@@ -1,4 +1,18 @@
+use ena::unify::InPlaceUnificationTable;
+
+use crate::ty::TyVar;
+
 pub fn typecheck() {}
+
+pub struct Typecheck {
+    unification_table: InPlaceUnificationTable<TyVar>,
+}
+
+impl Typecheck {
+    pub fn fresh_ty_var(&mut self) -> TyVar {
+        self.unification_table.new_key(None)
+    }
+}
 
 #[cfg(test)]
 mod test {

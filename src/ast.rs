@@ -1,6 +1,6 @@
 use ustr::{ustr, Ustr};
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ast {
     Fun(Fun),
     Lit(Lit),
@@ -14,27 +14,27 @@ impl Ast {
         })
     }
 
-    pub fn r#int(value: usize) -> Self {
+    pub fn int(value: usize) -> Self {
         Self::Lit(Lit {
             kind: LitKind::Int(value),
         })
     }
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Fun {
     name: Ustr,
     body: Box<Ast>,
     // TODO: span
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Lit {
     kind: LitKind,
     // TODO: span
 }
 
-#[derive(Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LitKind {
     Int(usize),
 }
