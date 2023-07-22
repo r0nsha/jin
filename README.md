@@ -15,8 +15,6 @@ fn main() =
 - Simple (small surface area)
 - Fast compile times
 
-For more information about up-to-date syntax and language features, check out the [demo file](https://github.com/r0nsha/chili/blob/main/examples/demo/demo.chl).
-
 ## Usage
 
 There's no real CLI yet, but this is how I'd imagine it to work
