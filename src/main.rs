@@ -15,7 +15,7 @@ fn main() {
         None,
     );
 
-    typecheck(&mut ast);
+    let typed_ast = typecheck(ast).unwrap();
 
-    ast.pretty_print().unwrap();
+    typed_ast.pretty_print().unwrap();
 }

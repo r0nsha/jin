@@ -28,7 +28,7 @@ impl Ty {
     pub fn fun(return_ty: Ty, span: Span) -> Self {
         Self {
             kind: TyKind::Fun(FunTy {
-                return_ty: Box::new(return_ty),
+                ret: Box::new(return_ty),
             }),
             span,
         }
@@ -36,6 +36,26 @@ impl Ty {
 
     pub fn span(&self) -> Span {
         self.span
+    }
+
+    pub fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
+        match &self.kind {
+            TyKind::Fun(fun) => {
+                // fun.arg.occurs_check(var).map_err(|_| self.clone())?;
+                fun.ret.occurs_check(var).map_err(|_| self.clone())
+            }
+            TyKind::Var(v) => {
+                if *v == var {
+                    Err(Ty {
+                        kind: TyKind::Var(*v),
+                        span: self.span,
+                    })
+                } else {
+                    Ok(())
+                }
+            }
+            TyKind::Int(_) => Ok(()),
+        }
     }
 }
 
@@ -46,13 +66,13 @@ pub enum TyKind {
     Fun(FunTy),
 }
 
-impl EqUnifyValue for TyKind {}
+impl EqUnifyValue for Ty {}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TyVar(u32);
 
 impl UnifyKey for TyVar {
-    type Value = Option<TyKind>;
+    type Value = Option<Ty>;
 
     fn index(&self) -> u32 {
         self.0
@@ -74,7 +94,7 @@ pub enum IntTy {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunTy {
-    pub return_ty: Box<Ty>,
+    pub ret: Box<Ty>,
 }
 
 impl fmt::Display for Ty {
@@ -86,7 +106,7 @@ impl fmt::Display for Ty {
             },
             TyKind::Fun(fun) => {
                 f.write_str("fn() ")?;
-                fun.return_ty.fmt(f)
+                fun.ret.fmt(f)
             }
         }
     }
