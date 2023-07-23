@@ -49,7 +49,7 @@ impl Ast {
         };
         p.visit(self);
         let tree = p.builder.build();
-        ptree::print_tree(&tree)
+        ptree::print_tree_with(&tree, &ptree::PrintConfig::default())
     }
 }
 
