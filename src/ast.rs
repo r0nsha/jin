@@ -11,7 +11,7 @@ pub enum Ast {
 }
 
 impl Ast {
-    // TODO: remove these functions...
+    // TODO: remove these functions after we implement the parser
     pub fn fun(name: &str, body: Self, span: Span, ty: Option<Ty>) -> Self {
         Self::Fun(Fun {
             name: ustr(name),
@@ -41,6 +41,10 @@ impl Ast {
             Self::Fun(fun) => fun.ty.as_ref(),
             Self::Lit(lit) => lit.ty.as_ref(),
         }
+    }
+
+    pub fn ty_cloned(&self) -> Ty {
+        self.ty().unwrap().clone()
     }
 
     pub fn pretty_print(&self) -> io::Result<()> {

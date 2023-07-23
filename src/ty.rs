@@ -6,7 +6,7 @@ use crate::span::Span;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ty {
-    kind: TyKind,
+    pub kind: TyKind,
     span: Span,
 }
 
@@ -32,6 +32,10 @@ impl Ty {
             }),
             span,
         }
+    }
+
+    pub fn span(&self) -> Span {
+        self.span
     }
 }
 

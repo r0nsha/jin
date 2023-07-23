@@ -1,9 +1,6 @@
 use ena::unify::InPlaceUnificationTable;
 
-use crate::{
-    ast::{Ast, LitKind},
-    ty::*,
-};
+use crate::{ast::*, ty::*};
 
 pub fn typecheck(ast: &mut Ast) {
     let mut cx = Typecheck {
@@ -28,23 +25,33 @@ impl Typecheck {
                 // let arg_ty_var = self.fresh_ty_var();
 
                 let body_constraints = self.infer(&mut fun.body);
-                fun.ty = Some(Ty::fun(fun.body.ty().unwrap().clone(), fun.span));
+                fun.ty = Some(Ty::fun(fun.body.ty_cloned(), fun.span));
 
-                Constraints(vec![])
+                Constraints::none()
             }
             Ast::Lit(lit) => match &lit.kind {
                 LitKind::Int(value) => {
                     lit.ty = Some(Ty::int(lit.span));
-                    Constraints(vec![])
+                    Constraints::none()
                 }
             },
         }
     }
 
-    fn check(&mut self, ast: &mut Ast, expected: Ty) -> Constraints {
-        match ast {
-            Ast::Fun(fun) => todo!(),
-            Ast::Lit(lit) => todo!(),
+    fn check(&mut self, ast: &mut Ast, expected_ty: Ty) -> Constraints {
+        match (ast, &expected_ty.kind) {
+            (
+                Ast::Lit(Lit {
+                    kind: LitKind::Int(_),
+                    ..
+                }),
+                TyKind::Int(IntTy::Int),
+            ) => Constraints::none(),
+            (ast, _) => {
+                let mut constraints = self.infer(ast);
+                constraints.push(Constraint::TyEq(expected_ty, ast.ty_cloned()));
+                constraints
+            }
         }
     }
 }
@@ -52,6 +59,14 @@ impl Typecheck {
 struct Constraints(Vec<Constraint>);
 
 impl Constraints {
+    fn none() -> Self {
+        Self(vec![])
+    }
+
+    fn push(&mut self, constraint: Constraint) {
+        self.0.push(constraint)
+    }
+
     fn merge(self, other: Self) -> Self {
         Self(self.0.into_iter().chain(other.0).collect())
     }
