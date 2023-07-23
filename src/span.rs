@@ -7,6 +7,10 @@ pub struct Span {
 }
 
 impl Span {
+    pub fn unknown() -> Self {
+        Self { low: 0, high: 0 }
+    }
+
     pub fn new(low: u32, high: u32) -> Self {
         Self { low, high }
     }
