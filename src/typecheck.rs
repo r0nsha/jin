@@ -24,7 +24,7 @@ struct Inferred {
 }
 
 enum Constraint {
-    TyEq(Ty, Ty),
+    TyEq(TyKind, TyKind),
 }
 
 #[cfg(test)]

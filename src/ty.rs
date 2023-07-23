@@ -1,29 +1,43 @@
 use ena::unify::{EqUnifyValue, UnifyKey};
 
+use crate::span::Span;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Ty {
+pub struct Ty {
+    kind: TyKind,
+    span: Span,
+}
+
+impl Ty {
+    pub fn var(inner: u32, span: Span) -> Self {
+        Self {
+            kind: TyKind::Var(TyVar(inner)),
+            span,
+        }
+    }
+
+    pub fn int(span: Span) -> Self {
+        Self {
+            kind: TyKind::Int(IntTy::Int),
+            span,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TyKind {
     Var(TyVar),
     Int(IntTy),
     Fun(FunTy),
 }
 
-impl EqUnifyValue for Ty {}
-
-impl Ty {
-    pub fn var(inner: u32) -> Self {
-        Self::Var(TyVar(inner))
-    }
-
-    pub fn int() -> Self {
-        Self::Int(IntTy::Int)
-    }
-}
+impl EqUnifyValue for TyKind {}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct TyVar(u32);
 
 impl UnifyKey for TyVar {
-    type Value = Option<Ty>;
+    type Value = Option<TyKind>;
 
     fn index(&self) -> u32 {
         self.0
@@ -45,5 +59,5 @@ pub enum IntTy {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunTy {
-    return_ty: Box<Ty>,
+    return_ty: Box<TyKind>,
 }
