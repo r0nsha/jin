@@ -24,6 +24,14 @@ impl Ty {
         })
     }
 
+    pub fn as_fun(&self) -> &FunTy {
+        if let Self::Fun(f) = self {
+            f
+        } else {
+            panic!("expected Fun, got {self}")
+        }
+    }
+
     pub fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
         match self {
             Ty::Fun(fun) => {

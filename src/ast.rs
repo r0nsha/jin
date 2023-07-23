@@ -92,7 +92,6 @@ pub trait AstVisitor<T> {
     }
 
     fn visit_fun(&mut self, fun: &Fun) -> T;
-
     fn visit_lit(&mut self, lit: &Lit) -> T;
 }
 
