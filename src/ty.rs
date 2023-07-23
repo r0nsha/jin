@@ -1,3 +1,5 @@
+use std::fmt;
+
 use ena::unify::{EqUnifyValue, UnifyKey};
 
 use crate::span::Span;
@@ -69,4 +71,19 @@ pub enum IntTy {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunTy {
     return_ty: Box<Ty>,
+}
+
+impl fmt::Display for Ty {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.kind {
+            TyKind::Var(var) => write!(f, "@{}", var.0),
+            TyKind::Int(int) => match int {
+                IntTy::Int => f.write_str("int"),
+            },
+            TyKind::Fun(fun) => {
+                f.write_str("fn() ");
+                fun.return_ty.fmt(f)
+            }
+        }
+    }
 }

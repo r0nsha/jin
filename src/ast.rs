@@ -89,11 +89,22 @@ struct PrettyPrint {
     builder: ptree::TreeBuilder,
 }
 
+impl PrettyPrint {
+    fn add_ty(&mut self, ty: Option<&Ty>) {
+        self.builder.add_empty_child(match ty {
+            Some(ty) => format!("ty: {}", ty),
+            None => "ty: ?".to_string(),
+        });
+    }
+}
+
 impl AstVisitor<()> for PrettyPrint {
     fn visit_fun(&mut self, fun: &Fun) {
-        self.builder
-            .begin_child(format!("fn {}", fun.name))
-            .begin_child("body".to_string());
+        self.builder.begin_child(format!("fn {}", fun.name));
+
+        self.add_ty(fun.ty.as_ref());
+
+        self.builder.begin_child("body".to_string());
 
         self.visit(&fun.body);
 
