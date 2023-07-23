@@ -35,7 +35,7 @@ impl Typecheck {
                 // let arg_ty_var = self.fresh_ty_var();
 
                 let body_constraints = self.infer(&mut fun.body);
-                fun.ty = Some(Ty::fun(fun.body.ty_cloned(), fun.span));
+                fun.ty = Some(Ty::fun(fun.body.ty_cloned()));
 
                 Constraints::none()
             }
@@ -75,7 +75,7 @@ impl Typecheck {
             // },
             Ast::Lit(lit) => match &lit.kind {
                 LitKind::Int(value) => {
-                    lit.ty = Some(Ty::int(lit.span));
+                    lit.ty = Some(Ty::int());
                     Constraints::none()
                 }
             },
@@ -83,8 +83,8 @@ impl Typecheck {
     }
 
     fn check(&mut self, ast: &mut Ast, expected_ty: Ty) -> Constraints {
-        match (ast, &expected_ty.kind) {
-            (Ast::Fun(fun), TyKind::Fun(fun_ty)) => {
+        match (ast, expected_ty) {
+            (Ast::Fun(fun), Ty::Fun(fun_ty)) => {
                 // let env = env.update(arg, *arg_ty);
                 self.check(&mut fun.body, fun_ty.ret.as_ref().clone())
             }
@@ -93,9 +93,9 @@ impl Typecheck {
                     kind: LitKind::Int(_),
                     ..
                 }),
-                TyKind::Int(IntTy::Int),
+                Ty::Int(IntTy::Int),
             ) => Constraints::none(),
-            (ast, _) => {
+            (ast, expected_ty) => {
                 let mut constraints = self.infer(ast);
                 constraints.push(Constraint::TyEq(expected_ty, ast.ty_cloned()));
                 constraints
@@ -116,18 +116,18 @@ impl Typecheck {
         let left = self.normalize_ty(unnorm_left);
         let right = self.normalize_ty(unnorm_right);
 
-        match (left.kind, right.kind) {
-            (TyKind::Fun(l), TyKind::Fun(r)) => {
+        match (left, right) {
+            (Ty::Fun(l), Ty::Fun(r)) => {
                 // self.unify_ty_ty(*f1.arg, f2.arg)?;
                 self.unify_ty_ty(l.ret.as_ref().clone(), r.ret.as_ref().clone())
             }
 
-            (TyKind::Var(l), TyKind::Var(r)) => self
+            (Ty::Var(l), Ty::Var(r)) => self
                 .unification_table
                 .unify_var_var(l, r)
                 .map_err(|(l, r)| TyError::TyNotEq(l, r)),
 
-            (TyKind::Var(v), ty) | (ty, TyKind::Var(v)) => {
+            (Ty::Var(v), ty) | (ty, Ty::Var(v)) => {
                 ty.occurs_check(v)
                     .map_err(|ty| TyError::InfiniteTy(v, ty))?;
 
@@ -136,26 +136,24 @@ impl Typecheck {
                     .map_err(|(l, r)| TyError::TyNotEq(l, r))
             }
 
-            (TyKind::Int(IntTy::Int), TyKind::Int(IntTy::Int)) => Ok(()),
+            (Ty::Int(IntTy::Int), Ty::Int(IntTy::Int)) => Ok(()),
 
-            _ => Err(TyError::TyNotEq(left, right)),
+            (left, right) => Err(TyError::TyNotEq(left, right)),
         }
     }
 
     fn normalize_ty(&mut self, ty: Ty) -> Ty {
-        let span = ty.span();
-
-        match ty.kind {
-            TyKind::Fun(fun) => {
+        match ty {
+            Ty::Fun(fun) => {
                 // let arg = self.normalize_ty(*arg);
                 let ret = self.normalize_ty(*fun.ret);
-                Ty::fun(ret, span)
+                Ty::fun(ret)
             }
-            TyKind::Var(var) => match self.unification_table.probe_value(var) {
+            Ty::Var(var) => match self.unification_table.probe_value(var) {
                 Some(ty) => self.normalize_ty(ty),
                 None => ty,
             },
-            TyKind::Int(_) => ty,
+            Ty::Int(_) => ty,
         }
     }
 }

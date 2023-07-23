@@ -2,68 +2,44 @@ use std::fmt;
 
 use ena::unify::{EqUnifyValue, UnifyKey};
 
-use crate::span::Span;
-
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Ty {
-    pub kind: TyKind,
-    span: Span,
+pub enum Ty {
+    Var(TyVar),
+    Int(IntTy),
+    Fun(FunTy),
 }
 
 impl Ty {
-    pub fn var(inner: u32, span: Span) -> Self {
-        Self {
-            kind: TyKind::Var(TyVar(inner)),
-            span,
-        }
+    pub fn var(inner: u32) -> Self {
+        Ty::Var(TyVar(inner))
     }
 
-    pub fn int(span: Span) -> Self {
-        Self {
-            kind: TyKind::Int(IntTy::Int),
-            span,
-        }
+    pub fn int() -> Self {
+        Ty::Int(IntTy::Int)
     }
 
-    pub fn fun(return_ty: Ty, span: Span) -> Self {
-        Self {
-            kind: TyKind::Fun(FunTy {
-                ret: Box::new(return_ty),
-            }),
-            span,
-        }
-    }
-
-    pub fn span(&self) -> Span {
-        self.span
+    pub fn fun(return_ty: Ty) -> Self {
+        Ty::Fun(FunTy {
+            ret: Box::new(return_ty),
+        })
     }
 
     pub fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
-        match &self.kind {
-            TyKind::Fun(fun) => {
+        match self {
+            Ty::Fun(fun) => {
                 // fun.arg.occurs_check(var).map_err(|_| self.clone())?;
                 fun.ret.occurs_check(var).map_err(|_| self.clone())
             }
-            TyKind::Var(v) => {
+            Ty::Var(v) => {
                 if *v == var {
-                    Err(Ty {
-                        kind: TyKind::Var(*v),
-                        span: self.span,
-                    })
+                    Err(Ty::Var(*v))
                 } else {
                     Ok(())
                 }
             }
-            TyKind::Int(_) => Ok(()),
+            Ty::Int(_) => Ok(()),
         }
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum TyKind {
-    Var(TyVar),
-    Int(IntTy),
-    Fun(FunTy),
 }
 
 impl EqUnifyValue for Ty {}
@@ -99,12 +75,12 @@ pub struct FunTy {
 
 impl fmt::Display for Ty {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.kind {
-            TyKind::Var(var) => write!(f, "@{}", var.0),
-            TyKind::Int(int) => match int {
+        match self {
+            Ty::Var(var) => write!(f, "@{}", var.0),
+            Ty::Int(int) => match int {
                 IntTy::Int => f.write_str("int"),
             },
-            TyKind::Fun(fun) => {
+            Ty::Fun(fun) => {
                 f.write_str("fn() ")?;
                 fun.ret.fmt(f)
             }
