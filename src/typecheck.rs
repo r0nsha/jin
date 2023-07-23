@@ -39,13 +39,13 @@ enum Constraint {
 
 #[cfg(test)]
 mod test {
-    use crate::ast::Ast;
+    use crate::{ast::Ast, span::Span};
 
     use super::typecheck;
 
     #[test]
     fn empty_main() {
-        let ast = Ast::fun("main", Ast::int(42));
+        let ast = Ast::fun("main", Ast::int(42, Span::unknown()), Span::unknown());
         // assert_eq!()
     }
 }
