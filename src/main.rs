@@ -12,7 +12,11 @@ use typecheck::typecheck;
 fn main() {
     let mut ast = Ast::fun(
         "main_main",
-        Ast::int(42, Span::unknown(), None),
+        Ast::ret(
+            Some(Ast::int(42, Span::unknown(), None)),
+            Span::unknown(),
+            None,
+        ),
         Span::unknown(),
         None,
     );
@@ -23,5 +27,6 @@ fn main() {
 
     let code = codegen(&typed_ast);
 
+    println!();
     println!("{code}");
 }

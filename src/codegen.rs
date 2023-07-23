@@ -31,7 +31,9 @@ impl Codegen {
             r#"int main() {
     main_main();
     return 0;
-}"#,
+}
+
+"#,
         );
 
         let definitions = self.visit(ast);
@@ -39,10 +41,9 @@ impl Codegen {
     }
 
     fn add_declaration(&mut self, decl: &str) {
-        const SUFFIX: &str = ";\n\n";
-        self.declarations.reserve(decl.len() + SUFFIX.len());
+        self.declarations.reserve(decl.len() + 1);
         self.declarations.push_str(decl);
-        self.declarations.push_str(SUFFIX);
+        self.declarations.push(';');
     }
 
     // fn add_definition(&mut self, def: &str) {
@@ -64,8 +65,19 @@ impl AstVisitor<String> for Codegen {
         self.add_declaration(&decl);
 
         let body = self.visit(&fun.body);
+        let body_str = format!("\t{body};\n");
 
-        format!("{decl} {{\n{body}}}\n\n")
+        format!("{decl} {{\n{body_str}}}\n\n")
+    }
+
+    fn visit_ret(&mut self, ret: &Ret) -> String {
+        let value = if let Some(value) = ret.value.as_ref() {
+            self.visit(value)
+        } else {
+            "".to_string()
+        };
+
+        format!("return {}", value)
     }
 
     fn visit_lit(&mut self, lit: &Lit) -> String {
@@ -82,6 +94,6 @@ fn c_type(ty: &Ty) -> String {
         }
         .to_string(),
         Ty::Fun(_) => todo!(),
-        Ty::Var(v) => panic!("unexpected {v:?}"),
+        Ty::Var(_) | Ty::Never => panic!("unexpected type: {ty}"),
     }
 }

@@ -7,6 +7,7 @@ pub enum Ty {
     Var(TyVar),
     Int(IntTy),
     Fun(FunTy),
+    Never,
 }
 
 impl Ty {
@@ -45,7 +46,7 @@ impl Ty {
                     Ok(())
                 }
             }
-            Ty::Int(_) => Ok(()),
+            Ty::Int(_) | Ty::Never => Ok(()),
         }
     }
 }
@@ -84,14 +85,15 @@ pub struct FunTy {
 impl fmt::Display for Ty {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Ty::Var(var) => write!(f, "@{}", var.0),
-            Ty::Int(int) => match int {
-                IntTy::Int => f.write_str("int"),
-            },
             Ty::Fun(fun) => {
                 f.write_str("fn() ")?;
                 fun.ret.fmt(f)
             }
+            Ty::Var(var) => write!(f, "@{}", var.0),
+            Ty::Int(int) => match int {
+                IntTy::Int => f.write_str("int"),
+            },
+            Ty::Never => f.write_str("never"),
         }
     }
 }

@@ -53,6 +53,16 @@ impl Typecheck {
 
                 Constraints::none()
             }
+            Ast::Ret(ret) => {
+                // let arg_ty_var = self.fresh_ty_var();
+
+                // let body_constraints = self.infer(&mut fun.body);
+                // fun.ty = Some(Ty::fun(fun.body.ty_cloned()));
+
+                // Constraints::none()
+
+                todo!()
+            }
             // Ast::App(fun, arg) => {
             //     let (arg_out, arg_ty) = self.infer(env.clone(), *arg);
             //
@@ -170,7 +180,7 @@ impl Typecheck {
                 Some(ty) => self.normalize_ty(ty),
                 None => ty,
             },
-            Ty::Int(_) => ty,
+            Ty::Int(_) | Ty::Never => ty,
         }
     }
 }
@@ -221,7 +231,7 @@ impl Typecheck {
             //     let (unbound, ty) = self.substitute(v.1);
             //     (unbound, Ast::Var(TypedVar(v.0, ty)))
             // }
-            Ast::Lit(_) => HashSet::new(),
+            Ast::Ret(_) | Ast::Lit(_) => HashSet::new(),
         };
 
         let (unbound_ty, ty) = self.substitute(ast.ty_cloned());
