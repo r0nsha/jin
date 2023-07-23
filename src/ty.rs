@@ -74,7 +74,7 @@ pub enum IntTy {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunTy {
-    return_ty: Box<Ty>,
+    pub return_ty: Box<Ty>,
 }
 
 impl fmt::Display for Ty {

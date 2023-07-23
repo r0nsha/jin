@@ -40,6 +40,9 @@ impl Typecheck {
 
     fn check(&mut self, ast: &mut Ast, expected_ty: Ty) -> Constraints {
         match (ast, &expected_ty.kind) {
+            (Ast::Fun(Fun { body, .. }), TyKind::Fun(FunTy { return_ty })) => {
+                self.check(body, return_ty.as_ref().clone())
+            }
             (
                 Ast::Lit(Lit {
                     kind: LitKind::Int(_),
