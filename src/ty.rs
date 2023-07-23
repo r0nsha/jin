@@ -81,7 +81,7 @@ impl fmt::Display for Ty {
                 IntTy::Int => f.write_str("int"),
             },
             TyKind::Fun(fun) => {
-                f.write_str("fn() ");
+                f.write_str("fn() ")?;
                 fun.return_ty.fmt(f)
             }
         }

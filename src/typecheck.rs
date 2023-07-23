@@ -5,77 +5,58 @@ use crate::{
     ty::*,
 };
 
-pub fn typecheck(ast: Ast) -> Ast {
+pub fn typecheck(ast: &mut Ast) {
     let mut cx = Typecheck {
         unification_table: InPlaceUnificationTable::new(),
     };
 
-    let (inferred, _) = cx.infer(ast);
-
-    inferred.typed_ast
+    cx.infer(ast);
 }
 
 struct Typecheck {
     unification_table: InPlaceUnificationTable<TyVar>,
 }
 
-struct Inferred {
-    contraints: Vec<Constraint>,
-    typed_ast: Ast,
-}
-
-enum Constraint {
-    TyEq(Ty, Ty),
-}
-
-// TODO: making this mutate the Ast instead for brevity?
 impl Typecheck {
     pub fn fresh_ty_var(&mut self) -> TyVar {
         self.unification_table.new_key(None)
     }
 
-    fn infer(&mut self, ast: Ast) -> (Inferred, Ty) {
+    fn infer(&mut self, ast: &mut Ast) -> Constraints {
         match ast {
             Ast::Fun(fun) => {
                 // let arg_ty_var = self.fresh_ty_var();
 
-                let (body_inferred, body_ty) = self.infer(*fun.body);
-                let fun_ty = Ty::fun(body_ty, fun.span);
+                let body_constraints = self.infer(&mut fun.body);
+                fun.ty = Some(Ty::fun(fun.body.ty().unwrap().clone(), fun.span));
 
-                (
-                    Inferred {
-                        contraints: vec![],
-                        typed_ast: Ast::fun(
-                            &fun.name,
-                            body_inferred.typed_ast,
-                            fun.span,
-                            Some(fun_ty.clone()),
-                        ),
-                    },
-                    fun_ty,
-                )
-                // fun.ty = Some(Ty::fun(fun.body.ty().unwrap()))
+                Constraints(vec![])
             }
             Ast::Lit(lit) => match &lit.kind {
                 LitKind::Int(value) => {
-                    let ty = Ty::int(lit.span);
-
-                    (
-                        Inferred {
-                            contraints: vec![],
-                            typed_ast: Ast::int(*value, lit.span, Some(ty.clone())),
-                        },
-                        ty,
-                    )
+                    lit.ty = Some(Ty::int(lit.span));
+                    Constraints(vec![])
                 }
             },
         }
     }
 
-    fn check(&mut self, ast: Ast, expected: Ty) -> Inferred {
+    fn check(&mut self, ast: &mut Ast, expected: Ty) -> Constraints {
         match ast {
             Ast::Fun(fun) => todo!(),
             Ast::Lit(lit) => todo!(),
         }
     }
+}
+
+struct Constraints(Vec<Constraint>);
+
+impl Constraints {
+    fn merge(self, other: Self) -> Self {
+        Self(self.0.into_iter().chain(other.0).collect())
+    }
+}
+
+enum Constraint {
+    TyEq(Ty, Ty),
 }

@@ -14,6 +14,8 @@ fn main() {
         Span::unknown(),
         None,
     );
-    let typed_ast = typecheck(ast);
-    typed_ast.pretty_print().unwrap();
+
+    typecheck(&mut ast);
+
+    ast.pretty_print().unwrap();
 }
