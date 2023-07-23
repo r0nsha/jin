@@ -22,6 +22,15 @@ impl Ty {
             span,
         }
     }
+
+    pub fn fun(return_ty: Ty, span: Span) -> Self {
+        Self {
+            kind: TyKind::Fun(FunTy {
+                return_ty: Box::new(return_ty),
+            }),
+            span,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -59,5 +68,5 @@ pub enum IntTy {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunTy {
-    return_ty: Box<TyKind>,
+    return_ty: Box<Ty>,
 }

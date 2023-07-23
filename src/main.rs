@@ -8,7 +8,12 @@ use span::Span;
 use typecheck::typecheck;
 
 fn main() {
-    let mut ast = Ast::fun("main", Ast::int(42, Span::unknown()), Span::unknown());
-    typecheck(&mut ast);
-    dbg!(ast);
+    let mut ast = Ast::fun(
+        "main",
+        Ast::int(42, Span::unknown(), None),
+        Span::unknown(),
+        None,
+    );
+    let typed_ast = typecheck(ast);
+    dbg!(typed_ast);
 }

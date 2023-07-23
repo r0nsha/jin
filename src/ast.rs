@@ -9,21 +9,36 @@ pub enum Ast {
 }
 
 impl Ast {
-    pub fn fun(name: &str, body: Self, span: Span) -> Self {
+    // TODO: remove these functions...
+    pub fn fun(name: &str, body: Self, span: Span, ty: Option<Ty>) -> Self {
         Self::Fun(Fun {
             name: ustr(name),
             body: Box::new(body),
             span,
-            ty: None,
+            ty,
         })
     }
 
-    pub fn int(value: usize, span: Span) -> Self {
+    pub fn int(value: usize, span: Span, ty: Option<Ty>) -> Self {
         Self::Lit(Lit {
             kind: LitKind::Int(value),
             span,
-            ty: None,
+            ty,
         })
+    }
+
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Fun(fun) => fun.span,
+            Self::Lit(lit) => lit.span,
+        }
+    }
+
+    pub fn ty(&self) -> Option<&Ty> {
+        match self {
+            Self::Fun(fun) => fun.ty.as_ref(),
+            Self::Lit(lit) => lit.ty.as_ref(),
+        }
     }
 }
 
@@ -31,9 +46,9 @@ macro_rules! define_ast {
     ($name: ident, $($element: ident: $ty: ty),* $(,)?) => {
         #[derive(Debug, Clone, PartialEq, Eq)]
         pub struct $name {
-            $($element: $ty),*,
-            span: Span,
-            ty: Option<Ty>,
+            $(pub $element: $ty),*,
+            pub span: Span,
+            pub ty: Option<Ty>,
         }
     };
 }

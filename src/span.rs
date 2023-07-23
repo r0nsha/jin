@@ -49,10 +49,6 @@ impl Span {
     }
 }
 
-pub trait Spannable {
-    fn span(&self) -> Span;
-}
-
 #[derive(Debug)]
 pub struct SourceMap {
     sources: Vec<Arc<Source>>,
