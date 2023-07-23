@@ -1,3 +1,5 @@
+use std::io;
+
 use ustr::{ustr, Ustr};
 
 use crate::{span::Span, ty::Ty};
@@ -40,6 +42,15 @@ impl Ast {
             Self::Lit(lit) => lit.ty.as_ref(),
         }
     }
+
+    pub fn pretty_print(&self) -> io::Result<()> {
+        let mut p = PrettyPrint {
+            builder: ptree::TreeBuilder::new("ast".to_string()),
+        };
+        p.visit(self);
+        let tree = p.builder.build();
+        ptree::print_tree(&tree)
+    }
 }
 
 macro_rules! define_ast {
@@ -59,4 +70,40 @@ define_ast!(Lit, kind: LitKind,);
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LitKind {
     Int(usize),
+}
+
+pub trait AstVisitor<T> {
+    fn visit(&mut self, ast: &Ast) -> T {
+        match ast {
+            Ast::Fun(fun) => self.visit_fun(fun),
+            Ast::Lit(lit) => self.visit_lit(lit),
+        }
+    }
+
+    fn visit_fun(&mut self, fun: &Fun) -> T;
+
+    fn visit_lit(&mut self, lit: &Lit) -> T;
+}
+
+struct PrettyPrint {
+    builder: ptree::TreeBuilder,
+}
+
+impl AstVisitor<()> for PrettyPrint {
+    fn visit_fun(&mut self, fun: &Fun) {
+        self.builder
+            .begin_child(format!("fn {}", fun.name))
+            .begin_child("body".to_string());
+
+        self.visit(&fun.body);
+
+        self.builder.end_child();
+        self.builder.end_child();
+    }
+
+    fn visit_lit(&mut self, lit: &Lit) {
+        match lit.kind {
+            LitKind::Int(value) => self.builder.add_empty_child(format!("int: {value}")),
+        };
+    }
 }

@@ -15,5 +15,5 @@ fn main() {
         None,
     );
     let typed_ast = typecheck(ast);
-    dbg!(typed_ast);
+    typed_ast.pretty_print().unwrap();
 }
