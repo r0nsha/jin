@@ -3,6 +3,12 @@ mod span;
 mod ty;
 mod typecheck;
 
+use ast::Ast;
+use span::Span;
+use typecheck::typecheck;
+
 fn main() {
-    println!("Hello, world!");
+    let mut ast = Ast::fun("main", Ast::int(42, Span::unknown()), Span::unknown());
+    typecheck(&mut ast);
+    dbg!(ast);
 }

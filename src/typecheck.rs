@@ -2,7 +2,7 @@ use ena::unify::InPlaceUnificationTable;
 
 use crate::{ast::Ast, ty::*};
 
-pub fn typecheck() {}
+pub fn typecheck(ast: &mut Ast) {}
 
 struct Typecheck {
     unification_table: InPlaceUnificationTable<TyVar>,
@@ -13,14 +13,14 @@ impl Typecheck {
         self.unification_table.new_key(None)
     }
 
-    fn infer(&mut self, ast: Ast) -> (Inferred, Ty) {
+    fn infer(&mut self, ast: &mut Ast) -> (Inferred, Ty) {
         match ast {
             Ast::Fun(_) => todo!(),
             Ast::Lit(_) => todo!(),
         }
     }
 
-    fn check(&mut self, ast: Ast, expected: Ty) -> Inferred {
+    fn check(&mut self, ast: &mut Ast, expected: Ty) -> Inferred {
         match ast {
             Ast::Fun(_) => todo!(),
             Ast::Lit(_) => todo!(),
@@ -30,22 +30,8 @@ impl Typecheck {
 
 struct Inferred {
     contraints: Vec<Constraint>,
-    typed_ast: Ast,
 }
 
 enum Constraint {
-    TyEq(TyKind, TyKind),
-}
-
-#[cfg(test)]
-mod test {
-    use crate::{ast::Ast, span::Span};
-
-    use super::typecheck;
-
-    #[test]
-    fn empty_main() {
-        let ast = Ast::fun("main", Ast::int(42, Span::unknown()), Span::unknown());
-        // assert_eq!()
-    }
+    TyEq(Ty, Ty),
 }
