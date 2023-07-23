@@ -90,19 +90,24 @@ struct PrettyPrint {
 }
 
 impl PrettyPrint {
-    fn add_ty(&mut self, ty: Option<&Ty>) {
-        self.builder.add_empty_child(match ty {
-            Some(ty) => format!("ty: {}", ty),
-            None => "ty: ?".to_string(),
-        });
+    fn print_ty(ty: Option<&Ty>) -> String {
+        format!(
+            "(ty: {})",
+            match ty {
+                Some(ty) => ty.to_string(),
+                None => "?".to_string(),
+            }
+        )
     }
 }
 
 impl AstVisitor<()> for PrettyPrint {
     fn visit_fun(&mut self, fun: &Fun) {
-        self.builder.begin_child(format!("fn {}", fun.name));
-
-        self.add_ty(fun.ty.as_ref());
+        self.builder.begin_child(format!(
+            "fn {} {}",
+            fun.name,
+            Self::print_ty(fun.ty.as_ref())
+        ));
 
         self.builder.begin_child("body".to_string());
 
@@ -115,10 +120,9 @@ impl AstVisitor<()> for PrettyPrint {
     fn visit_lit(&mut self, lit: &Lit) {
         match lit.kind {
             LitKind::Int(value) => {
-                self.builder.add_empty_child(format!("int: {value}"));
+                self.builder
+                    .add_empty_child(format!("int: {value} {}", Self::print_ty(lit.ty.as_ref())));
             }
         }
-
-        self.add_ty(lit.ty.as_ref());
     }
 }
