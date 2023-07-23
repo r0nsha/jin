@@ -1,15 +1,25 @@
+use std::collections::HashSet;
+
 use ena::unify::InPlaceUnificationTable;
 
 use crate::{ast::*, ty::*};
 
-pub fn typecheck(mut ast: Ast) -> TyResult<Ast> {
+pub fn typecheck(mut ast: Ast) -> TyResult<(Ast, TypeScheme)> {
     let mut cx = Typecheck {
         unification_table: InPlaceUnificationTable::new(),
     };
 
-    cx.infer(&mut ast);
+    let constraints = cx.infer(&mut ast);
 
-    Ok(ast)
+    cx.unification(constraints)?;
+
+    let (mut unbound, ty) = cx.substitute(ast.ty_cloned());
+    let unbound_ast = cx.substitute_ast(&mut ast);
+
+    unbound.extend(unbound_ast);
+
+    // Return our typed ast and it's type scheme
+    Ok((ast, TypeScheme { unbound, ty }))
 }
 
 pub type TyResult<T> = Result<T, TyError>;
@@ -24,11 +34,15 @@ struct Typecheck {
     unification_table: InPlaceUnificationTable<TyVar>,
 }
 
+// Utils
 impl Typecheck {
     pub fn fresh_ty_var(&mut self) -> TyVar {
         self.unification_table.new_key(None)
     }
+}
 
+// Infer/Check
+impl Typecheck {
     fn infer(&mut self, ast: &mut Ast) -> Constraints {
         match ast {
             Ast::Fun(fun) => {
@@ -42,8 +56,8 @@ impl Typecheck {
             // Ast::App(fun, arg) => {
             //     let (arg_out, arg_ty) = self.infer(env.clone(), *arg);
             //
-            //     let ret_ty = Type::Var(self.fresh_ty_var());
-            //     let fun_ty = Type::fun(arg_ty, ret_ty.clone());
+            //     let ret_ty = Ty::Var(self.fresh_ty_var());
+            //     let fun_ty = Ty::fun(arg_ty, ret_ty.clone());
             //
             //     // Because we inferred an argument type, we can
             //     // cconstruct a function type to check against.
@@ -102,9 +116,12 @@ impl Typecheck {
             }
         }
     }
+}
 
-    fn unification(&mut self, constraints: Vec<Constraint>) -> Result<(), TyError> {
-        for constraint in constraints {
+// Unification
+impl Typecheck {
+    fn unification(&mut self, constraints: Constraints) -> Result<(), TyError> {
+        for constraint in constraints.0 {
             match constraint {
                 Constraint::TyEq(left, right) => self.unify_ty_ty(left, right)?,
             }
@@ -158,6 +175,62 @@ impl Typecheck {
     }
 }
 
+// Substitute
+impl Typecheck {
+    fn substitute(&mut self, ty: Ty) -> (HashSet<TyVar>, Ty) {
+        match ty {
+            Ty::Fun(fun) => {
+                // let (mut arg_unbound, arg) = self.substitute(*arg);
+                let (ret_unbound, ret) = self.substitute(fun.ret.as_ref().clone());
+                // arg_unbound.extend(ret_unbound);
+                (ret_unbound, Ty::fun(ret))
+            }
+            Ty::Var(v) => {
+                let root = self.unification_table.find(v);
+                match self.unification_table.probe_value(root) {
+                    Some(ty) => self.substitute(ty),
+                    None => {
+                        let mut unbound = HashSet::new();
+                        unbound.insert(root);
+                        (unbound, Ty::Var(root))
+                    }
+                }
+            }
+            _ => (HashSet::new(), ty),
+        }
+    }
+
+    fn substitute_ast(&mut self, ast: &mut Ast) -> HashSet<TyVar> {
+        let unbound = match ast {
+            Ast::Fun(fun) => {
+                // let (mut unbound, ty) = self.substitute(arg.1);
+                // let arg = TypedVar(arg.0, ty);
+
+                let unbound_body = self.substitute_ast(&mut fun.body);
+                // unbound.extend(unbound_body);
+
+                unbound_body
+            }
+            // Ast::App(fun, arg) => {
+            //     let (mut unbound_fun, fun) = self.substitute_ast(*fun);
+            //     let (unbound_arg, arg) = self.substitute_ast(*arg);
+            //     unbound_fun.extend(unbound_arg);
+            //     (unbound_fun, Expr::app(fun, arg))
+            // }
+            // Ast::Var(v) => {
+            //     let (unbound, ty) = self.substitute(v.1);
+            //     (unbound, Ast::Var(TypedVar(v.0, ty)))
+            // }
+            Ast::Lit(_) => HashSet::new(),
+        };
+
+        let (unbound_ty, ty) = self.substitute(ast.ty_cloned());
+        *ast.ty_mut() = Some(ty);
+
+        unbound
+    }
+}
+
 struct Constraints(Vec<Constraint>);
 
 impl Constraints {
@@ -176,4 +249,10 @@ impl Constraints {
 
 enum Constraint {
     TyEq(Ty, Ty),
+}
+
+#[derive(PartialEq, Eq, Clone, Debug)]
+pub struct TypeScheme {
+    unbound: HashSet<TyVar>,
+    ty: Ty,
 }

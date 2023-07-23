@@ -15,7 +15,7 @@ fn main() {
         None,
     );
 
-    let typed_ast = typecheck(ast).unwrap();
+    let (typed_ast, _type_schema) = typecheck(ast).unwrap();
 
     typed_ast.pretty_print().unwrap();
 }

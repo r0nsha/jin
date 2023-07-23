@@ -44,7 +44,7 @@ impl Ty {
 
 impl EqUnifyValue for Ty {}
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TyVar(u32);
 
 impl UnifyKey for TyVar {

@@ -43,6 +43,13 @@ impl Ast {
         }
     }
 
+    pub fn ty_mut(&mut self) -> &mut Option<Ty> {
+        match self {
+            Self::Fun(fun) => &mut fun.ty,
+            Self::Lit(lit) => &mut lit.ty,
+        }
+    }
+
     pub fn ty_cloned(&self) -> Ty {
         self.ty().unwrap().clone()
     }
