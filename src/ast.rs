@@ -114,7 +114,11 @@ impl AstVisitor<()> for PrettyPrint {
 
     fn visit_lit(&mut self, lit: &Lit) {
         match lit.kind {
-            LitKind::Int(value) => self.builder.add_empty_child(format!("int: {value}")),
-        };
+            LitKind::Int(value) => {
+                self.builder.add_empty_child(format!("int: {value}"));
+            }
+        }
+
+        self.add_ty(lit.ty.as_ref());
     }
 }
