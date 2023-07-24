@@ -25,7 +25,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse(&mut self) -> Module {
-        let mut module = Module { funs: vec![] };
+        let mut module = Module { bindings: vec![] };
 
         while self.pos < self.tokens.len() - 1 {
             self.parse_top_level(&mut module);

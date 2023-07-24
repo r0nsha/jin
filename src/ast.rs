@@ -1,50 +1,41 @@
 use std::io;
 
-use ustr::{ustr, Ustr};
+use ustr::Ustr;
 
 use crate::{span::Span, ty::Ty};
 
 #[derive(Debug, Clone)]
 pub struct Module {
-    pub funs: Vec<Fun>,
+    pub bindings: Vec<Binding>,
+}
+
+impl Module {
+    pub fn pretty_print(&self) -> io::Result<()> {
+        let mut p = PrettyPrint {
+            builder: ptree::TreeBuilder::new("ast".to_string()),
+        };
+
+        for binding in &self.bindings {
+            p.visit_binding(binding);
+        }
+
+        let tree = p.builder.build();
+        ptree::print_tree_with(&tree, &ptree::PrintConfig::default())
+    }
 }
 
 #[derive(Debug, Clone)]
 pub enum Ast {
+    Binding(Binding),
     Fun(Fun),
     Ret(Ret),
     Lit(Lit),
 }
 
 impl Ast {
-    // TODO: remove these functions after we implement the parser
-    pub fn fun(name: &str, body: Self, span: Span, ty: Option<Ty>) -> Self {
-        Self::Fun(Fun {
-            name: ustr(name),
-            body: Box::new(body),
-            span,
-            ty,
-        })
-    }
-
-    pub fn ret(value: Option<Ast>, span: Span, ty: Option<Ty>) -> Self {
-        Self::Ret(Ret {
-            value: Box::new(value),
-            span,
-            ty,
-        })
-    }
-
-    pub fn int(value: usize, span: Span, ty: Option<Ty>) -> Self {
-        Self::Lit(Lit {
-            kind: LitKind::Int(value),
-            span,
-            ty,
-        })
-    }
-
     pub fn span(&self) -> Span {
         match self {
+            Self::Binding(binding) => binding.span,
             Self::Fun(fun) => fun.span,
             Self::Ret(ret) => ret.span,
             Self::Lit(lit) => lit.span,
@@ -53,6 +44,7 @@ impl Ast {
 
     pub fn ty(&self) -> Option<&Ty> {
         match self {
+            Self::Binding(binding) => binding.ty.as_ref(),
             Self::Fun(fun) => fun.ty.as_ref(),
             Self::Ret(ret) => ret.ty.as_ref(),
             Self::Lit(lit) => lit.ty.as_ref(),
@@ -61,6 +53,7 @@ impl Ast {
 
     pub fn ty_mut(&mut self) -> &mut Option<Ty> {
         match self {
+            Self::Binding(binding) => &mut binding.ty,
             Self::Fun(fun) => &mut fun.ty,
             Self::Ret(ret) => &mut ret.ty,
             Self::Lit(lit) => &mut lit.ty,
@@ -75,7 +68,9 @@ impl Ast {
         let mut p = PrettyPrint {
             builder: ptree::TreeBuilder::new("ast".to_string()),
         };
+
         p.visit(self);
+
         let tree = p.builder.build();
         ptree::print_tree_with(&tree, &ptree::PrintConfig::default())
     }
@@ -102,7 +97,14 @@ macro_rules! define_ast {
     };
 }
 
-define_ast!(Fun, name: Ustr, body: Box<Ast>);
+define_ast!(Binding, kind: BindingKind);
+
+#[derive(Debug, Clone)]
+pub enum BindingKind {
+    Fun { name: Ustr, fun: Box<Fun> },
+}
+
+define_ast!(Fun, body: Box<Ast>);
 define_ast!(Ret, value: Box<Option<Ast>>);
 define_ast!(Lit, kind: LitKind);
 
@@ -120,6 +122,7 @@ pub trait AstVisitor<T> {
         }
     }
 
+    fn visit_binding(&mut self, binding: &Binding) -> T;
     fn visit_fun(&mut self, fun: &Fun) -> T;
     fn visit_ret(&mut self, ret: &Ret) -> T;
     fn visit_lit(&mut self, lit: &Lit) -> T;
@@ -129,32 +132,26 @@ struct PrettyPrint {
     builder: ptree::TreeBuilder,
 }
 
-impl PrettyPrint {
-    fn print_ty(ty: Option<&Ty>) -> String {
-        format!(
-            "(ty: {})",
-            match ty {
-                Some(ty) => ty.to_string(),
-                None => "?".to_string(),
-            }
-        )
-    }
-}
-
 impl AstVisitor<()> for PrettyPrint {
+    fn visit_binding(&mut self, binding: &Binding) {
+        match &binding.kind {
+            BindingKind::Fun { name, fun } => {
+                self.builder.begin_child(format!(
+                    "fn {} {}",
+                    name,
+                    Self::print_ty(fun.ty.as_ref())
+                ));
+
+                self.print_fun_body(fun);
+            }
+        }
+    }
+
     fn visit_fun(&mut self, fun: &Fun) {
-        self.builder.begin_child(format!(
-            "fn {} {}",
-            fun.name,
-            Self::print_ty(fun.ty.as_ref())
-        ));
+        self.builder
+            .begin_child(format!("fn {}", Self::print_ty(fun.ty.as_ref())));
 
-        self.builder.begin_child("body".to_string());
-
-        self.visit(&fun.body);
-
-        self.builder.end_child();
-        self.builder.end_child();
+        self.print_fun_body(fun);
     }
 
     fn visit_ret(&mut self, ret: &Ret) -> () {
@@ -174,5 +171,26 @@ impl AstVisitor<()> for PrettyPrint {
                     .add_empty_child(format!("int: {value} {}", Self::print_ty(lit.ty.as_ref())));
             }
         }
+    }
+}
+
+impl PrettyPrint {
+    fn print_ty(ty: Option<&Ty>) -> String {
+        format!(
+            "(ty: {})",
+            match ty {
+                Some(ty) => ty.to_string(),
+                None => "?".to_string(),
+            }
+        )
+    }
+
+    fn print_fun_body(&mut self, fun: &Fun) {
+        self.builder.begin_child("body".to_string());
+
+        self.visit(&fun.body);
+
+        self.builder.end_child();
+        self.builder.end_child();
     }
 }

@@ -39,7 +39,7 @@ typedef void never;"#,
 "#,
         );
 
-        for fun in &module.funs {
+        for fun in &module.bindings {
             let definitions = self.visit_fun(fun);
             self.definitions.push_str(&definitions);
         }

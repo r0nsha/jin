@@ -14,7 +14,7 @@ pub fn typecheck(mut module: Module) -> TyResult<(Module, TypeScheme)> {
     let mut constraints = Constraints::none();
     let mut unbound = HashSet::new();
 
-    for fun in &mut module.funs {
+    for binding in &mut module.bindings {
         let constraints = cx.infer_fun(&mut fun);
         unbound.extend(cx.substitute(fun.ty_cloned()));
     }

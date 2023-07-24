@@ -11,7 +11,7 @@ use std::{fs, os::unix::process::CommandExt, path::PathBuf, process::Command};
 
 use clap::{Parser, Subcommand};
 
-use crate::{ast::Ast, codegen::codegen, span::Span, state::State, typecheck::typecheck};
+use crate::{codegen::codegen, state::State, typecheck::typecheck};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -39,13 +39,13 @@ fn main() {
             let source = state.source_map.add_source(file_name, file_source);
 
             let tokens = lexer::tokenize(source.as_ref());
-            let ast = parser::parse(source.as_ref(), tokens);
+            let module = parser::parse(source.as_ref(), tokens);
 
             let (typed_module, _type_schema) = typecheck(module).unwrap();
 
             typed_module.pretty_print().unwrap();
 
-            let code = codegen(&typed_module);
+            let code = codegen(typed_module);
 
             println!("\n{code}");
 
