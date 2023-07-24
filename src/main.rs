@@ -41,7 +41,7 @@ fn main() {
             let tokens = lexer::tokenize(source.as_ref());
             let module = parser::parse(source.as_ref(), tokens);
 
-            let (typed_module, _type_schema) = typecheck(module).unwrap();
+            let typed_module = typecheck(module).unwrap();
 
             typed_module.pretty_print().unwrap();
 

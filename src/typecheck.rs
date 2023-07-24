@@ -8,26 +8,32 @@ use crate::{ast::*, ty::*};
 
 use self::scope::{FunScope, FunScopes};
 
-pub fn typecheck(mut module: Module) -> TyResult<(Module, TypeScheme)> {
+pub fn typecheck(mut module: Module) -> TyResult<Module> {
     let mut cx = Typecheck::new();
 
+    // Generate constraints
     let mut constraints = Constraints::none();
+
+    for binding in &mut module.bindings {
+        let constraints = cx.infer_binding(binding);
+    }
+
+    // Unification
+    cx.unification(constraints)?;
+
+    // Substitution
     let mut unbound = HashSet::new();
 
     for binding in &mut module.bindings {
-        let constraints = cx.infer_fun(&mut fun);
-        unbound.extend(cx.substitute(fun.ty_cloned()));
+        let (unbound_ty, binding_ty) = cx.substitute(binding.get_actual_ty().unwrap().clone());
+        unbound.extend(unbound_ty);
+
+        let unbound_binding = cx.substitute_binding(binding);
+        unbound.extend(unbound_binding);
     }
 
-    cx.unification(constraints)?;
-
-    let (mut unbound, ty) = cx.substitute(module.ty_cloned());
-    let unbound_ast = cx.substitute_ast(&mut module);
-
-    unbound.extend(unbound_ast);
-
     // Return our typed ast and it's type scheme
-    Ok((module, TypeScheme { unbound, ty }))
+    Ok(module)
 }
 
 pub type TyResult<T> = Result<T, TyError>;
@@ -61,6 +67,7 @@ impl Typecheck {
 impl Typecheck {
     fn infer(&mut self, ast: &mut Ast) -> Constraints {
         match ast {
+            Ast::Binding(binding) => self.infer_binding(binding),
             Ast::Fun(fun) => self.infer_fun(fun),
             Ast::Ret(ret) => {
                 ret.set_ty(Ty::Never);
@@ -81,46 +88,20 @@ impl Typecheck {
                     todo!("cannot use return outside of function scope")
                 }
             }
-            // Ast::App(fun, arg) => {
-            //     let (arg_out, arg_ty) = self.infer(env.clone(), *arg);
-            //
-            //     let ret_ty = Ty::Var(self.fresh_ty_var());
-            //     let fun_ty = Ty::fun(arg_ty, ret_ty.clone());
-            //
-            //     // Because we inferred an argument type, we can
-            //     // cconstruct a function type to check against.
-            //     let fun_out = self.check(env, *fun, fun_ty);
-            //
-            //     (
-            //         GenOut::new(
-            //             // Pass on constraints from both child nodes
-            //             arg_out
-            //                 .constraints
-            //                 .into_iter()
-            //                 .chain(fun_out.constraints.into_iter())
-            //                 .collect(),
-            //             Ast::app(fun_out.typed_ast, arg_out.typed_ast),
-            //         ),
-            //         ret_ty,
-            //     )
-            // }
-            //  Ast::Var(v) => {
-            //   let ty = &env[&v];
-            //   (
-            //     GenOut::new(
-            //       vec![],
-            //       // Return a `TypedVar` instead of `Var`
-            //       Ast::Var(TypedVar(v, ty.clone())
-            //     ),
-            //     ty.clone(),
-            //   )
-            // },
             Ast::Lit(lit) => match &lit.kind {
                 LitKind::Int(_) => {
                     lit.set_ty(Ty::int());
                     Constraints::none()
                 }
             },
+        }
+    }
+
+    fn infer_binding(&mut self, binding: &mut Binding) -> Constraints {
+        binding.set_ty(Ty::Unit);
+
+        match &mut binding.kind {
+            BindingKind::Fun { name: _, fun } => self.infer_fun(fun),
         }
     }
 
@@ -243,25 +224,8 @@ impl Typecheck {
 
     fn substitute_ast(&mut self, ast: &mut Ast) -> HashSet<TyVar> {
         let unbound = match ast {
-            Ast::Fun(fun) => {
-                // let (mut unbound, ty) = self.substitute(arg.1);
-                // let arg = TypedVar(arg.0, ty);
-
-                let unbound_body = self.substitute_ast(&mut fun.body);
-                // unbound.extend(unbound_body);
-
-                unbound_body
-            }
-            // Ast::App(fun, arg) => {
-            //     let (mut unbound_fun, fun) = self.substitute_ast(*fun);
-            //     let (unbound_arg, arg) = self.substitute_ast(*arg);
-            //     unbound_fun.extend(unbound_arg);
-            //     (unbound_fun, Expr::app(fun, arg))
-            // }
-            // Ast::Var(v) => {
-            //     let (unbound, ty) = self.substitute(v.1);
-            //     (unbound, Ast::Var(TypedVar(v.0, ty)))
-            // }
+            Ast::Binding(binding) => self.substitute_binding(binding),
+            Ast::Fun(fun) => self.substitute_fun(fun),
             Ast::Ret(_) | Ast::Lit(_) => HashSet::new(),
         };
 
@@ -269,6 +233,22 @@ impl Typecheck {
         *ast.ty_mut() = Some(ty);
 
         unbound
+    }
+
+    fn substitute_binding(&mut self, binding: &mut Binding) -> HashSet<TyVar> {
+        match &mut binding.kind {
+            BindingKind::Fun { name: _, fun } => self.substitute_fun(fun),
+        }
+    }
+
+    fn substitute_fun(&mut self, fun: &mut Fun) -> HashSet<TyVar> {
+        // let (mut unbound, ty) = self.substitute(arg.1);
+        // let arg = TypedVar(arg.0, ty);
+
+        let unbound_body = self.substitute_ast(&mut fun.body);
+        // unbound.extend(unbound_body);
+
+        unbound_body
     }
 }
 

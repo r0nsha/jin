@@ -39,8 +39,8 @@ typedef void never;"#,
 "#,
         );
 
-        for fun in &module.bindings {
-            let definitions = self.visit_fun(fun);
+        for binding in &module.bindings {
+            let definitions = self.visit_binding(binding);
             self.definitions.push_str(&definitions);
         }
     }
@@ -60,19 +60,39 @@ typedef void never;"#,
 }
 
 impl AstVisitor<String> for Codegen {
+    fn visit_binding(&mut self, binding: &Binding) -> String {
+        match &binding.kind {
+            BindingKind::Fun { name, fun } => {
+                let decl = format!(
+                    "{} {}()",
+                    c_type(fun.ty.as_ref().unwrap().as_fun().ret.as_ref()),
+                    name
+                );
+
+                self.add_declaration(&decl);
+
+                let body = self.visit(&fun.body);
+                let body_str = format!("\t{body};\n");
+
+                format!("{decl} {{\n{body_str}}}\n\n")
+            }
+        }
+    }
+
     fn visit_fun(&mut self, fun: &Fun) -> String {
-        let decl = format!(
-            "{} {}()",
-            c_type(fun.ty.as_ref().unwrap().as_fun().ret.as_ref()),
-            fun.name
-        );
-
-        self.add_declaration(&decl);
-
-        let body = self.visit(&fun.body);
-        let body_str = format!("\t{body};\n");
-
-        format!("{decl} {{\n{body_str}}}\n\n")
+        todo!("anonymous functions")
+        // let decl = format!(
+        //     "{} {}()",
+        //     c_type(fun.ty.as_ref().unwrap().as_fun().ret.as_ref()),
+        //     fun.name
+        // );
+        //
+        // self.add_declaration(&decl);
+        //
+        // let body = self.visit(&fun.body);
+        // let body_str = format!("\t{body};\n");
+        //
+        // format!("{decl} {{\n{body_str}}}\n\n")
     }
 
     fn visit_ret(&mut self, ret: &Ret) -> String {

@@ -99,6 +99,14 @@ macro_rules! define_ast {
 
 define_ast!(Binding, kind: BindingKind);
 
+impl Binding {
+    pub fn get_actual_ty(&self) -> Option<&Ty> {
+        match &self.kind {
+            BindingKind::Fun { fun, .. } => fun.ty.as_ref(),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum BindingKind {
     Fun { name: Ustr, fun: Box<Fun> },
