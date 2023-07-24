@@ -87,7 +87,7 @@ macro_rules! define_ast {
 
         impl $name {
             pub fn ty_cloned(&self) -> Ty {
-                self.ty.unwrap().clone()
+                self.ty.as_ref().unwrap().clone()
             }
 
             pub fn set_ty(&mut self, ty: Ty) {
@@ -124,6 +124,7 @@ pub enum LitKind {
 pub trait AstVisitor<T> {
     fn visit(&mut self, ast: &Ast) -> T {
         match ast {
+            Ast::Binding(fun) => self.visit_binding(fun),
             Ast::Fun(fun) => self.visit_fun(fun),
             Ast::Ret(ret) => self.visit_ret(ret),
             Ast::Lit(lit) => self.visit_lit(lit),

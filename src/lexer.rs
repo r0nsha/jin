@@ -138,6 +138,22 @@ pub struct Token {
     pub span: Span,
 }
 
+impl Token {
+    pub fn ident(&self) -> Ustr {
+        match self.kind {
+            TokenKind::Ident(ident) => ident,
+            kind => panic!("expected Ident, got {kind:?}"),
+        }
+    }
+
+    pub fn int(&self) -> usize {
+        match self.kind {
+            TokenKind::Int(value) => value,
+            kind => panic!("expected Int, got {kind:?}"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenKind {
     // Delimiters

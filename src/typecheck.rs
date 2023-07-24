@@ -223,14 +223,20 @@ impl Typecheck {
     }
 
     fn substitute_ast(&mut self, ast: &mut Ast) -> HashSet<TyVar> {
-        let unbound = match ast {
+        let mut unbound = HashSet::new();
+
+        match ast {
             Ast::Binding(binding) => self.substitute_binding(binding),
             Ast::Fun(fun) => self.substitute_fun(fun),
-            Ast::Ret(_) | Ast::Lit(_) => HashSet::new(),
-        };
+            Ast::Ret(_) | Ast::Lit(_) => {
+                let (unbound_ty, ty) = self.substitute(ast.ty_cloned());
+                unbound.extend(unbound_ty);
 
-        let (unbound_ty, ty) = self.substitute(ast.ty_cloned());
-        *ast.ty_mut() = Some(ty);
+                *ast.ty_mut() = Some(ty);
+
+                HashSet::new()
+            }
+        };
 
         unbound
     }
@@ -248,7 +254,10 @@ impl Typecheck {
         let unbound_body = self.substitute_ast(&mut fun.body);
         // unbound.extend(unbound_body);
 
-        unbound_body
+        let (unbound_ty, ty) = self.substitute(fun.ty_cloned());
+        fun.set_ty(ty);
+
+        unbound_body.union(&unbound_ty).copied().collect()
     }
 }
 

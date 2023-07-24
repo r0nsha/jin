@@ -1,7 +1,7 @@
 use crate::{
-    ast::{Ast, Module},
+    ast::*,
     lexer::{Token, TokenKind},
-    span::Source,
+    span::{Source, Span},
 };
 
 pub fn parse(source: &Source, tokens: Vec<Token>) -> Module {
@@ -23,23 +23,94 @@ impl<'a> Parser<'a> {
             pos: 0,
         }
     }
+}
 
+impl<'a> Parser<'a> {
     fn parse(&mut self) -> Module {
         let mut module = Module { bindings: vec![] };
 
         while self.pos < self.tokens.len() - 1 {
-            self.parse_top_level(&mut module);
+            let binding = self.parse_binding(); // TODO: diagnostic
+            module.bindings.push(binding);
         }
 
         module
     }
 
-    fn parse_top_level(&mut self, module: &mut Module) {}
+    fn parse_binding(&mut self) -> Binding {
+        if self.is(TokenKind::Fn) {
+            let start = self.last_span();
 
+            let name = self.expect_ident().unwrap().ident(); // TODO: diagnostic
+            self.expect(TokenKind::OpenParen).unwrap(); // TODO: diagnostic
+                                                        // TODO: args
+            self.expect(TokenKind::CloseParen).unwrap(); // TODO: diagnostic
+            self.expect(TokenKind::Eq).unwrap(); // TODO: diagnostic
+
+            let body = self.parse_fun_body();
+
+            let span = start.merge(body.span());
+
+            Binding {
+                kind: BindingKind::Fun {
+                    name,
+                    fun: Box::new(Fun {
+                        body: Box::new(body),
+                        span,
+                        ty: None,
+                    }),
+                },
+                span,
+                ty: None,
+            }
+        } else {
+            todo!() // TODO: diagnostic
+        }
+    }
+
+    fn parse_fun_body(&mut self) -> Ast {
+        // TODO: don't require curlies (need to impl block expressions)
+        self.expect(TokenKind::OpenCurly).unwrap(); // TODO: diagnostic
+        let body = self.parse_expr(); // TODO: diagnostic
+        self.expect(TokenKind::CloseCurly).unwrap(); // TODO: diagnostic
+        body
+    }
+
+    fn parse_expr(&mut self) -> Ast {
+        if self.is(TokenKind::Return) {
+            self.parse_ret()
+        } else if let Some(TokenKind::Int(value)) = self.token_kind() {
+            self.advance();
+
+            Ast::Lit(Lit {
+                kind: LitKind::Int(value),
+                span: self.last_span(),
+                ty: None,
+            })
+        } else {
+            todo!() // TODO: diagnostic
+        }
+    }
+
+    fn parse_ret(&mut self) -> Ast {
+        // TODO: naked return
+        let start = self.last_span();
+        let value = self.parse_expr();
+        let span = start.merge(value.span());
+
+        Ast::Ret(Ret {
+            value: Box::new(Some(value)),
+            span,
+            ty: None,
+        })
+    }
+}
+
+impl<'a> Parser<'a> {
     fn is(&mut self, token: TokenKind) -> bool {
-        match self.tokens.get(self.pos) {
+        match self.token() {
             Some(tok) if tok.kind == token => {
-                self.bump();
+                self.advance();
                 true
             }
             _ => false,
@@ -48,12 +119,47 @@ impl<'a> Parser<'a> {
 
     // TODO: is_any
 
-    fn expect(&mut self, token: TokenKind) {
+    fn expect(&mut self, token: TokenKind) -> Option<Token> {
         // TODO: diagnostic
+        match self.token() {
+            Some(tok) if tok.kind == token => {
+                self.advance();
+                Some(tok)
+            }
+            _ => None,
+        }
+    }
+
+    fn expect_ident(&mut self) -> Option<Token> {
+        // TODO: diagnostic
+        match self.token() {
+            Some(
+                tok @ Token {
+                    kind: TokenKind::Ident(_),
+                    ..
+                },
+            ) => {
+                self.advance();
+                Some(tok)
+            }
+            _ => None,
+        }
+    }
+
+    fn token_kind(&self) -> Option<TokenKind> {
+        self.token().map(|t| t.kind)
+    }
+
+    fn token(&self) -> Option<Token> {
+        self.tokens.get(self.pos).cloned()
+    }
+
+    fn last_span(&self) -> Span {
+        self.tokens[self.pos - 1].span
     }
 
     #[inline]
-    fn bump(&mut self) {
+    fn advance(&mut self) {
         self.pos += 1;
     }
 }
