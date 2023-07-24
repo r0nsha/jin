@@ -138,7 +138,7 @@ pub struct Token {
     pub span: Span,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenKind {
     // Delimiters
     OpenParen,

@@ -4,7 +4,12 @@ use ustr::{ustr, Ustr};
 
 use crate::{span::Span, ty::Ty};
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
+pub struct Module {
+    pub funs: Vec<Fun>,
+}
+
+#[derive(Debug, Clone)]
 pub enum Ast {
     Fun(Fun),
     Ret(Ret),
@@ -78,7 +83,7 @@ impl Ast {
 
 macro_rules! define_ast {
     ($name: ident, $($element: ident: $ty: ty),* $(,)?) => {
-        #[derive(Debug, Clone, PartialEq, Eq)]
+        #[derive(Debug, Clone)]
         pub struct $name {
             $(pub $element: $ty),*,
             pub span: Span,
@@ -86,6 +91,10 @@ macro_rules! define_ast {
         }
 
         impl $name {
+            pub fn ty_cloned(&self) -> Ty {
+                self.ty.unwrap().clone()
+            }
+
             pub fn set_ty(&mut self, ty: Ty) {
                 self.ty = Some(ty);
             }

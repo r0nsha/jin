@@ -1,6 +1,7 @@
 mod ast;
 mod codegen;
 mod lexer;
+mod parser;
 mod span;
 mod state;
 mod ty;
@@ -38,25 +39,13 @@ fn main() {
             let source = state.source_map.add_source(file_name, file_source);
 
             let tokens = lexer::tokenize(source.as_ref());
+            let ast = parser::parse(source.as_ref(), tokens);
 
-            dbg!(tokens);
+            let (typed_module, _type_schema) = typecheck(module).unwrap();
 
-            let ast = Ast::fun(
-                "main_main",
-                Ast::ret(
-                    Some(Ast::int(42, Span::unknown(), None)),
-                    Span::unknown(),
-                    None,
-                ),
-                Span::unknown(),
-                None,
-            );
+            typed_module.pretty_print().unwrap();
 
-            let (typed_ast, _type_schema) = typecheck(ast).unwrap();
-
-            typed_ast.pretty_print().unwrap();
-
-            let code = codegen(&typed_ast);
+            let code = codegen(&typed_module);
 
             println!("\n{code}");
 

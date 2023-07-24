@@ -1,6 +1,6 @@
 use crate::{ast::*, ty::*};
 
-pub fn codegen(ast: &Ast) -> String {
+pub fn codegen(module: Module) -> String {
     let mut cg = Codegen {
         prelude: String::new(),
         declarations: String::new(),
@@ -8,7 +8,7 @@ pub fn codegen(ast: &Ast) -> String {
         indent: 0,
     };
 
-    cg.gen(ast);
+    cg.gen(module);
 
     format!(
         "{}\n\n{}\n\n{}",
@@ -24,7 +24,7 @@ struct Codegen {
 }
 
 impl Codegen {
-    fn gen(&mut self, ast: &Ast) {
+    fn gen(&mut self, module: Module) {
         self.prelude.push_str(
             r#"#include <stdint.h>
 typedef void never;"#,
@@ -39,8 +39,10 @@ typedef void never;"#,
 "#,
         );
 
-        let definitions = self.visit(ast);
-        self.definitions.push_str(&definitions);
+        for fun in &module.funs {
+            let definitions = self.visit_fun(fun);
+            self.definitions.push_str(&definitions);
+        }
     }
 
     fn add_declaration(&mut self, decl: &str) {

@@ -8,20 +8,26 @@ use crate::{ast::*, ty::*};
 
 use self::scope::{FunScope, FunScopes};
 
-pub fn typecheck(mut ast: Ast) -> TyResult<(Ast, TypeScheme)> {
+pub fn typecheck(mut module: Module) -> TyResult<(Module, TypeScheme)> {
     let mut cx = Typecheck::new();
 
-    let constraints = cx.infer(&mut ast);
+    let mut constraints = Constraints::none();
+    let mut unbound = HashSet::new();
+
+    for fun in &mut module.funs {
+        let constraints = cx.infer_fun(&mut fun);
+        unbound.extend(cx.substitute(fun.ty_cloned()));
+    }
 
     cx.unification(constraints)?;
 
-    let (mut unbound, ty) = cx.substitute(ast.ty_cloned());
-    let unbound_ast = cx.substitute_ast(&mut ast);
+    let (mut unbound, ty) = cx.substitute(module.ty_cloned());
+    let unbound_ast = cx.substitute_ast(&mut module);
 
     unbound.extend(unbound_ast);
 
     // Return our typed ast and it's type scheme
-    Ok((ast, TypeScheme { unbound, ty }))
+    Ok((module, TypeScheme { unbound, ty }))
 }
 
 pub type TyResult<T> = Result<T, TyError>;
@@ -55,18 +61,7 @@ impl Typecheck {
 impl Typecheck {
     fn infer(&mut self, ast: &mut Ast) -> Constraints {
         match ast {
-            Ast::Fun(fun) => {
-                // let arg_ty_var = self.fresh_ty_var();
-
-                let fun_ret_ty = Ty::var(self.fresh_ty_var());
-                fun.set_ty(Ty::fun(fun_ret_ty.clone()));
-
-                self.fun_scopes.push(FunScope { ret_ty: fun_ret_ty });
-                let body_constraints = self.infer(&mut fun.body);
-                self.fun_scopes.pop();
-
-                body_constraints
-            }
+            Ast::Fun(fun) => self.infer_fun(fun),
             Ast::Ret(ret) => {
                 ret.set_ty(Ty::Never);
 
@@ -127,6 +122,19 @@ impl Typecheck {
                 }
             },
         }
+    }
+
+    fn infer_fun(&mut self, fun: &mut Fun) -> Constraints {
+        // let arg_ty_var = self.fresh_ty_var();
+
+        let fun_ret_ty = Ty::var(self.fresh_ty_var());
+        fun.set_ty(Ty::fun(fun_ret_ty.clone()));
+
+        self.fun_scopes.push(FunScope { ret_ty: fun_ret_ty });
+        let body_constraints = self.infer(&mut fun.body);
+        self.fun_scopes.pop();
+
+        body_constraints
     }
 
     fn check(&mut self, ast: &mut Ast, expected_ty: Ty) -> Constraints {
