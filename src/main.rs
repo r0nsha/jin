@@ -1,49 +1,79 @@
 mod ast;
 mod codegen;
+mod lexer;
 mod span;
+mod state;
 mod ty;
 mod typecheck;
-mod state;
 
-use std::{fs, os::unix::process::CommandExt, process::Command};
+use std::{fs, os::unix::process::CommandExt, path::PathBuf, process::Command};
 
-use ast::Ast;
-use codegen::codegen;
-use span::Span;
-use typecheck::typecheck;
+use clap::{Parser, Subcommand};
+
+use crate::{ast::Ast, codegen::codegen, span::Span, state::State, typecheck::typecheck};
+
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    cmd: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Run { file: PathBuf },
+}
 
 fn main() {
-    let ast = Ast::fun(
-        "main_main",
-        Ast::ret(
-            Some(Ast::int(42, Span::unknown(), None)),
-            Span::unknown(),
-            None,
-        ),
-        Span::unknown(),
-        None,
-    );
+    let cli = Cli::parse();
 
-    let (typed_ast, _type_schema) = typecheck(ast).unwrap();
+    match cli.cmd {
+        Commands::Run { file } => {
+            let mut state = State::new();
 
-    typed_ast.pretty_print().unwrap();
+            // TODO: handle error
+            let file_name = file.to_str().unwrap().to_string();
+            let file_source = fs::read_to_string(file).unwrap();
 
-    let code = codegen(&typed_ast);
+            let source = state.source_map.add_source(file_name, file_source);
 
-    println!("\n{code}");
+            let tokens = lexer::tokenize(source.as_ref());
 
-    // TODO: don't create this out dir
-    // TODO: handle error (ICE)
-    fs::create_dir_all("out").unwrap();
+            dbg!(tokens);
 
-    // TODO: rename file
-    // TODO: handle error (ICE)
-    fs::write("out/main.c", &code).unwrap();
+            let ast = Ast::fun(
+                "main_main",
+                Ast::ret(
+                    Some(Ast::int(42, Span::unknown(), None)),
+                    Span::unknown(),
+                    None,
+                ),
+                Span::unknown(),
+                None,
+            );
 
-    // TODO: rename input
-    // TODO: rename output
-    // TODO: handle error (ICE)
-    Command::new("clang")
-        .args(["out/main.c", "-o", "out/main", "-x", "c", "-std=c99"])
-        .exec();
+            let (typed_ast, _type_schema) = typecheck(ast).unwrap();
+
+            typed_ast.pretty_print().unwrap();
+
+            let code = codegen(&typed_ast);
+
+            println!("\n{code}");
+
+            // TODO: don't create this out dir
+            // TODO: handle error (ICE)
+            fs::create_dir_all("out").unwrap();
+
+            // TODO: rename file
+            // TODO: handle error (ICE)
+            fs::write("out/main.c", &code).unwrap();
+
+            // TODO: rename input
+            // TODO: rename output
+            // TODO: handle error (ICE)
+            Command::new("clang")
+                .args(["out/main.c", "-o", "out/main", "-x", "c", "-std=c99"])
+                .exec();
+        }
+    }
 }
