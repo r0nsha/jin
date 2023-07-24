@@ -27,7 +27,7 @@ impl Codegen {
     fn gen(&mut self, ast: &Ast) {
         self.prelude.push_str(
             r#"#include <stdint.h>
-// typedef void never;"#,
+typedef void never;"#,
         );
 
         self.definitions.push_str(
