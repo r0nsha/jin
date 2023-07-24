@@ -25,7 +25,7 @@ pub fn typecheck(mut module: Module) -> TyResult<Module> {
     let mut unbound = HashSet::new();
 
     for binding in &mut module.bindings {
-        let (unbound_ty, binding_ty) = cx.substitute(binding.get_actual_ty().unwrap().clone());
+        let (unbound_ty, _binding_ty) = cx.substitute(binding.get_actual_ty().unwrap().clone());
         unbound.extend(unbound_ty);
 
         let unbound_binding = cx.substitute_binding(binding);
@@ -232,7 +232,7 @@ impl Typecheck {
                 let (unbound_ty, ty) = self.substitute(ast.ty_cloned());
                 unbound.extend(unbound_ty);
 
-                *ast.ty_mut() = Some(ty);
+                ast.set_ty(ty);
 
                 HashSet::new()
             }

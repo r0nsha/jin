@@ -51,12 +51,12 @@ impl Ast {
         }
     }
 
-    pub fn ty_mut(&mut self) -> &mut Option<Ty> {
+    pub fn set_ty(&mut self, ty: Ty) {
         match self {
-            Self::Binding(binding) => &mut binding.ty,
-            Self::Fun(fun) => &mut fun.ty,
-            Self::Ret(ret) => &mut ret.ty,
-            Self::Lit(lit) => &mut lit.ty,
+            Self::Binding(binding) => binding.set_ty(ty),
+            Self::Fun(fun) => fun.set_ty(ty),
+            Self::Ret(ret) => ret.set_ty(ty),
+            Self::Lit(lit) => lit.set_ty(ty),
         }
     }
 
