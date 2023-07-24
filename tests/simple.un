@@ -1,4 +1,5 @@
-fn main() = {
+// TODO: change to main()
+fn main_main() = {
 	// We return the answer to the universe...
 	return 42
 }

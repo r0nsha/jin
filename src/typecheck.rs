@@ -15,7 +15,7 @@ pub fn typecheck(mut module: Module) -> TyResult<Module> {
     let mut constraints = Constraints::none();
 
     for binding in &mut module.bindings {
-        let constraints = cx.infer_binding(binding);
+        constraints.extend(cx.infer_binding(binding));
     }
 
     // Unification
@@ -223,22 +223,15 @@ impl Typecheck {
     }
 
     fn substitute_ast(&mut self, ast: &mut Ast) -> HashSet<TyVar> {
-        let mut unbound = HashSet::new();
-
         match ast {
             Ast::Binding(binding) => self.substitute_binding(binding),
             Ast::Fun(fun) => self.substitute_fun(fun),
             Ast::Ret(_) | Ast::Lit(_) => {
                 let (unbound_ty, ty) = self.substitute(ast.ty_cloned());
-                unbound.extend(unbound_ty);
-
                 ast.set_ty(ty);
-
-                HashSet::new()
+                unbound_ty
             }
-        };
-
-        unbound
+        }
     }
 
     fn substitute_binding(&mut self, binding: &mut Binding) -> HashSet<TyVar> {
@@ -275,6 +268,10 @@ impl Constraints {
 
     fn push(&mut self, constraint: Constraint) {
         self.0.push(constraint)
+    }
+
+    fn extend(&mut self, other: Self) {
+        self.0.extend(other.0)
     }
 
     fn merge(self, other: Self) -> Self {
