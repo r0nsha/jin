@@ -30,7 +30,7 @@ pub enum TyError {
 
 struct Typecheck {
     unification_table: InPlaceUnificationTable<TyVar>,
-    curr_fun_ty: Option<Ty>,
+    fun_scopes: Vec<Ty>, // TODO: move to its own struct, use RAII to pop scope?
 }
 
 // Utils
@@ -38,7 +38,7 @@ impl Typecheck {
     pub fn new() -> Self {
         Self {
             unification_table: InPlaceUnificationTable::new(),
-            curr_fun_ty: None,
+            fun_scopes: vec![],
         }
     }
 
@@ -54,22 +54,28 @@ impl Typecheck {
             Ast::Fun(fun) => {
                 // let arg_ty_var = self.fresh_ty_var();
 
-                let body_constraints = self.infer(&mut fun.body);
-                fun.set_ty(Ty::fun(fun.body.ty_cloned()));
+                let fun_ret_ty = Ty::var(self.fresh_ty_var());
+                self.fun_scopes.push(fun_ret_ty.clone());
 
-                Constraints::none()
+                let body_constraints = self.infer(&mut fun.body);
+                fun.set_ty(Ty::fun(fun_ret_ty));
+
+                self.fun_scopes.pop();
+
+                body_constraints
             }
             Ast::Ret(ret) => {
                 ret.set_ty(Ty::Never);
 
-                if let Some(curr_fun_ty) = &self.curr_fun_ty {
-                    let ret_constraints = if let Some(value) = ret.value.as_mut() {
-                        self.infer(value)
+                if let Some(curr_fun_ty) = self.fun_scopes.last().cloned() {
+                    if let Some(value) = ret.value.as_mut() {
+                        let value_constraints = self.infer(value);
+                        let check_constraints = self.check(value, curr_fun_ty);
+
+                        value_constraints.merge(check_constraints)
                     } else {
                         Constraints::one(Constraint::TyEq(curr_fun_ty.clone(), Ty::Unit))
-                    };
-
-                    todo!()
+                    }
                 } else {
                     // TODO: diagnostic
                     todo!("cannot use return outside of function scope")
@@ -110,7 +116,7 @@ impl Typecheck {
             //   )
             // },
             Ast::Lit(lit) => match &lit.kind {
-                LitKind::Int(value) => {
+                LitKind::Int(_) => {
                     lit.set_ty(Ty::int());
                     Constraints::none()
                 }
@@ -253,6 +259,7 @@ impl Typecheck {
     }
 }
 
+#[derive(Debug, Clone)]
 struct Constraints(Vec<Constraint>);
 
 impl Constraints {
@@ -273,6 +280,7 @@ impl Constraints {
     }
 }
 
+#[derive(Debug, Clone)]
 enum Constraint {
     TyEq(Ty, Ty),
 }

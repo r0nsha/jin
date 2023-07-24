@@ -12,8 +12,8 @@ pub enum Ty {
 }
 
 impl Ty {
-    pub fn var(inner: u32) -> Self {
-        Ty::Var(TyVar(inner))
+    pub fn var(inner: TyVar) -> Self {
+        Ty::Var(inner)
     }
 
     pub fn int() -> Self {
@@ -47,7 +47,7 @@ impl Ty {
                     Ok(())
                 }
             }
-            Ty::Int(_) | Ty::Never | Ty::Unit => Ok(()),
+            Ty::Int(_) | Ty::Unit | Ty::Never => Ok(()),
         }
     }
 }

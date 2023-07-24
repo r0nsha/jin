@@ -2,7 +2,7 @@ use crate::{ast::*, ty::*};
 
 pub fn codegen(ast: &Ast) -> String {
     let mut cg = Codegen {
-        includes: String::new(),
+        prelude: String::new(),
         declarations: String::new(),
         definitions: String::new(),
         indent: 0,
@@ -12,12 +12,12 @@ pub fn codegen(ast: &Ast) -> String {
 
     format!(
         "{}\n\n{}\n\n{}",
-        cg.includes, cg.declarations, cg.definitions
+        cg.prelude, cg.declarations, cg.definitions
     )
 }
 
 struct Codegen {
-    includes: String,
+    prelude: String,
     declarations: String,
     definitions: String,
     indent: usize,
@@ -25,7 +25,10 @@ struct Codegen {
 
 impl Codegen {
     fn gen(&mut self, ast: &Ast) {
-        self.includes.push_str(r#"#include <stdint.h>"#);
+        self.prelude.push_str(
+            r#"#include <stdint.h>
+// typedef void never;"#,
+        );
 
         self.definitions.push_str(
             r#"int main() {
