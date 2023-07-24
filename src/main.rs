@@ -29,11 +29,13 @@ fn main() {
 
     let code = codegen(&typed_ast);
 
-    // TODO: don't create this out dir
-    fs::create_dir("out").unwrap();
-    // TODO: rename file
-    fs::write("out/main.c", &code).unwrap();
+    println!("\n{code}");
 
-    println!();
-    println!("{code}");
+    // TODO: don't create this out dir
+    // TODO: handle error (ICE)
+    fs::create_dir_all("out").unwrap();
+
+    // TODO: rename file
+    // TODO: handle error (ICE)
+    fs::write("out/main.c", &code).unwrap();
 }
