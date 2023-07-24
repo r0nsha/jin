@@ -4,7 +4,7 @@ mod span;
 mod ty;
 mod typecheck;
 
-use std::fs;
+use std::{fs, os::unix::process::CommandExt, process::Command};
 
 use ast::Ast;
 use codegen::codegen;
@@ -38,4 +38,11 @@ fn main() {
     // TODO: rename file
     // TODO: handle error (ICE)
     fs::write("out/main.c", &code).unwrap();
+
+    // TODO: rename input
+    // TODO: rename output
+    // TODO: handle error (ICE)
+    Command::new("clang")
+        .args(["out/main.c", "-o", "out/main", "-x", "c", "-std=c99"])
+        .exec();
 }
