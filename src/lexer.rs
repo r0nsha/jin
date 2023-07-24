@@ -1,25 +1,15 @@
-use std::ops::Range;
-
 use ustr::{ustr, Ustr};
 
 use crate::span::{Source, Span};
 
-pub fn tokenize(source: &Source) -> Tokens {
-    let mut lexer = Lexer::new(source);
-
-    lexer.run();
-
-    Tokens {
-        tokens: lexer.tokens,
-    }
+pub fn tokenize(source: &Source) -> Vec<Token> {
+    Lexer::new(source).scan()
 }
 
 struct Lexer<'a> {
     source: &'a Source,
     source_bytes: &'a [u8],
-    source_len: usize,
     pos: usize,
-    tokens: Vec<Token>,
 }
 
 impl<'a> Lexer<'a> {
@@ -27,27 +17,43 @@ impl<'a> Lexer<'a> {
         Self {
             source,
             source_bytes: source.source().as_bytes(),
-            source_len: source.source().len(),
             pos: 0,
-            tokens: vec![],
         }
     }
 
-    fn run(&mut self) {
+    fn scan(&mut self) -> Vec<Token> {
+        let mut tokens = vec![];
+
         while let Some(token) = self.next_token() {
-            dbg!(token);
-            self.advance();
+            tokens.push(token);
         }
+
+        tokens
     }
 
     fn next_token(&mut self) -> Option<Token> {
         let start = self.pos;
 
-        let ch = self.peek()?;
+        let ch = self.bump()?;
 
         let kind = match ch {
-            'a'..='z' | 'A'..='Z' | '_' => self.ident(start),
-            ' ' | '\t' | '\r' | '\n' => return self.next_token(),
+            '/' => {
+                if let Some('/') = self.peek() {
+                    self.advance();
+                    self.comment();
+                    return self.next_token();
+                } else {
+                    todo!("unknown character /")
+                }
+            }
+            '(' => TokenKind::OpenParen,
+            ')' => TokenKind::CloseParen,
+            '{' => TokenKind::OpenCurly,
+            '}' => TokenKind::CloseCurly,
+            '=' => TokenKind::Eq,
+            ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
+            ch if ch.is_ascii_digit() => self.numeric(start),
+            ch if ch.is_ascii_whitespace() => return self.next_token(),
             // TODO: diagnostic
             c => todo!("unknown character {c}"),
         };
@@ -59,35 +65,71 @@ impl<'a> Lexer<'a> {
     }
 
     fn ident(&mut self, start: usize) -> TokenKind {
-        while let Some('a'..='z' | 'A'..='Z' | '_' | '0'..='9') = self.peek() {
-            self.advance();
+        while let Some(ch) = self.peek() {
+            if ch.is_ascii_alphanumeric() || ch == '_' {
+                self.advance();
+            } else {
+                return match self.range(start) {
+                    "fn" => TokenKind::Fn,
+                    "return" => TokenKind::Return,
+                    str => TokenKind::Ident(ustr(str)),
+                };
+            }
         }
 
-        dbg!(self.pos);
-        let str = self.range(start);
-
-        return match str {
-            "fn" => TokenKind::Fn,
-            str => TokenKind::Ident(ustr(str)),
-        };
+        unreachable!()
     }
 
-    pub fn advance(&mut self) {
+    fn numeric(&mut self, start: usize) -> TokenKind {
+        while let Some(ch) = self.peek() {
+            if ch.is_ascii_digit() {
+                self.advance();
+            } else if ch == '_' && self.peek_offset(1).map_or(false, |c| c.is_ascii_digit()) {
+                self.advance();
+                self.advance();
+            } else {
+                // TODO: diagnostic
+                return TokenKind::Int(self.range(start).replace('_', "").parse().unwrap());
+            }
+        }
+
+        // TODO: diagnostic when number ends with _
+
+        unreachable!()
+    }
+
+    fn comment(&mut self) {
+        while let Some(ch) = self.peek() {
+            if ch == '\n' {
+                return;
+            } else {
+                self.advance()
+            }
+        }
+    }
+
+    #[inline]
+    fn advance(&mut self) {
         self.pos += 1;
     }
 
-    pub fn range(&self, start: usize) -> &str {
+    fn range(&self, start: usize) -> &str {
         &self.source.source()[start..start + (self.pos - start)]
     }
 
-    pub fn peek(&self) -> Option<char> {
+    fn peek(&self) -> Option<char> {
         self.source_bytes.get(self.pos).map(|c| *c as char)
     }
-}
 
-#[derive(Debug)]
-pub struct Tokens {
-    tokens: Vec<Token>,
+    fn peek_offset(&self, offset: usize) -> Option<char> {
+        self.source_bytes.get(self.pos + offset).map(|c| *c as char)
+    }
+
+    fn bump(&mut self) -> Option<char> {
+        let ch = self.peek();
+        self.advance();
+        ch
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -98,6 +140,20 @@ pub struct Token {
 
 #[derive(Debug, Clone, Copy)]
 pub enum TokenKind {
+    // Delimiters
+    OpenParen,
+    CloseParen,
+    OpenCurly,
+    CloseCurly,
+
+    // Symbols
+    Eq,
+
+    // Ident & Keywords
     Ident(Ustr),
     Fn,
+    Return,
+
+    // Values
+    Int(usize),
 }
