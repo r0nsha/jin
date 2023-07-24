@@ -3,6 +3,7 @@ mod codegen;
 mod span;
 mod ty;
 mod typecheck;
+mod state;
 
 use std::{fs, os::unix::process::CommandExt, process::Command};
 

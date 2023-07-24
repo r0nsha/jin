@@ -1,8 +1,12 @@
+mod scope;
+
 use std::collections::HashSet;
 
 use ena::unify::InPlaceUnificationTable;
 
 use crate::{ast::*, ty::*};
+
+use self::scope::{FunScope, FunScopes};
 
 pub fn typecheck(mut ast: Ast) -> TyResult<(Ast, TypeScheme)> {
     let mut cx = Typecheck::new();
@@ -30,7 +34,7 @@ pub enum TyError {
 
 struct Typecheck {
     unification_table: InPlaceUnificationTable<TyVar>,
-    fun_scopes: Vec<Ty>, // TODO: move to its own struct, use RAII to pop scope?
+    fun_scopes: FunScopes,
 }
 
 // Utils
@@ -38,7 +42,7 @@ impl Typecheck {
     pub fn new() -> Self {
         Self {
             unification_table: InPlaceUnificationTable::new(),
-            fun_scopes: vec![],
+            fun_scopes: FunScopes::new(),
         }
     }
 
@@ -55,11 +59,10 @@ impl Typecheck {
                 // let arg_ty_var = self.fresh_ty_var();
 
                 let fun_ret_ty = Ty::var(self.fresh_ty_var());
-                self.fun_scopes.push(fun_ret_ty.clone());
+                fun.set_ty(Ty::fun(fun_ret_ty.clone()));
 
+                self.fun_scopes.push(FunScope { ret_ty: fun_ret_ty });
                 let body_constraints = self.infer(&mut fun.body);
-                fun.set_ty(Ty::fun(fun_ret_ty));
-
                 self.fun_scopes.pop();
 
                 body_constraints
@@ -67,14 +70,16 @@ impl Typecheck {
             Ast::Ret(ret) => {
                 ret.set_ty(Ty::Never);
 
-                if let Some(curr_fun_ty) = self.fun_scopes.last().cloned() {
+                if let Some(fun_scope) = self.fun_scopes.current() {
+                    let expected_ty = fun_scope.ret_ty.clone();
+
                     if let Some(value) = ret.value.as_mut() {
                         let value_constraints = self.infer(value);
-                        let check_constraints = self.check(value, curr_fun_ty);
+                        let check_constraints = self.check(value, expected_ty);
 
                         value_constraints.merge(check_constraints)
                     } else {
-                        Constraints::one(Constraint::TyEq(curr_fun_ty.clone(), Ty::Unit))
+                        Constraints::one(Constraint::TyEq(expected_ty, Ty::Unit))
                     }
                 } else {
                     // TODO: diagnostic
@@ -285,7 +290,7 @@ enum Constraint {
     TyEq(Ty, Ty),
 }
 
-#[derive(PartialEq, Eq, Clone, Debug)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TypeScheme {
     unbound: HashSet<TyVar>,
     ty: Ty,

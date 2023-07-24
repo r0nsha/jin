@@ -20,9 +20,9 @@ impl Ty {
         Ty::Int(IntTy::Int)
     }
 
-    pub fn fun(return_ty: Ty) -> Self {
+    pub fn fun(ret: Ty) -> Self {
         Ty::Fun(FunTy {
-            ret: Box::new(return_ty),
+            ret: Box::new(ret),
         })
     }
 
