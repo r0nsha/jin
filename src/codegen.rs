@@ -94,6 +94,7 @@ fn c_type(ty: &Ty) -> String {
         }
         .to_string(),
         Ty::Fun(_) => todo!(),
-        Ty::Var(_) | Ty::Never => panic!("unexpected type: {ty}"),
+        Ty::Unit | Ty::Never => "void".to_string(),
+        Ty::Var(_) => panic!("unexpected type: {ty}"),
     }
 }

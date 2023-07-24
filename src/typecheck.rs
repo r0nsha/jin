@@ -5,9 +5,7 @@ use ena::unify::InPlaceUnificationTable;
 use crate::{ast::*, ty::*};
 
 pub fn typecheck(mut ast: Ast) -> TyResult<(Ast, TypeScheme)> {
-    let mut cx = Typecheck {
-        unification_table: InPlaceUnificationTable::new(),
-    };
+    let mut cx = Typecheck::new();
 
     let constraints = cx.infer(&mut ast);
 
@@ -32,10 +30,18 @@ pub enum TyError {
 
 struct Typecheck {
     unification_table: InPlaceUnificationTable<TyVar>,
+    curr_fun_ty: Option<Ty>,
 }
 
 // Utils
 impl Typecheck {
+    pub fn new() -> Self {
+        Self {
+            unification_table: InPlaceUnificationTable::new(),
+            curr_fun_ty: None,
+        }
+    }
+
     pub fn fresh_ty_var(&mut self) -> TyVar {
         self.unification_table.new_key(None)
     }
@@ -49,19 +55,25 @@ impl Typecheck {
                 // let arg_ty_var = self.fresh_ty_var();
 
                 let body_constraints = self.infer(&mut fun.body);
-                fun.ty = Some(Ty::fun(fun.body.ty_cloned()));
+                fun.set_ty(Ty::fun(fun.body.ty_cloned()));
 
                 Constraints::none()
             }
             Ast::Ret(ret) => {
-                // let arg_ty_var = self.fresh_ty_var();
+                ret.set_ty(Ty::Never);
 
-                // let body_constraints = self.infer(&mut fun.body);
-                // fun.ty = Some(Ty::fun(fun.body.ty_cloned()));
+                if let Some(curr_fun_ty) = &self.curr_fun_ty {
+                    let ret_constraints = if let Some(value) = ret.value.as_mut() {
+                        self.infer(value)
+                    } else {
+                        Constraints::one(Constraint::TyEq(curr_fun_ty.clone(), Ty::Unit))
+                    };
 
-                // Constraints::none()
-
-                todo!()
+                    todo!()
+                } else {
+                    // TODO: diagnostic
+                    todo!("cannot use return outside of function scope")
+                }
             }
             // Ast::App(fun, arg) => {
             //     let (arg_out, arg_ty) = self.infer(env.clone(), *arg);
@@ -99,7 +111,7 @@ impl Typecheck {
             // },
             Ast::Lit(lit) => match &lit.kind {
                 LitKind::Int(value) => {
-                    lit.ty = Some(Ty::int());
+                    lit.set_ty(Ty::int());
                     Constraints::none()
                 }
             },
@@ -180,7 +192,7 @@ impl Typecheck {
                 Some(ty) => self.normalize_ty(ty),
                 None => ty,
             },
-            Ty::Int(_) | Ty::Never => ty,
+            Ty::Int(_) | Ty::Unit | Ty::Never => ty,
         }
     }
 }
@@ -246,6 +258,10 @@ struct Constraints(Vec<Constraint>);
 impl Constraints {
     fn none() -> Self {
         Self(vec![])
+    }
+
+    fn one(c: Constraint) -> Self {
+        Self(vec![c])
     }
 
     fn push(&mut self, constraint: Constraint) {

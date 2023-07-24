@@ -8,6 +8,7 @@ pub enum Ty {
     Int(IntTy),
     Fun(FunTy),
     Never,
+    Unit, // TODO: when implementing tuples, this should just be an empty tuple
 }
 
 impl Ty {
@@ -46,7 +47,7 @@ impl Ty {
                     Ok(())
                 }
             }
-            Ty::Int(_) | Ty::Never => Ok(()),
+            Ty::Int(_) | Ty::Never | Ty::Unit => Ok(()),
         }
     }
 }
@@ -94,6 +95,7 @@ impl fmt::Display for Ty {
                 IntTy::Int => f.write_str("int"),
             },
             Ty::Never => f.write_str("never"),
+            Ty::Unit => f.write_str("()"),
         }
     }
 }

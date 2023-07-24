@@ -84,6 +84,12 @@ macro_rules! define_ast {
             pub span: Span,
             pub ty: Option<Ty>,
         }
+
+        impl $name {
+            pub fn set_ty(&mut self, ty: Ty) {
+                self.ty = Some(ty);
+            }
+        }
     };
 }
 
