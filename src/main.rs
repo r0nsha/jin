@@ -9,7 +9,7 @@ mod typecheck;
 
 use std::{fs, os::unix::process::CommandExt, path::PathBuf, process::Command};
 
-use ariadne::Cache;
+use ariadne::Report;
 use clap::{Parser, Subcommand};
 
 use crate::{codegen::codegen, state::State, typecheck::typecheck};
@@ -23,58 +23,70 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Run { file: PathBuf },
+    Build { file: PathBuf },
 }
+
+pub type CompilerResult<T> = std::result::Result<T, Report<'static>>;
 
 fn main() -> color_eyre::eyre::Result<()> {
     color_eyre::install()?;
 
     let cli = Cli::parse();
 
-    match cli.cmd {
-        Commands::Run { file } => {
-            let mut state = State::new();
+    let mut state = State::new();
 
-            // TODO: handle error
-            let source_key = state.source_cache.add_file(file).unwrap();
-            let source = state.source_cache.get(source_key).unwrap();
+    let result = match cli.cmd {
+        Commands::Build { file } => build(&mut state, file),
+    };
 
-            let tokens = lexer::tokenize(source);
-            let module = if let Some(module) = parser::parse(source, tokens) {
-                module
-            } else {
-                // TODO: print diagnostic
-            };
-
-            // TODO: handle error
-            let typed_module = typecheck(module).unwrap();
-
-            println!("Typed Ast:");
-            typed_module.pretty_print().unwrap();
-            println!();
-
-            let code = codegen(typed_module);
-
-            println!("Code:");
-            println!("{code}");
-            println!();
-
-            // TODO: don't create this out dir
-            // TODO: handle error (ICE)
-            fs::create_dir_all("out").unwrap();
-
-            // TODO: rename file
-            // TODO: handle error (ICE)
-            fs::write("out/main.c", &code).unwrap();
-
-            // TODO: rename input
-            // TODO: rename output
-            // TODO: handle error (ICE)
-            Command::new("clang")
-                .args(["out/main.c", "-o", "out/main", "-x", "c", "-std=c99"])
-                .exec();
-        }
+    if let Err(report) = result {
+        report.print(&state.source_cache);
     }
+
+    Ok(())
+}
+
+// fn handle_command(state: &State, mut cmd: impl FnMut() -> Result<()>) {
+//     if let Err(report) = cmd() {
+//         report.print(&state.source_cache);
+//     }
+// }
+
+fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
+    // TODO: handle error
+    let source_key = state.source_cache.add_file(file).unwrap();
+    let source = state.source_cache.get(source_key).unwrap();
+
+    let tokens = lexer::tokenize(source);
+    let module = parser::parse(tokens)?;
+
+    // TODO: handle error
+    let typed_module = typecheck(module).unwrap();
+
+    println!("Typed Ast:");
+    typed_module.pretty_print().unwrap();
+    println!();
+
+    let code = codegen(typed_module);
+
+    println!("Code:");
+    println!("{code}");
+    println!();
+
+    // TODO: don't create this out dir
+    // TODO: handle error (ICE)
+    fs::create_dir_all("out").unwrap();
+
+    // TODO: rename file
+    // TODO: handle error (ICE)
+    fs::write("out/main.c", &code).unwrap();
+
+    // TODO: rename input
+    // TODO: rename output
+    // TODO: handle error (ICE)
+    Command::new("clang")
+        .args(["out/main.c", "-o", "out/main", "-x", "c", "-std=c99"])
+        .exec();
 
     Ok(())
 }

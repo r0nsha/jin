@@ -1,15 +1,13 @@
-use ariadne::Report;
 use ustr::ustr;
 
 use crate::{
     ast::*,
     lexer::{Token, TokenKind},
     span::Span,
+    CompilerResult,
 };
 
-pub type Result<T> = std::result::Result<T, Report<'static>>;
-
-pub fn parse(tokens: Vec<Token>) -> Result<Module> {
+pub fn parse(tokens: Vec<Token>) -> CompilerResult<Module> {
     Parser::new(tokens).parse()
 }
 
@@ -26,7 +24,7 @@ impl Parser {
 }
 
 impl Parser {
-    fn parse(&mut self) -> Result<Module> {
+    fn parse(&mut self) -> CompilerResult<Module> {
         let mut module = Module { bindings: vec![] };
 
         while self.pos < self.tokens.len() - 1 {
@@ -37,7 +35,7 @@ impl Parser {
         Ok(module)
     }
 
-    fn parse_binding(&mut self) -> Result<Binding> {
+    fn parse_binding(&mut self) -> CompilerResult<Binding> {
         if self.is(TokenKind::Fn) {
             let start = self.last_span();
 
@@ -69,7 +67,7 @@ impl Parser {
         }
     }
 
-    fn parse_fun_body(&mut self) -> Result<Ast> {
+    fn parse_fun_body(&mut self) -> CompilerResult<Ast> {
         // TODO: don't require curlies (need to impl block expressions)
         self.expect(TokenKind::OpenCurly)?;
         let body = self.parse_expr();
@@ -77,7 +75,7 @@ impl Parser {
         body
     }
 
-    fn parse_expr(&mut self) -> Result<Ast> {
+    fn parse_expr(&mut self) -> CompilerResult<Ast> {
         if self.is(TokenKind::Return) {
             self.parse_ret()
         } else if let Some(TokenKind::Int(value)) = self.token_kind() {
@@ -94,7 +92,7 @@ impl Parser {
         }
     }
 
-    fn parse_ret(&mut self) -> Result<Ast> {
+    fn parse_ret(&mut self) -> CompilerResult<Ast> {
         // TODO: naked return
         let start = self.last_span();
         let value = self.parse_expr()?;
@@ -121,17 +119,13 @@ impl Parser {
 
     // TODO: is_any
 
-    fn expect(&mut self, expected: TokenKind) -> Result<Token> {
+    fn expect(&mut self, expected: TokenKind) -> CompilerResult<Token> {
         match self.token() {
             Some(tok) if tok.kind == expected => {
                 self.advance();
                 Ok(tok)
             }
-            Some(tok) => Err(diagnostics::expected_token(
-                expected,
-                Some(tok.kind),
-                tok.span,
-            )),
+            Some(tok) => Err(diagnostics::expected_token(expected, tok.kind, tok.span)),
             None => Err(diagnostics::expected_token_eof(expected, self.last_span())),
         }
     }

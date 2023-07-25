@@ -95,6 +95,16 @@ impl SourceCache {
     }
 }
 
+impl ariadne::Cache<SourceKey> for SourceCache {
+    fn fetch(&mut self, id: &SourceKey) -> Result<&ariadne::Source, Box<dyn std::fmt::Debug + '_>> {
+        self.get(*id).map(|s| s.source()).ok_or(Box::new(()))
+    }
+
+    fn display<'a>(&self, id: &'a SourceKey) -> Option<Box<dyn std::fmt::Display + 'a>> {
+        self.get(*id).map(|s| Box::new(s.contents()))
+    }
+}
+
 #[derive(Debug)]
 pub struct Source {
     key: SourceKey,
