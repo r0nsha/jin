@@ -5,45 +5,45 @@ use slotmap::SlotMap;
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
     source_key: SourceKey,
-    low: u32,
-    high: u32,
+    start: u32,
+    end: u32,
 }
 
 impl Span {
-    pub fn new(file_key: SourceKey, low: u32, high: u32) -> Self {
+    pub fn new(source_key: SourceKey, start: u32, end: u32) -> Self {
         Self {
-            source_key: file_key,
-            low,
-            high,
+            source_key,
+            start,
+            end,
         }
     }
 
     pub fn unknown() -> Self {
         Self {
             source_key: SourceKey::default(),
-            low: 0,
-            high: 0,
+            start: 0,
+            end: 0,
         }
     }
 
-    pub fn file_key(&self) -> SourceKey {
+    pub fn source_key(&self) -> SourceKey {
         self.source_key
     }
 
-    pub fn low(&self) -> u32 {
-        self.low
+    pub fn start(&self) -> u32 {
+        self.start
     }
 
-    pub fn high(&self) -> u32 {
-        self.high
+    pub fn end(&self) -> u32 {
+        self.end
     }
 
     pub fn len(&self) -> u32 {
-        self.high - self.low
+        self.end - self.start
     }
 
     pub fn contains(&self, other: Self) -> bool {
-        self.low <= other.low && self.high >= other.high
+        self.start <= other.start && self.end >= other.end
     }
 
     pub fn merge(&self, other: Self) -> Self {
@@ -51,9 +51,25 @@ impl Span {
 
         Self {
             source_key: self.source_key,
-            low: self.low.min(other.low),
-            high: self.high.min(other.high),
+            start: self.start.min(other.start),
+            end: self.end.min(other.end),
         }
+    }
+}
+
+impl ariadne::Span for Span {
+    type SourceId = SourceKey;
+
+    fn source(&self) -> &Self::SourceId {
+        &self.source_key()
+    }
+
+    fn start(&self) -> usize {
+        self.start() as usize
+    }
+
+    fn end(&self) -> usize {
+        self.end() as usize
     }
 }
 
@@ -72,6 +88,10 @@ impl SourceCache {
             source.key = key;
             source
         }))
+    }
+
+    pub fn get(&self, key: SourceKey) -> Option<&Source> {
+        self.0.get(key)
     }
 }
 

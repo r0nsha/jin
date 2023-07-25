@@ -92,12 +92,10 @@ impl<'a> Lexer<'a> {
                 self.advance();
                 self.advance();
             } else {
-                // TODO: diagnostic
+                // TODO: diagnostic when number ends with _
                 return TokenKind::Int(self.range(start).replace('_', "").parse().unwrap());
             }
         }
-
-        // TODO: diagnostic when number ends with _
 
         unreachable!()
     }

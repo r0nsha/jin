@@ -1,6 +1,4 @@
-use std::sync::Arc;
-
-use ariadne::{Report, Source};
+use ariadne::Report;
 use ustr::ustr;
 
 use crate::{
@@ -9,24 +7,21 @@ use crate::{
     span::Span,
 };
 
-pub fn parse(source: Arc<Source>, tokens: Vec<Token>) -> Result<Module> {
-    Parser::new(source, tokens).parse()
+pub type Result<T> = std::result::Result<T, Report<'static>>;
+
+pub fn parse(tokens: Vec<Token>) -> Result<Module> {
+    Parser::new(tokens).parse()
 }
 
 #[derive(Debug)]
 struct Parser {
-    source: Arc<Source>,
     tokens: Vec<Token>,
     pos: usize,
 }
 
 impl Parser {
-    fn new(source: Arc<Source>, tokens: Vec<Token>) -> Self {
-        Self {
-            source,
-            tokens,
-            pos: 0,
-        }
+    fn new(tokens: Vec<Token>) -> Self {
+        Self { tokens, pos: 0 }
     }
 }
 
@@ -132,15 +127,12 @@ impl Parser {
                 self.advance();
                 Ok(tok)
             }
-            Some(tok) => Err(InnerError::ExpectedToken {
+            Some(tok) => Err(diagnostics::expected_token(
                 expected,
-                actual: tok.kind,
-                span: tok.span.into(),
-            }),
-            None => Err(InnerError::Eof {
-                expected,
-                span: self.last_span().into(),
-            }),
+                Some(tok.kind),
+                tok.span,
+            )),
+            None => Err(diagnostics::expected_token_eof(expected, self.last_span())),
         }
     }
 
@@ -162,15 +154,20 @@ impl Parser {
     }
 }
 
-pub type Result<T> = std::result::Result<T, Report<'static>>;
-
-mod errors {
+mod diagnostics {
     use ariadne::{Report, ReportKind};
 
     use crate::{lexer::TokenKind, span::Span};
 
-    fn expected_token(expected: TokenKind, actual: Option<TokenKind>, span: Span) -> Report {
-        let loc = source_map.look_up_span(span);
-        Report::build(ReportKind::Error, (), loc.span.low() as usize).finish()
+    pub fn expected_token(expected: TokenKind, actual: TokenKind, span: Span) -> Report<'static> {
+        Report::build(ReportKind::Error, span.source_key(), span.start() as usize)
+            .with_message(format!("expected `{expected}`, got `{actual}` instead"))
+            .finish()
+    }
+
+    pub fn expected_token_eof(expected: TokenKind, span: Span) -> Report<'static> {
+        Report::build(ReportKind::Error, span.source_key(), span.start() as usize)
+            .with_message(format!("expected `{expected}`, got end of file instead"))
+            .finish()
     }
 }

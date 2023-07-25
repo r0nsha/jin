@@ -36,10 +36,15 @@ fn main() -> color_eyre::eyre::Result<()> {
             let mut state = State::new();
 
             // TODO: handle error
-            let source = state.source_cache.fetch(&file).unwrap();
+            let source_key = state.source_cache.add_file(file).unwrap();
+            let source = state.source_cache.get(source_key).unwrap();
 
             let tokens = lexer::tokenize(source);
-            let module = parser::parse(source.clone(), tokens)?;
+            let module = if let Some(module) = parser::parse(source, tokens) {
+                module
+            } else {
+                // TODO: print diagnostic
+            };
 
             // TODO: handle error
             let typed_module = typecheck(module).unwrap();
