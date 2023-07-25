@@ -9,8 +9,8 @@ mod typecheck;
 
 use std::{fs, os::unix::process::CommandExt, path::PathBuf, process::Command};
 
+use ariadne::Cache;
 use clap::{Parser, Subcommand};
-use miette::Result;
 
 use crate::{codegen::codegen, state::State, typecheck::typecheck};
 
@@ -26,8 +26,8 @@ enum Commands {
     Run { file: PathBuf },
 }
 
-fn main() -> Result<()> {
-    miette::set_panic_hook();
+fn main() -> color_eyre::eyre::Result<()> {
+    color_eyre::install()?;
 
     let cli = Cli::parse();
 
@@ -36,13 +36,9 @@ fn main() -> Result<()> {
             let mut state = State::new();
 
             // TODO: handle error
-            let file_name = file.to_str().unwrap().to_string();
-            // TODO: handle error
-            let file_source = fs::read_to_string(file).unwrap();
+            let source = state.file_cache.fetch(&file).unwrap();
 
-            let source = state.source_map.add_source(file_name, file_source);
-
-            let tokens = lexer::tokenize(source.as_ref());
+            let tokens = lexer::tokenize(source);
             let module = parser::parse(source.clone(), tokens)?;
 
             // TODO: handle error

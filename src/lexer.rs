@@ -1,8 +1,9 @@
 use std::fmt::{self, Write};
 
+use ariadne::Source;
 use ustr::{ustr, Ustr};
 
-use crate::span::{Source, Span};
+use crate::span::Span;
 
 pub fn tokenize(source: &Source) -> Vec<Token> {
     Lexer::new(source).scan()

@@ -1,13 +1,12 @@
 use std::sync::Arc;
 
-use miette::{Diagnostic, SourceSpan};
-use thiserror::Error;
+use ariadne::{Report, Source};
 use ustr::ustr;
 
 use crate::{
     ast::*,
     lexer::{Token, TokenKind},
-    span::{Source, Span},
+    span::Span,
 };
 
 pub fn parse(source: Arc<Source>, tokens: Vec<Token>) -> Result<Module> {
@@ -36,17 +35,14 @@ impl Parser {
         let mut module = Module { bindings: vec![] };
 
         while self.pos < self.tokens.len() - 1 {
-            let binding = self.parse_binding().map_err(|err| ParseError {
-                source_code: self.source.clone(),
-                related: vec![err],
-            })?;
+            let binding = self.parse_binding()?;
             module.bindings.push(binding);
         }
 
         Ok(module)
     }
 
-    fn parse_binding(&mut self) -> ParseResult<Binding> {
+    fn parse_binding(&mut self) -> Result<Binding> {
         if self.is(TokenKind::Fn) {
             let start = self.last_span();
 
@@ -78,7 +74,7 @@ impl Parser {
         }
     }
 
-    fn parse_fun_body(&mut self) -> ParseResult<Ast> {
+    fn parse_fun_body(&mut self) -> Result<Ast> {
         // TODO: don't require curlies (need to impl block expressions)
         self.expect(TokenKind::OpenCurly)?;
         let body = self.parse_expr();
@@ -86,7 +82,7 @@ impl Parser {
         body
     }
 
-    fn parse_expr(&mut self) -> ParseResult<Ast> {
+    fn parse_expr(&mut self) -> Result<Ast> {
         if self.is(TokenKind::Return) {
             self.parse_ret()
         } else if let Some(TokenKind::Int(value)) = self.token_kind() {
@@ -103,7 +99,7 @@ impl Parser {
         }
     }
 
-    fn parse_ret(&mut self) -> ParseResult<Ast> {
+    fn parse_ret(&mut self) -> Result<Ast> {
         // TODO: naked return
         let start = self.last_span();
         let value = self.parse_expr()?;
@@ -130,7 +126,7 @@ impl Parser {
 
     // TODO: is_any
 
-    fn expect(&mut self, expected: TokenKind) -> ParseResult<Token> {
+    fn expect(&mut self, expected: TokenKind) -> Result<Token> {
         match self.token() {
             Some(tok) if tok.kind == expected => {
                 self.advance();
@@ -166,35 +162,15 @@ impl Parser {
     }
 }
 
-pub type ParseResult<T> = std::result::Result<T, InnerError>;
-pub type Result<T> = std::result::Result<T, ParseError>;
+pub type Result<T> = std::result::Result<T, Report<'static>>;
 
-#[derive(Error, Diagnostic, Debug)]
-#[error("parsing failed")]
-#[diagnostic()]
-pub struct ParseError {
-    #[source_code]
-    source_code: Arc<Source>,
-    #[related]
-    related: Vec<InnerError>,
-}
+mod errors {
+    use ariadne::{Report, ReportKind};
 
-#[derive(Diagnostic, Debug, Error)]
-enum InnerError {
-    #[error("expected token `{expected}`, but got `{actual}` instead")]
-    #[diagnostic(code(parse::expected_token))]
-    ExpectedToken {
-        expected: TokenKind,
-        actual: TokenKind,
-        #[label("expected here")]
-        span: SourceSpan,
-    },
+    use crate::{lexer::TokenKind, span::Span};
 
-    #[error("expected token `{expected}`, but got to end the of the file instead")]
-    #[diagnostic(code(parse::expected_token))]
-    Eof {
-        expected: TokenKind,
-        #[label("expected here")]
-        span: SourceSpan,
-    },
+    fn expected_token(expected: TokenKind, actual: Option<TokenKind>, span: Span) -> Report {
+        let loc = source_map.look_up_span(span);
+        Report::build(ReportKind::Error, (), loc.span.low() as usize).finish()
+    }
 }
