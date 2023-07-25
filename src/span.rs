@@ -1,5 +1,7 @@
 use std::{cmp::Ordering, fmt, sync::Arc};
 
+use miette::{MietteError, MietteSpanContents, SourceCode, SourceOffset, SourceSpan, SpanContents};
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
     low: u32,
@@ -46,6 +48,13 @@ impl Span {
             low: self.low.min(other.low),
             high: self.high.min(other.high),
         }
+    }
+}
+
+impl From<Span> for SourceSpan {
+    fn from(value: Span) -> Self {
+        // Self::new(value.offset() as u32, (value.len() - value.offset()) as u32)
+        Self::from(value.low() as usize..value.high() as usize)
     }
 }
 
@@ -186,6 +195,28 @@ impl Source {
 
     pub fn line_count(&self) -> usize {
         self.lines.len()
+    }
+}
+
+impl SourceCode for Source {
+    fn read_span<'a>(
+        &'a self,
+        span: &SourceSpan,
+        context_lines_before: usize,
+        context_lines_after: usize,
+    ) -> Result<Box<dyn SpanContents<'a> + 'a>, MietteError> {
+        let line_col = self.find_line_col(span.offset() as u32);
+
+        println!("{:?}", line_col);
+
+        Ok(Box::new(MietteSpanContents::new_named(
+            self.name().to_string(),
+            self.source().as_bytes(),
+            *span,
+            line_col.line(),
+            line_col.col(),
+            self.line_count(),
+        )))
     }
 }
 

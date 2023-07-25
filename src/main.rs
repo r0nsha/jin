@@ -43,7 +43,7 @@ fn main() -> Result<()> {
             let source = state.source_map.add_source(file_name, file_source);
 
             let tokens = lexer::tokenize(source.as_ref());
-            let module = parser::parse(source.as_ref(), tokens);
+            let module = parser::parse(source.clone(), tokens)?;
 
             // TODO: handle error
             let typed_module = typecheck(module).unwrap();
