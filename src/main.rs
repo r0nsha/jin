@@ -1,5 +1,6 @@
 mod ast;
 mod codegen;
+mod diagnostics;
 mod lexer;
 mod parser;
 mod span;
@@ -9,9 +10,8 @@ mod typecheck;
 
 use std::{fs, os::unix::process::CommandExt, path::PathBuf, process::Command};
 
-use ariadne::Report;
 use clap::{Parser, Subcommand};
-use span::Span;
+use diagnostics::CompilerReport;
 
 use crate::{codegen::codegen, state::State, typecheck::typecheck};
 
@@ -27,7 +27,6 @@ enum Commands {
     Build { file: PathBuf },
 }
 
-pub type CompilerReport = Report<'static, Span>;
 pub type CompilerResult<T> = std::result::Result<T, CompilerReport>;
 
 fn main() -> color_eyre::eyre::Result<()> {
@@ -43,7 +42,7 @@ fn main() -> color_eyre::eyre::Result<()> {
 
     if let Err(report) = result {
         report
-            .print(&state.source_cache)
+            .eprint(&state.source_cache)
             .expect("diagnostics to work");
     }
 
