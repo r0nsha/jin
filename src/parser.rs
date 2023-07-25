@@ -1,10 +1,13 @@
+use miette::{miette, Diagnostic, SourceSpan};
+use thiserror::Error;
+
 use crate::{
     ast::*,
     lexer::{Token, TokenKind},
     span::{Source, Span},
 };
 
-pub fn parse(source: &Source, tokens: Vec<Token>) -> Module {
+pub fn parse(source: &Source, tokens: Vec<Token>) -> Result<Module> {
     Parser::new(source, tokens).parse()
 }
 
@@ -26,18 +29,18 @@ impl<'a> Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    fn parse(&mut self) -> Module {
+    fn parse(&mut self) -> Result<Module> {
         let mut module = Module { bindings: vec![] };
 
         while self.pos < self.tokens.len() - 1 {
-            let binding = self.parse_binding(); // TODO: diagnostic
+            let binding = self.parse_binding()?; // TODO: diagnostic
             module.bindings.push(binding);
         }
 
-        module
+        Ok(module)
     }
 
-    fn parse_binding(&mut self) -> Binding {
+    fn parse_binding(&mut self) -> Result<Binding> {
         if self.is(TokenKind::Fn) {
             let start = self.last_span();
 
@@ -47,11 +50,11 @@ impl<'a> Parser<'a> {
             self.expect(TokenKind::CloseParen).unwrap(); // TODO: diagnostic
             self.expect(TokenKind::Eq).unwrap(); // TODO: diagnostic
 
-            let body = self.parse_fun_body();
+            let body = self.parse_fun_body()?;
 
             let span = start.merge(body.span());
 
-            Binding {
+            Ok(Binding {
                 kind: BindingKind::Fun {
                     name,
                     fun: Box::new(Fun {
@@ -62,13 +65,13 @@ impl<'a> Parser<'a> {
                 },
                 span,
                 ty: None,
-            }
+            })
         } else {
             todo!() // TODO: diagnostic
         }
     }
 
-    fn parse_fun_body(&mut self) -> Ast {
+    fn parse_fun_body(&mut self) -> Result<Ast> {
         // TODO: don't require curlies (need to impl block expressions)
         self.expect(TokenKind::OpenCurly).unwrap(); // TODO: diagnostic
         let body = self.parse_expr(); // TODO: diagnostic
@@ -76,33 +79,33 @@ impl<'a> Parser<'a> {
         body
     }
 
-    fn parse_expr(&mut self) -> Ast {
+    fn parse_expr(&mut self) -> Result<Ast> {
         if self.is(TokenKind::Return) {
             self.parse_ret()
         } else if let Some(TokenKind::Int(value)) = self.token_kind() {
             self.advance();
 
-            Ast::Lit(Lit {
+            Ok(Ast::Lit(Lit {
                 kind: LitKind::Int(value),
                 span: self.last_span(),
                 ty: None,
-            })
+            }))
         } else {
             todo!() // TODO: diagnostic
         }
     }
 
-    fn parse_ret(&mut self) -> Ast {
+    fn parse_ret(&mut self) -> Result<Ast> {
         // TODO: naked return
         let start = self.last_span();
         let value = self.parse_expr();
         let span = start.merge(value.span());
 
-        Ast::Ret(Ret {
+        Ok(Ast::Ret(Ret {
             value: Box::new(Some(value)),
             span,
             ty: None,
-        })
+        }))
     }
 }
 
@@ -119,30 +122,35 @@ impl<'a> Parser<'a> {
 
     // TODO: is_any
 
-    fn expect(&mut self, token: TokenKind) -> Option<Token> {
+    fn require(&mut self) -> Result<Token> {
         // TODO: diagnostic
-        match self.token() {
-            Some(tok) if tok.kind == token => {
-                self.advance();
-                Some(tok)
-            }
-            _ => None,
-        }
+        self.token().ok_or_else(|| miette!("oish"))
     }
 
-    fn expect_ident(&mut self) -> Option<Token> {
-        // TODO: diagnostic
-        match self.token() {
-            Some(
-                tok @ Token {
-                    kind: TokenKind::Ident(_),
-                    ..
-                },
-            ) => {
-                self.advance();
-                Some(tok)
-            }
-            _ => None,
+    fn expect(&mut self, kind: TokenKind) -> Result<Token> {
+        self.expect_pred(|tok| tok.kind == kind, kind)
+    }
+
+    fn expect_ident(&mut self) -> Result<Token> {
+        self.expect_pred(Token::is_ident, TokenKind::Ident(""))
+    }
+
+    fn expect_pred(
+        &mut self,
+        pred: impl FnOnce(&Token) -> bool,
+        on_err: impl FnOnce() -> TokenKind,
+    ) -> Result<Token> {
+        let tok = self.require()?;
+
+        if pred(&tok) {
+            self.advance();
+            Ok(tok)
+        } else {
+            Err(ParseError::ExpectedToken {
+                expected: (),
+                actual: (),
+                span: (),
+            })
         }
     }
 
@@ -162,4 +170,17 @@ impl<'a> Parser<'a> {
     fn advance(&mut self) {
         self.pos += 1;
     }
+}
+
+pub type Result<T> = std::result::Result<T, ParseError>;
+
+#[derive(Error, Diagnostic, Debug)]
+pub enum ParseError {
+    #[diagnostic(code(parse::expected_token))]
+    ExpectedToken {
+        expected: TokenKind,
+        actual: Option<TokenKind>,
+        #[label("expected here")]
+        span: SourceSpan,
+    },
 }

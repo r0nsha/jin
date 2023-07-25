@@ -1,3 +1,5 @@
+use std::fmt::{self, Write};
+
 use ustr::{ustr, Ustr};
 
 use crate::span::{Source, Span};
@@ -146,6 +148,10 @@ impl Token {
         }
     }
 
+    pub fn is_ident(&self) -> bool {
+        matches!(self.kind, TokenKind::Ident(_))
+    }
+
     pub fn int(&self) -> usize {
         match self.kind {
             TokenKind::Int(value) => value,
@@ -172,4 +178,20 @@ pub enum TokenKind {
 
     // Values
     Int(usize),
+}
+
+impl fmt::Display for TokenKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::OpenParen => f.write_char('('),
+            Self::CloseParen => f.write_char(')'),
+            Self::OpenCurly => f.write_char('{'),
+            Self::CloseCurly => f.write_char('}'),
+            Self::Eq => f.write_char('='),
+            Self::Ident(_) => f.write_str("identifier"),
+            Self::Fn => f.write_str("fn"),
+            Self::Return => f.write_str("return"),
+            Self::Int(_) => f.write_str("int literal"),
+        }
+    }
 }
