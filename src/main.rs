@@ -10,6 +10,7 @@ mod typecheck;
 use std::{fs, os::unix::process::CommandExt, path::PathBuf, process::Command};
 
 use clap::{Parser, Subcommand};
+use color_eyre::eyre::Result;
 
 use crate::{codegen::codegen, state::State, typecheck::typecheck};
 
@@ -25,7 +26,9 @@ enum Commands {
     Run { file: PathBuf },
 }
 
-fn main() {
+fn main() -> Result<()> {
+    color_eyre::install()?;
+
     let cli = Cli::parse();
 
     match cli.cmd {
@@ -43,11 +46,15 @@ fn main() {
 
             let typed_module = typecheck(module).unwrap();
 
+            println!("Typed Ast:");
             typed_module.pretty_print().unwrap();
+            println!();
 
             let code = codegen(typed_module);
 
-            println!("\n{code}");
+            println!("Code:");
+            println!("{code}");
+            println!();
 
             // TODO: don't create this out dir
             // TODO: handle error (ICE)
@@ -65,4 +72,6 @@ fn main() {
                 .exec();
         }
     }
+
+    Ok(())
 }
