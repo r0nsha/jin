@@ -11,6 +11,7 @@ use std::{fs, os::unix::process::CommandExt, path::PathBuf, process::Command};
 
 use ariadne::Report;
 use clap::{Parser, Subcommand};
+use span::Span;
 
 use crate::{codegen::codegen, state::State, typecheck::typecheck};
 
@@ -26,7 +27,8 @@ enum Commands {
     Build { file: PathBuf },
 }
 
-pub type CompilerResult<T> = std::result::Result<T, Report<'static>>;
+pub type CompilerReport = Report<'static, Span>;
+pub type CompilerResult<T> = std::result::Result<T, CompilerReport>;
 
 fn main() -> color_eyre::eyre::Result<()> {
     color_eyre::install()?;
@@ -40,7 +42,9 @@ fn main() -> color_eyre::eyre::Result<()> {
     };
 
     if let Err(report) = result {
-        report.print(&state.source_cache);
+        report
+            .print(&state.source_cache)
+            .expect("diagnostics to work");
     }
 
     Ok(())

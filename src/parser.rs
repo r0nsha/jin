@@ -149,18 +149,18 @@ impl Parser {
 }
 
 mod diagnostics {
-    use ariadne::{Report, ReportKind};
+    use ariadne::ReportKind;
 
-    use crate::{lexer::TokenKind, span::Span};
+    use crate::{lexer::TokenKind, span::Span, CompilerReport};
 
-    pub fn expected_token(expected: TokenKind, actual: TokenKind, span: Span) -> Report<'static> {
-        Report::build(ReportKind::Error, span.source_key(), span.start() as usize)
+    pub fn expected_token(expected: TokenKind, actual: TokenKind, span: Span) -> CompilerReport {
+        CompilerReport::build(ReportKind::Error, span.source_key(), span.start() as usize)
             .with_message(format!("expected `{expected}`, got `{actual}` instead"))
             .finish()
     }
 
-    pub fn expected_token_eof(expected: TokenKind, span: Span) -> Report<'static> {
-        Report::build(ReportKind::Error, span.source_key(), span.start() as usize)
+    pub fn expected_token_eof(expected: TokenKind, span: Span) -> CompilerReport {
+        CompilerReport::build(ReportKind::Error, span.source_key(), span.start() as usize)
             .with_message(format!("expected `{expected}`, got end of file instead"))
             .finish()
     }

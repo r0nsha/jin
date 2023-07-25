@@ -1,4 +1,4 @@
-use std::{fs, io, path::PathBuf};
+use std::{fmt, fs, io, path::PathBuf};
 
 use slotmap::SlotMap;
 
@@ -61,15 +61,15 @@ impl ariadne::Span for Span {
     type SourceId = SourceKey;
 
     fn source(&self) -> &Self::SourceId {
-        &self.source_key()
+        &self.source_key
     }
 
     fn start(&self) -> usize {
-        self.start() as usize
+        self.start as usize
     }
 
     fn end(&self) -> usize {
-        self.end() as usize
+        self.end as usize
     }
 }
 
@@ -95,13 +95,13 @@ impl SourceCache {
     }
 }
 
-impl ariadne::Cache<SourceKey> for SourceCache {
+impl ariadne::Cache<SourceKey> for &SourceCache {
     fn fetch(&mut self, id: &SourceKey) -> Result<&ariadne::Source, Box<dyn std::fmt::Debug + '_>> {
         self.get(*id).map(|s| s.source()).ok_or(Box::new(()))
     }
 
     fn display<'a>(&self, id: &'a SourceKey) -> Option<Box<dyn std::fmt::Display + 'a>> {
-        self.get(*id).map(|s| Box::new(s.contents()))
+        Some(Box::new(id))
     }
 }
 
@@ -135,8 +135,8 @@ impl TryFrom<PathBuf> for Source {
     type Error = io::Error;
 
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
-        let contents = fs::read_to_string(value)?;
-        let source = ariadne::Source::from(contents);
+        let contents = fs::read_to_string(&value)?;
+        let source = ariadne::Source::from(&contents);
 
         Ok(Self {
             key: SourceKey::default(),
@@ -149,4 +149,10 @@ impl TryFrom<PathBuf> for Source {
 
 slotmap::new_key_type! {
     pub struct SourceKey;
+}
+
+impl fmt::Display for SourceKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
 }
