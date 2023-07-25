@@ -1,5 +1,6 @@
-use miette::{miette, Diagnostic, SourceSpan};
+use miette::{Diagnostic, SourceSpan};
 use thiserror::Error;
+use ustr::ustr;
 
 use crate::{
     ast::*,
@@ -44,7 +45,7 @@ impl<'a> Parser<'a> {
         if self.is(TokenKind::Fn) {
             let start = self.last_span();
 
-            let name = self.expect_ident().unwrap().ident(); // TODO: diagnostic
+            let name = self.expect(TokenKind::Ident(ustr(""))).unwrap().ident(); // TODO: diagnostic
             self.expect(TokenKind::OpenParen).unwrap(); // TODO: diagnostic
                                                         // TODO: args
             self.expect(TokenKind::CloseParen).unwrap(); // TODO: diagnostic
@@ -98,7 +99,7 @@ impl<'a> Parser<'a> {
     fn parse_ret(&mut self) -> Result<Ast> {
         // TODO: naked return
         let start = self.last_span();
-        let value = self.parse_expr();
+        let value = self.parse_expr()?;
         let span = start.merge(value.span());
 
         Ok(Ast::Ret(Ret {
@@ -122,35 +123,22 @@ impl<'a> Parser<'a> {
 
     // TODO: is_any
 
-    fn require(&mut self) -> Result<Token> {
-        // TODO: diagnostic
-        self.token().ok_or_else(|| miette!("oish"))
-    }
-
-    fn expect(&mut self, kind: TokenKind) -> Result<Token> {
-        self.expect_pred(|tok| tok.kind == kind, kind)
-    }
-
-    fn expect_ident(&mut self) -> Result<Token> {
-        self.expect_pred(Token::is_ident, TokenKind::Ident(""))
-    }
-
-    fn expect_pred(
-        &mut self,
-        pred: impl FnOnce(&Token) -> bool,
-        on_err: impl FnOnce() -> TokenKind,
-    ) -> Result<Token> {
-        let tok = self.require()?;
-
-        if pred(&tok) {
-            self.advance();
-            Ok(tok)
-        } else {
-            Err(ParseError::ExpectedToken {
+    fn expect(&mut self, expected: TokenKind) -> Result<Token> {
+        match self.token() {
+            Some(tok) if tok.kind == expected => {
+                self.advance();
+                Ok(tok)
+            }
+            Some(tok) => Err(ParseError::ExpectedToken {
+                expected,
+                actual: tok.kind,
+                span: tok.span.into(),
+            }),
+            None => Err(ParseError::Eof {
                 expected: (),
                 actual: (),
                 span: (),
-            })
+            }),
         }
     }
 
@@ -176,10 +164,19 @@ pub type Result<T> = std::result::Result<T, ParseError>;
 
 #[derive(Error, Diagnostic, Debug)]
 pub enum ParseError {
+    #[error("expected token `{expected}`, but got `{actual}` instead")]
     #[diagnostic(code(parse::expected_token))]
     ExpectedToken {
         expected: TokenKind,
-        actual: Option<TokenKind>,
+        actual: TokenKind,
+        #[label("expected here")]
+        span: SourceSpan,
+    },
+
+    #[error("expected token `{expected}`, but got to end the of the file instead")]
+    #[diagnostic(code(parse::expected_token))]
+    Eof {
+        expected: TokenKind,
         #[label("expected here")]
         span: SourceSpan,
     },

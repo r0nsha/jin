@@ -10,7 +10,7 @@ mod typecheck;
 use std::{fs, os::unix::process::CommandExt, path::PathBuf, process::Command};
 
 use clap::{Parser, Subcommand};
-use color_eyre::eyre::Result;
+use miette::Result;
 
 use crate::{codegen::codegen, state::State, typecheck::typecheck};
 
@@ -27,7 +27,7 @@ enum Commands {
 }
 
 fn main() -> Result<()> {
-    color_eyre::install()?;
+    miette::set_panic_hook();
 
     let cli = Cli::parse();
 
@@ -37,6 +37,7 @@ fn main() -> Result<()> {
 
             // TODO: handle error
             let file_name = file.to_str().unwrap().to_string();
+            // TODO: handle error
             let file_source = fs::read_to_string(file).unwrap();
 
             let source = state.source_map.add_source(file_name, file_source);
@@ -44,6 +45,7 @@ fn main() -> Result<()> {
             let tokens = lexer::tokenize(source.as_ref());
             let module = parser::parse(source.as_ref(), tokens);
 
+            // TODO: handle error
             let typed_module = typecheck(module).unwrap();
 
             println!("Typed Ast:");
