@@ -3,11 +3,16 @@ use std::{
     mem,
 };
 
+use ariadne::{Label, ReportKind};
 use ustr::{ustr, Ustr};
 
-use crate::span::{Source, SourceKey, Span};
+use crate::{
+    diagnostics::create_report,
+    span::{Source, SourceKey, Span},
+    CompilerResult,
+};
 
-pub fn tokenize(source: &Source) -> Vec<Token> {
+pub fn tokenize(source: &Source) -> CompilerResult<Vec<Token>> {
     Lexer::new(source).scan()
 }
 
@@ -28,47 +33,52 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn scan(&mut self) -> Vec<Token> {
+    fn scan(&mut self) -> CompilerResult<Vec<Token>> {
         let mut tokens = vec![];
 
-        while let Some(token) = self.next_token() {
+        while let Some(token) = self.next_token()? {
             tokens.push(token);
         }
 
-        tokens
+        Ok(tokens)
     }
 
-    fn next_token(&mut self) -> Option<Token> {
+    fn next_token(&mut self) -> CompilerResult<Option<Token>> {
         let start = self.pos;
 
-        let ch = self.bump()?;
+        match self.bump() {
+            Some(ch) => {
+                let kind = match ch {
+                    '(' => TokenKind::OpenParen,
+                    ')' => TokenKind::CloseParen,
+                    '{' => TokenKind::OpenCurly,
+                    '}' => TokenKind::CloseCurly,
+                    '=' => TokenKind::Eq,
+                    '/' if matches!(self.peek(), Some('/')) => {
+                        self.advance();
+                        self.comment();
+                        return self.next_token();
+                    }
+                    ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
+                    ch if ch.is_ascii_digit() => self.numeric(start),
+                    ch if ch.is_ascii_whitespace() => return self.next_token(),
+                    ch => {
+                        let span = self.create_span(start as u32);
 
-        let kind = match ch {
-            '/' => {
-                if let Some('/') = self.peek() {
-                    self.advance();
-                    self.comment();
-                    return self.next_token();
-                } else {
-                    todo!("unknown character /")
-                }
+                        return Err(create_report(ReportKind::Error, span)
+                            .with_message(format!("unknown character {ch}"))
+                            .with_label(Label::new(span))
+                            .finish());
+                    }
+                };
+
+                Ok(Some(Token {
+                    kind,
+                    span: self.create_span(start as u32),
+                }))
             }
-            '(' => TokenKind::OpenParen,
-            ')' => TokenKind::CloseParen,
-            '{' => TokenKind::OpenCurly,
-            '}' => TokenKind::CloseCurly,
-            '=' => TokenKind::Eq,
-            ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
-            ch if ch.is_ascii_digit() => self.numeric(start),
-            ch if ch.is_ascii_whitespace() => return self.next_token(),
-            // TODO: diagnostic
-            c => todo!("unknown character {c}"),
-        };
-
-        Some(Token {
-            kind,
-            span: Span::new(self.source_key, start as u32, self.pos as u32),
-        })
+            None => Ok(None),
+        }
     }
 
     fn ident(&mut self, start: usize) -> TokenKind {
@@ -87,7 +97,7 @@ impl<'a> Lexer<'a> {
         unreachable!()
     }
 
-    fn numeric(&mut self, start: usize) -> TokenKind {
+    fn numeric(&mut self, start: usize) -> CompilerResult<TokenKind> {
         while let Some(ch) = self.peek() {
             if ch.is_ascii_digit() {
                 self.advance();
@@ -96,7 +106,20 @@ impl<'a> Lexer<'a> {
                 self.advance();
             } else {
                 // TODO: diagnostic when number ends with _
-                return TokenKind::Int(self.range(start).replace('_', "").parse().unwrap());
+
+                let str = self.range(start);
+
+                return match str.as_bytes().last().unwrap() {
+                    b'_' => {
+                        let span = self.create_span(start as u32);
+
+                        Err(create_report(ReportKind::Error, span)
+                            .with_message(format!("numeric literal cannot end with _"))
+                            .with_label(Label::new(span))
+                            .finish())
+                    }
+                    _ => Ok(TokenKind::Int(str.replace('_', "").parse().unwrap())),
+                };
             }
         }
 
@@ -134,6 +157,10 @@ impl<'a> Lexer<'a> {
         let ch = self.peek();
         self.advance();
         ch
+    }
+
+    fn create_span(&self, start: u32) -> Span {
+        Span::new(self.source_key, start, self.pos as u32)
     }
 }
 
