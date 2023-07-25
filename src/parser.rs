@@ -1,3 +1,5 @@
+use std::mem;
+
 use ustr::ustr;
 
 use crate::{
@@ -39,7 +41,7 @@ impl Parser {
         if self.is(TokenKind::Fn) {
             let start = self.last_span();
 
-            let name = self.expect(TokenKind::Ident(ustr("")))?.ident();
+            let name = self.expect_ident()?.as_ident();
             self.expect(TokenKind::OpenParen)?;
             // TODO: args
             self.expect(TokenKind::CloseParen)?;
@@ -107,9 +109,9 @@ impl Parser {
 }
 
 impl Parser {
-    fn is(&mut self, token: TokenKind) -> bool {
+    fn is(&mut self, expected: TokenKind) -> bool {
         match self.token() {
-            Some(tok) if tok.kind == token => {
+            Some(tok) if tok.kind_eq(expected) => {
                 self.advance();
                 true
             }
@@ -119,9 +121,13 @@ impl Parser {
 
     // TODO: is_any
 
+    fn expect_ident(&mut self) -> CompilerResult<Token> {
+        self.expect(TokenKind::Ident(ustr("")))
+    }
+
     fn expect(&mut self, expected: TokenKind) -> CompilerResult<Token> {
         match self.token() {
-            Some(tok) if tok.kind == expected => {
+            Some(tok) if tok.kind_eq(expected) => {
                 self.advance();
                 Ok(tok)
             }

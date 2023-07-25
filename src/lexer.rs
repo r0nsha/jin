@@ -1,4 +1,7 @@
-use std::fmt::{self, Write};
+use std::{
+    fmt::{self, Write},
+    mem,
+};
 
 use ustr::{ustr, Ustr};
 
@@ -141,22 +144,22 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn ident(&self) -> Ustr {
+    pub fn as_ident(&self) -> Ustr {
         match self.kind {
             TokenKind::Ident(ident) => ident,
             kind => panic!("expected Ident, got {kind:?}"),
         }
     }
 
-    pub fn is_ident(&self) -> bool {
-        matches!(self.kind, TokenKind::Ident(_))
-    }
-
-    pub fn int(&self) -> usize {
+    pub fn as_int(&self) -> usize {
         match self.kind {
             TokenKind::Int(value) => value,
             kind => panic!("expected Int, got {kind:?}"),
         }
+    }
+
+    pub fn kind_eq(&self, other: TokenKind) -> bool {
+        mem::discriminant(&self.kind) == mem::discriminant(&other)
     }
 }
 
