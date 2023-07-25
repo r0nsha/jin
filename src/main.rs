@@ -7,11 +7,13 @@ mod span;
 mod state;
 mod ty;
 mod typecheck;
+mod util;
 
 use std::{fs, os::unix::process::CommandExt, path::PathBuf, process::Command};
 
 use clap::{Parser, Subcommand};
 use diagnostics::CompilerReport;
+use state::CompilerOptions;
 
 use crate::{codegen::codegen, state::State, typecheck::typecheck};
 
@@ -20,6 +22,9 @@ use crate::{codegen::codegen, state::State, typecheck::typecheck};
 struct Cli {
     #[command(subcommand)]
     cmd: Commands,
+
+    #[arg(short, long, default_value_t = true)]
+    time: bool,
 }
 
 #[derive(Subcommand)]
@@ -34,7 +39,7 @@ fn main() -> color_eyre::eyre::Result<()> {
 
     let cli = Cli::parse();
 
-    let mut state = State::new();
+    let mut state = State::new(CompilerOptions { time: cli.time });
 
     let result = match cli.cmd {
         Commands::Build { file } => build(&mut state, file),
@@ -49,19 +54,13 @@ fn main() -> color_eyre::eyre::Result<()> {
     Ok(())
 }
 
-// fn handle_command(state: &State, mut cmd: impl FnMut() -> Result<()>) {
-//     if let Err(report) = cmd() {
-//         report.print(&state.source_cache);
-//     }
-// }
-
 fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
     // TODO: handle error
     let source_key = state.source_cache.add_file(file).unwrap();
     let source = state.source_cache.get(source_key).unwrap();
 
-    let tokens = lexer::tokenize(source);
-    let module = parser::parse(tokens)?;
+    let tokens = time! { state.options.time, "lexer", lexer::tokenize(source) };
+    let module = time! { state.options.time, "parser", parser::parse(tokens)? };
 
     // TODO: handle error
     let typed_module = typecheck(module).unwrap();
@@ -70,7 +69,7 @@ fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
     typed_module.pretty_print().unwrap();
     println!();
 
-    let code = codegen(typed_module);
+    let code = time! { state.options.time, "codegen", codegen(typed_module) };
 
     println!("Code:");
     println!("{code}");
@@ -87,9 +86,11 @@ fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
     // TODO: rename input
     // TODO: rename output
     // TODO: handle error (ICE)
-    Command::new("clang")
-        .args(["out/main.c", "-o", "out/main", "-x", "c", "-std=c99"])
-        .exec();
+    time! { state.options.time, "clang",
+        Command::new("clang")
+            .args(["out/main.c", "-o", "out/main", "-x", "c", "-std=c99"])
+            .exec()
+    };
 
     Ok(())
 }
