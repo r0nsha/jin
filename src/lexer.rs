@@ -105,8 +105,6 @@ impl<'a> Lexer<'a> {
                 self.advance();
                 self.advance();
             } else {
-                // TODO: diagnostic when number ends with _
-
                 let str = self.range(start);
 
                 return match str.as_bytes().last().unwrap() {
