@@ -36,7 +36,7 @@ fn main() -> color_eyre::eyre::Result<()> {
             let mut state = State::new();
 
             // TODO: handle error
-            let source = state.file_cache.fetch(&file).unwrap();
+            let source = state.source_cache.fetch(&file).unwrap();
 
             let tokens = lexer::tokenize(source);
             let module = parser::parse(source.clone(), tokens)?;

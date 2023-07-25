@@ -1,16 +1,16 @@
 use std::fmt::{self, Write};
 
-use ariadne::Source;
 use ustr::{ustr, Ustr};
 
-use crate::span::Span;
+use crate::span::{Source, SourceKey, Span};
 
 pub fn tokenize(source: &Source) -> Vec<Token> {
     Lexer::new(source).scan()
 }
 
 struct Lexer<'a> {
-    source: &'a Source,
+    source_key: SourceKey,
+    source_contents: &'a str,
     source_bytes: &'a [u8],
     pos: usize,
 }
@@ -18,8 +18,9 @@ struct Lexer<'a> {
 impl<'a> Lexer<'a> {
     fn new(source: &'a Source) -> Self {
         Self {
-            source,
-            source_bytes: source.source().as_bytes(),
+            source_key: source.key(),
+            source_contents: source.contents(),
+            source_bytes: source.contents().as_bytes(),
             pos: 0,
         }
     }
@@ -63,7 +64,7 @@ impl<'a> Lexer<'a> {
 
         Some(Token {
             kind,
-            span: self.source.span().subspan(start as u32, self.pos as u32),
+            span: Span::new(self.source_key, start as u32, self.pos as u32),
         })
     }
 
@@ -117,7 +118,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn range(&self, start: usize) -> &str {
-        &self.source.source()[start..start + (self.pos - start)]
+        &self.source_contents[start..start + (self.pos - start)]
     }
 
     fn peek(&self) -> Option<char> {
