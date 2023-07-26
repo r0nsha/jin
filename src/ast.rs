@@ -1,6 +1,7 @@
 use std::io;
 
 use enum_as_inner::EnumAsInner;
+use slotmap::SlotMap;
 use ustr::Ustr;
 
 use crate::{
@@ -11,9 +12,17 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct Module {
     pub bindings: Vec<Binding>,
+    pub resolved_bindings: SlotMap<BindingId, ResolvedBinding>,
 }
 
 impl Module {
+    pub fn new() -> Self {
+        Self {
+            bindings: vec![],
+            resolved_bindings: SlotMap::with_key(),
+        }
+    }
+
     pub fn pretty_print(&self) -> io::Result<()> {
         let mut p = PrettyPrint {
             builder: ptree::TreeBuilder::new("ast".to_string()),
@@ -25,6 +34,62 @@ impl Module {
 
         let tree = p.builder.build();
         ptree::print_tree_with(&tree, &ptree::PrintConfig::default())
+    }
+}
+
+slotmap::new_key_type! {
+    pub struct BindingId;
+}
+
+#[derive(Debug, Clone)]
+pub struct ResolvedBinding {
+    name: Ustr,
+    qualified_name: Ustr,
+    scope: BindingScope,
+    uses: usize,
+}
+
+pub struct QualifiedName(Vec<Ustr>);
+
+impl QualifiedName {
+    pub fn new(full_name: Vec<Ustr>) -> Self {
+        assert!(!full_name.is_empty());
+        Self(full_name)
+    }
+
+    pub fn name(&self) -> Ustr {
+        *self.0.last().unwrap()
+    }
+
+    pub fn full_name(&self, separator: &str) -> String {
+        self.0
+            .iter()
+            .map(|s| s.as_str())
+            .collect::<Vec<_>>()
+            .join(separator)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BindingScope {
+    Global,
+    Scope(usize),
+}
+
+impl BindingScope {
+    pub fn next(self) -> Self {
+        match self {
+            BindingScope::Global => BindingScope::Scope(1),
+            BindingScope::Scope(n) => BindingScope::Scope(n + 1),
+        }
+    }
+
+    pub fn prev(self) -> Self {
+        match self {
+            BindingScope::Global => panic!("BindingScope::Global has no previous scope"),
+            BindingScope::Scope(n) if n == 1 => BindingScope::Global,
+            BindingScope::Scope(n) => BindingScope::Scope(n - 1),
+        }
     }
 }
 
