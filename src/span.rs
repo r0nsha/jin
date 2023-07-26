@@ -1,8 +1,10 @@
 use std::{
+    collections::HashMap,
     fmt, fs, io,
     path::{Path, PathBuf},
 };
 
+use ariadne::{Cache, FnCache};
 use slotmap::{Key, SlotMap};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -96,20 +98,32 @@ impl SourceCache {
     pub fn get(&self, key: SourceKey) -> Option<&Source> {
         self.0.get(key)
     }
+
+    pub fn cache(self) -> impl Cache<SourceKey> {
+        FnCache::new(
+            (move |id| Err(Box::new(format!("Failed to fetch source '{}'", id)) as _))
+                as fn(&_) -> _,
+        )
+        .with_sources(
+            self.0
+                .into_iter()
+                .map(|(id, s)| (id, s.source().clone()))
+                .collect(),
+        )
+    }
 }
 
-impl ariadne::Cache<SourceKey> for &SourceCache {
-    fn fetch(&mut self, id: &SourceKey) -> Result<&ariadne::Source, Box<dyn std::fmt::Debug + '_>> {
-        self.get(*id).map(|s| s.source()).ok_or(Box::new(()))
-    }
+// impl ariadne::Cache<SourceKey> for &SourceCache {
+//     fn fetch(&mut self, id: &SourceKey) -> Result<&ariadne::Source, Box<dyn std::fmt::Debug + '_>> {
+//         self.get(*id).map(|s| s.source()).ok_or(Box::new(()))
+//     }
+//
+//     fn display<'a>(&self, path: &'a SourceKey) -> Option<Box<dyn std::fmt::Display + 'a>> {
+//         Some(Box::new(path.display()))
+//     }
+// }
 
-    fn display<'a>(&self, id: &'a SourceKey) -> Option<Box<dyn std::fmt::Display + 'a>> {
-        let source = self.get(*id)?;
-        Some(Box::new(source.path().display()))
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Source {
     key: SourceKey,
     path: PathBuf,

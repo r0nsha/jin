@@ -47,7 +47,7 @@ fn main() -> color_eyre::eyre::Result<()> {
 
     if let Err(report) = result {
         report
-            .eprint(&state.source_cache)
+            .eprint(state.source_cache.cache())
             .expect("diagnostics to work");
     }
 
