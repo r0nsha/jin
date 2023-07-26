@@ -58,8 +58,8 @@ impl Typecheck {
         }
     }
 
-    pub fn fresh_ty_var(&mut self) -> TyVar {
-        self.unification_table.new_key(None)
+    pub fn fresh_ty_var(&mut self, span: Span) -> Ty {
+        Ty::var(self.unification_table.new_key(None), span)
     }
 }
 
@@ -70,7 +70,7 @@ impl Typecheck {
             Ast::Binding(binding) => self.infer_binding(binding),
             Ast::Fun(fun) => self.infer_fun(fun),
             Ast::Ret(ret) => {
-                ret.set_ty(Ty::Never);
+                ret.set_ty(Ty::never(ret.span));
 
                 if let Some(fun_scope) = self.fun_scopes.current() {
                     let expected_ty = fun_scope.ret_ty.clone();
@@ -83,8 +83,7 @@ impl Typecheck {
                     } else {
                         Ok(Constraints::one(Constraint::TyEq {
                             expected: expected_ty,
-                            actual: Ty::Unit,
-                            span: ret.span,
+                            actual: Ty::unit(ret.span),
                         }))
                     }
                 } else {
@@ -96,7 +95,7 @@ impl Typecheck {
             }
             Ast::Lit(lit) => match &lit.kind {
                 LitKind::Int(_) => {
-                    lit.set_ty(Ty::int());
+                    lit.set_ty(Ty::int(lit.span));
                     Ok(Constraints::none())
                 }
             },
@@ -104,7 +103,7 @@ impl Typecheck {
     }
 
     fn infer_binding(&mut self, binding: &mut Binding) -> CompilerResult<Constraints> {
-        binding.set_ty(Ty::Unit);
+        binding.set_ty(Ty::unit(binding.span));
 
         match &mut binding.kind {
             BindingKind::Fun { name: _, fun } => self.infer_fun(fun),
@@ -114,8 +113,8 @@ impl Typecheck {
     fn infer_fun(&mut self, fun: &mut Fun) -> CompilerResult<Constraints> {
         // let arg_ty_var = self.fresh_ty_var();
 
-        let fun_ret_ty = Ty::Unit; // Ty::var(self.fresh_ty_var());
-        fun.set_ty(Ty::fun(fun_ret_ty.clone()));
+        let fun_ret_ty = Ty::unit(fun.span); // self.fresh_ty_var(fun.span);
+        fun.set_ty(Ty::fun(fun_ret_ty.clone(), fun.span));
 
         self.fun_scopes.push(FunScope { ret_ty: fun_ret_ty });
         let body_constraints = self.infer(&mut fun.body);
@@ -125,8 +124,8 @@ impl Typecheck {
     }
 
     fn check(&mut self, ast: &mut Ast, expected_ty: Ty) -> CompilerResult<Constraints> {
-        match (ast, expected_ty) {
-            (Ast::Fun(fun), Ty::Fun(fun_ty)) => {
+        match (ast, &expected_ty.kind) {
+            (Ast::Fun(fun), TyKind::Fun(fun_ty)) => {
                 // let env = env.update(arg, *arg_ty);
                 self.check(&mut fun.body, fun_ty.ret.as_ref().clone())
             }
@@ -135,14 +134,13 @@ impl Typecheck {
                     kind: LitKind::Int(_),
                     ..
                 }),
-                Ty::Int(IntTy::Int),
+                TyKind::Int(IntTy::Int),
             ) => Ok(Constraints::none()),
-            (ast, expected_ty) => {
+            (ast, _) => {
                 let mut constraints = self.infer(ast)?;
                 constraints.push(Constraint::TyEq {
                     expected: expected_ty,
                     actual: ast.ty_cloned(),
-                    span: ast.span(),
                 });
                 Ok(constraints)
             }
@@ -155,77 +153,64 @@ impl Typecheck {
     fn unification(&mut self, constraints: Constraints) -> Result<(), TyError> {
         for constraint in constraints.0 {
             match constraint {
-                Constraint::TyEq {
-                    expected,
-                    actual,
-                    span,
-                } => self.unify_ty_ty(expected, actual, &span)?,
+                Constraint::TyEq { expected, actual } => self.unify_ty_ty(expected, actual)?,
             }
         }
         Ok(())
     }
 
-    fn unify_ty_ty(&mut self, expected: Ty, actual: Ty, span: &Span) -> Result<(), TyError> {
+    fn unify_ty_ty(&mut self, expected: Ty, actual: Ty) -> Result<(), TyError> {
         let expected = self.normalize_ty(expected);
         let actual = self.normalize_ty(actual);
 
-        match (expected, actual) {
-            (Ty::Fun(expected), Ty::Fun(actual)) => {
+        match (&expected.kind, &actual.kind) {
+            (TyKind::Fun(expected), TyKind::Fun(actual)) => {
                 // self.unify_ty_ty(*f1.arg, f2.arg)?;
-                self.unify_ty_ty(
-                    expected.ret.as_ref().clone(),
-                    actual.ret.as_ref().clone(),
-                    span,
-                )
+                self.unify_ty_ty(expected.ret.as_ref().clone(), actual.ret.as_ref().clone())
             }
 
-            (Ty::Var(expected), Ty::Var(actual)) => self
+            (TyKind::Var(expected), TyKind::Var(actual)) => self
                 .unification_table
-                .unify_var_var(expected, actual)
-                .map_err(|(expected, actual)| TyError::TyNotEq {
-                    expected,
-                    actual,
-                    span: *span,
-                }),
+                .unify_var_var(*expected, *actual)
+                .map_err(|(expected, actual)| TyError::TyNotEq { expected, actual }),
 
-            (Ty::Var(var), ty) | (ty, Ty::Var(var)) => {
-                ty.occurs_check(var).map_err(|ty| TyError::InfiniteTy {
-                    var,
-                    ty,
-                    span: *span,
-                })?;
+            (TyKind::Var(var), _) => {
+                actual
+                    .occurs_check(*var)
+                    .map_err(|ty| TyError::InfiniteTy { var: *var, ty })?;
 
                 self.unification_table
-                    .unify_var_value(var, Some(ty))
-                    .map_err(|(expected, actual)| TyError::TyNotEq {
-                        expected,
-                        actual,
-                        span: *span,
-                    })
+                    .unify_var_value(*var, Some(actual))
+                    .map_err(|(expected, actual)| TyError::TyNotEq { expected, actual })
             }
 
-            (Ty::Int(IntTy::Int), Ty::Int(IntTy::Int)) => Ok(()),
+            (_, TyKind::Var(var)) => {
+                expected
+                    .occurs_check(*var)
+                    .map_err(|ty| TyError::InfiniteTy { var: *var, ty })?;
 
-            (expected, actual) => Err(TyError::TyNotEq {
-                expected,
-                actual,
-                span: *span,
-            }),
+                self.unification_table
+                    .unify_var_value(*var, Some(expected))
+                    .map_err(|(expected, actual)| TyError::TyNotEq { expected, actual })
+            }
+
+            (TyKind::Int(IntTy::Int), TyKind::Int(IntTy::Int)) => Ok(()),
+
+            (_, _) => Err(TyError::TyNotEq { expected, actual }),
         }
     }
 
     fn normalize_ty(&mut self, ty: Ty) -> Ty {
-        match ty {
-            Ty::Fun(fun) => {
-                // let arg = self.normalize_ty(*arg);
+        match ty.kind {
+            TyKind::Fun(fun) => {
                 let ret = self.normalize_ty(*fun.ret);
-                Ty::fun(ret)
+                Ty::fun(ret, ty.span)
             }
-            Ty::Var(var) => match self.unification_table.probe_value(var) {
+            TyKind::Var(var) => match self.unification_table.probe_value(var) {
                 Some(ty) => self.normalize_ty(ty),
                 None => ty,
             },
-            Ty::Int(_) | Ty::Unit | Ty::Never => ty,
+            TyKind::Int(_) | TyKind::Unit | TyKind::Never => ty,
         }
     }
 }
@@ -233,21 +218,21 @@ impl Typecheck {
 // Substitute
 impl Typecheck {
     fn substitute(&mut self, ty: Ty) -> (HashSet<TyVar>, Ty) {
-        match ty {
-            Ty::Fun(fun) => {
+        match ty.kind {
+            TyKind::Fun(fun) => {
                 // let (mut arg_unbound, arg) = self.substitute(*arg);
                 let (ret_unbound, ret) = self.substitute(fun.ret.as_ref().clone());
                 // arg_unbound.extend(ret_unbound);
-                (ret_unbound, Ty::fun(ret))
+                (ret_unbound, Ty::fun(ret, ty.span))
             }
-            Ty::Var(v) => {
+            TyKind::Var(v) => {
                 let root = self.unification_table.find(v);
                 match self.unification_table.probe_value(root) {
                     Some(ty) => self.substitute(ty),
                     None => {
                         let mut unbound = HashSet::new();
                         unbound.insert(root);
-                        (unbound, Ty::Var(root))
+                        (unbound, Ty::var(root, ty.span))
                     }
                 }
             }
@@ -314,11 +299,7 @@ impl Constraints {
 
 #[derive(Debug, Clone)]
 enum Constraint {
-    TyEq {
-        expected: Ty,
-        actual: Ty,
-        span: Span,
-    },
+    TyEq { expected: Ty, actual: Ty },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -329,34 +310,30 @@ pub struct TypeScheme {
 
 #[derive(Debug)]
 pub enum TyError {
-    TyNotEq {
-        expected: Ty,
-        actual: Ty,
-        span: Span,
-    },
-    InfiniteTy {
-        ty: Ty,
-        var: TyVar,
-        span: Span,
-    },
+    TyNotEq { expected: Ty, actual: Ty },
+    InfiniteTy { ty: Ty, var: TyVar },
 }
 
 impl From<TyError> for CompilerReport {
     fn from(value: TyError) -> Self {
         match value {
-            TyError::TyNotEq {
-                expected,
-                actual,
-                span,
-            } => create_report(ReportKind::Error, &span)
-                .with_message(format!(
-                    "expected type `{expected}`, found `{actual}` instead"
-                ))
-                .with_label(Label::new(span).with_message(format!("found type `{actual}` here")))
-                .finish(),
-            TyError::InfiniteTy { span, .. } => create_report(ReportKind::Error, &span)
+            TyError::TyNotEq { expected, actual } => {
+                create_report(ReportKind::Error, &expected.span)
+                    .with_message(format!(
+                        "expected type `{expected}`, found `{actual}` instead"
+                    ))
+                    .with_label(
+                        Label::new(expected.span)
+                            .with_message(format!("expected type `{expected}` originates here")),
+                    )
+                    .with_label(
+                        Label::new(actual.span).with_message(format!("found type `{actual}` here")),
+                    )
+                    .finish()
+            }
+            TyError::InfiniteTy { ty, .. } => create_report(ReportKind::Error, &ty.span)
                 .with_message("type has infinite size")
-                .with_label(Label::new(span))
+                .with_label(Label::new(ty.span))
                 .finish(),
         }
     }

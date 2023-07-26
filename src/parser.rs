@@ -1,5 +1,3 @@
-use std::mem;
-
 use ustr::ustr;
 
 use crate::{
@@ -39,9 +37,10 @@ impl Parser {
 
     fn parse_binding(&mut self) -> CompilerResult<Binding> {
         if self.is(TokenKind::Fn) {
-            let start = self.last_span();
+            let name_ident = self.expect_ident()?;
+            let name_span = name_ident.span;
+            let name = name_ident.as_ident();
 
-            let name = self.expect_ident()?.as_ident();
             self.expect(TokenKind::OpenParen)?;
             // TODO: args
             self.expect(TokenKind::CloseParen)?;
@@ -49,7 +48,7 @@ impl Parser {
 
             let body = self.parse_fun_body()?;
 
-            let span = start.merge(body.span());
+            let span = name_span;
 
             Ok(Binding {
                 kind: BindingKind::Fun {

@@ -2,30 +2,52 @@ use std::fmt;
 
 use ena::unify::{EqUnifyValue, UnifyKey};
 
+use crate::span::Span;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Ty {
-    Var(TyVar),
-    Int(IntTy),
-    Fun(FunTy),
-    Never,
-    Unit, // TODO: when implementing tuples, this should just be an empty tuple
+pub struct Ty {
+    pub kind: TyKind,
+    pub span: Span,
 }
 
 impl Ty {
-    pub fn var(inner: TyVar) -> Self {
-        Ty::Var(inner)
+    pub fn var(var: TyVar, span: Span) -> Self {
+        Self {
+            kind: TyKind::Var(var),
+            span,
+        }
     }
 
-    pub fn int() -> Self {
-        Ty::Int(IntTy::Int)
+    pub fn int(span: Span) -> Self {
+        Self {
+            kind: TyKind::Int(IntTy::Int),
+            span,
+        }
     }
 
-    pub fn fun(ret: Ty) -> Self {
-        Ty::Fun(FunTy { ret: Box::new(ret) })
+    pub fn fun(ret: Ty, span: Span) -> Self {
+        Self {
+            kind: TyKind::Fun(FunTy { ret: Box::new(ret) }),
+            span,
+        }
+    }
+
+    pub fn never(span: Span) -> Self {
+        Self {
+            kind: TyKind::Never,
+            span,
+        }
+    }
+
+    pub fn unit(span: Span) -> Self {
+        Self {
+            kind: TyKind::Unit,
+            span,
+        }
     }
 
     pub fn as_fun(&self) -> &FunTy {
-        if let Self::Fun(f) = self {
+        if let TyKind::Fun(f) = &self.kind {
             f
         } else {
             panic!("expected Fun, got {self}")
@@ -33,24 +55,50 @@ impl Ty {
     }
 
     pub fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
-        match self {
-            Ty::Fun(fun) => {
+        match &self.kind {
+            TyKind::Fun(fun) => {
                 // fun.arg.occurs_check(var).map_err(|_| self.clone())?;
                 fun.ret.occurs_check(var).map_err(|_| self.clone())
             }
-            Ty::Var(v) => {
+            TyKind::Var(v) => {
                 if *v == var {
-                    Err(Ty::Var(*v))
+                    Err(self.clone())
                 } else {
                     Ok(())
                 }
             }
-            Ty::Int(_) | Ty::Unit | Ty::Never => Ok(()),
+            TyKind::Int(_) | TyKind::Unit | TyKind::Never => Ok(()),
+        }
+    }
+}
+
+impl fmt::Display for Ty {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match &self.kind {
+            TyKind::Fun(fun) => {
+                f.write_str("fn() ")?;
+                fun.ret.fmt(f)
+            }
+            TyKind::Var(var) => write!(f, "@{}", var.0),
+            TyKind::Int(int) => match int {
+                IntTy::Int => f.write_str("int"),
+            },
+            TyKind::Never => f.write_str("never"),
+            TyKind::Unit => f.write_str("()"),
         }
     }
 }
 
 impl EqUnifyValue for Ty {}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum TyKind {
+    Var(TyVar),
+    Int(IntTy),
+    Fun(FunTy),
+    Never,
+    Unit, // TODO: when implementing tuples, this should just be an empty tuple
+}
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct TyVar(u32);
@@ -79,21 +127,4 @@ pub enum IntTy {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunTy {
     pub ret: Box<Ty>,
-}
-
-impl fmt::Display for Ty {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Ty::Fun(fun) => {
-                f.write_str("fn() ")?;
-                fun.ret.fmt(f)
-            }
-            Ty::Var(var) => write!(f, "@{}", var.0),
-            Ty::Int(int) => match int {
-                IntTy::Int => f.write_str("int"),
-            },
-            Ty::Never => f.write_str("never"),
-            Ty::Unit => f.write_str("()"),
-        }
-    }
 }

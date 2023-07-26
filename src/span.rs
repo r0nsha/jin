@@ -52,7 +52,7 @@ impl Span {
         Self {
             source_key: self.source_key,
             start: self.start.min(other.start),
-            end: self.end.min(other.end),
+            end: self.end.max(other.end),
         }
     }
 }
