@@ -57,7 +57,7 @@ macro_rules! time {
     ($enabled:expr, $label:literal, $body:expr) => {{
         if $enabled {
             let sw = crate::util::Stopwatch::start_new($label);
-            let res = $body;
+            let res = { $body };
             sw.print();
             res
         } else {
@@ -67,7 +67,7 @@ macro_rules! time {
     ($enabled:expr, $label:expr, $body:expr) => {{
         if $enabled {
             let sw = crate::util::Stopwatch::start_new($label);
-            let res = $body;
+            let res = { $body };
             sw.print();
             res
         } else {

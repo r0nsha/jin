@@ -37,7 +37,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn scan(&mut self) -> TokenizeResult<Vec<Token>> {
+    fn scan(mut self) -> TokenizeResult<Vec<Token>> {
         let mut tokens = vec![];
 
         while let Some(token) = self.next_token()? {

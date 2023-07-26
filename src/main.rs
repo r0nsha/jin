@@ -1,5 +1,6 @@
 mod ast;
 mod codegen;
+mod name_resolution;
 mod parser;
 mod span;
 mod state;
@@ -61,6 +62,7 @@ fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
 
     let tokens =
         time! { state.options.print_times, "tokenize", tokenize::tokenize(&state, source)? };
+
     let module = time! { state.options.print_times, "parser", parser::parse(&state, tokens)? };
 
     if state.options.print_ast {
@@ -69,7 +71,10 @@ fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
         println!();
     }
 
-    let typed_module = time! { state.options.print_times, "typecheck", typecheck(&state, module)? };
+    let resolved_module = time! { state.options.print_times, "name resolution", name_resolution::resolve(&state, module)? };
+
+    let typed_module =
+        time! { state.options.print_times, "typecheck", typecheck(&state, resolved_module)? };
 
     if state.options.print_typed_ast {
         println!("Typed Ast:");

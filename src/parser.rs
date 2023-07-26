@@ -30,7 +30,7 @@ impl Parser {
 }
 
 impl Parser {
-    fn parse(&mut self) -> ParseResult<Module> {
+    fn parse(mut self) -> ParseResult<Module> {
         let mut module = Module { bindings: vec![] };
 
         while self.pos < self.tokens.len() - 1 {
