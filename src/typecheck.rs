@@ -312,7 +312,7 @@ pub struct TypeScheme {
 
 type TypeResult<T> = CompilerResult<T, TypeError>;
 
-#[derive(Error, Diagnostic, Debug, Clone)]
+#[derive(Error, Diagnostic, Debug)]
 enum TypeError {
     #[error("expected `{expected}`, got `{actual}` instead")]
     #[diagnostic(code(typeck::incompatible_types))]
