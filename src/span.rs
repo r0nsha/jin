@@ -63,7 +63,9 @@ impl Span {
 
 impl From<Span> for miette::SourceSpan {
     fn from(span: Span) -> Self {
-        (span.start as usize..span.end as usize).into()
+        let start = span.start as usize;
+        let end = span.end as usize;
+        Self::from(start..end)
     }
 }
 
