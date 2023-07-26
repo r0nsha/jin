@@ -3,7 +3,10 @@ use std::io;
 use enum_as_inner::EnumAsInner;
 use ustr::Ustr;
 
-use crate::{span::Span, ty::Ty};
+use crate::{
+    span::{Span, Spanned},
+    ty::Ty,
+};
 
 #[derive(Debug, Clone)]
 pub struct Module {
@@ -34,15 +37,6 @@ pub enum Ast {
 }
 
 impl Ast {
-    pub fn span(&self) -> Span {
-        match self {
-            Self::Binding(binding) => binding.span,
-            Self::Fun(fun) => fun.span,
-            Self::Ret(ret) => ret.span,
-            Self::Lit(lit) => lit.span,
-        }
-    }
-
     pub fn ty(&self) -> Option<&Ty> {
         match self {
             Self::Binding(binding) => binding.ty.as_ref(),
@@ -74,6 +68,17 @@ impl Ast {
 
         let tree = p.builder.build();
         ptree::print_tree_with(&tree, &ptree::PrintConfig::default())
+    }
+}
+
+impl Spanned for Ast {
+    fn span(&self) -> Span {
+        match self {
+            Self::Binding(binding) => binding.span,
+            Self::Fun(fun) => fun.span,
+            Self::Ret(ret) => ret.span,
+            Self::Lit(lit) => lit.span,
+        }
     }
 }
 

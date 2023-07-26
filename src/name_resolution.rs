@@ -1,12 +1,10 @@
 use miette::Diagnostic;
 use thiserror::Error;
-use ustr::ustr;
 
 use crate::{
     ast::*,
     span::{Span, Spanned},
     state::State,
-    tokenize::{Token, TokenKind},
     util::ErrExt,
     CompilerResult,
 };
