@@ -8,15 +8,15 @@ use slotmap::{Key, SlotMap};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
-    source_key: SourceKey,
+    source_id: SourceId,
     start: u32,
     end: u32,
 }
 
 impl Span {
-    pub fn new(source_key: SourceKey, start: u32, end: u32) -> Self {
+    pub fn new(source_id: SourceId, start: u32, end: u32) -> Self {
         Self {
-            source_key,
+            source_id,
             start,
             end,
         }
@@ -24,14 +24,14 @@ impl Span {
 
     pub fn unknown() -> Self {
         Self {
-            source_key: SourceKey::null(),
+            source_id: SourceId::null(),
             start: 0,
             end: 0,
         }
     }
 
-    pub fn source_key(&self) -> SourceKey {
-        self.source_key
+    pub fn source_id(&self) -> SourceId {
+        self.source_id
     }
 
     pub fn start(&self) -> u32 {
@@ -51,10 +51,10 @@ impl Span {
     }
 
     pub fn merge(&self, other: Self) -> Self {
-        assert!(self.source_key == other.source_key);
+        assert!(self.source_id == other.source_id);
 
         Self {
-            source_key: self.source_key,
+            source_id: self.source_id,
             start: self.start.min(other.start),
             end: self.end.max(other.end),
         }
@@ -74,14 +74,14 @@ pub trait Spanned {
 }
 
 #[derive(Debug)]
-pub struct SourceCache(SlotMap<SourceKey, Source>);
+pub struct SourceCache(SlotMap<SourceId, Source>);
 
 impl SourceCache {
     pub fn new() -> Self {
         Self(SlotMap::with_key())
     }
 
-    pub fn add_file(&mut self, path: PathBuf) -> io::Result<SourceKey> {
+    pub fn add_file(&mut self, path: PathBuf) -> io::Result<SourceId> {
         let mut source = Source::try_from(path)?;
 
         Ok(self.0.insert_with_key(|key| {
@@ -90,20 +90,20 @@ impl SourceCache {
         }))
     }
 
-    pub fn get(&self, key: SourceKey) -> Option<&Source> {
+    pub fn get(&self, key: SourceId) -> Option<&Source> {
         self.0.get(key)
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Source {
-    key: SourceKey,
+    key: SourceId,
     path: PathBuf,
     contents: String,
 }
 
 impl Source {
-    pub fn key(&self) -> SourceKey {
+    pub fn key(&self) -> SourceId {
         self.key
     }
 
@@ -123,7 +123,7 @@ impl TryFrom<PathBuf> for Source {
         let contents = fs::read_to_string(&value)?;
 
         Ok(Self {
-            key: SourceKey::null(),
+            key: SourceId::null(),
             path: value,
             contents,
         })
@@ -140,5 +140,5 @@ impl From<&Source> for NamedSource {
 }
 
 slotmap::new_key_type! {
-    pub struct SourceKey;
+    pub struct SourceId;
 }

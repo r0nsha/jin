@@ -8,7 +8,7 @@ use thiserror::Error;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    span::{Source, SourceKey, Span, Spanned},
+    span::{Source, SourceId, Span, Spanned},
     state::State,
     util::ErrExt,
     CompilerResult,
@@ -21,7 +21,7 @@ pub fn tokenize(state: &State, source: &Source) -> CompilerResult<Vec<Token>> {
 }
 
 struct Lexer<'a> {
-    source_key: SourceKey,
+    source_key: SourceId,
     source_contents: &'a str,
     source_bytes: &'a [u8],
     pos: usize,

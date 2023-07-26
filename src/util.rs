@@ -85,7 +85,7 @@ where
     Self: Diagnostic + Spanned + Send + Sync + 'static,
 {
     fn with_source_code(self, state: &State) -> ErrReport {
-        if let Some(source) = state.source_cache.get(self.span().source_key()) {
+        if let Some(source) = state.source_cache.get(self.span().source_id()) {
             ErrReport::from(self).with_source_code(NamedSource::from(source))
         } else {
             self.into()
