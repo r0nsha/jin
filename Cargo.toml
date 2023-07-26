@@ -9,7 +9,9 @@ edition = "2021"
 clap = { version = "4.3.19", features = ["derive"] }
 ena = "0.14.2"
 miette = { version = "5.10.0", features = ["fancy"] }
+owo-colors = "3.5.0"
 ptree = "0.4.0"
 slotmap = "1.0.6"
 stopwatch = "0.0.7"
+thiserror = "1.0.44"
 ustr = "0.10.0"

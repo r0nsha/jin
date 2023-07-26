@@ -3,6 +3,8 @@ mod scope;
 use std::collections::HashSet;
 
 use ena::unify::InPlaceUnificationTable;
+use miette::Diagnostic;
+use thiserror::Error;
 
 use crate::{ast::*, span::Span, ty::*, CompilerResult};
 
@@ -58,7 +60,7 @@ impl Typecheck {
 
 // Infer/Check
 impl Typecheck {
-    fn infer(&mut self, ast: &mut Ast) -> CompilerResult<Constraints> {
+    fn infer(&mut self, ast: &mut Ast) -> TypeResult<Constraints> {
         match ast {
             Ast::Binding(binding) => self.infer_binding(binding),
             Ast::Fun(fun) => self.infer_fun(fun),
@@ -80,10 +82,7 @@ impl Typecheck {
                         }))
                     }
                 } else {
-                    Err(create_report(ReportKind::Error, &ret.span)
-                        .with_message("cannot return outside of function scope")
-                        .with_label(Label::new(ret.span).with_color(Color::Red))
-                        .finish())
+                    Err(TypeError::MisplacedReturn { span: ret.span })
                 }
             }
             Ast::Lit(lit) => match &lit.kind {
@@ -95,7 +94,7 @@ impl Typecheck {
         }
     }
 
-    fn infer_binding(&mut self, binding: &mut Binding) -> CompilerResult<Constraints> {
+    fn infer_binding(&mut self, binding: &mut Binding) -> TypeResult<Constraints> {
         binding.set_ty(Ty::unit(binding.span));
 
         match &mut binding.kind {
@@ -103,7 +102,7 @@ impl Typecheck {
         }
     }
 
-    fn infer_fun(&mut self, fun: &mut Fun) -> CompilerResult<Constraints> {
+    fn infer_fun(&mut self, fun: &mut Fun) -> TypeResult<Constraints> {
         // let arg_ty_var = self.fresh_ty_var();
 
         let fun_ret_ty = Ty::unit(fun.span); // self.fresh_ty_var(fun.span);
@@ -116,7 +115,7 @@ impl Typecheck {
         body_constraints
     }
 
-    fn check(&mut self, ast: &mut Ast, expected_ty: Ty) -> CompilerResult<Constraints> {
+    fn check(&mut self, ast: &mut Ast, expected_ty: Ty) -> TypeResult<Constraints> {
         match (ast, &expected_ty.kind) {
             (Ast::Fun(fun), TyKind::Fun(fun_ty)) => {
                 // let env = env.update(arg, *arg_ty);
@@ -143,7 +142,7 @@ impl Typecheck {
 
 // Unification
 impl Typecheck {
-    fn unification(&mut self, constraints: Constraints) -> Result<(), TyError> {
+    fn unification(&mut self, constraints: Constraints) -> TypeResult<()> {
         for constraint in constraints.0 {
             match constraint {
                 Constraint::TyEq { expected, actual } => self.unify_ty_ty(expected, actual)?,
@@ -152,7 +151,7 @@ impl Typecheck {
         Ok(())
     }
 
-    fn unify_ty_ty(&mut self, expected: Ty, actual: Ty) -> Result<(), TyError> {
+    fn unify_ty_ty(&mut self, expected: Ty, actual: Ty) -> TypeResult<()> {
         let expected = self.normalize_ty(expected);
         let actual = self.normalize_ty(actual);
 
@@ -165,31 +164,31 @@ impl Typecheck {
             (TyKind::Var(expected), TyKind::Var(actual)) => self
                 .unification_table
                 .unify_var_var(*expected, *actual)
-                .map_err(|(expected, actual)| TyError::TyNotEq { expected, actual }),
+                .map_err(|(expected, actual)| TypeError::TyNotEq { expected, actual }),
 
             (TyKind::Var(var), _) => {
                 actual
                     .occurs_check(*var)
-                    .map_err(|ty| TyError::InfiniteTy { var: *var, ty })?;
+                    .map_err(|ty| TypeError::InfiniteTy { var: *var, ty })?;
 
                 self.unification_table
                     .unify_var_value(*var, Some(actual))
-                    .map_err(|(expected, actual)| TyError::TyNotEq { expected, actual })
+                    .map_err(|(expected, actual)| TypeError::TyNotEq { expected, actual })
             }
 
             (_, TyKind::Var(var)) => {
                 expected
                     .occurs_check(*var)
-                    .map_err(|ty| TyError::InfiniteTy { var: *var, ty })?;
+                    .map_err(|ty| TypeError::InfiniteTy { var: *var, ty })?;
 
                 self.unification_table
                     .unify_var_value(*var, Some(expected))
-                    .map_err(|(expected, actual)| TyError::TyNotEq { expected, actual })
+                    .map_err(|(expected, actual)| TypeError::TyNotEq { expected, actual })
             }
 
             (TyKind::Int(IntTy::Int), TyKind::Int(IntTy::Int)) => Ok(()),
 
-            (_, _) => Err(TyError::TyNotEq { expected, actual }),
+            (_, _) => Err(TypeError::TyNotEq { expected, actual }),
         }
     }
 
@@ -301,36 +300,25 @@ pub struct TypeScheme {
     ty: Ty,
 }
 
-#[derive(Debug)]
-pub enum TyError {
-    TyNotEq { expected: Ty, actual: Ty },
-    InfiniteTy { ty: Ty, var: TyVar },
-}
+type TypeResult<T> = CompilerResult<T, TypeError>;
 
-impl From<TyError> for CompilerReport {
-    fn from(value: TyError) -> Self {
-        match value {
-            TyError::TyNotEq { expected, actual } => {
-                create_report(ReportKind::Error, &expected.span)
-                    .with_message(format!(
-                        "expected type `{expected}`, found `{actual}` instead"
-                    ))
-                    .with_label(
-                        Label::new(expected.span)
-                            .with_message(format!("expected type `{expected}` originates here"))
-                            .with_color(Color::Cyan),
-                    )
-                    .with_label(
-                        Label::new(actual.span)
-                            .with_message(format!("found type `{actual}` here"))
-                            .with_color(Color::Red),
-                    )
-                    .finish()
-            }
-            TyError::InfiniteTy { ty, .. } => create_report(ReportKind::Error, &ty.span)
-                .with_message("type has infinite size")
-                .with_label(Label::new(ty.span).with_color(Color::Red))
-                .finish(),
-        }
-    }
+#[derive(Error, Diagnostic, Debug)]
+enum TypeError {
+    #[error("expected `{expected}`, got `{actual}` instead")]
+    #[diagnostic(code(typeck::incompatible_types))]
+    TyNotEq {
+        #[label("expected type `{expected}` originates here")]
+        expected: Ty,
+        #[label("found type `{actual}` here")]
+        actual: Ty,
+    },
+    #[error("type `{ty}` has an infinite size")]
+    #[diagnostic(code(typeck::infinite_type))]
+    InfiniteTy { ty: Ty, var: TyVar },
+    #[error("cannot return outside of function scope")]
+    #[diagnostic(code(typeck::infinite_type))]
+    MisplacedReturn {
+        #[label]
+        span: Span,
+    },
 }

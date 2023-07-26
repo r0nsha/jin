@@ -1,4 +1,4 @@
-use color_eyre::owo_colors::{AnsiColors, OwoColorize};
+use owo_colors::{AnsiColors, OwoColorize};
 use std::time::Duration;
 use stopwatch::Stopwatch as SW;
 

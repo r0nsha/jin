@@ -1,14 +1,17 @@
+use miette::Diagnostic;
+use thiserror::Error;
 use ustr::ustr;
 
 use crate::{
     ast::*,
-    lexer::{Token, TokenKind},
     span::Span,
+    tokenize::{Token, TokenKind},
     CompilerResult,
 };
 
 pub fn parse(tokens: Vec<Token>) -> CompilerResult<Module> {
-    Parser::new(tokens).parse()
+    let result = Parser::new(tokens).parse()?;
+    Ok(result)
 }
 
 #[derive(Debug)]
@@ -24,7 +27,7 @@ impl Parser {
 }
 
 impl Parser {
-    fn parse(&mut self) -> CompilerResult<Module> {
+    fn parse(&mut self) -> ParseResult<Module> {
         let mut module = Module { bindings: vec![] };
 
         while self.pos < self.tokens.len() - 1 {
@@ -35,7 +38,7 @@ impl Parser {
         Ok(module)
     }
 
-    fn parse_binding(&mut self) -> CompilerResult<Binding> {
+    fn parse_binding(&mut self) -> ParseResult<Binding> {
         if self.is(TokenKind::Fn) {
             let name_ident = self.expect_ident()?;
             let name_span = name_ident.span;
@@ -68,7 +71,7 @@ impl Parser {
         }
     }
 
-    fn parse_fun_body(&mut self) -> CompilerResult<Ast> {
+    fn parse_fun_body(&mut self) -> ParseResult<Ast> {
         // TODO: don't require curlies (need to impl block expressions)
         self.expect(TokenKind::OpenCurly)?;
         let body = self.parse_expr();
@@ -76,7 +79,7 @@ impl Parser {
         body
     }
 
-    fn parse_expr(&mut self) -> CompilerResult<Ast> {
+    fn parse_expr(&mut self) -> ParseResult<Ast> {
         if self.is(TokenKind::Return) {
             self.parse_ret()
         } else if let Some(TokenKind::Int(value)) = self.token_kind() {
@@ -93,7 +96,7 @@ impl Parser {
         }
     }
 
-    fn parse_ret(&mut self) -> CompilerResult<Ast> {
+    fn parse_ret(&mut self) -> ParseResult<Ast> {
         // TODO: naked return
         let start = self.last_span();
         let value = self.parse_expr()?;
@@ -120,18 +123,25 @@ impl Parser {
 
     // TODO: is_any
 
-    fn expect_ident(&mut self) -> CompilerResult<Token> {
+    fn expect_ident(&mut self) -> ParseResult<Token> {
         self.expect(TokenKind::Ident(ustr("")))
     }
 
-    fn expect(&mut self, expected: TokenKind) -> CompilerResult<Token> {
+    fn expect(&mut self, expected: TokenKind) -> ParseResult<Token> {
         match self.token() {
             Some(tok) if tok.kind_eq(expected) => {
                 self.advance();
                 Ok(tok)
             }
-            Some(tok) => Err(diagnostics::expected_token(expected, tok.kind, tok.span)),
-            None => Err(diagnostics::expected_token_eof(expected, self.last_span())),
+            Some(tok) => Err(ParseError::ExpectedToken {
+                expected,
+                actual: tok.kind,
+                span: tok.span,
+            }),
+            None => Err(ParseError::UnexpectedEof {
+                expected,
+                span: self.last_span(),
+            }),
         }
     }
 
@@ -153,32 +163,23 @@ impl Parser {
     }
 }
 
-mod diagnostics {
-    use crate::{
-        diagnostics::{create_report, CompilerReport},
-        lexer::TokenKind,
-        span::Span,
-    };
+type ParseResult<T> = CompilerResult<T, ParseError>;
 
-    pub fn expected_token(expected: TokenKind, actual: TokenKind, span: Span) -> CompilerReport {
-        create_report(ReportKind::Error, &span)
-            .with_message(format!("expected `{expected}`, got `{actual}` instead"))
-            .with_label(
-                Label::new(span)
-                    .with_message("expected here")
-                    .with_color(Color::Red),
-            )
-            .finish()
-    }
-
-    pub fn expected_token_eof(expected: TokenKind, span: Span) -> CompilerReport {
-        create_report(ReportKind::Error, &span)
-            .with_message(format!("expected `{expected}`, got end of file instead"))
-            .with_label(
-                Label::new(span)
-                    .with_message("expected here")
-                    .with_color(Color::Red),
-            )
-            .finish()
-    }
+#[derive(Error, Diagnostic, Debug)]
+enum ParseError {
+    #[error("expected `{expected}`, got `{actual}` instead")]
+    #[diagnostic(code(parse::expected_token))]
+    ExpectedToken {
+        expected: TokenKind,
+        actual: TokenKind,
+        #[label("expected here")]
+        span: Span,
+    },
+    #[error("expected `{expected}`, got end of file instead")]
+    #[diagnostic(code(parse::unexpected_eof))]
+    UnexpectedEof {
+        expected: TokenKind,
+        #[label("expected here")]
+        span: Span,
+    },
 }

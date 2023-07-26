@@ -3,6 +3,8 @@ use std::{
     mem,
 };
 
+use miette::Diagnostic;
+use thiserror::Error;
 use ustr::{ustr, Ustr};
 
 use crate::{
@@ -11,7 +13,7 @@ use crate::{
 };
 
 pub fn tokenize(source: &Source) -> CompilerResult<Vec<Token>> {
-    Lexer::new(source).scan()
+    Ok(Lexer::new(source).scan()?)
 }
 
 struct Lexer<'a> {
@@ -31,7 +33,7 @@ impl<'a> Lexer<'a> {
         }
     }
 
-    fn scan(&mut self) -> CompilerResult<Vec<Token>> {
+    fn scan(&mut self) -> TokenizeResult<Vec<Token>> {
         let mut tokens = vec![];
 
         while let Some(token) = self.next_token()? {
@@ -41,7 +43,7 @@ impl<'a> Lexer<'a> {
         Ok(tokens)
     }
 
-    fn next_token(&mut self) -> CompilerResult<Option<Token>> {
+    fn next_token(&mut self) -> TokenizeResult<Option<Token>> {
         let start = self.pos;
 
         match self.bump() {
@@ -58,15 +60,16 @@ impl<'a> Lexer<'a> {
                         return self.next_token();
                     }
                     ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
-                    ch if ch.is_ascii_digit() => self.numeric(start)?,
+                    ch if ch.is_ascii_digit() => self.numeric(start),
                     ch if ch.is_ascii_whitespace() => return self.next_token(),
                     ch => {
                         let span = self.create_span(start as u32);
 
-                        return Err(create_report(ReportKind::Error, &span)
-                            .with_message(format!("unknown character {ch}"))
-                            .with_label(Label::new(span).with_color(Color::Red))
-                            .finish());
+                        return Err(TokenizeError::InvalidChar { ch, span });
+                        // return Err(create_report(ReportKind::Error, &span)
+                        //     .with_message(format!("unknown character {ch}"))
+                        //     .with_label(Label::new(span).with_color(Color::Red))
+                        //     .finish());
                     }
                 };
 
@@ -95,7 +98,7 @@ impl<'a> Lexer<'a> {
         unreachable!()
     }
 
-    fn numeric(&mut self, start: usize) -> CompilerResult<TokenKind> {
+    fn numeric(&mut self, start: usize) -> TokenKind {
         while let Some(ch) = self.peek() {
             if ch.is_ascii_digit() {
                 self.advance();
@@ -103,19 +106,7 @@ impl<'a> Lexer<'a> {
                 self.advance();
                 self.advance();
             } else {
-                let str = self.range(start);
-
-                return match str.as_bytes().last().unwrap() {
-                    b'_' => {
-                        let span = self.create_span(start as u32);
-
-                        Err(create_report(ReportKind::Error, &span)
-                            .with_message(format!("numeric literal cannot end with _"))
-                            .with_label(Label::new(span).with_color(Color::Red))
-                            .finish())
-                    }
-                    _ => Ok(TokenKind::Int(str.replace('_', "").parse().unwrap())),
-                };
+                return TokenKind::Int(self.range(start).replace('_', "").parse().unwrap());
             }
         }
 
@@ -220,4 +211,17 @@ impl fmt::Display for TokenKind {
             Self::Int(_) => f.write_str("int literal"),
         }
     }
+}
+
+type TokenizeResult<T> = CompilerResult<T, TokenizeError>;
+
+#[derive(Error, Diagnostic, Debug)]
+enum TokenizeError {
+    #[error("invalid character {ch}")]
+    #[diagnostic(code(tokenize::invalid_char))]
+    InvalidChar {
+        ch: char,
+        #[label]
+        span: Span,
+    },
 }

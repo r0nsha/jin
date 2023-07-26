@@ -60,6 +60,12 @@ impl Span {
     }
 }
 
+impl From<Span> for miette::SourceSpan {
+    fn from(span: Span) -> Self {
+        (span.start as usize..span.end as usize).into()
+    }
+}
+
 #[derive(Debug)]
 pub struct SourceCache(SlotMap<SourceKey, Source>);
 

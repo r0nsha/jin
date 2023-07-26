@@ -89,6 +89,12 @@ impl fmt::Display for Ty {
     }
 }
 
+impl From<Ty> for miette::SourceSpan {
+    fn from(ty: Ty) -> Self {
+        ty.span.into()
+    }
+}
+
 impl EqUnifyValue for Ty {}
 
 #[derive(Debug, Clone, PartialEq, Eq)]

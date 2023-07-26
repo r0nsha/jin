@@ -1,9 +1,9 @@
 mod ast;
 mod codegen;
-mod lexer;
 mod parser;
 mod span;
 mod state;
+mod tokenize;
 mod ty;
 mod typecheck;
 mod util;
@@ -30,7 +30,7 @@ enum Commands {
     Build { file: PathBuf },
 }
 
-pub type CompilerResult<T> = miette::Result<T>;
+pub type CompilerResult<T, E = miette::Report> = miette::Result<T, E>;
 
 fn main() -> CompilerResult<()> {
     miette::set_panic_hook();
@@ -49,7 +49,7 @@ fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
     let source_key = state.source_cache.add_file(file).unwrap();
     let source = state.source_cache.get(source_key).unwrap();
 
-    let tokens = time! { state.options.time, "lexer", lexer::tokenize(source)? };
+    let tokens = time! { state.options.time, "tokenize", tokenize::tokenize(source)? };
     let module = time! { state.options.time, "parser", parser::parse(tokens)? };
 
     let typed_module = time! { state.options.time, "typecheck", typecheck(module)? };

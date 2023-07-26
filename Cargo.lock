@@ -1038,9 +1038,11 @@ dependencies = [
  "clap",
  "ena",
  "miette",
+ "owo-colors",
  "ptree",
  "slotmap",
  "stopwatch",
+ "thiserror",
  "ustr",
 ]
 
