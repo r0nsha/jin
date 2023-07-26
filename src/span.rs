@@ -1,6 +1,9 @@
-use std::{fmt, fs, io, path::PathBuf};
+use std::{
+    fmt, fs, io,
+    path::{Path, PathBuf},
+};
 
-use slotmap::SlotMap;
+use slotmap::{Key, SlotMap};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
@@ -20,7 +23,7 @@ impl Span {
 
     pub fn unknown() -> Self {
         Self {
-            source_key: SourceKey::default(),
+            source_key: SourceKey::null(),
             start: 0,
             end: 0,
         }
@@ -101,7 +104,8 @@ impl ariadne::Cache<SourceKey> for &SourceCache {
     }
 
     fn display<'a>(&self, id: &'a SourceKey) -> Option<Box<dyn std::fmt::Display + 'a>> {
-        Some(Box::new(id))
+        let source = self.get(*id)?;
+        Some(Box::new(source.path().display()))
     }
 }
 
@@ -118,7 +122,7 @@ impl Source {
         self.key
     }
 
-    pub fn path(&self) -> &PathBuf {
+    pub fn path(&self) -> &Path {
         &self.path
     }
 
@@ -139,7 +143,7 @@ impl TryFrom<PathBuf> for Source {
         let source = ariadne::Source::from(&contents);
 
         Ok(Self {
-            key: SourceKey::default(),
+            key: SourceKey::null(),
             path: value,
             contents,
             source,

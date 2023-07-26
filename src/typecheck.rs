@@ -2,7 +2,7 @@ mod scope;
 
 use std::collections::HashSet;
 
-use ariadne::{Label, ReportKind};
+use ariadne::{Color, Label, ReportKind};
 use ena::unify::InPlaceUnificationTable;
 
 use crate::{
@@ -89,7 +89,7 @@ impl Typecheck {
                 } else {
                     Err(create_report(ReportKind::Error, &ret.span)
                         .with_message("cannot return outside of function scope")
-                        .with_label(Label::new(ret.span))
+                        .with_label(Label::new(ret.span).with_color(Color::Red))
                         .finish())
                 }
             }
@@ -324,16 +324,19 @@ impl From<TyError> for CompilerReport {
                     ))
                     .with_label(
                         Label::new(expected.span)
-                            .with_message(format!("expected type `{expected}` originates here")),
+                            .with_message(format!("expected type `{expected}` originates here"))
+                            .with_color(Color::Cyan),
                     )
                     .with_label(
-                        Label::new(actual.span).with_message(format!("found type `{actual}` here")),
+                        Label::new(actual.span)
+                            .with_message(format!("found type `{actual}` here"))
+                            .with_color(Color::Red),
                     )
                     .finish()
             }
             TyError::InfiniteTy { ty, .. } => create_report(ReportKind::Error, &ty.span)
                 .with_message("type has infinite size")
-                .with_label(Label::new(ty.span))
+                .with_label(Label::new(ty.span).with_color(Color::Red))
                 .finish(),
         }
     }

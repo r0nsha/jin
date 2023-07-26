@@ -3,7 +3,7 @@ use std::{
     mem,
 };
 
-use ariadne::{Label, ReportKind};
+use ariadne::{Color, Label, ReportKind};
 use ustr::{ustr, Ustr};
 
 use crate::{
@@ -67,7 +67,7 @@ impl<'a> Lexer<'a> {
 
                         return Err(create_report(ReportKind::Error, &span)
                             .with_message(format!("unknown character {ch}"))
-                            .with_label(Label::new(span))
+                            .with_label(Label::new(span).with_color(Color::Red))
                             .finish());
                     }
                 };
@@ -113,7 +113,7 @@ impl<'a> Lexer<'a> {
 
                         Err(create_report(ReportKind::Error, &span)
                             .with_message(format!("numeric literal cannot end with _"))
-                            .with_label(Label::new(span))
+                            .with_label(Label::new(span).with_color(Color::Red))
                             .finish())
                     }
                     _ => Ok(TokenKind::Int(str.replace('_', "").parse().unwrap())),
