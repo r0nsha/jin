@@ -74,7 +74,7 @@ impl AstVisitor<String> for Codegen {
                 let body = self.visit(&fun.body);
                 let body_str = format!("\t{body};\n");
 
-                format!("{decl} {{\n{body_str}}}\n\n")
+                format!("{decl} {{\n{body_str}}}")
             }
         }
     }
