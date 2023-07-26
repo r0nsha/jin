@@ -154,8 +154,6 @@ impl Parser {
 }
 
 mod diagnostics {
-    use ariadne::{Color, Label, ReportKind};
-
     use crate::{
         diagnostics::{create_report, CompilerReport},
         lexer::TokenKind,

@@ -2,16 +2,9 @@ mod scope;
 
 use std::collections::HashSet;
 
-use ariadne::{Color, Label, ReportKind};
 use ena::unify::InPlaceUnificationTable;
 
-use crate::{
-    ast::*,
-    diagnostics::{create_report, CompilerReport},
-    span::Span,
-    ty::*,
-    CompilerResult,
-};
+use crate::{ast::*, span::Span, ty::*, CompilerResult};
 
 use self::scope::{FunScope, FunScopes};
 

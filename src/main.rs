@@ -1,6 +1,5 @@
 mod ast;
 mod codegen;
-mod diagnostics;
 mod lexer;
 mod parser;
 mod span;
@@ -12,7 +11,6 @@ mod util;
 use std::{fs, os::unix::process::CommandExt, path::PathBuf, process::Command};
 
 use clap::{Parser, Subcommand};
-use diagnostics::CompilerReport;
 use state::CompilerOptions;
 
 use crate::{codegen::codegen, state::State, typecheck::typecheck};
@@ -32,26 +30,18 @@ enum Commands {
     Build { file: PathBuf },
 }
 
-pub type CompilerResult<T> = std::result::Result<T, CompilerReport>;
+pub type CompilerResult<T> = miette::Result<T>;
 
-fn main() -> color_eyre::eyre::Result<()> {
-    color_eyre::install()?;
+fn main() -> CompilerResult<()> {
+    miette::set_panic_hook();
 
     let cli = Cli::parse();
 
     let mut state = State::new(CompilerOptions { time: cli.time });
 
-    let result = match cli.cmd {
+    match cli.cmd {
         Commands::Build { file } => build(&mut state, file),
-    };
-
-    if let Err(report) = result {
-        report
-            .eprint(state.source_cache.cache())
-            .expect("diagnostics to work");
     }
-
-    Ok(())
 }
 
 fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {

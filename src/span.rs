@@ -1,10 +1,8 @@
 use std::{
-    collections::HashMap,
     fmt, fs, io,
     path::{Path, PathBuf},
 };
 
-use ariadne::{Cache, FnCache};
 use slotmap::{Key, SlotMap};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -62,22 +60,6 @@ impl Span {
     }
 }
 
-impl ariadne::Span for Span {
-    type SourceId = SourceKey;
-
-    fn source(&self) -> &Self::SourceId {
-        &self.source_key
-    }
-
-    fn start(&self) -> usize {
-        self.start as usize
-    }
-
-    fn end(&self) -> usize {
-        self.end as usize
-    }
-}
-
 #[derive(Debug)]
 pub struct SourceCache(SlotMap<SourceKey, Source>);
 
@@ -98,37 +80,13 @@ impl SourceCache {
     pub fn get(&self, key: SourceKey) -> Option<&Source> {
         self.0.get(key)
     }
-
-    pub fn cache(self) -> impl Cache<SourceKey> {
-        FnCache::new(
-            (move |id| Err(Box::new(format!("Failed to fetch source '{}'", id)) as _))
-                as fn(&_) -> _,
-        )
-        .with_sources(
-            self.0
-                .into_iter()
-                .map(|(id, s)| (id, s.source().clone()))
-                .collect(),
-        )
-    }
 }
-
-// impl ariadne::Cache<SourceKey> for &SourceCache {
-//     fn fetch(&mut self, id: &SourceKey) -> Result<&ariadne::Source, Box<dyn std::fmt::Debug + '_>> {
-//         self.get(*id).map(|s| s.source()).ok_or(Box::new(()))
-//     }
-//
-//     fn display<'a>(&self, path: &'a SourceKey) -> Option<Box<dyn std::fmt::Display + 'a>> {
-//         Some(Box::new(path.display()))
-//     }
-// }
 
 #[derive(Debug, Clone)]
 pub struct Source {
     key: SourceKey,
     path: PathBuf,
     contents: String,
-    source: ariadne::Source,
 }
 
 impl Source {
@@ -143,10 +101,6 @@ impl Source {
     pub fn contents(&self) -> &str {
         self.contents.as_ref()
     }
-
-    pub fn source(&self) -> &ariadne::Source {
-        &self.source
-    }
 }
 
 impl TryFrom<PathBuf> for Source {
@@ -154,23 +108,15 @@ impl TryFrom<PathBuf> for Source {
 
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
         let contents = fs::read_to_string(&value)?;
-        let source = ariadne::Source::from(&contents);
 
         Ok(Self {
             key: SourceKey::null(),
             path: value,
             contents,
-            source,
         })
     }
 }
 
 slotmap::new_key_type! {
     pub struct SourceKey;
-}
-
-impl fmt::Display for SourceKey {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
 }

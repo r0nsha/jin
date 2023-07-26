@@ -3,11 +3,9 @@ use std::{
     mem,
 };
 
-use ariadne::{Color, Label, ReportKind};
 use ustr::{ustr, Ustr};
 
 use crate::{
-    diagnostics::create_report,
     span::{Source, SourceKey, Span},
     CompilerResult,
 };
