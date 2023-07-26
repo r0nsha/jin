@@ -17,5 +17,7 @@ impl State {
 
 #[derive(Debug)]
 pub struct CompilerOptions {
-    pub time: bool,
+    pub print_times: bool,
+    pub print_ast: bool,
+    pub print_typed_ast: bool,
 }

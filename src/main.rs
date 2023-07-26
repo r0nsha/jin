@@ -8,7 +8,7 @@ mod ty;
 mod typecheck;
 mod util;
 
-use std::{fs, os::unix::process::CommandExt, path::PathBuf, process::Command};
+use std::{fs, path::PathBuf, process::Command};
 
 use clap::{Parser, Subcommand};
 use state::CompilerOptions;
@@ -21,8 +21,14 @@ struct Cli {
     #[command(subcommand)]
     cmd: Commands,
 
-    #[arg(short, long, default_value_t = true)]
-    time: bool,
+    #[arg(long, default_value_t = true)]
+    print_times: bool,
+
+    #[arg(long, default_value_t = false)]
+    print_ast: bool,
+
+    #[arg(long, default_value_t = false)]
+    print_typed_ast: bool,
 }
 
 #[derive(Subcommand)]
@@ -37,7 +43,11 @@ fn main() -> CompilerResult<()> {
 
     let cli = Cli::parse();
 
-    let mut state = State::new(CompilerOptions { time: cli.time });
+    let mut state = State::new(CompilerOptions {
+        print_times: cli.print_times,
+        print_ast: cli.print_ast,
+        print_typed_ast: cli.print_typed_ast,
+    });
 
     match cli.cmd {
         Commands::Build { file } => build(&mut state, file),
@@ -49,20 +59,24 @@ fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
     let source_key = state.source_cache.add_file(file).unwrap();
     let source = state.source_cache.get(source_key).unwrap();
 
-    let tokens = time! { state.options.time, "tokenize", tokenize::tokenize(source)? };
-    let module = time! { state.options.time, "parser", parser::parse(tokens)? };
+    let tokens = time! { state.options.print_times, "tokenize", tokenize::tokenize(source)? };
+    let module = time! { state.options.print_times, "parser", parser::parse(tokens)? };
 
-    let typed_module = time! { state.options.time, "typecheck", typecheck(&state, module)? };
+    if state.options.print_ast {
+        println!("Ast:");
+        module.pretty_print().unwrap();
+        println!();
+    }
 
-    println!("Typed Ast:");
-    typed_module.pretty_print().unwrap();
-    println!();
+    let typed_module = time! { state.options.print_times, "typecheck", typecheck(&state, module)? };
 
-    let code = time! { state.options.time, "codegen", codegen(typed_module) };
+    if state.options.print_typed_ast {
+        println!("Typed Ast:");
+        typed_module.pretty_print().unwrap();
+        println!();
+    }
 
-    println!("Code:");
-    println!("{code}");
-    println!();
+    let code = time! { state.options.print_times, "codegen", codegen(typed_module) };
 
     // TODO: don't create this out dir
     // TODO: handle error (ICE)
@@ -75,7 +89,7 @@ fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
     // TODO: rename input
     // TODO: rename output
     // TODO: handle error (ICE)
-    time! { state.options.time, "clang",
+    time! { state.options.print_times, "clang",
         Command::new("clang")
             .args(["out/main.c", "-o", "out/main", "-x", "c", "-std=c99"])
             .spawn()
