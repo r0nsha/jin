@@ -114,7 +114,7 @@ impl Typecheck {
     fn infer_fun(&mut self, fun: &mut Fun) -> CompilerResult<Constraints> {
         // let arg_ty_var = self.fresh_ty_var();
 
-        let fun_ret_ty = Ty::var(self.fresh_ty_var());
+        let fun_ret_ty = Ty::Unit; // Ty::var(self.fresh_ty_var());
         fun.set_ty(Ty::fun(fun_ret_ty.clone()));
 
         self.fun_scopes.push(FunScope { ret_ty: fun_ret_ty });
@@ -350,9 +350,9 @@ impl From<TyError> for CompilerReport {
                 span,
             } => create_report(ReportKind::Error, &span)
                 .with_message(format!(
-                    "expected type `{expected}`, but got `{actual}` instead"
+                    "expected type `{expected}`, found `{actual}` instead"
                 ))
-                .with_label(Label::new(span))
+                .with_label(Label::new(span).with_message(format!("found type `{actual}` here")))
                 .finish(),
             TyError::InfiniteTy { span, .. } => create_report(ReportKind::Error, &span)
                 .with_message("type has infinite size")
