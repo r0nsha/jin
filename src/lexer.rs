@@ -60,12 +60,12 @@ impl<'a> Lexer<'a> {
                         return self.next_token();
                     }
                     ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
-                    ch if ch.is_ascii_digit() => self.numeric(start),
+                    ch if ch.is_ascii_digit() => self.numeric(start)?,
                     ch if ch.is_ascii_whitespace() => return self.next_token(),
                     ch => {
                         let span = self.create_span(start as u32);
 
-                        return Err(create_report(ReportKind::Error, span)
+                        return Err(create_report(ReportKind::Error, &span)
                             .with_message(format!("unknown character {ch}"))
                             .with_label(Label::new(span))
                             .finish());
@@ -111,7 +111,7 @@ impl<'a> Lexer<'a> {
                     b'_' => {
                         let span = self.create_span(start as u32);
 
-                        Err(create_report(ReportKind::Error, span)
+                        Err(create_report(ReportKind::Error, &span)
                             .with_message(format!("numeric literal cannot end with _"))
                             .with_label(Label::new(span))
                             .finish())

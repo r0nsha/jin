@@ -59,11 +59,11 @@ fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
     let source_key = state.source_cache.add_file(file).unwrap();
     let source = state.source_cache.get(source_key).unwrap();
 
-    let tokens = time! { state.options.time, "lexer", lexer::tokenize(source) };
+    let tokens = time! { state.options.time, "lexer", lexer::tokenize(source)? };
     let module = time! { state.options.time, "parser", parser::parse(tokens)? };
 
     // TODO: handle error
-    let typed_module = typecheck(module).unwrap();
+    let typed_module = time! { state.options.time, "typecheck", typecheck(module)? };
 
     println!("Typed Ast:");
     typed_module.pretty_print().unwrap();

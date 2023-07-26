@@ -164,14 +164,14 @@ mod diagnostics {
     };
 
     pub fn expected_token(expected: TokenKind, actual: TokenKind, span: Span) -> CompilerReport {
-        create_report(ReportKind::Error, span)
+        create_report(ReportKind::Error, &span)
             .with_message(format!("expected `{expected}`, got `{actual}` instead"))
             .with_label(Label::new(span).with_message("expected here"))
             .finish()
     }
 
     pub fn expected_token_eof(expected: TokenKind, span: Span) -> CompilerReport {
-        create_report(ReportKind::Error, span)
+        create_report(ReportKind::Error, &span)
             .with_message(format!("expected `{expected}`, got end of file instead"))
             .finish()
     }

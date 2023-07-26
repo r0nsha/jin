@@ -2,13 +2,20 @@ mod scope;
 
 use std::collections::HashSet;
 
+use ariadne::{Label, ReportKind};
 use ena::unify::InPlaceUnificationTable;
 
-use crate::{ast::*, ty::*};
+use crate::{
+    ast::*,
+    diagnostics::{create_report, CompilerReport},
+    span::Span,
+    ty::*,
+    CompilerResult,
+};
 
 use self::scope::{FunScope, FunScopes};
 
-pub fn typecheck(mut module: Module) -> TyResult<Module> {
+pub fn typecheck(mut module: Module) -> CompilerResult<Module> {
     let mut cx = Typecheck::new();
 
     // Generate constraints
@@ -40,8 +47,37 @@ pub type TyResult<T> = Result<T, TyError>;
 
 #[derive(Debug)]
 pub enum TyError {
-    TyNotEq(Ty, Ty),
-    InfiniteTy(TyVar, Ty),
+    TyNotEq {
+        expected: Ty,
+        actual: Ty,
+        span: Span,
+    },
+    InfiniteTy {
+        ty: Ty,
+        var: TyVar,
+        span: Span,
+    },
+}
+
+impl From<TyError> for CompilerReport {
+    fn from(value: TyError) -> Self {
+        match value {
+            TyError::TyNotEq {
+                expected,
+                actual,
+                span,
+            } => create_report(ReportKind::Error, &span)
+                .with_message(format!(
+                    "expected type `{expected}`, but got `{actual}` instead"
+                ))
+                .with_label(Label::new(span))
+                .finish(),
+            TyError::InfiniteTy { span, .. } => create_report(ReportKind::Error, &span)
+                .with_message("type has infinite size")
+                .with_label(Label::new(span))
+                .finish(),
+        }
+    }
 }
 
 struct Typecheck {
@@ -81,7 +117,11 @@ impl Typecheck {
 
                         value_constraints.merge(check_constraints)
                     } else {
-                        Constraints::one(Constraint::TyEq(expected_ty, Ty::Unit))
+                        Constraints::one(Constraint::TyEq {
+                            expected: expected_ty,
+                            actual: Ty::Unit,
+                            span: ret.span,
+                        })
                     }
                 } else {
                     // TODO: diagnostic
@@ -133,7 +173,11 @@ impl Typecheck {
             ) => Constraints::none(),
             (ast, expected_ty) => {
                 let mut constraints = self.infer(ast);
-                constraints.push(Constraint::TyEq(expected_ty, ast.ty_cloned()));
+                constraints.push(Constraint::TyEq {
+                    expected: expected_ty,
+                    actual: ast.ty_cloned(),
+                    span: ast.span(),
+                });
                 constraints
             }
         }
@@ -145,39 +189,62 @@ impl Typecheck {
     fn unification(&mut self, constraints: Constraints) -> Result<(), TyError> {
         for constraint in constraints.0 {
             match constraint {
-                Constraint::TyEq(left, right) => self.unify_ty_ty(left, right)?,
+                Constraint::TyEq {
+                    expected,
+                    actual,
+                    span,
+                } => self.unify_ty_ty(expected, actual, &span)?,
             }
         }
         Ok(())
     }
 
-    fn unify_ty_ty(&mut self, unnorm_left: Ty, unnorm_right: Ty) -> Result<(), TyError> {
-        let left = self.normalize_ty(unnorm_left);
-        let right = self.normalize_ty(unnorm_right);
+    fn unify_ty_ty(&mut self, expected: Ty, actual: Ty, span: &Span) -> Result<(), TyError> {
+        let expected = self.normalize_ty(expected);
+        let actual = self.normalize_ty(actual);
 
-        match (left, right) {
-            (Ty::Fun(l), Ty::Fun(r)) => {
+        match (expected, actual) {
+            (Ty::Fun(expected), Ty::Fun(actual)) => {
                 // self.unify_ty_ty(*f1.arg, f2.arg)?;
-                self.unify_ty_ty(l.ret.as_ref().clone(), r.ret.as_ref().clone())
+                self.unify_ty_ty(
+                    expected.ret.as_ref().clone(),
+                    actual.ret.as_ref().clone(),
+                    span,
+                )
             }
 
-            (Ty::Var(l), Ty::Var(r)) => self
+            (Ty::Var(expected), Ty::Var(actual)) => self
                 .unification_table
-                .unify_var_var(l, r)
-                .map_err(|(l, r)| TyError::TyNotEq(l, r)),
+                .unify_var_var(expected, actual)
+                .map_err(|(expected, actual)| TyError::TyNotEq {
+                    expected,
+                    actual,
+                    span: *span,
+                }),
 
-            (Ty::Var(v), ty) | (ty, Ty::Var(v)) => {
-                ty.occurs_check(v)
-                    .map_err(|ty| TyError::InfiniteTy(v, ty))?;
+            (Ty::Var(var), ty) | (ty, Ty::Var(var)) => {
+                ty.occurs_check(var).map_err(|ty| TyError::InfiniteTy {
+                    var,
+                    ty,
+                    span: *span,
+                })?;
 
                 self.unification_table
-                    .unify_var_value(v, Some(ty))
-                    .map_err(|(l, r)| TyError::TyNotEq(l, r))
+                    .unify_var_value(var, Some(ty))
+                    .map_err(|(expected, actual)| TyError::TyNotEq {
+                        expected,
+                        actual,
+                        span: *span,
+                    })
             }
 
             (Ty::Int(IntTy::Int), Ty::Int(IntTy::Int)) => Ok(()),
 
-            (left, right) => Err(TyError::TyNotEq(left, right)),
+            (expected, actual) => Err(TyError::TyNotEq {
+                expected,
+                actual,
+                span: *span,
+            }),
         }
     }
 
@@ -281,7 +348,11 @@ impl Constraints {
 
 #[derive(Debug, Clone)]
 enum Constraint {
-    TyEq(Ty, Ty),
+    TyEq {
+        expected: Ty,
+        actual: Ty,
+        span: Span,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
