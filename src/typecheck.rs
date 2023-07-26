@@ -116,7 +116,7 @@ impl Typecheck {
     fn infer_fun(&mut self, fun: &mut Fun) -> TypeResult<Constraints> {
         // let arg_ty_var = self.fresh_ty_var();
 
-        let fun_ret_ty = Ty::unit(fun.span); // self.fresh_ty_var(fun.span);
+        let fun_ret_ty = self.fresh_ty_var(fun.span);
         fun.set_ty(Ty::fun(fun_ret_ty.clone(), fun.span));
 
         self.fun_scopes.push(FunScope { ret_ty: fun_ret_ty });
