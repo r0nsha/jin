@@ -78,7 +78,8 @@ fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
     time! { state.options.time, "clang",
         Command::new("clang")
             .args(["out/main.c", "-o", "out/main", "-x", "c", "-std=c99"])
-            .exec()
+            .spawn()
+            .unwrap()
     };
 
     Ok(())
