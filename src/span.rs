@@ -69,6 +69,10 @@ impl From<Span> for miette::SourceSpan {
     }
 }
 
+pub trait Spanned {
+    fn span(&self) -> Span;
+}
+
 #[derive(Debug)]
 pub struct SourceCache(SlotMap<SourceKey, Source>);
 

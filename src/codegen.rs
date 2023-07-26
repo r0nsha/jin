@@ -65,7 +65,7 @@ impl AstVisitor<String> for Codegen {
             BindingKind::Fun { name, fun } => {
                 let decl = format!(
                     "{} {}()",
-                    c_type(fun.ty.as_ref().unwrap().as_fun().ret.as_ref()),
+                    c_type(fun.ty.as_ref().unwrap().kind.as_fun().unwrap().ret.as_ref()),
                     name
                 );
 

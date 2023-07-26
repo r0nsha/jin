@@ -59,8 +59,9 @@ fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
     let source_key = state.source_cache.add_file(file).unwrap();
     let source = state.source_cache.get(source_key).unwrap();
 
-    let tokens = time! { state.options.print_times, "tokenize", tokenize::tokenize(source)? };
-    let module = time! { state.options.print_times, "parser", parser::parse(tokens)? };
+    let tokens =
+        time! { state.options.print_times, "tokenize", tokenize::tokenize(&state, source)? };
+    let module = time! { state.options.print_times, "parser", parser::parse(&state, tokens)? };
 
     if state.options.print_ast {
         println!("Ast:");

@@ -8,12 +8,16 @@ use thiserror::Error;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    span::{Source, SourceKey, Span},
+    span::{Source, SourceKey, Span, Spanned},
+    state::State,
+    util::ErrExt,
     CompilerResult,
 };
 
-pub fn tokenize(source: &Source) -> CompilerResult<Vec<Token>> {
-    Ok(Lexer::new(source).scan()?)
+pub fn tokenize(state: &State, source: &Source) -> CompilerResult<Vec<Token>> {
+    Lexer::new(source)
+        .scan()
+        .map_err(|err| err.with_source_code(state))
 }
 
 struct Lexer<'a> {
@@ -224,4 +228,12 @@ enum TokenizeError {
         #[label]
         span: Span,
     },
+}
+
+impl Spanned for TokenizeError {
+    fn span(&self) -> Span {
+        match self {
+            TokenizeError::InvalidChar { span, .. } => *span,
+        }
+    }
 }

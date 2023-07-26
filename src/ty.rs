@@ -1,6 +1,7 @@
 use std::fmt;
 
 use ena::unify::{EqUnifyValue, UnifyKey};
+use enum_as_inner::EnumAsInner;
 
 use crate::span::Span;
 
@@ -43,14 +44,6 @@ impl Ty {
         Self {
             kind: TyKind::Unit,
             span,
-        }
-    }
-
-    pub fn as_fun(&self) -> &FunTy {
-        if let TyKind::Fun(f) = &self.kind {
-            f
-        } else {
-            panic!("expected Fun, got {self}")
         }
     }
 
@@ -97,7 +90,7 @@ impl From<Ty> for miette::SourceSpan {
 
 impl EqUnifyValue for Ty {}
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
 pub enum TyKind {
     Var(TyVar),
     Int(IntTy),

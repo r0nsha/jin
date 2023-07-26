@@ -1,5 +1,6 @@
 use std::io;
 
+use enum_as_inner::EnumAsInner;
 use ustr::Ustr;
 
 use crate::{span::Span, ty::Ty};
@@ -24,7 +25,7 @@ impl Module {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, EnumAsInner)]
 pub enum Ast {
     Binding(Binding),
     Fun(Fun),

@@ -4,14 +4,17 @@ use ustr::ustr;
 
 use crate::{
     ast::*,
-    span::Span,
+    span::{Span, Spanned},
+    state::State,
     tokenize::{Token, TokenKind},
+    util::ErrExt,
     CompilerResult,
 };
 
-pub fn parse(tokens: Vec<Token>) -> CompilerResult<Module> {
-    let result = Parser::new(tokens).parse()?;
-    Ok(result)
+pub fn parse(state: &State, tokens: Vec<Token>) -> CompilerResult<Module> {
+    Parser::new(tokens)
+        .parse()
+        .map_err(|err| err.with_source_code(state))
 }
 
 #[derive(Debug)]
@@ -172,7 +175,7 @@ enum ParseError {
     ExpectedToken {
         expected: TokenKind,
         actual: TokenKind,
-        #[label("expected here")]
+        #[label("found `{actual}` here")]
         span: Span,
     },
     #[error("expected `{expected}`, got end of file instead")]
@@ -182,4 +185,13 @@ enum ParseError {
         #[label("expected here")]
         span: Span,
     },
+}
+
+impl Spanned for ParseError {
+    fn span(&self) -> Span {
+        match self {
+            ParseError::ExpectedToken { span, .. } => *span,
+            ParseError::UnexpectedEof { span, .. } => *span,
+        }
+    }
 }

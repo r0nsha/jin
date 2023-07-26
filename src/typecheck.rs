@@ -3,21 +3,22 @@ mod scope;
 use std::collections::HashSet;
 
 use ena::unify::InPlaceUnificationTable;
-use miette::{Diagnostic, ErrReport, NamedSource};
+use miette::Diagnostic;
 use thiserror::Error;
 
-use crate::{ast::*, span::Span, state::State, ty::*, CompilerResult};
+use crate::{
+    ast::*,
+    span::{Span, Spanned},
+    state::State,
+    ty::*,
+    util::ErrExt,
+    CompilerResult,
+};
 
 use self::scope::{FunScope, FunScopes};
 
 pub fn typecheck(state: &State, module: Module) -> CompilerResult<Module> {
-    inner(module).map_err(|err| {
-        if let Some(source) = state.source_cache.get(err.span().source_key()) {
-            ErrReport::from(err).with_source_code(NamedSource::from(source))
-        } else {
-            err.into()
-        }
-    })
+    inner(module).map_err(|err| err.with_source_code(state))
 }
 
 fn inner(mut module: Module) -> TypeResult<Module> {
@@ -115,7 +116,7 @@ impl Typecheck {
     fn infer_fun(&mut self, fun: &mut Fun) -> TypeResult<Constraints> {
         // let arg_ty_var = self.fresh_ty_var();
 
-        let fun_ret_ty = self.fresh_ty_var(fun.span);
+        let fun_ret_ty = Ty::unit(fun.span); // self.fresh_ty_var(fun.span);
         fun.set_ty(Ty::fun(fun_ret_ty.clone(), fun.span));
 
         self.fun_scopes.push(FunScope { ret_ty: fun_ret_ty });
@@ -324,7 +325,11 @@ enum TypeError {
     },
     #[error("type `{ty}` has an infinite size")]
     #[diagnostic(code(typeck::infinite_type))]
-    InfiniteTy { ty: Ty, var: TyVar },
+    InfiniteTy {
+        #[label]
+        ty: Ty,
+        var: TyVar,
+    },
     #[error("cannot return outside of function scope")]
     #[diagnostic(code(typeck::infinite_type))]
     MisplacedReturn {
@@ -333,7 +338,7 @@ enum TypeError {
     },
 }
 
-impl TypeError {
+impl Spanned for TypeError {
     fn span(&self) -> Span {
         match self {
             TypeError::TyNotEq { expected, .. } => expected.span,
