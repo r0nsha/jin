@@ -3,14 +3,24 @@ mod scope;
 use std::collections::HashSet;
 
 use ena::unify::InPlaceUnificationTable;
-use miette::Diagnostic;
+use miette::{Diagnostic, ErrReport, NamedSource};
 use thiserror::Error;
 
-use crate::{ast::*, span::Span, ty::*, CompilerResult};
+use crate::{ast::*, span::Span, state::State, ty::*, CompilerResult};
 
 use self::scope::{FunScope, FunScopes};
 
-pub fn typecheck(mut module: Module) -> CompilerResult<Module> {
+pub fn typecheck(state: &State, module: Module) -> CompilerResult<Module> {
+    inner(module).map_err(|err| {
+        if let Some(source) = state.source_cache.get(err.span().source_key()) {
+            ErrReport::from(err).with_source_code(NamedSource::from(source))
+        } else {
+            err.into()
+        }
+    })
+}
+
+fn inner(mut module: Module) -> TypeResult<Module> {
     let mut cx = Typecheck::new();
 
     // Generate constraints
@@ -302,7 +312,7 @@ pub struct TypeScheme {
 
 type TypeResult<T> = CompilerResult<T, TypeError>;
 
-#[derive(Error, Diagnostic, Debug)]
+#[derive(Error, Diagnostic, Debug, Clone)]
 enum TypeError {
     #[error("expected `{expected}`, got `{actual}` instead")]
     #[diagnostic(code(typeck::incompatible_types))]
@@ -321,4 +331,14 @@ enum TypeError {
         #[label]
         span: Span,
     },
+}
+
+impl TypeError {
+    fn span(&self) -> Span {
+        match self {
+            TypeError::TyNotEq { expected, .. } => expected.span,
+            TypeError::InfiniteTy { ty, .. } => ty.span,
+            TypeError::MisplacedReturn { span } => *span,
+        }
+    }
 }

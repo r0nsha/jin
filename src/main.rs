@@ -52,7 +52,7 @@ fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
     let tokens = time! { state.options.time, "tokenize", tokenize::tokenize(source)? };
     let module = time! { state.options.time, "parser", parser::parse(tokens)? };
 
-    let typed_module = time! { state.options.time, "typecheck", typecheck(module)? };
+    let typed_module = time! { state.options.time, "typecheck", typecheck(&state, module)? };
 
     println!("Typed Ast:");
     typed_module.pretty_print().unwrap();

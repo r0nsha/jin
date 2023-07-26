@@ -3,6 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use miette::NamedSource;
 use slotmap::{Key, SlotMap};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -120,6 +121,15 @@ impl TryFrom<PathBuf> for Source {
             path: value,
             contents,
         })
+    }
+}
+
+impl From<&Source> for NamedSource {
+    fn from(source: &Source) -> Self {
+        Self::new(
+            source.path().to_string_lossy().to_string(),
+            source.contents().to_string(),
+        )
     }
 }
 
