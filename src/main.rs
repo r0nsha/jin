@@ -62,7 +62,6 @@ fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
     let tokens = time! { state.options.time, "lexer", lexer::tokenize(source)? };
     let module = time! { state.options.time, "parser", parser::parse(tokens)? };
 
-    // TODO: handle error
     let typed_module = time! { state.options.time, "typecheck", typecheck(module)? };
 
     println!("Typed Ast:");

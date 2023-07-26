@@ -22,7 +22,8 @@ pub fn typecheck(mut module: Module) -> CompilerResult<Module> {
     let mut constraints = Constraints::none();
 
     for binding in &mut module.bindings {
-        constraints.extend(cx.infer_binding(binding));
+        let constr = cx.infer_binding(binding)?;
+        constraints.extend(constr);
     }
 
     // Unification
@@ -41,43 +42,6 @@ pub fn typecheck(mut module: Module) -> CompilerResult<Module> {
 
     // Return our typed ast and it's type scheme
     Ok(module)
-}
-
-pub type TyResult<T> = Result<T, TyError>;
-
-#[derive(Debug)]
-pub enum TyError {
-    TyNotEq {
-        expected: Ty,
-        actual: Ty,
-        span: Span,
-    },
-    InfiniteTy {
-        ty: Ty,
-        var: TyVar,
-        span: Span,
-    },
-}
-
-impl From<TyError> for CompilerReport {
-    fn from(value: TyError) -> Self {
-        match value {
-            TyError::TyNotEq {
-                expected,
-                actual,
-                span,
-            } => create_report(ReportKind::Error, &span)
-                .with_message(format!(
-                    "expected type `{expected}`, but got `{actual}` instead"
-                ))
-                .with_label(Label::new(span))
-                .finish(),
-            TyError::InfiniteTy { span, .. } => create_report(ReportKind::Error, &span)
-                .with_message("type has infinite size")
-                .with_label(Label::new(span))
-                .finish(),
-        }
-    }
 }
 
 struct Typecheck {
@@ -101,7 +65,7 @@ impl Typecheck {
 
 // Infer/Check
 impl Typecheck {
-    fn infer(&mut self, ast: &mut Ast) -> Constraints {
+    fn infer(&mut self, ast: &mut Ast) -> CompilerResult<Constraints> {
         match ast {
             Ast::Binding(binding) => self.infer_binding(binding),
             Ast::Fun(fun) => self.infer_fun(fun),
@@ -112,32 +76,34 @@ impl Typecheck {
                     let expected_ty = fun_scope.ret_ty.clone();
 
                     if let Some(value) = ret.value.as_mut() {
-                        let value_constraints = self.infer(value);
-                        let check_constraints = self.check(value, expected_ty);
+                        let value_constraints = self.infer(value)?;
+                        let check_constraints = self.check(value, expected_ty)?;
 
-                        value_constraints.merge(check_constraints)
+                        Ok(value_constraints.merge(check_constraints))
                     } else {
-                        Constraints::one(Constraint::TyEq {
+                        Ok(Constraints::one(Constraint::TyEq {
                             expected: expected_ty,
                             actual: Ty::Unit,
                             span: ret.span,
-                        })
+                        }))
                     }
                 } else {
-                    // TODO: diagnostic
-                    todo!("cannot use return outside of function scope")
+                    Err(create_report(ReportKind::Error, &ret.span)
+                        .with_message("cannot return outside of function scope")
+                        .with_label(Label::new(ret.span))
+                        .finish())
                 }
             }
             Ast::Lit(lit) => match &lit.kind {
                 LitKind::Int(_) => {
                     lit.set_ty(Ty::int());
-                    Constraints::none()
+                    Ok(Constraints::none())
                 }
             },
         }
     }
 
-    fn infer_binding(&mut self, binding: &mut Binding) -> Constraints {
+    fn infer_binding(&mut self, binding: &mut Binding) -> CompilerResult<Constraints> {
         binding.set_ty(Ty::Unit);
 
         match &mut binding.kind {
@@ -145,7 +111,7 @@ impl Typecheck {
         }
     }
 
-    fn infer_fun(&mut self, fun: &mut Fun) -> Constraints {
+    fn infer_fun(&mut self, fun: &mut Fun) -> CompilerResult<Constraints> {
         // let arg_ty_var = self.fresh_ty_var();
 
         let fun_ret_ty = Ty::var(self.fresh_ty_var());
@@ -158,7 +124,7 @@ impl Typecheck {
         body_constraints
     }
 
-    fn check(&mut self, ast: &mut Ast, expected_ty: Ty) -> Constraints {
+    fn check(&mut self, ast: &mut Ast, expected_ty: Ty) -> CompilerResult<Constraints> {
         match (ast, expected_ty) {
             (Ast::Fun(fun), Ty::Fun(fun_ty)) => {
                 // let env = env.update(arg, *arg_ty);
@@ -170,15 +136,15 @@ impl Typecheck {
                     ..
                 }),
                 Ty::Int(IntTy::Int),
-            ) => Constraints::none(),
+            ) => Ok(Constraints::none()),
             (ast, expected_ty) => {
-                let mut constraints = self.infer(ast);
+                let mut constraints = self.infer(ast)?;
                 constraints.push(Constraint::TyEq {
                     expected: expected_ty,
                     actual: ast.ty_cloned(),
                     span: ast.span(),
                 });
-                constraints
+                Ok(constraints)
             }
         }
     }
@@ -359,4 +325,39 @@ enum Constraint {
 pub struct TypeScheme {
     unbound: HashSet<TyVar>,
     ty: Ty,
+}
+
+#[derive(Debug)]
+pub enum TyError {
+    TyNotEq {
+        expected: Ty,
+        actual: Ty,
+        span: Span,
+    },
+    InfiniteTy {
+        ty: Ty,
+        var: TyVar,
+        span: Span,
+    },
+}
+
+impl From<TyError> for CompilerReport {
+    fn from(value: TyError) -> Self {
+        match value {
+            TyError::TyNotEq {
+                expected,
+                actual,
+                span,
+            } => create_report(ReportKind::Error, &span)
+                .with_message(format!(
+                    "expected type `{expected}`, but got `{actual}` instead"
+                ))
+                .with_label(Label::new(span))
+                .finish(),
+            TyError::InfiniteTy { span, .. } => create_report(ReportKind::Error, &span)
+                .with_message("type has infinite size")
+                .with_label(Label::new(span))
+                .finish(),
+        }
+    }
 }
