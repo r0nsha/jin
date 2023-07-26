@@ -21,9 +21,7 @@ impl Ty {
     }
 
     pub fn fun(ret: Ty) -> Self {
-        Ty::Fun(FunTy {
-            ret: Box::new(ret),
-        })
+        Ty::Fun(FunTy { ret: Box::new(ret) })
     }
 
     pub fn as_fun(&self) -> &FunTy {
