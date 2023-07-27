@@ -51,5 +51,5 @@ impl State {
 pub struct CompilerOptions {
     pub print_times: bool,
     pub print_ast: bool,
-    pub print_typed_ast: bool,
+    pub print_hir: bool,
 }

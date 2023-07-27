@@ -1,4 +1,5 @@
 mod ast;
+mod check;
 mod codegen;
 mod name_resolution;
 mod parser;
@@ -6,7 +7,6 @@ mod span;
 mod state;
 mod tokenize;
 mod ty;
-mod check;
 mod util;
 
 use std::{fs, path::PathBuf, process::Command};
@@ -14,7 +14,7 @@ use std::{fs, path::PathBuf, process::Command};
 use clap::{Parser, Subcommand};
 use state::CompilerOptions;
 
-use crate::{codegen::codegen, state::State, check::check};
+use crate::{check::check, state::State};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -29,7 +29,7 @@ struct Cli {
     print_ast: bool,
 
     #[arg(long, default_value_t = false)]
-    print_typed_ast: bool,
+    print_hir: bool,
 }
 
 #[derive(Subcommand)]
@@ -47,7 +47,7 @@ fn main() -> CompilerResult<()> {
     let options = CompilerOptions {
         print_times: cli.print_times,
         print_ast: cli.print_ast,
-        print_typed_ast: cli.print_typed_ast,
+        print_hir: cli.print_hir,
     };
 
     match cli.cmd {
@@ -70,17 +70,14 @@ fn build(options: CompilerOptions, file: PathBuf) -> CompilerResult<()> {
         }
     }
 
-    let resolved_modules =
-        time! { print_times, "name resolution", name_resolution::resolve(&state, modules)? };
+    let hir = time! { print_times, "check", check(&state, modules)? };
 
-    // let typed_module = time! { print_times, "typecheck", typecheck(&state, resolved_module)? };
-    //
-    // if state.options().print_typed_ast {
-    //     println!("Typed Ast:");
-    //     typed_module.pretty_print().unwrap();
-    //     println!();
-    // }
-    //
+    if state.options().print_hir {
+        println!("Hir:");
+        typed_module.pretty_print().unwrap();
+        println!();
+    }
+
     // let code = time! { print_times, "codegen", codegen(typed_module) };
     //
     // // TODO: don't create this out dir
