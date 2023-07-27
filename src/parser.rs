@@ -4,16 +4,21 @@ use ustr::ustr;
 
 use crate::{
     ast::*,
-    span::{Span, Spanned},
+    span::{SourceId, Span, Spanned},
     state::State,
     tokenize::{Token, TokenKind},
     util::ErrExt,
     CompilerResult,
 };
 
-pub fn parse(state: &State, tokens: Vec<Token>) -> CompilerResult<Module> {
+pub fn parse(state: &State, source_id: SourceId, tokens: Vec<Token>) -> CompilerResult<Module> {
+    let source = state.source_cache.get(source_id).unwrap();
+    let name = QualifiedName::from_path(state.root_dir(), source.path()).unwrap();
+
+    dbg!(&name);
+
     Parser::new(tokens)
-        .parse()
+        .parse(source_id, name)
         .map_err(|err| err.with_source_code(state))
 }
 
@@ -30,8 +35,8 @@ impl Parser {
 }
 
 impl Parser {
-    fn parse(mut self) -> ParseResult<Module> {
-        let mut module = Module { bindings: vec![] };
+    fn parse(mut self, source_id: SourceId, name: QualifiedName) -> ParseResult<Module> {
+        let mut module = Module::new(source_id, name);
 
         while self.pos < self.tokens.len() - 1 {
             let binding = self.parse_binding()?;

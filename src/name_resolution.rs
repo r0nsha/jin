@@ -1,4 +1,5 @@
 use miette::Diagnostic;
+use slotmap::SlotMap;
 use thiserror::Error;
 
 use crate::{
@@ -9,7 +10,10 @@ use crate::{
     CompilerResult,
 };
 
-pub fn resolve(state: &State, modules: Vec<Module>) -> CompilerResult<Module> {
+pub fn resolve(
+    state: &State,
+    modules: Vec<Module>,
+) -> CompilerResult<SlotMap<ModuleId, ResolvedModule>> {
     Resolver::new(modules)
         .resolve()
         .map_err(|err| err.with_source_code(state))
@@ -18,17 +22,21 @@ pub fn resolve(state: &State, modules: Vec<Module>) -> CompilerResult<Module> {
 #[derive(Debug)]
 struct Resolver {
     modules: Vec<Module>,
+    resolved_modules: SlotMap<ModuleId, ResolvedModule>,
 }
 
 impl Resolver {
-    fn new(module: Vec<Module>) -> Self {
-        Self { modules: module }
+    fn new(modules: Vec<Module>) -> Self {
+        Self {
+            modules,
+            resolved_modules: SlotMap::with_key(),
+        }
     }
 }
 
 impl Resolver {
-    fn resolve(mut self) -> ResolveResult<Module> {
-        Ok(self.modules)
+    fn resolve(mut self) -> ResolveResult<SlotMap<ModuleId, ResolvedModule>> {
+        Ok(self.resolved_modules)
     }
 }
 

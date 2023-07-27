@@ -2,11 +2,11 @@ mod gen;
 
 pub use gen::gen;
 
-use std::io;
+use std::{io, path::Path};
 
 use enum_as_inner::EnumAsInner;
-use slotmap::SlotMap;
-use ustr::Ustr;
+use slotmap::{Key, SlotMap};
+use ustr::{ustr, Ustr};
 
 use crate::{
     span::{SourceId, Span, Spanned},
@@ -49,6 +49,7 @@ impl Module {
 
 #[derive(Debug, Clone)]
 pub struct ResolvedModule {
+    id: ModuleId,
     source_id: SourceId,
     name: QualifiedName,
     bindings: Vec<Binding>,
@@ -58,6 +59,7 @@ pub struct ResolvedModule {
 impl From<Module> for ResolvedModule {
     fn from(module: Module) -> Self {
         Self {
+            id: ModuleId::null(),
             source_id: module.source_id,
             name: module.name,
             bindings: module.bindings,
@@ -81,6 +83,7 @@ impl ResolvedModule {
 
 slotmap::new_key_type! {
     pub struct BindingId;
+    pub struct ModuleId;
 }
 
 #[derive(Debug, Clone)]
@@ -99,6 +102,18 @@ impl QualifiedName {
     pub fn new(full_name: Vec<Ustr>) -> Self {
         assert!(!full_name.is_empty());
         Self(full_name)
+    }
+
+    pub fn from_path(root: &Path, target: &Path) -> Option<Self> {
+        dbg!(root, target);
+        let stripped = target.strip_prefix(root).ok()?;
+
+        Some(Self(
+            stripped
+                .iter()
+                .map(|component| ustr(component.to_string_lossy().as_ref()))
+                .collect(),
+        ))
     }
 
     pub fn name(&self) -> Ustr {

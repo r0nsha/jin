@@ -44,24 +44,26 @@ fn main() -> CompilerResult<()> {
 
     let cli = Cli::parse();
 
-    let mut state = State::new(CompilerOptions {
+    let options = CompilerOptions {
         print_times: cli.print_times,
         print_ast: cli.print_ast,
         print_typed_ast: cli.print_typed_ast,
-    });
+    };
 
     match cli.cmd {
-        Commands::Build { file } => build(&mut state, file),
+        Commands::Build { file } => build(options, file),
     }
 }
 
-fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
+fn build(options: CompilerOptions, file: PathBuf) -> CompilerResult<()> {
+    let mut state = State::new(options);
+
     let print_times = state.options().print_times;
 
     // TODO: handle error
-    let source_id = state.source_cache.add_file(file).unwrap();
+    state.root_source_id = state.source_cache.add_file(file).unwrap();
 
-    let modules = time! { print_times, "astgen", ast::gen(state, source_id)? };
+    let modules = time! { print_times, "astgen", ast::gen(&state)? };
 
     if state.options().print_ast {
         for module in &modules {
@@ -74,33 +76,33 @@ fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
     let resolved_modules =
         time! { print_times, "name resolution", name_resolution::resolve(&state, modules)? };
 
-    let typed_module = time! { print_times, "typecheck", typecheck(&state, resolved_module)? };
-
-    if state.options().print_typed_ast {
-        println!("Typed Ast:");
-        typed_module.pretty_print().unwrap();
-        println!();
-    }
-
-    let code = time! { print_times, "codegen", codegen(typed_module) };
-
-    // TODO: don't create this out dir
-    // TODO: handle error (ICE)
-    fs::create_dir_all("out").unwrap();
-
-    // TODO: rename file
-    // TODO: handle error (ICE)
-    fs::write("out/main.c", &code).unwrap();
-
-    // TODO: rename input
-    // TODO: rename output
-    // TODO: handle error (ICE)
-    time! { print_times, "clang",
-        Command::new("clang")
-            .args(["out/main.c", "-o", "out/main", "-x", "c", "-std=c99"])
-            .spawn()
-            .unwrap()
-    };
+    // let typed_module = time! { print_times, "typecheck", typecheck(&state, resolved_module)? };
+    //
+    // if state.options().print_typed_ast {
+    //     println!("Typed Ast:");
+    //     typed_module.pretty_print().unwrap();
+    //     println!();
+    // }
+    //
+    // let code = time! { print_times, "codegen", codegen(typed_module) };
+    //
+    // // TODO: don't create this out dir
+    // // TODO: handle error (ICE)
+    // fs::create_dir_all("out").unwrap();
+    //
+    // // TODO: rename file
+    // // TODO: handle error (ICE)
+    // fs::write("out/main.c", &code).unwrap();
+    //
+    // // TODO: rename input
+    // // TODO: rename output
+    // // TODO: handle error (ICE)
+    // time! { print_times, "clang",
+    //     Command::new("clang")
+    //         .args(["out/main.c", "-o", "out/main", "-x", "c", "-std=c99"])
+    //         .spawn()
+    //         .unwrap()
+    // };
 
     Ok(())
 }
