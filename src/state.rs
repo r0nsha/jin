@@ -8,7 +8,7 @@ use crate::span::SourceCache;
 #[derive(Debug)]
 pub struct State {
     root_dir: PathBuf,
-    pub options: CompilerOptions,
+    options: CompilerOptions,
     pub source_cache: SourceCache,
 }
 
@@ -23,6 +23,10 @@ impl State {
 
     pub fn root_dir(&self) -> &Path {
         &self.root_dir
+    }
+
+    pub fn options(&self) -> &CompilerOptions {
+        &self.options
     }
 }
 

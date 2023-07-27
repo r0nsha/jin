@@ -60,29 +60,29 @@ fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
     let source_id = state.source_cache.add_file(file).unwrap();
     let source = state.source_cache.get(source_id).unwrap();
 
-    let tokens =
-        time! { state.options.print_times, "tokenize", tokenize::tokenize(&state, source)? };
+    let print_times = state.options().print_times;
 
-    let module = time! { state.options.print_times, "parser", parser::parse(&state, tokens)? };
+    let tokens = time! { print_times, "tokenize", tokenize::tokenize(&state, source)? };
+    let module = time! { print_times, "parser", parser::parse(&state, tokens)? };
 
-    if state.options.print_ast {
+    if state.options().print_ast {
         println!("Ast:");
         module.pretty_print().unwrap();
         println!();
     }
 
-    let resolved_module = time! { state.options.print_times, "name resolution", name_resolution::resolve(&state, module)? };
+    let resolved_module =
+        time! { print_times, "name resolution", name_resolution::resolve(&state, module)? };
 
-    let typed_module =
-        time! { state.options.print_times, "typecheck", typecheck(&state, resolved_module)? };
+    let typed_module = time! { print_times, "typecheck", typecheck(&state, resolved_module)? };
 
-    if state.options.print_typed_ast {
+    if state.options().print_typed_ast {
         println!("Typed Ast:");
         typed_module.pretty_print().unwrap();
         println!();
     }
 
-    let code = time! { state.options.print_times, "codegen", codegen(typed_module) };
+    let code = time! { print_times, "codegen", codegen(typed_module) };
 
     // TODO: don't create this out dir
     // TODO: handle error (ICE)
@@ -95,7 +95,7 @@ fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
     // TODO: rename input
     // TODO: rename output
     // TODO: handle error (ICE)
-    time! { state.options.print_times, "clang",
+    time! { print_times, "clang",
         Command::new("clang")
             .args(["out/main.c", "-o", "out/main", "-x", "c", "-std=c99"])
             .spawn()
