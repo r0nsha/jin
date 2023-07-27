@@ -129,6 +129,7 @@ pub struct BindingInfo {
     pub vis: Vis,
     pub scope: BindingScope,
     pub uses: usize,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -180,6 +181,7 @@ impl Ord for BindingScope {
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum Hir {
     // Name(Name),
+    Binding(Binding),
     Ret(Ret),
     Lit(Lit),
 }
@@ -231,10 +233,11 @@ pub enum FunKind {
 
 define_hir!(Block, statements: Vec<Hir>);
 define_hir!(Name, id: BindingId);
-define_hir!(Ret, value: Box<Option<Hir>>);
+define_hir!(Ret, value: Option<Box<Hir>>);
 define_hir!(Lit, kind: LitKind);
 
 #[derive(Debug, Clone)]
 pub enum LitKind {
     Int(usize),
+    Unit,
 }

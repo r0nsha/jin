@@ -127,7 +127,7 @@ pub enum BindingKind {
 }
 
 define_ast!(Fun, body: Box<Ast>);
-define_ast!(Ret, value: Box<Option<Ast>>);
+define_ast!(Ret, value: Option<Box<Ast>>);
 define_ast!(Lit, kind: LitKind);
 
 #[derive(Debug, Clone, PartialEq, Eq)]

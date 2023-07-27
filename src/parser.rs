@@ -112,7 +112,7 @@ impl Parser {
         let span = start.merge(value.span());
 
         Ok(Ast::Ret(Ret {
-            value: Box::new(Some(value)),
+            value: Some(Box::new(value)),
             span,
         }))
     }

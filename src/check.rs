@@ -104,26 +104,45 @@ impl CheckContext {
                 if let Some(fun_scope) = self.fun_scopes.current() {
                     let expected_ty = fun_scope.ret_ty.clone();
 
-                    if let Some(value) = ret.value.as_mut() {
-                        let value_constraints = self.infer(value)?;
+                    let (value, constraints) = if let Some(value) = ret.value.as_mut() {
+                        let (hir, value_constraints) = self.infer(value)?;
                         let check_constraints = self.check(value, expected_ty)?;
 
-                        Ok(value_constraints.merge(check_constraints))
+                        (
+                            Some(Box::new(hir)),
+                            value_constraints.merge(check_constraints),
+                        )
                     } else {
-                        Ok(Constraints::one(Constraint::TyEq {
-                            expected: expected_ty,
-                            actual: Ty::unit(ret.span),
-                        }))
-                    }
+                        (
+                            None,
+                            Constraints::one(Constraint::TyEq {
+                                expected: expected_ty,
+                                actual: Ty::unit(ret.span),
+                            }),
+                        )
+                    };
+
+                    Ok((
+                        Hir::Ret(hir::Ret {
+                            value,
+                            span: ret.span,
+                            ty,
+                        }),
+                        constraints,
+                    ))
                 } else {
                     Err(CheckError::MisplacedReturn { span: ret.span })
                 }
             }
             Ast::Lit(lit) => match &lit.kind {
-                LitKind::Int(_) => {
-                    lit.set_ty(Ty::int(lit.span));
-                    Ok(Constraints::none())
-                }
+                LitKind::Int(value) => Ok((
+                    Hir::Lit(hir::Lit {
+                        kind: hir::LitKind::Int(*value),
+                        span: lit.span,
+                        ty: Ty::int(lit.span),
+                    }),
+                    Constraints::none(),
+                )),
             },
         }
     }
@@ -131,7 +150,15 @@ impl CheckContext {
     fn infer_binding(&mut self, binding: &Binding) -> InferResult {
         binding.set_ty(Ty::unit(binding.span));
 
-        match &binding.kind {
+        let (kind, constraints) = match &binding.kind {
+            BindingKind::Fun { name: _, fun } => self.infer_fun(fun),
+        };
+
+        Ok(Hir::Binding(), constraints)
+    }
+
+    fn infer_binding_kind(&mut self, binding: &BindingKind) -> InferResult {
+        match kind {
             BindingKind::Fun { name: _, fun } => self.infer_fun(fun),
         }
     }
