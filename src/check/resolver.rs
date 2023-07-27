@@ -9,12 +9,6 @@ use crate::{
     CompilerResult,
 };
 
-pub fn resolve(state: &State, modules: Vec<Module>) -> CompilerResult<ResolvedModules> {
-    Resolver::new()
-        .resolve(modules)
-        .map_err(|err| err.with_source_code(state))
-}
-
 #[derive(Debug)]
 struct Resolver {
     resolved_modules: ResolvedModules,

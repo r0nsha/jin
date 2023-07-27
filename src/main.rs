@@ -1,6 +1,7 @@
 mod ast;
 mod check;
 mod codegen;
+mod hir;
 mod name_resolution;
 mod parser;
 mod span;
@@ -74,7 +75,7 @@ fn build(options: CompilerOptions, file: PathBuf) -> CompilerResult<()> {
 
     if state.options().print_hir {
         println!("Hir:");
-        typed_module.pretty_print().unwrap();
+        hir.pretty_print().unwrap();
         println!();
     }
 

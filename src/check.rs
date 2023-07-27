@@ -24,6 +24,24 @@ pub fn check(state: &State, module: Module) -> CompilerResult<Module> {
 fn inner(mut module: Module) -> TypeResult<Module> {
     let mut cx = Typecheck::new();
 
+    // TODO: create hir modules
+    // for module in modules {
+    //     self.resolved_modules
+    //         .insert_module(ResolvedModule::from(module));
+    // }
+
+    // TODO: create hir for each global binding
+    // for module in self.resolved_modules.iter_mut() {
+    //     // TODO: add all global names to binding_infos in each module
+    // }
+
+    // TODO: resolve all names in all asts
+    // for module in self.resolved_modules.iter_mut() {
+    //     for binding in &mut module.bindings {
+    //         self.resolve_binding(binding);
+    //     }
+    // }
+
     // Generate constraints
     let mut constraints = Constraints::none();
 
