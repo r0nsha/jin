@@ -57,8 +57,8 @@ fn main() -> CompilerResult<()> {
 
 fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
     // TODO: handle error
-    let source_key = state.source_cache.add_file(file).unwrap();
-    let source = state.source_cache.get(source_key).unwrap();
+    let source_id = state.source_cache.add_file(file).unwrap();
+    let source = state.source_cache.get(source_id).unwrap();
 
     let tokens =
         time! { state.options.print_times, "tokenize", tokenize::tokenize(&state, source)? };

@@ -84,27 +84,27 @@ impl SourceCache {
     pub fn add_file(&mut self, path: PathBuf) -> io::Result<SourceId> {
         let mut source = Source::try_from(path)?;
 
-        Ok(self.0.insert_with_key(|key| {
-            source.key = key;
+        Ok(self.0.insert_with_key(|id| {
+            source.id = id;
             source
         }))
     }
 
-    pub fn get(&self, key: SourceId) -> Option<&Source> {
-        self.0.get(key)
+    pub fn get(&self, id: SourceId) -> Option<&Source> {
+        self.0.get(id)
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Source {
-    key: SourceId,
+    id: SourceId,
     path: PathBuf,
     contents: String,
 }
 
 impl Source {
-    pub fn key(&self) -> SourceId {
-        self.key
+    pub fn id(&self) -> SourceId {
+        self.id
     }
 
     pub fn path(&self) -> &Path {
@@ -123,7 +123,7 @@ impl TryFrom<PathBuf> for Source {
         let contents = fs::read_to_string(&value)?;
 
         Ok(Self {
-            key: SourceId::null(),
+            id: SourceId::null(),
             path: value,
             contents,
         })

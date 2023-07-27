@@ -21,7 +21,7 @@ pub fn tokenize(state: &State, source: &Source) -> CompilerResult<Vec<Token>> {
 }
 
 struct Lexer<'a> {
-    source_key: SourceId,
+    source_id: SourceId,
     source_contents: &'a str,
     source_bytes: &'a [u8],
     pos: usize,
@@ -30,7 +30,7 @@ struct Lexer<'a> {
 impl<'a> Lexer<'a> {
     fn new(source: &'a Source) -> Self {
         Self {
-            source_key: source.key(),
+            source_id: source.id(),
             source_contents: source.contents(),
             source_bytes: source.contents().as_bytes(),
             pos: 0,
@@ -151,7 +151,7 @@ impl<'a> Lexer<'a> {
     }
 
     fn create_span(&self, start: u32) -> Span {
-        Span::new(self.source_key, start, self.pos as u32)
+        Span::new(self.source_id, start, self.pos as u32)
     }
 }
 

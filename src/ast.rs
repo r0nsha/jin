@@ -12,15 +12,11 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct Module {
     pub bindings: Vec<Binding>,
-    pub resolved_bindings: SlotMap<BindingId, ResolvedBinding>,
 }
 
 impl Module {
     pub fn new() -> Self {
-        Self {
-            bindings: vec![],
-            resolved_bindings: SlotMap::with_key(),
-        }
+        Self { bindings: vec![] }
     }
 
     pub fn pretty_print(&self) -> io::Result<()> {
@@ -37,18 +33,38 @@ impl Module {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ResolvedModule {
+    bindings: SlotMap<BindingId, ResolvedBinding>,
+}
+
+impl ResolvedModule {
+    pub fn add_binding(&mut self, mut binding: ResolvedBinding) -> BindingId {
+        self.bindings.insert_with_key(|key| {
+            binding.id = key;
+            binding
+        })
+    }
+
+    pub fn get_binding(&mut self, id: BindingId) -> Option<&ResolvedBinding> {
+        self.bindings.get(id)
+    }
+}
+
 slotmap::new_key_type! {
     pub struct BindingId;
 }
 
 #[derive(Debug, Clone)]
 pub struct ResolvedBinding {
+    id: BindingId,
     name: Ustr,
-    qualified_name: Ustr,
+    qualified_name: QualifiedName,
     scope: BindingScope,
     uses: usize,
 }
 
+#[derive(Debug, Clone)]
 pub struct QualifiedName(Vec<Ustr>);
 
 impl QualifiedName {
