@@ -31,10 +31,6 @@ impl Module {
         }
     }
 
-    pub fn get_binding(&mut self, name: Ustr) -> Option<&Binding> {
-        self.bindings.iter().find(|b| b.name() == name)
-    }
-
     pub fn pretty_print(&self) -> io::Result<()> {
         let mut p = PrettyPrint {
             builder: ptree::TreeBuilder::new(self.name.standard_full_name()),
@@ -83,6 +79,14 @@ impl ResolvedModules {
         assert!(!self.root_module_id.is_null());
         self.get_module(self.root_module_id).unwrap()
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &ResolvedModule> {
+        self.modules.values()
+    }
+
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut ResolvedModule> {
+        self.modules.values_mut()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -90,9 +94,9 @@ pub struct ResolvedModule {
     id: ModuleId,
     source_id: SourceId,
     name: QualifiedName,
-    bindings: Vec<Binding>,
-    binding_infos: SlotMap<BindingId, BindingInfo>,
     is_root: bool,
+    pub bindings: Vec<Binding>,
+    pub binding_infos: SlotMap<BindingId, BindingInfo>,
 }
 
 impl From<Module> for ResolvedModule {
@@ -101,14 +105,30 @@ impl From<Module> for ResolvedModule {
             id: ModuleId::null(),
             source_id: module.source_id,
             name: module.name,
+            is_root: module.is_root,
             bindings: module.bindings,
             binding_infos: SlotMap::with_key(),
-            is_root: module.is_root,
         }
     }
 }
 
 impl ResolvedModule {
+    pub fn id(&self) -> ModuleId {
+        self.id
+    }
+
+    pub fn source_id(&self) -> SourceId {
+        self.source_id
+    }
+
+    pub fn name(&self) -> &QualifiedName {
+        &self.name
+    }
+
+    pub fn is_root(&self) -> bool {
+        self.is_root
+    }
+
     pub fn add_binding_info(&mut self, mut binding: BindingInfo) -> BindingId {
         self.binding_infos.insert_with_key(|key| {
             binding.id = key;
