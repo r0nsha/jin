@@ -56,23 +56,23 @@ fn main() -> CompilerResult<()> {
 }
 
 fn build(state: &mut State, file: PathBuf) -> CompilerResult<()> {
-    // TODO: handle error
-    let source_id = state.source_cache.add_file(file).unwrap();
-    let source = state.source_cache.get(source_id).unwrap();
-
     let print_times = state.options().print_times;
 
-    let tokens = time! { print_times, "tokenize", tokenize::tokenize(&state, source)? };
-    let module = time! { print_times, "parser", parser::parse(&state, tokens)? };
+    // TODO: handle error
+    let source_id = state.source_cache.add_file(file).unwrap();
+
+    let modules = time! { print_times, "astgen", ast::gen(state, source_id)? };
 
     if state.options().print_ast {
-        println!("Ast:");
-        module.pretty_print().unwrap();
-        println!();
+        for module in &modules {
+            println!("Ast:");
+            module.pretty_print().unwrap();
+            println!();
+        }
     }
 
-    let resolved_module =
-        time! { print_times, "name resolution", name_resolution::resolve(&state, module)? };
+    let resolved_modules =
+        time! { print_times, "name resolution", name_resolution::resolve(&state, modules)? };
 
     let typed_module = time! { print_times, "typecheck", typecheck(&state, resolved_module)? };
 

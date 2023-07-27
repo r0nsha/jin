@@ -1,3 +1,7 @@
+mod gen;
+
+pub use gen::gen;
+
 use std::io;
 
 use enum_as_inner::EnumAsInner;
@@ -31,7 +35,7 @@ impl Module {
 
     pub fn pretty_print(&self) -> io::Result<()> {
         let mut p = PrettyPrint {
-            builder: ptree::TreeBuilder::new("ast".to_string()),
+            builder: ptree::TreeBuilder::new(self.name.standard_full_name()),
         };
 
         for binding in &self.bindings {
@@ -107,6 +111,15 @@ impl QualifiedName {
             .map(|s| s.as_str())
             .collect::<Vec<_>>()
             .join(separator)
+    }
+
+    pub fn standard_full_name(&self) -> String {
+        self.full_name(".")
+    }
+
+    pub fn child(mut self, name: Ustr) -> Self {
+        self.0.push(name);
+        self
     }
 }
 

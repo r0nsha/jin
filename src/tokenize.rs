@@ -14,7 +14,9 @@ use crate::{
     CompilerResult,
 };
 
-pub fn tokenize(state: &State, source: &Source) -> CompilerResult<Vec<Token>> {
+pub fn tokenize(state: &State, source_id: SourceId) -> CompilerResult<Vec<Token>> {
+    let source = state.source_cache.get(source_id).unwrap();
+
     Lexer::new(source)
         .scan()
         .map_err(|err| err.with_source_code(state))

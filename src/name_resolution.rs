@@ -9,26 +9,26 @@ use crate::{
     CompilerResult,
 };
 
-pub fn resolve(state: &State, module: Module) -> CompilerResult<Module> {
-    Resolver::new(module)
+pub fn resolve(state: &State, modules: Vec<Module>) -> CompilerResult<Module> {
+    Resolver::new(modules)
         .resolve()
         .map_err(|err| err.with_source_code(state))
 }
 
 #[derive(Debug)]
 struct Resolver {
-    module: Module,
+    modules: Vec<Module>,
 }
 
 impl Resolver {
-    fn new(module: Module) -> Self {
-        Self { module }
+    fn new(module: Vec<Module>) -> Self {
+        Self { modules: module }
     }
 }
 
 impl Resolver {
     fn resolve(mut self) -> ResolveResult<Module> {
-        Ok(self.module)
+        Ok(self.modules)
     }
 }
 
