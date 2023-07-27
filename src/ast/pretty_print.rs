@@ -1,7 +1,5 @@
 use std::io;
 
-use crate::ty::Ty;
-
 use super::{Ast, Binding, BindingKind, Fun, LitKind, Module};
 
 pub(super) fn print_module(module: &Module) -> io::Result<()> {
@@ -37,10 +35,7 @@ impl PrettyPrint {
             }
             Ast::Lit(lit) => match lit.kind {
                 LitKind::Int(value) => {
-                    self.builder.add_empty_child(format!(
-                        "int: {value} {}",
-                        Self::print_ty(lit.ty.as_ref())
-                    ));
+                    self.builder.add_empty_child(format!("int: {value}"));
                 }
             },
         }
@@ -49,32 +44,15 @@ impl PrettyPrint {
     fn print_binding(&mut self, binding: &Binding) {
         match &binding.kind {
             BindingKind::Fun { name, fun } => {
-                self.builder.begin_child(format!(
-                    "fn {} {}",
-                    name,
-                    Self::print_ty(fun.ty.as_ref())
-                ));
-
+                self.builder.begin_child(format!("fn {}", name));
                 self.print_fun_body(fun);
             }
         }
     }
 
     fn print_fun(&mut self, fun: &Fun) {
-        self.builder
-            .begin_child(format!("fn {}", Self::print_ty(fun.ty.as_ref())));
-
+        self.builder.begin_child("fn".to_string());
         self.print_fun_body(fun);
-    }
-
-    fn print_ty(ty: Option<&Ty>) -> String {
-        format!(
-            "(ty: {})",
-            match ty {
-                Some(ty) => ty.to_string(),
-                None => "?".to_string(),
-            }
-        )
     }
 
     fn print_fun_body(&mut self, fun: &Fun) {

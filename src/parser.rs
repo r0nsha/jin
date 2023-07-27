@@ -71,11 +71,9 @@ impl Parser {
                     fun: Box::new(Fun {
                         body: Box::new(body),
                         span,
-                        ty: None,
                     }),
                 },
                 span,
-                ty: None,
             })
         } else {
             // TODO: diagnostic
@@ -100,7 +98,6 @@ impl Parser {
             Ok(Ast::Lit(Lit {
                 kind: LitKind::Int(value),
                 span: self.last_span(),
-                ty: None,
             }))
         } else {
             // TODO: diagnostic
@@ -117,7 +114,6 @@ impl Parser {
         Ok(Ast::Ret(Ret {
             value: Box::new(Some(value)),
             span,
-            ty: None,
         }))
     }
 }
