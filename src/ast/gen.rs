@@ -1,10 +1,8 @@
-use crate::{parser, span::SourceId, state::State, tokenize, CompilerResult};
+use crate::{parser, state::State, tokenize, CompilerResult};
 
 use super::Module;
 
 pub fn gen(state: &State) -> CompilerResult<Vec<Module>> {
-    // TODO: handle error
-
     let mut modules = vec![];
 
     let root_source = state.root_source();
