@@ -81,7 +81,7 @@ impl SourceCache {
         Self(SlotMap::with_key())
     }
 
-    pub fn add_file(&mut self, path: PathBuf) -> io::Result<SourceId> {
+    pub fn insert_file(&mut self, path: PathBuf) -> io::Result<SourceId> {
         let mut source = Source::try_from(path)?;
 
         Ok(self.0.insert_with_key(|id| {

@@ -12,10 +12,12 @@ use crate::{
 };
 
 pub fn parse(state: &State, source: &Source, tokens: Vec<Token>) -> CompilerResult<Module> {
+    let source_id = source.id();
     let name = QualifiedName::from_path(state.root_dir(), source.path()).unwrap();
+    let is_root = source_id == state.root_source_id();
 
     Parser::new(tokens)
-        .parse(source.id(), name)
+        .parse(source_id, name, is_root)
         .map_err(|err| err.with_source_code(state))
 }
 
@@ -32,8 +34,13 @@ impl Parser {
 }
 
 impl Parser {
-    fn parse(mut self, source_id: SourceId, name: QualifiedName) -> ParseResult<Module> {
-        let mut module = Module::new(source_id, name);
+    fn parse(
+        mut self,
+        source_id: SourceId,
+        name: QualifiedName,
+        is_root: bool,
+    ) -> ParseResult<Module> {
+        let mut module = Module::new(source_id, name, is_root);
 
         while self.pos < self.tokens.len() - 1 {
             let binding = self.parse_binding()?;

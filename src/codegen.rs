@@ -45,13 +45,13 @@ typedef void never;"#,
         }
     }
 
-    fn add_declaration(&mut self, decl: &str) {
+    fn push_declaration(&mut self, decl: &str) {
         self.declarations.reserve(decl.len() + 1);
         self.declarations.push_str(decl);
         self.declarations.push(';');
     }
 
-    // fn add_definition(&mut self, def: &str) {
+    // fn push_definition(&mut self, def: &str) {
     //     const SUFFIX: &str = "\n\n";
     //     self.definitions.reserve(def.len() + SUFFIX.len());
     //     self.definitions.push_str(def);
@@ -69,7 +69,7 @@ impl AstVisitor<String> for Codegen {
                     name
                 );
 
-                self.add_declaration(&decl);
+                self.push_declaration(&decl);
 
                 let body = self.visit(&fun.body);
                 let body_str = format!("\t{body};\n");

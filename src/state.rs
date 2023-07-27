@@ -10,7 +10,7 @@ use crate::span::{Source, SourceCache, SourceId};
 #[derive(Debug)]
 pub struct State {
     root_dir: PathBuf,
-    pub root_source_id: SourceId,
+    root_source_id: SourceId,
     options: CompilerOptions,
     pub source_cache: SourceCache,
 }
@@ -20,7 +20,7 @@ impl State {
         let absolute_path = root_file.absolutize().unwrap();
 
         let mut source_cache = SourceCache::new();
-        let root_source_id = source_cache.add_file(absolute_path.to_path_buf())?;
+        let root_source_id = source_cache.insert_file(absolute_path.to_path_buf())?;
 
         Ok(Self {
             root_dir: absolute_path.parent().unwrap().to_path_buf(),

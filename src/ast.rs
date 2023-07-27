@@ -17,14 +17,16 @@ use crate::{
 pub struct Module {
     source_id: SourceId,
     name: QualifiedName,
+    is_root: bool,
     pub bindings: Vec<Binding>,
 }
 
 impl Module {
-    pub fn new(source_id: SourceId, name: QualifiedName) -> Self {
+    pub fn new(source_id: SourceId, name: QualifiedName, is_root: bool) -> Self {
         Self {
             source_id,
             name,
+            is_root,
             bindings: vec![],
         }
     }
@@ -47,6 +49,42 @@ impl Module {
     }
 }
 
+#[derive(Debug)]
+pub struct ResolvedModules {
+    modules: SlotMap<ModuleId, ResolvedModule>,
+    root_module_id: ModuleId,
+}
+
+impl ResolvedModules {
+    pub fn new() -> Self {
+        Self {
+            modules: SlotMap::with_key(),
+            root_module_id: ModuleId::null(),
+        }
+    }
+
+    pub fn get_module(&self, id: ModuleId) -> Option<&ResolvedModule> {
+        self.modules.get(id)
+    }
+
+    pub fn insert_module(&mut self, mut module: ResolvedModule) -> ModuleId {
+        self.modules.insert_with_key(|key| {
+            module.id = key;
+
+            if module.is_root {
+                self.root_module_id = module.id;
+            }
+
+            module
+        })
+    }
+
+    pub fn root_module(&self) -> &ResolvedModule {
+        assert!(!self.root_module_id.is_null());
+        self.get_module(self.root_module_id).unwrap()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct ResolvedModule {
     id: ModuleId,
@@ -54,6 +92,7 @@ pub struct ResolvedModule {
     name: QualifiedName,
     bindings: Vec<Binding>,
     binding_infos: SlotMap<BindingId, BindingInfo>,
+    is_root: bool,
 }
 
 impl From<Module> for ResolvedModule {
@@ -64,6 +103,7 @@ impl From<Module> for ResolvedModule {
             name: module.name,
             bindings: module.bindings,
             binding_infos: SlotMap::with_key(),
+            is_root: module.is_root,
         }
     }
 }
