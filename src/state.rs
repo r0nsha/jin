@@ -5,7 +5,7 @@ use std::{
 
 use path_absolutize::Absolutize;
 
-use crate::span::{SourceCache, SourceId};
+use crate::span::{Source, SourceCache, SourceId};
 
 #[derive(Debug)]
 pub struct State {
@@ -28,6 +28,14 @@ impl State {
             options,
             source_cache,
         })
+    }
+
+    pub fn root_source_id(&self) -> SourceId {
+        self.root_source_id
+    }
+
+    pub fn root_source(&self) -> &Source {
+        self.source_cache.get(self.root_source_id).unwrap()
     }
 
     pub fn root_dir(&self) -> &Path {

@@ -4,19 +4,18 @@ use ustr::ustr;
 
 use crate::{
     ast::*,
-    span::{SourceId, Span, Spanned},
+    span::{Source, SourceId, Span, Spanned},
     state::State,
     tokenize::{Token, TokenKind},
     util::ErrExt,
     CompilerResult,
 };
 
-pub fn parse(state: &State, source_id: SourceId, tokens: Vec<Token>) -> CompilerResult<Module> {
-    let source = state.source_cache.get(source_id).unwrap();
+pub fn parse(state: &State, source: &Source, tokens: Vec<Token>) -> CompilerResult<Module> {
     let name = QualifiedName::from_path(state.root_dir(), source.path()).unwrap();
 
     Parser::new(tokens)
-        .parse(source_id, name)
+        .parse(source.id(), name)
         .map_err(|err| err.with_source_code(state))
 }
 
