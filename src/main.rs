@@ -56,12 +56,9 @@ fn main() -> CompilerResult<()> {
 }
 
 fn build(options: CompilerOptions, file: PathBuf) -> CompilerResult<()> {
-    let mut state = State::new(options);
+    let print_times = options.print_times;
 
-    let print_times = state.options().print_times;
-
-    // TODO: handle error
-    state.root_source_id = state.source_cache.add_file(file).unwrap();
+    let state = State::new(options, file).unwrap();
 
     let modules = time! { print_times, "astgen", ast::gen(&state)? };
 

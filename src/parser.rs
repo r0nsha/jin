@@ -15,8 +15,6 @@ pub fn parse(state: &State, source_id: SourceId, tokens: Vec<Token>) -> Compiler
     let source = state.source_cache.get(source_id).unwrap();
     let name = QualifiedName::from_path(state.root_dir(), source.path()).unwrap();
 
-    dbg!(&name);
-
     Parser::new(tokens)
         .parse(source_id, name)
         .map_err(|err| err.with_source_code(state))

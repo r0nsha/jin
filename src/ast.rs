@@ -105,7 +105,7 @@ impl QualifiedName {
     }
 
     pub fn from_path(root: &Path, target: &Path) -> Option<Self> {
-        dbg!(root, target);
+        let target = target.with_extension("");
         let stripped = target.strip_prefix(root).ok()?;
 
         Some(Self(

@@ -1,9 +1,9 @@
 use std::{
-    env,
+    io,
     path::{Path, PathBuf},
 };
 
-use slotmap::Key;
+use path_absolutize::Absolutize;
 
 use crate::span::{SourceCache, SourceId};
 
@@ -16,13 +16,18 @@ pub struct State {
 }
 
 impl State {
-    pub fn new(options: CompilerOptions) -> Self {
-        Self {
-            root_dir: env::current_dir().unwrap(),
-            root_source_id: SourceId::null(),
+    pub fn new(options: CompilerOptions, root_file: PathBuf) -> io::Result<Self> {
+        let absolute_path = root_file.absolutize().unwrap();
+
+        let mut source_cache = SourceCache::new();
+        let root_source_id = source_cache.add_file(absolute_path.to_path_buf())?;
+
+        Ok(Self {
+            root_dir: absolute_path.parent().unwrap().to_path_buf(),
+            root_source_id,
             options,
-            source_cache: SourceCache::new(),
-        }
+            source_cache,
+        })
     }
 
     pub fn root_dir(&self) -> &Path {
