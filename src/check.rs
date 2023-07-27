@@ -17,7 +17,7 @@ use crate::{
 
 use self::scope::{FunScope, FunScopes};
 
-pub fn typecheck(state: &State, module: Module) -> CompilerResult<Module> {
+pub fn check(state: &State, module: Module) -> CompilerResult<Module> {
     inner(module).map_err(|err| err.with_source_code(state))
 }
 

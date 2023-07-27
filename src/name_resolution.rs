@@ -34,16 +34,15 @@ impl Resolver {
         }
 
         for module in self.resolved_modules.iter_mut() {
-            // TODO: add all global names to binding_infos
+            // TODO: add all global names to binding_infos in each module
         }
 
-        // TODO: resolve all names
-        for module in self.resolved_modules.iter_mut() {
-            // TODO: add all global names to binding_infos
-            //     for binding in &mut module.bindings {
-            //         self.resolve_binding(binding);
-            //     }
-        }
+        // TODO: resolve all names in all asts
+        // for module in self.resolved_modules.iter_mut() {
+        //     for binding in &mut module.bindings {
+        //         self.resolve_binding(binding);
+        //     }
+        // }
 
         Ok(self.resolved_modules)
     }

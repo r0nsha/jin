@@ -6,7 +6,7 @@ mod span;
 mod state;
 mod tokenize;
 mod ty;
-mod typecheck;
+mod check;
 mod util;
 
 use std::{fs, path::PathBuf, process::Command};
@@ -14,7 +14,7 @@ use std::{fs, path::PathBuf, process::Command};
 use clap::{Parser, Subcommand};
 use state::CompilerOptions;
 
-use crate::{codegen::codegen, state::State, typecheck::typecheck};
+use crate::{codegen::codegen, state::State, check::check};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
