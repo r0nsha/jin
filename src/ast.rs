@@ -5,18 +5,28 @@ use slotmap::SlotMap;
 use ustr::Ustr;
 
 use crate::{
-    span::{Span, Spanned},
+    span::{SourceId, Span, Spanned},
     ty::Ty,
 };
 
 #[derive(Debug, Clone)]
 pub struct Module {
+    source_id: SourceId,
+    name: QualifiedName,
     pub bindings: Vec<Binding>,
 }
 
 impl Module {
-    pub fn new() -> Self {
-        Self { bindings: vec![] }
+    pub fn new(source_id: SourceId, name: QualifiedName) -> Self {
+        Self {
+            source_id,
+            name,
+            bindings: vec![],
+        }
+    }
+
+    pub fn get_binding(&mut self, name: Ustr) -> Option<&Binding> {
+        self.bindings.iter().find(|b| b.name() == name)
     }
 
     pub fn pretty_print(&self) -> io::Result<()> {
@@ -35,29 +45,33 @@ impl Module {
 
 #[derive(Debug, Clone)]
 pub struct ResolvedModule {
-    bindings: SlotMap<BindingId, ResolvedBinding>,
+    source_id: SourceId,
+    name: QualifiedName,
+    bindings: Vec<Binding>,
+    binding_infos: SlotMap<BindingId, BindingInfo>,
+}
+
+impl From<Module> for ResolvedModule {
+    fn from(module: Module) -> Self {
+        Self {
+            source_id: module.source_id,
+            name: module.name,
+            bindings: module.bindings,
+            binding_infos: SlotMap::with_key(),
+        }
+    }
 }
 
 impl ResolvedModule {
-    pub fn new() -> Self {
-        Self {
-            bindings: SlotMap::with_key(),
-        }
-    }
-
-    pub fn add_binding(&mut self, mut binding: ResolvedBinding) -> BindingId {
-        self.bindings.insert_with_key(|key| {
+    pub fn add_binding_info(&mut self, mut binding: BindingInfo) -> BindingId {
+        self.binding_infos.insert_with_key(|key| {
             binding.id = key;
             binding
         })
     }
 
-    pub fn get_binding(&mut self, id: BindingId) -> Option<&ResolvedBinding> {
-        self.bindings.get(id)
-    }
-
-    pub fn bindings(&self) -> impl Iterator<Item = &ResolvedBinding> {
-        self.bindings.values()
+    pub fn get_binding_info(&mut self, id: BindingId) -> Option<&BindingInfo> {
+        self.binding_infos.get(id)
     }
 }
 
@@ -66,12 +80,12 @@ slotmap::new_key_type! {
 }
 
 #[derive(Debug, Clone)]
-pub struct ResolvedBinding {
-    id: BindingId,
-    name: Ustr,
-    qualified_name: QualifiedName,
-    scope: BindingScope,
-    uses: usize,
+pub struct BindingInfo {
+    pub id: BindingId,
+    pub qualified_name: QualifiedName,
+    pub vis: Vis,
+    pub scope: BindingScope,
+    pub uses: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -94,6 +108,12 @@ impl QualifiedName {
             .collect::<Vec<_>>()
             .join(separator)
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Vis {
+    Private,
+    Public,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -200,6 +220,12 @@ impl Binding {
     pub fn get_actual_ty(&self) -> Option<&Ty> {
         match &self.kind {
             BindingKind::Fun { fun, .. } => fun.ty.as_ref(),
+        }
+    }
+
+    pub fn name(&self) -> Ustr {
+        match &self.kind {
+            BindingKind::Fun { name, .. } => *name,
         }
     }
 }
