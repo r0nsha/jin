@@ -2,7 +2,6 @@ mod ast;
 mod check;
 mod codegen;
 mod hir;
-mod name_resolution;
 mod parser;
 mod span;
 mod state;

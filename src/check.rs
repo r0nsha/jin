@@ -8,6 +8,7 @@ use thiserror::Error;
 
 use crate::{
     ast::*,
+    hir,
     span::{Span, Spanned},
     state::State,
     ty::*,
@@ -17,12 +18,12 @@ use crate::{
 
 use self::scope::{FunScope, FunScopes};
 
-pub fn check(state: &State, module: Module) -> CompilerResult<Module> {
-    inner(module).map_err(|err| err.with_source_code(state))
+pub fn check(state: &State, modules: Vec<Module>) -> CompilerResult<Module> {
+    check_inner(modules).map_err(|err| err.with_source_code(state))
 }
 
-fn inner(mut module: Module) -> TypeResult<Module> {
-    let mut cx = Typecheck::new();
+fn check_inner(mut modules: Vec<Module>) -> TypeResult<hir::Cache> {
+    let mut cx = CheckContext::new();
 
     // TODO: create hir modules
     // for module in modules {
@@ -68,13 +69,13 @@ fn inner(mut module: Module) -> TypeResult<Module> {
     Ok(module)
 }
 
-struct Typecheck {
+struct CheckContext {
     unification_table: InPlaceUnificationTable<TyVar>,
     fun_scopes: FunScopes,
 }
 
 // Utils
-impl Typecheck {
+impl CheckContext {
     pub fn new() -> Self {
         Self {
             unification_table: InPlaceUnificationTable::new(),
@@ -88,7 +89,7 @@ impl Typecheck {
 }
 
 // Infer/Check
-impl Typecheck {
+impl CheckContext {
     fn infer(&mut self, ast: &mut Ast) -> TypeResult<Constraints> {
         match ast {
             Ast::Binding(binding) => self.infer_binding(binding),
@@ -170,7 +171,7 @@ impl Typecheck {
 }
 
 // Unification
-impl Typecheck {
+impl CheckContext {
     fn unification(&mut self, constraints: Constraints) -> TypeResult<()> {
         for constraint in constraints.0 {
             match constraint {
@@ -237,7 +238,7 @@ impl Typecheck {
 }
 
 // Substitute
-impl Typecheck {
+impl CheckContext {
     fn substitute(&mut self, ty: Ty) -> (HashSet<TyVar>, Ty) {
         match ty.kind {
             TyKind::Fun(fun) => {
