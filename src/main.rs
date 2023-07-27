@@ -3,6 +3,7 @@ mod check;
 mod codegen;
 mod hir;
 mod parser;
+mod scopes;
 mod span;
 mod state;
 mod tokenize;
@@ -12,7 +13,7 @@ mod util;
 use std::{fs, path::PathBuf, process::Command};
 
 use clap::{Parser, Subcommand};
-use state::CompilerOptions;
+use state::BuildOptions;
 
 use crate::{check::check, state::State};
 
@@ -44,25 +45,25 @@ fn main() -> CompilerResult<()> {
 
     let cli = Cli::parse();
 
-    let options = CompilerOptions {
+    let build_options = BuildOptions {
         print_times: cli.print_times,
         print_ast: cli.print_ast,
         print_hir: cli.print_hir,
     };
 
     match cli.cmd {
-        Commands::Build { file } => build(options, file),
+        Commands::Build { file } => build(build_options, file),
     }
 }
 
-fn build(options: CompilerOptions, file: PathBuf) -> CompilerResult<()> {
-    let print_times = options.print_times;
+fn build(build_options: BuildOptions, file: PathBuf) -> CompilerResult<()> {
+    let print_times = build_options.print_times;
 
-    let state = State::new(options, file).unwrap();
+    let state = State::new(build_options, file).unwrap();
 
     let modules = time! { print_times, "ast generation", ast::gen(&state)? };
 
-    if state.options().print_ast {
+    if state.build_options().print_ast {
         for module in &modules {
             println!("Ast:");
             module.pretty_print().unwrap();
@@ -73,7 +74,7 @@ fn build(options: CompilerOptions, file: PathBuf) -> CompilerResult<()> {
     let hir = time! { print_times, "check", check(&state, modules)? };
 
     // TODO: print Hir
-    // if state.options().print_hir {
+    // if state.build_options().print_hir {
     //     println!("Hir:");
     //     hir.pretty_print().unwrap();
     //     println!();

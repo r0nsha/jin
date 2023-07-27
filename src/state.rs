@@ -11,12 +11,12 @@ use crate::span::{Source, SourceCache, SourceId};
 pub struct State {
     root_dir: PathBuf,
     root_source_id: SourceId,
-    options: CompilerOptions,
+    build_options: BuildOptions,
     pub source_cache: SourceCache,
 }
 
 impl State {
-    pub fn new(options: CompilerOptions, root_file: PathBuf) -> io::Result<Self> {
+    pub fn new(build_options: BuildOptions, root_file: PathBuf) -> io::Result<Self> {
         let absolute_path = root_file.absolutize().unwrap();
 
         let mut source_cache = SourceCache::new();
@@ -25,7 +25,7 @@ impl State {
         Ok(Self {
             root_dir: absolute_path.parent().unwrap().to_path_buf(),
             root_source_id,
-            options,
+            build_options,
             source_cache,
         })
     }
@@ -42,13 +42,13 @@ impl State {
         &self.root_dir
     }
 
-    pub fn options(&self) -> &CompilerOptions {
-        &self.options
+    pub fn build_options(&self) -> &BuildOptions {
+        &self.build_options
     }
 }
 
 #[derive(Debug)]
-pub struct CompilerOptions {
+pub struct BuildOptions {
     pub print_times: bool,
     pub print_ast: bool,
     pub print_hir: bool,

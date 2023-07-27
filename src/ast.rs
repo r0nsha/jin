@@ -8,10 +8,7 @@ use std::{io, path::Path};
 use enum_as_inner::EnumAsInner;
 use ustr::{ustr, Ustr};
 
-use crate::{
-    span::{SourceId, Span, Spanned},
-    ty::Ty,
-};
+use crate::span::{SourceId, Span, Spanned};
 
 #[derive(Debug, Clone)]
 pub struct Module {
@@ -93,30 +90,6 @@ pub enum Ast {
     Lit(Lit),
 }
 
-impl Ast {
-    pub fn ty(&self) -> Option<&Ty> {
-        match self {
-            Self::Binding(binding) => binding.ty.as_ref(),
-            Self::Fun(fun) => fun.ty.as_ref(),
-            Self::Ret(ret) => ret.ty.as_ref(),
-            Self::Lit(lit) => lit.ty.as_ref(),
-        }
-    }
-
-    pub fn set_ty(&mut self, ty: Ty) {
-        match self {
-            Self::Binding(binding) => binding.set_ty(ty),
-            Self::Fun(fun) => fun.set_ty(ty),
-            Self::Ret(ret) => ret.set_ty(ty),
-            Self::Lit(lit) => lit.set_ty(ty),
-        }
-    }
-
-    pub fn ty_cloned(&self) -> Ty {
-        self.ty().unwrap().clone()
-    }
-}
-
 impl Spanned for Ast {
     fn span(&self) -> Span {
         match self {
@@ -141,12 +114,6 @@ macro_rules! define_ast {
 define_ast!(Binding, kind: BindingKind);
 
 impl Binding {
-    pub fn get_actual_ty(&self) -> Option<&Ty> {
-        match &self.kind {
-            BindingKind::Fun { fun, .. } => fun.ty.as_ref(),
-        }
-    }
-
     pub fn name(&self) -> Ustr {
         match &self.kind {
             BindingKind::Fun { name, .. } => *name,

@@ -4,7 +4,7 @@ use slotmap::{Key, SlotMap};
 use crate::{
     ast::{self, QualifiedName, Vis},
     span::{SourceId, Span, Spanned},
-    ty::Typed,
+    ty::{Ty, Typed},
 };
 
 #[derive(Debug)]
@@ -13,8 +13,7 @@ pub struct Cache {
     root_module_id: ModuleId,
     binding_infos: SlotMap<BindingId, BindingInfo>,
     bindings: SlotMap<BindingId, Binding>,
-    funs: SlotMap<FunId, Fun>,
-    entry_point_fun_id: Option<FunId>,
+    entry_point_id: Option<BindingId>,
 }
 
 impl Cache {
@@ -24,8 +23,7 @@ impl Cache {
             root_module_id: ModuleId::null(),
             binding_infos: SlotMap::with_key(),
             bindings: SlotMap::with_key(),
-            funs: SlotMap::with_key(),
-            entry_point_fun_id: None,
+            entry_point_id: None,
         }
     }
 
@@ -61,20 +59,12 @@ impl Cache {
         self.get_module(self.root_module_id).unwrap()
     }
 
-    pub fn modules(&self) -> impl Iterator<Item = &ResolvedModule> {
-        self.modules.values()
+    pub fn entry_point(&self) -> Option<&Binding> {
+        self.entry_point_id.and_then(|id| self.get_binding(id))
     }
 
-    pub fn binding_infos(&self) -> impl Iterator<Item = &BindingInfo> {
-        self.binding_infos.values()
-    }
-
-    pub fn funs(&self) -> impl Iterator<Item = &Fun> {
-        self.funs.values()
-    }
-
-    pub fn entry_point_fun(&self) -> Option<&Fun> {
-        self.entry_point_fun_id.map(|id| self.funs.get(id))
+    pub fn entry_point_info(&self) -> Option<&BindingInfo> {
+        self.entry_point_id.and_then(|id| self.get_binding_info(id))
     }
 }
 
@@ -157,7 +147,10 @@ slotmap::new_key_type! {
 }
 
 #[derive(Debug, Clone, EnumAsInner)]
-pub enum Hir {}
+pub enum Hir {
+    // Name(Name),
+    Lit(Lit),
+}
 
 impl Spanned for Hir {
     fn span(&self) -> Span {
@@ -180,4 +173,18 @@ macro_rules! define_hir {
             pub ty: Ty,
         }
     };
+}
+
+define_hir!(Name, kind: NameKind);
+
+#[derive(Debug, Clone)]
+pub enum NameKind {
+    Fun(FunId),
+}
+
+define_hir!(Lit, kind: LitKind);
+
+#[derive(Debug, Clone)]
+pub enum LitKind {
+    Int(usize),
 }
