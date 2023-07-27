@@ -127,3 +127,7 @@ pub enum IntTy {
 pub struct FunTy {
     pub ret: Box<Ty>,
 }
+
+pub trait Typed {
+    fn ty(&self) -> &Ty;
+}

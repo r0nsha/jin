@@ -6,7 +6,6 @@ pub use gen::gen;
 use std::{io, path::Path};
 
 use enum_as_inner::EnumAsInner;
-use slotmap::{Key, SlotMap};
 use ustr::{ustr, Ustr};
 
 use crate::{
@@ -16,9 +15,9 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct Module {
-    source_id: SourceId,
-    name: QualifiedName,
-    is_root: bool,
+    pub source_id: SourceId,
+    pub name: QualifiedName,
+    pub is_root: bool,
     pub bindings: Vec<Binding>,
 }
 
@@ -35,116 +34,6 @@ impl Module {
     pub fn pretty_print(&self) -> io::Result<()> {
         pretty_print::print_module(self)
     }
-}
-
-#[derive(Debug)]
-pub struct ResolvedModules {
-    modules: SlotMap<ModuleId, ResolvedModule>,
-    root_module_id: ModuleId,
-}
-
-impl ResolvedModules {
-    pub fn new() -> Self {
-        Self {
-            modules: SlotMap::with_key(),
-            root_module_id: ModuleId::null(),
-        }
-    }
-
-    pub fn get_module(&self, id: ModuleId) -> Option<&ResolvedModule> {
-        self.modules.get(id)
-    }
-
-    pub fn insert_module(&mut self, mut module: ResolvedModule) -> ModuleId {
-        self.modules.insert_with_key(|key| {
-            module.id = key;
-
-            if module.is_root {
-                self.root_module_id = module.id;
-            }
-
-            module
-        })
-    }
-
-    pub fn root_module(&self) -> &ResolvedModule {
-        assert!(!self.root_module_id.is_null());
-        self.get_module(self.root_module_id).unwrap()
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &ResolvedModule> {
-        self.modules.values()
-    }
-
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut ResolvedModule> {
-        self.modules.values_mut()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ResolvedModule {
-    id: ModuleId,
-    source_id: SourceId,
-    name: QualifiedName,
-    is_root: bool,
-    pub bindings: Vec<Binding>,
-    pub binding_infos: SlotMap<BindingId, BindingInfo>,
-}
-
-impl From<Module> for ResolvedModule {
-    fn from(module: Module) -> Self {
-        Self {
-            id: ModuleId::null(),
-            source_id: module.source_id,
-            name: module.name,
-            is_root: module.is_root,
-            bindings: module.bindings,
-            binding_infos: SlotMap::with_key(),
-        }
-    }
-}
-
-impl ResolvedModule {
-    pub fn id(&self) -> ModuleId {
-        self.id
-    }
-
-    pub fn source_id(&self) -> SourceId {
-        self.source_id
-    }
-
-    pub fn name(&self) -> &QualifiedName {
-        &self.name
-    }
-
-    pub fn is_root(&self) -> bool {
-        self.is_root
-    }
-
-    pub fn add_binding_info(&mut self, mut binding: BindingInfo) -> BindingId {
-        self.binding_infos.insert_with_key(|key| {
-            binding.id = key;
-            binding
-        })
-    }
-
-    pub fn get_binding_info(&mut self, id: BindingId) -> Option<&BindingInfo> {
-        self.binding_infos.get(id)
-    }
-}
-
-slotmap::new_key_type! {
-    pub struct BindingId;
-    pub struct ModuleId;
-}
-
-#[derive(Debug, Clone)]
-pub struct BindingInfo {
-    pub id: BindingId,
-    pub qualified_name: QualifiedName,
-    pub vis: Vis,
-    pub scope: BindingScope,
-    pub uses: usize,
 }
 
 #[derive(Debug, Clone)]
@@ -196,29 +85,6 @@ pub enum Vis {
     Public,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BindingScope {
-    Global,
-    Scope(usize),
-}
-
-impl BindingScope {
-    pub fn next(self) -> Self {
-        match self {
-            BindingScope::Global => BindingScope::Scope(1),
-            BindingScope::Scope(n) => BindingScope::Scope(n + 1),
-        }
-    }
-
-    pub fn prev(self) -> Self {
-        match self {
-            BindingScope::Global => panic!("BindingScope::Global has no previous scope"),
-            BindingScope::Scope(n) if n == 1 => BindingScope::Global,
-            BindingScope::Scope(n) => BindingScope::Scope(n - 1),
-        }
-    }
-}
-
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum Ast {
     Binding(Binding),
@@ -268,17 +134,6 @@ macro_rules! define_ast {
         pub struct $name {
             $(pub $element: $ty),*,
             pub span: Span,
-            pub ty: Option<Ty>,
-        }
-
-        impl $name {
-            pub fn ty_cloned(&self) -> Ty {
-                self.ty.as_ref().unwrap().clone()
-            }
-
-            pub fn set_ty(&mut self, ty: Ty) {
-                self.ty = Some(ty);
-            }
         }
     };
 }

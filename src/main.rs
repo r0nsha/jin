@@ -72,11 +72,12 @@ fn build(options: CompilerOptions, file: PathBuf) -> CompilerResult<()> {
 
     let hir = time! { print_times, "check", check(&state, modules)? };
 
-    if state.options().print_hir {
-        println!("Hir:");
-        hir.pretty_print().unwrap();
-        println!();
-    }
+    // TODO: print Hir
+    // if state.options().print_hir {
+    //     println!("Hir:");
+    //     hir.pretty_print().unwrap();
+    //     println!();
+    // }
 
     // let code = time! { print_times, "codegen", codegen(typed_module) };
     //

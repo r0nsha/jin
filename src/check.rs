@@ -18,12 +18,13 @@ use crate::{
 
 use self::scope::{FunScope, FunScopes};
 
-pub fn check(state: &State, modules: Vec<Module>) -> CompilerResult<Module> {
+pub fn check(state: &State, modules: Vec<Module>) -> CompilerResult<hir::Cache> {
     check_inner(modules).map_err(|err| err.with_source_code(state))
 }
 
 fn check_inner(mut modules: Vec<Module>) -> TypeResult<hir::Cache> {
     let mut cx = CheckContext::new();
+    let mut cache = hir::Cache::new();
 
     // TODO: create hir modules
     // for module in modules {
@@ -43,30 +44,28 @@ fn check_inner(mut modules: Vec<Module>) -> TypeResult<hir::Cache> {
     //     }
     // }
 
-    // Generate constraints
     let mut constraints = Constraints::none();
-
-    for binding in &mut module.bindings {
-        let constr = cx.infer_binding(binding)?;
-        constraints.extend(constr);
-    }
-
-    // Unification
-    cx.unification(constraints)?;
-
-    // Substitution
     let mut unbound = HashSet::new();
 
-    for binding in &mut module.bindings {
-        let (unbound_ty, _binding_ty) = cx.substitute(binding.get_actual_ty().unwrap().clone());
-        unbound.extend(unbound_ty);
+    for mut module in modules {
+        for binding in &mut module.bindings {
+            let constr = cx.infer_binding(binding)?;
+            constraints.extend(constr);
+        }
 
-        let unbound_binding = cx.substitute_binding(binding);
-        unbound.extend(unbound_binding);
+        // Unification
+        cx.unification(constraints)?;
+
+        for binding in &mut module.bindings {
+            let (unbound_ty, _binding_ty) = cx.substitute(binding.get_actual_ty().unwrap().clone());
+            unbound.extend(unbound_ty);
+
+            let unbound_binding = cx.substitute_binding(binding);
+            unbound.extend(unbound_binding);
+        }
     }
 
-    // Return our typed ast and it's type scheme
-    Ok(module)
+    Ok(cache)
 }
 
 struct CheckContext {
