@@ -40,8 +40,68 @@ typedef void never;"#,
         );
 
         for binding in &module.bindings {
-            let definitions = self.visit_binding(binding);
+            let definitions = self.gen_binding(binding);
             self.definitions.push_str(&definitions);
+        }
+    }
+
+    fn gen_ast(&mut self, ast: &Ast) -> String {
+        match ast {
+            Ast::Binding(binding) => self.gen_binding(binding),
+            Ast::Fun(fun) => self.gen_fun(fun),
+            Ast::Ret(ret) => self.gen_ret(ret),
+            Ast::Lit(lit) => self.gen_lit(lit),
+        }
+    }
+
+    fn gen_binding(&mut self, binding: &Binding) -> String {
+        match &binding.kind {
+            BindingKind::Fun { name, fun } => {
+                let decl = format!(
+                    "{} {}()",
+                    c_type(fun.ty.as_ref().unwrap().kind.as_fun().unwrap().ret.as_ref()),
+                    name
+                );
+
+                self.push_declaration(&decl);
+
+                let body = self.gen_ast(&fun.body);
+                let body_str = format!("\t{body};\n");
+
+                format!("{decl} {{\n{body_str}}}")
+            }
+        }
+    }
+
+    fn gen_fun(&mut self, fun: &Fun) -> String {
+        todo!("anonymous functions")
+        // let decl = format!(
+        //     "{} {}()",
+        //     c_type(fun.ty.as_ref().unwrap().as_fun().ret.as_ref()),
+        //     fun.name
+        // );
+        //
+        // self.add_declaration(&decl);
+        //
+        // let body = self.gen_ast(&fun.body);
+        // let body_str = format!("\t{body};\n");
+        //
+        // format!("{decl} {{\n{body_str}}}\n\n")
+    }
+
+    fn gen_ret(&mut self, ret: &Ret) -> String {
+        let value = if let Some(value) = ret.value.as_ref() {
+            self.gen_ast(value)
+        } else {
+            "".to_string()
+        };
+
+        format!("return {}", value)
+    }
+
+    fn gen_lit(&mut self, lit: &Lit) -> String {
+        match lit.kind {
+            LitKind::Int(value) => value.to_string(),
         }
     }
 
@@ -57,59 +117,6 @@ typedef void never;"#,
     //     self.definitions.push_str(def);
     //     self.definitions.push_str(SUFFIX);
     // }
-}
-
-impl AstVisitor<String> for Codegen {
-    fn visit_binding(&mut self, binding: &Binding) -> String {
-        match &binding.kind {
-            BindingKind::Fun { name, fun } => {
-                let decl = format!(
-                    "{} {}()",
-                    c_type(fun.ty.as_ref().unwrap().kind.as_fun().unwrap().ret.as_ref()),
-                    name
-                );
-
-                self.push_declaration(&decl);
-
-                let body = self.visit(&fun.body);
-                let body_str = format!("\t{body};\n");
-
-                format!("{decl} {{\n{body_str}}}")
-            }
-        }
-    }
-
-    fn visit_fun(&mut self, fun: &Fun) -> String {
-        todo!("anonymous functions")
-        // let decl = format!(
-        //     "{} {}()",
-        //     c_type(fun.ty.as_ref().unwrap().as_fun().ret.as_ref()),
-        //     fun.name
-        // );
-        //
-        // self.add_declaration(&decl);
-        //
-        // let body = self.visit(&fun.body);
-        // let body_str = format!("\t{body};\n");
-        //
-        // format!("{decl} {{\n{body_str}}}\n\n")
-    }
-
-    fn visit_ret(&mut self, ret: &Ret) -> String {
-        let value = if let Some(value) = ret.value.as_ref() {
-            self.visit(value)
-        } else {
-            "".to_string()
-        };
-
-        format!("return {}", value)
-    }
-
-    fn visit_lit(&mut self, lit: &Lit) -> String {
-        match lit.kind {
-            LitKind::Int(value) => value.to_string(),
-        }
-    }
 }
 
 fn c_type(ty: &Ty) -> String {
