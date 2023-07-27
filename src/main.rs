@@ -60,7 +60,7 @@ fn build(options: CompilerOptions, file: PathBuf) -> CompilerResult<()> {
 
     let state = State::new(options, file).unwrap();
 
-    let modules = time! { print_times, "astgen", ast::gen(&state)? };
+    let modules = time! { print_times, "ast generation", ast::gen(&state)? };
 
     if state.options().print_ast {
         for module in &modules {
