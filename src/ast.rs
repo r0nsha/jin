@@ -39,6 +39,12 @@ pub struct ResolvedModule {
 }
 
 impl ResolvedModule {
+    pub fn new() -> Self {
+        Self {
+            bindings: SlotMap::with_key(),
+        }
+    }
+
     pub fn add_binding(&mut self, mut binding: ResolvedBinding) -> BindingId {
         self.bindings.insert_with_key(|key| {
             binding.id = key;
