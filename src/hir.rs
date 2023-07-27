@@ -1,5 +1,7 @@
+use std::cmp;
+
 use enum_as_inner::EnumAsInner;
-use slotmap::{Key, SlotMap};
+use slotmap::{Key, SecondaryMap, SlotMap};
 
 use crate::{
     ast::{self, QualifiedName, Vis},
@@ -12,7 +14,7 @@ pub struct Cache {
     modules: SlotMap<ModuleId, ResolvedModule>,
     root_module_id: ModuleId,
     binding_infos: SlotMap<BindingId, BindingInfo>,
-    bindings: SlotMap<BindingId, Binding>,
+    global_bindings: SecondaryMap<BindingId, Binding>,
     entry_point_id: Option<BindingId>,
 }
 
@@ -22,7 +24,7 @@ impl Cache {
             modules: SlotMap::with_key(),
             root_module_id: ModuleId::null(),
             binding_infos: SlotMap::with_key(),
-            bindings: SlotMap::with_key(),
+            global_bindings: SecondaryMap::new(),
             entry_point_id: None,
         }
     }
@@ -54,17 +56,27 @@ impl Cache {
         })
     }
 
-    pub fn root_module(&self) -> &ResolvedModule {
+    pub fn get_global_binding(&mut self, id: BindingId) -> Option<&Binding> {
+        self.global_bindings.get(id)
+    }
+
+    pub fn insert_global_binding(&mut self, mut binding: Binding) {
+        assert!(!binding.id.is_null());
+        self.global_bindings.insert(binding.id, binding);
+    }
+
+    pub fn get_root_module(&self) -> &ResolvedModule {
         assert!(!self.root_module_id.is_null());
         self.get_module(self.root_module_id).unwrap()
     }
 
-    pub fn entry_point(&self) -> Option<&Binding> {
-        self.entry_point_id.and_then(|id| self.get_binding(id))
+    pub fn get_entry_point_info(&self) -> Option<&BindingInfo> {
+        self.entry_point_id.and_then(|id| self.get_binding_info(id))
     }
 
-    pub fn entry_point_info(&self) -> Option<&BindingInfo> {
-        self.entry_point_id.and_then(|id| self.get_binding_info(id))
+    pub fn get_entry_point(&self) -> Option<&Binding> {
+        self.entry_point_id
+            .and_then(|id| self.get_global_binding(id))
     }
 }
 
@@ -127,28 +139,48 @@ pub enum BindingScope {
 
 impl BindingScope {
     pub fn next(self) -> Self {
+        use BindingScope::*;
+
         match self {
-            BindingScope::Global => BindingScope::Scope(1),
-            BindingScope::Scope(n) => BindingScope::Scope(n + 1),
+            Global => Scope(1),
+            Scope(n) => Scope(n + 1),
         }
     }
 
     pub fn prev(self) -> Self {
+        use BindingScope::*;
+
         match self {
-            BindingScope::Global => panic!("BindingScope::Global has no previous scope"),
-            BindingScope::Scope(n) if n == 1 => BindingScope::Global,
-            BindingScope::Scope(n) => BindingScope::Scope(n - 1),
+            Global => panic!("BindingScope::Global has no previous scope"),
+            Scope(n) if n == 1 => Global,
+            Scope(n) => Scope(n - 1),
         }
     }
 }
 
-slotmap::new_key_type! {
-    pub struct FunId;
+impl PartialOrd for BindingScope {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for BindingScope {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        use BindingScope::*;
+
+        match (self, other) {
+            (Global, Global) => cmp::Ordering::Equal,
+            (Global, Scope(_)) => cmp::Ordering::Less,
+            (Scope(_), Global) => cmp::Ordering::Greater,
+            (Scope(a), Scope(b)) => a.cmp(b),
+        }
+    }
 }
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum Hir {
     // Name(Name),
+    Ret(Ret),
     Lit(Lit),
 }
 
@@ -175,13 +207,31 @@ macro_rules! define_hir {
     };
 }
 
-define_hir!(Name, kind: NameKind);
+define_hir!(Binding, id: BindingId, kind: BindingKind);
 
-#[derive(Debug, Clone)]
-pub enum NameKind {
-    Fun(FunId),
+#[derive(Debug, Clone, EnumAsInner)]
+pub enum BindingKind {
+    Value(Box<Hir>),
+    Fun(FunKind),
 }
 
+#[derive(Debug, Clone, EnumAsInner)]
+pub enum FunKind {
+    Orphan {
+        //     params: Vec<FunParam>,
+        body: Block,
+    },
+    // Extern {
+    //     lib: Option<ExternLib>,
+    //     dylib: Option<ExternLib>,
+    //     link_name: Ustr,
+    // },
+    // Intrinsic(Intrinsic),
+}
+
+define_hir!(Block, statements: Vec<Hir>);
+define_hir!(Name, id: BindingId);
+define_hir!(Ret, value: Box<Option<Hir>>);
 define_hir!(Lit, kind: LitKind);
 
 #[derive(Debug, Clone)]
