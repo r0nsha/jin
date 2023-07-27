@@ -55,6 +55,10 @@ impl ResolvedModule {
     pub fn get_binding(&mut self, id: BindingId) -> Option<&ResolvedBinding> {
         self.bindings.get(id)
     }
+
+    pub fn bindings(&self) -> impl Iterator<Item = &ResolvedBinding> {
+        self.bindings.values()
+    }
 }
 
 slotmap::new_key_type! {
