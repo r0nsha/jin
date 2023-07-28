@@ -139,8 +139,8 @@ impl CheckContext {
             }
             Ast::Lit(lit) => match &lit.kind {
                 LitKind::Int(value) => Ok((
-                    Hir::Lit(hir::Lit {
-                        kind: hir::LitKind::Int(*value),
+                    Hir::Const(hir::Const {
+                        kind: hir::ConstKind::Int(*value),
                         span: lit.span,
                         ty: Ty::int(lit.span),
                     }),
@@ -221,8 +221,8 @@ impl CheckContext {
                 }),
                 TyKind::Int(IntTy::Int),
             ) => Ok((
-                Hir::Lit(hir::Lit {
-                    kind: hir::LitKind::Int(*value),
+                Hir::Const(hir::Const {
+                    kind: hir::ConstKind::Int(*value),
                     span: *span,
                     ty: expected_ty,
                 }),

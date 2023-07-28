@@ -200,7 +200,7 @@ pub enum Hir {
     // Name(Name),
     Binding(Binding),
     Ret(Ret),
-    Lit(Lit),
+    Const(Const),
 }
 
 impl Spanned for Hir {
@@ -271,10 +271,10 @@ pub enum FunKind {
 define_hir!(Block, statements: Vec<Hir>);
 define_hir!(Name, id: BindingId);
 define_hir!(Ret, value: Option<Box<Hir>>);
-define_hir!(Lit, kind: LitKind);
+define_hir!(Const, kind: ConstKind);
 
 #[derive(Debug, Clone)]
-pub enum LitKind {
+pub enum ConstKind {
     Int(usize),
     Unit,
 }

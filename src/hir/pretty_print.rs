@@ -37,12 +37,12 @@ impl<'a> PrettyPrint<'a> {
 
                 self.builder.end_child();
             }
-            Hir::Lit(lit) => match lit.kind {
-                LitKind::Int(value) => {
+            Hir::Const(lit) => match lit.kind {
+                ConstKind::Int(value) => {
                     self.builder
                         .add_empty_child(format!("{value} {}", Self::print_ty(&lit.ty)));
                 }
-                LitKind::Unit => {
+                ConstKind::Unit => {
                     self.builder
                         .add_empty_child(format!("() {}", Self::print_ty(&lit.ty)));
                 }
