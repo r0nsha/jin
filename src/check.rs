@@ -25,7 +25,7 @@ use self::{
 pub fn check(state: &State, modules: Vec<Module>) -> CompilerResult<hir::Cache> {
     let mut cx = CheckContext::new();
 
-    resolve::create_modules_and_global_scopes(&mut cx, modules)?;
+    resolve::create_modules_and_global_scope(&mut cx, &modules)?;
 
     // TODO: infer all global bindings
     // cache.insert_global_binding(hir::Binding {

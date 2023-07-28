@@ -9,15 +9,18 @@ use crate::{
 
 use super::{CheckContext, CheckError, CheckResult};
 
-pub(super) fn create_modules_and_global_scopes(cx: &mut CheckContext, modules: Vec<ast::Module>) -> CheckResult<()> {
+pub(super) fn create_modules_and_global_scope(
+    cx: &mut CheckContext,
+    modules: &[ast::Module],
+) -> CheckResult<()> {
     for module in modules {
-        let module_id = cx.cache.insert_module(hir::Module::from(&module));
+        let module_id = cx.cache.insert_module(hir::Module::from(module));
         let module_full_name = cx.cache.get_module(module_id).unwrap().name().clone();
 
         let mut global_bindings = UstrMap::default();
         let mut defined_names = UstrMap::<Span>::default();
 
-        for binding in module.bindings {
+        for binding in &module.bindings {
             let qualified_name = module_full_name.clone().child(binding.name());
 
             let ty = cx.typecx.fresh_var(binding.span);
