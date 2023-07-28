@@ -5,12 +5,11 @@ mod type_context;
 use std::collections::HashSet;
 
 use miette::Diagnostic;
-use slotmap::Key;
 use thiserror::Error;
 
 use crate::{
     ast::*,
-    hir::{self, BindingId, Hir},
+    hir::{self, Hir},
     span::{Span, Spanned},
     state::State,
     ty::*,
@@ -24,13 +23,9 @@ use self::{
 };
 
 pub fn check(state: &State, modules: Vec<Module>) -> CompilerResult<hir::Cache> {
-    check_inner(modules).map_err(|err| err.with_source_code(state))
-}
-
-fn check_inner(modules: Vec<Module>) -> CheckResult<hir::Cache> {
     let mut cx = CheckContext::new();
 
-    resolve::create_modules(&mut cx, modules);
+    resolve::create_modules(&mut cx, modules).map_err(|err| err.with_source_code(state))?;
 
     // TODO: infer all global bindings
     // cache.insert_global_binding(hir::Binding {

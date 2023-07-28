@@ -1,5 +1,10 @@
 // TODO: change to main()
-fn main_main() = {
+fn main() = {
+	// We return the answer to the universe...
+	return 42
+}
+
+fn main() = {
 	// We return the answer to the universe...
 	return 42
 }

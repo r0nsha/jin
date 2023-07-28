@@ -45,7 +45,7 @@ pub(super) fn create_modules(
             if let Some(prev_span) = defined_names.insert(name, span) {
                 return Err(ResolveError::DuplicateName {
                     name,
-                    span: prev_span,
+                    prev_span,
                     dup_span: span,
                 });
             } else {
@@ -63,12 +63,15 @@ pub(super) type ResolveResult<T> = CompilerResult<T, ResolveError>;
 
 #[derive(Error, Diagnostic, Debug)]
 pub(super) enum ResolveError {
-    #[error("the name `{name}` is defined twice")]
-    #[diagnostic(code(resolve::duplicate_names))]
+    #[error("the name `{name}` is defined multiple times")]
+    #[diagnostic(
+        code(resolve::duplicate_names),
+        help("you can only define `{name}` once in this module")
+    )]
     DuplicateName {
         name: Ustr,
         #[label("`{name}` is already defined here")]
-        span: Span,
+        prev_span: Span,
         #[label("`{name}` is defined again here")]
         dup_span: Span,
     },
@@ -77,7 +80,7 @@ pub(super) enum ResolveError {
 impl Spanned for ResolveError {
     fn span(&self) -> Span {
         match self {
-            _ => todo!(),
+            ResolveError::DuplicateName { dup_span, .. } => *dup_span,
         }
     }
 }
