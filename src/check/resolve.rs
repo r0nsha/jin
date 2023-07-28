@@ -1,13 +1,10 @@
-use miette::Diagnostic;
 use slotmap::{Key, SecondaryMap};
-use thiserror::Error;
 use ustr::{Ustr, UstrMap};
 
 use crate::{
     ast,
     hir::{self, BindingId, ModuleId},
-    span::{Span, Spanned},
-    CompilerResult,
+    span::Span,
 };
 
 use super::{CheckContext, CheckError, CheckResult};

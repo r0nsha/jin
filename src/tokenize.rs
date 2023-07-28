@@ -3,7 +3,6 @@ use std::{
     mem,
 };
 
-use thiserror::Error;
 use ustr::{ustr, Ustr};
 
 use crate::{
