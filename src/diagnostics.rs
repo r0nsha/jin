@@ -1,5 +1,6 @@
 use crate::span::Span;
 
+#[derive(Debug)]
 pub struct Diagnostic {
     severity: Severity,
     code: String,
@@ -35,10 +36,12 @@ impl Diagnostic {
     }
 }
 
+#[derive(Debug)]
 pub enum Severity {
     Error,
 }
 
+#[derive(Debug)]
 pub struct Label {
     kind: LabelKind,
     message: Option<String>,
@@ -68,6 +71,7 @@ impl Label {
     }
 }
 
+#[derive(Debug)]
 enum LabelKind {
     Primary,
     Secondary,

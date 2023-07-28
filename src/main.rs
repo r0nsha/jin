@@ -14,6 +14,10 @@ mod util;
 use std::{fs, path::PathBuf, process::Command};
 
 use clap::{Parser, Subcommand};
+use codespan_reporting::term::{
+    self,
+    termcolor::{ColorChoice, StandardStream},
+};
 use diagnostics::Diagnostic;
 use state::BuildOptions;
 
@@ -38,11 +42,12 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Build { file: PathBuf },
+    Run { file: PathBuf },
 }
 
 pub type CompilerResult<T> = Result<T, Diagnostic>;
 
-fn main() -> CompilerResult<()> {
+fn main() {
     color_eyre::install().unwrap();
 
     let cli = Cli::parse();
@@ -55,6 +60,11 @@ fn main() -> CompilerResult<()> {
 
     match cli.cmd {
         Commands::Build { file } => build(build_options, file),
+        Commands::Run { file } => {
+            todo!();
+            // let output_file = build(build_options, file)?;
+            // Ok(())
+        }
     }
 }
 
@@ -103,4 +113,11 @@ fn build(build_options: BuildOptions, file: PathBuf) -> CompilerResult<()> {
     // };
 
     Ok(())
+}
+
+fn emit_diagnostics(state: &State, diagnostic: Diagnostic) {
+    let writer = StandardStream::stderr(ColorChoice::Always);
+    let config = codespan_reporting::term::Config::default();
+
+    term::emit(&mut writer.lock(), &config, &files, &diagnostic)?;
 }

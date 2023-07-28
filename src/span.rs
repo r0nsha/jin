@@ -3,6 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use codespan_reporting::files;
 use miette::NamedSource;
 use slotmap::{Key, SlotMap};
 
@@ -92,6 +93,45 @@ impl SourceCache {
 
     pub fn get(&self, id: SourceId) -> Option<&Source> {
         self.0.get(id)
+    }
+}
+
+impl<'a> files::Files<'a> for SourceCache {
+    type FileId = SourceId;
+
+    type Name = String;
+
+    type Source = String;
+
+    fn name(&'a self, id: Self::FileId) -> Result<Self::Name, files::Error> {
+        self.get(id)
+            .ok_or(files::Error::FileMissing)
+            .map(|source| source.path().display().to_string())
+    }
+
+    fn source(
+        &'a self,
+        id: Self::FileId,
+    ) -> Result<Self::Source, codespan_reporting::files::Error> {
+        self.get(id)
+            .ok_or(files::Error::FileMissing)
+            .map(|source| source.contents().to_string())
+    }
+
+    fn line_index(
+        &'a self,
+        id: Self::FileId,
+        byte_index: usize,
+    ) -> Result<usize, codespan_reporting::files::Error> {
+        todo!()
+    }
+
+    fn line_range(
+        &'a self,
+        id: Self::FileId,
+        line_index: usize,
+    ) -> Result<std::ops::Range<usize>, codespan_reporting::files::Error> {
+        todo!()
     }
 }
 
