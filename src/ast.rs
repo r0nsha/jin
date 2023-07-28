@@ -114,6 +114,7 @@ macro_rules! define_ast {
 define_ast!(Binding, kind: BindingKind);
 
 impl Binding {
+    // TODO: remove when we get patterns
     pub fn name(&self) -> Ustr {
         match &self.kind {
             BindingKind::Fun { name, .. } => *name,

@@ -13,7 +13,7 @@ impl TypeContext {
         }
     }
 
-    pub fn fresh_ty_var(&mut self, span: Span) -> Ty {
+    pub fn fresh_var(&mut self, span: Span) -> Ty {
         Ty::var(self.unification_table.new_key(None), span)
     }
 }

@@ -2,7 +2,7 @@ mod env;
 mod resolve;
 mod type_context;
 
-use std::collections::{HashSet, HashMap};
+use std::collections::HashSet;
 
 use miette::Diagnostic;
 use slotmap::Key;
@@ -10,7 +10,7 @@ use thiserror::Error;
 
 use crate::{
     ast::*,
-    hir::{self, BindingId, Hir, ModuleId},
+    hir::{self, BindingId, Hir},
     span::{Span, Spanned},
     state::State,
     ty::*,
@@ -30,8 +30,15 @@ pub fn check(state: &State, modules: Vec<Module>) -> CompilerResult<hir::Cache> 
 fn check_inner(modules: Vec<Module>) -> CheckResult<hir::Cache> {
     let mut cx = CheckContext::new();
 
-    resolve::create_modules(&mut cx.cache, modules);
-    resolve::create_modules(&mut cx.cache, modules);
+    resolve::create_modules(&mut cx, modules);
+
+    // TODO: infer all global bindings
+    // cache.insert_global_binding(hir::Binding {
+    //     id: todo!(),
+    //     kind: todo!(),
+    //     span: todo!(),
+    //     ty: todo!(),
+    // });
 
     // TODO: create hir for each global binding
     // for module in self.resolved_modules.iter_mut() {
@@ -73,10 +80,10 @@ fn check_inner(modules: Vec<Module>) -> CheckResult<hir::Cache> {
     Ok(cx.cache)
 }
 
-struct CheckContext {
-    cache: hir::Cache,
-    global_scope: HashMap<ModuleId, HashMap<>>,
-    typecx: TypeContext,
+pub(super) struct CheckContext {
+    pub(super) cache: hir::Cache,
+    pub(super) global_scope: resolve::GlobalScope,
+    pub(super) typecx: TypeContext,
 }
 
 // Utils
@@ -84,6 +91,7 @@ impl CheckContext {
     fn new() -> Self {
         Self {
             cache: hir::Cache::new(),
+            global_scope: resolve::GlobalScope::new(),
             typecx: TypeContext::new(),
         }
     }
@@ -149,40 +157,28 @@ impl CheckContext {
         env: &mut Env,
         binding: &Binding,
     ) -> CheckResult<(Hir, Constraints)> {
-        let (kind, constraints) = match &binding.kind {
-            BindingKind::Fun { name: _, fun } => {
-                let (fun, constraints) = self.infer_fun(env, fun)?;
-                (hir::BindingKind::Fun(Box::new(fun)), constraints)
-            }
-        };
+        // let (kind, constraints) = match &binding.kind {
+        //     BindingKind::Fun { name: _, fun } => {
+        //         let (fun, constraints) = self.infer_fun(env, fun)?;
+        //         (hir::BindingKind::Fun(Box::new(fun)), constraints)
+        //     }
+        // };
 
         // TODO: patterns
-        let span = binding.span;
-        let ty = Ty::unit(binding.span);
+        // let span = binding.span;
+        // let ty = Ty::unit(binding.span);
 
-        let current_module = self.cache.get_module(env.module_id()).unwrap();
-        let qualified_name = current_module.name().clone().child(binding.name());
-
-        let id = self.cache.insert_binding_info(hir::BindingInfo {
-            id: BindingId::null(),
-            qualified_name,
-            vis: Vis::Public,
-            scope: env.scopes.depth().into(),
-            uses: 0,
-            ty: kind.ty().clone(),
-            span,
-        });
-
-        Ok((
-            Hir::Binding(hir::Binding { id, kind, span, ty }),
-            constraints,
-        ))
+        todo!();
+        // Ok((
+        //     Hir::Binding(hir::Binding { id, kind, span, ty }),
+        //     constraints,
+        // ))
     }
 
     fn infer_fun(&mut self, env: &mut Env, fun: &Fun) -> CheckResult<(hir::Fun, Constraints)> {
         // let arg_ty_var = self.fresh_ty_var();
 
-        let fun_ret_ty = self.typecx.fresh_ty_var(fun.span);
+        let fun_ret_ty = self.typecx.fresh_var(fun.span);
 
         env.fun_scopes.push(FunScope {
             ret_ty: fun_ret_ty.clone(),

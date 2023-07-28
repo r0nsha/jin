@@ -13,7 +13,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Cache {
-    modules: SlotMap<ModuleId, Module>,
+    pub modules: SlotMap<ModuleId, Module>,
     root_module_id: ModuleId,
     binding_infos: SlotMap<BindingId, BindingInfo>,
     global_bindings: SecondaryMap<BindingId, Binding>,
@@ -42,8 +42,6 @@ impl Cache {
             if module.is_root {
                 self.root_module_id = module.id;
             }
-
-            dbg!(&module);
 
             module
         })
@@ -96,12 +94,12 @@ pub struct Module {
     is_root: bool,
 }
 
-impl From<ast::Module> for Module {
-    fn from(module: ast::Module) -> Self {
+impl From<&ast::Module> for Module {
+    fn from(module: &ast::Module) -> Self {
         Self {
             id: ModuleId::null(),
             source_id: module.source_id,
-            name: module.name,
+            name: module.name.clone(),
             is_root: module.is_root,
         }
     }
@@ -132,6 +130,7 @@ slotmap::new_key_type! {
 
 #[derive(Debug, Clone)]
 pub struct BindingInfo {
+    pub module_id: ModuleId,
     pub id: BindingId,
     pub qualified_name: QualifiedName,
     pub vis: Vis,
