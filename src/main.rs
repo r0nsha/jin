@@ -62,16 +62,31 @@ fn main() {
         Commands::Build { file } => build(build_options, file),
         Commands::Run { file } => {
             todo!();
-            // let output_file = build(build_options, file)?;
-            // Ok(())
+
+            if let Some(output_file) = build(build_options, file) {
+                // let _ = Command::new(output_file).spawn();
+            }
         }
     }
 }
 
-fn build(build_options: BuildOptions, file: PathBuf) -> CompilerResult<()> {
-    let print_times = build_options.print_times;
+fn build(build_options: BuildOptions, file: PathBuf) {
+    let mut state = State::new(build_options, file).unwrap();
 
-    let state = State::new(build_options, file).unwrap();
+    match build_inner(&mut state, build_options, file) {
+        Ok(output_file) => {
+            // let _ = Command::new(output_file).spawn();
+        }
+        Err(diagnostic) => emit_diagnostics(&state, diagnostic).unwrap(),
+    }
+}
+
+fn build_inner(
+    state: &mut State,
+    build_options: BuildOptions,
+    file: PathBuf,
+) -> CompilerResult<()> {
+    let print_times = build_options.print_times;
 
     let modules = time! { print_times, "ast generation", ast::gen(&state)? };
 
@@ -115,9 +130,17 @@ fn build(build_options: BuildOptions, file: PathBuf) -> CompilerResult<()> {
     Ok(())
 }
 
-fn emit_diagnostics(state: &State, diagnostic: Diagnostic) {
+fn emit_diagnostics(
+    state: &State,
+    diagnostic: Diagnostic,
+) -> Result<(), codespan_reporting::files::Error> {
     let writer = StandardStream::stderr(ColorChoice::Always);
     let config = codespan_reporting::term::Config::default();
 
-    term::emit(&mut writer.lock(), &config, &files, &diagnostic)?;
+    term::emit(
+        &mut writer.lock(),
+        &config,
+        &state.source_cache,
+        &diagnostic.into(),
+    )
 }

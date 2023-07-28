@@ -1,9 +1,9 @@
 use std::{
-    fs, io,
+    fs, io, ops,
     path::{Path, PathBuf},
 };
 
-use codespan_reporting::files;
+use codespan_reporting::files::{self, line_starts};
 use miette::NamedSource;
 use slotmap::{Key, SlotMap};
 
@@ -96,50 +96,12 @@ impl SourceCache {
     }
 }
 
-impl<'a> files::Files<'a> for SourceCache {
-    type FileId = SourceId;
-
-    type Name = String;
-
-    type Source = String;
-
-    fn name(&'a self, id: Self::FileId) -> Result<Self::Name, files::Error> {
-        self.get(id)
-            .ok_or(files::Error::FileMissing)
-            .map(|source| source.path().display().to_string())
-    }
-
-    fn source(
-        &'a self,
-        id: Self::FileId,
-    ) -> Result<Self::Source, codespan_reporting::files::Error> {
-        self.get(id)
-            .ok_or(files::Error::FileMissing)
-            .map(|source| source.contents().to_string())
-    }
-
-    fn line_index(
-        &'a self,
-        id: Self::FileId,
-        byte_index: usize,
-    ) -> Result<usize, codespan_reporting::files::Error> {
-        todo!()
-    }
-
-    fn line_range(
-        &'a self,
-        id: Self::FileId,
-        line_index: usize,
-    ) -> Result<std::ops::Range<usize>, codespan_reporting::files::Error> {
-        todo!()
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Source {
     id: SourceId,
     path: PathBuf,
     contents: String,
+    line_starts: Vec<usize>,
 }
 
 impl Source {
@@ -154,6 +116,19 @@ impl Source {
     pub fn contents(&self) -> &str {
         self.contents.as_ref()
     }
+
+    fn line_start(&self, line_index: usize) -> Result<usize, files::Error> {
+        use std::cmp::Ordering;
+
+        match line_index.cmp(&self.line_starts.len()) {
+            Ordering::Less => Ok(self.line_starts.get(line_index).cloned().unwrap()),
+            Ordering::Equal => Ok(self.contents.len()),
+            Ordering::Greater => Err(files::Error::LineTooLarge {
+                given: line_index,
+                max: self.line_starts.len() - 1,
+            }),
+        }
+    }
 }
 
 impl TryFrom<PathBuf> for Source {
@@ -161,11 +136,13 @@ impl TryFrom<PathBuf> for Source {
 
     fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
         let contents = fs::read_to_string(&value)?;
+        let line_starts = line_starts(&contents).collect();
 
         Ok(Self {
             id: SourceId::null(),
             path: value,
             contents,
+            line_starts,
         })
     }
 }
@@ -176,6 +153,76 @@ impl From<&Source> for NamedSource {
             source.path().to_string_lossy().to_string(),
             source.contents().to_string(),
         )
+    }
+}
+
+impl<'a> files::Files<'a> for Source {
+    type FileId = SourceId;
+
+    type Name = &'a str;
+
+    type Source = &'a str;
+
+    fn name(&'a self, id: Self::FileId) -> Result<Self::Name, files::Error> {
+        Ok(self.path().to_string_lossy().as_ref())
+    }
+
+    fn source(&'a self, id: Self::FileId) -> Result<Self::Source, files::Error> {
+        Ok(self.contents())
+    }
+
+    fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, files::Error> {
+        Ok(self
+            .line_starts
+            .binary_search(&byte_index)
+            .unwrap_or_else(|next_line| next_line - 1))
+    }
+
+    fn line_range(
+        &'a self,
+        id: Self::FileId,
+        line_index: usize,
+    ) -> Result<ops::Range<usize>, files::Error> {
+        let line_start = self.line_start(line_index)?;
+        let next_line_start = self.line_start(line_index + 1)?;
+
+        Ok(line_start..next_line_start)
+    }
+}
+
+impl<'a> files::Files<'a> for SourceCache {
+    type FileId = SourceId;
+
+    type Name = &'a str;
+
+    type Source = &'a str;
+
+    fn name(&'a self, id: Self::FileId) -> Result<Self::Name, files::Error> {
+        self.get(id)
+            .ok_or(files::Error::FileMissing)
+            .and_then(|source| source.name(id))
+    }
+
+    fn source(&'a self, id: Self::FileId) -> Result<Self::Source, files::Error> {
+        self.get(id)
+            .ok_or(files::Error::FileMissing)
+            .and_then(|source| source.source(id))
+    }
+
+    fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, files::Error> {
+        self.get(id)
+            .ok_or(files::Error::FileMissing)
+            .and_then(|source| source.line_index(id, byte_index))
+    }
+
+    fn line_range(
+        &'a self,
+        id: Self::FileId,
+        line_index: usize,
+    ) -> Result<ops::Range<usize>, files::Error> {
+        self.get(id)
+            .ok_or(files::Error::FileMissing)
+            .and_then(|source| source.line_range(id, line_index))
     }
 }
 

@@ -1,4 +1,6 @@
-use crate::span::Span;
+use codespan_reporting::diagnostic as codespan_diagnostic;
+
+use crate::span::{SourceId, Span};
 
 #[derive(Debug)]
 pub struct Diagnostic {
@@ -75,4 +77,35 @@ impl Label {
 enum LabelKind {
     Primary,
     Secondary,
+}
+
+impl Into<codespan_diagnostic::Diagnostic<SourceId>> for Diagnostic {
+    fn into(self) -> codespan_diagnostic::Diagnostic<SourceId> {
+        codespan_diagnostic::Diagnostic {
+            severity: self.severity.into(),
+            code: Some(self.code),
+            message: self.message.unwrap_or_else(|| "".to_string()),
+            labels: self.labels.into_iter().map(|label| label.into()).collect(),
+            notes: self.help.map_or_else(|| vec![], |help| vec![help]),
+        }
+    }
+}
+
+impl Into<codespan_diagnostic::Label<SourceId>> for Label {
+    fn into(self) -> codespan_diagnostic::Label<SourceId> {
+        codespan_diagnostic::Label {
+            style: codespan_diagnostic::LabelStyle::Primary,
+            file_id: self.span.source_id(),
+            range: self.span.start() as usize..self.span.end() as usize,
+            message: self.message.unwrap_or_else(|| "".to_string()),
+        }
+    }
+}
+
+impl Into<codespan_diagnostic::Severity> for Severity {
+    fn into(self) -> codespan_diagnostic::Severity {
+        match self {
+            Severity::Error => codespan_diagnostic::Severity::Error,
+        }
+    }
 }
