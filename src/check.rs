@@ -1,4 +1,5 @@
 mod env;
+mod error;
 mod resolve;
 mod type_context;
 
@@ -6,6 +7,7 @@ use std::collections::HashSet;
 
 use miette::Diagnostic;
 use thiserror::Error;
+use ustr::Ustr;
 
 use crate::{
     ast::*,
@@ -19,6 +21,7 @@ use crate::{
 
 use self::{
     env::{Env, FunScope},
+    error::CheckError,
     type_context::TypeContext,
 };
 
@@ -276,38 +279,3 @@ pub struct TypeScheme {
 }
 
 type CheckResult<T> = CompilerResult<T, CheckError>;
-
-#[derive(Error, Diagnostic, Debug)]
-enum CheckError {
-    #[error("expected `{expected}`, got `{actual}` instead")]
-    #[diagnostic(code(check::incompatible_types))]
-    TyNotEq {
-        #[label("expected type `{expected}` originates here")]
-        expected: Ty,
-        #[label("found type `{actual}` here")]
-        actual: Ty,
-    },
-    #[error("type `{ty}` has an infinite size")]
-    #[diagnostic(code(check::infinite_type))]
-    InfiniteTy {
-        #[label]
-        ty: Ty,
-        var: TyVar,
-    },
-    #[error("cannot return outside of function scope")]
-    #[diagnostic(code(check::infinite_type))]
-    MisplacedReturn {
-        #[label]
-        span: Span,
-    },
-}
-
-impl Spanned for CheckError {
-    fn span(&self) -> Span {
-        match self {
-            CheckError::TyNotEq { expected, .. } => expected.span,
-            CheckError::InfiniteTy { ty, .. } => ty.span,
-            CheckError::MisplacedReturn { span } => *span,
-        }
-    }
-}

@@ -10,12 +10,9 @@ use crate::{
     CompilerResult,
 };
 
-use super::CheckContext;
+use super::{CheckContext, CheckError, CheckResult};
 
-pub(super) fn create_modules(
-    cx: &mut CheckContext,
-    modules: Vec<ast::Module>,
-) -> ResolveResult<()> {
+pub(super) fn create_modules(cx: &mut CheckContext, modules: Vec<ast::Module>) -> CheckResult<()> {
     for module in modules {
         let module_id = cx.cache.insert_module(hir::Module::from(&module));
         let module_full_name = cx.cache.get_module(module_id).unwrap().name().clone();
@@ -43,7 +40,7 @@ pub(super) fn create_modules(
             let span = binding.span;
 
             if let Some(prev_span) = defined_names.insert(name, span) {
-                return Err(ResolveError::DuplicateName {
+                return Err(CheckError::DuplicateName {
                     name,
                     prev_span,
                     dup_span: span,
@@ -57,32 +54,6 @@ pub(super) fn create_modules(
     }
 
     Ok(())
-}
-
-pub(super) type ResolveResult<T> = CompilerResult<T, ResolveError>;
-
-#[derive(Error, Diagnostic, Debug)]
-pub(super) enum ResolveError {
-    #[error("the name `{name}` is defined multiple times")]
-    #[diagnostic(
-        code(resolve::duplicate_names),
-        help("you can only define the name `{name}` once in this module")
-    )]
-    DuplicateName {
-        name: Ustr,
-        #[label("`{name}` is already defined here")]
-        prev_span: Span,
-        #[label("`{name}` is defined again here")]
-        dup_span: Span,
-    },
-}
-
-impl Spanned for ResolveError {
-    fn span(&self) -> Span {
-        match self {
-            ResolveError::DuplicateName { dup_span, .. } => *dup_span,
-        }
-    }
 }
 
 #[derive(Debug)]
