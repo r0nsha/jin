@@ -65,20 +65,20 @@ fn build(build_options: BuildOptions, file: PathBuf) -> CompilerResult<()> {
 
     if state.build_options().print_ast {
         for module in &modules {
+            println!();
             println!("Ast:");
             module.pretty_print().unwrap();
             println!();
         }
     }
 
-    let hir = time! { print_times, "check", check(&state, modules)? };
+    let hir_cache = time! { print_times, "check", check(&state, modules)? };
 
-    // TODO: print Hir
-    // if state.build_options().print_hir {
-    //     println!("Hir:");
-    //     hir.pretty_print().unwrap();
-    //     println!();
-    // }
+    if state.build_options().print_hir {
+        println!();
+        hir_cache.pretty_print().unwrap();
+        println!();
+    }
 
     // let code = time! { print_times, "codegen", codegen(typed_module) };
     //

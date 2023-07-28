@@ -1,4 +1,6 @@
-use std::cmp;
+mod pretty_print;
+
+use std::{cmp, io};
 
 use enum_as_inner::EnumAsInner;
 use slotmap::{Key, SecondaryMap, SlotMap};
@@ -77,6 +79,10 @@ impl Cache {
     pub fn get_entry_point(&self) -> Option<&Binding> {
         self.entry_point_id
             .and_then(|id| self.get_global_binding(id))
+    }
+
+    pub fn pretty_print(&self) -> io::Result<()> {
+        pretty_print::print_hir(self)
     }
 }
 
