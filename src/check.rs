@@ -35,17 +35,7 @@ pub fn check(state: &State, modules: Vec<Module>) -> CompilerResult<hir::Cache> 
     //     ty: todo!(),
     // });
 
-    // TODO: create hir for each global binding
-    // for module in self.resolved_modules.iter_mut() {
-    //     // TODO: add all global names to binding_infos in each module
-    // }
-
-    // TODO: resolve all names in all asts
-    // for module in self.resolved_modules.iter_mut() {
-    //     for binding in &mut module.bindings {
-    //         self.resolve_binding(binding);
-    //     }
-    // }
+    // TODO: add all global bindings to the hir::Cache::global_bindings
 
     // TODO: generate constraints
     // TODO: unification
