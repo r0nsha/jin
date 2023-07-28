@@ -11,7 +11,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Cache {
-    modules: SlotMap<ModuleId, ResolvedModule>,
+    modules: SlotMap<ModuleId, Module>,
     root_module_id: ModuleId,
     binding_infos: SlotMap<BindingId, BindingInfo>,
     global_bindings: SecondaryMap<BindingId, Binding>,
@@ -29,11 +29,11 @@ impl Cache {
         }
     }
 
-    pub fn get_module(&self, id: ModuleId) -> Option<&ResolvedModule> {
+    pub fn get_module(&self, id: ModuleId) -> Option<&Module> {
         self.modules.get(id)
     }
 
-    pub fn insert_module(&mut self, mut module: ResolvedModule) -> ModuleId {
+    pub fn insert_module(&mut self, mut module: Module) -> ModuleId {
         self.modules.insert_with_key(|key| {
             module.id = key;
 
@@ -45,7 +45,7 @@ impl Cache {
         })
     }
 
-    pub fn get_binding_info(&mut self, id: BindingId) -> Option<&BindingInfo> {
+    pub fn get_binding_info(&self, id: BindingId) -> Option<&BindingInfo> {
         self.binding_infos.get(id)
     }
 
@@ -56,7 +56,7 @@ impl Cache {
         })
     }
 
-    pub fn get_global_binding(&mut self, id: BindingId) -> Option<&Binding> {
+    pub fn get_global_binding(&self, id: BindingId) -> Option<&Binding> {
         self.global_bindings.get(id)
     }
 
@@ -65,7 +65,7 @@ impl Cache {
         self.global_bindings.insert(binding.id, binding);
     }
 
-    pub fn get_root_module(&self) -> &ResolvedModule {
+    pub fn get_root_module(&self) -> &Module {
         assert!(!self.root_module_id.is_null());
         self.get_module(self.root_module_id).unwrap()
     }
@@ -81,14 +81,14 @@ impl Cache {
 }
 
 #[derive(Debug, Clone)]
-pub struct ResolvedModule {
+pub struct Module {
     id: ModuleId,
     source_id: SourceId,
     name: QualifiedName,
     is_root: bool,
 }
 
-impl From<ast::Module> for ResolvedModule {
+impl From<ast::Module> for Module {
     fn from(module: ast::Module) -> Self {
         Self {
             id: ModuleId::null(),
@@ -99,7 +99,7 @@ impl From<ast::Module> for ResolvedModule {
     }
 }
 
-impl ResolvedModule {
+impl Module {
     pub fn id(&self) -> ModuleId {
         self.id
     }
@@ -129,6 +129,7 @@ pub struct BindingInfo {
     pub vis: Vis,
     pub scope: BindingScope,
     pub uses: usize,
+    pub ty: Ty,
     pub span: Span,
 }
 
@@ -155,6 +156,15 @@ impl BindingScope {
             Global => panic!("BindingScope::Global has no previous scope"),
             Scope(n) if n == 1 => Global,
             Scope(n) => Scope(n - 1),
+        }
+    }
+}
+
+impl From<usize> for BindingScope {
+    fn from(value: usize) -> Self {
+        match value {
+            0 => Self::Global,
+            n => Self::Scope(n),
         }
     }
 }
@@ -214,8 +224,28 @@ define_hir!(Binding, id: BindingId, kind: BindingKind);
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum BindingKind {
     Value(Box<Hir>),
-    Fun(FunKind),
+    Fun(Box<Fun>),
 }
+
+impl Spanned for BindingKind {
+    fn span(&self) -> Span {
+        match self {
+            BindingKind::Value(v) => v.span(),
+            BindingKind::Fun(f) => f.span,
+        }
+    }
+}
+
+impl Typed for BindingKind {
+    fn ty(&self) -> &Ty {
+        match self {
+            BindingKind::Value(v) => v.ty(),
+            BindingKind::Fun(f) => &f.ty,
+        }
+    }
+}
+
+define_hir!(Fun, kind: FunKind);
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum FunKind {

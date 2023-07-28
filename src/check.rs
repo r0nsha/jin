@@ -1,14 +1,15 @@
-mod scope;
+mod env;
 
 use std::collections::HashSet;
 
 use ena::unify::InPlaceUnificationTable;
 use miette::Diagnostic;
+use slotmap::Key;
 use thiserror::Error;
 
 use crate::{
     ast::*,
-    hir::{self, Hir},
+    hir::{self, BindingId, Hir, ModuleId},
     span::{Span, Spanned},
     state::State,
     ty::*,
@@ -16,7 +17,7 @@ use crate::{
     CompilerResult,
 };
 
-use self::scope::{FunScope, FunScopes};
+use self::env::{Env, FunScope};
 
 pub fn check(state: &State, modules: Vec<Module>) -> CompilerResult<hir::Cache> {
     check_inner(modules).map_err(|err| err.with_source_code(state))
@@ -74,39 +75,37 @@ fn check_inner(mut modules: Vec<Module>) -> CheckResult<hir::Cache> {
 struct CheckContext {
     cache: hir::Cache,
     unification_table: InPlaceUnificationTable<TyVar>,
-    fun_scopes: FunScopes,
 }
 
 // Utils
 impl CheckContext {
-    pub fn new() -> Self {
+    fn new() -> Self {
         Self {
             cache: hir::Cache::new(),
             unification_table: InPlaceUnificationTable::new(),
-            fun_scopes: FunScopes::new(),
         }
     }
 
-    pub fn fresh_ty_var(&mut self, span: Span) -> Ty {
+    fn fresh_ty_var(&mut self, span: Span) -> Ty {
         Ty::var(self.unification_table.new_key(None), span)
     }
 }
 
 // Infer/Check
 impl CheckContext {
-    fn infer(&mut self, ast: &Ast) -> InferResult {
+    fn infer_ast(&mut self, env: &mut Env, ast: &Ast) -> CheckResult<(Hir, Constraints)> {
         match ast {
-            Ast::Binding(binding) => self.infer_binding(binding),
-            Ast::Fun(fun) => self.infer_fun(fun),
+            Ast::Binding(binding) => self.infer_binding(env, binding),
+            Ast::Fun(_) => todo!(),
             Ast::Ret(ret) => {
                 let ty = Ty::never(ret.span);
 
-                if let Some(fun_scope) = self.fun_scopes.current() {
+                if let Some(fun_scope) = env.fun_scopes.current() {
                     let expected_ty = fun_scope.ret_ty.clone();
 
-                    let (value, constraints) = if let Some(value) = ret.value.as_mut() {
-                        let (hir, value_constraints) = self.infer(value)?;
-                        let check_constraints = self.check(value, expected_ty)?;
+                    let (value, constraints) = if let Some(value) = ret.value.as_ref() {
+                        let (_, value_constraints) = self.infer_ast(env, value)?;
+                        let (hir, check_constraints) = self.check(env, value, expected_ty)?;
 
                         (
                             Some(Box::new(hir)),
@@ -147,55 +146,105 @@ impl CheckContext {
         }
     }
 
-    fn infer_binding(&mut self, binding: &Binding) -> InferResult {
-        binding.set_ty(Ty::unit(binding.span));
-
+    fn infer_binding(
+        &mut self,
+        env: &mut Env,
+        binding: &Binding,
+    ) -> CheckResult<(Hir, Constraints)> {
         let (kind, constraints) = match &binding.kind {
-            BindingKind::Fun { name: _, fun } => self.infer_fun(fun),
+            BindingKind::Fun { name: _, fun } => {
+                let (fun, constraints) = self.infer_fun(env, fun)?;
+                (hir::BindingKind::Fun(Box::new(fun)), constraints)
+            }
         };
 
-        Ok(Hir::Binding(), constraints)
+        // TODO: patterns
+        let span = binding.span;
+        let ty = Ty::unit(binding.span);
+
+        let current_module = self.cache.get_module(env.module_id()).unwrap();
+        let qualified_name = current_module.name().clone().child(binding.name());
+
+        let id = self.cache.insert_binding_info(hir::BindingInfo {
+            id: BindingId::null(),
+            qualified_name,
+            vis: Vis::Public,
+            scope: env.scopes.depth().into(),
+            uses: 0,
+            ty: kind.ty().clone(),
+            span,
+        });
+
+        Ok((
+            Hir::Binding(hir::Binding { id, kind, span, ty }),
+            constraints,
+        ))
     }
 
-    fn infer_binding_kind(&mut self, binding: &BindingKind) -> InferResult {
-        match kind {
-            BindingKind::Fun { name: _, fun } => self.infer_fun(fun),
-        }
-    }
-
-    fn infer_fun(&mut self, fun: &Fun) -> InferResult {
+    fn infer_fun(&mut self, env: &mut Env, fun: &Fun) -> CheckResult<(hir::Fun, Constraints)> {
         // let arg_ty_var = self.fresh_ty_var();
 
         let fun_ret_ty = self.fresh_ty_var(fun.span);
-        fun.set_ty(Ty::fun(fun_ret_ty.clone(), fun.span));
 
-        self.fun_scopes.push(FunScope { ret_ty: fun_ret_ty });
-        let body_constraints = self.infer(&fun.body);
-        self.fun_scopes.pop();
+        env.fun_scopes.push(FunScope {
+            ret_ty: fun_ret_ty.clone(),
+        });
 
-        body_constraints
+        let (body, body_constraints) = self.infer_ast(env, &fun.body)?;
+
+        env.fun_scopes.pop();
+
+        let span = body.span();
+
+        Ok((
+            hir::Fun {
+                kind: hir::FunKind::Orphan {
+                    body: hir::Block {
+                        statements: vec![body],
+                        span,
+                        ty: fun_ret_ty.clone(),
+                    },
+                },
+                ty: Ty::fun(fun_ret_ty, fun.span),
+                span: fun.span,
+            },
+            body_constraints,
+        ))
     }
 
-    fn check(&mut self, ast: &Ast, expected_ty: Ty) -> CheckResult<Constraints> {
+    fn check(
+        &mut self,
+        env: &mut Env,
+        ast: &Ast,
+        expected_ty: Ty,
+    ) -> CheckResult<(Hir, Constraints)> {
         match (ast, &expected_ty.kind) {
             (Ast::Fun(fun), TyKind::Fun(fun_ty)) => {
-                // let env = env.update(arg, *arg_ty);
-                self.check(&fun.body, fun_ty.ret.as_ref().clone())
+                self.check(env, &fun.body, fun_ty.ret.as_ref().clone())
             }
             (
                 Ast::Lit(Lit {
-                    kind: LitKind::Int(_),
-                    ..
+                    kind: LitKind::Int(value),
+                    span,
                 }),
                 TyKind::Int(IntTy::Int),
-            ) => Ok(Constraints::none()),
+            ) => Ok((
+                Hir::Lit(hir::Lit {
+                    kind: hir::LitKind::Int(*value),
+                    span: *span,
+                    ty: expected_ty,
+                }),
+                Constraints::none(),
+            )),
             (ast, _) => {
-                let mut constraints = self.infer(ast)?;
+                let (hir, mut constraints) = self.infer_ast(env, ast)?;
+
                 constraints.push(Constraint::TyEq {
                     expected: expected_ty,
-                    actual: ast.ty_cloned(),
+                    actual: hir.ty().clone(),
                 });
-                Ok(constraints)
+
+                Ok((hir, constraints))
             }
         }
     }
@@ -361,7 +410,6 @@ pub struct TypeScheme {
     ty: Ty,
 }
 
-type InferResult = CheckResult<(Hir, Constraints)>;
 type CheckResult<T> = CompilerResult<T, CheckError>;
 
 #[derive(Error, Diagnostic, Debug)]

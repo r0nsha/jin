@@ -1,31 +1,28 @@
 use std::{collections::HashMap, hash::Hash};
 
+// PERF: use UstrMap
 #[derive(Debug, Clone)]
-pub struct Scopes<K: Hash + Eq, V> {
-    inner: Vec<HashMap<K, V>>,
-}
-
-impl<K: Hash + Eq, V> Default for Scopes<K, V> {
-    fn default() -> Self {
-        Self { inner: vec![] }
-    }
-}
+pub struct Scopes<K: Hash + Eq, V>(Vec<HashMap<K, V>>);
 
 impl<K: Hash + Eq, V> Scopes<K, V> {
+    pub fn new() -> Self {
+        Self(vec![])
+    }
+
     pub fn push_scope(&mut self) {
-        self.inner.push(HashMap::default());
+        self.0.push(HashMap::default());
     }
 
     pub fn pop_scope(&mut self) {
-        self.inner.pop();
+        self.0.pop();
     }
 
     pub fn insert(&mut self, k: K, v: V) {
-        self.inner.last_mut().unwrap().insert(k, v);
+        self.0.last_mut().unwrap().insert(k, v);
     }
 
     pub fn get(&self, k: K) -> Option<(usize, &V)> {
-        for (depth, scope) in self.inner.iter().enumerate().rev() {
+        for (depth, scope) in self.0.iter().enumerate().rev() {
             if let Some(value) = scope.get(&k) {
                 return Some((depth + 1, value));
             }
@@ -34,7 +31,7 @@ impl<K: Hash + Eq, V> Scopes<K, V> {
     }
 
     pub fn get_mut(&mut self, k: K) -> Option<(usize, &mut V)> {
-        for (depth, scope) in self.inner.iter_mut().enumerate().rev() {
+        for (depth, scope) in self.0.iter_mut().enumerate().rev() {
             if let Some(value) = scope.get_mut(&k) {
                 return Some((depth + 1, value));
             }
@@ -51,6 +48,6 @@ impl<K: Hash + Eq, V> Scopes<K, V> {
     }
 
     pub fn depth(&self) -> usize {
-        self.inner.len()
+        self.0.len()
     }
 }
