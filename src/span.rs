@@ -4,7 +4,6 @@ use std::{
 };
 
 use codespan_reporting::files::{self, line_starts};
-use miette::NamedSource;
 use slotmap::{Key, SlotMap};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
@@ -59,14 +58,6 @@ impl Span {
             start: self.start.min(other.start),
             end: self.end.max(other.end),
         }
-    }
-}
-
-impl From<Span> for miette::SourceSpan {
-    fn from(span: Span) -> Self {
-        let start = span.start as usize;
-        let end = span.end as usize;
-        Self::from(start..end)
     }
 }
 
@@ -147,15 +138,6 @@ impl TryFrom<PathBuf> for Source {
     }
 }
 
-impl From<&Source> for NamedSource {
-    fn from(source: &Source) -> Self {
-        Self::new(
-            source.path().to_string_lossy().to_string(),
-            source.contents().to_string(),
-        )
-    }
-}
-
 impl<'a> files::Files<'a> for Source {
     type FileId = SourceId;
 
@@ -163,15 +145,15 @@ impl<'a> files::Files<'a> for Source {
 
     type Source = &'a str;
 
-    fn name(&'a self, id: Self::FileId) -> Result<Self::Name, files::Error> {
-        Ok(self.path().to_string_lossy().as_ref())
+    fn name(&'a self, _id: Self::FileId) -> Result<Self::Name, files::Error> {
+        Ok(self.path().to_str().unwrap())
     }
 
-    fn source(&'a self, id: Self::FileId) -> Result<Self::Source, files::Error> {
+    fn source(&'a self, _id: Self::FileId) -> Result<Self::Source, files::Error> {
         Ok(self.contents())
     }
 
-    fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, files::Error> {
+    fn line_index(&'a self, _id: Self::FileId, byte_index: usize) -> Result<usize, files::Error> {
         Ok(self
             .line_starts
             .binary_search(&byte_index)
@@ -180,7 +162,7 @@ impl<'a> files::Files<'a> for Source {
 
     fn line_range(
         &'a self,
-        id: Self::FileId,
+        _id: Self::FileId,
         line_index: usize,
     ) -> Result<ops::Range<usize>, files::Error> {
         let line_start = self.line_start(line_index)?;

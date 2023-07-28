@@ -25,9 +25,9 @@ pub(super) enum CheckError {
     },
 }
 
-impl Into<Diagnostic> for CheckError {
-    fn into(self) -> Diagnostic {
-        match self {
+impl From<CheckError> for Diagnostic {
+    fn from(err: CheckError) -> Self {
+        match err {
             CheckError::TyNotEq { expected, actual } => {
                 Diagnostic::error("check::incompatible_types")
                     .with_message(format!("expected `{expected}`, got `{actual}` instead"))

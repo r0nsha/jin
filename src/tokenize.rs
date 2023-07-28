@@ -13,7 +13,8 @@ use crate::{
 };
 
 pub fn tokenize(state: &State, source: &Source) -> CompilerResult<Vec<Token>> {
-    Lexer::new(source).scan().map_err(|e| e.into())
+    let tokens = Lexer::new(source).scan()?;
+    Ok(tokens)
 }
 
 struct Lexer<'a> {
@@ -220,9 +221,9 @@ enum TokenizeError {
     InvalidChar { ch: char, span: Span },
 }
 
-impl Into<Diagnostic> for TokenizeError {
-    fn into(self) -> Diagnostic {
-        match self {
+impl From<TokenizeError> for Diagnostic {
+    fn from(err: TokenizeError) -> Self {
+        match err {
             TokenizeError::InvalidChar { ch, span } => Diagnostic::error("tokenize::invalid_char")
                 .with_message(format!("invalid character {ch}"))
                 .with_label(Label::primary(span)),

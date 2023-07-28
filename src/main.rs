@@ -63,9 +63,9 @@ fn main() {
         Commands::Run { file } => {
             todo!();
 
-            if let Some(output_file) = build(build_options, file) {
-                // let _ = Command::new(output_file).spawn();
-            }
+            // if let Some(output_file) = build(build_options, file) {
+            // let _ = Command::new(output_file).spawn();
+            // }
         }
     }
 }
@@ -73,7 +73,7 @@ fn main() {
 fn build(build_options: BuildOptions, file: PathBuf) {
     let mut state = State::new(build_options, file).unwrap();
 
-    match build_inner(&mut state, build_options, file) {
+    match build_inner(&mut state) {
         Ok(output_file) => {
             // let _ = Command::new(output_file).spawn();
         }
@@ -81,12 +81,8 @@ fn build(build_options: BuildOptions, file: PathBuf) {
     }
 }
 
-fn build_inner(
-    state: &mut State,
-    build_options: BuildOptions,
-    file: PathBuf,
-) -> CompilerResult<()> {
-    let print_times = build_options.print_times;
+fn build_inner(state: &mut State) -> CompilerResult<()> {
+    let print_times = state.build_options().print_times;
 
     let modules = time! { print_times, "ast generation", ast::gen(&state)? };
 
@@ -137,8 +133,10 @@ fn emit_diagnostics(
     let writer = StandardStream::stderr(ColorChoice::Always);
     let config = codespan_reporting::term::Config::default();
 
+    let mut writer_lock = writer.lock();
+
     term::emit(
-        &mut writer.lock(),
+        &mut writer_lock,
         &config,
         &state.source_cache,
         &diagnostic.into(),

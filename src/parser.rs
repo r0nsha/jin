@@ -2,8 +2,8 @@ use ustr::ustr;
 
 use crate::{
     ast::*,
-    diagnostics::{Diagnostic,  Label},
-    span::{Source, SourceId, Span},
+    diagnostics::{Diagnostic, Label},
+    span::{Source, SourceId, Span, Spanned},
     state::State,
     tokenize::{Token, TokenKind},
     CompilerResult,
@@ -14,9 +14,9 @@ pub fn parse(state: &State, source: &Source, tokens: Vec<Token>) -> CompilerResu
     let name = QualifiedName::from_path(state.root_dir(), source.path()).unwrap();
     let is_root = source_id == state.root_source_id();
 
-    Parser::new(tokens)
-        .parse(source_id, name, is_root)
-        .map_err(|err| err.with_source_code(state))
+    let module = Parser::new(tokens).parse(source_id, name, is_root)?;
+
+    Ok(module)
 }
 
 #[derive(Debug)]
@@ -184,9 +184,9 @@ enum ParseError {
     },
 }
 
-impl Into<Diagnostic> for ParseError {
-    fn into(self) -> Diagnostic {
-        match self {
+impl From<ParseError> for Diagnostic {
+    fn from(err: ParseError) -> Self {
+        match err {
             ParseError::ExpectedToken {
                 expected,
                 actual,
