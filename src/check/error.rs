@@ -53,9 +53,11 @@ impl From<CheckError> for Diagnostic {
                 .with_message(format!("the name `{name}` is defined multiple times"))
                 .with_label(
                     Label::secondary(prev_span)
-                        .with_message("previous definition of `{name}` is here"),
+                        .with_message(format!("previous definition of `{name}` is here")),
                 )
-                .with_label(Label::primary(dup_span).with_message("`{name}` is redefined here"))
+                .with_label(
+                    Label::primary(dup_span).with_message(format!("`{name}` is redefined here")),
+                )
                 .with_help("you can only define names once in a module"),
         }
     }
