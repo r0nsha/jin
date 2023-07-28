@@ -43,6 +43,8 @@ impl Cache {
                 self.root_module_id = module.id;
             }
 
+            dbg!(&module);
+
             module
         })
     }
