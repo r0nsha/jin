@@ -5,7 +5,10 @@ use std::{
 
 use path_absolutize::Absolutize;
 
-use crate::span::{Source, SourceCache, SourceId};
+use crate::{
+    diagnostics::Diagnostic,
+    span::{Source, SourceCache, SourceId},
+};
 
 #[derive(Debug)]
 pub struct State {
@@ -13,6 +16,7 @@ pub struct State {
     root_source_id: SourceId,
     build_options: BuildOptions,
     pub source_cache: SourceCache,
+    pub diagnostics: Vec<Diagnostic>,
 }
 
 impl State {
@@ -27,6 +31,7 @@ impl State {
             root_source_id,
             build_options,
             source_cache,
+            diagnostics: vec![],
         })
     }
 

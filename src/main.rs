@@ -9,6 +9,7 @@ mod state;
 mod tokenize;
 mod ty;
 mod util;
+mod diagnostics;
 
 use std::{fs, path::PathBuf, process::Command};
 
