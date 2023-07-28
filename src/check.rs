@@ -1,4 +1,5 @@
 mod env;
+mod type_context;
 
 use std::collections::HashSet;
 
@@ -17,7 +18,10 @@ use crate::{
     CompilerResult,
 };
 
-use self::env::{Env, FunScope};
+use self::{
+    env::{Env, FunScope},
+    type_context::TypeContext,
+};
 
 pub fn check(state: &State, modules: Vec<Module>) -> CompilerResult<hir::Cache> {
     check_inner(modules).map_err(|err| err.with_source_code(state))
@@ -75,6 +79,7 @@ fn check_inner(mut modules: Vec<Module>) -> CheckResult<hir::Cache> {
 struct CheckContext {
     cache: hir::Cache,
     unification_table: InPlaceUnificationTable<TyVar>,
+    typecx: TypeContext,
 }
 
 // Utils
@@ -83,11 +88,8 @@ impl CheckContext {
         Self {
             cache: hir::Cache::new(),
             unification_table: InPlaceUnificationTable::new(),
+            typecx: TypeContext::new(),
         }
-    }
-
-    fn fresh_ty_var(&mut self, span: Span) -> Ty {
-        Ty::var(self.unification_table.new_key(None), span)
     }
 }
 
@@ -184,7 +186,7 @@ impl CheckContext {
     fn infer_fun(&mut self, env: &mut Env, fun: &Fun) -> CheckResult<(hir::Fun, Constraints)> {
         // let arg_ty_var = self.fresh_ty_var();
 
-        let fun_ret_ty = self.fresh_ty_var(fun.span);
+        let fun_ret_ty = self.typecx.fresh_ty_var(fun.span);
 
         env.fun_scopes.push(FunScope {
             ret_ty: fun_ret_ty.clone(),
