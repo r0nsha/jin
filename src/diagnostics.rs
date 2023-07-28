@@ -45,7 +45,7 @@ pub enum Severity {
 
 #[derive(Debug)]
 pub struct Label {
-    kind: LabelKind,
+    style: LabelStyle,
     message: Option<String>,
     span: Span,
 }
@@ -53,7 +53,7 @@ pub struct Label {
 impl Label {
     pub fn primary(span: Span) -> Self {
         Self {
-            kind: LabelKind::Primary,
+            style: LabelStyle::Primary,
             message: None,
             span,
         }
@@ -61,7 +61,7 @@ impl Label {
 
     pub fn secondary(span: Span) -> Self {
         Self {
-            kind: LabelKind::Secondary,
+            style: LabelStyle::Secondary,
             message: None,
             span,
         }
@@ -74,7 +74,7 @@ impl Label {
 }
 
 #[derive(Debug)]
-enum LabelKind {
+enum LabelStyle {
     Primary,
     Secondary,
 }
@@ -94,7 +94,10 @@ impl Into<codespan_diagnostic::Diagnostic<SourceId>> for Diagnostic {
 impl Into<codespan_diagnostic::Label<SourceId>> for Label {
     fn into(self) -> codespan_diagnostic::Label<SourceId> {
         codespan_diagnostic::Label {
-            style: codespan_diagnostic::LabelStyle::Primary,
+            style: match self.style {
+                LabelStyle::Primary => codespan_diagnostic::LabelStyle::Primary,
+                LabelStyle::Secondary => codespan_diagnostic::LabelStyle::Secondary,
+            },
             file_id: self.span.source_id(),
             range: self.span.start() as usize..self.span.end() as usize,
             message: self.message.unwrap_or_else(|| "".to_string()),

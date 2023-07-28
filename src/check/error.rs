@@ -52,12 +52,11 @@ impl From<CheckError> for Diagnostic {
             } => Diagnostic::error("check::duplicate_names")
                 .with_message(format!("the name `{name}` is defined multiple times"))
                 .with_label(
-                    Label::primary(prev_span).with_message("`{name}` is already defined here"),
+                    Label::secondary(prev_span)
+                        .with_message("previous definition of `{name}` is here"),
                 )
-                .with_label(
-                    Label::secondary(dup_span).with_message("`{name}` is defined again here"),
-                )
-                .with_help("you can only define the names once in this module"),
+                .with_label(Label::primary(dup_span).with_message("`{name}` is redefined here"))
+                .with_help("you can only define names once in a module"),
         }
     }
 }
