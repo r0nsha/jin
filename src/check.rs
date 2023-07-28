@@ -5,8 +5,6 @@ mod type_context;
 
 use std::collections::HashSet;
 
-use miette::Diagnostic;
-use thiserror::Error;
 use ustr::Ustr;
 
 use crate::{
@@ -15,7 +13,6 @@ use crate::{
     span::{Span, Spanned},
     state::State,
     ty::*,
-    util::ErrExt,
     CompilerResult,
 };
 
@@ -278,4 +275,4 @@ pub struct TypeScheme {
     ty: Ty,
 }
 
-type CheckResult<T> = CompilerResult<T, CheckError>;
+type CheckResult<T> = Result<T, CheckError>;

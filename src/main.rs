@@ -1,6 +1,7 @@
 mod ast;
 mod check;
 mod codegen;
+mod diagnostics;
 mod hir;
 mod parser;
 mod scopes;
@@ -9,11 +10,11 @@ mod state;
 mod tokenize;
 mod ty;
 mod util;
-mod diagnostics;
 
 use std::{fs, path::PathBuf, process::Command};
 
 use clap::{Parser, Subcommand};
+use diagnostics::Diagnostic;
 use state::BuildOptions;
 
 use crate::{check::check, state::State};
@@ -39,10 +40,10 @@ enum Commands {
     Build { file: PathBuf },
 }
 
-pub type CompilerResult<T, E = miette::Report> = miette::Result<T, E>;
+pub type CompilerResult<T> = Result<T, Diagnostic>;
 
 fn main() -> CompilerResult<()> {
-    miette::set_panic_hook();
+    color_eyre::install().unwrap();
 
     let cli = Cli::parse();
 

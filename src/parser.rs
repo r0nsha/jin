@@ -1,13 +1,11 @@
-use miette::Diagnostic;
-use thiserror::Error;
 use ustr::ustr;
 
 use crate::{
     ast::*,
-    span::{Source, SourceId, Span, Spanned},
+    diagnostics::{Diagnostic,  Label},
+    span::{Source, SourceId, Span},
     state::State,
     tokenize::{Token, TokenKind},
-    util::ErrExt,
     CompilerResult,
 };
 
@@ -171,32 +169,36 @@ impl Parser {
     }
 }
 
-type ParseResult<T> = CompilerResult<T, ParseError>;
+type ParseResult<T> = Result<T, ParseError>;
 
-#[derive(Error, Diagnostic, Debug)]
+#[derive(Debug)]
 enum ParseError {
-    #[error("expected `{expected}`, got `{actual}` instead")]
-    #[diagnostic(code(parse::expected_token))]
     ExpectedToken {
         expected: TokenKind,
         actual: TokenKind,
-        #[label("found `{actual}` here")]
         span: Span,
     },
-    #[error("expected `{expected}`, got end of file instead")]
-    #[diagnostic(code(parse::unexpected_eof))]
     UnexpectedEof {
         expected: TokenKind,
-        #[label("expected here")]
         span: Span,
     },
 }
 
-impl Spanned for ParseError {
-    fn span(&self) -> Span {
+impl Into<Diagnostic> for ParseError {
+    fn into(self) -> Diagnostic {
         match self {
-            ParseError::ExpectedToken { span, .. } => *span,
-            ParseError::UnexpectedEof { span, .. } => *span,
+            ParseError::ExpectedToken {
+                expected,
+                actual,
+                span,
+            } => Diagnostic::error("parse::unexpected_token")
+                .with_message(format!("expected `{expected}`, got `{actual}` instead"))
+                .with_label(Label::primary(span).with_message(format!("found `{actual}` here"))),
+            ParseError::UnexpectedEof { expected, span } => {
+                Diagnostic::error("parse::unexpected_eof")
+                    .with_message(format!("expected `{expected}`, got end of file instead"))
+                    .with_label(Label::primary(span).with_message(format!("expected here")))
+            }
         }
     }
 }

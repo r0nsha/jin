@@ -1,56 +1,63 @@
-use miette::Diagnostic;
-use thiserror::Error;
 use ustr::Ustr;
 
 use crate::{
-    span::{Span, Spanned},
+    diagnostics::{Diagnostic, Label},
+    span::Span,
     ty::{Ty, TyVar},
 };
 
-#[derive(Error, Diagnostic, Debug)]
 pub(super) enum CheckError {
-    #[error("expected `{expected}`, got `{actual}` instead")]
-    #[diagnostic(code(check::incompatible_types))]
     TyNotEq {
-        #[label("expected type `{expected}` originates here")]
         expected: Ty,
-        #[label("found type `{actual}` here")]
         actual: Ty,
     },
-    #[error("type `{ty}` has an infinite size")]
-    #[diagnostic(code(check::infinite_type))]
     InfiniteTy {
-        #[label]
         ty: Ty,
         var: TyVar,
     },
-    #[error("cannot return outside of function scope")]
-    #[diagnostic(code(check::infinite_type))]
     MisplacedReturn {
-        #[label]
         span: Span,
     },
-    #[error("the name `{name}` is defined multiple times")]
-    #[diagnostic(
-        code(resolve::duplicate_names),
-        help("you can only define the names once in this module")
-    )]
     DuplicateName {
         name: Ustr,
-        #[label("`{name}` is already defined here")]
         prev_span: Span,
-        #[label("`{name}` is defined again here")]
         dup_span: Span,
     },
 }
 
-impl Spanned for CheckError {
-    fn span(&self) -> Span {
+impl Into<Diagnostic> for CheckError {
+    fn into(self) -> Diagnostic {
         match self {
-            CheckError::TyNotEq { expected, .. } => expected.span,
-            CheckError::InfiniteTy { ty, .. } => ty.span,
-            CheckError::MisplacedReturn { span } => *span,
-            CheckError::DuplicateName { dup_span, .. } => *dup_span,
+            CheckError::TyNotEq { expected, actual } => {
+                Diagnostic::error("check::incompatible_types")
+                    .with_message(format!("expected `{expected}`, got `{actual}` instead"))
+                    .with_label(
+                        Label::primary(expected.span)
+                            .with_message("expected type `{expected}` originates here"),
+                    )
+                    .with_label(
+                        Label::secondary(actual.span).with_message("found type `{actual}` here"),
+                    )
+            }
+            CheckError::InfiniteTy { ty, .. } => Diagnostic::error("check::infinite_type")
+                .with_message(format!("type `{ty}` has an infinite size"))
+                .with_label(Label::primary(ty.span)),
+            CheckError::MisplacedReturn { span } => Diagnostic::error("check::misplaced_return")
+                .with_message("cannot return outside of function scope")
+                .with_label(Label::primary(span)),
+            CheckError::DuplicateName {
+                name,
+                prev_span,
+                dup_span,
+            } => Diagnostic::error("check::duplicate_names")
+                .with_message(format!("the name `{name}` is defined multiple times"))
+                .with_label(
+                    Label::primary(prev_span).with_message("`{name}` is already defined here"),
+                )
+                .with_label(
+                    Label::secondary(dup_span).with_message("`{name}` is defined again here"),
+                )
+                .with_help("you can only define the names once in this module"),
         }
     }
 }

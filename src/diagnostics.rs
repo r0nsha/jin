@@ -3,6 +3,7 @@ use crate::span::Span;
 pub struct Diagnostic {
     severity: Severity,
     code: String,
+    message: Option<String>,
     labels: Vec<Label>,
     help: Option<String>,
 }
@@ -12,9 +13,15 @@ impl Diagnostic {
         Self {
             severity: Severity::Error,
             code: code.into(),
+            message: None,
             labels: vec![],
             help: None,
         }
+    }
+
+    pub fn with_message(mut self, message: impl Into<String>) -> Self {
+        self.message = Some(message.into());
+        self
     }
 
     pub fn with_label(mut self, label: Label) -> Self {
@@ -22,8 +29,8 @@ impl Diagnostic {
         self
     }
 
-    pub fn with_help(mut self, help: String) -> Self {
-        self.help = Some(help);
+    pub fn with_help(mut self, help: impl Into<String>) -> Self {
+        self.help = Some(help.into());
         self
     }
 }
@@ -55,7 +62,7 @@ impl Label {
         }
     }
 
-    pub fn with_message(mut self, message: Into<String>) -> Self {
+    pub fn with_message(mut self, message: impl Into<String>) -> Self {
         self.message = Some(message.into());
         self
     }

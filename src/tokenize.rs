@@ -3,21 +3,18 @@ use std::{
     mem,
 };
 
-use miette::Diagnostic;
 use thiserror::Error;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    span::{Source, SourceId, Span, Spanned},
+    diagnostics::{Diagnostic, Label},
+    span::{Source, SourceId, Span},
     state::State,
-    util::ErrExt,
     CompilerResult,
 };
 
 pub fn tokenize(state: &State, source: &Source) -> CompilerResult<Vec<Token>> {
-    Lexer::new(source)
-        .scan()
-        .map_err(|err| err.with_source_code(state))
+    Lexer::new(source).scan().map_err(|e| e.into())
 }
 
 struct Lexer<'a> {
@@ -217,23 +214,19 @@ impl fmt::Display for TokenKind {
     }
 }
 
-type TokenizeResult<T> = CompilerResult<T, TokenizeError>;
+type TokenizeResult<T> = Result<T, TokenizeError>;
 
-#[derive(Error, Diagnostic, Debug)]
+#[derive(Debug)]
 enum TokenizeError {
-    #[error("invalid character {ch}")]
-    #[diagnostic(code(tokenize::invalid_char))]
-    InvalidChar {
-        ch: char,
-        #[label]
-        span: Span,
-    },
+    InvalidChar { ch: char, span: Span },
 }
 
-impl Spanned for TokenizeError {
-    fn span(&self) -> Span {
+impl Into<Diagnostic> for TokenizeError {
+    fn into(self) -> Diagnostic {
         match self {
-            TokenizeError::InvalidChar { span, .. } => *span,
+            TokenizeError::InvalidChar { ch, span } => Diagnostic::error("tokenize::invalid_char")
+                .with_message(format!("invalid character {ch}"))
+                .with_label(Label::primary(span)),
         }
     }
 }

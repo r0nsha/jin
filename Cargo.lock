@@ -1102,7 +1102,6 @@ dependencies = [
  "ptree",
  "slotmap",
  "stopwatch",
- "thiserror",
  "unindent",
  "ustr",
 ]

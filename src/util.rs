@@ -1,4 +1,3 @@
-use miette::{Diagnostic, ErrReport, NamedSource};
 use owo_colors::{AnsiColors, OwoColorize};
 use std::time::Duration;
 use stopwatch::Stopwatch as SW;
@@ -74,21 +73,4 @@ macro_rules! time {
             $body
         }
     }};
-}
-
-pub trait ErrExt {
-    fn with_source_code(self, state: &State) -> ErrReport;
-}
-
-impl<T> ErrExt for T
-where
-    Self: Diagnostic + Spanned + Send + Sync + 'static,
-{
-    fn with_source_code(self, state: &State) -> ErrReport {
-        if let Some(source) = state.source_cache.get(self.span().source_id()) {
-            ErrReport::from(self).with_source_code(NamedSource::from(source))
-        } else {
-            self.into()
-        }
-    }
 }
