@@ -66,7 +66,7 @@ pub(super) enum ResolveError {
     #[error("the name `{name}` is defined multiple times")]
     #[diagnostic(
         code(resolve::duplicate_names),
-        help("you can only define `{name}` once in this module")
+        help("you can only define the name `{name}` once in this module")
     )]
     DuplicateName {
         name: Ustr,
