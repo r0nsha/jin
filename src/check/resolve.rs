@@ -9,7 +9,7 @@ use crate::{
 
 use super::{CheckContext, CheckError, CheckResult};
 
-pub(super) fn create_modules(cx: &mut CheckContext, modules: Vec<ast::Module>) -> CheckResult<()> {
+pub(super) fn create_modules_and_global_scopes(cx: &mut CheckContext, modules: Vec<ast::Module>) -> CheckResult<()> {
     for module in modules {
         let module_id = cx.cache.insert_module(hir::Module::from(&module));
         let module_full_name = cx.cache.get_module(module_id).unwrap().name().clone();
