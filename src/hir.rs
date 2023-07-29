@@ -8,7 +8,7 @@ use slotmap::{Key, SecondaryMap, SlotMap};
 use crate::{
     ast::{self, QualifiedName, Vis},
     span::{SourceId, Span, Spanned},
-    ty::{Ty, Typed},
+    ty::{Ty, TyId, Typed},
 };
 
 #[derive(Debug)]
@@ -136,7 +136,7 @@ pub struct BindingInfo {
     pub vis: Vis,
     pub scope: BindingScope,
     pub uses: usize,
-    pub ty: Ty,
+    pub ty: TyId,
     pub span: Span,
 }
 
@@ -210,11 +210,11 @@ impl Spanned for Hir {
 }
 
 impl Typed for Hir {
-    fn ty(&self) -> &Ty {
+    fn ty(&self) -> TyId {
         match self {
-            Hir::Binding(x) => &x.ty,
-            Hir::Ret(x) => &x.ty,
-            Hir::Const(x) => &x.ty,
+            Hir::Binding(x) => x.ty,
+            Hir::Ret(x) => x.ty,
+            Hir::Const(x) => x.ty,
         }
     }
 }
@@ -225,7 +225,7 @@ macro_rules! define_hir {
         pub struct $name {
             $(pub $element: $ty),*,
             pub span: Span,
-            pub ty: Ty,
+            pub ty: TyId,
         }
     };
 }
@@ -248,10 +248,10 @@ impl Spanned for BindingKind {
 }
 
 impl Typed for BindingKind {
-    fn ty(&self) -> &Ty {
+    fn ty(&self) -> TyId {
         match self {
             BindingKind::Value(v) => v.ty(),
-            BindingKind::Fun(f) => &f.ty,
+            BindingKind::Fun(f) => f.ty,
         }
     }
 }
