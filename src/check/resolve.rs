@@ -23,7 +23,7 @@ pub(super) fn create_modules_and_global_scope(
         for binding in &module.bindings {
             let qualified_name = module_full_name.clone().child(binding.name());
 
-            let ty = cx.typecx.fresh_var(binding.span);
+            let ty = cx.typecx.ftv(binding.span);
 
             let binding_id = cx.cache.insert_binding_info(hir::BindingInfo {
                 module_id,

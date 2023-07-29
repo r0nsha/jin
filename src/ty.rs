@@ -5,6 +5,10 @@ use enum_as_inner::EnumAsInner;
 
 use crate::span::Span;
 
+slotmap::new_key_type! {
+    pub struct TyId;
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Ty {
     pub kind: TyKind,
@@ -123,5 +127,5 @@ pub struct FunTy {
 }
 
 pub trait Typed {
-    fn ty(&self) -> &Ty;
+    fn ty(&self) -> TyId;
 }

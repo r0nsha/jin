@@ -89,7 +89,7 @@ impl CheckContext {
             Ast::Binding(binding) => self.infer_binding(env, binding),
             Ast::Fun(_) => todo!(),
             Ast::Ret(ret) => {
-                let ty = Ty::never(ret.span);
+                let ty = self.typecx.alloc_ty(Ty::never(ret.span));
 
                 if let Some(fun_scope) = env.fun_scopes.current() {
                     let expected_ty = fun_scope.ret_ty.clone();
@@ -106,7 +106,7 @@ impl CheckContext {
                         (
                             None,
                             Constraints::one(Constraint::TyEq {
-                                expected: expected_ty,
+                                expected: self.typecx[expected_ty].clone(),
                                 actual: Ty::unit(ret.span),
                             }),
                         )
@@ -129,7 +129,7 @@ impl CheckContext {
                     Hir::Const(hir::Const {
                         kind: hir::ConstKind::Int(*value),
                         span: lit.span,
-                        ty: Ty::int(lit.span),
+                        ty: self.typecx.alloc_ty(Ty::int(lit.span)),
                     }),
                     Constraints::none(),
                 )),
@@ -163,11 +163,9 @@ impl CheckContext {
     fn infer_fun(&mut self, env: &mut Env, fun: &Fun) -> CheckResult<(hir::Fun, Constraints)> {
         // let arg_ty_var = self.fresh_ty_var();
 
-        let fun_ret_ty = self.typecx.fresh_var(fun.span);
+        let fun_ret_ty = self.typecx.ftv(fun.span);
 
-        env.fun_scopes.push(FunScope {
-            ret_ty: fun_ret_ty.clone(),
-        });
+        env.fun_scopes.push(FunScope { ret_ty: fun_ret_ty });
 
         let (body, body_constraints) = self.infer_ast(env, &fun.body)?;
 
@@ -184,7 +182,9 @@ impl CheckContext {
                         ty: fun_ret_ty.clone(),
                     },
                 },
-                ty: Ty::fun(fun_ret_ty, fun.span),
+                ty: self
+                    .typecx
+                    .alloc_ty(Ty::fun(self.typecx[fun_ret_ty], fun.span)),
                 span: fun.span,
             },
             body_constraints,
@@ -195,37 +195,38 @@ impl CheckContext {
         &mut self,
         env: &mut Env,
         ast: &Ast,
-        expected_ty: Ty,
+        expected_ty: TyId,
     ) -> CheckResult<(Hir, Constraints)> {
-        match (ast, &expected_ty.kind) {
-            (Ast::Fun(fun), TyKind::Fun(fun_ty)) => {
-                self.check(env, &fun.body, fun_ty.ret.as_ref().clone())
-            }
-            (
-                Ast::Lit(Lit {
-                    kind: LitKind::Int(value),
-                    span,
-                }),
-                TyKind::Int(IntTy::Int),
-            ) => Ok((
-                Hir::Const(hir::Const {
-                    kind: hir::ConstKind::Int(*value),
-                    span: *span,
-                    ty: expected_ty,
-                }),
-                Constraints::none(),
-            )),
-            (ast, _) => {
-                let (hir, mut constraints) = self.infer_ast(env, ast)?;
-
-                constraints.push(Constraint::TyEq {
-                    expected: expected_ty,
-                    actual: hir.ty().clone(),
-                });
-
-                Ok((hir, constraints))
-            }
-        }
+        todo!()
+        // match (ast, &expected_ty.kind) {
+        //     (Ast::Fun(fun), TyKind::Fun(fun_ty)) => {
+        //         self.check(env, &fun.body, fun_ty.ret.as_ref().clone())
+        //     }
+        //     (
+        //         Ast::Lit(Lit {
+        //             kind: LitKind::Int(value),
+        //             span,
+        //         }),
+        //         TyKind::Int(IntTy::Int),
+        //     ) => Ok((
+        //         Hir::Const(hir::Const {
+        //             kind: hir::ConstKind::Int(*value),
+        //             span: *span,
+        //             ty: expected_ty,
+        //         }),
+        //         Constraints::none(),
+        //     )),
+        //     (ast, _) => {
+        //         let (hir, mut constraints) = self.infer_ast(env, ast)?;
+        //
+        //         constraints.push(Constraint::TyEq {
+        //             expected: expected_ty,
+        //             actual: hir.ty().clone(),
+        //         });
+        //
+        //         Ok((hir, constraints))
+        //     }
+        // }
     }
 }
 

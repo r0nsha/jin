@@ -3,7 +3,7 @@ use ustr::Ustr;
 use crate::{
     hir::{BindingId, ModuleId},
     scopes::Scopes,
-    ty::Ty,
+    ty::TyId,
 };
 
 pub struct Env {
@@ -49,5 +49,5 @@ impl FunScopes {
 
 #[derive(Debug, Clone)]
 pub struct FunScope {
-    pub ret_ty: Ty,
+    pub ret_ty: TyId,
 }

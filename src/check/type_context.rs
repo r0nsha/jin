@@ -1,20 +1,42 @@
+use std::ops;
+
 use ena::unify::InPlaceUnificationTable;
+use slotmap::SlotMap;
 
 use crate::{span::Span, ty::*};
 
 pub struct TypeContext {
     unification_table: InPlaceUnificationTable<TyVar>,
+    ty_alloc: SlotMap<TyId, Ty>,
 }
 
 impl TypeContext {
     pub fn new() -> Self {
         Self {
             unification_table: InPlaceUnificationTable::new(),
+            ty_alloc: SlotMap::with_key(),
         }
     }
 
-    pub fn fresh_var(&mut self, span: Span) -> Ty {
-        Ty::var(self.unification_table.new_key(None), span)
+    pub fn get_ty(&self, id: TyId) -> Option<&Ty> {
+        self.ty_alloc.get(id)
+    }
+
+    pub fn alloc_ty(&mut self, ty: Ty) -> TyId {
+        self.ty_alloc.insert(ty)
+    }
+
+    pub fn ftv(&mut self, span: Span) -> TyId {
+        let fresh = self.unification_table.new_key(None);
+        self.alloc_ty(Ty::var(fresh, span))
+    }
+}
+
+impl ops::Index<TyId> for TypeContext {
+    type Output = Ty;
+
+    fn index(&self, index: TyId) -> &Self::Output {
+        self.get_ty(index).unwrap()
     }
 }
 
