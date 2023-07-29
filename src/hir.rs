@@ -8,7 +8,7 @@ use slotmap::{Key, SecondaryMap, SlotMap};
 use crate::{
     ast::{self, QualifiedName, Vis},
     span::{SourceId, Span, Spanned},
-    ty::{Ty, Typed},
+    ty::{Ty, Typed, TyId},
 };
 
 #[derive(Debug)]
@@ -136,7 +136,7 @@ pub struct BindingInfo {
     pub vis: Vis,
     pub scope: BindingScope,
     pub uses: usize,
-    pub ty: Ty,
+    pub ty: TyId,
     pub span: Span,
 }
 

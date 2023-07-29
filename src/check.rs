@@ -85,56 +85,57 @@ impl CheckContext {
 // Infer/Check
 impl CheckContext {
     fn infer_ast(&mut self, env: &mut Env, ast: &Ast) -> CheckResult<(Hir, Constraints)> {
-        match ast {
-            Ast::Binding(binding) => self.infer_binding(env, binding),
-            Ast::Fun(_) => todo!(),
-            Ast::Ret(ret) => {
-                let ty = self.typecx.alloc_ty(Ty::never(ret.span));
-
-                if let Some(fun_scope) = env.fun_scopes.current() {
-                    let expected_ty = fun_scope.ret_ty.clone();
-
-                    let (value, constraints) = if let Some(value) = ret.value.as_ref() {
-                        let (_, value_constraints) = self.infer_ast(env, value)?;
-                        let (hir, check_constraints) = self.check(env, value, expected_ty)?;
-
-                        (
-                            Some(Box::new(hir)),
-                            value_constraints.merge(check_constraints),
-                        )
-                    } else {
-                        (
-                            None,
-                            Constraints::one(Constraint::TyEq {
-                                expected: self.typecx[expected_ty].clone(),
-                                actual: Ty::unit(ret.span),
-                            }),
-                        )
-                    };
-
-                    Ok((
-                        Hir::Ret(hir::Ret {
-                            value,
-                            span: ret.span,
-                            ty,
-                        }),
-                        constraints,
-                    ))
-                } else {
-                    Err(CheckError::MisplacedReturn { span: ret.span })
-                }
-            }
-            Ast::Lit(lit) => match &lit.kind {
-                LitKind::Int(value) => Ok((
-                    Hir::Const(hir::Const {
-                        kind: hir::ConstKind::Int(*value),
-                        span: lit.span,
-                        ty: self.typecx.alloc_ty(Ty::int(lit.span)),
-                    }),
-                    Constraints::none(),
-                )),
-            },
-        }
+        todo!();
+        // match ast {
+        //     Ast::Binding(binding) => self.infer_binding(env, binding),
+        //     Ast::Fun(_) => todo!(),
+        //     Ast::Ret(ret) => {
+        //         let ty = self.typecx.alloc_ty(Ty::never(ret.span));
+        //
+        //         if let Some(fun_scope) = env.fun_scopes.current() {
+        //             let expected_ty = fun_scope.ret_ty.clone();
+        //
+        //             let (value, constraints) = if let Some(value) = ret.value.as_ref() {
+        //                 let (_, value_constraints) = self.infer_ast(env, value)?;
+        //                 let (hir, check_constraints) = self.check(env, value, expected_ty)?;
+        //
+        //                 (
+        //                     Some(Box::new(hir)),
+        //                     value_constraints.merge(check_constraints),
+        //                 )
+        //             } else {
+        //                 (
+        //                     None,
+        //                     Constraints::one(Constraint::TyEq {
+        //                         expected: self.typecx[expected_ty].clone(),
+        //                         actual: Ty::unit(ret.span),
+        //                     }),
+        //                 )
+        //             };
+        //
+        //             Ok((
+        //                 Hir::Ret(hir::Ret {
+        //                     value,
+        //                     span: ret.span,
+        //                     ty,
+        //                 }),
+        //                 constraints,
+        //             ))
+        //         } else {
+        //             Err(CheckError::MisplacedReturn { span: ret.span })
+        //         }
+        //     }
+        //     Ast::Lit(lit) => match &lit.kind {
+        //         LitKind::Int(value) => Ok((
+        //             Hir::Const(hir::Const {
+        //                 kind: hir::ConstKind::Int(*value),
+        //                 span: lit.span,
+        //                 ty: self.typecx.alloc_ty(Ty::int(lit.span)),
+        //             }),
+        //             Constraints::none(),
+        //         )),
+        //     },
+        // }
     }
 
     fn infer_binding(
@@ -142,6 +143,7 @@ impl CheckContext {
         env: &mut Env,
         binding: &Binding,
     ) -> CheckResult<(Hir, Constraints)> {
+        todo!();
         // let (kind, constraints) = match &binding.kind {
         //     BindingKind::Fun { name: _, fun } => {
         //         let (fun, constraints) = self.infer_fun(env, fun)?;
@@ -149,11 +151,9 @@ impl CheckContext {
         //     }
         // };
 
-        // TODO: patterns
         // let span = binding.span;
         // let ty = Ty::unit(binding.span);
 
-        todo!();
         // Ok((
         //     Hir::Binding(hir::Binding { id, kind, span, ty }),
         //     constraints,
@@ -161,34 +161,35 @@ impl CheckContext {
     }
 
     fn infer_fun(&mut self, env: &mut Env, fun: &Fun) -> CheckResult<(hir::Fun, Constraints)> {
+        todo!();
         // let arg_ty_var = self.fresh_ty_var();
-
-        let fun_ret_ty = self.typecx.ftv(fun.span);
-
-        env.fun_scopes.push(FunScope { ret_ty: fun_ret_ty });
-
-        let (body, body_constraints) = self.infer_ast(env, &fun.body)?;
-
-        env.fun_scopes.pop();
-
-        let span = body.span();
-
-        Ok((
-            hir::Fun {
-                kind: hir::FunKind::Orphan {
-                    body: hir::Block {
-                        statements: vec![body],
-                        span,
-                        ty: fun_ret_ty.clone(),
-                    },
-                },
-                ty: self
-                    .typecx
-                    .alloc_ty(Ty::fun(self.typecx[fun_ret_ty], fun.span)),
-                span: fun.span,
-            },
-            body_constraints,
-        ))
+        //
+        // let fun_ret_ty = self.typecx.ftv(fun.span);
+        //
+        // env.fun_scopes.push(FunScope { ret_ty: fun_ret_ty });
+        //
+        // let (body, body_constraints) = self.infer_ast(env, &fun.body)?;
+        //
+        // env.fun_scopes.pop();
+        //
+        // let span = body.span();
+        //
+        // Ok((
+        //     hir::Fun {
+        //         kind: hir::FunKind::Orphan {
+        //             body: hir::Block {
+        //                 statements: vec![body],
+        //                 span,
+        //                 ty: fun_ret_ty.clone(),
+        //             },
+        //         },
+        //         ty: self
+        //             .typecx
+        //             .alloc_ty(Ty::fun(self.typecx[fun_ret_ty], fun.span)),
+        //         span: fun.span,
+        //     },
+        //     body_constraints,
+        // ))
     }
 
     fn check(
