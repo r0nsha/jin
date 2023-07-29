@@ -127,5 +127,5 @@ pub struct FunTy {
 }
 
 pub trait Typed {
-    fn ty(&self) -> TyId;
+    fn ty(&self) -> &Ty;
 }
