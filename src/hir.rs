@@ -215,18 +215,13 @@ impl Typed for Hir {
     }
 }
 
-macro_rules! define_hir {
-    ($name: ident, $($element: ident: $ty: ty),* $(,)?) => {
-        #[derive(Debug, Clone)]
-        pub struct $name {
-            $(pub $element: $ty),*,
-            pub span: Span,
-            pub ty: Ty,
-        }
-    };
+#[derive(Debug, Clone)]
+pub struct Binding {
+    pub id: BindingId,
+    pub kind: BindingKind,
+    pub span: Span,
+    pub ty: Ty,
 }
-
-define_hir!(Binding, id: BindingId, kind: BindingKind);
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum BindingKind {
@@ -252,7 +247,12 @@ impl Typed for BindingKind {
     }
 }
 
-define_hir!(Fun, kind: FunKind);
+#[derive(Debug, Clone)]
+pub struct Fun {
+    pub kind: FunKind,
+    pub span: Span,
+    pub ty: Ty,
+}
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum FunKind {
@@ -268,10 +268,33 @@ pub enum FunKind {
     // Intrinsic(Intrinsic),
 }
 
-define_hir!(Block, statements: Vec<Hir>);
-define_hir!(Name, id: BindingId);
-define_hir!(Ret, value: Option<Box<Hir>>);
-define_hir!(Const, kind: ConstKind);
+#[derive(Debug, Clone)]
+pub struct Block {
+    pub statements: Vec<Hir>,
+    pub span: Span,
+    pub ty: Ty,
+}
+
+#[derive(Debug, Clone)]
+pub struct Name {
+    pub id: BindingId,
+    pub span: Span,
+    pub ty: Ty,
+}
+
+#[derive(Debug, Clone)]
+pub struct Ret {
+    pub value: Option<Box<Hir>>,
+    pub span: Span,
+    pub ty: Ty,
+}
+
+#[derive(Debug, Clone)]
+pub struct Const {
+    pub kind: ConstKind,
+    pub span: Span,
+    pub ty: Ty,
+}
 
 #[derive(Debug, Clone)]
 pub enum ConstKind {

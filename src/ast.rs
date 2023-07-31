@@ -101,17 +101,11 @@ impl Spanned for Ast {
     }
 }
 
-macro_rules! define_ast {
-    ($name: ident, $($element: ident: $ty: ty),* $(,)?) => {
-        #[derive(Debug, Clone)]
-        pub struct $name {
-            $(pub $element: $ty),*,
-            pub span: Span,
-        }
-    };
+#[derive(Debug, Clone)]
+pub struct Binding {
+    pub kind: BindingKind,
+    pub span: Span,
 }
-
-define_ast!(Binding, kind: BindingKind);
 
 impl Binding {
     // TODO: remove when we get patterns
@@ -127,9 +121,23 @@ pub enum BindingKind {
     Fun { name: Ustr, fun: Box<Fun> },
 }
 
-define_ast!(Fun, body: Box<Ast>);
-define_ast!(Ret, value: Option<Box<Ast>>);
-define_ast!(Lit, kind: LitKind);
+#[derive(Debug, Clone)]
+pub struct Fun {
+    pub body: Box<Ast>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Ret {
+    pub value: Option<Box<Ast>>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Lit {
+    pub kind: LitKind,
+    pub span: Span,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LitKind {
