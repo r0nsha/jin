@@ -1,6 +1,6 @@
 use crate::{ast::Module, parser, state::State, tokenize, CompilerResult};
 
-pub fn parse_modules(state: &State) -> CompilerResult<Vec<Module>> {
+pub(crate) fn parse_modules(state: &State) -> CompilerResult<Vec<Module>> {
     let mut modules = vec![];
 
     let root_source = state.root_source();

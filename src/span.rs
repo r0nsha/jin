@@ -6,15 +6,17 @@ use std::{
 use codespan_reporting::files::{self, line_starts};
 use slotmap::{Key, SlotMap};
 
+use crate::common::{new_id_type, IdVec};
+
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Span {
+pub(crate) struct Span {
     source_id: SourceId,
     start: u32,
     end: u32,
 }
 
 impl Span {
-    pub fn new(source_id: SourceId, start: u32, end: u32) -> Self {
+    pub(crate) fn new(source_id: SourceId, start: u32, end: u32) -> Self {
         Self {
             source_id,
             start,
@@ -22,7 +24,7 @@ impl Span {
         }
     }
 
-    pub fn unknown() -> Self {
+    pub(crate) fn unknown() -> Self {
         Self {
             source_id: SourceId::null(),
             start: 0,
@@ -30,27 +32,27 @@ impl Span {
         }
     }
 
-    pub fn source_id(&self) -> SourceId {
+    pub(crate) fn source_id(&self) -> SourceId {
         self.source_id
     }
 
-    pub fn start(&self) -> u32 {
+    pub(crate) fn start(&self) -> u32 {
         self.start
     }
 
-    pub fn end(&self) -> u32 {
+    pub(crate) fn end(&self) -> u32 {
         self.end
     }
 
-    pub fn len(&self) -> u32 {
+    pub(crate) fn len(&self) -> u32 {
         self.end - self.start
     }
 
-    pub fn contains(&self, other: Self) -> bool {
+    pub(crate) fn contains(&self, other: Self) -> bool {
         self.start <= other.start && self.end >= other.end
     }
 
-    pub fn merge(&self, other: Self) -> Self {
+    pub(crate) fn merge(&self, other: Self) -> Self {
         assert!(self.source_id == other.source_id);
 
         Self {
@@ -61,34 +63,36 @@ impl Span {
     }
 }
 
-pub trait Spanned {
+pub(crate) trait Spanned {
     fn span(&self) -> Span;
 }
 
 #[derive(Debug)]
-pub struct SourceCache(SlotMap<SourceId, Source>);
+pub(crate) struct SourceCache(IdVec<SourceId, Source>);
+
+new_id_type!(SourceId);
 
 impl SourceCache {
-    pub fn new() -> Self {
-        Self(SlotMap::with_key())
+    pub(crate) fn new() -> Self {
+        Self(IdVec::new())
     }
 
-    pub fn insert_file(&mut self, path: PathBuf) -> io::Result<SourceId> {
+    pub(crate) fn insert_file(&mut self, path: PathBuf) -> io::Result<SourceId> {
         let mut source = Source::try_from(path)?;
 
-        Ok(self.0.insert_with_key(|id| {
+        Ok(self.0.push_with_id(|id| {
             source.id = id;
             source
         }))
     }
 
-    pub fn get(&self, id: SourceId) -> Option<&Source> {
+    pub(crate) fn get(&self, id: SourceId) -> Option<&Source> {
         self.0.get(id)
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Source {
+pub(crate) struct Source {
     id: SourceId,
     path: PathBuf,
     contents: String,
@@ -96,15 +100,15 @@ pub struct Source {
 }
 
 impl Source {
-    pub fn id(&self) -> SourceId {
+    pub(crate) fn id(&self) -> SourceId {
         self.id
     }
 
-    pub fn path(&self) -> &Path {
+    pub(crate) fn path(&self) -> &Path {
         &self.path
     }
 
-    pub fn contents(&self) -> &str {
+    pub(crate) fn contents(&self) -> &str {
         self.contents.as_ref()
     }
 
@@ -206,8 +210,4 @@ impl<'a> files::Files<'a> for SourceCache {
             .ok_or(files::Error::FileMissing)
             .and_then(|source| source.line_range(id, line_index))
     }
-}
-
-slotmap::new_key_type! {
-    pub struct SourceId;
 }

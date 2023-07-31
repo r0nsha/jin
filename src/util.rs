@@ -4,21 +4,21 @@ use stopwatch::Stopwatch as SW;
 
 use crate::{span::Spanned, state::State};
 
-pub struct Stopwatch<'s> {
+pub(crate) struct Stopwatch<'s> {
     label: &'s str,
     sw: SW,
 }
 
 impl<'s> Stopwatch<'s> {
     #[allow(unused)]
-    pub fn new(label: &'s str) -> Self {
+    pub(crate) fn new(label: &'s str) -> Self {
         Self {
             label,
             sw: SW::new(),
         }
     }
 
-    pub fn start_new(label: &'s str) -> Self {
+    pub(crate) fn start_new(label: &'s str) -> Self {
         Self {
             label,
             sw: SW::start_new(),
@@ -26,15 +26,15 @@ impl<'s> Stopwatch<'s> {
     }
 
     #[allow(unused)]
-    pub fn start(&mut self) {
+    pub(crate) fn start(&mut self) {
         self.sw.start();
     }
 
-    pub fn elapsed(&self) -> Duration {
+    pub(crate) fn elapsed(&self) -> Duration {
         self.sw.elapsed()
     }
 
-    pub fn print(&self) {
+    pub(crate) fn print(&self) {
         let value = self.elapsed().as_millis();
 
         let color = if value < 5 {

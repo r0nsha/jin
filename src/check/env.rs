@@ -6,14 +6,14 @@ use crate::{
     ty::Ty,
 };
 
-pub struct Env {
+pub(crate) struct Env {
     module_id: ModuleId,
-    pub scopes: Scopes<Ustr, BindingId>,
-    pub fun_scopes: FunScopes,
+    pub(crate) scopes: Scopes<Ustr, BindingId>,
+    pub(crate) fun_scopes: FunScopes,
 }
 
 impl Env {
-    pub fn new(module_id: ModuleId) -> Self {
+    pub(crate) fn new(module_id: ModuleId) -> Self {
         Self {
             module_id,
             scopes: Scopes::new(),
@@ -21,33 +21,33 @@ impl Env {
         }
     }
 
-    pub fn module_id(&self) -> ModuleId {
+    pub(crate) fn module_id(&self) -> ModuleId {
         self.module_id
     }
 }
 
 #[derive(Debug)]
-pub struct FunScopes(Vec<FunScope>);
+pub(crate) struct FunScopes(Vec<FunScope>);
 
 impl FunScopes {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self(vec![])
     }
 
-    pub fn push(&mut self, new_scope: FunScope) {
+    pub(crate) fn push(&mut self, new_scope: FunScope) {
         self.0.push(new_scope);
     }
 
-    pub fn pop(&mut self) {
+    pub(crate) fn pop(&mut self) {
         self.0.pop();
     }
 
-    pub fn current(&self) -> Option<&FunScope> {
+    pub(crate) fn current(&self) -> Option<&FunScope> {
         self.0.last()
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct FunScope {
-    pub ret_ty: Ty,
+pub(crate) struct FunScope {
+    pub(crate) ret_ty: Ty,
 }

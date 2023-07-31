@@ -48,7 +48,7 @@ enum Commands {
     Run { file: PathBuf },
 }
 
-pub type CompilerResult<T> = Result<T, Diagnostic>;
+pub(crate) type CompilerResult<T> = Result<T, Diagnostic>;
 
 fn main() {
     color_eyre::install().unwrap();

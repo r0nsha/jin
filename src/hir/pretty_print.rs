@@ -2,7 +2,7 @@ use std::io;
 
 use super::*;
 
-pub fn print_hir(cache: &Cache) -> io::Result<()> {
+pub(crate) fn print_hir(cache: &Cache) -> io::Result<()> {
     let mut p = PrettyPrint {
         builder: ptree::TreeBuilder::new("hir".to_string()),
         cache,

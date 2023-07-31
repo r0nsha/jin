@@ -22,7 +22,7 @@ use self::{
     type_context::TypeContext,
 };
 
-pub fn check(state: &State, modules: Vec<Module>) -> CompilerResult<hir::Cache> {
+pub(crate) fn check(state: &State, modules: Vec<Module>) -> CompilerResult<hir::Cache> {
     let mut cx = CheckContext::new();
 
     resolve::create_modules_and_global_scope(&mut cx, &modules)?;
@@ -260,7 +260,7 @@ enum Constraint {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TypeScheme {
+pub(crate) struct TypeScheme {
     unbound: HashSet<TyVar>,
     ty: Ty,
 }

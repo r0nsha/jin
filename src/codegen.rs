@@ -1,6 +1,6 @@
 // use crate::{ast::*, ty::*};
 //
-// pub fn codegen(module: Module) -> String {
+// pub(crate)fn codegen(module: Module) -> String {
 //     let mut cg = Codegen {
 //         prelude: String::new(),
 //         declarations: String::new(),

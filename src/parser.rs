@@ -10,7 +10,7 @@ use crate::{
     CompilerResult,
 };
 
-pub fn parse(state: &State, source: &Source, tokens: Vec<Token>) -> CompilerResult<Module> {
+pub(crate) fn parse(state: &State, source: &Source, tokens: Vec<Token>) -> CompilerResult<Module> {
     let source_id = source.id();
     let name = QualifiedName::from_path(state.root_dir(), source.path()).unwrap();
     let is_root = source_id == state.root_source_id();

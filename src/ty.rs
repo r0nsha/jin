@@ -6,48 +6,48 @@ use enum_as_inner::EnumAsInner;
 use crate::span::Span;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Ty {
-    pub kind: TyKind,
-    pub span: Span,
+pub(crate) struct Ty {
+    pub(crate) kind: TyKind,
+    pub(crate) span: Span,
 }
 
 impl Ty {
-    pub fn var(var: TyVar, span: Span) -> Self {
+    pub(crate) fn var(var: TyVar, span: Span) -> Self {
         Self {
             kind: TyKind::Var(var),
             span,
         }
     }
 
-    pub fn int(span: Span) -> Self {
+    pub(crate) fn int(span: Span) -> Self {
         Self {
             kind: TyKind::Int(IntTy::Int),
             span,
         }
     }
 
-    pub fn fun(ret: Ty, span: Span) -> Self {
+    pub(crate) fn fun(ret: Ty, span: Span) -> Self {
         Self {
             kind: TyKind::Fun(FunTy { ret: Box::new(ret) }),
             span,
         }
     }
 
-    pub fn never(span: Span) -> Self {
+    pub(crate) fn never(span: Span) -> Self {
         Self {
             kind: TyKind::Never,
             span,
         }
     }
 
-    pub fn unit(span: Span) -> Self {
+    pub(crate) fn unit(span: Span) -> Self {
         Self {
             kind: TyKind::Unit,
             span,
         }
     }
 
-    pub fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
+    pub(crate) fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
         match &self.kind {
             TyKind::Fun(fun) => {
                 // fun.arg.occurs_check(var).map_err(|_| self.clone())?;
@@ -85,7 +85,7 @@ impl fmt::Display for Ty {
 impl EqUnifyValue for Ty {}
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
-pub enum TyKind {
+pub(crate) enum TyKind {
     Var(TyVar),
     Int(IntTy),
     Fun(FunTy),
@@ -94,7 +94,7 @@ pub enum TyKind {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub struct TyVar(u32);
+pub(crate) struct TyVar(u32);
 
 impl UnifyKey for TyVar {
     type Value = Option<Ty>;
@@ -113,15 +113,15 @@ impl UnifyKey for TyVar {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum IntTy {
+pub(crate) enum IntTy {
     Int,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FunTy {
-    pub ret: Box<Ty>,
+pub(crate) struct FunTy {
+    pub(crate) ret: Box<Ty>,
 }
 
-pub trait Typed {
+pub(crate) trait Typed {
     fn ty(&self) -> &Ty;
 }

@@ -13,14 +13,14 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct Cache {
-    pub modules: SlotMap<ModuleId, Module>,
+pub(crate) struct Cache {
+    pub(crate) modules: SlotMap<ModuleId, Module>,
     root_module_id: ModuleId,
     entry_point_id: Option<BindingId>,
 }
 
 impl Cache {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             modules: SlotMap::with_key(),
             root_module_id: ModuleId::null(),
@@ -28,11 +28,11 @@ impl Cache {
         }
     }
 
-    pub fn get_module(&self, id: ModuleId) -> Option<&Module> {
+    pub(crate) fn get_module(&self, id: ModuleId) -> Option<&Module> {
         self.modules.get(id)
     }
 
-    pub fn insert_module(&mut self, mut module: Module) -> ModuleId {
+    pub(crate) fn insert_module(&mut self, mut module: Module) -> ModuleId {
         self.modules.insert_with_key(|key| {
             module.id = key;
 
@@ -44,24 +44,24 @@ impl Cache {
         })
     }
 
-    pub fn get_root_module(&self) -> &Module {
+    pub(crate) fn get_root_module(&self) -> &Module {
         assert!(!self.root_module_id.is_null());
         self.get_module(self.root_module_id).unwrap()
     }
 
-    pub fn get_entry_point(&self) -> Option<&Binding> {
+    pub(crate) fn get_entry_point(&self) -> Option<&Binding> {
         todo!()
         // self.entry_point_id
         //     .and_then(|id| self.get_global_binding(id))
     }
 
-    pub fn pretty_print(&self) -> io::Result<()> {
+    pub(crate) fn pretty_print(&self) -> io::Result<()> {
         pretty_print::print_hir(self)
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct Module {
+pub(crate) struct Module {
     id: ModuleId,
     source_id: SourceId,
     name: QualifiedName,
@@ -80,36 +80,36 @@ impl From<&ast::Module> for Module {
 }
 
 impl Module {
-    pub fn id(&self) -> ModuleId {
+    pub(crate) fn id(&self) -> ModuleId {
         self.id
     }
 
-    pub fn source_id(&self) -> SourceId {
+    pub(crate) fn source_id(&self) -> SourceId {
         self.source_id
     }
 
-    pub fn name(&self) -> &QualifiedName {
+    pub(crate) fn name(&self) -> &QualifiedName {
         &self.name
     }
 
-    pub fn is_root(&self) -> bool {
+    pub(crate) fn is_root(&self) -> bool {
         self.is_root
     }
 }
 
 slotmap::new_key_type! {
-    pub struct BindingId;
-    pub struct ModuleId;
+    pub(crate)struct BindingId;
+    pub(crate)struct ModuleId;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BindingScope {
+pub(crate) enum BindingScope {
     Global,
     Scope(usize),
 }
 
 impl BindingScope {
-    pub fn next(self) -> Self {
+    pub(crate) fn next(self) -> Self {
         use BindingScope::*;
 
         match self {
@@ -118,7 +118,7 @@ impl BindingScope {
         }
     }
 
-    pub fn prev(self) -> Self {
+    pub(crate) fn prev(self) -> Self {
         use BindingScope::*;
 
         match self {
@@ -158,7 +158,7 @@ impl Ord for BindingScope {
 }
 
 #[derive(Debug, Clone, EnumAsInner)]
-pub enum Hir {
+pub(crate) enum Hir {
     // Name(Name),
     Binding(Binding),
     Ret(Ret),
@@ -178,20 +178,20 @@ impl Typed for Hir {
 }
 
 #[derive(Debug, Clone)]
-pub struct Binding {
-    pub id: BindingId,
-    pub module_id: ModuleId,
-    pub qualified_name: QualifiedName,
-    pub vis: Vis,
-    pub scope: BindingScope,
-    pub uses: usize,
-    pub kind: BindingKind,
-    pub ty: Ty,
-    pub span: Span,
+pub(crate) struct Binding {
+    pub(crate) id: BindingId,
+    pub(crate) module_id: ModuleId,
+    pub(crate) qualified_name: QualifiedName,
+    pub(crate) vis: Vis,
+    pub(crate) scope: BindingScope,
+    pub(crate) uses: usize,
+    pub(crate) kind: BindingKind,
+    pub(crate) ty: Ty,
+    pub(crate) span: Span,
 }
 
 #[derive(Debug, Clone, EnumAsInner)]
-pub enum BindingKind {
+pub(crate) enum BindingKind {
     Value(Box<Hir>),
     Fun(Box<Fun>),
 }
@@ -215,14 +215,14 @@ impl Typed for BindingKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct Fun {
-    pub kind: FunKind,
-    pub span: Span,
-    pub ty: Ty,
+pub(crate) struct Fun {
+    pub(crate) kind: FunKind,
+    pub(crate) span: Span,
+    pub(crate) ty: Ty,
 }
 
 #[derive(Debug, Clone, EnumAsInner)]
-pub enum FunKind {
+pub(crate) enum FunKind {
     Orphan {
         //     params: Vec<FunParam>,
         body: Block,
@@ -236,35 +236,35 @@ pub enum FunKind {
 }
 
 #[derive(Debug, Clone)]
-pub struct Block {
-    pub statements: Vec<Hir>,
-    pub span: Span,
-    pub ty: Ty,
+pub(crate) struct Block {
+    pub(crate) statements: Vec<Hir>,
+    pub(crate) span: Span,
+    pub(crate) ty: Ty,
 }
 
 #[derive(Debug, Clone)]
-pub struct Name {
-    pub id: BindingId,
-    pub span: Span,
-    pub ty: Ty,
+pub(crate) struct Name {
+    pub(crate) id: BindingId,
+    pub(crate) span: Span,
+    pub(crate) ty: Ty,
 }
 
 #[derive(Debug, Clone)]
-pub struct Ret {
-    pub value: Option<Box<Hir>>,
-    pub span: Span,
-    pub ty: Ty,
+pub(crate) struct Ret {
+    pub(crate) value: Option<Box<Hir>>,
+    pub(crate) span: Span,
+    pub(crate) ty: Ty,
 }
 
 #[derive(Debug, Clone)]
-pub struct Const {
-    pub kind: ConstKind,
-    pub span: Span,
-    pub ty: Ty,
+pub(crate) struct Const {
+    pub(crate) kind: ConstKind,
+    pub(crate) span: Span,
+    pub(crate) ty: Ty,
 }
 
 #[derive(Debug, Clone)]
-pub enum ConstKind {
+pub(crate) enum ConstKind {
     Int(usize),
     Unit,
 }

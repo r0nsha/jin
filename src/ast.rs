@@ -11,15 +11,15 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct Module {
-    pub source_id: SourceId,
-    pub name: QualifiedName,
-    pub is_root: bool,
-    pub bindings: Vec<Binding>,
+pub(crate) struct Module {
+    pub(crate) source_id: SourceId,
+    pub(crate) name: QualifiedName,
+    pub(crate) is_root: bool,
+    pub(crate) bindings: Vec<Binding>,
 }
 
 impl Module {
-    pub fn new(source_id: SourceId, name: QualifiedName, is_root: bool) -> Self {
+    pub(crate) fn new(source_id: SourceId, name: QualifiedName, is_root: bool) -> Self {
         Self {
             source_id,
             name,
@@ -28,19 +28,19 @@ impl Module {
         }
     }
 
-    pub fn pretty_print(&self) -> io::Result<()> {
+    pub(crate) fn pretty_print(&self) -> io::Result<()> {
         pretty_print::print_module(self)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Vis {
+pub(crate) enum Vis {
     Private,
     Public,
 }
 
 #[derive(Debug, Clone, EnumAsInner)]
-pub enum Ast {
+pub(crate) enum Ast {
     Binding(Binding),
     Fun(Fun),
     Ret(Ret),
@@ -59,14 +59,14 @@ impl Spanned for Ast {
 }
 
 #[derive(Debug, Clone)]
-pub struct Binding {
-    pub kind: BindingKind,
-    pub span: Span,
+pub(crate) struct Binding {
+    pub(crate) kind: BindingKind,
+    pub(crate) span: Span,
 }
 
 impl Binding {
     // TODO: remove when we get patterns
-    pub fn name(&self) -> Ustr {
+    pub(crate) fn name(&self) -> Ustr {
         match &self.kind {
             BindingKind::Fun { name, .. } => *name,
         }
@@ -74,29 +74,29 @@ impl Binding {
 }
 
 #[derive(Debug, Clone)]
-pub enum BindingKind {
+pub(crate) enum BindingKind {
     Fun { name: Ustr, fun: Box<Fun> },
 }
 
 #[derive(Debug, Clone)]
-pub struct Fun {
-    pub body: Box<Ast>,
-    pub span: Span,
+pub(crate) struct Fun {
+    pub(crate) body: Box<Ast>,
+    pub(crate) span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub struct Ret {
-    pub value: Option<Box<Ast>>,
-    pub span: Span,
+pub(crate) struct Ret {
+    pub(crate) value: Option<Box<Ast>>,
+    pub(crate) span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub struct Lit {
-    pub kind: LitKind,
-    pub span: Span,
+pub(crate) struct Lit {
+    pub(crate) kind: LitKind,
+    pub(crate) span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum LitKind {
+pub(crate) enum LitKind {
     Int(usize),
 }

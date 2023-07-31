@@ -3,7 +3,7 @@ use codespan_reporting::diagnostic as codespan_diagnostic;
 use crate::span::{SourceId, Span};
 
 #[derive(Debug)]
-pub struct Diagnostic {
+pub(crate) struct Diagnostic {
     severity: Severity,
     code: String,
     message: Option<String>,
@@ -12,7 +12,7 @@ pub struct Diagnostic {
 }
 
 impl Diagnostic {
-    pub fn error(code: impl Into<String>) -> Self {
+    pub(crate) fn error(code: impl Into<String>) -> Self {
         Self {
             severity: Severity::Error,
             code: code.into(),
@@ -22,36 +22,36 @@ impl Diagnostic {
         }
     }
 
-    pub fn with_message(mut self, message: impl Into<String>) -> Self {
+    pub(crate) fn with_message(mut self, message: impl Into<String>) -> Self {
         self.message = Some(message.into());
         self
     }
 
-    pub fn with_label(mut self, label: Label) -> Self {
+    pub(crate) fn with_label(mut self, label: Label) -> Self {
         self.labels.push(label);
         self
     }
 
-    pub fn with_help(mut self, help: impl Into<String>) -> Self {
+    pub(crate) fn with_help(mut self, help: impl Into<String>) -> Self {
         self.help = Some(help.into());
         self
     }
 }
 
 #[derive(Debug)]
-pub enum Severity {
+pub(crate) enum Severity {
     Error,
 }
 
 #[derive(Debug)]
-pub struct Label {
+pub(crate) struct Label {
     style: LabelStyle,
     message: Option<String>,
     span: Span,
 }
 
 impl Label {
-    pub fn primary(span: Span) -> Self {
+    pub(crate) fn primary(span: Span) -> Self {
         Self {
             style: LabelStyle::Primary,
             message: None,
@@ -59,7 +59,7 @@ impl Label {
         }
     }
 
-    pub fn secondary(span: Span) -> Self {
+    pub(crate) fn secondary(span: Span) -> Self {
         Self {
             style: LabelStyle::Secondary,
             message: None,
@@ -67,7 +67,7 @@ impl Label {
         }
     }
 
-    pub fn with_message(mut self, message: impl Into<String>) -> Self {
+    pub(crate) fn with_message(mut self, message: impl Into<String>) -> Self {
         self.message = Some(message.into());
         self
     }

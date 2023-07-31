@@ -58,14 +58,14 @@ pub(super) fn create_modules_and_global_scope(
 }
 
 #[derive(Debug)]
-pub struct GlobalScope(SecondaryMap<ModuleId, UstrMap<BindingId>>);
+pub(crate) struct GlobalScope(SecondaryMap<ModuleId, UstrMap<BindingId>>);
 
 impl GlobalScope {
-    pub fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self(SecondaryMap::new())
     }
 
-    pub fn find_binding(&self, module_id: ModuleId, name: Ustr) -> Option<BindingId> {
+    pub(crate) fn find_binding(&self, module_id: ModuleId, name: Ustr) -> Option<BindingId> {
         self.0
             .get(module_id)
             .and_then(|bindings| bindings.get(&name))

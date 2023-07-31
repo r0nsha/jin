@@ -12,7 +12,7 @@ use crate::{
     CompilerResult,
 };
 
-pub fn tokenize(state: &State, source: &Source) -> CompilerResult<Vec<Token>> {
+pub(crate) fn tokenize(state: &State, source: &Source) -> CompilerResult<Vec<Token>> {
     let tokens = Lexer::new(source).scan()?;
     Ok(tokens)
 }
@@ -153,33 +153,33 @@ impl<'a> Lexer<'a> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Token {
-    pub kind: TokenKind,
-    pub span: Span,
+pub(crate) struct Token {
+    pub(crate) kind: TokenKind,
+    pub(crate) span: Span,
 }
 
 impl Token {
-    pub fn as_ident(&self) -> Ustr {
+    pub(crate) fn as_ident(&self) -> Ustr {
         match self.kind {
             TokenKind::Ident(ident) => ident,
             kind => panic!("expected Ident, got {kind:?}"),
         }
     }
 
-    pub fn as_int(&self) -> usize {
+    pub(crate) fn as_int(&self) -> usize {
         match self.kind {
             TokenKind::Int(value) => value,
             kind => panic!("expected Int, got {kind:?}"),
         }
     }
 
-    pub fn kind_eq(&self, other: TokenKind) -> bool {
+    pub(crate) fn kind_eq(&self, other: TokenKind) -> bool {
         mem::discriminant(&self.kind) == mem::discriminant(&other)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum TokenKind {
+pub(crate) enum TokenKind {
     // Delimiters
     OpenParen,
     CloseParen,
