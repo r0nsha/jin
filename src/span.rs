@@ -4,7 +4,6 @@ use std::{
 };
 
 use codespan_reporting::files::{self, line_starts};
-use slotmap::{Key, SlotMap};
 
 use crate::common::{new_id_type, IdVec};
 

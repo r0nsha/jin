@@ -1,8 +1,8 @@
-use slotmap::{Key, SecondaryMap};
 use ustr::{Ustr, UstrMap};
 
 use crate::{
     ast,
+    common::IdVec,
     hir::{self, BindingId, ModuleId},
     span::Span,
 };
@@ -58,11 +58,11 @@ pub(super) fn create_modules_and_global_scope(
 }
 
 #[derive(Debug)]
-pub(crate) struct GlobalScope(SecondaryMap<ModuleId, UstrMap<BindingId>>);
+pub(crate) struct GlobalScope(IdVec<ModuleId, UstrMap<BindingId>>);
 
 impl GlobalScope {
     pub(crate) fn new() -> Self {
-        Self(SecondaryMap::new())
+        Self(IdVec::new())
     }
 
     pub(crate) fn find_binding(&self, module_id: ModuleId, name: Ustr) -> Option<BindingId> {

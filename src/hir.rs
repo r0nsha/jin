@@ -3,18 +3,17 @@ mod pretty_print;
 use std::{cmp, io};
 
 use enum_as_inner::EnumAsInner;
-use slotmap::{Key, SecondaryMap, SlotMap};
 
 use crate::{
     ast::{self, Vis},
-    common::QualifiedName,
+    common::{new_id_type, IdVec, QualifiedName},
     span::{SourceId, Span, Spanned},
     ty::{Ty, Typed},
 };
 
 #[derive(Debug)]
 pub(crate) struct Cache {
-    pub(crate) modules: SlotMap<ModuleId, Module>,
+    pub(crate) modules: IdVec<ModuleId, Module>,
     root_module_id: ModuleId,
     entry_point_id: Option<BindingId>,
 }
@@ -22,7 +21,7 @@ pub(crate) struct Cache {
 impl Cache {
     pub(crate) fn new() -> Self {
         Self {
-            modules: SlotMap::with_key(),
+            modules: IdVec::new(),
             root_module_id: ModuleId::null(),
             entry_point_id: None,
         }
@@ -33,7 +32,7 @@ impl Cache {
     }
 
     pub(crate) fn insert_module(&mut self, mut module: Module) -> ModuleId {
-        self.modules.insert_with_key(|key| {
+        self.modules.push_with_id(|key| {
             module.id = key;
 
             if module.is_root {
@@ -97,10 +96,8 @@ impl Module {
     }
 }
 
-slotmap::new_key_type! {
-    pub(crate)struct BindingId;
-    pub(crate)struct ModuleId;
-}
+new_id_type!(ModuleId);
+new_id_type!(BindingId);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum BindingScope {

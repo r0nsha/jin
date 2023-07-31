@@ -81,6 +81,10 @@ macro_rules! new_id_type {
             pub fn null() -> Self {
                 Self(usize::MAX)
             }
+
+            pub fn is_null(&self) -> bool {
+                self.0 == usize::MAX
+            }
         }
     };
 }
