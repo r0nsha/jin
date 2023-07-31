@@ -16,8 +16,6 @@ use crate::{
 pub struct Cache {
     pub modules: SlotMap<ModuleId, Module>,
     root_module_id: ModuleId,
-    binding_infos: SlotMap<BindingId, BindingInfo>,
-    global_bindings: SecondaryMap<BindingId, Binding>,
     entry_point_id: Option<BindingId>,
 }
 
@@ -26,8 +24,6 @@ impl Cache {
         Self {
             modules: SlotMap::with_key(),
             root_module_id: ModuleId::null(),
-            binding_infos: SlotMap::with_key(),
-            global_bindings: SecondaryMap::new(),
             entry_point_id: None,
         }
     }
@@ -48,38 +44,15 @@ impl Cache {
         })
     }
 
-    pub fn get_binding_info(&self, id: BindingId) -> Option<&BindingInfo> {
-        self.binding_infos.get(id)
-    }
-
-    pub fn insert_binding_info(&mut self, mut binding: BindingInfo) -> BindingId {
-        self.binding_infos.insert_with_key(|key| {
-            binding.id = key;
-            binding
-        })
-    }
-
-    pub fn get_global_binding(&self, id: BindingId) -> Option<&Binding> {
-        self.global_bindings.get(id)
-    }
-
-    pub fn insert_global_binding(&mut self, mut binding: Binding) {
-        assert!(!binding.id.is_null());
-        self.global_bindings.insert(binding.id, binding);
-    }
-
     pub fn get_root_module(&self) -> &Module {
         assert!(!self.root_module_id.is_null());
         self.get_module(self.root_module_id).unwrap()
     }
 
-    pub fn get_entry_point_info(&self) -> Option<&BindingInfo> {
-        self.entry_point_id.and_then(|id| self.get_binding_info(id))
-    }
-
     pub fn get_entry_point(&self) -> Option<&Binding> {
-        self.entry_point_id
-            .and_then(|id| self.get_global_binding(id))
+        todo!()
+        // self.entry_point_id
+        //     .and_then(|id| self.get_global_binding(id))
     }
 
     pub fn pretty_print(&self) -> io::Result<()> {
@@ -127,18 +100,6 @@ impl Module {
 slotmap::new_key_type! {
     pub struct BindingId;
     pub struct ModuleId;
-}
-
-#[derive(Debug, Clone)]
-pub struct BindingInfo {
-    pub module_id: ModuleId,
-    pub id: BindingId,
-    pub qualified_name: QualifiedName,
-    pub vis: Vis,
-    pub scope: BindingScope,
-    pub uses: usize,
-    pub ty: Ty,
-    pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -219,9 +180,14 @@ impl Typed for Hir {
 #[derive(Debug, Clone)]
 pub struct Binding {
     pub id: BindingId,
+    pub module_id: ModuleId,
+    pub qualified_name: QualifiedName,
+    pub vis: Vis,
+    pub scope: BindingScope,
+    pub uses: usize,
     pub kind: BindingKind,
-    pub span: Span,
     pub ty: Ty,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, EnumAsInner)]

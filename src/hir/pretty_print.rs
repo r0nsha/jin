@@ -19,9 +19,9 @@ struct PrettyPrint<'a> {
 
 impl<'a> PrettyPrint<'a> {
     fn print(&mut self) {
-        for binding in self.cache.global_bindings.values() {
-            self.print_binding(binding);
-        }
+        // for binding in self.cache.global_bindings.values() {
+        //     self.print_binding(binding);
+        // }
     }
 
     fn print_hir(&mut self, hir: &Hir) {
@@ -51,12 +51,7 @@ impl<'a> PrettyPrint<'a> {
     }
 
     fn print_binding(&mut self, binding: &Binding) {
-        let name = self
-            .cache
-            .get_binding_info(binding.id)
-            .unwrap()
-            .qualified_name
-            .standard_full_name();
+        let name = binding.qualified_name.standard_full_name();
 
         match &binding.kind {
             BindingKind::Value(_) => todo!(),
