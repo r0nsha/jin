@@ -3,6 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use path_absolutize::Absolutize;
 
 use crate::{
@@ -16,7 +17,7 @@ pub(crate) struct State {
     root_source_id: SourceId,
     build_options: BuildOptions,
     pub(crate) source_cache: SourceCache,
-    pub(crate) diagnostics: Vec<Diagnostic>,
+    diagnostics: Vec<Diagnostic>,
 }
 
 impl State {
@@ -49,6 +50,32 @@ impl State {
 
     pub(crate) fn build_options(&self) -> &BuildOptions {
         &self.build_options
+    }
+
+    pub(crate) fn add_diagnostic(&mut self, diagnostic: Diagnostic) {
+        self.diagnostics.push(diagnostic);
+    }
+
+    pub(crate) fn has_diagnostics(&self) -> bool {
+        !self.diagnostics.is_empty()
+    }
+
+    pub(crate) fn print_diagnostics(&self) -> Result<(), codespan_reporting::files::Error> {
+        let writer = StandardStream::stderr(ColorChoice::Always);
+        let config = codespan_reporting::term::Config::default();
+
+        let mut writer_lock = writer.lock();
+
+        for diagnostic in self.diagnostics.clone() {
+            codespan_reporting::term::emit(
+                &mut writer_lock,
+                &config,
+                &self.source_cache,
+                &diagnostic.into(),
+            )?;
+        }
+
+        Ok(())
     }
 }
 

@@ -13,18 +13,14 @@ mod tokenize;
 mod ty;
 mod util;
 
-use std::{fs, path::PathBuf, process::Command};
+use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use codespan_reporting::term::{
-    self,
-    termcolor::{ColorChoice, StandardStream},
-};
 use diagnostics::Diagnostic;
 use parse_modules::parse_modules;
 use state::BuildOptions;
 
-use crate::{check::check, state::State};
+use crate::state::State;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -47,8 +43,6 @@ enum Commands {
     Build { file: PathBuf },
     Run { file: PathBuf },
 }
-
-pub(crate) type CompilerResult<T> = Result<T, Diagnostic>;
 
 fn main() {
     color_eyre::install().unwrap();
@@ -75,37 +69,34 @@ fn main() {
 
 fn build(build_options: BuildOptions, file: PathBuf) {
     let mut state = State::new(build_options, file).unwrap();
-
-    match build_inner(&mut state) {
-        Ok(output_file) => {
-            // let _ = Command::new(output_file).spawn();
-        }
-        Err(diagnostic) => emit_diagnostics(&state, diagnostic).unwrap(),
-    }
+    build_inner(&mut state);
 }
 
-fn build_inner(state: &mut State) -> CompilerResult<()> {
+fn build_inner(state: &mut State) {
     let print_times = state.build_options().print_times;
 
-    let modules = time! { print_times, "ast generation", parse_modules(&state)? };
+    let modules = time! { print_times, "ast generation", parse_modules(state) };
+
+    if state.has_diagnostics() {
+        state.print_diagnostics().unwrap();
+        return;
+    }
 
     if state.build_options().print_ast {
+        println!("Ast:");
         for module in &modules {
-            println!();
-            println!("Ast:");
             module.pretty_print().unwrap();
-            println!();
         }
     }
 
-    let hir_cache = time! { print_times, "check", check(&state, modules)? };
-
-    if state.build_options().print_hir {
-        println!();
-        hir_cache.pretty_print().unwrap();
-        println!();
-    }
-
+    // let hir_cache = time! { print_times, "check", check(state, modules)? };
+    //
+    // if state.build_options().print_hir {
+    //     println!();
+    //     hir_cache.pretty_print().unwrap();
+    //     println!();
+    // }
+    //
     // let code = time! { print_times, "codegen", codegen(typed_module) };
     //
     // // TODO: don't create this out dir
@@ -127,21 +118,4 @@ fn build_inner(state: &mut State) -> CompilerResult<()> {
     // };
 
     Ok(())
-}
-
-fn emit_diagnostics(
-    state: &State,
-    diagnostic: Diagnostic,
-) -> Result<(), codespan_reporting::files::Error> {
-    let writer = StandardStream::stderr(ColorChoice::Always);
-    let config = codespan_reporting::term::Config::default();
-
-    let mut writer_lock = writer.lock();
-
-    term::emit(
-        &mut writer_lock,
-        &config,
-        &state.source_cache,
-        &diagnostic.into(),
-    )
 }

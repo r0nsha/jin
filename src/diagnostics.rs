@@ -2,7 +2,7 @@ use codespan_reporting::diagnostic as codespan_diagnostic;
 
 use crate::span::{SourceId, Span};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Diagnostic {
     severity: Severity,
     code: String,
@@ -38,12 +38,12 @@ impl Diagnostic {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) enum Severity {
     Error,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct Label {
     style: LabelStyle,
     message: Option<String>,
@@ -73,7 +73,7 @@ impl Label {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum LabelStyle {
     Primary,
     Secondary,

@@ -9,10 +9,9 @@ use crate::{
     diagnostics::{Diagnostic, Label},
     span::{Source, SourceId, Span},
     state::State,
-    CompilerResult,
 };
 
-pub(crate) fn tokenize(state: &State, source: &Source) -> CompilerResult<Vec<Token>> {
+pub(crate) fn tokenize(state: &State, source: &Source) -> Result<Vec<Token>, Diagnostic> {
     let tokens = Lexer::new(source).scan()?;
     Ok(tokens)
 }

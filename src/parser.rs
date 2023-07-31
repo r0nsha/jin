@@ -7,10 +7,13 @@ use crate::{
     span::{Source, SourceId, Span, Spanned},
     state::State,
     tokenize::{Token, TokenKind},
-    CompilerResult,
 };
 
-pub(crate) fn parse(state: &State, source: &Source, tokens: Vec<Token>) -> CompilerResult<Module> {
+pub(crate) fn parse(
+    state: &State,
+    source: &Source,
+    tokens: Vec<Token>,
+) -> Result<Module, Diagnostic> {
     let source_id = source.id();
     let name = QualifiedName::from_path(state.root_dir(), source.path()).unwrap();
     let is_root = source_id == state.root_source_id();
