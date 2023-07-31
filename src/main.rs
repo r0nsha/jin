@@ -10,6 +10,7 @@ mod state;
 mod tokenize;
 mod ty;
 mod util;
+mod parse_modules;
 
 use std::{fs, path::PathBuf, process::Command};
 
@@ -19,6 +20,7 @@ use codespan_reporting::term::{
     termcolor::{ColorChoice, StandardStream},
 };
 use diagnostics::Diagnostic;
+use parse_modules::parse_modules;
 use state::BuildOptions;
 
 use crate::{check::check, state::State};
@@ -84,7 +86,7 @@ fn build(build_options: BuildOptions, file: PathBuf) {
 fn build_inner(state: &mut State) -> CompilerResult<()> {
     let print_times = state.build_options().print_times;
 
-    let modules = time! { print_times, "ast generation", ast::gen(&state)? };
+    let modules = time! { print_times, "ast generation", parse_modules(&state)? };
 
     if state.build_options().print_ast {
         for module in &modules {

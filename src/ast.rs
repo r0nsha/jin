@@ -1,7 +1,4 @@
-mod gen;
 mod pretty_print;
-
-pub use gen::gen;
 
 use std::{io, path::Path};
 
