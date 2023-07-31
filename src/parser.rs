@@ -2,6 +2,7 @@ use ustr::ustr;
 
 use crate::{
     ast::*,
+    common::QualifiedName,
     diagnostics::{Diagnostic, Label},
     span::{Source, SourceId, Span, Spanned},
     state::State,

@@ -5,7 +5,10 @@ use std::{io, path::Path};
 use enum_as_inner::EnumAsInner;
 use ustr::{ustr, Ustr};
 
-use crate::span::{SourceId, Span, Spanned};
+use crate::{
+    common::QualifiedName,
+    span::{SourceId, Span, Spanned},
+};
 
 #[derive(Debug, Clone)]
 pub struct Module {
@@ -27,49 +30,6 @@ impl Module {
 
     pub fn pretty_print(&self) -> io::Result<()> {
         pretty_print::print_module(self)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct QualifiedName(Vec<Ustr>);
-
-impl QualifiedName {
-    pub fn new(full_name: Vec<Ustr>) -> Self {
-        assert!(!full_name.is_empty());
-        Self(full_name)
-    }
-
-    pub fn from_path(root: &Path, target: &Path) -> Option<Self> {
-        let target = target.with_extension("");
-        let stripped = target.strip_prefix(root).ok()?;
-
-        Some(Self(
-            stripped
-                .iter()
-                .map(|component| ustr(component.to_string_lossy().as_ref()))
-                .collect(),
-        ))
-    }
-
-    pub fn name(&self) -> Ustr {
-        *self.0.last().unwrap()
-    }
-
-    pub fn full_name(&self, separator: &str) -> String {
-        self.0
-            .iter()
-            .map(|s| s.as_str())
-            .collect::<Vec<_>>()
-            .join(separator)
-    }
-
-    pub fn standard_full_name(&self) -> String {
-        self.full_name(".")
-    }
-
-    pub fn child(mut self, name: Ustr) -> Self {
-        self.0.push(name);
-        self
     }
 }
 

@@ -6,7 +6,8 @@ use enum_as_inner::EnumAsInner;
 use slotmap::{Key, SecondaryMap, SlotMap};
 
 use crate::{
-    ast::{self, QualifiedName, Vis},
+    ast::{self, Vis},
+    common::QualifiedName,
     span::{SourceId, Span, Spanned},
     ty::{Ty, Typed},
 };

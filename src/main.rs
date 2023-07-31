@@ -1,8 +1,10 @@
 mod ast;
 mod check;
 mod codegen;
+mod common;
 mod diagnostics;
 mod hir;
+mod parse_modules;
 mod parser;
 mod scopes;
 mod span;
@@ -10,7 +12,6 @@ mod state;
 mod tokenize;
 mod ty;
 mod util;
-mod parse_modules;
 
 use std::{fs, path::PathBuf, process::Command};
 
