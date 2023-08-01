@@ -116,6 +116,4 @@ fn build_inner(state: &mut State) {
     //         .spawn()
     //         .unwrap()
     // };
-
-    Ok(())
 }
