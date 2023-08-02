@@ -1,15 +1,12 @@
-mod ast;
 mod check;
 mod codegen;
 mod common;
 mod db;
 mod diagnostics;
 mod hir;
-mod parse_modules;
-mod parser;
+mod parse;
 mod scopes;
 mod span;
-mod tokenize;
 mod ty;
 mod util;
 
@@ -17,7 +14,6 @@ use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use db::{BuildOptions, Database};
-use parse_modules::parse_modules;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -72,7 +68,7 @@ fn build(build_options: BuildOptions, file: PathBuf) {
 fn build_inner(db: &mut Database) {
     let print_times = db.build_options().print_times;
 
-    let modules = time! { print_times, "ast generation", parse_modules(db) };
+    let modules = time! { print_times, "ast generation", parse::parse_modules(db) };
 
     bail_if_failed!(db);
 

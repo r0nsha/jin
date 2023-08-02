@@ -6,9 +6,9 @@ use std::{
 use path_absolutize::Absolutize;
 
 use crate::{
-    ast::{self, Vis},
     common::{new_id_type, IdVec, QualifiedName},
     diagnostics::Diagnostics,
+    parse::ast::{self, Vis},
     span::{Source, SourceId, Sources, Span},
     ty::Type,
 };

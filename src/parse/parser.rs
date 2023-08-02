@@ -1,12 +1,14 @@
 use ustr::ustr;
 
 use crate::{
-    ast::*,
     common::QualifiedName,
     db::Database,
     diagnostics::{Diagnostic, Label},
+    parse::{
+        ast::*,
+        tokenize::{Token, TokenKind},
+    },
     span::{Source, SourceId, Span, Spanned},
-    tokenize::{Token, TokenKind},
 };
 
 pub(crate) fn parse(

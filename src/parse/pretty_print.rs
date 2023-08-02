@@ -1,6 +1,6 @@
 use std::io;
 
-use super::*;
+use super::ast::*;
 
 pub(super) fn print_module(module: &Module) -> io::Result<()> {
     let mut p = PrettyPrint {

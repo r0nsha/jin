@@ -5,10 +5,9 @@ use std::io;
 use enum_as_inner::EnumAsInner;
 
 use crate::{
-    ast,
     db::{ModuleId, TypeId},
+    parse::ast,
     span::{Span, Spanned},
-    ty::Type,
 };
 
 #[derive(Debug, Clone)]

@@ -1,14 +1,14 @@
-mod pretty_print;
-
-use std::{io, path::Path};
+use std::io;
 
 use enum_as_inner::EnumAsInner;
-use ustr::{ustr, Ustr};
+use ustr::Ustr;
 
 use crate::{
     common::QualifiedName,
     span::{SourceId, Span, Spanned},
 };
+
+use super::pretty_print;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Module {
