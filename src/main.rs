@@ -5,10 +5,8 @@ mod db;
 mod diagnostics;
 mod hir;
 mod parse;
-mod scopes;
 mod span;
 mod ty;
-mod util;
 
 use std::path::PathBuf;
 

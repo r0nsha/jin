@@ -1,6 +1,9 @@
-mod id_vec;
-mod qualified_name;
+pub(crate) mod id_vec;
+pub(crate) mod qualified_name;
+pub(crate) mod scopes;
+pub(crate) mod time;
 
-pub(crate) use id_vec::new_id_type;
-pub(crate) use id_vec::{Id, IdVec};
-pub(crate) use qualified_name::QualifiedName;
+pub(crate) use id_vec::*;
+pub(crate) use qualified_name::*;
+pub(crate) use scopes::*;
+pub(crate) use time::*;
