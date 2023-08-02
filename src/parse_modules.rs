@@ -7,7 +7,7 @@ pub(crate) fn parse_modules(state: &mut State) -> Vec<Module> {
 
     match parse_module(state, root_source) {
         Ok(module) => modules.push(module),
-        Err(diag) => state.add_diagnostic(diag),
+        Err(diag) => state.diagnostics.add(diag),
     }
 
     modules

@@ -77,8 +77,8 @@ fn build_inner(state: &mut State) {
 
     let modules = time! { print_times, "ast generation", parse_modules(state) };
 
-    if state.has_diagnostics() {
-        state.print_diagnostics().unwrap();
+    if state.diagnostics.any() {
+        state.diagnostics.print(&state.source_cache).unwrap();
         return;
     }
 

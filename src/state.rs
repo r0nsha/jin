@@ -7,17 +7,17 @@ use codespan_reporting::term::termcolor::{ColorChoice, StandardStream};
 use path_absolutize::Absolutize;
 
 use crate::{
-    diagnostics::Diagnostic,
+    diagnostics::{Diagnostic, Diagnostics},
     span::{Source, SourceCache, SourceId},
 };
 
 #[derive(Debug)]
 pub(crate) struct State {
+    build_options: BuildOptions,
     root_dir: PathBuf,
     root_source_id: SourceId,
-    build_options: BuildOptions,
     pub(crate) source_cache: SourceCache,
-    diagnostics: Vec<Diagnostic>,
+    pub(crate) diagnostics: Diagnostics,
 }
 
 impl State {
@@ -28,11 +28,11 @@ impl State {
         let root_source_id = source_cache.insert_file(absolute_path.to_path_buf())?;
 
         Ok(Self {
+            build_options,
             root_dir: absolute_path.parent().unwrap().to_path_buf(),
             root_source_id,
-            build_options,
             source_cache,
-            diagnostics: vec![],
+            diagnostics: Diagnostics::new(),
         })
     }
 
@@ -51,32 +51,6 @@ impl State {
     pub(crate) fn build_options(&self) -> &BuildOptions {
         &self.build_options
     }
-
-    pub(crate) fn add_diagnostic(&mut self, diagnostic: Diagnostic) {
-        self.diagnostics.push(diagnostic);
-    }
-
-    pub(crate) fn has_diagnostics(&self) -> bool {
-        !self.diagnostics.is_empty()
-    }
-
-    pub(crate) fn print_diagnostics(&self) -> Result<(), codespan_reporting::files::Error> {
-        let writer = StandardStream::stderr(ColorChoice::Always);
-        let config = codespan_reporting::term::Config::default();
-
-        let mut writer_lock = writer.lock();
-
-        for diagnostic in self.diagnostics.clone() {
-            codespan_reporting::term::emit(
-                &mut writer_lock,
-                &config,
-                &self.source_cache,
-                &diagnostic.into(),
-            )?;
-        }
-
-        Ok(())
-    }
 }
 
 #[derive(Debug)]
@@ -85,3 +59,6 @@ pub(crate) struct BuildOptions {
     pub(crate) print_ast: bool,
     pub(crate) print_hir: bool,
 }
+
+#[derive(Debug)]
+pub(crate) struct Database {}

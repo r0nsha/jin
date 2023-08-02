@@ -1,6 +1,10 @@
-use codespan_reporting::diagnostic as codespan_diagnostic;
+use codespan_reporting::{
+    diagnostic as codespan_diagnostic,
+    files::Files,
+    term::termcolor::{ColorChoice, StandardStream},
+};
 
-use crate::span::{SourceId, Span};
+use crate::span::{SourceCache, SourceId, Span};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Diagnostic {
@@ -110,5 +114,47 @@ impl Into<codespan_diagnostic::Severity> for Severity {
         match self {
             Severity::Error => codespan_diagnostic::Severity::Error,
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct Diagnostics {
+    diagnostics: Vec<Diagnostic>,
+}
+
+impl Diagnostics {
+    pub(crate) fn new() -> Self {
+        Self {
+            diagnostics: vec![],
+        }
+    }
+
+    pub(crate) fn add(&mut self, diagnostic: Diagnostic) {
+        self.diagnostics.push(diagnostic);
+    }
+
+    pub(crate) fn any(&self) -> bool {
+        !self.diagnostics.is_empty()
+    }
+
+    pub(crate) fn print(
+        &self,
+        source_cache: &SourceCache,
+    ) -> Result<(), codespan_reporting::files::Error> {
+        let writer = StandardStream::stderr(ColorChoice::Always);
+        let config = codespan_reporting::term::Config::default();
+
+        let mut writer_lock = writer.lock();
+
+        for diagnostic in &self.diagnostics {
+            codespan_reporting::term::emit(
+                &mut writer_lock,
+                &config,
+                source_cache,
+                &diagnostic.clone().into(),
+            )?;
+        }
+
+        Ok(())
     }
 }
