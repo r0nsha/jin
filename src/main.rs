@@ -74,7 +74,7 @@ fn build_inner(db: &mut Database) {
 
     let modules = time! { print_times, "ast generation", parse_modules(db) };
 
-    bail_with_diagnostics!(db);
+    bail_if_failed!(db);
 
     if db.build_options().print_ast {
         println!("Ast:");
@@ -112,7 +112,7 @@ fn build_inner(db: &mut Database) {
     // };
 }
 
-macro_rules! bail_with_diagnostics {
+macro_rules! bail_if_failed {
     ($db: expr) => {
         if $db.diagnostics.any() {
             $db.diagnostics.print(&$db.sources).unwrap();
@@ -121,4 +121,4 @@ macro_rules! bail_with_diagnostics {
     };
 }
 
-use bail_with_diagnostics;
+use bail_if_failed;
