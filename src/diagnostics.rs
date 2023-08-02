@@ -4,7 +4,7 @@ use codespan_reporting::{
     term::termcolor::{ColorChoice, StandardStream},
 };
 
-use crate::span::{SourceCache, SourceId, Span};
+use crate::span::{SourceId, Sources, Span};
 
 #[derive(Debug, Clone)]
 pub(crate) struct Diagnostic {
@@ -137,10 +137,7 @@ impl Diagnostics {
         !self.diagnostics.is_empty()
     }
 
-    pub(crate) fn print(
-        &self,
-        source_cache: &SourceCache,
-    ) -> Result<(), codespan_reporting::files::Error> {
+    pub(crate) fn print(&self, sources: &Sources) -> Result<(), codespan_reporting::files::Error> {
         let writer = StandardStream::stderr(ColorChoice::Always);
         let config = codespan_reporting::term::Config::default();
 
@@ -150,7 +147,7 @@ impl Diagnostics {
             codespan_reporting::term::emit(
                 &mut writer_lock,
                 &config,
-                source_cache,
+                sources,
                 &diagnostic.clone().into(),
             )?;
         }

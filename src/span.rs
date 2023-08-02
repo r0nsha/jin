@@ -67,16 +67,16 @@ pub(crate) trait Spanned {
 }
 
 #[derive(Debug)]
-pub(crate) struct SourceCache(IdVec<SourceId, Source>);
+pub(crate) struct Sources(IdVec<SourceId, Source>);
 
 new_id_type!(SourceId);
 
-impl SourceCache {
+impl Sources {
     pub(crate) fn new() -> Self {
         Self(IdVec::new())
     }
 
-    pub(crate) fn insert_file(&mut self, path: PathBuf) -> io::Result<SourceId> {
+    pub(crate) fn add_file(&mut self, path: PathBuf) -> io::Result<SourceId> {
         let mut source = Source::try_from(path)?;
 
         Ok(self.0.push_with_id(|id| {
@@ -175,7 +175,7 @@ impl<'a> files::Files<'a> for Source {
     }
 }
 
-impl<'a> files::Files<'a> for SourceCache {
+impl<'a> files::Files<'a> for Sources {
     type FileId = SourceId;
 
     type Name = &'a str;

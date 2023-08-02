@@ -12,6 +12,7 @@ mod state;
 mod tokenize;
 mod ty;
 mod util;
+mod database;
 
 use std::path::PathBuf;
 
@@ -78,7 +79,7 @@ fn build_inner(state: &mut State) {
     let modules = time! { print_times, "ast generation", parse_modules(state) };
 
     if state.diagnostics.any() {
-        state.diagnostics.print(&state.source_cache).unwrap();
+        state.diagnostics.print(&state.sources).unwrap();
         return;
     }
 

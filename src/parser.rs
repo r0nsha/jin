@@ -7,6 +7,7 @@ use crate::{
     span::{Source, SourceId, Span, Spanned},
     state::State,
     tokenize::{Token, TokenKind},
+    ty::Ty,
 };
 
 pub(crate) fn parse(
