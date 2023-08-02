@@ -19,7 +19,7 @@ pub(crate) struct Database {
 
     pub(crate) sources: Sources,
     pub(crate) modules: IdVec<ModuleId, Module>,
-    pub(crate) bindings: IdVec<BindingId, Binding>,
+    pub(crate) symbols: IdVec<SymbolId, Symbol>,
     pub(crate) funs: IdVec<FunId, Fun>,
     pub(crate) types: IdVec<TypeId, Type>,
 
@@ -28,7 +28,7 @@ pub(crate) struct Database {
     root_dir: PathBuf,
     main_source: SourceId,
     main_module: ModuleId,
-    main_fun: Option<BindingId>,
+    main_fun: Option<SymbolId>,
 }
 
 impl Database {
@@ -43,7 +43,7 @@ impl Database {
 
             sources,
             modules: IdVec::new(),
-            bindings: IdVec::new(),
+            symbols: IdVec::new(),
             funs: IdVec::new(),
             types: IdVec::new(),
 
@@ -97,15 +97,15 @@ impl ModuleId {
     }
 }
 
-new_id_type!(BindingId);
+new_id_type!(SymbolId);
 
-impl BindingId {
-    pub(crate) fn get(self, db: &Database) -> &Binding {
-        &db.bindings[self]
+impl SymbolId {
+    pub(crate) fn get(self, db: &Database) -> &Symbol {
+        &db.symbols[self]
     }
 
-    pub(crate) fn get_mut(self, db: &mut Database) -> &mut Binding {
-        &mut db.bindings[self]
+    pub(crate) fn get_mut(self, db: &mut Database) -> &mut Symbol {
+        &mut db.symbols[self]
     }
 }
 
@@ -135,56 +135,77 @@ impl TypeId {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Module {
-    id: ModuleId,
-    source_id: SourceId,
-    name: QualifiedName,
-    is_root: bool,
+    pub(crate) id: ModuleId,
+    pub(crate) source: SourceId,
+    pub(crate) name: QualifiedName,
+    pub(crate) is_main: bool,
 }
 
 impl From<&ast::Module> for Module {
     fn from(module: &ast::Module) -> Self {
         Self {
             id: ModuleId::null(),
-            source_id: module.source_id,
+            source: module.source,
             name: module.name.clone(),
-            is_root: module.is_root,
+            is_main: module.is_root,
         }
     }
 }
 
 impl Module {
-    pub(crate) fn id(&self) -> ModuleId {
-        self.id
-    }
-
-    pub(crate) fn source_id(&self) -> SourceId {
-        self.source_id
-    }
-
-    pub(crate) fn name(&self) -> &QualifiedName {
-        &self.name
-    }
-
-    pub(crate) fn is_root(&self) -> bool {
-        self.is_root
+    pub(crate) fn alloc(
+        db: &mut Database,
+        source: SourceId,
+        name: QualifiedName,
+        is_main: bool,
+    ) -> ModuleId {
+        db.modules.push_with_id(|id| Module {
+            id,
+            source,
+            name,
+            is_main,
+        })
     }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Binding {
-    pub(crate) id: BindingId,
+pub(crate) struct Symbol {
+    pub(crate) id: SymbolId,
     pub(crate) module_id: ModuleId,
     pub(crate) qualified_name: QualifiedName,
     pub(crate) vis: Vis,
     pub(crate) scope_level: ScopeLevel,
-    pub(crate) uses: usize,
-    pub(crate) kind: BindingKind,
+    pub(crate) kind: SymbolKind,
     pub(crate) ty: TypeId,
     pub(crate) span: Span,
 }
 
+impl Symbol {
+    pub(crate) fn alloc(
+        db: &mut Database,
+        module_id: ModuleId,
+        qualified_name: QualifiedName,
+        vis: Vis,
+        scope_level: ScopeLevel,
+        kind: SymbolKind,
+        ty: TypeId,
+        span: Span,
+    ) -> SymbolId {
+        db.symbols.push_with_id(|id| Symbol {
+            id,
+            module_id,
+            qualified_name,
+            vis,
+            scope_level,
+            kind,
+            ty,
+            span,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum BindingKind {
+pub(crate) enum SymbolKind {
     Fun(FunId),
 }
 
@@ -208,7 +229,7 @@ impl ScopeLevel {
         use ScopeLevel::*;
 
         match self {
-            Global => panic!("BindingScope::Global has no previous scope"),
+            Global => panic!("SymbolLevel::Global has no previous scope"),
             Scope(n) if n == 1 => Global,
             Scope(n) => Scope(n - 1),
         }
@@ -245,9 +266,16 @@ impl Ord for ScopeLevel {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Fun {
+    pub(crate) id: FunId,
     pub(crate) kind: FunKind,
     pub(crate) span: Span,
     pub(crate) ty: TypeId,
+}
+
+impl Fun {
+    pub(crate) fn alloc(db: &mut Database, kind: FunKind, span: Span, ty: TypeId) -> FunId {
+        db.funs.push_with_id(|id| Fun { id, kind, span, ty })
+    }
 }
 
 #[derive(Debug, Clone)]

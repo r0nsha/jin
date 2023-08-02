@@ -12,7 +12,7 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub(crate) struct Module {
-    pub(crate) source_id: SourceId,
+    pub(crate) source: SourceId,
     pub(crate) name: QualifiedName,
     pub(crate) is_root: bool,
     pub(crate) bindings: Vec<Binding>,
@@ -21,7 +21,7 @@ pub(crate) struct Module {
 impl Module {
     pub(crate) fn new(source_id: SourceId, name: QualifiedName, is_root: bool) -> Self {
         Self {
-            source_id,
+            source: source_id,
             name,
             is_root,
             bindings: vec![],

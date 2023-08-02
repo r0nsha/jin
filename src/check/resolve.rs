@@ -31,7 +31,6 @@ pub(super) fn create_modules_and_global_scope(
     //             qualified_name,
     //             vis: ast::Vis::Public,
     //             scope: hir::BindingScope::Global,
-    //             uses: 0,
     //             ty,
     //             span: binding.span,
     //         });
