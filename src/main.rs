@@ -2,26 +2,22 @@ mod ast;
 mod check;
 mod codegen;
 mod common;
+mod db;
 mod diagnostics;
 mod hir;
 mod parse_modules;
 mod parser;
 mod scopes;
 mod span;
-mod state;
 mod tokenize;
 mod ty;
 mod util;
-mod database;
 
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
-use diagnostics::Diagnostic;
+use db::{BuildOptions, Database};
 use parse_modules::parse_modules;
-use state::BuildOptions;
-
-use crate::state::State;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -69,21 +65,21 @@ fn main() {
 }
 
 fn build(build_options: BuildOptions, file: PathBuf) {
-    let mut state = State::new(build_options, file).unwrap();
-    build_inner(&mut state);
+    let mut db = Database::new(build_options, file).unwrap();
+    build_inner(&mut db);
 }
 
-fn build_inner(state: &mut State) {
-    let print_times = state.build_options().print_times;
+fn build_inner(db: &mut Database) {
+    let print_times = db.build_options().print_times;
 
-    let modules = time! { print_times, "ast generation", parse_modules(state) };
+    let modules = time! { print_times, "ast generation", parse_modules(db) };
 
-    if state.diagnostics.any() {
-        state.diagnostics.print(&state.sources).unwrap();
+    if db.diagnostics.any() {
+        db.diagnostics.print(&db.sources).unwrap();
         return;
     }
 
-    if state.build_options().print_ast {
+    if db.build_options().print_ast {
         println!("Ast:");
         for module in &modules {
             module.pretty_print().unwrap();

@@ -1,27 +1,65 @@
-use std::cmp;
+use std::{
+    cmp, io,
+    path::{Path, PathBuf},
+};
+
+use path_absolutize::Absolutize;
 
 use crate::{
     ast::{self, Vis},
     common::{new_id_type, IdVec, QualifiedName},
-    span::{SourceId, Span},
+    diagnostics::Diagnostics,
+    span::{Source, SourceId, Sources, Span},
     ty::Ty,
 };
 
 #[derive(Debug)]
 pub(crate) struct Database {
+    build_options: BuildOptions,
+
+    pub(crate) sources: Sources,
     pub(crate) modules: IdVec<ModuleId, Module>,
 
+    pub(crate) diagnostics: Diagnostics,
+
+    root_dir: PathBuf,
+    main_source: SourceId,
     main_module: ModuleId,
     main_fun: Option<BindingId>,
 }
 
 impl Database {
-    pub(crate) fn new() -> Self {
-        Self {
+    pub(crate) fn new(build_options: BuildOptions, root_file: PathBuf) -> io::Result<Self> {
+        let absolute_path = root_file.absolutize().unwrap();
+
+        let mut sources = Sources::new();
+        let main_source = sources.add_file(absolute_path.to_path_buf())?;
+
+        Ok(Self {
+            build_options,
+
+            sources,
             modules: IdVec::new(),
+
+            diagnostics: Diagnostics::new(),
+
+            root_dir: absolute_path.parent().unwrap().to_path_buf(),
+            main_source,
             main_module: ModuleId::null(),
             main_fun: None,
-        }
+        })
+    }
+
+    pub(crate) fn build_options(&self) -> &BuildOptions {
+        &self.build_options
+    }
+
+    pub(crate) fn root_dir(&self) -> &Path {
+        &self.root_dir
+    }
+
+    pub(crate) fn main_source(&self) -> &Source {
+        self.sources.get(self.main_source).unwrap()
     }
 
     pub(crate) fn main_module(&self) -> &Module {
@@ -32,6 +70,13 @@ impl Database {
     pub(crate) fn main_fun(&self) {
         todo!()
     }
+}
+
+#[derive(Debug)]
+pub(crate) struct BuildOptions {
+    pub(crate) print_times: bool,
+    pub(crate) print_ast: bool,
+    pub(crate) print_hir: bool,
 }
 
 new_id_type!(ModuleId);

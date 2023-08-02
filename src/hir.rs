@@ -5,8 +5,8 @@ use std::io;
 use enum_as_inner::EnumAsInner;
 
 use crate::{
-    ast::{self, Vis},
-    database::ModuleId,
+    ast,
+    db::ModuleId,
     span::{Span, Spanned},
     ty::{Ty, Typed},
 };

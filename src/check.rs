@@ -11,7 +11,6 @@
 //     ast::*,
 //     hir::{self, Hir},
 //     span::{Span, Spanned},
-//     state::State,
 //     ty::*,
 //     CompilerResult,
 // };

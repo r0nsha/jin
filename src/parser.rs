@@ -3,21 +3,20 @@ use ustr::ustr;
 use crate::{
     ast::*,
     common::QualifiedName,
+    db::Database,
     diagnostics::{Diagnostic, Label},
     span::{Source, SourceId, Span, Spanned},
-    state::State,
     tokenize::{Token, TokenKind},
-    ty::Ty,
 };
 
 pub(crate) fn parse(
-    state: &State,
+    db: &Database,
     source: &Source,
     tokens: Vec<Token>,
 ) -> Result<Module, Diagnostic> {
     let source_id = source.id();
-    let name = QualifiedName::from_path(state.root_dir(), source.path()).unwrap();
-    let is_root = source_id == state.root_source_id();
+    let name = QualifiedName::from_path(db.root_dir(), source.path()).unwrap();
+    let is_root = source_id == db.main_source().id();
 
     let module = Parser::new(tokens).parse(source_id, name, is_root)?;
 
