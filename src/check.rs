@@ -128,7 +128,7 @@
 //                     Hir::Const(hir::Const {
 //                         kind: hir::ConstKind::Int(*value),
 //                         span: lit.span,
-//                         ty: Ty::int(lit.span),
+//                         ty: Type::int(lit.span),
 //                     }),
 //                     Constraints::none(),
 //                 )),
@@ -183,7 +183,7 @@
 //                         ty: fun_ret_ty.clone(),
 //                     },
 //                 },
-//                 ty: Ty::fun(fun_ret_ty, fun.span),
+//                 ty: Type::fun(fun_ret_ty, fun.span),
 //                 span: fun.span,
 //             },
 //             body_constraints,
@@ -194,7 +194,7 @@
 //         &mut self,
 //         env: &mut Env,
 //         ast: &Ast,
-//         expected_ty: Ty,
+//         expected_ty: TypeId,
 //     ) -> CheckResult<(Hir, Constraints)> {
 //         match (ast, &expected_ty.kind) {
 //             (Ast::Fun(fun), TyKind::Fun(fun_ty)) => {
@@ -261,7 +261,7 @@
 // #[derive(Debug, Clone, PartialEq, Eq)]
 // pub(crate) struct TypeScheme {
 //     unbound: HashSet<TyVar>,
-//     ty: Ty,
+//     ty: TypeId,
 // }
 //
 // type CheckResult<T> = Result<T, CheckError>;

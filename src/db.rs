@@ -10,7 +10,7 @@ use crate::{
     common::{new_id_type, IdVec, QualifiedName},
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
-    ty::Ty,
+    ty::Type,
 };
 
 #[derive(Debug)]
@@ -19,6 +19,9 @@ pub(crate) struct Database {
 
     pub(crate) sources: Sources,
     pub(crate) modules: IdVec<ModuleId, Module>,
+    pub(crate) bindings: IdVec<BindingId, Binding>,
+    pub(crate) funs: IdVec<FunId, Fun>,
+    pub(crate) types: IdVec<TypeId, Type>,
 
     pub(crate) diagnostics: Diagnostics,
 
@@ -40,6 +43,9 @@ impl Database {
 
             sources,
             modules: IdVec::new(),
+            bindings: IdVec::new(),
+            funs: IdVec::new(),
+            types: IdVec::new(),
 
             diagnostics: Diagnostics::new(),
 
@@ -81,6 +87,52 @@ pub(crate) struct BuildOptions {
 
 new_id_type!(ModuleId);
 
+impl ModuleId {
+    pub(crate) fn get(self, db: &Database) -> &Module {
+        &db.modules[self]
+    }
+
+    pub(crate) fn get_mut(self, db: &mut Database) -> &mut Module {
+        &mut db.modules[self]
+    }
+}
+
+new_id_type!(BindingId);
+
+impl BindingId {
+    pub(crate) fn get(self, db: &Database) -> &Binding {
+        &db.bindings[self]
+    }
+
+    pub(crate) fn get_mut(self, db: &mut Database) -> &mut Binding {
+        &mut db.bindings[self]
+    }
+}
+
+new_id_type!(FunId);
+
+impl FunId {
+    pub(crate) fn get(self, db: &Database) -> &Fun {
+        &db.funs[self]
+    }
+
+    pub(crate) fn get_mut(self, db: &mut Database) -> &mut Fun {
+        &mut db.funs[self]
+    }
+}
+
+new_id_type!(TypeId);
+
+impl TypeId {
+    pub(crate) fn get(self, db: &Database) -> &Type {
+        &db.types[self]
+    }
+
+    pub(crate) fn get_mut(self, db: &mut Database) -> &mut Type {
+        &mut db.types[self]
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Module {
     id: ModuleId,
@@ -118,8 +170,6 @@ impl Module {
     }
 }
 
-new_id_type!(BindingId);
-
 #[derive(Debug, Clone)]
 pub(crate) struct Binding {
     pub(crate) id: BindingId,
@@ -129,7 +179,7 @@ pub(crate) struct Binding {
     pub(crate) scope_level: ScopeLevel,
     pub(crate) uses: usize,
     pub(crate) kind: BindingKind,
-    pub(crate) ty: Ty, // TODO: store TyId
+    pub(crate) ty: TypeId,
     pub(crate) span: Span,
 }
 
@@ -193,13 +243,11 @@ impl Ord for ScopeLevel {
     }
 }
 
-new_id_type!(FunId);
-
 #[derive(Debug, Clone)]
 pub(crate) struct Fun {
     pub(crate) kind: FunKind,
     pub(crate) span: Span,
-    pub(crate) ty: Ty, // TODO: use TyId
+    pub(crate) ty: TypeId,
 }
 
 #[derive(Debug, Clone)]

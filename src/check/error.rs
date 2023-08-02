@@ -8,11 +8,11 @@ use crate::{
 
 pub(super) enum CheckError {
     TyNotEq {
-        expected: Ty,
-        actual: Ty,
+        expected: TypeId,
+        actual: TypeId,
     },
     InfiniteTy {
-        ty: Ty,
+        ty: TypeId,
         var: TyVar,
     },
     MisplacedReturn {

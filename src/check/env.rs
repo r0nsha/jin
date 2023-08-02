@@ -49,5 +49,5 @@ impl FunScopes {
 
 #[derive(Debug, Clone)]
 pub(crate) struct FunScope {
-    pub(crate) ret_ty: Ty,
+    pub(crate) ret_ty: TypeId,
 }

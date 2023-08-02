@@ -6,9 +6,9 @@ use enum_as_inner::EnumAsInner;
 
 use crate::{
     ast,
-    db::ModuleId,
+    db::{ModuleId, TypeId},
     span::{Span, Spanned},
-    ty::{Ty, Typed},
+    ty::Type,
 };
 
 #[derive(Debug, Clone)]
@@ -43,31 +43,25 @@ impl Spanned for Hir {
     }
 }
 
-impl Typed for Hir {
-    fn ty(&self) -> &crate::ty::Ty {
-        todo!()
-    }
-}
-
 #[derive(Debug, Clone)]
 pub(crate) struct Block {
     pub(crate) statements: Vec<Hir>,
     pub(crate) span: Span,
-    pub(crate) ty: Ty,
+    pub(crate) ty: TypeId,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct Ret {
     pub(crate) value: Option<Box<Hir>>,
     pub(crate) span: Span,
-    pub(crate) ty: Ty,
+    pub(crate) ty: TypeId,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct Const {
     pub(crate) kind: ConstKind,
     pub(crate) span: Span,
-    pub(crate) ty: Ty,
+    pub(crate) ty: TypeId,
 }
 
 #[derive(Debug, Clone)]
