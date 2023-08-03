@@ -1,6 +1,5 @@
 use codespan_reporting::{
     diagnostic as codespan_diagnostic,
-    files::Files,
     term::termcolor::{ColorChoice, StandardStream},
 };
 

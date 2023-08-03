@@ -35,6 +35,7 @@ impl<'a> Lower<'a> {
     fn lower_binding(&mut self, binding: ast::Binding) -> Binding {
         Binding {
             id: SymbolId::null(),
+            name: binding.name(),
             kind: self.lower_binding_kind(binding.kind),
             span: binding.span,
             ty: TypeId::null(),
@@ -50,7 +51,6 @@ impl<'a> Lower<'a> {
     fn lower_fun(&mut self, fun: ast::Fun) -> Fun {
         Fun {
             id: FunId::null(),
-            name: fun.name,
             body: Block {
                 statements: vec![self.lower_ast(*fun.body)],
                 span: fun.span,

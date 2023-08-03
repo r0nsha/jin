@@ -54,8 +54,11 @@ impl<'a> PrettyPrint<'a> {
     fn print_binding(&mut self, binding: &Binding) {
         match &binding.kind {
             BindingKind::Fun(fun) => {
-                self.builder
-                    .begin_child(format!("fn {} {}", fun.name, self.print_ty(binding.ty)));
+                self.builder.begin_child(format!(
+                    "fn {} {}",
+                    binding.name,
+                    self.print_ty(binding.ty)
+                ));
 
                 self.print_block(&fun.body);
             }

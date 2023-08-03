@@ -33,12 +33,6 @@ impl Module {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Vis {
-    Private,
-    Public,
-}
-
 #[derive(Debug, Clone, EnumAsInner)]
 pub(crate) enum Ast {
     Ret(Ret),

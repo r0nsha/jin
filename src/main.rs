@@ -5,6 +5,7 @@ mod db;
 mod diagnostics;
 mod hir;
 mod parse;
+mod resolve;
 mod span;
 mod ty;
 
@@ -77,7 +78,7 @@ fn build_inner(db: &mut Database) {
 
     bail_if_failed!(db);
 
-    let hir_modules = time! { print_times, "ast -> hir", hir::lower(db, ast_modules) };
+    let mut hir_modules = time! { print_times, "ast -> hir", hir::lower(db, ast_modules) };
 
     if db.build_options().print_hir {
         println!("Hir:");
@@ -85,6 +86,10 @@ fn build_inner(db: &mut Database) {
             module.pretty_print(db).unwrap();
         }
     }
+
+    time! { print_times, "resolve", resolve::resolve(db, &mut hir_modules) };
+
+    bail_if_failed!(db);
 
     // let hir_cache = time! { print_times, "check", check(state, modules)? };
     //

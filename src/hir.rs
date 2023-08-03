@@ -38,6 +38,7 @@ impl Spanned for Hir {
 #[derive(Debug, Clone)]
 pub(crate) struct Binding {
     pub(crate) id: SymbolId,
+    pub(crate) name: Ustr,
     pub(crate) kind: BindingKind,
     pub(crate) span: Span,
     pub(crate) ty: TypeId,
@@ -51,7 +52,6 @@ pub(crate) enum BindingKind {
 #[derive(Debug, Clone)]
 pub(crate) struct Fun {
     pub(crate) id: FunId,
-    pub(crate) name: Ustr,
     pub(crate) body: Block,
     pub(crate) span: Span,
     pub(crate) ty: TypeId,

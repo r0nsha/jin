@@ -8,7 +8,6 @@ use path_absolutize::Absolutize;
 use crate::{
     common::{new_id_type, IdVec, QualifiedName},
     diagnostics::Diagnostics,
-    parse::ast::{self, Vis},
     span::{Source, SourceId, Sources, Span},
     ty::Type,
 };
@@ -196,6 +195,12 @@ impl Symbol {
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum SymbolKind {
     Fun(FunId),
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Vis {
+    Private,
+    Public,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
