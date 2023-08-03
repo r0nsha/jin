@@ -72,7 +72,7 @@ impl fmt::Display for Type {
                 f.write_str("fn() ")?;
                 fun.ret.fmt(f)
             }
-            TypeKind::Var(var) => write!(f, "@{}", var.0),
+            TypeKind::Var(var) => write!(f, "${}", var.0),
             TypeKind::Int(int) => match int {
                 IntType::Int => f.write_str("int"),
             },
