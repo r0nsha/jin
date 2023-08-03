@@ -11,7 +11,7 @@ use crate::{
     db::{Database, TypeId},
     diagnostics::Diagnostic,
     hir::*,
-    ty::{FunType, IntType, Type, TypeKind},
+    ty::*,
 };
 
 use self::{
@@ -23,7 +23,6 @@ use self::{
 pub(crate) fn infer(db: &mut Database, modules: &mut [Module]) -> Result<(), Diagnostic> {
     let mut cx = InferCx::new(db);
 
-    // TODO: generate constraints
     let constraints = cx.infer_all(modules);
 
     dbg!(constraints);
