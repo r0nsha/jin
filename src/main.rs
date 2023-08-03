@@ -66,26 +66,28 @@ fn build(build_options: BuildOptions, file: PathBuf) {
 fn build_inner(db: &mut Database) {
     let print_times = db.build_options().print_times;
 
-    let modules = time! { print_times, "ast generation", parse::parse_modules(db) };
+    let ast_modules = time! { print_times, "ast generation", parse::parse_modules(db) };
 
     if db.build_options().print_ast {
         println!("Ast:");
-        for module in &modules {
+        for module in &ast_modules {
             module.pretty_print().unwrap();
         }
     }
 
     bail_if_failed!(db);
 
-    let hir = hir::lower(db, modules);
+    let hir_modules = time! { print_times, "ast -> hir", hir::lower(db, ast_modules) };
+
+    if db.build_options().print_hir {
+        println!("Hir:");
+        for module in &hir_modules {
+            module.pretty_print(db).unwrap();
+        }
+    }
 
     // let hir_cache = time! { print_times, "check", check(state, modules)? };
     //
-    // if state.build_options().print_hir {
-    //     println!();
-    //     hir_cache.pretty_print().unwrap();
-    //     println!();
-    // }
     //
     // let code = time! { print_times, "codegen", codegen(typed_module) };
     //

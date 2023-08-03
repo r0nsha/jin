@@ -3,7 +3,7 @@ use std::fmt;
 use ena::unify::{EqUnifyValue, UnifyKey};
 use enum_as_inner::EnumAsInner;
 
-use crate::{db::TypeId, span::Span};
+use crate::span::Span;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Type {

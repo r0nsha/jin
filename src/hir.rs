@@ -7,7 +7,7 @@ use ustr::Ustr;
 use std::io;
 
 use crate::{
-    db::{FunId, ModuleId, SymbolId, TypeId},
+    db::{Database, FunId, ModuleId, SymbolId, TypeId},
     span::{Span, Spanned},
 };
 
@@ -17,17 +17,16 @@ pub(crate) struct Module {
     pub(crate) bindings: Vec<Binding>,
 }
 
+impl Module {
+    pub(crate) fn pretty_print(&self, db: &Database) -> io::Result<()> {
+        pretty_print::print_module(db, self)
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) enum Hir {
     Ret(Ret),
     Const(Const),
-}
-
-impl Hir {
-    pub(crate) fn pretty_print(&self) -> io::Result<()> {
-        todo!()
-        // pretty_print::print_hir(self)
-    }
 }
 
 impl Spanned for Hir {
