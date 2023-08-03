@@ -63,8 +63,18 @@ impl<'a> Lower<'a> {
 
     fn lower_ast(&mut self, ast: Ast) -> Hir {
         match ast {
-            Ast::Ret(ret) => todo!(),
-            Ast::Lit(lit) => todo!(),
+            Ast::Ret(ret) => Hir::Ret(Ret {
+                value: ret.value.map(|v| Box::new(self.lower_ast(*v))),
+                span: ret.span,
+                ty: TypeId::null(),
+            }),
+            Ast::Lit(lit) => Hir::Const(Const {
+                kind: match lit.kind {
+                    ast::LitKind::Int(v) => ConstKind::Int(v),
+                },
+                span: lit.span,
+                ty: TypeId::null(),
+            }),
         }
     }
 }

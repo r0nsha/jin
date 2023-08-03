@@ -78,10 +78,12 @@ macro_rules! new_id_type {
         impl crate::common::Id for $name {}
 
         impl $name {
+            #[inline]
             pub fn null() -> Self {
                 Self(usize::MAX)
             }
 
+            #[inline]
             pub fn is_null(&self) -> bool {
                 self.0 == usize::MAX
             }
