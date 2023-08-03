@@ -68,14 +68,16 @@ fn build_inner(db: &mut Database) {
 
     let modules = time! { print_times, "ast generation", parse::parse_modules(db) };
 
-    bail_if_failed!(db);
-
     if db.build_options().print_ast {
         println!("Ast:");
         for module in &modules {
             module.pretty_print().unwrap();
         }
     }
+
+    bail_if_failed!(db);
+
+    let hir = hir::lower(db, modules);
 
     // let hir_cache = time! { print_times, "check", check(state, modules)? };
     //

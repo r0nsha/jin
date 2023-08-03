@@ -22,8 +22,6 @@ struct PrettyPrint {
 impl PrettyPrint {
     fn print_ast(&mut self, ast: &Ast) {
         match ast {
-            Ast::Binding(fun) => self.print_binding(fun),
-            Ast::Fun(fun) => self.print_fun(fun),
             Ast::Ret(ret) => {
                 self.builder.begin_child("return".to_string());
 
@@ -43,19 +41,13 @@ impl PrettyPrint {
 
     fn print_binding(&mut self, binding: &Binding) {
         match &binding.kind {
-            BindingKind::Fun { name, fun } => {
-                self.builder.begin_child(format!("fn {}", name));
-                self.print_fun_body(fun);
-            }
+            BindingKind::Fun(fun) => self.print_fun(fun),
         }
     }
 
     fn print_fun(&mut self, fun: &Fun) {
-        self.builder.begin_child("fn".to_string());
-        self.print_fun_body(fun);
-    }
+        self.builder.begin_child(format!("fn {}", fun.name));
 
-    fn print_fun_body(&mut self, fun: &Fun) {
         self.builder.begin_child("body".to_string());
 
         self.print_ast(&fun.body);

@@ -1,29 +1,23 @@
+mod lower;
 mod pretty_print;
+
+pub(crate) use lower::lower;
+use ustr::Ustr;
 
 use std::io;
 
-use enum_as_inner::EnumAsInner;
-
 use crate::{
-    db::{ModuleId, TypeId},
-    parse::ast,
+    db::{FunId, ModuleId, SymbolId, TypeId},
     span::{Span, Spanned},
 };
 
 #[derive(Debug, Clone)]
 pub(crate) struct Module {
     pub(crate) id: ModuleId,
+    pub(crate) bindings: Vec<Binding>,
 }
 
-impl From<&ast::Module> for Module {
-    fn from(module: &ast::Module) -> Self {
-        Self {
-            id: ModuleId::null(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, EnumAsInner)]
+#[derive(Debug, Clone)]
 pub(crate) enum Hir {
     Ret(Ret),
     Const(Const),
@@ -40,6 +34,28 @@ impl Spanned for Hir {
     fn span(&self) -> Span {
         todo!()
     }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Binding {
+    pub(crate) id: SymbolId,
+    pub(crate) kind: BindingKind,
+    pub(crate) span: Span,
+    pub(crate) ty: TypeId,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum BindingKind {
+    Fun(Fun),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Fun {
+    pub(crate) id: FunId,
+    pub(crate) name: Ustr,
+    pub(crate) body: Block,
+    pub(crate) span: Span,
+    pub(crate) ty: TypeId,
 }
 
 #[derive(Debug, Clone)]

@@ -1,0 +1,70 @@
+use crate::{
+    db::{self, Database},
+    parse::ast::{self, Ast},
+};
+
+use super::*;
+
+pub(crate) fn lower(db: &mut Database, modules: Vec<ast::Module>) -> Vec<Module> {
+    modules
+        .into_iter()
+        .map(|module| {
+            let id = db::Module::alloc(db, module.source, module.name.clone(), module.is_main);
+            Lower { db, id }.run(module)
+        })
+        .collect()
+}
+
+struct Lower<'a> {
+    db: &'a mut Database,
+    id: ModuleId,
+}
+
+impl<'a> Lower<'a> {
+    fn run(&mut self, module: ast::Module) -> Module {
+        Module {
+            id: self.id,
+            bindings: module
+                .bindings
+                .into_iter()
+                .map(|binding| self.lower_binding(binding))
+                .collect(),
+        }
+    }
+
+    fn lower_binding(&mut self, binding: ast::Binding) -> Binding {
+        Binding {
+            id: SymbolId::null(),
+            kind: self.lower_binding_kind(binding.kind),
+            span: binding.span,
+            ty: TypeId::null(),
+        }
+    }
+
+    fn lower_binding_kind(&mut self, kind: ast::BindingKind) -> BindingKind {
+        match kind {
+            ast::BindingKind::Fun(fun) => BindingKind::Fun(self.lower_fun(fun)),
+        }
+    }
+
+    fn lower_fun(&mut self, fun: ast::Fun) -> Fun {
+        Fun {
+            id: FunId::null(),
+            name: fun.name,
+            body: Block {
+                statements: vec![self.lower_ast(*fun.body)],
+                span: fun.span,
+                ty: TypeId::null(),
+            },
+            span: fun.span,
+            ty: TypeId::null(),
+        }
+    }
+
+    fn lower_ast(&mut self, ast: Ast) -> Hir {
+        match ast {
+            Ast::Ret(ret) => todo!(),
+            Ast::Lit(lit) => todo!(),
+        }
+    }
+}

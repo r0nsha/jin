@@ -141,17 +141,6 @@ pub(crate) struct Module {
     pub(crate) is_main: bool,
 }
 
-impl From<&ast::Module> for Module {
-    fn from(module: &ast::Module) -> Self {
-        Self {
-            id: ModuleId::null(),
-            source: module.source,
-            name: module.name.clone(),
-            is_main: module.is_root,
-        }
-    }
-}
-
 impl Module {
     pub(crate) fn alloc(
         db: &mut Database,

@@ -14,16 +14,16 @@ use super::pretty_print;
 pub(crate) struct Module {
     pub(crate) source: SourceId,
     pub(crate) name: QualifiedName,
-    pub(crate) is_root: bool,
+    pub(crate) is_main: bool,
     pub(crate) bindings: Vec<Binding>,
 }
 
 impl Module {
-    pub(crate) fn new(source_id: SourceId, name: QualifiedName, is_root: bool) -> Self {
+    pub(crate) fn new(source_id: SourceId, name: QualifiedName, is_main: bool) -> Self {
         Self {
             source: source_id,
             name,
-            is_root,
+            is_main,
             bindings: vec![],
         }
     }
@@ -41,8 +41,6 @@ pub(crate) enum Vis {
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub(crate) enum Ast {
-    Binding(Binding),
-    Fun(Fun),
     Ret(Ret),
     Lit(Lit),
 }
@@ -50,8 +48,6 @@ pub(crate) enum Ast {
 impl Spanned for Ast {
     fn span(&self) -> Span {
         match self {
-            Self::Binding(binding) => binding.span,
-            Self::Fun(fun) => fun.span,
             Self::Ret(ret) => ret.span,
             Self::Lit(lit) => lit.span,
         }
@@ -68,18 +64,19 @@ impl Binding {
     // TODO: remove when we get patterns
     pub(crate) fn name(&self) -> Ustr {
         match &self.kind {
-            BindingKind::Fun { name, .. } => *name,
+            BindingKind::Fun(Fun { name, .. }) => *name,
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub(crate) enum BindingKind {
-    Fun { name: Ustr, fun: Box<Fun> },
+    Fun(Fun),
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct Fun {
+    pub(crate) name: Ustr,
     pub(crate) body: Box<Ast>,
     pub(crate) span: Span,
 }

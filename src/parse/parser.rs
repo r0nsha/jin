@@ -18,9 +18,9 @@ pub(crate) fn parse(
 ) -> Result<Module, Diagnostic> {
     let source_id = source.id();
     let name = QualifiedName::from_path(db.root_dir(), source.path()).unwrap();
-    let is_root = source_id == db.main_source().id();
+    let is_main = source_id == db.main_source().id();
 
-    let module = Parser::new(tokens).parse(source_id, name, is_root)?;
+    let module = Parser::new(tokens).parse(source_id, name, is_main)?;
 
     Ok(module)
 }
@@ -42,9 +42,9 @@ impl Parser {
         mut self,
         source_id: SourceId,
         name: QualifiedName,
-        is_root: bool,
+        is_main: bool,
     ) -> ParseResult<Module> {
-        let mut module = Module::new(source_id, name, is_root);
+        let mut module = Module::new(source_id, name, is_main);
 
         while self.pos < self.tokens.len() - 1 {
             let binding = self.parse_binding()?;
@@ -70,13 +70,11 @@ impl Parser {
             let span = name_span;
 
             Ok(Binding {
-                kind: BindingKind::Fun {
+                kind: BindingKind::Fun(Fun {
                     name,
-                    fun: Box::new(Fun {
-                        body: Box::new(body),
-                        span,
-                    }),
-                },
+                    body: Box::new(body),
+                    span,
+                }),
                 span,
             })
         } else {
