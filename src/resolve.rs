@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use ustr::{Ustr, UstrMap};
 
 use crate::{
@@ -24,7 +26,7 @@ pub(super) fn resolve(db: &mut Database, modules: &mut [Module]) {
 struct Resolve<'a> {
     db: &'a mut Database,
     errors: Vec<ResolveError>,
-    global_symbols: UstrMap<SymbolId>,
+    global_scope: GlobalScope,
 }
 
 impl<'a> Resolve<'a> {
@@ -32,13 +34,14 @@ impl<'a> Resolve<'a> {
         Self {
             db,
             errors: vec![],
-            global_symbols: UstrMap::default(),
+            global_scope: GlobalScope::new(),
         }
     }
 
     fn create_modules_and_global_scope(&mut self, modules: &mut [Module]) {
         for module in modules {
-            let mut defined_names = UstrMap::<Span>::default();
+            let mut scope_symbols = UstrMap::<SymbolId>::default();
+            let mut defined_symbols = UstrMap::<Span>::default();
 
             for binding in &mut module.bindings {
                 let kind = match &binding.kind {
@@ -50,45 +53,48 @@ impl<'a> Resolve<'a> {
                     )),
                 };
 
-                if let Some(prev_span) = defined_names.insert(binding.name, binding.span) {
+                if let Some(&prev_span) = defined_symbols.get(&binding.name) {
                     self.errors.push(ResolveError::DuplicateSymbol {
                         name: binding.name,
                         prev_span,
                         dup_span: binding.span,
                     });
                 } else {
-                    let qualified_name =
-                        module.id.get(&mut self.db).name.clone().child(binding.name);
-
-                    binding.id = Symbol::alloc(
-                        &mut self.db,
-                        module.id,
-                        qualified_name,
-                        Vis::Public,
-                        ScopeLevel::Global,
-                        kind,
-                        TypeId::null(),
-                        binding.span,
-                    );
-
-                    self.global_symbols.insert(binding.name, binding.id);
+                    defined_symbols.insert(binding.name, binding.span);
                 }
+
+                let qualified_name = module.id.get(&mut self.db).name.clone().child(binding.name);
+
+                binding.id = Symbol::alloc(
+                    &mut self.db,
+                    module.id,
+                    qualified_name,
+                    Vis::Public,
+                    ScopeLevel::Global,
+                    kind,
+                    TypeId::null(),
+                    binding.span,
+                );
+
+                scope_symbols.insert(binding.name, binding.id);
             }
+
+            self.global_scope.0.insert(module.id, scope_symbols);
         }
     }
 }
 
 #[derive(Debug)]
-pub(crate) struct GlobalScope(IdVec<ModuleId, UstrMap<SymbolId>>);
+pub(crate) struct GlobalScope(HashMap<ModuleId, UstrMap<SymbolId>>);
 
 impl GlobalScope {
     pub(crate) fn new() -> Self {
-        Self(IdVec::new())
+        Self(HashMap::new())
     }
 
     pub(crate) fn find_binding(&self, module_id: ModuleId, name: Ustr) -> Option<SymbolId> {
         self.0
-            .get(module_id)
+            .get(&module_id)
             .and_then(|bindings| bindings.get(&name))
             .copied()
     }
