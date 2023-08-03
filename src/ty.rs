@@ -12,6 +12,41 @@ pub(crate) struct Type {
 }
 
 impl Type {
+    pub(crate) fn var(var: TypeVar, span: Span) -> Self {
+        Self {
+            kind: TypeKind::Var(var),
+            span,
+        }
+    }
+
+    pub(crate) fn int(span: Span) -> Self {
+        Self {
+            kind: TypeKind::Int(IntType::Int),
+            span,
+        }
+    }
+
+    pub(crate) fn fun(ret: Type, span: Span) -> Self {
+        Self {
+            kind: TypeKind::Fun(FunType { ret: Box::new(ret) }),
+            span,
+        }
+    }
+
+    pub(crate) fn never(span: Span) -> Self {
+        Self {
+            kind: TypeKind::Never,
+            span,
+        }
+    }
+
+    pub(crate) fn unit(span: Span) -> Self {
+        Self {
+            kind: TypeKind::Unit,
+            span,
+        }
+    }
+
     pub(crate) fn occurs_check(&self, var: TypeVar) -> Result<(), Self> {
         match &self.kind {
             TypeKind::Fun(fun) => {
