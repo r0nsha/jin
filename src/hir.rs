@@ -29,6 +29,15 @@ pub(crate) enum Hir {
     Const(Const),
 }
 
+impl Hir {
+    pub(crate) fn ty(&self) -> TypeId {
+        match self {
+            Hir::Ret(x) => x.ty,
+            Hir::Const(x) => x.ty,
+        }
+    }
+}
+
 impl Spanned for Hir {
     fn span(&self) -> Span {
         todo!()

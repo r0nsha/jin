@@ -25,6 +25,8 @@ pub(crate) fn infer(db: &mut Database, modules: &mut [Module]) -> Result<(), Dia
 
     // TODO: generate constraints
     let constraints = cx.infer(modules);
+
+    dbg!(constraints);
     // TODO: unification
     // TODO: substitution
 
@@ -58,7 +60,7 @@ pub(super) struct InferCx<'a> {
 }
 
 impl<'a> InferCx<'a> {
-    fn new(db: &mut Database) -> Self {
+    fn new(db: &'a mut Database) -> Self {
         Self {
             db,
             typecx: TypeCx::new(),
@@ -89,21 +91,31 @@ impl<'a> InferCx<'a> {
         constraints
     }
 
+    fn infer_binding(&mut self, env: &mut TypeEnv, binding: &mut Binding) -> Constraints {
+        match &mut binding.kind {
+            BindingKind::Fun(fun) => self.infer_fun(env, fun),
+        }
+    }
+
     fn infer_hir(
         &mut self,
         env: &mut TypeEnv,
-        hir: &Hir,
+        hir: &mut Hir,
         expected_ty: Option<TypeId>,
     ) -> Constraints {
         match hir {
             Hir::Ret(ret) => {
-                let ty = Type::never(ret.span);
+                ret.ty = Type::alloc(&mut self.db, TypeKind::Never, ret.span);
 
                 if let Some(fun_scope) = env.fun_scopes.current() {
                     let expected_ty = fun_scope.ret_ty.clone();
 
-                    if let Some(value) = ret.value.as_ref() {
-                        self.infer_hir(env, value, Some(expected_ty))
+                    if let Some(value) = ret.value.as_mut() {
+                        let constraints = self.infer_hir(env, value, Some(expected_ty));
+                        Constraints::one(Constraint::TypeEq {
+                            expected: expected_ty,
+                            actual: value.ty(),
+                        })
                     } else {
                         Constraints::one(Constraint::TypeEq {
                             expected: expected_ty,
@@ -115,66 +127,42 @@ impl<'a> InferCx<'a> {
                     todo!()
                 }
             }
-            Hir::Lit(lit) => match &lit.kind {
-                LitKind::Int(value) => Ok((
-                    Hir::Const(hir::Const {
-                        kind: hir::ConstKind::Int(*value),
-                        span: lit.span,
-                        ty: Type::int(lit.span),
-                    }),
-                    Constraints::none(),
-                )),
+            Hir::Const(r#const) => match &r#const.kind {
+                ConstKind::Int(_) | ConstKind::Unit => Constraints::none(),
             },
         }
     }
 
-    fn infer_binding(&mut self, env: &mut TypeEnv, binding: &Binding) -> Constraints {
-        // let (kind, constraints) = match &binding.kind {
-        //     BindingKind::Fun { name: _, fun } => {
-        //         let (fun, constraints) = self.infer_fun(env, fun)?;
-        //         (hir::BindingKind::Fun(Box::new(fun)), constraints)
-        //     }
-        // };
+    fn infer_fun(&mut self, env: &mut TypeEnv, fun: &mut Fun) -> Constraints {
+        let ret_ty = self.typecx.fresh_type_var(&mut self.db, fun.span);
 
-        // TODO: patterns
-        // let span = binding.span;
-        // let ty = Type::unit(binding.span);
-
-        todo!();
-        // Ok((
-        //     Hir::Binding(hir::Binding { id, kind, span, ty }),
-        //     constraints,
-        // ))
-    }
-
-    fn infer_fun(&mut self, env: &mut TypeEnv, fun: &Fun) -> CheckResult<(hir::Fun, Constraints)> {
-        // let arg_ty_var = self.fresh_type_var();
-
-        let fun_ret_ty = self.typecx.fresh_type_var(fun.span);
-
-        env.fun_scopes.push(FunScope {
-            ret_ty: fun_ret_ty.clone(),
-        });
-
-        let (body, body_constraints) = self.infer_hir(env, &fun.body)?;
-
+        env.fun_scopes.push(FunScope { id: fun.id, ret_ty });
+        let body_constraints = self.infer_block(env, &mut fun.body, Some(ret_ty));
         env.fun_scopes.pop();
 
-        let span = body.span();
+        body_constraints
+    }
 
-        Ok((
-            hir::Fun {
-                kind: hir::FunKind::Orphan {
-                    body: hir::Block {
-                        statements: vec![body],
-                        span,
-                        ty: fun_ret_ty.clone(),
-                    },
-                },
-                ty: Type::fun(fun_ret_ty, fun.span),
-                span: fun.span,
-            },
-            body_constraints,
-        ))
+    fn infer_block(
+        &mut self,
+        env: &mut TypeEnv,
+        block: &mut Block,
+        expected_ty: Option<TypeId>,
+    ) -> Constraints {
+        let mut constraints = Constraints::none();
+
+        let last_index = block.statements.len() - 1;
+
+        for (i, stmt) in block.statements.iter_mut().enumerate() {
+            let expected_ty = if i == last_index { expected_ty } else { None };
+            constraints.extend(self.infer_hir(env, stmt, expected_ty));
+        }
+
+        block.ty = block.statements.last().map_or_else(
+            || Type::alloc(&mut self.db, TypeKind::Unit, block.span),
+            |stmt| stmt.ty(),
+        );
+
+        constraints
     }
 }
