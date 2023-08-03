@@ -44,13 +44,11 @@ impl<'a> Resolve<'a> {
             let mut defined_symbols = UstrMap::<Span>::default();
 
             for binding in &mut module.bindings {
-                let kind = match &binding.kind {
-                    BindingKind::Fun(fun) => SymbolKind::Fun(db::Fun::alloc(
-                        &mut self.db,
-                        FunKind::Orphan,
-                        fun.span,
-                        fun.ty,
-                    )),
+                let kind = match &mut binding.kind {
+                    BindingKind::Fun(fun) => {
+                        fun.id = db::Fun::alloc(&mut self.db, FunKind::Orphan, fun.span, fun.ty);
+                        SymbolKind::Fun(fun.id)
+                    }
                 };
 
                 if let Some(&prev_span) = defined_symbols.get(&binding.name) {

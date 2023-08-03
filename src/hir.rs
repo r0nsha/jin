@@ -58,6 +58,14 @@ pub(crate) enum BindingKind {
     Fun(Fun),
 }
 
+impl BindingKind {
+    pub(crate) fn ty(&self) -> TypeId {
+        match self {
+            BindingKind::Fun(f) => f.ty,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Fun {
     pub(crate) id: FunId,

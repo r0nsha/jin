@@ -57,7 +57,7 @@ impl<'a> PrettyPrint<'a> {
                 self.builder.begin_child(format!(
                     "fn {} {}",
                     binding.name,
-                    self.print_ty(binding.ty)
+                    self.print_ty(binding.id.get(&self.db).ty)
                 ));
 
                 self.print_block(&fun.body);
