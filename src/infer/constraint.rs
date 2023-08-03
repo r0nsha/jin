@@ -1,4 +1,4 @@
-use crate::ty::Type;
+use crate::db::TypeId;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Constraints(Vec<Constraint>);
@@ -27,5 +27,5 @@ impl Constraints {
 
 #[derive(Debug, Clone)]
 pub(crate) enum Constraint {
-    TypeEq { expected: Type, actual: Type },
+    TypeEq { expected: TypeId, actual: TypeId },
 }

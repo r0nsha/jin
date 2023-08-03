@@ -9,7 +9,7 @@ use crate::{
     common::{new_id_type, IdVec, QualifiedName},
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
-    ty::Type,
+    ty::{Type, TypeKind},
 };
 
 #[derive(Debug)]
@@ -121,6 +121,12 @@ impl FunId {
 }
 
 new_id_type!(TypeId);
+
+impl Type {
+    pub(crate) fn alloc(db: &mut Database, kind: TypeKind, span: Span) -> TypeId {
+        db.types.push(Type { kind, span })
+    }
+}
 
 impl TypeId {
     pub(crate) fn get(self, db: &Database) -> &Type {
