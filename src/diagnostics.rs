@@ -128,8 +128,12 @@ impl Diagnostics {
         }
     }
 
-    pub(crate) fn add(&mut self, diagnostic: Diagnostic) {
-        self.diagnostics.push(diagnostic);
+    pub(crate) fn add(&mut self, item: impl Into<Diagnostic>) {
+        self.diagnostics.push(item.into());
+    }
+
+    pub(crate) fn extend<T: Into<Diagnostic>>(&mut self, items: impl IntoIterator<Item = T>) {
+        self.diagnostics.extend(items.into_iter().map(|x| x.into()));
     }
 
     pub(crate) fn any(&self) -> bool {
