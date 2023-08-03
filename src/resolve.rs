@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ustr::{Ustr, UstrMap};
 
 use crate::{
-    common::{IdVec, Scopes},
+    common::Scopes,
     db::{
         self, Database, FunKind, ModuleId, ScopeLevel, Symbol, SymbolId, SymbolKind, TypeId, Vis,
     },

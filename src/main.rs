@@ -1,9 +1,9 @@
-mod check;
 mod codegen;
 mod common;
 mod db;
 mod diagnostics;
 mod hir;
+mod infer;
 mod parse;
 mod resolve;
 mod span;
@@ -12,6 +12,7 @@ mod ty;
 use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
+
 use db::{BuildOptions, Database};
 
 #[derive(Parser)]
@@ -91,9 +92,12 @@ fn build_inner(db: &mut Database) {
 
     bail_if_failed!(db);
 
-    // let hir_cache = time! { print_times, "check", check(state, modules)? };
-    //
-    //
+    if let Err(diagnostic) = time! { print_times, "infer", infer::infer(db, &mut hir_modules) } {
+        db.diagnostics.add(diagnostic);
+        db.diagnostics.print(&db.sources).unwrap();
+        return;
+    }
+
     // let code = time! { print_times, "codegen", codegen(typed_module) };
     //
     // // TODO: don't create this out dir
