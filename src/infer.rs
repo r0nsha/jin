@@ -112,10 +112,10 @@ impl<'a> InferCx<'a> {
 
                     if let Some(value) = ret.value.as_mut() {
                         let constraints = self.infer_hir(env, value, Some(expected_ty));
-                        Constraints::one(Constraint::TypeEq {
+                        constraints.merge(Constraints::one(Constraint::TypeEq {
                             expected: expected_ty,
                             actual: value.ty(),
-                        })
+                        }))
                     } else {
                         Constraints::one(Constraint::TypeEq {
                             expected: expected_ty,
