@@ -122,7 +122,7 @@ impl Infer<'_> for Binding {
         env: &mut TypeEnv,
         _expected_ty: Option<TypeId>,
     ) -> Constraints {
-        self.ty = Type::alloc(&mut cx.db, TypeKind::Unit, self.span);
+        self.ty = Type::alloc(&mut cx.db, Type::unit(self.span));
 
         let constraints = match &mut self.kind {
             BindingKind::Fun(fun) => fun.infer(cx, env, None),
@@ -142,12 +142,11 @@ impl Infer<'_> for Fun {
         _expected_ty: Option<TypeId>,
     ) -> Constraints {
         let ret_ty = cx.typecx.fresh_type_var(&mut cx.db, self.span);
+        let fun_ty = Type::fun(ret_ty.clone(), self.span);
 
-        let fun_ty = TypeKind::Fun(FunType {
-            ret: Box::new(ret_ty.get(&cx.db).clone()),
-        });
+        let ret_ty = Type::alloc(&mut cx.db, ret_ty);
 
-        let ty = Type::alloc(&mut cx.db, fun_ty, self.span);
+        let ty = Type::alloc(&mut cx.db, fun_ty);
 
         self.ty = ty;
         self.id.get_mut(&mut cx.db).ty = ty;
@@ -182,7 +181,7 @@ impl Infer<'_> for Block {
         }
 
         self.ty = self.statements.last().map_or_else(
-            || Type::alloc(&mut cx.db, TypeKind::Unit, self.span),
+            || Type::alloc(&mut cx.db, Type::unit(self.span)),
             |stmt| stmt.ty(),
         );
 
@@ -197,7 +196,7 @@ impl Infer<'_> for Ret {
         env: &mut TypeEnv,
         _expected_ty: Option<TypeId>,
     ) -> Constraints {
-        self.ty = Type::alloc(&mut cx.db, TypeKind::Never, self.span);
+        self.ty = Type::alloc(&mut cx.db, Type::never(self.span));
 
         if let Some(fun_scope) = env.fun_scopes.current() {
             let ret_ty = fun_scope.ret_ty;
@@ -211,7 +210,7 @@ impl Infer<'_> for Ret {
             } else {
                 Constraints::one(Constraint::TypeEq {
                     expected: ret_ty,
-                    actual: Type::alloc(&mut cx.db, TypeKind::Unit, self.span),
+                    actual: Type::alloc(&mut cx.db, Type::unit(self.span)),
                 })
             }
         } else {
@@ -232,11 +231,11 @@ impl Infer<'_> for Const {
             ConstKind::Int(_) => (
                 Constraints::none(),
                 // TODO: use a polymorphic int
-                Type::alloc(&mut cx.db, TypeKind::Int(IntType::Int), self.span),
+                Type::alloc(&mut cx.db, Type::int(self.span)),
             ),
             ConstKind::Unit => (
                 Constraints::none(),
-                Type::alloc(&mut cx.db, TypeKind::Unit, self.span),
+                Type::alloc(&mut cx.db, Type::unit(self.span)),
             ),
         };
 

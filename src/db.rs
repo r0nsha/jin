@@ -123,8 +123,8 @@ impl FunId {
 new_id_type!(TypeId);
 
 impl Type {
-    pub(crate) fn alloc(db: &mut Database, kind: TypeKind, span: Span) -> TypeId {
-        db.types.push(Type { kind, span })
+    pub(crate) fn alloc(db: &mut Database, ty: Type) -> TypeId {
+        db.types.push(ty)
     }
 }
 

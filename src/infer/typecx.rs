@@ -1,10 +1,6 @@
 use ena::unify::InPlaceUnificationTable;
 
-use crate::{
-    db::{Database, TypeId},
-    span::Span,
-    ty::*,
-};
+use crate::{db::Database, span::Span, ty::*};
 
 pub(crate) struct TypeCx {
     unification_table: InPlaceUnificationTable<TypeVar>,
@@ -17,11 +13,7 @@ impl TypeCx {
         }
     }
 
-    pub(crate) fn fresh_type_var(&mut self, db: &mut Database, span: Span) -> TypeId {
-        Type::alloc(
-            db,
-            TypeKind::Var(self.unification_table.new_key(None)),
-            span,
-        )
+    pub(crate) fn fresh_type_var(&mut self, db: &mut Database, span: Span) -> Type {
+        Type::var(self.unification_table.new_key(None), span)
     }
 }
