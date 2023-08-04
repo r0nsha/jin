@@ -61,7 +61,6 @@ impl Parser {
             let name = name_ident.as_ident();
 
             self.expect(TokenKind::OpenParen)?;
-            // TODO: args
             self.expect(TokenKind::CloseParen)?;
             self.expect(TokenKind::Eq)?;
 
@@ -78,13 +77,17 @@ impl Parser {
                 span,
             })
         } else {
-            // TODO: diagnostic
-            todo!()
+            let token = self.try_token()?;
+
+            Err(ParseError::UnexpectedToken {
+                expected: "fn".to_string(),
+                actual: token.kind,
+                span: token.span,
+            })
         }
     }
 
     fn parse_fun_body(&mut self) -> ParseResult<Ast> {
-        // TODO: don't require curlies (need to impl block expressions)
         self.expect(TokenKind::OpenCurly)?;
         let body = self.parse_expr();
         self.expect(TokenKind::CloseCurly)?;
@@ -102,13 +105,17 @@ impl Parser {
                 span: self.last_span(),
             }))
         } else {
-            // TODO: diagnostic
-            todo!()
+            let token = self.try_token()?;
+
+            Err(ParseError::UnexpectedToken {
+                expected: "an expression".to_string(),
+                actual: token.kind,
+                span: token.span,
+            })
         }
     }
 
     fn parse_ret(&mut self) -> ParseResult<Ast> {
-        // TODO: naked return
         let start = self.last_span();
         let value = self.parse_expr()?;
         let span = start.merge(value.span());
@@ -131,27 +138,22 @@ impl Parser {
         }
     }
 
-    // TODO: is_any
-
     fn expect_ident(&mut self) -> ParseResult<Token> {
         self.expect(TokenKind::Ident(ustr("")))
     }
 
     fn expect(&mut self, expected: TokenKind) -> ParseResult<Token> {
-        match self.token() {
-            Some(tok) if tok.kind_eq(expected) => {
-                self.advance();
-                Ok(tok)
-            }
-            Some(tok) => Err(ParseError::ExpectedToken {
-                expected,
+        let tok = self.try_token()?;
+
+        if tok.kind_eq(expected) {
+            self.advance();
+            Ok(tok)
+        } else {
+            Err(ParseError::UnexpectedToken {
+                expected: expected.to_string(),
                 actual: tok.kind,
                 span: tok.span,
-            }),
-            None => Err(ParseError::UnexpectedEof {
-                expected,
-                span: self.last_span(),
-            }),
+            })
         }
     }
 
@@ -159,8 +161,14 @@ impl Parser {
         self.token().map(|t| t.kind)
     }
 
+    fn try_token(&self) -> ParseResult<Token> {
+        self.token().ok_or_else(|| ParseError::UnexpectedEof {
+            span: self.last_span(),
+        })
+    }
+
     fn token(&self) -> Option<Token> {
-        self.tokens.get(self.pos).cloned()
+        self.tokens.get(self.pos).copied()
     }
 
     fn last_span(&self) -> Span {
@@ -177,13 +185,12 @@ type ParseResult<T> = Result<T, ParseError>;
 
 #[derive(Debug)]
 enum ParseError {
-    ExpectedToken {
-        expected: TokenKind,
+    UnexpectedToken {
+        expected: String,
         actual: TokenKind,
         span: Span,
     },
     UnexpectedEof {
-        expected: TokenKind,
         span: Span,
     },
 }
@@ -191,18 +198,16 @@ enum ParseError {
 impl From<ParseError> for Diagnostic {
     fn from(err: ParseError) -> Self {
         match err {
-            ParseError::ExpectedToken {
+            ParseError::UnexpectedToken {
                 expected,
                 actual,
                 span,
             } => Diagnostic::error("parse::unexpected_token")
                 .with_message(format!("expected `{expected}`, got `{actual}` instead"))
                 .with_label(Label::primary(span).with_message(format!("found `{actual}` here"))),
-            ParseError::UnexpectedEof { expected, span } => {
-                Diagnostic::error("parse::unexpected_eof")
-                    .with_message(format!("expected `{expected}`, got end of file instead"))
-                    .with_label(Label::primary(span).with_message(format!("expected here")))
-            }
+            ParseError::UnexpectedEof { span } => Diagnostic::error("parse::unexpected_eof")
+                .with_message(format!("unexpected end of file"))
+                .with_label(Label::primary(span).with_message(format!("here"))),
         }
     }
 }
