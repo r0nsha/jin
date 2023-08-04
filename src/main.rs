@@ -3,9 +3,8 @@ mod common;
 mod db;
 mod diagnostics;
 mod hir;
-mod infer;
 mod parse;
-mod resolve;
+mod passes;
 mod span;
 mod ty;
 
@@ -81,11 +80,11 @@ fn build_inner(db: &mut Database) {
 
     let mut hir_modules = time! { print_times, "ast -> hir", hir::lower(db, ast_modules) };
 
-    time! { print_times, "resolve", resolve::resolve(db, &mut hir_modules) };
+    time! { print_times, "resolve", passes::resolve(db, &mut hir_modules) };
 
     bail_if_failed!(db);
 
-    if let Err(diagnostic) = time! { print_times, "infer", infer::infer(db, &mut hir_modules) } {
+    if let Err(diagnostic) = time! { print_times, "infer", passes::infer(db, &mut hir_modules) } {
         db.diagnostics.add(diagnostic);
         db.diagnostics.print(&db.sources).unwrap();
         return;

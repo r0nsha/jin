@@ -9,7 +9,7 @@ use crate::{
     span::Span,
 };
 
-pub(super) fn resolve(db: &mut Database, modules: &mut [Module]) {
+pub(crate) fn resolve(db: &mut Database, modules: &mut [Module]) {
     let mut cx = ResolveCx::new(db);
 
     cx.create_modules_and_global_scope(modules);
