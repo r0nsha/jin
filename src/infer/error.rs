@@ -18,10 +18,11 @@ impl From<InferError> for Diagnostic {
                     .with_message(format!("expected `{expected}`, got `{actual}` instead"))
                     .with_label(
                         Label::primary(expected.span)
-                            .with_message("expected type `{expected}` originates here"),
+                            .with_message(format!("expected type `{expected}` originates here")),
                     )
                     .with_label(
-                        Label::secondary(actual.span).with_message("found type `{actual}` here"),
+                        Label::secondary(actual.span)
+                            .with_message(format!("found type `{actual}` here")),
                     )
             }
             InferError::InfiniteType { ty, .. } => Diagnostic::error("infer::infinite_type")

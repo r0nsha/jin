@@ -1,16 +1,12 @@
 use crate::ty::{IntType, Type, TypeKind};
 
-use super::{
-    constraint::{Constraint, Constraints},
-    error::InferError,
-    InferCx,
-};
+use super::{constraint::Constraint, error::InferError, InferCx};
 
 impl<'a> InferCx<'a> {
-    pub(crate) fn unification(&mut self, constraints: &Constraints) -> Result<(), InferError> {
-        for constraint in constraints.iter() {
+    pub(crate) fn unification(&mut self) -> Result<(), InferError> {
+        for constraint in self.constraints.clone().iter() {
             match constraint {
-                Constraint::TypeEq { expected, actual } => self.unify_ty_ty(
+                Constraint::Eq { expected, actual } => self.unify_ty_ty(
                     &expected.get(&self.db).clone(),
                     &actual.get(&self.db).clone(),
                 )?,
@@ -56,7 +52,9 @@ impl<'a> InferCx<'a> {
                     .map_err(|(expected, actual)| InferError::TypesNotEq { expected, actual })
             }
 
-            (TypeKind::Int(IntType::Int), TypeKind::Int(IntType::Int)) => Ok(()),
+            (TypeKind::Never, _)
+            | (_, TypeKind::Never)
+            | (TypeKind::Int(IntType::Int), TypeKind::Int(IntType::Int)) => Ok(()),
 
             (_, _) => Err(InferError::TypesNotEq { expected, actual }),
         }

@@ -69,15 +69,15 @@ impl<'a> PrettyPrint<'a> {
         self.builder
             .begin_child(format!("fn {} {}", fun.name, self.print_ty(fun.ty)));
 
-        self.print_block(&fun.body);
+        self.print_hir(&fun.body);
     }
 
     fn print_block(&mut self, block: &Block) {
         self.builder
             .begin_child(format!("block {}", self.print_ty(block.ty)));
 
-        for stmt in &block.exprs {
-            self.print_hir(stmt);
+        for expr in &block.exprs {
+            self.print_hir(expr);
         }
 
         self.builder.end_child();

@@ -5,12 +5,7 @@ mod type_env;
 mod typecx;
 mod unify;
 
-use crate::{
-    db::{Database, TypeId},
-    diagnostics::Diagnostic,
-    hir::*,
-    ty::*,
-};
+use crate::{db::Database, diagnostics::Diagnostic, hir::*, ty::*};
 
 use self::{
     constraint::{Constraint, Constraints},
@@ -21,10 +16,9 @@ use self::{
 pub(crate) fn infer(db: &mut Database, modules: &mut [Module]) -> Result<(), Diagnostic> {
     let mut cx = InferCx::new(db);
 
-    let constraints = cx.infer_all(modules);
-
-    cx.unification(&constraints)?;
-    cx.substitution(modules, &constraints);
+    cx.infer_all(modules);
+    cx.unification()?;
+    cx.substitution(modules);
 
     Ok(())
 }
@@ -32,6 +26,7 @@ pub(crate) fn infer(db: &mut Database, modules: &mut [Module]) -> Result<(), Dia
 pub(super) struct InferCx<'a> {
     pub(super) db: &'a mut Database,
     pub(super) typecx: TypeCx,
+    pub(super) constraints: Constraints,
 }
 
 impl<'a> InferCx<'a> {
@@ -39,83 +34,52 @@ impl<'a> InferCx<'a> {
         Self {
             db,
             typecx: TypeCx::new(),
+            constraints: Constraints::new(),
         }
     }
 }
 
 impl<'a> InferCx<'a> {
-    fn infer_all(&mut self, modules: &mut [Module]) -> Constraints {
-        let mut constraints = Constraints::none();
-
+    fn infer_all(&mut self, modules: &mut [Module]) {
         for module in modules {
-            constraints.extend(self.infer_module(module));
+            self.infer_module(module);
         }
-
-        constraints
     }
 
-    fn infer_module(&mut self, module: &mut Module) -> Constraints {
-        let mut constraints = Constraints::none();
-
+    fn infer_module(&mut self, module: &mut Module) {
         let mut env = TypeEnv::new(module.id);
 
         for binding in &mut module.bindings {
-            constraints.extend(binding.infer(self, &mut env, None));
+            binding.infer(self, &mut env);
         }
-
-        constraints
     }
 }
 
 trait Infer<'a> {
-    fn infer(
-        &mut self,
-        cx: &mut InferCx<'a>,
-        env: &mut TypeEnv,
-        expected_ty: Option<TypeId>,
-    ) -> Constraints;
+    fn infer(&mut self, cx: &mut InferCx<'a>, env: &mut TypeEnv);
 }
 
 impl Infer<'_> for Hir {
-    fn infer(
-        &mut self,
-        cx: &mut InferCx<'_>,
-        env: &mut TypeEnv,
-        expected_ty: Option<TypeId>,
-    ) -> Constraints {
+    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         match self {
-            Hir::Fun(x) => x.infer(cx, env, expected_ty),
-            Hir::Block(x) => x.infer(cx, env, expected_ty),
-            Hir::Ret(x) => x.infer(cx, env, expected_ty),
-            Hir::Lit(x) => x.infer(cx, env, expected_ty),
+            Hir::Fun(x) => x.infer(cx, env),
+            Hir::Block(x) => x.infer(cx, env),
+            Hir::Ret(x) => x.infer(cx, env),
+            Hir::Lit(x) => x.infer(cx, env),
         }
     }
 }
 
 impl Infer<'_> for Binding {
-    fn infer(
-        &mut self,
-        cx: &mut InferCx<'_>,
-        env: &mut TypeEnv,
-        _expected_ty: Option<TypeId>,
-    ) -> Constraints {
+    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         self.ty = Type::alloc(&mut cx.db, Type::unit(self.span));
-
-        let constraints = self.expr.infer(cx, env, None);
-
+        self.expr.infer(cx, env);
         self.id.get_mut(&mut cx.db).ty = self.expr.ty();
-
-        constraints
     }
 }
 
 impl Infer<'_> for Fun {
-    fn infer(
-        &mut self,
-        cx: &mut InferCx<'_>,
-        env: &mut TypeEnv,
-        _expected_ty: Option<TypeId>,
-    ) -> Constraints {
+    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         let ret_ty = cx.typecx.fresh_type_var(self.span);
         let fun_ty = Type::fun(ret_ty.clone(), self.span);
 
@@ -131,62 +95,49 @@ impl Infer<'_> for Fun {
             ret_ty,
         });
 
-        let body_constraints = self.body.infer(cx, env, Some(ret_ty));
+        self.body.infer(cx, env);
+        cx.constraints.push(Constraint::Eq {
+            expected: ret_ty,
+            actual: self.body.ty(),
+        });
 
         env.fun_scopes.pop();
-
-        body_constraints
     }
 }
 
 impl Infer<'_> for Block {
-    fn infer(
-        &mut self,
-        cx: &mut InferCx<'_>,
-        env: &mut TypeEnv,
-        expected_ty: Option<TypeId>,
-    ) -> Constraints {
-        let mut constraints = Constraints::none();
+    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
+        let mut constraints = Constraints::new();
 
-        let last_index = self.exprs.len() - 1;
-
-        for (i, stmt) in self.exprs.iter_mut().enumerate() {
-            let expected_ty = if i == last_index { expected_ty } else { None };
-            constraints.extend(stmt.infer(cx, env, expected_ty));
+        for expr in &mut self.exprs {
+            expr.infer(cx, env);
         }
 
         self.ty = self.exprs.last().map_or_else(
             || Type::alloc(&mut cx.db, Type::unit(self.span)),
-            |stmt| stmt.ty(),
+            |expr| expr.ty(),
         );
-
-        constraints
     }
 }
 
 impl Infer<'_> for Ret {
-    fn infer(
-        &mut self,
-        cx: &mut InferCx<'_>,
-        env: &mut TypeEnv,
-        _expected_ty: Option<TypeId>,
-    ) -> Constraints {
+    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         self.ty = Type::alloc(&mut cx.db, Type::never(self.span));
 
         if let Some(fun_scope) = env.fun_scopes.current() {
             let ret_ty = fun_scope.ret_ty;
 
             if let Some(value) = self.expr.as_mut() {
-                let constraints = value.infer(cx, env, Some(ret_ty));
-                constraints.merge(Constraints::one(Constraint::TypeEq {
+                value.infer(cx, env);
+                cx.constraints.push(Constraint::Eq {
                     expected: ret_ty,
                     actual: value.ty(),
-                }))
+                });
             } else {
-                Constraints::one(Constraint::TypeEq {
+                cx.constraints.push(Constraint::Eq {
                     expected: ret_ty,
                     actual: Type::alloc(&mut cx.db, Type::unit(self.span)),
-                })
+                });
             }
         } else {
             // Err(CheckError::MisplacedReturn { span: ret.span });
@@ -196,26 +147,13 @@ impl Infer<'_> for Ret {
 }
 
 impl Infer<'_> for Lit {
-    fn infer(
-        &mut self,
-        cx: &mut InferCx<'_>,
-        _env: &mut TypeEnv,
-        _expected_ty: Option<TypeId>,
-    ) -> Constraints {
-        let (constraints, ty) = match &self.kind {
-            LitKind::Int(_) => (
-                Constraints::none(),
+    fn infer(&mut self, cx: &mut InferCx<'_>, _env: &mut TypeEnv) {
+        self.ty = match &self.kind {
+            LitKind::Int(_) => {
                 // TODO: use a polymorphic int
-                Type::alloc(&mut cx.db, Type::int(self.span)),
-            ),
-            LitKind::Unit => (
-                Constraints::none(),
-                Type::alloc(&mut cx.db, Type::unit(self.span)),
-            ),
+                Type::alloc(&mut cx.db, Type::int(self.span))
+            }
+            LitKind::Unit => Type::alloc(&mut cx.db, Type::unit(self.span)),
         };
-
-        self.ty = ty;
-
-        constraints
     }
 }

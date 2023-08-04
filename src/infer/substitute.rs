@@ -6,15 +6,11 @@ use crate::{
     ty::{Type, TypeKind, TypeVar},
 };
 
-use super::{constraint::Constraints, InferCx};
+use super::InferCx;
 
 // Substitute
 impl<'a> InferCx<'a> {
-    pub(crate) fn substitution(
-        &mut self,
-        modules: &mut [Module],
-        constraints: &Constraints,
-    ) -> HashSet<TypeVar> {
+    pub(crate) fn substitution(&mut self, modules: &mut [Module]) -> HashSet<TypeVar> {
         let mut unbound_vars = HashSet::new();
 
         for module in modules {

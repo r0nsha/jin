@@ -4,7 +4,7 @@ use crate::db::TypeId;
 pub(crate) struct Constraints(Vec<Constraint>);
 
 impl Constraints {
-    pub(crate) fn none() -> Self {
+    pub(crate) fn new() -> Self {
         Self(vec![])
     }
 
@@ -31,5 +31,5 @@ impl Constraints {
 
 #[derive(Debug, Clone)]
 pub(crate) enum Constraint {
-    TypeEq { expected: TypeId, actual: TypeId },
+    Eq { expected: TypeId, actual: TypeId },
 }

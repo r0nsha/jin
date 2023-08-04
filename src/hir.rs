@@ -61,7 +61,7 @@ pub(crate) struct Binding {
 pub(crate) struct Fun {
     pub(crate) id: FunId,
     pub(crate) name: Ustr,
-    pub(crate) body: Block,
+    pub(crate) body: Box<Hir>,
     pub(crate) span: Span,
     pub(crate) ty: TypeId,
 }

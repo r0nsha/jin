@@ -50,11 +50,7 @@ impl<'a> Lower<'a> {
         Fun {
             id: FunId::null(),
             name: fun.name,
-            body: Block {
-                exprs: vec![self.lower_ast(*fun.body)],
-                span: fun.span,
-                ty: TypeId::null(),
-            },
+            body: Box::new(self.lower_ast(*fun.body)),
             span: fun.span,
             ty: TypeId::null(),
         }
