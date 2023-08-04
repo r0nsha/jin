@@ -54,15 +54,6 @@ pub(crate) struct Binding {
     pub(crate) span: Span,
 }
 
-impl Binding {
-    // TODO: remove when we get patterns
-    pub(crate) fn name(&self) -> Ustr {
-        match &self.kind {
-            BindingKind::Fun(Fun { name, .. }) => *name,
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub(crate) enum BindingKind {
     Fun(Fun),

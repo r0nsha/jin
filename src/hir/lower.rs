@@ -33,18 +33,14 @@ impl<'a> Lower<'a> {
     }
 
     fn lower_binding(&mut self, binding: ast::Binding) -> Binding {
-        Binding {
-            id: SymbolId::null(),
-            name: binding.name(),
-            kind: self.lower_binding_kind(binding.kind),
-            span: binding.span,
-            ty: TypeId::null(),
-        }
-    }
-
-    fn lower_binding_kind(&mut self, kind: ast::BindingKind) -> BindingKind {
-        match kind {
-            ast::BindingKind::Fun(fun) => BindingKind::Fun(self.lower_fun(fun)),
+        match binding.kind {
+            ast::BindingKind::Fun(fun) => Binding {
+                id: SymbolId::null(),
+                name: fun.name,
+                kind: BindingKind::Fun(self.lower_fun(fun)),
+                span: binding.span,
+                ty: TypeId::null(),
+            },
         }
     }
 
