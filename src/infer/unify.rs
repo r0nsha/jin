@@ -1,65 +1,77 @@
-// impl CheckContext {
-//     fn unification(&mut self, constraints: Constraints) -> CheckResult<()> {
-//         for constraint in constraints.0 {
-//             match constraint {
-//                 Constraint::TyEq { expected, actual } => self.unify_ty_ty(expected, actual)?,
-//             }
-//         }
-//         Ok(())
-//     }
-//
-//     fn unify_ty_ty(&mut self, expected: Ty, actual: Ty) -> CheckResult<()> {
-//         let expected = self.normalize_ty(expected);
-//         let actual = self.normalize_ty(actual);
-//
-//         match (&expected.kind, &actual.kind) {
-//             (TyKind::Fun(expected), TyKind::Fun(actual)) => {
-//                 // self.unify_ty_ty(*f1.arg, f2.arg)?;
-//                 self.unify_ty_ty(expected.ret.as_ref().clone(), actual.ret.as_ref().clone())
-//             }
-//
-//             (TyKind::Var(expected), TyKind::Var(actual)) => self
-//                 .unification_table
-//                 .unify_var_var(*expected, *actual)
-//                 .map_err(|(expected, actual)| CheckError::TyNotEq { expected, actual }),
-//
-//             (TyKind::Var(var), _) => {
-//                 actual
-//                     .occurs_check(*var)
-//                     .map_err(|ty| CheckError::InfiniteTy { var: *var, ty })?;
-//
-//                 self.unification_table
-//                     .unify_var_value(*var, Some(actual))
-//                     .map_err(|(expected, actual)| CheckError::TyNotEq { expected, actual })
-//             }
-//
-//             (_, TyKind::Var(var)) => {
-//                 expected
-//                     .occurs_check(*var)
-//                     .map_err(|ty| CheckError::InfiniteTy { var: *var, ty })?;
-//
-//                 self.unification_table
-//                     .unify_var_value(*var, Some(expected))
-//                     .map_err(|(expected, actual)| CheckError::TyNotEq { expected, actual })
-//             }
-//
-//             (TyKind::Int(IntTy::Int), TyKind::Int(IntTy::Int)) => Ok(()),
-//
-//             (_, _) => Err(CheckError::TyNotEq { expected, actual }),
-//         }
-//     }
-//
-//     fn normalize_ty(&mut self, ty: Ty) -> Ty {
-//         match ty.kind {
-//             TyKind::Fun(fun) => {
-//                 let ret = self.normalize_ty(*fun.ret);
-//                 Ty::fun(ret, ty.span)
-//             }
-//             TyKind::Var(var) => match self.unification_table.probe_value(var) {
-//                 Some(ty) => self.normalize_ty(ty),
-//                 None => ty,
-//             },
-//             TyKind::Int(_) | TyKind::Unit | TyKind::Never => ty,
-//         }
-//     }
-// }
+use crate::ty::{IntType, Type, TypeKind};
+
+use super::{
+    constraint::{Constraint, Constraints},
+    error::InferError,
+    InferCx,
+};
+
+impl<'a> InferCx<'a> {
+    pub(crate) fn unification(&mut self, constraints: &Constraints) -> Result<(), InferError> {
+        for constraint in constraints.iter() {
+            match constraint {
+                Constraint::TypeEq { expected, actual } => {
+                    self.unify_ty_ty(expected.get(&self.db), actual.get(&self.db))?
+                }
+            }
+        }
+        Ok(())
+    }
+
+    fn unify_ty_ty(&mut self, expected: &Type, actual: &Type) -> Result<(), InferError> {
+        let expected = self.normalize_ty(expected.clone());
+        let actual = self.normalize_ty(actual.clone());
+
+        match (&expected.kind, &actual.kind) {
+            (TypeKind::Fun(expected), TypeKind::Fun(actual)) => {
+                self.unify_ty_ty(&expected.ret, &actual.ret)
+            }
+
+            (TypeKind::Var(expected), TypeKind::Var(actual)) => self
+                .typecx
+                .unification_table
+                .unify_var_var(*expected, *actual)
+                .map_err(|(expected, actual)| InferError::TypesNotEq { expected, actual }),
+
+            (TypeKind::Var(var), _) => {
+                actual
+                    .occurs_check(*var)
+                    .map_err(|ty| InferError::InfiniteType { var: *var, ty })?;
+
+                self.typecx
+                    .unification_table
+                    .unify_var_value(*var, Some(actual))
+                    .map_err(|(expected, actual)| InferError::TypesNotEq { expected, actual })
+            }
+
+            (_, TypeKind::Var(var)) => {
+                expected
+                    .occurs_check(*var)
+                    .map_err(|ty| InferError::InfiniteType { var: *var, ty })?;
+
+                self.typecx
+                    .unification_table
+                    .unify_var_value(*var, Some(expected))
+                    .map_err(|(expected, actual)| InferError::TypesNotEq { expected, actual })
+            }
+
+            (TypeKind::Int(IntType::Int), TypeKind::Int(IntType::Int)) => Ok(()),
+
+            (_, _) => Err(InferError::TypesNotEq { expected, actual }),
+        }
+    }
+
+    fn normalize_ty(&mut self, ty: Type) -> Type {
+        match ty.kind {
+            TypeKind::Fun(fun) => {
+                let ret = self.normalize_ty(*fun.ret);
+                Type::fun(ret, ty.span)
+            }
+            TypeKind::Var(var) => match self.typecx.unification_table.probe_value(var) {
+                Some(ty) => self.normalize_ty(ty),
+                None => ty,
+            },
+            TypeKind::Int(_) | TypeKind::Unit | TypeKind::Never => ty,
+        }
+    }
+}

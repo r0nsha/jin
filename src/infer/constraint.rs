@@ -23,6 +23,10 @@ impl Constraints {
     pub(crate) fn merge(self, other: Self) -> Self {
         Self(self.0.into_iter().chain(other.0).collect())
     }
+
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &Constraint> {
+        self.0.iter()
+    }
 }
 
 #[derive(Debug, Clone)]

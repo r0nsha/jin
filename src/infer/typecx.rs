@@ -3,7 +3,7 @@ use ena::unify::InPlaceUnificationTable;
 use crate::{db::Database, span::Span, ty::*};
 
 pub(crate) struct TypeCx {
-    unification_table: InPlaceUnificationTable<TypeVar>,
+    pub(crate) unification_table: InPlaceUnificationTable<TypeVar>,
 }
 
 impl TypeCx {

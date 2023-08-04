@@ -5,8 +5,6 @@ mod type_env;
 mod typecx;
 mod unify;
 
-use std::collections::HashSet;
-
 use crate::{
     db::{Database, TypeId},
     diagnostics::Diagnostic,
@@ -23,32 +21,10 @@ use self::{
 pub(crate) fn infer(db: &mut Database, modules: &mut [Module]) -> Result<(), Diagnostic> {
     let mut cx = InferCx::new(db);
 
-    let constraints = cx.infer_all(modules);
+    let mut constraints = cx.infer_all(modules);
 
-    dbg!(constraints);
-    // TODO: unification
-    // TODO: substitution
-
-    // let mut constraints = Constraints::none();
-    // let mut unbound = HashSet::new();
-    //
-    // for mut module in modules {
-    //     for binding in &module.bindings {
-    //         let constr = cx.infer_binding(binding)?;
-    //         constraints.extend(constr);
-    //     }
-    //
-    //     // Unification
-    //     cx.unification(constraints)?;
-    //
-    //     for binding in &mut module.bindings {
-    //         let (unbound_ty, _binding_ty) = cx.substitute(binding.get_actual_ty().unwrap().clone());
-    //         unbound.extend(unbound_ty);
-    //
-    //         let unbound_binding = cx.substitute_binding(binding);
-    //         unbound.extend(unbound_binding);
-    //     }
-    // }
+    cx.unification(&constraints)?;
+    cx.substitution(modules, &constraints);
 
     Ok(())
 }
