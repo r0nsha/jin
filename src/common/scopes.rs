@@ -1,6 +1,5 @@
 use std::{collections::HashMap, hash::Hash};
 
-// PERF: use UstrMap
 #[derive(Debug, Clone)]
 pub(crate) struct Scopes<K: Hash + Eq, V>(Vec<HashMap<K, V>>);
 

@@ -124,24 +124,20 @@ impl Infer<'_> for Ret {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         self.ty = Type::alloc(&mut cx.db, Type::never(self.span));
 
-        if let Some(fun_scope) = env.fun_scopes.current() {
-            let ret_ty = fun_scope.ret_ty;
+        let fun_scope = env.fun_scopes.current().unwrap();
+        let ret_ty = fun_scope.ret_ty;
 
-            if let Some(value) = self.expr.as_mut() {
-                value.infer(cx, env);
-                cx.constraints.push(Constraint::Eq {
-                    expected: ret_ty,
-                    actual: value.ty(),
-                });
-            } else {
-                cx.constraints.push(Constraint::Eq {
-                    expected: ret_ty,
-                    actual: Type::alloc(&mut cx.db, Type::unit(self.span)),
-                });
-            }
+        if let Some(value) = self.expr.as_mut() {
+            value.infer(cx, env);
+            cx.constraints.push(Constraint::Eq {
+                expected: ret_ty,
+                actual: value.ty(),
+            });
         } else {
-            // Err(CheckError::MisplacedReturn { span: ret.span });
-            todo!()
+            cx.constraints.push(Constraint::Eq {
+                expected: ret_ty,
+                actual: Type::alloc(&mut cx.db, Type::unit(self.span)),
+            });
         }
     }
 }

@@ -3,7 +3,6 @@ use std::collections::HashMap;
 use ustr::{Ustr, UstrMap};
 
 use crate::{
-    common::Scopes,
     db::{self, Database, FunKind, ModuleId, ScopeLevel, Symbol, SymbolId, TypeId, Vis},
     diagnostics::{Diagnostic, Label},
     hir::*,
@@ -120,13 +119,15 @@ impl Resolve<'_> for Hir {
 impl Resolve<'_> for Fun {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         self.id = db::Fun::alloc(&mut cx.db, FunKind::Orphan, self.span, self.ty);
+        env.scopes.push_scope(ScopeKind::Fun);
         self.body.resolve(cx, env);
+        env.scopes.pop_scope();
     }
 }
 
 impl Resolve<'_> for Block {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        env.scopes.push_scope();
+        env.scopes.push_scope(ScopeKind::Block);
 
         for expr in &mut self.exprs {
             expr.resolve(cx, env);
@@ -140,6 +141,11 @@ impl Resolve<'_> for Ret {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         if let Some(value) = self.expr.as_mut() {
             value.resolve(cx, env);
+        }
+
+        if !env.scopes.in_kind(ScopeKind::Fun) {
+            cx.errors
+                .push(ResolveError::InvalidReturn { span: self.span });
         }
     }
 }
@@ -164,9 +170,10 @@ impl GlobalScope {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct Env {
     module_id: ModuleId,
-    pub(crate) scopes: Scopes<Ustr, SymbolId>,
+    scopes: Scopes,
 }
 
 impl Env {
@@ -182,11 +189,84 @@ impl Env {
     }
 }
 
+#[derive(Debug)]
+struct Scopes(Vec<Scope>);
+
+impl Scopes {
+    fn new() -> Self {
+        Self(vec![])
+    }
+
+    fn push_scope(&mut self, kind: ScopeKind) {
+        self.0.push(Scope {
+            kind,
+            symbols: UstrMap::default(),
+        });
+    }
+
+    fn pop_scope(&mut self) {
+        self.0.pop();
+    }
+
+    fn insert(&mut self, k: Ustr, v: SymbolId) {
+        self.0.last_mut().unwrap().symbols.insert(k, v);
+    }
+
+    fn get(&self, k: Ustr) -> Option<(usize, &SymbolId)> {
+        for (depth, scope) in self.0.iter().enumerate().rev() {
+            if let Some(value) = scope.symbols.get(&k) {
+                return Some((depth + 1, value));
+            }
+        }
+        None
+    }
+
+    fn get_mut(&mut self, k: Ustr) -> Option<(usize, &mut SymbolId)> {
+        for (depth, scope) in self.0.iter_mut().enumerate().rev() {
+            if let Some(value) = scope.symbols.get_mut(&k) {
+                return Some((depth + 1, value));
+            }
+        }
+        None
+    }
+
+    fn get_value(&self, k: Ustr) -> Option<&SymbolId> {
+        self.get(k).map(|r| r.1)
+    }
+
+    fn get_value_mut(&mut self, k: Ustr) -> Option<&mut SymbolId> {
+        self.get_mut(k).map(|r| r.1)
+    }
+
+    fn depth(&self) -> usize {
+        self.0.len()
+    }
+
+    fn in_kind(&self, kind: ScopeKind) -> bool {
+        self.0.iter().any(|s| s.kind == kind)
+    }
+}
+
+#[derive(Debug)]
+struct Scope {
+    kind: ScopeKind,
+    symbols: UstrMap<SymbolId>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum ScopeKind {
+    Fun,
+    Block,
+}
+
 pub(super) enum ResolveError {
     DuplicateSymbol {
         name: Ustr,
         prev_span: Span,
         dup_span: Span,
+    },
+    InvalidReturn {
+        span: Span,
     },
 }
 
@@ -197,7 +277,7 @@ impl From<ResolveError> for Diagnostic {
                 name,
                 prev_span,
                 dup_span,
-            } => Diagnostic::error("check::duplicate_names")
+            } => Diagnostic::error("resolve::duplicate_names")
                 .with_message(format!("the name `{name}` is defined multiple times"))
                 .with_label(
                     Label::secondary(prev_span)
@@ -207,6 +287,9 @@ impl From<ResolveError> for Diagnostic {
                     Label::primary(dup_span).with_message(format!("`{name}` is redefined here")),
                 )
                 .with_help("you can only define names once in a module"),
+            ResolveError::InvalidReturn { span } => Diagnostic::error("resolve::invalid_return")
+                .with_message("cannot return outside of function scope")
+                .with_label(Label::primary(span)),
         }
     }
 }
