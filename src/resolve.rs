@@ -183,10 +183,6 @@ impl Env {
             scopes: Scopes::new(),
         }
     }
-
-    pub(crate) fn module_id(&self) -> ModuleId {
-        self.module_id
-    }
 }
 
 #[derive(Debug)]
