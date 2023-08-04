@@ -4,7 +4,7 @@ use crate::{
     ty::{Type, TypeVar},
 };
 
-pub(super) enum InferError {
+pub(crate) enum InferError {
     TypesNotEq { expected: Type, actual: Type },
     InfiniteType { ty: Type, var: TypeVar },
     MisplacedReturn { span: Span }, // TODO: move to another pass

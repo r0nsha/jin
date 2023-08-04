@@ -27,20 +27,20 @@ impl<'a> InferCx<'a> {
     }
 
     fn substitute_type_id(&mut self, id: TypeId, unbound_vars: &mut HashSet<TypeVar>) {
-        let ty = id.get(&self.db);
+        let ty = id.get(&self.db).clone();
 
-        let new_ty = self.substitute_ty(ty, unbound_vars);
+        let new_ty = self.substitute_ty(&ty, unbound_vars);
         *id.get_mut(&mut self.db) = new_ty;
     }
 
     fn substitute_ty(&mut self, ty: &Type, unbound_vars: &mut HashSet<TypeVar>) -> Type {
-        match ty.kind {
+        match &ty.kind {
             TypeKind::Fun(fun) => {
                 let ret = self.substitute_ty(&fun.ret, unbound_vars);
                 Type::fun(ret, ty.span)
             }
             TypeKind::Var(v) => {
-                let root = self.typecx.unification_table.find(v);
+                let root = self.typecx.unification_table.find(*v);
 
                 match self.typecx.unification_table.probe_value(root) {
                     Some(ty) => self.substitute_ty(&ty, unbound_vars),
@@ -65,8 +65,10 @@ impl Substitute<'_> for Hir {
         match self {
             Hir::Fun(x) => x.substitute(cx, unbound_vars),
             Hir::Ret(x) => x.substitute(cx, unbound_vars),
-            Hir::Lit(x) => x.substitute(cx, unbound_vars),
+            _ => (),
         }
+
+        cx.substitute_type_id(self.ty(), unbound_vars);
     }
 }
 
@@ -94,14 +96,28 @@ impl Substitute<'_> for Block {
 
 impl Substitute<'_> for Ret {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TypeVar>) {
-        self.expr.substitute(cx);
+        self.expr.substitute(cx, unbound_vars);
     }
 }
 
-impl Substitute<'_> for Lit {
-    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TypeVar>) {
-        let (unbound_ty, ty) = self.substitute(hir.ty().get(&self.db));
-        hir.set_ty(ty);
-        unbound_ty
+impl<'a, T: Substitute<'a>> Substitute<'a> for Vec<T> {
+    fn substitute(&mut self, cx: &mut InferCx<'a>, unbound_vars: &mut HashSet<TypeVar>) {
+        for item in self {
+            item.substitute(cx, unbound_vars);
+        }
+    }
+}
+
+impl<'a, T: Substitute<'a>> Substitute<'a> for Option<T> {
+    fn substitute(&mut self, cx: &mut InferCx<'a>, unbound_vars: &mut HashSet<TypeVar>) {
+        if let Some(item) = self {
+            item.substitute(cx, unbound_vars);
+        }
+    }
+}
+
+impl<'a, T: Substitute<'a>> Substitute<'a> for Box<T> {
+    fn substitute(&mut self, cx: &mut InferCx<'a>, unbound_vars: &mut HashSet<TypeVar>) {
+        self.as_mut().substitute(cx, unbound_vars);
     }
 }

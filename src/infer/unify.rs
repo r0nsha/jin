@@ -10,9 +10,10 @@ impl<'a> InferCx<'a> {
     pub(crate) fn unification(&mut self, constraints: &Constraints) -> Result<(), InferError> {
         for constraint in constraints.iter() {
             match constraint {
-                Constraint::TypeEq { expected, actual } => {
-                    self.unify_ty_ty(expected.get(&self.db), actual.get(&self.db))?
-                }
+                Constraint::TypeEq { expected, actual } => self.unify_ty_ty(
+                    &expected.get(&self.db).clone(),
+                    &actual.get(&self.db).clone(),
+                )?,
             }
         }
         Ok(())
