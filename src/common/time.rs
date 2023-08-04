@@ -2,8 +2,6 @@ use owo_colors::{AnsiColors, OwoColorize};
 use std::time::Duration;
 use stopwatch::Stopwatch as SW;
 
-use crate::span::Spanned;
-
 pub(crate) struct Stopwatch<'s> {
     label: &'s str,
     sw: SW,

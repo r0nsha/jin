@@ -110,6 +110,7 @@ impl Resolve<'_> for Hir {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         match self {
             Hir::Fun(x) => x.resolve(cx, env),
+            Hir::Block(x) => x.resolve(cx, env),
             Hir::Ret(x) => x.resolve(cx, env),
             Hir::Lit(x) => x.resolve(cx, env),
         }
@@ -127,8 +128,8 @@ impl Resolve<'_> for Block {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         env.scopes.push_scope();
 
-        for stmt in &mut self.statements {
-            stmt.resolve(cx, env);
+        for expr in &mut self.exprs {
+            expr.resolve(cx, env);
         }
 
         env.scopes.pop_scope();

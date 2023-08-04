@@ -30,6 +30,7 @@ impl<'a> PrettyPrint<'a> {
 
     fn print_hir(&mut self, hir: &Hir) {
         match hir {
+            Hir::Block(block) => self.print_block(block),
             Hir::Fun(fun) => self.print_fun(fun),
             Hir::Ret(ret) => {
                 self.builder.begin_child("return".to_string());
@@ -75,7 +76,7 @@ impl<'a> PrettyPrint<'a> {
         self.builder
             .begin_child(format!("block {}", self.print_ty(block.ty)));
 
-        for stmt in &block.statements {
+        for stmt in &block.exprs {
             self.print_hir(stmt);
         }
 

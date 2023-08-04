@@ -75,7 +75,7 @@ impl Parser {
                 span: name_span,
             })
         } else {
-            let token = self.try_token()?;
+            let token = self.require()?;
 
             Err(ParseError::UnexpectedToken {
                 expected: "fn".to_string(),
@@ -85,16 +85,27 @@ impl Parser {
         }
     }
 
-    // TODO:
-    // fn parse_block(&mut self) -> ParseResult<Ast> {
-    //     self.expect(TokenKind::OpenCurly)?;
-    //     let body = self.parse_expr();
-    //     self.expect(TokenKind::CloseCurly)?;
-    //     body
-    // }
+    fn parse_block(&mut self) -> ParseResult<Block> {
+        let start = self.last_span();
+        let mut exprs = vec![];
+
+        loop {
+            let tok = self.require()?;
+
+            if tok.kind_eq(TokenKind::CloseCurly) {
+                let span = start.merge(tok.span);
+                return Ok(Block { exprs, span });
+            }
+
+            exprs.push(self.parse_expr()?);
+        }
+    }
 
     fn parse_expr(&mut self) -> ParseResult<Ast> {
-        if self.is(TokenKind::Return) {
+        if self.is(TokenKind::OpenCurly) {
+            let block = self.parse_block()?;
+            Ok(Ast::Block(block))
+        } else if self.is(TokenKind::Return) {
             self.parse_ret()
         } else if let Some(TokenKind::Int(value)) = self.token_kind() {
             self.advance();
@@ -104,7 +115,7 @@ impl Parser {
                 span: self.last_span(),
             }))
         } else {
-            let token = self.try_token()?;
+            let token = self.require()?;
 
             Err(ParseError::UnexpectedToken {
                 expected: "an expression".to_string(),
@@ -142,7 +153,7 @@ impl Parser {
     }
 
     fn expect(&mut self, expected: TokenKind) -> ParseResult<Token> {
-        let tok = self.try_token()?;
+        let tok = self.require()?;
 
         if tok.kind_eq(expected) {
             self.advance();
@@ -160,7 +171,7 @@ impl Parser {
         self.token().map(|t| t.kind)
     }
 
-    fn try_token(&self) -> ParseResult<Token> {
+    fn require(&self) -> ParseResult<Token> {
         self.token().ok_or_else(|| ParseError::UnexpectedEof {
             span: self.last_span(),
         })

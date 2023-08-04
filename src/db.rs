@@ -9,7 +9,7 @@ use crate::{
     common::{new_id_type, IdVec, QualifiedName},
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
-    ty::{Type, TypeKind},
+    ty::Type,
 };
 
 #[derive(Debug)]

@@ -26,6 +26,7 @@ impl Module {
 #[derive(Debug, Clone)]
 pub(crate) enum Hir {
     Fun(Fun),
+    Block(Block),
     Ret(Ret),
     Lit(Lit),
 }
@@ -34,6 +35,7 @@ impl Hir {
     pub(crate) fn ty(&self) -> TypeId {
         match self {
             Hir::Fun(x) => x.ty,
+            Hir::Block(x) => x.ty,
             Hir::Ret(x) => x.ty,
             Hir::Lit(x) => x.ty,
         }
@@ -66,7 +68,7 @@ pub(crate) struct Fun {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Block {
-    pub(crate) statements: Vec<Hir>,
+    pub(crate) exprs: Vec<Hir>,
     pub(crate) span: Span,
     pub(crate) ty: TypeId,
 }

@@ -22,6 +22,7 @@ struct PrettyPrint {
 impl PrettyPrint {
     fn print_ast(&mut self, ast: &Ast) {
         match ast {
+            Ast::Block(block) => self.print_block(block),
             Ast::Ret(ret) => {
                 self.builder.begin_child("return".to_string());
 
@@ -47,12 +48,17 @@ impl PrettyPrint {
 
     fn print_fun(&mut self, fun: &Fun) {
         self.builder.begin_child(format!("fn {}", fun.name));
-
-        self.builder.begin_child("body".to_string());
-
         self.print_ast(&fun.body);
-
         self.builder.end_child();
+    }
+
+    fn print_block(&mut self, block: &Block) {
+        self.builder.begin_child("block".to_string());
+
+        for expr in &block.exprs {
+            self.print_ast(expr);
+        }
+
         self.builder.end_child();
     }
 }

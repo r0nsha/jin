@@ -1,6 +1,5 @@
 use std::io;
 
-use enum_as_inner::EnumAsInner;
 use ustr::Ustr;
 
 use crate::{
@@ -33,8 +32,9 @@ impl Module {
     }
 }
 
-#[derive(Debug, Clone, EnumAsInner)]
+#[derive(Debug, Clone)]
 pub(crate) enum Ast {
+    Block(Block),
     Ret(Ret),
     Lit(Lit),
 }
@@ -42,8 +42,9 @@ pub(crate) enum Ast {
 impl Spanned for Ast {
     fn span(&self) -> Span {
         match self {
-            Self::Ret(ret) => ret.span,
-            Self::Lit(lit) => lit.span,
+            Self::Block(x) => x.span,
+            Self::Ret(x) => x.span,
+            Self::Lit(x) => x.span,
         }
     }
 }
@@ -69,7 +70,7 @@ pub(crate) struct Fun {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Block {
-    pub(crate) statements: Vec<Ast>,
+    pub(crate) exprs: Vec<Ast>,
     pub(crate) span: Span,
 }
 

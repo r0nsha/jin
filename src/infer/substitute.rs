@@ -88,7 +88,7 @@ impl Substitute<'_> for Fun {
 
 impl Substitute<'_> for Block {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TypeVar>) {
-        for stmt in &mut self.statements {
+        for stmt in &mut self.exprs {
             stmt.substitute(cx, unbound_vars);
         }
     }

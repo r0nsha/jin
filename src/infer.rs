@@ -21,7 +21,7 @@ use self::{
 pub(crate) fn infer(db: &mut Database, modules: &mut [Module]) -> Result<(), Diagnostic> {
     let mut cx = InferCx::new(db);
 
-    let mut constraints = cx.infer_all(modules);
+    let constraints = cx.infer_all(modules);
 
     cx.unification(&constraints)?;
     cx.substitution(modules, &constraints);
@@ -84,9 +84,10 @@ impl Infer<'_> for Hir {
         expected_ty: Option<TypeId>,
     ) -> Constraints {
         match self {
-            Hir::Fun(fun) => fun.infer(cx, env, expected_ty),
-            Hir::Ret(ret) => ret.infer(cx, env, expected_ty),
-            Hir::Lit(lit) => lit.infer(cx, env, expected_ty),
+            Hir::Fun(x) => x.infer(cx, env, expected_ty),
+            Hir::Block(x) => x.infer(cx, env, expected_ty),
+            Hir::Ret(x) => x.infer(cx, env, expected_ty),
+            Hir::Lit(x) => x.infer(cx, env, expected_ty),
         }
     }
 }
@@ -115,7 +116,7 @@ impl Infer<'_> for Fun {
         env: &mut TypeEnv,
         _expected_ty: Option<TypeId>,
     ) -> Constraints {
-        let ret_ty = cx.typecx.fresh_type_var(&mut cx.db, self.span);
+        let ret_ty = cx.typecx.fresh_type_var(self.span);
         let fun_ty = Type::fun(ret_ty.clone(), self.span);
 
         let ret_ty = Type::alloc(&mut cx.db, ret_ty);
@@ -147,14 +148,14 @@ impl Infer<'_> for Block {
     ) -> Constraints {
         let mut constraints = Constraints::none();
 
-        let last_index = self.statements.len() - 1;
+        let last_index = self.exprs.len() - 1;
 
-        for (i, stmt) in self.statements.iter_mut().enumerate() {
+        for (i, stmt) in self.exprs.iter_mut().enumerate() {
             let expected_ty = if i == last_index { expected_ty } else { None };
             constraints.extend(stmt.infer(cx, env, expected_ty));
         }
 
-        self.ty = self.statements.last().map_or_else(
+        self.ty = self.exprs.last().map_or_else(
             || Type::alloc(&mut cx.db, Type::unit(self.span)),
             |stmt| stmt.ty(),
         );
