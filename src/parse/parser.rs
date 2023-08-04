@@ -66,15 +66,13 @@ impl Parser {
 
             let body = self.parse_expr()?;
 
-            let span = name_span;
-
             Ok(Binding {
                 kind: BindingKind::Fun(Fun {
                     name,
                     body: Box::new(body),
-                    span,
+                    span: name_span,
                 }),
-                span,
+                span: name_span,
             })
         } else {
             let token = self.try_token()?;
