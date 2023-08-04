@@ -64,7 +64,7 @@ impl Parser {
             self.expect(TokenKind::CloseParen)?;
             self.expect(TokenKind::Eq)?;
 
-            let body = self.parse_fun_body()?;
+            let body = self.parse_expr()?;
 
             let span = name_span;
 
@@ -87,12 +87,13 @@ impl Parser {
         }
     }
 
-    fn parse_fun_body(&mut self) -> ParseResult<Ast> {
-        self.expect(TokenKind::OpenCurly)?;
-        let body = self.parse_expr();
-        self.expect(TokenKind::CloseCurly)?;
-        body
-    }
+    // TODO:
+    // fn parse_block(&mut self) -> ParseResult<Ast> {
+    //     self.expect(TokenKind::OpenCurly)?;
+    //     let body = self.parse_expr();
+    //     self.expect(TokenKind::CloseCurly)?;
+    //     body
+    // }
 
     fn parse_expr(&mut self) -> ParseResult<Ast> {
         if self.is(TokenKind::Return) {

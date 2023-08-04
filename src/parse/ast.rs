@@ -68,6 +68,12 @@ pub(crate) struct Fun {
 }
 
 #[derive(Debug, Clone)]
+pub(crate) struct Block {
+    pub(crate) statements: Vec<Ast>,
+    pub(crate) span: Span,
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct Ret {
     pub(crate) expr: Option<Box<Ast>>,
     pub(crate) span: Span,
