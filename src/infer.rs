@@ -108,8 +108,9 @@ impl Infer<'_> for Hir {
         expected_ty: Option<TypeId>,
     ) -> Constraints {
         match self {
+            Hir::Fun(fun) => fun.infer(cx, env, expected_ty),
             Hir::Ret(ret) => ret.infer(cx, env, expected_ty),
-            Hir::Const(r#const) => r#const.infer(cx, env, expected_ty),
+            Hir::Lit(lit) => lit.infer(cx, env, expected_ty),
         }
     }
 }
@@ -123,11 +124,9 @@ impl Infer<'_> for Binding {
     ) -> Constraints {
         self.ty = Type::alloc(&mut cx.db, Type::unit(self.span));
 
-        let constraints = match &mut self.kind {
-            BindingKind::Fun(fun) => fun.infer(cx, env, None),
-        };
+        let constraints = self.value.infer(cx, env, None);
 
-        self.id.get_mut(&mut cx.db).ty = self.kind.ty();
+        self.id.get_mut(&mut cx.db).ty = self.value.ty();
 
         constraints
     }
@@ -219,7 +218,7 @@ impl Infer<'_> for Ret {
     }
 }
 
-impl Infer<'_> for Const {
+impl Infer<'_> for Lit {
     fn infer(
         &mut self,
         cx: &mut InferCx<'_>,
@@ -227,12 +226,12 @@ impl Infer<'_> for Const {
         _expected_ty: Option<TypeId>,
     ) -> Constraints {
         let (constraints, ty) = match &self.kind {
-            ConstKind::Int(_) => (
+            LitKind::Int(_) => (
                 Constraints::none(),
                 // TODO: use a polymorphic int
                 Type::alloc(&mut cx.db, Type::int(self.span)),
             ),
-            ConstKind::Unit => (
+            LitKind::Unit => (
                 Constraints::none(),
                 Type::alloc(&mut cx.db, Type::unit(self.span)),
             ),

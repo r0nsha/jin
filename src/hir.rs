@@ -25,15 +25,17 @@ impl Module {
 
 #[derive(Debug, Clone)]
 pub(crate) enum Hir {
+    Fun(Fun),
     Ret(Ret),
-    Const(Const),
+    Lit(Lit),
 }
 
 impl Hir {
     pub(crate) fn ty(&self) -> TypeId {
         match self {
+            Hir::Fun(x) => x.ty,
             Hir::Ret(x) => x.ty,
-            Hir::Const(x) => x.ty,
+            Hir::Lit(x) => x.ty,
         }
     }
 }
@@ -48,22 +50,9 @@ impl Spanned for Hir {
 pub(crate) struct Binding {
     pub(crate) id: SymbolId,
     pub(crate) name: Ustr,
-    pub(crate) kind: BindingKind,
+    pub(crate) value: Box<Hir>,
     pub(crate) span: Span,
     pub(crate) ty: TypeId,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) enum BindingKind {
-    Fun(Fun),
-}
-
-impl BindingKind {
-    pub(crate) fn ty(&self) -> TypeId {
-        match self {
-            BindingKind::Fun(f) => f.ty,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -90,14 +79,14 @@ pub(crate) struct Ret {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Const {
-    pub(crate) kind: ConstKind,
+pub(crate) struct Lit {
+    pub(crate) kind: LitKind,
     pub(crate) span: Span,
     pub(crate) ty: TypeId,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum ConstKind {
+pub(crate) enum LitKind {
     Int(usize),
     Unit,
 }

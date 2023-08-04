@@ -30,6 +30,7 @@ impl<'a> PrettyPrint<'a> {
 
     fn print_hir(&mut self, hir: &Hir) {
         match hir {
+            Hir::Fun(fun) => self.print_fun(fun),
             Hir::Ret(ret) => {
                 self.builder.begin_child("return".to_string());
 
@@ -39,10 +40,10 @@ impl<'a> PrettyPrint<'a> {
 
                 self.builder.end_child();
             }
-            Hir::Const(lit) => {
+            Hir::Lit(lit) => {
                 let value = match lit.kind {
-                    ConstKind::Int(value) => value.to_string(),
-                    ConstKind::Unit => "()".to_string(),
+                    LitKind::Int(value) => value.to_string(),
+                    LitKind::Unit => "()".to_string(),
                 };
 
                 self.builder
@@ -52,17 +53,22 @@ impl<'a> PrettyPrint<'a> {
     }
 
     fn print_binding(&mut self, binding: &Binding) {
-        match &binding.kind {
-            BindingKind::Fun(fun) => {
-                self.builder.begin_child(format!(
-                    "fn {} {}",
-                    binding.name,
-                    self.print_ty(binding.id.get(&self.db).ty)
-                ));
+        self.builder.begin_child(format!(
+            "let {} {}",
+            binding.name,
+            self.print_ty(binding.id.get(&self.db).ty)
+        ));
 
-                self.print_block(&fun.body);
-            }
-        }
+        self.print_hir(&binding.value);
+
+        self.builder.end_child();
+    }
+
+    fn print_fun(&mut self, fun: &Fun) {
+        self.builder
+            .begin_child(format!("fn {} {}", fun.name, self.print_ty(fun.ty)));
+
+        self.print_block(&fun.body);
     }
 
     fn print_block(&mut self, block: &Block) {

@@ -169,7 +169,6 @@ pub(crate) struct Symbol {
     pub(crate) qualified_name: QualifiedName,
     pub(crate) vis: Vis,
     pub(crate) scope_level: ScopeLevel,
-    pub(crate) kind: SymbolKind,
     pub(crate) ty: TypeId,
     pub(crate) span: Span,
 }
@@ -181,7 +180,6 @@ impl Symbol {
         qualified_name: QualifiedName,
         vis: Vis,
         scope_level: ScopeLevel,
-        kind: SymbolKind,
         ty: TypeId,
         span: Span,
     ) -> SymbolId {
@@ -191,16 +189,10 @@ impl Symbol {
             qualified_name,
             vis,
             scope_level,
-            kind,
             ty,
             span,
         })
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum SymbolKind {
-    Fun(FunId),
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

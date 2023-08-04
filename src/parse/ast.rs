@@ -62,6 +62,7 @@ pub(crate) enum BindingKind {
 #[derive(Debug, Clone)]
 pub(crate) struct Fun {
     pub(crate) name: Ustr,
+    // TODO: FunKind
     pub(crate) body: Box<Ast>,
     pub(crate) span: Span,
 }

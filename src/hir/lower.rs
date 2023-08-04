@@ -33,14 +33,16 @@ impl<'a> Lower<'a> {
     }
 
     fn lower_binding(&mut self, binding: ast::Binding) -> Binding {
-        match binding.kind {
-            ast::BindingKind::Fun(fun) => Binding {
-                id: SymbolId::null(),
-                name: fun.name,
-                kind: BindingKind::Fun(self.lower_fun(fun)),
-                span: binding.span,
-                ty: TypeId::null(),
-            },
+        let (name, value) = match binding.kind {
+            ast::BindingKind::Fun(fun) => (fun.name, Hir::Fun(self.lower_fun(fun))),
+        };
+
+        Binding {
+            id: SymbolId::null(),
+            name,
+            value: Box::new(value),
+            span: binding.span,
+            ty: TypeId::null(),
         }
     }
 
@@ -65,9 +67,9 @@ impl<'a> Lower<'a> {
                 span: ret.span,
                 ty: TypeId::null(),
             }),
-            Ast::Lit(lit) => Hir::Const(Const {
+            Ast::Lit(lit) => Hir::Lit(Lit {
                 kind: match lit.kind {
-                    ast::LitKind::Int(v) => ConstKind::Int(v),
+                    ast::LitKind::Int(v) => LitKind::Int(v),
                 },
                 span: lit.span,
                 ty: TypeId::null(),

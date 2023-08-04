@@ -4,18 +4,17 @@ use ustr::{Ustr, UstrMap};
 
 use crate::{
     common::Scopes,
-    db::{
-        self, Database, FunKind, ModuleId, ScopeLevel, Symbol, SymbolId, SymbolKind, TypeId, Vis,
-    },
+    db::{self, Database, FunKind, ModuleId, ScopeLevel, Symbol, SymbolId, TypeId, Vis},
     diagnostics::{Diagnostic, Label},
     hir::*,
     span::Span,
 };
 
 pub(super) fn resolve(db: &mut Database, modules: &mut [Module]) {
-    let mut cx = Resolve::new(db);
+    let mut cx = ResolveCx::new(db);
 
     cx.create_modules_and_global_scope(modules);
+    cx.resolve_all(modules);
 
     if !cx.errors.is_empty() {
         let errors = cx.errors;
@@ -23,13 +22,13 @@ pub(super) fn resolve(db: &mut Database, modules: &mut [Module]) {
     }
 }
 
-struct Resolve<'a> {
+struct ResolveCx<'a> {
     db: &'a mut Database,
     errors: Vec<ResolveError>,
     global_scope: GlobalScope,
 }
 
-impl<'a> Resolve<'a> {
+impl<'a> ResolveCx<'a> {
     fn new(db: &'a mut Database) -> Self {
         Self {
             db,
@@ -44,13 +43,6 @@ impl<'a> Resolve<'a> {
             let mut defined_symbols = UstrMap::<Span>::default();
 
             for binding in &mut module.bindings {
-                let kind = match &mut binding.kind {
-                    BindingKind::Fun(fun) => {
-                        fun.id = db::Fun::alloc(&mut self.db, FunKind::Orphan, fun.span, fun.ty);
-                        SymbolKind::Fun(fun.id)
-                    }
-                };
-
                 if let Some(&prev_span) = defined_symbols.get(&binding.name) {
                     self.errors.push(ResolveError::DuplicateSymbol {
                         name: binding.name,
@@ -69,7 +61,6 @@ impl<'a> Resolve<'a> {
                     qualified_name,
                     Vis::Public,
                     ScopeLevel::Global,
-                    kind,
                     TypeId::null(),
                     binding.span,
                 );
@@ -80,6 +71,80 @@ impl<'a> Resolve<'a> {
             self.global_scope.0.insert(module.id, scope_symbols);
         }
     }
+
+    fn resolve_all(&mut self, modules: &mut [Module]) {
+        for module in modules {
+            let mut env = Env::new(module.id);
+
+            for binding in &mut module.bindings {
+                binding.resolve(self, &mut env);
+            }
+        }
+    }
+}
+
+trait Resolve<'a> {
+    fn resolve(&mut self, cx: &mut ResolveCx<'a>, env: &mut Env);
+}
+
+impl Resolve<'_> for Binding {
+    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+        if self.id.is_null() {
+            todo!("local bindings");
+            // self.id = Symbol::alloc(
+            //     &mut cx.db,
+            //     module.id,
+            //     qualified_name,
+            //     Vis::Public,
+            //     ScopeLevel::Global,
+            //     TypeId::null(),
+            //     binding.span,
+            // );
+        }
+
+        self.value.resolve(cx, env);
+    }
+}
+
+impl Resolve<'_> for Hir {
+    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+        match self {
+            Hir::Fun(x) => x.resolve(cx, env),
+            Hir::Ret(x) => x.resolve(cx, env),
+            Hir::Lit(x) => x.resolve(cx, env),
+        }
+    }
+}
+
+impl Resolve<'_> for Fun {
+    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+        self.id = db::Fun::alloc(&mut cx.db, FunKind::Orphan, self.span, self.ty);
+        self.body.resolve(cx, env);
+    }
+}
+
+impl Resolve<'_> for Block {
+    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+        env.scopes.push_scope();
+
+        for stmt in &mut self.statements {
+            stmt.resolve(cx, env);
+        }
+
+        env.scopes.pop_scope();
+    }
+}
+
+impl Resolve<'_> for Ret {
+    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+        if let Some(value) = self.value.as_mut() {
+            value.resolve(cx, env);
+        }
+    }
+}
+
+impl Resolve<'_> for Lit {
+    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {}
 }
 
 #[derive(Debug)]
