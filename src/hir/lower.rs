@@ -47,6 +47,7 @@ impl<'a> Lower<'a> {
     fn lower_fun(&mut self, fun: ast::Fun) -> Fun {
         Fun {
             id: FunId::null(),
+            name: fun.name,
             body: Block {
                 statements: vec![self.lower_ast(*fun.body)],
                 span: fun.span,

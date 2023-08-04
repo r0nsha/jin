@@ -69,6 +69,7 @@ impl BindingKind {
 #[derive(Debug, Clone)]
 pub(crate) struct Fun {
     pub(crate) id: FunId,
+    pub(crate) name: Ustr,
     pub(crate) body: Block,
     pub(crate) span: Span,
     pub(crate) ty: TypeId,
