@@ -64,8 +64,9 @@ impl Substitute<'_> for Hir {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TypeVar>) {
         match self {
             Hir::Fun(x) => x.substitute(cx, unbound_vars),
+            Hir::Block(x) => x.substitute(cx, unbound_vars),
             Hir::Ret(x) => x.substitute(cx, unbound_vars),
-            _ => (),
+            Hir::Lit(_) => (),
         }
 
         cx.substitute_type_id(self.ty(), unbound_vars);

@@ -81,7 +81,6 @@ impl<'a> PrettyPrint<'a> {
         }
 
         self.builder.end_child();
-        self.builder.end_child();
     }
 
     fn print_ty(&self, ty: TypeId) -> String {
