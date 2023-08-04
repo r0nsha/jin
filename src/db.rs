@@ -4,6 +4,7 @@ use std::{
 };
 
 use path_absolutize::Absolutize;
+use ustr::Ustr;
 
 use crate::{
     common::{new_id_type, IdVec, QualifiedName},
@@ -26,8 +27,8 @@ pub(crate) struct Database {
 
     root_dir: PathBuf,
     main_source: SourceId,
-    main_module: ModuleId,
-    main_fun: Option<SymbolId>,
+    main_module: Option<ModuleId>,
+    main_fun: Option<FunId>,
 }
 
 impl Database {
@@ -50,7 +51,7 @@ impl Database {
 
             root_dir: absolute_path.parent().unwrap().to_path_buf(),
             main_source,
-            main_module: ModuleId::null(),
+            main_module: None,
             main_fun: None,
         })
     }
@@ -63,17 +64,32 @@ impl Database {
         &self.root_dir
     }
 
+    pub(crate) fn main_source_id(&self) -> SourceId {
+        self.main_source
+    }
+
     pub(crate) fn main_source(&self) -> &Source {
         self.sources.get(self.main_source).unwrap()
     }
 
-    pub(crate) fn main_module(&self) -> &Module {
-        assert!(!self.main_module.is_null());
-        self.modules.get(self.main_module).unwrap()
+    pub(crate) fn main_module_id(&self) -> Option<ModuleId> {
+        self.main_module
     }
 
-    pub(crate) fn main_fun(&self) {
-        todo!()
+    pub(crate) fn main_module(&self) -> Option<&Module> {
+        self.main_module.and_then(|id| self.modules.get(id))
+    }
+
+    pub(crate) fn main_fun_id(&self) -> Option<FunId> {
+        self.main_fun
+    }
+
+    pub(crate) fn main_fun(&self) -> Option<&Fun> {
+        self.main_fun.and_then(|id| self.funs.get(id))
+    }
+
+    pub(crate) fn set_main_fun(&mut self, id: FunId) {
+        self.main_fun = Some(id);
     }
 }
 
@@ -141,7 +157,7 @@ impl TypeId {
 #[derive(Debug, Clone)]
 pub(crate) struct Module {
     pub(crate) id: ModuleId,
-    pub(crate) source: SourceId,
+    pub(crate) source_id: SourceId,
     pub(crate) name: QualifiedName,
     pub(crate) is_main: bool,
 }
@@ -149,16 +165,23 @@ pub(crate) struct Module {
 impl Module {
     pub(crate) fn alloc(
         db: &mut Database,
-        source: SourceId,
+        source_id: SourceId,
         name: QualifiedName,
         is_main: bool,
     ) -> ModuleId {
-        db.modules.push_with_id(|id| Module {
+        let id = db.modules.push_with_id(|id| Module {
             id,
-            source,
+            source_id,
             name,
             is_main,
-        })
+        });
+
+        if is_main {
+            assert!(db.main_module.is_none());
+            db.main_module = Some(id);
+        }
+
+        id
     }
 }
 
@@ -259,14 +282,30 @@ impl Ord for ScopeLevel {
 #[derive(Debug, Clone)]
 pub(crate) struct Fun {
     pub(crate) id: FunId,
+    pub(crate) module_id: ModuleId,
+    pub(crate) name: Ustr,
     pub(crate) kind: FunKind,
     pub(crate) span: Span,
     pub(crate) ty: TypeId,
 }
 
 impl Fun {
-    pub(crate) fn alloc(db: &mut Database, kind: FunKind, span: Span, ty: TypeId) -> FunId {
-        db.funs.push_with_id(|id| Fun { id, kind, span, ty })
+    pub(crate) fn alloc(
+        db: &mut Database,
+        module_id: ModuleId,
+        name: Ustr,
+        kind: FunKind,
+        span: Span,
+        ty: TypeId,
+    ) -> FunId {
+        db.funs.push_with_id(|id| Fun {
+            id,
+            module_id,
+            name,
+            kind,
+            span,
+            ty,
+        })
     }
 }
 

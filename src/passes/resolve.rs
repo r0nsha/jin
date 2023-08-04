@@ -118,7 +118,14 @@ impl Resolve<'_> for Hir {
 
 impl Resolve<'_> for Fun {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        self.id = db::Fun::alloc(&mut cx.db, FunKind::Orphan, self.span, self.ty);
+        self.id = db::Fun::alloc(
+            &mut cx.db,
+            env.module_id,
+            self.name,
+            FunKind::Orphan,
+            self.span,
+            self.ty,
+        );
         env.scopes.push_scope(ScopeKind::Fun);
         self.body.resolve(cx, env);
         env.scopes.pop_scope();

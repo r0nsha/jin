@@ -40,6 +40,16 @@ impl<I: Id, T> IdVec<I, T> {
     fn next_id(&self) -> I {
         self.vec.len().into()
     }
+
+    #[inline]
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &T> {
+        self.vec.iter()
+    }
+
+    #[inline]
+    pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+        self.vec.iter_mut()
+    }
 }
 
 impl<I: Id, T> ops::Index<I> for IdVec<I, T> {

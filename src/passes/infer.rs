@@ -5,7 +5,7 @@ mod type_env;
 mod typecx;
 mod unify;
 
-use crate::{db::Database, diagnostics::Diagnostic, hir::*, ty::*};
+use crate::{db::Database, hir::*, ty::*};
 
 use self::{
     constraint::{Constraint, Constraints},
@@ -13,14 +13,17 @@ use self::{
     typecx::TypeCx,
 };
 
-pub(crate) fn infer(db: &mut Database, modules: &mut [Module]) -> Result<(), Diagnostic> {
+pub(crate) fn infer(db: &mut Database, modules: &mut [Module]) {
     let mut cx = InferCx::new(db);
 
     cx.infer_all(modules);
-    cx.unification()?;
-    cx.substitution(modules);
 
-    Ok(())
+    if let Err(e) = cx.unification() {
+        db.diagnostics.add(e);
+        return;
+    }
+
+    cx.substitution(modules);
 }
 
 pub(super) struct InferCx<'a> {

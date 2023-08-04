@@ -71,6 +71,7 @@ impl<'a> Lower<'a> {
             Ast::Lit(lit) => Hir::Lit(Lit {
                 kind: match lit.kind {
                     ast::LitKind::Int(v) => LitKind::Int(v),
+                    ast::LitKind::Unit => LitKind::Unit,
                 },
                 span: lit.span,
                 ty: TypeId::null(),

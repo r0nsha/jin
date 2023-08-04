@@ -31,6 +31,14 @@ impl Span {
         }
     }
 
+    pub(crate) fn initial(source_id: SourceId) -> Self {
+        Self {
+            source_id,
+            start: 0,
+            end: 0,
+        }
+    }
+
     pub(crate) fn source_id(&self) -> SourceId {
         self.source_id
     }

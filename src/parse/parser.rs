@@ -105,6 +105,14 @@ impl Parser {
         if self.is(TokenKind::OpenCurly) {
             let block = self.parse_block()?;
             Ok(Ast::Block(block))
+        } else if self.is(TokenKind::OpenParen) {
+            let start = self.last_span();
+            let end = self.expect(TokenKind::CloseParen)?.span;
+
+            Ok(Ast::Lit(Lit {
+                kind: LitKind::Unit,
+                span: start.merge(end),
+            }))
         } else if self.is(TokenKind::Return) {
             self.parse_ret()
         } else if let Some(TokenKind::Int(value)) = self.token_kind() {

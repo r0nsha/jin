@@ -36,6 +36,9 @@ impl PrettyPrint {
                 LitKind::Int(value) => {
                     self.builder.add_empty_child(format!("int: {value}"));
                 }
+                LitKind::Unit => {
+                    self.builder.add_empty_child("()".to_string());
+                }
             },
         }
     }

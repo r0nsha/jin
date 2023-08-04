@@ -81,14 +81,10 @@ fn build_inner(db: &mut Database) {
     let mut hir_modules = time! { print_times, "ast -> hir", hir::lower(db, ast_modules) };
 
     time! { print_times, "resolve", passes::resolve(db, &mut hir_modules) };
-
     bail_if_failed!(db);
 
-    if let Err(diagnostic) = time! { print_times, "infer", passes::infer(db, &mut hir_modules) } {
-        db.diagnostics.add(diagnostic);
-        db.diagnostics.print(&db.sources).unwrap();
-        return;
-    }
+    time! { print_times, "infer", passes::infer(db, &mut hir_modules) };
+    bail_if_failed!(db);
 
     if db.build_options().print_hir {
         println!("Hir:");
@@ -96,6 +92,9 @@ fn build_inner(db: &mut Database) {
             module.pretty_print(db).unwrap();
         }
     }
+
+    time! { print_times, "find main", passes::find_main(db) };
+    bail_if_failed!(db);
 
     // let code = time! { print_times, "codegen", codegen(typed_module) };
     //

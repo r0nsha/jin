@@ -5,8 +5,6 @@ use super::{ast::Module, parser, tokenize::tokenize};
 pub(crate) fn parse_modules(db: &mut Database) -> Vec<Module> {
     let mut modules = vec![];
 
-    let root_source = db.main_source();
-
     match parse_module(db, db.main_source()) {
         Ok(module) => modules.push(module),
         Err(diag) => db.diagnostics.add(diag),
