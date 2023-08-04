@@ -50,7 +50,7 @@ impl Spanned for Hir {
 pub(crate) struct Binding {
     pub(crate) id: SymbolId,
     pub(crate) name: Ustr,
-    pub(crate) value: Box<Hir>,
+    pub(crate) expr: Box<Hir>,
     pub(crate) span: Span,
     pub(crate) ty: TypeId,
 }
@@ -73,7 +73,7 @@ pub(crate) struct Block {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Ret {
-    pub(crate) value: Option<Box<Hir>>,
+    pub(crate) expr: Option<Box<Hir>>,
     pub(crate) span: Span,
     pub(crate) ty: TypeId,
 }

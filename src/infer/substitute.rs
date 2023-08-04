@@ -15,92 +15,93 @@ impl<'a> InferCx<'a> {
         modules: &mut [Module],
         constraints: &Constraints,
     ) -> HashSet<TypeVar> {
-        let mut unbound = HashSet::new();
+        let mut unbound_vars = HashSet::new();
 
         for module in modules {
             for binding in &mut module.bindings {
-                let (unbound_ty, _binding_ty) =
-                    self.substitute_ty(binding.id.get(&self.db).ty.get(&self.db));
-                unbound.extend(unbound_ty);
-
-                unbound.extend(binding.substitute(self));
+                binding.substitute(self, &mut unbound_vars);
             }
         }
 
-        unbound
+        unbound_vars
     }
 
-    fn substitute_type_id(&mut self, id: TypeId) -> HashSet<TypeVar> {
+    fn substitute_type_id(&mut self, id: TypeId, unbound_vars: &mut HashSet<TypeVar>) {
         let ty = id.get(&self.db);
 
-        let (unbound, new_ty) = self.substitute_ty(ty);
+        let new_ty = self.substitute_ty(ty, unbound_vars);
         *id.get_mut(&mut self.db) = new_ty;
-
-        unbound
     }
 
-    fn substitute_ty(&mut self, ty: &Type) -> (HashSet<TypeVar>, Type) {
+    fn substitute_ty(&mut self, ty: &Type, unbound_vars: &mut HashSet<TypeVar>) -> Type {
         match ty.kind {
             TypeKind::Fun(fun) => {
-                let (ret_unbound, ret) = self.substitute_ty(&fun.ret);
-                (ret_unbound, Type::fun(ret, ty.span))
+                let ret = self.substitute_ty(&fun.ret, unbound_vars);
+                Type::fun(ret, ty.span)
             }
             TypeKind::Var(v) => {
                 let root = self.typecx.unification_table.find(v);
 
                 match self.typecx.unification_table.probe_value(root) {
-                    Some(ty) => self.substitute_ty(&ty),
+                    Some(ty) => self.substitute_ty(&ty, unbound_vars),
                     None => {
                         let mut unbound = HashSet::new();
                         unbound.insert(root);
-                        (unbound, Type::var(root, ty.span))
+                        Type::var(root, ty.span)
                     }
                 }
             }
-            _ => (HashSet::new(), ty.clone()),
+            _ => ty.clone(),
         }
     }
 }
 
 trait Substitute<'a> {
-    fn substitute(&mut self, cx: &mut InferCx<'a>) -> HashSet<TypeVar>;
+    fn substitute(&mut self, cx: &mut InferCx<'a>, unbound_vars: &mut HashSet<TypeVar>);
 }
 
 impl Substitute<'_> for Hir {
-    fn substitute(&mut self, cx: &mut InferCx<'_>) -> HashSet<TypeVar> {
+    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TypeVar>) {
         match self {
-            Hir::Fun(x) => x.substitute(),
-            Hir::Ret(x) => x.substitute(),
-            Hir::Lit(x) => x.substitute(),
-            // {
-            // let (unbound_ty, ty) = self.substitute(hir.ty().get(&self.db));
-            // hir.set_ty(ty);
-            // unbound_ty
-            // }
+            Hir::Fun(x) => x.substitute(cx, unbound_vars),
+            Hir::Ret(x) => x.substitute(cx, unbound_vars),
+            Hir::Lit(x) => x.substitute(cx, unbound_vars),
         }
     }
 }
 
 impl Substitute<'_> for Binding {
-    fn substitute(&mut self, cx: &mut InferCx<'_>) -> HashSet<TypeVar> {
-        let unbound = cx.substitute_type_id(self.id.get(&cx.db).ty);
-        unbound
+    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TypeVar>) {
+        cx.substitute_type_id(self.id.get(&cx.db).ty, unbound_vars);
+        self.expr.substitute(cx, unbound_vars);
     }
 }
 
 impl Substitute<'_> for Fun {
-    fn substitute(&mut self, cx: &mut InferCx<'_>) -> HashSet<TypeVar> {
-        let unbound_body = self.body.substitute(cx);
-
-        let (unbound_ty, ty) = self.substitute_ty(fun.ty_cloned());
-        fun.set_ty(ty);
-
-        unbound_body.union(&unbound_ty).copied().collect()
+    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TypeVar>) {
+        self.body.substitute(cx, unbound_vars);
+        cx.substitute_type_id(self.id.get(&cx.db).ty, unbound_vars);
     }
 }
 
 impl Substitute<'_> for Block {
-    fn substitute(&mut self, cx: &mut InferCx<'_>) -> HashSet<TypeVar> {
-        let unbound_body = self.body.substitute(cx);
+    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TypeVar>) {
+        for stmt in &mut self.statements {
+            stmt.substitute(cx, unbound_vars);
+        }
+    }
+}
+
+impl Substitute<'_> for Ret {
+    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TypeVar>) {
+        self.expr.substitute(cx);
+    }
+}
+
+impl Substitute<'_> for Lit {
+    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TypeVar>) {
+        let (unbound_ty, ty) = self.substitute(hir.ty().get(&self.db));
+        hir.set_ty(ty);
+        unbound_ty
     }
 }

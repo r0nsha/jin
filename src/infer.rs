@@ -100,9 +100,9 @@ impl Infer<'_> for Binding {
     ) -> Constraints {
         self.ty = Type::alloc(&mut cx.db, Type::unit(self.span));
 
-        let constraints = self.value.infer(cx, env, None);
+        let constraints = self.expr.infer(cx, env, None);
 
-        self.id.get_mut(&mut cx.db).ty = self.value.ty();
+        self.id.get_mut(&mut cx.db).ty = self.expr.ty();
 
         constraints
     }
@@ -175,7 +175,7 @@ impl Infer<'_> for Ret {
         if let Some(fun_scope) = env.fun_scopes.current() {
             let ret_ty = fun_scope.ret_ty;
 
-            if let Some(value) = self.value.as_mut() {
+            if let Some(value) = self.expr.as_mut() {
                 let constraints = value.infer(cx, env, Some(ret_ty));
                 constraints.merge(Constraints::one(Constraint::TypeEq {
                     expected: ret_ty,

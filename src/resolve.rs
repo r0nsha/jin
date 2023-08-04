@@ -102,7 +102,7 @@ impl Resolve<'_> for Binding {
             // );
         }
 
-        self.value.resolve(cx, env);
+        self.expr.resolve(cx, env);
     }
 }
 
@@ -137,7 +137,7 @@ impl Resolve<'_> for Block {
 
 impl Resolve<'_> for Ret {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        if let Some(value) = self.value.as_mut() {
+        if let Some(value) = self.expr.as_mut() {
             value.resolve(cx, env);
         }
     }

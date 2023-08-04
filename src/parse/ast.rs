@@ -69,7 +69,7 @@ pub(crate) struct Fun {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Ret {
-    pub(crate) value: Option<Box<Ast>>,
+    pub(crate) expr: Option<Box<Ast>>,
     pub(crate) span: Span,
 }
 

@@ -117,11 +117,11 @@ impl Parser {
 
     fn parse_ret(&mut self) -> ParseResult<Ast> {
         let start = self.last_span();
-        let value = self.parse_expr()?;
-        let span = start.merge(value.span());
+        let expr = self.parse_expr()?;
+        let span = start.merge(expr.span());
 
         Ok(Ast::Ret(Ret {
-            value: Some(Box::new(value)),
+            expr: Some(Box::new(expr)),
             span,
         }))
     }

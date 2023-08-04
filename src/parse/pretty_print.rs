@@ -25,7 +25,7 @@ impl PrettyPrint {
             Ast::Ret(ret) => {
                 self.builder.begin_child("return".to_string());
 
-                if let Some(value) = ret.value.as_ref() {
+                if let Some(value) = ret.expr.as_ref() {
                     self.print_ast(value);
                 }
 

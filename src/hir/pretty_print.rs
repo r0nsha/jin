@@ -34,7 +34,7 @@ impl<'a> PrettyPrint<'a> {
             Hir::Ret(ret) => {
                 self.builder.begin_child("return".to_string());
 
-                if let Some(value) = ret.value.as_ref() {
+                if let Some(value) = ret.expr.as_ref() {
                     self.print_hir(value);
                 }
 
@@ -59,7 +59,7 @@ impl<'a> PrettyPrint<'a> {
             self.print_ty(binding.id.get(&self.db).ty)
         ));
 
-        self.print_hir(&binding.value);
+        self.print_hir(&binding.expr);
 
         self.builder.end_child();
     }

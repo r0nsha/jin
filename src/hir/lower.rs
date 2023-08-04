@@ -40,7 +40,7 @@ impl<'a> Lower<'a> {
         Binding {
             id: SymbolId::null(),
             name,
-            value: Box::new(value),
+            expr: Box::new(value),
             span: binding.span,
             ty: TypeId::null(),
         }
@@ -63,7 +63,7 @@ impl<'a> Lower<'a> {
     fn lower_ast(&mut self, ast: Ast) -> Hir {
         match ast {
             Ast::Ret(ret) => Hir::Ret(Ret {
-                value: ret.value.map(|v| Box::new(self.lower_ast(*v))),
+                expr: ret.expr.map(|v| Box::new(self.lower_ast(*v))),
                 span: ret.span,
                 ty: TypeId::null(),
             }),
