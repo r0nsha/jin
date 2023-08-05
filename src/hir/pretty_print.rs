@@ -46,8 +46,11 @@ impl<'a, 'd> ToDoc<'a, 'd> for Binding {
         RcDoc::text("let")
             .append(RcDoc::space())
             .append(RcDoc::text(self.name.as_str()))
-            .append(RcDoc::space())
-            .append(self.id.get(db).ty.to_doc(db))
+            .append(if matches!(self.expr.as_ref(), Hir::Fun(_)) {
+                RcDoc::nil()
+            } else {
+                RcDoc::space().append(self.id.get(db).ty.to_doc(db))
+            })
             .append(RcDoc::space())
             .append(RcDoc::text("="))
             .append(RcDoc::softline())
