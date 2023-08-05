@@ -1,6 +1,6 @@
 use std::io;
 
-use pretty::{Arena, Doc, DocAllocator, DocBuilder, RefDoc};
+use pretty::{Arena, DocAllocator, DocBuilder, Pretty};
 
 use crate::{hir::*, ty::*};
 
@@ -12,33 +12,63 @@ pub(crate) fn codegen(modules: &[Module]) {
 struct Codegen<'a> {
     arena: &'a Arena<'a>,
     prelude: DocBuilder<'a, Arena<'a>>,
-    declarations: DocBuilder<'a, Arena<'a>>,
-    definitions: DocBuilder<'a, Arena<'a>>,
+    declarations: Vec<DocBuilder<'a, Arena<'a>>>,
+    definitions: Vec<DocBuilder<'a, Arena<'a>>>,
 }
 
 impl<'a> Codegen<'a> {
     fn new(arena: &'a Arena<'a>) -> Self {
-        let prelude = arena.nil();
-        let declarations = arena.nil();
-        let definitions = arena.nil();
+        let prelude = arena
+            .text("include <stdint.h>")
+            .append(arena.line())
+            .append(arena.line())
+            .append(arena.statement(arena.text("typedef void never")));
 
         Codegen {
             arena,
             prelude,
-            declarations,
-            definitions,
+            declarations: vec![],
+            definitions: vec![],
         }
     }
 
     fn gen(mut self, modules: &[Module]) -> Self {
+        //         self.definitions.push_str(
+        //             r#"int main() {
+        //     main_main();
+        //     return 0;
+        // }
+
+        let binding_count = modules.iter().map(|m| m.bindings.len()).sum();
+
+        self.declarations.reserve(binding_count);
+        self.definitions.reserve(binding_count);
+
         self
     }
 
+    fn add_definition(&mut self, def: DocBuilder<'a, Arena<'a>, ()>) {
+        self.definitions.push(def);
+    }
+
+    fn add_declaration(&mut self, decl: DocBuilder<'a, Arena<'a>, ()>) {
+        self.declarations.push(decl);
+    }
+
     fn write_to_stdout(self) {
+        println!();
+        self.write(io::stdout());
+        println!();
+    }
+
+    fn write(self, mut w: impl io::Write) {
         self.prelude
-            .append(self.declarations)
-            .append(self.definitions)
-            .render(80, &mut io::stdout())
+            .append(self.arena.line())
+            .append(self.arena.intersperse(
+                self.declarations.into_iter().chain(self.definitions),
+                self.arena.line(),
+            ))
+            .render(80, &mut w)
             .unwrap();
     }
 }
@@ -149,3 +179,17 @@ impl<'a> Codegen<'a> {
 //         TyKind::Var(_) => panic!("unexpected type: {ty}"),
 //     }
 // }
+
+trait ArenaExt<'a, A>
+where
+    Self: DocAllocator<'a, A>,
+    Self::Doc: Clone,
+    A: Clone + 'a,
+    <Self as DocAllocator<'a, A>>::Doc: Pretty<'a, Self, A>,
+{
+    fn statement(&'a self, doc: DocBuilder<'a, Self, A>) -> DocBuilder<'a, Self, A> {
+        self.nil().append(doc).append(";").group()
+    }
+}
+
+impl<'a, A: Clone> ArenaExt<'a, A> for Arena<'a, A> {}
