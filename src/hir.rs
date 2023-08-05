@@ -1,5 +1,5 @@
 mod lower;
-mod pretty_print;
+mod pretty;
 
 pub(crate) use lower::lower;
 use ustr::Ustr;
@@ -19,7 +19,7 @@ pub(crate) struct Module {
 
 impl Module {
     pub(crate) fn pretty_print(&self, db: &Database) -> io::Result<()> {
-        pretty_print::print_module(db, self)
+        pretty::print_module(db, self)
     }
 }
 
