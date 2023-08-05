@@ -48,9 +48,9 @@ impl<'a, 'd> ToDoc<'a, 'd> for Binding {
             .append(RcDoc::text(self.name.as_str()))
             .append(RcDoc::space())
             .append(self.id.get(db).ty.to_doc(db))
-            .append(RcDoc::softline())
-            .append(RcDoc::text("="))
             .append(RcDoc::space())
+            .append(RcDoc::text("="))
+            .append(RcDoc::softline())
             .append(self.expr.to_doc(db))
     }
 }
