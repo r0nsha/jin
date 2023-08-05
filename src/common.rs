@@ -5,4 +5,5 @@ pub(crate) mod time;
 
 pub(crate) use id_vec::*;
 pub(crate) use qualified_name::*;
+#[allow(unused)]
 pub(crate) use scopes::*;

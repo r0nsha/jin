@@ -97,7 +97,7 @@ fn build_inner(db: &mut Database) {
     time! { print_times, "find main", passes::find_main(db) };
     bail_if_failed!(db);
 
-    time! { print_times, "codegen", codegen::codegen(&hir_modules) };
+    time! { print_times, "codegen", codegen::codegen(&db, &hir_modules) };
 
     // // TODO: don't create this out dir
     // // TODO: handle error (ICE)

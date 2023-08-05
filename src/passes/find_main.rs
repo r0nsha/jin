@@ -11,7 +11,7 @@ pub(crate) fn find_main(db: &mut Database) {
     let main_fun_id = if let Some(main_fun) = db
         .funs
         .iter()
-        .find(|f| f.module_id == main_module_id && f.name == "main")
+        .find(|f| f.module_id == main_module_id && f.name.name() == "main")
     {
         let fun_ty = main_fun.ty.get(db);
 

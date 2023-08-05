@@ -283,7 +283,7 @@ impl Ord for ScopeLevel {
 pub(crate) struct Fun {
     pub(crate) id: FunId,
     pub(crate) module_id: ModuleId,
-    pub(crate) name: Ustr,
+    pub(crate) name: QualifiedName,
     pub(crate) kind: FunKind,
     pub(crate) span: Span,
     pub(crate) ty: TypeId,
@@ -293,7 +293,7 @@ impl Fun {
     pub(crate) fn alloc(
         db: &mut Database,
         module_id: ModuleId,
-        name: Ustr,
+        name: QualifiedName,
         kind: FunKind,
         span: Span,
         ty: TypeId,

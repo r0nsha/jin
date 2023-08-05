@@ -118,10 +118,12 @@ impl Resolve<'_> for Hir {
 
 impl Resolve<'_> for Fun {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+        let name = env.module_id.get(&cx.db).name.clone().child(self.name);
+
         self.id = db::Fun::alloc(
             &mut cx.db,
             env.module_id,
-            self.name,
+            name,
             FunKind::Orphan,
             self.span,
             self.ty,
