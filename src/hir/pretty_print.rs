@@ -22,7 +22,7 @@ pub(crate) fn print_module(db: &Database, module: &Module) {
     .append(RcDoc::line())
     .append("}");
 
-    println!("{}", doc.pretty(20));
+    println!("{}", doc.pretty(80));
 }
 
 trait ToDoc<'a> {
@@ -63,13 +63,13 @@ impl ToDoc<'_> for Fun {
 impl ToDoc<'_> for Block {
     fn to_doc(&self, db: &'_ Database) -> RcDoc<()> {
         RcDoc::text("{")
-            .append(RcDoc::line())
+            .append(RcDoc::softline())
             .append(RcDoc::intersperse(
                 self.exprs.iter().map(|e| e.to_doc(db)),
                 Doc::line(),
             ))
             .nest(1)
-            .append(RcDoc::line())
+            .append(RcDoc::softline())
             .append("}")
     }
 }
