@@ -87,17 +87,18 @@ fn build_inner(db: &mut Database) {
     bail_if_failed!(db);
 
     if db.build_options().print_hir {
-        println!("Hir:");
+        println!("\nHir:\n");
         for module in &hir_modules {
             module.pretty_print(db);
         }
+        println!();
     }
 
     time! { print_times, "find main", passes::find_main(db) };
     bail_if_failed!(db);
 
-    // let code = time! { print_times, "codegen", codegen(typed_module) };
-    //
+    time! { print_times, "codegen", codegen::codegen(&hir_modules) };
+
     // // TODO: don't create this out dir
     // // TODO: handle error (ICE)
     // fs::create_dir_all("out").unwrap();

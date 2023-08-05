@@ -1,28 +1,47 @@
-// use crate::{ast::*, ty::*};
-//
-// pub(crate)fn codegen(module: Module) -> String {
-//     let mut cg = Codegen {
-//         prelude: String::new(),
-//         declarations: String::new(),
-//         definitions: String::new(),
-//         indent: 0,
-//     };
-//
-//     cg.gen(module);
-//
-//     format!(
-//         "{}\n\n{}\n\n{}",
-//         cg.prelude, cg.declarations, cg.definitions
-//     )
-// }
-//
-// struct Codegen {
-//     prelude: String,
-//     declarations: String,
-//     definitions: String,
-//     indent: usize,
-// }
-//
+use std::io;
+
+use pretty::{Arena, Doc, DocAllocator, DocBuilder, RefDoc};
+
+use crate::{hir::*, ty::*};
+
+pub(crate) fn codegen(modules: &[Module]) {
+    let arena = Arena::new();
+    Codegen::new(&arena).gen(modules).write_to_stdout()
+}
+
+struct Codegen<'a> {
+    arena: &'a Arena<'a>,
+    prelude: DocBuilder<'a, Arena<'a>>,
+    declarations: DocBuilder<'a, Arena<'a>>,
+    definitions: DocBuilder<'a, Arena<'a>>,
+}
+
+impl<'a> Codegen<'a> {
+    fn new(arena: &'a Arena<'a>) -> Self {
+        let prelude = arena.nil();
+        let declarations = arena.nil();
+        let definitions = arena.nil();
+
+        Codegen {
+            arena,
+            prelude,
+            declarations,
+            definitions,
+        }
+    }
+
+    fn gen(mut self, modules: &[Module]) -> Self {
+        self
+    }
+
+    fn write_to_stdout(self) {
+        self.prelude
+            .append(self.declarations)
+            .append(self.definitions)
+            .render(80, &mut io::stdout())
+            .unwrap();
+    }
+}
 // impl Codegen {
 //     fn gen(&mut self, module: Module) {
 //         self.prelude.push_str(
