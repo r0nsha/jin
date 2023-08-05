@@ -89,8 +89,8 @@ pub(crate) enum TypeKind {
     Var(TypeVar),
     Int(IntType),
     Fun(FunType),
-    Never,
     Unit, // TODO: when implementing tuples, this should just be an empty tuple
+    Never,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

@@ -19,11 +19,17 @@ struct CodegenCx<'a> {
 
 impl<'a> CodegenCx<'a> {
     fn new(db: &'a Database, arena: &'a Arena<'a>) -> Self {
-        let prelude = arena
-            .text("include <stdint.h>")
+        let includes = arena.text("include <stdint.h>");
+
+        let typedefs = arena
+            .statement(arena.text("typedef void never"))
+            .append(arena.line())
+            .append(arena.statement(arena.text("typedef struct {} unit")));
+
+        let prelude = includes
             .append(arena.line())
             .append(arena.line())
-            .append(arena.statement(arena.text("typedef void never")));
+            .append(typedefs);
 
         CodegenCx {
             db,
@@ -105,21 +111,28 @@ trait Gen<'a, 'cx> {
 
 impl<'a, 'cx> Gen<'a, 'cx> for Module {
     fn gen(&self, cx: &'a mut CodegenCx<'cx>) {
-        todo!()
+        for binding in &self.bindings {
+            binding.gen(cx);
+        }
     }
 }
 
-// fn c_type(ty: &Ty) -> String {
-//     match &ty.kind {
-//         TyKind::Int(int) => match int {
-//             IntTy::Int => "intptr_t",
-//         }
-//         .to_string(),
-//         TyKind::Fun(_) => todo!(),
-//         TyKind::Unit | TyKind::Never => "void".to_string(),
-//         TyKind::Var(_) => panic!("unexpected type: {ty}"),
-//     }
-// }
+impl<'a, 'cx> Gen<'a, 'cx> for Binding {
+    fn gen(&self, cx: &'a mut CodegenCx<'cx>) {}
+}
+
+fn c_type(ty: &Type) -> String {
+    match &ty.kind {
+        TypeKind::Int(int) => match int {
+            IntType::Int => "intptr_t",
+        }
+        .to_string(),
+        TypeKind::Fun(_) => todo!(),
+        TypeKind::Unit => "unit".to_string(),
+        TypeKind::Never => "void".to_string(),
+        TypeKind::Var(_) => panic!("unexpected type: {ty}"),
+    }
+}
 
 trait ArenaExt<'a, A>
 where
