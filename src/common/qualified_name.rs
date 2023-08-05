@@ -39,6 +39,10 @@ impl QualifiedName {
         self.full_name(".")
     }
 
+    pub(crate) fn full_c_name(&self) -> String {
+        self.full_name("_")
+    }
+
     pub(crate) fn child(mut self, name: Ustr) -> Self {
         self.0.push(name);
         self

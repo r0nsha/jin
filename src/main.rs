@@ -8,7 +8,10 @@ mod passes;
 mod span;
 mod ty;
 
-use std::path::PathBuf;
+use std::{
+    fs::{self, File},
+    path::PathBuf,
+};
 
 use clap::{Parser, Subcommand};
 
@@ -97,16 +100,19 @@ fn build_inner(db: &mut Database) {
     time! { print_times, "find main", passes::find_main(db) };
     bail_if_failed!(db);
 
-    time! { print_times, "codegen", codegen::codegen(&db, &hir_modules) };
+    const OUT_DIR: &str = "out";
+    let out_file = db.main_module().unwrap().name.name();
 
-    // // TODO: don't create this out dir
-    // // TODO: handle error (ICE)
-    // fs::create_dir_all("out").unwrap();
-    //
-    // // TODO: rename file
-    // // TODO: handle error (ICE)
-    // fs::write("out/main.c", &code).unwrap();
-    //
+    // TODO: don't create this out dir
+    // TODO: handle error (ICE)
+    fs::create_dir_all(OUT_DIR).unwrap();
+
+    // TODO: rename file
+    // TODO: handle error (ICE)
+    let mut file = File::create(format!("{OUT_DIR}/{out_file}.c")).unwrap();
+
+    time! { print_times, "codegen", codegen::codegen(&db, &hir_modules, &mut file) };
+
     // // TODO: rename input
     // // TODO: rename output
     // // TODO: handle error (ICE)
