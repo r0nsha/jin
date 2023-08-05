@@ -1,4 +1,6 @@
 fn main() = {
-	// We return the answer to the universe...
+	// We return nothing for now...
 	return ()
 }
+
+fn answer() = 42

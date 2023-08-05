@@ -43,7 +43,12 @@ impl Hir {
 
 impl Spanned for Hir {
     fn span(&self) -> Span {
-        todo!()
+        match self {
+            Hir::Fun(x) => x.span,
+            Hir::Block(x) => x.span,
+            Hir::Ret(x) => x.span,
+            Hir::Lit(x) => x.span,
+        }
     }
 }
 

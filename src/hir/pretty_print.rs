@@ -17,7 +17,7 @@ pub(crate) fn print_module(db: &Database, module: &Module) {
     .append(RcDoc::line())
     .append(RcDoc::intersperse(
         module.bindings.iter().map(|b| b.to_doc(db)),
-        RcDoc::line(),
+        RcDoc::line().append(RcDoc::line()),
     ))
     .nest(1)
     .append(RcDoc::line())

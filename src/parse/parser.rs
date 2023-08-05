@@ -160,11 +160,21 @@ impl Parser {
         self.expect(TokenKind::Ident(ustr("")))
     }
 
+    fn require(&mut self) -> ParseResult<Token> {
+        if let Some(tok) = self.token() {
+            self.advance();
+            Ok(tok)
+        } else {
+            Err(ParseError::UnexpectedEof {
+                span: self.last_span(),
+            })
+        }
+    }
+
     fn expect(&mut self, expected: TokenKind) -> ParseResult<Token> {
         let tok = self.require()?;
 
         if tok.kind_eq(expected) {
-            self.advance();
             Ok(tok)
         } else {
             Err(ParseError::UnexpectedToken {
@@ -177,12 +187,6 @@ impl Parser {
 
     fn token_kind(&self) -> Option<TokenKind> {
         self.token().map(|t| t.kind)
-    }
-
-    fn require(&self) -> ParseResult<Token> {
-        self.token().ok_or_else(|| ParseError::UnexpectedEof {
-            span: self.last_span(),
-        })
     }
 
     fn token(&self) -> Option<Token> {
