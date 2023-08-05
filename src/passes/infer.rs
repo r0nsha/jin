@@ -101,7 +101,7 @@ impl Infer<'_> for Fun {
         self.body.infer(cx, env);
         cx.constraints.push(Constraint::Eq {
             expected: ret_ty,
-            actual: self.body.ty(),
+            actual: self.body.ty,
         });
 
         env.fun_scopes.pop();

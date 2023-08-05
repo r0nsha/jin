@@ -1,10 +1,9 @@
 mod lower;
-mod pretty;
+mod pretty_print;
 
+use enum_as_inner::EnumAsInner;
 pub(crate) use lower::lower;
 use ustr::Ustr;
-
-use std::io;
 
 use crate::{
     db::{Database, FunId, ModuleId, SymbolId, TypeId},
@@ -18,12 +17,12 @@ pub(crate) struct Module {
 }
 
 impl Module {
-    pub(crate) fn pretty_print(&self, db: &Database) -> io::Result<()> {
-        pretty::print_module(db, self)
+    pub(crate) fn pretty_print(&self, db: &Database) {
+        pretty_print::print_module(db, self)
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, EnumAsInner)]
 pub(crate) enum Hir {
     Fun(Fun),
     Block(Block),
@@ -61,7 +60,7 @@ pub(crate) struct Binding {
 pub(crate) struct Fun {
     pub(crate) id: FunId,
     pub(crate) name: Ustr,
-    pub(crate) body: Box<Hir>,
+    pub(crate) body: Block,
     pub(crate) span: Span,
     pub(crate) ty: TypeId,
 }

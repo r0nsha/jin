@@ -47,10 +47,24 @@ impl<'a> Lower<'a> {
     }
 
     fn lower_fun(&mut self, fun: ast::Fun) -> Fun {
+        let body = self.lower_ast(*fun.body);
+
+        let body = if let Hir::Block(block) = body {
+            block
+        } else {
+            let span = body.span();
+
+            Block {
+                exprs: vec![body],
+                span,
+                ty: TypeId::null(),
+            }
+        };
+
         Fun {
             id: FunId::null(),
             name: fun.name,
-            body: Box::new(self.lower_ast(*fun.body)),
+            body,
             span: fun.span,
             ty: TypeId::null(),
         }
@@ -58,11 +72,7 @@ impl<'a> Lower<'a> {
 
     fn lower_ast(&mut self, ast: Ast) -> Hir {
         match ast {
-            Ast::Block(block) => Hir::Block(Block {
-                exprs: block.exprs.into_iter().map(|e| self.lower_ast(e)).collect(),
-                span: block.span,
-                ty: TypeId::null(),
-            }),
+            Ast::Block(block) => Hir::Block(self.lower_block(block)),
             Ast::Ret(ret) => Hir::Ret(Ret {
                 expr: ret.expr.map(|v| Box::new(self.lower_ast(*v))),
                 span: ret.span,
@@ -76,6 +86,14 @@ impl<'a> Lower<'a> {
                 span: lit.span,
                 ty: TypeId::null(),
             }),
+        }
+    }
+
+    fn lower_block(&mut self, block: ast::Block) -> Block {
+        Block {
+            exprs: block.exprs.into_iter().map(|e| self.lower_ast(e)).collect(),
+            span: block.span,
+            ty: TypeId::null(),
         }
     }
 }
