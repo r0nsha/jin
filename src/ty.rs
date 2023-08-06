@@ -7,60 +7,60 @@ use crate::span::Span;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Ty {
-    pub(crate) kind: TypeKind,
+    pub(crate) kind: TyKind,
     pub(crate) span: Span,
 }
 
 impl Ty {
-    pub(crate) fn var(var: TypeVar, span: Span) -> Self {
+    pub(crate) fn var(var: TyVar, span: Span) -> Self {
         Self {
-            kind: TypeKind::Var(var),
+            kind: TyKind::Var(var),
             span,
         }
     }
 
     pub(crate) fn int(span: Span) -> Self {
         Self {
-            kind: TypeKind::Int(IntType::Int),
+            kind: TyKind::Int(IntTy::Int),
             span,
         }
     }
 
     pub(crate) fn fun(ret: Ty, span: Span) -> Self {
         Self {
-            kind: TypeKind::Fun(FunType { ret: Box::new(ret) }),
+            kind: TyKind::Fun(FunTy { ret: Box::new(ret) }),
             span,
         }
     }
 
     pub(crate) fn never(span: Span) -> Self {
         Self {
-            kind: TypeKind::Never,
+            kind: TyKind::Never,
             span,
         }
     }
 
     pub(crate) fn unit(span: Span) -> Self {
         Self {
-            kind: TypeKind::Unit,
+            kind: TyKind::Unit,
             span,
         }
     }
 
-    pub(crate) fn occurs_check(&self, var: TypeVar) -> Result<(), Self> {
+    pub(crate) fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
         match &self.kind {
-            TypeKind::Fun(fun) => {
+            TyKind::Fun(fun) => {
                 // fun.arg.occurs_check(var).map_err(|_| self.clone())?;
                 fun.ret.occurs_check(var).map_err(|_| self.clone())
             }
-            TypeKind::Var(v) => {
+            TyKind::Var(v) => {
                 if *v == var {
                     Err(self.clone())
                 } else {
                     Ok(())
                 }
             }
-            TypeKind::Int(_) | TypeKind::Unit | TypeKind::Never => Ok(()),
+            TyKind::Int(_) | TyKind::Unit | TyKind::Never => Ok(()),
         }
     }
 }
@@ -68,16 +68,16 @@ impl Ty {
 impl fmt::Display for Ty {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
-            TypeKind::Fun(fun) => {
+            TyKind::Fun(fun) => {
                 f.write_str("fn() ")?;
                 fun.ret.fmt(f)
             }
-            TypeKind::Var(var) => write!(f, "${}", var.0),
-            TypeKind::Int(int) => match int {
-                IntType::Int => f.write_str("int"),
+            TyKind::Var(var) => write!(f, "${}", var.0),
+            TyKind::Int(int) => match int {
+                IntTy::Int => f.write_str("int"),
             },
-            TypeKind::Never => f.write_str("never"),
-            TypeKind::Unit => f.write_str("()"),
+            TyKind::Never => f.write_str("never"),
+            TyKind::Unit => f.write_str("()"),
         }
     }
 }
@@ -85,18 +85,18 @@ impl fmt::Display for Ty {
 impl EqUnifyValue for Ty {}
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
-pub(crate) enum TypeKind {
-    Var(TypeVar),
-    Int(IntType),
-    Fun(FunType),
-    Unit, // TODO: when implementing tuples, this should just be an empty tuple
+pub(crate) enum TyKind {
+    Var(TyVar),
+    Int(IntTy),
+    Fun(FunTy),
+    Unit, // TODO: when we implement tuples, this should just be an empty tuple
     Never,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct TypeVar(u32);
+pub(crate) struct TyVar(u32);
 
-impl UnifyKey for TypeVar {
+impl UnifyKey for TyVar {
     type Value = Option<Ty>;
 
     fn index(&self) -> u32 {
@@ -113,11 +113,11 @@ impl UnifyKey for TypeVar {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum IntType {
+pub(crate) enum IntTy {
     Int,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct FunType {
+pub(crate) struct FunTy {
     pub(crate) ret: Box<Ty>,
 }

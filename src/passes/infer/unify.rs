@@ -1,4 +1,4 @@
-use crate::ty::{IntType, Ty, TypeKind};
+use crate::ty::{IntTy, Ty, TyKind};
 
 use super::{constraint::Constraint, error::InferError, InferCx};
 
@@ -20,17 +20,17 @@ impl<'db> InferCx<'db> {
         let actual = self.normalize_ty(actual.clone());
 
         match (&expected.kind, &actual.kind) {
-            (TypeKind::Fun(expected), TypeKind::Fun(actual)) => {
+            (TyKind::Fun(expected), TyKind::Fun(actual)) => {
                 self.unify_ty_ty(&expected.ret, &actual.ret)
             }
 
-            (TypeKind::Var(expected), TypeKind::Var(actual)) => self
+            (TyKind::Var(expected), TyKind::Var(actual)) => self
                 .typecx
                 .unification_table
                 .unify_var_var(*expected, *actual)
                 .map_err(|(expected, actual)| InferError::TypesNotEq { expected, actual }),
 
-            (TypeKind::Var(var), _) => {
+            (TyKind::Var(var), _) => {
                 actual
                     .occurs_check(*var)
                     .map_err(|ty| InferError::InfiniteType { var: *var, ty })?;
@@ -41,7 +41,7 @@ impl<'db> InferCx<'db> {
                     .map_err(|(expected, actual)| InferError::TypesNotEq { expected, actual })
             }
 
-            (_, TypeKind::Var(var)) => {
+            (_, TyKind::Var(var)) => {
                 expected
                     .occurs_check(*var)
                     .map_err(|ty| InferError::InfiniteType { var: *var, ty })?;
@@ -52,9 +52,9 @@ impl<'db> InferCx<'db> {
                     .map_err(|(expected, actual)| InferError::TypesNotEq { expected, actual })
             }
 
-            (TypeKind::Never, _)
-            | (_, TypeKind::Never)
-            | (TypeKind::Int(IntType::Int), TypeKind::Int(IntType::Int)) => Ok(()),
+            (TyKind::Never, _)
+            | (_, TyKind::Never)
+            | (TyKind::Int(IntTy::Int), TyKind::Int(IntTy::Int)) => Ok(()),
 
             (_, _) => Err(InferError::TypesNotEq { expected, actual }),
         }
@@ -62,15 +62,15 @@ impl<'db> InferCx<'db> {
 
     fn normalize_ty(&mut self, ty: Ty) -> Ty {
         match ty.kind {
-            TypeKind::Fun(fun) => {
+            TyKind::Fun(fun) => {
                 let ret = self.normalize_ty(*fun.ret);
                 Ty::fun(ret, ty.span)
             }
-            TypeKind::Var(var) => match self.typecx.unification_table.probe_value(var) {
+            TyKind::Var(var) => match self.typecx.unification_table.probe_value(var) {
                 Some(ty) => self.normalize_ty(ty),
                 None => ty,
             },
-            TypeKind::Int(_) | TypeKind::Unit | TypeKind::Never => ty,
+            TyKind::Int(_) | TyKind::Unit | TyKind::Never => ty,
         }
     }
 }

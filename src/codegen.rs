@@ -244,14 +244,14 @@ impl<'a, 'db> Codegen<'a, 'db> for Lit {
 
 fn c_type(ty: &Ty) -> String {
     match &ty.kind {
-        TypeKind::Int(int) => match int {
-            IntType::Int => "intptr_t",
+        TyKind::Int(int) => match int {
+            IntTy::Int => "intptr_t",
         }
         .to_string(),
-        TypeKind::Fun(_) => todo!(),
-        TypeKind::Unit => TYPE_UNIT.to_string(),
-        TypeKind::Never => TYPE_NEVER.to_string(),
-        TypeKind::Var(_) => panic!("unexpected type: {ty}"),
+        TyKind::Fun(_) => todo!(),
+        TyKind::Unit => TYPE_UNIT.to_string(),
+        TyKind::Never => TYPE_NEVER.to_string(),
+        TyKind::Var(_) => panic!("unexpected type: {ty}"),
     }
 }
 

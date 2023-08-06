@@ -1,11 +1,11 @@
 use crate::{
     diagnostics::{Diagnostic, Label},
-    ty::{Ty, TypeVar},
+    ty::{Ty, TyVar},
 };
 
 pub(crate) enum InferError {
     TypesNotEq { expected: Ty, actual: Ty },
-    InfiniteType { ty: Ty, var: TypeVar },
+    InfiniteType { ty: Ty, var: TyVar },
 }
 
 impl From<InferError> for Diagnostic {
