@@ -1,5 +1,7 @@
 mod builder;
 
+pub(crate) use builder::FunctionBuilder;
+
 use crate::{
     common::{new_id_type, IdVec},
     db::{FunctionId, TyId},
@@ -51,7 +53,6 @@ impl Function {
     pub(crate) fn parameters(&self) -> &[RegisterId] {
         &self.parameters
     }
-
 }
 
 pub(crate) struct Cfg {
