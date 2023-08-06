@@ -85,3 +85,20 @@ pub(crate) struct Block {
 impl Block {}
 
 pub(crate) enum Instruction {}
+
+pub(crate) struct FunctionBuilder {
+    function: Function,
+}
+
+impl FunctionBuilder {
+    pub(crate) fn new(id: FunctionId) -> Self {
+        Self {
+            function: Function::new(id),
+        }
+    }
+
+    pub(crate) fn finish(self) -> Function {
+        // TODO: validate that the function is built correctly
+        self.function
+    }
+}
