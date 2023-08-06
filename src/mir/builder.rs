@@ -27,6 +27,14 @@ impl FunctionBuilder {
         self.f.cfg.blocks.as_slice().last().unwrap()
     }
 
+    pub(crate) fn block(&self, id: BlockId) -> Option<&Block> {
+        self.f.cfg.blocks.get(id)
+    }
+
+    pub(crate) fn block_mut(&mut self, id: BlockId) -> Option<&mut Block> {
+        self.f.cfg.blocks.get_mut(id)
+    }
+
     pub(crate) fn finish(self) -> Result<Function, String> {
         // TODO: validate that the function is built correctly
         Ok(self.f)

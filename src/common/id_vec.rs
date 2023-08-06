@@ -32,6 +32,11 @@ impl<I: Id, T> IdVec<I, T> {
     }
 
     #[inline]
+    pub(crate) fn get_mut(&mut self, id: I) -> Option<&mut T> {
+        self.vec.get_mut(id.into())
+    }
+
+    #[inline]
     pub(crate) fn len(&self) -> usize {
         self.vec.len()
     }
