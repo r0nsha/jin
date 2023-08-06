@@ -36,7 +36,9 @@ impl FunctionBuilder {
     }
 
     pub(crate) fn finish(self) -> Result<Function, String> {
-        // TODO: validate that the function is built correctly
+        // TODO: validation:
+        //      - blocks with index > 0 have predecessors
+        //      - blocks with index < len - 1 have successors
         Ok(self.f)
     }
 }
