@@ -17,7 +17,8 @@ impl FunctionBuilder {
         self.f.registers.push(reg)
     }
 
-    pub(crate) fn add_parameter(&mut self, reg_id: RegisterId) -> usize {
+    pub(crate) fn add_parameter(&mut self, reg: Register) -> usize {
+        let reg_id = self.add_register(reg);
         self.f.parameters.push(reg_id);
         self.f.parameters.len() - 1
     }
