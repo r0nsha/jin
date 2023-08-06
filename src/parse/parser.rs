@@ -86,10 +86,8 @@ impl Parser {
         let mut stmts = vec![];
 
         loop {
-            let tok = self.require()?;
-
-            if tok.kind_eq(TokenKind::CloseCurly) {
-                let span = start.merge(tok.span);
+            if self.is(TokenKind::CloseCurly) {
+                let span = start.merge(self.last_span());
                 return Ok(Block { stmts, span });
             }
 
@@ -227,8 +225,8 @@ impl From<ParseError> for Diagnostic {
                 actual,
                 span,
             } => Diagnostic::error("parse::unexpected_token")
-                .with_message(format!("expected `{expected}`, got `{actual}` instead"))
-                .with_label(Label::primary(span).with_message(format!("found `{actual}` here"))),
+                .with_message(format!("expected {expected}, got {actual} instead"))
+                .with_label(Label::primary(span).with_message(format!("found {actual} here"))),
             ParseError::UnexpectedEof { span } => Diagnostic::error("parse::unexpected_eof")
                 .with_message(format!("unexpected end of file"))
                 .with_label(Label::primary(span).with_message(format!("here"))),

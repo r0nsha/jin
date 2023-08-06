@@ -1,6 +1,6 @@
 fn main() = {
 	// We return nothing for now...
-	return ()
+	return return ()
 }
 
 fn answer() = 42
