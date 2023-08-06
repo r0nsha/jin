@@ -8,7 +8,7 @@ pub(crate) fn codegen(db: &Database, modules: &[Module], writer: &mut impl io::W
     let arena = Arena::new();
 
     CodegenCx::new(db, &arena)
-        .gen(&arena, modules)
+        .codegen_all(&arena, modules)
         .write(&arena, writer)
 }
 
@@ -58,7 +58,7 @@ impl<'a> CodegenCx<'a> {
         }
     }
 
-    fn gen(mut self, arena: &'a Arena<'a>, modules: &[Module]) -> Self {
+    fn codegen_all(mut self, arena: &'a Arena<'a>, modules: &[Module]) -> Self {
         let binding_count = modules.iter().map(|m| m.bindings.len()).sum();
 
         self.declarations.reserve(binding_count);
@@ -67,7 +67,7 @@ impl<'a> CodegenCx<'a> {
         self.gen_main(&arena);
 
         for module in modules {
-            module.gen(&mut self, &arena);
+            module.codegen(&mut self, &arena);
         }
 
         self
@@ -117,59 +117,59 @@ impl<'a> CodegenCx<'a> {
     }
 }
 
-trait Gen<'a, 'cx> {
-    fn gen(
+trait Codegen<'a, 'cx> {
+    fn codegen(
         &self,
         cx: &'a mut CodegenCx<'cx>,
         arena: &'cx Arena<'cx>,
     ) -> DocBuilder<'cx, Arena<'cx>, ()>;
 }
 
-impl<'a, 'cx> Gen<'a, 'cx> for Module {
-    fn gen(
+impl<'a, 'cx> Codegen<'a, 'cx> for Module {
+    fn codegen(
         &self,
         cx: &'a mut CodegenCx<'cx>,
         arena: &'cx Arena<'cx>,
     ) -> DocBuilder<'cx, Arena<'cx>, ()> {
         for binding in &self.bindings {
-            binding.gen(cx, arena);
+            binding.codegen(cx, arena);
         }
 
         arena.nil()
     }
 }
 
-impl<'a, 'cx> Gen<'a, 'cx> for Hir {
-    fn gen(
+impl<'a, 'cx> Codegen<'a, 'cx> for Hir {
+    fn codegen(
         &self,
         cx: &'a mut CodegenCx<'cx>,
         arena: &'cx Arena<'cx>,
     ) -> DocBuilder<'cx, Arena<'cx>, ()> {
         match self {
-            Hir::Fun(x) => x.gen(cx, arena),
-            Hir::Block(x) => x.gen(cx, arena),
-            Hir::Ret(x) => x.gen(cx, arena),
-            Hir::Lit(x) => x.gen(cx, arena),
+            Hir::Fun(x) => x.codegen(cx, arena),
+            Hir::Block(x) => x.codegen(cx, arena),
+            Hir::Ret(x) => x.codegen(cx, arena),
+            Hir::Lit(x) => x.codegen(cx, arena),
         }
     }
 }
 
-impl<'a, 'cx> Gen<'a, 'cx> for Binding {
-    fn gen(
+impl<'a, 'cx> Codegen<'a, 'cx> for Binding {
+    fn codegen(
         &self,
         cx: &'a mut CodegenCx<'cx>,
         arena: &'cx Arena<'cx>,
     ) -> DocBuilder<'cx, Arena<'cx>, ()> {
         if let Hir::Fun(fun) = self.expr.as_ref() {
-            fun.gen(cx, arena)
+            fun.codegen(cx, arena)
         } else {
             todo!("local/global variable")
         }
     }
 }
 
-impl<'a, 'cx> Gen<'a, 'cx> for Fun {
-    fn gen(
+impl<'a, 'cx> Codegen<'a, 'cx> for Fun {
+    fn codegen(
         &self,
         cx: &'a mut CodegenCx<'cx>,
         arena: &'cx Arena<'cx>,
@@ -185,7 +185,9 @@ impl<'a, 'cx> Gen<'a, 'cx> for Fun {
 
         cx.add_declaration(arena, sig.clone());
 
-        let def = sig.append(arena.space()).append(self.body.gen(cx, arena));
+        let def = sig
+            .append(arena.space())
+            .append(self.body.codegen(cx, arena));
 
         cx.add_definition(def);
 
@@ -193,8 +195,8 @@ impl<'a, 'cx> Gen<'a, 'cx> for Fun {
     }
 }
 
-impl<'a, 'cx> Gen<'a, 'cx> for Block {
-    fn gen(
+impl<'a, 'cx> Codegen<'a, 'cx> for Block {
+    fn codegen(
         &self,
         cx: &'a mut CodegenCx<'cx>,
         arena: &'cx Arena<'cx>,
@@ -202,7 +204,10 @@ impl<'a, 'cx> Gen<'a, 'cx> for Block {
         arena
             .text("{")
             .append(arena.line())
-            .append(arena.intersperse(self.exprs.iter().map(|e| e.gen(cx, arena)), arena.line()))
+            .append(arena.intersperse(
+                self.exprs.iter().map(|e| e.codegen(cx, arena)),
+                arena.line(),
+            ))
             .append(arena.text(";"))
             .nest(1)
             .append(arena.line())
@@ -210,8 +215,8 @@ impl<'a, 'cx> Gen<'a, 'cx> for Block {
     }
 }
 
-impl<'a, 'cx> Gen<'a, 'cx> for Ret {
-    fn gen(
+impl<'a, 'cx> Codegen<'a, 'cx> for Ret {
+    fn codegen(
         &self,
         cx: &'a mut CodegenCx<'cx>,
         arena: &'cx Arena<'cx>,
@@ -219,13 +224,13 @@ impl<'a, 'cx> Gen<'a, 'cx> for Ret {
         arena.text("return").append(arena.space()).append(
             self.expr
                 .as_ref()
-                .map_or_else(|| arena.nil(), |e| e.gen(cx, arena)),
+                .map_or_else(|| arena.nil(), |e| e.codegen(cx, arena)),
         )
     }
 }
 
-impl<'a, 'cx> Gen<'a, 'cx> for Lit {
-    fn gen(
+impl<'a, 'cx> Codegen<'a, 'cx> for Lit {
+    fn codegen(
         &self,
         _cx: &'a mut CodegenCx<'cx>,
         arena: &'cx Arena<'cx>,
