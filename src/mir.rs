@@ -84,14 +84,16 @@ pub(crate) struct Register {
 new_id_type!(BlockId);
 
 pub(crate) struct Block {
+    pub(crate) id: BlockId,
     pub(crate) instructions: Vec<Instruction>,
     pub(crate) predecessors: Vec<BlockId>,
     pub(crate) successors: Vec<BlockId>,
 }
 
 impl Block {
-    fn new() -> Self {
+    fn new(id: BlockId) -> Self {
         Self {
+            id,
             instructions: vec![],
             predecessors: vec![],
             successors: vec![],
