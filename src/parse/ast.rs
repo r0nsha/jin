@@ -57,11 +57,11 @@ pub(crate) struct Binding {
 
 #[derive(Debug, Clone)]
 pub(crate) enum BindingKind {
-    Fun(Fun),
+    Function(Function),
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Fun {
+pub(crate) struct Function {
     pub(crate) name: Ustr,
     // TODO: FunKind
     pub(crate) body: Box<Ast>,

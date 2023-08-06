@@ -34,7 +34,7 @@ impl<'db> Lower<'db> {
 
     fn lower_binding(&mut self, binding: ast::Binding) -> Binding {
         let (name, value) = match binding.kind {
-            ast::BindingKind::Fun(fun) => (fun.name, Hir::Fun(self.lower_fun(fun))),
+            ast::BindingKind::Function(fun) => (fun.name, Hir::Function(self.lower_fun(fun))),
         };
 
         Binding {
@@ -46,7 +46,7 @@ impl<'db> Lower<'db> {
         }
     }
 
-    fn lower_fun(&mut self, fun: ast::Fun) -> Fun {
+    fn lower_fun(&mut self, fun: ast::Function) -> Function {
         let body = self.lower_ast(*fun.body);
 
         let body = if let Hir::Block(block) = body {
@@ -61,8 +61,8 @@ impl<'db> Lower<'db> {
             }
         };
 
-        Fun {
-            id: FunId::null(),
+        Function {
+            id: FunctionId::null(),
             name: fun.name,
             body,
             span: fun.span,
@@ -73,7 +73,7 @@ impl<'db> Lower<'db> {
     fn lower_ast(&mut self, ast: Ast) -> Hir {
         match ast {
             Ast::Block(block) => Hir::Block(self.lower_block(block)),
-            Ast::Ret(ret) => Hir::Ret(Ret {
+            Ast::Ret(ret) => Hir::Return(Return {
                 expr: ret.expr.map(|v| Box::new(self.lower_ast(*v))),
                 span: ret.span,
                 ty: TyId::null(),

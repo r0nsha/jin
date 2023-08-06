@@ -108,19 +108,19 @@ impl Resolve<'_> for Binding {
 impl Resolve<'_> for Hir {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         match self {
-            Hir::Fun(x) => x.resolve(cx, env),
+            Hir::Function(x) => x.resolve(cx, env),
             Hir::Block(x) => x.resolve(cx, env),
-            Hir::Ret(x) => x.resolve(cx, env),
+            Hir::Return(x) => x.resolve(cx, env),
             Hir::Lit(x) => x.resolve(cx, env),
         }
     }
 }
 
-impl Resolve<'_> for Fun {
+impl Resolve<'_> for Function {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         let name = env.module_id.get(&cx.db).name.clone().child(self.name);
 
-        self.id = db::Fun::alloc(
+        self.id = db::Function::alloc(
             &mut cx.db,
             env.module_id,
             name,
@@ -146,7 +146,7 @@ impl Resolve<'_> for Block {
     }
 }
 
-impl Resolve<'_> for Ret {
+impl Resolve<'_> for Return {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         if let Some(value) = self.expr.as_mut() {
             value.resolve(cx, env);

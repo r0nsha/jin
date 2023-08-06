@@ -65,9 +65,9 @@ trait Infer<'db> {
 impl Infer<'_> for Hir {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         match self {
-            Hir::Fun(x) => x.infer(cx, env),
+            Hir::Function(x) => x.infer(cx, env),
             Hir::Block(x) => x.infer(cx, env),
-            Hir::Ret(x) => x.infer(cx, env),
+            Hir::Return(x) => x.infer(cx, env),
             Hir::Lit(x) => x.infer(cx, env),
         }
     }
@@ -81,7 +81,7 @@ impl Infer<'_> for Binding {
     }
 }
 
-impl Infer<'_> for Fun {
+impl Infer<'_> for Function {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         let ret_ty = cx.typecx.fresh_type_var(self.span);
         let fun_ty = Ty::fun(ret_ty.clone(), self.span);
@@ -123,7 +123,7 @@ impl Infer<'_> for Block {
     }
 }
 
-impl Infer<'_> for Ret {
+impl Infer<'_> for Return {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         self.ty = Ty::alloc(&mut cx.db, Ty::never(self.span));
 

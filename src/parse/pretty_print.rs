@@ -45,11 +45,11 @@ impl PrettyPrint {
 
     fn print_binding(&mut self, binding: &Binding) {
         match &binding.kind {
-            BindingKind::Fun(fun) => self.print_fun(fun),
+            BindingKind::Function(fun) => self.print_fun(fun),
         }
     }
 
-    fn print_fun(&mut self, fun: &Fun) {
+    fn print_fun(&mut self, fun: &Function) {
         self.builder.begin_child(format!("fn {}", fun.name));
         self.print_ast(&fun.body);
         self.builder.end_child();

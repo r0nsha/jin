@@ -6,7 +6,7 @@ pub(crate) use lower::lower;
 use ustr::Ustr;
 
 use crate::{
-    db::{Database, FunId, ModuleId, SymbolId, TyId},
+    db::{Database, FunctionId, ModuleId, SymbolId, TyId},
     span::{Span, Spanned},
 };
 
@@ -24,18 +24,18 @@ impl Module {
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub(crate) enum Hir {
-    Fun(Fun),
+    Function(Function),
     Block(Block),
-    Ret(Ret),
+    Return(Return),
     Lit(Lit),
 }
 
 impl Hir {
     pub(crate) fn ty(&self) -> TyId {
         match self {
-            Hir::Fun(x) => x.ty,
+            Hir::Function(x) => x.ty,
             Hir::Block(x) => x.ty,
-            Hir::Ret(x) => x.ty,
+            Hir::Return(x) => x.ty,
             Hir::Lit(x) => x.ty,
         }
     }
@@ -44,9 +44,9 @@ impl Hir {
 impl Spanned for Hir {
     fn span(&self) -> Span {
         match self {
-            Hir::Fun(x) => x.span,
+            Hir::Function(x) => x.span,
             Hir::Block(x) => x.span,
-            Hir::Ret(x) => x.span,
+            Hir::Return(x) => x.span,
             Hir::Lit(x) => x.span,
         }
     }
@@ -62,8 +62,8 @@ pub(crate) struct Binding {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Fun {
-    pub(crate) id: FunId,
+pub(crate) struct Function {
+    pub(crate) id: FunctionId,
     pub(crate) name: Ustr,
     pub(crate) body: Block,
     pub(crate) span: Span,
@@ -78,7 +78,7 @@ pub(crate) struct Block {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Ret {
+pub(crate) struct Return {
     pub(crate) expr: Option<Box<Hir>>,
     pub(crate) span: Span,
     pub(crate) ty: TyId,

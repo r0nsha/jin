@@ -20,7 +20,7 @@ impl<'db> InferCx<'db> {
         let actual = self.normalize_ty(actual.clone());
 
         match (&expected.kind, &actual.kind) {
-            (TyKind::Fun(expected), TyKind::Fun(actual)) => {
+            (TyKind::Function(expected), TyKind::Function(actual)) => {
                 self.unify_ty_ty(&expected.ret, &actual.ret)
             }
 
@@ -62,7 +62,7 @@ impl<'db> InferCx<'db> {
 
     fn normalize_ty(&mut self, ty: Ty) -> Ty {
         match ty.kind {
-            TyKind::Fun(fun) => {
+            TyKind::Function(fun) => {
                 let ret = self.normalize_ty(*fun.ret);
                 Ty::fun(ret, ty.span)
             }

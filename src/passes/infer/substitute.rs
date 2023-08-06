@@ -31,7 +31,7 @@ impl<'db> InferCx<'db> {
 
     fn substitute_ty(&mut self, ty: &Ty, unbound_vars: &mut HashSet<TyVar>) -> Ty {
         match &ty.kind {
-            TyKind::Fun(fun) => {
+            TyKind::Function(fun) => {
                 let ret = self.substitute_ty(&fun.ret, unbound_vars);
                 Ty::fun(ret, ty.span)
             }
@@ -59,9 +59,9 @@ trait Substitute<'db> {
 impl Substitute<'_> for Hir {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         match self {
-            Hir::Fun(x) => x.substitute(cx, unbound_vars),
+            Hir::Function(x) => x.substitute(cx, unbound_vars),
             Hir::Block(x) => x.substitute(cx, unbound_vars),
-            Hir::Ret(x) => x.substitute(cx, unbound_vars),
+            Hir::Return(x) => x.substitute(cx, unbound_vars),
             Hir::Lit(_) => (),
         }
 
@@ -76,7 +76,7 @@ impl Substitute<'_> for Binding {
     }
 }
 
-impl Substitute<'_> for Fun {
+impl Substitute<'_> for Function {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         self.body.substitute(cx, unbound_vars);
         cx.substitute_type_id(self.id.get(&cx.db).ty, unbound_vars);
@@ -91,7 +91,7 @@ impl Substitute<'_> for Block {
     }
 }
 
-impl Substitute<'_> for Ret {
+impl Substitute<'_> for Return {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         self.expr.substitute(cx, unbound_vars);
     }

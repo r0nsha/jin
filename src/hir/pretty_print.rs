@@ -33,9 +33,9 @@ trait ToDoc<'db, 'd> {
 impl<'db, 'd> ToDoc<'db, 'd> for Hir {
     fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
         match self {
-            Hir::Fun(x) => x.to_doc(db),
+            Hir::Function(x) => x.to_doc(db),
             Hir::Block(x) => x.to_doc(db),
-            Hir::Ret(x) => x.to_doc(db),
+            Hir::Return(x) => x.to_doc(db),
             Hir::Lit(x) => x.to_doc(db),
         }
     }
@@ -46,7 +46,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for Binding {
         RcDoc::text("let")
             .append(RcDoc::space())
             .append(RcDoc::text(self.name.as_str()))
-            .append(if matches!(self.expr.as_ref(), Hir::Fun(_)) {
+            .append(if matches!(self.expr.as_ref(), Hir::Function(_)) {
                 RcDoc::nil()
             } else {
                 RcDoc::space().append(self.id.get(db).ty.to_doc(db))
@@ -58,9 +58,9 @@ impl<'db, 'd> ToDoc<'db, 'd> for Binding {
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Fun {
+impl<'db, 'd> ToDoc<'db, 'd> for Function {
     fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
-        let ret_ty = self.ty.get(db).kind.as_fun().unwrap().ret.to_doc(db);
+        let ret_ty = self.ty.get(db).kind.as_function().unwrap().ret.to_doc(db);
 
         RcDoc::text("fn()")
             .append(RcDoc::space())
@@ -84,7 +84,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for Block {
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Ret {
+impl<'db, 'd> ToDoc<'db, 'd> for Return {
     fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
         RcDoc::text("return")
             .append(RcDoc::space())

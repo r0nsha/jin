@@ -146,9 +146,9 @@ impl<'a, 'db> Codegen<'a, 'db> for Hir {
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
         match self {
-            Hir::Fun(x) => x.codegen(cx, arena),
+            Hir::Function(x) => x.codegen(cx, arena),
             Hir::Block(x) => x.codegen(cx, arena),
-            Hir::Ret(x) => x.codegen(cx, arena),
+            Hir::Return(x) => x.codegen(cx, arena),
             Hir::Lit(x) => x.codegen(cx, arena),
         }
     }
@@ -160,7 +160,7 @@ impl<'a, 'db> Codegen<'a, 'db> for Binding {
         cx: &'a mut CodegenCx<'db>,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        if let Hir::Fun(fun) = self.expr.as_ref() {
+        if let Hir::Function(fun) = self.expr.as_ref() {
             fun.codegen(cx, arena)
         } else {
             todo!("local/global variable")
@@ -168,13 +168,13 @@ impl<'a, 'db> Codegen<'a, 'db> for Binding {
     }
 }
 
-impl<'a, 'db> Codegen<'a, 'db> for Fun {
+impl<'a, 'db> Codegen<'a, 'db> for Function {
     fn codegen(
         &self,
         cx: &'a mut CodegenCx<'db>,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        let fun_ty = self.ty.get(&cx.db).kind.as_fun().unwrap();
+        let fun_ty = self.ty.get(&cx.db).kind.as_function().unwrap();
         let name = self.id.get(&cx.db).name.full_c_name();
 
         let sig = arena
@@ -215,7 +215,7 @@ impl<'a, 'db> Codegen<'a, 'db> for Block {
     }
 }
 
-impl<'a, 'db> Codegen<'a, 'db> for Ret {
+impl<'a, 'db> Codegen<'a, 'db> for Return {
     fn codegen(
         &self,
         cx: &'a mut CodegenCx<'db>,
@@ -248,7 +248,7 @@ fn c_type(ty: &Ty) -> String {
             IntTy::Int => "intptr_t",
         }
         .to_string(),
-        TyKind::Fun(_) => todo!(),
+        TyKind::Function(_) => todo!(),
         TyKind::Unit => TYPE_UNIT.to_string(),
         TyKind::Never => TYPE_NEVER.to_string(),
         TyKind::Var(_) => panic!("unexpected type: {ty}"),

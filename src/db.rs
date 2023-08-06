@@ -4,7 +4,6 @@ use std::{
 };
 
 use path_absolutize::Absolutize;
-use ustr::Ustr;
 
 use crate::{
     common::{new_id_type, IdVec, QualifiedName},
@@ -20,7 +19,7 @@ pub(crate) struct Database {
     pub(crate) sources: Sources,
     pub(crate) modules: IdVec<ModuleId, Module>,
     pub(crate) symbols: IdVec<SymbolId, Symbol>,
-    pub(crate) funs: IdVec<FunId, Fun>,
+    pub(crate) funs: IdVec<FunctionId, Function>,
     pub(crate) types: IdVec<TyId, Ty>,
 
     pub(crate) diagnostics: Diagnostics,
@@ -28,7 +27,7 @@ pub(crate) struct Database {
     root_dir: PathBuf,
     main_source: SourceId,
     main_module: Option<ModuleId>,
-    main_fun: Option<FunId>,
+    main_fun: Option<FunctionId>,
 }
 
 impl Database {
@@ -80,15 +79,15 @@ impl Database {
         self.main_module.and_then(|id| self.modules.get(id))
     }
 
-    pub(crate) fn main_fun_id(&self) -> Option<FunId> {
+    pub(crate) fn main_fun_id(&self) -> Option<FunctionId> {
         self.main_fun
     }
 
-    pub(crate) fn main_fun(&self) -> Option<&Fun> {
+    pub(crate) fn main_fun(&self) -> Option<&Function> {
         self.main_fun.and_then(|id| self.funs.get(id))
     }
 
-    pub(crate) fn set_main_fun(&mut self, id: FunId) {
+    pub(crate) fn set_main_fun(&mut self, id: FunctionId) {
         self.main_fun = Some(id);
     }
 }
@@ -124,14 +123,14 @@ impl SymbolId {
     }
 }
 
-new_id_type!(FunId);
+new_id_type!(FunctionId);
 
-impl FunId {
-    pub(crate) fn get(self, db: &Database) -> &Fun {
+impl FunctionId {
+    pub(crate) fn get(self, db: &Database) -> &Function {
         &db.funs[self]
     }
 
-    pub(crate) fn get_mut(self, db: &mut Database) -> &mut Fun {
+    pub(crate) fn get_mut(self, db: &mut Database) -> &mut Function {
         &mut db.funs[self]
     }
 }
@@ -280,8 +279,8 @@ impl Ord for ScopeLevel {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Fun {
-    pub(crate) id: FunId,
+pub(crate) struct Function {
+    pub(crate) id: FunctionId,
     pub(crate) module_id: ModuleId,
     pub(crate) name: QualifiedName,
     pub(crate) kind: FunKind,
@@ -289,7 +288,7 @@ pub(crate) struct Fun {
     pub(crate) ty: TyId,
 }
 
-impl Fun {
+impl Function {
     pub(crate) fn alloc(
         db: &mut Database,
         module_id: ModuleId,
@@ -297,8 +296,8 @@ impl Fun {
         kind: FunKind,
         span: Span,
         ty: TyId,
-    ) -> FunId {
-        db.funs.push_with_id(|id| Fun {
+    ) -> FunctionId {
+        db.funs.push_with_id(|id| Function {
             id,
             module_id,
             name,
@@ -313,17 +312,3 @@ impl Fun {
 pub(crate) enum FunKind {
     Orphan,
 }
-
-// #[derive(Debug, Clone, EnumAsInner)]
-// pub(crate) enum FunKind {
-//     Orphan {
-//         //     params: Vec<FunParam>,
-//         body: Block,
-//     },
-//     // Extern {
-//     //     lib: Option<ExternLib>,
-//     //     dylib: Option<ExternLib>,
-//     //     link_name: Ustr,
-//     // },
-//     // Intrinsic(Intrinsic),
-// }

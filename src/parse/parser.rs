@@ -67,7 +67,7 @@ impl Parser {
             let body = self.parse_expr()?;
 
             Ok(Binding {
-                kind: BindingKind::Fun(Fun {
+                kind: BindingKind::Function(Function {
                     name,
                     body: Box::new(body),
                     span: name_span,

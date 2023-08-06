@@ -28,7 +28,7 @@ impl Ty {
 
     pub(crate) fn fun(ret: Ty, span: Span) -> Self {
         Self {
-            kind: TyKind::Fun(FunTy { ret: Box::new(ret) }),
+            kind: TyKind::Function(FunctionTy { ret: Box::new(ret) }),
             span,
         }
     }
@@ -49,7 +49,7 @@ impl Ty {
 
     pub(crate) fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
         match &self.kind {
-            TyKind::Fun(fun) => fun.ret.occurs_check(var).map_err(|_| self.clone()),
+            TyKind::Function(fun) => fun.ret.occurs_check(var).map_err(|_| self.clone()),
             TyKind::Var(v) => {
                 if *v == var {
                     Err(self.clone())
@@ -65,7 +65,7 @@ impl Ty {
 impl fmt::Display for Ty {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
-            TyKind::Fun(fun) => {
+            TyKind::Function(fun) => {
                 f.write_str("fn() ")?;
                 fun.ret.fmt(f)
             }
@@ -85,7 +85,7 @@ impl EqUnifyValue for Ty {}
 pub(crate) enum TyKind {
     Var(TyVar),
     Int(IntTy),
-    Fun(FunTy),
+    Function(FunctionTy),
     Unit, // TODO: when we implement tuples, this should just be an empty tuple
     Never,
 }
@@ -115,6 +115,6 @@ pub(crate) enum IntTy {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct FunTy {
+pub(crate) struct FunctionTy {
     pub(crate) ret: Box<Ty>,
 }
