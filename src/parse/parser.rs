@@ -83,17 +83,25 @@ impl Parser {
 
     fn parse_block(&mut self) -> ParseResult<Block> {
         let start = self.last_span();
-        let mut exprs = vec![];
+        let mut stmts = vec![];
 
         loop {
             let tok = self.require()?;
 
             if tok.kind_eq(TokenKind::CloseCurly) {
                 let span = start.merge(tok.span);
-                return Ok(Block { exprs, span });
+                return Ok(Block { stmts, span });
             }
 
-            exprs.push(self.parse_expr()?);
+            stmts.push(self.parse_stmt()?);
+        }
+    }
+
+    fn parse_stmt(&mut self) -> ParseResult<Statement> {
+        if self.is(TokenKind::Return) {
+            Ok(Statement::Return(self.parse_ret()?))
+        } else {
+            Ok(Statement::Expr(self.parse_expr()?))
         }
     }
 
@@ -109,8 +117,6 @@ impl Parser {
                 kind: LitKind::Unit,
                 span: start.merge(end),
             }))
-        } else if self.is(TokenKind::Return) {
-            self.parse_ret()
         } else if let Some(TokenKind::Int(value)) = self.token_kind() {
             self.advance();
 
@@ -129,15 +135,15 @@ impl Parser {
         }
     }
 
-    fn parse_ret(&mut self) -> ParseResult<Ast> {
+    fn parse_ret(&mut self) -> ParseResult<Return> {
         let start = self.last_span();
         let expr = self.parse_expr()?;
         let span = start.merge(expr.span());
 
-        Ok(Ast::Ret(Ret {
+        Ok(Return {
             expr: Some(Box::new(expr)),
             span,
-        }))
+        })
     }
 }
 

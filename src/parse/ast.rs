@@ -35,7 +35,6 @@ impl Module {
 #[derive(Debug, Clone)]
 pub(crate) enum Ast {
     Block(Block),
-    Ret(Ret),
     Lit(Lit),
 }
 
@@ -43,7 +42,6 @@ impl Spanned for Ast {
     fn span(&self) -> Span {
         match self {
             Self::Block(x) => x.span,
-            Self::Ret(x) => x.span,
             Self::Lit(x) => x.span,
         }
     }
@@ -64,12 +62,18 @@ pub(crate) struct Function {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Block {
-    pub(crate) exprs: Vec<Ast>,
+    pub(crate) stmts: Vec<Statement>,
     pub(crate) span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Ret {
+pub(crate) enum Statement {
+    Return(Return),
+    Expr(Ast),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Return {
     pub(crate) expr: Option<Box<Ast>>,
     pub(crate) span: Span,
 }

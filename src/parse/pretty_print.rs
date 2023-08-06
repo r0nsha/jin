@@ -23,15 +23,6 @@ impl PrettyPrint {
     fn print_ast(&mut self, ast: &Ast) {
         match ast {
             Ast::Block(block) => self.print_block(block),
-            Ast::Ret(ret) => {
-                self.builder.begin_child("return".to_string());
-
-                if let Some(value) = ret.expr.as_ref() {
-                    self.print_ast(value);
-                }
-
-                self.builder.end_child();
-            }
             Ast::Lit(lit) => match lit.kind {
                 LitKind::Int(value) => {
                     self.builder.add_empty_child(format!("int: {value}"));
@@ -40,6 +31,21 @@ impl PrettyPrint {
                     self.builder.add_empty_child("()".to_string());
                 }
             },
+        }
+    }
+
+    fn print_stmt(&mut self, stmt: &Statement) {
+        match stmt {
+            Statement::Return(ret) => {
+                self.builder.begin_child("return".to_string());
+
+                if let Some(value) = ret.expr.as_ref() {
+                    self.print_ast(value);
+                }
+
+                self.builder.end_child();
+            }
+            Statement::Expr(expr) => self.print_ast(expr),
         }
     }
 
@@ -58,8 +64,8 @@ impl PrettyPrint {
     fn print_block(&mut self, block: &Block) {
         self.builder.begin_child("block".to_string());
 
-        for expr in &block.exprs {
-            self.print_ast(expr);
+        for stmt in &block.stmts {
+            self.print_stmt(stmt);
         }
 
         self.builder.end_child();

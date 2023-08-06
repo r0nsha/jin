@@ -76,11 +76,6 @@ impl<'db> Lower<'db> {
     fn lower_ast(&mut self, ast: Ast) -> Hir {
         match ast {
             Ast::Block(block) => Hir::Block(self.lower_block(block)),
-            Ast::Ret(ret) => Hir::Return(Return {
-                expr: ret.expr.map(|v| Box::new(self.lower_ast(*v))),
-                span: ret.span,
-                ty: TyId::null(),
-            }),
             Ast::Lit(lit) => Hir::Lit(Lit {
                 kind: match lit.kind {
                     ast::LitKind::Int(v) => LitKind::Int(v),
@@ -92,9 +87,24 @@ impl<'db> Lower<'db> {
         }
     }
 
+    fn lower_stmt(&mut self, stmt: ast::Statement) -> Hir {
+        match stmt {
+            ast::Statement::Return(ret) => Hir::Return(Return {
+                expr: ret.expr.map(|v| Box::new(self.lower_ast(*v))),
+                span: ret.span,
+                ty: TyId::null(),
+            }),
+            ast::Statement::Expr(expr) => self.lower_ast(expr),
+        }
+    }
+
     fn lower_block(&mut self, block: ast::Block) -> Block {
         Block {
-            exprs: block.exprs.into_iter().map(|e| self.lower_ast(e)).collect(),
+            exprs: block
+                .stmts
+                .into_iter()
+                .map(|e| self.lower_stmt(e))
+                .collect(),
             span: block.span,
             ty: TyId::null(),
         }
