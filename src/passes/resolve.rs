@@ -21,14 +21,14 @@ pub(crate) fn resolve(db: &mut Database, modules: &mut [Module]) {
     }
 }
 
-struct ResolveCx<'a> {
-    db: &'a mut Database,
+struct ResolveCx<'db> {
+    db: &'db mut Database,
     errors: Vec<ResolveError>,
     global_scope: GlobalScope,
 }
 
-impl<'a> ResolveCx<'a> {
-    fn new(db: &'a mut Database) -> Self {
+impl<'db> ResolveCx<'db> {
+    fn new(db: &'db mut Database) -> Self {
         Self {
             db,
             errors: vec![],
@@ -82,8 +82,8 @@ impl<'a> ResolveCx<'a> {
     }
 }
 
-trait Resolve<'a> {
-    fn resolve(&mut self, cx: &mut ResolveCx<'a>, env: &mut Env);
+trait Resolve<'db> {
+    fn resolve(&mut self, cx: &mut ResolveCx<'db>, env: &mut Env);
 }
 
 impl Resolve<'_> for Binding {

@@ -26,12 +26,12 @@ pub(crate) fn print_module(db: &Database, module: &Module) {
     println!("{}", doc.pretty(80));
 }
 
-trait ToDoc<'a, 'd> {
-    fn to_doc(&self, db: &'a Database) -> RcDoc<'d, ()>;
+trait ToDoc<'db, 'd> {
+    fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()>;
 }
 
-impl<'a, 'd> ToDoc<'a, 'd> for Hir {
-    fn to_doc(&self, db: &'a Database) -> RcDoc<'d, ()> {
+impl<'db, 'd> ToDoc<'db, 'd> for Hir {
+    fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
         match self {
             Hir::Fun(x) => x.to_doc(db),
             Hir::Block(x) => x.to_doc(db),
@@ -41,8 +41,8 @@ impl<'a, 'd> ToDoc<'a, 'd> for Hir {
     }
 }
 
-impl<'a, 'd> ToDoc<'a, 'd> for Binding {
-    fn to_doc(&self, db: &'a Database) -> RcDoc<'d, ()> {
+impl<'db, 'd> ToDoc<'db, 'd> for Binding {
+    fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
         RcDoc::text("let")
             .append(RcDoc::space())
             .append(RcDoc::text(self.name.as_str()))
@@ -58,8 +58,8 @@ impl<'a, 'd> ToDoc<'a, 'd> for Binding {
     }
 }
 
-impl<'a, 'd> ToDoc<'a, 'd> for Fun {
-    fn to_doc(&self, db: &'a Database) -> RcDoc<'d, ()> {
+impl<'db, 'd> ToDoc<'db, 'd> for Fun {
+    fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
         let ret_ty = self.ty.get(db).kind.as_fun().unwrap().ret.to_doc(db);
 
         RcDoc::text("fn()")
@@ -70,8 +70,8 @@ impl<'a, 'd> ToDoc<'a, 'd> for Fun {
     }
 }
 
-impl<'a, 'd> ToDoc<'a, 'd> for Block {
-    fn to_doc(&self, db: &'a Database) -> RcDoc<'d, ()> {
+impl<'db, 'd> ToDoc<'db, 'd> for Block {
+    fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
         RcDoc::text("{")
             .append(RcDoc::line())
             .append(RcDoc::intersperse(
@@ -84,16 +84,16 @@ impl<'a, 'd> ToDoc<'a, 'd> for Block {
     }
 }
 
-impl<'a, 'd> ToDoc<'a, 'd> for Ret {
-    fn to_doc(&self, db: &'a Database) -> RcDoc<'d, ()> {
+impl<'db, 'd> ToDoc<'db, 'd> for Ret {
+    fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
         RcDoc::text("return")
             .append(RcDoc::space())
             .append(self.expr.as_ref().map_or(RcDoc::nil(), |e| e.to_doc(db)))
     }
 }
 
-impl<'a, 'd> ToDoc<'a, 'd> for Lit {
-    fn to_doc(&self, _db: &'a Database) -> RcDoc<'d, ()> {
+impl<'db, 'd> ToDoc<'db, 'd> for Lit {
+    fn to_doc(&self, _db: &'db Database) -> RcDoc<'d, ()> {
         match &self.kind {
             LitKind::Int(v) => RcDoc::text(v.to_string()),
             LitKind::Unit => RcDoc::text("()"),
@@ -101,14 +101,14 @@ impl<'a, 'd> ToDoc<'a, 'd> for Lit {
     }
 }
 
-impl<'a, 'd> ToDoc<'a, 'd> for TypeId {
-    fn to_doc(&self, db: &'a Database) -> RcDoc<'d, ()> {
+impl<'db, 'd> ToDoc<'db, 'd> for TypeId {
+    fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
         self.get(db).to_doc(db)
     }
 }
 
-impl<'a, 'd> ToDoc<'a, 'd> for Type {
-    fn to_doc(&self, _db: &'a Database) -> RcDoc<'d, ()> {
+impl<'db, 'd> ToDoc<'db, 'd> for Type {
+    fn to_doc(&self, _db: &'db Database) -> RcDoc<'d, ()> {
         RcDoc::text(self.to_string())
     }
 }

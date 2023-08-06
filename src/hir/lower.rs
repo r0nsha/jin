@@ -15,12 +15,12 @@ pub(crate) fn lower(db: &mut Database, modules: Vec<ast::Module>) -> Vec<Module>
         .collect()
 }
 
-struct Lower<'a> {
-    db: &'a mut Database,
+struct Lower<'db> {
+    db: &'db mut Database,
     id: ModuleId,
 }
 
-impl<'a> Lower<'a> {
+impl<'db> Lower<'db> {
     fn run(&mut self, module: ast::Module) -> Module {
         Module {
             id: self.id,

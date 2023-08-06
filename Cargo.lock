@@ -1116,6 +1116,7 @@ dependencies = [
  "pretty",
  "ptree",
  "stopwatch",
+ "typed-arena",
  "unindent",
  "ustr",
 ]

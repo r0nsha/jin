@@ -12,11 +12,11 @@ pub(crate) fn codegen(db: &Database, modules: &[Module], writer: &mut impl io::W
         .write(&arena, writer)
 }
 
-struct CodegenCx<'a> {
-    db: &'a Database,
-    prelude: DocBuilder<'a, Arena<'a>>,
-    declarations: Vec<DocBuilder<'a, Arena<'a>>>,
-    definitions: Vec<DocBuilder<'a, Arena<'a>>>,
+struct CodegenCx<'db> {
+    db: &'db Database,
+    prelude: DocBuilder<'db, Arena<'db>>,
+    declarations: Vec<DocBuilder<'db, Arena<'db>>>,
+    definitions: Vec<DocBuilder<'db, Arena<'db>>>,
 }
 
 const TYPE_UNIT: &str = "Unit";
@@ -24,8 +24,8 @@ const TYPE_NEVER: &str = "Never";
 
 const CONST_UNIT: &str = "unit";
 
-impl<'a> CodegenCx<'a> {
-    fn new(db: &'a Database, arena: &'a Arena<'a>) -> Self {
+impl<'db> CodegenCx<'db> {
+    fn new(db: &'db Database, arena: &'db Arena<'db>) -> Self {
         let includes = arena.text("#include <stdint.h>");
 
         let typedefs = arena.intersperse(
@@ -58,7 +58,7 @@ impl<'a> CodegenCx<'a> {
         }
     }
 
-    fn codegen_all(mut self, arena: &'a Arena<'a>, modules: &[Module]) -> Self {
+    fn codegen_all(mut self, arena: &'db Arena<'db>, modules: &[Module]) -> Self {
         let binding_count = modules.iter().map(|m| m.bindings.len()).sum();
 
         self.declarations.reserve(binding_count);
@@ -73,7 +73,7 @@ impl<'a> CodegenCx<'a> {
         self
     }
 
-    fn gen_main(&mut self, arena: &'a Arena<'a>) {
+    fn gen_main(&mut self, arena: &'db Arena<'db>) {
         let main_fun_name = self.db.main_fun().unwrap().name.full_c_name();
 
         self.add_definition(
@@ -96,15 +96,15 @@ impl<'a> CodegenCx<'a> {
         );
     }
 
-    fn add_definition(&mut self, def: DocBuilder<'a, Arena<'a>, ()>) {
+    fn add_definition(&mut self, def: DocBuilder<'db, Arena<'db>, ()>) {
         self.definitions.push(def);
     }
 
-    fn add_declaration(&mut self, arena: &'a Arena<'a>, decl: DocBuilder<'a, Arena<'a>, ()>) {
+    fn add_declaration(&mut self, arena: &'db Arena<'db>, decl: DocBuilder<'db, Arena<'db>, ()>) {
         self.declarations.push(arena.statement(decl));
     }
 
-    fn write(self, arena: &'a Arena<'a>, w: &mut impl io::Write) {
+    fn write(self, arena: &'db Arena<'db>, w: &mut impl io::Write) {
         self.prelude
             .append(arena.line())
             .append(arena.line())
@@ -117,20 +117,20 @@ impl<'a> CodegenCx<'a> {
     }
 }
 
-trait Codegen<'a, 'cx> {
+trait Codegen<'a, 'db> {
     fn codegen(
         &self,
-        cx: &'a mut CodegenCx<'cx>,
-        arena: &'cx Arena<'cx>,
-    ) -> DocBuilder<'cx, Arena<'cx>, ()>;
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()>;
 }
 
-impl<'a, 'cx> Codegen<'a, 'cx> for Module {
+impl<'a, 'db> Codegen<'a, 'db> for Module {
     fn codegen(
         &self,
-        cx: &'a mut CodegenCx<'cx>,
-        arena: &'cx Arena<'cx>,
-    ) -> DocBuilder<'cx, Arena<'cx>, ()> {
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
         for binding in &self.bindings {
             binding.codegen(cx, arena);
         }
@@ -139,12 +139,12 @@ impl<'a, 'cx> Codegen<'a, 'cx> for Module {
     }
 }
 
-impl<'a, 'cx> Codegen<'a, 'cx> for Hir {
+impl<'a, 'db> Codegen<'a, 'db> for Hir {
     fn codegen(
         &self,
-        cx: &'a mut CodegenCx<'cx>,
-        arena: &'cx Arena<'cx>,
-    ) -> DocBuilder<'cx, Arena<'cx>, ()> {
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
         match self {
             Hir::Fun(x) => x.codegen(cx, arena),
             Hir::Block(x) => x.codegen(cx, arena),
@@ -154,12 +154,12 @@ impl<'a, 'cx> Codegen<'a, 'cx> for Hir {
     }
 }
 
-impl<'a, 'cx> Codegen<'a, 'cx> for Binding {
+impl<'a, 'db> Codegen<'a, 'db> for Binding {
     fn codegen(
         &self,
-        cx: &'a mut CodegenCx<'cx>,
-        arena: &'cx Arena<'cx>,
-    ) -> DocBuilder<'cx, Arena<'cx>, ()> {
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
         if let Hir::Fun(fun) = self.expr.as_ref() {
             fun.codegen(cx, arena)
         } else {
@@ -168,12 +168,12 @@ impl<'a, 'cx> Codegen<'a, 'cx> for Binding {
     }
 }
 
-impl<'a, 'cx> Codegen<'a, 'cx> for Fun {
+impl<'a, 'db> Codegen<'a, 'db> for Fun {
     fn codegen(
         &self,
-        cx: &'a mut CodegenCx<'cx>,
-        arena: &'cx Arena<'cx>,
-    ) -> DocBuilder<'cx, Arena<'cx>, ()> {
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
         let fun_ty = self.ty.get(&cx.db).kind.as_fun().unwrap();
         let name = self.id.get(&cx.db).name.full_c_name();
 
@@ -195,12 +195,12 @@ impl<'a, 'cx> Codegen<'a, 'cx> for Fun {
     }
 }
 
-impl<'a, 'cx> Codegen<'a, 'cx> for Block {
+impl<'a, 'db> Codegen<'a, 'db> for Block {
     fn codegen(
         &self,
-        cx: &'a mut CodegenCx<'cx>,
-        arena: &'cx Arena<'cx>,
-    ) -> DocBuilder<'cx, Arena<'cx>, ()> {
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
         arena
             .text("{")
             .append(arena.line())
@@ -215,12 +215,12 @@ impl<'a, 'cx> Codegen<'a, 'cx> for Block {
     }
 }
 
-impl<'a, 'cx> Codegen<'a, 'cx> for Ret {
+impl<'a, 'db> Codegen<'a, 'db> for Ret {
     fn codegen(
         &self,
-        cx: &'a mut CodegenCx<'cx>,
-        arena: &'cx Arena<'cx>,
-    ) -> DocBuilder<'cx, Arena<'cx>, ()> {
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
         arena.text("return").append(arena.space()).append(
             self.expr
                 .as_ref()
@@ -229,12 +229,12 @@ impl<'a, 'cx> Codegen<'a, 'cx> for Ret {
     }
 }
 
-impl<'a, 'cx> Codegen<'a, 'cx> for Lit {
+impl<'a, 'db> Codegen<'a, 'db> for Lit {
     fn codegen(
         &self,
-        _cx: &'a mut CodegenCx<'cx>,
-        arena: &'cx Arena<'cx>,
-    ) -> DocBuilder<'cx, Arena<'cx>, ()> {
+        _cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
         match &self.kind {
             LitKind::Int(v) => arena.text(v.to_string()),
             LitKind::Unit => arena.text(CONST_UNIT),

@@ -26,14 +26,14 @@ pub(crate) fn infer(db: &mut Database, modules: &mut [Module]) {
     cx.substitution(modules);
 }
 
-pub(super) struct InferCx<'a> {
-    pub(super) db: &'a mut Database,
+pub(super) struct InferCx<'db> {
+    pub(super) db: &'db mut Database,
     pub(super) typecx: TypeCx,
     pub(super) constraints: Constraints,
 }
 
-impl<'a> InferCx<'a> {
-    fn new(db: &'a mut Database) -> Self {
+impl<'db> InferCx<'db> {
+    fn new(db: &'db mut Database) -> Self {
         Self {
             db,
             typecx: TypeCx::new(),
@@ -42,7 +42,7 @@ impl<'a> InferCx<'a> {
     }
 }
 
-impl<'a> InferCx<'a> {
+impl<'db> InferCx<'db> {
     fn infer_all(&mut self, modules: &mut [Module]) {
         for module in modules {
             self.infer_module(module);
@@ -58,8 +58,8 @@ impl<'a> InferCx<'a> {
     }
 }
 
-trait Infer<'a> {
-    fn infer(&mut self, cx: &mut InferCx<'a>, env: &mut TypeEnv);
+trait Infer<'db> {
+    fn infer(&mut self, cx: &mut InferCx<'db>, env: &mut TypeEnv);
 }
 
 impl Infer<'_> for Hir {

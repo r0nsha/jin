@@ -9,7 +9,7 @@ use crate::{
 use super::InferCx;
 
 // Substitute
-impl<'a> InferCx<'a> {
+impl<'db> InferCx<'db> {
     pub(crate) fn substitution(&mut self, modules: &mut [Module]) -> HashSet<TypeVar> {
         let mut unbound_vars = HashSet::new();
 
@@ -52,8 +52,8 @@ impl<'a> InferCx<'a> {
     }
 }
 
-trait Substitute<'a> {
-    fn substitute(&mut self, cx: &mut InferCx<'a>, unbound_vars: &mut HashSet<TypeVar>);
+trait Substitute<'db> {
+    fn substitute(&mut self, cx: &mut InferCx<'db>, unbound_vars: &mut HashSet<TypeVar>);
 }
 
 impl Substitute<'_> for Hir {
@@ -97,24 +97,24 @@ impl Substitute<'_> for Ret {
     }
 }
 
-impl<'a, T: Substitute<'a>> Substitute<'a> for Vec<T> {
-    fn substitute(&mut self, cx: &mut InferCx<'a>, unbound_vars: &mut HashSet<TypeVar>) {
+impl<'db, T: Substitute<'db>> Substitute<'db> for Vec<T> {
+    fn substitute(&mut self, cx: &mut InferCx<'db>, unbound_vars: &mut HashSet<TypeVar>) {
         for item in self {
             item.substitute(cx, unbound_vars);
         }
     }
 }
 
-impl<'a, T: Substitute<'a>> Substitute<'a> for Option<T> {
-    fn substitute(&mut self, cx: &mut InferCx<'a>, unbound_vars: &mut HashSet<TypeVar>) {
+impl<'db, T: Substitute<'db>> Substitute<'db> for Option<T> {
+    fn substitute(&mut self, cx: &mut InferCx<'db>, unbound_vars: &mut HashSet<TypeVar>) {
         if let Some(item) = self {
             item.substitute(cx, unbound_vars);
         }
     }
 }
 
-impl<'a, T: Substitute<'a>> Substitute<'a> for Box<T> {
-    fn substitute(&mut self, cx: &mut InferCx<'a>, unbound_vars: &mut HashSet<TypeVar>) {
+impl<'db, T: Substitute<'db>> Substitute<'db> for Box<T> {
+    fn substitute(&mut self, cx: &mut InferCx<'db>, unbound_vars: &mut HashSet<TypeVar>) {
         self.as_mut().substitute(cx, unbound_vars);
     }
 }

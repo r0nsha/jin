@@ -2,7 +2,7 @@ use crate::ty::{IntType, Type, TypeKind};
 
 use super::{constraint::Constraint, error::InferError, InferCx};
 
-impl<'a> InferCx<'a> {
+impl<'db> InferCx<'db> {
     pub(crate) fn unification(&mut self) -> Result<(), InferError> {
         for constraint in self.constraints.clone().iter() {
             match constraint {

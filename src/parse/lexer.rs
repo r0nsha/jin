@@ -12,15 +12,15 @@ pub(crate) fn tokenize(source: &Source) -> Result<Vec<Token>, Diagnostic> {
     Ok(tokens)
 }
 
-struct Lexer<'a> {
+struct Lexer<'s> {
     source_id: SourceId,
-    source_contents: &'a str,
-    source_bytes: &'a [u8],
+    source_contents: &'s str,
+    source_bytes: &'s [u8],
     pos: usize,
 }
 
-impl<'a> Lexer<'a> {
-    fn new(source: &'a Source) -> Self {
+impl<'s> Lexer<'s> {
+    fn new(source: &'s Source) -> Self {
         Self {
             source_id: source.id(),
             source_contents: source.contents(),
