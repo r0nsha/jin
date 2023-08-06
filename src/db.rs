@@ -10,7 +10,7 @@ use crate::{
     common::{new_id_type, IdVec, QualifiedName},
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
-    ty::Type,
+    ty::Ty,
 };
 
 #[derive(Debug)]
@@ -21,7 +21,7 @@ pub(crate) struct Database {
     pub(crate) modules: IdVec<ModuleId, Module>,
     pub(crate) symbols: IdVec<SymbolId, Symbol>,
     pub(crate) funs: IdVec<FunId, Fun>,
-    pub(crate) types: IdVec<TyId, Type>,
+    pub(crate) types: IdVec<TyId, Ty>,
 
     pub(crate) diagnostics: Diagnostics,
 
@@ -138,18 +138,18 @@ impl FunId {
 
 new_id_type!(TyId);
 
-impl Type {
-    pub(crate) fn alloc(db: &mut Database, ty: Type) -> TyId {
+impl Ty {
+    pub(crate) fn alloc(db: &mut Database, ty: Ty) -> TyId {
         db.types.push(ty)
     }
 }
 
 impl TyId {
-    pub(crate) fn get(self, db: &Database) -> &Type {
+    pub(crate) fn get(self, db: &Database) -> &Ty {
         &db.types[self]
     }
 
-    pub(crate) fn get_mut(self, db: &mut Database) -> &mut Type {
+    pub(crate) fn get_mut(self, db: &mut Database) -> &mut Ty {
         &mut db.types[self]
     }
 }

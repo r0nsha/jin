@@ -75,7 +75,7 @@ impl Infer<'_> for Hir {
 
 impl Infer<'_> for Binding {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
-        self.ty = Type::alloc(&mut cx.db, Type::unit(self.span));
+        self.ty = Ty::alloc(&mut cx.db, Ty::unit(self.span));
         self.expr.infer(cx, env);
         self.id.get_mut(&mut cx.db).ty = self.expr.ty();
     }
@@ -84,11 +84,11 @@ impl Infer<'_> for Binding {
 impl Infer<'_> for Fun {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         let ret_ty = cx.typecx.fresh_type_var(self.span);
-        let fun_ty = Type::fun(ret_ty.clone(), self.span);
+        let fun_ty = Ty::fun(ret_ty.clone(), self.span);
 
-        let ret_ty = Type::alloc(&mut cx.db, ret_ty);
+        let ret_ty = Ty::alloc(&mut cx.db, ret_ty);
 
-        let ty = Type::alloc(&mut cx.db, fun_ty);
+        let ty = Ty::alloc(&mut cx.db, fun_ty);
 
         self.ty = ty;
         self.id.get_mut(&mut cx.db).ty = ty;
@@ -117,7 +117,7 @@ impl Infer<'_> for Block {
         }
 
         self.ty = self.exprs.last().map_or_else(
-            || Type::alloc(&mut cx.db, Type::unit(self.span)),
+            || Ty::alloc(&mut cx.db, Ty::unit(self.span)),
             |expr| expr.ty(),
         );
     }
@@ -125,7 +125,7 @@ impl Infer<'_> for Block {
 
 impl Infer<'_> for Ret {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
-        self.ty = Type::alloc(&mut cx.db, Type::never(self.span));
+        self.ty = Ty::alloc(&mut cx.db, Ty::never(self.span));
 
         let fun_scope = env.fun_scopes.current().unwrap();
         let ret_ty = fun_scope.ret_ty;
@@ -139,7 +139,7 @@ impl Infer<'_> for Ret {
         } else {
             cx.constraints.push(Constraint::Eq {
                 expected: ret_ty,
-                actual: Type::alloc(&mut cx.db, Type::unit(self.span)),
+                actual: Ty::alloc(&mut cx.db, Ty::unit(self.span)),
             });
         }
     }
@@ -150,9 +150,9 @@ impl Infer<'_> for Lit {
         self.ty = match &self.kind {
             LitKind::Int(_) => {
                 // TODO: use a polymorphic int
-                Type::alloc(&mut cx.db, Type::int(self.span))
+                Ty::alloc(&mut cx.db, Ty::int(self.span))
             }
-            LitKind::Unit => Type::alloc(&mut cx.db, Type::unit(self.span)),
+            LitKind::Unit => Ty::alloc(&mut cx.db, Ty::unit(self.span)),
         };
     }
 }

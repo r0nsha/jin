@@ -6,12 +6,12 @@ use enum_as_inner::EnumAsInner;
 use crate::span::Span;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Type {
+pub(crate) struct Ty {
     pub(crate) kind: TypeKind,
     pub(crate) span: Span,
 }
 
-impl Type {
+impl Ty {
     pub(crate) fn var(var: TypeVar, span: Span) -> Self {
         Self {
             kind: TypeKind::Var(var),
@@ -26,7 +26,7 @@ impl Type {
         }
     }
 
-    pub(crate) fn fun(ret: Type, span: Span) -> Self {
+    pub(crate) fn fun(ret: Ty, span: Span) -> Self {
         Self {
             kind: TypeKind::Fun(FunType { ret: Box::new(ret) }),
             span,
@@ -65,7 +65,7 @@ impl Type {
     }
 }
 
-impl fmt::Display for Type {
+impl fmt::Display for Ty {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self.kind {
             TypeKind::Fun(fun) => {
@@ -82,7 +82,7 @@ impl fmt::Display for Type {
     }
 }
 
-impl EqUnifyValue for Type {}
+impl EqUnifyValue for Ty {}
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
 pub(crate) enum TypeKind {
@@ -97,7 +97,7 @@ pub(crate) enum TypeKind {
 pub(crate) struct TypeVar(u32);
 
 impl UnifyKey for TypeVar {
-    type Value = Option<Type>;
+    type Value = Option<Ty>;
 
     fn index(&self) -> u32 {
         self.0
@@ -119,5 +119,5 @@ pub(crate) enum IntType {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct FunType {
-    pub(crate) ret: Box<Type>,
+    pub(crate) ret: Box<Ty>,
 }

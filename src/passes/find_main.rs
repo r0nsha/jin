@@ -2,7 +2,7 @@ use crate::{
     db::Database,
     diagnostics::{Diagnostic, Label},
     span::Span,
-    ty::Type,
+    ty::Ty,
 };
 
 pub(crate) fn find_main(db: &mut Database) {
@@ -44,7 +44,7 @@ pub(crate) fn find_main(db: &mut Database) {
     }
 }
 
-fn is_main_fun_ty(ty: &Type) -> bool {
+fn is_main_fun_ty(ty: &Ty) -> bool {
     let fun_ty = ty.kind.as_fun().unwrap();
     fun_ty.ret.kind.is_unit()
 }

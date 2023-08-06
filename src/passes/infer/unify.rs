@@ -1,4 +1,4 @@
-use crate::ty::{IntType, Type, TypeKind};
+use crate::ty::{IntType, Ty, TypeKind};
 
 use super::{constraint::Constraint, error::InferError, InferCx};
 
@@ -15,7 +15,7 @@ impl<'db> InferCx<'db> {
         Ok(())
     }
 
-    fn unify_ty_ty(&mut self, expected: &Type, actual: &Type) -> Result<(), InferError> {
+    fn unify_ty_ty(&mut self, expected: &Ty, actual: &Ty) -> Result<(), InferError> {
         let expected = self.normalize_ty(expected.clone());
         let actual = self.normalize_ty(actual.clone());
 
@@ -60,11 +60,11 @@ impl<'db> InferCx<'db> {
         }
     }
 
-    fn normalize_ty(&mut self, ty: Type) -> Type {
+    fn normalize_ty(&mut self, ty: Ty) -> Ty {
         match ty.kind {
             TypeKind::Fun(fun) => {
                 let ret = self.normalize_ty(*fun.ret);
-                Type::fun(ret, ty.span)
+                Ty::fun(ret, ty.span)
             }
             TypeKind::Var(var) => match self.typecx.unification_table.probe_value(var) {
                 Some(ty) => self.normalize_ty(ty),

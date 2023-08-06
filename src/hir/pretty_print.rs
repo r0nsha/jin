@@ -2,7 +2,7 @@ use pretty::{Doc, RcDoc};
 
 use crate::{
     db::{Database, TyId},
-    ty::Type,
+    ty::Ty,
 };
 
 use super::*;
@@ -107,7 +107,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for TyId {
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Type {
+impl<'db, 'd> ToDoc<'db, 'd> for Ty {
     fn to_doc(&self, _db: &'db Database) -> RcDoc<'d, ()> {
         RcDoc::text(self.to_string())
     }

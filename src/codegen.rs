@@ -242,7 +242,7 @@ impl<'a, 'db> Codegen<'a, 'db> for Lit {
     }
 }
 
-fn c_type(ty: &Type) -> String {
+fn c_type(ty: &Ty) -> String {
     match &ty.kind {
         TypeKind::Int(int) => match int {
             IntType::Int => "intptr_t",

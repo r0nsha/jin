@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::{
     db::TyId,
     hir::*,
-    ty::{Type, TypeKind, TypeVar},
+    ty::{Ty, TypeKind, TypeVar},
 };
 
 use super::InferCx;
@@ -29,11 +29,11 @@ impl<'db> InferCx<'db> {
         *id.get_mut(&mut self.db) = new_ty;
     }
 
-    fn substitute_ty(&mut self, ty: &Type, unbound_vars: &mut HashSet<TypeVar>) -> Type {
+    fn substitute_ty(&mut self, ty: &Ty, unbound_vars: &mut HashSet<TypeVar>) -> Ty {
         match &ty.kind {
             TypeKind::Fun(fun) => {
                 let ret = self.substitute_ty(&fun.ret, unbound_vars);
-                Type::fun(ret, ty.span)
+                Ty::fun(ret, ty.span)
             }
             TypeKind::Var(v) => {
                 let root = self.typecx.unification_table.find(*v);
@@ -43,7 +43,7 @@ impl<'db> InferCx<'db> {
                     None => {
                         let mut unbound = HashSet::new();
                         unbound.insert(root);
-                        Type::var(root, ty.span)
+                        Ty::var(root, ty.span)
                     }
                 }
             }
