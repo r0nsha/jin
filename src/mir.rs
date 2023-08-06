@@ -11,6 +11,10 @@ impl Mir {
     pub(crate) fn new() -> Self {
         Self { functions: vec![] }
     }
+
+    pub(crate) fn add_function(&mut self, function: Function) {
+        self.functions.push(function);
+    }
 }
 
 pub(crate) struct Function {
@@ -21,7 +25,7 @@ pub(crate) struct Function {
 }
 
 impl Function {
-    pub(crate) fn new(id: FunctionId) -> Self {
+    fn new(id: FunctionId) -> Self {
         Self {
             id,
             registers: IdVec::new(),
@@ -61,7 +65,7 @@ pub(crate) struct Cfg {
 }
 
 impl Cfg {
-    pub(crate) fn new() -> Self {
+    fn new() -> Self {
         Self {
             blocks: IdVec::new(),
         }
@@ -82,7 +86,19 @@ pub(crate) struct Block {
     pub(crate) successors: Vec<BlockId>,
 }
 
-impl Block {}
+impl Block {
+    fn new(
+        instructions: Vec<Instruction>,
+        predecessors: Vec<BlockId>,
+        successors: Vec<BlockId>,
+    ) -> Self {
+        Self {
+            instructions: vec![],
+            predecessors: vec![],
+            successors: vec![],
+        }
+    }
+}
 
 pub(crate) enum Instruction {}
 
