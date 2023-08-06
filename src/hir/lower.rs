@@ -25,24 +25,27 @@ impl<'db> Lower<'db> {
         Module {
             id: self.id,
             bindings: module
-                .bindings
+                .top_level
                 .into_iter()
-                .map(|binding| self.lower_binding(binding))
+                .map(|binding| self.lower_top_level(binding))
                 .collect(),
         }
     }
 
-    fn lower_binding(&mut self, binding: ast::Binding) -> Binding {
-        let (name, value) = match binding.kind {
-            ast::BindingKind::Function(fun) => (fun.name, Hir::Function(self.lower_fun(fun))),
-        };
+    fn lower_top_level(&mut self, tl: ast::TopLevel) -> Binding {
+        match tl {
+            ast::TopLevel::Function(fun) => {
+                let name = fun.name;
+                let span = fun.span;
 
-        Binding {
-            id: SymbolId::null(),
-            name,
-            expr: Box::new(value),
-            span: binding.span,
-            ty: TyId::null(),
+                Binding {
+                    id: SymbolId::null(),
+                    name,
+                    expr: Box::new(Hir::Function(self.lower_fun(fun))),
+                    span,
+                    ty: TyId::null(),
+                }
+            }
         }
     }
 

@@ -7,8 +7,8 @@ pub(super) fn print_module(module: &Module) -> io::Result<()> {
         builder: ptree::TreeBuilder::new(module.name.standard_full_name()),
     };
 
-    for binding in &module.bindings {
-        p.print_binding(binding);
+    for binding in &module.top_level {
+        p.print_top_level(binding);
     }
 
     let tree = p.builder.build();
@@ -43,9 +43,9 @@ impl PrettyPrint {
         }
     }
 
-    fn print_binding(&mut self, binding: &Binding) {
-        match &binding.kind {
-            BindingKind::Function(fun) => self.print_fun(fun),
+    fn print_top_level(&mut self, tl: &TopLevel) {
+        match tl {
+            TopLevel::Function(fun) => self.print_fun(fun),
         }
     }
 

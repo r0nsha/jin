@@ -14,7 +14,7 @@ pub(crate) struct Module {
     pub(crate) source: SourceId,
     pub(crate) name: QualifiedName,
     pub(crate) is_main: bool,
-    pub(crate) bindings: Vec<Binding>,
+    pub(crate) top_level: Vec<TopLevel>,
 }
 
 impl Module {
@@ -23,7 +23,7 @@ impl Module {
             source: source_id,
             name,
             is_main,
-            bindings: vec![],
+            top_level: vec![],
         }
     }
 
@@ -50,13 +50,7 @@ impl Spanned for Ast {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Binding {
-    pub(crate) kind: BindingKind,
-    pub(crate) span: Span,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) enum BindingKind {
+pub(crate) enum TopLevel {
     Function(Function),
 }
 

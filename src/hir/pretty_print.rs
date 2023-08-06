@@ -1,4 +1,4 @@
-use pretty::{Doc, RcDoc};
+use pretty::RcDoc;
 
 use crate::{
     db::{Database, TyId},

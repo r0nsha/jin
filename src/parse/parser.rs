@@ -47,14 +47,13 @@ impl Parser {
         let mut module = Module::new(source_id, name, is_main);
 
         while self.pos < self.tokens.len() - 1 {
-            let binding = self.parse_binding()?;
-            module.bindings.push(binding);
+            module.top_level.push(self.parse_top_level()?);
         }
 
         Ok(module)
     }
 
-    fn parse_binding(&mut self) -> ParseResult<Binding> {
+    fn parse_top_level(&mut self) -> ParseResult<TopLevel> {
         if self.is(TokenKind::Fn) {
             let name_ident = self.expect_ident()?;
             let name_span = name_ident.span;
@@ -66,14 +65,11 @@ impl Parser {
 
             let body = self.parse_expr()?;
 
-            Ok(Binding {
-                kind: BindingKind::Function(Function {
-                    name,
-                    body: Box::new(body),
-                    span: name_span,
-                }),
+            Ok(TopLevel::Function(Function {
+                name,
+                body: Box::new(body),
                 span: name_span,
-            })
+            }))
         } else {
             let token = self.require()?;
 
