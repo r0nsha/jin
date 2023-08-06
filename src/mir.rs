@@ -82,11 +82,7 @@ pub(crate) struct Block {
 }
 
 impl Block {
-    fn new(
-        instructions: Vec<Instruction>,
-        predecessors: Vec<BlockId>,
-        successors: Vec<BlockId>,
-    ) -> Self {
+    fn new() -> Self {
         Self {
             instructions: vec![],
             predecessors: vec![],

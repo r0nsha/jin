@@ -27,18 +27,13 @@ impl<I: Id, T> IdVec<I, T> {
     }
 
     #[inline]
-    pub(crate) fn len(&self) -> usize {
-        self.vec.len()
-    }
-
-    #[inline]
     pub(crate) fn get(&self, id: I) -> Option<&T> {
         self.vec.get(id.into())
     }
 
     #[inline]
-    fn next_id(&self) -> I {
-        self.vec.len().into()
+    pub(crate) fn len(&self) -> usize {
+        self.vec.len()
     }
 
     #[inline]
@@ -49,6 +44,16 @@ impl<I: Id, T> IdVec<I, T> {
     #[inline]
     pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
         self.vec.iter_mut()
+    }
+
+    #[inline]
+    pub(crate) fn inner(&self) -> &[T] {
+        &self.vec
+    }
+
+    #[inline]
+    fn next_id(&self) -> I {
+        self.vec.len().into()
     }
 }
 

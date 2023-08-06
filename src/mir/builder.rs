@@ -22,6 +22,11 @@ impl FunctionBuilder {
         self.f.parameters.len() - 1
     }
 
+    pub(crate) fn create_block(&mut self) -> &Block {
+        self.f.cfg.blocks.push(Block::new());
+        self.f.cfg.blocks.inner().last().unwrap()
+    }
+
     pub(crate) fn finish(self) -> Result<Function, String> {
         // TODO: validate that the function is built correctly
         Ok(self.f)
