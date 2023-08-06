@@ -21,7 +21,7 @@ pub(crate) struct Database {
     pub(crate) modules: IdVec<ModuleId, Module>,
     pub(crate) symbols: IdVec<SymbolId, Symbol>,
     pub(crate) funs: IdVec<FunId, Fun>,
-    pub(crate) types: IdVec<TypeId, Type>,
+    pub(crate) types: IdVec<TyId, Type>,
 
     pub(crate) diagnostics: Diagnostics,
 
@@ -136,15 +136,15 @@ impl FunId {
     }
 }
 
-new_id_type!(TypeId);
+new_id_type!(TyId);
 
 impl Type {
-    pub(crate) fn alloc(db: &mut Database, ty: Type) -> TypeId {
+    pub(crate) fn alloc(db: &mut Database, ty: Type) -> TyId {
         db.types.push(ty)
     }
 }
 
-impl TypeId {
+impl TyId {
     pub(crate) fn get(self, db: &Database) -> &Type {
         &db.types[self]
     }
@@ -192,7 +192,7 @@ pub(crate) struct Symbol {
     pub(crate) qualified_name: QualifiedName,
     pub(crate) vis: Vis,
     pub(crate) scope_level: ScopeLevel,
-    pub(crate) ty: TypeId,
+    pub(crate) ty: TyId,
     pub(crate) span: Span,
 }
 
@@ -203,7 +203,7 @@ impl Symbol {
         qualified_name: QualifiedName,
         vis: Vis,
         scope_level: ScopeLevel,
-        ty: TypeId,
+        ty: TyId,
         span: Span,
     ) -> SymbolId {
         db.symbols.push_with_id(|id| Symbol {
@@ -286,7 +286,7 @@ pub(crate) struct Fun {
     pub(crate) name: QualifiedName,
     pub(crate) kind: FunKind,
     pub(crate) span: Span,
-    pub(crate) ty: TypeId,
+    pub(crate) ty: TyId,
 }
 
 impl Fun {
@@ -296,7 +296,7 @@ impl Fun {
         name: QualifiedName,
         kind: FunKind,
         span: Span,
-        ty: TypeId,
+        ty: TyId,
     ) -> FunId {
         db.funs.push_with_id(|id| Fun {
             id,

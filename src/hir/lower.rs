@@ -42,7 +42,7 @@ impl<'db> Lower<'db> {
             name,
             expr: Box::new(value),
             span: binding.span,
-            ty: TypeId::null(),
+            ty: TyId::null(),
         }
     }
 
@@ -57,7 +57,7 @@ impl<'db> Lower<'db> {
             Block {
                 exprs: vec![body],
                 span,
-                ty: TypeId::null(),
+                ty: TyId::null(),
             }
         };
 
@@ -66,7 +66,7 @@ impl<'db> Lower<'db> {
             name: fun.name,
             body,
             span: fun.span,
-            ty: TypeId::null(),
+            ty: TyId::null(),
         }
     }
 
@@ -76,7 +76,7 @@ impl<'db> Lower<'db> {
             Ast::Ret(ret) => Hir::Ret(Ret {
                 expr: ret.expr.map(|v| Box::new(self.lower_ast(*v))),
                 span: ret.span,
-                ty: TypeId::null(),
+                ty: TyId::null(),
             }),
             Ast::Lit(lit) => Hir::Lit(Lit {
                 kind: match lit.kind {
@@ -84,7 +84,7 @@ impl<'db> Lower<'db> {
                     ast::LitKind::Unit => LitKind::Unit,
                 },
                 span: lit.span,
-                ty: TypeId::null(),
+                ty: TyId::null(),
             }),
         }
     }
@@ -93,7 +93,7 @@ impl<'db> Lower<'db> {
         Block {
             exprs: block.exprs.into_iter().map(|e| self.lower_ast(e)).collect(),
             span: block.span,
-            ty: TypeId::null(),
+            ty: TyId::null(),
         }
     }
 }

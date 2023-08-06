@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ustr::{Ustr, UstrMap};
 
 use crate::{
-    db::{self, Database, FunKind, ModuleId, ScopeLevel, Symbol, SymbolId, TypeId, Vis},
+    db::{self, Database, FunKind, ModuleId, ScopeLevel, Symbol, SymbolId, TyId, Vis},
     diagnostics::{Diagnostic, Label},
     hir::*,
     span::Span,
@@ -60,7 +60,7 @@ impl<'db> ResolveCx<'db> {
                     qualified_name,
                     Vis::Public,
                     ScopeLevel::Global,
-                    TypeId::null(),
+                    TyId::null(),
                     binding.span,
                 );
 

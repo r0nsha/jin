@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use crate::{
-    db::TypeId,
+    db::TyId,
     hir::*,
     ty::{Type, TypeKind, TypeVar},
 };
@@ -22,7 +22,7 @@ impl<'db> InferCx<'db> {
         unbound_vars
     }
 
-    fn substitute_type_id(&mut self, id: TypeId, unbound_vars: &mut HashSet<TypeVar>) {
+    fn substitute_type_id(&mut self, id: TyId, unbound_vars: &mut HashSet<TypeVar>) {
         let ty = id.get(&self.db).clone();
 
         let new_ty = self.substitute_ty(&ty, unbound_vars);

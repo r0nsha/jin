@@ -1,4 +1,4 @@
-use crate::db::{FunId, ModuleId, TypeId};
+use crate::db::{FunId, ModuleId, TyId};
 
 pub(crate) struct TypeEnv {
     module_id: ModuleId,
@@ -42,5 +42,5 @@ impl FunScopes {
 #[derive(Debug, Clone)]
 pub(crate) struct FunScope {
     pub(crate) id: FunId,
-    pub(crate) ret_ty: TypeId,
+    pub(crate) ret_ty: TyId,
 }

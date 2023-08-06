@@ -6,7 +6,7 @@ pub(crate) use lower::lower;
 use ustr::Ustr;
 
 use crate::{
-    db::{Database, FunId, ModuleId, SymbolId, TypeId},
+    db::{Database, FunId, ModuleId, SymbolId, TyId},
     span::{Span, Spanned},
 };
 
@@ -31,7 +31,7 @@ pub(crate) enum Hir {
 }
 
 impl Hir {
-    pub(crate) fn ty(&self) -> TypeId {
+    pub(crate) fn ty(&self) -> TyId {
         match self {
             Hir::Fun(x) => x.ty,
             Hir::Block(x) => x.ty,
@@ -58,7 +58,7 @@ pub(crate) struct Binding {
     pub(crate) name: Ustr,
     pub(crate) expr: Box<Hir>,
     pub(crate) span: Span,
-    pub(crate) ty: TypeId,
+    pub(crate) ty: TyId,
 }
 
 #[derive(Debug, Clone)]
@@ -67,28 +67,28 @@ pub(crate) struct Fun {
     pub(crate) name: Ustr,
     pub(crate) body: Block,
     pub(crate) span: Span,
-    pub(crate) ty: TypeId,
+    pub(crate) ty: TyId,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct Block {
     pub(crate) exprs: Vec<Hir>,
     pub(crate) span: Span,
-    pub(crate) ty: TypeId,
+    pub(crate) ty: TyId,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct Ret {
     pub(crate) expr: Option<Box<Hir>>,
     pub(crate) span: Span,
-    pub(crate) ty: TypeId,
+    pub(crate) ty: TyId,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct Lit {
     pub(crate) kind: LitKind,
     pub(crate) span: Span,
-    pub(crate) ty: TypeId,
+    pub(crate) ty: TyId,
 }
 
 #[derive(Debug, Clone)]
