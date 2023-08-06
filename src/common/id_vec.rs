@@ -47,7 +47,7 @@ impl<I: Id, T> IdVec<I, T> {
     }
 
     #[inline]
-    pub(crate) fn inner(&self) -> &[T] {
+    pub(crate) fn as_slice(&self) -> &[T] {
         &self.vec
     }
 

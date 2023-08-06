@@ -53,6 +53,14 @@ impl Function {
     pub(crate) fn parameters(&self) -> &[RegisterId] {
         &self.parameters
     }
+
+    pub(crate) fn block(&self, id: BlockId) -> Option<&Block> {
+        self.cfg.blocks.get(id)
+    }
+
+    pub(crate) fn blocks(&self) -> &[Block] {
+        self.cfg.blocks.as_slice()
+    }
 }
 
 pub(crate) struct Cfg {

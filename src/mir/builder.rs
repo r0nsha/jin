@@ -24,7 +24,7 @@ impl FunctionBuilder {
 
     pub(crate) fn create_block(&mut self) -> &Block {
         self.f.cfg.blocks.push(Block::new());
-        self.f.cfg.blocks.inner().last().unwrap()
+        self.f.cfg.blocks.as_slice().last().unwrap()
     }
 
     pub(crate) fn finish(self) -> Result<Function, String> {
