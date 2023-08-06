@@ -49,10 +49,7 @@ impl Ty {
 
     pub(crate) fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
         match &self.kind {
-            TyKind::Fun(fun) => {
-                // fun.arg.occurs_check(var).map_err(|_| self.clone())?;
-                fun.ret.occurs_check(var).map_err(|_| self.clone())
-            }
+            TyKind::Fun(fun) => fun.ret.occurs_check(var).map_err(|_| self.clone()),
             TyKind::Var(v) => {
                 if *v == var {
                     Err(self.clone())
