@@ -13,7 +13,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub(crate) struct Module {
     pub(crate) id: ModuleId,
-    pub(crate) bindings: Vec<Binding>,
+    pub(crate) definitions: Vec<Definition>,
 }
 
 impl Module {
@@ -53,18 +53,31 @@ impl Spanned for Hir {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Binding {
+pub(crate) struct Definition {
     pub(crate) id: SymbolId,
-    pub(crate) name: Ustr,
-    pub(crate) expr: Box<Hir>,
+    pub(crate) name: Ustr, // TODO: remove?
+    pub(crate) kind: DefinitionKind,
     pub(crate) span: Span,
     pub(crate) ty: TyId,
 }
 
 #[derive(Debug, Clone)]
+pub(crate) enum DefinitionKind {
+    Function(Function),
+}
+
+impl DefinitionKind {
+    pub(crate) fn ty(&self) -> TyId {
+        match self {
+            DefinitionKind::Function(x) => x.ty,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct Function {
     pub(crate) id: FunctionId,
-    pub(crate) name: Ustr,
+    pub(crate) name: Ustr, // TODO: remove?
     pub(crate) body: Block,
     pub(crate) span: Span,
     pub(crate) ty: TyId,

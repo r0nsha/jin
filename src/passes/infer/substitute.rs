@@ -14,7 +14,7 @@ impl<'db> InferCx<'db> {
         let mut unbound_vars = HashSet::new();
 
         for module in modules {
-            for binding in &mut module.bindings {
+            for binding in &mut module.definitions {
                 binding.substitute(self, &mut unbound_vars);
             }
         }
@@ -69,10 +69,14 @@ impl Substitute<'_> for Hir {
     }
 }
 
-impl Substitute<'_> for Binding {
+impl Substitute<'_> for Definition {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
+        match &mut self.kind {
+            DefinitionKind::Function(fun) => fun.substitute(cx, unbound_vars),
+        }
+
+        cx.substitute_type_id(self.ty, unbound_vars);
         cx.substitute_type_id(self.id.get(&cx.db).ty, unbound_vars);
-        self.expr.substitute(cx, unbound_vars);
     }
 }
 

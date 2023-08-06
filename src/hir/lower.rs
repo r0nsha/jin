@@ -24,7 +24,7 @@ impl<'db> Lower<'db> {
     fn run(&mut self, module: ast::Module) -> Module {
         Module {
             id: self.id,
-            bindings: module
+            definitions: module
                 .top_level
                 .into_iter()
                 .map(|binding| self.lower_top_level(binding))
@@ -32,16 +32,16 @@ impl<'db> Lower<'db> {
         }
     }
 
-    fn lower_top_level(&mut self, tl: ast::TopLevel) -> Binding {
+    fn lower_top_level(&mut self, tl: ast::TopLevel) -> Definition {
         match tl {
             ast::TopLevel::Function(fun) => {
                 let name = fun.name;
                 let span = fun.span;
 
-                Binding {
+                Definition {
                     id: SymbolId::null(),
                     name,
-                    expr: Box::new(Hir::Function(self.lower_fun(fun))),
+                    kind: DefinitionKind::Function(self.lower_fun(fun)),
                     span,
                     ty: TyId::null(),
                 }

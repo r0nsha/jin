@@ -41,30 +41,30 @@ impl<'db> ResolveCx<'db> {
             let mut scope_symbols = UstrMap::<SymbolId>::default();
             let mut defined_symbols = UstrMap::<Span>::default();
 
-            for binding in &mut module.bindings {
-                if let Some(&prev_span) = defined_symbols.get(&binding.name) {
+            for def in &mut module.definitions {
+                if let Some(&prev_span) = defined_symbols.get(&def.name) {
                     self.errors.push(ResolveError::DuplicateSymbol {
-                        name: binding.name,
+                        name: def.name,
                         prev_span,
-                        dup_span: binding.span,
+                        dup_span: def.span,
                     });
                 } else {
-                    defined_symbols.insert(binding.name, binding.span);
+                    defined_symbols.insert(def.name, def.span);
                 }
 
-                let qualified_name = module.id.get(&mut self.db).name.clone().child(binding.name);
+                let qualified_name = module.id.get(&mut self.db).name.clone().child(def.name);
 
-                binding.id = Symbol::alloc(
+                def.id = Symbol::alloc(
                     &mut self.db,
                     module.id,
                     qualified_name,
                     Vis::Public,
                     ScopeLevel::Global,
                     TyId::null(),
-                    binding.span,
+                    def.span,
                 );
 
-                scope_symbols.insert(binding.name, binding.id);
+                scope_symbols.insert(def.name, def.id);
             }
 
             self.global_scope.0.insert(module.id, scope_symbols);
@@ -75,8 +75,8 @@ impl<'db> ResolveCx<'db> {
         for module in modules {
             let mut env = Env::new(module.id);
 
-            for binding in &mut module.bindings {
-                binding.resolve(self, &mut env);
+            for def in &mut module.definitions {
+                def.resolve(self, &mut env);
             }
         }
     }
@@ -86,7 +86,7 @@ trait Resolve<'db> {
     fn resolve(&mut self, cx: &mut ResolveCx<'db>, env: &mut Env);
 }
 
-impl Resolve<'_> for Binding {
+impl Resolve<'_> for Definition {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         if self.id.is_null() {
             todo!("local bindings");
@@ -101,7 +101,9 @@ impl Resolve<'_> for Binding {
             // );
         }
 
-        self.expr.resolve(cx, env);
+        match &mut self.kind {
+            DefinitionKind::Function(fun) => fun.resolve(cx, env),
+        }
     }
 }
 

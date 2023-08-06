@@ -59,7 +59,7 @@ impl<'db> CodegenCx<'db> {
     }
 
     fn codegen_all(mut self, arena: &'db Arena<'db>, modules: &[Module]) -> Self {
-        let binding_count = modules.iter().map(|m| m.bindings.len()).sum();
+        let binding_count = modules.iter().map(|m| m.definitions.len()).sum();
 
         self.declarations.reserve(binding_count);
         self.definitions.reserve(binding_count);
@@ -131,7 +131,7 @@ impl<'a, 'db> Codegen<'a, 'db> for Module {
         cx: &'a mut CodegenCx<'db>,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        for binding in &self.bindings {
+        for binding in &self.definitions {
             binding.codegen(cx, arena);
         }
 
@@ -154,16 +154,14 @@ impl<'a, 'db> Codegen<'a, 'db> for Hir {
     }
 }
 
-impl<'a, 'db> Codegen<'a, 'db> for Binding {
+impl<'a, 'db> Codegen<'a, 'db> for Definition {
     fn codegen(
         &self,
         cx: &'a mut CodegenCx<'db>,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        if let Hir::Function(fun) = self.expr.as_ref() {
-            fun.codegen(cx, arena)
-        } else {
-            todo!("local/global variable")
+        match &self.kind {
+            DefinitionKind::Function(fun) => fun.codegen(cx, arena),
         }
     }
 }

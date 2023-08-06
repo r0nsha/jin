@@ -52,7 +52,7 @@ impl<'db> InferCx<'db> {
     fn infer_module(&mut self, module: &mut Module) {
         let mut env = TypeEnv::new(module.id);
 
-        for binding in &mut module.bindings {
+        for binding in &mut module.definitions {
             binding.infer(self, &mut env);
         }
     }
@@ -73,11 +73,15 @@ impl Infer<'_> for Hir {
     }
 }
 
-impl Infer<'_> for Binding {
+impl Infer<'_> for Definition {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         self.ty = Ty::alloc(&mut cx.db, Ty::unit(self.span));
-        self.expr.infer(cx, env);
-        self.id.get_mut(&mut cx.db).ty = self.expr.ty();
+
+        match &mut self.kind {
+            DefinitionKind::Function(fun) => fun.infer(cx, env),
+        }
+
+        self.id.get_mut(&mut cx.db).ty = self.kind.ty();
     }
 }
 

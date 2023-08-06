@@ -16,7 +16,7 @@ pub(crate) fn print_module(db: &Database, module: &Module) {
     .append(RcDoc::text("{"))
     .append(RcDoc::line())
     .append(RcDoc::intersperse(
-        module.bindings.iter().map(|b| b.to_doc(db)),
+        module.definitions.iter().map(|b| b.to_doc(db)),
         RcDoc::line().append(RcDoc::line()),
     ))
     .nest(1)
@@ -41,20 +41,23 @@ impl<'db, 'd> ToDoc<'db, 'd> for Hir {
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Binding {
+impl<'db, 'd> ToDoc<'db, 'd> for Definition {
     fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
-        RcDoc::text("let")
-            .append(RcDoc::space())
-            .append(RcDoc::text(self.name.as_str()))
-            .append(if matches!(self.expr.as_ref(), Hir::Function(_)) {
-                RcDoc::nil()
-            } else {
-                RcDoc::space().append(self.id.get(db).ty.to_doc(db))
-            })
-            .append(RcDoc::space())
-            .append(RcDoc::text("="))
-            .append(RcDoc::softline())
-            .append(self.expr.to_doc(db))
+        match &self.kind {
+            DefinitionKind::Function(fun) => {
+                let ret_ty = fun.ty.get(db).kind.as_function().unwrap().ret.to_doc(db);
+
+                RcDoc::text("fn()")
+                    .append(RcDoc::space())
+                    .append(RcDoc::text(fun.name.as_str()))
+                    .append(RcDoc::space())
+                    .append(ret_ty)
+                    .append(RcDoc::space())
+                    .append(RcDoc::text("="))
+                    .append(RcDoc::space())
+                    .append(fun.body.to_doc(db))
+            }
+        }
     }
 }
 
