@@ -1,3 +1,5 @@
+mod builder;
+
 use crate::{
     common::{new_id_type, IdVec},
     db::{FunctionId, TyId},
@@ -42,10 +44,6 @@ impl Function {
         self.registers.get(id)
     }
 
-    pub(crate) fn add_register(&mut self, reg: Register) -> RegisterId {
-        self.registers.push(reg)
-    }
-
     pub(crate) fn parameter(&self, index: usize) -> Option<RegisterId> {
         self.parameters.get(index).copied()
     }
@@ -54,10 +52,6 @@ impl Function {
         &self.parameters
     }
 
-    pub(crate) fn add_parameter(&mut self, reg_id: RegisterId) -> usize {
-        self.parameters.push(reg_id);
-        self.parameters.len() - 1
-    }
 }
 
 pub(crate) struct Cfg {
@@ -101,20 +95,3 @@ impl Block {
 }
 
 pub(crate) enum Instruction {}
-
-pub(crate) struct FunctionBuilder {
-    function: Function,
-}
-
-impl FunctionBuilder {
-    pub(crate) fn new(id: FunctionId) -> Self {
-        Self {
-            function: Function::new(id),
-        }
-    }
-
-    pub(crate) fn finish(self) -> Result<Function, String> {
-        // TODO: validate that the function is built correctly
-        Ok(self.function)
-    }
-}
