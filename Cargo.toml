@@ -16,6 +16,5 @@ path-absolutize = "3.1.0"
 pretty = { version = "0.12.1" }
 ptree = "0.4.0"
 stopwatch = "0.0.7"
-typed-arena = "2.0.2"
 unindent = "0.2.2"
 ustr = "0.10.0"
