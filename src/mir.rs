@@ -97,8 +97,8 @@ impl FunctionBuilder {
         }
     }
 
-    pub(crate) fn finish(self) -> Function {
+    pub(crate) fn finish(self) -> Result<Function, String> {
         // TODO: validate that the function is built correctly
-        self.function
+        Ok(self.function)
     }
 }
