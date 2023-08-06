@@ -22,7 +22,7 @@ impl FunctionBuilder {
         self.f.parameters.len() - 1
     }
 
-    pub(crate) fn create_block(&mut self) -> &Block {
+    pub(crate) fn add_block(&mut self) -> &Block {
         self.f.cfg.blocks.push_with_id(|id| Block::new(id));
         self.f.cfg.blocks.as_slice().last().unwrap()
     }
