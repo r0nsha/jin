@@ -6,7 +6,7 @@ use crate::{
     diagnostics::{Diagnostic, Label},
     parse::{
         ast::*,
-        tokenize::{Token, TokenKind},
+        token::{Token, TokenKind},
     },
     span::{Source, SourceId, Span, Spanned},
 };
