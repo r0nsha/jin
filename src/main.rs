@@ -72,28 +72,28 @@ fn build(build_options: BuildOptions, file: PathBuf) {
 fn build_inner(db: &mut Database) {
     let print_times = db.build_options().print_times;
 
-    let ast_modules = time! { print_times, "ast generation", parse::parse_modules(db) };
+    let ast = time! { print_times, "ast generation", parse::parse_modules(db) };
 
     if db.build_options().print_ast {
         println!("Ast:");
-        for module in &ast_modules {
+        for module in &ast {
             module.pretty_print().unwrap();
         }
     }
 
     bail_if_failed!(db);
 
-    let mut hir_modules = time! { print_times, "ast -> hir", hir::lower(db, ast_modules) };
+    let mut hir = time! { print_times, "ast -> hir", hir::lower(db, ast) };
 
-    time! { print_times, "resolve", passes::resolve(db, &mut hir_modules) };
+    time! { print_times, "resolve", passes::resolve(db, &mut hir) };
     bail_if_failed!(db);
 
-    time! { print_times, "infer", passes::infer(db, &mut hir_modules) };
+    time! { print_times, "infer", passes::infer(db, &mut hir) };
     bail_if_failed!(db);
 
     if db.build_options().print_hir {
         println!("\nHir:\n");
-        for module in &hir_modules {
+        for module in &hir {
             module.pretty_print(db);
         }
         println!();
@@ -105,7 +105,7 @@ fn build_inner(db: &mut Database) {
     // let mut hir_modules = time! { print_times, "hir -> mir", mir::lower(db, hir_modules) };
     // bail_if_failed!(db);
 
-    codegen(db, hir_modules);
+    codegen(db, hir);
 }
 
 fn codegen(db: &mut Database, hir_modules: Vec<hir::Module>) {
