@@ -101,4 +101,19 @@ impl Block {
     }
 }
 
-pub(crate) enum Instruction {}
+#[derive(Debug, Clone)]
+pub(crate) enum Instruction {
+    Return(Return),
+    IntValue(IntValue),
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Return {
+    pub(crate) register: RegisterId,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct IntValue {
+    pub(crate) register: RegisterId,
+    pub(crate) value: usize,
+}

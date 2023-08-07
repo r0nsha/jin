@@ -13,17 +13,17 @@ impl FunctionBuilder {
         }
     }
 
-    pub(crate) fn add_register(&mut self, reg: Register) -> RegisterId {
+    pub(crate) fn create_register(&mut self, reg: Register) -> RegisterId {
         self.f.registers.push(reg)
     }
 
-    pub(crate) fn add_parameter(&mut self, reg: Register) -> usize {
-        let reg_id = self.add_register(reg);
+    pub(crate) fn create_parameter(&mut self, reg: Register) -> usize {
+        let reg_id = self.create_register(reg);
         self.f.parameters.push(reg_id);
         self.f.parameters.len() - 1
     }
 
-    pub(crate) fn add_block(&mut self) -> &Block {
+    pub(crate) fn create_block(&mut self) -> &Block {
         self.f.cfg.blocks.push_with_id(|id| Block::new(id));
         self.f.cfg.blocks.as_slice().last().unwrap()
     }
