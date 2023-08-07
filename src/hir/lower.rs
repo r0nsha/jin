@@ -27,7 +27,7 @@ impl<'db> Lower<'db> {
             definitions: module
                 .top_level
                 .into_iter()
-                .map(|binding| self.lower_top_level(binding))
+                .map(|tl| self.lower_top_level(tl))
                 .collect(),
         }
     }

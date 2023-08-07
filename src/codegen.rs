@@ -2,13 +2,13 @@ use std::io;
 
 use pretty::{Arena, DocAllocator, DocBuilder, Pretty};
 
-use crate::{db::Database, hir::*, ty::*};
+use crate::{db::Database, mir::*, ty::*};
 
-pub(crate) fn codegen(db: &Database, modules: &[Module], writer: &mut impl io::Write) {
+pub(crate) fn codegen(db: &Database, mir: &Mir, writer: &mut impl io::Write) {
     let arena = Arena::new();
 
     CodegenCx::new(db, &arena)
-        .codegen_all(&arena, modules)
+        .codegen_all(&arena, mir)
         .write(&arena, writer)
 }
 
@@ -58,11 +58,11 @@ impl<'db> CodegenCx<'db> {
         }
     }
 
-    fn codegen_all(mut self, arena: &'db Arena<'db>, modules: &[Module]) -> Self {
-        let binding_count = modules.iter().map(|m| m.definitions.len()).sum();
+    fn codegen_all(mut self, arena: &'db Arena<'db>, mir: &Mir) -> Self {
+        let fun_count = mir.functions.len();
 
-        self.declarations.reserve(binding_count);
-        self.definitions.reserve(binding_count);
+        self.declarations.reserve(fun_count);
+        self.definitions.reserve(fun_count);
 
         self.gen_main(&arena);
 
@@ -131,8 +131,8 @@ impl<'a, 'db> Codegen<'a, 'db> for Module {
         cx: &'a mut CodegenCx<'db>,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        for binding in &self.definitions {
-            binding.codegen(cx, arena);
+        for def in &self.definitions {
+            def.codegen(cx, arena);
         }
 
         arena.nil()

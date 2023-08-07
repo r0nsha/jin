@@ -89,16 +89,7 @@ trait Resolve<'db> {
 impl Resolve<'_> for Definition {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         if self.id.is_null() {
-            todo!("local bindings");
-            // self.id = Symbol::alloc(
-            //     &mut cx.db,
-            //     module.id,
-            //     qualified_name,
-            //     Vis::Public,
-            //     ScopeLevel::Global,
-            //     TypeId::null(),
-            //     binding.span,
-            // );
+            todo!("local defs");
         }
 
         match &mut self.kind {
@@ -173,10 +164,10 @@ impl GlobalScope {
         Self(HashMap::new())
     }
 
-    pub(crate) fn find_binding(&self, module_id: ModuleId, name: Ustr) -> Option<SymbolId> {
+    pub(crate) fn find_symbol(&self, module_id: ModuleId, name: Ustr) -> Option<SymbolId> {
         self.0
             .get(&module_id)
-            .and_then(|bindings| bindings.get(&name))
+            .and_then(|symbols| symbols.get(&name))
             .copied()
     }
 }

@@ -14,8 +14,8 @@ impl<'db> InferCx<'db> {
         let mut unbound_vars = HashSet::new();
 
         for module in modules {
-            for binding in &mut module.definitions {
-                binding.substitute(self, &mut unbound_vars);
+            for def in &mut module.definitions {
+                def.substitute(self, &mut unbound_vars);
             }
         }
 

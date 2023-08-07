@@ -7,8 +7,8 @@ pub(super) fn print_module(module: &Module) -> io::Result<()> {
         builder: ptree::TreeBuilder::new(module.name.standard_full_name()),
     };
 
-    for binding in &module.top_level {
-        p.print_top_level(binding);
+    for tl in &module.top_level {
+        p.print_top_level(tl);
     }
 
     let tree = p.builder.build();

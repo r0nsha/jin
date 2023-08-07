@@ -52,8 +52,8 @@ impl<'db> InferCx<'db> {
     fn infer_module(&mut self, module: &mut Module) {
         let mut env = TypeEnv::new(module.id);
 
-        for binding in &mut module.definitions {
-            binding.infer(self, &mut env);
+        for def in &mut module.definitions {
+            def.infer(self, &mut env);
         }
     }
 }
