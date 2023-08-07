@@ -104,7 +104,8 @@ impl Block {
 #[derive(Debug, Clone)]
 pub(crate) enum Instruction {
     Return(Return),
-    IntValue(IntValue),
+    IntLit(IntLit),
+    UnitLit(UnitLit),
 }
 
 #[derive(Debug, Clone)]
@@ -113,7 +114,12 @@ pub(crate) struct Return {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct IntValue {
+pub(crate) struct IntLit {
     pub(crate) register: RegisterId,
     pub(crate) value: usize,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct UnitLit {
+    pub(crate) register: RegisterId,
 }
