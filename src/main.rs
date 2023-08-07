@@ -107,7 +107,7 @@ fn build_inner(db: &mut Database) {
     time! { print_times, "find main", passes::find_main(db) };
     bail_if_failed!(db);
 
-    let mut mir = time! { print_times, "hir -> mir", mir::lower(db, hir) };
+    let mir = time! { print_times, "hir -> mir", mir::lower(db, hir) };
     bail_if_failed!(db);
 
     if db.build_options().print_mir {
@@ -115,10 +115,10 @@ fn build_inner(db: &mut Database) {
         mir.pretty_print(db);
     }
 
-    // codegen(db, hir);
+    codegen(db, &mir);
 }
 
-fn codegen(db: &mut Database, hir_modules: Vec<hir::Module>) {
+fn codegen(db: &mut Database, mir: &Mir) {
     let print_times = db.build_options().print_times;
 
     let out_dir = Path::new("out");
@@ -129,7 +129,7 @@ fn codegen(db: &mut Database, hir_modules: Vec<hir::Module>) {
     fs::create_dir_all(out_dir).unwrap();
     let mut c_file = File::create(&out_c_file).unwrap();
 
-    time! { print_times, "codegen", codegen::codegen(&db, &hir_modules, &mut c_file) };
+    time! { print_times, "codegen", codegen::codegen(&db, mir, &mut c_file) };
 
     time! { print_times, "clang",
         Command::new("clang")
@@ -149,3 +149,4 @@ macro_rules! bail_if_failed {
 }
 
 use bail_if_failed;
+use mir::Mir;

@@ -66,8 +66,8 @@ impl<'db> CodegenCx<'db> {
 
         self.gen_main(&arena);
 
-        for module in modules {
-            module.codegen(&mut self, &arena);
+        for fun in &mir.functions {
+            fun.codegen(&mut self, fun, &arena);
         }
 
         self
@@ -121,59 +121,22 @@ trait Codegen<'a, 'db> {
     fn codegen(
         &self,
         cx: &'a mut CodegenCx<'db>,
+        fun: &'a Function,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()>;
-}
-
-impl<'a, 'db> Codegen<'a, 'db> for Module {
-    fn codegen(
-        &self,
-        cx: &'a mut CodegenCx<'db>,
-        arena: &'db Arena<'db>,
-    ) -> DocBuilder<'db, Arena<'db>, ()> {
-        for def in &self.definitions {
-            def.codegen(cx, arena);
-        }
-
-        arena.nil()
-    }
-}
-
-impl<'a, 'db> Codegen<'a, 'db> for Hir {
-    fn codegen(
-        &self,
-        cx: &'a mut CodegenCx<'db>,
-        arena: &'db Arena<'db>,
-    ) -> DocBuilder<'db, Arena<'db>, ()> {
-        match self {
-            Hir::Function(x) => x.codegen(cx, arena),
-            Hir::Block(x) => x.codegen(cx, arena),
-            Hir::Return(x) => x.codegen(cx, arena),
-            Hir::Lit(x) => x.codegen(cx, arena),
-        }
-    }
-}
-
-impl<'a, 'db> Codegen<'a, 'db> for Definition {
-    fn codegen(
-        &self,
-        cx: &'a mut CodegenCx<'db>,
-        arena: &'db Arena<'db>,
-    ) -> DocBuilder<'db, Arena<'db>, ()> {
-        match &self.kind {
-            DefinitionKind::Function(fun) => fun.codegen(cx, arena),
-        }
-    }
 }
 
 impl<'a, 'db> Codegen<'a, 'db> for Function {
     fn codegen(
         &self,
         cx: &'a mut CodegenCx<'db>,
+        fun: &'a Function,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        let fun_ty = self.ty.get(&cx.db).kind.as_function().unwrap();
-        let name = self.id.get(&cx.db).name.full_c_name();
+        let fun = self.id().get(&cx.db);
+
+        let fun_ty = fun.ty.get(&cx.db).kind.as_function().unwrap();
+        let name = fun.name.full_c_name();
 
         let sig = arena
             .text(c_type(&fun_ty.ret))
@@ -185,7 +148,16 @@ impl<'a, 'db> Codegen<'a, 'db> for Function {
 
         let def = sig
             .append(arena.space())
-            .append(self.body.codegen(cx, arena));
+            .append(arena.text("{"))
+            .append(arena.line())
+            .append(arena.intersperse(
+                self.blocks().iter().map(|blk| blk.codegen(cx, self, arena)),
+                arena.line(),
+            ))
+            .append(arena.text(";"))
+            .nest(1)
+            .append(arena.line())
+            .append(arena.text("}"));
 
         cx.add_definition(def);
 
@@ -197,48 +169,55 @@ impl<'a, 'db> Codegen<'a, 'db> for Block {
     fn codegen(
         &self,
         cx: &'a mut CodegenCx<'db>,
+        fun: &'a Function,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        arena
-            .text("{")
-            .append(arena.line())
-            .append(arena.intersperse(
-                self.exprs.iter().map(|e| e.codegen(cx, arena)),
-                arena.line(),
-            ))
-            .append(arena.text(";"))
-            .nest(1)
-            .append(arena.line())
-            .append(arena.text("}"))
-    }
-}
-
-impl<'a, 'db> Codegen<'a, 'db> for Return {
-    fn codegen(
-        &self,
-        cx: &'a mut CodegenCx<'db>,
-        arena: &'db Arena<'db>,
-    ) -> DocBuilder<'db, Arena<'db>, ()> {
-        arena.text("return").append(arena.space()).append(
-            self.expr
-                .as_ref()
-                .map_or_else(|| arena.nil(), |e| e.codegen(cx, arena)),
+        arena.intersperse(
+            self.instructions
+                .iter()
+                .map(|inst| inst.codegen(cx, fun, arena)),
+            arena.text(";").append(arena.line()),
         )
     }
 }
 
-impl<'a, 'db> Codegen<'a, 'db> for Lit {
+impl<'a, 'db> Codegen<'a, 'db> for Instruction {
     fn codegen(
         &self,
-        _cx: &'a mut CodegenCx<'db>,
+        cx: &'a mut CodegenCx<'db>,
+        fun: &'a Function,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        match &self.kind {
-            LitKind::Int(v) => arena.text(v.to_string()),
-            LitKind::Unit => arena.text(CONST_UNIT),
-        }
+        todo!()
     }
 }
+
+// impl<'a, 'db> Codegen<'a, 'db> for Return {
+//     fn codegen(
+//         &self,
+//         cx: &'a mut CodegenCx<'db>,
+//         arena: &'db Arena<'db>,
+//     ) -> DocBuilder<'db, Arena<'db>, ()> {
+//         arena.text("return").append(arena.space()).append(
+//             self.expr
+//                 .as_ref()
+//                 .map_or_else(|| arena.nil(), |e| e.codegen(cx, arena)),
+//         )
+//     }
+// }
+
+// impl<'a, 'db> Codegen<'a, 'db> for Lit {
+//     fn codegen(
+//         &self,
+//         _cx: &'a mut CodegenCx<'db>,
+//         arena: &'db Arena<'db>,
+//     ) -> DocBuilder<'db, Arena<'db>, ()> {
+//         match &self.kind {
+//             LitKind::Int(v) => arena.text(v.to_string()),
+//             LitKind::Unit => arena.text(CONST_UNIT),
+//         }
+//     }
+// }
 
 fn c_type(ty: &Ty) -> String {
     match &ty.kind {
