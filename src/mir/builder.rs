@@ -11,14 +11,10 @@ pub(crate) struct FunctionBuilder {
 
 impl FunctionBuilder {
     pub(crate) fn new(id: FunctionId) -> Self {
-        let mut s = Self {
+        Self {
             f: Function::new(id),
             current_block: BlockId(0),
-        };
-
-        s.create_block();
-
-        s
+        }
     }
 
     #[inline]
@@ -76,9 +72,21 @@ impl FunctionBuilder {
         self.f.cfg.blocks[source].successors.push(target);
     }
 
-    pub(crate) fn build_unit_lit(&mut self, register: RegisterId, span: Span) {
+    pub(crate) fn build_unit_lit(&mut self, reg: RegisterId, span: Span) {
         self.current_block_mut()
-            .add_instruction(Instruction::UnitLit(UnitLit { register, span }));
+            .add_instruction(Instruction::UnitLit(UnitLit {
+                register: reg,
+                span,
+            }));
+    }
+
+    pub(crate) fn build_int_lit(&mut self, reg: RegisterId, value: usize, span: Span) {
+        self.current_block_mut()
+            .add_instruction(Instruction::IntLit(IntLit {
+                register: reg,
+                value,
+                span,
+            }));
     }
 
     pub(crate) fn finish(self) -> Result<Function, String> {
