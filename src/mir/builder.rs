@@ -61,8 +61,8 @@ impl FunctionBuilder {
     }
 
     #[inline]
-    pub(crate) fn create_block(&mut self) -> BlockId {
-        self.f.cfg.blocks.push_with_id(|id| Block::new(id))
+    pub(crate) fn create_block(&mut self, name: impl AsRef<str>) -> BlockId {
+        self.f.cfg.blocks.push_with_id(|id| Block::new(id, name))
     }
 
     #[inline]
@@ -113,7 +113,7 @@ impl FunctionBuilder {
             for (i, blk) in blocks.iter().enumerate() {
                 if i > 0 && blk.predecessors.is_empty() {
                     return Err(format!(
-                        "Non-starting block &{i} is unreachable (has no predecessors)"
+                        "Non-starting block @{i} is unreachable (has no predecessors)"
                     ));
                 }
 

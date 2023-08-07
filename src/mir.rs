@@ -3,6 +3,7 @@ mod lower;
 mod pretty_print;
 
 pub(crate) use lower::lower;
+use ustr::{ustr, Ustr};
 
 use crate::{
     common::{new_id_type, IdVec},
@@ -92,15 +93,17 @@ new_id_type!(BlockId);
 
 pub(crate) struct Block {
     pub(crate) id: BlockId,
+    pub(crate) name: Ustr,
     pub(crate) instructions: Vec<Instruction>,
     pub(crate) predecessors: Vec<BlockId>,
     pub(crate) successors: Vec<BlockId>,
 }
 
 impl Block {
-    fn new(id: BlockId) -> Self {
+    fn new(id: BlockId, name: impl AsRef<str>) -> Self {
         Self {
             id,
+            name: ustr(name.as_ref()),
             instructions: vec![],
             predecessors: vec![],
             successors: vec![],

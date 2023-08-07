@@ -8,7 +8,7 @@ use crate::{
 use super::*;
 
 pub(crate) fn print_module(db: &Database, module: &Module) {
-    let doc = RcDoc::<()>::text(format!(
+    let doc = RcDoc::text(format!(
         "module {}",
         module.id.get(db).name.standard_full_name()
     ))
