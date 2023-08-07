@@ -89,6 +89,14 @@ impl FunctionBuilder {
             }));
     }
 
+    pub(crate) fn build_return(&mut self, reg: RegisterId, span: Span) {
+        self.current_block_mut()
+            .add_instruction(Instruction::Return(Return {
+                register: reg,
+                span,
+            }));
+    }
+
     pub(crate) fn finish(self) -> Result<Function, String> {
         if self.f.blocks().is_empty() {
             return Err("Function has 0 blocks".to_string());

@@ -48,7 +48,7 @@ impl<'db> LowerCx<'db> {
             reg = Some(self.lower_node(expr));
         }
 
-        reg.unwrap_or_else(|| self.create_unit_register(blk.span))
+        reg.unwrap_or_else(|| self.create_unit_register_with_ty(blk.ty, blk.span))
     }
 
     fn lower_node(&mut self, node: &hir::Hir) -> RegisterId {
@@ -67,9 +67,8 @@ impl<'db> LowerCx<'db> {
             self.create_unit_register(ret.span)
         };
 
-        // self.builder.build_return()
-
-        todo!()
+        self.builder.build_return(reg, ret.span);
+        self.build_unreachable(ret.span)
     }
 
     fn lower_lit(&mut self, lit: &hir::Lit) -> RegisterId {
@@ -79,7 +78,7 @@ impl<'db> LowerCx<'db> {
                 self.builder.build_int_lit(reg, *value, lit.span);
                 reg
             }
-            hir::LitKind::Unit => self.create_unit_register(lit.span),
+            hir::LitKind::Unit => self.create_unit_register_with_ty(lit.ty, lit.span),
         }
     }
 
@@ -92,5 +91,10 @@ impl<'db> LowerCx<'db> {
         let reg = self.builder.create_register(ty);
         self.builder.build_unit_lit(reg, span);
         reg
+    }
+
+    fn build_unreachable(&mut self, span: Span) -> RegisterId {
+        let ty = Ty::alloc(&mut self.db, Ty::never(span));
+        self.builder.create_register(ty)
     }
 }
