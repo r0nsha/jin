@@ -6,13 +6,19 @@ use super::*;
 
 pub(crate) struct FunctionBuilder {
     f: Function,
+    current_block: BlockId,
 }
 
 impl FunctionBuilder {
     pub(crate) fn new(id: FunctionId) -> Self {
-        Self {
+        let mut s = Self {
             f: Function::new(id),
-        }
+            current_block: BlockId(0),
+        };
+
+        s.create_block();
+
+        s
     }
 
     #[inline]
@@ -33,6 +39,16 @@ impl FunctionBuilder {
     #[inline]
     pub(crate) fn start_block_mut(&mut self) -> &mut Block {
         self.block_mut(BlockId(0))
+    }
+
+    #[inline]
+    pub(crate) fn current_block(&self) -> &Block {
+        self.block(self.current_block)
+    }
+
+    #[inline]
+    pub(crate) fn current_block_mut(&mut self) -> &mut Block {
+        self.block_mut(self.current_block)
     }
 
     pub(crate) fn reachable_blocks(&self) -> HashSet<BlockId> {
@@ -57,9 +73,8 @@ impl FunctionBuilder {
         self.f.parameters.len() - 1
     }
 
-    pub(crate) fn create_block(&mut self) -> &Block {
-        self.f.cfg.blocks.push_with_id(|id| Block::new(id));
-        self.f.cfg.blocks.as_slice().last().unwrap()
+    pub(crate) fn create_block(&mut self) -> BlockId {
+        self.f.cfg.blocks.push_with_id(|id| Block::new(id))
     }
 
     pub(crate) fn create_edge(&mut self, source: BlockId, target: BlockId) {
