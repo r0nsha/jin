@@ -3,15 +3,16 @@ mod common;
 mod db;
 mod diagnostics;
 mod hir;
+mod mir;
 mod parse;
 mod passes;
 mod span;
 mod ty;
-mod mir;
 
 use std::{
     fs::{self, File},
-    path::PathBuf,
+    path::{Path, PathBuf},
+    process::Command,
 };
 
 use clap::{Parser, Subcommand};
@@ -101,28 +102,22 @@ fn build_inner(db: &mut Database) {
     time! { print_times, "find main", passes::find_main(db) };
     bail_if_failed!(db);
 
-    const OUT_DIR: &str = "out";
-    let out_file = db.main_module().unwrap().name.name();
+    let out_dir = Path::new("out");
+    let main_module_name = db.main_module().unwrap().name.name();
+    let out_file_name = out_dir.join(main_module_name.as_str());
+    let out_c_file = out_file_name.with_extension("c");
 
-    // TODO: don't create this out dir
-    // TODO: handle error (ICE)
-    fs::create_dir_all(OUT_DIR).unwrap();
+    fs::create_dir_all(out_dir).unwrap();
+    let mut c_file = File::create(&out_c_file).unwrap();
 
-    // TODO: rename file
-    // TODO: handle error (ICE)
-    let mut file = File::create(format!("{OUT_DIR}/{out_file}.c")).unwrap();
+    time! { print_times, "codegen", codegen::codegen(&db, &hir_modules, &mut c_file) };
 
-    time! { print_times, "codegen", codegen::codegen(&db, &hir_modules, &mut file) };
-
-    // // TODO: rename input
-    // // TODO: rename output
-    // // TODO: handle error (ICE)
-    // time! { print_times, "clang",
-    //     Command::new("clang")
-    //         .args(["out/main.c", "-o", "out/main", "-x", "c", "-std=c99"])
-    //         .spawn()
-    //         .unwrap()
-    // };
+    time! { print_times, "clang",
+        Command::new("clang")
+            .args([out_c_file.to_string_lossy().as_ref(), "-o", out_file_name.to_string_lossy().as_ref(), "-x", "c", "-std=c99"])
+            .spawn()
+            .unwrap()
+    };
 }
 
 macro_rules! bail_if_failed {
