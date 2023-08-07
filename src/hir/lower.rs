@@ -52,8 +52,19 @@ impl<'db> Lower<'db> {
     fn lower_fun(&mut self, fun: ast::Function) -> Function {
         let body = self.lower_ast(*fun.body);
 
-        let body = if let Hir::Block(blk) = body {
-            blk
+        let body = if let Hir::Block(mut blk) = body {
+            // Automatically insert a `return` statement if the function's block is empty
+            if blk.exprs.is_empty() {
+                blk.exprs.push(Hir::Return(Return {
+                    expr: None,
+                    span: blk.span,
+                    ty: TyId::null(),
+                }));
+
+                blk
+            } else {
+                blk.fix_function_return()
+            }
         } else {
             let span = body.span();
 
@@ -62,7 +73,7 @@ impl<'db> Lower<'db> {
                 span,
                 ty: TyId::null(),
             }
-            .fix_return()
+            .fix_function_return()
         };
 
         Function {
@@ -105,12 +116,13 @@ impl<'db> Lower<'db> {
             span: blk.span,
             ty: TyId::null(),
         }
-        .fix_return()
     }
 }
 
 impl Block {
-    fn fix_return(mut self) -> Self {
+    // Automatically turn the last statement in a function's block into a `return` statement, if it
+    // isn't one already
+    fn fix_function_return(mut self) -> Self {
         match self.exprs.last_mut() {
             Some(Hir::Return(_)) => (),
             Some(last_expr) => {
