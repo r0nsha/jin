@@ -2,7 +2,11 @@ use std::io;
 
 use pretty::{Arena, DocAllocator, DocBuilder, Pretty};
 
-use crate::{db::Database, mir::*, ty::*};
+use crate::{
+    db::{Database, TyId},
+    mir::*,
+    ty::*,
+};
 
 pub(crate) fn codegen(db: &Database, mir: &Mir, writer: &mut impl io::Write) {
     let arena = Arena::new();
@@ -29,18 +33,6 @@ impl<'db> CodegenResult<'db> {
     }
 }
 
-struct CodegenCx<'db> {
-    db: &'db Database,
-    fun: &'db Function,
-    declarations: Vec<DocBuilder<'db, Arena<'db>>>,
-    definitions: Vec<DocBuilder<'db, Arena<'db>>>,
-}
-
-const TYPE_UNIT: &str = "Unit";
-const TYPE_NEVER: &str = "Never";
-
-const CONST_UNIT: &str = "unit";
-
 fn codegen_all<'db>(
     db: &'db Database,
     arena: &'db Arena<'db>,
@@ -55,7 +47,7 @@ fn codegen_all<'db>(
     codegen_main(db, &arena);
 
     for fun in &mir.functions {
-        let mut cx = CodegenCx::new(db, fun, arena);
+        let mut cx = CodegenCx::new(db, fun);
         fun.codegen(&mut cx, &arena);
     }
 
@@ -113,8 +105,15 @@ fn codegen_main<'db>(db: &'db Database, arena: &'db Arena<'db>) -> DocBuilder<'d
         .append(arena.text("}"))
 }
 
+struct CodegenCx<'db> {
+    db: &'db Database,
+    fun: &'db Function,
+    declarations: Vec<DocBuilder<'db, Arena<'db>>>,
+    definitions: Vec<DocBuilder<'db, Arena<'db>>>,
+}
+
 impl<'db> CodegenCx<'db> {
-    fn new(db: &'db Database, fun: &'db Function, arena: &'db Arena<'db>) -> Self {
+    fn new(db: &'db Database, fun: &'db Function) -> Self {
         CodegenCx {
             db,
             fun,
@@ -129,6 +128,26 @@ impl<'db> CodegenCx<'db> {
 
     fn add_declaration(&mut self, arena: &'db Arena<'db>, decl: DocBuilder<'db, Arena<'db>, ()>) {
         self.declarations.push(arena.statement(decl));
+    }
+
+    fn temp_var(
+        &mut self,
+        arena: &'db Arena<'db>,
+        reg: RegisterId,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
+        let reg_name: usize = reg.into();
+        let name = format!("reg_{}", reg_name);
+
+        self.fun
+            .register(reg)
+            .unwrap()
+            .ty
+            .codegen(self, arena)
+            .append(arena.space())
+            .append(arena.text(name))
+            .append(arena.space())
+            .append(arena.text("="))
+            .append(arena.space())
     }
 }
 
@@ -200,8 +219,12 @@ impl<'a, 'db> Codegen<'a, 'db> for Instruction {
     ) -> DocBuilder<'db, Arena<'db>, ()> {
         match self {
             Instruction::Return(_) => todo!(),
-            Instruction::IntLit(_) => todo!(),
-            Instruction::UnitLit(_) => todo!(),
+            Instruction::IntLit(lit) => cx
+                .temp_var(arena, lit.register)
+                .append(arena.text(lit.value.to_string())),
+            Instruction::UnitLit(lit) => cx
+                .temp_var(arena, lit.register)
+                .append(arena.text(CONST_UNIT)),
         }
     }
 }
@@ -233,6 +256,35 @@ impl<'a, 'db> Codegen<'a, 'db> for Instruction {
 //     }
 // }
 
+impl<'a, 'db> Codegen<'a, 'db> for TyId {
+    fn codegen(
+        &self,
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
+        self.get(&cx.db).codegen(cx, arena)
+    }
+}
+
+impl<'a, 'db> Codegen<'a, 'db> for Ty {
+    fn codegen(
+        &self,
+        _cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
+        arena.text(match &self.kind {
+            TyKind::Int(int) => match int {
+                IntTy::Int => "intptr_t",
+            }
+            .to_string(),
+            TyKind::Function(_) => todo!(),
+            TyKind::Unit => TYPE_UNIT.to_string(),
+            TyKind::Never => TYPE_NEVER.to_string(),
+            TyKind::Var(_) => panic!("unexpected type: {self}"),
+        })
+    }
+}
+
 fn c_type(ty: &Ty) -> String {
     match &ty.kind {
         TyKind::Int(int) => match int {
@@ -259,3 +311,8 @@ where
 }
 
 impl<'a, A: Clone> ArenaExt<'a, A> for Arena<'a, A> {}
+
+const TYPE_UNIT: &str = "Unit";
+const TYPE_NEVER: &str = "Never";
+
+const CONST_UNIT: &str = "unit";
