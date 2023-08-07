@@ -52,8 +52,8 @@ impl<'db> Lower<'db> {
     fn lower_fun(&mut self, fun: ast::Function) -> Function {
         let body = self.lower_ast(*fun.body);
 
-        let body = if let Hir::Block(block) = body {
-            block
+        let body = if let Hir::Block(blk) = body {
+            blk
         } else {
             let span = body.span();
 
@@ -62,6 +62,7 @@ impl<'db> Lower<'db> {
                 span,
                 ty: TyId::null(),
             }
+            .fix_return()
         };
 
         Function {
@@ -75,7 +76,7 @@ impl<'db> Lower<'db> {
 
     fn lower_ast(&mut self, ast: Ast) -> Hir {
         match ast {
-            Ast::Block(block) => Hir::Block(self.lower_block(block)),
+            Ast::Block(blk) => Hir::Block(self.lower_block(blk)),
             Ast::Lit(lit) => Hir::Lit(Lit {
                 kind: match lit.kind {
                     ast::LitKind::Int(v) => LitKind::Int(v),
@@ -98,15 +99,34 @@ impl<'db> Lower<'db> {
         }
     }
 
-    fn lower_block(&mut self, block: ast::Block) -> Block {
+    fn lower_block(&mut self, blk: ast::Block) -> Block {
         Block {
-            exprs: block
-                .stmts
-                .into_iter()
-                .map(|e| self.lower_stmt(e))
-                .collect(),
-            span: block.span,
+            exprs: blk.stmts.into_iter().map(|e| self.lower_stmt(e)).collect(),
+            span: blk.span,
             ty: TyId::null(),
         }
+        .fix_return()
+    }
+}
+
+impl Block {
+    fn fix_return(mut self) -> Self {
+        match self.exprs.last_mut() {
+            Some(Hir::Return(_)) => (),
+            Some(last_expr) => {
+                let span = last_expr.span();
+
+                let expr = last_expr.clone();
+
+                *last_expr = Hir::Return(Return {
+                    expr: Some(Box::new(expr)),
+                    span,
+                    ty: TyId::null(),
+                })
+            }
+            _ => (),
+        }
+
+        self
     }
 }
