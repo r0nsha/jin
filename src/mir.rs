@@ -1,11 +1,12 @@
 mod builder;
 mod lower;
+mod pretty_print;
 
 pub(crate) use lower::lower;
 
 use crate::{
     common::{new_id_type, IdVec},
-    db::{FunctionId, TyId},
+    db::{Database, FunctionId, TyId},
     span::Span,
 };
 
@@ -20,6 +21,10 @@ impl Mir {
 
     pub(crate) fn add_function(&mut self, function: Function) {
         self.functions.push(function);
+    }
+
+    pub(crate) fn pretty_print(&self, db: &Database) {
+        pretty_print::print(db, self)
     }
 }
 
