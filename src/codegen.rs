@@ -6,104 +6,16 @@ use crate::{db::Database, mir::*, ty::*};
 
 pub(crate) fn codegen(db: &Database, mir: &Mir, writer: &mut impl io::Write) {
     let arena = Arena::new();
-
-    CodegenCx::new(db, &arena)
-        .codegen_all(&arena, mir)
-        .write(&arena, writer)
+    codegen_all(db, &arena, mir).write(&arena, writer)
 }
 
-struct CodegenCx<'db> {
-    db: &'db Database,
+struct CodegenResult<'db> {
     prelude: DocBuilder<'db, Arena<'db>>,
     declarations: Vec<DocBuilder<'db, Arena<'db>>>,
     definitions: Vec<DocBuilder<'db, Arena<'db>>>,
 }
 
-const TYPE_UNIT: &str = "Unit";
-const TYPE_NEVER: &str = "Never";
-
-const CONST_UNIT: &str = "unit";
-
-impl<'db> CodegenCx<'db> {
-    fn new(db: &'db Database, arena: &'db Arena<'db>) -> Self {
-        let includes = arena.text("#include <stdint.h>");
-
-        let typedefs = arena.intersperse(
-            [
-                arena.text(format!("typedef void {TYPE_NEVER}")),
-                arena.text(format!("typedef struct {{}} {TYPE_UNIT}")),
-            ]
-            .into_iter()
-            .map(|d| arena.statement(d)),
-            arena.line(),
-        );
-
-        let constants = arena.intersperse(
-            [arena.text(format!("const {TYPE_UNIT} {CONST_UNIT} = {{}}"))]
-                .into_iter()
-                .map(|d| arena.statement(d)),
-            arena.line(),
-        );
-
-        let prelude = arena.intersperse(
-            [includes, typedefs, constants],
-            arena.line().append(arena.line()),
-        );
-
-        CodegenCx {
-            db,
-            prelude,
-            declarations: vec![],
-            definitions: vec![],
-        }
-    }
-
-    fn codegen_all(mut self, arena: &'db Arena<'db>, mir: &Mir) -> Self {
-        let fun_count = mir.functions.len();
-
-        self.declarations.reserve(fun_count);
-        self.definitions.reserve(fun_count);
-
-        self.gen_main(&arena);
-
-        for fun in &mir.functions {
-            fun.codegen(&mut self, fun, &arena);
-        }
-
-        self
-    }
-
-    fn gen_main(&mut self, arena: &'db Arena<'db>) {
-        let main_fun_name = self.db.main_fun().unwrap().name.full_c_name();
-
-        self.add_definition(
-            arena
-                .text("int main() {")
-                .append(arena.line())
-                .append(
-                    arena.intersperse(
-                        [
-                            arena.text(format!("{}()", main_fun_name)),
-                            arena.text("return 0"),
-                        ]
-                        .map(|d| arena.statement(d)),
-                        arena.line(),
-                    ),
-                )
-                .nest(1)
-                .append(arena.line())
-                .append(arena.text("}")),
-        );
-    }
-
-    fn add_definition(&mut self, def: DocBuilder<'db, Arena<'db>, ()>) {
-        self.definitions.push(def);
-    }
-
-    fn add_declaration(&mut self, arena: &'db Arena<'db>, decl: DocBuilder<'db, Arena<'db>, ()>) {
-        self.declarations.push(arena.statement(decl));
-    }
-
+impl<'db> CodegenResult<'db> {
     fn write(self, arena: &'db Arena<'db>, w: &mut impl io::Write) {
         self.prelude
             .append(arena.line())
@@ -117,11 +29,113 @@ impl<'db> CodegenCx<'db> {
     }
 }
 
+struct CodegenCx<'db> {
+    db: &'db Database,
+    fun: &'db Function,
+    declarations: Vec<DocBuilder<'db, Arena<'db>>>,
+    definitions: Vec<DocBuilder<'db, Arena<'db>>>,
+}
+
+const TYPE_UNIT: &str = "Unit";
+const TYPE_NEVER: &str = "Never";
+
+const CONST_UNIT: &str = "unit";
+
+fn codegen_all<'db>(
+    db: &'db Database,
+    arena: &'db Arena<'db>,
+    mir: &'db Mir,
+) -> CodegenResult<'db> {
+    let fun_count = mir.functions.len();
+
+    let prelude = codegen_prelude(arena);
+    let declarations = Vec::with_capacity(fun_count);
+    let definitions = Vec::with_capacity(fun_count);
+
+    codegen_main(db, &arena);
+
+    for fun in &mir.functions {
+        let mut cx = CodegenCx::new(db, fun, arena);
+        fun.codegen(&mut cx, &arena);
+    }
+
+    CodegenResult {
+        prelude,
+        declarations,
+        definitions,
+    }
+}
+
+fn codegen_prelude<'db>(arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>> {
+    let includes = arena.text("#include <stdint.h>");
+
+    let typedefs = arena.intersperse(
+        [
+            arena.text(format!("typedef void {TYPE_NEVER}")),
+            arena.text(format!("typedef struct {{}} {TYPE_UNIT}")),
+        ]
+        .into_iter()
+        .map(|d| arena.statement(d)),
+        arena.line(),
+    );
+
+    let constants = arena.intersperse(
+        [arena.text(format!("const {TYPE_UNIT} {CONST_UNIT} = {{}}"))]
+            .into_iter()
+            .map(|d| arena.statement(d)),
+        arena.line(),
+    );
+
+    arena.intersperse(
+        [includes, typedefs, constants],
+        arena.line().append(arena.line()),
+    )
+}
+
+fn codegen_main<'db>(db: &'db Database, arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>> {
+    let main_fun_name = db.main_fun().unwrap().name.full_c_name();
+
+    arena
+        .text("int main() {")
+        .append(arena.line())
+        .append(
+            arena.intersperse(
+                [
+                    arena.text(format!("{}()", main_fun_name)),
+                    arena.text("return 0"),
+                ]
+                .map(|d| arena.statement(d)),
+                arena.line(),
+            ),
+        )
+        .nest(1)
+        .append(arena.line())
+        .append(arena.text("}"))
+}
+
+impl<'db> CodegenCx<'db> {
+    fn new(db: &'db Database, fun: &'db Function, arena: &'db Arena<'db>) -> Self {
+        CodegenCx {
+            db,
+            fun,
+            declarations: vec![],
+            definitions: vec![],
+        }
+    }
+
+    fn add_definition(&mut self, def: DocBuilder<'db, Arena<'db>, ()>) {
+        self.definitions.push(def);
+    }
+
+    fn add_declaration(&mut self, arena: &'db Arena<'db>, decl: DocBuilder<'db, Arena<'db>, ()>) {
+        self.declarations.push(arena.statement(decl));
+    }
+}
+
 trait Codegen<'a, 'db> {
     fn codegen(
         &self,
         cx: &'a mut CodegenCx<'db>,
-        fun: &'a Function,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()>;
 }
@@ -130,7 +144,6 @@ impl<'a, 'db> Codegen<'a, 'db> for Function {
     fn codegen(
         &self,
         cx: &'a mut CodegenCx<'db>,
-        fun: &'a Function,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
         let fun = self.id().get(&cx.db);
@@ -151,7 +164,7 @@ impl<'a, 'db> Codegen<'a, 'db> for Function {
             .append(arena.text("{"))
             .append(arena.line())
             .append(arena.intersperse(
-                self.blocks().iter().map(|blk| blk.codegen(cx, self, arena)),
+                self.blocks().iter().map(|blk| blk.codegen(cx, arena)),
                 arena.line(),
             ))
             .append(arena.text(";"))
@@ -169,13 +182,11 @@ impl<'a, 'db> Codegen<'a, 'db> for Block {
     fn codegen(
         &self,
         cx: &'a mut CodegenCx<'db>,
-        fun: &'a Function,
+
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
         arena.intersperse(
-            self.instructions
-                .iter()
-                .map(|inst| inst.codegen(cx, fun, arena)),
+            self.instructions.iter().map(|inst| inst.codegen(cx, arena)),
             arena.text(";").append(arena.line()),
         )
     }
@@ -185,10 +196,13 @@ impl<'a, 'db> Codegen<'a, 'db> for Instruction {
     fn codegen(
         &self,
         cx: &'a mut CodegenCx<'db>,
-        fun: &'a Function,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        todo!()
+        match self {
+            Instruction::Return(_) => todo!(),
+            Instruction::IntLit(_) => todo!(),
+            Instruction::UnitLit(_) => todo!(),
+        }
     }
 }
 
