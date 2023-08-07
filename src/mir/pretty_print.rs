@@ -66,10 +66,10 @@ impl<'db, 'd> ToDoc<'db, 'd> for Instruction {
                 .append(RcDoc::space())
                 .append(ret.register.to_doc(db, fun)),
             Instruction::IntLit(lit) => {
-                register_start(db, fun, lit.register).append(RcDoc::text(lit.value.to_string()))
+                register_alloc(db, fun, lit.register).append(RcDoc::text(lit.value.to_string()))
             }
             Instruction::UnitLit(lit) => {
-                register_start(db, fun, lit.register).append(RcDoc::text("()"))
+                register_alloc(db, fun, lit.register).append(RcDoc::text("()"))
             }
         }
     }
@@ -93,7 +93,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for Ty {
     }
 }
 
-fn register_start<'db, 'd>(
+fn register_alloc<'db, 'd>(
     db: &'db Database,
     fun: &'db Function,
     reg: RegisterId,
