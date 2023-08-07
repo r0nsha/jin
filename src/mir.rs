@@ -1,6 +1,7 @@
 mod builder;
+mod lower;
 
-pub(crate) use builder::FunctionBuilder;
+pub(crate) use lower::lower;
 
 use crate::{
     common::{new_id_type, IdVec},

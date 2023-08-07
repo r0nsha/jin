@@ -28,11 +28,14 @@ struct Cli {
     #[arg(long, default_value_t = true)]
     print_times: bool,
 
-    #[arg(long, default_value_t = false)]
+    #[arg(global = true, long, default_value_t = false)]
     print_ast: bool,
 
-    #[arg(long, default_value_t = false)]
+    #[arg(global = true, long, default_value_t = false)]
     print_hir: bool,
+
+    #[arg(global = true, long, default_value_t = false)]
+    print_mir: bool,
 }
 
 #[derive(Subcommand)]
@@ -50,6 +53,7 @@ fn main() {
         print_times: cli.print_times,
         print_ast: cli.print_ast,
         print_hir: cli.print_hir,
+        print_mir: cli.print_mir,
     };
 
     match cli.cmd {
@@ -72,13 +76,14 @@ fn build(build_options: BuildOptions, file: PathBuf) {
 fn build_inner(db: &mut Database) {
     let print_times = db.build_options().print_times;
 
-    let ast = time! { print_times, "ast generation", parse::parse_modules(db) };
+    let ast = time! { print_times, "parse", parse::parse_modules(db) };
 
     if db.build_options().print_ast {
-        println!("Ast:");
+        println!("\nAST:\n");
         for module in &ast {
             module.pretty_print().unwrap();
         }
+        println!();
     }
 
     bail_if_failed!(db);
@@ -92,7 +97,7 @@ fn build_inner(db: &mut Database) {
     bail_if_failed!(db);
 
     if db.build_options().print_hir {
-        println!("\nHir:\n");
+        println!("\nHIR:\n");
         for module in &hir {
             module.pretty_print(db);
         }
@@ -102,10 +107,17 @@ fn build_inner(db: &mut Database) {
     time! { print_times, "find main", passes::find_main(db) };
     bail_if_failed!(db);
 
-    // let mut hir_modules = time! { print_times, "hir -> mir", mir::lower(db, hir_modules) };
-    // bail_if_failed!(db);
+    let mut mir = time! { print_times, "hir -> mir", mir::lower(&db, hir) };
+    bail_if_failed!(db);
 
-    codegen(db, hir);
+    if db.build_options().print_mir {
+        println!("\nMIR:\n");
+        todo!();
+        // mir.pretty_print(db);
+        println!();
+    }
+
+    // codegen(db, hir);
 }
 
 fn codegen(db: &mut Database, hir_modules: Vec<hir::Module>) {

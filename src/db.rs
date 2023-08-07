@@ -97,6 +97,7 @@ pub(crate) struct BuildOptions {
     pub(crate) print_times: bool,
     pub(crate) print_ast: bool,
     pub(crate) print_hir: bool,
+    pub(crate) print_mir: bool,
 }
 
 new_id_type!(ModuleId);
