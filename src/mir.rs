@@ -6,6 +6,7 @@ pub(crate) use lower::lower;
 use crate::{
     common::{new_id_type, IdVec},
     db::{FunctionId, TyId},
+    span::Span,
 };
 
 pub(crate) struct Mir {
@@ -112,15 +113,18 @@ pub(crate) enum Instruction {
 #[derive(Debug, Clone)]
 pub(crate) struct Return {
     pub(crate) register: RegisterId,
+    pub(crate) span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct IntLit {
     pub(crate) register: RegisterId,
     pub(crate) value: usize,
+    pub(crate) span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct UnitLit {
     pub(crate) register: RegisterId,
+    pub(crate) span: Span,
 }

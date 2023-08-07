@@ -33,8 +33,11 @@ impl<'db> LowerCx<'db> {
     }
 
     fn lower(mut self, fun: &hir::Function) -> Result<Function, String> {
-        let block = self.builder.create_block();
+        let blk_start = self.builder.create_block();
+        self.builder.position_at(blk_start);
+
         self.lower_block(&fun.body);
+
         self.builder.finish()
     }
 

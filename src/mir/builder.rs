@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::db::FunctionId;
+use crate::{db::FunctionId, span::Span, ty::Ty};
 
 use super::*;
 
@@ -32,16 +32,6 @@ impl FunctionBuilder {
     }
 
     #[inline]
-    pub(crate) fn start_block(&self) -> &Block {
-        self.block(BlockId(0))
-    }
-
-    #[inline]
-    pub(crate) fn start_block_mut(&mut self) -> &mut Block {
-        self.block_mut(BlockId(0))
-    }
-
-    #[inline]
     pub(crate) fn current_block(&self) -> &Block {
         self.block(self.current_block)
     }
@@ -63,12 +53,12 @@ impl FunctionBuilder {
         reachable
     }
 
-    pub(crate) fn create_register(&mut self, reg: Register) -> RegisterId {
-        self.f.registers.push(reg)
+    pub(crate) fn create_register(&mut self, ty: TyId) -> RegisterId {
+        self.f.registers.push(Register { ty })
     }
 
-    pub(crate) fn create_parameter(&mut self, reg: Register) -> usize {
-        let reg_id = self.create_register(reg);
+    pub(crate) fn create_parameter(&mut self, ty: TyId) -> usize {
+        let reg_id = self.create_register(ty);
         self.f.parameters.push(reg_id);
         self.f.parameters.len() - 1
     }
@@ -77,9 +67,23 @@ impl FunctionBuilder {
         self.f.cfg.blocks.push_with_id(|id| Block::new(id))
     }
 
+    pub(crate) fn position_at(&mut self, id: BlockId) {
+        self.current_block = id;
+    }
+
     pub(crate) fn create_edge(&mut self, source: BlockId, target: BlockId) {
         self.f.cfg.blocks[target].predecessors.push(source);
         self.f.cfg.blocks[source].successors.push(target);
+    }
+
+    pub(crate) fn build_unit_lit(&mut self, span: Span) {
+        let reg = self.create_register(Ty::unit(span));
+
+        self.current_block_mut()
+            .add_instruction(Instruction::UnitLit(UnitLit {
+                register: reg,
+                span,
+            }));
     }
 
     pub(crate) fn finish(self) -> Result<Function, String> {
@@ -121,5 +125,11 @@ impl FunctionBuilder {
         }
 
         Ok(self.f)
+    }
+}
+
+impl Block {
+    pub(crate) fn add_instruction(&mut self, inst: Instruction) {
+        self.instructions.push(inst);
     }
 }
