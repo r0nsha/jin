@@ -2,7 +2,7 @@ use crate::{db::Database, hir};
 
 use super::{builder::FunctionBuilder, *};
 
-pub(crate) fn lower(db: &Database, hir: Vec<hir::Module>) -> Mir {
+pub(crate) fn lower(db: &mut Database, hir: Vec<hir::Module>) -> Mir {
     let mut mir = Mir::new();
 
     for module in &hir {
@@ -25,7 +25,7 @@ struct LowerCx<'db> {
 }
 
 impl<'db> LowerCx<'db> {
-    fn new(db: &'db Database, fun_id: FunctionId) -> Self {
+    fn new(db: &'db mut Database, fun_id: FunctionId) -> Self {
         Self {
             db,
             builder: FunctionBuilder::new(fun_id),

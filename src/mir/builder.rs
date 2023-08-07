@@ -76,14 +76,9 @@ impl FunctionBuilder {
         self.f.cfg.blocks[source].successors.push(target);
     }
 
-    pub(crate) fn build_unit_lit(&mut self, span: Span) {
-        let reg = self.create_register(Ty::unit(span));
-
+    pub(crate) fn build_unit_lit(&mut self, register: RegisterId, span: Span) {
         self.current_block_mut()
-            .add_instruction(Instruction::UnitLit(UnitLit {
-                register: reg,
-                span,
-            }));
+            .add_instruction(Instruction::UnitLit(UnitLit { register, span }));
     }
 
     pub(crate) fn finish(self) -> Result<Function, String> {

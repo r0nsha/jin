@@ -107,7 +107,7 @@ fn build_inner(db: &mut Database) {
     time! { print_times, "find main", passes::find_main(db) };
     bail_if_failed!(db);
 
-    let mut mir = time! { print_times, "hir -> mir", mir::lower(&db, hir) };
+    let mut mir = time! { print_times, "hir -> mir", mir::lower(db, hir) };
     bail_if_failed!(db);
 
     if db.build_options().print_mir {
