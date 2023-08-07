@@ -102,6 +102,15 @@ fn build_inner(db: &mut Database) {
     time! { print_times, "find main", passes::find_main(db) };
     bail_if_failed!(db);
 
+    // let mut hir_modules = time! { print_times, "hir -> mir", mir::lower(db, hir_modules) };
+    // bail_if_failed!(db);
+
+    codegen(db, hir_modules);
+}
+
+fn codegen(db: &mut Database, hir_modules: Vec<hir::Module>) {
+    let print_times = db.build_options().print_times;
+
     let out_dir = Path::new("out");
     let main_module_name = db.main_module().unwrap().name.name();
     let out_file_name = out_dir.join(main_module_name.as_str());
