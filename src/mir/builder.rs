@@ -68,9 +68,43 @@ impl FunctionBuilder {
     }
 
     pub(crate) fn finish(self) -> Result<Function, String> {
-        // TODO: validation:
-        //      - blocks with index > 0 have predecessors
-        //      - blocks with index < len - 1 have successors
+        if self.f.blocks().is_empty() {
+            return Err("Function has 0 blocks".to_string());
+        }
+
+        let mut is_terminating = false;
+
+        {
+            let blocks = self.f.blocks();
+
+            for (i, blk) in blocks.iter().enumerate() {
+                if i > 0 && blk.predecessors.is_empty() {
+                    return Err(format!(
+                        "Non-starting block &{i} is unreachable (has no predecessors)"
+                    ));
+                }
+
+                let blk_is_terminating = blk
+                    .instructions
+                    .iter()
+                    .any(|inst| matches!(inst, Instruction::Return(_)));
+
+                if i < blocks.len() - 1 {
+                    if blk.successors.is_empty() && !blk_is_terminating {
+                        return Err(format!(
+                            "Intermediate block &{i} leads nowhere (has no successors and isn't terminating)"
+                        ));
+                    }
+                }
+
+                is_terminating = is_terminating || blk_is_terminating;
+            }
+        }
+
+        if !is_terminating {
+            return Err("Function never terminates".to_string());
+        }
+
         Ok(self.f)
     }
 }
