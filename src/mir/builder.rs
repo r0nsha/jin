@@ -49,6 +49,7 @@ impl FunctionBuilder {
         reachable
     }
 
+    #[inline]
     pub(crate) fn create_register(&mut self, ty: TyId) -> RegisterId {
         self.f.registers.push(Register { ty })
     }
@@ -59,10 +60,12 @@ impl FunctionBuilder {
         self.f.parameters.len() - 1
     }
 
+    #[inline]
     pub(crate) fn create_block(&mut self) -> BlockId {
         self.f.cfg.blocks.push_with_id(|id| Block::new(id))
     }
 
+    #[inline]
     pub(crate) fn position_at(&mut self, id: BlockId) {
         self.current_block = id;
     }
@@ -140,6 +143,7 @@ impl FunctionBuilder {
 }
 
 impl Block {
+    #[inline]
     pub(crate) fn add_instruction(&mut self, inst: Instruction) {
         self.instructions.push(inst);
     }
