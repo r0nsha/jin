@@ -135,13 +135,9 @@ impl<'db> CodegenCx<'db> {
         arena: &'db Arena<'db>,
         reg: RegisterId,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        self.fun
-            .register(reg)
-            .unwrap()
-            .ty
-            .codegen(self, arena)
+        reg.codegen(self, arena)
             .append(arena.space())
-            .append(arena.text(format!("r{reg}")))
+            .append(self.fun.register(reg).unwrap().ty.codegen(self, arena))
             .append(arena.space())
             .append(arena.text("="))
             .append(arena.space())
@@ -218,7 +214,7 @@ impl<'a, 'db> Codegen<'a, 'db> for Instruction {
             Instruction::Return(ret) => arena
                 .text("ret")
                 .append(arena.space())
-                .append(cx.lookup_register(ret.register)),
+                .append(ret.register.codegen(cx, arena)),
             Instruction::IntLit(lit) => cx
                 .local_var(arena, lit.register)
                 .append(arena.text(lit.value.to_string())),
@@ -226,6 +222,16 @@ impl<'a, 'db> Codegen<'a, 'db> for Instruction {
                 .local_var(arena, lit.register)
                 .append(arena.text(CONST_UNIT)),
         }
+    }
+}
+
+impl<'a, 'db> Codegen<'a, 'db> for RegisterId {
+    fn codegen(
+        &self,
+        _cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
+        arena.text(format!("r{self}"))
     }
 }
 
