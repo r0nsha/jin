@@ -24,10 +24,10 @@ impl<'db> CodegenResult<'db> {
         self.prelude
             .append(arena.line())
             .append(arena.line())
-            .append(arena.intersperse(
-                self.declarations.into_iter().chain(self.definitions),
-                arena.line().append(arena.line()),
-            ))
+            .append(arena.intersperse(self.declarations, arena.line()))
+            .append(arena.line())
+            .append(arena.line())
+            .append(arena.intersperse(self.definitions, arena.line().append(arena.line())))
             .render(80, w)
             .unwrap();
     }
