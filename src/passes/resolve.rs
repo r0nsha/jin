@@ -104,7 +104,7 @@ impl Resolve<'_> for Node {
             Node::Function(x) => x.resolve(cx, env),
             Node::Block(x) => x.resolve(cx, env),
             Node::Return(x) => x.resolve(cx, env),
-            Node::Lit(x) => x.resolve(cx, env),
+            Node::Lit(_) => (),
         }
     }
 }
@@ -150,10 +150,6 @@ impl Resolve<'_> for Return {
                 .push(ResolveError::InvalidReturn { span: self.span });
         }
     }
-}
-
-impl Resolve<'_> for Lit {
-    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {}
 }
 
 #[derive(Debug)]

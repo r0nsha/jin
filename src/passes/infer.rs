@@ -114,8 +114,6 @@ impl Infer<'_> for Function {
 
 impl Infer<'_> for Block {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
-        let mut constraints = Constraints::new();
-
         for expr in &mut self.exprs {
             expr.infer(cx, env);
         }

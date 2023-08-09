@@ -69,7 +69,7 @@ fn main() {
 
     match cli.cmd {
         Commands::Build { file } => build(build_options, file),
-        Commands::Run { file } => {
+        Commands::Run { file: _ } => {
             todo!();
 
             // if let Some(output_file) = build(build_options, file) {
@@ -140,7 +140,7 @@ fn codegen(db: &mut Database, mir: &Mir) {
     let mut c_file = File::create(&out_c_file).unwrap();
 
     time(print_times, "codegen", || {
-        codegen::codegen(&db, mir, &mut c_file)
+        codegen::codegen(db, mir, &mut c_file)
     });
 
     time(print_times, "clang", || {

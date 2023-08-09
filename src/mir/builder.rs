@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{db::FunctionId, span::Span, ty::Ty};
+use crate::{db::FunctionId, span::Span};
 
 use super::*;
 

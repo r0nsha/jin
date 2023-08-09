@@ -90,15 +90,15 @@ pub(crate) enum TyKind {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct TyVar(u32);
 
-impl From<u32> for TyVar {
-    fn from(value: u32) -> Self {
-        Self(value)
+impl From<TyVar> for u32 {
+    fn from(value: TyVar) -> Self {
+        value.0
     }
 }
 
-impl Into<u32> for TyVar {
-    fn into(self) -> u32 {
-        self.0
+impl From<u32> for TyVar {
+    fn from(value: u32) -> Self {
+        Self(value)
     }
 }
 
