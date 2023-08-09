@@ -133,8 +133,8 @@ fn codegen(db: &mut Database, mir: &Mir) {
     time! { print_times, "codegen", codegen::codegen(&db, mir, &mut c_file) };
 
     time! { print_times, "clang",
-        Command::new("clang")
-            .args([out_c_file.to_string_lossy().as_ref(), "-o", out_file_name.to_string_lossy().as_ref(), "-x", "c", "-std=c99"])
+        Command::new("clang").args([
+                "-Wno-unused-command-line-argument", out_c_file.to_string_lossy().as_ref(), "-o", out_file_name.to_string_lossy().as_ref(), "-x", "c", "-std=c99"])
             .spawn()
             .unwrap()
     };

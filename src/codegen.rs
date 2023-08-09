@@ -41,14 +41,16 @@ fn codegen_all<'db>(
     let fun_count = mir.functions.len();
 
     let prelude = codegen_prelude(arena);
-    let declarations = Vec::with_capacity(fun_count);
-    let definitions = Vec::with_capacity(fun_count);
+    let mut declarations = Vec::with_capacity(fun_count);
+    let mut definitions = Vec::with_capacity(fun_count);
 
     codegen_main(db, &arena);
 
     for fun in &mir.functions {
         let mut cx = CodegenCx::new(db, fun);
         fun.codegen(&mut cx, &arena);
+        declarations.extend(cx.declarations);
+        definitions.extend(cx.definitions);
     }
 
     CodegenResult {
@@ -135,9 +137,11 @@ impl<'db> CodegenCx<'db> {
         arena: &'db Arena<'db>,
         reg: RegisterId,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        reg.codegen(self, arena)
+        let ty = self.fun.register(reg).unwrap().ty;
+
+        ty.codegen(self, arena)
             .append(arena.space())
-            .append(self.fun.register(reg).unwrap().ty.codegen(self, arena))
+            .append(reg.codegen(self, arena))
             .append(arena.space())
             .append(arena.text("="))
             .append(arena.space())
@@ -212,7 +216,7 @@ impl<'a, 'db> Codegen<'a, 'db> for Instruction {
     ) -> DocBuilder<'db, Arena<'db>, ()> {
         match self {
             Instruction::Return(ret) => arena
-                .text("ret")
+                .text("return")
                 .append(arena.space())
                 .append(ret.register.codegen(cx, arena)),
             Instruction::IntLit(lit) => cx
