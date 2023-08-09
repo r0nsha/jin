@@ -44,7 +44,7 @@ fn codegen_all<'db>(
     let mut declarations = Vec::with_capacity(fun_count);
     let mut definitions = Vec::with_capacity(fun_count);
 
-    codegen_main(db, &arena);
+    definitions.push(codegen_main(db, &arena));
 
     for fun in &mir.functions {
         let mut cx = CodegenCx::new(db, fun);
