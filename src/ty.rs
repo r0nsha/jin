@@ -12,43 +12,30 @@ pub(crate) struct Ty {
 
 impl Ty {
     pub(crate) fn var(var: TyVar, span: Span) -> Self {
-        Self {
-            kind: TyKind::Var(var),
-            span,
-        }
+        Self { kind: TyKind::Var(var), span }
     }
 
     pub(crate) fn int(span: Span) -> Self {
-        Self {
-            kind: TyKind::Int(IntTy::Int),
-            span,
-        }
+        Self { kind: TyKind::Int(IntTy::Int), span }
     }
 
     pub(crate) fn fun(ret: Ty, span: Span) -> Self {
-        Self {
-            kind: TyKind::Function(FunctionTy { ret: Box::new(ret) }),
-            span,
-        }
+        Self { kind: TyKind::Function(FunctionTy { ret: Box::new(ret) }), span }
     }
 
     pub(crate) fn never(span: Span) -> Self {
-        Self {
-            kind: TyKind::Never,
-            span,
-        }
+        Self { kind: TyKind::Never, span }
     }
 
     pub(crate) fn unit(span: Span) -> Self {
-        Self {
-            kind: TyKind::Unit,
-            span,
-        }
+        Self { kind: TyKind::Unit, span }
     }
 
     pub(crate) fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
         match &self.kind {
-            TyKind::Function(fun) => fun.ret.occurs_check(var).map_err(|_| self.clone()),
+            TyKind::Function(fun) => {
+                fun.ret.occurs_check(var).map_err(|_| self.clone())
+            }
             TyKind::Var(v) => {
                 if *v == var {
                     Err(self.clone())

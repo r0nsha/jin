@@ -8,9 +8,7 @@ pub(crate) struct TypeCx {
 
 impl TypeCx {
     pub(crate) fn new() -> Self {
-        Self {
-            unification_table: InPlaceUnificationTable::new(),
-        }
+        Self { unification_table: InPlaceUnificationTable::new() }
     }
 
     pub(crate) fn fresh_type_var(&mut self, span: Span) -> Ty {

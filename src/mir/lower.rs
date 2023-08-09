@@ -30,10 +30,7 @@ struct LowerCx<'db> {
 
 impl<'db> LowerCx<'db> {
     fn new(db: &'db mut Database, fun_id: FunctionId) -> Self {
-        Self {
-            db,
-            builder: FunctionBuilder::new(fun_id),
-        }
+        Self { db, builder: FunctionBuilder::new(fun_id) }
     }
 
     fn lower(mut self, fun: &hir::Function) -> Result<Function, String> {
@@ -52,7 +49,9 @@ impl<'db> LowerCx<'db> {
             reg = Some(self.lower_node(expr));
         }
 
-        reg.unwrap_or_else(|| self.create_unit_register_with_ty(blk.ty, blk.span))
+        reg.unwrap_or_else(|| {
+            self.create_unit_register_with_ty(blk.ty, blk.span)
+        })
     }
 
     fn lower_node(&mut self, node: &hir::Node) -> RegisterId {
@@ -82,7 +81,9 @@ impl<'db> LowerCx<'db> {
                 self.builder.build_int_lit(reg, *value, lit.span);
                 reg
             }
-            hir::LitKind::Unit => self.create_unit_register_with_ty(lit.ty, lit.span),
+            hir::LitKind::Unit => {
+                self.create_unit_register_with_ty(lit.ty, lit.span)
+            }
         }
     }
 
@@ -91,7 +92,11 @@ impl<'db> LowerCx<'db> {
         self.create_unit_register_with_ty(ty, span)
     }
 
-    fn create_unit_register_with_ty(&mut self, ty: TyId, span: Span) -> RegisterId {
+    fn create_unit_register_with_ty(
+        &mut self,
+        ty: TyId,
+        span: Span,
+    ) -> RegisterId {
         let reg = self.builder.create_register(ty);
         self.builder.build_unit_lit(reg, span);
         reg

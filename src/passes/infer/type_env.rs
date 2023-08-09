@@ -7,10 +7,7 @@ pub(crate) struct TypeEnv {
 
 impl TypeEnv {
     pub(crate) fn new(module_id: ModuleId) -> Self {
-        Self {
-            module_id,
-            fun_scopes: FunScopes::new(),
-        }
+        Self { module_id, fun_scopes: FunScopes::new() }
     }
 
     pub(crate) fn module_id(&self) -> ModuleId {

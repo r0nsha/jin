@@ -16,27 +16,15 @@ pub(crate) struct Span {
 
 impl Span {
     pub(crate) fn new(source_id: SourceId, start: u32, end: u32) -> Self {
-        Self {
-            source_id,
-            start,
-            end,
-        }
+        Self { source_id, start, end }
     }
 
     pub(crate) fn unknown() -> Self {
-        Self {
-            source_id: SourceId::null(),
-            start: 0,
-            end: 0,
-        }
+        Self { source_id: SourceId::null(), start: 0, end: 0 }
     }
 
     pub(crate) fn initial(source_id: SourceId) -> Self {
-        Self {
-            source_id,
-            start: 0,
-            end: 0,
-        }
+        Self { source_id, start: 0, end: 0 }
     }
 
     pub(crate) fn source_id(&self) -> SourceId {
@@ -123,7 +111,9 @@ impl Source {
         use std::cmp::Ordering;
 
         match line_index.cmp(&self.line_starts.len()) {
-            Ordering::Less => Ok(self.line_starts.get(line_index).cloned().unwrap()),
+            Ordering::Less => {
+                Ok(self.line_starts.get(line_index).cloned().unwrap())
+            }
             Ordering::Equal => Ok(self.contents.len()),
             Ordering::Greater => Err(files::Error::LineTooLarge {
                 given: line_index,
@@ -140,12 +130,7 @@ impl TryFrom<PathBuf> for Source {
         let contents = fs::read_to_string(&value)?;
         let line_starts = line_starts(&contents).collect();
 
-        Ok(Self {
-            id: SourceId::null(),
-            path: value,
-            contents,
-            line_starts,
-        })
+        Ok(Self { id: SourceId::null(), path: value, contents, line_starts })
     }
 }
 
@@ -160,11 +145,18 @@ impl<'a> files::Files<'a> for Source {
         Ok(self.path().to_str().unwrap())
     }
 
-    fn source(&'a self, _id: Self::FileId) -> Result<Self::Source, files::Error> {
+    fn source(
+        &'a self,
+        _id: Self::FileId,
+    ) -> Result<Self::Source, files::Error> {
         Ok(self.contents())
     }
 
-    fn line_index(&'a self, _id: Self::FileId, byte_index: usize) -> Result<usize, files::Error> {
+    fn line_index(
+        &'a self,
+        _id: Self::FileId,
+        byte_index: usize,
+    ) -> Result<usize, files::Error> {
         Ok(self
             .line_starts
             .binary_search(&byte_index)
@@ -196,13 +188,20 @@ impl<'a> files::Files<'a> for Sources {
             .and_then(|source| source.name(id))
     }
 
-    fn source(&'a self, id: Self::FileId) -> Result<Self::Source, files::Error> {
+    fn source(
+        &'a self,
+        id: Self::FileId,
+    ) -> Result<Self::Source, files::Error> {
         self.get(id)
             .ok_or(files::Error::FileMissing)
             .and_then(|source| source.source(id))
     }
 
-    fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, files::Error> {
+    fn line_index(
+        &'a self,
+        id: Self::FileId,
+        byte_index: usize,
+    ) -> Result<usize, files::Error> {
         self.get(id)
             .ok_or(files::Error::FileMissing)
             .and_then(|source| source.line_index(id, byte_index))

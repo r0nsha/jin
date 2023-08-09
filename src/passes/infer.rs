@@ -34,11 +34,7 @@ pub(super) struct InferCx<'db> {
 
 impl<'db> InferCx<'db> {
     fn new(db: &'db mut Database) -> Self {
-        Self {
-            db,
-            typecx: TypeCx::new(),
-            constraints: Constraints::new(),
-        }
+        Self { db, typecx: TypeCx::new(), constraints: Constraints::new() }
     }
 }
 
@@ -97,16 +93,11 @@ impl Infer<'_> for Function {
         self.ty = ty;
         self.id.get_mut(&mut cx.db).ty = ty;
 
-        env.fun_scopes.push(FunScope {
-            id: self.id,
-            ret_ty,
-        });
+        env.fun_scopes.push(FunScope { id: self.id, ret_ty });
 
         self.body.infer(cx, env);
-        cx.constraints.push(Constraint::Eq {
-            expected: ret_ty,
-            actual: self.body.ty,
-        });
+        cx.constraints
+            .push(Constraint::Eq { expected: ret_ty, actual: self.body.ty });
 
         env.fun_scopes.pop();
     }
@@ -134,10 +125,8 @@ impl Infer<'_> for Return {
 
         if let Some(value) = self.expr.as_mut() {
             value.infer(cx, env);
-            cx.constraints.push(Constraint::Eq {
-                expected: ret_ty,
-                actual: value.ty(),
-            });
+            cx.constraints
+                .push(Constraint::Eq { expected: ret_ty, actual: value.ty() });
         } else {
             cx.constraints.push(Constraint::Eq {
                 expected: ret_ty,

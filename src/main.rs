@@ -139,9 +139,7 @@ fn codegen(db: &mut Database, mir: &Mir) {
     fs::create_dir_all(out_dir).unwrap();
     let mut c_file = File::create(&out_c_file).unwrap();
 
-    time(print_times, "codegen", || {
-        codegen::codegen(db, mir, &mut c_file)
-    });
+    time(print_times, "codegen", || codegen::codegen(db, mir, &mut c_file));
 
     time(print_times, "clang", || {
         Command::new("clang")

@@ -55,19 +55,11 @@ pub(crate) struct Label {
 
 impl Label {
     pub(crate) fn primary(span: Span) -> Self {
-        Self {
-            style: LabelStyle::Primary,
-            message: None,
-            span,
-        }
+        Self { style: LabelStyle::Primary, message: None, span }
     }
 
     pub(crate) fn secondary(span: Span) -> Self {
-        Self {
-            style: LabelStyle::Secondary,
-            message: None,
-            span,
-        }
+        Self { style: LabelStyle::Secondary, message: None, span }
     }
 
     pub(crate) fn with_message(mut self, message: impl Into<String>) -> Self {
@@ -99,7 +91,9 @@ impl Into<codespan_diagnostic::Label<SourceId>> for Label {
         codespan_diagnostic::Label {
             style: match self.style {
                 LabelStyle::Primary => codespan_diagnostic::LabelStyle::Primary,
-                LabelStyle::Secondary => codespan_diagnostic::LabelStyle::Secondary,
+                LabelStyle::Secondary => {
+                    codespan_diagnostic::LabelStyle::Secondary
+                }
             },
             file_id: self.span.source_id(),
             range: self.span.start() as usize..self.span.end() as usize,
@@ -123,16 +117,17 @@ pub struct Diagnostics {
 
 impl Diagnostics {
     pub(crate) fn new() -> Self {
-        Self {
-            diagnostics: vec![],
-        }
+        Self { diagnostics: vec![] }
     }
 
     pub(crate) fn add(&mut self, item: impl Into<Diagnostic>) {
         self.diagnostics.push(item.into());
     }
 
-    pub(crate) fn extend<T: Into<Diagnostic>>(&mut self, items: impl IntoIterator<Item = T>) {
+    pub(crate) fn extend<T: Into<Diagnostic>>(
+        &mut self,
+        items: impl IntoIterator<Item = T>,
+    ) {
         self.diagnostics.extend(items.into_iter().map(|x| x.into()));
     }
 
@@ -140,7 +135,10 @@ impl Diagnostics {
         !self.diagnostics.is_empty()
     }
 
-    pub(crate) fn print(&self, sources: &Sources) -> Result<(), codespan_reporting::files::Error> {
+    pub(crate) fn print(
+        &self,
+        sources: &Sources,
+    ) -> Result<(), codespan_reporting::files::Error> {
         let writer = StandardStream::stderr(ColorChoice::Always);
         let config = codespan_reporting::term::Config::default();
 

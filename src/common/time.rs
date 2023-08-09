@@ -10,17 +10,11 @@ pub(crate) struct Stopwatch<'s> {
 impl<'s> Stopwatch<'s> {
     #[allow(unused)]
     pub(crate) fn new(label: &'s str) -> Self {
-        Self {
-            label,
-            sw: SW::new(),
-        }
+        Self { label, sw: SW::new() }
     }
 
     pub(crate) fn start_new(label: &'s str) -> Self {
-        Self {
-            label,
-            sw: SW::start_new(),
-        }
+        Self { label, sw: SW::start_new() }
     }
 
     #[allow(unused)]

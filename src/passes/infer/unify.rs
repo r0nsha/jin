@@ -17,7 +17,11 @@ impl<'db> InferCx<'db> {
         Ok(())
     }
 
-    fn unify_ty_ty(&mut self, expected: &Ty, actual: &Ty) -> Result<(), InferError> {
+    fn unify_ty_ty(
+        &mut self,
+        expected: &Ty,
+        actual: &Ty,
+    ) -> Result<(), InferError> {
         let expected = self.normalize_ty(expected.clone());
         let actual = self.normalize_ty(actual.clone());
 
@@ -30,7 +34,10 @@ impl<'db> InferCx<'db> {
                 .typecx
                 .unification_table
                 .unify_var_var(*expected, *actual)
-                .map_err(|(expected, actual)| InferError::TypesNotEq { expected, actual }),
+                .map_err(|(expected, actual)| InferError::TypesNotEq {
+                    expected,
+                    actual,
+                }),
 
             (TyKind::Var(var), _) => {
                 actual
@@ -40,7 +47,10 @@ impl<'db> InferCx<'db> {
                 self.typecx
                     .unification_table
                     .unify_var_value(*var, Some(actual))
-                    .map_err(|(expected, actual)| InferError::TypesNotEq { expected, actual })
+                    .map_err(|(expected, actual)| InferError::TypesNotEq {
+                        expected,
+                        actual,
+                    })
             }
 
             (_, TyKind::Var(var)) => {
@@ -51,7 +61,10 @@ impl<'db> InferCx<'db> {
                 self.typecx
                     .unification_table
                     .unify_var_value(*var, Some(expected))
-                    .map_err(|(expected, actual)| InferError::TypesNotEq { expected, actual })
+                    .map_err(|(expected, actual)| InferError::TypesNotEq {
+                        expected,
+                        actual,
+                    })
             }
 
             (TyKind::Never, _)
@@ -68,10 +81,12 @@ impl<'db> InferCx<'db> {
                 let ret = self.normalize_ty(*fun.ret);
                 Ty::fun(ret, ty.span)
             }
-            TyKind::Var(var) => match self.typecx.unification_table.probe_value(var) {
-                Some(ty) => self.normalize_ty(ty),
-                None => ty,
-            },
+            TyKind::Var(var) => {
+                match self.typecx.unification_table.probe_value(var) {
+                    Some(ty) => self.normalize_ty(ty),
+                    None => ty,
+                }
+            }
             TyKind::Int(_) | TyKind::Unit | TyKind::Never => ty,
         }
     }

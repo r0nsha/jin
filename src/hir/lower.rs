@@ -10,7 +10,12 @@ pub(crate) fn lower(db: &mut Database, modules: Vec<ast::Module>) -> Hir {
         modules: modules
             .into_iter()
             .map(|module| {
-                let id = db::Module::alloc(db, module.source, module.name.clone(), module.is_main);
+                let id = db::Module::alloc(
+                    db,
+                    module.source,
+                    module.name.clone(),
+                    module.is_main,
+                );
                 Lower { db, id }.run(module)
             })
             .collect(),
@@ -70,12 +75,8 @@ impl<'db> Lower<'db> {
         } else {
             let span = body.span();
 
-            Block {
-                exprs: vec![body],
-                span,
-                ty: TyId::null(),
-            }
-            .fix_function_return()
+            Block { exprs: vec![body], span, ty: TyId::null() }
+                .fix_function_return()
         };
 
         Function {

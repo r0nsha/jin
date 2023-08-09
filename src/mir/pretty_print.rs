@@ -65,9 +65,8 @@ impl<'db, 'd> ToDoc<'db, 'd> for Instruction {
             Instruction::Return(ret) => RcDoc::text("ret")
                 .append(RcDoc::space())
                 .append(ret.register.to_doc(db, fun)),
-            Instruction::IntLit(lit) => {
-                register_alloc(db, fun, lit.register).append(RcDoc::text(lit.value.to_string()))
-            }
+            Instruction::IntLit(lit) => register_alloc(db, fun, lit.register)
+                .append(RcDoc::text(lit.value.to_string())),
             Instruction::UnitLit(lit) => {
                 register_alloc(db, fun, lit.register).append(RcDoc::text("()"))
             }

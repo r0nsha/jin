@@ -45,7 +45,8 @@ impl<'db, 'd> ToDoc<'db, 'd> for Definition {
     fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
         match &self.kind {
             DefinitionKind::Function(fun) => {
-                let ret_ty = fun.ty.get(db).kind.as_function().unwrap().ret.to_doc(db);
+                let ret_ty =
+                    fun.ty.get(db).kind.as_function().unwrap().ret.to_doc(db);
 
                 RcDoc::text("fn()")
                     .append(RcDoc::space())

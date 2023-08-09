@@ -31,7 +31,10 @@ pub(crate) struct Database {
 }
 
 impl Database {
-    pub(crate) fn new(build_options: BuildOptions, root_file: PathBuf) -> io::Result<Self> {
+    pub(crate) fn new(
+        build_options: BuildOptions,
+        root_file: PathBuf,
+    ) -> io::Result<Self> {
         let absolute_path = root_file.absolutize().unwrap();
 
         let mut sources = Sources::new();

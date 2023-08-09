@@ -11,10 +11,7 @@ pub(crate) struct FunctionBuilder {
 
 impl FunctionBuilder {
     pub(crate) fn new(id: FunctionId) -> Self {
-        Self {
-            f: Function::new(id),
-            current_block: BlockId(0),
-        }
+        Self { f: Function::new(id), current_block: BlockId(0) }
     }
 
     #[inline]
@@ -76,28 +73,29 @@ impl FunctionBuilder {
     }
 
     pub(crate) fn build_unit_lit(&mut self, reg: RegisterId, span: Span) {
-        self.current_block_mut()
-            .add_instruction(Instruction::UnitLit(UnitLit {
-                register: reg,
-                span,
-            }));
+        self.current_block_mut().add_instruction(Instruction::UnitLit(
+            UnitLit { register: reg, span },
+        ));
     }
 
-    pub(crate) fn build_int_lit(&mut self, reg: RegisterId, value: usize, span: Span) {
-        self.current_block_mut()
-            .add_instruction(Instruction::IntLit(IntLit {
-                register: reg,
-                value,
-                span,
-            }));
+    pub(crate) fn build_int_lit(
+        &mut self,
+        reg: RegisterId,
+        value: usize,
+        span: Span,
+    ) {
+        self.current_block_mut().add_instruction(Instruction::IntLit(IntLit {
+            register: reg,
+            value,
+            span,
+        }));
     }
 
     pub(crate) fn build_return(&mut self, reg: RegisterId, span: Span) {
-        self.current_block_mut()
-            .add_instruction(Instruction::Return(Return {
-                register: reg,
-                span,
-            }));
+        self.current_block_mut().add_instruction(Instruction::Return(Return {
+            register: reg,
+            span,
+        }));
     }
 
     pub(crate) fn finish(self) -> Result<Function, String> {

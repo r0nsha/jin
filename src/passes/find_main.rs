@@ -18,11 +18,12 @@ pub(crate) fn find_main(db: &mut Database) {
         if !is_main_fun_ty(fun_ty) {
             db.diagnostics.add(
                 Diagnostic::error("invalid_main")
-                    .with_message("the `main` function's type must be `fn() ()`")
-                    .with_label(
-                        Label::primary(main_fun.span)
-                            .with_message(format!("found type `{fun_ty}` instead")),
-                    ),
+                    .with_message(
+                        "the `main` function's type must be `fn() ()`",
+                    )
+                    .with_label(Label::primary(main_fun.span).with_message(
+                        format!("found type `{fun_ty}` instead"),
+                    )),
             )
         }
 
@@ -30,7 +31,9 @@ pub(crate) fn find_main(db: &mut Database) {
     } else {
         db.diagnostics.add(
             Diagnostic::error("no_main")
-                .with_message("couldn't find a function named `main` in the main module")
+                .with_message(
+                    "couldn't find a function named `main` in the main module",
+                )
                 .with_label(Label::primary(Span::initial(
                     db.main_module().unwrap().source_id,
                 ))),

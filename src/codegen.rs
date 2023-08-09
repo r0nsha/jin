@@ -27,7 +27,10 @@ impl<'db> CodegenResult<'db> {
             .append(arena.intersperse(self.declarations, arena.line()))
             .append(arena.line())
             .append(arena.line())
-            .append(arena.intersperse(self.definitions, arena.line().append(arena.line())))
+            .append(arena.intersperse(
+                self.definitions,
+                arena.line().append(arena.line()),
+            ))
             .render(80, w)
             .unwrap();
     }
@@ -53,11 +56,7 @@ fn codegen_all<'db>(
         definitions.extend(cx.definitions);
     }
 
-    CodegenResult {
-        prelude,
-        declarations,
-        definitions,
-    }
+    CodegenResult { prelude, declarations, definitions }
 }
 
 fn codegen_prelude<'db>(arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>> {
@@ -86,7 +85,10 @@ fn codegen_prelude<'db>(arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>> {
     )
 }
 
-fn codegen_main<'db>(db: &'db Database, arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>> {
+fn codegen_main<'db>(
+    db: &'db Database,
+    arena: &'db Arena<'db>,
+) -> DocBuilder<'db, Arena<'db>> {
     let main_fun_name = db.main_fun().unwrap().name.full_c_name();
 
     arena
@@ -116,19 +118,18 @@ struct CodegenCx<'db> {
 
 impl<'db> CodegenCx<'db> {
     fn new(db: &'db Database, fun: &'db Function) -> Self {
-        CodegenCx {
-            db,
-            fun,
-            declarations: vec![],
-            definitions: vec![],
-        }
+        CodegenCx { db, fun, declarations: vec![], definitions: vec![] }
     }
 
     fn add_definition(&mut self, def: DocBuilder<'db, Arena<'db>, ()>) {
         self.definitions.push(def);
     }
 
-    fn add_declaration(&mut self, arena: &'db Arena<'db>, decl: DocBuilder<'db, Arena<'db>, ()>) {
+    fn add_declaration(
+        &mut self,
+        arena: &'db Arena<'db>,
+        decl: DocBuilder<'db, Arena<'db>, ()>,
+    ) {
         self.declarations.push(arena.statement(decl));
     }
 
@@ -222,9 +223,9 @@ impl<'a, 'db> Codegen<'a, 'db> for Instruction {
             Instruction::IntLit(lit) => cx
                 .local_var(arena, lit.register)
                 .append(arena.text(lit.value.to_string())),
-            Instruction::UnitLit(lit) => cx
-                .local_var(arena, lit.register)
-                .append(arena.text(CONST_UNIT)),
+            Instruction::UnitLit(lit) => {
+                cx.local_var(arena, lit.register).append(arena.text(CONST_UNIT))
+            }
         }
     }
 }
@@ -288,7 +289,10 @@ where
     A: Clone + 'a,
     <Self as DocAllocator<'a, A>>::Doc: Pretty<'a, Self, A>,
 {
-    fn statement(&'a self, doc: DocBuilder<'a, Self, A>) -> DocBuilder<'a, Self, A> {
+    fn statement(
+        &'a self,
+        doc: DocBuilder<'a, Self, A>,
+    ) -> DocBuilder<'a, Self, A> {
         self.nil().append(doc).append(";").group()
     }
 }

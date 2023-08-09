@@ -77,9 +77,7 @@ pub(crate) struct Cfg {
 
 impl Cfg {
     fn new() -> Self {
-        Self {
-            blocks: IdVec::new(),
-        }
+        Self { blocks: IdVec::new() }
     }
 }
 

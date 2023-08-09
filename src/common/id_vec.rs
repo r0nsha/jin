@@ -8,10 +8,7 @@ pub(crate) struct IdVec<I: Id, T> {
 
 impl<I: Id, T> IdVec<I, T> {
     pub(crate) fn new() -> Self {
-        Self {
-            vec: vec![],
-            marker: PhantomData,
-        }
+        Self { vec: vec![], marker: PhantomData }
     }
 
     pub(crate) fn push(&mut self, value: T) -> I {

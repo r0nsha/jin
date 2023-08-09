@@ -111,10 +111,7 @@ impl Parser {
             let start = self.last_span();
             let end = self.expect(TokenKind::CloseParen)?.span;
 
-            Ok(Ast::Lit(Lit {
-                kind: LitKind::Unit,
-                span: start.merge(end),
-            }))
+            Ok(Ast::Lit(Lit { kind: LitKind::Unit, span: start.merge(end) }))
         } else if let Some(TokenKind::Int(value)) = self.token_kind() {
             self.advance();
 
@@ -138,10 +135,7 @@ impl Parser {
         let expr = self.parse_expr()?;
         let span = start.merge(expr.span());
 
-        Ok(Return {
-            expr: Some(Box::new(expr)),
-            span,
-        })
+        Ok(Return { expr: Some(Box::new(expr)), span })
     }
 }
 
@@ -165,9 +159,7 @@ impl Parser {
             self.advance();
             Ok(tok)
         } else {
-            Err(ParseError::UnexpectedEof {
-                span: self.last_span(),
-            })
+            Err(ParseError::UnexpectedEof { span: self.last_span() })
         }
     }
 
@@ -207,29 +199,30 @@ type ParseResult<T> = Result<T, ParseError>;
 
 #[derive(Debug)]
 enum ParseError {
-    UnexpectedToken {
-        expected: String,
-        actual: TokenKind,
-        span: Span,
-    },
-    UnexpectedEof {
-        span: Span,
-    },
+    UnexpectedToken { expected: String, actual: TokenKind, span: Span },
+    UnexpectedEof { span: Span },
 }
 
 impl From<ParseError> for Diagnostic {
     fn from(err: ParseError) -> Self {
         match err {
-            ParseError::UnexpectedToken {
-                expected,
-                actual,
-                span,
-            } => Diagnostic::error("parse::unexpected_token")
-                .with_message(format!("expected {expected}, got {actual} instead"))
-                .with_label(Label::primary(span).with_message(format!("found {actual} here"))),
-            ParseError::UnexpectedEof { span } => Diagnostic::error("parse::unexpected_eof")
-                .with_message(format!("unexpected end of file"))
-                .with_label(Label::primary(span).with_message(format!("here"))),
+            ParseError::UnexpectedToken { expected, actual, span } => {
+                Diagnostic::error("parse::unexpected_token")
+                    .with_message(format!(
+                        "expected {expected}, got {actual} instead"
+                    ))
+                    .with_label(
+                        Label::primary(span)
+                            .with_message(format!("found {actual} here")),
+                    )
+            }
+            ParseError::UnexpectedEof { span } => {
+                Diagnostic::error("parse::unexpected_eof")
+                    .with_message(format!("unexpected end of file"))
+                    .with_label(
+                        Label::primary(span).with_message(format!("here")),
+                    )
+            }
         }
     }
 }

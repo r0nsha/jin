@@ -18,13 +18,12 @@ pub(crate) struct Module {
 }
 
 impl Module {
-    pub(crate) fn new(source_id: SourceId, name: QualifiedName, is_main: bool) -> Self {
-        Self {
-            source: source_id,
-            name,
-            is_main,
-            top_level: vec![],
-        }
+    pub(crate) fn new(
+        source_id: SourceId,
+        name: QualifiedName,
+        is_main: bool,
+    ) -> Self {
+        Self { source: source_id, name, is_main, top_level: vec![] }
     }
 
     pub(crate) fn pretty_print(&self) -> io::Result<()> {

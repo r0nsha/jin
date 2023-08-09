@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use ustr::{Ustr, UstrMap};
 
 use crate::{
-    db::{self, Database, FunKind, ModuleId, ScopeLevel, Symbol, SymbolId, TyId, Vis},
+    db::{
+        self, Database, FunKind, ModuleId, ScopeLevel, Symbol, SymbolId, TyId,
+        Vis,
+    },
     diagnostics::{Diagnostic, Label},
     hir::*,
     span::Span,
@@ -29,11 +32,7 @@ struct ResolveCx<'db> {
 
 impl<'db> ResolveCx<'db> {
     fn new(db: &'db mut Database) -> Self {
-        Self {
-            db,
-            errors: vec![],
-            global_scope: GlobalScope::new(),
-        }
+        Self { db, errors: vec![], global_scope: GlobalScope::new() }
     }
 
     fn create_modules_and_global_scope(&mut self, modules: &mut [Module]) {
@@ -52,7 +51,8 @@ impl<'db> ResolveCx<'db> {
                     defined_symbols.insert(def.name, def.span);
                 }
 
-                let qualified_name = module.id.get(&mut self.db).name.clone().child(def.name);
+                let qualified_name =
+                    module.id.get(&mut self.db).name.clone().child(def.name);
 
                 def.id = Symbol::alloc(
                     &mut self.db,
@@ -146,8 +146,7 @@ impl Resolve<'_> for Return {
         }
 
         if !env.scopes.in_kind(ScopeKind::Fun) {
-            cx.errors
-                .push(ResolveError::InvalidReturn { span: self.span });
+            cx.errors.push(ResolveError::InvalidReturn { span: self.span });
         }
     }
 }
@@ -160,11 +159,12 @@ impl GlobalScope {
         Self(HashMap::new())
     }
 
-    pub(crate) fn find_symbol(&self, module_id: ModuleId, name: Ustr) -> Option<SymbolId> {
-        self.0
-            .get(&module_id)
-            .and_then(|symbols| symbols.get(&name))
-            .copied()
+    pub(crate) fn find_symbol(
+        &self,
+        module_id: ModuleId,
+        name: Ustr,
+    ) -> Option<SymbolId> {
+        self.0.get(&module_id).and_then(|symbols| symbols.get(&name)).copied()
     }
 }
 
@@ -176,10 +176,7 @@ pub(crate) struct Env {
 
 impl Env {
     pub(crate) fn new(module_id: ModuleId) -> Self {
-        Self {
-            module_id,
-            scopes: Scopes::new(),
-        }
+        Self { module_id, scopes: Scopes::new() }
     }
 }
 
@@ -192,10 +189,7 @@ impl Scopes {
     }
 
     fn push_scope(&mut self, kind: ScopeKind) {
-        self.0.push(Scope {
-            kind,
-            symbols: UstrMap::default(),
-        });
+        self.0.push(Scope { kind, symbols: UstrMap::default() });
     }
 
     fn pop_scope(&mut self) {
@@ -254,36 +248,33 @@ enum ScopeKind {
 }
 
 pub(super) enum ResolveError {
-    DuplicateSymbol {
-        name: Ustr,
-        prev_span: Span,
-        dup_span: Span,
-    },
-    InvalidReturn {
-        span: Span,
-    },
+    DuplicateSymbol { name: Ustr, prev_span: Span, dup_span: Span },
+    InvalidReturn { span: Span },
 }
 
 impl From<ResolveError> for Diagnostic {
     fn from(err: ResolveError) -> Self {
         match err {
-            ResolveError::DuplicateSymbol {
-                name,
-                prev_span,
-                dup_span,
-            } => Diagnostic::error("resolve::duplicate_names")
-                .with_message(format!("the name `{name}` is defined multiple times"))
-                .with_label(
-                    Label::secondary(prev_span)
-                        .with_message(format!("previous definition of `{name}` is here")),
-                )
-                .with_label(
-                    Label::primary(dup_span).with_message(format!("`{name}` is redefined here")),
-                )
-                .with_help("you can only define names once in a module"),
-            ResolveError::InvalidReturn { span } => Diagnostic::error("resolve::invalid_return")
-                .with_message("cannot return outside of function scope")
-                .with_label(Label::primary(span)),
+            ResolveError::DuplicateSymbol { name, prev_span, dup_span } => {
+                Diagnostic::error("resolve::duplicate_names")
+                    .with_message(format!(
+                        "the name `{name}` is defined multiple times"
+                    ))
+                    .with_label(Label::secondary(prev_span).with_message(
+                        format!("previous definition of `{name}` is here"),
+                    ))
+                    .with_label(
+                        Label::primary(dup_span).with_message(format!(
+                            "`{name}` is redefined here"
+                        )),
+                    )
+                    .with_help("you can only define names once in a module")
+            }
+            ResolveError::InvalidReturn { span } => {
+                Diagnostic::error("resolve::invalid_return")
+                    .with_message("cannot return outside of function scope")
+                    .with_label(Label::primary(span))
+            }
         }
     }
 }
