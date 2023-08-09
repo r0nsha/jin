@@ -89,9 +89,9 @@ macro_rules! new_id_type {
             }
         }
 
-        impl Into<usize> for $name {
-            fn into(self) -> usize {
-                self.0
+        impl From<$name> for usize {
+            fn from(value: $name) -> Self {
+                value.0
             }
         }
 
