@@ -93,19 +93,15 @@ pub(crate) enum TyKind {
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct TyVar(u32);
 
-impl UnifyKey for TyVar {
-    type Value = Option<Ty>;
+impl From<u32> for TyVar {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
 
-    fn index(&self) -> u32 {
+impl Into<u32> for TyVar {
+    fn into(self) -> u32 {
         self.0
-    }
-
-    fn from_index(u: u32) -> Self {
-        Self(u)
-    }
-
-    fn tag() -> &'static str {
-        "TyVar"
     }
 }
 

@@ -1,4 +1,6 @@
-use crate::ty::{IntTy, Ty, TyKind};
+use ena::unify::UnifyKey;
+
+use crate::ty::*;
 
 use super::{constraint::Constraint, error::InferError, InferCx};
 
@@ -72,5 +74,21 @@ impl<'db> InferCx<'db> {
             },
             TyKind::Int(_) | TyKind::Unit | TyKind::Never => ty,
         }
+    }
+}
+
+impl UnifyKey for TyVar {
+    type Value = Option<Ty>;
+
+    fn index(&self) -> u32 {
+        (*self).into()
+    }
+
+    fn from_index(u: u32) -> Self {
+        Self::from(u)
+    }
+
+    fn tag() -> &'static str {
+        "TyVar"
     }
 }
