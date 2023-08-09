@@ -113,6 +113,7 @@ fn build_inner(db: &mut Database) {
     if db.build_options().print_mir {
         println!("\nMIR:\n");
         mir.pretty_print(db);
+        println!();
     }
 
     codegen(db, &mir);

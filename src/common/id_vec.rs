@@ -113,7 +113,11 @@ macro_rules! new_id_type {
 
         impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                f.write_str(&self.to_string())
+                if self.is_null() {
+                    f.write_str("NUL")
+                } else {
+                    f.write_str(&self.0.to_string())
+                }
             }
         }
     };
