@@ -17,7 +17,18 @@ use std::{
 
 use clap::{Parser, Subcommand};
 
+use common::time::time;
 use db::{BuildOptions, Database};
+use mir::Mir;
+
+macro_rules! bail_if_failed {
+    ($db: expr) => {
+        if $db.diagnostics.any() {
+            $db.diagnostics.print(&$db.sources).unwrap();
+            return;
+        }
+    };
+}
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -76,7 +87,7 @@ fn build(build_options: BuildOptions, file: PathBuf) {
 fn build_inner(db: &mut Database) {
     let print_times = db.build_options().print_times;
 
-    let ast = time! { print_times, "parse", parse::parse_modules(db) };
+    let ast = time(print_times, "parse", || parse::parse_modules(db));
 
     if db.build_options().print_ast {
         println!("\nAST:\n");
@@ -88,12 +99,12 @@ fn build_inner(db: &mut Database) {
 
     bail_if_failed!(db);
 
-    let mut hir = time! { print_times, "ast -> hir", hir::lower(db, ast) };
+    let mut hir = time(print_times, "ast -> hir", || hir::lower(db, ast));
 
-    time! { print_times, "resolve", passes::resolve(db, &mut hir) };
+    time(print_times, "resolve", || passes::resolve(db, &mut hir));
     bail_if_failed!(db);
 
-    time! { print_times, "infer", passes::infer(db, &mut hir) };
+    time(print_times, "infer", || passes::infer(db, &mut hir));
     bail_if_failed!(db);
 
     if db.build_options().print_hir {
@@ -104,10 +115,10 @@ fn build_inner(db: &mut Database) {
         println!();
     }
 
-    time! { print_times, "find main", passes::find_main(db) };
+    time(print_times, "find main", || passes::find_main(db));
     bail_if_failed!(db);
 
-    let mir = time! { print_times, "hir -> mir", mir::lower(db, hir) };
+    let mir = time(print_times, "hir -> mir", || mir::lower(db, hir));
     bail_if_failed!(db);
 
     if db.build_options().print_mir {
@@ -130,24 +141,22 @@ fn codegen(db: &mut Database, mir: &Mir) {
     fs::create_dir_all(out_dir).unwrap();
     let mut c_file = File::create(&out_c_file).unwrap();
 
-    time! { print_times, "codegen", codegen::codegen(&db, mir, &mut c_file) };
+    time(print_times, "codegen", || {
+        codegen::codegen(&db, mir, &mut c_file)
+    });
 
-    time! { print_times, "clang",
-        Command::new("clang").args([
-                "-Wno-unused-command-line-argument", out_c_file.to_string_lossy().as_ref(), "-o", out_file_name.to_string_lossy().as_ref(), "-x", "c", "-std=c99"])
+    time(print_times, "clang", || {
+        Command::new("clang")
+            .args([
+                "-Wno-unused-command-line-argument",
+                out_c_file.to_string_lossy().as_ref(),
+                "-o",
+                out_file_name.to_string_lossy().as_ref(),
+                "-x",
+                "c",
+                "-std=c99",
+            ])
             .spawn()
             .unwrap()
-    };
+    });
 }
-
-macro_rules! bail_if_failed {
-    ($db: expr) => {
-        if $db.diagnostics.any() {
-            $db.diagnostics.print(&$db.sources).unwrap();
-            return;
-        }
-    };
-}
-
-use bail_if_failed;
-use mir::Mir;

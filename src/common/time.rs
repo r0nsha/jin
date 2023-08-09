@@ -49,26 +49,13 @@ impl<'s> Stopwatch<'s> {
     }
 }
 
-#[macro_export]
-macro_rules! time {
-    ($enabled:expr, $label:literal, $body:expr) => {{
-        if $enabled {
-            let sw = crate::common::time::Stopwatch::start_new($label);
-            let res = { $body };
-            sw.print();
-            res
-        } else {
-            $body
-        }
-    }};
-    ($enabled:expr, $label:expr, $body:expr) => {{
-        if $enabled {
-            let sw = crate::util::Stopwatch::start_new($label);
-            let res = { $body };
-            sw.print();
-            res
-        } else {
-            $body
-        }
-    }};
+pub(crate) fn time<T>(enabled: bool, label: &str, f: impl FnOnce() -> T) -> T {
+    if enabled {
+        let sw = Stopwatch::start_new(label);
+        let res = f();
+        sw.print();
+        res
+    } else {
+        f()
+    }
 }
