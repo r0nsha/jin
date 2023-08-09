@@ -1,6 +1,5 @@
 use std::fmt;
 
-use ena::unify::{EqUnifyValue, UnifyKey};
 use enum_as_inner::EnumAsInner;
 
 use crate::span::Span;
@@ -78,8 +77,6 @@ impl fmt::Display for Ty {
         }
     }
 }
-
-impl EqUnifyValue for Ty {}
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
 pub(crate) enum TyKind {

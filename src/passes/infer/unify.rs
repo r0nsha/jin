@@ -1,4 +1,4 @@
-use ena::unify::UnifyKey;
+use ena::unify::{EqUnifyValue, UnifyKey};
 
 use crate::ty::*;
 
@@ -92,3 +92,5 @@ impl UnifyKey for TyVar {
         "TyVar"
     }
 }
+
+impl EqUnifyValue for Ty {}
