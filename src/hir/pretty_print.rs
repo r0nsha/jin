@@ -30,13 +30,13 @@ trait ToDoc<'db, 'd> {
     fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()>;
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Hir {
+impl<'db, 'd> ToDoc<'db, 'd> for Node {
     fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
         match self {
-            Hir::Function(x) => x.to_doc(db),
-            Hir::Block(x) => x.to_doc(db),
-            Hir::Return(x) => x.to_doc(db),
-            Hir::Lit(x) => x.to_doc(db),
+            Node::Function(x) => x.to_doc(db),
+            Node::Block(x) => x.to_doc(db),
+            Node::Return(x) => x.to_doc(db),
+            Node::Lit(x) => x.to_doc(db),
         }
     }
 }

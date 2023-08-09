@@ -23,31 +23,31 @@ impl Module {
 }
 
 #[derive(Debug, Clone, EnumAsInner)]
-pub(crate) enum Hir {
+pub(crate) enum Node {
     Function(Function),
     Block(Block),
     Return(Return),
     Lit(Lit),
 }
 
-impl Hir {
+impl Node {
     pub(crate) fn ty(&self) -> TyId {
         match self {
-            Hir::Function(x) => x.ty,
-            Hir::Block(x) => x.ty,
-            Hir::Return(x) => x.ty,
-            Hir::Lit(x) => x.ty,
+            Node::Function(x) => x.ty,
+            Node::Block(x) => x.ty,
+            Node::Return(x) => x.ty,
+            Node::Lit(x) => x.ty,
         }
     }
 }
 
-impl Spanned for Hir {
+impl Spanned for Node {
     fn span(&self) -> Span {
         match self {
-            Hir::Function(x) => x.span,
-            Hir::Block(x) => x.span,
-            Hir::Return(x) => x.span,
-            Hir::Lit(x) => x.span,
+            Node::Function(x) => x.span,
+            Node::Block(x) => x.span,
+            Node::Return(x) => x.span,
+            Node::Lit(x) => x.span,
         }
     }
 }
@@ -85,14 +85,14 @@ pub(crate) struct Function {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Block {
-    pub(crate) exprs: Vec<Hir>,
+    pub(crate) exprs: Vec<Node>,
     pub(crate) span: Span,
     pub(crate) ty: TyId,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct Return {
-    pub(crate) expr: Option<Box<Hir>>,
+    pub(crate) expr: Option<Box<Node>>,
     pub(crate) span: Span,
     pub(crate) ty: TyId,
 }

@@ -62,13 +62,13 @@ trait Infer<'db> {
     fn infer(&mut self, cx: &mut InferCx<'db>, env: &mut TypeEnv);
 }
 
-impl Infer<'_> for Hir {
+impl Infer<'_> for Node {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         match self {
-            Hir::Function(x) => x.infer(cx, env),
-            Hir::Block(x) => x.infer(cx, env),
-            Hir::Return(x) => x.infer(cx, env),
-            Hir::Lit(x) => x.infer(cx, env),
+            Node::Function(x) => x.infer(cx, env),
+            Node::Block(x) => x.infer(cx, env),
+            Node::Return(x) => x.infer(cx, env),
+            Node::Lit(x) => x.infer(cx, env),
         }
     }
 }

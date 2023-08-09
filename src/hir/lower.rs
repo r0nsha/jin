@@ -52,10 +52,10 @@ impl<'db> Lower<'db> {
     fn lower_fun(&mut self, fun: ast::Function) -> Function {
         let body = self.lower_ast(*fun.body);
 
-        let body = if let Hir::Block(mut blk) = body {
+        let body = if let Node::Block(mut blk) = body {
             // Automatically insert a `return` statement if the function's block is empty
             if blk.exprs.is_empty() {
-                blk.exprs.push(Hir::Return(Return {
+                blk.exprs.push(Node::Return(Return {
                     expr: None,
                     span: blk.span,
                     ty: TyId::null(),
@@ -85,10 +85,10 @@ impl<'db> Lower<'db> {
         }
     }
 
-    fn lower_ast(&mut self, ast: Ast) -> Hir {
+    fn lower_ast(&mut self, ast: Ast) -> Node {
         match ast {
-            Ast::Block(blk) => Hir::Block(self.lower_block(blk)),
-            Ast::Lit(lit) => Hir::Lit(Lit {
+            Ast::Block(blk) => Node::Block(self.lower_block(blk)),
+            Ast::Lit(lit) => Node::Lit(Lit {
                 kind: match lit.kind {
                     ast::LitKind::Int(v) => LitKind::Int(v),
                     ast::LitKind::Unit => LitKind::Unit,
@@ -99,9 +99,9 @@ impl<'db> Lower<'db> {
         }
     }
 
-    fn lower_stmt(&mut self, stmt: ast::Statement) -> Hir {
+    fn lower_stmt(&mut self, stmt: ast::Statement) -> Node {
         match stmt {
-            ast::Statement::Return(ret) => Hir::Return(Return {
+            ast::Statement::Return(ret) => Node::Return(Return {
                 expr: ret.expr.map(|v| Box::new(self.lower_ast(*v))),
                 span: ret.span,
                 ty: TyId::null(),
@@ -124,13 +124,13 @@ impl Block {
     // isn't one already
     fn fix_function_return(mut self) -> Self {
         match self.exprs.last_mut() {
-            Some(Hir::Return(_)) => (),
+            Some(Node::Return(_)) => (),
             Some(last_expr) => {
                 let span = last_expr.span();
 
                 let expr = last_expr.clone();
 
-                *last_expr = Hir::Return(Return {
+                *last_expr = Node::Return(Return {
                     expr: Some(Box::new(expr)),
                     span,
                     ty: TyId::null(),

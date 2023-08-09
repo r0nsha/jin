@@ -51,12 +51,12 @@ impl<'db> LowerCx<'db> {
         reg.unwrap_or_else(|| self.create_unit_register_with_ty(blk.ty, blk.span))
     }
 
-    fn lower_node(&mut self, node: &hir::Hir) -> RegisterId {
+    fn lower_node(&mut self, node: &hir::Node) -> RegisterId {
         match node {
-            hir::Hir::Function(_) => todo!("function node"),
-            hir::Hir::Block(blk) => self.lower_block(blk),
-            hir::Hir::Return(ret) => self.lower_return(ret),
-            hir::Hir::Lit(lit) => self.lower_lit(lit),
+            hir::Node::Function(_) => todo!("function node"),
+            hir::Node::Block(blk) => self.lower_block(blk),
+            hir::Node::Return(ret) => self.lower_return(ret),
+            hir::Node::Lit(lit) => self.lower_lit(lit),
         }
     }
 

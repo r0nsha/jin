@@ -56,13 +56,13 @@ trait Substitute<'db> {
     fn substitute(&mut self, cx: &mut InferCx<'db>, unbound_vars: &mut HashSet<TyVar>);
 }
 
-impl Substitute<'_> for Hir {
+impl Substitute<'_> for Node {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         match self {
-            Hir::Function(x) => x.substitute(cx, unbound_vars),
-            Hir::Block(x) => x.substitute(cx, unbound_vars),
-            Hir::Return(x) => x.substitute(cx, unbound_vars),
-            Hir::Lit(_) => (),
+            Node::Function(x) => x.substitute(cx, unbound_vars),
+            Node::Block(x) => x.substitute(cx, unbound_vars),
+            Node::Return(x) => x.substitute(cx, unbound_vars),
+            Node::Lit(_) => (),
         }
 
         cx.substitute_type_id(self.ty(), unbound_vars);

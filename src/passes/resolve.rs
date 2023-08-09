@@ -98,13 +98,13 @@ impl Resolve<'_> for Definition {
     }
 }
 
-impl Resolve<'_> for Hir {
+impl Resolve<'_> for Node {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         match self {
-            Hir::Function(x) => x.resolve(cx, env),
-            Hir::Block(x) => x.resolve(cx, env),
-            Hir::Return(x) => x.resolve(cx, env),
-            Hir::Lit(x) => x.resolve(cx, env),
+            Node::Function(x) => x.resolve(cx, env),
+            Node::Block(x) => x.resolve(cx, env),
+            Node::Return(x) => x.resolve(cx, env),
+            Node::Lit(x) => x.resolve(cx, env),
         }
     }
 }
