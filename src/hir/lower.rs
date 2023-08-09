@@ -5,14 +5,16 @@ use crate::{
 
 use super::*;
 
-pub(crate) fn lower(db: &mut Database, modules: Vec<ast::Module>) -> Vec<Module> {
-    modules
-        .into_iter()
-        .map(|module| {
-            let id = db::Module::alloc(db, module.source, module.name.clone(), module.is_main);
-            Lower { db, id }.run(module)
-        })
-        .collect()
+pub(crate) fn lower(db: &mut Database, modules: Vec<ast::Module>) -> Hir {
+    Hir {
+        modules: modules
+            .into_iter()
+            .map(|module| {
+                let id = db::Module::alloc(db, module.source, module.name.clone(), module.is_main);
+                Lower { db, id }.run(module)
+            })
+            .collect(),
+    }
 }
 
 struct Lower<'db> {

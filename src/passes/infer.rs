@@ -13,17 +13,17 @@ use self::{
     typecx::TypeCx,
 };
 
-pub(crate) fn infer(db: &mut Database, modules: &mut [Module]) {
+pub(crate) fn infer(db: &mut Database, hir: &mut Hir) {
     let mut cx = InferCx::new(db);
 
-    cx.infer_all(modules);
+    cx.infer_all(&mut hir.modules);
 
     if let Err(e) = cx.unification() {
         db.diagnostics.add(e);
         return;
     }
 
-    cx.substitution(modules);
+    cx.substitution(&mut hir.modules);
 }
 
 pub(super) struct InferCx<'db> {

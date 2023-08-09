@@ -9,11 +9,11 @@ use crate::{
     span::Span,
 };
 
-pub(crate) fn resolve(db: &mut Database, modules: &mut [Module]) {
+pub(crate) fn resolve(db: &mut Database, hir: &mut Hir) {
     let mut cx = ResolveCx::new(db);
 
-    cx.create_modules_and_global_scope(modules);
-    cx.resolve_all(modules);
+    cx.create_modules_and_global_scope(&mut hir.modules);
+    cx.resolve_all(&mut hir.modules);
 
     if !cx.errors.is_empty() {
         let errors = cx.errors;

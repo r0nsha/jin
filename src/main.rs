@@ -109,9 +109,7 @@ fn build_inner(db: &mut Database) {
 
     if db.build_options().print_hir {
         println!("\nHIR:\n");
-        for module in &hir {
-            module.pretty_print(db);
-        }
+        hir.pretty_print(db);
         println!();
     }
 

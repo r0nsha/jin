@@ -11,15 +11,22 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
+pub(crate) struct Hir {
+    pub(crate) modules: Vec<Module>,
+}
+
+impl Hir {
+    pub(crate) fn pretty_print(&self, db: &Database) {
+        for module in &self.modules {
+            pretty_print::print_module(db, module);
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct Module {
     pub(crate) id: ModuleId,
     pub(crate) definitions: Vec<Definition>,
-}
-
-impl Module {
-    pub(crate) fn pretty_print(&self, db: &Database) {
-        pretty_print::print_module(db, self)
-    }
 }
 
 #[derive(Debug, Clone, EnumAsInner)]

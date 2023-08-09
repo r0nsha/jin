@@ -1,11 +1,15 @@
-use crate::{db::Database, hir, ty::Ty};
+use crate::{
+    db::Database,
+    hir::{self, Hir},
+    ty::Ty,
+};
 
 use super::{builder::FunctionBuilder, *};
 
-pub(crate) fn lower(db: &mut Database, hir: Vec<hir::Module>) -> Mir {
+pub(crate) fn lower(db: &mut Database, hir: Hir) -> Mir {
     let mut mir = Mir::new();
 
-    for module in &hir {
+    for module in &hir.modules {
         for def in &module.definitions {
             match &def.kind {
                 hir::DefinitionKind::Function(fun) => {
