@@ -175,7 +175,15 @@ impl Resolve<'_> for Return {
 
 impl Resolve<'_> for Name {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        todo!()
+        if let Some(id) = cx.global_scope.find_symbol(env.module_id, self.name)
+        {
+            todo!("got id {id}")
+        } else {
+            cx.errors.push(ResolveError::NameNotFound {
+                name: self.name,
+                span: self.span,
+            });
+        }
     }
 }
 
@@ -277,6 +285,7 @@ enum ScopeKind {
 
 pub(super) enum ResolveError {
     DuplicateSymbol { name: Ustr, prev_span: Span, dup_span: Span },
+    NameNotFound { name: Ustr, span: Span },
     InvalidReturn { span: Span },
 }
 
@@ -288,15 +297,25 @@ impl From<ResolveError> for Diagnostic {
                     .with_message(format!(
                         "the name `{name}` is defined multiple times"
                     ))
-                    .with_label(Label::secondary(prev_span).with_message(
-                        format!("previous definition of `{name}` is here"),
-                    ))
                     .with_label(
                         Label::primary(dup_span).with_message(format!(
                             "`{name}` is redefined here"
                         )),
                     )
+                    .with_label(Label::secondary(prev_span).with_message(
+                        format!("previous definition of `{name}` is here"),
+                    ))
                     .with_help("you can only define names once in a module")
+            }
+            ResolveError::NameNotFound { name, span } => {
+                Diagnostic::error("resolve::name_not_found")
+                    .with_message(format!(
+                        "cannot find value `{name}` in this scope"
+                    ))
+                    .with_label(
+                        Label::primary(span)
+                            .with_message("not found in this scope"),
+                    )
             }
             ResolveError::InvalidReturn { span } => {
                 Diagnostic::error("resolve::invalid_return")
