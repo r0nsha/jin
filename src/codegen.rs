@@ -219,13 +219,28 @@ impl<'a, 'db> Codegen<'a, 'db> for Instruction {
             Instruction::Return(ret) => arena
                 .text("return")
                 .append(arena.space())
-                .append(ret.register.codegen(cx, arena)),
+                .append(ret.value.codegen(cx, arena)),
             Instruction::IntLit(lit) => cx
                 .local_var(arena, lit.register)
                 .append(arena.text(lit.value.to_string())),
             Instruction::UnitLit(lit) => {
                 cx.local_var(arena, lit.register).append(arena.text(CONST_UNIT))
             }
+        }
+    }
+}
+
+impl<'a, 'db> Codegen<'a, 'db> for Value {
+    fn codegen(
+        &self,
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
+        match self {
+            Value::Symbol(id) => {
+                arena.text(id.get(cx.db).qualified_name.full_c_name())
+            }
+            Value::Register(id) => id.codegen(cx, arena),
         }
     }
 }

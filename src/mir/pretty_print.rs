@@ -64,12 +64,23 @@ impl<'db, 'd> ToDoc<'db, 'd> for Instruction {
         match self {
             Instruction::Return(ret) => RcDoc::text("ret")
                 .append(RcDoc::space())
-                .append(ret.register.to_doc(db, fun)),
+                .append(ret.value.to_doc(db, fun)),
             Instruction::IntLit(lit) => register_alloc(db, fun, lit.register)
                 .append(RcDoc::text(lit.value.to_string())),
             Instruction::UnitLit(lit) => {
                 register_alloc(db, fun, lit.register).append(RcDoc::text("()"))
             }
+        }
+    }
+}
+
+impl<'db, 'd> ToDoc<'db, 'd> for Value {
+    fn to_doc(&self, db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
+        match self {
+            Value::Symbol(id) => {
+                RcDoc::text(id.get(db).qualified_name.standard_full_name())
+            }
+            Value::Register(id) => id.to_doc(db, fun),
         }
     }
 }

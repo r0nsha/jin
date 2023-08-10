@@ -1,3 +1,4 @@
+use crate::db::ScopeLevel;
 use crate::{
     db::Database,
     hir::{self, Hir},
@@ -42,8 +43,8 @@ impl<'db> LowerCx<'db> {
         self.builder.finish()
     }
 
-    fn lower_block(&mut self, blk: &hir::Block) -> RegisterId {
-        let mut reg: Option<RegisterId> = None;
+    fn lower_block(&mut self, blk: &hir::Block) -> Value {
+        let mut reg: Option<Value> = None;
 
         for expr in &blk.exprs {
             reg = Some(self.lower_node(expr));
@@ -54,7 +55,7 @@ impl<'db> LowerCx<'db> {
         })
     }
 
-    fn lower_node(&mut self, node: &hir::Node) -> RegisterId {
+    fn lower_node(&mut self, node: &hir::Node) -> Value {
         match node {
             hir::Node::Function(_) => todo!("function node"),
             hir::Node::Block(blk) => self.lower_block(blk),
@@ -64,7 +65,7 @@ impl<'db> LowerCx<'db> {
         }
     }
 
-    fn lower_return(&mut self, ret: &hir::Return) -> RegisterId {
+    fn lower_return(&mut self, ret: &hir::Return) -> Value {
         let reg = if let Some(expr) = &ret.expr {
             self.lower_node(expr)
         } else {
@@ -75,16 +76,22 @@ impl<'db> LowerCx<'db> {
         self.build_unreachable(ret.span)
     }
 
-    fn lower_name(&mut self, name: &hir::Name) -> RegisterId {
-        todo!()
+    fn lower_name(&mut self, name: &hir::Name) -> Value {
+        let sym = name.id.expect("to be resolved").get(self.db);
+
+        if let ScopeLevel::Global = sym.scope_level {
+            Value::Symbol(sym.id)
+        } else {
+            todo!("local/nested name")
+        }
     }
 
-    fn lower_lit(&mut self, lit: &hir::Lit) -> RegisterId {
+    fn lower_lit(&mut self, lit: &hir::Lit) -> Value {
         match &lit.kind {
             hir::LitKind::Int(value) => {
                 let reg = self.builder.create_register(lit.ty);
                 self.builder.build_int_lit(reg, *value, lit.span);
-                reg
+                Value::Register(reg)
             }
             hir::LitKind::Unit => {
                 self.create_unit_register_with_ty(lit.ty, lit.span)
@@ -92,23 +99,19 @@ impl<'db> LowerCx<'db> {
         }
     }
 
-    fn create_unit_register(&mut self, span: Span) -> RegisterId {
+    fn create_unit_register(&mut self, span: Span) -> Value {
         let ty = Ty::alloc(self.db, Ty::unit(span));
         self.create_unit_register_with_ty(ty, span)
     }
 
-    fn create_unit_register_with_ty(
-        &mut self,
-        ty: TyId,
-        span: Span,
-    ) -> RegisterId {
+    fn create_unit_register_with_ty(&mut self, ty: TyId, span: Span) -> Value {
         let reg = self.builder.create_register(ty);
         self.builder.build_unit_lit(reg, span);
-        reg
+        Value::Register(reg)
     }
 
-    fn build_unreachable(&mut self, span: Span) -> RegisterId {
+    fn build_unreachable(&mut self, span: Span) -> Value {
         let ty = Ty::alloc(self.db, Ty::never(span));
-        self.builder.create_register(ty)
+        Value::Register(self.builder.create_register(ty))
     }
 }

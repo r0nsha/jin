@@ -91,11 +91,9 @@ impl FunctionBuilder {
         }));
     }
 
-    pub(crate) fn build_return(&mut self, reg: RegisterId, span: Span) {
-        self.current_block_mut().add_instruction(Instruction::Return(Return {
-            register: reg,
-            span,
-        }));
+    pub(crate) fn build_return(&mut self, value: Value, span: Span) {
+        self.current_block_mut()
+            .add_instruction(Instruction::Return(Return { value, span }));
     }
 
     pub(crate) fn finish(self) -> Result<Function, String> {

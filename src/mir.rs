@@ -5,6 +5,7 @@ mod pretty_print;
 pub(crate) use lower::lower;
 use ustr::{ustr, Ustr};
 
+use crate::db::SymbolId;
 use crate::{
     common::{new_id_type, IdVec},
     db::{Database, FunctionId, TyId},
@@ -87,6 +88,12 @@ pub(crate) struct Register {
     pub(crate) ty: TyId,
 }
 
+#[derive(Debug, Clone)]
+pub(crate) enum Value {
+    Symbol(SymbolId),
+    Register(RegisterId),
+}
+
 new_id_type!(BlockId);
 
 pub(crate) struct Block {
@@ -118,7 +125,7 @@ pub(crate) enum Instruction {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Return {
-    pub(crate) register: RegisterId,
+    pub(crate) value: Value,
     pub(crate) span: Span,
 }
 
