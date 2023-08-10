@@ -109,15 +109,10 @@ pub(crate) struct Return {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Name {
-    pub(crate) kind: NameKind,
+    pub(crate) id: Option<SymbolId>,
+    pub(crate) name: Ustr,
     pub(crate) span: Span,
     pub(crate) ty: TyId,
-}
-
-#[derive(Debug, Clone)]
-pub(crate) enum NameKind {
-    Resolved(SymbolId),
-    Unresolved(Ustr),
 }
 
 #[derive(Debug, Clone)]

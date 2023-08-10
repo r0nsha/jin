@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use ustr::{Ustr, UstrMap};
 
+use crate::db::{FunctionId, SymbolKind};
 use crate::{
     db::{
         self, Database, FunKind, ModuleId, ScopeLevel, Symbol, SymbolId, TyId,
@@ -15,7 +16,7 @@ use crate::{
 pub(crate) fn resolve(db: &mut Database, hir: &mut Hir) {
     let mut cx = ResolveCx::new(db);
 
-    cx.create_modules_and_global_scope(&mut hir.modules);
+    cx.create_modules_and_resolve_globals(&mut hir.modules);
     cx.resolve_all(&mut hir.modules);
 
     if !cx.errors.is_empty() {
@@ -35,7 +36,7 @@ impl<'db> ResolveCx<'db> {
         Self { db, errors: vec![], global_scope: GlobalScope::new() }
     }
 
-    fn create_modules_and_global_scope(&mut self, modules: &mut [Module]) {
+    fn create_modules_and_resolve_globals(&mut self, modules: &mut [Module]) {
         for module in modules {
             let mut scope_symbols = UstrMap::<SymbolId>::default();
             let mut defined_symbols = UstrMap::<Span>::default();
@@ -54,12 +55,19 @@ impl<'db> ResolveCx<'db> {
                 let qualified_name =
                     module.id.get(self.db).name.clone().child(def.name);
 
+                let kind = match &def.kind {
+                    DefinitionKind::Function(fun) => SymbolKind::Function(
+                        self.create_function(module.id, fun),
+                    ),
+                };
+
                 def.id = Symbol::alloc(
                     self.db,
                     module.id,
                     qualified_name,
                     Vis::Public,
                     ScopeLevel::Global,
+                    kind,
                     TyId::null(),
                     def.span,
                 );
@@ -79,6 +87,23 @@ impl<'db> ResolveCx<'db> {
                 def.resolve(self, &mut env);
             }
         }
+    }
+
+    fn create_function(
+        &mut self,
+        module_id: ModuleId,
+        fun: &Function,
+    ) -> FunctionId {
+        let name = module_id.get(self.db).name.clone().child(fun.name);
+
+        db::Function::alloc(
+            self.db,
+            module_id,
+            name,
+            FunKind::Orphan,
+            fun.span,
+            fun.ty,
+        )
     }
 }
 
@@ -104,6 +129,7 @@ impl Resolve<'_> for Node {
             Node::Function(x) => x.resolve(cx, env),
             Node::Block(x) => x.resolve(cx, env),
             Node::Return(x) => x.resolve(cx, env),
+            Node::Name(x) => x.resolve(cx, env),
             Node::Lit(_) => (),
         }
     }
@@ -113,14 +139,10 @@ impl Resolve<'_> for Function {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         let name = env.module_id.get(cx.db).name.clone().child(self.name);
 
-        self.id = db::Function::alloc(
-            cx.db,
-            env.module_id,
-            name,
-            FunKind::Orphan,
-            self.span,
-            self.ty,
-        );
+        if self.id.is_null() {
+            self.id = cx.create_function(env.module_id, self);
+        }
+
         env.scopes.push_scope(ScopeKind::Fun);
         self.body.resolve(cx, env);
         env.scopes.pop_scope();
@@ -148,6 +170,12 @@ impl Resolve<'_> for Return {
         if !env.scopes.in_kind(ScopeKind::Fun) {
             cx.errors.push(ResolveError::InvalidReturn { span: self.span });
         }
+    }
+}
+
+impl Resolve<'_> for Name {
+    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+        todo!()
     }
 }
 

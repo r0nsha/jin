@@ -59,6 +59,7 @@ impl<'db> LowerCx<'db> {
             hir::Node::Function(_) => todo!("function node"),
             hir::Node::Block(blk) => self.lower_block(blk),
             hir::Node::Return(ret) => self.lower_return(ret),
+            hir::Node::Name(ret) => self.lower_name(ret),
             hir::Node::Lit(lit) => self.lower_lit(lit),
         }
     }
@@ -72,6 +73,10 @@ impl<'db> LowerCx<'db> {
 
         self.builder.build_return(reg, ret.span);
         self.build_unreachable(ret.span)
+    }
+
+    fn lower_name(&mut self, name: &hir::Name) -> RegisterId {
+        todo!()
     }
 
     fn lower_lit(&mut self, lit: &hir::Lit) -> RegisterId {

@@ -92,7 +92,8 @@ impl<'db> Lower<'db> {
         match ast {
             Ast::Block(blk) => Node::Block(self.lower_block(blk)),
             Ast::Name(name) => Node::Name(Name {
-                kind: NameKind::Unresolved(name.name),
+                id: None,
+                name: name.name,
                 span: name.span,
                 ty: TyId::null(),
             }),

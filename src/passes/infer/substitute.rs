@@ -80,7 +80,7 @@ impl Substitute<'_> for Node {
             Node::Function(x) => x.substitute(cx, unbound_vars),
             Node::Block(x) => x.substitute(cx, unbound_vars),
             Node::Return(x) => x.substitute(cx, unbound_vars),
-            Node::Lit(_) => (),
+            Node::Name(_) | Node::Lit(_) => (),
         }
 
         cx.substitute_type_id(self.ty(), unbound_vars);

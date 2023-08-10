@@ -64,6 +64,7 @@ impl Infer<'_> for Node {
             Node::Function(x) => x.infer(cx, env),
             Node::Block(x) => x.infer(cx, env),
             Node::Return(x) => x.infer(cx, env),
+            Node::Name(x) => x.infer(cx, env),
             Node::Lit(x) => x.infer(cx, env),
         }
     }
@@ -133,6 +134,12 @@ impl Infer<'_> for Return {
                 actual: Ty::alloc(cx.db, Ty::unit(self.span)),
             });
         }
+    }
+}
+
+impl Infer<'_> for Name {
+    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
+        todo!()
     }
 }
 
