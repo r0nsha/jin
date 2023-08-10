@@ -55,13 +55,13 @@ impl Parser {
 
     fn parse_top_level(&mut self) -> ParseResult<TopLevel> {
         if self.is(TokenKind::Fn) {
-            let name_ident = self.expect_ident()?;
+            let name_ident = self.eat_ident()?;
             let name_span = name_ident.span;
             let name = name_ident.as_ident();
 
-            self.expect(TokenKind::OpenParen)?;
-            self.expect(TokenKind::CloseParen)?;
-            self.expect(TokenKind::Eq)?;
+            self.eat(TokenKind::OpenParen)?;
+            self.eat(TokenKind::CloseParen)?;
+            self.eat(TokenKind::Eq)?;
 
             let body = self.parse_expr()?;
 
@@ -108,7 +108,7 @@ impl Parser {
 
         match token.kind {
             TokenKind::OpenParen => {
-                let end = self.expect(TokenKind::CloseParen)?.span;
+                let end = self.eat(TokenKind::CloseParen)?.span;
 
                 Ok(Ast::Lit(Lit {
                     kind: LitKind::Unit,
@@ -144,18 +144,22 @@ impl Parser {
 }
 
 impl Parser {
-    fn is(&mut self, expected: TokenKind) -> bool {
-        match self.token() {
-            Some(tok) if tok.kind_eq(expected) => {
-                self.advance();
-                true
-            }
-            _ => false,
-        }
+    fn eat_ident(&mut self) -> ParseResult<Token> {
+        self.eat(TokenKind::Ident(ustr("")))
     }
 
-    fn expect_ident(&mut self) -> ParseResult<Token> {
-        self.expect(TokenKind::Ident(ustr("")))
+    fn eat(&mut self, expected: TokenKind) -> ParseResult<Token> {
+        let tok = self.require()?;
+
+        if tok.kind_eq(expected) {
+            Ok(tok)
+        } else {
+            Err(ParseError::UnexpectedToken {
+                expected: expected.to_string(),
+                actual: tok.kind,
+                span: tok.span,
+            })
+        }
     }
 
     fn require(&mut self) -> ParseResult<Token> {
@@ -167,17 +171,13 @@ impl Parser {
         }
     }
 
-    fn expect(&mut self, expected: TokenKind) -> ParseResult<Token> {
-        let tok = self.require()?;
-
-        if tok.kind_eq(expected) {
-            Ok(tok)
-        } else {
-            Err(ParseError::UnexpectedToken {
-                expected: expected.to_string(),
-                actual: tok.kind,
-                span: tok.span,
-            })
+    fn is(&mut self, expected: TokenKind) -> bool {
+        match self.token() {
+            Some(tok) if tok.kind_eq(expected) => {
+                self.advance();
+                true
+            }
+            _ => false,
         }
     }
 
