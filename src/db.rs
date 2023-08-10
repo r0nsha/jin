@@ -105,57 +105,30 @@ pub(crate) struct BuildOptions {
     pub(crate) print_mir: bool,
 }
 
-new_id_type!(ModuleId);
+macro_rules! new_db_id {
+    ($name: ident -> $collection: ident : $type: ident) => {
+        new_id_type!($name);
 
-impl ModuleId {
-    pub(crate) fn get(self, db: &Database) -> &Module {
-        &db.modules[self]
-    }
+        impl $name {
+            pub(crate) fn get(self, db: &Database) -> &$type {
+                &db.$collection[self]
+            }
 
-    pub(crate) fn get_mut(self, db: &mut Database) -> &mut Module {
-        &mut db.modules[self]
-    }
+            pub(crate) fn get_mut(self, db: &mut Database) -> &mut $type {
+                &mut db.$collection[self]
+            }
+        }
+    };
 }
 
-new_id_type!(SymbolId);
-
-impl SymbolId {
-    pub(crate) fn get(self, db: &Database) -> &Symbol {
-        &db.symbols[self]
-    }
-
-    pub(crate) fn get_mut(self, db: &mut Database) -> &mut Symbol {
-        &mut db.symbols[self]
-    }
-}
-
-new_id_type!(FunctionId);
-
-impl FunctionId {
-    pub(crate) fn get(self, db: &Database) -> &Function {
-        &db.functions[self]
-    }
-
-    pub(crate) fn get_mut(self, db: &mut Database) -> &mut Function {
-        &mut db.functions[self]
-    }
-}
-
-new_id_type!(TyId);
+new_db_id!(ModuleId -> modules : Module);
+new_db_id!(SymbolId -> symbols : Symbol);
+new_db_id!(FunctionId -> functions : Function);
+new_db_id!(TyId -> types : Ty);
 
 impl Ty {
     pub(crate) fn alloc(db: &mut Database, ty: Ty) -> TyId {
         db.types.push(ty)
-    }
-}
-
-impl TyId {
-    pub(crate) fn get(self, db: &Database) -> &Ty {
-        &db.types[self]
-    }
-
-    pub(crate) fn get_mut(self, db: &mut Database) -> &mut Ty {
-        &mut db.types[self]
     }
 }
 
