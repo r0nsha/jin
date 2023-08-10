@@ -5,6 +5,7 @@ mod type_env;
 mod typecx;
 mod unify;
 
+use crate::db::{SymbolId, TyId};
 use crate::{db::Database, hir::*, ty::*};
 
 use self::{
@@ -16,7 +17,7 @@ use self::{
 pub(crate) fn infer(db: &mut Database, hir: &mut Hir) {
     let mut cx = InferCx::new(db);
 
-    cx.alloc_top_level_tys();
+    // cx.alloc_top_level_tys();
     cx.infer_all(&mut hir.modules);
 
     if let Err(e) = cx.unification() {
@@ -69,6 +70,18 @@ impl<'db> InferCx<'db> {
 
         for def in &mut module.definitions {
             def.infer(self, &mut env);
+        }
+    }
+
+    fn infer_symbol(&mut self, id: SymbolId) -> TyId {
+        let sym = id.get(self.db);
+
+        if sym.ty.is_null() {
+            let ty = Ty::alloc(self.db, self.tcx.fresh_type_var(sym.span));
+            id.get_mut(self.db).ty = ty;
+            ty
+        } else {
+            sym.ty
         }
     }
 }
@@ -158,7 +171,7 @@ impl Infer<'_> for Return {
 
 impl Infer<'_> for Name {
     fn infer(&mut self, cx: &mut InferCx<'_>, _env: &mut TypeEnv) {
-        self.ty = self.id.expect("to be resolved").get(cx.db).ty;
+        self.ty = cx.infer_symbol(self.id.expect("to be resolved"));
     }
 }
 
