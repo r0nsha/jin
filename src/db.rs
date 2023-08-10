@@ -12,6 +12,7 @@ use crate::{
     ty::Ty,
 };
 
+// TODO: call this Workspace instead?
 #[derive(Debug)]
 pub(crate) struct Database {
     build_options: BuildOptions,
@@ -20,6 +21,7 @@ pub(crate) struct Database {
     pub(crate) modules: IdVec<ModuleId, Module>,
     pub(crate) symbols: IdVec<SymbolId, Symbol>,
     pub(crate) functions: IdVec<FunctionId, Function>,
+    // TODO: split this into TypeCx?
     pub(crate) types: IdVec<TyId, Ty>,
 
     pub(crate) diagnostics: Diagnostics,
