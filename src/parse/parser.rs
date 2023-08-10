@@ -104,29 +104,30 @@ impl Parser {
     }
 
     fn parse_expr(&mut self) -> ParseResult<Ast> {
-        if self.is(TokenKind::OpenCurly) {
-            let block = self.parse_block()?;
-            Ok(Ast::Block(block))
-        } else if self.is(TokenKind::OpenParen) {
-            let start = self.last_span();
-            let end = self.expect(TokenKind::CloseParen)?.span;
+        let token = self.require()?;
 
-            Ok(Ast::Lit(Lit { kind: LitKind::Unit, span: start.merge(end) }))
-        } else if let Some(TokenKind::Int(value)) = self.token_kind() {
-            self.advance();
+        match token.kind {
+            TokenKind::OpenParen => {
+                let end = self.expect(TokenKind::CloseParen)?.span;
 
-            Ok(Ast::Lit(Lit {
+                Ok(Ast::Lit(Lit {
+                    kind: LitKind::Unit,
+                    span: token.span.merge(end),
+                }))
+            }
+            TokenKind::OpenCurly => {
+                let block = self.parse_block()?;
+                Ok(Ast::Block(block))
+            }
+            TokenKind::Int(value) => Ok(Ast::Lit(Lit {
                 kind: LitKind::Int(value),
                 span: self.last_span(),
-            }))
-        } else {
-            let token = self.require()?;
-
-            Err(ParseError::UnexpectedToken {
+            })),
+            _ => Err(ParseError::UnexpectedToken {
                 expected: "an expression".to_string(),
                 actual: token.kind,
                 span: token.span,
-            })
+            }),
         }
     }
 
