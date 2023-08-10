@@ -219,9 +219,7 @@ impl From<ParseError> for Diagnostic {
             ParseError::UnexpectedEof { span } => {
                 Diagnostic::error("parse::unexpected_eof")
                     .with_message("unexpected end of file")
-                    .with_label(
-                        Label::primary(span).with_message("here"),
-                    )
+                    .with_label(Label::primary(span).with_message("here"))
             }
         }
     }

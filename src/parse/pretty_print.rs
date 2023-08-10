@@ -23,6 +23,9 @@ impl PrettyPrint {
     fn print_ast(&mut self, ast: &Ast) {
         match ast {
             Ast::Block(block) => self.print_block(block),
+            Ast::Name(name) => {
+                self.builder.add_empty_child(name.name.to_string());
+            }
             Ast::Lit(lit) => match lit.kind {
                 LitKind::Int(value) => {
                     self.builder.add_empty_child(format!("int: {value}"));
