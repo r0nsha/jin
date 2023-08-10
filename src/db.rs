@@ -19,7 +19,7 @@ pub(crate) struct Database {
     pub(crate) sources: Sources,
     pub(crate) modules: IdVec<ModuleId, Module>,
     pub(crate) symbols: IdVec<SymbolId, Symbol>,
-    pub(crate) funs: IdVec<FunctionId, Function>,
+    pub(crate) functions: IdVec<FunctionId, Function>,
     pub(crate) types: IdVec<TyId, Ty>,
 
     pub(crate) diagnostics: Diagnostics,
@@ -46,7 +46,7 @@ impl Database {
             sources,
             modules: IdVec::new(),
             symbols: IdVec::new(),
-            funs: IdVec::new(),
+            functions: IdVec::new(),
             types: IdVec::new(),
 
             diagnostics: Diagnostics::new(),
@@ -87,7 +87,7 @@ impl Database {
     }
 
     pub(crate) fn main_fun(&self) -> Option<&Function> {
-        self.main_fun.and_then(|id| self.funs.get(id))
+        self.main_fun.and_then(|id| self.functions.get(id))
     }
 
     pub(crate) fn set_main_fun(&mut self, id: FunctionId) {
@@ -131,11 +131,11 @@ new_id_type!(FunctionId);
 
 impl FunctionId {
     pub(crate) fn get(self, db: &Database) -> &Function {
-        &db.funs[self]
+        &db.functions[self]
     }
 
     pub(crate) fn get_mut(self, db: &mut Database) -> &mut Function {
-        &mut db.funs[self]
+        &mut db.functions[self]
     }
 }
 
@@ -309,7 +309,7 @@ impl Function {
         span: Span,
         ty: TyId,
     ) -> FunctionId {
-        db.funs.push_with_id(|id| Function {
+        db.functions.push_with_id(|id| Function {
             id,
             module_id,
             name,

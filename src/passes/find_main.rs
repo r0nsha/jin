@@ -9,7 +9,7 @@ pub(crate) fn find_main(db: &mut Database) {
     let main_module_id = db.main_module_id().unwrap();
 
     let main_fun_id = if let Some(main_fun) = db
-        .funs
+        .functions
         .iter()
         .find(|f| f.module_id == main_module_id && f.name.name() == "main")
     {
