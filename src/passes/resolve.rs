@@ -177,7 +177,7 @@ impl Resolve<'_> for Name {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         if let Some(id) = cx.global_scope.find_symbol(env.module_id, self.name)
         {
-            todo!("got id {id}")
+            self.id = Some(id);
         } else {
             cx.errors.push(ResolveError::NameNotFound {
                 name: self.name,

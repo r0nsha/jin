@@ -16,6 +16,7 @@ use self::{
 pub(crate) fn infer(db: &mut Database, hir: &mut Hir) {
     let mut cx = InferCx::new(db);
 
+    cx.alloc_top_level_tys();
     cx.infer_all(&mut hir.modules);
 
     if let Err(e) = cx.unification() {
@@ -39,6 +40,24 @@ impl<'db> InferCx<'db> {
 }
 
 impl<'db> InferCx<'db> {
+    fn alloc_top_level_tys(&mut self) {
+        let symbol_tys = self
+            .db
+            .symbols
+            .iter()
+            .map(|sym| self.typecx.fresh_type_var(sym.span))
+            .collect::<Vec<_>>();
+
+        let symbol_tys = symbol_tys
+            .into_iter()
+            .map(|ty| Ty::alloc(self.db, ty))
+            .collect::<Vec<_>>();
+
+        for (sym, ty) in self.db.symbols.iter_mut().zip(symbol_tys) {
+            sym.ty = ty;
+        }
+    }
+
     fn infer_all(&mut self, modules: &mut [Module]) {
         for module in modules {
             self.infer_module(module);
@@ -138,8 +157,8 @@ impl Infer<'_> for Return {
 }
 
 impl Infer<'_> for Name {
-    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
-        todo!()
+    fn infer(&mut self, cx: &mut InferCx<'_>, _env: &mut TypeEnv) {
+        self.ty = self.id.expect("to be resolved").get(cx.db).ty;
     }
 }
 
