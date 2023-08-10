@@ -12,6 +12,7 @@ use crate::{
     span::Span,
 };
 
+#[derive(Debug)]
 pub(crate) struct Mir {
     pub(crate) functions: Vec<Function>,
 }
@@ -30,6 +31,7 @@ impl Mir {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct Function {
     id: FunctionId,
     registers: IdVec<RegisterId, Register>,
@@ -72,6 +74,7 @@ impl Function {
     }
 }
 
+#[derive(Debug)]
 pub(crate) struct Cfg {
     pub(crate) blocks: IdVec<BlockId, Block>,
 }
@@ -84,11 +87,12 @@ impl Cfg {
 
 new_id_type!(RegisterId);
 
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct Register {
     pub(crate) ty: TyId,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) enum Value {
     Symbol(SymbolId),
     Register(RegisterId),
@@ -96,6 +100,7 @@ pub(crate) enum Value {
 
 new_id_type!(BlockId);
 
+#[derive(Debug)]
 pub(crate) struct Block {
     pub(crate) id: BlockId,
     pub(crate) name: Ustr,
