@@ -16,18 +16,6 @@ impl<'db> InferCx<'db> {
     ) -> HashSet<TyVar> {
         let mut unbound_vars = HashSet::new();
 
-        let top_level_tys = self
-            .db
-            .symbols
-            .iter()
-            .map(|sym| sym.ty)
-            .chain(self.db.funs.iter().map(|fun| fun.ty))
-            .collect::<Vec<_>>();
-
-        for ty in top_level_tys {
-            self.substitute_type_id(ty, &mut unbound_vars);
-        }
-
         for module in modules {
             for def in &mut module.definitions {
                 def.substitute(self, &mut unbound_vars);

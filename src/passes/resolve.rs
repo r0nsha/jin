@@ -55,7 +55,7 @@ impl<'db> ResolveCx<'db> {
                 let qualified_name =
                     module.id.get(self.db).name.clone().child(def.name);
 
-                let kind = match &def.kind {
+                let kind = match &mut def.kind {
                     DefinitionKind::Function(fun) => SymbolKind::Function(
                         self.create_function(module.id, fun),
                     ),
@@ -92,18 +92,20 @@ impl<'db> ResolveCx<'db> {
     fn create_function(
         &mut self,
         module_id: ModuleId,
-        fun: &Function,
+        fun: &mut Function,
     ) -> FunctionId {
         let name = module_id.get(self.db).name.clone().child(fun.name);
 
-        db::Function::alloc(
+        fun.id = db::Function::alloc(
             self.db,
             module_id,
             name,
             FunKind::Orphan,
             fun.span,
             fun.ty,
-        )
+        );
+
+        fun.id
     }
 }
 
@@ -137,12 +139,6 @@ impl Resolve<'_> for Node {
 
 impl Resolve<'_> for Function {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        let name = env.module_id.get(cx.db).name.clone().child(self.name);
-
-        if self.id.is_null() {
-            self.id = cx.create_function(env.module_id, self);
-        }
-
         env.scopes.push_scope(ScopeKind::Fun);
         self.body.resolve(cx, env);
         env.scopes.pop_scope();
