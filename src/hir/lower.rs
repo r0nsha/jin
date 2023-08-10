@@ -91,7 +91,11 @@ impl<'db> Lower<'db> {
     fn lower_ast(&mut self, ast: Ast) -> Node {
         match ast {
             Ast::Block(blk) => Node::Block(self.lower_block(blk)),
-            Ast::Name(name) => todo!(),
+            Ast::Name(name) => Node::Name(Name {
+                kind: NameKind::Unresolved(name.name),
+                span: name.span,
+                ty: TyId::null(),
+            }),
             Ast::Lit(lit) => Node::Lit(Lit {
                 kind: match lit.kind {
                     ast::LitKind::Int(v) => LitKind::Int(v),

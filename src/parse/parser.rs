@@ -119,9 +119,12 @@ impl Parser {
                 let block = self.parse_block()?;
                 Ok(Ast::Block(block))
             }
+            TokenKind::Ident(ident) => {
+                Ok(Ast::Name(Name { name: ident, span: token.span }))
+            }
             TokenKind::Int(value) => Ok(Ast::Lit(Lit {
                 kind: LitKind::Int(value),
-                span: self.last_span(),
+                span: token.span,
             })),
             _ => Err(ParseError::UnexpectedToken {
                 expected: "an expression".to_string(),

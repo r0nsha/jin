@@ -34,6 +34,7 @@ pub(crate) enum Node {
     Function(Function),
     Block(Block),
     Return(Return),
+    Name(Name),
     Lit(Lit),
 }
 
@@ -43,6 +44,7 @@ impl Node {
             Node::Function(x) => x.ty,
             Node::Block(x) => x.ty,
             Node::Return(x) => x.ty,
+            Node::Name(x) => x.ty,
             Node::Lit(x) => x.ty,
         }
     }
@@ -54,6 +56,7 @@ impl Spanned for Node {
             Node::Function(x) => x.span,
             Node::Block(x) => x.span,
             Node::Return(x) => x.span,
+            Node::Name(x) => x.span,
             Node::Lit(x) => x.span,
         }
     }
@@ -102,6 +105,19 @@ pub(crate) struct Return {
     pub(crate) expr: Option<Box<Node>>,
     pub(crate) span: Span,
     pub(crate) ty: TyId,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Name {
+    pub(crate) kind: NameKind,
+    pub(crate) span: Span,
+    pub(crate) ty: TyId,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) enum NameKind {
+    Resolved(SymbolId),
+    Unresolved(Ustr),
 }
 
 #[derive(Debug, Clone)]
