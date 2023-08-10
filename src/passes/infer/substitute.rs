@@ -30,10 +30,10 @@ impl<'db> InferCx<'db> {
         id: TyId,
         unbound_vars: &mut HashSet<TyVar>,
     ) {
-        let ty = id.get(&self.db).clone();
+        let ty = id.get(self.db).clone();
 
         let new_ty = self.substitute_ty(&ty, unbound_vars);
-        *id.get_mut(&mut self.db) = new_ty;
+        *id.get_mut(self.db) = new_ty;
     }
 
     fn substitute_ty(
@@ -52,8 +52,7 @@ impl<'db> InferCx<'db> {
                 match self.typecx.unification_table.probe_value(root) {
                     Some(ty) => self.substitute_ty(&ty, unbound_vars),
                     None => {
-                        let mut unbound = HashSet::new();
-                        unbound.insert(root);
+                        unbound_vars.insert(root);
                         Ty::var(root, ty.span)
                     }
                 }
@@ -99,7 +98,7 @@ impl Substitute<'_> for Definition {
         }
 
         cx.substitute_type_id(self.ty, unbound_vars);
-        cx.substitute_type_id(self.id.get(&cx.db).ty, unbound_vars);
+        cx.substitute_type_id(self.id.get(cx.db).ty, unbound_vars);
     }
 }
 
@@ -110,7 +109,7 @@ impl Substitute<'_> for Function {
         unbound_vars: &mut HashSet<TyVar>,
     ) {
         self.body.substitute(cx, unbound_vars);
-        cx.substitute_type_id(self.id.get(&cx.db).ty, unbound_vars);
+        cx.substitute_type_id(self.id.get(cx.db).ty, unbound_vars);
     }
 }
 

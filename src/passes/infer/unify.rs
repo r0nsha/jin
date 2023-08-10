@@ -9,8 +9,8 @@ impl<'db> InferCx<'db> {
         for constraint in self.constraints.clone().iter() {
             match constraint {
                 Constraint::Eq { expected, actual } => self.unify_ty_ty(
-                    &expected.get(&self.db).clone(),
-                    &actual.get(&self.db).clone(),
+                    &expected.get(self.db).clone(),
+                    &actual.get(self.db).clone(),
                 )?,
             }
         }

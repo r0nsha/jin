@@ -71,13 +71,13 @@ impl Infer<'_> for Node {
 
 impl Infer<'_> for Definition {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
-        self.ty = Ty::alloc(&mut cx.db, Ty::unit(self.span));
+        self.ty = Ty::alloc(cx.db, Ty::unit(self.span));
 
         match &mut self.kind {
             DefinitionKind::Function(fun) => fun.infer(cx, env),
         }
 
-        self.id.get_mut(&mut cx.db).ty = self.kind.ty();
+        self.id.get_mut(cx.db).ty = self.kind.ty();
     }
 }
 
@@ -86,12 +86,12 @@ impl Infer<'_> for Function {
         let ret_ty = cx.typecx.fresh_type_var(self.span);
         let fun_ty = Ty::fun(ret_ty.clone(), self.span);
 
-        let ret_ty = Ty::alloc(&mut cx.db, ret_ty);
+        let ret_ty = Ty::alloc(cx.db, ret_ty);
 
-        let ty = Ty::alloc(&mut cx.db, fun_ty);
+        let ty = Ty::alloc(cx.db, fun_ty);
 
         self.ty = ty;
-        self.id.get_mut(&mut cx.db).ty = ty;
+        self.id.get_mut(cx.db).ty = ty;
 
         env.fun_scopes.push(FunScope { id: self.id, ret_ty });
 
@@ -110,7 +110,7 @@ impl Infer<'_> for Block {
         }
 
         self.ty = self.exprs.last().map_or_else(
-            || Ty::alloc(&mut cx.db, Ty::unit(self.span)),
+            || Ty::alloc(cx.db, Ty::unit(self.span)),
             |expr| expr.ty(),
         );
     }
@@ -118,7 +118,7 @@ impl Infer<'_> for Block {
 
 impl Infer<'_> for Return {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
-        self.ty = Ty::alloc(&mut cx.db, Ty::never(self.span));
+        self.ty = Ty::alloc(cx.db, Ty::never(self.span));
 
         let fun_scope = env.fun_scopes.current().unwrap();
         let ret_ty = fun_scope.ret_ty;
@@ -130,7 +130,7 @@ impl Infer<'_> for Return {
         } else {
             cx.constraints.push(Constraint::Eq {
                 expected: ret_ty,
-                actual: Ty::alloc(&mut cx.db, Ty::unit(self.span)),
+                actual: Ty::alloc(cx.db, Ty::unit(self.span)),
             });
         }
     }
@@ -141,9 +141,9 @@ impl Infer<'_> for Lit {
         self.ty = match &self.kind {
             LitKind::Int(_) => {
                 // TODO: use a polymorphic int
-                Ty::alloc(&mut cx.db, Ty::int(self.span))
+                Ty::alloc(cx.db, Ty::int(self.span))
             }
-            LitKind::Unit => Ty::alloc(&mut cx.db, Ty::unit(self.span)),
+            LitKind::Unit => Ty::alloc(cx.db, Ty::unit(self.span)),
         };
     }
 }

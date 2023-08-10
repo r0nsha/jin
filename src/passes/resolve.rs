@@ -52,10 +52,10 @@ impl<'db> ResolveCx<'db> {
                 }
 
                 let qualified_name =
-                    module.id.get(&mut self.db).name.clone().child(def.name);
+                    module.id.get(self.db).name.clone().child(def.name);
 
                 def.id = Symbol::alloc(
-                    &mut self.db,
+                    self.db,
                     module.id,
                     qualified_name,
                     Vis::Public,
@@ -111,10 +111,10 @@ impl Resolve<'_> for Node {
 
 impl Resolve<'_> for Function {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        let name = env.module_id.get(&cx.db).name.clone().child(self.name);
+        let name = env.module_id.get(cx.db).name.clone().child(self.name);
 
         self.id = db::Function::alloc(
-            &mut cx.db,
+            cx.db,
             env.module_id,
             name,
             FunKind::Orphan,

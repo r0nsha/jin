@@ -13,7 +13,7 @@ pub(crate) fn print(db: &Database, mir: &Mir) {
     println!("{}", doc.pretty(80));
 }
 
-fn print_function<'db, 'd>(db: &'db Database, fun: &Function) -> RcDoc<'d, ()> {
+fn print_function<'d>(db: &Database, fun: &Function) -> RcDoc<'d, ()> {
     let ret_ty = fun
         .id
         .get(db)

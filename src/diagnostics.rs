@@ -74,37 +74,37 @@ enum LabelStyle {
     Secondary,
 }
 
-impl Into<codespan_diagnostic::Diagnostic<SourceId>> for Diagnostic {
-    fn into(self) -> codespan_diagnostic::Diagnostic<SourceId> {
+impl From<Diagnostic> for codespan_diagnostic::Diagnostic<SourceId> {
+    fn from(val: Diagnostic) -> Self {
         codespan_diagnostic::Diagnostic {
-            severity: self.severity.into(),
-            code: Some(self.code),
-            message: self.message.unwrap_or_else(|| "".to_string()),
-            labels: self.labels.into_iter().map(|label| label.into()).collect(),
-            notes: self.help.map_or_else(|| vec![], |help| vec![help]),
+            severity: val.severity.into(),
+            code: Some(val.code),
+            message: val.message.unwrap_or_default(),
+            labels: val.labels.into_iter().map(|label| label.into()).collect(),
+            notes: val.help.map_or(vec![], |help| vec![help]),
         }
     }
 }
 
-impl Into<codespan_diagnostic::Label<SourceId>> for Label {
-    fn into(self) -> codespan_diagnostic::Label<SourceId> {
+impl From<Label> for codespan_diagnostic::Label<SourceId> {
+    fn from(val: Label) -> Self {
         codespan_diagnostic::Label {
-            style: match self.style {
+            style: match val.style {
                 LabelStyle::Primary => codespan_diagnostic::LabelStyle::Primary,
                 LabelStyle::Secondary => {
                     codespan_diagnostic::LabelStyle::Secondary
                 }
             },
-            file_id: self.span.source_id(),
-            range: self.span.start() as usize..self.span.end() as usize,
-            message: self.message.unwrap_or_else(|| "".to_string()),
+            file_id: val.span.source_id(),
+            range: val.span.start() as usize..val.span.end() as usize,
+            message: val.message.unwrap_or_default(),
         }
     }
 }
 
-impl Into<codespan_diagnostic::Severity> for Severity {
-    fn into(self) -> codespan_diagnostic::Severity {
-        match self {
+impl From<Severity> for codespan_diagnostic::Severity {
+    fn from(val: Severity) -> Self {
+        match val {
             Severity::Error => codespan_diagnostic::Severity::Error,
         }
     }

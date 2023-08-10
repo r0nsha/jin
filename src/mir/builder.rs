@@ -120,12 +120,13 @@ impl FunctionBuilder {
                     .iter()
                     .any(|inst| matches!(inst, Instruction::Return(_)));
 
-                if i < blocks.len() - 1 {
-                    if blk.successors.is_empty() && !blk_is_terminating {
-                        return Err(format!(
-                            "Intermediate block &{i} leads nowhere (has no successors and isn't terminating)"
-                        ));
-                    }
+                if i < blocks.len() - 1
+                    && blk.successors.is_empty()
+                    && !blk_is_terminating
+                {
+                    return Err(format!(
+                        "Intermediate block &{i} leads nowhere (has no successors and isn't terminating)"
+                    ));
                 }
 
                 is_terminating = is_terminating || blk_is_terminating;

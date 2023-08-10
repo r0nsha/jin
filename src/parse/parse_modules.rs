@@ -15,6 +15,6 @@ pub(crate) fn parse_modules(db: &mut Database) -> Vec<Module> {
 
 fn parse_module(db: &Database, source: &Source) -> Result<Module, Diagnostic> {
     let tokens = lexer::tokenize(source)?;
-    let module = parser::parse(&db, source, tokens)?;
+    let module = parser::parse(db, source, tokens)?;
     Ok(module)
 }

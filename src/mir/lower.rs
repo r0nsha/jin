@@ -88,7 +88,7 @@ impl<'db> LowerCx<'db> {
     }
 
     fn create_unit_register(&mut self, span: Span) -> RegisterId {
-        let ty = Ty::alloc(&mut self.db, Ty::unit(span));
+        let ty = Ty::alloc(self.db, Ty::unit(span));
         self.create_unit_register_with_ty(ty, span)
     }
 
@@ -103,7 +103,7 @@ impl<'db> LowerCx<'db> {
     }
 
     fn build_unreachable(&mut self, span: Span) -> RegisterId {
-        let ty = Ty::alloc(&mut self.db, Ty::never(span));
+        let ty = Ty::alloc(self.db, Ty::never(span));
         self.builder.create_register(ty)
     }
 }

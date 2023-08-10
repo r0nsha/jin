@@ -47,11 +47,11 @@ fn codegen_all<'db>(
     let mut declarations = Vec::with_capacity(fun_count);
     let mut definitions = Vec::with_capacity(fun_count);
 
-    definitions.push(codegen_main(db, &arena));
+    definitions.push(codegen_main(db, arena));
 
     for fun in &mir.functions {
         let mut cx = CodegenCx::new(db, fun);
-        fun.codegen(&mut cx, &arena);
+        fun.codegen(&mut cx, arena);
         declarations.extend(cx.declarations);
         definitions.extend(cx.definitions);
     }
@@ -163,9 +163,9 @@ impl<'a, 'db> Codegen<'a, 'db> for Function {
         cx: &'a mut CodegenCx<'db>,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        let fun = self.id().get(&cx.db);
+        let fun = self.id().get(cx.db);
 
-        let fun_ty = fun.ty.get(&cx.db).kind.as_function().unwrap();
+        let fun_ty = fun.ty.get(cx.db).kind.as_function().unwrap();
         let name = fun.name.full_c_name();
 
         let sig = arena
@@ -246,7 +246,7 @@ impl<'a, 'db> Codegen<'a, 'db> for TyId {
         cx: &'a mut CodegenCx<'db>,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        self.get(&cx.db).codegen(cx, arena)
+        self.get(cx.db).codegen(cx, arena)
     }
 }
 
