@@ -29,13 +29,13 @@ pub(crate) fn infer(db: &mut Database, hir: &mut Hir) {
 
 pub(super) struct InferCx<'db> {
     pub(super) db: &'db mut Database,
-    pub(super) typecx: TypeCx,
+    pub(super) tcx: TypeCx,
     pub(super) constraints: Constraints,
 }
 
 impl<'db> InferCx<'db> {
     fn new(db: &'db mut Database) -> Self {
-        Self { db, typecx: TypeCx::new(), constraints: Constraints::new() }
+        Self { db, tcx: TypeCx::new(), constraints: Constraints::new() }
     }
 }
 
@@ -45,7 +45,7 @@ impl<'db> InferCx<'db> {
             .db
             .symbols
             .iter()
-            .map(|sym| self.typecx.fresh_type_var(sym.span))
+            .map(|sym| self.tcx.fresh_type_var(sym.span))
             .collect::<Vec<_>>();
 
         let symbol_tys = symbol_tys
@@ -103,7 +103,7 @@ impl Infer<'_> for Definition {
 
 impl Infer<'_> for Function {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
-        let ret_ty = cx.typecx.fresh_type_var(self.span);
+        let ret_ty = cx.tcx.fresh_type_var(self.span);
         let fun_ty = Ty::fun(ret_ty.clone(), self.span);
 
         let ret_ty = Ty::alloc(cx.db, ret_ty);

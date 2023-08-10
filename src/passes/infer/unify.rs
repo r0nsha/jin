@@ -31,7 +31,7 @@ impl<'db> InferCx<'db> {
             }
 
             (TyKind::Var(expected), TyKind::Var(actual)) => self
-                .typecx
+                .tcx
                 .unification_table
                 .unify_var_var(*expected, *actual)
                 .map_err(|(expected, actual)| InferError::TypesNotEq {
@@ -44,7 +44,7 @@ impl<'db> InferCx<'db> {
                     .occurs_check(*var)
                     .map_err(|ty| InferError::InfiniteType { var: *var, ty })?;
 
-                self.typecx
+                self.tcx
                     .unification_table
                     .unify_var_value(*var, Some(actual))
                     .map_err(|(expected, actual)| InferError::TypesNotEq {
@@ -58,7 +58,7 @@ impl<'db> InferCx<'db> {
                     .occurs_check(*var)
                     .map_err(|ty| InferError::InfiniteType { var: *var, ty })?;
 
-                self.typecx
+                self.tcx
                     .unification_table
                     .unify_var_value(*var, Some(expected))
                     .map_err(|(expected, actual)| InferError::TypesNotEq {
@@ -82,7 +82,7 @@ impl<'db> InferCx<'db> {
                 Ty::fun(ret, ty.span)
             }
             TyKind::Var(var) => {
-                match self.typecx.unification_table.probe_value(var) {
+                match self.tcx.unification_table.probe_value(var) {
                     Some(ty) => self.normalize_ty(ty),
                     None => ty,
                 }

@@ -47,9 +47,9 @@ impl<'db> InferCx<'db> {
                 Ty::fun(ret, ty.span)
             }
             TyKind::Var(v) => {
-                let root = self.typecx.unification_table.find(*v);
+                let root = self.tcx.unification_table.find(*v);
 
-                match self.typecx.unification_table.probe_value(root) {
+                match self.tcx.unification_table.probe_value(root) {
                     Some(ty) => self.substitute_ty(&ty, unbound_vars),
                     None => {
                         unbound_vars.insert(root);
