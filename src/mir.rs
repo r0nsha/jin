@@ -98,6 +98,18 @@ pub(crate) enum Value {
     Register(RegisterId),
 }
 
+impl From<SymbolId> for Value {
+    fn from(value: SymbolId) -> Self {
+        Self::Symbol(value)
+    }
+}
+
+impl From<RegisterId> for Value {
+    fn from(value: RegisterId) -> Self {
+        Self::Register(value)
+    }
+}
+
 new_id_type!(BlockId);
 
 #[derive(Debug)]

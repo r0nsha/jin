@@ -91,7 +91,7 @@ impl<'db> LowerCx<'db> {
             hir::LitKind::Int(value) => {
                 let reg = self.builder.create_register(lit.ty);
                 self.builder.build_int_lit(reg, *value, lit.span);
-                Value::Register(reg)
+                reg.into()
             }
             hir::LitKind::Unit => {
                 self.create_unit_register_with_ty(lit.ty, lit.span)
@@ -107,11 +107,11 @@ impl<'db> LowerCx<'db> {
     fn create_unit_register_with_ty(&mut self, ty: TyId, span: Span) -> Value {
         let reg = self.builder.create_register(ty);
         self.builder.build_unit_lit(reg, span);
-        Value::Register(reg)
+        reg.into()
     }
 
     fn build_unreachable(&mut self, span: Span) -> Value {
         let ty = Ty::alloc(self.db, Ty::never(span));
-        Value::Register(self.builder.create_register(ty))
+        self.builder.create_register(ty).into()
     }
 }

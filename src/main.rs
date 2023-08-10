@@ -117,7 +117,6 @@ fn build_inner(db: &mut Database) {
     bail_if_failed!(db);
 
     let mir = time(print_times, "hir -> mir", || mir::lower(db, hir));
-    dbg!(&mir);
     bail_if_failed!(db);
 
     if db.build_options().print_mir {
