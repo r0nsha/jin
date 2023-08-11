@@ -91,6 +91,11 @@ impl<'db> Lower<'db> {
     fn lower_ast(&mut self, ast: Ast) -> Node {
         match ast {
             Ast::Block(blk) => Node::Block(self.lower_block(blk)),
+            Ast::Call(call) => Node::Call(Call {
+                callee: Box::new(self.lower_ast(*call.callee)),
+                span: call.span,
+                ty: TyId::null(),
+            }),
             Ast::Name(name) => Node::Name(Name {
                 id: None,
                 name: name.name,

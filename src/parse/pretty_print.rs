@@ -22,9 +22,22 @@ struct PrettyPrint {
 impl PrettyPrint {
     fn print_ast(&mut self, ast: &Ast) {
         match ast {
-            Ast::Block(block) => self.print_block(block),
+            Ast::Block(blk) => {
+                self.builder.begin_child("block".to_string());
+
+                for stmt in &blk.stmts {
+                    self.print_stmt(stmt);
+                }
+
+                self.builder.end_child();
+            }
             Ast::Name(name) => {
                 self.builder.add_empty_child(name.name.to_string());
+            }
+            Ast::Call(call) => {
+                self.builder.begin_child("call".to_string());
+                self.print_ast(&call.callee);
+                self.builder.end_child();
             }
             Ast::Lit(lit) => match lit.kind {
                 LitKind::Int(value) => {
@@ -61,16 +74,6 @@ impl PrettyPrint {
     fn print_fun(&mut self, fun: &Function) {
         self.builder.begin_child(format!("fn {}", fun.name));
         self.print_ast(&fun.body);
-        self.builder.end_child();
-    }
-
-    fn print_block(&mut self, block: &Block) {
-        self.builder.begin_child("block".to_string());
-
-        for stmt in &block.stmts {
-            self.print_stmt(stmt);
-        }
-
         self.builder.end_child();
     }
 }

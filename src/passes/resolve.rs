@@ -98,7 +98,7 @@ trait Resolve<'db> {
 
 impl Resolve<'_> for Definition {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        if let Some(id) = self.id {
+        if let Some(_) = self.id {
             match &mut self.kind {
                 DefinitionKind::Function(fun) => fun.resolve(cx, env),
             }
@@ -114,6 +114,7 @@ impl Resolve<'_> for Node {
             Node::Function(x) => x.resolve(cx, env),
             Node::Block(x) => x.resolve(cx, env),
             Node::Return(x) => x.resolve(cx, env),
+            Node::Call(x) => x.resolve(cx, env),
             Node::Name(x) => x.resolve(cx, env),
             Node::Lit(_) => (),
         }
@@ -149,6 +150,12 @@ impl Resolve<'_> for Return {
         if !env.scopes.in_kind(ScopeKind::Fun) {
             cx.errors.push(ResolveError::InvalidReturn { span: self.span });
         }
+    }
+}
+
+impl Resolve<'_> for Call {
+    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+        self.callee.resolve(cx, env);
     }
 }
 

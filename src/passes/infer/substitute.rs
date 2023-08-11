@@ -80,6 +80,7 @@ impl Substitute<'_> for Node {
             Node::Function(x) => x.substitute(cx, unbound_vars),
             Node::Block(x) => x.substitute(cx, unbound_vars),
             Node::Return(x) => x.substitute(cx, unbound_vars),
+            Node::Call(x) => x.substitute(cx, unbound_vars),
             Node::Name(_) | Node::Lit(_) => (),
         }
 
@@ -138,6 +139,16 @@ impl Substitute<'_> for Return {
         unbound_vars: &mut HashSet<TyVar>,
     ) {
         self.expr.substitute(cx, unbound_vars);
+    }
+}
+
+impl Substitute<'_> for Call {
+    fn substitute(
+        &mut self,
+        cx: &mut InferCx<'_>,
+        unbound_vars: &mut HashSet<TyVar>,
+    ) {
+        self.callee.substitute(cx, unbound_vars);
     }
 }
 

@@ -36,6 +36,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for Node {
             Node::Function(x) => x.to_doc(db),
             Node::Block(x) => x.to_doc(db),
             Node::Return(x) => x.to_doc(db),
+            Node::Call(x) => x.to_doc(db),
             Node::Name(x) => x.to_doc(db),
             Node::Lit(x) => x.to_doc(db),
         }
@@ -97,8 +98,14 @@ impl<'db, 'd> ToDoc<'db, 'd> for Return {
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Name {
+impl<'db, 'd> ToDoc<'db, 'd> for Call {
     fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
+        self.callee.to_doc(db).append(RcDoc::text("()"))
+    }
+}
+
+impl<'db, 'd> ToDoc<'db, 'd> for Name {
+    fn to_doc(&self, _db: &'db Database) -> RcDoc<'d, ()> {
         RcDoc::text(self.name.as_str())
     }
 }

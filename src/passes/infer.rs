@@ -77,6 +77,7 @@ impl Infer<'_> for Node {
             Node::Function(x) => x.infer(cx, env),
             Node::Block(x) => x.infer(cx, env),
             Node::Return(x) => x.infer(cx, env),
+            Node::Call(x) => x.infer(cx, env),
             Node::Name(x) => x.infer(cx, env),
             Node::Lit(x) => x.infer(cx, env),
         }
@@ -151,10 +152,14 @@ impl Infer<'_> for Return {
     }
 }
 
+impl Infer<'_> for Call {
+    fn infer(&mut self, cx: &mut InferCx<'_>, _env: &mut TypeEnv) {
+        todo!()
+    }
+}
+
 impl Infer<'_> for Name {
     fn infer(&mut self, cx: &mut InferCx<'_>, _env: &mut TypeEnv) {
-        // TODO: Symbols should already have types attached to them... we shouldn't need this
-        // function?
         self.ty = cx.infer_symbol(self.id.expect("to be resolved"));
     }
 }

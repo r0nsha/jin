@@ -34,6 +34,7 @@ impl Module {
 #[derive(Debug, Clone)]
 pub(crate) enum Ast {
     Block(Block),
+    Call(Call),
     Name(Name),
     Lit(Lit),
 }
@@ -42,6 +43,7 @@ impl Spanned for Ast {
     fn span(&self) -> Span {
         match self {
             Self::Block(x) => x.span,
+            Self::Call(x) => x.span,
             Self::Name(x) => x.span,
             Self::Lit(x) => x.span,
         }
@@ -56,7 +58,6 @@ pub(crate) enum TopLevel {
 #[derive(Debug, Clone)]
 pub(crate) struct Function {
     pub(crate) name: Ustr,
-    // TODO: FunKind
     pub(crate) body: Box<Ast>,
     pub(crate) span: Span,
 }
@@ -76,6 +77,12 @@ pub(crate) enum Statement {
 #[derive(Debug, Clone)]
 pub(crate) struct Return {
     pub(crate) expr: Option<Box<Ast>>,
+    pub(crate) span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Call {
+    pub(crate) callee: Box<Ast>,
     pub(crate) span: Span,
 }
 

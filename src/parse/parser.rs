@@ -1,3 +1,4 @@
+use codespan_reporting::files::Files;
 use ustr::ustr;
 
 use crate::{
@@ -20,24 +21,27 @@ pub(crate) fn parse(
     let name = QualifiedName::from_path(db.root_dir(), source.path()).unwrap();
     let is_main = source_id == db.main_source().id();
 
-    let module = Parser::new(tokens).parse(source_id, name, is_main)?;
+    let module =
+        Parser::new(db.sources.get(source_id).expect("to exist"), tokens)
+            .parse(source_id, name, is_main)?;
 
     Ok(module)
 }
 
 #[derive(Debug)]
-struct Parser {
+struct Parser<'a> {
+    source: &'a Source,
     tokens: Vec<Token>,
     pos: usize,
 }
 
-impl Parser {
-    fn new(tokens: Vec<Token>) -> Self {
-        Self { tokens, pos: 0 }
+impl<'a> Parser<'a> {
+    fn new(source: &'a Source, tokens: Vec<Token>) -> Self {
+        Self { source, tokens, pos: 0 }
     }
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
     fn parse(
         mut self,
         source_id: SourceId,
@@ -106,31 +110,50 @@ impl Parser {
     fn parse_expr(&mut self) -> ParseResult<Ast> {
         let token = self.require()?;
 
-        match token.kind {
+        let expr = match token.kind {
             TokenKind::OpenParen => {
                 let end = self.eat(TokenKind::CloseParen)?.span;
 
-                Ok(Ast::Lit(Lit {
+                Ast::Lit(Lit {
                     kind: LitKind::Unit,
                     span: token.span.merge(end),
-                }))
+                })
             }
             TokenKind::OpenCurly => {
-                let block = self.parse_block()?;
-                Ok(Ast::Block(block))
+                let blk = self.parse_block()?;
+                Ast::Block(blk)
             }
             TokenKind::Ident(ident) => {
-                Ok(Ast::Name(Name { name: ident, span: token.span }))
+                Ast::Name(Name { name: ident, span: token.span })
             }
-            TokenKind::Int(value) => Ok(Ast::Lit(Lit {
-                kind: LitKind::Int(value),
-                span: token.span,
-            })),
-            _ => Err(ParseError::UnexpectedToken {
-                expected: "an expression".to_string(),
-                actual: token.kind,
-                span: token.span,
-            }),
+            TokenKind::Int(value) => {
+                Ast::Lit(Lit { kind: LitKind::Int(value), span: token.span })
+            }
+            _ => {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "an expression".to_string(),
+                    actual: token.kind,
+                    span: token.span,
+                })
+            }
+        };
+
+        self.parse_postfix(expr)
+    }
+
+    fn parse_postfix(&mut self, expr: Ast) -> ParseResult<Ast> {
+        match self.token() {
+            Some(tok) if self.are_on_same_line(expr.span(), tok.span) => {
+                match &tok.kind {
+                    TokenKind::OpenParen => {
+                        self.advance();
+                        let call = self.parse_call(expr)?;
+                        Ok(Ast::Call(call))
+                    }
+                    _ => Ok(expr),
+                }
+            }
+            _ => Ok(expr),
         }
     }
 
@@ -141,9 +164,30 @@ impl Parser {
 
         Ok(Return { expr: Some(Box::new(expr)), span })
     }
+
+    fn parse_call(&mut self, callee: Ast) -> ParseResult<Call> {
+        let close_paren = self.eat(TokenKind::CloseParen)?;
+
+        let span = callee.span().merge(close_paren.span);
+
+        Ok(Call { callee: Box::new(callee), span })
+    }
 }
 
-impl Parser {
+impl<'a> Parser<'a> {
+    fn are_on_same_line(&self, s1: Span, s2: Span) -> bool {
+        let l1 = self
+            .source
+            .line_index(self.source.id(), s1.end() as usize)
+            .unwrap();
+        let l2 = self
+            .source
+            .line_index(self.source.id(), s2.start() as usize)
+            .unwrap();
+
+        l1 == l2
+    }
+
     fn eat_ident(&mut self) -> ParseResult<Token> {
         self.eat(TokenKind::Ident(ustr("")))
     }
