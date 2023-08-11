@@ -109,6 +109,7 @@ impl<'db> InferCx<'db> {
 
             (TyKind::Never, _)
             | (_, TyKind::Never)
+            | (TyKind::Unit, TyKind::Unit)
             | (TyKind::Int(IntTy::Int), TyKind::Int(IntTy::Int)) => Ok(()),
 
             (_, _) => Err(InferError::TypesNotEq { expected, actual }),
