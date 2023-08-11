@@ -224,6 +224,9 @@ impl<'a, 'db> Codegen<'a, 'db> for Instruction {
                 .text("return")
                 .append(arena.space())
                 .append(ret.value.codegen(cx, arena)),
+            Instruction::Call(call) => {
+                call.callee.codegen(cx, arena).append(arena.text("()"))
+            }
             Instruction::IntLit(lit) => cx
                 .local_var(arena, lit.register)
                 .append(arena.text(lit.value.to_string())),

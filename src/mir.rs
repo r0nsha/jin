@@ -136,6 +136,7 @@ impl Block {
 #[derive(Debug, Clone)]
 pub(crate) enum Instruction {
     Return(Return),
+    Call(Call),
     IntLit(IntLit),
     UnitLit(UnitLit),
 }
@@ -143,6 +144,13 @@ pub(crate) enum Instruction {
 #[derive(Debug, Clone)]
 pub(crate) struct Return {
     pub(crate) value: Value,
+    pub(crate) span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Call {
+    pub(crate) register: RegisterId,
+    pub(crate) callee: Value,
     pub(crate) span: Span,
 }
 
