@@ -86,7 +86,7 @@ impl DefinitionKind {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Function {
-    pub(crate) id: FunctionId,
+    pub(crate) id: Option<FunctionId>,
     pub(crate) name: Ustr, // TODO: remove?
     pub(crate) body: Block,
     pub(crate) span: Span,

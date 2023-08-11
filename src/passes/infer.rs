@@ -105,9 +105,10 @@ impl Infer<'_> for Function {
         let ty = Ty::alloc(cx.db, fun_ty);
 
         self.ty = ty;
-        self.id.get_mut(cx.db).ty = ty;
+        let id = self.id.expect("to be resolved");
+        id.get_mut(cx.db).ty = ty;
 
-        env.fun_scopes.push(FunScope { id: self.id, ret_ty });
+        env.fun_scopes.push(FunScope { id, ret_ty });
 
         self.body.infer(cx, env);
         cx.constraints

@@ -98,7 +98,7 @@ impl<'db> ResolveCx<'db> {
     ) -> FunctionId {
         let name = module_id.get(self.db).name.clone().child(fun.name);
 
-        fun.id = db::Function::alloc(
+        let id = db::Function::alloc(
             self.db,
             module_id,
             name,
@@ -107,7 +107,9 @@ impl<'db> ResolveCx<'db> {
             fun.ty,
         );
 
-        fun.id
+        fun.id = Some(id);
+
+        id
     }
 }
 

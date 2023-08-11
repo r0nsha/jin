@@ -80,7 +80,7 @@ impl<'db> Lower<'db> {
         };
 
         Function {
-            id: FunctionId::null(),
+            id: None,
             name: fun.name,
             body,
             span: fun.span,

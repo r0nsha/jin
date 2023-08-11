@@ -112,7 +112,10 @@ impl Substitute<'_> for Function {
         unbound_vars: &mut HashSet<TyVar>,
     ) {
         self.body.substitute(cx, unbound_vars);
-        cx.substitute_type_id(self.id.get(cx.db).ty, unbound_vars);
+        cx.substitute_type_id(
+            self.id.expect("to be resolved").get(cx.db).ty,
+            unbound_vars,
+        );
     }
 }
 

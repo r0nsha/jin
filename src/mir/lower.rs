@@ -14,7 +14,9 @@ pub(crate) fn lower(db: &mut Database, hir: Hir) -> Mir {
         for def in &module.definitions {
             match &def.kind {
                 hir::DefinitionKind::Function(fun) => {
-                    let fun = LowerCx::new(db, fun.id).lower(fun).unwrap();
+                    let fun = LowerCx::new(db, fun.id.expect("to be resolved"))
+                        .lower(fun)
+                        .unwrap();
                     mir.add_function(fun);
                 }
             }
