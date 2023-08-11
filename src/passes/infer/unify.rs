@@ -1,5 +1,6 @@
 use ena::unify::{EqUnifyValue, UnifyKey};
 
+use crate::passes::infer::normalize::NormalizeTy;
 use crate::{
     diagnostics::{Diagnostic, Label},
     ty::*,
@@ -22,6 +23,11 @@ impl<'db> InferCx<'db> {
                 Constraint::Callable { callee } => {
                     self.unify_callable(callee.get(self.db).clone())?
                 }
+                Constraint::CallResult { callee, result } => self
+                    .unify_call_result(
+                        callee.get(self.db).clone(),
+                        result.get(self.db).clone(),
+                    )?,
             }
         }
 
@@ -29,12 +35,24 @@ impl<'db> InferCx<'db> {
     }
 
     fn unify_callable(&mut self, callee: Ty) -> Result<(), InferError> {
-        let callee = self.normalize_ty(callee);
-        dbg!(&self.tcx.unification_table);
-        dbg!(&callee);
+        let callee = callee.normalize(&mut self.tcx);
 
         match &callee.kind {
             TyKind::Function(_) => Ok(()),
+            _ => Err(InferError::NotCallable { ty: callee }),
+        }
+    }
+
+    fn unify_call_result(
+        &mut self,
+        callee: Ty,
+        result: Ty,
+    ) -> Result<(), InferError> {
+        let callee = callee.normalize(&mut self.tcx);
+        let result = result.normalize(&mut self.tcx);
+
+        match &callee.kind {
+            TyKind::Function(fun) => self.unify_ty_ty(&fun.ret, &result),
             _ => Err(InferError::NotCallable { ty: callee }),
         }
     }
@@ -44,8 +62,8 @@ impl<'db> InferCx<'db> {
         expected: &Ty,
         actual: &Ty,
     ) -> Result<(), InferError> {
-        let expected = self.normalize_ty(expected.clone());
-        let actual = self.normalize_ty(actual.clone());
+        let expected = expected.clone().normalize(&mut self.tcx);
+        let actual = actual.clone().normalize(&mut self.tcx);
 
         match (&expected.kind, &actual.kind) {
             (TyKind::Function(expected), TyKind::Function(actual)) => {
@@ -94,22 +112,6 @@ impl<'db> InferCx<'db> {
             | (TyKind::Int(IntTy::Int), TyKind::Int(IntTy::Int)) => Ok(()),
 
             (_, _) => Err(InferError::TypesNotEq { expected, actual }),
-        }
-    }
-
-    fn normalize_ty(&mut self, ty: Ty) -> Ty {
-        match ty.kind {
-            TyKind::Function(fun) => {
-                let ret = self.normalize_ty(*fun.ret);
-                Ty::fun(ret, ty.span)
-            }
-            TyKind::Var(var) => {
-                match self.tcx.unification_table.probe_value(var) {
-                    Some(ty) => self.normalize_ty(ty),
-                    None => ty,
-                }
-            }
-            TyKind::Int(_) | TyKind::Unit | TyKind::Never => ty,
         }
     }
 }

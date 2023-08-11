@@ -30,17 +30,22 @@ impl ops::DerefMut for Constraints {
 pub(crate) enum Constraint {
     Eq { expected: TyId, actual: TyId },
     Callable { callee: TyId },
+    CallResult { callee: TyId, result: TyId },
+}
+
+impl Constraint {
+    fn order(&self) -> usize {
+        match self {
+            Constraint::Eq { .. } => 0,
+            Constraint::Callable { .. } => 1,
+            Constraint::CallResult { .. } => 2,
+        }
+    }
 }
 
 impl Ord for Constraint {
     fn cmp(&self, other: &Self) -> Ordering {
-        use Constraint::*;
-
-        match (self, other) {
-            (Eq { .. }, Callable { .. }) => Ordering::Less,
-            (Callable { .. }, Eq { .. }) => Ordering::Greater,
-            _ => Ordering::Equal,
-        }
+        self.order().cmp(&other.order())
     }
 }
 

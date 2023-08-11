@@ -3,6 +3,7 @@ mod substitute;
 mod type_env;
 mod typecx;
 mod unify;
+mod normalize;
 
 use crate::db::{SymbolId, TyId};
 use crate::{db::Database, hir::*, ty::*};
@@ -91,7 +92,10 @@ impl Infer<'_> for Definition {
             DefinitionKind::Function(fun) => fun.infer(cx, env),
         }
 
-        self.id.expect("to be resolved").get_mut(cx.db).ty = self.kind.ty();
+        let sym_ty = cx.infer_symbol(self.id.expect("to be resolved"));
+
+        cx.constraints
+            .push(Constraint::Eq { expected: self.kind.ty(), actual: sym_ty });
     }
 }
 
@@ -101,13 +105,11 @@ impl Infer<'_> for Function {
         let fun_ty = Ty::fun(ret_ty.clone(), self.span);
 
         let ret_ty = Ty::alloc(cx.db, ret_ty);
+        let fun_ty = Ty::alloc(cx.db, fun_ty);
 
-        let ty = Ty::alloc(cx.db, fun_ty);
+        self.ty = fun_ty;
 
-        self.ty = ty;
         let id = self.id.expect("to be resolved");
-        id.get_mut(cx.db).ty = ty;
-
         env.fun_scopes.push(FunScope { id, ret_ty });
 
         self.body.infer(cx, env);
@@ -154,7 +156,18 @@ impl Infer<'_> for Return {
 impl Infer<'_> for Call {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         self.callee.infer(cx, env);
-        cx.constraints.push(Constraint::Callable { callee: self.callee.ty() })
+
+        let callee_ty = self.callee.ty();
+
+        cx.constraints.push(Constraint::Callable { callee: callee_ty });
+
+        let result_ty = Ty::alloc(cx.db, cx.tcx.fresh_type_var(self.span));
+        self.ty = result_ty;
+
+        cx.constraints.push(Constraint::CallResult {
+            callee: callee_ty,
+            result: result_ty,
+        });
     }
 }
 
