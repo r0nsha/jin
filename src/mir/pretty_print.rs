@@ -27,7 +27,9 @@ fn print_function<'d>(db: &Database, fun: &Function) -> RcDoc<'d, ()> {
 
     RcDoc::text("fn")
         .append(RcDoc::space())
-        .append(RcDoc::text(fun.id().get(db).name.standard_full_name()))
+        .append(RcDoc::text(
+            fun.id().get(db).qualified_name.standard_full_name(),
+        ))
         .append(RcDoc::text("()"))
         .append(RcDoc::space())
         .append(ret_ty)

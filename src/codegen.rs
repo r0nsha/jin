@@ -89,7 +89,11 @@ fn codegen_main<'db>(
     db: &'db Database,
     arena: &'db Arena<'db>,
 ) -> DocBuilder<'db, Arena<'db>> {
-    let main_fun_name = db.main_fun().unwrap().name.full_c_name();
+    let main_fun_name = db
+        .main_fun()
+        .expect("to have a main function")
+        .qualified_name
+        .full_c_name();
 
     arena
         .text("int main() {")
@@ -166,7 +170,7 @@ impl<'a, 'db> Codegen<'a, 'db> for Function {
         let fun = self.id().get(cx.db);
 
         let fun_ty = fun.ty.get(cx.db).kind.as_function().unwrap();
-        let name = fun.name.full_c_name();
+        let name = fun.qualified_name.full_c_name();
 
         let sig = arena
             .text(c_type(&fun_ty.ret))

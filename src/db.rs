@@ -19,7 +19,6 @@ pub(crate) struct Database {
     pub(crate) sources: Sources,
     pub(crate) modules: IdVec<ModuleId, Module>,
     pub(crate) symbols: IdVec<SymbolId, Symbol>,
-    pub(crate) functions: IdVec<FunctionId, Function>,
     // TODO: split this into TypeCx?
     pub(crate) types: IdVec<TyId, Ty>,
 
@@ -28,7 +27,7 @@ pub(crate) struct Database {
     root_dir: PathBuf,
     main_source: SourceId,
     main_module: Option<ModuleId>,
-    main_fun: Option<FunctionId>,
+    main_fun: Option<SymbolId>,
 }
 
 impl Database {
@@ -47,7 +46,6 @@ impl Database {
             sources,
             modules: IdVec::new(),
             symbols: IdVec::new(),
-            functions: IdVec::new(),
             types: IdVec::new(),
 
             diagnostics: Diagnostics::new(),
@@ -83,15 +81,15 @@ impl Database {
         self.main_module.and_then(|id| self.modules.get(id))
     }
 
-    pub(crate) fn main_fun_id(&self) -> Option<FunctionId> {
+    pub(crate) fn main_fun_id(&self) -> Option<SymbolId> {
         self.main_fun
     }
 
-    pub(crate) fn main_fun(&self) -> Option<&Function> {
-        self.main_fun.and_then(|id| self.functions.get(id))
+    pub(crate) fn main_fun(&self) -> Option<&Symbol> {
+        self.main_fun.and_then(|id| self.symbols.get(id))
     }
 
-    pub(crate) fn set_main_fun(&mut self, id: FunctionId) {
+    pub(crate) fn set_main_fun(&mut self, id: SymbolId) {
         self.main_fun = Some(id);
     }
 }
@@ -122,7 +120,6 @@ macro_rules! new_db_id {
 
 new_db_id!(ModuleId -> modules : Module);
 new_db_id!(SymbolId -> symbols : Symbol);
-new_db_id!(FunctionId -> functions : Function);
 new_db_id!(TyId -> types : Ty);
 
 impl Ty {
@@ -168,14 +165,14 @@ pub(crate) struct Symbol {
     pub(crate) module_id: ModuleId,
     pub(crate) qualified_name: QualifiedName,
     pub(crate) scope_level: ScopeLevel,
-    pub(crate) kind: SymbolKind,
+    pub(crate) kind: Box<SymbolKind>,
     pub(crate) ty: TyId,
     pub(crate) span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) enum SymbolKind {
-    Function(FunctionId),
+    Function(Function),
 }
 
 impl Symbol {
@@ -193,7 +190,7 @@ impl Symbol {
             module_id,
             qualified_name,
             scope_level,
-            kind,
+            kind: Box::new(kind),
             ty,
             span,
         })
@@ -239,36 +236,6 @@ impl Ord for ScopeLevel {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Function {
-    pub(crate) id: FunctionId,
-    pub(crate) module_id: ModuleId,
-    pub(crate) name: QualifiedName,
-    pub(crate) kind: FunKind,
-    pub(crate) span: Span,
-    pub(crate) ty: TyId,
-}
-
-impl Function {
-    pub(crate) fn alloc(
-        db: &mut Database,
-        module_id: ModuleId,
-        name: QualifiedName,
-        kind: FunKind,
-        span: Span,
-        ty: TyId,
-    ) -> FunctionId {
-        db.functions.push_with_id(|id| Function {
-            id,
-            module_id,
-            name,
-            kind,
-            span,
-            ty,
-        })
-    }
-}
-
-#[derive(Debug, Clone)]
-pub(crate) enum FunKind {
+pub(crate) enum Function {
     Orphan,
 }

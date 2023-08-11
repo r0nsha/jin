@@ -1,3 +1,4 @@
+use crate::db::{self, SymbolKind};
 use crate::{
     db::Database,
     diagnostics::{Diagnostic, Label},
@@ -8,11 +9,14 @@ use crate::{
 pub(crate) fn find_main(db: &mut Database) {
     let main_module_id = db.main_module_id().unwrap();
 
-    let main_fun_id = if let Some(main_fun) = db
-        .functions
-        .iter()
-        .find(|f| f.module_id == main_module_id && f.name.name() == "main")
-    {
+    let main_fun_id = if let Some(main_fun) = db.symbols.iter().find(|sym| {
+        sym.module_id == main_module_id
+            && matches!(
+                sym.kind.as_ref(),
+                SymbolKind::Function(db::Function::Orphan)
+            )
+            && sym.qualified_name.name() == "main"
+    }) {
         let fun_ty = main_fun.ty.get(db);
 
         if !is_main_fun_ty(fun_ty) {

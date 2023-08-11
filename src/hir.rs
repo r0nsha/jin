@@ -6,7 +6,7 @@ pub(crate) use lower::lower;
 use ustr::Ustr;
 
 use crate::{
-    db::{Database, FunctionId, ModuleId, SymbolId, TyId},
+    db::{Database, ModuleId, SymbolId, TyId},
     span::{Span, Spanned},
 };
 
@@ -65,7 +65,7 @@ impl Spanned for Node {
 #[derive(Debug, Clone)]
 pub(crate) struct Definition {
     pub(crate) id: Option<SymbolId>,
-    pub(crate) name: Ustr, // TODO: remove?
+    pub(crate) name: Ustr,
     pub(crate) kind: DefinitionKind,
     pub(crate) span: Span,
     pub(crate) ty: TyId,
@@ -86,8 +86,8 @@ impl DefinitionKind {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Function {
-    pub(crate) id: Option<FunctionId>,
-    pub(crate) name: Ustr, // TODO: remove?
+    pub(crate) id: Option<SymbolId>,
+    pub(crate) name: Ustr,
     pub(crate) body: Block,
     pub(crate) span: Span,
     pub(crate) ty: TyId,

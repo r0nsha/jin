@@ -8,7 +8,7 @@ use ustr::{ustr, Ustr};
 use crate::db::SymbolId;
 use crate::{
     common::{new_id_type, IdVec},
-    db::{Database, FunctionId, TyId},
+    db::{Database, TyId},
     span::Span,
 };
 
@@ -33,14 +33,14 @@ impl Mir {
 
 #[derive(Debug)]
 pub(crate) struct Function {
-    id: FunctionId,
+    id: SymbolId,
     registers: IdVec<RegisterId, Register>,
     parameters: Vec<RegisterId>,
     cfg: Cfg,
 }
 
 impl Function {
-    fn new(id: FunctionId) -> Self {
+    fn new(id: SymbolId) -> Self {
         Self {
             id,
             registers: IdVec::new(),
@@ -49,7 +49,7 @@ impl Function {
         }
     }
 
-    pub(crate) fn id(&self) -> FunctionId {
+    pub(crate) fn id(&self) -> SymbolId {
         self.id
     }
 

@@ -2,12 +2,9 @@ use std::collections::HashMap;
 
 use ustr::{Ustr, UstrMap};
 
-use crate::db::{FunctionId, SymbolKind};
+use crate::db::SymbolKind;
 use crate::{
-    db::{
-        self, Database, FunKind, ModuleId, ScopeLevel, Symbol, SymbolId, TyId,
-        Vis,
-    },
+    db::{self, Database, ModuleId, ScopeLevel, Symbol, SymbolId, TyId, Vis},
     diagnostics::{Diagnostic, Label},
     hir::*,
     span::Span,
@@ -55,10 +52,10 @@ impl<'db> ResolveCx<'db> {
                 let qualified_name =
                     module.id.get(self.db).name.clone().child(def.name);
 
-                let kind = match &mut def.kind {
-                    DefinitionKind::Function(fun) => SymbolKind::Function(
-                        self.create_function(module.id, fun),
-                    ),
+                let kind = match &def.kind {
+                    DefinitionKind::Function(_) => {
+                        SymbolKind::Function(db::Function::Orphan)
+                    }
                 };
 
                 let id = Symbol::alloc(
@@ -70,6 +67,10 @@ impl<'db> ResolveCx<'db> {
                     TyId::null(),
                     def.span,
                 );
+
+                match &mut def.kind {
+                    DefinitionKind::Function(fun) => fun.id = Some(id),
+                }
 
                 def.id = Some(id);
 
@@ -88,27 +89,6 @@ impl<'db> ResolveCx<'db> {
                 def.resolve(self, &mut env);
             }
         }
-    }
-
-    fn create_function(
-        &mut self,
-        module_id: ModuleId,
-        fun: &mut Function,
-    ) -> FunctionId {
-        let name = module_id.get(self.db).name.clone().child(fun.name);
-
-        let id = db::Function::alloc(
-            self.db,
-            module_id,
-            name,
-            FunKind::Orphan,
-            fun.span,
-            fun.ty,
-        );
-
-        fun.id = Some(id);
-
-        id
     }
 }
 

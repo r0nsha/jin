@@ -35,7 +35,7 @@ struct LowerCx<'db> {
 }
 
 impl<'db> LowerCx<'db> {
-    fn new(db: &'db mut Database, fun_id: FunctionId) -> Self {
+    fn new(db: &'db mut Database, fun_id: SymbolId) -> Self {
         Self { db, builder: FunctionBuilder::new(fun_id) }
     }
 
