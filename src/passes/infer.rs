@@ -1,9 +1,9 @@
 mod constraint;
+mod normalize;
 mod substitute;
 mod type_env;
 mod typecx;
 mod unify;
-mod normalize;
 
 use crate::db::{SymbolId, TyId};
 use crate::{db::Database, hir::*, ty::*};
@@ -157,17 +157,16 @@ impl Infer<'_> for Call {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         self.callee.infer(cx, env);
 
-        let callee_ty = self.callee.ty();
+        let result_ty = cx.tcx.fresh_type_var(self.span);
+        let expected_ty =
+            Ty::alloc(cx.db, Ty::fun(result_ty.clone(), self.span));
 
-        cx.constraints.push(Constraint::Callable { callee: callee_ty });
-
-        let result_ty = Ty::alloc(cx.db, cx.tcx.fresh_type_var(self.span));
-        self.ty = result_ty;
-
-        cx.constraints.push(Constraint::CallResult {
-            callee: callee_ty,
-            result: result_ty,
+        cx.constraints.push(Constraint::Eq {
+            expected: expected_ty,
+            actual: self.callee.ty(),
         });
+
+        self.ty = Ty::alloc(cx.db, result_ty);
     }
 }
 

@@ -11,8 +11,8 @@ use super::{constraint::Constraint, InferCx};
 
 impl<'db> InferCx<'db> {
     pub(crate) fn unification(&mut self) -> Result<(), InferError> {
-        let mut constraints = self.constraints.clone();
-        constraints.sort();
+        // PERF: can I remove this clone?
+        let constraints = self.constraints.clone();
 
         for constraint in constraints.iter() {
             match constraint {
@@ -20,41 +20,10 @@ impl<'db> InferCx<'db> {
                     &expected.get(self.db).clone(),
                     &actual.get(self.db).clone(),
                 )?,
-                Constraint::Callable { callee } => {
-                    self.unify_callable(callee.get(self.db).clone())?
-                }
-                Constraint::CallResult { callee, result } => self
-                    .unify_call_result(
-                        callee.get(self.db).clone(),
-                        result.get(self.db).clone(),
-                    )?,
             }
         }
 
         Ok(())
-    }
-
-    fn unify_callable(&mut self, callee: Ty) -> Result<(), InferError> {
-        let callee = callee.normalize(&mut self.tcx);
-
-        match &callee.kind {
-            TyKind::Function(_) => Ok(()),
-            _ => Err(InferError::NotCallable { ty: callee }),
-        }
-    }
-
-    fn unify_call_result(
-        &mut self,
-        callee: Ty,
-        result: Ty,
-    ) -> Result<(), InferError> {
-        let callee = callee.normalize(&mut self.tcx);
-        let result = result.normalize(&mut self.tcx);
-
-        match &callee.kind {
-            TyKind::Function(fun) => self.unify_ty_ty(&fun.ret, &result),
-            _ => Err(InferError::NotCallable { ty: callee }),
-        }
     }
 
     fn unify_ty_ty(

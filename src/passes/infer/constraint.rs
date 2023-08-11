@@ -1,4 +1,3 @@
-use std::cmp::Ordering;
 use std::ops;
 
 use crate::db::TyId;
@@ -29,28 +28,4 @@ impl ops::DerefMut for Constraints {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Constraint {
     Eq { expected: TyId, actual: TyId },
-    Callable { callee: TyId },
-    CallResult { callee: TyId, result: TyId },
-}
-
-impl Constraint {
-    fn order(&self) -> usize {
-        match self {
-            Constraint::Eq { .. } => 0,
-            Constraint::Callable { .. } => 1,
-            Constraint::CallResult { .. } => 2,
-        }
-    }
-}
-
-impl Ord for Constraint {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.order().cmp(&other.order())
-    }
-}
-
-impl PartialOrd for Constraint {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
 }
