@@ -1,3 +1,6 @@
+use std::cmp::Ordering;
+use std::ops;
+
 use crate::db::TyId;
 
 #[derive(Debug, Clone)]
@@ -7,30 +10,42 @@ impl Constraints {
     pub(crate) fn new() -> Self {
         Self(vec![])
     }
+}
 
-    pub(crate) fn one(c: Constraint) -> Self {
-        Self(vec![c])
-    }
+impl ops::Deref for Constraints {
+    type Target = Vec<Constraint>;
 
-    pub(crate) fn push(&mut self, constraint: Constraint) {
-        self.0.push(constraint)
-    }
-
-    pub(crate) fn extend(&mut self, other: Self) {
-        self.0.extend(other.0)
-    }
-
-    pub(crate) fn merge(self, other: Self) -> Self {
-        Self(self.0.into_iter().chain(other.0).collect())
-    }
-
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &Constraint> {
-        self.0.iter()
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
 }
 
-#[derive(Debug, Clone)]
+impl ops::DerefMut for Constraints {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Constraint {
     Eq { expected: TyId, actual: TyId },
     Callable { callee: TyId },
+}
+
+impl Ord for Constraint {
+    fn cmp(&self, other: &Self) -> Ordering {
+        use Constraint::*;
+
+        match (self, other) {
+            (Eq { .. }, Callable { .. }) => Ordering::Less,
+            (Callable { .. }, Eq { .. }) => Ordering::Greater,
+            _ => Ordering::Equal,
+        }
+    }
+}
+
+impl PartialOrd for Constraint {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }

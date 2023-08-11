@@ -10,7 +10,10 @@ use super::{constraint::Constraint, InferCx};
 
 impl<'db> InferCx<'db> {
     pub(crate) fn unification(&mut self) -> Result<(), InferError> {
-        for constraint in self.constraints.clone().iter() {
+        let mut constraints = self.constraints.clone();
+        constraints.sort();
+
+        for constraint in constraints.iter() {
             match constraint {
                 Constraint::Eq { expected, actual } => self.unify_ty_ty(
                     &expected.get(self.db).clone(),
@@ -27,10 +30,12 @@ impl<'db> InferCx<'db> {
 
     fn unify_callable(&mut self, callee: Ty) -> Result<(), InferError> {
         let callee = self.normalize_ty(callee);
+        dbg!(&self.tcx.unification_table);
+        dbg!(&callee);
 
         match &callee.kind {
-            TyKind::Function(_) => todo!(),
-            TyKind::Var(_) => todo!(),
+            TyKind::Function(_) => Ok(()),
+            _ => Err(InferError::NotCallable { ty: callee }),
         }
     }
 
@@ -130,6 +135,7 @@ impl EqUnifyValue for Ty {}
 pub(crate) enum InferError {
     TypesNotEq { expected: Ty, actual: Ty },
     InfiniteType { ty: Ty, var: TyVar },
+    NotCallable { ty: Ty },
 }
 
 impl From<InferError> for Diagnostic {
@@ -153,6 +159,15 @@ impl From<InferError> for Diagnostic {
                 Diagnostic::error("infer::infinite_type")
                     .with_message(format!("type `{ty}` has an infinite size"))
                     .with_label(Label::primary(ty.span))
+            }
+            InferError::NotCallable { ty } => {
+                Diagnostic::error("infer::not_callable")
+                    .with_message(format!(
+                        "type `{ty}` is neither a function nor a struct"
+                    ))
+                    .with_label(
+                        Label::primary(ty.span).with_message("not callable"),
+                    )
             }
         }
     }
