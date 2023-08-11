@@ -73,19 +73,7 @@ impl<'db> LowerCx<'db> {
 
     fn lower_call(&mut self, call: &hir::Call) -> Value {
         let value = self.lower_node(&call.callee);
-        let result_ty = Ty::alloc(
-            self.db,
-            call.ty
-                .get(self.db)
-                .kind
-                .as_function()
-                .unwrap()
-                .ret
-                .as_ref()
-                .clone(),
-        );
-
-        let reg = self.builder.create_register(result_ty);
+        let reg = self.builder.create_register(call.ty);
         self.builder.build_call(reg, value, call.span);
         reg.into()
     }
