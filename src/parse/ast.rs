@@ -14,7 +14,7 @@ pub(crate) struct Module {
     pub(crate) source: SourceId,
     pub(crate) name: QualifiedName,
     pub(crate) is_main: bool,
-    pub(crate) top_level: Vec<TopLevel>,
+    pub(crate) top_levels: Vec<TopLevel>,
 }
 
 impl Module {
@@ -23,7 +23,7 @@ impl Module {
         name: QualifiedName,
         is_main: bool,
     ) -> Self {
-        Self { source: source_id, name, is_main, top_level: vec![] }
+        Self { source: source_id, name, is_main, top_levels: vec![] }
     }
 
     pub(crate) fn pretty_print(&self) -> io::Result<()> {

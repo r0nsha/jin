@@ -47,7 +47,7 @@ impl Parser {
         let mut module = Module::new(source_id, name, is_main);
 
         while self.pos < self.tokens.len() - 1 {
-            module.top_level.push(self.parse_top_level()?);
+            module.top_levels.push(self.parse_top_level()?);
         }
 
         Ok(module)

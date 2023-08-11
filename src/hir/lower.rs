@@ -32,7 +32,7 @@ impl<'db> Lower<'db> {
         Module {
             id: self.id,
             definitions: module
-                .top_level
+                .top_levels
                 .into_iter()
                 .map(|tl| self.lower_top_level(tl))
                 .collect(),
