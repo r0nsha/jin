@@ -32,4 +32,5 @@ impl Constraints {
 #[derive(Debug, Clone)]
 pub(crate) enum Constraint {
     Eq { expected: TyId, actual: TyId },
+    Callable { callee: TyId },
 }

@@ -1,8 +1,12 @@
 use ena::unify::{EqUnifyValue, UnifyKey};
 
-use crate::ty::*;
+use crate::{
+    diagnostics::{Diagnostic, Label},
+    ty::*,
+    ty::{Ty, TyVar},
+};
 
-use super::{constraint::Constraint, error::InferError, InferCx};
+use super::{constraint::Constraint, InferCx};
 
 impl<'db> InferCx<'db> {
     pub(crate) fn unification(&mut self) -> Result<(), InferError> {
@@ -12,9 +16,22 @@ impl<'db> InferCx<'db> {
                     &expected.get(self.db).clone(),
                     &actual.get(self.db).clone(),
                 )?,
+                Constraint::Callable { callee } => {
+                    self.unify_callable(callee.get(self.db).clone())?
+                }
             }
         }
+
         Ok(())
+    }
+
+    fn unify_callable(&mut self, callee: Ty) -> Result<(), InferError> {
+        let callee = self.normalize_ty(callee);
+
+        match &callee.kind {
+            TyKind::Function(_) => todo!(),
+            TyKind::Var(_) => todo!(),
+        }
     }
 
     fn unify_ty_ty(
@@ -109,3 +126,34 @@ impl UnifyKey for TyVar {
 }
 
 impl EqUnifyValue for Ty {}
+
+pub(crate) enum InferError {
+    TypesNotEq { expected: Ty, actual: Ty },
+    InfiniteType { ty: Ty, var: TyVar },
+}
+
+impl From<InferError> for Diagnostic {
+    fn from(err: InferError) -> Self {
+        match err {
+            InferError::TypesNotEq { expected, actual } => {
+                Diagnostic::error("infer::incompatible_types")
+                    .with_message(format!(
+                        "expected `{expected}`, got `{actual}` instead"
+                    ))
+                    .with_label(Label::primary(expected.span).with_message(
+                        format!("expected type `{expected}` originates here"),
+                    ))
+                    .with_label(
+                        Label::secondary(actual.span).with_message(format!(
+                            "found type `{actual}` here"
+                        )),
+                    )
+            }
+            InferError::InfiniteType { ty, .. } => {
+                Diagnostic::error("infer::infinite_type")
+                    .with_message(format!("type `{ty}` has an infinite size"))
+                    .with_label(Label::primary(ty.span))
+            }
+        }
+    }
+}

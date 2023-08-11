@@ -1,5 +1,4 @@
 mod constraint;
-mod error;
 mod substitute;
 mod type_env;
 mod typecx;
@@ -153,8 +152,9 @@ impl Infer<'_> for Return {
 }
 
 impl Infer<'_> for Call {
-    fn infer(&mut self, cx: &mut InferCx<'_>, _env: &mut TypeEnv) {
-        todo!()
+    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
+        self.callee.infer(cx, env);
+        cx.constraints.push(Constraint::Callable { callee: self.callee.ty() })
     }
 }
 
