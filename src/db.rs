@@ -167,7 +167,6 @@ pub(crate) struct Symbol {
     pub(crate) id: SymbolId,
     pub(crate) module_id: ModuleId,
     pub(crate) qualified_name: QualifiedName,
-    pub(crate) vis: Vis,
     pub(crate) scope_level: ScopeLevel,
     pub(crate) kind: SymbolKind,
     pub(crate) ty: TyId,
@@ -184,7 +183,6 @@ impl Symbol {
         db: &mut Database,
         module_id: ModuleId,
         qualified_name: QualifiedName,
-        vis: Vis,
         scope_level: ScopeLevel,
         kind: SymbolKind,
         ty: TyId,
@@ -194,12 +192,18 @@ impl Symbol {
             id,
             module_id,
             qualified_name,
-            vis,
             scope_level,
             kind,
             ty,
             span,
         })
+    }
+
+    pub(crate) fn vis(&self) -> Vis {
+        match &self.scope_level {
+            ScopeLevel::Global(vis) => *vis,
+            ScopeLevel::Scope(_) => Vis::Private,
+        }
     }
 }
 
@@ -211,38 +215,8 @@ pub(crate) enum Vis {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ScopeLevel {
-    Global,
+    Global(Vis),
     Scope(usize),
-}
-
-impl ScopeLevel {
-    pub(crate) fn next(self) -> Self {
-        use ScopeLevel::*;
-
-        match self {
-            Global => Scope(1),
-            Scope(n) => Scope(n + 1),
-        }
-    }
-
-    pub(crate) fn prev(self) -> Self {
-        use ScopeLevel::*;
-
-        match self {
-            Global => panic!("SymbolLevel::Global has no previous scope"),
-            Scope(n) if n == 1 => Global,
-            Scope(n) => Scope(n - 1),
-        }
-    }
-}
-
-impl From<usize> for ScopeLevel {
-    fn from(value: usize) -> Self {
-        match value {
-            0 => Self::Global,
-            n => Self::Scope(n),
-        }
-    }
 }
 
 impl PartialOrd for ScopeLevel {
@@ -256,9 +230,9 @@ impl Ord for ScopeLevel {
         use ScopeLevel::*;
 
         match (self, other) {
-            (Global, Global) => cmp::Ordering::Equal,
-            (Global, Scope(_)) => cmp::Ordering::Less,
-            (Scope(_), Global) => cmp::Ordering::Greater,
+            (Global(_), Global(_)) => cmp::Ordering::Equal,
+            (Global(_), Scope(_)) => cmp::Ordering::Less,
+            (Scope(_), Global(_)) => cmp::Ordering::Greater,
             (Scope(a), Scope(b)) => a.cmp(b),
         }
     }

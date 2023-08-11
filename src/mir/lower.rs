@@ -81,7 +81,7 @@ impl<'db> LowerCx<'db> {
     fn lower_name(&mut self, name: &hir::Name) -> Value {
         let sym = name.id.expect("to be resolved").get(self.db);
 
-        if let ScopeLevel::Global = sym.scope_level {
+        if let ScopeLevel::Global(_) = sym.scope_level {
             Value::Symbol(sym.id)
         } else {
             todo!("local/nested name")
