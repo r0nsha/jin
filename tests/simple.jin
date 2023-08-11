@@ -1,5 +1,4 @@
 fn main() = {
-	// We return nothing for now...
 	answer()
 	return ()
 }

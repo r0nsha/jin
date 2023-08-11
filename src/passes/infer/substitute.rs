@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use crate::passes::infer::normalize::NormalizeTy;
 use crate::{
     db::TyId,
     hir::*,
@@ -17,6 +16,13 @@ impl<'db> InferCx<'db> {
     ) -> HashSet<TyVar> {
         let mut unbound_vars = HashSet::new();
 
+        // Substitute all symbol types
+        for i in 0..self.db.symbols.len() {
+            let ty = self.db.symbols[i.into()].ty;
+            self.substitute_type_id(ty, &mut unbound_vars);
+        }
+
+        // Substitute all modules recursively
         for module in modules {
             for def in &mut module.definitions {
                 def.substitute(self, &mut unbound_vars);
