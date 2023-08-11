@@ -22,9 +22,8 @@ pub(crate) fn lower(db: &mut Database, hir: Hir) -> Mir {
 fn lower_def(db: &mut Database, mir: &mut Mir, def: &hir::Definition) {
     match &def.kind {
         hir::DefinitionKind::Function(fun) => {
-            let fun = LowerCx::new(db, fun.id.expect("to be resolved"))
-                .lower(fun)
-                .unwrap();
+            let id = fun.id.expect("to be resolved");
+            let fun = LowerCx::new(db, id).lower(fun).unwrap();
             mir.add_function(fun);
         }
     }
