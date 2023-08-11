@@ -48,6 +48,11 @@ impl<'db> InferCx<'db> {
                     actual,
                 }),
 
+            (TyKind::Never, _)
+            | (_, TyKind::Never)
+            | (TyKind::Unit, TyKind::Unit)
+            | (TyKind::Int(IntTy::Int), TyKind::Int(IntTy::Int)) => Ok(()),
+
             (TyKind::Var(var), _) => {
                 actual
                     .occurs_check(*var)
@@ -75,11 +80,6 @@ impl<'db> InferCx<'db> {
                         actual,
                     })
             }
-
-            (TyKind::Never, _)
-            | (_, TyKind::Never)
-            | (TyKind::Unit, TyKind::Unit)
-            | (TyKind::Int(IntTy::Int), TyKind::Int(IntTy::Int)) => Ok(()),
 
             (_, _) => Err(InferError::TypesNotEq { expected, actual }),
         }

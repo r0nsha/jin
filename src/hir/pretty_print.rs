@@ -50,9 +50,10 @@ impl<'db, 'd> ToDoc<'db, 'd> for Definition {
                 let ret_ty =
                     fun.ty.get(db).kind.as_function().unwrap().ret.to_doc(db);
 
-                RcDoc::text("fn()")
+                RcDoc::text("fn")
                     .append(RcDoc::space())
                     .append(RcDoc::text(fun.name.as_str()))
+                    .append(RcDoc::text("()"))
                     .append(RcDoc::space())
                     .append(ret_ty)
                     .append(RcDoc::space())
