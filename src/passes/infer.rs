@@ -91,7 +91,7 @@ impl Infer<'_> for Definition {
             DefinitionKind::Function(fun) => fun.infer(cx, env),
         }
 
-        self.id.get_mut(cx.db).ty = self.kind.ty();
+        self.id.expect("to be resolved").get_mut(cx.db).ty = self.kind.ty();
     }
 }
 

@@ -61,7 +61,7 @@ impl<'db> ResolveCx<'db> {
                     ),
                 };
 
-                def.id = Symbol::alloc(
+                let id = Symbol::alloc(
                     self.db,
                     module.id,
                     qualified_name,
@@ -72,7 +72,9 @@ impl<'db> ResolveCx<'db> {
                     def.span,
                 );
 
-                scope_symbols.insert(def.name, def.id);
+                def.id = Some(id);
+
+                scope_symbols.insert(def.name, id);
             }
 
             self.global_scope.0.insert(module.id, scope_symbols);
@@ -115,12 +117,12 @@ trait Resolve<'db> {
 
 impl Resolve<'_> for Definition {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        if self.id.is_null() {
+        if let Some(id) = self.id {
+            match &mut self.kind {
+                DefinitionKind::Function(fun) => fun.resolve(cx, env),
+            }
+        } else {
             todo!("local defs");
-        }
-
-        match &mut self.kind {
-            DefinitionKind::Function(fun) => fun.resolve(cx, env),
         }
     }
 }

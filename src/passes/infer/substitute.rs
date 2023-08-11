@@ -98,7 +98,10 @@ impl Substitute<'_> for Definition {
         }
 
         cx.substitute_type_id(self.ty, unbound_vars);
-        cx.substitute_type_id(self.id.get(cx.db).ty, unbound_vars);
+        cx.substitute_type_id(
+            self.id.expect("to be resolved").get(cx.db).ty,
+            unbound_vars,
+        );
     }
 }
 

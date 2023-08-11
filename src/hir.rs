@@ -64,7 +64,7 @@ impl Spanned for Node {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Definition {
-    pub(crate) id: SymbolId,
+    pub(crate) id: Option<SymbolId>,
     pub(crate) name: Ustr, // TODO: remove?
     pub(crate) kind: DefinitionKind,
     pub(crate) span: Span,

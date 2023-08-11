@@ -46,7 +46,7 @@ impl<'db> Lower<'db> {
                 let span = fun.span;
 
                 Definition {
-                    id: SymbolId::null(),
+                    id: None,
                     name,
                     kind: DefinitionKind::Function(self.lower_fun(fun)),
                     span,

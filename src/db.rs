@@ -12,7 +12,6 @@ use crate::{
     ty::Ty,
 };
 
-// TODO: call this Workspace instead?
 #[derive(Debug)]
 pub(crate) struct Database {
     build_options: BuildOptions,
