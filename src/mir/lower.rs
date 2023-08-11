@@ -12,18 +12,22 @@ pub(crate) fn lower(db: &mut Database, hir: Hir) -> Mir {
 
     for module in &hir.modules {
         for def in &module.definitions {
-            match &def.kind {
-                hir::DefinitionKind::Function(fun) => {
-                    let fun = LowerCx::new(db, fun.id.expect("to be resolved"))
-                        .lower(fun)
-                        .unwrap();
-                    mir.add_function(fun);
-                }
-            }
+            lower_def(db, &mut mir, def);
         }
     }
 
     mir
+}
+
+fn lower_def(db: &mut Database, mir: &mut Mir, def: &hir::Definition) {
+    match &def.kind {
+        hir::DefinitionKind::Function(fun) => {
+            let fun = LowerCx::new(db, fun.id.expect("to be resolved"))
+                .lower(fun)
+                .unwrap();
+            mir.add_function(fun);
+        }
+    }
 }
 
 struct LowerCx<'db> {
