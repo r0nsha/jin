@@ -98,7 +98,7 @@ trait Resolve<'db> {
 
 impl Resolve<'_> for Definition {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        if let Some(_) = self.id {
+        if self.id.is_some() {
             match &mut self.kind {
                 DefinitionKind::Function(fun) => fun.resolve(cx, env),
             }

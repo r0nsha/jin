@@ -106,6 +106,7 @@ macro_rules! new_db_key {
     ($name: ident -> $collection: ident : $type: ident) => {
         new_key_type!($name);
 
+        #[allow(unused)]
         impl $name {
             pub(crate) fn get(self, db: &Database) -> &$type {
                 &db.$collection[self]

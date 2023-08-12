@@ -21,13 +21,6 @@ impl Token {
         }
     }
 
-    pub(crate) fn as_int(&self) -> usize {
-        match self.kind {
-            TokenKind::Int(value) => value,
-            kind => panic!("expected Int, got {kind:?}"),
-        }
-    }
-
     pub(crate) fn kind_eq(&self, other: TokenKind) -> bool {
         mem::discriminant(&self.kind) == mem::discriminant(&other)
     }

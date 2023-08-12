@@ -105,9 +105,15 @@ impl UnifyKey for TyVar {
 impl EqUnifyValue for Ty {}
 
 pub(crate) enum InferError {
-    TypesNotEq { expected: Ty, actual: Ty },
-    InfiniteType { ty: Ty, var: TyVar },
-    NotCallable { ty: Ty },
+    TypesNotEq {
+        expected: Ty,
+        actual: Ty,
+    },
+    InfiniteType {
+        ty: Ty,
+        #[allow(unused)]
+        var: TyVar,
+    },
 }
 
 impl From<InferError> for Diagnostic {
@@ -131,15 +137,6 @@ impl From<InferError> for Diagnostic {
                 Diagnostic::error("infer::infinite_type")
                     .with_message(format!("type `{ty}` has an infinite size"))
                     .with_label(Label::primary(ty.span))
-            }
-            InferError::NotCallable { ty } => {
-                Diagnostic::error("infer::not_callable")
-                    .with_message(format!(
-                        "type `{ty}` is neither a function nor a struct"
-                    ))
-                    .with_label(
-                        Label::primary(ty.span).with_message("not callable"),
-                    )
             }
         }
     }

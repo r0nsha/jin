@@ -19,6 +19,7 @@ impl Span {
         Self { source_id, start, end }
     }
 
+    #[allow(unused)]
     pub(crate) fn unknown() -> Self {
         Self { source_id: SourceId::null(), start: 0, end: 0 }
     }
@@ -39,10 +40,12 @@ impl Span {
         self.end
     }
 
+    #[allow(unused)]
     pub(crate) fn len(&self) -> u32 {
         self.end - self.start
     }
 
+    #[allow(unused)]
     pub(crate) fn contains(&self, other: Self) -> bool {
         self.start <= other.start && self.end >= other.end
     }
