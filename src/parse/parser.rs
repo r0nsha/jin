@@ -87,10 +87,9 @@ impl<'a> Parser<'a> {
         self.parse_list(
             TokenKind::OpenParen,
             TokenKind::CloseParen,
-            |parser, _| {
-                parser.eat(TokenKind::empty_ident()).map(|tok| FunctionParam {
-                    name: tok.as_ident(),
-                    span: tok.span,
+            |parser, tok| {
+                parser.require_kind(tok, TokenKind::empty_ident()).map(|tok| {
+                    FunctionParam { name: tok.as_ident(), span: tok.span }
                 })
             },
         )
@@ -225,7 +224,14 @@ impl<'a> Parser<'a> {
 
     fn eat(&mut self, expected: TokenKind) -> ParseResult<Token> {
         let tok = self.require()?;
+        self.require_kind(tok, expected)
+    }
 
+    fn require_kind(
+        &mut self,
+        tok: Token,
+        expected: TokenKind,
+    ) -> ParseResult<Token> {
         if tok.kind_is(expected) {
             Ok(tok)
         } else {
