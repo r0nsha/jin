@@ -72,6 +72,7 @@ impl<'a> Parser<'a> {
             Ok(TopLevel::Function(Function {
                 name,
                 body: Box::new(body),
+                params: vec![],
                 span: name_span,
             }))
         } else {

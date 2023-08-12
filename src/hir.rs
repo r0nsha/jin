@@ -93,6 +93,14 @@ pub(crate) struct Function {
     pub(crate) id: Option<SymbolId>,
     pub(crate) name: Ustr,
     pub(crate) body: Block,
+    pub(crate) params: Vec<FunctionParam>,
+    pub(crate) span: Span,
+    pub(crate) ty: TyId,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct FunctionParam {
+    pub(crate) name: Ustr,
     pub(crate) span: Span,
     pub(crate) ty: TyId,
 }

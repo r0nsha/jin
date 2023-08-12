@@ -59,6 +59,13 @@ pub(crate) enum TopLevel {
 pub(crate) struct Function {
     pub(crate) name: Ustr,
     pub(crate) body: Box<Ast>,
+    pub(crate) params: Vec<FunctionParam>,
+    pub(crate) span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct FunctionParam {
+    pub(crate) name: Ustr,
     pub(crate) span: Span,
 }
 
