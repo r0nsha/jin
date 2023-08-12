@@ -303,10 +303,7 @@ impl From<ParseError> for Diagnostic {
                     .with_message(format!(
                         "expected {expected}, got {actual} instead"
                     ))
-                    .with_label(
-                        Label::primary(span)
-                            .with_message(format!("found {actual} here")),
-                    )
+                    .with_label(Label::primary(span).with_message("found here"))
             }
             ParseError::UnexpectedEof { span } => {
                 Diagnostic::error("parse::unexpected_eof")
