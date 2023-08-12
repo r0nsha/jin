@@ -84,7 +84,7 @@ impl<'db> Lower<'db> {
             id: None,
             name: fun.name,
             body,
-            params: vec![],
+            params: IndexMap::new(),
             span: fun.span,
             ty: TyId::null(),
         }

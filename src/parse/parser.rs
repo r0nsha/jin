@@ -63,19 +63,28 @@ impl<'a> Parser<'a> {
             let name_span = name_ident.span;
             let name = name_ident.as_ident();
 
+            let mut params = vec![];
+
             self.eat(TokenKind::OpenParen)?;
 
-            while !self.is(TokenKind::CloseParen) {}
+            while !self.is(TokenKind::CloseParen) {
+                let name_ident = self.eat_ident()?;
+
+                params.push(FunctionParam {
+                    name: name_ident.as_ident(),
+                    span: name_ident.span,
+                })
+            }
 
             self.eat(TokenKind::Eq)?;
 
             let body = self.parse_expr()?;
 
             Ok(TopLevel::Function(Function {
-                name,
+                name: name_ident.as_ident(),
                 body: Box::new(body),
                 params: vec![],
-                span: name_span,
+                span: name_ident.span,
             }))
         } else {
             let token = self.require()?;
