@@ -67,12 +67,23 @@ impl PrettyPrint {
 
     fn print_top_level(&mut self, tl: &TopLevel) {
         match tl {
-            TopLevel::Function(fun) => self.print_fun(fun),
+            TopLevel::Function(fun) => self.print_function(fun),
         }
     }
 
-    fn print_fun(&mut self, fun: &Function) {
+    fn print_function(&mut self, fun: &Function) {
         self.builder.begin_child(format!("fn {}", fun.name));
+
+        if !fun.params.is_empty() {
+            self.builder.begin_child("params".to_string());
+
+            for param in &fun.params {
+                self.builder.add_empty_child(format!("{}", param.name));
+            }
+
+            self.builder.end_child();
+        }
+
         self.print_ast(&fun.body);
         self.builder.end_child();
     }
