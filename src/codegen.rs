@@ -90,7 +90,7 @@ fn codegen_main<'db>(
     arena: &'db Arena<'db>,
 ) -> DocBuilder<'db, Arena<'db>> {
     let main_fun_name = db
-        .main_fun()
+        .main_function()
         .expect("to have a main function")
         .qualified_name
         .full_c_name();

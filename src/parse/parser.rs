@@ -225,6 +225,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    #[allow(unused)]
     fn token_kind(&self) -> Option<TokenKind> {
         self.token().map(|t| t.kind)
     }

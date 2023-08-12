@@ -6,11 +6,6 @@ use ustr::{ustr, Ustr};
 pub(crate) struct QualifiedName(Vec<Ustr>);
 
 impl QualifiedName {
-    pub(crate) fn new(full_name: Vec<Ustr>) -> Self {
-        assert!(!full_name.is_empty());
-        Self(full_name)
-    }
-
     pub(crate) fn from_path(root: &Path, target: &Path) -> Option<Self> {
         let target = target.with_extension("");
         let stripped = target.strip_prefix(root).ok()?;

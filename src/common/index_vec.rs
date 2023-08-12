@@ -29,6 +29,7 @@ impl<K: Key, V> IndexVec<K, V> {
     }
 
     #[inline]
+    #[allow(unused)]
     pub(crate) fn get_mut(&mut self, key: K) -> Option<&mut V> {
         self.vec.get_mut(key.into())
     }
@@ -44,6 +45,7 @@ impl<K: Key, V> IndexVec<K, V> {
     }
 
     #[inline]
+    #[allow(unused)]
     pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = &mut V> {
         self.vec.iter_mut()
     }

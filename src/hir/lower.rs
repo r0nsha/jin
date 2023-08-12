@@ -23,6 +23,7 @@ pub(crate) fn lower(db: &mut Database, modules: Vec<ast::Module>) -> Hir {
 }
 
 struct Lower<'db> {
+    #[allow(unused)]
     db: &'db mut Database,
     id: ModuleId,
 }

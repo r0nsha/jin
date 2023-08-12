@@ -65,6 +65,7 @@ impl Database {
         &self.root_dir
     }
 
+    #[allow(unused)]
     pub(crate) fn main_source_id(&self) -> SourceId {
         self.main_source
     }
@@ -81,11 +82,12 @@ impl Database {
         self.main_module.and_then(|id| self.modules.get(id))
     }
 
-    pub(crate) fn main_fun_id(&self) -> Option<SymbolId> {
+    #[allow(unused)]
+    pub(crate) fn main_function_id(&self) -> Option<SymbolId> {
         self.main_fun
     }
 
-    pub(crate) fn main_fun(&self) -> Option<&Symbol> {
+    pub(crate) fn main_function(&self) -> Option<&Symbol> {
         self.main_fun.and_then(|id| self.symbols.get(id))
     }
 
@@ -131,9 +133,11 @@ impl Ty {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Module {
+    #[allow(unused)]
     pub(crate) id: ModuleId,
     pub(crate) source_id: SourceId,
     pub(crate) name: QualifiedName,
+    #[allow(unused)]
     pub(crate) is_main: bool,
 }
 
@@ -197,6 +201,7 @@ impl Symbol {
         })
     }
 
+    #[allow(unused)]
     pub(crate) fn vis(&self) -> Vis {
         match &self.scope_level {
             ScopeLevel::Global(vis) => *vis,
@@ -214,6 +219,7 @@ pub(crate) enum Vis {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum ScopeLevel {
     Global(Vis),
+    #[allow(unused)]
     Scope(usize),
 }
 

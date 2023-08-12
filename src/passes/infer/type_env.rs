@@ -10,6 +10,7 @@ impl TypeEnv {
         Self { module_id, fun_scopes: FunScopes::new() }
     }
 
+    #[allow(unused)]
     pub(crate) fn module_id(&self) -> ModuleId {
         self.module_id
     }
@@ -38,6 +39,7 @@ impl FunScopes {
 
 #[derive(Debug, Clone)]
 pub(crate) struct FunScope {
+    #[allow(unused)]
     pub(crate) id: SymbolId,
     pub(crate) ret_ty: TyId,
 }

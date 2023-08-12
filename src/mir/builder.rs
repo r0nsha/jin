@@ -15,6 +15,7 @@ impl FunctionBuilder {
     }
 
     #[inline]
+    #[allow(unused)]
     pub(crate) fn block(&self, id: BlockId) -> &Block {
         &self.f.cfg.blocks[id]
     }
@@ -25,6 +26,7 @@ impl FunctionBuilder {
     }
 
     #[inline]
+    #[allow(unused)]
     pub(crate) fn current_block(&self) -> &Block {
         self.block(self.current_block)
     }
@@ -34,6 +36,7 @@ impl FunctionBuilder {
         self.block_mut(self.current_block)
     }
 
+    #[allow(unused)]
     pub(crate) fn reachable_blocks(&self) -> HashSet<BlockId> {
         let mut reachable = HashSet::new();
 
@@ -51,6 +54,7 @@ impl FunctionBuilder {
         self.f.registers.push(Register { ty })
     }
 
+    #[allow(unused)]
     pub(crate) fn create_parameter(&mut self, ty: TyId) -> usize {
         let reg_id = self.create_register(ty);
         self.f.parameters.push(reg_id);
@@ -67,6 +71,7 @@ impl FunctionBuilder {
         self.current_block = id;
     }
 
+    #[allow(unused)]
     pub(crate) fn create_edge(&mut self, source: BlockId, target: BlockId) {
         self.f.cfg.blocks[target].predecessors.push(source);
         self.f.cfg.blocks[source].successors.push(target);

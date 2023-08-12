@@ -218,10 +218,12 @@ impl Scopes {
         self.0.pop();
     }
 
+    #[allow(unused)]
     fn insert(&mut self, k: Ustr, v: SymbolId) {
         self.0.last_mut().unwrap().symbols.insert(k, v);
     }
 
+    #[allow(unused)]
     fn get(&self, k: Ustr) -> Option<(usize, &SymbolId)> {
         for (depth, scope) in self.0.iter().enumerate().rev() {
             if let Some(value) = scope.symbols.get(&k) {
@@ -231,6 +233,7 @@ impl Scopes {
         None
     }
 
+    #[allow(unused)]
     fn get_mut(&mut self, k: Ustr) -> Option<(usize, &mut SymbolId)> {
         for (depth, scope) in self.0.iter_mut().enumerate().rev() {
             if let Some(value) = scope.symbols.get_mut(&k) {
@@ -240,14 +243,17 @@ impl Scopes {
         None
     }
 
+    #[allow(unused)]
     fn get_value(&self, k: Ustr) -> Option<&SymbolId> {
         self.get(k).map(|r| r.1)
     }
 
+    #[allow(unused)]
     fn get_value_mut(&mut self, k: Ustr) -> Option<&mut SymbolId> {
         self.get_mut(k).map(|r| r.1)
     }
 
+    #[allow(unused)]
     fn depth(&self) -> usize {
         self.0.len()
     }

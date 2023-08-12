@@ -57,14 +57,17 @@ impl Function {
         self.registers.get(id)
     }
 
+    #[allow(unused)]
     pub(crate) fn parameter(&self, index: usize) -> Option<RegisterId> {
         self.parameters.get(index).copied()
     }
 
+    #[allow(unused)]
     pub(crate) fn parameters(&self) -> &[RegisterId] {
         &self.parameters
     }
 
+    #[allow(unused)]
     pub(crate) fn block(&self, id: BlockId) -> Option<&Block> {
         self.cfg.blocks.get(id)
     }
@@ -144,6 +147,7 @@ pub(crate) enum Instruction {
 #[derive(Debug, Clone)]
 pub(crate) struct Return {
     pub(crate) value: Value,
+    #[allow(unused)]
     pub(crate) span: Span,
 }
 
@@ -151,6 +155,7 @@ pub(crate) struct Return {
 pub(crate) struct Call {
     pub(crate) register: RegisterId,
     pub(crate) callee: Value,
+    #[allow(unused)]
     pub(crate) span: Span,
 }
 
@@ -158,11 +163,13 @@ pub(crate) struct Call {
 pub(crate) struct IntLit {
     pub(crate) register: RegisterId,
     pub(crate) value: usize,
+    #[allow(unused)]
     pub(crate) span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct UnitLit {
     pub(crate) register: RegisterId,
+    #[allow(unused)]
     pub(crate) span: Span,
 }

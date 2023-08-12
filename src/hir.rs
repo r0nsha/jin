@@ -31,6 +31,7 @@ pub(crate) struct Module {
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub(crate) enum Node {
+    #[allow(unused)]
     Function(Function),
     Block(Block),
     Return(Return),
