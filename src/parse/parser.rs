@@ -59,7 +59,7 @@ impl<'a> Parser<'a> {
 
     fn parse_top_level(&mut self) -> ParseResult<TopLevel> {
         if self.is(TokenKind::Fn) {
-            let name_ident = self.eat_ident()?;
+            let name_ident = self.eat(TokenKind::empty_ident())?;
             let params = self.parse_function_params()?;
 
             self.eat(TokenKind::Eq)?;
@@ -88,7 +88,7 @@ impl<'a> Parser<'a> {
             TokenKind::OpenParen,
             TokenKind::CloseParen,
             |parser, _| {
-                parser.eat_ident().map(|tok| FunctionParam {
+                parser.eat(TokenKind::empty_ident()).map(|tok| FunctionParam {
                     name: tok.as_ident(),
                     span: tok.span,
                 })
@@ -221,10 +221,6 @@ impl<'a> Parser<'a> {
             .unwrap();
 
         l1 == l2
-    }
-
-    fn eat_ident(&mut self) -> ParseResult<Token> {
-        self.eat(TokenKind::Ident(ustr("")))
     }
 
     fn eat(&mut self, expected: TokenKind) -> ParseResult<Token> {

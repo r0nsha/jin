@@ -3,7 +3,7 @@ use std::{
     mem,
 };
 
-use ustr::Ustr;
+use ustr::{ustr, Ustr};
 
 use crate::span::Span;
 
@@ -45,6 +45,13 @@ pub(crate) enum TokenKind {
 
     // Values
     Int(usize),
+}
+
+impl TokenKind {
+    #[inline]
+    pub(crate) fn empty_ident() -> Self {
+        Self::Ident(ustr(""))
+    }
 }
 
 impl fmt::Display for TokenKind {
