@@ -59,7 +59,7 @@ impl FunctionBuilder {
 
     #[inline]
     pub(crate) fn create_block(&mut self, name: impl AsRef<str>) -> BlockId {
-        self.f.cfg.blocks.push_with_id(|id| Block::new(id, name))
+        self.f.cfg.blocks.push_with_key(|id| Block::new(id, name))
     }
 
     #[inline]

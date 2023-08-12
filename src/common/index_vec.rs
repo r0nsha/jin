@@ -1,36 +1,36 @@
 use std::{marker::PhantomData, ops};
 
 #[derive(Debug)]
-pub(crate) struct IdVec<I: Id, T> {
-    vec: Vec<T>,
-    marker: PhantomData<I>,
+pub(crate) struct IndexVec<K: Key, V> {
+    vec: Vec<V>,
+    marker: PhantomData<K>,
 }
 
-impl<I: Id, T> IdVec<I, T> {
+impl<K: Key, V> IndexVec<K, V> {
     pub(crate) fn new() -> Self {
         Self { vec: vec![], marker: PhantomData }
     }
 
-    pub(crate) fn push(&mut self, value: T) -> I {
-        let id = self.next_id();
+    pub(crate) fn push(&mut self, value: V) -> K {
+        let key = self.next_key();
         self.vec.push(value);
-        id
+        key
     }
 
-    pub(crate) fn push_with_id(&mut self, f: impl FnOnce(I) -> T) -> I {
-        let id = self.next_id();
-        self.vec.push(f(id));
-        id
-    }
-
-    #[inline]
-    pub(crate) fn get(&self, id: I) -> Option<&T> {
-        self.vec.get(id.into())
+    pub(crate) fn push_with_key(&mut self, f: impl FnOnce(K) -> V) -> K {
+        let key = self.next_key();
+        self.vec.push(f(key));
+        key
     }
 
     #[inline]
-    pub(crate) fn get_mut(&mut self, id: I) -> Option<&mut T> {
-        self.vec.get_mut(id.into())
+    pub(crate) fn get(&self, key: K) -> Option<&V> {
+        self.vec.get(key.into())
+    }
+
+    #[inline]
+    pub(crate) fn get_mut(&mut self, key: K) -> Option<&mut V> {
+        self.vec.get_mut(key.into())
     }
 
     #[inline]
@@ -39,27 +39,27 @@ impl<I: Id, T> IdVec<I, T> {
     }
 
     #[inline]
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &T> {
+    pub(crate) fn iter(&self) -> impl Iterator<Item = &V> {
         self.vec.iter()
     }
 
     #[inline]
-    pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = &mut T> {
+    pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = &mut V> {
         self.vec.iter_mut()
     }
 
     #[inline]
-    pub(crate) fn as_slice(&self) -> &[T] {
+    pub(crate) fn as_slice(&self) -> &[V] {
         &self.vec
     }
 
     #[inline]
-    fn next_id(&self) -> I {
+    fn next_key(&self) -> K {
         self.vec.len().into()
     }
 }
 
-impl<I: Id, T> ops::Index<I> for IdVec<I, T> {
+impl<I: Key, T> ops::Index<I> for IndexVec<I, T> {
     type Output = T;
 
     fn index(&self, index: I) -> &Self::Output {
@@ -67,15 +67,15 @@ impl<I: Id, T> ops::Index<I> for IdVec<I, T> {
     }
 }
 
-impl<I: Id, T> ops::IndexMut<I> for IdVec<I, T> {
+impl<I: Key, T> ops::IndexMut<I> for IndexVec<I, T> {
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         &mut self.vec[index.into()]
     }
 }
 
-pub(crate) trait Id: From<usize> + Into<usize> + Copy {}
+pub(crate) trait Key: From<usize> + Into<usize> + Copy {}
 
-macro_rules! new_id_type {
+macro_rules! new_key_type {
     ($name: ident) => {
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
         pub(crate) struct $name(usize);
@@ -92,7 +92,7 @@ macro_rules! new_id_type {
             }
         }
 
-        impl crate::common::Id for $name {}
+        impl crate::common::Key for $name {}
 
         impl $name {
             #[allow(unused)]
@@ -120,4 +120,4 @@ macro_rules! new_id_type {
     };
 }
 
-pub(crate) use new_id_type;
+pub(crate) use new_key_type;

@@ -6,7 +6,7 @@ use std::{
 use path_absolutize::Absolutize;
 
 use crate::{
-    common::{new_id_type, IdVec, QualifiedName},
+    common::{new_key_type, IndexVec, QualifiedName},
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
     ty::Ty,
@@ -17,10 +17,10 @@ pub(crate) struct Database {
     build_options: BuildOptions,
 
     pub(crate) sources: Sources,
-    pub(crate) modules: IdVec<ModuleId, Module>,
-    pub(crate) symbols: IdVec<SymbolId, Symbol>,
+    pub(crate) modules: IndexVec<ModuleId, Module>,
+    pub(crate) symbols: IndexVec<SymbolId, Symbol>,
     // TODO: split this into TypeCx?
-    pub(crate) types: IdVec<TyId, Ty>,
+    pub(crate) types: IndexVec<TyId, Ty>,
 
     pub(crate) diagnostics: Diagnostics,
 
@@ -44,9 +44,9 @@ impl Database {
             build_options,
 
             sources,
-            modules: IdVec::new(),
-            symbols: IdVec::new(),
-            types: IdVec::new(),
+            modules: IndexVec::new(),
+            symbols: IndexVec::new(),
+            types: IndexVec::new(),
 
             diagnostics: Diagnostics::new(),
 
@@ -102,9 +102,9 @@ pub(crate) struct BuildOptions {
     pub(crate) print_mir: bool,
 }
 
-macro_rules! new_db_id {
+macro_rules! new_db_key {
     ($name: ident -> $collection: ident : $type: ident) => {
-        new_id_type!($name);
+        new_key_type!($name);
 
         impl $name {
             pub(crate) fn get(self, db: &Database) -> &$type {
@@ -118,9 +118,9 @@ macro_rules! new_db_id {
     };
 }
 
-new_db_id!(ModuleId -> modules : Module);
-new_db_id!(SymbolId -> symbols : Symbol);
-new_db_id!(TyId -> types : Ty);
+new_db_key!(ModuleId -> modules : Module);
+new_db_key!(SymbolId -> symbols : Symbol);
+new_db_key!(TyId -> types : Ty);
 
 impl Ty {
     pub(crate) fn alloc(db: &mut Database, ty: Ty) -> TyId {
@@ -143,7 +143,7 @@ impl Module {
         name: QualifiedName,
         is_main: bool,
     ) -> ModuleId {
-        let id = db.modules.push_with_id(|id| Module {
+        let id = db.modules.push_with_key(|id| Module {
             id,
             source_id,
             name,
@@ -185,7 +185,7 @@ impl Symbol {
         ty: TyId,
         span: Span,
     ) -> SymbolId {
-        db.symbols.push_with_id(|id| Symbol {
+        db.symbols.push_with_key(|id| Symbol {
             id,
             module_id,
             qualified_name,

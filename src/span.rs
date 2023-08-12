@@ -5,7 +5,7 @@ use std::{
 
 use codespan_reporting::files::{self, line_starts};
 
-use crate::common::{new_id_type, IdVec};
+use crate::common::{new_key_type, IndexVec};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub(crate) struct Span {
@@ -63,19 +63,19 @@ pub(crate) trait Spanned {
 }
 
 #[derive(Debug)]
-pub(crate) struct Sources(IdVec<SourceId, Source>);
+pub(crate) struct Sources(IndexVec<SourceId, Source>);
 
-new_id_type!(SourceId);
+new_key_type!(SourceId);
 
 impl Sources {
     pub(crate) fn new() -> Self {
-        Self(IdVec::new())
+        Self(IndexVec::new())
     }
 
     pub(crate) fn add_file(&mut self, path: PathBuf) -> io::Result<SourceId> {
         let mut source = Source::try_from(path)?;
 
-        Ok(self.0.push_with_id(|id| {
+        Ok(self.0.push_with_key(|id| {
             source.id = id;
             source
         }))

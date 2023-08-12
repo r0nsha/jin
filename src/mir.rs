@@ -7,7 +7,7 @@ use ustr::{ustr, Ustr};
 
 use crate::db::SymbolId;
 use crate::{
-    common::{new_id_type, IdVec},
+    common::{new_key_type, IndexVec},
     db::{Database, TyId},
     span::Span,
 };
@@ -34,7 +34,7 @@ impl Mir {
 #[derive(Debug)]
 pub(crate) struct Function {
     id: SymbolId,
-    registers: IdVec<RegisterId, Register>,
+    registers: IndexVec<RegisterId, Register>,
     parameters: Vec<RegisterId>,
     cfg: Cfg,
 }
@@ -43,7 +43,7 @@ impl Function {
     fn new(id: SymbolId) -> Self {
         Self {
             id,
-            registers: IdVec::new(),
+            registers: IndexVec::new(),
             parameters: vec![],
             cfg: Cfg::new(),
         }
@@ -76,16 +76,16 @@ impl Function {
 
 #[derive(Debug)]
 pub(crate) struct Cfg {
-    pub(crate) blocks: IdVec<BlockId, Block>,
+    pub(crate) blocks: IndexVec<BlockId, Block>,
 }
 
 impl Cfg {
     fn new() -> Self {
-        Self { blocks: IdVec::new() }
+        Self { blocks: IndexVec::new() }
     }
 }
 
-new_id_type!(RegisterId);
+new_key_type!(RegisterId);
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Register {
@@ -110,7 +110,7 @@ impl From<RegisterId> for Value {
     }
 }
 
-new_id_type!(BlockId);
+new_key_type!(BlockId);
 
 #[derive(Debug)]
 pub(crate) struct Block {
