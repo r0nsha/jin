@@ -21,7 +21,7 @@ impl Token {
         }
     }
 
-    pub(crate) fn kind_eq(&self, other: TokenKind) -> bool {
+    pub(crate) fn kind_is(&self, other: TokenKind) -> bool {
         mem::discriminant(&self.kind) == mem::discriminant(&other)
     }
 }
@@ -33,6 +33,7 @@ pub(crate) enum TokenKind {
     CloseParen,
     OpenCurly,
     CloseCurly,
+    Comma,
 
     // Symbols
     Eq,
@@ -53,6 +54,7 @@ impl fmt::Display for TokenKind {
             Self::CloseParen => f.write_char(')'),
             Self::OpenCurly => f.write_char('{'),
             Self::CloseCurly => f.write_char('}'),
+            Self::Comma => f.write_char(','),
             Self::Eq => f.write_char('='),
             Self::Ident(_) => f.write_str("identifier"),
             Self::Fn => f.write_str("`fn`"),

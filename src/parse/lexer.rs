@@ -49,6 +49,7 @@ impl<'s> Lexer<'s> {
                     ')' => TokenKind::CloseParen,
                     '{' => TokenKind::OpenCurly,
                     '}' => TokenKind::CloseCurly,
+                    ',' => TokenKind::Comma,
                     '=' => TokenKind::Eq,
                     '/' if matches!(self.peek(), Some('/')) => {
                         self.advance();

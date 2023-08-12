@@ -60,21 +60,7 @@ impl<'a> Parser<'a> {
     fn parse_top_level(&mut self) -> ParseResult<TopLevel> {
         if self.is(TokenKind::Fn) {
             let name_ident = self.eat_ident()?;
-            let name_span = name_ident.span;
-            let name = name_ident.as_ident();
-
-            let mut params = vec![];
-
-            self.eat(TokenKind::OpenParen)?;
-
-            while !self.is(TokenKind::CloseParen) {
-                let name_ident = self.eat_ident()?;
-
-                params.push(FunctionParam {
-                    name: name_ident.as_ident(),
-                    span: name_ident.span,
-                })
-            }
+            let params = self.parse_function_params()?;
 
             self.eat(TokenKind::Eq)?;
 
@@ -83,7 +69,7 @@ impl<'a> Parser<'a> {
             Ok(TopLevel::Function(Function {
                 name: name_ident.as_ident(),
                 body: Box::new(body),
-                params: vec![],
+                params,
                 span: name_ident.span,
             }))
         } else {
@@ -95,6 +81,20 @@ impl<'a> Parser<'a> {
                 span: token.span,
             })
         }
+    }
+
+    fn parse_function_params(&mut self) -> ParseResult<Vec<FunctionParam>> {
+        self.parse_list(
+            TokenKind::OpenParen,
+            TokenKind::CloseParen,
+            |parser, _| {
+                parser.eat_ident().map(|tok| FunctionParam {
+                    name: tok.as_ident(),
+                    span: tok.span,
+                })
+            },
+        )
+        .map(|(params, _)| params)
     }
 
     fn parse_block(&mut self) -> ParseResult<Block> {
@@ -113,39 +113,36 @@ impl<'a> Parser<'a> {
 
     fn parse_stmt(&mut self) -> ParseResult<Statement> {
         if self.is(TokenKind::Return) {
-            Ok(Statement::Return(self.parse_ret()?))
+            Ok(Statement::Return(self.parse_return()?))
         } else {
             Ok(Statement::Expr(self.parse_expr()?))
         }
     }
 
     fn parse_expr(&mut self) -> ParseResult<Ast> {
-        let token = self.require()?;
+        let tok = self.require()?;
 
-        let expr = match token.kind {
+        let expr = match tok.kind {
             TokenKind::OpenParen => {
                 let end = self.eat(TokenKind::CloseParen)?.span;
 
-                Ast::Lit(Lit {
-                    kind: LitKind::Unit,
-                    span: token.span.merge(end),
-                })
+                Ast::Lit(Lit { kind: LitKind::Unit, span: tok.span.merge(end) })
             }
             TokenKind::OpenCurly => {
                 let blk = self.parse_block()?;
                 Ast::Block(blk)
             }
             TokenKind::Ident(ident) => {
-                Ast::Name(Name { name: ident, span: token.span })
+                Ast::Name(Name { name: ident, span: tok.span })
             }
             TokenKind::Int(value) => {
-                Ast::Lit(Lit { kind: LitKind::Int(value), span: token.span })
+                Ast::Lit(Lit { kind: LitKind::Int(value), span: tok.span })
             }
             _ => {
                 return Err(ParseError::UnexpectedToken {
                     expected: "an expression".to_string(),
-                    actual: token.kind,
-                    span: token.span,
+                    actual: tok.kind,
+                    span: tok.span,
                 })
             }
         };
@@ -158,7 +155,7 @@ impl<'a> Parser<'a> {
             Some(tok) if self.are_on_same_line(expr.span(), tok.span) => {
                 match &tok.kind {
                     TokenKind::OpenParen => {
-                        self.advance();
+                        self.next();
                         let call = self.parse_call(expr)?;
                         Ok(Ast::Call(call))
                     }
@@ -169,7 +166,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_ret(&mut self) -> ParseResult<Return> {
+    fn parse_return(&mut self) -> ParseResult<Return> {
         let start = self.last_span();
         let expr = self.parse_expr()?;
         let span = start.merge(expr.span());
@@ -183,6 +180,32 @@ impl<'a> Parser<'a> {
         let span = callee.span().merge(close_paren.span);
 
         Ok(Call { callee: Box::new(callee), span })
+    }
+
+    fn parse_list<T>(
+        &mut self,
+        open: TokenKind,
+        close: TokenKind,
+        mut f: impl FnMut(&mut Self, Token) -> Result<T, ParseError>,
+    ) -> ParseResult<(Vec<T>, Span)> {
+        let mut values = Vec::new();
+        let open_tok = self.eat(open)?;
+
+        loop {
+            let tok = self.require()?;
+
+            if tok.kind_is(close) {
+                return Ok((values, open_tok.span.merge(tok.span)));
+            }
+
+            values.push(f(self, tok)?);
+
+            if !values.is_empty() && !self.peek_is(close) {
+                self.eat(TokenKind::Comma)?;
+            } else if self.peek_is(TokenKind::Comma) {
+                self.next();
+            }
+        }
     }
 }
 
@@ -207,7 +230,7 @@ impl<'a> Parser<'a> {
     fn eat(&mut self, expected: TokenKind) -> ParseResult<Token> {
         let tok = self.require()?;
 
-        if tok.kind_eq(expected) {
+        if tok.kind_is(expected) {
             Ok(tok)
         } else {
             Err(ParseError::UnexpectedToken {
@@ -220,7 +243,7 @@ impl<'a> Parser<'a> {
 
     fn require(&mut self) -> ParseResult<Token> {
         if let Some(tok) = self.token() {
-            self.advance();
+            self.next();
             Ok(tok)
         } else {
             Err(ParseError::UnexpectedEof { span: self.last_span() })
@@ -229,8 +252,8 @@ impl<'a> Parser<'a> {
 
     fn is(&mut self, expected: TokenKind) -> bool {
         match self.token() {
-            Some(tok) if tok.kind_eq(expected) => {
-                self.advance();
+            Some(tok) if tok.kind_is(expected) => {
+                self.next();
                 true
             }
             _ => false,
@@ -246,12 +269,20 @@ impl<'a> Parser<'a> {
         self.tokens.get(self.pos).copied()
     }
 
+    fn peek<R: Default>(&self, f: impl FnOnce(Token) -> R) -> R {
+        self.token().map(f).unwrap_or_default()
+    }
+
+    fn peek_is(&self, expected: TokenKind) -> bool {
+        self.peek(|t| t.kind_is(expected))
+    }
+
     fn last_span(&self) -> Span {
         self.tokens[self.pos - 1].span
     }
 
     #[inline]
-    fn advance(&mut self) {
+    fn next(&mut self) {
         self.pos += 1;
     }
 }
