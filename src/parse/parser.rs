@@ -64,7 +64,9 @@ impl<'a> Parser<'a> {
             let name = name_ident.as_ident();
 
             self.eat(TokenKind::OpenParen)?;
-            self.eat(TokenKind::CloseParen)?;
+
+            while !self.is(TokenKind::CloseParen) {}
+
             self.eat(TokenKind::Eq)?;
 
             let body = self.parse_expr()?;

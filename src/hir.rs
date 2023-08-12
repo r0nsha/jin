@@ -2,6 +2,7 @@ mod lower;
 mod pretty_print;
 
 use enum_as_inner::EnumAsInner;
+use indexmap::IndexMap;
 pub(crate) use lower::lower;
 use ustr::Ustr;
 
@@ -93,7 +94,7 @@ pub(crate) struct Function {
     pub(crate) id: Option<SymbolId>,
     pub(crate) name: Ustr,
     pub(crate) body: Block,
-    pub(crate) params: Vec<FunctionParam>,
+    pub(crate) params: IndexMap<Ustr, FunctionParam>,
     pub(crate) span: Span,
     pub(crate) ty: TyId,
 }
