@@ -46,21 +46,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for Node {
 impl<'db, 'd> ToDoc<'db, 'd> for Definition {
     fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
         match &self.kind {
-            DefinitionKind::Function(fun) => {
-                let ret_ty =
-                    fun.ty.get(db).kind.as_function().unwrap().ret.to_doc(db);
-
-                RcDoc::text("fn")
-                    .append(RcDoc::space())
-                    .append(RcDoc::text(fun.name.as_str()))
-                    .append(RcDoc::text("()"))
-                    .append(RcDoc::space())
-                    .append(ret_ty)
-                    .append(RcDoc::space())
-                    .append(RcDoc::text("="))
-                    .append(RcDoc::space())
-                    .append(fun.body.to_doc(db))
-            }
+            DefinitionKind::Function(fun) => fun.to_doc(db),
         }
     }
 }
@@ -69,9 +55,23 @@ impl<'db, 'd> ToDoc<'db, 'd> for Function {
     fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
         let ret_ty = self.ty.get(db).kind.as_function().unwrap().ret.to_doc(db);
 
-        RcDoc::text("fn()")
+        RcDoc::text("fn")
+            .append(RcDoc::space())
+            .append(RcDoc::text(self.name.as_str()))
+            .append(RcDoc::text("("))
+            .append(RcDoc::intersperse(
+                self.params.values().map(|p| {
+                    RcDoc::text(p.name.as_str()).append(RcDoc::space()).append(
+                        p.id.expect("to have a symbol").get(db).ty.to_doc(db),
+                    )
+                }),
+                RcDoc::text(",").append(RcDoc::space()),
+            ))
+            .append(RcDoc::text(")"))
             .append(RcDoc::space())
             .append(ret_ty)
+            .append(RcDoc::space())
+            .append(RcDoc::text("="))
             .append(RcDoc::space())
             .append(self.body.to_doc(db))
     }

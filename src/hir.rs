@@ -101,6 +101,7 @@ pub(crate) struct Function {
 
 #[derive(Debug, Clone)]
 pub(crate) struct FunctionParam {
+    pub(crate) id: Option<SymbolId>,
     pub(crate) name: Ustr,
     pub(crate) span: Span,
     pub(crate) ty: TyId,

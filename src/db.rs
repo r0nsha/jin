@@ -178,6 +178,7 @@ pub(crate) struct Symbol {
 #[derive(Debug, Clone)]
 pub(crate) enum SymbolKind {
     Function(Function),
+    Parameter,
 }
 
 impl Symbol {
