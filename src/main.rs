@@ -21,10 +21,9 @@ use common::time::time;
 use db::{BuildOptions, Database};
 use mir::Mir;
 
-macro_rules! bail_if_failed {
+macro_rules! bail_on_errors {
     ($db: expr) => {
         if $db.diagnostics.any() {
-            $db.print_diagnostics();
             return;
         }
     };
@@ -82,6 +81,10 @@ fn main() {
 fn build(build_options: BuildOptions, file: PathBuf) {
     let mut db = Database::new(build_options, file).unwrap();
     build_inner(&mut db);
+
+    if db.diagnostics.any() {
+        db.print_diagnostics();
+    }
 }
 
 fn build_inner(db: &mut Database) {
@@ -97,15 +100,15 @@ fn build_inner(db: &mut Database) {
         println!();
     }
 
-    bail_if_failed!(db);
+    bail_on_errors!(db);
 
     let mut hir = time(print_times, "ast -> hir", || hir::lower(db, ast));
 
     time(print_times, "resolve", || passes::resolve(db, &mut hir));
-    bail_if_failed!(db);
+    bail_on_errors!(db);
 
     time(print_times, "infer", || passes::infer(db, &mut hir));
-    bail_if_failed!(db);
+    bail_on_errors!(db);
 
     if db.build_options().print_hir {
         println!("\nHIR:\n");
@@ -114,10 +117,10 @@ fn build_inner(db: &mut Database) {
     }
 
     time(print_times, "find main", || passes::find_main(db));
-    bail_if_failed!(db);
+    bail_on_errors!(db);
 
     let mir = time(print_times, "hir -> mir", || mir::lower(db, hir));
-    bail_if_failed!(db);
+    bail_on_errors!(db);
 
     if db.build_options().print_mir {
         println!("\nMIR:\n");
