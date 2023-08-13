@@ -24,7 +24,7 @@ use mir::Mir;
 macro_rules! bail_if_failed {
     ($db: expr) => {
         if $db.diagnostics.any() {
-            $db.diagnostics.print(&$db.sources).unwrap();
+            $db.print_diagnostics();
             return;
         }
     };

@@ -94,6 +94,12 @@ impl Database {
     pub(crate) fn set_main_fun(&mut self, id: SymbolId) {
         self.main_fun = Some(id);
     }
+
+    pub(crate) fn print_diagnostics(&self) {
+        self.diagnostics
+            .print(&self.sources)
+            .expect("printing diagnostis to work");
+    }
 }
 
 #[derive(Debug)]
