@@ -134,6 +134,12 @@ impl Block {
             successors: vec![],
         }
     }
+
+    fn is_terminating(&self) -> bool {
+        self.instructions
+            .iter()
+            .any(|inst| matches!(inst, Instruction::Return(_)))
+    }
 }
 
 #[derive(Debug, Clone)]

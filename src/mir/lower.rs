@@ -23,7 +23,7 @@ fn lower_def(db: &mut Database, mir: &mut Mir, def: &hir::Definition) {
     match &def.kind {
         hir::DefinitionKind::Function(fun) => {
             let id = fun.id.expect("to be resolved");
-            let fun = LowerCx::new(db, id).lower(fun).unwrap();
+            let fun = LowerCx::new(db, id).lower_function(fun).unwrap();
             mir.add_function(fun);
         }
     }
@@ -39,11 +39,16 @@ impl<'db> LowerCx<'db> {
         Self { db, builder: FunctionBuilder::new(fun_id) }
     }
 
-    fn lower(mut self, fun: &hir::Function) -> Result<Function, String> {
+    fn lower_function(
+        mut self,
+        fun: &hir::Function,
+    ) -> Result<Function, String> {
         let blk_start = self.builder.create_block("start");
         self.builder.position_at(blk_start);
 
         self.lower_block(&fun.body);
+
+        self.builder.is
 
         self.builder.finish()
     }

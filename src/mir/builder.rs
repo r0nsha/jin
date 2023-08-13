@@ -131,10 +131,7 @@ impl FunctionBuilder {
                     ));
                 }
 
-                let blk_is_terminating = blk
-                    .instructions
-                    .iter()
-                    .any(|inst| matches!(inst, Instruction::Return(_)));
+                let blk_is_terminating = blk.is_terminating();
 
                 if i < blocks.len() - 1
                     && blk.successors.is_empty()

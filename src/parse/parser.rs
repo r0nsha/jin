@@ -1,5 +1,4 @@
 use codespan_reporting::files::Files;
-use ustr::ustr;
 
 use crate::{
     common::QualifiedName,
