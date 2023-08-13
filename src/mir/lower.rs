@@ -48,6 +48,7 @@ impl<'db> LowerCx<'db> {
 
         let body_reg = self.lower_block(&fun.body);
 
+        // Insert a final return instruction if the function's isn't terminating
         if !self.builder.is_terminating() {
             let span = fun.body.span;
             self.builder.build_return(body_reg, span);
