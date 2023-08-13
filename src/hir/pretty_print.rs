@@ -59,14 +59,15 @@ impl<'db, 'd> ToDoc<'db, 'd> for Function {
             .append(RcDoc::space())
             .append(RcDoc::text(self.name.as_str()))
             .append(RcDoc::text("("))
-            .append(RcDoc::intersperse(
-                self.params.values().map(|p| {
-                    RcDoc::text(p.name.as_str()).append(RcDoc::space()).append(
-                        p.id.expect("to have a symbol").get(db).ty.to_doc(db),
-                    )
-                }),
-                RcDoc::text(",").append(RcDoc::space()),
-            ))
+            // TODO: Print function params
+            // .append(RcDoc::intersperse(
+            //     self.params.values().map(|p| {
+            //         RcDoc::text(p.name.as_str()).append(RcDoc::space()).append(
+            //             p.id.expect("to have a symbol").get(db).ty.to_doc(db),
+            //         )
+            //     }),
+            //     RcDoc::text(",").append(RcDoc::space()),
+            // ))
             .append(RcDoc::text(")"))
             .append(RcDoc::space())
             .append(ret_ty)

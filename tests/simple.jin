@@ -1,6 +1,8 @@
 fn main() = {
-	answer()
-	return ()
+	// TODO: function calls
+	// answer()
+
+	{return ()}
 }
 
 fn answer(x) = 42
