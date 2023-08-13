@@ -89,15 +89,15 @@ impl<'db> LowerCx<'db> {
     }
 
     fn lower_return(&mut self, ret: &hir::Return) -> Value {
-        // if !self.builder.current_block().is_terminating() {
-        let reg = if let Some(expr) = &ret.expr {
-            self.lower_node(expr)
-        } else {
-            self.create_unit_register(ret.span)
-        };
+        if !self.builder.current_block().is_terminating() {
+            let reg = if let Some(expr) = &ret.expr {
+                self.lower_node(expr)
+            } else {
+                self.create_unit_register(ret.span)
+            };
 
-        self.builder.build_return(reg, ret.span);
-        // }
+            self.builder.build_return(reg, ret.span);
+        }
 
         self.build_unreachable(ret.span)
     }
