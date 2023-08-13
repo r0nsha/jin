@@ -2,7 +2,7 @@ fn main() = {
 	// TODO: function calls
 	// answer()
 
-	//{return ()}
+	return ()
 }
 
 fn answer(x) = 42

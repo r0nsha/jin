@@ -79,8 +79,6 @@ impl<'db> Lower<'db> {
             Block { exprs: vec![body], span, ty: TyId::null() }
         };
 
-        let body = body.fix_function_return();
-
         Function {
             id: None,
             name: fun.name,
@@ -133,29 +131,5 @@ impl<'db> Lower<'db> {
             span: blk.span,
             ty: TyId::null(),
         }
-    }
-}
-
-impl Block {
-    // Automatically turn the last statement in a function's block into a `return` statement, if it
-    // isn't one already
-    fn fix_function_return(mut self) -> Self {
-        match self.exprs.last_mut() {
-            Some(Node::Return(_)) => (),
-            Some(last_expr) => {
-                let span = last_expr.span();
-
-                let expr = last_expr.clone();
-
-                *last_expr = Node::Return(Return {
-                    expr: Some(Box::new(expr)),
-                    span,
-                    ty: TyId::null(),
-                })
-            }
-            _ => (),
-        }
-
-        self
     }
 }
