@@ -72,25 +72,14 @@ impl<'db> Lower<'db> {
 
         let body = self.lower_ast(*fun.body);
 
-        let body = if let Node::Block(mut blk) = body {
-            // Automatically insert a `return` statement if the function's block is empty
-            // if blk.exprs.is_empty() {
-            //     blk.exprs.push(Node::Return(Return {
-            //         expr: None,
-            //         span: blk.span,
-            //         ty: TyId::null(),
-            //     }));
-            //
-            //     blk
-            // } else {
-            blk.fix_function_return()
-            // }
+        let body = if let Node::Block(blk) = body {
+            blk
         } else {
             let span = body.span();
-
             Block { exprs: vec![body], span, ty: TyId::null() }
-                .fix_function_return()
         };
+
+        let body = body.fix_function_return();
 
         Function {
             id: None,

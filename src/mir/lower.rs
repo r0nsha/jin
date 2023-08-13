@@ -48,7 +48,12 @@ impl<'db> LowerCx<'db> {
 
         self.lower_block(&fun.body);
 
-        self.builder.is
+        if !self.builder.blocks().iter().any(|blk| blk.is_terminating()) {
+            let span = fun.body.span;
+            let reg = self.create_unit_register(span);
+            self.builder.build_return(reg, span);
+            self.build_unreachable(span);
+        }
 
         self.builder.finish()
     }

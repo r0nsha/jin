@@ -16,6 +16,12 @@ impl FunctionBuilder {
 
     #[inline]
     #[allow(unused)]
+    pub(crate) fn blocks(&self) -> &[Block] {
+        self.f.cfg.blocks.as_slice()
+    }
+
+    #[inline]
+    #[allow(unused)]
     pub(crate) fn block(&self, id: BlockId) -> &Block {
         &self.f.cfg.blocks[id]
     }
