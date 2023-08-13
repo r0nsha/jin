@@ -42,6 +42,10 @@ impl FunctionBuilder {
         self.block_mut(self.current_block)
     }
 
+    pub(crate) fn is_terminating(&self) -> bool {
+        return self.blocks().iter().any(|blk| blk.is_terminating());
+    }
+
     #[allow(unused)]
     pub(crate) fn reachable_blocks(&self) -> HashSet<BlockId> {
         let mut reachable = HashSet::new();

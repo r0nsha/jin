@@ -46,12 +46,11 @@ impl<'db> LowerCx<'db> {
         let blk_start = self.builder.create_block("start");
         self.builder.position_at(blk_start);
 
-        self.lower_block(&fun.body);
+        let body_reg = self.lower_block(&fun.body);
 
-        if !self.builder.blocks().iter().any(|blk| blk.is_terminating()) {
+        if !self.builder.is_terminating() {
             let span = fun.body.span;
-            let reg = self.create_unit_register(span);
-            self.builder.build_return(reg, span);
+            self.builder.build_return(body_reg, span);
             self.build_unreachable(span);
         }
 
@@ -89,15 +88,15 @@ impl<'db> LowerCx<'db> {
     }
 
     fn lower_return(&mut self, ret: &hir::Return) -> Value {
-        if !self.builder.current_block().is_terminating() {
-            let reg = if let Some(expr) = &ret.expr {
-                self.lower_node(expr)
-            } else {
-                self.create_unit_register(ret.span)
-            };
+        // if !self.builder.current_block().is_terminating() {
+        let reg = if let Some(expr) = &ret.expr {
+            self.lower_node(expr)
+        } else {
+            self.create_unit_register(ret.span)
+        };
 
-            self.builder.build_return(reg, ret.span);
-        }
+        self.builder.build_return(reg, ret.span);
+        // }
 
         self.build_unreachable(ret.span)
     }
