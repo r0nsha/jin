@@ -1,4 +1,4 @@
-use std::io;
+use std::{io, iter};
 
 use pretty::{Arena, DocAllocator, DocBuilder, Pretty};
 
@@ -73,9 +73,10 @@ fn codegen_prelude<'db>(arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>> {
     );
 
     let constants = arena.intersperse(
-        [arena.text(format!("const {TYPE_UNIT} {CONST_UNIT} = {{}}"))]
-            .into_iter()
-            .map(|d| arena.statement(d)),
+        iter::once(
+            arena.text(format!("const {TYPE_UNIT} {CONST_UNIT} = {{}}")),
+        )
+        .map(|d| arena.statement(d)),
         arena.line(),
     );
 

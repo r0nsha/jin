@@ -89,6 +89,12 @@ impl Sources {
     }
 }
 
+impl Default for Sources {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Source {
     id: SourceId,

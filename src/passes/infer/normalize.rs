@@ -12,10 +12,10 @@ impl NormalizeTy for Ty {
                 let ret = fun.ret.normalize(tcx);
                 Self::fun(ret, self.span)
             }
-            TyKind::Var(var) => match tcx.unification_table.probe_value(var) {
-                Some(ty) => ty.normalize(tcx),
-                None => self,
-            },
+            TyKind::Var(var) => tcx
+                .unification_table
+                .probe_value(var)
+                .map_or(self, |ty| ty.normalize(tcx)),
             TyKind::Int(_) | TyKind::Unit | TyKind::Never => self,
         }
     }

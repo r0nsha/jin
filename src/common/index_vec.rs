@@ -13,7 +13,7 @@ impl<K: Key, V> Default for IndexVec<K, V> {
 }
 
 impl<K: Key, V> IndexVec<K, V> {
-    pub const fn new() -> Self {
+    pub fn new() -> Self {
         Self { vec: vec![], marker: PhantomData }
     }
 

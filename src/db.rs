@@ -214,7 +214,7 @@ impl DefinitionInfo {
     }
 
     #[allow(unused)]
-    pub const fn vis(&self) -> Vis {
+    pub fn vis(&self) -> Vis {
         match &self.scope_level {
             ScopeLevel::Global(vis) => *vis,
             ScopeLevel::Scope(_) => Vis::Private,
