@@ -1,4 +1,4 @@
-use crate::ty::typecx::TypeCx;
+use crate::passes::infer::typecx::TypeCx;
 use crate::ty::{Ty, TyKind};
 
 pub trait NormalizeTy {

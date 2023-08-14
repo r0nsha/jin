@@ -2,10 +2,11 @@ mod constraint;
 mod normalize;
 mod substitute;
 mod type_env;
+mod typecx;
 mod unify;
 
 use crate::db::{DefinitionId, TyId};
-use crate::ty::typecx::TypeCx;
+use crate::passes::infer::typecx::TypeCx;
 use crate::{
     db::Database,
     hir::{
