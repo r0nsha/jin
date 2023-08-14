@@ -1,5 +1,5 @@
 use crate::passes::infer::typecx::TypeCx;
-use crate::ty::{Ty, TyKind};
+use crate::ty::{FunctionTy, Ty};
 
 pub trait NormalizeTy {
     fn normalize(self, tcx: &mut TypeCx) -> Self;
@@ -7,16 +7,18 @@ pub trait NormalizeTy {
 
 impl NormalizeTy for Ty {
     fn normalize(self, tcx: &mut TypeCx) -> Self {
-        match self.kind {
-            TyKind::Function(fun) => {
-                let ret = fun.ret.normalize(tcx);
-                Self::fun(ret, self.span)
+        match self {
+            Self::Function(FunctionTy { ret, span }) => {
+                Self::Function(FunctionTy {
+                    ret: Box::new(ret.normalize(tcx)),
+                    span,
+                })
             }
-            TyKind::Var(var) => tcx
+            Self::Var(var, _) => tcx
                 .unification_table
                 .probe_value(var)
                 .map_or(self, |ty| ty.normalize(tcx)),
-            TyKind::Int(_) | TyKind::Unit | TyKind::Never => self,
+            Self::Int(..) | Self::Unit(_) | Self::Never(_) => self,
         }
     }
 }

@@ -1,21 +1,19 @@
 use std::collections::HashSet;
 
+use crate::ty::FunctionTy;
 use crate::{
     db::TyId,
     hir::{
         Block, Call, Definition, DefinitionKind, Function, Module, Node, Return,
     },
-    ty::{Ty, TyKind, TyVar},
+    ty::{Ty, TyVar},
 };
 
 use super::InferCx;
 
 // Substitute
 impl<'db> InferCx<'db> {
-    pub fn substitution(
-        &mut self,
-        modules: &mut [Module],
-    ) -> HashSet<TyVar> {
+    pub fn substitution(&mut self, modules: &mut [Module]) -> HashSet<TyVar> {
         let mut unbound_vars = HashSet::new();
 
         // Substitute all definition types
@@ -50,19 +48,19 @@ impl<'db> InferCx<'db> {
         ty: &Ty,
         unbound_vars: &mut HashSet<TyVar>,
     ) -> Ty {
-        match &ty.kind {
-            TyKind::Function(fun) => {
+        match ty {
+            Ty::Function(fun) => {
                 let ret = self.substitute_ty(&fun.ret, unbound_vars);
-                Ty::fun(ret, ty.span)
+                Ty::Function(FunctionTy { ret: Box::new(ret), span: fun.span })
             }
-            TyKind::Var(v) => {
+            Ty::Var(v, span) => {
                 let root = self.tcx.unification_table.find(*v);
 
                 if let Some(ty) = self.tcx.unification_table.probe_value(root) {
                     self.substitute_ty(&ty, unbound_vars)
                 } else {
                     unbound_vars.insert(root);
-                    Ty::var(root, ty.span)
+                    Ty::Var(root, *span)
                 }
             }
             _ => ty.clone(),

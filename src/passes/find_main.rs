@@ -53,6 +53,6 @@ pub fn find_main(db: &mut Database) {
 }
 
 fn is_main_fun_ty(ty: &Ty) -> bool {
-    let fun_ty = ty.kind.as_function().unwrap();
-    fun_ty.ret.kind.is_unit()
+    let fun_ty = ty.as_function().unwrap();
+    fun_ty.ret.is_unit()
 }

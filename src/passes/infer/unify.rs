@@ -4,7 +4,7 @@ use crate::db::Database;
 use crate::passes::infer::normalize::NormalizeTy;
 use crate::{
     diagnostics::{Diagnostic, Label},
-    ty::{IntTy, TyKind},
+    ty::IntTy,
     ty::{Ty, TyVar},
 };
 
@@ -35,55 +35,46 @@ impl<'db> InferCx<'db> {
         let expected = expected.clone().normalize(&mut self.tcx);
         let actual = actual.clone().normalize(&mut self.tcx);
 
-        match (&expected.kind, &actual.kind) {
-            (TyKind::Function(expected), TyKind::Function(actual)) => {
+        match (expected, actual) {
+            (Ty::Function(expected), Ty::Function(actual)) => {
                 self.unify_ty_ty(&expected.ret, &actual.ret)
             }
 
-            (TyKind::Var(expected), TyKind::Var(actual)) => self
+            (Ty::Var(expected, _), Ty::Var(actual, _)) => self
                 .tcx
                 .unification_table
-                .unify_var_var(*expected, *actual)
+                .unify_var_var(expected, actual)
                 .map_err(|(expected, actual)| InferError::TypesNotEq {
                     expected,
                     actual,
                 }),
 
-            (TyKind::Never, _)
-            | (_, TyKind::Never)
-            | (TyKind::Unit, TyKind::Unit)
-            | (TyKind::Int(IntTy::Int), TyKind::Int(IntTy::Int)) => Ok(()),
+            (Ty::Never(_), _)
+            | (_, Ty::Never(_))
+            | (Ty::Unit(_), Ty::Unit(_))
+            | (Ty::Int(IntTy::Int, _), Ty::Int(IntTy::Int, _)) => Ok(()),
 
-            (TyKind::Var(var), _) => {
-                actual
-                    .occurs_check(*var)
-                    .map_err(|ty| InferError::InfiniteType { var: *var, ty })?;
+            (Ty::Var(var, _), actual) => self.unify_ty_var(actual, var),
+            (expected, Ty::Var(var, _)) => self.unify_ty_var(expected, var),
 
-                self.tcx
-                    .unification_table
-                    .unify_var_value(*var, Some(actual))
-                    .map_err(|(expected, actual)| InferError::TypesNotEq {
-                        expected,
-                        actual,
-                    })
+            (expected, actual) => {
+                Err(InferError::TypesNotEq { expected, actual })
             }
-
-            (_, TyKind::Var(var)) => {
-                expected
-                    .occurs_check(*var)
-                    .map_err(|ty| InferError::InfiniteType { var: *var, ty })?;
-
-                self.tcx
-                    .unification_table
-                    .unify_var_value(*var, Some(expected))
-                    .map_err(|(expected, actual)| InferError::TypesNotEq {
-                        expected,
-                        actual,
-                    })
-            }
-
-            (_, _) => Err(InferError::TypesNotEq { expected, actual }),
         }
+    }
+
+    fn unify_ty_var(
+        &mut self,
+        expected: Ty,
+        var: TyVar,
+    ) -> Result<(), InferError> {
+        expected
+            .occurs_check(var)
+            .map_err(|ty| InferError::InfiniteType { var, ty })?;
+
+        self.tcx.unification_table.unify_var_value(var, Some(expected)).map_err(
+            |(expected, actual)| InferError::TypesNotEq { expected, actual },
+        )
     }
 }
 
@@ -127,13 +118,13 @@ impl InferError {
                         expected.display(db),
                         actual.display(db),
                     ))
-                    .with_label(Label::primary(expected.span).with_message(
+                    .with_label(Label::primary(expected.span()).with_message(
                         format!(
                             "expected type `{}` originates here",
                             expected.display(db)
                         ),
                     ))
-                    .with_label(Label::secondary(actual.span).with_message(
+                    .with_label(Label::secondary(actual.span()).with_message(
                         format!("found type `{}` here", actual.display(db)),
                     ))
             }
@@ -143,7 +134,7 @@ impl InferError {
                         "type `{}` is an infinite type",
                         ty.display(db)
                     ))
-                    .with_label(Label::primary(ty.span))
+                    .with_label(Label::primary(ty.span()))
             }
         }
     }

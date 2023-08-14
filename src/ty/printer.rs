@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter, Result};
 
 use crate::db::Database;
-use crate::ty::{IntTy, Ty, TyKind};
+use crate::ty::{IntTy, Ty};
 
 pub struct TypePrinter<'db> {
     _db: &'db Database,
@@ -20,17 +20,17 @@ impl<'db> TypePrinter<'db> {
     }
 
     fn fmt_ty(f: &mut Formatter, ty: &Ty) -> Result {
-        match &ty.kind {
-            TyKind::Function(fun) => {
+        match ty {
+            Ty::Function(fun) => {
                 f.write_str("fn() ")?;
                 Self::fmt_ty(f, &fun.ret)
             }
-            TyKind::Var(var) => write!(f, "${}", var.0),
-            TyKind::Int(int) => match int {
+            Ty::Var(var, _) => write!(f, "${}", var.0),
+            Ty::Int(int, _) => match int {
                 IntTy::Int => f.write_str("int"),
             },
-            TyKind::Never => f.write_str("!"),
-            TyKind::Unit => f.write_str("()"),
+            Ty::Never(_) => f.write_str("!"),
+            Ty::Unit(_) => f.write_str("()"),
         }
     }
 }

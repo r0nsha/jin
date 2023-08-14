@@ -6,46 +6,40 @@ use crate::db::Database;
 use crate::span::Span;
 use crate::ty::printer::TypePrinter;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Ty {
-    pub kind: TyKind,
-    pub span: Span,
+#[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
+pub enum Ty {
+    Var(TyVar, Span),
+    Int(IntTy, Span),
+    Function(FunctionTy),
+    // TODO: when we implement tuples, Unit should become Tuple([])
+    Unit(Span),
+    Never(Span),
 }
 
 impl Ty {
-    pub fn var(var: TyVar, span: Span) -> Self {
-        Self { kind: TyKind::Var(var), span }
-    }
-
-    pub fn int(span: Span) -> Self {
-        Self { kind: TyKind::Int(IntTy::Int), span }
-    }
-
-    pub fn fun(ret: Self, span: Span) -> Self {
-        Self { kind: TyKind::Function(FunctionTy { ret: Box::new(ret) }), span }
-    }
-
-    pub fn never(span: Span) -> Self {
-        Self { kind: TyKind::Never, span }
-    }
-
-    pub fn unit(span: Span) -> Self {
-        Self { kind: TyKind::Unit, span }
-    }
-
     pub fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
-        match &self.kind {
-            TyKind::Function(fun) => {
+        match self {
+            Self::Function(fun) => {
                 fun.ret.occurs_check(var).map_err(|_| self.clone())
             }
-            TyKind::Var(v) => {
+            Self::Var(v, _) => {
                 if *v == var {
                     Err(self.clone())
                 } else {
                     Ok(())
                 }
             }
-            TyKind::Int(_) | TyKind::Unit | TyKind::Never => Ok(()),
+            Self::Int(..) | Self::Unit(_) | Self::Never(_) => Ok(()),
+        }
+    }
+
+    pub fn span(&self) -> Span {
+        match self {
+            Self::Var(_, span)
+            | Self::Int(_, span)
+            | Self::Function(FunctionTy { span, .. })
+            | Self::Unit(span)
+            | Self::Never(span) => *span,
         }
     }
 
@@ -56,15 +50,6 @@ impl Ty {
     pub fn to_string(&self, db: &Database) -> String {
         self.display(db).to_string()
     }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
-pub enum TyKind {
-    Var(TyVar),
-    Int(IntTy),
-    Function(FunctionTy),
-    Unit, // TODO: when we implement tuples, this should just be an empty tuple
-    Never,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -90,4 +75,5 @@ pub enum IntTy {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionTy {
     pub ret: Box<Ty>,
+    pub span: Span,
 }

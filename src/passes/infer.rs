@@ -7,6 +7,7 @@ mod unify;
 
 use crate::db::{DefinitionId, TyId};
 use crate::passes::infer::typecx::TypeCx;
+use crate::ty::{FunctionTy, IntTy};
 use crate::{
     db::Database,
     hir::{
@@ -93,7 +94,7 @@ impl Infer<'_> for Node {
 
 impl Infer<'_> for Definition {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
-        self.ty = cx.db.alloc_ty(Ty::unit(self.span));
+        self.ty = cx.db.alloc_ty(Ty::Unit(self.span));
 
         match &mut self.kind {
             DefinitionKind::Function(fun) => fun.infer(cx, env),
@@ -109,7 +110,10 @@ impl Infer<'_> for Definition {
 impl Infer<'_> for Function {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         let ret_ty = cx.tcx.fresh_type_var(self.span);
-        let fun_ty = Ty::fun(ret_ty.clone(), self.span);
+        let fun_ty = Ty::Function(FunctionTy {
+            ret: Box::new(ret_ty.clone()),
+            span: self.span,
+        });
 
         let ret_ty = cx.db.alloc_ty(ret_ty);
         let fun_ty = cx.db.alloc_ty(fun_ty);
@@ -136,13 +140,13 @@ impl Infer<'_> for Block {
         self.ty = self
             .exprs
             .last()
-            .map_or_else(|| cx.db.alloc_ty(Ty::unit(self.span)), Node::ty);
+            .map_or_else(|| cx.db.alloc_ty(Ty::Unit(self.span)), Node::ty);
     }
 }
 
 impl Infer<'_> for Return {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
-        self.ty = cx.db.alloc_ty(Ty::never(self.span));
+        self.ty = cx.db.alloc_ty(Ty::Never(self.span));
 
         let call_frame = env.call_stack.current().unwrap();
         let ret_ty = call_frame.ret_ty;
@@ -154,7 +158,7 @@ impl Infer<'_> for Return {
         } else {
             cx.constraints.push(Constraint::Eq {
                 expected: ret_ty,
-                actual: cx.db.alloc_ty(Ty::unit(self.span)),
+                actual: cx.db.alloc_ty(Ty::Unit(self.span)),
             });
         }
     }
@@ -165,7 +169,10 @@ impl Infer<'_> for Call {
         self.callee.infer(cx, env);
 
         let result_ty = cx.tcx.fresh_type_var(self.span);
-        let expected_ty = cx.db.alloc_ty(Ty::fun(result_ty.clone(), self.span));
+        let expected_ty = cx.db.alloc_ty(Ty::Function(FunctionTy {
+            ret: Box::new(result_ty.clone()),
+            span: self.span,
+        }));
 
         cx.constraints.push(Constraint::Eq {
             expected: expected_ty,
@@ -185,8 +192,8 @@ impl Infer<'_> for Name {
 impl Infer<'_> for Lit {
     fn infer(&mut self, cx: &mut InferCx<'_>, _env: &mut TypeEnv) {
         self.ty = match &self.kind {
-            LitKind::Int(_) => cx.db.alloc_ty(Ty::int(self.span)),
-            LitKind::Unit => cx.db.alloc_ty(Ty::unit(self.span)),
+            LitKind::Int(_) => cx.db.alloc_ty(Ty::Int(IntTy::Int, self.span)),
+            LitKind::Unit => cx.db.alloc_ty(Ty::Unit(self.span)),
         };
     }
 }

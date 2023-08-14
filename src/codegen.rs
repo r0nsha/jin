@@ -5,7 +5,7 @@ use pretty::{Arena, DocAllocator, DocBuilder, Pretty};
 use crate::{
     db::{Database, TyId},
     mir::{Block, Function, Instruction, Mir, RegisterId, Value},
-    ty::{IntTy, Ty, TyKind},
+    ty::{IntTy, Ty},
 };
 
 pub fn codegen(db: &Database, mir: &Mir, writer: &mut impl io::Write) {
@@ -170,7 +170,7 @@ impl<'a, 'db> Codegen<'a, 'db> for Function {
     ) -> DocBuilder<'db, Arena<'db>, ()> {
         let fun = &cx.db[self.id()];
 
-        let fun_ty = cx.db[fun.ty].kind.as_function().unwrap();
+        let fun_ty = cx.db[fun.ty].as_function().unwrap();
         let name = fun.qualified_name.full_c_name();
 
         let sig = arena
@@ -279,15 +279,15 @@ impl<'a, 'db> Codegen<'a, 'db> for Ty {
         cx: &'a mut CodegenCx<'db>,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        arena.text(match &self.kind {
-            TyKind::Int(int) => match int {
+        arena.text(match &self {
+            Self::Int(int, _) => match int {
                 IntTy::Int => "intptr_t",
             }
             .to_string(),
-            TyKind::Function(_) => todo!(),
-            TyKind::Unit => TYPE_UNIT.to_string(),
-            TyKind::Never => TYPE_NEVER.to_string(),
-            TyKind::Var(_) => {
+            Self::Function(_) => todo!(),
+            Self::Unit(_) => TYPE_UNIT.to_string(),
+            Self::Never(_) => TYPE_NEVER.to_string(),
+            Self::Var(..) => {
                 panic!("unexpected type: {}", self.display(cx.db))
             }
         })
@@ -295,15 +295,15 @@ impl<'a, 'db> Codegen<'a, 'db> for Ty {
 }
 
 fn c_type(db: &Database, ty: &Ty) -> String {
-    match &ty.kind {
-        TyKind::Int(int) => match int {
+    match ty {
+        Ty::Int(int, _) => match int {
             IntTy::Int => "intptr_t",
         }
         .to_string(),
-        TyKind::Function(_) => todo!(),
-        TyKind::Unit => TYPE_UNIT.to_string(),
-        TyKind::Never => TYPE_NEVER.to_string(),
-        TyKind::Var(_) => panic!("unexpected type: {}", ty.display(db)),
+        Ty::Function(_) => todo!(),
+        Ty::Unit(_) => TYPE_UNIT.to_string(),
+        Ty::Never(_) => TYPE_NEVER.to_string(),
+        Ty::Var(..) => panic!("unexpected type: {}", ty.display(db)),
     }
 }
 

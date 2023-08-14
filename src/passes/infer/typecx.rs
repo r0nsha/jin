@@ -15,6 +15,6 @@ impl TypeCx {
     }
 
     pub fn fresh_type_var(&mut self, span: Span) -> Ty {
-        Ty::var(self.unification_table.new_key(None), span)
+        Ty::Var(self.unification_table.new_key(None), span)
     }
 }
