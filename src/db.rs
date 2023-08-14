@@ -99,6 +99,10 @@ impl Database {
             .print(&self.sources)
             .expect("printing diagnostis to work");
     }
+
+    pub fn alloc_ty(&mut self, ty: Ty) -> TyId {
+        self.types.push(ty)
+    }
 }
 
 macro_rules! new_db_key {
@@ -134,12 +138,6 @@ pub struct BuildOptions {
     pub print_ast: bool,
     pub print_hir: bool,
     pub print_mir: bool,
-}
-
-impl Ty {
-    pub fn alloc(db: &mut Database, ty: Self) -> TyId {
-        db.types.push(ty)
-    }
 }
 
 #[derive(Debug, Clone)]
