@@ -5,9 +5,7 @@ use crate::{
     ty::Ty,
 };
 
-use super::{
-    builder::FunctionBuilder, DefinitionId, Function, Mir, Span, TyId, Value,
-};
+use super::{builder::FunctionBuilder, DefinitionId, Function, Mir, Span, TyId, Value};
 
 pub fn lower(db: &mut Database, hir: &Hir) -> Mir {
     let mut mir = Mir::new();
@@ -41,10 +39,7 @@ impl<'db> LowerCx<'db> {
         Self { db, builder: FunctionBuilder::new(fun_id) }
     }
 
-    fn lower_function(
-        mut self,
-        fun: &hir::Function,
-    ) -> Result<Function, String> {
+    fn lower_function(mut self, fun: &hir::Function) -> Result<Function, String> {
         let blk_start = self.builder.create_block("start");
         self.builder.position_at(blk_start);
 
@@ -67,9 +62,7 @@ impl<'db> LowerCx<'db> {
             reg = Some(self.lower_node(expr));
         }
 
-        reg.unwrap_or_else(|| {
-            self.create_unit_register_with_ty(blk.ty, blk.span)
-        })
+        reg.unwrap_or_else(|| self.create_unit_register_with_ty(blk.ty, blk.span))
     }
 
     fn lower_node(&mut self, node: &hir::Node) -> Value {
@@ -121,9 +114,7 @@ impl<'db> LowerCx<'db> {
                 self.builder.build_int_lit(reg, *value, lit.span);
                 reg.into()
             }
-            hir::LitKind::Unit => {
-                self.create_unit_register_with_ty(lit.ty, lit.span)
-            }
+            hir::LitKind::Unit => self.create_unit_register_with_ty(lit.ty, lit.span),
         }
     }
 

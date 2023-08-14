@@ -55,9 +55,7 @@ impl<'s> Lexer<'s> {
                         self.comment();
                         return self.next_token();
                     }
-                    ch if ch.is_ascii_alphabetic() || ch == '_' => {
-                        self.ident(start)
-                    }
+                    ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
                     ch if ch.is_ascii_digit() => self.numeric(start),
                     ch if ch.is_ascii_whitespace() => return self.next_token(),
                     ch => {
@@ -66,10 +64,7 @@ impl<'s> Lexer<'s> {
                     }
                 };
 
-                Ok(Some(Token {
-                    kind,
-                    span: self.create_span(start.try_into().unwrap()),
-                }))
+                Ok(Some(Token { kind, span: self.create_span(start.try_into().unwrap()) }))
             }
             None => Ok(None),
         }
@@ -95,15 +90,11 @@ impl<'s> Lexer<'s> {
         while let Some(ch) = self.peek() {
             if ch.is_ascii_digit() {
                 self.advance();
-            } else if ch == '_'
-                && self.peek_offset(1).map_or(false, |c| c.is_ascii_digit())
-            {
+            } else if ch == '_' && self.peek_offset(1).map_or(false, |c| c.is_ascii_digit()) {
                 self.advance();
                 self.advance();
             } else {
-                return TokenKind::Int(
-                    self.range(start).replace('_', "").parse().unwrap(),
-                );
+                return TokenKind::Int(self.range(start).replace('_', "").parse().unwrap());
             }
         }
 
@@ -157,11 +148,9 @@ enum TokenizeError {
 impl From<TokenizeError> for Diagnostic {
     fn from(err: TokenizeError) -> Self {
         match err {
-            TokenizeError::InvalidChar { ch, span } => {
-                Self::error("tokenize::invalid_char")
-                    .with_message(format!("invalid character {ch}"))
-                    .with_label(Label::primary(span))
-            }
+            TokenizeError::InvalidChar { ch, span } => Self::error("tokenize::invalid_char")
+                .with_message(format!("invalid character {ch}"))
+                .with_label(Label::primary(span)),
         }
     }
 }

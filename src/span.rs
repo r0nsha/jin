@@ -53,11 +53,7 @@ impl Span {
     pub fn merge(&self, other: Self) -> Self {
         assert!(self.source_id == other.source_id);
 
-        Self {
-            source_id: self.source_id,
-            start: self.start.min(other.start),
-            end: self.end.max(other.end),
-        }
+        Self { source_id: self.source_id, start: self.start.min(other.start), end: self.end.max(other.end) }
     }
 }
 
@@ -120,14 +116,11 @@ impl Source {
         use std::cmp::Ordering;
 
         match line_index.cmp(&self.line_starts.len()) {
-            Ordering::Less => {
-                Ok(self.line_starts.get(line_index).copied().unwrap())
-            }
+            Ordering::Less => Ok(self.line_starts.get(line_index).copied().unwrap()),
             Ordering::Equal => Ok(self.contents.len()),
-            Ordering::Greater => Err(files::Error::LineTooLarge {
-                given: line_index,
-                max: self.line_starts.len() - 1,
-            }),
+            Ordering::Greater => {
+                Err(files::Error::LineTooLarge { given: line_index, max: self.line_starts.len() - 1 })
+            }
         }
     }
 }
@@ -154,29 +147,15 @@ impl<'a> files::Files<'a> for Source {
         Ok(self.path().to_str().unwrap())
     }
 
-    fn source(
-        &'a self,
-        _id: Self::FileId,
-    ) -> Result<Self::Source, files::Error> {
+    fn source(&'a self, _id: Self::FileId) -> Result<Self::Source, files::Error> {
         Ok(self.contents())
     }
 
-    fn line_index(
-        &'a self,
-        _id: Self::FileId,
-        byte_index: usize,
-    ) -> Result<usize, files::Error> {
-        Ok(self
-            .line_starts
-            .binary_search(&byte_index)
-            .unwrap_or_else(|next_line| next_line - 1))
+    fn line_index(&'a self, _id: Self::FileId, byte_index: usize) -> Result<usize, files::Error> {
+        Ok(self.line_starts.binary_search(&byte_index).unwrap_or_else(|next_line| next_line - 1))
     }
 
-    fn line_range(
-        &'a self,
-        _id: Self::FileId,
-        line_index: usize,
-    ) -> Result<ops::Range<usize>, files::Error> {
+    fn line_range(&'a self, _id: Self::FileId, line_index: usize) -> Result<ops::Range<usize>, files::Error> {
         let line_start = self.line_start(line_index)?;
         let next_line_start = self.line_start(line_index + 1)?;
 
@@ -192,37 +171,18 @@ impl<'a> files::Files<'a> for Sources {
     type Source = &'a str;
 
     fn name(&'a self, id: Self::FileId) -> Result<Self::Name, files::Error> {
-        self.get(id)
-            .ok_or(files::Error::FileMissing)
-            .and_then(|source| source.name(id))
+        self.get(id).ok_or(files::Error::FileMissing).and_then(|source| source.name(id))
     }
 
-    fn source(
-        &'a self,
-        id: Self::FileId,
-    ) -> Result<Self::Source, files::Error> {
-        self.get(id)
-            .ok_or(files::Error::FileMissing)
-            .and_then(|source| source.source(id))
+    fn source(&'a self, id: Self::FileId) -> Result<Self::Source, files::Error> {
+        self.get(id).ok_or(files::Error::FileMissing).and_then(|source| source.source(id))
     }
 
-    fn line_index(
-        &'a self,
-        id: Self::FileId,
-        byte_index: usize,
-    ) -> Result<usize, files::Error> {
-        self.get(id)
-            .ok_or(files::Error::FileMissing)
-            .and_then(|source| source.line_index(id, byte_index))
+    fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, files::Error> {
+        self.get(id).ok_or(files::Error::FileMissing).and_then(|source| source.line_index(id, byte_index))
     }
 
-    fn line_range(
-        &'a self,
-        id: Self::FileId,
-        line_index: usize,
-    ) -> Result<ops::Range<usize>, files::Error> {
-        self.get(id)
-            .ok_or(files::Error::FileMissing)
-            .and_then(|source| source.line_range(id, line_index))
+    fn line_range(&'a self, id: Self::FileId, line_index: usize) -> Result<ops::Range<usize>, files::Error> {
+        self.get(id).ok_or(files::Error::FileMissing).and_then(|source| source.line_range(id, line_index))
     }
 }

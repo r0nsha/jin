@@ -16,13 +16,7 @@ pub struct Diagnostic {
 
 impl Diagnostic {
     pub fn error(code: impl Into<String>) -> Self {
-        Self {
-            severity: Severity::Error,
-            code: code.into(),
-            message: None,
-            labels: vec![],
-            help: None,
-        }
+        Self { severity: Severity::Error, code: code.into(), message: None, labels: vec![], help: None }
     }
 
     pub fn with_message(mut self, message: impl Into<String>) -> Self {
@@ -91,9 +85,7 @@ impl From<Label> for codespan_diagnostic::Label<SourceId> {
         Self {
             style: match val.style {
                 LabelStyle::Primary => codespan_diagnostic::LabelStyle::Primary,
-                LabelStyle::Secondary => {
-                    codespan_diagnostic::LabelStyle::Secondary
-                }
+                LabelStyle::Secondary => codespan_diagnostic::LabelStyle::Secondary,
             },
             file_id: val.span.source_id(),
             range: val.span.start() as usize..val.span.end() as usize,
@@ -130,10 +122,7 @@ impl Diagnostics {
         self.diagnostics.push(item.into());
     }
 
-    pub fn extend<T: Into<Diagnostic>>(
-        &mut self,
-        items: impl IntoIterator<Item = T>,
-    ) {
+    pub fn extend<T: Into<Diagnostic>>(&mut self, items: impl IntoIterator<Item = T>) {
         self.diagnostics.extend(items.into_iter().map(Into::into));
     }
 
@@ -141,22 +130,14 @@ impl Diagnostics {
         !self.diagnostics.is_empty()
     }
 
-    pub fn print(
-        &self,
-        sources: &Sources,
-    ) -> Result<(), codespan_reporting::files::Error> {
+    pub fn print(&self, sources: &Sources) -> Result<(), codespan_reporting::files::Error> {
         let writer = StandardStream::stderr(ColorChoice::Always);
         let config = codespan_reporting::term::Config::default();
 
         let mut writer_lock = writer.lock();
 
         for diagnostic in &self.diagnostics {
-            codespan_reporting::term::emit(
-                &mut writer_lock,
-                &config,
-                sources,
-                &diagnostic.clone().into(),
-            )?;
+            codespan_reporting::term::emit(&mut writer_lock, &config, sources, &diagnostic.clone().into())?;
         }
 
         Ok(())

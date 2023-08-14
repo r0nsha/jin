@@ -24,9 +24,7 @@ impl Ty {
 
     pub fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
         match self {
-            Self::Function(fun) => {
-                fun.ret.occurs_check(var).map_err(|_| self.clone())
-            }
+            Self::Function(fun) => fun.ret.occurs_check(var).map_err(|_| self.clone()),
             Self::Infer(InferTy::TyVar(v), _) => {
                 if *v == var {
                     Err(self.clone())

@@ -4,14 +4,9 @@ use ustr::{Ustr, UstrMap};
 
 use crate::db::{DefinitionInfoKind, FunctionInfo};
 use crate::{
-    db::{
-        Database, DefinitionId, DefinitionInfo, ModuleId, ScopeLevel, TyId, Vis,
-    },
+    db::{Database, DefinitionId, DefinitionInfo, ModuleId, ScopeLevel, TyId, Vis},
     diagnostics::{Diagnostic, Label},
-    hir::{
-        Block, Call, Definition, DefinitionKind, Function, Hir, Module, Name,
-        Node, Return,
-    },
+    hir::{Block, Call, Definition, DefinitionKind, Function, Hir, Module, Name, Node, Return},
     span::Span,
 };
 
@@ -54,13 +49,10 @@ impl<'db> ResolveCx<'db> {
                     already_defined.insert(def.name, def.span);
                 }
 
-                let qualified_name =
-                    self.db[module.id].name.clone().child(def.name);
+                let qualified_name = self.db[module.id].name.clone().child(def.name);
 
                 let kind = match &def.kind {
-                    DefinitionKind::Function(_) => {
-                        DefinitionInfoKind::Function(FunctionInfo::Orphan)
-                    }
+                    DefinitionKind::Function(_) => DefinitionInfoKind::Function(FunctionInfo::Orphan),
                 };
 
                 let id = DefinitionInfo::alloc(
@@ -166,15 +158,10 @@ impl Resolve<'_> for Call {
 
 impl Resolve<'_> for Name {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        if let Some(id) =
-            cx.global_scope.find_definition(env.module_id, self.name)
-        {
+        if let Some(id) = cx.global_scope.find_definition(env.module_id, self.name) {
             self.id = Some(id);
         } else {
-            cx.errors.push(ResolveError::NameNotFound {
-                name: self.name,
-                span: self.span,
-            });
+            cx.errors.push(ResolveError::NameNotFound { name: self.name, span: self.span });
         }
     }
 }
@@ -187,11 +174,7 @@ impl GlobalScope {
         Self(HashMap::new())
     }
 
-    pub fn find_definition(
-        &self,
-        module_id: ModuleId,
-        name: Ustr,
-    ) -> Option<DefinitionId> {
+    pub fn find_definition(&self, module_id: ModuleId, name: Ustr) -> Option<DefinitionId> {
         self.0.get(&module_id).and_then(|defs| defs.get(&name)).copied()
     }
 }
@@ -292,34 +275,20 @@ impl From<ResolveError> for Diagnostic {
         match err {
             ResolveError::MultipleDefinitions { name, prev_span, dup_span } => {
                 Self::error("resolve::multiple_definitions")
-                    .with_message(format!(
-                        "the name `{name}` is defined multiple times"
-                    ))
+                    .with_message(format!("the name `{name}` is defined multiple times"))
+                    .with_label(Label::primary(dup_span).with_message(format!("`{name}` is redefined here")))
                     .with_label(
-                        Label::primary(dup_span).with_message(format!(
-                            "`{name}` is redefined here"
-                        )),
+                        Label::secondary(prev_span)
+                            .with_message(format!("previous definition of `{name}` is here")),
                     )
-                    .with_label(Label::secondary(prev_span).with_message(
-                        format!("previous definition of `{name}` is here"),
-                    ))
                     .with_help("you can only define names once in a module")
             }
-            ResolveError::NameNotFound { name, span } => {
-                Self::error("resolve::name_not_found")
-                    .with_message(format!(
-                        "cannot find value `{name}` in this scope"
-                    ))
-                    .with_label(
-                        Label::primary(span)
-                            .with_message("not found in this scope"),
-                    )
-            }
-            ResolveError::InvalidReturn { span } => {
-                Self::error("resolve::invalid_return")
-                    .with_message("cannot return outside of function scope")
-                    .with_label(Label::primary(span))
-            }
+            ResolveError::NameNotFound { name, span } => Self::error("resolve::name_not_found")
+                .with_message(format!("cannot find value `{name}` in this scope"))
+                .with_label(Label::primary(span).with_message("not found in this scope")),
+            ResolveError::InvalidReturn { span } => Self::error("resolve::invalid_return")
+                .with_message("cannot return outside of function scope")
+                .with_label(Label::primary(span)),
         }
     }
 }

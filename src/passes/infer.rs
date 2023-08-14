@@ -10,10 +10,7 @@ use crate::passes::infer::typecx::TypeCx;
 use crate::ty::FunctionTy;
 use crate::{
     db::Database,
-    hir::{
-        Block, Call, Definition, DefinitionKind, Function, Hir, Lit, LitKind,
-        Module, Name, Node, Return,
-    },
+    hir::{Block, Call, Definition, DefinitionKind, Function, Hir, Lit, LitKind, Module, Name, Node, Return},
     ty::Ty,
 };
 
@@ -102,18 +99,14 @@ impl Infer<'_> for Definition {
 
         let sym_ty = cx.infer_definition(self.id.expect("to be resolved"));
 
-        cx.constraints
-            .push(Constraint::Eq { expected: self.kind.ty(), actual: sym_ty });
+        cx.constraints.push(Constraint::Eq { expected: self.kind.ty(), actual: sym_ty });
     }
 }
 
 impl Infer<'_> for Function {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         let ret_ty = cx.tcx.fresh_ty_var(self.span);
-        let fun_ty = Ty::Function(FunctionTy {
-            ret: Box::new(ret_ty.clone()),
-            span: self.span,
-        });
+        let fun_ty = Ty::Function(FunctionTy { ret: Box::new(ret_ty.clone()), span: self.span });
 
         let ret_ty = cx.db.alloc_ty(ret_ty);
 
@@ -123,8 +116,7 @@ impl Infer<'_> for Function {
         env.call_stack.push(CallFrame { id, ret_ty });
 
         self.body.infer(cx, env);
-        cx.constraints
-            .push(Constraint::Eq { expected: ret_ty, actual: self.body.ty });
+        cx.constraints.push(Constraint::Eq { expected: ret_ty, actual: self.body.ty });
 
         env.call_stack.pop();
     }
@@ -136,10 +128,7 @@ impl Infer<'_> for Block {
             expr.infer(cx, env);
         }
 
-        self.ty = self
-            .exprs
-            .last()
-            .map_or_else(|| cx.db.alloc_ty(Ty::Unit(self.span)), Node::ty);
+        self.ty = self.exprs.last().map_or_else(|| cx.db.alloc_ty(Ty::Unit(self.span)), Node::ty);
     }
 }
 
@@ -152,13 +141,10 @@ impl Infer<'_> for Return {
 
         if let Some(value) = self.expr.as_mut() {
             value.infer(cx, env);
-            cx.constraints
-                .push(Constraint::Eq { expected: ret_ty, actual: value.ty() });
+            cx.constraints.push(Constraint::Eq { expected: ret_ty, actual: value.ty() });
         } else {
-            cx.constraints.push(Constraint::Eq {
-                expected: ret_ty,
-                actual: cx.db.alloc_ty(Ty::Unit(self.span)),
-            });
+            cx.constraints
+                .push(Constraint::Eq { expected: ret_ty, actual: cx.db.alloc_ty(Ty::Unit(self.span)) });
         }
     }
 }
@@ -168,15 +154,10 @@ impl Infer<'_> for Call {
         self.callee.infer(cx, env);
 
         let result_ty = cx.tcx.fresh_ty_var(self.span);
-        let expected_ty = cx.db.alloc_ty(Ty::Function(FunctionTy {
-            ret: Box::new(result_ty.clone()),
-            span: self.span,
-        }));
+        let expected_ty =
+            cx.db.alloc_ty(Ty::Function(FunctionTy { ret: Box::new(result_ty.clone()), span: self.span }));
 
-        cx.constraints.push(Constraint::Eq {
-            expected: expected_ty,
-            actual: self.callee.ty(),
-        });
+        cx.constraints.push(Constraint::Eq { expected: expected_ty, actual: self.callee.ty() });
 
         self.ty = cx.db.alloc_ty(result_ty);
     }

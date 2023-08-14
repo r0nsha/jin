@@ -3,9 +3,7 @@ use std::io;
 use super::{Ast, Function, LitKind, Module, Statement, TopLevel};
 
 pub(super) fn print_module(module: &Module) -> io::Result<()> {
-    let mut cx = Cx {
-        builder: ptree::TreeBuilder::new(module.name.standard_full_name()),
-    };
+    let mut cx = Cx { builder: ptree::TreeBuilder::new(module.name.standard_full_name()) };
 
     for tl in &module.top_levels {
         tl.pretty_print(&mut cx);

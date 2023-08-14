@@ -56,11 +56,7 @@ pub struct Module {
 }
 
 impl Module {
-    pub fn new(
-        source_id: SourceId,
-        name: QualifiedName,
-        is_main: bool,
-    ) -> Self {
+    pub fn new(source_id: SourceId, name: QualifiedName, is_main: bool) -> Self {
         Self { source: source_id, name, is_main, top_levels: vec![] }
     }
 

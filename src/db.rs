@@ -30,10 +30,7 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new(
-        build_options: BuildOptions,
-        root_file: &Path,
-    ) -> io::Result<Self> {
+    pub fn new(build_options: BuildOptions, root_file: &Path) -> io::Result<Self> {
         let absolute_path = root_file.absolutize().unwrap();
 
         let mut sources = Sources::new();
@@ -95,9 +92,7 @@ impl Database {
     }
 
     pub fn print_diagnostics(&self) {
-        self.diagnostics
-            .print(&self.sources)
-            .expect("printing diagnostis to work");
+        self.diagnostics.print(&self.sources).expect("printing diagnostis to work");
     }
 
     pub fn alloc_ty(&mut self, ty: Ty) -> TyId {
@@ -151,18 +146,8 @@ pub struct ModuleInfo {
 }
 
 impl ModuleInfo {
-    pub fn alloc(
-        db: &mut Database,
-        source_id: SourceId,
-        name: QualifiedName,
-        is_main: bool,
-    ) -> ModuleId {
-        let id = db.modules.push_with_key(|id| Self {
-            id,
-            source_id,
-            name,
-            is_main,
-        });
+    pub fn alloc(db: &mut Database, source_id: SourceId, name: QualifiedName, is_main: bool) -> ModuleId {
+        let id = db.modules.push_with_key(|id| Self { id, source_id, name, is_main });
 
         if is_main {
             assert!(db.main_module.is_none());

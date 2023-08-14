@@ -15,12 +15,7 @@ pub fn parse_modules(db: &mut Database) -> Library {
         Err(diag) => db.diagnostics.add(diag),
     }
 
-    let lib_name = modules
-        .iter()
-        .find(|m| m.is_main())
-        .expect("to have a main module")
-        .name
-        .name();
+    let lib_name = modules.iter().find(|m| m.is_main()).expect("to have a main module").name.name();
 
     Library::new(lib_name, true, modules)
 }

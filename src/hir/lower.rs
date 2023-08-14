@@ -4,9 +4,8 @@ use crate::{
 };
 
 use super::{
-    Block, Call, Definition, DefinitionKind, Function, FunctionParam, Hir,
-    IndexMap, Lit, LitKind, Module, ModuleId, Name, Node, Return, Spanned,
-    TyId,
+    Block, Call, Definition, DefinitionKind, Function, FunctionParam, Hir, IndexMap, Lit, LitKind, Module,
+    ModuleId, Name, Node, Return, Spanned, TyId,
 };
 
 pub fn lower(db: &mut Database, lib: ast::Library) -> Hir {
@@ -15,12 +14,7 @@ pub fn lower(db: &mut Database, lib: ast::Library) -> Hir {
             .modules
             .into_iter()
             .map(|module| {
-                let id = db::ModuleInfo::alloc(
-                    db,
-                    module.source,
-                    module.name.clone(),
-                    module.is_main(),
-                );
+                let id = db::ModuleInfo::alloc(db, module.source, module.name.clone(), module.is_main());
                 Lower { db, id }.run(module)
             })
             .collect(),
@@ -37,11 +31,7 @@ impl<'db> Lower<'db> {
     fn run(&mut self, module: ast::Module) -> Module {
         Module {
             id: self.id,
-            definitions: module
-                .top_levels
-                .into_iter()
-                .map(|tl| self.lower_top_level(tl))
-                .collect(),
+            definitions: module.top_levels.into_iter().map(|tl| self.lower_top_level(tl)).collect(),
         }
     }
 
@@ -66,17 +56,7 @@ impl<'db> Lower<'db> {
         let params = fun
             .params
             .into_iter()
-            .map(|p| {
-                (
-                    p.name,
-                    FunctionParam {
-                        id: None,
-                        name: p.name,
-                        span: p.span,
-                        ty: TyId::null(),
-                    },
-                )
-            })
+            .map(|p| (p.name, FunctionParam { id: None, name: p.name, span: p.span, ty: TyId::null() }))
             .collect::<IndexMap<_, _>>();
 
         let body = self.lower_ast(*fun.body);
@@ -88,14 +68,7 @@ impl<'db> Lower<'db> {
             Block { exprs: vec![body], span, ty: TyId::null() }
         };
 
-        Function {
-            id: None,
-            name: fun.name,
-            body,
-            params,
-            span: fun.span,
-            ty: TyId::null(),
-        }
+        Function { id: None, name: fun.name, body, params, span: fun.span, ty: TyId::null() }
     }
 
     fn lower_ast(&mut self, ast: Ast) -> Node {
@@ -106,12 +79,9 @@ impl<'db> Lower<'db> {
                 span: call.span,
                 ty: TyId::null(),
             }),
-            Ast::Name(name) => Node::Name(Name {
-                id: None,
-                name: name.name,
-                span: name.span,
-                ty: TyId::null(),
-            }),
+            Ast::Name(name) => {
+                Node::Name(Name { id: None, name: name.name, span: name.span, ty: TyId::null() })
+            }
             Ast::Lit(lit) => Node::Lit(Lit {
                 kind: match lit.kind {
                     ast::LitKind::Int(v) => LitKind::Int(v),

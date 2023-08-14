@@ -3,8 +3,7 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Ast, Block, Call, Function, FunctionParam, Lit, LitKind, Module, Name,
-        Return, Statement, TopLevel,
+        Ast, Block, Call, Function, FunctionParam, Lit, LitKind, Module, Name, Return, Statement, TopLevel,
     },
     common::QualifiedName,
     db::Database,
@@ -12,18 +11,13 @@ use crate::{
     span::{Source, SourceId, Span, Spanned},
 };
 
-pub fn parse(
-    db: &Database,
-    source: &Source,
-    tokens: Vec<Token>,
-) -> Result<Module, Diagnostic> {
+pub fn parse(db: &Database, source: &Source, tokens: Vec<Token>) -> Result<Module, Diagnostic> {
     let source_id = source.id();
     let name = QualifiedName::from_path(db.root_dir(), source.path()).unwrap();
     let is_main = source_id == db.main_source().id();
 
     let module =
-        Parser::new(db.sources.get(source_id).expect("to exist"), tokens)
-            .parse(source_id, name, is_main)?;
+        Parser::new(db.sources.get(source_id).expect("to exist"), tokens).parse(source_id, name, is_main)?;
 
     Ok(module)
 }
@@ -42,12 +36,7 @@ impl<'a> Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    fn parse(
-        mut self,
-        source_id: SourceId,
-        name: QualifiedName,
-        is_main: bool,
-    ) -> ParseResult<Module> {
+    fn parse(mut self, source_id: SourceId, name: QualifiedName, is_main: bool) -> ParseResult<Module> {
         let mut module = Module::new(source_id, name, is_main);
 
         while self.pos < self.tokens.len() - 1 {
@@ -84,15 +73,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_function_params(&mut self) -> ParseResult<Vec<FunctionParam>> {
-        self.parse_list(
-            TokenKind::OpenParen,
-            TokenKind::CloseParen,
-            |_, tok| {
-                Self::require_kind(tok, TokenKind::empty_ident()).map(|tok| {
-                    FunctionParam { name: tok.as_ident(), span: tok.span }
-                })
-            },
-        )
+        self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |_, tok| {
+            Self::require_kind(tok, TokenKind::empty_ident())
+                .map(|tok| FunctionParam { name: tok.as_ident(), span: tok.span })
+        })
         .map(|(params, _)| params)
     }
 
@@ -131,12 +115,8 @@ impl<'a> Parser<'a> {
                 let blk = self.parse_block()?;
                 Ast::Block(blk)
             }
-            TokenKind::Ident(ident) => {
-                Ast::Name(Name { name: ident, span: tok.span })
-            }
-            TokenKind::Int(value) => {
-                Ast::Lit(Lit { kind: LitKind::Int(value), span: tok.span })
-            }
+            TokenKind::Ident(ident) => Ast::Name(Name { name: ident, span: tok.span }),
+            TokenKind::Int(value) => Ast::Lit(Lit { kind: LitKind::Int(value), span: tok.span }),
             _ => {
                 return Err(ParseError::UnexpectedToken {
                     expected: "an expression".to_string(),
@@ -151,16 +131,14 @@ impl<'a> Parser<'a> {
 
     fn parse_postfix(&mut self, expr: Ast) -> ParseResult<Ast> {
         match self.token() {
-            Some(tok) if self.are_on_same_line(expr.span(), tok.span) => {
-                match &tok.kind {
-                    TokenKind::OpenParen => {
-                        self.next();
-                        let call = self.parse_call(expr)?;
-                        Ok(Ast::Call(call))
-                    }
-                    _ => Ok(expr),
+            Some(tok) if self.are_on_same_line(expr.span(), tok.span) => match &tok.kind {
+                TokenKind::OpenParen => {
+                    self.next();
+                    let call = self.parse_call(expr)?;
+                    Ok(Ast::Call(call))
                 }
-            }
+                _ => Ok(expr),
+            },
             _ => Ok(expr),
         }
     }
@@ -210,14 +188,8 @@ impl<'a> Parser<'a> {
 
 impl<'a> Parser<'a> {
     fn are_on_same_line(&self, s1: Span, s2: Span) -> bool {
-        let l1 = self
-            .source
-            .line_index(self.source.id(), s1.end() as usize)
-            .unwrap();
-        let l2 = self
-            .source
-            .line_index(self.source.id(), s2.start() as usize)
-            .unwrap();
+        let l1 = self.source.line_index(self.source.id(), s1.end() as usize).unwrap();
+        let l2 = self.source.line_index(self.source.id(), s2.start() as usize).unwrap();
 
         l1 == l2
     }
@@ -296,18 +268,12 @@ enum ParseError {
 impl From<ParseError> for Diagnostic {
     fn from(err: ParseError) -> Self {
         match err {
-            ParseError::UnexpectedToken { expected, actual, span } => {
-                Self::error("parse::unexpected_token")
-                    .with_message(format!(
-                        "expected {expected}, got {actual} instead"
-                    ))
-                    .with_label(Label::primary(span).with_message("found here"))
-            }
-            ParseError::UnexpectedEof { span } => {
-                Self::error("parse::unexpected_eof")
-                    .with_message("unexpected end of file")
-                    .with_label(Label::primary(span).with_message("here"))
-            }
+            ParseError::UnexpectedToken { expected, actual, span } => Self::error("parse::unexpected_token")
+                .with_message(format!("expected {expected}, got {actual} instead"))
+                .with_label(Label::primary(span).with_message("found here")),
+            ParseError::UnexpectedEof { span } => Self::error("parse::unexpected_eof")
+                .with_message("unexpected end of file")
+                .with_label(Label::primary(span).with_message("here")),
         }
     }
 }

@@ -41,10 +41,7 @@ impl TargetPlatform {
     }
 
     pub fn is_wasm(&self) -> bool {
-        matches!(
-            self,
-            Self::FreestandingWasm32 | Self::JsWasm32 | Self::WasiWasm32
-        )
+        matches!(self, Self::FreestandingWasm32 | Self::JsWasm32 | Self::WasiWasm32)
     }
 
     pub fn metrics(&self) -> TargetMetrics {
@@ -87,8 +84,7 @@ impl TargetPlatform {
                 word_size: 8,
                 max_align: 16,
                 target_triplet: "aarch64-linux-elf",
-                target_data_layout:
-                    "e-m:e-i8:8:32-i16:32-i64:64-i128:128-n32:64-S128",
+                target_data_layout: "e-m:e-i8:8:32-i16:32-i64:64-i128:128-n32:64-S128",
             },
             Self::DarwinAmd64 => TargetMetrics {
                 os: Os::Darwin,
@@ -229,11 +225,7 @@ impl Arch {
 
     pub fn endianness(self) -> Endianness {
         match self {
-            Self::Amd64
-            | Self::_386
-            | Self::Arm64
-            | Self::Wasm32
-            | Self::Wasm64 => Endianness::Little,
+            Self::Amd64 | Self::_386 | Self::Arm64 | Self::Wasm32 | Self::Wasm64 => Endianness::Little,
         }
     }
 }

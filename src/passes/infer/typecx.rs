@@ -26,10 +26,7 @@ impl TypeCx {
 
     #[inline]
     pub fn fresh_int_var(&mut self, span: Span) -> Ty {
-        Ty::Infer(
-            InferTy::IntVar(self.int_unification_table.new_key(None)),
-            span,
-        )
+        Ty::Infer(InferTy::IntVar(self.int_unification_table.new_key(None)), span)
     }
 }
 

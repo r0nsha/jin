@@ -10,12 +10,7 @@ impl QualifiedName {
         let target = target.with_extension("");
         let stripped = target.strip_prefix(root).ok()?;
 
-        Some(Self(
-            stripped
-                .iter()
-                .map(|component| ustr(component.to_string_lossy().as_ref()))
-                .collect(),
-        ))
+        Some(Self(stripped.iter().map(|component| ustr(component.to_string_lossy().as_ref())).collect()))
     }
 
     pub fn name(&self) -> Ustr {

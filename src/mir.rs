@@ -41,12 +41,7 @@ pub struct Function {
 
 impl Function {
     fn new(id: DefinitionId) -> Self {
-        Self {
-            id,
-            registers: IndexVec::new(),
-            parameters: vec![],
-            cfg: Cfg::new(),
-        }
+        Self { id, registers: IndexVec::new(), parameters: vec![], cfg: Cfg::new() }
     }
 
     pub fn id(&self) -> DefinitionId {
@@ -126,19 +121,11 @@ pub struct Block {
 
 impl Block {
     fn new(id: BlockId, name: impl AsRef<str>) -> Self {
-        Self {
-            id,
-            name: ustr(name.as_ref()),
-            instructions: vec![],
-            predecessors: vec![],
-            successors: vec![],
-        }
+        Self { id, name: ustr(name.as_ref()), instructions: vec![], predecessors: vec![], successors: vec![] }
     }
 
     fn is_terminating(&self) -> bool {
-        self.instructions
-            .iter()
-            .any(|inst| matches!(inst, Instruction::Return(_)))
+        self.instructions.iter().any(|inst| matches!(inst, Instruction::Return(_)))
     }
 }
 
