@@ -60,14 +60,14 @@ impl<'db> InferCx<'db> {
     }
 
     fn infer_definition(&mut self, id: DefinitionId) -> TyId {
-        let sym = &self.db[id];
+        let def = &self.db[id];
 
-        if sym.ty.is_null() {
-            let ty = self.db.alloc_ty(self.tcx.fresh_ty_var(sym.span));
+        if def.ty.is_null() {
+            let ty = self.db.alloc_ty(self.tcx.fresh_ty_var(def.span));
             self.db[id].ty = ty;
             ty
         } else {
-            sym.ty
+            def.ty
         }
     }
 }
@@ -97,9 +97,9 @@ impl Infer<'_> for Definition {
             DefinitionKind::Function(fun) => fun.infer(cx, env),
         }
 
-        let sym_ty = cx.infer_definition(self.id.expect("to be resolved"));
+        let def_ty = cx.infer_definition(self.id.expect("to be resolved"));
 
-        cx.constraints.push(Constraint::Eq { expected: self.kind.ty(), actual: sym_ty });
+        cx.constraints.push(Constraint::Eq { expected: self.kind.ty(), actual: def_ty });
     }
 }
 
