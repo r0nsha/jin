@@ -20,7 +20,7 @@ pub(crate) fn infer(db: &mut Database, hir: &mut Hir) {
     cx.infer_all(&mut hir.modules);
 
     if let Err(e) = cx.unification() {
-        db.diagnostics.add(e);
+        db.diagnostics.add(e.into_diagnostic(db));
         return;
     }
 

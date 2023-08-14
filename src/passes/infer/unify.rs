@@ -1,5 +1,6 @@
 use ena::unify::{EqUnifyValue, UnifyKey};
 
+use crate::db::Database;
 use crate::passes::infer::normalize::NormalizeTy;
 use crate::{
     diagnostics::{Diagnostic, Label},
@@ -116,9 +117,9 @@ pub(crate) enum InferError {
     },
 }
 
-impl From<InferError> for Diagnostic {
-    fn from(err: InferError) -> Self {
-        match err {
+impl InferError {
+    pub(crate) fn into_diagnostic(self, db: &Database) -> Diagnostic {
+        match self {
             InferError::TypesNotEq { expected, actual } => {
                 Diagnostic::error("infer::incompatible_types")
                     .with_message(format!(
