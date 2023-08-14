@@ -3,88 +3,99 @@ use std::io;
 use super::{Ast, Function, LitKind, Module, Statement, TopLevel};
 
 pub(super) fn print_module(module: &Module) -> io::Result<()> {
-    let mut p = PrettyPrint {
+    let mut cx = Cx {
         builder: ptree::TreeBuilder::new(module.name.standard_full_name()),
     };
 
     for tl in &module.top_levels {
-        p.print_top_level(tl);
+        tl.pretty_print(&mut cx);
     }
 
-    let tree = p.builder.build();
+    let tree = cx.builder.build();
     ptree::print_tree_with(&tree, &ptree::PrintConfig::default())
 }
 
-struct PrettyPrint {
+struct Cx {
     builder: ptree::TreeBuilder,
 }
 
-impl PrettyPrint {
-    fn print_ast(&mut self, ast: &Ast) {
-        match ast {
-            Ast::Block(blk) => {
-                self.builder.begin_child("block".to_string());
+trait PrettyPrint {
+    fn pretty_print(&self, cx: &mut Cx);
+}
+
+impl PrettyPrint for Ast {
+    fn pretty_print(&self, cx: &mut Cx) {
+        match self {
+            Self::Block(blk) => {
+                cx.builder.begin_child("block".to_string());
 
                 for stmt in &blk.stmts {
-                    self.print_stmt(stmt);
+                    stmt.pretty_print(cx);
                 }
 
-                self.builder.end_child();
+                cx.builder.end_child();
             }
-            Ast::Name(name) => {
-                self.builder.add_empty_child(name.name.to_string());
+            Self::Name(name) => {
+                cx.builder.add_empty_child(name.name.to_string());
             }
-            Ast::Call(call) => {
-                self.builder.begin_child("call".to_string());
-                self.print_ast(&call.callee);
-                self.builder.end_child();
+            Self::Call(call) => {
+                cx.builder.begin_child("call".to_string());
+                call.callee.pretty_print(cx);
+                cx.builder.end_child();
             }
-            Ast::Lit(lit) => match lit.kind {
+            Self::Lit(lit) => match lit.kind {
                 LitKind::Int(value) => {
-                    self.builder.add_empty_child(format!("int: {value}"));
+                    cx.builder.add_empty_child(format!("int: {value}"));
                 }
                 LitKind::Unit => {
-                    self.builder.add_empty_child("()".to_string());
+                    cx.builder.add_empty_child("()".to_string());
                 }
             },
         }
     }
+}
 
-    fn print_stmt(&mut self, stmt: &Statement) {
-        match stmt {
-            Statement::Return(ret) => {
-                self.builder.begin_child("return".to_string());
+impl PrettyPrint for Statement {
+    fn pretty_print(&self, cx: &mut Cx) {
+        match self {
+            Self::Return(ret) => {
+                cx.builder.begin_child("return".to_string());
 
                 if let Some(value) = ret.expr.as_ref() {
-                    self.print_ast(value);
+                    value.pretty_print(cx);
                 }
 
-                self.builder.end_child();
+                cx.builder.end_child();
             }
-            Statement::Expr(expr) => self.print_ast(expr),
+            Self::Expr(expr) => expr.pretty_print(cx),
         }
     }
+}
 
-    fn print_top_level(&mut self, tl: &TopLevel) {
-        match tl {
-            TopLevel::Function(fun) => self.print_function(fun),
+impl PrettyPrint for TopLevel {
+    fn pretty_print(&self, cx: &mut Cx) {
+        match self {
+            Self::Function(fun) => fun.pretty_print(cx),
         }
     }
+}
 
-    fn print_function(&mut self, fun: &Function) {
-        self.builder.begin_child(format!("fn {}", fun.name));
+impl PrettyPrint for Function {
+    fn pretty_print(&self, cx: &mut Cx) {
+        cx.builder.begin_child(format!("fn {}", self.name));
 
-        if !fun.params.is_empty() {
-            self.builder.begin_child("params".to_string());
+        if !self.params.is_empty() {
+            cx.builder.begin_child("params".to_string());
 
-            for param in &fun.params {
-                self.builder.add_empty_child(format!("{}", param.name));
+            for param in &self.params {
+                cx.builder.add_empty_child(format!("{}", param.name));
             }
 
-            self.builder.end_child();
+            cx.builder.end_child();
         }
 
-        self.print_ast(&fun.body);
-        self.builder.end_child();
+        self.body.pretty_print(cx);
+
+        cx.builder.end_child();
     }
 }
