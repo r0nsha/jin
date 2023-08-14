@@ -10,7 +10,7 @@ pub(crate) fn lower(db: &mut Database, modules: Vec<ast::Module>) -> Hir {
         modules: modules
             .into_iter()
             .map(|module| {
-                let id = db::Module::alloc(
+                let id = db::ModuleInfo::alloc(
                     db,
                     module.source,
                     module.name.clone(),

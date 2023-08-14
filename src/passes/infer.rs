@@ -5,7 +5,7 @@ mod type_env;
 mod typecx;
 mod unify;
 
-use crate::db::{SymbolId, TyId};
+use crate::db::{DefinitionId, TyId};
 use crate::{db::Database, hir::*, ty::*};
 
 use self::{
@@ -54,7 +54,7 @@ impl<'db> InferCx<'db> {
         }
     }
 
-    fn infer_symbol(&mut self, id: SymbolId) -> TyId {
+    fn infer_definition(&mut self, id: DefinitionId) -> TyId {
         let sym = id.get(self.db);
 
         if sym.ty.is_null() {
@@ -92,7 +92,7 @@ impl Infer<'_> for Definition {
             DefinitionKind::Function(fun) => fun.infer(cx, env),
         }
 
-        let sym_ty = cx.infer_symbol(self.id.expect("to be resolved"));
+        let sym_ty = cx.infer_definition(self.id.expect("to be resolved"));
 
         cx.constraints
             .push(Constraint::Eq { expected: self.kind.ty(), actual: sym_ty });
@@ -172,7 +172,7 @@ impl Infer<'_> for Call {
 
 impl Infer<'_> for Name {
     fn infer(&mut self, cx: &mut InferCx<'_>, _env: &mut TypeEnv) {
-        self.ty = cx.infer_symbol(self.id.expect("to be resolved"));
+        self.ty = cx.infer_definition(self.id.expect("to be resolved"));
     }
 }
 

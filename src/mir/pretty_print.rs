@@ -83,7 +83,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for Instruction {
 impl<'db, 'd> ToDoc<'db, 'd> for Value {
     fn to_doc(&self, db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
         match self {
-            Value::Symbol(id) => {
+            Value::Definition(id) => {
                 RcDoc::text(id.get(db).qualified_name.standard_full_name())
             }
             Value::Register(id) => id.to_doc(db, fun),

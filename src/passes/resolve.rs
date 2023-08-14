@@ -2,9 +2,11 @@ use std::collections::HashMap;
 
 use ustr::{Ustr, UstrMap};
 
-use crate::db::SymbolKind;
 use crate::{
-    db::{self, Database, ModuleId, ScopeLevel, Symbol, SymbolId, TyId, Vis},
+    db::{
+        self, Database, DefinitionId, DefinitionInfo, ModuleId, ScopeLevel,
+        TyId, Vis,
+    },
     diagnostics::{Diagnostic, Label},
     hir::*,
     span::Span,
@@ -35,18 +37,18 @@ impl<'db> ResolveCx<'db> {
 
     fn create_modules_and_resolve_globals(&mut self, modules: &mut [Module]) {
         for module in modules {
-            let mut scope_symbols = UstrMap::<SymbolId>::default();
-            let mut defined_symbols = UstrMap::<Span>::default();
+            let mut scope_definitions = UstrMap::<DefinitionId>::default();
+            let mut already_defined = UstrMap::<Span>::default();
 
             for def in &mut module.definitions {
-                if let Some(&prev_span) = defined_symbols.get(&def.name) {
-                    self.errors.push(ResolveError::DuplicateSymbol {
+                if let Some(&prev_span) = already_defined.get(&def.name) {
+                    self.errors.push(ResolveError::MultipleDefinitions {
                         name: def.name,
                         prev_span,
                         dup_span: def.span,
                     });
                 } else {
-                    defined_symbols.insert(def.name, def.span);
+                    already_defined.insert(def.name, def.span);
                 }
 
                 let qualified_name =
@@ -54,11 +56,11 @@ impl<'db> ResolveCx<'db> {
 
                 let kind = match &def.kind {
                     DefinitionKind::Function(_) => {
-                        SymbolKind::Function(db::Function::Orphan)
+                        db::DefinitionKind::Function(db::FunctionInfo::Orphan)
                     }
                 };
 
-                let id = Symbol::alloc(
+                let id = DefinitionInfo::alloc(
                     self.db,
                     module.id,
                     qualified_name,
@@ -74,10 +76,10 @@ impl<'db> ResolveCx<'db> {
 
                 def.id = Some(id);
 
-                scope_symbols.insert(def.name, id);
+                scope_definitions.insert(def.name, id);
             }
 
-            self.global_scope.0.insert(module.id, scope_symbols);
+            self.global_scope.0.insert(module.id, scope_definitions);
         }
     }
 
@@ -161,7 +163,8 @@ impl Resolve<'_> for Call {
 
 impl Resolve<'_> for Name {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        if let Some(id) = cx.global_scope.find_symbol(env.module_id, self.name)
+        if let Some(id) =
+            cx.global_scope.find_definition(env.module_id, self.name)
         {
             self.id = Some(id);
         } else {
@@ -174,19 +177,19 @@ impl Resolve<'_> for Name {
 }
 
 #[derive(Debug)]
-pub(crate) struct GlobalScope(HashMap<ModuleId, UstrMap<SymbolId>>);
+pub(crate) struct GlobalScope(HashMap<ModuleId, UstrMap<DefinitionId>>);
 
 impl GlobalScope {
     pub(crate) fn new() -> Self {
         Self(HashMap::new())
     }
 
-    pub(crate) fn find_symbol(
+    pub(crate) fn find_definition(
         &self,
         module_id: ModuleId,
         name: Ustr,
-    ) -> Option<SymbolId> {
-        self.0.get(&module_id).and_then(|symbols| symbols.get(&name)).copied()
+    ) -> Option<DefinitionId> {
+        self.0.get(&module_id).and_then(|defs| defs.get(&name)).copied()
     }
 }
 
@@ -211,7 +214,7 @@ impl Scopes {
     }
 
     fn push_scope(&mut self, kind: ScopeKind) {
-        self.0.push(Scope { kind, symbols: UstrMap::default() });
+        self.0.push(Scope { kind, definitions: UstrMap::default() });
     }
 
     fn pop_scope(&mut self) {
@@ -219,14 +222,14 @@ impl Scopes {
     }
 
     #[allow(unused)]
-    fn insert(&mut self, k: Ustr, v: SymbolId) {
-        self.0.last_mut().unwrap().symbols.insert(k, v);
+    fn insert(&mut self, k: Ustr, v: DefinitionId) {
+        self.0.last_mut().unwrap().definitions.insert(k, v);
     }
 
     #[allow(unused)]
-    fn get(&self, k: Ustr) -> Option<(usize, &SymbolId)> {
+    fn get(&self, k: Ustr) -> Option<(usize, &DefinitionId)> {
         for (depth, scope) in self.0.iter().enumerate().rev() {
-            if let Some(value) = scope.symbols.get(&k) {
+            if let Some(value) = scope.definitions.get(&k) {
                 return Some((depth + 1, value));
             }
         }
@@ -234,9 +237,9 @@ impl Scopes {
     }
 
     #[allow(unused)]
-    fn get_mut(&mut self, k: Ustr) -> Option<(usize, &mut SymbolId)> {
+    fn get_mut(&mut self, k: Ustr) -> Option<(usize, &mut DefinitionId)> {
         for (depth, scope) in self.0.iter_mut().enumerate().rev() {
-            if let Some(value) = scope.symbols.get_mut(&k) {
+            if let Some(value) = scope.definitions.get_mut(&k) {
                 return Some((depth + 1, value));
             }
         }
@@ -244,12 +247,12 @@ impl Scopes {
     }
 
     #[allow(unused)]
-    fn get_value(&self, k: Ustr) -> Option<&SymbolId> {
+    fn get_value(&self, k: Ustr) -> Option<&DefinitionId> {
         self.get(k).map(|r| r.1)
     }
 
     #[allow(unused)]
-    fn get_value_mut(&mut self, k: Ustr) -> Option<&mut SymbolId> {
+    fn get_value_mut(&mut self, k: Ustr) -> Option<&mut DefinitionId> {
         self.get_mut(k).map(|r| r.1)
     }
 
@@ -266,7 +269,7 @@ impl Scopes {
 #[derive(Debug)]
 struct Scope {
     kind: ScopeKind,
-    symbols: UstrMap<SymbolId>,
+    definitions: UstrMap<DefinitionId>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -276,7 +279,7 @@ enum ScopeKind {
 }
 
 pub(super) enum ResolveError {
-    DuplicateSymbol { name: Ustr, prev_span: Span, dup_span: Span },
+    MultipleDefinitions { name: Ustr, prev_span: Span, dup_span: Span },
     NameNotFound { name: Ustr, span: Span },
     InvalidReturn { span: Span },
 }
@@ -284,8 +287,8 @@ pub(super) enum ResolveError {
 impl From<ResolveError> for Diagnostic {
     fn from(err: ResolveError) -> Self {
         match err {
-            ResolveError::DuplicateSymbol { name, prev_span, dup_span } => {
-                Diagnostic::error("resolve::duplicate_names")
+            ResolveError::MultipleDefinitions { name, prev_span, dup_span } => {
+                Diagnostic::error("resolve::multiple_definitions")
                     .with_message(format!(
                         "the name `{name}` is defined multiple times"
                     ))

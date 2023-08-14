@@ -5,7 +5,7 @@ mod pretty_print;
 pub(crate) use lower::lower;
 use ustr::{ustr, Ustr};
 
-use crate::db::SymbolId;
+use crate::db::DefinitionId;
 use crate::{
     common::{new_key_type, IndexVec},
     db::{Database, TyId},
@@ -33,14 +33,14 @@ impl Mir {
 
 #[derive(Debug)]
 pub(crate) struct Function {
-    id: SymbolId,
+    id: DefinitionId,
     registers: IndexVec<RegisterId, Register>,
     parameters: Vec<RegisterId>,
     cfg: Cfg,
 }
 
 impl Function {
-    fn new(id: SymbolId) -> Self {
+    fn new(id: DefinitionId) -> Self {
         Self {
             id,
             registers: IndexVec::new(),
@@ -49,7 +49,7 @@ impl Function {
         }
     }
 
-    pub(crate) fn id(&self) -> SymbolId {
+    pub(crate) fn id(&self) -> DefinitionId {
         self.id
     }
 
@@ -97,13 +97,13 @@ pub(crate) struct Register {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum Value {
-    Symbol(SymbolId),
+    Definition(DefinitionId),
     Register(RegisterId),
 }
 
-impl From<SymbolId> for Value {
-    fn from(value: SymbolId) -> Self {
-        Self::Symbol(value)
+impl From<DefinitionId> for Value {
+    fn from(value: DefinitionId) -> Self {
+        Self::Definition(value)
     }
 }
 

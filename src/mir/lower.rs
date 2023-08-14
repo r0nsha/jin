@@ -35,7 +35,7 @@ struct LowerCx<'db> {
 }
 
 impl<'db> LowerCx<'db> {
-    fn new(db: &'db mut Database, fun_id: SymbolId) -> Self {
+    fn new(db: &'db mut Database, fun_id: DefinitionId) -> Self {
         Self { db, builder: FunctionBuilder::new(fun_id) }
     }
 
@@ -106,7 +106,7 @@ impl<'db> LowerCx<'db> {
         let sym = name.id.expect("to be resolved").get(self.db);
 
         if let ScopeLevel::Global(_) = sym.scope_level {
-            Value::Symbol(sym.id)
+            Value::Definition(sym.id)
         } else {
             todo!("local/nested name")
         }

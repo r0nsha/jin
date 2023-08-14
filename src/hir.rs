@@ -7,7 +7,7 @@ pub(crate) use lower::lower;
 use ustr::Ustr;
 
 use crate::{
-    db::{Database, ModuleId, SymbolId, TyId},
+    db::{Database, ModuleId, DefinitionId, TyId},
     span::{Span, Spanned},
 };
 
@@ -69,7 +69,7 @@ impl Spanned for Node {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Definition {
-    pub(crate) id: Option<SymbolId>,
+    pub(crate) id: Option<DefinitionId>,
     pub(crate) name: Ustr,
     pub(crate) kind: DefinitionKind,
     pub(crate) span: Span,
@@ -91,7 +91,7 @@ impl DefinitionKind {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Function {
-    pub(crate) id: Option<SymbolId>,
+    pub(crate) id: Option<DefinitionId>,
     pub(crate) name: Ustr,
     pub(crate) body: Block,
     pub(crate) params: IndexMap<Ustr, FunctionParam>,
@@ -101,7 +101,7 @@ pub(crate) struct Function {
 
 #[derive(Debug, Clone)]
 pub(crate) struct FunctionParam {
-    pub(crate) id: Option<SymbolId>,
+    pub(crate) id: Option<DefinitionId>,
     pub(crate) name: Ustr,
     pub(crate) span: Span,
     pub(crate) ty: TyId,
@@ -130,7 +130,7 @@ pub(crate) struct Call {
 
 #[derive(Debug, Clone)]
 pub(crate) struct Name {
-    pub(crate) id: Option<SymbolId>,
+    pub(crate) id: Option<DefinitionId>,
     pub(crate) name: Ustr,
     pub(crate) span: Span,
     pub(crate) ty: TyId,

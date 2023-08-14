@@ -16,9 +16,9 @@ impl<'db> InferCx<'db> {
     ) -> HashSet<TyVar> {
         let mut unbound_vars = HashSet::new();
 
-        // Substitute all symbol types
-        for i in 0..self.db.symbols.len() {
-            let ty = self.db.symbols[i.into()].ty;
+        // Substitute all definition types
+        for i in 0..self.db.definitions.len() {
+            let ty = self.db.definitions[i.into()].ty;
             self.substitute_type_id(ty, &mut unbound_vars);
         }
 

@@ -244,7 +244,7 @@ impl<'a, 'db> Codegen<'a, 'db> for Value {
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
         match self {
-            Value::Symbol(id) => {
+            Value::Definition(id) => {
                 arena.text(id.get(cx.db).qualified_name.full_c_name())
             }
             Value::Register(id) => id.codegen(cx, arena),

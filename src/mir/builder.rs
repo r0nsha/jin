@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::{db::SymbolId, span::Span};
+use crate::{db::DefinitionId, span::Span};
 
 use super::*;
 
@@ -10,7 +10,7 @@ pub(crate) struct FunctionBuilder {
 }
 
 impl FunctionBuilder {
-    pub(crate) fn new(id: SymbolId) -> Self {
+    pub(crate) fn new(id: DefinitionId) -> Self {
         Self { f: Function::new(id), current_block: BlockId(0) }
     }
 
