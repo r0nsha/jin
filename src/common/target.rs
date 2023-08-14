@@ -206,7 +206,7 @@ pub enum Os {
 
 #[allow(unused)]
 impl Os {
-    pub fn name(&self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             Os::Windows => "windows",
             Os::Darwin => "darwin",
@@ -233,7 +233,7 @@ pub enum Arch {
 
 #[allow(unused)]
 impl Arch {
-    pub fn name(&self) -> &'static str {
+    pub fn name(self) -> &'static str {
         match self {
             Arch::Amd64 => "amd64",
             Arch::_386 => "386",
@@ -243,7 +243,7 @@ impl Arch {
         }
     }
 
-    pub fn endianness(&self) -> Endianness {
+    pub fn endianness(self) -> Endianness {
         match self {
             Arch::Amd64
             | Arch::_386

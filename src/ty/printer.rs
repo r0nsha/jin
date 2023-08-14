@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter, Result};
 
 use crate::db::Database;
-use crate::ty::*;
+use crate::ty::{IntTy, Ty, TyKind};
 
 pub(crate) struct TypePrinter<'db> {
     db: &'db Database,
@@ -10,7 +10,7 @@ pub(crate) struct TypePrinter<'db> {
 
 impl Display for TypePrinter<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        self.fmt_ty(f, &self.ty)
+        self.fmt_ty(f, self.ty)
     }
 }
 

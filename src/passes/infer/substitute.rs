@@ -2,7 +2,9 @@ use std::collections::HashSet;
 
 use crate::{
     db::TyId,
-    hir::*,
+    hir::{
+        Block, Call, Definition, DefinitionKind, Function, Module, Node, Return,
+    },
     ty::{Ty, TyKind, TyVar},
 };
 
@@ -56,12 +58,11 @@ impl<'db> InferCx<'db> {
             TyKind::Var(v) => {
                 let root = self.tcx.unification_table.find(*v);
 
-                match self.tcx.unification_table.probe_value(root) {
-                    Some(ty) => self.substitute_ty(&ty, unbound_vars),
-                    None => {
-                        unbound_vars.insert(root);
-                        Ty::var(root, ty.span)
-                    }
+                if let Some(ty) = self.tcx.unification_table.probe_value(root) {
+                    self.substitute_ty(&ty, unbound_vars)
+                } else {
+                    unbound_vars.insert(root);
+                    Ty::var(root, ty.span)
                 }
             }
             _ => ty.clone(),

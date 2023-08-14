@@ -4,13 +4,13 @@ use pretty::{Arena, DocAllocator, DocBuilder, Pretty};
 
 use crate::{
     db::{Database, TyId},
-    mir::*,
-    ty::*,
+    mir::{Block, Function, Instruction, Mir, RegisterId, Value},
+    ty::{IntTy, Ty, TyKind},
 };
 
 pub(crate) fn codegen(db: &Database, mir: &Mir, writer: &mut impl io::Write) {
     let arena = Arena::new();
-    codegen_all(db, &arena, mir).write(&arena, writer)
+    codegen_all(db, &arena, mir).write(&arena, writer);
 }
 
 struct CodegenResult<'db> {
@@ -101,7 +101,7 @@ fn codegen_main<'db>(
         .append(
             arena.intersperse(
                 [
-                    arena.text(format!("{}()", main_fun_name)),
+                    arena.text(format!("{main_fun_name}()")),
                     arena.text("return 0"),
                 ]
                 .map(|d| arena.statement(d)),
@@ -173,7 +173,7 @@ impl<'a, 'db> Codegen<'a, 'db> for Function {
         let name = fun.qualified_name.full_c_name();
 
         let sig = arena
-            .text(c_type(&cx.db, &fun_ty.ret))
+            .text(c_type(cx.db, &fun_ty.ret))
             .append(arena.space())
             .append(arena.text(name))
             .append(arena.text("()"));
@@ -287,7 +287,7 @@ impl<'a, 'db> Codegen<'a, 'db> for Ty {
             TyKind::Unit => TYPE_UNIT.to_string(),
             TyKind::Never => TYPE_NEVER.to_string(),
             TyKind::Var(_) => {
-                panic!("unexpected type: {}", self.display(&cx.db))
+                panic!("unexpected type: {}", self.display(cx.db))
             }
         })
     }

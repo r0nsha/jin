@@ -1,6 +1,9 @@
 use ena::unify::InPlaceUnificationTable;
 
-use crate::{span::Span, ty::*};
+use crate::{
+    span::Span,
+    ty::{Ty, TyVar},
+};
 
 pub(crate) struct TypeCx {
     pub(crate) unification_table: InPlaceUnificationTable<TyVar>,

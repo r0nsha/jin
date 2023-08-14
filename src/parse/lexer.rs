@@ -61,17 +61,15 @@ impl<'s> Lexer<'s> {
                     ch if ch.is_ascii_digit() => self.numeric(start),
                     ch if ch.is_ascii_whitespace() => return self.next_token(),
                     ch => {
-                        let span = self.create_span(start as u32);
-
+                        let span = self.create_span(start.try_into().unwrap());
                         return Err(TokenizeError::InvalidChar { ch, span });
-                        // return Err(create_report(ReportKind::Error, &span)
-                        //     .with_message(format!("unknown character {ch}"))
-                        //     .with_label(Label::new(span).with_color(Color::Red))
-                        //     .finish());
                     }
                 };
 
-                Ok(Some(Token { kind, span: self.create_span(start as u32) }))
+                Ok(Some(Token {
+                    kind,
+                    span: self.create_span(start.try_into().unwrap()),
+                }))
             }
             None => Ok(None),
         }
@@ -116,9 +114,9 @@ impl<'s> Lexer<'s> {
         while let Some(ch) = self.peek() {
             if ch == '\n' {
                 return;
-            } else {
-                self.advance()
             }
+
+            self.advance();
         }
     }
 
@@ -146,7 +144,7 @@ impl<'s> Lexer<'s> {
     }
 
     fn create_span(&self, start: u32) -> Span {
-        Span::new(self.source_id, start, self.pos as u32)
+        Span::new(self.source_id, start, self.pos.try_into().unwrap())
     }
 }
 type TokenizeResult<T> = Result<T, TokenizeError>;

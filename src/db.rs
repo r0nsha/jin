@@ -33,7 +33,7 @@ pub(crate) struct Database {
 impl Database {
     pub(crate) fn new(
         build_options: BuildOptions,
-        root_file: PathBuf,
+        root_file: &Path,
     ) -> io::Result<Self> {
         let absolute_path = root_file.absolutize().unwrap();
 
@@ -243,13 +243,17 @@ impl PartialOrd for ScopeLevel {
 
 impl Ord for ScopeLevel {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        use ScopeLevel::*;
-
         match (self, other) {
-            (Global(_), Global(_)) => cmp::Ordering::Equal,
-            (Global(_), Scope(_)) => cmp::Ordering::Less,
-            (Scope(_), Global(_)) => cmp::Ordering::Greater,
-            (Scope(a), Scope(b)) => a.cmp(b),
+            (ScopeLevel::Global(_), ScopeLevel::Global(_)) => {
+                cmp::Ordering::Equal
+            }
+            (ScopeLevel::Global(_), ScopeLevel::Scope(_)) => {
+                cmp::Ordering::Less
+            }
+            (ScopeLevel::Scope(_), ScopeLevel::Global(_)) => {
+                cmp::Ordering::Greater
+            }
+            (ScopeLevel::Scope(a), ScopeLevel::Scope(b)) => a.cmp(b),
         }
     }
 }

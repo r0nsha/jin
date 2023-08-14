@@ -1,3 +1,11 @@
+#![warn(clippy::pedantic, clippy::perf)]
+#![allow(
+    clippy::struct_excessive_bools,
+    clippy::similar_names,
+    clippy::module_name_repetitions
+)]
+
+mod ast;
 mod codegen;
 mod common;
 mod db;
@@ -8,7 +16,6 @@ mod parse;
 mod passes;
 mod span;
 mod ty;
-mod ast;
 
 use std::{
     fs::{self, File},
@@ -68,7 +75,7 @@ fn main() {
     };
 
     match cli.cmd {
-        Commands::Build { file } => build(build_options, file),
+        Commands::Build { file } => build(build_options, &file),
         Commands::Run { file: _ } => {
             todo!();
 
@@ -79,7 +86,7 @@ fn main() {
     }
 }
 
-fn build(build_options: BuildOptions, file: PathBuf) {
+fn build(build_options: BuildOptions, file: &Path) {
     let mut db = Database::new(build_options, file).unwrap();
     build_inner(&mut db);
 

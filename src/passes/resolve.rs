@@ -8,7 +8,10 @@ use crate::{
         Database, DefinitionId, DefinitionInfo, ModuleId, ScopeLevel, TyId, Vis,
     },
     diagnostics::{Diagnostic, Label},
-    hir::*,
+    hir::{
+        Block, Call, Definition, DefinitionKind, Function, Hir, Module, Name,
+        Node, Return,
+    },
     span::Span,
 };
 

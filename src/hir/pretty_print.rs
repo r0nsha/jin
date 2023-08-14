@@ -1,13 +1,11 @@
 use std::io;
 
-use pretty::RcDoc;
+use crate::db::Database;
 
-use crate::{
-    db::{Database, TyId},
-    ty::Ty,
+use super::{
+    Block, Call, Definition, DefinitionKind, Function, Lit, LitKind, Module,
+    Name, Node, Return,
 };
-
-use super::*;
 
 pub(super) fn print_module(db: &Database, module: &Module) -> io::Result<()> {
     let mut cx = Cx {
@@ -57,8 +55,11 @@ impl PrettyPrint for Definition {
 
 impl PrettyPrint for Function {
     fn pretty_print(&self, cx: &mut Cx) {
-        // TODO: types
-        cx.builder.begin_child(format!("fn {}", self.name));
+        cx.builder.begin_child(format!(
+            "fn {} (type: {})",
+            self.name,
+            cx.db[self.ty].display(cx.db)
+        ));
 
         if !self.params.is_empty() {
             cx.builder.begin_child("params".to_string());
@@ -102,8 +103,10 @@ impl PrettyPrint for Return {
 
 impl PrettyPrint for Call {
     fn pretty_print(&self, cx: &mut Cx) {
-        // TODO: type
-        cx.builder.begin_child("call".to_string());
+        cx.builder.begin_child(format!(
+            "call (result: {})",
+            cx.db[self.ty].display(cx.db)
+        ));
         self.callee.pretty_print(cx);
         cx.builder.end_child();
     }
@@ -111,12 +114,13 @@ impl PrettyPrint for Call {
 
 impl PrettyPrint for Name {
     fn pretty_print(&self, cx: &mut Cx) {
-        // TODO: type
-        cx.builder.add_empty_child(
+        cx.builder.add_empty_child(format!(
+            "{} (type: {})",
             self.id.map_or(self.name.to_string(), |id| {
                 cx.db[id].qualified_name.standard_full_name()
             }),
-        );
+            cx.db[self.ty].display(cx.db)
+        ));
     }
 }
 
@@ -125,8 +129,8 @@ impl PrettyPrint for Lit {
         match &self.kind {
             LitKind::Int(v) => {
                 cx.builder.add_empty_child(format!(
-                    "{v} {}",
-                    cx.db[self.ty].display(&cx.db)
+                    "{v} (type: {})",
+                    cx.db[self.ty].display(cx.db)
                 ));
             }
             LitKind::Unit => {

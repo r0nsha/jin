@@ -4,7 +4,7 @@ use crate::db::Database;
 use crate::passes::infer::normalize::NormalizeTy;
 use crate::{
     diagnostics::{Diagnostic, Label},
-    ty::*,
+    ty::{IntTy, TyKind},
     ty::{Ty, TyVar},
 };
 

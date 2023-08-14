@@ -80,7 +80,7 @@ impl From<Diagnostic> for codespan_diagnostic::Diagnostic<SourceId> {
             severity: val.severity.into(),
             code: Some(val.code),
             message: val.message.unwrap_or_default(),
-            labels: val.labels.into_iter().map(|label| label.into()).collect(),
+            labels: val.labels.into_iter().map(Into::into).collect(),
             notes: val.help.map_or(vec![], |help| vec![help]),
         }
     }
@@ -128,7 +128,7 @@ impl Diagnostics {
         &mut self,
         items: impl IntoIterator<Item = T>,
     ) {
-        self.diagnostics.extend(items.into_iter().map(|x| x.into()));
+        self.diagnostics.extend(items.into_iter().map(Into::into));
     }
 
     pub(crate) fn any(&self) -> bool {

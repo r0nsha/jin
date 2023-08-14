@@ -6,7 +6,14 @@ mod typecx;
 mod unify;
 
 use crate::db::{DefinitionId, TyId};
-use crate::{db::Database, hir::*, ty::*};
+use crate::{
+    db::Database,
+    hir::{
+        Block, Call, Definition, DefinitionKind, Function, Hir, Lit, LitKind,
+        Module, Name, Node, Return,
+    },
+    ty::Ty,
+};
 
 use self::{
     constraint::{Constraint, Constraints},
@@ -126,10 +133,10 @@ impl Infer<'_> for Block {
             expr.infer(cx, env);
         }
 
-        self.ty = self.exprs.last().map_or_else(
-            || Ty::alloc(cx.db, Ty::unit(self.span)),
-            |expr| expr.ty(),
-        );
+        self.ty = self
+            .exprs
+            .last()
+            .map_or_else(|| Ty::alloc(cx.db, Ty::unit(self.span)), Node::ty);
     }
 }
 

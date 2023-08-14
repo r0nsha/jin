@@ -3,7 +3,11 @@ use crate::{
     db::{self, Database},
 };
 
-use super::*;
+use super::{
+    Block, Call, Definition, DefinitionKind, Function, FunctionParam, Hir,
+    IndexMap, Lit, LitKind, Module, ModuleId, Name, Node, Return, Spanned,
+    TyId,
+};
 
 pub(crate) fn lower(db: &mut Database, lib: ast::Library) -> Hir {
     Hir {
@@ -59,17 +63,21 @@ impl<'db> Lower<'db> {
     }
 
     fn lower_fun(&mut self, fun: ast::Function) -> Function {
-        let params = IndexMap::from_iter(fun.params.into_iter().map(|p| {
-            (
-                p.name,
-                FunctionParam {
-                    id: None,
-                    name: p.name,
-                    span: p.span,
-                    ty: TyId::null(),
-                },
-            )
-        }));
+        let params = fun
+            .params
+            .into_iter()
+            .map(|p| {
+                (
+                    p.name,
+                    FunctionParam {
+                        id: None,
+                        name: p.name,
+                        span: p.span,
+                        ty: TyId::null(),
+                    },
+                )
+            })
+            .collect::<IndexMap<_, _>>();
 
         let body = self.lower_ast(*fun.body);
 

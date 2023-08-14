@@ -49,7 +49,10 @@ impl Ty {
         }
     }
 
-    pub(crate) fn display(&self, db: &Database) -> TypePrinter {
+    pub(crate) fn display<'db>(
+        &'db self,
+        db: &'db Database,
+    ) -> TypePrinter<'db> {
         TypePrinter::new(db, self)
     }
 

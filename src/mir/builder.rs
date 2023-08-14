@@ -2,7 +2,10 @@ use std::collections::HashSet;
 
 use crate::{db::DefinitionId, span::Span};
 
-use super::*;
+use super::{
+    Block, BlockId, Call, Function, Instruction, IntLit, Register, RegisterId,
+    Return, TyId, UnitLit, Value,
+};
 
 pub(crate) struct FunctionBuilder {
     f: Function,
@@ -43,7 +46,7 @@ impl FunctionBuilder {
     }
 
     pub(crate) fn is_terminating(&self) -> bool {
-        return self.blocks().iter().any(|blk| blk.is_terminating());
+        return self.blocks().iter().any(Block::is_terminating);
     }
 
     #[allow(unused)]

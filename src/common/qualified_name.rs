@@ -23,7 +23,7 @@ impl QualifiedName {
     }
 
     pub(crate) fn full_name(&self, separator: &str) -> String {
-        self.0.iter().map(|s| s.as_str()).collect::<Vec<_>>().join(separator)
+        self.0.iter().map(Ustr::as_str).collect::<Vec<_>>().join(separator)
     }
 
     pub(crate) fn standard_full_name(&self) -> String {

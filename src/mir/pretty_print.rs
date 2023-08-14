@@ -2,7 +2,7 @@ use pretty::RcDoc;
 
 use crate::{db::Database, ty::Ty};
 
-use super::*;
+use super::{Block, Function, Instruction, Mir, RegisterId, TyId, Value};
 
 pub(crate) fn print(db: &Database, mir: &Mir) {
     let doc = RcDoc::intersperse(
