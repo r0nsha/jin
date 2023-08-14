@@ -129,6 +129,7 @@ new_db_key!(DefinitionId -> definitions : DefinitionInfo);
 new_db_key!(TyId -> types : Ty);
 
 #[derive(Debug)]
+#[allow(clippy::struct_excessive_bools)]
 pub struct BuildOptions {
     pub print_times: bool,
     pub print_ast: bool,

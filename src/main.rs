@@ -8,7 +8,6 @@
     clippy::nursery
 )]
 #![allow(
-    clippy::struct_excessive_bools,
     clippy::similar_names,
     clippy::module_name_repetitions,
     clippy::too_many_lines,
@@ -49,6 +48,7 @@ macro_rules! bail_on_errors {
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
+#[allow(clippy::struct_excessive_bools)]
 struct Cli {
     #[command(subcommand)]
     cmd: Commands,
