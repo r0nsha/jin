@@ -186,10 +186,7 @@ impl Infer<'_> for Name {
 impl Infer<'_> for Lit {
     fn infer(&mut self, cx: &mut InferCx<'_>, _env: &mut TypeEnv) {
         self.ty = match &self.kind {
-            LitKind::Int(_) => {
-                // TODO: use a polymorphic int
-                Ty::alloc(cx.db, Ty::int(self.span))
-            }
+            LitKind::Int(_) => Ty::alloc(cx.db, Ty::int(self.span)),
             LitKind::Unit => Ty::alloc(cx.db, Ty::unit(self.span)),
         };
     }
