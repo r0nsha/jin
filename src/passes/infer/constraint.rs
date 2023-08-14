@@ -1,6 +1,6 @@
 use std::ops;
 
-use crate::ty::typecx::TyId;
+use crate::db::TyId;
 
 #[derive(Debug, Clone)]
 pub struct Constraints(Vec<Constraint>);
