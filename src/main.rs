@@ -38,6 +38,8 @@ use common::time::time;
 use db::{BuildOptions, Database};
 use mir::Mir;
 
+use crate::ty::typecx::TypeCx;
+
 macro_rules! bail_on_errors {
     ($db: expr) => {
         if $db.diagnostics.any() {
@@ -121,7 +123,8 @@ fn build_inner(db: &mut Database) {
     time(print_times, "resolve", || passes::resolve(db, &mut hir));
     bail_on_errors!(db);
 
-    time(print_times, "infer", || passes::infer(db, &mut hir));
+    let mut tcx = TypeCx::new();
+    time(print_times, "infer", || passes::infer(db, &mut tcx, &mut hir));
     bail_on_errors!(db);
 
     if db.build_options().print_hir {

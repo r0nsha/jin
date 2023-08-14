@@ -10,7 +10,7 @@ use crate::{
 
 use super::{constraint::Constraint, InferCx};
 
-impl<'db> InferCx<'db> {
+impl InferCx<'_, '_> {
     pub fn unification(&mut self) -> Result<(), InferError> {
         // PERF: can I remove this clone?
         let constraints = self.constraints.clone();
@@ -32,8 +32,8 @@ impl<'db> InferCx<'db> {
         expected: &Ty,
         actual: &Ty,
     ) -> Result<(), InferError> {
-        let expected = expected.clone().normalize(&mut self.tcx);
-        let actual = actual.clone().normalize(&mut self.tcx);
+        let expected = expected.clone().normalize(self.tcx);
+        let actual = actual.clone().normalize(self.tcx);
 
         match (&expected.kind, &actual.kind) {
             (TyKind::Function(expected), TyKind::Function(actual)) => {
