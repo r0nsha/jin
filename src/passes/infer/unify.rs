@@ -10,7 +10,7 @@ use crate::{
 
 use super::{constraint::Constraint, InferCx};
 
-impl InferCx<'_, '_> {
+impl InferCx<'_> {
     pub fn unification(&mut self) -> Result<(), InferError> {
         // PERF: can I remove this clone?
         let constraints = self.constraints.clone();
