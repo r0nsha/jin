@@ -17,7 +17,7 @@ use crate::{
 
 use self::{
     constraint::{Constraint, Constraints},
-    type_env::{FunScope, TypeEnv},
+    type_env::{CallFrame, TypeEnv},
 };
 
 pub fn infer(db: &mut Database, tcx: &mut TypeCx, hir: &mut Hir) {
@@ -116,13 +116,13 @@ impl Infer<'_> for Function {
         self.ty = fun_ty;
 
         let id = self.id.expect("to be resolved");
-        env.fun_scopes.push(FunScope { id, ret_ty });
+        env.call_stack.push(CallFrame { id, ret_ty });
 
         self.body.infer(cx, env);
         cx.constraints
             .push(Constraint::Eq { expected: ret_ty, actual: self.body.ty });
 
-        env.fun_scopes.pop();
+        env.call_stack.pop();
     }
 }
 
@@ -143,8 +143,8 @@ impl Infer<'_> for Return {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         self.ty = cx.tcx.alloc_ty(Ty::never(self.span));
 
-        let fun_scope = env.fun_scopes.current().unwrap();
-        let ret_ty = fun_scope.ret_ty;
+        let call_frame = env.call_stack.current().unwrap();
+        let ret_ty = call_frame.ret_ty;
 
         if let Some(value) = self.expr.as_mut() {
             value.infer(cx, env);

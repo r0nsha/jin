@@ -3,12 +3,12 @@ use crate::ty::typecx::TyId;
 
 pub struct TypeEnv {
     module_id: ModuleId,
-    pub fun_scopes: FunScopes,
+    pub call_stack: CallStack,
 }
 
 impl TypeEnv {
     pub fn new(module_id: ModuleId) -> Self {
-        Self { module_id, fun_scopes: FunScopes::new() }
+        Self { module_id, call_stack: CallStack::new() }
     }
 
     #[allow(unused)]
@@ -18,28 +18,28 @@ impl TypeEnv {
 }
 
 #[derive(Debug)]
-pub struct FunScopes(Vec<FunScope>);
+pub struct CallStack(Vec<CallFrame>);
 
-impl FunScopes {
+impl CallStack {
     pub fn new() -> Self {
         Self(vec![])
     }
 
-    pub fn push(&mut self, new_scope: FunScope) {
-        self.0.push(new_scope);
+    pub fn push(&mut self, frame: CallFrame) {
+        self.0.push(frame);
     }
 
     pub fn pop(&mut self) {
         self.0.pop();
     }
 
-    pub fn current(&self) -> Option<&FunScope> {
+    pub fn current(&self) -> Option<&CallFrame> {
         self.0.last()
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct FunScope {
+pub struct CallFrame {
     #[allow(unused)]
     pub id: DefinitionId,
     pub ret_ty: TyId,
