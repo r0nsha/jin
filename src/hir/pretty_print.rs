@@ -35,12 +35,12 @@ trait PrettyPrint {
 impl PrettyPrint for Node {
     fn pretty_print(&self, cx: &mut Cx) {
         match self {
-            Node::Function(x) => x.pretty_print(cx),
-            Node::Block(x) => x.pretty_print(cx),
-            Node::Return(x) => x.pretty_print(cx),
-            Node::Call(x) => x.pretty_print(cx),
-            Node::Name(x) => x.pretty_print(cx),
-            Node::Lit(x) => x.pretty_print(cx),
+            Self::Function(x) => x.pretty_print(cx),
+            Self::Block(x) => x.pretty_print(cx),
+            Self::Return(x) => x.pretty_print(cx),
+            Self::Call(x) => x.pretty_print(cx),
+            Self::Name(x) => x.pretty_print(cx),
+            Self::Lit(x) => x.pretty_print(cx),
         }
     }
 }

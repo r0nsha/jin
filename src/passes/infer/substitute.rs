@@ -85,11 +85,11 @@ impl Substitute<'_> for Node {
         unbound_vars: &mut HashSet<TyVar>,
     ) {
         match self {
-            Node::Function(x) => x.substitute(cx, unbound_vars),
-            Node::Block(x) => x.substitute(cx, unbound_vars),
-            Node::Return(x) => x.substitute(cx, unbound_vars),
-            Node::Call(x) => x.substitute(cx, unbound_vars),
-            Node::Name(_) | Node::Lit(_) => (),
+            Self::Function(x) => x.substitute(cx, unbound_vars),
+            Self::Block(x) => x.substitute(cx, unbound_vars),
+            Self::Return(x) => x.substitute(cx, unbound_vars),
+            Self::Call(x) => x.substitute(cx, unbound_vars),
+            Self::Name(_) | Self::Lit(_) => (),
         }
 
         cx.substitute_type_id(self.ty(), unbound_vars);

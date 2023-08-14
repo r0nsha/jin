@@ -120,7 +120,7 @@ pub enum InferError {
 impl InferError {
     pub fn into_diagnostic(self, db: &Database) -> Diagnostic {
         match self {
-            InferError::TypesNotEq { expected, actual } => {
+            Self::TypesNotEq { expected, actual } => {
                 Diagnostic::error("infer::incompatible_types")
                     .with_message(format!(
                         "expected `{}`, got `{}` instead",
@@ -137,7 +137,7 @@ impl InferError {
                         format!("found type `{}` here", actual.display(db)),
                     ))
             }
-            InferError::InfiniteType { ty, .. } => {
+            Self::InfiniteType { ty, .. } => {
                 Diagnostic::error("infer::infinite_type")
                     .with_message(format!(
                         "type `{}` is an infinite type",

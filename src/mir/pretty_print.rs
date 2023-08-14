@@ -54,16 +54,16 @@ impl<'db, 'd> ToDoc<'db, 'd> for Block {
 impl<'db, 'd> ToDoc<'db, 'd> for Instruction {
     fn to_doc(&self, db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
         match self {
-            Instruction::Return(ret) => RcDoc::text("ret")
+            Self::Return(ret) => RcDoc::text("ret")
                 .append(RcDoc::space())
                 .append(ret.value.to_doc(db, fun)),
-            Instruction::Call(call) => register_alloc(db, fun, call.register)
+            Self::Call(call) => register_alloc(db, fun, call.register)
                 .append(RcDoc::text("call"))
                 .append(RcDoc::space())
                 .append(call.callee.to_doc(db, fun)),
-            Instruction::IntLit(lit) => register_alloc(db, fun, lit.register)
+            Self::IntLit(lit) => register_alloc(db, fun, lit.register)
                 .append(RcDoc::text(lit.value.to_string())),
-            Instruction::UnitLit(lit) => {
+            Self::UnitLit(lit) => {
                 register_alloc(db, fun, lit.register).append(RcDoc::text("()"))
             }
         }
@@ -73,10 +73,10 @@ impl<'db, 'd> ToDoc<'db, 'd> for Instruction {
 impl<'db, 'd> ToDoc<'db, 'd> for Value {
     fn to_doc(&self, db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
         match self {
-            Value::Definition(id) => {
+            Self::Definition(id) => {
                 RcDoc::text(db[*id].qualified_name.standard_full_name())
             }
-            Value::Register(id) => id.to_doc(db, fun),
+            Self::Register(id) => id.to_doc(db, fun),
         }
     }
 }

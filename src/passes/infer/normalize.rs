@@ -10,7 +10,7 @@ impl NormalizeTy for Ty {
         match self.kind {
             TyKind::Function(fun) => {
                 let ret = fun.ret.normalize(tcx);
-                Ty::fun(ret, self.span)
+                Self::fun(ret, self.span)
             }
             TyKind::Var(var) => match tcx.unification_table.probe_value(var) {
                 Some(ty) => ty.normalize(tcx),

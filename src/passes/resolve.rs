@@ -116,12 +116,12 @@ impl Resolve<'_> for Definition {
 impl Resolve<'_> for Node {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         match self {
-            Node::Function(x) => x.resolve(cx, env),
-            Node::Block(x) => x.resolve(cx, env),
-            Node::Return(x) => x.resolve(cx, env),
-            Node::Call(x) => x.resolve(cx, env),
-            Node::Name(x) => x.resolve(cx, env),
-            Node::Lit(_) => (),
+            Self::Function(x) => x.resolve(cx, env),
+            Self::Block(x) => x.resolve(cx, env),
+            Self::Return(x) => x.resolve(cx, env),
+            Self::Call(x) => x.resolve(cx, env),
+            Self::Name(x) => x.resolve(cx, env),
+            Self::Lit(_) => (),
         }
     }
 }
@@ -291,7 +291,7 @@ impl From<ResolveError> for Diagnostic {
     fn from(err: ResolveError) -> Self {
         match err {
             ResolveError::MultipleDefinitions { name, prev_span, dup_span } => {
-                Diagnostic::error("resolve::multiple_definitions")
+                Self::error("resolve::multiple_definitions")
                     .with_message(format!(
                         "the name `{name}` is defined multiple times"
                     ))
@@ -306,7 +306,7 @@ impl From<ResolveError> for Diagnostic {
                     .with_help("you can only define names once in a module")
             }
             ResolveError::NameNotFound { name, span } => {
-                Diagnostic::error("resolve::name_not_found")
+                Self::error("resolve::name_not_found")
                     .with_message(format!(
                         "cannot find value `{name}` in this scope"
                     ))
@@ -316,7 +316,7 @@ impl From<ResolveError> for Diagnostic {
                     )
             }
             ResolveError::InvalidReturn { span } => {
-                Diagnostic::error("resolve::invalid_return")
+                Self::error("resolve::invalid_return")
                     .with_message("cannot return outside of function scope")
                     .with_label(Label::primary(span))
             }
