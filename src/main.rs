@@ -1,4 +1,12 @@
-#![warn(clippy::pedantic, clippy::perf, clippy::nursery)]
+#![warn(
+    clippy::correctness,
+    clippy::suspicious,
+    clippy::style,
+    clippy::complexity,
+    clippy::perf,
+    clippy::pedantic,
+    clippy::nursery
+)]
 #![allow(
     clippy::struct_excessive_bools,
     clippy::similar_names,

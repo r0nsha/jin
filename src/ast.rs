@@ -13,6 +13,7 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct Library {
     name: Ustr,
+    #[allow(unused)]
     is_main: bool,
     pub modules: Vec<Module>,
 }
@@ -22,6 +23,7 @@ impl Library {
         Self { name, is_main, modules }
     }
 
+    #[allow(unused)]
     pub fn is_main(&self) -> bool {
         self.is_main
     }
@@ -60,10 +62,6 @@ impl Module {
         is_main: bool,
     ) -> Self {
         Self { source: source_id, name, is_main, top_levels: vec![] }
-    }
-
-    pub fn pretty_print(&self) -> io::Result<()> {
-        pretty_print::print_module(self)
     }
 
     pub fn is_main(&self) -> bool {
