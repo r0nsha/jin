@@ -7,7 +7,7 @@ pub(crate) use lower::lower;
 use ustr::Ustr;
 
 use crate::{
-    db::{Database, ModuleId, DefinitionId, TyId},
+    db::{Database, DefinitionId, ModuleId, TyId},
     span::{Span, Spanned},
 };
 

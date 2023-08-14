@@ -1,6 +1,6 @@
 use crate::{
+    ast::{self, Ast},
     db::{self, Database},
-    parse::ast::{self, Ast},
 };
 
 use super::*;

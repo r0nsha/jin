@@ -8,6 +8,7 @@ mod parse;
 mod passes;
 mod span;
 mod ty;
+mod ast;
 
 use std::{
     fs::{self, File},

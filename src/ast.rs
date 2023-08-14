@@ -1,3 +1,6 @@
+mod pretty_print;
+pub(crate) mod token;
+
 use std::io;
 
 use ustr::Ustr;
@@ -6,8 +9,6 @@ use crate::{
     common::QualifiedName,
     span::{SourceId, Span, Spanned},
 };
-
-use super::pretty_print;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Library {

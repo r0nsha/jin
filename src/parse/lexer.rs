@@ -1,11 +1,10 @@
 use ustr::ustr;
 
 use crate::{
+    ast::token::{Token, TokenKind},
     diagnostics::{Diagnostic, Label},
     span::{Source, SourceId, Span},
 };
-
-use super::token::{Token, TokenKind};
 
 pub(crate) fn tokenize(source: &Source) -> Result<Vec<Token>, Diagnostic> {
     let tokens = Lexer::new(source).scan()?;

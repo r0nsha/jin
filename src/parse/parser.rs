@@ -1,13 +1,13 @@
 use codespan_reporting::files::Files;
 
 use crate::{
+    ast::{
+        token::{Token, TokenKind},
+        *,
+    },
     common::QualifiedName,
     db::Database,
     diagnostics::{Diagnostic, Label},
-    parse::{
-        ast::*,
-        token::{Token, TokenKind},
-    },
     span::{Source, SourceId, Span, Spanned},
 };
 

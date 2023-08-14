@@ -1,7 +1,11 @@
-use crate::parse::ast::Library;
-use crate::{db::Database, diagnostics::Diagnostic, span::Source};
+use crate::{
+    ast::{Library, Module},
+    db::Database,
+    diagnostics::Diagnostic,
+    span::Source,
+};
 
-use super::{ast::Module, lexer, parser};
+use super::{lexer, parser};
 
 pub(crate) fn parse_modules(db: &mut Database) -> Library {
     let mut modules = vec![];
