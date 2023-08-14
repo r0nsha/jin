@@ -59,7 +59,7 @@ impl<'db> InferCx<'db> {
         }
     }
 
-    fn infer_definition(&mut self, id: DefinitionId) -> TyId {
+    fn get_definition_info_ty(&mut self, id: DefinitionId) -> TyId {
         let def = &self.db[id];
 
         if def.ty.is_null() {
@@ -97,7 +97,7 @@ impl Infer<'_> for Definition {
             DefinitionKind::Function(fun) => fun.infer(cx, env),
         }
 
-        let def_ty = cx.infer_definition(self.id.expect("to be resolved"));
+        let def_ty = cx.get_definition_info_ty(self.id.expect("to be resolved"));
 
         cx.constraints.push(Constraint::Eq { expected: self.kind.ty(), actual: def_ty });
     }
@@ -160,7 +160,7 @@ impl Infer<'_> for Call {
 
 impl Infer<'_> for Name {
     fn infer(&mut self, cx: &mut InferCx<'_>, _env: &mut TypeEnv) {
-        self.ty = cx.infer_definition(self.id.expect("to be resolved"));
+        self.ty = cx.get_definition_info_ty(self.id.expect("to be resolved"));
     }
 }
 
