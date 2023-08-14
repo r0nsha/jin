@@ -49,10 +49,10 @@ impl<'db> InferCx<'db> {
         unbound_vars: &mut HashSet<TyVar>,
     ) -> Ty {
         match ty {
-            Ty::Function(fun) => {
-                let ret = self.substitute_ty(&fun.ret, unbound_vars);
-                Ty::Function(FunctionTy { ret: Box::new(ret), span: fun.span })
-            }
+            Ty::Function(fun) => Ty::Function(FunctionTy {
+                ret: Box::new(self.substitute_ty(&fun.ret, unbound_vars)),
+                span: fun.span,
+            }),
             Ty::Infer(InferTy::TyVar(var), span) => {
                 let root = self.tcx.ty_unification_table.find(*var);
 
