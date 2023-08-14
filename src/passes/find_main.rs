@@ -1,4 +1,4 @@
-use crate::db::{self, DefinitionKind};
+use crate::db::{self, DefinitionInfoKind};
 use crate::{
     db::Database,
     diagnostics::{Diagnostic, Label},
@@ -13,7 +13,7 @@ pub(crate) fn find_main(db: &mut Database) {
         sym.module_id == main_module_id
             && matches!(
                 sym.kind.as_ref(),
-                DefinitionKind::Function(db::FunctionInfo::Orphan)
+                DefinitionInfoKind::Function(db::FunctionInfo::Orphan)
             )
             && sym.qualified_name.name() == "main"
     }) {

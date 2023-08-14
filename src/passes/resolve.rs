@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use ustr::{Ustr, UstrMap};
 
+use crate::db::{DefinitionInfoKind, FunctionInfo};
 use crate::{
     db::{
-        self, Database, DefinitionId, DefinitionInfo, ModuleId, ScopeLevel,
-        TyId, Vis,
+        Database, DefinitionId, DefinitionInfo, ModuleId, ScopeLevel, TyId, Vis,
     },
     diagnostics::{Diagnostic, Label},
     hir::*,
@@ -56,7 +56,7 @@ impl<'db> ResolveCx<'db> {
 
                 let kind = match &def.kind {
                     DefinitionKind::Function(_) => {
-                        db::DefinitionKind::Function(db::FunctionInfo::Orphan)
+                        DefinitionInfoKind::Function(FunctionInfo::Orphan)
                     }
                 };
 

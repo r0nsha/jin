@@ -176,13 +176,13 @@ pub(crate) struct DefinitionInfo {
     pub(crate) module_id: ModuleId,
     pub(crate) qualified_name: QualifiedName,
     pub(crate) scope_level: ScopeLevel,
-    pub(crate) kind: Box<DefinitionKind>,
+    pub(crate) kind: Box<DefinitionInfoKind>,
     pub(crate) ty: TyId,
     pub(crate) span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum DefinitionKind {
+pub(crate) enum DefinitionInfoKind {
     Function(FunctionInfo),
     Parameter,
 }
@@ -193,7 +193,7 @@ impl DefinitionInfo {
         module_id: ModuleId,
         qualified_name: QualifiedName,
         scope_level: ScopeLevel,
-        kind: DefinitionKind,
+        kind: DefinitionInfoKind,
         ty: TyId,
         span: Span,
     ) -> DefinitionId {
