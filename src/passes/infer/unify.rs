@@ -17,7 +17,7 @@ impl<'db> InferCx<'db> {
         for constraint in constraints.iter() {
             match constraint {
                 Constraint::Eq { expected, actual } => {
-                    self.unify_ty_ty(&self.db[*expected].clone(), &self.db[*actual].clone())?
+                    self.unify_ty_ty(&self.db[*expected].clone(), &self.db[*actual].clone())?;
                 }
             }
         }
