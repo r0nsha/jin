@@ -80,11 +80,7 @@ impl PrettyPrint for Block {
 impl PrettyPrint for Return {
     fn pretty_print(&self, cx: &mut Cx) {
         cx.builder.begin_child("return".to_string());
-
-        if let Some(expr) = self.expr.as_ref() {
-            expr.pretty_print(cx);
-        }
-
+        self.expr.pretty_print(cx);
         cx.builder.end_child();
     }
 }

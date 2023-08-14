@@ -126,7 +126,7 @@ pub struct Block {
 
 #[derive(Debug, Clone)]
 pub struct Return {
-    pub expr: Option<Box<Node>>,
+    pub expr: Box<Node>,
     pub span: Span,
     pub ty: TyId,
 }

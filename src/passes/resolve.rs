@@ -140,9 +140,7 @@ impl Resolve<'_> for Block {
 
 impl Resolve<'_> for Return {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        if let Some(value) = self.expr.as_mut() {
-            value.resolve(cx, env);
-        }
+        self.expr.resolve(cx, env);
 
         if !env.scopes.in_kind(&ScopeKind::Fun) {
             cx.errors.push(ResolveError::InvalidReturn { span: self.span });

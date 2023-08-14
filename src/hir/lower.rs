@@ -96,7 +96,10 @@ impl<'db> Lower<'db> {
     fn lower_stmt(&mut self, stmt: ast::Statement) -> Node {
         match stmt {
             ast::Statement::Return(ret) => Node::Return(Return {
-                expr: ret.expr.map(|v| Box::new(self.lower_ast(*v))),
+                expr: ret.expr.map_or_else(
+                    || Box::new(Node::Lit(Lit { kind: LitKind::Unit, span: ret.span, ty: TyId::null() })),
+                    |v| Box::new(self.lower_ast(*v)),
+                ),
                 span: ret.span,
                 ty: TyId::null(),
             }),

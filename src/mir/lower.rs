@@ -85,12 +85,7 @@ impl<'db> LowerCx<'db> {
 
     fn lower_return(&mut self, ret: &hir::Return) -> Value {
         if !self.builder.current_block().is_terminating() {
-            let reg = if let Some(expr) = &ret.expr {
-                self.lower_node(expr)
-            } else {
-                self.create_unit_register(ret.span)
-            };
-
+            let reg = self.lower_node(&ret.expr);
             self.builder.build_return(reg, ret.span);
         }
 
@@ -118,6 +113,7 @@ impl<'db> LowerCx<'db> {
         }
     }
 
+    #[allow(unused)]
     fn create_unit_register(&mut self, span: Span) -> Value {
         let ty = self.db.alloc_ty(Ty::Unit(span));
         self.create_unit_register_with_ty(ty, span)

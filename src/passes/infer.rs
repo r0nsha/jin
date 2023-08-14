@@ -139,13 +139,8 @@ impl Infer<'_> for Return {
         let call_frame = env.call_stack.current().unwrap();
         let ret_ty = call_frame.ret_ty;
 
-        if let Some(value) = self.expr.as_mut() {
-            value.infer(cx, env);
-            cx.constraints.push(Constraint::Eq { expected: ret_ty, actual: value.ty() });
-        } else {
-            cx.constraints
-                .push(Constraint::Eq { expected: ret_ty, actual: cx.db.alloc_ty(Ty::Unit(self.span)) });
-        }
+        self.expr.infer(cx, env);
+        cx.constraints.push(Constraint::Eq { expected: ret_ty, actual: self.expr.ty() });
     }
 }
 
