@@ -2,8 +2,9 @@ use std::{io, iter};
 
 use pretty::{Arena, DocAllocator, DocBuilder, Pretty};
 
+use crate::ty::typecx::TyId;
 use crate::{
-    db::{Database, TyId},
+    db::Database,
     mir::{Block, Function, Instruction, Mir, RegisterId, Value},
     ty::{IntTy, Ty, TyKind},
 };

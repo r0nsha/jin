@@ -5,11 +5,11 @@ use std::{
 
 use path_absolutize::Absolutize;
 
+use crate::ty::typecx::TyId;
 use crate::{
     common::{new_key_type, IndexVec, QualifiedName},
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
-    ty::Ty,
 };
 
 #[derive(Debug)]
@@ -19,8 +19,6 @@ pub struct Database {
     pub sources: Sources,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
     pub definitions: IndexVec<DefinitionId, DefinitionInfo>,
-    // TODO: split this into TypeCx?
-    pub types: IndexVec<TyId, Ty>,
 
     pub diagnostics: Diagnostics,
 
@@ -46,7 +44,6 @@ impl Database {
             sources,
             modules: IndexVec::new(),
             definitions: IndexVec::new(),
-            types: IndexVec::new(),
 
             diagnostics: Diagnostics::new(),
 
@@ -126,7 +123,6 @@ macro_rules! new_db_key {
 
 new_db_key!(ModuleId -> modules : ModuleInfo);
 new_db_key!(DefinitionId -> definitions : DefinitionInfo);
-new_db_key!(TyId -> types : Ty);
 
 #[derive(Debug)]
 #[allow(clippy::struct_excessive_bools)]
@@ -135,12 +131,6 @@ pub struct BuildOptions {
     pub print_ast: bool,
     pub print_hir: bool,
     pub print_mir: bool,
-}
-
-impl Ty {
-    pub fn alloc(db: &mut Database, ty: Self) -> TyId {
-        db.types.push(ty)
-    }
 }
 
 #[derive(Debug, Clone)]

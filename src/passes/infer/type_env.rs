@@ -1,4 +1,5 @@
-use crate::db::{ModuleId, DefinitionId, TyId};
+use crate::db::{DefinitionId, ModuleId};
+use crate::ty::typecx::TyId;
 
 pub struct TypeEnv {
     module_id: ModuleId,

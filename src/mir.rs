@@ -8,8 +8,9 @@ use ustr::{ustr, Ustr};
 use crate::db::DefinitionId;
 use crate::{
     common::{new_key_type, IndexVec},
-    db::{Database, TyId},
+    db::Database,
     span::Span,
+    ty::typecx::TypeCx,
 };
 
 #[derive(Debug)]
@@ -26,8 +27,8 @@ impl Mir {
         self.functions.push(function);
     }
 
-    pub fn pretty_print(&self, db: &Database) {
-        pretty_print::print(db, self);
+    pub fn pretty_print(&self, db: &Database, tcx: &TypeCx) {
+        pretty_print::print(db, tcx, self);
     }
 }
 

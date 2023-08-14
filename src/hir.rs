@@ -1,15 +1,17 @@
 mod lower;
 mod pretty_print;
 
+pub use lower::lower;
+
 use std::io;
 
 use enum_as_inner::EnumAsInner;
 use indexmap::IndexMap;
-pub use lower::lower;
 use ustr::Ustr;
 
+use crate::ty::typecx::TyId;
 use crate::{
-    db::{Database, DefinitionId, ModuleId, TyId},
+    db::{Database, DefinitionId, ModuleId},
     span::{Span, Spanned},
 };
 

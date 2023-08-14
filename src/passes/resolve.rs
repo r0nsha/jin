@@ -3,10 +3,9 @@ use std::collections::HashMap;
 use ustr::{Ustr, UstrMap};
 
 use crate::db::{DefinitionInfoKind, FunctionInfo};
+use crate::ty::typecx::TyId;
 use crate::{
-    db::{
-        Database, DefinitionId, DefinitionInfo, ModuleId, ScopeLevel, TyId, Vis,
-    },
+    db::{Database, DefinitionId, DefinitionInfo, ModuleId, ScopeLevel, Vis},
     diagnostics::{Diagnostic, Label},
     hir::{
         Block, Call, Definition, DefinitionKind, Function, Hir, Module, Name,
