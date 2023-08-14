@@ -14,7 +14,7 @@ pub(crate) fn lower(db: &mut Database, modules: Vec<ast::Module>) -> Hir {
                     db,
                     module.source,
                     module.name.clone(),
-                    module.is_main,
+                    module.is_main(),
                 );
                 Lower { db, id }.run(module)
             })

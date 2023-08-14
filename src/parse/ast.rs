@@ -10,11 +10,28 @@ use crate::{
 use super::pretty_print;
 
 #[derive(Debug, Clone)]
+pub(crate) struct Library {
+    pub(crate) modules: Vec<Module>,
+    name: Ustr,
+    is_main: bool,
+}
+
+impl Library {
+    pub(crate) fn is_main(&self) -> bool {
+        self.is_main
+    }
+
+    pub(crate) fn name(&self) -> Ustr {
+        self.name
+    }
+}
+
+#[derive(Debug, Clone)]
 pub(crate) struct Module {
     pub(crate) source: SourceId,
     pub(crate) name: QualifiedName,
-    pub(crate) is_main: bool,
     pub(crate) top_levels: Vec<TopLevel>,
+    is_main: bool,
 }
 
 impl Module {
@@ -28,6 +45,10 @@ impl Module {
 
     pub(crate) fn pretty_print(&self) -> io::Result<()> {
         pretty_print::print_module(self)
+    }
+
+    pub(crate) fn is_main(&self) -> bool {
+        self.is_main
     }
 }
 
