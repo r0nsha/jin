@@ -20,8 +20,8 @@ use self::{
     type_env::{CallFrame, TypeEnv},
 };
 
-pub fn infer(db: &mut Database, tcx: &mut TypeCx, hir: &mut Hir) {
-    let mut cx = InferCx::new(db, tcx);
+pub fn infer(db: &mut Database, hir: &mut Hir) {
+    let mut cx = InferCx::new(db);
 
     cx.infer_all(&mut hir.modules);
 
@@ -33,19 +33,19 @@ pub fn infer(db: &mut Database, tcx: &mut TypeCx, hir: &mut Hir) {
     cx.substitution(&mut hir.modules);
 }
 
-pub(super) struct InferCx<'db, 'tcx> {
+pub(super) struct InferCx<'db> {
     pub(super) db: &'db mut Database,
-    pub(super) tcx: &'tcx mut TypeCx,
+    pub(super) tcx: TypeCx,
     pub(super) constraints: Constraints,
 }
 
-impl<'db, 'tcx> InferCx<'db, 'tcx> {
-    fn new(db: &'db mut Database, tcx: &'tcx mut TypeCx) -> Self {
-        Self { db, tcx, constraints: Constraints::new() }
+impl<'db> InferCx<'db> {
+    fn new(db: &'db mut Database) -> Self {
+        Self { db, tcx: TypeCx::new(), constraints: Constraints::new() }
     }
 }
 
-impl<'db, 'tcx> InferCx<'db, 'tcx> {
+impl<'db> InferCx<'db> {
     fn infer_all(&mut self, modules: &mut [Module]) {
         for module in modules {
             self.infer_module(module);
@@ -73,12 +73,12 @@ impl<'db, 'tcx> InferCx<'db, 'tcx> {
     }
 }
 
-trait Infer<'db, 'tcx> {
-    fn infer(&mut self, cx: &mut InferCx<'db, 'tcx>, env: &mut TypeEnv);
+trait Infer<'db> {
+    fn infer(&mut self, cx: &mut InferCx<'db>, env: &mut TypeEnv);
 }
 
-impl Infer<'_, '_> for Node {
-    fn infer(&mut self, cx: &mut InferCx<'_, '_>, env: &mut TypeEnv) {
+impl Infer<'_> for Node {
+    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         match self {
             Self::Function(x) => x.infer(cx, env),
             Self::Block(x) => x.infer(cx, env),
@@ -90,8 +90,8 @@ impl Infer<'_, '_> for Node {
     }
 }
 
-impl Infer<'_, '_> for Definition {
-    fn infer(&mut self, cx: &mut InferCx<'_, '_>, env: &mut TypeEnv) {
+impl Infer<'_> for Definition {
+    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         self.ty = Ty::alloc(cx.db, Ty::unit(self.span));
 
         match &mut self.kind {
@@ -105,8 +105,8 @@ impl Infer<'_, '_> for Definition {
     }
 }
 
-impl Infer<'_, '_> for Function {
-    fn infer(&mut self, cx: &mut InferCx<'_, '_>, env: &mut TypeEnv) {
+impl Infer<'_> for Function {
+    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         let ret_ty = cx.tcx.fresh_type_var(self.span);
         let fun_ty = Ty::fun(ret_ty.clone(), self.span);
 
@@ -126,8 +126,8 @@ impl Infer<'_, '_> for Function {
     }
 }
 
-impl Infer<'_, '_> for Block {
-    fn infer(&mut self, cx: &mut InferCx<'_, '_>, env: &mut TypeEnv) {
+impl Infer<'_> for Block {
+    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         for expr in &mut self.exprs {
             expr.infer(cx, env);
         }
@@ -139,8 +139,8 @@ impl Infer<'_, '_> for Block {
     }
 }
 
-impl Infer<'_, '_> for Return {
-    fn infer(&mut self, cx: &mut InferCx<'_, '_>, env: &mut TypeEnv) {
+impl Infer<'_> for Return {
+    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         self.ty = Ty::alloc(cx.db, Ty::never(self.span));
 
         let call_frame = env.call_stack.current().unwrap();
@@ -159,8 +159,8 @@ impl Infer<'_, '_> for Return {
     }
 }
 
-impl Infer<'_, '_> for Call {
-    fn infer(&mut self, cx: &mut InferCx<'_, '_>, env: &mut TypeEnv) {
+impl Infer<'_> for Call {
+    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         self.callee.infer(cx, env);
 
         let result_ty = cx.tcx.fresh_type_var(self.span);
@@ -176,14 +176,14 @@ impl Infer<'_, '_> for Call {
     }
 }
 
-impl Infer<'_, '_> for Name {
-    fn infer(&mut self, cx: &mut InferCx<'_, '_>, _env: &mut TypeEnv) {
+impl Infer<'_> for Name {
+    fn infer(&mut self, cx: &mut InferCx<'_>, _env: &mut TypeEnv) {
         self.ty = cx.infer_definition(self.id.expect("to be resolved"));
     }
 }
 
-impl Infer<'_, '_> for Lit {
-    fn infer(&mut self, cx: &mut InferCx<'_, '_>, _env: &mut TypeEnv) {
+impl Infer<'_> for Lit {
+    fn infer(&mut self, cx: &mut InferCx<'_>, _env: &mut TypeEnv) {
         self.ty = match &self.kind {
             LitKind::Int(_) => {
                 // TODO: use a polymorphic int
