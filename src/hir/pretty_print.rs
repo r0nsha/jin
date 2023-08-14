@@ -10,7 +10,7 @@ use super::*;
 pub(crate) fn print_module(db: &Database, module: &Module) {
     let doc = RcDoc::text(format!(
         "module {}",
-        module.id.get(db).name.standard_full_name()
+        db[module.id].name.standard_full_name()
     ))
     .append(RcDoc::space())
     .append(RcDoc::text("{"))
@@ -53,7 +53,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for Definition {
 
 impl<'db, 'd> ToDoc<'db, 'd> for Function {
     fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
-        let ret_ty = self.ty.get(db).kind.as_function().unwrap().ret.to_doc(db);
+        let ret_ty = db[self.ty].kind.as_function().unwrap().ret.to_doc(db);
 
         RcDoc::text("fn")
             .append(RcDoc::space())
@@ -123,7 +123,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for Lit {
 
 impl<'db, 'd> ToDoc<'db, 'd> for TyId {
     fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
-        self.get(db).to_doc(db)
+        db[*self].to_doc(db)
     }
 }
 

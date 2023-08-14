@@ -102,26 +102,23 @@ impl Database {
     }
 }
 
-#[derive(Debug)]
-pub(crate) struct BuildOptions {
-    pub(crate) print_times: bool,
-    pub(crate) print_ast: bool,
-    pub(crate) print_hir: bool,
-    pub(crate) print_mir: bool,
-}
-
 macro_rules! new_db_key {
-    ($name: ident -> $collection: ident : $type: ident) => {
-        new_key_type!($name);
+    ($key: ident -> $collection: ident : $type: ident) => {
+        new_key_type!($key);
 
         #[allow(unused)]
-        impl $name {
-            pub(crate) fn get(self, db: &Database) -> &$type {
-                &db.$collection[self]
-            }
+        impl std::ops::Index<$key> for Database {
+            type Output = $type;
 
-            pub(crate) fn get_mut(self, db: &mut Database) -> &mut $type {
-                &mut db.$collection[self]
+            fn index(&self, index: $key) -> &Self::Output {
+                &self.$collection[index]
+            }
+        }
+
+        #[allow(unused)]
+        impl std::ops::IndexMut<$key> for Database {
+            fn index_mut(&mut self, index: $key) -> &mut Self::Output {
+                &mut self.$collection[index]
             }
         }
     };
@@ -130,6 +127,14 @@ macro_rules! new_db_key {
 new_db_key!(ModuleId -> modules : ModuleInfo);
 new_db_key!(DefinitionId -> definitions : DefinitionInfo);
 new_db_key!(TyId -> types : Ty);
+
+#[derive(Debug)]
+pub(crate) struct BuildOptions {
+    pub(crate) print_times: bool,
+    pub(crate) print_ast: bool,
+    pub(crate) print_hir: bool,
+    pub(crate) print_mir: bool,
+}
 
 impl Ty {
     pub(crate) fn alloc(db: &mut Database, ty: Ty) -> TyId {

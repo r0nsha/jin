@@ -37,10 +37,10 @@ impl<'db> InferCx<'db> {
         id: TyId,
         unbound_vars: &mut HashSet<TyVar>,
     ) {
-        let ty = id.get(self.db).clone();
+        let ty = self.db[id].clone();
 
         let new_ty = self.substitute_ty(&ty, unbound_vars);
-        *id.get_mut(self.db) = new_ty;
+        self.db[id] = new_ty;
     }
 
     fn substitute_ty(
@@ -107,7 +107,7 @@ impl Substitute<'_> for Definition {
 
         cx.substitute_type_id(self.ty, unbound_vars);
         cx.substitute_type_id(
-            self.id.expect("to be resolved").get(cx.db).ty,
+            cx.db[self.id.expect("to be resolved")].ty,
             unbound_vars,
         );
     }
@@ -122,7 +122,7 @@ impl Substitute<'_> for Function {
         self.body.substitute(cx, unbound_vars);
         cx.substitute_type_id(self.ty, unbound_vars);
         cx.substitute_type_id(
-            self.id.expect("to be resolved").get(cx.db).ty,
+            cx.db[self.id.expect("to be resolved")].ty,
             unbound_vars,
         );
     }

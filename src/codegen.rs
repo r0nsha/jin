@@ -167,9 +167,9 @@ impl<'a, 'db> Codegen<'a, 'db> for Function {
         cx: &'a mut CodegenCx<'db>,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        let fun = self.id().get(cx.db);
+        let fun = &cx.db[self.id()];
 
-        let fun_ty = fun.ty.get(cx.db).kind.as_function().unwrap();
+        let fun_ty = cx.db[fun.ty].kind.as_function().unwrap();
         let name = fun.qualified_name.full_c_name();
 
         let sig = arena
@@ -245,7 +245,7 @@ impl<'a, 'db> Codegen<'a, 'db> for Value {
     ) -> DocBuilder<'db, Arena<'db>, ()> {
         match self {
             Value::Definition(id) => {
-                arena.text(id.get(cx.db).qualified_name.full_c_name())
+                arena.text(cx.db[*id].qualified_name.full_c_name())
             }
             Value::Register(id) => id.codegen(cx, arena),
         }
@@ -268,7 +268,7 @@ impl<'a, 'db> Codegen<'a, 'db> for TyId {
         cx: &'a mut CodegenCx<'db>,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
-        self.get(cx.db).codegen(cx, arena)
+        cx.db[*self].codegen(cx, arena)
     }
 }
 

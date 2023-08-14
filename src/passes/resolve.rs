@@ -52,7 +52,7 @@ impl<'db> ResolveCx<'db> {
                 }
 
                 let qualified_name =
-                    module.id.get(self.db).name.clone().child(def.name);
+                    self.db[module.id].name.clone().child(def.name);
 
                 let kind = match &def.kind {
                     DefinitionKind::Function(_) => {

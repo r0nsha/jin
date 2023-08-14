@@ -55,11 +55,11 @@ impl<'db> InferCx<'db> {
     }
 
     fn infer_definition(&mut self, id: DefinitionId) -> TyId {
-        let sym = id.get(self.db);
+        let sym = &self.db[id];
 
         if sym.ty.is_null() {
             let ty = Ty::alloc(self.db, self.tcx.fresh_type_var(sym.span));
-            id.get_mut(self.db).ty = ty;
+            self.db[id].ty = ty;
             ty
         } else {
             sym.ty

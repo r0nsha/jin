@@ -14,22 +14,12 @@ pub(crate) fn print(db: &Database, mir: &Mir) {
 }
 
 fn print_function<'d>(db: &Database, fun: &Function) -> RcDoc<'d, ()> {
-    let ret_ty = fun
-        .id
-        .get(db)
-        .ty
-        .get(db)
-        .kind
-        .as_function()
-        .unwrap()
-        .ret
-        .to_doc(db, fun);
+    let ret_ty =
+        db[db[fun.id].ty].kind.as_function().unwrap().ret.to_doc(db, fun);
 
     RcDoc::text("fn")
         .append(RcDoc::space())
-        .append(RcDoc::text(
-            fun.id().get(db).qualified_name.standard_full_name(),
-        ))
+        .append(RcDoc::text(db[fun.id()].qualified_name.standard_full_name()))
         .append(RcDoc::text("()"))
         .append(RcDoc::space())
         .append(ret_ty)
@@ -84,7 +74,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for Value {
     fn to_doc(&self, db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
         match self {
             Value::Definition(id) => {
-                RcDoc::text(id.get(db).qualified_name.standard_full_name())
+                RcDoc::text(db[*id].qualified_name.standard_full_name())
             }
             Value::Register(id) => id.to_doc(db, fun),
         }
@@ -99,7 +89,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for RegisterId {
 
 impl<'db, 'd> ToDoc<'db, 'd> for TyId {
     fn to_doc(&self, db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
-        self.get(db).to_doc(db, fun)
+        db[*self].to_doc(db, fun)
     }
 }
 

@@ -103,7 +103,7 @@ impl<'db> LowerCx<'db> {
     }
 
     fn lower_name(&mut self, name: &hir::Name) -> Value {
-        let sym = name.id.expect("to be resolved").get(self.db);
+        let sym = &self.db[name.id.expect("to be resolved")];
 
         if let ScopeLevel::Global(_) = sym.scope_level {
             Value::Definition(sym.id)

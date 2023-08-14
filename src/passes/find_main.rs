@@ -9,15 +9,16 @@ use crate::{
 pub(crate) fn find_main(db: &mut Database) {
     let main_module_id = db.main_module_id().unwrap();
 
-    let main_fun_id = if let Some(main_fun) = db.definitions.iter().find(|sym| {
-        sym.module_id == main_module_id
-            && matches!(
-                sym.kind.as_ref(),
-                DefinitionInfoKind::Function(db::FunctionInfo::Orphan)
-            )
-            && sym.qualified_name.name() == "main"
-    }) {
-        let fun_ty = main_fun.ty.get(db);
+    let main_fun_id = if let Some(main_fun) =
+        db.definitions.iter().find(|sym| {
+            sym.module_id == main_module_id
+                && matches!(
+                    sym.kind.as_ref(),
+                    DefinitionInfoKind::Function(db::FunctionInfo::Orphan)
+                )
+                && sym.qualified_name.name() == "main"
+        }) {
+        let fun_ty = &db[main_fun.ty];
 
         if !is_main_fun_ty(fun_ty) {
             db.diagnostics.add(
