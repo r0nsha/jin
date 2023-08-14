@@ -2,10 +2,10 @@ mod constraint;
 mod normalize;
 mod substitute;
 mod type_env;
-mod typecx;
 mod unify;
 
 use crate::db::{DefinitionId, TyId};
+use crate::ty::typecx::TypeCx;
 use crate::{
     db::Database,
     hir::{
@@ -18,7 +18,6 @@ use crate::{
 use self::{
     constraint::{Constraint, Constraints},
     type_env::{FunScope, TypeEnv},
-    typecx::TypeCx,
 };
 
 pub fn infer(db: &mut Database, hir: &mut Hir) {
