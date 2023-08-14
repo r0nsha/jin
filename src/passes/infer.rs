@@ -7,7 +7,7 @@ mod unify;
 
 use crate::db::{DefinitionId, TyId};
 use crate::passes::infer::typecx::TypeCx;
-use crate::ty::{FunctionTy, IntTy};
+use crate::ty::FunctionTy;
 use crate::{
     db::Database,
     hir::{
@@ -66,7 +66,7 @@ impl<'db> InferCx<'db> {
         let sym = &self.db[id];
 
         if sym.ty.is_null() {
-            let ty = self.db.alloc_ty(self.tcx.fresh_type_var(sym.span));
+            let ty = self.db.alloc_ty(self.tcx.fresh_ty_var(sym.span));
             self.db[id].ty = ty;
             ty
         } else {
@@ -109,7 +109,7 @@ impl Infer<'_> for Definition {
 
 impl Infer<'_> for Function {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
-        let ret_ty = cx.tcx.fresh_type_var(self.span);
+        let ret_ty = cx.tcx.fresh_ty_var(self.span);
         let fun_ty = Ty::Function(FunctionTy {
             ret: Box::new(ret_ty.clone()),
             span: self.span,
@@ -168,7 +168,7 @@ impl Infer<'_> for Call {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         self.callee.infer(cx, env);
 
-        let result_ty = cx.tcx.fresh_type_var(self.span);
+        let result_ty = cx.tcx.fresh_ty_var(self.span);
         let expected_ty = cx.db.alloc_ty(Ty::Function(FunctionTy {
             ret: Box::new(result_ty.clone()),
             span: self.span,
@@ -192,7 +192,7 @@ impl Infer<'_> for Name {
 impl Infer<'_> for Lit {
     fn infer(&mut self, cx: &mut InferCx<'_>, _env: &mut TypeEnv) {
         self.ty = match &self.kind {
-            LitKind::Int(_) => cx.db.alloc_ty(Ty::Int(IntTy::Int, self.span)),
+            LitKind::Int(_) => cx.db.alloc_ty(cx.tcx.fresh_int_var(self.span)),
             LitKind::Unit => cx.db.alloc_ty(Ty::Unit(self.span)),
         };
     }

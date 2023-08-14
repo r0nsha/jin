@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use crate::ty::FunctionTy;
+use crate::ty::{FunctionTy, InferTy};
 use crate::{
     db::TyId,
     hir::{
@@ -53,15 +53,25 @@ impl<'db> InferCx<'db> {
                 let ret = self.substitute_ty(&fun.ret, unbound_vars);
                 Ty::Function(FunctionTy { ret: Box::new(ret), span: fun.span })
             }
-            Ty::Var(v, span) => {
-                let root = self.tcx.unification_table.find(*v);
+            Ty::Infer(InferTy::TyVar(var), span) => {
+                let root = self.tcx.ty_unification_table.find(*var);
 
-                if let Some(ty) = self.tcx.unification_table.probe_value(root) {
+                if let Some(ty) =
+                    self.tcx.ty_unification_table.probe_value(root)
+                {
                     self.substitute_ty(&ty, unbound_vars)
                 } else {
                     unbound_vars.insert(root);
-                    Ty::Var(root, *span)
+                    Ty::Infer(InferTy::TyVar(root), *span)
                 }
+            }
+            Ty::Infer(InferTy::IntVar(var), span) => {
+                let root = self.tcx.int_unification_table.find(*var);
+
+                self.tcx
+                    .int_unification_table
+                    .probe_value(root)
+                    .map_or_else(|| Ty::default_int(*span), Into::into)
             }
             _ => ty.clone(),
         }

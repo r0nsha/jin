@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter, Result};
 
 use crate::db::Database;
-use crate::ty::{IntTy, Ty};
+use crate::ty::{InferTy, IntTy, Ty};
 
 pub struct TypePrinter<'db> {
     _db: &'db Database,
@@ -25,12 +25,13 @@ impl<'db> TypePrinter<'db> {
                 f.write_str("fn() ")?;
                 Self::fmt_ty(f, &fun.ret)
             }
-            Ty::Var(var, _) => write!(f, "${}", var.0),
             Ty::Int(int, _) => match int {
                 IntTy::Int => f.write_str("int"),
             },
             Ty::Never(_) => f.write_str("!"),
             Ty::Unit(_) => f.write_str("()"),
+            Ty::Infer(InferTy::TyVar(v), _) => write!(f, "?{}", v.0),
+            Ty::Infer(InferTy::IntVar(_), _) => f.write_str("{int}"),
         }
     }
 }

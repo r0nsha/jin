@@ -1,5 +1,6 @@
 mod printer;
 
+use derive_more::{From, Into};
 use enum_as_inner::EnumAsInner;
 
 use crate::db::Database;
@@ -8,38 +9,42 @@ use crate::ty::printer::TypePrinter;
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
 pub enum Ty {
-    Var(TyVar, Span),
     Int(IntTy, Span),
     Function(FunctionTy),
     // TODO: when we implement tuples, Unit should become Tuple([])
     Unit(Span),
     Never(Span),
+    Infer(InferTy, Span),
 }
 
 impl Ty {
+    pub fn default_int(span: Span) -> Self {
+        Self::Int(IntTy::Int, span)
+    }
+
     pub fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
         match self {
             Self::Function(fun) => {
                 fun.ret.occurs_check(var).map_err(|_| self.clone())
             }
-            Self::Var(v, _) => {
+            Self::Infer(InferTy::TyVar(v), _) => {
                 if *v == var {
                     Err(self.clone())
                 } else {
                     Ok(())
                 }
             }
-            Self::Int(..) | Self::Unit(_) | Self::Never(_) => Ok(()),
+            _ => Ok(()),
         }
     }
 
     pub fn span(&self) -> Span {
         match self {
-            Self::Var(_, span)
-            | Self::Int(_, span)
+            Self::Int(_, span)
             | Self::Function(FunctionTy { span, .. })
             | Self::Unit(span)
-            | Self::Never(span) => *span,
+            | Self::Never(span)
+            | Self::Infer(_, span) => *span,
         }
     }
 
@@ -52,18 +57,22 @@ impl Ty {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, From, Into)]
 pub struct TyVar(u32);
 
-impl From<TyVar> for u32 {
-    fn from(value: TyVar) -> Self {
-        value.0
-    }
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, From, Into)]
+pub struct IntVar(u32);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum IntVarValue {
+    Int(IntTy, Span),
 }
 
-impl From<u32> for TyVar {
-    fn from(value: u32) -> Self {
-        Self(value)
+impl From<IntVarValue> for Ty {
+    fn from(value: IntVarValue) -> Self {
+        match value {
+            IntVarValue::Int(ty, span) => Self::Int(ty, span),
+        }
     }
 }
 
@@ -76,4 +85,10 @@ pub enum IntTy {
 pub struct FunctionTy {
     pub ret: Box<Ty>,
     pub span: Span,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum InferTy {
+    TyVar(TyVar),
+    IntVar(IntVar),
 }

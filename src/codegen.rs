@@ -173,8 +173,9 @@ impl<'a, 'db> Codegen<'a, 'db> for Function {
         let fun_ty = cx.db[fun.ty].as_function().unwrap();
         let name = fun.qualified_name.full_c_name();
 
-        let sig = arena
-            .text(c_type(cx.db, &fun_ty.ret))
+        let sig = fun_ty
+            .ret
+            .codegen(cx, arena)
             .append(arena.space())
             .append(arena.text(name))
             .append(arena.text("()"));
@@ -287,23 +288,10 @@ impl<'a, 'db> Codegen<'a, 'db> for Ty {
             Self::Function(_) => todo!(),
             Self::Unit(_) => TYPE_UNIT.to_string(),
             Self::Never(_) => TYPE_NEVER.to_string(),
-            Self::Var(..) => {
+            Self::Infer(..) => {
                 panic!("unexpected type: {}", self.display(cx.db))
             }
         })
-    }
-}
-
-fn c_type(db: &Database, ty: &Ty) -> String {
-    match ty {
-        Ty::Int(int, _) => match int {
-            IntTy::Int => "intptr_t",
-        }
-        .to_string(),
-        Ty::Function(_) => todo!(),
-        Ty::Unit(_) => TYPE_UNIT.to_string(),
-        Ty::Never(_) => TYPE_NEVER.to_string(),
-        Ty::Var(..) => panic!("unexpected type: {}", ty.display(db)),
     }
 }
 
