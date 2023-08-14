@@ -94,8 +94,8 @@ impl<'db, 'd> ToDoc<'db, 'd> for TyId {
 }
 
 impl<'db, 'd> ToDoc<'db, 'd> for Ty {
-    fn to_doc(&self, _db: &'db Database, _fun: &'db Function) -> RcDoc<'d, ()> {
-        RcDoc::text(self.to_string())
+    fn to_doc(&self, db: &'db Database, _fun: &'db Function) -> RcDoc<'d, ()> {
+        RcDoc::text(self.to_string(db))
     }
 }
 

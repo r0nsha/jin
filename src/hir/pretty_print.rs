@@ -1,3 +1,5 @@
+use std::io;
+
 use pretty::RcDoc;
 
 use crate::{
@@ -7,128 +9,129 @@ use crate::{
 
 use super::*;
 
-pub(crate) fn print_module(db: &Database, module: &Module) {
-    let doc = RcDoc::text(format!(
-        "module {}",
-        db[module.id].name.standard_full_name()
-    ))
-    .append(RcDoc::space())
-    .append(RcDoc::text("{"))
-    .append(RcDoc::line())
-    .append(RcDoc::intersperse(
-        module.definitions.iter().map(|b| b.to_doc(db)),
-        RcDoc::line().append(RcDoc::line()),
-    ))
-    .nest(1)
-    .append(RcDoc::line())
-    .append("}");
+pub(super) fn print_module(db: &Database, module: &Module) -> io::Result<()> {
+    let mut cx = Cx {
+        db,
+        builder: ptree::TreeBuilder::new(
+            db[module.id].name.standard_full_name(),
+        ),
+    };
 
-    println!("{}", doc.pretty(80));
+    for def in &module.definitions {
+        def.pretty_print(&mut cx);
+    }
+
+    let tree = cx.builder.build();
+    ptree::print_tree_with(&tree, &ptree::PrintConfig::default())
 }
 
-trait ToDoc<'db, 'd> {
-    fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()>;
+struct Cx<'db> {
+    db: &'db Database,
+    builder: ptree::TreeBuilder,
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Node {
-    fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
+trait PrettyPrint {
+    fn pretty_print(&self, cx: &mut Cx);
+}
+
+impl PrettyPrint for Node {
+    fn pretty_print(&self, cx: &mut Cx) {
         match self {
-            Node::Function(x) => x.to_doc(db),
-            Node::Block(x) => x.to_doc(db),
-            Node::Return(x) => x.to_doc(db),
-            Node::Call(x) => x.to_doc(db),
-            Node::Name(x) => x.to_doc(db),
-            Node::Lit(x) => x.to_doc(db),
+            Node::Function(x) => x.pretty_print(cx),
+            Node::Block(x) => x.pretty_print(cx),
+            Node::Return(x) => x.pretty_print(cx),
+            Node::Call(x) => x.pretty_print(cx),
+            Node::Name(x) => x.pretty_print(cx),
+            Node::Lit(x) => x.pretty_print(cx),
         }
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Definition {
-    fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
+impl PrettyPrint for Definition {
+    fn pretty_print(&self, cx: &mut Cx) {
         match &self.kind {
-            DefinitionKind::Function(fun) => fun.to_doc(db),
+            DefinitionKind::Function(fun) => fun.pretty_print(cx),
         }
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Function {
-    fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
-        let ret_ty = db[self.ty].kind.as_function().unwrap().ret.to_doc(db);
+impl PrettyPrint for Function {
+    fn pretty_print(&self, cx: &mut Cx) {
+        // TODO: types
+        cx.builder.begin_child(format!("fn {}", self.name));
 
-        RcDoc::text("fn")
-            .append(RcDoc::space())
-            .append(RcDoc::text(self.name.as_str()))
-            .append(RcDoc::text("("))
-            // TODO: Print function params
-            // .append(RcDoc::intersperse(
-            //     self.params.values().map(|p| {
-            //         RcDoc::text(p.name.as_str()).append(RcDoc::space()).append(
-            //             p.id.expect("to have a definition").get(db).ty.to_doc(db),
-            //         )
-            //     }),
-            //     RcDoc::text(",").append(RcDoc::space()),
-            // ))
-            .append(RcDoc::text(")"))
-            .append(RcDoc::space())
-            .append(ret_ty)
-            .append(RcDoc::space())
-            .append(RcDoc::text("="))
-            .append(RcDoc::space())
-            .append(self.body.to_doc(db))
+        if !self.params.is_empty() {
+            cx.builder.begin_child("params".to_string());
+
+            for param in self.params.values() {
+                cx.builder.add_empty_child(format!("{}", param.name));
+            }
+
+            cx.builder.end_child();
+        }
+
+        self.body.pretty_print(cx);
+
+        cx.builder.end_child();
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Block {
-    fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
-        RcDoc::text("{")
-            .append(RcDoc::line())
-            .append(RcDoc::intersperse(
-                self.exprs.iter().map(|e| e.to_doc(db)),
-                RcDoc::line(),
-            ))
-            .nest(1)
-            .append(RcDoc::line())
-            .append("}")
+impl PrettyPrint for Block {
+    fn pretty_print(&self, cx: &mut Cx) {
+        cx.builder.begin_child("block".to_string());
+
+        for expr in &self.exprs {
+            expr.pretty_print(cx);
+        }
+
+        cx.builder.end_child();
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Return {
-    fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
-        RcDoc::text("return")
-            .append(RcDoc::space())
-            .append(self.expr.as_ref().map_or(RcDoc::nil(), |e| e.to_doc(db)))
+impl PrettyPrint for Return {
+    fn pretty_print(&self, cx: &mut Cx) {
+        cx.builder.begin_child("return".to_string());
+
+        if let Some(expr) = self.expr.as_ref() {
+            expr.pretty_print(cx);
+        }
+
+        cx.builder.end_child();
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Call {
-    fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
-        self.callee.to_doc(db).append(RcDoc::text("()"))
+impl PrettyPrint for Call {
+    fn pretty_print(&self, cx: &mut Cx) {
+        // TODO: type
+        cx.builder.begin_child("call".to_string());
+        self.callee.pretty_print(cx);
+        cx.builder.end_child();
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Name {
-    fn to_doc(&self, _db: &'db Database) -> RcDoc<'d, ()> {
-        RcDoc::text(self.name.as_str())
+impl PrettyPrint for Name {
+    fn pretty_print(&self, cx: &mut Cx) {
+        // TODO: type
+        cx.builder.add_empty_child(
+            self.id.map_or(self.name.to_string(), |id| {
+                cx.db[id].qualified_name.standard_full_name()
+            }),
+        );
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Lit {
-    fn to_doc(&self, _db: &'db Database) -> RcDoc<'d, ()> {
+impl PrettyPrint for Lit {
+    fn pretty_print(&self, cx: &mut Cx) {
         match &self.kind {
-            LitKind::Int(v) => RcDoc::text(v.to_string()),
-            LitKind::Unit => RcDoc::text("()"),
+            LitKind::Int(v) => {
+                cx.builder.add_empty_child(format!(
+                    "{v} {}",
+                    cx.db[self.ty].display(&cx.db)
+                ));
+            }
+            LitKind::Unit => {
+                cx.builder.add_empty_child("()".to_string());
+            }
         }
-    }
-}
-
-impl<'db, 'd> ToDoc<'db, 'd> for TyId {
-    fn to_doc(&self, db: &'db Database) -> RcDoc<'d, ()> {
-        db[*self].to_doc(db)
-    }
-}
-
-impl<'db, 'd> ToDoc<'db, 'd> for Ty {
-    fn to_doc(&self, _db: &'db Database) -> RcDoc<'d, ()> {
-        RcDoc::text(self.to_string())
     }
 }

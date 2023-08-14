@@ -1,8 +1,10 @@
-use std::fmt;
+mod printer;
 
 use enum_as_inner::EnumAsInner;
 
+use crate::db::Database;
 use crate::span::Span;
+use crate::ty::printer::TypePrinter;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct Ty {
@@ -46,22 +48,13 @@ impl Ty {
             TyKind::Int(_) | TyKind::Unit | TyKind::Never => Ok(()),
         }
     }
-}
 
-impl fmt::Display for Ty {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match &self.kind {
-            TyKind::Function(fun) => {
-                f.write_str("fn() ")?;
-                fun.ret.fmt(f)
-            }
-            TyKind::Var(var) => write!(f, "${}", var.0),
-            TyKind::Int(int) => match int {
-                IntTy::Int => f.write_str("int"),
-            },
-            TyKind::Never => f.write_str("never"),
-            TyKind::Unit => f.write_str("()"),
-        }
+    pub(crate) fn display(&self, db: &Database) -> TypePrinter {
+        TypePrinter::new(db, self)
+    }
+
+    pub(crate) fn to_string(&self, db: &Database) -> String {
+        self.display(db).to_string()
     }
 }
 

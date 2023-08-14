@@ -1,7 +1,4 @@
 fn main() = {
-	// TODO: function calls
-	// answer()
-
 	return ()
 }
 

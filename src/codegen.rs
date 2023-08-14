@@ -173,7 +173,7 @@ impl<'a, 'db> Codegen<'a, 'db> for Function {
         let name = fun.qualified_name.full_c_name();
 
         let sig = arena
-            .text(c_type(&fun_ty.ret))
+            .text(c_type(&cx.db, &fun_ty.ret))
             .append(arena.space())
             .append(arena.text(name))
             .append(arena.text("()"));
@@ -275,7 +275,7 @@ impl<'a, 'db> Codegen<'a, 'db> for TyId {
 impl<'a, 'db> Codegen<'a, 'db> for Ty {
     fn codegen(
         &self,
-        _cx: &'a mut CodegenCx<'db>,
+        cx: &'a mut CodegenCx<'db>,
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
         arena.text(match &self.kind {
@@ -286,12 +286,14 @@ impl<'a, 'db> Codegen<'a, 'db> for Ty {
             TyKind::Function(_) => todo!(),
             TyKind::Unit => TYPE_UNIT.to_string(),
             TyKind::Never => TYPE_NEVER.to_string(),
-            TyKind::Var(_) => panic!("unexpected type: {self}"),
+            TyKind::Var(_) => {
+                panic!("unexpected type: {}", self.display(&cx.db))
+            }
         })
     }
 }
 
-fn c_type(ty: &Ty) -> String {
+fn c_type(db: &Database, ty: &Ty) -> String {
     match &ty.kind {
         TyKind::Int(int) => match int {
             IntTy::Int => "intptr_t",
@@ -300,7 +302,7 @@ fn c_type(ty: &Ty) -> String {
         TyKind::Function(_) => todo!(),
         TyKind::Unit => TYPE_UNIT.to_string(),
         TyKind::Never => TYPE_NEVER.to_string(),
-        TyKind::Var(_) => panic!("unexpected type: {ty}"),
+        TyKind::Var(_) => panic!("unexpected type: {}", ty.display(db)),
     }
 }
 

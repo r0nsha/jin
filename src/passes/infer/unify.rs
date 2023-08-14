@@ -122,20 +122,26 @@ impl From<InferError> for Diagnostic {
             InferError::TypesNotEq { expected, actual } => {
                 Diagnostic::error("infer::incompatible_types")
                     .with_message(format!(
-                        "expected `{expected}`, got `{actual}` instead"
+                        "expected `{}`, got `{}` instead",
+                        expected.display(db),
+                        actual.display(db),
                     ))
                     .with_label(Label::primary(expected.span).with_message(
-                        format!("expected type `{expected}` originates here"),
+                        format!(
+                            "expected type `{}` originates here",
+                            expected.display(db)
+                        ),
                     ))
-                    .with_label(
-                        Label::secondary(actual.span).with_message(format!(
-                            "found type `{actual}` here"
-                        )),
-                    )
+                    .with_label(Label::secondary(actual.span).with_message(
+                        format!("found type `{}` here", actual.display(db)),
+                    ))
             }
             InferError::InfiniteType { ty, .. } => {
                 Diagnostic::error("infer::infinite_type")
-                    .with_message(format!("type `{ty}` has an infinite size"))
+                    .with_message(format!(
+                        "type `{}` is an infinite type",
+                        ty.display(db)
+                    ))
                     .with_label(Label::primary(ty.span))
             }
         }
