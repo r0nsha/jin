@@ -11,18 +11,36 @@ use super::pretty_print;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Library {
-    pub(crate) modules: Vec<Module>,
     name: Ustr,
     is_main: bool,
+    pub(crate) modules: Vec<Module>,
 }
 
 impl Library {
+    pub(crate) fn new(name: Ustr, is_main: bool, modules: Vec<Module>) -> Self {
+        Self { name, is_main, modules }
+    }
+
     pub(crate) fn is_main(&self) -> bool {
         self.is_main
     }
 
     pub(crate) fn name(&self) -> Ustr {
         self.name
+    }
+
+    pub(crate) fn pretty_print(&self) -> io::Result<()> {
+        println!();
+        println!("{}:", self.name());
+        println!();
+
+        for module in &self.modules {
+            pretty_print::print_module(module)?;
+        }
+
+        println!();
+
+        Ok(())
     }
 }
 

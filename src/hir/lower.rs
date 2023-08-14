@@ -5,9 +5,10 @@ use crate::{
 
 use super::*;
 
-pub(crate) fn lower(db: &mut Database, modules: Vec<ast::Module>) -> Hir {
+pub(crate) fn lower(db: &mut Database, lib: ast::Library) -> Hir {
     Hir {
-        modules: modules
+        modules: lib
+            .modules
             .into_iter()
             .map(|module| {
                 let id = db::ModuleInfo::alloc(

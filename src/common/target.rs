@@ -18,8 +18,8 @@ pub enum TargetPlatform {
     WasiWasm32,
 }
 
+#[allow(unused)]
 impl TargetPlatform {
-    #[allow(unused)]
     pub fn is_windows(&self) -> bool {
         matches!(
             self,
@@ -27,7 +27,6 @@ impl TargetPlatform {
         )
     }
 
-    #[allow(unused)]
     pub fn is_linux(&self) -> bool {
         matches!(
             self,
@@ -37,7 +36,6 @@ impl TargetPlatform {
         )
     }
 
-    #[allow(unused)]
     pub fn is_darwin(&self) -> bool {
         matches!(
             self,
@@ -45,7 +43,6 @@ impl TargetPlatform {
         )
     }
 
-    #[allow(unused)]
     pub fn is_free_bsd(&self) -> bool {
         matches!(
             self,
@@ -53,12 +50,10 @@ impl TargetPlatform {
         )
     }
 
-    #[allow(unused)]
     pub fn is_essence(&self) -> bool {
         matches!(self, TargetPlatform::EssenceAmd64)
     }
 
-    #[allow(unused)]
     pub fn is_wasm(&self) -> bool {
         matches!(
             self,
@@ -209,8 +204,8 @@ pub enum Os {
     Freestanding,
 }
 
+#[allow(unused)]
 impl Os {
-    #[allow(unused)]
     pub fn name(&self) -> &'static str {
         match self {
             Os::Windows => "windows",
@@ -236,6 +231,7 @@ pub enum Arch {
     Wasm64,
 }
 
+#[allow(unused)]
 impl Arch {
     pub fn name(&self) -> &'static str {
         match self {
@@ -247,7 +243,6 @@ impl Arch {
         }
     }
 
-    #[allow(unused)]
     pub fn endianness(&self) -> Endianness {
         match self {
             Arch::Amd64
@@ -265,8 +260,8 @@ pub enum Endianness {
     Big,
 }
 
+#[allow(unused)]
 impl Endianness {
-    #[allow(unused)]
     pub fn name(&self) -> &str {
         match self {
             Endianness::Little => "little",

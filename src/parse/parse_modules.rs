@@ -1,8 +1,9 @@
+use crate::parse::ast::Library;
 use crate::{db::Database, diagnostics::Diagnostic, span::Source};
 
 use super::{ast::Module, lexer, parser};
 
-pub(crate) fn parse_modules(db: &mut Database) -> Vec<Module> {
+pub(crate) fn parse_modules(db: &mut Database) -> Library {
     let mut modules = vec![];
 
     match parse_module(db, db.main_source()) {
@@ -10,7 +11,14 @@ pub(crate) fn parse_modules(db: &mut Database) -> Vec<Module> {
         Err(diag) => db.diagnostics.add(diag),
     }
 
-    modules
+    let lib_name = modules
+        .iter()
+        .find(|m| m.is_main())
+        .expect("to have a main module")
+        .name
+        .name();
+
+    Library::new(lib_name, true, modules)
 }
 
 fn parse_module(db: &Database, source: &Source) -> Result<Module, Diagnostic> {

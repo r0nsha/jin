@@ -90,19 +90,15 @@ fn build(build_options: BuildOptions, file: PathBuf) {
 fn build_inner(db: &mut Database) {
     let print_times = db.build_options().print_times;
 
-    let ast = time(print_times, "parse", || parse::parse_modules(db));
+    let ast_lib = time(print_times, "parse", || parse::parse_modules(db));
 
     if db.build_options().print_ast {
-        println!("\nAST:\n");
-        for module in &ast {
-            module.pretty_print().unwrap();
-        }
-        println!();
+        ast_lib.pretty_print().expect("ast printing to work");
     }
 
     bail_on_errors!(db);
 
-    let mut hir = time(print_times, "ast -> hir", || hir::lower(db, ast));
+    let mut hir = time(print_times, "ast -> hir", || hir::lower(db, ast_lib));
 
     time(print_times, "resolve", || passes::resolve(db, &mut hir));
     bail_on_errors!(db);
