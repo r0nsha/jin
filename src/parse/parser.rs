@@ -87,8 +87,8 @@ impl<'a> Parser<'a> {
         self.parse_list(
             TokenKind::OpenParen,
             TokenKind::CloseParen,
-            |parser, tok| {
-                parser.require_kind(tok, TokenKind::empty_ident()).map(|tok| {
+            |_, tok| {
+                Self::require_kind(tok, TokenKind::empty_ident()).map(|tok| {
                     FunctionParam { name: tok.as_ident(), span: tok.span }
                 })
             },
@@ -224,23 +224,7 @@ impl<'a> Parser<'a> {
 
     fn eat(&mut self, expected: TokenKind) -> ParseResult<Token> {
         let tok = self.require()?;
-        self.require_kind(tok, expected)
-    }
-
-    fn require_kind(
-        &mut self,
-        tok: Token,
-        expected: TokenKind,
-    ) -> ParseResult<Token> {
-        if tok.kind_is(expected) {
-            Ok(tok)
-        } else {
-            Err(ParseError::UnexpectedToken {
-                expected: expected.to_string(),
-                actual: tok.kind,
-                span: tok.span,
-            })
-        }
+        Self::require_kind(tok, expected)
     }
 
     fn require(&mut self) -> ParseResult<Token> {
@@ -286,6 +270,18 @@ impl<'a> Parser<'a> {
     #[inline]
     fn next(&mut self) {
         self.pos += 1;
+    }
+
+    fn require_kind(tok: Token, expected: TokenKind) -> ParseResult<Token> {
+        if tok.kind_is(expected) {
+            Ok(tok)
+        } else {
+            Err(ParseError::UnexpectedToken {
+                expected: expected.to_string(),
+                actual: tok.kind,
+                span: tok.span,
+            })
+        }
     }
 }
 

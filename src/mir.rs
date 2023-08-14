@@ -27,7 +27,7 @@ impl Mir {
     }
 
     pub(crate) fn pretty_print(&self, db: &Database) {
-        pretty_print::print(db, self)
+        pretty_print::print(db, self);
     }
 }
 

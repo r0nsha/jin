@@ -29,7 +29,7 @@ pub(crate) fn find_main(db: &mut Database) {
                     .with_label(Label::primary(main_fun.span).with_message(
                         format!("found type `{}` instead", fun_ty.display(db)),
                     )),
-            )
+            );
         }
 
         Some(main_fun.id)

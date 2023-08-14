@@ -115,7 +115,7 @@ impl Source {
 
         match line_index.cmp(&self.line_starts.len()) {
             Ordering::Less => {
-                Ok(self.line_starts.get(line_index).cloned().unwrap())
+                Ok(self.line_starts.get(line_index).copied().unwrap())
             }
             Ordering::Equal => Ok(self.contents.len()),
             Ordering::Greater => Err(files::Error::LineTooLarge {
