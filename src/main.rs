@@ -3,7 +3,8 @@
     clippy::struct_excessive_bools,
     clippy::similar_names,
     clippy::module_name_repetitions,
-    clippy::too_many_lines
+    clippy::too_many_lines,
+    clippy::missing_const_for_fn
 )]
 
 mod ast;
