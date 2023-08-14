@@ -19,7 +19,6 @@ pub struct Database {
     pub sources: Sources,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
     pub definitions: IndexVec<DefinitionId, DefinitionInfo>,
-    // TODO: split this into TypeCx?
     pub types: IndexVec<TyId, Ty>,
 
     pub diagnostics: Diagnostics,
