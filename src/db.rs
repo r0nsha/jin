@@ -187,7 +187,7 @@ pub struct DefinitionInfo {
 #[derive(Debug, Clone)]
 pub enum DefinitionInfoKind {
     Function(FunctionInfo),
-    Parameter,
+    Variable,
 }
 
 impl DefinitionInfo {
