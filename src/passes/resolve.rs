@@ -152,7 +152,7 @@ impl Resolve<'_> for Return {
             value.resolve(cx, env);
         }
 
-        if !env.scopes.in_kind(ScopeKind::Fun) {
+        if !env.scopes.in_kind(&ScopeKind::Fun) {
             cx.errors.push(ResolveError::InvalidReturn { span: self.span });
         }
     }
@@ -264,8 +264,8 @@ impl Scopes {
         self.0.len()
     }
 
-    fn in_kind(&self, kind: ScopeKind) -> bool {
-        self.0.iter().any(|s| s.kind == kind)
+    fn in_kind(&self, kind: &ScopeKind) -> bool {
+        self.0.iter().any(|s| &s.kind == kind)
     }
 }
 

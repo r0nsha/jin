@@ -2,7 +2,8 @@
 #![allow(
     clippy::struct_excessive_bools,
     clippy::similar_names,
-    clippy::module_name_repetitions
+    clippy::module_name_repetitions,
+    clippy::too_many_lines
 )]
 
 mod ast;
@@ -115,15 +116,13 @@ fn build_inner(db: &mut Database) {
     bail_on_errors!(db);
 
     if db.build_options().print_hir {
-        println!("\nHIR:\n");
-        hir.pretty_print(db);
-        println!();
+        hir.pretty_print(db).expect("hir printing to work");
     }
 
     time(print_times, "find main", || passes::find_main(db));
     bail_on_errors!(db);
 
-    let mir = time(print_times, "hir -> mir", || mir::lower(db, hir));
+    let mir = time(print_times, "hir -> mir", || mir::lower(db, &hir));
     bail_on_errors!(db);
 
     if db.build_options().print_mir {

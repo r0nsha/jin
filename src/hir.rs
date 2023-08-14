@@ -1,6 +1,8 @@
 mod lower;
 mod pretty_print;
 
+use std::io;
+
 use enum_as_inner::EnumAsInner;
 use indexmap::IndexMap;
 pub(crate) use lower::lower;
@@ -17,10 +19,18 @@ pub(crate) struct Hir {
 }
 
 impl Hir {
-    pub(crate) fn pretty_print(&self, db: &Database) {
+    pub(crate) fn pretty_print(&self, db: &Database) -> io::Result<()> {
+        println!();
+        println!("HIR:");
+        println!();
+
         for module in &self.modules {
-            pretty_print::print_module(db, module);
+            pretty_print::print_module(db, module)?;
         }
+
+        println!();
+
+        Ok(())
     }
 }
 
