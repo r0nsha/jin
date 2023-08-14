@@ -2,7 +2,7 @@ mod builder;
 mod lower;
 mod pretty_print;
 
-pub(crate) use lower::lower;
+pub use lower::lower;
 use ustr::{ustr, Ustr};
 
 use crate::db::DefinitionId;
@@ -13,26 +13,26 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(crate) struct Mir {
-    pub(crate) functions: Vec<Function>,
+pub struct Mir {
+    pub functions: Vec<Function>,
 }
 
 impl Mir {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self { functions: vec![] }
     }
 
-    pub(crate) fn add_function(&mut self, function: Function) {
+    pub fn add_function(&mut self, function: Function) {
         self.functions.push(function);
     }
 
-    pub(crate) fn pretty_print(&self, db: &Database) {
+    pub fn pretty_print(&self, db: &Database) {
         pretty_print::print(db, self);
     }
 }
 
 #[derive(Debug)]
-pub(crate) struct Function {
+pub struct Function {
     id: DefinitionId,
     registers: IndexVec<RegisterId, Register>,
     parameters: Vec<RegisterId>,
@@ -49,37 +49,37 @@ impl Function {
         }
     }
 
-    pub(crate) fn id(&self) -> DefinitionId {
+    pub fn id(&self) -> DefinitionId {
         self.id
     }
 
-    pub(crate) fn register(&self, id: RegisterId) -> Option<&Register> {
+    pub fn register(&self, id: RegisterId) -> Option<&Register> {
         self.registers.get(id)
     }
 
     #[allow(unused)]
-    pub(crate) fn parameter(&self, index: usize) -> Option<RegisterId> {
+    pub fn parameter(&self, index: usize) -> Option<RegisterId> {
         self.parameters.get(index).copied()
     }
 
     #[allow(unused)]
-    pub(crate) fn parameters(&self) -> &[RegisterId] {
+    pub fn parameters(&self) -> &[RegisterId] {
         &self.parameters
     }
 
     #[allow(unused)]
-    pub(crate) fn block(&self, id: BlockId) -> Option<&Block> {
+    pub fn block(&self, id: BlockId) -> Option<&Block> {
         self.cfg.blocks.get(id)
     }
 
-    pub(crate) fn blocks(&self) -> &[Block] {
+    pub fn blocks(&self) -> &[Block] {
         self.cfg.blocks.as_slice()
     }
 }
 
 #[derive(Debug)]
-pub(crate) struct Cfg {
-    pub(crate) blocks: IndexVec<BlockId, Block>,
+pub struct Cfg {
+    pub blocks: IndexVec<BlockId, Block>,
 }
 
 impl Cfg {
@@ -91,12 +91,12 @@ impl Cfg {
 new_key_type!(RegisterId);
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Register {
-    pub(crate) ty: TyId,
+pub struct Register {
+    pub ty: TyId,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum Value {
+pub enum Value {
     Definition(DefinitionId),
     Register(RegisterId),
 }
@@ -116,12 +116,12 @@ impl From<RegisterId> for Value {
 new_key_type!(BlockId);
 
 #[derive(Debug)]
-pub(crate) struct Block {
-    pub(crate) id: BlockId,
-    pub(crate) name: Ustr,
-    pub(crate) instructions: Vec<Instruction>,
-    pub(crate) predecessors: Vec<BlockId>,
-    pub(crate) successors: Vec<BlockId>,
+pub struct Block {
+    pub id: BlockId,
+    pub name: Ustr,
+    pub instructions: Vec<Instruction>,
+    pub predecessors: Vec<BlockId>,
+    pub successors: Vec<BlockId>,
 }
 
 impl Block {
@@ -143,7 +143,7 @@ impl Block {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum Instruction {
+pub enum Instruction {
     Return(Return),
     Call(Call),
     IntLit(IntLit),
@@ -151,31 +151,31 @@ pub(crate) enum Instruction {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Return {
-    pub(crate) value: Value,
+pub struct Return {
+    pub value: Value,
     #[allow(unused)]
-    pub(crate) span: Span,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Call {
-    pub(crate) register: RegisterId,
-    pub(crate) callee: Value,
+pub struct Call {
+    pub register: RegisterId,
+    pub callee: Value,
     #[allow(unused)]
-    pub(crate) span: Span,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct IntLit {
-    pub(crate) register: RegisterId,
-    pub(crate) value: usize,
+pub struct IntLit {
+    pub register: RegisterId,
+    pub value: usize,
     #[allow(unused)]
-    pub(crate) span: Span,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct UnitLit {
-    pub(crate) register: RegisterId,
+pub struct UnitLit {
+    pub register: RegisterId,
     #[allow(unused)]
-    pub(crate) span: Span,
+    pub span: Span,
 }

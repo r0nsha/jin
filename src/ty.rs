@@ -7,33 +7,33 @@ use crate::span::Span;
 use crate::ty::printer::TypePrinter;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct Ty {
-    pub(crate) kind: TyKind,
-    pub(crate) span: Span,
+pub struct Ty {
+    pub kind: TyKind,
+    pub span: Span,
 }
 
 impl Ty {
-    pub(crate) fn var(var: TyVar, span: Span) -> Self {
+    pub fn var(var: TyVar, span: Span) -> Self {
         Self { kind: TyKind::Var(var), span }
     }
 
-    pub(crate) fn int(span: Span) -> Self {
+    pub fn int(span: Span) -> Self {
         Self { kind: TyKind::Int(IntTy::Int), span }
     }
 
-    pub(crate) fn fun(ret: Ty, span: Span) -> Self {
+    pub fn fun(ret: Self, span: Span) -> Self {
         Self { kind: TyKind::Function(FunctionTy { ret: Box::new(ret) }), span }
     }
 
-    pub(crate) fn never(span: Span) -> Self {
+    pub fn never(span: Span) -> Self {
         Self { kind: TyKind::Never, span }
     }
 
-    pub(crate) fn unit(span: Span) -> Self {
+    pub fn unit(span: Span) -> Self {
         Self { kind: TyKind::Unit, span }
     }
 
-    pub(crate) fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
+    pub fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
         match &self.kind {
             TyKind::Function(fun) => {
                 fun.ret.occurs_check(var).map_err(|_| self.clone())
@@ -49,20 +49,17 @@ impl Ty {
         }
     }
 
-    pub(crate) fn display<'db>(
-        &'db self,
-        db: &'db Database,
-    ) -> TypePrinter<'db> {
+    pub fn display<'db>(&'db self, db: &'db Database) -> TypePrinter<'db> {
         TypePrinter::new(db, self)
     }
 
-    pub(crate) fn to_string(&self, db: &Database) -> String {
+    pub fn to_string(&self, db: &Database) -> String {
         self.display(db).to_string()
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
-pub(crate) enum TyKind {
+pub enum TyKind {
     Var(TyVar),
     Int(IntTy),
     Function(FunctionTy),
@@ -71,7 +68,7 @@ pub(crate) enum TyKind {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-pub(crate) struct TyVar(u32);
+pub struct TyVar(u32);
 
 impl From<TyVar> for u32 {
     fn from(value: TyVar) -> Self {
@@ -86,11 +83,11 @@ impl From<u32> for TyVar {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum IntTy {
+pub enum IntTy {
     Int,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct FunctionTy {
-    pub(crate) ret: Box<Ty>,
+pub struct FunctionTy {
+    pub ret: Box<Ty>,
 }

@@ -8,49 +8,49 @@ use codespan_reporting::files::{self, line_starts};
 use crate::common::{new_key_type, IndexVec};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
-pub(crate) struct Span {
+pub struct Span {
     source_id: SourceId,
     start: u32,
     end: u32,
 }
 
 impl Span {
-    pub(crate) fn new(source_id: SourceId, start: u32, end: u32) -> Self {
+    pub fn new(source_id: SourceId, start: u32, end: u32) -> Self {
         Self { source_id, start, end }
     }
 
     #[allow(unused)]
-    pub(crate) fn unknown() -> Self {
+    pub fn unknown() -> Self {
         Self { source_id: SourceId::null(), start: 0, end: 0 }
     }
 
-    pub(crate) fn initial(source_id: SourceId) -> Self {
+    pub fn initial(source_id: SourceId) -> Self {
         Self { source_id, start: 0, end: 0 }
     }
 
-    pub(crate) fn source_id(&self) -> SourceId {
+    pub fn source_id(&self) -> SourceId {
         self.source_id
     }
 
-    pub(crate) fn start(&self) -> u32 {
+    pub fn start(&self) -> u32 {
         self.start
     }
 
-    pub(crate) fn end(&self) -> u32 {
+    pub fn end(&self) -> u32 {
         self.end
     }
 
     #[allow(unused)]
-    pub(crate) fn len(&self) -> u32 {
+    pub fn len(&self) -> u32 {
         self.end - self.start
     }
 
     #[allow(unused)]
-    pub(crate) fn contains(&self, other: Self) -> bool {
+    pub fn contains(&self, other: Self) -> bool {
         self.start <= other.start && self.end >= other.end
     }
 
-    pub(crate) fn merge(&self, other: Self) -> Self {
+    pub fn merge(&self, other: Self) -> Self {
         assert!(self.source_id == other.source_id);
 
         Self {
@@ -61,21 +61,21 @@ impl Span {
     }
 }
 
-pub(crate) trait Spanned {
+pub trait Spanned {
     fn span(&self) -> Span;
 }
 
 #[derive(Debug)]
-pub(crate) struct Sources(IndexVec<SourceId, Source>);
+pub struct Sources(IndexVec<SourceId, Source>);
 
 new_key_type!(SourceId);
 
 impl Sources {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self(IndexVec::new())
     }
 
-    pub(crate) fn add_file(&mut self, path: PathBuf) -> io::Result<SourceId> {
+    pub fn add_file(&mut self, path: PathBuf) -> io::Result<SourceId> {
         let mut source = Source::try_from(path)?;
 
         Ok(self.0.push_with_key(|id| {
@@ -84,13 +84,13 @@ impl Sources {
         }))
     }
 
-    pub(crate) fn get(&self, id: SourceId) -> Option<&Source> {
+    pub fn get(&self, id: SourceId) -> Option<&Source> {
         self.0.get(id)
     }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Source {
+pub struct Source {
     id: SourceId,
     path: PathBuf,
     contents: String,
@@ -98,15 +98,15 @@ pub(crate) struct Source {
 }
 
 impl Source {
-    pub(crate) fn id(&self) -> SourceId {
+    pub fn id(&self) -> SourceId {
         self.id
     }
 
-    pub(crate) fn path(&self) -> &Path {
+    pub fn path(&self) -> &Path {
         &self.path
     }
 
-    pub(crate) fn contents(&self) -> &str {
+    pub fn contents(&self) -> &str {
         self.contents.as_ref()
     }
 

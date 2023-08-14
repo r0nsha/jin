@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter, Result};
 use crate::db::Database;
 use crate::ty::{IntTy, Ty, TyKind};
 
-pub(crate) struct TypePrinter<'db> {
+pub struct TypePrinter<'db> {
     db: &'db Database,
     ty: &'db Ty,
 }
@@ -15,7 +15,7 @@ impl Display for TypePrinter<'_> {
 }
 
 impl<'db> TypePrinter<'db> {
-    pub(crate) fn new(db: &'db Database, ty: &'db Ty) -> Self {
+    pub fn new(db: &'db Database, ty: &'db Ty) -> Self {
         Self { db, ty }
     }
 

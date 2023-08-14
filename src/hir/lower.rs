@@ -9,7 +9,7 @@ use super::{
     TyId,
 };
 
-pub(crate) fn lower(db: &mut Database, lib: ast::Library) -> Hir {
+pub fn lower(db: &mut Database, lib: ast::Library) -> Hir {
     Hir {
         modules: lib
             .modules

@@ -12,7 +12,7 @@ use super::InferCx;
 
 // Substitute
 impl<'db> InferCx<'db> {
-    pub(crate) fn substitution(
+    pub fn substitution(
         &mut self,
         modules: &mut [Module],
     ) -> HashSet<TyVar> {

@@ -8,26 +8,26 @@ use ustr::{ustr, Ustr};
 use crate::span::Span;
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct Token {
-    pub(crate) kind: TokenKind,
-    pub(crate) span: Span,
+pub struct Token {
+    pub kind: TokenKind,
+    pub span: Span,
 }
 
 impl Token {
-    pub(crate) fn as_ident(&self) -> Ustr {
+    pub fn as_ident(&self) -> Ustr {
         match self.kind {
             TokenKind::Ident(ident) => ident,
             kind => panic!("expected Ident, got {kind:?}"),
         }
     }
 
-    pub(crate) fn kind_is(&self, other: TokenKind) -> bool {
+    pub fn kind_is(&self, other: TokenKind) -> bool {
         mem::discriminant(&self.kind) == mem::discriminant(&other)
     }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum TokenKind {
+pub enum TokenKind {
     // Delimiters
     OpenParen,
     CloseParen,
@@ -49,7 +49,7 @@ pub(crate) enum TokenKind {
 
 impl TokenKind {
     #[inline]
-    pub(crate) fn empty_ident() -> Self {
+    pub fn empty_ident() -> Self {
         Self::Ident(ustr(""))
     }
 }

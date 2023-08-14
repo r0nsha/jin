@@ -9,7 +9,7 @@ use super::{
     builder::FunctionBuilder, DefinitionId, Function, Mir, Span, TyId, Value,
 };
 
-pub(crate) fn lower(db: &mut Database, hir: &Hir) -> Mir {
+pub fn lower(db: &mut Database, hir: &Hir) -> Mir {
     let mut mir = Mir::new();
 
     for module in &hir.modules {

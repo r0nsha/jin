@@ -21,7 +21,7 @@ use self::{
     typecx::TypeCx,
 };
 
-pub(crate) fn infer(db: &mut Database, hir: &mut Hir) {
+pub fn infer(db: &mut Database, hir: &mut Hir) {
     let mut cx = InferCx::new(db);
 
     cx.infer_all(&mut hir.modules);
@@ -81,12 +81,12 @@ trait Infer<'db> {
 impl Infer<'_> for Node {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         match self {
-            Node::Function(x) => x.infer(cx, env),
-            Node::Block(x) => x.infer(cx, env),
-            Node::Return(x) => x.infer(cx, env),
-            Node::Call(x) => x.infer(cx, env),
-            Node::Name(x) => x.infer(cx, env),
-            Node::Lit(x) => x.infer(cx, env),
+            Self::Function(x) => x.infer(cx, env),
+            Self::Block(x) => x.infer(cx, env),
+            Self::Return(x) => x.infer(cx, env),
+            Self::Call(x) => x.infer(cx, env),
+            Self::Name(x) => x.infer(cx, env),
+            Self::Lit(x) => x.infer(cx, env),
         }
     }
 }

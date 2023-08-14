@@ -5,7 +5,7 @@ use std::io;
 
 use enum_as_inner::EnumAsInner;
 use indexmap::IndexMap;
-pub(crate) use lower::lower;
+pub use lower::lower;
 use ustr::Ustr;
 
 use crate::{
@@ -14,12 +14,12 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub(crate) struct Hir {
-    pub(crate) modules: Vec<Module>,
+pub struct Hir {
+    pub modules: Vec<Module>,
 }
 
 impl Hir {
-    pub(crate) fn pretty_print(&self, db: &Database) -> io::Result<()> {
+    pub fn pretty_print(&self, db: &Database) -> io::Result<()> {
         println!();
         println!("HIR:");
         println!();
@@ -35,13 +35,13 @@ impl Hir {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Module {
-    pub(crate) id: ModuleId,
-    pub(crate) definitions: Vec<Definition>,
+pub struct Module {
+    pub id: ModuleId,
+    pub definitions: Vec<Definition>,
 }
 
 #[derive(Debug, Clone, EnumAsInner)]
-pub(crate) enum Node {
+pub enum Node {
     #[allow(unused)]
     Function(Function),
     Block(Block),
@@ -52,14 +52,14 @@ pub(crate) enum Node {
 }
 
 impl Node {
-    pub(crate) fn ty(&self) -> TyId {
+    pub fn ty(&self) -> TyId {
         match self {
-            Node::Function(x) => x.ty,
-            Node::Block(x) => x.ty,
-            Node::Return(x) => x.ty,
-            Node::Call(x) => x.ty,
-            Node::Name(x) => x.ty,
-            Node::Lit(x) => x.ty,
+            Self::Function(x) => x.ty,
+            Self::Block(x) => x.ty,
+            Self::Return(x) => x.ty,
+            Self::Call(x) => x.ty,
+            Self::Name(x) => x.ty,
+            Self::Lit(x) => x.ty,
         }
     }
 }
@@ -67,94 +67,94 @@ impl Node {
 impl Spanned for Node {
     fn span(&self) -> Span {
         match self {
-            Node::Function(x) => x.span,
-            Node::Block(x) => x.span,
-            Node::Return(x) => x.span,
-            Node::Call(x) => x.span,
-            Node::Name(x) => x.span,
-            Node::Lit(x) => x.span,
+            Self::Function(x) => x.span,
+            Self::Block(x) => x.span,
+            Self::Return(x) => x.span,
+            Self::Call(x) => x.span,
+            Self::Name(x) => x.span,
+            Self::Lit(x) => x.span,
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Definition {
-    pub(crate) id: Option<DefinitionId>,
-    pub(crate) name: Ustr,
-    pub(crate) kind: DefinitionKind,
-    pub(crate) span: Span,
-    pub(crate) ty: TyId,
+pub struct Definition {
+    pub id: Option<DefinitionId>,
+    pub name: Ustr,
+    pub kind: DefinitionKind,
+    pub span: Span,
+    pub ty: TyId,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum DefinitionKind {
+pub enum DefinitionKind {
     Function(Function),
 }
 
 impl DefinitionKind {
-    pub(crate) fn ty(&self) -> TyId {
+    pub fn ty(&self) -> TyId {
         match self {
-            DefinitionKind::Function(x) => x.ty,
+            Self::Function(x) => x.ty,
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Function {
-    pub(crate) id: Option<DefinitionId>,
-    pub(crate) name: Ustr,
-    pub(crate) body: Block,
-    pub(crate) params: IndexMap<Ustr, FunctionParam>,
-    pub(crate) span: Span,
-    pub(crate) ty: TyId,
+pub struct Function {
+    pub id: Option<DefinitionId>,
+    pub name: Ustr,
+    pub body: Block,
+    pub params: IndexMap<Ustr, FunctionParam>,
+    pub span: Span,
+    pub ty: TyId,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct FunctionParam {
-    pub(crate) id: Option<DefinitionId>,
-    pub(crate) name: Ustr,
-    pub(crate) span: Span,
-    pub(crate) ty: TyId,
+pub struct FunctionParam {
+    pub id: Option<DefinitionId>,
+    pub name: Ustr,
+    pub span: Span,
+    pub ty: TyId,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Block {
-    pub(crate) exprs: Vec<Node>,
-    pub(crate) span: Span,
-    pub(crate) ty: TyId,
+pub struct Block {
+    pub exprs: Vec<Node>,
+    pub span: Span,
+    pub ty: TyId,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Return {
-    pub(crate) expr: Option<Box<Node>>,
-    pub(crate) span: Span,
-    pub(crate) ty: TyId,
+pub struct Return {
+    pub expr: Option<Box<Node>>,
+    pub span: Span,
+    pub ty: TyId,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Call {
-    pub(crate) callee: Box<Node>,
-    pub(crate) span: Span,
-    pub(crate) ty: TyId,
+pub struct Call {
+    pub callee: Box<Node>,
+    pub span: Span,
+    pub ty: TyId,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Name {
-    pub(crate) id: Option<DefinitionId>,
-    pub(crate) name: Ustr,
-    pub(crate) span: Span,
-    pub(crate) ty: TyId,
+pub struct Name {
+    pub id: Option<DefinitionId>,
+    pub name: Ustr,
+    pub span: Span,
+    pub ty: TyId,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Lit {
-    pub(crate) kind: LitKind,
-    pub(crate) span: Span,
-    pub(crate) ty: TyId,
+pub struct Lit {
+    pub kind: LitKind,
+    pub span: Span,
+    pub ty: TyId,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum LitKind {
+pub enum LitKind {
     Int(usize),
     Unit,
 }

@@ -11,7 +11,7 @@ use crate::{
 use super::{constraint::Constraint, InferCx};
 
 impl<'db> InferCx<'db> {
-    pub(crate) fn unification(&mut self) -> Result<(), InferError> {
+    pub fn unification(&mut self) -> Result<(), InferError> {
         // PERF: can I remove this clone?
         let constraints = self.constraints.clone();
 
@@ -105,7 +105,7 @@ impl UnifyKey for TyVar {
 
 impl EqUnifyValue for Ty {}
 
-pub(crate) enum InferError {
+pub enum InferError {
     TypesNotEq {
         expected: Ty,
         actual: Ty,
@@ -118,7 +118,7 @@ pub(crate) enum InferError {
 }
 
 impl InferError {
-    pub(crate) fn into_diagnostic(self, db: &Database) -> Diagnostic {
+    pub fn into_diagnostic(self, db: &Database) -> Diagnostic {
         match self {
             InferError::TypesNotEq { expected, actual } => {
                 Diagnostic::error("infer::incompatible_types")

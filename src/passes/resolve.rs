@@ -15,7 +15,7 @@ use crate::{
     span::Span,
 };
 
-pub(crate) fn resolve(db: &mut Database, hir: &mut Hir) {
+pub fn resolve(db: &mut Database, hir: &mut Hir) {
     let mut cx = ResolveCx::new(db);
 
     cx.create_modules_and_resolve_globals(&mut hir.modules);
@@ -180,14 +180,14 @@ impl Resolve<'_> for Name {
 }
 
 #[derive(Debug)]
-pub(crate) struct GlobalScope(HashMap<ModuleId, UstrMap<DefinitionId>>);
+pub struct GlobalScope(HashMap<ModuleId, UstrMap<DefinitionId>>);
 
 impl GlobalScope {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self(HashMap::new())
     }
 
-    pub(crate) fn find_definition(
+    pub fn find_definition(
         &self,
         module_id: ModuleId,
         name: Ustr,
@@ -197,13 +197,13 @@ impl GlobalScope {
 }
 
 #[derive(Debug)]
-pub(crate) struct Env {
+pub struct Env {
     module_id: ModuleId,
     scopes: Scopes,
 }
 
 impl Env {
-    pub(crate) fn new(module_id: ModuleId) -> Self {
+    pub fn new(module_id: ModuleId) -> Self {
         Self { module_id, scopes: Scopes::new() }
     }
 }

@@ -1,57 +1,63 @@
 use std::{marker::PhantomData, ops};
 
 #[derive(Debug)]
-pub(crate) struct IndexVec<K: Key, V> {
+pub struct IndexVec<K: Key, V> {
     vec: Vec<V>,
     marker: PhantomData<K>,
 }
 
+impl<K: Key, V> Default for IndexVec<K, V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<K: Key, V> IndexVec<K, V> {
-    pub(crate) fn new() -> Self {
+    pub const fn new() -> Self {
         Self { vec: vec![], marker: PhantomData }
     }
 
-    pub(crate) fn push(&mut self, value: V) -> K {
+    pub fn push(&mut self, value: V) -> K {
         let key = self.next_key();
         self.vec.push(value);
         key
     }
 
-    pub(crate) fn push_with_key(&mut self, f: impl FnOnce(K) -> V) -> K {
+    pub fn push_with_key(&mut self, f: impl FnOnce(K) -> V) -> K {
         let key = self.next_key();
         self.vec.push(f(key));
         key
     }
 
     #[inline]
-    pub(crate) fn get(&self, key: K) -> Option<&V> {
+    pub fn get(&self, key: K) -> Option<&V> {
         self.vec.get(key.into())
     }
 
     #[inline]
     #[allow(unused)]
-    pub(crate) fn get_mut(&mut self, key: K) -> Option<&mut V> {
+    pub fn get_mut(&mut self, key: K) -> Option<&mut V> {
         self.vec.get_mut(key.into())
     }
 
     #[inline]
-    pub(crate) fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.vec.len()
     }
 
     #[inline]
-    pub(crate) fn iter(&self) -> impl Iterator<Item = &V> {
+    pub fn iter(&self) -> impl Iterator<Item = &V> {
         self.vec.iter()
     }
 
     #[inline]
     #[allow(unused)]
-    pub(crate) fn iter_mut(&mut self) -> impl Iterator<Item = &mut V> {
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut V> {
         self.vec.iter_mut()
     }
 
     #[inline]
-    pub(crate) fn as_slice(&self) -> &[V] {
+    pub fn as_slice(&self) -> &[V] {
         &self.vec
     }
 
@@ -75,12 +81,12 @@ impl<I: Key, T> ops::IndexMut<I> for IndexVec<I, T> {
     }
 }
 
-pub(crate) trait Key: From<usize> + Into<usize> + Copy {}
+pub trait Key: From<usize> + Into<usize> + Copy {}
 
 macro_rules! new_key_type {
     ($name: ident) => {
         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        pub(crate) struct $name(usize);
+        pub struct $name(usize);
 
         impl From<usize> for $name {
             fn from(value: usize) -> Self {

@@ -3,10 +3,10 @@ use std::ops;
 use crate::db::TyId;
 
 #[derive(Debug, Clone)]
-pub(crate) struct Constraints(Vec<Constraint>);
+pub struct Constraints(Vec<Constraint>);
 
 impl Constraints {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self(vec![])
     }
 }
@@ -26,6 +26,6 @@ impl ops::DerefMut for Constraints {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum Constraint {
+pub enum Constraint {
     Eq { expected: TyId, actual: TyId },
 }

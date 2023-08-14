@@ -6,7 +6,7 @@ use codespan_reporting::{
 use crate::span::{SourceId, Sources, Span};
 
 #[derive(Debug, Clone)]
-pub(crate) struct Diagnostic {
+pub struct Diagnostic {
     severity: Severity,
     code: String,
     message: Option<String>,
@@ -15,7 +15,7 @@ pub(crate) struct Diagnostic {
 }
 
 impl Diagnostic {
-    pub(crate) fn error(code: impl Into<String>) -> Self {
+    pub fn error(code: impl Into<String>) -> Self {
         Self {
             severity: Severity::Error,
             code: code.into(),
@@ -25,44 +25,44 @@ impl Diagnostic {
         }
     }
 
-    pub(crate) fn with_message(mut self, message: impl Into<String>) -> Self {
+    pub fn with_message(mut self, message: impl Into<String>) -> Self {
         self.message = Some(message.into());
         self
     }
 
-    pub(crate) fn with_label(mut self, label: Label) -> Self {
+    pub fn with_label(mut self, label: Label) -> Self {
         self.labels.push(label);
         self
     }
 
-    pub(crate) fn with_help(mut self, help: impl Into<String>) -> Self {
+    pub fn with_help(mut self, help: impl Into<String>) -> Self {
         self.help = Some(help.into());
         self
     }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum Severity {
+pub enum Severity {
     Error,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Label {
+pub struct Label {
     style: LabelStyle,
     message: Option<String>,
     span: Span,
 }
 
 impl Label {
-    pub(crate) fn primary(span: Span) -> Self {
+    pub fn primary(span: Span) -> Self {
         Self { style: LabelStyle::Primary, message: None, span }
     }
 
-    pub(crate) fn secondary(span: Span) -> Self {
+    pub fn secondary(span: Span) -> Self {
         Self { style: LabelStyle::Secondary, message: None, span }
     }
 
-    pub(crate) fn with_message(mut self, message: impl Into<String>) -> Self {
+    pub fn with_message(mut self, message: impl Into<String>) -> Self {
         self.message = Some(message.into());
         self
     }
@@ -76,7 +76,7 @@ enum LabelStyle {
 
 impl From<Diagnostic> for codespan_diagnostic::Diagnostic<SourceId> {
     fn from(val: Diagnostic) -> Self {
-        codespan_diagnostic::Diagnostic {
+        Self {
             severity: val.severity.into(),
             code: Some(val.code),
             message: val.message.unwrap_or_default(),
@@ -88,7 +88,7 @@ impl From<Diagnostic> for codespan_diagnostic::Diagnostic<SourceId> {
 
 impl From<Label> for codespan_diagnostic::Label<SourceId> {
     fn from(val: Label) -> Self {
-        codespan_diagnostic::Label {
+        Self {
             style: match val.style {
                 LabelStyle::Primary => codespan_diagnostic::LabelStyle::Primary,
                 LabelStyle::Secondary => {
@@ -105,7 +105,7 @@ impl From<Label> for codespan_diagnostic::Label<SourceId> {
 impl From<Severity> for codespan_diagnostic::Severity {
     fn from(val: Severity) -> Self {
         match val {
-            Severity::Error => codespan_diagnostic::Severity::Error,
+            Severity::Error => Self::Error,
         }
     }
 }
@@ -116,26 +116,26 @@ pub struct Diagnostics {
 }
 
 impl Diagnostics {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self { diagnostics: vec![] }
     }
 
-    pub(crate) fn add(&mut self, item: impl Into<Diagnostic>) {
+    pub fn add(&mut self, item: impl Into<Diagnostic>) {
         self.diagnostics.push(item.into());
     }
 
-    pub(crate) fn extend<T: Into<Diagnostic>>(
+    pub fn extend<T: Into<Diagnostic>>(
         &mut self,
         items: impl IntoIterator<Item = T>,
     ) {
         self.diagnostics.extend(items.into_iter().map(Into::into));
     }
 
-    pub(crate) fn any(&self) -> bool {
+    pub fn any(&self) -> bool {
         !self.diagnostics.is_empty()
     }
 
-    pub(crate) fn print(
+    pub fn print(
         &self,
         sources: &Sources,
     ) -> Result<(), codespan_reporting::files::Error> {

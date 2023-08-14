@@ -1,5 +1,5 @@
 mod pretty_print;
-pub(crate) mod token;
+pub mod token;
 
 use std::io;
 
@@ -11,26 +11,26 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub(crate) struct Library {
+pub struct Library {
     name: Ustr,
     is_main: bool,
-    pub(crate) modules: Vec<Module>,
+    pub modules: Vec<Module>,
 }
 
 impl Library {
-    pub(crate) fn new(name: Ustr, is_main: bool, modules: Vec<Module>) -> Self {
+    pub fn new(name: Ustr, is_main: bool, modules: Vec<Module>) -> Self {
         Self { name, is_main, modules }
     }
 
-    pub(crate) fn is_main(&self) -> bool {
+    pub fn is_main(&self) -> bool {
         self.is_main
     }
 
-    pub(crate) fn name(&self) -> Ustr {
+    pub fn name(&self) -> Ustr {
         self.name
     }
 
-    pub(crate) fn pretty_print(&self) -> io::Result<()> {
+    pub fn pretty_print(&self) -> io::Result<()> {
         println!();
         println!("{}:", self.name());
         println!();
@@ -46,15 +46,15 @@ impl Library {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Module {
-    pub(crate) source: SourceId,
-    pub(crate) name: QualifiedName,
-    pub(crate) top_levels: Vec<TopLevel>,
+pub struct Module {
+    pub source: SourceId,
+    pub name: QualifiedName,
+    pub top_levels: Vec<TopLevel>,
     is_main: bool,
 }
 
 impl Module {
-    pub(crate) fn new(
+    pub fn new(
         source_id: SourceId,
         name: QualifiedName,
         is_main: bool,
@@ -62,17 +62,17 @@ impl Module {
         Self { source: source_id, name, is_main, top_levels: vec![] }
     }
 
-    pub(crate) fn pretty_print(&self) -> io::Result<()> {
+    pub fn pretty_print(&self) -> io::Result<()> {
         pretty_print::print_module(self)
     }
 
-    pub(crate) fn is_main(&self) -> bool {
+    pub fn is_main(&self) -> bool {
         self.is_main
     }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum Ast {
+pub enum Ast {
     Block(Block),
     Call(Call),
     Name(Name),
@@ -91,62 +91,62 @@ impl Spanned for Ast {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum TopLevel {
+pub enum TopLevel {
     Function(Function),
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Function {
-    pub(crate) name: Ustr,
-    pub(crate) body: Box<Ast>,
-    pub(crate) params: Vec<FunctionParam>,
-    pub(crate) span: Span,
+pub struct Function {
+    pub name: Ustr,
+    pub body: Box<Ast>,
+    pub params: Vec<FunctionParam>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct FunctionParam {
-    pub(crate) name: Ustr,
-    pub(crate) span: Span,
+pub struct FunctionParam {
+    pub name: Ustr,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Block {
-    pub(crate) stmts: Vec<Statement>,
-    pub(crate) span: Span,
+pub struct Block {
+    pub stmts: Vec<Statement>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum Statement {
+pub enum Statement {
     Return(Return),
     Expr(Ast),
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Return {
-    pub(crate) expr: Option<Box<Ast>>,
-    pub(crate) span: Span,
+pub struct Return {
+    pub expr: Option<Box<Ast>>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Call {
-    pub(crate) callee: Box<Ast>,
-    pub(crate) span: Span,
+pub struct Call {
+    pub callee: Box<Ast>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Name {
-    pub(crate) name: Ustr,
-    pub(crate) span: Span,
+pub struct Name {
+    pub name: Ustr,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct Lit {
-    pub(crate) kind: LitKind,
-    pub(crate) span: Span,
+pub struct Lit {
+    pub kind: LitKind,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum LitKind {
+pub enum LitKind {
     Int(usize),
     Unit,
 }

@@ -6,7 +6,7 @@ use crate::{
     ty::Ty,
 };
 
-pub(crate) fn find_main(db: &mut Database) {
+pub fn find_main(db: &mut Database) {
     let main_module_id = db.main_module_id().unwrap();
 
     let main_fun_id = if let Some(main_fun) =

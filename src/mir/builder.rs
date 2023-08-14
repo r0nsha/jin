@@ -7,50 +7,50 @@ use super::{
     Return, TyId, UnitLit, Value,
 };
 
-pub(crate) struct FunctionBuilder {
+pub struct FunctionBuilder {
     f: Function,
     current_block: BlockId,
 }
 
 impl FunctionBuilder {
-    pub(crate) fn new(id: DefinitionId) -> Self {
+    pub fn new(id: DefinitionId) -> Self {
         Self { f: Function::new(id), current_block: BlockId(0) }
     }
 
     #[inline]
     #[allow(unused)]
-    pub(crate) fn blocks(&self) -> &[Block] {
+    pub fn blocks(&self) -> &[Block] {
         self.f.cfg.blocks.as_slice()
     }
 
     #[inline]
     #[allow(unused)]
-    pub(crate) fn block(&self, id: BlockId) -> &Block {
+    pub fn block(&self, id: BlockId) -> &Block {
         &self.f.cfg.blocks[id]
     }
 
     #[inline]
-    pub(crate) fn block_mut(&mut self, id: BlockId) -> &mut Block {
+    pub fn block_mut(&mut self, id: BlockId) -> &mut Block {
         &mut self.f.cfg.blocks[id]
     }
 
     #[inline]
     #[allow(unused)]
-    pub(crate) fn current_block(&self) -> &Block {
+    pub fn current_block(&self) -> &Block {
         self.block(self.current_block)
     }
 
     #[inline]
-    pub(crate) fn current_block_mut(&mut self) -> &mut Block {
+    pub fn current_block_mut(&mut self) -> &mut Block {
         self.block_mut(self.current_block)
     }
 
-    pub(crate) fn is_terminating(&self) -> bool {
+    pub fn is_terminating(&self) -> bool {
         return self.blocks().iter().any(Block::is_terminating);
     }
 
     #[allow(unused)]
-    pub(crate) fn reachable_blocks(&self) -> HashSet<BlockId> {
+    pub fn reachable_blocks(&self) -> HashSet<BlockId> {
         let mut reachable = HashSet::new();
 
         for blk in self.f.cfg.blocks.iter() {
@@ -63,40 +63,40 @@ impl FunctionBuilder {
     }
 
     #[inline]
-    pub(crate) fn create_register(&mut self, ty: TyId) -> RegisterId {
+    pub fn create_register(&mut self, ty: TyId) -> RegisterId {
         self.f.registers.push(Register { ty })
     }
 
     #[allow(unused)]
-    pub(crate) fn create_parameter(&mut self, ty: TyId) -> usize {
+    pub fn create_parameter(&mut self, ty: TyId) -> usize {
         let reg_id = self.create_register(ty);
         self.f.parameters.push(reg_id);
         self.f.parameters.len() - 1
     }
 
     #[inline]
-    pub(crate) fn create_block(&mut self, name: impl AsRef<str>) -> BlockId {
+    pub fn create_block(&mut self, name: impl AsRef<str>) -> BlockId {
         self.f.cfg.blocks.push_with_key(|id| Block::new(id, name))
     }
 
     #[inline]
-    pub(crate) fn position_at(&mut self, id: BlockId) {
+    pub fn position_at(&mut self, id: BlockId) {
         self.current_block = id;
     }
 
     #[allow(unused)]
-    pub(crate) fn create_edge(&mut self, source: BlockId, target: BlockId) {
+    pub fn create_edge(&mut self, source: BlockId, target: BlockId) {
         self.f.cfg.blocks[target].predecessors.push(source);
         self.f.cfg.blocks[source].successors.push(target);
     }
 
-    pub(crate) fn build_unit_lit(&mut self, reg: RegisterId, span: Span) {
+    pub fn build_unit_lit(&mut self, reg: RegisterId, span: Span) {
         self.current_block_mut().add_instruction(Instruction::UnitLit(
             UnitLit { register: reg, span },
         ));
     }
 
-    pub(crate) fn build_int_lit(
+    pub fn build_int_lit(
         &mut self,
         reg: RegisterId,
         value: usize,
@@ -109,12 +109,12 @@ impl FunctionBuilder {
         }));
     }
 
-    pub(crate) fn build_return(&mut self, value: Value, span: Span) {
+    pub fn build_return(&mut self, value: Value, span: Span) {
         self.current_block_mut()
             .add_instruction(Instruction::Return(Return { value, span }));
     }
 
-    pub(crate) fn build_call(
+    pub fn build_call(
         &mut self,
         register: RegisterId,
         callee: Value,
@@ -127,7 +127,7 @@ impl FunctionBuilder {
         }));
     }
 
-    pub(crate) fn finish(self) -> Result<Function, String> {
+    pub fn finish(self) -> Result<Function, String> {
         if self.f.blocks().is_empty() {
             return Err("Function has 0 blocks".to_string());
         }
@@ -169,7 +169,7 @@ impl FunctionBuilder {
 
 impl Block {
     #[inline]
-    pub(crate) fn add_instruction(&mut self, inst: Instruction) {
+    pub fn add_instruction(&mut self, inst: Instruction) {
         self.instructions.push(inst);
     }
 }

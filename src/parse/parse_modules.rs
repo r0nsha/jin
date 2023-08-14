@@ -7,7 +7,7 @@ use crate::{
 
 use super::{lexer, parser};
 
-pub(crate) fn parse_modules(db: &mut Database) -> Library {
+pub fn parse_modules(db: &mut Database) -> Library {
     let mut modules = vec![];
 
     match parse_module(db, db.main_source()) {

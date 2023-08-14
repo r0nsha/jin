@@ -5,16 +5,16 @@ use crate::{
     ty::{Ty, TyVar},
 };
 
-pub(crate) struct TypeCx {
-    pub(crate) unification_table: InPlaceUnificationTable<TyVar>,
+pub struct TypeCx {
+    pub unification_table: InPlaceUnificationTable<TyVar>,
 }
 
 impl TypeCx {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self { unification_table: InPlaceUnificationTable::new() }
     }
 
-    pub(crate) fn fresh_type_var(&mut self, span: Span) -> Ty {
+    pub fn fresh_type_var(&mut self, span: Span) -> Ty {
         Ty::var(self.unification_table.new_key(None), span)
     }
 }

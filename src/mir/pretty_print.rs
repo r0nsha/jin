@@ -4,7 +4,7 @@ use crate::{db::Database, ty::Ty};
 
 use super::{Block, Function, Instruction, Mir, RegisterId, TyId, Value};
 
-pub(crate) fn print(db: &Database, mir: &Mir) {
+pub fn print(db: &Database, mir: &Mir) {
     let doc = RcDoc::intersperse(
         mir.functions.iter().map(|f| print_function(db, f)),
         RcDoc::hardline().append(RcDoc::hardline()),

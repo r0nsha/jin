@@ -13,16 +13,16 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(crate) struct Database {
+pub struct Database {
     build_options: BuildOptions,
 
-    pub(crate) sources: Sources,
-    pub(crate) modules: IndexVec<ModuleId, ModuleInfo>,
-    pub(crate) definitions: IndexVec<DefinitionId, DefinitionInfo>,
+    pub sources: Sources,
+    pub modules: IndexVec<ModuleId, ModuleInfo>,
+    pub definitions: IndexVec<DefinitionId, DefinitionInfo>,
     // TODO: split this into TypeCx?
-    pub(crate) types: IndexVec<TyId, Ty>,
+    pub types: IndexVec<TyId, Ty>,
 
-    pub(crate) diagnostics: Diagnostics,
+    pub diagnostics: Diagnostics,
 
     root_dir: PathBuf,
     main_source: SourceId,
@@ -31,7 +31,7 @@ pub(crate) struct Database {
 }
 
 impl Database {
-    pub(crate) fn new(
+    pub fn new(
         build_options: BuildOptions,
         root_file: &Path,
     ) -> io::Result<Self> {
@@ -57,45 +57,45 @@ impl Database {
         })
     }
 
-    pub(crate) fn build_options(&self) -> &BuildOptions {
+    pub fn build_options(&self) -> &BuildOptions {
         &self.build_options
     }
 
-    pub(crate) fn root_dir(&self) -> &Path {
+    pub fn root_dir(&self) -> &Path {
         &self.root_dir
     }
 
     #[allow(unused)]
-    pub(crate) fn main_source_id(&self) -> SourceId {
+    pub fn main_source_id(&self) -> SourceId {
         self.main_source
     }
 
-    pub(crate) fn main_source(&self) -> &Source {
+    pub fn main_source(&self) -> &Source {
         self.sources.get(self.main_source).unwrap()
     }
 
-    pub(crate) fn main_module_id(&self) -> Option<ModuleId> {
+    pub fn main_module_id(&self) -> Option<ModuleId> {
         self.main_module
     }
 
-    pub(crate) fn main_module(&self) -> Option<&ModuleInfo> {
+    pub fn main_module(&self) -> Option<&ModuleInfo> {
         self.main_module.and_then(|id| self.modules.get(id))
     }
 
     #[allow(unused)]
-    pub(crate) fn main_function_id(&self) -> Option<DefinitionId> {
+    pub fn main_function_id(&self) -> Option<DefinitionId> {
         self.main_fun
     }
 
-    pub(crate) fn main_function(&self) -> Option<&DefinitionInfo> {
+    pub fn main_function(&self) -> Option<&DefinitionInfo> {
         self.main_fun.and_then(|id| self.definitions.get(id))
     }
 
-    pub(crate) fn set_main_fun(&mut self, id: DefinitionId) {
+    pub fn set_main_fun(&mut self, id: DefinitionId) {
         self.main_fun = Some(id);
     }
 
-    pub(crate) fn print_diagnostics(&self) {
+    pub fn print_diagnostics(&self) {
         self.diagnostics
             .print(&self.sources)
             .expect("printing diagnostis to work");
@@ -129,37 +129,37 @@ new_db_key!(DefinitionId -> definitions : DefinitionInfo);
 new_db_key!(TyId -> types : Ty);
 
 #[derive(Debug)]
-pub(crate) struct BuildOptions {
-    pub(crate) print_times: bool,
-    pub(crate) print_ast: bool,
-    pub(crate) print_hir: bool,
-    pub(crate) print_mir: bool,
+pub struct BuildOptions {
+    pub print_times: bool,
+    pub print_ast: bool,
+    pub print_hir: bool,
+    pub print_mir: bool,
 }
 
 impl Ty {
-    pub(crate) fn alloc(db: &mut Database, ty: Ty) -> TyId {
+    pub fn alloc(db: &mut Database, ty: Self) -> TyId {
         db.types.push(ty)
     }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct ModuleInfo {
+pub struct ModuleInfo {
     #[allow(unused)]
-    pub(crate) id: ModuleId,
-    pub(crate) source_id: SourceId,
-    pub(crate) name: QualifiedName,
+    pub id: ModuleId,
+    pub source_id: SourceId,
+    pub name: QualifiedName,
     #[allow(unused)]
-    pub(crate) is_main: bool,
+    pub is_main: bool,
 }
 
 impl ModuleInfo {
-    pub(crate) fn alloc(
+    pub fn alloc(
         db: &mut Database,
         source_id: SourceId,
         name: QualifiedName,
         is_main: bool,
     ) -> ModuleId {
-        let id = db.modules.push_with_key(|id| ModuleInfo {
+        let id = db.modules.push_with_key(|id| Self {
             id,
             source_id,
             name,
@@ -176,24 +176,24 @@ impl ModuleInfo {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct DefinitionInfo {
-    pub(crate) id: DefinitionId,
-    pub(crate) module_id: ModuleId,
-    pub(crate) qualified_name: QualifiedName,
-    pub(crate) scope_level: ScopeLevel,
-    pub(crate) kind: Box<DefinitionInfoKind>,
-    pub(crate) ty: TyId,
-    pub(crate) span: Span,
+pub struct DefinitionInfo {
+    pub id: DefinitionId,
+    pub module_id: ModuleId,
+    pub qualified_name: QualifiedName,
+    pub scope_level: ScopeLevel,
+    pub kind: Box<DefinitionInfoKind>,
+    pub ty: TyId,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum DefinitionInfoKind {
+pub enum DefinitionInfoKind {
     Function(FunctionInfo),
     Parameter,
 }
 
 impl DefinitionInfo {
-    pub(crate) fn alloc(
+    pub fn alloc(
         db: &mut Database,
         module_id: ModuleId,
         qualified_name: QualifiedName,
@@ -202,7 +202,7 @@ impl DefinitionInfo {
         ty: TyId,
         span: Span,
     ) -> DefinitionId {
-        db.definitions.push_with_key(|id| DefinitionInfo {
+        db.definitions.push_with_key(|id| Self {
             id,
             module_id,
             qualified_name,
@@ -214,7 +214,7 @@ impl DefinitionInfo {
     }
 
     #[allow(unused)]
-    pub(crate) fn vis(&self) -> Vis {
+    pub const fn vis(&self) -> Vis {
         match &self.scope_level {
             ScopeLevel::Global(vis) => *vis,
             ScopeLevel::Scope(_) => Vis::Private,
@@ -223,13 +223,13 @@ impl DefinitionInfo {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum Vis {
+pub enum Vis {
     Private,
     Public,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ScopeLevel {
+pub enum ScopeLevel {
     Global(Vis),
     #[allow(unused)]
     Scope(usize),
@@ -244,21 +244,15 @@ impl PartialOrd for ScopeLevel {
 impl Ord for ScopeLevel {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         match (self, other) {
-            (ScopeLevel::Global(_), ScopeLevel::Global(_)) => {
-                cmp::Ordering::Equal
-            }
-            (ScopeLevel::Global(_), ScopeLevel::Scope(_)) => {
-                cmp::Ordering::Less
-            }
-            (ScopeLevel::Scope(_), ScopeLevel::Global(_)) => {
-                cmp::Ordering::Greater
-            }
-            (ScopeLevel::Scope(a), ScopeLevel::Scope(b)) => a.cmp(b),
+            (Self::Global(_), Self::Global(_)) => cmp::Ordering::Equal,
+            (Self::Global(_), Self::Scope(_)) => cmp::Ordering::Less,
+            (Self::Scope(_), Self::Global(_)) => cmp::Ordering::Greater,
+            (Self::Scope(a), Self::Scope(b)) => a.cmp(b),
         }
     }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) enum FunctionInfo {
+pub enum FunctionInfo {
     Orphan,
 }

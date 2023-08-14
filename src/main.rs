@@ -1,4 +1,4 @@
-#![warn(clippy::pedantic, clippy::perf)]
+#![warn(clippy::pedantic, clippy::perf, clippy::nursery)]
 #![allow(
     clippy::struct_excessive_bools,
     clippy::similar_names,

@@ -12,7 +12,7 @@ use crate::{
     span::{Source, SourceId, Span, Spanned},
 };
 
-pub(crate) fn parse(
+pub fn parse(
     db: &Database,
     source: &Source,
     tokens: Vec<Token>,
@@ -297,14 +297,14 @@ impl From<ParseError> for Diagnostic {
     fn from(err: ParseError) -> Self {
         match err {
             ParseError::UnexpectedToken { expected, actual, span } => {
-                Diagnostic::error("parse::unexpected_token")
+                Self::error("parse::unexpected_token")
                     .with_message(format!(
                         "expected {expected}, got {actual} instead"
                     ))
                     .with_label(Label::primary(span).with_message("found here"))
             }
             ParseError::UnexpectedEof { span } => {
-                Diagnostic::error("parse::unexpected_eof")
+                Self::error("parse::unexpected_eof")
                     .with_message("unexpected end of file")
                     .with_label(Label::primary(span).with_message("here"))
             }

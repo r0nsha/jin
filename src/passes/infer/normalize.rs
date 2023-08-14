@@ -1,7 +1,7 @@
 use crate::passes::infer::typecx::TypeCx;
 use crate::ty::{Ty, TyKind};
 
-pub(crate) trait NormalizeTy {
+pub trait NormalizeTy {
     fn normalize(self, tcx: &mut TypeCx) -> Self;
 }
 

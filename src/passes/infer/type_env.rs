@@ -1,45 +1,45 @@
 use crate::db::{ModuleId, DefinitionId, TyId};
 
-pub(crate) struct TypeEnv {
+pub struct TypeEnv {
     module_id: ModuleId,
-    pub(crate) fun_scopes: FunScopes,
+    pub fun_scopes: FunScopes,
 }
 
 impl TypeEnv {
-    pub(crate) fn new(module_id: ModuleId) -> Self {
+    pub fn new(module_id: ModuleId) -> Self {
         Self { module_id, fun_scopes: FunScopes::new() }
     }
 
     #[allow(unused)]
-    pub(crate) fn module_id(&self) -> ModuleId {
+    pub fn module_id(&self) -> ModuleId {
         self.module_id
     }
 }
 
 #[derive(Debug)]
-pub(crate) struct FunScopes(Vec<FunScope>);
+pub struct FunScopes(Vec<FunScope>);
 
 impl FunScopes {
-    pub(crate) fn new() -> Self {
+    pub fn new() -> Self {
         Self(vec![])
     }
 
-    pub(crate) fn push(&mut self, new_scope: FunScope) {
+    pub fn push(&mut self, new_scope: FunScope) {
         self.0.push(new_scope);
     }
 
-    pub(crate) fn pop(&mut self) {
+    pub fn pop(&mut self) {
         self.0.pop();
     }
 
-    pub(crate) fn current(&self) -> Option<&FunScope> {
+    pub fn current(&self) -> Option<&FunScope> {
         self.0.last()
     }
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct FunScope {
+pub struct FunScope {
     #[allow(unused)]
-    pub(crate) id: DefinitionId,
-    pub(crate) ret_ty: TyId,
+    pub id: DefinitionId,
+    pub ret_ty: TyId,
 }

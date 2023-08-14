@@ -21,51 +21,35 @@ pub enum TargetPlatform {
 #[allow(unused)]
 impl TargetPlatform {
     pub fn is_windows(&self) -> bool {
-        matches!(
-            self,
-            TargetPlatform::Windows386 | TargetPlatform::WindowsAmd64
-        )
+        matches!(self, Self::Windows386 | Self::WindowsAmd64)
     }
 
     pub fn is_linux(&self) -> bool {
-        matches!(
-            self,
-            TargetPlatform::Linux386
-                | TargetPlatform::LinuxAmd64
-                | TargetPlatform::LinuxArm64
-        )
+        matches!(self, Self::Linux386 | Self::LinuxAmd64 | Self::LinuxArm64)
     }
 
     pub fn is_darwin(&self) -> bool {
-        matches!(
-            self,
-            TargetPlatform::DarwinAmd64 | TargetPlatform::DarwinArm64
-        )
+        matches!(self, Self::DarwinAmd64 | Self::DarwinArm64)
     }
 
     pub fn is_free_bsd(&self) -> bool {
-        matches!(
-            self,
-            TargetPlatform::FreeBSD386 | TargetPlatform::FreeBSDAmd64
-        )
+        matches!(self, Self::FreeBSD386 | Self::FreeBSDAmd64)
     }
 
     pub fn is_essence(&self) -> bool {
-        matches!(self, TargetPlatform::EssenceAmd64)
+        matches!(self, Self::EssenceAmd64)
     }
 
     pub fn is_wasm(&self) -> bool {
         matches!(
             self,
-            TargetPlatform::FreestandingWasm32
-                | TargetPlatform::JsWasm32
-                | TargetPlatform::WasiWasm32
+            Self::FreestandingWasm32 | Self::JsWasm32 | Self::WasiWasm32
         )
     }
 
     pub fn metrics(&self) -> TargetMetrics {
         match self {
-            TargetPlatform::Windows386 => TargetMetrics {
+            Self::Windows386 => TargetMetrics {
                 os: Os::Windows,
                 arch: Arch::_386,
                 word_size: 4,
@@ -73,7 +57,7 @@ impl TargetPlatform {
                 target_triplet: "i386-pc-windows-msvc",
                 target_data_layout: "",
             },
-            TargetPlatform::WindowsAmd64 => TargetMetrics {
+            Self::WindowsAmd64 => TargetMetrics {
                 os: Os::Windows,
                 arch: Arch::Amd64,
                 word_size: 8,
@@ -81,7 +65,7 @@ impl TargetPlatform {
                 target_triplet: "x86_64-pc-windows-msvc",
                 target_data_layout: "e-m:w-i64:64-f80:128-n8:16:32:64-S128",
             },
-            TargetPlatform::Linux386 => TargetMetrics {
+            Self::Linux386 => TargetMetrics {
                 os: Os::Linux,
                 arch: Arch::_386,
                 word_size: 4,
@@ -89,7 +73,7 @@ impl TargetPlatform {
                 target_triplet: "i386-pc-linux-gnu",
                 target_data_layout: "",
             },
-            TargetPlatform::LinuxAmd64 => TargetMetrics {
+            Self::LinuxAmd64 => TargetMetrics {
                 os: Os::Linux,
                 arch: Arch::Amd64,
                 word_size: 8,
@@ -97,7 +81,7 @@ impl TargetPlatform {
                 target_triplet: "x86_64-pc-linux-gnu",
                 target_data_layout: "e-m:w-i64:64-f80:128-n8:16:32:64-S128",
             },
-            TargetPlatform::LinuxArm64 => TargetMetrics {
+            Self::LinuxArm64 => TargetMetrics {
                 os: Os::Linux,
                 arch: Arch::Arm64,
                 word_size: 8,
@@ -106,7 +90,7 @@ impl TargetPlatform {
                 target_data_layout:
                     "e-m:e-i8:8:32-i16:32-i64:64-i128:128-n32:64-S128",
             },
-            TargetPlatform::DarwinAmd64 => TargetMetrics {
+            Self::DarwinAmd64 => TargetMetrics {
                 os: Os::Darwin,
                 arch: Arch::Amd64,
                 word_size: 8,
@@ -114,7 +98,7 @@ impl TargetPlatform {
                 target_triplet: "x86_64-apple-darwin",
                 target_data_layout: "e-m:o-i64:64-f80:128-n8:16:32:64-S128",
             },
-            TargetPlatform::DarwinArm64 => TargetMetrics {
+            Self::DarwinArm64 => TargetMetrics {
                 os: Os::Darwin,
                 arch: Arch::Arm64,
                 word_size: 8,
@@ -122,7 +106,7 @@ impl TargetPlatform {
                 target_triplet: "arm64-apple-macosx11.0.0",
                 target_data_layout: "e-m:o-i64:64-i128:128-n32:64-S128",
             },
-            TargetPlatform::FreeBSD386 => TargetMetrics {
+            Self::FreeBSD386 => TargetMetrics {
                 os: Os::FreeBSD,
                 arch: Arch::_386,
                 word_size: 4,
@@ -130,7 +114,7 @@ impl TargetPlatform {
                 target_triplet: "i386-unknown-freebsd-elf",
                 target_data_layout: "",
             },
-            TargetPlatform::FreeBSDAmd64 => TargetMetrics {
+            Self::FreeBSDAmd64 => TargetMetrics {
                 os: Os::FreeBSD,
                 arch: Arch::Amd64,
                 word_size: 8,
@@ -138,7 +122,7 @@ impl TargetPlatform {
                 target_triplet: "x86_64-unknown-freebsd-elf",
                 target_data_layout: "e-m:w-i64:64-f80:128-n8:16:32:64-S128",
             },
-            TargetPlatform::EssenceAmd64 => TargetMetrics {
+            Self::EssenceAmd64 => TargetMetrics {
                 os: Os::Essence,
                 arch: Arch::Amd64,
                 word_size: 8,
@@ -146,7 +130,7 @@ impl TargetPlatform {
                 target_triplet: "x86_64-pc-none-elf",
                 target_data_layout: "",
             },
-            TargetPlatform::FreestandingWasm32 => TargetMetrics {
+            Self::FreestandingWasm32 => TargetMetrics {
                 os: Os::Freestanding,
                 arch: Arch::Wasm32,
                 word_size: 4,
@@ -154,7 +138,7 @@ impl TargetPlatform {
                 target_triplet: "wasm32-freestanding-js",
                 target_data_layout: "",
             },
-            TargetPlatform::JsWasm32 => TargetMetrics {
+            Self::JsWasm32 => TargetMetrics {
                 os: Os::Js,
                 arch: Arch::Wasm32,
                 word_size: 4,
@@ -162,7 +146,7 @@ impl TargetPlatform {
                 target_triplet: "wasm32-js-js",
                 target_data_layout: "",
             },
-            TargetPlatform::WasiWasm32 => TargetMetrics {
+            Self::WasiWasm32 => TargetMetrics {
                 os: Os::Wasi,
                 arch: Arch::Wasm32,
                 word_size: 4,
@@ -208,14 +192,14 @@ pub enum Os {
 impl Os {
     pub fn name(self) -> &'static str {
         match self {
-            Os::Windows => "windows",
-            Os::Darwin => "darwin",
-            Os::Linux => "linux",
-            Os::Essence => "essence",
-            Os::FreeBSD => "freebsd",
-            Os::Wasi => "wasi",
-            Os::Js => "js",
-            Os::Freestanding => "freestanding",
+            Self::Windows => "windows",
+            Self::Darwin => "darwin",
+            Self::Linux => "linux",
+            Self::Essence => "essence",
+            Self::FreeBSD => "freebsd",
+            Self::Wasi => "wasi",
+            Self::Js => "js",
+            Self::Freestanding => "freestanding",
         }
     }
 }
@@ -235,21 +219,21 @@ pub enum Arch {
 impl Arch {
     pub fn name(self) -> &'static str {
         match self {
-            Arch::Amd64 => "amd64",
-            Arch::_386 => "386",
-            Arch::Arm64 => "arm64",
-            Arch::Wasm32 => "wasm32",
-            Arch::Wasm64 => "wasm64",
+            Self::Amd64 => "amd64",
+            Self::_386 => "386",
+            Self::Arm64 => "arm64",
+            Self::Wasm32 => "wasm32",
+            Self::Wasm64 => "wasm64",
         }
     }
 
     pub fn endianness(self) -> Endianness {
         match self {
-            Arch::Amd64
-            | Arch::_386
-            | Arch::Arm64
-            | Arch::Wasm32
-            | Arch::Wasm64 => Endianness::Little,
+            Self::Amd64
+            | Self::_386
+            | Self::Arm64
+            | Self::Wasm32
+            | Self::Wasm64 => Endianness::Little,
         }
     }
 }
@@ -264,8 +248,8 @@ pub enum Endianness {
 impl Endianness {
     pub fn name(&self) -> &str {
         match self {
-            Endianness::Little => "little",
-            Endianness::Big => "big",
+            Self::Little => "little",
+            Self::Big => "big",
         }
     }
 }

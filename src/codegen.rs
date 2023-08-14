@@ -8,7 +8,7 @@ use crate::{
     ty::{IntTy, Ty, TyKind},
 };
 
-pub(crate) fn codegen(db: &Database, mir: &Mir, writer: &mut impl io::Write) {
+pub fn codegen(db: &Database, mir: &Mir, writer: &mut impl io::Write) {
     let arena = Arena::new();
     codegen_all(db, &arena, mir).write(&arena, writer);
 }
@@ -220,17 +220,17 @@ impl<'a, 'db> Codegen<'a, 'db> for Instruction {
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
         match self {
-            Instruction::Return(ret) => arena
+            Self::Return(ret) => arena
                 .text("return")
                 .append(arena.space())
                 .append(ret.value.codegen(cx, arena)),
-            Instruction::Call(call) => {
+            Self::Call(call) => {
                 call.callee.codegen(cx, arena).append(arena.text("()"))
             }
-            Instruction::IntLit(lit) => cx
+            Self::IntLit(lit) => cx
                 .local_var(arena, lit.register)
                 .append(arena.text(lit.value.to_string())),
-            Instruction::UnitLit(lit) => {
+            Self::UnitLit(lit) => {
                 cx.local_var(arena, lit.register).append(arena.text(CONST_UNIT))
             }
         }
@@ -244,10 +244,10 @@ impl<'a, 'db> Codegen<'a, 'db> for Value {
         arena: &'db Arena<'db>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
         match self {
-            Value::Definition(id) => {
+            Self::Definition(id) => {
                 arena.text(cx.db[*id].qualified_name.full_c_name())
             }
-            Value::Register(id) => id.codegen(cx, arena),
+            Self::Register(id) => id.codegen(cx, arena),
         }
     }
 }

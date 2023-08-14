@@ -6,7 +6,7 @@ use crate::{
     span::{Source, SourceId, Span},
 };
 
-pub(crate) fn tokenize(source: &Source) -> Result<Vec<Token>, Diagnostic> {
+pub fn tokenize(source: &Source) -> Result<Vec<Token>, Diagnostic> {
     let tokens = Lexer::new(source).scan()?;
     Ok(tokens)
 }
@@ -158,7 +158,7 @@ impl From<TokenizeError> for Diagnostic {
     fn from(err: TokenizeError) -> Self {
         match err {
             TokenizeError::InvalidChar { ch, span } => {
-                Diagnostic::error("tokenize::invalid_char")
+                Self::error("tokenize::invalid_char")
                     .with_message(format!("invalid character {ch}"))
                     .with_label(Label::primary(span))
             }
