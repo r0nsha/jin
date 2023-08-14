@@ -116,9 +116,8 @@ impl Infer<'_> for Function {
         });
 
         let ret_ty = cx.db.alloc_ty(ret_ty);
-        let fun_ty = cx.db.alloc_ty(fun_ty);
 
-        self.ty = fun_ty;
+        self.ty = cx.db.alloc_ty(fun_ty);
 
         let id = self.id.expect("to be resolved");
         env.call_stack.push(CallFrame { id, ret_ty });
