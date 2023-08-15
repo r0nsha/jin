@@ -37,13 +37,31 @@ pub enum TokenKind {
 
     // Symbols
     Eq,
+    EqEq,
+    BangEq,
+    Star,
+    FwSlash,
+    Percent,
+    Plus,
+    Minus,
+    Lt,
+    LtLt,
+    LtEq,
+    Gt,
+    GtGt,
+    GtEq,
+    Amp,
+    AmpAmp,
+    Caret,
+    Pipe,
+    PipePipe,
 
     // Ident & Keywords
     Ident(Ustr),
     Fn,
     Return,
 
-    // Values
+    // Literals
     Int(usize),
 }
 
@@ -63,6 +81,24 @@ impl fmt::Display for TokenKind {
             Self::CloseCurly => f.write_char('}'),
             Self::Comma => f.write_char(','),
             Self::Eq => f.write_char('='),
+            Self::EqEq => f.write_str("=="),
+            Self::BangEq => f.write_str("!="),
+            Self::Star => f.write_str("*"),
+            Self::FwSlash => f.write_str("/"),
+            Self::Percent => f.write_str("%"),
+            Self::Plus => f.write_str("+"),
+            Self::Minus => f.write_str("-"),
+            Self::Lt => f.write_str("<"),
+            Self::LtLt => f.write_str("<<"),
+            Self::LtEq => f.write_str("<="),
+            Self::Gt => f.write_str(">"),
+            Self::GtGt => f.write_str(">>"),
+            Self::GtEq => f.write_str(">="),
+            Self::Amp => f.write_str("&"),
+            Self::AmpAmp => f.write_str("&&"),
+            Self::Caret => f.write_str("^"),
+            Self::Pipe => f.write_str("|"),
+            Self::PipePipe => f.write_str("||"),
             Self::Ident(_) => f.write_str("identifier"),
             Self::Fn => f.write_str("`fn`"),
             Self::Return => f.write_str("`return`"),

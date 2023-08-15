@@ -6,6 +6,7 @@ use std::io;
 
 use ustr::Ustr;
 
+use crate::ast::token::TokenKind;
 use crate::{
     common::QualifiedName,
     span::{SourceId, Span, Spanned},
@@ -143,6 +144,7 @@ pub enum BinaryOp {
     Add,
     Sub,
     Mul,
+    Div,
     Mod,
     Shl,
     Shr,
@@ -165,6 +167,7 @@ impl BinaryOp {
             Self::Add => "+",
             Self::Sub => "-",
             Self::Mul => "*",
+            Self::Div => "/",
             Self::Mod => "%",
             Self::Shl => "<<",
             Self::Shr => ">>",
@@ -186,6 +189,36 @@ impl BinaryOp {
 impl fmt::Display for BinaryOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
+    }
+}
+
+impl TryFrom<TokenKind> for BinaryOp {
+    type Error = ();
+
+    fn try_from(value: TokenKind) -> Result<Self, Self::Error> {
+        let op = match value {
+            TokenKind::EqEq => Self::Eq,
+            TokenKind::BangEq => Self::NotEq,
+            TokenKind::Star => Self::Mul,
+            TokenKind::FwSlash => Self::Div,
+            TokenKind::Percent => Self::Mod,
+            TokenKind::Plus => Self::Add,
+            TokenKind::Minus => Self::Sub,
+            TokenKind::Lt => Self::Less,
+            TokenKind::LtLt => Self::Shl,
+            TokenKind::LtEq => Self::LessEq,
+            TokenKind::Gt => Self::Greater,
+            TokenKind::GtGt => Self::Shr,
+            TokenKind::GtEq => Self::GreaterEq,
+            TokenKind::Amp => Self::BitAnd,
+            TokenKind::AmpAmp => Self::And,
+            TokenKind::Caret => Self::BitXor,
+            TokenKind::Pipe => Self::BitOr,
+            TokenKind::PipePipe => Self::Or,
+            _ => return Err(()),
+        };
+
+        Ok(op)
     }
 }
 
