@@ -1,7 +1,7 @@
 mod pretty_print;
 pub mod token;
 
-use std::fmt::{self, Display};
+use std::fmt;
 use std::io;
 
 use ustr::Ustr;
