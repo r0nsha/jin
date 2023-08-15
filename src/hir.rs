@@ -75,6 +75,17 @@ impl Spanned for Node {
             Self::Lit(x) => x.span,
         }
     }
+
+    fn span_mut(&mut self) -> &mut Span {
+        match self {
+            Self::Function(x) => &mut x.span,
+            Self::Block(x) => &mut x.span,
+            Self::Return(x) => &mut x.span,
+            Self::Call(x) => &mut x.span,
+            Self::Name(x) => &mut x.span,
+            Self::Lit(x) => &mut x.span,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

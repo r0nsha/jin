@@ -86,6 +86,16 @@ impl Spanned for Ast {
             Self::Lit(x) => x.span,
         }
     }
+
+    fn span_mut(&mut self) -> &mut Span {
+        match self {
+            Self::Block(x) => &mut x.span,
+            Self::Call(x) => &mut x.span,
+            Self::Binary(x) => &mut x.span,
+            Self::Name(x) => &mut x.span,
+            Self::Lit(x) => &mut x.span,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

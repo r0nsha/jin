@@ -49,12 +49,60 @@ impl<'s> Lexer<'s> {
                     '{' => TokenKind::OpenCurly,
                     '}' => TokenKind::CloseCurly,
                     ',' => TokenKind::Comma,
-                    '=' => TokenKind::Eq,
-                    '/' if matches!(self.peek(), Some('/')) => {
-                        self.advance();
-                        self.comment();
-                        return self.next_token();
+                    '=' => {
+                        if self.is('=') {
+                            TokenKind::EqEq
+                        } else {
+                            TokenKind::Eq
+                        }
                     }
+                    '!' if self.is('=') => TokenKind::BangEq,
+                    '*' => TokenKind::Star,
+                    '/' => {
+                        if self.is('/') {
+                            self.advance();
+                            self.comment();
+                            return self.next_token();
+                        }
+
+                        TokenKind::FwSlash
+                    }
+                    '%' => TokenKind::Percent,
+                    '+' => TokenKind::Plus,
+                    '-' => TokenKind::Minus,
+                    '<' => {
+                        if self.is('<') {
+                            TokenKind::LtLt
+                        } else if self.is('=') {
+                            TokenKind::LtEq
+                        } else {
+                            TokenKind::Lt
+                        }
+                    }
+                    '>' => {
+                        if self.is('>') {
+                            TokenKind::GtGt
+                        } else if self.is('=') {
+                            TokenKind::GtEq
+                        } else {
+                            TokenKind::Gt
+                        }
+                    }
+                    '&' => {
+                        if self.is('&') {
+                            TokenKind::AmpAmp
+                        } else {
+                            TokenKind::Amp
+                        }
+                    }
+                    '|' => {
+                        if self.is('|') {
+                            TokenKind::PipePipe
+                        } else {
+                            TokenKind::Pipe
+                        }
+                    }
+                    '^' => TokenKind::Caret,
                     ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
                     ch if ch.is_ascii_digit() => self.numeric(start),
                     ch if ch.is_ascii_whitespace() => return self.next_token(),
@@ -122,6 +170,10 @@ impl<'s> Lexer<'s> {
 
     fn peek(&self) -> Option<char> {
         self.source_bytes.get(self.pos).map(|c| *c as char)
+    }
+
+    fn is(&self, ch: char) -> bool {
+        self.peek() == Some(ch)
     }
 
     fn peek_offset(&self, offset: usize) -> Option<char> {

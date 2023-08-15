@@ -69,7 +69,7 @@ impl<'a> Parser<'a> {
                 span: name_ident.span,
             }))
         } else {
-            let token = self.eat_any()?;
+            let token = self.require()?;
 
             Err(ParseError::UnexpectedToken {
                 expected: "fn".to_string(),
@@ -114,7 +114,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_call(&mut self) -> ParseResult<Ast> {
-        let expr = self.parse_value()?;
+        let expr = self.parse_operand()?;
 
         if self.is_and_same_line(TokenKind::OpenParen, expr.span()) {
             let close_paren = self.eat(TokenKind::CloseParen)?;
@@ -126,7 +126,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_binary_factor(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.eat_any()?;
+        let tok = self.require()?;
 
         match tok.kind {
             TokenKind::Star | TokenKind::FwSlash | TokenKind::Percent => {
@@ -137,7 +137,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_binary_term(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.eat_any()?;
+        let tok = self.require()?;
 
         match tok.kind {
             TokenKind::Plus | TokenKind::Minus => self.parse_binary(left, tok),
@@ -146,7 +146,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_binary_bitshift(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.eat_any()?;
+        let tok = self.require()?;
 
         match tok.kind {
             TokenKind::LtLt | TokenKind::GtGt => self.parse_binary(left, tok),
@@ -155,7 +155,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_binary_bitand(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.eat_any()?;
+        let tok = self.require()?;
 
         match tok.kind {
             TokenKind::Amp => self.parse_binary(left, tok),
@@ -164,7 +164,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_binary_bitxor(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.eat_any()?;
+        let tok = self.require()?;
 
         match tok.kind {
             TokenKind::Caret => self.parse_binary(left, tok),
@@ -173,7 +173,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_binary_bitor(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.eat_any()?;
+        let tok = self.require()?;
 
         match tok.kind {
             TokenKind::Pipe => self.parse_binary(left, tok),
@@ -182,7 +182,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_cmp_eq(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.eat_any()?;
+        let tok = self.require()?;
 
         match tok.kind {
             TokenKind::EqEq | TokenKind::BangEq => self.parse_binary(left, tok),
@@ -191,7 +191,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_cmp_ord(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.eat_any()?;
+        let tok = self.require()?;
 
         match tok.kind {
             TokenKind::Lt | TokenKind::LtEq | TokenKind::Gt | TokenKind::GtEq => {
@@ -202,7 +202,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_and(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.eat_any()?;
+        let tok = self.require()?;
 
         match tok.kind {
             TokenKind::AmpAmp => self.parse_binary(left, tok),
@@ -211,11 +211,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_or(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.eat_any()?;
+        let tok = self.require()?;
 
         match tok.kind {
             TokenKind::PipePipe => self.parse_binary(left, tok),
-            _ => self.parse_value(),
+            _ => self.parse_operand(),
         }
     }
 
@@ -239,13 +239,21 @@ impl<'a> Parser<'a> {
         Ok(Return { expr: Some(Box::new(expr)), span })
     }
 
-    fn parse_value(&mut self) -> ParseResult<Ast> {
+    fn parse_operand(&mut self) -> ParseResult<Ast> {
         let tok = self.eat_any()?;
 
         match tok.kind {
             TokenKind::OpenParen => {
-                let end = self.eat(TokenKind::CloseParen)?.span;
-                Ok(Ast::Lit(Lit { kind: LitKind::Unit, span: tok.span.merge(end) }))
+                if self.is(TokenKind::CloseParen) {
+                    Ok(Ast::Lit(Lit {
+                        kind: LitKind::Unit,
+                        span: tok.span.merge(self.last_span()),
+                    }))
+                } else {
+                    let expr = self.parse_expr()?;
+                    let end = self.eat(TokenKind::CloseParen)?.span;
+                    Ok(expr.with_span(tok.span.merge(end)))
+                }
             }
             TokenKind::OpenCurly => {
                 let blk = self.parse_block()?;
