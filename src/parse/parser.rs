@@ -131,7 +131,17 @@ impl<'a> Parser<'a> {
     fn parse_call(&mut self) -> ParseResult<Ast> {
         let expr = self.parse_value()?;
 
-        if self.is_same_line(TokenKind::OpenParen, expr.span()) {
+        if self.is_and_same_line(TokenKind::OpenParen, expr.span()) {
+            let close_paren = self.eat(TokenKind::CloseParen)?;
+            let span = expr.span().merge(close_paren.span);
+            Ok(Ast::Call(Call { callee: Box::new(expr), span }))
+        } else {
+            self.parse_binary(expr)
+        }
+    }
+
+    fn parse_binary(&mut self, expr: Ast) -> ParseResult<Ast> {
+        if self.is_and_same_line(TokenKind::OpenParen, expr.span()) {
             let close_paren = self.eat(TokenKind::CloseParen)?;
             let span = expr.span().merge(close_paren.span);
             Ok(Ast::Call(Call { callee: Box::new(expr), span }))
@@ -194,7 +204,7 @@ impl<'a> Parser<'a> {
         self.is_predicate(|_, tok| tok.kind_is(expected))
     }
 
-    fn is_same_line(&mut self, expected: TokenKind, span: Span) -> bool {
+    fn is_and_same_line(&mut self, expected: TokenKind, span: Span) -> bool {
         self.is_predicate(|this, tok| tok.kind_is(expected) && this.are_on_same_line(tok.span, span))
     }
 
