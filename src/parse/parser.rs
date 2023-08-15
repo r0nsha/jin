@@ -46,7 +46,7 @@ impl<'a> Parser<'a> {
     ) -> ParseResult<Module> {
         let mut module = Module::new(source_id, name, is_main);
 
-        while self.has_tokens() {
+        while !self.eof() {
             module.top_levels.push(self.parse_top_level()?);
         }
 
@@ -110,12 +110,16 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self) -> ParseResult<Ast> {
-        self.parse_call()
-    }
-
-    fn parse_call(&mut self) -> ParseResult<Ast> {
         let expr = self.parse_operand()?;
 
+        if self.eof() {
+            Ok(expr)
+        } else {
+            self.parse_call(expr)
+        }
+    }
+
+    fn parse_call(&mut self, expr: Ast) -> ParseResult<Ast> {
         if self.is_and_same_line(TokenKind::OpenParen, expr.span()) {
             let close_paren = self.eat(TokenKind::CloseParen)?;
             let span = expr.span().merge(close_paren.span);
@@ -341,11 +345,6 @@ impl<'a> Parser<'a> {
         l1 == l2
     }
 
-    #[allow(unused)]
-    fn token_kind(&self) -> Option<TokenKind> {
-        self.token().map(|t| t.kind)
-    }
-
     fn token(&self) -> Option<Token> {
         self.tokens.get(self.pos).copied()
     }
@@ -368,8 +367,8 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
-    fn has_tokens(&self) -> bool {
-        self.pos < self.tokens.len() - 1
+    fn eof(&self) -> bool {
+        self.pos == self.tokens.len() - 1
     }
 
     fn require_kind(tok: Token, expected: TokenKind) -> ParseResult<Token> {
