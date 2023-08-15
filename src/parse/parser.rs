@@ -122,6 +122,8 @@ impl<'a> Parser<'a> {
             };
 
             let op = match BinaryOp::try_from(tok.kind).ok() {
+                // For these specific operators, we check if they are on the same line as the last
+                // expr, to avoid ambiguity with unary operators
                 Some(op @ (BinaryOp::BitAnd | BinaryOp::Sub))
                     if self.are_on_same_line(
                         expr_stack.last().expect("to have an expr").span(),
