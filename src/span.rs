@@ -53,7 +53,11 @@ impl Span {
     pub fn merge(&self, other: Self) -> Self {
         assert!(self.source_id == other.source_id);
 
-        Self { source_id: self.source_id, start: self.start.min(other.start), end: self.end.max(other.end) }
+        Self {
+            source_id: self.source_id,
+            start: self.start.min(other.start),
+            end: self.end.max(other.end),
+        }
     }
 }
 
@@ -118,9 +122,10 @@ impl Source {
         match line_index.cmp(&self.line_starts.len()) {
             Ordering::Less => Ok(self.line_starts.get(line_index).copied().unwrap()),
             Ordering::Equal => Ok(self.contents.len()),
-            Ordering::Greater => {
-                Err(files::Error::LineTooLarge { given: line_index, max: self.line_starts.len() - 1 })
-            }
+            Ordering::Greater => Err(files::Error::LineTooLarge {
+                given: line_index,
+                max: self.line_starts.len() - 1,
+            }),
         }
     }
 }
@@ -155,7 +160,11 @@ impl<'a> files::Files<'a> for Source {
         Ok(self.line_starts.binary_search(&byte_index).unwrap_or_else(|next_line| next_line - 1))
     }
 
-    fn line_range(&'a self, _id: Self::FileId, line_index: usize) -> Result<ops::Range<usize>, files::Error> {
+    fn line_range(
+        &'a self,
+        _id: Self::FileId,
+        line_index: usize,
+    ) -> Result<ops::Range<usize>, files::Error> {
         let line_start = self.line_start(line_index)?;
         let next_line_start = self.line_start(line_index + 1)?;
 
@@ -179,10 +188,18 @@ impl<'a> files::Files<'a> for Sources {
     }
 
     fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, files::Error> {
-        self.get(id).ok_or(files::Error::FileMissing).and_then(|source| source.line_index(id, byte_index))
+        self.get(id)
+            .ok_or(files::Error::FileMissing)
+            .and_then(|source| source.line_index(id, byte_index))
     }
 
-    fn line_range(&'a self, id: Self::FileId, line_index: usize) -> Result<ops::Range<usize>, files::Error> {
-        self.get(id).ok_or(files::Error::FileMissing).and_then(|source| source.line_range(id, line_index))
+    fn line_range(
+        &'a self,
+        id: Self::FileId,
+        line_index: usize,
+    ) -> Result<ops::Range<usize>, files::Error> {
+        self.get(id)
+            .ok_or(files::Error::FileMissing)
+            .and_then(|source| source.line_range(id, line_index))
     }
 }

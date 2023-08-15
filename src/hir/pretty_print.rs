@@ -2,10 +2,13 @@ use std::io;
 
 use crate::db::Database;
 
-use super::{Block, Call, Definition, DefinitionKind, Function, Lit, LitKind, Module, Name, Node, Return};
+use super::{
+    Block, Call, Definition, DefinitionKind, Function, Lit, LitKind, Module, Name, Node, Return,
+};
 
 pub(super) fn print_module(db: &Database, module: &Module) -> io::Result<()> {
-    let mut cx = Cx { db, builder: ptree::TreeBuilder::new(db[module.id].name.standard_full_name()) };
+    let mut cx =
+        Cx { db, builder: ptree::TreeBuilder::new(db[module.id].name.standard_full_name()) };
 
     for def in &module.definitions {
         def.pretty_print(&mut cx);
@@ -47,7 +50,11 @@ impl PrettyPrint for Definition {
 
 impl PrettyPrint for Function {
     fn pretty_print(&self, cx: &mut Cx) {
-        cx.builder.begin_child(format!("fn {} (type: {})", self.name, cx.db[self.ty].display(cx.db)));
+        cx.builder.begin_child(format!(
+            "fn {} (type: {})",
+            self.name,
+            cx.db[self.ty].display(cx.db)
+        ));
 
         if !self.params.is_empty() {
             cx.builder.begin_child("params".to_string());
@@ -97,7 +104,9 @@ impl PrettyPrint for Name {
     fn pretty_print(&self, cx: &mut Cx) {
         cx.builder.add_empty_child(format!(
             "{} (type: {})",
-            self.id.map_or(self.name.to_string(), |id| { cx.db[id].qualified_name.standard_full_name() }),
+            self.id.map_or(self.name.to_string(), |id| {
+                cx.db[id].qualified_name.standard_full_name()
+            }),
             cx.db[self.ty].display(cx.db)
         ));
     }
@@ -107,7 +116,8 @@ impl PrettyPrint for Lit {
     fn pretty_print(&self, cx: &mut Cx) {
         match &self.kind {
             LitKind::Int(v) => {
-                cx.builder.add_empty_child(format!("{v} (type: {})", cx.db[self.ty].display(cx.db)));
+                cx.builder
+                    .add_empty_child(format!("{v} (type: {})", cx.db[self.ty].display(cx.db)));
             }
             LitKind::Unit => {
                 cx.builder.add_empty_child("()".to_string());

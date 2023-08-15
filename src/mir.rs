@@ -121,7 +121,13 @@ pub struct Block {
 
 impl Block {
     fn new(id: BlockId, name: impl AsRef<str>) -> Self {
-        Self { id, name: ustr(name.as_ref()), instructions: vec![], predecessors: vec![], successors: vec![] }
+        Self {
+            id,
+            name: ustr(name.as_ref()),
+            instructions: vec![],
+            predecessors: vec![],
+            successors: vec![],
+        }
     }
 
     fn is_terminating(&self) -> bool {

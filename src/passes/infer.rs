@@ -10,7 +10,10 @@ use crate::passes::infer::typecx::TypeCx;
 use crate::ty::FunctionTy;
 use crate::{
     db::Database,
-    hir::{Block, Call, Definition, DefinitionKind, Function, Hir, Lit, LitKind, Module, Name, Node, Return},
+    hir::{
+        Block, Call, Definition, DefinitionKind, Function, Hir, Lit, LitKind, Module, Name, Node,
+        Return,
+    },
     ty::Ty,
 };
 
@@ -149,8 +152,10 @@ impl Infer<'_> for Call {
         self.callee.infer(cx, env);
 
         let result_ty = cx.tcx.fresh_ty_var(self.span);
-        let expected_ty =
-            cx.db.alloc_ty(Ty::Function(FunctionTy { ret: Box::new(result_ty.clone()), span: self.span }));
+        let expected_ty = cx.db.alloc_ty(Ty::Function(FunctionTy {
+            ret: Box::new(result_ty.clone()),
+            span: self.span,
+        }));
 
         cx.constraints.push(Constraint::Eq { expected: expected_ty, actual: self.callee.ty() });
 

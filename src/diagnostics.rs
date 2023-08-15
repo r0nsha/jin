@@ -16,7 +16,13 @@ pub struct Diagnostic {
 
 impl Diagnostic {
     pub fn error(code: impl Into<String>) -> Self {
-        Self { severity: Severity::Error, code: code.into(), message: None, labels: vec![], help: None }
+        Self {
+            severity: Severity::Error,
+            code: code.into(),
+            message: None,
+            labels: vec![],
+            help: None,
+        }
     }
 
     pub fn with_message(mut self, message: impl Into<String>) -> Self {
@@ -137,7 +143,12 @@ impl Diagnostics {
         let mut writer_lock = writer.lock();
 
         for diagnostic in &self.diagnostics {
-            codespan_reporting::term::emit(&mut writer_lock, &config, sources, &diagnostic.clone().into())?;
+            codespan_reporting::term::emit(
+                &mut writer_lock,
+                &config,
+                sources,
+                &diagnostic.clone().into(),
+            )?;
         }
 
         Ok(())

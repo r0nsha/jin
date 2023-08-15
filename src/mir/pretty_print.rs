@@ -25,7 +25,10 @@ fn print_function<'d>(db: &Database, fun: &Function) -> RcDoc<'d, ()> {
         .append(RcDoc::space())
         .append(RcDoc::text("{"))
         .append(RcDoc::hardline())
-        .append(RcDoc::intersperse(fun.blocks().iter().map(|blk| blk.to_doc(db, fun)), RcDoc::hardline()))
+        .append(RcDoc::intersperse(
+            fun.blocks().iter().map(|blk| blk.to_doc(db, fun)),
+            RcDoc::hardline(),
+        ))
         .append(RcDoc::hardline())
         .append("}")
 }
@@ -50,7 +53,9 @@ impl<'db, 'd> ToDoc<'db, 'd> for Block {
 impl<'db, 'd> ToDoc<'db, 'd> for Instruction {
     fn to_doc(&self, db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
         match self {
-            Self::Return(ret) => RcDoc::text("ret").append(RcDoc::space()).append(ret.value.to_doc(db, fun)),
+            Self::Return(ret) => {
+                RcDoc::text("ret").append(RcDoc::space()).append(ret.value.to_doc(db, fun))
+            }
             Self::Call(call) => register_alloc(db, fun, call.register)
                 .append(RcDoc::text("call"))
                 .append(RcDoc::space())
@@ -90,7 +95,11 @@ impl<'db, 'd> ToDoc<'db, 'd> for Ty {
     }
 }
 
-fn register_alloc<'db, 'd>(db: &'db Database, fun: &'db Function, reg: RegisterId) -> RcDoc<'d, ()> {
+fn register_alloc<'db, 'd>(
+    db: &'db Database,
+    fun: &'db Function,
+    reg: RegisterId,
+) -> RcDoc<'d, ()> {
     reg.to_doc(db, fun)
         .append(RcDoc::space())
         .append(fun.register(reg).unwrap().ty.to_doc(db, fun))

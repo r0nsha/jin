@@ -3,7 +3,8 @@ use std::collections::HashSet;
 use crate::{db::DefinitionId, span::Span};
 
 use super::{
-    Block, BlockId, Call, Function, Instruction, IntLit, Register, RegisterId, Return, TyId, UnitLit, Value,
+    Block, BlockId, Call, Function, Instruction, IntLit, Register, RegisterId, Return, TyId,
+    UnitLit, Value,
 };
 
 pub struct FunctionBuilder {
@@ -90,11 +91,16 @@ impl FunctionBuilder {
     }
 
     pub fn build_unit_lit(&mut self, reg: RegisterId, span: Span) {
-        self.current_block_mut().add_instruction(Instruction::UnitLit(UnitLit { register: reg, span }));
+        self.current_block_mut()
+            .add_instruction(Instruction::UnitLit(UnitLit { register: reg, span }));
     }
 
     pub fn build_int_lit(&mut self, reg: RegisterId, value: usize, span: Span) {
-        self.current_block_mut().add_instruction(Instruction::IntLit(IntLit { register: reg, value, span }));
+        self.current_block_mut().add_instruction(Instruction::IntLit(IntLit {
+            register: reg,
+            value,
+            span,
+        }));
     }
 
     pub fn build_return(&mut self, value: Value, span: Span) {
@@ -102,7 +108,11 @@ impl FunctionBuilder {
     }
 
     pub fn build_call(&mut self, register: RegisterId, callee: Value, span: Span) {
-        self.current_block_mut().add_instruction(Instruction::Call(Call { register, callee, span }));
+        self.current_block_mut().add_instruction(Instruction::Call(Call {
+            register,
+            callee,
+            span,
+        }));
     }
 
     pub fn finish(self) -> Result<Function, String> {
@@ -117,7 +127,9 @@ impl FunctionBuilder {
 
             for (i, blk) in blocks.iter().enumerate() {
                 if i > 0 && blk.predecessors.is_empty() {
-                    return Err(format!("Non-starting block @{i} is unreachable (has no predecessors)"));
+                    return Err(format!(
+                        "Non-starting block @{i} is unreachable (has no predecessors)"
+                    ));
                 }
 
                 let blk_is_terminating = blk.is_terminating();

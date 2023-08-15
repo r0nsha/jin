@@ -4,7 +4,8 @@ use crate::ast::{Binary, BinaryOp};
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Ast, Block, Call, Function, FunctionParam, Lit, LitKind, Module, Name, Return, Statement, TopLevel,
+        Ast, Block, Call, Function, FunctionParam, Lit, LitKind, Module, Name, Return, Statement,
+        TopLevel,
     },
     common::QualifiedName,
     db::Database,
@@ -17,8 +18,8 @@ pub fn parse(db: &Database, source: &Source, tokens: Vec<Token>) -> Result<Modul
     let name = QualifiedName::from_path(db.root_dir(), source.path()).unwrap();
     let is_main = source_id == db.main_source().id();
 
-    let module =
-        Parser::new(db.sources.get(source_id).expect("to exist"), tokens).parse(source_id, name, is_main)?;
+    let module = Parser::new(db.sources.get(source_id).expect("to exist"), tokens)
+        .parse(source_id, name, is_main)?;
 
     Ok(module)
 }
@@ -37,7 +38,12 @@ impl<'a> Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    fn parse(mut self, source_id: SourceId, name: QualifiedName, is_main: bool) -> ParseResult<Module> {
+    fn parse(
+        mut self,
+        source_id: SourceId,
+        name: QualifiedName,
+        is_main: bool,
+    ) -> ParseResult<Module> {
         let mut module = Module::new(source_id, name, is_main);
 
         while self.has_tokens() {
@@ -123,7 +129,9 @@ impl<'a> Parser<'a> {
         let tok = self.eat_any()?;
 
         match tok.kind {
-            TokenKind::Star | TokenKind::FwSlash | TokenKind::Percent => self.parse_binary(left, tok),
+            TokenKind::Star | TokenKind::FwSlash | TokenKind::Percent => {
+                self.parse_binary(left, tok)
+            }
             _ => self.parse_binary_term(left),
         }
     }
@@ -186,7 +194,9 @@ impl<'a> Parser<'a> {
         let tok = self.eat_any()?;
 
         match tok.kind {
-            TokenKind::Lt | TokenKind::LtEq | TokenKind::Gt | TokenKind::GtEq => self.parse_binary(left, tok),
+            TokenKind::Lt | TokenKind::LtEq | TokenKind::Gt | TokenKind::GtEq => {
+                self.parse_binary(left, tok)
+            }
             _ => self.parse_and(left),
         }
     }
@@ -242,7 +252,9 @@ impl<'a> Parser<'a> {
                 Ok(Ast::Block(blk))
             }
             TokenKind::Ident(ident) => Ok(Ast::Name(Name { name: ident, span: tok.span })),
-            TokenKind::Int(value) => Ok(Ast::Lit(Lit { kind: LitKind::Int(value), span: tok.span })),
+            TokenKind::Int(value) => {
+                Ok(Ast::Lit(Lit { kind: LitKind::Int(value), span: tok.span }))
+            }
             _ => Err(ParseError::UnexpectedToken {
                 expected: "an expression".to_string(),
                 actual: tok.kind,
@@ -299,7 +311,9 @@ impl<'a> Parser<'a> {
     }
 
     fn is_and_same_line(&mut self, expected: TokenKind, span: Span) -> bool {
-        self.is_predicate(|this, tok| tok.kind_is(expected) && this.are_on_same_line(tok.span, span))
+        self.is_predicate(|this, tok| {
+            tok.kind_is(expected) && this.are_on_same_line(tok.span, span)
+        })
     }
 
     fn is_predicate(&mut self, mut f: impl FnMut(&mut Self, Token) -> bool) -> bool {
@@ -374,9 +388,11 @@ enum ParseError {
 impl From<ParseError> for Diagnostic {
     fn from(err: ParseError) -> Self {
         match err {
-            ParseError::UnexpectedToken { expected, actual, span } => Self::error("parse::unexpected_token")
-                .with_message(format!("expected {expected}, got {actual} instead"))
-                .with_label(Label::primary(span).with_message("found here")),
+            ParseError::UnexpectedToken { expected, actual, span } => {
+                Self::error("parse::unexpected_token")
+                    .with_message(format!("expected {expected}, got {actual} instead"))
+                    .with_label(Label::primary(span).with_message("found here"))
+            }
             ParseError::UnexpectedEof { span } => Self::error("parse::unexpected_eof")
                 .with_message("unexpected end of file")
                 .with_label(Label::primary(span).with_message("here")),

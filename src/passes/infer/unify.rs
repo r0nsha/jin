@@ -34,7 +34,9 @@ impl<'db> InferCx<'db> {
             | (Ty::Unit(_), Ty::Unit(_))
             | (Ty::Int(IntTy::Int, _), Ty::Int(IntTy::Int, _)) => Ok(()),
 
-            (Ty::Function(expected), Ty::Function(actual)) => self.unify_ty_ty(&expected.ret, &actual.ret),
+            (Ty::Function(expected), Ty::Function(actual)) => {
+                self.unify_ty_ty(&expected.ret, &actual.ret)
+            }
 
             (Ty::Infer(InferTy::TyVar(expected), _), Ty::Infer(InferTy::TyVar(actual), _)) => {
                 self.tcx.ty_unification_table.unify_var_var(expected, actual)?;
@@ -48,7 +50,9 @@ impl<'db> InferCx<'db> {
 
             (Ty::Int(ity, span), Ty::Infer(InferTy::IntVar(var), _))
             | (Ty::Infer(InferTy::IntVar(var), _), Ty::Int(ity, span)) => {
-                self.tcx.int_unification_table.unify_var_value(var, Some(IntVarValue::Int(ity, span)))?;
+                self.tcx
+                    .int_unification_table
+                    .unify_var_value(var, Some(IntVarValue::Int(ity, span)))?;
                 Ok(())
             }
 
@@ -101,10 +105,10 @@ impl InferError {
                     expected.display(db),
                     actual.display(db),
                 ))
-                .with_label(
-                    Label::primary(expected.span())
-                        .with_message(format!("expected type `{}` originates here", expected.display(db))),
-                )
+                .with_label(Label::primary(expected.span()).with_message(format!(
+                    "expected type `{}` originates here",
+                    expected.display(db)
+                )))
                 .with_label(
                     Label::secondary(actual.span())
                         .with_message(format!("found type `{}` here", actual.display(db))),

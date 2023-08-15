@@ -33,7 +33,11 @@ impl<'db> CodegenResult<'db> {
     }
 }
 
-fn codegen_all<'db>(db: &'db Database, arena: &'db Arena<'db>, mir: &'db Mir) -> CodegenResult<'db> {
+fn codegen_all<'db>(
+    db: &'db Database,
+    arena: &'db Arena<'db>,
+    mir: &'db Mir,
+) -> CodegenResult<'db> {
     let fun_count = mir.functions.len();
 
     let prelude = codegen_prelude(arena);
@@ -66,7 +70,8 @@ fn codegen_prelude<'db>(arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>> {
     );
 
     let constants = arena.intersperse(
-        iter::once(arena.text(format!("const {TYPE_UNIT} {CONST_UNIT} = {{}}"))).map(|d| arena.statement(d)),
+        iter::once(arena.text(format!("const {TYPE_UNIT} {CONST_UNIT} = {{}}")))
+            .map(|d| arena.statement(d)),
         arena.line(),
     );
 
@@ -74,15 +79,19 @@ fn codegen_prelude<'db>(arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>> {
 }
 
 fn codegen_main<'db>(db: &'db Database, arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>> {
-    let main_fun_name = db.main_function().expect("to have a main function").qualified_name.full_c_name();
+    let main_fun_name =
+        db.main_function().expect("to have a main function").qualified_name.full_c_name();
 
     arena
         .text("int main() {")
         .append(arena.line())
-        .append(arena.intersperse(
-            [arena.text(format!("{main_fun_name}()")), arena.text("return 0")].map(|d| arena.statement(d)),
-            arena.line(),
-        ))
+        .append(
+            arena.intersperse(
+                [arena.text(format!("{main_fun_name}()")), arena.text("return 0")]
+                    .map(|d| arena.statement(d)),
+                arena.line(),
+            ),
+        )
         .nest(1)
         .append(arena.line())
         .append(arena.text("}"))
@@ -108,7 +117,11 @@ impl<'db> CodegenCx<'db> {
         self.declarations.push(arena.statement(decl));
     }
 
-    fn local_var(&mut self, arena: &'db Arena<'db>, reg: RegisterId) -> DocBuilder<'db, Arena<'db>, ()> {
+    fn local_var(
+        &mut self,
+        arena: &'db Arena<'db>,
+        reg: RegisterId,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
         let ty = self.fun.register(reg).unwrap().ty;
 
         ty.codegen(self, arena)
@@ -121,11 +134,19 @@ impl<'db> CodegenCx<'db> {
 }
 
 trait Codegen<'a, 'db> {
-    fn codegen(&self, cx: &'a mut CodegenCx<'db>, arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>, ()>;
+    fn codegen(
+        &self,
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()>;
 }
 
 impl<'a, 'db> Codegen<'a, 'db> for Function {
-    fn codegen(&self, cx: &'a mut CodegenCx<'db>, arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>, ()> {
+    fn codegen(
+        &self,
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
         let fun = &cx.db[self.id()];
 
         let fun_ty = cx.db[fun.ty].as_function().unwrap();
@@ -140,15 +161,18 @@ impl<'a, 'db> Codegen<'a, 'db> for Function {
 
         cx.add_declaration(arena, sig.clone());
 
-        let def = sig
-            .append(arena.space())
-            .append(arena.text("{"))
-            .append(arena.line())
-            .append(arena.intersperse(self.blocks().iter().map(|blk| blk.codegen(cx, arena)), arena.line()))
-            .append(arena.text(";"))
-            .nest(1)
-            .append(arena.line())
-            .append(arena.text("}"));
+        let def =
+            sig.append(arena.space())
+                .append(arena.text("{"))
+                .append(arena.line())
+                .append(arena.intersperse(
+                    self.blocks().iter().map(|blk| blk.codegen(cx, arena)),
+                    arena.line(),
+                ))
+                .append(arena.text(";"))
+                .nest(1)
+                .append(arena.line())
+                .append(arena.text("}"));
 
         cx.add_definition(def);
 
@@ -157,7 +181,11 @@ impl<'a, 'db> Codegen<'a, 'db> for Function {
 }
 
 impl<'a, 'db> Codegen<'a, 'db> for Block {
-    fn codegen(&self, cx: &'a mut CodegenCx<'db>, arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>, ()> {
+    fn codegen(
+        &self,
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
         arena.intersperse(
             self.instructions.iter().map(|inst| inst.codegen(cx, arena)),
             arena.text(";").append(arena.line()),
@@ -166,20 +194,30 @@ impl<'a, 'db> Codegen<'a, 'db> for Block {
 }
 
 impl<'a, 'db> Codegen<'a, 'db> for Instruction {
-    fn codegen(&self, cx: &'a mut CodegenCx<'db>, arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>, ()> {
+    fn codegen(
+        &self,
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
         match self {
             Self::Return(ret) => {
                 arena.text("return").append(arena.space()).append(ret.value.codegen(cx, arena))
             }
             Self::Call(call) => call.callee.codegen(cx, arena).append(arena.text("()")),
-            Self::IntLit(lit) => cx.local_var(arena, lit.register).append(arena.text(lit.value.to_string())),
+            Self::IntLit(lit) => {
+                cx.local_var(arena, lit.register).append(arena.text(lit.value.to_string()))
+            }
             Self::UnitLit(lit) => cx.local_var(arena, lit.register).append(arena.text(CONST_UNIT)),
         }
     }
 }
 
 impl<'a, 'db> Codegen<'a, 'db> for Value {
-    fn codegen(&self, cx: &'a mut CodegenCx<'db>, arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>, ()> {
+    fn codegen(
+        &self,
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
         match self {
             Self::Definition(id) => arena.text(cx.db[*id].qualified_name.full_c_name()),
             Self::Register(id) => id.codegen(cx, arena),
@@ -198,13 +236,21 @@ impl<'a, 'db> Codegen<'a, 'db> for RegisterId {
 }
 
 impl<'a, 'db> Codegen<'a, 'db> for TyId {
-    fn codegen(&self, cx: &'a mut CodegenCx<'db>, arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>, ()> {
+    fn codegen(
+        &self,
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
         cx.db[*self].codegen(cx, arena)
     }
 }
 
 impl<'a, 'db> Codegen<'a, 'db> for Ty {
-    fn codegen(&self, cx: &'a mut CodegenCx<'db>, arena: &'db Arena<'db>) -> DocBuilder<'db, Arena<'db>, ()> {
+    fn codegen(
+        &self,
+        cx: &'a mut CodegenCx<'db>,
+        arena: &'db Arena<'db>,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
         arena.text(match &self {
             Self::Int(int, _) => match int {
                 IntTy::Int => "intptr_t",

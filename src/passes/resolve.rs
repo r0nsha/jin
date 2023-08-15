@@ -52,7 +52,9 @@ impl<'db> ResolveCx<'db> {
                 let qualified_name = self.db[module.id].name.clone().child(def.name);
 
                 let kind = match &def.kind {
-                    DefinitionKind::Function(_) => DefinitionInfoKind::Function(FunctionInfo::Orphan),
+                    DefinitionKind::Function(_) => {
+                        DefinitionInfoKind::Function(FunctionInfo::Orphan)
+                    }
                 };
 
                 let id = DefinitionInfo::alloc(
@@ -274,7 +276,10 @@ impl From<ResolveError> for Diagnostic {
             ResolveError::MultipleDefinitions { name, prev_span, dup_span } => {
                 Self::error("resolve::multiple_definitions")
                     .with_message(format!("the name `{name}` is defined multiple times"))
-                    .with_label(Label::primary(dup_span).with_message(format!("`{name}` is redefined here")))
+                    .with_label(
+                        Label::primary(dup_span)
+                            .with_message(format!("`{name}` is redefined here")),
+                    )
                     .with_label(
                         Label::secondary(prev_span)
                             .with_message(format!("previous definition of `{name}` is here")),

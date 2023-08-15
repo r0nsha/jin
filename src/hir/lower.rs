@@ -4,8 +4,8 @@ use crate::{
 };
 
 use super::{
-    Block, Call, Definition, DefinitionKind, Function, FunctionParam, Hir, IndexMap, Lit, LitKind, Module,
-    ModuleId, Name, Node, Return, Spanned, TyId,
+    Block, Call, Definition, DefinitionKind, Function, FunctionParam, Hir, IndexMap, Lit, LitKind,
+    Module, ModuleId, Name, Node, Return, Spanned, TyId,
 };
 
 pub fn lower(db: &mut Database, lib: ast::Library) -> Hir {
@@ -14,7 +14,8 @@ pub fn lower(db: &mut Database, lib: ast::Library) -> Hir {
             .modules
             .into_iter()
             .map(|module| {
-                let id = db::ModuleInfo::alloc(db, module.source, module.name.clone(), module.is_main());
+                let id =
+                    db::ModuleInfo::alloc(db, module.source, module.name.clone(), module.is_main());
                 Lower { db, id }.run(module)
             })
             .collect(),
@@ -56,7 +57,9 @@ impl<'db> Lower<'db> {
         let params = fun
             .params
             .into_iter()
-            .map(|p| (p.name, FunctionParam { id: None, name: p.name, span: p.span, ty: TyId::null() }))
+            .map(|p| {
+                (p.name, FunctionParam { id: None, name: p.name, span: p.span, ty: TyId::null() })
+            })
             .collect::<IndexMap<_, _>>();
 
         let body = self.lower_ast(*fun.body);
@@ -100,7 +103,13 @@ impl<'db> Lower<'db> {
         match stmt {
             ast::Statement::Return(ret) => Node::Return(Return {
                 expr: ret.expr.map_or_else(
-                    || Box::new(Node::Lit(Lit { kind: LitKind::Unit, span: ret.span, ty: TyId::null() })),
+                    || {
+                        Box::new(Node::Lit(Lit {
+                            kind: LitKind::Unit,
+                            span: ret.span,
+                            ty: TyId::null(),
+                        }))
+                    },
                     |v| Box::new(self.lower_ast(*v)),
                 ),
                 span: ret.span,

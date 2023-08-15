@@ -225,7 +225,9 @@ impl Arch {
 
     pub fn endianness(self) -> Endianness {
         match self {
-            Self::Amd64 | Self::_386 | Self::Arm64 | Self::Wasm32 | Self::Wasm64 => Endianness::Little,
+            Self::Amd64 | Self::_386 | Self::Arm64 | Self::Wasm32 | Self::Wasm64 => {
+                Endianness::Little
+            }
         }
     }
 }

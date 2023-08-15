@@ -146,7 +146,12 @@ pub struct ModuleInfo {
 }
 
 impl ModuleInfo {
-    pub fn alloc(db: &mut Database, source_id: SourceId, name: QualifiedName, is_main: bool) -> ModuleId {
+    pub fn alloc(
+        db: &mut Database,
+        source_id: SourceId,
+        name: QualifiedName,
+        is_main: bool,
+    ) -> ModuleId {
         let id = db.modules.push_with_key(|id| Self { id, source_id, name, is_main });
 
         if is_main {
