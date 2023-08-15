@@ -110,6 +110,76 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self) -> ParseResult<Ast> {
+        let mut expr_stack: Vec<Ast> = vec![];
+        let mut op_stack: Vec<BinaryOp> = vec![];
+        let mut last_precedence = usize::MAX;
+
+        expr_stack.push(self.parse_operand()?);
+
+        while !self.eof() {
+            let tok = self.require()?;
+
+            let op = match BinaryOp::try_from(tok.kind).ok() {
+                Some(op) => {
+                    self.next();
+                    op
+                }
+                None => break,
+            };
+
+            let rhs = self.parse_operand()?;
+
+            let precedence = op.precedence();
+
+            while precedence <= last_precedence && expr_stack.len() > 1 {
+                let right = expr_stack.pop().unwrap();
+                let op = op_stack.pop().unwrap();
+
+                last_precedence = op.precedence();
+
+                if last_precedence < precedence {
+                    expr_stack.push(right);
+                    op_stack.push(op);
+                    break;
+                }
+
+                let left = expr_stack.pop().unwrap();
+
+                let span = left.span().merge(right.span());
+
+                expr_stack.push(Ast::Binary(Binary {
+                    left: Box::new(left),
+                    op,
+                    right: Box::new(right),
+                    span,
+                }));
+            }
+
+            op_stack.push(op);
+            expr_stack.push(rhs);
+
+            last_precedence = precedence;
+        }
+
+        while expr_stack.len() > 1 {
+            let right = expr_stack.pop().unwrap();
+            let op = op_stack.pop().unwrap();
+            let left = expr_stack.pop().unwrap();
+
+            let span = left.span().merge(right.span());
+
+            expr_stack.push(Ast::Binary(Binary {
+                left: Box::new(left),
+                op,
+                right: Box::new(right),
+                span,
+            }));
+        }
+
+        Ok(expr_stack.into_iter().next().unwrap())
+    }
+
+    fn parse_operand(&mut self) -> ParseResult<Ast> {
         let expr = self.parse_operand_base()?;
         self.parse_binary_factor(expr)
     }
