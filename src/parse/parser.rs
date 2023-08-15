@@ -117,13 +117,26 @@ impl<'a> Parser<'a> {
         expr_stack.push(self.parse_operand()?);
 
         while !self.eof() {
-            let op =
-                if let Some(op) = self.token().and_then(|tok| BinaryOp::try_from(tok.kind).ok()) {
+            let Some(token) = self.token() else {
+                break;
+            };
+
+            let op = match BinaryOp::try_from(tok.kind).ok() {
+                Some(op @ (BinaryOp::BitAnd | BinaryOp::Sub))
+                    if self.are_on_same_line(
+                        expr_stack.last().expect("to have an expr").span(),
+                        tok.span,
+                    ) =>
+                {
                     self.next();
                     op
-                } else {
-                    break;
-                };
+                }
+                Some(op) => {
+                    self.next();
+                    op
+                }
+                None => break,
+            };
 
             let rhs = self.parse_operand()?;
 
