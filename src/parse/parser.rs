@@ -131,15 +131,15 @@ impl<'a> Parser<'a> {
 
     fn parse_postfix(&mut self, expr: Ast) -> ParseResult<Ast> {
         match self.token() {
-            Some(tok) if self.are_on_same_line(expr.span(), tok.span) => match &tok.kind {
-                TokenKind::OpenParen => {
+            Some(tok) => match &tok.kind {
+                TokenKind::OpenParen if self.are_on_same_line(expr.span(), tok.span) => {
                     self.next();
                     let call = self.parse_call(expr)?;
                     Ok(Ast::Call(call))
                 }
                 _ => Ok(expr),
             },
-            _ => Ok(expr),
+            None => Ok(expr),
         }
     }
 
