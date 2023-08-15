@@ -110,23 +110,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self) -> ParseResult<Ast> {
-        let expr = self.parse_operand()?;
-
-        if self.eof() {
-            Ok(expr)
-        } else {
-            self.parse_call(expr)
-        }
-    }
-
-    fn parse_call(&mut self, expr: Ast) -> ParseResult<Ast> {
-        if self.is_and_same_line(TokenKind::OpenParen, expr.span()) {
-            let close_paren = self.eat(TokenKind::CloseParen)?;
-            let span = expr.span().merge(close_paren.span);
-            Ok(Ast::Call(Call { callee: Box::new(expr), span }))
-        } else {
-            self.parse_binary_factor(expr)
-        }
+        let expr = self.parse_operand_base()?;
+        self.parse_binary_factor(expr)
     }
 
     fn parse_binary_factor(&mut self, left: Ast) -> ParseResult<Ast> {
@@ -219,7 +204,7 @@ impl<'a> Parser<'a> {
 
         match tok.kind {
             TokenKind::PipePipe => self.parse_binary(left, tok),
-            _ => self.parse_operand(),
+            _ => self.parse_operand_base(),
         }
     }
 
@@ -243,35 +228,41 @@ impl<'a> Parser<'a> {
         Ok(Return { expr: Some(Box::new(expr)), span })
     }
 
-    fn parse_operand(&mut self) -> ParseResult<Ast> {
+    fn parse_operand_base(&mut self) -> ParseResult<Ast> {
         let tok = self.eat_any()?;
 
-        match tok.kind {
+        let expr = match tok.kind {
             TokenKind::OpenParen => {
                 if self.is(TokenKind::CloseParen) {
-                    Ok(Ast::Lit(Lit {
-                        kind: LitKind::Unit,
-                        span: tok.span.merge(self.last_span()),
-                    }))
+                    Ast::Lit(Lit { kind: LitKind::Unit, span: tok.span.merge(self.last_span()) })
                 } else {
                     let expr = self.parse_expr()?;
                     let end = self.eat(TokenKind::CloseParen)?.span;
-                    Ok(expr.with_span(tok.span.merge(end)))
+                    expr.with_span(tok.span.merge(end))
                 }
             }
-            TokenKind::OpenCurly => {
-                let blk = self.parse_block()?;
-                Ok(Ast::Block(blk))
+            TokenKind::OpenCurly => Ast::Block(self.parse_block()?),
+            TokenKind::Ident(ident) => Ast::Name(Name { name: ident, span: tok.span }),
+            TokenKind::Int(value) => Ast::Lit(Lit { kind: LitKind::Int(value), span: tok.span }),
+            _ => {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "an expression".to_string(),
+                    actual: tok.kind,
+                    span: tok.span,
+                })
             }
-            TokenKind::Ident(ident) => Ok(Ast::Name(Name { name: ident, span: tok.span })),
-            TokenKind::Int(value) => {
-                Ok(Ast::Lit(Lit { kind: LitKind::Int(value), span: tok.span }))
-            }
-            _ => Err(ParseError::UnexpectedToken {
-                expected: "an expression".to_string(),
-                actual: tok.kind,
-                span: tok.span,
-            }),
+        };
+
+        self.parse_postfix(expr)
+    }
+
+    fn parse_postfix(&mut self, expr: Ast) -> ParseResult<Ast> {
+        if self.is_and_same_line(TokenKind::OpenParen, expr.span()) {
+            let close_paren = self.eat(TokenKind::CloseParen)?;
+            let span = expr.span().merge(close_paren.span);
+            Ok(Ast::Call(Call { callee: Box::new(expr), span }))
+        } else {
+            self.parse_binary_factor(expr)
         }
     }
 
