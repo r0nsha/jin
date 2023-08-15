@@ -125,7 +125,7 @@ impl<'a> Parser<'a> {
         expr_stack.push(self.parse_operand()?);
 
         while !self.eof() {
-            let Some(token) = self.token() else {
+            let Some(tok) = self.token() else {
                 break;
             };
 
