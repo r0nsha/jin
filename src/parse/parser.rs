@@ -110,114 +110,75 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self) -> ParseResult<Ast> {
+        let mut expr_stack: Vec<Ast> = vec![];
+        let mut op_stack: Vec<BinaryOp> = vec![];
+        let mut last_precedence = usize::MAX;
+
+        expr_stack.push(self.parse_operand()?);
+
+        while !self.eof() {
+            let op =
+                if let Some(op) = self.token().and_then(|tok| BinaryOp::try_from(tok.kind).ok()) {
+                    self.next();
+                    op
+                } else {
+                    break;
+                };
+
+            let rhs = self.parse_operand()?;
+
+            let precedence = op.precedence();
+
+            while precedence <= last_precedence && expr_stack.len() > 1 {
+                let right = expr_stack.pop().unwrap();
+                let op = op_stack.pop().unwrap();
+
+                last_precedence = op.precedence();
+
+                if last_precedence < precedence {
+                    expr_stack.push(right);
+                    op_stack.push(op);
+                    break;
+                }
+
+                let left = expr_stack.pop().unwrap();
+                let span = left.span().merge(right.span());
+
+                expr_stack.push(Ast::Binary(Binary {
+                    left: Box::new(left),
+                    op,
+                    right: Box::new(right),
+                    span,
+                }));
+            }
+
+            op_stack.push(op);
+            expr_stack.push(rhs);
+
+            last_precedence = precedence;
+        }
+
+        while expr_stack.len() > 1 {
+            let right = expr_stack.pop().unwrap();
+            let op = op_stack.pop().unwrap();
+            let left = expr_stack.pop().unwrap();
+
+            let span = left.span().merge(right.span());
+
+            expr_stack.push(Ast::Binary(Binary {
+                left: Box::new(left),
+                op,
+                right: Box::new(right),
+                span,
+            }));
+        }
+
+        Ok(expr_stack.into_iter().next().unwrap())
+    }
+
+    fn parse_operand(&mut self) -> ParseResult<Ast> {
         let expr = self.parse_operand_base()?;
-        self.parse_binary_factor(expr)
-    }
-
-    fn parse_binary_factor(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.require()?;
-
-        match tok.kind {
-            TokenKind::Star | TokenKind::FwSlash | TokenKind::Percent => {
-                self.parse_binary(left, tok)
-            }
-            _ => self.parse_binary_term(left),
-        }
-    }
-
-    fn parse_binary_term(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.require()?;
-
-        match tok.kind {
-            TokenKind::Plus | TokenKind::Minus => self.parse_binary(left, tok),
-            _ => self.parse_binary_bitshift(left),
-        }
-    }
-
-    fn parse_binary_bitshift(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.require()?;
-
-        match tok.kind {
-            TokenKind::LtLt | TokenKind::GtGt => self.parse_binary(left, tok),
-            _ => self.parse_binary_bitand(left),
-        }
-    }
-
-    fn parse_binary_bitand(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.require()?;
-
-        match tok.kind {
-            TokenKind::Amp => self.parse_binary(left, tok),
-            _ => self.parse_binary_bitxor(left),
-        }
-    }
-
-    fn parse_binary_bitxor(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.require()?;
-
-        match tok.kind {
-            TokenKind::Caret => self.parse_binary(left, tok),
-            _ => self.parse_binary_bitor(left),
-        }
-    }
-
-    fn parse_binary_bitor(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.require()?;
-
-        match tok.kind {
-            TokenKind::Pipe => self.parse_binary(left, tok),
-            _ => self.parse_cmp_eq(left),
-        }
-    }
-
-    fn parse_cmp_eq(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.require()?;
-
-        match tok.kind {
-            TokenKind::EqEq | TokenKind::BangEq => self.parse_binary(left, tok),
-            _ => self.parse_cmp_ord(left),
-        }
-    }
-
-    fn parse_cmp_ord(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.require()?;
-
-        match tok.kind {
-            TokenKind::Lt | TokenKind::LtEq | TokenKind::Gt | TokenKind::GtEq => {
-                self.parse_binary(left, tok)
-            }
-            _ => self.parse_and(left),
-        }
-    }
-
-    fn parse_and(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.require()?;
-
-        match tok.kind {
-            TokenKind::AmpAmp => self.parse_binary(left, tok),
-            _ => self.parse_or(left),
-        }
-    }
-
-    fn parse_or(&mut self, left: Ast) -> ParseResult<Ast> {
-        let tok = self.require()?;
-
-        match tok.kind {
-            TokenKind::PipePipe => self.parse_binary(left, tok),
-            _ => self.parse_operand_base(),
-        }
-    }
-
-    fn parse_binary(&mut self, left: Ast, tok: Token) -> ParseResult<Ast> {
-        let right = self.parse_expr()?;
-        let span = left.span().merge(right.span());
-
-        Ok(Ast::Binary(Binary {
-            left: Box::new(left),
-            right: Box::new(right),
-            op: BinaryOp::try_from(tok.kind).expect("to be a binary op"),
-            span,
-        }))
+        self.parse_operand_postfix(expr)
     }
 
     fn parse_return(&mut self) -> ParseResult<Return> {
@@ -253,17 +214,21 @@ impl<'a> Parser<'a> {
             }
         };
 
-        self.parse_postfix(expr)
+        Ok(expr)
     }
 
-    fn parse_postfix(&mut self, expr: Ast) -> ParseResult<Ast> {
+    fn parse_operand_postfix(&mut self, expr: Ast) -> ParseResult<Ast> {
         if self.is_and_same_line(TokenKind::OpenParen, expr.span()) {
-            let close_paren = self.eat(TokenKind::CloseParen)?;
-            let span = expr.span().merge(close_paren.span);
-            Ok(Ast::Call(Call { callee: Box::new(expr), span }))
+            self.parse_call(expr)
         } else {
-            self.parse_binary_factor(expr)
+            Ok(expr)
         }
+    }
+
+    fn parse_call(&mut self, expr: Ast) -> ParseResult<Ast> {
+        let close_paren = self.eat(TokenKind::CloseParen)?;
+        let span = expr.span().merge(close_paren.span);
+        Ok(Ast::Call(Call { callee: Box::new(expr), span }))
     }
 
     fn parse_list<T>(
@@ -359,7 +324,7 @@ impl<'a> Parser<'a> {
 
     #[inline]
     fn eof(&self) -> bool {
-        self.pos == self.tokens.len() - 1
+        self.pos == self.tokens.len()
     }
 
     fn require_kind(tok: Token, expected: TokenKind) -> ParseResult<Token> {
