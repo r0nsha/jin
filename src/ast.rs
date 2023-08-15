@@ -1,6 +1,7 @@
 mod pretty_print;
 pub mod token;
 
+use std::fmt::{self, Display};
 use std::io;
 
 use ustr::Ustr;
@@ -69,6 +70,7 @@ impl Module {
 pub enum Ast {
     Block(Block),
     Call(Call),
+    Binary(Binary),
     Name(Name),
     Lit(Lit),
 }
@@ -78,6 +80,7 @@ impl Spanned for Ast {
         match self {
             Self::Block(x) => x.span,
             Self::Call(x) => x.span,
+            Self::Binary(x) => x.span,
             Self::Name(x) => x.span,
             Self::Lit(x) => x.span,
         }
@@ -125,6 +128,65 @@ pub struct Return {
 pub struct Call {
     pub callee: Box<Ast>,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Binary {
+    pub left: Box<Ast>,
+    pub right: Box<Ast>,
+    pub op: BinaryOp,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum BinaryOp {
+    Add,
+    Sub,
+    Mul,
+    Mod,
+    Shl,
+    Shr,
+    BitAnd,
+    BitOr,
+    BitXor,
+    Eq,
+    NotEq,
+    Less,
+    LessEq,
+    Greater,
+    GreaterEq,
+    And,
+    Or,
+}
+
+impl BinaryOp {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Add => "+",
+            Self::Sub => "-",
+            Self::Mul => "*",
+            Self::Mod => "%",
+            Self::Shl => "<<",
+            Self::Shr => ">>",
+            Self::BitAnd => "&",
+            Self::BitOr => "|",
+            Self::BitXor => "^",
+            Self::Eq => "==",
+            Self::NotEq => "!=",
+            Self::Less => "<",
+            Self::LessEq => "<=",
+            Self::Greater => ">",
+            Self::GreaterEq => ">=",
+            Self::And => "&&",
+            Self::Or => "||",
+        }
+    }
+}
+
+impl fmt::Display for BinaryOp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
 }
 
 #[derive(Debug, Clone)]

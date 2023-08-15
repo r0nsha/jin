@@ -79,6 +79,9 @@ impl<'db> Lower<'db> {
                 span: call.span,
                 ty: TyId::null(),
             }),
+            Ast::Binary(bin) => {
+                todo!()
+            }
             Ast::Name(name) => {
                 Node::Name(Name { id: None, name: name.name, span: name.span, ty: TyId::null() })
             }
