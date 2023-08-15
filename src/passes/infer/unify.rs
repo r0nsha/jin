@@ -11,7 +11,6 @@ use super::{constraint::Constraint, InferCx};
 
 impl<'db> InferCx<'db> {
     pub fn unification(&mut self) -> Result<(), InferError> {
-        // PERF: can I remove this clone?
         let constraints = self.constraints.clone();
 
         for constraint in constraints.iter() {
