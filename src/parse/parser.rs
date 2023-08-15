@@ -39,7 +39,7 @@ impl<'a> Parser<'a> {
     fn parse(mut self, source_id: SourceId, name: QualifiedName, is_main: bool) -> ParseResult<Module> {
         let mut module = Module::new(source_id, name, is_main);
 
-        while self.pos < self.tokens.len() - 1 {
+        while self.has_tokens() {
             module.top_levels.push(self.parse_top_level()?);
         }
 
@@ -103,43 +103,39 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_expr(&mut self) -> ParseResult<Ast> {
+        let expr = self.parse_expr()?;
+        self.parse_call(expr)
+    }
+
+    fn parse_value(&mut self) -> ParseResult<Ast> {
         let tok = self.require()?;
 
-        let expr = match tok.kind {
+        match tok.kind {
             TokenKind::OpenParen => {
                 let end = self.eat(TokenKind::CloseParen)?.span;
-
-                Ast::Lit(Lit { kind: LitKind::Unit, span: tok.span.merge(end) })
+                Ok(Ast::Lit(Lit { kind: LitKind::Unit, span: tok.span.merge(end) }))
             }
             TokenKind::OpenCurly => {
                 let blk = self.parse_block()?;
-                Ast::Block(blk)
+                Ok(Ast::Block(blk))
             }
-            TokenKind::Ident(ident) => Ast::Name(Name { name: ident, span: tok.span }),
-            TokenKind::Int(value) => Ast::Lit(Lit { kind: LitKind::Int(value), span: tok.span }),
-            _ => {
-                return Err(ParseError::UnexpectedToken {
-                    expected: "an expression".to_string(),
-                    actual: tok.kind,
-                    span: tok.span,
-                })
-            }
-        };
-
-        self.parse_postfix(expr)
+            TokenKind::Ident(ident) => Ok(Ast::Name(Name { name: ident, span: tok.span })),
+            TokenKind::Int(value) => Ok(Ast::Lit(Lit { kind: LitKind::Int(value), span: tok.span })),
+            _ => Err(ParseError::UnexpectedToken {
+                expected: "an expression".to_string(),
+                actual: tok.kind,
+                span: tok.span,
+            }),
+        }
     }
 
-    fn parse_postfix(&mut self, expr: Ast) -> ParseResult<Ast> {
-        match self.token() {
-            Some(tok) => match &tok.kind {
-                TokenKind::OpenParen if self.are_on_same_line(expr.span(), tok.span) => {
-                    self.next();
-                    let call = self.parse_call(expr)?;
-                    Ok(Ast::Call(call))
-                }
-                _ => Ok(expr),
-            },
-            None => Ok(expr),
+    fn parse_call(&mut self, expr: Ast) -> ParseResult<Ast> {
+        if self.is_same_line(TokenKind::OpenParen, expr.span()) {
+            let close_paren = self.eat(TokenKind::CloseParen)?;
+            let span = expr.span().merge(close_paren.span);
+            Ok(Ast::Call(Call { callee: Box::new(expr), span }))
+        } else {
+            self.parse_value()
         }
     }
 
@@ -149,14 +145,6 @@ impl<'a> Parser<'a> {
         let span = start.merge(expr.span());
 
         Ok(Return { expr: Some(Box::new(expr)), span })
-    }
-
-    fn parse_call(&mut self, callee: Ast) -> ParseResult<Call> {
-        let close_paren = self.eat(TokenKind::CloseParen)?;
-
-        let span = callee.span().merge(close_paren.span);
-
-        Ok(Call { callee: Box::new(callee), span })
     }
 
     fn parse_list<T>(
@@ -187,13 +175,6 @@ impl<'a> Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    fn are_on_same_line(&self, s1: Span, s2: Span) -> bool {
-        let l1 = self.source.line_index(self.source.id(), s1.end() as usize).unwrap();
-        let l2 = self.source.line_index(self.source.id(), s2.start() as usize).unwrap();
-
-        l1 == l2
-    }
-
     fn eat(&mut self, expected: TokenKind) -> ParseResult<Token> {
         let tok = self.require()?;
         Self::require_kind(tok, expected)
@@ -209,13 +190,28 @@ impl<'a> Parser<'a> {
     }
 
     fn is(&mut self, expected: TokenKind) -> bool {
+        self.is_predicate(|_, tok| tok.kind_is(expected))
+    }
+
+    fn is_same_line(&mut self, expected: TokenKind, span: Span) -> bool {
+        self.is_predicate(|this, tok| tok.kind_is(expected) && this.are_on_same_line(tok.span, span))
+    }
+
+    fn is_predicate(&mut self, mut f: impl FnMut(&mut Self, Token) -> bool) -> bool {
         match self.token() {
-            Some(tok) if tok.kind_is(expected) => {
+            Some(tok) if f(self, tok) => {
                 self.next();
                 true
             }
             _ => false,
         }
+    }
+
+    fn are_on_same_line(&self, s1: Span, s2: Span) -> bool {
+        let l1 = self.source.line_index(self.source.id(), s1.end() as usize).unwrap();
+        let l2 = self.source.line_index(self.source.id(), s2.start() as usize).unwrap();
+
+        l1 == l2
     }
 
     #[allow(unused)]
@@ -242,6 +238,11 @@ impl<'a> Parser<'a> {
     #[inline]
     fn next(&mut self) {
         self.pos += 1;
+    }
+
+    #[inline]
+    fn has_tokens(&self) -> bool {
+        self.pos < self.tokens.len() - 1
     }
 
     fn require_kind(tok: Token, expected: TokenKind) -> ParseResult<Token> {
