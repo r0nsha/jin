@@ -109,6 +109,14 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_return(&mut self) -> ParseResult<Return> {
+        let start = self.last_span();
+        let expr = self.parse_expr()?;
+        let span = start.merge(expr.span());
+
+        Ok(Return { expr: Some(Box::new(expr)), span })
+    }
+
     fn parse_expr(&mut self) -> ParseResult<Ast> {
         let mut expr_stack: Vec<Ast> = vec![];
         let mut op_stack: Vec<BinaryOp> = vec![];
@@ -196,13 +204,111 @@ impl<'a> Parser<'a> {
         self.parse_operand_postfix(expr)
     }
 
-    fn parse_return(&mut self) -> ParseResult<Return> {
-        let start = self.last_span();
-        let expr = self.parse_expr()?;
-        let span = start.merge(expr.span());
+    // fn parse_binary_factor(&mut self, left: Ast) -> ParseResult<Ast> {
+    //     let tok = self.require()?;
+    //
+    //     match tok.kind {
+    //         TokenKind::Star | TokenKind::FwSlash | TokenKind::Percent => {
+    //             self.parse_binary(left, tok)
+    //         }
+    //         _ => self.parse_binary_term(left),
+    //     }
+    // }
+    //
+    // fn parse_binary_term(&mut self, left: Ast) -> ParseResult<Ast> {
+    //     let tok = self.require()?;
+    //
+    //     match tok.kind {
+    //         TokenKind::Plus | TokenKind::Minus => self.parse_binary(left, tok),
+    //         _ => self.parse_binary_bitshift(left),
+    //     }
+    // }
+    //
+    // fn parse_binary_bitshift(&mut self, left: Ast) -> ParseResult<Ast> {
+    //     let tok = self.require()?;
+    //
+    //     match tok.kind {
+    //         TokenKind::LtLt | TokenKind::GtGt => self.parse_binary(left, tok),
+    //         _ => self.parse_binary_bitand(left),
+    //     }
+    // }
+    //
+    // fn parse_binary_bitand(&mut self, left: Ast) -> ParseResult<Ast> {
+    //     let tok = self.require()?;
+    //
+    //     match tok.kind {
+    //         TokenKind::Amp => self.parse_binary(left, tok),
+    //         _ => self.parse_binary_bitxor(left),
+    //     }
+    // }
+    //
+    // fn parse_binary_bitxor(&mut self, left: Ast) -> ParseResult<Ast> {
+    //     let tok = self.require()?;
+    //
+    //     match tok.kind {
+    //         TokenKind::Caret => self.parse_binary(left, tok),
+    //         _ => self.parse_binary_bitor(left),
+    //     }
+    // }
+    //
+    // fn parse_binary_bitor(&mut self, left: Ast) -> ParseResult<Ast> {
+    //     let tok = self.require()?;
+    //
+    //     match tok.kind {
+    //         TokenKind::Pipe => self.parse_binary(left, tok),
+    //         _ => self.parse_cmp_eq(left),
+    //     }
+    // }
+    //
+    // fn parse_cmp_eq(&mut self, left: Ast) -> ParseResult<Ast> {
+    //     let tok = self.require()?;
+    //
+    //     match tok.kind {
+    //         TokenKind::EqEq | TokenKind::BangEq => self.parse_binary(left, tok),
+    //         _ => self.parse_cmp_ord(left),
+    //     }
+    // }
+    //
+    // fn parse_cmp_ord(&mut self, left: Ast) -> ParseResult<Ast> {
+    //     let tok = self.require()?;
+    //
+    //     match tok.kind {
+    //         TokenKind::Lt | TokenKind::LtEq | TokenKind::Gt | TokenKind::GtEq => {
+    //             self.parse_binary(left, tok)
+    //         }
+    //         _ => self.parse_and(left),
+    //     }
+    // }
+    //
+    // fn parse_and(&mut self, left: Ast) -> ParseResult<Ast> {
+    //     let tok = self.require()?;
+    //
+    //     match tok.kind {
+    //         TokenKind::AmpAmp => self.parse_binary(left, tok),
+    //         _ => self.parse_or(left),
+    //     }
+    // }
+    //
+    // fn parse_or(&mut self, left: Ast) -> ParseResult<Ast> {
+    //     let tok = self.require()?;
+    //
+    //     match tok.kind {
+    //         TokenKind::PipePipe => self.parse_binary(left, tok),
+    //         _ => self.parse_operand_base(),
+    //     }
+    // }
 
-        Ok(Return { expr: Some(Box::new(expr)), span })
-    }
+    // fn parse_binary(&mut self, left: Ast, tok: Token) -> ParseResult<Ast> {
+    //     let right = self.parse_expr()?;
+    //     let span = left.span().merge(right.span());
+    //
+    //     Ok(Ast::Binary(Binary {
+    //         left: Box::new(left),
+    //         right: Box::new(right),
+    //         op: BinaryOp::try_from(tok.kind).expect("to be a binary op"),
+    //         span,
+    //     }))
+    // }
 
     fn parse_operand_base(&mut self) -> ParseResult<Ast> {
         let tok = self.eat_any()?;
