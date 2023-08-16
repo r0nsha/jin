@@ -3,4 +3,4 @@ fn main() = {
 	return ()
 }
 
-fn answer(x) = 42
+fn answer() = 41 + 1
