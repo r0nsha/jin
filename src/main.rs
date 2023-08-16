@@ -143,7 +143,7 @@ fn build_inner(db: &mut Database) {
     codegen(db, &mir);
 }
 
-fn codegen(db: &mut Database, mir: &Mir) {
+fn codegen(db: &Database, mir: &Mir) {
     let print_times = db.build_options().print_times;
 
     let out_dir = Path::new("out");
