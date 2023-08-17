@@ -1,6 +1,5 @@
 use std::collections::HashSet;
 
-use crate::ast::BinaryOp;
 use crate::mir::Binary;
 use crate::{db::DefinitionId, span::Span};
 
@@ -117,17 +116,9 @@ impl FunctionBuilder {
         }));
     }
 
-    pub fn build_binary_op(
-        &mut self,
-        register: RegisterId,
-        op: BinaryOp,
-        left: Value,
-        right: Value,
-        span: Span,
-    ) {
-        self.current_block_mut().add_instruction(Instruction::Binary(Binary {
+    pub fn build_iadd(&mut self, register: RegisterId, left: Value, right: Value, span: Span) {
+        self.current_block_mut().add_instruction(Instruction::IAdd(Binary {
             register,
-            op,
             left,
             right,
             span,
