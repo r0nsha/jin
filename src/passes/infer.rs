@@ -11,7 +11,7 @@ use crate::ty::FunctionTy;
 use crate::{
     db::Database,
     hir::{
-        Block, Call, Definition, DefinitionKind, Function, Hir, Lit, LitKind, Module, Name, Node,
+        Block, Call, Definition, DefinitionKind, Expr, Function, Hir, Lit, LitKind, Module, Name,
         Return,
     },
     ty::Ty,
@@ -79,15 +79,16 @@ trait Infer<'db> {
     fn infer(&mut self, cx: &mut InferCx<'db>, env: &mut TypeEnv);
 }
 
-impl Infer<'_> for Node {
+impl Infer<'_> for Expr {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         match self {
-            Self::Function(x) => x.infer(cx, env),
-            Self::Block(x) => x.infer(cx, env),
-            Self::Return(x) => x.infer(cx, env),
-            Self::Call(x) => x.infer(cx, env),
-            Self::Name(x) => x.infer(cx, env),
-            Self::Lit(x) => x.infer(cx, env),
+            Self::Function(expr) => expr.infer(cx, env),
+            Self::Block(expr) => expr.infer(cx, env),
+            Self::Return(expr) => expr.infer(cx, env),
+            Self::Call(expr) => expr.infer(cx, env),
+            Self::Binary(expr) => todo!(),
+            Self::Name(expr) => expr.infer(cx, env),
+            Self::Lit(expr) => expr.infer(cx, env),
         }
     }
 }
@@ -131,7 +132,7 @@ impl Infer<'_> for Block {
             expr.infer(cx, env);
         }
 
-        self.ty = self.exprs.last().map_or_else(|| cx.db.alloc_ty(Ty::Unit(self.span)), Node::ty);
+        self.ty = self.exprs.last().map_or_else(|| cx.db.alloc_ty(Ty::Unit(self.span)), Expr::ty);
     }
 }
 

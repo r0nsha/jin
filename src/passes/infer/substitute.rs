@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::ty::{FunctionTy, InferTy};
 use crate::{
     db::TyId,
-    hir::{Block, Call, Definition, DefinitionKind, Function, Module, Node, Return},
+    hir::{Block, Call, Definition, DefinitionKind, Expr, Function, Module, Return},
     ty::{Ty, TyVar},
 };
 
@@ -70,13 +70,14 @@ trait Substitute<'db> {
     fn substitute(&mut self, cx: &mut InferCx<'db>, unbound_vars: &mut HashSet<TyVar>);
 }
 
-impl Substitute<'_> for Node {
+impl Substitute<'_> for Expr {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         match self {
-            Self::Function(x) => x.substitute(cx, unbound_vars),
-            Self::Block(x) => x.substitute(cx, unbound_vars),
-            Self::Return(x) => x.substitute(cx, unbound_vars),
-            Self::Call(x) => x.substitute(cx, unbound_vars),
+            Self::Function(expr) => expr.substitute(cx, unbound_vars),
+            Self::Block(expr) => expr.substitute(cx, unbound_vars),
+            Self::Return(expr) => expr.substitute(cx, unbound_vars),
+            Self::Call(expr) => expr.substitute(cx, unbound_vars),
+            Self::Binary(expr) => todo!(),
             Self::Name(_) | Self::Lit(_) => (),
         }
 

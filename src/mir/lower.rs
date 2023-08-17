@@ -59,25 +59,26 @@ impl<'db> LowerCx<'db> {
         let mut reg: Option<Value> = None;
 
         for expr in &blk.exprs {
-            reg = Some(self.lower_node(expr));
+            reg = Some(self.lower_expr(expr));
         }
 
         reg.unwrap_or_else(|| self.create_unit_register_with_ty(blk.ty, blk.span))
     }
 
-    fn lower_node(&mut self, node: &hir::Node) -> Value {
-        match node {
-            hir::Node::Function(_) => todo!("function node"),
-            hir::Node::Block(blk) => self.lower_block(blk),
-            hir::Node::Return(ret) => self.lower_return(ret),
-            hir::Node::Call(ret) => self.lower_call(ret),
-            hir::Node::Name(ret) => self.lower_name(ret),
-            hir::Node::Lit(lit) => self.lower_lit(lit),
+    fn lower_expr(&mut self, expr: &hir::Expr) -> Value {
+        match expr {
+            hir::Expr::Function(_) => todo!("function expr"),
+            hir::Expr::Block(blk) => self.lower_block(blk),
+            hir::Expr::Return(ret) => self.lower_return(ret),
+            hir::Expr::Call(ret) => self.lower_call(ret),
+            hir::Expr::Binary(bin) => todo!(),
+            hir::Expr::Name(ret) => self.lower_name(ret),
+            hir::Expr::Lit(lit) => self.lower_lit(lit),
         }
     }
 
     fn lower_call(&mut self, call: &hir::Call) -> Value {
-        let value = self.lower_node(&call.callee);
+        let value = self.lower_expr(&call.callee);
         let reg = self.builder.create_register(call.ty);
         self.builder.build_call(reg, value, call.span);
         reg.into()
@@ -85,7 +86,7 @@ impl<'db> LowerCx<'db> {
 
     fn lower_return(&mut self, ret: &hir::Return) -> Value {
         if !self.builder.current_block().is_terminating() {
-            let reg = self.lower_node(&ret.expr);
+            let reg = self.lower_expr(&ret.expr);
             self.builder.build_return(reg, ret.span);
         }
 

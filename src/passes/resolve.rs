@@ -6,7 +6,7 @@ use crate::db::{DefinitionInfoKind, FunctionInfo};
 use crate::{
     db::{Database, DefinitionId, DefinitionInfo, ModuleId, ScopeLevel, TyId, Vis},
     diagnostics::{Diagnostic, Label},
-    hir::{Block, Call, Definition, DefinitionKind, Function, Hir, Module, Name, Node, Return},
+    hir::{Block, Call, Definition, DefinitionKind, Expr, Function, Hir, Module, Name, Return},
     span::Span,
 };
 
@@ -107,14 +107,15 @@ impl Resolve<'_> for Definition {
     }
 }
 
-impl Resolve<'_> for Node {
+impl Resolve<'_> for Expr {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         match self {
-            Self::Function(x) => x.resolve(cx, env),
-            Self::Block(x) => x.resolve(cx, env),
-            Self::Return(x) => x.resolve(cx, env),
-            Self::Call(x) => x.resolve(cx, env),
-            Self::Name(x) => x.resolve(cx, env),
+            Self::Function(expr) => expr.resolve(cx, env),
+            Self::Block(expr) => expr.resolve(cx, env),
+            Self::Return(expr) => expr.resolve(cx, env),
+            Self::Call(expr) => expr.resolve(cx, env),
+            Self::Binary(expr) => todo!(),
+            Self::Name(expr) => expr.resolve(cx, env),
             Self::Lit(_) => (),
         }
     }

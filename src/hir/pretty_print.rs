@@ -3,7 +3,7 @@ use std::io;
 use crate::db::Database;
 
 use super::{
-    Block, Call, Definition, DefinitionKind, Function, Lit, LitKind, Module, Name, Node, Return,
+    Block, Call, Definition, DefinitionKind, Expr, Function, Lit, LitKind, Module, Name, Return,
 };
 
 pub(super) fn print_module(db: &Database, module: &Module) -> io::Result<()> {
@@ -27,15 +27,16 @@ trait PrettyPrint {
     fn pretty_print(&self, cx: &mut Cx);
 }
 
-impl PrettyPrint for Node {
+impl PrettyPrint for Expr {
     fn pretty_print(&self, cx: &mut Cx) {
         match self {
-            Self::Function(x) => x.pretty_print(cx),
-            Self::Block(x) => x.pretty_print(cx),
-            Self::Return(x) => x.pretty_print(cx),
-            Self::Call(x) => x.pretty_print(cx),
-            Self::Name(x) => x.pretty_print(cx),
-            Self::Lit(x) => x.pretty_print(cx),
+            Self::Function(expr) => expr.pretty_print(cx),
+            Self::Block(expr) => expr.pretty_print(cx),
+            Self::Return(expr) => expr.pretty_print(cx),
+            Self::Call(expr) => expr.pretty_print(cx),
+            Self::Binary(expr) => todo!(),
+            Self::Name(expr) => expr.pretty_print(cx),
+            Self::Lit(expr) => expr.pretty_print(cx),
         }
     }
 }

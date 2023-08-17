@@ -8,6 +8,7 @@ use indexmap::IndexMap;
 pub use lower::lower;
 use ustr::Ustr;
 
+use crate::ast::BinaryOp;
 use crate::{
     db::{Database, DefinitionId, ModuleId, TyId},
     span::{Span, Spanned},
@@ -41,36 +42,53 @@ pub struct Module {
 }
 
 #[derive(Debug, Clone, EnumAsInner)]
-pub enum Node {
+pub enum Expr {
     #[allow(unused)]
     Function(Function),
     Block(Block),
     Return(Return),
     Call(Call),
+    Binary(Binary),
     Name(Name),
     Lit(Lit),
 }
 
-impl Node {
+macro_rules! dispatch_on_expr {
+    ($node: expr, $dispatch: expr) => {
+        match $node {
+            crate::hir::Expr::Function(expr) => $dispatch,
+            crate::hir::Expr::Block(expr) => $dispatch,
+            crate::hir::Expr::Return(expr) => $dispatch,
+            crate::hir::Expr::Call(expr) => $dispatch,
+            crate::hir::Expr::Binary(expr) => $dispatch,
+            crate::hir::Expr::Name(expr) => $dispatch,
+            crate::hir::Expr::Lit(expr) => $dispatch,
+        }
+    };
+}
+
+impl Expr {
     pub fn ty(&self) -> TyId {
         match self {
             Self::Function(x) => x.ty,
             Self::Block(x) => x.ty,
             Self::Return(x) => x.ty,
             Self::Call(x) => x.ty,
+            Self::Binary(x) => x.ty,
             Self::Name(x) => x.ty,
             Self::Lit(x) => x.ty,
         }
     }
 }
 
-impl Spanned for Node {
+impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
             Self::Function(x) => x.span,
             Self::Block(x) => x.span,
             Self::Return(x) => x.span,
             Self::Call(x) => x.span,
+            Self::Binary(x) => x.span,
             Self::Name(x) => x.span,
             Self::Lit(x) => x.span,
         }
@@ -82,6 +100,7 @@ impl Spanned for Node {
             Self::Block(x) => &mut x.span,
             Self::Return(x) => &mut x.span,
             Self::Call(x) => &mut x.span,
+            Self::Binary(x) => &mut x.span,
             Self::Name(x) => &mut x.span,
             Self::Lit(x) => &mut x.span,
         }
@@ -130,21 +149,30 @@ pub struct FunctionParam {
 
 #[derive(Debug, Clone)]
 pub struct Block {
-    pub exprs: Vec<Node>,
+    pub exprs: Vec<Expr>,
     pub span: Span,
     pub ty: TyId,
 }
 
 #[derive(Debug, Clone)]
 pub struct Return {
-    pub expr: Box<Node>,
+    pub expr: Box<Expr>,
     pub span: Span,
     pub ty: TyId,
 }
 
 #[derive(Debug, Clone)]
 pub struct Call {
-    pub callee: Box<Node>,
+    pub callee: Box<Expr>,
+    pub span: Span,
+    pub ty: TyId,
+}
+
+#[derive(Debug, Clone)]
+pub struct Binary {
+    pub left: Box<Expr>,
+    pub right: Box<Expr>,
+    pub op: BinaryOp,
     pub span: Span,
     pub ty: TyId,
 }
