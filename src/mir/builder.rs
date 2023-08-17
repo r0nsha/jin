@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 
+use crate::ast::BinaryOp;
+use crate::mir::Binary;
 use crate::{db::DefinitionId, span::Span};
 
 use super::{
@@ -111,6 +113,23 @@ impl FunctionBuilder {
         self.current_block_mut().add_instruction(Instruction::Call(Call {
             register,
             callee,
+            span,
+        }));
+    }
+
+    pub fn build_binary_op(
+        &mut self,
+        register: RegisterId,
+        op: BinaryOp,
+        left: Value,
+        right: Value,
+        span: Span,
+    ) {
+        self.current_block_mut().add_instruction(Instruction::Binary(Binary {
+            register,
+            op,
+            left,
+            right,
             span,
         }));
     }

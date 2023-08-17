@@ -71,7 +71,7 @@ impl<'db> LowerCx<'db> {
             hir::Expr::Block(blk) => self.lower_block(blk),
             hir::Expr::Return(ret) => self.lower_return(ret),
             hir::Expr::Call(ret) => self.lower_call(ret),
-            hir::Expr::Binary(bin) => todo!(),
+            hir::Expr::Binary(bin) => self.lower_binary(bin),
             hir::Expr::Name(ret) => self.lower_name(ret),
             hir::Expr::Lit(lit) => self.lower_lit(lit),
         }
@@ -81,6 +81,14 @@ impl<'db> LowerCx<'db> {
         let value = self.lower_expr(&call.callee);
         let reg = self.builder.create_register(call.ty);
         self.builder.build_call(reg, value, call.span);
+        reg.into()
+    }
+
+    fn lower_binary(&mut self, bin: &hir::Binary) -> Value {
+        let left = self.lower_expr(&bin.left);
+        let right = self.lower_expr(&bin.right);
+        let reg = self.builder.create_register(bin.ty);
+        self.builder.build_binary_op(reg, bin.op, left, right, bin.span);
         reg.into()
     }
 

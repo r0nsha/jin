@@ -5,6 +5,7 @@ mod pretty_print;
 pub use lower::lower;
 use ustr::{ustr, Ustr};
 
+use crate::ast::BinaryOp;
 use crate::db::DefinitionId;
 use crate::{
     common::{new_key_type, IndexVec},
@@ -139,6 +140,7 @@ impl Block {
 pub enum Instruction {
     Return(Return),
     Call(Call),
+    Binary(Binary),
     IntLit(IntLit),
     UnitLit(UnitLit),
 }
@@ -154,6 +156,16 @@ pub struct Return {
 pub struct Call {
     pub register: RegisterId,
     pub callee: Value,
+    #[allow(unused)]
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Binary {
+    pub register: RegisterId,
+    pub op: BinaryOp,
+    pub left: Value,
+    pub right: Value,
     #[allow(unused)]
     pub span: Span,
 }
