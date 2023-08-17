@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use ustr::{Ustr, UstrMap};
 
 use crate::db::{DefinitionInfoKind, FunctionInfo};
+use crate::hir::Binary;
 use crate::{
     db::{Database, DefinitionId, DefinitionInfo, ModuleId, ScopeLevel, TyId, Vis},
     diagnostics::{Diagnostic, Label},
@@ -110,12 +111,12 @@ impl Resolve<'_> for Definition {
 impl Resolve<'_> for Expr {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         match self {
-            Self::Function(expr) => expr.resolve(cx, env),
-            Self::Block(expr) => expr.resolve(cx, env),
-            Self::Return(expr) => expr.resolve(cx, env),
-            Self::Call(expr) => expr.resolve(cx, env),
-            Self::Binary(expr) => todo!(),
-            Self::Name(expr) => expr.resolve(cx, env),
+            Self::Function(inner) => inner.resolve(cx, env),
+            Self::Block(inner) => inner.resolve(cx, env),
+            Self::Return(inner) => inner.resolve(cx, env),
+            Self::Call(inner) => inner.resolve(cx, env),
+            Self::Binary(inner) => inner.resolve(cx, env),
+            Self::Name(inner) => inner.resolve(cx, env),
             Self::Lit(_) => (),
         }
     }
@@ -154,6 +155,13 @@ impl Resolve<'_> for Return {
 impl Resolve<'_> for Call {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         self.callee.resolve(cx, env);
+    }
+}
+
+impl Resolve<'_> for Binary {
+    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+        self.left.resolve(cx, env);
+        self.right.resolve(cx, env);
     }
 }
 

@@ -53,20 +53,6 @@ pub enum Expr {
     Lit(Lit),
 }
 
-macro_rules! dispatch_on_expr {
-    ($node: expr, $dispatch: expr) => {
-        match $node {
-            crate::hir::Expr::Function(expr) => $dispatch,
-            crate::hir::Expr::Block(expr) => $dispatch,
-            crate::hir::Expr::Return(expr) => $dispatch,
-            crate::hir::Expr::Call(expr) => $dispatch,
-            crate::hir::Expr::Binary(expr) => $dispatch,
-            crate::hir::Expr::Name(expr) => $dispatch,
-            crate::hir::Expr::Lit(expr) => $dispatch,
-        }
-    };
-}
-
 impl Expr {
     pub fn ty(&self) -> TyId {
         match self {

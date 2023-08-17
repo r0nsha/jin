@@ -1,6 +1,7 @@
 use std::io;
 
 use crate::db::Database;
+use crate::hir::Binary;
 
 use super::{
     Block, Call, Definition, DefinitionKind, Expr, Function, Lit, LitKind, Module, Name, Return,
@@ -30,13 +31,13 @@ trait PrettyPrint {
 impl PrettyPrint for Expr {
     fn pretty_print(&self, cx: &mut Cx) {
         match self {
-            Self::Function(expr) => expr.pretty_print(cx),
-            Self::Block(expr) => expr.pretty_print(cx),
-            Self::Return(expr) => expr.pretty_print(cx),
-            Self::Call(expr) => expr.pretty_print(cx),
-            Self::Binary(expr) => todo!(),
-            Self::Name(expr) => expr.pretty_print(cx),
-            Self::Lit(expr) => expr.pretty_print(cx),
+            Self::Function(inner) => inner.pretty_print(cx),
+            Self::Block(inner) => inner.pretty_print(cx),
+            Self::Return(inner) => inner.pretty_print(cx),
+            Self::Call(inner) => inner.pretty_print(cx),
+            Self::Binary(inner) => inner.pretty_print(cx),
+            Self::Name(inner) => inner.pretty_print(cx),
+            Self::Lit(inner) => inner.pretty_print(cx),
         }
     }
 }
@@ -97,6 +98,15 @@ impl PrettyPrint for Call {
     fn pretty_print(&self, cx: &mut Cx) {
         cx.builder.begin_child(format!("call (result: {})", cx.db[self.ty].display(cx.db)));
         self.callee.pretty_print(cx);
+        cx.builder.end_child();
+    }
+}
+
+impl PrettyPrint for Binary {
+    fn pretty_print(&self, cx: &mut Cx) {
+        cx.builder.begin_child(format!("{} (result: {})", self.op, cx.db[self.ty].display(cx.db)));
+        self.left.pretty_print(cx);
+        self.right.pretty_print(cx);
         cx.builder.end_child();
     }
 }

@@ -6,6 +6,7 @@ mod typecx;
 mod unify;
 
 use crate::db::{DefinitionId, TyId};
+use crate::hir::Binary;
 use crate::passes::infer::typecx::TypeCx;
 use crate::ty::FunctionTy;
 use crate::{
@@ -82,13 +83,13 @@ trait Infer<'db> {
 impl Infer<'_> for Expr {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         match self {
-            Self::Function(expr) => expr.infer(cx, env),
-            Self::Block(expr) => expr.infer(cx, env),
-            Self::Return(expr) => expr.infer(cx, env),
-            Self::Call(expr) => expr.infer(cx, env),
-            Self::Binary(expr) => todo!(),
-            Self::Name(expr) => expr.infer(cx, env),
-            Self::Lit(expr) => expr.infer(cx, env),
+            Self::Function(inner) => inner.infer(cx, env),
+            Self::Block(inner) => inner.infer(cx, env),
+            Self::Return(inner) => inner.infer(cx, env),
+            Self::Call(inner) => inner.infer(cx, env),
+            Self::Binary(inner) => inner.infer(cx, env),
+            Self::Name(inner) => inner.infer(cx, env),
+            Self::Lit(inner) => inner.infer(cx, env),
         }
     }
 }
@@ -161,6 +162,15 @@ impl Infer<'_> for Call {
         cx.constraints.push(Constraint::Eq { expected: expected_ty, actual: self.callee.ty() });
 
         self.ty = cx.db.alloc_ty(result_ty);
+    }
+}
+
+impl Infer<'_> for Binary {
+    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
+        self.left.infer(cx, env);
+        self.right.infer(cx, env);
+        cx.constraints.push(Constraint::Eq { expected: self.left.ty(), actual: self.right.ty() });
+        self.ty = self.left.ty();
     }
 }
 

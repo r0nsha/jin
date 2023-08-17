@@ -3,7 +3,7 @@ mod printer;
 use derive_more::{From, Into};
 use enum_as_inner::EnumAsInner;
 
-use crate::db::Database;
+use crate::db::{Database, TyId};
 use crate::span::Span;
 use crate::ty::printer::TypePrinter;
 
@@ -89,4 +89,13 @@ pub struct FunctionTy {
 pub enum InferTy {
     TyVar(TyVar),
     IntVar(IntVar),
+}
+
+pub trait Typed {
+    fn ty(&self) -> TyId;
+    fn ty_mut(&mut self) -> &mut TyId;
+
+    fn set_ty(&mut self, ty: TyId) {
+        *self.ty_mut() = ty;
+    }
 }
