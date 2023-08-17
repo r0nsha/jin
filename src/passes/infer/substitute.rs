@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use crate::hir::Binary;
 use crate::ty::{FunctionTy, InferTy};
 use crate::{
     db::TyId,
@@ -73,11 +74,11 @@ trait Substitute<'db> {
 impl Substitute<'_> for Expr {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         match self {
-            Self::Function(expr) => expr.substitute(cx, unbound_vars),
-            Self::Block(expr) => expr.substitute(cx, unbound_vars),
-            Self::Return(expr) => expr.substitute(cx, unbound_vars),
-            Self::Call(expr) => expr.substitute(cx, unbound_vars),
-            Self::Binary(expr) => todo!(),
+            Self::Function(inner) => inner.substitute(cx, unbound_vars),
+            Self::Block(inner) => inner.substitute(cx, unbound_vars),
+            Self::Return(inner) => inner.substitute(cx, unbound_vars),
+            Self::Call(inner) => inner.substitute(cx, unbound_vars),
+            Self::Binary(inner) => inner.substitute(cx, unbound_vars),
             Self::Name(_) | Self::Lit(_) => (),
         }
 
@@ -121,6 +122,13 @@ impl Substitute<'_> for Return {
 impl Substitute<'_> for Call {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         self.callee.substitute(cx, unbound_vars);
+    }
+}
+
+impl Substitute<'_> for Binary {
+    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
+        self.left.substitute(cx, unbound_vars);
+        self.right.substitute(cx, unbound_vars);
     }
 }
 
