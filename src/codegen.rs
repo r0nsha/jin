@@ -2,6 +2,7 @@ use std::{io, iter};
 
 use pretty::{Arena, DocAllocator, DocBuilder, Pretty};
 
+use crate::mir::Binary;
 use crate::{
     db::{Database, TyId},
     mir::{Block, Function, Instruction, Mir, RegisterId, Value},
@@ -121,6 +122,7 @@ impl<'db> CodegenCx<'db> {
         &mut self,
         arena: &'db Arena<'db>,
         reg: RegisterId,
+        value: DocBuilder<'db, Arena<'db>, ()>,
     ) -> DocBuilder<'db, Arena<'db>, ()> {
         let ty = self.fun.register(reg).unwrap().ty;
 
@@ -130,6 +132,23 @@ impl<'db> CodegenCx<'db> {
             .append(arena.space())
             .append(arena.text("="))
             .append(arena.space())
+            .append(value)
+    }
+
+    fn codegen_binary(
+        &mut self,
+        arena: &'db Arena<'db>,
+        bin: &Binary,
+        op: &'db str,
+    ) -> DocBuilder<'db, Arena<'db>, ()> {
+        let left = bin.left.codegen(self, arena);
+        let right = bin.right.codegen(self, arena);
+
+        self.local_var(
+            arena,
+            bin.register,
+            left.append(arena.space()).append(arena.text(op)).append(arena.space()).append(right),
+        )
     }
 }
 
@@ -204,10 +223,11 @@ impl<'a, 'db> Codegen<'a, 'db> for Instruction {
                 arena.text("return").append(arena.space()).append(ret.value.codegen(cx, arena))
             }
             Self::Call(call) => call.callee.codegen(cx, arena).append(arena.text("()")),
+            Self::IAdd(bin) => cx.codegen_binary(arena, bin, "+"),
             Self::IntLit(lit) => {
-                cx.local_var(arena, lit.register).append(arena.text(lit.value.to_string()))
+                cx.local_var(arena, lit.register, arena.text(lit.value.to_string()))
             }
-            Self::UnitLit(lit) => cx.local_var(arena, lit.register).append(arena.text(CONST_UNIT)),
+            Self::UnitLit(lit) => cx.local_var(arena, lit.register, arena.text(CONST_UNIT)),
         }
     }
 }
