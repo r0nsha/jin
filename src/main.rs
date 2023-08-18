@@ -15,7 +15,6 @@
 )]
 
 mod ast;
-mod codegen;
 mod common;
 mod db;
 mod diagnostics;
