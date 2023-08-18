@@ -1,4 +1,4 @@
-use super::{builder::FunctionBuilder, DefId, Function, Mir, Span, TyId};
+use super::{builder::FunctionBuilder, DefId, Function, Mir, Span};
 use crate::{
     ast::BinaryOp,
     db::{Database, ScopeLevel},
@@ -124,7 +124,7 @@ impl<'db> LowerCx<'db> {
             value = Some(self.lower_expr(expr));
         }
 
-        value.unwrap_or_else(|| self.create_unit_value_with_ty(blk.ty, blk.span))
+        value.unwrap_or_else(|| self.create_unit_value(blk.span))
     }
 
     fn lower_call(&mut self, call: &hir::Call) -> ValueId {
@@ -236,7 +236,7 @@ impl<'db> LowerCx<'db> {
                 self.builder.build_bool_lit(value, *v, lit.span);
                 value
             }
-            hir::LitKind::Unit => self.create_unit_value_with_ty(lit.ty, lit.span),
+            hir::LitKind::Unit => self.create_unit_value(lit.span),
         }
     }
 
@@ -249,10 +249,6 @@ impl<'db> LowerCx<'db> {
 
     fn create_unit_value(&mut self, span: Span) -> ValueId {
         let ty = self.db.alloc_ty(Ty::Unit(span));
-        self.create_unit_value_with_ty(ty, span)
-    }
-
-    fn create_unit_value_with_ty(&mut self, ty: TyId, span: Span) -> ValueId {
         let value = self.builder.create_value(ty);
         self.builder.build_unit_lit(value, span);
         value

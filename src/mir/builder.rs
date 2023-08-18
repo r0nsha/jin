@@ -19,6 +19,7 @@ impl FunctionBuilder {
     }
 
     #[inline]
+    #[allow(unused)]
     pub fn blocks(&self) -> &[Block] {
         self.f.cfg.blocks.as_slice()
     }
