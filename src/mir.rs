@@ -13,6 +13,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Mir {
+    // TODO: turn into a HashMap
     pub functions: Vec<Function>,
 }
 
