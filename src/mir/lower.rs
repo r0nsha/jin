@@ -1,7 +1,7 @@
 use super::{builder::FunctionBuilder, DefId, Function, Mir, Span};
 use crate::{
     ast::BinaryOp,
-    db::{Database, ScopeLevel},
+    db::Database,
     hir::{self, Hir},
     mir::ValueId,
     span::Spanned,
@@ -63,7 +63,7 @@ impl<'db> LowerFunctionCx<'db> {
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
         match expr {
-            hir::Expr::Def(_) => todo!("local def"),
+            hir::Expr::Def(inner) => self.lower_local_def(inner),
             hir::Expr::If(inner) => self.lower_if(inner),
             hir::Expr::Block(inner) => self.lower_block(inner),
             hir::Expr::Return(inner) => self.lower_return(inner),
@@ -72,6 +72,11 @@ impl<'db> LowerFunctionCx<'db> {
             hir::Expr::Name(inner) => self.lower_name(inner),
             hir::Expr::Lit(inner) => self.lower_lit(inner),
         }
+    }
+
+    fn lower_local_def(&mut self, def: &hir::Def) -> ValueId {
+        lower_def(self.db, self.mir, def);
+        self.builder.build_load_global(def.ty, def.id.expect("to be resolved"), def.span)
     }
 
     fn lower_if(&mut self, if_: &hir::If) -> ValueId {
@@ -202,11 +207,8 @@ impl<'db> LowerFunctionCx<'db> {
     fn lower_name(&mut self, name: &hir::Name) -> ValueId {
         let def = &self.db[name.id.expect("to be resolved")];
 
-        if let ScopeLevel::Global(_) = def.scope_level {
-            self.builder.build_load_global(def.ty, def.id, name.span)
-        } else {
-            todo!("local/nested name")
-        }
+        // TODO: local/nested name
+        self.builder.build_load_global(def.ty, def.id, name.span)
     }
 
     fn lower_lit(&mut self, lit: &hir::Lit) -> ValueId {
