@@ -83,8 +83,8 @@ impl<'db> LowerCx<'db> {
     }
 
     fn lower_binary(&mut self, bin: &hir::Binary) -> Value {
-        let left = self.lower_expr(&bin.left);
-        let right = self.lower_expr(&bin.right);
+        let left = self.lower_expr(&bin.lhs);
+        let right = self.lower_expr(&bin.rhs);
         let reg = self.builder.create_register(bin.ty);
 
         self.builder.build_binary(reg, bin.op, left, right, bin.span);

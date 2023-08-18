@@ -163,10 +163,10 @@ impl Infer<'_> for Call {
 
 impl Infer<'_> for Binary {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
-        self.left.infer(cx, env);
-        self.right.infer(cx, env);
-        cx.constraints.push(Constraint::Eq { expected: self.left.ty(), actual: self.right.ty() });
-        self.ty = self.left.ty();
+        self.lhs.infer(cx, env);
+        self.rhs.infer(cx, env);
+        cx.constraints.push(Constraint::Eq { expected: self.lhs.ty(), actual: self.rhs.ty() });
+        self.ty = self.lhs.ty();
     }
 }
 

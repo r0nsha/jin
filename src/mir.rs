@@ -176,8 +176,8 @@ pub struct Call {
 pub struct Binary {
     pub register: RegisterId,
     pub op: BinaryOp,
-    pub left: Value,
-    pub right: Value,
+    pub lhs: Value,
+    pub rhs: Value,
     #[allow(unused)]
     pub span: Span,
 }

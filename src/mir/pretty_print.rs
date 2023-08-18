@@ -1,7 +1,7 @@
 use pretty::RcDoc;
 
 use super::{Block, Function, Instruction, Mir, RegisterId, TyId, Value};
-use crate::{db::Database, ty::Ty};
+use crate::{ast::BinaryOp, db::Database, ty::Ty};
 
 pub fn print(db: &Database, mir: &Mir) {
     let doc = RcDoc::intersperse(
@@ -60,11 +60,11 @@ impl<'db, 'd> ToDoc<'db, 'd> for Instruction {
                 .append(RcDoc::space())
                 .append(call.callee.to_doc(db, fun)),
             Self::Binary(bin) => register_alloc(db, fun, bin.register)
-                .append(RcDoc::text("iadd"))
+                .append(RcDoc::text(binary_instruction_name(bin.op)))
                 .append(RcDoc::space())
-                .append(bin.left.to_doc(db, fun))
+                .append(bin.lhs.to_doc(db, fun))
                 .append(RcDoc::space())
-                .append(bin.right.to_doc(db, fun)),
+                .append(bin.rhs.to_doc(db, fun)),
             Self::IntLit(lit) => {
                 register_alloc(db, fun, lit.register).append(RcDoc::text(lit.value.to_string()))
             }
@@ -111,4 +111,31 @@ fn register_alloc<'db, 'd>(
         .append(RcDoc::space())
         .append(RcDoc::text("="))
         .append(RcDoc::space())
+}
+
+fn binary_instruction_name(op: BinaryOp) -> String {
+    let prefix = "i";
+
+    let inst = match op {
+        BinaryOp::Add => "add",
+        BinaryOp::Sub => "sub",
+        BinaryOp::Mul => "mul",
+        BinaryOp::Div => "div",
+        BinaryOp::Mod => "mod",
+        BinaryOp::Shl => "shl",
+        BinaryOp::Shr => "shr",
+        BinaryOp::BitAnd => "bitand",
+        BinaryOp::BitOr => "bitor",
+        BinaryOp::BitXor => "bitxor",
+        BinaryOp::Eq => "eq",
+        BinaryOp::Ne => "ne",
+        BinaryOp::Lt => "lt",
+        BinaryOp::Le => "le",
+        BinaryOp::Gt => "gt",
+        BinaryOp::Ge => "ge",
+        BinaryOp::And => "and",
+        BinaryOp::Or => "or",
+    };
+
+    format!("{prefix}{inst}")
 }

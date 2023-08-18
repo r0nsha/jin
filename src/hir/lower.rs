@@ -93,8 +93,8 @@ impl Lower<'_, Expr> for Ast {
                 ty: TyId::null(),
             }),
             Self::Binary(bin) => Expr::Binary(Binary {
-                left: Box::new(bin.left.lower(cx)),
-                right: Box::new(bin.right.lower(cx)),
+                lhs: Box::new(bin.lhs.lower(cx)),
+                rhs: Box::new(bin.rhs.lower(cx)),
                 op: bin.op,
                 span: bin.span,
                 ty: TyId::null(),

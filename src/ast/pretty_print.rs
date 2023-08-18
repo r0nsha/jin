@@ -43,8 +43,8 @@ impl PrettyPrint for Ast {
             }
             Self::Binary(bin) => {
                 cx.builder.begin_child(bin.op.to_string());
-                bin.left.pretty_print(cx);
-                bin.right.pretty_print(cx);
+                bin.lhs.pretty_print(cx);
+                bin.rhs.pretty_print(cx);
                 cx.builder.end_child();
             }
             Self::Lit(lit) => match lit.kind {

@@ -265,8 +265,8 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Binary {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let left = cx.get_value(state, &self.left).into_int_value();
-        let right = cx.get_value(state, &self.right).into_int_value();
+        let left = cx.get_value(state, &self.lhs).into_int_value();
+        let right = cx.get_value(state, &self.rhs).into_int_value();
         let result = cx.builder.build_int_add(left, right, "iadd");
         state.set_register(self.register, result.into());
     }

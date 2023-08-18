@@ -124,8 +124,8 @@ impl Substitute<'_> for Call {
 
 impl Substitute<'_> for Binary {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
-        self.left.substitute(cx, unbound_vars);
-        self.right.substitute(cx, unbound_vars);
+        self.lhs.substitute(cx, unbound_vars);
+        self.rhs.substitute(cx, unbound_vars);
     }
 }
 

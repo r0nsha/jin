@@ -163,8 +163,8 @@ impl Resolve<'_> for Call {
 
 impl Resolve<'_> for Binary {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        self.left.resolve(cx, env);
-        self.right.resolve(cx, env);
+        self.lhs.resolve(cx, env);
+        self.rhs.resolve(cx, env);
     }
 }
 

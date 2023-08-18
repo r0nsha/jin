@@ -125,8 +125,8 @@ impl FunctionBuilder {
         self.current_block_mut().add_instruction(Instruction::Binary(Binary {
             register,
             op,
-            left,
-            right,
+            lhs: left,
+            rhs: right,
             span,
         }));
     }

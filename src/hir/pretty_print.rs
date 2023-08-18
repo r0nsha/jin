@@ -103,8 +103,8 @@ impl PrettyPrint for Call {
 impl PrettyPrint for Binary {
     fn pretty_print(&self, cx: &mut Cx) {
         cx.builder.begin_child(format!("{} (result: {})", self.op, cx.db[self.ty].display(cx.db)));
-        self.left.pretty_print(cx);
-        self.right.pretty_print(cx);
+        self.lhs.pretty_print(cx);
+        self.rhs.pretty_print(cx);
         cx.builder.end_child();
     }
 }

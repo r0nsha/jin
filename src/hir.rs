@@ -156,8 +156,8 @@ pub struct Call {
 
 #[derive(Debug, Clone)]
 pub struct Binary {
-    pub left: Box<Expr>,
-    pub right: Box<Expr>,
+    pub lhs: Box<Expr>,
+    pub rhs: Box<Expr>,
     pub op: BinaryOp,
     pub span: Span,
     pub ty: TyId,
