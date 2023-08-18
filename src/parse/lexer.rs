@@ -127,6 +127,7 @@ impl<'s> Lexer<'s> {
                     "return" => TokenKind::Return,
                     "fn" => TokenKind::Fn,
                     "if" => TokenKind::If,
+                    "else" => TokenKind::Else,
                     "true" => TokenKind::True,
                     "false" => TokenKind::False,
                     str => TokenKind::Ident(ustr(str)),

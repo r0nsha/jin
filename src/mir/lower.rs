@@ -53,6 +53,23 @@ impl<'db> LowerCx<'db> {
         self.builder.finish()
     }
 
+    fn lower_expr(&mut self, expr: &hir::Expr) -> Value {
+        match expr {
+            hir::Expr::Function(_) => todo!("function expr"),
+            hir::Expr::If(inner) => self.lower_if(inner),
+            hir::Expr::Block(inner) => self.lower_block(inner),
+            hir::Expr::Return(inner) => self.lower_return(inner),
+            hir::Expr::Call(inner) => self.lower_call(inner),
+            hir::Expr::Binary(inner) => self.lower_binary(inner),
+            hir::Expr::Name(inner) => self.lower_name(inner),
+            hir::Expr::Lit(inner) => self.lower_lit(inner),
+        }
+    }
+
+    fn lower_if(&mut self, if_: &hir::If) -> Value {
+        todo!()
+    }
+
     fn lower_block(&mut self, blk: &hir::Block) -> Value {
         let mut reg: Option<Value> = None;
 
@@ -61,18 +78,6 @@ impl<'db> LowerCx<'db> {
         }
 
         reg.unwrap_or_else(|| self.create_unit_register_with_ty(blk.ty, blk.span))
-    }
-
-    fn lower_expr(&mut self, expr: &hir::Expr) -> Value {
-        match expr {
-            hir::Expr::Function(_) => todo!("function expr"),
-            hir::Expr::Block(blk) => self.lower_block(blk),
-            hir::Expr::Return(ret) => self.lower_return(ret),
-            hir::Expr::Call(ret) => self.lower_call(ret),
-            hir::Expr::Binary(bin) => self.lower_binary(bin),
-            hir::Expr::Name(ret) => self.lower_name(ret),
-            hir::Expr::Lit(lit) => self.lower_lit(lit),
-        }
     }
 
     fn lower_call(&mut self, call: &hir::Call) -> Value {

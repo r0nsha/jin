@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use super::InferCx;
 use crate::{
     db::TyId,
-    hir::{Binary, Block, Call, Definition, DefinitionKind, Expr, Function, Module, Return},
+    hir::{Binary, Block, Call, Definition, DefinitionKind, Expr, Function, If, Module, Return},
     ty::{FunctionTy, InferTy, Ty, TyVar},
 };
 
@@ -72,6 +72,7 @@ impl Substitute<'_> for Expr {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         match self {
             Self::Function(inner) => inner.substitute(cx, unbound_vars),
+            Self::If(inner) => inner.substitute(cx, unbound_vars),
             Self::Block(inner) => inner.substitute(cx, unbound_vars),
             Self::Return(inner) => inner.substitute(cx, unbound_vars),
             Self::Call(inner) => inner.substitute(cx, unbound_vars),
@@ -99,6 +100,14 @@ impl Substitute<'_> for Function {
         self.body.substitute(cx, unbound_vars);
         cx.substitute_type_id(self.ty, unbound_vars);
         cx.substitute_type_id(cx.db[self.id.expect("to be resolved")].ty, unbound_vars);
+    }
+}
+
+impl Substitute<'_> for If {
+    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
+        self.cond.substitute(cx, unbound_vars);
+        self.then.substitute(cx, unbound_vars);
+        self.otherwise.substitute(cx, unbound_vars);
     }
 }
 

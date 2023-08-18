@@ -24,6 +24,25 @@ trait PrettyPrint {
 impl PrettyPrint for Ast {
     fn pretty_print(&self, cx: &mut Cx) {
         match self {
+            Self::If(if_) => {
+                cx.builder.begin_child("if".to_string());
+
+                cx.builder.begin_child("cond".to_string());
+                if_.cond.pretty_print(cx);
+                cx.builder.end_child();
+
+                cx.builder.begin_child("then".to_string());
+                if_.then.pretty_print(cx);
+                cx.builder.end_child();
+
+                if let Some(otherwise) = &if_.otherwise {
+                    cx.builder.begin_child("else".to_string());
+                    otherwise.pretty_print(cx);
+                    cx.builder.end_child();
+                }
+
+                cx.builder.end_child();
+            }
             Self::Block(blk) => {
                 cx.builder.begin_child("block".to_string());
 

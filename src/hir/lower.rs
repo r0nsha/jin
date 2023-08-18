@@ -5,7 +5,7 @@ use super::{
 use crate::{
     ast::{self, Ast},
     db::{self, Database},
-    hir::Binary,
+    hir::{Binary, If},
 };
 
 pub fn lower(db: &mut Database, lib: ast::Library) -> Hir {
@@ -86,6 +86,13 @@ impl Lower<'_, Function> for ast::Function {
 impl Lower<'_, Expr> for Ast {
     fn lower(self, cx: &mut Cx<'_>) -> Expr {
         match self {
+            Self::If(if_) => Expr::If(If {
+                cond: Box::new(if_.cond.lower(cx)),
+                then: Box::new(if_.then.lower(cx)),
+                otherwise: if_.otherwise.map(|o| Box::new(o.lower(cx))),
+                span: if_.span,
+                ty: TyId::null(),
+            }),
             Self::Block(blk) => Expr::Block(blk.lower(cx)),
             Self::Call(call) => Expr::Call(Call {
                 callee: Box::new(call.callee.lower(cx)),

@@ -13,8 +13,8 @@ use crate::{
     ast::BinaryOp,
     db::{Database, DefinitionId, TyId},
     hir::{
-        Binary, Block, Call, Definition, DefinitionKind, Expr, Function, Hir, Lit, LitKind, Module,
-        Name, Return,
+        Binary, Block, Call, Definition, DefinitionKind, Expr, Function, Hir, If, Lit, LitKind,
+        Module, Name, Return,
     },
     passes::infer::typecx::TypeCx,
     ty::{FunctionTy, Ty},
@@ -81,6 +81,7 @@ impl Infer<'_> for Expr {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         match self {
             Self::Function(inner) => inner.infer(cx, env),
+            Self::If(inner) => inner.infer(cx, env),
             Self::Block(inner) => inner.infer(cx, env),
             Self::Return(inner) => inner.infer(cx, env),
             Self::Call(inner) => inner.infer(cx, env),
@@ -121,6 +122,13 @@ impl Infer<'_> for Function {
         cx.constraints.push(Constraint::Eq { expected: ret_ty, actual: self.body.ty });
 
         env.call_stack.pop();
+    }
+}
+
+impl Infer<'_> for If {
+    fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
+        todo!()
+        // self.ty = self.exprs.last().map_or_else(|| cx.db.alloc_ty(Ty::Unit(self.span)), Expr::ty);
     }
 }
 

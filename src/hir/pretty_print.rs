@@ -3,7 +3,10 @@ use std::io;
 use super::{
     Block, Call, Definition, DefinitionKind, Expr, Function, Lit, LitKind, Module, Name, Return,
 };
-use crate::{db::Database, hir::Binary};
+use crate::{
+    db::Database,
+    hir::{Binary, If},
+};
 
 pub(super) fn print_module(db: &Database, module: &Module) -> io::Result<()> {
     let mut cx =
@@ -30,6 +33,7 @@ impl PrettyPrint for Expr {
     fn pretty_print(&self, cx: &mut Cx) {
         match self {
             Self::Function(inner) => inner.pretty_print(cx),
+            Self::If(inner) => inner.pretty_print(cx),
             Self::Block(inner) => inner.pretty_print(cx),
             Self::Return(inner) => inner.pretty_print(cx),
             Self::Call(inner) => inner.pretty_print(cx),
@@ -67,6 +71,28 @@ impl PrettyPrint for Function {
         }
 
         self.body.pretty_print(cx);
+
+        cx.builder.end_child();
+    }
+}
+
+impl PrettyPrint for If {
+    fn pretty_print(&self, cx: &mut Cx) {
+        cx.builder.begin_child("if".to_string());
+
+        cx.builder.begin_child("cond".to_string());
+        self.cond.pretty_print(cx);
+        cx.builder.end_child();
+
+        cx.builder.begin_child("then".to_string());
+        self.then.pretty_print(cx);
+        cx.builder.end_child();
+
+        if let Some(otherwise) = &self.otherwise {
+            cx.builder.begin_child("else".to_string());
+            otherwise.pretty_print(cx);
+            cx.builder.end_child();
+        }
 
         cx.builder.end_child();
     }

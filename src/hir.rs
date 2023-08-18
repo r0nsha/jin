@@ -45,6 +45,7 @@ pub struct Module {
 pub enum Expr {
     #[allow(unused)]
     Function(Function),
+    If(If),
     Block(Block),
     Return(Return),
     Call(Call),
@@ -57,6 +58,7 @@ impl Expr {
     pub fn ty(&self) -> TyId {
         match self {
             Self::Function(x) => x.ty,
+            Self::If(x) => x.ty,
             Self::Block(x) => x.ty,
             Self::Return(x) => x.ty,
             Self::Call(x) => x.ty,
@@ -71,6 +73,7 @@ impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
             Self::Function(x) => x.span,
+            Self::If(x) => x.span,
             Self::Block(x) => x.span,
             Self::Return(x) => x.span,
             Self::Call(x) => x.span,
@@ -83,6 +86,7 @@ impl Spanned for Expr {
     fn span_mut(&mut self) -> &mut Span {
         match self {
             Self::Function(x) => &mut x.span,
+            Self::If(x) => &mut x.span,
             Self::Block(x) => &mut x.span,
             Self::Return(x) => &mut x.span,
             Self::Call(x) => &mut x.span,
@@ -129,6 +133,15 @@ pub struct Function {
 pub struct FunctionParam {
     pub id: Option<DefinitionId>,
     pub name: Ustr,
+    pub span: Span,
+    pub ty: TyId,
+}
+
+#[derive(Debug, Clone)]
+pub struct If {
+    pub cond: Box<Expr>,
+    pub then: Box<Expr>,
+    pub otherwise: Option<Box<Expr>>,
     pub span: Span,
     pub ty: TyId,
 }

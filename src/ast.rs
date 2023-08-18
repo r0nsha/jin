@@ -68,6 +68,7 @@ impl Module {
 
 #[derive(Debug, Clone)]
 pub enum Ast {
+    If(If),
     Block(Block),
     Call(Call),
     Binary(Binary),
@@ -78,6 +79,7 @@ pub enum Ast {
 impl Spanned for Ast {
     fn span(&self) -> Span {
         match self {
+            Self::If(x) => x.span,
             Self::Block(x) => x.span,
             Self::Call(x) => x.span,
             Self::Binary(x) => x.span,
@@ -88,6 +90,7 @@ impl Spanned for Ast {
 
     fn span_mut(&mut self) -> &mut Span {
         match self {
+            Self::If(x) => &mut x.span,
             Self::Block(x) => &mut x.span,
             Self::Call(x) => &mut x.span,
             Self::Binary(x) => &mut x.span,
@@ -113,6 +116,14 @@ pub struct Function {
 #[derive(Debug, Clone)]
 pub struct FunctionParam {
     pub name: Ustr,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct If {
+    pub cond: Box<Ast>,
+    pub then: Box<Ast>,
+    pub otherwise: Option<Box<Ast>>,
     pub span: Span,
 }
 

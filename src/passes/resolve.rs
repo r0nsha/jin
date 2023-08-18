@@ -9,7 +9,8 @@ use crate::{
     },
     diagnostics::{Diagnostic, Label},
     hir::{
-        Binary, Block, Call, Definition, DefinitionKind, Expr, Function, Hir, Module, Name, Return,
+        Binary, Block, Call, Definition, DefinitionKind, Expr, Function, Hir, If, Module, Name,
+        Return,
     },
     span::Span,
 };
@@ -115,6 +116,7 @@ impl Resolve<'_> for Expr {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         match self {
             Self::Function(inner) => inner.resolve(cx, env),
+            Self::If(inner) => inner.resolve(cx, env),
             Self::Block(inner) => inner.resolve(cx, env),
             Self::Return(inner) => inner.resolve(cx, env),
             Self::Call(inner) => inner.resolve(cx, env),
@@ -130,6 +132,17 @@ impl Resolve<'_> for Function {
         env.scopes.push_scope(ScopeKind::Fun);
         self.body.resolve(cx, env);
         env.scopes.pop_scope();
+    }
+}
+
+impl Resolve<'_> for If {
+    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+        self.cond.resolve(cx, env);
+        self.then.resolve(cx, env);
+
+        if let Some(otherwise) = &mut self.otherwise {
+            otherwise.resolve(cx, env);
+        }
     }
 }
 

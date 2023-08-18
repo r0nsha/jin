@@ -3,8 +3,8 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Ast, Binary, BinaryOp, Block, Call, Function, FunctionParam, Lit, LitKind, Module, Name,
-        Return, Statement, TopLevel,
+        Ast, Binary, BinaryOp, Block, Call, Function, FunctionParam, If, Lit, LitKind, Module,
+        Name, Return, Statement, TopLevel,
     },
     common::QualifiedName,
     db::Database,
@@ -313,6 +313,7 @@ impl<'a> Parser<'a> {
         let tok = self.eat_any()?;
 
         let expr = match tok.kind {
+            TokenKind::If => Ast::If(self.parse_if()?),
             TokenKind::OpenParen => {
                 if self.is(TokenKind::CloseParen) {
                     Ast::Lit(Lit { kind: LitKind::Unit, span: tok.span.merge(self.last_span()) })
@@ -337,6 +338,27 @@ impl<'a> Parser<'a> {
         };
 
         Ok(expr)
+    }
+
+    fn parse_if(&mut self) -> ParseResult<If> {
+        let start = self.last_span();
+        let cond = self.parse_expr()?;
+
+        self.eat(TokenKind::OpenCurly)?;
+        let then = Ast::Block(self.parse_block()?);
+
+        self.eat(TokenKind::Else)?;
+        self.eat(TokenKind::OpenCurly)?;
+        let otherwise = Ast::Block(self.parse_block()?);
+
+        let span = start.merge(otherwise.span());
+
+        Ok(If {
+            cond: Box::new(cond),
+            then: Box::new(then),
+            otherwise: Some(Box::new(otherwise)),
+            span,
+        })
     }
 
     fn parse_operand_postfix(&mut self, expr: Ast) -> ParseResult<Ast> {
