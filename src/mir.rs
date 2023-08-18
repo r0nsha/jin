@@ -40,31 +40,31 @@ impl Mir {
 #[derive(Debug)]
 pub struct Function {
     id: DefId,
-    registers: IndexVec<RegisterId, Register>,
-    parameters: Vec<RegisterId>,
+    values: IndexVec<ValueId, Value>,
+    parameters: Vec<ValueId>,
     cfg: Cfg,
 }
 
 impl Function {
     fn new(id: DefId) -> Self {
-        Self { id, registers: IndexVec::new(), parameters: vec![], cfg: Cfg::new() }
+        Self { id, values: IndexVec::new(), parameters: vec![], cfg: Cfg::new() }
     }
 
     pub fn id(&self) -> DefId {
         self.id
     }
 
-    pub fn register(&self, id: RegisterId) -> Option<&Register> {
-        self.registers.get(id)
+    pub fn value(&self, id: ValueId) -> Option<&Value> {
+        self.values.get(id)
     }
 
     #[allow(unused)]
-    pub fn parameter(&self, index: usize) -> Option<RegisterId> {
+    pub fn parameter(&self, index: usize) -> Option<ValueId> {
         self.parameters.get(index).copied()
     }
 
     #[allow(unused)]
-    pub fn parameters(&self) -> &[RegisterId] {
+    pub fn parameters(&self) -> &[ValueId] {
         &self.parameters
     }
 
@@ -89,29 +89,11 @@ impl Cfg {
     }
 }
 
-new_key_type!(RegisterId);
+new_key_type!(ValueId);
 
 #[derive(Debug, Clone, Copy)]
-pub struct Register {
+pub struct Value {
     pub ty: TyId,
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum Value {
-    Def(DefId),
-    Register(RegisterId),
-}
-
-impl From<DefId> for Value {
-    fn from(value: DefId) -> Self {
-        Self::Def(value)
-    }
-}
-
-impl From<RegisterId> for Value {
-    fn from(value: RegisterId) -> Self {
-        Self::Register(value)
-    }
 }
 
 new_key_type!(BlockId);
@@ -164,7 +146,7 @@ pub enum Inst {
 
 #[derive(Debug, Clone)]
 pub struct Return {
-    pub value: Value,
+    pub value: ValueId,
     #[allow(unused)]
     pub span: Span,
 }
@@ -178,7 +160,7 @@ pub struct Br {
 
 #[derive(Debug, Clone)]
 pub struct BrIf {
-    pub cond: Value,
+    pub cond: ValueId,
     pub b1: BlockId,
     pub b2: BlockId,
     #[allow(unused)]
@@ -187,25 +169,25 @@ pub struct BrIf {
 
 #[derive(Debug, Clone)]
 pub struct Phi {
-    pub register: RegisterId,
-    pub values: Box<[PhiValue]>,
+    pub value: ValueId,
+    pub phi_values: Box<[PhiValue]>,
     #[allow(unused)]
     pub span: Span,
 }
 
-pub type PhiValue = (BlockId, Value);
+pub type PhiValue = (BlockId, ValueId);
 
 #[derive(Debug, Clone)]
 pub struct Call {
-    pub register: RegisterId,
-    pub callee: Value,
+    pub value: ValueId,
+    pub callee: ValueId,
     #[allow(unused)]
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct LoadGlobal {
-    pub register: RegisterId,
+    pub value: ValueId,
     pub id: DefId,
     #[allow(unused)]
     pub span: Span,
@@ -213,33 +195,33 @@ pub struct LoadGlobal {
 
 #[derive(Debug, Clone)]
 pub struct Binary {
-    pub register: RegisterId,
+    pub value: ValueId,
     pub op: BinaryOp,
-    pub lhs: Value,
-    pub rhs: Value,
+    pub lhs: ValueId,
+    pub rhs: ValueId,
     #[allow(unused)]
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct IntLit {
-    pub register: RegisterId,
-    pub value: usize,
+    pub value: ValueId,
+    pub lit: usize,
     #[allow(unused)]
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct BoolLit {
-    pub register: RegisterId,
-    pub value: bool,
+    pub value: ValueId,
+    pub lit: bool,
     #[allow(unused)]
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct UnitLit {
-    pub register: RegisterId,
+    pub value: ValueId,
     #[allow(unused)]
     pub span: Span,
 }

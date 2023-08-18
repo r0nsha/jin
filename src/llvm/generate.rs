@@ -16,7 +16,7 @@ use crate::{
     llvm::ty::LlvmType,
     mir::{
         Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, LoadGlobal, Mir,
-        Phi, RegisterId, Return, UnitLit, Value,
+        Phi, Return, UnitLit, ValueId,
     },
 };
 
@@ -39,7 +39,7 @@ pub struct FunctionState<'cx> {
     pub prologue_block: BasicBlock<'cx>,
     pub current_block: BasicBlock<'cx>,
     blocks: HashMap<BlockId, BasicBlock<'cx>>,
-    registers: HashMap<RegisterId, BasicValueEnum<'cx>>,
+    values: HashMap<ValueId, BasicValueEnum<'cx>>,
 }
 
 impl<'cx> FunctionState<'cx> {
@@ -57,7 +57,7 @@ impl<'cx> FunctionState<'cx> {
             prologue_block,
             current_block,
             blocks,
-            registers: HashMap::default(),
+            values: HashMap::default(),
         }
     }
 
@@ -69,12 +69,12 @@ impl<'cx> FunctionState<'cx> {
         *self.blocks.get(&id).expect("to be a valid BlockId")
     }
 
-    pub fn register(&self, id: RegisterId) -> BasicValueEnum<'cx> {
-        *self.registers.get(&id).expect("to be a valid RegisterId")
+    pub fn value(&self, id: ValueId) -> BasicValueEnum<'cx> {
+        *self.values.get(&id).expect("to be a valid ValueId")
     }
 
-    pub fn set_register(&mut self, id: RegisterId, value: BasicValueEnum<'cx>) {
-        self.registers.insert(id, value);
+    pub fn set_value(&mut self, id: ValueId, value: BasicValueEnum<'cx>) {
+        self.values.insert(id, value);
     }
 }
 
@@ -187,13 +187,6 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     fn function(&self, id: DefId) -> FunctionValue<'cx> {
         *self.functions.get(&id).expect("function to be declared")
     }
-
-    fn value(&self, state: &FunctionState<'cx>, value: &Value) -> BasicValueEnum<'cx> {
-        match value {
-            Value::Def(id) => self.function(*id).as_global_value().as_pointer_value().into(),
-            Value::Register(id) => state.register(*id),
-        }
-    }
 }
 
 trait Codegen<'db, 'cx> {
@@ -231,7 +224,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
 impl<'db, 'cx> Codegen<'db, 'cx> for Return {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         if !cx.current_block_is_terminating() {
-            cx.builder.build_return(Some(&cx.value(state, &self.value)));
+            cx.builder.build_return(Some(&state.value(self.value)));
         }
     }
 }
@@ -248,7 +241,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for BrIf {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         if !cx.current_block_is_terminating() {
             cx.builder.build_conditional_branch(
-                cx.value(state, &self.cond).into_int_value(),
+                state.value(self.cond).into_int_value(),
                 state.block(self.b1),
                 state.block(self.b2),
             );
@@ -258,22 +251,22 @@ impl<'db, 'cx> Codegen<'db, 'cx> for BrIf {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Phi {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let ty = state.function(cx).register(self.register).unwrap().ty.llvm_type(cx);
+        let ty = state.function(cx).value(self.value).unwrap().ty.llvm_type(cx);
         let phi = cx.builder.build_phi(ty, "phi");
 
-        for (blk, value) in &*self.values {
-            let value = cx.value(state, value);
+        for (blk, value) in &*self.phi_values {
+            let value = state.value(*value);
             let bb = state.block(*blk);
             phi.add_incoming(&[(&value, bb)]);
         }
 
-        state.set_register(self.register, phi.as_basic_value());
+        state.set_value(self.value, phi.as_basic_value());
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Call {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let callee = cx.value(state, &self.callee).into_pointer_value();
+        let callee = state.value(self.callee).into_pointer_value();
 
         let result = cx.builder.build_call(
             CallableValue::try_from(callee).expect("a callable pointer value"),
@@ -302,14 +295,14 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
             "printf_call",
         );
 
-        state.set_register(self.register, result_value);
+        state.set_value(self.value, result_value);
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for LoadGlobal {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         let value = cx.function(self.id).as_global_value().as_pointer_value();
-        state.set_register(self.register, value.into());
+        state.set_value(self.value, value.into());
     }
 }
 
@@ -317,8 +310,8 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Binary {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         const NAME: &str = "result";
 
-        let lhs = cx.value(state, &self.lhs).into_int_value();
-        let rhs = cx.value(state, &self.rhs).into_int_value();
+        let lhs = state.value(self.lhs).into_int_value();
+        let rhs = state.value(self.rhs).into_int_value();
 
         let result = match self.op {
             BinaryOp::Add => cx.builder.build_int_add(lhs, rhs, NAME),
@@ -342,7 +335,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Binary {
             }
         };
 
-        state.set_register(self.register, result.into());
+        state.set_value(self.value, result.into());
     }
 }
 
@@ -360,24 +353,23 @@ fn get_int_predicate(op: CmpOp) -> IntPredicate {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for IntLit {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let ty =
-            state.function(cx).register(self.register).unwrap().ty.llvm_type(cx).into_int_type();
+        let ty = state.function(cx).value(self.value).unwrap().ty.llvm_type(cx).into_int_type();
 
         // TODO: unsigned integers
-        let value = ty.const_int(self.value as u64, true);
-        state.set_register(self.register, value.into());
+        let value = ty.const_int(self.lit as u64, true);
+        state.set_value(self.value, value.into());
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for BoolLit {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let value = cx.context.bool_type().const_int(u64::from(self.value), false);
-        state.set_register(self.register, value.into());
+        let value = cx.context.bool_type().const_int(u64::from(self.lit), false);
+        state.set_value(self.value, value.into());
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for UnitLit {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        state.set_register(self.register, cx.unit_value().into());
+        state.set_value(self.value, cx.unit_value().into());
     }
 }

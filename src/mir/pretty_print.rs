@@ -1,6 +1,6 @@
 use pretty::RcDoc;
 
-use super::{Block, Function, Inst, Mir, RegisterId, TyId, Value};
+use super::{Block, Function, Inst, Mir, TyId, ValueId};
 use crate::{ast::BinaryOp, db::Database, ty::Ty};
 
 pub fn print(db: &Database, mir: &Mir) {
@@ -65,7 +65,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
                 .append(RcDoc::space())
                 .append(block_name(fun.block(brif.b2).unwrap())),
             Self::Phi(phi) => RcDoc::text("phi").append(RcDoc::space()).append(RcDoc::intersperse(
-                phi.values.iter().map(|(blk, value)| {
+                phi.phi_values.iter().map(|(blk, value)| {
                     RcDoc::text("(")
                         .append(block_name(fun.block(*blk).unwrap()))
                         .append(RcDoc::space())
@@ -76,37 +76,32 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
                 }),
                 RcDoc::space(),
             )),
-            Self::Call(call) => register_alloc(db, fun, call.register)
+            Self::Call(call) => value_alloc(db, fun, call.value)
                 .append(RcDoc::text("call"))
                 .append(RcDoc::space())
                 .append(call.callee.to_doc(db, fun)),
-            Self::Binary(bin) => register_alloc(db, fun, bin.register)
+            Self::LoadGlobal(load) => value_alloc(db, fun, load.value)
+                .append(RcDoc::text("load_global"))
+                .append(RcDoc::space())
+                .append(RcDoc::text(db[load.id].qualified_name.standard_full_name())),
+            Self::Binary(bin) => value_alloc(db, fun, bin.value)
                 .append(RcDoc::text(binary_instruction_name(bin.op)))
                 .append(RcDoc::space())
                 .append(bin.lhs.to_doc(db, fun))
                 .append(RcDoc::space())
                 .append(bin.rhs.to_doc(db, fun)),
             Self::IntLit(lit) => {
-                register_alloc(db, fun, lit.register).append(RcDoc::text(lit.value.to_string()))
+                value_alloc(db, fun, lit.value).append(RcDoc::text(lit.value.to_string()))
             }
             Self::BoolLit(lit) => {
-                register_alloc(db, fun, lit.register).append(RcDoc::text(lit.value.to_string()))
+                value_alloc(db, fun, lit.value).append(RcDoc::text(lit.value.to_string()))
             }
-            Self::UnitLit(lit) => register_alloc(db, fun, lit.register).append(RcDoc::text("()")),
+            Self::UnitLit(lit) => value_alloc(db, fun, lit.value).append(RcDoc::text("()")),
         }
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Value {
-    fn to_doc(&self, db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
-        match self {
-            Self::Def(id) => RcDoc::text(db[*id].qualified_name.standard_full_name()),
-            Self::Register(id) => id.to_doc(db, fun),
-        }
-    }
-}
-
-impl<'db, 'd> ToDoc<'db, 'd> for RegisterId {
+impl<'db, 'd> ToDoc<'db, 'd> for ValueId {
     fn to_doc(&self, _db: &'db Database, _fun: &'db Function) -> RcDoc<'d, ()> {
         RcDoc::text("%").append(RcDoc::text(self.0.to_string()))
     }
@@ -124,14 +119,11 @@ impl<'db, 'd> ToDoc<'db, 'd> for Ty {
     }
 }
 
-fn register_alloc<'db, 'd>(
-    db: &'db Database,
-    fun: &'db Function,
-    reg: RegisterId,
-) -> RcDoc<'d, ()> {
-    reg.to_doc(db, fun)
+fn value_alloc<'db, 'd>(db: &'db Database, fun: &'db Function, value: ValueId) -> RcDoc<'d, ()> {
+    value
+        .to_doc(db, fun)
         .append(RcDoc::space())
-        .append(fun.register(reg).unwrap().ty.to_doc(db, fun))
+        .append(fun.value(value).unwrap().ty.to_doc(db, fun))
         .append(RcDoc::space())
         .append(RcDoc::text("="))
         .append(RcDoc::space())

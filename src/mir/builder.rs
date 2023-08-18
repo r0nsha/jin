@@ -1,13 +1,10 @@
 use std::collections::HashSet;
 
-use super::{
-    Block, BlockId, Call, Function, Inst, IntLit, Register, RegisterId, Return, TyId,
-    UnitLit, Value,
-};
+use super::{Block, BlockId, Call, Function, Inst, IntLit, Return, TyId, UnitLit, Value, ValueId};
 use crate::{
     ast::BinaryOp,
     db::DefId,
-    mir::{Binary, BoolLit, Br, BrIf, Phi, PhiValue},
+    mir::{Binary, BoolLit, Br, BrIf, LoadGlobal, Phi, PhiValue},
     span::Span,
 };
 
@@ -64,14 +61,14 @@ impl FunctionBuilder {
     }
 
     #[inline]
-    pub fn create_register(&mut self, ty: TyId) -> RegisterId {
-        self.f.registers.push(Register { ty })
+    pub fn create_value(&mut self, ty: TyId) -> ValueId {
+        self.f.values.push(Value { ty })
     }
 
     #[allow(unused)]
     pub fn create_parameter(&mut self, ty: TyId) -> usize {
-        let reg_id = self.create_register(ty);
-        self.f.parameters.push(reg_id);
+        let value = self.create_value(ty);
+        self.f.parameters.push(value);
         self.f.parameters.len() - 1
     }
 
@@ -90,69 +87,54 @@ impl FunctionBuilder {
         self.f.cfg.blocks[source].successors.push(target);
     }
 
-    pub fn build_int_lit(&mut self, reg: RegisterId, value: usize, span: Span) {
-        self.current_block_mut().add_instruction(Inst::IntLit(IntLit {
-            register: reg,
-            value,
-            span,
-        }));
+    pub fn build_int_lit(&mut self, vid: ValueId, lit: usize, span: Span) {
+        self.current_block_mut().add_inst(Inst::IntLit(IntLit { value: vid, lit, span }));
     }
 
-    pub fn build_bool_lit(&mut self, reg: RegisterId, value: bool, span: Span) {
-        self.current_block_mut().add_instruction(Inst::BoolLit(BoolLit {
-            register: reg,
-            value,
-            span,
-        }));
+    pub fn build_bool_lit(&mut self, value: ValueId, lit: bool, span: Span) {
+        self.current_block_mut().add_inst(Inst::BoolLit(BoolLit { value, lit, span }));
     }
 
-    pub fn build_unit_lit(&mut self, reg: RegisterId, span: Span) {
-        self.current_block_mut()
-            .add_instruction(Inst::UnitLit(UnitLit { register: reg, span }));
+    pub fn build_unit_lit(&mut self, value: ValueId, span: Span) {
+        self.current_block_mut().add_inst(Inst::UnitLit(UnitLit { value, span }));
     }
 
-    pub fn build_return(&mut self, value: Value, span: Span) {
-        self.current_block_mut().add_instruction(Inst::Return(Return { value, span }));
+    pub fn build_return(&mut self, value: ValueId, span: Span) {
+        self.current_block_mut().add_inst(Inst::Return(Return { value, span }));
     }
 
     pub fn build_br(&mut self, target: BlockId, span: Span) {
         self.create_edge(self.current_block().id, target);
-        self.current_block_mut().add_instruction(Inst::Br(Br { target, span }));
+        self.current_block_mut().add_inst(Inst::Br(Br { target, span }));
     }
 
-    pub fn build_brif(&mut self, cond: Value, b1: BlockId, b2: BlockId, span: Span) {
+    pub fn build_brif(&mut self, cond: ValueId, b1: BlockId, b2: BlockId, span: Span) {
         self.create_edge(self.current_block().id, b1);
         self.create_edge(self.current_block().id, b2);
-        self.current_block_mut().add_instruction(Inst::BrIf(BrIf { cond, b1, b2, span }));
+        self.current_block_mut().add_inst(Inst::BrIf(BrIf { cond, b1, b2, span }));
     }
 
-    pub fn build_phi(&mut self, register: RegisterId, values: Box<[PhiValue]>, span: Span) {
-        self.current_block_mut().add_instruction(Inst::Phi(Phi { register, values, span }));
+    pub fn build_phi(&mut self, value: ValueId, phi_values: Box<[PhiValue]>, span: Span) {
+        self.current_block_mut().add_inst(Inst::Phi(Phi { value, phi_values, span }));
     }
 
-    pub fn build_call(&mut self, register: RegisterId, callee: Value, span: Span) {
-        self.current_block_mut().add_instruction(Inst::Call(Call {
-            register,
-            callee,
-            span,
-        }));
+    pub fn build_call(&mut self, value: ValueId, callee: ValueId, span: Span) {
+        self.current_block_mut().add_inst(Inst::Call(Call { value, callee, span }));
+    }
+
+    pub fn build_load_global(&mut self, value: ValueId, id: DefId, span: Span) {
+        self.current_block_mut().add_inst(Inst::LoadGlobal(LoadGlobal { value, id, span }));
     }
 
     pub fn build_binary(
         &mut self,
-        register: RegisterId,
+        value: ValueId,
         op: BinaryOp,
-        lhs: Value,
-        rhs: Value,
+        lhs: ValueId,
+        rhs: ValueId,
         span: Span,
     ) {
-        self.current_block_mut().add_instruction(Inst::Binary(Binary {
-            register,
-            op,
-            lhs,
-            rhs,
-            span,
-        }));
+        self.current_block_mut().add_inst(Inst::Binary(Binary { value, op, lhs, rhs, span }));
     }
 
     pub fn finish(self) -> Result<Function, String> {
@@ -194,7 +176,7 @@ impl FunctionBuilder {
 
 impl Block {
     #[inline]
-    pub fn add_instruction(&mut self, inst: Inst) {
+    pub fn add_inst(&mut self, inst: Inst) {
         self.instructions.push(inst);
     }
 }

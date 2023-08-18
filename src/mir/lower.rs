@@ -1,8 +1,9 @@
-use super::{builder::FunctionBuilder, DefId, Function, Mir, Span, TyId, Value};
+use super::{builder::FunctionBuilder, DefId, Function, Mir, Span, TyId};
 use crate::{
     ast::BinaryOp,
     db::{Database, ScopeLevel},
     hir::{self, Hir},
+    mir::ValueId,
     span::Spanned,
     ty::Ty,
 };
@@ -43,19 +44,19 @@ impl<'db> LowerCx<'db> {
         let blk_start = self.builder.create_block("start");
         self.builder.position_at(blk_start);
 
-        let body_reg = self.lower_block(&fun.body);
+        let body_value = self.lower_block(&fun.body);
 
         // Insert a final return instruction if the function's isn't terminating
         if !self.builder.current_block().is_terminating() {
             let span = fun.body.span;
-            self.builder.build_return(body_reg, span);
+            self.builder.build_return(body_value, span);
             self.build_unreachable(span);
         }
 
         self.builder.finish()
     }
 
-    fn lower_expr(&mut self, expr: &hir::Expr) -> Value {
+    fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
         match expr {
             hir::Expr::Function(_) => todo!("function expr"),
             hir::Expr::If(inner) => self.lower_if(inner),
@@ -68,7 +69,7 @@ impl<'db> LowerCx<'db> {
         }
     }
 
-    fn lower_if(&mut self, if_: &hir::If) -> Value {
+    fn lower_if(&mut self, if_: &hir::If) -> ValueId {
         let cond = self.lower_expr(&if_.cond);
 
         let then_blk = self.builder.create_block("if_then");
@@ -90,15 +91,15 @@ impl<'db> LowerCx<'db> {
 
         match (then_value, else_value) {
             (Some(then_value), Some(else_value)) => {
-                let reg = self.builder.create_register(if_.ty);
+                let value = self.builder.create_value(if_.ty);
 
                 self.builder.build_phi(
-                    reg,
+                    value,
                     vec![(then_blk, then_value), (else_blk, else_value)].into_boxed_slice(),
                     if_.span,
                 );
 
-                reg.into()
+                value
             }
             (Some(then_value), None) => then_value,
             (None, Some(else_value)) => else_value,
@@ -106,7 +107,7 @@ impl<'db> LowerCx<'db> {
         }
     }
 
-    fn lower_branch(&mut self, expr: &hir::Expr) -> Option<Value> {
+    fn lower_branch(&mut self, expr: &hir::Expr) -> Option<ValueId> {
         let value = self.lower_expr(expr);
 
         if self.builder.current_block().is_terminating() {
@@ -116,24 +117,24 @@ impl<'db> LowerCx<'db> {
         }
     }
 
-    fn lower_block(&mut self, blk: &hir::Block) -> Value {
-        let mut reg: Option<Value> = None;
+    fn lower_block(&mut self, blk: &hir::Block) -> ValueId {
+        let mut value: Option<ValueId> = None;
 
         for expr in &blk.exprs {
-            reg = Some(self.lower_expr(expr));
+            value = Some(self.lower_expr(expr));
         }
 
-        reg.unwrap_or_else(|| self.create_unit_register_with_ty(blk.ty, blk.span))
+        value.unwrap_or_else(|| self.create_unit_value_with_ty(blk.ty, blk.span))
     }
 
-    fn lower_call(&mut self, call: &hir::Call) -> Value {
-        let value = self.lower_expr(&call.callee);
-        let reg = self.builder.create_register(call.ty);
-        self.builder.build_call(reg, value, call.span);
-        reg.into()
+    fn lower_call(&mut self, call: &hir::Call) -> ValueId {
+        let callee = self.lower_expr(&call.callee);
+        let value = self.builder.create_value(call.ty);
+        self.builder.build_call(value, callee, call.span);
+        value
     }
 
-    fn lower_binary(&mut self, bin: &hir::Binary) -> Value {
+    fn lower_binary(&mut self, bin: &hir::Binary) -> ValueId {
         let lhs = self.lower_expr(&bin.lhs);
 
         match bin.op {
@@ -150,20 +151,20 @@ impl<'db> LowerCx<'db> {
                 self.builder.build_br(merge_blk, bin.span);
 
                 self.builder.position_at(false_blk);
-                let false_value = self.create_bool_register(false, bin.span);
+                let false_value = self.create_bool_value(false, bin.span);
                 self.builder.build_br(merge_blk, bin.span);
 
                 self.builder.position_at(merge_blk);
 
-                let reg = self.builder.create_register(bin.ty);
+                let result_value = self.builder.create_value(bin.ty);
 
                 self.builder.build_phi(
-                    reg,
+                    result_value,
                     vec![(true_blk, true_value), (false_blk, false_value)].into_boxed_slice(),
                     bin.span,
                 );
 
-                reg.into()
+                result_value
             }
             BinaryOp::Or => {
                 let true_blk = self.builder.create_block("or_true");
@@ -174,7 +175,7 @@ impl<'db> LowerCx<'db> {
                 let merge_blk = self.builder.create_block("or_merge");
 
                 self.builder.position_at(true_blk);
-                let true_value = self.create_bool_register(true, bin.span);
+                let true_value = self.create_bool_value(true, bin.span);
                 self.builder.build_br(merge_blk, bin.span);
 
                 self.builder.position_at(false_blk);
@@ -183,80 +184,82 @@ impl<'db> LowerCx<'db> {
 
                 self.builder.position_at(merge_blk);
 
-                let reg = self.builder.create_register(bin.ty);
+                let result_value = self.builder.create_value(bin.ty);
 
                 self.builder.build_phi(
-                    reg,
+                    result_value,
                     vec![(true_blk, true_value), (false_blk, false_value)].into_boxed_slice(),
                     bin.span,
                 );
 
-                reg.into()
+                result_value
             }
             _ => {
                 let rhs = self.lower_expr(&bin.rhs);
-                let reg = self.builder.create_register(bin.ty);
-                self.builder.build_binary(reg, bin.op, lhs, rhs, bin.span);
-                reg.into()
+                let value = self.builder.create_value(bin.ty);
+                self.builder.build_binary(value, bin.op, lhs, rhs, bin.span);
+                value
             }
         }
     }
 
-    fn lower_return(&mut self, ret: &hir::Return) -> Value {
+    fn lower_return(&mut self, ret: &hir::Return) -> ValueId {
         if !self.builder.current_block().is_terminating() {
-            let reg = self.lower_expr(&ret.expr);
-            self.builder.build_return(reg, ret.span);
+            let value = self.lower_expr(&ret.expr);
+            self.builder.build_return(value, ret.span);
         }
 
         self.build_unreachable(ret.span)
     }
 
-    fn lower_name(&mut self, name: &hir::Name) -> Value {
+    fn lower_name(&mut self, name: &hir::Name) -> ValueId {
         let def = &self.db[name.id.expect("to be resolved")];
 
         if let ScopeLevel::Global(_) = def.scope_level {
-            Value::Def(def.id)
+            let value = self.builder.create_value(def.ty);
+            self.builder.build_load_global(value, def.id, name.span);
+            value
         } else {
             todo!("local/nested name")
         }
     }
 
-    fn lower_lit(&mut self, lit: &hir::Lit) -> Value {
+    fn lower_lit(&mut self, lit: &hir::Lit) -> ValueId {
         match &lit.kind {
-            hir::LitKind::Int(value) => {
-                let reg = self.builder.create_register(lit.ty);
-                self.builder.build_int_lit(reg, *value, lit.span);
-                reg.into()
+            hir::LitKind::Int(v) => {
+                let value = self.builder.create_value(lit.ty);
+                self.builder.build_int_lit(value, *v, lit.span);
+                value
             }
-            hir::LitKind::Bool(value) => {
-                let reg = self.builder.create_register(lit.ty);
-                self.builder.build_bool_lit(reg, *value, lit.span);
-                reg.into()
+            hir::LitKind::Bool(v) => {
+                let value = self.builder.create_value(lit.ty);
+                self.builder.build_bool_lit(value, *v, lit.span);
+                value
             }
-            hir::LitKind::Unit => self.create_unit_register_with_ty(lit.ty, lit.span),
+            hir::LitKind::Unit => self.create_unit_value_with_ty(lit.ty, lit.span),
         }
     }
 
-    fn create_bool_register(&mut self, value: bool, span: Span) -> Value {
+    fn create_bool_value(&mut self, lit: bool, span: Span) -> ValueId {
         let ty = self.db.alloc_ty(Ty::Bool(span));
-        let reg = self.builder.create_register(ty);
-        self.builder.build_bool_lit(reg, value, span);
-        reg.into()
+        let value = self.builder.create_value(ty);
+        self.builder.build_bool_lit(value, lit, span);
+        value
     }
 
-    fn create_unit_register(&mut self, span: Span) -> Value {
+    fn create_unit_value(&mut self, span: Span) -> ValueId {
         let ty = self.db.alloc_ty(Ty::Unit(span));
-        self.create_unit_register_with_ty(ty, span)
+        self.create_unit_value_with_ty(ty, span)
     }
 
-    fn create_unit_register_with_ty(&mut self, ty: TyId, span: Span) -> Value {
-        let reg = self.builder.create_register(ty);
-        self.builder.build_unit_lit(reg, span);
-        reg.into()
+    fn create_unit_value_with_ty(&mut self, ty: TyId, span: Span) -> ValueId {
+        let value = self.builder.create_value(ty);
+        self.builder.build_unit_lit(value, span);
+        value
     }
 
-    fn build_unreachable(&mut self, span: Span) -> Value {
+    fn build_unreachable(&mut self, span: Span) -> ValueId {
         let ty = self.db.alloc_ty(Ty::Never(span));
-        self.builder.create_register(ty).into()
+        self.builder.create_value(ty)
     }
 }
