@@ -154,6 +154,7 @@ pub enum Instruction {
     Call(Call),
     Binary(Binary),
     IntLit(IntLit),
+    BoolLit(BoolLit),
     UnitLit(UnitLit),
 }
 
@@ -186,6 +187,14 @@ pub struct Binary {
 pub struct IntLit {
     pub register: RegisterId,
     pub value: usize,
+    #[allow(unused)]
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct BoolLit {
+    pub register: RegisterId,
+    pub value: bool,
     #[allow(unused)]
     pub span: Span,
 }

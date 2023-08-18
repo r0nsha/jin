@@ -68,6 +68,9 @@ impl<'db, 'd> ToDoc<'db, 'd> for Instruction {
             Self::IntLit(lit) => {
                 register_alloc(db, fun, lit.register).append(RcDoc::text(lit.value.to_string()))
             }
+            Self::BoolLit(lit) => {
+                register_alloc(db, fun, lit.register).append(RcDoc::text(lit.value.to_string()))
+            }
             Self::UnitLit(lit) => register_alloc(db, fun, lit.register).append(RcDoc::text("()")),
         }
     }

@@ -105,6 +105,7 @@ impl Lower<'_, Expr> for Ast {
             Self::Lit(lit) => Expr::Lit(Lit {
                 kind: match lit.kind {
                     ast::LitKind::Int(v) => LitKind::Int(v),
+                    ast::LitKind::Bool(v) => LitKind::Bool(v),
                     ast::LitKind::Unit => LitKind::Unit,
                 },
                 span: lit.span,

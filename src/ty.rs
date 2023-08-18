@@ -11,8 +11,9 @@ use crate::{
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
 pub enum Ty {
-    Int(IntTy, Span),
     Function(FunctionTy),
+    Int(IntTy, Span),
+    Bool(Span),
     // TODO: when we implement tuples, Unit should become Tuple([])
     Unit(Span),
     Never(Span),
@@ -40,8 +41,9 @@ impl Ty {
 
     pub fn span(&self) -> Span {
         match self {
-            Self::Int(_, span)
-            | Self::Function(FunctionTy { span, .. })
+            Self::Function(FunctionTy { span, .. })
+            | Self::Int(_, span)
+            | Self::Bool(span)
             | Self::Unit(span)
             | Self::Never(span)
             | Self::Infer(_, span) => *span,

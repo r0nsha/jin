@@ -180,6 +180,7 @@ impl Infer<'_> for Lit {
     fn infer(&mut self, cx: &mut InferCx<'_>, _env: &mut TypeEnv) {
         self.ty = match &self.kind {
             LitKind::Int(_) => cx.db.alloc_ty(cx.tcx.fresh_int_var(self.span)),
+            LitKind::Bool(_) => cx.db.alloc_ty(Ty::Bool(self.span)),
             LitKind::Unit => cx.db.alloc_ty(Ty::Unit(self.span)),
         };
     }

@@ -3,4 +3,5 @@ fn main() = {
 	return ()
 }
 
-fn answer() = 43 * 15
+fn answer() = true
+// fn answer() = 43 == 15

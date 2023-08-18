@@ -323,6 +323,8 @@ impl<'a> Parser<'a> {
                 }
             }
             TokenKind::OpenCurly => Ast::Block(self.parse_block()?),
+            TokenKind::True => Ast::Lit(Lit { kind: LitKind::Bool(true), span: tok.span }),
+            TokenKind::False => Ast::Lit(Lit { kind: LitKind::Bool(false), span: tok.span }),
             TokenKind::Ident(ident) => Ast::Name(Name { name: ident, span: tok.span }),
             TokenKind::Int(value) => Ast::Lit(Lit { kind: LitKind::Int(value), span: tok.span }),
             _ => {

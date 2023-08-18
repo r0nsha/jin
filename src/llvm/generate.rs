@@ -15,8 +15,8 @@ use crate::{
     db::{Database, DefinitionId},
     llvm::ty::LlvmType,
     mir::{
-        Binary, Block, BlockId, Call, Function, Instruction, IntLit, Mir, RegisterId, Return,
-        UnitLit, Value,
+        Binary, Block, BlockId, BoolLit, Call, Function, Instruction, IntLit, Mir, RegisterId,
+        Return, UnitLit, Value,
     },
 };
 
@@ -218,6 +218,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Instruction {
             Self::Call(inner) => inner.codegen(cx, state),
             Self::Binary(inner) => inner.codegen(cx, state),
             Self::IntLit(inner) => inner.codegen(cx, state),
+            Self::BoolLit(inner) => inner.codegen(cx, state),
             Self::UnitLit(inner) => inner.codegen(cx, state),
         }
     }
@@ -316,6 +317,13 @@ impl<'db, 'cx> Codegen<'db, 'cx> for IntLit {
 
         // TODO: unsigned integers
         let value = ty.const_int(self.value as u64, true);
+        state.set_register(self.register, value.into());
+    }
+}
+
+impl<'db, 'cx> Codegen<'db, 'cx> for BoolLit {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        let value = cx.context.bool_type().const_int(u64::from(self.value), false);
         state.set_register(self.register, value.into());
     }
 }

@@ -118,6 +118,11 @@ impl<'db> LowerCx<'db> {
                 self.builder.build_int_lit(reg, *value, lit.span);
                 reg.into()
             }
+            hir::LitKind::Bool(value) => {
+                let reg = self.builder.create_register(lit.ty);
+                self.builder.build_bool_lit(reg, *value, lit.span);
+                reg.into()
+            }
             hir::LitKind::Unit => self.create_unit_register_with_ty(lit.ty, lit.span),
         }
     }

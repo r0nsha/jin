@@ -51,6 +51,9 @@ impl PrettyPrint for Ast {
                 LitKind::Int(value) => {
                     cx.builder.add_empty_child(format!("int: {value}"));
                 }
+                LitKind::Bool(value) => {
+                    cx.builder.add_empty_child(format!("bool: {value}"));
+                }
                 LitKind::Unit => {
                     cx.builder.add_empty_child("()".to_string());
                 }

@@ -4,7 +4,12 @@ use super::{
     Block, BlockId, Call, Function, Instruction, IntLit, Register, RegisterId, Return, TyId,
     UnitLit, Value,
 };
-use crate::{ast::BinaryOp, db::DefinitionId, mir::Binary, span::Span};
+use crate::{
+    ast::BinaryOp,
+    db::DefinitionId,
+    mir::{Binary, BoolLit},
+    span::Span,
+};
 
 pub struct FunctionBuilder {
     f: Function,
@@ -89,17 +94,25 @@ impl FunctionBuilder {
         self.f.cfg.blocks[source].successors.push(target);
     }
 
-    pub fn build_unit_lit(&mut self, reg: RegisterId, span: Span) {
-        self.current_block_mut()
-            .add_instruction(Instruction::UnitLit(UnitLit { register: reg, span }));
-    }
-
     pub fn build_int_lit(&mut self, reg: RegisterId, value: usize, span: Span) {
         self.current_block_mut().add_instruction(Instruction::IntLit(IntLit {
             register: reg,
             value,
             span,
         }));
+    }
+
+    pub fn build_bool_lit(&mut self, reg: RegisterId, value: bool, span: Span) {
+        self.current_block_mut().add_instruction(Instruction::BoolLit(BoolLit {
+            register: reg,
+            value,
+            span,
+        }));
+    }
+
+    pub fn build_unit_lit(&mut self, reg: RegisterId, span: Span) {
+        self.current_block_mut()
+            .add_instruction(Instruction::UnitLit(UnitLit { register: reg, span }));
     }
 
     pub fn build_return(&mut self, value: Value, span: Span) {

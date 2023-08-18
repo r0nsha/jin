@@ -123,14 +123,13 @@ impl PrettyPrint for Name {
 
 impl PrettyPrint for Lit {
     fn pretty_print(&self, cx: &mut Cx) {
-        match &self.kind {
-            LitKind::Int(v) => {
-                cx.builder
-                    .add_empty_child(format!("{v} (type: {})", cx.db[self.ty].display(cx.db)));
-            }
-            LitKind::Unit => {
-                cx.builder.add_empty_child("()".to_string());
-            }
-        }
+        let value_str = match &self.kind {
+            LitKind::Int(v) => v.to_string(),
+            LitKind::Bool(v) => v.to_string(),
+            LitKind::Unit => "()".to_string(),
+        };
+
+        cx.builder
+            .add_empty_child(format!("{value_str} (type: {})", cx.db[self.ty].display(cx.db)));
     }
 }

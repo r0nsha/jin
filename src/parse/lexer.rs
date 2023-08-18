@@ -124,8 +124,10 @@ impl<'s> Lexer<'s> {
                 self.next();
             } else {
                 return match self.range(start) {
-                    "fn" => TokenKind::Fn,
                     "return" => TokenKind::Return,
+                    "fn" => TokenKind::Fn,
+                    "true" => TokenKind::True,
+                    "false" => TokenKind::False,
                     str => TokenKind::Ident(ustr(str)),
                 };
             }

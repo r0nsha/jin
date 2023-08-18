@@ -60,6 +60,8 @@ pub enum TokenKind {
     Ident(Ustr),
     Fn,
     Return,
+    True,
+    False,
 
     // Literals
     Int(usize),
@@ -101,6 +103,8 @@ impl fmt::Display for TokenKind {
             Self::PipePipe => f.write_str("||"),
             Self::Ident(_) => f.write_str("identifier"),
             Self::Fn => f.write_str("`fn`"),
+            Self::True => f.write_str("true"),
+            Self::False => f.write_str("false"),
             Self::Return => f.write_str("`return`"),
             Self::Int(_) => f.write_str("int literal"),
         }

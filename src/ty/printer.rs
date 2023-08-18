@@ -30,8 +30,9 @@ impl<'db> TypePrinter<'db> {
             Ty::Int(int, _) => match int {
                 IntTy::Int => f.write_str("int"),
             },
-            Ty::Never(_) => f.write_str("!"),
+            Ty::Bool(_) => f.write_str("bool"),
             Ty::Unit(_) => f.write_str("()"),
+            Ty::Never(_) => f.write_str("!"),
             Ty::Infer(InferTy::TyVar(v), _) => write!(f, "?{}", v.0),
             Ty::Infer(InferTy::IntVar(_), _) => f.write_str("{int}"),
         }

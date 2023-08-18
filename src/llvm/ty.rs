@@ -34,6 +34,7 @@ impl<'db, 'cx> LlvmType<'db, 'cx, BasicTypeEnum<'cx>> for Ty {
         match self {
             Self::Int(inner, _) => inner.llvm_type(cx).into(),
             Self::Function(inner) => inner.llvm_type(cx).ptr_type(AddressSpace::default()).into(),
+            Self::Bool(_) => cx.context.bool_type().into(),
             Self::Unit(_) => cx.unit_ty().into(),
             Self::Never(_) => cx.never_ty().into(),
             Self::Infer(_, _) => panic!("unexpected infer type {}", self.display(cx.db)),

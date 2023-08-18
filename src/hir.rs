@@ -181,5 +181,6 @@ pub struct Lit {
 #[derive(Debug, Clone)]
 pub enum LitKind {
     Int(usize),
+    Bool(bool),
     Unit,
 }
