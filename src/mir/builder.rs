@@ -7,7 +7,7 @@ use super::{
 use crate::{
     ast::BinaryOp,
     db::DefinitionId,
-    mir::{Binary, BoolLit},
+    mir::{Binary, BoolLit, Jmp, Jnz, Phi, PhiValue},
     span::Span,
 };
 
@@ -88,7 +88,6 @@ impl FunctionBuilder {
         self.current_block = id;
     }
 
-    #[allow(unused)]
     pub fn create_edge(&mut self, source: BlockId, target: BlockId) {
         self.f.cfg.blocks[target].predecessors.push(source);
         self.f.cfg.blocks[source].successors.push(target);
@@ -117,6 +116,21 @@ impl FunctionBuilder {
 
     pub fn build_return(&mut self, value: Value, span: Span) {
         self.current_block_mut().add_instruction(Instruction::Return(Return { value, span }));
+    }
+
+    pub fn build_jmp(&mut self, target: BlockId, span: Span) {
+        self.create_edge(self.current_block().id, target);
+        self.current_block_mut().add_instruction(Instruction::Jmp(Jmp { target, span }));
+    }
+
+    pub fn build_jnz(&mut self, cond: Value, b1: BlockId, b2: BlockId, span: Span) {
+        self.create_edge(self.current_block().id, b1);
+        self.create_edge(self.current_block().id, b2);
+        self.current_block_mut().add_instruction(Instruction::Jnz(Jnz { cond, b1, b2, span }));
+    }
+
+    pub fn build_phi(&mut self, register: RegisterId, values: Box<[PhiValue]>, span: Span) {
+        self.current_block_mut().add_instruction(Instruction::Phi(Phi { register, values, span }));
     }
 
     pub fn build_call(&mut self, register: RegisterId, callee: Value, span: Span) {

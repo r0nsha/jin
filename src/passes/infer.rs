@@ -17,6 +17,7 @@ use crate::{
         Module, Name, Return,
     },
     passes::infer::typecx::TypeCx,
+    span::Spanned,
     ty::{FunctionTy, Ty},
 };
 
@@ -127,8 +128,25 @@ impl Infer<'_> for Function {
 
 impl Infer<'_> for If {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
-        todo!()
-        // self.ty = self.exprs.last().map_or_else(|| cx.db.alloc_ty(Ty::Unit(self.span)), Expr::ty);
+        self.cond.infer(cx, env);
+
+        cx.constraints.push(Constraint::Eq {
+            expected: cx.db.alloc_ty(Ty::Bool(self.cond.span())),
+            actual: self.cond.ty(),
+        });
+
+        self.then.infer(cx, env);
+
+        let other_ty = if let Some(otherwise) = self.otherwise.as_mut() {
+            otherwise.infer(cx, env);
+            otherwise.ty()
+        } else {
+            cx.db.alloc_ty(Ty::Unit(self.span))
+        };
+
+        cx.constraints.push(Constraint::Eq { expected: self.then.ty(), actual: other_ty });
+
+        self.ty = self.then.ty();
     }
 }
 

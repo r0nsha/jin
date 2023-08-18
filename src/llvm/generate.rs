@@ -184,6 +184,22 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         function_value.as_global_value().as_pointer_value().into()
     }
 
+    // fn codegen_branch(
+    //     &mut self,
+    //     branch: &hir::Ast,
+    //     end_block: BasicBlock<'g>,
+    // ) -> (BasicTypeEnum<'g>, Option<(BasicValueEnum<'g>, BasicBlock<'g>)>) {
+    //     let branch_value = branch.codegen(self);
+    //
+    //     if self.current_instruction_is_block_terminator() {
+    //         (branch_value.get_type(), None)
+    //     } else {
+    //         let branch_block = self.current_block();
+    //         self.builder.build_unconditional_branch(end_block);
+    //         (branch_value.get_type(), Some((branch_value, branch_block)))
+    //     }
+    // }
+
     fn function(&self, id: DefinitionId) -> FunctionValue<'cx> {
         *self.functions.get(&id).expect("function to be declared")
     }

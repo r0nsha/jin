@@ -28,6 +28,7 @@ impl<'db> InferCx<'db> {
         match (expected, actual) {
             (Ty::Never(_), _)
             | (_, Ty::Never(_))
+            | (Ty::Bool(_), Ty::Bool(_))
             | (Ty::Unit(_), Ty::Unit(_))
             | (Ty::Int(IntTy::Int, _), Ty::Int(IntTy::Int, _)) => Ok(()),
 

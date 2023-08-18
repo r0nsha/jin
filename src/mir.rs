@@ -151,6 +151,9 @@ impl Block {
 #[derive(Debug, Clone)]
 pub enum Instruction {
     Return(Return),
+    Jmp(Jmp),
+    Jnz(Jnz),
+    Phi(Phi),
     Call(Call),
     Binary(Binary),
     IntLit(IntLit),
@@ -164,6 +167,32 @@ pub struct Return {
     #[allow(unused)]
     pub span: Span,
 }
+
+#[derive(Debug, Clone)]
+pub struct Jmp {
+    pub target: BlockId,
+    #[allow(unused)]
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Jnz {
+    pub cond: Value,
+    pub b1: BlockId,
+    pub b2: BlockId,
+    #[allow(unused)]
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Phi {
+    pub register: RegisterId,
+    pub values: Box<[PhiValue]>,
+    #[allow(unused)]
+    pub span: Span,
+}
+
+pub type PhiValue = (BlockId, Value);
 
 #[derive(Debug, Clone)]
 pub struct Call {

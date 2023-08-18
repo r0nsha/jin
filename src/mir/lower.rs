@@ -2,6 +2,7 @@ use super::{builder::FunctionBuilder, DefinitionId, Function, Mir, Span, TyId, V
 use crate::{
     db::{Database, ScopeLevel},
     hir::{self, Hir},
+    span::Spanned,
     ty::Ty,
 };
 
@@ -67,7 +68,40 @@ impl<'db> LowerCx<'db> {
     }
 
     fn lower_if(&mut self, if_: &hir::If) -> Value {
-        todo!()
+        let cond = self.lower_expr(&if_.cond);
+
+        let then_blk = self.builder.create_block("if_then");
+        let else_blk = self.builder.create_block("if_else");
+
+        self.builder.build_jnz(cond, then_blk, else_blk, if_.cond.span());
+
+        let merge_blk = self.builder.create_block("if_merge");
+
+        self.builder.position_at(then_blk);
+        let then_value = self.lower_expr(&if_.then);
+        self.builder.build_jmp(merge_blk, if_.span);
+
+        self.builder.position_at(else_blk);
+
+        if let Some(otherwise) = if_.otherwise.as_ref() {
+            let else_value = self.lower_expr(otherwise);
+            self.builder.build_jmp(merge_blk, if_.span);
+
+            self.builder.position_at(merge_blk);
+
+            let reg = self.builder.create_register(if_.ty);
+
+            self.builder.build_phi(
+                reg,
+                vec![(then_blk, then_value), (else_blk, else_value)].into_boxed_slice(),
+                if_.span,
+            );
+
+            reg.into()
+        } else {
+            self.builder.position_at(merge_blk);
+            then_value
+        }
     }
 
     fn lower_block(&mut self, blk: &hir::Block) -> Value {
