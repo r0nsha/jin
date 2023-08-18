@@ -7,7 +7,7 @@ use super::{
 use crate::{
     ast::BinaryOp,
     db::DefinitionId,
-    mir::{Binary, BoolLit, Jmp, Jnz, Phi, PhiValue},
+    mir::{Binary, BoolLit, Br, BrIf, Phi, PhiValue},
     span::Span,
 };
 
@@ -115,25 +115,15 @@ impl FunctionBuilder {
         self.current_block_mut().add_instruction(Instruction::Return(Return { value, span }));
     }
 
-    pub fn build_jmp(&mut self, target: BlockId, span: Span) {
-        // TODO: do we need this early return? does it not mess up codegen?
-        // if self.current_block().is_terminating() {
-        //     return;
-        // }
-
+    pub fn build_br(&mut self, target: BlockId, span: Span) {
         self.create_edge(self.current_block().id, target);
-        self.current_block_mut().add_instruction(Instruction::Jmp(Jmp { target, span }));
+        self.current_block_mut().add_instruction(Instruction::Br(Br { target, span }));
     }
 
-    pub fn build_jnz(&mut self, cond: Value, b1: BlockId, b2: BlockId, span: Span) {
-        // TODO: do we need this early return? does it not mess up codegen?
-        // if self.current_block().is_terminating() {
-        //     return;
-        // }
-
+    pub fn build_brif(&mut self, cond: Value, b1: BlockId, b2: BlockId, span: Span) {
         self.create_edge(self.current_block().id, b1);
         self.create_edge(self.current_block().id, b2);
-        self.current_block_mut().add_instruction(Instruction::Jnz(Jnz { cond, b1, b2, span }));
+        self.current_block_mut().add_instruction(Instruction::BrIf(BrIf { cond, b1, b2, span }));
     }
 
     pub fn build_phi(&mut self, register: RegisterId, values: Box<[PhiValue]>, span: Span) {

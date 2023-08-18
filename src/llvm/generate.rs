@@ -15,7 +15,7 @@ use crate::{
     db::{Database, DefinitionId},
     llvm::ty::LlvmType,
     mir::{
-        Binary, Block, BlockId, BoolLit, Call, Function, Instruction, IntLit, Jmp, Jnz, Mir, Phi,
+        Binary, Block, BlockId, BoolLit, Call, Function, Instruction, IntLit, Br, BrIf, Mir, Phi,
         RegisterId, Return, UnitLit, Value,
     },
 };
@@ -215,8 +215,8 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Instruction {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         match self {
             Self::Return(inner) => inner.codegen(cx, state),
-            Self::Jmp(inner) => inner.codegen(cx, state),
-            Self::Jnz(inner) => inner.codegen(cx, state),
+            Self::Br(inner) => inner.codegen(cx, state),
+            Self::BrIf(inner) => inner.codegen(cx, state),
             Self::Phi(inner) => inner.codegen(cx, state),
             Self::Call(inner) => inner.codegen(cx, state),
             Self::Binary(inner) => inner.codegen(cx, state),
@@ -235,7 +235,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Return {
     }
 }
 
-impl<'db, 'cx> Codegen<'db, 'cx> for Jmp {
+impl<'db, 'cx> Codegen<'db, 'cx> for Br {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         if !cx.current_block_is_terminating() {
             cx.builder.build_unconditional_branch(state.block(self.target));
@@ -243,7 +243,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Jmp {
     }
 }
 
-impl<'db, 'cx> Codegen<'db, 'cx> for Jnz {
+impl<'db, 'cx> Codegen<'db, 'cx> for BrIf {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         if !cx.current_block_is_terminating() {
             cx.builder.build_conditional_branch(

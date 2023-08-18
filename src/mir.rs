@@ -151,8 +151,8 @@ impl Block {
 #[derive(Debug, Clone)]
 pub enum Instruction {
     Return(Return),
-    Jmp(Jmp),
-    Jnz(Jnz),
+    Br(Br),
+    BrIf(BrIf),
     Phi(Phi),
     Call(Call),
     Binary(Binary),
@@ -169,14 +169,14 @@ pub struct Return {
 }
 
 #[derive(Debug, Clone)]
-pub struct Jmp {
+pub struct Br {
     pub target: BlockId,
     #[allow(unused)]
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub struct Jnz {
+pub struct BrIf {
     pub cond: Value,
     pub b1: BlockId,
     pub b2: BlockId,

@@ -54,16 +54,16 @@ impl<'db, 'd> ToDoc<'db, 'd> for Instruction {
             Self::Return(ret) => {
                 RcDoc::text("ret").append(RcDoc::space()).append(ret.value.to_doc(db, fun))
             }
-            Self::Jmp(jmp) => RcDoc::text("jmp")
+            Self::Br(br) => RcDoc::text("br")
                 .append(RcDoc::space())
-                .append(block_name(fun.block(jmp.target).unwrap())),
-            Self::Jnz(jnz) => RcDoc::text("jnz")
+                .append(block_name(fun.block(br.target).unwrap())),
+            Self::BrIf(brif) => RcDoc::text("brif")
                 .append(RcDoc::space())
-                .append(jnz.cond.to_doc(db, fun))
+                .append(brif.cond.to_doc(db, fun))
                 .append(RcDoc::space())
-                .append(block_name(fun.block(jnz.b1).unwrap()))
+                .append(block_name(fun.block(brif.b1).unwrap()))
                 .append(RcDoc::space())
-                .append(block_name(fun.block(jnz.b2).unwrap())),
+                .append(block_name(fun.block(brif.b2).unwrap())),
             Self::Phi(phi) => RcDoc::text("phi").append(RcDoc::space()).append(RcDoc::intersperse(
                 phi.values.iter().map(|(blk, value)| {
                     RcDoc::text("(")
