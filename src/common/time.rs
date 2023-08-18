@@ -40,7 +40,7 @@ impl<'s> Stopwatch<'s> {
             AnsiColors::BrightRed
         };
 
-        println!("{:<16}{}ms", self.label.color(color).bold(), value);
+        println!("{:<20}{}ms", self.label.color(color).bold(), value);
     }
 }
 

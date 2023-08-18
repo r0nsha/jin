@@ -106,7 +106,7 @@ fn optimize(module: &Module) {
 
 fn build_exe(db: &Database, target_machine: &TargetMachine, module: &Module) -> PathBuf {
     let build_options = db.build_options();
-    let output_path = db.output_path().expect("to have an output path");
+    let output_path = db.output_path();
 
     if let Some(parent_dir) = output_path.parent() {
         let _ = std::fs::create_dir_all(parent_dir);

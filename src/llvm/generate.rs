@@ -103,7 +103,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             puts,
             &[self
                 .builder
-                .build_global_string_ptr("Hello, World!\n", "str")
+                .build_global_string_ptr("Hello, World!", "str")
                 .as_pointer_value()
                 .into()],
             "call",

@@ -61,9 +61,8 @@ impl Database {
         &self.build_options
     }
 
-    pub fn output_path(&self) -> Option<PathBuf> {
-        let name = self.main_module()?.name.name().as_str();
-        Some(PathBuf::from(name))
+    pub fn output_path(&self) -> PathBuf {
+        self.main_source().path().with_extension("")
     }
 
     pub fn root_dir(&self) -> &Path {
