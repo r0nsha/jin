@@ -55,6 +55,9 @@ impl<'db, 'd> ToDoc<'db, 'd> for Instruction {
             Self::Return(ret) => {
                 RcDoc::text("ret").append(RcDoc::space()).append(ret.value.to_doc(db, fun))
             }
+            Self::Jmp(jmp) => {}
+            Self::Jnz(jnz) => {}
+            Self::Phi(phi) => {}
             Self::Call(call) => register_alloc(db, fun, call.register)
                 .append(RcDoc::text("call"))
                 .append(RcDoc::space())
