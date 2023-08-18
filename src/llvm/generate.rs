@@ -5,15 +5,15 @@ use inkwell::{
     builder::Builder,
     context::Context,
     module::{Linkage, Module},
-    types::{AnyType, IntType},
-    values::FunctionValue,
+    types::IntType,
+    values::{BasicValueEnum, FunctionValue},
     AddressSpace,
 };
 
 use crate::{
     db::{Database, DefinitionId},
     llvm::ty::LlvmType,
-    mir::Mir,
+    mir::{Block, Function, Instruction, Mir},
 };
 
 pub struct Generator<'db, 'cx> {
@@ -122,7 +122,8 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
     pub fn declare_all_functions(&mut self) {
         for fun in &self.mir.functions {
-            let fun_info = &self.db[fun.id()];
+            let id = fun.id();
+            let fun_info = &self.db[id];
             let name = fun_info.qualified_name.standard_full_name();
             let llvm_ty = fun_info
                 .ty
@@ -131,22 +132,66 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 .get_element_type()
                 .into_function_type();
 
-            self.module.add_function(&name, llvm_ty, Some(Linkage::Private));
+            let function = self.module.add_function(&name, llvm_ty, Some(Linkage::Private));
+            self.functions.insert(id, function);
         }
     }
 
     pub fn define_all_functions(&mut self) {
         for fun in &self.mir.functions {
-            let fun_info = &self.db[fun.id()];
-            let name = fun_info.qualified_name.standard_full_name();
-            let llvm_ty = fun_info
-                .ty
-                .llvm_type(self)
-                .into_pointer_type()
-                .get_element_type()
-                .into_function_type();
-
-            self.module.add_function(&name, llvm_ty, Some(Linkage::Private));
+            self.codegen_function(fun);
         }
+    }
+
+    fn codegen_function(&mut self, fun: &Function) -> BasicValueEnum<'cx> {
+        let id = fun.id();
+        let fun_info = &self.db[id];
+        // let llvm_ty =
+        //     fun_info.ty.llvm_type(self).into_pointer_type().get_element_type().into_function_type();
+
+        let function = *self.functions.get(&fun.id()).unwrap_or_else(|| {
+            panic!("function {} to be declared", fun_info.qualified_name.standard_full_name())
+        });
+
+        let decl_block = self.context.append_basic_block(function, "decls");
+        let entry_block = self.context.append_basic_block(function, "entry");
+
+        let mut state = FunctionState::new(function, decl_block, entry_block);
+
+        self.start_block(&mut state, entry_block);
+
+        for blk in fun.blocks() {
+            blk.codegen(self, &mut state);
+        }
+
+        function.as_global_value().as_pointer_value().into()
+    }
+}
+
+trait Codegen<'db, 'cx> {
+    fn codegen(
+        &self,
+        cx: &mut Generator<'db, 'cx>,
+        state: &mut FunctionState,
+    ) -> BasicValueEnum<'cx>;
+}
+
+impl<'db, 'cx> Codegen<'db, 'cx> for Block {
+    fn codegen(
+        &self,
+        cx: &mut Generator<'db, 'cx>,
+        state: &mut FunctionState,
+    ) -> BasicValueEnum<'cx> {
+        todo!()
+    }
+}
+
+impl<'db, 'cx> Codegen<'db, 'cx> for Instruction {
+    fn codegen(
+        &self,
+        cx: &mut Generator<'db, 'cx>,
+        state: &mut FunctionState,
+    ) -> BasicValueEnum<'cx> {
+        todo!()
     }
 }
