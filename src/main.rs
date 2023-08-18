@@ -20,17 +20,14 @@ mod common;
 mod db;
 mod diagnostics;
 mod hir;
+mod llvm;
 mod mir;
 mod parse;
 mod passes;
 mod span;
 mod ty;
 
-use std::{
-    fs::{self, File},
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
 
@@ -140,34 +137,5 @@ fn build_inner(db: &mut Database) {
         println!();
     }
 
-    codegen(db, &mir);
-}
-
-fn codegen(db: &Database, mir: &Mir) {
-    let print_times = db.build_options().print_times;
-
-    let out_dir = Path::new("out");
-    let main_module_name = db.main_module().unwrap().name.name();
-    let out_file_name = out_dir.join(main_module_name.as_str());
-    let out_c_file = out_file_name.with_extension("c");
-
-    fs::create_dir_all(out_dir).unwrap();
-    let mut c_file = File::create(&out_c_file).unwrap();
-
-    time(print_times, "codegen", || codegen::codegen(db, mir, &mut c_file));
-
-    time(print_times, "clang", || {
-        Command::new("clang")
-            .args([
-                "-Wno-unused-command-line-argument",
-                out_c_file.to_string_lossy().as_ref(),
-                "-o",
-                out_file_name.to_string_lossy().as_ref(),
-                "-x",
-                "c",
-                "-std=c99",
-            ])
-            .spawn()
-            .unwrap()
-    });
+    llvm::codegen(db, &mir);
 }

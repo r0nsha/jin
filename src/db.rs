@@ -57,6 +57,16 @@ impl Database {
         &self.build_options
     }
 
+    pub fn out_dir_name(&self) -> PathBuf {
+        Path::new("out").to_path_buf()
+    }
+
+    pub fn out_file_name(&self) -> Option<PathBuf> {
+        let main_module_name = self.main_module()?.name.name();
+        let out_file_name = self.out_dir_name().join(main_module_name.as_str());
+        Some(out_file_name)
+    }
+
     pub fn root_dir(&self) -> &Path {
         &self.root_dir
     }
