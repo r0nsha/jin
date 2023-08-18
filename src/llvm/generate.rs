@@ -13,7 +13,7 @@ use inkwell::{
 use crate::{
     db::{Database, DefinitionId},
     llvm::ty::LlvmType,
-    mir::{Block, Function, Instruction, Mir},
+    mir::{Block, BlockId, Function, Instruction, Mir},
 };
 
 pub struct Generator<'db, 'cx> {
@@ -28,20 +28,26 @@ pub struct Generator<'db, 'cx> {
     pub functions: HashMap<DefinitionId, FunctionValue<'cx>>,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct FunctionState<'cx> {
     pub function: FunctionValue<'cx>,
     pub decl_block: BasicBlock<'cx>,
     pub current_block: BasicBlock<'cx>,
+    blocks: HashMap<BlockId, BasicBlock<'cx>>,
 }
 
 impl<'cx> FunctionState<'cx> {
     pub fn new(
         function: FunctionValue<'cx>,
         decl_block: BasicBlock<'cx>,
-        entry_block: BasicBlock<'cx>,
+        blocks: HashMap<BlockId, BasicBlock<'cx>>,
     ) -> Self {
-        Self { function, decl_block, current_block: entry_block }
+        let current_block = *blocks.get(&BlockId::first()).expect("to have a start block");
+        Self { function, decl_block, current_block, blocks }
+    }
+
+    fn block(&self, id: BlockId) -> BasicBlock<'cx> {
+        *self.blocks.get(&id).expect("to be a valid BlockId")
     }
 }
 
@@ -87,7 +93,11 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         let decl_block = self.context.append_basic_block(function, "decls");
         let entry_block = self.context.append_basic_block(function, "entry");
 
-        let mut state = FunctionState::new(function, decl_block, entry_block);
+        let mut state = FunctionState::new(
+            function,
+            decl_block,
+            HashMap::from([(BlockId::first(), entry_block)]),
+        );
 
         self.start_block(&mut state, entry_block);
 
@@ -146,8 +156,6 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     fn codegen_function(&mut self, fun: &Function) -> BasicValueEnum<'cx> {
         let id = fun.id();
         let fun_info = &self.db[id];
-        // let llvm_ty =
-        //     fun_info.ty.llvm_type(self).into_pointer_type().get_element_type().into_function_type();
 
         let function = *self.functions.get(&fun.id()).unwrap_or_else(|| {
             panic!("function {} to be declared", fun_info.qualified_name.standard_full_name())
@@ -156,7 +164,14 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         let decl_block = self.context.append_basic_block(function, "decls");
         let entry_block = self.context.append_basic_block(function, "entry");
 
-        let mut state = FunctionState::new(function, decl_block, entry_block);
+        let mut blocks = HashMap::default();
+
+        for blk in fun.blocks() {
+            let bb = self.context.append_basic_block(function, &blk.name);
+            blocks.insert(blk.id, bb);
+        }
+
+        let mut state = FunctionState::new(function, decl_block, blocks);
 
         self.start_block(&mut state, entry_block);
 

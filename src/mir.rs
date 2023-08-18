@@ -114,6 +114,13 @@ impl From<RegisterId> for Value {
 
 new_key_type!(BlockId);
 
+impl BlockId {
+    #[inline]
+    pub fn first() -> Self {
+        Self(0)
+    }
+}
+
 #[derive(Debug)]
 pub struct Block {
     pub id: BlockId,

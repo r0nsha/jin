@@ -13,7 +13,7 @@ pub struct FunctionBuilder {
 
 impl FunctionBuilder {
     pub fn new(id: DefinitionId) -> Self {
-        Self { f: Function::new(id), current_block: BlockId(0) }
+        Self { f: Function::new(id), current_block: BlockId::first() }
     }
 
     #[inline]

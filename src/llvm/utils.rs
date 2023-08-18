@@ -7,10 +7,6 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         self.builder.get_insert_block().unwrap()
     }
 
-    pub fn append_basic_block(&self, state: &FunctionState<'cx>, name: &str) -> BasicBlock<'cx> {
-        self.context.append_basic_block(state.function, name)
-    }
-
     pub fn start_block(&self, state: &mut FunctionState<'cx>, block: BasicBlock<'cx>) {
         state.current_block = block;
         self.builder.position_at_end(block);
