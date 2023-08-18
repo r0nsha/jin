@@ -298,12 +298,12 @@ impl<'a> Parser<'a> {
     // }
 
     // fn parse_binary(&mut self, lhs: Ast, tok: Token) -> ParseResult<Ast> {
-    //     let right = self.parse_expr()?;
-    //     let span = lhs.span().merge(right.span());
+    //     let rhs = self.parse_expr()?;
+    //     let span = lhs.span().merge(rhs.span());
     //
     //     Ok(Ast::Binary(Binary {
     //         lhs: Box::new(lhs),
-    //         right: Box::new(right),
+    //         rhs: Box::new(rhs),
     //         op: BinaryOp::try_from(tok.kind).expect("to be a binary op"),
     //         span,
     //     }))

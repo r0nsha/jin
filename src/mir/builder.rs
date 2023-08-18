@@ -118,15 +118,15 @@ impl FunctionBuilder {
         &mut self,
         register: RegisterId,
         op: BinaryOp,
-        left: Value,
-        right: Value,
+        lhs: Value,
+        rhs: Value,
         span: Span,
     ) {
         self.current_block_mut().add_instruction(Instruction::Binary(Binary {
             register,
             op,
-            lhs: left,
-            rhs: right,
+            lhs,
+            rhs,
             span,
         }));
     }

@@ -11,6 +11,7 @@ use inkwell::{
 };
 
 use crate::{
+    ast::BinaryOp,
     db::{Database, DefinitionId},
     llvm::ty::LlvmType,
     mir::{
@@ -265,9 +266,30 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Binary {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let left = cx.get_value(state, &self.lhs).into_int_value();
-        let right = cx.get_value(state, &self.rhs).into_int_value();
-        let result = cx.builder.build_int_add(left, right, "iadd");
+        let lhs = cx.get_value(state, &self.lhs).into_int_value();
+        let rhs = cx.get_value(state, &self.rhs).into_int_value();
+
+        let result = match self.op {
+            BinaryOp::Add => cx.builder.build_int_add(lhs, rhs, "iadd"),
+            BinaryOp::Sub => todo!(),
+            BinaryOp::Mul => todo!(),
+            BinaryOp::Div => todo!(),
+            BinaryOp::Mod => todo!(),
+            BinaryOp::Shl => todo!(),
+            BinaryOp::Shr => todo!(),
+            BinaryOp::BitAnd => todo!(),
+            BinaryOp::BitOr => todo!(),
+            BinaryOp::BitXor => todo!(),
+            BinaryOp::Eq => todo!(),
+            BinaryOp::Ne => todo!(),
+            BinaryOp::Lt => todo!(),
+            BinaryOp::Le => todo!(),
+            BinaryOp::Gt => todo!(),
+            BinaryOp::Ge => todo!(),
+            BinaryOp::And => todo!(),
+            BinaryOp::Or => todo!(),
+        };
+
         state.set_register(self.register, result.into());
     }
 }
