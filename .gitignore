@@ -1,3 +1,7 @@
 /target
 /out
+
+/tests/*
+!/tests/*.jin
+
 fail.ll
