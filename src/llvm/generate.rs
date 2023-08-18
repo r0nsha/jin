@@ -79,10 +79,12 @@ impl<'cx> FunctionState<'cx> {
 
 impl<'db, 'cx> Generator<'db, 'cx> {
     pub fn run(&mut self) {
-        self.gen_start_function();
+        self.declare_all_functions();
+        self.define_all_functions();
+        self.codegen_start_function();
     }
 
-    pub fn gen_start_function(&mut self) {
+    pub fn codegen_start_function(&mut self) {
         // let startup_fn_type = FunctionType {
         //     params: vec![
         //         FunctionTypeParam { name: ustr("argc"), ty: Type::u32(), default_value: None },
@@ -118,9 +120,6 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
         let entry_block = self.context.append_basic_block(function_value, "entry");
         self.builder.position_at_end(entry_block);
-
-        self.declare_all_functions();
-        self.define_all_functions();
 
         // TODO: Codegen the entry point function
         // Codegen the entry point function
@@ -176,6 +175,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         });
 
         let decl_block = self.context.append_basic_block(function_value, "decls");
+        self.builder.position_at_end(decl_block);
 
         let mut blocks = HashMap::default();
 
@@ -184,9 +184,9 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             blocks.insert(blk.id, bb);
         }
 
-        let mut state = FunctionState::new(id, function_value, decl_block, blocks);
+        self.builder.build_unconditional_branch(blocks[&BlockId::first()]);
 
-        self.builder.build_unconditional_branch(state.block(BlockId::first()));
+        let mut state = FunctionState::new(id, function_value, decl_block, blocks);
 
         for blk in fun.blocks() {
             blk.codegen(self, &mut state);
