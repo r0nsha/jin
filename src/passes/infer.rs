@@ -5,22 +5,18 @@ mod type_env;
 mod typecx;
 mod unify;
 
-use crate::db::{DefinitionId, TyId};
-use crate::hir::Binary;
-use crate::passes::infer::typecx::TypeCx;
-use crate::ty::FunctionTy;
-use crate::{
-    db::Database,
-    hir::{
-        Block, Call, Definition, DefinitionKind, Expr, Function, Hir, Lit, LitKind, Module, Name,
-        Return,
-    },
-    ty::Ty,
-};
-
 use self::{
     constraint::{Constraint, Constraints},
     type_env::{CallFrame, TypeEnv},
+};
+use crate::{
+    db::{Database, DefinitionId, TyId},
+    hir::{
+        Binary, Block, Call, Definition, DefinitionKind, Expr, Function, Hir, Lit, LitKind, Module,
+        Name, Return,
+    },
+    passes::infer::typecx::TypeCx,
+    ty::{FunctionTy, Ty},
 };
 
 pub fn infer(db: &mut Database, hir: &mut Hir) {

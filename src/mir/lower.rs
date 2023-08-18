@@ -1,12 +1,10 @@
-use crate::ast::BinaryOp;
-use crate::db::ScopeLevel;
+use super::{builder::FunctionBuilder, DefinitionId, Function, Mir, Span, TyId, Value};
 use crate::{
-    db::Database,
+    ast::BinaryOp,
+    db::{Database, ScopeLevel},
     hir::{self, Hir},
     ty::Ty,
 };
-
-use super::{builder::FunctionBuilder, DefinitionId, Function, Mir, Span, TyId, Value};
 
 pub fn lower(db: &mut Database, hir: &Hir) -> Mir {
     let mut mir = Mir::new();

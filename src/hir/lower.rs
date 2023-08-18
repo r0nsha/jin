@@ -1,12 +1,11 @@
-use crate::hir::Binary;
-use crate::{
-    ast::{self, Ast},
-    db::{self, Database},
-};
-
 use super::{
     Block, Call, Definition, DefinitionKind, Expr, Function, FunctionParam, Hir, IndexMap, Lit,
     LitKind, Module, ModuleId, Name, Return, Spanned, TyId,
+};
+use crate::{
+    ast::{self, Ast},
+    db::{self, Database},
+    hir::Binary,
 };
 
 pub fn lower(db: &mut Database, lib: ast::Library) -> Hir {

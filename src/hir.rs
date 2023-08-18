@@ -8,8 +8,8 @@ use indexmap::IndexMap;
 pub use lower::lower;
 use ustr::Ustr;
 
-use crate::ast::BinaryOp;
 use crate::{
+    ast::BinaryOp,
     db::{Database, DefinitionId, ModuleId, TyId},
     span::{Span, Spanned},
 };

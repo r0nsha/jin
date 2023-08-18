@@ -1,13 +1,10 @@
-use crate::db::Database;
-use crate::passes::infer::normalize::NormalizeTy;
-use crate::ty::{InferTy, IntVarValue};
-use crate::{
-    diagnostics::{Diagnostic, Label},
-    ty::IntTy,
-    ty::{Ty, TyVar},
-};
-
 use super::{constraint::Constraint, InferCx};
+use crate::{
+    db::Database,
+    diagnostics::{Diagnostic, Label},
+    passes::infer::normalize::NormalizeTy,
+    ty::{InferTy, IntTy, IntVarValue, Ty, TyVar},
+};
 
 impl<'db> InferCx<'db> {
     pub fn unification(&mut self) -> Result<(), InferError> {

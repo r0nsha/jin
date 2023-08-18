@@ -1,5 +1,7 @@
-use crate::passes::infer::typecx::TypeCx;
-use crate::ty::{FunctionTy, InferTy, Ty};
+use crate::{
+    passes::infer::typecx::TypeCx,
+    ty::{FunctionTy, InferTy, Ty},
+};
 
 pub trait NormalizeTy {
     fn normalize(self, tcx: &mut TypeCx) -> Self;

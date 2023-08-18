@@ -1,11 +1,9 @@
 use std::io;
 
-use crate::db::Database;
-use crate::hir::Binary;
-
 use super::{
     Block, Call, Definition, DefinitionKind, Expr, Function, Lit, LitKind, Module, Name, Return,
 };
+use crate::{db::Database, hir::Binary};
 
 pub(super) fn print_module(db: &Database, module: &Module) -> io::Result<()> {
     let mut cx =

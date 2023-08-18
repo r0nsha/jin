@@ -1,13 +1,12 @@
 mod pretty_print;
 pub mod token;
 
-use std::fmt;
-use std::io;
+use std::{fmt, io};
 
 use ustr::Ustr;
 
-use crate::ast::token::TokenKind;
 use crate::{
+    ast::token::TokenKind,
     common::QualifiedName,
     span::{SourceId, Span, Spanned},
 };

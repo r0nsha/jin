@@ -1,7 +1,9 @@
 use std::fmt::{Display, Formatter, Result};
 
-use crate::db::Database;
-use crate::ty::{InferTy, IntTy, Ty};
+use crate::{
+    db::Database,
+    ty::{InferTy, IntTy, Ty},
+};
 
 pub struct TypePrinter<'db> {
     _db: &'db Database,

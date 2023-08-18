@@ -5,10 +5,9 @@ mod pretty_print;
 pub use lower::lower;
 use ustr::{ustr, Ustr};
 
-use crate::db::DefinitionId;
 use crate::{
     common::{new_key_type, IndexVec},
-    db::{Database, TyId},
+    db::{Database, DefinitionId, TyId},
     span::Span,
 };
 

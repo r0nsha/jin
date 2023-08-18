@@ -5,9 +5,12 @@ use std::{
 
 use path_absolutize::Absolutize;
 
-use crate::common::target::{TargetMetrics, TargetPlatform};
 use crate::{
-    common::{new_key_type, IndexVec, QualifiedName},
+    common::{
+        new_key_type,
+        target::{TargetMetrics, TargetPlatform},
+        IndexVec, QualifiedName,
+    },
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
     ty::Ty,
@@ -149,6 +152,7 @@ pub struct BuildOptions {
 }
 
 impl BuildOptions {
+    #[allow(clippy::fn_params_excessive_bools)]
     pub fn new(
         print_times: bool,
         print_ast: bool,

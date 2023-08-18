@@ -1,13 +1,12 @@
 use ustr::ustr;
 
+use super::{lexer, parser};
 use crate::{
     ast::{Library, Module},
     db::Database,
     diagnostics::Diagnostic,
     span::Source,
 };
-
-use super::{lexer, parser};
 
 pub fn parse_modules(db: &mut Database) -> Library {
     let mut modules = vec![];

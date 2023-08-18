@@ -1,5 +1,6 @@
-use owo_colors::{AnsiColors, OwoColorize};
 use std::time::Duration;
+
+use owo_colors::{AnsiColors, OwoColorize};
 use stopwatch::Stopwatch as SW;
 
 pub struct Stopwatch<'s> {

@@ -2,12 +2,15 @@ use std::collections::HashMap;
 
 use ustr::{Ustr, UstrMap};
 
-use crate::db::{DefinitionInfoKind, FunctionInfo};
-use crate::hir::Binary;
 use crate::{
-    db::{Database, DefinitionId, DefinitionInfo, ModuleId, ScopeLevel, TyId, Vis},
+    db::{
+        Database, DefinitionId, DefinitionInfo, DefinitionInfoKind, FunctionInfo, ModuleId,
+        ScopeLevel, TyId, Vis,
+    },
     diagnostics::{Diagnostic, Label},
-    hir::{Block, Call, Definition, DefinitionKind, Expr, Function, Hir, Module, Name, Return},
+    hir::{
+        Binary, Block, Call, Definition, DefinitionKind, Expr, Function, Hir, Module, Name, Return,
+    },
     span::Span,
 };
 

@@ -1,14 +1,11 @@
 use std::collections::HashSet;
 
-use crate::hir::Binary;
-use crate::ty::{FunctionTy, InferTy};
+use super::InferCx;
 use crate::{
     db::TyId,
-    hir::{Block, Call, Definition, DefinitionKind, Expr, Function, Module, Return},
-    ty::{Ty, TyVar},
+    hir::{Binary, Block, Call, Definition, DefinitionKind, Expr, Function, Module, Return},
+    ty::{FunctionTy, InferTy, Ty, TyVar},
 };
-
-use super::InferCx;
 
 // Substitute
 impl<'db> InferCx<'db> {

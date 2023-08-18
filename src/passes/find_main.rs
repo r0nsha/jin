@@ -1,6 +1,5 @@
-use crate::db::{self, DefinitionInfoKind};
 use crate::{
-    db::Database,
+    db::{self, Database, DefinitionInfoKind},
     diagnostics::{Diagnostic, Label},
     span::Span,
     ty::Ty,

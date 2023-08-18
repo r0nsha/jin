@@ -1,12 +1,10 @@
 use std::collections::HashSet;
 
-use crate::mir::Binary;
-use crate::{db::DefinitionId, span::Span};
-
 use super::{
     Block, BlockId, Call, Function, Instruction, IntLit, Register, RegisterId, Return, TyId,
     UnitLit, Value,
 };
+use crate::{db::DefinitionId, mir::Binary, span::Span};
 
 pub struct FunctionBuilder {
     f: Function,

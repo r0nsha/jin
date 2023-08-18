@@ -1,9 +1,8 @@
 use ena::unify::{EqUnifyValue, InPlaceUnificationTable, UnifyKey};
 
-use crate::ty::{InferTy, IntVar, IntVarValue};
 use crate::{
     span::Span,
-    ty::{Ty, TyVar},
+    ty::{InferTy, IntVar, IntVarValue, Ty, TyVar},
 };
 
 pub struct TypeCx {

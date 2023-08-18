@@ -1,7 +1,8 @@
 #![allow(non_snake_case)]
 
-use libc::{free, malloc, wcslen};
 use std::{fs, ptr};
+
+use libc::{free, malloc, wcslen};
 use widestring::{u16cstr, u16str, U16CStr, U16CString, U16String};
 use winapi::{
     ctypes::wchar_t,

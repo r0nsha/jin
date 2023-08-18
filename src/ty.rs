@@ -3,9 +3,11 @@ mod printer;
 use derive_more::{From, Into};
 use enum_as_inner::EnumAsInner;
 
-use crate::db::{Database, TyId};
-use crate::span::Span;
-use crate::ty::printer::TypePrinter;
+use crate::{
+    db::{Database, TyId},
+    span::Span,
+    ty::printer::TypePrinter,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
 pub enum Ty {
