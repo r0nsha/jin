@@ -15,7 +15,7 @@ use crate::{
     db::{Database, DefinitionId},
     llvm::ty::LlvmType,
     mir::{
-        Binary, Block, BlockId, BoolLit, Call, Function, Instruction, IntLit, Br, BrIf, Mir, Phi,
+        Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Instruction, IntLit, Mir, Phi,
         RegisterId, Return, UnitLit, Value,
     },
 };
@@ -36,7 +36,7 @@ pub struct Generator<'db, 'cx> {
 pub struct FunctionState<'cx> {
     pub id: DefinitionId,
     pub function_value: FunctionValue<'cx>,
-    pub decl_block: BasicBlock<'cx>,
+    pub prologue_block: BasicBlock<'cx>,
     pub current_block: BasicBlock<'cx>,
     blocks: HashMap<BlockId, BasicBlock<'cx>>,
     registers: HashMap<RegisterId, BasicValueEnum<'cx>>,
@@ -46,7 +46,7 @@ impl<'cx> FunctionState<'cx> {
     pub fn new(
         id: DefinitionId,
         function_value: FunctionValue<'cx>,
-        decl_block: BasicBlock<'cx>,
+        prologue_block: BasicBlock<'cx>,
         blocks: HashMap<BlockId, BasicBlock<'cx>>,
     ) -> Self {
         let current_block = *blocks.get(&BlockId::first()).expect("to have a start block");
@@ -54,7 +54,7 @@ impl<'cx> FunctionState<'cx> {
         Self {
             id,
             function_value,
-            decl_block,
+            prologue_block,
             current_block,
             blocks,
             registers: HashMap::default(),
@@ -163,8 +163,8 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             panic!("function {} to be declared", fun_info.qualified_name.standard_full_name())
         });
 
-        let decl_block = self.context.append_basic_block(function_value, "decls");
-        self.builder.position_at_end(decl_block);
+        let prologue_block = self.context.append_basic_block(function_value, "decls");
+        self.builder.position_at_end(prologue_block);
 
         let mut blocks = HashMap::default();
 
@@ -175,7 +175,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
         self.builder.build_unconditional_branch(blocks[&BlockId::first()]);
 
-        let mut state = FunctionState::new(id, function_value, decl_block, blocks);
+        let mut state = FunctionState::new(id, function_value, prologue_block, blocks);
 
         for blk in fun.blocks() {
             blk.codegen(self, &mut state);
