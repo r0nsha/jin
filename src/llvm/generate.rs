@@ -15,8 +15,8 @@ use crate::{
     db::{Database, DefinitionId},
     llvm::ty::LlvmType,
     mir::{
-        Binary, Block, BlockId, BoolLit, Call, Function, Instruction, IntLit, Mir, RegisterId,
-        Return, UnitLit, Value,
+        Binary, Block, BlockId, BoolLit, Call, Function, Instruction, IntLit, Jmp, Jnz, Mir, Phi,
+        RegisterId, Return, UnitLit, Value,
     },
 };
 
@@ -231,6 +231,9 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Instruction {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         match self {
             Self::Return(inner) => inner.codegen(cx, state),
+            Self::Jmp(inner) => inner.codegen(cx, state),
+            Self::Jnz(inner) => inner.codegen(cx, state),
+            Self::Phi(inner) => inner.codegen(cx, state),
             Self::Call(inner) => inner.codegen(cx, state),
             Self::Binary(inner) => inner.codegen(cx, state),
             Self::IntLit(inner) => inner.codegen(cx, state),
@@ -243,6 +246,24 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Instruction {
 impl<'db, 'cx> Codegen<'db, 'cx> for Return {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         cx.builder.build_return(Some(&cx.get_value(state, &self.value)));
+    }
+}
+
+impl<'db, 'cx> Codegen<'db, 'cx> for Jmp {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        todo!()
+    }
+}
+
+impl<'db, 'cx> Codegen<'db, 'cx> for Jnz {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        todo!()
+    }
+}
+
+impl<'db, 'cx> Codegen<'db, 'cx> for Phi {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        todo!()
     }
 }
 
