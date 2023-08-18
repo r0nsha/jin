@@ -25,6 +25,11 @@ impl Mir {
         self.functions.push(function);
     }
 
+    #[allow(unused)]
+    pub fn main_function(&self, db: &Database) -> Option<&Function> {
+        db.main_function_id().and_then(|id| self.functions.iter().find(|f| f.id() == id))
+    }
+
     pub fn pretty_print(&self, db: &Database) {
         pretty_print::print(db, self);
     }

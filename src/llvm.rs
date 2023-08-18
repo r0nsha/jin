@@ -71,7 +71,7 @@ fn create_target_machine(db: &Database) -> Option<TargetMachine> {
         Arch::Amd64 | Arch::_386 => Target::initialize_x86(&InitializationConfig::default()),
         Arch::Arm64 => Target::initialize_aarch64(&InitializationConfig::default()),
         Arch::Wasm32 | Arch::Wasm64 => {
-            Target::initialize_webassembly(&InitializationConfig::default())
+            Target::initialize_webassembly(&InitializationConfig::default());
         }
     }
 
@@ -246,10 +246,6 @@ fn optimize(module: &Module) {
 //         .args(link_flags)
 //         .execute_output()
 //         .unwrap();
-
-fn is_libc(lib: &str) -> bool {
-    lib.eq_ignore_ascii_case("c")
-}
 
 #[allow(dead_code)]
 #[repr(u32)]

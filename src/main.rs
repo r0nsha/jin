@@ -31,7 +31,6 @@ use std::path::{Path, PathBuf};
 use clap::{Parser, Subcommand};
 use common::time::time;
 use db::{BuildOptions, Database};
-use mir::Mir;
 
 use crate::common::target::TargetPlatform;
 
