@@ -31,38 +31,41 @@ impl<'s> Lexer<'s> {
     fn scan(mut self) -> TokenizeResult<Vec<Token>> {
         let mut tokens = vec![];
 
-        while let Some(token) = self.next_token()? {
+        while let Some(token) = self.eat_token()? {
             tokens.push(token);
         }
 
         Ok(tokens)
     }
 
-    fn next_token(&mut self) -> TokenizeResult<Option<Token>> {
+    fn eat_token(&mut self) -> TokenizeResult<Option<Token>> {
         let start = self.pos;
 
         match self.bump() {
             Some(ch) => {
                 let kind = match ch {
+                    ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
+                    ch if ch.is_ascii_digit() => self.numeric(start),
+                    ch if ch.is_ascii_whitespace() => return self.eat_token(),
                     '(' => TokenKind::OpenParen,
                     ')' => TokenKind::CloseParen,
                     '{' => TokenKind::OpenCurly,
                     '}' => TokenKind::CloseCurly,
                     ',' => TokenKind::Comma,
                     '=' => {
-                        if self.is('=') {
+                        if self.eat('=') {
                             TokenKind::EqEq
                         } else {
                             TokenKind::Eq
                         }
                     }
-                    '!' if self.is('=') => TokenKind::BangEq,
+                    '!' if self.eat('=') => TokenKind::BangEq,
                     '*' => TokenKind::Star,
                     '/' => {
-                        if self.is('/') {
-                            self.advance();
-                            self.comment();
-                            return self.next_token();
+                        if self.eat('/') {
+                            self.next();
+                            self.eat_comment();
+                            return self.eat_token();
                         }
 
                         TokenKind::FwSlash
@@ -71,41 +74,38 @@ impl<'s> Lexer<'s> {
                     '+' => TokenKind::Plus,
                     '-' => TokenKind::Minus,
                     '<' => {
-                        if self.is('<') {
+                        if self.eat('<') {
                             TokenKind::LtLt
-                        } else if self.is('=') {
+                        } else if self.eat('=') {
                             TokenKind::LtEq
                         } else {
                             TokenKind::Lt
                         }
                     }
                     '>' => {
-                        if self.is('>') {
+                        if self.eat('>') {
                             TokenKind::GtGt
-                        } else if self.is('=') {
+                        } else if self.eat('=') {
                             TokenKind::GtEq
                         } else {
                             TokenKind::Gt
                         }
                     }
                     '&' => {
-                        if self.is('&') {
+                        if self.eat('&') {
                             TokenKind::AmpAmp
                         } else {
                             TokenKind::Amp
                         }
                     }
                     '|' => {
-                        if self.is('|') {
+                        if self.eat('|') {
                             TokenKind::PipePipe
                         } else {
                             TokenKind::Pipe
                         }
                     }
                     '^' => TokenKind::Caret,
-                    ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
-                    ch if ch.is_ascii_digit() => self.numeric(start),
-                    ch if ch.is_ascii_whitespace() => return self.next_token(),
                     ch => {
                         let span = self.create_span(start.try_into().unwrap());
                         return Err(TokenizeError::InvalidChar { ch, span });
@@ -121,7 +121,7 @@ impl<'s> Lexer<'s> {
     fn ident(&mut self, start: usize) -> TokenKind {
         while let Some(ch) = self.peek() {
             if ch.is_ascii_alphanumeric() || ch == '_' {
-                self.advance();
+                self.next();
             } else {
                 return match self.range(start) {
                     "fn" => TokenKind::Fn,
@@ -137,10 +137,10 @@ impl<'s> Lexer<'s> {
     fn numeric(&mut self, start: usize) -> TokenKind {
         while let Some(ch) = self.peek() {
             if ch.is_ascii_digit() {
-                self.advance();
+                self.next();
             } else if ch == '_' && self.peek_offset(1).map_or(false, |c| c.is_ascii_digit()) {
-                self.advance();
-                self.advance();
+                self.next();
+                self.next();
             } else {
                 return TokenKind::Int(self.range(start).replace('_', "").parse().unwrap());
             }
@@ -149,18 +149,18 @@ impl<'s> Lexer<'s> {
         unreachable!()
     }
 
-    fn comment(&mut self) {
+    fn eat_comment(&mut self) {
         while let Some(ch) = self.peek() {
             if ch == '\n' {
                 return;
             }
 
-            self.advance();
+            self.next();
         }
     }
 
     #[inline]
-    fn advance(&mut self) {
+    fn next(&mut self) {
         self.pos += 1;
     }
 
@@ -172,8 +172,13 @@ impl<'s> Lexer<'s> {
         self.source_bytes.get(self.pos).map(|c| *c as char)
     }
 
-    fn is(&self, ch: char) -> bool {
-        self.peek() == Some(ch)
+    fn eat(&mut self, ch: char) -> bool {
+        if self.peek() == Some(ch) {
+            self.bump();
+            true
+        } else {
+            false
+        }
     }
 
     fn peek_offset(&self, offset: usize) -> Option<char> {
@@ -182,7 +187,7 @@ impl<'s> Lexer<'s> {
 
     fn bump(&mut self) -> Option<char> {
         let ch = self.peek();
-        self.advance();
+        self.next();
         ch
     }
 
