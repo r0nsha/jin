@@ -101,7 +101,11 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
         self.builder.build_call(
             puts,
-            &[self.context.const_string(b"Hello, World!\n", false).into()],
+            &[self
+                .builder
+                .build_global_string_ptr("Hello, World!\n", "str")
+                .as_pointer_value()
+                .into()],
             "call",
         );
 

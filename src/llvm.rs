@@ -25,7 +25,7 @@ use crate::{
         target::{Arch, Os, TargetMetrics},
         time::time,
     },
-    db::{BuildOptions, Database},
+    db::Database,
     llvm::generate::Generator,
     mir::Mir,
 };
