@@ -348,17 +348,18 @@ impl<'a> Parser<'a> {
         let then = Ast::Block(self.parse_block()?);
 
         self.eat(TokenKind::Else)?;
-        self.eat(TokenKind::OpenCurly)?;
-        let otherwise = Ast::Block(self.parse_block()?);
 
-        let span = start.merge(otherwise.span());
+        let otherwise = if self.is(TokenKind::OpenCurly) {
+            Some(Box::new(Ast::Block(self.parse_block()?)))
+        } else if self.is(TokenKind::If) {
+            Some(Box::new(Ast::If(self.parse_if()?)))
+        } else {
+            None
+        };
 
-        Ok(If {
-            cond: Box::new(cond),
-            then: Box::new(then),
-            otherwise: Some(Box::new(otherwise)),
-            span,
-        })
+        let span = start.merge(otherwise.as_ref().map_or(then.span(), |o| o.span()));
+
+        Ok(If { cond: Box::new(cond), then: Box::new(then), otherwise, span })
     }
 
     fn parse_operand_postfix(&mut self, expr: Ast) -> ParseResult<Ast> {
