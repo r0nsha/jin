@@ -155,6 +155,7 @@ pub enum Inst {
     BrIf(BrIf),
     Phi(Phi),
     Call(Call),
+    LoadGlobal(LoadGlobal),
     Binary(Binary),
     IntLit(IntLit),
     BoolLit(BoolLit),
@@ -198,6 +199,14 @@ pub type PhiValue = (BlockId, Value);
 pub struct Call {
     pub register: RegisterId,
     pub callee: Value,
+    #[allow(unused)]
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct LoadGlobal {
+    pub register: RegisterId,
+    pub id: DefId,
     #[allow(unused)]
     pub span: Span,
 }

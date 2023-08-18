@@ -15,8 +15,8 @@ use crate::{
     db::{Database, DefId},
     llvm::ty::LlvmType,
     mir::{
-        Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, Mir, Phi,
-        RegisterId, Return, UnitLit, Value,
+        Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, LoadGlobal, Mir,
+        Phi, RegisterId, Return, UnitLit, Value,
     },
 };
 
@@ -219,6 +219,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
             Self::BrIf(inner) => inner.codegen(cx, state),
             Self::Phi(inner) => inner.codegen(cx, state),
             Self::Call(inner) => inner.codegen(cx, state),
+            Self::LoadGlobal(inner) => inner.codegen(cx, state),
             Self::Binary(inner) => inner.codegen(cx, state),
             Self::IntLit(inner) => inner.codegen(cx, state),
             Self::BoolLit(inner) => inner.codegen(cx, state),
@@ -302,6 +303,13 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
         );
 
         state.set_register(self.register, result_value);
+    }
+}
+
+impl<'db, 'cx> Codegen<'db, 'cx> for LoadGlobal {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        let value = cx.function(self.id).as_global_value().as_pointer_value();
+        state.set_register(self.register, value.into());
     }
 }
 
