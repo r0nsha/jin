@@ -14,8 +14,8 @@ use crate::{
     db::{Database, DefinitionId},
     llvm::ty::LlvmType,
     mir::{
-        Block, BlockId, Call, Function, Instruction, IntLit, Mir, RegisterId, Return, UnitLit,
-        Value,
+        Binary, Block, BlockId, Call, Function, Instruction, IntLit, Mir, RegisterId, Return,
+        UnitLit, Value,
     },
 };
 
@@ -215,12 +215,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Instruction {
         match self {
             Self::Return(inner) => inner.codegen(cx, state),
             Self::Call(inner) => inner.codegen(cx, state),
-            Self::Binary(inner) => {
-                let left = cx.get_value(state, &inner.left).into_int_value();
-                let right = cx.get_value(state, &inner.right).into_int_value();
-                let result = cx.builder.build_int_add(left, right, "iadd");
-                state.set_register(inner.register, result.into());
-            }
+            Self::Binary(inner) => inner.codegen(cx, state),
             Self::IntLit(inner) => inner.codegen(cx, state),
             Self::UnitLit(inner) => inner.codegen(cx, state),
         }
@@ -265,6 +260,15 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
         );
 
         state.set_register(self.register, result_value);
+    }
+}
+
+impl<'db, 'cx> Codegen<'db, 'cx> for Binary {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        let left = cx.get_value(state, &self.left).into_int_value();
+        let right = cx.get_value(state, &self.right).into_int_value();
+        let result = cx.builder.build_int_add(left, right, "iadd");
+        state.set_register(self.register, result.into());
     }
 }
 
