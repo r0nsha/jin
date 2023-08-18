@@ -32,7 +32,7 @@ impl<'db> Cx<'db> {
     fn run(&mut self, module: ast::Module) -> Module {
         Module {
             id: self.id,
-            definitions: module.top_levels.into_iter().map(|tl| tl.lower(self)).collect(),
+            definitions: module.definitions.into_iter().map(|tl| tl.lower(self)).collect(),
         }
     }
 }
@@ -41,7 +41,7 @@ trait Lower<'db, T> {
     fn lower(self, cx: &mut Cx<'db>) -> T;
 }
 
-impl Lower<'_, Def> for ast::TopLevel {
+impl Lower<'_, Def> for ast::Def {
     fn lower(self, cx: &mut Cx<'_>) -> Def {
         match self {
             Self::Function(fun) => {
@@ -125,18 +125,7 @@ impl Lower<'_, Expr> for Ast {
 impl Lower<'_, Expr> for ast::Statement {
     fn lower(self, cx: &mut Cx<'_>) -> Expr {
         match self {
-            Self::Function(fun) => {
-                let name = fun.name;
-                let span = fun.span;
-
-                Expr::Def(Def {
-                    id: None,
-                    name,
-                    kind: DefKind::Function(fun.lower(cx)),
-                    span,
-                    ty: TyId::null(),
-                })
-            }
+            Self::Def(def) => Expr::Def(def.lower(cx)),
             Self::Return(ret) => Expr::Return(Return {
                 expr: ret.expr.map_or_else(
                     || {

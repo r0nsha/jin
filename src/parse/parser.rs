@@ -3,8 +3,8 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Ast, Binary, BinaryOp, Block, Call, Function, FunctionParam, If, Lit, LitKind, Module,
-        Name, Return, Statement, TopLevel,
+        Ast, Binary, BinaryOp, Block, Call, Def, Function, FunctionParam, If, Lit, LitKind, Module,
+        Name, Return, Statement,
     },
     common::QualifiedName,
     db::Database,
@@ -46,15 +46,15 @@ impl<'a> Parser<'a> {
         let mut module = Module::new(source_id, name, is_main);
 
         while !self.eof() {
-            module.top_levels.push(self.parse_top_level()?);
+            module.definitions.push(self.parse_top_level()?);
         }
 
         Ok(module)
     }
 
-    fn parse_top_level(&mut self) -> ParseResult<TopLevel> {
+    fn parse_top_level(&mut self) -> ParseResult<Def> {
         if self.is(TokenKind::Fn) {
-            Ok(TopLevel::Function(self.parse_function()?))
+            Ok(Def::Function(self.parse_function()?))
         } else {
             let token = self.require()?;
 
@@ -106,7 +106,7 @@ impl<'a> Parser<'a> {
 
     fn parse_stmt(&mut self) -> ParseResult<Statement> {
         if self.is(TokenKind::Fn) {
-            Ok(Statement::Function(self.parse_function()?))
+            Ok(Statement::Def(Def::Function(self.parse_function()?)))
         } else if self.is(TokenKind::Return) {
             Ok(Statement::Return(self.parse_return()?))
         } else {

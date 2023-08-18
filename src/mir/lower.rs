@@ -12,32 +12,37 @@ pub fn lower(db: &mut Database, hir: &Hir) -> Mir {
     let mut mir = Mir::new();
 
     for module in &hir.modules {
-        for def in &module.definitions {
-            lower_def(db, &mut mir, def);
-        }
+        lower_module(db, &mut mir, module);
     }
 
     mir
+}
+
+fn lower_module(db: &mut Database, mir: &mut Mir, module: &hir::Module) {
+    for def in &module.definitions {
+        lower_def(db, mir, def);
+    }
 }
 
 fn lower_def(db: &mut Database, mir: &mut Mir, def: &hir::Def) {
     match &def.kind {
         hir::DefKind::Function(fun) => {
             let id = fun.id.expect("to be resolved");
-            let fun = LowerCx::new(db, id).lower_function(fun).unwrap();
+            let fun = LowerFunctionCx::new(db, mir, id).lower_function(fun).unwrap();
             mir.add_function(fun);
         }
     }
 }
 
-struct LowerCx<'db> {
+struct LowerFunctionCx<'db> {
     db: &'db mut Database,
+    mir: &'db mut Mir,
     builder: FunctionBuilder,
 }
 
-impl<'db> LowerCx<'db> {
-    fn new(db: &'db mut Database, fun_id: DefId) -> Self {
-        Self { db, builder: FunctionBuilder::new(fun_id) }
+impl<'db> LowerFunctionCx<'db> {
+    fn new(db: &'db mut Database, mir: &'db mut Mir, fun_id: DefId) -> Self {
+        Self { db, mir, builder: FunctionBuilder::new(fun_id) }
     }
 
     fn lower_function(mut self, fun: &hir::Function) -> Result<Function, String> {

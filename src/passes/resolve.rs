@@ -49,27 +49,12 @@ impl<'db> ResolveCx<'db> {
                     already_defined.insert(def.name, def.span);
                 }
 
-                let qualified_name = self.db[module.id].name.clone().child(def.name);
-
-                let kind = match &def.kind {
-                    DefKind::Function(_) => DefInfoKind::Function(FunctionInfo::Orphan),
-                };
-
-                let id = DefInfo::alloc(
-                    self.db,
+                let id = self.declare_def(
+                    def,
                     module.id,
-                    qualified_name,
+                    self.db[module.id].name.clone(),
                     ScopeLevel::Global(Vis::Public),
-                    kind,
-                    TyId::null(),
-                    def.span,
                 );
-
-                match &mut def.kind {
-                    DefKind::Function(fun) => fun.id = Some(id),
-                }
-
-                def.id = Some(id);
 
                 scope_definitions.insert(def.name, id);
             }
@@ -87,6 +72,36 @@ impl<'db> ResolveCx<'db> {
             }
         }
     }
+
+    fn declare_def(
+        &mut self,
+        def: &mut Def,
+        module_id: ModuleId,
+        prefix: QualifiedName,
+        scope_level: ScopeLevel,
+    ) -> DefId {
+        let kind = match &def.kind {
+            DefKind::Function(_) => DefInfoKind::Function(FunctionInfo::Orphan),
+        };
+
+        let id = DefInfo::alloc(
+            self.db,
+            module_id,
+            prefix.child(def.name),
+            scope_level,
+            kind,
+            TyId::null(),
+            def.span,
+        );
+
+        def.id = Some(id);
+
+        match &mut def.kind {
+            DefKind::Function(fun) => fun.id = def.id,
+        }
+
+        id
+    }
 }
 
 trait Resolve<'db> {
@@ -95,7 +110,13 @@ trait Resolve<'db> {
 
 impl Resolve<'_> for Def {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        // TODO: local def
+        let scope_level = env.scope_level(Vis::Private);
+
+        if let Some(scope) = env.scopes.current_mut() {
+            let id = cx.declare_def(self, env.module_id, scope.name.clone(), scope_level);
+            scope.insert(self.name, id);
+        }
+
         match &mut self.kind {
             DefKind::Function(fun) => fun.resolve(cx, env),
         }
@@ -119,22 +140,6 @@ impl Resolve<'_> for Expr {
 
 impl Resolve<'_> for Function {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        if let Some(scope) = env.scopes.current() {
-            let qualified_name = scope.name.clone().child(self.name);
-
-            let kind = DefInfoKind::Function(FunctionInfo::Orphan);
-
-            self.id = Some(DefInfo::alloc(
-                cx.db,
-                env.module_id,
-                qualified_name,
-                ScopeLevel::Local(env.scopes.depth()),
-                kind,
-                TyId::null(),
-                self.span,
-            ));
-        }
-
         env.scopes.push_scope(self.name, ScopeKind::Fun);
         self.body.resolve(cx, env);
         env.scopes.pop_scope();
@@ -189,9 +194,13 @@ impl Resolve<'_> for Binary {
 
 impl Resolve<'_> for Name {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        if let Some(id) = cx.global_scope.find_definition(env.module_id, self.name) {
-            self.id = Some(id);
-        } else {
+        self.id = env
+            .scopes
+            .get_value(self.name)
+            .copied()
+            .or_else(|| cx.global_scope.find_definition(env.module_id, self.name));
+
+        if self.id.is_none() {
             cx.errors.push(ResolveError::NameNotFound { name: self.name, span: self.span });
         }
     }
@@ -219,6 +228,13 @@ pub struct Env {
 impl Env {
     pub fn new(module_id: ModuleId) -> Self {
         Self { module_id, scopes: Scopes::new() }
+    }
+
+    pub fn scope_level(&self, vis: Vis) -> ScopeLevel {
+        match self.scopes.depth() {
+            0 => ScopeLevel::Global(vis),
+            n => ScopeLevel::Local(n),
+        }
     }
 }
 
@@ -308,6 +324,7 @@ impl Scope {
         self.definitions.insert(name, id);
     }
 
+    #[allow(unused)]
     fn get(&mut self, name: Ustr) -> Option<DefId> {
         self.definitions.get(&name).copied()
     }

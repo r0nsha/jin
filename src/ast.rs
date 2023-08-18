@@ -52,13 +52,13 @@ impl Library {
 pub struct Module {
     pub source: SourceId,
     pub name: QualifiedName,
-    pub top_levels: Vec<TopLevel>,
+    pub definitions: Vec<Def>,
     is_main: bool,
 }
 
 impl Module {
     pub fn new(source_id: SourceId, name: QualifiedName, is_main: bool) -> Self {
-        Self { source: source_id, name, is_main, top_levels: vec![] }
+        Self { source: source_id, name, is_main, definitions: vec![] }
     }
 
     pub fn is_main(&self) -> bool {
@@ -101,7 +101,7 @@ impl Spanned for Ast {
 }
 
 #[derive(Debug, Clone)]
-pub enum TopLevel {
+pub enum Def {
     Function(Function),
 }
 
@@ -135,7 +135,7 @@ pub struct Block {
 
 #[derive(Debug, Clone)]
 pub enum Statement {
-    Function(Function),
+    Def(Def),
     Return(Return),
     Expr(Ast),
 }

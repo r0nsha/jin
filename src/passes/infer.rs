@@ -13,8 +13,8 @@ use crate::{
     ast::BinaryOp,
     db::{Database, DefId, TyId},
     hir::{
-        Binary, Block, Call, Def, DefKind, Expr, Function, Hir, If, Lit, LitKind,
-        Module, Name, Return,
+        Binary, Block, Call, Def, DefKind, Expr, Function, Hir, If, Lit, LitKind, Module, Name,
+        Return,
     },
     passes::infer::typecx::TypeCx,
     span::Spanned,
@@ -81,7 +81,7 @@ trait Infer<'db> {
 impl Infer<'_> for Expr {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         match self {
-            Self::Function(inner) => inner.infer(cx, env),
+            Self::Def(inner) => inner.infer(cx, env),
             Self::If(inner) => inner.infer(cx, env),
             Self::Block(inner) => inner.infer(cx, env),
             Self::Return(inner) => inner.infer(cx, env),

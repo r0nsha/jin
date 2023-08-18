@@ -1,12 +1,12 @@
 use std::io;
 
-use super::{Ast, Function, LitKind, Module, Statement, TopLevel};
+use super::{Ast, Def, Function, LitKind, Module, Statement};
 
 pub(super) fn print_module(module: &Module) -> io::Result<()> {
     let mut cx = Cx { builder: ptree::TreeBuilder::new(module.name.standard_full_name()) };
 
-    for tl in &module.top_levels {
-        tl.pretty_print(&mut cx);
+    for def in &module.definitions {
+        def.pretty_print(&mut cx);
     }
 
     let tree = cx.builder.build();
@@ -84,7 +84,7 @@ impl PrettyPrint for Ast {
 impl PrettyPrint for Statement {
     fn pretty_print(&self, cx: &mut Cx) {
         match self {
-            Self::Function(fun) => fun.pretty_print(cx),
+            Self::Def(def) => def.pretty_print(cx),
             Self::Return(ret) => {
                 cx.builder.begin_child("return".to_string());
 
@@ -99,7 +99,7 @@ impl PrettyPrint for Statement {
     }
 }
 
-impl PrettyPrint for TopLevel {
+impl PrettyPrint for Def {
     fn pretty_print(&self, cx: &mut Cx) {
         match self {
             Self::Function(fun) => fun.pretty_print(cx),

@@ -1,8 +1,6 @@
 use std::io;
 
-use super::{
-    Block, Call, Def, DefKind, Expr, Function, Lit, LitKind, Module, Name, Return,
-};
+use super::{Block, Call, Def, DefKind, Expr, Function, Lit, LitKind, Module, Name, Return};
 use crate::{
     db::Database,
     hir::{Binary, If},
@@ -32,7 +30,7 @@ trait PrettyPrint {
 impl PrettyPrint for Expr {
     fn pretty_print(&self, cx: &mut Cx) {
         match self {
-            Self::Function(inner) => inner.pretty_print(cx),
+            Self::Def(inner) => inner.pretty_print(cx),
             Self::If(inner) => inner.pretty_print(cx),
             Self::Block(inner) => inner.pretty_print(cx),
             Self::Return(inner) => inner.pretty_print(cx),
