@@ -16,6 +16,10 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         self.context.const_struct(&[], false)
     }
 
+    pub fn current_block_is_terminating(&self) -> bool {
+        self.current_block().get_terminator().is_some()
+    }
+
     #[allow(unused)]
     pub fn print_current_state(&self, state: &FunctionState<'cx>) {
         let current_block = self.current_block();

@@ -70,7 +70,7 @@ impl<'cx> FunctionState<'cx> {
     }
 
     pub fn register(&self, id: RegisterId) -> BasicValueEnum<'cx> {
-        *self.registers.get(&id).expect("to be a valid BlockId")
+        *self.registers.get(&id).expect("to be a valid RegisterId")
     }
 
     pub fn set_register(&mut self, id: RegisterId, value: BasicValueEnum<'cx>) {
@@ -127,7 +127,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
         self.builder.build_call(main_function_value, &[], "call_main");
 
-        if self.current_block().get_terminator().is_none() {
+        if !self.current_block_is_terminating() {
             self.builder.build_return(Some(&self.context.i32_type().const_zero()));
         }
     }
@@ -184,22 +184,6 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         function_value.as_global_value().as_pointer_value().into()
     }
 
-    // fn codegen_branch(
-    //     &mut self,
-    //     branch: &hir::Ast,
-    //     end_block: BasicBlock<'g>,
-    // ) -> (BasicTypeEnum<'g>, Option<(BasicValueEnum<'g>, BasicBlock<'g>)>) {
-    //     let branch_value = branch.codegen(self);
-    //
-    //     if self.current_instruction_is_block_terminator() {
-    //         (branch_value.get_type(), None)
-    //     } else {
-    //         let branch_block = self.current_block();
-    //         self.builder.build_unconditional_branch(end_block);
-    //         (branch_value.get_type(), Some((branch_value, branch_block)))
-    //     }
-    // }
-
     fn function(&self, id: DefinitionId) -> FunctionValue<'cx> {
         *self.functions.get(&id).expect("function to be declared")
     }
@@ -245,23 +229,29 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Instruction {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Return {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        cx.builder.build_return(Some(&cx.value(state, &self.value)));
+        if !cx.current_block_is_terminating() {
+            cx.builder.build_return(Some(&cx.value(state, &self.value)));
+        }
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Jmp {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        cx.builder.build_unconditional_branch(state.block(self.target));
+        if !cx.current_block_is_terminating() {
+            cx.builder.build_unconditional_branch(state.block(self.target));
+        }
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Jnz {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        cx.builder.build_conditional_branch(
-            cx.value(state, &self.cond).into_int_value(),
-            state.block(self.b1),
-            state.block(self.b2),
-        );
+        if !cx.current_block_is_terminating() {
+            cx.builder.build_conditional_branch(
+                cx.value(state, &self.cond).into_int_value(),
+                state.block(self.b1),
+                state.block(self.b2),
+            );
+        }
     }
 }
 

@@ -45,7 +45,7 @@ impl<'db> LowerCx<'db> {
         let body_reg = self.lower_block(&fun.body);
 
         // Insert a final return instruction if the function's isn't terminating
-        if !self.builder.is_terminating() {
+        if !self.builder.current_block().is_terminating() {
             let span = fun.body.span;
             self.builder.build_return(body_reg, span);
             self.build_unreachable(span);
@@ -78,17 +78,17 @@ impl<'db> LowerCx<'db> {
         let merge_blk = self.builder.create_block("if_merge");
 
         self.builder.position_at(then_blk);
-        let then_value = self.lower_expr(&if_.then);
+        let then_value = self.lower_branch(&if_.then);
         self.builder.build_jmp(merge_blk, if_.span);
 
         self.builder.position_at(else_blk);
-        let else_value = if_.otherwise.as_ref().map(|otherwise| self.lower_expr(otherwise));
+        let else_value = if_.otherwise.as_ref().and_then(|otherwise| self.lower_branch(otherwise));
         self.builder.build_jmp(merge_blk, if_.span);
 
         self.builder.position_at(merge_blk);
 
-        match else_value {
-            Some(else_value) => {
+        match (then_value, else_value) {
+            (Some(then_value), Some(else_value)) => {
                 let reg = self.builder.create_register(if_.ty);
 
                 self.builder.build_phi(
@@ -99,7 +99,19 @@ impl<'db> LowerCx<'db> {
 
                 reg.into()
             }
-            None => then_value,
+            (Some(then_value), None) => then_value,
+            (None, Some(else_value)) => else_value,
+            (None, None) => self.build_unreachable(if_.span),
+        }
+    }
+
+    fn lower_branch(&mut self, expr: &hir::Expr) -> Option<Value> {
+        let value = self.lower_expr(expr);
+
+        if self.builder.current_block().is_terminating() {
+            None
+        } else {
+            Some(value)
         }
     }
 

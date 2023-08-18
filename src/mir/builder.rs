@@ -22,13 +22,11 @@ impl FunctionBuilder {
     }
 
     #[inline]
-    #[allow(unused)]
     pub fn blocks(&self) -> &[Block] {
         self.f.cfg.blocks.as_slice()
     }
 
     #[inline]
-    #[allow(unused)]
     pub fn block(&self, id: BlockId) -> &Block {
         &self.f.cfg.blocks[id]
     }
@@ -39,7 +37,6 @@ impl FunctionBuilder {
     }
 
     #[inline]
-    #[allow(unused)]
     pub fn current_block(&self) -> &Block {
         self.block(self.current_block)
     }
