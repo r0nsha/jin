@@ -116,18 +116,20 @@ fn build_exe(db: &Database, target_machine: &TargetMachine, module: &Module) -> 
         module.print_to_file(output_path.with_extension("ll")).unwrap();
     }
 
-    let (object_file, output_file) = if let Os::Windows = build_options.target_metrics.os {
+    let (object_file, output_file) = if build_options.target_metrics.os == Os::Windows {
         (output_path.with_extension("obj"), output_path.with_extension("exe"))
     } else {
         (output_path.with_extension("o"), output_path.with_extension(""))
     };
 
     time(build_options.print_times, "write object file", || {
-        target_machine.write_to_file(module, FileType::Object, &object_file).unwrap()
+        target_machine
+            .write_to_file(module, FileType::Object, &object_file)
+            .expect("writing the object file to work");
     });
 
     time(build_options.print_times, "link", || {
-        link(&build_options.target_metrics, &output_file, &object_file)
+        link(&build_options.target_metrics, &output_file, &object_file);
     });
 
     let _ = std::fs::remove_file(object_file);
