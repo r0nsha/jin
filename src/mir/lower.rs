@@ -90,17 +90,11 @@ impl<'db> LowerCx<'db> {
         self.builder.position_at(merge_blk);
 
         match (then_value, else_value) {
-            (Some(then_value), Some(else_value)) => {
-                let value = self.builder.create_value(if_.ty);
-
-                self.builder.build_phi(
-                    value,
-                    vec![(then_blk, then_value), (else_blk, else_value)].into_boxed_slice(),
-                    if_.span,
-                );
-
-                value
-            }
+            (Some(then_value), Some(else_value)) => self.builder.build_phi(
+                if_.ty,
+                vec![(then_blk, then_value), (else_blk, else_value)].into_boxed_slice(),
+                if_.span,
+            ),
             (Some(then_value), None) => then_value,
             (None, Some(else_value)) => else_value,
             (None, None) => self.build_unreachable(if_.span),
@@ -124,14 +118,12 @@ impl<'db> LowerCx<'db> {
             value = Some(self.lower_expr(expr));
         }
 
-        value.unwrap_or_else(|| self.create_unit_value(blk.span))
+        value.unwrap_or_else(|| self.builder.build_unit_lit(blk.ty, blk.span))
     }
 
     fn lower_call(&mut self, call: &hir::Call) -> ValueId {
         let callee = self.lower_expr(&call.callee);
-        let value = self.builder.create_value(call.ty);
-        self.builder.build_call(value, callee, call.span);
-        value
+        self.builder.build_call(call.ty, callee, call.span)
     }
 
     fn lower_binary(&mut self, bin: &hir::Binary) -> ValueId {
@@ -151,20 +143,16 @@ impl<'db> LowerCx<'db> {
                 self.builder.build_br(merge_blk, bin.span);
 
                 self.builder.position_at(false_blk);
-                let false_value = self.create_bool_value(false, bin.span);
+                let false_value = self.builder.build_bool_lit(bin.ty, false, bin.span);
                 self.builder.build_br(merge_blk, bin.span);
 
                 self.builder.position_at(merge_blk);
 
-                let result_value = self.builder.create_value(bin.ty);
-
                 self.builder.build_phi(
-                    result_value,
+                    bin.ty,
                     vec![(true_blk, true_value), (false_blk, false_value)].into_boxed_slice(),
                     bin.span,
-                );
-
-                result_value
+                )
             }
             BinaryOp::Or => {
                 let true_blk = self.builder.create_block("or_true");
@@ -175,7 +163,7 @@ impl<'db> LowerCx<'db> {
                 let merge_blk = self.builder.create_block("or_merge");
 
                 self.builder.position_at(true_blk);
-                let true_value = self.create_bool_value(true, bin.span);
+                let true_value = self.builder.build_bool_lit(bin.ty, true, bin.span);
                 self.builder.build_br(merge_blk, bin.span);
 
                 self.builder.position_at(false_blk);
@@ -184,21 +172,15 @@ impl<'db> LowerCx<'db> {
 
                 self.builder.position_at(merge_blk);
 
-                let result_value = self.builder.create_value(bin.ty);
-
                 self.builder.build_phi(
-                    result_value,
+                    bin.ty,
                     vec![(true_blk, true_value), (false_blk, false_value)].into_boxed_slice(),
                     bin.span,
-                );
-
-                result_value
+                )
             }
             _ => {
                 let rhs = self.lower_expr(&bin.rhs);
-                let value = self.builder.create_value(bin.ty);
-                self.builder.build_binary(value, bin.op, lhs, rhs, bin.span);
-                value
+                self.builder.build_binary(bin.ty, bin.op, lhs, rhs, bin.span)
             }
         }
     }
@@ -216,9 +198,7 @@ impl<'db> LowerCx<'db> {
         let def = &self.db[name.id.expect("to be resolved")];
 
         if let ScopeLevel::Global(_) = def.scope_level {
-            let value = self.builder.create_value(def.ty);
-            self.builder.build_load_global(value, def.id, name.span);
-            value
+            self.builder.build_load_global(def.ty, def.id, name.span)
         } else {
             todo!("local/nested name")
         }
@@ -226,36 +206,13 @@ impl<'db> LowerCx<'db> {
 
     fn lower_lit(&mut self, lit: &hir::Lit) -> ValueId {
         match &lit.kind {
-            hir::LitKind::Int(v) => {
-                let value = self.builder.create_value(lit.ty);
-                self.builder.build_int_lit(value, *v, lit.span);
-                value
-            }
-            hir::LitKind::Bool(v) => {
-                let value = self.builder.create_value(lit.ty);
-                self.builder.build_bool_lit(value, *v, lit.span);
-                value
-            }
-            hir::LitKind::Unit => self.create_unit_value(lit.span),
+            hir::LitKind::Int(v) => self.builder.build_int_lit(lit.ty, *v, lit.span),
+            hir::LitKind::Bool(v) => self.builder.build_bool_lit(lit.ty, *v, lit.span),
+            hir::LitKind::Unit => self.builder.build_unit_lit(lit.ty, lit.span),
         }
     }
 
-    fn create_bool_value(&mut self, lit: bool, span: Span) -> ValueId {
-        let ty = self.db.alloc_ty(Ty::Bool(span));
-        let value = self.builder.create_value(ty);
-        self.builder.build_bool_lit(value, lit, span);
-        value
-    }
-
-    fn create_unit_value(&mut self, span: Span) -> ValueId {
-        let ty = self.db.alloc_ty(Ty::Unit(span));
-        let value = self.builder.create_value(ty);
-        self.builder.build_unit_lit(value, span);
-        value
-    }
-
     fn build_unreachable(&mut self, span: Span) -> ValueId {
-        let ty = self.db.alloc_ty(Ty::Never(span));
-        self.builder.create_value(ty)
+        self.builder.build_unit_lit(self.db.alloc_ty(Ty::Never(span)), span)
     }
 }

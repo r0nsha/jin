@@ -88,16 +88,22 @@ impl FunctionBuilder {
         self.f.cfg.blocks[source].successors.push(target);
     }
 
-    pub fn build_int_lit(&mut self, vid: ValueId, lit: usize, span: Span) {
-        self.current_block_mut().add_inst(Inst::IntLit(IntLit { value: vid, lit, span }));
+    pub fn build_int_lit(&mut self, ty: TyId, lit: usize, span: Span) -> ValueId {
+        let value = self.create_value(ty);
+        self.current_block_mut().add_inst(Inst::IntLit(IntLit { value, lit, span }));
+        value
     }
 
-    pub fn build_bool_lit(&mut self, value: ValueId, lit: bool, span: Span) {
+    pub fn build_bool_lit(&mut self, ty: TyId, lit: bool, span: Span) -> ValueId {
+        let value = self.create_value(ty);
         self.current_block_mut().add_inst(Inst::BoolLit(BoolLit { value, lit, span }));
+        value
     }
 
-    pub fn build_unit_lit(&mut self, value: ValueId, span: Span) {
+    pub fn build_unit_lit(&mut self, ty: TyId, span: Span) -> ValueId {
+        let value = self.create_value(ty);
         self.current_block_mut().add_inst(Inst::UnitLit(UnitLit { value, span }));
+        value
     }
 
     pub fn build_return(&mut self, value: ValueId, span: Span) {
@@ -115,27 +121,35 @@ impl FunctionBuilder {
         self.current_block_mut().add_inst(Inst::BrIf(BrIf { cond, b1, b2, span }));
     }
 
-    pub fn build_phi(&mut self, value: ValueId, phi_values: Box<[PhiValue]>, span: Span) {
+    pub fn build_phi(&mut self, ty: TyId, phi_values: Box<[PhiValue]>, span: Span) -> ValueId {
+        let value = self.create_value(ty);
         self.current_block_mut().add_inst(Inst::Phi(Phi { value, phi_values, span }));
+        value
     }
 
-    pub fn build_call(&mut self, value: ValueId, callee: ValueId, span: Span) {
+    pub fn build_call(&mut self, ty: TyId, callee: ValueId, span: Span) -> ValueId {
+        let value = self.create_value(ty);
         self.current_block_mut().add_inst(Inst::Call(Call { value, callee, span }));
+        value
     }
 
-    pub fn build_load_global(&mut self, value: ValueId, id: DefId, span: Span) {
+    pub fn build_load_global(&mut self, ty: TyId, id: DefId, span: Span) -> ValueId {
+        let value = self.create_value(ty);
         self.current_block_mut().add_inst(Inst::LoadGlobal(LoadGlobal { value, id, span }));
+        value
     }
 
     pub fn build_binary(
         &mut self,
-        value: ValueId,
+        ty: TyId,
         op: BinaryOp,
         lhs: ValueId,
         rhs: ValueId,
         span: Span,
-    ) {
+    ) -> ValueId {
+        let value = self.create_value(ty);
         self.current_block_mut().add_inst(Inst::Binary(Binary { value, op, lhs, rhs, span }));
+        value
     }
 
     pub fn finish(self) -> Result<Function, String> {
