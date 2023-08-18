@@ -204,7 +204,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         *self.functions.get(&id).expect("function to be declared")
     }
 
-    fn get_value(&self, state: &FunctionState<'cx>, value: &Value) -> BasicValueEnum<'cx> {
+    fn value(&self, state: &FunctionState<'cx>, value: &Value) -> BasicValueEnum<'cx> {
         match value {
             Value::Definition(id) => self.function(*id).as_global_value().as_pointer_value().into(),
             Value::Register(id) => state.register(*id),
@@ -245,31 +245,44 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Instruction {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Return {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        cx.builder.build_return(Some(&cx.get_value(state, &self.value)));
+        cx.builder.build_return(Some(&cx.value(state, &self.value)));
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Jmp {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        todo!()
+        cx.builder.build_unconditional_branch(state.block(self.target));
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Jnz {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        todo!()
+        cx.builder.build_conditional_branch(
+            cx.value(state, &self.cond).into_int_value(),
+            state.block(self.b1),
+            state.block(self.b2),
+        );
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Phi {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        todo!()
+        let ty = state.function(cx).register(self.register).unwrap().ty.llvm_type(cx);
+        let phi = cx.builder.build_phi(ty, "phi");
+
+        for (blk, value) in &*self.values {
+            let value = cx.value(state, value);
+            let bb = state.block(*blk);
+            phi.add_incoming(&[(&value, bb)]);
+        }
+
+        state.set_register(self.register, phi.as_basic_value());
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Call {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let callee = cx.get_value(state, &self.callee).into_pointer_value();
+        let callee = cx.value(state, &self.callee).into_pointer_value();
 
         let result = cx.builder.build_call(
             CallableValue::try_from(callee).expect("a callable pointer value"),
@@ -306,8 +319,8 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Binary {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         const NAME: &str = "result";
 
-        let lhs = cx.get_value(state, &self.lhs).into_int_value();
-        let rhs = cx.get_value(state, &self.rhs).into_int_value();
+        let lhs = cx.value(state, &self.lhs).into_int_value();
+        let rhs = cx.value(state, &self.rhs).into_int_value();
 
         let result = match self.op {
             BinaryOp::Add => cx.builder.build_int_add(lhs, rhs, NAME),
