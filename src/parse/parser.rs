@@ -110,10 +110,17 @@ impl<'a> Parser<'a> {
 
     fn parse_return(&mut self) -> ParseResult<Return> {
         let start = self.last_span();
-        let expr = self.parse_expr()?;
-        let span = start.merge(expr.span());
 
-        Ok(Return { expr: Some(Box::new(expr)), span })
+        let expr = match self.token() {
+            Some(tok) if self.are_on_same_line(start, tok.span) => {
+                Some(Box::new(self.parse_expr()?))
+            }
+            _ => None,
+        };
+
+        let span = expr.as_ref().map_or(start, |e| start.merge(e.span()));
+
+        Ok(Return { expr, span })
     }
 
     fn parse_expr(&mut self) -> ParseResult<Ast> {
@@ -347,12 +354,20 @@ impl<'a> Parser<'a> {
         self.eat(TokenKind::OpenCurly)?;
         let then = Ast::Block(self.parse_block()?);
 
-        self.eat(TokenKind::Else)?;
+        let otherwise = if self.is(TokenKind::Else) {
+            if self.is(TokenKind::OpenCurly) {
+                Some(Box::new(Ast::Block(self.parse_block()?)))
+            } else if self.is(TokenKind::If) {
+                Some(Box::new(Ast::If(self.parse_if()?)))
+            } else {
+                let tok = self.require()?;
 
-        let otherwise = if self.is(TokenKind::OpenCurly) {
-            Some(Box::new(Ast::Block(self.parse_block()?)))
-        } else if self.is(TokenKind::If) {
-            Some(Box::new(Ast::If(self.parse_if()?)))
+                return Err(ParseError::UnexpectedToken {
+                    expected: "{ or `if`".to_string(),
+                    actual: tok.kind,
+                    span: tok.span,
+                });
+            }
         } else {
             None
         };
