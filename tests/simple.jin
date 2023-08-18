@@ -3,4 +3,4 @@ fn main() = {
 	return ()
 }
 
-fn answer() = 43 == 15
+fn answer() = if 43 == 15 { 42 } else { 69 }
