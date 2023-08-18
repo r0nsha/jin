@@ -25,6 +25,7 @@ ustr = "0.10.0"
 inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = [
 	"llvm14-0-force-dynamic",
 ] }
+execute = "0.2.12"
 
 [target.'cfg(windows)'.dependencies]
 libc = "0.2.132"

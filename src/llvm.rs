@@ -2,19 +2,30 @@ mod generate;
 #[cfg(windows)]
 mod microsoft_craziness;
 
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    path::{Path, PathBuf},
+    process::Command,
+};
 
+use execute::Execute;
 use inkwell::{
     context::Context,
     module::Module,
     passes::{PassManager, PassManagerBuilder},
-    targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple},
+    targets::{
+        CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple,
+    },
     OptimizationLevel,
 };
+use path_absolutize::Absolutize;
 
 use crate::{
-    common::{target::Arch, time::time},
-    db::Database,
+    common::{
+        target::{Arch, Os, TargetMetrics},
+        time::time,
+    },
+    db::{BuildOptions, Database},
     llvm::generate::Generator,
     mir::Mir,
 };
@@ -53,15 +64,7 @@ pub fn codegen(db: &Database, mir: &Mir) -> PathBuf {
 
     time(print_times, "llvm opt", || optimize(cx.module));
 
-    todo!()
-
-    // build_executable(
-    //     &workspace.build_options,
-    //     &target_machine,
-    //     &target_metrics,
-    //     &module,
-    //     &cg.extern_libraries,
-    // )
+    build_exe(db, &target_machine, &module)
 }
 
 fn create_target_machine(db: &Database) -> Option<TargetMachine> {
@@ -101,151 +104,135 @@ fn optimize(module: &Module) {
     pass_manager.run_on(module);
 }
 
-// fn build_executable(
-//     build_options: &BuildOptions,
-//     target_machine: &TargetMachine,
-//     target_metrics: &TargetMetrics,
-//     module: &Module,
-//     extern_libraries: &HashSet<ast::ExternLibrary>,
-// ) -> PathBuf {
-//     let output_path = build_options.output_file.as_ref().unwrap_or(&build_options.source_file);
-//
-//     if let Some(parent_dir) = output_path.parent() {
-//         let _ = std::fs::create_dir_all(parent_dir);
-//     }
-//
-//     if build_options.codegen_options.emit_llvm_ir() {
-//         module.print_to_file(output_path.with_extension("ll")).unwrap();
-//     }
-//
-//     let object_file = if target_metrics.os == Os::Windows {
-//         output_path.with_extension("obj")
-//     } else {
-//         output_path.with_extension("o")
-//     };
-//
-//     let output_file = if target_metrics.os == Os::Windows {
-//         output_path.with_extension("exe")
-//     } else {
-//         output_path.with_extension("")
-//     };
-//
-//     time! { build_options.emit_times, "write obj",
-//         target_machine
-//             .write_to_file(module, FileType::Object, &object_file)
-//             .unwrap()
-//     };
-//
-//     time! { build_options.emit_times, "link",
-//         link(target_metrics, &output_file, &object_file, extern_libraries)
-//     }
-//
-//     let _ = std::fs::remove_file(object_file);
-//
-//     output_file.absolutize().unwrap().to_path_buf()
-// }
-//
-// fn link(
-//     target_metrics: &TargetMetrics,
-//     executable_file: &Path,
-//     object_file: &Path,
-//     extern_libraries: &HashSet<ast::ExternLibrary>,
-// ) {
-//     let link_flags = match target_metrics.arch {
-//         Arch::Amd64 => match target_metrics.os {
-//             Os::Windows => vec!["/machine:x64"],
-//             Os::Linux | Os::FreeBSD => vec!["-arch x86-64"],
-//             _ => vec![],
-//         },
-//         Arch::_386 => match target_metrics.os {
-//             Os::Windows => vec!["/machine:x86"],
-//             Os::Darwin => panic!("unsupported architecture"), // TODO: this needs to be a proper diagnostic
-//             Os::Linux | Os::FreeBSD => vec!["-arch x86"],
-//             _ => vec![],
-//         },
-//         Arch::Arm64 => match target_metrics.os {
-//             Os::Darwin => vec!["-arch arm64"],
-//             Os::Linux => vec!["-arch aarch64"],
-//             _ => vec![],
-//         },
-//         Arch::Wasm32 | Arch::Wasm64 => {
-//             let mut link_flags = vec!["--allow-undefined"];
-//
-//             if matches!(target_metrics.arch, Arch::Wasm64) {
-//                 link_flags.push("-mwas64");
-//             }
-//
-//             if matches!(target_metrics.os, Os::Freestanding) {
-//                 link_flags.push("--no-entry");
-//             }
-//
-//             link_flags
-//         }
-//     };
-//
-//     let mut lib_paths = vec![];
-//     let mut libs = vec![];
-//
-//     for lib in extern_libraries.iter() {
-//         match lib {
-//             ast::ExternLibrary::System(lib_name) => {
-//                 if !is_libc(lib_name) {
-//                     libs.push(lib_name.clone())
-//                 }
-//             }
-//             ast::ExternLibrary::Path(path) => {
-//                 lib_paths.push(path.lib_dir().to_str().unwrap().to_string());
-//                 libs.push(path.lib_name().to_str().unwrap().to_string());
-//             }
-//         }
-//     }
-//
-//     #[cfg(windows)]
-//     {
-//         let find_result = unsafe { microsoft_craziness::find_visual_studio_and_windows_sdk() };
-//
-//         if let Some(path) = &find_result.windows_sdk_ucrt_library_path {
-//             lib_paths.push(path.to_string().unwrap());
-//         }
-//
-//         if let Some(path) = &find_result.windows_sdk_um_library_path {
-//             lib_paths.push(path.to_string().unwrap());
-//         }
-//
-//         if let Some(path) = &find_result.vs_library_path {
-//             lib_paths.push(path.to_string().unwrap());
-//         }
-//
-//         Command::new("lld-link")
-//             .arg(format!("/out:{}", executable_file.to_str().unwrap()))
-//             .arg("/entry:mainCRTStartup")
-//             .arg("/defaultlib:libcmt")
-//             .arg("/nologo")
-//             .arg("/incremental:no")
-//             .arg("/opt:ref")
-//             .arg("/threads:8")
-//             .arg("/subsystem:CONSOLE")
-//             .args(lib_paths.iter().map(|path| format!("/libpath:{}", path)))
-//             .arg(object_file.to_str().unwrap())
-//             .args(libs)
-//             .args(link_flags)
-//             .execute_output()
-//             .unwrap();
-//     }
-//
-//     #[cfg(not(windows))]
-//     Command::new("clang")
-//         .arg("-Wno-unused-command-line-argument")
-//         .arg(object_file.to_str().unwrap())
-//         .arg(format!("-o{}", executable_file.to_str().unwrap()))
-//         .args(lib_paths.iter().map(|path| format!("-L{}", path)))
-//         .arg("-lc")
-//         .arg("-lm")
-//         .args(libs.iter().map(|path| format!("-l:{}", path)))
-//         .arg("-no-pie")
-//         .args(link_flags)
-//         .execute_output()
-//         .unwrap();
+fn build_exe(db: &Database, target_machine: &TargetMachine, module: &Module) -> PathBuf {
+    let build_options = db.build_options();
+    let output_path = db.output_path().expect("to have an output path");
+
+    if let Some(parent_dir) = output_path.parent() {
+        let _ = std::fs::create_dir_all(parent_dir);
+    }
+
+    if build_options.print_llvm_ir {
+        module.print_to_file(output_path.with_extension("ll")).unwrap();
+    }
+
+    let (object_file, output_file) = if let Os::Windows = build_options.target_metrics.os {
+        (output_path.with_extension("obj"), output_path.with_extension("exe"))
+    } else {
+        (output_path.with_extension("o"), output_path.with_extension(""))
+    };
+
+    time(build_options.print_times, "write object file", || {
+        target_machine.write_to_file(module, FileType::Object, &object_file).unwrap()
+    });
+
+    time(build_options.print_times, "link", || {
+        link(&build_options.target_metrics, &output_file, &object_file)
+    });
+
+    let _ = std::fs::remove_file(object_file);
+
+    output_file.absolutize().unwrap().to_path_buf()
+}
+
+fn link(target_metrics: &TargetMetrics, exe_file: &Path, object_file: &Path) {
+    let link_flags = match target_metrics.arch {
+        Arch::Amd64 => match target_metrics.os {
+            Os::Windows => vec!["/machine:x64"],
+            Os::Linux | Os::FreeBSD => vec!["-arch x86-64"],
+            _ => vec![],
+        },
+        Arch::_386 => match target_metrics.os {
+            Os::Windows => vec!["/machine:x86"],
+            Os::Darwin => panic!("unsupported architecture"),
+            Os::Linux | Os::FreeBSD => vec!["-arch x86"],
+            _ => vec![],
+        },
+        Arch::Arm64 => match target_metrics.os {
+            Os::Darwin => vec!["-arch arm64"],
+            Os::Linux => vec!["-arch aarch64"],
+            _ => vec![],
+        },
+        Arch::Wasm32 | Arch::Wasm64 => {
+            let mut link_flags = vec!["--allow-undefined"];
+
+            if matches!(target_metrics.arch, Arch::Wasm64) {
+                link_flags.push("-mwas64");
+            }
+
+            if matches!(target_metrics.os, Os::Freestanding) {
+                link_flags.push("--no-entry");
+            }
+
+            link_flags
+        }
+    };
+
+    let lib_paths = HashSet::<String>::new();
+    let libs = HashSet::<String>::new();
+
+    // TODO: externally linked libraries
+    // for lib in extern_libraries.iter() {
+    //     match lib {
+    //         ast::ExternLibrary::System(lib_name) => {
+    //             if !is_libc(lib_name) {
+    //                 libs.push(lib_name.clone())
+    //             }
+    //         }
+    //         ast::ExternLibrary::Path(path) => {
+    //             lib_paths.push(path.lib_dir().to_str().unwrap().to_string());
+    //             libs.push(path.lib_name().to_str().unwrap().to_string());
+    //         }
+    //     }
+    // }
+
+    #[cfg(windows)]
+    {
+        let find_result = unsafe { microsoft_craziness::find_visual_studio_and_windows_sdk() };
+
+        if let Some(path) = &find_result.windows_sdk_ucrt_library_path {
+            lib_paths.push(path.to_string().unwrap());
+        }
+
+        if let Some(path) = &find_result.windows_sdk_um_library_path {
+            lib_paths.push(path.to_string().unwrap());
+        }
+
+        if let Some(path) = &find_result.vs_library_path {
+            lib_paths.push(path.to_string().unwrap());
+        }
+
+        Command::new("lld-link")
+            .arg(format!("/out:{}", executable_file.to_str().unwrap()))
+            .arg("/entry:mainCRTStartup")
+            .arg("/defaultlib:libcmt")
+            .arg("/nologo")
+            .arg("/incremental:no")
+            .arg("/opt:ref")
+            .arg("/threads:8")
+            .arg("/subsystem:CONSOLE")
+            .args(lib_paths.iter().map(|path| format!("/libpath:{}", path)))
+            .arg(object_file.to_str().unwrap())
+            .args(libs)
+            .args(link_flags)
+            .execute_output()
+            .unwrap();
+    }
+
+    #[cfg(not(windows))]
+    Command::new("clang")
+        .arg("-Wno-unused-command-line-argument")
+        .arg(object_file.to_str().unwrap())
+        .arg(format!("-o{}", exe_file.to_str().unwrap()))
+        .args(lib_paths.iter().map(|path| format!("-L{}", path)))
+        .arg("-lc")
+        .arg("-lm")
+        .args(libs.iter().map(|path| format!("-l:{}", path)))
+        .arg("-no-pie")
+        .args(link_flags)
+        .execute_output()
+        .unwrap();
+}
 
 #[allow(dead_code)]
 #[repr(u32)]

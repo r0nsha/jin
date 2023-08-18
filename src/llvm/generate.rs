@@ -91,20 +91,32 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         self.start_block(&mut state, entry_block);
 
         // TODO: Hello World
+        let puts = self.module.add_function(
+            "puts",
+            self.context
+                .i32_type()
+                .fn_type(&[self.context.i8_type().ptr_type(AddressSpace::default()).into()], false),
+            Some(Linkage::External),
+        );
 
-        // Codegen the entry point function
-        let entry_point_function = self.db.main_function().expect("to have a main function");
+        self.builder.build_call(
+            puts,
+            &[self.context.const_string(b"Hello, World!\n", false).into()],
+            "call",
+        );
 
         // TODO: Declare all functions
         // TODO: Generate all functions
 
+        // TODO: Codegen the entry point function
+        // Codegen the entry point function
+        // let entry_point_function = self.db.main_function().expect("to have a main function");
+
+        // TODO: Call the entry point function
         // Call the entry point function
-        let entry_point_function_value = *self.functions.get(&entry_point_function.id).unwrap();
-
-        let entry_point_function_type =
-            self.db[entry_point_function.ty].as_function().expect("to be a function type");
-
-        // TODO: call entry point function
+        // let entry_point_function_value = *self.functions.get(&entry_point_function.id).unwrap();
+        // let entry_point_function_type =
+        //     self.db[entry_point_function.ty].as_function().expect("to be a function type");
         // self.gen_function_call(
         //     &mut state,
         //     entry_point_function_value,

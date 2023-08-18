@@ -60,6 +60,9 @@ struct Cli {
 
     #[arg(global = true, long, default_value_t = false)]
     print_mir: bool,
+
+    #[arg(global = true, long, default_value_t = false)]
+    print_llvm_ir: bool,
 }
 
 #[derive(Subcommand)]
@@ -78,6 +81,7 @@ fn main() {
         cli.print_ast,
         cli.print_hir,
         cli.print_mir,
+        cli.print_llvm_ir,
         TargetPlatform::current().expect("Current platform is not supported"),
     );
 

@@ -61,14 +61,9 @@ impl Database {
         &self.build_options
     }
 
-    pub fn out_dir_name(&self) -> PathBuf {
-        Path::new("out").to_path_buf()
-    }
-
-    pub fn out_file_name(&self) -> Option<PathBuf> {
-        let main_module_name = self.main_module()?.name.name();
-        let out_file_name = self.out_dir_name().join(main_module_name.as_str());
-        Some(out_file_name)
+    pub fn output_path(&self) -> Option<PathBuf> {
+        let name = self.main_module()?.name.name().as_str();
+        Some(PathBuf::from(name))
     }
 
     pub fn root_dir(&self) -> &Path {
@@ -147,6 +142,7 @@ pub struct BuildOptions {
     pub print_ast: bool,
     pub print_hir: bool,
     pub print_mir: bool,
+    pub print_llvm_ir: bool,
     pub target_platform: TargetPlatform,
     pub target_metrics: TargetMetrics,
 }
@@ -158,10 +154,19 @@ impl BuildOptions {
         print_ast: bool,
         print_hir: bool,
         print_mir: bool,
+        print_llvm_ir: bool,
         target_platform: TargetPlatform,
     ) -> Self {
         let target_metrics = target_platform.metrics();
-        Self { print_times, print_ast, print_hir, print_mir, target_platform, target_metrics }
+        Self {
+            print_times,
+            print_ast,
+            print_hir,
+            print_mir,
+            print_llvm_ir,
+            target_platform,
+            target_metrics,
+        }
     }
 }
 
