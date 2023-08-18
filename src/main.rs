@@ -34,6 +34,8 @@ use common::time::time;
 use db::{BuildOptions, Database};
 use mir::Mir;
 
+use crate::common::target::TargetPlatform;
+
 macro_rules! bail_on_errors {
     ($db: expr) => {
         if $db.diagnostics.any() {
@@ -73,12 +75,13 @@ fn main() {
 
     let cli = Cli::parse();
 
-    let build_options = BuildOptions {
-        print_times: cli.print_times,
-        print_ast: cli.print_ast,
-        print_hir: cli.print_hir,
-        print_mir: cli.print_mir,
-    };
+    let build_options = BuildOptions::new(
+        cli.print_times,
+        cli.print_ast,
+        cli.print_hir,
+        cli.print_mir,
+        TargetPlatform::current().expect("Current platform is not supported"),
+    );
 
     match cli.cmd {
         Commands::Build { file } => build(build_options, &file),

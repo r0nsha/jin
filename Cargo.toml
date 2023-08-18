@@ -18,6 +18,9 @@ ptree = "0.4.0"
 stopwatch = "0.0.7"
 unindent = "0.2.2"
 ustr = "0.10.0"
+inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = [
+	"llvm16-0",
+] }
 
 [target.'cfg(windows)'.dependencies]
 libc = "0.2.132"

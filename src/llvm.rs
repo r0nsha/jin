@@ -100,7 +100,6 @@ pub fn codegen(db: &Database, mir: &Mir) -> PathBuf {
     //     module: &Module,
     //     extern_libraries: &HashSet<ast::ExternLibrary>,
     // ) -> PathBuf {
-    //     fs::create_dir_all(db.out_dir_name()).unwrap();
     //     let output_path = build_options.output_file.as_ref().unwrap_or(&build_options.source_file);
     //
     //     if let Some(parent_dir) = output_path.parent() {

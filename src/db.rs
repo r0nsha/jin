@@ -5,6 +5,7 @@ use std::{
 
 use path_absolutize::Absolutize;
 
+use crate::common::target::{TargetMetrics, TargetPlatform};
 use crate::{
     common::{new_key_type, IndexVec, QualifiedName},
     diagnostics::Diagnostics,
@@ -143,6 +144,21 @@ pub struct BuildOptions {
     pub print_ast: bool,
     pub print_hir: bool,
     pub print_mir: bool,
+    pub target_platform: TargetPlatform,
+    pub target_metrics: TargetMetrics,
+}
+
+impl BuildOptions {
+    pub fn new(
+        print_times: bool,
+        print_ast: bool,
+        print_hir: bool,
+        print_mir: bool,
+        target_platform: TargetPlatform,
+    ) -> Self {
+        let target_metrics = target_platform.metrics();
+        Self { print_times, print_ast, print_hir, print_mir, target_platform, target_metrics }
+    }
 }
 
 #[derive(Debug, Clone)]
