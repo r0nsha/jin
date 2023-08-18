@@ -82,25 +82,24 @@ impl<'db> LowerCx<'db> {
         self.builder.build_jmp(merge_blk, if_.span);
 
         self.builder.position_at(else_blk);
+        let else_value = if_.otherwise.as_ref().map(|otherwise| self.lower_expr(otherwise));
+        self.builder.build_jmp(merge_blk, if_.span);
 
-        if let Some(otherwise) = if_.otherwise.as_ref() {
-            let else_value = self.lower_expr(otherwise);
-            self.builder.build_jmp(merge_blk, if_.span);
+        self.builder.position_at(merge_blk);
 
-            self.builder.position_at(merge_blk);
+        match else_value {
+            Some(else_value) => {
+                let reg = self.builder.create_register(if_.ty);
 
-            let reg = self.builder.create_register(if_.ty);
+                self.builder.build_phi(
+                    reg,
+                    vec![(then_blk, then_value), (else_blk, else_value)].into_boxed_slice(),
+                    if_.span,
+                );
 
-            self.builder.build_phi(
-                reg,
-                vec![(then_blk, then_value), (else_blk, else_value)].into_boxed_slice(),
-                if_.span,
-            );
-
-            reg.into()
-        } else {
-            self.builder.position_at(merge_blk);
-            then_value
+                reg.into()
+            }
+            None => then_value,
         }
     }
 
