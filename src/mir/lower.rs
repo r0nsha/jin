@@ -1,4 +1,4 @@
-use super::{builder::FunctionBuilder, DefinitionId, Function, Mir, Span, TyId, Value};
+use super::{builder::FunctionBuilder, DefId, Function, Mir, Span, TyId, Value};
 use crate::{
     ast::BinaryOp,
     db::{Database, ScopeLevel},
@@ -19,9 +19,9 @@ pub fn lower(db: &mut Database, hir: &Hir) -> Mir {
     mir
 }
 
-fn lower_def(db: &mut Database, mir: &mut Mir, def: &hir::Definition) {
+fn lower_def(db: &mut Database, mir: &mut Mir, def: &hir::Def) {
     match &def.kind {
-        hir::DefinitionKind::Function(fun) => {
+        hir::DefKind::Function(fun) => {
             let id = fun.id.expect("to be resolved");
             let fun = LowerCx::new(db, id).lower_function(fun).unwrap();
             mir.add_function(fun);
@@ -35,7 +35,7 @@ struct LowerCx<'db> {
 }
 
 impl<'db> LowerCx<'db> {
-    fn new(db: &'db mut Database, fun_id: DefinitionId) -> Self {
+    fn new(db: &'db mut Database, fun_id: DefId) -> Self {
         Self { db, builder: FunctionBuilder::new(fun_id) }
     }
 
@@ -215,7 +215,7 @@ impl<'db> LowerCx<'db> {
         let def = &self.db[name.id.expect("to be resolved")];
 
         if let ScopeLevel::Global(_) = def.scope_level {
-            Value::Definition(def.id)
+            Value::Def(def.id)
         } else {
             todo!("local/nested name")
         }

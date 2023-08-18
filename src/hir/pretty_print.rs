@@ -1,7 +1,7 @@
 use std::io;
 
 use super::{
-    Block, Call, Definition, DefinitionKind, Expr, Function, Lit, LitKind, Module, Name, Return,
+    Block, Call, Def, DefKind, Expr, Function, Lit, LitKind, Module, Name, Return,
 };
 use crate::{
     db::Database,
@@ -44,10 +44,10 @@ impl PrettyPrint for Expr {
     }
 }
 
-impl PrettyPrint for Definition {
+impl PrettyPrint for Def {
     fn pretty_print(&self, cx: &mut Cx) {
         match &self.kind {
-            DefinitionKind::Function(fun) => fun.pretty_print(cx),
+            DefKind::Function(fun) => fun.pretty_print(cx),
         }
     }
 }

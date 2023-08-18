@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use super::InferCx;
 use crate::{
     db::TyId,
-    hir::{Binary, Block, Call, Definition, DefinitionKind, Expr, Function, If, Module, Return},
+    hir::{Binary, Block, Call, Def, DefKind, Expr, Function, If, Module, Return},
     ty::{FunctionTy, InferTy, Ty, TyVar},
 };
 
@@ -13,8 +13,8 @@ impl<'db> InferCx<'db> {
         let mut unbound_vars = HashSet::new();
 
         // Substitute all definition types
-        for i in 0..self.db.definitions.len() {
-            let ty = self.db.definitions[i.into()].ty;
+        for i in 0..self.db.defs.len() {
+            let ty = self.db.defs[i.into()].ty;
             self.substitute_type_id(ty, &mut unbound_vars);
         }
 
@@ -84,10 +84,10 @@ impl Substitute<'_> for Expr {
     }
 }
 
-impl Substitute<'_> for Definition {
+impl Substitute<'_> for Def {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         match &mut self.kind {
-            DefinitionKind::Function(fun) => fun.substitute(cx, unbound_vars),
+            DefKind::Function(fun) => fun.substitute(cx, unbound_vars),
         }
 
         cx.substitute_type_id(self.ty, unbound_vars);

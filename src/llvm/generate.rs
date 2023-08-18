@@ -12,7 +12,7 @@ use inkwell::{
 
 use crate::{
     ast::{BinaryOp, CmpOp},
-    db::{Database, DefinitionId},
+    db::{Database, DefId},
     llvm::ty::LlvmType,
     mir::{
         Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, Mir, Phi,
@@ -29,12 +29,12 @@ pub struct Generator<'db, 'cx> {
     pub builder: &'db Builder<'cx>,
     pub isize_ty: IntType<'cx>,
 
-    pub functions: HashMap<DefinitionId, FunctionValue<'cx>>,
+    pub functions: HashMap<DefId, FunctionValue<'cx>>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FunctionState<'cx> {
-    pub id: DefinitionId,
+    pub id: DefId,
     pub function_value: FunctionValue<'cx>,
     pub prologue_block: BasicBlock<'cx>,
     pub current_block: BasicBlock<'cx>,
@@ -44,7 +44,7 @@ pub struct FunctionState<'cx> {
 
 impl<'cx> FunctionState<'cx> {
     pub fn new(
-        id: DefinitionId,
+        id: DefId,
         function_value: FunctionValue<'cx>,
         prologue_block: BasicBlock<'cx>,
         blocks: HashMap<BlockId, BasicBlock<'cx>>,
@@ -184,13 +184,13 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         function_value.as_global_value().as_pointer_value().into()
     }
 
-    fn function(&self, id: DefinitionId) -> FunctionValue<'cx> {
+    fn function(&self, id: DefId) -> FunctionValue<'cx> {
         *self.functions.get(&id).expect("function to be declared")
     }
 
     fn value(&self, state: &FunctionState<'cx>, value: &Value) -> BasicValueEnum<'cx> {
         match value {
-            Value::Definition(id) => self.function(*id).as_global_value().as_pointer_value().into(),
+            Value::Def(id) => self.function(*id).as_global_value().as_pointer_value().into(),
             Value::Register(id) => state.register(*id),
         }
     }

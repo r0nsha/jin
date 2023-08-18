@@ -1,5 +1,5 @@
 use super::{
-    Block, Call, Definition, DefinitionKind, Expr, Function, FunctionParam, Hir, IndexMap, Lit,
+    Block, Call, Def, DefKind, Expr, Function, FunctionParam, Hir, IndexMap, Lit,
     LitKind, Module, ModuleId, Name, Return, Spanned, TyId,
 };
 use crate::{
@@ -41,17 +41,17 @@ trait Lower<'db, T> {
     fn lower(self, cx: &mut Cx<'db>) -> T;
 }
 
-impl Lower<'_, Definition> for ast::TopLevel {
-    fn lower(self, cx: &mut Cx<'_>) -> Definition {
+impl Lower<'_, Def> for ast::TopLevel {
+    fn lower(self, cx: &mut Cx<'_>) -> Def {
         match self {
             Self::Function(fun) => {
                 let name = fun.name;
                 let span = fun.span;
 
-                Definition {
+                Def {
                     id: None,
                     name,
-                    kind: DefinitionKind::Function(fun.lower(cx)),
+                    kind: DefKind::Function(fun.lower(cx)),
                     span,
                     ty: TyId::null(),
                 }

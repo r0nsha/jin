@@ -6,7 +6,7 @@ use super::{
 };
 use crate::{
     ast::BinaryOp,
-    db::DefinitionId,
+    db::DefId,
     mir::{Binary, BoolLit, Br, BrIf, Phi, PhiValue},
     span::Span,
 };
@@ -17,7 +17,7 @@ pub struct FunctionBuilder {
 }
 
 impl FunctionBuilder {
-    pub fn new(id: DefinitionId) -> Self {
+    pub fn new(id: DefId) -> Self {
         Self { f: Function::new(id), current_block: BlockId::first() }
     }
 

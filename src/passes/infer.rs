@@ -11,9 +11,9 @@ use self::{
 };
 use crate::{
     ast::BinaryOp,
-    db::{Database, DefinitionId, TyId},
+    db::{Database, DefId, TyId},
     hir::{
-        Binary, Block, Call, Definition, DefinitionKind, Expr, Function, Hir, If, Lit, LitKind,
+        Binary, Block, Call, Def, DefKind, Expr, Function, Hir, If, Lit, LitKind,
         Module, Name, Return,
     },
     passes::infer::typecx::TypeCx,
@@ -61,7 +61,7 @@ impl<'db> InferCx<'db> {
         }
     }
 
-    fn get_definition_info_ty(&mut self, id: DefinitionId) -> TyId {
+    fn get_definition_info_ty(&mut self, id: DefId) -> TyId {
         let def = &self.db[id];
 
         if def.ty.is_null() {
@@ -93,12 +93,12 @@ impl Infer<'_> for Expr {
     }
 }
 
-impl Infer<'_> for Definition {
+impl Infer<'_> for Def {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         self.ty = cx.db.alloc_ty(Ty::Unit(self.span));
 
         match &mut self.kind {
-            DefinitionKind::Function(fun) => fun.infer(cx, env),
+            DefKind::Function(fun) => fun.infer(cx, env),
         }
 
         let def_ty = cx.get_definition_info_ty(self.id.expect("to be resolved"));

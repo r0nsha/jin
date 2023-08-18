@@ -3,15 +3,9 @@ use std::collections::HashMap;
 use ustr::{Ustr, UstrMap};
 
 use crate::{
-    db::{
-        Database, DefinitionId, DefinitionInfo, DefinitionInfoKind, FunctionInfo, ModuleId,
-        ScopeLevel, TyId, Vis,
-    },
+    db::{Database, DefId, DefInfo, DefInfoKind, FunctionInfo, ModuleId, ScopeLevel, TyId, Vis},
     diagnostics::{Diagnostic, Label},
-    hir::{
-        Binary, Block, Call, Definition, DefinitionKind, Expr, Function, Hir, If, Module, Name,
-        Return,
-    },
+    hir::{Binary, Block, Call, Def, DefKind, Expr, Function, Hir, If, Module, Name, Return},
     span::Span,
 };
 
@@ -40,12 +34,12 @@ impl<'db> ResolveCx<'db> {
 
     fn create_modules_and_resolve_globals(&mut self, modules: &mut [Module]) {
         for module in modules {
-            let mut scope_definitions = UstrMap::<DefinitionId>::default();
+            let mut scope_definitions = UstrMap::<DefId>::default();
             let mut already_defined = UstrMap::<Span>::default();
 
             for def in &mut module.definitions {
                 if let Some(&prev_span) = already_defined.get(&def.name) {
-                    self.errors.push(ResolveError::MultipleDefinitions {
+                    self.errors.push(ResolveError::MultipleDefs {
                         name: def.name,
                         prev_span,
                         dup_span: def.span,
@@ -57,12 +51,10 @@ impl<'db> ResolveCx<'db> {
                 let qualified_name = self.db[module.id].name.clone().child(def.name);
 
                 let kind = match &def.kind {
-                    DefinitionKind::Function(_) => {
-                        DefinitionInfoKind::Function(FunctionInfo::Orphan)
-                    }
+                    DefKind::Function(_) => DefInfoKind::Function(FunctionInfo::Orphan),
                 };
 
-                let id = DefinitionInfo::alloc(
+                let id = DefInfo::alloc(
                     self.db,
                     module.id,
                     qualified_name,
@@ -73,7 +65,7 @@ impl<'db> ResolveCx<'db> {
                 );
 
                 match &mut def.kind {
-                    DefinitionKind::Function(fun) => fun.id = Some(id),
+                    DefKind::Function(fun) => fun.id = Some(id),
                 }
 
                 def.id = Some(id);
@@ -100,11 +92,11 @@ trait Resolve<'db> {
     fn resolve(&mut self, cx: &mut ResolveCx<'db>, env: &mut Env);
 }
 
-impl Resolve<'_> for Definition {
+impl Resolve<'_> for Def {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         if self.id.is_some() {
             match &mut self.kind {
-                DefinitionKind::Function(fun) => fun.resolve(cx, env),
+                DefKind::Function(fun) => fun.resolve(cx, env),
             }
         } else {
             todo!("local defs");
@@ -192,14 +184,14 @@ impl Resolve<'_> for Name {
 }
 
 #[derive(Debug)]
-pub struct GlobalScope(HashMap<ModuleId, UstrMap<DefinitionId>>);
+pub struct GlobalScope(HashMap<ModuleId, UstrMap<DefId>>);
 
 impl GlobalScope {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
 
-    pub fn find_definition(&self, module_id: ModuleId, name: Ustr) -> Option<DefinitionId> {
+    pub fn find_definition(&self, module_id: ModuleId, name: Ustr) -> Option<DefId> {
         self.0.get(&module_id).and_then(|defs| defs.get(&name)).copied()
     }
 }
@@ -233,12 +225,12 @@ impl Scopes {
     }
 
     #[allow(unused)]
-    fn insert(&mut self, k: Ustr, v: DefinitionId) {
+    fn insert(&mut self, k: Ustr, v: DefId) {
         self.0.last_mut().unwrap().definitions.insert(k, v);
     }
 
     #[allow(unused)]
-    fn get(&self, k: Ustr) -> Option<(usize, &DefinitionId)> {
+    fn get(&self, k: Ustr) -> Option<(usize, &DefId)> {
         for (depth, scope) in self.0.iter().enumerate().rev() {
             if let Some(value) = scope.definitions.get(&k) {
                 return Some((depth + 1, value));
@@ -248,7 +240,7 @@ impl Scopes {
     }
 
     #[allow(unused)]
-    fn get_mut(&mut self, k: Ustr) -> Option<(usize, &mut DefinitionId)> {
+    fn get_mut(&mut self, k: Ustr) -> Option<(usize, &mut DefId)> {
         for (depth, scope) in self.0.iter_mut().enumerate().rev() {
             if let Some(value) = scope.definitions.get_mut(&k) {
                 return Some((depth + 1, value));
@@ -258,12 +250,12 @@ impl Scopes {
     }
 
     #[allow(unused)]
-    fn get_value(&self, k: Ustr) -> Option<&DefinitionId> {
+    fn get_value(&self, k: Ustr) -> Option<&DefId> {
         self.get(k).map(|r| r.1)
     }
 
     #[allow(unused)]
-    fn get_value_mut(&mut self, k: Ustr) -> Option<&mut DefinitionId> {
+    fn get_value_mut(&mut self, k: Ustr) -> Option<&mut DefId> {
         self.get_mut(k).map(|r| r.1)
     }
 
@@ -280,7 +272,7 @@ impl Scopes {
 #[derive(Debug)]
 struct Scope {
     kind: ScopeKind,
-    definitions: UstrMap<DefinitionId>,
+    definitions: UstrMap<DefId>,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -290,7 +282,7 @@ enum ScopeKind {
 }
 
 pub(super) enum ResolveError {
-    MultipleDefinitions { name: Ustr, prev_span: Span, dup_span: Span },
+    MultipleDefs { name: Ustr, prev_span: Span, dup_span: Span },
     NameNotFound { name: Ustr, span: Span },
     InvalidReturn { span: Span },
 }
@@ -298,7 +290,7 @@ pub(super) enum ResolveError {
 impl From<ResolveError> for Diagnostic {
     fn from(err: ResolveError) -> Self {
         match err {
-            ResolveError::MultipleDefinitions { name, prev_span, dup_span } => {
+            ResolveError::MultipleDefs { name, prev_span, dup_span } => {
                 Self::error("resolve::multiple_definitions")
                     .with_message(format!("the name `{name}` is defined multiple times"))
                     .with_label(

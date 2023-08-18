@@ -8,7 +8,7 @@ use ustr::{ustr, Ustr};
 use crate::{
     ast::BinaryOp,
     common::{new_key_type, IndexVec},
-    db::{Database, DefinitionId, TyId},
+    db::{Database, DefId, TyId},
     span::Span,
 };
 
@@ -39,18 +39,18 @@ impl Mir {
 
 #[derive(Debug)]
 pub struct Function {
-    id: DefinitionId,
+    id: DefId,
     registers: IndexVec<RegisterId, Register>,
     parameters: Vec<RegisterId>,
     cfg: Cfg,
 }
 
 impl Function {
-    fn new(id: DefinitionId) -> Self {
+    fn new(id: DefId) -> Self {
         Self { id, registers: IndexVec::new(), parameters: vec![], cfg: Cfg::new() }
     }
 
-    pub fn id(&self) -> DefinitionId {
+    pub fn id(&self) -> DefId {
         self.id
     }
 
@@ -98,13 +98,13 @@ pub struct Register {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Value {
-    Definition(DefinitionId),
+    Def(DefId),
     Register(RegisterId),
 }
 
-impl From<DefinitionId> for Value {
-    fn from(value: DefinitionId) -> Self {
-        Self::Definition(value)
+impl From<DefId> for Value {
+    fn from(value: DefId) -> Self {
+        Self::Def(value)
     }
 }
 

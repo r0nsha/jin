@@ -22,7 +22,7 @@ pub struct Database {
 
     pub sources: Sources,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
-    pub definitions: IndexVec<DefinitionId, DefinitionInfo>,
+    pub definitions: IndexVec<DefId, DefInfo>,
     pub types: IndexVec<TyId, Ty>,
 
     pub diagnostics: Diagnostics,
@@ -30,7 +30,7 @@ pub struct Database {
     root_dir: PathBuf,
     main_source: SourceId,
     main_module: Option<ModuleId>,
-    main_fun: Option<DefinitionId>,
+    main_fun: Option<DefId>,
 }
 
 impl Database {
@@ -87,15 +87,15 @@ impl Database {
     }
 
     #[allow(unused)]
-    pub fn main_function_id(&self) -> Option<DefinitionId> {
+    pub fn main_function_id(&self) -> Option<DefId> {
         self.main_fun
     }
 
-    pub fn main_function(&self) -> Option<&DefinitionInfo> {
+    pub fn main_function(&self) -> Option<&DefInfo> {
         self.main_fun.and_then(|id| self.definitions.get(id))
     }
 
-    pub fn set_main_fun(&mut self, id: DefinitionId) {
+    pub fn set_main_fun(&mut self, id: DefId) {
         self.main_fun = Some(id);
     }
 
@@ -131,7 +131,7 @@ macro_rules! new_db_key {
 }
 
 new_db_key!(ModuleId -> modules : ModuleInfo);
-new_db_key!(DefinitionId -> definitions : DefinitionInfo);
+new_db_key!(DefId -> definitions : DefInfo);
 new_db_key!(TyId -> types : Ty);
 
 #[derive(Debug)]
@@ -198,32 +198,32 @@ impl ModuleInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct DefinitionInfo {
-    pub id: DefinitionId,
+pub struct DefInfo {
+    pub id: DefId,
     pub module_id: ModuleId,
     pub qualified_name: QualifiedName,
     pub scope_level: ScopeLevel,
-    pub kind: Box<DefinitionInfoKind>,
+    pub kind: Box<DefInfoKind>,
     pub ty: TyId,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub enum DefinitionInfoKind {
+pub enum DefInfoKind {
     Function(FunctionInfo),
     Variable,
 }
 
-impl DefinitionInfo {
+impl DefInfo {
     pub fn alloc(
         db: &mut Database,
         module_id: ModuleId,
         qualified_name: QualifiedName,
         scope_level: ScopeLevel,
-        kind: DefinitionInfoKind,
+        kind: DefInfoKind,
         ty: TyId,
         span: Span,
-    ) -> DefinitionId {
+    ) -> DefId {
         db.definitions.push_with_key(|id| Self {
             id,
             module_id,

@@ -10,7 +10,7 @@ use ustr::Ustr;
 
 use crate::{
     ast::BinaryOp,
-    db::{Database, DefinitionId, ModuleId, TyId},
+    db::{Database, DefId, ModuleId, TyId},
     span::{Span, Spanned},
 };
 
@@ -38,7 +38,7 @@ impl Hir {
 #[derive(Debug, Clone)]
 pub struct Module {
     pub id: ModuleId,
-    pub definitions: Vec<Definition>,
+    pub definitions: Vec<Def>,
 }
 
 #[derive(Debug, Clone, EnumAsInner)]
@@ -98,20 +98,20 @@ impl Spanned for Expr {
 }
 
 #[derive(Debug, Clone)]
-pub struct Definition {
-    pub id: Option<DefinitionId>,
+pub struct Def {
+    pub id: Option<DefId>,
     pub name: Ustr,
-    pub kind: DefinitionKind,
+    pub kind: DefKind,
     pub span: Span,
     pub ty: TyId,
 }
 
 #[derive(Debug, Clone)]
-pub enum DefinitionKind {
+pub enum DefKind {
     Function(Function),
 }
 
-impl DefinitionKind {
+impl DefKind {
     pub fn ty(&self) -> TyId {
         match self {
             Self::Function(x) => x.ty,
@@ -121,7 +121,7 @@ impl DefinitionKind {
 
 #[derive(Debug, Clone)]
 pub struct Function {
-    pub id: Option<DefinitionId>,
+    pub id: Option<DefId>,
     pub name: Ustr,
     pub body: Block,
     pub params: IndexMap<Ustr, FunctionParam>,
@@ -131,7 +131,7 @@ pub struct Function {
 
 #[derive(Debug, Clone)]
 pub struct FunctionParam {
-    pub id: Option<DefinitionId>,
+    pub id: Option<DefId>,
     pub name: Ustr,
     pub span: Span,
     pub ty: TyId,
@@ -178,7 +178,7 @@ pub struct Binary {
 
 #[derive(Debug, Clone)]
 pub struct Name {
-    pub id: Option<DefinitionId>,
+    pub id: Option<DefId>,
     pub name: Ustr,
     pub span: Span,
     pub ty: TyId,
