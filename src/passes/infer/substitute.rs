@@ -13,8 +13,8 @@ impl<'db> InferCx<'db> {
         let mut unbound_vars = HashSet::new();
 
         // Substitute all definition types
-        for i in 0..self.db.defs.len() {
-            let ty = self.db.defs[i.into()].ty;
+        for i in 0..self.db.definitions.len() {
+            let ty = self.db.definitions[i.into()].ty;
             self.substitute_type_id(ty, &mut unbound_vars);
         }
 

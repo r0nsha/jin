@@ -8,7 +8,7 @@ use crate::{
 pub fn find_main(db: &mut Database) {
     let main_module_id = db.main_module_id().unwrap();
 
-    let main_fun_id = if let Some(main_fun) = db.defs.iter().find(|def| {
+    let main_fun_id = if let Some(main_fun) = db.definitions.iter().find(|def| {
         def.module_id == main_module_id
             && matches!(def.kind.as_ref(), DefInfoKind::Function(db::FunctionInfo::Orphan))
             && def.qualified_name.name() == "main"
