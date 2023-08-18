@@ -59,7 +59,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for Instruction {
                 .append(RcDoc::text("call"))
                 .append(RcDoc::space())
                 .append(call.callee.to_doc(db, fun)),
-            Self::IAdd(bin) => register_alloc(db, fun, bin.register)
+            Self::Binary(bin) => register_alloc(db, fun, bin.register)
                 .append(RcDoc::text("iadd"))
                 .append(RcDoc::space())
                 .append(bin.left.to_doc(db, fun))

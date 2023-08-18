@@ -6,6 +6,7 @@ pub use lower::lower;
 use ustr::{ustr, Ustr};
 
 use crate::{
+    ast::BinaryOp,
     common::{new_key_type, IndexVec},
     db::{Database, DefinitionId, TyId},
     span::Span,
@@ -151,7 +152,7 @@ impl Block {
 pub enum Instruction {
     Return(Return),
     Call(Call),
-    IAdd(Binary),
+    Binary(Binary),
     IntLit(IntLit),
     UnitLit(UnitLit),
 }
@@ -174,6 +175,7 @@ pub struct Call {
 #[derive(Debug, Clone)]
 pub struct Binary {
     pub register: RegisterId,
+    pub op: BinaryOp,
     pub left: Value,
     pub right: Value,
     #[allow(unused)]

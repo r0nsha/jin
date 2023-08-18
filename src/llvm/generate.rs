@@ -215,7 +215,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Instruction {
         match self {
             Self::Return(inner) => inner.codegen(cx, state),
             Self::Call(inner) => inner.codegen(cx, state),
-            Self::IAdd(inner) => {
+            Self::Binary(inner) => {
                 let left = cx.get_value(state, &inner.left).into_int_value();
                 let right = cx.get_value(state, &inner.right).into_int_value();
                 let result = cx.builder.build_int_add(left, right, "iadd");
@@ -245,24 +245,24 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
 
         let result_value = result.try_as_basic_value().expect_left("expected a return value");
 
-        // let printf = cx.module.add_function(
-        //     "printf",
-        //     cx.isize_ty
-        //         .fn_type(&[cx.context.i8_type().ptr_type(AddressSpace::default()).into()], true),
-        //     Some(Linkage::External),
-        // );
+        let printf = cx.module.add_function(
+            "printf",
+            cx.isize_ty
+                .fn_type(&[cx.context.i8_type().ptr_type(AddressSpace::default()).into()], true),
+            Some(Linkage::External),
+        );
 
-        // cx.builder.build_call(
-        //     printf,
-        //     &[
-        //         cx.builder
-        //             .build_global_string_ptr("result = %d\n\0", "fmt")
-        //             .as_pointer_value()
-        //             .into(),
-        //         result_value.into(),
-        //     ],
-        //     "printf_call",
-        // );
+        cx.builder.build_call(
+            printf,
+            &[
+                cx.builder
+                    .build_global_string_ptr("result = %d\n\0", "fmt")
+                    .as_pointer_value()
+                    .into(),
+                result_value.into(),
+            ],
+            "printf_call",
+        );
 
         state.set_register(self.register, result_value);
     }

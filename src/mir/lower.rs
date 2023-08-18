@@ -1,6 +1,5 @@
 use super::{builder::FunctionBuilder, DefinitionId, Function, Mir, Span, TyId, Value};
 use crate::{
-    ast::BinaryOp,
     db::{Database, ScopeLevel},
     hir::{self, Hir},
     ty::Ty,
@@ -88,26 +87,7 @@ impl<'db> LowerCx<'db> {
         let right = self.lower_expr(&bin.right);
         let reg = self.builder.create_register(bin.ty);
 
-        match bin.op {
-            BinaryOp::Add => self.builder.build_iadd(reg, left, right, bin.span),
-            BinaryOp::Sub => todo!(),
-            BinaryOp::Mul => todo!(),
-            BinaryOp::Div => todo!(),
-            BinaryOp::Mod => todo!(),
-            BinaryOp::Shl => todo!(),
-            BinaryOp::Shr => todo!(),
-            BinaryOp::BitAnd => todo!(),
-            BinaryOp::BitOr => todo!(),
-            BinaryOp::BitXor => todo!(),
-            BinaryOp::Eq => todo!(),
-            BinaryOp::Ne => todo!(),
-            BinaryOp::Lt => todo!(),
-            BinaryOp::Le => todo!(),
-            BinaryOp::Gt => todo!(),
-            BinaryOp::Ge => todo!(),
-            BinaryOp::And => todo!(),
-            BinaryOp::Or => todo!(),
-        }
+        self.builder.build_binary(reg, bin.op, left, right, bin.span);
 
         reg.into()
     }

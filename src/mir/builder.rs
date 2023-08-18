@@ -4,7 +4,7 @@ use super::{
     Block, BlockId, Call, Function, Instruction, IntLit, Register, RegisterId, Return, TyId,
     UnitLit, Value,
 };
-use crate::{db::DefinitionId, mir::Binary, span::Span};
+use crate::{ast::BinaryOp, db::DefinitionId, mir::Binary, span::Span};
 
 pub struct FunctionBuilder {
     f: Function,
@@ -114,9 +114,17 @@ impl FunctionBuilder {
         }));
     }
 
-    pub fn build_iadd(&mut self, register: RegisterId, left: Value, right: Value, span: Span) {
-        self.current_block_mut().add_instruction(Instruction::IAdd(Binary {
+    pub fn build_binary(
+        &mut self,
+        register: RegisterId,
+        op: BinaryOp,
+        left: Value,
+        right: Value,
+        span: Span,
+    ) {
+        self.current_block_mut().add_instruction(Instruction::Binary(Binary {
             register,
+            op,
             left,
             right,
             span,
