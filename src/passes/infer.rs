@@ -10,6 +10,7 @@ use self::{
     type_env::{CallFrame, TypeEnv},
 };
 use crate::{
+    ast::BinaryOp,
     db::{Database, DefinitionId, TyId},
     hir::{
         Binary, Block, Call, Definition, DefinitionKind, Expr, Function, Hir, Lit, LitKind, Module,
@@ -165,8 +166,13 @@ impl Infer<'_> for Binary {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         self.lhs.infer(cx, env);
         self.rhs.infer(cx, env);
+
         cx.constraints.push(Constraint::Eq { expected: self.lhs.ty(), actual: self.rhs.ty() });
-        self.ty = self.lhs.ty();
+
+        self.ty = match self.op {
+            BinaryOp::Cmp(_) => cx.db.alloc_ty(Ty::Bool(self.span)),
+            _ => self.lhs.ty(),
+        };
     }
 }
 
