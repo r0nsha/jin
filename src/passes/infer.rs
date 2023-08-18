@@ -195,6 +195,20 @@ impl Infer<'_> for Binary {
 
         cx.constraints.push(Constraint::Eq { expected: self.lhs.ty(), actual: self.rhs.ty() });
 
+        match self.op {
+            BinaryOp::Cmp(_) => (),
+            BinaryOp::And | BinaryOp::Or => {
+                let expected = cx.db.alloc_ty(Ty::Bool(self.span));
+                cx.constraints.push(Constraint::Eq { expected, actual: self.lhs.ty() });
+                cx.constraints.push(Constraint::Eq { expected, actual: self.rhs.ty() });
+            }
+            _ => {
+                let expected = cx.db.alloc_ty(cx.tcx.fresh_int_var(self.span));
+                cx.constraints.push(Constraint::Eq { expected, actual: self.lhs.ty() });
+                cx.constraints.push(Constraint::Eq { expected, actual: self.rhs.ty() });
+            }
+        }
+
         self.ty = match self.op {
             BinaryOp::Cmp(_) => cx.db.alloc_ty(Ty::Bool(self.span)),
             _ => self.lhs.ty(),
