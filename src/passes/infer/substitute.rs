@@ -71,7 +71,7 @@ trait Substitute<'db> {
 impl Substitute<'_> for Expr {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         match self {
-            Self::Function(inner) => inner.substitute(cx, unbound_vars),
+            Self::Def(inner) => inner.substitute(cx, unbound_vars),
             Self::If(inner) => inner.substitute(cx, unbound_vars),
             Self::Block(inner) => inner.substitute(cx, unbound_vars),
             Self::Return(inner) => inner.substitute(cx, unbound_vars),

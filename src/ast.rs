@@ -135,6 +135,7 @@ pub struct Block {
 
 #[derive(Debug, Clone)]
 pub enum Statement {
+    Function(Function),
     Return(Return),
     Expr(Ast),
 }

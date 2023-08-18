@@ -58,7 +58,7 @@ impl<'db> LowerCx<'db> {
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
         match expr {
-            hir::Expr::Function(_) => todo!("function expr"),
+            hir::Expr::Def(_) => todo!("local def"),
             hir::Expr::If(inner) => self.lower_if(inner),
             hir::Expr::Block(inner) => self.lower_block(inner),
             hir::Expr::Return(inner) => self.lower_return(inner),

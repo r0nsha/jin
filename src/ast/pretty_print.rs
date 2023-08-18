@@ -84,6 +84,7 @@ impl PrettyPrint for Ast {
 impl PrettyPrint for Statement {
     fn pretty_print(&self, cx: &mut Cx) {
         match self {
+            Self::Function(fun) => fun.pretty_print(cx),
             Self::Return(ret) => {
                 cx.builder.begin_child("return".to_string());
 

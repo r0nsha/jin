@@ -1,8 +1,9 @@
 use std::collections::HashMap;
 
-use ustr::{Ustr, UstrMap};
+use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
+    common::QualifiedName,
     db::{Database, DefId, DefInfo, DefInfoKind, FunctionInfo, ModuleId, ScopeLevel, TyId, Vis},
     diagnostics::{Diagnostic, Label},
     hir::{Binary, Block, Call, Def, DefKind, Expr, Function, Hir, If, Module, Name, Return},
@@ -94,12 +95,9 @@ trait Resolve<'db> {
 
 impl Resolve<'_> for Def {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        if self.id.is_some() {
-            match &mut self.kind {
-                DefKind::Function(fun) => fun.resolve(cx, env),
-            }
-        } else {
-            todo!("local defs");
+        // TODO: local def
+        match &mut self.kind {
+            DefKind::Function(fun) => fun.resolve(cx, env),
         }
     }
 }
@@ -107,7 +105,7 @@ impl Resolve<'_> for Def {
 impl Resolve<'_> for Expr {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         match self {
-            Self::Function(inner) => inner.resolve(cx, env),
+            Self::Def(inner) => inner.resolve(cx, env),
             Self::If(inner) => inner.resolve(cx, env),
             Self::Block(inner) => inner.resolve(cx, env),
             Self::Return(inner) => inner.resolve(cx, env),
@@ -121,7 +119,23 @@ impl Resolve<'_> for Expr {
 
 impl Resolve<'_> for Function {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        env.scopes.push_scope(ScopeKind::Fun);
+        if let Some(scope) = env.scopes.current() {
+            let qualified_name = scope.name.clone().child(self.name);
+
+            let kind = DefInfoKind::Function(FunctionInfo::Orphan);
+
+            self.id = Some(DefInfo::alloc(
+                cx.db,
+                env.module_id,
+                qualified_name,
+                ScopeLevel::Local(env.scopes.depth()),
+                kind,
+                TyId::null(),
+                self.span,
+            ));
+        }
+
+        env.scopes.push_scope(self.name, ScopeKind::Fun);
         self.body.resolve(cx, env);
         env.scopes.pop_scope();
     }
@@ -140,7 +154,7 @@ impl Resolve<'_> for If {
 
 impl Resolve<'_> for Block {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        env.scopes.push_scope(ScopeKind::Block);
+        env.scopes.push_scope(ustr("_"), ScopeKind::Block);
 
         for expr in &mut self.exprs {
             expr.resolve(cx, env);
@@ -216,12 +230,25 @@ impl Scopes {
         Self(vec![])
     }
 
-    fn push_scope(&mut self, kind: ScopeKind) {
-        self.0.push(Scope { kind, definitions: UstrMap::default() });
+    fn push_scope(&mut self, name: Ustr, kind: ScopeKind) {
+        let name = self
+            .current()
+            .map_or_else(|| QualifiedName::from(name), |curr| curr.name.clone().child(name));
+
+        self.0.push(Scope { kind, name, definitions: UstrMap::default() });
     }
 
     fn pop_scope(&mut self) {
         self.0.pop();
+    }
+
+    fn current(&self) -> Option<&Scope> {
+        self.0.last()
+    }
+
+    #[allow(unused)]
+    fn current_mut(&mut self) -> Option<&mut Scope> {
+        self.0.last_mut()
     }
 
     #[allow(unused)]
@@ -272,7 +299,18 @@ impl Scopes {
 #[derive(Debug)]
 struct Scope {
     kind: ScopeKind,
+    name: QualifiedName,
     definitions: UstrMap<DefId>,
+}
+
+impl Scope {
+    fn insert(&mut self, name: Ustr, id: DefId) {
+        self.definitions.insert(name, id);
+    }
+
+    fn get(&mut self, name: Ustr) -> Option<DefId> {
+        self.definitions.get(&name).copied()
+    }
 }
 
 #[derive(Debug, PartialEq, Eq)]

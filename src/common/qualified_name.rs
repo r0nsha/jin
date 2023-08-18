@@ -36,3 +36,9 @@ impl QualifiedName {
         self
     }
 }
+
+impl From<Ustr> for QualifiedName {
+    fn from(value: Ustr) -> Self {
+        Self(vec![value])
+    }
+}

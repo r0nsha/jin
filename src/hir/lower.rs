@@ -1,6 +1,6 @@
 use super::{
-    Block, Call, Def, DefKind, Expr, Function, FunctionParam, Hir, IndexMap, Lit,
-    LitKind, Module, ModuleId, Name, Return, Spanned, TyId,
+    Block, Call, Def, DefKind, Expr, Function, FunctionParam, Hir, IndexMap, Lit, LitKind, Module,
+    ModuleId, Name, Return, Spanned, TyId,
 };
 use crate::{
     ast::{self, Ast},
@@ -125,6 +125,18 @@ impl Lower<'_, Expr> for Ast {
 impl Lower<'_, Expr> for ast::Statement {
     fn lower(self, cx: &mut Cx<'_>) -> Expr {
         match self {
+            Self::Function(fun) => {
+                let name = fun.name;
+                let span = fun.span;
+
+                Expr::Def(Def {
+                    id: None,
+                    name,
+                    kind: DefKind::Function(fun.lower(cx)),
+                    span,
+                    ty: TyId::null(),
+                })
+            }
             Self::Return(ret) => Expr::Return(Return {
                 expr: ret.expr.map_or_else(
                     || {

@@ -1,6 +1,6 @@
 fn main() = {
+	fn answer() = 42
 	answer()
 	return ()
 }
 
-fn answer() = 42

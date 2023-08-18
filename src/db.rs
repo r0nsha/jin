@@ -239,7 +239,7 @@ impl DefInfo {
     pub fn vis(&self) -> Vis {
         match &self.scope_level {
             ScopeLevel::Global(vis) => *vis,
-            ScopeLevel::Scope(_) => Vis::Private,
+            ScopeLevel::Local(_) => Vis::Private,
         }
     }
 }
@@ -253,8 +253,7 @@ pub enum Vis {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScopeLevel {
     Global(Vis),
-    #[allow(unused)]
-    Scope(usize),
+    Local(usize),
 }
 
 impl PartialOrd for ScopeLevel {
@@ -267,9 +266,9 @@ impl Ord for ScopeLevel {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         match (self, other) {
             (Self::Global(_), Self::Global(_)) => cmp::Ordering::Equal,
-            (Self::Global(_), Self::Scope(_)) => cmp::Ordering::Less,
-            (Self::Scope(_), Self::Global(_)) => cmp::Ordering::Greater,
-            (Self::Scope(a), Self::Scope(b)) => a.cmp(b),
+            (Self::Global(_), Self::Local(_)) => cmp::Ordering::Less,
+            (Self::Local(_), Self::Global(_)) => cmp::Ordering::Greater,
+            (Self::Local(a), Self::Local(b)) => a.cmp(b),
         }
     }
 }

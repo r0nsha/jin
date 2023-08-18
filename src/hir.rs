@@ -43,8 +43,7 @@ pub struct Module {
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum Expr {
-    #[allow(unused)]
-    Function(Function),
+    Def(Def),
     If(If),
     Block(Block),
     Return(Return),
@@ -57,7 +56,7 @@ pub enum Expr {
 impl Expr {
     pub fn ty(&self) -> TyId {
         match self {
-            Self::Function(x) => x.ty,
+            Self::Def(x) => x.ty,
             Self::If(x) => x.ty,
             Self::Block(x) => x.ty,
             Self::Return(x) => x.ty,
@@ -72,7 +71,7 @@ impl Expr {
 impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
-            Self::Function(x) => x.span,
+            Self::Def(x) => x.span,
             Self::If(x) => x.span,
             Self::Block(x) => x.span,
             Self::Return(x) => x.span,
@@ -85,7 +84,7 @@ impl Spanned for Expr {
 
     fn span_mut(&mut self) -> &mut Span {
         match self {
-            Self::Function(x) => &mut x.span,
+            Self::Def(x) => &mut x.span,
             Self::If(x) => &mut x.span,
             Self::Block(x) => &mut x.span,
             Self::Return(x) => &mut x.span,

@@ -54,19 +54,7 @@ impl<'a> Parser<'a> {
 
     fn parse_top_level(&mut self) -> ParseResult<TopLevel> {
         if self.is(TokenKind::Fn) {
-            let name_ident = self.eat(TokenKind::empty_ident())?;
-            let params = self.parse_function_params()?;
-
-            self.eat(TokenKind::Eq)?;
-
-            let body = self.parse_expr()?;
-
-            Ok(TopLevel::Function(Function {
-                name: name_ident.as_ident(),
-                body: Box::new(body),
-                params,
-                span: name_ident.span,
-            }))
+            Ok(TopLevel::Function(self.parse_function()?))
         } else {
             let token = self.require()?;
 
@@ -76,6 +64,22 @@ impl<'a> Parser<'a> {
                 span: token.span,
             })
         }
+    }
+
+    fn parse_function(&mut self) -> ParseResult<Function> {
+        let name_ident = self.eat(TokenKind::empty_ident())?;
+        let params = self.parse_function_params()?;
+
+        self.eat(TokenKind::Eq)?;
+
+        let body = self.parse_expr()?;
+
+        Ok(Function {
+            name: name_ident.as_ident(),
+            body: Box::new(body),
+            params,
+            span: name_ident.span,
+        })
     }
 
     fn parse_function_params(&mut self) -> ParseResult<Vec<FunctionParam>> {
@@ -101,7 +105,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_stmt(&mut self) -> ParseResult<Statement> {
-        if self.is(TokenKind::Return) {
+        if self.is(TokenKind::Fn) {
+            Ok(Statement::Function(self.parse_function()?))
+        } else if self.is(TokenKind::Return) {
             Ok(Statement::Return(self.parse_return()?))
         } else {
             Ok(Statement::Expr(self.parse_expr()?))
