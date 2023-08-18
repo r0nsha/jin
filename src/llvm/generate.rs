@@ -121,22 +121,10 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         let entry_block = self.context.append_basic_block(function_value, "entry");
         self.builder.position_at_end(entry_block);
 
-        // TODO: Codegen the entry point function
-        // Codegen the entry point function
-        // let entry_point_function = self.db.main_function().expect("to have a main function");
+        let main_function = self.db.main_function().expect("to have a main function");
+        let main_function_value = self.function(main_function.id);
 
-        // TODO: Call the entry point function
-        // Call the entry point function
-        // let entry_point_function_value = *self.functions.get(&entry_point_function.id).unwrap();
-        // let entry_point_function_type =
-        //     self.db[entry_point_function.ty].as_function().expect("to be a function type");
-        // self.gen_function_call(
-        //     &mut state,
-        //     entry_point_function_value,
-        //     &entry_point_function_type,
-        //     vec![],
-        //     &entry_point_function_type.return_type,
-        // );
+        self.builder.build_call(main_function_value, &[], "call_main");
 
         if self.current_block().get_terminator().is_none() {
             self.builder.build_return(Some(&self.context.i32_type().const_zero()));
@@ -255,10 +243,9 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
             "call",
         );
 
-        state.set_register(
-            self.register,
-            result.try_as_basic_value().expect_left("expected a return value"),
-        );
+        let result_value = result.try_as_basic_value().expect_left("expected a return value");
+
+        state.set_register(self.register, result_value);
     }
 }
 
