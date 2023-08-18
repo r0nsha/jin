@@ -64,7 +64,7 @@ pub fn codegen(db: &Database, mir: &Mir) -> PathBuf {
         panic!("{}", e);
     }
 
-    // time(print_times, "llvm opt", || optimize(cx.module));
+    time(print_times, "llvm opt", || optimize(cx.module));
 
     build_exe(db, &target_machine, &module)
 }
