@@ -5,13 +5,14 @@ use inkwell::{
     builder::Builder,
     context::Context,
     module::{Linkage, Module},
-    types::IntType,
+    types::{AnyType, IntType},
     values::FunctionValue,
     AddressSpace,
 };
 
 use crate::{
     db::{Database, DefinitionId},
+    llvm::ty::LlvmType,
     mir::Mir,
 };
 
@@ -90,27 +91,8 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
         self.start_block(&mut state, entry_block);
 
-        // TODO: Hello World
-        let puts = self.module.add_function(
-            "puts",
-            self.context
-                .i32_type()
-                .fn_type(&[self.context.i8_type().ptr_type(AddressSpace::default()).into()], false),
-            Some(Linkage::External),
-        );
-
-        self.builder.build_call(
-            puts,
-            &[self
-                .builder
-                .build_global_string_ptr("Hello, World!", "str")
-                .as_pointer_value()
-                .into()],
-            "call",
-        );
-
-        // TODO: Declare all functions
-        // TODO: Generate all functions
+        self.declare_all_functions();
+        self.define_all_functions();
 
         // TODO: Codegen the entry point function
         // Codegen the entry point function
@@ -138,27 +120,33 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         self.builder.build_unconditional_branch(entry_block);
     }
 
-    pub fn current_block(&self) -> BasicBlock<'cx> {
-        self.builder.get_insert_block().unwrap()
+    pub fn declare_all_functions(&mut self) {
+        for fun in &self.mir.functions {
+            let fun_info = &self.db[fun.id()];
+            let name = fun_info.qualified_name.standard_full_name();
+            let llvm_ty = fun_info
+                .ty
+                .llvm_type(self)
+                .into_pointer_type()
+                .get_element_type()
+                .into_function_type();
+
+            self.module.add_function(&name, llvm_ty, Some(Linkage::Private));
+        }
     }
 
-    pub fn append_basic_block(&self, state: &FunctionState<'cx>, name: &str) -> BasicBlock<'cx> {
-        self.context.append_basic_block(state.function, name)
-    }
+    pub fn define_all_functions(&mut self) {
+        for fun in &self.mir.functions {
+            let fun_info = &self.db[fun.id()];
+            let name = fun_info.qualified_name.standard_full_name();
+            let llvm_ty = fun_info
+                .ty
+                .llvm_type(self)
+                .into_pointer_type()
+                .get_element_type()
+                .into_function_type();
 
-    pub fn start_block(&self, state: &mut FunctionState<'cx>, block: BasicBlock<'cx>) {
-        state.current_block = block;
-        self.builder.position_at_end(block);
-    }
-
-    #[allow(unused)]
-    pub fn print_current_state(&self, state: &FunctionState<'cx>) {
-        let current_block = self.current_block();
-        println!(
-            "function: {}\n\tblock: {}\n\tterminated: {}",
-            state.function.get_name().to_str().unwrap(),
-            current_block.get_name().to_str().unwrap(),
-            current_block.get_terminator().is_some()
-        );
+            self.module.add_function(&name, llvm_ty, Some(Linkage::Private));
+        }
     }
 }
