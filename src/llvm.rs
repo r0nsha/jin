@@ -1,3 +1,4 @@
+mod generate;
 #[cfg(windows)]
 mod microsoft_craziness;
 
@@ -5,6 +6,8 @@ use std::{collections::HashMap, path::PathBuf};
 
 use inkwell::{
     context::Context,
+    module::Module,
+    passes::{PassManager, PassManagerBuilder},
     targets::{CodeModel, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple},
     OptimizationLevel,
 };
@@ -12,15 +15,56 @@ use inkwell::{
 use crate::{
     common::{target::Arch, time::time},
     db::Database,
+    llvm::generate::Generator,
     mir::Mir,
 };
 
 pub fn codegen(db: &Database, mir: &Mir) -> PathBuf {
+    let target_machine = create_target_machine(db).expect("to create a LLVM TargetMachine");
+
     let context = Context::create();
+
     let module =
         context.create_module(db.main_source().path().file_stem().unwrap().to_str().unwrap());
+
+    module.set_data_layout(&target_machine.get_target_data().get_data_layout());
+    module.set_triple(&target_machine.get_triple());
+
     let builder = context.create_builder();
 
+    let mut cx = Generator {
+        db,
+        mir,
+        context: &context,
+        module: &module,
+        builder: &builder,
+        isize_ty: context.ptr_sized_int_type(&target_machine.get_target_data(), None),
+        functions: HashMap::default(),
+    };
+
+    let print_times = db.build_options().print_times;
+
+    time(print_times, "emit llvm ir", || cx.run());
+
+    if let Err(e) = cx.module.verify() {
+        cx.module.print_to_file("fail.ll").unwrap();
+        panic!("{}", e);
+    }
+
+    time(print_times, "llvm opt", || optimize(cx.module));
+
+    todo!()
+
+    // build_executable(
+    //     &workspace.build_options,
+    //     &target_machine,
+    //     &target_metrics,
+    //     &module,
+    //     &cg.extern_libraries,
+    // )
+}
+
+fn create_target_machine(db: &Database) -> Option<TargetMachine> {
     let target_metrics = db.build_options().target_metrics;
 
     match &target_metrics.arch {
@@ -36,50 +80,25 @@ pub fn codegen(db: &Database, mir: &Mir) -> PathBuf {
     let host_cpu = TargetMachine::get_host_cpu_name();
     let features = TargetMachine::get_host_cpu_features();
 
-    let target_machine = target
-        .create_target_machine(
-            &triple,
-            host_cpu.to_str().unwrap(),
-            features.to_str().unwrap(),
-            OptimizationLevel::Default,
-            RelocMode::Default,
-            CodeModel::Default,
-        )
-        .expect("to create a LLVM TargetMachine");
+    target.create_target_machine(
+        &triple,
+        host_cpu.to_str().unwrap(),
+        features.to_str().unwrap(),
+        OptimizationLevel::Default,
+        RelocMode::Default,
+        CodeModel::Default,
+    )
+}
 
-    module.set_data_layout(&target_machine.get_target_data().get_data_layout());
-    module.set_triple(&target_machine.get_triple());
+fn optimize(module: &Module) {
+    let pass_manager_builder = PassManagerBuilder::create();
 
-    let mut cx = Generator {
-        db,
-        mir,
-        context: &context,
-        module: &module,
-        builder: &builder,
-        ptr_sized_int_type: context.ptr_sized_int_type(&target_machine.get_target_data(), None),
-        functions: HashMap::default(),
-    };
+    pass_manager_builder.set_optimization_level(OptimizationLevel::Default);
+    pass_manager_builder.set_size_level(1);
 
-    let print_times = db.build_options().print_times;
-
-    time(print_times, "emit llvm ir", || cx.run());
-
-    if let Err(e) = cx.module.verify() {
-        cx.module.print_to_file("fail.ll").unwrap();
-        panic!("{}", e);
-    }
-
-    time(print_times, "llvm opt", || cx.optimize());
-
-    todo!()
-
-    // build_executable(
-    //     &workspace.build_options,
-    //     &target_machine,
-    //     &target_metrics,
-    //     &module,
-    //     &cg.extern_libraries,
-    // )
+    let pass_manager = PassManager::create(());
+    pass_manager_builder.populate_module_pass_manager(&pass_manager);
+    pass_manager.run_on(module);
 }
 
 // fn build_executable(
