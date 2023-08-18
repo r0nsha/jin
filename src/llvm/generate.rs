@@ -245,6 +245,25 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
 
         let result_value = result.try_as_basic_value().expect_left("expected a return value");
 
+        // let printf = cx.module.add_function(
+        //     "printf",
+        //     cx.isize_ty
+        //         .fn_type(&[cx.context.i8_type().ptr_type(AddressSpace::default()).into()], true),
+        //     Some(Linkage::External),
+        // );
+
+        // cx.builder.build_call(
+        //     printf,
+        //     &[
+        //         cx.builder
+        //             .build_global_string_ptr("result = %d\n\0", "fmt")
+        //             .as_pointer_value()
+        //             .into(),
+        //         result_value.into(),
+        //     ],
+        //     "printf_call",
+        // );
+
         state.set_register(self.register, result_value);
     }
 }
