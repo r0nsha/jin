@@ -160,14 +160,9 @@ pub enum BinaryOp {
     BitAnd,
     BitOr,
     BitXor,
-    Eq,
-    Ne,
-    Lt,
-    Le,
-    Gt,
-    Ge,
     And,
     Or,
+    Cmp(CmpOp),
 }
 
 impl BinaryOp {
@@ -183,14 +178,37 @@ impl BinaryOp {
             Self::BitAnd => "&",
             Self::BitOr => "|",
             Self::BitXor => "^",
-            Self::Eq => "==",
-            Self::Ne => "!=",
-            Self::Lt => "<",
-            Self::Le => "<=",
-            Self::Gt => ">",
-            Self::Ge => ">=",
             Self::And => "&&",
             Self::Or => "||",
+            Self::Cmp(CmpOp::Eq) => "==",
+            Self::Cmp(CmpOp::Ne) => "!=",
+            Self::Cmp(CmpOp::Lt) => "<",
+            Self::Cmp(CmpOp::Le) => "<=",
+            Self::Cmp(CmpOp::Gt) => ">",
+            Self::Cmp(CmpOp::Ge) => ">=",
+        }
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Add => "add",
+            Self::Sub => "sub",
+            Self::Mul => "mul",
+            Self::Div => "div",
+            Self::Mod => "mod",
+            Self::Shl => "shl",
+            Self::Shr => "shr",
+            Self::BitAnd => "bitand",
+            Self::BitOr => "bitor",
+            Self::BitXor => "bitxor",
+            Self::And => "and",
+            Self::Or => "or",
+            Self::Cmp(CmpOp::Eq) => "eq",
+            Self::Cmp(CmpOp::Ne) => "ne",
+            Self::Cmp(CmpOp::Lt) => "lt",
+            Self::Cmp(CmpOp::Le) => "le",
+            Self::Cmp(CmpOp::Gt) => "gt",
+            Self::Cmp(CmpOp::Ge) => "ge",
         }
     }
 
@@ -202,12 +220,22 @@ impl BinaryOp {
             Self::BitAnd => 8,
             Self::BitXor => 7,
             Self::BitOr => 6,
-            Self::Eq | Self::Ne => 5,
-            Self::Lt | Self::Le | Self::Gt | Self::Ge => 4,
+            Self::Cmp(CmpOp::Eq | CmpOp::Ne) => 5,
+            Self::Cmp(CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge) => 4,
             Self::And => 3,
             Self::Or => 2,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CmpOp {
+    Eq,
+    Ne,
+    Lt,
+    Le,
+    Gt,
+    Ge,
 }
 
 impl fmt::Display for BinaryOp {
@@ -221,19 +249,19 @@ impl TryFrom<TokenKind> for BinaryOp {
 
     fn try_from(value: TokenKind) -> Result<Self, Self::Error> {
         let op = match value {
-            TokenKind::EqEq => Self::Eq,
-            TokenKind::BangEq => Self::Ne,
+            TokenKind::EqEq => Self::Cmp(CmpOp::Eq),
+            TokenKind::BangEq => Self::Cmp(CmpOp::Ne),
             TokenKind::Star => Self::Mul,
             TokenKind::FwSlash => Self::Div,
             TokenKind::Percent => Self::Mod,
             TokenKind::Plus => Self::Add,
             TokenKind::Minus => Self::Sub,
-            TokenKind::Lt => Self::Lt,
+            TokenKind::Lt => Self::Cmp(CmpOp::Lt),
             TokenKind::LtLt => Self::Shl,
-            TokenKind::LtEq => Self::Le,
-            TokenKind::Gt => Self::Gt,
+            TokenKind::LtEq => Self::Cmp(CmpOp::Le),
+            TokenKind::Gt => Self::Cmp(CmpOp::Gt),
             TokenKind::GtGt => Self::Shr,
-            TokenKind::GtEq => Self::Ge,
+            TokenKind::GtEq => Self::Cmp(CmpOp::Ge),
             TokenKind::Amp => Self::BitAnd,
             TokenKind::AmpAmp => Self::And,
             TokenKind::Caret => Self::BitXor,

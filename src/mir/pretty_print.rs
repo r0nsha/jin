@@ -115,27 +115,6 @@ fn register_alloc<'db, 'd>(
 
 fn binary_instruction_name(op: BinaryOp) -> String {
     let prefix = "i";
-
-    let inst = match op {
-        BinaryOp::Add => "add",
-        BinaryOp::Sub => "sub",
-        BinaryOp::Mul => "mul",
-        BinaryOp::Div => "div",
-        BinaryOp::Mod => "mod",
-        BinaryOp::Shl => "shl",
-        BinaryOp::Shr => "shr",
-        BinaryOp::BitAnd => "bitand",
-        BinaryOp::BitOr => "bitor",
-        BinaryOp::BitXor => "bitxor",
-        BinaryOp::Eq => "eq",
-        BinaryOp::Ne => "ne",
-        BinaryOp::Lt => "lt",
-        BinaryOp::Le => "le",
-        BinaryOp::Gt => "gt",
-        BinaryOp::Ge => "ge",
-        BinaryOp::And => "and",
-        BinaryOp::Or => "or",
-    };
-
+    let inst = op.name();
     format!("{prefix}{inst}")
 }
