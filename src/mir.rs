@@ -127,7 +127,7 @@ impl BlockId {
 pub struct Block {
     pub id: BlockId,
     pub name: Ustr,
-    pub instructions: Vec<Instruction>,
+    pub instructions: Vec<Inst>,
     pub predecessors: Vec<BlockId>,
     pub successors: Vec<BlockId>,
 }
@@ -144,12 +144,12 @@ impl Block {
     }
 
     fn is_terminating(&self) -> bool {
-        self.instructions.iter().any(|inst| matches!(inst, Instruction::Return(_)))
+        self.instructions.iter().any(|inst| matches!(inst, Inst::Return(_)))
     }
 }
 
 #[derive(Debug, Clone)]
-pub enum Instruction {
+pub enum Inst {
     Return(Return),
     Br(Br),
     BrIf(BrIf),

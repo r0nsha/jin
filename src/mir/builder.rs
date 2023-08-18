@@ -1,7 +1,7 @@
 use std::collections::HashSet;
 
 use super::{
-    Block, BlockId, Call, Function, Instruction, IntLit, Register, RegisterId, Return, TyId,
+    Block, BlockId, Call, Function, Inst, IntLit, Register, RegisterId, Return, TyId,
     UnitLit, Value,
 };
 use crate::{
@@ -91,7 +91,7 @@ impl FunctionBuilder {
     }
 
     pub fn build_int_lit(&mut self, reg: RegisterId, value: usize, span: Span) {
-        self.current_block_mut().add_instruction(Instruction::IntLit(IntLit {
+        self.current_block_mut().add_instruction(Inst::IntLit(IntLit {
             register: reg,
             value,
             span,
@@ -99,7 +99,7 @@ impl FunctionBuilder {
     }
 
     pub fn build_bool_lit(&mut self, reg: RegisterId, value: bool, span: Span) {
-        self.current_block_mut().add_instruction(Instruction::BoolLit(BoolLit {
+        self.current_block_mut().add_instruction(Inst::BoolLit(BoolLit {
             register: reg,
             value,
             span,
@@ -108,30 +108,30 @@ impl FunctionBuilder {
 
     pub fn build_unit_lit(&mut self, reg: RegisterId, span: Span) {
         self.current_block_mut()
-            .add_instruction(Instruction::UnitLit(UnitLit { register: reg, span }));
+            .add_instruction(Inst::UnitLit(UnitLit { register: reg, span }));
     }
 
     pub fn build_return(&mut self, value: Value, span: Span) {
-        self.current_block_mut().add_instruction(Instruction::Return(Return { value, span }));
+        self.current_block_mut().add_instruction(Inst::Return(Return { value, span }));
     }
 
     pub fn build_br(&mut self, target: BlockId, span: Span) {
         self.create_edge(self.current_block().id, target);
-        self.current_block_mut().add_instruction(Instruction::Br(Br { target, span }));
+        self.current_block_mut().add_instruction(Inst::Br(Br { target, span }));
     }
 
     pub fn build_brif(&mut self, cond: Value, b1: BlockId, b2: BlockId, span: Span) {
         self.create_edge(self.current_block().id, b1);
         self.create_edge(self.current_block().id, b2);
-        self.current_block_mut().add_instruction(Instruction::BrIf(BrIf { cond, b1, b2, span }));
+        self.current_block_mut().add_instruction(Inst::BrIf(BrIf { cond, b1, b2, span }));
     }
 
     pub fn build_phi(&mut self, register: RegisterId, values: Box<[PhiValue]>, span: Span) {
-        self.current_block_mut().add_instruction(Instruction::Phi(Phi { register, values, span }));
+        self.current_block_mut().add_instruction(Inst::Phi(Phi { register, values, span }));
     }
 
     pub fn build_call(&mut self, register: RegisterId, callee: Value, span: Span) {
-        self.current_block_mut().add_instruction(Instruction::Call(Call {
+        self.current_block_mut().add_instruction(Inst::Call(Call {
             register,
             callee,
             span,
@@ -146,7 +146,7 @@ impl FunctionBuilder {
         rhs: Value,
         span: Span,
     ) {
-        self.current_block_mut().add_instruction(Instruction::Binary(Binary {
+        self.current_block_mut().add_instruction(Inst::Binary(Binary {
             register,
             op,
             lhs,
@@ -194,7 +194,7 @@ impl FunctionBuilder {
 
 impl Block {
     #[inline]
-    pub fn add_instruction(&mut self, inst: Instruction) {
+    pub fn add_instruction(&mut self, inst: Inst) {
         self.instructions.push(inst);
     }
 }

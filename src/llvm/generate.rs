@@ -15,7 +15,7 @@ use crate::{
     db::{Database, DefinitionId},
     llvm::ty::LlvmType,
     mir::{
-        Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Instruction, IntLit, Mir, Phi,
+        Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, Mir, Phi,
         RegisterId, Return, UnitLit, Value,
     },
 };
@@ -211,7 +211,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Block {
     }
 }
 
-impl<'db, 'cx> Codegen<'db, 'cx> for Instruction {
+impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         match self {
             Self::Return(inner) => inner.codegen(cx, state),

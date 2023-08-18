@@ -1,6 +1,6 @@
 use pretty::RcDoc;
 
-use super::{Block, Function, Instruction, Mir, RegisterId, TyId, Value};
+use super::{Block, Function, Inst, Mir, RegisterId, TyId, Value};
 use crate::{ast::BinaryOp, db::Database, ty::Ty};
 
 pub fn print(db: &Database, mir: &Mir) {
@@ -48,7 +48,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for Block {
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Instruction {
+impl<'db, 'd> ToDoc<'db, 'd> for Inst {
     fn to_doc(&self, db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
         match self {
             Self::Return(ret) => {
