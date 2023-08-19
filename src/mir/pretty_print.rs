@@ -25,7 +25,12 @@ fn print_function<'d>(db: &Database, fun: &Function) -> RcDoc<'d, ()> {
         .append(fun.id().to_doc(db, fun))
         .append(RcDoc::text("("))
         .append(RcDoc::intersperse(
-            fun.params().iter().map(|param| param.id.to_doc(db, fun)),
+            fun.params().iter().map(|p| {
+                p.id.to_doc(db, fun)
+                    .append(RcDoc::text(":"))
+                    .append(RcDoc::space())
+                    .append(db[p.id].ty.to_doc(db, fun))
+            }),
             RcDoc::text(",").append(RcDoc::space()),
         ))
         .append(RcDoc::text(")"))
@@ -35,7 +40,7 @@ fn print_function<'d>(db: &Database, fun: &Function) -> RcDoc<'d, ()> {
         .append(RcDoc::text("{"))
         .append(RcDoc::hardline())
         .append(RcDoc::intersperse(
-            fun.blocks().iter().map(|blk| blk.to_doc(db, fun)),
+            fun.blocks().iter().map(|b| b.to_doc(db, fun)),
             RcDoc::hardline(),
         ))
         .append(RcDoc::hardline())
@@ -52,7 +57,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for Block {
             .append(RcDoc::text(":"))
             .append(RcDoc::hardline())
             .append(RcDoc::intersperse(
-                self.instructions.iter().map(|inst| inst.to_doc(db, fun)),
+                self.instructions.iter().map(|i| i.to_doc(db, fun)),
                 RcDoc::hardline(),
             ))
             .nest(1)
@@ -94,14 +99,14 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
                 .append(RcDoc::space())
                 .append(RcDoc::text("("))
                 .append(RcDoc::intersperse(
-                    call.args.iter().map(|arg| arg.to_doc(db, fun)),
+                    call.args.iter().map(|a| a.to_doc(db, fun)),
                     RcDoc::text(",").append(RcDoc::space()),
                 ))
                 .append(RcDoc::text(")")),
             Self::Load(load) => value_alloc(db, fun, load.value)
                 .append(RcDoc::text("load"))
                 .append(RcDoc::space())
-                .append(RcDoc::text(db[load.id].qualified_name.standard_full_name())),
+                .append(load.id.to_doc(db, fun)),
             Self::Binary(bin) => value_alloc(db, fun, bin.value)
                 .append(RcDoc::text(binary_instruction_name(bin.op)))
                 .append(RcDoc::space())

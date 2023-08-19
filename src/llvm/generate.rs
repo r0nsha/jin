@@ -6,7 +6,7 @@ use inkwell::{
     context::Context,
     module::{Linkage, Module},
     types::IntType,
-    values::{BasicValueEnum, CallableValue, FunctionValue, PointerValue},
+    values::{BasicValue, BasicValueEnum, CallableValue, FunctionValue},
     AddressSpace, IntPredicate,
 };
 
@@ -35,19 +35,14 @@ pub struct Generator<'db, 'cx> {
 #[derive(Debug, Clone, Copy)]
 pub enum DefValue<'cx> {
     Function(FunctionValue<'cx>),
+    Variable(BasicValueEnum<'cx>),
 }
 
 impl<'cx> DefValue<'cx> {
     pub fn as_function_value(self) -> FunctionValue<'cx> {
         match self {
             DefValue::Function(f) => f,
-            // _ => panic!("expected Function, got {:?} instead", self),
-        }
-    }
-
-    pub fn as_pointer_value(self) -> PointerValue<'cx> {
-        match self {
-            DefValue::Function(f) => f.as_global_value().as_pointer_value(),
+            DefValue::Variable(_) => panic!("expected Function, got {self:?} instead"),
         }
     }
 }
@@ -187,6 +182,10 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             || panic!("function {} to be declared", fun_info.qualified_name.standard_full_name()),
             |f| f.as_function_value(),
         );
+
+        for (param, value) in fun.params().iter().zip(function_value.get_param_iter()) {
+            self.def_values.insert(param.id(), DefValue::Variable(value));
+        }
 
         let prologue_block = self.context.append_basic_block(function_value, "decls");
         self.builder.position_at_end(prologue_block);
@@ -334,8 +333,12 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Load {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let value = cx.def_value(self.id).as_pointer_value();
-        state.set_value(self.value, value.into());
+        let value = match cx.def_value(self.id) {
+            DefValue::Function(f) => f.as_global_value().as_pointer_value().as_basic_value_enum(),
+            DefValue::Variable(v) => v,
+        };
+
+        state.set_value(self.value, value);
     }
 }
 
