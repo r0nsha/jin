@@ -182,6 +182,7 @@ pub type PhiValue = (BlockId, ValueId);
 pub struct Call {
     pub value: ValueId,
     pub callee: ValueId,
+    pub args: Vec<ValueId>,
     #[allow(unused)]
     pub span: Span,
 }

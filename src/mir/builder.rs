@@ -127,9 +127,15 @@ impl FunctionBuilder {
         value
     }
 
-    pub fn build_call(&mut self, ty: TyId, callee: ValueId, span: Span) -> ValueId {
+    pub fn build_call(
+        &mut self,
+        ty: TyId,
+        callee: ValueId,
+        args: Vec<ValueId>,
+        span: Span,
+    ) -> ValueId {
         let value = self.create_value(ty);
-        self.current_block_mut().add_inst(Inst::Call(Call { value, callee, span }));
+        self.current_block_mut().add_inst(Inst::Call(Call { value, callee, args, span }));
         value
     }
 

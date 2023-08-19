@@ -79,7 +79,12 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
             Self::Call(call) => value_alloc(db, fun, call.value)
                 .append(RcDoc::text("call"))
                 .append(RcDoc::space())
-                .append(call.callee.to_doc(db, fun)),
+                .append(call.callee.to_doc(db, fun))
+                .append(RcDoc::space())
+                .append(RcDoc::intersperse(
+                    call.args.iter().map(|arg| arg.to_doc(db, fun)),
+                    RcDoc::text(",").append(RcDoc::space()),
+                )),
             Self::Load(load) => value_alloc(db, fun, load.value)
                 .append(RcDoc::text("load"))
                 .append(RcDoc::space())

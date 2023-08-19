@@ -133,7 +133,8 @@ impl<'db> LowerFunctionCx<'db> {
 
     fn lower_call(&mut self, call: &hir::Call) -> ValueId {
         let callee = self.lower_expr(&call.callee);
-        self.builder.build_call(call.ty, callee, call.span)
+        let args = call.args.iter().map(|arg| self.lower_expr(arg)).collect();
+        self.builder.build_call(call.ty, callee, args, call.span)
     }
 
     fn lower_binary(&mut self, bin: &hir::Binary) -> ValueId {
