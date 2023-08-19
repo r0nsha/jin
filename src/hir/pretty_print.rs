@@ -53,16 +53,20 @@ impl PrettyPrint for Def {
 impl PrettyPrint for Function {
     fn pretty_print(&self, cx: &mut Cx) {
         cx.builder.begin_child(format!(
-            "fn {} (type: {})",
+            "fn {} (returns: {})",
             self.name,
-            cx.db[self.ty].display(cx.db)
+            cx.db[self.ty].as_function().unwrap().ret.display(cx.db)
         ));
 
         if !self.params.is_empty() {
             cx.builder.begin_child("params".to_string());
 
             for param in self.params.values() {
-                cx.builder.add_empty_child(format!("{}", param.name));
+                cx.builder.add_empty_child(format!(
+                    "{} (type: {})",
+                    param.name,
+                    cx.db[param.ty].display(cx.db)
+                ));
             }
 
             cx.builder.end_child();
