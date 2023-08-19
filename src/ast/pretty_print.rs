@@ -58,6 +58,15 @@ impl PrettyPrint for Ast {
             Self::Call(call) => {
                 cx.builder.begin_child("call".to_string());
                 call.callee.pretty_print(cx);
+
+                if !call.args.is_empty() {
+                    cx.builder.begin_child("args".to_string());
+                    for arg in &call.args {
+                        arg.pretty_print(cx);
+                    }
+                    cx.builder.end_child();
+                }
+
                 cx.builder.end_child();
             }
             Self::Binary(bin) => {

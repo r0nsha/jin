@@ -149,6 +149,7 @@ pub struct Return {
 #[derive(Debug, Clone)]
 pub struct Call {
     pub callee: Box<Ast>,
+    pub args: Vec<Ast>,
     pub span: Span,
 }
 

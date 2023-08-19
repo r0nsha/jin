@@ -68,7 +68,7 @@ impl<'a> Parser<'a> {
 
     fn parse_function(&mut self) -> ParseResult<Function> {
         let name_ident = self.eat(TokenKind::empty_ident())?;
-        let params = self.parse_function_params()?;
+        let (params, _) = self.parse_function_params()?;
 
         self.eat(TokenKind::Eq)?;
 
@@ -82,12 +82,11 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_function_params(&mut self) -> ParseResult<Vec<FunctionParam>> {
-        self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |_, tok| {
-            Self::require_kind(tok, TokenKind::empty_ident())
-                .map(|tok| FunctionParam { name: tok.as_ident(), span: tok.span })
+    fn parse_function_params(&mut self) -> ParseResult<(Vec<FunctionParam>, Span)> {
+        self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
+            let ident_tok = this.eat(TokenKind::empty_ident())?;
+            Ok(FunctionParam { name: ident_tok.as_ident(), span: ident_tok.span })
         })
-        .map(|(params, _)| params)
     }
 
     fn parse_block(&mut self) -> ParseResult<Block> {
@@ -384,36 +383,47 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_operand_postfix(&mut self, expr: Ast) -> ParseResult<Ast> {
-        if self.is_and_same_line(TokenKind::OpenParen, expr.span()) {
-            self.parse_call(expr)
-        } else {
-            Ok(expr)
+        let start = self.last_span();
+
+        match self.token() {
+            Some(tok @ Token { kind: TokenKind::OpenParen, .. })
+                if self.are_on_same_line(start, tok.span) =>
+            {
+                self.parse_call(expr)
+            }
+            _ => Ok(expr),
         }
+        // if self.is_and_same_line(TokenKind::OpenParen, expr.span()) {
+        //     self.parse_call(expr)
+        // } else {
+        //     Ok(expr)
+        // }
     }
 
     fn parse_call(&mut self, expr: Ast) -> ParseResult<Ast> {
-        let close_paren = self.eat(TokenKind::CloseParen)?;
-        let span = expr.span().merge(close_paren.span);
-        Ok(Ast::Call(Call { callee: Box::new(expr), span }))
+        let (args, args_span) =
+            self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, Parser::parse_expr)?;
+
+        let span = expr.span().merge(args_span);
+
+        Ok(Ast::Call(Call { callee: Box::new(expr), args, span }))
     }
 
     fn parse_list<T>(
         &mut self,
         open: TokenKind,
         close: TokenKind,
-        mut f: impl FnMut(&mut Self, Token) -> Result<T, ParseError>,
+        mut f: impl FnMut(&mut Self) -> Result<T, ParseError>,
     ) -> ParseResult<(Vec<T>, Span)> {
         let mut values = Vec::new();
         let open_tok = self.eat(open)?;
 
         loop {
-            let tok = self.eat_any()?;
-
-            if tok.kind_is(close) {
-                return Ok((values, open_tok.span.merge(tok.span)));
+            if self.is(close) {
+                return Ok((values, open_tok.span.merge(self.last_span())));
             }
 
-            values.push(f(self, tok)?);
+            values.push(f(self)?);
 
             if !values.is_empty() && !self.peek_is(close) {
                 self.eat(TokenKind::Comma)?;
@@ -442,12 +452,6 @@ impl<'a> Parser<'a> {
 
     fn is(&mut self, expected: TokenKind) -> bool {
         self.is_predicate(|_, tok| tok.kind_is(expected))
-    }
-
-    fn is_and_same_line(&mut self, expected: TokenKind, span: Span) -> bool {
-        self.is_predicate(|this, tok| {
-            tok.kind_is(expected) && this.are_on_same_line(tok.span, span)
-        })
     }
 
     fn is_predicate(&mut self, mut f: impl FnMut(&mut Self, Token) -> bool) -> bool {
