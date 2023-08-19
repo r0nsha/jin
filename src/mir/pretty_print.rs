@@ -5,7 +5,7 @@ use crate::{ast::BinaryOp, db::Database, ty::Ty};
 
 pub fn print(db: &Database, mir: &Mir) {
     let doc = RcDoc::intersperse(
-        mir.functions.iter().map(|f| print_function(db, f)),
+        mir.functions.values().map(|f| print_function(db, f)),
         RcDoc::hardline().append(RcDoc::hardline()),
     );
 

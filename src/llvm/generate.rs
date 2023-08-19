@@ -82,7 +82,7 @@ impl<'cx> FunctionState<'cx> {
     }
 
     pub fn function<'db>(&self, cx: &Generator<'db, 'cx>) -> &'db Function {
-        cx.mir.functions.iter().find(|f| f.id() == self.id).expect("FunctionState.id to be valid")
+        cx.mir.functions.get(&self.id).expect("FunctionState.id to be valid")
     }
 
     pub fn block(&self, id: BlockId) -> BasicBlock<'cx> {
@@ -153,7 +153,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     }
 
     pub fn declare_all_functions(&mut self) {
-        for fun in &self.mir.functions {
+        for fun in self.mir.functions.values() {
             let id = fun.id();
             let fun_info = &self.db[id];
             let name = fun_info.qualified_name.standard_full_name();
@@ -170,7 +170,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     }
 
     pub fn define_all_functions(&mut self) {
-        for fun in &self.mir.functions {
+        for fun in self.mir.functions.values() {
             self.codegen_function(fun);
         }
     }

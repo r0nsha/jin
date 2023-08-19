@@ -2,6 +2,8 @@ mod builder;
 mod lower;
 mod pretty_print;
 
+use std::collections::HashMap;
+
 pub use lower::lower;
 use ustr::{ustr, Ustr};
 
@@ -14,22 +16,21 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Mir {
-    // TODO: turn into a HashMap
-    pub functions: Vec<Function>,
+    pub functions: HashMap<DefId, Function>,
 }
 
 impl Mir {
     pub fn new() -> Self {
-        Self { functions: vec![] }
+        Self { functions: HashMap::default() }
     }
 
     pub fn add_function(&mut self, function: Function) {
-        self.functions.push(function);
+        self.functions.insert(function.id(), function);
     }
 
     #[allow(unused)]
     pub fn main_function(&self, db: &Database) -> Option<&Function> {
-        db.main_function_id().and_then(|id| self.functions.iter().find(|f| f.id() == id))
+        db.main_function_id().and_then(|id| self.functions.get(&id))
     }
 
     pub fn pretty_print(&self, db: &Database) {
