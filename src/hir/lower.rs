@@ -1,6 +1,6 @@
 use super::{
-    Block, Call, Def, DefKind, Expr, Function, FunctionParam, Hir, IndexMap, Lit, LitKind, Module,
-    ModuleId, Name, Return, Spanned, TyId,
+    Block, Call, Def, DefKind, Expr, Function, FunctionParam, Hir, Lit, LitKind, Module, ModuleId,
+    Name, Return, Spanned, TyId,
 };
 use crate::{
     ast::{self, Ast},
@@ -65,10 +65,8 @@ impl Lower<'_, Function> for ast::Function {
         let params = self
             .params
             .into_iter()
-            .map(|p| {
-                (p.name, FunctionParam { id: None, name: p.name, span: p.span, ty: TyId::null() })
-            })
-            .collect::<IndexMap<_, _>>();
+            .map(|p| FunctionParam { id: None, name: p.name, span: p.span, ty: TyId::null() })
+            .collect::<Vec<_>>();
 
         let body = self.body.lower(cx);
 
@@ -96,6 +94,7 @@ impl Lower<'_, Expr> for Ast {
             Self::Block(blk) => Expr::Block(blk.lower(cx)),
             Self::Call(call) => Expr::Call(Call {
                 callee: Box::new(call.callee.lower(cx)),
+                args: call.args.into_iter().map(|arg| arg.lower(cx)).collect(),
                 span: call.span,
                 ty: TyId::null(),
             }),

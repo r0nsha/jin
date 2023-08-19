@@ -32,8 +32,21 @@ impl<'db> InferCx<'db> {
             | (Ty::Unit(_), Ty::Unit(_))
             | (Ty::Int(IntTy::Int, _), Ty::Int(IntTy::Int, _)) => Ok(()),
 
-            (Ty::Function(expected), Ty::Function(actual)) => {
-                self.unify_ty_ty(&expected.ret, &actual.ret)
+            (ref expected @ Ty::Function(ref fex), ref actual @ Ty::Function(ref fact)) => {
+                self.unify_ty_ty(&fex.ret, &fact.ret)?;
+
+                if fex.params.len() == fact.params.len() {
+                    for (p1, p2) in fex.params.iter().zip(fact.params.iter()) {
+                        self.unify_ty_ty(&p1.ty, &p2.ty)?;
+                    }
+
+                    Ok(())
+                } else {
+                    Err(InferError::TypesNotEq {
+                        expected: expected.clone(),
+                        actual: actual.clone(),
+                    })
+                }
             }
 
             (Ty::Infer(InferTy::TyVar(expected), _), Ty::Infer(InferTy::TyVar(actual), _)) => {
@@ -63,9 +76,7 @@ impl<'db> InferCx<'db> {
 
     fn unify_ty_var(&mut self, expected: Ty, var: TyVar) -> Result<(), InferError> {
         expected.occurs_check(var).map_err(|ty| InferError::InfiniteType { var, ty })?;
-
         self.tcx.ty_unification_table.unify_var_value(var, Some(expected))?;
-
         Ok(())
     }
 }

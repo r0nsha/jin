@@ -142,7 +142,7 @@ impl Resolve<'_> for Function {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         env.scopes.push_scope(self.name, ScopeKind::Fun);
 
-        for param in self.params.values_mut() {
+        for param in &mut self.params {
             let id = DefInfo::alloc(
                 cx.db,
                 env.module_id,

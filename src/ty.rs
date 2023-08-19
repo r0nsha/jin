@@ -2,6 +2,7 @@ mod printer;
 
 use derive_more::{From, Into};
 use enum_as_inner::EnumAsInner;
+use ustr::Ustr;
 
 use crate::{
     db::{Database, TyId},
@@ -86,7 +87,24 @@ pub enum IntTy {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionTy {
     pub ret: Box<Ty>,
+    pub params: Vec<FunctionParamTy>,
     pub span: Span,
+}
+
+impl FunctionTy {
+    pub fn param(&self, name: Ustr) -> Option<&FunctionParamTy> {
+        self.params.iter().find(|p| p.name == Some(name))
+    }
+
+    pub fn param_at(&self, index: usize) -> Option<&FunctionParamTy> {
+        self.params.get(index)
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FunctionParamTy {
+    pub name: Option<Ustr>,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

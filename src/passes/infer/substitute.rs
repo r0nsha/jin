@@ -4,7 +4,7 @@ use super::InferCx;
 use crate::{
     db::TyId,
     hir::{Binary, Block, Call, Def, DefKind, Expr, Function, If, Module, Return},
-    ty::{FunctionTy, InferTy, Ty, TyVar},
+    ty::{FunctionParamTy, FunctionTy, InferTy, Ty, TyVar},
 };
 
 // Substitute
@@ -39,6 +39,14 @@ impl<'db> InferCx<'db> {
         match ty {
             Ty::Function(fun) => Ty::Function(FunctionTy {
                 ret: Box::new(self.substitute_ty(&fun.ret, unbound_vars)),
+                params: fun
+                    .params
+                    .iter()
+                    .map(|param| FunctionParamTy {
+                        name: param.name,
+                        ty: self.substitute_ty(&param.ty, unbound_vars),
+                    })
+                    .collect(),
                 span: fun.span,
             }),
             Ty::Infer(InferTy::TyVar(var), span) => {

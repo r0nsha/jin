@@ -61,7 +61,7 @@ impl PrettyPrint for Function {
         if !self.params.is_empty() {
             cx.builder.begin_child("params".to_string());
 
-            for param in self.params.values() {
+            for param in &self.params {
                 cx.builder.add_empty_child(format!(
                     "{} (type: {})",
                     param.name,
@@ -124,6 +124,17 @@ impl PrettyPrint for Call {
     fn pretty_print(&self, cx: &mut Cx) {
         cx.builder.begin_child(format!("call (result: {})", cx.db[self.ty].display(cx.db)));
         self.callee.pretty_print(cx);
+
+        if !self.args.is_empty() {
+            cx.builder.begin_child("args".to_string());
+
+            for arg in &self.args {
+                arg.pretty_print(cx);
+            }
+
+            cx.builder.end_child();
+        }
+
         cx.builder.end_child();
     }
 }

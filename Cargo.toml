@@ -14,7 +14,6 @@ color-eyre = "0.6.2"
 derive_more = "0.99.17"
 ena = "0.14.2"
 enum-as-inner = "0.6.0"
-indexmap = "2.0.0"
 owo-colors = "3.5.0"
 path-absolutize = "3.1.0"
 pretty = { version = "0.12.1" }

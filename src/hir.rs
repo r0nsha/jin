@@ -4,7 +4,6 @@ mod pretty_print;
 use std::io;
 
 use enum_as_inner::EnumAsInner;
-use indexmap::IndexMap;
 pub use lower::lower;
 use ustr::Ustr;
 
@@ -123,9 +122,19 @@ pub struct Function {
     pub id: Option<DefId>,
     pub name: Ustr,
     pub body: Block,
-    pub params: IndexMap<Ustr, FunctionParam>,
+    pub params: Vec<FunctionParam>,
     pub span: Span,
     pub ty: TyId,
+}
+
+impl Function {
+    pub fn param(&self, name: Ustr) -> Option<&FunctionParam> {
+        self.params.iter().find(|p| p.name == name)
+    }
+
+    pub fn param_at(&self, index: usize) -> Option<&FunctionParam> {
+        self.params.get(index)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -162,6 +171,7 @@ pub struct Return {
 #[derive(Debug, Clone)]
 pub struct Call {
     pub callee: Box<Expr>,
+    pub args: Vec<Expr>,
     pub span: Span,
     pub ty: TyId,
 }
