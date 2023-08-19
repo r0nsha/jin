@@ -76,7 +76,7 @@ impl<'db> LowerFunctionCx<'db> {
 
     fn lower_local_def(&mut self, def: &hir::Def) -> ValueId {
         lower_def(self.db, self.mir, def);
-        self.builder.build_load_global(def.ty, def.id.expect("to be resolved"), def.span)
+        self.builder.build_unit_lit(def.ty, def.span)
     }
 
     fn lower_if(&mut self, if_: &hir::If) -> ValueId {
