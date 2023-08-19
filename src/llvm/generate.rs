@@ -15,8 +15,8 @@ use crate::{
     db::{Database, DefId},
     llvm::ty::LlvmType,
     mir::{
-        Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, LoadGlobal, Mir,
-        Phi, Return, UnitLit, ValueId,
+        Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, LoadGlobal,
+        LoadLocal, Mir, Phi, Return, UnitLit, ValueId,
     },
 };
 
@@ -213,6 +213,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
             Self::Phi(inner) => inner.codegen(cx, state),
             Self::Call(inner) => inner.codegen(cx, state),
             Self::LoadGlobal(inner) => inner.codegen(cx, state),
+            Self::LoadLocal(inner) => inner.codegen(cx, state),
             Self::Binary(inner) => inner.codegen(cx, state),
             Self::IntLit(inner) => inner.codegen(cx, state),
             Self::BoolLit(inner) => inner.codegen(cx, state),
@@ -300,6 +301,13 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for LoadGlobal {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        let value = cx.function(self.id).as_global_value().as_pointer_value();
+        state.set_value(self.value, value.into());
+    }
+}
+
+impl<'db, 'cx> Codegen<'db, 'cx> for LoadLocal {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         let value = cx.function(self.id).as_global_value().as_pointer_value();
         state.set_value(self.value, value.into());

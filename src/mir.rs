@@ -138,6 +138,7 @@ pub enum Inst {
     Phi(Phi),
     Call(Call),
     LoadGlobal(LoadGlobal),
+    LoadLocal(LoadLocal),
     Binary(Binary),
     IntLit(IntLit),
     BoolLit(BoolLit),
@@ -187,6 +188,14 @@ pub struct Call {
 
 #[derive(Debug, Clone)]
 pub struct LoadGlobal {
+    pub value: ValueId,
+    pub id: DefId,
+    #[allow(unused)]
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct LoadLocal {
     pub value: ValueId,
     pub id: DefId,
     #[allow(unused)]

@@ -141,6 +141,22 @@ impl Resolve<'_> for Expr {
 impl Resolve<'_> for Function {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         env.scopes.push_scope(self.name, ScopeKind::Fun);
+
+        for param in self.params.values_mut() {
+            let id = DefInfo::alloc(
+                cx.db,
+                env.module_id,
+                param.name.into(),
+                env.scope_level(Vis::Private),
+                DefInfoKind::Variable,
+                TyId::null(),
+                param.span,
+            );
+
+            param.id = Some(id);
+            env.scopes.insert(param.name, id);
+        }
+
         self.body.resolve(cx, env);
         env.scopes.pop_scope();
     }

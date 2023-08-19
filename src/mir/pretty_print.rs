@@ -84,6 +84,10 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
                 .append(RcDoc::text("load_global"))
                 .append(RcDoc::space())
                 .append(RcDoc::text(db[load.id].qualified_name.standard_full_name())),
+            Self::LoadLocal(load) => value_alloc(db, fun, load.value)
+                .append(RcDoc::text("load_local"))
+                .append(RcDoc::space())
+                .append(RcDoc::text(db[load.id].qualified_name.standard_full_name())),
             Self::Binary(bin) => value_alloc(db, fun, bin.value)
                 .append(RcDoc::text(binary_instruction_name(bin.op)))
                 .append(RcDoc::space())
