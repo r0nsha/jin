@@ -12,11 +12,11 @@ use inkwell::{
 
 use crate::{
     ast::{BinaryOp, CmpOp},
-    db::{Database, DefId},
+    db::{Database, DefId, TyId},
     llvm::ty::LlvmType,
     mir::{
         Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, Load, Mir, Phi,
-        Return, UnitLit, ValueId,
+        Return, UnitLit, Unreachable, ValueId,
     },
 };
 
@@ -95,6 +95,10 @@ impl<'cx> FunctionState<'cx> {
 
     pub fn set_value(&mut self, id: ValueId, value: BasicValueEnum<'cx>) {
         self.values.insert(id, value);
+    }
+
+    pub fn value_ty<'db>(&self, cx: &Generator<'db, 'cx>, id: ValueId) -> TyId {
+        self.function(cx).value(id).unwrap().ty
     }
 }
 
@@ -238,6 +242,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
             Self::IntLit(inner) => inner.codegen(cx, state),
             Self::BoolLit(inner) => inner.codegen(cx, state),
             Self::UnitLit(inner) => inner.codegen(cx, state),
+            Self::Unreachable(inner) => inner.codegen(cx, state),
         }
     }
 }
@@ -272,7 +277,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for BrIf {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Phi {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let ty = state.function(cx).value(self.value).unwrap().ty.llvm_type(cx);
+        let ty = state.value_ty(cx, self.value).llvm_type(cx);
         let phi = cx.builder.build_phi(ty, "phi");
 
         for (blk, value) in &*self.phi_values {
@@ -381,7 +386,7 @@ fn get_int_predicate(op: CmpOp) -> IntPredicate {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for IntLit {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let ty = state.function(cx).value(self.value).unwrap().ty.llvm_type(cx).into_int_type();
+        let ty = state.value_ty(cx, self.value).llvm_type(cx).into_int_type();
 
         // TODO: unsigned integers
         let value = ty.const_int(self.lit as u64, true);
@@ -399,5 +404,13 @@ impl<'db, 'cx> Codegen<'db, 'cx> for BoolLit {
 impl<'db, 'cx> Codegen<'db, 'cx> for UnitLit {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         state.set_value(self.value, cx.unit_value().into());
+    }
+}
+
+impl<'db, 'cx> Codegen<'db, 'cx> for Unreachable {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        cx.builder.build_unreachable();
+        let ty = state.value_ty(cx, self.value);
+        state.set_value(self.value, Generator::undef_value(ty.llvm_type(cx)));
     }
 }

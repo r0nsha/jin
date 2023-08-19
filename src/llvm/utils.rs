@@ -1,4 +1,8 @@
-use inkwell::{basic_block::BasicBlock, values::StructValue};
+use inkwell::{
+    basic_block::BasicBlock,
+    types::BasicTypeEnum,
+    values::{BasicValueEnum, StructValue},
+};
 
 use crate::llvm::generate::{FunctionState, Generator};
 
@@ -18,6 +22,17 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
     pub fn current_block_is_terminating(&self) -> bool {
         self.current_block().get_terminator().is_some()
+    }
+
+    pub fn undef_value(typ: BasicTypeEnum<'cx>) -> BasicValueEnum<'cx> {
+        match typ {
+            BasicTypeEnum::ArrayType(array) => array.get_undef().into(),
+            BasicTypeEnum::FloatType(float) => float.get_undef().into(),
+            BasicTypeEnum::IntType(int) => int.get_undef().into(),
+            BasicTypeEnum::PointerType(pointer) => pointer.get_undef().into(),
+            BasicTypeEnum::StructType(tuple) => tuple.get_undef().into(),
+            BasicTypeEnum::VectorType(vector) => vector.get_undef().into(),
+        }
     }
 
     #[allow(unused)]

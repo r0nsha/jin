@@ -1,7 +1,12 @@
 use pretty::RcDoc;
 
 use super::{Block, Function, Inst, Mir, TyId, ValueId};
-use crate::{ast::BinaryOp, db::Database, ty::Ty};
+use crate::{
+    ast::BinaryOp,
+    db::{Database, DefId},
+    mir::BlockId,
+    ty::Ty,
+};
 
 pub fn print(db: &Database, mir: &Mir) {
     let doc = RcDoc::intersperse(
@@ -17,8 +22,13 @@ fn print_function<'d>(db: &Database, fun: &Function) -> RcDoc<'d, ()> {
 
     RcDoc::text("fn")
         .append(RcDoc::space())
-        .append(RcDoc::text(db[fun.id()].qualified_name.standard_full_name()))
-        .append(RcDoc::text("()"))
+        .append(fun.id().to_doc(db, fun))
+        .append(RcDoc::text("("))
+        .append(RcDoc::intersperse(
+            fun.params().iter().map(|param| param.id.to_doc(db, fun)),
+            RcDoc::text(",").append(RcDoc::space()),
+        ))
+        .append(RcDoc::text(")"))
         .append(RcDoc::space())
         .append(ret_ty)
         .append(RcDoc::space())
@@ -38,7 +48,8 @@ trait ToDoc<'db, 'd> {
 
 impl<'db, 'd> ToDoc<'db, 'd> for Block {
     fn to_doc(&self, db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
-        block_name(self)
+        RcDoc::text(self.name.as_str())
+            .append(RcDoc::text(":"))
             .append(RcDoc::hardline())
             .append(RcDoc::intersperse(
                 self.instructions.iter().map(|inst| inst.to_doc(db, fun)),
@@ -54,20 +65,20 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
             Self::Return(ret) => {
                 RcDoc::text("ret").append(RcDoc::space()).append(ret.value.to_doc(db, fun))
             }
-            Self::Br(br) => RcDoc::text("br")
-                .append(RcDoc::space())
-                .append(block_name(fun.block(br.target).unwrap())),
+            Self::Br(br) => {
+                RcDoc::text("br").append(RcDoc::space()).append(br.target.to_doc(db, fun))
+            }
             Self::BrIf(brif) => RcDoc::text("brif")
                 .append(RcDoc::space())
                 .append(brif.cond.to_doc(db, fun))
                 .append(RcDoc::space())
-                .append(block_name(fun.block(brif.b1).unwrap()))
+                .append(brif.b1.to_doc(db, fun))
                 .append(RcDoc::space())
-                .append(block_name(fun.block(brif.b2).unwrap())),
+                .append(brif.b2.to_doc(db, fun)),
             Self::Phi(phi) => RcDoc::text("phi").append(RcDoc::space()).append(RcDoc::intersperse(
                 phi.phi_values.iter().map(|(blk, value)| {
                     RcDoc::text("(")
-                        .append(block_name(fun.block(*blk).unwrap()))
+                        .append(blk.to_doc(db, fun))
                         .append(RcDoc::space())
                         .append(RcDoc::text("->"))
                         .append(RcDoc::space())
@@ -81,10 +92,12 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
                 .append(RcDoc::space())
                 .append(call.callee.to_doc(db, fun))
                 .append(RcDoc::space())
+                .append(RcDoc::text("("))
                 .append(RcDoc::intersperse(
                     call.args.iter().map(|arg| arg.to_doc(db, fun)),
                     RcDoc::text(",").append(RcDoc::space()),
-                )),
+                ))
+                .append(RcDoc::text(")")),
             Self::Load(load) => value_alloc(db, fun, load.value)
                 .append(RcDoc::text("load"))
                 .append(RcDoc::space())
@@ -102,13 +115,16 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
                 value_alloc(db, fun, lit.value).append(RcDoc::text(lit.value.to_string()))
             }
             Self::UnitLit(lit) => value_alloc(db, fun, lit.value).append(RcDoc::text("()")),
+            Self::Unreachable(unr) => {
+                value_alloc(db, fun, unr.value).append(RcDoc::text("unreachable"))
+            }
         }
     }
 }
 
 impl<'db, 'd> ToDoc<'db, 'd> for ValueId {
     fn to_doc(&self, _db: &'db Database, _fun: &'db Function) -> RcDoc<'d, ()> {
-        RcDoc::text("%").append(RcDoc::text(self.0.to_string()))
+        RcDoc::text(format!("v{}", self.0))
     }
 }
 
@@ -124,9 +140,22 @@ impl<'db, 'd> ToDoc<'db, 'd> for Ty {
     }
 }
 
+impl<'db, 'd> ToDoc<'db, 'd> for BlockId {
+    fn to_doc(&self, _db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
+        RcDoc::text(fun.block(*self).expect("to be a valid BlockId").name.as_str())
+    }
+}
+
+impl<'db, 'd> ToDoc<'db, 'd> for DefId {
+    fn to_doc(&self, db: &'db Database, _fun: &'db Function) -> RcDoc<'d, ()> {
+        RcDoc::text(format!("@{}", db[*self].qualified_name.standard_full_name()))
+    }
+}
+
 fn value_alloc<'db, 'd>(db: &'db Database, fun: &'db Function, value: ValueId) -> RcDoc<'d, ()> {
     value
         .to_doc(db, fun)
+        .append(RcDoc::text(":"))
         .append(RcDoc::space())
         .append(fun.value(value).unwrap().ty.to_doc(db, fun))
         .append(RcDoc::space())
@@ -138,8 +167,4 @@ fn binary_instruction_name(op: BinaryOp) -> String {
     let prefix = "i";
     let inst = op.name();
     format!("{prefix}{inst}")
-}
-
-fn block_name<'d>(blk: &Block) -> RcDoc<'d, ()> {
-    RcDoc::text(format!("@{}", blk.name))
 }

@@ -41,14 +41,25 @@ impl Mir {
 #[derive(Debug)]
 pub struct Function {
     id: DefId,
+    params: Vec<FunctionParam>,
     values: IndexVec<ValueId, Value>,
-    parameters: Vec<ValueId>,
     cfg: Cfg,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct FunctionParam {
+    id: DefId,
+}
+
+impl FunctionParam {
+    pub fn id(&self) -> DefId {
+        self.id
+    }
 }
 
 impl Function {
     fn new(id: DefId) -> Self {
-        Self { id, values: IndexVec::new(), parameters: vec![], cfg: Cfg::new() }
+        Self { id, params: vec![], values: IndexVec::new(), cfg: Cfg::new() }
     }
 
     pub fn id(&self) -> DefId {
@@ -59,17 +70,14 @@ impl Function {
         self.values.get(id)
     }
 
-    #[allow(unused)]
-    pub fn parameter(&self, index: usize) -> Option<ValueId> {
-        self.parameters.get(index).copied()
+    pub fn param(&self, index: usize) -> Option<FunctionParam> {
+        self.params.get(index).copied()
     }
 
-    #[allow(unused)]
-    pub fn parameters(&self) -> &[ValueId] {
-        &self.parameters
+    pub fn params(&self) -> &[FunctionParam] {
+        &self.params
     }
 
-    #[allow(unused)]
     pub fn block(&self, id: BlockId) -> Option<&Block> {
         self.cfg.blocks.get(id)
     }
@@ -143,6 +151,7 @@ pub enum Inst {
     IntLit(IntLit),
     BoolLit(BoolLit),
     UnitLit(UnitLit),
+    Unreachable(Unreachable),
 }
 
 #[derive(Debug, Clone)]
@@ -223,6 +232,13 @@ pub struct BoolLit {
 
 #[derive(Debug, Clone)]
 pub struct UnitLit {
+    pub value: ValueId,
+    #[allow(unused)]
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Unreachable {
     pub value: ValueId,
     #[allow(unused)]
     pub span: Span,

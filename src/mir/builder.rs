@@ -4,7 +4,7 @@ use super::{Block, BlockId, Call, Function, Inst, IntLit, Return, TyId, UnitLit,
 use crate::{
     ast::BinaryOp,
     db::DefId,
-    mir::{Binary, BoolLit, Br, BrIf, Load, Phi, PhiValue},
+    mir::{Binary, BoolLit, Br, BrIf, FunctionParam, Load, Phi, PhiValue, Unreachable},
     span::Span,
 };
 
@@ -66,11 +66,9 @@ impl FunctionBuilder {
         self.f.values.push(Value { ty })
     }
 
-    #[allow(unused)]
-    pub fn create_parameter(&mut self, ty: TyId) -> usize {
-        let value = self.create_value(ty);
-        self.f.parameters.push(value);
-        self.f.parameters.len() - 1
+    #[inline]
+    pub fn create_param(&mut self, id: DefId) {
+        self.f.params.push(FunctionParam { id });
     }
 
     #[inline]
@@ -108,6 +106,12 @@ impl FunctionBuilder {
 
     pub fn build_return(&mut self, value: ValueId, span: Span) {
         self.current_block_mut().add_inst(Inst::Return(Return { value, span }));
+    }
+
+    pub fn build_unreachable(&mut self, ty: TyId, span: Span) -> ValueId {
+        let value = self.create_value(ty);
+        self.current_block_mut().add_inst(Inst::Unreachable(Unreachable { value, span }));
+        value
     }
 
     pub fn build_br(&mut self, target: BlockId, span: Span) {
