@@ -15,7 +15,7 @@ impl<'db> InferCx<'db> {
         // Substitute all definition types
         for i in 0..self.db.definitions.len() {
             let ty = self.db.definitions[i.into()].ty;
-            self.substitute_type_id(ty, &mut unbound_vars);
+            self.substitute_tyid(ty, &mut unbound_vars);
         }
 
         // Substitute all modules recursively
@@ -28,7 +28,7 @@ impl<'db> InferCx<'db> {
         unbound_vars
     }
 
-    fn substitute_type_id(&mut self, id: TyId, unbound_vars: &mut HashSet<TyVar>) {
+    fn substitute_tyid(&mut self, id: TyId, unbound_vars: &mut HashSet<TyVar>) {
         let ty = self.db[id].clone();
 
         let new_ty = self.substitute_ty(&ty, unbound_vars);
@@ -88,7 +88,7 @@ impl Substitute<'_> for Expr {
             Self::Name(_) | Self::Lit(_) => (),
         }
 
-        cx.substitute_type_id(self.ty(), unbound_vars);
+        cx.substitute_tyid(self.ty(), unbound_vars);
     }
 }
 
@@ -98,16 +98,20 @@ impl Substitute<'_> for Def {
             DefKind::Function(fun) => fun.substitute(cx, unbound_vars),
         }
 
-        cx.substitute_type_id(self.ty, unbound_vars);
-        cx.substitute_type_id(cx.db[self.id.expect("to be resolved")].ty, unbound_vars);
+        cx.substitute_tyid(self.ty, unbound_vars);
+        cx.substitute_tyid(cx.db[self.id.expect("to be resolved")].ty, unbound_vars);
     }
 }
 
 impl Substitute<'_> for Function {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
+        for param in &self.params {
+            cx.substitute_tyid(param.ty, unbound_vars);
+        }
+
         self.body.substitute(cx, unbound_vars);
-        cx.substitute_type_id(self.ty, unbound_vars);
-        cx.substitute_type_id(cx.db[self.id.expect("to be resolved")].ty, unbound_vars);
+        cx.substitute_tyid(self.ty, unbound_vars);
+        cx.substitute_tyid(cx.db[self.id.expect("to be resolved")].ty, unbound_vars);
     }
 }
 
@@ -136,6 +140,10 @@ impl Substitute<'_> for Return {
 impl Substitute<'_> for Call {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         self.callee.substitute(cx, unbound_vars);
+
+        for arg in &mut self.args {
+            arg.substitute(cx, unbound_vars);
+        }
     }
 }
 
