@@ -4,7 +4,7 @@ use super::{Block, BlockId, Call, Function, Inst, IntLit, Return, TyId, UnitLit,
 use crate::{
     ast::BinaryOp,
     db::DefId,
-    mir::{Binary, BoolLit, Br, BrIf, LoadGlobal, Phi, PhiValue},
+    mir::{Binary, BoolLit, Br, BrIf, Load, Phi, PhiValue},
     span::Span,
 };
 
@@ -133,9 +133,9 @@ impl FunctionBuilder {
         value
     }
 
-    pub fn build_load_global(&mut self, ty: TyId, id: DefId, span: Span) -> ValueId {
+    pub fn build_load(&mut self, ty: TyId, id: DefId, span: Span) -> ValueId {
         let value = self.create_value(ty);
-        self.current_block_mut().add_inst(Inst::LoadGlobal(LoadGlobal { value, id, span }));
+        self.current_block_mut().add_inst(Inst::Load(Load { value, id, span }));
         value
     }
 

@@ -52,7 +52,7 @@ pub fn codegen(db: &Database, mir: &Mir) -> PathBuf {
         module: &module,
         builder: &builder,
         isize_ty: context.ptr_sized_int_type(&target_machine.get_target_data(), None),
-        functions: HashMap::default(),
+        def_values: HashMap::default(),
     };
 
     let print_times = db.build_options().print_times;

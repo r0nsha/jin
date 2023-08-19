@@ -128,12 +128,9 @@ pub struct Function {
 }
 
 impl Function {
+    #[allow(unused)]
     pub fn param(&self, name: Ustr) -> Option<&FunctionParam> {
         self.params.iter().find(|p| p.name == name)
-    }
-
-    pub fn param_at(&self, index: usize) -> Option<&FunctionParam> {
-        self.params.get(index)
     }
 }
 

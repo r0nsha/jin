@@ -1,7 +1,7 @@
 use super::{builder::FunctionBuilder, DefId, Function, Mir, Span};
 use crate::{
     ast::BinaryOp,
-    db::{Database, ScopeLevel},
+    db::Database,
     hir::{self, Hir},
     mir::ValueId,
     span::Spanned,
@@ -206,13 +206,7 @@ impl<'db> LowerFunctionCx<'db> {
 
     fn lower_name(&mut self, name: &hir::Name) -> ValueId {
         let def = &self.db[name.id.expect("to be resolved")];
-
-        if let ScopeLevel::Global(_) = self.db[def.id].scope_level {
-            self.builder.build_load_global(def.ty, def.id, name.span)
-        } else {
-            // TODO: local/nested name
-            todo!()
-        }
+        self.builder.build_load(def.ty, def.id, name.span)
     }
 
     fn lower_lit(&mut self, lit: &hir::Lit) -> ValueId {

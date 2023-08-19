@@ -80,12 +80,8 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
                 .append(RcDoc::text("call"))
                 .append(RcDoc::space())
                 .append(call.callee.to_doc(db, fun)),
-            Self::LoadGlobal(load) => value_alloc(db, fun, load.value)
-                .append(RcDoc::text("load_global"))
-                .append(RcDoc::space())
-                .append(RcDoc::text(db[load.id].qualified_name.standard_full_name())),
-            Self::LoadLocal(load) => value_alloc(db, fun, load.value)
-                .append(RcDoc::text("load_local"))
+            Self::Load(load) => value_alloc(db, fun, load.value)
+                .append(RcDoc::text("load"))
                 .append(RcDoc::space())
                 .append(RcDoc::text(db[load.id].qualified_name.standard_full_name())),
             Self::Binary(bin) => value_alloc(db, fun, bin.value)

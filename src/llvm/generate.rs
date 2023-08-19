@@ -6,7 +6,7 @@ use inkwell::{
     context::Context,
     module::{Linkage, Module},
     types::IntType,
-    values::{BasicValueEnum, CallableValue, FunctionValue},
+    values::{BasicValueEnum, CallableValue, FunctionValue, PointerValue},
     AddressSpace, IntPredicate,
 };
 
@@ -15,8 +15,8 @@ use crate::{
     db::{Database, DefId},
     llvm::ty::LlvmType,
     mir::{
-        Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, LoadGlobal,
-        LoadLocal, Mir, Phi, Return, UnitLit, ValueId,
+        Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, Load, Mir, Phi,
+        Return, UnitLit, ValueId,
     },
 };
 
@@ -29,7 +29,27 @@ pub struct Generator<'db, 'cx> {
     pub builder: &'db Builder<'cx>,
     pub isize_ty: IntType<'cx>,
 
-    pub functions: HashMap<DefId, FunctionValue<'cx>>,
+    pub def_values: HashMap<DefId, DefValue<'cx>>,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum DefValue<'cx> {
+    Function(FunctionValue<'cx>),
+}
+
+impl<'cx> DefValue<'cx> {
+    pub fn as_function_value(self) -> FunctionValue<'cx> {
+        match self {
+            DefValue::Function(f) => f,
+            // _ => panic!("expected Function, got {:?} instead", self),
+        }
+    }
+
+    pub fn as_pointer_value(self) -> PointerValue<'cx> {
+        match self {
+            DefValue::Function(f) => f.as_global_value().as_pointer_value(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -123,7 +143,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         self.builder.position_at_end(entry_block);
 
         let main_function = self.db.main_function().expect("to have a main function");
-        let main_function_value = self.function(main_function.id);
+        let main_function_value = self.def_value(main_function.id).as_function_value();
 
         self.builder.build_call(main_function_value, &[], "call_main");
 
@@ -145,7 +165,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 .into_function_type();
 
             let function = self.module.add_function(&name, llvm_ty, Some(Linkage::Private));
-            self.functions.insert(id, function);
+            self.def_values.insert(id, DefValue::Function(function));
         }
     }
 
@@ -159,9 +179,10 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         let id = fun.id();
         let fun_info = &self.db[id];
 
-        let function_value = *self.functions.get(&fun.id()).unwrap_or_else(|| {
-            panic!("function {} to be declared", fun_info.qualified_name.standard_full_name())
-        });
+        let function_value = self.def_values.get(&fun.id()).map_or_else(
+            || panic!("function {} to be declared", fun_info.qualified_name.standard_full_name()),
+            |f| f.as_function_value(),
+        );
 
         let prologue_block = self.context.append_basic_block(function_value, "decls");
         self.builder.position_at_end(prologue_block);
@@ -184,8 +205,8 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         function_value.as_global_value().as_pointer_value().into()
     }
 
-    fn function(&self, id: DefId) -> FunctionValue<'cx> {
-        *self.functions.get(&id).expect("function to be declared")
+    fn def_value(&self, id: DefId) -> DefValue<'cx> {
+        *self.def_values.get(&id).expect("to be defined")
     }
 }
 
@@ -212,8 +233,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
             Self::BrIf(inner) => inner.codegen(cx, state),
             Self::Phi(inner) => inner.codegen(cx, state),
             Self::Call(inner) => inner.codegen(cx, state),
-            Self::LoadGlobal(inner) => inner.codegen(cx, state),
-            Self::LoadLocal(inner) => inner.codegen(cx, state),
+            Self::Load(inner) => inner.codegen(cx, state),
             Self::Binary(inner) => inner.codegen(cx, state),
             Self::IntLit(inner) => inner.codegen(cx, state),
             Self::BoolLit(inner) => inner.codegen(cx, state),
@@ -300,16 +320,9 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
     }
 }
 
-impl<'db, 'cx> Codegen<'db, 'cx> for LoadGlobal {
+impl<'db, 'cx> Codegen<'db, 'cx> for Load {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let value = cx.function(self.id).as_global_value().as_pointer_value();
-        state.set_value(self.value, value.into());
-    }
-}
-
-impl<'db, 'cx> Codegen<'db, 'cx> for LoadLocal {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let value = cx.function(self.id).as_global_value().as_pointer_value();
+        let value = cx.def_value(self.id).as_pointer_value();
         state.set_value(self.value, value.into());
     }
 }
