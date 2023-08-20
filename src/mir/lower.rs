@@ -5,6 +5,7 @@ use crate::{
     hir::{self, Hir},
     mir::ValueId,
     span::Spanned,
+    ty::Typed,
 };
 
 pub fn lower(db: &mut Database, hir: &Hir) -> Mir {
@@ -139,9 +140,17 @@ impl<'db> LowerFunctionCx<'db> {
 
     fn lower_call(&mut self, call: &hir::Call) -> ValueId {
         let callee = self.lower_expr(&call.callee);
-        todo!()
-        // let args = call.args.iter().map(|arg| self.lower_expr(arg)).collect();
-        // self.bx.build_call(call.ty, callee, args, call.span)
+        let args = call
+            .args
+            .iter()
+            .map(|arg| match arg {
+                hir::CallArg::Positional(expr) => self.lower_expr(expr),
+                hir::CallArg::Named(_, _) => {
+                    unreachable!("named arguments should be desugared to positional")
+                }
+            })
+            .collect();
+        self.bx.build_call(call.ty, callee, args, call.span)
     }
 
     fn lower_binary(&mut self, bin: &hir::Binary) -> ValueId {

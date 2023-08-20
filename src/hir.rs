@@ -11,6 +11,7 @@ use crate::{
     ast::BinaryOp,
     db::{Database, DefId, ModuleId, TyId},
     span::{Span, Spanned},
+    ty::Typed,
 };
 
 #[derive(Debug, Clone)]
@@ -52,8 +53,8 @@ pub enum Expr {
     Lit(Lit),
 }
 
-impl Expr {
-    pub fn ty(&self) -> TyId {
+impl Typed for Expr {
+    fn ty(&self) -> TyId {
         match self {
             Self::Def(x) => x.ty,
             Self::If(x) => x.ty,
@@ -63,6 +64,19 @@ impl Expr {
             Self::Binary(x) => x.ty,
             Self::Name(x) => x.ty,
             Self::Lit(x) => x.ty,
+        }
+    }
+
+    fn ty_mut(&mut self) -> &mut TyId {
+        match self {
+            Self::Def(x) => &mut x.ty,
+            Self::If(x) => &mut x.ty,
+            Self::Block(x) => &mut x.ty,
+            Self::Return(x) => &mut x.ty,
+            Self::Call(x) => &mut x.ty,
+            Self::Binary(x) => &mut x.ty,
+            Self::Name(x) => &mut x.ty,
+            Self::Lit(x) => &mut x.ty,
         }
     }
 }
@@ -177,6 +191,20 @@ pub struct Call {
 pub enum CallArg {
     Positional(Expr),
     Named(Ustr, Expr),
+}
+
+impl Typed for CallArg {
+    fn ty(&self) -> TyId {
+        match self {
+            Self::Positional(e) | Self::Named(_, e) => e.ty(),
+        }
+    }
+
+    fn ty_mut(&mut self) -> &mut TyId {
+        match self {
+            Self::Positional(e) | Self::Named(_, e) => e.ty_mut(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

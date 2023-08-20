@@ -70,6 +70,7 @@ impl Function {
         self.values.get(id)
     }
 
+    #[allow(unused)]
     pub fn param(&self, index: usize) -> Option<FunctionParam> {
         self.params.get(index).copied()
     }

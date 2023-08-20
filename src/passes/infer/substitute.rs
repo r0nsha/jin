@@ -4,7 +4,7 @@ use super::InferCx;
 use crate::{
     db::TyId,
     hir::{Binary, Block, Call, CallArg, Def, DefKind, Expr, Function, If, Module, Return},
-    ty::{FunctionParamTy, FunctionTy, InferTy, Ty, TyVar},
+    ty::{FunctionParamTy, FunctionTy, InferTy, Ty, TyVar, Typed},
 };
 
 // Substitute
