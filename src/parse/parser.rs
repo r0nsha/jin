@@ -78,9 +78,9 @@ impl<'a> Parser<'a> {
 
         Ok(Function {
             name: name_ident.word(),
+            span: start.merge(body.span()),
             body: Box::new(body),
             params,
-            span: start.merge(body.span()),
         })
     }
 
