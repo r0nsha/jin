@@ -54,7 +54,7 @@ impl PrettyPrint for Ast {
                 cx.builder.end_child();
             }
             Self::Name(name) => {
-                cx.builder.add_empty_child(name.name.to_string());
+                cx.builder.add_empty_child(name.to_string());
             }
             Self::Call(call) => {
                 cx.builder.begin_child("call".to_string());

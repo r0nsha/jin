@@ -9,6 +9,7 @@ use ustr::Ustr;
 
 use crate::{
     ast::BinaryOp,
+    common::Word,
     db::{Database, DefId, ModuleId, TyId},
     span::{Span, Spanned},
     ty::Typed,
@@ -90,7 +91,7 @@ impl Spanned for Expr {
             Self::Return(x) => x.span,
             Self::Call(x) => x.span,
             Self::Binary(x) => x.span,
-            Self::Name(x) => x.span,
+            Self::Name(x) => x.name.span(),
             Self::Lit(x) => x.span,
         }
     }
@@ -103,7 +104,7 @@ impl Spanned for Expr {
             Self::Return(x) => &mut x.span,
             Self::Call(x) => &mut x.span,
             Self::Binary(x) => &mut x.span,
-            Self::Name(x) => &mut x.span,
+            Self::Name(x) => x.name.span_mut(),
             Self::Lit(x) => &mut x.span,
         }
     }
@@ -112,7 +113,7 @@ impl Spanned for Expr {
 #[derive(Debug, Clone)]
 pub struct Def {
     pub id: Option<DefId>,
-    pub name: Ustr,
+    pub name: Word,
     pub kind: DefKind,
     pub span: Span,
     pub ty: TyId,
@@ -134,7 +135,7 @@ impl DefKind {
 #[derive(Debug, Clone)]
 pub struct Function {
     pub id: Option<DefId>,
-    pub name: Ustr,
+    pub name: Word,
     pub body: Block,
     pub params: Vec<FunctionParam>,
     pub span: Span,
@@ -144,14 +145,14 @@ pub struct Function {
 impl Function {
     #[allow(unused)]
     pub fn param(&self, name: Ustr) -> Option<&FunctionParam> {
-        self.params.iter().find(|p| p.name == name)
+        self.params.iter().find(|p| p.name.name() == name)
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct FunctionParam {
     pub id: Option<DefId>,
-    pub name: Ustr,
+    pub name: Word,
     pub span: Span,
     pub ty: TyId,
 }
@@ -219,8 +220,7 @@ pub struct Binary {
 #[derive(Debug, Clone)]
 pub struct Name {
     pub id: Option<DefId>,
-    pub name: Ustr,
-    pub span: Span,
+    pub name: Word,
     pub ty: TyId,
 }
 

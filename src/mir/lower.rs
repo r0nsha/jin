@@ -223,7 +223,7 @@ impl<'db> LowerFunctionCx<'db> {
 
     fn lower_name(&mut self, name: &hir::Name) -> ValueId {
         let def = &self.db[name.id.expect("to be resolved")];
-        self.bx.build_load(def.ty, def.id, name.span)
+        self.bx.build_load(def.ty, def.id, name.name.span())
     }
 
     fn lower_lit(&mut self, lit: &hir::Lit) -> ValueId {

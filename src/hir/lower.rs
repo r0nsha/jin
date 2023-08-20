@@ -44,18 +44,13 @@ trait Lower<'db, T> {
 impl Lower<'_, Def> for ast::Def {
     fn lower(self, cx: &mut Cx<'_>) -> Def {
         match self {
-            Self::Function(fun) => {
-                let name = fun.name;
-                let span = fun.span;
-
-                Def {
-                    id: None,
-                    name,
-                    kind: DefKind::Function(fun.lower(cx)),
-                    span,
-                    ty: TyId::null(),
-                }
-            }
+            Self::Function(fun) => Def {
+                id: None,
+                name: fun.name,
+                span: fun.span,
+                kind: DefKind::Function(fun.lower(cx)),
+                ty: TyId::null(),
+            },
         }
     }
 }
@@ -105,9 +100,7 @@ impl Lower<'_, Expr> for Ast {
                 span: bin.span,
                 ty: TyId::null(),
             }),
-            Self::Name(name) => {
-                Expr::Name(Name { id: None, name: name.name, span: name.span, ty: TyId::null() })
-            }
+            Self::Name(name) => Expr::Name(Name { id: None, name, ty: TyId::null() }),
             Self::Lit(lit) => Expr::Lit(Lit {
                 kind: match lit.kind {
                     ast::LitKind::Int(v) => LitKind::Int(v),

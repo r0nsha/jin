@@ -121,7 +121,7 @@ impl Infer<'_> for Function {
                 .params
                 .iter()
                 .map(|param| FunctionParamTy {
-                    name: Some(param.name),
+                    name: Some(param.name.name()),
                     ty: cx.db[param.ty].clone(),
                 })
                 .collect(),

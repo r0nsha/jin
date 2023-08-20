@@ -4,7 +4,7 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         Ast, Binary, BinaryOp, Block, Call, CallArg, Def, Function, FunctionParam, If, Lit,
-        LitKind, Module, Name, Return, Statement,
+        LitKind, Module, Return, Statement,
     },
     common::QualifiedName,
     db::Database,
@@ -67,6 +67,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_function(&mut self) -> ParseResult<Function> {
+        let start = self.last_span();
+
         let name_ident = self.eat(TokenKind::empty_ident())?;
         let (params, _) = self.parse_function_params()?;
 
@@ -75,17 +77,17 @@ impl<'a> Parser<'a> {
         let body = self.parse_expr()?;
 
         Ok(Function {
-            name: name_ident.as_ident(),
+            name: name_ident.word(),
             body: Box::new(body),
             params,
-            span: name_ident.span,
+            span: start.merge(body.span()),
         })
     }
 
     fn parse_function_params(&mut self) -> ParseResult<(Vec<FunctionParam>, Span)> {
         self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             let ident_tok = this.eat(TokenKind::empty_ident())?;
-            Ok(FunctionParam { name: ident_tok.as_ident(), span: ident_tok.span })
+            Ok(FunctionParam { name: ident_tok.word(), span: ident_tok.span })
         })
     }
 
@@ -338,7 +340,7 @@ impl<'a> Parser<'a> {
             TokenKind::OpenCurly => Ast::Block(self.parse_block()?),
             TokenKind::True => Ast::Lit(Lit { kind: LitKind::Bool(true), span: tok.span }),
             TokenKind::False => Ast::Lit(Lit { kind: LitKind::Bool(false), span: tok.span }),
-            TokenKind::Ident(ident) => Ast::Name(Name { name: ident, span: tok.span }),
+            TokenKind::Ident(_) => Ast::Name(tok.word()),
             TokenKind::Int(value) => Ast::Lit(Lit { kind: LitKind::Int(value), span: tok.span }),
             _ => {
                 return Err(ParseError::UnexpectedToken {
@@ -415,7 +417,7 @@ impl<'a> Parser<'a> {
 
             if self.is(TokenKind::Eq) {
                 let expr = self.parse_expr()?;
-                return Ok(CallArg::Named(ident_tok.as_ident(), expr));
+                return Ok(CallArg::Named(ident_tok.ident(), expr));
             }
 
             self.prev();

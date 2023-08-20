@@ -7,7 +7,7 @@ use ustr::Ustr;
 
 use crate::{
     ast::token::TokenKind,
-    common::QualifiedName,
+    common::{QualifiedName, Word},
     span::{SourceId, Span, Spanned},
 };
 
@@ -72,7 +72,7 @@ pub enum Ast {
     Block(Block),
     Call(Call),
     Binary(Binary),
-    Name(Name),
+    Name(Word),
     Lit(Lit),
 }
 
@@ -83,7 +83,7 @@ impl Spanned for Ast {
             Self::Block(x) => x.span,
             Self::Call(x) => x.span,
             Self::Binary(x) => x.span,
-            Self::Name(x) => x.span,
+            Self::Name(x) => x.span(),
             Self::Lit(x) => x.span,
         }
     }
@@ -94,7 +94,7 @@ impl Spanned for Ast {
             Self::Block(x) => &mut x.span,
             Self::Call(x) => &mut x.span,
             Self::Binary(x) => &mut x.span,
-            Self::Name(x) => &mut x.span,
+            Self::Name(x) => x.span_mut(),
             Self::Lit(x) => &mut x.span,
         }
     }
@@ -107,7 +107,7 @@ pub enum Def {
 
 #[derive(Debug, Clone)]
 pub struct Function {
-    pub name: Ustr,
+    pub name: Word,
     pub body: Box<Ast>,
     pub params: Vec<FunctionParam>,
     pub span: Span,
@@ -115,7 +115,7 @@ pub struct Function {
 
 #[derive(Debug, Clone)]
 pub struct FunctionParam {
-    pub name: Ustr,
+    pub name: Word,
     pub span: Span,
 }
 
@@ -291,12 +291,6 @@ impl TryFrom<TokenKind> for BinaryOp {
 
         Ok(op)
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct Name {
-    pub name: Ustr,
-    pub span: Span,
 }
 
 #[derive(Debug, Clone)]

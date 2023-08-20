@@ -2,6 +2,8 @@ use std::path::Path;
 
 use ustr::{ustr, Ustr};
 
+use crate::common::Word;
+
 #[derive(Debug, Clone)]
 pub struct QualifiedName(Vec<Ustr>);
 
@@ -40,5 +42,11 @@ impl QualifiedName {
 impl From<Ustr> for QualifiedName {
     fn from(value: Ustr) -> Self {
         Self(vec![value])
+    }
+}
+
+impl From<Word> for QualifiedName {
+    fn from(value: Word) -> Self {
+        Self::from(value.name())
     }
 }

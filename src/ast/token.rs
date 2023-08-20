@@ -5,7 +5,7 @@ use std::{
 
 use ustr::{ustr, Ustr};
 
-use crate::span::Span;
+use crate::{common::Word, span::Span};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Token {
@@ -14,11 +14,15 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn as_ident(&self) -> Ustr {
+    pub fn ident(&self) -> Ustr {
         match self.kind {
             TokenKind::Ident(ident) => ident,
             kind => panic!("expected Ident, got {kind:?}"),
         }
+    }
+
+    pub fn word(&self) -> Word {
+        Word::new(self.ident(), self.span)
     }
 
     pub fn kind_is(&self, other: TokenKind) -> bool {
