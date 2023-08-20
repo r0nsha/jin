@@ -156,7 +156,7 @@ pub struct Call {
 #[derive(Debug, Clone)]
 pub enum CallArg {
     Positional(Ast),
-    Named(Ustr, Ast),
+    Named(Word, Ast),
 }
 
 #[derive(Debug, Clone)]

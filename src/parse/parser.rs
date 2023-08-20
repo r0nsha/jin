@@ -417,7 +417,7 @@ impl<'a> Parser<'a> {
 
             if self.is(TokenKind::Eq) {
                 let expr = self.parse_expr()?;
-                return Ok(CallArg::Named(ident_tok.ident(), expr));
+                return Ok(CallArg::Named(ident_tok.word(), expr));
             }
 
             self.prev();

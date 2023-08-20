@@ -9,7 +9,7 @@ pub struct Word(Ustr, Span);
 
 impl Word {
     pub fn new(name: Ustr, span: Span) -> Self {
-        Word(name, span)
+        Self(name, span)
     }
 
     pub fn name(&self) -> Ustr {

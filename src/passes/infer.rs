@@ -194,8 +194,7 @@ impl Infer<'_> for Call {
 
         for arg in &mut self.args {
             match arg {
-                CallArg::Positional(expr) => expr.infer(cx, env),
-                CallArg::Named(_, _) => todo!(),
+                CallArg::Positional(expr) | CallArg::Named(_, expr) => expr.infer(cx, env),
             }
         }
 
