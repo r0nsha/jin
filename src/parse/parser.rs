@@ -3,8 +3,8 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Ast, Binary, BinaryOp, Block, Call, Def, Function, FunctionParam, If, Lit, LitKind, Module,
-        Name, Return, Statement,
+        Ast, Binary, BinaryOp, Block, Call, CallArg, Def, Function, FunctionParam, If, Lit,
+        LitKind, Module, Name, Return, Statement,
     },
     common::QualifiedName,
     db::Database,
@@ -402,11 +402,27 @@ impl<'a> Parser<'a> {
 
     fn parse_call(&mut self, expr: Ast) -> ParseResult<Ast> {
         let (args, args_span) =
-            self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, Parser::parse_expr)?;
+            self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, Parser::parse_arg)?;
 
         let span = expr.span().merge(args_span);
 
         Ok(Ast::Call(Call { callee: Box::new(expr), args, span }))
+    }
+
+    fn parse_arg(&mut self) -> ParseResult<CallArg> {
+        if self.is(TokenKind::empty_ident()) {
+            let ident_tok = self.last_token();
+
+            if self.is(TokenKind::Eq) {
+                let expr = self.parse_expr()?;
+                return Ok(CallArg::Named(ident_tok.as_ident(), expr));
+            }
+
+            self.prev();
+        }
+
+        let expr = self.parse_expr()?;
+        Ok(CallArg::Positional(expr))
     }
 
     fn parse_list<T>(
@@ -484,12 +500,21 @@ impl<'a> Parser<'a> {
     }
 
     fn last_span(&self) -> Span {
-        self.tokens[self.pos - 1].span
+        self.last_token().span
+    }
+
+    fn last_token(&self) -> Token {
+        self.tokens[self.pos - 1]
     }
 
     #[inline]
     fn next(&mut self) {
         self.pos += 1;
+    }
+
+    #[inline]
+    fn prev(&mut self) {
+        self.pos -= 1;
     }
 
     #[inline]

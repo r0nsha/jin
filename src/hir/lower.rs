@@ -5,7 +5,7 @@ use super::{
 use crate::{
     ast::{self, Ast},
     db::{self, Database},
-    hir::{Binary, If},
+    hir::{Binary, CallArg, If},
 };
 
 pub fn lower(db: &mut Database, lib: ast::Library) -> Hir {
@@ -117,6 +117,15 @@ impl Lower<'_, Expr> for Ast {
                 span: lit.span,
                 ty: TyId::null(),
             }),
+        }
+    }
+}
+
+impl Lower<'_, CallArg> for ast::CallArg {
+    fn lower(self, cx: &mut Cx<'_>) -> CallArg {
+        match self {
+            Self::Positional(expr) => CallArg::Positional(expr.lower(cx)),
+            Self::Named(name, expr) => CallArg::Named(name, expr.lower(cx)),
         }
     }
 }

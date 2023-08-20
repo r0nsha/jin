@@ -193,22 +193,24 @@ impl Infer<'_> for Call {
         let result_ty = cx.tcx.fresh_ty_var(self.span);
 
         for arg in &mut self.args {
-            arg.infer(cx, env);
+            todo!();
+            // arg.infer(cx, env);
         }
 
-        let expected_ty = cx.db.alloc_ty(Ty::Function(FunctionTy {
-            ret: Box::new(result_ty.clone()),
-            params: self
-                .args
-                .iter()
-                .map(|arg| FunctionParamTy { name: None, ty: cx.db[arg.ty()].clone() })
-                .collect(),
-            span: self.span,
-        }));
+        todo!();
+        // let expected_ty = cx.db.alloc_ty(Ty::Function(FunctionTy {
+        //     ret: Box::new(result_ty.clone()),
+        //     params: self
+        //         .args
+        //         .iter()
+        //         .map(|arg| FunctionParamTy { name: None, ty: cx.db[arg.ty()].clone() })
+        //         .collect(),
+        //     span: self.span,
+        // }));
+        //
+        // cx.constraints.push(Constraint::Eq { expected: expected_ty, actual: self.callee.ty() });
 
-        cx.constraints.push(Constraint::Eq { expected: expected_ty, actual: self.callee.ty() });
-
-        self.ty = cx.db.alloc_ty(result_ty);
+        // self.ty = cx.db.alloc_ty(result_ty);
     }
 }
 

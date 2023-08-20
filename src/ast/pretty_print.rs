@@ -1,6 +1,7 @@
 use std::io;
 
 use super::{Ast, Def, Function, LitKind, Module, Statement};
+use crate::ast::CallArg;
 
 pub(super) fn print_module(module: &Module) -> io::Result<()> {
     let mut cx = Cx { builder: ptree::TreeBuilder::new(module.name.standard_full_name()) };
@@ -62,7 +63,14 @@ impl PrettyPrint for Ast {
                 if !call.args.is_empty() {
                     cx.builder.begin_child("args".to_string());
                     for arg in &call.args {
-                        arg.pretty_print(cx);
+                        match arg {
+                            CallArg::Positional(expr) => expr.pretty_print(cx),
+                            CallArg::Named(name, expr) => {
+                                cx.builder.begin_child(name.to_string());
+                                expr.pretty_print(cx);
+                                cx.builder.end_child();
+                            }
+                        }
                     }
                     cx.builder.end_child();
                 }

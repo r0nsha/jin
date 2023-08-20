@@ -149,8 +149,14 @@ pub struct Return {
 #[derive(Debug, Clone)]
 pub struct Call {
     pub callee: Box<Ast>,
-    pub args: Vec<Ast>,
+    pub args: Vec<CallArg>,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum CallArg {
+    Positional(Ast),
+    Named(Ustr, Ast),
 }
 
 #[derive(Debug, Clone)]

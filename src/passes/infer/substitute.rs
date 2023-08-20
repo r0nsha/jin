@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use super::InferCx;
 use crate::{
     db::TyId,
-    hir::{Binary, Block, Call, Def, DefKind, Expr, Function, If, Module, Return},
+    hir::{Binary, Block, Call, CallArg, Def, DefKind, Expr, Function, If, Module, Return},
     ty::{FunctionParamTy, FunctionTy, InferTy, Ty, TyVar},
 };
 
@@ -143,6 +143,16 @@ impl Substitute<'_> for Call {
 
         for arg in &mut self.args {
             arg.substitute(cx, unbound_vars);
+        }
+    }
+}
+
+impl Substitute<'_> for CallArg {
+    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
+        match self {
+            Self::Positional(expr) | Self::Named(_, expr) => {
+                expr.substitute(cx, unbound_vars);
+            }
         }
     }
 }

@@ -3,7 +3,7 @@ use std::io;
 use super::{Block, Call, Def, DefKind, Expr, Function, Lit, LitKind, Module, Name, Return};
 use crate::{
     db::Database,
-    hir::{Binary, If},
+    hir::{Binary, CallArg, If},
 };
 
 pub(super) fn print_module(db: &Database, module: &Module) -> io::Result<()> {
@@ -129,7 +129,14 @@ impl PrettyPrint for Call {
             cx.builder.begin_child("args".to_string());
 
             for arg in &self.args {
-                arg.pretty_print(cx);
+                match arg {
+                    CallArg::Positional(expr) => expr.pretty_print(cx),
+                    CallArg::Named(name, expr) => {
+                        cx.builder.begin_child(name.to_string());
+                        expr.pretty_print(cx);
+                        cx.builder.end_child();
+                    }
+                }
             }
 
             cx.builder.end_child();

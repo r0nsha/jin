@@ -52,7 +52,7 @@ pub struct FunctionParam {
 }
 
 impl FunctionParam {
-    pub fn id(&self) -> DefId {
+    pub fn id(self) -> DefId {
         self.id
     }
 }
