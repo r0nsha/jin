@@ -208,8 +208,9 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         function_value.as_global_value().as_pointer_value().into()
     }
 
+    #[track_caller]
     fn def_value(&self, id: DefId) -> DefValue<'cx> {
-        *self.def_values.get(&id).expect("to be defined")
+        *self.def_values.get(&id).expect("id in def_value to be defined")
     }
 }
 
@@ -248,29 +249,35 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Return {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        if !cx.current_block_is_terminating() {
-            cx.builder.build_return(Some(&state.value(self.value)));
+        if cx.current_block_is_terminating() {
+            return;
         }
+
+        cx.builder.build_return(Some(&state.value(self.value)));
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Br {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        if !cx.current_block_is_terminating() {
-            cx.builder.build_unconditional_branch(state.block(self.target));
+        if cx.current_block_is_terminating() {
+            return;
         }
+
+        cx.builder.build_unconditional_branch(state.block(self.target));
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for BrIf {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        if !cx.current_block_is_terminating() {
-            cx.builder.build_conditional_branch(
-                state.value(self.cond).into_int_value(),
-                state.block(self.b1),
-                state.block(self.b2),
-            );
+        if cx.current_block_is_terminating() {
+            return;
         }
+
+        cx.builder.build_conditional_branch(
+            state.value(self.cond).into_int_value(),
+            state.block(self.b1),
+            state.block(self.b2),
+        );
     }
 }
 
@@ -293,9 +300,11 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         let callee = state.value(self.callee).into_pointer_value();
 
+        let args: Vec<_> = self.args.iter().map(|v| state.value(*v).into()).collect();
+
         let result = cx.builder.build_call(
             CallableValue::try_from(callee).expect("a callable pointer value"),
-            &[],
+            &args,
             "call",
         );
 
@@ -412,7 +421,10 @@ impl<'db, 'cx> Codegen<'db, 'cx> for UnitLit {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Unreachable {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        cx.builder.build_unreachable();
+        if !cx.current_block_is_terminating() {
+            cx.builder.build_unreachable();
+        }
+
         let ty = state.value_ty(cx, self.value);
         state.set_value(self.value, Generator::undef_value(ty.llvm_type(cx)));
     }

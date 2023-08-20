@@ -52,6 +52,7 @@ impl<'db, 'cx> LlvmType<'db, 'cx, IntType<'cx>> for IntTy {
 
 impl<'db, 'cx> LlvmType<'db, 'cx, FunctionType<'cx>> for FunctionTy {
     fn llvm_type(&self, cx: &Generator<'db, 'cx>) -> FunctionType<'cx> {
-        self.ret.llvm_type(cx).fn_type(&[], false)
+        let param_tys: Vec<_> = self.params.iter().map(|p| p.ty.llvm_type(cx).into()).collect();
+        self.ret.llvm_type(cx).fn_type(&param_tys, false)
     }
 }

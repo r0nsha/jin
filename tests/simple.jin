@@ -1,6 +1,6 @@
 fn main() = {
-	answer(5)
+	add(41, 1)
 	return ()
 }
 
-fn answer(x) = 42 + x
+fn add(a, b) = a + b
