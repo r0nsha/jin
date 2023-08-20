@@ -205,7 +205,7 @@ impl Resolve<'_> for Call {
             match arg {
                 CallArg::Named(name, expr) => {
                     if let Some(prev_span) = already_passed.insert(name.name(), name.span()) {
-                        cx.errors.push(ResolveError::ArgNamedTwice {
+                        cx.errors.push(ResolveError::MultipleNamedArgs {
                             prev: Word::new(name.name(), prev_span),
                             dup: *name,
                         });
@@ -373,7 +373,7 @@ enum ScopeKind {
 pub(super) enum ResolveError {
     MultipleDefs { name: Ustr, prev_span: Span, dup_span: Span },
     NameNotFound(Word),
-    ArgNamedTwice { prev: Word, dup: Word },
+    MultipleNamedArgs { prev: Word, dup: Word },
     InvalidReturn { span: Span },
 }
 
@@ -381,7 +381,7 @@ impl From<ResolveError> for Diagnostic {
     fn from(err: ResolveError) -> Self {
         match err {
             ResolveError::MultipleDefs { name, prev_span, dup_span } => {
-                Self::error("resolve::multiple_definitions")
+                Self::error("resolve::multiple_defs")
                     .with_message(format!("the name `{name}` is defined multiple times"))
                     .with_label(
                         Label::primary(dup_span)
@@ -393,16 +393,19 @@ impl From<ResolveError> for Diagnostic {
                     )
                     .with_help("you can only define names once in a module")
             }
-            ResolveError::ArgNamedTwice { prev, dup } => Self::error("resolve::arg_named_twice")
-                .with_message(format!("the arg `{prev}` is passed multiple times"))
-                .with_label(
-                    Label::primary(dup.span()).with_message(format!("`{dup}` is redefined here")),
-                )
-                .with_label(
-                    Label::secondary(prev.span())
-                        .with_message(format!("previous definition of `{prev}` is here")),
-                )
-                .with_help("you can only define names once in a module"),
+            ResolveError::MultipleNamedArgs { prev, dup } => {
+                Self::error("resolve::multiple_named_args")
+                    .with_message(format!("the arg `{prev}` is passed multiple times"))
+                    .with_label(
+                        Label::primary(dup.span())
+                            .with_message(format!("`{dup}` is redefined here")),
+                    )
+                    .with_label(
+                        Label::secondary(prev.span())
+                            .with_message(format!("previous definition of `{prev}` is here")),
+                    )
+                    .with_help("you can only define names once in a module")
+            }
             ResolveError::NameNotFound(name) => Self::error("resolve::name_not_found")
                 .with_message(format!("cannot find value `{name}` in this scope"))
                 .with_label(Label::primary(name.span()).with_message("not found in this scope")),
