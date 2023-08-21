@@ -123,15 +123,11 @@ impl Infer<'_> for Expr {
 
 impl Infer<'_> for Item {
     fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
-        self.ty = cx.db.alloc_ty(Type::Unit(self.span));
-
         match &mut self.kind {
             ItemKind::Function(fun) => fun.infer(cx, env),
         }
 
-        let symbol_ty = cx.lookup(self.id.expect("to be resolved"));
-
-        cx.constraints.push(Constraint::Eq { expected: self.kind.ty(), actual: symbol_ty });
+        self.ty = cx.db.alloc_ty(Type::Unit(self.span()));
     }
 }
 
@@ -156,9 +152,12 @@ impl Infer<'_> for Function {
             span: self.span,
         });
 
-        self.ty = cx.db.alloc_ty(fun_ty);
-
         let id = self.id.expect("to be resolved");
+
+        self.ty = cx.db.alloc_ty(fun_ty);
+        cx.db[id].ty = self.ty;
+        println!("{}, {}", self.name, self.ty);
+
         env.call_stack.push(CallFrame { id, ret_ty });
 
         self.body.infer(cx, env);

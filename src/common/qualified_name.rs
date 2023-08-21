@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::{fmt, path::Path};
 
 use ustr::{ustr, Ustr};
 
@@ -48,5 +48,11 @@ impl From<Ustr> for QualifiedName {
 impl From<Word> for QualifiedName {
     fn from(value: Word) -> Self {
         Self::from(value.name())
+    }
+}
+
+impl fmt::Display for QualifiedName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(&self.standard_full_name())
     }
 }

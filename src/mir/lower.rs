@@ -85,7 +85,7 @@ impl<'db> LowerFunctionCx<'db> {
 
     fn lower_local_item(&mut self, item: &hir::Item) -> ValueId {
         lower_item(self.db, self.mir, item);
-        self.bx.build_unit_lit(item.ty, item.span)
+        self.bx.build_unit_lit(item.ty, item.span())
     }
 
     fn lower_if(&mut self, if_: &hir::If) -> ValueId {

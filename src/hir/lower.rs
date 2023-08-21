@@ -1,11 +1,11 @@
 use super::{
-    Block, Call, Expr, Function, FunctionParam, Hir, Item, ItemKind, Lit, LitKind, Module,
-    ModuleId, Name, Return, TypeId,
+    Block, Call, Expr, Function, FunctionParam, Hir, Item, Lit, LitKind, Module, ModuleId, Name,
+    Return, TypeId,
 };
 use crate::{
     ast,
     db::{self, Database},
-    hir::{Binary, CallArg, If},
+    hir::{Binary, CallArg, If, ItemKind},
 };
 
 pub fn lower(db: &mut Database, lib: ast::Ast) -> Hir {
@@ -40,14 +40,11 @@ trait Lower<'db, T> {
 
 impl Lower<'_, Item> for ast::Item {
     fn lower(self, cx: &mut Cx<'_>) -> Item {
-        match self {
-            Self::Function(fun) => Item {
-                id: None,
-                name: fun.name,
-                span: fun.span,
-                kind: ItemKind::Function(fun.lower(cx)),
-                ty: TypeId::null(),
+        Item {
+            kind: match self {
+                Self::Function(fun) => ItemKind::Function(fun.lower(cx)),
             },
+            ty: TypeId::null(),
         }
     }
 }

@@ -96,7 +96,6 @@ impl Substitute<'_> for Item {
         }
 
         cx.substitute_tyid(self.ty, unbound_vars);
-        cx.substitute_tyid(cx.db[self.id.expect("to be resolved")].ty, unbound_vars);
     }
 }
 

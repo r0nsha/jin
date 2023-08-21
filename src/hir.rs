@@ -57,7 +57,7 @@ pub enum Expr {
 impl Typed for Expr {
     fn ty(&self) -> TypeId {
         match self {
-            Self::Item(x) => x.ty,
+            Self::Item(x) => x.ty(),
             Self::If(x) => x.ty,
             Self::Block(x) => x.ty,
             Self::Return(x) => x.ty,
@@ -70,7 +70,7 @@ impl Typed for Expr {
 
     fn ty_mut(&mut self) -> &mut TypeId {
         match self {
-            Self::Item(x) => &mut x.ty,
+            Self::Item(x) => x.ty_mut(),
             Self::If(x) => &mut x.ty,
             Self::Block(x) => &mut x.ty,
             Self::Return(x) => &mut x.ty,
@@ -85,7 +85,7 @@ impl Typed for Expr {
 impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
-            Self::Item(x) => x.span,
+            Self::Item(x) => x.span(),
             Self::If(x) => x.span,
             Self::Block(x) => x.span,
             Self::Return(x) => x.span,
@@ -98,7 +98,7 @@ impl Spanned for Expr {
 
     fn span_mut(&mut self) -> &mut Span {
         match self {
-            Self::Item(x) => &mut x.span,
+            Self::Item(x) => x.span_mut(),
             Self::If(x) => &mut x.span,
             Self::Block(x) => &mut x.span,
             Self::Return(x) => &mut x.span,
@@ -112,11 +112,28 @@ impl Spanned for Expr {
 
 #[derive(Debug, Clone)]
 pub struct Item {
-    pub id: Option<SymbolId>,
-    pub name: Word,
     pub kind: ItemKind,
-    pub span: Span,
     pub ty: TypeId,
+}
+
+impl Spanned for Item {
+    fn span(&self) -> Span {
+        self.kind.span()
+    }
+
+    fn span_mut(&mut self) -> &mut Span {
+        self.kind.span_mut()
+    }
+}
+
+impl Typed for Item {
+    fn ty(&self) -> TypeId {
+        self.kind.ty()
+    }
+
+    fn ty_mut(&mut self) -> &mut TypeId {
+        self.kind.ty_mut()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -124,10 +141,30 @@ pub enum ItemKind {
     Function(Function),
 }
 
-impl ItemKind {
-    pub fn ty(&self) -> TypeId {
+impl Spanned for ItemKind {
+    fn span(&self) -> Span {
+        match self {
+            Self::Function(x) => x.span,
+        }
+    }
+
+    fn span_mut(&mut self) -> &mut Span {
+        match self {
+            Self::Function(x) => &mut x.span,
+        }
+    }
+}
+
+impl Typed for ItemKind {
+    fn ty(&self) -> TypeId {
         match self {
             Self::Function(x) => x.ty,
+        }
+    }
+
+    fn ty_mut(&mut self) -> &mut TypeId {
+        match self {
+            Self::Function(x) => &mut x.ty,
         }
     }
 }

@@ -18,7 +18,7 @@ use crate::{
 pub fn resolve(db: &mut Database, hir: &mut Hir) {
     let mut cx = ResolveCx::new(db);
 
-    cx.create_modules_and_resolve_globals(&mut hir.modules);
+    cx.create_modules_and_resolve_global_items(&mut hir.modules);
     cx.resolve_all(&mut hir.modules);
 
     if !cx.errors.is_empty() {
@@ -38,32 +38,32 @@ impl<'db> ResolveCx<'db> {
         Self { db, errors: vec![], global_scope: GlobalScope::new() }
     }
 
-    fn create_modules_and_resolve_globals(&mut self, modules: &mut [Module]) {
+    fn create_modules_and_resolve_global_items(&mut self, modules: &mut [Module]) {
         for module in modules {
             let mut scope_symbols = UstrMap::<SymbolId>::default();
             let mut already_defined = UstrMap::<Span>::default();
 
+            let mut env = Env::new(module.id);
+
             for item in &mut module.items {
-                if let Some(prev_span) = already_defined.insert(item.name.name(), item.name.span())
-                {
+                let name = match &item.kind {
+                    ItemKind::Function(fun) => fun.name,
+                };
+
+                if let Some(prev_span) = already_defined.insert(name.name(), name.span()) {
                     self.errors.push(ResolveError::MultipleItems {
-                        name: item.name.name(),
+                        name: name.name(),
                         prev_span,
-                        dup_span: item.span,
+                        dup_span: name.span(),
                     });
                 }
 
-                let id = self.declare_item(
-                    item,
-                    module.id,
-                    self.db[module.id].name.clone(),
-                    ScopeLevel::Global(Vis::Public),
-                );
+                let id = self.declare_item(&mut env, item);
 
-                scope_symbols.insert(item.name.name(), id);
+                scope_symbols.insert(name.name(), id);
             }
 
-            self.global_scope.0.insert(module.id, scope_symbols);
+            self.global_scope.insert_module(module.id, scope_symbols);
         }
     }
 
@@ -77,31 +77,40 @@ impl<'db> ResolveCx<'db> {
         }
     }
 
-    fn declare_item(
-        &mut self,
-        item: &mut Item,
-        module_id: ModuleId,
-        prefix: QualifiedName,
-        scope_level: ScopeLevel,
-    ) -> SymbolId {
-        let kind = match &item.kind {
-            ItemKind::Function(_) => SymbolInfoKind::Function(FunctionInfo::Orphan),
-        };
+    fn declare_item(&mut self, env: &mut Env, item: &mut Item) -> SymbolId {
+        match &mut item.kind {
+            ItemKind::Function(fun) => {
+                let id = self.declare_symbol(
+                    env,
+                    SymbolInfoKind::Function(FunctionInfo::Orphan),
+                    fun.name,
+                );
+
+                fun.id = Some(id);
+
+                id
+            }
+        }
+    }
+
+    fn declare_symbol(&mut self, env: &mut Env, kind: SymbolInfoKind, name: Word) -> SymbolId {
+        let module_id = env.module_id;
+        let scope_level = env.scope_level(Vis::Public);
+        let qname = env.scope_name(self.db).child(name.name());
 
         let id = SymbolInfo::alloc(
             self.db,
             module_id,
-            prefix.child(item.name.name()),
+            qname,
             scope_level,
             kind,
             TypeId::null(),
-            item.span,
+            name.span(),
         );
 
-        item.id = Some(id);
-
-        match &mut item.kind {
-            ItemKind::Function(fun) => fun.id = item.id,
+        match env.scopes.current_mut() {
+            Some(scope) => scope.insert(name.name(), id),
+            None => self.global_scope.insert(env.module_id, name.name(), id),
         }
 
         id
@@ -114,12 +123,7 @@ trait Resolve<'db> {
 
 impl Resolve<'_> for Item {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        let scope_level = env.scope_level(Vis::Private);
-
-        if let Some(scope) = env.scopes.current_mut() {
-            let id = cx.declare_item(self, env.module_id, scope.name.clone(), scope_level);
-            scope.insert(self.name.name(), id);
-        }
+        cx.declare_item(env, self);
 
         match &mut self.kind {
             ItemKind::Function(fun) => fun.resolve(cx, env),
@@ -255,6 +259,14 @@ impl GlobalScope {
     pub fn lookup(&self, module_id: ModuleId, name: Ustr) -> Option<SymbolId> {
         self.0.get(&module_id).and_then(|syms| syms.get(&name)).copied()
     }
+
+    pub fn insert_module(&mut self, module_id: ModuleId, symbols: UstrMap<SymbolId>) {
+        self.0.insert(module_id, symbols);
+    }
+
+    pub fn insert(&mut self, module_id: ModuleId, name: Ustr, id: SymbolId) {
+        self.0.get_mut(&module_id).and_then(|syms| syms.insert(name, id));
+    }
 }
 
 #[derive(Debug)]
@@ -273,6 +285,12 @@ impl Env {
             0 => ScopeLevel::Global(vis),
             n => ScopeLevel::Local(n),
         }
+    }
+
+    pub fn scope_name(&self, db: &Database) -> QualifiedName {
+        self.scopes
+            .current()
+            .map_or_else(|| db[self.module_id].name.clone(), |scope| scope.name.clone())
     }
 }
 
