@@ -217,13 +217,13 @@ impl Infer<'_> for Call {
     fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
         self.callee.infer(cx, env);
 
-        let result_ty = cx.fresh_ty_var(self.span);
-
         for arg in &mut self.args {
             match arg {
                 CallArg::Positional(expr) | CallArg::Named(_, expr) => expr.infer(cx, env),
             }
         }
+
+        let result_ty = cx.fresh_ty_var(self.span);
 
         let expected_ty = cx.db.alloc_ty(Type::Function(FunctionType {
             ret: Box::new(result_ty.clone()),
