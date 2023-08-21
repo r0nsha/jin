@@ -8,6 +8,10 @@ use crate::common::Word;
 pub struct QualifiedName(Vec<Ustr>);
 
 impl QualifiedName {
+    pub fn new() -> Self {
+        Self(vec![])
+    }
+
     pub fn from_path(root: &Path, target: &Path) -> Option<Self> {
         let target = target.with_extension("");
         let stripped = target.strip_prefix(root).ok()?;
@@ -39,9 +43,19 @@ impl QualifiedName {
     }
 }
 
+impl Default for QualifiedName {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl From<Ustr> for QualifiedName {
     fn from(value: Ustr) -> Self {
-        Self(vec![value])
+        if value.is_empty() {
+            Self::new()
+        } else {
+            Self(vec![value])
+        }
     }
 }
 

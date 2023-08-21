@@ -158,7 +158,7 @@ impl PrettyPrint for Binary {
 impl PrettyPrint for Name {
     fn pretty_print(&self, cx: &mut Cx) {
         cx.builder.add_empty_child(format!(
-            "{} (type: {})",
+            "`{}` (type: {})",
             self.id.map_or(self.name.to_string(), |id| {
                 cx.db[id].qualified_name.standard_full_name()
             }),

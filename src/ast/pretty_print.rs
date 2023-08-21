@@ -56,7 +56,7 @@ impl PrettyPrint for Expr {
             }
             Self::Block(blk) => blk.pretty_print(cx),
             Self::Name(name) => {
-                cx.builder.add_empty_child(name.name.to_string());
+                cx.builder.add_empty_child(format!("`{}`", name.name));
             }
             Self::Call(call) => {
                 cx.builder.begin_child("call".to_string());
