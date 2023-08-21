@@ -8,7 +8,7 @@ use crate::{
     hir::{Binary, CallArg, If},
 };
 
-pub fn lower(db: &mut Database, lib: ast::Library) -> Hir {
+pub fn lower(db: &mut Database, lib: ast::Ast) -> Hir {
     Hir {
         modules: lib
             .modules

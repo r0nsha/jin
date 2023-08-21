@@ -1,31 +1,20 @@
-use ustr::ustr;
-
 use super::{lexer, parser};
 use crate::{
-    ast::{Library, Module},
+    ast::{Ast, Module},
     db::Database,
     diagnostics::Diagnostic,
     span::Source,
 };
 
-pub fn parse_modules(db: &mut Database) -> Library {
-    let mut modules = vec![];
+pub fn parse_modules(db: &mut Database) -> Ast {
+    let mut ast = Ast::new();
 
     match parse_module(db, db.main_source()) {
-        Ok(module) => modules.push(module),
+        Ok(module) => ast.modules.push(module),
         Err(diag) => db.diagnostics.add(diag),
     }
 
-    let lib_name = ustr(
-        db.main_source()
-            .path()
-            .file_stem()
-            .expect("to have a file stem")
-            .to_string_lossy()
-            .as_ref(),
-    );
-
-    Library::new(lib_name, true, modules)
+    ast
 }
 
 fn parse_module(db: &Database, source: &Source) -> Result<Module, Diagnostic> {

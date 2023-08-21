@@ -3,8 +3,6 @@ pub mod token;
 
 use std::{fmt, io};
 
-use ustr::Ustr;
-
 use crate::{
     ast::token::TokenKind,
     common::{QualifiedName, Word},
@@ -12,30 +10,18 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct Library {
-    name: Ustr,
-    #[allow(unused)]
-    is_main: bool,
+pub struct Ast {
     pub modules: Vec<Module>,
 }
 
-impl Library {
-    pub fn new(name: Ustr, is_main: bool, modules: Vec<Module>) -> Self {
-        Self { name, is_main, modules }
-    }
-
-    #[allow(unused)]
-    pub fn is_main(&self) -> bool {
-        self.is_main
-    }
-
-    pub fn name(&self) -> Ustr {
-        self.name
+impl Ast {
+    pub fn new() -> Self {
+        Self { modules: vec![] }
     }
 
     pub fn pretty_print(&self) -> io::Result<()> {
         println!();
-        println!("{}:", self.name());
+        println!("AST:");
         println!();
 
         for module in &self.modules {
@@ -63,6 +49,25 @@ impl Module {
 
     pub fn is_main(&self) -> bool {
         self.is_main
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum Item {
+    Function(Function),
+}
+
+impl Spanned for Item {
+    fn span(&self) -> Span {
+        match self {
+            Self::Function(x) => x.span,
+        }
+    }
+
+    fn span_mut(&mut self) -> &mut Span {
+        match self {
+            Self::Function(x) => &mut x.span,
+        }
     }
 }
 
@@ -102,25 +107,6 @@ impl Spanned for Expr {
             Self::Binary(x) => &mut x.span,
             Self::Name(x) => x.name.span_mut(),
             Self::Lit(x) => &mut x.span,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum Item {
-    Function(Function),
-}
-
-impl Spanned for Item {
-    fn span(&self) -> Span {
-        match self {
-            Self::Function(x) => x.span,
-        }
-    }
-
-    fn span_mut(&mut self) -> &mut Span {
-        match self {
-            Self::Function(x) => &mut x.span,
         }
     }
 }
