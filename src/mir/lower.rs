@@ -1,3 +1,5 @@
+use ustr::UstrMap;
+
 use super::{builder::FunctionBuilder, DefId, Function, Mir};
 use crate::{
     ast::BinaryOp,
@@ -140,17 +142,33 @@ impl<'db> LowerFunctionCx<'db> {
 
     fn lower_call(&mut self, call: &hir::Call) -> ValueId {
         let callee = self.lower_expr(&call.callee);
-        let args = call
-            .args
+
+        let params_map = self.db[call.callee.ty()]
+            .as_function()
+            .unwrap()
+            .params
             .iter()
-            .map(|arg| match arg {
-                hir::CallArg::Positional(expr) => self.lower_expr(expr),
-                hir::CallArg::Named(_, _) => {
-                    unreachable!("named arguments should be desugared to positional")
+            .enumerate()
+            .filter_map(|(i, p)| p.name.map(|n| (n, i)))
+            .collect::<UstrMap<_>>();
+
+        let mut args = vec![None; call.args.len()];
+
+        for arg in &call.args {
+            match arg {
+                hir::CallArg::Positional(expr) => {
+                    let idx = args.iter_mut().position(|a| a.is_none()).unwrap();
+                    args[idx] = Some(self.lower_expr(expr));
                 }
-            })
-            .collect();
-        self.bx.build_call(call.ty, callee, args, call.span)
+                hir::CallArg::Named(name, expr) => {
+                    dbg!(&params_map, name.name());
+                    let idx = params_map[&name.name()];
+                    args[idx] = Some(self.lower_expr(expr));
+                }
+            }
+        }
+
+        self.bx.build_call(call.ty, callee, args.into_iter().flatten().collect(), call.span)
     }
 
     fn lower_binary(&mut self, bin: &hir::Binary) -> ValueId {

@@ -203,7 +203,14 @@ impl Infer<'_> for Call {
             params: self
                 .args
                 .iter()
-                .map(|arg| FunctionParamTy { name: None, ty: cx.db[arg.ty()].clone() })
+                .map(|arg| match arg {
+                    CallArg::Positional(expr) => {
+                        FunctionParamTy { name: None, ty: cx.db[expr.ty()].clone() }
+                    }
+                    CallArg::Named(name, expr) => {
+                        FunctionParamTy { name: Some(name.name()), ty: cx.db[expr.ty()].clone() }
+                    }
+                })
                 .collect(),
             span: self.span,
         }));
