@@ -54,8 +54,16 @@ impl<'db> TypeCx<'db> {
 
 impl<'db> TypeCx<'db> {
     fn infer_all(&mut self, modules: &mut [Module]) {
+        self.assign_global_tyids();
+
         for module in modules {
             self.infer_module(module);
+        }
+    }
+
+    fn assign_global_tyids(&mut self) {
+        for i in 0..self.db.symbols.len() {
+            self.db.symbols[i.into()].ty = self.alloc_ty_var(self.db.symbols[i.into()].span);
         }
     }
 
@@ -68,15 +76,9 @@ impl<'db> TypeCx<'db> {
     }
 
     fn lookup(&mut self, id: SymbolId) -> TypeId {
-        let symbol = &self.db[id];
-
-        if symbol.ty.is_null() {
-            let ty = self.alloc_ty_var(symbol.span);
-            self.db[id].ty = ty;
-            ty
-        } else {
-            symbol.ty
-        }
+        let sym = &self.db[id];
+        assert!(!sym.ty.is_null(), "symbol `{}` wasn't assigned a TypeId", sym.qualified_name);
+        sym.ty
     }
 
     #[inline]
@@ -156,7 +158,9 @@ impl Infer<'_> for Function {
         let id = self.id.expect("to be resolved");
 
         self.ty = cx.db.alloc_ty(fun_ty);
-        cx.db[id].ty = self.ty;
+
+        let sym_ty = cx.lookup(id);
+        cx.constraints.push(Constraint::Eq { expected: sym_ty, actual: self.ty });
 
         env.call_stack.push(CallFrame { id, ret_ty });
 

@@ -161,7 +161,6 @@ impl<'db> LowerFunctionCx<'db> {
                     args[idx] = Some(self.lower_expr(expr));
                 }
                 hir::CallArg::Named(name, expr) => {
-                    dbg!(&params_map, name.name());
                     let idx = params_map[&name.name()];
                     args[idx] = Some(self.lower_expr(expr));
                 }

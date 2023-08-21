@@ -82,7 +82,6 @@ impl<'db> ResolveCx<'db> {
     fn declare_symbol(&mut self, env: &mut Env, kind: SymbolInfoKind, name: Word) -> SymbolId {
         let module_id = env.module_id;
         let scope_level = env.scope_level(Vis::Public);
-        dbg!(scope_level);
         let qname = env.scope_name(self.db).child(name.name());
 
         let id = SymbolInfo::alloc(

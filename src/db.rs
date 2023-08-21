@@ -242,6 +242,12 @@ impl SymbolInfo {
             ScopeLevel::Local(_) => Vis::Private,
         }
     }
+
+    pub fn set_ty(&mut self, ty: TypeId) {
+        if self.ty.is_null() {
+            self.ty = ty;
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

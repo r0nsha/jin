@@ -139,6 +139,8 @@ impl Substitute<'_> for Call {
         for arg in &mut self.args {
             arg.substitute(cx, unbound_vars);
         }
+
+        cx.substitute_tyid(self.ty, unbound_vars);
     }
 }
 
@@ -149,6 +151,7 @@ impl Substitute<'_> for CallArg {
                 expr.substitute(cx, unbound_vars);
             }
         }
+        cx.substitute_tyid(self.ty(), unbound_vars);
     }
 }
 

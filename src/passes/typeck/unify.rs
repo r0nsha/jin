@@ -48,12 +48,18 @@ impl<'db> TypeCx<'db> {
                 }
             }
 
-            (Type::Infer(InferType::TypeVar(expected), _), Type::Infer(InferType::TypeVar(actual), _)) => {
+            (
+                Type::Infer(InferType::TypeVar(expected), _),
+                Type::Infer(InferType::TypeVar(actual), _),
+            ) => {
                 self.ty_unification_table.unify_var_var(expected, actual)?;
                 Ok(())
             }
 
-            (Type::Infer(InferType::IntVar(expected), _), Type::Infer(InferType::IntVar(actual), _)) => {
+            (
+                Type::Infer(InferType::IntVar(expected), _),
+                Type::Infer(InferType::IntVar(actual), _),
+            ) => {
                 self.int_unification_table.unify_var_var(expected, actual)?;
                 Ok(())
             }
