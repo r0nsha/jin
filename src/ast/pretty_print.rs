@@ -1,6 +1,6 @@
 use std::io;
 
-use super::{Ast, Function, Item, LitKind, Module};
+use super::{Expr, Function, Item, LitKind, Module};
 use crate::ast::{Block, CallArg};
 
 pub(super) fn print_module(module: &Module) -> io::Result<()> {
@@ -22,7 +22,7 @@ trait PrettyPrint {
     fn pretty_print(&self, cx: &mut Cx);
 }
 
-impl PrettyPrint for Ast {
+impl PrettyPrint for Expr {
     fn pretty_print(&self, cx: &mut Cx) {
         match self {
             Self::Item(item) => item.pretty_print(cx),

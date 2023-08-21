@@ -3,7 +3,7 @@ use super::{
     ModuleId, Name, Return, TypeId,
 };
 use crate::{
-    ast::{self, Ast},
+    ast,
     db::{self, Database},
     hir::{Binary, CallArg, If},
 };
@@ -66,7 +66,7 @@ impl Lower<'_, Function> for ast::Function {
     }
 }
 
-impl Lower<'_, Expr> for Ast {
+impl Lower<'_, Expr> for ast::Expr {
     fn lower(self, cx: &mut Cx<'_>) -> Expr {
         match self {
             Self::Item(item) => Expr::Item(item.lower(cx)),

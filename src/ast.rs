@@ -67,7 +67,7 @@ impl Module {
 }
 
 #[derive(Debug, Clone)]
-pub enum Ast {
+pub enum Expr {
     Item(Item),
     Return(Return),
     If(If),
@@ -78,7 +78,7 @@ pub enum Ast {
     Lit(Lit),
 }
 
-impl Spanned for Ast {
+impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
             Self::Item(x) => x.span(),
@@ -141,41 +141,41 @@ pub struct FunctionParam {
 
 #[derive(Debug, Clone)]
 pub struct If {
-    pub cond: Box<Ast>,
-    pub then: Box<Ast>,
-    pub otherwise: Option<Box<Ast>>,
+    pub cond: Box<Expr>,
+    pub then: Box<Expr>,
+    pub otherwise: Option<Box<Expr>>,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct Block {
-    pub exprs: Vec<Ast>,
+    pub exprs: Vec<Expr>,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct Return {
-    pub expr: Option<Box<Ast>>,
+    pub expr: Option<Box<Expr>>,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct Call {
-    pub callee: Box<Ast>,
+    pub callee: Box<Expr>,
     pub args: Vec<CallArg>,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub enum CallArg {
-    Positional(Ast),
-    Named(Word, Ast),
+    Positional(Expr),
+    Named(Word, Expr),
 }
 
 #[derive(Debug, Clone)]
 pub struct Binary {
-    pub lhs: Box<Ast>,
-    pub rhs: Box<Ast>,
+    pub lhs: Box<Expr>,
+    pub rhs: Box<Expr>,
     pub op: BinaryOp,
     pub span: Span,
 }

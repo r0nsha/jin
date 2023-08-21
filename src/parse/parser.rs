@@ -3,7 +3,7 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Ast, Binary, BinaryOp, Block, Call, CallArg, Function, FunctionParam, If, Item, Lit,
+        Expr, Binary, BinaryOp, Block, Call, CallArg, Function, FunctionParam, If, Item, Lit,
         LitKind, Module, Name, Return,
     },
     common::QualifiedName,
@@ -77,7 +77,7 @@ impl<'a> Parser<'a> {
         let expr = self.parse_expr()?;
 
         let body = match expr {
-            Ast::Block(blk) => blk,
+            Expr::Block(blk) => blk,
             _ => Block { span: expr.span(), exprs: vec![expr] },
         };
 
@@ -105,11 +105,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_stmt(&mut self) -> ParseResult<Ast> {
+    fn parse_stmt(&mut self) -> ParseResult<Expr> {
         if self.is(TokenKind::Fn) {
-            Ok(Ast::Item(Item::Function(self.parse_function()?)))
+            Ok(Expr::Item(Item::Function(self.parse_function()?)))
         } else if self.is(TokenKind::Return) {
-            Ok(Ast::Return(self.parse_return()?))
+            Ok(Expr::Return(self.parse_return()?))
         } else {
             Ok(self.parse_expr()?)
         }
@@ -130,8 +130,8 @@ impl<'a> Parser<'a> {
         Ok(Return { expr, span })
     }
 
-    fn parse_expr(&mut self) -> ParseResult<Ast> {
-        let mut expr_stack: Vec<Ast> = vec![];
+    fn parse_expr(&mut self) -> ParseResult<Expr> {
+        let mut expr_stack: Vec<Expr> = vec![];
         let mut op_stack: Vec<BinaryOp> = vec![];
         let mut last_precedence = usize::MAX;
 
@@ -180,7 +180,7 @@ impl<'a> Parser<'a> {
                 let lhs = expr_stack.pop().unwrap();
                 let span = lhs.span().merge(rhs.span());
 
-                expr_stack.push(Ast::Binary(Binary {
+                expr_stack.push(Expr::Binary(Binary {
                     lhs: Box::new(lhs),
                     op,
                     rhs: Box::new(rhs),
@@ -201,7 +201,7 @@ impl<'a> Parser<'a> {
 
             let span = lhs.span().merge(rhs.span());
 
-            expr_stack.push(Ast::Binary(Binary {
+            expr_stack.push(Expr::Binary(Binary {
                 lhs: Box::new(lhs),
                 op,
                 rhs: Box::new(rhs),
@@ -212,7 +212,7 @@ impl<'a> Parser<'a> {
         Ok(expr_stack.into_iter().next().unwrap())
     }
 
-    fn parse_operand(&mut self) -> ParseResult<Ast> {
+    fn parse_operand(&mut self) -> ParseResult<Expr> {
         let term = self.parse_term()?;
         self.parse_postfix(term)
     }
@@ -323,25 +323,25 @@ impl<'a> Parser<'a> {
     //     }))
     // }
 
-    fn parse_term(&mut self) -> ParseResult<Ast> {
+    fn parse_term(&mut self) -> ParseResult<Expr> {
         let tok = self.eat_any()?;
 
         let expr = match tok.kind {
-            TokenKind::If => Ast::If(self.parse_if()?),
+            TokenKind::If => Expr::If(self.parse_if()?),
             TokenKind::OpenParen => {
                 if self.is(TokenKind::CloseParen) {
-                    Ast::Lit(Lit { kind: LitKind::Unit, span: tok.span.merge(self.last_span()) })
+                    Expr::Lit(Lit { kind: LitKind::Unit, span: tok.span.merge(self.last_span()) })
                 } else {
                     let expr = self.parse_expr()?;
                     let end = self.eat(TokenKind::CloseParen)?.span;
                     expr.with_span(tok.span.merge(end))
                 }
             }
-            TokenKind::OpenCurly => Ast::Block(self.parse_block()?),
-            TokenKind::True => Ast::Lit(Lit { kind: LitKind::Bool(true), span: tok.span }),
-            TokenKind::False => Ast::Lit(Lit { kind: LitKind::Bool(false), span: tok.span }),
-            TokenKind::Ident(_) => Ast::Name(Name { name: tok.word() }),
-            TokenKind::Int(value) => Ast::Lit(Lit { kind: LitKind::Int(value), span: tok.span }),
+            TokenKind::OpenCurly => Expr::Block(self.parse_block()?),
+            TokenKind::True => Expr::Lit(Lit { kind: LitKind::Bool(true), span: tok.span }),
+            TokenKind::False => Expr::Lit(Lit { kind: LitKind::Bool(false), span: tok.span }),
+            TokenKind::Ident(_) => Expr::Name(Name { name: tok.word() }),
+            TokenKind::Int(value) => Expr::Lit(Lit { kind: LitKind::Int(value), span: tok.span }),
             _ => {
                 return Err(ParseError::UnexpectedToken {
                     expected: "an expression".to_string(),
@@ -359,13 +359,13 @@ impl<'a> Parser<'a> {
         let cond = self.parse_expr()?;
 
         self.eat(TokenKind::OpenCurly)?;
-        let then = Ast::Block(self.parse_block()?);
+        let then = Expr::Block(self.parse_block()?);
 
         let otherwise = if self.is(TokenKind::Else) {
             if self.is(TokenKind::OpenCurly) {
-                Some(Box::new(Ast::Block(self.parse_block()?)))
+                Some(Box::new(Expr::Block(self.parse_block()?)))
             } else if self.is(TokenKind::If) {
-                Some(Box::new(Ast::If(self.parse_if()?)))
+                Some(Box::new(Expr::If(self.parse_if()?)))
             } else {
                 let tok = self.require()?;
 
@@ -384,7 +384,7 @@ impl<'a> Parser<'a> {
         Ok(If { cond: Box::new(cond), then: Box::new(then), otherwise, span })
     }
 
-    fn parse_postfix(&mut self, expr: Ast) -> ParseResult<Ast> {
+    fn parse_postfix(&mut self, expr: Expr) -> ParseResult<Expr> {
         let start = self.last_span();
 
         match self.token() {
@@ -402,13 +402,13 @@ impl<'a> Parser<'a> {
         // }
     }
 
-    fn parse_call(&mut self, expr: Ast) -> ParseResult<Ast> {
+    fn parse_call(&mut self, expr: Expr) -> ParseResult<Expr> {
         let (args, args_span) =
             self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, Parser::parse_arg)?;
 
         let span = expr.span().merge(args_span);
 
-        Ok(Ast::Call(Call { callee: Box::new(expr), args, span }))
+        Ok(Expr::Call(Call { callee: Box::new(expr), args, span }))
     }
 
     fn parse_arg(&mut self) -> ParseResult<CallArg> {
