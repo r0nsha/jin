@@ -30,7 +30,10 @@ struct Cx<'db> {
 
 impl<'db> Cx<'db> {
     fn run(&mut self, module: ast::Module) -> Module {
-        Module { id: self.id, items: module.items.into_iter().map(|tl| tl.lower(self)).collect() }
+        Module {
+            id: self.id,
+            items: module.items.into_iter().map(|item| item.lower(self)).collect(),
+        }
     }
 }
 

@@ -83,6 +83,7 @@ impl<'db> ResolveCx<'db> {
         let module_id = env.module_id;
         let scope_level = env.scope_level(Vis::Public);
         let qname = env.scope_name(self.db).child(name.name());
+        println!("scope: {}, name: {qname}", env.scope_name(self.db));
 
         let id = SymbolInfo::alloc(
             self.db,
@@ -278,9 +279,8 @@ impl Env {
     }
 
     pub fn scope_name(&self, db: &Database) -> QualifiedName {
-        self.scopes
-            .current()
-            .map_or_else(|| db[self.module_id].name.clone(), |scope| scope.name.clone())
+        let module_name = db[self.module_id].name.clone();
+        self.scopes.current().map_or(module_name, |scope| module_name.child(scope.name.clone()))
     }
 
     pub fn is_global_scope(&self) -> bool {

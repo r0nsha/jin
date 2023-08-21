@@ -37,9 +37,30 @@ impl QualifiedName {
         self.full_name("_")
     }
 
-    pub fn child(mut self, name: Ustr) -> Self {
-        self.0.push(name);
+    pub fn child(mut self, child: impl Into<Child>) -> Self {
+        match child.into() {
+            Child::Qualified(q) => self.extend(q.0),
+            Child::Single(s) => self.0.push(s),
+        }
         self
+    }
+}
+
+#[derive(Debug, Clone)]
+enum Child {
+    Qualified(QualifiedName),
+    Single(Ustr),
+}
+
+impl From<QualifiedName> for Child {
+    fn from(value: QualifiedName) -> Self {
+        Self::Qualified(value)
+    }
+}
+
+impl From<Ustr> for Child {
+    fn from(value: Ustr) -> Self {
+        Self::Single(value)
     }
 }
 
@@ -62,6 +83,22 @@ impl From<Ustr> for QualifiedName {
 impl From<Word> for QualifiedName {
     fn from(value: Word) -> Self {
         Self::from(value.name())
+    }
+}
+
+impl IntoIterator for QualifiedName {
+    type Item = Ustr;
+
+    type IntoIter = std::vec::IntoIter<Ustr>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl Extend<Ustr> for QualifiedName {
+    fn extend<T: IntoIterator<Item = Ustr>>(&mut self, iter: T) {
+        self.0.extend(iter)
     }
 }
 

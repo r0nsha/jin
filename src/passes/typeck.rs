@@ -137,6 +137,7 @@ impl Infer<'_> for Function {
 
         for param in &mut self.params {
             param.ty = cx.alloc_ty_var(param.span);
+            cx.db[param.id.expect("to be resolved")].ty = param.ty;
         }
 
         let fun_ty = Type::Function(FunctionType {
@@ -156,7 +157,6 @@ impl Infer<'_> for Function {
 
         self.ty = cx.db.alloc_ty(fun_ty);
         cx.db[id].ty = self.ty;
-        println!("{}, {}", self.name, self.ty);
 
         env.call_stack.push(CallFrame { id, ret_ty });
 
