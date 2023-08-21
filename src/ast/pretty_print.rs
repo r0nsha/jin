@@ -1,7 +1,7 @@
 use std::io;
 
 use super::{Ast, Function, Item, LitKind, Module, Statement};
-use crate::ast::CallArg;
+use crate::ast::{Block, CallArg};
 
 pub(super) fn print_module(module: &Module) -> io::Result<()> {
     let mut cx = Cx { builder: ptree::TreeBuilder::new(module.name.standard_full_name()) };
@@ -44,15 +44,7 @@ impl PrettyPrint for Ast {
 
                 cx.builder.end_child();
             }
-            Self::Block(blk) => {
-                cx.builder.begin_child("block".to_string());
-
-                for stmt in &blk.stmts {
-                    stmt.pretty_print(cx);
-                }
-
-                cx.builder.end_child();
-            }
+            Self::Block(blk) => blk.pretty_print(cx),
             Self::Name(name) => {
                 cx.builder.add_empty_child(name.to_string());
             }
@@ -139,6 +131,18 @@ impl PrettyPrint for Function {
         }
 
         self.body.pretty_print(cx);
+
+        cx.builder.end_child();
+    }
+}
+
+impl PrettyPrint for Block {
+    fn pretty_print(&self, cx: &mut Cx) {
+        cx.builder.begin_child("block".to_string());
+
+        for stmt in &self.stmts {
+            stmt.pretty_print(cx);
+        }
 
         cx.builder.end_child();
     }

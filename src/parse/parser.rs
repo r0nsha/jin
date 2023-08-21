@@ -3,7 +3,7 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Ast, Binary, BinaryOp, Block, Call, CallArg, Item, Function, FunctionParam, If, Lit,
+        Ast, Binary, BinaryOp, Block, Call, CallArg, Function, FunctionParam, If, Item, Lit,
         LitKind, Module, Return, Statement,
     },
     common::QualifiedName,
@@ -76,12 +76,13 @@ impl<'a> Parser<'a> {
 
         let body = self.parse_expr()?;
 
-        Ok(Function {
-            name: name_ident.word(),
-            span: start.merge(body.span()),
-            body: Box::new(body),
-            params,
-        })
+        let body = if let Ast::Block(blk) = body {
+            blk
+        } else {
+            Block { span: body.span(), stmts: vec![Statement::Expr(body)] }
+        };
+
+        Ok(Function { name: name_ident.word(), span: start.merge(body.span), body, params })
     }
 
     fn parse_function_params(&mut self) -> ParseResult<(Vec<FunctionParam>, Span)> {

@@ -108,7 +108,7 @@ pub enum Item {
 #[derive(Debug, Clone)]
 pub struct Function {
     pub name: Word,
-    pub body: Box<Ast>,
+    pub body: Block,
     pub params: Vec<FunctionParam>,
     pub span: Span,
 }

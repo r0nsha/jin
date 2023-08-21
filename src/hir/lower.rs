@@ -1,6 +1,6 @@
 use super::{
     Block, Call, Def, DefKind, Expr, Function, FunctionParam, Hir, Lit, LitKind, Module, ModuleId,
-    Name, Return, Spanned, TyId,
+    Name, Return, TyId,
 };
 use crate::{
     ast::{self, Ast},
@@ -64,13 +64,6 @@ impl Lower<'_, Function> for ast::Function {
             .collect::<Vec<_>>();
 
         let body = self.body.lower(cx);
-
-        let body = if let Expr::Block(blk) = body {
-            blk
-        } else {
-            let span = body.span();
-            Block { exprs: vec![body], span, ty: TyId::null() }
-        };
 
         Function { id: None, name: self.name, body, params, span: self.span, ty: TyId::null() }
     }
