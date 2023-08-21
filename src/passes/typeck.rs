@@ -54,18 +54,14 @@ impl<'db> TypeCx<'db> {
 
 impl<'db> TypeCx<'db> {
     fn infer_all(&mut self, modules: &mut [Module]) {
-        self.assign_global_tyids();
-
-        for module in modules {
-            self.infer_module(module);
-        }
-    }
-
-    fn assign_global_tyids(&mut self) {
         // TODO: find a less unsightly code pattern for mutating all symbols...
         for i in 0..self.db.symbols.len() {
             let id = i.into();
             self.db.symbols[id].ty = self.alloc_ty_var(self.db.symbols[id].span);
+        }
+
+        for module in modules {
+            self.infer_module(module);
         }
     }
 
