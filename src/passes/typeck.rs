@@ -100,6 +100,11 @@ impl<'db> TypeCx<'db> {
         let ftv = self.fresh_int_var(span);
         self.db.alloc_ty(ftv)
     }
+
+    #[inline]
+    pub fn add_eq_constraint(&mut self, expected: TypeId, actual: TypeId) {
+        self.constraints.push(Constraint::Eq { expected, actual });
+    }
 }
 
 trait Infer<'db> {
@@ -158,12 +163,12 @@ impl Infer<'_> for Function {
         self.ty = cx.db.alloc_ty(fun_ty);
 
         let sym_ty = cx.lookup(id);
-        cx.constraints.push(Constraint::Eq { expected: sym_ty, actual: self.ty });
+        cx.add_eq_constraint(sym_ty, self.ty);
 
         env.call_stack.push(CallFrame { id, ret_ty });
 
         self.body.infer(cx, env);
-        cx.constraints.push(Constraint::Eq { expected: ret_ty, actual: self.body.ty });
+        cx.add_eq_constraint(ret_ty, self.body.ty);
 
         env.call_stack.pop();
     }
@@ -173,10 +178,8 @@ impl Infer<'_> for If {
     fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
         self.cond.infer(cx, env);
 
-        cx.constraints.push(Constraint::Eq {
-            expected: cx.db.alloc_ty(Type::Bool(self.cond.span())),
-            actual: self.cond.ty(),
-        });
+        let expected = cx.db.alloc_ty(Type::Bool(self.cond.span()));
+        cx.add_eq_constraint(expected, self.cond.ty());
 
         self.then.infer(cx, env);
 
@@ -187,7 +190,7 @@ impl Infer<'_> for If {
             cx.db.alloc_ty(Type::Unit(self.span))
         };
 
-        cx.constraints.push(Constraint::Eq { expected: self.then.ty(), actual: other_ty });
+        cx.add_eq_constraint(self.then.ty(), other_ty);
 
         self.ty = self.then.ty();
     }
@@ -211,7 +214,7 @@ impl Infer<'_> for Return {
         let ret_ty = call_frame.ret_ty;
 
         self.expr.infer(cx, env);
-        cx.constraints.push(Constraint::Eq { expected: ret_ty, actual: self.expr.ty() });
+        cx.add_eq_constraint(ret_ty, self.expr.ty());
     }
 }
 
@@ -244,7 +247,7 @@ impl Infer<'_> for Call {
             span: self.span,
         }));
 
-        cx.constraints.push(Constraint::Eq { expected: expected_ty, actual: self.callee.ty() });
+        cx.add_eq_constraint(expected_ty, self.callee.ty());
 
         self.ty = cx.db.alloc_ty(result_ty);
     }
@@ -255,19 +258,19 @@ impl Infer<'_> for Binary {
         self.lhs.infer(cx, env);
         self.rhs.infer(cx, env);
 
-        cx.constraints.push(Constraint::Eq { expected: self.lhs.ty(), actual: self.rhs.ty() });
+        cx.add_eq_constraint(self.lhs.ty(), self.rhs.ty());
 
         match self.op {
             BinaryOp::Cmp(_) => (),
             BinaryOp::And | BinaryOp::Or => {
                 let expected = cx.db.alloc_ty(Type::Bool(self.span));
-                cx.constraints.push(Constraint::Eq { expected, actual: self.lhs.ty() });
-                cx.constraints.push(Constraint::Eq { expected, actual: self.rhs.ty() });
+                cx.add_eq_constraint(expected, self.lhs.ty());
+                cx.add_eq_constraint(expected, self.rhs.ty());
             }
             _ => {
                 let expected = cx.alloc_int_var(self.span);
-                cx.constraints.push(Constraint::Eq { expected, actual: self.lhs.ty() });
-                cx.constraints.push(Constraint::Eq { expected, actual: self.rhs.ty() });
+                cx.add_eq_constraint(expected, self.lhs.ty());
+                cx.add_eq_constraint(expected, self.rhs.ty());
             }
         }
 
