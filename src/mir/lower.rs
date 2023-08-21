@@ -1,6 +1,6 @@
 use ustr::UstrMap;
 
-use super::{builder::FunctionBuilder, DefId, Function, Mir};
+use super::{builder::FunctionBuilder, SymbolId, Function, Mir};
 use crate::{
     ast::BinaryOp,
     db::Database,
@@ -43,7 +43,7 @@ struct LowerFunctionCx<'db> {
 }
 
 impl<'db> LowerFunctionCx<'db> {
-    fn new(db: &'db mut Database, mir: &'db mut Mir, fun_id: DefId) -> Self {
+    fn new(db: &'db mut Database, mir: &'db mut Mir, fun_id: SymbolId) -> Self {
         Self { db, mir, bx: FunctionBuilder::new(fun_id) }
     }
 

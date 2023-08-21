@@ -10,7 +10,7 @@ use ustr::Ustr;
 use crate::{
     ast::BinaryOp,
     common::Word,
-    db::{Database, DefId, ModuleId, TyId},
+    db::{Database, SymbolId, ModuleId, TyId},
     span::{Span, Spanned},
     ty::Typed,
 };
@@ -112,7 +112,7 @@ impl Spanned for Expr {
 
 #[derive(Debug, Clone)]
 pub struct Item {
-    pub id: Option<DefId>,
+    pub id: Option<SymbolId>,
     pub name: Word,
     pub kind: ItemKind,
     pub span: Span,
@@ -134,7 +134,7 @@ impl ItemKind {
 
 #[derive(Debug, Clone)]
 pub struct Function {
-    pub id: Option<DefId>,
+    pub id: Option<SymbolId>,
     pub name: Word,
     pub body: Block,
     pub params: Vec<FunctionParam>,
@@ -151,7 +151,7 @@ impl Function {
 
 #[derive(Debug, Clone)]
 pub struct FunctionParam {
-    pub id: Option<DefId>,
+    pub id: Option<SymbolId>,
     pub name: Word,
     pub span: Span,
     pub ty: TyId,
@@ -219,7 +219,7 @@ pub struct Binary {
 
 #[derive(Debug, Clone)]
 pub struct Name {
-    pub id: Option<DefId>,
+    pub id: Option<SymbolId>,
     pub name: Word,
     pub ty: TyId,
 }

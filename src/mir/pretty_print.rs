@@ -3,7 +3,7 @@ use pretty::RcDoc;
 use super::{Block, Function, Inst, Mir, TyId, ValueId};
 use crate::{
     ast::BinaryOp,
-    db::{Database, DefId},
+    db::{Database, SymbolId},
     mir::BlockId,
     ty::Ty,
 };
@@ -151,7 +151,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for BlockId {
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for DefId {
+impl<'db, 'd> ToDoc<'db, 'd> for SymbolId {
     fn to_doc(&self, db: &'db Database, _fun: &'db Function) -> RcDoc<'d, ()> {
         RcDoc::text(format!("@{}", db[*self].qualified_name.standard_full_name()))
     }

@@ -1,4 +1,4 @@
-use crate::db::{DefId, ModuleId, TyId};
+use crate::db::{SymbolId, ModuleId, TyId};
 
 pub struct TypeEnv {
     module_id: ModuleId,
@@ -40,6 +40,6 @@ impl CallStack {
 #[derive(Debug, Clone)]
 pub struct CallFrame {
     #[allow(unused)]
-    pub id: DefId,
+    pub id: SymbolId,
     pub ret_ty: TyId,
 }

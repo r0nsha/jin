@@ -10,13 +10,13 @@ use ustr::{ustr, Ustr};
 use crate::{
     ast::BinaryOp,
     common::{new_key_type, IndexVec},
-    db::{Database, DefId, TyId},
+    db::{Database, SymbolId, TyId},
     span::Span,
 };
 
 #[derive(Debug)]
 pub struct Mir {
-    pub functions: HashMap<DefId, Function>,
+    pub functions: HashMap<SymbolId, Function>,
 }
 
 impl Mir {
@@ -40,7 +40,7 @@ impl Mir {
 
 #[derive(Debug)]
 pub struct Function {
-    id: DefId,
+    id: SymbolId,
     params: Vec<FunctionParam>,
     values: IndexVec<ValueId, Value>,
     cfg: Cfg,
@@ -48,21 +48,21 @@ pub struct Function {
 
 #[derive(Debug, Clone, Copy)]
 pub struct FunctionParam {
-    id: DefId,
+    id: SymbolId,
 }
 
 impl FunctionParam {
-    pub fn id(self) -> DefId {
+    pub fn id(self) -> SymbolId {
         self.id
     }
 }
 
 impl Function {
-    fn new(id: DefId) -> Self {
+    fn new(id: SymbolId) -> Self {
         Self { id, params: vec![], values: IndexVec::new(), cfg: Cfg::new() }
     }
 
-    pub fn id(&self) -> DefId {
+    pub fn id(&self) -> SymbolId {
         self.id
     }
 
@@ -200,7 +200,7 @@ pub struct Call {
 #[derive(Debug, Clone)]
 pub struct Load {
     pub value: ValueId,
-    pub id: DefId,
+    pub id: SymbolId,
     #[allow(unused)]
     pub span: Span,
 }

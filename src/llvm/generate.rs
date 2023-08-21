@@ -12,7 +12,7 @@ use inkwell::{
 
 use crate::{
     ast::{BinaryOp, CmpOp},
-    db::{Database, DefId, TyId},
+    db::{Database, SymbolId, TyId},
     llvm::ty::LlvmType,
     mir::{
         Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, Load, Mir, Phi,
@@ -29,7 +29,7 @@ pub struct Generator<'db, 'cx> {
     pub builder: &'db Builder<'cx>,
     pub isize_ty: IntType<'cx>,
 
-    pub def_values: HashMap<DefId, DefValue<'cx>>,
+    pub def_values: HashMap<SymbolId, DefValue<'cx>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -49,7 +49,7 @@ impl<'cx> DefValue<'cx> {
 
 #[derive(Debug, Clone)]
 pub struct FunctionState<'cx> {
-    pub id: DefId,
+    pub id: SymbolId,
     pub function_value: FunctionValue<'cx>,
     pub prologue_block: BasicBlock<'cx>,
     pub current_block: BasicBlock<'cx>,
@@ -59,7 +59,7 @@ pub struct FunctionState<'cx> {
 
 impl<'cx> FunctionState<'cx> {
     pub fn new(
-        id: DefId,
+        id: SymbolId,
         function_value: FunctionValue<'cx>,
         prologue_block: BasicBlock<'cx>,
         blocks: HashMap<BlockId, BasicBlock<'cx>>,
@@ -209,7 +209,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     }
 
     #[track_caller]
-    fn def_value(&self, id: DefId) -> DefValue<'cx> {
+    fn def_value(&self, id: SymbolId) -> DefValue<'cx> {
         *self.def_values.get(&id).expect("id in def_value to be defined")
     }
 }

@@ -11,10 +11,10 @@ use self::{
 };
 use crate::{
     ast::BinaryOp,
-    db::{Database, DefId, TyId},
+    db::{Database, SymbolId, TyId},
     hir::{
-        Binary, Block, Call, CallArg, Item, ItemKind, Expr, Function, Hir, If, Lit, LitKind, Module,
-        Name, Return,
+        Binary, Block, Call, CallArg, Expr, Function, Hir, If, Item, ItemKind, Lit, LitKind,
+        Module, Name, Return,
     },
     passes::infer::typecx::TypeCx,
     span::Spanned,
@@ -61,7 +61,7 @@ impl<'db> InferCx<'db> {
         }
     }
 
-    fn get_definition_info_ty(&mut self, id: DefId) -> TyId {
+    fn symbol_ty(&mut self, id: SymbolId) -> TyId {
         let def = &self.db[id];
 
         if def.ty.is_null() {
@@ -101,7 +101,7 @@ impl Infer<'_> for Item {
             ItemKind::Function(fun) => fun.infer(cx, env),
         }
 
-        let def_ty = cx.get_definition_info_ty(self.id.expect("to be resolved"));
+        let def_ty = cx.symbol_ty(self.id.expect("to be resolved"));
 
         cx.constraints.push(Constraint::Eq { expected: self.kind.ty(), actual: def_ty });
     }
@@ -251,7 +251,7 @@ impl Infer<'_> for Binary {
 
 impl Infer<'_> for Name {
     fn infer(&mut self, cx: &mut InferCx<'_>, _env: &mut TypeEnv) {
-        self.ty = cx.get_definition_info_ty(self.id.expect("to be resolved"));
+        self.ty = cx.symbol_ty(self.id.expect("to be resolved"));
     }
 }
 

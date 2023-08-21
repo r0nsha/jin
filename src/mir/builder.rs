@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use super::{Block, BlockId, Call, Function, Inst, IntLit, Return, TyId, UnitLit, Value, ValueId};
 use crate::{
     ast::BinaryOp,
-    db::DefId,
+    db::SymbolId,
     mir::{Binary, BoolLit, Br, BrIf, FunctionParam, Load, Phi, PhiValue, Unreachable},
     span::Span,
 };
@@ -14,7 +14,7 @@ pub struct FunctionBuilder {
 }
 
 impl FunctionBuilder {
-    pub fn new(id: DefId) -> Self {
+    pub fn new(id: SymbolId) -> Self {
         Self { f: Function::new(id), current_block: BlockId::first() }
     }
 
@@ -67,7 +67,7 @@ impl FunctionBuilder {
     }
 
     #[inline]
-    pub fn create_param(&mut self, id: DefId) {
+    pub fn create_param(&mut self, id: SymbolId) {
         self.f.params.push(FunctionParam { id });
     }
 
@@ -143,7 +143,7 @@ impl FunctionBuilder {
         value
     }
 
-    pub fn build_load(&mut self, ty: TyId, id: DefId, span: Span) -> ValueId {
+    pub fn build_load(&mut self, ty: TyId, id: SymbolId, span: Span) -> ValueId {
         let value = self.create_value(ty);
         self.current_block_mut().add_inst(Inst::Load(Load { value, id, span }));
         value

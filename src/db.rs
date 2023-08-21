@@ -22,7 +22,7 @@ pub struct Database {
 
     pub sources: Sources,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
-    pub definitions: IndexVec<DefId, DefInfo>,
+    pub symbols: IndexVec<SymbolId, SymbolInfo>,
     pub types: IndexVec<TyId, Ty>,
 
     pub diagnostics: Diagnostics,
@@ -30,7 +30,7 @@ pub struct Database {
     root_dir: PathBuf,
     main_source: SourceId,
     main_module: Option<ModuleId>,
-    main_fun: Option<DefId>,
+    main_fun: Option<SymbolId>,
 }
 
 impl Database {
@@ -45,7 +45,7 @@ impl Database {
 
             sources,
             modules: IndexVec::new(),
-            definitions: IndexVec::new(),
+            symbols: IndexVec::new(),
             types: IndexVec::new(),
 
             diagnostics: Diagnostics::new(),
@@ -87,15 +87,15 @@ impl Database {
     }
 
     #[allow(unused)]
-    pub fn main_function_id(&self) -> Option<DefId> {
+    pub fn main_function_id(&self) -> Option<SymbolId> {
         self.main_fun
     }
 
-    pub fn main_function(&self) -> Option<&DefInfo> {
-        self.main_fun.and_then(|id| self.definitions.get(id))
+    pub fn main_function(&self) -> Option<&SymbolInfo> {
+        self.main_fun.and_then(|id| self.symbols.get(id))
     }
 
-    pub fn set_main_fun(&mut self, id: DefId) {
+    pub fn set_main_fun(&mut self, id: SymbolId) {
         self.main_fun = Some(id);
     }
 
@@ -131,7 +131,7 @@ macro_rules! new_db_key {
 }
 
 new_db_key!(ModuleId -> modules : ModuleInfo);
-new_db_key!(DefId -> definitions : DefInfo);
+new_db_key!(SymbolId -> symbols : SymbolInfo);
 new_db_key!(TyId -> types : Ty);
 
 #[derive(Debug)]
@@ -198,33 +198,33 @@ impl ModuleInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct DefInfo {
-    pub id: DefId,
+pub struct SymbolInfo {
+    pub id: SymbolId,
     pub module_id: ModuleId,
     pub qualified_name: QualifiedName,
     pub scope_level: ScopeLevel,
-    pub kind: Box<DefInfoKind>,
+    pub kind: Box<SymbolInfoKind>,
     pub ty: TyId,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub enum DefInfoKind {
+pub enum SymbolInfoKind {
     Function(FunctionInfo),
     Variable,
 }
 
-impl DefInfo {
+impl SymbolInfo {
     pub fn alloc(
         db: &mut Database,
         module_id: ModuleId,
         qualified_name: QualifiedName,
         scope_level: ScopeLevel,
-        kind: DefInfoKind,
+        kind: SymbolInfoKind,
         ty: TyId,
         span: Span,
-    ) -> DefId {
-        db.definitions.push_with_key(|id| Self {
+    ) -> SymbolId {
+        db.symbols.push_with_key(|id| Self {
             id,
             module_id,
             qualified_name,

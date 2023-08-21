@@ -4,7 +4,10 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     common::{QualifiedName, Word},
-    db::{Database, DefId, DefInfo, DefInfoKind, FunctionInfo, ModuleId, ScopeLevel, TyId, Vis},
+    db::{
+        Database, FunctionInfo, ModuleId, ScopeLevel, SymbolId, SymbolInfo, SymbolInfoKind, TyId,
+        Vis,
+    },
     diagnostics::{Diagnostic, Label},
     hir::{
         Binary, Block, Call, CallArg, Expr, Function, Hir, If, Item, ItemKind, Module, Name, Return,
@@ -37,7 +40,7 @@ impl<'db> ResolveCx<'db> {
 
     fn create_modules_and_resolve_globals(&mut self, modules: &mut [Module]) {
         for module in modules {
-            let mut scope_definitions = UstrMap::<DefId>::default();
+            let mut scope_symbols = UstrMap::<SymbolId>::default();
             let mut already_defined = UstrMap::<Span>::default();
 
             for item in &mut module.items {
@@ -57,10 +60,10 @@ impl<'db> ResolveCx<'db> {
                     ScopeLevel::Global(Vis::Public),
                 );
 
-                scope_definitions.insert(item.name.name(), id);
+                scope_symbols.insert(item.name.name(), id);
             }
 
-            self.global_scope.0.insert(module.id, scope_definitions);
+            self.global_scope.0.insert(module.id, scope_symbols);
         }
     }
 
@@ -80,12 +83,12 @@ impl<'db> ResolveCx<'db> {
         module_id: ModuleId,
         prefix: QualifiedName,
         scope_level: ScopeLevel,
-    ) -> DefId {
+    ) -> SymbolId {
         let kind = match &item.kind {
-            ItemKind::Function(_) => DefInfoKind::Function(FunctionInfo::Orphan),
+            ItemKind::Function(_) => SymbolInfoKind::Function(FunctionInfo::Orphan),
         };
 
-        let id = DefInfo::alloc(
+        let id = SymbolInfo::alloc(
             self.db,
             module_id,
             prefix.child(item.name.name()),
@@ -144,12 +147,12 @@ impl Resolve<'_> for Function {
         env.scopes.push_scope(self.name.name(), ScopeKind::Fun);
 
         for param in &mut self.params {
-            let id = DefInfo::alloc(
+            let id = SymbolInfo::alloc(
                 cx.db,
                 env.module_id,
                 param.name.into(),
                 env.scope_level(Vis::Private),
-                DefInfoKind::Variable,
+                SymbolInfoKind::Variable,
                 TyId::null(),
                 param.span,
             );
@@ -231,9 +234,9 @@ impl Resolve<'_> for Name {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         self.id = env
             .scopes
-            .get_value(self.name.name())
+            .lookup(self.name.name())
             .copied()
-            .or_else(|| cx.global_scope.find_def(env.module_id, self.name.name()));
+            .or_else(|| cx.global_scope.lookup(env.module_id, self.name.name()));
 
         if self.id.is_none() {
             cx.errors.push(ResolveError::NameNotFound(self.name));
@@ -242,15 +245,15 @@ impl Resolve<'_> for Name {
 }
 
 #[derive(Debug)]
-pub struct GlobalScope(HashMap<ModuleId, UstrMap<DefId>>);
+pub struct GlobalScope(HashMap<ModuleId, UstrMap<SymbolId>>);
 
 impl GlobalScope {
     pub fn new() -> Self {
         Self(HashMap::new())
     }
 
-    pub fn find_def(&self, module_id: ModuleId, name: Ustr) -> Option<DefId> {
-        self.0.get(&module_id).and_then(|defs| defs.get(&name)).copied()
+    pub fn lookup(&self, module_id: ModuleId, name: Ustr) -> Option<SymbolId> {
+        self.0.get(&module_id).and_then(|syms| syms.get(&name)).copied()
     }
 }
 
@@ -286,7 +289,7 @@ impl Scopes {
             .current()
             .map_or_else(|| QualifiedName::from(name), |curr| curr.name.clone().child(name));
 
-        self.0.push(Scope { kind, name, definitions: UstrMap::default() });
+        self.0.push(Scope { kind, name, symbols: UstrMap::default() });
     }
 
     fn pop_scope(&mut self) {
@@ -303,14 +306,14 @@ impl Scopes {
     }
 
     #[allow(unused)]
-    fn insert(&mut self, k: Ustr, v: DefId) {
-        self.0.last_mut().unwrap().definitions.insert(k, v);
+    fn insert(&mut self, k: Ustr, v: SymbolId) {
+        self.0.last_mut().unwrap().symbols.insert(k, v);
     }
 
     #[allow(unused)]
-    fn get(&self, k: Ustr) -> Option<(usize, &DefId)> {
+    fn lookup_depth(&self, k: Ustr) -> Option<(usize, &SymbolId)> {
         for (depth, scope) in self.0.iter().enumerate().rev() {
-            if let Some(value) = scope.definitions.get(&k) {
+            if let Some(value) = scope.symbols.get(&k) {
                 return Some((depth + 1, value));
             }
         }
@@ -318,23 +321,22 @@ impl Scopes {
     }
 
     #[allow(unused)]
-    fn get_mut(&mut self, k: Ustr) -> Option<(usize, &mut DefId)> {
+    fn lookup_depth_mut(&mut self, k: Ustr) -> Option<(usize, &mut SymbolId)> {
         for (depth, scope) in self.0.iter_mut().enumerate().rev() {
-            if let Some(value) = scope.definitions.get_mut(&k) {
+            if let Some(value) = scope.symbols.get_mut(&k) {
                 return Some((depth + 1, value));
             }
         }
         None
     }
 
-    #[allow(unused)]
-    fn get_value(&self, k: Ustr) -> Option<&DefId> {
-        self.get(k).map(|r| r.1)
+    fn lookup(&self, k: Ustr) -> Option<&SymbolId> {
+        self.lookup_depth(k).map(|r| r.1)
     }
 
     #[allow(unused)]
-    fn get_value_mut(&mut self, k: Ustr) -> Option<&mut DefId> {
-        self.get_mut(k).map(|r| r.1)
+    fn lookup_mut(&mut self, k: Ustr) -> Option<&mut SymbolId> {
+        self.lookup_depth_mut(k).map(|r| r.1)
     }
 
     #[allow(unused)]
@@ -351,17 +353,17 @@ impl Scopes {
 struct Scope {
     kind: ScopeKind,
     name: QualifiedName,
-    definitions: UstrMap<DefId>,
+    symbols: UstrMap<SymbolId>,
 }
 
 impl Scope {
-    fn insert(&mut self, name: Ustr, id: DefId) {
-        self.definitions.insert(name, id);
+    fn insert(&mut self, name: Ustr, id: SymbolId) {
+        self.symbols.insert(name, id);
     }
 
     #[allow(unused)]
-    fn get(&mut self, name: Ustr) -> Option<DefId> {
-        self.definitions.get(&name).copied()
+    fn get(&mut self, name: Ustr) -> Option<SymbolId> {
+        self.symbols.get(&name).copied()
     }
 }
 
@@ -390,22 +392,21 @@ impl From<ResolveError> for Diagnostic {
                     )
                     .with_label(
                         Label::secondary(prev_span)
-                            .with_message(format!("previous definition of `{name}` is here")),
+                            .with_message(format!("previous item `{name}` defined here")),
                     )
-                    .with_help("you can only define names once in a module")
+                    .with_help("you can only define items once in a module")
             }
             ResolveError::MultipleNamedArgs { prev, dup } => {
                 Self::error("resolve::multiple_named_args")
-                    .with_message(format!("the arg `{prev}` is passed multiple times"))
+                    .with_message(format!("argument `{prev}` is passed multiple times"))
                     .with_label(
                         Label::primary(dup.span())
                             .with_message(format!("`{dup}` is redefined here")),
                     )
                     .with_label(
                         Label::secondary(prev.span())
-                            .with_message(format!("previous definition of `{prev}` is here")),
+                            .with_message(format!("argument `{prev}` is already passed here")),
                     )
-                    .with_help("you can only define names once in a module")
             }
             ResolveError::NameNotFound(name) => Self::error("resolve::name_not_found")
                 .with_message(format!("cannot find value `{name}` in this scope"))
