@@ -18,7 +18,7 @@ use crate::{
 pub fn resolve(db: &mut Database, hir: &mut Hir) {
     let mut cx = ResolveCx::new(db);
 
-    cx.create_modules_and_resolve_global_items(&mut hir.modules);
+    cx.resolve_global_items(&mut hir.modules);
     cx.resolve_all(&mut hir.modules);
 
     if !cx.errors.is_empty() {
@@ -38,32 +38,18 @@ impl<'db> ResolveCx<'db> {
         Self { db, errors: vec![], global_scope: GlobalScope::new() }
     }
 
-    fn create_modules_and_resolve_global_items(&mut self, modules: &mut [Module]) {
+    fn resolve_global_items(&mut self, modules: &mut [Module]) {
         for module in modules {
-            let mut scope_symbols = UstrMap::<SymbolId>::default();
-            let mut already_defined = UstrMap::<Span>::default();
-
             let mut env = Env::new(module.id);
 
+            env.scopes.push(ustr(""), ScopeKind::Block);
+
             for item in &mut module.items {
-                let name = match &item.kind {
-                    ItemKind::Function(fun) => fun.name,
-                };
-
-                if let Some(prev_span) = already_defined.insert(name.name(), name.span()) {
-                    self.errors.push(ResolveError::MultipleItems {
-                        name: name.name(),
-                        prev_span,
-                        dup_span: name.span(),
-                    });
-                }
-
-                let id = self.declare_item(&mut env, item);
-
-                scope_symbols.insert(name.name(), id);
+                self.declare_item(&mut env, item);
             }
 
-            self.global_scope.insert_module(module.id, scope_symbols);
+            let symbols = env.scopes.pop().expect("to have a single scope").symbols;
+            self.global_scope.insert_module(module.id, symbols);
         }
     }
 
@@ -110,7 +96,16 @@ impl<'db> ResolveCx<'db> {
 
         match env.scopes.current_mut() {
             Some(scope) => scope.insert(name.name(), id),
-            None => self.global_scope.insert(env.module_id, name.name(), id),
+            None => {
+                if let Some(prev_id) = self.global_scope.insert(env.module_id, name.name(), id) {
+                    let sym = &self.db[prev_id];
+                    self.errors.push(ResolveError::MultipleItems {
+                        name: sym.qualified_name.name(),
+                        prev_span: sym.span,
+                        dup_span: name.span(),
+                    });
+                }
+            }
         }
 
         id
@@ -123,7 +118,9 @@ trait Resolve<'db> {
 
 impl Resolve<'_> for Item {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        cx.declare_item(env, self);
+        if !env.is_global_scope() {
+            cx.declare_item(env, self);
+        }
 
         match &mut self.kind {
             ItemKind::Function(fun) => fun.resolve(cx, env),
@@ -148,7 +145,7 @@ impl Resolve<'_> for Expr {
 
 impl Resolve<'_> for Function {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        env.scopes.push_scope(self.name.name(), ScopeKind::Fun);
+        env.scopes.push(self.name.name(), ScopeKind::Fun);
 
         for param in &mut self.params {
             let id = SymbolInfo::alloc(
@@ -166,7 +163,7 @@ impl Resolve<'_> for Function {
         }
 
         self.body.resolve(cx, env);
-        env.scopes.pop_scope();
+        env.scopes.pop();
     }
 }
 
@@ -183,13 +180,13 @@ impl Resolve<'_> for If {
 
 impl Resolve<'_> for Block {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        env.scopes.push_scope(ustr("_"), ScopeKind::Block);
+        env.scopes.push(ustr("_"), ScopeKind::Block);
 
         for expr in &mut self.exprs {
             expr.resolve(cx, env);
         }
 
-        env.scopes.pop_scope();
+        env.scopes.pop();
     }
 }
 
@@ -260,12 +257,16 @@ impl GlobalScope {
         self.0.get(&module_id).and_then(|syms| syms.get(&name)).copied()
     }
 
-    pub fn insert_module(&mut self, module_id: ModuleId, symbols: UstrMap<SymbolId>) {
-        self.0.insert(module_id, symbols);
+    pub fn insert_module(
+        &mut self,
+        module_id: ModuleId,
+        symbols: UstrMap<SymbolId>,
+    ) -> Option<UstrMap<SymbolId>> {
+        self.0.insert(module_id, symbols)
     }
 
-    pub fn insert(&mut self, module_id: ModuleId, name: Ustr, id: SymbolId) {
-        self.0.get_mut(&module_id).and_then(|syms| syms.insert(name, id));
+    pub fn insert(&mut self, module_id: ModuleId, name: Ustr, id: SymbolId) -> Option<SymbolId> {
+        self.0.get_mut(&module_id).and_then(|syms| syms.insert(name, id))
     }
 }
 
@@ -292,6 +293,10 @@ impl Env {
             .current()
             .map_or_else(|| db[self.module_id].name.clone(), |scope| scope.name.clone())
     }
+
+    pub fn is_global_scope(&self) -> bool {
+        self.scopes.depth() == 0
+    }
 }
 
 #[derive(Debug)]
@@ -302,7 +307,7 @@ impl Scopes {
         Self(vec![])
     }
 
-    fn push_scope(&mut self, name: Ustr, kind: ScopeKind) {
+    fn push(&mut self, name: Ustr, kind: ScopeKind) {
         let name = self
             .current()
             .map_or_else(|| QualifiedName::from(name), |curr| curr.name.clone().child(name));
@@ -310,8 +315,8 @@ impl Scopes {
         self.0.push(Scope { kind, name, symbols: UstrMap::default() });
     }
 
-    fn pop_scope(&mut self) {
-        self.0.pop();
+    fn pop(&mut self) -> Option<Scope> {
+        self.0.pop()
     }
 
     fn current(&self) -> Option<&Scope> {
@@ -369,9 +374,9 @@ impl Scopes {
 
 #[derive(Debug)]
 struct Scope {
-    kind: ScopeKind,
-    name: QualifiedName,
-    symbols: UstrMap<SymbolId>,
+    pub kind: ScopeKind,
+    pub name: QualifiedName,
+    pub symbols: UstrMap<SymbolId>,
 }
 
 impl Scope {
