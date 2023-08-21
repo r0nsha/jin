@@ -7,7 +7,7 @@ use crate::{
     db::{Database, DefId, DefInfo, DefInfoKind, FunctionInfo, ModuleId, ScopeLevel, TyId, Vis},
     diagnostics::{Diagnostic, Label},
     hir::{
-        Binary, Block, Call, CallArg, Def, DefKind, Expr, Function, Hir, If, Module, Name, Return,
+        Binary, Block, Call, CallArg, Expr, Function, Hir, If, Item, ItemKind, Module, Name, Return,
     },
     span::Span,
 };
@@ -40,23 +40,24 @@ impl<'db> ResolveCx<'db> {
             let mut scope_definitions = UstrMap::<DefId>::default();
             let mut already_defined = UstrMap::<Span>::default();
 
-            for def in &mut module.definitions {
-                if let Some(prev_span) = already_defined.insert(def.name.name(), def.name.span()) {
-                    self.errors.push(ResolveError::MultipleDefs {
-                        name: def.name.name(),
+            for item in &mut module.items {
+                if let Some(prev_span) = already_defined.insert(item.name.name(), item.name.span())
+                {
+                    self.errors.push(ResolveError::MultipleItems {
+                        name: item.name.name(),
                         prev_span,
-                        dup_span: def.span,
+                        dup_span: item.span,
                     });
                 }
 
-                let id = self.declare_def(
-                    def,
+                let id = self.declare_item(
+                    item,
                     module.id,
                     self.db[module.id].name.clone(),
                     ScopeLevel::Global(Vis::Public),
                 );
 
-                scope_definitions.insert(def.name.name(), id);
+                scope_definitions.insert(item.name.name(), id);
             }
 
             self.global_scope.0.insert(module.id, scope_definitions);
@@ -67,37 +68,37 @@ impl<'db> ResolveCx<'db> {
         for module in modules {
             let mut env = Env::new(module.id);
 
-            for def in &mut module.definitions {
-                def.resolve(self, &mut env);
+            for item in &mut module.items {
+                item.resolve(self, &mut env);
             }
         }
     }
 
-    fn declare_def(
+    fn declare_item(
         &mut self,
-        def: &mut Def,
+        item: &mut Item,
         module_id: ModuleId,
         prefix: QualifiedName,
         scope_level: ScopeLevel,
     ) -> DefId {
-        let kind = match &def.kind {
-            DefKind::Function(_) => DefInfoKind::Function(FunctionInfo::Orphan),
+        let kind = match &item.kind {
+            ItemKind::Function(_) => DefInfoKind::Function(FunctionInfo::Orphan),
         };
 
         let id = DefInfo::alloc(
             self.db,
             module_id,
-            prefix.child(def.name.name()),
+            prefix.child(item.name.name()),
             scope_level,
             kind,
             TyId::null(),
-            def.span,
+            item.span,
         );
 
-        def.id = Some(id);
+        item.id = Some(id);
 
-        match &mut def.kind {
-            DefKind::Function(fun) => fun.id = def.id,
+        match &mut item.kind {
+            ItemKind::Function(fun) => fun.id = item.id,
         }
 
         id
@@ -108,17 +109,17 @@ trait Resolve<'db> {
     fn resolve(&mut self, cx: &mut ResolveCx<'db>, env: &mut Env);
 }
 
-impl Resolve<'_> for Def {
+impl Resolve<'_> for Item {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         let scope_level = env.scope_level(Vis::Private);
 
         if let Some(scope) = env.scopes.current_mut() {
-            let id = cx.declare_def(self, env.module_id, scope.name.clone(), scope_level);
+            let id = cx.declare_item(self, env.module_id, scope.name.clone(), scope_level);
             scope.insert(self.name.name(), id);
         }
 
         match &mut self.kind {
-            DefKind::Function(fun) => fun.resolve(cx, env),
+            ItemKind::Function(fun) => fun.resolve(cx, env),
         }
     }
 }
@@ -126,7 +127,7 @@ impl Resolve<'_> for Def {
 impl Resolve<'_> for Expr {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         match self {
-            Self::Def(inner) => inner.resolve(cx, env),
+            Self::Item(inner) => inner.resolve(cx, env),
             Self::If(inner) => inner.resolve(cx, env),
             Self::Block(inner) => inner.resolve(cx, env),
             Self::Return(inner) => inner.resolve(cx, env),
@@ -232,7 +233,7 @@ impl Resolve<'_> for Name {
             .scopes
             .get_value(self.name.name())
             .copied()
-            .or_else(|| cx.global_scope.find_definition(env.module_id, self.name.name()));
+            .or_else(|| cx.global_scope.find_def(env.module_id, self.name.name()));
 
         if self.id.is_none() {
             cx.errors.push(ResolveError::NameNotFound(self.name));
@@ -248,7 +249,7 @@ impl GlobalScope {
         Self(HashMap::new())
     }
 
-    pub fn find_definition(&self, module_id: ModuleId, name: Ustr) -> Option<DefId> {
+    pub fn find_def(&self, module_id: ModuleId, name: Ustr) -> Option<DefId> {
         self.0.get(&module_id).and_then(|defs| defs.get(&name)).copied()
     }
 }
@@ -371,7 +372,7 @@ enum ScopeKind {
 }
 
 pub(super) enum ResolveError {
-    MultipleDefs { name: Ustr, prev_span: Span, dup_span: Span },
+    MultipleItems { name: Ustr, prev_span: Span, dup_span: Span },
     NameNotFound(Word),
     MultipleNamedArgs { prev: Word, dup: Word },
     InvalidReturn { span: Span },
@@ -380,9 +381,9 @@ pub(super) enum ResolveError {
 impl From<ResolveError> for Diagnostic {
     fn from(err: ResolveError) -> Self {
         match err {
-            ResolveError::MultipleDefs { name, prev_span, dup_span } => {
-                Self::error("resolve::multiple_defs")
-                    .with_message(format!("the name `{name}` is defined multiple times"))
+            ResolveError::MultipleItems { name, prev_span, dup_span } => {
+                Self::error("resolve::multiple_items")
+                    .with_message(format!("the item `{name}` is defined multiple times"))
                     .with_label(
                         Label::primary(dup_span)
                             .with_message(format!("`{name}` is redefined here")),

@@ -1,6 +1,6 @@
 use std::io;
 
-use super::{Block, Call, Def, DefKind, Expr, Function, Lit, LitKind, Module, Name, Return};
+use super::{Block, Call, Item, ItemKind, Expr, Function, Lit, LitKind, Module, Name, Return};
 use crate::{
     db::Database,
     hir::{Binary, CallArg, If},
@@ -10,7 +10,7 @@ pub(super) fn print_module(db: &Database, module: &Module) -> io::Result<()> {
     let mut cx =
         Cx { db, builder: ptree::TreeBuilder::new(db[module.id].name.standard_full_name()) };
 
-    for def in &module.definitions {
+    for def in &module.items {
         def.pretty_print(&mut cx);
     }
 
@@ -30,7 +30,7 @@ trait PrettyPrint {
 impl PrettyPrint for Expr {
     fn pretty_print(&self, cx: &mut Cx) {
         match self {
-            Self::Def(inner) => inner.pretty_print(cx),
+            Self::Item(inner) => inner.pretty_print(cx),
             Self::If(inner) => inner.pretty_print(cx),
             Self::Block(inner) => inner.pretty_print(cx),
             Self::Return(inner) => inner.pretty_print(cx),
@@ -42,10 +42,10 @@ impl PrettyPrint for Expr {
     }
 }
 
-impl PrettyPrint for Def {
+impl PrettyPrint for Item {
     fn pretty_print(&self, cx: &mut Cx) {
         match &self.kind {
-            DefKind::Function(fun) => fun.pretty_print(cx),
+            ItemKind::Function(fun) => fun.pretty_print(cx),
         }
     }
 }

@@ -1,5 +1,5 @@
 use super::{
-    Block, Call, Def, DefKind, Expr, Function, FunctionParam, Hir, Lit, LitKind, Module, ModuleId,
+    Block, Call, Item, ItemKind, Expr, Function, FunctionParam, Hir, Lit, LitKind, Module, ModuleId,
     Name, Return, TyId,
 };
 use crate::{
@@ -32,7 +32,7 @@ impl<'db> Cx<'db> {
     fn run(&mut self, module: ast::Module) -> Module {
         Module {
             id: self.id,
-            definitions: module.items.into_iter().map(|tl| tl.lower(self)).collect(),
+            items: module.items.into_iter().map(|tl| tl.lower(self)).collect(),
         }
     }
 }
@@ -41,14 +41,14 @@ trait Lower<'db, T> {
     fn lower(self, cx: &mut Cx<'db>) -> T;
 }
 
-impl Lower<'_, Def> for ast::Item {
-    fn lower(self, cx: &mut Cx<'_>) -> Def {
+impl Lower<'_, Item> for ast::Item {
+    fn lower(self, cx: &mut Cx<'_>) -> Item {
         match self {
-            Self::Function(fun) => Def {
+            Self::Function(fun) => Item {
                 id: None,
                 name: fun.name,
                 span: fun.span,
-                kind: DefKind::Function(fun.lower(cx)),
+                kind: ItemKind::Function(fun.lower(cx)),
                 ty: TyId::null(),
             },
         }
@@ -119,7 +119,7 @@ impl Lower<'_, CallArg> for ast::CallArg {
 impl Lower<'_, Expr> for ast::Statement {
     fn lower(self, cx: &mut Cx<'_>) -> Expr {
         match self {
-            Self::Item(item) => Expr::Def(item.lower(cx)),
+            Self::Item(item) => Expr::Item(item.lower(cx)),
             Self::Return(ret) => Expr::Return(Return {
                 expr: ret.expr.map_or_else(
                     || {

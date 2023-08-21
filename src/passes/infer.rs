@@ -13,7 +13,7 @@ use crate::{
     ast::BinaryOp,
     db::{Database, DefId, TyId},
     hir::{
-        Binary, Block, Call, CallArg, Def, DefKind, Expr, Function, Hir, If, Lit, LitKind, Module,
+        Binary, Block, Call, CallArg, Item, ItemKind, Expr, Function, Hir, If, Lit, LitKind, Module,
         Name, Return,
     },
     passes::infer::typecx::TypeCx,
@@ -56,7 +56,7 @@ impl<'db> InferCx<'db> {
     fn infer_module(&mut self, module: &mut Module) {
         let mut env = TypeEnv::new(module.id);
 
-        for def in &mut module.definitions {
+        for def in &mut module.items {
             def.infer(self, &mut env);
         }
     }
@@ -81,7 +81,7 @@ trait Infer<'db> {
 impl Infer<'_> for Expr {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         match self {
-            Self::Def(inner) => inner.infer(cx, env),
+            Self::Item(inner) => inner.infer(cx, env),
             Self::If(inner) => inner.infer(cx, env),
             Self::Block(inner) => inner.infer(cx, env),
             Self::Return(inner) => inner.infer(cx, env),
@@ -93,12 +93,12 @@ impl Infer<'_> for Expr {
     }
 }
 
-impl Infer<'_> for Def {
+impl Infer<'_> for Item {
     fn infer(&mut self, cx: &mut InferCx<'_>, env: &mut TypeEnv) {
         self.ty = cx.db.alloc_ty(Ty::Unit(self.span));
 
         match &mut self.kind {
-            DefKind::Function(fun) => fun.infer(cx, env),
+            ItemKind::Function(fun) => fun.infer(cx, env),
         }
 
         let def_ty = cx.get_definition_info_ty(self.id.expect("to be resolved"));

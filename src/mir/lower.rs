@@ -21,14 +21,14 @@ pub fn lower(db: &mut Database, hir: &Hir) -> Mir {
 }
 
 fn lower_module(db: &mut Database, mir: &mut Mir, module: &hir::Module) {
-    for def in &module.definitions {
-        lower_def(db, mir, def);
+    for item in &module.items {
+        lower_item(db, mir, item);
     }
 }
 
-fn lower_def(db: &mut Database, mir: &mut Mir, def: &hir::Def) {
-    match &def.kind {
-        hir::DefKind::Function(fun) => {
+fn lower_item(db: &mut Database, mir: &mut Mir, item: &hir::Item) {
+    match &item.kind {
+        hir::ItemKind::Function(fun) => {
             let id = fun.id.expect("to be resolved");
             let fun = LowerFunctionCx::new(db, mir, id).lower_function(fun).unwrap();
             mir.add_function(fun);
@@ -72,7 +72,7 @@ impl<'db> LowerFunctionCx<'db> {
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
         match expr {
-            hir::Expr::Def(inner) => self.lower_local_def(inner),
+            hir::Expr::Item(inner) => self.lower_local_item(inner),
             hir::Expr::If(inner) => self.lower_if(inner),
             hir::Expr::Block(inner) => self.lower_block(inner),
             hir::Expr::Return(inner) => self.lower_return(inner),
@@ -83,9 +83,9 @@ impl<'db> LowerFunctionCx<'db> {
         }
     }
 
-    fn lower_local_def(&mut self, def: &hir::Def) -> ValueId {
-        lower_def(self.db, self.mir, def);
-        self.bx.build_unit_lit(def.ty, def.span)
+    fn lower_local_item(&mut self, item: &hir::Item) -> ValueId {
+        lower_item(self.db, self.mir, item);
+        self.bx.build_unit_lit(item.ty, item.span)
     }
 
     fn lower_if(&mut self, if_: &hir::If) -> ValueId {

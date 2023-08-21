@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use super::InferCx;
 use crate::{
     db::TyId,
-    hir::{Binary, Block, Call, CallArg, Def, DefKind, Expr, Function, If, Module, Return},
+    hir::{Binary, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Module, Return},
     ty::{FunctionParamTy, FunctionTy, InferTy, Ty, TyVar, Typed},
 };
 
@@ -12,16 +12,14 @@ impl<'db> InferCx<'db> {
     pub fn substitution(&mut self, modules: &mut [Module]) -> HashSet<TyVar> {
         let mut unbound_vars = HashSet::new();
 
-        // Substitute all definition types
         for i in 0..self.db.definitions.len() {
             let ty = self.db.definitions[i.into()].ty;
             self.substitute_tyid(ty, &mut unbound_vars);
         }
 
-        // Substitute all modules recursively
         for module in modules {
-            for def in &mut module.definitions {
-                def.substitute(self, &mut unbound_vars);
+            for item in &mut module.items {
+                item.substitute(self, &mut unbound_vars);
             }
         }
 
@@ -79,7 +77,7 @@ trait Substitute<'db> {
 impl Substitute<'_> for Expr {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         match self {
-            Self::Def(inner) => inner.substitute(cx, unbound_vars),
+            Self::Item(inner) => inner.substitute(cx, unbound_vars),
             Self::If(inner) => inner.substitute(cx, unbound_vars),
             Self::Block(inner) => inner.substitute(cx, unbound_vars),
             Self::Return(inner) => inner.substitute(cx, unbound_vars),
@@ -92,10 +90,10 @@ impl Substitute<'_> for Expr {
     }
 }
 
-impl Substitute<'_> for Def {
+impl Substitute<'_> for Item {
     fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         match &mut self.kind {
-            DefKind::Function(fun) => fun.substitute(cx, unbound_vars),
+            ItemKind::Function(fun) => fun.substitute(cx, unbound_vars),
         }
 
         cx.substitute_tyid(self.ty, unbound_vars);
