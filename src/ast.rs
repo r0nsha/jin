@@ -68,6 +68,8 @@ impl Module {
 
 #[derive(Debug, Clone)]
 pub enum Ast {
+    Item(Item),
+    Return(Return),
     If(If),
     Block(Block),
     Call(Call),
@@ -79,6 +81,8 @@ pub enum Ast {
 impl Spanned for Ast {
     fn span(&self) -> Span {
         match self {
+            Self::Item(x) => x.span(),
+            Self::Return(x) => x.span,
             Self::If(x) => x.span,
             Self::Block(x) => x.span,
             Self::Call(x) => x.span,
@@ -90,6 +94,8 @@ impl Spanned for Ast {
 
     fn span_mut(&mut self) -> &mut Span {
         match self {
+            Self::Item(x) => x.span_mut(),
+            Self::Return(x) => &mut x.span,
             Self::If(x) => &mut x.span,
             Self::Block(x) => &mut x.span,
             Self::Call(x) => &mut x.span,
@@ -103,6 +109,20 @@ impl Spanned for Ast {
 #[derive(Debug, Clone)]
 pub enum Item {
     Function(Function),
+}
+
+impl Spanned for Item {
+    fn span(&self) -> Span {
+        match self {
+            Self::Function(x) => x.span,
+        }
+    }
+
+    fn span_mut(&mut self) -> &mut Span {
+        match self {
+            Self::Function(x) => &mut x.span,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -129,15 +149,8 @@ pub struct If {
 
 #[derive(Debug, Clone)]
 pub struct Block {
-    pub stmts: Vec<Statement>,
+    pub exprs: Vec<Ast>,
     pub span: Span,
-}
-
-#[derive(Debug, Clone)]
-pub enum Statement {
-    Item(Item),
-    Return(Return),
-    Expr(Ast),
 }
 
 #[derive(Debug, Clone)]

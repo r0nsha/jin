@@ -1,6 +1,6 @@
 use super::{
-    Block, Call, Item, ItemKind, Expr, Function, FunctionParam, Hir, Lit, LitKind, Module, ModuleId,
-    Name, Return, TypeId,
+    Block, Call, Expr, Function, FunctionParam, Hir, Item, ItemKind, Lit, LitKind, Module,
+    ModuleId, Name, Return, TypeId,
 };
 use crate::{
     ast::{self, Ast},
@@ -30,10 +30,7 @@ struct Cx<'db> {
 
 impl<'db> Cx<'db> {
     fn run(&mut self, module: ast::Module) -> Module {
-        Module {
-            id: self.id,
-            items: module.items.into_iter().map(|tl| tl.lower(self)).collect(),
-        }
+        Module { id: self.id, items: module.items.into_iter().map(|tl| tl.lower(self)).collect() }
     }
 }
 
@@ -72,6 +69,21 @@ impl Lower<'_, Function> for ast::Function {
 impl Lower<'_, Expr> for Ast {
     fn lower(self, cx: &mut Cx<'_>) -> Expr {
         match self {
+            Self::Item(item) => Expr::Item(item.lower(cx)),
+            Self::Return(ret) => Expr::Return(Return {
+                expr: ret.expr.map_or_else(
+                    || {
+                        Box::new(Expr::Lit(Lit {
+                            kind: LitKind::Unit,
+                            span: ret.span,
+                            ty: TypeId::null(),
+                        }))
+                    },
+                    |v| Box::new(v.lower(cx)),
+                ),
+                span: ret.span,
+                ty: TypeId::null(),
+            }),
             Self::If(if_) => Expr::If(If {
                 cond: Box::new(if_.cond.lower(cx)),
                 then: Box::new(if_.then.lower(cx)),
@@ -115,34 +127,10 @@ impl Lower<'_, CallArg> for ast::CallArg {
         }
     }
 }
-
-impl Lower<'_, Expr> for ast::Statement {
-    fn lower(self, cx: &mut Cx<'_>) -> Expr {
-        match self {
-            Self::Item(item) => Expr::Item(item.lower(cx)),
-            Self::Return(ret) => Expr::Return(Return {
-                expr: ret.expr.map_or_else(
-                    || {
-                        Box::new(Expr::Lit(Lit {
-                            kind: LitKind::Unit,
-                            span: ret.span,
-                            ty: TypeId::null(),
-                        }))
-                    },
-                    |v| Box::new(v.lower(cx)),
-                ),
-                span: ret.span,
-                ty: TypeId::null(),
-            }),
-            Self::Expr(expr) => expr.lower(cx),
-        }
-    }
-}
-
 impl Lower<'_, Block> for ast::Block {
     fn lower(self, cx: &mut Cx<'_>) -> Block {
         Block {
-            exprs: self.stmts.into_iter().map(|stmt| stmt.lower(cx)).collect(),
+            exprs: self.exprs.into_iter().map(|e| e.lower(cx)).collect(),
             span: self.span,
             ty: TypeId::null(),
         }

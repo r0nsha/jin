@@ -4,7 +4,7 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         Ast, Binary, BinaryOp, Block, Call, CallArg, Function, FunctionParam, If, Item, Lit,
-        LitKind, Module, Return, Statement,
+        LitKind, Module, Return,
     },
     common::QualifiedName,
     db::Database,
@@ -74,12 +74,11 @@ impl<'a> Parser<'a> {
 
         self.eat(TokenKind::Eq)?;
 
-        let body = self.parse_expr()?;
+        let expr = self.parse_expr()?;
 
-        let body = if let Ast::Block(blk) = body {
-            blk
-        } else {
-            Block { span: body.span(), stmts: vec![Statement::Expr(body)] }
+        let body = match expr {
+            Ast::Block(blk) => blk,
+            _ => Block { span: expr.span(), exprs: vec![expr] },
         };
 
         Ok(Function { name: name_ident.word(), span: start.merge(body.span), body, params })
@@ -99,20 +98,20 @@ impl<'a> Parser<'a> {
         loop {
             if self.is(TokenKind::CloseCurly) {
                 let span = start.merge(self.last_span());
-                return Ok(Block { stmts, span });
+                return Ok(Block { exprs: stmts, span });
             }
 
             stmts.push(self.parse_stmt()?);
         }
     }
 
-    fn parse_stmt(&mut self) -> ParseResult<Statement> {
+    fn parse_stmt(&mut self) -> ParseResult<Ast> {
         if self.is(TokenKind::Fn) {
-            Ok(Statement::Item(Item::Function(self.parse_function()?)))
+            Ok(Ast::Item(Item::Function(self.parse_function()?)))
         } else if self.is(TokenKind::Return) {
-            Ok(Statement::Return(self.parse_return()?))
+            Ok(Ast::Return(self.parse_return()?))
         } else {
-            Ok(Statement::Expr(self.parse_expr()?))
+            Ok(self.parse_expr()?)
         }
     }
 

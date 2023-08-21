@@ -1,6 +1,6 @@
 use std::io;
 
-use super::{Ast, Function, Item, LitKind, Module, Statement};
+use super::{Ast, Function, Item, LitKind, Module};
 use crate::ast::{Block, CallArg};
 
 pub(super) fn print_module(module: &Module) -> io::Result<()> {
@@ -25,6 +25,16 @@ trait PrettyPrint {
 impl PrettyPrint for Ast {
     fn pretty_print(&self, cx: &mut Cx) {
         match self {
+            Self::Item(item) => item.pretty_print(cx),
+            Self::Return(ret) => {
+                cx.builder.begin_child("return".to_string());
+
+                if let Some(value) = ret.expr.as_ref() {
+                    value.pretty_print(cx);
+                }
+
+                cx.builder.end_child();
+            }
             Self::If(if_) => {
                 cx.builder.begin_child("if".to_string());
 
@@ -90,24 +100,6 @@ impl PrettyPrint for Ast {
     }
 }
 
-impl PrettyPrint for Statement {
-    fn pretty_print(&self, cx: &mut Cx) {
-        match self {
-            Self::Item(item) => item.pretty_print(cx),
-            Self::Return(ret) => {
-                cx.builder.begin_child("return".to_string());
-
-                if let Some(value) = ret.expr.as_ref() {
-                    value.pretty_print(cx);
-                }
-
-                cx.builder.end_child();
-            }
-            Self::Expr(expr) => expr.pretty_print(cx),
-        }
-    }
-}
-
 impl PrettyPrint for Item {
     fn pretty_print(&self, cx: &mut Cx) {
         match self {
@@ -140,8 +132,8 @@ impl PrettyPrint for Block {
     fn pretty_print(&self, cx: &mut Cx) {
         cx.builder.begin_child("block".to_string());
 
-        for stmt in &self.stmts {
-            stmt.pretty_print(cx);
+        for expr in &self.exprs {
+            expr.pretty_print(cx);
         }
 
         cx.builder.end_child();
