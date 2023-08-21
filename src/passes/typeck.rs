@@ -71,7 +71,7 @@ impl<'db> TypeCx<'db> {
         let symbol = &self.db[id];
 
         if symbol.ty.is_null() {
-            let ty = self.alloc_fresh_ty_var(symbol.span);
+            let ty = self.alloc_ty_var(symbol.span);
             self.db[id].ty = ty;
             ty
         } else {
@@ -85,7 +85,7 @@ impl<'db> TypeCx<'db> {
     }
 
     #[inline]
-    pub fn alloc_fresh_ty_var(&mut self, span: Span) -> TyId {
+    pub fn alloc_ty_var(&mut self, span: Span) -> TyId {
         let ftv = self.fresh_ty_var(span);
         self.db.alloc_ty(ftv)
     }
@@ -96,7 +96,7 @@ impl<'db> TypeCx<'db> {
     }
 
     #[inline]
-    pub fn alloc_fresh_int_var(&mut self, span: Span) -> TyId {
+    pub fn alloc_int_var(&mut self, span: Span) -> TyId {
         let ftv = self.fresh_int_var(span);
         self.db.alloc_ty(ftv)
     }
@@ -137,10 +137,10 @@ impl Infer<'_> for Item {
 
 impl Infer<'_> for Function {
     fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
-        let ret_ty = cx.alloc_fresh_ty_var(self.span);
+        let ret_ty = cx.alloc_ty_var(self.span);
 
         for param in &mut self.params {
-            param.ty = cx.alloc_fresh_ty_var(param.span);
+            param.ty = cx.alloc_ty_var(param.span);
         }
 
         let fun_ty = Ty::Function(FunctionTy {
@@ -264,7 +264,7 @@ impl Infer<'_> for Binary {
                 cx.constraints.push(Constraint::Eq { expected, actual: self.rhs.ty() });
             }
             _ => {
-                let expected = cx.alloc_fresh_int_var(self.span);
+                let expected = cx.alloc_int_var(self.span);
                 cx.constraints.push(Constraint::Eq { expected, actual: self.lhs.ty() });
                 cx.constraints.push(Constraint::Eq { expected, actual: self.rhs.ty() });
             }
@@ -286,7 +286,7 @@ impl Infer<'_> for Name {
 impl Infer<'_> for Lit {
     fn infer(&mut self, cx: &mut TypeCx<'_>, _env: &mut TypeEnv) {
         self.ty = match &self.kind {
-            LitKind::Int(_) => cx.alloc_fresh_int_var(self.span),
+            LitKind::Int(_) => cx.alloc_int_var(self.span),
             LitKind::Bool(_) => cx.db.alloc_ty(Ty::Bool(self.span)),
             LitKind::Unit => cx.db.alloc_ty(Ty::Unit(self.span)),
         };
