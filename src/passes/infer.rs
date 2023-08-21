@@ -56,20 +56,20 @@ impl<'db> InferCx<'db> {
     fn infer_module(&mut self, module: &mut Module) {
         let mut env = TypeEnv::new(module.id);
 
-        for def in &mut module.items {
-            def.infer(self, &mut env);
+        for item in &mut module.items {
+            item.infer(self, &mut env);
         }
     }
 
     fn symbol_ty(&mut self, id: SymbolId) -> TyId {
-        let def = &self.db[id];
+        let symbol = &self.db[id];
 
-        if def.ty.is_null() {
-            let ty = self.db.alloc_ty(self.tcx.fresh_ty_var(def.span));
+        if symbol.ty.is_null() {
+            let ty = self.db.alloc_ty(self.tcx.fresh_ty_var(symbol.span));
             self.db[id].ty = ty;
             ty
         } else {
-            def.ty
+            symbol.ty
         }
     }
 }
@@ -101,9 +101,9 @@ impl Infer<'_> for Item {
             ItemKind::Function(fun) => fun.infer(cx, env),
         }
 
-        let def_ty = cx.symbol_ty(self.id.expect("to be resolved"));
+        let symbol_ty = cx.symbol_ty(self.id.expect("to be resolved"));
 
-        cx.constraints.push(Constraint::Eq { expected: self.kind.ty(), actual: def_ty });
+        cx.constraints.push(Constraint::Eq { expected: self.kind.ty(), actual: symbol_ty });
     }
 }
 

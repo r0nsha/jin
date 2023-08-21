@@ -29,20 +29,20 @@ pub struct Generator<'db, 'cx> {
     pub builder: &'db Builder<'cx>,
     pub isize_ty: IntType<'cx>,
 
-    pub def_values: HashMap<SymbolId, DefValue<'cx>>,
+    pub symbol_values: HashMap<SymbolId, SymbolValue<'cx>>,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum DefValue<'cx> {
+pub enum SymbolValue<'cx> {
     Function(FunctionValue<'cx>),
     Variable(BasicValueEnum<'cx>),
 }
 
-impl<'cx> DefValue<'cx> {
+impl<'cx> SymbolValue<'cx> {
     pub fn as_function_value(self) -> FunctionValue<'cx> {
         match self {
-            DefValue::Function(f) => f,
-            DefValue::Variable(_) => panic!("expected Function, got {self:?} instead"),
+            SymbolValue::Function(f) => f,
+            SymbolValue::Variable(_) => panic!("expected Function, got {self:?} instead"),
         }
     }
 }
@@ -142,7 +142,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         self.builder.position_at_end(entry_block);
 
         let main_function = self.db.main_function().expect("to have a main function");
-        let main_function_value = self.def_value(main_function.id).as_function_value();
+        let main_function_value = self.symbol_value(main_function.id).as_function_value();
 
         self.builder.build_call(main_function_value, &[], "call_main");
 
@@ -164,7 +164,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 .into_function_type();
 
             let function = self.module.add_function(&name, llvm_ty, Some(Linkage::Private));
-            self.def_values.insert(id, DefValue::Function(function));
+            self.symbol_values.insert(id, SymbolValue::Function(function));
         }
     }
 
@@ -178,13 +178,13 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         let id = fun.id();
         let fun_info = &self.db[id];
 
-        let function_value = self.def_values.get(&fun.id()).map_or_else(
+        let function_value = self.symbol_values.get(&fun.id()).map_or_else(
             || panic!("function {} to be declared", fun_info.qualified_name.standard_full_name()),
             |f| f.as_function_value(),
         );
 
         for (param, value) in fun.params().iter().zip(function_value.get_param_iter()) {
-            self.def_values.insert(param.id(), DefValue::Variable(value));
+            self.symbol_values.insert(param.id(), SymbolValue::Variable(value));
         }
 
         let prologue_block = self.context.append_basic_block(function_value, "decls");
@@ -209,8 +209,8 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     }
 
     #[track_caller]
-    fn def_value(&self, id: SymbolId) -> DefValue<'cx> {
-        *self.def_values.get(&id).expect("id in def_value to be defined")
+    fn symbol_value(&self, id: SymbolId) -> SymbolValue<'cx> {
+        *self.symbol_values.get(&id).expect("id in def_value to be defined")
     }
 }
 
@@ -342,9 +342,11 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Load {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let value = match cx.def_value(self.id) {
-            DefValue::Function(f) => f.as_global_value().as_pointer_value().as_basic_value_enum(),
-            DefValue::Variable(v) => v,
+        let value = match cx.symbol_value(self.id) {
+            SymbolValue::Function(f) => {
+                f.as_global_value().as_pointer_value().as_basic_value_enum()
+            }
+            SymbolValue::Variable(v) => v,
         };
 
         state.set_value(self.value, value);

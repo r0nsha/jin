@@ -1,6 +1,6 @@
 use std::io;
 
-use super::{Block, Call, Item, ItemKind, Expr, Function, Lit, LitKind, Module, Name, Return};
+use super::{Block, Call, Expr, Function, Item, ItemKind, Lit, LitKind, Module, Name, Return};
 use crate::{
     db::Database,
     hir::{Binary, CallArg, If},
@@ -10,8 +10,8 @@ pub(super) fn print_module(db: &Database, module: &Module) -> io::Result<()> {
     let mut cx =
         Cx { db, builder: ptree::TreeBuilder::new(db[module.id].name.standard_full_name()) };
 
-    for def in &module.items {
-        def.pretty_print(&mut cx);
+    for item in &module.items {
+        item.pretty_print(&mut cx);
     }
 
     let tree = cx.builder.build();
