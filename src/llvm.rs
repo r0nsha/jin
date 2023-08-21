@@ -2,7 +2,7 @@ mod generate;
 #[cfg(windows)]
 mod microsoft_craziness;
 mod ty;
-mod utils;
+mod util;
 
 use std::{
     collections::{HashMap, HashSet},
