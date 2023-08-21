@@ -1,16 +1,16 @@
 use crate::{
     passes::typeck::TypeCx,
-    ty::{FunctionParamTy, FunctionTy, InferTy, Ty},
+    ty::{FunctionParamTy, FunctionType, InferType, Type},
 };
 
 pub trait NormalizeTy {
     fn normalize(self, tcx: &mut TypeCx) -> Self;
 }
 
-impl NormalizeTy for Ty {
+impl NormalizeTy for Type {
     fn normalize(self, tcx: &mut TypeCx) -> Self {
         match self {
-            Self::Function(FunctionTy { ret, params, span }) => Self::Function(FunctionTy {
+            Self::Function(FunctionType { ret, params, span }) => Self::Function(FunctionType {
                 ret: Box::new(ret.normalize(tcx)),
                 params: params
                     .into_iter()
@@ -18,7 +18,7 @@ impl NormalizeTy for Ty {
                     .collect(),
                 span,
             }),
-            Self::Infer(InferTy::TyVar(var), _) => {
+            Self::Infer(InferType::TypeVar(var), _) => {
                 tcx.ty_unification_table.probe_value(var).map_or(self, |ty| ty.normalize(tcx))
             }
             _ => self,

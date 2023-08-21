@@ -12,7 +12,7 @@ use inkwell::{
 
 use crate::{
     ast::{BinaryOp, CmpOp},
-    db::{Database, SymbolId, TyId},
+    db::{Database, SymbolId, TypeId},
     llvm::ty::LlvmType,
     mir::{
         Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, Load, Mir, Phi,
@@ -92,7 +92,7 @@ impl<'cx> FunctionState<'cx> {
         self.values.insert(id, value);
     }
 
-    pub fn value_ty<'db>(&self, cx: &Generator<'db, 'cx>, id: ValueId) -> TyId {
+    pub fn value_ty<'db>(&self, cx: &Generator<'db, 'cx>, id: ValueId) -> TypeId {
         self.function(cx).value(id).unwrap().ty
     }
 }

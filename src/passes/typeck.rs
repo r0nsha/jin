@@ -8,7 +8,7 @@ use ena::unify::{EqUnifyValue, InPlaceUnificationTable, UnifyKey};
 
 use crate::{
     ast::BinaryOp,
-    db::{Database, SymbolId, TyId},
+    db::{Database, SymbolId, TypeId},
     hir::{
         Binary, Block, Call, CallArg, Expr, Function, Hir, If, Item, ItemKind, Lit, LitKind,
         Module, Name, Return,
@@ -18,7 +18,7 @@ use crate::{
         type_env::{CallFrame, TypeEnv},
     },
     span::{Span, Spanned},
-    ty::{FunctionParamTy, FunctionTy, InferTy, IntVar, IntVarValue, Ty, TyVar, Typed},
+    ty::{FunctionParamTy, FunctionType, InferType, IntVar, IntVarValue, Type, TypeVar, Typed},
 };
 
 pub fn typeck(db: &mut Database, hir: &mut Hir) {
@@ -36,7 +36,7 @@ pub fn typeck(db: &mut Database, hir: &mut Hir) {
 
 pub struct TypeCx<'db> {
     pub db: &'db mut Database,
-    pub ty_unification_table: InPlaceUnificationTable<TyVar>,
+    pub ty_unification_table: InPlaceUnificationTable<TypeVar>,
     pub int_unification_table: InPlaceUnificationTable<IntVar>,
     pub constraints: Constraints,
 }
@@ -67,7 +67,7 @@ impl<'db> TypeCx<'db> {
         }
     }
 
-    fn lookup(&mut self, id: SymbolId) -> TyId {
+    fn lookup(&mut self, id: SymbolId) -> TypeId {
         let symbol = &self.db[id];
 
         if symbol.ty.is_null() {
@@ -80,23 +80,23 @@ impl<'db> TypeCx<'db> {
     }
 
     #[inline]
-    pub fn fresh_ty_var(&mut self, span: Span) -> Ty {
-        Ty::Infer(InferTy::TyVar(self.ty_unification_table.new_key(None)), span)
+    pub fn fresh_ty_var(&mut self, span: Span) -> Type {
+        Type::Infer(InferType::TypeVar(self.ty_unification_table.new_key(None)), span)
     }
 
     #[inline]
-    pub fn alloc_ty_var(&mut self, span: Span) -> TyId {
+    pub fn alloc_ty_var(&mut self, span: Span) -> TypeId {
         let ftv = self.fresh_ty_var(span);
         self.db.alloc_ty(ftv)
     }
 
     #[inline]
-    pub fn fresh_int_var(&mut self, span: Span) -> Ty {
-        Ty::Infer(InferTy::IntVar(self.int_unification_table.new_key(None)), span)
+    pub fn fresh_int_var(&mut self, span: Span) -> Type {
+        Type::Infer(InferType::IntVar(self.int_unification_table.new_key(None)), span)
     }
 
     #[inline]
-    pub fn alloc_int_var(&mut self, span: Span) -> TyId {
+    pub fn alloc_int_var(&mut self, span: Span) -> TypeId {
         let ftv = self.fresh_int_var(span);
         self.db.alloc_ty(ftv)
     }
@@ -123,7 +123,7 @@ impl Infer<'_> for Expr {
 
 impl Infer<'_> for Item {
     fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
-        self.ty = cx.db.alloc_ty(Ty::Unit(self.span));
+        self.ty = cx.db.alloc_ty(Type::Unit(self.span));
 
         match &mut self.kind {
             ItemKind::Function(fun) => fun.infer(cx, env),
@@ -143,7 +143,7 @@ impl Infer<'_> for Function {
             param.ty = cx.alloc_ty_var(param.span);
         }
 
-        let fun_ty = Ty::Function(FunctionTy {
+        let fun_ty = Type::Function(FunctionType {
             ret: Box::new(cx.db[ret_ty].clone()),
             params: self
                 .params
@@ -173,7 +173,7 @@ impl Infer<'_> for If {
         self.cond.infer(cx, env);
 
         cx.constraints.push(Constraint::Eq {
-            expected: cx.db.alloc_ty(Ty::Bool(self.cond.span())),
+            expected: cx.db.alloc_ty(Type::Bool(self.cond.span())),
             actual: self.cond.ty(),
         });
 
@@ -183,7 +183,7 @@ impl Infer<'_> for If {
             otherwise.infer(cx, env);
             otherwise.ty()
         } else {
-            cx.db.alloc_ty(Ty::Unit(self.span))
+            cx.db.alloc_ty(Type::Unit(self.span))
         };
 
         cx.constraints.push(Constraint::Eq { expected: self.then.ty(), actual: other_ty });
@@ -198,13 +198,13 @@ impl Infer<'_> for Block {
             expr.infer(cx, env);
         }
 
-        self.ty = self.exprs.last().map_or_else(|| cx.db.alloc_ty(Ty::Unit(self.span)), Expr::ty);
+        self.ty = self.exprs.last().map_or_else(|| cx.db.alloc_ty(Type::Unit(self.span)), Expr::ty);
     }
 }
 
 impl Infer<'_> for Return {
     fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
-        self.ty = cx.db.alloc_ty(Ty::Never(self.span));
+        self.ty = cx.db.alloc_ty(Type::Never(self.span));
 
         let call_frame = env.call_stack.current().unwrap();
         let ret_ty = call_frame.ret_ty;
@@ -226,7 +226,7 @@ impl Infer<'_> for Call {
             }
         }
 
-        let expected_ty = cx.db.alloc_ty(Ty::Function(FunctionTy {
+        let expected_ty = cx.db.alloc_ty(Type::Function(FunctionType {
             ret: Box::new(result_ty.clone()),
             params: self
                 .args
@@ -259,7 +259,7 @@ impl Infer<'_> for Binary {
         match self.op {
             BinaryOp::Cmp(_) => (),
             BinaryOp::And | BinaryOp::Or => {
-                let expected = cx.db.alloc_ty(Ty::Bool(self.span));
+                let expected = cx.db.alloc_ty(Type::Bool(self.span));
                 cx.constraints.push(Constraint::Eq { expected, actual: self.lhs.ty() });
                 cx.constraints.push(Constraint::Eq { expected, actual: self.rhs.ty() });
             }
@@ -271,7 +271,7 @@ impl Infer<'_> for Binary {
         }
 
         self.ty = match self.op {
-            BinaryOp::Cmp(_) => cx.db.alloc_ty(Ty::Bool(self.span)),
+            BinaryOp::Cmp(_) => cx.db.alloc_ty(Type::Bool(self.span)),
             _ => self.lhs.ty(),
         };
     }
@@ -287,14 +287,14 @@ impl Infer<'_> for Lit {
     fn infer(&mut self, cx: &mut TypeCx<'_>, _env: &mut TypeEnv) {
         self.ty = match &self.kind {
             LitKind::Int(_) => cx.alloc_int_var(self.span),
-            LitKind::Bool(_) => cx.db.alloc_ty(Ty::Bool(self.span)),
-            LitKind::Unit => cx.db.alloc_ty(Ty::Unit(self.span)),
+            LitKind::Bool(_) => cx.db.alloc_ty(Type::Bool(self.span)),
+            LitKind::Unit => cx.db.alloc_ty(Type::Unit(self.span)),
         };
     }
 }
 
-impl UnifyKey for TyVar {
-    type Value = Option<Ty>;
+impl UnifyKey for TypeVar {
+    type Value = Option<Type>;
 
     fn index(&self) -> u32 {
         (*self).into()
@@ -309,7 +309,7 @@ impl UnifyKey for TyVar {
     }
 }
 
-impl EqUnifyValue for Ty {}
+impl EqUnifyValue for Type {}
 
 impl UnifyKey for IntVar {
     type Value = Option<IntVarValue>;

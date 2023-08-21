@@ -5,31 +5,31 @@ use enum_as_inner::EnumAsInner;
 use ustr::Ustr;
 
 use crate::{
-    db::{Database, TyId},
+    db::{Database, TypeId},
     span::Span,
     ty::printer::TypePrinter,
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
-pub enum Ty {
-    Function(FunctionTy),
-    Int(IntTy, Span),
+pub enum Type {
+    Function(FunctionType),
+    Int(IntType, Span),
     Bool(Span),
     // TODO: when we implement tuples, Unit should become Tuple([])
     Unit(Span),
     Never(Span),
-    Infer(InferTy, Span),
+    Infer(InferType, Span),
 }
 
-impl Ty {
+impl Type {
     pub fn default_int(span: Span) -> Self {
-        Self::Int(IntTy::Int, span)
+        Self::Int(IntType::Int, span)
     }
 
-    pub fn occurs_check(&self, var: TyVar) -> Result<(), Self> {
+    pub fn occurs_check(&self, var: TypeVar) -> Result<(), Self> {
         match self {
             Self::Function(fun) => fun.ret.occurs_check(var).map_err(|_| self.clone()),
-            Self::Infer(InferTy::TyVar(v), _) => {
+            Self::Infer(InferType::TypeVar(v), _) => {
                 if *v == var {
                     Err(self.clone())
                 } else {
@@ -42,7 +42,7 @@ impl Ty {
 
     pub fn span(&self) -> Span {
         match self {
-            Self::Function(FunctionTy { span, .. })
+            Self::Function(FunctionType { span, .. })
             | Self::Int(_, span)
             | Self::Bool(span)
             | Self::Unit(span)
@@ -61,17 +61,17 @@ impl Ty {
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, From, Into)]
-pub struct TyVar(u32);
+pub struct TypeVar(u32);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, From, Into)]
 pub struct IntVar(u32);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IntVarValue {
-    Int(IntTy, Span),
+    Int(IntType, Span),
 }
 
-impl From<IntVarValue> for Ty {
+impl From<IntVarValue> for Type {
     fn from(value: IntVarValue) -> Self {
         match value {
             IntVarValue::Int(ty, span) => Self::Int(ty, span),
@@ -80,18 +80,18 @@ impl From<IntVarValue> for Ty {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum IntTy {
+pub enum IntType {
     Int,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FunctionTy {
-    pub ret: Box<Ty>,
+pub struct FunctionType {
+    pub ret: Box<Type>,
     pub params: Vec<FunctionParamTy>,
     pub span: Span,
 }
 
-impl FunctionTy {
+impl FunctionType {
     pub fn param(&self, name: Ustr) -> Option<&FunctionParamTy> {
         self.params.iter().find(|p| p.name == Some(name))
     }
@@ -104,20 +104,20 @@ impl FunctionTy {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionParamTy {
     pub name: Option<Ustr>,
-    pub ty: Ty,
+    pub ty: Type,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum InferTy {
-    TyVar(TyVar),
+pub enum InferType {
+    TypeVar(TypeVar),
     IntVar(IntVar),
 }
 
 pub trait Typed {
-    fn ty(&self) -> TyId;
-    fn ty_mut(&mut self) -> &mut TyId;
+    fn ty(&self) -> TypeId;
+    fn ty_mut(&mut self) -> &mut TypeId;
 
-    fn set_ty(&mut self, ty: TyId) {
+    fn set_ty(&mut self, ty: TypeId) {
         *self.ty_mut() = ty;
     }
 }

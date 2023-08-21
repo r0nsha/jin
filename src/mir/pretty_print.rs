@@ -1,11 +1,11 @@
 use pretty::RcDoc;
 
-use super::{Block, Function, Inst, Mir, TyId, ValueId};
+use super::{Block, Function, Inst, Mir, TypeId, ValueId};
 use crate::{
     ast::BinaryOp,
     db::{Database, SymbolId},
     mir::BlockId,
-    ty::Ty,
+    ty::Type,
 };
 
 pub fn print(db: &Database, mir: &Mir) {
@@ -133,13 +133,13 @@ impl<'db, 'd> ToDoc<'db, 'd> for ValueId {
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for TyId {
+impl<'db, 'd> ToDoc<'db, 'd> for TypeId {
     fn to_doc(&self, db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
         db[*self].to_doc(db, fun)
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for Ty {
+impl<'db, 'd> ToDoc<'db, 'd> for Type {
     fn to_doc(&self, db: &'db Database, _fun: &'db Function) -> RcDoc<'d, ()> {
         RcDoc::text(self.to_string(db))
     }

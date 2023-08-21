@@ -5,7 +5,7 @@ use ustr::{ustr, Ustr, UstrMap};
 use crate::{
     common::{QualifiedName, Word},
     db::{
-        Database, FunctionInfo, ModuleId, ScopeLevel, SymbolId, SymbolInfo, SymbolInfoKind, TyId,
+        Database, FunctionInfo, ModuleId, ScopeLevel, SymbolId, SymbolInfo, SymbolInfoKind, TypeId,
         Vis,
     },
     diagnostics::{Diagnostic, Label},
@@ -94,7 +94,7 @@ impl<'db> ResolveCx<'db> {
             prefix.child(item.name.name()),
             scope_level,
             kind,
-            TyId::null(),
+            TypeId::null(),
             item.span,
         );
 
@@ -153,7 +153,7 @@ impl Resolve<'_> for Function {
                 param.name.into(),
                 env.scope_level(Vis::Private),
                 SymbolInfoKind::Variable,
-                TyId::null(),
+                TypeId::null(),
                 param.span,
             );
 

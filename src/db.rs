@@ -13,7 +13,7 @@ use crate::{
     },
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
-    ty::Ty,
+    ty::Type,
 };
 
 #[derive(Debug)]
@@ -23,7 +23,7 @@ pub struct Database {
     pub sources: Sources,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
     pub symbols: IndexVec<SymbolId, SymbolInfo>,
-    pub types: IndexVec<TyId, Ty>,
+    pub types: IndexVec<TypeId, Type>,
 
     pub diagnostics: Diagnostics,
 
@@ -103,7 +103,7 @@ impl Database {
         self.diagnostics.print(&self.sources).expect("printing diagnostis to work");
     }
 
-    pub fn alloc_ty(&mut self, ty: Ty) -> TyId {
+    pub fn alloc_ty(&mut self, ty: Type) -> TypeId {
         self.types.push(ty)
     }
 }
@@ -132,7 +132,7 @@ macro_rules! new_db_key {
 
 new_db_key!(ModuleId -> modules : ModuleInfo);
 new_db_key!(SymbolId -> symbols : SymbolInfo);
-new_db_key!(TyId -> types : Ty);
+new_db_key!(TypeId -> types : Type);
 
 #[derive(Debug)]
 #[allow(clippy::struct_excessive_bools)]
@@ -204,7 +204,7 @@ pub struct SymbolInfo {
     pub qualified_name: QualifiedName,
     pub scope_level: ScopeLevel,
     pub kind: Box<SymbolInfoKind>,
-    pub ty: TyId,
+    pub ty: TypeId,
     pub span: Span,
 }
 
@@ -221,7 +221,7 @@ impl SymbolInfo {
         qualified_name: QualifiedName,
         scope_level: ScopeLevel,
         kind: SymbolInfoKind,
-        ty: TyId,
+        ty: TypeId,
         span: Span,
     ) -> SymbolId {
         db.symbols.push_with_key(|id| Self {

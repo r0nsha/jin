@@ -2,39 +2,39 @@ use std::fmt::{Display, Formatter, Result};
 
 use crate::{
     db::Database,
-    ty::{InferTy, IntTy, Ty},
+    ty::{InferType, IntType, Type},
 };
 
 pub struct TypePrinter<'db> {
     _db: &'db Database,
-    ty: &'db Ty,
+    ty: &'db Type,
 }
 
 impl Display for TypePrinter<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        TypePrinter::fmt_ty(f, self.ty)
+        TypePrinter::fmt_type(f, self.ty)
     }
 }
 
 impl<'db> TypePrinter<'db> {
-    pub fn new(db: &'db Database, ty: &'db Ty) -> Self {
+    pub fn new(db: &'db Database, ty: &'db Type) -> Self {
         Self { _db: db, ty }
     }
 
-    fn fmt_ty(f: &mut Formatter, ty: &Ty) -> Result {
+    fn fmt_type(f: &mut Formatter, ty: &Type) -> Result {
         match ty {
-            Ty::Function(fun) => {
+            Type::Function(fun) => {
                 f.write_str("fn() ")?;
-                Self::fmt_ty(f, &fun.ret)
+                Self::fmt_type(f, &fun.ret)
             }
-            Ty::Int(int, _) => match int {
-                IntTy::Int => f.write_str("int"),
+            Type::Int(int, _) => match int {
+                IntType::Int => f.write_str("int"),
             },
-            Ty::Bool(_) => f.write_str("bool"),
-            Ty::Unit(_) => f.write_str("()"),
-            Ty::Never(_) => f.write_str("!"),
-            Ty::Infer(InferTy::TyVar(v), _) => write!(f, "?{}", v.0),
-            Ty::Infer(InferTy::IntVar(_), _) => f.write_str("{int}"),
+            Type::Bool(_) => f.write_str("bool"),
+            Type::Unit(_) => f.write_str("()"),
+            Type::Never(_) => f.write_str("!"),
+            Type::Infer(InferType::TypeVar(v), _) => write!(f, "?{}", v.0),
+            Type::Infer(InferType::IntVar(_), _) => f.write_str("{int}"),
         }
     }
 }

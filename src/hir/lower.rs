@@ -1,6 +1,6 @@
 use super::{
     Block, Call, Item, ItemKind, Expr, Function, FunctionParam, Hir, Lit, LitKind, Module, ModuleId,
-    Name, Return, TyId,
+    Name, Return, TypeId,
 };
 use crate::{
     ast::{self, Ast},
@@ -49,7 +49,7 @@ impl Lower<'_, Item> for ast::Item {
                 name: fun.name,
                 span: fun.span,
                 kind: ItemKind::Function(fun.lower(cx)),
-                ty: TyId::null(),
+                ty: TypeId::null(),
             },
         }
     }
@@ -60,12 +60,12 @@ impl Lower<'_, Function> for ast::Function {
         let params = self
             .params
             .into_iter()
-            .map(|p| FunctionParam { id: None, name: p.name, span: p.span, ty: TyId::null() })
+            .map(|p| FunctionParam { id: None, name: p.name, span: p.span, ty: TypeId::null() })
             .collect::<Vec<_>>();
 
         let body = self.body.lower(cx);
 
-        Function { id: None, name: self.name, body, params, span: self.span, ty: TyId::null() }
+        Function { id: None, name: self.name, body, params, span: self.span, ty: TypeId::null() }
     }
 }
 
@@ -77,23 +77,23 @@ impl Lower<'_, Expr> for Ast {
                 then: Box::new(if_.then.lower(cx)),
                 otherwise: if_.otherwise.map(|o| Box::new(o.lower(cx))),
                 span: if_.span,
-                ty: TyId::null(),
+                ty: TypeId::null(),
             }),
             Self::Block(blk) => Expr::Block(blk.lower(cx)),
             Self::Call(call) => Expr::Call(Call {
                 callee: Box::new(call.callee.lower(cx)),
                 args: call.args.into_iter().map(|arg| arg.lower(cx)).collect(),
                 span: call.span,
-                ty: TyId::null(),
+                ty: TypeId::null(),
             }),
             Self::Binary(bin) => Expr::Binary(Binary {
                 lhs: Box::new(bin.lhs.lower(cx)),
                 rhs: Box::new(bin.rhs.lower(cx)),
                 op: bin.op,
                 span: bin.span,
-                ty: TyId::null(),
+                ty: TypeId::null(),
             }),
-            Self::Name(name) => Expr::Name(Name { id: None, name, ty: TyId::null() }),
+            Self::Name(name) => Expr::Name(Name { id: None, name, ty: TypeId::null() }),
             Self::Lit(lit) => Expr::Lit(Lit {
                 kind: match lit.kind {
                     ast::LitKind::Int(v) => LitKind::Int(v),
@@ -101,7 +101,7 @@ impl Lower<'_, Expr> for Ast {
                     ast::LitKind::Unit => LitKind::Unit,
                 },
                 span: lit.span,
-                ty: TyId::null(),
+                ty: TypeId::null(),
             }),
         }
     }
@@ -126,13 +126,13 @@ impl Lower<'_, Expr> for ast::Statement {
                         Box::new(Expr::Lit(Lit {
                             kind: LitKind::Unit,
                             span: ret.span,
-                            ty: TyId::null(),
+                            ty: TypeId::null(),
                         }))
                     },
                     |v| Box::new(v.lower(cx)),
                 ),
                 span: ret.span,
-                ty: TyId::null(),
+                ty: TypeId::null(),
             }),
             Self::Expr(expr) => expr.lower(cx),
         }
@@ -144,7 +144,7 @@ impl Lower<'_, Block> for ast::Block {
         Block {
             exprs: self.stmts.into_iter().map(|stmt| stmt.lower(cx)).collect(),
             span: self.span,
-            ty: TyId::null(),
+            ty: TypeId::null(),
         }
     }
 }

@@ -10,7 +10,7 @@ use ustr::{ustr, Ustr};
 use crate::{
     ast::BinaryOp,
     common::{new_key_type, IndexVec},
-    db::{Database, SymbolId, TyId},
+    db::{Database, SymbolId, TypeId},
     span::Span,
 };
 
@@ -103,7 +103,7 @@ new_key_type!(ValueId);
 
 #[derive(Debug, Clone, Copy)]
 pub struct Value {
-    pub ty: TyId,
+    pub ty: TypeId,
 }
 
 new_key_type!(BlockId);
