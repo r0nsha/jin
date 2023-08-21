@@ -4,7 +4,7 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         Ast, Binary, BinaryOp, Block, Call, CallArg, Function, FunctionParam, If, Item, Lit,
-        LitKind, Module, Return,
+        LitKind, Module, Name, Return,
     },
     common::QualifiedName,
     db::Database,
@@ -340,7 +340,7 @@ impl<'a> Parser<'a> {
             TokenKind::OpenCurly => Ast::Block(self.parse_block()?),
             TokenKind::True => Ast::Lit(Lit { kind: LitKind::Bool(true), span: tok.span }),
             TokenKind::False => Ast::Lit(Lit { kind: LitKind::Bool(false), span: tok.span }),
-            TokenKind::Ident(_) => Ast::Name(tok.word()),
+            TokenKind::Ident(_) => Ast::Name(Name { name: tok.word() }),
             TokenKind::Int(value) => Ast::Lit(Lit { kind: LitKind::Int(value), span: tok.span }),
             _ => {
                 return Err(ParseError::UnexpectedToken {

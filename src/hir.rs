@@ -10,7 +10,7 @@ use ustr::Ustr;
 use crate::{
     ast::BinaryOp,
     common::Word,
-    db::{Database, SymbolId, ModuleId, TypeId},
+    db::{Database, ModuleId, SymbolId, TypeId},
     span::{Span, Spanned},
     ty::Typed,
 };

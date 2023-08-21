@@ -74,7 +74,7 @@ pub enum Ast {
     Block(Block),
     Call(Call),
     Binary(Binary),
-    Name(Word),
+    Name(Name),
     Lit(Lit),
 }
 
@@ -87,7 +87,7 @@ impl Spanned for Ast {
             Self::Block(x) => x.span,
             Self::Call(x) => x.span,
             Self::Binary(x) => x.span,
-            Self::Name(x) => x.span(),
+            Self::Name(x) => x.name.span(),
             Self::Lit(x) => x.span,
         }
     }
@@ -100,7 +100,7 @@ impl Spanned for Ast {
             Self::Block(x) => &mut x.span,
             Self::Call(x) => &mut x.span,
             Self::Binary(x) => &mut x.span,
-            Self::Name(x) => x.span_mut(),
+            Self::Name(x) => x.name.span_mut(),
             Self::Lit(x) => &mut x.span,
         }
     }
@@ -304,6 +304,11 @@ impl TryFrom<TokenKind> for BinaryOp {
 
         Ok(op)
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Name {
+    pub name: Word,
 }
 
 #[derive(Debug, Clone)]

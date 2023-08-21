@@ -105,7 +105,7 @@ impl Lower<'_, Expr> for Ast {
                 span: bin.span,
                 ty: TypeId::null(),
             }),
-            Self::Name(name) => Expr::Name(Name { id: None, name, ty: TypeId::null() }),
+            Self::Name(name) => Expr::Name(Name { id: None, name: name.name, ty: TypeId::null() }),
             Self::Lit(lit) => Expr::Lit(Lit {
                 kind: match lit.kind {
                     ast::LitKind::Int(v) => LitKind::Int(v),
