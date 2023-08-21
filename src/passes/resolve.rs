@@ -42,7 +42,7 @@ impl<'db> ResolveCx<'db> {
         for module in modules {
             let mut env = Env::new(module.id);
 
-            env.scopes.push(ustr(""), ScopeKind::Global);
+            env.push(ustr(""), ScopeKind::Global);
 
             for item in &mut module.items {
                 self.declare_item(&mut env, item);
@@ -95,7 +95,7 @@ impl<'db> ResolveCx<'db> {
             name.span(),
         );
 
-        match env.scopes.current_mut() {
+        match env.current_mut() {
             Some(scope) => scope.insert(name.name(), id),
             None => {
                 if let Some(prev_id) = self.global_scope.insert(env.module_id, name.name(), id) {
@@ -119,7 +119,7 @@ trait Resolve<'db> {
 
 impl Resolve<'_> for Item {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        if !env.is_global_scope() {
+        if !env.in_global_scope() {
             cx.declare_item(env, self);
         }
 
@@ -146,7 +146,7 @@ impl Resolve<'_> for Expr {
 
 impl Resolve<'_> for Function {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        env.scopes.push(self.name.name(), ScopeKind::Fun);
+        env.push(self.name.name(), ScopeKind::Fun);
 
         for param in &mut self.params {
             param.id = Some(cx.declare_symbol(env, SymbolInfoKind::Variable, param.name));
@@ -170,7 +170,7 @@ impl Resolve<'_> for If {
 
 impl Resolve<'_> for Block {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        env.scopes.push(ustr("_"), ScopeKind::Block);
+        env.push(ustr("_"), ScopeKind::Block);
 
         for expr in &mut self.exprs {
             expr.resolve(cx, env);
@@ -184,7 +184,7 @@ impl Resolve<'_> for Return {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         self.expr.resolve(cx, env);
 
-        if !env.scopes.in_kind(ScopeKind::Fun) {
+        if !env.in_kind(ScopeKind::Fun) {
             cx.errors.push(ResolveError::InvalidReturn { span: self.span });
         }
     }
@@ -224,7 +224,6 @@ impl Resolve<'_> for Binary {
 impl Resolve<'_> for Name {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         self.id = env
-            .scopes
             .lookup(self.name.name())
             .copied()
             .or_else(|| cx.global_scope.lookup(env.module_id, self.name.name()));
@@ -263,71 +262,44 @@ impl GlobalScope {
 #[derive(Debug)]
 pub struct Env {
     module_id: ModuleId,
-    scopes: Scopes,
+    scopes: Vec<Scope>,
 }
 
 impl Env {
     pub fn new(module_id: ModuleId) -> Self {
-        Self { module_id, scopes: Scopes::new() }
+        Self { module_id, scopes: vec![] }
     }
 
-    pub fn scope_level(&self, vis: Vis) -> ScopeLevel {
-        match self.scopes.depth() {
-            0 => ScopeLevel::Global(vis),
-            n => ScopeLevel::Local(n),
-        }
-    }
-
-    pub fn scope_name(&self, db: &Database) -> QualifiedName {
-        let module_name = &db[self.module_id].name;
-        self.scopes.current().map_or_else(
-            || module_name.clone(),
-            |scope| module_name.clone().child(scope.name.clone()),
-        )
-    }
-
-    pub fn is_global_scope(&self) -> bool {
-        self.scopes.depth() == 0
-    }
-}
-
-#[derive(Debug)]
-struct Scopes(Vec<Scope>);
-
-impl Scopes {
-    fn new() -> Self {
-        Self(vec![])
-    }
-
-    fn push(&mut self, name: Ustr, kind: ScopeKind) {
+    pub fn push(&mut self, name: Ustr, kind: ScopeKind) {
         let name = self
             .current()
             .map_or_else(|| QualifiedName::from(name), |curr| curr.name.clone().child(name));
 
-        self.0.push(Scope { kind, name, symbols: UstrMap::default() });
-    }
-
-    fn pop(&mut self) -> Option<Scope> {
-        self.0.pop()
-    }
-
-    fn current(&self) -> Option<&Scope> {
-        self.0.last()
+        self.scopes.push(Scope { kind, name, symbols: UstrMap::default() });
     }
 
     #[allow(unused)]
-    fn current_mut(&mut self) -> Option<&mut Scope> {
-        self.0.last_mut()
+    pub fn pop(&mut self) -> Option<Scope> {
+        self.scopes.pop()
+    }
+
+    pub fn current(&self) -> Option<&Scope> {
+        self.scopes.last()
     }
 
     #[allow(unused)]
-    fn insert(&mut self, k: Ustr, v: SymbolId) {
-        self.0.last_mut().unwrap().symbols.insert(k, v);
+    pub fn current_mut(&mut self) -> Option<&mut Scope> {
+        self.scopes.last_mut()
     }
 
     #[allow(unused)]
-    fn lookup_depth(&self, k: Ustr) -> Option<(usize, &SymbolId)> {
-        for (depth, scope) in self.0.iter().enumerate().rev() {
+    pub fn insert(&mut self, k: Ustr, v: SymbolId) {
+        self.scopes.last_mut().unwrap().symbols.insert(k, v);
+    }
+
+    #[allow(unused)]
+    pub fn lookup_depth(&self, k: Ustr) -> Option<(usize, &SymbolId)> {
+        for (depth, scope) in self.scopes.iter().enumerate().rev() {
             if let Some(value) = scope.symbols.get(&k) {
                 return Some((depth + 1, value));
             }
@@ -336,8 +308,8 @@ impl Scopes {
     }
 
     #[allow(unused)]
-    fn lookup_depth_mut(&mut self, k: Ustr) -> Option<(usize, &mut SymbolId)> {
-        for (depth, scope) in self.0.iter_mut().enumerate().rev() {
+    pub fn lookup_depth_mut(&mut self, k: Ustr) -> Option<(usize, &mut SymbolId)> {
+        for (depth, scope) in self.scopes.iter_mut().enumerate().rev() {
             if let Some(value) = scope.symbols.get_mut(&k) {
                 return Some((depth + 1, value));
             }
@@ -345,27 +317,46 @@ impl Scopes {
         None
     }
 
-    fn lookup(&self, k: Ustr) -> Option<&SymbolId> {
+    pub fn lookup(&self, k: Ustr) -> Option<&SymbolId> {
         self.lookup_depth(k).map(|r| r.1)
     }
 
     #[allow(unused)]
-    fn lookup_mut(&mut self, k: Ustr) -> Option<&mut SymbolId> {
+    pub fn lookup_mut(&mut self, k: Ustr) -> Option<&mut SymbolId> {
         self.lookup_depth_mut(k).map(|r| r.1)
     }
 
     #[allow(unused)]
-    fn depth(&self) -> usize {
-        self.0.len()
+    pub fn depth(&self) -> usize {
+        self.scopes.len()
+    }
+
+    pub fn scope_level(&self, vis: Vis) -> ScopeLevel {
+        match self.depth() {
+            0 => ScopeLevel::Global(vis),
+            n => ScopeLevel::Local(n),
+        }
+    }
+
+    pub fn scope_name(&self, db: &Database) -> QualifiedName {
+        let module_name = &db[self.module_id].name;
+        self.current().map_or_else(
+            || module_name.clone(),
+            |scope| module_name.clone().child(scope.name.clone()),
+        )
+    }
+
+    pub fn in_global_scope(&self) -> bool {
+        self.depth() == 0
     }
 
     fn in_kind(&self, kind: ScopeKind) -> bool {
-        self.0.iter().any(|s| s.kind == kind)
+        self.scopes.iter().any(|s| s.kind == kind)
     }
 }
 
 #[derive(Debug)]
-struct Scope {
+pub struct Scope {
     pub kind: ScopeKind,
     pub name: QualifiedName,
     pub symbols: UstrMap<SymbolId>,
@@ -383,7 +374,7 @@ impl Scope {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum ScopeKind {
+pub enum ScopeKind {
     Global,
     Fun,
     Block,
