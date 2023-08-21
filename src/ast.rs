@@ -5,7 +5,7 @@ use std::{fmt, io};
 
 use crate::{
     ast::token::TokenKind,
-    common::{QualifiedName, Word},
+    common::{QName, Word},
     span::{SourceId, Span, Spanned},
 };
 
@@ -37,13 +37,13 @@ impl Ast {
 #[derive(Debug, Clone)]
 pub struct Module {
     pub source: SourceId,
-    pub name: QualifiedName,
+    pub name: QName,
     pub items: Vec<Item>,
     is_main: bool,
 }
 
 impl Module {
-    pub fn new(source_id: SourceId, name: QualifiedName, is_main: bool) -> Self {
+    pub fn new(source_id: SourceId, name: QName, is_main: bool) -> Self {
         Self { source: source_id, name, is_main, items: vec![] }
     }
 

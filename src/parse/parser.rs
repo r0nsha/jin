@@ -6,7 +6,7 @@ use crate::{
         Expr, Binary, BinaryOp, Block, Call, CallArg, Function, FunctionParam, If, Item, Lit,
         LitKind, Module, Name, Return,
     },
-    common::QualifiedName,
+    common::QName,
     db::Database,
     diagnostics::{Diagnostic, Label},
     span::{Source, SourceId, Span, Spanned},
@@ -14,7 +14,7 @@ use crate::{
 
 pub fn parse(db: &Database, source: &Source, tokens: Vec<Token>) -> Result<Module, Diagnostic> {
     let source_id = source.id();
-    let name = QualifiedName::from_path(db.root_dir(), source.path()).unwrap();
+    let name = QName::from_path(db.root_dir(), source.path()).unwrap();
     let is_main = source_id == db.main_source().id();
 
     let module = Parser::new(db.sources.get(source_id).expect("to exist"), tokens)
@@ -40,7 +40,7 @@ impl<'a> Parser<'a> {
     fn parse(
         mut self,
         source_id: SourceId,
-        name: QualifiedName,
+        name: QName,
         is_main: bool,
     ) -> ParseResult<Module> {
         let mut module = Module::new(source_id, name, is_main);

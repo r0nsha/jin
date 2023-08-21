@@ -75,7 +75,7 @@ impl<'db> TypeCx<'db> {
 
     fn lookup(&mut self, id: SymbolId) -> TypeId {
         let sym = &self.db[id];
-        assert!(!sym.ty.is_null(), "symbol `{}` wasn't assigned a TypeId", sym.qualified_name);
+        assert!(!sym.ty.is_null(), "symbol `{}` wasn't assigned a TypeId", sym.qname);
         sym.ty
     }
 

@@ -5,9 +5,9 @@ use ustr::{ustr, Ustr};
 use crate::common::Word;
 
 #[derive(Debug, Clone)]
-pub struct QualifiedName(Vec<Ustr>);
+pub struct QName(Vec<Ustr>);
 
-impl QualifiedName {
+impl QName {
     pub fn new() -> Self {
         Self(vec![])
     }
@@ -48,12 +48,12 @@ impl QualifiedName {
 
 #[derive(Debug, Clone)]
 pub enum Child {
-    Qualified(QualifiedName),
+    Qualified(QName),
     Single(Ustr),
 }
 
-impl From<QualifiedName> for Child {
-    fn from(value: QualifiedName) -> Self {
+impl From<QName> for Child {
+    fn from(value: QName) -> Self {
         Self::Qualified(value)
     }
 }
@@ -64,13 +64,13 @@ impl From<Ustr> for Child {
     }
 }
 
-impl Default for QualifiedName {
+impl Default for QName {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl From<Ustr> for QualifiedName {
+impl From<Ustr> for QName {
     fn from(value: Ustr) -> Self {
         if value.is_empty() {
             Self::new()
@@ -80,13 +80,13 @@ impl From<Ustr> for QualifiedName {
     }
 }
 
-impl From<Word> for QualifiedName {
+impl From<Word> for QName {
     fn from(value: Word) -> Self {
         Self::from(value.name())
     }
 }
 
-impl IntoIterator for QualifiedName {
+impl IntoIterator for QName {
     type Item = Ustr;
 
     type IntoIter = std::vec::IntoIter<Ustr>;
@@ -96,13 +96,13 @@ impl IntoIterator for QualifiedName {
     }
 }
 
-impl Extend<Ustr> for QualifiedName {
+impl Extend<Ustr> for QName {
     fn extend<T: IntoIterator<Item = Ustr>>(&mut self, iter: T) {
         self.0.extend(iter);
     }
 }
 
-impl fmt::Display for QualifiedName {
+impl fmt::Display for QName {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(&self.standard_full_name())
     }

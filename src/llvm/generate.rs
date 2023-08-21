@@ -155,7 +155,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         for fun in self.mir.functions.values() {
             let id = fun.id();
             let fun_info = &self.db[id];
-            let name = fun_info.qualified_name.standard_full_name();
+            let name = fun_info.qname.standard_full_name();
             let llvm_ty = fun_info
                 .ty
                 .llvm_type(self)
@@ -179,7 +179,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         let fun_info = &self.db[id];
 
         let function_value = self.symbol_values.get(&fun.id()).map_or_else(
-            || panic!("function {} to be declared", fun_info.qualified_name.standard_full_name()),
+            || panic!("function {} to be declared", fun_info.qname.standard_full_name()),
             |f| f.as_function_value(),
         );
 

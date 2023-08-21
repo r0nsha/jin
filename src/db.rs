@@ -9,7 +9,7 @@ use crate::{
     common::{
         new_key_type,
         target::{TargetMetrics, TargetPlatform},
-        IndexVec, QualifiedName,
+        IndexVec, QName,
     },
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
@@ -174,18 +174,13 @@ pub struct ModuleInfo {
     #[allow(unused)]
     pub id: ModuleId,
     pub source_id: SourceId,
-    pub name: QualifiedName,
+    pub name: QName,
     #[allow(unused)]
     pub is_main: bool,
 }
 
 impl ModuleInfo {
-    pub fn alloc(
-        db: &mut Database,
-        source_id: SourceId,
-        name: QualifiedName,
-        is_main: bool,
-    ) -> ModuleId {
+    pub fn alloc(db: &mut Database, source_id: SourceId, name: QName, is_main: bool) -> ModuleId {
         let id = db.modules.push_with_key(|id| Self { id, source_id, name, is_main });
 
         if is_main {
@@ -201,7 +196,7 @@ impl ModuleInfo {
 pub struct SymbolInfo {
     pub id: SymbolId,
     pub module_id: ModuleId,
-    pub qualified_name: QualifiedName,
+    pub qname: QName,
     pub scope_level: ScopeLevel,
     pub kind: Box<SymbolInfoKind>,
     pub ty: TypeId,
@@ -218,7 +213,7 @@ impl SymbolInfo {
     pub fn alloc(
         db: &mut Database,
         module_id: ModuleId,
-        qualified_name: QualifiedName,
+        qname: QName,
         scope_level: ScopeLevel,
         kind: SymbolInfoKind,
         ty: TypeId,
@@ -227,7 +222,7 @@ impl SymbolInfo {
         db.symbols.push_with_key(|id| Self {
             id,
             module_id,
-            qualified_name,
+            qname,
             scope_level,
             kind: Box::new(kind),
             ty,

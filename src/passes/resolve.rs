@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
-    common::{QualifiedName, Word},
+    common::{QName, Word},
     db::{
         Database, FunctionInfo, ModuleId, ScopeLevel, SymbolId, SymbolInfo, SymbolInfoKind, TypeId,
         Vis,
@@ -100,7 +100,7 @@ impl<'db> ResolveCx<'db> {
                 if let Some(prev_id) = self.global_scope.insert(env.module_id, name.name(), id) {
                     let sym = &self.db[prev_id];
                     self.errors.push(ResolveError::MultipleItems {
-                        name: sym.qualified_name.name(),
+                        name: sym.qname.name(),
                         prev_span: sym.span,
                         dup_span: name.span(),
                     });
@@ -272,7 +272,7 @@ impl Env {
     pub fn push(&mut self, name: Ustr, kind: ScopeKind) {
         let name = self
             .current()
-            .map_or_else(|| QualifiedName::from(name), |curr| curr.name.clone().child(name));
+            .map_or_else(|| QName::from(name), |curr| curr.name.clone().child(name));
 
         self.scopes.push(Scope { kind, name, symbols: UstrMap::default() });
     }
@@ -337,7 +337,7 @@ impl Env {
         }
     }
 
-    pub fn scope_name(&self, db: &Database) -> QualifiedName {
+    pub fn scope_name(&self, db: &Database) -> QName {
         let module_name = &db[self.module_id].name;
         self.current().map_or_else(
             || module_name.clone(),
@@ -357,7 +357,7 @@ impl Env {
 #[derive(Debug)]
 pub struct Scope {
     pub kind: ScopeKind,
-    pub name: QualifiedName,
+    pub name: QName,
     pub symbols: UstrMap<SymbolId>,
 }
 

@@ -160,7 +160,7 @@ impl PrettyPrint for Name {
         cx.builder.add_empty_child(format!(
             "`{}` (type: {})",
             self.id.map_or(self.name.to_string(), |id| {
-                cx.db[id].qualified_name.standard_full_name()
+                cx.db[id].qname.standard_full_name()
             }),
             cx.db[self.ty].display(cx.db)
         ));
