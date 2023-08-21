@@ -3,7 +3,7 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Ast, Binary, BinaryOp, Block, Call, CallArg, Def, Function, FunctionParam, If, Lit,
+        Ast, Binary, BinaryOp, Block, Call, CallArg, Item, Function, FunctionParam, If, Lit,
         LitKind, Module, Return, Statement,
     },
     common::QualifiedName,
@@ -46,15 +46,15 @@ impl<'a> Parser<'a> {
         let mut module = Module::new(source_id, name, is_main);
 
         while !self.eof() {
-            module.definitions.push(self.parse_top_level()?);
+            module.items.push(self.parse_top_level()?);
         }
 
         Ok(module)
     }
 
-    fn parse_top_level(&mut self) -> ParseResult<Def> {
+    fn parse_top_level(&mut self) -> ParseResult<Item> {
         if self.is(TokenKind::Fn) {
-            Ok(Def::Function(self.parse_function()?))
+            Ok(Item::Function(self.parse_function()?))
         } else {
             let token = self.require()?;
 
@@ -107,7 +107,7 @@ impl<'a> Parser<'a> {
 
     fn parse_stmt(&mut self) -> ParseResult<Statement> {
         if self.is(TokenKind::Fn) {
-            Ok(Statement::Def(Def::Function(self.parse_function()?)))
+            Ok(Statement::Item(Item::Function(self.parse_function()?)))
         } else if self.is(TokenKind::Return) {
             Ok(Statement::Return(self.parse_return()?))
         } else {
