@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use super::InferCx;
+use super::TypeCx;
 use crate::{
     db::TyId,
     hir::{Binary, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Module, Return},
@@ -8,7 +8,7 @@ use crate::{
 };
 
 // Substitute
-impl<'db> InferCx<'db> {
+impl<'db> TypeCx<'db> {
     pub fn substitution(&mut self, modules: &mut [Module]) -> HashSet<TyVar> {
         let mut unbound_vars = HashSet::new();
 
@@ -48,9 +48,9 @@ impl<'db> InferCx<'db> {
                 span: fun.span,
             }),
             Ty::Infer(InferTy::TyVar(var), span) => {
-                let root = self.tcx.ty_unification_table.find(*var);
+                let root = self.ty_unification_table.find(*var);
 
-                if let Some(ty) = self.tcx.ty_unification_table.probe_value(root) {
+                if let Some(ty) = self.ty_unification_table.probe_value(root) {
                     self.substitute_ty(&ty, unbound_vars)
                 } else {
                     unbound_vars.insert(root);
@@ -58,10 +58,9 @@ impl<'db> InferCx<'db> {
                 }
             }
             Ty::Infer(InferTy::IntVar(var), span) => {
-                let root = self.tcx.int_unification_table.find(*var);
+                let root = self.int_unification_table.find(*var);
 
-                self.tcx
-                    .int_unification_table
+                self.int_unification_table
                     .probe_value(root)
                     .map_or_else(|| Ty::default_int(*span), Into::into)
             }
@@ -71,11 +70,11 @@ impl<'db> InferCx<'db> {
 }
 
 trait Substitute<'db> {
-    fn substitute(&mut self, cx: &mut InferCx<'db>, unbound_vars: &mut HashSet<TyVar>);
+    fn substitute(&mut self, cx: &mut TypeCx<'db>, unbound_vars: &mut HashSet<TyVar>);
 }
 
 impl Substitute<'_> for Expr {
-    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
+    fn substitute(&mut self, cx: &mut TypeCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         match self {
             Self::Item(inner) => inner.substitute(cx, unbound_vars),
             Self::If(inner) => inner.substitute(cx, unbound_vars),
@@ -91,7 +90,7 @@ impl Substitute<'_> for Expr {
 }
 
 impl Substitute<'_> for Item {
-    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
+    fn substitute(&mut self, cx: &mut TypeCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         match &mut self.kind {
             ItemKind::Function(fun) => fun.substitute(cx, unbound_vars),
         }
@@ -102,7 +101,7 @@ impl Substitute<'_> for Item {
 }
 
 impl Substitute<'_> for Function {
-    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
+    fn substitute(&mut self, cx: &mut TypeCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         for param in &self.params {
             cx.substitute_tyid(param.ty, unbound_vars);
         }
@@ -114,7 +113,7 @@ impl Substitute<'_> for Function {
 }
 
 impl Substitute<'_> for If {
-    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
+    fn substitute(&mut self, cx: &mut TypeCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         self.cond.substitute(cx, unbound_vars);
         self.then.substitute(cx, unbound_vars);
         self.otherwise.substitute(cx, unbound_vars);
@@ -122,7 +121,7 @@ impl Substitute<'_> for If {
 }
 
 impl Substitute<'_> for Block {
-    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
+    fn substitute(&mut self, cx: &mut TypeCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         for stmt in &mut self.exprs {
             stmt.substitute(cx, unbound_vars);
         }
@@ -130,13 +129,13 @@ impl Substitute<'_> for Block {
 }
 
 impl Substitute<'_> for Return {
-    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
+    fn substitute(&mut self, cx: &mut TypeCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         self.expr.substitute(cx, unbound_vars);
     }
 }
 
 impl Substitute<'_> for Call {
-    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
+    fn substitute(&mut self, cx: &mut TypeCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         self.callee.substitute(cx, unbound_vars);
 
         for arg in &mut self.args {
@@ -146,7 +145,7 @@ impl Substitute<'_> for Call {
 }
 
 impl Substitute<'_> for CallArg {
-    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
+    fn substitute(&mut self, cx: &mut TypeCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         match self {
             Self::Positional(expr) | Self::Named(_, expr) => {
                 expr.substitute(cx, unbound_vars);
@@ -156,14 +155,14 @@ impl Substitute<'_> for CallArg {
 }
 
 impl Substitute<'_> for Binary {
-    fn substitute(&mut self, cx: &mut InferCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
+    fn substitute(&mut self, cx: &mut TypeCx<'_>, unbound_vars: &mut HashSet<TyVar>) {
         self.lhs.substitute(cx, unbound_vars);
         self.rhs.substitute(cx, unbound_vars);
     }
 }
 
 impl<'db, T: Substitute<'db>> Substitute<'db> for Vec<T> {
-    fn substitute(&mut self, cx: &mut InferCx<'db>, unbound_vars: &mut HashSet<TyVar>) {
+    fn substitute(&mut self, cx: &mut TypeCx<'db>, unbound_vars: &mut HashSet<TyVar>) {
         for item in self {
             item.substitute(cx, unbound_vars);
         }
@@ -171,7 +170,7 @@ impl<'db, T: Substitute<'db>> Substitute<'db> for Vec<T> {
 }
 
 impl<'db, T: Substitute<'db>> Substitute<'db> for Option<T> {
-    fn substitute(&mut self, cx: &mut InferCx<'db>, unbound_vars: &mut HashSet<TyVar>) {
+    fn substitute(&mut self, cx: &mut TypeCx<'db>, unbound_vars: &mut HashSet<TyVar>) {
         if let Some(item) = self {
             item.substitute(cx, unbound_vars);
         }
@@ -179,7 +178,7 @@ impl<'db, T: Substitute<'db>> Substitute<'db> for Option<T> {
 }
 
 impl<'db, T: Substitute<'db>> Substitute<'db> for Box<T> {
-    fn substitute(&mut self, cx: &mut InferCx<'db>, unbound_vars: &mut HashSet<TyVar>) {
+    fn substitute(&mut self, cx: &mut TypeCx<'db>, unbound_vars: &mut HashSet<TyVar>) {
         self.as_mut().substitute(cx, unbound_vars);
     }
 }

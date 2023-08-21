@@ -1,5 +1,5 @@
 use crate::{
-    passes::infer::typecx::TypeCx,
+    passes::typeck::TypeCx,
     ty::{FunctionParamTy, FunctionTy, InferTy, Ty},
 };
 

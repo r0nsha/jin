@@ -1,7 +1,7 @@
 mod find_main;
-mod infer;
 mod resolve;
+mod typeck;
 
 pub use find_main::find_main;
-pub use infer::infer;
 pub use resolve::resolve;
+pub use typeck::typeck;

@@ -1,12 +1,11 @@
-use super::{constraint::Constraint, InferCx};
 use crate::{
     db::Database,
     diagnostics::{Diagnostic, Label},
-    passes::infer::normalize::NormalizeTy,
+    passes::typeck::{constraint::Constraint, normalize::NormalizeTy, TypeCx},
     ty::{InferTy, IntTy, IntVarValue, Ty, TyVar},
 };
 
-impl<'db> InferCx<'db> {
+impl<'db> TypeCx<'db> {
     pub fn unification(&mut self) -> Result<(), InferError> {
         let constraints = self.constraints.clone();
 
@@ -22,8 +21,8 @@ impl<'db> InferCx<'db> {
     }
 
     fn unify_ty_ty(&mut self, expected: &Ty, actual: &Ty) -> Result<(), InferError> {
-        let expected = expected.clone().normalize(&mut self.tcx);
-        let actual = actual.clone().normalize(&mut self.tcx);
+        let expected = expected.clone().normalize(self);
+        let actual = actual.clone().normalize(self);
 
         match (expected, actual) {
             (Ty::Never(_), _)
@@ -50,19 +49,18 @@ impl<'db> InferCx<'db> {
             }
 
             (Ty::Infer(InferTy::TyVar(expected), _), Ty::Infer(InferTy::TyVar(actual), _)) => {
-                self.tcx.ty_unification_table.unify_var_var(expected, actual)?;
+                self.ty_unification_table.unify_var_var(expected, actual)?;
                 Ok(())
             }
 
             (Ty::Infer(InferTy::IntVar(expected), _), Ty::Infer(InferTy::IntVar(actual), _)) => {
-                self.tcx.int_unification_table.unify_var_var(expected, actual)?;
+                self.int_unification_table.unify_var_var(expected, actual)?;
                 Ok(())
             }
 
             (Ty::Int(ity, span), Ty::Infer(InferTy::IntVar(var), _))
             | (Ty::Infer(InferTy::IntVar(var), _), Ty::Int(ity, span)) => {
-                self.tcx
-                    .int_unification_table
+                self.int_unification_table
                     .unify_var_value(var, Some(IntVarValue::Int(ity, span)))?;
                 Ok(())
             }
@@ -76,7 +74,7 @@ impl<'db> InferCx<'db> {
 
     fn unify_ty_var(&mut self, expected: Ty, var: TyVar) -> Result<(), InferError> {
         expected.occurs_check(var).map_err(|ty| InferError::InfiniteType { var, ty })?;
-        self.tcx.ty_unification_table.unify_var_value(var, Some(expected))?;
+        self.ty_unification_table.unify_var_value(var, Some(expected))?;
         Ok(())
     }
 }
