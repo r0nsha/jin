@@ -47,7 +47,7 @@ impl QualifiedName {
 }
 
 #[derive(Debug, Clone)]
-enum Child {
+pub enum Child {
     Qualified(QualifiedName),
     Single(Ustr),
 }
@@ -98,7 +98,7 @@ impl IntoIterator for QualifiedName {
 
 impl Extend<Ustr> for QualifiedName {
     fn extend<T: IntoIterator<Item = Ustr>>(&mut self, iter: T) {
-        self.0.extend(iter)
+        self.0.extend(iter);
     }
 }
 

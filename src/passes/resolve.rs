@@ -42,7 +42,7 @@ impl<'db> ResolveCx<'db> {
         for module in modules {
             let mut env = Env::new(module.id);
 
-            env.scopes.push(ustr(""), ScopeKind::Block);
+            env.scopes.push(ustr(""), ScopeKind::Global);
 
             for item in &mut module.items {
                 self.declare_item(&mut env, item);
@@ -82,8 +82,8 @@ impl<'db> ResolveCx<'db> {
     fn declare_symbol(&mut self, env: &mut Env, kind: SymbolInfoKind, name: Word) -> SymbolId {
         let module_id = env.module_id;
         let scope_level = env.scope_level(Vis::Public);
+        dbg!(scope_level);
         let qname = env.scope_name(self.db).child(name.name());
-        println!("scope: {}, name: {qname}", env.scope_name(self.db));
 
         let id = SymbolInfo::alloc(
             self.db,
@@ -272,19 +272,27 @@ impl Env {
     }
 
     pub fn scope_level(&self, vis: Vis) -> ScopeLevel {
-        match self.scopes.depth() {
-            0 => ScopeLevel::Global(vis),
-            n => ScopeLevel::Local(n),
+        if self.is_global_scope() {
+            ScopeLevel::Global(vis)
+        } else {
+            ScopeLevel::Local(self.scopes.depth())
         }
     }
 
     pub fn scope_name(&self, db: &Database) -> QualifiedName {
-        let module_name = db[self.module_id].name.clone();
-        self.scopes.current().map_or(module_name, |scope| module_name.child(scope.name.clone()))
+        let module_name = &db[self.module_id].name;
+        self.scopes.current().map_or_else(
+            || module_name.clone(),
+            |scope| module_name.clone().child(scope.name.clone()),
+        )
+    }
+
+    pub fn scope_kind(&self) -> Option<ScopeKind> {
+        self.scopes.current().map(|s| s.kind)
     }
 
     pub fn is_global_scope(&self) -> bool {
-        self.scopes.depth() == 0
+        self.scopes.depth() == 0 || self.scope_kind().map_or(false, |k| k == ScopeKind::Global)
     }
 }
 
@@ -379,8 +387,9 @@ impl Scope {
     }
 }
 
-#[derive(Debug, PartialEq, Eq)]
-enum ScopeKind {
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum ScopeKind {
+    Global,
     Fun,
     Block,
 }
