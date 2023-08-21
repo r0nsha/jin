@@ -148,18 +148,7 @@ impl Resolve<'_> for Function {
         env.scopes.push(self.name.name(), ScopeKind::Fun);
 
         for param in &mut self.params {
-            let id = SymbolInfo::alloc(
-                cx.db,
-                env.module_id,
-                param.name.into(),
-                env.scope_level(Vis::Private),
-                SymbolInfoKind::Variable,
-                TypeId::null(),
-                param.span,
-            );
-
-            param.id = Some(id);
-            env.scopes.insert(param.name.name(), id);
+            param.id = Some(cx.declare_symbol(env, SymbolInfoKind::Variable, param.name));
         }
 
         self.body.resolve(cx, env);
