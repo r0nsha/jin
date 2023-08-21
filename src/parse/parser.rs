@@ -213,8 +213,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_operand(&mut self) -> ParseResult<Ast> {
-        let expr = self.parse_operand_base()?;
-        self.parse_operand_postfix(expr)
+        let term = self.parse_term()?;
+        self.parse_postfix(term)
     }
 
     // fn parse_binary_factor(&mut self, lhs: Ast) -> ParseResult<Ast> {
@@ -323,7 +323,7 @@ impl<'a> Parser<'a> {
     //     }))
     // }
 
-    fn parse_operand_base(&mut self) -> ParseResult<Ast> {
+    fn parse_term(&mut self) -> ParseResult<Ast> {
         let tok = self.eat_any()?;
 
         let expr = match tok.kind {
@@ -384,7 +384,7 @@ impl<'a> Parser<'a> {
         Ok(If { cond: Box::new(cond), then: Box::new(then), otherwise, span })
     }
 
-    fn parse_operand_postfix(&mut self, expr: Ast) -> ParseResult<Ast> {
+    fn parse_postfix(&mut self, expr: Ast) -> ParseResult<Ast> {
         let start = self.last_span();
 
         match self.token() {
