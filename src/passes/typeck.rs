@@ -62,8 +62,10 @@ impl<'db> TypeCx<'db> {
     }
 
     fn assign_global_tyids(&mut self) {
+        // TODO: find a less unsightly code pattern for mutating all symbols...
         for i in 0..self.db.symbols.len() {
-            self.db.symbols[i.into()].ty = self.alloc_ty_var(self.db.symbols[i.into()].span);
+            let id = i.into();
+            self.db.symbols[id].ty = self.alloc_ty_var(self.db.symbols[id].span);
         }
     }
 

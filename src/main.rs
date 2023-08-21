@@ -4,8 +4,7 @@
     clippy::style,
     clippy::complexity,
     clippy::perf,
-    clippy::pedantic,
-    clippy::nursery
+    clippy::pedantic
 )]
 #![allow(
     clippy::similar_names,
