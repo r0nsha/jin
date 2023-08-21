@@ -184,7 +184,7 @@ impl Resolve<'_> for Return {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
         self.expr.resolve(cx, env);
 
-        if !env.scopes.in_kind(&ScopeKind::Fun) {
+        if !env.scopes.in_kind(ScopeKind::Fun) {
             cx.errors.push(ResolveError::InvalidReturn { span: self.span });
         }
     }
@@ -272,10 +272,9 @@ impl Env {
     }
 
     pub fn scope_level(&self, vis: Vis) -> ScopeLevel {
-        if self.is_global_scope() {
-            ScopeLevel::Global(vis)
-        } else {
-            ScopeLevel::Local(self.scopes.depth())
+        match self.scopes.depth() {
+            0 => ScopeLevel::Global(vis),
+            n => ScopeLevel::Local(n),
         }
     }
 
@@ -287,12 +286,8 @@ impl Env {
         )
     }
 
-    pub fn scope_kind(&self) -> Option<ScopeKind> {
-        self.scopes.current().map(|s| s.kind)
-    }
-
     pub fn is_global_scope(&self) -> bool {
-        self.scopes.depth() == 0 || self.scope_kind().map_or(false, |k| k == ScopeKind::Global)
+        self.scopes.depth() == 0
     }
 }
 
@@ -364,8 +359,8 @@ impl Scopes {
         self.0.len()
     }
 
-    fn in_kind(&self, kind: &ScopeKind) -> bool {
-        self.0.iter().any(|s| &s.kind == kind)
+    fn in_kind(&self, kind: ScopeKind) -> bool {
+        self.0.iter().any(|s| s.kind == kind)
     }
 }
 
@@ -388,7 +383,7 @@ impl Scope {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
-pub enum ScopeKind {
+enum ScopeKind {
     Global,
     Fun,
     Block,
