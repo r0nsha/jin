@@ -25,20 +25,12 @@ mod passes;
 mod span;
 mod ty;
 
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 use clap::{Parser, Subcommand};
 use db::{BuildOptions, Database};
 
 use crate::{common::target::TargetPlatform, db::EmitOption};
-
-macro_rules! bail_on_errors {
-    ($db: expr) => {
-        if $db.diagnostics.any() {
-            return;
-        }
-    };
-}
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -57,7 +49,15 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Build { file: PathBuf },
-    Run { file: PathBuf },
+}
+
+macro_rules! expect {
+    ($db: expr) => {
+        if $db.diagnostics.any() {
+            $db.print_diagnostics();
+            return;
+        }
+    };
 }
 
 fn main() {
@@ -72,47 +72,33 @@ fn main() {
     );
 
     match cli.cmd {
-        Commands::Build { file } => build(build_options, &file),
-        Commands::Run { file: _ } => {
-            todo!();
-
-            // if let Some(output_file) = build(build_options, file) {
-            // let _ = Command::new(output_file).spawn();
-            // }
+        Commands::Build { file } => {
+            let mut db = Database::new(build_options, &file).unwrap();
+            build(&mut db);
         }
     }
 }
 
-fn build(build_options: BuildOptions, file: &Path) {
-    let mut db = Database::new(build_options, file).unwrap();
-    build_inner(&mut db);
-
-    if db.diagnostics.any() {
-        db.print_diagnostics();
-    }
-}
-
-fn build_inner(db: &mut Database) {
+fn build(db: &mut Database) {
     db.timings.start("parse");
     let ast_lib = parse::parse_modules(db);
 
     if db.build_options().should_emit(EmitOption::Ast) {
         ast_lib.pretty_print().expect("ast printing to work");
     }
-
-    bail_on_errors!(db);
+    expect!(db);
 
     db.timings.start("ast -> hir");
     let mut hir = hir::lower(db, ast_lib);
 
     db.timings.start("resolve");
     passes::resolve(db, &mut hir);
-    bail_on_errors!(db);
+    expect!(db);
 
     db.timings.start("typeck");
     passes::typeck(db, &mut hir);
     db.timings.stop();
-    bail_on_errors!(db);
+    expect!(db);
 
     if db.build_options().should_emit(EmitOption::Hir) {
         hir.pretty_print(db).expect("hir printing to work");
@@ -120,12 +106,12 @@ fn build_inner(db: &mut Database) {
 
     db.timings.start("find main");
     passes::find_main(db);
-    bail_on_errors!(db);
+    expect!(db);
 
     db.timings.start("hir -> mir");
     let mir = mir::lower(db, &hir);
     db.timings.stop();
-    bail_on_errors!(db);
+    expect!(db);
 
     if db.build_options().should_emit(EmitOption::Mir) {
         println!("\nMIR:\n");
