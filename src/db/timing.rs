@@ -44,18 +44,24 @@ struct Timing {
 
 impl Timing {
     fn print(&self) {
-        let value = self.duration.as_millis();
+        let millis = self.duration.as_millis();
 
-        let color = if value < 5 {
+        let color = if millis < 5 {
             AnsiColors::BrightCyan
-        } else if value < 20 {
+        } else if millis < 20 {
             AnsiColors::BrightGreen
-        } else if value < 100 {
+        } else if millis < 100 {
             AnsiColors::BrightYellow
         } else {
             AnsiColors::BrightRed
         };
 
-        println!("{:<20}{}ms", self.name.color(color).bold(), value);
+        let time_str = if millis == 0 {
+            format!("{}μs", self.duration.as_micros())
+        } else {
+            format!("{millis}ms")
+        };
+
+        println!("{: <25}{time_str}", self.name.color(color).bold());
     }
 }
