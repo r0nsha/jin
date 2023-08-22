@@ -15,7 +15,7 @@ struct Lexer<'s> {
     source_id: SourceId,
     source_contents: &'s str,
     source_bytes: &'s [u8],
-    pos: usize,
+    pos: u32,
 }
 
 impl<'s> Lexer<'s> {
@@ -107,18 +107,18 @@ impl<'s> Lexer<'s> {
                     }
                     '^' => TokenKind::Caret,
                     ch => {
-                        let span = self.create_span(start.try_into().unwrap());
+                        let span = self.create_span(start);
                         return Err(TokenizeError::InvalidChar { ch, span });
                     }
                 };
 
-                Ok(Some(Token { kind, span: self.create_span(start.try_into().unwrap()) }))
+                Ok(Some(Token { kind, span: self.create_span(start) }))
             }
             None => Ok(None),
         }
     }
 
-    fn ident(&mut self, start: usize) -> TokenKind {
+    fn ident(&mut self, start: u32) -> TokenKind {
         while let Some(ch) = self.peek() {
             if ch.is_ascii_alphanumeric() || ch == '_' {
                 self.next();
@@ -138,7 +138,7 @@ impl<'s> Lexer<'s> {
         unreachable!()
     }
 
-    fn numeric(&mut self, start: usize) -> TokenKind {
+    fn numeric(&mut self, start: u32) -> TokenKind {
         while let Some(ch) = self.peek() {
             if ch.is_ascii_digit() {
                 self.next();
@@ -146,7 +146,9 @@ impl<'s> Lexer<'s> {
                 self.next();
                 self.next();
             } else {
-                return TokenKind::Int(self.range(start).replace('_', "").parse().unwrap());
+                return TokenKind::Int(
+                    self.range(start).replace('_', "").parse().expect("to be a valid integer"),
+                );
             }
         }
 
@@ -168,12 +170,14 @@ impl<'s> Lexer<'s> {
         self.pos += 1;
     }
 
-    fn range(&self, start: usize) -> &str {
-        &self.source_contents[start..start + (self.pos - start)]
+    fn range(&self, start: u32) -> &str {
+        let start = start as usize;
+        let end = start + (self.pos as usize - start);
+        &self.source_contents[start..end]
     }
 
     fn peek(&self) -> Option<char> {
-        self.source_bytes.get(self.pos).map(|c| *c as char)
+        self.source_bytes.get(self.pos as usize).map(|c| *c as char)
     }
 
     fn eat(&mut self, ch: char) -> bool {
@@ -186,7 +190,7 @@ impl<'s> Lexer<'s> {
     }
 
     fn peek_offset(&self, offset: usize) -> Option<char> {
-        self.source_bytes.get(self.pos + offset).map(|c| *c as char)
+        self.source_bytes.get(self.pos as usize + offset).map(|c| *c as char)
     }
 
     fn bump(&mut self) -> Option<char> {
@@ -196,7 +200,7 @@ impl<'s> Lexer<'s> {
     }
 
     fn create_span(&self, start: u32) -> Span {
-        Span::new(self.source_id, start, self.pos.try_into().unwrap())
+        Span::new(self.source_id, start, self.pos)
     }
 }
 type TokenizeResult<T> = Result<T, TokenizeError>;
