@@ -3,6 +3,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use clap::ValueEnum;
 use path_absolutize::Absolutize;
 
 use crate::{
@@ -153,24 +154,12 @@ impl BuildOptions {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum EmitOption {
     Ast,
     Hir,
     Mir,
     LlvmIr,
-}
-
-impl From<String> for EmitOption {
-    fn from(value: String) -> Self {
-        match value.to_lowercase().as_str() {
-            "ast" => Self::Ast,
-            "hir" => Self::Hir,
-            "mir" => Self::Mir,
-            "llvm-ir" => Self::LlvmIr,
-            _ => unreachable!(),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]

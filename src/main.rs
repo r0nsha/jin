@@ -51,7 +51,7 @@ struct Cli {
     #[arg(global = true, long, default_value_t = false)]
     timings: bool,
 
-    #[arg(global = true, long)]
+    #[arg(value_enum, global = true, long)]
     emit: Vec<EmitOption>,
 }
 
