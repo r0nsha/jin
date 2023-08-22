@@ -40,16 +40,9 @@ impl<'db> ResolveCx<'db> {
 
     fn resolve_global_items(&mut self, modules: &mut [Module]) {
         for module in modules {
-            let mut env = Env::new(module.id);
-
-            env.push(ustr(""), ScopeKind::Global);
-
             for item in &mut module.items {
-                self.declare_item(&mut env, item);
+                self.declare_global_item(module.id, item);
             }
-
-            let symbols = env.scopes.pop().expect("to have a single scope").symbols;
-            self.global_scope.insert_module(module.id, symbols);
         }
     }
 
@@ -61,6 +54,55 @@ impl<'db> ResolveCx<'db> {
                 item.resolve(self, &mut env);
             }
         }
+    }
+
+    fn declare_global_item(&mut self, module_id: ModuleId, item: &mut Item) -> SymbolId {
+        match &mut item.kind {
+            ItemKind::Function(fun) => {
+                let id = self.declare_global_symbol(
+                    module_id,
+                    Vis::Public,
+                    SymbolInfoKind::Function(FunctionInfo::Orphan),
+                    fun.name,
+                );
+
+                fun.id = Some(id);
+
+                id
+            }
+        }
+    }
+
+    fn declare_global_symbol(
+        &mut self,
+        module_id: ModuleId,
+        vis: Vis,
+        kind: SymbolInfoKind,
+        name: Word,
+    ) -> SymbolId {
+        let scope_level = ScopeLevel::Global(vis);
+        let qname = self.db[module_id].name.clone().child(name.name());
+
+        let id = SymbolInfo::alloc(
+            self.db,
+            module_id,
+            qname,
+            scope_level,
+            kind,
+            TypeId::null(),
+            name.span(),
+        );
+
+        if let Some(prev_id) = self.global_scope.insert(module_id, name.name(), id) {
+            let sym = &self.db[prev_id];
+            self.errors.push(ResolveError::MultipleItems {
+                name: sym.qname.name(),
+                prev_span: sym.span,
+                dup_span: name.span(),
+            });
+        }
+
+        id
     }
 
     fn declare_item(&mut self, env: &mut Env, item: &mut Item) -> SymbolId {
@@ -80,33 +122,17 @@ impl<'db> ResolveCx<'db> {
     }
 
     fn declare_symbol(&mut self, env: &mut Env, kind: SymbolInfoKind, name: Word) -> SymbolId {
-        let module_id = env.module_id;
-        let scope_level = env.scope_level(Vis::Public);
-        let qname = env.scope_name(self.db).child(name.name());
-
         let id = SymbolInfo::alloc(
             self.db,
-            module_id,
-            qname,
-            scope_level,
+            env.module_id,
+            env.scope_name(self.db).child(name.name()),
+            env.scope_level(),
             kind,
             TypeId::null(),
             name.span(),
         );
 
-        match env.current_mut() {
-            Some(scope) => scope.insert(name.name(), id),
-            None => {
-                if let Some(prev_id) = self.global_scope.insert(env.module_id, name.name(), id) {
-                    let sym = &self.db[prev_id];
-                    self.errors.push(ResolveError::MultipleItems {
-                        name: sym.qname.name(),
-                        prev_span: sym.span,
-                        dup_span: name.span(),
-                    });
-                }
-            }
-        }
+        env.current_mut().insert(name.name(), id);
 
         id
     }
@@ -152,7 +178,7 @@ impl Resolve<'_> for Function {
         }
 
         self.body.resolve(cx, env);
-        env.scopes.pop();
+        env.pop();
     }
 }
 
@@ -175,7 +201,7 @@ impl Resolve<'_> for Block {
             expr.resolve(cx, env);
         }
 
-        env.scopes.pop();
+        env.pop();
     }
 }
 
@@ -234,27 +260,21 @@ impl Resolve<'_> for Name {
 }
 
 #[derive(Debug)]
-pub struct GlobalScope(HashMap<ModuleId, UstrMap<SymbolId>>);
+pub struct GlobalScope {
+    modules: HashMap<(ModuleId, Ustr), SymbolId>,
+}
 
 impl GlobalScope {
     pub fn new() -> Self {
-        Self(HashMap::new())
+        Self { modules: HashMap::new() }
     }
 
     pub fn lookup(&self, module_id: ModuleId, name: Ustr) -> Option<SymbolId> {
-        self.0.get(&module_id).and_then(|syms| syms.get(&name)).copied()
-    }
-
-    pub fn insert_module(
-        &mut self,
-        module_id: ModuleId,
-        symbols: UstrMap<SymbolId>,
-    ) -> Option<UstrMap<SymbolId>> {
-        self.0.insert(module_id, symbols)
+        self.modules.get(&(module_id, name)).copied()
     }
 
     pub fn insert(&mut self, module_id: ModuleId, name: Ustr, id: SymbolId) -> Option<SymbolId> {
-        self.0.get_mut(&module_id).and_then(|syms| syms.insert(name, id))
+        self.modules.insert((module_id, name), id)
     }
 }
 
@@ -264,35 +284,39 @@ pub struct Env {
     scopes: Vec<Scope>,
 }
 
+#[allow(unused)]
 impl Env {
     pub fn new(module_id: ModuleId) -> Self {
         Self { module_id, scopes: vec![] }
     }
 
     pub fn push(&mut self, name: Ustr, kind: ScopeKind) {
-        let name =
-            self.current().map_or_else(|| QName::from(name), |curr| curr.name.clone().child(name));
-
         self.scopes.push(Scope { kind, name, symbols: UstrMap::default() });
     }
 
-    #[allow(unused)]
     pub fn pop(&mut self) -> Option<Scope> {
         self.scopes.pop()
     }
 
-    pub fn current(&self) -> Option<&Scope> {
-        self.scopes.last()
+    pub fn current(&self) -> &Scope {
+        self.scopes.last().expect("to have a scope")
     }
 
-    #[allow(unused)]
-    pub fn current_mut(&mut self) -> Option<&mut Scope> {
-        self.scopes.last_mut()
+    pub fn current_mut(&mut self) -> &mut Scope {
+        self.scopes.last_mut().expect("to have a scope")
     }
 
-    #[allow(unused)]
     pub fn insert(&mut self, k: Ustr, v: SymbolId) {
         self.scopes.last_mut().unwrap().symbols.insert(k, v);
+    }
+
+    pub fn lookup(&self, k: Ustr) -> Option<&SymbolId> {
+        self.lookup_depth(k).map(|r| r.1)
+    }
+
+    #[allow(unused)]
+    pub fn lookup_mut(&mut self, k: Ustr) -> Option<&mut SymbolId> {
+        self.lookup_depth_mut(k).map(|r| r.1)
     }
 
     #[allow(unused)]
@@ -315,35 +339,25 @@ impl Env {
         None
     }
 
-    pub fn lookup(&self, k: Ustr) -> Option<&SymbolId> {
-        self.lookup_depth(k).map(|r| r.1)
-    }
-
-    #[allow(unused)]
-    pub fn lookup_mut(&mut self, k: Ustr) -> Option<&mut SymbolId> {
-        self.lookup_depth_mut(k).map(|r| r.1)
-    }
-
-    #[allow(unused)]
-    pub fn depth(&self) -> usize {
-        self.scopes.len()
-    }
-
-    pub fn scope_level(&self, vis: Vis) -> ScopeLevel {
+    pub fn scope_level(&self) -> ScopeLevel {
         match self.depth() {
-            0 => ScopeLevel::Global(vis),
+            0 => unreachable!("expected to have at least one scope"),
             n => ScopeLevel::Local(n),
         }
     }
 
     pub fn scope_name(&self, db: &Database) -> QName {
-        let module_name = &db[self.module_id].name;
-        self.current().map_or_else(
-            || module_name.clone(),
-            |scope| module_name.clone().child(scope.name.clone()),
-        )
+        let mut qname = db[self.module_id].name.clone();
+        qname.extend(self.scopes.iter().map(|s| s.name));
+        qname
     }
 
+    #[inline]
+    pub fn depth(&self) -> usize {
+        self.scopes.len()
+    }
+
+    #[inline]
     pub fn in_global_scope(&self) -> bool {
         self.depth() == 0
     }
@@ -356,7 +370,7 @@ impl Env {
 #[derive(Debug)]
 pub struct Scope {
     pub kind: ScopeKind,
-    pub name: QName,
+    pub name: Ustr,
     pub symbols: UstrMap<SymbolId>,
 }
 
@@ -373,7 +387,6 @@ impl Scope {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ScopeKind {
-    Global,
     Fun,
     Block,
 }
