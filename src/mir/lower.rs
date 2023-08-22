@@ -56,7 +56,7 @@ impl<'db> LowerFunctionCx<'db> {
         let blk_start = self.bx.create_block("start");
         self.bx.position_at(blk_start);
 
-        for param in &fun.params {
+        for param in &fun.sig.params {
             self.bx.create_param(param.id.expect("to be resolved"));
         }
 

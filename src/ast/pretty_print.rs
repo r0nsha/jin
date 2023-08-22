@@ -110,12 +110,12 @@ impl PrettyPrint for Item {
 
 impl PrettyPrint for Function {
     fn pretty_print(&self, cx: &mut Cx) {
-        cx.builder.begin_child(format!("fn {}", self.name));
+        cx.builder.begin_child(format!("fn {}", self.sig.name));
 
-        if !self.params.is_empty() {
+        if !self.sig.params.is_empty() {
             cx.builder.begin_child("params".to_string());
 
-            for param in &self.params {
+            for param in &self.sig.params {
                 cx.builder.add_empty_child(format!("{}", param.name));
             }
 

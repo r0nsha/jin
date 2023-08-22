@@ -18,7 +18,7 @@ use crate::{
         type_env::{CallFrame, TypeEnv},
     },
     span::{Span, Spanned},
-    ty::{FunctionTypeParam, FunctionType, InferType, IntVar, IntVarValue, Type, TypeVar, Typed},
+    ty::{FunctionType, FunctionTypeParam, InferType, IntVar, IntVarValue, Type, TypeVar, Typed},
 };
 
 pub fn typeck(db: &mut Database, hir: &mut Hir) {
@@ -140,7 +140,7 @@ impl Infer<'_> for Function {
     fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
         let ret_ty = cx.alloc_ty_var(self.span);
 
-        for param in &mut self.params {
+        for param in &mut self.sig.params {
             param.ty = cx.alloc_ty_var(param.span);
             cx.db[param.id.expect("to be resolved")].ty = param.ty;
         }
@@ -148,6 +148,7 @@ impl Infer<'_> for Function {
         let fun_ty = Type::Function(FunctionType {
             ret: Box::new(cx.db[ret_ty].clone()),
             params: self
+                .sig
                 .params
                 .iter()
                 .map(|param| FunctionTypeParam {

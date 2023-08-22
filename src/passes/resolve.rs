@@ -63,7 +63,7 @@ impl<'db> ResolveCx<'db> {
                     module_id,
                     Vis::Public,
                     SymbolInfoKind::Function(FunctionInfo::Orphan),
-                    fun.name,
+                    fun.sig.name,
                 );
 
                 fun.id = Some(id);
@@ -111,7 +111,7 @@ impl<'db> ResolveCx<'db> {
                 let id = self.declare_symbol(
                     env,
                     SymbolInfoKind::Function(FunctionInfo::Orphan),
-                    fun.name,
+                    fun.sig.name,
                 );
 
                 fun.id = Some(id);
@@ -171,9 +171,9 @@ impl Resolve<'_> for Expr {
 
 impl Resolve<'_> for Function {
     fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        env.push(self.name.name(), ScopeKind::Fun);
+        env.push(self.sig.name.name(), ScopeKind::Fun);
 
-        for param in &mut self.params {
+        for param in &mut self.sig.params {
             param.id = Some(cx.declare_symbol(env, SymbolInfoKind::Variable, param.name));
         }
 

@@ -113,20 +113,16 @@ impl Spanned for Expr {
 
 #[derive(Debug, Clone)]
 pub struct Function {
-    pub name: Word,
+    pub sig: FunctionSig,
     pub body: Block,
-    pub params: Vec<FunctionParam>,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct FunctionSig {
     pub name: Word,
-    pub body: Block,
     pub params: Vec<FunctionParam>,
-    pub span: Span,
 }
-
 
 #[derive(Debug, Clone)]
 pub struct FunctionParam {

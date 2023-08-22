@@ -3,8 +3,11 @@ use std::collections::HashSet;
 use super::TypeCx;
 use crate::{
     db::TypeId,
-    hir::{Binary, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Module, Return},
-    ty::{FunctionTypeParam, FunctionType, InferType, Type, TypeVar, Typed},
+    hir::{
+        Binary, Block, Call, CallArg, Expr, Function, FunctionSig, If, Item, ItemKind, Module,
+        Return,
+    },
+    ty::{FunctionType, FunctionTypeParam, InferType, Type, TypeVar, Typed},
 };
 
 // Substitute
@@ -101,12 +104,17 @@ impl Substitute<'_> for Item {
 
 impl Substitute<'_> for Function {
     fn substitute(&mut self, cx: &mut TypeCx<'_>, unbound_vars: &mut HashSet<TypeVar>) {
+        self.sig.substitute(cx, unbound_vars);
+        self.body.substitute(cx, unbound_vars);
+        cx.substitute_tyid(self.ty, unbound_vars);
+    }
+}
+
+impl Substitute<'_> for FunctionSig {
+    fn substitute(&mut self, cx: &mut TypeCx<'_>, unbound_vars: &mut HashSet<TypeVar>) {
         for param in &self.params {
             cx.substitute_tyid(param.ty, unbound_vars);
         }
-
-        self.body.substitute(cx, unbound_vars);
-        cx.substitute_tyid(self.ty, unbound_vars);
     }
 }
 

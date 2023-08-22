@@ -3,10 +3,10 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Binary, BinaryOp, Block, Call, CallArg, Expr, Function, FunctionParam, If, Item, Lit,
-        LitKind, Module, Name, Return,
+        Binary, BinaryOp, Block, Call, CallArg, Expr, Function, FunctionParam, FunctionSig, If,
+        Item, Lit, LitKind, Module, Name, Return,
     },
-    common::QName,
+    common::{QName, Word},
     db::Database,
     diagnostics::{Diagnostic, Label},
     span::{Source, SourceId, Span, Spanned},
@@ -65,7 +65,7 @@ impl<'a> Parser<'a> {
         let start = self.last_span();
 
         let name_ident = self.eat(TokenKind::empty_ident())?;
-        let (params, _) = self.parse_function_params()?;
+        let sig = self.parse_function_sig(name_ident.word())?;
 
         self.eat(TokenKind::Eq)?;
 
@@ -76,7 +76,12 @@ impl<'a> Parser<'a> {
             _ => Block { span: expr.span(), exprs: vec![expr] },
         };
 
-        Ok(Function { name: name_ident.word(), span: start.merge(body.span), body, params })
+        Ok(Function { sig, span: start.merge(body.span), body })
+    }
+
+    fn parse_function_sig(&mut self, name: Word) -> ParseResult<FunctionSig> {
+        let (params, _) = self.parse_function_params()?;
+        Ok(FunctionSig { name, params })
     }
 
     fn parse_function_params(&mut self) -> ParseResult<(Vec<FunctionParam>, Span)> {

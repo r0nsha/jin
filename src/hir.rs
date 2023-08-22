@@ -5,7 +5,6 @@ use std::io;
 
 use enum_as_inner::EnumAsInner;
 pub use lower::lower;
-use ustr::Ustr;
 
 use crate::{
     ast::BinaryOp,
@@ -172,18 +171,16 @@ impl Typed for ItemKind {
 #[derive(Debug, Clone)]
 pub struct Function {
     pub id: Option<SymbolId>,
-    pub name: Word,
+    pub sig: FunctionSig,
     pub body: Block,
-    pub params: Vec<FunctionParam>,
     pub span: Span,
     pub ty: TypeId,
 }
 
-impl Function {
-    #[allow(unused)]
-    pub fn param(&self, name: Ustr) -> Option<&FunctionParam> {
-        self.params.iter().find(|p| p.name.name() == name)
-    }
+#[derive(Debug, Clone)]
+pub struct FunctionSig {
+    pub name: Word,
+    pub params: Vec<FunctionParam>,
 }
 
 #[derive(Debug, Clone)]

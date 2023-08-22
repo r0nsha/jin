@@ -5,7 +5,7 @@ use super::{
 use crate::{
     ast,
     db::{self, Database},
-    hir::{Binary, CallArg, If, ItemKind},
+    hir::{Binary, CallArg, FunctionSig, If, ItemKind},
 };
 
 pub fn lower(db: &mut Database, lib: ast::Ast) -> Hir {
@@ -54,15 +54,25 @@ impl Lower<'_, Item> for ast::Item {
 
 impl Lower<'_, Function> for ast::Function {
     fn lower(self, cx: &mut Cx<'_>) -> Function {
+        Function {
+            id: None,
+            sig: self.sig.lower(cx),
+            body: self.body.lower(cx),
+            span: self.span,
+            ty: TypeId::null(),
+        }
+    }
+}
+
+impl Lower<'_, FunctionSig> for ast::FunctionSig {
+    fn lower(self, _cx: &mut Cx<'_>) -> FunctionSig {
         let params = self
             .params
             .into_iter()
             .map(|p| FunctionParam { id: None, name: p.name, span: p.span, ty: TypeId::null() })
             .collect::<Vec<_>>();
 
-        let body = self.body.lower(cx);
-
-        Function { id: None, name: self.name, body, params, span: self.span, ty: TypeId::null() }
+        FunctionSig { name: self.name, params }
     }
 }
 

@@ -54,14 +54,14 @@ impl PrettyPrint for Function {
     fn pretty_print(&self, cx: &mut Cx) {
         cx.builder.begin_child(format!(
             "fn {} (returns: {})",
-            self.name,
+            self.sig.name,
             cx.db[self.ty].as_function().expect("to be a function").ret.display(cx.db)
         ));
 
-        if !self.params.is_empty() {
+        if !self.sig.params.is_empty() {
             cx.builder.begin_child("params".to_string());
 
-            for param in &self.params {
+            for param in &self.sig.params {
                 cx.builder.add_empty_child(format!(
                     "{} (type: {})",
                     param.name,
