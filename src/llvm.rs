@@ -27,7 +27,7 @@ use crate::{
         target::{Arch, Os, TargetMetrics},
         time::time,
     },
-    db::Database,
+    db::{Database, EmitOption},
     llvm::generate::Generator,
     mir::Mir,
 };
@@ -55,9 +55,9 @@ pub fn codegen(db: &Database, mir: &Mir) -> PathBuf {
         symbol_values: HashMap::default(),
     };
 
-    let print_times = db.build_options().print_times;
+    let print_times = db.build_options().timings;
 
-    time(print_times, "emit llvm ir", || cx.run());
+    time(print_times, "llvm generation", || cx.run());
 
     if let Err(e) = cx.module.verify() {
         cx.module.print_to_file("fail.ll").unwrap();
@@ -114,7 +114,7 @@ fn build_exe(db: &Database, target_machine: &TargetMachine, module: &Module) -> 
         let _ = std::fs::create_dir_all(parent_dir);
     }
 
-    if build_options.print_llvm_ir {
+    if build_options.should_emit(EmitOption::LlvmIr) {
         module.print_to_file(output_path.with_extension("ll")).unwrap();
     }
 
@@ -124,17 +124,15 @@ fn build_exe(db: &Database, target_machine: &TargetMachine, module: &Module) -> 
         (output_path.with_extension("o"), output_path.with_extension(""))
     };
 
-    time(build_options.print_times, "write object file", || {
+    time(build_options.timings, "link", || {
         target_machine
             .write_to_file(module, FileType::Object, &object_file)
             .expect("writing the object file to work");
-    });
 
-    time(build_options.print_times, "link", || {
         link(&build_options.target_metrics, &output_file, &object_file);
-    });
 
-    let _ = std::fs::remove_file(object_file);
+        let _ = std::fs::remove_file(object_file);
+    });
 
     output_file.absolutize().unwrap().to_path_buf()
 }

@@ -31,7 +31,7 @@ use clap::{Parser, Subcommand};
 use common::time::time;
 use db::{BuildOptions, Database};
 
-use crate::common::target::TargetPlatform;
+use crate::{common::target::TargetPlatform, db::EmitOption};
 
 macro_rules! bail_on_errors {
     ($db: expr) => {
@@ -48,20 +48,11 @@ struct Cli {
     #[command(subcommand)]
     cmd: Commands,
 
-    #[arg(long, default_value_t = true)]
-    print_times: bool,
-
     #[arg(global = true, long, default_value_t = false)]
-    print_ast: bool,
+    timings: bool,
 
-    #[arg(global = true, long, default_value_t = false)]
-    print_hir: bool,
-
-    #[arg(global = true, long, default_value_t = false)]
-    print_mir: bool,
-
-    #[arg(global = true, long, default_value_t = false)]
-    print_llvm_ir: bool,
+    #[arg(global = true, long)]
+    emit: Vec<EmitOption>,
 }
 
 #[derive(Subcommand)]
@@ -76,11 +67,8 @@ fn main() {
     let cli = Cli::parse();
 
     let build_options = BuildOptions::new(
-        cli.print_times,
-        cli.print_ast,
-        cli.print_hir,
-        cli.print_mir,
-        cli.print_llvm_ir,
+        cli.timings,
+        cli.emit,
         TargetPlatform::current().expect("Current platform is not supported"),
     );
 
@@ -106,11 +94,11 @@ fn build(build_options: BuildOptions, file: &Path) {
 }
 
 fn build_inner(db: &mut Database) {
-    let print_times = db.build_options().print_times;
+    let print_times = db.build_options().timings;
 
     let ast_lib = time(print_times, "parse", || parse::parse_modules(db));
 
-    if db.build_options().print_ast {
+    if db.build_options().should_emit(EmitOption::Ast) {
         ast_lib.pretty_print().expect("ast printing to work");
     }
 
@@ -124,7 +112,7 @@ fn build_inner(db: &mut Database) {
     time(print_times, "typeck", || passes::typeck(db, &mut hir));
     bail_on_errors!(db);
 
-    if db.build_options().print_hir {
+    if db.build_options().should_emit(EmitOption::Hir) {
         hir.pretty_print(db).expect("hir printing to work");
     }
 
@@ -134,7 +122,7 @@ fn build_inner(db: &mut Database) {
     let mir = time(print_times, "hir -> mir", || mir::lower(db, &hir));
     bail_on_errors!(db);
 
-    if db.build_options().print_mir {
+    if db.build_options().should_emit(EmitOption::Mir) {
         println!("\nMIR:\n");
         mir.pretty_print(db);
         println!();

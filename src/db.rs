@@ -135,36 +135,40 @@ new_db_key!(SymbolId -> symbols : SymbolInfo);
 new_db_key!(TypeId -> types : Type);
 
 #[derive(Debug)]
-#[allow(clippy::struct_excessive_bools)]
 pub struct BuildOptions {
-    pub print_times: bool,
-    pub print_ast: bool,
-    pub print_hir: bool,
-    pub print_mir: bool,
-    pub print_llvm_ir: bool,
+    pub timings: bool,
+    pub emit: Vec<EmitOption>,
     pub target_platform: TargetPlatform,
     pub target_metrics: TargetMetrics,
 }
 
 impl BuildOptions {
-    #[allow(clippy::fn_params_excessive_bools)]
-    pub fn new(
-        print_times: bool,
-        print_ast: bool,
-        print_hir: bool,
-        print_mir: bool,
-        print_llvm_ir: bool,
-        target_platform: TargetPlatform,
-    ) -> Self {
+    pub fn new(timings: bool, emit: Vec<EmitOption>, target_platform: TargetPlatform) -> Self {
         let target_metrics = target_platform.metrics();
-        Self {
-            print_times,
-            print_ast,
-            print_hir,
-            print_mir,
-            print_llvm_ir,
-            target_platform,
-            target_metrics,
+        Self { timings, emit, target_platform, target_metrics }
+    }
+
+    pub fn should_emit(&self, opt: EmitOption) -> bool {
+        self.emit.contains(&opt)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum EmitOption {
+    Ast,
+    Hir,
+    Mir,
+    LlvmIr,
+}
+
+impl From<String> for EmitOption {
+    fn from(value: String) -> Self {
+        match value.to_lowercase().as_str() {
+            "ast" => Self::Ast,
+            "hir" => Self::Hir,
+            "mir" => Self::Mir,
+            "llvm-ir" => Self::LlvmIr,
+            _ => unreachable!(),
         }
     }
 }
