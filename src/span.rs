@@ -137,7 +137,9 @@ impl Source {
         use std::cmp::Ordering;
 
         match line_index.cmp(&self.line_starts.len()) {
-            Ordering::Less => Ok(self.line_starts.get(line_index).copied().unwrap()),
+            Ordering::Less => {
+                Ok(self.line_starts.get(line_index).copied().expect("line index to be found"))
+            }
             Ordering::Equal => Ok(self.contents.len()),
             Ordering::Greater => Err(files::Error::LineTooLarge {
                 given: line_index,
@@ -166,7 +168,7 @@ impl<'a> files::Files<'a> for Source {
     type Source = &'a str;
 
     fn name(&'a self, _id: Self::FileId) -> Result<Self::Name, files::Error> {
-        Ok(self.path().to_str().unwrap())
+        Ok(self.path().to_str().expect("path to be a valid str"))
     }
 
     fn source(&'a self, _id: Self::FileId) -> Result<Self::Source, files::Error> {
