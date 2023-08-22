@@ -11,4 +11,3 @@ fn main() = {
 }
 
 fn add(a, b) = a + b
-fn add(a, b) = a + b
