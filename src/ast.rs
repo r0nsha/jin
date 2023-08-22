@@ -3,6 +3,8 @@ pub mod token;
 
 use std::{fmt, io};
 
+use enum_as_inner::EnumAsInner;
+
 use crate::{
     ast::token::TokenKind,
     common::{QName, Word},
@@ -52,7 +54,7 @@ impl Module {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, EnumAsInner)]
 pub enum Item {
     Function(Function),
 }
