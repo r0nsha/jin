@@ -87,22 +87,22 @@ pub enum IntType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionType {
     pub ret: Box<Type>,
-    pub params: Vec<FunctionParamTy>,
+    pub params: Vec<FunctionTypeParam>,
     pub span: Span,
 }
 
 impl FunctionType {
-    pub fn param(&self, name: Ustr) -> Option<&FunctionParamTy> {
+    pub fn param(&self, name: Ustr) -> Option<&FunctionTypeParam> {
         self.params.iter().find(|p| p.name == Some(name))
     }
 
-    pub fn param_at(&self, index: usize) -> Option<&FunctionParamTy> {
+    pub fn param_at(&self, index: usize) -> Option<&FunctionTypeParam> {
         self.params.get(index)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct FunctionParamTy {
+pub struct FunctionTypeParam {
     pub name: Option<Ustr>,
     pub ty: Type,
 }

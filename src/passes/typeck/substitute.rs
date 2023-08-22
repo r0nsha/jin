@@ -4,7 +4,7 @@ use super::TypeCx;
 use crate::{
     db::TypeId,
     hir::{Binary, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Module, Return},
-    ty::{FunctionParamTy, FunctionType, InferType, Type, TypeVar, Typed},
+    ty::{FunctionTypeParam, FunctionType, InferType, Type, TypeVar, Typed},
 };
 
 // Substitute
@@ -40,7 +40,7 @@ impl<'db> TypeCx<'db> {
                 params: fun
                     .params
                     .iter()
-                    .map(|param| FunctionParamTy {
+                    .map(|param| FunctionTypeParam {
                         name: param.name,
                         ty: self.substitute_ty(&param.ty, unbound_vars),
                     })

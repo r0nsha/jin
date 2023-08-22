@@ -18,7 +18,7 @@ use crate::{
         type_env::{CallFrame, TypeEnv},
     },
     span::{Span, Spanned},
-    ty::{FunctionParamTy, FunctionType, InferType, IntVar, IntVarValue, Type, TypeVar, Typed},
+    ty::{FunctionTypeParam, FunctionType, InferType, IntVar, IntVarValue, Type, TypeVar, Typed},
 };
 
 pub fn typeck(db: &mut Database, hir: &mut Hir) {
@@ -150,7 +150,7 @@ impl Infer<'_> for Function {
             params: self
                 .params
                 .iter()
-                .map(|param| FunctionParamTy {
+                .map(|param| FunctionTypeParam {
                     name: Some(param.name.name()),
                     ty: cx.db[param.ty].clone(),
                 })
@@ -237,10 +237,10 @@ impl Infer<'_> for Call {
                 .iter()
                 .map(|arg| match arg {
                     CallArg::Positional(expr) => {
-                        FunctionParamTy { name: None, ty: cx.db[expr.ty()].clone() }
+                        FunctionTypeParam { name: None, ty: cx.db[expr.ty()].clone() }
                     }
                     CallArg::Named(name, expr) => {
-                        FunctionParamTy { name: Some(name.name()), ty: cx.db[expr.ty()].clone() }
+                        FunctionTypeParam { name: Some(name.name()), ty: cx.db[expr.ty()].clone() }
                     }
                 })
                 .collect(),

@@ -1,6 +1,6 @@
 use crate::{
     passes::typeck::TypeCx,
-    ty::{FunctionParamTy, FunctionType, InferType, Type},
+    ty::{FunctionTypeParam, FunctionType, InferType, Type},
 };
 
 pub trait NormalizeTy {
@@ -14,7 +14,7 @@ impl NormalizeTy for Type {
                 ret: Box::new(ret.normalize(tcx)),
                 params: params
                     .into_iter()
-                    .map(|param| FunctionParamTy { name: param.name, ty: param.ty.normalize(tcx) })
+                    .map(|param| FunctionTypeParam { name: param.name, ty: param.ty.normalize(tcx) })
                     .collect(),
                 span,
             }),
