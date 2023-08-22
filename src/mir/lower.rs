@@ -1,3 +1,4 @@
+use anyhow::Result;
 use ustr::UstrMap;
 
 use super::{builder::FunctionBuilder, Function, Mir, SymbolId};
@@ -10,30 +11,34 @@ use crate::{
     ty::Typed,
 };
 
-pub fn lower(db: &mut Database, hir: &Hir) -> Mir {
+pub fn lower(db: &mut Database, hir: &Hir) -> Result<Mir> {
     let mut mir = Mir::new();
 
     for module in &hir.modules {
-        lower_module(db, &mut mir, module);
+        lower_module(db, &mut mir, module)?;
     }
 
-    mir
+    Ok(mir)
 }
 
-fn lower_module(db: &mut Database, mir: &mut Mir, module: &hir::Module) {
+fn lower_module(db: &mut Database, mir: &mut Mir, module: &hir::Module) -> Result<()> {
     for item in &module.items {
-        lower_item(db, mir, item);
+        lower_item(db, mir, item)?;
     }
+
+    Ok(())
 }
 
-fn lower_item(db: &mut Database, mir: &mut Mir, item: &hir::Item) {
+fn lower_item(db: &mut Database, mir: &mut Mir, item: &hir::Item) -> Result<()> {
     match &item.kind {
         hir::ItemKind::Function(fun) => {
             let id = fun.id.expect("to be resolved");
-            let fun = LowerFunctionCx::new(db, mir, id).lower_function(fun).unwrap();
+            let fun = LowerFunctionCx::new(db, mir, id).lower_function(fun)?;
             mir.add_function(fun);
         }
     }
+
+    Ok(())
 }
 
 struct LowerFunctionCx<'db> {
@@ -47,7 +52,7 @@ impl<'db> LowerFunctionCx<'db> {
         Self { db, mir, bx: FunctionBuilder::new(fun_id) }
     }
 
-    fn lower_function(mut self, fun: &hir::Function) -> Result<Function, String> {
+    fn lower_function(mut self, fun: &hir::Function) -> Result<Function> {
         let blk_start = self.bx.create_block("start");
         self.bx.position_at(blk_start);
 

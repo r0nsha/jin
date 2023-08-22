@@ -1,6 +1,10 @@
 use std::collections::HashSet;
 
-use super::{Block, BlockId, Call, Function, Inst, IntLit, Return, TypeId, UnitLit, Value, ValueId};
+use anyhow::{bail, Result};
+
+use super::{
+    Block, BlockId, Call, Function, Inst, IntLit, Return, TypeId, UnitLit, Value, ValueId,
+};
 use crate::{
     ast::BinaryOp,
     db::SymbolId,
@@ -162,9 +166,9 @@ impl FunctionBuilder {
         value
     }
 
-    pub fn finish(self) -> Result<Function, String> {
+    pub fn finish(self) -> Result<Function> {
         if self.f.blocks().is_empty() {
-            return Err("Function has 0 blocks".to_string());
+            bail!("Function has 0 blocks");
         }
 
         let mut is_terminating = false;
@@ -174,17 +178,13 @@ impl FunctionBuilder {
 
             for (i, blk) in blocks.iter().enumerate() {
                 if i > 0 && blk.predecessors.is_empty() {
-                    return Err(format!(
-                        "Non-starting block @{i} is unreachable (has no predecessors)"
-                    ));
+                    bail!("Non-starting block @{i} is unreachable (has no predecessors)");
                 }
 
                 let blk_is_terminating = blk.is_terminating();
 
                 if i < blocks.len() - 1 && blk.successors.is_empty() && !blk_is_terminating {
-                    return Err(format!(
-                        "Intermediate block &{i} leads nowhere (has no successors and isn't terminating)"
-                    ));
+                    bail!("Intermediate block &{i} leads nowhere (has no successors and isn't terminating)");
                 }
 
                 is_terminating = is_terminating || blk_is_terminating;
@@ -192,7 +192,7 @@ impl FunctionBuilder {
         }
 
         if !is_terminating {
-            return Err("Function never terminates".to_string());
+            bail!("Function never terminates");
         }
 
         Ok(self.f)

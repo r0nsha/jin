@@ -114,7 +114,7 @@ fn build(db: &mut Database) {
     expect!(db);
 
     db.timings.start("hir -> mir");
-    let mir = mir::lower(db, &hir);
+    let mir = mir::lower(db, &hir).expect("mir lowering to succeed");
     db.timings.stop();
     expect!(db);
 
