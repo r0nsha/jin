@@ -89,7 +89,7 @@ impl<'db> LowerFunctionCx<'db> {
     }
 
     fn lower_local_item(&mut self, item: &hir::Item) -> ValueId {
-        lower_item(self.db, self.mir, item);
+        lower_item(self.db, self.mir, item).expect("mir lowering to succeed");
         self.bx.build_unit_lit(item.ty, item.span())
     }
 

@@ -3,7 +3,7 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Expr, Binary, BinaryOp, Block, Call, CallArg, Function, FunctionParam, If, Item, Lit,
+        Binary, BinaryOp, Block, Call, CallArg, Expr, Function, FunctionParam, If, Item, Lit,
         LitKind, Module, Name, Return,
     },
     common::QName,
@@ -37,12 +37,7 @@ impl<'a> Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
-    fn parse(
-        mut self,
-        source_id: SourceId,
-        name: QName,
-        is_main: bool,
-    ) -> ParseResult<Module> {
+    fn parse(mut self, source_id: SourceId, name: QName, is_main: bool) -> ParseResult<Module> {
         let mut module = Module::new(source_id, name, is_main);
 
         while !self.eof() {
@@ -327,6 +322,7 @@ impl<'a> Parser<'a> {
         let tok = self.eat_any()?;
 
         let expr = match tok.kind {
+            TokenKind::Return => Expr::Return(self.parse_return()?),
             TokenKind::If => Expr::If(self.parse_if()?),
             TokenKind::OpenParen => {
                 if self.is(TokenKind::CloseParen) {
