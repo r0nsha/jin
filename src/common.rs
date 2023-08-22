@@ -1,7 +1,7 @@
 pub mod index_vec;
 pub mod qname;
 pub mod target;
-pub mod time;
+pub mod timing;
 pub mod word;
 
 pub use index_vec::*;

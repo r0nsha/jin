@@ -25,7 +25,7 @@ use path_absolutize::Absolutize;
 use crate::{
     common::{
         target::{Arch, Os, TargetMetrics},
-        time::time,
+        timing::time,
     },
     db::{Database, EmitOption},
     llvm::generate::Generator,

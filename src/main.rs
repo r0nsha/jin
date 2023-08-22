@@ -28,7 +28,7 @@ mod ty;
 use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
-use common::time::time;
+use common::timing::time;
 use db::{BuildOptions, Database};
 
 use crate::{common::target::TargetPlatform, db::EmitOption};
