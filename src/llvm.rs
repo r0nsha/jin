@@ -20,7 +20,6 @@ use inkwell::{
     },
     OptimizationLevel,
 };
-use path_absolutize::Absolutize;
 
 use crate::{
     common::target::{Arch, Os, TargetMetrics},
@@ -221,8 +220,8 @@ fn link(target_metrics: &TargetMetrics, exe_file: &Path, object_file: &Path) {
     #[cfg(not(windows))]
     Command::new("clang")
         .arg("-Wno-unused-command-line-argument")
-        .arg(object_file.to_str().unwrap())
-        .arg(format!("-o{}", exe_file.to_str().unwrap()))
+        .arg(object_file.to_string_lossy().as_ref())
+        .arg(format!("-o{}", exe_file.display()))
         .args(lib_paths.iter().map(|path| format!("-L{}", path)))
         .arg("-lc")
         .arg("-lm")
@@ -230,7 +229,7 @@ fn link(target_metrics: &TargetMetrics, exe_file: &Path, object_file: &Path) {
         .arg("-no-pie")
         .args(link_flags)
         .execute_output()
-        .unwrap();
+        .expect("clang to succeed");
 }
 
 #[allow(dead_code)]

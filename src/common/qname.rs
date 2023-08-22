@@ -18,7 +18,7 @@ impl QName {
     }
 
     pub fn name(&self) -> Ustr {
-        *self.0.last().unwrap()
+        *self.0.last().expect("to have at least one component")
     }
 
     pub fn full_name(&self, separator: &str) -> String {
