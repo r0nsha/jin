@@ -1,10 +1,11 @@
 mod timing;
 
 use std::{
-    cmp, io,
+    cmp,
     path::{Path, PathBuf},
 };
 
+use anyhow::{bail, Result};
 use clap::ValueEnum;
 use path_absolutize::Absolutize;
 
@@ -39,8 +40,14 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new(build_options: BuildOptions, root_file: &Path) -> io::Result<Self> {
-        let absolute_path = root_file.absolutize().unwrap();
+    pub fn new(build_options: BuildOptions, root_file: &Path) -> Result<Self> {
+        let absolute_path = root_file.absolutize()?;
+
+        if !absolute_path.is_file() {
+            bail!("provided path `{}` in not a file", absolute_path.display());
+        }
+
+        let root_dir = absolute_path.parent().expect("to have a parent directory").to_path_buf();
 
         let mut sources = Sources::new();
         let main_source = sources.add_file(absolute_path.to_path_buf())?;
@@ -56,7 +63,7 @@ impl Database {
 
             diagnostics: Diagnostics::new(),
 
-            root_dir: absolute_path.parent().unwrap().to_path_buf(),
+            root_dir,
             main_source,
             main_module: None,
             main_fun: None,
@@ -81,7 +88,7 @@ impl Database {
     }
 
     pub fn main_source(&self) -> &Source {
-        self.sources.get(self.main_source).unwrap()
+        self.sources.get(self.main_source).expect("to always have a main source")
     }
 
     pub fn main_module_id(&self) -> Option<ModuleId> {

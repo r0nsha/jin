@@ -28,10 +28,13 @@ mod ty;
 
 use std::path::PathBuf;
 
+use anyhow::Result;
 use clap::{Parser, Subcommand};
-use db::{BuildOptions, Database};
 
-use crate::{common::target::TargetPlatform, db::EmitOption};
+use crate::{
+    common::target::TargetPlatform,
+    db::{BuildOptions, Database, EmitOption},
+};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -61,8 +64,8 @@ macro_rules! expect {
     };
 }
 
-fn main() {
-    color_eyre::install().unwrap();
+fn main() -> Result<()> {
+    color_eyre::install().expect("color_eyre::install to work");
 
     let cli = Cli::parse();
 
@@ -74,8 +77,9 @@ fn main() {
 
     match cli.cmd {
         Commands::Build { file } => {
-            let mut db = Database::new(build_options, &file).unwrap();
+            let mut db = Database::new(build_options, &file)?;
             build(&mut db);
+            Ok(())
         }
     }
 }

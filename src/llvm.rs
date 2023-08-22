@@ -34,8 +34,7 @@ pub fn codegen(db: &mut Database, mir: &Mir) -> PathBuf {
 
     let context = Context::create();
 
-    let module =
-        context.create_module(db.main_source().path().file_stem().unwrap().to_str().unwrap());
+    let module = context.create_module(&db.main_source().file_name());
 
     module.set_data_layout(&target_machine.get_target_data().get_data_layout());
     module.set_triple(&target_machine.get_triple());
@@ -57,7 +56,7 @@ pub fn codegen(db: &mut Database, mir: &Mir) -> PathBuf {
     cx.db.timings.stop();
 
     if let Err(e) = cx.module.verify() {
-        cx.module.print_to_file("fail.ll").unwrap();
+        cx.module.print_to_file("fail.ll").expect("printing llvm module to file to work");
         panic!("{}", e);
     }
 
@@ -80,14 +79,14 @@ fn create_target_machine(db: &Database) -> Option<TargetMachine> {
     }
 
     let triple = TargetTriple::create(target_metrics.target_triplet);
-    let target = Target::from_triple(&triple).unwrap();
+    let target = Target::from_triple(&triple).expect("llvm triple to be valid");
     let host_cpu = TargetMachine::get_host_cpu_name();
     let features = TargetMachine::get_host_cpu_features();
 
     target.create_target_machine(
         &triple,
-        host_cpu.to_str().unwrap(),
-        features.to_str().unwrap(),
+        host_cpu.to_str().expect("to have a valid host cpu"),
+        features.to_str().expect("to have valid cpu features"),
         OptimizationLevel::Default,
         RelocMode::Default,
         CodeModel::Default,
@@ -113,7 +112,7 @@ fn build_exe(db: &mut Database, target_machine: &TargetMachine, module: &Module)
     }
 
     if db.build_options().should_emit(EmitOption::LlvmIr) {
-        module.print_to_file(output_path.with_extension("ll")).unwrap();
+        module.print_to_file(output_path.with_extension("ll")).expect("printing llvm ir to work");
     }
 
     let (object_file, output_file) = if db.build_options().target_metrics.os == Os::Windows {
@@ -132,7 +131,7 @@ fn build_exe(db: &mut Database, target_machine: &TargetMachine, module: &Module)
 
     let _ = std::fs::remove_file(object_file);
 
-    output_file.absolutize().unwrap().to_path_buf()
+    output_file
 }
 
 fn link(target_metrics: &TargetMetrics, exe_file: &Path, object_file: &Path) {

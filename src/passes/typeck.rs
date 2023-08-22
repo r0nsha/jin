@@ -210,7 +210,7 @@ impl Infer<'_> for Return {
     fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
         self.ty = cx.db.alloc_ty(Type::Never(self.span));
 
-        let call_frame = env.call_stack.current().unwrap();
+        let call_frame = env.call_stack.current().expect("to be inside a call frame");
         let ret_ty = call_frame.ret_ty;
 
         self.expr.infer(cx, env);

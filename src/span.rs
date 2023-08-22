@@ -125,6 +125,10 @@ impl Source {
         &self.path
     }
 
+    pub fn file_name(&self) -> String {
+        self.path.file_stem().expect("a source to be a file").to_string_lossy().to_string()
+    }
+
     pub fn contents(&self) -> &str {
         self.contents.as_ref()
     }

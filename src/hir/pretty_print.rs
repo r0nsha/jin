@@ -55,7 +55,7 @@ impl PrettyPrint for Function {
         cx.builder.begin_child(format!(
             "fn {} (returns: {})",
             self.name,
-            cx.db[self.ty].as_function().unwrap().ret.display(cx.db)
+            cx.db[self.ty].as_function().expect("to be a function").ret.display(cx.db)
         ));
 
         if !self.params.is_empty() {
@@ -159,9 +159,7 @@ impl PrettyPrint for Name {
     fn pretty_print(&self, cx: &mut Cx) {
         cx.builder.add_empty_child(format!(
             "`{}` (type: {})",
-            self.id.map_or(self.name.to_string(), |id| {
-                cx.db[id].qname.standard_full_name()
-            }),
+            self.id.map_or(self.name.to_string(), |id| { cx.db[id].qname.standard_full_name() }),
             cx.db[self.ty].display(cx.db)
         ));
     }
