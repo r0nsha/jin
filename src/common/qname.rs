@@ -8,10 +8,6 @@ use crate::common::Word;
 pub struct QName(Vec<Ustr>);
 
 impl QName {
-    pub fn new() -> Self {
-        Self(vec![])
-    }
-
     pub fn from_path(root: &Path, target: &Path) -> Option<Self> {
         let target = target.with_extension("");
         let stripped = target.strip_prefix(root).ok()?;
@@ -64,19 +60,9 @@ impl From<Ustr> for Child {
     }
 }
 
-impl Default for QName {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl From<Ustr> for QName {
     fn from(value: Ustr) -> Self {
-        if value.is_empty() {
-            Self::new()
-        } else {
-            Self(vec![value])
-        }
+        Self(vec![value])
     }
 }
 

@@ -270,9 +270,8 @@ impl Env {
     }
 
     pub fn push(&mut self, name: Ustr, kind: ScopeKind) {
-        let name = self
-            .current()
-            .map_or_else(|| QName::from(name), |curr| curr.name.clone().child(name));
+        let name =
+            self.current().map_or_else(|| QName::from(name), |curr| curr.name.clone().child(name));
 
         self.scopes.push(Scope { kind, name, symbols: UstrMap::default() });
     }
