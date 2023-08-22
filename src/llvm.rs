@@ -23,16 +23,13 @@ use inkwell::{
 use path_absolutize::Absolutize;
 
 use crate::{
-    common::{
-        target::{Arch, Os, TargetMetrics},
-        timing::time,
-    },
+    common::target::{Arch, Os, TargetMetrics},
     db::{Database, EmitOption},
     llvm::generate::Generator,
     mir::Mir,
 };
 
-pub fn codegen(db: &Database, mir: &Mir) -> PathBuf {
+pub fn codegen(db: &mut Database, mir: &Mir) -> PathBuf {
     let target_machine = create_target_machine(db).expect("to create a LLVM TargetMachine");
 
     let context = Context::create();
@@ -55,16 +52,18 @@ pub fn codegen(db: &Database, mir: &Mir) -> PathBuf {
         symbol_values: HashMap::default(),
     };
 
-    let print_times = db.build_options().timings;
-
-    time(print_times, "llvm generation", || cx.run());
+    cx.db.timings.start("llvm generation");
+    cx.run();
+    cx.db.timings.stop();
 
     if let Err(e) = cx.module.verify() {
         cx.module.print_to_file("fail.ll").unwrap();
         panic!("{}", e);
     }
 
-    // time(print_times, "llvm opt", || optimize(cx.module));
+    // db.timings.start(print_times, "llvm optimizations")
+    // optimize(cx.module);
+    // db.timings.stop();
 
     build_exe(db, &target_machine, &module)
 }
@@ -106,33 +105,32 @@ fn optimize(module: &Module) {
     pass_manager.run_on(module);
 }
 
-fn build_exe(db: &Database, target_machine: &TargetMachine, module: &Module) -> PathBuf {
-    let build_options = db.build_options();
+fn build_exe(db: &mut Database, target_machine: &TargetMachine, module: &Module) -> PathBuf {
     let output_path = db.output_path();
 
     if let Some(parent_dir) = output_path.parent() {
         let _ = std::fs::create_dir_all(parent_dir);
     }
 
-    if build_options.should_emit(EmitOption::LlvmIr) {
+    if db.build_options().should_emit(EmitOption::LlvmIr) {
         module.print_to_file(output_path.with_extension("ll")).unwrap();
     }
 
-    let (object_file, output_file) = if build_options.target_metrics.os == Os::Windows {
+    let (object_file, output_file) = if db.build_options().target_metrics.os == Os::Windows {
         (output_path.with_extension("obj"), output_path.with_extension("exe"))
     } else {
         (output_path.with_extension("o"), output_path.with_extension(""))
     };
 
-    time(build_options.timings, "link", || {
-        target_machine
-            .write_to_file(module, FileType::Object, &object_file)
-            .expect("writing the object file to work");
+    db.timings.start("link");
+    target_machine
+        .write_to_file(module, FileType::Object, &object_file)
+        .expect("writing the object file to work");
 
-        link(&build_options.target_metrics, &output_file, &object_file);
+    link(&db.build_options().target_metrics, &output_file, &object_file);
+    db.timings.stop();
 
-        let _ = std::fs::remove_file(object_file);
-    });
+    let _ = std::fs::remove_file(object_file);
 
     output_file.absolutize().unwrap().to_path_buf()
 }

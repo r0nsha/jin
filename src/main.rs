@@ -28,7 +28,6 @@ mod ty;
 use std::path::{Path, PathBuf};
 
 use clap::{Parser, Subcommand};
-use common::timing::time;
 use db::{BuildOptions, Database};
 
 use crate::{common::target::TargetPlatform, db::EmitOption};
@@ -94,9 +93,8 @@ fn build(build_options: BuildOptions, file: &Path) {
 }
 
 fn build_inner(db: &mut Database) {
-    let print_times = db.build_options().timings;
-
-    let ast_lib = time(print_times, "parse", || parse::parse_modules(db));
+    db.timings.start("parse");
+    let ast_lib = parse::parse_modules(db);
 
     if db.build_options().should_emit(EmitOption::Ast) {
         ast_lib.pretty_print().expect("ast printing to work");
@@ -104,22 +102,29 @@ fn build_inner(db: &mut Database) {
 
     bail_on_errors!(db);
 
-    let mut hir = time(print_times, "ast -> hir", || hir::lower(db, ast_lib));
+    db.timings.start("ast -> hir");
+    let mut hir = hir::lower(db, ast_lib);
 
-    time(print_times, "resolve", || passes::resolve(db, &mut hir));
+    db.timings.start("resolve");
+    passes::resolve(db, &mut hir);
     bail_on_errors!(db);
 
-    time(print_times, "typeck", || passes::typeck(db, &mut hir));
+    db.timings.start("typeck");
+    passes::typeck(db, &mut hir);
+    db.timings.stop();
     bail_on_errors!(db);
 
     if db.build_options().should_emit(EmitOption::Hir) {
         hir.pretty_print(db).expect("hir printing to work");
     }
 
-    time(print_times, "find main", || passes::find_main(db));
+    db.timings.start("find main");
+    passes::find_main(db);
     bail_on_errors!(db);
 
-    let mir = time(print_times, "hir -> mir", || mir::lower(db, &hir));
+    db.timings.start("hir -> mir");
+    let mir = mir::lower(db, &hir);
+    db.timings.stop();
     bail_on_errors!(db);
 
     if db.build_options().should_emit(EmitOption::Mir) {
@@ -129,4 +134,6 @@ fn build_inner(db: &mut Database) {
     }
 
     llvm::codegen(db, &mir);
+
+    db.timings.print();
 }

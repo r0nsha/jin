@@ -21,7 +21,7 @@ use crate::{
 };
 
 pub struct Generator<'db, 'cx> {
-    pub db: &'db Database,
+    pub db: &'db mut Database,
     pub mir: &'db Mir,
 
     pub context: &'cx Context,

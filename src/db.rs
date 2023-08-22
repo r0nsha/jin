@@ -1,3 +1,5 @@
+mod timing;
+
 use std::{
     cmp, io,
     path::{Path, PathBuf},
@@ -12,6 +14,7 @@ use crate::{
         target::{TargetMetrics, TargetPlatform},
         IndexVec, QName,
     },
+    db::timing::Timings,
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
     ty::Type,
@@ -20,6 +23,7 @@ use crate::{
 #[derive(Debug)]
 pub struct Database {
     build_options: BuildOptions,
+    pub timings: Timings,
 
     pub sources: Sources,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
@@ -42,6 +46,7 @@ impl Database {
         let main_source = sources.add_file(absolute_path.to_path_buf())?;
 
         Ok(Self {
+            timings: Timings::new(build_options.timings),
             build_options,
 
             sources,

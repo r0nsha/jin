@@ -18,8 +18,6 @@ owo-colors = "3.5.0"
 path-absolutize = "3.1.0"
 pretty = { version = "0.12.1" }
 ptree = "0.4.0"
-stopwatch = "0.0.7"
-unindent = "0.2.2"
 ustr = "0.10.0"
 inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = [
 	"llvm14-0-force-dynamic",
