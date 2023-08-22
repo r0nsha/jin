@@ -93,7 +93,7 @@ impl<'cx> FunctionState<'cx> {
     }
 
     pub fn value_ty<'db>(&self, cx: &Generator<'db, 'cx>, id: ValueId) -> TypeId {
-        self.function(cx).value(id).unwrap().ty
+        self.function(cx).value(id).expect("value to exist").ty
     }
 }
 
@@ -105,38 +105,11 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     }
 
     pub fn codegen_start_function(&mut self) {
-        // let startup_fn_type = FunctionType {
-        //     params: vec![
-        //         FunctionTypeParam { name: ustr("argc"), ty: Type::u32(), default_value: None },
-        //         FunctionTypeParam {
-        //             name: ustr("argv"),
-        //             ty: Type::u8().pointer_type(false).pointer_type(false),
-        //             default_value: None,
-        //         },
-        //     ],
-        //     return_type: Box::new(Type::u32()),
-        //     varargs: None,
-        //     kind: FunctionTypeKind::Orphan,
-        // };
-
         let function_value = self.module.add_function(
             "main",
-            self.context.i32_type().fn_type(
-                &[
-                    self.context.i32_type().into(),
-                    self.context
-                        .i8_type()
-                        .ptr_type(AddressSpace::default())
-                        .ptr_type(AddressSpace::default())
-                        .into(),
-                ],
-                false,
-            ),
+            self.context.i32_type().fn_type(&[], false),
             Some(Linkage::External),
         );
-
-        function_value.get_nth_param(0).unwrap().set_name("argc");
-        function_value.get_nth_param(1).unwrap().set_name("argv");
 
         let entry_block = self.context.append_basic_block(function_value, "entry");
         self.builder.position_at_end(entry_block);
