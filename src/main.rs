@@ -103,7 +103,9 @@ fn build(db: &mut Db) {
     let mut tast = tast::lower(db, ast);
 
     db.timings.start("typeck");
-    passes::typeck(db, &mut tast);
+    if let Err(diag) = passes::typeck(db, &mut tast) {
+        db.diagnostics.add(diag);
+    }
     db.timings.stop();
     expect!(db);
 

@@ -28,7 +28,7 @@ pub fn typeck(db: &mut Db, tast: &mut TypedAst) -> Result<(), Diagnostic> {
     let mut cx = InferCtxt::new(db);
 
     fill_symbol_tys(&mut cx);
-    infer_all(&mut cx, tast).map_err(|err| err.into_diagnostic(cx.db));
+    infer_all(&mut cx, tast).map_err(|err| err.into_diagnostic(cx.db))?;
 
     cx.substitution(tast);
 
@@ -105,13 +105,13 @@ impl Infer<'_> for Function {
         });
 
         let sym_ty = cx.lookup(self.id);
-        cx.at(self.span).eq(sym_ty, Type::new(fun_ty));
+        cx.at(self.span).eq(sym_ty, Type::new(fun_ty))?;
         self.ty = sym_ty;
 
         env.call_stack.push(CallFrame { id: self.id, ret_ty });
 
-        self.body.infer(cx, env);
-        cx.at(self.body.span).eq(ret_ty, self.body.ty);
+        self.body.infer(cx, env)?;
+        cx.at(self.body.span).eq(ret_ty, self.body.ty)?;
 
         env.call_stack.pop();
 
@@ -121,18 +121,17 @@ impl Infer<'_> for Function {
 
 impl Infer<'_> for If {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
-        self.cond.infer(cx, env);
+        self.cond.infer(cx, env)?;
 
-        let expected = Type::new(TypeKind::Bool(self.cond.span()));
-        cx.at(self.cond.span()).eq(expected, self.cond.ty());
+        cx.at(self.cond.span()).eq(Type::new(TypeKind::Bool(self.cond.span())), self.cond.ty())?;
 
-        self.then.infer(cx, env);
+        self.then.infer(cx, env)?;
 
         if let Some(otherwise) = self.otherwise.as_mut() {
             otherwise.infer(cx, env)?;
-            cx.at(otherwise.span()).eq(self.then.ty(), otherwise.ty());
+            cx.at(otherwise.span()).eq(self.then.ty(), otherwise.ty())?;
         } else {
-            cx.at(self.then.span()).eq(self.then.ty(), Type::new(TypeKind::Unit(self.span)));
+            cx.at(self.then.span()).eq(self.then.ty(), Type::new(TypeKind::Unit(self.span)))?;
         }
 
         self.ty = self.then.ty();
@@ -160,8 +159,8 @@ impl Infer<'_> for Return {
         let call_frame = env.call_stack.current().expect("to be inside a call frame");
         let ret_ty = call_frame.ret_ty;
 
-        self.expr.infer(cx, env);
-        cx.at(self.expr.span()).eq(ret_ty, self.expr.ty());
+        self.expr.infer(cx, env)?;
+        cx.at(self.expr.span()).eq(ret_ty, self.expr.ty())?;
 
         Ok(())
     }
@@ -169,7 +168,7 @@ impl Infer<'_> for Return {
 
 impl Infer<'_> for Call {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
-        self.callee.infer(cx, env);
+        self.callee.infer(cx, env)?;
 
         for arg in &mut self.args {
             match arg {
@@ -194,7 +193,7 @@ impl Infer<'_> for Call {
             span: self.span,
         }));
 
-        cx.at(self.callee.span()).eq(expected_ty, self.callee.ty());
+        cx.at(self.callee.span()).eq(expected_ty, self.callee.ty())?;
 
         self.ty = result_ty;
 
@@ -204,22 +203,20 @@ impl Infer<'_> for Call {
 
 impl Infer<'_> for Binary {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
-        self.lhs.infer(cx, env);
-        self.rhs.infer(cx, env);
+        self.lhs.infer(cx, env)?;
+        self.rhs.infer(cx, env)?;
 
-        cx.at(self.rhs.span()).eq(self.lhs.ty(), self.rhs.ty());
+        cx.at(self.rhs.span()).eq(self.lhs.ty(), self.rhs.ty())?;
 
         match self.op {
             BinaryOp::Cmp(_) => (),
             BinaryOp::And | BinaryOp::Or => {
                 let expected = Type::new(TypeKind::Bool(self.span));
-                cx.add_eq_constraint(expected, self.lhs.ty());
-                cx.add_eq_constraint(expected, self.rhs.ty());
+                cx.at(self.lhs.span()).eq(expected, self.lhs.ty())?;
+                cx.at(self.rhs.span()).eq(expected, self.rhs.ty())?;
             }
             _ => {
-                let expected = cx.fresh_int_var(self.span);
-                cx.add_eq_constraint(expected, self.lhs.ty());
-                cx.add_eq_constraint(expected, self.rhs.ty());
+                // TODO: type check arithmetic operations
             }
         }
 
