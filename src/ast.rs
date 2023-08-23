@@ -23,7 +23,7 @@ impl Ast {
 
     pub fn pretty_print(&self) -> io::Result<()> {
         println!();
-        println!("AST:");
+        println!("Ast:");
         println!();
 
         for module in &self.modules {

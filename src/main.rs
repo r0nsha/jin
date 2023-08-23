@@ -23,6 +23,7 @@ mod mir;
 mod parse;
 mod passes;
 mod span;
+mod tast;
 mod ty;
 
 use std::path::PathBuf;
