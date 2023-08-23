@@ -8,7 +8,7 @@ use crate::{
 };
 
 impl<'db> InferCtxt<'db> {
-    pub fn unification(&'db mut self) -> Result<(), InferError> {
+    pub fn unification(&mut self) -> Result<(), InferError> {
         let constraints = self.constraints.clone();
 
         for constraint in constraints.iter() {
@@ -20,80 +20,6 @@ impl<'db> InferCtxt<'db> {
             }
         }
 
-        Ok(())
-    }
-
-    fn unify_ty_ty(&mut self, expected: Type, found: Type) -> Result<(), InferError> {
-        let expected = expected.normalize(self);
-        let found = found.normalize(self);
-
-        match (expected.as_ref(), found.as_ref()) {
-            (TypeKind::Never(_), _)
-            | (_, TypeKind::Never(_))
-            | (TypeKind::Bool(_), TypeKind::Bool(_))
-            | (TypeKind::Unit(_), TypeKind::Unit(_))
-            | (TypeKind::Int(IntType::Int, _), TypeKind::Int(IntType::Int, _)) => Ok(()),
-
-            (TypeKind::Function(ref fex), TypeKind::Function(ref fact)) => {
-                self.unify_ty_ty(fex.ret, fact.ret)?;
-
-                if fex.params.len() == fact.params.len() {
-                    for (p1, p2) in fex.params.iter().zip(fact.params.iter()) {
-                        self.unify_ty_ty(p1.ty, p2.ty)?;
-                    }
-
-                    Ok(())
-                } else {
-                    Err(InferError::TypesNotEq { expected, found })
-                }
-            }
-
-            // Unify ?T1 ~ ?T2
-            (
-                TypeKind::Infer(InferType::TypeVar(expected), _),
-                TypeKind::Infer(InferType::TypeVar(found), _),
-            ) => {
-                self.ty_unification_table.unify_var_var(*expected, *found)?;
-                Ok(())
-            }
-
-            // Unify ?int ~ ?int
-            (
-                TypeKind::Infer(InferType::IntVar(expected), _),
-                TypeKind::Infer(InferType::IntVar(found), _),
-            ) => {
-                self.int_unification_table.unify_var_var(*expected, *found)?;
-                Ok(())
-            }
-
-            // Unify ?int ~ int
-            (TypeKind::Int(ity, span), TypeKind::Infer(InferType::IntVar(var), _))
-            | (TypeKind::Infer(InferType::IntVar(var), _), TypeKind::Int(ity, span)) => {
-                self.int_unification_table
-                    .unify_var_value(*var, Some(IntVarValue::Int(*ity, *span)))?;
-                Ok(())
-            }
-
-            // Unify ?T ~ T
-            (TypeKind::Infer(InferType::TypeVar(var), _), found) => {
-                self.unify_ty_var(Type::from(found), *var)
-            }
-
-            // Unify T ~ ?T
-            (expected, TypeKind::Infer(InferType::TypeVar(var), _)) => {
-                self.unify_ty_var(Type::from(expected), *var)
-            }
-
-            (expected, found) => Err(InferError::TypesNotEq {
-                expected: Type::from(expected),
-                found: Type::from(found),
-            }),
-        }
-    }
-
-    fn unify_ty_var(&mut self, expected: Type, var: TypeVar) -> Result<(), InferError> {
-        expected.occurs_check(var).map_err(|ty| InferError::InfiniteType { var, ty })?;
-        self.ty_unification_table.unify_var_value(var, Some(expected))?;
         Ok(())
     }
 }
