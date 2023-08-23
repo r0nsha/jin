@@ -24,7 +24,10 @@ pub struct At<'db, 'icx> {
 impl At<'_, '_> {
     pub fn eq(&mut self, expected: Type, found: Type) -> Result<(), InferError> {
         UnifyCtxt { infcx: self.infcx }.unify_ty_ty(expected, found).map_err(|err| match err {
-            UnifyError::TypeMismatch { .. } => InferError::TypeMismatch { expected, found },
+            UnifyError::TypeMismatch { .. } => InferError::TypeMismatch {
+                expected: expected.normalize(self.infcx),
+                found: found.normalize(self.infcx),
+            },
             UnifyError::InfiniteType { ty } => InferError::InfiniteType { ty },
         })
     }
