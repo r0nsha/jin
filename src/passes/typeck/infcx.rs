@@ -55,8 +55,8 @@ impl<'db> InferCtxt<'db> {
     }
 }
 
-// pub struct At<'db, 'a> {
-//     infcx: &'a mut InferCtxt<'db>,
+// pub struct At<'db> {
+//     infcx: &'db mut InferCtxt<'db>,
 //     a: Span,
 //     b: Span,
 //     a_is_expected: bool
@@ -68,18 +68,3 @@ impl<'db> InferCtxt<'db> {
 //     }
 // }
 //
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ExpectedFound<T> {
-    pub expected: T,
-    pub found: T,
-}
-
-impl<T> ExpectedFound<T> {
-    pub fn new(a_is_expected: bool, a: T, b: T) -> Self {
-        if a_is_expected {
-            ExpectedFound { expected: a, found: b }
-        } else {
-            ExpectedFound { expected: b, found: a }
-        }
-    }
-}

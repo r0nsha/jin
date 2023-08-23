@@ -8,13 +8,14 @@ use crate::{
 };
 
 impl<'db> InferCtxt<'db> {
-    pub fn unification(&mut self) -> Result<(), InferError> {
+    pub fn unification(&'db mut self) -> Result<(), InferError> {
         let constraints = self.constraints.clone();
 
         for constraint in constraints.iter() {
             match constraint {
                 Constraint::Eq { expected, found } => {
-                    self.unify_ty_ty(*expected, *found)?;
+                    UnifyCtxt { infcx: self, a: *expected, b: *found, a_is_expected: true }
+                        .unify_ty_ty(*expected, *found)?;
                 }
             }
         }
@@ -22,8 +23,7 @@ impl<'db> InferCtxt<'db> {
         Ok(())
     }
 
-    // TODO: remove pub
-    pub fn unify_ty_ty(&mut self, expected: Type, found: Type) -> Result<(), InferError> {
+    fn unify_ty_ty(&mut self, expected: Type, found: Type) -> Result<(), InferError> {
         let expected = expected.normalize(self);
         let found = found.normalize(self);
 
@@ -48,7 +48,7 @@ impl<'db> InferCtxt<'db> {
                 }
             }
 
-            // Unify ?X ~ ?Y
+            // Unify ?T1 ~ ?T2
             (
                 TypeKind::Infer(InferType::TypeVar(expected), _),
                 TypeKind::Infer(InferType::TypeVar(found), _),
@@ -74,10 +74,12 @@ impl<'db> InferCtxt<'db> {
                 Ok(())
             }
 
-            // Unify ?N ~ any
+            // Unify ?T ~ T
             (TypeKind::Infer(InferType::TypeVar(var), _), found) => {
                 self.unify_ty_var(Type::from(found), *var)
             }
+
+            // Unify T ~ ?T
             (expected, TypeKind::Infer(InferType::TypeVar(var), _)) => {
                 self.unify_ty_var(Type::from(expected), *var)
             }
@@ -93,6 +95,89 @@ impl<'db> InferCtxt<'db> {
         expected.occurs_check(var).map_err(|ty| InferError::InfiniteType { var, ty })?;
         self.ty_unification_table.unify_var_value(var, Some(expected))?;
         Ok(())
+    }
+}
+
+struct UnifyCtxt<'db, 'cx> {
+    infcx: &'cx mut InferCtxt<'db>,
+    a: Type,
+    b: Type,
+    a_is_expected: bool,
+}
+
+impl<'db, 'cx> UnifyCtxt<'db, 'cx> {
+    fn unify_ty_ty(&mut self, a: Type, b: Type) -> Result<(), InferError> {
+        let a = a.normalize(self.infcx);
+        let b = b.normalize(self.infcx);
+
+        match (a.as_ref(), b.as_ref()) {
+            (TypeKind::Never(_), _)
+            | (_, TypeKind::Never(_))
+            | (TypeKind::Bool(_), TypeKind::Bool(_))
+            | (TypeKind::Unit(_), TypeKind::Unit(_))
+            | (TypeKind::Int(IntType::Int, _), TypeKind::Int(IntType::Int, _)) => Ok(()),
+
+            (TypeKind::Function(ref fex), TypeKind::Function(ref fact)) => {
+                self.unify_ty_ty(fex.ret, fact.ret)?;
+
+                if fex.params.len() == fact.params.len() {
+                    for (p1, p2) in fex.params.iter().zip(fact.params.iter()) {
+                        self.unify_ty_ty(p1.ty, p2.ty)?;
+                    }
+
+                    Ok(())
+                } else {
+                    Err(self.ty_unification_err())
+                }
+            }
+
+            // Unify ?T1 ~ ?T2
+            (
+                TypeKind::Infer(InferType::TypeVar(expected), _),
+                TypeKind::Infer(InferType::TypeVar(found), _),
+            ) => {
+                self.infcx.ty_unification_table.unify_var_var(*expected, *found)?;
+                Ok(())
+            }
+
+            // Unify ?int ~ ?int
+            (
+                TypeKind::Infer(InferType::IntVar(expected), _),
+                TypeKind::Infer(InferType::IntVar(found), _),
+            ) => {
+                self.infcx.int_unification_table.unify_var_var(*expected, *found)?;
+                Ok(())
+            }
+
+            // Unify ?int ~ int
+            (TypeKind::Int(ity, span), TypeKind::Infer(InferType::IntVar(var), _))
+            | (TypeKind::Infer(InferType::IntVar(var), _), TypeKind::Int(ity, span)) => {
+                self.infcx
+                    .int_unification_table
+                    .unify_var_value(*var, Some(IntVarValue::Int(*ity, *span)))?;
+                Ok(())
+            }
+
+            // Unify ?T ~ T
+            (TypeKind::Infer(InferType::TypeVar(var), _), _) => self.unify_ty_var(b, *var),
+
+            // Unify T ~ ?T
+            (_, TypeKind::Infer(InferType::TypeVar(var), _)) => self.unify_ty_var(a, *var),
+
+            (_, _) => Err(self.ty_unification_err()),
+        }
+    }
+
+    fn unify_ty_var(&mut self, expected: Type, var: TypeVar) -> Result<(), InferError> {
+        expected.occurs_check(var).map_err(|ty| InferError::InfiniteType { var, ty })?;
+        self.infcx.ty_unification_table.unify_var_value(var, Some(expected))?;
+        Ok(())
+    }
+
+    fn ty_unification_err(&self) -> InferError {
+        let ExpectedFound { expected, found } =
+            ExpectedFound::new(self.a_is_expected, self.a, self.b);
+        InferError::TypesNotEq { expected, found }
     }
 }
 
@@ -179,3 +264,19 @@ impl UnifyKey for IntVar {
 }
 
 impl EqUnifyValue for IntVarValue {}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ExpectedFound<T> {
+    pub expected: T,
+    pub found: T,
+}
+
+impl<T> ExpectedFound<T> {
+    pub fn new(a_is_expected: bool, a: T, b: T) -> Self {
+        if a_is_expected {
+            ExpectedFound { expected: a, found: b }
+        } else {
+            ExpectedFound { expected: b, found: a }
+        }
+    }
+}
