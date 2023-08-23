@@ -1,31 +1,30 @@
 mod constraint;
+mod infcx;
 mod normalize;
 mod substitute;
 mod type_env;
 mod unify;
 
-use ena::unify::{EqUnifyValue, InPlaceUnificationTable, UnifyKey};
-
 use crate::{
     ast::BinaryOp,
-    db::{Database, SymbolId, TypeId},
+    db::Database,
     passes::typeck::{
-        constraint::{Constraint, Constraints},
+        infcx::InferCtxt,
         type_env::{CallFrame, TypeEnv},
     },
-    span::{Span, Spanned},
+    span::Spanned,
     tast::{
         Binary, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name,
         Return, TypedAst,
     },
-    ty::{FunctionType, FunctionTypeParam, InferType, IntVar, IntVarValue, Type, TypeVar, Typed},
+    ty::{FunctionType, FunctionTypeParam, Type, Typed},
 };
 
 pub fn typeck(db: &mut Database, tast: &mut TypedAst) {
-    let mut cx = TypeCtxt::new(db);
+    let mut cx = InferCtxt::new(db);
 
-    cx.fill_symbol_tys();
-    cx.infer_all(tast);
+    fill_symbol_tys(&mut cx);
+    infer_all(&mut cx, tast);
 
     if let Err(e) = cx.unification() {
         db.diagnostics.add(e.into_diagnostic(db));
@@ -35,81 +34,28 @@ pub fn typeck(db: &mut Database, tast: &mut TypedAst) {
     cx.substitution(tast);
 }
 
-pub struct TypeCtxt<'db> {
-    pub db: &'db mut Database,
-    pub ty_unification_table: InPlaceUnificationTable<TypeVar>,
-    pub int_unification_table: InPlaceUnificationTable<IntVar>,
-    pub constraints: Constraints,
-}
-
-impl<'db> TypeCtxt<'db> {
-    fn new(db: &'db mut Database) -> Self {
-        Self {
-            db,
-            ty_unification_table: InPlaceUnificationTable::new(),
-            int_unification_table: InPlaceUnificationTable::new(),
-            constraints: Constraints::new(),
-        }
+fn fill_symbol_tys(infcx: &mut InferCtxt) {
+    // TODO: find a less unsightly code pattern for mutating all symbols...
+    for i in 0..infcx.db.symbols.len() {
+        let id = i.into();
+        infcx.db.symbols[id].ty = infcx.alloc_ty_var(infcx.db.symbols[id].span);
     }
 }
 
-impl<'db> TypeCtxt<'db> {
-    fn fill_symbol_tys(&mut self) {
-        // TODO: find a less unsightly code pattern for mutating all symbols...
-        for i in 0..self.db.symbols.len() {
-            let id = i.into();
-            self.db.symbols[id].ty = self.alloc_ty_var(self.db.symbols[id].span);
-        }
-    }
+fn infer_all(infcx: &mut InferCtxt, tast: &mut TypedAst) {
+    let mut env = TypeEnv::new();
 
-    fn infer_all(&mut self, tast: &mut TypedAst) {
-        let mut env = TypeEnv::new();
-
-        for item in &mut tast.items {
-            item.infer(self, &mut env);
-        }
-    }
-
-    fn lookup(&mut self, id: SymbolId) -> TypeId {
-        let sym = &self.db[id];
-        assert!(!sym.ty.is_null(), "symbol `{}` wasn't assigned a TypeId", sym.qpath);
-        sym.ty
-    }
-
-    #[inline]
-    pub fn fresh_ty_var(&mut self, span: Span) -> Type {
-        Type::Infer(InferType::TypeVar(self.ty_unification_table.new_key(None)), span)
-    }
-
-    #[inline]
-    pub fn alloc_ty_var(&mut self, span: Span) -> TypeId {
-        let ftv = self.fresh_ty_var(span);
-        self.db.alloc_ty(ftv)
-    }
-
-    #[inline]
-    pub fn fresh_int_var(&mut self, span: Span) -> Type {
-        Type::Infer(InferType::IntVar(self.int_unification_table.new_key(None)), span)
-    }
-
-    #[inline]
-    pub fn alloc_int_var(&mut self, span: Span) -> TypeId {
-        let ftv = self.fresh_int_var(span);
-        self.db.alloc_ty(ftv)
-    }
-
-    #[inline]
-    pub fn add_eq_constraint(&mut self, expected: TypeId, actual: TypeId) {
-        self.constraints.push(Constraint::Eq { expected, actual });
+    for item in &mut tast.items {
+        item.infer(infcx, &mut env);
     }
 }
 
 trait Infer<'db> {
-    fn infer(&mut self, cx: &mut TypeCtxt<'db>, env: &mut TypeEnv);
+    fn infer(&mut self, cx: &mut InferCtxt<'db>, env: &mut TypeEnv);
 }
 
 impl Infer<'_> for Expr {
-    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
         match self {
             Self::Item(inner) => inner.infer(cx, env),
             Self::If(inner) => inner.infer(cx, env),
@@ -124,7 +70,7 @@ impl Infer<'_> for Expr {
 }
 
 impl Infer<'_> for Item {
-    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
         match &mut self.kind {
             ItemKind::Function(fun) => fun.infer(cx, env),
         }
@@ -134,7 +80,7 @@ impl Infer<'_> for Item {
 }
 
 impl Infer<'_> for Function {
-    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
         let ret_ty = cx.alloc_ty_var(self.span);
 
         for param in &mut self.sig.params {
@@ -171,7 +117,7 @@ impl Infer<'_> for Function {
 }
 
 impl Infer<'_> for If {
-    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
         self.cond.infer(cx, env);
 
         let expected = cx.db.alloc_ty(Type::Bool(self.cond.span()));
@@ -193,7 +139,7 @@ impl Infer<'_> for If {
 }
 
 impl Infer<'_> for Block {
-    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
         for expr in &mut self.exprs {
             expr.infer(cx, env);
         }
@@ -203,7 +149,7 @@ impl Infer<'_> for Block {
 }
 
 impl Infer<'_> for Return {
-    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
         self.ty = cx.db.alloc_ty(Type::Never(self.span));
 
         let call_frame = env.call_stack.current().expect("to be inside a call frame");
@@ -215,7 +161,7 @@ impl Infer<'_> for Return {
 }
 
 impl Infer<'_> for Call {
-    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
         self.callee.infer(cx, env);
 
         for arg in &mut self.args {
@@ -250,7 +196,7 @@ impl Infer<'_> for Call {
 }
 
 impl Infer<'_> for Binary {
-    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
         self.lhs.infer(cx, env);
         self.rhs.infer(cx, env);
 
@@ -278,13 +224,13 @@ impl Infer<'_> for Binary {
 }
 
 impl Infer<'_> for Name {
-    fn infer(&mut self, cx: &mut TypeCtxt<'_>, _env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut TypeEnv) {
         self.ty = cx.lookup(self.id);
     }
 }
 
 impl Infer<'_> for Lit {
-    fn infer(&mut self, cx: &mut TypeCtxt<'_>, _env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut TypeEnv) {
         self.ty = match &self.kind {
             LitKind::Int(_) => cx.alloc_int_var(self.span),
             LitKind::Bool(_) => cx.db.alloc_ty(Type::Bool(self.span)),
@@ -292,39 +238,3 @@ impl Infer<'_> for Lit {
         };
     }
 }
-
-impl UnifyKey for TypeVar {
-    type Value = Option<Type>;
-
-    fn index(&self) -> u32 {
-        (*self).into()
-    }
-
-    fn from_index(u: u32) -> Self {
-        Self::from(u)
-    }
-
-    fn tag() -> &'static str {
-        "TyVar"
-    }
-}
-
-impl EqUnifyValue for Type {}
-
-impl UnifyKey for IntVar {
-    type Value = Option<IntVarValue>;
-
-    fn index(&self) -> u32 {
-        (*self).into()
-    }
-
-    fn from_index(u: u32) -> Self {
-        Self::from(u)
-    }
-
-    fn tag() -> &'static str {
-        "IntTy"
-    }
-}
-
-impl EqUnifyValue for IntVarValue {}

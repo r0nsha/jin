@@ -1,11 +1,13 @@
+use ena::unify::{EqUnifyValue, UnifyKey};
+
 use crate::{
     db::Database,
     diagnostics::{Diagnostic, Label},
-    passes::typeck::{constraint::Constraint, normalize::NormalizeTy, TypeCtxt},
-    ty::{InferType, IntType, IntVarValue, Type, TypeVar},
+    passes::typeck::{constraint::Constraint, infcx::InferCtxt, normalize::NormalizeTy},
+    ty::{InferType, IntType, IntVar, IntVarValue, Type, TypeVar},
 };
 
-impl<'db> TypeCtxt<'db> {
+impl<'db> InferCtxt<'db> {
     pub fn unification(&mut self) -> Result<(), InferError> {
         let constraints = self.constraints.clone();
 
@@ -136,3 +138,39 @@ impl InferError {
         }
     }
 }
+
+impl UnifyKey for TypeVar {
+    type Value = Option<Type>;
+
+    fn index(&self) -> u32 {
+        (*self).into()
+    }
+
+    fn from_index(u: u32) -> Self {
+        Self::from(u)
+    }
+
+    fn tag() -> &'static str {
+        "TyVar"
+    }
+}
+
+impl EqUnifyValue for Type {}
+
+impl UnifyKey for IntVar {
+    type Value = Option<IntVarValue>;
+
+    fn index(&self) -> u32 {
+        (*self).into()
+    }
+
+    fn from_index(u: u32) -> Self {
+        Self::from(u)
+    }
+
+    fn tag() -> &'static str {
+        "IntTy"
+    }
+}
+
+impl EqUnifyValue for IntVarValue {}

@@ -1,20 +1,23 @@
 use crate::{
-    passes::typeck::TypeCtxt,
-    ty::{FunctionTypeParam, FunctionType, InferType, Type},
+    passes::typeck::infcx::InferCtxt,
+    ty::{FunctionType, FunctionTypeParam, InferType, Type},
 };
 
 pub trait NormalizeTy {
-    fn normalize(self, tcx: &mut TypeCtxt) -> Self;
+    fn normalize(self, tcx: &mut InferCtxt) -> Self;
 }
 
 impl NormalizeTy for Type {
-    fn normalize(self, tcx: &mut TypeCtxt) -> Self {
+    fn normalize(self, tcx: &mut InferCtxt) -> Self {
         match self {
             Self::Function(FunctionType { ret, params, span }) => Self::Function(FunctionType {
                 ret: Box::new(ret.normalize(tcx)),
                 params: params
                     .into_iter()
-                    .map(|param| FunctionTypeParam { name: param.name, ty: param.ty.normalize(tcx) })
+                    .map(|param| FunctionTypeParam {
+                        name: param.name,
+                        ty: param.ty.normalize(tcx),
+                    })
                     .collect(),
                 span,
             }),
