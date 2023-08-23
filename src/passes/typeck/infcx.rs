@@ -2,7 +2,10 @@ use ena::unify::InPlaceUnificationTable;
 
 use crate::{
     db::{Db, SymbolId},
-    passes::typeck::constraint::{Constraint, Constraints},
+    passes::typeck::{
+        constraint::{Constraint, Constraints},
+        unify::InferError,
+    },
     span::Span,
     ty::{InferType, IntVar, Type, TypeKind, TypeVar},
 };
@@ -51,3 +54,32 @@ impl<'db> InferCtxt<'db> {
         self.constraints.push(Constraint::Eq { expected, actual });
     }
 }
+
+// pub struct At<'db, 'a> {
+//     infcx: &'a mut InferCtxt<'db>,
+//     a: Span,
+//     b: Span,
+//     a_is_expected: bool
+// }
+//
+// impl At<'_, '_> {
+//     pub fn eq(&mut self, a: Type, b: Type) -> Result<(), InferError> {
+//         self.infcx.unify_ty_ty(a, b)
+//     }
+// }
+//
+// #[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable, Lift)]
+// pub struct ExpectedFound<T> {
+//     pub expected: T,
+//     pub found: T,
+// }
+//
+// impl<T> ExpectedFound<T> {
+//     pub fn new(a_is_expected: bool, a: T, b: T) -> Self {
+//         if a_is_expected {
+//             ExpectedFound { expected: a, found: b }
+//         } else {
+//             ExpectedFound { expected: b, found: a }
+//         }
+//     }
+// }

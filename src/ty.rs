@@ -29,6 +29,20 @@ impl Type {
     pub fn unknown() -> Self {
         *TYPE_UNKNOWN
     }
+
+    pub fn occurs_check(self, var: TypeVar) -> Result<(), Self> {
+        match self.as_ref() {
+            TypeKind::Function(fun) => fun.ret.occurs_check(var).map_err(|_| self),
+            TypeKind::Infer(InferType::TypeVar(v), _) => {
+                if *v == var {
+                    Err(self)
+                } else {
+                    Ok(())
+                }
+            }
+            _ => Ok(()),
+        }
+    }
 }
 
 impl Deref for Type {
@@ -42,6 +56,12 @@ impl Deref for Type {
 impl AsRef<TypeKind> for Type {
     fn as_ref(&self) -> &TypeKind {
         &self.0
+    }
+}
+
+impl From<TypeKind> for Type {
+    fn from(value: TypeKind) -> Self {
+        Self::new(value)
     }
 }
 
@@ -74,20 +94,6 @@ impl TypeKind {
         Self::Int(IntType::Int, span)
     }
 
-    pub fn occurs_check(&self, var: TypeVar) -> Result<(), Self> {
-        match self {
-            Self::Function(fun) => fun.ret.occurs_check(var).map_err(|_| self.clone()),
-            Self::Infer(InferType::TypeVar(v), _) => {
-                if *v == var {
-                    Err(self.clone())
-                } else {
-                    Ok(())
-                }
-            }
-            _ => Ok(()),
-        }
-    }
-
     pub fn span(&self) -> Span {
         match self {
             Self::Function(FunctionType { span, .. })
@@ -109,13 +115,13 @@ impl TypeKind {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, From, Into)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]
 pub struct TypeVar(u32);
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, From, Into)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]
 pub struct IntVar(u32);
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntVarValue {
     Int(IntType, Span),
 }
@@ -128,7 +134,7 @@ impl From<IntVarValue> for TypeKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IntType {
     Int,
 }
@@ -156,7 +162,7 @@ pub struct FunctionTypeParam {
     pub ty: Type,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InferType {
     TypeVar(TypeVar),
     IntVar(IntVar),
