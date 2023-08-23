@@ -2,7 +2,6 @@ use ena::unify::InPlaceUnificationTable;
 
 use crate::{
     db::{Db, SymbolId},
-    passes::typeck::constraint::{Constraint, Constraints},
     span::Span,
     ty::{InferType, IntVar, Type, TypeKind, TypeVar},
 };
@@ -11,7 +10,6 @@ pub struct InferCtxt<'db> {
     pub db: &'db mut Db,
     pub ty_unification_table: InPlaceUnificationTable<TypeVar>,
     pub int_unification_table: InPlaceUnificationTable<IntVar>,
-    pub constraints: Constraints,
 }
 
 impl<'db> InferCtxt<'db> {
@@ -20,7 +18,6 @@ impl<'db> InferCtxt<'db> {
             db,
             ty_unification_table: InPlaceUnificationTable::new(),
             int_unification_table: InPlaceUnificationTable::new(),
-            constraints: Constraints::new(),
         }
     }
 
@@ -44,10 +41,5 @@ impl<'db> InferCtxt<'db> {
             InferType::IntVar(self.int_unification_table.new_key(None)),
             span,
         ))
-    }
-
-    #[inline]
-    pub fn add_eq_constraint(&mut self, expected: Type, found: Type) {
-        self.constraints.push(Constraint::Eq { expected, found });
     }
 }

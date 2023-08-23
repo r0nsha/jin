@@ -3,51 +3,35 @@ use ena::unify::{EqUnifyValue, UnifyKey};
 use crate::{
     db::Db,
     diagnostics::{Diagnostic, Label},
-    passes::typeck::{constraint::Constraint, infcx::InferCtxt, normalize::NormalizeTy},
+    passes::typeck::{infcx::InferCtxt, normalize::NormalizeTy},
     span::Span,
     ty::{InferType, IntType, IntVar, IntVarValue, Type, TypeKind, TypeVar},
 };
 
 impl<'db> InferCtxt<'db> {
-    pub fn unification(&mut self) -> Result<(), InferError> {
-        let constraints = self.constraints.clone();
-
-        for constraint in constraints.iter() {
-            match constraint {
-                Constraint::Eq { expected, found } => {
-                    todo!()
-                    // UnifyCtxt { infcx: self, a: *expected, b: *found, a_is_expected: true }
-                    //     .unify_ty_ty(*expected, *found)?;
-                }
-            }
-        }
-
-        Ok(())
+    #[inline]
+    #[must_use]
+    pub fn at(&mut self, span: Span) -> At<'db, '_> {
+        At { infcx: self, span }
     }
 }
 
 pub struct At<'db, 'icx> {
     infcx: &'icx mut InferCtxt<'db>,
     span: Span,
-    a_is_expected: bool,
 }
 
 impl At<'_, '_> {
-    pub fn eq(&mut self, a: Type, b: Type) -> Result<(), InferError> {
-        UnifyCtxt { infcx: self.infcx, a_is_expected: self.a_is_expected }
-            .unify_ty_ty(a, b)
-            .map_err(|err| match err {
-                UnifyError::TypeMismatch { .. } => {
-                    InferError::TypeMismatch(ExpectedFound::new(self.a_is_expected, a, b))
-                }
-                UnifyError::InfiniteType { ty } => InferError::InfiniteType { ty },
-            })
+    pub fn eq(&mut self, expected: Type, found: Type) -> Result<(), InferError> {
+        UnifyCtxt { infcx: self.infcx }.unify_ty_ty(expected, found).map_err(|err| match err {
+            UnifyError::TypeMismatch { .. } => InferError::TypeMismatch { expected, found },
+            UnifyError::InfiniteType { ty } => InferError::InfiniteType { ty },
+        })
     }
 }
 
 struct UnifyCtxt<'db, 'icx> {
     infcx: &'icx mut InferCtxt<'db>,
-    a_is_expected: bool,
 }
 
 impl<'db, 'icx> UnifyCtxt<'db, 'icx> {
@@ -138,14 +122,14 @@ pub enum UnifyError {
 }
 
 pub enum InferError {
-    TypeMismatch(ExpectedFound<Type>),
+    TypeMismatch { expected: Type, found: Type },
     InfiniteType { ty: Type },
 }
 
 impl InferError {
     pub fn into_diagnostic(self, db: &Db) -> Diagnostic {
         match self {
-            Self::TypeMismatch(ExpectedFound { expected, found }) => {
+            Self::TypeMismatch { expected, found } => {
                 Diagnostic::error("infer::incompatible_types")
                     .with_message(format!(
                         "expected `{}`, found `{}` instead",
@@ -203,19 +187,3 @@ impl UnifyKey for IntVar {
 }
 
 impl EqUnifyValue for IntVarValue {}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct ExpectedFound<T> {
-    pub expected: T,
-    pub found: T,
-}
-
-impl<T> ExpectedFound<T> {
-    pub fn new(a_is_expected: bool, a: T, b: T) -> Self {
-        if a_is_expected {
-            ExpectedFound { expected: a, found: b }
-        } else {
-            ExpectedFound { expected: b, found: a }
-        }
-    }
-}

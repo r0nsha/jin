@@ -8,9 +8,11 @@ mod unify;
 use crate::{
     ast::BinaryOp,
     db::Db,
+    diagnostics::Diagnostic,
     passes::typeck::{
         infcx::InferCtxt,
         type_env::{CallFrame, TypeEnv},
+        unify::InferError,
     },
     span::Spanned,
     tast::{
@@ -20,18 +22,17 @@ use crate::{
     ty::{FunctionType, FunctionTypeParam, Type, TypeKind, Typed},
 };
 
-pub fn typeck(db: &mut Db, tast: &mut TypedAst) {
+pub type InferResult<T> = Result<T, InferError>;
+
+pub fn typeck(db: &mut Db, tast: &mut TypedAst) -> Result<(), Diagnostic> {
     let mut cx = InferCtxt::new(db);
 
     fill_symbol_tys(&mut cx);
-    infer_all(&mut cx, tast);
-
-    if let Err(e) = cx.unification() {
-        db.diagnostics.add(e.into_diagnostic(db));
-        return;
-    }
+    infer_all(&mut cx, tast).map_err(|err| err.into_diagnostic(cx.db));
 
     cx.substitution(tast);
+
+    Ok(())
 }
 
 fn fill_symbol_tys(infcx: &mut InferCtxt) {
@@ -42,20 +43,22 @@ fn fill_symbol_tys(infcx: &mut InferCtxt) {
     }
 }
 
-fn infer_all(infcx: &mut InferCtxt, tast: &mut TypedAst) {
+fn infer_all(infcx: &mut InferCtxt, tast: &mut TypedAst) -> InferResult<()> {
     let mut env = TypeEnv::new();
 
     for item in &mut tast.items {
-        item.infer(infcx, &mut env);
+        item.infer(infcx, &mut env)?;
     }
+
+    Ok(())
 }
 
 trait Infer<'db> {
-    fn infer(&mut self, cx: &mut InferCtxt<'db>, env: &mut TypeEnv);
+    fn infer(&mut self, cx: &mut InferCtxt<'db>, env: &mut TypeEnv) -> InferResult<()>;
 }
 
 impl Infer<'_> for Expr {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         match self {
             Self::Item(inner) => inner.infer(cx, env),
             Self::If(inner) => inner.infer(cx, env),
@@ -70,17 +73,19 @@ impl Infer<'_> for Expr {
 }
 
 impl Infer<'_> for Item {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         match &mut self.kind {
-            ItemKind::Function(fun) => fun.infer(cx, env),
+            ItemKind::Function(fun) => fun.infer(cx, env)?,
         }
 
         self.ty = Type::new(TypeKind::Unit(self.span()));
+
+        Ok(())
     }
 }
 
 impl Infer<'_> for Function {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         let ret_ty = cx.fresh_ty_var(self.span);
 
         for param in &mut self.sig.params {
@@ -99,71 +104,76 @@ impl Infer<'_> for Function {
             span: self.span,
         });
 
-        self.ty = Type::new(fun_ty);
-
         let sym_ty = cx.lookup(self.id);
-        cx.add_eq_constraint(sym_ty, self.ty);
+        cx.at(self.span).eq(sym_ty, Type::new(fun_ty));
+        self.ty = sym_ty;
 
         env.call_stack.push(CallFrame { id: self.id, ret_ty });
 
         self.body.infer(cx, env);
-        cx.add_eq_constraint(ret_ty, self.body.ty);
+        cx.at(self.body.span).eq(ret_ty, self.body.ty);
 
         env.call_stack.pop();
+
+        Ok(())
     }
 }
 
 impl Infer<'_> for If {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         self.cond.infer(cx, env);
 
         let expected = Type::new(TypeKind::Bool(self.cond.span()));
-        cx.add_eq_constraint(expected, self.cond.ty());
+        cx.at(self.cond.span()).eq(expected, self.cond.ty());
 
         self.then.infer(cx, env);
 
-        let other_ty = if let Some(otherwise) = self.otherwise.as_mut() {
-            otherwise.infer(cx, env);
-            otherwise.ty()
+        if let Some(otherwise) = self.otherwise.as_mut() {
+            otherwise.infer(cx, env)?;
+            cx.at(otherwise.span()).eq(self.then.ty(), otherwise.ty());
         } else {
-            Type::new(TypeKind::Unit(self.span))
-        };
-
-        cx.add_eq_constraint(self.then.ty(), other_ty);
+            cx.at(self.then.span()).eq(self.then.ty(), Type::new(TypeKind::Unit(self.span)));
+        }
 
         self.ty = self.then.ty();
+
+        Ok(())
     }
 }
 
 impl Infer<'_> for Block {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         for expr in &mut self.exprs {
-            expr.infer(cx, env);
+            expr.infer(cx, env)?;
         }
 
         self.ty = self.exprs.last().map_or_else(|| Type::new(TypeKind::Unit(self.span)), Expr::ty);
+
+        Ok(())
     }
 }
 
 impl Infer<'_> for Return {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         self.ty = Type::new(TypeKind::Never(self.span));
 
         let call_frame = env.call_stack.current().expect("to be inside a call frame");
         let ret_ty = call_frame.ret_ty;
 
         self.expr.infer(cx, env);
-        cx.add_eq_constraint(ret_ty, self.expr.ty());
+        cx.at(self.expr.span()).eq(ret_ty, self.expr.ty());
+
+        Ok(())
     }
 }
 
 impl Infer<'_> for Call {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         self.callee.infer(cx, env);
 
         for arg in &mut self.args {
             match arg {
-                CallArg::Positional(expr) | CallArg::Named(_, expr) => expr.infer(cx, env),
+                CallArg::Positional(expr) | CallArg::Named(_, expr) => expr.infer(cx, env)?,
             }
         }
 
@@ -184,18 +194,20 @@ impl Infer<'_> for Call {
             span: self.span,
         }));
 
-        cx.add_eq_constraint(expected_ty, self.callee.ty());
+        cx.at(self.callee.span()).eq(expected_ty, self.callee.ty());
 
         self.ty = result_ty;
+
+        Ok(())
     }
 }
 
 impl Infer<'_> for Binary {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         self.lhs.infer(cx, env);
         self.rhs.infer(cx, env);
 
-        cx.add_eq_constraint(self.lhs.ty(), self.rhs.ty());
+        cx.at(self.rhs.span()).eq(self.lhs.ty(), self.rhs.ty());
 
         match self.op {
             BinaryOp::Cmp(_) => (),
@@ -215,21 +227,26 @@ impl Infer<'_> for Binary {
             BinaryOp::Cmp(_) => Type::new(TypeKind::Bool(self.span)),
             _ => self.lhs.ty(),
         };
+
+        Ok(())
     }
 }
 
 impl Infer<'_> for Name {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut TypeEnv) -> InferResult<()> {
         self.ty = cx.lookup(self.id);
+        Ok(())
     }
 }
 
 impl Infer<'_> for Lit {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut TypeEnv) -> InferResult<()> {
         self.ty = match &self.kind {
             LitKind::Int(_) => cx.fresh_int_var(self.span),
             LitKind::Bool(_) => Type::new(TypeKind::Bool(self.span)),
             LitKind::Unit => Type::new(TypeKind::Unit(self.span)),
         };
+
+        Ok(())
     }
 }
