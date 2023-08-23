@@ -8,8 +8,8 @@ pub use lower::lower;
 
 use crate::{
     ast::BinaryOp,
-    common::Word,
-    db::{Database, SymbolId, TypeId},
+    common::SpannedWord,
+    db::{Db, SymbolId, TypeId},
     span::{Span, Spanned},
     ty::Typed,
 };
@@ -20,7 +20,7 @@ pub struct TypedAst {
 }
 
 impl TypedAst {
-    pub fn pretty_print(&self, db: &Database) -> io::Result<()> {
+    pub fn pretty_print(&self, db: &Db) -> io::Result<()> {
         println!();
         pretty_print::print(db, self)?;
         println!();
@@ -210,7 +210,7 @@ pub struct Call {
 #[derive(Debug, Clone)]
 pub enum CallArg {
     Positional(Expr),
-    Named(Word, Expr),
+    Named(SpannedWord, Expr),
 }
 
 impl Typed for CallArg {

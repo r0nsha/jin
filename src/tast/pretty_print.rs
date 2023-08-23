@@ -1,14 +1,14 @@
 use std::io;
 
 use crate::{
-    db::Database,
+    db::Db,
     tast::{
         Binary, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name,
         Return, TypedAst,
     },
 };
 
-pub(super) fn print(db: &Database, tast: &TypedAst) -> io::Result<()> {
+pub(super) fn print(db: &Db, tast: &TypedAst) -> io::Result<()> {
     let mut cx = PPCtxt { db, builder: ptree::TreeBuilder::new("Typed Ast".to_string()) };
 
     for item in &tast.items {
@@ -20,7 +20,7 @@ pub(super) fn print(db: &Database, tast: &TypedAst) -> io::Result<()> {
 }
 
 struct PPCtxt<'db> {
-    db: &'db Database,
+    db: &'db Db,
     builder: ptree::TreeBuilder,
 }
 

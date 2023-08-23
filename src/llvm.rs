@@ -23,12 +23,12 @@ use inkwell::{
 
 use crate::{
     common::target::{Arch, Os, TargetMetrics},
-    db::{build_options::EmitOption, Database},
+    db::{build_options::EmitOption, Db},
     llvm::generate::Generator,
     mir::Mir,
 };
 
-pub fn codegen(db: &mut Database, mir: &Mir) -> PathBuf {
+pub fn codegen(db: &mut Db, mir: &Mir) -> PathBuf {
     let target_machine = create_target_machine(db).expect("to create a LLVM TargetMachine");
 
     let context = Context::create();
@@ -66,7 +66,7 @@ pub fn codegen(db: &mut Database, mir: &Mir) -> PathBuf {
     build_exe(db, &target_machine, &module)
 }
 
-fn create_target_machine(db: &Database) -> Option<TargetMachine> {
+fn create_target_machine(db: &Db) -> Option<TargetMachine> {
     let target_metrics = db.build_options().target_metrics;
 
     match &target_metrics.arch {
@@ -103,7 +103,7 @@ fn optimize(module: &Module) {
     pass_manager.run_on(module);
 }
 
-fn build_exe(db: &mut Database, target_machine: &TargetMachine, module: &Module) -> PathBuf {
+fn build_exe(db: &mut Db, target_machine: &TargetMachine, module: &Module) -> PathBuf {
     let output_path = db.output_path();
 
     if let Some(parent_dir) = output_path.parent() {

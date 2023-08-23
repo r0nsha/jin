@@ -7,7 +7,7 @@ mod unify;
 
 use crate::{
     ast::BinaryOp,
-    db::Database,
+    db::Db,
     passes::typeck::{
         infcx::InferCtxt,
         type_env::{CallFrame, TypeEnv},
@@ -20,7 +20,7 @@ use crate::{
     ty::{FunctionType, FunctionTypeParam, Type, Typed},
 };
 
-pub fn typeck(db: &mut Database, tast: &mut TypedAst) {
+pub fn typeck(db: &mut Db, tast: &mut TypedAst) {
     let mut cx = InferCtxt::new(db);
 
     fill_symbol_tys(&mut cx);

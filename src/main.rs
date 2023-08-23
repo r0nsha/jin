@@ -34,7 +34,7 @@ use crate::{
     common::target::TargetPlatform,
     db::{
         build_options::{BuildOptions, EmitOption},
-        Database,
+        Db,
     },
 };
 
@@ -79,14 +79,14 @@ fn main() -> Result<()> {
 
     match cli.cmd {
         Commands::Build { file } => {
-            let mut db = Database::new(build_options, &file)?;
+            let mut db = Db::new(build_options, &file)?;
             build(&mut db);
             Ok(())
         }
     }
 }
 
-fn build(db: &mut Database) {
+fn build(db: &mut Db) {
     db.timings.start("parse");
     let mut ast = parse::parse_modules(db);
 

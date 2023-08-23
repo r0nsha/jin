@@ -6,13 +6,13 @@ use crate::{
         Binary, BinaryOp, Block, Call, CallArg, Expr, Function, FunctionParam, FunctionSig, If,
         Item, Lit, LitKind, Module, Name, Return,
     },
-    common::{QPath, Word},
-    db::Database,
+    common::{QPath, SpannedWord},
+    db::Db,
     diagnostics::{Diagnostic, Label},
     span::{Source, SourceId, Span, Spanned},
 };
 
-pub fn parse(db: &Database, source: &Source, tokens: Vec<Token>) -> Result<Module, Diagnostic> {
+pub fn parse(db: &Db, source: &Source, tokens: Vec<Token>) -> Result<Module, Diagnostic> {
     let source_id = source.id();
     let name = QPath::from_path(db.root_dir(), source.path()).unwrap();
     let is_main = source_id == db.main_source().id();
@@ -65,7 +65,7 @@ impl<'a> Parser<'a> {
         let start = self.last_span();
 
         let name_ident = self.eat(TokenKind::empty_ident())?;
-        let sig = self.parse_function_sig(name_ident.word())?;
+        let sig = self.parse_function_sig(name_ident.spanned_word())?;
 
         self.eat(TokenKind::Eq)?;
 
@@ -79,7 +79,7 @@ impl<'a> Parser<'a> {
         Ok(Function { id: None, sig, span: start.merge(body.span), body })
     }
 
-    fn parse_function_sig(&mut self, name: Word) -> ParseResult<FunctionSig> {
+    fn parse_function_sig(&mut self, name: SpannedWord) -> ParseResult<FunctionSig> {
         let (params, _) = self.parse_function_params()?;
         Ok(FunctionSig { name, params })
     }
@@ -87,7 +87,7 @@ impl<'a> Parser<'a> {
     fn parse_function_params(&mut self) -> ParseResult<(Vec<FunctionParam>, Span)> {
         self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             let ident_tok = this.eat(TokenKind::empty_ident())?;
-            Ok(FunctionParam { id: None, name: ident_tok.word(), span: ident_tok.span })
+            Ok(FunctionParam { id: None, name: ident_tok.spanned_word(), span: ident_tok.span })
         })
     }
 
@@ -341,7 +341,9 @@ impl<'a> Parser<'a> {
             TokenKind::OpenCurly => Expr::Block(self.parse_block()?),
             TokenKind::True => Expr::Lit(Lit { kind: LitKind::Bool(true), span: tok.span }),
             TokenKind::False => Expr::Lit(Lit { kind: LitKind::Bool(false), span: tok.span }),
-            TokenKind::Ident(_) => Expr::Name(Name { id: None, name: tok.word(), span: tok.span }),
+            TokenKind::Ident(_) => {
+                Expr::Name(Name { id: None, name: tok.spanned_word(), span: tok.span })
+            }
             TokenKind::Int(value) => Expr::Lit(Lit { kind: LitKind::Int(value), span: tok.span }),
             _ => {
                 return Err(ParseError::UnexpectedToken {
@@ -418,7 +420,7 @@ impl<'a> Parser<'a> {
 
             if self.is(TokenKind::Eq) {
                 let expr = self.parse_expr()?;
-                return Ok(CallArg::Named(ident_tok.word(), expr));
+                return Ok(CallArg::Named(ident_tok.spanned_word(), expr));
             }
 
             self.prev();

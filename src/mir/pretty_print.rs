@@ -3,12 +3,12 @@ use pretty::RcDoc;
 use super::{Block, Function, Inst, Mir, TypeId, ValueId};
 use crate::{
     ast::BinaryOp,
-    db::{Database, ScopeLevel, SymbolId},
+    db::{Db, ScopeLevel, SymbolId},
     mir::BlockId,
     ty::Type,
 };
 
-pub fn print(db: &Database, mir: &Mir) {
+pub fn print(db: &Db, mir: &Mir) {
     let doc = RcDoc::intersperse(
         mir.functions.values().map(|f| print_function(db, f)),
         RcDoc::hardline().append(RcDoc::hardline()),
@@ -17,7 +17,7 @@ pub fn print(db: &Database, mir: &Mir) {
     println!("{}", doc.pretty(80));
 }
 
-fn print_function<'d>(db: &Database, fun: &Function) -> RcDoc<'d, ()> {
+fn print_function<'d>(db: &Db, fun: &Function) -> RcDoc<'d, ()> {
     let ret_ty = db[db[fun.id].ty].as_function().unwrap().ret.to_doc(db, fun);
 
     RcDoc::text("fn")
@@ -48,11 +48,11 @@ fn print_function<'d>(db: &Database, fun: &Function) -> RcDoc<'d, ()> {
 }
 
 trait ToDoc<'db, 'd> {
-    fn to_doc(&self, db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()>;
+    fn to_doc(&self, db: &'db Db, fun: &'db Function) -> RcDoc<'d, ()>;
 }
 
 impl<'db, 'd> ToDoc<'db, 'd> for Block {
-    fn to_doc(&self, db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
+    fn to_doc(&self, db: &'db Db, fun: &'db Function) -> RcDoc<'d, ()> {
         RcDoc::text(self.name.as_str())
             .append(RcDoc::text(":"))
             .append(RcDoc::hardline())
@@ -65,7 +65,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for Block {
 }
 
 impl<'db, 'd> ToDoc<'db, 'd> for Inst {
-    fn to_doc(&self, db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
+    fn to_doc(&self, db: &'db Db, fun: &'db Function) -> RcDoc<'d, ()> {
         match self {
             Self::Return(ret) => {
                 RcDoc::text("ret").append(RcDoc::space()).append(ret.value.to_doc(db, fun))
@@ -128,31 +128,31 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
 }
 
 impl<'db, 'd> ToDoc<'db, 'd> for ValueId {
-    fn to_doc(&self, _db: &'db Database, _fun: &'db Function) -> RcDoc<'d, ()> {
+    fn to_doc(&self, _db: &'db Db, _fun: &'db Function) -> RcDoc<'d, ()> {
         RcDoc::text(format!("v{}", self.0))
     }
 }
 
 impl<'db, 'd> ToDoc<'db, 'd> for TypeId {
-    fn to_doc(&self, db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
+    fn to_doc(&self, db: &'db Db, fun: &'db Function) -> RcDoc<'d, ()> {
         db[*self].to_doc(db, fun)
     }
 }
 
 impl<'db, 'd> ToDoc<'db, 'd> for Type {
-    fn to_doc(&self, db: &'db Database, _fun: &'db Function) -> RcDoc<'d, ()> {
+    fn to_doc(&self, db: &'db Db, _fun: &'db Function) -> RcDoc<'d, ()> {
         RcDoc::text(self.to_string(db))
     }
 }
 
 impl<'db, 'd> ToDoc<'db, 'd> for BlockId {
-    fn to_doc(&self, _db: &'db Database, fun: &'db Function) -> RcDoc<'d, ()> {
+    fn to_doc(&self, _db: &'db Db, fun: &'db Function) -> RcDoc<'d, ()> {
         RcDoc::text(fun.block(*self).expect("to be a valid BlockId").name.as_str())
     }
 }
 
 impl<'db, 'd> ToDoc<'db, 'd> for SymbolId {
-    fn to_doc(&self, db: &'db Database, _fun: &'db Function) -> RcDoc<'d, ()> {
+    fn to_doc(&self, db: &'db Db, _fun: &'db Function) -> RcDoc<'d, ()> {
         let sym = &db[*self];
 
         let name = match sym.scope.level {
@@ -164,7 +164,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for SymbolId {
     }
 }
 
-fn value_alloc<'db, 'd>(db: &'db Database, fun: &'db Function, value: ValueId) -> RcDoc<'d, ()> {
+fn value_alloc<'db, 'd>(db: &'db Db, fun: &'db Function, value: ValueId) -> RcDoc<'d, ()> {
     value
         .to_doc(db, fun)
         .append(RcDoc::text(":"))

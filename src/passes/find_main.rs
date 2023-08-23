@@ -1,11 +1,11 @@
 use crate::{
-    db::{self, Database, SymbolInfoKind},
+    db::{self, Db, SymbolInfoKind},
     diagnostics::{Diagnostic, Label},
     span::Span,
     ty::Type,
 };
 
-pub fn find_main(db: &mut Database) {
+pub fn find_main(db: &mut Db) {
     let main_module_id = db.main_module_id().unwrap();
 
     let main_fun_id = if let Some(main_fun) = db.symbols.iter().find(|sym| {

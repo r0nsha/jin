@@ -4,16 +4,16 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     ast::{Ast, Binary, Block, Call, CallArg, Expr, Function, If, Item, Module, Name, Return},
-    common::{QPath, Word},
+    common::{QPath, SpannedWord},
     db::{
-        Database, FunctionInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, SymbolId, SymbolInfo,
+        Db, FunctionInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, SymbolId, SymbolInfo,
         SymbolInfoKind, Vis,
     },
     diagnostics::{Diagnostic, Label},
-    span::Span,
+    span::{Span, Spanned},
 };
 
-pub fn resolve(db: &mut Database, ast: &mut Ast) {
+pub fn resolve(db: &mut Db, ast: &mut Ast) {
     let mut cx = Resolver::new(db);
 
     cx.resolve_modules_and_global_items(&mut ast.modules);
@@ -26,13 +26,13 @@ pub fn resolve(db: &mut Database, ast: &mut Ast) {
 }
 
 struct Resolver<'db> {
-    db: &'db mut Database,
+    db: &'db mut Db,
     errors: Vec<ResolveError>,
     global_scope: GlobalScope,
 }
 
 impl<'db> Resolver<'db> {
-    fn new(db: &'db mut Database) -> Self {
+    fn new(db: &'db mut Db) -> Self {
         Self { db, errors: vec![], global_scope: GlobalScope::new() }
     }
 
@@ -81,7 +81,7 @@ impl<'db> Resolver<'db> {
         module_id: ModuleId,
         vis: Vis,
         kind: SymbolInfoKind,
-        name: Word,
+        name: SpannedWord,
     ) -> SymbolId {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].name.clone().child(name.name());
@@ -116,7 +116,12 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn declare_symbol(&mut self, env: &mut Env, kind: SymbolInfoKind, name: Word) -> SymbolId {
+    fn declare_symbol(
+        &mut self,
+        env: &mut Env,
+        kind: SymbolInfoKind,
+        name: SpannedWord,
+    ) -> SymbolId {
         let id = SymbolInfo::alloc(
             self.db,
             env.scope_path(self.db).child(name.name()),
@@ -221,7 +226,7 @@ impl Resolve<'_> for Call {
                 CallArg::Named(name, expr) => {
                     if let Some(prev_span) = already_passed.insert(name.name(), name.span()) {
                         cx.errors.push(ResolveError::MultipleNamedArgs {
-                            prev: Word::new(name.name(), prev_span),
+                            prev: SpannedWord::new(name.name(), prev_span),
                             dup: *name,
                         });
                     }
@@ -341,7 +346,7 @@ impl Env {
         }
     }
 
-    pub fn scope_path(&self, db: &Database) -> QPath {
+    pub fn scope_path(&self, db: &Db) -> QPath {
         let mut qpath = db[self.module_id].name.clone();
         qpath.extend(self.scopes.iter().map(|s| s.name));
         qpath
@@ -388,8 +393,8 @@ pub enum ScopeKind {
 
 pub(super) enum ResolveError {
     MultipleItems { name: Ustr, prev_span: Span, dup_span: Span },
-    NameNotFound(Word),
-    MultipleNamedArgs { prev: Word, dup: Word },
+    NameNotFound(SpannedWord),
+    MultipleNamedArgs { prev: SpannedWord, dup: SpannedWord },
     InvalidReturn { span: Span },
 }
 

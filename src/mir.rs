@@ -10,7 +10,7 @@ use ustr::{ustr, Ustr};
 use crate::{
     ast::BinaryOp,
     common::{new_key_type, IndexVec},
-    db::{Database, SymbolId, TypeId},
+    db::{Db, SymbolId, TypeId},
     span::Span,
 };
 
@@ -29,11 +29,11 @@ impl Mir {
     }
 
     #[allow(unused)]
-    pub fn main_function(&self, db: &Database) -> Option<&Function> {
+    pub fn main_function(&self, db: &Db) -> Option<&Function> {
         db.main_function_id().and_then(|id| self.functions.get(&id))
     }
 
-    pub fn pretty_print(&self, db: &Database) {
+    pub fn pretty_print(&self, db: &Db) {
         pretty_print::print(db, self);
     }
 }

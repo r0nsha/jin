@@ -1,13 +1,13 @@
 use crate::{
     ast,
-    db::Database,
+    db::Db,
     tast::{
         Binary, Block, Call, CallArg, Expr, Function, FunctionParam, FunctionSig, If, Item,
         ItemKind, Lit, LitKind, Name, Return, TypeId, TypedAst,
     },
 };
 
-pub fn lower(db: &mut Database, ast: ast::Ast) -> TypedAst {
+pub fn lower(db: &mut Db, ast: ast::Ast) -> TypedAst {
     TypedAst {
         items: ast
             .modules
@@ -18,7 +18,7 @@ pub fn lower(db: &mut Database, ast: ast::Ast) -> TypedAst {
 }
 
 struct LowerCtxt<'db> {
-    _db: &'db mut Database,
+    _db: &'db mut Db,
 }
 
 impl<'db> LowerCtxt<'db> {

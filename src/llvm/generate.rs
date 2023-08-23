@@ -12,7 +12,7 @@ use inkwell::{
 
 use crate::{
     ast::{BinaryOp, CmpOp},
-    db::{Database, SymbolId, TypeId},
+    db::{Db, SymbolId, TypeId},
     llvm::ty::LlvmType,
     mir::{
         Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, Load, Mir, Phi,
@@ -21,7 +21,7 @@ use crate::{
 };
 
 pub struct Generator<'db, 'cx> {
-    pub db: &'db mut Database,
+    pub db: &'db mut Db,
     pub mir: &'db Mir,
 
     pub context: &'cx Context,

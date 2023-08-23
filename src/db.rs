@@ -19,7 +19,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct Database {
+pub struct Db {
     build_options: BuildOptions,
     pub timings: Timings,
 
@@ -36,7 +36,7 @@ pub struct Database {
     main_fun: Option<SymbolId>,
 }
 
-impl Database {
+impl Db {
     pub fn new(build_options: BuildOptions, root_file: &Path) -> Result<Self> {
         let absolute_path = root_file.absolutize()?;
 
@@ -123,7 +123,7 @@ macro_rules! new_db_key {
         new_key_type!($key);
 
         #[allow(unused)]
-        impl std::ops::Index<$key> for Database {
+        impl std::ops::Index<$key> for Db {
             type Output = $type;
 
             fn index(&self, index: $key) -> &Self::Output {
@@ -132,7 +132,7 @@ macro_rules! new_db_key {
         }
 
         #[allow(unused)]
-        impl std::ops::IndexMut<$key> for Database {
+        impl std::ops::IndexMut<$key> for Db {
             fn index_mut(&mut self, index: $key) -> &mut Self::Output {
                 &mut self.$collection[index]
             }
@@ -155,7 +155,7 @@ pub struct ModuleInfo {
 }
 
 impl ModuleInfo {
-    pub fn alloc(db: &mut Database, source_id: SourceId, name: QPath, is_main: bool) -> ModuleId {
+    pub fn alloc(db: &mut Db, source_id: SourceId, name: QPath, is_main: bool) -> ModuleId {
         let id = db.modules.push_with_key(|id| Self { id, source_id, name, is_main });
 
         if is_main {
@@ -193,7 +193,7 @@ pub enum SymbolInfoKind {
 
 impl SymbolInfo {
     pub fn alloc(
-        db: &mut Database,
+        db: &mut Db,
         qpath: QPath,
         scope: ScopeInfo,
         kind: SymbolInfoKind,

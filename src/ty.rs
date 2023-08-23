@@ -5,7 +5,7 @@ use enum_as_inner::EnumAsInner;
 use ustr::Ustr;
 
 use crate::{
-    db::{Database, TypeId},
+    db::{Db, TypeId},
     span::Span,
     ty::printer::TypePrinter,
 };
@@ -51,11 +51,11 @@ impl Type {
         }
     }
 
-    pub fn display<'db>(&'db self, db: &'db Database) -> TypePrinter<'db> {
+    pub fn display<'db>(&'db self, db: &'db Db) -> TypePrinter<'db> {
         TypePrinter::new(db, self)
     }
 
-    pub fn to_string(&self, db: &Database) -> String {
+    pub fn to_string(&self, db: &Db) -> String {
         self.display(db).to_string()
     }
 }

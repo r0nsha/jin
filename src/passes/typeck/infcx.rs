@@ -1,21 +1,21 @@
 use ena::unify::InPlaceUnificationTable;
 
 use crate::{
-    db::{Database, SymbolId, TypeId},
+    db::{Db, SymbolId, TypeId},
     passes::typeck::constraint::{Constraint, Constraints},
     span::Span,
     ty::{InferType, IntVar, Type, TypeVar},
 };
 
 pub struct InferCtxt<'db> {
-    pub db: &'db mut Database,
+    pub db: &'db mut Db,
     pub ty_unification_table: InPlaceUnificationTable<TypeVar>,
     pub int_unification_table: InPlaceUnificationTable<IntVar>,
     pub constraints: Constraints,
 }
 
 impl<'db> InferCtxt<'db> {
-    pub fn new(db: &'db mut Database) -> Self {
+    pub fn new(db: &'db mut Db) -> Self {
         Self {
             db,
             ty_unification_table: InPlaceUnificationTable::new(),

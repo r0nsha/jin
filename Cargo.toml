@@ -24,6 +24,7 @@ inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", feat
 ] }
 execute = "0.2.12"
 anyhow = "1.0.75"
+internment = "0.7.1"
 
 [target.'cfg(windows)'.dependencies]
 libc = "0.2.132"

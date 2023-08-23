@@ -1,12 +1,12 @@
 use std::fmt::{Display, Formatter, Result};
 
 use crate::{
-    db::Database,
+    db::Db,
     ty::{InferType, IntType, Type},
 };
 
 pub struct TypePrinter<'db> {
-    _db: &'db Database,
+    _db: &'db Db,
     ty: &'db Type,
 }
 
@@ -17,7 +17,7 @@ impl Display for TypePrinter<'_> {
 }
 
 impl<'db> TypePrinter<'db> {
-    pub fn new(db: &'db Database, ty: &'db Type) -> Self {
+    pub fn new(db: &'db Db, ty: &'db Type) -> Self {
         Self { _db: db, ty }
     }
 

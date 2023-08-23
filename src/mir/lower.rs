@@ -3,14 +3,14 @@ use ustr::UstrMap;
 
 use crate::{
     ast::BinaryOp,
-    db::Database,
+    db::Db,
     mir::{builder::FunctionBuilder, Function, Mir, SymbolId, ValueId},
     span::Spanned,
     tast::{self, TypedAst},
     ty::Typed,
 };
 
-pub fn lower(db: &mut Database, tast: &TypedAst) -> Result<Mir> {
+pub fn lower(db: &mut Db, tast: &TypedAst) -> Result<Mir> {
     let mut mir = Mir::new();
 
     for item in &tast.items {
@@ -20,7 +20,7 @@ pub fn lower(db: &mut Database, tast: &TypedAst) -> Result<Mir> {
     Ok(mir)
 }
 
-fn lower_item(db: &mut Database, mir: &mut Mir, item: &tast::Item) -> Result<()> {
+fn lower_item(db: &mut Db, mir: &mut Mir, item: &tast::Item) -> Result<()> {
     match &item.kind {
         tast::ItemKind::Function(fun) => {
             let fun = LowerFunctionCtxt::new(db, mir, fun.id).lower_function(fun)?;
@@ -32,13 +32,13 @@ fn lower_item(db: &mut Database, mir: &mut Mir, item: &tast::Item) -> Result<()>
 }
 
 struct LowerFunctionCtxt<'db> {
-    db: &'db mut Database,
+    db: &'db mut Db,
     mir: &'db mut Mir,
     bx: FunctionBuilder,
 }
 
 impl<'db> LowerFunctionCtxt<'db> {
-    fn new(db: &'db mut Database, mir: &'db mut Mir, fun_id: SymbolId) -> Self {
+    fn new(db: &'db mut Db, mir: &'db mut Mir, fun_id: SymbolId) -> Self {
         Self { db, mir, bx: FunctionBuilder::new(fun_id) }
     }
 

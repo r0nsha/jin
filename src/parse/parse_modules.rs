@@ -1,12 +1,12 @@
 use super::{lexer, parser};
 use crate::{
     ast::{Ast, Module},
-    db::Database,
+    db::Db,
     diagnostics::Diagnostic,
     span::Source,
 };
 
-pub fn parse_modules(db: &mut Database) -> Ast {
+pub fn parse_modules(db: &mut Db) -> Ast {
     let mut ast = Ast::new();
 
     match parse_module(db, db.main_source()) {
@@ -17,7 +17,7 @@ pub fn parse_modules(db: &mut Database) -> Ast {
     ast
 }
 
-fn parse_module(db: &Database, source: &Source) -> Result<Module, Diagnostic> {
+fn parse_module(db: &Db, source: &Source) -> Result<Module, Diagnostic> {
     let tokens = lexer::tokenize(source)?;
     let module = parser::parse(db, source, tokens)?;
     Ok(module)
