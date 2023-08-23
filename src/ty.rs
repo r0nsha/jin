@@ -11,7 +11,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
-pub enum Type {
+pub enum TypeKind {
     Function(FunctionType),
     Int(IntType, Span),
     Bool(Span),
@@ -21,7 +21,7 @@ pub enum Type {
     Infer(InferType, Span),
 }
 
-impl Type {
+impl TypeKind {
     pub fn default_int(span: Span) -> Self {
         Self::Int(IntType::Int, span)
     }
@@ -71,7 +71,7 @@ pub enum IntVarValue {
     Int(IntType, Span),
 }
 
-impl From<IntVarValue> for Type {
+impl From<IntVarValue> for TypeKind {
     fn from(value: IntVarValue) -> Self {
         match value {
             IntVarValue::Int(ty, span) => Self::Int(ty, span),
@@ -86,7 +86,7 @@ pub enum IntType {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionType {
-    pub ret: Box<Type>,
+    pub ret: Box<TypeKind>,
     pub params: Vec<FunctionTypeParam>,
     pub span: Span,
 }
@@ -104,7 +104,7 @@ impl FunctionType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FunctionTypeParam {
     pub name: Option<Ustr>,
-    pub ty: Type,
+    pub ty: TypeKind,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

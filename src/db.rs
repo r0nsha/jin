@@ -15,7 +15,7 @@ use crate::{
     db::{build_options::BuildOptions, timing::Timings},
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
-    ty::Type,
+    ty::TypeKind,
 };
 
 #[derive(Debug)]
@@ -26,7 +26,7 @@ pub struct Db {
     pub sources: Sources,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
     pub symbols: IndexVec<SymbolId, SymbolInfo>,
-    pub types: IndexVec<TypeId, Type>,
+    pub types: IndexVec<TypeId, TypeKind>,
 
     pub diagnostics: Diagnostics,
 
@@ -113,7 +113,7 @@ impl Db {
         self.diagnostics.print(&self.sources).expect("printing diagnostis to work");
     }
 
-    pub fn alloc_ty(&mut self, ty: Type) -> TypeId {
+    pub fn alloc_ty(&mut self, ty: TypeKind) -> TypeId {
         self.types.push(ty)
     }
 }
@@ -142,7 +142,7 @@ macro_rules! new_db_key {
 
 new_db_key!(ModuleId -> modules : ModuleInfo);
 new_db_key!(SymbolId -> symbols : SymbolInfo);
-new_db_key!(TypeId -> types : Type);
+new_db_key!(TypeId -> types : TypeKind);
 
 #[derive(Debug, Clone)]
 pub struct ModuleInfo {

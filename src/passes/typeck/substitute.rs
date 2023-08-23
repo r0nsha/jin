@@ -7,7 +7,7 @@ use crate::{
         Binary, Block, Call, CallArg, Expr, Function, FunctionSig, If, Item, ItemKind, Return,
         TypedAst,
     },
-    ty::{FunctionType, FunctionTypeParam, InferType, Type, TypeVar, Typed},
+    ty::{FunctionType, FunctionTypeParam, InferType, TypeKind, TypeVar, Typed},
 };
 
 // Substitute
@@ -34,9 +34,9 @@ impl<'db> InferCtxt<'db> {
         self.db[id] = new_ty;
     }
 
-    fn substitute_ty(&mut self, ty: &Type, unbound_vars: &mut HashSet<TypeVar>) -> Type {
+    fn substitute_ty(&mut self, ty: &TypeKind, unbound_vars: &mut HashSet<TypeVar>) -> TypeKind {
         match ty {
-            Type::Function(fun) => Type::Function(FunctionType {
+            TypeKind::Function(fun) => TypeKind::Function(FunctionType {
                 ret: Box::new(self.substitute_ty(&fun.ret, unbound_vars)),
                 params: fun
                     .params
@@ -48,22 +48,22 @@ impl<'db> InferCtxt<'db> {
                     .collect(),
                 span: fun.span,
             }),
-            Type::Infer(InferType::TypeVar(var), span) => {
+            TypeKind::Infer(InferType::TypeVar(var), span) => {
                 let root = self.ty_unification_table.find(*var);
 
                 if let Some(ty) = self.ty_unification_table.probe_value(root) {
                     self.substitute_ty(&ty, unbound_vars)
                 } else {
                     unbound_vars.insert(root);
-                    Type::Infer(InferType::TypeVar(root), *span)
+                    TypeKind::Infer(InferType::TypeVar(root), *span)
                 }
             }
-            Type::Infer(InferType::IntVar(var), span) => {
+            TypeKind::Infer(InferType::IntVar(var), span) => {
                 let root = self.int_unification_table.find(*var);
 
                 self.int_unification_table
                     .probe_value(root)
-                    .map_or_else(|| Type::default_int(*span), Into::into)
+                    .map_or_else(|| TypeKind::default_int(*span), Into::into)
             }
             _ => ty.clone(),
         }

@@ -6,7 +6,7 @@ use inkwell::{
 use crate::{
     db::TypeId,
     llvm::generate::Generator,
-    ty::{FunctionType, IntType, Type},
+    ty::{FunctionType, IntType, TypeKind},
 };
 
 impl<'db, 'cx> Generator<'db, 'cx> {
@@ -29,7 +29,7 @@ impl<'db, 'cx> LlvmType<'db, 'cx, ll::BasicTypeEnum<'cx>> for TypeId {
     }
 }
 
-impl<'db, 'cx> LlvmType<'db, 'cx, ll::BasicTypeEnum<'cx>> for Type {
+impl<'db, 'cx> LlvmType<'db, 'cx, ll::BasicTypeEnum<'cx>> for TypeKind {
     fn llvm_type(&self, cx: &Generator<'db, 'cx>) -> ll::BasicTypeEnum<'cx> {
         match self {
             Self::Int(inner, _) => inner.llvm_type(cx).into(),

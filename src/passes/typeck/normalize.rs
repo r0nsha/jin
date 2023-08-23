@@ -1,13 +1,13 @@
 use crate::{
     passes::typeck::infcx::InferCtxt,
-    ty::{FunctionType, FunctionTypeParam, InferType, Type},
+    ty::{FunctionType, FunctionTypeParam, InferType, TypeKind},
 };
 
 pub trait NormalizeTy {
     fn normalize(self, tcx: &mut InferCtxt) -> Self;
 }
 
-impl NormalizeTy for Type {
+impl NormalizeTy for TypeKind {
     fn normalize(self, tcx: &mut InferCtxt) -> Self {
         match self {
             Self::Function(FunctionType { ret, params, span }) => Self::Function(FunctionType {

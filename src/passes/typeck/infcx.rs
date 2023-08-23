@@ -4,7 +4,7 @@ use crate::{
     db::{Db, SymbolId, TypeId},
     passes::typeck::constraint::{Constraint, Constraints},
     span::Span,
-    ty::{InferType, IntVar, Type, TypeVar},
+    ty::{InferType, IntVar, TypeKind, TypeVar},
 };
 
 pub struct InferCtxt<'db> {
@@ -31,8 +31,8 @@ impl<'db> InferCtxt<'db> {
     }
 
     #[inline]
-    pub fn fresh_ty_var(&mut self, span: Span) -> Type {
-        Type::Infer(InferType::TypeVar(self.ty_unification_table.new_key(None)), span)
+    pub fn fresh_ty_var(&mut self, span: Span) -> TypeKind {
+        TypeKind::Infer(InferType::TypeVar(self.ty_unification_table.new_key(None)), span)
     }
 
     #[inline]
@@ -42,8 +42,8 @@ impl<'db> InferCtxt<'db> {
     }
 
     #[inline]
-    pub fn fresh_int_var(&mut self, span: Span) -> Type {
-        Type::Infer(InferType::IntVar(self.int_unification_table.new_key(None)), span)
+    pub fn fresh_int_var(&mut self, span: Span) -> TypeKind {
+        TypeKind::Infer(InferType::IntVar(self.int_unification_table.new_key(None)), span)
     }
 
     #[inline]
@@ -57,3 +57,4 @@ impl<'db> InferCtxt<'db> {
         self.constraints.push(Constraint::Eq { expected, actual });
     }
 }
+

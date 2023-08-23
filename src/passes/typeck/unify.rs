@@ -4,7 +4,7 @@ use crate::{
     db::Db,
     diagnostics::{Diagnostic, Label},
     passes::typeck::{constraint::Constraint, infcx::InferCtxt, normalize::NormalizeTy},
-    ty::{InferType, IntType, IntVar, IntVarValue, Type, TypeVar},
+    ty::{InferType, IntType, IntVar, IntVarValue, TypeKind, TypeVar},
 };
 
 impl<'db> InferCtxt<'db> {
@@ -22,18 +22,18 @@ impl<'db> InferCtxt<'db> {
         Ok(())
     }
 
-    fn unify_ty_ty(&mut self, expected: &Type, actual: &Type) -> Result<(), InferError> {
+    fn unify_ty_ty(&mut self, expected: &TypeKind, actual: &TypeKind) -> Result<(), InferError> {
         let expected = expected.clone().normalize(self);
         let actual = actual.clone().normalize(self);
 
         match (expected, actual) {
-            (Type::Never(_), _)
-            | (_, Type::Never(_))
-            | (Type::Bool(_), Type::Bool(_))
-            | (Type::Unit(_), Type::Unit(_))
-            | (Type::Int(IntType::Int, _), Type::Int(IntType::Int, _)) => Ok(()),
+            (TypeKind::Never(_), _)
+            | (_, TypeKind::Never(_))
+            | (TypeKind::Bool(_), TypeKind::Bool(_))
+            | (TypeKind::Unit(_), TypeKind::Unit(_))
+            | (TypeKind::Int(IntType::Int, _), TypeKind::Int(IntType::Int, _)) => Ok(()),
 
-            (ref expected @ Type::Function(ref fex), ref actual @ Type::Function(ref fact)) => {
+            (ref expected @ TypeKind::Function(ref fex), ref actual @ TypeKind::Function(ref fact)) => {
                 self.unify_ty_ty(&fex.ret, &fact.ret)?;
 
                 if fex.params.len() == fact.params.len() {
@@ -52,8 +52,8 @@ impl<'db> InferCtxt<'db> {
 
             // Unify ?X ~ ?Y
             (
-                Type::Infer(InferType::TypeVar(expected), _),
-                Type::Infer(InferType::TypeVar(actual), _),
+                TypeKind::Infer(InferType::TypeVar(expected), _),
+                TypeKind::Infer(InferType::TypeVar(actual), _),
             ) => {
                 self.ty_unification_table.unify_var_var(expected, actual)?;
                 Ok(())
@@ -61,38 +61,38 @@ impl<'db> InferCtxt<'db> {
 
             // Unify ?int ~ ?int
             (
-                Type::Infer(InferType::IntVar(expected), _),
-                Type::Infer(InferType::IntVar(actual), _),
+                TypeKind::Infer(InferType::IntVar(expected), _),
+                TypeKind::Infer(InferType::IntVar(actual), _),
             ) => {
                 self.int_unification_table.unify_var_var(expected, actual)?;
                 Ok(())
             }
 
             // Unify ?int ~ int
-            (Type::Int(ity, span), Type::Infer(InferType::IntVar(var), _))
-            | (Type::Infer(InferType::IntVar(var), _), Type::Int(ity, span)) => {
+            (TypeKind::Int(ity, span), TypeKind::Infer(InferType::IntVar(var), _))
+            | (TypeKind::Infer(InferType::IntVar(var), _), TypeKind::Int(ity, span)) => {
                 self.int_unification_table
                     .unify_var_value(var, Some(IntVarValue::Int(ity, span)))?;
                 Ok(())
             }
 
             // Unify ?N ~ any
-            (Type::Infer(InferType::TypeVar(var), _), actual) => self.unify_ty_var(actual, var),
-            (expected, Type::Infer(InferType::TypeVar(var), _)) => self.unify_ty_var(expected, var),
+            (TypeKind::Infer(InferType::TypeVar(var), _), actual) => self.unify_ty_var(actual, var),
+            (expected, TypeKind::Infer(InferType::TypeVar(var), _)) => self.unify_ty_var(expected, var),
 
             (expected, actual) => Err(InferError::TypesNotEq { expected, actual }),
         }
     }
 
-    fn unify_ty_var(&mut self, expected: Type, var: TypeVar) -> Result<(), InferError> {
+    fn unify_ty_var(&mut self, expected: TypeKind, var: TypeVar) -> Result<(), InferError> {
         expected.occurs_check(var).map_err(|ty| InferError::InfiniteType { var, ty })?;
         self.ty_unification_table.unify_var_value(var, Some(expected))?;
         Ok(())
     }
 }
 
-impl From<(Type, Type)> for InferError {
-    fn from((expected, actual): (Type, Type)) -> Self {
+impl From<(TypeKind, TypeKind)> for InferError {
+    fn from((expected, actual): (TypeKind, TypeKind)) -> Self {
         Self::TypesNotEq { expected, actual }
     }
 }
@@ -105,11 +105,11 @@ impl From<(IntVarValue, IntVarValue)> for InferError {
 
 pub enum InferError {
     TypesNotEq {
-        expected: Type,
-        actual: Type,
+        expected: TypeKind,
+        actual: TypeKind,
     },
     InfiniteType {
-        ty: Type,
+        ty: TypeKind,
         #[allow(unused)]
         var: TypeVar,
     },
@@ -140,7 +140,7 @@ impl InferError {
 }
 
 impl UnifyKey for TypeVar {
-    type Value = Option<Type>;
+    type Value = Option<TypeKind>;
 
     fn index(&self) -> u32 {
         (*self).into()
@@ -155,7 +155,7 @@ impl UnifyKey for TypeVar {
     }
 }
 
-impl EqUnifyValue for Type {}
+impl EqUnifyValue for TypeKind {}
 
 impl UnifyKey for IntVar {
     type Value = Option<IntVarValue>;
