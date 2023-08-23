@@ -136,7 +136,7 @@ impl Spanned for Expr {
             Self::Return(x) => x.span,
             Self::Call(x) => x.span,
             Self::Binary(x) => x.span,
-            Self::Name(x) => x.name.span(),
+            Self::Name(x) => x.span,
             Self::Lit(x) => x.span,
         }
     }
@@ -149,7 +149,7 @@ impl Spanned for Expr {
             Self::Return(x) => &mut x.span,
             Self::Call(x) => &mut x.span,
             Self::Binary(x) => &mut x.span,
-            Self::Name(x) => x.name.span_mut(),
+            Self::Name(x) => &mut x.span,
             Self::Lit(x) => &mut x.span,
         }
     }
@@ -157,7 +157,7 @@ impl Spanned for Expr {
 
 #[derive(Debug, Clone)]
 pub struct Function {
-    pub id: Option<SymbolId>,
+    pub id: SymbolId,
     pub sig: FunctionSig,
     pub body: Block,
     pub span: Span,
@@ -166,14 +166,12 @@ pub struct Function {
 
 #[derive(Debug, Clone)]
 pub struct FunctionSig {
-    pub name: Word,
     pub params: Vec<FunctionParam>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FunctionParam {
-    pub id: Option<SymbolId>,
-    pub name: Word,
+    pub id: SymbolId,
     pub span: Span,
     pub ty: TypeId,
 }
@@ -240,8 +238,8 @@ pub struct Binary {
 
 #[derive(Debug, Clone)]
 pub struct Name {
-    pub id: Option<SymbolId>,
-    pub name: Word,
+    pub id: SymbolId,
+    pub span: Span,
     pub ty: TypeId,
 }
 

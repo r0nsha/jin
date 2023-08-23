@@ -86,6 +86,7 @@ impl<'db> ResolveCx<'db> {
         let id = SymbolInfo::alloc(
             self.db,
             module_id,
+            name.name(),
             qname,
             scope_level,
             kind,
@@ -125,6 +126,7 @@ impl<'db> ResolveCx<'db> {
         let id = SymbolInfo::alloc(
             self.db,
             env.module_id,
+            name.name(),
             env.scope_name(self.db).child(name.name()),
             env.scope_level(),
             kind,

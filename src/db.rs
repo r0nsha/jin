@@ -8,6 +8,7 @@ use std::{
 use anyhow::{bail, Result};
 use clap::ValueEnum;
 use path_absolutize::Absolutize;
+use ustr::Ustr;
 
 use crate::{
     common::{
@@ -202,6 +203,7 @@ impl ModuleInfo {
 pub struct SymbolInfo {
     pub id: SymbolId,
     pub module_id: ModuleId,
+    pub name: Ustr,
     pub qname: QName,
     pub scope_level: ScopeLevel,
     pub kind: Box<SymbolInfoKind>,
@@ -219,6 +221,7 @@ impl SymbolInfo {
     pub fn alloc(
         db: &mut Database,
         module_id: ModuleId,
+        name: Ustr,
         qname: QName,
         scope_level: ScopeLevel,
         kind: SymbolInfoKind,
@@ -228,6 +231,7 @@ impl SymbolInfo {
         db.symbols.push_with_key(|id| Self {
             id,
             module_id,
+            name,
             qname,
             scope_level,
             kind: Box::new(kind),
