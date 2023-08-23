@@ -8,6 +8,7 @@ use enum_as_inner::EnumAsInner;
 use crate::{
     ast::token::TokenKind,
     common::{QName, Word},
+    db::{ModuleId, SymbolId},
     span::{SourceId, Span, Spanned},
 };
 
@@ -38,6 +39,7 @@ impl Ast {
 
 #[derive(Debug, Clone)]
 pub struct Module {
+    pub id: Option<ModuleId>,
     pub source: SourceId,
     pub name: QName,
     pub items: Vec<Item>,
@@ -46,7 +48,7 @@ pub struct Module {
 
 impl Module {
     pub fn new(source_id: SourceId, name: QName, is_main: bool) -> Self {
-        Self { source: source_id, name, is_main, items: vec![] }
+        Self { id: None, source: source_id, name, is_main, items: vec![] }
     }
 
     pub fn is_main(&self) -> bool {
@@ -115,6 +117,7 @@ impl Spanned for Expr {
 
 #[derive(Debug, Clone)]
 pub struct Function {
+    pub id: Option<SymbolId>,
     pub sig: FunctionSig,
     pub body: Block,
     pub span: Span,
@@ -128,6 +131,7 @@ pub struct FunctionSig {
 
 #[derive(Debug, Clone)]
 pub struct FunctionParam {
+    pub id: Option<SymbolId>,
     pub name: Word,
     pub span: Span,
 }
@@ -301,7 +305,9 @@ impl TryFrom<TokenKind> for BinaryOp {
 
 #[derive(Debug, Clone)]
 pub struct Name {
+    pub id: Option<SymbolId>,
     pub name: Word,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]

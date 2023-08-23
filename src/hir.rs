@@ -22,7 +22,7 @@ pub struct Hir {
 impl Hir {
     pub fn pretty_print(&self, db: &Database) -> io::Result<()> {
         println!();
-        println!("HIR:");
+        println!("Hir:");
         println!();
 
         for module in &self.modules {

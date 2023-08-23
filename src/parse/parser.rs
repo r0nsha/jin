@@ -76,7 +76,7 @@ impl<'a> Parser<'a> {
             _ => Block { span: expr.span(), exprs: vec![expr] },
         };
 
-        Ok(Function { sig, span: start.merge(body.span), body })
+        Ok(Function { id: None, sig, span: start.merge(body.span), body })
     }
 
     fn parse_function_sig(&mut self, name: Word) -> ParseResult<FunctionSig> {
@@ -87,7 +87,7 @@ impl<'a> Parser<'a> {
     fn parse_function_params(&mut self) -> ParseResult<(Vec<FunctionParam>, Span)> {
         self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             let ident_tok = this.eat(TokenKind::empty_ident())?;
-            Ok(FunctionParam { name: ident_tok.word(), span: ident_tok.span })
+            Ok(FunctionParam { id: None, name: ident_tok.word(), span: ident_tok.span })
         })
     }
 
@@ -341,7 +341,7 @@ impl<'a> Parser<'a> {
             TokenKind::OpenCurly => Expr::Block(self.parse_block()?),
             TokenKind::True => Expr::Lit(Lit { kind: LitKind::Bool(true), span: tok.span }),
             TokenKind::False => Expr::Lit(Lit { kind: LitKind::Bool(false), span: tok.span }),
-            TokenKind::Ident(_) => Expr::Name(Name { name: tok.word() }),
+            TokenKind::Ident(_) => Expr::Name(Name { id: None, name: tok.word(), span: tok.span }),
             TokenKind::Int(value) => Expr::Lit(Lit { kind: LitKind::Int(value), span: tok.span }),
             _ => {
                 return Err(ParseError::UnexpectedToken {
