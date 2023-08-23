@@ -57,4 +57,3 @@ impl<'db> InferCtxt<'db> {
         self.constraints.push(Constraint::Eq { expected, actual });
     }
 }
-
