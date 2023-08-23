@@ -5,9 +5,9 @@ use ustr::Ustr;
 use crate::span::{Span, Spanned};
 
 #[derive(Debug, Clone, Copy)]
-pub struct SpannedWord(Ustr, Span);
+pub struct Word(Ustr, Span);
 
-impl SpannedWord {
+impl Word {
     pub fn new(name: Ustr, span: Span) -> Self {
         Self(name, span)
     }
@@ -25,25 +25,25 @@ impl SpannedWord {
     }
 }
 
-impl From<SpannedWord> for Ustr {
-    fn from(value: SpannedWord) -> Self {
+impl From<Word> for Ustr {
+    fn from(value: Word) -> Self {
         value.name()
     }
 }
 
-impl<'a> From<SpannedWord> for &'a str {
-    fn from(value: SpannedWord) -> Self {
+impl<'a> From<Word> for &'a str {
+    fn from(value: Word) -> Self {
         value.name().as_str()
     }
 }
 
-impl From<SpannedWord> for Span {
-    fn from(value: SpannedWord) -> Self {
+impl From<Word> for Span {
+    fn from(value: Word) -> Self {
         value.span()
     }
 }
 
-impl Spanned for SpannedWord {
+impl Spanned for Word {
     fn span(&self) -> Span {
         self.1
     }
@@ -53,15 +53,15 @@ impl Spanned for SpannedWord {
     }
 }
 
-impl cmp::PartialEq for SpannedWord {
+impl cmp::PartialEq for Word {
     fn eq(&self, other: &Self) -> bool {
         self.name() == other.name()
     }
 }
 
-impl cmp::Eq for SpannedWord {}
+impl cmp::Eq for Word {}
 
-impl fmt::Display for SpannedWord {
+impl fmt::Display for Word {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
     }

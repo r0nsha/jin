@@ -8,7 +8,7 @@ pub use lower::lower;
 
 use crate::{
     ast::BinaryOp,
-    common::SpannedWord,
+    common::Word,
     db::{Db, SymbolId, TypeId},
     span::{Span, Spanned},
     ty::Typed,
@@ -210,7 +210,7 @@ pub struct Call {
 #[derive(Debug, Clone)]
 pub enum CallArg {
     Positional(Expr),
-    Named(SpannedWord, Expr),
+    Named(Word, Expr),
 }
 
 impl Typed for CallArg {

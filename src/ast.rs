@@ -7,7 +7,7 @@ use enum_as_inner::EnumAsInner;
 
 use crate::{
     ast::token::TokenKind,
-    common::{QPath, SpannedWord},
+    common::{QPath, Word},
     db::{ModuleId, SymbolId},
     span::{SourceId, Span, Spanned},
 };
@@ -125,14 +125,14 @@ pub struct Function {
 
 #[derive(Debug, Clone)]
 pub struct FunctionSig {
-    pub name: SpannedWord,
+    pub name: Word,
     pub params: Vec<FunctionParam>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FunctionParam {
     pub id: Option<SymbolId>,
-    pub name: SpannedWord,
+    pub name: Word,
     pub span: Span,
 }
 
@@ -166,7 +166,7 @@ pub struct Call {
 #[derive(Debug, Clone)]
 pub enum CallArg {
     Positional(Expr),
-    Named(SpannedWord, Expr),
+    Named(Word, Expr),
 }
 
 #[derive(Debug, Clone)]
@@ -306,7 +306,7 @@ impl TryFrom<TokenKind> for BinaryOp {
 #[derive(Debug, Clone)]
 pub struct Name {
     pub id: Option<SymbolId>,
-    pub name: SpannedWord,
+    pub name: Word,
     pub span: Span,
 }
 

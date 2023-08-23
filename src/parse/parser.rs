@@ -6,7 +6,7 @@ use crate::{
         Binary, BinaryOp, Block, Call, CallArg, Expr, Function, FunctionParam, FunctionSig, If,
         Item, Lit, LitKind, Module, Name, Return,
     },
-    common::{QPath, SpannedWord},
+    common::{QPath, Word},
     db::Db,
     diagnostics::{Diagnostic, Label},
     span::{Source, SourceId, Span, Spanned},
@@ -79,7 +79,7 @@ impl<'a> Parser<'a> {
         Ok(Function { id: None, sig, span: start.merge(body.span), body })
     }
 
-    fn parse_function_sig(&mut self, name: SpannedWord) -> ParseResult<FunctionSig> {
+    fn parse_function_sig(&mut self, name: Word) -> ParseResult<FunctionSig> {
         let (params, _) = self.parse_function_params()?;
         Ok(FunctionSig { name, params })
     }

@@ -2,7 +2,7 @@ use std::{fmt, path::Path};
 
 use ustr::{ustr, Ustr};
 
-use crate::common::SpannedWord;
+use crate::common::Word;
 
 #[derive(Debug, Clone)]
 pub struct QPath(Vec<Ustr>);
@@ -70,8 +70,8 @@ impl From<Ustr> for QPath {
     }
 }
 
-impl From<SpannedWord> for QPath {
-    fn from(value: SpannedWord) -> Self {
+impl From<Word> for QPath {
+    fn from(value: Word) -> Self {
         Self::from(value.name())
     }
 }

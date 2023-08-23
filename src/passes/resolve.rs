@@ -4,7 +4,7 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     ast::{Ast, Binary, Block, Call, CallArg, Expr, Function, If, Item, Module, Name, Return},
-    common::{QPath, SpannedWord},
+    common::{QPath, Word},
     db::{
         Db, FunctionInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, SymbolId, SymbolInfo,
         SymbolInfoKind, Vis,
@@ -81,7 +81,7 @@ impl<'db> Resolver<'db> {
         module_id: ModuleId,
         vis: Vis,
         kind: SymbolInfoKind,
-        name: SpannedWord,
+        name: Word,
     ) -> SymbolId {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].name.clone().child(name.name());
@@ -120,7 +120,7 @@ impl<'db> Resolver<'db> {
         &mut self,
         env: &mut Env,
         kind: SymbolInfoKind,
-        name: SpannedWord,
+        name: Word,
     ) -> SymbolId {
         let id = SymbolInfo::alloc(
             self.db,
@@ -226,7 +226,7 @@ impl Resolve<'_> for Call {
                 CallArg::Named(name, expr) => {
                     if let Some(prev_span) = already_passed.insert(name.name(), name.span()) {
                         cx.errors.push(ResolveError::MultipleNamedArgs {
-                            prev: SpannedWord::new(name.name(), prev_span),
+                            prev: Word::new(name.name(), prev_span),
                             dup: *name,
                         });
                     }
@@ -393,8 +393,8 @@ pub enum ScopeKind {
 
 pub(super) enum ResolveError {
     MultipleItems { name: Ustr, prev_span: Span, dup_span: Span },
-    NameNotFound(SpannedWord),
-    MultipleNamedArgs { prev: SpannedWord, dup: SpannedWord },
+    NameNotFound(Word),
+    MultipleNamedArgs { prev: Word, dup: Word },
     InvalidReturn { span: Span },
 }
 

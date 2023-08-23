@@ -5,7 +5,7 @@ use std::{
 
 use ustr::{ustr, Ustr};
 
-use crate::{common::SpannedWord, span::Span};
+use crate::{common::Word, span::Span};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Token {
@@ -21,8 +21,8 @@ impl Token {
         }
     }
 
-    pub fn spanned_word(&self) -> SpannedWord {
-        SpannedWord::new(self.ident(), self.span)
+    pub fn spanned_word(&self) -> Word {
+        Word::new(self.ident(), self.span)
     }
 
     pub fn kind_is(&self, other: TokenKind) -> bool {
