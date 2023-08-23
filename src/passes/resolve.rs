@@ -3,23 +3,21 @@ use std::collections::HashMap;
 use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
+    ast::{Ast, Binary, Block, Call, CallArg, Expr, Function, If, Item, Module, Name, Return},
     common::{QName, Word},
     db::{
-        Database, FunctionInfo, ModuleId, ScopeLevel, SymbolId, SymbolInfo, SymbolInfoKind, TypeId,
-        Vis,
+        Database, FunctionInfo, ModuleId, ModuleInfo, ScopeLevel, SymbolId, SymbolInfo,
+        SymbolInfoKind, TypeId, Vis,
     },
     diagnostics::{Diagnostic, Label},
-    hir::{
-        Binary, Block, Call, CallArg, Expr, Function, Hir, If, Item, ItemKind, Module, Name, Return,
-    },
     span::Span,
 };
 
-pub fn resolve(db: &mut Database, hir: &mut Hir) {
-    let mut cx = ResolveCx::new(db);
+pub fn resolve(db: &mut Database, ast: &mut Ast) {
+    let mut cx = Resolver::new(db);
 
-    cx.resolve_global_items(&mut hir.modules);
-    cx.resolve_all(&mut hir.modules);
+    cx.resolve_modules_and_global_items(&mut ast.modules);
+    cx.resolve_all(&mut ast.modules);
 
     if !cx.errors.is_empty() {
         let errors = cx.errors;
@@ -27,28 +25,33 @@ pub fn resolve(db: &mut Database, hir: &mut Hir) {
     }
 }
 
-struct ResolveCx<'db> {
+struct Resolver<'db> {
     db: &'db mut Database,
     errors: Vec<ResolveError>,
     global_scope: GlobalScope,
 }
 
-impl<'db> ResolveCx<'db> {
+impl<'db> Resolver<'db> {
     fn new(db: &'db mut Database) -> Self {
         Self { db, errors: vec![], global_scope: GlobalScope::new() }
     }
 
-    fn resolve_global_items(&mut self, modules: &mut [Module]) {
+    fn resolve_modules_and_global_items(&mut self, modules: &mut [Module]) {
         for module in modules {
+            let module_id =
+                ModuleInfo::alloc(self.db, module.source, module.name.clone(), module.is_main());
+
+            module.id = Some(module_id);
+
             for item in &mut module.items {
-                self.declare_global_item(module.id, item);
+                self.declare_global_item(module_id, item);
             }
         }
     }
 
     fn resolve_all(&mut self, modules: &mut [Module]) {
         for module in modules {
-            let mut env = Env::new(module.id);
+            let mut env = Env::new(module.id.expect("ModuleId to be resolved"));
 
             for item in &mut module.items {
                 item.resolve(self, &mut env);
@@ -57,8 +60,8 @@ impl<'db> ResolveCx<'db> {
     }
 
     fn declare_global_item(&mut self, module_id: ModuleId, item: &mut Item) -> SymbolId {
-        match &mut item.kind {
-            ItemKind::Function(fun) => {
+        match item {
+            Item::Function(fun) => {
                 let id = self.declare_global_symbol(
                     module_id,
                     Vis::Public,
@@ -107,8 +110,8 @@ impl<'db> ResolveCx<'db> {
     }
 
     fn declare_item(&mut self, env: &mut Env, item: &mut Item) -> SymbolId {
-        match &mut item.kind {
-            ItemKind::Function(fun) => {
+        match item {
+            Item::Function(fun) => {
                 let id = self.declare_symbol(
                     env,
                     SymbolInfoKind::Function(FunctionInfo::Orphan),
@@ -141,23 +144,23 @@ impl<'db> ResolveCx<'db> {
 }
 
 trait Resolve<'db> {
-    fn resolve(&mut self, cx: &mut ResolveCx<'db>, env: &mut Env);
+    fn resolve(&mut self, cx: &mut Resolver<'db>, env: &mut Env);
 }
 
 impl Resolve<'_> for Item {
-    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         if !env.in_global_scope() {
             cx.declare_item(env, self);
         }
 
-        match &mut self.kind {
-            ItemKind::Function(fun) => fun.resolve(cx, env),
+        match self {
+            Item::Function(fun) => fun.resolve(cx, env),
         }
     }
 }
 
 impl Resolve<'_> for Expr {
-    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         match self {
             Self::Item(inner) => inner.resolve(cx, env),
             Self::If(inner) => inner.resolve(cx, env),
@@ -172,7 +175,7 @@ impl Resolve<'_> for Expr {
 }
 
 impl Resolve<'_> for Function {
-    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         env.push(self.sig.name.name(), ScopeKind::Fun);
 
         for param in &mut self.sig.params {
@@ -185,7 +188,7 @@ impl Resolve<'_> for Function {
 }
 
 impl Resolve<'_> for If {
-    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         self.cond.resolve(cx, env);
         self.then.resolve(cx, env);
 
@@ -196,7 +199,7 @@ impl Resolve<'_> for If {
 }
 
 impl Resolve<'_> for Block {
-    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         env.push(ustr("_"), ScopeKind::Block);
 
         for expr in &mut self.exprs {
@@ -208,17 +211,19 @@ impl Resolve<'_> for Block {
 }
 
 impl Resolve<'_> for Return {
-    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
-        self.expr.resolve(cx, env);
-
+    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         if !env.in_kind(ScopeKind::Fun) {
             cx.errors.push(ResolveError::InvalidReturn { span: self.span });
+        }
+
+        if let Some(expr) = self.expr.as_mut() {
+            expr.resolve(cx, env);
         }
     }
 }
 
 impl Resolve<'_> for Call {
-    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         self.callee.resolve(cx, env);
 
         let mut already_passed = UstrMap::<Span>::default();
@@ -242,14 +247,14 @@ impl Resolve<'_> for Call {
 }
 
 impl Resolve<'_> for Binary {
-    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         self.lhs.resolve(cx, env);
         self.rhs.resolve(cx, env);
     }
 }
 
 impl Resolve<'_> for Name {
-    fn resolve(&mut self, cx: &mut ResolveCx<'_>, env: &mut Env) {
+    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         self.id = env
             .lookup(self.name.name())
             .copied()
