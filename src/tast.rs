@@ -22,8 +22,6 @@ pub struct TypedAst {
 impl TypedAst {
     pub fn pretty_print(&self, db: &Database) -> io::Result<()> {
         println!();
-        println!("Typed Ast:");
-        println!();
         pretty_print::print(db, self)?;
         println!();
         Ok(())

@@ -9,12 +9,7 @@ use crate::{
 };
 
 pub(super) fn print(db: &Database, tast: &TypedAst) -> io::Result<()> {
-    let mut cx = Cx {
-        db,
-        builder: ptree::TreeBuilder::new(
-            db.main_module().expect("to have a main module").name.standard_full_name(),
-        ),
-    };
+    let mut cx = Cx { db, builder: ptree::TreeBuilder::new("Typed Ast".to_string()) };
 
     for item in &tast.items {
         item.pretty_print(&mut cx);
