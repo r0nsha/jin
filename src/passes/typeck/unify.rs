@@ -48,6 +48,7 @@ impl<'db> TypeCtxt<'db> {
                 }
             }
 
+            // Unify ?X ~ ?Y
             (
                 Type::Infer(InferType::TypeVar(expected), _),
                 Type::Infer(InferType::TypeVar(actual), _),
@@ -56,6 +57,7 @@ impl<'db> TypeCtxt<'db> {
                 Ok(())
             }
 
+            // Unify ?int ~ ?int
             (
                 Type::Infer(InferType::IntVar(expected), _),
                 Type::Infer(InferType::IntVar(actual), _),
@@ -64,6 +66,7 @@ impl<'db> TypeCtxt<'db> {
                 Ok(())
             }
 
+            // Unify ?int ~ int
             (Type::Int(ity, span), Type::Infer(InferType::IntVar(var), _))
             | (Type::Infer(InferType::IntVar(var), _), Type::Int(ity, span)) => {
                 self.int_unification_table
@@ -71,6 +74,7 @@ impl<'db> TypeCtxt<'db> {
                 Ok(())
             }
 
+            // Unify ?N ~ any
             (Type::Infer(InferType::TypeVar(var), _), actual) => self.unify_ty_var(actual, var),
             (expected, Type::Infer(InferType::TypeVar(var), _)) => self.unify_ty_var(expected, var),
 
