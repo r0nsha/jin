@@ -7,7 +7,7 @@ use enum_as_inner::EnumAsInner;
 
 use crate::{
     ast::token::TokenKind,
-    common::{QName, Word},
+    common::{QPath, Word},
     db::{ModuleId, SymbolId},
     span::{SourceId, Span, Spanned},
 };
@@ -41,13 +41,13 @@ impl Ast {
 pub struct Module {
     pub id: Option<ModuleId>,
     pub source: SourceId,
-    pub name: QName,
+    pub name: QPath,
     pub items: Vec<Item>,
     is_main: bool,
 }
 
 impl Module {
-    pub fn new(source_id: SourceId, name: QName, is_main: bool) -> Self {
+    pub fn new(source_id: SourceId, name: QPath, is_main: bool) -> Self {
         Self { id: None, source: source_id, name, is_main, items: vec![] }
     }
 

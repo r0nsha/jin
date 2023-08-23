@@ -4,7 +4,7 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     ast::{Ast, Binary, Block, Call, CallArg, Expr, Function, If, Item, Module, Name, Return},
-    common::{QName, Word},
+    common::{QPath, Word},
     db::{
         Database, FunctionInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, SymbolId, SymbolInfo,
         SymbolInfoKind, Vis,
@@ -84,14 +84,14 @@ impl<'db> Resolver<'db> {
         name: Word,
     ) -> SymbolId {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
-        let qname = self.db[module_id].name.clone().child(name.name());
+        let qpath = self.db[module_id].name.clone().child(name.name());
 
-        let id = SymbolInfo::alloc(self.db, qname, scope, kind, name.span());
+        let id = SymbolInfo::alloc(self.db, qpath, scope, kind, name.span());
 
         if let Some(prev_id) = self.global_scope.insert(module_id, name.name(), id) {
             let sym = &self.db[prev_id];
             self.errors.push(ResolveError::MultipleItems {
-                name: sym.qname.name(),
+                name: sym.qpath.name(),
                 prev_span: sym.span,
                 dup_span: name.span(),
             });
@@ -119,7 +119,7 @@ impl<'db> Resolver<'db> {
     fn declare_symbol(&mut self, env: &mut Env, kind: SymbolInfoKind, name: Word) -> SymbolId {
         let id = SymbolInfo::alloc(
             self.db,
-            env.scope_name(self.db).child(name.name()),
+            env.scope_path(self.db).child(name.name()),
             ScopeInfo { module_id: env.module_id, level: env.scope_level(), vis: Vis::Private },
             kind,
             name.span(),
@@ -341,10 +341,10 @@ impl Env {
         }
     }
 
-    pub fn scope_name(&self, db: &Database) -> QName {
-        let mut qname = db[self.module_id].name.clone();
-        qname.extend(self.scopes.iter().map(|s| s.name));
-        qname
+    pub fn scope_path(&self, db: &Database) -> QPath {
+        let mut qpath = db[self.module_id].name.clone();
+        qpath.extend(self.scopes.iter().map(|s| s.name));
+        qpath
     }
 
     #[inline]

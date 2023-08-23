@@ -1,8 +1,8 @@
 pub mod index_vec;
-pub mod qname;
+pub mod qpath;
 pub mod target;
 pub mod word;
 
 pub use index_vec::*;
-pub use qname::*;
+pub use qpath::*;
 pub use word::*;

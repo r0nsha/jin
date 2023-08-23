@@ -156,8 +156,8 @@ impl<'db, 'd> ToDoc<'db, 'd> for SymbolId {
         let sym = &db[*self];
 
         let name = match sym.scope.level {
-            ScopeLevel::Global => sym.qname.standard_full_name(),
-            ScopeLevel::Local(_) => sym.qname.name().to_string(),
+            ScopeLevel::Global => sym.qpath.standard_full_name(),
+            ScopeLevel::Local(_) => sym.qpath.name().to_string(),
         };
 
         RcDoc::text(format!("@{name}"))

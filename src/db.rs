@@ -11,7 +11,7 @@ use path_absolutize::Absolutize;
 use ustr::Ustr;
 
 use crate::{
-    common::{new_key_type, IndexVec, QName},
+    common::{new_key_type, IndexVec, QPath},
     db::{build_options::BuildOptions, timing::Timings},
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
@@ -149,13 +149,13 @@ pub struct ModuleInfo {
     #[allow(unused)]
     pub id: ModuleId,
     pub source_id: SourceId,
-    pub name: QName,
+    pub name: QPath,
     #[allow(unused)]
     pub is_main: bool,
 }
 
 impl ModuleInfo {
-    pub fn alloc(db: &mut Database, source_id: SourceId, name: QName, is_main: bool) -> ModuleId {
+    pub fn alloc(db: &mut Database, source_id: SourceId, name: QPath, is_main: bool) -> ModuleId {
         let id = db.modules.push_with_key(|id| Self { id, source_id, name, is_main });
 
         if is_main {
@@ -171,7 +171,7 @@ impl ModuleInfo {
 pub struct SymbolInfo {
     pub id: SymbolId,
     pub name: Ustr,
-    pub qname: QName,
+    pub qpath: QPath,
     pub scope: ScopeInfo,
     pub kind: Box<SymbolInfoKind>,
     pub ty: TypeId,
@@ -194,15 +194,15 @@ pub enum SymbolInfoKind {
 impl SymbolInfo {
     pub fn alloc(
         db: &mut Database,
-        qname: QName,
+        qpath: QPath,
         scope: ScopeInfo,
         kind: SymbolInfoKind,
         span: Span,
     ) -> SymbolId {
         db.symbols.push_with_key(|id| Self {
             id,
-            name: qname.name(),
-            qname,
+            name: qpath.name(),
+            qpath,
             scope,
             kind: Box::new(kind),
             ty: TypeId::null(),
