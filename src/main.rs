@@ -121,7 +121,7 @@ fn build(db: &mut Database) {
     expect!(db);
 
     if db.build_options().should_emit(EmitOption::Mir) {
-        println!("\nMIR:\n");
+        println!();
         mir.pretty_print(db);
         println!();
     }
