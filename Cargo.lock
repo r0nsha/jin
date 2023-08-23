@@ -580,6 +580,7 @@ dependencies = [
  "fs_extra",
  "inkwell",
  "internment",
+ "lazy_static 1.4.0",
  "libc",
  "owo-colors",
  "path-absolutize",

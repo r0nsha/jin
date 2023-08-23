@@ -5,9 +5,14 @@ use std::ops::Deref;
 use derive_more::{From, Into};
 use enum_as_inner::EnumAsInner;
 use internment::Intern;
+use lazy_static::lazy_static;
 use ustr::Ustr;
 
 use crate::{db::Db, span::Span, ty::printer::TypePrinter};
+
+lazy_static! {
+    static ref TYPE_UNKNOWN: Type = Type::new(TypeKind::Unknown);
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Type(Intern<TypeKind>);
@@ -19,6 +24,10 @@ impl Type {
 
     pub fn from_ref(kind: &TypeKind) -> Self {
         Self(Intern::from_ref(kind))
+    }
+
+    pub fn unknown() -> Self {
+        *TYPE_UNKNOWN
     }
 }
 
