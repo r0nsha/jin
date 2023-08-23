@@ -9,7 +9,6 @@ use crate::{
     ty::{FunctionType, FunctionTypeParam, InferType, Type, TypeKind, TypeVar, Typed},
 };
 
-// Substitute
 impl<'db> InferCtxt<'db> {
     pub fn substitution(&mut self, tast: &mut TypedAst) -> HashSet<TypeVar> {
         let mut unbound_vars = HashSet::new();
@@ -37,13 +36,13 @@ impl<'db> InferCtxt<'db> {
     ) -> TypeKind {
         match ty {
             TypeKind::Function(fun) => TypeKind::Function(FunctionType {
-                ret: Box::new(self.substitute_tykind(&fun.ret, unbound_vars)),
+                ret: self.substitute_ty(fun.ret, unbound_vars),
                 params: fun
                     .params
                     .iter()
                     .map(|param| FunctionTypeParam {
                         name: param.name,
-                        ty: self.substitute_tykind(&param.ty, unbound_vars),
+                        ty: self.substitute_ty(param.ty, unbound_vars),
                     })
                     .collect(),
                 span: fun.span,

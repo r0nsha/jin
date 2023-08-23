@@ -126,7 +126,7 @@ pub enum IntType {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionType {
-    pub ret: Box<TypeKind>,
+    pub ret: Type,
     pub params: Vec<FunctionTypeParam>,
     pub span: Span,
 }
@@ -144,7 +144,7 @@ impl FunctionType {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionTypeParam {
     pub name: Option<Ustr>,
-    pub ty: TypeKind,
+    pub ty: Type,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

@@ -89,15 +89,12 @@ impl Infer<'_> for Function {
         }
 
         let fun_ty = TypeKind::Function(FunctionType {
-            ret: Box::new(ret_ty.as_ref().clone()),
+            ret: ret_ty,
             params: self
                 .sig
                 .params
                 .iter()
-                .map(|param| FunctionTypeParam {
-                    name: Some(cx.db[param.id].name),
-                    ty: param.ty.as_ref().clone(),
-                })
+                .map(|param| FunctionTypeParam { name: Some(cx.db[param.id].name), ty: param.ty })
                 .collect(),
             span: self.span,
         });
@@ -173,18 +170,15 @@ impl Infer<'_> for Call {
         let result_ty = cx.fresh_ty_var(self.span);
 
         let expected_ty = Type::new(TypeKind::Function(FunctionType {
-            ret: Box::new(result_ty.as_ref().clone()),
+            ret: result_ty,
             params: self
                 .args
                 .iter()
                 .map(|arg| match arg {
-                    CallArg::Positional(expr) => {
-                        FunctionTypeParam { name: None, ty: expr.ty().as_ref().clone() }
+                    CallArg::Positional(expr) => FunctionTypeParam { name: None, ty: expr.ty() },
+                    CallArg::Named(name, expr) => {
+                        FunctionTypeParam { name: Some(name.name()), ty: expr.ty() }
                     }
-                    CallArg::Named(name, expr) => FunctionTypeParam {
-                        name: Some(name.name()),
-                        ty: expr.ty().as_ref().clone(),
-                    },
                 })
                 .collect(),
             span: self.span,
