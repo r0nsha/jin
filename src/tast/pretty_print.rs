@@ -56,7 +56,7 @@ impl PrettyPrint for Function {
         cx.builder.begin_child(format!(
             "fn {} (returns: {})",
             cx.db[self.id].qpath,
-            cx.db[self.ty].as_function().expect("to be a function").ret.display(cx.db)
+            self.ty.as_function().expect("to be a function").ret.display(cx.db)
         ));
 
         if !self.sig.params.is_empty() {
@@ -66,7 +66,7 @@ impl PrettyPrint for Function {
                 cx.builder.add_empty_child(format!(
                     "{} (type: {})",
                     cx.db[param.id].name,
-                    cx.db[param.ty].display(cx.db)
+                    param.ty.display(cx.db)
                 ));
             }
 
@@ -123,7 +123,7 @@ impl PrettyPrint for Return {
 
 impl PrettyPrint for Call {
     fn pretty_print(&self, cx: &mut PPCtxt) {
-        cx.builder.begin_child(format!("call (result: {})", cx.db[self.ty].display(cx.db)));
+        cx.builder.begin_child(format!("call (result: {})", self.ty.display(cx.db)));
         self.callee.pretty_print(cx);
 
         if !self.args.is_empty() {
@@ -149,7 +149,7 @@ impl PrettyPrint for Call {
 
 impl PrettyPrint for Binary {
     fn pretty_print(&self, cx: &mut PPCtxt) {
-        cx.builder.begin_child(format!("{} (result: {})", self.op, cx.db[self.ty].display(cx.db)));
+        cx.builder.begin_child(format!("{} (result: {})", self.op, self.ty.display(cx.db)));
         self.lhs.pretty_print(cx);
         self.rhs.pretty_print(cx);
         cx.builder.end_child();
@@ -161,7 +161,7 @@ impl PrettyPrint for Name {
         cx.builder.add_empty_child(format!(
             "`{}` (type: {})",
             cx.db[self.id].qpath,
-            cx.db[self.ty].display(cx.db)
+            self.ty.display(cx.db)
         ));
     }
 }
@@ -174,7 +174,6 @@ impl PrettyPrint for Lit {
             LitKind::Unit => "()".to_string(),
         };
 
-        cx.builder
-            .add_empty_child(format!("{value_str} (type: {})", cx.db[self.ty].display(cx.db)));
+        cx.builder.add_empty_child(format!("{value_str} (type: {})", self.ty.display(cx.db)));
     }
 }

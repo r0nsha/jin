@@ -1,16 +1,54 @@
 mod printer;
 
+use std::ops::Deref;
+
 use derive_more::{From, Into};
 use enum_as_inner::EnumAsInner;
+use internment::Intern;
 use ustr::Ustr;
 
-use crate::{
-    db::{Db, TypeId},
-    span::Span,
-    ty::printer::TypePrinter,
-};
+use crate::{db::Db, span::Span, ty::printer::TypePrinter};
 
-#[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Type(Intern<TypeKind>);
+
+impl Type {
+    pub fn new(kind: TypeKind) -> Self {
+        Self(Intern::new(kind))
+    }
+
+    pub fn from_ref(kind: &TypeKind) -> Self {
+        Self(Intern::from_ref(kind))
+    }
+}
+
+impl Deref for Type {
+    type Target = TypeKind;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl AsRef<TypeKind> for Type {
+    fn as_ref(&self) -> &TypeKind {
+        &self.0
+    }
+}
+
+impl From<&TypeKind> for Type {
+    fn from(value: &TypeKind) -> Self {
+        Self::from_ref(value)
+    }
+}
+
+impl From<&TypeKind> for TypeKind {
+    fn from(value: &TypeKind) -> Self {
+        value.clone()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, EnumAsInner)]
 pub enum TypeKind {
     Function(FunctionType),
     Int(IntType, Span),
@@ -19,6 +57,7 @@ pub enum TypeKind {
     Unit(Span),
     Never(Span),
     Infer(InferType, Span),
+    Unknown,
 }
 
 impl TypeKind {
@@ -48,6 +87,7 @@ impl TypeKind {
             | Self::Unit(span)
             | Self::Never(span)
             | Self::Infer(_, span) => *span,
+            Self::Unknown => panic!(),
         }
     }
 
@@ -79,12 +119,12 @@ impl From<IntVarValue> for TypeKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum IntType {
     Int,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionType {
     pub ret: Box<TypeKind>,
     pub params: Vec<FunctionTypeParam>,
@@ -101,23 +141,23 @@ impl FunctionType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionTypeParam {
     pub name: Option<Ustr>,
     pub ty: TypeKind,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum InferType {
     TypeVar(TypeVar),
     IntVar(IntVar),
 }
 
 pub trait Typed {
-    fn ty(&self) -> TypeId;
-    fn ty_mut(&mut self) -> &mut TypeId;
+    fn ty(&self) -> Type;
+    fn ty_mut(&mut self) -> &mut Type;
 
-    fn set_ty(&mut self, ty: TypeId) {
+    fn set_ty(&mut self, ty: Type) {
         *self.ty_mut() = ty;
     }
 }

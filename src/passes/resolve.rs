@@ -11,6 +11,7 @@ use crate::{
     },
     diagnostics::{Diagnostic, Label},
     span::{Span, Spanned},
+    ty::{Type, TypeKind},
 };
 
 pub fn resolve(db: &mut Db, ast: &mut Ast) {
@@ -86,7 +87,14 @@ impl<'db> Resolver<'db> {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].name.clone().child(name.name());
 
-        let id = SymbolInfo::alloc(self.db, qpath, scope, kind, name.span());
+        let id = SymbolInfo::alloc(
+            self.db,
+            qpath,
+            scope,
+            kind,
+            Type::new(TypeKind::Unknown),
+            name.span(),
+        );
 
         if let Some(prev_id) = self.global_scope.insert(module_id, name.name(), id) {
             let sym = &self.db[prev_id];
@@ -116,17 +124,13 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn declare_symbol(
-        &mut self,
-        env: &mut Env,
-        kind: SymbolInfoKind,
-        name: Word,
-    ) -> SymbolId {
+    fn declare_symbol(&mut self, env: &mut Env, kind: SymbolInfoKind, name: Word) -> SymbolId {
         let id = SymbolInfo::alloc(
             self.db,
             env.scope_path(self.db).child(name.name()),
             ScopeInfo { module_id: env.module_id, level: env.scope_level(), vis: Vis::Private },
             kind,
+            Type::new(TypeKind::Unknown),
             name.span(),
         );
 

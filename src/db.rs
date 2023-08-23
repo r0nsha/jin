@@ -15,7 +15,7 @@ use crate::{
     db::{build_options::BuildOptions, timing::Timings},
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
-    ty::TypeKind,
+    ty::{Type, Typed},
 };
 
 #[derive(Debug)]
@@ -26,7 +26,6 @@ pub struct Db {
     pub sources: Sources,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
     pub symbols: IndexVec<SymbolId, SymbolInfo>,
-    pub types: IndexVec<TypeId, TypeKind>,
 
     pub diagnostics: Diagnostics,
 
@@ -56,7 +55,6 @@ impl Db {
             sources,
             modules: IndexVec::new(),
             symbols: IndexVec::new(),
-            types: IndexVec::new(),
 
             diagnostics: Diagnostics::new(),
 
@@ -112,10 +110,6 @@ impl Db {
     pub fn print_diagnostics(&self) {
         self.diagnostics.print(&self.sources).expect("printing diagnostis to work");
     }
-
-    pub fn alloc_ty(&mut self, ty: TypeKind) -> TypeId {
-        self.types.push(ty)
-    }
 }
 
 macro_rules! new_db_key {
@@ -142,7 +136,6 @@ macro_rules! new_db_key {
 
 new_db_key!(ModuleId -> modules : ModuleInfo);
 new_db_key!(SymbolId -> symbols : SymbolInfo);
-new_db_key!(TypeId -> types : TypeKind);
 
 #[derive(Debug, Clone)]
 pub struct ModuleInfo {
@@ -174,7 +167,7 @@ pub struct SymbolInfo {
     pub qpath: QPath,
     pub scope: ScopeInfo,
     pub kind: Box<SymbolInfoKind>,
-    pub ty: TypeId,
+    pub ty: Type,
     pub span: Span,
 }
 
@@ -197,6 +190,7 @@ impl SymbolInfo {
         qpath: QPath,
         scope: ScopeInfo,
         kind: SymbolInfoKind,
+        ty: Type,
         span: Span,
     ) -> SymbolId {
         db.symbols.push_with_key(|id| Self {
@@ -205,15 +199,19 @@ impl SymbolInfo {
             qpath,
             scope,
             kind: Box::new(kind),
-            ty: TypeId::null(),
+            ty,
             span,
         })
     }
+}
 
-    pub fn set_ty(&mut self, ty: TypeId) {
-        if self.ty.is_null() {
-            self.ty = ty;
-        }
+impl Typed for SymbolInfo {
+    fn ty(&self) -> Type {
+        self.ty
+    }
+
+    fn ty_mut(&mut self) -> &mut Type {
+        &mut self.ty
     }
 }
 

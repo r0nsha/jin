@@ -1,6 +1,6 @@
 use std::ops;
 
-use crate::db::TypeId;
+use crate::ty::Type;
 
 #[derive(Debug, Clone)]
 pub struct Constraints(Vec<Constraint>);
@@ -27,5 +27,5 @@ impl ops::DerefMut for Constraints {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Constraint {
-    Eq { expected: TypeId, actual: TypeId },
+    Eq { expected: Type, actual: Type },
 }

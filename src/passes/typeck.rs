@@ -17,7 +17,7 @@ use crate::{
         Binary, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name,
         Return, TypedAst,
     },
-    ty::{FunctionType, FunctionTypeParam, TypeKind, Typed},
+    ty::{FunctionType, FunctionTypeParam, Type, TypeKind, Typed},
 };
 
 pub fn typeck(db: &mut Db, tast: &mut TypedAst) {
@@ -38,7 +38,7 @@ fn fill_symbol_tys(infcx: &mut InferCtxt) {
     // TODO: find a less unsightly code pattern for mutating all symbols...
     for i in 0..infcx.db.symbols.len() {
         let id = i.into();
-        infcx.db.symbols[id].ty = infcx.alloc_ty_var(infcx.db.symbols[id].span);
+        infcx.db.symbols[id].ty = infcx.fresh_ty_var(infcx.db.symbols[id].span);
     }
 }
 
@@ -75,34 +75,34 @@ impl Infer<'_> for Item {
             ItemKind::Function(fun) => fun.infer(cx, env),
         }
 
-        self.ty = cx.db.alloc_ty(TypeKind::Unit(self.span()));
+        self.ty = Type::new(TypeKind::Unit(self.span()));
     }
 }
 
 impl Infer<'_> for Function {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
-        let ret_ty = cx.alloc_ty_var(self.span);
+        let ret_ty = cx.fresh_ty_var(self.span);
 
         for param in &mut self.sig.params {
-            param.ty = cx.alloc_ty_var(param.span);
+            param.ty = cx.fresh_ty_var(param.span);
             cx.db[param.id].ty = param.ty;
         }
 
         let fun_ty = TypeKind::Function(FunctionType {
-            ret: Box::new(cx.db[ret_ty].clone()),
+            ret: Box::new(ret_ty.as_ref().clone()),
             params: self
                 .sig
                 .params
                 .iter()
                 .map(|param| FunctionTypeParam {
                     name: Some(cx.db[param.id].name),
-                    ty: cx.db[param.ty].clone(),
+                    ty: param.ty.as_ref().clone(),
                 })
                 .collect(),
             span: self.span,
         });
 
-        self.ty = cx.db.alloc_ty(fun_ty);
+        self.ty = Type::new(fun_ty);
 
         let sym_ty = cx.lookup(self.id);
         cx.add_eq_constraint(sym_ty, self.ty);
@@ -120,7 +120,7 @@ impl Infer<'_> for If {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
         self.cond.infer(cx, env);
 
-        let expected = cx.db.alloc_ty(TypeKind::Bool(self.cond.span()));
+        let expected = Type::new(TypeKind::Bool(self.cond.span()));
         cx.add_eq_constraint(expected, self.cond.ty());
 
         self.then.infer(cx, env);
@@ -129,7 +129,7 @@ impl Infer<'_> for If {
             otherwise.infer(cx, env);
             otherwise.ty()
         } else {
-            cx.db.alloc_ty(TypeKind::Unit(self.span))
+            Type::new(TypeKind::Unit(self.span))
         };
 
         cx.add_eq_constraint(self.then.ty(), other_ty);
@@ -144,13 +144,13 @@ impl Infer<'_> for Block {
             expr.infer(cx, env);
         }
 
-        self.ty = self.exprs.last().map_or_else(|| cx.db.alloc_ty(TypeKind::Unit(self.span)), Expr::ty);
+        self.ty = self.exprs.last().map_or_else(|| Type::new(TypeKind::Unit(self.span)), Expr::ty);
     }
 }
 
 impl Infer<'_> for Return {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) {
-        self.ty = cx.db.alloc_ty(TypeKind::Never(self.span));
+        self.ty = Type::new(TypeKind::Never(self.span));
 
         let call_frame = env.call_stack.current().expect("to be inside a call frame");
         let ret_ty = call_frame.ret_ty;
@@ -172,18 +172,19 @@ impl Infer<'_> for Call {
 
         let result_ty = cx.fresh_ty_var(self.span);
 
-        let expected_ty = cx.db.alloc_ty(TypeKind::Function(FunctionType {
-            ret: Box::new(result_ty.clone()),
+        let expected_ty = Type::new(TypeKind::Function(FunctionType {
+            ret: Box::new(result_ty.as_ref().clone()),
             params: self
                 .args
                 .iter()
                 .map(|arg| match arg {
                     CallArg::Positional(expr) => {
-                        FunctionTypeParam { name: None, ty: cx.db[expr.ty()].clone() }
+                        FunctionTypeParam { name: None, ty: expr.ty().as_ref().clone() }
                     }
-                    CallArg::Named(name, expr) => {
-                        FunctionTypeParam { name: Some(name.name()), ty: cx.db[expr.ty()].clone() }
-                    }
+                    CallArg::Named(name, expr) => FunctionTypeParam {
+                        name: Some(name.name()),
+                        ty: expr.ty().as_ref().clone(),
+                    },
                 })
                 .collect(),
             span: self.span,
@@ -191,7 +192,7 @@ impl Infer<'_> for Call {
 
         cx.add_eq_constraint(expected_ty, self.callee.ty());
 
-        self.ty = cx.db.alloc_ty(result_ty);
+        self.ty = result_ty;
     }
 }
 
@@ -205,19 +206,19 @@ impl Infer<'_> for Binary {
         match self.op {
             BinaryOp::Cmp(_) => (),
             BinaryOp::And | BinaryOp::Or => {
-                let expected = cx.db.alloc_ty(TypeKind::Bool(self.span));
+                let expected = Type::new(TypeKind::Bool(self.span));
                 cx.add_eq_constraint(expected, self.lhs.ty());
                 cx.add_eq_constraint(expected, self.rhs.ty());
             }
             _ => {
-                let expected = cx.alloc_int_var(self.span);
+                let expected = cx.fresh_int_var(self.span);
                 cx.add_eq_constraint(expected, self.lhs.ty());
                 cx.add_eq_constraint(expected, self.rhs.ty());
             }
         }
 
         self.ty = match self.op {
-            BinaryOp::Cmp(_) => cx.db.alloc_ty(TypeKind::Bool(self.span)),
+            BinaryOp::Cmp(_) => Type::new(TypeKind::Bool(self.span)),
             _ => self.lhs.ty(),
         };
     }
@@ -232,9 +233,9 @@ impl Infer<'_> for Name {
 impl Infer<'_> for Lit {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut TypeEnv) {
         self.ty = match &self.kind {
-            LitKind::Int(_) => cx.alloc_int_var(self.span),
-            LitKind::Bool(_) => cx.db.alloc_ty(TypeKind::Bool(self.span)),
-            LitKind::Unit => cx.db.alloc_ty(TypeKind::Unit(self.span)),
+            LitKind::Int(_) => cx.fresh_int_var(self.span),
+            LitKind::Bool(_) => Type::new(TypeKind::Bool(self.span)),
+            LitKind::Unit => Type::new(TypeKind::Unit(self.span)),
         };
     }
 }

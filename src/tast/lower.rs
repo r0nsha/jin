@@ -3,8 +3,9 @@ use crate::{
     db::Db,
     tast::{
         Binary, Block, Call, CallArg, Expr, Function, FunctionParam, FunctionSig, If, Item,
-        ItemKind, Lit, LitKind, Name, Return, TypeId, TypedAst,
+        ItemKind, Lit, LitKind, Name, Return, TypedAst,
     },
+    ty::{Type, TypeKind},
 };
 
 pub fn lower(db: &mut Db, ast: ast::Ast) -> TypedAst {
@@ -37,7 +38,7 @@ impl Lower<'_, Item> for ast::Item {
             kind: match self {
                 Self::Function(fun) => ItemKind::Function(fun.lower(cx)),
             },
-            ty: TypeId::null(),
+            ty: Type::new(TypeKind::Unknown),
         }
     }
 }
@@ -49,7 +50,7 @@ impl Lower<'_, Function> for ast::Function {
             sig: self.sig.lower(cx),
             body: self.body.lower(cx),
             span: self.span,
-            ty: TypeId::null(),
+            ty: Type::new(TypeKind::Unknown),
         }
     }
 }
@@ -63,7 +64,7 @@ impl Lower<'_, FunctionSig> for ast::FunctionSig {
                 .map(|p| FunctionParam {
                     id: p.id.expect("to be resolved"),
                     span: p.span,
-                    ty: TypeId::null(),
+                    ty: Type::new(TypeKind::Unknown),
                 })
                 .collect::<Vec<_>>(),
         }
@@ -80,39 +81,39 @@ impl Lower<'_, Expr> for ast::Expr {
                         Box::new(Expr::Lit(Lit {
                             kind: LitKind::Unit,
                             span: ret.span,
-                            ty: TypeId::null(),
+                            ty: Type::new(TypeKind::Unknown),
                         }))
                     },
                     |v| Box::new(v.lower(cx)),
                 ),
                 span: ret.span,
-                ty: TypeId::null(),
+                ty: Type::new(TypeKind::Unknown),
             }),
             Self::If(if_) => Expr::If(If {
                 cond: Box::new(if_.cond.lower(cx)),
                 then: Box::new(if_.then.lower(cx)),
                 otherwise: if_.otherwise.map(|o| Box::new(o.lower(cx))),
                 span: if_.span,
-                ty: TypeId::null(),
+                ty: Type::new(TypeKind::Unknown),
             }),
             Self::Block(blk) => Expr::Block(blk.lower(cx)),
             Self::Call(call) => Expr::Call(Call {
                 callee: Box::new(call.callee.lower(cx)),
                 args: call.args.into_iter().map(|arg| arg.lower(cx)).collect(),
                 span: call.span,
-                ty: TypeId::null(),
+                ty: Type::new(TypeKind::Unknown),
             }),
             Self::Binary(bin) => Expr::Binary(Binary {
                 lhs: Box::new(bin.lhs.lower(cx)),
                 rhs: Box::new(bin.rhs.lower(cx)),
                 op: bin.op,
                 span: bin.span,
-                ty: TypeId::null(),
+                ty: Type::new(TypeKind::Unknown),
             }),
             Self::Name(name) => Expr::Name(Name {
                 id: name.id.expect("to be resolved"),
                 span: name.span,
-                ty: TypeId::null(),
+                ty: Type::new(TypeKind::Unknown),
             }),
             Self::Lit(lit) => Expr::Lit(Lit {
                 kind: match lit.kind {
@@ -121,7 +122,7 @@ impl Lower<'_, Expr> for ast::Expr {
                     ast::LitKind::Unit => LitKind::Unit,
                 },
                 span: lit.span,
-                ty: TypeId::null(),
+                ty: Type::new(TypeKind::Unknown),
             }),
         }
     }
@@ -140,7 +141,7 @@ impl Lower<'_, Block> for ast::Block {
         Block {
             exprs: self.exprs.into_iter().map(|e| e.lower(cx)).collect(),
             span: self.span,
-            ty: TypeId::null(),
+            ty: Type::new(TypeKind::Unknown),
         }
     }
 }

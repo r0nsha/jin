@@ -12,12 +12,13 @@ use inkwell::{
 
 use crate::{
     ast::{BinaryOp, CmpOp},
-    db::{Db, SymbolId, TypeId},
+    db::{Db, SymbolId},
     llvm::ty::LlvmType,
     mir::{
         Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, Load, Mir, Phi,
         Return, UnitLit, Unreachable, ValueId,
     },
+    ty::Type,
 };
 
 pub struct Generator<'db, 'cx> {
@@ -92,7 +93,7 @@ impl<'cx> FunctionState<'cx> {
         self.values.insert(id, value);
     }
 
-    pub fn value_ty<'db>(&self, cx: &Generator<'db, 'cx>, id: ValueId) -> TypeId {
+    pub fn value_ty<'db>(&self, cx: &Generator<'db, 'cx>, id: ValueId) -> Type {
         self.function(cx).value(id).expect("value to exist").ty
     }
 }

@@ -1,4 +1,4 @@
-use crate::db::{SymbolId, TypeId};
+use crate::{db::SymbolId, ty::Type};
 
 pub struct TypeEnv {
     pub call_stack: CallStack,
@@ -35,5 +35,5 @@ impl CallStack {
 pub struct CallFrame {
     #[allow(unused)]
     pub id: SymbolId,
-    pub ret_ty: TypeId,
+    pub ret_ty: Type,
 }

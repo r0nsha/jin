@@ -99,7 +99,7 @@ fn build(db: &mut Db) {
     passes::resolve(db, &mut ast);
     expect!(db);
 
-    db.timings.start("ast -> hir");
+    db.timings.start("ast -> typed ast");
     let mut tast = tast::lower(db, ast);
 
     db.timings.start("typeck");

@@ -13,7 +13,7 @@ pub fn find_main(db: &mut Db) {
             && matches!(sym.kind.as_ref(), SymbolInfoKind::Function(db::FunctionInfo::Orphan))
             && sym.qpath.name() == "main"
     }) {
-        let fun_ty = &db[main_fun.ty];
+        let fun_ty = main_fun.ty.as_ref();
 
         if !is_main_fun_ty(fun_ty) {
             db.diagnostics.add(

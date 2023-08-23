@@ -1,13 +1,12 @@
 use std::collections::HashSet;
 
 use crate::{
-    db::TypeId,
     passes::typeck::infcx::InferCtxt,
     tast::{
         Binary, Block, Call, CallArg, Expr, Function, FunctionSig, If, Item, ItemKind, Return,
         TypedAst,
     },
-    ty::{FunctionType, FunctionTypeParam, InferType, TypeKind, TypeVar, Typed},
+    ty::{FunctionType, FunctionTypeParam, InferType, Type, TypeKind, TypeVar, Typed},
 };
 
 // Substitute
@@ -17,7 +16,7 @@ impl<'db> InferCtxt<'db> {
 
         for i in 0..self.db.symbols.len() {
             let ty = self.db.symbols[i.into()].ty;
-            self.substitute_tyid(ty, &mut unbound_vars);
+            self.db.symbols[i.into()].ty = self.substitute_ty(ty, &mut unbound_vars);
         }
 
         for item in &mut tast.items {
@@ -27,23 +26,24 @@ impl<'db> InferCtxt<'db> {
         unbound_vars
     }
 
-    fn substitute_tyid(&mut self, id: TypeId, unbound_vars: &mut HashSet<TypeVar>) {
-        let ty = self.db[id].clone();
-
-        let new_ty = self.substitute_ty(&ty, unbound_vars);
-        self.db[id] = new_ty;
+    fn substitute_ty(&mut self, ty: Type, unbound_vars: &mut HashSet<TypeVar>) -> Type {
+        Type::new(self.substitute_tykind(&ty, unbound_vars))
     }
 
-    fn substitute_ty(&mut self, ty: &TypeKind, unbound_vars: &mut HashSet<TypeVar>) -> TypeKind {
+    fn substitute_tykind(
+        &mut self,
+        ty: &TypeKind,
+        unbound_vars: &mut HashSet<TypeVar>,
+    ) -> TypeKind {
         match ty {
             TypeKind::Function(fun) => TypeKind::Function(FunctionType {
-                ret: Box::new(self.substitute_ty(&fun.ret, unbound_vars)),
+                ret: Box::new(self.substitute_tykind(&fun.ret, unbound_vars)),
                 params: fun
                     .params
                     .iter()
                     .map(|param| FunctionTypeParam {
                         name: param.name,
-                        ty: self.substitute_ty(&param.ty, unbound_vars),
+                        ty: self.substitute_tykind(&param.ty, unbound_vars),
                     })
                     .collect(),
                 span: fun.span,
@@ -52,7 +52,7 @@ impl<'db> InferCtxt<'db> {
                 let root = self.ty_unification_table.find(*var);
 
                 if let Some(ty) = self.ty_unification_table.probe_value(root) {
-                    self.substitute_ty(&ty, unbound_vars)
+                    self.substitute_tykind(&ty, unbound_vars)
                 } else {
                     unbound_vars.insert(root);
                     TypeKind::Infer(InferType::TypeVar(root), *span)
@@ -86,7 +86,7 @@ impl Substitute<'_> for Expr {
             Self::Name(_) | Self::Lit(_) => (),
         }
 
-        cx.substitute_tyid(self.ty(), unbound_vars);
+        self.set_ty(cx.substitute_ty(self.ty(), unbound_vars));
     }
 }
 
@@ -96,7 +96,7 @@ impl Substitute<'_> for Item {
             ItemKind::Function(fun) => fun.substitute(cx, unbound_vars),
         }
 
-        cx.substitute_tyid(self.ty, unbound_vars);
+        self.ty = cx.substitute_ty(self.ty, unbound_vars);
     }
 }
 
@@ -104,14 +104,14 @@ impl Substitute<'_> for Function {
     fn substitute(&mut self, cx: &mut InferCtxt<'_>, unbound_vars: &mut HashSet<TypeVar>) {
         self.sig.substitute(cx, unbound_vars);
         self.body.substitute(cx, unbound_vars);
-        cx.substitute_tyid(self.ty, unbound_vars);
+        self.ty = cx.substitute_ty(self.ty, unbound_vars);
     }
 }
 
 impl Substitute<'_> for FunctionSig {
     fn substitute(&mut self, cx: &mut InferCtxt<'_>, unbound_vars: &mut HashSet<TypeVar>) {
-        for param in &self.params {
-            cx.substitute_tyid(param.ty, unbound_vars);
+        for param in &mut self.params {
+            param.ty = cx.substitute_ty(param.ty, unbound_vars);
         }
     }
 }
@@ -143,21 +143,14 @@ impl Substitute<'_> for Call {
         self.callee.substitute(cx, unbound_vars);
 
         for arg in &mut self.args {
-            arg.substitute(cx, unbound_vars);
-        }
-
-        cx.substitute_tyid(self.ty, unbound_vars);
-    }
-}
-
-impl Substitute<'_> for CallArg {
-    fn substitute(&mut self, cx: &mut InferCtxt<'_>, unbound_vars: &mut HashSet<TypeVar>) {
-        match self {
-            Self::Positional(expr) | Self::Named(_, expr) => {
-                expr.substitute(cx, unbound_vars);
+            match arg {
+                CallArg::Positional(expr) | CallArg::Named(_, expr) => {
+                    expr.substitute(cx, unbound_vars);
+                }
             }
+
+            arg.set_ty(cx.substitute_ty(arg.ty(), unbound_vars));
         }
-        cx.substitute_tyid(self.ty(), unbound_vars);
     }
 }
 

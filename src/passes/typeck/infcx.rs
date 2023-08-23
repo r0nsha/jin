@@ -1,10 +1,10 @@
 use ena::unify::InPlaceUnificationTable;
 
 use crate::{
-    db::{Db, SymbolId, TypeId},
+    db::{Db, SymbolId},
     passes::typeck::constraint::{Constraint, Constraints},
     span::Span,
-    ty::{InferType, IntVar, TypeKind, TypeVar},
+    ty::{InferType, IntVar, Type, TypeKind, TypeVar},
 };
 
 pub struct InferCtxt<'db> {
@@ -24,37 +24,30 @@ impl<'db> InferCtxt<'db> {
         }
     }
 
-    pub fn lookup(&mut self, id: SymbolId) -> TypeId {
+    pub fn lookup(&mut self, id: SymbolId) -> Type {
         let sym = &self.db[id];
-        assert!(!sym.ty.is_null(), "symbol `{}` wasn't assigned a TypeId", sym.qpath);
+        assert!(*sym.ty != TypeKind::Unknown, "symbol `{}` wasn't assigned a Type", sym.qpath);
         sym.ty
     }
 
     #[inline]
-    pub fn fresh_ty_var(&mut self, span: Span) -> TypeKind {
-        TypeKind::Infer(InferType::TypeVar(self.ty_unification_table.new_key(None)), span)
+    pub fn fresh_ty_var(&mut self, span: Span) -> Type {
+        Type::new(TypeKind::Infer(
+            InferType::TypeVar(self.ty_unification_table.new_key(None)),
+            span,
+        ))
     }
 
     #[inline]
-    pub fn alloc_ty_var(&mut self, span: Span) -> TypeId {
-        let ftv = self.fresh_ty_var(span);
-        self.db.alloc_ty(ftv)
+    pub fn fresh_int_var(&mut self, span: Span) -> Type {
+        Type::new(TypeKind::Infer(
+            InferType::IntVar(self.int_unification_table.new_key(None)),
+            span,
+        ))
     }
 
     #[inline]
-    pub fn fresh_int_var(&mut self, span: Span) -> TypeKind {
-        TypeKind::Infer(InferType::IntVar(self.int_unification_table.new_key(None)), span)
-    }
-
-    #[inline]
-    pub fn alloc_int_var(&mut self, span: Span) -> TypeId {
-        let ftv = self.fresh_int_var(span);
-        self.db.alloc_ty(ftv)
-    }
-
-    #[inline]
-    pub fn add_eq_constraint(&mut self, expected: TypeId, actual: TypeId) {
+    pub fn add_eq_constraint(&mut self, expected: Type, actual: Type) {
         self.constraints.push(Constraint::Eq { expected, actual });
     }
 }
-

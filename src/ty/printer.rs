@@ -35,6 +35,7 @@ impl<'db> TypePrinter<'db> {
             TypeKind::Never(_) => f.write_str("!"),
             TypeKind::Infer(InferType::TypeVar(v), _) => write!(f, "?{}", v.0),
             TypeKind::Infer(InferType::IntVar(_), _) => f.write_str("{int}"),
+            TypeKind::Unknown => f.write_str("{unknown}"),
         }
     }
 }

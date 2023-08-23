@@ -14,7 +14,7 @@ impl<'db> InferCtxt<'db> {
         for constraint in constraints.iter() {
             match constraint {
                 Constraint::Eq { expected, actual } => {
-                    self.unify_ty_ty(&self.db[*expected].clone(), &self.db[*actual].clone())?;
+                    self.unify_ty_ty(expected, actual)?;
                 }
             }
         }
@@ -33,7 +33,10 @@ impl<'db> InferCtxt<'db> {
             | (TypeKind::Unit(_), TypeKind::Unit(_))
             | (TypeKind::Int(IntType::Int, _), TypeKind::Int(IntType::Int, _)) => Ok(()),
 
-            (ref expected @ TypeKind::Function(ref fex), ref actual @ TypeKind::Function(ref fact)) => {
+            (
+                ref expected @ TypeKind::Function(ref fex),
+                ref actual @ TypeKind::Function(ref fact),
+            ) => {
                 self.unify_ty_ty(&fex.ret, &fact.ret)?;
 
                 if fex.params.len() == fact.params.len() {
@@ -78,7 +81,9 @@ impl<'db> InferCtxt<'db> {
 
             // Unify ?N ~ any
             (TypeKind::Infer(InferType::TypeVar(var), _), actual) => self.unify_ty_var(actual, var),
-            (expected, TypeKind::Infer(InferType::TypeVar(var), _)) => self.unify_ty_var(expected, var),
+            (expected, TypeKind::Infer(InferType::TypeVar(var), _)) => {
+                self.unify_ty_var(expected, var)
+            }
 
             (expected, actual) => Err(InferError::TypesNotEq { expected, actual }),
         }

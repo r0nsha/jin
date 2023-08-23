@@ -4,7 +4,6 @@ use inkwell::{
 };
 
 use crate::{
-    db::TypeId,
     llvm::generate::Generator,
     ty::{FunctionType, IntType, TypeKind},
 };
@@ -23,12 +22,6 @@ pub trait LlvmType<'db, 'cx, T> {
     fn llvm_type(&self, cx: &Generator<'db, 'cx>) -> T;
 }
 
-impl<'db, 'cx> LlvmType<'db, 'cx, ll::BasicTypeEnum<'cx>> for TypeId {
-    fn llvm_type(&self, cx: &Generator<'db, 'cx>) -> ll::BasicTypeEnum<'cx> {
-        cx.db[*self].llvm_type(cx)
-    }
-}
-
 impl<'db, 'cx> LlvmType<'db, 'cx, ll::BasicTypeEnum<'cx>> for TypeKind {
     fn llvm_type(&self, cx: &Generator<'db, 'cx>) -> ll::BasicTypeEnum<'cx> {
         match self {
@@ -38,6 +31,7 @@ impl<'db, 'cx> LlvmType<'db, 'cx, ll::BasicTypeEnum<'cx>> for TypeKind {
             Self::Unit(_) => cx.unit_ty().into(),
             Self::Never(_) => cx.never_ty().into(),
             Self::Infer(_, _) => panic!("unexpected infer type {}", self.display(cx.db)),
+            Self::Unknown => panic!("unexpected unknown type"),
         }
     }
 }

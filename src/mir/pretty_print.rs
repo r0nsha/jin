@@ -1,6 +1,6 @@
 use pretty::RcDoc;
 
-use super::{Block, Function, Inst, Mir, TypeId, ValueId};
+use super::{Block, Function, Inst, Mir, ValueId};
 use crate::{
     ast::BinaryOp,
     db::{Db, ScopeLevel, SymbolId},
@@ -18,7 +18,7 @@ pub fn print(db: &Db, mir: &Mir) {
 }
 
 fn print_function<'d>(db: &Db, fun: &Function) -> RcDoc<'d, ()> {
-    let ret_ty = db[db[fun.id].ty].as_function().unwrap().ret.to_doc(db, fun);
+    let ret_ty = db[fun.id].ty.as_function().unwrap().ret.to_doc(db, fun);
 
     RcDoc::text("fn")
         .append(RcDoc::space())
@@ -130,12 +130,6 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
 impl<'db, 'd> ToDoc<'db, 'd> for ValueId {
     fn to_doc(&self, _db: &'db Db, _fun: &'db Function) -> RcDoc<'d, ()> {
         RcDoc::text(format!("v{}", self.0))
-    }
-}
-
-impl<'db, 'd> ToDoc<'db, 'd> for TypeId {
-    fn to_doc(&self, db: &'db Db, fun: &'db Function) -> RcDoc<'d, ()> {
-        db[*self].to_doc(db, fun)
     }
 }
 

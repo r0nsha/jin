@@ -7,7 +7,7 @@ use crate::{
     mir::{builder::FunctionBuilder, Function, Mir, SymbolId, ValueId},
     span::Spanned,
     tast::{self, TypedAst},
-    ty::Typed,
+    ty::{Type, Typed},
 };
 
 pub fn lower(db: &mut Db, tast: &TypedAst) -> Result<Mir> {
@@ -57,7 +57,7 @@ impl<'db> LowerFunctionCtxt<'db> {
             let span = fun.body.span;
             self.bx.build_return(body_value, span);
             self.bx.build_unreachable(
-                self.db.alloc_ty(*self.db[fun.ty].as_function().unwrap().ret.clone()),
+                Type::new(fun.ty.as_function().unwrap().ret.as_ref().clone()),
                 span,
             );
         }
@@ -138,7 +138,9 @@ impl<'db> LowerFunctionCtxt<'db> {
     fn lower_call(&mut self, call: &tast::Call) -> ValueId {
         let callee = self.lower_expr(&call.callee);
 
-        let params_map = self.db[call.callee.ty()]
+        let params_map = call
+            .callee
+            .ty()
             .as_function()
             .unwrap()
             .params
