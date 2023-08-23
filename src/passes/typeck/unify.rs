@@ -13,8 +13,8 @@ impl<'db> InferCtxt<'db> {
 
         for constraint in constraints.iter() {
             match constraint {
-                Constraint::Eq { expected, actual } => {
-                    self.unify_ty_ty(*expected, *actual)?;
+                Constraint::Eq { expected, found } => {
+                    self.unify_ty_ty(*expected, *found)?;
                 }
             }
         }
@@ -23,11 +23,11 @@ impl<'db> InferCtxt<'db> {
     }
 
     // TODO: remove pub
-    pub fn unify_ty_ty(&mut self, expected: Type, actual: Type) -> Result<(), InferError> {
+    pub fn unify_ty_ty(&mut self, expected: Type, found: Type) -> Result<(), InferError> {
         let expected = expected.normalize(self);
-        let actual = actual.normalize(self);
+        let found = found.normalize(self);
 
-        match (expected.as_ref(), actual.as_ref()) {
+        match (expected.as_ref(), found.as_ref()) {
             (TypeKind::Never(_), _)
             | (_, TypeKind::Never(_))
             | (TypeKind::Bool(_), TypeKind::Bool(_))
@@ -44,25 +44,25 @@ impl<'db> InferCtxt<'db> {
 
                     Ok(())
                 } else {
-                    Err(InferError::TypesNotEq { expected, actual })
+                    Err(InferError::TypesNotEq { expected, found })
                 }
             }
 
             // Unify ?X ~ ?Y
             (
                 TypeKind::Infer(InferType::TypeVar(expected), _),
-                TypeKind::Infer(InferType::TypeVar(actual), _),
+                TypeKind::Infer(InferType::TypeVar(found), _),
             ) => {
-                self.ty_unification_table.unify_var_var(*expected, *actual)?;
+                self.ty_unification_table.unify_var_var(*expected, *found)?;
                 Ok(())
             }
 
             // Unify ?int ~ ?int
             (
                 TypeKind::Infer(InferType::IntVar(expected), _),
-                TypeKind::Infer(InferType::IntVar(actual), _),
+                TypeKind::Infer(InferType::IntVar(found), _),
             ) => {
-                self.int_unification_table.unify_var_var(*expected, *actual)?;
+                self.int_unification_table.unify_var_var(*expected, *found)?;
                 Ok(())
             }
 
@@ -75,16 +75,16 @@ impl<'db> InferCtxt<'db> {
             }
 
             // Unify ?N ~ any
-            (TypeKind::Infer(InferType::TypeVar(var), _), actual) => {
-                self.unify_ty_var(Type::from(actual), *var)
+            (TypeKind::Infer(InferType::TypeVar(var), _), found) => {
+                self.unify_ty_var(Type::from(found), *var)
             }
             (expected, TypeKind::Infer(InferType::TypeVar(var), _)) => {
                 self.unify_ty_var(Type::from(expected), *var)
             }
 
-            (expected, actual) => Err(InferError::TypesNotEq {
+            (expected, found) => Err(InferError::TypesNotEq {
                 expected: Type::from(expected),
-                actual: Type::from(actual),
+                found: Type::from(found),
             }),
         }
     }
@@ -97,21 +97,21 @@ impl<'db> InferCtxt<'db> {
 }
 
 impl From<(Type, Type)> for InferError {
-    fn from((expected, actual): (Type, Type)) -> Self {
-        Self::TypesNotEq { expected, actual }
+    fn from((expected, found): (Type, Type)) -> Self {
+        Self::TypesNotEq { expected, found }
     }
 }
 
 impl From<(IntVarValue, IntVarValue)> for InferError {
-    fn from((expected, actual): (IntVarValue, IntVarValue)) -> Self {
-        Self::TypesNotEq { expected: Type::new(expected.into()), actual: Type::new(actual.into()) }
+    fn from((expected, found): (IntVarValue, IntVarValue)) -> Self {
+        Self::TypesNotEq { expected: Type::new(expected.into()), found: Type::new(found.into()) }
     }
 }
 
 pub enum InferError {
     TypesNotEq {
         expected: Type,
-        actual: Type,
+        found: Type,
     },
     InfiniteType {
         ty: Type,
@@ -123,19 +123,19 @@ pub enum InferError {
 impl InferError {
     pub fn into_diagnostic(self, db: &Db) -> Diagnostic {
         match self {
-            Self::TypesNotEq { expected, actual } => Diagnostic::error("infer::incompatible_types")
+            Self::TypesNotEq { expected, found } => Diagnostic::error("infer::incompatible_types")
                 .with_message(format!(
                     "expected `{}`, got `{}` instead",
                     expected.display(db),
-                    actual.display(db),
+                    found.display(db),
                 ))
                 .with_label(Label::primary(expected.span()).with_message(format!(
                     "expected type `{}` originates here",
                     expected.display(db)
                 )))
                 .with_label(
-                    Label::secondary(actual.span())
-                        .with_message(format!("found type `{}` here", actual.display(db))),
+                    Label::secondary(found.span())
+                        .with_message(format!("found type `{}` here", found.display(db))),
                 ),
             Self::InfiniteType { ty, .. } => Diagnostic::error("infer::infinite_type")
                 .with_message(format!("type `{}` is an infinite type", ty.display(db)))

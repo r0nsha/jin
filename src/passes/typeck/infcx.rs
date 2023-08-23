@@ -50,8 +50,8 @@ impl<'db> InferCtxt<'db> {
     }
 
     #[inline]
-    pub fn add_eq_constraint(&mut self, expected: Type, actual: Type) {
-        self.constraints.push(Constraint::Eq { expected, actual });
+    pub fn add_eq_constraint(&mut self, expected: Type, found: Type) {
+        self.constraints.push(Constraint::Eq { expected, found });
     }
 }
 
@@ -68,18 +68,18 @@ impl<'db> InferCtxt<'db> {
 //     }
 // }
 //
-// #[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable, Lift)]
-// pub struct ExpectedFound<T> {
-//     pub expected: T,
-//     pub found: T,
-// }
-//
-// impl<T> ExpectedFound<T> {
-//     pub fn new(a_is_expected: bool, a: T, b: T) -> Self {
-//         if a_is_expected {
-//             ExpectedFound { expected: a, found: b }
-//         } else {
-//             ExpectedFound { expected: b, found: a }
-//         }
-//     }
-// }
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct ExpectedFound<T> {
+    pub expected: T,
+    pub found: T,
+}
+
+impl<T> ExpectedFound<T> {
+    pub fn new(a_is_expected: bool, a: T, b: T) -> Self {
+        if a_is_expected {
+            ExpectedFound { expected: a, found: b }
+        } else {
+            ExpectedFound { expected: b, found: a }
+        }
+    }
+}

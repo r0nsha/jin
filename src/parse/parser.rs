@@ -55,7 +55,7 @@ impl<'a> Parser<'a> {
 
             Err(ParseError::UnexpectedToken {
                 expected: "fn".to_string(),
-                actual: token.kind,
+                found: token.kind,
                 span: token.span,
             })
         }
@@ -348,7 +348,7 @@ impl<'a> Parser<'a> {
             _ => {
                 return Err(ParseError::UnexpectedToken {
                     expected: "an expression".to_string(),
-                    actual: tok.kind,
+                    found: tok.kind,
                     span: tok.span,
                 })
             }
@@ -374,7 +374,7 @@ impl<'a> Parser<'a> {
 
                 return Err(ParseError::UnexpectedToken {
                     expected: "{ or `if`".to_string(),
-                    actual: tok.kind,
+                    found: tok.kind,
                     span: tok.span,
                 });
             }
@@ -533,7 +533,7 @@ impl<'a> Parser<'a> {
         } else {
             Err(ParseError::UnexpectedToken {
                 expected: expected.to_string(),
-                actual: tok.kind,
+                found: tok.kind,
                 span: tok.span,
             })
         }
@@ -544,16 +544,16 @@ type ParseResult<T> = Result<T, ParseError>;
 
 #[derive(Debug)]
 enum ParseError {
-    UnexpectedToken { expected: String, actual: TokenKind, span: Span },
+    UnexpectedToken { expected: String, found: TokenKind, span: Span },
     UnexpectedEof { span: Span },
 }
 
 impl From<ParseError> for Diagnostic {
     fn from(err: ParseError) -> Self {
         match err {
-            ParseError::UnexpectedToken { expected, actual, span } => {
+            ParseError::UnexpectedToken { expected, found, span } => {
                 Self::error("parse::unexpected_token")
-                    .with_message(format!("expected {expected}, got {actual} instead"))
+                    .with_message(format!("expected {expected}, got {found} instead"))
                     .with_label(Label::primary(span).with_message("found here"))
             }
             ParseError::UnexpectedEof { span } => Self::error("parse::unexpected_eof")

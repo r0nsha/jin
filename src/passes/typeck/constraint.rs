@@ -27,5 +27,5 @@ impl ops::DerefMut for Constraints {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Constraint {
-    Eq { expected: Type, actual: Type },
+    Eq { expected: Type, found: Type },
 }
