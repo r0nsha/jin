@@ -1,16 +1,22 @@
 use std::io;
 
-use super::{Block, Call, Expr, Function, Item, ItemKind, Lit, LitKind, Module, Name, Return};
 use crate::{
     db::Database,
-    hir::{Binary, CallArg, If},
+    tast::{
+        Binary, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name,
+        Return, TypedAst,
+    },
 };
 
-pub(super) fn print_module(db: &Database, module: &Module) -> io::Result<()> {
-    let mut cx =
-        Cx { db, builder: ptree::TreeBuilder::new(db[module.id].name.standard_full_name()) };
+pub(super) fn print(db: &Database, tast: &TypedAst) -> io::Result<()> {
+    let mut cx = Cx {
+        db,
+        builder: ptree::TreeBuilder::new(
+            db.main_module().expect("to have a main module").name.standard_full_name(),
+        ),
+    };
 
-    for item in &module.items {
+    for item in &tast.items {
         item.pretty_print(&mut cx);
     }
 

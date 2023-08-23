@@ -86,15 +86,15 @@ fn main() -> Result<()> {
 
 fn build(db: &mut Database) {
     db.timings.start("parse");
-    let ast_lib = parse::parse_modules(db);
+    let ast = parse::parse_modules(db);
 
     if db.build_options().should_emit(EmitOption::Ast) {
-        ast_lib.pretty_print().expect("ast printing to work");
+        ast.pretty_print().expect("ast printing to work");
     }
     expect!(db);
 
     db.timings.start("ast -> hir");
-    let mut hir = hir::lower(db, ast_lib);
+    let mut hir = hir::lower(db, ast);
 
     db.timings.start("resolve");
     passes::resolve(db, &mut hir);
@@ -104,6 +104,10 @@ fn build(db: &mut Database) {
     passes::typeck(db, &mut hir);
     db.timings.stop();
     expect!(db);
+
+    if db.build_options().should_emit(EmitOption::TypedAst) {
+        todo!();
+    }
 
     if db.build_options().should_emit(EmitOption::Hir) {
         hir.pretty_print(db).expect("hir printing to work");

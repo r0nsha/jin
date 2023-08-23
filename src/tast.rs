@@ -1,44 +1,31 @@
-mod lower;
 mod pretty_print;
 
 use std::io;
 
 use enum_as_inner::EnumAsInner;
-pub use lower::lower;
 
 use crate::{
     ast::BinaryOp,
     common::Word,
-    db::{Database, ModuleId, SymbolId, TypeId},
+    db::{Database, SymbolId, TypeId},
     span::{Span, Spanned},
     ty::Typed,
 };
 
 #[derive(Debug, Clone)]
-pub struct Hir {
-    pub modules: Vec<Module>,
+pub struct TypedAst {
+    pub items: Vec<Item>,
 }
 
-impl Hir {
+impl TypedAst {
     pub fn pretty_print(&self, db: &Database) -> io::Result<()> {
         println!();
-        println!("HIR:");
+        println!("Typed Ast:");
         println!();
-
-        for module in &self.modules {
-            pretty_print::print_module(db, module)?;
-        }
-
+        pretty_print::print(db, self)?;
         println!();
-
         Ok(())
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct Module {
-    pub id: ModuleId,
-    pub items: Vec<Item>,
 }
 
 #[derive(Debug, Clone)]

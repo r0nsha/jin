@@ -170,6 +170,7 @@ impl BuildOptions {
 pub enum EmitOption {
     Ast,
     Hir,
+    TypedAst,
     Mir,
     LlvmIr,
 }
