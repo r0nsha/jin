@@ -4,7 +4,7 @@ use super::{Expr, Function, Item, LitKind, Module};
 use crate::ast::{Block, CallArg};
 
 pub(super) fn print_module(module: &Module) -> io::Result<()> {
-    let mut cx = Cx { builder: ptree::TreeBuilder::new(module.name.standard_full_name()) };
+    let mut cx = PPCtxt { builder: ptree::TreeBuilder::new(module.name.standard_full_name()) };
 
     for item in &module.items {
         item.pretty_print(&mut cx);
@@ -14,16 +14,16 @@ pub(super) fn print_module(module: &Module) -> io::Result<()> {
     ptree::print_tree_with(&tree, &ptree::PrintConfig::default())
 }
 
-struct Cx {
+struct PPCtxt {
     builder: ptree::TreeBuilder,
 }
 
 trait PrettyPrint {
-    fn pretty_print(&self, cx: &mut Cx);
+    fn pretty_print(&self, cx: &mut PPCtxt);
 }
 
 impl PrettyPrint for Expr {
-    fn pretty_print(&self, cx: &mut Cx) {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
         match self {
             Self::Item(item) => item.pretty_print(cx),
             Self::Return(ret) => {
@@ -101,7 +101,7 @@ impl PrettyPrint for Expr {
 }
 
 impl PrettyPrint for Item {
-    fn pretty_print(&self, cx: &mut Cx) {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
         match self {
             Self::Function(fun) => fun.pretty_print(cx),
         }
@@ -109,7 +109,7 @@ impl PrettyPrint for Item {
 }
 
 impl PrettyPrint for Function {
-    fn pretty_print(&self, cx: &mut Cx) {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
         cx.builder.begin_child(format!("fn {}", self.sig.name));
 
         if !self.sig.params.is_empty() {
@@ -129,7 +129,7 @@ impl PrettyPrint for Function {
 }
 
 impl PrettyPrint for Block {
-    fn pretty_print(&self, cx: &mut Cx) {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
         cx.builder.begin_child("block".to_string());
 
         for expr in &self.exprs {

@@ -22,7 +22,7 @@ use crate::{
 };
 
 pub fn typeck(db: &mut Database, tast: &mut TypedAst) {
-    let mut cx = TypeCx::new(db);
+    let mut cx = TypeCtxt::new(db);
 
     cx.fill_symbol_tys();
     cx.infer_all(tast);
@@ -35,14 +35,14 @@ pub fn typeck(db: &mut Database, tast: &mut TypedAst) {
     cx.substitution(tast);
 }
 
-pub struct TypeCx<'db> {
+pub struct TypeCtxt<'db> {
     pub db: &'db mut Database,
     pub ty_unification_table: InPlaceUnificationTable<TypeVar>,
     pub int_unification_table: InPlaceUnificationTable<IntVar>,
     pub constraints: Constraints,
 }
 
-impl<'db> TypeCx<'db> {
+impl<'db> TypeCtxt<'db> {
     fn new(db: &'db mut Database) -> Self {
         Self {
             db,
@@ -53,7 +53,7 @@ impl<'db> TypeCx<'db> {
     }
 }
 
-impl<'db> TypeCx<'db> {
+impl<'db> TypeCtxt<'db> {
     fn fill_symbol_tys(&mut self) {
         // TODO: find a less unsightly code pattern for mutating all symbols...
         for i in 0..self.db.symbols.len() {
@@ -105,11 +105,11 @@ impl<'db> TypeCx<'db> {
 }
 
 trait Infer<'db> {
-    fn infer(&mut self, cx: &mut TypeCx<'db>, env: &mut TypeEnv);
+    fn infer(&mut self, cx: &mut TypeCtxt<'db>, env: &mut TypeEnv);
 }
 
 impl Infer<'_> for Expr {
-    fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
         match self {
             Self::Item(inner) => inner.infer(cx, env),
             Self::If(inner) => inner.infer(cx, env),
@@ -124,7 +124,7 @@ impl Infer<'_> for Expr {
 }
 
 impl Infer<'_> for Item {
-    fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
         match &mut self.kind {
             ItemKind::Function(fun) => fun.infer(cx, env),
         }
@@ -134,7 +134,7 @@ impl Infer<'_> for Item {
 }
 
 impl Infer<'_> for Function {
-    fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
         let ret_ty = cx.alloc_ty_var(self.span);
 
         for param in &mut self.sig.params {
@@ -171,7 +171,7 @@ impl Infer<'_> for Function {
 }
 
 impl Infer<'_> for If {
-    fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
         self.cond.infer(cx, env);
 
         let expected = cx.db.alloc_ty(Type::Bool(self.cond.span()));
@@ -193,7 +193,7 @@ impl Infer<'_> for If {
 }
 
 impl Infer<'_> for Block {
-    fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
         for expr in &mut self.exprs {
             expr.infer(cx, env);
         }
@@ -203,7 +203,7 @@ impl Infer<'_> for Block {
 }
 
 impl Infer<'_> for Return {
-    fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
         self.ty = cx.db.alloc_ty(Type::Never(self.span));
 
         let call_frame = env.call_stack.current().expect("to be inside a call frame");
@@ -215,7 +215,7 @@ impl Infer<'_> for Return {
 }
 
 impl Infer<'_> for Call {
-    fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
         self.callee.infer(cx, env);
 
         for arg in &mut self.args {
@@ -250,7 +250,7 @@ impl Infer<'_> for Call {
 }
 
 impl Infer<'_> for Binary {
-    fn infer(&mut self, cx: &mut TypeCx<'_>, env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut TypeCtxt<'_>, env: &mut TypeEnv) {
         self.lhs.infer(cx, env);
         self.rhs.infer(cx, env);
 
@@ -278,13 +278,13 @@ impl Infer<'_> for Binary {
 }
 
 impl Infer<'_> for Name {
-    fn infer(&mut self, cx: &mut TypeCx<'_>, _env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut TypeCtxt<'_>, _env: &mut TypeEnv) {
         self.ty = cx.lookup(self.id);
     }
 }
 
 impl Infer<'_> for Lit {
-    fn infer(&mut self, cx: &mut TypeCx<'_>, _env: &mut TypeEnv) {
+    fn infer(&mut self, cx: &mut TypeCtxt<'_>, _env: &mut TypeEnv) {
         self.ty = match &self.kind {
             LitKind::Int(_) => cx.alloc_int_var(self.span),
             LitKind::Bool(_) => cx.db.alloc_ty(Type::Bool(self.span)),

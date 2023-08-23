@@ -23,7 +23,7 @@ pub fn lower(db: &mut Database, tast: &TypedAst) -> Result<Mir> {
 fn lower_item(db: &mut Database, mir: &mut Mir, item: &tast::Item) -> Result<()> {
     match &item.kind {
         tast::ItemKind::Function(fun) => {
-            let fun = LowerFunctionCx::new(db, mir, fun.id).lower_function(fun)?;
+            let fun = LowerFunctionCtxt::new(db, mir, fun.id).lower_function(fun)?;
             mir.add_function(fun);
         }
     }
@@ -31,13 +31,13 @@ fn lower_item(db: &mut Database, mir: &mut Mir, item: &tast::Item) -> Result<()>
     Ok(())
 }
 
-struct LowerFunctionCx<'db> {
+struct LowerFunctionCtxt<'db> {
     db: &'db mut Database,
     mir: &'db mut Mir,
     bx: FunctionBuilder,
 }
 
-impl<'db> LowerFunctionCx<'db> {
+impl<'db> LowerFunctionCtxt<'db> {
     fn new(db: &'db mut Database, mir: &'db mut Mir, fun_id: SymbolId) -> Self {
         Self { db, mir, bx: FunctionBuilder::new(fun_id) }
     }

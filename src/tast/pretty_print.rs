@@ -9,7 +9,7 @@ use crate::{
 };
 
 pub(super) fn print(db: &Database, tast: &TypedAst) -> io::Result<()> {
-    let mut cx = Cx { db, builder: ptree::TreeBuilder::new("Typed Ast".to_string()) };
+    let mut cx = PPCtxt { db, builder: ptree::TreeBuilder::new("Typed Ast".to_string()) };
 
     for item in &tast.items {
         item.pretty_print(&mut cx);
@@ -19,17 +19,17 @@ pub(super) fn print(db: &Database, tast: &TypedAst) -> io::Result<()> {
     ptree::print_tree_with(&tree, &ptree::PrintConfig::default())
 }
 
-struct Cx<'db> {
+struct PPCtxt<'db> {
     db: &'db Database,
     builder: ptree::TreeBuilder,
 }
 
 trait PrettyPrint {
-    fn pretty_print(&self, cx: &mut Cx);
+    fn pretty_print(&self, cx: &mut PPCtxt);
 }
 
 impl PrettyPrint for Expr {
-    fn pretty_print(&self, cx: &mut Cx) {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
         match self {
             Self::Item(inner) => inner.pretty_print(cx),
             Self::If(inner) => inner.pretty_print(cx),
@@ -44,7 +44,7 @@ impl PrettyPrint for Expr {
 }
 
 impl PrettyPrint for Item {
-    fn pretty_print(&self, cx: &mut Cx) {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
         match &self.kind {
             ItemKind::Function(fun) => fun.pretty_print(cx),
         }
@@ -52,7 +52,7 @@ impl PrettyPrint for Item {
 }
 
 impl PrettyPrint for Function {
-    fn pretty_print(&self, cx: &mut Cx) {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
         cx.builder.begin_child(format!(
             "fn {} (returns: {})",
             cx.db[self.id].qpath,
@@ -80,7 +80,7 @@ impl PrettyPrint for Function {
 }
 
 impl PrettyPrint for If {
-    fn pretty_print(&self, cx: &mut Cx) {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
         cx.builder.begin_child("if".to_string());
 
         cx.builder.begin_child("cond".to_string());
@@ -102,7 +102,7 @@ impl PrettyPrint for If {
 }
 
 impl PrettyPrint for Block {
-    fn pretty_print(&self, cx: &mut Cx) {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
         cx.builder.begin_child("block".to_string());
 
         for expr in &self.exprs {
@@ -114,7 +114,7 @@ impl PrettyPrint for Block {
 }
 
 impl PrettyPrint for Return {
-    fn pretty_print(&self, cx: &mut Cx) {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
         cx.builder.begin_child("return".to_string());
         self.expr.pretty_print(cx);
         cx.builder.end_child();
@@ -122,7 +122,7 @@ impl PrettyPrint for Return {
 }
 
 impl PrettyPrint for Call {
-    fn pretty_print(&self, cx: &mut Cx) {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
         cx.builder.begin_child(format!("call (result: {})", cx.db[self.ty].display(cx.db)));
         self.callee.pretty_print(cx);
 
@@ -148,7 +148,7 @@ impl PrettyPrint for Call {
 }
 
 impl PrettyPrint for Binary {
-    fn pretty_print(&self, cx: &mut Cx) {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
         cx.builder.begin_child(format!("{} (result: {})", self.op, cx.db[self.ty].display(cx.db)));
         self.lhs.pretty_print(cx);
         self.rhs.pretty_print(cx);
@@ -157,7 +157,7 @@ impl PrettyPrint for Binary {
 }
 
 impl PrettyPrint for Name {
-    fn pretty_print(&self, cx: &mut Cx) {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
         cx.builder.add_empty_child(format!(
             "`{}` (type: {})",
             cx.db[self.id].qpath,
@@ -167,7 +167,7 @@ impl PrettyPrint for Name {
 }
 
 impl PrettyPrint for Lit {
-    fn pretty_print(&self, cx: &mut Cx) {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
         let value_str = match &self.kind {
             LitKind::Int(v) => v.to_string(),
             LitKind::Bool(v) => v.to_string(),

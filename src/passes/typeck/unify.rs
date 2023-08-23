@@ -1,11 +1,11 @@
 use crate::{
     db::Database,
     diagnostics::{Diagnostic, Label},
-    passes::typeck::{constraint::Constraint, normalize::NormalizeTy, TypeCx},
+    passes::typeck::{constraint::Constraint, normalize::NormalizeTy, TypeCtxt},
     ty::{InferType, IntType, IntVarValue, Type, TypeVar},
 };
 
-impl<'db> TypeCx<'db> {
+impl<'db> TypeCtxt<'db> {
     pub fn unification(&mut self) -> Result<(), InferError> {
         let constraints = self.constraints.clone();
 
