@@ -43,7 +43,7 @@ impl<'cx> SymbolValue<'cx> {
     pub fn as_function_value(self) -> FunctionValue<'cx> {
         match self {
             SymbolValue::Function(f) => f,
-            SymbolValue::Variable(_) => panic!("expected Function, got {self:?} instead"),
+            SymbolValue::Variable(_) => panic!("expected Function, found {self:?}"),
         }
     }
 }

@@ -2,10 +2,7 @@ use ena::unify::InPlaceUnificationTable;
 
 use crate::{
     db::{Db, SymbolId},
-    passes::typeck::{
-        constraint::{Constraint, Constraints},
-        unify::InferError,
-    },
+    passes::typeck::constraint::{Constraint, Constraints},
     span::Span,
     ty::{InferType, IntVar, Type, TypeKind, TypeVar},
 };
@@ -54,17 +51,3 @@ impl<'db> InferCtxt<'db> {
         self.constraints.push(Constraint::Eq { expected, found });
     }
 }
-
-// pub struct At<'db> {
-//     infcx: &'db mut InferCtxt<'db>,
-//     a: Span,
-//     b: Span,
-//     a_is_expected: bool
-// }
-//
-// impl At<'_, '_> {
-//     pub fn eq(&mut self, a: Type, b: Type) -> Result<(), InferError> {
-//         self.infcx.unify_ty_ty(a, b)
-//     }
-// }
-//

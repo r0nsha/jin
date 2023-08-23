@@ -17,7 +17,7 @@ impl Token {
     pub fn ident(&self) -> Ustr {
         match self.kind {
             TokenKind::Ident(ident) => ident,
-            kind => panic!("expected Ident, got {kind:?}"),
+            kind => panic!("expected Ident, found {kind:?}"),
         }
     }
 

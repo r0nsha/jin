@@ -4,6 +4,7 @@ use crate::{
     db::Db,
     diagnostics::{Diagnostic, Label},
     passes::typeck::{constraint::Constraint, infcx::InferCtxt, normalize::NormalizeTy},
+    span::Span,
     ty::{InferType, IntType, IntVar, IntVarValue, Type, TypeKind, TypeVar},
 };
 
@@ -14,8 +15,9 @@ impl<'db> InferCtxt<'db> {
         for constraint in constraints.iter() {
             match constraint {
                 Constraint::Eq { expected, found } => {
-                    UnifyCtxt { infcx: self, a: *expected, b: *found, a_is_expected: true }
-                        .unify_ty_ty(*expected, *found)?;
+                    todo!()
+                    // UnifyCtxt { infcx: self, a: *expected, b: *found, a_is_expected: true }
+                    //     .unify_ty_ty(*expected, *found)?;
                 }
             }
         }
@@ -24,15 +26,32 @@ impl<'db> InferCtxt<'db> {
     }
 }
 
-struct UnifyCtxt<'db, 'cx> {
-    infcx: &'cx mut InferCtxt<'db>,
-    a: Type,
-    b: Type,
+pub struct At<'db, 'icx> {
+    infcx: &'icx mut InferCtxt<'db>,
+    span: Span,
     a_is_expected: bool,
 }
 
-impl<'db, 'cx> UnifyCtxt<'db, 'cx> {
-    fn unify_ty_ty(&mut self, a: Type, b: Type) -> Result<(), InferError> {
+impl At<'_, '_> {
+    pub fn eq(&mut self, a: Type, b: Type) -> Result<(), InferError> {
+        UnifyCtxt { infcx: self.infcx, a_is_expected: self.a_is_expected }
+            .unify_ty_ty(a, b)
+            .map_err(|err| match err {
+                UnifyError::TypeMismatch { .. } => {
+                    InferError::TypeMismatch(ExpectedFound::new(self.a_is_expected, a, b))
+                }
+                UnifyError::InfiniteType { ty } => InferError::InfiniteType { ty },
+            })
+    }
+}
+
+struct UnifyCtxt<'db, 'icx> {
+    infcx: &'icx mut InferCtxt<'db>,
+    a_is_expected: bool,
+}
+
+impl<'db, 'icx> UnifyCtxt<'db, 'icx> {
+    fn unify_ty_ty(&mut self, a: Type, b: Type) -> Result<(), UnifyError> {
         let a = a.normalize(self.infcx);
         let b = b.normalize(self.infcx);
 
@@ -53,7 +72,7 @@ impl<'db, 'cx> UnifyCtxt<'db, 'cx> {
 
                     Ok(())
                 } else {
-                    Err(self.ty_unification_err())
+                    Err(UnifyError::TypeMismatch { a, b })
                 }
             }
 
@@ -90,64 +109,58 @@ impl<'db, 'cx> UnifyCtxt<'db, 'cx> {
             // Unify T ~ ?T
             (_, TypeKind::Infer(InferType::TypeVar(var), _)) => self.unify_ty_var(a, *var),
 
-            (_, _) => Err(self.ty_unification_err()),
+            (_, _) => Err(UnifyError::TypeMismatch { a, b }),
         }
     }
 
-    fn unify_ty_var(&mut self, expected: Type, var: TypeVar) -> Result<(), InferError> {
-        expected.occurs_check(var).map_err(|ty| InferError::InfiniteType { var, ty })?;
-        self.infcx.ty_unification_table.unify_var_value(var, Some(expected))?;
+    fn unify_ty_var(&mut self, ty: Type, var: TypeVar) -> Result<(), UnifyError> {
+        ty.occurs_check(var).map_err(|ty| UnifyError::InfiniteType { ty })?;
+        self.infcx.ty_unification_table.unify_var_value(var, Some(ty))?;
         Ok(())
     }
+}
 
-    fn ty_unification_err(&self) -> InferError {
-        let ExpectedFound { expected, found } =
-            ExpectedFound::new(self.a_is_expected, self.a, self.b);
-        InferError::TypesNotEq { expected, found }
+impl From<(Type, Type)> for UnifyError {
+    fn from((a, b): (Type, Type)) -> Self {
+        Self::TypeMismatch { a, b }
     }
 }
 
-impl From<(Type, Type)> for InferError {
-    fn from((expected, found): (Type, Type)) -> Self {
-        Self::TypesNotEq { expected, found }
+impl From<(IntVarValue, IntVarValue)> for UnifyError {
+    fn from((a, b): (IntVarValue, IntVarValue)) -> Self {
+        Self::TypeMismatch { a: Type::new(a.into()), b: Type::new(b.into()) }
     }
 }
 
-impl From<(IntVarValue, IntVarValue)> for InferError {
-    fn from((expected, found): (IntVarValue, IntVarValue)) -> Self {
-        Self::TypesNotEq { expected: Type::new(expected.into()), found: Type::new(found.into()) }
-    }
+pub enum UnifyError {
+    TypeMismatch { a: Type, b: Type },
+    InfiniteType { ty: Type },
 }
 
 pub enum InferError {
-    TypesNotEq {
-        expected: Type,
-        found: Type,
-    },
-    InfiniteType {
-        ty: Type,
-        #[allow(unused)]
-        var: TypeVar,
-    },
+    TypeMismatch(ExpectedFound<Type>),
+    InfiniteType { ty: Type },
 }
 
 impl InferError {
     pub fn into_diagnostic(self, db: &Db) -> Diagnostic {
         match self {
-            Self::TypesNotEq { expected, found } => Diagnostic::error("infer::incompatible_types")
-                .with_message(format!(
-                    "expected `{}`, got `{}` instead",
-                    expected.display(db),
-                    found.display(db),
-                ))
-                .with_label(Label::primary(expected.span()).with_message(format!(
-                    "expected type `{}` originates here",
-                    expected.display(db)
-                )))
-                .with_label(
-                    Label::secondary(found.span())
-                        .with_message(format!("found type `{}` here", found.display(db))),
-                ),
+            Self::TypeMismatch(ExpectedFound { expected, found }) => {
+                Diagnostic::error("infer::incompatible_types")
+                    .with_message(format!(
+                        "expected `{}`, found `{}` instead",
+                        expected.display(db),
+                        found.display(db),
+                    ))
+                    .with_label(
+                        Label::primary(found.span())
+                            .with_message(format!("found type `{}` here", found.display(db))),
+                    )
+                // .with_label(Label::secondary(expected.span()).with_message(format!(
+                //     "expected type `{}` originates here",
+                //     expected.display(db)
+                // )))
+            }
             Self::InfiniteType { ty, .. } => Diagnostic::error("infer::infinite_type")
                 .with_message(format!("type `{}` is an infinite type", ty.display(db)))
                 .with_label(Label::primary(ty.span())),

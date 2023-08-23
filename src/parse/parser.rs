@@ -553,7 +553,7 @@ impl From<ParseError> for Diagnostic {
         match err {
             ParseError::UnexpectedToken { expected, found, span } => {
                 Self::error("parse::unexpected_token")
-                    .with_message(format!("expected {expected}, got {found} instead"))
+                    .with_message(format!("expected {expected}, found {found}"))
                     .with_label(Label::primary(span).with_message("found here"))
             }
             ParseError::UnexpectedEof { span } => Self::error("parse::unexpected_eof")
