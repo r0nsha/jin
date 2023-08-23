@@ -9,29 +9,30 @@ use ena::unify::{EqUnifyValue, InPlaceUnificationTable, UnifyKey};
 use crate::{
     ast::BinaryOp,
     db::{Database, SymbolId, TypeId},
-    hir::{
-        Binary, Block, Call, CallArg, Expr, Function, Hir, If, Item, ItemKind, Lit, LitKind,
-        Module, Name, Return,
-    },
     passes::typeck::{
         constraint::{Constraint, Constraints},
         type_env::{CallFrame, TypeEnv},
     },
     span::{Span, Spanned},
+    tast::{
+        Binary, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name,
+        Return, TypedAst,
+    },
     ty::{FunctionType, FunctionTypeParam, InferType, IntVar, IntVarValue, Type, TypeVar, Typed},
 };
 
-pub fn typeck(db: &mut Database, hir: &mut Hir) {
+pub fn typeck(db: &mut Database, tast: &mut TypedAst) {
     let mut cx = TypeCx::new(db);
 
-    cx.infer_all(&mut hir.modules);
+    cx.fill_symbol_tys();
+    cx.infer_all(tast);
 
     if let Err(e) = cx.unification() {
         db.diagnostics.add(e.into_diagnostic(db));
         return;
     }
 
-    cx.substitution(&mut hir.modules);
+    cx.substitution(tast);
 }
 
 pub struct TypeCx<'db> {
@@ -53,22 +54,18 @@ impl<'db> TypeCx<'db> {
 }
 
 impl<'db> TypeCx<'db> {
-    fn infer_all(&mut self, modules: &mut [Module]) {
+    fn fill_symbol_tys(&mut self) {
         // TODO: find a less unsightly code pattern for mutating all symbols...
         for i in 0..self.db.symbols.len() {
             let id = i.into();
             self.db.symbols[id].ty = self.alloc_ty_var(self.db.symbols[id].span);
         }
-
-        for module in modules {
-            self.infer_module(module);
-        }
     }
 
-    fn infer_module(&mut self, module: &mut Module) {
-        let mut env = TypeEnv::new(module.id);
+    fn infer_all(&mut self, tast: &mut TypedAst) {
+        let mut env = TypeEnv::new();
 
-        for item in &mut module.items {
+        for item in &mut tast.items {
             item.infer(self, &mut env);
         }
     }
@@ -142,7 +139,7 @@ impl Infer<'_> for Function {
 
         for param in &mut self.sig.params {
             param.ty = cx.alloc_ty_var(param.span);
-            cx.db[param.id.expect("to be resolved")].ty = param.ty;
+            cx.db[param.id].ty = param.ty;
         }
 
         let fun_ty = Type::Function(FunctionType {
@@ -152,21 +149,19 @@ impl Infer<'_> for Function {
                 .params
                 .iter()
                 .map(|param| FunctionTypeParam {
-                    name: Some(param.name.name()),
+                    name: Some(cx.db[param.id].name),
                     ty: cx.db[param.ty].clone(),
                 })
                 .collect(),
             span: self.span,
         });
 
-        let id = self.id.expect("to be resolved");
-
         self.ty = cx.db.alloc_ty(fun_ty);
 
-        let sym_ty = cx.lookup(id);
+        let sym_ty = cx.lookup(self.id);
         cx.add_eq_constraint(sym_ty, self.ty);
 
-        env.call_stack.push(CallFrame { id, ret_ty });
+        env.call_stack.push(CallFrame { id: self.id, ret_ty });
 
         self.body.infer(cx, env);
         cx.add_eq_constraint(ret_ty, self.body.ty);
@@ -284,7 +279,7 @@ impl Infer<'_> for Binary {
 
 impl Infer<'_> for Name {
     fn infer(&mut self, cx: &mut TypeCx<'_>, _env: &mut TypeEnv) {
-        self.ty = cx.lookup(self.id.expect("to be resolved"));
+        self.ty = cx.lookup(self.id);
     }
 }
 

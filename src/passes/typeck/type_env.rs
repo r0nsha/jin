@@ -1,18 +1,12 @@
-use crate::db::{SymbolId, ModuleId, TypeId};
+use crate::db::{SymbolId, TypeId};
 
 pub struct TypeEnv {
-    module_id: ModuleId,
     pub call_stack: CallStack,
 }
 
 impl TypeEnv {
-    pub fn new(module_id: ModuleId) -> Self {
-        Self { module_id, call_stack: CallStack::new() }
-    }
-
-    #[allow(unused)]
-    pub fn module_id(&self) -> ModuleId {
-        self.module_id
+    pub fn new() -> Self {
+        Self { call_stack: CallStack::new() }
     }
 }
 

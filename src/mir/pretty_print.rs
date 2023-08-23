@@ -155,8 +155,8 @@ impl<'db, 'd> ToDoc<'db, 'd> for SymbolId {
     fn to_doc(&self, db: &'db Database, _fun: &'db Function) -> RcDoc<'d, ()> {
         let sym = &db[*self];
 
-        let name = match sym.scope_level {
-            ScopeLevel::Global(_) => sym.qname.standard_full_name(),
+        let name = match sym.scope.level {
+            ScopeLevel::Global => sym.qname.standard_full_name(),
             ScopeLevel::Local(_) => sym.qname.name().to_string(),
         };
 

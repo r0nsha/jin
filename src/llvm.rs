@@ -23,7 +23,7 @@ use inkwell::{
 
 use crate::{
     common::target::{Arch, Os, TargetMetrics},
-    db::{Database, EmitOption},
+    db::{build_options::EmitOption, Database},
     llvm::generate::Generator,
     mir::Mir,
 };

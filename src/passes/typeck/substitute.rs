@@ -3,16 +3,16 @@ use std::collections::HashSet;
 use super::TypeCx;
 use crate::{
     db::TypeId,
-    hir::{
-        Binary, Block, Call, CallArg, Expr, Function, FunctionSig, If, Item, ItemKind, Module,
-        Return,
+    tast::{
+        Binary, Block, Call, CallArg, Expr, Function, FunctionSig, If, Item, ItemKind, Return,
+        TypedAst,
     },
     ty::{FunctionType, FunctionTypeParam, InferType, Type, TypeVar, Typed},
 };
 
 // Substitute
 impl<'db> TypeCx<'db> {
-    pub fn substitution(&mut self, modules: &mut [Module]) -> HashSet<TypeVar> {
+    pub fn substitution(&mut self, tast: &mut TypedAst) -> HashSet<TypeVar> {
         let mut unbound_vars = HashSet::new();
 
         for i in 0..self.db.symbols.len() {
@@ -20,10 +20,8 @@ impl<'db> TypeCx<'db> {
             self.substitute_tyid(ty, &mut unbound_vars);
         }
 
-        for module in modules {
-            for item in &mut module.items {
-                item.substitute(self, &mut unbound_vars);
-            }
+        for item in &mut tast.items {
+            item.substitute(self, &mut unbound_vars);
         }
 
         unbound_vars

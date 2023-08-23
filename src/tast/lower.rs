@@ -1,48 +1,38 @@
-use super::{
-    Block, Call, Expr, Function, FunctionParam, Hir, Item, Lit, LitKind, Module, ModuleId, Name,
-    Return, TypeId,
-};
 use crate::{
     ast,
-    db::{self, Database},
-    hir::{Binary, CallArg, FunctionSig, If, ItemKind},
+    db::Database,
+    tast::{
+        Binary, Block, Call, CallArg, Expr, Function, FunctionParam, FunctionSig, If, Item,
+        ItemKind, Lit, LitKind, Name, Return, TypeId, TypedAst,
+    },
 };
 
-pub fn lower(db: &mut Database, lib: ast::Ast) -> Hir {
-    Hir {
-        modules: lib
+pub fn lower(db: &mut Database, ast: ast::Ast) -> TypedAst {
+    TypedAst {
+        items: ast
             .modules
             .into_iter()
-            .map(|module| {
-                let id =
-                    db::ModuleInfo::alloc(db, module.source, module.name.clone(), module.is_main());
-                Cx { db, id }.run(module)
-            })
+            .flat_map(|module| LowerCtxt { _db: db }.run(module))
             .collect(),
     }
 }
 
-struct Cx<'db> {
-    #[allow(unused)]
-    db: &'db mut Database,
-    id: ModuleId,
+struct LowerCtxt<'db> {
+    _db: &'db mut Database,
 }
 
-impl<'db> Cx<'db> {
-    fn run(&mut self, module: ast::Module) -> Module {
-        Module {
-            id: self.id,
-            items: module.items.into_iter().map(|item| item.lower(self)).collect(),
-        }
+impl<'db> LowerCtxt<'db> {
+    fn run(&mut self, module: ast::Module) -> Vec<Item> {
+        module.items.into_iter().map(|item| item.lower(self)).collect()
     }
 }
 
 trait Lower<'db, T> {
-    fn lower(self, cx: &mut Cx<'db>) -> T;
+    fn lower(self, cx: &mut LowerCtxt<'db>) -> T;
 }
 
 impl Lower<'_, Item> for ast::Item {
-    fn lower(self, cx: &mut Cx<'_>) -> Item {
+    fn lower(self, cx: &mut LowerCtxt<'_>) -> Item {
         Item {
             kind: match self {
                 Self::Function(fun) => ItemKind::Function(fun.lower(cx)),
@@ -53,9 +43,9 @@ impl Lower<'_, Item> for ast::Item {
 }
 
 impl Lower<'_, Function> for ast::Function {
-    fn lower(self, cx: &mut Cx<'_>) -> Function {
+    fn lower(self, cx: &mut LowerCtxt<'_>) -> Function {
         Function {
-            id: None,
+            id: self.id.expect("to be resolved"),
             sig: self.sig.lower(cx),
             body: self.body.lower(cx),
             span: self.span,
@@ -65,19 +55,23 @@ impl Lower<'_, Function> for ast::Function {
 }
 
 impl Lower<'_, FunctionSig> for ast::FunctionSig {
-    fn lower(self, _cx: &mut Cx<'_>) -> FunctionSig {
-        let params = self
-            .params
-            .into_iter()
-            .map(|p| FunctionParam { id: None, name: p.name, span: p.span, ty: TypeId::null() })
-            .collect::<Vec<_>>();
-
-        FunctionSig { name: self.name, params }
+    fn lower(self, _cx: &mut LowerCtxt<'_>) -> FunctionSig {
+        FunctionSig {
+            params: self
+                .params
+                .into_iter()
+                .map(|p| FunctionParam {
+                    id: p.id.expect("to be resolved"),
+                    span: p.span,
+                    ty: TypeId::null(),
+                })
+                .collect::<Vec<_>>(),
+        }
     }
 }
 
 impl Lower<'_, Expr> for ast::Expr {
-    fn lower(self, cx: &mut Cx<'_>) -> Expr {
+    fn lower(self, cx: &mut LowerCtxt<'_>) -> Expr {
         match self {
             Self::Item(item) => Expr::Item(item.lower(cx)),
             Self::Return(ret) => Expr::Return(Return {
@@ -115,7 +109,11 @@ impl Lower<'_, Expr> for ast::Expr {
                 span: bin.span,
                 ty: TypeId::null(),
             }),
-            Self::Name(name) => Expr::Name(Name { id: None, name: name.name, ty: TypeId::null() }),
+            Self::Name(name) => Expr::Name(Name {
+                id: name.id.expect("to be resolved"),
+                span: name.span,
+                ty: TypeId::null(),
+            }),
             Self::Lit(lit) => Expr::Lit(Lit {
                 kind: match lit.kind {
                     ast::LitKind::Int(v) => LitKind::Int(v),
@@ -130,7 +128,7 @@ impl Lower<'_, Expr> for ast::Expr {
 }
 
 impl Lower<'_, CallArg> for ast::CallArg {
-    fn lower(self, cx: &mut Cx<'_>) -> CallArg {
+    fn lower(self, cx: &mut LowerCtxt<'_>) -> CallArg {
         match self {
             Self::Positional(expr) => CallArg::Positional(expr.lower(cx)),
             Self::Named(name, expr) => CallArg::Named(name, expr.lower(cx)),
@@ -138,7 +136,7 @@ impl Lower<'_, CallArg> for ast::CallArg {
     }
 }
 impl Lower<'_, Block> for ast::Block {
-    fn lower(self, cx: &mut Cx<'_>) -> Block {
+    fn lower(self, cx: &mut LowerCtxt<'_>) -> Block {
         Block {
             exprs: self.exprs.into_iter().map(|e| e.lower(cx)).collect(),
             span: self.span,

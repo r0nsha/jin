@@ -9,7 +9,7 @@ pub fn find_main(db: &mut Database) {
     let main_module_id = db.main_module_id().unwrap();
 
     let main_fun_id = if let Some(main_fun) = db.symbols.iter().find(|sym| {
-        sym.module_id == main_module_id
+        sym.scope.module_id == main_module_id
             && matches!(sym.kind.as_ref(), SymbolInfoKind::Function(db::FunctionInfo::Orphan))
             && sym.qname.name() == "main"
     }) {

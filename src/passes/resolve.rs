@@ -6,8 +6,8 @@ use crate::{
     ast::{Ast, Binary, Block, Call, CallArg, Expr, Function, If, Item, Module, Name, Return},
     common::{QName, Word},
     db::{
-        Database, FunctionInfo, ModuleId, ModuleInfo, ScopeLevel, SymbolId, SymbolInfo,
-        SymbolInfoKind, TypeId, Vis,
+        Database, FunctionInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, SymbolId, SymbolInfo,
+        SymbolInfoKind, Vis,
     },
     diagnostics::{Diagnostic, Label},
     span::Span,
@@ -83,19 +83,10 @@ impl<'db> Resolver<'db> {
         kind: SymbolInfoKind,
         name: Word,
     ) -> SymbolId {
-        let scope_level = ScopeLevel::Global(vis);
+        let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qname = self.db[module_id].name.clone().child(name.name());
 
-        let id = SymbolInfo::alloc(
-            self.db,
-            module_id,
-            name.name(),
-            qname,
-            scope_level,
-            kind,
-            TypeId::null(),
-            name.span(),
-        );
+        let id = SymbolInfo::alloc(self.db, qname, scope, kind, name.span());
 
         if let Some(prev_id) = self.global_scope.insert(module_id, name.name(), id) {
             let sym = &self.db[prev_id];
@@ -128,12 +119,9 @@ impl<'db> Resolver<'db> {
     fn declare_symbol(&mut self, env: &mut Env, kind: SymbolInfoKind, name: Word) -> SymbolId {
         let id = SymbolInfo::alloc(
             self.db,
-            env.module_id,
-            name.name(),
             env.scope_name(self.db).child(name.name()),
-            env.scope_level(),
+            ScopeInfo { module_id: env.module_id, level: env.scope_level(), vis: Vis::Private },
             kind,
-            TypeId::null(),
             name.span(),
         );
 

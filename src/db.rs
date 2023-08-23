@@ -1,3 +1,4 @@
+pub mod build_options;
 mod timing;
 
 use std::{
@@ -6,17 +7,12 @@ use std::{
 };
 
 use anyhow::{bail, Result};
-use clap::ValueEnum;
 use path_absolutize::Absolutize;
 use ustr::Ustr;
 
 use crate::{
-    common::{
-        new_key_type,
-        target::{TargetMetrics, TargetPlatform},
-        IndexVec, QName,
-    },
-    db::timing::Timings,
+    common::{new_key_type, IndexVec, QName},
+    db::{build_options::BuildOptions, timing::Timings},
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
     ty::Type,
@@ -148,34 +144,6 @@ new_db_key!(ModuleId -> modules : ModuleInfo);
 new_db_key!(SymbolId -> symbols : SymbolInfo);
 new_db_key!(TypeId -> types : Type);
 
-#[derive(Debug)]
-pub struct BuildOptions {
-    pub timings: bool,
-    pub emit: Vec<EmitOption>,
-    pub target_platform: TargetPlatform,
-    pub target_metrics: TargetMetrics,
-}
-
-impl BuildOptions {
-    pub fn new(timings: bool, emit: Vec<EmitOption>, target_platform: TargetPlatform) -> Self {
-        let target_metrics = target_platform.metrics();
-        Self { timings, emit, target_platform, target_metrics }
-    }
-
-    pub fn should_emit(&self, opt: EmitOption) -> bool {
-        self.emit.contains(&opt)
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
-pub enum EmitOption {
-    Ast,
-    Hir,
-    TypedAst,
-    Mir,
-    LlvmIr,
-}
-
 #[derive(Debug, Clone)]
 pub struct ModuleInfo {
     #[allow(unused)]
@@ -202,13 +170,19 @@ impl ModuleInfo {
 #[derive(Debug, Clone)]
 pub struct SymbolInfo {
     pub id: SymbolId,
-    pub module_id: ModuleId,
     pub name: Ustr,
     pub qname: QName,
-    pub scope_level: ScopeLevel,
+    pub scope: ScopeInfo,
     pub kind: Box<SymbolInfoKind>,
     pub ty: TypeId,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ScopeInfo {
+    pub module_id: ModuleId,
+    pub level: ScopeLevel,
+    pub vis: Vis,
 }
 
 #[derive(Debug, Clone)]
@@ -220,32 +194,20 @@ pub enum SymbolInfoKind {
 impl SymbolInfo {
     pub fn alloc(
         db: &mut Database,
-        module_id: ModuleId,
-        name: Ustr,
         qname: QName,
-        scope_level: ScopeLevel,
+        scope: ScopeInfo,
         kind: SymbolInfoKind,
-        ty: TypeId,
         span: Span,
     ) -> SymbolId {
         db.symbols.push_with_key(|id| Self {
             id,
-            module_id,
-            name,
+            name: qname.name(),
             qname,
-            scope_level,
+            scope,
             kind: Box::new(kind),
-            ty,
+            ty: TypeId::null(),
             span,
         })
-    }
-
-    #[allow(unused)]
-    pub fn vis(&self) -> Vis {
-        match &self.scope_level {
-            ScopeLevel::Global(vis) => *vis,
-            ScopeLevel::Local(_) => Vis::Private,
-        }
     }
 
     pub fn set_ty(&mut self, ty: TypeId) {
@@ -263,7 +225,7 @@ pub enum Vis {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ScopeLevel {
-    Global(Vis),
+    Global,
     Local(usize),
 }
 
@@ -276,9 +238,9 @@ impl PartialOrd for ScopeLevel {
 impl Ord for ScopeLevel {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         match (self, other) {
-            (Self::Global(_), Self::Global(_)) => cmp::Ordering::Equal,
-            (Self::Global(_), Self::Local(_)) => cmp::Ordering::Less,
-            (Self::Local(_), Self::Global(_)) => cmp::Ordering::Greater,
+            (Self::Global, Self::Global) => cmp::Ordering::Equal,
+            (Self::Global, Self::Local(_)) => cmp::Ordering::Less,
+            (Self::Local(_), Self::Global) => cmp::Ordering::Greater,
             (Self::Local(a), Self::Local(b)) => a.cmp(b),
         }
     }

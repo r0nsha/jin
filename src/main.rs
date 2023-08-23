@@ -17,7 +17,6 @@ mod ast;
 mod common;
 mod db;
 mod diagnostics;
-mod hir;
 mod llvm;
 mod mir;
 mod parse;
@@ -33,7 +32,10 @@ use clap::{Parser, Subcommand};
 
 use crate::{
     common::target::TargetPlatform,
-    db::{BuildOptions, Database, EmitOption},
+    db::{
+        build_options::{BuildOptions, EmitOption},
+        Database,
+    },
 };
 
 #[derive(Parser)]
@@ -86,31 +88,27 @@ fn main() -> Result<()> {
 
 fn build(db: &mut Database) {
     db.timings.start("parse");
-    let ast = parse::parse_modules(db);
+    let mut ast = parse::parse_modules(db);
 
     if db.build_options().should_emit(EmitOption::Ast) {
         ast.pretty_print().expect("ast printing to work");
     }
     expect!(db);
 
-    db.timings.start("ast -> hir");
-    let mut hir = hir::lower(db, ast);
-
     db.timings.start("resolve");
-    passes::resolve(db, &mut hir);
+    passes::resolve(db, &mut ast);
     expect!(db);
 
+    db.timings.start("ast -> hir");
+    let mut tast = tast::lower(db, ast);
+
     db.timings.start("typeck");
-    passes::typeck(db, &mut hir);
+    passes::typeck(db, &mut tast);
     db.timings.stop();
     expect!(db);
 
     if db.build_options().should_emit(EmitOption::TypedAst) {
-        todo!();
-    }
-
-    if db.build_options().should_emit(EmitOption::Hir) {
-        hir.pretty_print(db).expect("hir printing to work");
+        tast.pretty_print(db).expect("typed-ast printing to work");
     }
 
     db.timings.start("find main");
@@ -118,7 +116,7 @@ fn build(db: &mut Database) {
     expect!(db);
 
     db.timings.start("hir -> mir");
-    let mir = mir::lower(db, &hir).expect("mir lowering to succeed");
+    let mir = mir::lower(db, &tast).expect("mir lowering to succeed");
     db.timings.stop();
     expect!(db);
 

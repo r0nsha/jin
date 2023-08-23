@@ -1,8 +1,10 @@
+mod lower;
 mod pretty_print;
 
 use std::io;
 
 use enum_as_inner::EnumAsInner;
+pub use lower::lower;
 
 use crate::{
     ast::BinaryOp,
