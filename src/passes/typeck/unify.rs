@@ -29,9 +29,10 @@ impl At<'_, '_> {
                 found: found.normalize(self.infcx),
                 cause: self.cause,
             },
-            UnifyError::InfiniteType { ty } => {
-                InferError::InfiniteType { ty: ty.normalize(self.infcx) }
-            }
+            UnifyError::InfiniteType { ty } => InferError::InfiniteType {
+                ty: ty.normalize(self.infcx),
+                cause: Cause::obvious(self.cause.span()),
+            },
         })
     }
 }
@@ -88,11 +89,11 @@ impl<'db, 'icx> UnifyCtxt<'db, 'icx> {
         let b = b.normalize(self.infcx);
 
         match (a.as_ref(), b.as_ref()) {
-            (TypeKind::Never(_), _)
-            | (_, TypeKind::Never(_))
-            | (TypeKind::Bool(_), TypeKind::Bool(_))
-            | (TypeKind::Unit(_), TypeKind::Unit(_))
-            | (TypeKind::Int(IntType::Int, _), TypeKind::Int(IntType::Int, _)) => Ok(()),
+            (TypeKind::Never, _)
+            | (_, TypeKind::Never)
+            | (TypeKind::Bool, TypeKind::Bool)
+            | (TypeKind::Unit, TypeKind::Unit)
+            | (TypeKind::Int(IntType::Int), TypeKind::Int(IntType::Int)) => Ok(()),
 
             (TypeKind::Function(ref fex), TypeKind::Function(ref fact)) => {
                 self.unify_ty_ty(fex.ret, fact.ret)?;
@@ -110,8 +111,8 @@ impl<'db, 'icx> UnifyCtxt<'db, 'icx> {
 
             // Unify ?T1 ~ ?T2
             (
-                TypeKind::Infer(InferType::TypeVar(expected), _),
-                TypeKind::Infer(InferType::TypeVar(found), _),
+                TypeKind::Infer(InferType::TypeVar(expected)),
+                TypeKind::Infer(InferType::TypeVar(found)),
             ) => {
                 self.infcx.ty_unification_table.unify_var_var(*expected, *found)?;
                 Ok(())
@@ -119,27 +120,27 @@ impl<'db, 'icx> UnifyCtxt<'db, 'icx> {
 
             // Unify ?int ~ ?int
             (
-                TypeKind::Infer(InferType::IntVar(expected), _),
-                TypeKind::Infer(InferType::IntVar(found), _),
+                TypeKind::Infer(InferType::IntVar(expected)),
+                TypeKind::Infer(InferType::IntVar(found)),
             ) => {
                 self.infcx.int_unification_table.unify_var_var(*expected, *found)?;
                 Ok(())
             }
 
             // Unify ?int ~ int
-            (TypeKind::Int(ity, span), TypeKind::Infer(InferType::IntVar(var), _))
-            | (TypeKind::Infer(InferType::IntVar(var), _), TypeKind::Int(ity, span)) => {
+            (TypeKind::Int(ity), TypeKind::Infer(InferType::IntVar(var)))
+            | (TypeKind::Infer(InferType::IntVar(var)), TypeKind::Int(ity)) => {
                 self.infcx
                     .int_unification_table
-                    .unify_var_value(*var, Some(IntVarValue::Int(*ity, *span)))?;
+                    .unify_var_value(*var, Some(IntVarValue::Int(*ity)))?;
                 Ok(())
             }
 
             // Unify ?T ~ T
-            (TypeKind::Infer(InferType::TypeVar(var), _), _) => self.unify_ty_var(b, *var),
+            (TypeKind::Infer(InferType::TypeVar(var)), _) => self.unify_ty_var(b, *var),
 
             // Unify T ~ ?T
-            (_, TypeKind::Infer(InferType::TypeVar(var), _)) => self.unify_ty_var(a, *var),
+            (_, TypeKind::Infer(InferType::TypeVar(var))) => self.unify_ty_var(a, *var),
 
             (_, _) => Err(UnifyError::TypeMismatch { a, b }),
         }
@@ -207,7 +208,7 @@ impl From<(IntVarValue, IntVarValue)> for UnifyError {
 
 pub enum InferError {
     TypeMismatch { expected: Type, found: Type, cause: Cause },
-    InfiniteType { ty: Type },
+    InfiniteType { ty: Type, cause: Cause },
 }
 
 impl InferError {
@@ -239,9 +240,9 @@ impl InferError {
 
                 diag
             }
-            Self::InfiniteType { ty, .. } => Diagnostic::error("infer::infinite_type")
+            Self::InfiniteType { ty, cause } => Diagnostic::error("infer::infinite_type")
                 .with_message(format!("type `{}` is an infinite type", ty.display(db)))
-                .with_label(Label::primary(ty.span())),
+                .with_label(Label::primary(cause.span())),
         }
     }
 }

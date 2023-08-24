@@ -2,7 +2,6 @@ use ena::unify::InPlaceUnificationTable;
 
 use crate::{
     db::{Db, SymbolId},
-    span::Span,
     ty::{InferType, IntVar, Type, TypeKind, TypeVar},
 };
 
@@ -28,18 +27,12 @@ impl<'db> InferCtxt<'db> {
     }
 
     #[inline]
-    pub fn fresh_ty_var(&mut self, span: Span) -> Type {
-        Type::new(TypeKind::Infer(
-            InferType::TypeVar(self.ty_unification_table.new_key(None)),
-            span,
-        ))
+    pub fn fresh_ty_var(&mut self) -> Type {
+        Type::new(TypeKind::Infer(InferType::TypeVar(self.ty_unification_table.new_key(None))))
     }
 
     #[inline]
-    pub fn fresh_int_var(&mut self, span: Span) -> Type {
-        Type::new(TypeKind::Infer(
-            InferType::IntVar(self.int_unification_table.new_key(None)),
-            span,
-        ))
+    pub fn fresh_int_var(&mut self) -> Type {
+        Type::new(TypeKind::Infer(InferType::IntVar(self.int_unification_table.new_key(None))))
     }
 }

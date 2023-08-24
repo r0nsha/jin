@@ -27,14 +27,14 @@ impl<'db> TypePrinter<'db> {
                 f.write_str("fn() ")?;
                 Self::fmt_type(f, &fun.ret)
             }
-            TypeKind::Int(int, _) => match int {
+            TypeKind::Int(int) => match int {
                 IntType::Int => f.write_str("int"),
             },
-            TypeKind::Bool(_) => f.write_str("bool"),
-            TypeKind::Unit(_) => f.write_str("()"),
-            TypeKind::Never(_) => f.write_str("!"),
-            TypeKind::Infer(InferType::TypeVar(v), _) => write!(f, "?{}", v.0),
-            TypeKind::Infer(InferType::IntVar(_), _) => f.write_str("{int}"),
+            TypeKind::Bool => f.write_str("bool"),
+            TypeKind::Unit => f.write_str("()"),
+            TypeKind::Never => f.write_str("!"),
+            TypeKind::Infer(InferType::TypeVar(v)) => write!(f, "?{}", v.0),
+            TypeKind::Infer(InferType::IntVar(_)) => f.write_str("{int}"),
             TypeKind::Unknown => f.write_str("{unknown}"),
         }
     }

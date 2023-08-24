@@ -38,7 +38,7 @@ fn fill_symbol_tys(infcx: &mut InferCtxt) {
     // TODO: find a less unsightly code pattern for mutating all symbols...
     for i in 0..infcx.db.symbols.len() {
         let id = i.into();
-        infcx.db.symbols[id].ty = infcx.fresh_ty_var(infcx.db.symbols[id].span);
+        infcx.db.symbols[id].ty = infcx.fresh_ty_var();
     }
 }
 
@@ -77,7 +77,7 @@ impl Infer<'_> for Item {
             ItemKind::Function(fun) => fun.infer(cx, env)?,
         }
 
-        self.ty = Type::new(TypeKind::Unit(self.span()));
+        self.ty = Type::new(TypeKind::Unit);
 
         Ok(())
     }
@@ -85,10 +85,10 @@ impl Infer<'_> for Item {
 
 impl Infer<'_> for Function {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
-        let ret_ty = cx.fresh_ty_var(self.span);
+        let ret_ty = cx.fresh_ty_var();
 
         for param in &mut self.sig.params {
-            param.ty = cx.fresh_ty_var(param.span);
+            param.ty = cx.fresh_ty_var();
             cx.db[param.id].ty = param.ty;
         }
 
@@ -100,7 +100,6 @@ impl Infer<'_> for Function {
                 .iter()
                 .map(|param| FunctionTypeParam { name: Some(cx.db[param.id].name), ty: param.ty })
                 .collect(),
-            span: self.span,
         });
 
         let sym_ty = cx.lookup(self.id);
@@ -122,8 +121,7 @@ impl Infer<'_> for If {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         self.cond.infer(cx, env)?;
 
-        cx.at(Cause::obvious(self.cond.span()))
-            .eq(Type::new(TypeKind::Bool(self.cond.span())), self.cond.ty())?;
+        cx.at(Cause::obvious(self.cond.span())).eq(Type::new(TypeKind::Bool), self.cond.ty())?;
 
         self.then.infer(cx, env)?;
 
@@ -133,7 +131,7 @@ impl Infer<'_> for If {
                 .eq(self.then.ty(), otherwise.ty())?;
         } else {
             cx.at(Cause::obvious(self.then.span()))
-                .eq(Type::new(TypeKind::Unit(self.span)), self.then.ty())?;
+                .eq(Type::new(TypeKind::Unit), self.then.ty())?;
         }
 
         self.ty = self.then.ty();
@@ -148,7 +146,7 @@ impl Infer<'_> for Block {
             expr.infer(cx, env)?;
         }
 
-        self.ty = self.exprs.last().map_or_else(|| Type::new(TypeKind::Unit(self.span)), Expr::ty);
+        self.ty = self.exprs.last().map_or_else(|| Type::new(TypeKind::Unit), Expr::ty);
 
         Ok(())
     }
@@ -156,7 +154,7 @@ impl Infer<'_> for Block {
 
 impl Infer<'_> for Return {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
-        self.ty = Type::new(TypeKind::Never(self.span));
+        self.ty = Type::new(TypeKind::Never);
 
         let CallFrame { id, ret_ty } =
             env.call_stack.current().expect("to be inside a call frame").clone();
@@ -178,7 +176,7 @@ impl Infer<'_> for Call {
             }
         }
 
-        let result_ty = cx.fresh_ty_var(self.span);
+        let result_ty = cx.fresh_ty_var();
 
         let expected_ty = Type::new(TypeKind::Function(FunctionType {
             ret: result_ty,
@@ -192,7 +190,6 @@ impl Infer<'_> for Call {
                     }
                 })
                 .collect(),
-            span: self.span,
         }));
 
         cx.at(Cause::obvious(self.callee.span())).eq(expected_ty, self.callee.ty())?;
@@ -214,7 +211,7 @@ impl Infer<'_> for Bin {
         match self.op {
             BinOp::Cmp(_) => (),
             BinOp::And | BinOp::Or => {
-                let expected = Type::new(TypeKind::Bool(self.span));
+                let expected = Type::new(TypeKind::Bool);
                 cx.at(Cause::obvious(self.lhs.span())).eq(expected, self.lhs.ty())?;
                 cx.at(Cause::obvious(self.rhs.span())).eq(expected, self.rhs.ty())?;
             }
@@ -224,7 +221,7 @@ impl Infer<'_> for Bin {
         }
 
         self.ty = match self.op {
-            BinOp::Cmp(_) => Type::new(TypeKind::Bool(self.span)),
+            BinOp::Cmp(_) => Type::new(TypeKind::Bool),
             _ => self.lhs.ty(),
         };
 
@@ -242,9 +239,9 @@ impl Infer<'_> for Name {
 impl Infer<'_> for Lit {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut TypeEnv) -> InferResult<()> {
         self.ty = match &self.kind {
-            LitKind::Int(_) => cx.fresh_int_var(self.span),
-            LitKind::Bool(_) => Type::new(TypeKind::Bool(self.span)),
-            LitKind::Unit => Type::new(TypeKind::Unit(self.span)),
+            LitKind::Int(_) => cx.fresh_int_var(),
+            LitKind::Bool(_) => Type::new(TypeKind::Bool),
+            LitKind::Unit => Type::new(TypeKind::Unit),
         };
 
         Ok(())

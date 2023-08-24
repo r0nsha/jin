@@ -25,12 +25,12 @@ pub trait LlvmType<'db, 'cx, T> {
 impl<'db, 'cx> LlvmType<'db, 'cx, ll::BasicTypeEnum<'cx>> for TypeKind {
     fn llvm_type(&self, cx: &Generator<'db, 'cx>) -> ll::BasicTypeEnum<'cx> {
         match self {
-            Self::Int(inner, _) => inner.llvm_type(cx).into(),
+            Self::Int(inner) => inner.llvm_type(cx).into(),
             Self::Function(inner) => inner.llvm_type(cx).ptr_type(AddressSpace::default()).into(),
-            Self::Bool(_) => cx.context.bool_type().into(),
-            Self::Unit(_) => cx.unit_ty().into(),
-            Self::Never(_) => cx.never_ty().into(),
-            Self::Infer(_, _) => panic!("unexpected infer type {}", self.display(cx.db)),
+            Self::Bool => cx.context.bool_type().into(),
+            Self::Unit => cx.unit_ty().into(),
+            Self::Never => cx.never_ty().into(),
+            Self::Infer(_) => panic!("unexpected infer type {}", self.display(cx.db)),
             Self::Unknown => panic!("unexpected unknown type"),
         }
     }

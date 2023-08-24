@@ -45,24 +45,23 @@ impl<'db> InferCtxt<'db> {
                         ty: self.substitute_ty(param.ty, unbound_vars),
                     })
                     .collect(),
-                span: fun.span,
             }),
-            TypeKind::Infer(InferType::TypeVar(var), span) => {
+            TypeKind::Infer(InferType::TypeVar(var)) => {
                 let root = self.ty_unification_table.find(*var);
 
                 if let Some(ty) = self.ty_unification_table.probe_value(root) {
                     self.substitute_tykind(&ty, unbound_vars)
                 } else {
                     unbound_vars.insert(root);
-                    TypeKind::Infer(InferType::TypeVar(root), *span)
+                    TypeKind::Infer(InferType::TypeVar(root))
                 }
             }
-            TypeKind::Infer(InferType::IntVar(var), span) => {
+            TypeKind::Infer(InferType::IntVar(var)) => {
                 let root = self.int_unification_table.find(*var);
 
                 self.int_unification_table
                     .probe_value(root)
-                    .map_or_else(|| TypeKind::default_int(*span), Into::into)
+                    .map_or_else(|| TypeKind::DEFAULT_INT, Into::into)
             }
             _ => ty.clone(),
         }

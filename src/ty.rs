@@ -8,7 +8,7 @@ use internment::Intern;
 use lazy_static::lazy_static;
 use ustr::Ustr;
 
-use crate::{db::Db, span::Span, ty::printer::TypePrinter};
+use crate::{db::Db, ty::printer::TypePrinter};
 
 lazy_static! {
     static ref TYPE_UNKNOWN: Type = Type::new(TypeKind::Unknown);
@@ -33,7 +33,7 @@ impl Type {
     pub fn occurs_check(self, var: TypeVar) -> Result<(), Self> {
         match self.as_ref() {
             TypeKind::Function(fun) => fun.ret.occurs_check(var).map_err(|_| self),
-            TypeKind::Infer(InferType::TypeVar(v), _) => {
+            TypeKind::Infer(InferType::TypeVar(v)) => {
                 if *v == var {
                     Err(self)
                 } else {
@@ -80,31 +80,17 @@ impl From<&TypeKind> for TypeKind {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, EnumAsInner)]
 pub enum TypeKind {
     Function(FunctionType),
-    Int(IntType, Span),
-    Bool(Span),
+    Int(IntType),
+    Bool,
     // TODO: when we implement tuples, Unit should become Tuple([])
-    Unit(Span),
-    Never(Span),
-    Infer(InferType, Span),
+    Unit,
+    Never,
+    Infer(InferType),
     Unknown,
 }
 
 impl TypeKind {
-    pub fn default_int(span: Span) -> Self {
-        Self::Int(IntType::Int, span)
-    }
-
-    pub fn span(&self) -> Span {
-        match self {
-            Self::Function(FunctionType { span, .. })
-            | Self::Int(_, span)
-            | Self::Bool(span)
-            | Self::Unit(span)
-            | Self::Never(span)
-            | Self::Infer(_, span) => *span,
-            Self::Unknown => panic!(),
-        }
-    }
+    pub const DEFAULT_INT: Self = Self::Int(IntType::Int);
 
     pub fn display<'db>(&'db self, db: &'db Db) -> TypePrinter<'db> {
         TypePrinter::new(db, self)
@@ -123,13 +109,13 @@ pub struct IntVar(u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntVarValue {
-    Int(IntType, Span),
+    Int(IntType),
 }
 
 impl From<IntVarValue> for TypeKind {
     fn from(value: IntVarValue) -> Self {
         match value {
-            IntVarValue::Int(ty, span) => Self::Int(ty, span),
+            IntVarValue::Int(ty) => Self::Int(ty),
         }
     }
 }
@@ -143,7 +129,6 @@ pub enum IntType {
 pub struct FunctionType {
     pub ret: Type,
     pub params: Vec<FunctionTypeParam>,
-    pub span: Span,
 }
 
 impl FunctionType {
