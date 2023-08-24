@@ -35,6 +35,11 @@ impl Diagnostic {
         self
     }
 
+    pub fn with_labels(mut self, labels: impl Iterator<Item = Label>) -> Self {
+        self.labels.extend(labels);
+        self
+    }
+
     pub fn with_help(mut self, help: impl Into<String>) -> Self {
         self.help = Some(help.into());
         self

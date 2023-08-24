@@ -36,6 +36,37 @@ impl At<'_, '_> {
     }
 }
 
+pub struct Cause {
+    span: Span,
+    kind: CauseKind,
+}
+
+impl Cause {
+    pub fn new(span: Span, kind: CauseKind) -> Self {
+        Self { span, kind }
+    }
+
+    pub fn span(&self) -> Span {
+        self.span
+    }
+
+    pub fn kind(&self) -> &CauseKind {
+        &self.kind
+    }
+
+    pub fn as_labels(&self) /* -> impl Iterator<Item = Label>  */
+    {
+        todo!()
+    }
+}
+
+pub enum CauseKind {
+    /// Should be obvious from the span
+    Obvious,
+    /// Raised from two expressions which are expected to have the same type
+    Exprs(Span, Span),
+}
+
 struct UnifyCtxt<'db, 'icx> {
     infcx: &'icx mut InferCtxt<'db>,
 }
@@ -192,9 +223,4 @@ impl InferError {
                 .with_label(Label::primary(ty.span())),
         }
     }
-}
-
-pub enum Cause {
-    Single(Span),
-    Exprs { expected: Span, found: Span },
 }
