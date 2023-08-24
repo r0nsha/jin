@@ -128,6 +128,8 @@ fn build(db: &mut Db) {
 
     if db.build_options().should_emit(EmitOption::Mir) {
         println!();
+        println!("Mir:");
+        println!();
         mir.pretty_print(db);
         println!();
     }
