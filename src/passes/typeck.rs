@@ -11,12 +11,12 @@ use crate::{
     passes::typeck::{
         infcx::InferCtxt,
         type_env::{CallFrame, TypeEnv},
-        unify::InferError,
+        unify::{Cause, InferError},
     },
     span::Spanned,
     tast::{
-        Bin, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name,
-        Return, TypedAst,
+        Bin, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name, Return,
+        TypedAst,
     },
     ty::{FunctionType, FunctionTypeParam, Type, TypeKind, Typed},
 };
@@ -104,13 +104,13 @@ impl Infer<'_> for Function {
         });
 
         let sym_ty = cx.lookup(self.id);
-        cx.at(self.span).eq(sym_ty, Type::new(fun_ty))?;
+        cx.at(Cause::obvious(self.span)).eq(sym_ty, Type::new(fun_ty))?;
         self.ty = sym_ty;
 
         env.call_stack.push(CallFrame { id: self.id, ret_ty });
 
         self.body.infer(cx, env)?;
-        cx.at(self.body.span).eq(ret_ty, self.body.ty)?;
+        cx.at(Cause::return_ty(self.body.span, cx.db[self.id].span)).eq(ret_ty, self.body.ty)?;
 
         env.call_stack.pop();
 
@@ -122,15 +122,18 @@ impl Infer<'_> for If {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         self.cond.infer(cx, env)?;
 
-        cx.at(self.cond.span()).eq(Type::new(TypeKind::Bool(self.cond.span())), self.cond.ty())?;
+        cx.at(Cause::obvious(self.cond.span()))
+            .eq(Type::new(TypeKind::Bool(self.cond.span())), self.cond.ty())?;
 
         self.then.infer(cx, env)?;
 
         if let Some(otherwise) = self.otherwise.as_mut() {
             otherwise.infer(cx, env)?;
-            cx.at(otherwise.span()).eq(self.then.ty(), otherwise.ty())?;
+            cx.at(Cause::exprs(self.span, self.then.span(), otherwise.span()))
+                .eq(self.then.ty(), otherwise.ty())?;
         } else {
-            cx.at(self.then.span()).eq(self.then.ty(), Type::new(TypeKind::Unit(self.span)))?;
+            cx.at(Cause::obvious(self.then.span()))
+                .eq(Type::new(TypeKind::Unit(self.span)), self.then.ty())?;
         }
 
         self.ty = self.then.ty();
@@ -155,11 +158,11 @@ impl Infer<'_> for Return {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         self.ty = Type::new(TypeKind::Never(self.span));
 
-        let call_frame = env.call_stack.current().expect("to be inside a call frame");
-        let ret_ty = call_frame.ret_ty;
+        let CallFrame { id, ret_ty } =
+            env.call_stack.current().expect("to be inside a call frame").clone();
 
         self.expr.infer(cx, env)?;
-        cx.at(self.expr.span()).eq(ret_ty, self.expr.ty())?;
+        cx.at(Cause::return_ty(self.expr.span(), cx.db[id].span)).eq(ret_ty, self.expr.ty())?;
 
         Ok(())
     }
@@ -192,7 +195,7 @@ impl Infer<'_> for Call {
             span: self.span,
         }));
 
-        cx.at(self.callee.span()).eq(expected_ty, self.callee.ty())?;
+        cx.at(Cause::obvious(self.callee.span())).eq(expected_ty, self.callee.ty())?;
 
         self.ty = result_ty;
 
@@ -205,14 +208,15 @@ impl Infer<'_> for Bin {
         self.lhs.infer(cx, env)?;
         self.rhs.infer(cx, env)?;
 
-        cx.at(self.span).eq(self.lhs.ty(), self.rhs.ty())?;
+        cx.at(Cause::exprs(self.span, self.lhs.span(), self.rhs.span()))
+            .eq(self.lhs.ty(), self.rhs.ty())?;
 
         match self.op {
             BinOp::Cmp(_) => (),
             BinOp::And | BinOp::Or => {
                 let expected = Type::new(TypeKind::Bool(self.span));
-                cx.at(self.lhs.span()).eq(expected, self.lhs.ty())?;
-                cx.at(self.rhs.span()).eq(expected, self.rhs.ty())?;
+                cx.at(Cause::obvious(self.lhs.span())).eq(expected, self.lhs.ty())?;
+                cx.at(Cause::obvious(self.rhs.span())).eq(expected, self.rhs.ty())?;
             }
             _ => {
                 // TODO: type check arithmetic operations

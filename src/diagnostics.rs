@@ -35,7 +35,15 @@ impl Diagnostic {
         self
     }
 
-    pub fn with_labels(mut self, labels: impl Iterator<Item = Label>) -> Self {
+    pub fn push_label(&mut self, label: Label) {
+        self.labels.push(label);
+    }
+
+    pub fn push_labels(&mut self, labels: impl IntoIterator<Item = Label>) {
+        self.labels.extend(labels);
+    }
+
+    pub fn with_labels(mut self, labels: impl IntoIterator<Item = Label>) -> Self {
         self.labels.extend(labels);
         self
     }

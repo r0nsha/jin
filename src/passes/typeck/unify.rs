@@ -11,14 +11,14 @@ use crate::{
 impl<'db> InferCtxt<'db> {
     #[inline]
     #[must_use]
-    pub fn at(&mut self, span: Span) -> At<'db, '_> {
-        At { infcx: self, span }
+    pub fn at(&mut self, cause: Cause) -> At<'db, '_> {
+        At { infcx: self, cause }
     }
 }
 
 pub struct At<'db, 'icx> {
     infcx: &'icx mut InferCtxt<'db>,
-    span: Span,
+    cause: Cause,
 }
 
 impl At<'_, '_> {
@@ -27,7 +27,7 @@ impl At<'_, '_> {
             UnifyError::TypeMismatch { .. } => InferError::TypeMismatch {
                 expected: expected.normalize(self.infcx),
                 found: found.normalize(self.infcx),
-                span: self.span,
+                cause: self.cause,
             },
             UnifyError::InfiniteType { ty } => {
                 InferError::InfiniteType { ty: ty.normalize(self.infcx) }
@@ -36,6 +36,7 @@ impl At<'_, '_> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct Cause {
     span: Span,
     kind: CauseKind,
@@ -46,6 +47,18 @@ impl Cause {
         Self { span, kind }
     }
 
+    pub fn obvious(span: Span) -> Self {
+        Self::new(span, CauseKind::Obvious)
+    }
+
+    pub fn exprs(span: Span, expected: Span, found: Span) -> Self {
+        Self::new(span, CauseKind::Exprs(expected, found))
+    }
+
+    pub fn return_ty(span: Span, return_ty_span: Span) -> Self {
+        Self::new(span, CauseKind::ReturnTy(return_ty_span))
+    }
+
     pub fn span(&self) -> Span {
         self.span
     }
@@ -53,18 +66,16 @@ impl Cause {
     pub fn kind(&self) -> &CauseKind {
         &self.kind
     }
-
-    pub fn as_labels(&self) /* -> impl Iterator<Item = Label>  */
-    {
-        todo!()
-    }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub enum CauseKind {
     /// Should be obvious from the span
     Obvious,
-    /// Raised from two expressions which are expected to have the same type
+    /// Two expressions which are expected to have the same type
     Exprs(Span, Span),
+    /// An expression which was expected to be equal to the return type
+    ReturnTy(Span),
 }
 
 struct UnifyCtxt<'db, 'icx> {
@@ -195,28 +206,38 @@ impl From<(IntVarValue, IntVarValue)> for UnifyError {
 }
 
 pub enum InferError {
-    TypeMismatch { expected: Type, found: Type, span: Span },
+    TypeMismatch { expected: Type, found: Type, cause: Cause },
     InfiniteType { ty: Type },
 }
 
 impl InferError {
     pub fn into_diagnostic(self, db: &Db) -> Diagnostic {
         match self {
-            Self::TypeMismatch { expected, found, span } => {
-                Diagnostic::error("infer::type_mismatch")
-                    .with_message(format!(
-                        "expected `{}`, found `{}`",
-                        expected.display(db),
-                        found.display(db),
-                    ))
-                    // .with_label(Label::primary(span).with_message("expected here"))
-                    .with_label(
-                        Label::primary(found.span())
-                            .with_message(format!("found type `{}` here", found.display(db))),
-                    ).with_label(Label::secondary(expected.span()).with_message(format!(
-                    "expected type `{}` originates here",
-                    expected.display(db)
-                )))
+            Self::TypeMismatch { expected, found, cause } => {
+                let expected_ty = expected.display(db).to_string();
+                let found_ty = found.display(db).to_string();
+
+                let msg = format!("expected `{expected_ty}`, found `{found_ty}`");
+
+                let mut diag = Diagnostic::error("infer::type_mismatch")
+                    .with_message(msg.clone())
+                    .with_label(Label::primary(cause.span()).with_message(msg));
+
+                match *cause.kind() {
+                    CauseKind::Obvious => (),
+                    CauseKind::Exprs(expected_span, found_span) => diag.push_labels([
+                        Label::secondary(expected_span)
+                            .with_message(format!("expected `{expected_ty}`")),
+                        Label::secondary(found_span).with_message(format!("found `{found_ty}`")),
+                    ]),
+                    CauseKind::ReturnTy(return_ty_span) => {
+                        diag.push_label(Label::secondary(return_ty_span).with_message(format!(
+                            "expected `{expected_ty}` because of return type"
+                        )));
+                    }
+                }
+
+                diag
             }
             Self::InfiniteType { ty, .. } => Diagnostic::error("infer::infinite_type")
                 .with_message(format!("type `{}` is an infinite type", ty.display(db)))
