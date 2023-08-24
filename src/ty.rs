@@ -8,24 +8,24 @@ use enum_as_inner::EnumAsInner;
 use internment::Intern;
 use ustr::Ustr;
 
-use crate::{db::Db, ty::printer::TypePrinter};
+use crate::{db::Db, ty::printer::TyPrinter};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct Type(Intern<TypeKind>);
+pub struct Ty(Intern<TyKind>);
 
-impl Type {
-    pub fn new(kind: TypeKind) -> Self {
+impl Ty {
+    pub fn new(kind: TyKind) -> Self {
         Self(Intern::new(kind))
     }
 
-    pub fn from_ref(kind: &TypeKind) -> Self {
+    pub fn from_ref(kind: &TyKind) -> Self {
         Self(Intern::from_ref(kind))
     }
 
-    pub fn occurs_check(self, var: TypeVar) -> Result<(), Self> {
+    pub fn occurs_check(self, var: TyVar) -> Result<(), Self> {
         match self.as_ref() {
-            TypeKind::Function(fun) => fun.ret.occurs_check(var).map_err(|_| self),
-            TypeKind::Infer(InferType::TypeVar(v)) => {
+            TyKind::Function(fun) => fun.ret.occurs_check(var).map_err(|_| self),
+            TyKind::Infer(InferTy::TyVar(v)) => {
                 if *v == var {
                     Err(self)
                 } else {
@@ -37,55 +37,55 @@ impl Type {
     }
 }
 
-impl Deref for Type {
-    type Target = TypeKind;
+impl Deref for Ty {
+    type Target = TyKind;
 
     fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
-impl AsRef<TypeKind> for Type {
-    fn as_ref(&self) -> &TypeKind {
+impl AsRef<TyKind> for Ty {
+    fn as_ref(&self) -> &TyKind {
         &self.0
     }
 }
 
-impl From<TypeKind> for Type {
-    fn from(value: TypeKind) -> Self {
+impl From<TyKind> for Ty {
+    fn from(value: TyKind) -> Self {
         Self::new(value)
     }
 }
 
-impl From<&TypeKind> for Type {
-    fn from(value: &TypeKind) -> Self {
+impl From<&TyKind> for Ty {
+    fn from(value: &TyKind) -> Self {
         Self::from_ref(value)
     }
 }
 
-impl From<&TypeKind> for TypeKind {
-    fn from(value: &TypeKind) -> Self {
+impl From<&TyKind> for TyKind {
+    fn from(value: &TyKind) -> Self {
         value.clone()
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, EnumAsInner)]
-pub enum TypeKind {
-    Function(FunctionType),
-    Int(IntType),
+pub enum TyKind {
+    Function(FunctionTy),
+    Int(IntTy),
     Bool,
     // TODO: when we implement tuples, Unit should become Tuple([])
     Unit,
     Never,
-    Infer(InferType),
+    Infer(InferTy),
     Unknown,
 }
 
-impl TypeKind {
-    pub const DEFAULT_INT: Self = Self::Int(IntType::Int);
+impl TyKind {
+    pub const DEFAULT_INT: Self = Self::Int(IntTy::Int);
 
-    pub fn display<'db>(&'db self, db: &'db Db) -> TypePrinter<'db> {
-        TypePrinter::new(db, self)
+    pub fn display<'db>(&'db self, db: &'db Db) -> TyPrinter<'db> {
+        TyPrinter::new(db, self)
     }
 
     pub fn to_string(&self, db: &Db) -> String {
@@ -94,17 +94,17 @@ impl TypeKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]
-pub struct TypeVar(u32);
+pub struct TyVar(u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]
 pub struct IntVar(u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntVarValue {
-    Int(IntType),
+    Int(IntTy),
 }
 
-impl From<IntVarValue> for TypeKind {
+impl From<IntVarValue> for TyKind {
     fn from(value: IntVarValue) -> Self {
         match value {
             IntVarValue::Int(ty) => Self::Int(ty),
@@ -113,43 +113,43 @@ impl From<IntVarValue> for TypeKind {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum IntType {
+pub enum IntTy {
     Int,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FunctionType {
-    pub ret: Type,
-    pub params: Vec<FunctionTypeParam>,
+pub struct FunctionTy {
+    pub ret: Ty,
+    pub params: Vec<FunctionTyParam>,
 }
 
-impl FunctionType {
-    pub fn param(&self, name: Ustr) -> Option<&FunctionTypeParam> {
+impl FunctionTy {
+    pub fn param(&self, name: Ustr) -> Option<&FunctionTyParam> {
         self.params.iter().find(|p| p.name == Some(name))
     }
 
-    pub fn param_at(&self, index: usize) -> Option<&FunctionTypeParam> {
+    pub fn param_at(&self, index: usize) -> Option<&FunctionTyParam> {
         self.params.get(index)
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FunctionTypeParam {
+pub struct FunctionTyParam {
     pub name: Option<Ustr>,
-    pub ty: Type,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum InferType {
-    TypeVar(TypeVar),
+pub enum InferTy {
+    TyVar(TyVar),
     IntVar(IntVar),
 }
 
 pub trait Typed {
-    fn ty(&self) -> Type;
-    fn ty_mut(&mut self) -> &mut Type;
+    fn ty(&self) -> Ty;
+    fn ty_mut(&mut self) -> &mut Ty;
 
-    fn set_ty(&mut self, ty: Type) {
+    fn set_ty(&mut self, ty: Ty) {
         *self.ty_mut() = ty;
     }
 }

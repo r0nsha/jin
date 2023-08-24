@@ -1,32 +1,32 @@
 use inkwell::{
-    types::{self as ll, BasicType},
+    types::{BasicType, BasicTypeEnum, FunctionType, IntType, StructType},
     AddressSpace,
 };
 
 use crate::{
     llvm::generate::Generator,
-    ty::{FunctionType, IntType, TypeKind},
+    ty::{FunctionTy, IntTy, TyKind},
 };
 
 impl<'db, 'cx> Generator<'db, 'cx> {
-    pub fn unit_ty(&self) -> ll::StructType<'cx> {
+    pub fn unit_ty(&self) -> StructType<'cx> {
         self.context.struct_type(&[], false)
     }
 
-    pub fn never_ty(&self) -> ll::StructType<'cx> {
+    pub fn never_ty(&self) -> StructType<'cx> {
         self.unit_ty()
     }
 }
 
-pub trait LlvmType<'db, 'cx, T> {
-    fn llvm_type(&self, cx: &Generator<'db, 'cx>) -> T;
+pub trait LlvmTy<'db, 'cx, T> {
+    fn llvm_ty(&self, cx: &Generator<'db, 'cx>) -> T;
 }
 
-impl<'db, 'cx> LlvmType<'db, 'cx, ll::BasicTypeEnum<'cx>> for TypeKind {
-    fn llvm_type(&self, cx: &Generator<'db, 'cx>) -> ll::BasicTypeEnum<'cx> {
+impl<'db, 'cx> LlvmTy<'db, 'cx, BasicTypeEnum<'cx>> for TyKind {
+    fn llvm_ty(&self, cx: &Generator<'db, 'cx>) -> BasicTypeEnum<'cx> {
         match self {
-            Self::Int(inner) => inner.llvm_type(cx).into(),
-            Self::Function(inner) => inner.llvm_type(cx).ptr_type(AddressSpace::default()).into(),
+            Self::Int(inner) => inner.llvm_ty(cx).into(),
+            Self::Function(inner) => inner.llvm_ty(cx).ptr_type(AddressSpace::default()).into(),
             Self::Bool => cx.context.bool_type().into(),
             Self::Unit => cx.unit_ty().into(),
             Self::Never => cx.never_ty().into(),
@@ -36,17 +36,17 @@ impl<'db, 'cx> LlvmType<'db, 'cx, ll::BasicTypeEnum<'cx>> for TypeKind {
     }
 }
 
-impl<'db, 'cx> LlvmType<'db, 'cx, ll::IntType<'cx>> for IntType {
-    fn llvm_type(&self, cx: &Generator<'db, 'cx>) -> ll::IntType<'cx> {
+impl<'db, 'cx> LlvmTy<'db, 'cx, IntType<'cx>> for IntTy {
+    fn llvm_ty(&self, cx: &Generator<'db, 'cx>) -> IntType<'cx> {
         match self {
             Self::Int => cx.isize_ty,
         }
     }
 }
 
-impl<'db, 'cx> LlvmType<'db, 'cx, ll::FunctionType<'cx>> for FunctionType {
-    fn llvm_type(&self, cx: &Generator<'db, 'cx>) -> ll::FunctionType<'cx> {
-        let param_tys: Vec<_> = self.params.iter().map(|p| p.ty.llvm_type(cx).into()).collect();
-        self.ret.llvm_type(cx).fn_type(&param_tys, false)
+impl<'db, 'cx> LlvmTy<'db, 'cx, FunctionType<'cx>> for FunctionTy {
+    fn llvm_ty(&self, cx: &Generator<'db, 'cx>) -> FunctionType<'cx> {
+        let param_tys: Vec<_> = self.params.iter().map(|p| p.ty.llvm_ty(cx).into()).collect();
+        self.ret.llvm_ty(cx).fn_type(&param_tys, false)
     }
 }

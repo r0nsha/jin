@@ -15,7 +15,7 @@ use crate::{
     db::{build_options::BuildOptions, timing::Timings},
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
-    ty::{Type, Typed},
+    ty::{Ty, Typed},
 };
 
 #[derive(Debug)]
@@ -167,7 +167,7 @@ pub struct SymbolInfo {
     pub qpath: QPath,
     pub scope: ScopeInfo,
     pub kind: Box<SymbolInfoKind>,
-    pub ty: Type,
+    pub ty: Ty,
     pub span: Span,
 }
 
@@ -190,7 +190,7 @@ impl SymbolInfo {
         qpath: QPath,
         scope: ScopeInfo,
         kind: SymbolInfoKind,
-        ty: Type,
+        ty: Ty,
         span: Span,
     ) -> SymbolId {
         db.symbols.push_with_key(|id| Self {
@@ -206,11 +206,11 @@ impl SymbolInfo {
 }
 
 impl Typed for SymbolInfo {
-    fn ty(&self) -> Type {
+    fn ty(&self) -> Ty {
         self.ty
     }
 
-    fn ty_mut(&mut self) -> &mut Type {
+    fn ty_mut(&mut self) -> &mut Ty {
         &mut self.ty
     }
 }

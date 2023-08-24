@@ -18,7 +18,7 @@ use crate::{
         Bin, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name, Return,
         TypedAst,
     },
-    ty::{tcx::TyCtxt, FunctionType, FunctionTypeParam, Type, TypeKind, Typed},
+    ty::{tcx::TyCtxt, FunctionTy, FunctionTyParam, Ty, TyKind, Typed},
 };
 
 pub type InferResult<T> = Result<T, InferError>;
@@ -92,18 +92,18 @@ impl Infer<'_> for Function {
             cx.db[param.id].ty = param.ty;
         }
 
-        let fun_ty = TypeKind::Function(FunctionType {
+        let fun_ty = TyKind::Function(FunctionTy {
             ret: ret_ty,
             params: self
                 .sig
                 .params
                 .iter()
-                .map(|param| FunctionTypeParam { name: Some(cx.db[param.id].name), ty: param.ty })
+                .map(|param| FunctionTyParam { name: Some(cx.db[param.id].name), ty: param.ty })
                 .collect(),
         });
 
         let sym_ty = cx.lookup(self.id);
-        cx.at(Cause::obvious(self.span)).eq(sym_ty, Type::new(fun_ty))?;
+        cx.at(Cause::obvious(self.span)).eq(sym_ty, Ty::new(fun_ty))?;
         self.ty = sym_ty;
 
         env.call_stack.push(CallFrame { id: self.id, ret_ty });
@@ -177,15 +177,15 @@ impl Infer<'_> for Call {
 
         let result_ty = cx.fresh_ty_var();
 
-        let expected_ty = Type::new(TypeKind::Function(FunctionType {
+        let expected_ty = Ty::new(TyKind::Function(FunctionTy {
             ret: result_ty,
             params: self
                 .args
                 .iter()
                 .map(|arg| match arg {
-                    CallArg::Positional(expr) => FunctionTypeParam { name: None, ty: expr.ty() },
+                    CallArg::Positional(expr) => FunctionTyParam { name: None, ty: expr.ty() },
                     CallArg::Named(name, expr) => {
-                        FunctionTypeParam { name: Some(name.name()), ty: expr.ty() }
+                        FunctionTyParam { name: Some(name.name()), ty: expr.ty() }
                     }
                 })
                 .collect(),

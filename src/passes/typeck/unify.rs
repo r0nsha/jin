@@ -5,7 +5,7 @@ use crate::{
     diagnostics::{Diagnostic, Label},
     passes::typeck::{infcx::InferCtxt, normalize::NormalizeTy},
     span::Span,
-    ty::{InferType, IntType, IntVar, IntVarValue, Type, TypeKind, TypeVar},
+    ty::{InferTy, IntTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
 };
 
 impl<'db> InferCtxt<'db> {
@@ -22,17 +22,17 @@ pub struct At<'db, 'a> {
 }
 
 impl At<'_, '_> {
-    pub fn eq(&self, expected: Type, found: Type) -> Result<(), InferError> {
+    pub fn eq(&self, expected: Ty, found: Ty) -> Result<(), InferError> {
         UnifyCtxt { infcx: self.infcx }.unify_ty_ty(expected, found).map_err(|err| {
             let mut infcx = self.infcx.inner.borrow_mut();
 
             match err {
-                UnifyError::TypeMismatch { .. } => InferError::TypeMismatch {
+                UnifyError::TyMismatch { .. } => InferError::TyMismatch {
                     expected: expected.normalize(&mut infcx),
                     found: found.normalize(&mut infcx),
                     cause: self.cause,
                 },
-                UnifyError::InfiniteType { ty } => InferError::InfiniteType {
+                UnifyError::InfiniteTy { ty } => InferError::InfiniteTy {
                     ty: ty.normalize(&mut infcx),
                     cause: Cause::obvious(self.cause.span()),
                 },
@@ -88,7 +88,7 @@ struct UnifyCtxt<'db, 'a> {
 }
 
 impl UnifyCtxt<'_, '_> {
-    fn unify_ty_ty(&mut self, a: Type, b: Type) -> Result<(), UnifyError> {
+    fn unify_ty_ty(&mut self, a: Ty, b: Ty) -> Result<(), UnifyError> {
         let (a, b) = {
             let mut infcx = self.infcx.inner.borrow_mut();
             let a = a.normalize(&mut infcx);
@@ -97,13 +97,13 @@ impl UnifyCtxt<'_, '_> {
         };
 
         match (a.as_ref(), b.as_ref()) {
-            (TypeKind::Never, _)
-            | (_, TypeKind::Never)
-            | (TypeKind::Bool, TypeKind::Bool)
-            | (TypeKind::Unit, TypeKind::Unit)
-            | (TypeKind::Int(IntType::Int), TypeKind::Int(IntType::Int)) => Ok(()),
+            (TyKind::Never, _)
+            | (_, TyKind::Never)
+            | (TyKind::Bool, TyKind::Bool)
+            | (TyKind::Unit, TyKind::Unit)
+            | (TyKind::Int(IntTy::Int), TyKind::Int(IntTy::Int)) => Ok(()),
 
-            (TypeKind::Function(ref fex), TypeKind::Function(ref fact)) => {
+            (TyKind::Function(ref fex), TyKind::Function(ref fact)) => {
                 self.unify_ty_ty(fex.ret, fact.ret)?;
 
                 if fex.params.len() == fact.params.len() {
@@ -113,15 +113,12 @@ impl UnifyCtxt<'_, '_> {
 
                     Ok(())
                 } else {
-                    Err(UnifyError::TypeMismatch { a, b })
+                    Err(UnifyError::TyMismatch { a, b })
                 }
             }
 
             // Unify ?T1 ~ ?T2
-            (
-                TypeKind::Infer(InferType::TypeVar(expected)),
-                TypeKind::Infer(InferType::TypeVar(found)),
-            ) => {
+            (TyKind::Infer(InferTy::TyVar(expected)), TyKind::Infer(InferTy::TyVar(found))) => {
                 self.infcx
                     .inner
                     .borrow_mut()
@@ -131,10 +128,7 @@ impl UnifyCtxt<'_, '_> {
             }
 
             // Unify ?int ~ ?int
-            (
-                TypeKind::Infer(InferType::IntVar(expected)),
-                TypeKind::Infer(InferType::IntVar(found)),
-            ) => {
+            (TyKind::Infer(InferTy::IntVar(expected)), TyKind::Infer(InferTy::IntVar(found))) => {
                 self.infcx
                     .inner
                     .borrow_mut()
@@ -144,8 +138,8 @@ impl UnifyCtxt<'_, '_> {
             }
 
             // Unify ?int ~ int
-            (TypeKind::Int(ity), TypeKind::Infer(InferType::IntVar(var)))
-            | (TypeKind::Infer(InferType::IntVar(var)), TypeKind::Int(ity)) => {
+            (TyKind::Int(ity), TyKind::Infer(InferTy::IntVar(var)))
+            | (TyKind::Infer(InferTy::IntVar(var)), TyKind::Int(ity)) => {
                 self.infcx
                     .inner
                     .borrow_mut()
@@ -155,24 +149,24 @@ impl UnifyCtxt<'_, '_> {
             }
 
             // Unify ?T ~ T
-            (TypeKind::Infer(InferType::TypeVar(var)), _) => self.unify_ty_var(b, *var),
+            (TyKind::Infer(InferTy::TyVar(var)), _) => self.unify_ty_var(b, *var),
 
             // Unify T ~ ?T
-            (_, TypeKind::Infer(InferType::TypeVar(var))) => self.unify_ty_var(a, *var),
+            (_, TyKind::Infer(InferTy::TyVar(var))) => self.unify_ty_var(a, *var),
 
-            (_, _) => Err(UnifyError::TypeMismatch { a, b }),
+            (_, _) => Err(UnifyError::TyMismatch { a, b }),
         }
     }
 
-    fn unify_ty_var(&mut self, ty: Type, var: TypeVar) -> Result<(), UnifyError> {
-        ty.occurs_check(var).map_err(|ty| UnifyError::InfiniteType { ty })?;
+    fn unify_ty_var(&mut self, ty: Ty, var: TyVar) -> Result<(), UnifyError> {
+        ty.occurs_check(var).map_err(|ty| UnifyError::InfiniteTy { ty })?;
         self.infcx.inner.borrow_mut().ty_unification_table.unify_var_value(var, Some(ty))?;
         Ok(())
     }
 }
 
-impl UnifyKey for TypeVar {
-    type Value = Option<Type>;
+impl UnifyKey for TyVar {
+    type Value = Option<Ty>;
 
     fn index(&self) -> u32 {
         (*self).into()
@@ -187,7 +181,7 @@ impl UnifyKey for TypeVar {
     }
 }
 
-impl EqUnifyValue for Type {}
+impl EqUnifyValue for Ty {}
 
 impl UnifyKey for IntVar {
     type Value = Option<IntVarValue>;
@@ -208,31 +202,31 @@ impl UnifyKey for IntVar {
 impl EqUnifyValue for IntVarValue {}
 
 pub enum UnifyError {
-    TypeMismatch { a: Type, b: Type },
-    InfiniteType { ty: Type },
+    TyMismatch { a: Ty, b: Ty },
+    InfiniteTy { ty: Ty },
 }
 
-impl From<(Type, Type)> for UnifyError {
-    fn from((a, b): (Type, Type)) -> Self {
-        Self::TypeMismatch { a, b }
+impl From<(Ty, Ty)> for UnifyError {
+    fn from((a, b): (Ty, Ty)) -> Self {
+        Self::TyMismatch { a, b }
     }
 }
 
 impl From<(IntVarValue, IntVarValue)> for UnifyError {
     fn from((a, b): (IntVarValue, IntVarValue)) -> Self {
-        Self::TypeMismatch { a: Type::new(a.into()), b: Type::new(b.into()) }
+        Self::TyMismatch { a: Ty::new(a.into()), b: Ty::new(b.into()) }
     }
 }
 
 pub enum InferError {
-    TypeMismatch { expected: Type, found: Type, cause: Cause },
-    InfiniteType { ty: Type, cause: Cause },
+    TyMismatch { expected: Ty, found: Ty, cause: Cause },
+    InfiniteTy { ty: Ty, cause: Cause },
 }
 
 impl InferError {
     pub fn into_diagnostic(self, db: &Db) -> Diagnostic {
         match self {
-            Self::TypeMismatch { expected, found, cause } => {
+            Self::TyMismatch { expected, found, cause } => {
                 let expected_ty = expected.display(db).to_string();
                 let found_ty = found.display(db).to_string();
 
@@ -258,7 +252,7 @@ impl InferError {
 
                 diag
             }
-            Self::InfiniteType { ty, cause } => Diagnostic::error("infer::infinite_type")
+            Self::InfiniteTy { ty, cause } => Diagnostic::error("infer::infinite_type")
                 .with_message(format!("type `{}` is an infinite type", ty.display(db)))
                 .with_label(Label::primary(cause.span())),
         }

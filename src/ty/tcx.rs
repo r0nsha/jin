@@ -1,4 +1,4 @@
-use crate::ty::{IntType, Type, TypeKind};
+use crate::ty::{IntTy, Ty, TyKind};
 
 #[derive(Debug)]
 pub struct TyCtxt {
@@ -13,21 +13,21 @@ impl TyCtxt {
 
 #[derive(Debug)]
 pub struct CommonTypes {
-    pub int: Type,
-    pub bool: Type,
-    pub unit: Type,
-    pub never: Type,
-    pub unknown: Type,
+    pub int: Ty,
+    pub bool: Ty,
+    pub unit: Ty,
+    pub never: Ty,
+    pub unknown: Ty,
 }
 
 impl CommonTypes {
     pub fn new() -> Self {
         Self {
-            int: Type::new(TypeKind::Int(IntType::Int)),
-            bool: Type::new(TypeKind::Bool),
-            unit: Type::new(TypeKind::Unit),
-            never: Type::new(TypeKind::Never),
-            unknown: Type::new(TypeKind::Unknown),
+            int: Ty::new(TyKind::Int(IntTy::Int)),
+            bool: Ty::new(TyKind::Bool),
+            unit: Ty::new(TyKind::Unit),
+            never: Ty::new(TyKind::Never),
+            unknown: Ty::new(TyKind::Unknown),
         }
     }
 }

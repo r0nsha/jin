@@ -6,11 +6,11 @@ use crate::{
         Bin, Block, Call, CallArg, Expr, Function, FunctionSig, If, Item, ItemKind, Return,
         TypedAst,
     },
-    ty::{FunctionType, FunctionTypeParam, InferType, Type, TypeKind, TypeVar, Typed},
+    ty::{FunctionTy, FunctionTyParam, InferTy, Ty, TyKind, TyVar, Typed},
 };
 
 impl<'db> InferCtxt<'db> {
-    pub fn substitution(&mut self, tast: &mut TypedAst) -> HashSet<TypeVar> {
+    pub fn substitution(&mut self, tast: &mut TypedAst) -> HashSet<TyVar> {
         let mut unbound_vars = HashSet::new();
 
         for i in 0..self.db.symbols.len() {
@@ -31,57 +31,57 @@ impl<'db> InferCtxt<'db> {
 
 fn substitute_ty(
     infcx: &mut InferCtxtInner,
-    ty: Type,
-    unbound_vars: &mut HashSet<TypeVar>,
-) -> Type {
-    Type::new(substitute_tykind(infcx, &ty, unbound_vars))
+    ty: Ty,
+    unbound_vars: &mut HashSet<TyVar>,
+) -> Ty {
+    Ty::new(substitute_tykind(infcx, &ty, unbound_vars))
 }
 
 fn substitute_tykind(
     infcx: &mut InferCtxtInner,
-    ty: &TypeKind,
-    unbound_vars: &mut HashSet<TypeVar>,
-) -> TypeKind {
+    ty: &TyKind,
+    unbound_vars: &mut HashSet<TyVar>,
+) -> TyKind {
     match ty {
-        TypeKind::Function(fun) => TypeKind::Function(FunctionType {
+        TyKind::Function(fun) => TyKind::Function(FunctionTy {
             ret: substitute_ty(infcx, fun.ret, unbound_vars),
             params: fun
                 .params
                 .iter()
-                .map(|param| FunctionTypeParam {
+                .map(|param| FunctionTyParam {
                     name: param.name,
                     ty: substitute_ty(infcx, param.ty, unbound_vars),
                 })
                 .collect(),
         }),
-        TypeKind::Infer(InferType::TypeVar(var)) => {
+        TyKind::Infer(InferTy::TyVar(var)) => {
             let root = infcx.ty_unification_table.find(*var);
 
             if let Some(ty) = infcx.ty_unification_table.probe_value(root) {
                 substitute_tykind(infcx, &ty, unbound_vars)
             } else {
                 unbound_vars.insert(root);
-                TypeKind::Infer(InferType::TypeVar(root))
+                TyKind::Infer(InferTy::TyVar(root))
             }
         }
-        TypeKind::Infer(InferType::IntVar(var)) => {
+        TyKind::Infer(InferTy::IntVar(var)) => {
             let root = infcx.int_unification_table.find(*var);
 
             infcx
                 .int_unification_table
                 .probe_value(root)
-                .map_or_else(|| TypeKind::DEFAULT_INT, Into::into)
+                .map_or_else(|| TyKind::DEFAULT_INT, Into::into)
         }
         _ => ty.clone(),
     }
 }
 
 trait Substitute<'db> {
-    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TypeVar>);
+    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>);
 }
 
 impl Substitute<'_> for Expr {
-    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TypeVar>) {
+    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>) {
         match self {
             Self::Item(inner) => inner.substitute(infcx, unbound_vars),
             Self::If(inner) => inner.substitute(infcx, unbound_vars),
@@ -97,7 +97,7 @@ impl Substitute<'_> for Expr {
 }
 
 impl Substitute<'_> for Item {
-    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TypeVar>) {
+    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>) {
         match &mut self.kind {
             ItemKind::Function(fun) => fun.substitute(infcx, unbound_vars),
         }
@@ -107,7 +107,7 @@ impl Substitute<'_> for Item {
 }
 
 impl Substitute<'_> for Function {
-    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TypeVar>) {
+    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>) {
         self.sig.substitute(infcx, unbound_vars);
         self.body.substitute(infcx, unbound_vars);
         self.ty = substitute_ty(infcx, self.ty, unbound_vars);
@@ -115,7 +115,7 @@ impl Substitute<'_> for Function {
 }
 
 impl Substitute<'_> for FunctionSig {
-    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TypeVar>) {
+    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>) {
         for param in &mut self.params {
             param.ty = substitute_ty(infcx, param.ty, unbound_vars);
         }
@@ -123,7 +123,7 @@ impl Substitute<'_> for FunctionSig {
 }
 
 impl Substitute<'_> for If {
-    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TypeVar>) {
+    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>) {
         self.cond.substitute(infcx, unbound_vars);
         self.then.substitute(infcx, unbound_vars);
         self.otherwise.substitute(infcx, unbound_vars);
@@ -131,7 +131,7 @@ impl Substitute<'_> for If {
 }
 
 impl Substitute<'_> for Block {
-    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TypeVar>) {
+    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>) {
         for stmt in &mut self.exprs {
             stmt.substitute(infcx, unbound_vars);
         }
@@ -139,13 +139,13 @@ impl Substitute<'_> for Block {
 }
 
 impl Substitute<'_> for Return {
-    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TypeVar>) {
+    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>) {
         self.expr.substitute(infcx, unbound_vars);
     }
 }
 
 impl Substitute<'_> for Call {
-    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TypeVar>) {
+    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>) {
         self.callee.substitute(infcx, unbound_vars);
 
         for arg in &mut self.args {
@@ -161,14 +161,14 @@ impl Substitute<'_> for Call {
 }
 
 impl Substitute<'_> for Bin {
-    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TypeVar>) {
+    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>) {
         self.lhs.substitute(infcx, unbound_vars);
         self.rhs.substitute(infcx, unbound_vars);
     }
 }
 
 impl<'db, T: Substitute<'db>> Substitute<'db> for Vec<T> {
-    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TypeVar>) {
+    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>) {
         for item in self {
             item.substitute(infcx, unbound_vars);
         }
@@ -176,7 +176,7 @@ impl<'db, T: Substitute<'db>> Substitute<'db> for Vec<T> {
 }
 
 impl<'db, T: Substitute<'db>> Substitute<'db> for Option<T> {
-    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TypeVar>) {
+    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>) {
         if let Some(item) = self {
             item.substitute(infcx, unbound_vars);
         }
@@ -184,7 +184,7 @@ impl<'db, T: Substitute<'db>> Substitute<'db> for Option<T> {
 }
 
 impl<'db, T: Substitute<'db>> Substitute<'db> for Box<T> {
-    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TypeVar>) {
+    fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>) {
         self.as_mut().substitute(infcx, unbound_vars);
     }
 }

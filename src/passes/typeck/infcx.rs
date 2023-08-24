@@ -4,7 +4,7 @@ use ena::unify::InPlaceUnificationTable;
 
 use crate::{
     db::{Db, SymbolId},
-    ty::{tcx::TyCtxt, InferType, IntVar, Type, TypeKind, TypeVar},
+    ty::{tcx::TyCtxt, InferTy, IntVar, Ty, TyKind, TyVar},
 };
 
 pub struct InferCtxt<'db> {
@@ -18,29 +18,29 @@ impl<'db> InferCtxt<'db> {
         Self { db, tcx, inner: RefCell::new(InferCtxtInner::new()) }
     }
 
-    pub fn lookup(&mut self, id: SymbolId) -> Type {
+    pub fn lookup(&mut self, id: SymbolId) -> Ty {
         let sym = &self.db[id];
-        assert!(*sym.ty != TypeKind::Unknown, "symbol `{}` wasn't assigned a Type", sym.qpath);
+        assert!(*sym.ty != TyKind::Unknown, "symbol `{}` wasn't assigned a Type", sym.qpath);
         sym.ty
     }
 
     #[inline]
-    pub fn fresh_ty_var(&mut self) -> Type {
-        Type::new(TypeKind::Infer(InferType::TypeVar(
+    pub fn fresh_ty_var(&mut self) -> Ty {
+        Ty::new(TyKind::Infer(InferTy::TyVar(
             self.inner.borrow_mut().ty_unification_table.new_key(None),
         )))
     }
 
     #[inline]
-    pub fn fresh_int_var(&mut self) -> Type {
-        Type::new(TypeKind::Infer(InferType::IntVar(
+    pub fn fresh_int_var(&mut self) -> Ty {
+        Ty::new(TyKind::Infer(InferTy::IntVar(
             self.inner.borrow_mut().int_unification_table.new_key(None),
         )))
     }
 }
 
 pub struct InferCtxtInner {
-    pub ty_unification_table: InPlaceUnificationTable<TypeVar>,
+    pub ty_unification_table: InPlaceUnificationTable<TyVar>,
     pub int_unification_table: InPlaceUnificationTable<IntVar>,
 }
 

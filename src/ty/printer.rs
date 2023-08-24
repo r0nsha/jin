@@ -2,40 +2,40 @@ use std::fmt::{Display, Formatter, Result};
 
 use crate::{
     db::Db,
-    ty::{InferType, IntType, TypeKind},
+    ty::{InferTy, IntTy, TyKind},
 };
 
-pub struct TypePrinter<'db> {
+pub struct TyPrinter<'db> {
     _db: &'db Db,
-    ty: &'db TypeKind,
+    ty: &'db TyKind,
 }
 
-impl Display for TypePrinter<'_> {
+impl Display for TyPrinter<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        TypePrinter::fmt_type(f, self.ty)
+        TyPrinter::fmt_type(f, self.ty)
     }
 }
 
-impl<'db> TypePrinter<'db> {
-    pub fn new(db: &'db Db, ty: &'db TypeKind) -> Self {
+impl<'db> TyPrinter<'db> {
+    pub fn new(db: &'db Db, ty: &'db TyKind) -> Self {
         Self { _db: db, ty }
     }
 
-    fn fmt_type(f: &mut Formatter, ty: &TypeKind) -> Result {
+    fn fmt_type(f: &mut Formatter, ty: &TyKind) -> Result {
         match ty {
-            TypeKind::Function(fun) => {
+            TyKind::Function(fun) => {
                 f.write_str("fn() ")?;
                 Self::fmt_type(f, &fun.ret)
             }
-            TypeKind::Int(int) => match int {
-                IntType::Int => f.write_str("int"),
+            TyKind::Int(int) => match int {
+                IntTy::Int => f.write_str("int"),
             },
-            TypeKind::Bool => f.write_str("bool"),
-            TypeKind::Unit => f.write_str("()"),
-            TypeKind::Never => f.write_str("!"),
-            TypeKind::Infer(InferType::TypeVar(v)) => write!(f, "?{}", v.0),
-            TypeKind::Infer(InferType::IntVar(_)) => f.write_str("{int}"),
-            TypeKind::Unknown => f.write_str("{unknown}"),
+            TyKind::Bool => f.write_str("bool"),
+            TyKind::Unit => f.write_str("()"),
+            TyKind::Never => f.write_str("!"),
+            TyKind::Infer(InferTy::TyVar(v)) => write!(f, "?{}", v.0),
+            TyKind::Infer(InferTy::IntVar(_)) => f.write_str("{int}"),
+            TyKind::Unknown => f.write_str("{unknown}"),
         }
     }
 }

@@ -11,7 +11,7 @@ use crate::{
     common::Word,
     db::{Db, SymbolId},
     span::{Span, Spanned},
-    ty::{Type, Typed},
+    ty::{Ty, Typed},
 };
 
 #[derive(Debug, Clone)]
@@ -31,7 +31,7 @@ impl TypedAst {
 #[derive(Debug, Clone)]
 pub struct Item {
     pub kind: ItemKind,
-    pub ty: Type,
+    pub ty: Ty,
 }
 
 impl Spanned for Item {
@@ -45,11 +45,11 @@ impl Spanned for Item {
 }
 
 impl Typed for Item {
-    fn ty(&self) -> Type {
+    fn ty(&self) -> Ty {
         self.kind.ty()
     }
 
-    fn ty_mut(&mut self) -> &mut Type {
+    fn ty_mut(&mut self) -> &mut Ty {
         self.kind.ty_mut()
     }
 }
@@ -74,13 +74,13 @@ impl Spanned for ItemKind {
 }
 
 impl Typed for ItemKind {
-    fn ty(&self) -> Type {
+    fn ty(&self) -> Ty {
         match self {
             Self::Function(x) => x.ty,
         }
     }
 
-    fn ty_mut(&mut self) -> &mut Type {
+    fn ty_mut(&mut self) -> &mut Ty {
         match self {
             Self::Function(x) => &mut x.ty,
         }
@@ -100,7 +100,7 @@ pub enum Expr {
 }
 
 impl Typed for Expr {
-    fn ty(&self) -> Type {
+    fn ty(&self) -> Ty {
         match self {
             Self::Item(x) => x.ty(),
             Self::If(x) => x.ty,
@@ -113,7 +113,7 @@ impl Typed for Expr {
         }
     }
 
-    fn ty_mut(&mut self) -> &mut Type {
+    fn ty_mut(&mut self) -> &mut Ty {
         match self {
             Self::Item(x) => x.ty_mut(),
             Self::If(x) => &mut x.ty,
@@ -161,7 +161,7 @@ pub struct Function {
     pub sig: FunctionSig,
     pub body: Block,
     pub span: Span,
-    pub ty: Type,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone)]
@@ -173,7 +173,7 @@ pub struct FunctionSig {
 pub struct FunctionParam {
     pub id: SymbolId,
     pub span: Span,
-    pub ty: Type,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone)]
@@ -182,21 +182,21 @@ pub struct If {
     pub then: Box<Expr>,
     pub otherwise: Option<Box<Expr>>,
     pub span: Span,
-    pub ty: Type,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone)]
 pub struct Block {
     pub exprs: Vec<Expr>,
     pub span: Span,
-    pub ty: Type,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone)]
 pub struct Return {
     pub expr: Box<Expr>,
     pub span: Span,
-    pub ty: Type,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone)]
@@ -204,7 +204,7 @@ pub struct Call {
     pub callee: Box<Expr>,
     pub args: Vec<CallArg>,
     pub span: Span,
-    pub ty: Type,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone)]
@@ -214,13 +214,13 @@ pub enum CallArg {
 }
 
 impl Typed for CallArg {
-    fn ty(&self) -> Type {
+    fn ty(&self) -> Ty {
         match self {
             Self::Positional(e) | Self::Named(_, e) => e.ty(),
         }
     }
 
-    fn ty_mut(&mut self) -> &mut Type {
+    fn ty_mut(&mut self) -> &mut Ty {
         match self {
             Self::Positional(e) | Self::Named(_, e) => e.ty_mut(),
         }
@@ -233,21 +233,21 @@ pub struct Bin {
     pub rhs: Box<Expr>,
     pub op: BinOp,
     pub span: Span,
-    pub ty: Type,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone)]
 pub struct Name {
     pub id: SymbolId,
     pub span: Span,
-    pub ty: Type,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone)]
 pub struct Lit {
     pub kind: LitKind,
     pub span: Span,
-    pub ty: Type,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone)]

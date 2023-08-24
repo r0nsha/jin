@@ -5,7 +5,7 @@ use crate::{
     ast::BinOp,
     db::{Db, ScopeLevel, SymbolId},
     mir::BlockId,
-    ty::TypeKind,
+    ty::TyKind,
 };
 
 pub fn print(db: &Db, mir: &Mir) {
@@ -133,7 +133,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for ValueId {
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for TypeKind {
+impl<'db, 'd> ToDoc<'db, 'd> for TyKind {
     fn to_doc(&self, db: &'db Db, _fun: &'db Function) -> RcDoc<'d, ()> {
         RcDoc::text(self.to_string(db))
     }

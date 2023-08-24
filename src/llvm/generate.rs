@@ -13,12 +13,12 @@ use inkwell::{
 use crate::{
     ast::{BinOp, CmpOp},
     db::{Db, SymbolId},
-    llvm::ty::LlvmType,
+    llvm::ty::LlvmTy,
     mir::{
         Bin, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, Load, Mir, Phi,
         Return, UnitLit, Unreachable, ValueId,
     },
-    ty::Type,
+    ty::Ty,
 };
 
 pub struct Generator<'db, 'cx> {
@@ -93,7 +93,7 @@ impl<'cx> FunctionState<'cx> {
         self.values.insert(id, value);
     }
 
-    pub fn value_ty<'db>(&self, cx: &Generator<'db, 'cx>, id: ValueId) -> Type {
+    pub fn value_ty<'db>(&self, cx: &Generator<'db, 'cx>, id: ValueId) -> Ty {
         self.function(cx).value(id).expect("value to exist").ty
     }
 }
@@ -132,7 +132,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             let name = fun_info.qpath.standard_full_name();
             let llvm_ty = fun_info
                 .ty
-                .llvm_type(self)
+                .llvm_ty(self)
                 .into_pointer_type()
                 .get_element_type()
                 .into_function_type();
@@ -257,7 +257,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for BrIf {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Phi {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let ty = state.value_ty(cx, self.value).llvm_type(cx);
+        let ty = state.value_ty(cx, self.value).llvm_ty(cx);
         let phi = cx.builder.build_phi(ty, "phi");
 
         for (blk, value) in &*self.phi_values {
@@ -374,7 +374,7 @@ fn get_int_predicate(op: CmpOp) -> IntPredicate {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for IntLit {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let ty = state.value_ty(cx, self.value).llvm_type(cx).into_int_type();
+        let ty = state.value_ty(cx, self.value).llvm_ty(cx).into_int_type();
 
         // TODO: unsigned integers
         let value = ty.const_int(self.lit as u64, true);
@@ -402,6 +402,6 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Unreachable {
         }
 
         let ty = state.value_ty(cx, self.value);
-        state.set_value(self.value, Generator::undef_value(ty.llvm_type(cx)));
+        state.set_value(self.value, Generator::undef_value(ty.llvm_ty(cx)));
     }
 }

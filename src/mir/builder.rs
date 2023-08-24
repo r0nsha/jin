@@ -10,7 +10,7 @@ use crate::{
         Phi, PhiValue, Return, UnitLit, Unreachable, Value, ValueId,
     },
     span::Span,
-    ty::Type,
+    ty::Ty,
 };
 
 pub struct FunctionBuilder {
@@ -67,7 +67,7 @@ impl FunctionBuilder {
     }
 
     #[inline]
-    pub fn create_value(&mut self, ty: Type) -> ValueId {
+    pub fn create_value(&mut self, ty: Ty) -> ValueId {
         self.f.values.push(Value { ty })
     }
 
@@ -91,19 +91,19 @@ impl FunctionBuilder {
         self.f.cfg.blocks[source].successors.push(target);
     }
 
-    pub fn build_int_lit(&mut self, ty: Type, lit: usize, span: Span) -> ValueId {
+    pub fn build_int_lit(&mut self, ty: Ty, lit: usize, span: Span) -> ValueId {
         let value = self.create_value(ty);
         self.current_block_mut().add_inst(Inst::IntLit(IntLit { value, lit, span }));
         value
     }
 
-    pub fn build_bool_lit(&mut self, ty: Type, lit: bool, span: Span) -> ValueId {
+    pub fn build_bool_lit(&mut self, ty: Ty, lit: bool, span: Span) -> ValueId {
         let value = self.create_value(ty);
         self.current_block_mut().add_inst(Inst::BoolLit(BoolLit { value, lit, span }));
         value
     }
 
-    pub fn build_unit_lit(&mut self, ty: Type, span: Span) -> ValueId {
+    pub fn build_unit_lit(&mut self, ty: Ty, span: Span) -> ValueId {
         let value = self.create_value(ty);
         self.current_block_mut().add_inst(Inst::UnitLit(UnitLit { value, span }));
         value
@@ -113,7 +113,7 @@ impl FunctionBuilder {
         self.current_block_mut().add_inst(Inst::Return(Return { value, span }));
     }
 
-    pub fn build_unreachable(&mut self, ty: Type, span: Span) -> ValueId {
+    pub fn build_unreachable(&mut self, ty: Ty, span: Span) -> ValueId {
         let value = self.create_value(ty);
         self.current_block_mut().add_inst(Inst::Unreachable(Unreachable { value, span }));
         value
@@ -130,7 +130,7 @@ impl FunctionBuilder {
         self.current_block_mut().add_inst(Inst::BrIf(BrIf { cond, b1, b2, span }));
     }
 
-    pub fn build_phi(&mut self, ty: Type, phi_values: Box<[PhiValue]>, span: Span) -> ValueId {
+    pub fn build_phi(&mut self, ty: Ty, phi_values: Box<[PhiValue]>, span: Span) -> ValueId {
         let value = self.create_value(ty);
         self.current_block_mut().add_inst(Inst::Phi(Phi { value, phi_values, span }));
         value
@@ -138,7 +138,7 @@ impl FunctionBuilder {
 
     pub fn build_call(
         &mut self,
-        ty: Type,
+        ty: Ty,
         callee: ValueId,
         args: Vec<ValueId>,
         span: Span,
@@ -148,7 +148,7 @@ impl FunctionBuilder {
         value
     }
 
-    pub fn build_load(&mut self, ty: Type, id: SymbolId, span: Span) -> ValueId {
+    pub fn build_load(&mut self, ty: Ty, id: SymbolId, span: Span) -> ValueId {
         let value = self.create_value(ty);
         self.current_block_mut().add_inst(Inst::Load(Load { value, id, span }));
         value
@@ -156,7 +156,7 @@ impl FunctionBuilder {
 
     pub fn build_bin(
         &mut self,
-        ty: Type,
+        ty: Ty,
         op: BinOp,
         lhs: ValueId,
         rhs: ValueId,

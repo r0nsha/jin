@@ -12,7 +12,7 @@ use crate::{
     common::{new_key_type, IndexVec},
     db::{Db, SymbolId},
     span::Span,
-    ty::Type,
+    ty::Ty,
 };
 
 #[derive(Debug)]
@@ -104,7 +104,7 @@ new_key_type!(ValueId);
 
 #[derive(Debug, Clone, Copy)]
 pub struct Value {
-    pub ty: Type,
+    pub ty: Ty,
 }
 
 new_key_type!(BlockId);
