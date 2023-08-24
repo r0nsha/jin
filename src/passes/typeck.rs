@@ -1,4 +1,3 @@
-mod constraint;
 mod infcx;
 mod normalize;
 mod substitute;
