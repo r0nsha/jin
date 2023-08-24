@@ -121,8 +121,7 @@ impl Infer<'_> for If {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         self.cond.infer(cx, env)?;
 
-        let bool_ty = cx.tcx.types.bool;
-        cx.at(Cause::obvious(self.cond.span())).eq(bool_ty, self.cond.ty())?;
+        cx.at(Cause::obvious(self.cond.span())).eq(cx.tcx.types.bool, self.cond.ty())?;
 
         self.then.infer(cx, env)?;
 
@@ -131,8 +130,7 @@ impl Infer<'_> for If {
             cx.at(Cause::exprs(self.span, self.then.span(), otherwise.span()))
                 .eq(self.then.ty(), otherwise.ty())?;
         } else {
-            let unit_ty = cx.tcx.types.unit;
-            cx.at(Cause::obvious(self.then.span())).eq(unit_ty, self.then.ty())?;
+            cx.at(Cause::obvious(self.then.span())).eq(cx.tcx.types.unit, self.then.ty())?;
         }
 
         self.ty = self.then.ty();
@@ -212,9 +210,8 @@ impl Infer<'_> for Bin {
         match self.op {
             BinOp::Cmp(_) => (),
             BinOp::And | BinOp::Or => {
-                let bool_ty = cx.tcx.types.bool;
-                cx.at(Cause::obvious(self.lhs.span())).eq(bool_ty, self.lhs.ty())?;
-                cx.at(Cause::obvious(self.rhs.span())).eq(bool_ty, self.rhs.ty())?;
+                cx.at(Cause::obvious(self.lhs.span())).eq(cx.tcx.types.bool, self.lhs.ty())?;
+                cx.at(Cause::obvious(self.rhs.span())).eq(cx.tcx.types.bool, self.rhs.ty())?;
             }
             _ => {
                 // TODO: type check arithmetic operations
