@@ -13,13 +13,11 @@ impl<'db> InferCtxt<'db> {
     pub fn substitution(&mut self, tast: &mut TypedAst) -> HashSet<TyVar> {
         let mut unbound_vars = HashSet::new();
 
-        for i in 0..self.db.symbols.len() {
-            let ty = self.db.symbols[i.into()].ty;
-            self.db.symbols[i.into()].ty =
-                substitute_ty(&mut self.inner.borrow_mut(), ty, &mut unbound_vars);
-        }
-
         let mut infcx = self.inner.borrow_mut();
+
+        for sym in self.db.symbols.iter_mut() {
+            sym.ty = substitute_ty(&mut infcx, sym.ty, &mut unbound_vars);
+        }
 
         for item in &mut tast.items {
             item.substitute(&mut infcx, &mut unbound_vars);
@@ -29,11 +27,7 @@ impl<'db> InferCtxt<'db> {
     }
 }
 
-fn substitute_ty(
-    infcx: &mut InferCtxtInner,
-    ty: Ty,
-    unbound_vars: &mut HashSet<TyVar>,
-) -> Ty {
+fn substitute_ty(infcx: &mut InferCtxtInner, ty: Ty, unbound_vars: &mut HashSet<TyVar>) -> Ty {
     Ty::new(substitute_tykind(infcx, &ty, unbound_vars))
 }
 
