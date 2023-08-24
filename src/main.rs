@@ -36,6 +36,7 @@ use crate::{
         build_options::{BuildOptions, EmitOption},
         Db,
     },
+    ty::tyctxt::TyCtxt,
 };
 
 #[derive(Parser)]
@@ -95,15 +96,18 @@ fn build(db: &mut Db) {
     }
     expect!(db);
 
+    let tcx = TyCtxt::new();
+
     db.timings.start("resolve");
-    passes::resolve(db, &mut ast);
+    passes::resolve(db, &tcx, &mut ast);
     expect!(db);
 
     db.timings.start("ast -> typed ast");
-    let mut tast = tast::lower(db, ast);
+
+    let mut tast = tast::lower(db, &tcx, ast);
 
     db.timings.start("typeck");
-    if let Err(diag) = passes::typeck(db, &mut tast) {
+    if let Err(diag) = passes::typeck(db, &tcx, &mut tast) {
         db.diagnostics.add(diag);
     }
     db.timings.stop();

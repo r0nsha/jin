@@ -18,13 +18,13 @@ use crate::{
         Bin, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name, Return,
         TypedAst,
     },
-    ty::{FunctionType, FunctionTypeParam, Type, TypeKind, Typed},
+    ty::{tyctxt::TyCtxt, FunctionType, FunctionTypeParam, Type, TypeKind, Typed},
 };
 
 pub type InferResult<T> = Result<T, InferError>;
 
-pub fn typeck(db: &mut Db, tast: &mut TypedAst) -> Result<(), Diagnostic> {
-    let mut cx = InferCtxt::new(db);
+pub fn typeck(db: &mut Db, tcx: &TyCtxt, tast: &mut TypedAst) -> Result<(), Diagnostic> {
+    let mut cx = InferCtxt::new(db, tcx);
 
     fill_symbol_tys(&mut cx);
     infer_all(&mut cx, tast).map_err(|err| err.into_diagnostic(cx.db))?;
@@ -77,7 +77,7 @@ impl Infer<'_> for Item {
             ItemKind::Function(fun) => fun.infer(cx, env)?,
         }
 
-        self.ty = Type::new(TypeKind::Unit);
+        self.ty = cx.tcx.types.unit;
 
         Ok(())
     }
@@ -121,7 +121,8 @@ impl Infer<'_> for If {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         self.cond.infer(cx, env)?;
 
-        cx.at(Cause::obvious(self.cond.span())).eq(Type::new(TypeKind::Bool), self.cond.ty())?;
+        let bool_ty = cx.tcx.types.bool;
+        cx.at(Cause::obvious(self.cond.span())).eq(bool_ty, self.cond.ty())?;
 
         self.then.infer(cx, env)?;
 
@@ -130,8 +131,8 @@ impl Infer<'_> for If {
             cx.at(Cause::exprs(self.span, self.then.span(), otherwise.span()))
                 .eq(self.then.ty(), otherwise.ty())?;
         } else {
-            cx.at(Cause::obvious(self.then.span()))
-                .eq(Type::new(TypeKind::Unit), self.then.ty())?;
+            let unit_ty = cx.tcx.types.unit;
+            cx.at(Cause::obvious(self.then.span())).eq(unit_ty, self.then.ty())?;
         }
 
         self.ty = self.then.ty();
@@ -146,7 +147,7 @@ impl Infer<'_> for Block {
             expr.infer(cx, env)?;
         }
 
-        self.ty = self.exprs.last().map_or_else(|| Type::new(TypeKind::Unit), Expr::ty);
+        self.ty = self.exprs.last().map_or_else(|| cx.tcx.types.unit, Expr::ty);
 
         Ok(())
     }
@@ -154,7 +155,7 @@ impl Infer<'_> for Block {
 
 impl Infer<'_> for Return {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
-        self.ty = Type::new(TypeKind::Never);
+        self.ty = cx.tcx.types.never;
 
         let CallFrame { id, ret_ty } =
             env.call_stack.current().expect("to be inside a call frame").clone();
@@ -211,9 +212,9 @@ impl Infer<'_> for Bin {
         match self.op {
             BinOp::Cmp(_) => (),
             BinOp::And | BinOp::Or => {
-                let expected = Type::new(TypeKind::Bool);
-                cx.at(Cause::obvious(self.lhs.span())).eq(expected, self.lhs.ty())?;
-                cx.at(Cause::obvious(self.rhs.span())).eq(expected, self.rhs.ty())?;
+                let bool_ty = cx.tcx.types.bool;
+                cx.at(Cause::obvious(self.lhs.span())).eq(bool_ty, self.lhs.ty())?;
+                cx.at(Cause::obvious(self.rhs.span())).eq(bool_ty, self.rhs.ty())?;
             }
             _ => {
                 // TODO: type check arithmetic operations
@@ -221,7 +222,7 @@ impl Infer<'_> for Bin {
         }
 
         self.ty = match self.op {
-            BinOp::Cmp(_) => Type::new(TypeKind::Bool),
+            BinOp::Cmp(_) => cx.tcx.types.bool,
             _ => self.lhs.ty(),
         };
 
@@ -240,8 +241,8 @@ impl Infer<'_> for Lit {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut TypeEnv) -> InferResult<()> {
         self.ty = match &self.kind {
             LitKind::Int(_) => cx.fresh_int_var(),
-            LitKind::Bool(_) => Type::new(TypeKind::Bool),
-            LitKind::Unit => Type::new(TypeKind::Unit),
+            LitKind::Bool(_) => cx.tcx.types.bool,
+            LitKind::Unit => cx.tcx.types.unit,
         };
 
         Ok(())

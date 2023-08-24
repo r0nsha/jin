@@ -2,19 +2,21 @@ use ena::unify::InPlaceUnificationTable;
 
 use crate::{
     db::{Db, SymbolId},
-    ty::{InferType, IntVar, Type, TypeKind, TypeVar},
+    ty::{tyctxt::TyCtxt, InferType, IntVar, Type, TypeKind, TypeVar},
 };
 
 pub struct InferCtxt<'db> {
     pub db: &'db mut Db,
+    pub tcx: &'db TyCtxt,
     pub ty_unification_table: InPlaceUnificationTable<TypeVar>,
     pub int_unification_table: InPlaceUnificationTable<IntVar>,
 }
 
 impl<'db> InferCtxt<'db> {
-    pub fn new(db: &'db mut Db) -> Self {
+    pub fn new(db: &'db mut Db, tcx: &'db TyCtxt) -> Self {
         Self {
             db,
+            tcx,
             ty_unification_table: InPlaceUnificationTable::new(),
             int_unification_table: InPlaceUnificationTable::new(),
         }
