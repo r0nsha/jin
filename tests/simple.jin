@@ -1,5 +1,5 @@
 fn main() = {
-	add(41, true) // valid
+	add(41, 1) // valid
 	// add(41, b = 1) // valid
 	// add(a = 41, 1) // valid
 	// add(b = 41, 1) // valid
