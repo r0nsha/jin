@@ -29,7 +29,7 @@ pub fn typeck(db: &mut Db, tcx: &TyCtxt, tast: &mut TypedAst) -> Result<(), Diag
     fill_symbol_tys(&mut cx);
     infer_all(&mut cx, tast).map_err(|err| err.into_diagnostic(cx.db))?;
 
-    cx.substitution(tast);
+    cx.substitute_all(tast);
 
     Ok(())
 }

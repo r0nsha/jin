@@ -10,7 +10,7 @@ use crate::{
 };
 
 impl<'db> InferCtxt<'db> {
-    pub fn substitution(&mut self, tast: &mut TypedAst) -> HashSet<TyVar> {
+    pub fn substitute_all(&mut self, tast: &mut TypedAst) -> HashSet<TyVar> {
         let mut unbound_vars = HashSet::new();
 
         let mut infcx = self.inner.borrow_mut();
