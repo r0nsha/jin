@@ -35,10 +35,10 @@ pub fn typeck(db: &mut Db, tcx: &TyCtxt, tast: &mut TypedAst) -> Result<(), Diag
 }
 
 fn fill_symbol_tys(infcx: &mut InferCtxt) {
-    // TODO: find a less unsightly code pattern for mutating all symbols...
-    for i in 0..infcx.db.symbols.len() {
-        let id = i.into();
-        infcx.db.symbols[id].ty = infcx.fresh_ty_var();
+    let len = infcx.db.symbols.len();
+    let tys: Vec<_> = std::iter::repeat_with(|| infcx.fresh_ty_var()).take(len).collect();
+    for (i, sym) in infcx.db.symbols.iter_mut().enumerate() {
+        sym.ty = tys[i];
     }
 }
 

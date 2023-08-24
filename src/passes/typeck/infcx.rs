@@ -25,14 +25,14 @@ impl<'db> InferCtxt<'db> {
     }
 
     #[inline]
-    pub fn fresh_ty_var(&mut self) -> Ty {
+    pub fn fresh_ty_var(&self) -> Ty {
         Ty::new(TyKind::Infer(InferTy::TyVar(
             self.inner.borrow_mut().ty_unification_table.new_key(None),
         )))
     }
 
     #[inline]
-    pub fn fresh_int_var(&mut self) -> Ty {
+    pub fn fresh_int_var(&self) -> Ty {
         Ty::new(TyKind::Infer(InferTy::IntVar(
             self.inner.borrow_mut().int_unification_table.new_key(None),
         )))
