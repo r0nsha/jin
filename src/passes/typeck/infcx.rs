@@ -18,7 +18,7 @@ impl<'db> InferCtxt<'db> {
         Self { db, tcx, inner: RefCell::new(InferCtxtInner::new()) }
     }
 
-    pub fn lookup(&mut self, id: SymbolId) -> Ty {
+    pub fn lookup(&self, id: SymbolId) -> Ty {
         let sym = &self.db[id];
         assert!(*sym.ty != TyKind::Unknown, "symbol `{}` wasn't assigned a Type", sym.qpath);
         sym.ty
