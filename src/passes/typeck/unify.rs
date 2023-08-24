@@ -142,7 +142,14 @@ impl InferError {
                         expected.display(db),
                         found.display(db),
                     ))
-                    .with_label(Label::primary(span).with_message("expected here"))
+                    // .with_label(Label::primary(span).with_message("expected here"))
+                    .with_label(
+                        Label::primary(found.span())
+                            .with_message(format!("found type `{}` here", found.display(db))),
+                    ).with_label(Label::secondary(expected.span()).with_message(format!(
+                    "expected type `{}` originates here",
+                    expected.display(db)
+                )))
             }
             Self::InfiniteType { ty, .. } => Diagnostic::error("infer::infinite_type")
                 .with_message(format!("type `{}` is an infinite type", ty.display(db)))
