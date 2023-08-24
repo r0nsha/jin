@@ -1,5 +1,5 @@
 mod printer;
-pub mod tyctxt;
+pub mod tcx;
 
 use std::ops::Deref;
 

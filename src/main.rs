@@ -36,7 +36,7 @@ use crate::{
         build_options::{BuildOptions, EmitOption},
         Db,
     },
-    ty::tyctxt::TyCtxt,
+    ty::tcx::TyCtxt,
 };
 
 #[derive(Parser)]

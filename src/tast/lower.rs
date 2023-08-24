@@ -5,7 +5,7 @@ use crate::{
         Bin, Block, Call, CallArg, Expr, Function, FunctionParam, FunctionSig, If, Item, ItemKind,
         Lit, LitKind, Name, Return, TypedAst,
     },
-    ty::tyctxt::TyCtxt,
+    ty::tcx::TyCtxt,
 };
 
 pub fn lower(db: &mut Db, tcx: &TyCtxt, ast: ast::Ast) -> TypedAst {

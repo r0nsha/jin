@@ -11,7 +11,7 @@ use crate::{
     },
     diagnostics::{Diagnostic, Label},
     span::{Span, Spanned},
-    ty::tyctxt::TyCtxt,
+    ty::tcx::TyCtxt,
 };
 
 pub fn resolve(db: &mut Db, tcx: &TyCtxt, ast: &mut Ast) {

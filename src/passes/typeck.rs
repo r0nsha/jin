@@ -18,7 +18,7 @@ use crate::{
         Bin, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name, Return,
         TypedAst,
     },
-    ty::{tyctxt::TyCtxt, FunctionType, FunctionTypeParam, Type, TypeKind, Typed},
+    ty::{tcx::TyCtxt, FunctionType, FunctionTypeParam, Type, TypeKind, Typed},
 };
 
 pub type InferResult<T> = Result<T, InferError>;

@@ -2,7 +2,7 @@ use ena::unify::InPlaceUnificationTable;
 
 use crate::{
     db::{Db, SymbolId},
-    ty::{tyctxt::TyCtxt, InferType, IntVar, Type, TypeKind, TypeVar},
+    ty::{tcx::TyCtxt, InferType, IntVar, Type, TypeKind, TypeVar},
 };
 
 pub struct InferCtxt<'db> {
