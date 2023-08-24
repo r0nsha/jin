@@ -3,7 +3,7 @@ use std::io;
 use crate::{
     db::Db,
     tast::{
-        Binary, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name,
+        Bin, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name,
         Return, TypedAst,
     },
 };
@@ -36,7 +36,7 @@ impl PrettyPrint for Expr {
             Self::Block(inner) => inner.pretty_print(cx),
             Self::Return(inner) => inner.pretty_print(cx),
             Self::Call(inner) => inner.pretty_print(cx),
-            Self::Binary(inner) => inner.pretty_print(cx),
+            Self::Bin(inner) => inner.pretty_print(cx),
             Self::Name(inner) => inner.pretty_print(cx),
             Self::Lit(inner) => inner.pretty_print(cx),
         }
@@ -147,7 +147,7 @@ impl PrettyPrint for Call {
     }
 }
 
-impl PrettyPrint for Binary {
+impl PrettyPrint for Bin {
     fn pretty_print(&self, cx: &mut PPCtxt) {
         cx.builder.begin_child(format!("{} (result: {})", self.op, self.ty.display(cx.db)));
         self.lhs.pretty_print(cx);

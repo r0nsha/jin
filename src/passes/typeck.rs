@@ -5,7 +5,7 @@ mod type_env;
 mod unify;
 
 use crate::{
-    ast::BinaryOp,
+    ast::BinOp,
     db::Db,
     diagnostics::Diagnostic,
     passes::typeck::{
@@ -15,7 +15,7 @@ use crate::{
     },
     span::Spanned,
     tast::{
-        Binary, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name,
+        Bin, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name,
         Return, TypedAst,
     },
     ty::{FunctionType, FunctionTypeParam, Type, TypeKind, Typed},
@@ -64,7 +64,7 @@ impl Infer<'_> for Expr {
             Self::Block(inner) => inner.infer(cx, env),
             Self::Return(inner) => inner.infer(cx, env),
             Self::Call(inner) => inner.infer(cx, env),
-            Self::Binary(inner) => inner.infer(cx, env),
+            Self::Bin(inner) => inner.infer(cx, env),
             Self::Name(inner) => inner.infer(cx, env),
             Self::Lit(inner) => inner.infer(cx, env),
         }
@@ -200,16 +200,16 @@ impl Infer<'_> for Call {
     }
 }
 
-impl Infer<'_> for Binary {
+impl Infer<'_> for Bin {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         self.lhs.infer(cx, env)?;
         self.rhs.infer(cx, env)?;
 
-        cx.at(self.rhs.span()).eq(self.lhs.ty(), self.rhs.ty())?;
+        cx.at(self.span).eq(self.lhs.ty(), self.rhs.ty())?;
 
         match self.op {
-            BinaryOp::Cmp(_) => (),
-            BinaryOp::And | BinaryOp::Or => {
+            BinOp::Cmp(_) => (),
+            BinOp::And | BinOp::Or => {
                 let expected = Type::new(TypeKind::Bool(self.span));
                 cx.at(self.lhs.span()).eq(expected, self.lhs.ty())?;
                 cx.at(self.rhs.span()).eq(expected, self.rhs.ty())?;
@@ -220,7 +220,7 @@ impl Infer<'_> for Binary {
         }
 
         self.ty = match self.op {
-            BinaryOp::Cmp(_) => Type::new(TypeKind::Bool(self.span)),
+            BinOp::Cmp(_) => Type::new(TypeKind::Bool(self.span)),
             _ => self.lhs.ty(),
         };
 

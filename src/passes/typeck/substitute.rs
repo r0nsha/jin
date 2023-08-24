@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use crate::{
     passes::typeck::infcx::InferCtxt,
     tast::{
-        Binary, Block, Call, CallArg, Expr, Function, FunctionSig, If, Item, ItemKind, Return,
+        Bin, Block, Call, CallArg, Expr, Function, FunctionSig, If, Item, ItemKind, Return,
         TypedAst,
     },
     ty::{FunctionType, FunctionTypeParam, InferType, Type, TypeKind, TypeVar, Typed},
@@ -81,7 +81,7 @@ impl Substitute<'_> for Expr {
             Self::Block(inner) => inner.substitute(cx, unbound_vars),
             Self::Return(inner) => inner.substitute(cx, unbound_vars),
             Self::Call(inner) => inner.substitute(cx, unbound_vars),
-            Self::Binary(inner) => inner.substitute(cx, unbound_vars),
+            Self::Bin(inner) => inner.substitute(cx, unbound_vars),
             Self::Name(_) | Self::Lit(_) => (),
         }
 
@@ -153,7 +153,7 @@ impl Substitute<'_> for Call {
     }
 }
 
-impl Substitute<'_> for Binary {
+impl Substitute<'_> for Bin {
     fn substitute(&mut self, cx: &mut InferCtxt<'_>, unbound_vars: &mut HashSet<TypeVar>) {
         self.lhs.substitute(cx, unbound_vars);
         self.rhs.substitute(cx, unbound_vars);

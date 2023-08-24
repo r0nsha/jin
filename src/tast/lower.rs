@@ -2,7 +2,7 @@ use crate::{
     ast,
     db::Db,
     tast::{
-        Binary, Block, Call, CallArg, Expr, Function, FunctionParam, FunctionSig, If, Item,
+        Bin, Block, Call, CallArg, Expr, Function, FunctionParam, FunctionSig, If, Item,
         ItemKind, Lit, LitKind, Name, Return, TypedAst,
     },
     ty::Type,
@@ -103,7 +103,7 @@ impl Lower<'_, Expr> for ast::Expr {
                 span: call.span,
                 ty: Type::unknown(),
             }),
-            Self::Binary(bin) => Expr::Binary(Binary {
+            Self::Bin(bin) => Expr::Bin(Bin {
                 lhs: Box::new(bin.lhs.lower(cx)),
                 rhs: Box::new(bin.rhs.lower(cx)),
                 op: bin.op,

@@ -21,7 +21,7 @@ pub fn find_main(db: &mut Db) {
                     .with_message("the `main` function's type must be `fn() ()`")
                     .with_label(
                         Label::primary(main_fun.span)
-                            .with_message(format!("found type `{}` instead", fun_ty.display(db))),
+                            .with_message(format!("found type `{}`", fun_ty.display(db))),
                     ),
             );
         }

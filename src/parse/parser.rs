@@ -3,8 +3,8 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Binary, BinaryOp, Block, Call, CallArg, Expr, Function, FunctionParam, FunctionSig, If,
-        Item, Lit, LitKind, Module, Name, Return,
+        Bin, BinOp, Block, Call, CallArg, Expr, Function, FunctionParam, FunctionSig, If, Item,
+        Lit, LitKind, Module, Name, Return,
     },
     common::{QPath, Word},
     db::Db,
@@ -132,7 +132,7 @@ impl<'a> Parser<'a> {
 
     fn parse_expr(&mut self) -> ParseResult<Expr> {
         let mut expr_stack: Vec<Expr> = vec![];
-        let mut op_stack: Vec<BinaryOp> = vec![];
+        let mut op_stack: Vec<BinOp> = vec![];
         let mut last_precedence = usize::MAX;
 
         expr_stack.push(self.parse_operand()?);
@@ -142,10 +142,10 @@ impl<'a> Parser<'a> {
                 break;
             };
 
-            let op = match BinaryOp::try_from(tok.kind).ok() {
+            let op = match BinOp::try_from(tok.kind).ok() {
                 // For these specific operators, we check if they are on the same line as the last
                 // expr, to avoid ambiguity with unary operators
-                Some(op @ (BinaryOp::BitAnd | BinaryOp::Sub))
+                Some(op @ (BinOp::BitAnd | BinOp::Sub))
                     if self.are_on_same_line(
                         expr_stack.last().expect("to have an expr").span(),
                         tok.span,
@@ -180,7 +180,7 @@ impl<'a> Parser<'a> {
                 let lhs = expr_stack.pop().unwrap();
                 let span = lhs.span().merge(rhs.span());
 
-                expr_stack.push(Expr::Binary(Binary {
+                expr_stack.push(Expr::Bin(Bin {
                     lhs: Box::new(lhs),
                     op,
                     rhs: Box::new(rhs),
@@ -201,12 +201,7 @@ impl<'a> Parser<'a> {
 
             let span = lhs.span().merge(rhs.span());
 
-            expr_stack.push(Expr::Binary(Binary {
-                lhs: Box::new(lhs),
-                op,
-                rhs: Box::new(rhs),
-                span,
-            }));
+            expr_stack.push(Expr::Bin(Bin { lhs: Box::new(lhs), op, rhs: Box::new(rhs), span }));
         }
 
         Ok(expr_stack.into_iter().next().unwrap())
@@ -217,58 +212,58 @@ impl<'a> Parser<'a> {
         self.parse_postfix(term)
     }
 
-    // fn parse_binary_factor(&mut self, lhs: Ast) -> ParseResult<Ast> {
+    // fn parse_bin_factor(&mut self, lhs: Ast) -> ParseResult<Ast> {
     //     let tok = self.require()?;
     //
     //     match tok.kind {
     //         TokenKind::Star | TokenKind::FwSlash | TokenKind::Percent => {
-    //             self.parse_binary(lhs, tok)
+    //             self.parse_bin(lhs, tok)
     //         }
-    //         _ => self.parse_binary_term(lhs),
+    //         _ => self.parse_bin_term(lhs),
     //     }
     // }
     //
-    // fn parse_binary_term(&mut self, lhs: Ast) -> ParseResult<Ast> {
+    // fn parse_bin_term(&mut self, lhs: Ast) -> ParseResult<Ast> {
     //     let tok = self.require()?;
     //
     //     match tok.kind {
-    //         TokenKind::Plus | TokenKind::Minus => self.parse_binary(lhs, tok),
-    //         _ => self.parse_binary_bitshift(lhs),
+    //         TokenKind::Plus | TokenKind::Minus => self.parse_bin(lhs, tok),
+    //         _ => self.parse_bin_bitshift(lhs),
     //     }
     // }
     //
-    // fn parse_binary_bitshift(&mut self, lhs: Ast) -> ParseResult<Ast> {
+    // fn parse_bin_bitshift(&mut self, lhs: Ast) -> ParseResult<Ast> {
     //     let tok = self.require()?;
     //
     //     match tok.kind {
-    //         TokenKind::LtLt | TokenKind::GtGt => self.parse_binary(lhs, tok),
-    //         _ => self.parse_binary_bitand(lhs),
+    //         TokenKind::LtLt | TokenKind::GtGt => self.parse_bin(lhs, tok),
+    //         _ => self.parse_bin_bitand(lhs),
     //     }
     // }
     //
-    // fn parse_binary_bitand(&mut self, lhs: Ast) -> ParseResult<Ast> {
+    // fn parse_bin_bitand(&mut self, lhs: Ast) -> ParseResult<Ast> {
     //     let tok = self.require()?;
     //
     //     match tok.kind {
-    //         TokenKind::Amp => self.parse_binary(lhs, tok),
-    //         _ => self.parse_binary_bitxor(lhs),
+    //         TokenKind::Amp => self.parse_bin(lhs, tok),
+    //         _ => self.parse_bin_bitxor(lhs),
     //     }
     // }
     //
-    // fn parse_binary_bitxor(&mut self, lhs: Ast) -> ParseResult<Ast> {
+    // fn parse_bin_bitxor(&mut self, lhs: Ast) -> ParseResult<Ast> {
     //     let tok = self.require()?;
     //
     //     match tok.kind {
-    //         TokenKind::Caret => self.parse_binary(lhs, tok),
-    //         _ => self.parse_binary_bitor(lhs),
+    //         TokenKind::Caret => self.parse_bin(lhs, tok),
+    //         _ => self.parse_bin_bitor(lhs),
     //     }
     // }
     //
-    // fn parse_binary_bitor(&mut self, lhs: Ast) -> ParseResult<Ast> {
+    // fn parse_bin_bitor(&mut self, lhs: Ast) -> ParseResult<Ast> {
     //     let tok = self.require()?;
     //
     //     match tok.kind {
-    //         TokenKind::Pipe => self.parse_binary(lhs, tok),
+    //         TokenKind::Pipe => self.parse_bin(lhs, tok),
     //         _ => self.parse_cmp_eq(lhs),
     //     }
     // }
@@ -277,7 +272,7 @@ impl<'a> Parser<'a> {
     //     let tok = self.require()?;
     //
     //     match tok.kind {
-    //         TokenKind::EqEq | TokenKind::BangEq => self.parse_binary(lhs, tok),
+    //         TokenKind::EqEq | TokenKind::BangEq => self.parse_bin(lhs, tok),
     //         _ => self.parse_cmp_ord(lhs),
     //     }
     // }
@@ -287,7 +282,7 @@ impl<'a> Parser<'a> {
     //
     //     match tok.kind {
     //         TokenKind::Lt | TokenKind::LtEq | TokenKind::Gt | TokenKind::GtEq => {
-    //             self.parse_binary(lhs, tok)
+    //             self.parse_bin(lhs, tok)
     //         }
     //         _ => self.parse_and(lhs),
     //     }
@@ -297,7 +292,7 @@ impl<'a> Parser<'a> {
     //     let tok = self.require()?;
     //
     //     match tok.kind {
-    //         TokenKind::AmpAmp => self.parse_binary(lhs, tok),
+    //         TokenKind::AmpAmp => self.parse_bin(lhs, tok),
     //         _ => self.parse_or(lhs),
     //     }
     // }
@@ -306,19 +301,19 @@ impl<'a> Parser<'a> {
     //     let tok = self.require()?;
     //
     //     match tok.kind {
-    //         TokenKind::PipePipe => self.parse_binary(lhs, tok),
+    //         TokenKind::PipePipe => self.parse_bin(lhs, tok),
     //         _ => self.parse_operand_base(),
     //     }
     // }
 
-    // fn parse_binary(&mut self, lhs: Ast, tok: Token) -> ParseResult<Ast> {
+    // fn parse_bin(&mut self, lhs: Ast, tok: Token) -> ParseResult<Ast> {
     //     let rhs = self.parse_expr()?;
     //     let span = lhs.span().merge(rhs.span());
     //
-    //     Ok(Ast::Binary(Binary {
+    //     Ok(Ast::bin(bin {
     //         lhs: Box::new(lhs),
     //         rhs: Box::new(rhs),
-    //         op: BinaryOp::try_from(tok.kind).expect("to be a binary op"),
+    //         op: binOp::try_from(tok.kind).expect("to be a bin op"),
     //         span,
     //     }))
     // }

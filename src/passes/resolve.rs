@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
-    ast::{Ast, Binary, Block, Call, CallArg, Expr, Function, If, Item, Module, Name, Return},
+    ast::{Ast, Bin, Block, Call, CallArg, Expr, Function, If, Item, Module, Name, Return},
     common::{QPath, Word},
     db::{
         Db, FunctionInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, SymbolId, SymbolInfo,
@@ -157,7 +157,7 @@ impl Resolve<'_> for Expr {
             Self::Block(inner) => inner.resolve(cx, env),
             Self::Return(inner) => inner.resolve(cx, env),
             Self::Call(inner) => inner.resolve(cx, env),
-            Self::Binary(inner) => inner.resolve(cx, env),
+            Self::Bin(inner) => inner.resolve(cx, env),
             Self::Name(inner) => inner.resolve(cx, env),
             Self::Lit(_) => (),
         }
@@ -236,7 +236,7 @@ impl Resolve<'_> for Call {
     }
 }
 
-impl Resolve<'_> for Binary {
+impl Resolve<'_> for Bin {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         self.lhs.resolve(cx, env);
         self.rhs.resolve(cx, env);

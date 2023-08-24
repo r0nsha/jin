@@ -2,7 +2,7 @@ use pretty::RcDoc;
 
 use super::{Block, Function, Inst, Mir, ValueId};
 use crate::{
-    ast::BinaryOp,
+    ast::BinOp,
     db::{Db, ScopeLevel, SymbolId},
     mir::BlockId,
     ty::TypeKind,
@@ -107,8 +107,8 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
                 .append(RcDoc::text("load"))
                 .append(RcDoc::space())
                 .append(load.id.to_doc(db, fun)),
-            Self::Binary(bin) => value_alloc(db, fun, bin.value)
-                .append(RcDoc::text(binary_instruction_name(bin.op)))
+            Self::Bin(bin) => value_alloc(db, fun, bin.value)
+                .append(RcDoc::text(bin_instruction_name(bin.op)))
                 .append(RcDoc::space())
                 .append(bin.lhs.to_doc(db, fun))
                 .append(RcDoc::space())
@@ -169,7 +169,7 @@ fn value_alloc<'db, 'd>(db: &'db Db, fun: &'db Function, value: ValueId) -> RcDo
         .append(RcDoc::space())
 }
 
-fn binary_instruction_name(op: BinaryOp) -> String {
+fn bin_instruction_name(op: BinOp) -> String {
     let prefix = "i";
     let inst = op.name();
     format!("{prefix}{inst}")

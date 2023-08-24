@@ -82,7 +82,7 @@ pub enum Expr {
     If(If),
     Block(Block),
     Call(Call),
-    Binary(Binary),
+    Bin(Bin),
     Name(Name),
     Lit(Lit),
 }
@@ -95,7 +95,7 @@ impl Spanned for Expr {
             Self::If(x) => x.span,
             Self::Block(x) => x.span,
             Self::Call(x) => x.span,
-            Self::Binary(x) => x.span,
+            Self::Bin(x) => x.span,
             Self::Name(x) => x.name.span(),
             Self::Lit(x) => x.span,
         }
@@ -108,7 +108,7 @@ impl Spanned for Expr {
             Self::If(x) => &mut x.span,
             Self::Block(x) => &mut x.span,
             Self::Call(x) => &mut x.span,
-            Self::Binary(x) => &mut x.span,
+            Self::Bin(x) => &mut x.span,
             Self::Name(x) => x.name.span_mut(),
             Self::Lit(x) => &mut x.span,
         }
@@ -170,15 +170,15 @@ pub enum CallArg {
 }
 
 #[derive(Debug, Clone)]
-pub struct Binary {
+pub struct Bin {
     pub lhs: Box<Expr>,
     pub rhs: Box<Expr>,
-    pub op: BinaryOp,
+    pub op: BinOp,
     pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BinaryOp {
+pub enum BinOp {
     Add,
     Sub,
     Mul,
@@ -194,7 +194,7 @@ pub enum BinaryOp {
     Cmp(CmpOp),
 }
 
-impl BinaryOp {
+impl BinOp {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Add => "+",
@@ -267,13 +267,13 @@ pub enum CmpOp {
     Ge,
 }
 
-impl fmt::Display for BinaryOp {
+impl fmt::Display for BinOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
-impl TryFrom<TokenKind> for BinaryOp {
+impl TryFrom<TokenKind> for BinOp {
     type Error = ();
 
     fn try_from(value: TokenKind) -> Result<Self, Self::Error> {

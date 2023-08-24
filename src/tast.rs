@@ -7,7 +7,7 @@ use enum_as_inner::EnumAsInner;
 pub use lower::lower;
 
 use crate::{
-    ast::BinaryOp,
+    ast::BinOp,
     common::Word,
     db::{Db, SymbolId},
     span::{Span, Spanned},
@@ -94,7 +94,7 @@ pub enum Expr {
     Block(Block),
     Return(Return),
     Call(Call),
-    Binary(Binary),
+    Bin(Bin),
     Name(Name),
     Lit(Lit),
 }
@@ -107,7 +107,7 @@ impl Typed for Expr {
             Self::Block(x) => x.ty,
             Self::Return(x) => x.ty,
             Self::Call(x) => x.ty,
-            Self::Binary(x) => x.ty,
+            Self::Bin(x) => x.ty,
             Self::Name(x) => x.ty,
             Self::Lit(x) => x.ty,
         }
@@ -120,7 +120,7 @@ impl Typed for Expr {
             Self::Block(x) => &mut x.ty,
             Self::Return(x) => &mut x.ty,
             Self::Call(x) => &mut x.ty,
-            Self::Binary(x) => &mut x.ty,
+            Self::Bin(x) => &mut x.ty,
             Self::Name(x) => &mut x.ty,
             Self::Lit(x) => &mut x.ty,
         }
@@ -135,7 +135,7 @@ impl Spanned for Expr {
             Self::Block(x) => x.span,
             Self::Return(x) => x.span,
             Self::Call(x) => x.span,
-            Self::Binary(x) => x.span,
+            Self::Bin(x) => x.span,
             Self::Name(x) => x.span,
             Self::Lit(x) => x.span,
         }
@@ -148,7 +148,7 @@ impl Spanned for Expr {
             Self::Block(x) => &mut x.span,
             Self::Return(x) => &mut x.span,
             Self::Call(x) => &mut x.span,
-            Self::Binary(x) => &mut x.span,
+            Self::Bin(x) => &mut x.span,
             Self::Name(x) => &mut x.span,
             Self::Lit(x) => &mut x.span,
         }
@@ -228,10 +228,10 @@ impl Typed for CallArg {
 }
 
 #[derive(Debug, Clone)]
-pub struct Binary {
+pub struct Bin {
     pub lhs: Box<Expr>,
     pub rhs: Box<Expr>,
-    pub op: BinaryOp,
+    pub op: BinOp,
     pub span: Span,
     pub ty: Type,
 }

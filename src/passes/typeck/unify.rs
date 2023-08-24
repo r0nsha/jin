@@ -110,54 +110,6 @@ impl<'db, 'icx> UnifyCtxt<'db, 'icx> {
     }
 }
 
-impl From<(Type, Type)> for UnifyError {
-    fn from((a, b): (Type, Type)) -> Self {
-        Self::TypeMismatch { a, b }
-    }
-}
-
-impl From<(IntVarValue, IntVarValue)> for UnifyError {
-    fn from((a, b): (IntVarValue, IntVarValue)) -> Self {
-        Self::TypeMismatch { a: Type::new(a.into()), b: Type::new(b.into()) }
-    }
-}
-
-pub enum UnifyError {
-    TypeMismatch { a: Type, b: Type },
-    InfiniteType { ty: Type },
-}
-
-pub enum InferError {
-    TypeMismatch { expected: Type, found: Type, span: Span },
-    InfiniteType { ty: Type },
-}
-
-impl InferError {
-    pub fn into_diagnostic(self, db: &Db) -> Diagnostic {
-        match self {
-            Self::TypeMismatch { expected, found, span } => {
-                Diagnostic::error("infer::incompatible_types")
-                    .with_message(format!(
-                        "expected `{}`, found `{}` instead",
-                        expected.display(db),
-                        found.display(db),
-                    ))
-                    // .with_label(Label::primary(span).with_message("expected here"))
-                    .with_label(
-                        Label::primary(found.span())
-                            .with_message(format!("found type `{}` here", found.display(db))),
-                    ).with_label(Label::secondary(expected.span()).with_message(format!(
-                    "expected type `{}` originates here",
-                    expected.display(db)
-                )))
-            }
-            Self::InfiniteType { ty, .. } => Diagnostic::error("infer::infinite_type")
-                .with_message(format!("type `{}` is an infinite type", ty.display(db)))
-                .with_label(Label::primary(ty.span())),
-        }
-    }
-}
-
 impl UnifyKey for TypeVar {
     type Value = Option<Type>;
 
@@ -193,3 +145,56 @@ impl UnifyKey for IntVar {
 }
 
 impl EqUnifyValue for IntVarValue {}
+
+pub enum UnifyError {
+    TypeMismatch { a: Type, b: Type },
+    InfiniteType { ty: Type },
+}
+
+impl From<(Type, Type)> for UnifyError {
+    fn from((a, b): (Type, Type)) -> Self {
+        Self::TypeMismatch { a, b }
+    }
+}
+
+impl From<(IntVarValue, IntVarValue)> for UnifyError {
+    fn from((a, b): (IntVarValue, IntVarValue)) -> Self {
+        Self::TypeMismatch { a: Type::new(a.into()), b: Type::new(b.into()) }
+    }
+}
+
+pub enum InferError {
+    TypeMismatch { expected: Type, found: Type, span: Span },
+    InfiniteType { ty: Type },
+}
+
+impl InferError {
+    pub fn into_diagnostic(self, db: &Db) -> Diagnostic {
+        match self {
+            Self::TypeMismatch { expected, found, span } => {
+                Diagnostic::error("infer::type_mismatch")
+                    .with_message(format!(
+                        "expected `{}`, found `{}`",
+                        expected.display(db),
+                        found.display(db),
+                    ))
+                    // .with_label(Label::primary(span).with_message("expected here"))
+                    .with_label(
+                        Label::primary(found.span())
+                            .with_message(format!("found type `{}` here", found.display(db))),
+                    ).with_label(Label::secondary(expected.span()).with_message(format!(
+                    "expected type `{}` originates here",
+                    expected.display(db)
+                )))
+            }
+            Self::InfiniteType { ty, .. } => Diagnostic::error("infer::infinite_type")
+                .with_message(format!("type `{}` is an infinite type", ty.display(db)))
+                .with_label(Label::primary(ty.span())),
+        }
+    }
+}
+
+pub enum Cause {
+    Single(Span),
+    Exprs { expected: Span, found: Span },
+}

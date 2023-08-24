@@ -11,11 +11,11 @@ use inkwell::{
 };
 
 use crate::{
-    ast::{BinaryOp, CmpOp},
+    ast::{BinOp, CmpOp},
     db::{Db, SymbolId},
     llvm::ty::LlvmType,
     mir::{
-        Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, Load, Mir, Phi,
+        Bin, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, Load, Mir, Phi,
         Return, UnitLit, Unreachable, ValueId,
     },
     ty::Type,
@@ -212,7 +212,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
             Self::Phi(inner) => inner.codegen(cx, state),
             Self::Call(inner) => inner.codegen(cx, state),
             Self::Load(inner) => inner.codegen(cx, state),
-            Self::Binary(inner) => inner.codegen(cx, state),
+            Self::Bin(inner) => inner.codegen(cx, state),
             Self::IntLit(inner) => inner.codegen(cx, state),
             Self::BoolLit(inner) => inner.codegen(cx, state),
             Self::UnitLit(inner) => inner.codegen(cx, state),
@@ -327,7 +327,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Load {
     }
 }
 
-impl<'db, 'cx> Codegen<'db, 'cx> for Binary {
+impl<'db, 'cx> Codegen<'db, 'cx> for Bin {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         const NAME: &str = "result";
 
@@ -335,22 +335,22 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Binary {
         let rhs = state.value(self.rhs).into_int_value();
 
         let result = match self.op {
-            BinaryOp::Add => cx.builder.build_int_add(lhs, rhs, NAME),
-            BinaryOp::Sub => cx.builder.build_int_sub(lhs, rhs, NAME),
-            BinaryOp::Mul => cx.builder.build_int_mul(lhs, rhs, NAME),
+            BinOp::Add => cx.builder.build_int_add(lhs, rhs, NAME),
+            BinOp::Sub => cx.builder.build_int_sub(lhs, rhs, NAME),
+            BinOp::Mul => cx.builder.build_int_mul(lhs, rhs, NAME),
             // TODO: unsigned
-            BinaryOp::Div => cx.builder.build_int_signed_div(lhs, rhs, NAME),
+            BinOp::Div => cx.builder.build_int_signed_div(lhs, rhs, NAME),
             // TODO: unsigned
-            BinaryOp::Mod => cx.builder.build_int_signed_rem(lhs, rhs, NAME),
-            BinaryOp::Shl => cx.builder.build_left_shift(lhs, rhs, NAME),
+            BinOp::Mod => cx.builder.build_int_signed_rem(lhs, rhs, NAME),
+            BinOp::Shl => cx.builder.build_left_shift(lhs, rhs, NAME),
             // TODO: unsigned
-            BinaryOp::Shr => cx.builder.build_right_shift(lhs, rhs, true, NAME),
-            BinaryOp::BitAnd => cx.builder.build_and(lhs, rhs, NAME),
-            BinaryOp::BitOr => cx.builder.build_or(lhs, rhs, NAME),
-            BinaryOp::BitXor => cx.builder.build_xor(lhs, rhs, NAME),
-            BinaryOp::And => todo!(),
-            BinaryOp::Or => todo!(),
-            BinaryOp::Cmp(op) => {
+            BinOp::Shr => cx.builder.build_right_shift(lhs, rhs, true, NAME),
+            BinOp::BitAnd => cx.builder.build_and(lhs, rhs, NAME),
+            BinOp::BitOr => cx.builder.build_or(lhs, rhs, NAME),
+            BinOp::BitXor => cx.builder.build_xor(lhs, rhs, NAME),
+            BinOp::And => todo!(),
+            BinOp::Or => todo!(),
+            BinOp::Cmp(op) => {
                 let pred = get_int_predicate(op);
                 cx.builder.build_int_compare(pred, lhs, rhs, NAME)
             }

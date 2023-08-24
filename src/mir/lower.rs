@@ -2,7 +2,7 @@ use anyhow::Result;
 use ustr::UstrMap;
 
 use crate::{
-    ast::BinaryOp,
+    ast::BinOp,
     db::Db,
     mir::{builder::FunctionBuilder, Function, Mir, SymbolId, ValueId},
     span::Spanned,
@@ -69,7 +69,7 @@ impl<'db> LowerFunctionCtxt<'db> {
             tast::Expr::Block(inner) => self.lower_block(inner),
             tast::Expr::Return(inner) => self.lower_return(inner),
             tast::Expr::Call(inner) => self.lower_call(inner),
-            tast::Expr::Binary(inner) => self.lower_binary(inner),
+            tast::Expr::Bin(inner) => self.lower_bin(inner),
             tast::Expr::Name(inner) => self.lower_name(inner),
             tast::Expr::Lit(inner) => self.lower_lit(inner),
         }
@@ -164,11 +164,11 @@ impl<'db> LowerFunctionCtxt<'db> {
         self.bx.build_call(call.ty, callee, args.into_iter().flatten().collect(), call.span)
     }
 
-    fn lower_binary(&mut self, bin: &tast::Binary) -> ValueId {
+    fn lower_bin(&mut self, bin: &tast::Bin) -> ValueId {
         let lhs = self.lower_expr(&bin.lhs);
 
         match bin.op {
-            BinaryOp::And => {
+            BinOp::And => {
                 let true_blk = self.bx.create_block("and_true");
                 let false_blk = self.bx.create_block("and_false");
 
@@ -192,7 +192,7 @@ impl<'db> LowerFunctionCtxt<'db> {
                     bin.span,
                 )
             }
-            BinaryOp::Or => {
+            BinOp::Or => {
                 let true_blk = self.bx.create_block("or_true");
                 let false_blk = self.bx.create_block("or_false");
 
@@ -218,7 +218,7 @@ impl<'db> LowerFunctionCtxt<'db> {
             }
             _ => {
                 let rhs = self.lower_expr(&bin.rhs);
-                self.bx.build_binary(bin.ty, bin.op, lhs, rhs, bin.span)
+                self.bx.build_bin(bin.ty, bin.op, lhs, rhs, bin.span)
             }
         }
     }
