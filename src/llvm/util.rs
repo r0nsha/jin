@@ -1,7 +1,7 @@
 use inkwell::{
     basic_block::BasicBlock,
     types::BasicTypeEnum,
-    values::{BasicValue, BasicValueEnum, InstructionOpcode, StructValue},
+    values::{BasicValueEnum, StructValue},
 };
 
 use crate::llvm::generate::{FunctionState, Generator};
@@ -35,21 +35,21 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         }
     }
 
-    #[allow(unused)]
-    fn gep_at_index(
-        &mut self,
-        load: BasicValueEnum<'cx>,
-        field_index: u32,
-        field_name: &str,
-    ) -> BasicValueEnum<'cx> {
-        let instruction = load.as_instruction_value().unwrap();
-        assert_eq!(instruction.get_opcode(), InstructionOpcode::Load);
-
-        let pointer = instruction.get_operand(0).unwrap().left().unwrap().into_pointer_value();
-
-        let gep = self.builder.build_struct_gep(pointer, field_index, field_name).unwrap();
-        self.builder.build_load(gep, field_name)
-    }
+    // #[allow(unused)]
+    // fn gep_at_index(
+    //     &mut self,
+    //     load: BasicValueEnum<'cx>,
+    //     index: u32,
+    //     name: &str,
+    // ) -> BasicValueEnum<'cx> {
+    //     let instruction = load.as_instruction_value().unwrap();
+    //     assert_eq!(instruction.get_opcode(), InstructionOpcode::Load);
+    //
+    //     let pointer = instruction.get_operand(0).unwrap().left().unwrap().into_pointer_value();
+    //
+    //     let gep = self.builder.build_struct_gep(pointer, index, name).unwrap();
+    //     self.builder.build_load(gep, name)
+    // }
 
     #[allow(unused)]
     pub fn print_current_state(&self, state: &FunctionState<'cx>) {

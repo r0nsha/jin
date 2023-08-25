@@ -6,7 +6,7 @@ use inkwell::{
     context::Context,
     module::{Linkage, Module},
     types::IntType,
-    values::{BasicValue, BasicValueEnum, CallableValue, FunctionValue},
+    values::{AnyValue, BasicValue, BasicValueEnum, FunctionValue},
     AddressSpace, IntPredicate,
 };
 
@@ -118,7 +118,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         let main_function = self.db.main_function().expect("to have a main function");
         let main_function_value = self.symbol_value(main_function.id).as_function_value();
 
-        self.builder.build_call(main_function_value, &[], "call_main");
+        self.builder.build_direct_call(main_function_value, &[], "call_main");
 
         if !self.current_block_is_terminating() {
             self.builder.build_return(Some(&self.context.i32_type().const_zero()));
@@ -130,12 +130,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             let id = fun.id();
             let fun_info = &self.db[id];
             let name = fun_info.qpath.standard_full_name();
-            let llvm_ty = fun_info
-                .ty
-                .llvm_ty(self)
-                .into_pointer_type()
-                .get_element_type()
-                .into_function_type();
+            let llvm_ty = fun_info.ty.as_function().expect("a function type").llvm_ty(self);
 
             let function = self.module.add_function(&name, llvm_ty, Some(Linkage::Private));
             self.symbol_values.insert(id, SymbolValue::Function(function));
@@ -272,15 +267,12 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Phi {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Call {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let callee = state.value(self.callee).into_pointer_value();
+        // TODO: this doesn't take indirect calls (function pointers) into account
+        let callee = state.value(self.callee).as_any_value_enum().into_function_value();
 
         let args: Vec<_> = self.args.iter().map(|v| state.value(*v).into()).collect();
 
-        let result = cx.builder.build_call(
-            CallableValue::try_from(callee).expect("a callable pointer value"),
-            &args,
-            "call",
-        );
+        let result = cx.builder.build_direct_call(callee, &args, "call");
 
         let result_value = result.try_as_basic_value().expect_left("expected a return value");
 
@@ -297,7 +289,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
                 )
             });
 
-            cx.builder.build_call(
+            cx.builder.build_direct_call(
                 printf,
                 &[
                     cx.builder
