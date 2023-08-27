@@ -28,6 +28,10 @@ impl Span {
         Self { source_id, start: 0, end: 0 }
     }
 
+    pub fn uniform(source_id: SourceId, n: u32) -> Self {
+        Self { source_id, start: n, end: n }
+    }
+
     pub fn source_id(&self) -> SourceId {
         self.source_id
     }

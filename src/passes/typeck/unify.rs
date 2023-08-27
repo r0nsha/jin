@@ -81,8 +81,6 @@ pub enum ObligationKind {
     Exprs(Span, Span),
     /// An expression which was expected to be equal to the return type
     ReturnTy(Span),
-    /// The main function has an unexpected type
-    WrongMainFunction,
 }
 
 struct UnifyCtxt<'db, 'a> {
@@ -249,9 +247,6 @@ impl TypeError {
                         diag.push_label(Label::secondary(return_ty_span).with_message(format!(
                             "expected `{expected_ty}` because of return type"
                         )));
-                    }
-                    ObligationKind::WrongMainFunction => {
-                        diag.set_help("the `main` function's type must be `fn() ()`");
                     }
                 }
 

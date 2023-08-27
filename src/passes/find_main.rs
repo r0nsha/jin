@@ -29,9 +29,15 @@ pub fn find_main(db: &mut Db) {
         Some(main_fun.id)
     } else {
         db.diagnostics.add(
-            Diagnostic::error("no_main")
-                .with_message("couldn't find a function named `main` in the main module")
-                .with_label(Label::primary(Span::initial(db.main_module().unwrap().source_id))),
+            Diagnostic::error("typeck::no_main")
+                .with_message("`main` function not found")
+                .with_label(
+                    Label::primary(Span::uniform(
+                        db.main_source_id(),
+                        (db.main_source().contents().len() - 1) as u32,
+                    ))
+                    .with_message("consider adding a main function here"),
+                ),
         );
 
         None

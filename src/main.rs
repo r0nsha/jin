@@ -10,7 +10,8 @@
     clippy::similar_names,
     clippy::module_name_repetitions,
     clippy::too_many_lines,
-    clippy::missing_const_for_fn
+    clippy::missing_const_for_fn,
+    clippy::cast_possible_truncation
 )]
 
 mod ast;
