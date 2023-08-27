@@ -22,17 +22,17 @@ pub struct At<'db, 'a> {
 }
 
 impl At<'_, '_> {
-    pub fn eq(&self, expected: Ty, found: Ty) -> Result<(), TypeError> {
+    pub fn eq(&self, expected: Ty, found: Ty) -> Result<(), InferError> {
         UnifyCtxt { infcx: self.infcx }.unify_ty_ty(expected, found).map_err(|err| {
             let mut infcx = self.infcx.inner.borrow_mut();
 
             match err {
-                UnifyError::TyMismatch { .. } => TypeError::TyMismatch {
+                UnifyError::TyMismatch { .. } => InferError::TyMismatch {
                     expected: expected.normalize(&mut infcx),
                     found: found.normalize(&mut infcx),
                     cause: self.cause,
                 },
-                UnifyError::InfiniteTy { ty } => TypeError::InfiniteTy {
+                UnifyError::InfiniteTy { ty } => InferError::InfiniteTy {
                     ty: ty.normalize(&mut infcx),
                     cause: Obligation::obvious(self.cause.span()),
                 },
@@ -218,12 +218,12 @@ impl From<(IntVarValue, IntVarValue)> for UnifyError {
     }
 }
 
-pub enum TypeError {
+pub enum InferError {
     TyMismatch { expected: Ty, found: Ty, cause: Obligation },
     InfiniteTy { ty: Ty, cause: Obligation },
 }
 
-impl TypeError {
+impl InferError {
     pub fn into_diagnostic(self, db: &Db) -> Diagnostic {
         match self {
             Self::TyMismatch { expected, found, cause } => {
