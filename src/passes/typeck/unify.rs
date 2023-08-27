@@ -234,7 +234,7 @@ impl TypeError {
 
                 let msg = format!("expected `{expected_ty}`, found `{found_ty}`");
 
-                let mut diag = Diagnostic::error("infer::type_mismatch")
+                let mut diag = Diagnostic::error("typeck::type_mismatch")
                     .with_message(msg.clone())
                     .with_label(Label::primary(cause.span()).with_message(msg));
 
@@ -257,7 +257,7 @@ impl TypeError {
 
                 diag
             }
-            Self::InfiniteTy { ty, cause } => Diagnostic::error("infer::infinite_type")
+            Self::InfiniteTy { ty, cause } => Diagnostic::error("typeck::infinite_type")
                 .with_message(format!("type `{}` is an infinite type", ty.display(db)))
                 .with_label(Label::primary(cause.span())),
         }
