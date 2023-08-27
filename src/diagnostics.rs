@@ -25,8 +25,12 @@ impl Diagnostic {
         }
     }
 
-    pub fn with_message(mut self, message: impl Into<String>) -> Self {
+    pub fn set_message(&mut self, message: impl Into<String>) {
         self.message = Some(message.into());
+    }
+
+    pub fn with_message(mut self, message: impl Into<String>) -> Self {
+        self.set_message(message);
         self
     }
 
@@ -48,8 +52,12 @@ impl Diagnostic {
         self
     }
 
-    pub fn with_help(mut self, help: impl Into<String>) -> Self {
+    pub fn set_help(&mut self, help: impl Into<String>) {
         self.help = Some(help.into());
+    }
+
+    pub fn with_help(mut self, help: impl Into<String>) -> Self {
+        self.set_help(help);
         self
     }
 }

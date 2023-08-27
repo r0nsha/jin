@@ -11,7 +11,7 @@ use crate::{
     passes::typeck::{
         infcx::InferCtxt,
         type_env::{CallFrame, TypeEnv},
-        unify::{Cause, InferError},
+        unify::{Obligation, InferError},
     },
     span::Spanned,
     tast::{
@@ -103,13 +103,13 @@ impl Infer<'_> for Function {
         });
 
         let sym_ty = cx.lookup(self.id);
-        cx.at(Cause::obvious(self.span)).eq(sym_ty, Ty::new(fun_ty))?;
+        cx.at(Obligation::obvious(self.span)).eq(sym_ty, Ty::new(fun_ty))?;
         self.ty = sym_ty;
 
         env.call_stack.push(CallFrame { id: self.id, ret_ty });
 
         self.body.infer(cx, env)?;
-        cx.at(Cause::return_ty(self.body.span, cx.db[self.id].span)).eq(ret_ty, self.body.ty)?;
+        cx.at(Obligation::return_ty(self.body.span, cx.db[self.id].span)).eq(ret_ty, self.body.ty)?;
 
         env.call_stack.pop();
 
@@ -121,16 +121,16 @@ impl Infer<'_> for If {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         self.cond.infer(cx, env)?;
 
-        cx.at(Cause::obvious(self.cond.span())).eq(cx.tcx.types.bool, self.cond.ty())?;
+        cx.at(Obligation::obvious(self.cond.span())).eq(cx.tcx.types.bool, self.cond.ty())?;
 
         self.then.infer(cx, env)?;
 
         if let Some(otherwise) = self.otherwise.as_mut() {
             otherwise.infer(cx, env)?;
-            cx.at(Cause::exprs(self.span, self.then.span(), otherwise.span()))
+            cx.at(Obligation::exprs(self.span, self.then.span(), otherwise.span()))
                 .eq(self.then.ty(), otherwise.ty())?;
         } else {
-            cx.at(Cause::obvious(self.then.span())).eq(cx.tcx.types.unit, self.then.ty())?;
+            cx.at(Obligation::obvious(self.then.span())).eq(cx.tcx.types.unit, self.then.ty())?;
         }
 
         self.ty = self.then.ty();
@@ -159,7 +159,7 @@ impl Infer<'_> for Return {
             env.call_stack.current().expect("to be inside a call frame").clone();
 
         self.expr.infer(cx, env)?;
-        cx.at(Cause::return_ty(self.expr.span(), cx.db[id].span)).eq(ret_ty, self.expr.ty())?;
+        cx.at(Obligation::return_ty(self.expr.span(), cx.db[id].span)).eq(ret_ty, self.expr.ty())?;
 
         Ok(())
     }
@@ -191,7 +191,7 @@ impl Infer<'_> for Call {
                 .collect(),
         }));
 
-        cx.at(Cause::obvious(self.callee.span())).eq(expected_ty, self.callee.ty())?;
+        cx.at(Obligation::obvious(self.callee.span())).eq(expected_ty, self.callee.ty())?;
 
         self.ty = result_ty;
 
@@ -204,14 +204,14 @@ impl Infer<'_> for Bin {
         self.lhs.infer(cx, env)?;
         self.rhs.infer(cx, env)?;
 
-        cx.at(Cause::exprs(self.span, self.lhs.span(), self.rhs.span()))
+        cx.at(Obligation::exprs(self.span, self.lhs.span(), self.rhs.span()))
             .eq(self.lhs.ty(), self.rhs.ty())?;
 
         match self.op {
             BinOp::Cmp(_) => (),
             BinOp::And | BinOp::Or => {
-                cx.at(Cause::obvious(self.lhs.span())).eq(cx.tcx.types.bool, self.lhs.ty())?;
-                cx.at(Cause::obvious(self.rhs.span())).eq(cx.tcx.types.bool, self.rhs.ty())?;
+                cx.at(Obligation::obvious(self.lhs.span())).eq(cx.tcx.types.bool, self.lhs.ty())?;
+                cx.at(Obligation::obvious(self.rhs.span())).eq(cx.tcx.types.bool, self.rhs.ty())?;
             }
             _ => {
                 // TODO: type check arithmetic operations

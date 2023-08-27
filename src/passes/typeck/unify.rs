@@ -11,14 +11,14 @@ use crate::{
 impl<'db> InferCtxt<'db> {
     #[inline]
     #[must_use]
-    pub fn at(&self, cause: Cause) -> At<'_, '_> {
+    pub fn at(&self, cause: Obligation) -> At<'_, '_> {
         At { infcx: self, cause }
     }
 }
 
 pub struct At<'db, 'a> {
     infcx: &'a InferCtxt<'db>,
-    cause: Cause,
+    cause: Obligation,
 }
 
 impl At<'_, '_> {
@@ -34,7 +34,7 @@ impl At<'_, '_> {
                 },
                 UnifyError::InfiniteTy { ty } => InferError::InfiniteTy {
                     ty: ty.normalize(&mut infcx),
-                    cause: Cause::obvious(self.cause.span()),
+                    cause: Obligation::obvious(self.cause.span()),
                 },
             }
         })
@@ -42,45 +42,47 @@ impl At<'_, '_> {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub struct Cause {
+pub struct Obligation {
     span: Span,
-    kind: CauseKind,
+    kind: ObligationKind,
 }
 
-impl Cause {
-    pub fn new(span: Span, kind: CauseKind) -> Self {
+impl Obligation {
+    pub fn new(span: Span, kind: ObligationKind) -> Self {
         Self { span, kind }
     }
 
     pub fn obvious(span: Span) -> Self {
-        Self::new(span, CauseKind::Obvious)
+        Self::new(span, ObligationKind::Obvious)
     }
 
     pub fn exprs(span: Span, expected: Span, found: Span) -> Self {
-        Self::new(span, CauseKind::Exprs(expected, found))
+        Self::new(span, ObligationKind::Exprs(expected, found))
     }
 
     pub fn return_ty(span: Span, return_ty_span: Span) -> Self {
-        Self::new(span, CauseKind::ReturnTy(return_ty_span))
+        Self::new(span, ObligationKind::ReturnTy(return_ty_span))
     }
 
     pub fn span(&self) -> Span {
         self.span
     }
 
-    pub fn kind(&self) -> &CauseKind {
+    pub fn kind(&self) -> &ObligationKind {
         &self.kind
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum CauseKind {
+pub enum ObligationKind {
     /// Should be obvious from the span
     Obvious,
     /// Two expressions which are expected to have the same type
     Exprs(Span, Span),
     /// An expression which was expected to be equal to the return type
     ReturnTy(Span),
+    /// The main function has an unexpected type
+    WrongMainFunction,
 }
 
 struct UnifyCtxt<'db, 'a> {
@@ -219,8 +221,8 @@ impl From<(IntVarValue, IntVarValue)> for UnifyError {
 }
 
 pub enum InferError {
-    TyMismatch { expected: Ty, found: Ty, cause: Cause },
-    InfiniteTy { ty: Ty, cause: Cause },
+    TyMismatch { expected: Ty, found: Ty, cause: Obligation },
+    InfiniteTy { ty: Ty, cause: Obligation },
 }
 
 impl InferError {
@@ -237,16 +239,19 @@ impl InferError {
                     .with_label(Label::primary(cause.span()).with_message(msg));
 
                 match *cause.kind() {
-                    CauseKind::Obvious => (),
-                    CauseKind::Exprs(expected_span, found_span) => diag.push_labels([
+                    ObligationKind::Obvious => (),
+                    ObligationKind::Exprs(expected_span, found_span) => diag.push_labels([
                         Label::secondary(expected_span)
                             .with_message(format!("expected `{expected_ty}`")),
                         Label::secondary(found_span).with_message(format!("found `{found_ty}`")),
                     ]),
-                    CauseKind::ReturnTy(return_ty_span) => {
+                    ObligationKind::ReturnTy(return_ty_span) => {
                         diag.push_label(Label::secondary(return_ty_span).with_message(format!(
                             "expected `{expected_ty}` because of return type"
                         )));
+                    }
+                    ObligationKind::WrongMainFunction => {
+                        diag.set_help("the `main` function's type must be `fn() ()`");
                     }
                 }
 
