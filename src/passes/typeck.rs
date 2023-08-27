@@ -11,7 +11,7 @@ use crate::{
     passes::typeck::{
         infcx::InferCtxt,
         type_env::{CallFrame, TypeEnv},
-        unify::{Obligation, InferError},
+        unify::{Obligation, TypeError},
     },
     span::Spanned,
     tast::{
@@ -21,7 +21,7 @@ use crate::{
     ty::{tcx::TyCtxt, FunctionTy, FunctionTyParam, Ty, TyKind, Typed},
 };
 
-pub type InferResult<T> = Result<T, InferError>;
+pub type TypeResult<T> = Result<T, TypeError>;
 
 pub fn typeck(db: &mut Db, tcx: &TyCtxt, tast: &mut TypedAst) -> Result<(), Diagnostic> {
     let mut cx = InferCtxt::new(db, tcx);
@@ -42,7 +42,7 @@ fn fill_symbol_tys(infcx: &mut InferCtxt) {
     }
 }
 
-fn infer_all(infcx: &mut InferCtxt, tast: &mut TypedAst) -> InferResult<()> {
+fn infer_all(infcx: &mut InferCtxt, tast: &mut TypedAst) -> TypeResult<()> {
     let mut env = TypeEnv::new();
 
     for item in &mut tast.items {
@@ -53,11 +53,11 @@ fn infer_all(infcx: &mut InferCtxt, tast: &mut TypedAst) -> InferResult<()> {
 }
 
 trait Infer<'db> {
-    fn infer(&mut self, cx: &mut InferCtxt<'db>, env: &mut TypeEnv) -> InferResult<()>;
+    fn infer(&mut self, cx: &mut InferCtxt<'db>, env: &mut TypeEnv) -> TypeResult<()>;
 }
 
 impl Infer<'_> for Expr {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> TypeResult<()> {
         match self {
             Self::Item(inner) => inner.infer(cx, env),
             Self::If(inner) => inner.infer(cx, env),
@@ -72,7 +72,7 @@ impl Infer<'_> for Expr {
 }
 
 impl Infer<'_> for Item {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> TypeResult<()> {
         match &mut self.kind {
             ItemKind::Function(fun) => fun.infer(cx, env)?,
         }
@@ -84,7 +84,7 @@ impl Infer<'_> for Item {
 }
 
 impl Infer<'_> for Function {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> TypeResult<()> {
         let ret_ty = cx.fresh_ty_var();
 
         for param in &mut self.sig.params {
@@ -109,7 +109,8 @@ impl Infer<'_> for Function {
         env.call_stack.push(CallFrame { id: self.id, ret_ty });
 
         self.body.infer(cx, env)?;
-        cx.at(Obligation::return_ty(self.body.span, cx.db[self.id].span)).eq(ret_ty, self.body.ty)?;
+        cx.at(Obligation::return_ty(self.body.span, cx.db[self.id].span))
+            .eq(ret_ty, self.body.ty)?;
 
         env.call_stack.pop();
 
@@ -118,7 +119,7 @@ impl Infer<'_> for Function {
 }
 
 impl Infer<'_> for If {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> TypeResult<()> {
         self.cond.infer(cx, env)?;
 
         cx.at(Obligation::obvious(self.cond.span())).eq(cx.tcx.types.bool, self.cond.ty())?;
@@ -140,7 +141,7 @@ impl Infer<'_> for If {
 }
 
 impl Infer<'_> for Block {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> TypeResult<()> {
         for expr in &mut self.exprs {
             expr.infer(cx, env)?;
         }
@@ -152,21 +153,22 @@ impl Infer<'_> for Block {
 }
 
 impl Infer<'_> for Return {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> TypeResult<()> {
         self.ty = cx.tcx.types.never;
 
         let CallFrame { id, ret_ty } =
             env.call_stack.current().expect("to be inside a call frame").clone();
 
         self.expr.infer(cx, env)?;
-        cx.at(Obligation::return_ty(self.expr.span(), cx.db[id].span)).eq(ret_ty, self.expr.ty())?;
+        cx.at(Obligation::return_ty(self.expr.span(), cx.db[id].span))
+            .eq(ret_ty, self.expr.ty())?;
 
         Ok(())
     }
 }
 
 impl Infer<'_> for Call {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> TypeResult<()> {
         self.callee.infer(cx, env)?;
 
         for arg in &mut self.args {
@@ -200,7 +202,7 @@ impl Infer<'_> for Call {
 }
 
 impl Infer<'_> for Bin {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> TypeResult<()> {
         self.lhs.infer(cx, env)?;
         self.rhs.infer(cx, env)?;
 
@@ -228,14 +230,14 @@ impl Infer<'_> for Bin {
 }
 
 impl Infer<'_> for Name {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut TypeEnv) -> InferResult<()> {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut TypeEnv) -> TypeResult<()> {
         self.ty = cx.lookup(self.id);
         Ok(())
     }
 }
 
 impl Infer<'_> for Lit {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut TypeEnv) -> InferResult<()> {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut TypeEnv) -> TypeResult<()> {
         self.ty = match &self.kind {
             LitKind::Int(_) => cx.fresh_int_var(),
             LitKind::Bool(_) => cx.tcx.types.bool,
