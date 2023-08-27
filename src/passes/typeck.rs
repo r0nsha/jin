@@ -194,25 +194,48 @@ impl Infer<'_> for Call {
             }
         }
 
-        let result_ty = cx.fresh_ty_var();
+        self.ty = if let TyKind::Function(fun) = self.callee.ty().as_ref() {
+            if self.args.len() != fun.params.len() {
+                return Err(InferError::ArgMismatch {
+                    expected: fun.params.len(),
+                    found: self.args.len(),
+                    span: self.span,
+                });
+            }
 
-        let expected_ty = Ty::new(TyKind::Function(FunctionTy {
-            ret: result_ty,
-            params: self
-                .args
-                .iter()
-                .map(|arg| match arg {
-                    CallArg::Positional(expr) => FunctionTyParam { name: None, ty: expr.ty() },
-                    CallArg::Named(name, expr) => {
-                        FunctionTyParam { name: Some(name.name()), ty: expr.ty() }
-                    }
-                })
-                .collect(),
-        }));
+            // TODO: match named args/params
+            // TODO: unify along the way
+            // for arg in &self.args {
+            //     match arg {
+            //         CallArg::Positional(_) => todo!(),
+            //         CallArg::Named(_, _) => todo!(),
+            //     }
+            // }
+            // TODO: error: cannot find parameter with the name `{name}`
+            // TODO: fill positional args in order
 
-        cx.at(Obligation::obvious(self.callee.span())).eq(expected_ty, self.callee.ty())?;
+            fun.ret
+        } else {
+            let result_ty = cx.fresh_ty_var();
 
-        self.ty = result_ty;
+            let expected_ty = Ty::new(TyKind::Function(FunctionTy {
+                ret: result_ty,
+                params: self
+                    .args
+                    .iter()
+                    .map(|arg| match arg {
+                        CallArg::Positional(expr) => FunctionTyParam { name: None, ty: expr.ty() },
+                        CallArg::Named(name, expr) => {
+                            FunctionTyParam { name: Some(name.name()), ty: expr.ty() }
+                        }
+                    })
+                    .collect(),
+            }));
+
+            cx.at(Obligation::obvious(self.callee.span())).eq(expected_ty, self.callee.ty())?;
+
+            result_ty
+        };
 
         Ok(())
     }

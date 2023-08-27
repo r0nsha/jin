@@ -221,6 +221,7 @@ impl From<(IntVarValue, IntVarValue)> for UnifyError {
 pub enum InferError {
     TyMismatch { expected: Ty, found: Ty, cause: Obligation },
     InfiniteTy { ty: Ty, cause: Obligation },
+    ArgMismatch { expected: usize, found: usize, span: Span },
 }
 
 impl InferError {
@@ -255,6 +256,16 @@ impl InferError {
             Self::InfiniteTy { ty, cause } => Diagnostic::error("typeck::infinite_type")
                 .with_message(format!("type `{}` is an infinite type", ty.display(db)))
                 .with_label(Label::primary(cause.span())),
+            Self::ArgMismatch { expected, found, span } => {
+                Diagnostic::error("typeck::arg_mismatch")
+                    .with_message(format!(
+                        "this function takes {expected} arguments, but {found} were supplied"
+                    ))
+                    .with_label(
+                        Label::primary(span)
+                            .with_message(format!("expected {expected} arguments, found {found}")),
+                    )
+            }
         }
     }
 }
