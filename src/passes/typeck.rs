@@ -11,7 +11,7 @@ use crate::{
     passes::typeck::{
         infcx::InferCtxt,
         type_env::{CallFrame, TypeEnv},
-        unify::{Obligation, InferError},
+        unify::{InferError, Obligation},
     },
     span::Spanned,
     tast::{
@@ -24,25 +24,31 @@ use crate::{
 pub type InferResult<T> = Result<T, InferError>;
 
 pub fn typeck(db: &mut Db, tcx: &TyCtxt, tast: &mut TypedAst) -> Result<(), Diagnostic> {
+    typeck_inner(db, tcx, tast).map_err(|err| err.into_diagnostic(db))
+}
+
+fn typeck_inner(db: &mut Db, tcx: &TyCtxt, tast: &mut TypedAst) -> InferResult<()> {
     let mut cx = InferCtxt::new(db, tcx);
 
-    fill_symbol_tys(&mut cx);
-    infer_all(&mut cx, tast).map_err(|err| err.into_diagnostic(cx.db))?;
+    typeck_function_signatures(&mut cx, tast)?;
+    typeck_function_bodies(&mut cx, tast)?;
 
     cx.substitute_all(tast);
 
     Ok(())
 }
 
-fn fill_symbol_tys(infcx: &mut InferCtxt) {
+fn typeck_function_signatures(infcx: &mut InferCtxt, tast: &mut TypedAst) -> InferResult<()> {
     let len = infcx.db.symbols.len();
     let tys: Vec<_> = std::iter::repeat_with(|| infcx.fresh_ty_var()).take(len).collect();
     for (i, sym) in infcx.db.symbols.iter_mut().enumerate() {
         sym.ty = tys[i];
     }
+
+    Ok(())
 }
 
-fn infer_all(infcx: &mut InferCtxt, tast: &mut TypedAst) -> InferResult<()> {
+fn typeck_function_bodies(infcx: &mut InferCtxt, tast: &mut TypedAst) -> InferResult<()> {
     let mut env = TypeEnv::new();
 
     for item in &mut tast.items {
