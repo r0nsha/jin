@@ -51,8 +51,6 @@ impl InferCtxt<'_> {
                 ItemKind::Function(fun) => {
                     fun.ty = self.typeck_function_sig(&mut fun.sig);
                     self.db[fun.id].ty = fun.ty;
-                    // let sym_ty = self.lookup(fun.id);
-                    // self.at(Obligation::obvious(fun.span)).eq(sym_ty, fun.ty)?;
                 }
             }
         }
@@ -120,26 +118,10 @@ impl Infer<'_> for Item {
 
 impl Infer<'_> for Function {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
-        let ret_ty = cx.fresh_ty_var();
+        self.ty = cx.typeck_function_sig(&mut self.sig);
+        cx.db[self.id].ty = self.ty;
 
-        for param in &mut self.sig.params {
-            param.ty = cx.fresh_ty_var();
-            cx.db[param.id].ty = param.ty;
-        }
-
-        let fun_ty = TyKind::Function(FunctionTy {
-            ret: ret_ty,
-            params: self
-                .sig
-                .params
-                .iter()
-                .map(|param| FunctionTyParam { name: Some(cx.db[param.id].name), ty: param.ty })
-                .collect(),
-        });
-
-        let sym_ty = cx.lookup(self.id);
-        cx.at(Obligation::obvious(self.span)).eq(sym_ty, Ty::new(fun_ty))?;
-        self.ty = sym_ty;
+        let ret_ty = self.ty.as_function().unwrap().ret;
 
         env.call_stack.push(CallFrame { id: self.id, ret_ty });
 
