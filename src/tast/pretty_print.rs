@@ -3,8 +3,8 @@ use std::io;
 use crate::{
     db::Db,
     tast::{
-        Bin, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name,
-        Return, TypedAst,
+        Bin, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name, Return,
+        TypedAst,
     },
 };
 
@@ -130,13 +130,12 @@ impl PrettyPrint for Call {
             cx.builder.begin_child("args".to_string());
 
             for arg in &self.args {
-                match arg {
-                    CallArg::Positional(expr) => expr.pretty_print(cx),
-                    CallArg::Named(name, expr) => {
-                        cx.builder.begin_child(name.to_string());
-                        expr.pretty_print(cx);
-                        cx.builder.end_child();
-                    }
+                if let Some(name) = arg.name {
+                    cx.builder.begin_child(name.to_string());
+                    arg.expr.pretty_print(cx);
+                    cx.builder.end_child();
+                } else {
+                    arg.expr.pretty_print(cx)
                 }
             }
 

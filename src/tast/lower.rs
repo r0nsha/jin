@@ -132,8 +132,10 @@ impl Lower<'_, Expr> for ast::Expr {
 impl Lower<'_, CallArg> for ast::CallArg {
     fn lower(self, cx: &mut LowerCtxt<'_>) -> CallArg {
         match self {
-            Self::Positional(expr) => CallArg::Positional(expr.lower(cx)),
-            Self::Named(name, expr) => CallArg::Named(name, expr.lower(cx)),
+            Self::Positional(expr) => CallArg { name: None, expr: expr.lower(cx), index: None },
+            Self::Named(name, expr) => {
+                CallArg { name: Some(name), expr: expr.lower(cx), index: None }
+            }
         }
     }
 }

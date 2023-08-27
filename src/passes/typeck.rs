@@ -189,9 +189,7 @@ impl Infer<'_> for Call {
         self.callee.infer(cx, env)?;
 
         for arg in &mut self.args {
-            match arg {
-                CallArg::Positional(expr) | CallArg::Named(_, expr) => expr.infer(cx, env)?,
-            }
+            arg.expr.infer(cx, env)?;
         }
 
         self.ty = if let TyKind::Function(fun) = self.callee.ty().as_ref() {
@@ -223,11 +221,9 @@ impl Infer<'_> for Call {
                 params: self
                     .args
                     .iter()
-                    .map(|arg| match arg {
-                        CallArg::Positional(expr) => FunctionTyParam { name: None, ty: expr.ty() },
-                        CallArg::Named(name, expr) => {
-                            FunctionTyParam { name: Some(name.name()), ty: expr.ty() }
-                        }
+                    .map(|arg| FunctionTyParam {
+                        name: arg.name.map(|n| n.name()),
+                        ty: arg.expr.ty(),
                     })
                     .collect(),
             }));

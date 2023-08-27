@@ -208,24 +208,41 @@ pub struct Call {
 }
 
 #[derive(Debug, Clone)]
-pub enum CallArg {
-    Positional(Expr),
-    Named(Word, Expr),
+pub struct CallArg {
+    pub name: Option<Word>,
+    pub expr: Expr,
+    pub index: Option<usize>,
 }
 
 impl Typed for CallArg {
     fn ty(&self) -> Ty {
-        match self {
-            Self::Positional(e) | Self::Named(_, e) => e.ty(),
-        }
+        self.expr.ty()
     }
 
     fn ty_mut(&mut self) -> &mut Ty {
-        match self {
-            Self::Positional(e) | Self::Named(_, e) => e.ty_mut(),
-        }
+        self.expr.ty_mut()
     }
 }
+
+// #[derive(Debug, Clone)]
+// pub struct CallArg {
+//     Positional(Expr),
+//     Named(Word, Expr),
+// }
+//
+// impl Typed for CallArg {
+//     fn ty(&self) -> Ty {
+//         match self {
+//             Self::Positional(e) | Self::Named(_, e) => e.ty(),
+//         }
+//     }
+//
+//     fn ty_mut(&mut self) -> &mut Ty {
+//         match self {
+//             Self::Positional(e) | Self::Named(_, e) => e.ty_mut(),
+//         }
+//     }
+// }
 
 #[derive(Debug, Clone)]
 pub struct Bin {

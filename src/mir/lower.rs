@@ -149,16 +149,17 @@ impl<'db> LowerFunctionCtxt<'db> {
         let mut args = vec![None; call.args.len()];
 
         for arg in &call.args {
-            match arg {
-                tast::CallArg::Positional(expr) => {
-                    let idx = args.iter_mut().position(|a| a.is_none()).unwrap();
-                    args[idx] = Some(self.lower_expr(expr));
-                }
-                tast::CallArg::Named(name, expr) => {
-                    let idx = params_map[&name.name()];
-                    args[idx] = Some(self.lower_expr(expr));
-                }
-            }
+            todo!()
+            // match arg {
+            //     tast::CallArg::Positional(expr) => {
+            //         let idx = args.iter_mut().position(|a| a.is_none()).unwrap();
+            //         args[idx] = Some(self.lower_expr(expr));
+            //     }
+            //     tast::CallArg::Named(name, expr) => {
+            //         let idx = params_map[&name.name()];
+            //         args[idx] = Some(self.lower_expr(expr));
+            //     }
+            // }
         }
 
         self.bx.build_call(call.ty, callee, args.into_iter().flatten().collect(), call.span)

@@ -143,13 +143,7 @@ impl Substitute<'_> for Call {
         self.callee.substitute(infcx, unbound_vars);
 
         for arg in &mut self.args {
-            match arg {
-                CallArg::Positional(expr) | CallArg::Named(_, expr) => {
-                    expr.substitute(infcx, unbound_vars);
-                }
-            }
-
-            arg.set_ty(substitute_ty(infcx, arg.ty(), unbound_vars));
+            arg.expr.substitute(infcx, unbound_vars);
         }
     }
 }
