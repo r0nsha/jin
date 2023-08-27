@@ -104,7 +104,6 @@ fn build(db: &mut Db) {
     expect!(db);
 
     db.timings.start("ast -> typed ast");
-
     let mut tast = tast::lower(db, &tcx, ast);
 
     db.timings.start("typeck");
@@ -119,7 +118,10 @@ fn build(db: &mut Db) {
     }
 
     db.timings.start("find main");
-    passes::find_main(db);
+    if let Err(diag) = passes::check_entry(db) {
+        db.diagnostics.add(diag);
+    }
+    db.timings.stop();
     expect!(db);
 
     db.timings.start("hir -> mir");

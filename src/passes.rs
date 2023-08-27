@@ -1,7 +1,7 @@
-mod find_main;
+mod check_entry;
 mod resolve;
 mod typeck;
 
-pub use find_main::find_main;
+pub use check_entry::check_entry;
 pub use resolve::resolve;
 pub use typeck::typeck;
