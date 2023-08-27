@@ -24,7 +24,19 @@ impl<'db> TyPrinter<'db> {
     fn fmt_type(f: &mut Formatter, ty: &TyKind) -> Result {
         match ty {
             TyKind::Function(fun) => {
-                f.write_str("fn() ")?;
+                f.write_str("fn(")?;
+
+                for (i, param) in fun.params.iter().enumerate() {
+                    f.write_str(param.name.map_or("_", |s| s.as_str()))?;
+                    f.write_str(" ")?;
+                    Self::fmt_type(f, &param.ty)?;
+
+                    if i != fun.params.len() - 1 {
+                        f.write_str(", ")?;
+                    }
+                }
+
+                f.write_str(") ")?;
                 Self::fmt_type(f, &fun.ret)
             }
             TyKind::Int(int) => match int {

@@ -15,8 +15,8 @@ use crate::{
     },
     span::Spanned,
     tast::{
-        Bin, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name, Return,
-        TypedAst,
+        Bin, Block, Call, CallArg, Expr, Function, FunctionSig, If, Item, ItemKind, Lit, LitKind,
+        Name, Return, TypedAst,
     },
     ty::{tcx::TyCtxt, FunctionTy, FunctionTyParam, Ty, TyKind, Typed},
 };
@@ -30,32 +30,61 @@ pub fn typeck(db: &mut Db, tcx: &TyCtxt, tast: &mut TypedAst) -> Result<(), Diag
 fn typeck_inner(db: &mut Db, tcx: &TyCtxt, tast: &mut TypedAst) -> InferResult<()> {
     let mut cx = InferCtxt::new(db, tcx);
 
-    typeck_function_signatures(&mut cx, tast)?;
-    typeck_function_bodies(&mut cx, tast)?;
+    cx.typeck_function_signatures(tast);
+    cx.typeck_function_bodies(tast)?;
 
     cx.substitute_all(tast);
 
     Ok(())
 }
 
-fn typeck_function_signatures(infcx: &mut InferCtxt, tast: &mut TypedAst) -> InferResult<()> {
-    let len = infcx.db.symbols.len();
-    let tys: Vec<_> = std::iter::repeat_with(|| infcx.fresh_ty_var()).take(len).collect();
-    for (i, sym) in infcx.db.symbols.iter_mut().enumerate() {
-        sym.ty = tys[i];
+impl InferCtxt<'_> {
+    fn typeck_function_signatures(&mut self, tast: &mut TypedAst) {
+        // let len = infcx.db.symbols.len();
+        // let tys: Vec<_> = std::iter::repeat_with(|| infcx.fresh_ty_var()).take(len).collect();
+        // for (i, sym) in infcx.db.symbols.iter_mut().enumerate() {
+        //     sym.ty = tys[i];
+        // }
+
+        for item in &mut tast.items {
+            match &mut item.kind {
+                ItemKind::Function(fun) => {
+                    fun.ty = self.typeck_function_sig(&mut fun.sig);
+                    self.db[fun.id].ty = fun.ty;
+                    // let sym_ty = self.lookup(fun.id);
+                    // self.at(Obligation::obvious(fun.span)).eq(sym_ty, fun.ty)?;
+                }
+            }
+        }
     }
 
-    Ok(())
-}
+    fn typeck_function_sig(&mut self, sig: &mut FunctionSig) -> Ty {
+        let ret_ty = self.fresh_ty_var();
 
-fn typeck_function_bodies(infcx: &mut InferCtxt, tast: &mut TypedAst) -> InferResult<()> {
-    let mut env = TypeEnv::new();
+        for param in &mut sig.params {
+            param.ty = self.fresh_ty_var();
+            self.db[param.id].ty = param.ty;
+        }
 
-    for item in &mut tast.items {
-        item.infer(infcx, &mut env)?;
+        Ty::new(TyKind::Function(FunctionTy {
+            ret: ret_ty,
+            params: sig
+                .params
+                .iter()
+                .map(|param| FunctionTyParam { name: Some(self.db[param.id].name), ty: param.ty })
+                .collect(),
+        }))
     }
 
-    Ok(())
+    fn typeck_function_bodies(&mut self, tast: &mut TypedAst) -> InferResult<()> {
+        let mut env = TypeEnv::new();
+
+        for item in &mut tast.items {
+            item.infer(self, &mut env)?;
+        }
+
+        Ok(())
+    }
 }
 
 trait Infer<'db> {
