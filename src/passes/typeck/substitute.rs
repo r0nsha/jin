@@ -2,8 +2,8 @@ use std::collections::HashSet;
 
 use crate::{
     passes::typeck::infcx::{InferCtxt, InferCtxtInner},
-    tast::{Bin, Block, Call, Expr, Function, FunctionSig, If, Item, ItemKind, Return, TypedAst},
-    ty::{FunctionTy, FunctionTyParam, InferTy, Ty, TyKind, TyVar, Typed},
+    tast::{Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Return, TypedAst},
+    ty::{FnTy, FnTyParam, InferTy, Ty, TyKind, TyVar, Typed},
 };
 
 impl<'db> InferCtxt<'db> {
@@ -34,12 +34,12 @@ fn substitute_tykind(
     unbound_vars: &mut HashSet<TyVar>,
 ) -> TyKind {
     match ty {
-        TyKind::Function(fun) => TyKind::Function(FunctionTy {
+        TyKind::Fn(fun) => TyKind::Fn(FnTy {
             ret: substitute_ty(infcx, fun.ret, unbound_vars),
             params: fun
                 .params
                 .iter()
-                .map(|param| FunctionTyParam {
+                .map(|param| FnTyParam {
                     name: param.name,
                     ty: substitute_ty(infcx, param.ty, unbound_vars),
                 })
@@ -97,7 +97,7 @@ impl Substitute<'_> for Item {
     }
 }
 
-impl Substitute<'_> for Function {
+impl Substitute<'_> for Fn {
     fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>) {
         self.sig.substitute(infcx, unbound_vars);
         self.body.substitute(infcx, unbound_vars);
@@ -105,7 +105,7 @@ impl Substitute<'_> for Function {
     }
 }
 
-impl Substitute<'_> for FunctionSig {
+impl Substitute<'_> for FnSig {
     fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>) {
         for param in &mut self.params {
             param.ty = substitute_ty(infcx, param.ty, unbound_vars);

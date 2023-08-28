@@ -58,19 +58,19 @@ impl Module {
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum Item {
-    Function(Function),
+    Fn(Fn),
 }
 
 impl Spanned for Item {
     fn span(&self) -> Span {
         match self {
-            Self::Function(x) => x.span,
+            Self::Fn(x) => x.span,
         }
     }
 
     fn span_mut(&mut self) -> &mut Span {
         match self {
-            Self::Function(x) => &mut x.span,
+            Self::Fn(x) => &mut x.span,
         }
     }
 }
@@ -116,21 +116,21 @@ impl Spanned for Expr {
 }
 
 #[derive(Debug, Clone)]
-pub struct Function {
+pub struct Fn {
     pub id: Option<SymbolId>,
-    pub sig: FunctionSig,
+    pub sig: FnSig,
     pub body: Block,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub struct FunctionSig {
+pub struct FnSig {
     pub name: Word,
-    pub params: Vec<FunctionParam>,
+    pub params: Vec<FnParam>,
 }
 
 #[derive(Debug, Clone)]
-pub struct FunctionParam {
+pub struct FnParam {
     pub id: Option<SymbolId>,
     pub name: Word,
     pub span: Span,

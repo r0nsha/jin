@@ -3,7 +3,7 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Bin, BinOp, Block, Call, CallArg, Expr, Function, FunctionParam, FunctionSig, If, Item,
+        Bin, BinOp, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, If, Item,
         Lit, LitKind, Module, Name, Return,
     },
     common::{QPath, Word},
@@ -49,7 +49,7 @@ impl<'a> Parser<'a> {
 
     fn parse_top_level(&mut self) -> ParseResult<Item> {
         if self.is(TokenKind::Fn) {
-            Ok(Item::Function(self.parse_function()?))
+            Ok(Item::Fn(self.parse_function()?))
         } else {
             let token = self.require()?;
 
@@ -61,7 +61,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_function(&mut self) -> ParseResult<Function> {
+    fn parse_function(&mut self) -> ParseResult<Fn> {
         let start = self.last_span();
 
         let name_ident = self.eat(TokenKind::empty_ident())?;
@@ -76,18 +76,18 @@ impl<'a> Parser<'a> {
             _ => Block { span: expr.span(), exprs: vec![expr] },
         };
 
-        Ok(Function { id: None, sig, span: start.merge(body.span), body })
+        Ok(Fn { id: None, sig, span: start.merge(body.span), body })
     }
 
-    fn parse_function_sig(&mut self, name: Word) -> ParseResult<FunctionSig> {
+    fn parse_function_sig(&mut self, name: Word) -> ParseResult<FnSig> {
         let (params, _) = self.parse_function_params()?;
-        Ok(FunctionSig { name, params })
+        Ok(FnSig { name, params })
     }
 
-    fn parse_function_params(&mut self) -> ParseResult<(Vec<FunctionParam>, Span)> {
+    fn parse_function_params(&mut self) -> ParseResult<(Vec<FnParam>, Span)> {
         self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             let ident_tok = this.eat(TokenKind::empty_ident())?;
-            Ok(FunctionParam { id: None, name: ident_tok.spanned_word(), span: ident_tok.span })
+            Ok(FnParam { id: None, name: ident_tok.spanned_word(), span: ident_tok.span })
         })
     }
 
@@ -107,7 +107,7 @@ impl<'a> Parser<'a> {
 
     fn parse_stmt(&mut self) -> ParseResult<Expr> {
         if self.is(TokenKind::Fn) {
-            Ok(Expr::Item(Item::Function(self.parse_function()?)))
+            Ok(Expr::Item(Item::Fn(self.parse_function()?)))
         } else if self.is(TokenKind::Return) {
             Ok(Expr::Return(self.parse_return()?))
         } else {

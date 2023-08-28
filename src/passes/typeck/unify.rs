@@ -101,7 +101,7 @@ impl UnifyCtxt<'_, '_> {
             | (TyKind::Unit, TyKind::Unit)
             | (TyKind::Int(IntTy::Int), TyKind::Int(IntTy::Int)) => Ok(()),
 
-            (TyKind::Function(ref fex), TyKind::Function(ref fact)) => {
+            (TyKind::Fn(ref fex), TyKind::Fn(ref fact)) => {
                 self.unify_ty_ty(fex.ret, fact.ret)?;
 
                 if fex.params.len() == fact.params.len() {

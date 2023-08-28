@@ -5,7 +5,7 @@ use inkwell::{
 
 use crate::{
     llvm::{generate::Generator, inkwell_ext::ContextExt},
-    ty::{FunctionTy, IntTy, TyKind},
+    ty::{FnTy, IntTy, TyKind},
 };
 
 impl<'db, 'cx> Generator<'db, 'cx> {
@@ -26,7 +26,7 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, BasicTypeEnum<'cx>> for TyKind {
     fn llvm_ty(&self, cx: &Generator<'db, 'cx>) -> BasicTypeEnum<'cx> {
         match self {
             Self::Int(inner) => inner.llvm_ty(cx).into(),
-            Self::Function(_) => cx.context.ptr_type(AddressSpace::default()).into(),
+            Self::Fn(_) => cx.context.ptr_type(AddressSpace::default()).into(),
             Self::Bool => cx.context.bool_type().into(),
             Self::Unit => cx.unit_ty().into(),
             Self::Never => cx.never_ty().into(),
@@ -44,7 +44,7 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, IntType<'cx>> for IntTy {
     }
 }
 
-impl<'db, 'cx> LlvmTy<'db, 'cx, FunctionType<'cx>> for FunctionTy {
+impl<'db, 'cx> LlvmTy<'db, 'cx, FunctionType<'cx>> for FnTy {
     fn llvm_ty(&self, cx: &Generator<'db, 'cx>) -> FunctionType<'cx> {
         let param_tys: Vec<_> = self.params.iter().map(|p| p.ty.llvm_ty(cx).into()).collect();
         self.ret.llvm_ty(cx).fn_type(&param_tys, false)

@@ -1,6 +1,6 @@
 use std::io;
 
-use super::{Expr, Function, Item, LitKind, Module};
+use super::{Expr, Fn, Item, LitKind, Module};
 use crate::ast::{Block, CallArg};
 
 pub(super) fn print_module(module: &Module) -> io::Result<()> {
@@ -103,12 +103,12 @@ impl PrettyPrint for Expr {
 impl PrettyPrint for Item {
     fn pretty_print(&self, cx: &mut PPCtxt) {
         match self {
-            Self::Function(fun) => fun.pretty_print(cx),
+            Self::Fn(fun) => fun.pretty_print(cx),
         }
     }
 }
 
-impl PrettyPrint for Function {
+impl PrettyPrint for Fn {
     fn pretty_print(&self, cx: &mut PPCtxt) {
         cx.builder.begin_child(format!("fn {}", self.sig.name));
 

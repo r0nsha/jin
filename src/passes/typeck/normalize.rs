@@ -1,6 +1,6 @@
 use crate::{
     passes::typeck::infcx::InferCtxtInner,
-    ty::{FunctionTy, FunctionTyParam, InferTy, Ty, TyKind},
+    ty::{FnTy, FnTyParam, InferTy, Ty, TyKind},
 };
 
 pub trait NormalizeTy {
@@ -10,11 +10,11 @@ pub trait NormalizeTy {
 impl NormalizeTy for Ty {
     fn normalize(self, infcx: &mut InferCtxtInner) -> Self {
         match self.as_ref() {
-            TyKind::Function(FunctionTy { ret, params }) => TyKind::Function(FunctionTy {
+            TyKind::Fn(FnTy { ret, params }) => TyKind::Fn(FnTy {
                 ret: ret.normalize(infcx),
                 params: params
                     .iter()
-                    .map(|param| FunctionTyParam {
+                    .map(|param| FnTyParam {
                         name: param.name,
                         ty: param.ty.normalize(infcx),
                     })

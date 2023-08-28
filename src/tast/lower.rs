@@ -2,7 +2,7 @@ use crate::{
     ast,
     db::Db,
     tast::{
-        Bin, Block, Call, CallArg, Expr, Function, FunctionParam, FunctionSig, If, Item, ItemKind,
+        Bin, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, If, Item, ItemKind,
         Lit, LitKind, Name, Return, TypedAst,
     },
     ty::tcx::TyCtxt,
@@ -37,16 +37,16 @@ impl Lower<'_, Item> for ast::Item {
     fn lower(self, cx: &mut LowerCtxt<'_>) -> Item {
         Item {
             kind: match self {
-                Self::Function(fun) => ItemKind::Function(fun.lower(cx)),
+                Self::Fn(fun) => ItemKind::Function(fun.lower(cx)),
             },
             ty: cx.tcx.types.unknown,
         }
     }
 }
 
-impl Lower<'_, Function> for ast::Function {
-    fn lower(self, cx: &mut LowerCtxt<'_>) -> Function {
-        Function {
+impl Lower<'_, Fn> for ast::Fn {
+    fn lower(self, cx: &mut LowerCtxt<'_>) -> Fn {
+        Fn {
             id: self.id.expect("to be resolved"),
             sig: self.sig.lower(cx),
             body: self.body.lower(cx),
@@ -56,13 +56,13 @@ impl Lower<'_, Function> for ast::Function {
     }
 }
 
-impl Lower<'_, FunctionSig> for ast::FunctionSig {
-    fn lower(self, cx: &mut LowerCtxt<'_>) -> FunctionSig {
-        FunctionSig {
+impl Lower<'_, FnSig> for ast::FnSig {
+    fn lower(self, cx: &mut LowerCtxt<'_>) -> FnSig {
+        FnSig {
             params: self
                 .params
                 .into_iter()
-                .map(|p| FunctionParam {
+                .map(|p| FnParam {
                     id: p.id.expect("to be resolved"),
                     span: p.span,
                     ty: cx.tcx.types.unknown,

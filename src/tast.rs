@@ -56,7 +56,7 @@ impl Typed for Item {
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum ItemKind {
-    Function(Function),
+    Function(Fn),
 }
 
 impl Spanned for ItemKind {
@@ -156,21 +156,21 @@ impl Spanned for Expr {
 }
 
 #[derive(Debug, Clone)]
-pub struct Function {
+pub struct Fn {
     pub id: SymbolId,
-    pub sig: FunctionSig,
+    pub sig: FnSig,
     pub body: Block,
     pub span: Span,
     pub ty: Ty,
 }
 
 #[derive(Debug, Clone)]
-pub struct FunctionSig {
-    pub params: Vec<FunctionParam>,
+pub struct FnSig {
+    pub params: Vec<FnParam>,
 }
 
 #[derive(Debug, Clone)]
-pub struct FunctionParam {
+pub struct FnParam {
     pub id: SymbolId,
     pub span: Span,
     pub ty: Ty,

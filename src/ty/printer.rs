@@ -23,7 +23,7 @@ impl<'db> TyPrinter<'db> {
 
     fn fmt_type(f: &mut Formatter, ty: &TyKind) -> Result {
         match ty {
-            TyKind::Function(fun) => {
+            TyKind::Fn(fun) => {
                 f.write_str("fn(")?;
 
                 for (i, param) in fun.params.iter().enumerate() {

@@ -24,7 +24,7 @@ impl Ty {
 
     pub fn occurs_check(self, var: TyVar) -> Result<(), Self> {
         match self.as_ref() {
-            TyKind::Function(fun) => fun.ret.occurs_check(var).map_err(|_| self),
+            TyKind::Fn(fun) => fun.ret.occurs_check(var).map_err(|_| self),
             TyKind::Infer(InferTy::TyVar(v)) => {
                 if *v == var {
                     Err(self)
@@ -32,7 +32,12 @@ impl Ty {
                     Ok(())
                 }
             }
-            _ => Ok(()),
+            TyKind::Infer(..)
+            | TyKind::Int(..)
+            | TyKind::Bool
+            | TyKind::Unit
+            | TyKind::Never
+            | TyKind::Unknown => Ok(()),
         }
     }
 }
@@ -71,7 +76,7 @@ impl From<&TyKind> for TyKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, EnumAsInner)]
 pub enum TyKind {
-    Function(FunctionTy),
+    Fn(FnTy),
     Int(IntTy),
     Bool,
     // TODO: when we implement tuples, Unit should become Tuple([])
@@ -118,13 +123,13 @@ pub enum IntTy {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FunctionTy {
+pub struct FnTy {
     pub ret: Ty,
-    pub params: Vec<FunctionTyParam>,
+    pub params: Vec<FnTyParam>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct FunctionTyParam {
+pub struct FnTyParam {
     // TODO: This shouldn't be optional...
     pub name: Option<Ustr>,
     pub ty: Ty,

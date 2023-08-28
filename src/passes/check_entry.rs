@@ -53,5 +53,5 @@ fn check_entry_ty(db: &Db) -> Result<(), Diagnostic> {
 }
 
 fn is_main_fun_ty(ty: &TyKind) -> bool {
-    matches!(ty, TyKind::Function(f) if f.params.is_empty() && f.ret.is_unit())
+    matches!(ty, TyKind::Fn(f) if f.params.is_empty() && f.ret.is_unit())
 }

@@ -18,7 +18,7 @@ pub fn print(db: &Db, mir: &Mir) {
 }
 
 fn print_function<'d>(db: &Db, fun: &Function) -> RcDoc<'d, ()> {
-    let ret_ty = db[fun.id].ty.as_function().unwrap().ret.to_doc(db, fun);
+    let ret_ty = db[fun.id].ty.as_fn().unwrap().ret.to_doc(db, fun);
 
     RcDoc::text("fn")
         .append(RcDoc::space())

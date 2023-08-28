@@ -41,7 +41,7 @@ impl<'db> LowerFunctionCtxt<'db> {
         Self { db, mir, bx: FunctionBuilder::new(fun_id) }
     }
 
-    fn lower_function(mut self, fun: &tast::Function) -> Result<Function> {
+    fn lower_function(mut self, fun: &tast::Fn) -> Result<Function> {
         let blk_start = self.bx.create_block("start");
         self.bx.position_at(blk_start);
 

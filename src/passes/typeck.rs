@@ -13,10 +13,10 @@ use crate::{
     passes::typeck::{error::InferError, infcx::InferCtxt, unify::Obligation},
     span::{Span, Spanned},
     tast::{
-        Bin, Block, Call, Expr, Function, FunctionSig, If, Item, ItemKind, Lit, LitKind, Name,
+        Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Lit, LitKind, Name,
         Return, TypedAst,
     },
-    ty::{tcx::TyCtxt, FunctionTy, FunctionTyParam, Ty, TyKind, Typed},
+    ty::{tcx::TyCtxt, FnTy, FnTyParam, Ty, TyKind, Typed},
 };
 
 pub type InferResult<T> = Result<T, InferError>;
@@ -48,7 +48,7 @@ impl InferCtxt<'_> {
         }
     }
 
-    fn typeck_function_sig(&mut self, sig: &mut FunctionSig) -> Ty {
+    fn typeck_function_sig(&mut self, sig: &mut FnSig) -> Ty {
         let ret_ty = self.fresh_ty_var();
 
         for param in &mut sig.params {
@@ -56,12 +56,12 @@ impl InferCtxt<'_> {
             self.db[param.id].ty = param.ty;
         }
 
-        Ty::new(TyKind::Function(FunctionTy {
+        Ty::new(TyKind::Fn(FnTy {
             ret: ret_ty,
             params: sig
                 .params
                 .iter()
-                .map(|param| FunctionTyParam { name: Some(self.db[param.id].name), ty: param.ty })
+                .map(|param| FnTyParam { name: Some(self.db[param.id].name), ty: param.ty })
                 .collect(),
         }))
     }
@@ -86,8 +86,8 @@ struct FnCtxt {
 }
 
 impl FnCtxt {
-    fn from_function(fun: &Function) -> Self {
-        FnCtxt { id: fun.id, ret_ty: fun.ty.as_function().unwrap().ret }
+    fn from_function(fun: &Fn) -> Self {
+        FnCtxt { id: fun.id, ret_ty: fun.ty.as_fn().unwrap().ret }
     }
 }
 
@@ -122,7 +122,7 @@ impl Infer<'_> for Item {
     }
 }
 
-impl Infer<'_> for Function {
+impl Infer<'_> for Fn {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, _fx: &mut FnCtxt) -> InferResult<()> {
         if cx.db[self.id].scope.level.is_local() {
             self.ty = cx.typeck_function_sig(&mut self.sig);
@@ -200,7 +200,7 @@ impl Infer<'_> for Call {
             arg.expr.infer(cx, fx)?;
         }
 
-        self.ty = if let TyKind::Function(fun_ty) = self.callee.ty().as_ref() {
+        self.ty = if let TyKind::Fn(fun_ty) = self.callee.ty().as_ref() {
             if self.args.len() != fun_ty.params.len() {
                 return Err(InferError::ArgMismatch {
                     expected: fun_ty.params.len(),
@@ -266,12 +266,12 @@ impl Infer<'_> for Call {
             // Unresolved callee type, unify with a generic function type
             let result_ty = cx.fresh_ty_var();
 
-            let expected_ty = Ty::new(TyKind::Function(FunctionTy {
+            let expected_ty = Ty::new(TyKind::Fn(FnTy {
                 ret: result_ty,
                 params: self
                     .args
                     .iter()
-                    .map(|arg| FunctionTyParam {
+                    .map(|arg| FnTyParam {
                         name: arg.name.map(|n| n.name()),
                         ty: arg.expr.ty(),
                     })

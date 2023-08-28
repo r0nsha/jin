@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
-    ast::{Ast, Bin, Block, Call, CallArg, Expr, Function, If, Item, Module, Name, Return},
+    ast::{Ast, Bin, Block, Call, CallArg, Expr, Fn, If, Item, Module, Name, Return},
     common::{QPath, Word},
     db::{
         Db, FunctionInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, SymbolId, SymbolInfo,
@@ -63,7 +63,7 @@ impl<'db> Resolver<'db> {
 
     fn declare_global_item(&mut self, module_id: ModuleId, item: &mut Item) -> SymbolId {
         match item {
-            Item::Function(fun) => {
+            Item::Fn(fun) => {
                 let id = self.declare_global_symbol(
                     module_id,
                     Vis::Public,
@@ -105,7 +105,7 @@ impl<'db> Resolver<'db> {
 
     fn declare_item(&mut self, env: &mut Env, item: &mut Item) -> SymbolId {
         match item {
-            Item::Function(fun) => {
+            Item::Fn(fun) => {
                 let id = self.declare_symbol(
                     env,
                     SymbolInfoKind::Function(FunctionInfo::Orphan),
@@ -146,7 +146,7 @@ impl Resolve<'_> for Item {
         }
 
         match self {
-            Item::Function(fun) => fun.resolve(cx, env),
+            Item::Fn(fun) => fun.resolve(cx, env),
         }
     }
 }
@@ -166,7 +166,7 @@ impl Resolve<'_> for Expr {
     }
 }
 
-impl Resolve<'_> for Function {
+impl Resolve<'_> for Fn {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         env.push(self.sig.name.name(), ScopeKind::Fun);
 

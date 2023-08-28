@@ -2,9 +2,7 @@ use std::io;
 
 use crate::{
     db::Db,
-    tast::{
-        Bin, Block, Call, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name, Return, TypedAst,
-    },
+    tast::{Bin, Block, Call, Expr, Fn, If, Item, ItemKind, Lit, LitKind, Name, Return, TypedAst},
 };
 
 pub(super) fn print(db: &Db, tast: &TypedAst) -> io::Result<()> {
@@ -50,12 +48,12 @@ impl PrettyPrint for Item {
     }
 }
 
-impl PrettyPrint for Function {
+impl PrettyPrint for Fn {
     fn pretty_print(&self, cx: &mut PPCtxt) {
         cx.builder.begin_child(format!(
             "fn {} (returns: {})",
             cx.db[self.id].qpath,
-            self.ty.as_function().expect("to be a function").ret.display(cx.db)
+            self.ty.as_fn().expect("to be a function").ret.display(cx.db)
         ));
 
         if !self.sig.params.is_empty() {
