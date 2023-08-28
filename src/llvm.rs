@@ -6,6 +6,7 @@ mod util;
 
 use std::{
     collections::{HashMap, HashSet},
+    fs,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -107,7 +108,7 @@ fn build_exe(db: &mut Db, target_machine: &TargetMachine, module: &Module) -> Pa
     let output_path = db.output_path();
 
     if let Some(parent_dir) = output_path.parent() {
-        let _ = std::fs::create_dir_all(parent_dir);
+        let _ = fs::create_dir_all(parent_dir);
     }
 
     if db.build_options().should_emit(EmitOption::LlvmIr) {

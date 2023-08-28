@@ -70,7 +70,10 @@ impl Db {
     }
 
     pub fn output_path(&self) -> PathBuf {
-        self.main_source().path().with_extension("")
+        let main_path = self.main_source().path();
+        let file_name = main_path.file_stem().expect("main source to be a file");
+        let src_dir = main_path.parent().expect("to have a parent directory");
+        src_dir.join(self.build_options.output_dir.clone()).join(file_name)
     }
 
     pub fn root_dir(&self) -> &Path {

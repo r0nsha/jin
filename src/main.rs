@@ -50,8 +50,11 @@ struct Cli {
     #[arg(global = true, long, default_value_t = false)]
     timings: bool,
 
-    #[arg(value_enum, global = true, long)]
+    #[arg(global = true, long, value_enum)]
     emit: Vec<EmitOption>,
+
+    #[arg(global = true, long)]
+    out_dir: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -76,6 +79,7 @@ fn main() -> Result<()> {
     let build_options = BuildOptions::new(
         cli.timings,
         cli.emit,
+        cli.out_dir,
         TargetPlatform::current().expect("Current platform is not supported"),
     );
 
