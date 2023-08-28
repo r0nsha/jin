@@ -407,8 +407,12 @@ impl<'a> Parser<'a> {
             self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
                 let arg = Parser::parse_arg(this)?;
 
-                match arg {
-                    CallArg::Positional(..) => todo!(),
+                match &arg {
+                    CallArg::Positional(expr) => {
+                        if passed_named_arg {
+                            return Err(ParseError::MixedArgs { span: expr.span() });
+                        }
+                    }
                     CallArg::Named(..) => passed_named_arg = true,
                 }
 
@@ -552,6 +556,7 @@ type ParseResult<T> = Result<T, ParseError>;
 enum ParseError {
     UnexpectedToken { expected: String, found: TokenKind, span: Span },
     UnexpectedEof { span: Span },
+    MixedArgs { span: Span },
 }
 
 impl From<ParseError> for Diagnostic {
@@ -565,6 +570,9 @@ impl From<ParseError> for Diagnostic {
             ParseError::UnexpectedEof { span } => Self::error("parse::unexpected_eof")
                 .with_message("unexpected end of file")
                 .with_label(Label::primary(span).with_message("here")),
+            ParseError::MixedArgs { span } => Self::error("parse::mixed_args")
+                .with_message("positional arguments are not allowed after named arguments")
+                .with_label(Label::primary(span).with_message("unexpected positional argument")),
         }
     }
 }
