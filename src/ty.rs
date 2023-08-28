@@ -22,6 +22,13 @@ impl Ty {
         Self(Intern::from_ref(kind))
     }
 
+    pub fn as_tyvar(&self) -> Option<TyVar> {
+        match self.as_ref() {
+            TyKind::Infer(InferTy::TyVar(tv)) => Some(*tv),
+            _ => None,
+        }
+    }
+
     pub fn occurs_check(self, var: TyVar) -> Result<(), Self> {
         match self.as_ref() {
             TyKind::Fn(fun) => fun.ret.occurs_check(var).map_err(|_| self),
@@ -140,6 +147,12 @@ pub struct FnTyParam {
 pub struct ParamTy {
     pub name: Ustr,
     pub var: TyVar,
+}
+
+impl ParamTy {
+    pub fn new(name: Ustr, var: TyVar) -> Self {
+        Self { name, var }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

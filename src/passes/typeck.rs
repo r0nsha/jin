@@ -4,6 +4,8 @@ mod normalize;
 mod substitute;
 mod unify;
 
+use std::collections::HashMap;
+
 use ustr::UstrMap;
 
 use crate::{
@@ -17,7 +19,7 @@ use crate::{
     tast::{
         Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Lit, LitKind, Name, Return, TypedAst,
     },
-    ty::{tcx::TyCtxt, FnTy, FnTyParam, Ty, TyKind, Typed},
+    ty::{tcx::TyCtxt, FnTy, FnTyParam, ParamTy, Ty, TyKind, TyVar, Typed},
 };
 
 pub type InferResult<T> = Result<T, InferError>;
@@ -58,7 +60,11 @@ impl InferCtxt<'_> {
         }
 
         Ty::new(TyKind::Fn(FnTy {
-            ty_params: todo!(),
+            ty_params: sig
+                .params
+                .iter()
+                .map(|p| ParamTy::new(ustr::ustr("a"), p.ty.as_tyvar().unwrap()))
+                .collect(),
             params: sig
                 .params
                 .iter()
@@ -79,6 +85,17 @@ impl InferCtxt<'_> {
         }
 
         Ok(())
+    }
+
+    fn instantiate(&mut self, ty: Ty, map: HashMap<TyVar, Ty>) -> Ty {
+        match ty.as_ref() {
+            _ if map.is_empty() => ty,
+            TyKind::Fn(fun) if !fun.ty_params.is_empty() => {
+                todo!("replace ParamTy.var -> index : usize");
+                todo!("replace tyvars w/ the given generic args");
+            }
+            _ => ty,
+        }
     }
 }
 
