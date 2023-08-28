@@ -130,7 +130,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             let id = fun.id();
             let fun_info = &self.db[id];
             let name = fun_info.qpath.standard_full_name();
-            let llvm_ty = fun_info.mono_ty().as_function().expect("a function type").llvm_ty(self);
+            let llvm_ty = fun_info.ty.as_function().expect("a function type").llvm_ty(self);
 
             let function = self.module.add_function(&name, llvm_ty, Some(Linkage::Private));
             self.symbol_values.insert(id, SymbolValue::Function(function));

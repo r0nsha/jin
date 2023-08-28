@@ -4,12 +4,13 @@ use ena::unify::InPlaceUnificationTable;
 
 use crate::{
     db::{Db, SymbolId},
-    ty::{tcx::TyCtxt, GeneralizedTy, InferTy, IntVar, Ty, TyKind, TyVar},
+    ty::{tcx::TyCtxt, InferTy, IntVar, Ty, TyKind, TyVar},
 };
 
 pub struct InferCtxt<'db> {
     pub db: &'db mut Db,
     pub tcx: &'db TyCtxt,
+    // pub symbol_env: &'db TyCtxt,
     pub inner: RefCell<InferCtxtInner>,
 }
 
@@ -18,9 +19,10 @@ impl<'db> InferCtxt<'db> {
         Self { db, tcx, inner: RefCell::new(InferCtxtInner::new()) }
     }
 
-    pub fn lookup(&self, id: SymbolId) -> &GeneralizedTy {
+    pub fn lookup(&self, id: SymbolId) -> Ty {
         let sym = &self.db[id];
-        sym.ty.as_ref().unwrap_or_else(|| panic!("symbol `{}` wasn't assigned a Type", sym.qpath))
+        assert!(*sym.ty != TyKind::Unknown, "symbol `{}` wasn't assigned a Type", sym.qpath);
+        sym.ty
     }
 
     #[inline]

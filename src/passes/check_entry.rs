@@ -38,7 +38,7 @@ fn check_entry_exists(db: &mut Db) -> Result<(), Diagnostic> {
 
 fn check_entry_ty(db: &Db) -> Result<(), Diagnostic> {
     let main_fun = db.main_function().expect("to exist");
-    let fun_ty = &main_fun.mono_ty();
+    let fun_ty = main_fun.ty.as_ref();
 
     if is_main_fun_ty(fun_ty) {
         Ok(())

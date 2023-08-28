@@ -15,7 +15,7 @@ use crate::{
     db::{build_options::BuildOptions, timing::Timings},
     diagnostics::Diagnostics,
     span::{Source, SourceId, Sources, Span},
-    ty::{GeneralizedTy, Ty},
+    ty::{Ty, Typed},
 };
 
 #[derive(Debug)]
@@ -170,7 +170,7 @@ pub struct SymbolInfo {
     pub qpath: QPath,
     pub scope: ScopeInfo,
     pub kind: Box<SymbolInfoKind>,
-    pub ty: Option<GeneralizedTy>,
+    pub ty: Ty,
     pub span: Span,
 }
 
@@ -193,6 +193,7 @@ impl SymbolInfo {
         qpath: QPath,
         scope: ScopeInfo,
         kind: SymbolInfoKind,
+        ty: Ty,
         span: Span,
     ) -> SymbolId {
         db.symbols.push_with_key(|id| Self {
@@ -201,16 +202,19 @@ impl SymbolInfo {
             qpath,
             scope,
             kind: Box::new(kind),
-            ty: None,
+            ty,
             span,
         })
     }
+}
 
-    pub fn mono_ty(&self) -> Ty {
+impl Typed for SymbolInfo {
+    fn ty(&self) -> Ty {
         self.ty
-            .as_ref()
-            .unwrap_or_else(|| panic!("expected `{}` to have a type", self.qpath))
-            .as_mono()
+    }
+
+    fn ty_mut(&mut self) -> &mut Ty {
+        &mut self.ty
     }
 }
 

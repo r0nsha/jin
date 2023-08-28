@@ -8,10 +8,7 @@ use enum_as_inner::EnumAsInner;
 use internment::Intern;
 use ustr::Ustr;
 
-use crate::{
-    db::Db,
-    ty::printer::{GeneralizedTyPrinter, TyPrinter},
-};
+use crate::{db::Db, ty::printer::TyPrinter};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Ty(Intern<TyKind>);
@@ -145,33 +142,10 @@ pub enum GeneralizedTy {
     Poly(PolyTy),
 }
 
-impl GeneralizedTy {
-    pub fn as_mono(&self) -> Ty {
-        match self {
-            Self::Mono(ty) => *ty,
-            Self::Poly(_) => panic!("expected a mono type"),
-        }
-    }
-
-    pub fn display<'db>(&'db self, db: &'db Db) -> GeneralizedTyPrinter<'db> {
-        GeneralizedTyPrinter::new(db, self)
-    }
-
-    pub fn to_string(&self, db: &Db) -> String {
-        self.display(db).to_string()
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PolyTy {
     pub ty: Ty,
-    pub params: Vec<ParamTy>,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ParamTy {
-    pub name: Ustr,
-    pub ty: Ty,
+    pub vars: Vec<(Ustr, TyVar)>,
 }
 
 pub trait Typed {

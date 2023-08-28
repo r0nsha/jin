@@ -211,8 +211,8 @@ impl<'db> LowerFunctionCtxt<'db> {
     }
 
     fn lower_name(&mut self, name: &tast::Name) -> ValueId {
-        let sym = &self.db[name.id];
-        self.bx.build_load(sym.mono_ty(), sym.id, name.span)
+        let symbol = &self.db[name.id];
+        self.bx.build_load(symbol.ty, symbol.id, name.span)
     }
 
     fn lower_lit(&mut self, lit: &tast::Lit) -> ValueId {
