@@ -218,21 +218,9 @@ impl Resolve<'_> for Call {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         self.callee.resolve(cx, env);
 
-        let mut already_passed = UstrMap::<Span>::default();
-
         for arg in &mut self.args {
             match arg {
-                CallArg::Named(name, expr) => {
-                    if let Some(prev_span) = already_passed.insert(name.name(), name.span()) {
-                        cx.errors.push(ResolveError::MultipleNamedArgs {
-                            prev: Word::new(name.name(), prev_span),
-                            dup: *name,
-                        });
-                    }
-
-                    expr.resolve(cx, env);
-                }
-                CallArg::Positional(expr) => expr.resolve(cx, env),
+                CallArg::Named(_, expr) | CallArg::Positional(expr) => expr.resolve(cx, env),
             }
         }
     }
@@ -393,7 +381,6 @@ pub enum ScopeKind {
 pub(super) enum ResolveError {
     MultipleItems { name: Ustr, prev_span: Span, dup_span: Span },
     NameNotFound(Word),
-    MultipleNamedArgs { prev: Word, dup: Word },
     InvalidReturn { span: Span },
 }
 
@@ -412,18 +399,6 @@ impl From<ResolveError> for Diagnostic {
                             .with_message(format!("previous item `{name}` defined here")),
                     )
                     .with_help("you can only define items once in a module")
-            }
-            ResolveError::MultipleNamedArgs { prev, dup } => {
-                Self::error("resolve::multiple_named_args")
-                    .with_message(format!("argument `{prev}` is passed multiple times"))
-                    .with_label(
-                        Label::primary(dup.span())
-                            .with_message(format!("`{dup}` is redefined here")),
-                    )
-                    .with_label(
-                        Label::secondary(prev.span())
-                            .with_message(format!("argument `{prev}` is already passed here")),
-                    )
             }
             ResolveError::NameNotFound(name) => Self::error("resolve::name_not_found")
                 .with_message(format!("cannot find value `{name}` in this scope"))

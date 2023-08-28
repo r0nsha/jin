@@ -125,6 +125,7 @@ pub struct FunctionTy {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionTyParam {
+    // TODO: This should be optional...
     pub name: Option<Ustr>,
     pub ty: Ty,
 }

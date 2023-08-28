@@ -1,12 +1,12 @@
 fn main() = {
-	sub(41, 1) // valid
-	sub(41, b = 1) // valid
-	sub(a = 41, 1) // valid
-	sub(b = 41, 1) // valid
-	sub(a = 41, b = 1) // valid
-	// sub(b = 41, a = 1, b = 5) // invalid (named passed twice)
-	// sub(a = 41, a = 1, b = 5) // invalid (named passed twice)
-	// sub(41, a = 1) // invalid (named argument already passed as positional)
+	// sub(41, 1) // valid
+	// sub(41, b = 1) // valid
+	// sub(a = 41, 1) // valid
+	// sub(b = 41, 1) // valid
+	// sub(a = 41, b = 1) // valid
+	// sub(b = 41, a = 1, b = 5) // invalid (too many arguments)
+	// sub(a = 41, a = 1) // invalid (named passed twice)
+	sub(41, a = 1) // invalid (named argument already passed as positional)
 	return ()
 }
 

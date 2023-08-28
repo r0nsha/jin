@@ -5,6 +5,8 @@ mod substitute;
 mod type_env;
 mod unify;
 
+use ustr::UstrMap;
+
 use crate::{
     ast::BinOp,
     db::Db,
@@ -15,7 +17,7 @@ use crate::{
         type_env::{CallFrame, TypeEnv},
         unify::Obligation,
     },
-    span::Spanned,
+    span::{Span, Spanned},
     tast::{
         Bin, Block, Call, Expr, Function, FunctionSig, If, Item, ItemKind, Lit, LitKind, Name,
         Return, TypedAst,
@@ -201,6 +203,7 @@ impl Infer<'_> for Call {
 
             // Generate a mapping from (arg index -> availability)
             let mut idx_availability = (0..self.args.len()).map(|_| true).collect::<Vec<_>>();
+            let mut already_passed_named_args = UstrMap::<Span>::default();
 
             // Resolve named arg indices
             for arg in &mut self.args {
@@ -213,6 +216,17 @@ impl Infer<'_> for Call {
                         .enumerate()
                         .find_map(|(i, p)| if p.name == Some(name) { Some(i) } else { None })
                         .ok_or(InferError::NamedParamNotFound { word: *arg_name })?;
+
+                    // Report named arguments that are passed twice
+                    if let Some(prev_span) =
+                        already_passed_named_args.insert(arg_name.name(), arg_name.span())
+                    {
+                        return Err(InferError::MultipleNamedArgs {
+                            name: arg_name.name(),
+                            prev: prev_span,
+                            dup: arg_name.span(),
+                        });
+                    }
 
                     arg.index = Some(idx);
                     idx_availability[idx] = false;
@@ -232,6 +246,19 @@ impl Infer<'_> for Call {
                     } else {
                         pos_idx + 1
                     };
+
+                    // Report when a named argument is passed after a positional argument of the
+                    // same name has already been passed
+                    if let Some(param_name) = fun_ty.params[pos_idx].name {
+                        dbg!(param_name, &already_passed_named_args);
+                        if let Some(named_arg_span) = already_passed_named_args.get(&param_name) {
+                            return Err(InferError::MultipleNamedArgs {
+                                name: param_name,
+                                prev: arg.expr.span(),
+                                dup: *named_arg_span,
+                            });
+                        }
+                    }
 
                     arg.index = Some(pos_idx);
                 }

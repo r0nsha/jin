@@ -1,3 +1,5 @@
+use ustr::Ustr;
+
 use crate::{
     common::Word,
     db::Db,
@@ -12,6 +14,7 @@ pub enum InferError {
     InfiniteTy { ty: Ty, obligation: Obligation },
     ArgMismatch { expected: usize, found: usize, span: Span },
     NamedParamNotFound { word: Word },
+    MultipleNamedArgs { name: Ustr, prev: Span, dup: Span },
 }
 
 impl InferError {
@@ -62,6 +65,17 @@ impl InferError {
                     Label::primary(word.span())
                         .with_message(format!("tried to pass `{}` here", word.name())),
                 ),
+            Self::MultipleNamedArgs { name, prev, dup } => {
+                Diagnostic::error("resolve::multiple_named_args")
+                    .with_message(format!("argument `{name}` is passed multiple times"))
+                    .with_label(
+                        Label::primary(dup).with_message(format!("`{name}` is passed again here")),
+                    )
+                    .with_label(
+                        Label::secondary(prev)
+                            .with_message(format!("`{name}` is already passed here")),
+                    )
+            }
         }
     }
 }
