@@ -199,8 +199,10 @@ impl Infer<'_> for Call {
                 });
             }
 
+            // Generate a mapping from (arg index -> availability)
             let mut idx_availability = (0..self.args.len()).map(|_| true).collect::<Vec<_>>();
 
+            // Resolve named arg indices
             for arg in &mut self.args {
                 if let Some(arg_name) = &arg.name {
                     let name = arg_name.name();
@@ -217,6 +219,7 @@ impl Infer<'_> for Call {
                 }
             }
 
+            // Resolve positional arg indices
             let mut pos_idx = 0;
 
             for arg in &mut self.args {
@@ -234,8 +237,10 @@ impl Infer<'_> for Call {
                 }
             }
 
+            // Sort args by index
             self.args.sort_by_key(|arg| arg.index.expect("arg index to be resolved"));
 
+            // Unify all args with their corresponding param type
             for arg in &self.args {
                 let idx = arg.index.expect("arg index to be resolved");
                 cx.at(Obligation::obvious(arg.expr.span()))
@@ -244,6 +249,7 @@ impl Infer<'_> for Call {
 
             fun_ty.ret
         } else {
+            // Unresolved callee type, unify with a generic function type
             let result_ty = cx.fresh_ty_var();
 
             let expected_ty = Ty::new(TyKind::Function(FunctionTy {
