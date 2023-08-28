@@ -125,7 +125,7 @@ pub struct FunctionTy {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionTyParam {
-    // TODO: This should be optional...
+    // TODO: This shouldn't be optional...
     pub name: Option<Ustr>,
     pub ty: Ty,
 }
@@ -134,6 +134,18 @@ pub struct FunctionTyParam {
 pub enum InferTy {
     TyVar(TyVar),
     IntVar(IntVar),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum GeneralizedTy {
+    Mono(Ty),
+    Poly(PolyTy),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct PolyTy {
+    pub ty: Ty,
+    pub vars: Vec<(Ustr, TyVar)>,
 }
 
 pub trait Typed {
