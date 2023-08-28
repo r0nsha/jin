@@ -55,7 +55,6 @@ impl<'db> LowerFunctionCtxt<'db> {
         if !self.bx.current_block().is_terminating() {
             let span = fun.body.span;
             self.bx.build_return(body_value, span);
-            self.bx.build_unreachable(fun.ty.as_function().unwrap().ret, span);
         }
 
         self.bx.finish()
