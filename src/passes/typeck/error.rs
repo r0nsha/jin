@@ -14,7 +14,7 @@ pub enum InferError {
     InfiniteTy { ty: Ty, obligation: Obligation },
     ArgMismatch { expected: usize, found: usize, span: Span },
     NamedParamNotFound { word: Word },
-    MultipleNamedArgs { name: Ustr, prev: Span, dup: Span },
+    MultipleNamedArgs { name: Ustr, prev: Span, dup: Span, is_named: bool },
 }
 
 impl InferError {
@@ -63,11 +63,15 @@ impl InferError {
                 .with_message(format!("cannot find parameter with the name `{}`", word.name()))
                 .with_label(
                     Label::primary(word.span())
-                        .with_message(format!("tried to pass `{}` here", word.name())),
+                        .with_message(format!("found argument `{}` here", word.name())),
                 ),
-            Self::MultipleNamedArgs { name, prev, dup } => {
+            Self::MultipleNamedArgs { name, prev, dup, is_named } => {
                 Diagnostic::error("resolve::multiple_named_args")
-                    .with_message(format!("argument `{name}` is passed multiple times"))
+                    .with_message(if is_named {
+                        format!("argument `{name}` is passed multiple times")
+                    } else {
+                        format!("argument `{name}` is already passed positionally")
+                    })
                     .with_label(
                         Label::primary(dup).with_message(format!("`{name}` is passed again here")),
                     )

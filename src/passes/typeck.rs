@@ -184,6 +184,12 @@ impl Infer<'_> for Return {
     }
 }
 
+#[derive(Debug)]
+struct PassedArg {
+    is_named: bool,
+    span: Span,
+}
+
 impl Infer<'_> for Call {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
         self.callee.infer(cx, env)?;
@@ -201,15 +207,18 @@ impl Infer<'_> for Call {
                 });
             }
 
-            // TODO: New logic
-            // TODO: 1. Resolve positional args
-            // TODO: 2. Resolve named args
-            // TODO: 3. Report multiple named args
-            // TODO: 3. Report named already passed as positional
+            let mut already_passed_args = UstrMap::<PassedArg>::default();
 
-            // Generate a mapping from (arg index -> availability)
-            let mut idx_availability = (0..self.args.len()).map(|_| true).collect::<Vec<_>>();
-            let mut already_passed_named_args = UstrMap::<Span>::default();
+            // Resolve positional arg indices
+            for (idx, arg) in self.args.iter_mut().enumerate() {
+                if arg.name.is_none() {
+                    arg.index = Some(idx);
+                    already_passed_args.insert(
+                        fun_ty.params[idx].name.expect("to have a name"),
+                        PassedArg { is_named: false, span: arg.expr.span() },
+                    );
+                }
+            }
 
             // Resolve named arg indices
             for arg in &mut self.args {
@@ -224,48 +233,19 @@ impl Infer<'_> for Call {
                         .ok_or(InferError::NamedParamNotFound { word: *arg_name })?;
 
                     // Report named arguments that are passed twice
-                    if let Some(prev_span) =
-                        already_passed_named_args.insert(arg_name.name(), arg_name.span())
-                    {
+                    if let Some(passed_arg) = already_passed_args.insert(
+                        arg_name.name(),
+                        PassedArg { is_named: true, span: arg_name.span() },
+                    ) {
                         return Err(InferError::MultipleNamedArgs {
                             name: arg_name.name(),
-                            prev: prev_span,
+                            prev: passed_arg.span,
                             dup: arg_name.span(),
+                            is_named: passed_arg.is_named,
                         });
                     }
 
                     arg.index = Some(idx);
-                    idx_availability[idx] = false;
-                }
-            }
-
-            // Resolve positional arg indices
-            let mut pos_idx = 0;
-
-            for arg in &mut self.args {
-                if arg.name.is_none() {
-                    pos_idx = if let Some(avail_idx) =
-                        idx_availability.iter().enumerate().find_map(|(i, avail)| avail.then(|| i))
-                    {
-                        idx_availability[avail_idx] = false;
-                        avail_idx
-                    } else {
-                        pos_idx + 1
-                    };
-
-                    // Report when a named argument is passed after a positional argument of the
-                    // same name has already been passed
-                    if let Some(param_name) = fun_ty.params[pos_idx].name {
-                        if let Some(named_arg_span) = already_passed_named_args.get(&param_name) {
-                            return Err(InferError::MultipleNamedArgs {
-                                name: param_name,
-                                prev: arg.expr.span(),
-                                dup: *named_arg_span,
-                            });
-                        }
-                    }
-
-                    arg.index = Some(pos_idx);
                 }
             }
 
