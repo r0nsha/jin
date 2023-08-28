@@ -123,16 +123,6 @@ pub struct FunctionTy {
     pub params: Vec<FunctionTyParam>,
 }
 
-impl FunctionTy {
-    pub fn param(&self, name: Ustr) -> Option<&FunctionTyParam> {
-        self.params.iter().find(|p| p.name == Some(name))
-    }
-
-    pub fn param_at(&self, index: usize) -> Option<&FunctionTyParam> {
-        self.params.get(index)
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FunctionTyParam {
     pub name: Option<Ustr>,

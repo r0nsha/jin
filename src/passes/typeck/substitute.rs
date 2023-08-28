@@ -2,10 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     passes::typeck::infcx::{InferCtxt, InferCtxtInner},
-    tast::{
-        Bin, Block, Call, CallArg, Expr, Function, FunctionSig, If, Item, ItemKind, Return,
-        TypedAst,
-    },
+    tast::{Bin, Block, Call, Expr, Function, FunctionSig, If, Item, ItemKind, Return, TypedAst},
     ty::{FunctionTy, FunctionTyParam, InferTy, Ty, TyKind, TyVar, Typed},
 };
 

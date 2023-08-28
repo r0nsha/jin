@@ -1,9 +1,7 @@
 use ena::unify::{EqUnifyValue, UnifyKey};
 
 use crate::{
-    db::Db,
-    diagnostics::{Diagnostic, Label},
-    passes::typeck::{infcx::InferCtxt, normalize::NormalizeTy},
+    passes::typeck::{error::InferError, infcx::InferCtxt, normalize::NormalizeTy},
     span::Span,
     ty::{InferTy, IntTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
 };
@@ -11,14 +9,14 @@ use crate::{
 impl<'db> InferCtxt<'db> {
     #[inline]
     #[must_use]
-    pub fn at(&self, cause: Obligation) -> At<'_, '_> {
-        At { infcx: self, cause }
+    pub fn at(&self, obligation: Obligation) -> At<'_, '_> {
+        At { infcx: self, obligation }
     }
 }
 
 pub struct At<'db, 'a> {
     infcx: &'a InferCtxt<'db>,
-    cause: Obligation,
+    obligation: Obligation,
 }
 
 impl At<'_, '_> {
@@ -30,11 +28,11 @@ impl At<'_, '_> {
                 UnifyError::TyMismatch { .. } => InferError::TyMismatch {
                     expected: expected.normalize(&mut infcx),
                     found: found.normalize(&mut infcx),
-                    cause: self.cause,
+                    obligation: self.obligation,
                 },
                 UnifyError::InfiniteTy { ty } => InferError::InfiniteTy {
                     ty: ty.normalize(&mut infcx),
-                    cause: Obligation::obvious(self.cause.span()),
+                    obligation: Obligation::obvious(self.obligation.span()),
                 },
             }
         })
@@ -215,57 +213,5 @@ impl From<(Ty, Ty)> for UnifyError {
 impl From<(IntVarValue, IntVarValue)> for UnifyError {
     fn from((a, b): (IntVarValue, IntVarValue)) -> Self {
         Self::TyMismatch { a: Ty::new(a.into()), b: Ty::new(b.into()) }
-    }
-}
-
-pub enum InferError {
-    TyMismatch { expected: Ty, found: Ty, cause: Obligation },
-    InfiniteTy { ty: Ty, cause: Obligation },
-    ArgMismatch { expected: usize, found: usize, span: Span },
-}
-
-impl InferError {
-    pub fn into_diagnostic(self, db: &Db) -> Diagnostic {
-        match self {
-            Self::TyMismatch { expected, found, cause } => {
-                let expected_ty = expected.display(db).to_string();
-                let found_ty = found.display(db).to_string();
-
-                let msg = format!("expected `{expected_ty}`, found `{found_ty}`");
-
-                let mut diag = Diagnostic::error("typeck::type_mismatch")
-                    .with_message(msg.clone())
-                    .with_label(Label::primary(cause.span()).with_message(msg));
-
-                match *cause.kind() {
-                    ObligationKind::Obvious => (),
-                    ObligationKind::Exprs(expected_span, found_span) => diag.push_labels([
-                        Label::secondary(expected_span)
-                            .with_message(format!("expected `{expected_ty}`")),
-                        Label::secondary(found_span).with_message(format!("found `{found_ty}`")),
-                    ]),
-                    ObligationKind::ReturnTy(return_ty_span) => {
-                        diag.push_label(Label::secondary(return_ty_span).with_message(format!(
-                            "expected `{expected_ty}` because of return type"
-                        )));
-                    }
-                }
-
-                diag
-            }
-            Self::InfiniteTy { ty, cause } => Diagnostic::error("typeck::infinite_type")
-                .with_message(format!("type `{}` is an infinite type", ty.display(db)))
-                .with_label(Label::primary(cause.span())),
-            Self::ArgMismatch { expected, found, span } => {
-                Diagnostic::error("typeck::arg_mismatch")
-                    .with_message(format!(
-                        "this function takes {expected} arguments, but {found} were supplied"
-                    ))
-                    .with_label(
-                        Label::primary(span)
-                            .with_message(format!("expected {expected} arguments, found {found}")),
-                    )
-            }
-        }
     }
 }

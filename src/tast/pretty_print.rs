@@ -3,8 +3,7 @@ use std::io;
 use crate::{
     db::Db,
     tast::{
-        Bin, Block, Call, CallArg, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name, Return,
-        TypedAst,
+        Bin, Block, Call, Expr, Function, If, Item, ItemKind, Lit, LitKind, Name, Return, TypedAst,
     },
 };
 
@@ -135,7 +134,7 @@ impl PrettyPrint for Call {
                     arg.expr.pretty_print(cx);
                     cx.builder.end_child();
                 } else {
-                    arg.expr.pretty_print(cx)
+                    arg.expr.pretty_print(cx);
                 }
             }
 

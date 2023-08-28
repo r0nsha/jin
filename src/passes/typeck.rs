@@ -1,3 +1,4 @@
+mod error;
 mod infcx;
 mod normalize;
 mod substitute;
@@ -9,14 +10,15 @@ use crate::{
     db::Db,
     diagnostics::Diagnostic,
     passes::typeck::{
+        error::InferError,
         infcx::InferCtxt,
         type_env::{CallFrame, TypeEnv},
-        unify::{InferError, Obligation},
+        unify::Obligation,
     },
     span::Spanned,
     tast::{
-        Bin, Block, Call, CallArg, Expr, Function, FunctionSig, If, Item, ItemKind, Lit, LitKind,
-        Name, Return, TypedAst,
+        Bin, Block, Call, Expr, Function, FunctionSig, If, Item, ItemKind, Lit, LitKind, Name,
+        Return, TypedAst,
     },
     ty::{tcx::TyCtxt, FunctionTy, FunctionTyParam, Ty, TyKind, Typed},
 };
@@ -40,12 +42,6 @@ fn typeck_inner(db: &mut Db, tcx: &TyCtxt, tast: &mut TypedAst) -> InferResult<(
 
 impl InferCtxt<'_> {
     fn typeck_function_signatures(&mut self, tast: &mut TypedAst) {
-        // let len = infcx.db.symbols.len();
-        // let tys: Vec<_> = std::iter::repeat_with(|| infcx.fresh_ty_var()).take(len).collect();
-        // for (i, sym) in infcx.db.symbols.iter_mut().enumerate() {
-        //     sym.ty = tys[i];
-        // }
-
         for item in &mut tast.items {
             match &mut item.kind {
                 ItemKind::Function(fun) => {
@@ -192,27 +188,59 @@ impl Infer<'_> for Call {
             arg.expr.infer(cx, env)?;
         }
 
-        self.ty = if let TyKind::Function(fun) = self.callee.ty().as_ref() {
-            if self.args.len() != fun.params.len() {
+        self.ty = if let TyKind::Function(fun_ty) = self.callee.ty().as_ref() {
+            if self.args.len() != fun_ty.params.len() {
                 return Err(InferError::ArgMismatch {
-                    expected: fun.params.len(),
+                    expected: fun_ty.params.len(),
                     found: self.args.len(),
                     span: self.span,
                 });
             }
 
-            // TODO: match named args/params
-            // TODO: unify along the way
-            // for arg in &self.args {
-            //     match arg {
-            //         CallArg::Positional(_) => todo!(),
-            //         CallArg::Named(_, _) => todo!(),
-            //     }
-            // }
-            // TODO: error: cannot find parameter with the name `{name}`
-            // TODO: fill positional args in order
+            let mut idx_availability = (0..self.args.len()).map(|_| true).collect::<Vec<_>>();
 
-            fun.ret
+            for arg in &mut self.args {
+                if let Some(arg_name) = &arg.name {
+                    let name = arg_name.name();
+
+                    let idx = fun_ty
+                        .params
+                        .iter()
+                        .enumerate()
+                        .find_map(|(i, p)| if p.name == Some(name) { Some(i) } else { None })
+                        .ok_or(InferError::NamedParamNotFound { word: *arg_name })?;
+
+                    arg.index = Some(idx);
+                    idx_availability[idx] = false;
+                }
+            }
+
+            let mut pos_idx = 0;
+
+            for arg in &mut self.args {
+                if arg.name.is_none() {
+                    pos_idx = if let Some(avail_idx) =
+                        idx_availability.iter().enumerate().find_map(|(i, avail)| avail.then(|| i))
+                    {
+                        idx_availability[avail_idx] = false;
+                        avail_idx
+                    } else {
+                        pos_idx + 1
+                    };
+
+                    arg.index = Some(pos_idx);
+                }
+            }
+
+            self.args.sort_by_key(|arg| arg.index.expect("arg index to be resolved"));
+
+            for arg in &self.args {
+                let idx = arg.index.expect("arg index to be resolved");
+                cx.at(Obligation::obvious(arg.expr.span()))
+                    .eq(fun_ty.params[idx].ty, arg.expr.ty())?;
+            }
+
+            fun_ty.ret
         } else {
             let result_ty = cx.fresh_ty_var();
 

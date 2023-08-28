@@ -1,5 +1,4 @@
 use anyhow::Result;
-use ustr::UstrMap;
 
 use crate::{
     ast::BinOp,
@@ -133,36 +132,10 @@ impl<'db> LowerFunctionCtxt<'db> {
     }
 
     fn lower_call(&mut self, call: &tast::Call) -> ValueId {
+        // NOTE: Call arguments are expected to be sorted by parameter order, from left-to-right
+        let args = call.args.iter().map(|arg| self.lower_expr(&arg.expr)).collect::<Vec<_>>();
         let callee = self.lower_expr(&call.callee);
-
-        let params_map = call
-            .callee
-            .ty()
-            .as_function()
-            .unwrap()
-            .params
-            .iter()
-            .enumerate()
-            .filter_map(|(i, p)| p.name.map(|n| (n, i)))
-            .collect::<UstrMap<_>>();
-
-        let mut args = vec![None; call.args.len()];
-
-        for arg in &call.args {
-            todo!()
-            // match arg {
-            //     tast::CallArg::Positional(expr) => {
-            //         let idx = args.iter_mut().position(|a| a.is_none()).unwrap();
-            //         args[idx] = Some(self.lower_expr(expr));
-            //     }
-            //     tast::CallArg::Named(name, expr) => {
-            //         let idx = params_map[&name.name()];
-            //         args[idx] = Some(self.lower_expr(expr));
-            //     }
-            // }
-        }
-
-        self.bx.build_call(call.ty, callee, args.into_iter().flatten().collect(), call.span)
+        self.bx.build_call(call.ty, callee, args, call.span)
     }
 
     fn lower_bin(&mut self, bin: &tast::Bin) -> ValueId {
