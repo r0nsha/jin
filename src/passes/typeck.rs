@@ -256,7 +256,6 @@ impl Infer<'_> for Call {
                     // Report when a named argument is passed after a positional argument of the
                     // same name has already been passed
                     if let Some(param_name) = fun_ty.params[pos_idx].name {
-                        dbg!(param_name, &already_passed_named_args);
                         if let Some(named_arg_span) = already_passed_named_args.get(&param_name) {
                             return Err(InferError::MultipleNamedArgs {
                                 name: param_name,

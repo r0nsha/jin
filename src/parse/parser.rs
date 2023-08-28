@@ -401,8 +401,19 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_call(&mut self, expr: Expr) -> ParseResult<Expr> {
+        let mut passed_named_arg = false;
+
         let (args, args_span) =
-            self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, Parser::parse_arg)?;
+            self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
+                let arg = Parser::parse_arg(this)?;
+
+                match arg {
+                    CallArg::Positional(..) => todo!(),
+                    CallArg::Named(..) => passed_named_arg = true,
+                }
+
+                Ok(arg)
+            })?;
 
         let span = expr.span().merge(args_span);
 
