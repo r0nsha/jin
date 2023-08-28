@@ -6,7 +6,7 @@ use crate::{
     mir::{builder::FunctionBuilder, Function, Mir, SymbolId, ValueId},
     span::Spanned,
     tast::{self, TypedAst},
-    ty::Typed,
+    ty::{Ty, TyKind, Typed},
 };
 
 pub fn lower(db: &mut Db, tast: &TypedAst) -> Result<Mir> {
@@ -93,7 +93,12 @@ impl<'db> LowerFunctionCtxt<'db> {
         self.bx.build_br(merge_blk, if_.span);
 
         self.bx.position_at(else_blk);
-        let else_value = if_.otherwise.as_ref().and_then(|otherwise| self.lower_branch(otherwise));
+        let else_value = if let Some(otherwise) = &if_.otherwise {
+            self.lower_branch(otherwise)
+        } else {
+            Some(self.bx.build_unit_lit(Ty::new(TyKind::Unit), if_.span))
+        };
+
         self.bx.build_br(merge_blk, if_.span);
 
         self.bx.position_at(merge_blk);

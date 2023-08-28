@@ -1,25 +1,7 @@
 fn main() = {
-	sub(a = 41, b = 1) // valid
-	a(5)
+	sub(a = 41, b = 1)
+	sub(70, b = 1)
 	return ()
 }
 
 fn sub(a, b) = a - b
-
-fn a(x) = {
-	if x > 0 {
-		b(x - 1)
-	}
-	// else {
-	// 	()
-	// }
-}
-
-fn b(x) = {
-	if x > 0 {
-		a(x - 1)
-	} 
-	// else {
-	// 	()
-	// }
-}
