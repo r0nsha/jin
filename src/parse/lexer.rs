@@ -213,7 +213,7 @@ enum TokenizeError {
 impl From<TokenizeError> for Diagnostic {
     fn from(err: TokenizeError) -> Self {
         match err {
-            TokenizeError::InvalidChar { ch, span } => Self::error("tokenize::invalid_char")
+            TokenizeError::InvalidChar { ch, span } => Self::error("parse::invalid_char")
                 .with_message(format!("invalid character {ch}"))
                 .with_label(Label::primary(span)),
         }

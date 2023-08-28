@@ -1,7 +1,22 @@
 fn main() = {
-	sub(a = 41, b = 1)
-	sub(70, b = 1)
+	fac(2)
 	return
 }
 
-fn sub(a, b) = a - b
+int fac(int n) {
+   if(n == 0) {
+      return 1;
+   } else {
+      return n * fac(n-1);
+   }
+}
+
+// int fib(int n) {
+//    if(n == 0){
+//       return 0;
+//    } else if(n == 1) {
+//       return 1;
+//    } else {
+//       return (fib(n-1) + fib(n-2));
+//    }
+// }
