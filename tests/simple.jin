@@ -1,23 +1,7 @@
 fn main() = {
-	fac(8)
-	fib(18)
+	id(1)
+	id(true)
 	()
 }
 
-fn fac(n) = {
-   if n == 0 {
-      return 1
-   } else {
-      return n * fac(n - 1)
-   }
-}
-
-fn fib(n) = {
-   if n == 0 {
-      return 0
-   } else if n == 1  {
-      return 1
-   } else {
-      return fib(n - 1) + fib(n - 2)
-   }
-}
+fn id(x) = x
