@@ -2,16 +2,15 @@ mod error;
 mod infcx;
 mod normalize;
 mod substitute;
-mod type_env;
 mod unify;
 
 use ustr::UstrMap;
 
 use crate::{
     ast::BinOp,
-    db::Db,
+    db::{Db, SymbolId},
     diagnostics::Diagnostic,
-    passes::typeck::{error::InferError, infcx::InferCtxt, type_env::FnCtxt, unify::Obligation},
+    passes::typeck::{error::InferError, infcx::InferCtxt, unify::Obligation},
     span::{Span, Spanned},
     tast::{
         Bin, Block, Call, Expr, Function, FunctionSig, If, Item, ItemKind, Lit, LitKind, Name,
@@ -78,6 +77,17 @@ impl InferCtxt<'_> {
         }
 
         Ok(())
+    }
+}
+
+struct FnCtxt {
+    pub id: SymbolId,
+    pub ret_ty: Ty,
+}
+
+impl FnCtxt {
+    fn from_function(fun: &Function) -> Self {
+        FnCtxt { id: fun.id, ret_ty: fun.ty.as_function().unwrap().ret }
     }
 }
 
