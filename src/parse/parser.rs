@@ -3,8 +3,8 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Bin, BinOp, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, If, Item,
-        Lit, LitKind, Module, Name, Return,
+        Bin, BinOp, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, If, Item, Lit, LitKind, Module,
+        Name, Return,
     },
     common::{QPath, Word},
     db::Db,

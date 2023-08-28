@@ -13,8 +13,7 @@ use crate::{
     passes::typeck::{error::InferError, infcx::InferCtxt, unify::Obligation},
     span::{Span, Spanned},
     tast::{
-        Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Lit, LitKind, Name,
-        Return, TypedAst,
+        Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Lit, LitKind, Name, Return, TypedAst,
     },
     ty::{tcx::TyCtxt, FnTy, FnTyParam, Ty, TyKind, Typed},
 };
@@ -271,10 +270,7 @@ impl Infer<'_> for Call {
                 params: self
                     .args
                     .iter()
-                    .map(|arg| FnTyParam {
-                        name: arg.name.map(|n| n.name()),
-                        ty: arg.expr.ty(),
-                    })
+                    .map(|arg| FnTyParam { name: arg.name.map(|n| n.name()), ty: arg.expr.ty() })
                     .collect(),
             }));
 

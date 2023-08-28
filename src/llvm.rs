@@ -1,9 +1,9 @@
 mod generate;
+mod inkwell_ext;
 #[cfg(windows)]
 mod microsoft_craziness;
 mod ty;
 mod util;
-mod inkwell_ext;
 
 use std::{
     collections::{HashMap, HashSet},

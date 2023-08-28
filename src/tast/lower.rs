@@ -2,8 +2,8 @@ use crate::{
     ast,
     db::Db,
     tast::{
-        Bin, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, If, Item, ItemKind,
-        Lit, LitKind, Name, Return, TypedAst,
+        Bin, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, If, Item, ItemKind, Lit, LitKind,
+        Name, Return, TypedAst,
     },
     ty::tcx::TyCtxt,
 };

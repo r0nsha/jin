@@ -14,10 +14,7 @@ impl NormalizeTy for Ty {
                 ret: ret.normalize(infcx),
                 params: params
                     .iter()
-                    .map(|param| FnTyParam {
-                        name: param.name,
-                        ty: param.ty.normalize(infcx),
-                    })
+                    .map(|param| FnTyParam { name: param.name, ty: param.ty.normalize(infcx) })
                     .collect(),
             })
             .into(),
