@@ -15,6 +15,7 @@ pub enum InferError {
     ArgMismatch { expected: usize, found: usize, span: Span },
     NamedParamNotFound { word: Word },
     MultipleNamedArgs { name: Ustr, prev: Span, dup: Span, is_named: bool },
+    UncallableTy { ty: Ty, span: Span },
 }
 
 impl InferError {
@@ -80,6 +81,9 @@ impl InferError {
                             .with_message(format!("`{name}` is already passed here")),
                     )
             }
+            Self::UncallableTy { ty, span } => Diagnostic::error("typeck::uncallable_type")
+                .with_message(format!("expected a function, found `{}`", ty.display(db)))
+                .with_label(Label::primary(span).with_message("expected a function")),
         }
     }
 }

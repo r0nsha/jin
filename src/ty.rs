@@ -124,8 +124,9 @@ pub enum IntTy {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnTy {
-    pub ret: Ty,
+    pub ty_params: Vec<ParamTy>,
     pub params: Vec<FnTyParam>,
+    pub ret: Ty,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -133,6 +134,12 @@ pub struct FnTyParam {
     // TODO: This shouldn't be optional...
     pub name: Option<Ustr>,
     pub ty: Ty,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ParamTy {
+    pub name: Ustr,
+    pub var: TyVar,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

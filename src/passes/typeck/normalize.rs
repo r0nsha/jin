@@ -10,12 +10,14 @@ pub trait NormalizeTy {
 impl NormalizeTy for Ty {
     fn normalize(self, infcx: &mut InferCtxtInner) -> Self {
         match self.as_ref() {
-            TyKind::Fn(FnTy { ret, params }) => TyKind::Fn(FnTy {
-                ret: ret.normalize(infcx),
-                params: params
+            TyKind::Fn(fun) => TyKind::Fn(FnTy {
+                ty_params: fun.ty_params.clone(),
+                params: fun
+                    .params
                     .iter()
                     .map(|param| FnTyParam { name: param.name, ty: param.ty.normalize(infcx) })
                     .collect(),
+                ret: fun.ret.normalize(infcx),
             })
             .into(),
             TyKind::Infer(InferTy::TyVar(var)) => {

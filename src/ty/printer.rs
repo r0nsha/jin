@@ -24,11 +24,27 @@ impl<'db> TyPrinter<'db> {
     fn fmt_type(f: &mut Formatter, ty: &TyKind) -> Result {
         match ty {
             TyKind::Fn(fun) => {
-                f.write_str("fn(")?;
+                f.write_str("fn")?;
 
+                if !fun.ty_params.is_empty() {
+                    f.write_str("[")?;
+                    for (i, param) in fun.ty_params.iter().enumerate() {
+                        f.write_str(param.name.as_str())?;
+
+                        if i != fun.ty_params.len() - 1 {
+                            f.write_str(", ")?;
+                        }
+                    }
+                    f.write_str("]")?;
+                }
+
+                f.write_str("(")?;
                 for (i, param) in fun.params.iter().enumerate() {
-                    f.write_str(param.name.map_or("_", |s| s.as_str()))?;
-                    f.write_str(" ")?;
+                    if let Some(name) = param.name {
+                        f.write_str(name.as_str())?;
+                        f.write_str(" ")?;
+                    }
+
                     Self::fmt_type(f, &param.ty)?;
 
                     if i != fun.params.len() - 1 {

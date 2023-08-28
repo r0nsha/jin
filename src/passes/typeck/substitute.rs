@@ -35,7 +35,7 @@ fn substitute_tykind(
 ) -> TyKind {
     match ty {
         TyKind::Fn(fun) => TyKind::Fn(FnTy {
-            ret: substitute_ty(infcx, fun.ret, unbound_vars),
+            ty_params: fun.ty_params.clone(),
             params: fun
                 .params
                 .iter()
@@ -44,6 +44,7 @@ fn substitute_tykind(
                     ty: substitute_ty(infcx, param.ty, unbound_vars),
                 })
                 .collect(),
+            ret: substitute_ty(infcx, fun.ret, unbound_vars),
         }),
         TyKind::Infer(InferTy::TyVar(var)) => {
             let root = infcx.ty_unification_table.find(*var);

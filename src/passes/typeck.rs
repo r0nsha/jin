@@ -10,7 +10,9 @@ use crate::{
     ast::BinOp,
     db::{Db, SymbolId},
     diagnostics::Diagnostic,
-    passes::typeck::{error::InferError, infcx::InferCtxt, unify::Obligation},
+    passes::typeck::{
+        error::InferError, infcx::InferCtxt, normalize::NormalizeTy, unify::Obligation,
+    },
     span::{Span, Spanned},
     tast::{
         Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Lit, LitKind, Name, Return, TypedAst,
@@ -56,12 +58,13 @@ impl InferCtxt<'_> {
         }
 
         Ty::new(TyKind::Fn(FnTy {
-            ret: ret_ty,
+            ty_params: todo!(),
             params: sig
                 .params
                 .iter()
                 .map(|param| FnTyParam { name: Some(self.db[param.id].name), ty: param.ty })
                 .collect(),
+            ret: ret_ty,
         }))
     }
 
@@ -262,21 +265,10 @@ impl Infer<'_> for Call {
 
             fun_ty.ret
         } else {
-            // Unresolved callee type, unify with a generic function type
-            let result_ty = cx.fresh_ty_var();
-
-            let expected_ty = Ty::new(TyKind::Fn(FnTy {
-                ret: result_ty,
-                params: self
-                    .args
-                    .iter()
-                    .map(|arg| FnTyParam { name: arg.name.map(|n| n.name()), ty: arg.expr.ty() })
-                    .collect(),
-            }));
-
-            cx.at(Obligation::obvious(self.callee.span())).eq(expected_ty, self.callee.ty())?;
-
-            result_ty
+            return Err(InferError::UncallableTy {
+                ty: self.callee.ty().normalize(&mut cx.inner.borrow_mut()),
+                span: self.callee.span(),
+            });
         };
 
         Ok(())
