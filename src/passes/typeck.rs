@@ -201,6 +201,12 @@ impl Infer<'_> for Call {
                 });
             }
 
+            // TODO: New logic
+            // TODO: 1. Resolve positional args
+            // TODO: 2. Resolve named args
+            // TODO: 3. Report multiple named args
+            // TODO: 3. Report named already passed as positional
+
             // Generate a mapping from (arg index -> availability)
             let mut idx_availability = (0..self.args.len()).map(|_| true).collect::<Vec<_>>();
             let mut already_passed_named_args = UstrMap::<Span>::default();
