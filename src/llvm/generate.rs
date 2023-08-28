@@ -13,7 +13,7 @@ use inkwell::{
 use crate::{
     ast::{BinOp, CmpOp},
     db::{Db, SymbolId},
-    llvm::ty::LlvmTy,
+    llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
     mir::{
         Bin, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, Load, Mir, Phi,
         Return, UnitLit, Unreachable, ValueId,
@@ -281,10 +281,8 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
             let printf = cx.module.get_function("printf").unwrap_or_else(|| {
                 cx.module.add_function(
                     "printf",
-                    cx.isize_ty.fn_type(
-                        &[cx.context.i8_type().ptr_type(AddressSpace::default()).into()],
-                        true,
-                    ),
+                    cx.isize_ty
+                        .fn_type(&[cx.context.ptr_type(AddressSpace::default()).into()], true),
                     Some(Linkage::External),
                 )
             });

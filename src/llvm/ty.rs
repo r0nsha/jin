@@ -4,7 +4,7 @@ use inkwell::{
 };
 
 use crate::{
-    llvm::generate::Generator,
+    llvm::{generate::Generator, inkwell_ext::ContextExt},
     ty::{FunctionTy, IntTy, TyKind},
 };
 
@@ -26,7 +26,7 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, BasicTypeEnum<'cx>> for TyKind {
     fn llvm_ty(&self, cx: &Generator<'db, 'cx>) -> BasicTypeEnum<'cx> {
         match self {
             Self::Int(inner) => inner.llvm_ty(cx).into(),
-            Self::Function(inner) => inner.llvm_ty(cx).ptr_type(AddressSpace::default()).into(),
+            Self::Function(_) => cx.context.ptr_type(AddressSpace::default()).into(),
             Self::Bool => cx.context.bool_type().into(),
             Self::Unit => cx.unit_ty().into(),
             Self::Never => cx.never_ty().into(),
