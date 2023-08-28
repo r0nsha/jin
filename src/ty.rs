@@ -136,12 +136,6 @@ pub enum InferTy {
     IntVar(IntVar),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct PolyTy {
-    pub ty: Ty,
-    pub vars: Vec<(Ustr, TyVar)>,
-}
-
 pub trait Typed {
     fn ty(&self) -> Ty;
     fn ty_mut(&mut self) -> &mut Ty;
