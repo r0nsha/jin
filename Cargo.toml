@@ -22,6 +22,8 @@ ustr = "0.10.0"
 inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = [
 	"llvm15-0-force-dynamic",
 ] }
+llvm-sys = { version = "150", features = ["force-dynamic"] }
+libc = "0.2"
 execute = "0.2.12"
 anyhow = "1.0.75"
 internment = "0.7.1"

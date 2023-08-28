@@ -582,6 +582,7 @@ dependencies = [
  "internment",
  "lazy_static 1.4.0",
  "libc",
+ "llvm-sys",
  "owo-colors",
  "path-absolutize",
  "pretty",

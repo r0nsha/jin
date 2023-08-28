@@ -3,6 +3,7 @@ mod generate;
 mod microsoft_craziness;
 mod ty;
 mod util;
+mod inkwell_ext;
 
 use std::{
     collections::{HashMap, HashSet},
