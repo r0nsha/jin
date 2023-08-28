@@ -1,7 +1,7 @@
 fn main() = {
 	sub(a = 41, b = 1)
 	sub(70, b = 1)
-	return ()
+	return
 }
 
 fn sub(a, b) = a - b
