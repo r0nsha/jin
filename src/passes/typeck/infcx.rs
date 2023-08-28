@@ -10,6 +10,7 @@ use crate::{
 pub struct InferCtxt<'db> {
     pub db: &'db mut Db,
     pub tcx: &'db TyCtxt,
+    // pub symbol_env: &'db TyCtxt,
     pub inner: RefCell<InferCtxtInner>,
 }
 
