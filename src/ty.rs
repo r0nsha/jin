@@ -137,12 +137,6 @@ pub enum InferTy {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum GeneralizedTy {
-    Mono(Ty),
-    Poly(PolyTy),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PolyTy {
     pub ty: Ty,
     pub vars: Vec<(Ustr, TyVar)>,
