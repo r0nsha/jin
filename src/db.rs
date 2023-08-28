@@ -227,6 +227,24 @@ pub enum ScopeLevel {
     Local(usize),
 }
 
+impl ScopeLevel {
+    /// Returns `true` if the scope level is [`Global`].
+    ///
+    /// [`Global`]: ScopeLevel::Global
+    #[must_use]
+    pub fn is_global(&self) -> bool {
+        matches!(self, Self::Global)
+    }
+
+    /// Returns `true` if the scope level is [`Local`].
+    ///
+    /// [`Local`]: ScopeLevel::Local
+    #[must_use]
+    pub fn is_local(&self) -> bool {
+        matches!(self, Self::Local(..))
+    }
+}
+
 impl PartialOrd for ScopeLevel {
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
@@ -237,8 +255,8 @@ impl Ord for ScopeLevel {
     fn cmp(&self, other: &Self) -> cmp::Ordering {
         match (self, other) {
             (Self::Global, Self::Global) => cmp::Ordering::Equal,
-            (Self::Global, Self::Local(_)) => cmp::Ordering::Less,
-            (Self::Local(_), Self::Global) => cmp::Ordering::Greater,
+            (Self::Global, Self::Local(..)) => cmp::Ordering::Less,
+            (Self::Local(..), Self::Global) => cmp::Ordering::Greater,
             (Self::Local(a), Self::Local(b)) => a.cmp(b),
         }
     }

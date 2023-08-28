@@ -499,7 +499,7 @@ unsafe fn find_visual_studio_2017_by_fighting_through_microsoft_craziness(
                     return true;
                 }
             }
-            Err(_) => continue,
+            Err(..) => continue,
         }
 
         /*

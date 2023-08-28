@@ -336,7 +336,7 @@ impl<'a> Parser<'a> {
             TokenKind::OpenCurly => Expr::Block(self.parse_block()?),
             TokenKind::True => Expr::Lit(Lit { kind: LitKind::Bool(true), span: tok.span }),
             TokenKind::False => Expr::Lit(Lit { kind: LitKind::Bool(false), span: tok.span }),
-            TokenKind::Ident(_) => {
+            TokenKind::Ident(..) => {
                 Expr::Name(Name { id: None, name: tok.spanned_word(), span: tok.span })
             }
             TokenKind::Int(value) => Expr::Lit(Lit { kind: LitKind::Int(value), span: tok.span }),

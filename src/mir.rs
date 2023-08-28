@@ -137,7 +137,7 @@ impl Block {
     }
 
     fn is_terminating(&self) -> bool {
-        self.instructions.iter().any(|inst| matches!(inst, Inst::Return(_)))
+        self.instructions.iter().any(|inst| matches!(inst, Inst::Return(..)))
     }
 }
 

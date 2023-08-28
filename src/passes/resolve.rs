@@ -161,7 +161,7 @@ impl Resolve<'_> for Expr {
             Self::Call(inner) => inner.resolve(cx, env),
             Self::Bin(inner) => inner.resolve(cx, env),
             Self::Name(inner) => inner.resolve(cx, env),
-            Self::Lit(_) => (),
+            Self::Lit(..) => (),
         }
     }
 }

@@ -80,7 +80,7 @@ impl Substitute<'_> for Expr {
             Self::Return(inner) => inner.substitute(infcx, unbound_vars),
             Self::Call(inner) => inner.substitute(infcx, unbound_vars),
             Self::Bin(inner) => inner.substitute(infcx, unbound_vars),
-            Self::Name(_) | Self::Lit(_) => (),
+            Self::Name(..) | Self::Lit(..) => (),
         }
 
         self.set_ty(substitute_ty(infcx, self.ty(), unbound_vars));

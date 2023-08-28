@@ -114,8 +114,10 @@ impl Infer<'_> for Item {
 
 impl Infer<'_> for Function {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, env: &mut TypeEnv) -> InferResult<()> {
-        self.ty = cx.typeck_function_sig(&mut self.sig);
-        cx.db[self.id].ty = self.ty;
+        if cx.db[self.id].scope.level.is_local() {
+            self.ty = cx.typeck_function_sig(&mut self.sig);
+            cx.db[self.id].ty = self.ty;
+        }
 
         let ret_ty = self.ty.as_function().unwrap().ret;
 
@@ -274,7 +276,7 @@ impl Infer<'_> for Bin {
             .eq(self.lhs.ty(), self.rhs.ty())?;
 
         match self.op {
-            BinOp::Cmp(_) => (),
+            BinOp::Cmp(..) => (),
             BinOp::And | BinOp::Or => {
                 cx.at(Obligation::obvious(self.lhs.span())).eq(cx.tcx.types.bool, self.lhs.ty())?;
                 cx.at(Obligation::obvious(self.rhs.span())).eq(cx.tcx.types.bool, self.rhs.ty())?;
@@ -285,7 +287,7 @@ impl Infer<'_> for Bin {
         }
 
         self.ty = match self.op {
-            BinOp::Cmp(_) => cx.tcx.types.bool,
+            BinOp::Cmp(..) => cx.tcx.types.bool,
             _ => self.lhs.ty(),
         };
 
@@ -303,8 +305,8 @@ impl Infer<'_> for Name {
 impl Infer<'_> for Lit {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut TypeEnv) -> InferResult<()> {
         self.ty = match &self.kind {
-            LitKind::Int(_) => cx.fresh_int_var(),
-            LitKind::Bool(_) => cx.tcx.types.bool,
+            LitKind::Int(..) => cx.fresh_int_var(),
+            LitKind::Bool(..) => cx.tcx.types.bool,
             LitKind::Unit => cx.tcx.types.unit,
         };
 

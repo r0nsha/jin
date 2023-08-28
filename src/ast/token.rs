@@ -107,14 +107,14 @@ impl fmt::Display for TokenKind {
             Self::Caret => f.write_str("^"),
             Self::Pipe => f.write_str("|"),
             Self::PipePipe => f.write_str("||"),
-            Self::Ident(_) => f.write_str("identifier"),
+            Self::Ident(..) => f.write_str("identifier"),
             Self::Return => f.write_str("`return`"),
             Self::If => f.write_str("`if`"),
             Self::Else => f.write_str("`else`"),
             Self::Fn => f.write_str("`fn`"),
             Self::True => f.write_str("`true`"),
             Self::False => f.write_str("`false`"),
-            Self::Int(_) => f.write_str("int literal"),
+            Self::Int(..) => f.write_str("int literal"),
         }
     }
 }

@@ -46,7 +46,7 @@ impl<'db> TyPrinter<'db> {
             TyKind::Unit => f.write_str("()"),
             TyKind::Never => f.write_str("!"),
             TyKind::Infer(InferTy::TyVar(v)) => write!(f, "?{}", v.0),
-            TyKind::Infer(InferTy::IntVar(_)) => f.write_str("{int}"),
+            TyKind::Infer(InferTy::IntVar(..)) => f.write_str("{int}"),
             TyKind::Unknown => f.write_str("{unknown}"),
         }
     }
