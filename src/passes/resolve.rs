@@ -88,8 +88,7 @@ impl<'db> Resolver<'db> {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].name.clone().child(name.name());
 
-        let id =
-            SymbolInfo::alloc(self.db, qpath, scope, kind, self.tcx.types.unknown, name.span());
+        let id = SymbolInfo::alloc(self.db, qpath, scope, kind, name.span());
 
         if let Some(prev_id) = self.global_scope.insert(module_id, name.name(), id) {
             let sym = &self.db[prev_id];
@@ -125,7 +124,6 @@ impl<'db> Resolver<'db> {
             env.scope_path(self.db).child(name.name()),
             ScopeInfo { module_id: env.module_id, level: env.scope_level(), vis: Vis::Private },
             kind,
-            self.tcx.types.unknown,
             name.span(),
         );
 

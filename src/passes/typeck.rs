@@ -4,6 +4,8 @@ mod normalize;
 mod substitute;
 mod unify;
 
+use std::collections::HashMap;
+
 use ustr::UstrMap;
 
 use crate::{
@@ -16,7 +18,7 @@ use crate::{
         Bin, Block, Call, Expr, Function, FunctionSig, If, Item, ItemKind, Lit, LitKind, Name,
         Return, TypedAst,
     },
-    ty::{tcx::TyCtxt, FunctionTy, FunctionTyParam, Ty, TyKind, Typed},
+    ty::{tcx::TyCtxt, FunctionTy, FunctionTyParam, Ty, TyKind, TyVar, Typed},
 };
 
 pub type InferResult<T> = Result<T, InferError>;
@@ -42,7 +44,8 @@ impl InferCtxt<'_> {
             match &mut item.kind {
                 ItemKind::Function(fun) => {
                     fun.ty = self.typeck_function_sig(&mut fun.sig);
-                    self.db[fun.id].ty = fun.ty;
+                    todo!()
+                    // self.db[fun.id].ty = fun.ty;
                 }
             }
         }
@@ -53,7 +56,8 @@ impl InferCtxt<'_> {
 
         for param in &mut sig.params {
             param.ty = self.fresh_ty_var();
-            self.db[param.id].ty = param.ty;
+            todo!()
+            // self.db[param.id].ty = param.ty;
         }
 
         Ty::new(TyKind::Function(FunctionTy {
@@ -126,7 +130,8 @@ impl Infer<'_> for Function {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, _fx: &mut FnCtxt) -> InferResult<()> {
         if cx.db[self.id].scope.level.is_local() {
             self.ty = cx.typeck_function_sig(&mut self.sig);
-            cx.db[self.id].ty = self.ty;
+            todo!()
+            // cx.db[self.id].ty = self.ty;
         }
 
         let mut fx = FnCtxt::from_function(self);
@@ -317,8 +322,9 @@ impl Infer<'_> for Bin {
 
 impl Infer<'_> for Name {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut FnCtxt) -> InferResult<()> {
-        self.ty = cx.lookup(self.id);
-        Ok(())
+        todo!();
+        // self.ty = cx.lookup(self.id);
+        // Ok(())
     }
 }
 
@@ -332,4 +338,8 @@ impl Infer<'_> for Lit {
 
         Ok(())
     }
+}
+
+fn instantiate(ty: Ty, instantiation: HashMap<TyVar, Ty>) -> Ty {
+    todo!()
 }

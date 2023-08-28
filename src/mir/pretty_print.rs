@@ -5,7 +5,7 @@ use crate::{
     ast::BinOp,
     db::{Db, ScopeLevel, SymbolId},
     mir::BlockId,
-    ty::TyKind,
+    ty::{GeneralizedTy, TyKind},
 };
 
 pub fn print(db: &Db, mir: &Mir) {
@@ -18,7 +18,7 @@ pub fn print(db: &Db, mir: &Mir) {
 }
 
 fn print_function<'d>(db: &Db, fun: &Function) -> RcDoc<'d, ()> {
-    let ret_ty = db[fun.id].ty.as_function().unwrap().ret.to_doc(db, fun);
+    let ret_ty = db[fun.id].mono_ty().as_function().unwrap().ret.to_doc(db, fun);
 
     RcDoc::text("fn")
         .append(RcDoc::space())
@@ -29,7 +29,7 @@ fn print_function<'d>(db: &Db, fun: &Function) -> RcDoc<'d, ()> {
                 p.id.to_doc(db, fun)
                     .append(RcDoc::text(":"))
                     .append(RcDoc::space())
-                    .append(db[p.id].ty.to_doc(db, fun))
+                    .append(db[p.id].mono_ty().to_doc(db, fun))
             }),
             RcDoc::text(",").append(RcDoc::space()),
         ))
@@ -130,6 +130,12 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
 impl<'db, 'd> ToDoc<'db, 'd> for ValueId {
     fn to_doc(&self, _db: &'db Db, _fun: &'db Function) -> RcDoc<'d, ()> {
         RcDoc::text(format!("v{}", self.0))
+    }
+}
+
+impl<'db, 'd> ToDoc<'db, 'd> for GeneralizedTy {
+    fn to_doc(&self, db: &'db Db, _fun: &'db Function) -> RcDoc<'d, ()> {
+        RcDoc::text(self.to_string(db))
     }
 }
 

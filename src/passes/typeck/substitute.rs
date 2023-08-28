@@ -13,7 +13,8 @@ impl<'db> InferCtxt<'db> {
         let mut infcx = self.inner.borrow_mut();
 
         for sym in self.db.symbols.iter_mut() {
-            sym.ty = substitute_ty(&mut infcx, sym.ty, &mut unbound_vars);
+            todo!();
+            // sym.ty = substitute_ty(&mut infcx, sym.ty, &mut unbound_vars);
         }
 
         for item in &mut tast.items {
