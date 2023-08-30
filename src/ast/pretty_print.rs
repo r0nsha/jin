@@ -29,7 +29,7 @@ impl PrettyPrint for Expr {
             Self::Return(ret) => {
                 cx.builder.begin_child("return".to_string());
 
-                if let Some(value) = ret.expr.as_ref() {
+                if let Some(value) = &ret.expr {
                     value.pretty_print(cx);
                 }
 

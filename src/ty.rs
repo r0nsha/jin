@@ -14,16 +14,24 @@ use crate::{db::Db, ty::printer::TyPrinter};
 pub struct Ty(Intern<TyKind>);
 
 impl Ty {
+    #[inline]
     pub fn new(kind: TyKind) -> Self {
         Self(Intern::new(kind))
     }
 
+    #[inline]
     pub fn from_ref(kind: &TyKind) -> Self {
         Self(Intern::from_ref(kind))
     }
 
+    #[inline]
+    pub fn kind(&self) -> &TyKind {
+        self.as_ref()
+    }
+
+    #[inline]
     pub fn as_tyvar(&self) -> Option<TyVar> {
-        match self.as_ref() {
+        match self.kind() {
             TyKind::Infer(InferTy::TyVar(tv)) => Some(*tv),
             _ => None,
         }

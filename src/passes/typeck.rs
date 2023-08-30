@@ -89,7 +89,7 @@ impl InferCtxt<'_> {
     }
 
     fn instantiate(&mut self, ty: Ty, instantiation: &HashMap<TyVar, Ty>) -> Ty {
-        match ty.as_ref() {
+        match ty.kind() {
             TyKind::Fn(fun) if !fun.ty_params.is_empty() => {
                 let infcx = &mut self.inner.borrow_mut();
 
@@ -105,7 +105,7 @@ impl InferCtxt<'_> {
                 .into()
             }
             TyKind::Infer(InferTy::TyVar(..)) => {
-                match ty.normalize(&mut self.inner.borrow_mut()).as_ref() {
+                match ty.normalize(&mut self.inner.borrow_mut()).kind() {
                     TyKind::Infer(InferTy::TyVar(var)) => {
                         instantiation.get(var).copied().unwrap_or(ty)
                     }
@@ -237,7 +237,7 @@ impl Infer<'_> for Call {
             arg.expr.infer(cx, fx)?;
         }
 
-        self.ty = if let TyKind::Fn(fun_ty) = self.callee.ty().as_ref() {
+        self.ty = if let TyKind::Fn(fun_ty) = self.callee.ty().kind() {
             if self.args.len() != fun_ty.params.len() {
                 return Err(InferError::ArgMismatch {
                     expected: fun_ty.params.len(),

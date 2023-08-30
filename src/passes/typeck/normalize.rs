@@ -9,7 +9,7 @@ pub trait NormalizeTy {
 
 impl NormalizeTy for Ty {
     fn normalize(self, infcx: &mut InferCtxtInner) -> Self {
-        match self.as_ref() {
+        match self.kind() {
             TyKind::Fn(fun) => TyKind::Fn(FnTy {
                 ty_params: fun.ty_params.clone(),
                 params: fun
