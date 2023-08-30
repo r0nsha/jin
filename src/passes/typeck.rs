@@ -63,7 +63,8 @@ impl InferCtxt<'_> {
             ty_params: sig
                 .params
                 .iter()
-                .map(|p| ParamTy::new(ustr::ustr("a"), p.ty.as_tyvar().unwrap()))
+                .enumerate()
+                .map(|(i, p)| ParamTy::new(ustr::ustr("a"), i))
                 .collect(),
             params: sig
                 .params
@@ -91,7 +92,6 @@ impl InferCtxt<'_> {
         match ty.as_ref() {
             _ if map.is_empty() => ty,
             TyKind::Fn(fun) if !fun.ty_params.is_empty() => {
-                todo!("replace ParamTy.var -> index : usize");
                 todo!("replace tyvars w/ the given generic args");
             }
             _ => ty,

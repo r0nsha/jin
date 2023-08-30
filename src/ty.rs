@@ -146,12 +146,12 @@ pub struct FnTyParam {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParamTy {
     pub name: Ustr,
-    pub var: TyVar,
+    pub index: usize,
 }
 
 impl ParamTy {
-    pub fn new(name: Ustr, var: TyVar) -> Self {
-        Self { name, var }
+    pub fn new(name: Ustr, index: usize) -> Self {
+        Self { name, index }
     }
 }
 
