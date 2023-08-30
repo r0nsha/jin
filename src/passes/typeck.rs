@@ -19,7 +19,7 @@ use crate::{
     tast::{
         Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Lit, LitKind, Name, Return, TypedAst,
     },
-    ty::{tcx::TyCtxt, FnTy, FnTyParam, ParamTy, Ty, TyKind, TyVar, Typed},
+    ty::{tcx::TyCtxt, FnTy, FnTyParam, InferTy, ParamTy, Ty, TyKind, TyVar, Typed},
 };
 
 pub type InferResult<T> = Result<T, InferError>;
@@ -88,11 +88,29 @@ impl InferCtxt<'_> {
         Ok(())
     }
 
-    fn instantiate(&mut self, ty: Ty, map: HashMap<TyVar, Ty>) -> Ty {
+    fn instantiate(&mut self, ty: Ty, instantiation: &HashMap<TyVar, Ty>) -> Ty {
         match ty.as_ref() {
-            _ if map.is_empty() => ty,
             TyKind::Fn(fun) if !fun.ty_params.is_empty() => {
-                todo!("replace tyvars w/ the given generic args");
+                let infcx = &mut self.inner.borrow_mut();
+
+                TyKind::Fn(FnTy {
+                    ty_params: fun.ty_params.clone(),
+                    params: fun
+                        .params
+                        .iter()
+                        .map(|param| FnTyParam { name: param.name, ty: param.ty.normalize(infcx) })
+                        .collect(),
+                    ret: fun.ret.normalize(infcx),
+                })
+                .into()
+            }
+            TyKind::Infer(InferTy::TyVar(..)) => {
+                match ty.normalize(&mut self.inner.borrow_mut()).as_ref() {
+                    TyKind::Infer(InferTy::TyVar(var)) => {
+                        instantiation.get(var).copied().unwrap_or(ty)
+                    }
+                    _ => ty,
+                }
             }
             _ => ty,
         }
@@ -322,7 +340,9 @@ impl Infer<'_> for Bin {
 
 impl Infer<'_> for Name {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut FnCtxt) -> InferResult<()> {
-        self.ty = cx.lookup(self.id);
+        let ty = cx.lookup(self.id);
+        let instantiated = cx.instantiate(ty, instantiation);
+        self.ty = ty;
         Ok(())
     }
 }
