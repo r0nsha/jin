@@ -1,10 +1,9 @@
 mod error;
 mod infcx;
+mod instantiate;
 mod normalize;
 mod substitute;
 mod unify;
-
-use std::collections::HashMap;
 
 use ustr::UstrMap;
 
@@ -19,7 +18,7 @@ use crate::{
     tast::{
         Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Lit, LitKind, Name, Return, TypedAst,
     },
-    ty::{tcx::TyCtxt, FnTy, FnTyParam, InferTy, ParamTy, Ty, TyKind, TyVar, Typed},
+    ty::{tcx::TyCtxt, FnTy, FnTyParam, ParamTy, Ty, TyKind, Typed},
 };
 
 pub type InferResult<T> = Result<T, InferError>;
@@ -54,18 +53,20 @@ impl InferCtxt<'_> {
     fn typeck_function_sig(&mut self, sig: &mut FnSig) -> Ty {
         let ret_ty = self.fresh_ty_var();
 
-        for param in &mut sig.params {
-            param.ty = self.fresh_ty_var();
-            self.db[param.id].ty = param.ty;
-        }
+        todo!();
+        // for param in &mut sig.params {
+        //     param.ty = self.fresh_ty_var();
+        //     self.db[param.id].ty = param.ty;
+        // }
 
         Ty::new(TyKind::Fn(FnTy {
-            ty_params: sig
-                .params
-                .iter()
-                .enumerate()
-                .map(|(i, p)| ParamTy::new(ustr::ustr("a"), i))
-                .collect(),
+            // ty_params: sig
+            //     .params
+            //     .iter()
+            //     .enumerate()
+            //     .map(|(i, p)| ParamTy::new(ustr::ustr("a"), i))
+            // .collect(),
+            // TODO: make all of these into polymorphic types
             params: sig
                 .params
                 .iter()
@@ -86,34 +87,6 @@ impl InferCtxt<'_> {
         }
 
         Ok(())
-    }
-
-    fn instantiate(&mut self, ty: Ty, instantiation: &HashMap<TyVar, Ty>) -> Ty {
-        match ty.kind() {
-            TyKind::Fn(fun) if !fun.ty_params.is_empty() => {
-                let infcx = &mut self.inner.borrow_mut();
-
-                TyKind::Fn(FnTy {
-                    ty_params: fun.ty_params.clone(),
-                    params: fun
-                        .params
-                        .iter()
-                        .map(|param| FnTyParam { name: param.name, ty: param.ty.normalize(infcx) })
-                        .collect(),
-                    ret: fun.ret.normalize(infcx),
-                })
-                .into()
-            }
-            TyKind::Infer(InferTy::TyVar(..)) => {
-                match ty.normalize(&mut self.inner.borrow_mut()).kind() {
-                    TyKind::Infer(InferTy::TyVar(var)) => {
-                        instantiation.get(var).copied().unwrap_or(ty)
-                    }
-                    _ => ty,
-                }
-            }
-            _ => ty,
-        }
     }
 }
 
@@ -341,8 +314,8 @@ impl Infer<'_> for Bin {
 impl Infer<'_> for Name {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut FnCtxt) -> InferResult<()> {
         let ty = cx.lookup(self.id);
-        let instantiated = cx.instantiate(ty, instantiation);
-        self.ty = ty;
+        let instantiated = cx.instantiate(ty, vec![]);
+        self.ty = instantiated;
         Ok(())
     }
 }

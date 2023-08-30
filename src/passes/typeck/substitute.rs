@@ -35,7 +35,6 @@ fn substitute_tykind(
 ) -> TyKind {
     match ty {
         TyKind::Fn(fun) => TyKind::Fn(FnTy {
-            ty_params: fun.ty_params.clone(),
             params: fun
                 .params
                 .iter()

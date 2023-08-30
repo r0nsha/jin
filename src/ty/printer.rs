@@ -26,18 +26,6 @@ impl<'db> TyPrinter<'db> {
             TyKind::Fn(fun) => {
                 f.write_str("fn")?;
 
-                if !fun.ty_params.is_empty() {
-                    f.write_str("[")?;
-                    for (i, param) in fun.ty_params.iter().enumerate() {
-                        f.write_str(param.name.as_str())?;
-
-                        if i != fun.ty_params.len() - 1 {
-                            f.write_str(", ")?;
-                        }
-                    }
-                    f.write_str("]")?;
-                }
-
                 f.write_str("(")?;
                 for (i, param) in fun.params.iter().enumerate() {
                     if let Some(name) = param.name {
@@ -61,6 +49,7 @@ impl<'db> TyPrinter<'db> {
             TyKind::Bool => f.write_str("bool"),
             TyKind::Unit => f.write_str("()"),
             TyKind::Never => f.write_str("!"),
+            TyKind::Param(p) => f.write_str(p.name.as_str()),
             TyKind::Infer(InferTy::TyVar(v)) => write!(f, "?{}", v.0),
             TyKind::Infer(InferTy::IntVar(..)) => f.write_str("{int}"),
             TyKind::Unknown => f.write_str("{unknown}"),

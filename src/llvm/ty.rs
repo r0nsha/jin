@@ -30,8 +30,7 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, BasicTypeEnum<'cx>> for TyKind {
             Self::Bool => cx.context.bool_type().into(),
             Self::Unit => cx.unit_ty().into(),
             Self::Never => cx.never_ty().into(),
-            Self::Infer(..) => panic!("unexpected infer type {}", self.display(cx.db)),
-            Self::Unknown => panic!("unexpected unknown type"),
+            _ => panic!("unexpected type {self:?}"),
         }
     }
 }

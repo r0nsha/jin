@@ -47,7 +47,8 @@ impl Ty {
                     Ok(())
                 }
             }
-            TyKind::Infer(..)
+            TyKind::Param(..)
+            | TyKind::Infer(..)
             | TyKind::Int(..)
             | TyKind::Bool
             | TyKind::Unit
@@ -92,11 +93,15 @@ impl From<&TyKind> for TyKind {
 #[derive(Debug, Clone, PartialEq, Eq, Hash, EnumAsInner)]
 pub enum TyKind {
     Fn(FnTy),
+
+    // Primitives types
     Int(IntTy),
     Bool,
-    // TODO: when we implement tuples, Unit should become Tuple([])
-    Unit,
+    Unit, // TODO: when we implement tuples, Unit should become Tuple([])
     Never,
+
+    // Types related to phases inside or before the typeck pass
+    Param(ParamTy),
     Infer(InferTy),
     Unknown,
 }
@@ -139,7 +144,6 @@ pub enum IntTy {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnTy {
-    pub ty_params: Vec<ParamTy>,
     pub params: Vec<FnTyParam>,
     pub ret: Ty,
 }
