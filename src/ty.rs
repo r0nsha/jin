@@ -30,7 +30,7 @@ impl Ty {
     }
 
     #[inline]
-    pub fn as_tyvar(&self) -> Option<TyVar> {
+    pub fn as_tyvar(self) -> Option<TyVar> {
         match self.kind() {
             TyKind::Infer(InferTy::TyVar(tv)) => Some(*tv),
             _ => None,

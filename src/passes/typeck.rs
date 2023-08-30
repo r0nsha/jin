@@ -53,24 +53,18 @@ impl InferCtxt<'_> {
     fn typeck_function_sig(&mut self, sig: &mut FnSig) -> Ty {
         let ret_ty = self.fresh_ty_var();
 
-        todo!();
-        // for param in &mut sig.params {
-        //     param.ty = self.fresh_ty_var();
-        //     self.db[param.id].ty = param.ty;
-        // }
+        for (index, param) in sig.params.iter_mut().enumerate() {
+            // param.ty = self.fresh_ty_var();
+            param.ty =
+                Ty::new(TyKind::Param(ParamTy { name: ustr::ustr(&format!("T{index}")), index }));
+            self.db[param.id].ty = param.ty;
+        }
 
         Ty::new(TyKind::Fn(FnTy {
-            // ty_params: sig
-            //     .params
-            //     .iter()
-            //     .enumerate()
-            //     .map(|(i, p)| ParamTy::new(ustr::ustr("a"), i))
-            // .collect(),
-            // TODO: make all of these into polymorphic types
             params: sig
                 .params
                 .iter()
-                .map(|param| FnTyParam { name: Some(self.db[param.id].name), ty: param.ty })
+                .map(|p| FnTyParam { name: Some(self.db[p.id].name), ty: p.ty })
                 .collect(),
             ret: ret_ty,
         }))
