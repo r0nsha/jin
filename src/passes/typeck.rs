@@ -55,7 +55,7 @@ impl InferCtxt<'_> {
     }
 
     fn typeck_function_sig(&mut self, sig: &mut FnSig) -> InferResult<Ty> {
-        for (index, param) in sig.params.iter_mut().enumerate() {
+        for param in sig.params.iter_mut() {
             param.ty = self.typeck_ty_annot(&param.ty_annot)?;
             self.db[param.id].ty = param.ty;
         }
