@@ -322,3 +322,11 @@ pub enum LitKind {
     Bool(bool),
     Unit,
 }
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Ty {
+    Name(Word, Vec<Ty>),
+    Unit(Span),
+    Never(Span),
+    Placeholder(Span),
+}
