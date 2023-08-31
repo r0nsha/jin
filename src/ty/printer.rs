@@ -21,6 +21,7 @@ impl<'db> TyPrinter<'db> {
         Self { _db: db, ty }
     }
 
+    #[allow(clippy::match_same_arms)]
     fn fmt_type(f: &mut Formatter, ty: &TyKind) -> Result {
         match ty {
             TyKind::Fn(fun) => {
@@ -50,7 +51,8 @@ impl<'db> TyPrinter<'db> {
             TyKind::Unit => f.write_str("()"),
             TyKind::Never => f.write_str("!"),
             TyKind::Param(p) => f.write_str(p.name.as_str()),
-            TyKind::Infer(InferTy::TyVar(v)) => write!(f, "?{}", v.0),
+            TyKind::Infer(InferTy::TyVar(_)) => f.write_str("{unknown}"),
+            // TyKind::Infer(InferTy::TyVar(v)) => write!(f, "?{}", v.0),
             TyKind::Infer(InferTy::IntVar(..)) => f.write_str("{int}"),
             TyKind::Type => f.write_str("{type}"),
             TyKind::Unknown => f.write_str("{unknown}"),
