@@ -32,7 +32,7 @@ pub fn typeck(db: &mut Db, tcx: &TyCtxt, hir: &mut Hir) -> Result<(), Diagnostic
 fn typeck_inner(db: &mut Db, tcx: &TyCtxt, hir: &mut Hir) -> InferResult<()> {
     let mut cx = InferCtxt::new(db, tcx);
 
-    cx.typeck_function_signatures(hir);
+    cx.typeck_function_signatures(hir)?;
     cx.typeck_function_bodies(hir)?;
 
     cx.substitute_all(hir);
@@ -41,43 +41,35 @@ fn typeck_inner(db: &mut Db, tcx: &TyCtxt, hir: &mut Hir) -> InferResult<()> {
 }
 
 impl InferCtxt<'_> {
-    fn typeck_function_signatures(&mut self, hir: &mut Hir) {
+    fn typeck_function_signatures(&mut self, hir: &mut Hir) -> InferResult<()> {
         for item in &mut hir.items {
             match &mut item.kind {
                 ItemKind::Fn(fun) => {
-                    fun.ty = self.typeck_function_sig(&mut fun.sig);
+                    fun.ty = self.typeck_function_sig(&mut fun.sig)?;
                     self.db[fun.id].ty = fun.ty;
                 }
             }
         }
+
+        Ok(())
     }
 
-    fn typeck_function_sig(&mut self, sig: &mut FnSig) -> Ty {
+    fn typeck_function_sig(&mut self, sig: &mut FnSig) -> InferResult<Ty> {
         for (index, param) in sig.params.iter_mut().enumerate() {
-            todo!("typeck param w/ annotation");
-            param.ty =
-                Ty::new(TyKind::Param(ParamTy { name: ustr::ustr(&format!("T{index}")), index }));
+            param.ty = self.typeck_ty_annot(&param.ty_annot)?;
             self.db[param.id].ty = param.ty;
         }
 
-        todo!("typeck return w/ annotation");
-        let ret = {
-            // HACK: return type = first param type
-            let ret_index = 0;
-            Ty::new(TyKind::Param(ParamTy {
-                name: ustr::ustr(&format!("T{ret_index}")),
-                index: ret_index,
-            }))
-        };
+        let ret = self.typeck_ty_annot(&sig.ret)?;
 
-        Ty::new(TyKind::Fn(FnTy {
+        Ok(Ty::new(TyKind::Fn(FnTy {
             params: sig
                 .params
                 .iter()
                 .map(|p| FnTyParam { name: Some(self.db[p.id].name), ty: p.ty })
                 .collect(),
             ret,
-        }))
+        })))
     }
 
     fn typeck_function_bodies(&mut self, hir: &mut Hir) -> InferResult<()> {
@@ -93,7 +85,7 @@ impl InferCtxt<'_> {
         Ok(())
     }
 
-    fn typeck_ty_annot(&mut self, ty: hir::Ty) -> InferResult<Ty> {
+    fn typeck_ty_annot(&mut self, ty: &hir::Ty) -> InferResult<Ty> {
         match ty {
             hir::Ty::Name(name) => {
                 let def = &self.db[name.id];
@@ -155,7 +147,7 @@ impl Infer<'_> for Item {
 impl Infer<'_> for Fn {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, _fx: &mut FnCtxt) -> InferResult<()> {
         if cx.db[self.id].scope.level.is_local() {
-            self.ty = cx.typeck_function_sig(&mut self.sig);
+            self.ty = cx.typeck_function_sig(&mut self.sig)?;
             cx.db[self.id].ty = self.ty;
         }
 

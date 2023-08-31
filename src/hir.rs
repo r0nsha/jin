@@ -167,13 +167,13 @@ pub struct Fn {
 #[derive(Debug, Clone)]
 pub struct FnSig {
     pub params: Vec<FnParam>,
-    pub ret: Option<Ty>,
+    pub ret: Ty,
 }
 
 #[derive(Debug, Clone)]
 pub struct FnParam {
     pub id: DefId,
-    pub annot: Ty,
+    pub ty_annot: Ty,
     pub span: Span,
     pub ty: ty::Ty,
 }
