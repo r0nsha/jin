@@ -16,6 +16,7 @@ pub enum InferError {
     NamedParamNotFound { word: Word },
     MultipleNamedArgs { name: Ustr, prev: Span, dup: Span, is_named: bool },
     UncallableTy { ty: Ty, span: Span },
+    ExpectedTy { ty: Ty, span: Span },
 }
 
 impl InferError {
@@ -84,6 +85,9 @@ impl InferError {
             Self::UncallableTy { ty, span } => Diagnostic::error("typeck::uncallable_type")
                 .with_message(format!("expected a function, found `{}`", ty.display(db)))
                 .with_label(Label::primary(span).with_message("expected a function")),
+            Self::ExpectedTy { ty, span } => Diagnostic::error("typeck::expected_ty")
+                .with_message(format!("expected a type, found value of type `{}`", ty.display(db)))
+                .with_label(Label::primary(span).with_message("expected a type")),
         }
     }
 }

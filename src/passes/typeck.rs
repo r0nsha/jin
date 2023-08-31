@@ -9,7 +9,7 @@ use ustr::UstrMap;
 
 use crate::{
     ast::BinOp,
-    db::{Db, DefId},
+    db::{Db, DefId, DefKind},
     diagnostics::Diagnostic,
     hir::{
         self, Bin, Block, Call, Expr, Fn, FnSig, Hir, If, Item, ItemKind, Lit, LitKind, Name,
@@ -93,8 +93,20 @@ impl InferCtxt<'_> {
         Ok(())
     }
 
-    fn typeck_type_annot(&mut self, ty: hir::Ty) -> Ty {
-        todo!()
+    fn typeck_ty_annot(&mut self, ty: hir::Ty) -> InferResult<Ty> {
+        match ty {
+            hir::Ty::Name(name) => {
+                let def = &self.db[name.id];
+
+                match def.kind.as_ref() {
+                    DefKind::Ty(ty) => Ok(*ty),
+                    _ => Err(InferError::ExpectedTy { ty: def.ty, span: name.span }),
+                }
+            }
+            hir::Ty::Unit(_) => Ok(self.tcx.types.unit),
+            hir::Ty::Never(_) => Ok(self.tcx.types.never),
+            hir::Ty::Infer(_) => Ok(self.fresh_ty_var()),
+        }
     }
 }
 
