@@ -281,7 +281,7 @@ pub enum Ty {
     Name(TyName),
     Unit(Span),
     Never(Span),
-    Placeholder(Span),
+    Infer(Span),
 }
 
 #[derive(Debug, Clone)]

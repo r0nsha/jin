@@ -54,7 +54,7 @@ impl<'db> Resolver<'db> {
                     level: ScopeLevel::Global,
                     vis: Vis::Public,
                 },
-                DefKind::Ty(ty),
+                DefKind::BuiltinTy(ty),
                 self.tcx.types.typ,
                 Span::unknown(),
             )
@@ -284,7 +284,7 @@ impl Resolve<'_> for Ty {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         match self {
             Self::Name(name) => name.resolve(cx, env),
-            Self::Placeholder(span) if env.in_kind(ScopeKind::Fn) => {
+            Self::Infer(span) if env.in_kind(ScopeKind::Fn) => {
                 cx.errors.push(ResolveError::InvalidPlaceholderTy(*span));
             }
             _ => (),
@@ -294,6 +294,7 @@ impl Resolve<'_> for Ty {
 
 impl Resolve<'_> for TyName {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
+        // TODO: type arguments are not allowed on builtin type `{name}`
         if let Ok(id) = cx.lookup(env, self.name) {
             self.id = Some(id);
         } else {

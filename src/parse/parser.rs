@@ -375,7 +375,7 @@ impl<'a> Parser<'a> {
                 Ty::Unit(tok.span.merge(end))
             }
             TokenKind::Bang => Ty::Never(tok.span),
-            TokenKind::Placeholder => Ty::Placeholder(tok.span),
+            TokenKind::Placeholder => Ty::Infer(tok.span),
             _ => {
                 return Err(ParseError::UnexpectedToken {
                     expected: "a type".to_string(),
