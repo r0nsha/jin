@@ -276,7 +276,7 @@ pub enum LitKind {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ty {
-    Name(Word, Vec<Ty>),
+    Name(SymbolId, Vec<Ty>),
     Unit(Span),
     Never(Span),
     Placeholder(Span),
