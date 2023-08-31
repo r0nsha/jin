@@ -7,8 +7,10 @@ use crate::{
 // TODO: find polymorphic function uses in roots, recursively
 // TODO: collect Vec<MonoItem>
 // TODO: place generated mono defs where needed
-pub fn monomorphize(db: &mut Db, hir: &Hir) {
-    Context::new(db).monomorphize(hir);
+pub fn monomorphize(db: &mut Db, hir: &Hir) -> Vec<MonoItem> {
+    let mut cx = Context::new(db);
+    cx.monomorphize(hir);
+    cx.mono_items
 }
 
 struct Context<'db> {
@@ -16,7 +18,7 @@ struct Context<'db> {
     mono_items: Vec<MonoItem>,
 }
 
-struct MonoItem {
+pub struct MonoItem {
     id: DefId,
     args: Vec<Ty>,
 }

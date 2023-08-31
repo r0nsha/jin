@@ -121,6 +121,7 @@ impl Lower<'_, Expr> for ast::Expr {
             }),
             Self::Name(name) => Expr::Name(Name {
                 id: name.id.expect("to be resolved"),
+                args: vec![],
                 span: name.span,
                 ty: cx.tcx.types.unknown,
             }),
