@@ -156,10 +156,26 @@ impl Infer<'_> for Fn {
 
         self.body.infer(cx, &mut fx)?;
 
-        cx.at(Obligation::return_ty(self.body.span, cx.db[self.id].span))
-            .eq(fx.ret_ty, self.body.ty)?;
+        let unify_body_res = cx
+            .at(Obligation::return_ty(
+                self.body.span,
+                self.sig.ret.as_ref().map_or(cx.db[self.id].span, Spanned::span),
+            ))
+            .eq(fx.ret_ty, self.body.ty);
 
-        Ok(())
+        // If the function's return type is `()`, we always want to return the unit value `()`.
+        if self.ty.as_fn().unwrap().ret.normalize(&mut cx.inner.borrow_mut()).is_unit() {
+            // TODO: should this be in Mir lowering?
+            self.body.exprs.push(Expr::Lit(Lit {
+                kind: LitKind::Unit,
+                span: self.body.span,
+                ty: cx.tcx.types.unit,
+            }));
+
+            Ok(())
+        } else {
+            unify_body_res
+        }
     }
 }
 

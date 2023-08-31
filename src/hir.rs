@@ -290,3 +290,19 @@ pub struct TyName {
     pub args: Vec<Ty>,
     pub span: Span,
 }
+
+impl Spanned for Ty {
+    fn span(&self) -> Span {
+        match self {
+            Ty::Name(n) => n.span,
+            Ty::Unit(span) | Ty::Never(span) | Ty::Infer(span) => *span,
+        }
+    }
+
+    fn span_mut(&mut self) -> &mut Span {
+        match self {
+            Ty::Name(n) => &mut n.span,
+            Ty::Unit(span) | Ty::Never(span) | Ty::Infer(span) => span,
+        }
+    }
+}
