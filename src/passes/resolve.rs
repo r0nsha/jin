@@ -218,7 +218,7 @@ impl Resolve<'_> for Block {
 impl Resolve<'_> for Return {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         if !env.in_kind(ScopeKind::Fn) {
-            cx.errors.push(ResolveError::InvalidReturn { span: self.span });
+            cx.errors.push(ResolveError::InvalidReturn(self.span));
         }
 
         if let Some(expr) = self.expr.as_mut() {
@@ -258,9 +258,12 @@ impl Resolve<'_> for Name {
 
 impl Resolve<'_> for Ty {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        todo!("don't allow placeholder type in fn scope");
-        if let Ty::Name(name) = self {
-            name.resolve(cx, env);
+        match self {
+            Self::Name(name) => name.resolve(cx, env),
+            Self::Placeholder(span) if env.in_kind(ScopeKind::Fn) => {
+                cx.errors.push(ResolveError::InvalidPlaceholderTy(*span));
+            }
+            _ => (),
         }
     }
 }
@@ -410,7 +413,8 @@ pub enum ScopeKind {
 pub(super) enum ResolveError {
     MultipleItems { name: Ustr, prev_span: Span, dup_span: Span },
     NameNotFound(Word),
-    InvalidReturn { span: Span },
+    InvalidReturn(Span),
+    InvalidPlaceholderTy(Span),
 }
 
 impl From<ResolveError> for Diagnostic {
@@ -432,9 +436,14 @@ impl From<ResolveError> for Diagnostic {
             ResolveError::NameNotFound(name) => Self::error("resolve::name_not_found")
                 .with_message(format!("cannot find value `{name}` in this scope"))
                 .with_label(Label::primary(name.span()).with_message("not found in this scope")),
-            ResolveError::InvalidReturn { span } => Self::error("resolve::invalid_return")
+            ResolveError::InvalidReturn(span) => Self::error("resolve::invalid_return")
                 .with_message("cannot return outside of function scope")
                 .with_label(Label::primary(span)),
+            ResolveError::InvalidPlaceholderTy(span) => {
+                Self::error("resolve::invalid_placeholder_type")
+                    .with_message("cannot use a placeholder type _ in a function's signature")
+                    .with_label(Label::primary(span))
+            }
         }
     }
 }
