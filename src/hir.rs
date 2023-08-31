@@ -265,6 +265,7 @@ pub struct Bin {
 #[derive(Debug, Clone)]
 pub struct Name {
     pub id: DefId,
+    pub args: Vec<ty::Ty>,
     pub span: Span,
     pub ty: ty::Ty,
 }

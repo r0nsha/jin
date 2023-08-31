@@ -339,6 +339,7 @@ impl Infer<'_> for Name {
         let ty = cx.lookup(self.id).normalize(&mut cx.inner.borrow_mut());
         let args = ty.collect_params().into_iter().map(|_| cx.fresh_ty_var()).collect();
         self.ty = instantiate(ty, args);
+        self.args = args;
         Ok(())
     }
 }

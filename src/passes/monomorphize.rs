@@ -1,34 +1,42 @@
 use crate::{
     db::{Db, DefId},
-    hir::{Hir, ItemKind},
+    hir::{Fn, Hir, ItemKind},
     ty::Ty,
 };
 
-pub fn monomorphize(db: &mut Db, hir: &mut Hir) {
-    let roots = collect_roots(hir);
-    // TODO: find polymorphic function uses in mono items, recursively, marking visited items to
-    //       not visit them twice
-    // TODO: generate the appropriate definition for each use
-    // TODO: place generated mono defs where needed
+// TODO: find polymorphic function uses in roots, recursively
+// TODO: collect Vec<MonoItem>
+// TODO: place generated mono defs where needed
+pub fn monomorphize(db: &mut Db, hir: &Hir) {
+    Context::new(db).monomorphize(hir);
 }
 
-fn collect_roots(hir: &Hir) -> Vec<DefId> {
-    let mut defs = vec![];
+struct Context<'db> {
+    db: &'db mut Db,
+    mono_items: Vec<MonoItem>,
+}
 
-    for item in &hir.items {
-        match &item.kind {
-            ItemKind::Fn(f) => {
-                if f.ty.is_polymorphic() {
-                    defs.push(f.id);
+struct MonoItem {
+    id: DefId,
+    args: Vec<Ty>,
+}
+
+impl<'db> Context<'db> {
+    fn new(db: &'db mut Db) -> Self {
+        Self { db, mono_items: vec![] }
+    }
+
+    fn monomorphize(&mut self, hir: &Hir) {
+        for item in &hir.items {
+            match &item.kind {
+                ItemKind::Fn(f) => {
+                    if f.ty.is_polymorphic() {
+                        self.monomorphize_root_fn(f);
+                    }
                 }
             }
         }
     }
 
-    defs
-}
-
-struct Collector<'db> {
-    db: &'db mut Db,
-    defs: Vec<DefId>,
+    fn monomorphize_root_fn(&self, f: &Fn) {}
 }
