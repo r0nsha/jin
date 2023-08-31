@@ -163,15 +163,9 @@ impl Infer<'_> for Fn {
             ))
             .eq(fx.ret_ty, self.body.ty);
 
-        // If the function's return type is `()`, we always want to return the unit value `()`.
+        // If the function's return type is `()`, we want to let the user end the body with
+        // whatever expression they want, so that they don't need to end it with a `()`
         if self.ty.as_fn().unwrap().ret.normalize(&mut cx.inner.borrow_mut()).is_unit() {
-            // TODO: should this be in Mir lowering?
-            self.body.exprs.push(Expr::Lit(Lit {
-                kind: LitKind::Unit,
-                span: self.body.span,
-                ty: cx.tcx.types.unit,
-            }));
-
             Ok(())
         } else {
             unify_body_res

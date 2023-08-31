@@ -24,6 +24,11 @@ impl FunctionBuilder {
     }
 
     #[inline]
+    pub fn value(&self, id: ValueId) -> Option<&Value> {
+        self.f.value(id)
+    }
+
+    #[inline]
     #[allow(unused)]
     pub fn blocks(&self) -> &[Block] {
         self.f.cfg.blocks.as_slice()
