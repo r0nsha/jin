@@ -1,13 +1,7 @@
-use crate::{
-    passes::typeck::{infcx::InferCtxt, normalize::NormalizeTy},
-    ty::{FnTy, FnTyParam, Ty, TyKind},
-};
+use crate::ty::{FnTy, FnTyParam, Ty, TyKind};
 
-impl<'db> InferCtxt<'db> {
-    pub(super) fn instantiate(&self, ty: Ty, args: Vec<Ty>) -> Ty {
-        let ty = ty.normalize(&mut self.inner.borrow_mut());
-        Instantiate::new(ty, args).instantiate()
-    }
+pub(super) fn instantiate(ty: Ty, args: Vec<Ty>) -> Ty {
+    Instantiate::new(ty, args).instantiate()
 }
 
 struct Instantiate {
@@ -21,11 +15,7 @@ impl Instantiate {
     }
 
     fn instantiate(&self) -> Ty {
-        if self.args.is_empty() {
-            self.ty
-        } else {
-            self.instantiate_inner(self.ty)
-        }
+        self.instantiate_inner(self.ty)
     }
 
     fn instantiate_inner(&self, ty: Ty) -> Ty {

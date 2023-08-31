@@ -5,6 +5,8 @@ mod normalize;
 mod substitute;
 mod unify;
 
+use std::collections::HashMap;
+
 use ustr::UstrMap;
 
 use crate::{
@@ -12,7 +14,8 @@ use crate::{
     db::{Db, SymbolId},
     diagnostics::Diagnostic,
     passes::typeck::{
-        error::InferError, infcx::InferCtxt, normalize::NormalizeTy, unify::Obligation,
+        error::InferError, infcx::InferCtxt, instantiate::instantiate, normalize::NormalizeTy,
+        unify::Obligation,
     },
     span::{Span, Spanned},
     tast::{
@@ -87,11 +90,12 @@ impl InferCtxt<'_> {
 struct FnCtxt {
     pub id: SymbolId,
     pub ret_ty: Ty,
+    pub param_env: HashMap<usize, Ty>,
 }
 
 impl FnCtxt {
     fn from_function(fun: &Fn) -> Self {
-        FnCtxt { id: fun.id, ret_ty: fun.ty.as_fn().unwrap().ret }
+        FnCtxt { id: fun.id, ret_ty: fun.ty.as_fn().unwrap().ret, param_env: HashMap::new() }
     }
 }
 
@@ -308,8 +312,13 @@ impl Infer<'_> for Bin {
 impl Infer<'_> for Name {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut FnCtxt) -> InferResult<()> {
         let ty = cx.lookup(self.id);
-        let instantiated = cx.instantiate(ty, vec![]);
+        let ty = ty.normalize(&mut cx.inner.borrow_mut());
+
+        let args = ty.collect_params().into_iter().map(|_| cx.fresh_ty_var()).collect();
+        let instantiated = instantiate(ty, args);
+
         self.ty = instantiated;
+
         Ok(())
     }
 }

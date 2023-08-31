@@ -38,7 +38,7 @@ impl Ty {
     }
 
     pub fn occurs_check(self, var: TyVar) -> Result<(), Self> {
-        match self.as_ref() {
+        match self.kind() {
             TyKind::Fn(fun) => fun.ret.occurs_check(var).map_err(|_| self),
             TyKind::Infer(InferTy::TyVar(v)) => {
                 if *v == var {
@@ -54,6 +54,31 @@ impl Ty {
             | TyKind::Unit
             | TyKind::Never
             | TyKind::Unknown => Ok(()),
+        }
+    }
+
+    pub fn collect_params(self) -> Vec<ParamTy> {
+        let mut params = vec![];
+        self.collect_params_inner(&mut params);
+        params
+    }
+
+    fn collect_params_inner(self, params: &mut Vec<ParamTy>) {
+        match self.kind() {
+            TyKind::Fn(fun) => {
+                for p in &fun.params {
+                    p.ty.collect_params_inner(params);
+                }
+
+                fun.ret.collect_params_inner(params);
+            }
+            TyKind::Param(p) => params.push(p.clone()),
+            TyKind::Int(..)
+            | TyKind::Bool
+            | TyKind::Unit
+            | TyKind::Never
+            | TyKind::Infer(..)
+            | TyKind::Unknown => (),
         }
     }
 }
