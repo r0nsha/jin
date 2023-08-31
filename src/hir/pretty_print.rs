@@ -2,13 +2,13 @@ use std::io;
 
 use crate::{
     db::Db,
-    tast::{Bin, Block, Call, Expr, Fn, If, Item, ItemKind, Lit, LitKind, Name, Return, TypedAst},
+    hir::{Bin, Block, Call, Expr, Fn, Hir, If, Item, ItemKind, Lit, LitKind, Name, Return},
 };
 
-pub(super) fn print(db: &Db, tast: &TypedAst) -> io::Result<()> {
-    let mut cx = PPCtxt { db, builder: ptree::TreeBuilder::new("Typed Ast".to_string()) };
+pub(super) fn print(db: &Db, hir: &Hir) -> io::Result<()> {
+    let mut cx = PPCtxt { db, builder: ptree::TreeBuilder::new("Hir".to_string()) };
 
-    for item in &tast.items {
+    for item in &hir.items {
         item.pretty_print(&mut cx);
     }
 

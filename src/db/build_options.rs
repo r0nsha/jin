@@ -39,7 +39,7 @@ impl BuildOptions {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
 pub enum EmitOption {
     Ast,
-    TypedAst,
+    Hir,
     Mir,
     LlvmIr,
 }

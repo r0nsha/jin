@@ -2,12 +2,12 @@ use std::collections::HashSet;
 
 use crate::{
     passes::typeck::infcx::{InferCtxt, InferCtxtInner},
-    tast::{Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Return, TypedAst},
+    hir::{Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Return, Hir},
     ty::{FnTy, FnTyParam, InferTy, Ty, TyKind, TyVar, Typed},
 };
 
 impl<'db> InferCtxt<'db> {
-    pub fn substitute_all(&mut self, tast: &mut TypedAst) -> HashSet<TyVar> {
+    pub fn substitute_all(&mut self, hir: &mut Hir) -> HashSet<TyVar> {
         let mut unbound_vars = HashSet::new();
 
         let mut infcx = self.inner.borrow_mut();
@@ -16,7 +16,7 @@ impl<'db> InferCtxt<'db> {
             sym.ty = substitute_ty(&mut infcx, sym.ty, &mut unbound_vars);
         }
 
-        for item in &mut tast.items {
+        for item in &mut hir.items {
             item.substitute(&mut infcx, &mut unbound_vars);
         }
 

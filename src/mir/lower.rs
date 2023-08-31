@@ -5,23 +5,23 @@ use crate::{
     db::Db,
     mir::{builder::FunctionBuilder, Function, Mir, SymbolId, ValueId},
     span::Spanned,
-    tast::{self, TypedAst},
+    hir::{self, Hir},
     ty::{Ty, TyKind, Typed},
 };
 
-pub fn lower(db: &mut Db, tast: &TypedAst) -> Result<Mir> {
+pub fn lower(db: &mut Db, hir: &Hir) -> Result<Mir> {
     let mut mir = Mir::new();
 
-    for item in &tast.items {
+    for item in &hir.items {
         lower_item(db, &mut mir, item)?;
     }
 
     Ok(mir)
 }
 
-fn lower_item(db: &mut Db, mir: &mut Mir, item: &tast::Item) -> Result<()> {
+fn lower_item(db: &mut Db, mir: &mut Mir, item: &hir::Item) -> Result<()> {
     match &item.kind {
-        tast::ItemKind::Function(fun) => {
+        hir::ItemKind::Function(fun) => {
             let fun = LowerFunctionCtxt::new(db, mir, fun.id).lower_function(fun)?;
             mir.add_function(fun);
         }
@@ -41,7 +41,7 @@ impl<'db> LowerFunctionCtxt<'db> {
         Self { db, mir, bx: FunctionBuilder::new(fun_id) }
     }
 
-    fn lower_function(mut self, fun: &tast::Fn) -> Result<Function> {
+    fn lower_function(mut self, fun: &hir::Fn) -> Result<Function> {
         let blk_start = self.bx.create_block("start");
         self.bx.position_at(blk_start);
 
@@ -60,25 +60,25 @@ impl<'db> LowerFunctionCtxt<'db> {
         self.bx.finish()
     }
 
-    fn lower_expr(&mut self, expr: &tast::Expr) -> ValueId {
+    fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
         match expr {
-            tast::Expr::Item(inner) => self.lower_local_item(inner),
-            tast::Expr::If(inner) => self.lower_if(inner),
-            tast::Expr::Block(inner) => self.lower_block(inner),
-            tast::Expr::Return(inner) => self.lower_return(inner),
-            tast::Expr::Call(inner) => self.lower_call(inner),
-            tast::Expr::Bin(inner) => self.lower_bin(inner),
-            tast::Expr::Name(inner) => self.lower_name(inner),
-            tast::Expr::Lit(inner) => self.lower_lit(inner),
+            hir::Expr::Item(inner) => self.lower_local_item(inner),
+            hir::Expr::If(inner) => self.lower_if(inner),
+            hir::Expr::Block(inner) => self.lower_block(inner),
+            hir::Expr::Return(inner) => self.lower_return(inner),
+            hir::Expr::Call(inner) => self.lower_call(inner),
+            hir::Expr::Bin(inner) => self.lower_bin(inner),
+            hir::Expr::Name(inner) => self.lower_name(inner),
+            hir::Expr::Lit(inner) => self.lower_lit(inner),
         }
     }
 
-    fn lower_local_item(&mut self, item: &tast::Item) -> ValueId {
+    fn lower_local_item(&mut self, item: &hir::Item) -> ValueId {
         lower_item(self.db, self.mir, item).expect("mir lowering to succeed");
         self.bx.build_unit_lit(item.ty, item.span())
     }
 
-    fn lower_if(&mut self, if_: &tast::If) -> ValueId {
+    fn lower_if(&mut self, if_: &hir::If) -> ValueId {
         let cond = self.lower_expr(&if_.cond);
 
         let then_blk = self.bx.create_block("if_then");
@@ -115,7 +115,7 @@ impl<'db> LowerFunctionCtxt<'db> {
         }
     }
 
-    fn lower_branch(&mut self, expr: &tast::Expr) -> Option<ValueId> {
+    fn lower_branch(&mut self, expr: &hir::Expr) -> Option<ValueId> {
         let value = self.lower_expr(expr);
 
         if self.bx.current_block().is_terminating() {
@@ -125,7 +125,7 @@ impl<'db> LowerFunctionCtxt<'db> {
         }
     }
 
-    fn lower_block(&mut self, blk: &tast::Block) -> ValueId {
+    fn lower_block(&mut self, blk: &hir::Block) -> ValueId {
         let mut value: Option<ValueId> = None;
 
         for expr in &blk.exprs {
@@ -135,14 +135,14 @@ impl<'db> LowerFunctionCtxt<'db> {
         value.unwrap_or_else(|| self.bx.build_unit_lit(blk.ty, blk.span))
     }
 
-    fn lower_call(&mut self, call: &tast::Call) -> ValueId {
+    fn lower_call(&mut self, call: &hir::Call) -> ValueId {
         // NOTE: Call arguments are expected to be sorted by parameter order, from left-to-right
         let args = call.args.iter().map(|arg| self.lower_expr(&arg.expr)).collect::<Vec<_>>();
         let callee = self.lower_expr(&call.callee);
         self.bx.build_call(call.ty, callee, args, call.span)
     }
 
-    fn lower_bin(&mut self, bin: &tast::Bin) -> ValueId {
+    fn lower_bin(&mut self, bin: &hir::Bin) -> ValueId {
         let lhs = self.lower_expr(&bin.lhs);
 
         match bin.op {
@@ -201,7 +201,7 @@ impl<'db> LowerFunctionCtxt<'db> {
         }
     }
 
-    fn lower_return(&mut self, ret: &tast::Return) -> ValueId {
+    fn lower_return(&mut self, ret: &hir::Return) -> ValueId {
         if !self.bx.current_block().is_terminating() {
             let value = self.lower_expr(&ret.expr);
             self.bx.build_return(value, ret.span);
@@ -210,16 +210,16 @@ impl<'db> LowerFunctionCtxt<'db> {
         self.bx.build_unreachable(ret.expr.ty(), ret.span)
     }
 
-    fn lower_name(&mut self, name: &tast::Name) -> ValueId {
+    fn lower_name(&mut self, name: &hir::Name) -> ValueId {
         let symbol = &self.db[name.id];
         self.bx.build_load(symbol.ty, symbol.id, name.span)
     }
 
-    fn lower_lit(&mut self, lit: &tast::Lit) -> ValueId {
+    fn lower_lit(&mut self, lit: &hir::Lit) -> ValueId {
         match &lit.kind {
-            tast::LitKind::Int(v) => self.bx.build_int_lit(lit.ty, *v, lit.span),
-            tast::LitKind::Bool(v) => self.bx.build_bool_lit(lit.ty, *v, lit.span),
-            tast::LitKind::Unit => self.bx.build_unit_lit(lit.ty, lit.span),
+            hir::LitKind::Int(v) => self.bx.build_int_lit(lit.ty, *v, lit.span),
+            hir::LitKind::Bool(v) => self.bx.build_bool_lit(lit.ty, *v, lit.span),
+            hir::LitKind::Unit => self.bx.build_unit_lit(lit.ty, lit.span),
         }
     }
 }

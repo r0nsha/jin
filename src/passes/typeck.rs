@@ -11,37 +11,35 @@ use crate::{
     ast::BinOp,
     db::{Db, SymbolId},
     diagnostics::Diagnostic,
+    hir::{Bin, Block, Call, Expr, Fn, FnSig, Hir, If, Item, ItemKind, Lit, LitKind, Name, Return},
     passes::typeck::{
         error::InferError, infcx::InferCtxt, instantiate::instantiate, normalize::NormalizeTy,
         unify::Obligation,
     },
     span::{Span, Spanned},
-    tast::{
-        Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Lit, LitKind, Name, Return, TypedAst,
-    },
     ty::{tcx::TyCtxt, FnTy, FnTyParam, ParamTy, Ty, TyKind, Typed},
 };
 
 pub type InferResult<T> = Result<T, InferError>;
 
-pub fn typeck(db: &mut Db, tcx: &TyCtxt, tast: &mut TypedAst) -> Result<(), Diagnostic> {
-    typeck_inner(db, tcx, tast).map_err(|err| err.into_diagnostic(db))
+pub fn typeck(db: &mut Db, tcx: &TyCtxt, hir: &mut Hir) -> Result<(), Diagnostic> {
+    typeck_inner(db, tcx, hir).map_err(|err| err.into_diagnostic(db))
 }
 
-fn typeck_inner(db: &mut Db, tcx: &TyCtxt, tast: &mut TypedAst) -> InferResult<()> {
+fn typeck_inner(db: &mut Db, tcx: &TyCtxt, hir: &mut Hir) -> InferResult<()> {
     let mut cx = InferCtxt::new(db, tcx);
 
-    cx.typeck_function_signatures(tast);
-    cx.typeck_function_bodies(tast)?;
+    cx.typeck_function_signatures(hir);
+    cx.typeck_function_bodies(hir)?;
 
-    cx.substitute_all(tast);
+    cx.substitute_all(hir);
 
     Ok(())
 }
 
 impl InferCtxt<'_> {
-    fn typeck_function_signatures(&mut self, tast: &mut TypedAst) {
-        for item in &mut tast.items {
+    fn typeck_function_signatures(&mut self, hir: &mut Hir) {
+        for item in &mut hir.items {
             match &mut item.kind {
                 ItemKind::Function(fun) => {
                     fun.ty = self.typeck_function_sig(&mut fun.sig);
@@ -80,8 +78,8 @@ impl InferCtxt<'_> {
         }))
     }
 
-    fn typeck_function_bodies(&mut self, tast: &mut TypedAst) -> InferResult<()> {
-        for item in &mut tast.items {
+    fn typeck_function_bodies(&mut self, hir: &mut Hir) -> InferResult<()> {
+        for item in &mut hir.items {
             match &mut item.kind {
                 ItemKind::Function(fun) => {
                     let mut fx = FnCtxt::from_function(fun);

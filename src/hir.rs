@@ -15,11 +15,11 @@ use crate::{
 };
 
 #[derive(Debug, Clone)]
-pub struct TypedAst {
+pub struct Hir {
     pub items: Vec<Item>,
 }
 
-impl TypedAst {
+impl Hir {
     pub fn pretty_print(&self, db: &Db) -> io::Result<()> {
         println!();
         pretty_print::print(db, self)?;

@@ -18,12 +18,12 @@ mod ast;
 mod common;
 mod db;
 mod diagnostics;
+mod hir;
 mod llvm;
 mod mir;
 mod parse;
 mod passes;
 mod span;
-mod tast;
 mod ty;
 
 use std::path::PathBuf;
@@ -107,18 +107,18 @@ fn build(db: &mut Db) {
     passes::resolve(db, &tcx, &mut ast);
     expect!(db);
 
-    db.timings.start("ast -> typed ast");
-    let mut tast = tast::lower(db, &tcx, ast);
+    db.timings.start("ast -> hir");
+    let mut hir = hir::lower(db, &tcx, ast);
 
     db.timings.start("typeck");
-    if let Err(diag) = passes::typeck(db, &tcx, &mut tast) {
+    if let Err(diag) = passes::typeck(db, &tcx, &mut hir) {
         db.diagnostics.add(diag);
     }
     db.timings.stop();
     expect!(db);
 
-    if db.build_options().should_emit(EmitOption::TypedAst) {
-        tast.pretty_print(db).expect("typed-ast printing to work");
+    if db.build_options().should_emit(EmitOption::Hir) {
+        hir.pretty_print(db).expect("hir printing to work");
     }
 
     // TODO: uncomment
@@ -129,8 +129,8 @@ fn build(db: &mut Db) {
     // db.timings.stop();
     // expect!(db);
 
-    db.timings.start("typed ast -> mir");
-    let mir = mir::lower(db, &tast).expect("mir lowering to succeed");
+    db.timings.start("hir -> mir");
+    let mir = mir::lower(db, &hir).expect("mir lowering to succeed");
     db.timings.stop();
     expect!(db);
 

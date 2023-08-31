@@ -1,15 +1,15 @@
 use crate::{
     ast,
     db::Db,
-    tast::{
+    hir::{
         Bin, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, If, Item, ItemKind, Lit, LitKind,
-        Name, Return, TypedAst,
+        Name, Return, Hir,
     },
     ty::tcx::TyCtxt,
 };
 
-pub fn lower(db: &mut Db, tcx: &TyCtxt, ast: ast::Ast) -> TypedAst {
-    TypedAst {
+pub fn lower(db: &mut Db, tcx: &TyCtxt, ast: ast::Ast) -> Hir {
+    Hir {
         items: ast
             .modules
             .into_iter()
