@@ -61,9 +61,10 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> PathBuf {
         panic!("{}", e);
     }
 
-    // db.timings.start(print_times, "llvm optimizations")
+    // TODO: release mode
+    // cx.db.timings.start("llvm optimizations");
     // optimize(cx.module);
-    // db.timings.stop();
+    // cx.db.timings.stop();
 
     build_exe(db, &target_machine, &module)
 }
