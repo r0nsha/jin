@@ -55,12 +55,13 @@ impl InferCtxt<'_> {
     }
 
     fn typeck_function_sig(&mut self, sig: &mut FnSig) -> InferResult<Ty> {
-        for param in sig.params.iter_mut() {
+        for param in &mut sig.params {
             param.ty = self.typeck_ty_annot(&param.ty_annot)?;
             self.db[param.id].ty = param.ty;
         }
 
-        let ret = self.typeck_ty_annot(&sig.ret)?;
+        let ret =
+            if let Some(ret) = &sig.ret { self.typeck_ty_annot(ret)? } else { self.tcx.types.unit };
 
         Ok(Ty::new(TyKind::Fn(FnTy {
             params: sig

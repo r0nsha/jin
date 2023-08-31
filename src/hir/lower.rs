@@ -5,7 +5,6 @@ use crate::{
         Bin, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, Hir, If, Item, ItemKind, Lit, LitKind,
         Name, Return, Ty, TyName,
     },
-    span::Spanned,
     ty::tcx::TyCtxt,
 };
 
@@ -70,7 +69,7 @@ impl Lower<'_, FnSig> for ast::FnSig {
                     ty: cx.tcx.types.unknown,
                 })
                 .collect::<Vec<_>>(),
-            ret: self.ret.map_or(Ty::Unit(self.name.span()), |r| r.lower(cx)),
+            ret: self.ret.map(|r| r.lower(cx)),
         }
     }
 }

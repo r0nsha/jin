@@ -167,7 +167,7 @@ pub struct Fn {
 #[derive(Debug, Clone)]
 pub struct FnSig {
     pub params: Vec<FnParam>,
-    pub ret: Ty,
+    pub ret: Option<Ty>,
 }
 
 #[derive(Debug, Clone)]
