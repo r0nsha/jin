@@ -16,7 +16,9 @@ use crate::{
 pub fn resolve(db: &mut Db, tcx: &TyCtxt, ast: &mut Ast) {
     let mut cx = Resolver::new(db, tcx);
 
-    cx.resolve_modules_and_global_items(&mut ast.modules);
+    cx.resolve_modules(&mut ast.modules);
+    cx.declare_builtin_defs();
+    cx.resolve_global_items(&mut ast.modules);
     cx.resolve_all(&mut ast.modules);
 
     if !cx.errors.is_empty() {
@@ -45,31 +47,44 @@ impl<'db> Resolver<'db> {
     }
 
     fn declare_builtin_defs(&mut self) {
-        let mk = |name, ty| {
-            Def::alloc(
-                self.db,
-                QPath::from(ustr(name)),
-                ScopeInfo {
-                    module_id: self.db.main_module_id().expect("to be resolved"),
-                    level: ScopeLevel::Global,
-                    vis: Vis::Public,
-                },
-                DefKind::BuiltinTy(ty),
-                self.tcx.types.typ,
-                Span::unknown(),
+        let mut mk = |name, ty| {
+            let name = ustr(name);
+            self.builtins.insert(
+                name,
+                Def::alloc(
+                    self.db,
+                    QPath::from(name),
+                    ScopeInfo {
+                        module_id: self.db.main_module_id().expect("to be resolved"),
+                        level: ScopeLevel::Global,
+                        vis: Vis::Public,
+                    },
+                    DefKind::BuiltinTy(ty),
+                    self.tcx.types.typ,
+                    Span::unknown(),
+                ),
             )
         };
+
+        mk("int", self.tcx.types.int);
+        mk("bool", self.tcx.types.bool);
     }
 
-    fn resolve_modules_and_global_items(&mut self, modules: &mut [Module]) {
+    fn resolve_modules(&mut self, modules: &mut [Module]) {
         for module in modules {
-            let module_id =
-                ModuleInfo::alloc(self.db, module.source, module.name.clone(), module.is_main());
+            module.id = Some(ModuleInfo::alloc(
+                self.db,
+                module.source,
+                module.name.clone(),
+                module.is_main(),
+            ));
+        }
+    }
 
-            module.id = Some(module_id);
-
+    fn resolve_global_items(&mut self, modules: &mut [Module]) {
+        for module in modules {
             for item in &mut module.items {
-                self.declare_global_item(module_id, item);
+                self.declare_global_item(module.id.expect("to be resolved"), item);
             }
         }
     }
@@ -152,11 +167,13 @@ impl<'db> Resolver<'db> {
         id
     }
 
-    fn lookup(&self, env: &Env, name: Word) -> Result<DefId, ResolveError> {
-        env.lookup(name.name())
+    fn lookup(&self, env: &Env, word: Word) -> Result<DefId, ResolveError> {
+        let name = word.name();
+        env.lookup(name)
             .copied()
-            .or_else(|| self.global_scope.lookup(env.module_id, name.name()))
-            .ok_or(ResolveError::NameNotFound(name))
+            .or_else(|| self.global_scope.lookup(env.module_id, name))
+            .or_else(|| self.builtins.get(&name).copied())
+            .ok_or(ResolveError::NameNotFound(word))
     }
 }
 
