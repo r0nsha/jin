@@ -123,7 +123,7 @@ fn build(db: &mut Db) {
     }
 
     db.timings.start("check entry");
-    if let Err(diag) = passes::check_entry(db) {
+    if let Err(diag) = passes::check_entry(db, &hir) {
         db.diagnostics.add(diag);
     }
     db.timings.stop();
