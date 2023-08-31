@@ -15,7 +15,7 @@ fn check_entry_exists(db: &mut Db) -> Result<(), Diagnostic> {
 
     let main_fun_id = if let Some(main_fun) = db.defs.iter().find(|def| {
         def.scope.module_id == main_module_id
-            && matches!(def.kind.as_ref(), DefKind::Function(db::FunctionInfo::Orphan))
+            && matches!(def.kind.as_ref(), DefKind::Fn(db::FnInfo::Bare))
             && def.qpath.name() == "main"
     }) {
         main_fun.id

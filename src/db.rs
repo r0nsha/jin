@@ -183,7 +183,7 @@ pub struct ScopeInfo {
 
 #[derive(Debug, Clone)]
 pub enum DefKind {
-    Function(FunctionInfo),
+    Fn(FnInfo),
     Variable,
     BuiltinTy(Ty),
 }
@@ -267,6 +267,6 @@ impl Ord for ScopeLevel {
 }
 
 #[derive(Debug, Clone)]
-pub enum FunctionInfo {
-    Orphan,
+pub enum FnInfo {
+    Bare,
 }

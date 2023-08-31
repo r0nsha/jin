@@ -7,7 +7,7 @@ use crate::{
         Ast, Bin, Block, Call, CallArg, Expr, Fn, FnSig, If, Item, Module, Name, Return, Ty, TyName,
     },
     common::{QPath, Word},
-    db::{Db, Def, DefId, DefKind, FunctionInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
+    db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
     diagnostics::{Diagnostic, Label},
     span::{Span, Spanned},
     ty::tcx::TyCtxt,
@@ -90,7 +90,7 @@ impl<'db> Resolver<'db> {
                 let id = self.declare_global_def(
                     module_id,
                     Vis::Public,
-                    DefKind::Function(FunctionInfo::Orphan),
+                    DefKind::Fn(FnInfo::Bare),
                     fun.sig.name,
                 );
 
@@ -128,8 +128,7 @@ impl<'db> Resolver<'db> {
     fn declare_item(&mut self, env: &mut Env, item: &mut Item) -> DefId {
         match item {
             Item::Fn(fun) => {
-                let id =
-                    self.declare_def(env, DefKind::Function(FunctionInfo::Orphan), fun.sig.name);
+                let id = self.declare_def(env, DefKind::Fn(FnInfo::Bare), fun.sig.name);
 
                 fun.id = Some(id);
 
