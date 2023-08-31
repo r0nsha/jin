@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
-    ast::{Ast, Bin, Block, Call, CallArg, Expr, Fn, If, Item, Module, Name, Return},
+    ast::{
+        Ast, Bin, Block, Call, CallArg, Expr, Fn, FnSig, If, Item, Module, Name, Return, Ty, TyName,
+    },
     common::{QPath, Word},
     db::{Db, Def, DefId, DefKind, FunctionInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
     diagnostics::{Diagnostic, Label},
@@ -126,6 +128,13 @@ impl<'db> Resolver<'db> {
 
         id
     }
+
+    fn lookup(&self, env: &Env, name: Word) -> Result<DefId, ResolveError> {
+        env.lookup(name.name())
+            .copied()
+            .or_else(|| self.global_scope.lookup(env.module_id, name.name()))
+            .ok_or(ResolveError::NameNotFound(name))
+    }
 }
 
 trait Resolve<'db> {
@@ -161,18 +170,25 @@ impl Resolve<'_> for Expr {
 
 impl Resolve<'_> for Fn {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        env.push(self.sig.name.name(), ScopeKind::Fun);
-
-        for param in &mut self.sig.params {
-            param.id = Some(cx.declare_def(env, DefKind::Variable, param.name));
-            todo!("resolve param type annotation");
-        }
-
-        todo!("resolve return type annotation");
-        todo!("don't allow placeholder type in fn scope");
-
+        env.push(self.sig.name.name(), ScopeKind::Fn);
+        self.sig.resolve(cx, env);
         self.body.resolve(cx, env);
         env.pop();
+    }
+}
+
+impl Resolve<'_> for FnSig {
+    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
+        assert!(env.in_kind(ScopeKind::Fn), "FnSig must be resolved inside a ScopeKind::Fn");
+
+        for param in &mut self.params {
+            param.id = Some(cx.declare_def(env, DefKind::Variable, param.name));
+            param.ty.resolve(cx, env);
+        }
+
+        if let Some(ret) = self.ret.as_mut() {
+            ret.resolve(cx, env);
+        }
     }
 }
 
@@ -201,7 +217,7 @@ impl Resolve<'_> for Block {
 
 impl Resolve<'_> for Return {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        if !env.in_kind(ScopeKind::Fun) {
+        if !env.in_kind(ScopeKind::Fn) {
             cx.errors.push(ResolveError::InvalidReturn { span: self.span });
         }
 
@@ -232,12 +248,28 @@ impl Resolve<'_> for Bin {
 
 impl Resolve<'_> for Name {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        self.id = env
-            .lookup(self.name.name())
-            .copied()
-            .or_else(|| cx.global_scope.lookup(env.module_id, self.name.name()));
+        if let Ok(id) = cx.lookup(env, self.name) {
+            self.id = Some(id);
+        } else {
+            cx.errors.push(ResolveError::NameNotFound(self.name));
+        }
+    }
+}
 
-        if self.id.is_none() {
+impl Resolve<'_> for Ty {
+    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
+        todo!("don't allow placeholder type in fn scope");
+        if let Ty::Name(name) = self {
+            name.resolve(cx, env);
+        }
+    }
+}
+
+impl Resolve<'_> for TyName {
+    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
+        if let Ok(id) = cx.lookup(env, self.name) {
+            self.id = Some(id);
+        } else {
             cx.errors.push(ResolveError::NameNotFound(self.name));
         }
     }
@@ -371,7 +403,7 @@ impl Scope {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ScopeKind {
-    Fun,
+    Fn,
     Block,
 }
 
