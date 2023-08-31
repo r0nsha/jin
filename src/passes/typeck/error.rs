@@ -91,7 +91,7 @@ impl InferError {
                 .with_label(Label::primary(span).with_message("expected a type")),
             Self::CannotInfer { ty, span } => Diagnostic::error("typeck::cannot_infer")
                 .with_message(format!("type annotations needed for `{}`", ty.display(db)))
-                .with_label(Label::primary(span).with_message("cannot infer this type")),
+                .with_label(Label::primary(span).with_message("cannot infer type")),
         }
     }
 }
