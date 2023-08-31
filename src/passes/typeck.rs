@@ -58,11 +58,17 @@ impl InferCtxt<'_> {
             self.db[param.id].ty = param.ty;
         }
 
-        let ret_index = sig.params.len();
-        let ret = Ty::new(TyKind::Param(ParamTy {
-            name: ustr::ustr(&format!("T{ret_index}")),
-            index: ret_index,
-        }));
+        // HACK: don't consider main as polymorphic
+        let ret = if sig.params.is_empty() {
+            Ty::new(TyKind::Unit)
+        } else {
+            // HACK: return type = first param type
+            let ret_index = 0;
+            Ty::new(TyKind::Param(ParamTy {
+                name: ustr::ustr(&format!("T{ret_index}")),
+                index: ret_index,
+            }))
+        };
 
         Ty::new(TyKind::Fn(FnTy {
             params: sig
