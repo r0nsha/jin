@@ -1,6 +1,6 @@
 use crate::{
     db::{Db, DefId},
-    hir::{Fn, Hir, ItemKind},
+    hir::{Fn, Hir, Item, ItemKind},
     ty::Ty,
 };
 
@@ -18,6 +18,7 @@ struct Context<'db> {
     mono_items: Vec<MonoItem>,
 }
 
+#[derive(Debug)]
 pub struct MonoItem {
     id: DefId,
     args: Vec<Ty>,
@@ -30,15 +31,19 @@ impl<'db> Context<'db> {
 
     fn monomorphize(&mut self, hir: &Hir) {
         for item in &hir.items {
-            match &item.kind {
-                ItemKind::Fn(f) => {
-                    if f.ty.is_polymorphic() {
-                        self.monomorphize_root_fn(f);
-                    }
+            self.monomorphize_item(item);
+        }
+    }
+
+    fn monomorphize_item(&mut self, item: &Item) {
+        match &item.kind {
+            ItemKind::Fn(f) => {
+                if f.ty.is_polymorphic() {
+                    self.monomorphize_fn(f);
                 }
             }
         }
     }
 
-    fn monomorphize_root_fn(&self, f: &Fn) {}
+    fn monomorphize_fn(&self, f: &Fn) {}
 }

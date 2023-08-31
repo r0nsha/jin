@@ -131,6 +131,7 @@ fn build(db: &mut Db) {
 
     db.time.start("monomorphization");
     let mono_items = passes::monomorphize(db, &hir);
+    dbg!(&mono_items);
     db.time.stop();
 
     db.time.start("hir -> mir");
