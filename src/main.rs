@@ -121,12 +121,13 @@ fn build(db: &mut Db) {
         tast.pretty_print(db).expect("typed-ast printing to work");
     }
 
-    db.timings.start("find main");
-    if let Err(diag) = passes::check_entry(db) {
-        db.diagnostics.add(diag);
-    }
-    db.timings.stop();
-    expect!(db);
+    // TODO: uncomment
+    // db.timings.start("check entry");
+    // if let Err(diag) = passes::check_entry(db) {
+    //     db.diagnostics.add(diag);
+    // }
+    // db.timings.stop();
+    // expect!(db);
 
     db.timings.start("typed ast -> mir");
     let mir = mir::lower(db, &tast).expect("mir lowering to succeed");

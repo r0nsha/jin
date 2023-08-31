@@ -54,8 +54,6 @@ impl InferCtxt<'_> {
     }
 
     fn typeck_function_sig(&mut self, sig: &mut FnSig) -> Ty {
-        let ret_ty = self.fresh_ty_var();
-
         for (index, param) in sig.params.iter_mut().enumerate() {
             // param.ty = self.fresh_ty_var();
             param.ty =
@@ -63,13 +61,19 @@ impl InferCtxt<'_> {
             self.db[param.id].ty = param.ty;
         }
 
+        let ret_index = sig.params.len();
+        let ret = Ty::new(TyKind::Param(ParamTy {
+            name: ustr::ustr(&format!("T{ret_index}")),
+            index: ret_index,
+        }));
+
         Ty::new(TyKind::Fn(FnTy {
             params: sig
                 .params
                 .iter()
                 .map(|p| FnTyParam { name: Some(self.db[p.id].name), ty: p.ty })
                 .collect(),
-            ret: ret_ty,
+            ret,
         }))
     }
 
