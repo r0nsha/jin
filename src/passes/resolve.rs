@@ -10,7 +10,7 @@ use crate::{
     db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
     diagnostics::{Diagnostic, Label},
     span::{Span, Spanned},
-    ty::tcx::TyCtxt,
+    ty::{self, tcx::TyCtxt, ParamTy, TyKind},
 };
 
 pub fn resolve(db: &mut Db, tcx: &TyCtxt, ast: &mut Ast) {
@@ -220,6 +220,17 @@ impl Resolve<'_> for Fn {
 impl Resolve<'_> for FnSig {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         assert!(env.in_kind(ScopeKind::Fn), "FnSig must be resolved inside a ScopeKind::Fn");
+
+        for (index, ty_param) in self.ty_params.iter_mut().enumerate() {
+            ty_param.id = Some(cx.declare_def(
+                env,
+                DefKind::Ty(ty::Ty::new(TyKind::Param(ParamTy {
+                    name: ty_param.name.name(),
+                    index,
+                }))),
+                ty_param.name,
+            ));
+        }
 
         for param in &mut self.params {
             param.id = Some(cx.declare_def(env, DefKind::Variable, param.name));

@@ -184,8 +184,8 @@ pub struct ScopeInfo {
 #[derive(Debug, Clone)]
 pub enum DefKind {
     Fn(FnInfo),
-    Variable,
     Ty(Ty),
+    Variable,
 }
 
 impl Def {

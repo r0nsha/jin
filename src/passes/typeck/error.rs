@@ -17,6 +17,7 @@ pub enum InferError {
     MultipleNamedArgs { name: Ustr, prev: Span, dup: Span, is_named: bool },
     UncallableTy { ty: Ty, span: Span },
     ExpectedTy { ty: Ty, span: Span },
+    CannotInfer { ty: Ty, span: Span },
 }
 
 impl InferError {
@@ -88,6 +89,9 @@ impl InferError {
             Self::ExpectedTy { ty, span } => Diagnostic::error("typeck::expected_ty")
                 .with_message(format!("expected a type, found value of type `{}`", ty.display(db)))
                 .with_label(Label::primary(span).with_message("expected a type")),
+            Self::CannotInfer { ty, span } => Diagnostic::error("typeck::cannot_infer")
+                .with_message(format!("type annotations needed for `{}`", ty.display(db)))
+                .with_label(Label::primary(span).with_message("cannot infer this type")),
         }
     }
 }
