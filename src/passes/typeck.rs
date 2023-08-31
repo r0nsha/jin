@@ -51,15 +51,14 @@ impl InferCtxt<'_> {
 
     fn typeck_function_sig(&mut self, sig: &mut FnSig) -> Ty {
         for (index, param) in sig.params.iter_mut().enumerate() {
+            todo!("typeck param w/ annotation");
             param.ty =
                 Ty::new(TyKind::Param(ParamTy { name: ustr::ustr(&format!("T{index}")), index }));
             self.db[param.id].ty = param.ty;
         }
 
-        // HACK: don't consider main as polymorphic
-        let ret = if sig.params.is_empty() {
-            Ty::new(TyKind::Unit)
-        } else {
+        todo!("typeck return w/ annotation");
+        let ret = {
             // HACK: return type = first param type
             let ret_index = 0;
             Ty::new(TyKind::Param(ParamTy {

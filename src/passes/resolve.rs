@@ -165,7 +165,10 @@ impl Resolve<'_> for Fn {
 
         for param in &mut self.sig.params {
             param.id = Some(cx.declare_def(env, DefKind::Variable, param.name));
+            todo!("resolve param type annotations");
         }
+
+        todo!("resolve return type annotation");
 
         self.body.resolve(cx, env);
         env.pop();
