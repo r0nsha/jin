@@ -3,8 +3,9 @@ use crate::{
     db::Db,
     hir::{
         Bin, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, Hir, If, Item, ItemKind, Lit, LitKind,
-        Name, Return, Ty, TyName,
+        Name, Return, Ty, TyName, TyParam,
     },
+    span::Spanned,
     ty::tcx::TyCtxt,
 };
 
@@ -59,6 +60,11 @@ impl Lower<'_, Fn> for ast::Fn {
 impl Lower<'_, FnSig> for ast::FnSig {
     fn lower(self, cx: &mut LowerCtxt<'_>) -> FnSig {
         FnSig {
+            ty_params: self
+                .ty_params
+                .into_iter()
+                .map(|p| TyParam { id: p.id.expect("to be resolved"), span: p.name.span() })
+                .collect::<Vec<_>>(),
             params: self
                 .params
                 .into_iter()

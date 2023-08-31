@@ -4,7 +4,7 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         Bin, BinOp, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, If, Item, Lit, LitKind, Module,
-        Name, Return, Ty, TyName,
+        Name, Return, Ty, TyName, TyParam,
     },
     common::{QPath, Word},
     db::Db,
@@ -80,6 +80,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_function_sig(&mut self, name: Word) -> ParseResult<FnSig> {
+        let ty_params =
+            if self.peek_is(TokenKind::OpenBracket) { self.parse_ty_params()?.0 } else { vec![] };
+
         let (params, _) = self.parse_function_params()?;
 
         let ret = if self.peek_is(TokenKind::Eq) || self.peek_is(TokenKind::OpenCurly) {
@@ -88,7 +91,14 @@ impl<'a> Parser<'a> {
             Some(self.parse_ty()?)
         };
 
-        Ok(FnSig { name, params, ret })
+        Ok(FnSig { name, ty_params, params, ret })
+    }
+
+    fn parse_ty_params(&mut self) -> ParseResult<(Vec<TyParam>, Span)> {
+        self.parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
+            let ident = this.eat(TokenKind::empty_ident())?;
+            Ok(TyParam { id: None, name: ident.spanned_word() })
+        })
     }
 
     fn parse_function_params(&mut self) -> ParseResult<(Vec<FnParam>, Span)> {

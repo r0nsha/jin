@@ -20,7 +20,7 @@ use crate::{
         unify::Obligation,
     },
     span::{Span, Spanned},
-    ty::{tcx::TyCtxt, FnTy, FnTyParam, ParamTy, Ty, TyKind, Typed},
+    ty::{tcx::TyCtxt, FnTy, FnTyParam, Ty, TyKind, Typed},
 };
 
 pub type InferResult<T> = Result<T, InferError>;

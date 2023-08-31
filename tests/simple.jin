@@ -4,4 +4,4 @@ fn main() = {
 	()
 }
 
-fn id(x int) int = x
+fn id[T](x T) T = x

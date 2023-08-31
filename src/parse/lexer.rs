@@ -49,6 +49,8 @@ impl<'s> Lexer<'s> {
                     ch if ch.is_ascii_whitespace() => return self.eat_token(),
                     '(' => TokenKind::OpenParen,
                     ')' => TokenKind::CloseParen,
+                    '[' => TokenKind::OpenBracket,
+                    ']' => TokenKind::CloseBracket,
                     '{' => TokenKind::OpenCurly,
                     '}' => TokenKind::CloseCurly,
                     ',' => TokenKind::Comma,

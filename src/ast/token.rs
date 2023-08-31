@@ -35,6 +35,8 @@ pub enum TokenKind {
     // Delimiters
     OpenParen,
     CloseParen,
+    OpenBracket,
+    CloseBracket,
     OpenCurly,
     CloseCurly,
     Comma,
@@ -87,6 +89,8 @@ impl fmt::Display for TokenKind {
         match self {
             Self::OpenParen => f.write_char('('),
             Self::CloseParen => f.write_char(')'),
+            Self::OpenBracket => f.write_char('['),
+            Self::CloseBracket => f.write_char(']'),
             Self::OpenCurly => f.write_char('{'),
             Self::CloseCurly => f.write_char('}'),
             Self::Comma => f.write_char(','),
