@@ -169,7 +169,7 @@ impl Resolve<'_> for Fn {
         }
 
         todo!("resolve return type annotation");
-        todo!("don't allow placeholder type in global fn scope");
+        todo!("don't allow placeholder type in fn scope");
 
         self.body.resolve(cx, env);
         env.pop();
