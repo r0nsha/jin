@@ -130,7 +130,7 @@ fn build(db: &mut Db) {
     expect!(db);
 
     db.time.start("monomorphization");
-    passes::monomorphization(db, &mut hir);
+    passes::monomorphize(db, &mut hir);
     db.time.stop();
 
     db.time.start("hir -> mir");
