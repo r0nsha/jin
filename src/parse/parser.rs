@@ -81,13 +81,15 @@ impl<'a> Parser<'a> {
 
     fn parse_function_sig(&mut self, name: Word) -> ParseResult<FnSig> {
         let (params, _) = self.parse_function_params()?;
-        Ok(FnSig { name, params })
+        todo!()
+        // Ok(FnSig { name, params })
     }
 
     fn parse_function_params(&mut self) -> ParseResult<(Vec<FnParam>, Span)> {
         self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             let ident_tok = this.eat(TokenKind::empty_ident())?;
-            Ok(FnParam { id: None, name: ident_tok.spanned_word(), span: ident_tok.span })
+            todo!()
+            // Ok(FnParam { id: None, name: ident_tok.spanned_word(), span: ident_tok.span })
         })
     }
 

@@ -8,7 +8,7 @@ use enum_as_inner::EnumAsInner;
 use crate::{
     ast::token::TokenKind,
     common::{QPath, Word},
-    db::{ModuleId, DefId},
+    db::{DefId, ModuleId},
     span::{SourceId, Span, Spanned},
 };
 
@@ -127,12 +127,14 @@ pub struct Fn {
 pub struct FnSig {
     pub name: Word,
     pub params: Vec<FnParam>,
+    pub ret: Option<Ty>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FnParam {
     pub id: Option<DefId>,
     pub name: Word,
+    pub ty: Ty,
     pub span: Span,
 }
 
@@ -323,10 +325,18 @@ pub enum LitKind {
     Unit,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum Ty {
-    Name(Word, Vec<Ty>),
+    Name(TyName),
     Unit(Span),
     Never(Span),
     Placeholder(Span),
+}
+
+#[derive(Debug, Clone)]
+pub struct TyName {
+    pub id: Option<DefId>,
+    pub args: Vec<Ty>,
+    pub name: Word,
+    pub span: Span,
 }

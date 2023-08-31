@@ -2,8 +2,8 @@ use crate::{
     ast,
     db::Db,
     hir::{
-        Bin, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, If, Item, ItemKind, Lit, LitKind,
-        Name, Return, Hir,
+        Bin, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, Hir, If, Item, ItemKind, Lit, LitKind,
+        Name, Return, Ty, TyName,
     },
     ty::tcx::TyCtxt,
 };
@@ -64,10 +64,12 @@ impl Lower<'_, FnSig> for ast::FnSig {
                 .into_iter()
                 .map(|p| FnParam {
                     id: p.id.expect("to be resolved"),
+                    annot: p.ty.lower(cx),
                     span: p.span,
                     ty: cx.tcx.types.unknown,
                 })
                 .collect::<Vec<_>>(),
+            ret: self.ret.map(|r| r.lower(cx)),
         }
     }
 }
@@ -139,12 +141,29 @@ impl Lower<'_, CallArg> for ast::CallArg {
         }
     }
 }
+
 impl Lower<'_, Block> for ast::Block {
     fn lower(self, cx: &mut LowerCtxt<'_>) -> Block {
         Block {
             exprs: self.exprs.into_iter().map(|e| e.lower(cx)).collect(),
             span: self.span,
             ty: cx.tcx.types.unknown,
+        }
+    }
+}
+
+#[allow(clippy::complexity)]
+impl Lower<'_, Ty> for ast::Ty {
+    fn lower(self, cx: &mut LowerCtxt<'_>) -> Ty {
+        match self {
+            ast::Ty::Name(name) => Ty::Name(TyName {
+                id: name.id.expect("to be resolved"),
+                args: name.args.into_iter().map(|a| a.lower(cx)).collect(),
+                span: name.span,
+            }),
+            ast::Ty::Unit(span) => Ty::Unit(span),
+            ast::Ty::Never(span) => Ty::Never(span),
+            ast::Ty::Placeholder(span) => Ty::Placeholder(span),
         }
     }
 }

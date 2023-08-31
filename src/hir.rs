@@ -167,11 +167,13 @@ pub struct Fn {
 #[derive(Debug, Clone)]
 pub struct FnSig {
     pub params: Vec<FnParam>,
+    pub ret: Option<Ty>,
 }
 
 #[derive(Debug, Clone)]
 pub struct FnParam {
     pub id: DefId,
+    pub annot: Ty,
     pub span: Span,
     pub ty: ty::Ty,
 }
@@ -274,10 +276,17 @@ pub enum LitKind {
     Unit,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone)]
 pub enum Ty {
-    Name(DefId, Vec<Ty>),
+    Name(TyName),
     Unit(Span),
     Never(Span),
     Placeholder(Span),
+}
+
+#[derive(Debug, Clone)]
+pub struct TyName {
+    pub id: DefId,
+    pub args: Vec<Ty>,
+    pub span: Span,
 }
