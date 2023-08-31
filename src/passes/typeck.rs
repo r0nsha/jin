@@ -11,7 +11,10 @@ use crate::{
     ast::BinOp,
     db::{Db, DefId},
     diagnostics::Diagnostic,
-    hir::{Bin, Block, Call, Expr, Fn, FnSig, Hir, If, Item, ItemKind, Lit, LitKind, Name, Return},
+    hir::{
+        self, Bin, Block, Call, Expr, Fn, FnSig, Hir, If, Item, ItemKind, Lit, LitKind, Name,
+        Return,
+    },
     passes::typeck::{
         error::InferError, infcx::InferCtxt, instantiate::instantiate, normalize::NormalizeTy,
         unify::Obligation,
@@ -88,6 +91,10 @@ impl InferCtxt<'_> {
         }
 
         Ok(())
+    }
+
+    fn typeck_type_annot(&mut self, ty: hir::Ty) -> Ty {
+        todo!()
     }
 }
 

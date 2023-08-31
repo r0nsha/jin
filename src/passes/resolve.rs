@@ -59,7 +59,7 @@ impl<'db> Resolver<'db> {
                         level: ScopeLevel::Global,
                         vis: Vis::Public,
                     },
-                    DefKind::BuiltinTy(ty),
+                    DefKind::Ty(ty),
                     self.tcx.types.typ,
                     Span::unknown(),
                 ),
@@ -310,7 +310,6 @@ impl Resolve<'_> for Ty {
 
 impl Resolve<'_> for TyName {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        // TODO: type arguments are not allowed on builtin type `{name}`
         if let Ok(id) = cx.lookup(env, self.name) {
             self.id = Some(id);
         } else {
