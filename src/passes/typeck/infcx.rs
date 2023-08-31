@@ -3,14 +3,13 @@ use std::cell::RefCell;
 use ena::unify::InPlaceUnificationTable;
 
 use crate::{
-    db::{Db, SymbolId},
+    db::{Db, DefId},
     ty::{tcx::TyCtxt, InferTy, IntVar, Ty, TyKind, TyVar},
 };
 
 pub struct InferCtxt<'db> {
     pub db: &'db mut Db,
     pub tcx: &'db TyCtxt,
-    // pub symbol_env: &'db TyCtxt,
     pub inner: RefCell<InferCtxtInner>,
 }
 
@@ -19,10 +18,10 @@ impl<'db> InferCtxt<'db> {
         Self { db, tcx, inner: RefCell::new(InferCtxtInner::new()) }
     }
 
-    pub fn lookup(&self, id: SymbolId) -> Ty {
-        let sym = &self.db[id];
-        assert!(*sym.ty != TyKind::Unknown, "symbol `{}` wasn't assigned a Type", sym.qpath);
-        sym.ty
+    pub fn lookup(&self, id: DefId) -> Ty {
+        let def = &self.db[id];
+        assert!(*def.ty != TyKind::Unknown, "definition `{}` wasn't assigned a Type", def.qpath);
+        def.ty
     }
 
     #[inline]

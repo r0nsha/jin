@@ -9,7 +9,7 @@ pub use lower::lower;
 use crate::{
     ast::BinOp,
     common::Word,
-    db::{Db, SymbolId},
+    db::{Db, DefId},
     span::{Span, Spanned},
     ty::{self, Typed},
 };
@@ -157,7 +157,7 @@ impl Spanned for Expr {
 
 #[derive(Debug, Clone)]
 pub struct Fn {
-    pub id: SymbolId,
+    pub id: DefId,
     pub sig: FnSig,
     pub body: Block,
     pub span: Span,
@@ -171,7 +171,7 @@ pub struct FnSig {
 
 #[derive(Debug, Clone)]
 pub struct FnParam {
-    pub id: SymbolId,
+    pub id: DefId,
     pub span: Span,
     pub ty: ty::Ty,
 }
@@ -255,7 +255,7 @@ pub struct Bin {
 
 #[derive(Debug, Clone)]
 pub struct Name {
-    pub id: SymbolId,
+    pub id: DefId,
     pub span: Span,
     pub ty: ty::Ty,
 }
@@ -276,7 +276,7 @@ pub enum LitKind {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Ty {
-    Name(SymbolId, Vec<Ty>),
+    Name(DefId, Vec<Ty>),
     Unit(Span),
     Never(Span),
     Placeholder(Span),

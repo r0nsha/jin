@@ -9,7 +9,7 @@ use ustr::UstrMap;
 
 use crate::{
     ast::BinOp,
-    db::{Db, SymbolId},
+    db::{Db, DefId},
     diagnostics::Diagnostic,
     hir::{Bin, Block, Call, Expr, Fn, FnSig, Hir, If, Item, ItemKind, Lit, LitKind, Name, Return},
     passes::typeck::{
@@ -93,7 +93,7 @@ impl InferCtxt<'_> {
 }
 
 struct FnCtxt {
-    pub id: SymbolId,
+    pub id: DefId,
     pub ret_ty: Ty,
 }
 

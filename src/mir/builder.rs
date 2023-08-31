@@ -4,7 +4,7 @@ use anyhow::{bail, Result};
 
 use crate::{
     ast::BinOp,
-    db::SymbolId,
+    db::DefId,
     mir::{
         Bin, Block, BlockId, BoolLit, Br, BrIf, Call, Function, FunctionParam, Inst, IntLit, Load,
         Phi, PhiValue, Return, UnitLit, Unreachable, Value, ValueId,
@@ -19,7 +19,7 @@ pub struct FunctionBuilder {
 }
 
 impl FunctionBuilder {
-    pub fn new(id: SymbolId) -> Self {
+    pub fn new(id: DefId) -> Self {
         Self { f: Function::new(id), current_block: BlockId::first() }
     }
 
@@ -72,7 +72,7 @@ impl FunctionBuilder {
     }
 
     #[inline]
-    pub fn create_param(&mut self, id: SymbolId) {
+    pub fn create_param(&mut self, id: DefId) {
         self.f.params.push(FunctionParam { id });
     }
 
@@ -148,7 +148,7 @@ impl FunctionBuilder {
         value
     }
 
-    pub fn build_load(&mut self, ty: Ty, id: SymbolId, span: Span) -> ValueId {
+    pub fn build_load(&mut self, ty: Ty, id: DefId, span: Span) -> ValueId {
         let value = self.create_value(ty);
         self.current_block_mut().add_inst(Inst::Load(Load { value, id, span }));
         value

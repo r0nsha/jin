@@ -3,7 +3,7 @@ use pretty::RcDoc;
 use super::{Block, Function, Inst, Mir, ValueId};
 use crate::{
     ast::BinOp,
-    db::{Db, ScopeLevel, SymbolId},
+    db::{Db, DefId, ScopeLevel},
     mir::BlockId,
     ty::TyKind,
 };
@@ -145,13 +145,13 @@ impl<'db, 'd> ToDoc<'db, 'd> for BlockId {
     }
 }
 
-impl<'db, 'd> ToDoc<'db, 'd> for SymbolId {
+impl<'db, 'd> ToDoc<'db, 'd> for DefId {
     fn to_doc(&self, db: &'db Db, _fun: &'db Function) -> RcDoc<'d, ()> {
-        let sym = &db[*self];
+        let def = &db[*self];
 
-        let name = match sym.scope.level {
-            ScopeLevel::Global => sym.qpath.standard_full_name(),
-            ScopeLevel::Local(..) => sym.qpath.name().to_string(),
+        let name = match def.scope.level {
+            ScopeLevel::Global => def.qpath.standard_full_name(),
+            ScopeLevel::Local(..) => def.qpath.name().to_string(),
         };
 
         RcDoc::text(format!("@{name}"))

@@ -5,10 +5,7 @@ use ustr::{ustr, Ustr, UstrMap};
 use crate::{
     ast::{Ast, Bin, Block, Call, CallArg, Expr, Fn, If, Item, Module, Name, Return},
     common::{QPath, Word},
-    db::{
-        Db, FunctionInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, SymbolId, SymbolInfo,
-        SymbolInfoKind, Vis,
-    },
+    db::{Db, Def, DefId, DefKind, FunctionInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
     diagnostics::{Diagnostic, Label},
     span::{Span, Spanned},
     ty::tcx::TyCtxt,
@@ -61,13 +58,13 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn declare_global_item(&mut self, module_id: ModuleId, item: &mut Item) -> SymbolId {
+    fn declare_global_item(&mut self, module_id: ModuleId, item: &mut Item) -> DefId {
         match item {
             Item::Fn(fun) => {
-                let id = self.declare_global_symbol(
+                let id = self.declare_global_def(
                     module_id,
                     Vis::Public,
-                    SymbolInfoKind::Function(FunctionInfo::Orphan),
+                    DefKind::Function(FunctionInfo::Orphan),
                     fun.sig.name,
                 );
 
@@ -78,24 +75,23 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn declare_global_symbol(
+    fn declare_global_def(
         &mut self,
         module_id: ModuleId,
         vis: Vis,
-        kind: SymbolInfoKind,
+        kind: DefKind,
         name: Word,
-    ) -> SymbolId {
+    ) -> DefId {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].name.clone().child(name.name());
 
-        let id =
-            SymbolInfo::alloc(self.db, qpath, scope, kind, self.tcx.types.unknown, name.span());
+        let id = Def::alloc(self.db, qpath, scope, kind, self.tcx.types.unknown, name.span());
 
         if let Some(prev_id) = self.global_scope.insert(module_id, name.name(), id) {
-            let sym = &self.db[prev_id];
+            let def = &self.db[prev_id];
             self.errors.push(ResolveError::MultipleItems {
-                name: sym.qpath.name(),
-                prev_span: sym.span,
+                name: def.qpath.name(),
+                prev_span: def.span,
                 dup_span: name.span(),
             });
         }
@@ -103,14 +99,11 @@ impl<'db> Resolver<'db> {
         id
     }
 
-    fn declare_item(&mut self, env: &mut Env, item: &mut Item) -> SymbolId {
+    fn declare_item(&mut self, env: &mut Env, item: &mut Item) -> DefId {
         match item {
             Item::Fn(fun) => {
-                let id = self.declare_symbol(
-                    env,
-                    SymbolInfoKind::Function(FunctionInfo::Orphan),
-                    fun.sig.name,
-                );
+                let id =
+                    self.declare_def(env, DefKind::Function(FunctionInfo::Orphan), fun.sig.name);
 
                 fun.id = Some(id);
 
@@ -119,8 +112,8 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn declare_symbol(&mut self, env: &mut Env, kind: SymbolInfoKind, name: Word) -> SymbolId {
-        let id = SymbolInfo::alloc(
+    fn declare_def(&mut self, env: &mut Env, kind: DefKind, name: Word) -> DefId {
+        let id = Def::alloc(
             self.db,
             env.scope_path(self.db).child(name.name()),
             ScopeInfo { module_id: env.module_id, level: env.scope_level(), vis: Vis::Private },
@@ -171,7 +164,7 @@ impl Resolve<'_> for Fn {
         env.push(self.sig.name.name(), ScopeKind::Fun);
 
         for param in &mut self.sig.params {
-            param.id = Some(cx.declare_symbol(env, SymbolInfoKind::Variable, param.name));
+            param.id = Some(cx.declare_def(env, DefKind::Variable, param.name));
         }
 
         self.body.resolve(cx, env);
@@ -248,7 +241,7 @@ impl Resolve<'_> for Name {
 
 #[derive(Debug)]
 pub struct GlobalScope {
-    modules: HashMap<(ModuleId, Ustr), SymbolId>,
+    modules: HashMap<(ModuleId, Ustr), DefId>,
 }
 
 impl GlobalScope {
@@ -256,11 +249,11 @@ impl GlobalScope {
         Self { modules: HashMap::new() }
     }
 
-    pub fn lookup(&self, module_id: ModuleId, name: Ustr) -> Option<SymbolId> {
+    pub fn lookup(&self, module_id: ModuleId, name: Ustr) -> Option<DefId> {
         self.modules.get(&(module_id, name)).copied()
     }
 
-    pub fn insert(&mut self, module_id: ModuleId, name: Ustr, id: SymbolId) -> Option<SymbolId> {
+    pub fn insert(&mut self, module_id: ModuleId, name: Ustr, id: DefId) -> Option<DefId> {
         self.modules.insert((module_id, name), id)
     }
 }
@@ -278,7 +271,7 @@ impl Env {
     }
 
     pub fn push(&mut self, name: Ustr, kind: ScopeKind) {
-        self.scopes.push(Scope { kind, name, symbols: UstrMap::default() });
+        self.scopes.push(Scope { kind, name, defs: UstrMap::default() });
     }
 
     pub fn pop(&mut self) -> Option<Scope> {
@@ -293,23 +286,23 @@ impl Env {
         self.scopes.last_mut().expect("to have a scope")
     }
 
-    pub fn insert(&mut self, k: Ustr, v: SymbolId) {
-        self.scopes.last_mut().unwrap().symbols.insert(k, v);
+    pub fn insert(&mut self, k: Ustr, v: DefId) {
+        self.scopes.last_mut().unwrap().defs.insert(k, v);
     }
 
-    pub fn lookup(&self, k: Ustr) -> Option<&SymbolId> {
+    pub fn lookup(&self, k: Ustr) -> Option<&DefId> {
         self.lookup_depth(k).map(|r| r.1)
     }
 
     #[allow(unused)]
-    pub fn lookup_mut(&mut self, k: Ustr) -> Option<&mut SymbolId> {
+    pub fn lookup_mut(&mut self, k: Ustr) -> Option<&mut DefId> {
         self.lookup_depth_mut(k).map(|r| r.1)
     }
 
     #[allow(unused)]
-    pub fn lookup_depth(&self, k: Ustr) -> Option<(usize, &SymbolId)> {
+    pub fn lookup_depth(&self, k: Ustr) -> Option<(usize, &DefId)> {
         for (depth, scope) in self.scopes.iter().enumerate().rev() {
-            if let Some(value) = scope.symbols.get(&k) {
+            if let Some(value) = scope.defs.get(&k) {
                 return Some((depth + 1, value));
             }
         }
@@ -317,9 +310,9 @@ impl Env {
     }
 
     #[allow(unused)]
-    pub fn lookup_depth_mut(&mut self, k: Ustr) -> Option<(usize, &mut SymbolId)> {
+    pub fn lookup_depth_mut(&mut self, k: Ustr) -> Option<(usize, &mut DefId)> {
         for (depth, scope) in self.scopes.iter_mut().enumerate().rev() {
-            if let Some(value) = scope.symbols.get_mut(&k) {
+            if let Some(value) = scope.defs.get_mut(&k) {
                 return Some((depth + 1, value));
             }
         }
@@ -358,17 +351,17 @@ impl Env {
 pub struct Scope {
     pub kind: ScopeKind,
     pub name: Ustr,
-    pub symbols: UstrMap<SymbolId>,
+    pub defs: UstrMap<DefId>,
 }
 
 impl Scope {
-    fn insert(&mut self, name: Ustr, id: SymbolId) {
-        self.symbols.insert(name, id);
+    fn insert(&mut self, name: Ustr, id: DefId) {
+        self.defs.insert(name, id);
     }
 
     #[allow(unused)]
-    fn get(&mut self, name: Ustr) -> Option<SymbolId> {
-        self.symbols.get(&name).copied()
+    fn get(&mut self, name: Ustr) -> Option<DefId> {
+        self.defs.get(&name).copied()
     }
 }
 

@@ -12,7 +12,7 @@ use inkwell::{
 
 use crate::{
     ast::{BinOp, CmpOp},
-    db::{Db, SymbolId},
+    db::{Db, DefId},
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
     mir::{
         Bin, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, Load, Mir, Phi,
@@ -30,27 +30,27 @@ pub struct Generator<'db, 'cx> {
     pub builder: &'db Builder<'cx>,
     pub isize_ty: IntType<'cx>,
 
-    pub symbol_values: HashMap<SymbolId, SymbolValue<'cx>>,
+    pub def_values: HashMap<DefId, DefValue<'cx>>,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum SymbolValue<'cx> {
+pub enum DefValue<'cx> {
     Function(FunctionValue<'cx>),
     Variable(BasicValueEnum<'cx>),
 }
 
-impl<'cx> SymbolValue<'cx> {
+impl<'cx> DefValue<'cx> {
     pub fn as_function_value(self) -> FunctionValue<'cx> {
         match self {
-            SymbolValue::Function(f) => f,
-            SymbolValue::Variable(..) => panic!("expected Function, found {self:?}"),
+            DefValue::Function(f) => f,
+            DefValue::Variable(..) => panic!("expected Function, found {self:?}"),
         }
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct FunctionState<'cx> {
-    pub id: SymbolId,
+    pub id: DefId,
     pub function_value: FunctionValue<'cx>,
     pub prologue_block: BasicBlock<'cx>,
     pub current_block: BasicBlock<'cx>,
@@ -60,7 +60,7 @@ pub struct FunctionState<'cx> {
 
 impl<'cx> FunctionState<'cx> {
     pub fn new(
-        id: SymbolId,
+        id: DefId,
         function_value: FunctionValue<'cx>,
         prologue_block: BasicBlock<'cx>,
         blocks: HashMap<BlockId, BasicBlock<'cx>>,
@@ -116,7 +116,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         self.builder.position_at_end(entry_block);
 
         let main_function = self.db.main_function().expect("to have a main function");
-        let main_function_value = self.symbol_value(main_function.id).as_function_value();
+        let main_function_value = self.def_value(main_function.id).as_function_value();
 
         self.builder.build_direct_call(main_function_value, &[], "call_main");
 
@@ -133,7 +133,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             let llvm_ty = fun_info.ty.as_fn().expect("a function type").llvm_ty(self);
 
             let function = self.module.add_function(&name, llvm_ty, Some(Linkage::Private));
-            self.symbol_values.insert(id, SymbolValue::Function(function));
+            self.def_values.insert(id, DefValue::Function(function));
         }
     }
 
@@ -147,13 +147,13 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         let id = fun.id();
         let fun_info = &self.db[id];
 
-        let function_value = self.symbol_values.get(&fun.id()).map_or_else(
+        let function_value = self.def_values.get(&fun.id()).map_or_else(
             || panic!("function {} to be declared", fun_info.qpath.standard_full_name()),
             |f| f.as_function_value(),
         );
 
         for (param, value) in fun.params().iter().zip(function_value.get_param_iter()) {
-            self.symbol_values.insert(param.id(), SymbolValue::Variable(value));
+            self.def_values.insert(param.id(), DefValue::Variable(value));
         }
 
         let prologue_block = self.context.append_basic_block(function_value, "decls");
@@ -178,8 +178,8 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     }
 
     #[track_caller]
-    fn symbol_value(&self, id: SymbolId) -> SymbolValue<'cx> {
-        *self.symbol_values.get(&id).expect("id in def_value to be defined")
+    fn def_value(&self, id: DefId) -> DefValue<'cx> {
+        *self.def_values.get(&id).expect("id in def_value to be defined")
     }
 }
 
@@ -306,11 +306,9 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Load {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let value = match cx.symbol_value(self.id) {
-            SymbolValue::Function(f) => {
-                f.as_global_value().as_pointer_value().as_basic_value_enum()
-            }
-            SymbolValue::Variable(v) => v,
+        let value = match cx.def_value(self.id) {
+            DefValue::Function(f) => f.as_global_value().as_pointer_value().as_basic_value_enum(),
+            DefValue::Variable(v) => v,
         };
 
         state.set_value(self.value, value);

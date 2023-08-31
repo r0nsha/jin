@@ -1,8 +1,8 @@
 use std::collections::HashSet;
 
 use crate::{
+    hir::{Bin, Block, Call, Expr, Fn, FnSig, Hir, If, Item, ItemKind, Return},
     passes::typeck::infcx::{InferCtxt, InferCtxtInner},
-    hir::{Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Return, Hir},
     ty::{FnTy, FnTyParam, InferTy, Ty, TyKind, TyVar, Typed},
 };
 
@@ -12,8 +12,8 @@ impl<'db> InferCtxt<'db> {
 
         let mut infcx = self.inner.borrow_mut();
 
-        for sym in self.db.symbols.iter_mut() {
-            sym.ty = substitute_ty(&mut infcx, sym.ty, &mut unbound_vars);
+        for def in self.db.defs.iter_mut() {
+            def.ty = substitute_ty(&mut infcx, def.ty, &mut unbound_vars);
         }
 
         for item in &mut hir.items {

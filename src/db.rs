@@ -25,14 +25,14 @@ pub struct Db {
 
     pub sources: Sources,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
-    pub symbols: IndexVec<SymbolId, SymbolInfo>,
+    pub defs: IndexVec<DefId, Def>,
 
     pub diagnostics: Diagnostics,
 
     root_dir: PathBuf,
     main_source: SourceId,
     main_module: Option<ModuleId>,
-    main_fun: Option<SymbolId>,
+    main_fun: Option<DefId>,
 }
 
 impl Db {
@@ -54,7 +54,7 @@ impl Db {
 
             sources,
             modules: IndexVec::new(),
-            symbols: IndexVec::new(),
+            defs: IndexVec::new(),
 
             diagnostics: Diagnostics::new(),
 
@@ -98,15 +98,15 @@ impl Db {
     }
 
     #[allow(unused)]
-    pub fn main_function_id(&self) -> Option<SymbolId> {
+    pub fn main_function_id(&self) -> Option<DefId> {
         self.main_fun
     }
 
-    pub fn main_function(&self) -> Option<&SymbolInfo> {
-        self.main_fun.and_then(|id| self.symbols.get(id))
+    pub fn main_function(&self) -> Option<&Def> {
+        self.main_fun.and_then(|id| self.defs.get(id))
     }
 
-    pub fn set_main_fun(&mut self, id: SymbolId) {
+    pub fn set_main_fun(&mut self, id: DefId) {
         self.main_fun = Some(id);
     }
 
@@ -138,7 +138,7 @@ macro_rules! new_db_key {
 }
 
 new_db_key!(ModuleId -> modules : ModuleInfo);
-new_db_key!(SymbolId -> symbols : SymbolInfo);
+new_db_key!(DefId -> defs : Def);
 
 #[derive(Debug, Clone)]
 pub struct ModuleInfo {
@@ -164,12 +164,12 @@ impl ModuleInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct SymbolInfo {
-    pub id: SymbolId,
+pub struct Def {
+    pub id: DefId,
     pub name: Ustr,
     pub qpath: QPath,
     pub scope: ScopeInfo,
-    pub kind: Box<SymbolInfoKind>,
+    pub kind: Box<DefKind>,
     pub ty: Ty,
     pub span: Span,
 }
@@ -182,21 +182,21 @@ pub struct ScopeInfo {
 }
 
 #[derive(Debug, Clone)]
-pub enum SymbolInfoKind {
+pub enum DefKind {
     Function(FunctionInfo),
     Variable,
 }
 
-impl SymbolInfo {
+impl Def {
     pub fn alloc(
         db: &mut Db,
         qpath: QPath,
         scope: ScopeInfo,
-        kind: SymbolInfoKind,
+        kind: DefKind,
         ty: Ty,
         span: Span,
-    ) -> SymbolId {
-        db.symbols.push_with_key(|id| Self {
+    ) -> DefId {
+        db.defs.push_with_key(|id| Self {
             id,
             name: qpath.name(),
             qpath,
@@ -208,7 +208,7 @@ impl SymbolInfo {
     }
 }
 
-impl Typed for SymbolInfo {
+impl Typed for Def {
     fn ty(&self) -> Ty {
         self.ty
     }

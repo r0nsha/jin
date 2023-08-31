@@ -39,7 +39,7 @@ pub enum TokenKind {
     CloseCurly,
     Comma,
 
-    // Symbols
+    // defs
     Eq,
     EqEq,
     BangEq,

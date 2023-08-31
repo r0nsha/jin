@@ -121,13 +121,12 @@ fn build(db: &mut Db) {
         hir.pretty_print(db).expect("hir printing to work");
     }
 
-    // TODO: uncomment
-    // db.timings.start("check entry");
-    // if let Err(diag) = passes::check_entry(db) {
-    //     db.diagnostics.add(diag);
-    // }
-    // db.timings.stop();
-    // expect!(db);
+    db.timings.start("check entry");
+    if let Err(diag) = passes::check_entry(db) {
+        db.diagnostics.add(diag);
+    }
+    db.timings.stop();
+    expect!(db);
 
     db.timings.start("hir -> mir");
     let mir = mir::lower(db, &hir).expect("mir lowering to succeed");

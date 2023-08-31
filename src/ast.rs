@@ -8,7 +8,7 @@ use enum_as_inner::EnumAsInner;
 use crate::{
     ast::token::TokenKind,
     common::{QPath, Word},
-    db::{ModuleId, SymbolId},
+    db::{ModuleId, DefId},
     span::{SourceId, Span, Spanned},
 };
 
@@ -117,7 +117,7 @@ impl Spanned for Expr {
 
 #[derive(Debug, Clone)]
 pub struct Fn {
-    pub id: Option<SymbolId>,
+    pub id: Option<DefId>,
     pub sig: FnSig,
     pub body: Block,
     pub span: Span,
@@ -131,7 +131,7 @@ pub struct FnSig {
 
 #[derive(Debug, Clone)]
 pub struct FnParam {
-    pub id: Option<SymbolId>,
+    pub id: Option<DefId>,
     pub name: Word,
     pub span: Span,
 }
@@ -305,7 +305,7 @@ impl TryFrom<TokenKind> for BinOp {
 
 #[derive(Debug, Clone)]
 pub struct Name {
-    pub id: Option<SymbolId>,
+    pub id: Option<DefId>,
     pub name: Word,
     pub span: Span,
 }

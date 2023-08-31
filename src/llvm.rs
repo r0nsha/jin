@@ -49,7 +49,7 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> PathBuf {
         module: &module,
         builder: &builder,
         isize_ty: context.ptr_sized_int_type(&target_machine.get_target_data(), None),
-        symbol_values: HashMap::default(),
+        def_values: HashMap::default(),
     };
 
     cx.db.timings.start("llvm generation");

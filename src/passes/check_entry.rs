@@ -1,5 +1,5 @@
 use crate::{
-    db::{self, Db, SymbolInfoKind},
+    db::{self, Db, DefKind},
     diagnostics::{Diagnostic, Label},
     span::Span,
     ty::TyKind,
@@ -13,10 +13,10 @@ pub fn check_entry(db: &mut Db) -> Result<(), Diagnostic> {
 fn check_entry_exists(db: &mut Db) -> Result<(), Diagnostic> {
     let main_module_id = db.main_module_id().unwrap();
 
-    let main_fun_id = if let Some(main_fun) = db.symbols.iter().find(|sym| {
-        sym.scope.module_id == main_module_id
-            && matches!(sym.kind.as_ref(), SymbolInfoKind::Function(db::FunctionInfo::Orphan))
-            && sym.qpath.name() == "main"
+    let main_fun_id = if let Some(main_fun) = db.defs.iter().find(|def| {
+        def.scope.module_id == main_module_id
+            && matches!(def.kind.as_ref(), DefKind::Function(db::FunctionInfo::Orphan))
+            && def.qpath.name() == "main"
     }) {
         main_fun.id
     } else {

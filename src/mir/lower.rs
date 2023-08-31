@@ -3,9 +3,9 @@ use anyhow::Result;
 use crate::{
     ast::BinOp,
     db::Db,
-    mir::{builder::FunctionBuilder, Function, Mir, SymbolId, ValueId},
-    span::Spanned,
     hir::{self, Hir},
+    mir::{builder::FunctionBuilder, DefId, Function, Mir, ValueId},
+    span::Spanned,
     ty::{Ty, TyKind, Typed},
 };
 
@@ -37,7 +37,7 @@ struct LowerFunctionCtxt<'db> {
 }
 
 impl<'db> LowerFunctionCtxt<'db> {
-    fn new(db: &'db mut Db, mir: &'db mut Mir, fun_id: SymbolId) -> Self {
+    fn new(db: &'db mut Db, mir: &'db mut Mir, fun_id: DefId) -> Self {
         Self { db, mir, bx: FunctionBuilder::new(fun_id) }
     }
 
@@ -211,8 +211,8 @@ impl<'db> LowerFunctionCtxt<'db> {
     }
 
     fn lower_name(&mut self, name: &hir::Name) -> ValueId {
-        let symbol = &self.db[name.id];
-        self.bx.build_load(symbol.ty, symbol.id, name.span)
+        let def = &self.db[name.id];
+        self.bx.build_load(def.ty, def.id, name.span)
     }
 
     fn lower_lit(&mut self, lit: &hir::Lit) -> ValueId {
