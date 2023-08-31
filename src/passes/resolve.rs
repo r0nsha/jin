@@ -4,7 +4,8 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     ast::{
-        Ast, Bin, Block, Call, CallArg, Expr, Fn, FnSig, If, Item, Module, Name, Return, Ty, TyName,
+        Ast, Bin, Block, Call, CallArg, Expr, Fn, FnSig, If, Item, Module, Name, Return, Ty,
+        TyName, TyParam,
     },
     common::{QPath, Word},
     db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
@@ -175,6 +176,31 @@ impl<'db> Resolver<'db> {
             .or_else(|| self.builtins.get(&name).copied())
             .ok_or(ResolveError::NameNotFound(word))
     }
+
+    fn resolve_ty_params(&mut self, env: &mut Env, ty_params: &mut [TyParam]) {
+        let mut defined_ty_params = UstrMap::<Span>::default();
+
+        for (index, ty_param) in ty_params.iter_mut().enumerate() {
+            ty_param.id = Some(self.declare_def(
+                env,
+                DefKind::Ty(ty::Ty::new(TyKind::Param(ParamTy {
+                    name: ty_param.name.name(),
+                    index,
+                }))),
+                ty_param.name,
+            ));
+
+            if let Some(prev_span) =
+                defined_ty_params.insert(ty_param.name.name(), ty_param.name.span())
+            {
+                self.errors.push(ResolveError::MultipleTyParams {
+                    name: ty_param.name.name(),
+                    prev_span,
+                    dup_span: ty_param.name.span(),
+                });
+            }
+        }
+    }
 }
 
 trait Resolve<'db> {
@@ -221,20 +247,21 @@ impl Resolve<'_> for FnSig {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         assert!(env.in_kind(ScopeKind::Fn), "FnSig must be resolved inside a ScopeKind::Fn");
 
-        for (index, ty_param) in self.ty_params.iter_mut().enumerate() {
-            ty_param.id = Some(cx.declare_def(
-                env,
-                DefKind::Ty(ty::Ty::new(TyKind::Param(ParamTy {
-                    name: ty_param.name.name(),
-                    index,
-                }))),
-                ty_param.name,
-            ));
-        }
+        cx.resolve_ty_params(env, &mut self.ty_params);
+
+        let mut defined_params = UstrMap::<Span>::default();
 
         for param in &mut self.params {
             param.id = Some(cx.declare_def(env, DefKind::Variable, param.name));
             param.ty.resolve(cx, env);
+
+            if let Some(prev_span) = defined_params.insert(param.name.name(), param.name.span()) {
+                cx.errors.push(ResolveError::MultipleParams {
+                    name: param.name.name(),
+                    prev_span,
+                    dup_span: param.name.span(),
+                });
+            }
         }
 
         if let Some(ret) = self.ret.as_mut() {
@@ -463,6 +490,8 @@ pub enum ScopeKind {
 
 pub(super) enum ResolveError {
     MultipleItems { name: Ustr, prev_span: Span, dup_span: Span },
+    MultipleParams { name: Ustr, prev_span: Span, dup_span: Span },
+    MultipleTyParams { name: Ustr, prev_span: Span, dup_span: Span },
     NameNotFound(Word),
     InvalidReturn(Span),
     InvalidPlaceholderTy(Span),
@@ -476,13 +505,35 @@ impl From<ResolveError> for Diagnostic {
                     .with_message(format!("the item `{name}` is defined multiple times"))
                     .with_label(
                         Label::primary(dup_span)
-                            .with_message(format!("`{name}` is redefined here")),
+                            .with_message(format!("`{name}` defined again here")),
                     )
                     .with_label(
                         Label::secondary(prev_span)
-                            .with_message(format!("previous item `{name}` defined here")),
+                            .with_message(format!("first definition of `{name}`")),
                     )
                     .with_help("you can only define items once in a module")
+            }
+            ResolveError::MultipleTyParams { name, prev_span, dup_span } => {
+                Self::error("resolve::multiple_type_params")
+                    .with_message(format!(
+                        "the name `{name}` is already used as a type parameter name"
+                    ))
+                    .with_label(
+                        Label::primary(dup_span).with_message(format!("`{name}` used again here")),
+                    )
+                    .with_label(
+                        Label::secondary(prev_span).with_message(format!("first use of `{name}`")),
+                    )
+            }
+            ResolveError::MultipleParams { name, prev_span, dup_span } => {
+                Self::error("resolve::multiple_params")
+                    .with_message(format!("the name `{name}` is already used as a parameter name"))
+                    .with_label(
+                        Label::primary(dup_span).with_message(format!("`{name}` used again here")),
+                    )
+                    .with_label(
+                        Label::secondary(prev_span).with_message(format!("first use of `{name}`")),
+                    )
             }
             ResolveError::NameNotFound(name) => Self::error("resolve::name_not_found")
                 .with_message(format!("cannot find `{name}` in this scope"))
