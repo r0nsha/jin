@@ -336,7 +336,7 @@ pub enum Ty {
 #[derive(Debug, Clone)]
 pub struct TyName {
     pub id: Option<DefId>,
-    pub args: Vec<Ty>,
     pub name: Word,
+    pub args: Vec<Ty>,
     pub span: Span,
 }

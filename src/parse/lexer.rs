@@ -59,7 +59,13 @@ impl<'s> Lexer<'s> {
                             TokenKind::Eq
                         }
                     }
-                    '!' if self.eat('=') => TokenKind::BangEq,
+                    '!' => {
+                        if self.eat('=') {
+                            TokenKind::BangEq
+                        } else {
+                            TokenKind::Bang
+                        }
+                    }
                     '*' => TokenKind::Star,
                     '/' => {
                         if self.eat('/') {
@@ -124,6 +130,7 @@ impl<'s> Lexer<'s> {
                 self.next();
             } else {
                 return match self.range(start) {
+                    "_" => TokenKind::Placeholder,
                     "return" => TokenKind::Return,
                     "fn" => TokenKind::Fn,
                     "if" => TokenKind::If,

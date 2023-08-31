@@ -4,7 +4,7 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         Bin, BinOp, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, If, Item, Lit, LitKind, Module,
-        Name, Return,
+        Name, Return, Ty, TyName,
     },
     common::{QPath, Word},
     db::Db,
@@ -81,15 +81,21 @@ impl<'a> Parser<'a> {
 
     fn parse_function_sig(&mut self, name: Word) -> ParseResult<FnSig> {
         let (params, _) = self.parse_function_params()?;
-        todo!()
-        // Ok(FnSig { name, params })
+
+        let ret = if self.peek_is(TokenKind::Eq) || self.peek_is(TokenKind::OpenCurly) {
+            None
+        } else {
+            Some(self.parse_ty()?)
+        };
+
+        Ok(FnSig { name, params, ret })
     }
 
     fn parse_function_params(&mut self) -> ParseResult<(Vec<FnParam>, Span)> {
         self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
-            let ident_tok = this.eat(TokenKind::empty_ident())?;
-            todo!()
-            // Ok(FnParam { id: None, name: ident_tok.spanned_word(), span: ident_tok.span })
+            let ident = this.eat(TokenKind::empty_ident())?;
+            let ty = this.parse_ty()?;
+            Ok(FnParam { id: None, name: ident.spanned_word(), ty, span: ident.span })
         })
     }
 
@@ -352,6 +358,34 @@ impl<'a> Parser<'a> {
         };
 
         Ok(expr)
+    }
+
+    fn parse_ty(&mut self) -> ParseResult<Ty> {
+        let tok = self.eat_any()?;
+
+        let ty = match tok.kind {
+            TokenKind::Ident(..) => Ty::Name(TyName {
+                id: None,
+                name: tok.spanned_word(),
+                args: vec![],
+                span: tok.span,
+            }),
+            TokenKind::OpenParen => {
+                let end = self.eat(TokenKind::CloseParen)?.span;
+                Ty::Unit(tok.span.merge(end))
+            }
+            TokenKind::Bang => Ty::Never(tok.span),
+            TokenKind::Placeholder => Ty::Placeholder(tok.span),
+            _ => {
+                return Err(ParseError::UnexpectedToken {
+                    expected: "a type".to_string(),
+                    found: tok.kind,
+                    span: tok.span,
+                })
+            }
+        };
+
+        Ok(ty)
     }
 
     fn parse_if(&mut self) -> ParseResult<If> {

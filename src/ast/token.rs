@@ -42,6 +42,7 @@ pub enum TokenKind {
     // defs
     Eq,
     EqEq,
+    Bang,
     BangEq,
     Star,
     FwSlash,
@@ -62,6 +63,7 @@ pub enum TokenKind {
 
     // Ident & Keywords
     Ident(Ustr),
+    Placeholder,
     Return,
     Fn,
     If,
@@ -90,6 +92,7 @@ impl fmt::Display for TokenKind {
             Self::Comma => f.write_char(','),
             Self::Eq => f.write_char('='),
             Self::EqEq => f.write_str("=="),
+            Self::Bang => f.write_str("!"),
             Self::BangEq => f.write_str("!="),
             Self::Star => f.write_str("*"),
             Self::FwSlash => f.write_str("/"),
@@ -108,6 +111,7 @@ impl fmt::Display for TokenKind {
             Self::Pipe => f.write_str("|"),
             Self::PipePipe => f.write_str("||"),
             Self::Ident(..) => f.write_str("identifier"),
+            Self::Placeholder => f.write_str("_"),
             Self::Return => f.write_str("`return`"),
             Self::If => f.write_str("`if`"),
             Self::Else => f.write_str("`else`"),
