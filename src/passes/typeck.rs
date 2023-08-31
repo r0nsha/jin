@@ -41,7 +41,7 @@ impl InferCtxt<'_> {
     fn typeck_function_signatures(&mut self, hir: &mut Hir) {
         for item in &mut hir.items {
             match &mut item.kind {
-                ItemKind::Function(fun) => {
+                ItemKind::Fn(fun) => {
                     fun.ty = self.typeck_function_sig(&mut fun.sig);
                     self.db[fun.id].ty = fun.ty;
                 }
@@ -80,7 +80,7 @@ impl InferCtxt<'_> {
     fn typeck_function_bodies(&mut self, hir: &mut Hir) -> InferResult<()> {
         for item in &mut hir.items {
             match &mut item.kind {
-                ItemKind::Function(fun) => {
+                ItemKind::Fn(fun) => {
                     let mut fx = FnCtxt::from_function(fun);
                     fun.infer(self, &mut fx)?;
                 }
@@ -124,7 +124,7 @@ impl Infer<'_> for Expr {
 impl Infer<'_> for Item {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
         match &mut self.kind {
-            ItemKind::Function(fun) => fun.infer(cx, fx)?,
+            ItemKind::Fn(fun) => fun.infer(cx, fx)?,
         }
 
         self.ty = cx.tcx.types.unit;

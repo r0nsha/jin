@@ -43,7 +43,7 @@ impl PrettyPrint for Expr {
 impl PrettyPrint for Item {
     fn pretty_print(&self, cx: &mut PPCtxt) {
         match &self.kind {
-            ItemKind::Function(fun) => fun.pretty_print(cx),
+            ItemKind::Fn(fun) => fun.pretty_print(cx),
         }
     }
 }

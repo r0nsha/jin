@@ -21,7 +21,7 @@ pub fn lower(db: &mut Db, hir: &Hir) -> Result<Mir> {
 
 fn lower_item(db: &mut Db, mir: &mut Mir, item: &hir::Item) -> Result<()> {
     match &item.kind {
-        hir::ItemKind::Function(fun) => {
+        hir::ItemKind::Fn(fun) => {
             let fun = LowerFunctionCtxt::new(db, mir, fun.id).lower_function(fun)?;
             mir.add_function(fun);
         }

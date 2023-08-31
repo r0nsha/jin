@@ -56,19 +56,19 @@ impl Typed for Item {
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum ItemKind {
-    Function(Fn),
+    Fn(Fn),
 }
 
 impl Spanned for ItemKind {
     fn span(&self) -> Span {
         match self {
-            Self::Function(x) => x.span,
+            Self::Fn(x) => x.span,
         }
     }
 
     fn span_mut(&mut self) -> &mut Span {
         match self {
-            Self::Function(x) => &mut x.span,
+            Self::Fn(x) => &mut x.span,
         }
     }
 }
@@ -76,13 +76,13 @@ impl Spanned for ItemKind {
 impl Typed for ItemKind {
     fn ty(&self) -> ty::Ty {
         match self {
-            Self::Function(x) => x.ty,
+            Self::Fn(x) => x.ty,
         }
     }
 
     fn ty_mut(&mut self) -> &mut ty::Ty {
         match self {
-            Self::Function(x) => &mut x.ty,
+            Self::Fn(x) => &mut x.ty,
         }
     }
 }

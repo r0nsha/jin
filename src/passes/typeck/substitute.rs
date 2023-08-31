@@ -90,7 +90,7 @@ impl Substitute<'_> for Expr {
 impl Substitute<'_> for Item {
     fn substitute(&mut self, infcx: &mut InferCtxtInner, unbound_vars: &mut HashSet<TyVar>) {
         match &mut self.kind {
-            ItemKind::Function(fun) => fun.substitute(infcx, unbound_vars),
+            ItemKind::Fn(fun) => fun.substitute(infcx, unbound_vars),
         }
 
         self.ty = substitute_ty(infcx, self.ty, unbound_vars);

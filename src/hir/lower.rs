@@ -37,7 +37,7 @@ impl Lower<'_, Item> for ast::Item {
     fn lower(self, cx: &mut LowerCtxt<'_>) -> Item {
         Item {
             kind: match self {
-                Self::Fn(fun) => ItemKind::Function(fun.lower(cx)),
+                Self::Fn(fun) => ItemKind::Fn(fun.lower(cx)),
             },
             ty: cx.tcx.types.unknown,
         }
