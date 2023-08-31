@@ -4,4 +4,4 @@ fn main() = {
 	()
 }
 
-fn id(x int) bool = x
+fn id(x int) int = x
