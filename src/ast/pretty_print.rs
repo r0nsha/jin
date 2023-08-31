@@ -1,7 +1,7 @@
 use std::io;
 
 use super::{Expr, Fn, Item, LitKind, Module};
-use crate::ast::{Block, CallArg};
+use crate::ast::{Block, CallArg, Ty};
 
 pub(super) fn print_module(module: &Module) -> io::Result<()> {
     let mut cx = PPCtxt { builder: ptree::TreeBuilder::new(module.name.standard_full_name()) };
@@ -117,6 +117,11 @@ impl PrettyPrint for Fn {
 
             for param in &self.sig.params {
                 cx.builder.add_empty_child(format!("{}", param.name));
+                param.ty.pretty_print(cx);
+            }
+
+            if let Some(ret) = &self.sig.ret {
+                ret.pretty_print(cx);
             }
 
             cx.builder.end_child();
@@ -137,5 +142,32 @@ impl PrettyPrint for Block {
         }
 
         cx.builder.end_child();
+    }
+}
+
+impl PrettyPrint for Ty {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
+        match self {
+            Ty::Name(name) => {
+                cx.builder.add_empty_child(name.name.to_string());
+
+                if !name.args.is_empty() {
+                    cx.builder.begin_child("tyargs".to_string());
+                    for arg in &name.args {
+                        arg.pretty_print(cx);
+                    }
+                    cx.builder.end_child();
+                }
+            }
+            Ty::Unit(_) => {
+                cx.builder.add_empty_child("()".to_string());
+            }
+            Ty::Never(_) => {
+                cx.builder.add_empty_child("!".to_string());
+            }
+            Ty::Infer(_) => {
+                cx.builder.add_empty_child("_".to_string());
+            }
+        }
     }
 }
