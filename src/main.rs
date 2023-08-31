@@ -13,6 +13,7 @@
     clippy::missing_const_for_fn,
     clippy::cast_possible_truncation
 )]
+#![feature(iterator_try_collect)]
 
 mod ast;
 mod common;
