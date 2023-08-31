@@ -5,8 +5,6 @@ mod normalize;
 mod substitute;
 mod unify;
 
-use std::collections::HashMap;
-
 use ustr::UstrMap;
 
 use crate::{
