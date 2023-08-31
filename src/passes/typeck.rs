@@ -93,12 +93,11 @@ impl InferCtxt<'_> {
 struct FnCtxt {
     pub id: SymbolId,
     pub ret_ty: Ty,
-    pub param_env: HashMap<usize, Ty>,
 }
 
 impl FnCtxt {
     fn from_function(fun: &Fn) -> Self {
-        FnCtxt { id: fun.id, ret_ty: fun.ty.as_fn().unwrap().ret, param_env: HashMap::new() }
+        FnCtxt { id: fun.id, ret_ty: fun.ty.as_fn().unwrap().ret }
     }
 }
 
