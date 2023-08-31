@@ -311,8 +311,7 @@ impl Infer<'_> for Bin {
 
 impl Infer<'_> for Name {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut FnCtxt) -> InferResult<()> {
-        let ty = cx.lookup(self.id);
-        let ty = ty.normalize(&mut cx.inner.borrow_mut());
+        let ty = cx.lookup(self.id).normalize(&mut cx.inner.borrow_mut());
 
         let args = ty.collect_params().into_iter().map(|_| cx.fresh_ty_var()).collect();
         let instantiated = instantiate(ty, args);
