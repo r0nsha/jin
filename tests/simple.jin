@@ -5,3 +5,4 @@ fn main() = {
 }
 
 fn id[T](x T) T = x
+fn id2[T]() T = 42

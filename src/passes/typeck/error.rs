@@ -31,19 +31,18 @@ impl InferError {
 
                 let mut diag = Diagnostic::error("typeck::type_mismatch")
                     .with_message(msg.clone())
-                    .with_label(Label::primary(obligation.span()).with_message(msg));
+                    .with_label(Label::primary(obligation.span()).with_message("expected here"));
 
                 match *obligation.kind() {
                     ObligationKind::Obvious => (),
                     ObligationKind::Exprs(expected_span, found_span) => diag.push_labels([
-                        Label::secondary(expected_span)
-                            .with_message(format!("expected `{expected_ty}`")),
-                        Label::secondary(found_span).with_message(format!("found `{found_ty}`")),
+                        Label::secondary(expected_span).with_message(expected_ty.to_string()),
+                        Label::secondary(found_span).with_message(found_ty.to_string()),
                     ]),
                     ObligationKind::ReturnTy(return_ty_span) => {
-                        diag.push_label(Label::secondary(return_ty_span).with_message(format!(
-                            "expected `{expected_ty}` because of return type"
-                        )));
+                        diag.push_label(
+                            Label::secondary(return_ty_span).with_message("because of return type"),
+                        );
                     }
                 }
 
