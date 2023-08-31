@@ -70,6 +70,16 @@ impl Ty {
             _ => (),
         }
     }
+
+    pub fn is_polymorphic(self) -> bool {
+        match self.kind() {
+            TyKind::Fn(fun) => {
+                fun.params.iter().any(|p| p.ty.is_polymorphic()) || fun.ret.is_polymorphic()
+            }
+            TyKind::Param(_) => true,
+            _ => false,
+        }
+    }
 }
 
 impl Deref for Ty {
