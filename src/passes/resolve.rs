@@ -474,7 +474,7 @@ impl From<ResolveError> for Diagnostic {
                     .with_help("you can only define items once in a module")
             }
             ResolveError::NameNotFound(name) => Self::error("resolve::name_not_found")
-                .with_message(format!("cannot find value `{name}` in this scope"))
+                .with_message(format!("cannot find `{name}` in this scope"))
                 .with_label(Label::primary(name.span()).with_message("not found in this scope")),
             ResolveError::InvalidReturn(span) => Self::error("resolve::invalid_return")
                 .with_message("cannot return outside of function scope")
