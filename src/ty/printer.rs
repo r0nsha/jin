@@ -52,6 +52,7 @@ impl<'db> TyPrinter<'db> {
             TyKind::Param(p) => f.write_str(p.name.as_str()),
             TyKind::Infer(InferTy::TyVar(v)) => write!(f, "?{}", v.0),
             TyKind::Infer(InferTy::IntVar(..)) => f.write_str("{int}"),
+            TyKind::Type => f.write_str("{type}"),
             TyKind::Unknown => f.write_str("{unknown}"),
         }
     }

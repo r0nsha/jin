@@ -47,13 +47,7 @@ impl Ty {
                     Ok(())
                 }
             }
-            TyKind::Param(..)
-            | TyKind::Infer(..)
-            | TyKind::Int(..)
-            | TyKind::Bool
-            | TyKind::Unit
-            | TyKind::Never
-            | TyKind::Unknown => Ok(()),
+            _ => Ok(()),
         }
     }
 
@@ -73,12 +67,7 @@ impl Ty {
                 fun.ret.collect_params_inner(params);
             }
             TyKind::Param(p) => params.push(p.clone()),
-            TyKind::Int(..)
-            | TyKind::Bool
-            | TyKind::Unit
-            | TyKind::Never
-            | TyKind::Infer(..)
-            | TyKind::Unknown => (),
+            _ => (),
         }
     }
 }
@@ -128,6 +117,7 @@ pub enum TyKind {
     // Types related to phases inside or before the typeck pass
     Param(ParamTy),
     Infer(InferTy),
+    Type,
     Unknown,
 }
 

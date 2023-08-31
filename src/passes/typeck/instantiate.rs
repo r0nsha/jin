@@ -41,12 +41,7 @@ impl Instantiate {
                     )
                 }
             },
-            TyKind::Int(..)
-            | TyKind::Bool
-            | TyKind::Unit
-            | TyKind::Never
-            | TyKind::Infer(..)
-            | TyKind::Unknown => ty,
+            _ => ty,
         }
     }
 }

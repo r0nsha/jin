@@ -185,6 +185,7 @@ pub struct ScopeInfo {
 pub enum DefKind {
     Function(FunctionInfo),
     Variable,
+    Ty(Ty),
 }
 
 impl Def {

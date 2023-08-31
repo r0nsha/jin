@@ -30,11 +30,35 @@ struct Resolver<'db> {
     tcx: &'db TyCtxt,
     errors: Vec<ResolveError>,
     global_scope: GlobalScope,
+    builtins: UstrMap<DefId>,
 }
 
 impl<'db> Resolver<'db> {
     fn new(db: &'db mut Db, tcx: &'db TyCtxt) -> Self {
-        Self { db, tcx, errors: vec![], global_scope: GlobalScope::new() }
+        Self {
+            db,
+            tcx,
+            errors: vec![],
+            global_scope: GlobalScope::new(),
+            builtins: UstrMap::default(),
+        }
+    }
+
+    fn declare_builtin_defs(&mut self) {
+        let mk = |name, ty| {
+            Def::alloc(
+                self.db,
+                QPath::from(ustr(name)),
+                ScopeInfo {
+                    module_id: self.db.main_module_id().expect("to be resolved"),
+                    level: ScopeLevel::Global,
+                    vis: Vis::Public,
+                },
+                DefKind::Ty(ty),
+                self.tcx.types.typ,
+                Span::unknown(),
+            )
+        };
     }
 
     fn resolve_modules_and_global_items(&mut self, modules: &mut [Module]) {
