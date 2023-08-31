@@ -52,9 +52,9 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> PathBuf {
         def_values: HashMap::default(),
     };
 
-    cx.db.timings.start("llvm generation");
+    cx.db.time.start("llvm generation");
     cx.run();
-    cx.db.timings.stop();
+    cx.db.time.stop();
 
     if let Err(e) = cx.module.verify() {
         cx.module.print_to_file("fail.ll").expect("printing llvm module to file to work");
@@ -123,13 +123,13 @@ fn build_exe(db: &mut Db, target_machine: &TargetMachine, module: &Module) -> Pa
         (output_path.with_extension("o"), output_path.with_extension(""))
     };
 
-    db.timings.start("link");
+    db.time.start("link");
     target_machine
         .write_to_file(module, FileType::Object, &object_file)
         .expect("writing the object file to work");
 
     link(&db.build_options().target_metrics, &output_file, &object_file);
-    db.timings.stop();
+    db.time.stop();
 
     let _ = std::fs::remove_file(object_file);
 

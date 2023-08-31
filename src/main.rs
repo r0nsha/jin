@@ -94,7 +94,7 @@ fn main() -> Result<()> {
 }
 
 fn build(db: &mut Db) {
-    db.timings.start("parse");
+    db.time.start("parse");
     let mut ast = parse::parse_modules(db);
 
     if db.build_options().should_emit(EmitOption::Ast) {
@@ -104,34 +104,38 @@ fn build(db: &mut Db) {
 
     let tcx = TyCtxt::new();
 
-    db.timings.start("resolve");
+    db.time.start("resolve");
     passes::resolve(db, &tcx, &mut ast);
     expect!(db);
 
-    db.timings.start("ast -> hir");
+    db.time.start("ast -> hir");
     let mut hir = hir::lower(db, &tcx, ast);
 
-    db.timings.start("typeck");
+    db.time.start("typeck");
     if let Err(diag) = passes::typeck(db, &tcx, &mut hir) {
         db.diagnostics.add(diag);
     }
-    db.timings.stop();
+    db.time.stop();
     expect!(db);
 
     if db.build_options().should_emit(EmitOption::Hir) {
         hir.pretty_print(db).expect("hir printing to work");
     }
 
-    db.timings.start("check entry");
+    db.time.start("check entry");
     if let Err(diag) = passes::check_entry(db, &hir) {
         db.diagnostics.add(diag);
     }
-    db.timings.stop();
+    db.time.stop();
     expect!(db);
 
-    db.timings.start("hir -> mir");
+    db.time.start("monomorphization");
+    passes::monomorphization(db, &mut hir);
+    db.time.stop();
+
+    db.time.start("hir -> mir");
     let mir = mir::lower(db, &hir).expect("mir lowering to succeed");
-    db.timings.stop();
+    db.time.stop();
     expect!(db);
 
     if db.build_options().should_emit(EmitOption::Mir) {
@@ -144,5 +148,5 @@ fn build(db: &mut Db) {
 
     llvm::codegen(db, &mir);
 
-    db.timings.print();
+    db.time.print();
 }

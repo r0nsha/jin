@@ -21,7 +21,7 @@ use crate::{
 #[derive(Debug)]
 pub struct Db {
     build_options: BuildOptions,
-    pub timings: Timings,
+    pub time: Timings,
 
     pub sources: Sources,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
@@ -49,7 +49,7 @@ impl Db {
         let main_source = sources.add_file(absolute_path.to_path_buf())?;
 
         Ok(Self {
-            timings: Timings::new(build_options.timings),
+            time: Timings::new(build_options.timings),
             build_options,
 
             sources,
