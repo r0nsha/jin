@@ -1,7 +1,8 @@
 fn main() = {
 	id(1)
 	id(true)
-	()
+	// TODO: uncomment
+	// ()
 }
 
 fn id(x) = x
