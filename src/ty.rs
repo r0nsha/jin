@@ -1,7 +1,7 @@
 mod printer;
 pub mod tcx;
 
-use std::ops::Deref;
+use std::{collections::HashSet, ops::Deref};
 
 use derive_more::{From, Into};
 use enum_as_inner::EnumAsInner;
@@ -52,12 +52,12 @@ impl Ty {
     }
 
     pub fn collect_params(self) -> Vec<ParamTy> {
-        let mut params = vec![];
+        let mut params = HashSet::new();
         self.collect_params_inner(&mut params);
-        params
+        params.into_iter().collect()
     }
 
-    fn collect_params_inner(self, params: &mut Vec<ParamTy>) {
+    fn collect_params_inner(self, params: &mut HashSet<ParamTy>) {
         match self.kind() {
             TyKind::Fn(fun) => {
                 for p in &fun.params {
@@ -66,7 +66,9 @@ impl Ty {
 
                 fun.ret.collect_params_inner(params);
             }
-            TyKind::Param(p) => params.push(p.clone()),
+            TyKind::Param(p) => {
+                params.insert(p.clone());
+            }
             _ => (),
         }
     }

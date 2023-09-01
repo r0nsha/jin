@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    hir::{Bin, Block, Call, Expr, Fn, FnSig, Hir, If, Item, ItemKind, Return},
+    hir::{Bin, Block, Call, Expr, Fn, FnSig, Hir, If, Item, ItemKind, Name, Return},
     passes::typeck::{
         error::InferError,
         infcx::{InferCtxt, InferCtxtInner},
@@ -101,7 +101,8 @@ impl Subst<'_> for Expr {
             Self::Return(inner) => inner.subst(cx),
             Self::Call(inner) => inner.subst(cx),
             Self::Bin(inner) => inner.subst(cx),
-            Self::Name(..) | Self::Lit(..) => (),
+            Self::Name(inner) => inner.subst(cx),
+            Self::Lit(..) => (),
         }
 
         self.set_ty(cx.subst_ty(self.ty(), self.span()));
@@ -170,6 +171,14 @@ impl Subst<'_> for Bin {
     fn subst(&mut self, cx: &mut SubstCtxt<'_>) {
         self.lhs.subst(cx);
         self.rhs.subst(cx);
+    }
+}
+
+impl Subst<'_> for Name {
+    fn subst(&mut self, cx: &mut SubstCtxt<'_>) {
+        for arg in &mut self.args {
+            *arg = cx.subst_ty(*arg, self.span);
+        }
     }
 }
 
