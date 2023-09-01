@@ -31,19 +31,21 @@ impl<'db> LowerCtxt<'db> {
         Self { db, mir, mono_items: vec![] }
     }
 
-    fn lookup_mono_item(&self, id: DefId, tys: &[Ty]) -> Option<&MonoItem> {
-        self.mono_items.iter().find(|item| item.source_id == id && item.args == tys)
-    }
-
     fn lower_item(&mut self, item: &hir::Item) -> Result<()> {
         match &item.kind {
             hir::ItemKind::Fn(fun) => {
-                let fun = LowerFunctionCtxt::new(self, fun.id).lower_function(fun)?;
-                self.mir.add_function(fun);
+                if !fun.ty.is_polymorphic() {
+                    let fun = LowerFunctionCtxt::new(self, fun.id).lower_function(fun)?;
+                    self.mir.add_function(fun);
+                }
+
+                Ok(())
             }
         }
+    }
 
-        Ok(())
+    fn lookup_mono_item(&self, id: DefId, tys: &[Ty]) -> Option<&MonoItem> {
+        self.mono_items.iter().find(|item| item.source_id == id && item.args == tys)
     }
 }
 
