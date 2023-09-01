@@ -138,7 +138,10 @@ impl Subst<'_> for If {
     fn subst(&mut self, cx: &mut SubstCtxt<'_>) {
         self.cond.subst(cx);
         self.then.subst(cx);
-        self.otherwise.subst(cx);
+
+        if let Some(o) = &mut self.otherwise {
+            o.subst(cx);
+        }
     }
 }
 
@@ -178,27 +181,5 @@ impl Subst<'_> for Name {
         for arg in &mut self.args {
             *arg = cx.subst_ty(*arg, self.span);
         }
-    }
-}
-
-impl<'db, T: Subst<'db>> Subst<'db> for Vec<T> {
-    fn subst(&mut self, cx: &mut SubstCtxt<'db>) {
-        for item in self {
-            item.subst(cx);
-        }
-    }
-}
-
-impl<'db, T: Subst<'db>> Subst<'db> for Option<T> {
-    fn subst(&mut self, cx: &mut SubstCtxt<'db>) {
-        if let Some(item) = self {
-            item.subst(cx);
-        }
-    }
-}
-
-impl<'db, T: Subst<'db>> Subst<'db> for Box<T> {
-    fn subst(&mut self, cx: &mut SubstCtxt<'db>) {
-        self.as_mut().subst(cx);
     }
 }
