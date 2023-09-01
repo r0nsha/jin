@@ -8,7 +8,7 @@ use crate::{
         normalize::NormalizeTy,
     },
     span::{Span, Spanned},
-    ty::{fold::TyFolder, FnTy, FnTyParam, InferTy, Ty, TyKind, Typed},
+    ty::{fold::TyFolder, InferTy, Ty, TyKind, Typed},
 };
 
 impl<'db> InferCtxt<'db> {
