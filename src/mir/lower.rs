@@ -5,13 +5,14 @@ use crate::{
     db::Db,
     hir::{self, Hir},
     mir::{builder::FunctionBuilder, DefId, Function, Mir, ValueId},
+    passes::subst::Subst,
     span::Spanned,
     ty::{fold::TyFolder, Ty, TyKind, Typed},
 };
 
 pub fn lower(db: &mut Db, hir: &Hir) -> Result<Mir> {
     let mut mir = Mir::new();
-    let mut cx = LowerCtxt::new(db, &mut mir);
+    let mut cx = LowerCtxt::new(db, hir, &mut mir);
 
     for item in &hir.items {
         cx.lower_item(item)?;
@@ -22,13 +23,14 @@ pub fn lower(db: &mut Db, hir: &Hir) -> Result<Mir> {
 
 struct LowerCtxt<'db> {
     db: &'db mut Db,
+    hir: &'db Hir,
     mir: &'db mut Mir,
     mono_items: Vec<MonoItem>,
 }
 
 impl<'db> LowerCtxt<'db> {
-    fn new(db: &'db mut Db, mir: &'db mut Mir) -> Self {
-        Self { db, mir, mono_items: vec![] }
+    fn new(db: &'db mut Db, hir: &'db Hir, mir: &'db mut Mir) -> Self {
+        Self { db, hir, mir, mono_items: vec![] }
     }
 
     fn lower_item(&mut self, item: &hir::Item) -> Result<()> {
@@ -41,6 +43,29 @@ impl<'db> LowerCtxt<'db> {
                 }
             }
         }
+    }
+
+    fn lower_mono_item(&mut self, id: DefId, args: Vec<Ty>) -> DefId {
+        let item = self
+            .hir
+            .items
+            .iter()
+            .find(|item| match &item.kind {
+                hir::ItemKind::Fn(f) => f.id == id,
+            })
+            .expect("item to exist");
+
+        match &item.kind {
+            hir::ItemKind::Fn(fun) => {
+                let new_fun = fun.clone();
+                // new_fun.subst(cx);
+            }
+        }
+        todo!("generate monomorphized definitions recursively");
+        todo!("add item being generated to mono_items");
+        todo!("return target def id");
+
+        // Ok()
     }
 
     fn lower_fn(&mut self, fun: &hir::Fn) -> Result<(), anyhow::Error> {
@@ -259,7 +284,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
             item.target_id
         } else {
             // This is a polymorphic item that needs monomorphization
-            todo!("generate monomorphized definitions recursively");
+            self.inner.lower_mono_item(name.id, name.args.clone())
         };
 
         let def = &self.inner.db[id];
@@ -276,12 +301,15 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
     }
 }
 
-// struct ParamFolder<'a> {
-//     args: &'a [Ty],
-// }
-//
-// impl TyFolder for ParamFolder<'_> {
-//     fn fold_ty(&mut self, ty: &TyKind) -> TyKind {
-//         todo!()
-//     }
-// }
+struct ParamFolder<'a> {
+    args: &'a [Ty],
+}
+
+impl TyFolder for ParamFolder<'_> {
+    fn fold(&mut self, ty: Ty) -> Ty {
+        match ty.kind() {
+            TyKind::Param(p) => self.args[p.index],
+            _ => self.super_fold(ty),
+        }
+    }
+}
