@@ -129,7 +129,7 @@ fn build(db: &mut Db) {
     db.time.stop();
     expect!(db);
 
-    db.time.start("monomorphization");
+    db.time.start("monomorphize");
     let mono_items = passes::monomorphize(db, &hir);
     dbg!(&mono_items);
     db.time.stop();
