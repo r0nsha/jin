@@ -2,7 +2,7 @@ mod error;
 mod infcx;
 mod instantiate;
 mod normalize;
-mod substitute;
+mod subst;
 mod unify;
 
 use ustr::UstrMap;

@@ -37,7 +37,6 @@ impl<'db> LowerCtxt<'db> {
                 if fun.ty.is_polymorphic() {
                     Ok(())
                 } else {
-                    println!("visiting {}", &self.db[fun.id].qpath);
                     self.lower_fn(fun)
                 }
             }
@@ -45,6 +44,7 @@ impl<'db> LowerCtxt<'db> {
     }
 
     fn lower_fn(&mut self, fun: &hir::Fn) -> Result<(), anyhow::Error> {
+        // TODO: subst fn params with the type args
         let fun = LowerFunctionCtxt::new(self, fun.id).lower_fn(fun)?;
         self.mir.add_function(fun);
         Ok(())
