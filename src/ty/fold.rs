@@ -1,9 +1,5 @@
-use crate::ty::{Ty, TyKind};
+use crate::ty::Ty;
 
 pub trait TyFolder {
-    fn fold_ty(&mut self, ty: &TyKind) -> TyKind;
-
-    fn fold_ty(&mut self, ty: Ty) -> Ty {
-        self.fold_ty(ty.kind()).into()
-    }
+    fn fold(&mut self, ty: Ty) -> Ty;
 }

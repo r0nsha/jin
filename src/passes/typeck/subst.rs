@@ -37,7 +37,7 @@ struct SubstCtxt<'db> {
 impl SubstCtxt<'_> {
     fn subst_ty(&mut self, ty: Ty, span: Span) -> Ty {
         let mut s = SubstTy { cx: self, has_unbound_vars: false };
-        let ty = Ty::new(s.fold_ty(&ty));
+        let ty = s.fold(ty);
 
         if s.has_unbound_vars {
             s.cx.errs.insert(span, InferError::CannotInfer { ty: ty.normalize(s.cx.infcx), span });
@@ -53,24 +53,25 @@ struct SubstTy<'db, 'a> {
 }
 
 impl TyFolder for SubstTy<'_, '_> {
-    fn fold_ty(&mut self, ty: &TyKind) -> TyKind {
-        match ty {
+    fn fold(&mut self, ty: Ty) -> Ty {
+        match ty.kind() {
             TyKind::Fn(fun) => TyKind::Fn(FnTy {
                 params: fun
                     .params
                     .iter()
-                    .map(|param| FnTyParam { name: param.name, ty: self.fold_ty(&param.ty).into() })
+                    .map(|param| FnTyParam { name: param.name, ty: self.fold(param.ty) })
                     .collect(),
-                ret: self.fold_ty(&fun.ret).into(),
-            }),
+                ret: self.fold(fun.ret),
+            })
+            .into(),
             TyKind::Infer(InferTy::TyVar(var)) => {
                 let root = self.cx.infcx.ty_unification_table.find(*var);
 
                 if let Some(ty) = self.cx.infcx.ty_unification_table.probe_value(root) {
-                    self.fold_ty(&ty)
+                    self.fold(ty)
                 } else {
                     self.has_unbound_vars = true;
-                    TyKind::Infer(InferTy::TyVar(*var))
+                    TyKind::Infer(InferTy::TyVar(*var)).into()
                 }
             }
             TyKind::Infer(InferTy::IntVar(var)) => {
@@ -81,8 +82,9 @@ impl TyFolder for SubstTy<'_, '_> {
                     .int_unification_table
                     .probe_value(root)
                     .map_or_else(|| TyKind::DEFAULT_INT, Into::into)
+                    .into()
             }
-            _ => ty.clone(),
+            _ => ty,
         }
     }
 }

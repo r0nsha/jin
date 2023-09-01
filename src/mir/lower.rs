@@ -276,12 +276,12 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
     }
 }
 
-struct ParamFolder<'a> {
-    args: &'a [Ty],
-}
-
-impl TyFolder for ParamFolder<'_> {
-    fn fold_ty(&mut self, ty: &TyKind) -> TyKind {
-        todo!()
-    }
-}
+// struct ParamFolder<'a> {
+//     args: &'a [Ty],
+// }
+//
+// impl TyFolder for ParamFolder<'_> {
+//     fn fold_ty(&mut self, ty: &TyKind) -> TyKind {
+//         todo!()
+//     }
+// }
