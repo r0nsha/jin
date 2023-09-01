@@ -106,5 +106,5 @@ impl<S: SubstTy> Subst<S> for Name {
 }
 
 impl<S: SubstTy> Subst<S> for Lit {
-    fn subst(&mut self, s: &mut S) {}
+    fn subst(&mut self, _s: &mut S) {}
 }

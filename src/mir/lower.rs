@@ -1,12 +1,13 @@
 use anyhow::Result;
+use ustr::ustr;
 
 use crate::{
     ast::BinOp,
-    db::Db,
+    db::{Db, Def},
     hir::{self, Hir},
     mir::{builder::FunctionBuilder, DefId, Function, Mir, ValueId},
-    passes::subst::Subst,
-    span::Spanned,
+    passes::subst::{Subst, SubstTy},
+    span::{Span, Spanned},
     ty::{fold::TyFolder, Ty, TyKind, Typed},
 };
 
@@ -57,19 +58,41 @@ impl<'db> LowerCtxt<'db> {
 
         match &item.kind {
             hir::ItemKind::Fn(fun) => {
-                let new_fun = fun.clone();
-                // new_fun.subst(cx);
+                let def = &self.db[fun.id];
+                let args_str =
+                    args.iter().map(|t| t.to_string(self.db)).collect::<Vec<String>>().join("_");
+                let new_name = ustr(&format!("{}${}", def.name, args_str));
+                let new_qpath = def.qpath.clone().with_name(new_name);
+                let new_def_id = Def::alloc(
+                    self.db,
+                    new_qpath,
+                    def.scope.clone(),
+                    def.kind.as_ref().clone(),
+                    def.ty,
+                    def.span,
+                );
+
+                self.mono_items.push(MonoItem {
+                    args: args.clone(),
+                    source_id: fun.id,
+                    target_id: new_def_id,
+                });
+
+                let mut new_fun = fun.clone();
+                new_fun.id = new_def_id;
+                new_fun.subst(&mut ParamFolder { args: &args });
+
+                self.lower_fn(&new_fun).expect("lowering MIR to work");
+
+                new_fun.id
             }
         }
-        todo!("generate monomorphized definitions recursively");
-        todo!("add item being generated to mono_items");
-        todo!("return target def id");
 
         // Ok()
     }
 
     fn lower_fn(&mut self, fun: &hir::Fn) -> Result<(), anyhow::Error> {
-        // TODO: subst fn params with the type args
+        assert!(!fun.ty.is_polymorphic(), "lowering polymorphic functions to MIR is not allowed");
         let fun = LowerFunctionCtxt::new(self, fun.id).lower_fn(fun)?;
         self.mir.add_function(fun);
         Ok(())
@@ -303,6 +326,12 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
 
 struct ParamFolder<'a> {
     args: &'a [Ty],
+}
+
+impl SubstTy for ParamFolder<'_> {
+    fn subst_ty(&mut self, ty: Ty, _: Span) -> Ty {
+        self.fold(ty)
+    }
 }
 
 impl TyFolder for ParamFolder<'_> {

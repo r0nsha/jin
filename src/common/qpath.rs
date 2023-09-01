@@ -12,13 +12,11 @@ impl QPath {
         let target = target.with_extension("");
         let stripped = target.strip_prefix(root).ok()?;
 
-        Some(Self(
-            stripped.iter().map(|component| ustr(component.to_string_lossy().as_ref())).collect(),
-        ))
+        Some(Self(stripped.iter().map(|seg| ustr(seg.to_string_lossy().as_ref())).collect()))
     }
 
     pub fn name(&self) -> Ustr {
-        *self.0.last().expect("to have at least one component")
+        *self.0.last().expect("to have at least one segment")
     }
 
     pub fn full_name(&self, separator: &str) -> String {
@@ -42,6 +40,11 @@ impl QPath {
 
     pub fn child(mut self, seg: impl Into<Segment>) -> Self {
         self.push(seg);
+        self
+    }
+
+    pub fn with_name(mut self, name: Ustr) -> Self {
+        *self.0.last_mut().expect("to have at least one segment") = name;
         self
     }
 }
