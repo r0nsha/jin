@@ -34,11 +34,19 @@ struct LowerFunctionCtxt<'db> {
     db: &'db mut Db,
     mir: &'db mut Mir,
     bx: FunctionBuilder,
+    mono_items: Vec<MonoItem>,
+}
+
+#[derive(Debug)]
+struct MonoItem {
+    args: Vec<Ty>,
+    source_id: DefId,
+    target_id: DefId,
 }
 
 impl<'db> LowerFunctionCtxt<'db> {
     fn new(db: &'db mut Db, mir: &'db mut Mir, fun_id: DefId) -> Self {
-        Self { db, mir, bx: FunctionBuilder::new(fun_id) }
+        Self { db, mir, bx: FunctionBuilder::new(fun_id), mono_items: vec![] }
     }
 
     fn lower_function(mut self, fun: &hir::Fn) -> Result<Function> {
@@ -220,14 +228,18 @@ impl<'db> LowerFunctionCtxt<'db> {
     }
 
     fn lower_name(&mut self, name: &hir::Name) -> ValueId {
-        let def = if name.args.is_empty() {
-            &self.db[name.id]
+        let id = if name.args.is_empty() {
+            // This is a monomorphic item
+            name.id
+        } else if let Some(item) = self.lookup_mono_item(name.id, &name.args) {
+            // This is a polymorphic item that has already been monomorphized
+            item.target_id
         } else {
-            dbg!(&name.args);
-            todo!("get def if monomorphized");
+            // This is a polymorphic item that needs monomorphization
             todo!("generate monomorphized definitions recursively");
-            todo!("return def");
         };
+
+        let def = &self.db[id];
 
         self.bx.build_load(def.ty, def.id, name.span)
     }
@@ -238,5 +250,9 @@ impl<'db> LowerFunctionCtxt<'db> {
             hir::LitKind::Bool(v) => self.bx.build_bool_lit(lit.ty, *v, lit.span),
             hir::LitKind::Unit => self.bx.build_unit_lit(lit.ty, lit.span),
         }
+    }
+
+    fn lookup_mono_item(&self, id: DefId, tys: &[Ty]) -> Option<&MonoItem> {
+        self.mono_items.iter().find(|item| item.source_id == id && item.args == tys)
     }
 }
