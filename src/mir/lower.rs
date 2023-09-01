@@ -6,7 +6,7 @@ use crate::{
     hir::{self, Hir},
     mir::{builder::FunctionBuilder, DefId, Function, Mir, ValueId},
     span::Spanned,
-    ty::{Ty, TyKind, Typed},
+    ty::{fold::TyFolder, Ty, TyKind, Typed},
 };
 
 pub fn lower(db: &mut Db, hir: &Hir) -> Result<Mir> {
@@ -273,5 +273,15 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
             hir::LitKind::Bool(v) => self.bx.build_bool_lit(lit.ty, *v, lit.span),
             hir::LitKind::Unit => self.bx.build_unit_lit(lit.ty, lit.span),
         }
+    }
+}
+
+struct ParamFolder<'a> {
+    args: &'a [Ty],
+}
+
+impl TyFolder for ParamFolder<'_> {
+    fn fold_ty(&mut self, ty: &TyKind) -> TyKind {
+        todo!()
     }
 }
