@@ -34,14 +34,20 @@ impl<'db> LowerCtxt<'db> {
     fn lower_item(&mut self, item: &hir::Item) -> Result<()> {
         match &item.kind {
             hir::ItemKind::Fn(fun) => {
-                if !fun.ty.is_polymorphic() {
-                    let fun = LowerFunctionCtxt::new(self, fun.id).lower_function(fun)?;
-                    self.mir.add_function(fun);
+                if fun.ty.is_polymorphic() {
+                    Ok(())
+                } else {
+                    println!("visiting {}", &self.db[fun.id].qpath);
+                    self.lower_fn(fun)
                 }
-
-                Ok(())
             }
         }
+    }
+
+    fn lower_fn(&mut self, fun: &hir::Fn) -> Result<(), anyhow::Error> {
+        let fun = LowerFunctionCtxt::new(self, fun.id).lower_fn(fun)?;
+        self.mir.add_function(fun);
+        Ok(())
     }
 
     fn lookup_mono_item(&self, id: DefId, tys: &[Ty]) -> Option<&MonoItem> {
@@ -66,7 +72,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
         Self { inner, bx: FunctionBuilder::new(fun_id) }
     }
 
-    fn lower_function(mut self, fun: &hir::Fn) -> Result<Function> {
+    fn lower_fn(mut self, fun: &hir::Fn) -> Result<Function> {
         let blk_start = self.bx.create_block("start");
         self.bx.position_at(blk_start);
 
