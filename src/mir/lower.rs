@@ -220,8 +220,15 @@ impl<'db> LowerFunctionCtxt<'db> {
     }
 
     fn lower_name(&mut self, name: &hir::Name) -> ValueId {
-        let def = &self.db[name.id];
-        dbg!(&name.args);
+        let def = if name.args.is_empty() {
+            &self.db[name.id]
+        } else {
+            dbg!(&name.args);
+            todo!("get def if monomorphized");
+            todo!("generate monomorphized definitions recursively");
+            todo!("return def");
+        };
+
         self.bx.build_load(def.ty, def.id, name.span)
     }
 
