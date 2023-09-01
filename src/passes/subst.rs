@@ -1,5 +1,5 @@
 use crate::{
-    hir::{Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Name, Return},
+    hir::{Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Lit, Name, Return},
     span::{Span, Spanned},
     ty::{Ty, Typed},
 };
@@ -22,7 +22,7 @@ impl<S: SubstTy> Subst<S> for Expr {
             Self::Call(inner) => inner.subst(s),
             Self::Bin(inner) => inner.subst(s),
             Self::Name(inner) => inner.subst(s),
-            Self::Lit(..) => (),
+            Self::Lit(inner) => inner.subst(s),
         }
 
         self.set_ty(s.subst_ty(self.ty(), self.span()));
@@ -103,4 +103,8 @@ impl<S: SubstTy> Subst<S> for Name {
             *arg = s.subst_ty(*arg, self.span);
         }
     }
+}
+
+impl<S: SubstTy> Subst<S> for Lit {
+    fn subst(&mut self, s: &mut S) {}
 }
