@@ -35,7 +35,7 @@ fn typeck_inner(db: &mut Db, tcx: &TyCtxt, hir: &mut Hir) -> InferResult<()> {
     cx.typeck_function_signatures(hir)?;
     cx.typeck_function_bodies(hir)?;
 
-    cx.substitute_all(hir);
+    cx.subst(hir);
 
     Ok(())
 }

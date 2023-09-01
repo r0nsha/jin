@@ -12,7 +12,7 @@ use crate::{
 };
 
 impl<'db> InferCtxt<'db> {
-    pub fn substitute_all(&mut self, hir: &mut Hir) {
+    pub fn subst(&mut self, hir: &mut Hir) {
         let mut cx = SubstCtxt { infcx: &mut self.inner.borrow_mut(), errs: HashMap::new() };
 
         for def in self.db.defs.iter_mut() {
