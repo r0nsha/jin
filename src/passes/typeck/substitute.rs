@@ -16,7 +16,7 @@ impl<'db> InferCtxt<'db> {
         let mut cx = SubstCtxt { infcx: &mut self.inner.borrow_mut(), errs: HashMap::new() };
 
         for def in self.db.defs.iter_mut() {
-            def.ty = cx.substitute_ty(def.ty, def.span);
+            def.ty = cx.subst_ty(def.ty, def.span);
         }
 
         for item in &mut hir.items {
@@ -35,7 +35,7 @@ struct SubstCtxt<'db> {
 }
 
 impl SubstCtxt<'_> {
-    fn substitute_ty(&mut self, ty: Ty, span: Span) -> Ty {
+    fn subst_ty(&mut self, ty: Ty, span: Span) -> Ty {
         let mut s = SubstTy { cx: self, has_unbound_vars: false };
         let ty = Ty::new(s.subst(&ty));
 
@@ -104,7 +104,7 @@ impl Subst<'_> for Expr {
             Self::Name(..) | Self::Lit(..) => (),
         }
 
-        self.set_ty(cx.substitute_ty(self.ty(), self.span()));
+        self.set_ty(cx.subst_ty(self.ty(), self.span()));
     }
 }
 
@@ -114,7 +114,7 @@ impl Subst<'_> for Item {
             ItemKind::Fn(fun) => fun.subst(cx),
         }
 
-        self.ty = cx.substitute_ty(self.ty, self.span());
+        self.ty = cx.subst_ty(self.ty, self.span());
     }
 }
 
@@ -122,14 +122,14 @@ impl Subst<'_> for Fn {
     fn subst(&mut self, cx: &mut SubstCtxt<'_>) {
         self.sig.subst(cx);
         self.body.subst(cx);
-        self.ty = cx.substitute_ty(self.ty, self.span);
+        self.ty = cx.subst_ty(self.ty, self.span);
     }
 }
 
 impl Subst<'_> for FnSig {
     fn subst(&mut self, cx: &mut SubstCtxt<'_>) {
         for param in &mut self.params {
-            param.ty = cx.substitute_ty(param.ty, param.span);
+            param.ty = cx.subst_ty(param.ty, param.span);
         }
     }
 }
