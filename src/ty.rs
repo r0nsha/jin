@@ -1,5 +1,6 @@
 mod printer;
 pub mod tcx;
+pub mod fold;
 
 use std::{collections::HashSet, ops::Deref};
 
