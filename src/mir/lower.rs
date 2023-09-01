@@ -221,6 +221,7 @@ impl<'db> LowerFunctionCtxt<'db> {
 
     fn lower_name(&mut self, name: &hir::Name) -> ValueId {
         let def = &self.db[name.id];
+        dbg!(&name.args);
         self.bx.build_load(def.ty, def.id, name.span)
     }
 

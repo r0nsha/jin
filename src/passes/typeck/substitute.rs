@@ -20,7 +20,7 @@ impl<'db> InferCtxt<'db> {
         }
 
         for item in &mut hir.items {
-            item.substitute(&mut cx);
+            item.subst(&mut cx);
         }
 
         let diagnostics: Vec<_> =
@@ -88,19 +88,19 @@ impl SubstTy<'_, '_> {
     }
 }
 
-trait Substitute<'db> {
-    fn substitute(&mut self, cx: &mut SubstCtxt<'db>);
+trait Subst<'db> {
+    fn subst(&mut self, cx: &mut SubstCtxt<'db>);
 }
 
-impl Substitute<'_> for Expr {
-    fn substitute(&mut self, cx: &mut SubstCtxt<'_>) {
+impl Subst<'_> for Expr {
+    fn subst(&mut self, cx: &mut SubstCtxt<'_>) {
         match self {
-            Self::Item(inner) => inner.substitute(cx),
-            Self::If(inner) => inner.substitute(cx),
-            Self::Block(inner) => inner.substitute(cx),
-            Self::Return(inner) => inner.substitute(cx),
-            Self::Call(inner) => inner.substitute(cx),
-            Self::Bin(inner) => inner.substitute(cx),
+            Self::Item(inner) => inner.subst(cx),
+            Self::If(inner) => inner.subst(cx),
+            Self::Block(inner) => inner.subst(cx),
+            Self::Return(inner) => inner.subst(cx),
+            Self::Call(inner) => inner.subst(cx),
+            Self::Bin(inner) => inner.subst(cx),
             Self::Name(..) | Self::Lit(..) => (),
         }
 
@@ -108,89 +108,89 @@ impl Substitute<'_> for Expr {
     }
 }
 
-impl Substitute<'_> for Item {
-    fn substitute(&mut self, cx: &mut SubstCtxt<'_>) {
+impl Subst<'_> for Item {
+    fn subst(&mut self, cx: &mut SubstCtxt<'_>) {
         match &mut self.kind {
-            ItemKind::Fn(fun) => fun.substitute(cx),
+            ItemKind::Fn(fun) => fun.subst(cx),
         }
 
         self.ty = cx.substitute_ty(self.ty, self.span());
     }
 }
 
-impl Substitute<'_> for Fn {
-    fn substitute(&mut self, cx: &mut SubstCtxt<'_>) {
-        self.sig.substitute(cx);
-        self.body.substitute(cx);
+impl Subst<'_> for Fn {
+    fn subst(&mut self, cx: &mut SubstCtxt<'_>) {
+        self.sig.subst(cx);
+        self.body.subst(cx);
         self.ty = cx.substitute_ty(self.ty, self.span);
     }
 }
 
-impl Substitute<'_> for FnSig {
-    fn substitute(&mut self, cx: &mut SubstCtxt<'_>) {
+impl Subst<'_> for FnSig {
+    fn subst(&mut self, cx: &mut SubstCtxt<'_>) {
         for param in &mut self.params {
             param.ty = cx.substitute_ty(param.ty, param.span);
         }
     }
 }
 
-impl Substitute<'_> for If {
-    fn substitute(&mut self, cx: &mut SubstCtxt<'_>) {
-        self.cond.substitute(cx);
-        self.then.substitute(cx);
-        self.otherwise.substitute(cx);
+impl Subst<'_> for If {
+    fn subst(&mut self, cx: &mut SubstCtxt<'_>) {
+        self.cond.subst(cx);
+        self.then.subst(cx);
+        self.otherwise.subst(cx);
     }
 }
 
-impl Substitute<'_> for Block {
-    fn substitute(&mut self, cx: &mut SubstCtxt<'_>) {
+impl Subst<'_> for Block {
+    fn subst(&mut self, cx: &mut SubstCtxt<'_>) {
         for stmt in &mut self.exprs {
-            stmt.substitute(cx);
+            stmt.subst(cx);
         }
     }
 }
 
-impl Substitute<'_> for Return {
-    fn substitute(&mut self, cx: &mut SubstCtxt<'_>) {
-        self.expr.substitute(cx);
+impl Subst<'_> for Return {
+    fn subst(&mut self, cx: &mut SubstCtxt<'_>) {
+        self.expr.subst(cx);
     }
 }
 
-impl Substitute<'_> for Call {
-    fn substitute(&mut self, cx: &mut SubstCtxt<'_>) {
-        self.callee.substitute(cx);
+impl Subst<'_> for Call {
+    fn subst(&mut self, cx: &mut SubstCtxt<'_>) {
+        self.callee.subst(cx);
 
         for arg in &mut self.args {
-            arg.expr.substitute(cx);
+            arg.expr.subst(cx);
         }
     }
 }
 
-impl Substitute<'_> for Bin {
-    fn substitute(&mut self, cx: &mut SubstCtxt<'_>) {
-        self.lhs.substitute(cx);
-        self.rhs.substitute(cx);
+impl Subst<'_> for Bin {
+    fn subst(&mut self, cx: &mut SubstCtxt<'_>) {
+        self.lhs.subst(cx);
+        self.rhs.subst(cx);
     }
 }
 
-impl<'db, T: Substitute<'db>> Substitute<'db> for Vec<T> {
-    fn substitute(&mut self, cx: &mut SubstCtxt<'db>) {
+impl<'db, T: Subst<'db>> Subst<'db> for Vec<T> {
+    fn subst(&mut self, cx: &mut SubstCtxt<'db>) {
         for item in self {
-            item.substitute(cx);
+            item.subst(cx);
         }
     }
 }
 
-impl<'db, T: Substitute<'db>> Substitute<'db> for Option<T> {
-    fn substitute(&mut self, cx: &mut SubstCtxt<'db>) {
+impl<'db, T: Subst<'db>> Subst<'db> for Option<T> {
+    fn subst(&mut self, cx: &mut SubstCtxt<'db>) {
         if let Some(item) = self {
-            item.substitute(cx);
+            item.subst(cx);
         }
     }
 }
 
-impl<'db, T: Substitute<'db>> Substitute<'db> for Box<T> {
-    fn substitute(&mut self, cx: &mut SubstCtxt<'db>) {
-        self.as_mut().substitute(cx);
+impl<'db, T: Subst<'db>> Subst<'db> for Box<T> {
+    fn subst(&mut self, cx: &mut SubstCtxt<'db>) {
+        self.as_mut().subst(cx);
     }
 }
