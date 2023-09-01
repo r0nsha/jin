@@ -55,15 +55,6 @@ struct SubstTy<'db, 'a> {
 impl TyFolder for SubstTy<'_, '_> {
     fn fold(&mut self, ty: Ty) -> Ty {
         match ty.kind() {
-            TyKind::Fn(fun) => TyKind::Fn(FnTy {
-                params: fun
-                    .params
-                    .iter()
-                    .map(|param| FnTyParam { name: param.name, ty: self.fold(param.ty) })
-                    .collect(),
-                ret: self.fold(fun.ret),
-            })
-            .into(),
             TyKind::Infer(InferTy::TyVar(var)) => {
                 let root = self.cx.infcx.ty_unification_table.find(*var);
 
@@ -84,7 +75,7 @@ impl TyFolder for SubstTy<'_, '_> {
                     .map_or_else(|| TyKind::DEFAULT_INT, Into::into)
                     .into()
             }
-            _ => ty,
+            _ => self.super_fold(ty),
         }
     }
 }
