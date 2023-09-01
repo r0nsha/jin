@@ -11,30 +11,45 @@ use crate::{
 
 pub fn lower(db: &mut Db, hir: &Hir) -> Result<Mir> {
     let mut mir = Mir::new();
+    let mut cx = LowerCtxt::new(db, &mut mir);
 
     for item in &hir.items {
-        lower_item(db, &mut mir, item)?;
+        cx.lower_item(item)?;
     }
 
     Ok(mir)
 }
 
-fn lower_item(db: &mut Db, mir: &mut Mir, item: &hir::Item) -> Result<()> {
-    match &item.kind {
-        hir::ItemKind::Fn(fun) => {
-            let fun = LowerFunctionCtxt::new(db, mir, fun.id).lower_function(fun)?;
-            mir.add_function(fun);
-        }
-    }
-
-    Ok(())
-}
-
-struct LowerFunctionCtxt<'db> {
+struct LowerCtxt<'db> {
     db: &'db mut Db,
     mir: &'db mut Mir,
-    bx: FunctionBuilder,
     mono_items: Vec<MonoItem>,
+}
+
+impl<'db> LowerCtxt<'db> {
+    fn new(db: &'db mut Db, mir: &'db mut Mir) -> Self {
+        Self { db, mir, mono_items: vec![] }
+    }
+
+    fn lookup_mono_item(&self, id: DefId, tys: &[Ty]) -> Option<&MonoItem> {
+        self.mono_items.iter().find(|item| item.source_id == id && item.args == tys)
+    }
+
+    fn lower_item(&mut self, item: &hir::Item) -> Result<()> {
+        match &item.kind {
+            hir::ItemKind::Fn(fun) => {
+                let fun = LowerFunctionCtxt::new(self, fun.id).lower_function(fun)?;
+                self.mir.add_function(fun);
+            }
+        }
+
+        Ok(())
+    }
+}
+
+struct LowerFunctionCtxt<'cx, 'db> {
+    inner: &'cx mut LowerCtxt<'db>,
+    bx: FunctionBuilder,
 }
 
 #[derive(Debug)]
@@ -44,9 +59,9 @@ struct MonoItem {
     target_id: DefId,
 }
 
-impl<'db> LowerFunctionCtxt<'db> {
-    fn new(db: &'db mut Db, mir: &'db mut Mir, fun_id: DefId) -> Self {
-        Self { db, mir, bx: FunctionBuilder::new(fun_id), mono_items: vec![] }
+impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
+    fn new(inner: &'cx mut LowerCtxt<'db>, fun_id: DefId) -> Self {
+        Self { inner, bx: FunctionBuilder::new(fun_id) }
     }
 
     fn lower_function(mut self, fun: &hir::Fn) -> Result<Function> {
@@ -91,7 +106,7 @@ impl<'db> LowerFunctionCtxt<'db> {
     }
 
     fn lower_local_item(&mut self, item: &hir::Item) -> ValueId {
-        lower_item(self.db, self.mir, item).expect("mir lowering to succeed");
+        self.inner.lower_item(item).expect("mir lowering to succeed");
         self.bx.build_unit_lit(item.ty, item.span())
     }
 
@@ -231,7 +246,7 @@ impl<'db> LowerFunctionCtxt<'db> {
         let id = if name.args.is_empty() {
             // This is a monomorphic item
             name.id
-        } else if let Some(item) = self.lookup_mono_item(name.id, &name.args) {
+        } else if let Some(item) = self.inner.lookup_mono_item(name.id, &name.args) {
             // This is a polymorphic item that has already been monomorphized
             item.target_id
         } else {
@@ -239,7 +254,7 @@ impl<'db> LowerFunctionCtxt<'db> {
             todo!("generate monomorphized definitions recursively");
         };
 
-        let def = &self.db[id];
+        let def = &self.inner.db[id];
 
         self.bx.build_load(def.ty, def.id, name.span)
     }
@@ -250,9 +265,5 @@ impl<'db> LowerFunctionCtxt<'db> {
             hir::LitKind::Bool(v) => self.bx.build_bool_lit(lit.ty, *v, lit.span),
             hir::LitKind::Unit => self.bx.build_unit_lit(lit.ty, lit.span),
         }
-    }
-
-    fn lookup_mono_item(&self, id: DefId, tys: &[Ty]) -> Option<&MonoItem> {
-        self.mono_items.iter().find(|item| item.source_id == id && item.args == tys)
     }
 }
