@@ -76,7 +76,6 @@ impl SubstTy<'_, '_> {
             TyKind::Infer(InferTy::IntVar(var)) => {
                 let root = self.cx.infcx.int_unification_table.find(*var);
 
-                // TODO: swap for the default int in monorphization pass?
                 self.cx
                     .infcx
                     .int_unification_table
