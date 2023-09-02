@@ -148,7 +148,8 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
         self.bx.position_at(blk_start);
 
         for param in &fun.sig.params {
-            let id = self.inner.get_mono_def(&MonoItem { id: param.id, args: vec![] });
+            let id =
+                self.inner.get_mono_def(&MonoItem { id: param.id, args: vec![], ty: param.ty });
             self.bx.create_param(id);
         }
 
@@ -323,7 +324,11 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
     }
 
     fn lower_name(&mut self, name: &hir::Name) -> ValueId {
-        let id = self.inner.get_mono_def(&MonoItem { id: name.id, args: name.args.clone() });
+        let id = self.inner.get_mono_def(&MonoItem {
+            id: name.id,
+            args: name.args.clone(),
+            ty: name.ty,
+        });
         let def = &self.inner.db[id];
         self.bx.build_load(def.ty, def.id, name.span)
     }

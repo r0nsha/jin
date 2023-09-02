@@ -306,7 +306,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Load {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        dbg!(&cx.def_values, self.id);
+        dbg!(&cx.def_values, self.id, cx.db[self.id].name);
         let value = match cx.def_value(self.id) {
             DefValue::Function(f) => f.as_global_value().as_pointer_value().as_basic_value_enum(),
             DefValue::Variable(v) => v,

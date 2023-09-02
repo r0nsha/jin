@@ -10,7 +10,8 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MonoItem {
     pub id: DefId,
-    pub args: Vec<Ty>,
+    pub ty: Ty,        // Used for identifying a polymorphic item use, paired with `id`
+    pub args: Vec<Ty>, // Used to propogate the ty args downwards
 }
 
 pub fn monomorphize(db: &mut Db, hir: &Hir) -> HashSet<MonoItem> {
@@ -53,8 +54,8 @@ impl<'db> Collector<'db> {
         }
     }
 
-    fn collect_def_use(&mut self, id: DefId, args: Vec<Ty>) {
-        self.mono_items.insert(MonoItem { id, args });
+    fn collect_def_use(&mut self, id: DefId, args: Vec<Ty>, ty: Ty) {
+        self.mono_items.insert(MonoItem { id, ty, args });
     }
 }
 
@@ -68,10 +69,9 @@ impl HirVisitor for PolyCollector<'_, '_> {
         noop_visit_fn(self, f);
 
         for p in &f.sig.params {
-            let ty_params = p.ty.collect_params();
-            if !ty_params.is_empty() {
-                let args: Vec<_> = ty_params.into_iter().map(|p| self.args[p.index]).collect();
-                self.root.collect_def_use(p.id, args);
+            if p.ty.is_polymorphic() {
+                let ty = ParamFolder { db: self.root.db, args: &self.args }.fold(p.ty);
+                self.root.collect_def_use(p.id, vec![], ty);
             }
         }
     }
@@ -81,8 +81,9 @@ impl HirVisitor for PolyCollector<'_, '_> {
 
         if !name.args.is_empty() {
             let mut folder = ParamFolder { db: self.root.db, args: &self.args };
+            let ty = folder.fold(name.ty);
             let args: Vec<_> = name.args.iter().map(|arg| folder.fold(*arg)).collect();
-            self.root.collect_def_use(name.id, args.clone());
+            self.root.collect_def_use(name.id, args.clone(), ty);
             self.root.collect_poly_item(name.id, args);
         }
     }
