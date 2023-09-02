@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, hash::Hash};
 
 use crate::{
     db::{Db, DefId},
@@ -7,11 +7,18 @@ use crate::{
     ty::{fold::TyFolder, Ty},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MonoItem {
     pub id: DefId,
     pub ty: Ty,        // Used for identifying a polymorphic item use, paired with `id`
     pub args: Vec<Ty>, // Used to propogate the ty args downwards
+}
+
+impl Hash for MonoItem {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.id.hash(state);
+        self.ty.kind().hash(state);
+    }
 }
 
 pub fn monomorphize(db: &mut Db, hir: &Hir) -> HashSet<MonoItem> {
