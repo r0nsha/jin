@@ -55,7 +55,7 @@ impl InferError {
             Self::ArgMismatch { expected, found, span } => {
                 Diagnostic::error("typeck::arg_mismatch")
                     .with_message(format!(
-                        "this function takes {expected} arguments, but {found} were supplied"
+                        "this function takes {expected} argument(s), but {found} were supplied"
                     ))
                     .with_label(
                         Label::primary(span)
