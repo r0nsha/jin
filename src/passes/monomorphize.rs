@@ -2,8 +2,9 @@ use std::collections::HashSet;
 
 use crate::{
     db::{Db, DefId},
-    hir::{visit::*, Fn, Hir, Item, ItemKind, Name},
-    ty::Ty,
+    hir::{visit::*, Fn, Hir, ItemKind, Name},
+    passes::subst::ParamFolder,
+    ty::{fold::TyFolder, Ty},
 };
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -32,8 +33,7 @@ impl<'db> Collector<'db> {
             match &item.kind {
                 ItemKind::Fn(f) => {
                     if !f.ty.is_polymorphic() {
-                        self.visit_fn(f);
-                        // self.collect_root_fn(fun);
+                        PolyCollector { root: &mut self, args: vec![] }.visit_fn(f);
                     }
                 }
             }
@@ -42,22 +42,14 @@ impl<'db> Collector<'db> {
         self
     }
 
-    // fn collect_root_fn(&mut self, fun: &Fn) {
-    // for param in &fun.sig.params {
-    //     self.collect_def_use(param.id, vec![]);
-    // }
-
-    //     self.visit_fn(fun);
-    // }
-
-    fn collect_poly_item(&mut self, id: DefId) {
+    fn collect_poly_item(&mut self, id: DefId, args: Vec<Ty>) {
         // TODO: this doesn't work with local items
         let item = self.hir.items.iter().find(|item| match &item.kind {
             ItemKind::Fn(f) => f.id == id,
         });
 
         if let Some(item) = item {
-            self.visit_item(item);
+            PolyCollector { root: self, args }.visit_item(item);
         }
     }
 
@@ -66,13 +58,18 @@ impl<'db> Collector<'db> {
     }
 }
 
-impl HirVisitor for Collector<'_> {
+struct PolyCollector<'db, 'a> {
+    root: &'a mut Collector<'db>,
+    args: Vec<Ty>,
+}
+
+impl HirVisitor for PolyCollector<'_, '_> {
     fn visit_fn(&mut self, f: &Fn) {
         noop_visit_fn(self, f);
 
         for p in &f.sig.params {
             if p.ty.is_polymorphic() {
-                self.collect_def_use(p.id, vec![]);
+                self.root.collect_def_use(p.id, vec![]);
             }
         }
     }
@@ -81,8 +78,10 @@ impl HirVisitor for Collector<'_> {
         noop_visit_name(self, name);
 
         if !name.args.is_empty() {
-            self.collect_def_use(name.id, name.args.clone());
-            self.collect_poly_item(name.id);
+            let mut folder = ParamFolder { db: self.root.db, args: &self.args };
+            let args: Vec<_> = name.args.iter().map(|arg| folder.fold(*arg)).collect();
+            self.root.collect_def_use(name.id, args.clone());
+            self.root.collect_poly_item(name.id, args);
         }
     }
 }

@@ -6,8 +6,8 @@ use crate::{
     db::{Db, Def},
     hir::{self, Hir},
     mir::{builder::FunctionBuilder, DefId, Function, Mir, ValueId},
-    passes::subst::{Subst, SubstTy},
-    span::{Span, Spanned},
+    passes::subst::{ParamFolder, Subst},
+    span::Spanned,
     ty::{fold::TyFolder, Ty, TyKind, Typed},
 };
 
@@ -331,30 +331,6 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
             hir::LitKind::Int(v) => self.bx.build_int_lit(lit.ty, *v, lit.span),
             hir::LitKind::Bool(v) => self.bx.build_bool_lit(lit.ty, *v, lit.span),
             hir::LitKind::Unit => self.bx.build_unit_lit(lit.ty, lit.span),
-        }
-    }
-}
-
-struct ParamFolder<'db, 'a> {
-    db: &'db mut Db,
-    args: &'a [Ty],
-}
-
-impl SubstTy for ParamFolder<'_, '_> {
-    fn subst_ty(&mut self, ty: Ty, _: Span) -> Ty {
-        self.fold(ty)
-    }
-
-    fn db(&mut self) -> &mut Db {
-        self.db
-    }
-}
-
-impl TyFolder for ParamFolder<'_, '_> {
-    fn fold(&mut self, ty: Ty) -> Ty {
-        match ty.kind() {
-            TyKind::Param(p) => self.args[p.index],
-            _ => self.super_fold(ty),
         }
     }
 }
