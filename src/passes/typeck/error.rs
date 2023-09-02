@@ -28,7 +28,7 @@ impl InferError {
                 let expected_ty = expected.display(db).to_string();
                 let found_ty = found.display(db).to_string();
 
-                let msg = format!("expected `{expected_ty}`, found `{found_ty}`");
+                let msg = format!("expected type `{expected_ty}`, found `{found_ty}`");
 
                 let mut diag = Diagnostic::error("typeck::type_mismatch")
                     .with_message(msg.clone())

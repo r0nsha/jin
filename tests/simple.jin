@@ -4,3 +4,4 @@ fn main() = {
 }
 
 fn id[T](x T) T = x
+fn answer[A, B](x A) B = x
