@@ -34,6 +34,19 @@ impl<'db> LowerCtxt<'db> {
         Self { db, hir, mir, mono_items: vec![] }
     }
 
+    fn get_mono_def(&mut self, id: DefId, args: &[Ty]) -> DefId {
+        if args.is_empty() {
+            // This is a monomorphic item
+            id
+        } else if let Some(item) = self.lookup_mono_item(id, args) {
+            // This is a polymorphic item that has already been monomorphized
+            item.target_id
+        } else {
+            // This is a polymorphic item that needs monomorphization
+            self.lower_mono_def(id, args)
+        }
+    }
+
     fn lower_item(&mut self, item: &hir::Item) -> Result<()> {
         match &item.kind {
             hir::ItemKind::Fn(fun) => {
@@ -133,7 +146,8 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
         self.bx.position_at(blk_start);
 
         for param in &fun.sig.params {
-            self.bx.create_param(param.id);
+            let id = self.inner.get_mono_def(param.id, &[]);
+            self.bx.create_param(id);
         }
 
         let body_value = self.lower_block(&fun.body);
@@ -307,20 +321,8 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
     }
 
     fn lower_name(&mut self, name: &hir::Name) -> ValueId {
-        let id = if name.args.is_empty() {
-            // This is a monomorphic item
-            name.id
-        } else if let Some(item) = self.inner.lookup_mono_item(name.id, &name.args) {
-            // This is a polymorphic item that has already been monomorphized
-            item.target_id
-        } else {
-            // This is a polymorphic item that needs monomorphization
-            self.inner.lower_mono_def(name.id, &name.args)
-        };
-
+        let id = self.inner.get_mono_def(name.id, &name.args);
         let def = &self.inner.db[id];
-        dbg!(def);
-
         self.bx.build_load(def.ty, def.id, name.span)
     }
 
