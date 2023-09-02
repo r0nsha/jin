@@ -11,7 +11,7 @@ use crate::{
     db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
     diagnostics::{Diagnostic, Label},
     span::{Span, Spanned},
-    ty::{self, tcx::TyCtxt, ParamTy, TyKind},
+    ty::tcx::TyCtxt,
 };
 
 pub fn resolve(db: &mut Db, tcx: &TyCtxt, ast: &mut Ast) {
@@ -180,17 +180,15 @@ impl<'db> Resolver<'db> {
     fn resolve_ty_params(&mut self, env: &mut Env, ty_params: &mut [TyParam]) {
         let mut defined_ty_params = UstrMap::<Span>::default();
 
-        for (index, ty_param) in ty_params.iter_mut().enumerate() {
+        for tp in ty_params {
             let ty = self.tcx.types.unknown;
-            ty_param.id = Some(self.declare_def(env, DefKind::Ty(ty), ty_param.name));
+            tp.id = Some(self.declare_def(env, DefKind::Ty(ty), tp.name));
 
-            if let Some(prev_span) =
-                defined_ty_params.insert(ty_param.name.name(), ty_param.name.span())
-            {
+            if let Some(prev_span) = defined_ty_params.insert(tp.name.name(), tp.name.span()) {
                 self.errors.push(ResolveError::MultipleTyParams {
-                    name: ty_param.name.name(),
+                    name: tp.name.name(),
                     prev_span,
-                    dup_span: ty_param.name.span(),
+                    dup_span: tp.name.span(),
                 });
             }
         }

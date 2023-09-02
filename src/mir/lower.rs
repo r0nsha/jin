@@ -46,7 +46,7 @@ impl<'db> LowerCtxt<'db> {
         Self { db, hir, mir, mono_items: mono_items.into_iter().map(|i| (i, None)).collect() }
     }
 
-    fn get_mono_def(&mut self, mono_item: &MonoItem, instantiation: Instantiation) -> DefId {
+    fn get_mono_def(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> DefId {
         let target_id = self.mono_items.get(mono_item).copied().flatten();
 
         if let Some(target_id) = target_id {
@@ -54,7 +54,7 @@ impl<'db> LowerCtxt<'db> {
             target_id
         } else {
             // This is a polymorphic item that needs monomorphization
-            self.lower_mono_def(mono_item, &instantiation)
+            self.lower_mono_def(mono_item, instantiation)
         }
     }
 
@@ -147,7 +147,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
         for param in &fun.sig.params {
             let id = self
                 .inner
-                .get_mono_def(&MonoItem { id: param.id, ty: param.ty }, Instantiation::new());
+                .get_mono_def(&MonoItem { id: param.id, ty: param.ty }, &Instantiation::new());
             self.bx.create_param(id);
         }
 
@@ -322,9 +322,8 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
     }
 
     fn lower_name(&mut self, name: &hir::Name) -> ValueId {
-        let id = self
-            .inner
-            .get_mono_def(&MonoItem { id: name.id, ty: name.ty }, name.instantiation.clone());
+        let id =
+            self.inner.get_mono_def(&MonoItem { id: name.id, ty: name.ty }, &name.instantiation);
         let def = &self.inner.db[id];
         self.bx.build_load(def.ty, def.id, name.span)
     }
