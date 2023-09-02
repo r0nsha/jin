@@ -70,9 +70,9 @@ impl HirVisitor for PolyCollector<'_, '_> {
 
         for p in &f.sig.params {
             if p.ty.is_polymorphic() {
-                let ty =
-                    ParamFolder { db: self.root.db, instantiation: &self.instantiation }.fold(p.ty);
-                self.root.collect_def_use(p.id, ty);
+                // let ty =
+                //     ParamFolder { db: self.root.db, instantiation: &self.instantiation }.fold(p.ty);
+                self.root.collect_def_use(p.id, p.ty);
             }
         }
     }

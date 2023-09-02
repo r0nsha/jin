@@ -114,10 +114,10 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
                 .append(RcDoc::space())
                 .append(bin.rhs.to_doc(db, fun)),
             Self::IntLit(lit) => {
-                value_alloc(db, fun, lit.value).append(RcDoc::text(lit.value.to_string()))
+                value_alloc(db, fun, lit.value).append(RcDoc::text(lit.lit.to_string()))
             }
             Self::BoolLit(lit) => {
-                value_alloc(db, fun, lit.value).append(RcDoc::text(lit.value.to_string()))
+                value_alloc(db, fun, lit.value).append(RcDoc::text(lit.lit.to_string()))
             }
             Self::UnitLit(lit) => value_alloc(db, fun, lit.value).append(RcDoc::text("()")),
             Self::Unreachable(unr) => {
@@ -154,8 +154,8 @@ impl<'db, 'd> ToDoc<'db, 'd> for DefId {
             ScopeLevel::Local(..) => def.qpath.name().to_string(),
         };
 
-        RcDoc::text(format!("@{name}/{self}"))
-        // RcDoc::text(format!("@{name}"))
+        // RcDoc::text(format!("@{name}/{self}"))
+        RcDoc::text(format!("@{name}"))
     }
 }
 
