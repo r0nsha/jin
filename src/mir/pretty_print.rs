@@ -154,7 +154,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for DefId {
             ScopeLevel::Local(..) => def.qpath.name().to_string(),
         };
 
-        RcDoc::text(format!("@{name}[{self}]"))
+        RcDoc::text(format!("@{name}"))
     }
 }
 
