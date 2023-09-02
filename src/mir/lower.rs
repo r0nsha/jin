@@ -3,7 +3,7 @@ use ustr::ustr;
 
 use crate::{
     ast::BinOp,
-    db::{Db, Def, DefKind},
+    db::{Db, Def},
     hir::{self, Hir},
     mir::{builder::FunctionBuilder, DefId, Function, Mir, ValueId},
     passes::subst::{Subst, SubstTy},
@@ -81,13 +81,12 @@ impl<'db> LowerCtxt<'db> {
     fn alloc_mono_def(&mut self, id: DefId, args: &[Ty]) -> DefId {
         let def = &self.db[id];
 
-        let new_qpath = if def.scope.level.is_local() && matches!(def.kind.as_ref(), DefKind::Fn(_))
-        {
-            def.qpath.clone()
-        } else {
+        let new_qpath = if def.kind.is_fn() {
             let args_str =
                 args.iter().map(|t| t.to_string(self.db)).collect::<Vec<String>>().join("_");
             def.qpath.clone().with_name(ustr(&format!("{}${}", def.name, args_str)))
+        } else {
+            def.qpath.clone()
         };
 
         let new_scope = def.scope.clone();

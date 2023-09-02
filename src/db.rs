@@ -188,6 +188,13 @@ pub enum DefKind {
     Variable,
 }
 
+impl DefKind {
+    #[must_use]
+    pub fn is_fn(&self) -> bool {
+        matches!(self, Self::Fn(..))
+    }
+}
+
 impl Def {
     pub fn alloc(
         db: &mut Db,
