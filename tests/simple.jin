@@ -7,5 +7,5 @@ fn main() = {
 fn id[T](x T) T = 
 	x
 
-fn add[T](a T, b T) = 
+fn add[T](a T, b T) T = 
 	a + b

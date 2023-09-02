@@ -9,6 +9,7 @@ use crate::{
     ty::Ty,
 };
 
+#[derive(Debug)]
 pub enum InferError {
     TyMismatch { expected: Ty, found: Ty, obligation: Obligation },
     InfiniteTy { ty: Ty, obligation: Obligation },
