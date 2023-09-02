@@ -131,9 +131,10 @@ fn build(db: &mut Db) {
 
     db.time.start("monomorphize");
     let mono_items = passes::monomorphize(db, &hir);
-    dbg!(&mono_items);
+    dbg!(mono_items.iter().map(|i| db[i.id].qpath.to_string()).collect::<Vec<_>>());
     db.time.stop();
 
+    return;
     db.time.start("hir -> mir");
     let mir = mir::lower(db, &hir).expect("mir lowering to succeed");
     db.time.stop();
