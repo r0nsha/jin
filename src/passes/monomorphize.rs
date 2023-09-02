@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     db::{Db, DefId},
-    hir::{Fn, Hir, HirVisitor, Item, ItemKind, Name},
+    hir::{visit::*, Fn, Hir, Item, ItemKind, Name},
     ty::Ty,
 };
 
@@ -13,7 +13,7 @@ pub struct MonoItem {
 }
 
 pub fn monomorphize(db: &mut Db, hir: &Hir) -> HashSet<MonoItem> {
-    Collector::new(db, hir).collect().mono_items
+    Collector::new(db, hir).collect_roots().mono_items
 }
 
 struct Collector<'db> {
@@ -27,41 +27,37 @@ impl<'db> Collector<'db> {
         Self { db, hir, mono_items: HashSet::new() }
     }
 
-    fn collect(mut self) -> Self {
+    fn collect_roots(mut self) -> Self {
         for item in &self.hir.items {
-            self.collect_root_item(item);
+            match &item.kind {
+                ItemKind::Fn(f) => {
+                    if !f.ty.is_polymorphic() {
+                        self.visit_fn(f);
+                        // self.collect_root_fn(fun);
+                    }
+                }
+            }
         }
 
         self
     }
 
-    fn collect_root_item(&mut self, item: &Item) {
-        match &item.kind {
-            ItemKind::Fn(fun) => {
-                if !fun.ty.is_polymorphic() {
-                    self.collect_root_fn(fun);
-                }
-            }
-        }
-    }
+    // fn collect_root_fn(&mut self, fun: &Fn) {
+    // for param in &fun.sig.params {
+    //     self.collect_def_use(param.id, vec![]);
+    // }
+
+    //     self.visit_fn(fun);
+    // }
 
     fn collect_poly_item(&mut self, id: DefId) {
         // TODO: this doesn't work with local items
-        let item = self
-            .hir
-            .items
-            .iter()
-            .find(|item| match &item.kind {
-                ItemKind::Fn(f) => f.id == id,
-            })
-            .expect("item to exist");
+        let item = self.hir.items.iter().find(|item| match &item.kind {
+            ItemKind::Fn(f) => f.id == id,
+        });
 
-        self.visit_item(item);
-    }
-
-    fn collect_root_fn(&mut self, fun: &Fn) {
-        for param in &fun.sig.params {
-            self.collect_def_use(param.id, vec![]);
+        if let Some(item) = item {
+            self.visit_item(item);
         }
     }
 
@@ -72,6 +68,8 @@ impl<'db> Collector<'db> {
 
 impl HirVisitor for Collector<'_> {
     fn visit_fn(&mut self, f: &Fn) {
+        noop_visit_fn(self, f);
+
         for p in &f.sig.params {
             if p.ty.is_polymorphic() {
                 self.collect_def_use(p.id, vec![]);
@@ -80,6 +78,8 @@ impl HirVisitor for Collector<'_> {
     }
 
     fn visit_name(&mut self, name: &Name) {
+        noop_visit_name(self, name);
+
         if !name.args.is_empty() {
             self.collect_def_use(name.id, name.args.clone());
             self.collect_poly_item(name.id);
