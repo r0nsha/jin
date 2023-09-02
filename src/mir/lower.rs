@@ -46,7 +46,7 @@ impl<'db> LowerCtxt<'db> {
         }
     }
 
-    fn lower_mono_item(&mut self, id: DefId, args: &[Ty]) -> DefId {
+    fn lower_mono_defs(&mut self, id: DefId, args: &[Ty]) -> DefId {
         let item = self
             .hir
             .items
@@ -308,10 +308,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
     }
 
     fn lower_name(&mut self, name: &hir::Name) -> ValueId {
-        let needs_monomorphization = {
-            let def = &self.inner.db[name.id];
-            def.ty.is_polymorphic() && matches!(def.kind.as_ref(), DefKind::Fn(_))
-        };
+        let needs_monomorphization = self.inner.db[name.id].ty.is_polymorphic();
 
         let id = if needs_monomorphization {
             if let Some(item) = self.inner.lookup_mono_item(name.id, &name.args) {
@@ -319,7 +316,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
                 item.target_id
             } else {
                 // This is a polymorphic item that needs monomorphization
-                self.inner.lower_mono_item(name.id, &name.args)
+                self.inner.lower_mono_defs(name.id, &name.args)
             }
         } else {
             // This is a monomorphic item
