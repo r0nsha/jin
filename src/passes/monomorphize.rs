@@ -7,7 +7,7 @@ use crate::{
     ty::{fold::TyFolder, Ty},
 };
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MonoItem {
     pub id: DefId,
     pub args: Vec<Ty>,

@@ -11,7 +11,8 @@
     clippy::module_name_repetitions,
     clippy::too_many_lines,
     clippy::missing_const_for_fn,
-    clippy::cast_possible_truncation
+    clippy::cast_possible_truncation,
+    clippy::wildcard_imports
 )]
 #![feature(iterator_try_collect)]
 
@@ -134,9 +135,8 @@ fn build(db: &mut Db) {
     dbg!(mono_items.iter().map(|i| (db[i.id].qpath.to_string(), &i.args)).collect::<Vec<_>>());
     db.time.stop();
 
-    return;
     db.time.start("hir -> mir");
-    let mir = mir::lower(db, &hir).expect("mir lowering to succeed");
+    let mir = mir::lower(db, &hir, mono_items).expect("mir lowering to succeed");
     db.time.stop();
     expect!(db);
 
