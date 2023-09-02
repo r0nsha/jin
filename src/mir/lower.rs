@@ -47,7 +47,6 @@ impl<'db> LowerCtxt<'db> {
     }
 
     fn lower_mono_item(&mut self, id: DefId, args: &[Ty]) -> DefId {
-        println!("{id:?}");
         let item = self
             .hir
             .items
@@ -61,32 +60,43 @@ impl<'db> LowerCtxt<'db> {
             hir::ItemKind::Fn(fun) => {
                 let mut folder = ParamFolder { args };
 
-                let def = &self.db[fun.id];
-                let args_str =
-                    args.iter().map(|t| t.to_string(self.db)).collect::<Vec<String>>().join("_");
-                let new_name = ustr(&format!("{}${}", def.name, args_str));
-                let new_qpath = def.qpath.clone().with_name(new_name);
-                let new_ty = folder.fold(def.ty);
-                let new_def_id = Def::alloc(
-                    self.db,
-                    new_qpath,
-                    def.scope.clone(),
-                    def.kind.as_ref().clone(),
-                    new_ty,
-                    def.span,
-                );
+                // Create a new definition for the monomorphized function
+                let new_def_id = {
+                    let def = &self.db[fun.id];
 
+                    let args_str = args
+                        .iter()
+                        .map(|t| t.to_string(self.db))
+                        .collect::<Vec<String>>()
+                        .join("_");
+                    let new_qpath =
+                        def.qpath.clone().with_name(ustr(&format!("{}${}", def.name, args_str)));
+
+                    let new_ty = folder.fold(def.ty);
+
+                    Def::alloc(
+                        self.db,
+                        new_qpath,
+                        def.scope.clone(),
+                        def.kind.as_ref().clone(),
+                        new_ty,
+                        def.span,
+                    )
+                };
+
+                // Add the monomorphized item to the visited list
                 self.mono_items.push(MonoItem {
                     args: args.to_owned(),
                     source_id: fun.id,
                     target_id: new_def_id,
                 });
 
+                // Clone the function's contents and substitute its type args
                 let mut new_fun = fun.clone();
                 new_fun.id = new_def_id;
-
                 new_fun.subst(&mut folder);
 
+                // Lower the newly created function to MIR
                 self.lower_fn(&new_fun).expect("lowering MIR to work");
 
                 new_fun.id
