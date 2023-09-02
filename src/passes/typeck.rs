@@ -193,11 +193,6 @@ impl Infer<'_> for Fn {
             ))
             .eq(fx.ret_ty, self.body.ty);
 
-        {
-            let x = &mut cx.inner.borrow_mut();
-            dbg!(cx.db[self.id].name, fx.ret_ty.normalize(x), self.body.ty.normalize(x));
-        }
-
         // If the function's return type is `()`, we want to let the user end the body with
         // whatever expression they want, so that they don't need to end it with a `()`
         if self.ty.as_fn().unwrap().ret.normalize(&mut cx.inner.borrow_mut()).is_unit() {
