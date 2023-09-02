@@ -48,6 +48,7 @@ impl<'db> Collector<'db> {
     }
 
     fn collect_poly_item(&mut self, id: DefId) {
+        // TODO: this doesn't work with local items
         let item = self
             .hir
             .items
