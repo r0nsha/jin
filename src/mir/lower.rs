@@ -54,7 +54,7 @@ impl<'db> LowerCtxt<'db> {
             target_id
         } else {
             // This is a polymorphic item that needs monomorphization
-            self.lower_mono_def(mono_item, instantiation)
+            self.lower_mono_def(mono_item, &instantiation)
         }
     }
 
@@ -70,8 +70,8 @@ impl<'db> LowerCtxt<'db> {
         }
     }
 
-    fn lower_mono_def(&mut self, mono_item: &MonoItem, instantiation: Instantiation) -> DefId {
-        let new_def_id = self.alloc_mono_def(mono_item, &instantiation);
+    fn lower_mono_def(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> DefId {
+        let new_def_id = self.alloc_mono_def(mono_item, instantiation);
 
         // Add the monomorphized item to the visited list
         self.mono_items.insert(mono_item.clone(), Some(new_def_id));
@@ -87,7 +87,7 @@ impl<'db> LowerCtxt<'db> {
                     // Clone the function's contents and substitute its type args
                     let mut new_fun = fun.clone();
                     new_fun.id = new_def_id;
-                    new_fun.subst(&mut ParamFolder { db: self.db, instantiation: &instantiation });
+                    new_fun.subst(&mut ParamFolder { db: self.db, instantiation });
 
                     // Lower the newly created function to MIR
                     self.lower_fn(&new_fun).expect("lowering MIR to work");

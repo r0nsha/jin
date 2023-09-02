@@ -35,10 +35,13 @@ impl Instantiate {
             TyKind::Param(p) => match self.instantiation.get(&p.var) {
                 Some(ty) => *ty,
                 None => {
-                    panic!(
-                        "type param `{:?}` ({:?}/{:?}) out of when instantiating, args={:?}",
-                        p, self.ty, p.var, self.instantiation
-                    )
+                    ty
+                    // NOTE: It currently makes sense to not instantiate params that are part of
+                    // the currently typechecked function.
+                    // panic!(
+                    //     "type param `{:?}` ({:?}/{:?}) out of when instantiating, args={:?}",
+                    //     p, self.ty, p.var, self.instantiation
+                    // )
                 }
             },
             _ => ty,

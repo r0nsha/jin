@@ -5,7 +5,7 @@ mod normalize;
 mod subst;
 mod unify;
 
-use std::collections::HashMap;
+use std::ops::Not;
 
 use ustr::UstrMap;
 
@@ -22,7 +22,7 @@ use crate::{
         unify::Obligation,
     },
     span::{Span, Spanned},
-    ty::{tcx::TyCtxt, FnTy, FnTyParam, ParamTy, Ty, TyKind, Typed},
+    ty::{tcx::TyCtxt, FnTy, FnTyParam, Instantiation, ParamTy, Ty, TyKind, Typed},
 };
 
 pub type InferResult<T> = Result<T, InferError>;
@@ -89,7 +89,7 @@ impl InferCtxt<'_> {
         for item in &mut hir.items {
             match &mut item.kind {
                 ItemKind::Fn(fun) => {
-                    let mut fx = FnCtxt::from_function(fun);
+                    let mut fx = FnCtxt::from_fn(self.db, fun);
                     fun.infer(self, &mut fx)?;
                 }
             }
@@ -118,11 +118,29 @@ impl InferCtxt<'_> {
 struct FnCtxt {
     pub id: DefId,
     pub ret_ty: Ty,
+    pub ty_params: Vec<ParamTy>,
 }
 
 impl FnCtxt {
-    fn from_function(fun: &Fn) -> Self {
-        FnCtxt { id: fun.id, ret_ty: fun.ty.as_fn().unwrap().ret }
+    fn from_fn(db: &Db, fun: &Fn) -> Self {
+        FnCtxt {
+            id: fun.id,
+            ret_ty: fun.ty.as_fn().unwrap().ret,
+            ty_params: fun
+                .sig
+                .ty_params
+                .iter()
+                .map(|tp| {
+                    db[tp.id]
+                        .kind
+                        .as_ty()
+                        .expect("to be a type")
+                        .as_param()
+                        .expect("to be a param type")
+                })
+                .cloned()
+                .collect(),
+        }
     }
 }
 
@@ -164,7 +182,7 @@ impl Infer<'_> for Fn {
             cx.db[self.id].ty = self.ty;
         }
 
-        let mut fx = FnCtxt::from_function(self);
+        let mut fx = FnCtxt::from_fn(cx.db, self);
 
         self.body.infer(cx, &mut fx)?;
 
@@ -352,13 +370,16 @@ impl Infer<'_> for Bin {
 }
 
 impl Infer<'_> for Name {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, _fx: &mut FnCtxt) -> InferResult<()> {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
         let def_ty = cx.lookup(self.id);
         let ty = def_ty.normalize(&mut cx.inner.borrow_mut());
-        let args: HashMap<_, _> =
-            ty.collect_params().into_iter().map(|p| (p.var, cx.fresh_ty_var())).collect();
-        self.ty = instantiate(ty, args.clone());
-        self.instantiation = args;
+        let instantiation: Instantiation = ty
+            .collect_params()
+            .into_iter()
+            .filter_map(|p| fx.ty_params.contains(&p).not().then(|| (p.var, cx.fresh_ty_var())))
+            .collect();
+        self.ty = instantiate(ty, instantiation.clone());
+        self.instantiation = instantiation;
         Ok(())
     }
 }

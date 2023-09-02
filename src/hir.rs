@@ -2,7 +2,7 @@ mod lower;
 mod pretty_print;
 pub mod visit;
 
-use std::{collections::HashMap, io};
+use std::io;
 
 use enum_as_inner::EnumAsInner;
 pub use lower::lower;

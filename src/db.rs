@@ -193,6 +193,15 @@ impl DefKind {
     pub fn is_fn(&self) -> bool {
         matches!(self, Self::Fn(..))
     }
+
+    #[must_use]
+    pub fn as_ty(&self) -> Option<&Ty> {
+        if let Self::Ty(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }
 
 impl Def {
