@@ -1,6 +1,6 @@
 fn main() = {
 	id(1)
-	id(true)
+	id(false)
 	()
 }
 

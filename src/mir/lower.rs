@@ -3,7 +3,7 @@ use ustr::ustr;
 
 use crate::{
     ast::BinOp,
-    db::{Db, Def},
+    db::{Db, Def, DefKind},
     hir::{self, Hir},
     mir::{builder::FunctionBuilder, DefId, Function, Mir, ValueId},
     passes::subst::{Subst, SubstTy},
@@ -46,7 +46,8 @@ impl<'db> LowerCtxt<'db> {
         }
     }
 
-    fn lower_mono_item(&mut self, id: DefId, args: Vec<Ty>) -> DefId {
+    fn lower_mono_item(&mut self, id: DefId, args: &[Ty]) -> DefId {
+        println!("{id:?}");
         let item = self
             .hir
             .items
@@ -58,37 +59,39 @@ impl<'db> LowerCtxt<'db> {
 
         match &item.kind {
             hir::ItemKind::Fn(fun) => {
+                let mut folder = ParamFolder { args };
+
                 let def = &self.db[fun.id];
                 let args_str =
                     args.iter().map(|t| t.to_string(self.db)).collect::<Vec<String>>().join("_");
                 let new_name = ustr(&format!("{}${}", def.name, args_str));
                 let new_qpath = def.qpath.clone().with_name(new_name);
+                let new_ty = folder.fold(def.ty);
                 let new_def_id = Def::alloc(
                     self.db,
                     new_qpath,
                     def.scope.clone(),
                     def.kind.as_ref().clone(),
-                    def.ty,
+                    new_ty,
                     def.span,
                 );
 
                 self.mono_items.push(MonoItem {
-                    args: args.clone(),
+                    args: args.to_owned(),
                     source_id: fun.id,
                     target_id: new_def_id,
                 });
 
                 let mut new_fun = fun.clone();
                 new_fun.id = new_def_id;
-                new_fun.subst(&mut ParamFolder { args: &args });
+
+                new_fun.subst(&mut folder);
 
                 self.lower_fn(&new_fun).expect("lowering MIR to work");
 
                 new_fun.id
             }
         }
-
-        // Ok()
     }
 
     fn lower_fn(&mut self, fun: &hir::Fn) -> Result<(), anyhow::Error> {
@@ -299,15 +302,23 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
     }
 
     fn lower_name(&mut self, name: &hir::Name) -> ValueId {
-        let id = if name.args.is_empty() {
+        let needs_monomorphization = {
+            let def = &self.inner.db[name.id];
+            def.ty.is_polymorphic() && matches!(def.kind.as_ref(), DefKind::Fn(_))
+        };
+
+        let id = if needs_monomorphization {
+            if let Some(item) = self.inner.lookup_mono_item(name.id, &name.args) {
+                // This is a polymorphic item that has already been monomorphized
+                item.target_id
+            } else {
+                // This is a polymorphic item that needs monomorphization
+                println!("{}", self.inner.db[name.id].qpath);
+                self.inner.lower_mono_item(name.id, &name.args)
+            }
+        } else {
             // This is a monomorphic item
             name.id
-        } else if let Some(item) = self.inner.lookup_mono_item(name.id, &name.args) {
-            // This is a polymorphic item that has already been monomorphized
-            item.target_id
-        } else {
-            // This is a polymorphic item that needs monomorphization
-            self.inner.lower_mono_item(name.id, name.args.clone())
         };
 
         let def = &self.inner.db[id];
