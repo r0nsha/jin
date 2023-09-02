@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use crate::{
     ast,
     db::Db,
@@ -6,7 +8,7 @@ use crate::{
         Name, Return, Ty, TyName, TyParam,
     },
     span::Spanned,
-    ty::tcx::TyCtxt,
+    ty::{tcx::TyCtxt, Instantiation},
 };
 
 pub fn lower(db: &mut Db, tcx: &TyCtxt, ast: ast::Ast) -> Hir {
@@ -121,7 +123,7 @@ impl Lower<'_, Expr> for ast::Expr {
             }),
             Self::Name(name) => Expr::Name(Name {
                 id: name.id.expect("to be resolved"),
-                args: vec![],
+                instantiation: Instantiation::new(),
                 span: name.span,
                 ty: cx.tcx.types.unknown,
             }),

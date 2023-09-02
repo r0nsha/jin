@@ -1,8 +1,11 @@
+pub mod fold;
 mod printer;
 pub mod tcx;
-pub mod fold;
 
-use std::{collections::HashSet, ops::Deref};
+use std::{
+    collections::{HashMap, HashSet},
+    ops::Deref,
+};
 
 use derive_more::{From, Into};
 use enum_as_inner::EnumAsInner;
@@ -186,14 +189,16 @@ pub struct FnTyParam {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ParamTy {
     pub name: Ustr,
-    pub index: usize,
+    pub var: TyVar,
 }
 
 impl ParamTy {
-    pub fn new(name: Ustr, index: usize) -> Self {
-        Self { name, index }
+    pub fn new(name: Ustr, var: TyVar) -> Self {
+        Self { name, var }
     }
 }
+
+pub type Instantiation = HashMap<TyVar, Ty>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InferTy {

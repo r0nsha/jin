@@ -181,14 +181,8 @@ impl<'db> Resolver<'db> {
         let mut defined_ty_params = UstrMap::<Span>::default();
 
         for (index, ty_param) in ty_params.iter_mut().enumerate() {
-            ty_param.id = Some(self.declare_def(
-                env,
-                DefKind::Ty(ty::Ty::new(TyKind::Param(ParamTy {
-                    name: ty_param.name.name(),
-                    index,
-                }))),
-                ty_param.name,
-            ));
+            let ty = self.tcx.types.unknown;
+            ty_param.id = Some(self.declare_def(env, DefKind::Ty(ty), ty_param.name));
 
             if let Some(prev_span) =
                 defined_ty_params.insert(ty_param.name.name(), ty_param.name.span())

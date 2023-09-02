@@ -5,6 +5,8 @@ mod normalize;
 mod subst;
 mod unify;
 
+use std::collections::HashMap;
+
 use ustr::UstrMap;
 
 use crate::{
@@ -20,7 +22,7 @@ use crate::{
         unify::Obligation,
     },
     span::{Span, Spanned},
-    ty::{tcx::TyCtxt, FnTy, FnTyParam, Ty, TyKind, Typed},
+    ty::{tcx::TyCtxt, FnTy, FnTyParam, ParamTy, Ty, TyKind, Typed},
 };
 
 pub type InferResult<T> = Result<T, InferError>;
@@ -55,6 +57,16 @@ impl InferCtxt<'_> {
     }
 
     fn typeck_function_sig(&mut self, sig: &mut FnSig) -> InferResult<Ty> {
+        for tp in &mut sig.ty_params {
+            let ty = Ty::new(TyKind::Param(ParamTy {
+                name: self.db[tp.id].name,
+                var: self.fresh_var(),
+            }));
+
+            self.db[tp.id].ty = self.tcx.types.typ;
+            self.db[tp.id].kind = Box::new(DefKind::Ty(ty));
+        }
+
         for param in &mut sig.params {
             param.ty = self.typeck_ty_annot(&param.ty_annot)?;
             self.db[param.id].ty = param.ty;
@@ -343,9 +355,10 @@ impl Infer<'_> for Name {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, _fx: &mut FnCtxt) -> InferResult<()> {
         let def_ty = cx.lookup(self.id);
         let ty = def_ty.normalize(&mut cx.inner.borrow_mut());
-        let args: Vec<_> = ty.collect_params().into_iter().map(|_| cx.fresh_ty_var()).collect();
+        let args: HashMap<_, _> =
+            ty.collect_params().into_iter().map(|p| (p.var, cx.fresh_ty_var())).collect();
         self.ty = instantiate(ty, args.clone());
-        self.args = args;
+        self.instantiation = args;
         Ok(())
     }
 }

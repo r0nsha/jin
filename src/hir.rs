@@ -2,7 +2,7 @@ mod lower;
 mod pretty_print;
 pub mod visit;
 
-use std::io;
+use std::{collections::HashMap, io};
 
 use enum_as_inner::EnumAsInner;
 pub use lower::lower;
@@ -246,7 +246,7 @@ pub struct Bin {
 #[derive(Debug, Clone)]
 pub struct Name {
     pub id: DefId,
-    pub args: Vec<ty::Ty>,
+    pub instantiation: ty::Instantiation,
     pub span: Span,
     pub ty: ty::Ty,
 }

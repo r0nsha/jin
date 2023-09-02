@@ -1,9 +1,9 @@
 fn main() = {
 	id(1)
 	id(false)
-	//add(41, 2)
+	add(41, 2)
 }
 
 fn id[T](x T) T = x
 
-//fn add[T](a T, b T) = a + b
+fn add[T](a T, b T) = a + b

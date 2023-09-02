@@ -1,10 +1,10 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::{
     db::{Db, DefId},
     hir::{visit::*, Fn, Hir, ItemKind, Name},
     passes::subst::ParamFolder,
-    ty::{fold::TyFolder, Ty},
+    ty::{fold::TyFolder, Instantiation, Ty},
 };
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -33,7 +33,8 @@ impl<'db> Collector<'db> {
             match &item.kind {
                 ItemKind::Fn(f) => {
                     if !f.ty.is_polymorphic() {
-                        PolyCollector { root: &mut self, args: vec![] }.visit_fn(f);
+                        PolyCollector { root: &mut self, instantiation: Instantiation::new() }
+                            .visit_fn(f);
                     }
                 }
             }
@@ -42,14 +43,14 @@ impl<'db> Collector<'db> {
         self
     }
 
-    fn collect_poly_item(&mut self, id: DefId, args: Vec<Ty>) {
+    fn collect_poly_item(&mut self, id: DefId, instantiation: Instantiation) {
         // TODO: this doesn't work with local items
         let item = self.hir.items.iter().find(|item| match &item.kind {
             ItemKind::Fn(f) => f.id == id,
         });
 
         if let Some(item) = item {
-            PolyCollector { root: self, args }.visit_item(item);
+            PolyCollector { root: self, instantiation }.visit_item(item);
         }
     }
 
@@ -60,7 +61,7 @@ impl<'db> Collector<'db> {
 
 struct PolyCollector<'db, 'a> {
     root: &'a mut Collector<'db>,
-    args: Vec<Ty>,
+    instantiation: Instantiation,
 }
 
 impl HirVisitor for PolyCollector<'_, '_> {
@@ -69,7 +70,8 @@ impl HirVisitor for PolyCollector<'_, '_> {
 
         for p in &f.sig.params {
             if p.ty.is_polymorphic() {
-                let ty = ParamFolder { db: self.root.db, args: &self.args }.fold(p.ty);
+                let ty =
+                    ParamFolder { db: self.root.db, instantiation: &self.instantiation }.fold(p.ty);
                 self.root.collect_def_use(p.id, ty);
             }
         }
@@ -78,10 +80,11 @@ impl HirVisitor for PolyCollector<'_, '_> {
     fn visit_name(&mut self, name: &Name) {
         noop_visit_name(self, name);
 
-        if !name.args.is_empty() {
-            let mut folder = ParamFolder { db: self.root.db, args: &self.args };
+        if !name.instantiation.is_empty() {
+            let mut folder = ParamFolder { db: self.root.db, instantiation: &self.instantiation };
             let ty = folder.fold(name.ty);
-            let args: Vec<_> = name.args.iter().map(|arg| folder.fold(*arg)).collect();
+            let args: Instantiation =
+                name.instantiation.iter().map(|(var, ty)| (*var, folder.fold(*ty))).collect();
             self.root.collect_def_use(name.id, ty);
             self.root.collect_poly_item(name.id, args);
         }

@@ -152,7 +152,7 @@ impl UnifyCtxt<'_, '_> {
             // Unify T ~ ?T
             (_, TyKind::Infer(InferTy::TyVar(var))) => self.unify_ty_var(a, *var),
 
-            (TyKind::Param(p1), TyKind::Param(p2)) if p1.index == p2.index => Ok(()),
+            (TyKind::Param(p1), TyKind::Param(p2)) if p1.var == p2.var => Ok(()),
 
             (_, _) => Err(UnifyError::TyMismatch { a, b }),
         }

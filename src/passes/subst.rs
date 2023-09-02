@@ -2,7 +2,7 @@ use crate::{
     db::Db,
     hir::{Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Lit, Name, Return},
     span::{Span, Spanned},
-    ty::{fold::TyFolder, Ty, TyKind, Typed},
+    ty::{fold::TyFolder, Instantiation, Ty, TyKind, Typed},
 };
 
 pub trait SubstTy {
@@ -103,8 +103,8 @@ impl<S: SubstTy> Subst<S> for Bin {
 
 impl<S: SubstTy> Subst<S> for Name {
     fn subst(&mut self, s: &mut S) {
-        for arg in &mut self.args {
-            *arg = s.subst_ty(*arg, self.span);
+        for ty in self.instantiation.values_mut() {
+            *ty = s.subst_ty(*ty, self.span);
         }
         // s.db()[self.id].ty = self.ty;
     }
@@ -116,7 +116,7 @@ impl<S: SubstTy> Subst<S> for Lit {
 
 pub struct ParamFolder<'db, 'a> {
     pub db: &'db mut Db,
-    pub args: &'a [Ty],
+    pub instantiation: &'a Instantiation,
 }
 
 impl SubstTy for ParamFolder<'_, '_> {
@@ -132,7 +132,7 @@ impl SubstTy for ParamFolder<'_, '_> {
 impl TyFolder for ParamFolder<'_, '_> {
     fn fold(&mut self, ty: Ty) -> Ty {
         match ty.kind() {
-            TyKind::Param(p) => self.args[p.index],
+            TyKind::Param(p) => self.instantiation[&p.var],
             _ => self.super_fold(ty),
         }
     }

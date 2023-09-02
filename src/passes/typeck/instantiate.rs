@@ -1,17 +1,17 @@
-use crate::ty::{FnTy, FnTyParam, Ty, TyKind};
+use crate::ty::{FnTy, FnTyParam, Instantiation, Ty, TyKind};
 
-pub(super) fn instantiate(ty: Ty, args: Vec<Ty>) -> Ty {
-    Instantiate::new(ty, args).instantiate()
+pub(super) fn instantiate(ty: Ty, instantiation: Instantiation) -> Ty {
+    Instantiate::new(ty, instantiation).instantiate()
 }
 
 struct Instantiate {
     ty: Ty,
-    args: Vec<Ty>,
+    instantiation: Instantiation,
 }
 
 impl Instantiate {
-    fn new(ty: Ty, args: Vec<Ty>) -> Self {
-        Self { ty, args }
+    fn new(ty: Ty, instantiation: Instantiation) -> Self {
+        Self { ty, instantiation }
     }
 
     fn instantiate(&self) -> Ty {
@@ -32,12 +32,12 @@ impl Instantiate {
                 ret: self.instantiate_inner(fun.ret),
             })
             .into(),
-            TyKind::Param(p) => match self.args.get(p.index) {
+            TyKind::Param(p) => match self.instantiation.get(&p.var) {
                 Some(ty) => *ty,
                 None => {
                     panic!(
-                        "type param `{:?}` ({:?}/{}) out of when instantiating, args={:?}",
-                        p, self.ty, p.index, self.args
+                        "type param `{:?}` ({:?}/{:?}) out of when instantiating, args={:?}",
+                        p, self.ty, p.var, self.instantiation
                     )
                 }
             },
