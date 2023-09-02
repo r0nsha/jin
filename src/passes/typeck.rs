@@ -106,11 +106,16 @@ impl InferCtxt<'_> {
 struct FnCtxt {
     pub id: DefId,
     pub ret_ty: Ty,
+    pub is_polymorphic: bool,
 }
 
 impl FnCtxt {
     fn from_function(fun: &Fn) -> Self {
-        FnCtxt { id: fun.id, ret_ty: fun.ty.as_fn().unwrap().ret }
+        FnCtxt {
+            id: fun.id,
+            ret_ty: fun.ty.as_fn().unwrap().ret,
+            is_polymorphic: !fun.sig.ty_params.is_empty(),
+        }
     }
 }
 
@@ -162,6 +167,11 @@ impl Infer<'_> for Fn {
                 self.sig.ret.as_ref().map_or(cx.db[self.id].span, Spanned::span),
             ))
             .eq(fx.ret_ty, self.body.ty);
+
+        {
+            let x = &mut cx.inner.borrow_mut();
+            dbg!(cx.db[self.id].name, fx.ret_ty.normalize(x), self.body.ty.normalize(x));
+        }
 
         // If the function's return type is `()`, we want to let the user end the body with
         // whatever expression they want, so that they don't need to end it with a `()`
@@ -335,17 +345,24 @@ impl Infer<'_> for Bin {
 }
 
 impl Infer<'_> for Name {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut FnCtxt) -> InferResult<()> {
-        let ty = cx.lookup(self.id).normalize(&mut cx.inner.borrow_mut());
-        let args: Vec<_> = ty.collect_params().into_iter().map(|_| cx.fresh_ty_var()).collect();
-        self.ty = instantiate(ty, args.clone());
-        self.args = args;
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
+        let def_ty = cx.lookup(self.id);
+
+        if fx.is_polymorphic {
+            let ty = def_ty.normalize(&mut cx.inner.borrow_mut());
+            let args: Vec<_> = ty.collect_params().into_iter().map(|_| cx.fresh_ty_var()).collect();
+            self.ty = instantiate(ty, args.clone());
+            self.args = args;
+        } else {
+            self.ty = def_ty;
+        }
+
         Ok(())
     }
 }
 
 impl Infer<'_> for Lit {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, _env: &mut FnCtxt) -> InferResult<()> {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, _fx: &mut FnCtxt) -> InferResult<()> {
         self.ty = match &self.kind {
             LitKind::Int(..) => cx.fresh_int_var(),
             LitKind::Bool(..) => cx.tcx.types.bool,
