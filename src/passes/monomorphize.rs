@@ -68,8 +68,10 @@ impl HirVisitor for PolyCollector<'_, '_> {
         noop_visit_fn(self, f);
 
         for p in &f.sig.params {
-            if p.ty.is_polymorphic() {
-                self.root.collect_def_use(p.id, vec![]);
+            let ty_params = p.ty.collect_params();
+            if !ty_params.is_empty() {
+                let args: Vec<_> = ty_params.into_iter().map(|p| self.args[p.index]).collect();
+                self.root.collect_def_use(p.id, args);
             }
         }
     }
