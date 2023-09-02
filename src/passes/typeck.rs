@@ -106,16 +106,11 @@ impl InferCtxt<'_> {
 struct FnCtxt {
     pub id: DefId,
     pub ret_ty: Ty,
-    pub is_polymorphic: bool,
 }
 
 impl FnCtxt {
     fn from_function(fun: &Fn) -> Self {
-        FnCtxt {
-            id: fun.id,
-            ret_ty: fun.ty.as_fn().unwrap().ret,
-            is_polymorphic: !fun.sig.ty_params.is_empty(),
-        }
+        FnCtxt { id: fun.id, ret_ty: fun.ty.as_fn().unwrap().ret }
     }
 }
 
@@ -345,18 +340,12 @@ impl Infer<'_> for Bin {
 }
 
 impl Infer<'_> for Name {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
+    fn infer(&mut self, cx: &mut InferCtxt<'_>, _fx: &mut FnCtxt) -> InferResult<()> {
         let def_ty = cx.lookup(self.id);
-
-        if fx.is_polymorphic {
-            let ty = def_ty.normalize(&mut cx.inner.borrow_mut());
-            let args: Vec<_> = ty.collect_params().into_iter().map(|_| cx.fresh_ty_var()).collect();
-            self.ty = instantiate(ty, args.clone());
-            self.args = args;
-        } else {
-            self.ty = def_ty;
-        }
-
+        let ty = def_ty.normalize(&mut cx.inner.borrow_mut());
+        let args: Vec<_> = ty.collect_params().into_iter().map(|_| cx.fresh_ty_var()).collect();
+        self.ty = instantiate(ty, args.clone());
+        self.args = args;
         Ok(())
     }
 }
