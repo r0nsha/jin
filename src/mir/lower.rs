@@ -81,8 +81,14 @@ impl<'db> LowerCtxt<'db> {
     fn alloc_mono_def(&mut self, id: DefId, args: &[Ty]) -> DefId {
         let def = &self.db[id];
 
-        let args_str = args.iter().map(|t| t.to_string(self.db)).collect::<Vec<String>>().join("_");
-        let new_qpath = def.qpath.clone().with_name(ustr(&format!("{}${}", def.name, args_str)));
+        let new_qpath = if def.scope.level.is_local() && matches!(def.kind.as_ref(), DefKind::Fn(_))
+        {
+            def.qpath.clone()
+        } else {
+            let args_str =
+                args.iter().map(|t| t.to_string(self.db)).collect::<Vec<String>>().join("_");
+            def.qpath.clone().with_name(ustr(&format!("{}${}", def.name, args_str)))
+        };
 
         let new_scope = def.scope.clone();
         let new_kind = def.kind.as_ref().clone();
@@ -314,6 +320,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
         };
 
         let def = &self.inner.db[id];
+        dbg!(def);
 
         self.bx.build_load(def.ty, def.id, name.span)
     }
