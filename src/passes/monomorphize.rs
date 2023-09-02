@@ -25,7 +25,7 @@ struct Collector<'db> {
 }
 
 impl<'db> Collector<'db> {
-    fn new(db: &'db mut Db, hir: &Hir) -> Self {
+    fn new(db: &'db mut Db, hir: &'db Hir) -> Self {
         Self { db, hir, mono_items: HashSet::new() }
     }
 
@@ -48,17 +48,16 @@ impl<'db> Collector<'db> {
     }
 
     fn collect_poly_item(&mut self, id: DefId) {
-        let item = self.hir.items.iter().find(|item| match &item.kind {
-            ItemKind::Fn(f) => f.id == id,
-        });
+        let item = self
+            .hir
+            .items
+            .iter()
+            .find(|item| match &item.kind {
+                ItemKind::Fn(f) => f.id == id,
+            })
+            .expect("item to exist");
 
-        match &item.kind {
-            ItemKind::Fn(fun) => {
-                if !fun.ty.is_polymorphic() {
-                    self.collect_root_fn(fun);
-                }
-            }
-        }
+        self.visit_item(item);
     }
 
     fn collect_root_fn(&mut self, fun: &Fn) {
@@ -68,7 +67,7 @@ impl<'db> Collector<'db> {
     }
 
     fn collect_def_use(&mut self, id: DefId, args: Vec<Ty>) {
-        self.mono_items.insert(MonoItem { args, id });
+        self.mono_items.insert(MonoItem { id, args });
     }
 }
 
@@ -84,6 +83,7 @@ impl HirVisitor for Collector<'_> {
     fn visit_name(&mut self, name: &Name) {
         if !name.args.is_empty() {
             self.collect_def_use(name.id, name.args.clone());
+            self.collect_poly_item(name.id);
         }
     }
 }
