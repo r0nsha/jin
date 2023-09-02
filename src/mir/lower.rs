@@ -313,7 +313,6 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
                 item.target_id
             } else {
                 // This is a polymorphic item that needs monomorphization
-                println!("{}", self.inner.db[name.id].qpath);
                 self.inner.lower_mono_item(name.id, &name.args)
             }
         } else {
