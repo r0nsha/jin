@@ -46,13 +46,15 @@ impl<'db> LowerCtxt<'db> {
         Self { db, hir, mir, mono_items: mono_items.into_iter().map(|i| (i, None)).collect() }
     }
 
-    fn get_mono_def(&mut self, mono_item: &MonoItem) -> DefId {
-        if let Some(target_id) = self.lookup_mono_item(mono_item) {
+    fn get_mono_def(&mut self, mono_item: &MonoItem, args: Vec<Ty>) -> DefId {
+        let target_id = self.mono_items.get(mono_item).copied().flatten();
+
+        if let Some(target_id) = target_id {
             // This is a polymorphic item that has already been monomorphized
             target_id
         } else {
             // This is a polymorphic item that needs monomorphization
-            self.lower_mono_def(mono_item)
+            self.lower_mono_def(mono_item, args)
         }
     }
 
@@ -68,12 +70,8 @@ impl<'db> LowerCtxt<'db> {
         }
     }
 
-    fn lookup_mono_item(&self, item: &MonoItem) -> Option<DefId> {
-        self.mono_items.get(item).copied().flatten()
-    }
-
-    fn lower_mono_def(&mut self, mono_item: &MonoItem) -> DefId {
-        let new_def_id = self.alloc_mono_def(mono_item);
+    fn lower_mono_def(&mut self, mono_item: &MonoItem, args: Vec<Ty>) -> DefId {
+        let new_def_id = self.alloc_mono_def(mono_item, &args);
 
         // Add the monomorphized item to the visited list
         self.mono_items.insert(mono_item.clone(), Some(new_def_id));
@@ -89,7 +87,7 @@ impl<'db> LowerCtxt<'db> {
                     // Clone the function's contents and substitute its type args
                     let mut new_fun = fun.clone();
                     new_fun.id = new_def_id;
-                    new_fun.subst(&mut ParamFolder { db: self.db, args: &mono_item.args });
+                    new_fun.subst(&mut ParamFolder { db: self.db, args: &args });
 
                     // Lower the newly created function to MIR
                     self.lower_fn(&new_fun).expect("lowering MIR to work");
@@ -100,16 +98,12 @@ impl<'db> LowerCtxt<'db> {
         new_def_id
     }
 
-    fn alloc_mono_def(&mut self, mono_item: &MonoItem) -> DefId {
+    fn alloc_mono_def(&mut self, mono_item: &MonoItem, args: &[Ty]) -> DefId {
         let def = &self.db[mono_item.id];
 
         let new_qpath = if def.kind.is_fn() {
-            let args_str = mono_item
-                .args
-                .iter()
-                .map(|t| t.to_string(self.db))
-                .collect::<Vec<String>>()
-                .join("_");
+            let args_str =
+                args.iter().map(|t| t.to_string(self.db)).collect::<Vec<String>>().join("_");
             def.qpath.clone().with_name(ustr(&format!("{}${}", def.name, args_str)))
         } else {
             def.qpath.clone()
@@ -120,7 +114,7 @@ impl<'db> LowerCtxt<'db> {
         let new_span = def.span;
 
         let ty = def.ty;
-        let new_ty = ParamFolder { db: self.db, args: &mono_item.args }.fold(ty);
+        let new_ty = ParamFolder { db: self.db, args }.fold(ty);
 
         Def::alloc(self.db, new_qpath, new_scope, new_kind, new_ty, new_span)
     }
@@ -148,8 +142,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
         self.bx.position_at(blk_start);
 
         for param in &fun.sig.params {
-            let id =
-                self.inner.get_mono_def(&MonoItem { id: param.id, args: vec![], ty: param.ty });
+            let id = self.inner.get_mono_def(&MonoItem { id: param.id, ty: param.ty }, vec![]);
             self.bx.create_param(id);
         }
 
@@ -324,11 +317,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
     }
 
     fn lower_name(&mut self, name: &hir::Name) -> ValueId {
-        let id = self.inner.get_mono_def(&MonoItem {
-            id: name.id,
-            args: name.args.clone(),
-            ty: name.ty,
-        });
+        let id = self.inner.get_mono_def(&MonoItem { id: name.id, ty: name.ty }, name.args.clone());
         let def = &self.inner.db[id];
         self.bx.build_load(def.ty, def.id, name.span)
     }

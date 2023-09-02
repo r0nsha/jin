@@ -1,4 +1,4 @@
-use std::{collections::HashSet, hash::Hash};
+use std::collections::HashSet;
 
 use crate::{
     db::{Db, DefId},
@@ -7,18 +7,10 @@ use crate::{
     ty::{fold::TyFolder, Ty},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct MonoItem {
     pub id: DefId,
-    pub ty: Ty,        // Used for identifying a polymorphic item use, paired with `id`
-    pub args: Vec<Ty>, // Used to propogate the ty args downwards
-}
-
-impl Hash for MonoItem {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id.hash(state);
-        self.ty.kind().hash(state);
-    }
+    pub ty: Ty,
 }
 
 pub fn monomorphize(db: &mut Db, hir: &Hir) -> HashSet<MonoItem> {
@@ -61,8 +53,8 @@ impl<'db> Collector<'db> {
         }
     }
 
-    fn collect_def_use(&mut self, id: DefId, args: Vec<Ty>, ty: Ty) {
-        self.mono_items.insert(MonoItem { id, ty, args });
+    fn collect_def_use(&mut self, id: DefId, ty: Ty) {
+        self.mono_items.insert(MonoItem { id, ty });
     }
 }
 
@@ -78,7 +70,7 @@ impl HirVisitor for PolyCollector<'_, '_> {
         for p in &f.sig.params {
             if p.ty.is_polymorphic() {
                 let ty = ParamFolder { db: self.root.db, args: &self.args }.fold(p.ty);
-                self.root.collect_def_use(p.id, vec![], ty);
+                self.root.collect_def_use(p.id, ty);
             }
         }
     }
@@ -90,7 +82,7 @@ impl HirVisitor for PolyCollector<'_, '_> {
             let mut folder = ParamFolder { db: self.root.db, args: &self.args };
             let ty = folder.fold(name.ty);
             let args: Vec<_> = name.args.iter().map(|arg| folder.fold(*arg)).collect();
-            self.root.collect_def_use(name.id, args.clone(), ty);
+            self.root.collect_def_use(name.id, ty);
             self.root.collect_poly_item(name.id, args);
         }
     }
