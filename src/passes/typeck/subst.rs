@@ -20,10 +20,6 @@ impl<'db> InferCtxt<'db> {
         let mut cx =
             SubstCtxt { db: self.db, infcx: &mut self.inner.borrow_mut(), errs: HashMap::new() };
 
-        // for def in cx.db.defs.iter_mut() {
-        //     def.ty = cx.subst_ty(def.ty, def.span);
-        // }
-
         for item in &mut hir.items {
             item.subst(&mut cx);
         }

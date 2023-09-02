@@ -106,6 +106,7 @@ impl<S: SubstTy> Subst<S> for Name {
         for arg in &mut self.args {
             *arg = s.subst_ty(*arg, self.span);
         }
+        // s.db()[self.id].ty = self.ty;
     }
 }
 
