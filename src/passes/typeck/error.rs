@@ -32,7 +32,10 @@ impl InferError {
 
                 let mut diag = Diagnostic::error("typeck::type_mismatch")
                     .with_message(msg.clone())
-                    .with_label(Label::primary(obligation.span()).with_message("expected here"));
+                    .with_label(
+                        Label::primary(obligation.span())
+                            .with_message(format!("expected `{expected_ty}` here")),
+                    );
 
                 match *obligation.kind() {
                     ObligationKind::Obvious => (),
