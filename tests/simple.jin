@@ -1,7 +1,5 @@
 fn main() = {
 	id(1)
-	id(false)
 }
 
 fn id[T](x T) T = x
-fn answer[A, B](x A) B = x
