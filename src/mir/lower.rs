@@ -75,17 +75,17 @@ impl<'db> LowerCtxt<'db> {
     fn lower_mono_def(&mut self, mono_item: &MonoItem) -> DefId {
         let new_def_id = self.alloc_mono_def(mono_item);
 
+        // Add the monomorphized item to the visited list
+        self.mono_items.insert(mono_item.clone(), Some(new_def_id));
+
         // Monomorphize the item if needed
-        let item = self.hir.items.iter().find(|item| match &item.kind {
+        let found_item = self.hir.items.iter().find(|item| match &item.kind {
             hir::ItemKind::Fn(f) => f.id == mono_item.id,
         });
 
-        if let Some(item) = item {
+        if let Some(item) = found_item {
             match &item.kind {
                 hir::ItemKind::Fn(fun) => {
-                    // Add the monomorphized item to the visited list
-                    self.mono_items.insert(mono_item.clone(), Some(new_def_id));
-
                     // Clone the function's contents and substitute its type args
                     let mut new_fun = fun.clone();
                     new_fun.id = new_def_id;
