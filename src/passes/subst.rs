@@ -1,4 +1,5 @@
 use crate::{
+    db::Db,
     hir::{Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Lit, Name, Return},
     span::{Span, Spanned},
     ty::{Ty, Typed},
@@ -6,6 +7,7 @@ use crate::{
 
 pub trait SubstTy {
     fn subst_ty(&mut self, ty: Ty, span: Span) -> Ty;
+    fn db(&mut self) -> &mut Db;
 }
 
 pub trait Subst<S: SubstTy> {
@@ -44,6 +46,7 @@ impl<S: SubstTy> Subst<S> for Fn {
         self.sig.subst(s);
         self.body.subst(s);
         self.ty = s.subst_ty(self.ty, self.span);
+        s.db()[self.id].ty = self.ty;
     }
 }
 
@@ -51,6 +54,7 @@ impl<S: SubstTy> Subst<S> for FnSig {
     fn subst(&mut self, s: &mut S) {
         for param in &mut self.params {
             param.ty = s.subst_ty(param.ty, param.span);
+            s.db()[param.id].ty = param.ty;
         }
     }
 }

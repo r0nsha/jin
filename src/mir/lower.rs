@@ -58,30 +58,26 @@ impl<'db> LowerCtxt<'db> {
 
         match &item.kind {
             hir::ItemKind::Fn(fun) => {
-                let mut folder = ParamFolder { args };
+                let mut folder = ParamFolder { db: self.db, args };
 
                 // Create a new definition for the monomorphized function
                 let new_def_id = {
-                    let def = &self.db[fun.id];
+                    let def = &folder.db[fun.id];
 
                     let args_str = args
                         .iter()
-                        .map(|t| t.to_string(self.db))
+                        .map(|t| t.to_string(folder.db))
                         .collect::<Vec<String>>()
                         .join("_");
                     let new_qpath =
                         def.qpath.clone().with_name(ustr(&format!("{}${}", def.name, args_str)));
 
+                    let new_scope = def.scope.clone();
+                    let new_kind = def.kind.as_ref().clone();
+                    let new_span = def.span;
                     let new_ty = folder.fold(def.ty);
 
-                    Def::alloc(
-                        self.db,
-                        new_qpath,
-                        def.scope.clone(),
-                        def.kind.as_ref().clone(),
-                        new_ty,
-                        def.span,
-                    )
+                    Def::alloc(folder.db, new_qpath, new_scope, new_kind, new_ty, new_span)
                 };
 
                 // Add the monomorphized item to the visited list
@@ -344,17 +340,22 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
     }
 }
 
-struct ParamFolder<'a> {
+struct ParamFolder<'db, 'a> {
+    db: &'db mut Db,
     args: &'a [Ty],
 }
 
-impl SubstTy for ParamFolder<'_> {
+impl SubstTy for ParamFolder<'_, '_> {
     fn subst_ty(&mut self, ty: Ty, _: Span) -> Ty {
         self.fold(ty)
     }
+
+    fn db(&mut self) -> &mut Db {
+        self.db
+    }
 }
 
-impl TyFolder for ParamFolder<'_> {
+impl TyFolder for ParamFolder<'_, '_> {
     fn fold(&mut self, ty: Ty) -> Ty {
         match ty.kind() {
             TyKind::Param(p) => self.args[p.index],

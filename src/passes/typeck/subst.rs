@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
+    db::Db,
     hir::Hir,
     passes::{
         subst::{Subst, SubstTy},
@@ -16,11 +17,12 @@ use crate::{
 
 impl<'db> InferCtxt<'db> {
     pub fn subst(&mut self, hir: &mut Hir) {
-        let mut cx = SubstCtxt { infcx: &mut self.inner.borrow_mut(), errs: HashMap::new() };
+        let mut cx =
+            SubstCtxt { db: self.db, infcx: &mut self.inner.borrow_mut(), errs: HashMap::new() };
 
-        for def in self.db.defs.iter_mut() {
-            def.ty = cx.subst_ty(def.ty, def.span);
-        }
+        // for def in cx.db.defs.iter_mut() {
+        //     def.ty = cx.subst_ty(def.ty, def.span);
+        // }
 
         for item in &mut hir.items {
             item.subst(&mut cx);
@@ -33,6 +35,7 @@ impl<'db> InferCtxt<'db> {
 }
 
 struct SubstCtxt<'db> {
+    db: &'db mut Db,
     infcx: &'db mut InferCtxtInner,
     errs: HashMap<Span, InferError>,
 }
@@ -50,6 +53,10 @@ impl SubstTy for SubstCtxt<'_> {
         }
 
         ty
+    }
+
+    fn db(&mut self) -> &mut Db {
+        self.db
     }
 }
 
