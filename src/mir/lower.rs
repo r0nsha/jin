@@ -173,7 +173,6 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
         match expr {
-            hir::Expr::Item(inner) => self.lower_local_item(inner),
             hir::Expr::If(inner) => self.lower_if(inner),
             hir::Expr::Block(inner) => self.lower_block(inner),
             hir::Expr::Return(inner) => self.lower_return(inner),
@@ -182,11 +181,6 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
             hir::Expr::Name(inner) => self.lower_name(inner),
             hir::Expr::Lit(inner) => self.lower_lit(inner),
         }
-    }
-
-    fn lower_local_item(&mut self, item: &hir::Item) -> ValueId {
-        self.inner.lower_item(item).expect("mir lowering to succeed");
-        self.bx.build_unit_lit(item.ty, item.span())
     }
 
     fn lower_if(&mut self, if_: &hir::If) -> ValueId {

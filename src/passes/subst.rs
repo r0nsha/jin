@@ -17,7 +17,6 @@ pub trait Subst<S: SubstTy> {
 impl<S: SubstTy> Subst<S> for Expr {
     fn subst(&mut self, s: &mut S) {
         match self {
-            Self::Item(inner) => inner.subst(s),
             Self::If(inner) => inner.subst(s),
             Self::Block(inner) => inner.subst(s),
             Self::Return(inner) => inner.subst(s),

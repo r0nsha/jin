@@ -21,6 +21,10 @@ pub struct Hir {
 }
 
 impl Hir {
+    pub fn new() -> Self {
+        Self { items: vec![] }
+    }
+
     pub fn pretty_print(&self, db: &Db) -> io::Result<()> {
         println!();
         pretty_print::print(db, self)?;
@@ -90,7 +94,6 @@ impl Typed for ItemKind {
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum Expr {
-    Item(Item),
     If(If),
     Block(Block),
     Return(Return),
@@ -103,7 +106,6 @@ pub enum Expr {
 impl Typed for Expr {
     fn ty(&self) -> ty::Ty {
         match self {
-            Self::Item(x) => x.ty(),
             Self::If(x) => x.ty,
             Self::Block(x) => x.ty,
             Self::Return(x) => x.ty,
@@ -116,7 +118,6 @@ impl Typed for Expr {
 
     fn ty_mut(&mut self) -> &mut ty::Ty {
         match self {
-            Self::Item(x) => x.ty_mut(),
             Self::If(x) => &mut x.ty,
             Self::Block(x) => &mut x.ty,
             Self::Return(x) => &mut x.ty,
@@ -131,7 +132,6 @@ impl Typed for Expr {
 impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
-            Self::Item(x) => x.span(),
             Self::If(x) => x.span,
             Self::Block(x) => x.span,
             Self::Return(x) => x.span,
@@ -144,7 +144,6 @@ impl Spanned for Expr {
 
     fn span_mut(&mut self) -> &mut Span {
         match self {
-            Self::Item(x) => x.span_mut(),
             Self::If(x) => &mut x.span,
             Self::Block(x) => &mut x.span,
             Self::Return(x) => &mut x.span,

@@ -151,7 +151,6 @@ trait Infer<'db> {
 impl Infer<'_> for Expr {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
         match self {
-            Self::Item(inner) => inner.infer(cx, fx),
             Self::If(inner) => inner.infer(cx, fx),
             Self::Block(inner) => inner.infer(cx, fx),
             Self::Return(inner) => inner.infer(cx, fx),

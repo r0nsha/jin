@@ -54,7 +54,6 @@ pub fn noop_visit_fn(vis: &mut impl HirVisitor, f: &Fn) {
 
 pub fn noop_visit_expr(vis: &mut impl HirVisitor, expr: &Expr) {
     match expr {
-        Expr::Item(x) => vis.visit_item(x),
         Expr::If(x) => vis.visit_if(x),
         Expr::Block(x) => vis.visit_block(x),
         Expr::Return(x) => vis.visit_return(x),

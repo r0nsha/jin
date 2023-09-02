@@ -28,7 +28,6 @@ trait PrettyPrint {
 impl PrettyPrint for Expr {
     fn pretty_print(&self, cx: &mut PPCtxt) {
         match self {
-            Self::Item(inner) => inner.pretty_print(cx),
             Self::If(inner) => inner.pretty_print(cx),
             Self::Block(inner) => inner.pretty_print(cx),
             Self::Return(inner) => inner.pretty_print(cx),

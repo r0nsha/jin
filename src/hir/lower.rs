@@ -10,23 +10,25 @@ use crate::{
 };
 
 pub fn lower(db: &mut Db, tcx: &TyCtxt, ast: ast::Ast) -> Hir {
-    Hir {
-        items: ast
-            .modules
-            .into_iter()
-            .flat_map(|module| LowerCtxt { _db: db, tcx }.run(module))
-            .collect(),
+    let mut cx = LowerCtxt { _db: db, tcx, hir: Hir::new() };
+
+    for module in ast.modules {
+        cx.lower_module(module);
     }
+
+    cx.hir
 }
 
 struct LowerCtxt<'db> {
     _db: &'db mut Db,
     tcx: &'db TyCtxt,
+    hir: Hir,
 }
 
 impl<'db> LowerCtxt<'db> {
-    fn run(&mut self, module: ast::Module) -> Vec<Item> {
-        module.items.into_iter().map(|item| item.lower(self)).collect()
+    fn lower_module(&mut self, module: ast::Module) {
+        let items: Vec<_> = module.items.into_iter().map(|item| item.lower(self)).collect();
+        self.hir.items.extend(items);
     }
 }
 
@@ -83,7 +85,14 @@ impl Lower<'_, FnSig> for ast::FnSig {
 impl Lower<'_, Expr> for ast::Expr {
     fn lower(self, cx: &mut LowerCtxt<'_>) -> Expr {
         match self {
-            Self::Item(item) => Expr::Item(item.lower(cx)),
+            Self::Item(item) => {
+                let span = item.span();
+                let item = item.lower(cx);
+                cx.hir.items.push(item);
+                // TODO: We need to create a dummy value because we must return an expression.
+                // Maybe we can avoid this since we know that this must be a block statement?
+                Expr::Lit(Lit { kind: LitKind::Unit, span, ty: cx.tcx.types.unknown })
+            }
             Self::Return(ret) => Expr::Return(Return {
                 expr: ret.expr.map_or_else(
                     || {
