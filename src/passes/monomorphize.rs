@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     db::{Db, DefId},
-    hir::{visit::*, Fn, Hir, ItemKind, Name},
+    hir::{visit::*, Fn, Hir, Item, ItemKind, Name},
     passes::subst::ParamFolder,
     ty::{fold::TyFolder, Instantiation, Ty},
 };
@@ -45,13 +45,16 @@ impl<'db> Collector<'db> {
 
     fn collect_poly_item(&mut self, id: DefId, instantiation: Instantiation) {
         // TODO: this doesn't work with local items
-        let item = self.hir.items.iter().find(|item| match &item.kind {
-            ItemKind::Fn(f) => f.id == id,
-        });
+        let item = self
+            .hir
+            .items
+            .iter()
+            .find(|item| match &item.kind {
+                ItemKind::Fn(f) => f.id == id,
+            })
+            .expect("item to exist");
 
-        if let Some(item) = item {
-            PolyCollector { root: self, instantiation }.visit_item(item);
-        }
+        PolyCollector { root: self, instantiation }.visit_item(item);
     }
 
     fn collect_def_use(&mut self, id: DefId, ty: Ty) {
@@ -65,14 +68,28 @@ struct PolyCollector<'db, 'a> {
 }
 
 impl HirVisitor for PolyCollector<'_, '_> {
+    fn visit_item(&mut self, item: &Item) {
+        match &item.kind {
+            ItemKind::Fn(f) => {
+                if !f.ty.is_polymorphic() {
+                    PolyCollector { root: self.root, instantiation: Instantiation::new() }
+                        .visit_fn(f);
+                }
+            }
+        }
+    }
+
     fn visit_fn(&mut self, f: &Fn) {
         noop_visit_fn(self, f);
 
         for p in &f.sig.params {
             if p.ty.is_polymorphic() {
-                // let ty =
-                //     ParamFolder { db: self.root.db, instantiation: &self.instantiation }.fold(p.ty);
-                self.root.collect_def_use(p.id, p.ty);
+                dbg!(&p.ty);
+                dbg!(&self.instantiation);
+                let ty =
+                    ParamFolder { db: self.root.db, instantiation: &self.instantiation }.fold(p.ty);
+
+                self.root.collect_def_use(p.id, ty);
             }
         }
     }
