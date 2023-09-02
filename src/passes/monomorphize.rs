@@ -39,20 +39,22 @@ impl<'db> Collector<'db> {
 
     fn collect_root_item(&mut self, item: &Item) {
         match &item.kind {
-            ItemKind::Fn(f) => {
-                if f.ty.is_polymorphic() {
-                    self.collect_fn(f);
+            ItemKind::Fn(fun) => {
+                if fun.ty.is_polymorphic() {
+                    self.collect_fn(fun);
                 }
             }
         }
     }
 
-    fn collect_fn(&self, f: &Fn) {}
+    fn collect_fn(&mut self, fun: &Fn) {
+        for param in &fun.sig.params {
+            self.collect_mono_def(param.id, &[]);
+        }
+    }
 
-    fn lookup_mono_item(&mut self, source_id: DefId, args: &[Ty]) -> DefId {
-        if args.is_empty() {
-            source_id
-        } else if let Some(item) =
+    fn collect_mono_def(&mut self, source_id: DefId, args: &[Ty]) -> DefId {
+        if let Some(item) =
             self.mono_items.iter().find(|item| item.source_id == source_id && item.args == args)
         {
             item.target_id
