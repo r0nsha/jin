@@ -3,9 +3,7 @@ use std::collections::HashSet;
 use crate::{
     db::{Db, DefId},
     hir::{Fn, Hir, HirVisitor, Item, ItemKind, Name},
-    passes::subst::SubstTy,
-    span::Span,
-    ty::{fold::TyFolder, Ty, TyKind},
+    ty::Ty,
 };
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -85,30 +83,6 @@ impl HirVisitor for Collector<'_> {
         if !name.args.is_empty() {
             self.collect_def_use(name.id, name.args.clone());
             self.collect_poly_item(name.id);
-        }
-    }
-}
-
-pub struct ParamFolder<'db, 'a> {
-    db: &'db mut Db,
-    args: &'a [Ty],
-}
-
-impl SubstTy for ParamFolder<'_, '_> {
-    fn subst_ty(&mut self, ty: Ty, _: Span) -> Ty {
-        self.fold(ty)
-    }
-
-    fn db(&mut self) -> &mut Db {
-        self.db
-    }
-}
-
-impl TyFolder for ParamFolder<'_, '_> {
-    fn fold(&mut self, ty: Ty) -> Ty {
-        match ty.kind() {
-            TyKind::Param(p) => self.args[p.index],
-            _ => self.super_fold(ty),
         }
     }
 }
