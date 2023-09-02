@@ -46,58 +46,52 @@ impl<'db> LowerCtxt<'db> {
         }
     }
 
-    fn lower_mono_defs(&mut self, id: DefId, args: &[Ty]) -> DefId {
-        let item = self
-            .hir
-            .items
-            .iter()
-            .find(|item| match &item.kind {
-                hir::ItemKind::Fn(f) => f.id == id,
-            })
-            .expect("item to exist");
+    fn lower_mono_def(&mut self, id: DefId, args: &[Ty]) -> DefId {
+        let new_def_id = self.alloc_mono_def(id, args);
 
-        match &item.kind {
-            hir::ItemKind::Fn(fun) => {
-                let mut folder = ParamFolder { db: self.db, args };
+        // Monomorphize the item if needed
+        let item = self.hir.items.iter().find(|item| match &item.kind {
+            hir::ItemKind::Fn(f) => f.id == id,
+        });
 
-                // Create a new definition for the monomorphized function
-                let new_def_id = {
-                    let def = &folder.db[fun.id];
+        if let Some(item) = item {
+            match &item.kind {
+                hir::ItemKind::Fn(fun) => {
+                    // Add the monomorphized item to the visited list
+                    self.mono_items.push(MonoItem {
+                        args: args.to_owned(),
+                        source_id: fun.id,
+                        target_id: new_def_id,
+                    });
 
-                    let args_str = args
-                        .iter()
-                        .map(|t| t.to_string(folder.db))
-                        .collect::<Vec<String>>()
-                        .join("_");
-                    let new_qpath =
-                        def.qpath.clone().with_name(ustr(&format!("{}${}", def.name, args_str)));
+                    // Clone the function's contents and substitute its type args
+                    let mut new_fun = fun.clone();
+                    new_fun.id = new_def_id;
+                    new_fun.subst(&mut ParamFolder { db: self.db, args });
 
-                    let new_scope = def.scope.clone();
-                    let new_kind = def.kind.as_ref().clone();
-                    let new_span = def.span;
-                    let new_ty = folder.fold(def.ty);
-
-                    Def::alloc(folder.db, new_qpath, new_scope, new_kind, new_ty, new_span)
-                };
-
-                // Add the monomorphized item to the visited list
-                self.mono_items.push(MonoItem {
-                    args: args.to_owned(),
-                    source_id: fun.id,
-                    target_id: new_def_id,
-                });
-
-                // Clone the function's contents and substitute its type args
-                let mut new_fun = fun.clone();
-                new_fun.id = new_def_id;
-                new_fun.subst(&mut folder);
-
-                // Lower the newly created function to MIR
-                self.lower_fn(&new_fun).expect("lowering MIR to work");
-
-                new_fun.id
+                    // Lower the newly created function to MIR
+                    self.lower_fn(&new_fun).expect("lowering MIR to work");
+                }
             }
         }
+
+        new_def_id
+    }
+
+    fn alloc_mono_def(&mut self, id: DefId, args: &[Ty]) -> DefId {
+        let def = &self.db[id];
+
+        let args_str = args.iter().map(|t| t.to_string(self.db)).collect::<Vec<String>>().join("_");
+        let new_qpath = def.qpath.clone().with_name(ustr(&format!("{}${}", def.name, args_str)));
+
+        let new_scope = def.scope.clone();
+        let new_kind = def.kind.as_ref().clone();
+        let new_span = def.span;
+
+        let ty = def.ty;
+        let new_ty = ParamFolder { db: self.db, args }.fold(ty);
+
+        Def::alloc(self.db, new_qpath, new_scope, new_kind, new_ty, new_span)
     }
 
     fn lower_fn(&mut self, fun: &hir::Fn) -> Result<(), anyhow::Error> {
@@ -308,19 +302,15 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
     }
 
     fn lower_name(&mut self, name: &hir::Name) -> ValueId {
-        let needs_monomorphization = self.inner.db[name.id].ty.is_polymorphic();
-
-        let id = if needs_monomorphization {
-            if let Some(item) = self.inner.lookup_mono_item(name.id, &name.args) {
-                // This is a polymorphic item that has already been monomorphized
-                item.target_id
-            } else {
-                // This is a polymorphic item that needs monomorphization
-                self.inner.lower_mono_defs(name.id, &name.args)
-            }
-        } else {
+        let id = if name.args.is_empty() {
             // This is a monomorphic item
             name.id
+        } else if let Some(item) = self.inner.lookup_mono_item(name.id, &name.args) {
+            // This is a polymorphic item that has already been monomorphized
+            item.target_id
+        } else {
+            // This is a polymorphic item that needs monomorphization
+            self.inner.lower_mono_def(name.id, &name.args)
         };
 
         let def = &self.inner.db[id];
