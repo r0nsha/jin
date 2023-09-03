@@ -8,18 +8,22 @@ use crate::span::{Span, Spanned};
 pub struct Word(Ustr, Span);
 
 impl Word {
+    #[inline]
     pub fn new(name: Ustr, span: Span) -> Self {
         Self(name, span)
     }
 
+    #[inline]
     pub fn name(&self) -> Ustr {
         self.0
     }
 
+    #[inline]
     pub fn name_mut(&mut self) -> &mut Ustr {
         &mut self.0
     }
 
+    #[inline]
     pub fn as_str(&self) -> &str {
         self.name().as_str()
     }
