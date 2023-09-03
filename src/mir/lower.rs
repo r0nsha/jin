@@ -4,7 +4,7 @@ use anyhow::Result;
 use ustr::ustr;
 
 use crate::{
-    ast::BinOp,
+    ast::BinOpKind,
     db::{Db, Def},
     hir::{self, Hir},
     mir::{builder::FunctionBuilder, DefId, Function, Mir, ValueId},
@@ -247,11 +247,11 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
         self.bx.build_call(call.ty, callee, args, call.span)
     }
 
-    fn lower_bin(&mut self, bin: &hir::Bin) -> ValueId {
+    fn lower_bin(&mut self, bin: &hir::BinOp) -> ValueId {
         let lhs = self.lower_expr(&bin.lhs);
 
         match bin.op {
-            BinOp::And => {
+            BinOpKind::And => {
                 let true_blk = self.bx.create_block("and_true");
                 let false_blk = self.bx.create_block("and_false");
 
@@ -275,7 +275,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
                     bin.span,
                 )
             }
-            BinOp::Or => {
+            BinOpKind::Or => {
                 let true_blk = self.bx.create_block("or_true");
                 let false_blk = self.bx.create_block("or_false");
 

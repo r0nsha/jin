@@ -1,6 +1,6 @@
 use crate::{
     db::Db,
-    hir::{Bin, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Lit, Name, Return},
+    hir::{BinOp, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Lit, Name, Return},
     span::{Span, Spanned},
     ty::{fold::TyFolder, Instantiation, Ty, TyKind, Typed},
 };
@@ -93,7 +93,7 @@ impl<S: SubstTy> Subst<S> for Call {
     }
 }
 
-impl<S: SubstTy> Subst<S> for Bin {
+impl<S: SubstTy> Subst<S> for BinOp {
     fn subst(&mut self, s: &mut S) {
         self.lhs.subst(s);
         self.rhs.subst(s);

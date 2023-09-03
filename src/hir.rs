@@ -8,7 +8,7 @@ use enum_as_inner::EnumAsInner;
 pub use lower::lower;
 
 use crate::{
-    ast::BinOp,
+    ast::BinOpKind,
     common::Word,
     db::{Db, DefId},
     span::{Span, Spanned},
@@ -98,7 +98,7 @@ pub enum Expr {
     Block(Block),
     Return(Return),
     Call(Call),
-    Bin(Bin),
+    Bin(BinOp),
     Name(Name),
     Lit(Lit),
 }
@@ -234,10 +234,10 @@ impl Typed for CallArg {
 }
 
 #[derive(Debug, Clone)]
-pub struct Bin {
+pub struct BinOp {
     pub lhs: Box<Expr>,
     pub rhs: Box<Expr>,
-    pub op: BinOp,
+    pub op: BinOpKind,
     pub span: Span,
     pub ty: ty::Ty,
 }

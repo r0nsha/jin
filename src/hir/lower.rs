@@ -2,7 +2,7 @@ use crate::{
     ast,
     db::Db,
     hir::{
-        Bin, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, Hir, If, Item, ItemKind, Lit, LitKind,
+        BinOp, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, Hir, If, Item, ItemKind, Lit, LitKind,
         Name, Return, Ty, TyName, TyParam,
     },
     span::Spanned,
@@ -121,7 +121,7 @@ impl Lower<'_, Expr> for ast::Expr {
                 span: call.span,
                 ty: cx.tcx.types.unknown,
             }),
-            Self::Bin(bin) => Expr::Bin(Bin {
+            Self::Bin(bin) => Expr::Bin(BinOp {
                 lhs: Box::new(bin.lhs.lower(cx)),
                 rhs: Box::new(bin.rhs.lower(cx)),
                 op: bin.op,

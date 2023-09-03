@@ -8,11 +8,11 @@ mod unify;
 use ustr::UstrMap;
 
 use crate::{
-    ast::BinOp,
+    ast::BinOpKind,
     db::{Db, DefId, DefKind},
     diagnostics::Diagnostic,
     hir::{
-        self, Bin, Block, Call, Expr, Fn, FnSig, Hir, If, Item, ItemKind, Lit, LitKind, Name,
+        self, BinOp, Block, Call, Expr, Fn, FnSig, Hir, If, Item, ItemKind, Lit, LitKind, Name,
         Return,
     },
     passes::typeck::{
@@ -332,7 +332,7 @@ impl Infer<'_> for Call {
     }
 }
 
-impl Infer<'_> for Bin {
+impl Infer<'_> for BinOp {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
         self.lhs.infer(cx, fx)?;
         self.rhs.infer(cx, fx)?;
@@ -341,8 +341,8 @@ impl Infer<'_> for Bin {
             .eq(self.lhs.ty(), self.rhs.ty())?;
 
         match self.op {
-            BinOp::Cmp(..) => (),
-            BinOp::And | BinOp::Or => {
+            BinOpKind::Cmp(..) => (),
+            BinOpKind::And | BinOpKind::Or => {
                 cx.at(Obligation::obvious(self.lhs.span())).eq(cx.tcx.types.bool, self.lhs.ty())?;
                 cx.at(Obligation::obvious(self.rhs.span())).eq(cx.tcx.types.bool, self.rhs.ty())?;
             }
@@ -352,7 +352,7 @@ impl Infer<'_> for Bin {
         }
 
         self.ty = match self.op {
-            BinOp::Cmp(..) => cx.tcx.types.bool,
+            BinOpKind::Cmp(..) => cx.tcx.types.bool,
             _ => self.lhs.ty(),
         };
 

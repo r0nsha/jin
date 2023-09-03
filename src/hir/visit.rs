@@ -29,7 +29,7 @@ pub trait HirVisitor: Sized {
         noop_visit_call(self, call);
     }
 
-    fn visit_bin(&mut self, bin: &Bin) {
+    fn visit_bin(&mut self, bin: &BinOp) {
         noop_visit_bin(self, bin);
     }
 
@@ -90,7 +90,7 @@ pub fn noop_visit_call(vis: &mut impl HirVisitor, call: &Call) {
     }
 }
 
-pub fn noop_visit_bin(vis: &mut impl HirVisitor, bin: &Bin) {
+pub fn noop_visit_bin(vis: &mut impl HirVisitor, bin: &BinOp) {
     vis.visit_expr(&bin.lhs);
     vis.visit_expr(&bin.rhs);
 }

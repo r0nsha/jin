@@ -8,7 +8,7 @@ pub use lower::lower;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    ast::BinOp,
+    ast::BinOpKind,
     common::{new_key_type, IndexVec},
     db::{Db, DefId},
     span::Span,
@@ -151,7 +151,7 @@ pub enum Inst {
     Phi(Phi),
     Call(Call),
     Load(Load),
-    Bin(Bin),
+    Bin(BinOp),
     IntLit(IntLit),
     BoolLit(BoolLit),
     UnitLit(UnitLit),
@@ -209,9 +209,9 @@ pub struct Load {
 }
 
 #[derive(Debug, Clone)]
-pub struct Bin {
+pub struct BinOp {
     pub value: ValueId,
-    pub op: BinOp,
+    pub op: BinOpKind,
     pub lhs: ValueId,
     pub rhs: ValueId,
     #[allow(unused)]

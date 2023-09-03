@@ -2,7 +2,7 @@ use std::io;
 
 use crate::{
     db::Db,
-    hir::{Bin, Block, Call, Expr, Fn, Hir, If, Item, ItemKind, Lit, LitKind, Name, Return},
+    hir::{BinOp, Block, Call, Expr, Fn, Hir, If, Item, ItemKind, Lit, LitKind, Name, Return},
 };
 
 pub(super) fn print(db: &Db, hir: &Hir) -> io::Result<()> {
@@ -142,7 +142,7 @@ impl PrettyPrint for Call {
     }
 }
 
-impl PrettyPrint for Bin {
+impl PrettyPrint for BinOp {
     fn pretty_print(&self, cx: &mut PPCtxt) {
         cx.builder.begin_child(format!("{} (result: {})", self.op, self.ty.display(cx.db)));
         self.lhs.pretty_print(cx);

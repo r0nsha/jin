@@ -3,7 +3,7 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Bin, BinOp, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, If, Item, Lit, LitKind, Module,
+        BinOp, BinOpKind, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, If, Item, Lit, LitKind, Module,
         Name, Return, Ty, TyName, TyParam,
     },
     common::{QPath, Word},
@@ -168,7 +168,7 @@ impl<'a> Parser<'a> {
 
     fn parse_expr(&mut self) -> ParseResult<Expr> {
         let mut expr_stack: Vec<Expr> = vec![];
-        let mut op_stack: Vec<BinOp> = vec![];
+        let mut op_stack: Vec<BinOpKind> = vec![];
         let mut last_precedence = usize::MAX;
 
         expr_stack.push(self.parse_operand()?);
@@ -178,10 +178,10 @@ impl<'a> Parser<'a> {
                 break;
             };
 
-            let op = match BinOp::try_from(tok.kind).ok() {
+            let op = match BinOpKind::try_from(tok.kind).ok() {
                 // For these specific operators, we check if they are on the same line as the last
                 // expr, to avoid ambiguity with unary operators
-                Some(op @ (BinOp::BitAnd | BinOp::Sub))
+                Some(op @ (BinOpKind::BitAnd | BinOpKind::Sub))
                     if self.are_on_same_line(
                         expr_stack.last().expect("to have an expr").span(),
                         tok.span,
@@ -216,7 +216,7 @@ impl<'a> Parser<'a> {
                 let lhs = expr_stack.pop().unwrap();
                 let span = lhs.span().merge(rhs.span());
 
-                expr_stack.push(Expr::Bin(Bin {
+                expr_stack.push(Expr::Bin(BinOp {
                     lhs: Box::new(lhs),
                     op,
                     rhs: Box::new(rhs),
@@ -237,7 +237,7 @@ impl<'a> Parser<'a> {
 
             let span = lhs.span().merge(rhs.span());
 
-            expr_stack.push(Expr::Bin(Bin { lhs: Box::new(lhs), op, rhs: Box::new(rhs), span }));
+            expr_stack.push(Expr::Bin(BinOp { lhs: Box::new(lhs), op, rhs: Box::new(rhs), span }));
         }
 
         Ok(expr_stack.into_iter().next().unwrap())

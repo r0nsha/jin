@@ -82,7 +82,7 @@ pub enum Expr {
     If(If),
     Block(Block),
     Call(Call),
-    Bin(Bin),
+    Bin(BinOp),
     Name(Name),
     Lit(Lit),
 }
@@ -179,15 +179,15 @@ pub enum CallArg {
 }
 
 #[derive(Debug, Clone)]
-pub struct Bin {
+pub struct BinOp {
     pub lhs: Box<Expr>,
     pub rhs: Box<Expr>,
-    pub op: BinOp,
+    pub op: BinOpKind,
     pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BinOp {
+pub enum BinOpKind {
     Add,
     Sub,
     Mul,
@@ -203,7 +203,7 @@ pub enum BinOp {
     Cmp(CmpOp),
 }
 
-impl BinOp {
+impl BinOpKind {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Add => "+",
@@ -276,13 +276,13 @@ pub enum CmpOp {
     Ge,
 }
 
-impl fmt::Display for BinOp {
+impl fmt::Display for BinOpKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
-impl TryFrom<TokenKind> for BinOp {
+impl TryFrom<TokenKind> for BinOpKind {
     type Error = ();
 
     fn try_from(value: TokenKind) -> Result<Self, Self::Error> {

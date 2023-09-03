@@ -4,7 +4,7 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     ast::{
-        Ast, Bin, Block, Call, CallArg, Expr, Fn, FnSig, If, Item, Module, Name, Return, Ty,
+        Ast, BinOp, Block, Call, CallArg, Expr, Fn, FnSig, If, Item, Module, Name, Return, Ty,
         TyName, TyParam,
     },
     common::{QPath, Word},
@@ -309,7 +309,7 @@ impl Resolve<'_> for Call {
     }
 }
 
-impl Resolve<'_> for Bin {
+impl Resolve<'_> for BinOp {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         self.lhs.resolve(cx, env);
         self.rhs.resolve(cx, env);
