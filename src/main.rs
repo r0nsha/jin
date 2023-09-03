@@ -103,7 +103,7 @@ fn build(db: &mut Db) {
     }
     expect!(db);
 
-    let tcx = TyCtxt::new();
+    let mut tcx = TyCtxt::new();
 
     db.time.start("resolve");
     passes::resolve(db, &tcx, &mut ast);
@@ -113,7 +113,7 @@ fn build(db: &mut Db) {
     let mut hir = hir::lower(db, &tcx, ast);
 
     db.time.start("typeck");
-    if let Err(diag) = passes::typeck(db, &tcx, &mut hir) {
+    if let Err(diag) = passes::typeck(db, &mut tcx, &mut hir) {
         db.diagnostics.add(diag);
     }
     db.time.stop();

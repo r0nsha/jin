@@ -1,3 +1,4 @@
+mod apply_adjustments;
 mod error;
 mod infcx;
 mod instantiate;
@@ -16,8 +17,8 @@ use crate::{
         Return,
     },
     passes::typeck::{
-        error::InferError, infcx::InferCtxt, instantiate::instantiate, normalize::NormalizeTy,
-        unify::Obligation,
+        apply_adjustments::apply_adjustments, error::InferError, infcx::InferCtxt,
+        instantiate::instantiate, normalize::NormalizeTy, unify::Obligation,
     },
     span::{Span, Spanned},
     ty::{tcx::TyCtxt, FnTy, FnTyParam, Instantiation, ParamTy, Ty, TyKind, Typed},
@@ -25,11 +26,13 @@ use crate::{
 
 pub type InferResult<T> = Result<T, InferError>;
 
-pub fn typeck(db: &mut Db, tcx: &TyCtxt, hir: &mut Hir) -> Result<(), Diagnostic> {
-    typeck_inner(db, tcx, hir).map_err(|err| err.into_diagnostic(db))
+pub fn typeck(db: &mut Db, tcx: &mut TyCtxt, hir: &mut Hir) -> Result<(), Diagnostic> {
+    typeck_inner(db, tcx, hir).map_err(|err| err.into_diagnostic(db))?;
+    apply_adjustments(db, tcx, hir);
+    Ok(())
 }
 
-fn typeck_inner(db: &mut Db, tcx: &TyCtxt, hir: &mut Hir) -> InferResult<()> {
+fn typeck_inner(db: &mut Db, tcx: &mut TyCtxt, hir: &mut Hir) -> InferResult<()> {
     let mut cx = InferCtxt::new(db, tcx);
 
     cx.typeck_function_signatures(hir)?;
