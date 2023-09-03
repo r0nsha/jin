@@ -159,7 +159,7 @@ impl Spanned for Expr {
 pub struct Fn {
     pub id: DefId,
     pub sig: FnSig,
-    pub body: Block,
+    pub body: Expr,
     pub span: Span,
     pub ty: ty::Ty,
 }

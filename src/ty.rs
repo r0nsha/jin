@@ -4,7 +4,7 @@ pub mod tcx;
 
 use std::{
     collections::{HashMap, HashSet},
-    ops::{ControlFlow, Deref},
+    ops::Deref,
 };
 
 use derive_more::{From, Into};

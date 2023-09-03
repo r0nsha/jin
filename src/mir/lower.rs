@@ -151,16 +151,16 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
             self.bx.create_param(id);
         }
 
-        let body_value = self.lower_block(&fun.body);
+        let body_value = self.lower_expr(&fun.body);
 
         // Insert a final return instruction if the function's isn't terminating
         if !self.bx.current_block().is_terminating() {
-            let span = fun.body.span;
+            let span = fun.body.span();
 
             let ret_ty = fun.ty.as_fn().unwrap().ret;
             let ret_value = if ret_ty.is_unit() && !self.bx.value(body_value).unwrap().ty.is_unit()
             {
-                self.bx.build_unit_lit(ret_ty, fun.body.span)
+                self.bx.build_unit_lit(ret_ty, fun.body.span())
             } else {
                 body_value
             };

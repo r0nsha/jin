@@ -184,10 +184,10 @@ impl Infer<'_> for Fn {
 
         let unify_body_res = cx
             .at(Obligation::return_ty(
-                self.body.span,
+                self.body.span(),
                 self.sig.ret.as_ref().map_or(cx.db[self.id].span, Spanned::span),
             ))
-            .eq(fx.ret_ty, self.body.ty);
+            .eq(fx.ret_ty, self.body.ty());
 
         // If the function's return type is `()`, we want to let the user end the body with
         // whatever expression they want, so that they don't need to end it with a `()`

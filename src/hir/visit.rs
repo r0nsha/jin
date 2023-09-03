@@ -49,7 +49,7 @@ pub fn noop_visit_item(vis: &mut impl HirVisitor, item: &Item) {
 }
 
 pub fn noop_visit_fn(vis: &mut impl HirVisitor, f: &Fn) {
-    vis.visit_block(&f.body);
+    vis.visit_expr(&f.body);
 }
 
 pub fn noop_visit_expr(vis: &mut impl HirVisitor, expr: &Expr) {

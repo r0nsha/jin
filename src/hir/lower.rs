@@ -52,7 +52,7 @@ impl Lower<'_, Fn> for ast::Fn {
         Fn {
             id: self.id.expect("to be resolved"),
             sig: self.sig.lower(cx),
-            body: self.body.lower(cx),
+            body: Expr::Block(self.body.lower(cx)),
             span: self.span,
             ty: cx.tcx.types.unknown,
         }
