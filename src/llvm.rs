@@ -217,7 +217,7 @@ fn link(target_metrics: &TargetMetrics, exe_file: &Path, object_file: &Path) {
             .args(libs)
             .args(link_flags)
             .execute_output()
-            .unwrap();
+            .expect("linking to work");
     }
 
     #[cfg(not(windows))]
@@ -226,13 +226,14 @@ fn link(target_metrics: &TargetMetrics, exe_file: &Path, object_file: &Path) {
         .arg(object_file.to_string_lossy().as_ref())
         .arg(format!("-o{}", exe_file.display()))
         .args(lib_paths.iter().map(|path| format!("-L{}", path)))
+        .args(libs.iter().map(|path| format!("-l:{}", path)))
+        .arg("-fuse-ld=mold")
         .arg("-lc")
         .arg("-lm")
-        .args(libs.iter().map(|path| format!("-l:{}", path)))
         .arg("-no-pie")
         .args(link_flags)
         .execute_output()
-        .expect("clang to succeed");
+        .expect("linking to work");
 }
 
 #[allow(dead_code)]
