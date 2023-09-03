@@ -15,6 +15,7 @@
     clippy::wildcard_imports
 )]
 #![feature(iterator_try_collect)]
+#![feature(never_type)]
 
 mod ast;
 mod common;

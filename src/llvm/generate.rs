@@ -200,6 +200,10 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Block {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        if cx.current_block_is_terminating() {
+            return;
+        }
+
         match self {
             Self::Return(inner) => inner.codegen(cx, state),
             Self::Br(inner) => inner.codegen(cx, state),
@@ -218,30 +222,18 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Return {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        if cx.current_block_is_terminating() {
-            return;
-        }
-
         cx.bx.build_return(Some(&state.value(self.value)));
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Br {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        if cx.current_block_is_terminating() {
-            return;
-        }
-
         cx.bx.build_unconditional_branch(state.block(self.target));
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for BrIf {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        if cx.current_block_is_terminating() {
-            return;
-        }
-
         cx.bx.build_conditional_branch(
             state.value(self.cond).into_int_value(),
             state.block(self.b1),
@@ -272,12 +264,9 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
 
         let args: Vec<_> = self.args.iter().map(|v| state.value(*v).into()).collect();
 
-        // Don't call the function if any of the args is terminating
-        if self.args.iter().any(|arg| state.value_ty(cx, *arg).is_never()) {
-            println!("wut");
+        // Don't call actually call the function if it's diverging
+        if state.value_ty(cx, self.callee).is_diverging() {
             cx.build_unreachable();
-            let ty = state.value_ty(cx, self.value);
-            state.set_value(self.value, Generator::undef_value(ty.llvm_ty(cx)));
             return;
         }
 

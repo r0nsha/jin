@@ -95,9 +95,7 @@ impl UnifyCtxt<'_, '_> {
         };
 
         match (a.kind(), b.kind()) {
-            (TyKind::Never, _)
-            | (_, TyKind::Never)
-            | (TyKind::Bool, TyKind::Bool)
+            (TyKind::Bool, TyKind::Bool)
             | (TyKind::Unit, TyKind::Unit)
             | (TyKind::Int(IntTy::Int), TyKind::Int(IntTy::Int)) => Ok(()),
 

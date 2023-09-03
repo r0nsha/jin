@@ -4,7 +4,7 @@ pub mod tcx;
 
 use std::{
     collections::{HashMap, HashSet},
-    ops::Deref,
+    ops::{ControlFlow, Deref},
 };
 
 use derive_more::{From, Into};
@@ -78,12 +78,34 @@ impl Ty {
     }
 
     pub fn is_polymorphic(self) -> bool {
+        self.walk_short(|ty| matches!(ty.kind(), TyKind::Param(_)))
+    }
+
+    pub fn is_diverging(self) -> bool {
+        self.walk_short(|ty| matches!(ty.kind(), TyKind::Never))
+    }
+
+    pub fn walk_short(self, mut f: impl Fn(Ty) -> bool) -> bool {
+        self.walk_short_(&mut f)
+    }
+
+    fn walk_short_(self, f: &mut impl Fn(Ty) -> bool) -> bool {
         match self.kind() {
             TyKind::Fn(fun) => {
-                fun.params.iter().any(|p| p.ty.is_polymorphic()) || fun.ret.is_polymorphic()
+                fun.params.iter().any(|p| p.ty.walk_short_(f)) || fun.ret.walk_short_(f)
             }
-            TyKind::Param(_) => true,
-            _ => false,
+            _ => f(self),
+        }
+    }
+
+    pub fn walk(self, mut f: impl Fn(Ty) -> bool) -> bool {
+        self.walk_(&mut f)
+    }
+
+    pub fn walk_(self, f: &mut impl Fn(Ty) -> bool) -> bool {
+        match self.kind() {
+            TyKind::Fn(fun) => fun.params.iter().all(|p| p.ty.walk_(f)) && fun.ret.walk_(f),
+            _ => f(self),
         }
     }
 }
