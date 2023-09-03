@@ -27,7 +27,7 @@ pub struct Generator<'db, 'cx> {
 
     pub context: &'cx Context,
     pub module: &'db Module<'cx>,
-    pub builder: &'db Builder<'cx>,
+    pub bx: &'db Builder<'cx>,
     pub isize_ty: IntType<'cx>,
 
     pub def_values: HashMap<DefId, DefValue<'cx>>,
@@ -113,15 +113,15 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         );
 
         let entry_block = self.context.append_basic_block(function_value, "entry");
-        self.builder.position_at_end(entry_block);
+        self.bx.position_at_end(entry_block);
 
         let main_function = self.db.main_function().expect("to have a main function");
         let main_function_value = self.def_value(main_function.id).as_function_value();
 
-        self.builder.build_direct_call(main_function_value, &[], "call_main");
+        self.bx.build_direct_call(main_function_value, &[], "call_main");
 
         if !self.current_block_is_terminating() {
-            self.builder.build_return(Some(&self.context.i32_type().const_zero()));
+            self.bx.build_return(Some(&self.context.i32_type().const_zero()));
         }
     }
 
@@ -157,7 +157,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         }
 
         let prologue_block = self.context.append_basic_block(function_value, "decls");
-        self.builder.position_at_end(prologue_block);
+        self.bx.position_at_end(prologue_block);
 
         let mut blocks = HashMap::default();
 
@@ -166,7 +166,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             blocks.insert(blk.id, bb);
         }
 
-        self.builder.build_unconditional_branch(blocks[&BlockId::first()]);
+        self.bx.build_unconditional_branch(blocks[&BlockId::first()]);
 
         let mut state = FunctionState::new(id, function_value, prologue_block, blocks);
 
@@ -222,7 +222,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Return {
             return;
         }
 
-        cx.builder.build_return(Some(&state.value(self.value)));
+        cx.bx.build_return(Some(&state.value(self.value)));
     }
 }
 
@@ -232,7 +232,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Br {
             return;
         }
 
-        cx.builder.build_unconditional_branch(state.block(self.target));
+        cx.bx.build_unconditional_branch(state.block(self.target));
     }
 }
 
@@ -242,7 +242,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for BrIf {
             return;
         }
 
-        cx.builder.build_conditional_branch(
+        cx.bx.build_conditional_branch(
             state.value(self.cond).into_int_value(),
             state.block(self.b1),
             state.block(self.b2),
@@ -253,7 +253,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for BrIf {
 impl<'db, 'cx> Codegen<'db, 'cx> for Phi {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         let ty = state.value_ty(cx, self.value).llvm_ty(cx);
-        let phi = cx.builder.build_phi(ty, "phi");
+        let phi = cx.bx.build_phi(ty, "phi");
 
         for (blk, value) in &*self.phi_values {
             let value = state.value(*value);
@@ -274,13 +274,14 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
 
         // Don't call the function if any of the args is terminating
         if self.args.iter().any(|arg| state.value_ty(cx, *arg).is_never()) {
+            println!("wut");
             cx.build_unreachable();
             let ty = state.value_ty(cx, self.value);
             state.set_value(self.value, Generator::undef_value(ty.llvm_ty(cx)));
             return;
         }
 
-        let result = cx.builder.build_direct_call(callee, &args, "call");
+        let result = cx.bx.build_direct_call(callee, &args, "call");
 
         let result_value = result.try_as_basic_value().expect_left("expected a return value");
 
@@ -295,10 +296,10 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
                 )
             });
 
-            cx.builder.build_direct_call(
+            cx.bx.build_direct_call(
                 printf,
                 &[
-                    cx.builder
+                    cx.bx
                         .build_global_string_ptr("result = %d\n\0", "fmt")
                         .as_pointer_value()
                         .into(),
@@ -331,24 +332,24 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Bin {
         let rhs = state.value(self.rhs).into_int_value();
 
         let result = match self.op {
-            BinOp::Add => cx.builder.build_int_add(lhs, rhs, NAME),
-            BinOp::Sub => cx.builder.build_int_sub(lhs, rhs, NAME),
-            BinOp::Mul => cx.builder.build_int_mul(lhs, rhs, NAME),
+            BinOp::Add => cx.bx.build_int_add(lhs, rhs, NAME),
+            BinOp::Sub => cx.bx.build_int_sub(lhs, rhs, NAME),
+            BinOp::Mul => cx.bx.build_int_mul(lhs, rhs, NAME),
             // TODO: unsigned
-            BinOp::Div => cx.builder.build_int_signed_div(lhs, rhs, NAME),
+            BinOp::Div => cx.bx.build_int_signed_div(lhs, rhs, NAME),
             // TODO: unsigned
-            BinOp::Mod => cx.builder.build_int_signed_rem(lhs, rhs, NAME),
-            BinOp::Shl => cx.builder.build_left_shift(lhs, rhs, NAME),
+            BinOp::Mod => cx.bx.build_int_signed_rem(lhs, rhs, NAME),
+            BinOp::Shl => cx.bx.build_left_shift(lhs, rhs, NAME),
             // TODO: unsigned
-            BinOp::Shr => cx.builder.build_right_shift(lhs, rhs, true, NAME),
-            BinOp::BitAnd => cx.builder.build_and(lhs, rhs, NAME),
-            BinOp::BitOr => cx.builder.build_or(lhs, rhs, NAME),
-            BinOp::BitXor => cx.builder.build_xor(lhs, rhs, NAME),
+            BinOp::Shr => cx.bx.build_right_shift(lhs, rhs, true, NAME),
+            BinOp::BitAnd => cx.bx.build_and(lhs, rhs, NAME),
+            BinOp::BitOr => cx.bx.build_or(lhs, rhs, NAME),
+            BinOp::BitXor => cx.bx.build_xor(lhs, rhs, NAME),
             BinOp::And => todo!(),
             BinOp::Or => todo!(),
             BinOp::Cmp(op) => {
                 let pred = get_int_predicate(op);
-                cx.builder.build_int_compare(pred, lhs, rhs, NAME)
+                cx.bx.build_int_compare(pred, lhs, rhs, NAME)
             }
         };
 

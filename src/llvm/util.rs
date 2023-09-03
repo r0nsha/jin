@@ -8,12 +8,12 @@ use crate::llvm::generate::{FunctionState, Generator};
 
 impl<'db, 'cx> Generator<'db, 'cx> {
     pub fn current_block(&self) -> BasicBlock<'cx> {
-        self.builder.get_insert_block().unwrap()
+        self.bx.get_insert_block().unwrap()
     }
 
     pub fn start_block(&self, state: &mut FunctionState<'cx>, bb: BasicBlock<'cx>) {
         state.current_block = bb;
-        self.builder.position_at_end(bb);
+        self.bx.position_at_end(bb);
     }
 
     pub fn unit_value(&self) -> StructValue<'cx> {
@@ -26,7 +26,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
     pub fn build_unreachable(&self) {
         if !self.current_block_is_terminating() {
-            self.builder.build_unreachable();
+            self.bx.build_unreachable();
         }
     }
 

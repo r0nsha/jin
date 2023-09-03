@@ -47,7 +47,7 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> PathBuf {
         mir,
         context: &context,
         module: &module,
-        builder: &builder,
+        bx: &builder,
         isize_ty: context.ptr_sized_int_type(&target_machine.get_target_data(), None),
         def_values: HashMap::default(),
     };
