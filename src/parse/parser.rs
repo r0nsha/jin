@@ -3,8 +3,8 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        BinOp, BinOpKind, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, If, Item, Lit, LitKind, Module,
-        Name, Return, Ty, TyName, TyParam,
+        BinOp, BinOpKind, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, If, Item, Lit, LitKind,
+        Module, Name, Return, Ty, TyName, TyParam,
     },
     common::{QPath, Word},
     db::Db,
@@ -247,112 +247,6 @@ impl<'a> Parser<'a> {
         let term = self.parse_term()?;
         self.parse_postfix(term)
     }
-
-    // fn parse_bin_factor(&mut self, lhs: Ast) -> ParseResult<Ast> {
-    //     let tok = self.require()?;
-    //
-    //     match tok.kind {
-    //         TokenKind::Star | TokenKind::FwSlash | TokenKind::Percent => {
-    //             self.parse_bin(lhs, tok)
-    //         }
-    //         _ => self.parse_bin_term(lhs),
-    //     }
-    // }
-    //
-    // fn parse_bin_term(&mut self, lhs: Ast) -> ParseResult<Ast> {
-    //     let tok = self.require()?;
-    //
-    //     match tok.kind {
-    //         TokenKind::Plus | TokenKind::Minus => self.parse_bin(lhs, tok),
-    //         _ => self.parse_bin_bitshift(lhs),
-    //     }
-    // }
-    //
-    // fn parse_bin_bitshift(&mut self, lhs: Ast) -> ParseResult<Ast> {
-    //     let tok = self.require()?;
-    //
-    //     match tok.kind {
-    //         TokenKind::LtLt | TokenKind::GtGt => self.parse_bin(lhs, tok),
-    //         _ => self.parse_bin_bitand(lhs),
-    //     }
-    // }
-    //
-    // fn parse_bin_bitand(&mut self, lhs: Ast) -> ParseResult<Ast> {
-    //     let tok = self.require()?;
-    //
-    //     match tok.kind {
-    //         TokenKind::Amp => self.parse_bin(lhs, tok),
-    //         _ => self.parse_bin_bitxor(lhs),
-    //     }
-    // }
-    //
-    // fn parse_bin_bitxor(&mut self, lhs: Ast) -> ParseResult<Ast> {
-    //     let tok = self.require()?;
-    //
-    //     match tok.kind {
-    //         TokenKind::Caret => self.parse_bin(lhs, tok),
-    //         _ => self.parse_bin_bitor(lhs),
-    //     }
-    // }
-    //
-    // fn parse_bin_bitor(&mut self, lhs: Ast) -> ParseResult<Ast> {
-    //     let tok = self.require()?;
-    //
-    //     match tok.kind {
-    //         TokenKind::Pipe => self.parse_bin(lhs, tok),
-    //         _ => self.parse_cmp_eq(lhs),
-    //     }
-    // }
-    //
-    // fn parse_cmp_eq(&mut self, lhs: Ast) -> ParseResult<Ast> {
-    //     let tok = self.require()?;
-    //
-    //     match tok.kind {
-    //         TokenKind::EqEq | TokenKind::BangEq => self.parse_bin(lhs, tok),
-    //         _ => self.parse_cmp_ord(lhs),
-    //     }
-    // }
-    //
-    // fn parse_cmp_ord(&mut self, lhs: Ast) -> ParseResult<Ast> {
-    //     let tok = self.require()?;
-    //
-    //     match tok.kind {
-    //         TokenKind::Lt | TokenKind::LtEq | TokenKind::Gt | TokenKind::GtEq => {
-    //             self.parse_bin(lhs, tok)
-    //         }
-    //         _ => self.parse_and(lhs),
-    //     }
-    // }
-    //
-    // fn parse_and(&mut self, lhs: Ast) -> ParseResult<Ast> {
-    //     let tok = self.require()?;
-    //
-    //     match tok.kind {
-    //         TokenKind::AmpAmp => self.parse_bin(lhs, tok),
-    //         _ => self.parse_or(lhs),
-    //     }
-    // }
-    //
-    // fn parse_or(&mut self, lhs: Ast) -> ParseResult<Ast> {
-    //     let tok = self.require()?;
-    //
-    //     match tok.kind {
-    //         TokenKind::PipePipe => self.parse_bin(lhs, tok),
-    //         _ => self.parse_operand_base(),
-    //     }
-    // }
-
-    // fn parse_bin(&mut self, lhs: Ast, tok: Token) -> ParseResult<Ast> {
-    //     let rhs = self.parse_expr()?;
-    //     let span = lhs.span().merge(rhs.span());
-    //
-    //     Ok(Ast::bin(bin {
-    //         lhs: Box::new(lhs),
-    //         rhs: Box::new(rhs),
-    //         op: binOp::try_from(tok.kind).expect("to be a bin op"),
-    //         span,
-    //     }))
-    // }
 
     fn parse_term(&mut self) -> ParseResult<Expr> {
         let tok = self.eat_any()?;
