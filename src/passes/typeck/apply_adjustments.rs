@@ -18,17 +18,17 @@ struct Context<'db> {
     tcx: &'db mut TyCtxt,
 }
 
-trait Apply<'db> {
+trait ApplyAdjustments<'db> {
     fn apply_adjustments(&mut self, cx: &mut Context<'db>);
 }
 
-impl Apply<'_> for Fn {
+impl ApplyAdjustments<'_> for Fn {
     fn apply_adjustments(&mut self, cx: &mut Context<'_>) {
         self.body.apply_adjustments(cx);
     }
 }
 
-impl Apply<'_> for Expr {
+impl ApplyAdjustments<'_> for Expr {
     fn apply_adjustments(&mut self, cx: &mut Context<'_>) {
         match self {
             Expr::If(if_) => todo!(),
