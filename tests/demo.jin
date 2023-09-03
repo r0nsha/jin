@@ -1,5 +1,32 @@
 fn main() = {
-	id(1)
+	arithmetic()
+	cmp()
+	polymorphism()
 }
 
-fn id[T](x T) T = x
+fn arithmetic() = {
+	1 + 2
+	3 - 4
+	5 * 6
+	7 / 8
+	9 % 10
+}
+
+fn cmp() = {
+	100 == 100
+	200 != 150
+	8 < 7
+	42 <= 999
+	2 > 1
+	264 >= 71
+	5 * 6
+	7 / 8
+	9 % 10
+}
+
+fn polymorphism() = {
+	fn id[T](x T) T = x
+
+	id(1)
+	id(true)
+}
