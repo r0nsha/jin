@@ -9,7 +9,7 @@ pub use lower::lower;
 
 use crate::{
     ast::BinOpKind,
-    common::Word,
+    common::{new_key_type, IndexVec, Word},
     db::{Db, DefId},
     span::{Span, Spanned},
     ty::{self, Typed},
@@ -295,3 +295,7 @@ impl Spanned for Ty {
         }
     }
 }
+
+new_key_type!(HirId);
+
+pub type HirMap<T> = IndexVec<HirId, T>;

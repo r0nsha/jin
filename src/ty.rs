@@ -1,6 +1,7 @@
 pub mod fold;
 mod printer;
 pub mod tcx;
+pub mod adjust;
 
 use std::{
     collections::{HashMap, HashSet},

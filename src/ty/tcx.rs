@@ -1,13 +1,17 @@
-use crate::ty::{IntTy, Ty, TyKind};
+use crate::{
+    hir::HirMap,
+    ty::{adjust::Adjustments, IntTy, Ty, TyKind},
+};
 
 #[derive(Debug)]
 pub struct TyCtxt {
     pub types: CommonTypes,
+    pub adjustments: HirMap<Adjustments>,
 }
 
 impl TyCtxt {
     pub fn new() -> Self {
-        Self { types: CommonTypes::new() }
+        Self { types: CommonTypes::new(), adjustments: HirMap::new() }
     }
 }
 
