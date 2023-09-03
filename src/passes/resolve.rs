@@ -323,6 +323,10 @@ impl Resolve<'_> for Name {
         } else {
             cx.errors.push(ResolveError::NameNotFound(self.name));
         }
+
+        for arg in &mut self.args {
+            arg.resolve(cx, env);
+        }
     }
 }
 

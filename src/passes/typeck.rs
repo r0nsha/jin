@@ -5,8 +5,6 @@ mod normalize;
 mod subst;
 mod unify;
 
-use std::ops::Not;
-
 use ustr::UstrMap;
 
 use crate::{
@@ -68,12 +66,11 @@ impl InferCtxt<'_> {
         }
 
         for param in &mut sig.params {
-            param.ty = self.typeck_ty_annot(&param.ty_annot)?;
+            param.ty = self.typeck_ty(&param.ty_annot)?;
             self.db[param.id].ty = param.ty;
         }
 
-        let ret =
-            if let Some(ret) = &sig.ret { self.typeck_ty_annot(ret)? } else { self.tcx.types.unit };
+        let ret = if let Some(ret) = &sig.ret { self.typeck_ty(ret)? } else { self.tcx.types.unit };
 
         Ok(Ty::new(TyKind::Fn(FnTy {
             params: sig
@@ -98,7 +95,7 @@ impl InferCtxt<'_> {
         Ok(())
     }
 
-    fn typeck_ty_annot(&mut self, ty: &hir::Ty) -> InferResult<Ty> {
+    fn typeck_ty(&mut self, ty: &hir::Ty) -> InferResult<Ty> {
         match ty {
             hir::Ty::Name(name) => {
                 let def = &self.db[name.id];
@@ -367,13 +364,31 @@ impl Infer<'_> for Name {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
         let def_ty = cx.lookup(self.id);
         let ty = def_ty.normalize(&mut cx.inner.borrow_mut());
-        let instantiation: Instantiation = ty
-            .collect_params()
-            .into_iter()
-            .filter_map(|p| fx.ty_params.contains(&p).not().then(|| (p.var, cx.fresh_ty_var())))
-            .collect();
+
+        let ty_params: Vec<ParamTy> =
+            ty.collect_params().into_iter().filter(|p| !fx.ty_params.contains(p)).collect();
+
+        let instantiation: Instantiation = if self.args.is_empty() {
+            ty.collect_params().into_iter().map(|param| (param.var, cx.fresh_ty_var())).collect()
+        } else if self.args.len() == ty_params.len() {
+            let arg_tys: Vec<Ty> = self.args.iter().map(|arg| cx.typeck_ty(arg)).try_collect()?;
+
+            ty.collect_params()
+                .into_iter()
+                .zip(arg_tys)
+                .map(|(param, arg)| (param.var, arg))
+                .collect()
+        } else {
+            return Err(InferError::TyArgMismatch {
+                expected: ty_params.len(),
+                found: self.args.len(),
+                span: self.span,
+            });
+        };
+
         self.ty = instantiate(ty, instantiation.clone());
         self.instantiation = instantiation;
+
         Ok(())
     }
 }

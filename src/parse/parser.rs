@@ -80,9 +80,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_function_sig(&mut self, name: Word) -> ParseResult<FnSig> {
-        let ty_params =
-            if self.peek_is(TokenKind::OpenBracket) { self.parse_ty_params()?.0 } else { vec![] };
-
+        let ty_params = self.parse_optional_ty_params()?;
         let (params, _) = self.parse_function_params()?;
 
         let ret = if self.peek_is(TokenKind::Eq) || self.peek_is(TokenKind::OpenCurly) {
@@ -94,11 +92,31 @@ impl<'a> Parser<'a> {
         Ok(FnSig { name, ty_params, params, ret })
     }
 
+    fn parse_optional_ty_params(&mut self) -> ParseResult<Vec<TyParam>> {
+        if self.peek_is(TokenKind::OpenBracket) {
+            self.parse_ty_params().map(|(t, _)| t)
+        } else {
+            Ok(vec![])
+        }
+    }
+
     fn parse_ty_params(&mut self) -> ParseResult<(Vec<TyParam>, Span)> {
         self.parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
             let ident = this.eat(TokenKind::empty_ident())?;
             Ok(TyParam { id: None, name: ident.spanned_word() })
         })
+    }
+
+    fn parse_optional_ty_args(&mut self) -> ParseResult<Vec<Ty>> {
+        if self.peek_is(TokenKind::OpenBracket) {
+            self.parse_ty_args().map(|(t, _)| t)
+        } else {
+            Ok(vec![])
+        }
+    }
+
+    fn parse_ty_args(&mut self) -> ParseResult<(Vec<Ty>, Span)> {
+        self.parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, Self::parse_ty)
     }
 
     fn parse_function_params(&mut self) -> ParseResult<(Vec<FnParam>, Span)> {
@@ -355,7 +373,8 @@ impl<'a> Parser<'a> {
             TokenKind::True => Expr::Lit(Lit { kind: LitKind::Bool(true), span: tok.span }),
             TokenKind::False => Expr::Lit(Lit { kind: LitKind::Bool(false), span: tok.span }),
             TokenKind::Ident(..) => {
-                Expr::Name(Name { id: None, name: tok.spanned_word(), span: tok.span })
+                let args = self.parse_optional_ty_args()?;
+                Expr::Name(Name { id: None, name: tok.spanned_word(), args, span: tok.span })
             }
             TokenKind::Int(value) => Expr::Lit(Lit { kind: LitKind::Int(value), span: tok.span }),
             _ => {

@@ -14,6 +14,7 @@ pub enum InferError {
     TyMismatch { expected: Ty, found: Ty, obligation: Obligation },
     InfiniteTy { ty: Ty, obligation: Obligation },
     ArgMismatch { expected: usize, found: usize, span: Span },
+    TyArgMismatch { expected: usize, found: usize, span: Span },
     NamedParamNotFound { word: Word },
     MultipleNamedArgs { name: Ustr, prev: Span, dup: Span, is_named: bool },
     UncallableTy { ty: Ty, span: Span },
@@ -63,6 +64,17 @@ impl InferError {
                     .with_label(
                         Label::primary(span)
                             .with_message(format!("expected {expected} arguments, found {found}")),
+                    )
+            }
+            Self::TyArgMismatch { expected, found, span } => {
+                Diagnostic::error("typeck::type_arg_mismatch")
+                    .with_message(format!(
+                        "expected {expected} type argument(s), but {found} were supplied"
+                    ))
+                    .with_label(
+                        Label::primary(span).with_message(format!(
+                            "expected {expected} type arguments, found {found}"
+                        )),
                     )
             }
             Self::NamedParamNotFound { word } => Diagnostic::error("typeck::named_param_not_found")

@@ -316,6 +316,7 @@ impl TryFrom<TokenKind> for BinOp {
 pub struct Name {
     pub id: Option<DefId>,
     pub name: Word,
+    pub args: Vec<Ty>,
     pub span: Span,
 }
 

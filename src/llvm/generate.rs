@@ -272,6 +272,14 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
 
         let args: Vec<_> = self.args.iter().map(|v| state.value(*v).into()).collect();
 
+        // Don't call the function if any of the args is terminating
+        if self.args.iter().any(|arg| state.value_ty(cx, *arg).is_never()) {
+            cx.build_unreachable();
+            let ty = state.value_ty(cx, self.value);
+            state.set_value(self.value, Generator::undef_value(ty.llvm_ty(cx)));
+            return;
+        }
+
         let result = cx.builder.build_direct_call(callee, &args, "call");
 
         let result_value = result.try_as_basic_value().expect_left("expected a return value");
@@ -385,10 +393,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for UnitLit {
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Unreachable {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        if !cx.current_block_is_terminating() {
-            cx.builder.build_unreachable();
-        }
-
+        cx.build_unreachable();
         let ty = state.value_ty(cx, self.value);
         state.set_value(self.value, Generator::undef_value(ty.llvm_ty(cx)));
     }

@@ -24,6 +24,12 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         self.current_block().get_terminator().is_some()
     }
 
+    pub fn build_unreachable(&self) {
+        if !self.current_block_is_terminating() {
+            self.builder.build_unreachable();
+        }
+    }
+
     pub fn undef_value(typ: BasicTypeEnum<'cx>) -> BasicValueEnum<'cx> {
         match typ {
             BasicTypeEnum::ArrayType(array) => array.get_undef().into(),

@@ -36,6 +36,6 @@ fn nested_fn() = {
 fn polymorphism() = {
 	fn id[T](x T) T = x
 
-	id(1)
+	id[!](1)
 	id(true)
 }
