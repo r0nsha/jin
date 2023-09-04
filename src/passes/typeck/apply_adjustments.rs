@@ -6,6 +6,7 @@ use crate::{
 
 pub fn apply_adjustments(db: &mut Db, hir: &mut Hir) {
     let mut cx = Context { db };
+
     for item in &mut hir.items {
         match &mut item.kind {
             ItemKind::Fn(f) => f.apply_adj(&mut cx),
@@ -23,7 +24,7 @@ trait ApplyAdjustments<'db> {
 
 impl ApplyAdjustments<'_> for Fn {
     fn apply_adj(&mut self, cx: &mut Context<'_>) {
-        // self.body.apply_adj(cx);
+        self.body.apply_adj(cx);
     }
 }
 

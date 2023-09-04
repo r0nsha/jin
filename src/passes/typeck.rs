@@ -14,8 +14,8 @@ use crate::{
     diagnostics::Diagnostic,
     hir::{self, Expr, ExprKind, Fn, FnSig, Hir, ItemKind, LitKind},
     passes::typeck::{
-        error::InferError, infcx::InferCtxt, instantiate::instantiate, normalize::NormalizeTy,
-        unify::Obligation,
+        apply_adjustments::apply_adjustments, error::InferError, infcx::InferCtxt,
+        instantiate::instantiate, normalize::NormalizeTy, unify::Obligation,
     },
     span::{Span, Spanned},
     ty::{FnTy, FnTyParam, Instantiation, ParamTy, Ty, TyKind},
@@ -25,8 +25,7 @@ pub type InferResult<T> = Result<T, InferError>;
 
 pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
     typeck_inner(db, hir).map_err(|err| err.into_diagnostic(db))?;
-    // TODO:
-    // apply_adjustments(db,  hir);
+    apply_adjustments(db, hir);
     Ok(())
 }
 

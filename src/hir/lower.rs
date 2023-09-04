@@ -2,15 +2,15 @@ use crate::{
     ast,
     db::Db,
     hir::{
-        BinOp, Block, Call, CallArg, Expr, ExprKind, Fn, FnParam, FnSig, Hir, If, Item, ItemKind,
-        Lit, LitKind, Name, Return, Ty, TyName, TyParam,
+        BinOp, Block, Call, CallArg, Expr, ExprKind, Fn, FnParam, FnSig, Hir, HirId, If, Item,
+        ItemKind, Lit, LitKind, Name, Return, Ty, TyName, TyParam,
     },
     span::{Span, Spanned},
     ty::Instantiation,
 };
 
 pub fn lower(db: &mut Db, ast: ast::Ast) -> Hir {
-    let mut cx = LowerCtxt { db, hir: Hir::new() };
+    let mut cx = LowerCtxt { db, hir: Hir::new(), id: 0 };
 
     for module in ast.modules {
         cx.lower_module(module);
@@ -22,6 +22,7 @@ pub fn lower(db: &mut Db, ast: ast::Ast) -> Hir {
 struct LowerCtxt<'db> {
     db: &'db mut Db,
     hir: Hir,
+    id: usize,
 }
 
 impl<'db> LowerCtxt<'db> {
@@ -31,7 +32,12 @@ impl<'db> LowerCtxt<'db> {
     }
 
     fn expr(&mut self, kind: ExprKind, span: Span) -> Expr {
-        Expr { kind, span, ty: self.db.types.unknown }
+        Expr { id: self.next_id(), kind, span, ty: self.db.types.unknown }
+    }
+
+    fn next_id(&mut self) -> HirId {
+        self.id += 1;
+        self.id.into()
     }
 }
 

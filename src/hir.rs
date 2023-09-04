@@ -93,6 +93,7 @@ impl Typed for ItemKind {
 
 #[derive(Debug, Clone)]
 pub struct Expr {
+    pub id: HirId,
     pub kind: ExprKind,
     pub span: Span,
     pub ty: ty::Ty,
