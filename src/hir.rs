@@ -2,14 +2,14 @@ mod lower;
 mod pretty_print;
 pub mod visit;
 
-use std::io;
+use std::{collections::HashMap, io};
 
 use enum_as_inner::EnumAsInner;
 pub use lower::lower;
 
 use crate::{
     ast::BinOpKind,
-    common::{new_key_type, IndexVec, Word},
+    common::{new_key_type, Word},
     db::{Db, DefId},
     span::{Span, Spanned},
     ty::{self, Typed},
@@ -298,4 +298,4 @@ impl Spanned for Ty {
 
 new_key_type!(HirId);
 
-pub type HirMap<T> = IndexVec<HirId, T>;
+pub type HirMap<T> = HashMap<HirId, T>;

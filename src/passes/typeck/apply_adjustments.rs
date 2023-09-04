@@ -45,9 +45,10 @@ impl ApplyAdjustments<'_> for Expr {
 }
 
 fn apply_adj_to_expr(expr: &mut Expr, cx: &Context<'_>) {
-    let adjustments = cx.tcx.adjustments[expr.id];
+    todo!()
+    // let adjustments = cx.tcx.adjustments[expr.id];
 
-    if !adjustments.is_empty() {
-        todo!("apply here...");
-    }
+    // if !adjustments.is_empty() {
+    //     todo!("apply here...");
+    // }
 }

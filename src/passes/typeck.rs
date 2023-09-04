@@ -28,7 +28,8 @@ pub type InferResult<T> = Result<T, InferError>;
 
 pub fn typeck(db: &mut Db, tcx: &mut TyCtxt, hir: &mut Hir) -> Result<(), Diagnostic> {
     typeck_inner(db, tcx, hir).map_err(|err| err.into_diagnostic(db))?;
-    apply_adjustments(db, tcx, hir);
+    // TODO:
+    // apply_adjustments(db, tcx, hir);
     Ok(())
 }
 
