@@ -292,7 +292,11 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
                         .build_global_string_ptr("result = %d\n\0", "fmt")
                         .as_pointer_value()
                         .into(),
-                    result_value.into(),
+                    if let BasicValueEnum::IntValue(v) = result_value {
+                        cx.bx.build_int_cast(v, cx.isize_ty, "cast_to_i64").into()
+                    } else {
+                        result_value.into()
+                    },
                 ],
                 "printf_call",
             );
