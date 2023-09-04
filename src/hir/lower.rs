@@ -31,7 +31,7 @@ impl<'db> LowerCtxt<'db> {
         self.hir.items.extend(items);
     }
 
-    fn expr(&mut self, span: Span, kind: ExprKind) -> Expr {
+    fn expr(&mut self, kind: ExprKind, span: Span) -> Expr {
         Expr { kind, span, ty: self.tcx.types.unknown }
     }
 }
@@ -53,10 +53,13 @@ impl Lower<'_, Item> for ast::Item {
 
 impl Lower<'_, Fn> for ast::Fn {
     fn lower(self, cx: &mut LowerCtxt<'_>) -> Fn {
+        let body_span = self.body.span;
+        let body = ExprKind::Block(self.body.lower(cx));
+
         Fn {
             id: self.id.expect("to be resolved"),
             sig: self.sig.lower(cx),
-            body: cx.expr(self.body.span, ExprKind::Block(self.body.lower(cx))),
+            body: cx.expr(body, body_span),
             span: self.span,
             ty: cx.tcx.types.unknown,
         }
@@ -95,58 +98,62 @@ impl Lower<'_, Expr> for ast::Expr {
                 cx.hir.items.push(item);
                 // TODO: We need to create a dummy value because we must return an expression.
                 // Maybe we can avoid this since we know that this must be a block statement?
-                cx.expr(item.span(), ExprKind::Lit(Lit { kind: LitKind::Unit }))
+                cx.expr(ExprKind::Lit(Lit { kind: LitKind::Unit }), span)
             }
-            Self::Return(ret) => cx.expr(
-                ret.span,
-                ExprKind::Return(Return {
-                    expr: ret.expr.map_or_else(
-                        || Box::new(cx.expr(ret.span, ExprKind::Lit(Lit { kind: LitKind::Unit }))),
-                        |v| Box::new(v.lower(cx)),
-                    ),
-                }),
-            ),
-            Self::If(if_) => cx.expr(
-                if_.span,
-                ExprKind::If(If {
-                    cond: Box::new(if_.cond.lower(cx)),
-                    then: Box::new(if_.then.lower(cx)),
-                    otherwise: if_.otherwise.map(|o| Box::new(o.lower(cx))),
-                }),
-            ),
-            Self::Block(blk) => cx.expr(blk.span, ExprKind::Block(blk.lower(cx))),
-            Self::Call(call) => cx.expr(
-                call.span,
-                ExprKind::Call(Call {
-                    callee: Box::new(call.callee.lower(cx)),
-                    args: call.args.into_iter().map(|arg| arg.lower(cx)).collect(),
-                }),
-            ),
-            Self::Bin(bin) => cx.expr(
-                bin.span,
-                ExprKind::Bin(BinOp {
-                    lhs: Box::new(bin.lhs.lower(cx)),
-                    rhs: Box::new(bin.rhs.lower(cx)),
-                    op: bin.op,
-                }),
-            ),
-            Self::Name(name) => cx.expr(
-                name.span,
-                ExprKind::Name(Name {
-                    id: name.id.expect("to be resolved"),
-                    args: name.args.map(|args| args.into_iter().map(|arg| arg.lower(cx)).collect()),
+            Self::Return(ret) => {
+                let span = ret.span;
+                let expr = if let Some(expr) = ret.expr {
+                    Box::new(expr.lower(cx))
+                } else {
+                    Box::new(cx.expr(ExprKind::Lit(Lit { kind: LitKind::Unit }), span))
+                };
+                cx.expr(ExprKind::Return(Return { expr }), span)
+            }
+            Self::If(ast::If { cond, then, otherwise, span }) => {
+                let kind = ExprKind::If(If {
+                    cond: Box::new(cond.lower(cx)),
+                    then: Box::new(then.lower(cx)),
+                    otherwise: otherwise.map(|o| Box::new(o.lower(cx))),
+                });
+                cx.expr(kind, span)
+            }
+            Self::Block(blk) => {
+                let span = blk.span;
+                let kind = ExprKind::Block(blk.lower(cx));
+                cx.expr(kind, span)
+            }
+            Self::Call(ast::Call { callee, args, span }) => {
+                let kind = ExprKind::Call(Call {
+                    callee: Box::new(callee.lower(cx)),
+                    args: args.into_iter().map(|arg| arg.lower(cx)).collect(),
+                });
+                cx.expr(kind, span)
+            }
+            Self::Bin(ast::BinOp { lhs, rhs, op, span }) => {
+                let kind = ExprKind::Bin(BinOp {
+                    lhs: Box::new(lhs.lower(cx)),
+                    rhs: Box::new(rhs.lower(cx)),
+                    op,
+                });
+                cx.expr(kind, span)
+            }
+            Self::Name(ast::Name { id, name: _, args, span }) => {
+                let kind = ExprKind::Name(Name {
+                    id: id.expect("to be resolved"),
+                    args: args.map(|args| args.into_iter().map(|arg| arg.lower(cx)).collect()),
                     instantiation: Instantiation::new(),
-                }),
-            ),
-            Self::Lit(lit) => cx.expr(
-                lit.span,
+                });
+                cx.expr(kind, span)
+            }
+            Self::Lit(ast::Lit { kind, span }) => cx.expr(
                 ExprKind::Lit(Lit {
-                    kind: match lit.kind {
+                    kind: match kind {
                         ast::LitKind::Int(v) => LitKind::Int(v),
                         ast::LitKind::Bool(v) => LitKind::Bool(v),
                         ast::LitKind::Unit => LitKind::Unit,
                     },
                 }),
+                span,
             ),
         }
     }

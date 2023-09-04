@@ -1,6 +1,5 @@
 mod lower;
 mod pretty_print;
-pub mod visit;
 
 use std::{collections::HashMap, io};
 
@@ -97,6 +96,44 @@ pub struct Expr {
     pub kind: ExprKind,
     pub span: Span,
     pub ty: ty::Ty,
+}
+
+impl Expr {
+    pub fn walk(&self, mut f: impl FnMut(&Expr)) {
+        self.walk_(&mut f);
+    }
+
+    fn walk_(&self, f: &mut impl FnMut(&Expr)) {
+        match &self.kind {
+            ExprKind::If(if_) => {
+                if_.cond.walk_(f);
+                if_.then.walk_(f);
+                if let Some(otherwise) = &if_.otherwise {
+                    otherwise.walk_(f);
+                }
+            }
+            ExprKind::Block(blk) => {
+                for expr in &blk.exprs {
+                    expr.walk_(f);
+                }
+            }
+            ExprKind::Return(ret) => ret.expr.walk_(f),
+            ExprKind::Call(call) => {
+                call.callee.walk_(f);
+
+                for arg in &call.args {
+                    arg.expr.walk_(f);
+                }
+            }
+            ExprKind::Bin(bin) => {
+                bin.lhs.walk_(f);
+                bin.rhs.walk_(f);
+            }
+            ExprKind::Name(_) | ExprKind::Lit(_) => (),
+        }
+
+        f(self);
+    }
 }
 
 #[derive(Debug, Clone, EnumAsInner)]

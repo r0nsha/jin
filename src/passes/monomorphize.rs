@@ -2,7 +2,7 @@ use std::collections::HashSet;
 
 use crate::{
     db::{Db, DefId},
-    hir::{visit::*, Fn, Hir, Item, ItemKind, Name},
+    hir::{Expr, ExprKind, Fn, Hir, Item, ItemKind},
     passes::subst::ParamFolder,
     ty::{fold::TyFolder, Instantiation, Ty},
 };
@@ -30,21 +30,13 @@ impl<'db> Collector<'db> {
 
     fn collect_roots(mut self) -> Self {
         for item in &self.hir.items {
-            match &item.kind {
-                ItemKind::Fn(f) => {
-                    if !f.ty.is_polymorphic() {
-                        PolyCollector { root: &mut self, instantiation: Instantiation::new() }
-                            .visit_fn(f);
-                    }
-                }
-            }
+            self.collect_uses_in_item(item, &Instantiation::new());
         }
 
         self
     }
 
-    fn collect_poly_item(&mut self, id: DefId, instantiation: Instantiation) {
-        // TODO: this doesn't work with local items
+    fn collect_poly_item(&mut self, id: DefId, instantiation: &Instantiation) {
         let item = self
             .hir
             .items
@@ -54,54 +46,49 @@ impl<'db> Collector<'db> {
             })
             .expect("item to exist");
 
-        PolyCollector { root: self, instantiation }.visit_item(item);
+        self.collect_uses_in_item(item, instantiation);
     }
 
     fn collect_def_use(&mut self, id: DefId, ty: Ty) {
         self.mono_items.insert(MonoItem { id, ty });
     }
-}
 
-struct PolyCollector<'db, 'a> {
-    root: &'a mut Collector<'db>,
-    instantiation: Instantiation,
-}
-
-impl HirVisitor for PolyCollector<'_, '_> {
-    fn visit_item(&mut self, item: &Item) {
+    fn collect_uses_in_item(&mut self, item: &Item, instantiation: &Instantiation) {
         match &item.kind {
             ItemKind::Fn(f) => {
                 if !f.ty.is_polymorphic() {
-                    PolyCollector { root: self.root, instantiation: Instantiation::new() }
-                        .visit_fn(f);
+                    self.collect_uses_in_fn(f, instantiation);
                 }
             }
         }
     }
 
-    fn visit_fn(&mut self, f: &Fn) {
-        noop_visit_fn(self, f);
-
+    fn collect_uses_in_fn(&mut self, f: &Fn, instantiation: &Instantiation) {
         for p in &f.sig.params {
             if p.ty.is_polymorphic() {
-                let ty =
-                    ParamFolder { db: self.root.db, instantiation: &self.instantiation }.fold(p.ty);
-
-                self.root.collect_def_use(p.id, ty);
+                let ty = ParamFolder { db: self.db, instantiation }.fold(p.ty);
+                self.collect_def_use(p.id, ty);
             }
         }
+
+        self.collect_uses(&f.body, instantiation);
     }
 
-    fn visit_name(&mut self, name: &Name) {
-        noop_visit_name(self, name);
-
-        if !name.instantiation.is_empty() {
-            let mut folder = ParamFolder { db: self.root.db, instantiation: &self.instantiation };
-            let ty = folder.fold(name.ty);
-            let args: Instantiation =
-                name.instantiation.iter().map(|(var, ty)| (*var, folder.fold(*ty))).collect();
-            self.root.collect_def_use(name.id, ty);
-            self.root.collect_poly_item(name.id, args);
-        }
+    fn collect_uses(&mut self, expr: &Expr, instantiation: &Instantiation) {
+        expr.walk(|expr| {
+            if let ExprKind::Name(name) = &expr.kind {
+                if !name.instantiation.is_empty() {
+                    let mut folder = ParamFolder { db: self.db, instantiation };
+                    let ty = folder.fold(expr.ty);
+                    let args: Instantiation = name
+                        .instantiation
+                        .iter()
+                        .map(|(var, ty)| (*var, folder.fold(*ty)))
+                        .collect();
+                    self.collect_def_use(name.id, ty);
+                    self.collect_poly_item(name.id, &args);
+                }
+            }
+        });
     }
 }

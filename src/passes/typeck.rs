@@ -30,7 +30,7 @@ pub fn typeck(db: &mut Db, tcx: &mut TyCtxt, hir: &mut Hir) -> Result<(), Diagno
     Ok(())
 }
 
-fn typeck_inner(db: &mut Db, tcx: &mut TyCtxt, hir: &mut Hir) -> InferResult<()> {
+fn typeck_inner(db: &mut Db, tcx: &TyCtxt, hir: &mut Hir) -> InferResult<()> {
     let mut cx = InferCtxt::new(db, tcx);
 
     cx.typeck_fn_sigs(hir)?;
@@ -164,18 +164,18 @@ impl InferCtxt<'_> {
                 }
 
                 if let TyKind::Fn(fun_ty) = call.callee.ty.kind() {
+                    #[derive(Debug)]
+                    struct PassedArg {
+                        is_named: bool,
+                        span: Span,
+                    }
+
                     if call.args.len() != fun_ty.params.len() {
                         return Err(InferError::ArgMismatch {
                             expected: fun_ty.params.len(),
                             found: call.args.len(),
                             span: expr.span,
                         });
-                    }
-
-                    #[derive(Debug)]
-                    struct PassedArg {
-                        is_named: bool,
-                        span: Span,
                     }
 
                     let mut already_passed_args = UstrMap::<PassedArg>::default();
