@@ -110,7 +110,7 @@ impl InferCtxt<'_> {
                 f.sig.ret.as_ref().map_or(self.db[f.id].span, Spanned::span),
             ))
             .eq(fx.ret_ty, f.body.ty)
-            .or_coerce(self.db, f.body.id);
+            .or_coerce(self, f.body.id);
 
         // If the function's return type is `()`, we want to let the user end the body with
         // whatever expression they want, so that they don't need to end it with a `()`
@@ -128,7 +128,7 @@ impl InferCtxt<'_> {
 
                 self.at(Obligation::obvious(if_.cond.span))
                     .eq(self.db.types.bool, if_.cond.ty)
-                    .or_coerce(self.db, if_.cond.id)?;
+                    .or_coerce(self, if_.cond.id)?;
 
                 self.infer_expr(&mut if_.then, fx)?;
 
@@ -136,11 +136,11 @@ impl InferCtxt<'_> {
                     self.infer_expr(otherwise, fx)?;
                     self.at(Obligation::exprs(expr.span, if_.then.span, otherwise.span))
                         .eq(if_.then.ty, otherwise.ty)
-                        .or_coerce(self.db, otherwise.id)?;
+                        .or_coerce(self, otherwise.id)?;
                 } else {
                     self.at(Obligation::obvious(if_.then.span))
                         .eq(self.db.types.unit, if_.then.ty)
-                        .or_coerce(self.db, if_.then.id)?;
+                        .or_coerce(self, if_.then.id)?;
                 }
 
                 if_.then.ty
@@ -157,7 +157,7 @@ impl InferCtxt<'_> {
 
                 self.at(Obligation::return_ty(ret.expr.span, self.db[fx.id].span))
                     .eq(fx.ret_ty, ret.expr.ty)
-                    .or_coerce(self.db, ret.expr.id)?;
+                    .or_coerce(self, ret.expr.id)?;
 
                 self.db.types.never
             }
@@ -235,7 +235,7 @@ impl InferCtxt<'_> {
                         let idx = arg.index.expect("arg index to be resolved");
                         self.at(Obligation::obvious(arg.expr.span))
                             .eq(fun_ty.params[idx].ty, arg.expr.ty)
-                            .or_coerce(self.db, arg.expr.id)?;
+                            .or_coerce(self, arg.expr.id)?;
                     }
 
                     fun_ty.ret
@@ -252,18 +252,18 @@ impl InferCtxt<'_> {
 
                 self.at(Obligation::exprs(expr.span, bin.lhs.span, bin.rhs.span))
                     .eq(bin.lhs.ty, bin.rhs.ty)
-                    .or_coerce(self.db, bin.rhs.id)?;
+                    .or_coerce(self, bin.rhs.id)?;
 
                 match bin.op {
                     BinOpKind::Cmp(..) => (),
                     BinOpKind::And | BinOpKind::Or => {
                         self.at(Obligation::obvious(bin.lhs.span))
                             .eq(self.db.types.bool, bin.lhs.ty)
-                            .or_coerce(self.db, bin.lhs.id)?;
+                            .or_coerce(self, bin.lhs.id)?;
 
                         self.at(Obligation::obvious(bin.rhs.span))
                             .eq(self.db.types.bool, bin.rhs.ty)
-                            .or_coerce(self.db, bin.rhs.id)?;
+                            .or_coerce(self, bin.rhs.id)?;
                     }
                     _ => {
                         // TODO: type check arithmetic operations
