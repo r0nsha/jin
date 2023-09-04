@@ -1,6 +1,6 @@
 use crate::{
     db::Db,
-    hir::{Expr, Fn, Hir, ItemKind},
+    hir::{Expr, ExprKind, Fn, Hir, ItemKind},
     ty::{adjust::Adjustments, tcx::TyCtxt},
 };
 
@@ -24,23 +24,24 @@ trait ApplyAdjustments<'db> {
 
 impl ApplyAdjustments<'_> for Fn {
     fn apply_adj(&mut self, cx: &mut Context<'_>) {
-        self.body.apply_adj(cx);
+        // self.body.apply_adj(cx);
     }
 }
 
 impl ApplyAdjustments<'_> for Expr {
     fn apply_adj(&mut self, cx: &mut Context<'_>) {
-        match self {
-            Expr::If(if_) => todo!(),
-            Expr::Block(blk) => todo!(),
-            Expr::Return(ret) => todo!(),
-            Expr::Call(call) => todo!(),
-            Expr::Bin(bin) => todo!(),
-            Expr::Name(name) => todo!(),
-            Expr::Lit(_) => (),
-        }
-
-        apply_adj_to_expr(self, cx);
+        todo!()
+        // match &mut self.kind {
+        //     ExprKind::If(if_) => todo!(),
+        //     ExprKind::Block(blk) => todo!(),
+        //     ExprKind::Return(ret) => todo!(),
+        //     ExprKind::Call(call) => todo!(),
+        //     ExprKind::Bin(bin) => todo!(),
+        //     ExprKind::Name(name) => todo!(),
+        //     ExprKind::Lit(_) => (),
+        // }
+        //
+        // apply_adj_to_expr(self, cx);
     }
 }
 

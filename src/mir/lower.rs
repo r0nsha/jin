@@ -12,8 +12,7 @@ use crate::{
         subst::{ParamFolder, Subst},
         MonoItem,
     },
-    span::Spanned,
-    ty::{fold::TyFolder, Instantiation, Ty, TyKind, Typed},
+    ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };
 
 pub fn lower(db: &mut Db, hir: &Hir, mono_items: HashSet<MonoItem>) -> Result<Mir> {
@@ -155,12 +154,12 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
 
         // Insert a final return instruction if the function's isn't terminating
         if !self.bx.current_block().is_terminating() {
-            let span = fun.body.span();
+            let span = fun.body.span;
 
             let ret_ty = fun.ty.as_fn().unwrap().ret;
             let ret_value = if ret_ty.is_unit() && !self.bx.value(body_value).unwrap().ty.is_unit()
             {
-                self.bx.build_unit_lit(ret_ty, fun.body.span())
+                self.bx.build_unit_lit(ret_ty, fun.body.span)
             } else {
                 body_value
             };
@@ -172,51 +171,139 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
     }
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
-        match expr {
-            hir::Expr::If(inner) => self.lower_if(inner),
-            hir::Expr::Block(inner) => self.lower_block(inner),
-            hir::Expr::Return(inner) => self.lower_return(inner),
-            hir::Expr::Call(inner) => self.lower_call(inner),
-            hir::Expr::Bin(inner) => self.lower_bin(inner),
-            hir::Expr::Name(inner) => self.lower_name(inner),
-            hir::Expr::Lit(inner) => self.lower_lit(inner),
-        }
-    }
+        match &expr.kind {
+            hir::ExprKind::If(if_) => {
+                let cond = self.lower_expr(&if_.cond);
 
-    fn lower_if(&mut self, if_: &hir::If) -> ValueId {
-        let cond = self.lower_expr(&if_.cond);
+                let then_blk = self.bx.create_block("if_then");
+                let else_blk = self.bx.create_block("if_else");
 
-        let then_blk = self.bx.create_block("if_then");
-        let else_blk = self.bx.create_block("if_else");
+                self.bx.build_brif(cond, then_blk, else_blk, if_.cond.span);
 
-        self.bx.build_brif(cond, then_blk, else_blk, if_.cond.span());
+                let merge_blk = self.bx.create_block("if_merge");
 
-        let merge_blk = self.bx.create_block("if_merge");
+                self.bx.position_at(then_blk);
+                let then_value = self.lower_branch(&if_.then);
+                self.bx.build_br(merge_blk, expr.span);
 
-        self.bx.position_at(then_blk);
-        let then_value = self.lower_branch(&if_.then);
-        self.bx.build_br(merge_blk, if_.span);
+                self.bx.position_at(else_blk);
+                let else_value = if let Some(otherwise) = &if_.otherwise {
+                    self.lower_branch(otherwise)
+                } else {
+                    Some(self.bx.build_unit_lit(Ty::new(TyKind::Unit), expr.span))
+                };
 
-        self.bx.position_at(else_blk);
-        let else_value = if let Some(otherwise) = &if_.otherwise {
-            self.lower_branch(otherwise)
-        } else {
-            Some(self.bx.build_unit_lit(Ty::new(TyKind::Unit), if_.span))
-        };
+                self.bx.build_br(merge_blk, expr.span);
 
-        self.bx.build_br(merge_blk, if_.span);
+                self.bx.position_at(merge_blk);
 
-        self.bx.position_at(merge_blk);
+                match (then_value, else_value) {
+                    (Some(then_value), Some(else_value)) => self.bx.build_phi(
+                        expr.ty,
+                        vec![(then_blk, then_value), (else_blk, else_value)].into_boxed_slice(),
+                        expr.span,
+                    ),
+                    (Some(then_value), None) => then_value,
+                    (None, Some(else_value)) => else_value,
+                    (None, None) => self.bx.build_unreachable(expr.ty, expr.span),
+                }
+            }
+            hir::ExprKind::Block(blk) => {
+                let mut value: Option<ValueId> = None;
 
-        match (then_value, else_value) {
-            (Some(then_value), Some(else_value)) => self.bx.build_phi(
-                if_.ty,
-                vec![(then_blk, then_value), (else_blk, else_value)].into_boxed_slice(),
-                if_.span,
-            ),
-            (Some(then_value), None) => then_value,
-            (None, Some(else_value)) => else_value,
-            (None, None) => self.bx.build_unreachable(if_.ty, if_.span),
+                for expr in &blk.exprs {
+                    value = Some(self.lower_expr(expr));
+                }
+
+                value.unwrap_or_else(|| self.bx.build_unit_lit(expr.ty, expr.span))
+            }
+            hir::ExprKind::Return(ret) => {
+                if !self.bx.current_block().is_terminating() {
+                    let value = self.lower_expr(&ret.expr);
+                    self.bx.build_return(value, expr.span);
+                }
+
+                self.bx.build_unreachable(ret.expr.ty, expr.span)
+            }
+            hir::ExprKind::Call(call) => {
+                // NOTE: Call arguments are expected to be sorted by parameter order, from left-to-right
+                let args =
+                    call.args.iter().map(|arg| self.lower_expr(&arg.expr)).collect::<Vec<_>>();
+                let callee = self.lower_expr(&call.callee);
+                self.bx.build_call(expr.ty, callee, args, expr.span)
+            }
+            hir::ExprKind::Bin(bin) => {
+                let lhs = self.lower_expr(&bin.lhs);
+
+                match bin.op {
+                    BinOpKind::And => {
+                        let true_blk = self.bx.create_block("and_true");
+                        let false_blk = self.bx.create_block("and_false");
+
+                        self.bx.build_brif(lhs, true_blk, false_blk, expr.span);
+
+                        let merge_blk = self.bx.create_block("and_merge");
+
+                        self.bx.position_at(true_blk);
+                        let true_value = self.lower_expr(&bin.rhs);
+                        self.bx.build_br(merge_blk, expr.span);
+
+                        self.bx.position_at(false_blk);
+                        let false_value = self.bx.build_bool_lit(expr.ty, false, expr.span);
+                        self.bx.build_br(merge_blk, expr.span);
+
+                        self.bx.position_at(merge_blk);
+
+                        self.bx.build_phi(
+                            expr.ty,
+                            vec![(true_blk, true_value), (false_blk, false_value)]
+                                .into_boxed_slice(),
+                            expr.span,
+                        )
+                    }
+                    BinOpKind::Or => {
+                        let true_blk = self.bx.create_block("or_true");
+                        let false_blk = self.bx.create_block("or_false");
+
+                        self.bx.build_brif(lhs, true_blk, false_blk, expr.span);
+
+                        let merge_blk = self.bx.create_block("or_merge");
+
+                        self.bx.position_at(true_blk);
+                        let true_value = self.bx.build_bool_lit(expr.ty, true, expr.span);
+                        self.bx.build_br(merge_blk, expr.span);
+
+                        self.bx.position_at(false_blk);
+                        let false_value = self.lower_expr(&bin.rhs);
+                        self.bx.build_br(merge_blk, expr.span);
+
+                        self.bx.position_at(merge_blk);
+
+                        self.bx.build_phi(
+                            expr.ty,
+                            vec![(true_blk, true_value), (false_blk, false_value)]
+                                .into_boxed_slice(),
+                            expr.span,
+                        )
+                    }
+                    _ => {
+                        let rhs = self.lower_expr(&bin.rhs);
+                        self.bx.build_bin(expr.ty, bin.op, lhs, rhs, expr.span)
+                    }
+                }
+            }
+            hir::ExprKind::Name(name) => {
+                let id = self
+                    .inner
+                    .get_mono_def(&MonoItem { id: name.id, ty: expr.ty }, &name.instantiation);
+                let def = &self.inner.db[id];
+                self.bx.build_load(def.ty, def.id, expr.span)
+            }
+            hir::ExprKind::Lit(lit) => match &lit.kind {
+                hir::LitKind::Int(v) => self.bx.build_int_lit(expr.ty, *v, expr.span),
+                hir::LitKind::Bool(v) => self.bx.build_bool_lit(expr.ty, *v, expr.span),
+                hir::LitKind::Unit => self.bx.build_unit_lit(expr.ty, expr.span),
+            },
         }
     }
 
@@ -227,106 +314,6 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
             None
         } else {
             Some(value)
-        }
-    }
-
-    fn lower_block(&mut self, blk: &hir::Block) -> ValueId {
-        let mut value: Option<ValueId> = None;
-
-        for expr in &blk.exprs {
-            value = Some(self.lower_expr(expr));
-        }
-
-        value.unwrap_or_else(|| self.bx.build_unit_lit(blk.ty, blk.span))
-    }
-
-    fn lower_call(&mut self, call: &hir::Call) -> ValueId {
-        // NOTE: Call arguments are expected to be sorted by parameter order, from left-to-right
-        let args = call.args.iter().map(|arg| self.lower_expr(&arg.expr)).collect::<Vec<_>>();
-        let callee = self.lower_expr(&call.callee);
-        self.bx.build_call(call.ty, callee, args, call.span)
-    }
-
-    fn lower_bin(&mut self, bin: &hir::BinOp) -> ValueId {
-        let lhs = self.lower_expr(&bin.lhs);
-
-        match bin.op {
-            BinOpKind::And => {
-                let true_blk = self.bx.create_block("and_true");
-                let false_blk = self.bx.create_block("and_false");
-
-                self.bx.build_brif(lhs, true_blk, false_blk, bin.span);
-
-                let merge_blk = self.bx.create_block("and_merge");
-
-                self.bx.position_at(true_blk);
-                let true_value = self.lower_expr(&bin.rhs);
-                self.bx.build_br(merge_blk, bin.span);
-
-                self.bx.position_at(false_blk);
-                let false_value = self.bx.build_bool_lit(bin.ty, false, bin.span);
-                self.bx.build_br(merge_blk, bin.span);
-
-                self.bx.position_at(merge_blk);
-
-                self.bx.build_phi(
-                    bin.ty,
-                    vec![(true_blk, true_value), (false_blk, false_value)].into_boxed_slice(),
-                    bin.span,
-                )
-            }
-            BinOpKind::Or => {
-                let true_blk = self.bx.create_block("or_true");
-                let false_blk = self.bx.create_block("or_false");
-
-                self.bx.build_brif(lhs, true_blk, false_blk, bin.span);
-
-                let merge_blk = self.bx.create_block("or_merge");
-
-                self.bx.position_at(true_blk);
-                let true_value = self.bx.build_bool_lit(bin.ty, true, bin.span);
-                self.bx.build_br(merge_blk, bin.span);
-
-                self.bx.position_at(false_blk);
-                let false_value = self.lower_expr(&bin.rhs);
-                self.bx.build_br(merge_blk, bin.span);
-
-                self.bx.position_at(merge_blk);
-
-                self.bx.build_phi(
-                    bin.ty,
-                    vec![(true_blk, true_value), (false_blk, false_value)].into_boxed_slice(),
-                    bin.span,
-                )
-            }
-            _ => {
-                let rhs = self.lower_expr(&bin.rhs);
-                self.bx.build_bin(bin.ty, bin.op, lhs, rhs, bin.span)
-            }
-        }
-    }
-
-    fn lower_return(&mut self, ret: &hir::Return) -> ValueId {
-        if !self.bx.current_block().is_terminating() {
-            let value = self.lower_expr(&ret.expr);
-            self.bx.build_return(value, ret.span);
-        }
-
-        self.bx.build_unreachable(ret.expr.ty(), ret.span)
-    }
-
-    fn lower_name(&mut self, name: &hir::Name) -> ValueId {
-        let id =
-            self.inner.get_mono_def(&MonoItem { id: name.id, ty: name.ty }, &name.instantiation);
-        let def = &self.inner.db[id];
-        self.bx.build_load(def.ty, def.id, name.span)
-    }
-
-    fn lower_lit(&mut self, lit: &hir::Lit) -> ValueId {
-        match &lit.kind {
-            hir::LitKind::Int(v) => self.bx.build_int_lit(lit.ty, *v, lit.span),
-            hir::LitKind::Bool(v) => self.bx.build_bool_lit(lit.ty, *v, lit.span),
-            hir::LitKind::Unit => self.bx.build_unit_lit(lit.ty, lit.span),
         }
     }
 }

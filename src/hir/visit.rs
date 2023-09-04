@@ -53,14 +53,14 @@ pub fn noop_visit_fn(vis: &mut impl HirVisitor, f: &Fn) {
 }
 
 pub fn noop_visit_expr(vis: &mut impl HirVisitor, expr: &Expr) {
-    match expr {
-        Expr::If(x) => vis.visit_if(x),
-        Expr::Block(x) => vis.visit_block(x),
-        Expr::Return(x) => vis.visit_return(x),
-        Expr::Call(x) => vis.visit_call(x),
-        Expr::Bin(x) => vis.visit_bin(x),
-        Expr::Name(x) => vis.visit_name(x),
-        Expr::Lit(x) => vis.visit_lit(x),
+    match &expr.kind {
+        ExprKind::If(x) => vis.visit_if(x),
+        ExprKind::Block(x) => vis.visit_block(x),
+        ExprKind::Return(x) => vis.visit_return(x),
+        ExprKind::Call(x) => vis.visit_call(x),
+        ExprKind::Bin(x) => vis.visit_bin(x),
+        ExprKind::Name(x) => vis.visit_name(x),
+        ExprKind::Lit(x) => vis.visit_lit(x),
     }
 }
 

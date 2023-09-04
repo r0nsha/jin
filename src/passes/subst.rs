@@ -1,8 +1,8 @@
 use crate::{
     db::Db,
-    hir::{BinOp, Block, Call, Expr, Fn, FnSig, If, Item, ItemKind, Lit, Name, Return},
+    hir::{Expr, ExprKind, Fn, FnSig, Item, ItemKind},
     span::{Span, Spanned},
-    ty::{fold::TyFolder, Instantiation, Ty, TyKind, Typed},
+    ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };
 
 pub trait SubstTy {
@@ -16,17 +16,44 @@ pub trait Subst<S: SubstTy> {
 
 impl<S: SubstTy> Subst<S> for Expr {
     fn subst(&mut self, s: &mut S) {
-        match self {
-            Self::If(inner) => inner.subst(s),
-            Self::Block(inner) => inner.subst(s),
-            Self::Return(inner) => inner.subst(s),
-            Self::Call(inner) => inner.subst(s),
-            Self::Bin(inner) => inner.subst(s),
-            Self::Name(inner) => inner.subst(s),
-            Self::Lit(inner) => inner.subst(s),
+        match &mut self.kind {
+            ExprKind::If(if_) => {
+                if_.cond.subst(s);
+                if_.then.subst(s);
+
+                if let Some(o) = &mut if_.otherwise {
+                    o.subst(s);
+                }
+            }
+            ExprKind::Block(blk) => {
+                for stmt in &mut blk.exprs {
+                    stmt.subst(s);
+                }
+            }
+            ExprKind::Return(ret) => {
+                ret.expr.subst(s);
+            }
+            ExprKind::Call(call) => {
+                call.callee.subst(s);
+
+                for arg in &mut call.args {
+                    arg.expr.subst(s);
+                }
+            }
+            ExprKind::Bin(bin) => {
+                bin.lhs.subst(s);
+                bin.rhs.subst(s);
+            }
+            ExprKind::Name(name) => {
+                for ty in name.instantiation.values_mut() {
+                    *ty = s.subst_ty(*ty, self.span);
+                }
+                // s.db()[self.id].ty = self.ty;
+            }
+            ExprKind::Lit(_) => (),
         }
 
-        self.set_ty(s.subst_ty(self.ty(), self.span()));
+        self.ty = s.subst_ty(self.ty, self.span);
     }
 }
 
@@ -56,61 +83,6 @@ impl<S: SubstTy> Subst<S> for FnSig {
             s.db()[param.id].ty = param.ty;
         }
     }
-}
-
-impl<S: SubstTy> Subst<S> for If {
-    fn subst(&mut self, s: &mut S) {
-        self.cond.subst(s);
-        self.then.subst(s);
-
-        if let Some(o) = &mut self.otherwise {
-            o.subst(s);
-        }
-    }
-}
-
-impl<S: SubstTy> Subst<S> for Block {
-    fn subst(&mut self, s: &mut S) {
-        for stmt in &mut self.exprs {
-            stmt.subst(s);
-        }
-    }
-}
-
-impl<S: SubstTy> Subst<S> for Return {
-    fn subst(&mut self, s: &mut S) {
-        self.expr.subst(s);
-    }
-}
-
-impl<S: SubstTy> Subst<S> for Call {
-    fn subst(&mut self, s: &mut S) {
-        self.callee.subst(s);
-
-        for arg in &mut self.args {
-            arg.expr.subst(s);
-        }
-    }
-}
-
-impl<S: SubstTy> Subst<S> for BinOp {
-    fn subst(&mut self, s: &mut S) {
-        self.lhs.subst(s);
-        self.rhs.subst(s);
-    }
-}
-
-impl<S: SubstTy> Subst<S> for Name {
-    fn subst(&mut self, s: &mut S) {
-        for ty in self.instantiation.values_mut() {
-            *ty = s.subst_ty(*ty, self.span);
-        }
-        // s.db()[self.id].ty = self.ty;
-    }
-}
-
-impl<S: SubstTy> Subst<S> for Lit {
-    fn subst(&mut self, _s: &mut S) {}
 }
 
 pub struct ParamFolder<'db, 'a> {

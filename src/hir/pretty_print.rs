@@ -2,7 +2,7 @@ use std::io;
 
 use crate::{
     db::Db,
-    hir::{BinOp, Block, Call, Expr, Fn, Hir, If, Item, ItemKind, Lit, LitKind, Name, Return},
+    hir::{Expr, ExprKind, Fn, Hir, Item, ItemKind, LitKind},
 };
 
 pub(super) fn print(db: &Db, hir: &Hir) -> io::Result<()> {
@@ -27,14 +27,87 @@ trait PrettyPrint {
 
 impl PrettyPrint for Expr {
     fn pretty_print(&self, cx: &mut PPCtxt) {
-        match self {
-            Self::If(inner) => inner.pretty_print(cx),
-            Self::Block(inner) => inner.pretty_print(cx),
-            Self::Return(inner) => inner.pretty_print(cx),
-            Self::Call(inner) => inner.pretty_print(cx),
-            Self::Bin(inner) => inner.pretty_print(cx),
-            Self::Name(inner) => inner.pretty_print(cx),
-            Self::Lit(inner) => inner.pretty_print(cx),
+        match &self.kind {
+            ExprKind::If(if_) => {
+                cx.builder.begin_child("if".to_string());
+
+                cx.builder.begin_child("cond".to_string());
+                if_.cond.pretty_print(cx);
+                cx.builder.end_child();
+
+                cx.builder.begin_child("then".to_string());
+                if_.then.pretty_print(cx);
+                cx.builder.end_child();
+
+                if let Some(otherwise) = &if_.otherwise {
+                    cx.builder.begin_child("else".to_string());
+                    otherwise.pretty_print(cx);
+                    cx.builder.end_child();
+                }
+
+                cx.builder.end_child();
+            }
+            ExprKind::Block(blk) => {
+                cx.builder.begin_child("block".to_string());
+
+                for expr in &blk.exprs {
+                    expr.pretty_print(cx);
+                }
+
+                cx.builder.end_child();
+            }
+            ExprKind::Return(ret) => {
+                cx.builder.begin_child("return".to_string());
+                ret.expr.pretty_print(cx);
+                cx.builder.end_child();
+            }
+            ExprKind::Call(call) => {
+                cx.builder.begin_child(format!("call (result: {})", self.ty.display(cx.db)));
+                call.callee.pretty_print(cx);
+
+                if !call.args.is_empty() {
+                    cx.builder.begin_child("args".to_string());
+
+                    for arg in &call.args {
+                        if let Some(name) = arg.name {
+                            cx.builder.begin_child(name.to_string());
+                            arg.expr.pretty_print(cx);
+                            cx.builder.end_child();
+                        } else {
+                            arg.expr.pretty_print(cx);
+                        }
+                    }
+
+                    cx.builder.end_child();
+                }
+
+                cx.builder.end_child();
+            }
+            ExprKind::Bin(bin) => {
+                cx.builder.begin_child(format!("{} (result: {})", bin.op, self.ty.display(cx.db)));
+                bin.lhs.pretty_print(cx);
+                bin.rhs.pretty_print(cx);
+                cx.builder.end_child();
+            }
+            ExprKind::Name(inner) => {
+                let ref this = inner;
+                let cx: &mut PPCtxt = cx;
+                cx.builder.add_empty_child(format!(
+                    "`{}` (type: {})",
+                    cx.db[this.id].qpath,
+                    self.ty.display(cx.db)
+                ));
+            }
+            ExprKind::Lit(lit) => {
+                let value_str = match &lit.kind {
+                    LitKind::Int(v) => v.to_string(),
+                    LitKind::Bool(v) => v.to_string(),
+                    LitKind::Unit => "()".to_string(),
+                };
+
+                cx.builder
+                    .add_empty_child(format!("{value_str} (type: {})", self.ty.display(cx.db)));
+            }
         }
     }
 }
@@ -72,103 +145,5 @@ impl PrettyPrint for Fn {
         self.body.pretty_print(cx);
 
         cx.builder.end_child();
-    }
-}
-
-impl PrettyPrint for If {
-    fn pretty_print(&self, cx: &mut PPCtxt) {
-        cx.builder.begin_child("if".to_string());
-
-        cx.builder.begin_child("cond".to_string());
-        self.cond.pretty_print(cx);
-        cx.builder.end_child();
-
-        cx.builder.begin_child("then".to_string());
-        self.then.pretty_print(cx);
-        cx.builder.end_child();
-
-        if let Some(otherwise) = &self.otherwise {
-            cx.builder.begin_child("else".to_string());
-            otherwise.pretty_print(cx);
-            cx.builder.end_child();
-        }
-
-        cx.builder.end_child();
-    }
-}
-
-impl PrettyPrint for Block {
-    fn pretty_print(&self, cx: &mut PPCtxt) {
-        cx.builder.begin_child("block".to_string());
-
-        for expr in &self.exprs {
-            expr.pretty_print(cx);
-        }
-
-        cx.builder.end_child();
-    }
-}
-
-impl PrettyPrint for Return {
-    fn pretty_print(&self, cx: &mut PPCtxt) {
-        cx.builder.begin_child("return".to_string());
-        self.expr.pretty_print(cx);
-        cx.builder.end_child();
-    }
-}
-
-impl PrettyPrint for Call {
-    fn pretty_print(&self, cx: &mut PPCtxt) {
-        cx.builder.begin_child(format!("call (result: {})", self.ty.display(cx.db)));
-        self.callee.pretty_print(cx);
-
-        if !self.args.is_empty() {
-            cx.builder.begin_child("args".to_string());
-
-            for arg in &self.args {
-                if let Some(name) = arg.name {
-                    cx.builder.begin_child(name.to_string());
-                    arg.expr.pretty_print(cx);
-                    cx.builder.end_child();
-                } else {
-                    arg.expr.pretty_print(cx);
-                }
-            }
-
-            cx.builder.end_child();
-        }
-
-        cx.builder.end_child();
-    }
-}
-
-impl PrettyPrint for BinOp {
-    fn pretty_print(&self, cx: &mut PPCtxt) {
-        cx.builder.begin_child(format!("{} (result: {})", self.op, self.ty.display(cx.db)));
-        self.lhs.pretty_print(cx);
-        self.rhs.pretty_print(cx);
-        cx.builder.end_child();
-    }
-}
-
-impl PrettyPrint for Name {
-    fn pretty_print(&self, cx: &mut PPCtxt) {
-        cx.builder.add_empty_child(format!(
-            "`{}` (type: {})",
-            cx.db[self.id].qpath,
-            self.ty.display(cx.db)
-        ));
-    }
-}
-
-impl PrettyPrint for Lit {
-    fn pretty_print(&self, cx: &mut PPCtxt) {
-        let value_str = match &self.kind {
-            LitKind::Int(v) => v.to_string(),
-            LitKind::Bool(v) => v.to_string(),
-            LitKind::Unit => "()".to_string(),
-        };
-
-        cx.builder.add_empty_child(format!("{value_str} (type: {})", self.ty.display(cx.db)));
     }
 }

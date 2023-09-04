@@ -12,7 +12,7 @@ use crate::{
     ast::BinOpKind,
     db::{Db, DefId, DefKind},
     diagnostics::Diagnostic,
-    hir::{self, Expr, ExprKind, Fn, FnSig, Hir, Item, ItemKind, LitKind},
+    hir::{self, Expr, ExprKind, Fn, FnSig, Hir, ItemKind, LitKind},
     passes::typeck::{
         error::InferError, infcx::InferCtxt, instantiate::instantiate, normalize::NormalizeTy,
         unify::Obligation,
@@ -33,8 +33,8 @@ pub fn typeck(db: &mut Db, tcx: &mut TyCtxt, hir: &mut Hir) -> Result<(), Diagno
 fn typeck_inner(db: &mut Db, tcx: &mut TyCtxt, hir: &mut Hir) -> InferResult<()> {
     let mut cx = InferCtxt::new(db, tcx);
 
-    cx.typeck_function_signatures(hir)?;
-    cx.typeck_function_bodies(hir)?;
+    cx.typeck_fn_sigs(hir)?;
+    cx.typeck_fn_bodies(hir)?;
 
     cx.subst(hir);
 
@@ -42,11 +42,11 @@ fn typeck_inner(db: &mut Db, tcx: &mut TyCtxt, hir: &mut Hir) -> InferResult<()>
 }
 
 impl InferCtxt<'_> {
-    fn typeck_function_signatures(&mut self, hir: &mut Hir) -> InferResult<()> {
+    fn typeck_fn_sigs(&mut self, hir: &mut Hir) -> InferResult<()> {
         for item in &mut hir.items {
             match &mut item.kind {
                 ItemKind::Fn(fun) => {
-                    fun.ty = self.typeck_function_sig(&mut fun.sig)?;
+                    fun.ty = self.typeck_fn_sig(&mut fun.sig)?;
                     self.db[fun.id].ty = fun.ty;
                 }
             }
@@ -55,7 +55,7 @@ impl InferCtxt<'_> {
         Ok(())
     }
 
-    fn typeck_function_sig(&mut self, sig: &mut FnSig) -> InferResult<Ty> {
+    fn typeck_fn_sig(&mut self, sig: &mut FnSig) -> InferResult<Ty> {
         for tp in &mut sig.ty_params {
             let ty = Ty::new(TyKind::Param(ParamTy {
                 name: self.db[tp.id].name,
@@ -83,12 +83,11 @@ impl InferCtxt<'_> {
         })))
     }
 
-    fn typeck_function_bodies(&mut self, hir: &mut Hir) -> InferResult<()> {
+    fn typeck_fn_bodies(&mut self, hir: &mut Hir) -> InferResult<()> {
         for item in &mut hir.items {
             match &mut item.kind {
-                ItemKind::Fn(fun) => {
-                    let mut fx = FnCtxt::from_fn(self.db, fun);
-                    fun.infer(self, &mut fx)?;
+                ItemKind::Fn(f) => {
+                    self.typeck_fn(f)?;
                 }
             }
         }
@@ -96,96 +95,72 @@ impl InferCtxt<'_> {
         Ok(())
     }
 
-    fn typeck_ty(&mut self, ty: &hir::Ty) -> InferResult<Ty> {
-        match ty {
-            hir::Ty::Name(name) => {
-                let def = &self.db[name.id];
+    fn typeck_fn(&mut self, f: &mut Fn) -> InferResult<()> {
+        if self.db[f.id].scope.level.is_local() {
+            f.ty = self.typeck_fn_sig(&mut f.sig)?;
+            self.db[f.id].ty = f.ty;
+        }
 
-                match def.kind.as_ref() {
-                    DefKind::Ty(ty) => Ok(*ty),
-                    _ => Err(InferError::ExpectedTy { ty: def.ty, span: name.span }),
-                }
-            }
-            hir::Ty::Unit(_) => Ok(self.tcx.types.unit),
-            hir::Ty::Never(_) => Ok(self.tcx.types.never),
-            hir::Ty::Infer(_) => Ok(self.fresh_ty_var()),
+        let mut fx = FnCtxt::from_fn(self.db, f);
+
+        self.infer_expr(&mut f.body, &mut fx)?;
+
+        let unify_body_res = self
+            .at(Obligation::return_ty(
+                f.body.span,
+                f.sig.ret.as_ref().map_or(self.db[f.id].span, Spanned::span),
+            ))
+            .eq(fx.ret_ty, f.body.ty);
+
+        // If the function's return type is `()`, we want to let the user end the body with
+        // whatever expression they want, so that they don't need to end it with a `()`
+        if f.ty.as_fn().unwrap().ret.normalize(&mut self.inner.borrow_mut()).is_unit() {
+            Ok(())
+        } else {
+            unify_body_res
         }
     }
-}
 
-struct FnCtxt {
-    pub id: DefId,
-    pub ret_ty: Ty,
-    pub ty_params: Vec<ParamTy>,
-}
-
-impl FnCtxt {
-    fn from_fn(db: &Db, fun: &Fn) -> Self {
-        FnCtxt {
-            id: fun.id,
-            ret_ty: fun.ty.as_fn().unwrap().ret,
-            ty_params: fun
-                .sig
-                .ty_params
-                .iter()
-                .map(|tp| {
-                    db[tp.id]
-                        .kind
-                        .as_ty()
-                        .expect("to be a type")
-                        .as_param()
-                        .expect("to be a param type")
-                })
-                .cloned()
-                .collect(),
-        }
-    }
-}
-
-trait Infer<'db> {
-    fn infer(&mut self, cx: &mut InferCtxt<'db>, fx: &mut FnCtxt) -> InferResult<()>;
-}
-
-impl Infer<'_> for Expr {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
-        let ty = match &mut self.kind {
+    fn infer_expr(&mut self, expr: &mut Expr, fx: &mut FnCtxt) -> InferResult<()> {
+        let ty = match &mut expr.kind {
             ExprKind::If(if_) => {
-                if_.cond.infer(cx, fx)?;
+                self.infer_expr(&mut if_.cond, fx)?;
 
-                cx.at(Obligation::obvious(if_.cond.span)).eq(cx.tcx.types.bool, if_.cond.ty)?;
+                self.at(Obligation::obvious(if_.cond.span)).eq(self.tcx.types.bool, if_.cond.ty)?;
 
-                if_.then.infer(cx, fx)?;
+                self.infer_expr(&mut if_.then, fx)?;
 
                 if let Some(otherwise) = if_.otherwise.as_mut() {
-                    otherwise.infer(cx, fx)?;
-                    cx.at(Obligation::exprs(self.span, if_.then.span, otherwise.span))
+                    self.infer_expr(otherwise, fx)?;
+                    self.at(Obligation::exprs(expr.span, if_.then.span, otherwise.span))
                         .eq(if_.then.ty, otherwise.ty)?;
                 } else {
-                    cx.at(Obligation::obvious(if_.then.span)).eq(cx.tcx.types.unit, if_.then.ty)?;
+                    self.at(Obligation::obvious(if_.then.span))
+                        .eq(self.tcx.types.unit, if_.then.ty)?;
                 }
 
                 if_.then.ty
             }
             ExprKind::Block(blk) => {
                 for expr in &mut blk.exprs {
-                    expr.infer(cx, fx)?;
+                    self.infer_expr(expr, fx)?;
                 }
 
-                blk.exprs.last().map_or_else(|| cx.tcx.types.unit, |e| e.ty)
+                blk.exprs.last().map_or_else(|| self.tcx.types.unit, |e| e.ty)
             }
             ExprKind::Return(ret) => {
-                ret.expr.infer(cx, fx)?;
+                self.infer_expr(&mut ret.expr, fx)?;
 
-                cx.at(Obligation::return_ty(ret.expr.span, cx.db[fx.id].span))
+                self.at(Obligation::return_ty(ret.expr.span, self.db[fx.id].span))
                     .eq(fx.ret_ty, ret.expr.ty)?;
 
-                cx.tcx.types.never
+                self.tcx.types.never
             }
             ExprKind::Call(call) => {
-                call.callee.infer(cx, fx)?;
+                self.infer_expr(&mut call.callee, fx)?;
 
                 for arg in &mut call.args {
-                    arg.expr.infer(cx, fx)?;
+                    self.infer_expr(&mut arg.expr, fx)?;
                 }
 
                 if let TyKind::Fn(fun_ty) = call.callee.ty.kind() {
@@ -193,8 +168,14 @@ impl Infer<'_> for Expr {
                         return Err(InferError::ArgMismatch {
                             expected: fun_ty.params.len(),
                             found: call.args.len(),
-                            span: self.span,
+                            span: expr.span,
                         });
+                    }
+
+                    #[derive(Debug)]
+                    struct PassedArg {
+                        is_named: bool,
+                        span: Span,
                     }
 
                     let mut already_passed_args = UstrMap::<PassedArg>::default();
@@ -247,32 +228,32 @@ impl Infer<'_> for Expr {
                     // Unify all args with their corresponding param type
                     for arg in &call.args {
                         let idx = arg.index.expect("arg index to be resolved");
-                        cx.at(Obligation::obvious(arg.expr.span))
+                        self.at(Obligation::obvious(arg.expr.span))
                             .eq(fun_ty.params[idx].ty, arg.expr.ty)?;
                     }
 
                     fun_ty.ret
                 } else {
                     return Err(InferError::UncallableTy {
-                        ty: call.callee.ty.normalize(&mut cx.inner.borrow_mut()),
+                        ty: call.callee.ty.normalize(&mut self.inner.borrow_mut()),
                         span: call.callee.span,
                     });
                 }
             }
             ExprKind::Bin(bin) => {
-                bin.lhs.infer(cx, fx)?;
-                bin.rhs.infer(cx, fx)?;
+                self.infer_expr(&mut bin.lhs, fx)?;
+                self.infer_expr(&mut bin.rhs, fx)?;
 
-                cx.at(Obligation::exprs(self.span, bin.lhs.span, bin.rhs.span))
+                self.at(Obligation::exprs(expr.span, bin.lhs.span, bin.rhs.span))
                     .eq(bin.lhs.ty, bin.rhs.ty)?;
 
                 match bin.op {
                     BinOpKind::Cmp(..) => (),
                     BinOpKind::And | BinOpKind::Or => {
-                        cx.at(Obligation::obvious(bin.lhs.span))
-                            .eq(cx.tcx.types.bool, bin.lhs.ty)?;
-                        cx.at(Obligation::obvious(bin.rhs.span))
-                            .eq(cx.tcx.types.bool, bin.rhs.ty)?;
+                        self.at(Obligation::obvious(bin.lhs.span))
+                            .eq(self.tcx.types.bool, bin.lhs.ty)?;
+                        self.at(Obligation::obvious(bin.rhs.span))
+                            .eq(self.tcx.types.bool, bin.rhs.ty)?;
                     }
                     _ => {
                         // TODO: type check arithmetic operations
@@ -280,13 +261,13 @@ impl Infer<'_> for Expr {
                 }
 
                 match bin.op {
-                    BinOpKind::Cmp(..) => cx.tcx.types.bool,
+                    BinOpKind::Cmp(..) => self.tcx.types.bool,
                     _ => bin.lhs.ty,
                 }
             }
             ExprKind::Name(name) => {
-                let def_ty = cx.lookup(name.id);
-                let ty = def_ty.normalize(&mut cx.inner.borrow_mut());
+                let def_ty = self.lookup(name.id);
+                let ty = def_ty.normalize(&mut self.inner.borrow_mut());
 
                 let ty_params: Vec<ParamTy> =
                     ty.collect_params().into_iter().filter(|p| !fx.ty_params.contains(p)).collect();
@@ -294,7 +275,7 @@ impl Infer<'_> for Expr {
                 let instantiation: Instantiation = match &name.args {
                     Some(args) if args.len() == ty_params.len() => {
                         let arg_tys: Vec<Ty> =
-                            args.iter().map(|arg| cx.typeck_ty(arg)).try_collect()?;
+                            args.iter().map(|arg| self.typeck_ty(arg)).try_collect()?;
                         ty_params
                             .into_iter()
                             .zip(arg_tys)
@@ -305,12 +286,13 @@ impl Infer<'_> for Expr {
                         return Err(InferError::TyArgMismatch {
                             expected: ty_params.len(),
                             found: args.len(),
-                            span: self.span,
+                            span: expr.span,
                         });
                     }
-                    _ => {
-                        ty_params.into_iter().map(|param| (param.var, cx.fresh_ty_var())).collect()
-                    }
+                    _ => ty_params
+                        .into_iter()
+                        .map(|param| (param.var, self.fresh_ty_var()))
+                        .collect(),
                 };
 
                 let ty = instantiate(ty, instantiation.clone());
@@ -319,61 +301,59 @@ impl Infer<'_> for Expr {
                 ty
             }
             ExprKind::Lit(lit) => match &lit.kind {
-                LitKind::Int(..) => cx.fresh_int_var(),
-                LitKind::Bool(..) => cx.tcx.types.bool,
-                LitKind::Unit => cx.tcx.types.unit,
+                LitKind::Int(..) => self.fresh_int_var(),
+                LitKind::Bool(..) => self.tcx.types.bool,
+                LitKind::Unit => self.tcx.types.unit,
             },
         };
 
-        self.ty = ty;
+        expr.ty = ty;
 
         Ok(())
     }
-}
 
-// TODO: inline
-impl Infer<'_> for Item {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
-        match &mut self.kind {
-            ItemKind::Fn(fun) => fun.infer(cx, fx)?,
-        }
+    fn typeck_ty(&mut self, ty: &hir::Ty) -> InferResult<Ty> {
+        match ty {
+            hir::Ty::Name(name) => {
+                let def = &self.db[name.id];
 
-        self.ty = cx.tcx.types.unit;
-
-        Ok(())
-    }
-}
-
-impl Infer<'_> for Fn {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, _fx: &mut FnCtxt) -> InferResult<()> {
-        if cx.db[self.id].scope.level.is_local() {
-            self.ty = cx.typeck_function_sig(&mut self.sig)?;
-            cx.db[self.id].ty = self.ty;
-        }
-
-        let mut fx = FnCtxt::from_fn(cx.db, self);
-
-        self.body.infer(cx, &mut fx)?;
-
-        let unify_body_res = cx
-            .at(Obligation::return_ty(
-                self.body.span,
-                self.sig.ret.as_ref().map_or(cx.db[self.id].span, Spanned::span),
-            ))
-            .eq(fx.ret_ty, self.body.ty);
-
-        // If the function's return type is `()`, we want to let the user end the body with
-        // whatever expression they want, so that they don't need to end it with a `()`
-        if self.ty.as_fn().unwrap().ret.normalize(&mut cx.inner.borrow_mut()).is_unit() {
-            Ok(())
-        } else {
-            unify_body_res
+                match def.kind.as_ref() {
+                    DefKind::Ty(ty) => Ok(*ty),
+                    _ => Err(InferError::ExpectedTy { ty: def.ty, span: name.span }),
+                }
+            }
+            hir::Ty::Unit(_) => Ok(self.tcx.types.unit),
+            hir::Ty::Never(_) => Ok(self.tcx.types.never),
+            hir::Ty::Infer(_) => Ok(self.fresh_ty_var()),
         }
     }
 }
 
-#[derive(Debug)]
-struct PassedArg {
-    is_named: bool,
-    span: Span,
+struct FnCtxt {
+    pub id: DefId,
+    pub ret_ty: Ty,
+    pub ty_params: Vec<ParamTy>,
+}
+
+impl FnCtxt {
+    fn from_fn(db: &Db, fun: &Fn) -> Self {
+        FnCtxt {
+            id: fun.id,
+            ret_ty: fun.ty.as_fn().unwrap().ret,
+            ty_params: fun
+                .sig
+                .ty_params
+                .iter()
+                .map(|tp| {
+                    db[tp.id]
+                        .kind
+                        .as_ty()
+                        .expect("to be a type")
+                        .as_param()
+                        .expect("to be a param type")
+                })
+                .cloned()
+                .collect(),
+        }
+    }
 }
