@@ -114,6 +114,10 @@ impl UnifyCtxt<'_, '_> {
         match (a.kind(), b.kind()) {
             (TyKind::Bool, TyKind::Bool)
             | (TyKind::Unit, TyKind::Unit)
+            | (TyKind::Int(IntTy::I8), TyKind::Int(IntTy::I8))
+            | (TyKind::Int(IntTy::I16), TyKind::Int(IntTy::I16))
+            | (TyKind::Int(IntTy::I32), TyKind::Int(IntTy::I32))
+            | (TyKind::Int(IntTy::I64), TyKind::Int(IntTy::I64))
             | (TyKind::Int(IntTy::Int), TyKind::Int(IntTy::Int)) => Ok(()),
 
             (TyKind::Fn(ref fex), TyKind::Fn(ref fact)) => {

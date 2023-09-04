@@ -3,6 +3,7 @@ fn main() = {
 	cmp()
 	nested_fn()
 	polymorphism()
+	int_types()
 }
 
 fn arithmetic() = {
@@ -44,4 +45,11 @@ fn polymorphism() = {
 	# Explicit type arguments
 	id[int](111)
 	id[bool](false)
+}
+
+fn int_types() = {
+	fn a(x i8) i8 = x
+	# fn b(x i32) i64 = 4
+	# fn b(x i8) int = 4
+	a(129)
 }

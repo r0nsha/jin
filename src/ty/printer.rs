@@ -44,9 +44,13 @@ impl<'db> TyPrinter<'db> {
                 f.write_str(") ")?;
                 Self::fmt_type(f, &fun.ret)
             }
-            TyKind::Int(int) => match int {
-                IntTy::Int => f.write_str("int"),
-            },
+            TyKind::Int(int) => f.write_str(match int {
+                IntTy::I8 => "i8",
+                IntTy::I16 => "i16",
+                IntTy::I32 => "i32",
+                IntTy::I64 => "i64",
+                IntTy::Int => "int",
+            }),
             TyKind::Bool => f.write_str("bool"),
             TyKind::Unit => f.write_str("()"),
             TyKind::Never => f.write_str("!"),

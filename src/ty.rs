@@ -192,7 +192,24 @@ impl From<IntVarValue> for TyKind {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum IntTy {
+    I8,
+    I16,
+    I32,
+    I64,
     Int,
+}
+
+impl IntTy {
+    pub fn size(self) -> usize {
+        #[allow(clippy::match_same_arms)]
+        match self {
+            IntTy::I8 => 8,
+            IntTy::I16 => 16,
+            IntTy::I32 => 32,
+            IntTy::I64 => 64,
+            IntTy::Int => 64, // TODO: decide by target
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

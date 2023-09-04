@@ -322,6 +322,10 @@ pub enum FnInfo {
 
 #[derive(Debug)]
 pub struct CommonTypes {
+    pub i8: Ty,
+    pub i16: Ty,
+    pub i32: Ty,
+    pub i64: Ty,
     pub int: Ty,
     pub bool: Ty,
     pub unit: Ty,
@@ -339,6 +343,10 @@ impl Default for CommonTypes {
 impl CommonTypes {
     pub fn new() -> Self {
         Self {
+            i8: Ty::new(TyKind::Int(IntTy::I8)),
+            i16: Ty::new(TyKind::Int(IntTy::I16)),
+            i32: Ty::new(TyKind::Int(IntTy::I32)),
+            i64: Ty::new(TyKind::Int(IntTy::I64)),
             int: Ty::new(TyKind::Int(IntTy::Int)),
             bool: Ty::new(TyKind::Bool),
             unit: Ty::new(TyKind::Unit),

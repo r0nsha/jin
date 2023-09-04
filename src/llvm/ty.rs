@@ -38,6 +38,10 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, BasicTypeEnum<'cx>> for TyKind {
 impl<'db, 'cx> LlvmTy<'db, 'cx, IntType<'cx>> for IntTy {
     fn llvm_ty(&self, cx: &Generator<'db, 'cx>) -> IntType<'cx> {
         match self {
+            Self::I8 => cx.context.i8_type(),
+            Self::I16 => cx.context.i16_type(),
+            Self::I32 => cx.context.i32_type(),
+            Self::I64 => cx.context.i64_type(),
             Self::Int => cx.isize_ty,
         }
     }
