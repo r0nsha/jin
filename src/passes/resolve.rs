@@ -334,7 +334,7 @@ impl Resolve<'_> for Ty {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         match self {
             Self::Name(name) => name.resolve(cx, env),
-            Self::Infer(span) if env.in_kind(ScopeKind::Fn) => {
+            Self::Infer(span) if env.current().kind == ScopeKind::Fn => {
                 cx.errors.push(ResolveError::InvalidPlaceholderTy(*span));
             }
             _ => (),
