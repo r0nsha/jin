@@ -95,6 +95,7 @@ fn main() -> Result<()> {
 fn build(db: &mut Db) {
     db.time.start("parse");
     let mut ast = parse::parse_modules(db);
+    expect!(db);
 
     db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file)).expect("emitting ast failed");
 

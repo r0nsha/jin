@@ -56,7 +56,7 @@ impl Db {
         let root_dir = absolute_path.parent().expect("to have a parent directory").to_path_buf();
 
         let mut sources = Sources::new();
-        let main_source = sources.add_file(absolute_path.to_path_buf())?;
+        let main_source = sources.load_file(absolute_path.to_path_buf())?;
 
         let sources = Rc::new(RefCell::new(sources));
 
@@ -92,7 +92,6 @@ impl Db {
         &self.root_dir
     }
 
-    #[allow(unused)]
     pub fn main_source_id(&self) -> SourceId {
         self.main_source
     }

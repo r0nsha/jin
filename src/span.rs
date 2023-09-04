@@ -92,7 +92,7 @@ impl Sources {
         Self(IndexVec::new())
     }
 
-    pub fn add_file(&mut self, path: PathBuf) -> io::Result<SourceId> {
+    pub fn load_file(&mut self, path: PathBuf) -> io::Result<SourceId> {
         let mut source = Source::try_from(path)?;
 
         Ok(self.0.push_with_key(|id| {
