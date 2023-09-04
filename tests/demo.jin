@@ -37,11 +37,11 @@ fn nested_fn() = {
 fn polymorphism() = {
 	fn id[T](x T) T = x
 
-	// Inferred type arguments
+	# Inferred type arguments
 	id(42)
 	id(true)
 
-	// Explicit type arguments
+	# Explicit type arguments
 	id[int](111)
 	id[bool](false)
 }

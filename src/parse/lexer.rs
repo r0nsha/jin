@@ -47,6 +47,10 @@ impl<'s> Lexer<'s> {
                     ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
                     ch if ch.is_ascii_digit() => self.numeric(start),
                     ch if ch.is_ascii_whitespace() => return self.eat_token(),
+                    '#' => {
+                        self.eat_comment();
+                        return self.eat_token();
+                    }
                     '(' => TokenKind::OpenParen,
                     ')' => TokenKind::CloseParen,
                     '[' => TokenKind::OpenBracket,
@@ -69,15 +73,7 @@ impl<'s> Lexer<'s> {
                         }
                     }
                     '*' => TokenKind::Star,
-                    '/' => {
-                        if self.eat('/') {
-                            self.next();
-                            self.eat_comment();
-                            return self.eat_token();
-                        }
-
-                        TokenKind::FwSlash
-                    }
+                    '/' => TokenKind::FwSlash,
                     '%' => TokenKind::Percent,
                     '+' => TokenKind::Plus,
                     '-' => TokenKind::Minus,
