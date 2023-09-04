@@ -26,7 +26,7 @@ impl<'db> InferCtxt<'db> {
 
         let diagnostics: Vec<_> =
             cx.errs.into_values().map(|e| e.into_diagnostic(self.db)).collect();
-        self.db.diagnostics.extend(diagnostics);
+        self.db.diagnostics.emit_many(diagnostics);
     }
 }
 

@@ -2,10 +2,12 @@ pub mod build_options;
 mod timing;
 
 use std::{
+    cell::{Ref, RefCell},
     cmp,
     collections::hash_map::Entry,
     fs, io,
     path::{Path, PathBuf},
+    rc::Rc,
 };
 
 use anyhow::{bail, Result};
@@ -29,18 +31,14 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Db {
-    build_options: BuildOptions,
     pub time: Timings,
-
-    pub sources: Sources,
+    pub sources: Rc<RefCell<Sources>>,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
     pub defs: IndexVec<DefId, Def>,
-
     pub types: CommonTypes,
     pub coercions: HirMap<Coercions>,
-
     pub diagnostics: Diagnostics,
-
+    build_options: BuildOptions,
     root_dir: PathBuf,
     main_source: SourceId,
     main_module: Option<ModuleId>,
@@ -60,19 +58,17 @@ impl Db {
         let mut sources = Sources::new();
         let main_source = sources.add_file(absolute_path.to_path_buf())?;
 
+        let sources = Rc::new(RefCell::new(sources));
+
         Ok(Self {
             time: Timings::new(build_options.timings),
             build_options,
-
+            diagnostics: Diagnostics::new(sources.clone()),
             sources,
             modules: IndexVec::new(),
             defs: IndexVec::new(),
-
             types: CommonTypes::new(),
             coercions: HirMap::new(),
-
-            diagnostics: Diagnostics::new(),
-
             root_dir,
             main_source,
             main_module: None,
@@ -85,7 +81,8 @@ impl Db {
     }
 
     pub fn output_path(&self) -> PathBuf {
-        let main_path = self.main_source().path();
+        let binding = self.main_source();
+        let main_path = binding.path();
         let file_name = main_path.file_stem().expect("main source to be a file");
         let src_dir = main_path.parent().expect("to have a parent directory");
         src_dir.join(self.build_options.output_dir.clone()).join(file_name)
@@ -100,8 +97,10 @@ impl Db {
         self.main_source
     }
 
-    pub fn main_source(&self) -> &Source {
-        self.sources.get(self.main_source).expect("to always have a main source")
+    pub fn main_source(&self) -> Ref<'_, Source> {
+        Ref::map(self.sources.borrow(), |s| {
+            s.get(self.main_source).expect("to always have a main source")
+        })
     }
 
     pub fn main_module_id(&self) -> Option<ModuleId> {
@@ -125,10 +124,6 @@ impl Db {
         self.main_fun = Some(id);
     }
 
-    pub fn print_diagnostics(&self) {
-        self.diagnostics.print(&self.sources).expect("printing diagnostis to work");
-    }
-
     pub fn push_coercion(&mut self, expr_id: ExprId, c: Coercion) {
         match self.coercions.entry(expr_id) {
             Entry::Occupied(mut entry) => {
@@ -140,7 +135,7 @@ impl Db {
         }
     }
 
-    pub fn emit(
+    pub fn emit_file(
         &self,
         opt: EmitOption,
         f: impl Fn(&Self, &mut fs::File) -> io::Result<()>,

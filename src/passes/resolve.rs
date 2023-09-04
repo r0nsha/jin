@@ -24,7 +24,7 @@ pub fn resolve(db: &mut Db, ast: &mut Ast) {
 
     if !cx.errors.is_empty() {
         let errors = cx.errors;
-        db.diagnostics.extend(errors);
+        db.diagnostics.emit_many(errors);
     }
 }
 

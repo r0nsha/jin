@@ -1,6 +1,8 @@
+use std::{cell::RefCell, rc::Rc};
+
 use codespan_reporting::{
     diagnostic as codespan_diagnostic,
-    term::termcolor::{ColorChoice, StandardStream},
+    term::termcolor::{ColorChoice, StandardStream, StandardStreamLock},
 };
 
 use crate::span::{SourceId, Sources, Span};
@@ -60,9 +62,13 @@ impl Diagnostic {
         self.set_help(help);
         self
     }
+
+    pub fn severity(&self) -> Severity {
+        self.severity
+    }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Severity {
     Error,
 }
@@ -131,47 +137,49 @@ impl From<Severity> for codespan_diagnostic::Severity {
 
 #[derive(Debug)]
 pub struct Diagnostics {
-    diagnostics: Vec<Diagnostic>,
-}
-
-impl Default for Diagnostics {
-    fn default() -> Self {
-        Self::new()
-    }
+    sources: Rc<RefCell<Sources>>,
+    config: codespan_reporting::term::Config,
+    had_errors: bool,
 }
 
 impl Diagnostics {
-    pub fn new() -> Self {
-        Self { diagnostics: vec![] }
+    pub fn new(sources: Rc<RefCell<Sources>>) -> Self {
+        Self { sources, config: codespan_reporting::term::Config::default(), had_errors: false }
     }
 
-    pub fn add(&mut self, item: impl Into<Diagnostic>) {
-        self.diagnostics.push(item.into());
+    pub fn emit(&mut self, diagnostic: impl Into<Diagnostic>) {
+        self.emit_(&mut Self::writer().lock(), diagnostic.into());
     }
 
-    pub fn extend<T: Into<Diagnostic>>(&mut self, items: impl IntoIterator<Item = T>) {
-        self.diagnostics.extend(items.into_iter().map(Into::into));
+    pub fn emit_many<T, I>(&mut self, diagnostics: I)
+    where
+        T: Into<Diagnostic>,
+        I: IntoIterator<Item = T>,
+    {
+        let w = Self::writer();
+        let mut w = w.lock();
+
+        for diagnostic in diagnostics {
+            self.emit_(&mut w, diagnostic.into());
+        }
     }
 
     pub fn any(&self) -> bool {
-        !self.diagnostics.is_empty()
+        self.had_errors
     }
 
-    pub fn print(&self, sources: &Sources) -> Result<(), codespan_reporting::files::Error> {
-        let writer = StandardStream::stderr(ColorChoice::Always);
-        let config = codespan_reporting::term::Config::default();
+    fn emit_(&mut self, w: &mut StandardStreamLock, diagnostic: Diagnostic) {
+        // if let Severity::Error = diagnostic.severity() {
+        self.had_errors = true;
+        // }
 
-        let mut writer_lock = writer.lock();
+        let sources: &Sources = &self.sources.borrow();
 
-        for diagnostic in &self.diagnostics {
-            codespan_reporting::term::emit(
-                &mut writer_lock,
-                &config,
-                sources,
-                &diagnostic.clone().into(),
-            )?;
-        }
+        codespan_reporting::term::emit(w, &self.config, sources, &diagnostic.into())
+            .expect("failed emitting diagnostic");
+    }
 
-        Ok(())
+    fn writer() -> StandardStream {
+        StandardStream::stderr(ColorChoice::Always)
     }
 }

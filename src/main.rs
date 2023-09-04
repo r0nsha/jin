@@ -28,7 +28,7 @@ mod passes;
 mod span;
 mod ty;
 
-use std::{fs, path::PathBuf};
+use std::path::PathBuf;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -66,7 +66,6 @@ enum Commands {
 macro_rules! expect {
     ($db: expr) => {
         if $db.diagnostics.any() {
-            $db.print_diagnostics();
             return;
         }
     };
@@ -97,7 +96,7 @@ fn build(db: &mut Db) {
     db.time.start("parse");
     let mut ast = parse::parse_modules(db);
 
-    db.emit(EmitOption::Ast, |_, file| ast.pretty_print(file)).expect("emitting ast failed");
+    db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file)).expect("emitting ast failed");
 
     db.time.start("resolve");
     passes::resolve(db, &mut ast);
@@ -108,16 +107,17 @@ fn build(db: &mut Db) {
 
     db.time.start("typeck");
     if let Err(diag) = passes::typeck(db, &mut hir) {
-        db.diagnostics.add(diag);
+        db.diagnostics.emit(diag);
     }
     db.time.stop();
     expect!(db);
 
-    db.emit(EmitOption::Hir, |db, file| hir.pretty_print(db, file)).expect("emitting hir failed");
+    db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))
+        .expect("emitting hir failed");
 
     db.time.start("check entry");
     if let Err(diag) = passes::check_entry(db, &hir) {
-        db.diagnostics.add(diag);
+        db.diagnostics.emit(diag);
     }
     db.time.stop();
     expect!(db);
@@ -131,7 +131,8 @@ fn build(db: &mut Db) {
     db.time.stop();
     expect!(db);
 
-    db.emit(EmitOption::Mir, |db, file| mir.pretty_print(db, file)).expect("emitting mir failed");
+    db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
+        .expect("emitting mir failed");
 
     llvm::codegen(db, &mir);
 

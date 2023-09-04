@@ -17,7 +17,7 @@ pub fn parse(db: &Db, source: &Source, tokens: Vec<Token>) -> Result<Module, Dia
     let name = QPath::from_path(db.root_dir(), source.path()).unwrap();
     let is_main = source_id == db.main_source().id();
 
-    let module = Parser::new(db.sources.get(source_id).expect("to exist"), tokens)
+    let module = Parser::new(db.sources.borrow().get(source_id).expect("to exist"), tokens)
         .parse(source_id, name, is_main)?;
 
     Ok(module)
@@ -238,7 +238,12 @@ impl<'a> Parser<'a> {
 
             let span = lhs.span().merge(rhs.span());
 
-            expr_stack.push(Expr::BinOp(BinOp { lhs: Box::new(lhs), op, rhs: Box::new(rhs), span }));
+            expr_stack.push(Expr::BinOp(BinOp {
+                lhs: Box::new(lhs),
+                op,
+                rhs: Box::new(rhs),
+                span,
+            }));
         }
 
         Ok(expr_stack.into_iter().next().unwrap())
