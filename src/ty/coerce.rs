@@ -1,21 +1,21 @@
 use crate::{hir::Expr, ty::Ty};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Adjustments(Vec<Adjust>);
+pub struct Coercions(Vec<Coercion>);
 
-impl Adjustments {
+impl Coercions {
     pub fn new() -> Self {
         Self(vec![])
     }
 
-    pub fn push(&mut self, adj: Adjust) {
+    pub fn push(&mut self, adj: Coercion) {
         self.0.push(adj);
     }
 
     pub fn apply(&self, mut expr: Expr) -> Expr {
         for adj in &self.0 {
             expr = match adj.kind {
-                AdjustKind::CoerceNever => expr,
+                CoercionKind::NeverToAny => expr,
             };
             expr.ty = adj.target;
         }
@@ -24,19 +24,19 @@ impl Adjustments {
     }
 }
 
-impl Default for Adjustments {
+impl Default for Coercions {
     fn default() -> Self {
         Self::new()
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Adjust {
-    pub kind: AdjustKind,
+pub struct Coercion {
+    pub kind: CoercionKind,
     pub target: Ty,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum AdjustKind {
-    CoerceNever,
+pub enum CoercionKind {
+    NeverToAny,
 }

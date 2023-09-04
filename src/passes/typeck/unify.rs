@@ -20,11 +20,12 @@ pub struct At<'db, 'a> {
 }
 
 impl At<'_, '_> {
-    pub fn eq(&self, expected: Ty, found: Ty) -> Result<(), InferError> {
+    #[must_use]
+    pub fn eq(&self, expected: Ty, found: Ty) -> EqResult<()> {
         UnifyCtxt { infcx: self.infcx }.unify_ty_ty(expected, found).map_err(|err| {
             let mut infcx = self.infcx.inner.borrow_mut();
 
-            match err {
+            let err = match err {
                 UnifyError::TyMismatch { .. } => InferError::TyMismatch {
                     expected: expected.normalize(&mut infcx),
                     found: found.normalize(&mut infcx),
@@ -34,8 +35,25 @@ impl At<'_, '_> {
                     ty: ty.normalize(&mut infcx),
                     obligation: Obligation::obvious(self.obligation.span()),
                 },
-            }
+            };
+
+            EqError { expected, found, err }
         })
+    }
+}
+
+pub type EqResult<T> = Result<T, EqError>;
+
+#[derive(Debug)]
+pub struct EqError {
+    pub expected: Ty,
+    pub found: Ty,
+    pub err: InferError,
+}
+
+impl From<EqError> for InferError {
+    fn from(value: EqError) -> Self {
+        value.err
     }
 }
 

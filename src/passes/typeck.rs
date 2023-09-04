@@ -1,4 +1,4 @@
-mod apply_adjustments;
+mod coerce;
 mod error;
 mod infcx;
 mod instantiate;
@@ -14,8 +14,8 @@ use crate::{
     diagnostics::Diagnostic,
     hir::{self, Expr, ExprKind, Fn, FnSig, Hir, ItemKind, LitKind},
     passes::typeck::{
-        apply_adjustments::apply_adjustments, error::InferError, infcx::InferCtxt,
-        instantiate::instantiate, normalize::NormalizeTy, unify::Obligation,
+        error::InferError, infcx::InferCtxt, instantiate::instantiate, normalize::NormalizeTy,
+        unify::Obligation,
     },
     span::{Span, Spanned},
     ty::{FnTy, FnTyParam, Instantiation, ParamTy, Ty, TyKind},
@@ -25,7 +25,7 @@ pub type InferResult<T> = Result<T, InferError>;
 
 pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
     typeck_inner(db, hir).map_err(|err| err.into_diagnostic(db))?;
-    apply_adjustments(db, hir);
+    coerce::apply_coercions(db, hir);
     Ok(())
 }
 
@@ -116,7 +116,7 @@ impl InferCtxt<'_> {
         if f.ty.as_fn().unwrap().ret.normalize(&mut self.inner.borrow_mut()).is_unit() {
             Ok(())
         } else {
-            unify_body_res
+            unify_body_res.map_err(Into::into)
         }
     }
 

@@ -1,10 +1,21 @@
 use crate::{
     db::Db,
-    hir::{Expr, ExprKind, Fn, Hir, ItemKind},
-    ty::adjust::Adjustments,
+    hir::{Expr, ExprId, ExprKind, Fn, Hir, ItemKind},
+    passes::typeck::unify::EqResult,
+    ty::{coerce::Coercions, Ty},
 };
 
-pub fn apply_adjustments(db: &mut Db, hir: &mut Hir) {
+trait CoerceExt<T> {
+    fn or_coerce(&self, expr_id: ExprId, source: Ty, target: Ty) -> EqResult<T>;
+}
+
+impl<T> CoerceExt<T> for EqResult<T> {
+    fn or_coerce(&self, expr_id: ExprId, source: Ty, target: Ty) -> EqResult<T> {
+        todo!()
+    }
+}
+
+pub fn apply_coercions(db: &mut Db, hir: &mut Hir) {
     let mut cx = Context { db };
 
     for item in &mut hir.items {

@@ -1,4 +1,4 @@
-pub mod adjust;
+pub mod coerce;
 pub mod fold;
 mod printer;
 

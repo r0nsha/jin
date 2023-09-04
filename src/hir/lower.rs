@@ -2,7 +2,7 @@ use crate::{
     ast,
     db::Db,
     hir::{
-        BinOp, Block, Call, CallArg, Expr, ExprKind, Fn, FnParam, FnSig, Hir, HirId, If, Item,
+        BinOp, Block, Call, CallArg, Expr, ExprKind, Fn, FnParam, FnSig, Hir, ExprId, If, Item,
         ItemKind, Lit, LitKind, Name, Return, Ty, TyName, TyParam,
     },
     span::{Span, Spanned},
@@ -35,7 +35,7 @@ impl<'db> LowerCtxt<'db> {
         Expr { id: self.next_id(), kind, span, ty: self.db.types.unknown }
     }
 
-    fn next_id(&mut self) -> HirId {
+    fn next_id(&mut self) -> ExprId {
         self.id += 1;
         self.id.into()
     }

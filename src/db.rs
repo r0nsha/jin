@@ -16,7 +16,7 @@ use crate::{
     diagnostics::Diagnostics,
     hir::HirMap,
     span::{Source, SourceId, Sources, Span},
-    ty::{adjust::Adjustments, IntTy, Ty, TyKind, Typed},
+    ty::{coerce::Coercions, IntTy, Ty, TyKind, Typed},
 };
 
 #[derive(Debug)]
@@ -29,7 +29,7 @@ pub struct Db {
     pub defs: IndexVec<DefId, Def>,
 
     pub types: CommonTypes,
-    pub adjustments: HirMap<Adjustments>,
+    pub adjustments: HirMap<Coercions>,
 
     pub diagnostics: Diagnostics,
 

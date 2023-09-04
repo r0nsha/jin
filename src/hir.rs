@@ -93,7 +93,7 @@ impl Typed for ItemKind {
 
 #[derive(Debug, Clone)]
 pub struct Expr {
-    pub id: HirId,
+    pub id: ExprId,
     pub kind: ExprKind,
     pub span: Span,
     pub ty: ty::Ty,
@@ -275,6 +275,6 @@ impl Spanned for Ty {
     }
 }
 
-new_key_type!(HirId);
+new_key_type!(ExprId);
 
-pub type HirMap<T> = HashMap<HirId, T>;
+pub type HirMap<T> = HashMap<ExprId, T>;
