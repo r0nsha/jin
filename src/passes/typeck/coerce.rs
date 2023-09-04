@@ -43,7 +43,6 @@ pub fn apply_coercions(db: &Db, hir: &mut Hir) {
             ItemKind::Fn(f) => {
                 f.body = f.body.clone().rewrite(|expr| {
                     if let Some(coercions) = db.coercions.get(&expr.id) {
-                        dbg!(&expr, coercions);
                         coercions.apply(expr)
                     } else {
                         expr

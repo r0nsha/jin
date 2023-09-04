@@ -42,6 +42,6 @@ fn polymorphism() = {
 	id(true)
 
 	// Explicit type arguments
-	id[!](111)
+	id[int](111)
 	id[bool](false)
 }
