@@ -107,11 +107,12 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_optional_ty_args(&mut self) -> ParseResult<Vec<Ty>> {
+    fn parse_optional_ty_args(&mut self) -> ParseResult<Option<Vec<Ty>>> {
         if self.peek_is(TokenKind::OpenBracket) {
-            self.parse_ty_args().map(|(t, _)| t)
+            let args = self.parse_ty_args().map(|(t, _)| t)?;
+            Ok(Some(args))
         } else {
-            Ok(vec![])
+            Ok(None)
         }
     }
 

@@ -245,8 +245,8 @@ pub struct BinOp {
 #[derive(Debug, Clone)]
 pub struct Name {
     pub id: DefId,
-    pub args: Vec<Ty>,
-    pub instantiation: ty::Instantiation,
+    pub args: Option<Vec<Ty>>,
+    pub instantiation: ty::Instantiation, // TODO: Turn into an Option<_>
     pub span: Span,
     pub ty: ty::Ty,
 }

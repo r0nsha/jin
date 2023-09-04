@@ -372,22 +372,19 @@ impl Infer<'_> for Name {
         let ty_params: Vec<ParamTy> =
             ty.collect_params().into_iter().filter(|p| !fx.ty_params.contains(p)).collect();
 
-        let instantiation: Instantiation = if self.args.is_empty() {
-            ty.collect_params().into_iter().map(|param| (param.var, cx.fresh_ty_var())).collect()
-        } else if self.args.len() == ty_params.len() {
-            let arg_tys: Vec<Ty> = self.args.iter().map(|arg| cx.typeck_ty(arg)).try_collect()?;
-
-            ty.collect_params()
-                .into_iter()
-                .zip(arg_tys)
-                .map(|(param, arg)| (param.var, arg))
-                .collect()
-        } else {
-            return Err(InferError::TyArgMismatch {
-                expected: ty_params.len(),
-                found: self.args.len(),
-                span: self.span,
-            });
+        let instantiation: Instantiation = match &self.args {
+            Some(args) if args.len() == ty_params.len() => {
+                let arg_tys: Vec<Ty> = args.iter().map(|arg| cx.typeck_ty(arg)).try_collect()?;
+                ty_params.into_iter().zip(arg_tys).map(|(param, arg)| (param.var, arg)).collect()
+            }
+            Some(args) => {
+                return Err(InferError::TyArgMismatch {
+                    expected: ty_params.len(),
+                    found: args.len(),
+                    span: self.span,
+                });
+            }
+            _ => ty_params.into_iter().map(|param| (param.var, cx.fresh_ty_var())).collect(),
         };
 
         self.ty = instantiate(ty, instantiation.clone());

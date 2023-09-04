@@ -324,8 +324,10 @@ impl Resolve<'_> for Name {
             cx.errors.push(ResolveError::NameNotFound(self.name));
         }
 
-        for arg in &mut self.args {
-            arg.resolve(cx, env);
+        if let Some(args) = &mut self.args {
+            for arg in args {
+                arg.resolve(cx, env);
+            }
         }
     }
 }

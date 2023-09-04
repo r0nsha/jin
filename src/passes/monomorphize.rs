@@ -84,8 +84,6 @@ impl HirVisitor for PolyCollector<'_, '_> {
 
         for p in &f.sig.params {
             if p.ty.is_polymorphic() {
-                dbg!(&p.ty);
-                dbg!(&self.instantiation);
                 let ty =
                     ParamFolder { db: self.root.db, instantiation: &self.instantiation }.fold(p.ty);
 
