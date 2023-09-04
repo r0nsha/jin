@@ -48,7 +48,6 @@ impl<S: SubstTy> Subst<S> for Expr {
                 for ty in name.instantiation.values_mut() {
                     *ty = s.subst_ty(*ty, self.span);
                 }
-                // s.db()[self.id].ty = self.ty;
             }
             ExprKind::Lit(_) => (),
         }
