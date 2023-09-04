@@ -1,11 +1,11 @@
 use crate::{
     db::Db,
     hir::{Expr, ExprKind, Fn, Hir, ItemKind},
-    ty::{adjust::Adjustments, tcx::TyCtxt},
+    ty::adjust::Adjustments,
 };
 
-pub fn apply_adjustments(db: &mut Db, tcx: &mut TyCtxt, hir: &mut Hir) {
-    let mut cx = Context { db, tcx };
+pub fn apply_adjustments(db: &mut Db, hir: &mut Hir) {
+    let mut cx = Context { db };
     for item in &mut hir.items {
         match &mut item.kind {
             ItemKind::Fn(f) => f.apply_adj(&mut cx),
@@ -15,7 +15,6 @@ pub fn apply_adjustments(db: &mut Db, tcx: &mut TyCtxt, hir: &mut Hir) {
 
 struct Context<'db> {
     db: &'db mut Db,
-    tcx: &'db mut TyCtxt,
 }
 
 trait ApplyAdjustments<'db> {

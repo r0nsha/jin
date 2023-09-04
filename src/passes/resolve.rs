@@ -11,11 +11,11 @@ use crate::{
     db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
     diagnostics::{Diagnostic, Label},
     span::{Span, Spanned},
-    ty::tcx::TyCtxt,
+    ty,
 };
 
-pub fn resolve(db: &mut Db, tcx: &TyCtxt, ast: &mut Ast) {
-    let mut cx = Resolver::new(db, tcx);
+pub fn resolve(db: &mut Db, ast: &mut Ast) {
+    let mut cx = Resolver::new(db);
 
     cx.resolve_modules(&mut ast.modules);
     cx.declare_builtin_defs();
@@ -30,25 +30,18 @@ pub fn resolve(db: &mut Db, tcx: &TyCtxt, ast: &mut Ast) {
 
 struct Resolver<'db> {
     db: &'db mut Db,
-    tcx: &'db TyCtxt,
     errors: Vec<ResolveError>,
     global_scope: GlobalScope,
     builtins: UstrMap<DefId>,
 }
 
 impl<'db> Resolver<'db> {
-    fn new(db: &'db mut Db, tcx: &'db TyCtxt) -> Self {
-        Self {
-            db,
-            tcx,
-            errors: vec![],
-            global_scope: GlobalScope::new(),
-            builtins: UstrMap::default(),
-        }
+    fn new(db: &'db mut Db) -> Self {
+        Self { db, errors: vec![], global_scope: GlobalScope::new(), builtins: UstrMap::default() }
     }
 
     fn declare_builtin_defs(&mut self) {
-        let mut mk = |name, ty| {
+        let mut mk = |name: &str, ty: &dyn std::ops::Fn(&Db) -> ty::Ty| -> Option<DefId> {
             let name = ustr(name);
             self.builtins.insert(
                 name,
@@ -60,15 +53,15 @@ impl<'db> Resolver<'db> {
                         level: ScopeLevel::Global,
                         vis: Vis::Public,
                     },
-                    DefKind::Ty(ty),
-                    self.tcx.types.typ,
+                    DefKind::Ty(ty(self.db)),
+                    self.db.types.typ,
                     Span::unknown(),
                 ),
             )
         };
 
-        mk("int", self.tcx.types.int);
-        mk("bool", self.tcx.types.bool);
+        mk("int", &|db| db.types.int);
+        mk("bool", &|db| db.types.bool);
     }
 
     fn resolve_modules(&mut self, modules: &mut [Module]) {
@@ -127,7 +120,7 @@ impl<'db> Resolver<'db> {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].name.clone().child(name.name());
 
-        let id = Def::alloc(self.db, qpath, scope, kind, self.tcx.types.unknown, name.span());
+        let id = Def::alloc(self.db, qpath, scope, kind, self.db.types.unknown, name.span());
 
         if let Some(prev_id) = self.global_scope.insert(module_id, name.name(), id) {
             let def = &self.db[prev_id];
@@ -159,7 +152,7 @@ impl<'db> Resolver<'db> {
             env.scope_path(self.db).child(name.name()),
             ScopeInfo { module_id: env.module_id, level: env.scope_level(), vis: Vis::Private },
             kind,
-            self.tcx.types.unknown,
+            self.db.types.unknown,
             name.span(),
         );
 
@@ -181,7 +174,7 @@ impl<'db> Resolver<'db> {
         let mut defined_ty_params = UstrMap::<Span>::default();
 
         for tp in ty_params {
-            let ty = self.tcx.types.unknown;
+            let ty = self.db.types.unknown;
             tp.id = Some(self.declare_def(env, DefKind::Ty(ty), tp.name));
 
             if let Some(prev_span) = defined_ty_params.insert(tp.name.name(), tp.name.span()) {

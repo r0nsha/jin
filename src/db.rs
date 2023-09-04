@@ -14,8 +14,9 @@ use crate::{
     common::{new_key_type, IndexVec, QPath},
     db::{build_options::BuildOptions, timing::Timings},
     diagnostics::Diagnostics,
+    hir::HirMap,
     span::{Source, SourceId, Sources, Span},
-    ty::{Ty, Typed},
+    ty::{adjust::Adjustments, IntTy, Ty, TyKind, Typed},
 };
 
 #[derive(Debug)]
@@ -26,6 +27,9 @@ pub struct Db {
     pub sources: Sources,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
     pub defs: IndexVec<DefId, Def>,
+
+    pub types: CommonTypes,
+    pub adjustments: HirMap<Adjustments>,
 
     pub diagnostics: Diagnostics,
 
@@ -55,6 +59,9 @@ impl Db {
             sources,
             modules: IndexVec::new(),
             defs: IndexVec::new(),
+
+            types: CommonTypes::new(),
+            adjustments: HirMap::new(),
 
             diagnostics: Diagnostics::new(),
 
@@ -285,4 +292,33 @@ impl Ord for ScopeLevel {
 #[derive(Debug, Clone)]
 pub enum FnInfo {
     Bare,
+}
+
+#[derive(Debug)]
+pub struct CommonTypes {
+    pub int: Ty,
+    pub bool: Ty,
+    pub unit: Ty,
+    pub never: Ty,
+    pub typ: Ty,
+    pub unknown: Ty,
+}
+
+impl Default for CommonTypes {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl CommonTypes {
+    pub fn new() -> Self {
+        Self {
+            int: Ty::new(TyKind::Int(IntTy::Int)),
+            bool: Ty::new(TyKind::Bool),
+            unit: Ty::new(TyKind::Unit),
+            never: Ty::new(TyKind::Never),
+            typ: Ty::new(TyKind::Type),
+            unknown: Ty::new(TyKind::Unknown),
+        }
+    }
 }

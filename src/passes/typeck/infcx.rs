@@ -4,18 +4,17 @@ use ena::unify::InPlaceUnificationTable;
 
 use crate::{
     db::{Db, DefId},
-    ty::{tcx::TyCtxt, InferTy, IntVar, Ty, TyKind, TyVar},
+    ty::{InferTy, IntVar, Ty, TyKind, TyVar},
 };
 
 pub struct InferCtxt<'db> {
     pub db: &'db mut Db,
-    pub tcx: &'db TyCtxt,
     pub inner: RefCell<InferCtxtInner>,
 }
 
 impl<'db> InferCtxt<'db> {
-    pub fn new(db: &'db mut Db, tcx: &'db TyCtxt) -> Self {
-        Self { db, tcx, inner: RefCell::new(InferCtxtInner::new()) }
+    pub fn new(db: &'db mut Db) -> Self {
+        Self { db, inner: RefCell::new(InferCtxtInner::new()) }
     }
 
     pub fn lookup(&self, id: DefId) -> Ty {

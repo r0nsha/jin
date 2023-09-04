@@ -6,11 +6,11 @@ use crate::{
         Lit, LitKind, Name, Return, Ty, TyName, TyParam,
     },
     span::{Span, Spanned},
-    ty::{tcx::TyCtxt, Instantiation},
+    ty::Instantiation,
 };
 
-pub fn lower(db: &mut Db, tcx: &TyCtxt, ast: ast::Ast) -> Hir {
-    let mut cx = LowerCtxt { _db: db, tcx, hir: Hir::new() };
+pub fn lower(db: &mut Db, ast: ast::Ast) -> Hir {
+    let mut cx = LowerCtxt { db, hir: Hir::new() };
 
     for module in ast.modules {
         cx.lower_module(module);
@@ -20,8 +20,7 @@ pub fn lower(db: &mut Db, tcx: &TyCtxt, ast: ast::Ast) -> Hir {
 }
 
 struct LowerCtxt<'db> {
-    _db: &'db mut Db,
-    tcx: &'db TyCtxt,
+    db: &'db mut Db,
     hir: Hir,
 }
 
@@ -32,7 +31,7 @@ impl<'db> LowerCtxt<'db> {
     }
 
     fn expr(&mut self, kind: ExprKind, span: Span) -> Expr {
-        Expr { kind, span, ty: self.tcx.types.unknown }
+        Expr { kind, span, ty: self.db.types.unknown }
     }
 }
 
@@ -46,7 +45,7 @@ impl Lower<'_, Item> for ast::Item {
             kind: match self {
                 Self::Fn(fun) => ItemKind::Fn(fun.lower(cx)),
             },
-            ty: cx.tcx.types.unknown,
+            ty: cx.db.types.unknown,
         }
     }
 }
@@ -61,7 +60,7 @@ impl Lower<'_, Fn> for ast::Fn {
             sig: self.sig.lower(cx),
             body: cx.expr(body, body_span),
             span: self.span,
-            ty: cx.tcx.types.unknown,
+            ty: cx.db.types.unknown,
         }
     }
 }
@@ -81,7 +80,7 @@ impl Lower<'_, FnSig> for ast::FnSig {
                     id: p.id.expect("to be resolved"),
                     ty_annot: p.ty.lower(cx),
                     span: p.span,
-                    ty: cx.tcx.types.unknown,
+                    ty: cx.db.types.unknown,
                 })
                 .collect::<Vec<_>>(),
             ret: self.ret.map(|r| r.lower(cx)),

@@ -18,20 +18,20 @@ use crate::{
         unify::Obligation,
     },
     span::{Span, Spanned},
-    ty::{tcx::TyCtxt, FnTy, FnTyParam, Instantiation, ParamTy, Ty, TyKind},
+    ty::{FnTy, FnTyParam, Instantiation, ParamTy, Ty, TyKind},
 };
 
 pub type InferResult<T> = Result<T, InferError>;
 
-pub fn typeck(db: &mut Db, tcx: &mut TyCtxt, hir: &mut Hir) -> Result<(), Diagnostic> {
-    typeck_inner(db, tcx, hir).map_err(|err| err.into_diagnostic(db))?;
+pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
+    typeck_inner(db, hir).map_err(|err| err.into_diagnostic(db))?;
     // TODO:
-    // apply_adjustments(db, tcx, hir);
+    // apply_adjustments(db,  hir);
     Ok(())
 }
 
-fn typeck_inner(db: &mut Db, tcx: &TyCtxt, hir: &mut Hir) -> InferResult<()> {
-    let mut cx = InferCtxt::new(db, tcx);
+fn typeck_inner(db: &mut Db, hir: &mut Hir) -> InferResult<()> {
+    let mut cx = InferCtxt::new(db);
 
     cx.typeck_fn_sigs(hir)?;
     cx.typeck_fn_bodies(hir)?;
@@ -62,7 +62,7 @@ impl InferCtxt<'_> {
                 var: self.fresh_var(),
             }));
 
-            self.db[tp.id].ty = self.tcx.types.typ;
+            self.db[tp.id].ty = self.db.types.typ;
             self.db[tp.id].kind = Box::new(DefKind::Ty(ty));
         }
 
@@ -71,7 +71,7 @@ impl InferCtxt<'_> {
             self.db[param.id].ty = param.ty;
         }
 
-        let ret = if let Some(ret) = &sig.ret { self.typeck_ty(ret)? } else { self.tcx.types.unit };
+        let ret = if let Some(ret) = &sig.ret { self.typeck_ty(ret)? } else { self.db.types.unit };
 
         Ok(Ty::new(TyKind::Fn(FnTy {
             params: sig
@@ -126,7 +126,7 @@ impl InferCtxt<'_> {
             ExprKind::If(if_) => {
                 self.infer_expr(&mut if_.cond, fx)?;
 
-                self.at(Obligation::obvious(if_.cond.span)).eq(self.tcx.types.bool, if_.cond.ty)?;
+                self.at(Obligation::obvious(if_.cond.span)).eq(self.db.types.bool, if_.cond.ty)?;
 
                 self.infer_expr(&mut if_.then, fx)?;
 
@@ -136,7 +136,7 @@ impl InferCtxt<'_> {
                         .eq(if_.then.ty, otherwise.ty)?;
                 } else {
                     self.at(Obligation::obvious(if_.then.span))
-                        .eq(self.tcx.types.unit, if_.then.ty)?;
+                        .eq(self.db.types.unit, if_.then.ty)?;
                 }
 
                 if_.then.ty
@@ -146,7 +146,7 @@ impl InferCtxt<'_> {
                     self.infer_expr(expr, fx)?;
                 }
 
-                blk.exprs.last().map_or_else(|| self.tcx.types.unit, |e| e.ty)
+                blk.exprs.last().map_or_else(|| self.db.types.unit, |e| e.ty)
             }
             ExprKind::Return(ret) => {
                 self.infer_expr(&mut ret.expr, fx)?;
@@ -154,7 +154,7 @@ impl InferCtxt<'_> {
                 self.at(Obligation::return_ty(ret.expr.span, self.db[fx.id].span))
                     .eq(fx.ret_ty, ret.expr.ty)?;
 
-                self.tcx.types.never
+                self.db.types.never
             }
             ExprKind::Call(call) => {
                 self.infer_expr(&mut call.callee, fx)?;
@@ -251,9 +251,9 @@ impl InferCtxt<'_> {
                     BinOpKind::Cmp(..) => (),
                     BinOpKind::And | BinOpKind::Or => {
                         self.at(Obligation::obvious(bin.lhs.span))
-                            .eq(self.tcx.types.bool, bin.lhs.ty)?;
+                            .eq(self.db.types.bool, bin.lhs.ty)?;
                         self.at(Obligation::obvious(bin.rhs.span))
-                            .eq(self.tcx.types.bool, bin.rhs.ty)?;
+                            .eq(self.db.types.bool, bin.rhs.ty)?;
                     }
                     _ => {
                         // TODO: type check arithmetic operations
@@ -261,7 +261,7 @@ impl InferCtxt<'_> {
                 }
 
                 match bin.op {
-                    BinOpKind::Cmp(..) => self.tcx.types.bool,
+                    BinOpKind::Cmp(..) => self.db.types.bool,
                     _ => bin.lhs.ty,
                 }
             }
@@ -302,8 +302,8 @@ impl InferCtxt<'_> {
             }
             ExprKind::Lit(lit) => match &lit.kind {
                 LitKind::Int(..) => self.fresh_int_var(),
-                LitKind::Bool(..) => self.tcx.types.bool,
-                LitKind::Unit => self.tcx.types.unit,
+                LitKind::Bool(..) => self.db.types.bool,
+                LitKind::Unit => self.db.types.unit,
             },
         };
 
@@ -322,8 +322,8 @@ impl InferCtxt<'_> {
                     _ => Err(InferError::ExpectedTy { ty: def.ty, span: name.span }),
                 }
             }
-            hir::Ty::Unit(_) => Ok(self.tcx.types.unit),
-            hir::Ty::Never(_) => Ok(self.tcx.types.never),
+            hir::Ty::Unit(_) => Ok(self.db.types.unit),
+            hir::Ty::Never(_) => Ok(self.db.types.never),
             hir::Ty::Infer(_) => Ok(self.fresh_ty_var()),
         }
     }
