@@ -12,16 +12,13 @@ use crate::{
     ast::BinOpKind,
     db::{Db, DefId, DefKind},
     diagnostics::Diagnostic,
-    hir::{
-        self, BinOp, Block, Call, Expr, Fn, FnSig, Hir, If, Item, ItemKind, Lit, LitKind, Name,
-        Return,
-    },
+    hir::{self, Expr, ExprKind, Fn, FnSig, Hir, Item, ItemKind, LitKind},
     passes::typeck::{
-        apply_adjustments::apply_adjustments, error::InferError, infcx::InferCtxt,
-        instantiate::instantiate, normalize::NormalizeTy, unify::Obligation,
+        error::InferError, infcx::InferCtxt, instantiate::instantiate, normalize::NormalizeTy,
+        unify::Obligation,
     },
     span::{Span, Spanned},
-    ty::{tcx::TyCtxt, FnTy, FnTyParam, Instantiation, ParamTy, Ty, TyKind, Typed},
+    ty::{tcx::TyCtxt, FnTy, FnTyParam, Instantiation, ParamTy, Ty, TyKind},
 };
 
 pub type InferResult<T> = Result<T, InferError>;
@@ -151,18 +148,190 @@ trait Infer<'db> {
 
 impl Infer<'_> for Expr {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
-        match self {
-            Self::If(inner) => inner.infer(cx, fx),
-            Self::Block(inner) => inner.infer(cx, fx),
-            Self::Return(inner) => inner.infer(cx, fx),
-            Self::Call(inner) => inner.infer(cx, fx),
-            Self::Bin(inner) => inner.infer(cx, fx),
-            Self::Name(inner) => inner.infer(cx, fx),
-            Self::Lit(inner) => inner.infer(cx, fx),
-        }
+        let ty = match &mut self.kind {
+            ExprKind::If(if_) => {
+                if_.cond.infer(cx, fx)?;
+
+                cx.at(Obligation::obvious(if_.cond.span)).eq(cx.tcx.types.bool, if_.cond.ty)?;
+
+                if_.then.infer(cx, fx)?;
+
+                if let Some(otherwise) = if_.otherwise.as_mut() {
+                    otherwise.infer(cx, fx)?;
+                    cx.at(Obligation::exprs(self.span, if_.then.span, otherwise.span))
+                        .eq(if_.then.ty, otherwise.ty)?;
+                } else {
+                    cx.at(Obligation::obvious(if_.then.span)).eq(cx.tcx.types.unit, if_.then.ty)?;
+                }
+
+                if_.then.ty
+            }
+            ExprKind::Block(blk) => {
+                for expr in &mut blk.exprs {
+                    expr.infer(cx, fx)?;
+                }
+
+                blk.exprs.last().map_or_else(|| cx.tcx.types.unit, |e| e.ty)
+            }
+            ExprKind::Return(ret) => {
+                ret.expr.infer(cx, fx)?;
+
+                cx.at(Obligation::return_ty(ret.expr.span, cx.db[fx.id].span))
+                    .eq(fx.ret_ty, ret.expr.ty)?;
+
+                cx.tcx.types.never
+            }
+            ExprKind::Call(call) => {
+                call.callee.infer(cx, fx)?;
+
+                for arg in &mut call.args {
+                    arg.expr.infer(cx, fx)?;
+                }
+
+                if let TyKind::Fn(fun_ty) = call.callee.ty.kind() {
+                    if call.args.len() != fun_ty.params.len() {
+                        return Err(InferError::ArgMismatch {
+                            expected: fun_ty.params.len(),
+                            found: call.args.len(),
+                            span: self.span,
+                        });
+                    }
+
+                    let mut already_passed_args = UstrMap::<PassedArg>::default();
+
+                    // Resolve positional arg indices
+                    for (idx, arg) in call.args.iter_mut().enumerate() {
+                        if arg.name.is_none() {
+                            arg.index = Some(idx);
+                            already_passed_args.insert(
+                                fun_ty.params[idx].name.expect("to have a name"),
+                                PassedArg { is_named: false, span: arg.expr.span },
+                            );
+                        }
+                    }
+
+                    // Resolve named arg indices
+                    for arg in &mut call.args {
+                        if let Some(arg_name) = &arg.name {
+                            let name = arg_name.name();
+
+                            let idx = fun_ty
+                                .params
+                                .iter()
+                                .enumerate()
+                                .find_map(
+                                    |(i, p)| if p.name == Some(name) { Some(i) } else { None },
+                                )
+                                .ok_or(InferError::NamedParamNotFound { word: *arg_name })?;
+
+                            // Report named arguments that are passed twice
+                            if let Some(passed_arg) = already_passed_args.insert(
+                                arg_name.name(),
+                                PassedArg { is_named: true, span: arg_name.span() },
+                            ) {
+                                return Err(InferError::MultipleNamedArgs {
+                                    name: arg_name.name(),
+                                    prev: passed_arg.span,
+                                    dup: arg_name.span(),
+                                    is_named: passed_arg.is_named,
+                                });
+                            }
+
+                            arg.index = Some(idx);
+                        }
+                    }
+
+                    // Sort args by index
+                    call.args.sort_by_key(|arg| arg.index.expect("arg index to be resolved"));
+
+                    // Unify all args with their corresponding param type
+                    for arg in &call.args {
+                        let idx = arg.index.expect("arg index to be resolved");
+                        cx.at(Obligation::obvious(arg.expr.span))
+                            .eq(fun_ty.params[idx].ty, arg.expr.ty)?;
+                    }
+
+                    fun_ty.ret
+                } else {
+                    return Err(InferError::UncallableTy {
+                        ty: call.callee.ty.normalize(&mut cx.inner.borrow_mut()),
+                        span: call.callee.span,
+                    });
+                }
+            }
+            ExprKind::Bin(bin) => {
+                bin.lhs.infer(cx, fx)?;
+                bin.rhs.infer(cx, fx)?;
+
+                cx.at(Obligation::exprs(self.span, bin.lhs.span, bin.rhs.span))
+                    .eq(bin.lhs.ty, bin.rhs.ty)?;
+
+                match bin.op {
+                    BinOpKind::Cmp(..) => (),
+                    BinOpKind::And | BinOpKind::Or => {
+                        cx.at(Obligation::obvious(bin.lhs.span))
+                            .eq(cx.tcx.types.bool, bin.lhs.ty)?;
+                        cx.at(Obligation::obvious(bin.rhs.span))
+                            .eq(cx.tcx.types.bool, bin.rhs.ty)?;
+                    }
+                    _ => {
+                        // TODO: type check arithmetic operations
+                    }
+                }
+
+                match bin.op {
+                    BinOpKind::Cmp(..) => cx.tcx.types.bool,
+                    _ => bin.lhs.ty,
+                }
+            }
+            ExprKind::Name(name) => {
+                let def_ty = cx.lookup(name.id);
+                let ty = def_ty.normalize(&mut cx.inner.borrow_mut());
+
+                let ty_params: Vec<ParamTy> =
+                    ty.collect_params().into_iter().filter(|p| !fx.ty_params.contains(p)).collect();
+
+                let instantiation: Instantiation = match &name.args {
+                    Some(args) if args.len() == ty_params.len() => {
+                        let arg_tys: Vec<Ty> =
+                            args.iter().map(|arg| cx.typeck_ty(arg)).try_collect()?;
+                        ty_params
+                            .into_iter()
+                            .zip(arg_tys)
+                            .map(|(param, arg)| (param.var, arg))
+                            .collect()
+                    }
+                    Some(args) => {
+                        return Err(InferError::TyArgMismatch {
+                            expected: ty_params.len(),
+                            found: args.len(),
+                            span: self.span,
+                        });
+                    }
+                    _ => {
+                        ty_params.into_iter().map(|param| (param.var, cx.fresh_ty_var())).collect()
+                    }
+                };
+
+                let ty = instantiate(ty, instantiation.clone());
+                name.instantiation = instantiation;
+
+                ty
+            }
+            ExprKind::Lit(lit) => match &lit.kind {
+                LitKind::Int(..) => cx.fresh_int_var(),
+                LitKind::Bool(..) => cx.tcx.types.bool,
+                LitKind::Unit => cx.tcx.types.unit,
+            },
+        };
+
+        self.ty = ty;
+
+        Ok(())
     }
 }
 
+// TODO: inline
 impl Infer<'_> for Item {
     fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
         match &mut self.kind {
@@ -188,10 +357,10 @@ impl Infer<'_> for Fn {
 
         let unify_body_res = cx
             .at(Obligation::return_ty(
-                self.body.span(),
+                self.body.span,
                 self.sig.ret.as_ref().map_or(cx.db[self.id].span, Spanned::span),
             ))
-            .eq(fx.ret_ty, self.body.ty());
+            .eq(fx.ret_ty, self.body.ty);
 
         // If the function's return type is `()`, we want to let the user end the body with
         // whatever expression they want, so that they don't need to end it with a `()`
@@ -203,205 +372,8 @@ impl Infer<'_> for Fn {
     }
 }
 
-impl Infer<'_> for If {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
-        self.cond.infer(cx, fx)?;
-
-        cx.at(Obligation::obvious(self.cond.span())).eq(cx.tcx.types.bool, self.cond.ty())?;
-
-        self.then.infer(cx, fx)?;
-
-        if let Some(otherwise) = self.otherwise.as_mut() {
-            otherwise.infer(cx, fx)?;
-            cx.at(Obligation::exprs(self.span, self.then.span(), otherwise.span()))
-                .eq(self.then.ty(), otherwise.ty())?;
-        } else {
-            cx.at(Obligation::obvious(self.then.span())).eq(cx.tcx.types.unit, self.then.ty())?;
-        }
-
-        self.ty = self.then.ty();
-
-        Ok(())
-    }
-}
-
-impl Infer<'_> for Block {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
-        for expr in &mut self.exprs {
-            expr.infer(cx, fx)?;
-        }
-
-        self.ty = self.exprs.last().map_or_else(|| cx.tcx.types.unit, Expr::ty);
-
-        Ok(())
-    }
-}
-
-impl Infer<'_> for Return {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
-        self.ty = cx.tcx.types.never;
-
-        self.expr.infer(cx, fx)?;
-        cx.at(Obligation::return_ty(self.expr.span(), cx.db[fx.id].span))
-            .eq(fx.ret_ty, self.expr.ty())?;
-
-        Ok(())
-    }
-}
-
 #[derive(Debug)]
 struct PassedArg {
     is_named: bool,
     span: Span,
-}
-
-impl Infer<'_> for Call {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
-        self.callee.infer(cx, fx)?;
-
-        for arg in &mut self.args {
-            arg.expr.infer(cx, fx)?;
-        }
-
-        self.ty = if let TyKind::Fn(fun_ty) = self.callee.ty().kind() {
-            if self.args.len() != fun_ty.params.len() {
-                return Err(InferError::ArgMismatch {
-                    expected: fun_ty.params.len(),
-                    found: self.args.len(),
-                    span: self.span,
-                });
-            }
-
-            let mut already_passed_args = UstrMap::<PassedArg>::default();
-
-            // Resolve positional arg indices
-            for (idx, arg) in self.args.iter_mut().enumerate() {
-                if arg.name.is_none() {
-                    arg.index = Some(idx);
-                    already_passed_args.insert(
-                        fun_ty.params[idx].name.expect("to have a name"),
-                        PassedArg { is_named: false, span: arg.expr.span() },
-                    );
-                }
-            }
-
-            // Resolve named arg indices
-            for arg in &mut self.args {
-                if let Some(arg_name) = &arg.name {
-                    let name = arg_name.name();
-
-                    let idx = fun_ty
-                        .params
-                        .iter()
-                        .enumerate()
-                        .find_map(|(i, p)| if p.name == Some(name) { Some(i) } else { None })
-                        .ok_or(InferError::NamedParamNotFound { word: *arg_name })?;
-
-                    // Report named arguments that are passed twice
-                    if let Some(passed_arg) = already_passed_args.insert(
-                        arg_name.name(),
-                        PassedArg { is_named: true, span: arg_name.span() },
-                    ) {
-                        return Err(InferError::MultipleNamedArgs {
-                            name: arg_name.name(),
-                            prev: passed_arg.span,
-                            dup: arg_name.span(),
-                            is_named: passed_arg.is_named,
-                        });
-                    }
-
-                    arg.index = Some(idx);
-                }
-            }
-
-            // Sort args by index
-            self.args.sort_by_key(|arg| arg.index.expect("arg index to be resolved"));
-
-            // Unify all args with their corresponding param type
-            for arg in &self.args {
-                let idx = arg.index.expect("arg index to be resolved");
-                cx.at(Obligation::obvious(arg.expr.span()))
-                    .eq(fun_ty.params[idx].ty, arg.expr.ty())?;
-            }
-
-            fun_ty.ret
-        } else {
-            return Err(InferError::UncallableTy {
-                ty: self.callee.ty().normalize(&mut cx.inner.borrow_mut()),
-                span: self.callee.span(),
-            });
-        };
-
-        Ok(())
-    }
-}
-
-impl Infer<'_> for BinOp {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
-        self.lhs.infer(cx, fx)?;
-        self.rhs.infer(cx, fx)?;
-
-        cx.at(Obligation::exprs(self.span, self.lhs.span(), self.rhs.span()))
-            .eq(self.lhs.ty(), self.rhs.ty())?;
-
-        match self.op {
-            BinOpKind::Cmp(..) => (),
-            BinOpKind::And | BinOpKind::Or => {
-                cx.at(Obligation::obvious(self.lhs.span())).eq(cx.tcx.types.bool, self.lhs.ty())?;
-                cx.at(Obligation::obvious(self.rhs.span())).eq(cx.tcx.types.bool, self.rhs.ty())?;
-            }
-            _ => {
-                // TODO: type check arithmetic operations
-            }
-        }
-
-        self.ty = match self.op {
-            BinOpKind::Cmp(..) => cx.tcx.types.bool,
-            _ => self.lhs.ty(),
-        };
-
-        Ok(())
-    }
-}
-
-impl Infer<'_> for Name {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, fx: &mut FnCtxt) -> InferResult<()> {
-        let def_ty = cx.lookup(self.id);
-        let ty = def_ty.normalize(&mut cx.inner.borrow_mut());
-
-        let ty_params: Vec<ParamTy> =
-            ty.collect_params().into_iter().filter(|p| !fx.ty_params.contains(p)).collect();
-
-        let instantiation: Instantiation = match &self.args {
-            Some(args) if args.len() == ty_params.len() => {
-                let arg_tys: Vec<Ty> = args.iter().map(|arg| cx.typeck_ty(arg)).try_collect()?;
-                ty_params.into_iter().zip(arg_tys).map(|(param, arg)| (param.var, arg)).collect()
-            }
-            Some(args) => {
-                return Err(InferError::TyArgMismatch {
-                    expected: ty_params.len(),
-                    found: args.len(),
-                    span: self.span,
-                });
-            }
-            _ => ty_params.into_iter().map(|param| (param.var, cx.fresh_ty_var())).collect(),
-        };
-
-        self.ty = instantiate(ty, instantiation.clone());
-        self.instantiation = instantiation;
-
-        Ok(())
-    }
-}
-
-impl Infer<'_> for Lit {
-    fn infer(&mut self, cx: &mut InferCtxt<'_>, _fx: &mut FnCtxt) -> InferResult<()> {
-        self.ty = match &self.kind {
-            LitKind::Int(..) => cx.fresh_int_var(),
-            LitKind::Bool(..) => cx.tcx.types.bool,
-            LitKind::Unit => cx.tcx.types.unit,
-        };
-
-        Ok(())
-    }
 }

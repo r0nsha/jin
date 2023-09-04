@@ -92,8 +92,15 @@ impl Typed for ItemKind {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Expr {
+    pub kind: ExprKind,
+    pub span: Span,
+    pub ty: ty::Ty,
+}
+
 #[derive(Debug, Clone, EnumAsInner)]
-pub enum Expr {
+pub enum ExprKind {
     If(If),
     Block(Block),
     Return(Return),
@@ -103,65 +110,13 @@ pub enum Expr {
     Lit(Lit),
 }
 
-impl Typed for Expr {
-    fn ty(&self) -> ty::Ty {
-        match self {
-            Self::If(x) => x.ty,
-            Self::Block(x) => x.ty,
-            Self::Return(x) => x.ty,
-            Self::Call(x) => x.ty,
-            Self::Bin(x) => x.ty,
-            Self::Name(x) => x.ty,
-            Self::Lit(x) => x.ty,
-        }
-    }
-
-    fn ty_mut(&mut self) -> &mut ty::Ty {
-        match self {
-            Self::If(x) => &mut x.ty,
-            Self::Block(x) => &mut x.ty,
-            Self::Return(x) => &mut x.ty,
-            Self::Call(x) => &mut x.ty,
-            Self::Bin(x) => &mut x.ty,
-            Self::Name(x) => &mut x.ty,
-            Self::Lit(x) => &mut x.ty,
-        }
-    }
-}
-
-impl Spanned for Expr {
-    fn span(&self) -> Span {
-        match self {
-            Self::If(x) => x.span,
-            Self::Block(x) => x.span,
-            Self::Return(x) => x.span,
-            Self::Call(x) => x.span,
-            Self::Bin(x) => x.span,
-            Self::Name(x) => x.span,
-            Self::Lit(x) => x.span,
-        }
-    }
-
-    fn span_mut(&mut self) -> &mut Span {
-        match self {
-            Self::If(x) => &mut x.span,
-            Self::Block(x) => &mut x.span,
-            Self::Return(x) => &mut x.span,
-            Self::Call(x) => &mut x.span,
-            Self::Bin(x) => &mut x.span,
-            Self::Name(x) => &mut x.span,
-            Self::Lit(x) => &mut x.span,
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct Fn {
     pub id: DefId,
     pub sig: FnSig,
     pub body: Expr,
     pub span: Span,
-    pub ty: ty::Ty,
+    pub ty: ty::Ty, // TODO: Remove
 }
 
 #[derive(Debug, Clone)]
@@ -182,7 +137,7 @@ pub struct FnParam {
     pub id: DefId,
     pub ty_annot: Ty,
     pub span: Span,
-    pub ty: ty::Ty,
+    pub ty: ty::Ty, // TODO: Remove
 }
 
 #[derive(Debug, Clone)]
@@ -190,30 +145,22 @@ pub struct If {
     pub cond: Box<Expr>,
     pub then: Box<Expr>,
     pub otherwise: Option<Box<Expr>>,
-    pub span: Span,
-    pub ty: ty::Ty,
 }
 
 #[derive(Debug, Clone)]
 pub struct Block {
     pub exprs: Vec<Expr>,
-    pub span: Span,
-    pub ty: ty::Ty,
 }
 
 #[derive(Debug, Clone)]
 pub struct Return {
     pub expr: Box<Expr>,
-    pub span: Span,
-    pub ty: ty::Ty,
 }
 
 #[derive(Debug, Clone)]
 pub struct Call {
     pub callee: Box<Expr>,
     pub args: Vec<CallArg>,
-    pub span: Span,
-    pub ty: ty::Ty,
 }
 
 #[derive(Debug, Clone)]
@@ -225,11 +172,11 @@ pub struct CallArg {
 
 impl Typed for CallArg {
     fn ty(&self) -> ty::Ty {
-        self.expr.ty()
+        self.expr.ty
     }
 
     fn ty_mut(&mut self) -> &mut ty::Ty {
-        self.expr.ty_mut()
+        &mut self.expr.ty
     }
 }
 
@@ -238,8 +185,6 @@ pub struct BinOp {
     pub lhs: Box<Expr>,
     pub rhs: Box<Expr>,
     pub op: BinOpKind,
-    pub span: Span,
-    pub ty: ty::Ty,
 }
 
 #[derive(Debug, Clone)]
@@ -247,15 +192,11 @@ pub struct Name {
     pub id: DefId,
     pub args: Option<Vec<Ty>>,
     pub instantiation: ty::Instantiation, // TODO: Turn into an Option<_>
-    pub span: Span,
-    pub ty: ty::Ty,
 }
 
 #[derive(Debug, Clone)]
 pub struct Lit {
     pub kind: LitKind,
-    pub span: Span,
-    pub ty: ty::Ty,
 }
 
 #[derive(Debug, Clone)]
