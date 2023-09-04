@@ -4,6 +4,7 @@ mod timing;
 use std::{
     cmp,
     collections::hash_map::Entry,
+    fs, io,
     path::{Path, PathBuf},
 };
 
@@ -13,7 +14,10 @@ use ustr::Ustr;
 
 use crate::{
     common::{new_key_type, IndexVec, QPath},
-    db::{build_options::BuildOptions, timing::Timings},
+    db::{
+        build_options::{BuildOptions, EmitOption},
+        timing::Timings,
+    },
     diagnostics::Diagnostics,
     hir::{ExprId, HirMap},
     span::{Source, SourceId, Sources, Span},
@@ -133,6 +137,19 @@ impl Db {
             Entry::Vacant(entry) => {
                 entry.insert(Coercions::one(c));
             }
+        }
+    }
+
+    pub fn emit(
+        &self,
+        opt: EmitOption,
+        f: impl Fn(&Self, &mut fs::File) -> io::Result<()>,
+    ) -> io::Result<()> {
+        if self.build_options.should_emit(opt) {
+            let mut file = fs::File::create(self.output_path().with_extension(opt.as_extension()))?;
+            f(self, &mut file)
+        } else {
+            Ok(())
         }
     }
 }

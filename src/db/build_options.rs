@@ -43,3 +43,14 @@ pub enum EmitOption {
     Mir,
     LlvmIr,
 }
+
+impl EmitOption {
+    pub fn as_extension(self) -> &'static str {
+        match self {
+            Self::Ast => "ast",
+            Self::Hir => "hir",
+            Self::Mir => "mir",
+            Self::LlvmIr => "ll",
+        }
+    }
+}

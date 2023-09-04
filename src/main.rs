@@ -97,12 +97,7 @@ fn build(db: &mut Db) {
     db.time.start("parse");
     let mut ast = parse::parse_modules(db);
 
-    if db.build_options().should_emit(EmitOption::Ast) {
-        let mut file = fs::File::create(db.output_path().with_extension("ast"))
-            .expect("creating ast file to work");
-        ast.pretty_print(&mut file).expect("writing ast failed");
-    }
-    expect!(db);
+    db.emit(EmitOption::Ast, |_, file| ast.pretty_print(file)).expect("emitting ast failed");
 
     db.time.start("resolve");
     passes::resolve(db, &mut ast);
@@ -118,11 +113,7 @@ fn build(db: &mut Db) {
     db.time.stop();
     expect!(db);
 
-    if db.build_options().should_emit(EmitOption::Hir) {
-        let mut file = fs::File::create(db.output_path().with_extension("hir"))
-            .expect("creating hir file to work");
-        hir.pretty_print(db, &mut file).expect("writing hir failed");
-    }
+    db.emit(EmitOption::Hir, |db, file| hir.pretty_print(db, file)).expect("emitting hir failed");
 
     db.time.start("check entry");
     if let Err(diag) = passes::check_entry(db, &hir) {
@@ -140,11 +131,7 @@ fn build(db: &mut Db) {
     db.time.stop();
     expect!(db);
 
-    if db.build_options().should_emit(EmitOption::Mir) {
-        let mut file = fs::File::create(db.output_path().with_extension("mir"))
-            .expect("creating mir file to work");
-        mir.pretty_print(db, &mut file).expect("writing mir failed");
-    }
+    db.emit(EmitOption::Mir, |db, file| mir.pretty_print(db, file)).expect("emitting mir failed");
 
     llvm::codegen(db, &mir);
 
