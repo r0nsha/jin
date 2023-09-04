@@ -218,11 +218,8 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
                 value.unwrap_or_else(|| self.bx.build_unit_lit(expr.ty, expr.span))
             }
             hir::ExprKind::Return(ret) => {
-                if !self.bx.current_block().is_terminating() {
-                    let value = self.lower_expr(&ret.expr);
-                    self.bx.build_return(value, expr.span);
-                }
-
+                let value = self.lower_expr(&ret.expr);
+                self.bx.build_return(value, expr.span);
                 self.bx.build_unreachable(ret.expr.ty, expr.span)
             }
             hir::ExprKind::Call(call) => {
