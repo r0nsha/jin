@@ -49,7 +49,7 @@ fn polymorphism() = {
 
 fn int_types() = {
 	fn a(x i8) i8 = x
-	# fn b(x i32) i64 = 4
-	# fn b(x i8) int = 4
+	fn b(x i32) i64 = x
+	# fn b(x i8) int = x
 	a(129)
 }
