@@ -3,7 +3,7 @@ use std::io;
 use super::{Expr, Fn, Item, LitKind, Module};
 use crate::ast::{Block, CallArg, Ty};
 
-pub(super) fn print_module(module: &Module) -> io::Result<()> {
+pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Result<()> {
     let mut cx = PPCtxt { builder: ptree::TreeBuilder::new(module.name.standard_full_name()) };
 
     for item in &module.items {
@@ -11,7 +11,7 @@ pub(super) fn print_module(module: &Module) -> io::Result<()> {
     }
 
     let tree = cx.builder.build();
-    ptree::print_tree_with(&tree, &ptree::PrintConfig::default())
+    ptree::write_tree_with(&tree, w, &ptree::PrintConfig::default())
 }
 
 struct PPCtxt {

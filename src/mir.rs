@@ -2,7 +2,7 @@ mod builder;
 mod lower;
 mod pretty_print;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, io};
 
 pub use lower::lower;
 use ustr::{ustr, Ustr};
@@ -34,8 +34,8 @@ impl Mir {
         db.main_function_id().and_then(|id| self.functions.get(&id))
     }
 
-    pub fn pretty_print(&self, db: &Db) {
-        pretty_print::print(db, self);
+    pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
+        pretty_print::print(db, self, w)
     }
 }
 

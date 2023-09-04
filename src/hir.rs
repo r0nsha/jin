@@ -24,11 +24,8 @@ impl Hir {
         Self { items: vec![] }
     }
 
-    pub fn pretty_print(&self, db: &Db) -> io::Result<()> {
-        println!();
-        pretty_print::print(db, self)?;
-        println!();
-        Ok(())
+    pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
+        pretty_print::print(db, self, w)
     }
 }
 

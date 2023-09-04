@@ -28,7 +28,7 @@ mod passes;
 mod span;
 mod ty;
 
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -98,7 +98,9 @@ fn build(db: &mut Db) {
     let mut ast = parse::parse_modules(db);
 
     if db.build_options().should_emit(EmitOption::Ast) {
-        ast.pretty_print().expect("ast printing to work");
+        let mut file = fs::File::create(db.output_path().with_extension("ast"))
+            .expect("creating ast file to work");
+        ast.pretty_print(&mut file).expect("writing ast failed");
     }
     expect!(db);
 
@@ -117,7 +119,9 @@ fn build(db: &mut Db) {
     expect!(db);
 
     if db.build_options().should_emit(EmitOption::Hir) {
-        hir.pretty_print(db).expect("hir printing to work");
+        let mut file = fs::File::create(db.output_path().with_extension("hir"))
+            .expect("creating hir file to work");
+        hir.pretty_print(db, &mut file).expect("writing hir failed");
     }
 
     db.time.start("check entry");
@@ -137,11 +141,9 @@ fn build(db: &mut Db) {
     expect!(db);
 
     if db.build_options().should_emit(EmitOption::Mir) {
-        println!();
-        println!("Mir:");
-        println!();
-        mir.pretty_print(db);
-        println!();
+        let mut file = fs::File::create(db.output_path().with_extension("mir"))
+            .expect("creating mir file to work");
+        mir.pretty_print(db, &mut file).expect("writing mir failed");
     }
 
     llvm::codegen(db, &mir);

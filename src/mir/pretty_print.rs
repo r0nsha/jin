@@ -1,3 +1,5 @@
+use std::io;
+
 use pretty::RcDoc;
 
 use super::{Block, Function, Inst, Mir, ValueId};
@@ -8,13 +10,13 @@ use crate::{
     ty::TyKind,
 };
 
-pub fn print(db: &Db, mir: &Mir) {
+pub fn print(db: &Db, mir: &Mir, w: &mut impl io::Write) -> io::Result<()> {
     let doc = RcDoc::intersperse(
         mir.functions.values().map(|f| print_function(db, f)),
         RcDoc::hardline().append(RcDoc::hardline()),
     );
 
-    println!("{}", doc.pretty(80));
+    w.write_all(doc.pretty(80).to_string().as_bytes())
 }
 
 fn print_function<'d>(db: &Db, fun: &Function) -> RcDoc<'d, ()> {

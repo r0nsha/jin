@@ -5,7 +5,7 @@ use crate::{
     hir::{Expr, ExprKind, Fn, Hir, ItemKind, LitKind},
 };
 
-pub(super) fn print(db: &Db, hir: &Hir) -> io::Result<()> {
+pub(super) fn print(db: &Db, hir: &Hir, w: &mut impl io::Write) -> io::Result<()> {
     let mut cx = PPCtxt { db, builder: ptree::TreeBuilder::new("Hir".to_string()) };
 
     for item in &hir.items {
@@ -15,7 +15,7 @@ pub(super) fn print(db: &Db, hir: &Hir) -> io::Result<()> {
     }
 
     let tree = cx.builder.build();
-    ptree::print_tree_with(&tree, &ptree::PrintConfig::default())
+    ptree::write_tree_with(&tree, w, &ptree::PrintConfig::default())
 }
 
 struct PPCtxt<'db> {

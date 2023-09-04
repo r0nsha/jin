@@ -22,16 +22,10 @@ impl Ast {
         Self { modules: vec![] }
     }
 
-    pub fn pretty_print(&self) -> io::Result<()> {
-        println!();
-        println!("Ast:");
-        println!();
-
+    pub fn pretty_print(&self, w: &mut impl io::Write) -> io::Result<()> {
         for module in &self.modules {
-            pretty_print::print_module(module)?;
+            pretty_print::print_module(module, w)?;
         }
-
-        println!();
 
         Ok(())
     }
