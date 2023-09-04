@@ -14,8 +14,8 @@ use crate::{
     diagnostics::Diagnostic,
     hir::{self, Expr, ExprKind, Fn, FnSig, Hir, ItemKind, LitKind},
     passes::typeck::{
-        error::InferError, infcx::InferCtxt, instantiate::instantiate, normalize::NormalizeTy,
-        unify::Obligation,
+        coerce::CoerceExt, error::InferError, infcx::InferCtxt, instantiate::instantiate,
+        normalize::NormalizeTy, unify::Obligation,
     },
     span::{Span, Spanned},
     ty::{FnTy, FnTyParam, Instantiation, ParamTy, Ty, TyKind},
@@ -109,7 +109,8 @@ impl InferCtxt<'_> {
                 f.body.span,
                 f.sig.ret.as_ref().map_or(self.db[f.id].span, Spanned::span),
             ))
-            .eq(fx.ret_ty, f.body.ty);
+            .eq(fx.ret_ty, f.body.ty)
+            .or_coerce(self.db, f.body.id);
 
         // If the function's return type is `()`, we want to let the user end the body with
         // whatever expression they want, so that they don't need to end it with a `()`
@@ -125,17 +126,21 @@ impl InferCtxt<'_> {
             ExprKind::If(if_) => {
                 self.infer_expr(&mut if_.cond, fx)?;
 
-                self.at(Obligation::obvious(if_.cond.span)).eq(self.db.types.bool, if_.cond.ty)?;
+                self.at(Obligation::obvious(if_.cond.span))
+                    .eq(self.db.types.bool, if_.cond.ty)
+                    .or_coerce(self.db, if_.cond.id)?;
 
                 self.infer_expr(&mut if_.then, fx)?;
 
                 if let Some(otherwise) = if_.otherwise.as_mut() {
                     self.infer_expr(otherwise, fx)?;
                     self.at(Obligation::exprs(expr.span, if_.then.span, otherwise.span))
-                        .eq(if_.then.ty, otherwise.ty)?;
+                        .eq(if_.then.ty, otherwise.ty)
+                        .or_coerce(self.db, otherwise.id)?;
                 } else {
                     self.at(Obligation::obvious(if_.then.span))
-                        .eq(self.db.types.unit, if_.then.ty)?;
+                        .eq(self.db.types.unit, if_.then.ty)
+                        .or_coerce(self.db, if_.then.id)?;
                 }
 
                 if_.then.ty
@@ -151,7 +156,8 @@ impl InferCtxt<'_> {
                 self.infer_expr(&mut ret.expr, fx)?;
 
                 self.at(Obligation::return_ty(ret.expr.span, self.db[fx.id].span))
-                    .eq(fx.ret_ty, ret.expr.ty)?;
+                    .eq(fx.ret_ty, ret.expr.ty)
+                    .or_coerce(self.db, ret.expr.id)?;
 
                 self.db.types.never
             }
@@ -228,7 +234,8 @@ impl InferCtxt<'_> {
                     for arg in &call.args {
                         let idx = arg.index.expect("arg index to be resolved");
                         self.at(Obligation::obvious(arg.expr.span))
-                            .eq(fun_ty.params[idx].ty, arg.expr.ty)?;
+                            .eq(fun_ty.params[idx].ty, arg.expr.ty)
+                            .or_coerce(self.db, arg.expr.id)?;
                     }
 
                     fun_ty.ret
@@ -244,15 +251,19 @@ impl InferCtxt<'_> {
                 self.infer_expr(&mut bin.rhs, fx)?;
 
                 self.at(Obligation::exprs(expr.span, bin.lhs.span, bin.rhs.span))
-                    .eq(bin.lhs.ty, bin.rhs.ty)?;
+                    .eq(bin.lhs.ty, bin.rhs.ty)
+                    .or_coerce(self.db, bin.rhs.id)?;
 
                 match bin.op {
                     BinOpKind::Cmp(..) => (),
                     BinOpKind::And | BinOpKind::Or => {
                         self.at(Obligation::obvious(bin.lhs.span))
-                            .eq(self.db.types.bool, bin.lhs.ty)?;
+                            .eq(self.db.types.bool, bin.lhs.ty)
+                            .or_coerce(self.db, bin.lhs.id)?;
+
                         self.at(Obligation::obvious(bin.rhs.span))
-                            .eq(self.db.types.bool, bin.rhs.ty)?;
+                            .eq(self.db.types.bool, bin.rhs.ty)
+                            .or_coerce(self.db, bin.rhs.id)?;
                     }
                     _ => {
                         // TODO: type check arithmetic operations

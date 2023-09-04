@@ -1,14 +1,14 @@
 use crate::{
     db::Db,
-    hir::{Expr, ExprId, ExprKind, Fn, Hir, ItemKind},
-    passes::typeck::unify::{EqError, EqResult},
+    hir::{ExprId, Hir, ItemKind},
+    passes::typeck::unify::EqResult,
     ty::{
-        coerce::{Coercion, CoercionKind, Coercions},
-        Ty, TyKind,
+        coerce::{Coercion, CoercionKind},
+        TyKind,
     },
 };
 
-trait CoerceExt {
+pub trait CoerceExt {
     fn or_coerce(self, db: &mut Db, expr_id: ExprId) -> Self;
 }
 
@@ -35,9 +35,7 @@ impl CoerceExt for EqResult<()> {
     }
 }
 
-pub fn apply_coercions(db: &mut Db, hir: &mut Hir) {
-    // let mut cx = Context { db };
-
+pub fn apply_coercions(db: &Db, hir: &mut Hir) {
     for item in &mut hir.items {
         match &mut item.kind {
             ItemKind::Fn(f) => {
@@ -51,44 +49,4 @@ pub fn apply_coercions(db: &mut Db, hir: &mut Hir) {
             }
         }
     }
-}
-
-struct Context<'db> {
-    db: &'db mut Db,
-}
-
-trait ApplyCoercions<'db> {
-    fn apply_coercions(&mut self, cx: &mut Context<'db>);
-}
-
-impl ApplyCoercions<'_> for Fn {
-    fn apply_coercions(&mut self, cx: &mut Context<'_>) {
-        self.body.apply_coercions(cx);
-    }
-}
-
-impl ApplyCoercions<'_> for Expr {
-    fn apply_coercions(&mut self, cx: &mut Context<'_>) {
-        todo!()
-        // match &mut self.kind {
-        //     ExprKind::If(if_) => todo!(),
-        //     ExprKind::Block(blk) => todo!(),
-        //     ExprKind::Return(ret) => todo!(),
-        //     ExprKind::Call(call) => todo!(),
-        //     ExprKind::Bin(bin) => todo!(),
-        //     ExprKind::Name(name) => todo!(),
-        //     ExprKind::Lit(_) => (),
-        // }
-        //
-        // apply_adj_to_expr(self, cx);
-    }
-}
-
-fn apply_adj_to_expr(expr: &mut Expr, cx: &Context<'_>) {
-    todo!()
-    // let coercions = cx.tcx.coercions[expr.id];
-
-    // if !adjustments.is_empty() {
-    //     todo!("apply here...");
-    // }
 }
