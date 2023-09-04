@@ -132,7 +132,7 @@ fn build(db: &mut Db) {
     db.time.stop();
 
     db.time.start("hir -> mir");
-    let mir = mir::lower(db, &hir, mono_items).expect("mir lowering to succeed");
+    let mir = mir::lower(db, &hir, mono_items);
     db.time.stop();
     expect!(db);
 

@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use anyhow::Result;
 use ustr::ustr;
 
 use crate::{
@@ -15,15 +14,15 @@ use crate::{
     ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };
 
-pub fn lower(db: &mut Db, hir: &Hir, mono_items: HashSet<MonoItem>) -> Result<Mir> {
+pub fn lower(db: &mut Db, hir: &Hir, mono_items: HashSet<MonoItem>) -> Mir {
     let mut mir = Mir::new();
     let mut cx = LowerCtxt::new(db, hir, &mut mir, mono_items);
 
     for item in &hir.items {
-        cx.lower_item(item)?;
+        cx.lower_item(item);
     }
 
-    Ok(mir)
+    mir
 }
 
 type MonoItemTarget = DefId;
@@ -57,13 +56,11 @@ impl<'db> LowerCtxt<'db> {
         }
     }
 
-    fn lower_item(&mut self, item: &hir::Item) -> Result<()> {
+    fn lower_item(&mut self, item: &hir::Item) {
         match &item.kind {
             hir::ItemKind::Fn(fun) => {
-                if fun.ty.is_polymorphic() {
-                    Ok(())
-                } else {
-                    self.lower_fn(fun)
+                if !fun.ty.is_polymorphic() {
+                    self.lower_fn(fun);
                 }
             }
         }
@@ -89,7 +86,7 @@ impl<'db> LowerCtxt<'db> {
                     new_fun.subst(&mut ParamFolder { db: self.db, instantiation });
 
                     // Lower the newly created function to MIR
-                    self.lower_fn(&new_fun).expect("lowering MIR to work");
+                    self.lower_fn(&new_fun);
                 }
             }
         }
@@ -121,11 +118,10 @@ impl<'db> LowerCtxt<'db> {
         Def::alloc(self.db, new_qpath, new_scope, new_kind, new_ty, new_span)
     }
 
-    fn lower_fn(&mut self, fun: &hir::Fn) -> Result<(), anyhow::Error> {
+    fn lower_fn(&mut self, fun: &hir::Fn) {
         assert!(!fun.ty.is_polymorphic(), "lowering polymorphic functions to MIR is not allowed");
-        let fun = LowerFunctionCtxt::new(self, fun.id).lower_fn(fun)?;
+        let fun = LowerFunctionCtxt::new(self, fun.id).lower_fn(fun);
         self.mir.add_function(fun);
-        Ok(())
     }
 }
 
@@ -139,7 +135,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
         Self { inner, bx: FunctionBuilder::new(fun_id) }
     }
 
-    fn lower_fn(mut self, fun: &hir::Fn) -> Result<Function> {
+    fn lower_fn(mut self, fun: &hir::Fn) -> Function {
         let blk_start = self.bx.create_block("start");
         self.bx.position_at(blk_start);
 
@@ -167,7 +163,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
             self.bx.build_return(ret_value, span);
         }
 
-        self.bx.finish()
+        self.bx.finish().expect("function lowering failed")
     }
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {

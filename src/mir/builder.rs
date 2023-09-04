@@ -6,8 +6,8 @@ use crate::{
     ast::BinOpKind,
     db::DefId,
     mir::{
-        BinOp, Block, BlockId, BoolLit, Br, BrIf, Call, Function, FunctionParam, Inst, IntLit, Load,
-        Phi, PhiValue, Return, UnitLit, Unreachable, Value, ValueId,
+        BinOp, Block, BlockId, BoolLit, Br, BrIf, Call, Function, FunctionParam, Inst, IntLit,
+        Load, Phi, PhiValue, Return, UnitLit, Unreachable, Value, ValueId,
     },
     span::Span,
     ty::Ty,
