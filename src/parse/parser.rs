@@ -217,7 +217,7 @@ impl<'a> Parser<'a> {
                 let lhs = expr_stack.pop().unwrap();
                 let span = lhs.span().merge(rhs.span());
 
-                expr_stack.push(Expr::Bin(BinOp {
+                expr_stack.push(Expr::BinOp(BinOp {
                     lhs: Box::new(lhs),
                     op,
                     rhs: Box::new(rhs),
@@ -238,7 +238,7 @@ impl<'a> Parser<'a> {
 
             let span = lhs.span().merge(rhs.span());
 
-            expr_stack.push(Expr::Bin(BinOp { lhs: Box::new(lhs), op, rhs: Box::new(rhs), span }));
+            expr_stack.push(Expr::BinOp(BinOp { lhs: Box::new(lhs), op, rhs: Box::new(rhs), span }));
         }
 
         Ok(expr_stack.into_iter().next().unwrap())

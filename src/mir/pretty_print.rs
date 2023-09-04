@@ -107,7 +107,7 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
                 .append(RcDoc::text("load"))
                 .append(RcDoc::space())
                 .append(load.id.to_doc(db, fun)),
-            Self::Bin(bin) => value_alloc(db, fun, bin.value)
+            Self::BinOp(bin) => value_alloc(db, fun, bin.value)
                 .append(RcDoc::text(bin_instruction_name(bin.op)))
                 .append(RcDoc::space())
                 .append(bin.lhs.to_doc(db, fun))

@@ -151,7 +151,7 @@ pub enum Inst {
     Phi(Phi),
     Call(Call),
     Load(Load),
-    Bin(BinOp),
+    BinOp(BinOp),
     IntLit(IntLit),
     BoolLit(BoolLit),
     UnitLit(UnitLit),

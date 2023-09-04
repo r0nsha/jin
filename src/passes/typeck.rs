@@ -239,7 +239,7 @@ impl InferCtxt<'_> {
                     });
                 }
             }
-            ExprKind::Bin(bin) => {
+            ExprKind::BinOp(bin) => {
                 self.infer_expr(&mut bin.lhs, fx)?;
                 self.infer_expr(&mut bin.rhs, fx)?;
 

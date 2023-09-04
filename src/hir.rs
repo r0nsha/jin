@@ -100,6 +100,46 @@ pub struct Expr {
 }
 
 impl Expr {
+    pub fn rewrite(self, mut f: impl FnMut(Self) -> Self) -> Self {
+        self.rewrite_(&mut f)
+    }
+
+    fn rewrite_(self, f: &mut impl FnMut(Self) -> Self) -> Self {
+        let kind = match self.kind {
+            ExprKind::If(if_) => ExprKind::If(If {
+                cond: Box::new(if_.cond.rewrite_(f)),
+                then: Box::new(if_.then.rewrite_(f)),
+                otherwise: if_.otherwise.map(|o| Box::new(o.rewrite_(f))),
+            }),
+            ExprKind::Block(blk) => ExprKind::Block(Block {
+                exprs: blk.exprs.into_iter().map(|expr| expr.rewrite_(f)).collect(),
+            }),
+            ExprKind::Return(ret) => {
+                ExprKind::Return(Return { expr: Box::new(ret.expr.rewrite_(f)) })
+            }
+            ExprKind::Call(call) => ExprKind::Call(Call {
+                callee: Box::new(call.callee.rewrite_(f)),
+                args: call
+                    .args
+                    .into_iter()
+                    .map(|arg| CallArg {
+                        name: arg.name,
+                        expr: arg.expr.rewrite_(f),
+                        index: arg.index,
+                    })
+                    .collect(),
+            }),
+            ExprKind::BinOp(bin) => ExprKind::BinOp(BinOp {
+                lhs: Box::new(bin.lhs.rewrite_(f)),
+                rhs: Box::new(bin.rhs.rewrite_(f)),
+                op: bin.op,
+            }),
+            kind => kind.clone(),
+        };
+
+        f(Expr { id: self.id, kind, span: self.span, ty: self.ty })
+    }
+
     pub fn walk(&self, mut f: impl FnMut(&Expr)) {
         self.walk_(&mut f);
     }
@@ -126,9 +166,45 @@ impl Expr {
                     arg.expr.walk_(f);
                 }
             }
-            ExprKind::Bin(bin) => {
+            ExprKind::BinOp(bin) => {
                 bin.lhs.walk_(f);
                 bin.rhs.walk_(f);
+            }
+            ExprKind::Name(_) | ExprKind::Lit(_) => (),
+        }
+
+        f(self);
+    }
+
+    pub fn walk_mut(&mut self, mut f: impl FnMut(&mut Expr)) {
+        self.walk_mut_(&mut f);
+    }
+
+    fn walk_mut_(&mut self, f: &mut impl FnMut(&mut Expr)) {
+        match &mut self.kind {
+            ExprKind::If(if_) => {
+                if_.cond.walk_mut_(f);
+                if_.then.walk_mut_(f);
+                if let Some(otherwise) = &mut if_.otherwise {
+                    otherwise.walk_mut_(f);
+                }
+            }
+            ExprKind::Block(blk) => {
+                for expr in &mut blk.exprs {
+                    expr.walk_mut_(f);
+                }
+            }
+            ExprKind::Return(ret) => ret.expr.walk_mut_(f),
+            ExprKind::Call(call) => {
+                call.callee.walk_mut_(f);
+
+                for arg in &mut call.args {
+                    arg.expr.walk_mut_(f);
+                }
+            }
+            ExprKind::BinOp(bin) => {
+                bin.lhs.walk_mut_(f);
+                bin.rhs.walk_mut_(f);
             }
             ExprKind::Name(_) | ExprKind::Lit(_) => (),
         }
@@ -143,7 +219,7 @@ pub enum ExprKind {
     Block(Block),
     Return(Return),
     Call(Call),
-    Bin(BinOp),
+    BinOp(BinOp),
     Name(Name),
     Lit(Lit),
 }

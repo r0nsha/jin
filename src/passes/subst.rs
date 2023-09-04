@@ -40,7 +40,7 @@ impl<S: SubstTy> Subst<S> for Expr {
                     arg.expr.subst(s);
                 }
             }
-            ExprKind::Bin(bin) => {
+            ExprKind::BinOp(bin) => {
                 bin.lhs.subst(s);
                 bin.rhs.subst(s);
             }

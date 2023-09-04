@@ -107,7 +107,7 @@ impl PPCtxt<'_> {
 
                 self.builder.end_child();
             }
-            ExprKind::Bin(bin) => {
+            ExprKind::BinOp(bin) => {
                 self.builder.begin_child(format!(
                     "{} (result: {})",
                     bin.op,

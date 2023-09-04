@@ -134,8 +134,8 @@ impl Lower<'_, Expr> for ast::Expr {
                 });
                 cx.expr(kind, span)
             }
-            Self::Bin(ast::BinOp { lhs, rhs, op, span }) => {
-                let kind = ExprKind::Bin(BinOp {
+            Self::BinOp(ast::BinOp { lhs, rhs, op, span }) => {
+                let kind = ExprKind::BinOp(BinOp {
                     lhs: Box::new(lhs.lower(cx)),
                     rhs: Box::new(rhs.lower(cx)),
                     op,

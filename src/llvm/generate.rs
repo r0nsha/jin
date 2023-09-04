@@ -211,7 +211,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
             Self::Phi(inner) => inner.codegen(cx, state),
             Self::Call(inner) => inner.codegen(cx, state),
             Self::Load(inner) => inner.codegen(cx, state),
-            Self::Bin(inner) => inner.codegen(cx, state),
+            Self::BinOp(inner) => inner.codegen(cx, state),
             Self::IntLit(inner) => inner.codegen(cx, state),
             Self::BoolLit(inner) => inner.codegen(cx, state),
             Self::UnitLit(inner) => inner.codegen(cx, state),

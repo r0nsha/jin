@@ -79,7 +79,7 @@ impl PrettyPrint for Expr {
 
                 cx.builder.end_child();
             }
-            Self::Bin(bin) => {
+            Self::BinOp(bin) => {
                 cx.builder.begin_child(bin.op.to_string());
                 bin.lhs.pretty_print(cx);
                 bin.rhs.pretty_print(cx);

@@ -20,7 +20,6 @@ pub struct At<'db, 'a> {
 }
 
 impl At<'_, '_> {
-    #[must_use]
     pub fn eq(&self, expected: Ty, found: Ty) -> EqResult<()> {
         UnifyCtxt { infcx: self.infcx }.unify_ty_ty(expected, found).map_err(|err| {
             let mut infcx = self.infcx.inner.borrow_mut();

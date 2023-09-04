@@ -3,6 +3,7 @@ mod timing;
 
 use std::{
     cmp,
+    collections::hash_map::Entry,
     path::{Path, PathBuf},
 };
 
@@ -14,9 +15,12 @@ use crate::{
     common::{new_key_type, IndexVec, QPath},
     db::{build_options::BuildOptions, timing::Timings},
     diagnostics::Diagnostics,
-    hir::HirMap,
+    hir::{ExprId, HirMap},
     span::{Source, SourceId, Sources, Span},
-    ty::{coerce::Coercions, IntTy, Ty, TyKind, Typed},
+    ty::{
+        coerce::{Coercion, Coercions},
+        IntTy, Ty, TyKind, Typed,
+    },
 };
 
 #[derive(Debug)]
@@ -29,7 +33,7 @@ pub struct Db {
     pub defs: IndexVec<DefId, Def>,
 
     pub types: CommonTypes,
-    pub adjustments: HirMap<Coercions>,
+    pub coercions: HirMap<Coercions>,
 
     pub diagnostics: Diagnostics,
 
@@ -61,7 +65,7 @@ impl Db {
             defs: IndexVec::new(),
 
             types: CommonTypes::new(),
-            adjustments: HirMap::new(),
+            coercions: HirMap::new(),
 
             diagnostics: Diagnostics::new(),
 
@@ -119,6 +123,17 @@ impl Db {
 
     pub fn print_diagnostics(&self) {
         self.diagnostics.print(&self.sources).expect("printing diagnostis to work");
+    }
+
+    pub fn push_coercion(&mut self, expr_id: ExprId, c: Coercion) {
+        match self.coercions.entry(expr_id) {
+            Entry::Occupied(mut entry) => {
+                entry.get_mut().push(c);
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(Coercions::one(c));
+            }
+        }
     }
 }
 

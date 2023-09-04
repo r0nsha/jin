@@ -8,6 +8,10 @@ impl Coercions {
         Self(vec![])
     }
 
+    pub fn one(c: Coercion) -> Self {
+        Self(vec![c])
+    }
+
     pub fn push(&mut self, adj: Coercion) {
         self.0.push(adj);
     }

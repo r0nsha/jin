@@ -168,7 +168,7 @@ impl FunctionBuilder {
         span: Span,
     ) -> ValueId {
         let value = self.create_value(ty);
-        self.current_block_mut().add_inst(Inst::Bin(BinOp { value, op, lhs, rhs, span }));
+        self.current_block_mut().add_inst(Inst::BinOp(BinOp { value, op, lhs, rhs, span }));
         value
     }
 

@@ -82,7 +82,7 @@ pub enum Expr {
     If(If),
     Block(Block),
     Call(Call),
-    Bin(BinOp),
+    BinOp(BinOp),
     Name(Name),
     Lit(Lit),
 }
@@ -95,7 +95,7 @@ impl Spanned for Expr {
             Self::If(x) => x.span,
             Self::Block(x) => x.span,
             Self::Call(x) => x.span,
-            Self::Bin(x) => x.span,
+            Self::BinOp(x) => x.span,
             Self::Name(x) => x.name.span(),
             Self::Lit(x) => x.span,
         }
@@ -108,7 +108,7 @@ impl Spanned for Expr {
             Self::If(x) => &mut x.span,
             Self::Block(x) => &mut x.span,
             Self::Call(x) => &mut x.span,
-            Self::Bin(x) => &mut x.span,
+            Self::BinOp(x) => &mut x.span,
             Self::Name(x) => x.name.span_mut(),
             Self::Lit(x) => &mut x.span,
         }

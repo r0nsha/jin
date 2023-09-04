@@ -212,7 +212,7 @@ impl Resolve<'_> for Expr {
             Self::Block(inner) => inner.resolve(cx, env),
             Self::Return(inner) => inner.resolve(cx, env),
             Self::Call(inner) => inner.resolve(cx, env),
-            Self::Bin(inner) => inner.resolve(cx, env),
+            Self::BinOp(inner) => inner.resolve(cx, env),
             Self::Name(inner) => inner.resolve(cx, env),
             Self::Lit(..) => (),
         }
