@@ -52,10 +52,10 @@ fn int_types() = {
 	a(126)
 
 	# fn b(x i32) i64 = x.[i64]
-	# fn b(x i32) i64 = x.[_]
+	fn b(x i32) i64 = x.[_]
 	b(55554)
 
 	# fn c(x int) i8 = x.[i8]
-	# fn c(x int) i8 = x.[_]
-	# c(57)
+	fn c(x int) i8 = x.[_]
+	c(129)
 }

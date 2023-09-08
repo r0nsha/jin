@@ -116,6 +116,11 @@ fn build(db: &mut Db) {
     db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))
         .expect("emitting hir failed");
 
+    db.time.start("analysis");
+    passes::analysis(db, &hir);
+    db.time.stop();
+    expect!(db);
+
     db.time.start("check entry");
     if let Err(diag) = passes::check_entry(db, &hir) {
         db.diagnostics.emit(diag);
