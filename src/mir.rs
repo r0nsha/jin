@@ -150,6 +150,7 @@ pub enum Inst {
     BrIf(BrIf),
     Phi(Phi),
     Call(Call),
+    Cast(Cast),
     Load(Load),
     BinOp(BinOp),
     IntLit(IntLit),
@@ -196,6 +197,14 @@ pub struct Call {
     pub value: ValueId,
     pub callee: ValueId,
     pub args: Vec<ValueId>,
+    #[allow(unused)]
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Cast {
+    pub value: ValueId,
+    pub operand: ValueId,
     #[allow(unused)]
     pub span: Span,
 }

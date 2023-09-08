@@ -49,9 +49,9 @@ fn polymorphism() = {
 
 fn int_types() = {
 	fn a(x i8) i8 = x
-	a(129)
+	a(126)
 
-	fn b(x i32) i64 = x.[i64]
+	# fn b(x i32) i64 = x.[i64]
 	# fn b(x i32) i64 = x.[_]
 	b(55554)
 

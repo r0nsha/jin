@@ -19,19 +19,19 @@ pub fn print(db: &Db, mir: &Mir, w: &mut impl io::Write) -> io::Result<()> {
     w.write_all(doc.pretty(80).to_string().as_bytes())
 }
 
-fn print_function<'d>(db: &Db, fun: &Function) -> RcDoc<'d, ()> {
-    let ret_ty = db[fun.id].ty.as_fn().unwrap().ret.to_doc(db, fun);
+fn print_function<'d>(db: &Db, f: &Function) -> RcDoc<'d, ()> {
+    let ret_ty = db[f.id].ty.as_fn().unwrap().ret.to_doc(db, f);
 
     RcDoc::text("fn")
         .append(RcDoc::space())
-        .append(fun.id().to_doc(db, fun))
+        .append(f.id().to_doc(db, f))
         .append(RcDoc::text("("))
         .append(RcDoc::intersperse(
-            fun.params().iter().map(|p| {
-                p.id.to_doc(db, fun)
+            f.params().iter().map(|p| {
+                p.id.to_doc(db, f)
                     .append(RcDoc::text(":"))
                     .append(RcDoc::space())
-                    .append(db[p.id].ty.to_doc(db, fun))
+                    .append(db[p.id].ty.to_doc(db, f))
             }),
             RcDoc::text(",").append(RcDoc::space()),
         ))
@@ -41,25 +41,22 @@ fn print_function<'d>(db: &Db, fun: &Function) -> RcDoc<'d, ()> {
         .append(RcDoc::space())
         .append(RcDoc::text("{"))
         .append(RcDoc::hardline())
-        .append(RcDoc::intersperse(
-            fun.blocks().iter().map(|b| b.to_doc(db, fun)),
-            RcDoc::hardline(),
-        ))
+        .append(RcDoc::intersperse(f.blocks().iter().map(|b| b.to_doc(db, f)), RcDoc::hardline()))
         .append(RcDoc::hardline())
         .append("}")
 }
 
 trait ToDoc<'db, 'd> {
-    fn to_doc(&self, db: &'db Db, fun: &'db Function) -> RcDoc<'d, ()>;
+    fn to_doc(&self, db: &'db Db, f: &'db Function) -> RcDoc<'d, ()>;
 }
 
 impl<'db, 'd> ToDoc<'db, 'd> for Block {
-    fn to_doc(&self, db: &'db Db, fun: &'db Function) -> RcDoc<'d, ()> {
+    fn to_doc(&self, db: &'db Db, f: &'db Function) -> RcDoc<'d, ()> {
         RcDoc::text(self.name.as_str())
             .append(RcDoc::text(":"))
             .append(RcDoc::hardline())
             .append(RcDoc::intersperse(
-                self.instructions.iter().map(|i| i.to_doc(db, fun)),
+                self.instructions.iter().map(|i| i.to_doc(db, f)),
                 RcDoc::hardline(),
             ))
             .nest(1)
@@ -67,88 +64,96 @@ impl<'db, 'd> ToDoc<'db, 'd> for Block {
 }
 
 impl<'db, 'd> ToDoc<'db, 'd> for Inst {
-    fn to_doc(&self, db: &'db Db, fun: &'db Function) -> RcDoc<'d, ()> {
+    fn to_doc(&self, db: &'db Db, f: &'db Function) -> RcDoc<'d, ()> {
         match self {
             Self::Return(ret) => {
-                RcDoc::text("ret").append(RcDoc::space()).append(ret.value.to_doc(db, fun))
+                RcDoc::text("ret").append(RcDoc::space()).append(ret.value.to_doc(db, f))
             }
             Self::Br(br) => {
-                RcDoc::text("br").append(RcDoc::space()).append(br.target.to_doc(db, fun))
+                RcDoc::text("br").append(RcDoc::space()).append(br.target.to_doc(db, f))
             }
             Self::BrIf(brif) => RcDoc::text("brif")
                 .append(RcDoc::space())
-                .append(brif.cond.to_doc(db, fun))
+                .append(brif.cond.to_doc(db, f))
                 .append(RcDoc::space())
-                .append(brif.b1.to_doc(db, fun))
+                .append(brif.b1.to_doc(db, f))
                 .append(RcDoc::space())
-                .append(brif.b2.to_doc(db, fun)),
+                .append(brif.b2.to_doc(db, f)),
             Self::Phi(phi) => RcDoc::text("phi").append(RcDoc::space()).append(RcDoc::intersperse(
                 phi.phi_values.iter().map(|(blk, value)| {
                     RcDoc::text("(")
-                        .append(blk.to_doc(db, fun))
+                        .append(blk.to_doc(db, f))
                         .append(RcDoc::space())
                         .append(RcDoc::text("->"))
                         .append(RcDoc::space())
-                        .append(value.to_doc(db, fun))
+                        .append(value.to_doc(db, f))
                         .append(RcDoc::text(")"))
                 }),
                 RcDoc::space(),
             )),
-            Self::Call(call) => value_alloc(db, fun, call.value)
+            Self::Call(call) => value_alloc(db, f, call.value)
                 .append(RcDoc::text("call"))
                 .append(RcDoc::space())
-                .append(call.callee.to_doc(db, fun))
+                .append(call.callee.to_doc(db, f))
                 .append(RcDoc::space())
                 .append(RcDoc::text("("))
                 .append(RcDoc::intersperse(
-                    call.args.iter().map(|a| a.to_doc(db, fun)),
+                    call.args.iter().map(|a| a.to_doc(db, f)),
                     RcDoc::text(",").append(RcDoc::space()),
                 ))
                 .append(RcDoc::text(")")),
-            Self::Load(load) => value_alloc(db, fun, load.value)
+            Self::Cast(cast) => value_alloc(db, f, cast.value)
+                .append(RcDoc::text("cast"))
+                .append(RcDoc::space())
+                .append(cast.operand.to_doc(db, f))
+                .append(RcDoc::space())
+                .append(RcDoc::text("->"))
+                .append(RcDoc::space())
+                .append(f.value(cast.value).unwrap().ty.to_doc(db, f)),
+            Self::Load(load) => value_alloc(db, f, load.value)
                 .append(RcDoc::text("load"))
                 .append(RcDoc::space())
-                .append(load.id.to_doc(db, fun)),
-            Self::BinOp(bin) => value_alloc(db, fun, bin.value)
+                .append(load.id.to_doc(db, f)),
+            Self::BinOp(bin) => value_alloc(db, f, bin.value)
                 .append(RcDoc::text(bin_instruction_name(bin.op)))
                 .append(RcDoc::space())
-                .append(bin.lhs.to_doc(db, fun))
+                .append(bin.lhs.to_doc(db, f))
                 .append(RcDoc::space())
-                .append(bin.rhs.to_doc(db, fun)),
+                .append(bin.rhs.to_doc(db, f)),
             Self::IntLit(lit) => {
-                value_alloc(db, fun, lit.value).append(RcDoc::text(lit.lit.to_string()))
+                value_alloc(db, f, lit.value).append(RcDoc::text(lit.lit.to_string()))
             }
             Self::BoolLit(lit) => {
-                value_alloc(db, fun, lit.value).append(RcDoc::text(lit.lit.to_string()))
+                value_alloc(db, f, lit.value).append(RcDoc::text(lit.lit.to_string()))
             }
-            Self::UnitLit(lit) => value_alloc(db, fun, lit.value).append(RcDoc::text("()")),
+            Self::UnitLit(lit) => value_alloc(db, f, lit.value).append(RcDoc::text("()")),
             Self::Unreachable(unr) => {
-                value_alloc(db, fun, unr.value).append(RcDoc::text("unreachable"))
+                value_alloc(db, f, unr.value).append(RcDoc::text("unreachable"))
             }
         }
     }
 }
 
 impl<'db, 'd> ToDoc<'db, 'd> for ValueId {
-    fn to_doc(&self, _db: &'db Db, _fun: &'db Function) -> RcDoc<'d, ()> {
+    fn to_doc(&self, _db: &'db Db, _f: &'db Function) -> RcDoc<'d, ()> {
         RcDoc::text(format!("v{}", self.0))
     }
 }
 
 impl<'db, 'd> ToDoc<'db, 'd> for TyKind {
-    fn to_doc(&self, db: &'db Db, _fun: &'db Function) -> RcDoc<'d, ()> {
+    fn to_doc(&self, db: &'db Db, _f: &'db Function) -> RcDoc<'d, ()> {
         RcDoc::text(self.to_string(db))
     }
 }
 
 impl<'db, 'd> ToDoc<'db, 'd> for BlockId {
-    fn to_doc(&self, _db: &'db Db, fun: &'db Function) -> RcDoc<'d, ()> {
-        RcDoc::text(fun.block(*self).expect("to be a valid BlockId").name.as_str())
+    fn to_doc(&self, _db: &'db Db, f: &'db Function) -> RcDoc<'d, ()> {
+        RcDoc::text(f.block(*self).expect("to be a valid BlockId").name.as_str())
     }
 }
 
 impl<'db, 'd> ToDoc<'db, 'd> for DefId {
-    fn to_doc(&self, db: &'db Db, _fun: &'db Function) -> RcDoc<'d, ()> {
+    fn to_doc(&self, db: &'db Db, _f: &'db Function) -> RcDoc<'d, ()> {
         let def = &db[*self];
 
         let name = match def.scope.level {
@@ -161,12 +166,12 @@ impl<'db, 'd> ToDoc<'db, 'd> for DefId {
     }
 }
 
-fn value_alloc<'db, 'd>(db: &'db Db, fun: &'db Function, value: ValueId) -> RcDoc<'d, ()> {
+fn value_alloc<'db, 'd>(db: &'db Db, f: &'db Function, value: ValueId) -> RcDoc<'d, ()> {
     value
-        .to_doc(db, fun)
+        .to_doc(db, f)
         .append(RcDoc::text(":"))
         .append(RcDoc::space())
-        .append(fun.value(value).unwrap().ty.to_doc(db, fun))
+        .append(f.value(value).unwrap().ty.to_doc(db, f))
         .append(RcDoc::space())
         .append(RcDoc::text("="))
         .append(RcDoc::space())

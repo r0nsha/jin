@@ -5,7 +5,7 @@ use inkwell::{
     builder::Builder,
     context::Context,
     module::{Linkage, Module},
-    types::IntType,
+    types::{BasicTypeEnum, IntType},
     values::{AnyValue, BasicValue, BasicValueEnum, FunctionValue},
     AddressSpace, IntPredicate,
 };
@@ -15,8 +15,8 @@ use crate::{
     db::{Db, DefId},
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
     mir::{
-        BinOp, Block, BlockId, BoolLit, Br, BrIf, Call, Function, Inst, IntLit, Load, Mir, Phi,
-        Return, UnitLit, Unreachable, ValueId,
+        BinOp, Block, BlockId, BoolLit, Br, BrIf, Call, Cast, Function, Inst, IntLit, Load, Mir,
+        Phi, Return, UnitLit, Unreachable, ValueId,
     },
     ty::Ty,
 };
@@ -210,6 +210,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
             Self::BrIf(inner) => inner.codegen(cx, state),
             Self::Phi(inner) => inner.codegen(cx, state),
             Self::Call(inner) => inner.codegen(cx, state),
+            Self::Cast(inner) => inner.codegen(cx, state),
             Self::Load(inner) => inner.codegen(cx, state),
             Self::BinOp(inner) => inner.codegen(cx, state),
             Self::IntLit(inner) => inner.codegen(cx, state),
@@ -306,6 +307,36 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
     }
 }
 
+impl<'db, 'cx> Codegen<'db, 'cx> for Cast {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        let source_ty = state.value_ty(cx, self.operand);
+        let target_ty = state.value_ty(cx, self.value);
+
+        let result = match (source_ty.llvm_ty(cx), target_ty.llvm_ty(cx)) {
+            (BasicTypeEnum::IntType(_), BasicTypeEnum::IntType(target)) => {
+                // TODO: unsigned
+                cx.bx
+                    .build_int_cast_sign_flag(
+                        state.value(self.operand).into_int_value(),
+                        target,
+                        true,
+                        "cast_result",
+                    )
+                    .as_basic_value_enum()
+            }
+            (source, target) => panic!(
+                "unexpected types in cast: {} : {} and {} : {}",
+                source,
+                source_ty.display(cx.db),
+                target,
+                target_ty.display(cx.db)
+            ),
+        };
+
+        state.set_value(self.value, result);
+    }
+}
+
 impl<'db, 'cx> Codegen<'db, 'cx> for Load {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         let value = match cx.def_value(self.id) {
@@ -366,7 +397,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for IntLit {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         let ty = state.value_ty(cx, self.value).llvm_ty(cx).into_int_type();
 
-        // TODO: unsigned integers
+        // TODO: unsigned
         let value = ty.const_int(self.lit as u64, true);
         state.set_value(self.value, value.into());
     }

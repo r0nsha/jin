@@ -276,7 +276,8 @@ impl InferCtxt<'_> {
                 }
             }
             ExprKind::Cast(cast) => {
-                todo!()
+                self.infer_expr(&mut cast.expr, fx)?;
+                self.typeck_ty(&cast.ty)?
             }
             ExprKind::Name(name) => {
                 let def_ty = self.lookup(name.id);
