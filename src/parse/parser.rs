@@ -355,22 +355,11 @@ impl<'a> Parser<'a> {
                 TokenKind::OpenParen if self.are_on_same_line(start, tok.span) => {
                     self.parse_call(expr)
                 }
-                TokenKind::Dot => {
+                TokenKind::As => {
                     self.next();
-                    let tok = self.require()?;
-
-                    if self.is(TokenKind::OpenBracket) {
-                        let ty = self.parse_ty()?;
-                        let end = self.eat(TokenKind::CloseBracket)?.span;
-                        let span = expr.span().merge(end);
-                        Ok(Expr::Cast(Cast { expr: Box::new(expr), ty, span }))
-                    } else {
-                        Err(ParseError::UnexpectedToken {
-                            expected: "an identifier or [".to_owned(),
-                            found: tok.kind,
-                            span: tok.span,
-                        })
-                    }
+                    let ty = self.parse_ty()?;
+                    let span = expr.span().merge(ty.span());
+                    Ok(Expr::Cast(Cast { expr: Box::new(expr), ty, span }))
                 }
                 _ => Ok(expr),
             },

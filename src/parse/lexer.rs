@@ -136,6 +136,7 @@ impl<'s> Lexer<'s> {
                     "else" => TokenKind::Else,
                     "true" => TokenKind::True,
                     "false" => TokenKind::False,
+                    "as" => TokenKind::As,
                     str => TokenKind::Ident(ustr(str)),
                 };
             }

@@ -73,6 +73,7 @@ pub enum TokenKind {
     Else,
     True,
     False,
+    As,
 
     // Literals
     Int(usize),
@@ -124,6 +125,7 @@ impl fmt::Display for TokenKind {
             Self::Fn => f.write_str("`fn`"),
             Self::True => f.write_str("`true`"),
             Self::False => f.write_str("`false`"),
+            Self::As => f.write_str("`as`"),
             Self::Int(..) => f.write_str("int literal"),
         }
     }
