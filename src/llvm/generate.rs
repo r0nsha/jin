@@ -313,17 +313,15 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Cast {
         let target_ty = state.value_ty(cx, self.value);
 
         let result = match (source_ty.llvm_ty(cx), target_ty.llvm_ty(cx)) {
-            (BasicTypeEnum::IntType(_), BasicTypeEnum::IntType(target)) => {
-                // TODO: unsigned
-                cx.bx
-                    .build_int_cast_sign_flag(
-                        state.value(self.operand).into_int_value(),
-                        target,
-                        true,
-                        "cast_result",
-                    )
-                    .as_basic_value_enum()
-            }
+            (BasicTypeEnum::IntType(_), BasicTypeEnum::IntType(target)) => cx
+                .bx
+                .build_int_cast_sign_flag(
+                    state.value(self.operand).into_int_value(),
+                    target,
+                    target_ty.is_uint(),
+                    "cast_result",
+                )
+                .as_basic_value_enum(),
             (source, target) => panic!(
                 "unexpected types in cast: {} : {} and {} : {}",
                 source,
@@ -354,25 +352,35 @@ impl<'db, 'cx> Codegen<'db, 'cx> for BinOp {
 
         let lhs = state.value(self.lhs).into_int_value();
         let rhs = state.value(self.rhs).into_int_value();
+        let ty = state.value_ty(cx, self.value);
 
         let result = match self.op {
             BinOpKind::Add => cx.bx.build_int_add(lhs, rhs, NAME),
             BinOpKind::Sub => cx.bx.build_int_sub(lhs, rhs, NAME),
             BinOpKind::Mul => cx.bx.build_int_mul(lhs, rhs, NAME),
-            // TODO: unsigned
-            BinOpKind::Div => cx.bx.build_int_signed_div(lhs, rhs, NAME),
-            // TODO: unsigned
-            BinOpKind::Mod => cx.bx.build_int_signed_rem(lhs, rhs, NAME),
+            BinOpKind::Div => {
+                if ty.is_uint() {
+                    cx.bx.build_int_unsigned_div(lhs, rhs, NAME)
+                } else {
+                    cx.bx.build_int_signed_div(lhs, rhs, NAME)
+                }
+            }
+            BinOpKind::Mod => {
+                if ty.is_uint() {
+                    cx.bx.build_int_unsigned_rem(lhs, rhs, NAME)
+                } else {
+                    cx.bx.build_int_signed_rem(lhs, rhs, NAME)
+                }
+            }
             BinOpKind::Shl => cx.bx.build_left_shift(lhs, rhs, NAME),
-            // TODO: unsigned
-            BinOpKind::Shr => cx.bx.build_right_shift(lhs, rhs, true, NAME),
+            BinOpKind::Shr => cx.bx.build_right_shift(lhs, rhs, ty.is_int(), NAME),
             BinOpKind::BitAnd => cx.bx.build_and(lhs, rhs, NAME),
             BinOpKind::BitOr => cx.bx.build_or(lhs, rhs, NAME),
             BinOpKind::BitXor => cx.bx.build_xor(lhs, rhs, NAME),
             BinOpKind::And => todo!(),
             BinOpKind::Or => todo!(),
             BinOpKind::Cmp(op) => {
-                let pred = get_int_predicate(op);
+                let pred = get_int_predicate(op, ty.is_int());
                 cx.bx.build_int_compare(pred, lhs, rhs, NAME)
             }
         };
@@ -381,24 +389,45 @@ impl<'db, 'cx> Codegen<'db, 'cx> for BinOp {
     }
 }
 
-fn get_int_predicate(op: CmpOp) -> IntPredicate {
-    // TODO: unsigned
+fn get_int_predicate(op: CmpOp, is_signed: bool) -> IntPredicate {
     match op {
         CmpOp::Eq => IntPredicate::EQ,
         CmpOp::Ne => IntPredicate::NE,
-        CmpOp::Lt => IntPredicate::SLT,
-        CmpOp::Le => IntPredicate::SLE,
-        CmpOp::Gt => IntPredicate::SGT,
-        CmpOp::Ge => IntPredicate::SGE,
+        CmpOp::Lt => {
+            if is_signed {
+                IntPredicate::SLT
+            } else {
+                IntPredicate::ULT
+            }
+        }
+        CmpOp::Le => {
+            if is_signed {
+                IntPredicate::SLE
+            } else {
+                IntPredicate::ULE
+            }
+        }
+        CmpOp::Gt => {
+            if is_signed {
+                IntPredicate::SGT
+            } else {
+                IntPredicate::UGT
+            }
+        }
+        CmpOp::Ge => {
+            if is_signed {
+                IntPredicate::SGE
+            } else {
+                IntPredicate::UGE
+            }
+        }
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for IntLit {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
-        let ty = state.value_ty(cx, self.value).llvm_ty(cx).into_int_type();
-
-        // TODO: unsigned
-        let value = ty.const_int(self.lit as u64, true);
+        let ty = state.value_ty(cx, self.value);
+        let value = ty.llvm_ty(cx).into_int_type().const_int(self.lit as u64, ty.is_int());
         state.set_value(self.value, value.into());
     }
 }
