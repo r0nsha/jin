@@ -121,13 +121,6 @@ fn build(db: &mut Db) {
     db.time.stop();
     expect!(db);
 
-    db.time.start("check entry");
-    if let Err(diag) = passes::check_entry(db, &hir) {
-        db.diagnostics.emit(diag);
-    }
-    db.time.stop();
-    expect!(db);
-
     db.time.start("monomorphize");
     let mono_items = passes::monomorphize(db, &hir);
     db.time.stop();
