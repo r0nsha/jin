@@ -3,6 +3,7 @@ fn main() = {
 	unary()
 	arithmetic()
 	cmp()
+	variables()
 	nested_fn()
 	polymorphism()
 }
@@ -60,6 +61,12 @@ fn cmp() int = {
 	7 / 8
 	9 % 10
 	return 5
+}
+
+fn variables() int = {
+	let x = 39
+	let y = 3
+	x + y
 }
 
 fn nested_fn() = {
