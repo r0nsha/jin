@@ -129,7 +129,7 @@ impl<'s> Lexer<'s> {
                 self.next();
             } else {
                 return match self.range(start) {
-                    "_" => TokenKind::Placeholder,
+                    "_" => TokenKind::Underscore,
                     "return" => TokenKind::Return,
                     "fn" => TokenKind::Fn,
                     "if" => TokenKind::If,

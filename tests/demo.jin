@@ -51,9 +51,9 @@ fn int_types() = {
 	fn id(x i8) i8 = x
 	id(126)
 
-	fn promote(x i32) i64 = x as i64
+	fn promote(x i32) i64 = x.as(i64)
 	promote(55554)
 
-	fn demote_inferred(x int) i8 = x as _
+	fn demote_inferred(x int) i8 = x.as(_)
 	demote_inferred(129)
 }

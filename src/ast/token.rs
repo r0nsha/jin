@@ -66,7 +66,7 @@ pub enum TokenKind {
 
     // Ident & Keywords
     Ident(Ustr),
-    Placeholder,
+    Underscore,
     Return,
     Fn,
     If,
@@ -118,7 +118,7 @@ impl fmt::Display for TokenKind {
             Self::Pipe => f.write_str("|"),
             Self::PipePipe => f.write_str("||"),
             Self::Ident(..) => f.write_str("identifier"),
-            Self::Placeholder => f.write_str("_"),
+            Self::Underscore => f.write_str("_"),
             Self::Return => f.write_str("`return`"),
             Self::If => f.write_str("`if`"),
             Self::Else => f.write_str("`else`"),

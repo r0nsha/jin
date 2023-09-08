@@ -304,7 +304,7 @@ impl<'a> Parser<'a> {
                 Ty::Unit(tok.span.merge(end))
             }
             TokenKind::Bang => Ty::Never(tok.span),
-            TokenKind::Placeholder => Ty::Infer(tok.span),
+            TokenKind::Underscore => Ty::Infer(tok.span),
             _ => {
                 return Err(ParseError::UnexpectedToken {
                     expected: "a type".to_string(),
@@ -355,11 +355,24 @@ impl<'a> Parser<'a> {
                 TokenKind::OpenParen if self.are_on_same_line(start, tok.span) => {
                     self.parse_call(expr)
                 }
-                TokenKind::As => {
+                TokenKind::Dot => {
                     self.next();
-                    let ty = self.parse_ty()?;
-                    let span = expr.span().merge(ty.span());
-                    Ok(Expr::Cast(Cast { expr: Box::new(expr), ty, span }))
+                    let tok = self.require()?;
+
+                    if self.is(TokenKind::As) {
+                        self.eat(TokenKind::OpenParen)?;
+                        let ty = self.parse_ty()?;
+                        let end = self.eat(TokenKind::CloseParen)?.span;
+                        let span = expr.span().merge(end);
+                        Ok(Expr::Cast(Cast { expr: Box::new(expr), ty, span }))
+                    } else {
+                        Err(ParseError::UnexpectedToken {
+                            expected: "`as`".to_owned(),
+                            // expected: "an identifier or `as`".to_owned(),
+                            found: tok.kind,
+                            span: tok.span,
+                        })
+                    }
                 }
                 _ => Ok(expr),
             },
