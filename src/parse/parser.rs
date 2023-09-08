@@ -3,8 +3,8 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        BinOp, BinOpKind, Block, Call, CallArg, Cast, Expr, Fn, FnParam, FnSig, If, Item, Lit,
-        LitKind, Module, Name, Return, Ty, TyName, TyParam, UnaryOp, UnaryOpKind,
+        BinOp, BinOpKind, Block, Call, CallArg, Cast, Expr, Fn, FnParam, FnSig, If, Item, Let, Lit,
+        LitKind, Module, Name, Pat, Return, Ty, TyName, TyParam, UnaryOp, UnaryOpKind,
     },
     common::{QPath, Word},
     db::Db,
@@ -50,6 +50,8 @@ impl<'a> Parser<'a> {
     fn parse_top_level(&mut self) -> ParseResult<Item> {
         if self.is(TokenKind::Fn) {
             Ok(Item::Fn(self.parse_function()?))
+        } else if self.is(TokenKind::Let) {
+            Ok(Item::Let(self.parse_let()?))
         } else {
             let token = self.require()?;
 
@@ -77,6 +79,32 @@ impl<'a> Parser<'a> {
         };
 
         Ok(Fn { id: None, sig, span: start.merge(body.span), body })
+    }
+
+    fn parse_let(&mut self) -> ParseResult<Let> {
+        let start = self.last_span();
+        let pat = self.parse_pat()?;
+
+        let ty = if self.peek_is(TokenKind::Eq) { None } else { Some(self.parse_ty()?) };
+
+        self.eat(TokenKind::Eq)?;
+
+        let value = self.parse_expr()?;
+
+        Ok(Let { id: None, pat, ty, span: start.merge(value.span()), value: Box::new(value) })
+    }
+
+    fn parse_pat(&mut self) -> ParseResult<Pat> {
+        let tok = self.eat_any()?;
+
+        match tok.kind {
+            TokenKind::Ident(_) => Ok(Pat::Name(tok.spanned_word())),
+            _ => Err(ParseError::UnexpectedToken {
+                expected: "a pattern".to_string(),
+                found: tok.kind,
+                span: tok.span,
+            }),
+        }
     }
 
     fn parse_function_sig(&mut self, name: Word) -> ParseResult<FnSig> {
@@ -145,6 +173,8 @@ impl<'a> Parser<'a> {
     fn parse_stmt(&mut self) -> ParseResult<Expr> {
         if self.is(TokenKind::Fn) {
             Ok(Expr::Item(Item::Fn(self.parse_function()?)))
+        } else if self.is(TokenKind::Let) {
+            Ok(Expr::Item(Item::Let(self.parse_let()?)))
         } else if self.is(TokenKind::Return) {
             Ok(Expr::Return(self.parse_return()?))
         } else {

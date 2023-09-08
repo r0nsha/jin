@@ -132,6 +132,7 @@ impl<'s> Lexer<'s> {
                     "_" => TokenKind::Underscore,
                     "return" => TokenKind::Return,
                     "fn" => TokenKind::Fn,
+                    "let" => TokenKind::Let,
                     "if" => TokenKind::If,
                     "else" => TokenKind::Else,
                     "true" => TokenKind::True,

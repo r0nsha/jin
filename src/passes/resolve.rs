@@ -118,6 +118,7 @@ impl<'db> Resolver<'db> {
 
                 id
             }
+            Item::Let(_) => todo!(),
         }
     }
 
@@ -149,11 +150,10 @@ impl<'db> Resolver<'db> {
         match item {
             Item::Fn(fun) => {
                 let id = self.declare_def(env, DefKind::Fn(FnInfo::Bare), fun.sig.name);
-
                 fun.id = Some(id);
-
                 id
             }
+            Item::Let(_) => todo!(),
         }
     }
 
@@ -211,6 +211,7 @@ impl Resolve<'_> for Item {
 
         match self {
             Item::Fn(fun) => fun.resolve(cx, env),
+            Item::Let(_) => todo!(),
         }
     }
 }

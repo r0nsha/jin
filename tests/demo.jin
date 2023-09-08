@@ -64,8 +64,8 @@ fn cmp() int = {
 }
 
 fn variables() int = {
-	let x = 39
-	let y = 3
+	let x = 39 # Inferred to `int`
+	let y int = 3 # Explicit type annotation
 	x + y
 }
 

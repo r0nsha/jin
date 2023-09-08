@@ -53,18 +53,21 @@ impl Module {
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum Item {
     Fn(Fn),
+    Let(Let),
 }
 
 impl Spanned for Item {
     fn span(&self) -> Span {
         match self {
             Self::Fn(x) => x.span,
+            Self::Let(x) => x.span,
         }
     }
 
     fn span_mut(&mut self) -> &mut Span {
         match self {
             Self::Fn(x) => &mut x.span,
+            Self::Let(x) => &mut x.span,
         }
     }
 }
@@ -143,6 +146,29 @@ pub struct FnParam {
     pub name: Word,
     pub ty: Ty,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Let {
+    pub id: Option<DefId>,
+    pub pat: Pat,
+    pub ty: Option<Ty>,
+    pub value: Box<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum Pat {
+    Name(Word),
+    // Ignore(Span)
+}
+
+impl fmt::Display for Pat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Pat::Name(w) => w.fmt(f),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -50,6 +50,7 @@ impl Lower<'_, Item> for ast::Item {
         Item {
             kind: match self {
                 Self::Fn(fun) => ItemKind::Fn(fun.lower(cx)),
+                Self::Let(_) => todo!(),
             },
             ty: cx.db.types.unknown,
         }
