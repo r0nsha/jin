@@ -150,7 +150,6 @@ pub struct FnParam {
 
 #[derive(Debug, Clone)]
 pub struct Let {
-    pub id: Option<DefId>,
     pub pat: Pat,
     pub ty: Option<Ty>,
     pub value: Box<Expr>,
@@ -159,14 +158,32 @@ pub struct Let {
 
 #[derive(Debug, Clone)]
 pub enum Pat {
-    Name(Word),
+    Name(NamePat),
     // Ignore(Span)
+}
+
+impl Pat {
+    pub fn walk(&self, mut f: impl FnMut(&NamePat)) {
+        self.walk_(&mut f);
+    }
+
+    fn walk_(&self, f: &mut impl FnMut(&NamePat)) {
+        match self {
+            Pat::Name(n) => f(n),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct NamePat {
+    pub id: Option<DefId>,
+    pub word: Word,
 }
 
 impl fmt::Display for Pat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Pat::Name(w) => w.fmt(f),
+            Pat::Name(n) => n.word.fmt(f),
         }
     }
 }

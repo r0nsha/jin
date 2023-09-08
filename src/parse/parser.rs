@@ -4,7 +4,7 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         BinOp, BinOpKind, Block, Call, CallArg, Cast, Expr, Fn, FnParam, FnSig, If, Item, Let, Lit,
-        LitKind, Module, Name, Pat, Return, Ty, TyName, TyParam, UnaryOp, UnaryOpKind,
+        LitKind, Module, Name, NamePat, Pat, Return, Ty, TyName, TyParam, UnaryOp, UnaryOpKind,
     },
     common::{QPath, Word},
     db::Db,
@@ -91,14 +91,14 @@ impl<'a> Parser<'a> {
 
         let value = self.parse_expr()?;
 
-        Ok(Let { id: None, pat, ty, span: start.merge(value.span()), value: Box::new(value) })
+        Ok(Let { pat, ty, span: start.merge(value.span()), value: Box::new(value) })
     }
 
     fn parse_pat(&mut self) -> ParseResult<Pat> {
         let tok = self.eat_any()?;
 
         match tok.kind {
-            TokenKind::Ident(_) => Ok(Pat::Name(tok.spanned_word())),
+            TokenKind::Ident(_) => Ok(Pat::Name(NamePat { id: None, word: tok.spanned_word() })),
             _ => Err(ParseError::UnexpectedToken {
                 expected: "a pattern".to_string(),
                 found: tok.kind,

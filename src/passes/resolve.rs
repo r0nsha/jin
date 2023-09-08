@@ -4,8 +4,8 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     ast::{
-        Ast, BinOp, Block, Call, CallArg, Cast, Expr, Fn, FnSig, If, Item, Module, Name, Return,
-        Ty, TyName, TyParam, UnaryOp,
+        Ast, BinOp, Block, Call, CallArg, Cast, Expr, Fn, FnSig, If, Item, Let, Module, Name, Pat,
+        Return, Ty, TyName, TyParam, UnaryOp,
     },
     common::{QPath, Word},
     db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
@@ -146,14 +146,13 @@ impl<'db> Resolver<'db> {
         id
     }
 
-    fn declare_item(&mut self, env: &mut Env, item: &mut Item) -> DefId {
+    fn declare_item(&mut self, env: &mut Env, item: &mut Item) {
         match item {
             Item::Fn(fun) => {
                 let id = self.declare_def(env, DefKind::Fn(FnInfo::Bare), fun.sig.name);
                 fun.id = Some(id);
-                id
             }
-            Item::Let(_) => todo!(),
+            Item::Let(let_) => self.declare_pat(env, DefKind::Variable, &mut let_.pat),
         }
     }
 
@@ -170,6 +169,14 @@ impl<'db> Resolver<'db> {
         env.current_mut().insert(name.name(), id);
 
         id
+    }
+
+    fn declare_pat(&mut self, env: &mut Env, kind: DefKind, pat: &mut Pat) {
+        match pat {
+            Pat::Name(name) => {
+                name.id = Some(self.declare_def(env, kind, name.word));
+            }
+        }
     }
 
     fn lookup(&self, env: &Env, word: Word) -> Result<DefId, ResolveError> {
@@ -211,7 +218,7 @@ impl Resolve<'_> for Item {
 
         match self {
             Item::Fn(fun) => fun.resolve(cx, env),
-            Item::Let(_) => todo!(),
+            Item::Let(let_) => let_.resolve(cx, env),
         }
     }
 }
@@ -242,6 +249,15 @@ impl Resolve<'_> for Fn {
     }
 }
 
+impl Resolve<'_> for Let {
+    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
+        cx.declare_pat(env, DefKind::Variable, &mut self.pat);
+        self.pat.walk(|pat| {
+            env.insert(pat.word.name(), pat.id.unwrap());
+        });
+        self.value.resolve(cx, env);
+    }
+}
 impl Resolve<'_> for FnSig {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         assert!(env.in_kind(ScopeKind::Fn), "FnSig must be resolved inside a ScopeKind::Fn");
