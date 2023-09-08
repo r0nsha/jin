@@ -148,6 +148,7 @@ pub enum TyKind {
 
     // Primitives types
     Int(IntTy),
+    Uint(UintTy),
     Bool,
     Unit, // TODO: when we implement tuples, Unit should become Tuple([])
     Never,
@@ -180,12 +181,14 @@ pub struct IntVar(u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntVarValue {
     Int(IntTy),
+    Uint(UintTy),
 }
 
 impl From<IntVarValue> for TyKind {
     fn from(value: IntVarValue) -> Self {
         match value {
             IntVarValue::Int(ty) => Self::Int(ty),
+            IntVarValue::Uint(ty) => Self::Uint(ty),
         }
     }
 }
@@ -202,11 +205,32 @@ pub enum IntTy {
 impl IntTy {
     pub fn size(self, target_metrics: &TargetMetrics) -> usize {
         match self {
-            IntTy::I8 => 8,
-            IntTy::I16 => 16,
-            IntTy::I32 => 32,
-            IntTy::I64 => 64,
-            IntTy::Int => target_metrics.word_size,
+            Self::I8 => 8,
+            Self::I16 => 16,
+            Self::I32 => 32,
+            Self::I64 => 64,
+            Self::Int => target_metrics.word_size,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum UintTy {
+    U8,
+    U16,
+    U32,
+    U64,
+    Uint,
+}
+
+impl UintTy {
+    pub fn size(self, target_metrics: &TargetMetrics) -> usize {
+        match self {
+            Self::U8 => 8,
+            Self::U16 => 16,
+            Self::U32 => 32,
+            Self::U64 => 64,
+            Self::Uint => target_metrics.word_size,
         }
     }
 }

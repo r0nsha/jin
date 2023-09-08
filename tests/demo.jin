@@ -59,4 +59,13 @@ fn int_types() = {
 
 	fn auto_promote(x i16) i32 = x
 	auto_promote(4688)
+
+	fn promote_to_signed(x u16) int = x.as(int)
+	promote_to_signed(555)
+
+	fn demote_to_unsigned_inferred(x int) u8 = x.as(_)
+	demote_to_unsigned_inferred(34)
+
+	fn uint_to_int(x uint) int = x.as(int)
+	uint_to_int(663151)
 }

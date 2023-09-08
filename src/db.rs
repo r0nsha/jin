@@ -29,7 +29,7 @@ use crate::{
     span::{Source, SourceId, Sources, Span},
     ty::{
         coerce::{Coercion, Coercions},
-        IntTy, Ty, TyKind, Typed,
+        IntTy, Ty, TyKind, Typed, UintTy,
     },
 };
 
@@ -339,6 +339,13 @@ pub struct CommonTypes {
     pub i32: Ty,
     pub i64: Ty,
     pub int: Ty,
+
+    pub u8: Ty,
+    pub u16: Ty,
+    pub u32: Ty,
+    pub u64: Ty,
+    pub uint: Ty,
+
     pub bool: Ty,
     pub unit: Ty,
     pub never: Ty,
@@ -360,6 +367,13 @@ impl CommonTypes {
             i32: Ty::new(TyKind::Int(IntTy::I32)),
             i64: Ty::new(TyKind::Int(IntTy::I64)),
             int: Ty::new(TyKind::Int(IntTy::Int)),
+
+            u8: Ty::new(TyKind::Uint(UintTy::U8)),
+            u16: Ty::new(TyKind::Uint(UintTy::U16)),
+            u32: Ty::new(TyKind::Uint(UintTy::U32)),
+            u64: Ty::new(TyKind::Uint(UintTy::U64)),
+            uint: Ty::new(TyKind::Uint(UintTy::Uint)),
+
             bool: Ty::new(TyKind::Bool),
             unit: Ty::new(TyKind::Unit),
             never: Ty::new(TyKind::Never),

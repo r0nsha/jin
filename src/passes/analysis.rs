@@ -143,9 +143,8 @@ impl AnalysisError {
 }
 
 fn is_valid_cast(source: Ty, target: Ty) -> bool {
-    #[allow(clippy::match_like_matches_macro)]
-    match (source.kind(), target.kind()) {
-        (TyKind::Int(_), TyKind::Int(_)) => true,
-        _ => false,
-    }
+    matches!(
+        (source.kind(), target.kind()),
+        (TyKind::Int(_) | TyKind::Uint(_), TyKind::Int(_) | TyKind::Uint(_))
+    )
 }

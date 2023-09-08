@@ -2,7 +2,7 @@ use std::fmt::{Display, Formatter, Result};
 
 use crate::{
     db::Db,
-    ty::{InferTy, IntTy, TyKind},
+    ty::{InferTy, IntTy, TyKind, UintTy},
 };
 
 pub struct TyPrinter<'db> {
@@ -44,12 +44,19 @@ impl<'db> TyPrinter<'db> {
                 f.write_str(") ")?;
                 Self::fmt_type(f, &fun.ret)
             }
-            TyKind::Int(int) => f.write_str(match int {
+            TyKind::Int(ity) => f.write_str(match ity {
                 IntTy::I8 => "i8",
                 IntTy::I16 => "i16",
                 IntTy::I32 => "i32",
                 IntTy::I64 => "i64",
                 IntTy::Int => "int",
+            }),
+            TyKind::Uint(uty) => f.write_str(match uty {
+                UintTy::U8 => "u8",
+                UintTy::U16 => "u16",
+                UintTy::U32 => "u32",
+                UintTy::U64 => "u64",
+                UintTy::Uint => "uint",
             }),
             TyKind::Bool => f.write_str("bool"),
             TyKind::Unit => f.write_str("()"),

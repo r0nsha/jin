@@ -65,6 +65,13 @@ impl<'db> Resolver<'db> {
         mk("i32", &|db| db.types.i32);
         mk("i64", &|db| db.types.i64);
         mk("int", &|db| db.types.int);
+
+        mk("u8", &|db| db.types.u8);
+        mk("u16", &|db| db.types.u16);
+        mk("u32", &|db| db.types.u32);
+        mk("u64", &|db| db.types.u64);
+        mk("uint", &|db| db.types.uint);
+
         mk("bool", &|db| db.types.bool);
     }
 

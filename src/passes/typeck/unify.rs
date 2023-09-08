@@ -3,7 +3,7 @@ use ena::unify::{EqUnifyValue, UnifyKey};
 use crate::{
     passes::typeck::{error::InferError, infcx::InferCtxt, normalize::NormalizeTy},
     span::Span,
-    ty::{InferTy, IntTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
+    ty::{InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
 };
 
 impl<'db> InferCtxt<'db> {
@@ -112,13 +112,9 @@ impl UnifyCtxt<'_, '_> {
         };
 
         match (a.kind(), b.kind()) {
-            (TyKind::Bool, TyKind::Bool)
-            | (TyKind::Unit, TyKind::Unit)
-            | (TyKind::Int(IntTy::I8), TyKind::Int(IntTy::I8))
-            | (TyKind::Int(IntTy::I16), TyKind::Int(IntTy::I16))
-            | (TyKind::Int(IntTy::I32), TyKind::Int(IntTy::I32))
-            | (TyKind::Int(IntTy::I64), TyKind::Int(IntTy::I64))
-            | (TyKind::Int(IntTy::Int), TyKind::Int(IntTy::Int)) => Ok(()),
+            (TyKind::Bool, TyKind::Bool) | (TyKind::Unit, TyKind::Unit) => Ok(()),
+            (TyKind::Uint(a), TyKind::Uint(b)) if a == b => Ok(()),
+            (TyKind::Int(a), TyKind::Int(b)) if a == b => Ok(()),
 
             (TyKind::Fn(ref fex), TyKind::Fn(ref fact)) => {
                 self.unify_ty_ty(fex.ret, fact.ret)?;
@@ -162,6 +158,17 @@ impl UnifyCtxt<'_, '_> {
                     .borrow_mut()
                     .int_unification_table
                     .unify_var_value(*var, Some(IntVarValue::Int(*ity)))?;
+                Ok(())
+            }
+
+            // Unify ?int ~ uint
+            (TyKind::Uint(uty), TyKind::Infer(InferTy::IntVar(var)))
+            | (TyKind::Infer(InferTy::IntVar(var)), TyKind::Uint(uty)) => {
+                self.infcx
+                    .inner
+                    .borrow_mut()
+                    .int_unification_table
+                    .unify_var_value(*var, Some(IntVarValue::Uint(*uty)))?;
                 Ok(())
             }
 

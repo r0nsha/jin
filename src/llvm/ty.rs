@@ -5,7 +5,7 @@ use inkwell::{
 
 use crate::{
     llvm::{generate::Generator, inkwell_ext::ContextExt},
-    ty::{FnTy, IntTy, TyKind},
+    ty::{FnTy, IntTy, TyKind, UintTy},
 };
 
 impl<'db, 'cx> Generator<'db, 'cx> {
@@ -25,12 +25,13 @@ pub trait LlvmTy<'db, 'cx, T> {
 impl<'db, 'cx> LlvmTy<'db, 'cx, BasicTypeEnum<'cx>> for TyKind {
     fn llvm_ty(&self, cx: &Generator<'db, 'cx>) -> BasicTypeEnum<'cx> {
         match self {
-            Self::Int(inner) => inner.llvm_ty(cx).into(),
+            Self::Int(ity) => ity.llvm_ty(cx).into(),
+            Self::Uint(uty) => uty.llvm_ty(cx).into(),
             Self::Fn(_) => cx.context.ptr_type(AddressSpace::default()).into(),
             Self::Bool => cx.context.bool_type().into(),
             Self::Unit => cx.unit_ty().into(),
             Self::Never => cx.never_ty().into(),
-            _ => panic!("unexpected type {self:?}"),
+            _ => panic!("unexpected type: {self:?}"),
         }
     }
 }
@@ -43,6 +44,18 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, IntType<'cx>> for IntTy {
             Self::I32 => cx.context.i32_type(),
             Self::I64 => cx.context.i64_type(),
             Self::Int => cx.isize_ty,
+        }
+    }
+}
+
+impl<'db, 'cx> LlvmTy<'db, 'cx, IntType<'cx>> for UintTy {
+    fn llvm_ty(&self, cx: &Generator<'db, 'cx>) -> IntType<'cx> {
+        match self {
+            Self::U8 => cx.context.i8_type(),
+            Self::U16 => cx.context.i16_type(),
+            Self::U32 => cx.context.i32_type(),
+            Self::U64 => cx.context.i64_type(),
+            Self::Uint => cx.isize_ty,
         }
     }
 }
