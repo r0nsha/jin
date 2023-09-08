@@ -77,6 +77,7 @@ pub enum Expr {
     Block(Block),
     Call(Call),
     BinOp(BinOp),
+    Cast(Cast),
     Name(Name),
     Lit(Lit),
 }
@@ -85,13 +86,14 @@ impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
             Self::Item(x) => x.span(),
-            Self::Return(x) => x.span,
-            Self::If(x) => x.span,
-            Self::Block(x) => x.span,
-            Self::Call(x) => x.span,
-            Self::BinOp(x) => x.span,
             Self::Name(x) => x.name.span(),
-            Self::Lit(x) => x.span,
+            Self::Return(Return { span, .. })
+            | Self::If(If { span, .. })
+            | Self::Block(Block { span, .. })
+            | Self::Call(Call { span, .. })
+            | Self::BinOp(BinOp { span, .. })
+            | Self::Cast(Cast { span, .. })
+            | Self::Lit(Lit { span, .. }) => *span,
         }
     }
 
@@ -103,6 +105,7 @@ impl Spanned for Expr {
             Self::Block(x) => &mut x.span,
             Self::Call(x) => &mut x.span,
             Self::BinOp(x) => &mut x.span,
+            Self::Cast(x) => &mut x.span,
             Self::Name(x) => x.name.span_mut(),
             Self::Lit(x) => &mut x.span,
         }
@@ -307,6 +310,13 @@ impl TryFrom<TokenKind> for BinOpKind {
 }
 
 #[derive(Debug, Clone)]
+pub struct Cast {
+    pub expr: Box<Expr>,
+    pub ty: Ty,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
 pub struct Name {
     pub id: Option<DefId>,
     pub name: Word,
@@ -333,6 +343,20 @@ pub enum Ty {
     Unit(Span),
     Never(Span),
     Infer(Span),
+}
+
+impl Spanned for Ty {
+    fn span(&self) -> Span {
+        match self {
+            Ty::Name(TyName { span, .. }) | Ty::Unit(span) | Ty::Never(span) | Ty::Infer(span) => {
+                *span
+            }
+        }
+    }
+
+    fn span_mut(&mut self) -> &mut Span {
+        todo!()
+    }
 }
 
 #[derive(Debug, Clone)]

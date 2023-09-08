@@ -117,6 +117,11 @@ impl PPCtxt<'_> {
                 self.pp_expr(&bin.rhs);
                 self.builder.end_child();
             }
+            ExprKind::Cast(cast) => {
+                self.builder.begin_child(format!("cast (to: {})", expr.ty.display(self.db)));
+                self.pp_expr(&cast.expr);
+                self.builder.end_child();
+            }
             ExprKind::Name(name) => {
                 self.builder.add_empty_child(format!(
                     "`{}` (type: {})",

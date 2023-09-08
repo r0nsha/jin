@@ -131,6 +131,9 @@ impl Expr {
                 rhs: Box::new(bin.rhs.rewrite_(f)),
                 op: bin.op,
             }),
+            ExprKind::Cast(cast) => {
+                ExprKind::Cast(Cast { expr: Box::new(cast.expr.rewrite_(f)), ty: cast.ty.clone() })
+            }
             kind => kind.clone(),
         };
 
@@ -167,6 +170,7 @@ impl Expr {
                 bin.lhs.walk_(f);
                 bin.rhs.walk_(f);
             }
+            ExprKind::Cast(cast) => cast.expr.walk_(f),
             ExprKind::Name(_) | ExprKind::Lit(_) => (),
         }
 
@@ -203,6 +207,7 @@ impl Expr {
                 bin.lhs.walk_mut_(f);
                 bin.rhs.walk_mut_(f);
             }
+            ExprKind::Cast(cast) => cast.expr.walk_mut_(f),
             ExprKind::Name(_) | ExprKind::Lit(_) => (),
         }
 
@@ -217,6 +222,7 @@ pub enum ExprKind {
     Return(Return),
     Call(Call),
     BinOp(BinOp),
+    Cast(Cast),
     Name(Name),
     Lit(Lit),
 }
@@ -296,6 +302,12 @@ pub struct BinOp {
     pub lhs: Box<Expr>,
     pub rhs: Box<Expr>,
     pub op: BinOpKind,
+}
+
+#[derive(Debug, Clone)]
+pub struct Cast {
+    pub expr: Box<Expr>,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone)]

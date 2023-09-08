@@ -2,8 +2,8 @@ use crate::{
     ast,
     db::Db,
     hir::{
-        BinOp, Block, Call, CallArg, Expr, ExprKind, Fn, FnParam, FnSig, Hir, ExprId, If, Item,
-        ItemKind, Lit, LitKind, Name, Return, Ty, TyName, TyParam,
+        BinOp, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Hir, If,
+        Item, ItemKind, Lit, LitKind, Name, Return, Ty, TyName, TyParam,
     },
     span::{Span, Spanned},
     ty::Instantiation,
@@ -140,6 +140,11 @@ impl Lower<'_, Expr> for ast::Expr {
                     rhs: Box::new(rhs.lower(cx)),
                     op,
                 });
+                cx.expr(kind, span)
+            }
+            Self::Cast(ast::Cast { expr, ty, span }) => {
+                let kind =
+                    ExprKind::Cast(Cast { expr: Box::new(expr.lower(cx)), ty: ty.lower(cx) });
                 cx.expr(kind, span)
             }
             Self::Name(ast::Name { id, name: _, args, span }) => {

@@ -44,6 +44,9 @@ impl<S: SubstTy> Subst<S> for Expr {
                 bin.lhs.subst(s);
                 bin.rhs.subst(s);
             }
+            ExprKind::Cast(cast) => {
+                cast.expr.subst(s);
+            }
             ExprKind::Name(name) => {
                 for ty in name.instantiation.values_mut() {
                     *ty = s.subst_ty(*ty, self.span);

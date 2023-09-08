@@ -225,6 +225,9 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
                 let callee = self.lower_expr(&call.callee);
                 self.bx.build_call(expr.ty, callee, args, expr.span)
             }
+            hir::ExprKind::Cast(cast) => {
+                todo!()
+            }
             hir::ExprKind::BinOp(bin) => {
                 let lhs = self.lower_expr(&bin.lhs);
 

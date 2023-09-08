@@ -58,6 +58,7 @@ impl<'s> Lexer<'s> {
                     '{' => TokenKind::OpenCurly,
                     '}' => TokenKind::CloseCurly,
                     ',' => TokenKind::Comma,
+                    '.' => TokenKind::Dot,
                     '=' => {
                         if self.eat('=') {
                             TokenKind::EqEq

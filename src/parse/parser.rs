@@ -3,8 +3,8 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        BinOp, BinOpKind, Block, Call, CallArg, Expr, Fn, FnParam, FnSig, If, Item, Lit, LitKind,
-        Module, Name, Return, Ty, TyName, TyParam,
+        BinOp, BinOpKind, Block, Call, CallArg, Cast, Expr, Fn, FnParam, FnSig, If, Item, Lit,
+        LitKind, Module, Name, Return, Ty, TyName, TyParam,
     },
     common::{QPath, Word},
     db::Db,
@@ -351,18 +351,31 @@ impl<'a> Parser<'a> {
         let start = self.last_span();
 
         match self.token() {
-            Some(tok @ Token { kind: TokenKind::OpenParen, .. })
-                if self.are_on_same_line(start, tok.span) =>
-            {
-                self.parse_call(expr)
-            }
+            Some(tok) => match tok.kind {
+                TokenKind::OpenParen if self.are_on_same_line(start, tok.span) => {
+                    self.parse_call(expr)
+                }
+                TokenKind::Dot => {
+                    self.next();
+                    let tok = self.require()?;
+
+                    if self.is(TokenKind::OpenBracket) {
+                        let ty = self.parse_ty()?;
+                        let end = self.eat(TokenKind::CloseBracket)?.span;
+                        let span = expr.span().merge(end);
+                        Ok(Expr::Cast(Cast { expr: Box::new(expr), ty, span }))
+                    } else {
+                        Err(ParseError::UnexpectedToken {
+                            expected: "an identifier or [".to_owned(),
+                            found: tok.kind,
+                            span: tok.span,
+                        })
+                    }
+                }
+                _ => Ok(expr),
+            },
             _ => Ok(expr),
         }
-        // if self.is_and_same_line(TokenKind::OpenParen, expr.span()) {
-        //     self.parse_call(expr)
-        // } else {
-        //     Ok(expr)
-        // }
     }
 
     fn parse_call(&mut self, expr: Expr) -> ParseResult<Expr> {

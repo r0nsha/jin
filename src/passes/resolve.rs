@@ -4,8 +4,8 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     ast::{
-        Ast, BinOp, Block, Call, CallArg, Expr, Fn, FnSig, If, Item, Module, Name, Return, Ty,
-        TyName, TyParam,
+        Ast, BinOp, Block, Call, CallArg, Cast, Expr, Fn, FnSig, If, Item, Module, Name, Return,
+        Ty, TyName, TyParam,
     },
     common::{QPath, Word},
     db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
@@ -217,6 +217,7 @@ impl Resolve<'_> for Expr {
             Self::Return(inner) => inner.resolve(cx, env),
             Self::Call(inner) => inner.resolve(cx, env),
             Self::BinOp(inner) => inner.resolve(cx, env),
+            Self::Cast(inner) => inner.resolve(cx, env),
             Self::Name(inner) => inner.resolve(cx, env),
             Self::Lit(..) => (),
         }
@@ -310,6 +311,13 @@ impl Resolve<'_> for BinOp {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         self.lhs.resolve(cx, env);
         self.rhs.resolve(cx, env);
+    }
+}
+
+impl Resolve<'_> for Cast {
+    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
+        self.expr.resolve(cx, env);
+        self.ty.resolve(cx, env);
     }
 }
 

@@ -55,9 +55,6 @@ impl PrettyPrint for Expr {
                 cx.builder.end_child();
             }
             Self::Block(blk) => blk.pretty_print(cx),
-            Self::Name(name) => {
-                cx.builder.add_empty_child(format!("`{}`", name.name));
-            }
             Self::Call(call) => {
                 cx.builder.begin_child("call".to_string());
                 call.callee.pretty_print(cx);
@@ -84,6 +81,17 @@ impl PrettyPrint for Expr {
                 bin.lhs.pretty_print(cx);
                 bin.rhs.pretty_print(cx);
                 cx.builder.end_child();
+            }
+            Self::Cast(cast) => {
+                cx.builder.begin_child("cast".to_string());
+                cast.expr.pretty_print(cx);
+                cx.builder.begin_child("to".to_string());
+                cast.ty.pretty_print(cx);
+                cx.builder.end_child();
+                cx.builder.end_child();
+            }
+            Self::Name(name) => {
+                cx.builder.add_empty_child(format!("`{}`", name.name));
             }
             Self::Lit(lit) => match lit.kind {
                 LitKind::Int(value) => {

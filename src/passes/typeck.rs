@@ -275,6 +275,9 @@ impl InferCtxt<'_> {
                     _ => bin.lhs.ty,
                 }
             }
+            ExprKind::Cast(cast) => {
+                todo!()
+            }
             ExprKind::Name(name) => {
                 let def_ty = self.lookup(name.id);
                 let ty = def_ty.normalize(&mut self.inner.borrow_mut());

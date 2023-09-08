@@ -40,8 +40,9 @@ pub enum TokenKind {
     OpenCurly,
     CloseCurly,
     Comma,
+    Dot,
 
-    // defs
+    // Operators
     Eq,
     EqEq,
     Bang,
@@ -94,6 +95,7 @@ impl fmt::Display for TokenKind {
             Self::OpenCurly => f.write_char('{'),
             Self::CloseCurly => f.write_char('}'),
             Self::Comma => f.write_char(','),
+            Self::Dot => f.write_char('.'),
             Self::Eq => f.write_char('='),
             Self::EqEq => f.write_str("=="),
             Self::Bang => f.write_str("!"),
