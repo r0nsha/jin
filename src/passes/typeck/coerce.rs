@@ -15,6 +15,7 @@ pub trait CoerceExt<'db> {
 impl CoerceExt<'_> for EqResult<()> {
     fn or_coerce(self, infcx: &mut InferCtxt, expr_id: ExprId) -> Self {
         let inner = &mut infcx.inner.borrow_mut();
+        let target_metrics = infcx.db.target_metrics();
 
         match self {
             Ok(res) => Ok(res),
@@ -27,6 +28,15 @@ impl CoerceExt<'_> for EqResult<()> {
                         infcx.db.push_coercion(
                             expr_id,
                             Coercion { kind: CoercionKind::NeverToAny, target },
+                        );
+                        Ok(())
+                    }
+                    (TyKind::Int(isource), TyKind::Int(itarget))
+                        if itarget.size(target_metrics) >= isource.size(target_metrics) =>
+                    {
+                        infcx.db.push_coercion(
+                            expr_id,
+                            Coercion { kind: CoercionKind::IntPromotion, target },
                         );
                         Ok(())
                     }

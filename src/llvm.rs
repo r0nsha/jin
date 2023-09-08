@@ -70,7 +70,7 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> PathBuf {
 }
 
 fn create_target_machine(db: &Db) -> Option<TargetMachine> {
-    let target_metrics = db.build_options().target_metrics;
+    let target_metrics = db.target_metrics();
 
     match &target_metrics.arch {
         Arch::Amd64 | Arch::_386 => Target::initialize_x86(&InitializationConfig::default()),
@@ -117,7 +117,7 @@ fn build_exe(db: &mut Db, target_machine: &TargetMachine, module: &Module) -> Pa
         module.print_to_file(output_path.with_extension("ll")).expect("printing llvm ir to work");
     }
 
-    let (object_file, output_file) = if db.build_options().target_metrics.os == Os::Windows {
+    let (object_file, output_file) = if db.target_metrics().os == Os::Windows {
         (output_path.with_extension("obj"), output_path.with_extension("exe"))
     } else {
         (output_path.with_extension("o"), output_path.with_extension(""))
@@ -128,7 +128,7 @@ fn build_exe(db: &mut Db, target_machine: &TargetMachine, module: &Module) -> Pa
         .write_to_file(module, FileType::Object, &object_file)
         .expect("writing the object file to work");
 
-    link(&db.build_options().target_metrics, &output_file, &object_file);
+    link(db.target_metrics(), &output_file, &object_file);
     db.time.stop();
 
     let _ = std::fs::remove_file(object_file);

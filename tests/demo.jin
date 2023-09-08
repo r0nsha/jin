@@ -56,4 +56,7 @@ fn int_types() = {
 
 	fn demote_inferred(x int) i8 = x.as(_)
 	demote_inferred(129)
+
+	fn auto_promote(x i16) i32 = x
+	auto_promote(4688)
 }

@@ -12,7 +12,7 @@ use enum_as_inner::EnumAsInner;
 use internment::Intern;
 use ustr::Ustr;
 
-use crate::{db::Db, ty::printer::TyPrinter};
+use crate::{common::target::TargetMetrics, db::Db, ty::printer::TyPrinter};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Ty(Intern<TyKind>);
@@ -200,14 +200,13 @@ pub enum IntTy {
 }
 
 impl IntTy {
-    pub fn size(self) -> usize {
-        #[allow(clippy::match_same_arms)]
+    pub fn size(self, target_metrics: &TargetMetrics) -> usize {
         match self {
             IntTy::I8 => 8,
             IntTy::I16 => 16,
             IntTy::I32 => 32,
             IntTy::I64 => 64,
-            IntTy::Int => 64, // TODO: decide by target
+            IntTy::Int => target_metrics.word_size,
         }
     }
 }

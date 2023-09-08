@@ -1,4 +1,8 @@
-use crate::{hir::Expr, ty::Ty};
+use crate::{
+    hir,
+    hir::{Cast, Expr, ExprKind},
+    ty::Ty,
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Coercions(Vec<Coercion>);
@@ -17,11 +21,21 @@ impl Coercions {
     }
 
     pub fn apply(&self, mut expr: Expr) -> Expr {
-        for adj in &self.0 {
-            expr = match adj.kind {
+        for coercion in &self.0 {
+            expr = match coercion.kind {
                 CoercionKind::NeverToAny => expr,
+                CoercionKind::IntPromotion => Expr {
+                    id: expr.id,
+                    span: expr.span,
+                    ty: coercion.target,
+                    kind: ExprKind::Cast(Cast {
+                        // NOTE: used a dummy Ty node here...
+                        ty: hir::Ty::Infer(expr.span),
+                        expr: Box::new(expr),
+                    }),
+                },
             };
-            expr.ty = adj.target;
+            expr.ty = coercion.target;
         }
 
         expr
@@ -43,4 +57,5 @@ pub struct Coercion {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CoercionKind {
     NeverToAny,
+    IntPromotion,
 }

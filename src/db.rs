@@ -15,7 +15,11 @@ use path_absolutize::Absolutize;
 use ustr::Ustr;
 
 use crate::{
-    common::{new_key_type, IndexVec, QPath},
+    common::{
+        new_key_type,
+        target::{TargetMetrics, TargetPlatform},
+        IndexVec, QPath,
+    },
     db::{
         build_options::{BuildOptions, EmitOption},
         timing::Timings,
@@ -78,6 +82,14 @@ impl Db {
 
     pub fn build_options(&self) -> &BuildOptions {
         &self.build_options
+    }
+
+    pub fn target_platform(&self) -> &TargetPlatform {
+        &self.build_options.target_platform
+    }
+
+    pub fn target_metrics(&self) -> &TargetMetrics {
+        &self.build_options.target_metrics
     }
 
     pub fn output_path(&self) -> PathBuf {
