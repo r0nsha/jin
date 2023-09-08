@@ -48,14 +48,12 @@ fn polymorphism() = {
 }
 
 fn int_types() = {
-	fn a(x i8) i8 = x
-	a(126)
+	fn id(x i8) i8 = x
+	id(126)
 
-	# fn b(x i32) i64 = x.[i64]
-	fn b(x i32) i64 = x.[_]
-	b(55554)
+	fn promote(x i32) i64 = x.[i64]
+	promote(55554)
 
-	# fn c(x int) i8 = x.[i8]
-	fn c(x int) i8 = x.[_]
-	c(129)
+	fn demote_inferred(x int) i8 = x.[_]
+	demote_inferred(129)
 }
