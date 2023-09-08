@@ -76,6 +76,7 @@ pub enum Expr {
     If(If),
     Block(Block),
     Call(Call),
+    UnaryOp(UnaryOp),
     BinOp(BinOp),
     Cast(Cast),
     Name(Name),
@@ -91,6 +92,7 @@ impl Spanned for Expr {
             | Self::If(If { span, .. })
             | Self::Block(Block { span, .. })
             | Self::Call(Call { span, .. })
+            | Self::UnaryOp(UnaryOp { span, .. })
             | Self::BinOp(BinOp { span, .. })
             | Self::Cast(Cast { span, .. })
             | Self::Lit(Lit { span, .. }) => *span,
@@ -104,6 +106,7 @@ impl Spanned for Expr {
             Self::If(x) => &mut x.span,
             Self::Block(x) => &mut x.span,
             Self::Call(x) => &mut x.span,
+            Self::UnaryOp(x) => &mut x.span,
             Self::BinOp(x) => &mut x.span,
             Self::Cast(x) => &mut x.span,
             Self::Name(x) => x.name.span_mut(),
@@ -271,6 +274,34 @@ pub enum CmpOp {
     Le,
     Gt,
     Ge,
+}
+
+#[derive(Debug, Clone)]
+pub struct UnaryOp {
+    pub expr: Box<Expr>,
+    pub op: UnaryOpKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum UnaryOpKind {
+    Neg,
+    Not,
+}
+
+impl fmt::Display for UnaryOpKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl UnaryOpKind {
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Self::Neg => "-",
+            Self::Not => "!",
+        }
+    }
 }
 
 impl fmt::Display for BinOpKind {

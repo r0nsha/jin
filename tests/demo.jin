@@ -31,7 +31,7 @@ fn int_types() = {
 }
 
 fn unary() = {
-	fn neg() int = -54878
+	fn neg() int = -(48 + 2).as(int) / 1
 	neg()
 
 	# fn not() bool = !true

@@ -3,7 +3,7 @@ use crate::{
     db::Db,
     hir::{
         BinOp, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Hir, If,
-        Item, ItemKind, Lit, LitKind, Name, Return, Ty, TyName, TyParam,
+        Item, ItemKind, Lit, LitKind, Name, Return, Ty, TyName, TyParam, UnaryOp,
     },
     span::{Span, Spanned},
     ty::Instantiation,
@@ -132,6 +132,10 @@ impl Lower<'_, Expr> for ast::Expr {
                     callee: Box::new(callee.lower(cx)),
                     args: args.into_iter().map(|arg| arg.lower(cx)).collect(),
                 });
+                cx.expr(kind, span)
+            }
+            Self::UnaryOp(ast::UnaryOp { expr, op, span }) => {
+                let kind = ExprKind::UnaryOp(UnaryOp { expr: Box::new(expr.lower(cx)), op });
                 cx.expr(kind, span)
             }
             Self::BinOp(ast::BinOp { lhs, rhs, op, span }) => {

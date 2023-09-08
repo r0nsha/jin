@@ -107,6 +107,15 @@ impl PPCtxt<'_> {
 
                 self.builder.end_child();
             }
+            ExprKind::UnaryOp(un) => {
+                self.builder.begin_child(format!(
+                    "{} (result: {})",
+                    un.op,
+                    expr.ty.display(self.db)
+                ));
+                self.pp_expr(&un.expr);
+                self.builder.end_child();
+            }
             ExprKind::BinOp(bin) => {
                 self.builder.begin_child(format!(
                     "{} (result: {})",

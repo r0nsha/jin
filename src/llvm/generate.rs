@@ -16,7 +16,7 @@ use crate::{
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
     mir::{
         BinOp, Block, BlockId, BoolLit, Br, BrIf, Call, Cast, Function, Inst, IntLit, Load, Mir,
-        Phi, Return, UnitLit, Unreachable, ValueId,
+        Neg, Phi, Return, UnitLit, Unreachable, ValueId,
     },
     ty::Ty,
 };
@@ -212,6 +212,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
             Self::Call(inner) => inner.codegen(cx, state),
             Self::Cast(inner) => inner.codegen(cx, state),
             Self::Load(inner) => inner.codegen(cx, state),
+            Self::Neg(inner) => inner.codegen(cx, state),
             Self::BinOp(inner) => inner.codegen(cx, state),
             Self::IntLit(inner) => inner.codegen(cx, state),
             Self::BoolLit(inner) => inner.codegen(cx, state),
@@ -343,6 +344,14 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Load {
         };
 
         state.set_value(self.value, value);
+    }
+}
+
+impl<'db, 'cx> Codegen<'db, 'cx> for Neg {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        let operand = state.value(self.operand).into_int_value();
+        let result = cx.bx.build_int_neg(operand, "result");
+        state.set_value(self.value, result.into());
     }
 }
 

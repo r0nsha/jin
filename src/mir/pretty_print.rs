@@ -114,6 +114,10 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
                 .append(RcDoc::text("load"))
                 .append(RcDoc::space())
                 .append(load.id.to_doc(db, f)),
+            Self::Neg(neg) => value_alloc(db, f, neg.value)
+                .append(RcDoc::text("-"))
+                .append(RcDoc::space())
+                .append(neg.operand.to_doc(db, f)),
             Self::BinOp(bin) => value_alloc(db, f, bin.value)
                 .append(RcDoc::text(bin_instruction_name(bin.op)))
                 .append(RcDoc::space())

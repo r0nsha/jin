@@ -4,7 +4,7 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         BinOp, BinOpKind, Block, Call, CallArg, Cast, Expr, Fn, FnParam, FnSig, If, Item, Lit,
-        LitKind, Module, Name, Return, Ty, TyName, TyParam,
+        LitKind, Module, Name, Return, Ty, TyName, TyParam, UnaryOp, UnaryOpKind,
     },
     common::{QPath, Word},
     db::Db,
@@ -260,6 +260,15 @@ impl<'a> Parser<'a> {
         let expr = match tok.kind {
             TokenKind::Return => Expr::Return(self.parse_return()?),
             TokenKind::If => Expr::If(self.parse_if()?),
+            TokenKind::Minus => {
+                let expr = self.parse_operand()?;
+
+                Expr::UnaryOp(UnaryOp {
+                    span: tok.span.merge(expr.span()),
+                    expr: Box::new(expr),
+                    op: UnaryOpKind::Neg,
+                })
+            }
             TokenKind::OpenParen => {
                 if self.is(TokenKind::CloseParen) {
                     Expr::Lit(Lit { kind: LitKind::Unit, span: tok.span.merge(self.last_span()) })

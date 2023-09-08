@@ -7,7 +7,7 @@ use enum_as_inner::EnumAsInner;
 pub use lower::lower;
 
 use crate::{
-    ast::BinOpKind,
+    ast::{BinOpKind, UnaryOpKind},
     common::{new_key_type, Word},
     db::{Db, DefId},
     span::{Span, Spanned},
@@ -126,6 +126,9 @@ impl Expr {
                     })
                     .collect(),
             }),
+            ExprKind::UnaryOp(un) => {
+                ExprKind::UnaryOp(UnaryOp { expr: Box::new(un.expr.rewrite_(f)), op: un.op })
+            }
             ExprKind::BinOp(bin) => ExprKind::BinOp(BinOp {
                 lhs: Box::new(bin.lhs.rewrite_(f)),
                 rhs: Box::new(bin.rhs.rewrite_(f)),
@@ -166,6 +169,7 @@ impl Expr {
                     arg.expr.walk_(f);
                 }
             }
+            ExprKind::UnaryOp(un) => un.expr.walk_(f),
             ExprKind::BinOp(bin) => {
                 bin.lhs.walk_(f);
                 bin.rhs.walk_(f);
@@ -203,6 +207,7 @@ impl Expr {
                     arg.expr.walk_mut_(f);
                 }
             }
+            ExprKind::UnaryOp(un) => un.expr.walk_mut_(f),
             ExprKind::BinOp(bin) => {
                 bin.lhs.walk_mut_(f);
                 bin.rhs.walk_mut_(f);
@@ -221,6 +226,7 @@ pub enum ExprKind {
     Block(Block),
     Return(Return),
     Call(Call),
+    UnaryOp(UnaryOp),
     BinOp(BinOp),
     Cast(Cast),
     Name(Name),
@@ -295,6 +301,12 @@ impl Typed for CallArg {
     fn ty_mut(&mut self) -> &mut ty::Ty {
         &mut self.expr.ty
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct UnaryOp {
+    pub expr: Box<Expr>,
+    pub op: UnaryOpKind,
 }
 
 #[derive(Debug, Clone)]

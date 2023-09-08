@@ -229,6 +229,10 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
                 let operand = self.lower_expr(&cast.expr);
                 self.bx.build_cast(expr.ty, operand, expr.span)
             }
+            hir::ExprKind::UnaryOp(un) => {
+                let operand = self.lower_expr(&un.expr);
+                self.bx.build_neg(expr.ty, operand, expr.span)
+            }
             hir::ExprKind::BinOp(bin) => {
                 let lhs = self.lower_expr(&bin.lhs);
 

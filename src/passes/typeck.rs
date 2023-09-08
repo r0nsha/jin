@@ -9,7 +9,7 @@ mod unify;
 use ustr::UstrMap;
 
 use crate::{
-    ast::BinOpKind,
+    ast::{BinOpKind, UnaryOpKind},
     db::{Db, DefId, DefKind},
     diagnostics::Diagnostic,
     hir::{self, Expr, ExprKind, Fn, FnSig, Hir, ItemKind, LitKind},
@@ -246,6 +246,26 @@ impl InferCtxt<'_> {
                     });
                 }
             }
+            ExprKind::UnaryOp(un) => {
+                self.infer_expr(&mut un.expr, fx)?;
+
+                match un.op {
+                    UnaryOpKind::Neg => {
+                        // TODO: Only allow signed integers (need traits)
+                        self.at(Obligation::obvious(un.expr.span))
+                            .eq(self.fresh_int_var(), un.expr.ty)
+                            .or_coerce(self, un.expr.id)?;
+                    }
+                    UnaryOpKind::Not => {
+                        // TODO: Allow bitnot (integers)
+                        self.at(Obligation::obvious(un.expr.span))
+                            .eq(self.db.types.bool, un.expr.ty)
+                            .or_coerce(self, un.expr.id)?;
+                    }
+                }
+
+                un.expr.ty
+            }
             ExprKind::BinOp(bin) => {
                 self.infer_expr(&mut bin.lhs, fx)?;
                 self.infer_expr(&mut bin.rhs, fx)?;
@@ -255,7 +275,6 @@ impl InferCtxt<'_> {
                     .or_coerce(self, bin.rhs.id)?;
 
                 match bin.op {
-                    BinOpKind::Cmp(..) => (),
                     BinOpKind::And | BinOpKind::Or => {
                         self.at(Obligation::obvious(bin.lhs.span))
                             .eq(self.db.types.bool, bin.lhs.ty)
@@ -267,6 +286,7 @@ impl InferCtxt<'_> {
                     }
                     _ => {
                         // TODO: type check arithmetic operations
+                        // TODO: type check cmp operations
                     }
                 }
 

@@ -5,7 +5,7 @@ use ustr::{ustr, Ustr, UstrMap};
 use crate::{
     ast::{
         Ast, BinOp, Block, Call, CallArg, Cast, Expr, Fn, FnSig, If, Item, Module, Name, Return,
-        Ty, TyName, TyParam,
+        Ty, TyName, TyParam, UnaryOp,
     },
     common::{QPath, Word},
     db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
@@ -223,6 +223,7 @@ impl Resolve<'_> for Expr {
             Self::Block(inner) => inner.resolve(cx, env),
             Self::Return(inner) => inner.resolve(cx, env),
             Self::Call(inner) => inner.resolve(cx, env),
+            Self::UnaryOp(inner) => inner.resolve(cx, env),
             Self::BinOp(inner) => inner.resolve(cx, env),
             Self::Cast(inner) => inner.resolve(cx, env),
             Self::Name(inner) => inner.resolve(cx, env),
@@ -311,6 +312,12 @@ impl Resolve<'_> for Call {
                 CallArg::Named(_, expr) | CallArg::Positional(expr) => expr.resolve(cx, env),
             }
         }
+    }
+}
+
+impl Resolve<'_> for UnaryOp {
+    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
+        self.expr.resolve(cx, env);
     }
 }
 
