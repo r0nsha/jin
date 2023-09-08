@@ -269,6 +269,15 @@ impl<'a> Parser<'a> {
                     op: UnaryOpKind::Neg,
                 })
             }
+            TokenKind::Bang => {
+                let expr = self.parse_operand()?;
+
+                Expr::UnaryOp(UnaryOp {
+                    span: tok.span.merge(expr.span()),
+                    expr: Box::new(expr),
+                    op: UnaryOpKind::Not,
+                })
+            }
             TokenKind::OpenParen => {
                 if self.is(TokenKind::CloseParen) {
                     Expr::Lit(Lit { kind: LitKind::Unit, span: tok.span.merge(self.last_span()) })

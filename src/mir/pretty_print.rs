@@ -118,6 +118,10 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
                 .append(RcDoc::text("-"))
                 .append(RcDoc::space())
                 .append(neg.operand.to_doc(db, f)),
+            Self::Not(not) => value_alloc(db, f, not.value)
+                .append(RcDoc::text("!"))
+                .append(RcDoc::space())
+                .append(not.operand.to_doc(db, f)),
             Self::BinOp(bin) => value_alloc(db, f, bin.value)
                 .append(RcDoc::text(bin_instruction_name(bin.op)))
                 .append(RcDoc::space())

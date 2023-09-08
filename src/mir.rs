@@ -153,6 +153,7 @@ pub enum Inst {
     Cast(Cast),
     Load(Load),
     Neg(Neg),
+    Not(Not),
     BinOp(BinOp),
     IntLit(IntLit),
     BoolLit(BoolLit),
@@ -220,6 +221,14 @@ pub struct Load {
 
 #[derive(Debug, Clone)]
 pub struct Neg {
+    pub value: ValueId,
+    pub operand: ValueId,
+    #[allow(unused)]
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct Not {
     pub value: ValueId,
     pub operand: ValueId,
     #[allow(unused)]

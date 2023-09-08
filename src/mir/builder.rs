@@ -7,7 +7,7 @@ use crate::{
     db::DefId,
     mir::{
         BinOp, Block, BlockId, BoolLit, Br, BrIf, Call, Cast, Function, FunctionParam, Inst,
-        IntLit, Load, Neg, Phi, PhiValue, Return, UnitLit, Unreachable, Value, ValueId,
+        IntLit, Load, Neg, Not, Phi, PhiValue, Return, UnitLit, Unreachable, Value, ValueId,
     },
     span::Span,
     ty::Ty,
@@ -168,6 +168,12 @@ impl FunctionBuilder {
     pub fn build_neg(&mut self, ty: Ty, operand: ValueId, span: Span) -> ValueId {
         let value = self.create_value(ty);
         self.current_block_mut().add_inst(Inst::Neg(Neg { value, operand, span }));
+        value
+    }
+
+    pub fn build_not(&mut self, ty: Ty, operand: ValueId, span: Span) -> ValueId {
+        let value = self.create_value(ty);
+        self.current_block_mut().add_inst(Inst::Not(Not { value, operand, span }));
         value
     }
 

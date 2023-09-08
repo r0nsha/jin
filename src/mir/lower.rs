@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use ustr::ustr;
 
 use crate::{
-    ast::BinOpKind,
+    ast::{BinOpKind, UnaryOpKind},
     db::{Db, Def},
     hir::{self, Hir},
     mir::{builder::FunctionBuilder, DefId, Function, Mir, ValueId},
@@ -231,7 +231,10 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
             }
             hir::ExprKind::UnaryOp(un) => {
                 let operand = self.lower_expr(&un.expr);
-                self.bx.build_neg(expr.ty, operand, expr.span)
+                match un.op {
+                    UnaryOpKind::Neg => self.bx.build_neg(expr.ty, operand, expr.span),
+                    UnaryOpKind::Not => self.bx.build_not(expr.ty, operand, expr.span),
+                }
             }
             hir::ExprKind::BinOp(bin) => {
                 let lhs = self.lower_expr(&bin.lhs);

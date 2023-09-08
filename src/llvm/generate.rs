@@ -16,7 +16,7 @@ use crate::{
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
     mir::{
         BinOp, Block, BlockId, BoolLit, Br, BrIf, Call, Cast, Function, Inst, IntLit, Load, Mir,
-        Neg, Phi, Return, UnitLit, Unreachable, ValueId,
+        Neg, Not, Phi, Return, UnitLit, Unreachable, ValueId,
     },
     ty::Ty,
 };
@@ -213,6 +213,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
             Self::Cast(inner) => inner.codegen(cx, state),
             Self::Load(inner) => inner.codegen(cx, state),
             Self::Neg(inner) => inner.codegen(cx, state),
+            Self::Not(inner) => inner.codegen(cx, state),
             Self::BinOp(inner) => inner.codegen(cx, state),
             Self::IntLit(inner) => inner.codegen(cx, state),
             Self::BoolLit(inner) => inner.codegen(cx, state),
@@ -295,7 +296,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
                         .as_pointer_value()
                         .into(),
                     if let BasicValueEnum::IntValue(v) = result_value {
-                        cx.bx.build_int_cast(v, cx.isize_ty, "cast_to_i64").into()
+                        cx.bx.build_int_cast_sign_flag(v, cx.isize_ty, false, "cast_to_i64").into()
                     } else {
                         result_value.into()
                     },
@@ -351,6 +352,14 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Neg {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         let operand = state.value(self.operand).into_int_value();
         let result = cx.bx.build_int_neg(operand, "result");
+        state.set_value(self.value, result.into());
+    }
+}
+
+impl<'db, 'cx> Codegen<'db, 'cx> for Not {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        let operand = state.value(self.operand).into_int_value();
+        let result = cx.bx.build_not(operand, "result");
         state.set_value(self.value, result.into());
     }
 }
