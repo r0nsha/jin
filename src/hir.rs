@@ -45,16 +45,6 @@ impl Spanned for Item {
     }
 }
 
-// impl Typed for Item {
-//     fn ty(&self) -> ty::Ty {
-//         self.kind.ty()
-//     }
-//
-//     fn ty_mut(&mut self) -> &mut ty::Ty {
-//         self.kind.ty_mut()
-//     }
-// }
-
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum ItemKind {
     Fn(Fn),
@@ -76,22 +66,6 @@ impl Spanned for ItemKind {
         }
     }
 }
-
-// impl Typed for ItemKind {
-//     fn ty(&self) -> ty::Ty {
-//         match self {
-//             Self::Fn(x) => x.ty,
-//             Self::Let(x) => x.ty,
-//         }
-//     }
-//
-//     fn ty_mut(&mut self) -> &mut ty::Ty {
-//         match self {
-//             Self::Fn(x) => &mut x.ty,
-//             Self::Let(x) => &mut x.ty,
-//         }
-//     }
-// }
 
 #[derive(Debug, Clone)]
 pub struct Expr {

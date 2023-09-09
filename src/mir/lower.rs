@@ -106,7 +106,12 @@ impl<'db> LowerCtxt<'db> {
                 .map(|t| t.to_string(self.db))
                 .collect::<Vec<String>>()
                 .join("_");
-            def.qpath.clone().with_name(ustr(&format!("{}${}", def.name, args_str)))
+
+            if args_str.is_empty() {
+                def.qpath.clone()
+            } else {
+                def.qpath.clone().with_name(ustr(&format!("{}${}", def.name, args_str)))
+            }
         } else {
             def.qpath.clone()
         };
