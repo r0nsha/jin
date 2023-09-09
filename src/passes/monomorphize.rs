@@ -61,7 +61,7 @@ impl<'db> Collector<'db> {
                     self.collect_uses_in_fn(f, instantiation);
                 }
             }
-            ItemKind::Let(_) => (),
+            ItemKind::Let(l) => self.collect_uses(&l.value, instantiation),
         }
     }
 

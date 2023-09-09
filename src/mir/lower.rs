@@ -181,7 +181,13 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
 
                 match &let_.pat {
                     Pat::Name(name) => {
-                        self.bx.build_stack_alloc(name.id, value, let_.span);
+                        dbg!(self.inner.db[name.id].ty);
+                        let id = self.inner.get_mono_def(
+                            &MonoItem { id: name.id, ty: let_.value.ty },
+                            &Instantiation::new(),
+                        );
+
+                        self.bx.build_stack_alloc(id, value, let_.span);
                     }
                 }
 

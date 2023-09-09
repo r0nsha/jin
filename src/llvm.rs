@@ -42,6 +42,9 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> PathBuf {
 
     let builder = context.create_builder();
 
+    let unit_ty = context.opaque_struct_type("unit");
+    unit_ty.set_body(&[], false);
+
     let mut cx = Generator {
         db,
         mir,
@@ -49,6 +52,7 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> PathBuf {
         module: &module,
         bx: &builder,
         isize_ty: context.ptr_sized_int_type(&target_machine.get_target_data(), None),
+        unit_ty,
         def_values: HashMap::default(),
     };
 

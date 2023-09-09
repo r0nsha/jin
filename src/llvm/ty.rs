@@ -9,12 +9,14 @@ use crate::{
 };
 
 impl<'db, 'cx> Generator<'db, 'cx> {
+    #[inline]
     pub fn unit_ty(&self) -> StructType<'cx> {
-        self.context.struct_type(&[], false)
+        self.unit_ty
     }
 
+    #[inline]
     pub fn never_ty(&self) -> StructType<'cx> {
-        self.unit_ty()
+        self.unit_ty
     }
 }
 
