@@ -151,6 +151,7 @@ pub enum Inst {
     Phi(Phi),
     Call(Call),
     Cast(Cast),
+    StackAlloc(StackAlloc),
     Load(Load),
     Neg(Neg),
     Not(Not),
@@ -206,6 +207,15 @@ pub struct Call {
 #[derive(Debug, Clone)]
 pub struct Cast {
     pub value: ValueId,
+    pub operand: ValueId,
+    #[allow(unused)]
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct StackAlloc {
+    pub value: ValueId,
+    pub id: DefId,
     pub operand: ValueId,
     #[allow(unused)]
     pub span: Span,

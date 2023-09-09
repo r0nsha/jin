@@ -5,7 +5,7 @@ use ustr::ustr;
 use crate::{
     ast::{BinOpKind, UnaryOpKind},
     db::{Db, Def},
-    hir::{self, Hir},
+    hir::{self, Hir, Pat},
     mir::{builder::FunctionBuilder, DefId, Function, Mir, ValueId},
     passes::{
         subst::{ParamFolder, Subst},
@@ -172,7 +172,12 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
     fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
         match &expr.kind {
             hir::ExprKind::Let(let_) => {
-                todo!()
+                let value = self.lower_expr(&let_.value);
+                match &let_.pat {
+                    Pat::Name(name) => {
+                        self.bx.build_stack_alloc(let_.value.ty, name.id, value, let_.span)
+                    }
+                }
             }
             hir::ExprKind::If(if_) => {
                 let cond = self.lower_expr(&if_.cond);
