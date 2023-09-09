@@ -102,10 +102,19 @@ impl Lower<'_, Expr> for ast::Expr {
             Self::Item(item) => {
                 let span = item.span();
                 let item = item.lower(cx);
-                cx.hir.items.push(item);
-                // TODO: We need to create a dummy value because we must return an expression.
-                // Maybe we can avoid this since we know that this must be a block statement?
-                cx.expr(ExprKind::Lit(Lit { kind: LitKind::Unit }), span)
+
+                match item.kind {
+                    ItemKind::Fn(_) => {
+                        cx.hir.items.push(item);
+                        // TODO: We need to create a dummy value because we must return an expression.
+                        // Maybe we can avoid this since we know that this must be a block statement?
+                        cx.expr(ExprKind::Lit(Lit { kind: LitKind::Unit }), span)
+                    }
+                    ItemKind::Let(let_) => {
+                        let span = let_.span;
+                        cx.expr(ExprKind::Let(let_), span)
+                    }
+                }
             }
             Self::Return(ret) => {
                 let span = ret.span;

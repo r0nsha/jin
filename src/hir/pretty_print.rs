@@ -53,6 +53,11 @@ impl PPCtxt<'_> {
 
     fn pp_expr(&mut self, expr: &Expr) {
         match &expr.kind {
+            ExprKind::Let(let_) => {
+                self.builder.begin_child(format!("let (type: {})", let_.value.ty.display(self.db)));
+                self.pp_expr(&let_.value);
+                self.builder.end_child();
+            }
             ExprKind::If(if_) => {
                 self.builder.begin_child("if".to_string());
 

@@ -12,7 +12,7 @@ use crate::{
     ast::{BinOpKind, UnaryOpKind},
     db::{Db, DefId, DefKind},
     diagnostics::Diagnostic,
-    hir::{self, Expr, ExprKind, Fn, FnSig, Hir, ItemKind, LitKind},
+    hir::{self, Expr, ExprKind, Fn, FnSig, Hir, ItemKind, LitKind, Pat},
     passes::typeck::{
         coerce::CoerceExt, error::InferError, infcx::InferCtxt, instantiate::instantiate,
         normalize::NormalizeTy, unify::Obligation,
@@ -32,7 +32,7 @@ pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
 fn typeck_inner(db: &mut Db, hir: &mut Hir) -> InferResult<()> {
     let mut cx = InferCtxt::new(db);
 
-    cx.typeck_fn_sigs(hir)?;
+    cx.typeck_defs(hir)?;
     cx.typeck_fn_bodies(hir)?;
 
     cx.subst(hir);
@@ -41,7 +41,7 @@ fn typeck_inner(db: &mut Db, hir: &mut Hir) -> InferResult<()> {
 }
 
 impl InferCtxt<'_> {
-    fn typeck_fn_sigs(&mut self, hir: &mut Hir) -> InferResult<()> {
+    fn typeck_defs(&mut self, hir: &mut Hir) -> InferResult<()> {
         for item in &mut hir.items {
             match &mut item.kind {
                 ItemKind::Fn(fun) => {
@@ -125,6 +125,25 @@ impl InferCtxt<'_> {
 
     fn infer_expr(&mut self, expr: &mut Expr, fx: &mut FnCtxt) -> InferResult<()> {
         let ty = match &mut expr.kind {
+            ExprKind::Let(let_) => {
+                let ty = if let Some(ty) = &let_.ty_annot {
+                    self.typeck_ty(ty)?
+                } else {
+                    self.fresh_ty_var()
+                };
+
+                self.infer_expr(&mut let_.value, fx)?;
+
+                self.at(Obligation::obvious(let_.value.span))
+                    .eq(ty, let_.value.ty)
+                    .or_coerce(self, let_.value.id)?;
+
+                match &let_.pat {
+                    Pat::Name(name) => self.db[name.id].ty = ty,
+                }
+
+                ty
+            }
             ExprKind::If(if_) => {
                 self.infer_expr(&mut if_.cond, fx)?;
 

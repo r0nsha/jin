@@ -255,6 +255,11 @@ impl Resolve<'_> for Let {
         self.pat.walk(|pat| {
             env.insert(pat.word.name(), pat.id.unwrap());
         });
+
+        if let Some(ty) = &mut self.ty_annot {
+            ty.resolve(cx, env);
+        }
+
         self.value.resolve(cx, env);
     }
 }

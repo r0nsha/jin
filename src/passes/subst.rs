@@ -17,6 +17,9 @@ pub trait Subst<S: SubstTy> {
 impl<S: SubstTy> Subst<S> for Expr {
     fn subst(&mut self, s: &mut S) {
         match &mut self.kind {
+            ExprKind::Let(let_) => {
+                let_.value.subst(s);
+            }
             ExprKind::If(if_) => {
                 if_.cond.subst(s);
                 if_.then.subst(s);

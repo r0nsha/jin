@@ -171,6 +171,9 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
         match &expr.kind {
+            hir::ExprKind::Let(let_) => {
+                todo!()
+            }
             hir::ExprKind::If(if_) => {
                 let cond = self.lower_expr(&if_.cond);
 

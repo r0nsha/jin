@@ -108,6 +108,13 @@ impl Expr {
 
     fn rewrite_(self, f: &mut impl FnMut(Self) -> Self) -> Self {
         let kind = match self.kind {
+            ExprKind::Let(let_) => ExprKind::Let(Let {
+                pat: let_.pat.clone(),
+                ty_annot: let_.ty_annot.clone(),
+                value: Box::new(let_.value.rewrite_(f)),
+                span: let_.span,
+                ty: let_.ty,
+            }),
             ExprKind::If(if_) => ExprKind::If(If {
                 cond: Box::new(if_.cond.rewrite_(f)),
                 then: Box::new(if_.then.rewrite_(f)),
@@ -154,6 +161,7 @@ impl Expr {
 
     fn walk_(&self, f: &mut impl FnMut(&Expr)) {
         match &self.kind {
+            ExprKind::Let(let_) => let_.value.walk_(f),
             ExprKind::If(if_) => {
                 if_.cond.walk_(f);
                 if_.then.walk_(f);
@@ -192,6 +200,7 @@ impl Expr {
 
     fn walk_mut_(&mut self, f: &mut impl FnMut(&mut Expr)) {
         match &mut self.kind {
+            ExprKind::Let(let_) => let_.value.walk_mut_(f),
             ExprKind::If(if_) => {
                 if_.cond.walk_mut_(f);
                 if_.then.walk_mut_(f);
@@ -227,6 +236,7 @@ impl Expr {
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum ExprKind {
+    Let(Let),
     If(If),
     Block(Block),
     Return(Return),
