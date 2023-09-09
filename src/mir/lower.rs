@@ -173,6 +173,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
         match &expr.kind {
             hir::ExprKind::Let(let_) => {
                 let value = self.lower_expr(&let_.value);
+
                 match &let_.pat {
                     Pat::Name(name) => {
                         self.bx.build_stack_alloc(let_.value.ty, name.id, value, let_.span)
