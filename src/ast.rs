@@ -159,7 +159,7 @@ pub struct Let {
 #[derive(Debug, Clone)]
 pub enum Pat {
     Name(NamePat),
-    // Ignore(Span)
+    Ignore(Span),
 }
 
 impl Pat {
@@ -170,6 +170,7 @@ impl Pat {
     fn walk_(&self, f: &mut impl FnMut(&NamePat)) {
         match self {
             Pat::Name(n) => f(n),
+            Pat::Ignore(_) => (),
         }
     }
 }
@@ -184,6 +185,7 @@ impl fmt::Display for Pat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Pat::Name(n) => n.word.fmt(f),
+            Pat::Ignore(_) => f.write_str("_"),
         }
     }
 }

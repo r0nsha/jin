@@ -188,6 +188,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
 
                         self.bx.build_stack_alloc(id, value, let_.span);
                     }
+                    Pat::Ignore(_) => (),
                 }
 
                 self.bx.build_unit_lit(let_.ty, let_.span)

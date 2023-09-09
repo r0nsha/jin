@@ -135,6 +135,7 @@ impl InferCtxt<'_> {
 
         match &let_.pat {
             Pat::Name(name) => self.db[name.id].ty = ty,
+            Pat::Ignore(_) => (),
         }
 
         let_.ty = self.db.types.unit;

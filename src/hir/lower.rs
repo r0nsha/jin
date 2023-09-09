@@ -199,9 +199,10 @@ impl Lower<'_, Let> for ast::Let {
 impl Lower<'_, Pat> for ast::Pat {
     fn lower(self, _cx: &mut LowerCtxt<'_>) -> Pat {
         match self {
-            ast::Pat::Name(n) => {
-                Pat::Name(NamePat { id: n.id.expect("to be resolved"), word: n.word })
+            ast::Pat::Name(name) => {
+                Pat::Name(NamePat { id: name.id.expect("to be resolved"), word: name.word })
             }
+            ast::Pat::Ignore(span) => Pat::Ignore(span),
         }
     }
 }

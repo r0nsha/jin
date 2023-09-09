@@ -99,6 +99,7 @@ impl<'a> Parser<'a> {
 
         match tok.kind {
             TokenKind::Ident(_) => Ok(Pat::Name(NamePat { id: None, word: tok.spanned_word() })),
+            TokenKind::Underscore => Ok(Pat::Ignore(tok.span)),
             _ => Err(ParseError::UnexpectedToken {
                 expected: "a pattern".to_string(),
                 found: tok.kind,
