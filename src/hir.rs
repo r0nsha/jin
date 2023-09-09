@@ -87,7 +87,6 @@ impl Expr {
                 ty_annot: let_.ty_annot.clone(),
                 value: Box::new(let_.value.rewrite_(f)),
                 span: let_.span,
-                ty: let_.ty,
             }),
             ExprKind::If(if_) => ExprKind::If(If {
                 cond: Box::new(if_.cond.rewrite_(f)),
@@ -258,7 +257,6 @@ pub struct Let {
     pub ty_annot: Option<Ty>,
     pub value: Box<Expr>,
     pub span: Span,
-    pub ty: ty::Ty, // TODO: remove
 }
 
 #[derive(Debug, Clone)]

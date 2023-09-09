@@ -138,8 +138,6 @@ impl InferCtxt<'_> {
             Pat::Ignore(_) => (),
         }
 
-        let_.ty = self.db.types.unit;
-
         Ok(())
     }
 

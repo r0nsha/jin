@@ -95,7 +95,6 @@ impl<S: SubstTy> Subst<S> for FnSig {
 impl<S: SubstTy> Subst<S> for Let {
     fn subst(&mut self, s: &mut S) {
         self.value.subst(s);
-        self.ty = s.subst_ty(self.ty, self.span);
 
         match &self.pat {
             Pat::Name(name) => s.db()[name.id].ty = self.value.ty,

@@ -191,7 +191,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
                     Pat::Ignore(_) => (),
                 }
 
-                self.bx.build_unit_lit(let_.ty, let_.span)
+                self.bx.build_unit_lit(expr.ty, let_.span)
             }
             hir::ExprKind::If(if_) => {
                 let cond = self.lower_expr(&if_.cond);

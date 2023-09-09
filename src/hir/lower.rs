@@ -191,7 +191,6 @@ impl Lower<'_, Let> for ast::Let {
             ty_annot: self.ty_annot.map(|t| t.lower(cx)),
             value: Box::new(self.value.lower(cx)),
             span: self.span,
-            ty: cx.db.types.unknown,
         }
     }
 }
