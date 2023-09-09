@@ -66,9 +66,9 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> PathBuf {
     }
 
     // TODO: release mode
-    // cx.db.timings.start("llvm optimizations");
+    // cx.db.time.start("llvm optimizations");
     // optimize(cx.module);
-    // cx.db.timings.stop();
+    // cx.db.time.stop();
 
     build_exe(db, &target_machine, &module)
 }

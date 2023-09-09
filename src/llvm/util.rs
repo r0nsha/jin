@@ -17,7 +17,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     }
 
     pub fn unit_value(&self) -> StructValue<'cx> {
-        self.context.const_struct(&[], false)
+        self.unit_ty.const_named_struct(&[])
     }
 
     pub fn current_block_is_terminating(&self) -> bool {
