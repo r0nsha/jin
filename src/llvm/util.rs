@@ -1,7 +1,7 @@
 use inkwell::{
     basic_block::BasicBlock,
     types::BasicTypeEnum,
-    values::{BasicValueEnum, StructValue},
+    values::{BasicValueEnum, PointerValue, StructValue},
 };
 
 use crate::llvm::generate::{FunctionState, Generator};
@@ -30,8 +30,8 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         }
     }
 
-    pub fn undef_value(typ: BasicTypeEnum<'cx>) -> BasicValueEnum<'cx> {
-        match typ {
+    pub fn undef_value(ty: BasicTypeEnum<'cx>) -> BasicValueEnum<'cx> {
+        match ty {
             BasicTypeEnum::ArrayType(array) => array.get_undef().into(),
             BasicTypeEnum::FloatType(float) => float.get_undef().into(),
             BasicTypeEnum::IntType(int) => int.get_undef().into(),
@@ -39,6 +39,18 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             BasicTypeEnum::StructType(tuple) => tuple.get_undef().into(),
             BasicTypeEnum::VectorType(vector) => vector.get_undef().into(),
         }
+    }
+
+    pub fn build_stack_alloc(
+        &self,
+        state: &FunctionState<'cx>,
+        ty: BasicTypeEnum<'cx>,
+        name: &str,
+    ) -> PointerValue<'cx> {
+        self.bx.position_at_end(state.prologue_block);
+        let ptr = self.bx.build_alloca(ty, name);
+        self.bx.position_at_end(state.current_block);
+        ptr
     }
 
     // #[allow(unused)]

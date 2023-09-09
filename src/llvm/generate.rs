@@ -161,7 +161,6 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         }
 
         let prologue_block = self.context.append_basic_block(function_value, "decls");
-        self.bx.position_at_end(prologue_block);
 
         let mut blocks = HashMap::default();
 
@@ -170,13 +169,14 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             blocks.insert(blk.id, bb);
         }
 
-        self.bx.build_unconditional_branch(blocks[&BlockId::first()]);
-
         let mut state = FunctionState::new(id, function_value, prologue_block, blocks);
 
         for blk in fun.blocks() {
             blk.codegen(self, &mut state);
         }
+
+        self.bx.position_at_end(prologue_block);
+        self.bx.build_unconditional_branch(state.blocks[&BlockId::first()]);
 
         function_value.as_global_value().as_pointer_value().into()
     }
@@ -346,7 +346,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for StackAlloc {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         let def = &cx.db[self.id];
         let ty = def.ty.llvm_ty(cx);
-        let ptr = cx.bx.build_alloca(ty, &def.qpath.full_c_name());
+        let ptr = cx.build_stack_alloc(state, ty, &def.qpath.full_c_name());
         cx.bx.build_store(ptr, state.value(self.operand));
         cx.def_values.insert(self.id, DefValue::Alloca(ptr, ty));
     }
