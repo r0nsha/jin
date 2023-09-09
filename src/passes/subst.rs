@@ -1,6 +1,6 @@
 use crate::{
     db::Db,
-    hir::{Expr, ExprKind, Fn, FnSig, Item, ItemKind},
+    hir::{Expr, ExprKind, Fn, FnSig, Item, ItemKind, Let, Pat},
     span::{Span, Spanned},
     ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };
@@ -17,9 +17,7 @@ pub trait Subst<S: SubstTy> {
 impl<S: SubstTy> Subst<S> for Expr {
     fn subst(&mut self, s: &mut S) {
         match &mut self.kind {
-            ExprKind::Let(let_) => {
-                let_.value.subst(s);
-            }
+            ExprKind::Let(let_) => let_.subst(s),
             ExprKind::If(if_) => {
                 if_.cond.subst(s);
                 if_.then.subst(s);
@@ -90,6 +88,17 @@ impl<S: SubstTy> Subst<S> for FnSig {
         for param in &mut self.params {
             param.ty = s.subst_ty(param.ty, param.span);
             s.db()[param.id].ty = param.ty;
+        }
+    }
+}
+
+impl<S: SubstTy> Subst<S> for Let {
+    fn subst(&mut self, s: &mut S) {
+        self.value.subst(s);
+        self.ty = s.subst_ty(self.ty, self.span);
+
+        match &self.pat {
+            Pat::Name(name) => s.db()[name.id].ty = self.ty,
         }
     }
 }

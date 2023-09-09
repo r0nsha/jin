@@ -214,7 +214,6 @@ pub struct Cast {
 
 #[derive(Debug, Clone)]
 pub struct StackAlloc {
-    pub value: ValueId,
     pub id: DefId,
     pub operand: ValueId,
     #[allow(unused)]

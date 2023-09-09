@@ -160,21 +160,8 @@ impl FunctionBuilder {
         value
     }
 
-    pub fn build_stack_alloc(
-        &mut self,
-        ty: Ty,
-        id: DefId,
-        operand: ValueId,
-        span: Span,
-    ) -> ValueId {
-        let value = self.create_value(ty);
-        self.current_block_mut().add_inst(Inst::StackAlloc(StackAlloc {
-            value,
-            id,
-            operand,
-            span,
-        }));
-        value
+    pub fn build_stack_alloc(&mut self, id: DefId, operand: ValueId, span: Span) {
+        self.current_block_mut().add_inst(Inst::StackAlloc(StackAlloc { id, operand, span }));
     }
 
     pub fn build_load(&mut self, ty: Ty, id: DefId, span: Span) -> ValueId {

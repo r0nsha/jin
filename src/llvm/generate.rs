@@ -6,7 +6,7 @@ use inkwell::{
     context::Context,
     module::{Linkage, Module},
     types::{BasicTypeEnum, IntType},
-    values::{AnyValue, BasicValue, BasicValueEnum, FunctionValue},
+    values::{AnyValue, BasicValue, BasicValueEnum, FunctionValue, PointerValue},
     AddressSpace, IntPredicate,
 };
 
@@ -16,7 +16,7 @@ use crate::{
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
     mir::{
         BinOp, Block, BlockId, BoolLit, Br, BrIf, Call, Cast, Function, Inst, IntLit, Load, Mir,
-        Neg, Not, Phi, Return, UnitLit, Unreachable, ValueId,
+        Neg, Not, Phi, Return, StackAlloc, UnitLit, Unreachable, ValueId,
     },
     ty::Ty,
 };
@@ -36,14 +36,17 @@ pub struct Generator<'db, 'cx> {
 #[derive(Debug, Clone, Copy)]
 pub enum DefValue<'cx> {
     Function(FunctionValue<'cx>),
-    Variable(BasicValueEnum<'cx>),
+    Alloca(PointerValue<'cx>, BasicTypeEnum<'cx>),
+    Value(BasicValueEnum<'cx>),
 }
 
 impl<'cx> DefValue<'cx> {
     pub fn as_function_value(self) -> FunctionValue<'cx> {
         match self {
             DefValue::Function(f) => f,
-            DefValue::Variable(..) => panic!("expected Function, found {self:?}"),
+            DefValue::Alloca(..) | DefValue::Value(..) => {
+                panic!("expected Function, found {self:?}")
+            }
         }
     }
 }
@@ -153,7 +156,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         );
 
         for (param, value) in fun.params().iter().zip(function_value.get_param_iter()) {
-            self.def_values.insert(param.id(), DefValue::Variable(value));
+            self.def_values.insert(param.id(), DefValue::Value(value));
         }
 
         let prologue_block = self.context.append_basic_block(function_value, "decls");
@@ -211,6 +214,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
             Self::Phi(inner) => inner.codegen(cx, state),
             Self::Call(inner) => inner.codegen(cx, state),
             Self::Cast(inner) => inner.codegen(cx, state),
+            Self::StackAlloc(inner) => inner.codegen(cx, state),
             Self::Load(inner) => inner.codegen(cx, state),
             Self::Neg(inner) => inner.codegen(cx, state),
             Self::Not(inner) => inner.codegen(cx, state),
@@ -337,11 +341,23 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Cast {
     }
 }
 
+impl<'db, 'cx> Codegen<'db, 'cx> for StackAlloc {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, _state: &mut FunctionState<'cx>) {
+        let def = &cx.db[self.id];
+        let ty = def.ty.llvm_ty(cx);
+        let ptr = cx.bx.build_alloca(ty, &def.qpath.full_c_name());
+        cx.def_values.insert(self.id, DefValue::Alloca(ptr, ty));
+    }
+}
+
 impl<'db, 'cx> Codegen<'db, 'cx> for Load {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         let value = match cx.def_value(self.id) {
             DefValue::Function(f) => f.as_global_value().as_pointer_value().as_basic_value_enum(),
-            DefValue::Variable(v) => v,
+            DefValue::Alloca(p, ty) => {
+                cx.bx.build_load(ty, p, &format!("load_{}", cx.db[self.id].name))
+            }
+            DefValue::Value(v) => v,
         };
 
         state.set_value(self.value, value);

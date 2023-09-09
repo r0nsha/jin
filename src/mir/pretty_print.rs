@@ -110,6 +110,11 @@ impl<'db, 'd> ToDoc<'db, 'd> for Inst {
                 .append(RcDoc::text("->"))
                 .append(RcDoc::space())
                 .append(f.value(cast.value).unwrap().ty.to_doc(db, f)),
+            Self::StackAlloc(sa) => RcDoc::text("stackalloc")
+                .append(RcDoc::space())
+                .append(sa.id.to_doc(db, f))
+                .append(RcDoc::space())
+                .append(sa.operand.to_doc(db, f)),
             Self::Load(load) => value_alloc(db, f, load.value)
                 .append(RcDoc::text("load"))
                 .append(RcDoc::space())

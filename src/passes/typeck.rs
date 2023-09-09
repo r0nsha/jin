@@ -142,7 +142,7 @@ impl InferCtxt<'_> {
                     Pat::Name(name) => self.db[name.id].ty = ty,
                 }
 
-                ty
+                self.db.types.unit
             }
             ExprKind::If(if_) => {
                 self.infer_expr(&mut if_.cond, fx)?;
