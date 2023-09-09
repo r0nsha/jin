@@ -59,6 +59,7 @@ pub fn apply_coercions(db: &Db, hir: &mut Hir) {
                     }
                 });
             }
+            ItemKind::Let(_) => todo!(),
         }
     }
 }

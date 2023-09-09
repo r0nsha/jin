@@ -48,6 +48,7 @@ impl InferCtxt<'_> {
                     fun.ty = self.typeck_fn_sig(&mut fun.sig)?;
                     self.db[fun.id].ty = fun.ty;
                 }
+                ItemKind::Let(_) => todo!(),
             }
         }
 
@@ -88,6 +89,7 @@ impl InferCtxt<'_> {
                 ItemKind::Fn(f) => {
                     self.typeck_fn(f)?;
                 }
+                ItemKind::Let(_) => todo!(),
             }
         }
 

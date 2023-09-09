@@ -66,6 +66,7 @@ impl<S: SubstTy> Subst<S> for Item {
     fn subst(&mut self, s: &mut S) {
         match &mut self.kind {
             ItemKind::Fn(fun) => fun.subst(s),
+            ItemKind::Let(_) => todo!(),
         }
 
         self.ty = s.subst_ty(self.ty, self.span());

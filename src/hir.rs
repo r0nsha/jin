@@ -1,7 +1,7 @@
 mod lower;
 mod pretty_print;
 
-use std::{collections::HashMap, io};
+use std::{collections::HashMap, fmt, io};
 
 use enum_as_inner::EnumAsInner;
 pub use lower::lower;
@@ -45,48 +45,53 @@ impl Spanned for Item {
     }
 }
 
-impl Typed for Item {
-    fn ty(&self) -> ty::Ty {
-        self.kind.ty()
-    }
-
-    fn ty_mut(&mut self) -> &mut ty::Ty {
-        self.kind.ty_mut()
-    }
-}
+// impl Typed for Item {
+//     fn ty(&self) -> ty::Ty {
+//         self.kind.ty()
+//     }
+//
+//     fn ty_mut(&mut self) -> &mut ty::Ty {
+//         self.kind.ty_mut()
+//     }
+// }
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum ItemKind {
     Fn(Fn),
+    Let(Let),
 }
 
 impl Spanned for ItemKind {
     fn span(&self) -> Span {
         match self {
             Self::Fn(x) => x.span,
+            Self::Let(x) => x.span,
         }
     }
 
     fn span_mut(&mut self) -> &mut Span {
         match self {
             Self::Fn(x) => &mut x.span,
+            Self::Let(x) => &mut x.span,
         }
     }
 }
 
-impl Typed for ItemKind {
-    fn ty(&self) -> ty::Ty {
-        match self {
-            Self::Fn(x) => x.ty,
-        }
-    }
-
-    fn ty_mut(&mut self) -> &mut ty::Ty {
-        match self {
-            Self::Fn(x) => &mut x.ty,
-        }
-    }
-}
+// impl Typed for ItemKind {
+//     fn ty(&self) -> ty::Ty {
+//         match self {
+//             Self::Fn(x) => x.ty,
+//             Self::Let(x) => x.ty,
+//         }
+//     }
+//
+//     fn ty_mut(&mut self) -> &mut ty::Ty {
+//         match self {
+//             Self::Fn(x) => &mut x.ty,
+//             Self::Let(x) => &mut x.ty,
+//         }
+//     }
+// }
 
 #[derive(Debug, Clone)]
 pub struct Expr {
@@ -261,6 +266,47 @@ pub struct FnParam {
     pub ty_annot: Ty,
     pub span: Span,
     pub ty: ty::Ty, // TODO: Remove
+}
+
+#[derive(Debug, Clone)]
+pub struct Let {
+    pub pat: Pat,
+    pub ty_annot: Option<Ty>,
+    pub value: Box<Expr>,
+    pub span: Span,
+    pub ty: ty::Ty, // TODO: remove
+}
+
+#[derive(Debug, Clone)]
+pub enum Pat {
+    Name(NamePat),
+    // Ignore(Span)
+}
+
+impl Pat {
+    pub fn walk(&self, mut f: impl FnMut(&NamePat)) {
+        self.walk_(&mut f);
+    }
+
+    fn walk_(&self, f: &mut impl FnMut(&NamePat)) {
+        match self {
+            Pat::Name(n) => f(n),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct NamePat {
+    pub id: DefId,
+    pub word: Word,
+}
+
+impl fmt::Display for Pat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Pat::Name(n) => n.word.fmt(f),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

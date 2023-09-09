@@ -3,7 +3,8 @@ use crate::{
     db::Db,
     hir::{
         BinOp, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Hir, If,
-        Item, ItemKind, Lit, LitKind, Name, Return, Ty, TyName, TyParam, UnaryOp,
+        Item, ItemKind, Let, Lit, LitKind, Name, NamePat, Pat, Return, Ty, TyName, TyParam,
+        UnaryOp,
     },
     span::{Span, Spanned},
     ty::Instantiation,
@@ -50,7 +51,7 @@ impl Lower<'_, Item> for ast::Item {
         Item {
             kind: match self {
                 Self::Fn(fun) => ItemKind::Fn(fun.lower(cx)),
-                Self::Let(_) => todo!(),
+                Self::Let(let_) => ItemKind::Let(let_.lower(cx)),
             },
             ty: cx.db.types.unknown,
         }
@@ -170,6 +171,28 @@ impl Lower<'_, Expr> for ast::Expr {
                 }),
                 span,
             ),
+        }
+    }
+}
+
+impl Lower<'_, Let> for ast::Let {
+    fn lower(self, cx: &mut LowerCtxt<'_>) -> Let {
+        Let {
+            pat: self.pat.lower(cx),
+            ty_annot: self.ty_annot.map(|t| t.lower(cx)),
+            value: Box::new(self.value.lower(cx)),
+            span: self.span,
+            ty: cx.db.types.unknown,
+        }
+    }
+}
+
+impl Lower<'_, Pat> for ast::Pat {
+    fn lower(self, _cx: &mut LowerCtxt<'_>) -> Pat {
+        match self {
+            ast::Pat::Name(n) => {
+                Pat::Name(NamePat { id: n.id.expect("to be resolved"), word: n.word })
+            }
         }
     }
 }

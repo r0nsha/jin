@@ -32,6 +32,7 @@ impl Context<'_> {
                         }
                     }
                 }),
+                ItemKind::Let(_) => todo!(),
             }
         }
 
@@ -80,7 +81,7 @@ impl Context<'_> {
 
                         break;
                     }
-                    ItemKind::Fn(_) => (),
+                    _ => (),
                 }
             }
         } else {

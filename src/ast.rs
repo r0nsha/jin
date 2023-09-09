@@ -151,7 +151,7 @@ pub struct FnParam {
 #[derive(Debug, Clone)]
 pub struct Let {
     pub pat: Pat,
-    pub ty: Option<Ty>,
+    pub ty_annot: Option<Ty>,
     pub value: Box<Expr>,
     pub span: Span,
 }

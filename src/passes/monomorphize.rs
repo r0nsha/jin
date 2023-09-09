@@ -43,6 +43,7 @@ impl<'db> Collector<'db> {
             .iter()
             .find(|item| match &item.kind {
                 ItemKind::Fn(f) => f.id == id,
+                ItemKind::Let(_) => false,
             })
             .expect("item to exist");
 
@@ -60,6 +61,7 @@ impl<'db> Collector<'db> {
                     self.collect_uses_in_fn(f, instantiation);
                 }
             }
+            ItemKind::Let(_) => (),
         }
     }
 

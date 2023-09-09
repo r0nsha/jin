@@ -151,7 +151,7 @@ impl PrettyPrint for Let {
     fn pretty_print(&self, cx: &mut PPCtxt) {
         cx.builder.begin_child(format!("let {}", self.pat));
 
-        if let Some(ty) = &self.ty {
+        if let Some(ty) = &self.ty_annot {
             cx.builder.begin_child("type".to_string());
             ty.pretty_print(cx);
             cx.builder.end_child();

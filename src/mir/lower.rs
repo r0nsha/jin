@@ -63,6 +63,7 @@ impl<'db> LowerCtxt<'db> {
                     self.lower_fn(fun);
                 }
             }
+            hir::ItemKind::Let(_) => todo!(),
         }
     }
 
@@ -75,6 +76,7 @@ impl<'db> LowerCtxt<'db> {
         // Monomorphize the item if needed
         let found_item = self.hir.items.iter().find(|item| match &item.kind {
             hir::ItemKind::Fn(f) => f.id == mono_item.id,
+            hir::ItemKind::Let(_) => todo!(),
         });
 
         if let Some(item) = found_item {
@@ -88,6 +90,7 @@ impl<'db> LowerCtxt<'db> {
                     // Lower the newly created function to MIR
                     self.lower_fn(&new_fun);
                 }
+                hir::ItemKind::Let(_) => todo!(),
             }
         }
 

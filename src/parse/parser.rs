@@ -91,7 +91,7 @@ impl<'a> Parser<'a> {
 
         let value = self.parse_expr()?;
 
-        Ok(Let { pat, ty, span: start.merge(value.span()), value: Box::new(value) })
+        Ok(Let { pat, ty_annot: ty, span: start.merge(value.span()), value: Box::new(value) })
     }
 
     fn parse_pat(&mut self) -> ParseResult<Pat> {
