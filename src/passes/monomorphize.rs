@@ -57,7 +57,7 @@ impl<'db> Collector<'db> {
     fn collect_uses_in_item(&mut self, item: &Item, instantiation: &Instantiation) {
         match &item.kind {
             ItemKind::Fn(f) => {
-                if !f.ty.is_polymorphic() {
+                if !self.db[f.id].ty.is_polymorphic() {
                     self.collect_uses_in_fn(f, instantiation);
                 }
             }

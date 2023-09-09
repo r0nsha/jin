@@ -59,7 +59,7 @@ impl<'db> LowerCtxt<'db> {
     fn lower_item(&mut self, item: &hir::Item) {
         match &item.kind {
             hir::ItemKind::Fn(fun) => {
-                if !fun.ty.is_polymorphic() {
+                if !self.db[fun.id].ty.is_polymorphic() {
                     self.lower_fn(fun);
                 }
             }
@@ -127,7 +127,10 @@ impl<'db> LowerCtxt<'db> {
     }
 
     fn lower_fn(&mut self, fun: &hir::Fn) {
-        assert!(!fun.ty.is_polymorphic(), "lowering polymorphic functions to MIR is not allowed");
+        assert!(
+            !self.db[fun.id].ty.is_polymorphic(),
+            "lowering polymorphic functions to MIR is not allowed"
+        );
         let fun = LowerFunctionCtxt::new(self, fun.id).lower_fn(fun);
         self.mir.add_function(fun);
     }
@@ -160,7 +163,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
         if !self.bx.current_block().is_terminating() {
             let span = fun.body.span;
 
-            let ret_ty = fun.ty.as_fn().unwrap().ret;
+            let ret_ty = self.inner.db[fun.id].ty.as_fn().unwrap().ret;
             let ret_value = if ret_ty.is_unit() && !self.bx.value(body_value).unwrap().ty.is_unit()
             {
                 self.bx.build_unit_lit(ret_ty, fun.body.span)

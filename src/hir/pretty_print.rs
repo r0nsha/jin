@@ -29,7 +29,7 @@ impl PPCtxt<'_> {
         self.builder.begin_child(format!(
             "fn {} (returns: {})",
             self.db[f.id].qpath,
-            f.ty.as_fn().expect("to be a function").ret.display(self.db)
+            self.db[f.id].ty.as_fn().expect("to be a function").ret.display(self.db)
         ));
 
         if !f.sig.params.is_empty() {

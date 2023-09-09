@@ -227,7 +227,6 @@ pub struct Fn {
     pub sig: FnSig,
     pub body: Expr,
     pub span: Span,
-    pub ty: ty::Ty, // TODO: Remove
 }
 
 #[derive(Debug, Clone)]

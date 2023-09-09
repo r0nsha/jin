@@ -78,8 +78,13 @@ impl<S: SubstTy> Subst<S> for Fn {
     fn subst(&mut self, s: &mut S) {
         self.sig.subst(s);
         self.body.subst(s);
-        self.ty = s.subst_ty(self.ty, self.span);
-        s.db()[self.id].ty = self.ty;
+
+        let ty = {
+            let ty = s.db()[self.id].ty;
+            s.subst_ty(ty, self.span)
+        };
+
+        s.db()[self.id].ty = ty;
     }
 }
 

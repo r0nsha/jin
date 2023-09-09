@@ -68,7 +68,6 @@ impl Lower<'_, Fn> for ast::Fn {
             sig: self.sig.lower(cx),
             body: cx.expr(body, body_span),
             span: self.span,
-            ty: cx.db.types.unknown,
         }
     }
 }

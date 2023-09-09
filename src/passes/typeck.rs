@@ -45,8 +45,8 @@ impl InferCtxt<'_> {
         for item in &mut hir.items {
             match &mut item.kind {
                 ItemKind::Fn(fun) => {
-                    fun.ty = self.typeck_fn_sig(&mut fun.sig)?;
-                    self.db[fun.id].ty = fun.ty;
+                    let ty = self.typeck_fn_sig(&mut fun.sig)?;
+                    self.db[fun.id].ty = ty;
                 }
                 ItemKind::Let(_) => todo!(),
             }
@@ -98,8 +98,8 @@ impl InferCtxt<'_> {
 
     fn typeck_fn(&mut self, f: &mut Fn) -> InferResult<()> {
         if self.db[f.id].scope.level.is_local() {
-            f.ty = self.typeck_fn_sig(&mut f.sig)?;
-            self.db[f.id].ty = f.ty;
+            let ty = self.typeck_fn_sig(&mut f.sig)?;
+            self.db[f.id].ty = ty;
         }
 
         let mut fx = FnCtxt::from_fn(self.db, f);
@@ -116,7 +116,7 @@ impl InferCtxt<'_> {
 
         // If the function's return type is `()`, we want to let the user end the body with
         // whatever expression they want, so that they don't need to end it with a `()`
-        if f.ty.as_fn().unwrap().ret.normalize(&mut self.inner.borrow_mut()).is_unit() {
+        if self.db[f.id].ty.as_fn().unwrap().ret.normalize(&mut self.inner.borrow_mut()).is_unit() {
             Ok(())
         } else {
             unify_body_res.map_err(Into::into)
@@ -397,7 +397,7 @@ impl FnCtxt {
     fn from_fn(db: &Db, fun: &Fn) -> Self {
         FnCtxt {
             id: fun.id,
-            ret_ty: fun.ty.as_fn().unwrap().ret,
+            ret_ty: db[fun.id].ty.as_fn().unwrap().ret,
             ty_params: fun
                 .sig
                 .ty_params
