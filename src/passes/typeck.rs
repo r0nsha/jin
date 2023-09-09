@@ -12,7 +12,7 @@ use crate::{
     ast::{BinOpKind, UnaryOpKind},
     db::{Db, DefId, DefKind},
     diagnostics::Diagnostic,
-    hir::{self, Expr, ExprKind, Fn, FnSig, Hir, ItemKind, LitKind, Pat},
+    hir::{self, Expr, ExprKind, Fn, FnSig, Hir, ItemKind, Let, LitKind, Pat},
     passes::typeck::{
         coerce::CoerceExt, error::InferError, infcx::InferCtxt, instantiate::instantiate,
         normalize::NormalizeTy, unify::Obligation,
@@ -123,25 +123,29 @@ impl InferCtxt<'_> {
         }
     }
 
+    fn typeck_let(&mut self, let_: &mut Let, fx: &mut FnCtxt) -> InferResult<()> {
+        let ty =
+            if let Some(ty) = &let_.ty_annot { self.typeck_ty(ty)? } else { self.fresh_ty_var() };
+
+        self.infer_expr(&mut let_.value, fx)?;
+
+        self.at(Obligation::obvious(let_.value.span))
+            .eq(ty, let_.value.ty)
+            .or_coerce(self, let_.value.id)?;
+
+        match &let_.pat {
+            Pat::Name(name) => self.db[name.id].ty = ty,
+        }
+
+        let_.ty = self.db.types.unit;
+
+        Ok(())
+    }
+
     fn infer_expr(&mut self, expr: &mut Expr, fx: &mut FnCtxt) -> InferResult<()> {
         let ty = match &mut expr.kind {
             ExprKind::Let(let_) => {
-                let ty = if let Some(ty) = &let_.ty_annot {
-                    self.typeck_ty(ty)?
-                } else {
-                    self.fresh_ty_var()
-                };
-
-                self.infer_expr(&mut let_.value, fx)?;
-
-                self.at(Obligation::obvious(let_.value.span))
-                    .eq(ty, let_.value.ty)
-                    .or_coerce(self, let_.value.id)?;
-
-                match &let_.pat {
-                    Pat::Name(name) => self.db[name.id].ty = ty,
-                }
-
+                self.typeck_let(let_, fx)?;
                 self.db.types.unit
             }
             ExprKind::If(if_) => {
