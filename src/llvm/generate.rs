@@ -346,7 +346,6 @@ impl<'db, 'cx> Codegen<'db, 'cx> for StackAlloc {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, _state: &mut FunctionState<'cx>) {
         let def = &cx.db[self.id];
         let ty = def.ty.llvm_ty(cx);
-        dbg!(ty);
         let ptr = cx.bx.build_alloca(ty, &def.qpath.full_c_name());
         cx.def_values.insert(self.id, DefValue::Alloca(ptr, ty));
     }

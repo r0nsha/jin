@@ -181,7 +181,6 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
 
                 match &let_.pat {
                     Pat::Name(name) => {
-                        dbg!(self.inner.db[name.id].ty);
                         let id = self.inner.get_mono_def(
                             &MonoItem { id: name.id, ty: let_.value.ty },
                             &Instantiation::new(),

@@ -98,7 +98,7 @@ impl<S: SubstTy> Subst<S> for Let {
         self.ty = s.subst_ty(self.ty, self.span);
 
         match &self.pat {
-            Pat::Name(name) => s.db()[name.id].ty = self.ty,
+            Pat::Name(name) => s.db()[name.id].ty = self.value.ty,
         }
     }
 }
