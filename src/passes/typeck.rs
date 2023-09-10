@@ -9,7 +9,7 @@ mod unify;
 use ustr::UstrMap;
 
 use crate::{
-    ast::{BinOpKind, UnaryOpKind},
+    ast::{BinOp, UnOp},
     db::{Db, DefId, DefKind},
     diagnostics::Diagnostic,
     hir::{self, Expr, ExprKind, Fn, FnSig, Hir, ItemKind, Let, LitKind, Pat},
@@ -270,17 +270,17 @@ impl InferCtxt<'_> {
                     });
                 }
             }
-            ExprKind::UnaryOp(un) => {
+            ExprKind::Unary(un) => {
                 self.infer_expr(&mut un.expr, fx)?;
 
                 match un.op {
-                    UnaryOpKind::Neg => {
+                    UnOp::Neg => {
                         // TODO: Only allow signed integers (need traits)
                         self.at(Obligation::obvious(un.expr.span))
                             .eq(self.fresh_int_var(), un.expr.ty)
                             .or_coerce(self, un.expr.id)?;
                     }
-                    UnaryOpKind::Not => {
+                    UnOp::Not => {
                         // TODO: Allow bitnot (integers)
                         self.at(Obligation::obvious(un.expr.span))
                             .eq(self.db.types.bool, un.expr.ty)
@@ -290,7 +290,7 @@ impl InferCtxt<'_> {
 
                 un.expr.ty
             }
-            ExprKind::BinOp(bin) => {
+            ExprKind::Binary(bin) => {
                 self.infer_expr(&mut bin.lhs, fx)?;
                 self.infer_expr(&mut bin.rhs, fx)?;
 
@@ -299,7 +299,7 @@ impl InferCtxt<'_> {
                     .or_coerce(self, bin.rhs.id)?;
 
                 match bin.op {
-                    BinOpKind::And | BinOpKind::Or => {
+                    BinOp::And | BinOp::Or => {
                         self.at(Obligation::obvious(bin.lhs.span))
                             .eq(self.db.types.bool, bin.lhs.ty)
                             .or_coerce(self, bin.lhs.id)?;
@@ -315,7 +315,7 @@ impl InferCtxt<'_> {
                 }
 
                 match bin.op {
-                    BinOpKind::Cmp(..) => self.db.types.bool,
+                    BinOp::Cmp(..) => self.db.types.bool,
                     _ => bin.lhs.ty,
                 }
             }

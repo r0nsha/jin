@@ -11,11 +11,11 @@ use inkwell::{
 };
 
 use crate::{
-    ast::{BinOpKind, CmpOp},
+    ast::{BinOp, CmpOp},
     db::{Db, DefId},
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
     mir::{
-        BinOp, Block, BlockId, BoolLit, Br, BrIf, Call, Cast, Function, Inst, IntLit, Load, Mir,
+        Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Cast, Function, Inst, IntLit, Load, Mir,
         Neg, Not, Phi, Return, StackAlloc, UnitLit, Unreachable, ValueId,
     },
     ty::Ty,
@@ -382,7 +382,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Not {
     }
 }
 
-impl<'db, 'cx> Codegen<'db, 'cx> for BinOp {
+impl<'db, 'cx> Codegen<'db, 'cx> for Binary {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         const NAME: &str = "result";
 
@@ -391,31 +391,31 @@ impl<'db, 'cx> Codegen<'db, 'cx> for BinOp {
         let ty = state.value_ty(cx, self.value);
 
         let result = match self.op {
-            BinOpKind::Add => cx.bx.build_int_add(lhs, rhs, NAME),
-            BinOpKind::Sub => cx.bx.build_int_sub(lhs, rhs, NAME),
-            BinOpKind::Mul => cx.bx.build_int_mul(lhs, rhs, NAME),
-            BinOpKind::Div => {
+            BinOp::Add => cx.bx.build_int_add(lhs, rhs, NAME),
+            BinOp::Sub => cx.bx.build_int_sub(lhs, rhs, NAME),
+            BinOp::Mul => cx.bx.build_int_mul(lhs, rhs, NAME),
+            BinOp::Div => {
                 if ty.is_uint() {
                     cx.bx.build_int_unsigned_div(lhs, rhs, NAME)
                 } else {
                     cx.bx.build_int_signed_div(lhs, rhs, NAME)
                 }
             }
-            BinOpKind::Mod => {
+            BinOp::Mod => {
                 if ty.is_uint() {
                     cx.bx.build_int_unsigned_rem(lhs, rhs, NAME)
                 } else {
                     cx.bx.build_int_signed_rem(lhs, rhs, NAME)
                 }
             }
-            BinOpKind::Shl => cx.bx.build_left_shift(lhs, rhs, NAME),
-            BinOpKind::Shr => cx.bx.build_right_shift(lhs, rhs, ty.is_int(), NAME),
-            BinOpKind::BitAnd => cx.bx.build_and(lhs, rhs, NAME),
-            BinOpKind::BitOr => cx.bx.build_or(lhs, rhs, NAME),
-            BinOpKind::BitXor => cx.bx.build_xor(lhs, rhs, NAME),
-            BinOpKind::And => todo!(),
-            BinOpKind::Or => todo!(),
-            BinOpKind::Cmp(op) => {
+            BinOp::Shl => cx.bx.build_left_shift(lhs, rhs, NAME),
+            BinOp::Shr => cx.bx.build_right_shift(lhs, rhs, ty.is_int(), NAME),
+            BinOp::BitAnd => cx.bx.build_and(lhs, rhs, NAME),
+            BinOp::BitOr => cx.bx.build_or(lhs, rhs, NAME),
+            BinOp::BitXor => cx.bx.build_xor(lhs, rhs, NAME),
+            BinOp::And => todo!(),
+            BinOp::Or => todo!(),
+            BinOp::Cmp(op) => {
                 let pred = get_int_predicate(op, ty.is_int());
                 cx.bx.build_int_compare(pred, lhs, rhs, NAME)
             }

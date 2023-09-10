@@ -4,8 +4,8 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     ast::{
-        Ast, BinOp, Block, Call, CallArg, Cast, Expr, Fn, FnSig, If, Item, Let, Module, Name, Pat,
-        Return, Ty, TyName, TyParam, UnaryOp,
+        Ast, Binary, Block, Call, CallArg, Cast, Expr, Fn, FnSig, If, Item, Let, Module, Name, Pat,
+        Return, Ty, TyName, TyParam, Unary,
     },
     common::{QPath, Word},
     db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
@@ -233,8 +233,8 @@ impl Resolve<'_> for Expr {
             Self::Block(inner) => inner.resolve(cx, env),
             Self::Return(inner) => inner.resolve(cx, env),
             Self::Call(inner) => inner.resolve(cx, env),
-            Self::UnaryOp(inner) => inner.resolve(cx, env),
-            Self::BinOp(inner) => inner.resolve(cx, env),
+            Self::Unary(inner) => inner.resolve(cx, env),
+            Self::Binary(inner) => inner.resolve(cx, env),
             Self::Cast(inner) => inner.resolve(cx, env),
             Self::Name(inner) => inner.resolve(cx, env),
             Self::Lit(..) => (),
@@ -339,13 +339,13 @@ impl Resolve<'_> for Call {
     }
 }
 
-impl Resolve<'_> for UnaryOp {
+impl Resolve<'_> for Unary {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         self.expr.resolve(cx, env);
     }
 }
 
-impl Resolve<'_> for BinOp {
+impl Resolve<'_> for Binary {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         self.lhs.resolve(cx, env);
         self.rhs.resolve(cx, env);

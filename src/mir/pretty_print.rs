@@ -4,7 +4,7 @@ use pretty::RcDoc;
 
 use super::{Block, Function, Inst, Mir, ValueId};
 use crate::{
-    ast::BinOpKind,
+    ast::BinOp,
     db::{Db, DefId, ScopeLevel},
     mir::BlockId,
     ty::TyKind,
@@ -190,7 +190,7 @@ fn value_alloc<'db, 'd>(db: &'db Db, f: &'db Function, value: ValueId) -> RcDoc<
         .append(RcDoc::space())
 }
 
-fn bin_instruction_name(op: BinOpKind) -> String {
+fn bin_instruction_name(op: BinOp) -> String {
     let prefix = "i";
     let inst = op.name();
     format!("{prefix}{inst}")

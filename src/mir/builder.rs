@@ -3,10 +3,10 @@ use std::collections::HashSet;
 use anyhow::{bail, Result};
 
 use crate::{
-    ast::BinOpKind,
+    ast::BinOp,
     db::DefId,
     mir::{
-        BinOp, Block, BlockId, BoolLit, Br, BrIf, Call, Cast, Function, FunctionParam, Inst,
+        Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Cast, Function, FunctionParam, Inst,
         IntLit, Load, Neg, Not, Phi, PhiValue, Return, StackAlloc, UnitLit, Unreachable, Value,
         ValueId,
     },
@@ -185,13 +185,13 @@ impl FunctionBuilder {
     pub fn build_bin(
         &mut self,
         ty: Ty,
-        op: BinOpKind,
+        op: BinOp,
         lhs: ValueId,
         rhs: ValueId,
         span: Span,
     ) -> ValueId {
         let value = self.create_value(ty);
-        self.current_block_mut().add_inst(Inst::BinOp(BinOp { value, op, lhs, rhs, span }));
+        self.current_block_mut().add_inst(Inst::BinOp(Binary { value, op, lhs, rhs, span }));
         value
     }
 

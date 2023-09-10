@@ -1,6 +1,6 @@
 use std::{marker::PhantomData, ops};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct IndexVec<K: Key, V> {
     vec: Vec<V>,
     marker: PhantomData<K>,

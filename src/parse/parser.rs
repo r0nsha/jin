@@ -3,8 +3,8 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        BinOp, BinOpKind, Block, Call, CallArg, Cast, Expr, Fn, FnParam, FnSig, If, Item, Let, Lit,
-        LitKind, Module, Name, NamePat, Pat, Return, Ty, TyName, TyParam, UnaryOp, UnaryOpKind,
+        Binary, BinOp, Block, Call, CallArg, Cast, Expr, Fn, FnParam, FnSig, If, Item, Let, Lit,
+        LitKind, Module, Name, NamePat, Pat, Return, Ty, TyName, TyParam, Unary, UnOp,
     },
     common::{QPath, Word},
     db::Db,
@@ -200,7 +200,7 @@ impl<'a> Parser<'a> {
 
     fn parse_expr(&mut self) -> ParseResult<Expr> {
         let mut expr_stack: Vec<Expr> = vec![];
-        let mut op_stack: Vec<BinOpKind> = vec![];
+        let mut op_stack: Vec<BinOp> = vec![];
         let mut last_precedence = usize::MAX;
 
         expr_stack.push(self.parse_operand()?);
@@ -210,10 +210,10 @@ impl<'a> Parser<'a> {
                 break;
             };
 
-            let op = match BinOpKind::try_from(tok.kind).ok() {
+            let op = match BinOp::try_from(tok.kind).ok() {
                 // For these specific operators, we check if they are on the same line as the last
                 // expr, to avoid ambiguity with unary operators
-                Some(op @ (BinOpKind::BitAnd | BinOpKind::Sub))
+                Some(op @ (BinOp::BitAnd | BinOp::Sub))
                     if self.are_on_same_line(
                         expr_stack.last().expect("to have an expr").span(),
                         tok.span,
@@ -248,7 +248,7 @@ impl<'a> Parser<'a> {
                 let lhs = expr_stack.pop().unwrap();
                 let span = lhs.span().merge(rhs.span());
 
-                expr_stack.push(Expr::BinOp(BinOp {
+                expr_stack.push(Expr::Binary(Binary {
                     lhs: Box::new(lhs),
                     op,
                     rhs: Box::new(rhs),
@@ -269,7 +269,7 @@ impl<'a> Parser<'a> {
 
             let span = lhs.span().merge(rhs.span());
 
-            expr_stack.push(Expr::BinOp(BinOp {
+            expr_stack.push(Expr::Binary(Binary {
                 lhs: Box::new(lhs),
                 op,
                 rhs: Box::new(rhs),
@@ -294,19 +294,19 @@ impl<'a> Parser<'a> {
             TokenKind::Minus => {
                 let expr = self.parse_operand()?;
 
-                Expr::UnaryOp(UnaryOp {
+                Expr::Unary(Unary {
                     span: tok.span.merge(expr.span()),
                     expr: Box::new(expr),
-                    op: UnaryOpKind::Neg,
+                    op: UnOp::Neg,
                 })
             }
             TokenKind::Bang => {
                 let expr = self.parse_operand()?;
 
-                Expr::UnaryOp(UnaryOp {
+                Expr::Unary(Unary {
                     span: tok.span.merge(expr.span()),
                     expr: Box::new(expr),
-                    op: UnaryOpKind::Not,
+                    op: UnOp::Not,
                 })
             }
             TokenKind::OpenParen => {

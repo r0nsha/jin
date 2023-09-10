@@ -7,7 +7,7 @@ use enum_as_inner::EnumAsInner;
 pub use lower::lower;
 
 use crate::{
-    ast::{BinOpKind, UnaryOpKind},
+    ast::{BinOp, UnOp},
     common::{new_key_type, Word},
     db::{Db, DefId},
     span::{Span, Spanned},
@@ -111,10 +111,10 @@ impl Expr {
                     })
                     .collect(),
             }),
-            ExprKind::UnaryOp(un) => {
-                ExprKind::UnaryOp(UnaryOp { expr: Box::new(un.expr.rewrite_(f)), op: un.op })
+            ExprKind::Unary(un) => {
+                ExprKind::Unary(Unary { expr: Box::new(un.expr.rewrite_(f)), op: un.op })
             }
-            ExprKind::BinOp(bin) => ExprKind::BinOp(BinOp {
+            ExprKind::Binary(bin) => ExprKind::Binary(Binary {
                 lhs: Box::new(bin.lhs.rewrite_(f)),
                 rhs: Box::new(bin.rhs.rewrite_(f)),
                 op: bin.op,
@@ -155,8 +155,8 @@ impl Expr {
                     arg.expr.walk_(f);
                 }
             }
-            ExprKind::UnaryOp(un) => un.expr.walk_(f),
-            ExprKind::BinOp(bin) => {
+            ExprKind::Unary(un) => un.expr.walk_(f),
+            ExprKind::Binary(bin) => {
                 bin.lhs.walk_(f);
                 bin.rhs.walk_(f);
             }
@@ -194,8 +194,8 @@ impl Expr {
                     arg.expr.walk_mut_(f);
                 }
             }
-            ExprKind::UnaryOp(un) => un.expr.walk_mut_(f),
-            ExprKind::BinOp(bin) => {
+            ExprKind::Unary(un) => un.expr.walk_mut_(f),
+            ExprKind::Binary(bin) => {
                 bin.lhs.walk_mut_(f);
                 bin.rhs.walk_mut_(f);
             }
@@ -214,8 +214,8 @@ pub enum ExprKind {
     Block(Block),
     Return(Return),
     Call(Call),
-    UnaryOp(UnaryOp),
-    BinOp(BinOp),
+    Unary(Unary),
+    Binary(Binary),
     Cast(Cast),
     Name(Name),
     Lit(Lit),
@@ -333,16 +333,16 @@ impl Typed for CallArg {
 }
 
 #[derive(Debug, Clone)]
-pub struct UnaryOp {
+pub struct Unary {
     pub expr: Box<Expr>,
-    pub op: UnaryOpKind,
+    pub op: UnOp,
 }
 
 #[derive(Debug, Clone)]
-pub struct BinOp {
+pub struct Binary {
     pub lhs: Box<Expr>,
     pub rhs: Box<Expr>,
-    pub op: BinOpKind,
+    pub op: BinOp,
 }
 
 #[derive(Debug, Clone)]

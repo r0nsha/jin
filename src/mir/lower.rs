@@ -3,7 +3,7 @@ use std::collections::{HashMap, HashSet};
 use ustr::ustr;
 
 use crate::{
-    ast::{BinOpKind, UnaryOpKind},
+    ast::{BinOp, UnOp},
     db::{Db, Def},
     hir::{self, Hir, Pat},
     mir::{builder::FunctionBuilder, DefId, Function, Mir, ValueId},
@@ -257,18 +257,18 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
                 let operand = self.lower_expr(&cast.expr);
                 self.bx.build_cast(expr.ty, operand, expr.span)
             }
-            hir::ExprKind::UnaryOp(un) => {
+            hir::ExprKind::Unary(un) => {
                 let operand = self.lower_expr(&un.expr);
                 match un.op {
-                    UnaryOpKind::Neg => self.bx.build_neg(expr.ty, operand, expr.span),
-                    UnaryOpKind::Not => self.bx.build_not(expr.ty, operand, expr.span),
+                    UnOp::Neg => self.bx.build_neg(expr.ty, operand, expr.span),
+                    UnOp::Not => self.bx.build_not(expr.ty, operand, expr.span),
                 }
             }
-            hir::ExprKind::BinOp(bin) => {
+            hir::ExprKind::Binary(bin) => {
                 let lhs = self.lower_expr(&bin.lhs);
 
                 match bin.op {
-                    BinOpKind::And => {
+                    BinOp::And => {
                         let true_blk = self.bx.create_block("and_true");
                         let false_blk = self.bx.create_block("and_false");
 
@@ -293,7 +293,7 @@ impl<'cx, 'db> LowerFunctionCtxt<'cx, 'db> {
                             expr.span,
                         )
                     }
-                    BinOpKind::Or => {
+                    BinOp::Or => {
                         let true_blk = self.bx.create_block("or_true");
                         let false_blk = self.bx.create_block("or_false");
 

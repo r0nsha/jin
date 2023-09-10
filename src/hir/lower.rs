@@ -2,9 +2,9 @@ use crate::{
     ast,
     db::Db,
     hir::{
-        BinOp, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Hir, If,
+        Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Hir, If,
         Item, ItemKind, Let, Lit, LitKind, Name, NamePat, Pat, Return, Ty, TyName, TyParam,
-        UnaryOp,
+        Unary,
     },
     span::{Span, Spanned},
     ty::Instantiation,
@@ -144,12 +144,12 @@ impl Lower<'_, Expr> for ast::Expr {
                 });
                 cx.expr(kind, span)
             }
-            Self::UnaryOp(ast::UnaryOp { expr, op, span }) => {
-                let kind = ExprKind::UnaryOp(UnaryOp { expr: Box::new(expr.lower(cx)), op });
+            Self::Unary(ast::Unary { expr, op, span }) => {
+                let kind = ExprKind::Unary(Unary { expr: Box::new(expr.lower(cx)), op });
                 cx.expr(kind, span)
             }
-            Self::BinOp(ast::BinOp { lhs, rhs, op, span }) => {
-                let kind = ExprKind::BinOp(BinOp {
+            Self::Binary(ast::Binary { lhs, rhs, op, span }) => {
+                let kind = ExprKind::Binary(Binary {
                     lhs: Box::new(lhs.lower(cx)),
                     rhs: Box::new(rhs.lower(cx)),
                     op,

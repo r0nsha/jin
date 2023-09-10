@@ -113,7 +113,7 @@ impl PPCtxt<'_> {
 
                 self.builder.end_child();
             }
-            ExprKind::UnaryOp(un) => {
+            ExprKind::Unary(un) => {
                 self.builder.begin_child(format!(
                     "{} (result: {})",
                     un.op,
@@ -122,7 +122,7 @@ impl PPCtxt<'_> {
                 self.pp_expr(&un.expr);
                 self.builder.end_child();
             }
-            ExprKind::BinOp(bin) => {
+            ExprKind::Binary(bin) => {
                 self.builder.begin_child(format!(
                     "{} (result: {})",
                     bin.op,

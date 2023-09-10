@@ -79,8 +79,8 @@ pub enum Expr {
     If(If),
     Block(Block),
     Call(Call),
-    UnaryOp(UnaryOp),
-    BinOp(BinOp),
+    Unary(Unary),
+    Binary(Binary),
     Cast(Cast),
     Name(Name),
     Lit(Lit),
@@ -95,8 +95,8 @@ impl Spanned for Expr {
             | Self::If(If { span, .. })
             | Self::Block(Block { span, .. })
             | Self::Call(Call { span, .. })
-            | Self::UnaryOp(UnaryOp { span, .. })
-            | Self::BinOp(BinOp { span, .. })
+            | Self::Unary(Unary { span, .. })
+            | Self::Binary(Binary { span, .. })
             | Self::Cast(Cast { span, .. })
             | Self::Lit(Lit { span, .. }) => *span,
         }
@@ -109,8 +109,8 @@ impl Spanned for Expr {
             Self::If(x) => &mut x.span,
             Self::Block(x) => &mut x.span,
             Self::Call(x) => &mut x.span,
-            Self::UnaryOp(x) => &mut x.span,
-            Self::BinOp(x) => &mut x.span,
+            Self::Unary(x) => &mut x.span,
+            Self::Binary(x) => &mut x.span,
             Self::Cast(x) => &mut x.span,
             Self::Name(x) => x.name.span_mut(),
             Self::Lit(x) => &mut x.span,
@@ -224,15 +224,15 @@ pub enum CallArg {
 }
 
 #[derive(Debug, Clone)]
-pub struct BinOp {
+pub struct Binary {
     pub lhs: Box<Expr>,
     pub rhs: Box<Expr>,
-    pub op: BinOpKind,
+    pub op: BinOp,
     pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BinOpKind {
+pub enum BinOp {
     Add,
     Sub,
     Mul,
@@ -248,7 +248,7 @@ pub enum BinOpKind {
     Cmp(CmpOp),
 }
 
-impl BinOpKind {
+impl BinOp {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Add => "+",
@@ -322,25 +322,25 @@ pub enum CmpOp {
 }
 
 #[derive(Debug, Clone)]
-pub struct UnaryOp {
+pub struct Unary {
     pub expr: Box<Expr>,
-    pub op: UnaryOpKind,
+    pub op: UnOp,
     pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum UnaryOpKind {
+pub enum UnOp {
     Neg,
     Not,
 }
 
-impl fmt::Display for UnaryOpKind {
+impl fmt::Display for UnOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
-impl UnaryOpKind {
+impl UnOp {
     pub fn as_str(self) -> &'static str {
         match self {
             Self::Neg => "-",
@@ -349,13 +349,13 @@ impl UnaryOpKind {
     }
 }
 
-impl fmt::Display for BinOpKind {
+impl fmt::Display for BinOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
     }
 }
 
-impl TryFrom<TokenKind> for BinOpKind {
+impl TryFrom<TokenKind> for BinOp {
     type Error = ();
 
     fn try_from(value: TokenKind) -> Result<Self, Self::Error> {
