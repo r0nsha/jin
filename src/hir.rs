@@ -120,7 +120,7 @@ impl Expr {
                 op: bin.op,
             }),
             ExprKind::Cast(cast) => {
-                ExprKind::Cast(Cast { expr: Box::new(cast.expr.rewrite_(f)), ty: cast.ty.clone() })
+                ExprKind::Cast(Cast { expr: Box::new(cast.expr.rewrite_(f)), target: cast.target.clone() })
             }
             kind => kind.clone(),
         };
@@ -348,7 +348,7 @@ pub struct Binary {
 #[derive(Debug, Clone)]
 pub struct Cast {
     pub expr: Box<Expr>,
-    pub ty: Ty,
+    pub target: Ty,
 }
 
 #[derive(Debug, Clone)]

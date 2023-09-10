@@ -158,7 +158,7 @@ impl Lower<'_, Expr> for ast::Expr {
             }
             Self::Cast(ast::Cast { expr, ty, span }) => {
                 let kind =
-                    ExprKind::Cast(Cast { expr: Box::new(expr.lower(cx)), ty: ty.lower(cx) });
+                    ExprKind::Cast(Cast { expr: Box::new(expr.lower(cx)), target: ty.lower(cx) });
                 cx.expr(kind, span)
             }
             Self::Name(ast::Name { id, name: _, args, span }) => {

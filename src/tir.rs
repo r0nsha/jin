@@ -16,6 +16,12 @@ pub struct Tir {
     pub functions: Vec<Fn>,
 }
 
+impl Tir {
+    pub fn new() -> Self {
+        Self { functions: vec![] }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Fn {
     pub id: DefId,
@@ -29,11 +35,6 @@ impl Fn {
     #[inline]
     pub fn expr(&self, id: ExprId) -> &Expr {
         &self.exprs[id]
-    }
-
-    #[inline]
-    pub fn create_expr(&mut self, kind: ExprKind, ty: Ty) -> ExprId {
-        self.exprs.push_with_key(|id| Expr { id, kind, ty })
     }
 }
 
@@ -59,7 +60,7 @@ pub struct Expr {
 #[derive(Debug, Clone)]
 pub enum ExprKind {
     Let { id: DefId, value: ExprId },
-    If { cond: ExprId, then: ExprId, otherwise: ExprId },
+    If { cond: ExprId, then: ExprId, otherwise: Option<ExprId> },
     Block { exprs: Vec<ExprId> },
     Return { value: ExprId },
     Call { callee: ExprId, args: Vec<ExprId> },

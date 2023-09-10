@@ -30,7 +30,7 @@ impl Coercions {
                     ty: coercion.target,
                     kind: ExprKind::Cast(Cast {
                         // NOTE: used a dummy Ty node here...
-                        ty: hir::Ty::Infer(expr.span),
+                        target: hir::Ty::Infer(expr.span),
                         expr: Box::new(expr),
                     }),
                 },
