@@ -1,4 +1,5 @@
 mod generate;
+mod generate_tir;
 mod inkwell_ext;
 #[cfg(windows)]
 mod microsoft_craziness;
@@ -27,10 +28,10 @@ use crate::{
     common::target::{Arch, Os, TargetMetrics},
     db::{build_options::EmitOption, Db},
     llvm::generate::Generator,
-    mir::Mir,
+    tir::Tir,
 };
 
-pub fn codegen(db: &mut Db, mir: &Mir) -> PathBuf {
+pub fn codegen(db: &mut Db, tir: &Tir) -> PathBuf {
     let target_machine = create_target_machine(db).expect("to create a LLVM TargetMachine");
 
     let context = Context::create();
@@ -47,7 +48,7 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> PathBuf {
 
     let mut cx = Generator {
         db,
-        mir,
+        tir,
         context: &context,
         module: &module,
         bx: &builder,

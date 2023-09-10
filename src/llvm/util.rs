@@ -4,14 +4,14 @@ use inkwell::{
     values::{BasicValueEnum, PointerValue, StructValue},
 };
 
-use crate::llvm::generate::{FunctionState, Generator};
+use crate::llvm::generate::{FnState, Generator};
 
 impl<'db, 'cx> Generator<'db, 'cx> {
     pub fn current_block(&self) -> BasicBlock<'cx> {
         self.bx.get_insert_block().unwrap()
     }
 
-    pub fn start_block(&self, state: &mut FunctionState<'cx>, bb: BasicBlock<'cx>) {
+    pub fn start_block(&self, state: &mut FnState<'cx>, bb: BasicBlock<'cx>) {
         state.current_block = bb;
         self.bx.position_at_end(bb);
     }
@@ -43,7 +43,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
     pub fn build_stack_alloc(
         &self,
-        state: &FunctionState<'cx>,
+        state: &FnState<'cx>,
         ty: BasicTypeEnum<'cx>,
         name: &str,
     ) -> PointerValue<'cx> {
@@ -70,7 +70,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     // }
 
     #[allow(unused)]
-    pub fn print_current_state(&self, state: &FunctionState<'cx>) {
+    pub fn print_current_state(&self, state: &FnState<'cx>) {
         let current_block = self.current_block();
         println!(
             "function: {}\n\tblock: {}\n\tterminated: {}",

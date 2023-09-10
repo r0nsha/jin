@@ -14,13 +14,16 @@ use crate::{
     ast::{BinOp, CmpOp},
     db::{Db, DefId},
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
-    tir::{Expr, ExprId, ExprKind, Fn, Tir},
+    mir::{
+        Binary, Block, BlockId, BoolLit, Br, BrIf, Call, Cast, Function, Inst, IntLit, Load, Mir,
+        Neg, Not, Phi, Return, StackAlloc, UnitLit, Unreachable, ValueId,
+    },
     ty::Ty,
 };
 
 pub struct Generator<'db, 'cx> {
     pub db: &'db mut Db,
-    pub tir: &'db Tir,
+    pub mir: &'db Mir,
 
     pub context: &'cx Context,
     pub module: &'db Module<'cx>,
@@ -50,28 +53,59 @@ impl<'cx> DefValue<'cx> {
 }
 
 #[derive(Debug, Clone)]
-pub struct FnState<'cx> {
-    pub f: &'cx Fn,
+pub struct FunctionState<'cx> {
+    pub id: DefId,
     pub function_value: FunctionValue<'cx>,
     pub prologue_block: BasicBlock<'cx>,
     pub current_block: BasicBlock<'cx>,
+    blocks: HashMap<BlockId, BasicBlock<'cx>>,
+    values: HashMap<ValueId, BasicValueEnum<'cx>>,
 }
 
-impl<'cx> FnState<'cx> {
+impl<'cx> FunctionState<'cx> {
     pub fn new(
-        f: &'cx Fn,
+        id: DefId,
         function_value: FunctionValue<'cx>,
         prologue_block: BasicBlock<'cx>,
-        first_block: BasicBlock<'cx>,
+        blocks: HashMap<BlockId, BasicBlock<'cx>>,
     ) -> Self {
-        Self { f, function_value, prologue_block, current_block: first_block }
+        let current_block = *blocks.get(&BlockId::first()).expect("to have a start block");
+
+        Self {
+            id,
+            function_value,
+            prologue_block,
+            current_block,
+            blocks,
+            values: HashMap::default(),
+        }
+    }
+
+    pub fn function<'db>(&self, cx: &Generator<'db, 'cx>) -> &'db Function {
+        cx.mir.functions.get(&self.id).expect("FunctionState.id to be valid")
+    }
+
+    pub fn block(&self, id: BlockId) -> BasicBlock<'cx> {
+        *self.blocks.get(&id).expect("to be a valid BlockId")
+    }
+
+    pub fn value(&self, id: ValueId) -> BasicValueEnum<'cx> {
+        *self.values.get(&id).expect("to be a valid ValueId")
+    }
+
+    pub fn set_value(&mut self, id: ValueId, value: BasicValueEnum<'cx>) {
+        self.values.insert(id, value);
+    }
+
+    pub fn value_ty<'db>(&self, cx: &Generator<'db, 'cx>, id: ValueId) -> Ty {
+        self.function(cx).value(id).expect("value to exist").ty
     }
 }
 
 impl<'db, 'cx> Generator<'db, 'cx> {
     pub fn run(&mut self) {
-        self.predefine_all();
-        self.define_all();
+        self.declare_all_functions();
+        self.define_all_functions();
         self.codegen_start_function();
     }
 
@@ -95,44 +129,54 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         }
     }
 
-    pub fn predefine_all(&mut self) {
-        for fun in &self.tir.functions {
-            let fun_info = &self.db[fun.id];
+    pub fn declare_all_functions(&mut self) {
+        for fun in self.mir.functions.values() {
+            let id = fun.id();
+            let fun_info = &self.db[id];
             let name = fun_info.qpath.standard_full_name();
             let llvm_ty = fun_info.ty.as_fn().expect("a function type").llvm_ty(self);
 
             let function = self.module.add_function(&name, llvm_ty, Some(Linkage::Private));
-            self.def_values.insert(fun.id, DefValue::Function(function));
+            self.def_values.insert(id, DefValue::Function(function));
         }
     }
 
-    pub fn define_all(&mut self) {
-        for fun in &self.tir.functions {
-            self.codegen_fn(fun);
+    pub fn define_all_functions(&mut self) {
+        for fun in self.mir.functions.values() {
+            self.codegen_function(fun);
         }
     }
 
-    fn codegen_fn(&mut self, fun: &Fn) -> BasicValueEnum<'cx> {
-        let fun_info = &self.db[fun.id];
+    fn codegen_function(&mut self, fun: &Function) -> BasicValueEnum<'cx> {
+        let id = fun.id();
+        let fun_info = &self.db[id];
 
-        let function_value = self.def_values.get(&fun.id).map_or_else(
+        let function_value = self.def_values.get(&fun.id()).map_or_else(
             || panic!("function {} to be declared", fun_info.qpath.standard_full_name()),
             |f| f.as_function_value(),
         );
 
-        for (param, value) in fun.sig.params.iter().zip(function_value.get_param_iter()) {
-            self.def_values.insert(param.id, DefValue::Value(value));
+        for (param, value) in fun.params().iter().zip(function_value.get_param_iter()) {
+            self.def_values.insert(param.id(), DefValue::Value(value));
         }
 
-        let prologue_block = self.context.append_basic_block(function_value, "prologue");
-        let start_block = self.context.append_basic_block(function_value, "start");
+        let prologue_block = self.context.append_basic_block(function_value, "decls");
 
-        let mut state = FnState::new(fun, function_value, prologue_block, start_block);
+        let mut blocks = HashMap::default();
 
-        self.codegen_expr(&mut state, fun.body);
+        for blk in fun.blocks() {
+            let bb = self.context.append_basic_block(function_value, &blk.name);
+            blocks.insert(blk.id, bb);
+        }
+
+        let mut state = FunctionState::new(id, function_value, prologue_block, blocks);
+
+        for blk in fun.blocks() {
+            blk.codegen(self, &mut state);
+        }
 
         self.bx.position_at_end(prologue_block);
-        self.bx.build_unconditional_branch(start_block);
+        self.bx.build_unconditional_branch(state.blocks[&BlockId::first()]);
 
         function_value.as_global_value().as_pointer_value().into()
     }
@@ -141,62 +185,14 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     fn def_value(&self, id: DefId) -> DefValue<'cx> {
         *self.def_values.get(&id).expect("id in def_value to be defined")
     }
-
-    fn codegen_expr(&mut self, state: &mut FnState, expr: ExprId) -> BasicValueEnum<'cx> {
-        let expr = &state.f.expr(expr);
-
-        if self.current_block_is_terminating() {
-            return Self::undef_value(expr.ty.llvm_ty(self));
-        }
-
-        match &expr.kind {
-            ExprKind::Let { id, value } => {
-                let def = &self.db[*id];
-                let ty = def.ty.llvm_ty(self);
-                let ptr = self.build_stack_alloc(state, ty, &def.qpath.full_c_name());
-
-                let value = self.codegen_expr(state, *value);
-                self.bx.build_store(ptr, value);
-
-                self.def_values.insert(*id, DefValue::Alloca(ptr, ty));
-                self.unit_value().into()
-            }
-            ExprKind::If { cond, then, otherwise } => todo!(),
-            ExprKind::Block { exprs } => todo!(),
-            ExprKind::Return { value } => todo!(),
-            ExprKind::Call { callee, args } => todo!(),
-            ExprKind::Binary { lhs, rhs, op } => todo!(),
-            ExprKind::Unary { value, op } => todo!(),
-            ExprKind::Cast { value, target } => todo!(),
-            ExprKind::Name { id } => match self.def_value(*id) {
-                DefValue::Function(f) => {
-                    f.as_global_value().as_pointer_value().as_basic_value_enum()
-                }
-                DefValue::Alloca(p, ty) => {
-                    self.bx.build_load(ty, p, &format!("load_{}", self.db[*id].name))
-                }
-                DefValue::Value(v) => v,
-            },
-            ExprKind::IntLit { value } => expr
-                .ty
-                .llvm_ty(self)
-                .into_int_type()
-                .const_int(*value as u64, expr.ty.is_int())
-                .into(),
-            ExprKind::BoolLit { value } => {
-                self.context.bool_type().const_int(u64::from(*value), false).into()
-            }
-            ExprKind::UnitLit => self.unit_value().into(),
-        }
-    }
 }
 
 trait Codegen<'db, 'cx> {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>);
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>);
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Block {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         let bb = state.block(self.id);
         cx.start_block(state, bb);
 
@@ -206,20 +202,46 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Block {
     }
 }
 
+impl<'db, 'cx> Codegen<'db, 'cx> for Inst {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        if cx.current_block_is_terminating() {
+            return;
+        }
+
+        match self {
+            Self::Return(inner) => inner.codegen(cx, state),
+            Self::Br(inner) => inner.codegen(cx, state),
+            Self::BrIf(inner) => inner.codegen(cx, state),
+            Self::Phi(inner) => inner.codegen(cx, state),
+            Self::Call(inner) => inner.codegen(cx, state),
+            Self::Cast(inner) => inner.codegen(cx, state),
+            Self::StackAlloc(inner) => inner.codegen(cx, state),
+            Self::Load(inner) => inner.codegen(cx, state),
+            Self::Neg(inner) => inner.codegen(cx, state),
+            Self::Not(inner) => inner.codegen(cx, state),
+            Self::BinOp(inner) => inner.codegen(cx, state),
+            Self::IntLit(inner) => inner.codegen(cx, state),
+            Self::BoolLit(inner) => inner.codegen(cx, state),
+            Self::UnitLit(inner) => inner.codegen(cx, state),
+            Self::Unreachable(inner) => inner.codegen(cx, state),
+        }
+    }
+}
+
 impl<'db, 'cx> Codegen<'db, 'cx> for Return {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         cx.bx.build_return(Some(&state.value(self.value)));
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Br {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         cx.bx.build_unconditional_branch(state.block(self.target));
     }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for BrIf {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         cx.bx.build_conditional_branch(
             state.value(self.cond).into_int_value(),
             state.block(self.b1),
@@ -229,7 +251,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for BrIf {
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Phi {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         let ty = state.value_ty(cx, self.value).llvm_ty(cx);
         let phi = cx.bx.build_phi(ty, "phi");
 
@@ -244,7 +266,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Phi {
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Call {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         // TODO: this doesn't take indirect calls (function pointers) into account
         let callee = state.value(self.callee).as_any_value_enum().into_function_value();
 
@@ -293,7 +315,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Call {
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Cast {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         let source_ty = state.value_ty(cx, self.operand);
         let target_ty = state.value_ty(cx, self.value);
 
@@ -320,8 +342,32 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Cast {
     }
 }
 
+impl<'db, 'cx> Codegen<'db, 'cx> for StackAlloc {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        let def = &cx.db[self.id];
+        let ty = def.ty.llvm_ty(cx);
+        let ptr = cx.build_stack_alloc(state, ty, &def.qpath.full_c_name());
+        cx.bx.build_store(ptr, state.value(self.operand));
+        cx.def_values.insert(self.id, DefValue::Alloca(ptr, ty));
+    }
+}
+
+impl<'db, 'cx> Codegen<'db, 'cx> for Load {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        let value = match cx.def_value(self.id) {
+            DefValue::Function(f) => f.as_global_value().as_pointer_value().as_basic_value_enum(),
+            DefValue::Alloca(p, ty) => {
+                cx.bx.build_load(ty, p, &format!("load_{}", cx.db[self.id].name))
+            }
+            DefValue::Value(v) => v,
+        };
+
+        state.set_value(self.value, value);
+    }
+}
+
 impl<'db, 'cx> Codegen<'db, 'cx> for Neg {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         let operand = state.value(self.operand).into_int_value();
         let result = cx.bx.build_int_neg(operand, "result");
         state.set_value(self.value, result.into());
@@ -329,7 +375,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Neg {
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Not {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         let operand = state.value(self.operand).into_int_value();
         let result = cx.bx.build_not(operand, "result");
         state.set_value(self.value, result.into());
@@ -337,7 +383,7 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Not {
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Binary {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         const NAME: &str = "result";
 
         let lhs = state.value(self.lhs).into_int_value();
@@ -414,8 +460,29 @@ fn get_int_predicate(op: CmpOp, is_signed: bool) -> IntPredicate {
     }
 }
 
+impl<'db, 'cx> Codegen<'db, 'cx> for IntLit {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        let ty = state.value_ty(cx, self.value);
+        let value = ty.llvm_ty(cx).into_int_type().const_int(self.lit as u64, ty.is_int());
+        state.set_value(self.value, value.into());
+    }
+}
+
+impl<'db, 'cx> Codegen<'db, 'cx> for BoolLit {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        let value = cx.context.bool_type().const_int(u64::from(self.lit), false);
+        state.set_value(self.value, value.into());
+    }
+}
+
+impl<'db, 'cx> Codegen<'db, 'cx> for UnitLit {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
+        state.set_value(self.value, cx.unit_value().into());
+    }
+}
+
 impl<'db, 'cx> Codegen<'db, 'cx> for Unreachable {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
+    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FunctionState<'cx>) {
         cx.build_unreachable();
         let ty = state.value_ty(cx, self.value);
         state.set_value(self.value, Generator::undef_value(ty.llvm_ty(cx)));
