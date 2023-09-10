@@ -12,27 +12,27 @@ fn int_types() = {
 	fn id(x i8) i8 = x
 	id(126)
 
-	fn promote(x i32) i64 = x.as(i64)
+	fn promote(x i32) i64 = x as i64
 	promote(55554)
 
-	fn demote_inferred(x int) i8 = x.as(_)
+	fn demote_inferred(x int) i8 = x as _
 	demote_inferred(129)
 
 	fn auto_promote(x i16) i32 = x
 	auto_promote(4688)
 
-	fn promote_to_signed(x u16) int = x.as(int)
+	fn promote_to_signed(x u16) int = x as int
 	promote_to_signed(555)
 
-	fn demote_to_unsigned_inferred(x int) u8 = x.as(_)
+	fn demote_to_unsigned_inferred(x int) u8 = x as _
 	demote_to_unsigned_inferred(34)
 
-	fn uint_to_int(x uint) int = x.as(int)
+	fn uint_to_int(x uint) int = x as int
 	uint_to_int(663151)
 }
 
 fn unary() = {
-	fn neg() int = -(48 + 2).as(int) / 1
+	fn neg() int = -(48 + 2) as int / 1
 	neg()
 
 	fn not() bool = !true
