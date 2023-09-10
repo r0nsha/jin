@@ -2,6 +2,7 @@ use std::fmt::{Display, Formatter, Result};
 
 use crate::{
     db::Db,
+    sym,
     ty::{InferTy, IntTy, TyKind, UintTy},
 };
 
@@ -45,22 +46,22 @@ impl<'db> TyPrinter<'db> {
                 Self::fmt_type(f, &fun.ret)
             }
             TyKind::Int(ity) => f.write_str(match ity {
-                IntTy::I8 => "i8",
-                IntTy::I16 => "i16",
-                IntTy::I32 => "i32",
-                IntTy::I64 => "i64",
-                IntTy::Int => "int",
+                IntTy::I8 => sym::I8,
+                IntTy::I16 => sym::I16,
+                IntTy::I32 => sym::I32,
+                IntTy::I64 => sym::I64,
+                IntTy::Int => sym::INT,
             }),
             TyKind::Uint(uty) => f.write_str(match uty {
-                UintTy::U8 => "u8",
-                UintTy::U16 => "u16",
-                UintTy::U32 => "u32",
-                UintTy::U64 => "u64",
-                UintTy::Uint => "uint",
+                UintTy::U8 => sym::U8,
+                UintTy::U16 => sym::U16,
+                UintTy::U32 => sym::U32,
+                UintTy::U64 => sym::U64,
+                UintTy::Uint => sym::UINT,
             }),
-            TyKind::Bool => f.write_str("bool"),
+            TyKind::Bool => f.write_str(sym::BOOL),
             TyKind::Unit => f.write_str("()"),
-            TyKind::Never => f.write_str("!"),
+            TyKind::Never => f.write_str(sym::NEVER),
             TyKind::Param(p) => f.write_str(p.name.as_str()),
             // TyKind::Infer(InferTy::TyVar(_)) => f.write_str("{unknown}"),
             TyKind::Infer(InferTy::TyVar(v)) => write!(f, "?{}", v.0),

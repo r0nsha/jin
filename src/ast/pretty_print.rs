@@ -181,7 +181,7 @@ impl PrettyPrint for Ty {
                 cx.builder.add_empty_child(name.name.to_string());
 
                 if !name.args.is_empty() {
-                    cx.builder.begin_child("tyargs".to_string());
+                    cx.builder.begin_child("type args".to_string());
                     for arg in &name.args {
                         arg.pretty_print(cx);
                     }
@@ -190,9 +190,6 @@ impl PrettyPrint for Ty {
             }
             Ty::Unit(_) => {
                 cx.builder.add_empty_child("()".to_string());
-            }
-            Ty::Never(_) => {
-                cx.builder.add_empty_child("!".to_string());
             }
             Ty::Infer(_) => {
                 cx.builder.add_empty_child("_".to_string());

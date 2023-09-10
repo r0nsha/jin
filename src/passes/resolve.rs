@@ -11,7 +11,7 @@ use crate::{
     db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
     diagnostics::{Diagnostic, Label},
     span::{Span, Spanned},
-    ty,
+    sym, ty,
 };
 
 pub fn resolve(db: &mut Db, ast: &mut Ast) {
@@ -60,19 +60,20 @@ impl<'db> Resolver<'db> {
             )
         };
 
-        mk("i8", &|db| db.types.i8);
-        mk("i16", &|db| db.types.i16);
-        mk("i32", &|db| db.types.i32);
-        mk("i64", &|db| db.types.i64);
-        mk("int", &|db| db.types.int);
+        mk(sym::I8, &|db| db.types.i8);
+        mk(sym::I16, &|db| db.types.i16);
+        mk(sym::I32, &|db| db.types.i32);
+        mk(sym::I64, &|db| db.types.i64);
+        mk(sym::INT, &|db| db.types.int);
 
-        mk("u8", &|db| db.types.u8);
-        mk("u16", &|db| db.types.u16);
-        mk("u32", &|db| db.types.u32);
-        mk("u64", &|db| db.types.u64);
-        mk("uint", &|db| db.types.uint);
+        mk(sym::U8, &|db| db.types.u8);
+        mk(sym::U16, &|db| db.types.u16);
+        mk(sym::U32, &|db| db.types.u32);
+        mk(sym::U64, &|db| db.types.u64);
+        mk(sym::UINT, &|db| db.types.uint);
 
-        mk("bool", &|db| db.types.bool);
+        mk(sym::BOOL, &|db| db.types.bool);
+        mk(sym::NEVER, &|db| db.types.never);
     }
 
     fn resolve_modules(&mut self, modules: &mut [Module]) {

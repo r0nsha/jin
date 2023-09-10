@@ -232,7 +232,6 @@ impl Lower<'_, Ty> for ast::Ty {
                 span: name.span,
             }),
             ast::Ty::Unit(span) => Ty::Unit(span),
-            ast::Ty::Never(span) => Ty::Never(span),
             ast::Ty::Infer(span) => Ty::Infer(span),
         }
     }

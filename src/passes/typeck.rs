@@ -381,7 +381,6 @@ impl InferCtxt<'_> {
                 }
             }
             hir::Ty::Unit(_) => Ok(self.db.types.unit),
-            hir::Ty::Never(_) => Ok(self.db.types.never),
             hir::Ty::Infer(_) => Ok(self.fresh_ty_var()),
         }
     }

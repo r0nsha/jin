@@ -27,6 +27,7 @@ mod parse;
 mod passes;
 mod span;
 mod ty;
+pub mod sym;
 
 use std::path::PathBuf;
 

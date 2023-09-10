@@ -417,16 +417,13 @@ pub enum LitKind {
 pub enum Ty {
     Name(TyName),
     Unit(Span),
-    Never(Span),
     Infer(Span),
 }
 
 impl Spanned for Ty {
     fn span(&self) -> Span {
         match self {
-            Ty::Name(TyName { span, .. }) | Ty::Unit(span) | Ty::Never(span) | Ty::Infer(span) => {
-                *span
-            }
+            Ty::Name(TyName { span, .. }) | Ty::Unit(span) | Ty::Infer(span) => *span,
         }
     }
 
