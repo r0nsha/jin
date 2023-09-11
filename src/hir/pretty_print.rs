@@ -2,7 +2,7 @@ use std::io;
 
 use crate::{
     db::Db,
-    hir::{Expr, ExprKind, Fn, Hir, ItemKind, LitKind},
+    hir::{Const, Expr, ExprKind, Fn, Hir, ItemKind},
 };
 
 pub(super) fn print(db: &Db, hir: &Hir, w: &mut impl io::Write) -> io::Result<()> {
@@ -144,11 +144,11 @@ impl PPCtxt<'_> {
                     expr.ty.display(self.db)
                 ));
             }
-            ExprKind::Lit(lit) => {
-                let value_str = match &lit.kind {
-                    LitKind::Int(v) => v.to_string(),
-                    LitKind::Bool(v) => v.to_string(),
-                    LitKind::Unit => "()".to_string(),
+            ExprKind::Const(value) => {
+                let value_str = match value {
+                    Const::Int(v) => v.to_string(),
+                    Const::Bool(v) => v.to_string(),
+                    Const::Unit => "()".to_string(),
                 };
 
                 self.builder

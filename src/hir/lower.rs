@@ -2,8 +2,8 @@ use crate::{
     ast,
     db::Db,
     hir::{
-        Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Hir, If,
-        Item, ItemKind, Let, Lit, LitKind, Name, NamePat, Pat, Return, Ty, TyName, TyParam, Unary,
+        Binary, Block, Call, CallArg, Cast, Const, Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Hir,
+        If, Item, ItemKind, Let, Name, NamePat, Pat, Return, Ty, TyName, TyParam, Unary,
     },
     span::{Span, Spanned},
     ty::Instantiation,
@@ -106,7 +106,7 @@ impl Lower<'_, Expr> for ast::Expr {
                         cx.hir.items.push(item);
                         // TODO: We need to create a dummy value because we must return an expression.
                         // Maybe we can avoid this since we know that this must be a block statement?
-                        cx.expr(ExprKind::Lit(Lit { kind: LitKind::Unit }), span)
+                        cx.expr(ExprKind::Const(Const::Unit), span)
                     }
                     ItemKind::Let(let_) => {
                         let span = let_.span;
@@ -119,7 +119,7 @@ impl Lower<'_, Expr> for ast::Expr {
                 let expr = if let Some(expr) = ret.expr {
                     Box::new(expr.lower(cx))
                 } else {
-                    Box::new(cx.expr(ExprKind::Lit(Lit { kind: LitKind::Unit }), span))
+                    Box::new(cx.expr(ExprKind::Const(Const::Unit), span))
                 };
                 cx.expr(ExprKind::Return(Return { expr }), span)
             }
@@ -169,12 +169,10 @@ impl Lower<'_, Expr> for ast::Expr {
                 cx.expr(kind, span)
             }
             Self::Lit(ast::Lit { kind, span }) => cx.expr(
-                ExprKind::Lit(Lit {
-                    kind: match kind {
-                        ast::LitKind::Int(v) => LitKind::Int(v),
-                        ast::LitKind::Bool(v) => LitKind::Bool(v),
-                        ast::LitKind::Unit => LitKind::Unit,
-                    },
+                ExprKind::Const(match kind {
+                    ast::LitKind::Int(v) => Const::Int(v),
+                    ast::LitKind::Bool(v) => Const::Bool(v),
+                    ast::LitKind::Unit => Const::Unit,
                 }),
                 span,
             ),

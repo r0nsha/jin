@@ -109,7 +109,7 @@ impl Expr {
                 bin.rhs.walk_(f);
             }
             ExprKind::Cast(cast) => cast.expr.walk_(f),
-            ExprKind::Name(_) | ExprKind::Lit(_) => (),
+            ExprKind::Name(_) | ExprKind::Const(_) => (),
         }
 
         f(self);
@@ -127,7 +127,7 @@ pub enum ExprKind {
     Binary(Binary),
     Cast(Cast),
     Name(Name),
-    Lit(Lit),
+    Const(Const),
 }
 
 #[derive(Debug, Clone)]
@@ -270,12 +270,7 @@ pub struct Name {
 }
 
 #[derive(Debug, Clone)]
-pub struct Lit {
-    pub kind: LitKind,
-}
-
-#[derive(Debug, Clone)]
-pub enum LitKind {
+pub enum Const {
     Int(usize),
     Bool(bool),
     Unit,

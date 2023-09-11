@@ -12,7 +12,7 @@ use crate::{
     ast::{BinOp, UnOp},
     db::{Db, DefId, DefKind},
     diagnostics::Diagnostic,
-    hir::{self, Expr, ExprKind, Fn, FnSig, Hir, ItemKind, Let, LitKind, Pat},
+    hir::{self, Const, Expr, ExprKind, Fn, FnSig, Hir, ItemKind, Let, Pat},
     passes::typeck::{
         coerce::CoerceExt, error::InferError, infcx::InferCtxt, instantiate::instantiate,
         normalize::NormalizeTy, unify::Obligation,
@@ -360,10 +360,10 @@ impl InferCtxt<'_> {
 
                 ty
             }
-            ExprKind::Lit(lit) => match &lit.kind {
-                LitKind::Int(..) => self.fresh_int_var(),
-                LitKind::Bool(..) => self.db.types.bool,
-                LitKind::Unit => self.db.types.unit,
+            ExprKind::Const(value) => match value {
+                Const::Int(..) => self.fresh_int_var(),
+                Const::Bool(..) => self.db.types.bool,
+                Const::Unit => self.db.types.unit,
             },
         };
 

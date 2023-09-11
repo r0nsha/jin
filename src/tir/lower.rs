@@ -231,10 +231,10 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
                     .get_mono_def(&MonoItem { id: name.id, ty: expr.ty }, &name.instantiation);
                 ExprKind::Name { id }
             }
-            hir::ExprKind::Lit(lit) => match &lit.kind {
-                hir::LitKind::Int(value) => ExprKind::IntLit { value: *value },
-                hir::LitKind::Bool(value) => ExprKind::BoolLit { value: *value },
-                hir::LitKind::Unit => ExprKind::UnitLit,
+            hir::ExprKind::Const(value) => match value {
+                hir::Const::Int(value) => ExprKind::IntLit { value: *value },
+                hir::Const::Bool(value) => ExprKind::BoolLit { value: *value },
+                hir::Const::Unit => ExprKind::UnitLit,
             },
         };
 
