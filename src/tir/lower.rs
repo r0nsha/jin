@@ -195,7 +195,17 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
                 otherwise: if_.otherwise.as_ref().map(|o| self.lower_expr(o)),
             },
             hir::ExprKind::Block(blk) => {
-                ExprKind::Block { exprs: blk.exprs.iter().map(|e| self.lower_expr(e)).collect() }
+                let mut exprs: Vec<_> = blk.exprs.iter().map(|e| self.lower_expr(e)).collect();
+
+                // NOTE: If the block ty is (), we must always return a () value.
+                // A situation where we don't return a () value can occur
+                // when the expected type of the block is unit, but the last expression doesn't
+                // return ().
+                if expr.ty.is_unit() {
+                    exprs.push(self.create_expr(ExprKind::UnitLit, expr.ty));
+                }
+
+                ExprKind::Block { exprs }
             }
             hir::ExprKind::Return(ret) => ExprKind::Return { value: self.lower_expr(&ret.expr) },
             hir::ExprKind::Call(call) => {

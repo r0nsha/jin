@@ -1,12 +1,17 @@
 fn main() = {
-	int_types()
-	unary()
-	arithmetic()
-	cmp()
-	variables()
-	nested_fn()
-	polymorphism()
+	let foo = if 1 == 1 {
+		answer()
+	}
+	#int_types()
+	#unary()
+	#arithmetic()
+	#cmp()
+	#variables()
+	#nested_fn()
+	#polymorphism()
 }
+
+fn answer() int = 42
 
 fn int_types() = {
 	fn id(x i8) i8 = x
@@ -50,7 +55,7 @@ fn arithmetic() = {
 	9 % 10
 }
 
-fn cmp() int = {
+fn cmp() = {
 	100 == 100
 	200 != 150
 	8 < 7
@@ -60,7 +65,6 @@ fn cmp() int = {
 	5 * 6
 	7 / 8
 	9 % 10
-	return 5
 }
 
 fn variables() int = {

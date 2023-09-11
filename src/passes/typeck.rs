@@ -160,13 +160,16 @@ impl InferCtxt<'_> {
                     self.at(Obligation::exprs(expr.span, if_.then.span, otherwise.span))
                         .eq(if_.then.ty, otherwise.ty)
                         .or_coerce(self, otherwise.id)?;
-                } else {
-                    self.at(Obligation::obvious(if_.then.span))
-                        .eq(self.db.types.unit, if_.then.ty)
-                        .or_coerce(self, if_.then.id)?;
-                }
 
-                if_.then.ty
+                    if_.then.ty
+                } else {
+                    // self.at(Obligation::obvious(if_.then.span))
+                    //     .eq(self.db.types.unit, if_.then.ty)
+                    //     .or_coerce(self, if_.then.id)?;
+                    if_.then.ty = self.db.types.unit;
+
+                    self.db.types.unit
+                }
             }
             ExprKind::Block(blk) => {
                 for expr in &mut blk.exprs {
