@@ -313,8 +313,14 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                     BinOp::BitAnd => self.bx.build_and(lhs, rhs, "result").into(),
                     BinOp::BitOr => self.bx.build_or(lhs, rhs, "result").into(),
                     BinOp::BitXor => self.bx.build_xor(lhs, rhs, "result").into(),
-                    BinOp::And => todo!(),
-                    BinOp::Or => todo!(),
+                    BinOp::And => {
+                        // if lhs { rhs } else { false }
+                        todo!()
+                    }
+                    BinOp::Or => {
+                        // if lhs { true } else { rhs }
+                        todo!()
+                    }
                     BinOp::Cmp(op) => {
                         let pred = get_int_predicate(*op, ty.is_int());
                         self.bx.build_int_compare(pred, lhs, rhs, "result").into()
@@ -365,9 +371,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             ExprKind::IntLit { value } => {
                 expr.ty.llty(self).into_int_type().const_int(*value as u64, expr.ty.is_int()).into()
             }
-            ExprKind::BoolLit { value } => {
-                self.context.bool_type().const_int(u64::from(*value), false).into()
-            }
+            ExprKind::BoolLit { value } => self.bool_value(*value).into(),
             ExprKind::UnitLit => self.unit_value().into(),
         }
     }

@@ -1,17 +1,16 @@
 fn main() = {
-	if 1 == 1 {
-		answer()
-	}
-	#int_types()
-	#unary()
-	#arithmetic()
-	#cmp()
-	#variables()
-	#nested_fn()
-	#polymorphism()
+	#fn answer() int = 42
+	#if 1 == 1 && 2 == 1 {
+	#	answer()
+	#}
+	int_types()
+	unary()
+	arithmetic()
+	cmp()
+	variables()
+	nested_fn()
+	polymorphism()
 }
-
-fn answer() int = 42
 
 fn int_types() = {
 	fn id(x i8) i8 = x

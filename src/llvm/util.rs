@@ -1,7 +1,7 @@
 use inkwell::{
     basic_block::BasicBlock,
     types::BasicTypeEnum,
-    values::{BasicValueEnum, PointerValue, StructValue},
+    values::{BasicValueEnum, IntValue, PointerValue, StructValue},
 };
 
 use crate::llvm::generate::{FnState, Generator};
@@ -22,6 +22,10 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
     pub fn unit_value(&self) -> StructValue<'cx> {
         self.unit_ty.const_named_struct(&[])
+    }
+
+    pub fn bool_value(&self, value: bool) -> IntValue<'cx> {
+        self.context.bool_type().const_int(u64::from(value), false)
     }
 
     pub fn current_block_is_terminating(&self) -> bool {
