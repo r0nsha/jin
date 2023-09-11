@@ -11,7 +11,7 @@ use inkwell::{
 };
 
 use crate::{
-    ast::{BinOp, CmpOp},
+    ast::{BinOp, CmpOp, UnOp},
     db::{Db, DefId},
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
     tir::{Expr, ExprId, ExprKind, Fn, Tir},
@@ -161,13 +161,149 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 self.def_values.insert(*id, DefValue::Alloca(ptr, ty));
                 self.unit_value().into()
             }
-            ExprKind::If { cond, then, otherwise } => todo!(),
-            ExprKind::Block { exprs } => todo!(),
-            ExprKind::Return { value } => todo!(),
-            ExprKind::Call { callee, args } => todo!(),
-            ExprKind::Binary { lhs, rhs, op } => todo!(),
-            ExprKind::Unary { value, op } => todo!(),
-            ExprKind::Cast { value, target } => todo!(),
+            ExprKind::If { cond, then, otherwise } => {}
+            ExprKind::Block { exprs } => {
+                let mut result = self.unit_value().as_basic_value_enum();
+
+                for expr in exprs {
+                    result = self.codegen_expr(state, *expr);
+                }
+
+                result
+            }
+            ExprKind::Return { value } => {
+                let value = self.codegen_expr(state, *value);
+                self.bx.build_return(Some(&value));
+                Self::undef_value(expr.ty.llvm_ty(self))
+            }
+            ExprKind::Call { callee, args } => {
+                let callee_ty = state.f.expr(*callee).ty;
+
+                let args: Vec<_> =
+                    args.iter().map(|arg| self.codegen_expr(state, *arg).into()).collect();
+
+                // TODO: this doesn't take indirect calls (function pointers) into account
+                let callee =
+                    self.codegen_expr(state, *callee).as_any_value_enum().into_function_value();
+
+                // Don't call actually call the function if it's diverging
+                if callee_ty.is_diverging() {
+                    self.build_unreachable();
+                    return Self::undef_value(expr.ty.llvm_ty(self));
+                }
+
+                let result = self.bx.build_direct_call(callee, &args, "call");
+
+                let result_value =
+                    result.try_as_basic_value().expect_left("expected a return value");
+
+                // TODO: remove this debug printf call
+                {
+                    let printf = self.module.get_function("printf").unwrap_or_else(|| {
+                        self.module.add_function(
+                            "printf",
+                            self.isize_ty.fn_type(
+                                &[self.context.ptr_type(AddressSpace::default()).into()],
+                                true,
+                            ),
+                            Some(Linkage::External),
+                        )
+                    });
+
+                    self.bx.build_direct_call(
+                        printf,
+                        &[
+                            self.bx
+                                .build_global_string_ptr("result = %d\n\0", "fmt")
+                                .as_pointer_value()
+                                .into(),
+                            if let BasicValueEnum::IntValue(v) = result_value {
+                                self.bx
+                                    .build_int_cast_sign_flag(
+                                        v,
+                                        self.isize_ty,
+                                        false,
+                                        "cast_to_i64",
+                                    )
+                                    .into()
+                            } else {
+                                result_value.into()
+                            },
+                        ],
+                        "printf_call",
+                    );
+                }
+
+                result_value
+            }
+            ExprKind::Binary { lhs, rhs, op } => {
+                let lhs = self.codegen_expr(state, *lhs).into_int_value();
+                let rhs = self.codegen_expr(state, *rhs).into_int_value();
+                let ty = expr.ty;
+
+                match op {
+                    BinOp::Add => self.bx.build_int_add(lhs, rhs, "result").into(),
+                    BinOp::Sub => self.bx.build_int_sub(lhs, rhs, "result").into(),
+                    BinOp::Mul => self.bx.build_int_mul(lhs, rhs, "result").into(),
+                    BinOp::Div => {
+                        if ty.is_uint() {
+                            self.bx.build_int_unsigned_div(lhs, rhs, "result").into()
+                        } else {
+                            self.bx.build_int_signed_div(lhs, rhs, "result").into()
+                        }
+                    }
+                    BinOp::Mod => {
+                        if ty.is_uint() {
+                            self.bx.build_int_unsigned_rem(lhs, rhs, "result").into()
+                        } else {
+                            self.bx.build_int_signed_rem(lhs, rhs, "result").into()
+                        }
+                    }
+                    BinOp::Shl => self.bx.build_left_shift(lhs, rhs, "result").into(),
+                    BinOp::Shr => self.bx.build_right_shift(lhs, rhs, ty.is_int(), "result").into(),
+                    BinOp::BitAnd => self.bx.build_and(lhs, rhs, "result").into(),
+                    BinOp::BitOr => self.bx.build_or(lhs, rhs, "result").into(),
+                    BinOp::BitXor => self.bx.build_xor(lhs, rhs, "result").into(),
+                    BinOp::And => todo!(),
+                    BinOp::Or => todo!(),
+                    BinOp::Cmp(op) => {
+                        let pred = get_int_predicate(*op, ty.is_int());
+                        self.bx.build_int_compare(pred, lhs, rhs, "result").into()
+                    }
+                }
+            }
+            ExprKind::Unary { value, op } => {
+                let value = self.codegen_expr(state, *value).into_int_value();
+                match op {
+                    UnOp::Neg => self.bx.build_int_neg(value, "result").into(),
+                    UnOp::Not => self.bx.build_not(value, "result").into(),
+                }
+            }
+            ExprKind::Cast { value, target } => {
+                let source_ty = state.f.expr(*value).ty;
+                let target_ty = *target;
+
+                let value = self.codegen_expr(state, *value);
+
+                match (source_ty.llvm_ty(self), target_ty.llvm_ty(self)) {
+                    (BasicTypeEnum::IntType(_), BasicTypeEnum::IntType(target)) => self
+                        .bx
+                        .build_int_cast_sign_flag(
+                            value.into_int_value(),
+                            target,
+                            target_ty.is_uint(),
+                            "cast_result",
+                        )
+                        .into(),
+                    (source, target) => panic!(
+                        "unexpected types in cast: {} : {} and {} : {}",
+                        source,
+                        source_ty.display(self.db),
+                        target,
+                        target_ty.display(self.db)
+                    ),
+                }
+            }
             ExprKind::Name { id } => match self.def_value(*id) {
                 DefValue::Function(f) => {
                     f.as_global_value().as_pointer_value().as_basic_value_enum()
@@ -193,23 +329,6 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
 trait Codegen<'db, 'cx> {
     fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>);
-}
-
-impl<'db, 'cx> Codegen<'db, 'cx> for Block {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
-        let bb = state.block(self.id);
-        cx.start_block(state, bb);
-
-        for inst in &self.instructions {
-            inst.codegen(cx, state);
-        }
-    }
-}
-
-impl<'db, 'cx> Codegen<'db, 'cx> for Return {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
-        cx.bx.build_return(Some(&state.value(self.value)));
-    }
 }
 
 impl<'db, 'cx> Codegen<'db, 'cx> for Br {
@@ -240,142 +359,6 @@ impl<'db, 'cx> Codegen<'db, 'cx> for Phi {
         }
 
         state.set_value(self.value, phi.as_basic_value());
-    }
-}
-
-impl<'db, 'cx> Codegen<'db, 'cx> for Call {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
-        // TODO: this doesn't take indirect calls (function pointers) into account
-        let callee = state.value(self.callee).as_any_value_enum().into_function_value();
-
-        let args: Vec<_> = self.args.iter().map(|v| state.value(*v).into()).collect();
-
-        // Don't call actually call the function if it's diverging
-        if state.value_ty(cx, self.callee).is_diverging() {
-            cx.build_unreachable();
-            return;
-        }
-
-        let result = cx.bx.build_direct_call(callee, &args, "call");
-
-        let result_value = result.try_as_basic_value().expect_left("expected a return value");
-
-        // TODO: remove this debug printf call
-        {
-            let printf = cx.module.get_function("printf").unwrap_or_else(|| {
-                cx.module.add_function(
-                    "printf",
-                    cx.isize_ty
-                        .fn_type(&[cx.context.ptr_type(AddressSpace::default()).into()], true),
-                    Some(Linkage::External),
-                )
-            });
-
-            cx.bx.build_direct_call(
-                printf,
-                &[
-                    cx.bx
-                        .build_global_string_ptr("result = %d\n\0", "fmt")
-                        .as_pointer_value()
-                        .into(),
-                    if let BasicValueEnum::IntValue(v) = result_value {
-                        cx.bx.build_int_cast_sign_flag(v, cx.isize_ty, false, "cast_to_i64").into()
-                    } else {
-                        result_value.into()
-                    },
-                ],
-                "printf_call",
-            );
-        }
-
-        state.set_value(self.value, result_value);
-    }
-}
-
-impl<'db, 'cx> Codegen<'db, 'cx> for Cast {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
-        let source_ty = state.value_ty(cx, self.operand);
-        let target_ty = state.value_ty(cx, self.value);
-
-        let result = match (source_ty.llvm_ty(cx), target_ty.llvm_ty(cx)) {
-            (BasicTypeEnum::IntType(_), BasicTypeEnum::IntType(target)) => cx
-                .bx
-                .build_int_cast_sign_flag(
-                    state.value(self.operand).into_int_value(),
-                    target,
-                    target_ty.is_uint(),
-                    "cast_result",
-                )
-                .as_basic_value_enum(),
-            (source, target) => panic!(
-                "unexpected types in cast: {} : {} and {} : {}",
-                source,
-                source_ty.display(cx.db),
-                target,
-                target_ty.display(cx.db)
-            ),
-        };
-
-        state.set_value(self.value, result);
-    }
-}
-
-impl<'db, 'cx> Codegen<'db, 'cx> for Neg {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
-        let operand = state.value(self.operand).into_int_value();
-        let result = cx.bx.build_int_neg(operand, "result");
-        state.set_value(self.value, result.into());
-    }
-}
-
-impl<'db, 'cx> Codegen<'db, 'cx> for Not {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
-        let operand = state.value(self.operand).into_int_value();
-        let result = cx.bx.build_not(operand, "result");
-        state.set_value(self.value, result.into());
-    }
-}
-
-impl<'db, 'cx> Codegen<'db, 'cx> for Binary {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
-        const NAME: &str = "result";
-
-        let lhs = state.value(self.lhs).into_int_value();
-        let rhs = state.value(self.rhs).into_int_value();
-        let ty = state.value_ty(cx, self.value);
-
-        let result = match self.op {
-            BinOp::Add => cx.bx.build_int_add(lhs, rhs, NAME),
-            BinOp::Sub => cx.bx.build_int_sub(lhs, rhs, NAME),
-            BinOp::Mul => cx.bx.build_int_mul(lhs, rhs, NAME),
-            BinOp::Div => {
-                if ty.is_uint() {
-                    cx.bx.build_int_unsigned_div(lhs, rhs, NAME)
-                } else {
-                    cx.bx.build_int_signed_div(lhs, rhs, NAME)
-                }
-            }
-            BinOp::Mod => {
-                if ty.is_uint() {
-                    cx.bx.build_int_unsigned_rem(lhs, rhs, NAME)
-                } else {
-                    cx.bx.build_int_signed_rem(lhs, rhs, NAME)
-                }
-            }
-            BinOp::Shl => cx.bx.build_left_shift(lhs, rhs, NAME),
-            BinOp::Shr => cx.bx.build_right_shift(lhs, rhs, ty.is_int(), NAME),
-            BinOp::BitAnd => cx.bx.build_and(lhs, rhs, NAME),
-            BinOp::BitOr => cx.bx.build_or(lhs, rhs, NAME),
-            BinOp::BitXor => cx.bx.build_xor(lhs, rhs, NAME),
-            BinOp::And => todo!(),
-            BinOp::Or => todo!(),
-            BinOp::Cmp(op) => {
-                let pred = get_int_predicate(op, ty.is_int());
-                cx.bx.build_int_compare(pred, lhs, rhs, NAME)
-            }
-        };
-
-        state.set_value(self.value, result.into());
     }
 }
 
@@ -411,13 +394,5 @@ fn get_int_predicate(op: CmpOp, is_signed: bool) -> IntPredicate {
                 IntPredicate::UGE
             }
         }
-    }
-}
-
-impl<'db, 'cx> Codegen<'db, 'cx> for Unreachable {
-    fn codegen(&self, cx: &mut Generator<'db, 'cx>, state: &mut FnState<'cx>) {
-        cx.build_unreachable();
-        let ty = state.value_ty(cx, self.value);
-        state.set_value(self.value, Generator::undef_value(ty.llvm_ty(cx)));
     }
 }
