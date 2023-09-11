@@ -3,8 +3,7 @@ use crate::{
     db::Db,
     hir::{
         Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Hir, If,
-        Item, ItemKind, Let, Lit, LitKind, Name, NamePat, Pat, Return, Ty, TyName, TyParam,
-        Unary,
+        Item, ItemKind, Let, Lit, LitKind, Name, NamePat, Pat, Return, Ty, TyName, TyParam, Unary,
     },
     span::{Span, Spanned},
     ty::Instantiation,

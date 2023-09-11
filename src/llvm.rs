@@ -1,5 +1,4 @@
 mod generate;
-mod generate_tir;
 mod inkwell_ext;
 #[cfg(windows)]
 mod microsoft_craziness;

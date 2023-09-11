@@ -127,15 +127,24 @@ fn build(db: &mut Db) {
     let mono_items = passes::monomorphize(db, &hir);
     db.time.stop();
 
-    db.time.start("hir -> mir");
-    let mir = mir::lower(db, &hir, mono_items);
+    // db.time.start("hir -> mir");
+    // let mir = mir::lower(db, &hir, mono_items);
+    // db.time.stop();
+    // expect!(db);
+    //
+    // db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
+    //     .expect("emitting mir failed");
+
+    db.time.start("hir -> tir");
+    let tir = tir::lower(db, &hir, mono_items);
     db.time.stop();
     expect!(db);
 
-    db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
-        .expect("emitting mir failed");
+    // TODO: emit Tir
+    // db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
+    //     .expect("emitting mir failed");
 
-    llvm::codegen(db, &mir);
+    llvm::codegen(db, &tir);
 
     db.time.print();
 }

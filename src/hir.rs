@@ -119,9 +119,10 @@ impl Expr {
                 rhs: Box::new(bin.rhs.rewrite_(f)),
                 op: bin.op,
             }),
-            ExprKind::Cast(cast) => {
-                ExprKind::Cast(Cast { expr: Box::new(cast.expr.rewrite_(f)), target: cast.target.clone() })
-            }
+            ExprKind::Cast(cast) => ExprKind::Cast(Cast {
+                expr: Box::new(cast.expr.rewrite_(f)),
+                target: cast.target.clone(),
+            }),
             kind => kind.clone(),
         };
 
