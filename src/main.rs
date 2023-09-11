@@ -22,7 +22,6 @@ mod db;
 mod diagnostics;
 mod hir;
 mod llvm;
-mod mir;
 mod parse;
 mod passes;
 mod span;
