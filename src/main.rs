@@ -30,7 +30,7 @@ mod sym;
 mod tir;
 mod ty;
 
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -95,6 +95,8 @@ fn main() -> Result<()> {
 }
 
 fn build(db: &mut Db) {
+    fs::create_dir_all(db.output_dir()).expect("failed creating build directory");
+
     db.time.start("parse");
     let mut ast = parse::parse_modules(db);
     expect!(db);
@@ -127,22 +129,13 @@ fn build(db: &mut Db) {
     let mono_items = passes::monomorphize(db, &hir);
     db.time.stop();
 
-    // db.time.start("hir -> mir");
-    // let mir = mir::lower(db, &hir, mono_items);
-    // db.time.stop();
-    // expect!(db);
-    //
-    // db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
-    //     .expect("emitting mir failed");
-
     db.time.start("hir -> tir");
     let tir = tir::lower(db, &hir, mono_items);
     db.time.stop();
     expect!(db);
 
-    // TODO: emit Tir
-    // db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
-    //     .expect("emitting mir failed");
+    db.emit_file(EmitOption::Tir, |db, file| tir.pretty_print(db, file))
+        .expect("emitting tir failed");
 
     llvm::codegen(db, &tir);
 

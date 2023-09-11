@@ -1,11 +1,14 @@
 mod lower;
+mod pretty_print;
+
+use std::io;
 
 pub use lower::lower;
 
 use crate::{
     ast::{BinOp, UnOp},
     common::{new_key_type, IndexVec},
-    db::DefId,
+    db::{Db, DefId},
     ty::Ty,
 };
 
@@ -19,6 +22,10 @@ pub struct Tir {
 impl Tir {
     pub fn new() -> Self {
         Self { functions: vec![] }
+    }
+
+    pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
+        pretty_print::print(db, self, w)
     }
 }
 

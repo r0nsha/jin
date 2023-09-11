@@ -113,10 +113,6 @@ fn optimize(module: &Module) {
 fn build_exe(db: &mut Db, target_machine: &TargetMachine, module: &Module) -> PathBuf {
     let output_path = db.output_path();
 
-    if let Some(parent_dir) = output_path.parent() {
-        let _ = fs::create_dir_all(parent_dir);
-    }
-
     if db.build_options().should_emit(EmitOption::LlvmIr) {
         module.print_to_file(output_path.with_extension("ll")).expect("printing llvm ir to work");
     }

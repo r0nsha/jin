@@ -100,6 +100,13 @@ impl Db {
         src_dir.join(self.build_options.output_dir.clone()).join(file_name)
     }
 
+    pub fn output_dir(&self) -> PathBuf {
+        self.output_path()
+            .parent()
+            .expect("expected to have a parent directory for output_path")
+            .to_owned()
+    }
+
     pub fn root_dir(&self) -> &Path {
         &self.root_dir
     }
