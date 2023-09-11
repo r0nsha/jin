@@ -286,44 +286,90 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 result_value
             }
             ExprKind::Binary { lhs, rhs, op } => {
-                let lhs = self.codegen_expr(state, *lhs).into_int_value();
-                let rhs = self.codegen_expr(state, *rhs).into_int_value();
                 let ty = expr.ty;
+                let lhs = self.codegen_expr(state, *lhs).into_int_value();
 
                 match op {
-                    BinOp::Add => self.bx.build_int_add(lhs, rhs, "result").into(),
-                    BinOp::Sub => self.bx.build_int_sub(lhs, rhs, "result").into(),
-                    BinOp::Mul => self.bx.build_int_mul(lhs, rhs, "result").into(),
-                    BinOp::Div => {
-                        if ty.is_uint() {
-                            self.bx.build_int_unsigned_div(lhs, rhs, "result").into()
-                        } else {
-                            self.bx.build_int_signed_div(lhs, rhs, "result").into()
-                        }
-                    }
-                    BinOp::Mod => {
-                        if ty.is_uint() {
-                            self.bx.build_int_unsigned_rem(lhs, rhs, "result").into()
-                        } else {
-                            self.bx.build_int_signed_rem(lhs, rhs, "result").into()
-                        }
-                    }
-                    BinOp::Shl => self.bx.build_left_shift(lhs, rhs, "result").into(),
-                    BinOp::Shr => self.bx.build_right_shift(lhs, rhs, ty.is_int(), "result").into(),
-                    BinOp::BitAnd => self.bx.build_and(lhs, rhs, "result").into(),
-                    BinOp::BitOr => self.bx.build_or(lhs, rhs, "result").into(),
-                    BinOp::BitXor => self.bx.build_xor(lhs, rhs, "result").into(),
                     BinOp::And => {
                         // if lhs { rhs } else { false }
-                        todo!()
+                        let then_block = self.append_block(state, "and_then");
+                        let else_block = self.append_block(state, "and_else");
+                        let merge_block = self.append_block(state, "and_merge");
+
+                        self.bx.build_conditional_branch(lhs, then_block, else_block);
+
+                        self.start_block(state, then_block);
+                        let then_value = self.codegen_expr(state, *rhs);
+                        self.bx.build_unconditional_branch(merge_block);
+
+                        self.start_block(state, else_block);
+                        let else_value = self.bool_value(false);
+
+                        self.bx.build_unconditional_branch(merge_block);
+                        self.start_block(state, merge_block);
+
+                        let ty = expr.ty.llty(self);
+                        let phi = self.bx.build_phi(ty, "phi");
+                        phi.add_incoming(&[(&then_value, then_block), (&else_value, else_block)]);
+                        phi.as_basic_value()
                     }
                     BinOp::Or => {
                         // if lhs { true } else { rhs }
-                        todo!()
+                        let then_block = self.append_block(state, "or_then");
+                        let else_block = self.append_block(state, "or_else");
+                        let merge_block = self.append_block(state, "or_merge");
+
+                        self.bx.build_conditional_branch(lhs, then_block, else_block);
+
+                        self.start_block(state, then_block);
+                        let then_value = self.bool_value(true);
+                        self.bx.build_unconditional_branch(merge_block);
+
+                        self.start_block(state, else_block);
+                        let else_value = self.codegen_expr(state, *rhs);
+
+                        self.bx.build_unconditional_branch(merge_block);
+                        self.start_block(state, merge_block);
+
+                        let ty = expr.ty.llty(self);
+                        let phi = self.bx.build_phi(ty, "phi");
+                        phi.add_incoming(&[(&then_value, then_block), (&else_value, else_block)]);
+                        phi.as_basic_value()
                     }
-                    BinOp::Cmp(op) => {
-                        let pred = get_int_predicate(*op, ty.is_int());
-                        self.bx.build_int_compare(pred, lhs, rhs, "result").into()
+                    _ => {
+                        let rhs = self.codegen_expr(state, *rhs).into_int_value();
+
+                        match op {
+                            BinOp::Add => self.bx.build_int_add(lhs, rhs, "result").into(),
+                            BinOp::Sub => self.bx.build_int_sub(lhs, rhs, "result").into(),
+                            BinOp::Mul => self.bx.build_int_mul(lhs, rhs, "result").into(),
+                            BinOp::Div => {
+                                if ty.is_uint() {
+                                    self.bx.build_int_unsigned_div(lhs, rhs, "result").into()
+                                } else {
+                                    self.bx.build_int_signed_div(lhs, rhs, "result").into()
+                                }
+                            }
+                            BinOp::Mod => {
+                                if ty.is_uint() {
+                                    self.bx.build_int_unsigned_rem(lhs, rhs, "result").into()
+                                } else {
+                                    self.bx.build_int_signed_rem(lhs, rhs, "result").into()
+                                }
+                            }
+                            BinOp::Shl => self.bx.build_left_shift(lhs, rhs, "result").into(),
+                            BinOp::Shr => {
+                                self.bx.build_right_shift(lhs, rhs, ty.is_int(), "result").into()
+                            }
+                            BinOp::BitAnd => self.bx.build_and(lhs, rhs, "result").into(),
+                            BinOp::BitOr => self.bx.build_or(lhs, rhs, "result").into(),
+                            BinOp::BitXor => self.bx.build_xor(lhs, rhs, "result").into(),
+                            BinOp::Cmp(op) => {
+                                let pred = get_int_predicate(*op, ty.is_int());
+                                self.bx.build_int_compare(pred, lhs, rhs, "result").into()
+                            }
+                            BinOp::And | BinOp::Or => unreachable!(),
+                        }
                     }
                 }
             }
