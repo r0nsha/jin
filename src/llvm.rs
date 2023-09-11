@@ -7,7 +7,6 @@ mod util;
 
 use std::{
     collections::{HashMap, HashSet},
-    fs,
     path::{Path, PathBuf},
     process::Command,
 };

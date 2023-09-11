@@ -272,6 +272,7 @@ impl BinOp {
         }
     }
 
+    #[allow(unused)]
     pub fn name(self) -> &'static str {
         match self {
             Self::Add => "add",

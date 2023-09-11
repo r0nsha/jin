@@ -50,7 +50,7 @@ impl PPCtxt<'_> {
         let expr = self.f.expr(expr);
 
         match &expr.kind {
-            ExprKind::Let { id, value } => {
+            ExprKind::Let { id: _, value } => {
                 self.builder.begin_child(format!(
                     "let (type: {})",
                     self.f.expr(*value).ty.display(self.db)

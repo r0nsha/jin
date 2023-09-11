@@ -11,8 +11,12 @@ use crate::{
         subst::{ParamFolder, Subst},
         MonoItem,
     },
-    tir::{Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Tir},
-    ty::{fold::TyFolder, Instantiation, Ty},
+    tir::{Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, Tir},
+    ty::{
+        coerce::{CoercionKind, Coercions},
+        fold::TyFolder,
+        Instantiation, Ty,
+    },
 };
 
 pub fn lower(db: &mut Db, hir: &Hir, mono_items: HashSet<MonoItem>) -> Tir {
@@ -139,7 +143,7 @@ impl<'db> LowerCtxt<'db> {
 
 struct LowerFnCtxt<'cx, 'db> {
     inner: &'cx mut LowerCtxt<'db>,
-    exprs: IndexVec<ExprId, Expr>,
+    exprs: Exprs,
 }
 
 impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
@@ -224,11 +228,36 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
             },
         };
 
-        self.create_expr(kind, expr.ty)
+        let new_expr = self.create_expr(kind, expr.ty);
+
+        if let Some(coercions) = self.inner.db.coercions.get(&expr.id) {
+            coercions.apply(&mut self.exprs, new_expr)
+        } else {
+            new_expr
+        }
     }
 
     #[inline]
     pub fn create_expr(&mut self, kind: ExprKind, ty: Ty) -> ExprId {
         self.exprs.push_with_key(|id| Expr { id, kind, ty })
+    }
+}
+
+impl Coercions {
+    fn apply(&self, exprs: &mut Exprs, mut expr: ExprId) -> ExprId {
+        for coercion in self.iter() {
+            expr = match coercion.kind {
+                CoercionKind::NeverToAny => expr,
+                CoercionKind::IntPromotion => exprs.push_with_key(|id| Expr {
+                    id,
+                    ty: coercion.target,
+                    kind: ExprKind::Cast { value: expr, target: coercion.target },
+                }),
+            };
+
+            exprs[expr].ty = coercion.target;
+        }
+
+        expr
     }
 }

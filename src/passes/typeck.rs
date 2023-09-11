@@ -25,7 +25,6 @@ pub type InferResult<T> = Result<T, InferError>;
 
 pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
     typeck_inner(db, hir).map_err(|err| err.into_diagnostic(db))?;
-    coerce::apply_coercions(db, hir);
     Ok(())
 }
 

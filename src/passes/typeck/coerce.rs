@@ -1,6 +1,5 @@
 use crate::{
-    db::Db,
-    hir::{ExprId, Hir, ItemKind},
+    hir::ExprId,
     passes::typeck::{infcx::InferCtxt, normalize::NormalizeTy, unify::EqResult},
     ty::{
         coerce::{Coercion, CoercionKind},
@@ -43,23 +42,6 @@ impl CoerceExt<'_> for EqResult<()> {
                     (_, _) => Err(err),
                 }
             }
-        }
-    }
-}
-
-pub fn apply_coercions(db: &Db, hir: &mut Hir) {
-    for item in &mut hir.items {
-        match &mut item.kind {
-            ItemKind::Fn(f) => {
-                f.body = f.body.clone().rewrite(|expr| {
-                    if let Some(coercions) = db.coercions.get(&expr.id) {
-                        coercions.apply(expr)
-                    } else {
-                        expr
-                    }
-                });
-            }
-            ItemKind::Let(_) => todo!(),
         }
     }
 }

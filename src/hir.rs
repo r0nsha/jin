@@ -76,59 +76,6 @@ pub struct Expr {
 }
 
 impl Expr {
-    pub fn rewrite(self, mut f: impl FnMut(Self) -> Self) -> Self {
-        self.rewrite_(&mut f)
-    }
-
-    fn rewrite_(self, f: &mut impl FnMut(Self) -> Self) -> Self {
-        let kind = match self.kind {
-            ExprKind::Let(let_) => ExprKind::Let(Let {
-                pat: let_.pat.clone(),
-                ty_annot: let_.ty_annot.clone(),
-                value: Box::new(let_.value.rewrite_(f)),
-                span: let_.span,
-            }),
-            ExprKind::If(if_) => ExprKind::If(If {
-                cond: Box::new(if_.cond.rewrite_(f)),
-                then: Box::new(if_.then.rewrite_(f)),
-                otherwise: if_.otherwise.map(|o| Box::new(o.rewrite_(f))),
-            }),
-            ExprKind::Block(blk) => ExprKind::Block(Block {
-                exprs: blk.exprs.into_iter().map(|expr| expr.rewrite_(f)).collect(),
-            }),
-            ExprKind::Return(ret) => {
-                ExprKind::Return(Return { expr: Box::new(ret.expr.rewrite_(f)) })
-            }
-            ExprKind::Call(call) => ExprKind::Call(Call {
-                callee: Box::new(call.callee.rewrite_(f)),
-                args: call
-                    .args
-                    .into_iter()
-                    .map(|arg| CallArg {
-                        name: arg.name,
-                        expr: arg.expr.rewrite_(f),
-                        index: arg.index,
-                    })
-                    .collect(),
-            }),
-            ExprKind::Unary(un) => {
-                ExprKind::Unary(Unary { expr: Box::new(un.expr.rewrite_(f)), op: un.op })
-            }
-            ExprKind::Binary(bin) => ExprKind::Binary(Binary {
-                lhs: Box::new(bin.lhs.rewrite_(f)),
-                rhs: Box::new(bin.rhs.rewrite_(f)),
-                op: bin.op,
-            }),
-            ExprKind::Cast(cast) => ExprKind::Cast(Cast {
-                expr: Box::new(cast.expr.rewrite_(f)),
-                target: cast.target.clone(),
-            }),
-            kind => kind.clone(),
-        };
-
-        f(Expr { id: self.id, kind, span: self.span, ty: self.ty })
-    }
-
     pub fn walk(&self, mut f: impl FnMut(&Expr)) {
         self.walk_(&mut f);
     }
@@ -162,45 +109,6 @@ impl Expr {
                 bin.rhs.walk_(f);
             }
             ExprKind::Cast(cast) => cast.expr.walk_(f),
-            ExprKind::Name(_) | ExprKind::Lit(_) => (),
-        }
-
-        f(self);
-    }
-
-    pub fn walk_mut(&mut self, mut f: impl FnMut(&mut Expr)) {
-        self.walk_mut_(&mut f);
-    }
-
-    fn walk_mut_(&mut self, f: &mut impl FnMut(&mut Expr)) {
-        match &mut self.kind {
-            ExprKind::Let(let_) => let_.value.walk_mut_(f),
-            ExprKind::If(if_) => {
-                if_.cond.walk_mut_(f);
-                if_.then.walk_mut_(f);
-                if let Some(otherwise) = &mut if_.otherwise {
-                    otherwise.walk_mut_(f);
-                }
-            }
-            ExprKind::Block(blk) => {
-                for expr in &mut blk.exprs {
-                    expr.walk_mut_(f);
-                }
-            }
-            ExprKind::Return(ret) => ret.expr.walk_mut_(f),
-            ExprKind::Call(call) => {
-                call.callee.walk_mut_(f);
-
-                for arg in &mut call.args {
-                    arg.expr.walk_mut_(f);
-                }
-            }
-            ExprKind::Unary(un) => un.expr.walk_mut_(f),
-            ExprKind::Binary(bin) => {
-                bin.lhs.walk_mut_(f);
-                bin.rhs.walk_mut_(f);
-            }
-            ExprKind::Cast(cast) => cast.expr.walk_mut_(f),
             ExprKind::Name(_) | ExprKind::Lit(_) => (),
         }
 
@@ -266,10 +174,12 @@ pub enum Pat {
 }
 
 impl Pat {
+    #[allow(unused)]
     pub fn walk(&self, mut f: impl FnMut(&NamePat)) {
         self.walk_(&mut f);
     }
 
+    #[allow(unused)]
     fn walk_(&self, f: &mut impl FnMut(&NamePat)) {
         match self {
             Pat::Name(n) => f(n),

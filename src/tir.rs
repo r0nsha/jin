@@ -35,8 +35,10 @@ pub struct Fn {
     pub sig: FnSig,
     pub body: ExprId,
 
-    exprs: IndexVec<ExprId, Expr>,
+    exprs: Exprs,
 }
+
+pub type Exprs = IndexVec<ExprId, Expr>;
 
 impl Fn {
     #[inline]
