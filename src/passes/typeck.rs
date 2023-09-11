@@ -163,9 +163,9 @@ impl InferCtxt<'_> {
 
                     if_.then.ty
                 } else {
-                    // self.at(Obligation::obvious(if_.then.span))
-                    //     .eq(self.db.types.unit, if_.then.ty)
-                    //     .or_coerce(self, if_.then.id)?;
+                    // NOTE: We don't unify here since, since we allow non-unit blocks to
+                    // _become_ unit blocks, meaning that a block that doesn't return a unit value,
+                    // but is expected to - is assumed to return it anyways.
                     if_.then.ty = self.db.types.unit;
 
                     self.db.types.unit

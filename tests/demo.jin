@@ -1,5 +1,5 @@
 fn main() = {
-	let foo = if 1 == 1 {
+	if 1 == 1 {
 		answer()
 	}
 	#int_types()
