@@ -5,7 +5,7 @@ use crate::{db::Db, tir::*};
 pub(super) fn print(db: &Db, tir: &Tir, w: &mut impl io::Write) -> io::Result<()> {
     let mut builder = ptree::TreeBuilder::new("Tir".to_string());
 
-    for f in tir.functions.iter() {
+    for f in tir.fns.iter() {
         PPCtxt { builder: &mut builder, db, tir, f }.pp_fn(f);
     }
 
@@ -131,7 +131,7 @@ impl PPCtxt<'_> {
                 Id::Fn(fid) => {
                     self.builder.add_empty_child(format!(
                         "`{}` (type: {})",
-                        self.tir.functions[*fid].name,
+                        self.tir.sigs[*fid].name,
                         expr.ty.display(self.db)
                     ));
                 }

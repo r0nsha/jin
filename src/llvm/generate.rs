@@ -14,7 +14,7 @@ use crate::{
     ast::{BinOp, CmpOp, UnOp},
     db::{Db, DefId},
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
-    tir::{ExprId, ExprKind, Fn, FnId, Id, Tir},
+    tir::{ExprId, ExprKind, Fn, FnSigId, Id, Tir},
 };
 
 pub struct Generator<'db, 'cx> {
@@ -27,7 +27,7 @@ pub struct Generator<'db, 'cx> {
     pub isize_ty: IntType<'cx>,
     pub unit_ty: StructType<'cx>,
 
-    pub functions: HashMap<FnId, FunctionValue<'cx>>,
+    pub functions: HashMap<FnSigId, FunctionValue<'cx>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -85,8 +85,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         let entry_block = self.context.append_basic_block(function_value, "entry");
         self.bx.position_at_end(entry_block);
 
-        let main_function_value =
-            self.function(self.tir.main_function.expect("to have a main function"));
+        let main_function_value = self.function(self.tir.main_fn.expect("to have a main function"));
 
         self.bx.build_direct_call(main_function_value, &[], "call_main");
 
@@ -96,17 +95,17 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     }
 
     pub fn predefine_all(&mut self) {
-        for fun in self.tir.functions.iter() {
+        for fun in self.tir.fns.iter() {
             let sig = &self.tir.sigs[fun.sig];
             let llvm_ty = sig.ty.as_fn().expect("a function type").llty(self);
 
             let function = self.module.add_function(&sig.name, llvm_ty, Some(Linkage::Private));
-            self.functions.insert(fun.id, function);
+            self.functions.insert(fun.sig, function);
         }
     }
 
     pub fn define_all(&mut self) {
-        for fun in self.tir.functions.iter() {
+        for fun in self.tir.fns.iter() {
             self.codegen_fn(fun);
         }
     }
@@ -115,7 +114,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         let sig = &self.tir.sigs[fun.sig];
         let fty = sig.ty;
 
-        let function_value = self.function(fun.id);
+        let function_value = self.function(fun.sig);
 
         let sig = &self.tir.sigs[fun.sig];
 
@@ -431,10 +430,11 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     }
 
     #[track_caller]
-    fn function(&self, id: FnId) -> FunctionValue<'cx> {
-        self.functions.get(&id).copied().unwrap_or_else(|| {
-            panic!("function {} to be declared", self.tir.sigs[self.tir.functions[id].sig].name)
-        })
+    fn function(&self, id: FnSigId) -> FunctionValue<'cx> {
+        self.functions
+            .get(&id)
+            .copied()
+            .unwrap_or_else(|| panic!("function {} to be declared", self.tir.sigs[id].name))
     }
 }
 

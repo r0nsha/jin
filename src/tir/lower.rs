@@ -185,22 +185,19 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
             self.cx.tir.sigs.push(sig)
         };
 
-        let id = self.cx.tir.functions.next_key();
         let f = Fn {
-            id,
+            id: self.cx.tir.fns.next_key(),
             def_id: f.id,
-            name,
             sig,
             body: self.lower_expr(&f.body),
-            ty,
             exprs: self.exprs,
         };
 
         if self.cx.db.main_function_id() == Some(f.def_id) {
-            self.cx.tir.main_function = Some(f.id);
+            self.cx.tir.main_fn = Some(f.sig);
         }
 
-        self.cx.tir.functions.push(f);
+        self.cx.tir.fns.push(f);
     }
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ExprId {

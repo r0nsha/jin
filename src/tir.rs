@@ -20,13 +20,13 @@ new_key_type!(ExprId);
 #[derive(Debug)]
 pub struct Tir {
     pub sigs: IndexVec<FnSigId, FnSig>,
-    pub functions: IndexVec<FnId, Fn>,
-    pub main_function: Option<FnId>,
+    pub fns: IndexVec<FnId, Fn>,
+    pub main_fn: Option<FnSigId>,
 }
 
 impl Tir {
     pub fn new() -> Self {
-        Self { sigs: IndexVec::new(), functions: IndexVec::new(), main_function: None }
+        Self { sigs: IndexVec::new(), fns: IndexVec::new(), main_fn: None }
     }
 
     pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
@@ -34,15 +34,13 @@ impl Tir {
     }
 }
 
+// TODO: change to FnBody
 #[derive(Debug, Clone)]
 pub struct Fn {
     pub id: FnId,
     pub def_id: DefId,
-    pub name: Ustr,
     pub sig: FnSigId,
     pub body: ExprId,
-    pub ty: Ty,
-
     exprs: Exprs,
 }
 
@@ -95,7 +93,7 @@ pub enum ExprKind {
 
 #[derive(Debug, Clone)]
 pub enum Id {
-    Fn(FnId),
+    Fn(FnSigId),
     // TODO: LocalId
     Local(DefId),
 }

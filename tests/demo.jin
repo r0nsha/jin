@@ -1,3 +1,16 @@
+############################
+############################
+# TODO: remove
+fn recursive_poly[t](x t) = {
+	if true {
+		wut(x)
+	} else {
+		()
+	}
+}
+############################
+############################
+
 fn main() = {
 	int_types()
 	unary()
@@ -95,3 +108,4 @@ fn named_args() = {
 	add(second: 2, first: 1)
 	add(1, second: 2)
 }
+
