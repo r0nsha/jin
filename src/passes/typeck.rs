@@ -327,8 +327,7 @@ impl InferCtxt<'_> {
                 let def_ty = self.lookup(name.id);
                 let ty = def_ty.normalize(&mut self.inner.borrow_mut());
 
-                let ty_params: Vec<ParamTy> =
-                    ty.collect_params().into_iter().filter(|p| !fx.ty_params.contains(p)).collect();
+                let ty_params = ty.collect_params();
 
                 let instantiation: Instantiation = match &name.args {
                     Some(args) if args.len() == ty_params.len() => {
