@@ -219,12 +219,18 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
             }
             hir::ExprKind::Return(ret) => ExprKind::Return { value: self.lower_expr(&ret.expr) },
             hir::ExprKind::Call(call) => {
-                let mut sorted_args = call.args.clone();
-                sorted_args.sort_by_key(|arg| arg.index.expect("arg index to be resolved"));
+                let mut args: Vec<_> = call
+                    .args
+                    .iter()
+                    .map(|arg| {
+                        (arg.index.expect("arg index to be resolved"), self.lower_expr(&arg.expr))
+                    })
+                    .collect();
 
-                let args = sorted_args.iter().map(|a| self.lower_expr(&a.expr)).collect();
+                args.sort_by_key(|(idx, _)| *idx);
+
                 let callee = self.lower_expr(&call.callee);
-                ExprKind::Call { callee, args }
+                ExprKind::Call { callee, args: args.into_iter().map(|(_, arg)| arg).collect() }
             }
             hir::ExprKind::Unary(un) => {
                 ExprKind::Unary { value: self.lower_expr(&un.expr), op: un.op }
