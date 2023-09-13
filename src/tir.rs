@@ -15,6 +15,7 @@ use crate::{
 
 new_key_type!(FnId);
 new_key_type!(FnSigId);
+new_key_type!(LocalId);
 new_key_type!(ExprId);
 
 #[derive(Debug)]
@@ -34,7 +35,6 @@ impl Tir {
     }
 }
 
-// TODO: change to FnBody
 #[derive(Debug, Clone)]
 pub struct Fn {
     pub id: FnId,
@@ -42,9 +42,19 @@ pub struct Fn {
     pub sig: FnSigId,
     pub body: ExprId,
     exprs: Exprs,
+    locals: Locals,
+}
+
+#[derive(Debug, Clone)]
+pub struct Local {
+    pub id: LocalId,
+    pub def_id: DefId,
+    pub name: Ustr,
+    pub ty: Ty,
 }
 
 pub type Exprs = IndexVec<ExprId, Expr>;
+pub type Locals = IndexVec<LocalId, Local>;
 
 impl Fn {
     #[inline]
@@ -94,6 +104,5 @@ pub enum ExprKind {
 #[derive(Debug, Clone)]
 pub enum Id {
     Fn(FnSigId),
-    // TODO: LocalId
-    Local(DefId),
+    Local(LocalId),
 }

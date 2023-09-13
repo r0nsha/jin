@@ -4,14 +4,14 @@ use ustr::ustr;
 
 use crate::{
     common::IndexVec,
-    db::{Db, Def, DefId},
+    db::{Db, Def, DefId, DefKind},
     hir,
     hir::Hir,
     passes::{
         subst::{ParamFolder, Subst},
         MonoItem,
     },
-    tir::{Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Id, Tir},
+    tir::{Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Id, Locals, Tir},
     ty::{
         coerce::{CoercionKind, Coercions},
         fold::TyFolder,
@@ -56,15 +56,11 @@ impl<'db> LowerCtxt<'db> {
         }
     }
 
-    fn get_mono_def(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> DefId {
-        let target_id = self.mono_items.get(mono_item).copied().flatten();
-
-        if let Some(target_id) = target_id {
-            // This is a polymorphic item that has already been monomorphized
+    fn get_mono_fn(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> FnSigId {
+        if let Some(target_id) = self.mono_fns.get(mono_item).copied() {
             target_id
         } else {
-            // This is a polymorphic item that needs monomorphization
-            self.lower_mono_def(mono_item, instantiation)
+            self.monomorphize_fn(mono_item, instantiation)
         }
     }
 
@@ -79,7 +75,7 @@ impl<'db> LowerCtxt<'db> {
         }
     }
 
-    fn lower_mono_def(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> DefId {
+    fn monomorphize_fn(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> FnSigId {
         for item in &self.hir.items {
             match &item.kind {
                 hir::ItemKind::Fn(fun) if fun.id == mono_item.id => {
@@ -91,44 +87,14 @@ impl<'db> LowerCtxt<'db> {
                     self.mono_fns.insert(mono_item.clone(), sig);
                     self.lower_fn_body(sig, &new_fun);
 
-                    break;
+                    return sig;
                 }
                 hir::ItemKind::Fn(_) | hir::ItemKind::Let(_) => (),
             }
         }
 
-        panic!("function not found");
+        panic!("function {} not found in hir.items", self.db[mono_item.id].qpath);
     }
-
-    // TODO: LocalId Remove
-    // fn alloc_mono_def(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> DefId {
-    //     let def = &self.db[mono_item.id];
-    //
-    //     let new_qpath = if def.kind.is_fn() {
-    //         let args_str = instantiation
-    //             .values()
-    //             .map(|t| t.to_string(self.db))
-    //             .collect::<Vec<String>>()
-    //             .join("_");
-    //
-    //         if args_str.is_empty() {
-    //             def.qpath.clone()
-    //         } else {
-    //             def.qpath.clone().with_name(ustr(&format!("{}${}", def.name, args_str)))
-    //         }
-    //     } else {
-    //         def.qpath.clone()
-    //     };
-    //
-    //     let new_scope = def.scope.clone();
-    //     let new_kind = def.kind.as_ref().clone();
-    //     let new_span = def.span;
-    //
-    //     let ty = def.ty;
-    //     let new_ty = ParamFolder { db: self.db, instantiation }.fold(ty);
-    //
-    //     Def::alloc(self.db, new_qpath, new_scope, new_kind, new_ty, new_span)
-    // }
 
     fn lower_fn(&mut self, f: &hir::Fn) {
         let sig = self.lower_fn_sig(f.id, &f.sig);
@@ -149,7 +115,7 @@ impl<'db> LowerCtxt<'db> {
                 .map(|p| FnParam {
                     // TODO: LocalId
                     def_id: self
-                        .get_mono_def(&MonoItem { id: p.id, ty: p.ty }, &Instantiation::new()),
+                        .get_mono_fn(&MonoItem { id: p.id, ty: p.ty }, &Instantiation::new()),
                     ty: p.ty,
                 })
                 .collect(),
@@ -172,11 +138,12 @@ impl<'db> LowerCtxt<'db> {
 struct LowerFnCtxt<'cx, 'db> {
     cx: &'cx mut LowerCtxt<'db>,
     exprs: Exprs,
+    locals: Locals,
 }
 
 impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
     fn new(cx: &'cx mut LowerCtxt<'db>) -> Self {
-        Self { cx, exprs: IndexVec::new() }
+        Self { cx, exprs: IndexVec::new(), locals: IndexVec::new() }
     }
 
     fn lower_fn(mut self, sig: FnSigId, f: &hir::Fn) {
@@ -186,6 +153,7 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
             sig,
             body: self.lower_expr(&f.body),
             exprs: self.exprs,
+            locals: self.locals,
         };
 
         if self.cx.db.main_function_id() == Some(f.def_id) {
@@ -203,7 +171,7 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
                 match &let_.pat {
                     hir::Pat::Name(name) => ExprKind::Let {
                         // TODO: LocalId
-                        def_id: self.cx.get_mono_def(
+                        def_id: self.cx.get_mono_fn(
                             &MonoItem { id: name.id, ty: let_.value.ty },
                             &Instantiation::new(),
                         ),
@@ -248,13 +216,20 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
             hir::ExprKind::Cast(cast) => {
                 ExprKind::Cast { value: self.lower_expr(&cast.expr), target: expr.ty }
             }
-            hir::ExprKind::Name(name) => {
-                let id = self
-                    .cx
-                    .get_mono_def(&MonoItem { id: name.id, ty: expr.ty }, &name.instantiation);
+            hir::ExprKind::Name(name) => match self.cx.db[name.id].kind.as_ref() {
+                DefKind::Fn(_) => {
+                    let id = self
+                        .cx
+                        .get_mono_fn(&MonoItem { id: name.id, ty: expr.ty }, &name.instantiation);
 
-                ExprKind::Id { id: Id::Local(id) }
-            }
+                    ExprKind::Id { id: Id::Fn(id) }
+                }
+                DefKind::Variable => {
+                    todo!("get mono local")
+                    // ExprKind::Id { id: Id::Local(id) }
+                }
+                DefKind::Ty(_) => unreachable!(),
+            },
             hir::ExprKind::Const(value) => match value {
                 hir::Const::Int(value) => ExprKind::IntLit { value: *value },
                 hir::Const::Bool(value) => ExprKind::BoolLit { value: *value },
