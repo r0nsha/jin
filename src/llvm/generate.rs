@@ -32,8 +32,6 @@ pub struct Generator<'db, 'cx> {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Local<'cx> {
-    // TODO: remove
-    Function(FunctionValue<'cx>),
     Alloca(PointerValue<'cx>, BasicTypeEnum<'cx>),
     Value(BasicValueEnum<'cx>),
 }
@@ -87,7 +85,6 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         let entry_block = self.context.append_basic_block(function_value, "entry");
         self.bx.position_at_end(entry_block);
 
-        let main_function = self.db.main_function().expect("to have a main function");
         let main_function_value =
             self.function(self.tir.main_function.expect("to have a main function"));
 
@@ -410,9 +407,6 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                     self.function(*fid).as_global_value().as_pointer_value().as_basic_value_enum()
                 }
                 Id::Local(lid) => match state.local(*lid) {
-                    Local::Function(f) => {
-                        f.as_global_value().as_pointer_value().as_basic_value_enum()
-                    }
                     Local::Alloca(p, ty) => {
                         self.bx.build_load(ty, p, &format!("load_{}", self.db[*lid].name))
                     }
