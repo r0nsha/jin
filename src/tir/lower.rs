@@ -219,6 +219,8 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
             }
             hir::ExprKind::Return(ret) => ExprKind::Return { value: self.lower_expr(&ret.expr) },
             hir::ExprKind::Call(call) => {
+                // NOTE: We evaluate args in passing order, and then sort them to the actual
+                // required parameter order
                 let mut args: Vec<_> = call
                     .args
                     .iter()
