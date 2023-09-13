@@ -29,7 +29,7 @@ mod sym;
 mod tir;
 mod ty;
 
-use std::{collections::HashSet, fs, path::PathBuf};
+use std::{fs, path::PathBuf};
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -124,12 +124,8 @@ fn build(db: &mut Db) {
     db.time.stop();
     expect!(db);
 
-    // db.time.start("monomorphize");
-    // let mono_items = passes::monomorphize(db, &hir);
-    // db.time.stop();
-
     db.time.start("hir -> tir");
-    let tir = tir::lower(db, &hir, HashSet::new());
+    let tir = tir::lower(db, &hir);
     db.time.stop();
     expect!(db);
 

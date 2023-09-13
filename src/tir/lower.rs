@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 
 use ustr::{ustr, Ustr};
 
@@ -7,10 +7,7 @@ use crate::{
     db::{Db, DefId, DefKind},
     hir,
     hir::Hir,
-    passes::{
-        subst::{ParamFolder, Subst},
-        MonoItem,
-    },
+    passes::subst::{ParamFolder, Subst},
     tir::{
         Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Id, Local, LocalId, Locals, Tir,
     },
@@ -21,16 +18,14 @@ use crate::{
     },
 };
 
-pub fn lower(db: &mut Db, hir: &Hir, mono_items: HashSet<MonoItem>) -> Tir {
+pub fn lower(db: &mut Db, hir: &Hir) -> Tir {
     let mut tir = Tir::new();
-    let mut cx = LowerCtxt::new(db, hir, &mut tir, mono_items);
+    let mut cx = LowerCtxt::new(db, hir, &mut tir);
 
     cx.lower_all();
 
     tir
 }
-
-type MonoItemTarget = DefId;
 
 struct LowerCtxt<'db> {
     db: &'db mut Db,
@@ -42,26 +37,17 @@ struct LowerCtxt<'db> {
 
     // Already monomorphized functions
     mono_fns: HashMap<MonoItem, FnSigId>,
+}
 
-    // TODO: remove
-    mono_items: HashMap<MonoItem, Option<MonoItemTarget>>,
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct MonoItem {
+    pub id: DefId,
+    pub ty: Ty,
 }
 
 impl<'db> LowerCtxt<'db> {
-    fn new(
-        db: &'db mut Db,
-        hir: &'db Hir,
-        tir: &'db mut Tir,
-        mono_items: HashSet<MonoItem>,
-    ) -> Self {
-        Self {
-            db,
-            hir,
-            tir,
-            fn_to_sig: HashMap::new(),
-            mono_fns: HashMap::new(),
-            mono_items: mono_items.into_iter().map(|i| (i, None)).collect(),
-        }
+    fn new(db: &'db mut Db, hir: &'db Hir, tir: &'db mut Tir) -> Self {
+        Self { db, hir, tir, fn_to_sig: HashMap::new(), mono_fns: HashMap::new() }
     }
 
     fn lower_all(&mut self) {
@@ -78,7 +64,9 @@ impl<'db> LowerCtxt<'db> {
         match &item.kind {
             hir::ItemKind::Fn(fun) => {
                 if !self.db[fun.id].ty.is_polymorphic() {
-                    let sig = self.lower_fn_sig(fun.id, &fun.sig);
+                    let def = &self.db[fun.id];
+                    let sig =
+                        self.lower_fn_sig(&fun.sig, def.qpath.standard_full_name().into(), def.ty);
                     self.fn_to_sig.insert(fun.id, sig);
                 }
             }
@@ -100,12 +88,6 @@ impl<'db> LowerCtxt<'db> {
 
     fn monomorphize_fn(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> FnSigId {
         if let Some(target_id) = self.mono_fns.get(mono_item).copied() {
-            println!(
-                "found: {} + {} -> {}",
-                self.db[mono_item.id].name,
-                mono_item.ty.display(self.db),
-                self.tir.sigs[target_id].ty.display(self.db)
-            );
             return target_id;
         }
 
@@ -115,8 +97,25 @@ impl<'db> LowerCtxt<'db> {
                     let mut new_fun = fun.clone();
                     new_fun.subst(&mut ParamFolder { db: self.db, instantiation });
 
-                    let name = 
-                    let sig = self.lower_fn_sig( mono_item.ty, &new_fun.sig);
+                    let name = {
+                        let args_str = instantiation
+                            .values()
+                            .map(|t| t.to_string(self.db))
+                            .collect::<Vec<String>>()
+                            .join("_");
+
+                        let def = &self.db[fun.id];
+
+                        let name = def
+                            .qpath
+                            .clone()
+                            .with_name(ustr(&format!("{}${}", def.name, args_str)))
+                            .standard_full_name();
+
+                        ustr(&name)
+                    };
+
+                    let sig = self.lower_fn_sig(&new_fun.sig, name, mono_item.ty);
 
                     self.mono_fns.insert(mono_item.clone(), sig);
                     self.lower_fn_body(sig, &new_fun);
@@ -130,7 +129,7 @@ impl<'db> LowerCtxt<'db> {
         panic!("function {} not found in hir.items", self.db[mono_item.id].qpath);
     }
 
-    fn lower_fn_sig(&mut self, name: Ustr, ty: Ty, sig: &hir::FnSig) -> FnSigId {
+    fn lower_fn_sig(&mut self, sig: &hir::FnSig, name: Ustr, ty: Ty) -> FnSigId {
         let sig = FnSig {
             id: self.tir.sigs.next_key(),
             name,
@@ -243,19 +242,16 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
                     } else {
                         let mut folder =
                             ParamFolder { db: self.cx.db, instantiation: &name.instantiation };
-                        let ty = folder.fold(expr.ty);
-                        let instantiation: Instantiation = name
-                            .instantiation
-                            .iter()
-                            .map(|(var, ty)| (*var, folder.fold(*ty)))
-                            .collect();
 
-                        println!(
-                            "monomorphizing: {} + {}",
-                            self.cx.db[name.id].name,
-                            ty.display(self.cx.db)
-                        );
-                        self.cx.monomorphize_fn(&MonoItem { id: name.id, ty }, &instantiation)
+                        let ty = folder.fold(expr.ty);
+
+                        // let instantiation: Instantiation = name
+                        //     .instantiation
+                        //     .iter()
+                        //     .map(|(var, ty)| (*var, folder.fold(*ty)))
+                        //     .collect();
+
+                        self.cx.monomorphize_fn(&MonoItem { id: name.id, ty }, &name.instantiation)
                     };
 
                     ExprKind::Id { id: Id::Fn(id) }
