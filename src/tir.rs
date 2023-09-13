@@ -4,6 +4,7 @@ mod pretty_print;
 use std::io;
 
 pub use lower::lower;
+use ustr::Ustr;
 
 use crate::{
     ast::{BinOp, UnOp},
@@ -12,16 +13,19 @@ use crate::{
     ty::Ty,
 };
 
+new_key_type!(FnId);
+new_key_type!(FnSigId);
 new_key_type!(ExprId);
 
 #[derive(Debug)]
 pub struct Tir {
-    pub functions: Vec<Fn>,
+    pub sigs: IndexVec<FnSigId, FnSig>,
+    pub functions: IndexVec<FnId, Fn>,
 }
 
 impl Tir {
     pub fn new() -> Self {
-        Self { functions: vec![] }
+        Self { sigs: IndexVec::new(), functions: IndexVec::new() }
     }
 
     pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
@@ -31,8 +35,9 @@ impl Tir {
 
 #[derive(Debug, Clone)]
 pub struct Fn {
-    pub id: DefId,
-    pub sig: FnSig,
+    pub id: FnId,
+    pub def_id: DefId,
+    pub sig: FnSigId,
     pub body: ExprId,
 
     exprs: Exprs,
@@ -49,13 +54,16 @@ impl Fn {
 
 #[derive(Debug, Clone)]
 pub struct FnSig {
+    pub id: FnSigId,
+    pub name: Ustr,
     pub params: Vec<FnParam>,
     pub ret: Ty,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone)]
 pub struct FnParam {
-    pub id: DefId,
+    pub def_id: DefId,
     pub ty: Ty,
 }
 
@@ -68,7 +76,7 @@ pub struct Expr {
 
 #[derive(Debug, Clone)]
 pub enum ExprKind {
-    Let { id: DefId, value: ExprId },
+    Let { def_id: DefId, value: ExprId },
     If { cond: ExprId, then: ExprId, otherwise: Option<ExprId> },
     Block { exprs: Vec<ExprId> },
     Return { value: ExprId },

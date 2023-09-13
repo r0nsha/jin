@@ -136,41 +136,53 @@ impl<'db> LowerCtxt<'db> {
             !self.db[f.id].ty.is_polymorphic(),
             "lowering polymorphic functions to TIR is not allowed"
         );
-        let f = LowerFnCtxt::new(self).lower_fn(f);
-        self.tir.functions.push(f);
+        LowerFnCtxt::new(self).lower_fn(f);
     }
 }
 
 struct LowerFnCtxt<'cx, 'db> {
-    inner: &'cx mut LowerCtxt<'db>,
+    cx: &'cx mut LowerCtxt<'db>,
     exprs: Exprs,
 }
 
 impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
-    fn new(inner: &'cx mut LowerCtxt<'db>) -> Self {
-        Self { inner, exprs: IndexVec::new() }
+    fn new(cx: &'cx mut LowerCtxt<'db>) -> Self {
+        Self { cx, exprs: IndexVec::new() }
     }
 
-    fn lower_fn(mut self, f: &hir::Fn) -> Fn {
-        Fn {
-            id: f.id,
-            sig: FnSig {
+    fn lower_fn(mut self, f: &hir::Fn) {
+        let sig = {
+            let sig = FnSig {
+                id: self.cx.tir.sigs.next_key(),
+                // TODO: don't use the name given from the def id. use a name given from outside
+                name: self.cx.db[f.id].qpath.standard_full_name().into(),
                 params: f
                     .sig
                     .params
                     .iter()
                     .map(|p| FnParam {
-                        id: self
-                            .inner
+                        def_id: self
+                            .cx
                             .get_mono_def(&MonoItem { id: p.id, ty: p.ty }, &Instantiation::new()),
                         ty: p.ty,
                     })
                     .collect(),
-                ret: self.inner.db[f.id].ty.as_fn().unwrap().ret,
-            },
+                ret: self.cx.db[f.id].ty.as_fn().unwrap().ret,
+                ty: self.cx.db[f.id].ty,
+            };
+
+            self.cx.tir.sigs.push(sig)
+        };
+
+        let f = Fn {
+            id: self.cx.tir.functions.next_key(),
+            def_id: f.id,
+            sig,
             body: self.lower_expr(&f.body),
             exprs: self.exprs,
-        }
+        };
+
+        self.cx.tir.functions.push(f);
     }
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ExprId {
@@ -180,7 +192,7 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
 
                 match &let_.pat {
                     hir::Pat::Name(name) => ExprKind::Let {
-                        id: self.inner.get_mono_def(
+                        def_id: self.cx.get_mono_def(
                             &MonoItem { id: name.id, ty: let_.value.ty },
                             &Instantiation::new(),
                         ),
@@ -227,7 +239,7 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
             }
             hir::ExprKind::Name(name) => {
                 let id = self
-                    .inner
+                    .cx
                     .get_mono_def(&MonoItem { id: name.id, ty: expr.ty }, &name.instantiation);
                 ExprKind::Name { id }
             }
@@ -240,7 +252,7 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
 
         let new_expr = self.create_expr(kind, expr.ty);
 
-        if let Some(coercions) = self.inner.db.coercions.get(&expr.id) {
+        if let Some(coercions) = self.cx.db.coercions.get(&expr.id) {
             coercions.apply(&mut self.exprs, new_expr)
         } else {
             new_expr

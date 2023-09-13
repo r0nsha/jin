@@ -62,7 +62,7 @@ impl<K: Key, V> IndexVec<K, V> {
     }
 
     #[inline]
-    fn next_key(&self) -> K {
+    pub fn next_key(&self) -> K {
         self.vec.len().into()
     }
 }

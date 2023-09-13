@@ -5,8 +5,8 @@ use crate::{db::Db, tir::*};
 pub(super) fn print(db: &Db, tir: &Tir, w: &mut impl io::Write) -> io::Result<()> {
     let mut builder = ptree::TreeBuilder::new("Tir".to_string());
 
-    for f in &tir.functions {
-        PPCtxt { db, builder: &mut builder, f }.pp_fn(f);
+    for f in tir.functions.iter() {
+        PPCtxt { builder: &mut builder, db, tir, f }.pp_fn(f);
     }
 
     let tree = builder.build();
@@ -14,8 +14,9 @@ pub(super) fn print(db: &Db, tir: &Tir, w: &mut impl io::Write) -> io::Result<()
 }
 
 struct PPCtxt<'db> {
-    db: &'db Db,
     builder: &'db mut ptree::TreeBuilder,
+    db: &'db Db,
+    tir: &'db Tir,
     f: &'db Fn,
 }
 
@@ -23,17 +24,20 @@ impl PPCtxt<'_> {
     fn pp_fn(&mut self, f: &Fn) {
         self.builder.begin_child(format!(
             "fn {} (returns: {})",
-            self.db[f.id].qpath,
-            self.db[f.id].ty.as_fn().expect("to be a function").ret.display(self.db)
+            self.tir.sigs[f.sig].name,
+            self.tir.sigs[f.sig].ty.as_fn().expect("to be a function").ret.display(self.db)
         ));
 
-        if !f.sig.params.is_empty() {
+        let sig = &self.tir.sigs[f.sig];
+
+        if !sig.params.is_empty() {
             self.builder.begin_child("params".to_string());
 
-            for param in &f.sig.params {
+            for param in &sig.params {
                 self.builder.add_empty_child(format!(
                     "{} (type: {})",
-                    self.db[param.id].name,
+                    // TODO: LocalId
+                    self.db[param.def_id].name,
                     param.ty.display(self.db)
                 ));
             }
@@ -50,9 +54,11 @@ impl PPCtxt<'_> {
         let expr = self.f.expr(expr);
 
         match &expr.kind {
-            ExprKind::Let { id: _, value } => {
+            ExprKind::Let { def_id, value } => {
                 self.builder.begin_child(format!(
-                    "let (type: {})",
+                    "let {} (type: {})",
+                    // TODO: LocalId
+                    self.db[*def_id].qpath.standard_full_name(),
                     self.f.expr(*value).ty.display(self.db)
                 ));
                 self.pp_expr(*value);

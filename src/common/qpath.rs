@@ -27,10 +27,6 @@ impl QPath {
         self.full_name(".")
     }
 
-    pub fn full_c_name(&self) -> String {
-        self.full_name("_")
-    }
-
     pub fn push(&mut self, seg: impl Into<Segment>) {
         match seg.into() {
             Segment::Qualified(q) => self.extend(q.0),

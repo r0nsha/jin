@@ -95,33 +95,40 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     }
 
     pub fn predefine_all(&mut self) {
-        for fun in &self.tir.functions {
-            let fun_info = &self.db[fun.id];
+        for fun in self.tir.functions.iter() {
+            // TODO: FnId
+            let fun_info = &self.db[fun.def_id];
             let name = fun_info.qpath.standard_full_name();
             let llvm_ty = fun_info.ty.as_fn().expect("a function type").llty(self);
 
             let function = self.module.add_function(&name, llvm_ty, Some(Linkage::Private));
-            self.def_values.insert(fun.id, DefValue::Function(function));
+            // TODO: FnId
+            self.def_values.insert(fun.def_id, DefValue::Function(function));
         }
     }
 
     pub fn define_all(&mut self) {
-        for fun in &self.tir.functions {
+        for fun in self.tir.functions.iter() {
             self.codegen_fn(fun);
         }
     }
 
     fn codegen_fn(&mut self, fun: &'db Fn) -> BasicValueEnum<'cx> {
-        let fun_info = &self.db[fun.id];
+        // TODO: FnId
+        let fun_info = &self.db[fun.def_id];
         let fty = fun_info.ty;
 
-        let function_value = self.def_values.get(&fun.id).map_or_else(
+        // TODO: FnId
+        let function_value = self.def_values.get(&fun.def_id).map_or_else(
             || panic!("function {} to be declared", fun_info.qpath.standard_full_name()),
             |f| f.as_function_value(),
         );
 
-        for (param, value) in fun.sig.params.iter().zip(function_value.get_param_iter()) {
-            self.def_values.insert(param.id, DefValue::Value(value));
+        let sig = &self.tir.sigs[fun.sig];
+
+        for (param, value) in sig.params.iter().zip(function_value.get_param_iter()) {
+            // TODO: LocalId
+            self.def_values.insert(param.def_id, DefValue::Value(value));
         }
 
         let prologue_block = self.context.append_basic_block(function_value, "prologue");
@@ -162,15 +169,17 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         }
 
         match &expr.kind {
-            ExprKind::Let { id, value } => {
-                let def = &self.db[*id];
+            ExprKind::Let { def_id, value } => {
+                // TODO: LocalId
+                let def = &self.db[*def_id];
                 let ty = def.ty.llty(self);
-                let ptr = self.build_stack_alloc(state, ty, &def.qpath.full_c_name());
+                let ptr = self.build_stack_alloc(state, ty, &def.qpath.standard_full_name());
 
                 let value = self.codegen_expr(state, *value);
                 self.bx.build_store(ptr, value);
 
-                self.def_values.insert(*id, DefValue::Alloca(ptr, ty));
+                // TODO: LocalId
+                self.def_values.insert(*def_id, DefValue::Alloca(ptr, ty));
                 self.unit_value().into()
             }
             ExprKind::If { cond, then, otherwise } => {
