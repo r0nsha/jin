@@ -6,6 +6,7 @@ fn main() = {
 	variables()
 	nested_fn()
 	polymorphism()
+	named_args()
 }
 
 fn int_types() = {
@@ -86,4 +87,11 @@ fn polymorphism() = {
 	# Explicit type arguments
 	id[int](111)
 	id[bool](false)
+}
+
+fn named_args() = {
+	fn add(first int, second int) int = first + second
+	add(first = 1, second = 2)
+	add(second = 2, first = 1)
+	add(1, second = 2)
 }
