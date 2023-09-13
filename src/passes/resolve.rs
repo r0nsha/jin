@@ -380,7 +380,7 @@ impl Resolve<'_> for Ty {
         match self {
             Self::Name(name) => name.resolve(cx, env),
             Self::Infer(span) if env.current().kind == ScopeKind::Fn => {
-                cx.errors.push(ResolveError::InvalidPlaceholderTy(*span));
+                cx.errors.push(ResolveError::InvalidInferTy(*span));
             }
             _ => (),
         }
@@ -535,7 +535,7 @@ pub(super) enum ResolveError {
     MultipleTyParams { name: Ustr, prev_span: Span, dup_span: Span },
     NameNotFound(Word),
     InvalidReturn(Span),
-    InvalidPlaceholderTy(Span),
+    InvalidInferTy(Span),
 }
 
 impl From<ResolveError> for Diagnostic {
@@ -582,11 +582,9 @@ impl From<ResolveError> for Diagnostic {
             ResolveError::InvalidReturn(span) => Self::error("resolve::invalid_return")
                 .with_message("cannot return outside of function scope")
                 .with_label(Label::primary(span)),
-            ResolveError::InvalidPlaceholderTy(span) => {
-                Self::error("resolve::invalid_placeholder_type")
-                    .with_message("cannot use a placeholder type _ in a function's signature")
-                    .with_label(Label::primary(span))
-            }
+            ResolveError::InvalidInferTy(span) => Self::error("resolve::invalid_infer_type")
+                .with_message("cannot use a _ type in a function's signature")
+                .with_label(Label::primary(span)),
         }
     }
 }

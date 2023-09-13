@@ -34,8 +34,6 @@ fn typeck_inner(db: &mut Db, hir: &mut Hir) -> InferResult<()> {
     cx.typeck_defs(hir)?;
     cx.typeck_fn_bodies(hir)?;
 
-    cx.subst(hir);
-
     Ok(())
 }
 
@@ -112,6 +110,8 @@ impl InferCtxt<'_> {
             ))
             .eq(fx.ret_ty, f.body.ty)
             .or_coerce(self, f.body.id);
+
+        self.subst_fn(f);
 
         // If the function's return type is `()`, we want to let the user end the body with
         // whatever expression they want, so that they don't need to end it with a `()`
