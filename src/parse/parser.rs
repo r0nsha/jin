@@ -462,7 +462,7 @@ impl<'a> Parser<'a> {
         if self.is(TokenKind::empty_ident()) {
             let ident_tok = self.last_token();
 
-            if self.is(TokenKind::Eq) {
+            if self.is(TokenKind::Colon) {
                 let expr = self.parse_expr()?;
                 return Ok(CallArg::Named(ident_tok.spanned_word(), expr));
             }
