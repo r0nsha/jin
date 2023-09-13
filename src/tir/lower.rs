@@ -11,7 +11,7 @@ use crate::{
         subst::{ParamFolder, Subst},
         MonoItem,
     },
-    tir::{Expr, ExprId, ExprKind, Exprs, Fn, FnId, FnParam, FnSig, Id, Tir},
+    tir::{Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Id, Tir},
     ty::{
         coerce::{CoercionKind, Coercions},
         fold::TyFolder,
@@ -36,7 +36,7 @@ struct LowerCtxt<'db> {
     db: &'db mut Db,
     hir: &'db Hir,
     tir: &'db mut Tir,
-    mono_fns: HashMap<MonoItem, FnId>,
+    mono_fns: HashMap<MonoItem, FnSigId>,
     mono_items: HashMap<MonoItem, Option<MonoItemTarget>>,
 }
 
@@ -80,70 +80,92 @@ impl<'db> LowerCtxt<'db> {
     }
 
     fn lower_mono_def(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> DefId {
-        let new_def_id = self.alloc_mono_def(mono_item, instantiation);
-
-        // Add the monomorphized item to the visited list
-        self.mono_items.insert(mono_item.clone(), Some(new_def_id));
-
-        // Monomorphize the item if needed
-        let found_item = self.hir.items.iter().find(|item| match &item.kind {
-            hir::ItemKind::Fn(f) => f.id == mono_item.id,
-            hir::ItemKind::Let(_) => todo!(),
-        });
-
-        if let Some(item) = found_item {
+        for item in &self.hir.items {
             match &item.kind {
-                hir::ItemKind::Fn(fun) => {
-                    // Clone the function's contents and substitute its type args
+                hir::ItemKind::Fn(fun) if fun.id == mono_item.id => {
                     let mut new_fun = fun.clone();
-                    new_fun.id = new_def_id;
                     new_fun.subst(&mut ParamFolder { db: self.db, instantiation });
 
-                    // Lower the newly created function to TIR
-                    self.lower_fn(&new_fun);
+                    let sig = self.lower_fn_sig(mono_item.id, &fun.sig);
+
+                    self.mono_fns.insert(mono_item.clone(), sig);
+                    self.lower_fn_body(sig, &new_fun);
+
+                    break;
                 }
-                hir::ItemKind::Let(_) => todo!(),
+                hir::ItemKind::Fn(_) | hir::ItemKind::Let(_) => (),
             }
         }
 
-        new_def_id
+        panic!("function not found");
     }
 
-    fn alloc_mono_def(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> DefId {
-        let def = &self.db[mono_item.id];
-
-        let new_qpath = if def.kind.is_fn() {
-            let args_str = instantiation
-                .values()
-                .map(|t| t.to_string(self.db))
-                .collect::<Vec<String>>()
-                .join("_");
-
-            if args_str.is_empty() {
-                def.qpath.clone()
-            } else {
-                def.qpath.clone().with_name(ustr(&format!("{}${}", def.name, args_str)))
-            }
-        } else {
-            def.qpath.clone()
-        };
-
-        let new_scope = def.scope.clone();
-        let new_kind = def.kind.as_ref().clone();
-        let new_span = def.span;
-
-        let ty = def.ty;
-        let new_ty = ParamFolder { db: self.db, instantiation }.fold(ty);
-
-        Def::alloc(self.db, new_qpath, new_scope, new_kind, new_ty, new_span)
-    }
+    // TODO: LocalId Remove
+    // fn alloc_mono_def(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> DefId {
+    //     let def = &self.db[mono_item.id];
+    //
+    //     let new_qpath = if def.kind.is_fn() {
+    //         let args_str = instantiation
+    //             .values()
+    //             .map(|t| t.to_string(self.db))
+    //             .collect::<Vec<String>>()
+    //             .join("_");
+    //
+    //         if args_str.is_empty() {
+    //             def.qpath.clone()
+    //         } else {
+    //             def.qpath.clone().with_name(ustr(&format!("{}${}", def.name, args_str)))
+    //         }
+    //     } else {
+    //         def.qpath.clone()
+    //     };
+    //
+    //     let new_scope = def.scope.clone();
+    //     let new_kind = def.kind.as_ref().clone();
+    //     let new_span = def.span;
+    //
+    //     let ty = def.ty;
+    //     let new_ty = ParamFolder { db: self.db, instantiation }.fold(ty);
+    //
+    //     Def::alloc(self.db, new_qpath, new_scope, new_kind, new_ty, new_span)
+    // }
 
     fn lower_fn(&mut self, f: &hir::Fn) {
+        let sig = self.lower_fn_sig(f.id, &f.sig);
+        self.lower_fn_body(sig, f);
+    }
+
+    fn lower_fn_sig(&mut self, def_id: DefId, sig: &hir::FnSig) -> FnSigId {
+        let name = ustr(&self.db[def_id].qpath.standard_full_name());
+        let ty = self.db[def_id].ty;
+
+        let sig = FnSig {
+            id: self.tir.sigs.next_key(),
+            // TODO: don't use the name given from the def id. use a name given from outside
+            name,
+            params: sig
+                .params
+                .iter()
+                .map(|p| FnParam {
+                    // TODO: LocalId
+                    def_id: self
+                        .get_mono_def(&MonoItem { id: p.id, ty: p.ty }, &Instantiation::new()),
+                    ty: p.ty,
+                })
+                .collect(),
+            ret: ty.as_fn().unwrap().ret,
+            ty,
+        };
+
+        self.tir.sigs.push(sig)
+    }
+
+    fn lower_fn_body(&mut self, sig: FnSigId, f: &hir::Fn) {
         assert!(
             !self.db[f.id].ty.is_polymorphic(),
             "lowering polymorphic functions to TIR is not allowed"
         );
-        LowerFnCtxt::new(self).lower_fn(f);
+        LowerFnCtxt::new(self).lower_fn(sig, f);
     }
 }
 
@@ -157,34 +179,7 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
         Self { cx, exprs: IndexVec::new() }
     }
 
-    fn lower_fn(mut self, f: &hir::Fn) {
-        let name = ustr(&self.cx.db[f.id].qpath.standard_full_name());
-        let ty = self.cx.db[f.id].ty;
-
-        let sig = {
-            let sig = FnSig {
-                id: self.cx.tir.sigs.next_key(),
-                // TODO: don't use the name given from the def id. use a name given from outside
-                name,
-                params: f
-                    .sig
-                    .params
-                    .iter()
-                    .map(|p| FnParam {
-                        // TODO: LocalId
-                        def_id: self
-                            .cx
-                            .get_mono_def(&MonoItem { id: p.id, ty: p.ty }, &Instantiation::new()),
-                        ty: p.ty,
-                    })
-                    .collect(),
-                ret: ty.as_fn().unwrap().ret,
-                ty,
-            };
-
-            self.cx.tir.sigs.push(sig)
-        };
-
+    fn lower_fn(mut self, sig: FnSigId, f: &hir::Fn) {
         let f = Fn {
             id: self.cx.tir.fns.next_key(),
             def_id: f.id,

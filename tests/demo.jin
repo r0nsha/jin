@@ -3,7 +3,7 @@
 # TODO: remove
 fn recursive_poly[t](x t) = {
 	if true {
-		wut(x)
+		recursive_poly(x)
 	} else {
 		()
 	}
