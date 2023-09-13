@@ -11,7 +11,7 @@ use crate::{
         subst::{ParamFolder, Subst},
         MonoItem,
     },
-    tir::{Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, Id, Tir},
+    tir::{Expr, ExprId, ExprKind, Exprs, Fn, FnId, FnParam, FnSig, Id, Tir},
     ty::{
         coerce::{CoercionKind, Coercions},
         fold::TyFolder,
@@ -36,6 +36,7 @@ struct LowerCtxt<'db> {
     db: &'db mut Db,
     hir: &'db Hir,
     tir: &'db mut Tir,
+    mono_fns: HashMap<MonoItem, FnId>,
     mono_items: HashMap<MonoItem, Option<MonoItemTarget>>,
 }
 
@@ -46,7 +47,13 @@ impl<'db> LowerCtxt<'db> {
         tir: &'db mut Tir,
         mono_items: HashSet<MonoItem>,
     ) -> Self {
-        Self { db, hir, tir, mono_items: mono_items.into_iter().map(|i| (i, None)).collect() }
+        Self {
+            db,
+            hir,
+            tir,
+            mono_fns: HashMap::new(),
+            mono_items: mono_items.into_iter().map(|i| (i, None)).collect(),
+        }
     }
 
     fn get_mono_def(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> DefId {
