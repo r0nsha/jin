@@ -253,9 +253,6 @@ impl InferCtxt<'_> {
                         }
                     }
 
-                    // Sort args by index
-                    call.args.sort_by_key(|arg| arg.index.expect("arg index to be resolved"));
-
                     // Unify all args with their corresponding param type
                     for arg in &call.args {
                         let idx = arg.index.expect("arg index to be resolved");
@@ -266,6 +263,7 @@ impl InferCtxt<'_> {
 
                     fun_ty.ret
                 } else {
+                    // TODO: assume a function here?
                     return Err(InferError::UncallableTy {
                         ty: call.callee.ty.normalize(&mut self.inner.borrow_mut()),
                         span: call.callee.span,

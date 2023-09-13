@@ -219,9 +219,10 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
             }
             hir::ExprKind::Return(ret) => ExprKind::Return { value: self.lower_expr(&ret.expr) },
             hir::ExprKind::Call(call) => {
-                // NOTE: Call arguments are expected to be sorted by parameter order, from left-to-right
-                // call.args.sort_by_key(|arg| arg.index.expect("arg index to be resolved"));
-                let args = call.args.iter().map(|a| self.lower_expr(&a.expr)).collect();
+                let mut sorted_args = call.args.clone();
+                sorted_args.sort_by_key(|arg| arg.index.expect("arg index to be resolved"));
+
+                let args = sorted_args.iter().map(|a| self.lower_expr(&a.expr)).collect();
                 let callee = self.lower_expr(&call.callee);
                 ExprKind::Call { callee, args }
             }
