@@ -1,6 +1,6 @@
 use std::collections::{HashMap, HashSet};
 
-use ustr::ustr;
+use ustr::{ustr, Ustr};
 
 use crate::{
     common::IndexVec,
@@ -100,6 +100,12 @@ impl<'db> LowerCtxt<'db> {
 
     fn monomorphize_fn(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> FnSigId {
         if let Some(target_id) = self.mono_fns.get(mono_item).copied() {
+            println!(
+                "found: {} + {} -> {}",
+                self.db[mono_item.id].name,
+                mono_item.ty.display(self.db),
+                self.tir.sigs[target_id].ty.display(self.db)
+            );
             return target_id;
         }
 
@@ -109,10 +115,10 @@ impl<'db> LowerCtxt<'db> {
                     let mut new_fun = fun.clone();
                     new_fun.subst(&mut ParamFolder { db: self.db, instantiation });
 
-                    let sig = self.lower_fn_sig(mono_item.id, &fun.sig);
+                    let name = 
+                    let sig = self.lower_fn_sig( mono_item.ty, &new_fun.sig);
 
                     self.mono_fns.insert(mono_item.clone(), sig);
-                    self.fn_to_sig.insert(fun.id, sig);
                     self.lower_fn_body(sig, &new_fun);
 
                     return sig;
@@ -124,11 +130,7 @@ impl<'db> LowerCtxt<'db> {
         panic!("function {} not found in hir.items", self.db[mono_item.id].qpath);
     }
 
-    fn lower_fn_sig(&mut self, def_id: DefId, sig: &hir::FnSig) -> FnSigId {
-        // TODO: get name as param (because of poly functions)
-        let name = ustr(&self.db[def_id].qpath.standard_full_name());
-        let ty = self.db[def_id].ty;
-
+    fn lower_fn_sig(&mut self, name: Ustr, ty: Ty, sig: &hir::FnSig) -> FnSigId {
         let sig = FnSig {
             id: self.tir.sigs.next_key(),
             name,
@@ -236,15 +238,24 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
             }
             hir::ExprKind::Name(name) => match self.cx.db[name.id].kind.as_ref() {
                 DefKind::Fn(_) => {
-                    println!("{}", self.cx.db[name.id].ty.display(self.cx.db));
-                    let id = if self.cx.db[name.id].ty.is_polymorphic() {
-                        self.cx.monomorphize_fn(
-                            &MonoItem { id: name.id, ty: expr.ty },
-                            &name.instantiation,
-                        )
-                    } else {
-                        println!("{}", self.cx.db[name.id].qpath);
+                    let id = if name.instantiation.is_empty() {
                         self.cx.fn_to_sig[&name.id]
+                    } else {
+                        let mut folder =
+                            ParamFolder { db: self.cx.db, instantiation: &name.instantiation };
+                        let ty = folder.fold(expr.ty);
+                        let instantiation: Instantiation = name
+                            .instantiation
+                            .iter()
+                            .map(|(var, ty)| (*var, folder.fold(*ty)))
+                            .collect();
+
+                        println!(
+                            "monomorphizing: {} + {}",
+                            self.cx.db[name.id].name,
+                            ty.display(self.cx.db)
+                        );
+                        self.cx.monomorphize_fn(&MonoItem { id: name.id, ty }, &instantiation)
                     };
 
                     ExprKind::Id { id: Id::Fn(id) }
