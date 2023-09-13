@@ -52,7 +52,7 @@ pub fn codegen(db: &mut Db, tir: &Tir) -> PathBuf {
         bx: &builder,
         isize_ty: context.ptr_sized_int_type(&target_machine.get_target_data(), None),
         unit_ty,
-        def_values: HashMap::default(),
+        functions: HashMap::default(),
     };
 
     cx.db.time.start("llvm generation");

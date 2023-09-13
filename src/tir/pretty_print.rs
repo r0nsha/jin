@@ -127,13 +127,22 @@ impl PPCtxt<'_> {
                 self.pp_expr(*value);
                 self.builder.end_child();
             }
-            ExprKind::Name { id } => {
-                self.builder.add_empty_child(format!(
-                    "`{}` (type: {})",
-                    self.db[*id].qpath,
-                    expr.ty.display(self.db)
-                ));
-            }
+            ExprKind::Id { id } => match id {
+                Id::Fn(fid) => {
+                    self.builder.add_empty_child(format!(
+                        "`{}` (type: {})",
+                        self.tir.functions[*fid].name,
+                        expr.ty.display(self.db)
+                    ));
+                }
+                Id::Local(lid) => {
+                    self.builder.add_empty_child(format!(
+                        "`{}` (type: {})",
+                        self.db[*lid].name,
+                        expr.ty.display(self.db)
+                    ));
+                }
+            },
             ExprKind::IntLit { value } => {
                 self.builder.add_empty_child(format!(
                     "{} (type: {})",

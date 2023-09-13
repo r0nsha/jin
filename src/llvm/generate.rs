@@ -14,7 +14,7 @@ use crate::{
     ast::{BinOp, CmpOp, UnOp},
     db::{Db, DefId},
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
-    tir::{ExprId, ExprKind, Fn, Tir},
+    tir::{ExprId, ExprKind, Fn, FnId, Id, Tir},
 };
 
 pub struct Generator<'db, 'cx> {
@@ -27,25 +27,15 @@ pub struct Generator<'db, 'cx> {
     pub isize_ty: IntType<'cx>,
     pub unit_ty: StructType<'cx>,
 
-    pub def_values: HashMap<DefId, DefValue<'cx>>,
+    pub functions: HashMap<FnId, FunctionValue<'cx>>,
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum DefValue<'cx> {
+pub enum Local<'cx> {
+    // TODO: remove
     Function(FunctionValue<'cx>),
     Alloca(PointerValue<'cx>, BasicTypeEnum<'cx>),
     Value(BasicValueEnum<'cx>),
-}
-
-impl<'cx> DefValue<'cx> {
-    pub fn as_function_value(self) -> FunctionValue<'cx> {
-        match self {
-            DefValue::Function(f) => f,
-            DefValue::Alloca(..) | DefValue::Value(..) => {
-                panic!("expected Function, found {self:?}")
-            }
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -54,6 +44,8 @@ pub struct FnState<'db, 'cx> {
     pub function_value: FunctionValue<'cx>,
     pub prologue_block: BasicBlock<'cx>,
     pub current_block: BasicBlock<'cx>,
+    // TODO: LocalId
+    pub locals: HashMap<DefId, Local<'cx>>,
 }
 
 impl<'db, 'cx> FnState<'db, 'cx> {
@@ -63,7 +55,18 @@ impl<'db, 'cx> FnState<'db, 'cx> {
         prologue_block: BasicBlock<'cx>,
         first_block: BasicBlock<'cx>,
     ) -> Self {
-        Self { f, function_value, prologue_block, current_block: first_block }
+        Self {
+            f,
+            function_value,
+            prologue_block,
+            current_block: first_block,
+            locals: HashMap::new(),
+        }
+    }
+
+    #[track_caller]
+    fn local(&self, id: DefId) -> Local<'cx> {
+        self.locals.get(&id).copied().unwrap_or_else(|| panic!("local {} to be declared", id))
     }
 }
 
@@ -85,7 +88,8 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         self.bx.position_at_end(entry_block);
 
         let main_function = self.db.main_function().expect("to have a main function");
-        let main_function_value = self.def_value(main_function.id).as_function_value();
+        let main_function_value =
+            self.function(self.tir.main_function.expect("to have a main function"));
 
         self.bx.build_direct_call(main_function_value, &[], "call_main");
 
@@ -96,14 +100,11 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
     pub fn predefine_all(&mut self) {
         for fun in self.tir.functions.iter() {
-            // TODO: FnId
-            let fun_info = &self.db[fun.def_id];
-            let name = fun_info.qpath.standard_full_name();
-            let llvm_ty = fun_info.ty.as_fn().expect("a function type").llty(self);
+            let sig = &self.tir.sigs[fun.sig];
+            let llvm_ty = sig.ty.as_fn().expect("a function type").llty(self);
 
-            let function = self.module.add_function(&name, llvm_ty, Some(Linkage::Private));
-            // TODO: FnId
-            self.def_values.insert(fun.def_id, DefValue::Function(function));
+            let function = self.module.add_function(&sig.name, llvm_ty, Some(Linkage::Private));
+            self.functions.insert(fun.id, function);
         }
     }
 
@@ -114,29 +115,24 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     }
 
     fn codegen_fn(&mut self, fun: &'db Fn) -> BasicValueEnum<'cx> {
-        // TODO: FnId
-        let fun_info = &self.db[fun.def_id];
-        let fty = fun_info.ty;
+        let sig = &self.tir.sigs[fun.sig];
+        let fty = sig.ty;
 
-        // TODO: FnId
-        let function_value = self.def_values.get(&fun.def_id).map_or_else(
-            || panic!("function {} to be declared", fun_info.qpath.standard_full_name()),
-            |f| f.as_function_value(),
-        );
+        let function_value = self.function(fun.id);
 
         let sig = &self.tir.sigs[fun.sig];
-
-        for (param, value) in sig.params.iter().zip(function_value.get_param_iter()) {
-            // TODO: LocalId
-            self.def_values.insert(param.def_id, DefValue::Value(value));
-        }
 
         let prologue_block = self.context.append_basic_block(function_value, "prologue");
         let start_block = self.context.append_basic_block(function_value, "start");
 
         let mut state = FnState::new(fun, function_value, prologue_block, start_block);
-        self.start_block(&mut state, start_block);
 
+        for (param, value) in sig.params.iter().zip(function_value.get_param_iter()) {
+            // TODO: LocalId
+            state.locals.insert(param.def_id, Local::Value(value));
+        }
+
+        self.start_block(&mut state, start_block);
         let body = self.codegen_expr(&mut state, fun.body);
 
         if !self.current_block_is_terminating() {
@@ -154,11 +150,6 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         self.bx.build_unconditional_branch(start_block);
 
         function_value.as_global_value().as_pointer_value().into()
-    }
-
-    #[track_caller]
-    fn def_value(&self, id: DefId) -> DefValue<'cx> {
-        *self.def_values.get(&id).expect("id in def_value to be defined")
     }
 
     fn codegen_expr(&mut self, state: &mut FnState<'db, 'cx>, expr: ExprId) -> BasicValueEnum<'cx> {
@@ -179,7 +170,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 self.bx.build_store(ptr, value);
 
                 // TODO: LocalId
-                self.def_values.insert(*def_id, DefValue::Alloca(ptr, ty));
+                state.locals.insert(*def_id, Local::Alloca(ptr, ty));
                 self.unit_value().into()
             }
             ExprKind::If { cond, then, otherwise } => {
@@ -414,14 +405,19 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                     ),
                 }
             }
-            ExprKind::Name { id } => match self.def_value(*id) {
-                DefValue::Function(f) => {
-                    f.as_global_value().as_pointer_value().as_basic_value_enum()
+            ExprKind::Id { id } => match id {
+                Id::Fn(fid) => {
+                    self.function(*fid).as_global_value().as_pointer_value().as_basic_value_enum()
                 }
-                DefValue::Alloca(p, ty) => {
-                    self.bx.build_load(ty, p, &format!("load_{}", self.db[*id].name))
-                }
-                DefValue::Value(v) => v,
+                Id::Local(lid) => match state.local(*lid) {
+                    Local::Function(f) => {
+                        f.as_global_value().as_pointer_value().as_basic_value_enum()
+                    }
+                    Local::Alloca(p, ty) => {
+                        self.bx.build_load(ty, p, &format!("load_{}", self.db[*lid].name))
+                    }
+                    Local::Value(v) => v,
+                },
             },
             ExprKind::IntLit { value } => {
                 expr.ty.llty(self).into_int_type().const_int(*value as u64, expr.ty.is_int()).into()
@@ -438,6 +434,13 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     ) -> Option<BasicValueEnum<'cx>> {
         let value = self.codegen_expr(state, expr);
         self.current_block_is_terminating().not().then_some(value)
+    }
+
+    #[track_caller]
+    fn function(&self, id: FnId) -> FunctionValue<'cx> {
+        self.functions.get(&id).copied().unwrap_or_else(|| {
+            panic!("function {} to be declared", self.tir.sigs[self.tir.functions[id].sig].name)
+        })
     }
 }
 

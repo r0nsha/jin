@@ -11,7 +11,7 @@ use crate::{
         subst::{ParamFolder, Subst},
         MonoItem,
     },
-    tir::{Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, Tir},
+    tir::{Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, Id, Tir},
     ty::{
         coerce::{CoercionKind, Coercions},
         fold::TyFolder,
@@ -151,36 +151,47 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
     }
 
     fn lower_fn(mut self, f: &hir::Fn) {
+        let name = ustr(&self.cx.db[f.id].qpath.standard_full_name());
+        let ty = self.cx.db[f.id].ty;
+
         let sig = {
             let sig = FnSig {
                 id: self.cx.tir.sigs.next_key(),
                 // TODO: don't use the name given from the def id. use a name given from outside
-                name: self.cx.db[f.id].qpath.standard_full_name().into(),
+                name,
                 params: f
                     .sig
                     .params
                     .iter()
                     .map(|p| FnParam {
+                        // TODO: LocalId
                         def_id: self
                             .cx
                             .get_mono_def(&MonoItem { id: p.id, ty: p.ty }, &Instantiation::new()),
                         ty: p.ty,
                     })
                     .collect(),
-                ret: self.cx.db[f.id].ty.as_fn().unwrap().ret,
-                ty: self.cx.db[f.id].ty,
+                ret: ty.as_fn().unwrap().ret,
+                ty,
             };
 
             self.cx.tir.sigs.push(sig)
         };
 
+        let id = self.cx.tir.functions.next_key();
         let f = Fn {
-            id: self.cx.tir.functions.next_key(),
+            id,
             def_id: f.id,
+            name,
             sig,
             body: self.lower_expr(&f.body),
+            ty,
             exprs: self.exprs,
         };
+
+        if self.cx.db.main_function_id() == Some(f.def_id) {
+            self.cx.tir.main_function = Some(f.id);
+        }
 
         self.cx.tir.functions.push(f);
     }
@@ -192,6 +203,7 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
 
                 match &let_.pat {
                     hir::Pat::Name(name) => ExprKind::Let {
+                        // TODO: LocalId
                         def_id: self.cx.get_mono_def(
                             &MonoItem { id: name.id, ty: let_.value.ty },
                             &Instantiation::new(),
@@ -241,7 +253,8 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
                 let id = self
                     .cx
                     .get_mono_def(&MonoItem { id: name.id, ty: expr.ty }, &name.instantiation);
-                ExprKind::Name { id }
+
+                ExprKind::Id { id: Id::Local(id) }
             }
             hir::ExprKind::Const(value) => match value {
                 hir::Const::Int(value) => ExprKind::IntLit { value: *value },
