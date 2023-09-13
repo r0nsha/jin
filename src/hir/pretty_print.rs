@@ -11,7 +11,7 @@ pub(super) fn print(db: &Db, hir: &Hir, w: &mut impl io::Write) -> io::Result<()
     for item in &hir.items {
         match &item.kind {
             ItemKind::Fn(f) => cx.pp_fn(f),
-            ItemKind::Let(_) => todo!(),
+            ItemKind::Let(_) => todo!("global variables"),
         }
     }
 

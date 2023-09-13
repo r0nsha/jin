@@ -32,7 +32,7 @@ impl Context<'_> {
                         }
                     }
                 }),
-                ItemKind::Let(_) => todo!(),
+                ItemKind::Let(_) => todo!("global variables"),
             }
         }
 

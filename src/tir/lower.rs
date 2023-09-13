@@ -4,14 +4,16 @@ use ustr::ustr;
 
 use crate::{
     common::IndexVec,
-    db::{Db, Def, DefId, DefKind},
+    db::{Db, DefId, DefKind},
     hir,
     hir::Hir,
     passes::{
         subst::{ParamFolder, Subst},
         MonoItem,
     },
-    tir::{Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Id, Locals, Tir},
+    tir::{
+        Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Id, Local, LocalId, Locals, Tir,
+    },
     ty::{
         coerce::{CoercionKind, Coercions},
         fold::TyFolder,
@@ -23,9 +25,7 @@ pub fn lower(db: &mut Db, hir: &Hir, mono_items: HashSet<MonoItem>) -> Tir {
     let mut tir = Tir::new();
     let mut cx = LowerCtxt::new(db, hir, &mut tir, mono_items);
 
-    for item in &hir.items {
-        cx.lower_item(item);
-    }
+    cx.lower_all();
 
     tir
 }
@@ -36,7 +36,14 @@ struct LowerCtxt<'db> {
     db: &'db mut Db,
     hir: &'db Hir,
     tir: &'db mut Tir,
+
+    // A mapping of functions to their predeclared signatures
+    fn_to_sig: HashMap<DefId, FnSigId>,
+
+    // Already monomorphized functions
     mono_fns: HashMap<MonoItem, FnSigId>,
+
+    // TODO: remove
     mono_items: HashMap<MonoItem, Option<MonoItemTarget>>,
 }
 
@@ -51,31 +58,51 @@ impl<'db> LowerCtxt<'db> {
             db,
             hir,
             tir,
+            fn_to_sig: HashMap::new(),
             mono_fns: HashMap::new(),
             mono_items: mono_items.into_iter().map(|i| (i, None)).collect(),
         }
     }
 
-    fn get_mono_fn(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> FnSigId {
-        if let Some(target_id) = self.mono_fns.get(mono_item).copied() {
-            target_id
-        } else {
-            self.monomorphize_fn(mono_item, instantiation)
+    fn lower_all(&mut self) {
+        for item in &self.hir.items {
+            self.declare_fn_item(item);
+        }
+
+        for item in &self.hir.items {
+            self.lower_root_item(item);
         }
     }
 
-    fn lower_item(&mut self, item: &hir::Item) {
+    fn declare_fn_item(&mut self, item: &hir::Item) {
         match &item.kind {
             hir::ItemKind::Fn(fun) => {
                 if !self.db[fun.id].ty.is_polymorphic() {
-                    self.lower_fn(fun);
+                    let sig = self.lower_fn_sig(fun.id, &fun.sig);
+                    self.fn_to_sig.insert(fun.id, sig);
                 }
             }
-            hir::ItemKind::Let(_) => todo!(),
+            hir::ItemKind::Let(_) => (),
+        }
+    }
+
+    fn lower_root_item(&mut self, item: &hir::Item) {
+        match &item.kind {
+            hir::ItemKind::Fn(fun) => {
+                if !self.db[fun.id].ty.is_polymorphic() {
+                    let sig = self.fn_to_sig[&fun.id];
+                    self.lower_fn_body(sig, fun);
+                }
+            }
+            hir::ItemKind::Let(_) => todo!("global variables"),
         }
     }
 
     fn monomorphize_fn(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> FnSigId {
+        if let Some(target_id) = self.mono_fns.get(mono_item).copied() {
+            return target_id;
+        }
+
         for item in &self.hir.items {
             match &item.kind {
                 hir::ItemKind::Fn(fun) if fun.id == mono_item.id => {
@@ -85,6 +112,7 @@ impl<'db> LowerCtxt<'db> {
                     let sig = self.lower_fn_sig(mono_item.id, &fun.sig);
 
                     self.mono_fns.insert(mono_item.clone(), sig);
+                    self.fn_to_sig.insert(fun.id, sig);
                     self.lower_fn_body(sig, &new_fun);
 
                     return sig;
@@ -96,29 +124,15 @@ impl<'db> LowerCtxt<'db> {
         panic!("function {} not found in hir.items", self.db[mono_item.id].qpath);
     }
 
-    fn lower_fn(&mut self, f: &hir::Fn) {
-        let sig = self.lower_fn_sig(f.id, &f.sig);
-        self.lower_fn_body(sig, f);
-    }
-
     fn lower_fn_sig(&mut self, def_id: DefId, sig: &hir::FnSig) -> FnSigId {
+        // TODO: get name as param (because of poly functions)
         let name = ustr(&self.db[def_id].qpath.standard_full_name());
         let ty = self.db[def_id].ty;
 
         let sig = FnSig {
             id: self.tir.sigs.next_key(),
-            // TODO: don't use the name given from the def id. use a name given from outside
             name,
-            params: sig
-                .params
-                .iter()
-                .map(|p| FnParam {
-                    // TODO: LocalId
-                    def_id: self
-                        .get_mono_fn(&MonoItem { id: p.id, ty: p.ty }, &Instantiation::new()),
-                    ty: p.ty,
-                })
-                .collect(),
+            params: sig.params.iter().map(|p| FnParam { def_id: p.id, ty: p.ty }).collect(),
             ret: ty.as_fn().unwrap().ret,
             ty,
         };
@@ -139,14 +153,19 @@ struct LowerFnCtxt<'cx, 'db> {
     cx: &'cx mut LowerCtxt<'db>,
     exprs: Exprs,
     locals: Locals,
+    def_to_local: HashMap<DefId, LocalId>,
 }
 
 impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
     fn new(cx: &'cx mut LowerCtxt<'db>) -> Self {
-        Self { cx, exprs: IndexVec::new(), locals: IndexVec::new() }
+        Self { cx, exprs: IndexVec::new(), locals: IndexVec::new(), def_to_local: HashMap::new() }
     }
 
     fn lower_fn(mut self, sig: FnSigId, f: &hir::Fn) {
+        for param in self.cx.tir.sigs[sig].params.clone() {
+            self.create_local(param.def_id, param.ty);
+        }
+
         let f = Fn {
             id: self.cx.tir.fns.next_key(),
             def_id: f.id,
@@ -169,14 +188,13 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
                 let value = self.lower_expr(&let_.value);
 
                 match &let_.pat {
-                    hir::Pat::Name(name) => ExprKind::Let {
-                        // TODO: LocalId
-                        def_id: self.cx.get_mono_fn(
-                            &MonoItem { id: name.id, ty: let_.value.ty },
-                            &Instantiation::new(),
-                        ),
-                        value,
-                    },
+                    hir::Pat::Name(name) => {
+                        let ty = self.cx.db[name.id].ty;
+                        // ParamFolder { db: self.cx.db, instantiation:&Instantiation }
+                        //     .fold(self.cx.db[name.id].ty);
+                        let id = self.create_local(name.id, ty);
+                        ExprKind::Let { id, def_id: name.id, value }
+                    }
                     hir::Pat::Ignore(_) => ExprKind::UnitLit,
                 }
             }
@@ -218,16 +236,20 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
             }
             hir::ExprKind::Name(name) => match self.cx.db[name.id].kind.as_ref() {
                 DefKind::Fn(_) => {
-                    let id = self
-                        .cx
-                        .get_mono_fn(&MonoItem { id: name.id, ty: expr.ty }, &name.instantiation);
+                    println!("{}", self.cx.db[name.id].ty.display(self.cx.db));
+                    let id = if self.cx.db[name.id].ty.is_polymorphic() {
+                        self.cx.monomorphize_fn(
+                            &MonoItem { id: name.id, ty: expr.ty },
+                            &name.instantiation,
+                        )
+                    } else {
+                        println!("{}", self.cx.db[name.id].qpath);
+                        self.cx.fn_to_sig[&name.id]
+                    };
 
                     ExprKind::Id { id: Id::Fn(id) }
                 }
-                DefKind::Variable => {
-                    todo!("get mono local")
-                    // ExprKind::Id { id: Id::Local(id) }
-                }
+                DefKind::Variable => ExprKind::Id { id: Id::Local(self.def_to_local[&name.id]) },
                 DefKind::Ty(_) => unreachable!(),
             },
             hir::ExprKind::Const(value) => match value {
@@ -249,6 +271,14 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
     #[inline]
     pub fn create_expr(&mut self, kind: ExprKind, ty: Ty) -> ExprId {
         self.exprs.push_with_key(|id| Expr { id, kind, ty })
+    }
+
+    #[inline]
+    pub fn create_local(&mut self, def_id: DefId, ty: Ty) -> LocalId {
+        let id =
+            self.locals.push_with_key(|id| Local { id, def_id, name: self.cx.db[def_id].name, ty });
+        self.def_to_local.insert(def_id, id);
+        id
     }
 }
 

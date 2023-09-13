@@ -45,7 +45,7 @@ impl InferCtxt<'_> {
                     let ty = self.typeck_fn_sig(&mut fun.sig)?;
                     self.db[fun.id].ty = ty;
                 }
-                ItemKind::Let(_) => todo!(),
+                ItemKind::Let(_) => todo!("global variables"),
             }
         }
 
@@ -86,7 +86,7 @@ impl InferCtxt<'_> {
                 ItemKind::Fn(f) => {
                     self.typeck_fn(f)?;
                 }
-                ItemKind::Let(_) => todo!(),
+                ItemKind::Let(_) => todo!("global variables"),
             }
         }
 

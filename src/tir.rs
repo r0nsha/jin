@@ -45,22 +45,32 @@ pub struct Fn {
     locals: Locals,
 }
 
+impl Fn {
+    #[inline]
+    pub fn expr(&self, id: ExprId) -> &Expr {
+        &self.exprs[id]
+    }
+
+    #[inline]
+    pub fn local(&self, id: LocalId) -> &Local {
+        &self.locals[id]
+    }
+
+    #[inline]
+    pub fn params(&self, tir: &Tir) -> &[Local] {
+        &self.locals.as_slice()[0..tir.sigs[self.sig].params.len()]
+    }
+}
+
+pub type Exprs = IndexVec<ExprId, Expr>;
+pub type Locals = IndexVec<LocalId, Local>;
+
 #[derive(Debug, Clone)]
 pub struct Local {
     pub id: LocalId,
     pub def_id: DefId,
     pub name: Ustr,
     pub ty: Ty,
-}
-
-pub type Exprs = IndexVec<ExprId, Expr>;
-pub type Locals = IndexVec<LocalId, Local>;
-
-impl Fn {
-    #[inline]
-    pub fn expr(&self, id: ExprId) -> &Expr {
-        &self.exprs[id]
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -87,7 +97,7 @@ pub struct Expr {
 
 #[derive(Debug, Clone)]
 pub enum ExprKind {
-    Let { def_id: DefId, value: ExprId },
+    Let { id: LocalId, def_id: DefId, value: ExprId },
     If { cond: ExprId, then: ExprId, otherwise: Option<ExprId> },
     Block { exprs: Vec<ExprId> },
     Return { value: ExprId },

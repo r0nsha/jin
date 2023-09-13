@@ -12,9 +12,9 @@ use inkwell::{
 
 use crate::{
     ast::{BinOp, CmpOp, UnOp},
-    db::{Db, DefId},
+    db::Db,
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
-    tir::{ExprId, ExprKind, Fn, FnSigId, Id, Tir},
+    tir::{ExprId, ExprKind, Fn, FnSigId, Id, LocalId, Tir},
 };
 
 pub struct Generator<'db, 'cx> {
@@ -38,12 +38,11 @@ pub enum Local<'cx> {
 
 #[derive(Debug, Clone)]
 pub struct FnState<'db, 'cx> {
-    pub f: &'db Fn,
+    pub fun: &'db Fn,
     pub function_value: FunctionValue<'cx>,
     pub prologue_block: BasicBlock<'cx>,
     pub current_block: BasicBlock<'cx>,
-    // TODO: LocalId
-    pub locals: HashMap<DefId, Local<'cx>>,
+    pub locals: HashMap<LocalId, Local<'cx>>,
 }
 
 impl<'db, 'cx> FnState<'db, 'cx> {
@@ -54,7 +53,7 @@ impl<'db, 'cx> FnState<'db, 'cx> {
         first_block: BasicBlock<'cx>,
     ) -> Self {
         Self {
-            f,
+            fun: f,
             function_value,
             prologue_block,
             current_block: first_block,
@@ -63,7 +62,7 @@ impl<'db, 'cx> FnState<'db, 'cx> {
     }
 
     #[track_caller]
-    fn local(&self, id: DefId) -> Local<'cx> {
+    fn local(&self, id: LocalId) -> Local<'cx> {
         self.locals.get(&id).copied().unwrap_or_else(|| panic!("local {} to be declared", id))
     }
 }
@@ -116,16 +115,13 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
         let function_value = self.function(fun.sig);
 
-        let sig = &self.tir.sigs[fun.sig];
-
         let prologue_block = self.context.append_basic_block(function_value, "prologue");
         let start_block = self.context.append_basic_block(function_value, "start");
 
         let mut state = FnState::new(fun, function_value, prologue_block, start_block);
 
-        for (param, value) in sig.params.iter().zip(function_value.get_param_iter()) {
-            // TODO: LocalId
-            state.locals.insert(param.def_id, Local::Value(value));
+        for (local, value) in fun.params(self.tir).iter().zip(function_value.get_param_iter()) {
+            state.locals.insert(local.id, Local::Value(value));
         }
 
         self.start_block(&mut state, start_block);
@@ -133,7 +129,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
         if !self.current_block_is_terminating() {
             let ret_value =
-                if fty.as_fn().unwrap().ret.is_unit() && !state.f.expr(fun.body).ty.is_unit() {
+                if fty.as_fn().unwrap().ret.is_unit() && !state.fun.expr(fun.body).ty.is_unit() {
                     self.unit_value().as_basic_value_enum()
                 } else {
                     body
@@ -149,24 +145,23 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     }
 
     fn codegen_expr(&mut self, state: &mut FnState<'db, 'cx>, expr: ExprId) -> BasicValueEnum<'cx> {
-        let expr = &state.f.expr(expr);
+        let expr = &state.fun.expr(expr);
 
         if self.current_block_is_terminating() {
             return Self::undef_value(expr.ty.llty(self));
         }
 
         match &expr.kind {
-            ExprKind::Let { def_id, value } => {
-                // TODO: LocalId
-                let def = &self.db[*def_id];
-                let ty = def.ty.llty(self);
-                let ptr = self.build_stack_alloc(state, ty, &def.qpath.standard_full_name());
+            ExprKind::Let { id, def_id: _, value } => {
+                let local = state.fun.local(*id);
+                let ty = local.ty.llty(self);
 
+                let ptr = self.build_stack_alloc(state, ty, &local.name);
                 let value = self.codegen_expr(state, *value);
                 self.bx.build_store(ptr, value);
 
-                // TODO: LocalId
-                state.locals.insert(*def_id, Local::Alloca(ptr, ty));
+                state.locals.insert(*id, Local::Alloca(ptr, ty));
+
                 self.unit_value().into()
             }
             ExprKind::If { cond, then, otherwise } => {
@@ -222,7 +217,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 Self::undef_value(expr.ty.llty(self))
             }
             ExprKind::Call { callee, args } => {
-                let callee_ty = state.f.expr(*callee).ty;
+                let callee_ty = state.fun.expr(*callee).ty;
 
                 let args: Vec<_> =
                     args.iter().map(|arg| self.codegen_expr(state, *arg).into()).collect();
@@ -377,7 +372,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 }
             }
             ExprKind::Cast { value, target } => {
-                let source_ty = state.f.expr(*value).ty;
+                let source_ty = state.fun.expr(*value).ty;
                 let target_ty = *target;
 
                 let value = self.codegen_expr(state, *value);
@@ -407,7 +402,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 }
                 Id::Local(lid) => match state.local(*lid) {
                     Local::Alloca(p, ty) => {
-                        self.bx.build_load(ty, p, &format!("load_{}", self.db[*lid].name))
+                        self.bx.build_load(ty, p, &format!("load_{}", state.fun.local(*lid).name))
                     }
                     Local::Value(v) => v,
                 },

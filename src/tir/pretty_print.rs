@@ -6,7 +6,7 @@ pub(super) fn print(db: &Db, tir: &Tir, w: &mut impl io::Write) -> io::Result<()
     let mut builder = ptree::TreeBuilder::new("Tir".to_string());
 
     for f in tir.fns.iter() {
-        PPCtxt { builder: &mut builder, db, tir, f }.pp_fn(f);
+        PPCtxt { builder: &mut builder, db, tir, fun: f }.pp_fn(f);
     }
 
     let tree = builder.build();
@@ -17,7 +17,7 @@ struct PPCtxt<'db> {
     builder: &'db mut ptree::TreeBuilder,
     db: &'db Db,
     tir: &'db Tir,
-    f: &'db Fn,
+    fun: &'db Fn,
 }
 
 impl PPCtxt<'_> {
@@ -33,12 +33,13 @@ impl PPCtxt<'_> {
         if !sig.params.is_empty() {
             self.builder.begin_child("params".to_string());
 
-            for param in &sig.params {
+            for param in f.params(self.tir) {
+                let local = self.fun.local(param.id);
+
                 self.builder.add_empty_child(format!(
                     "{} (type: {})",
-                    // TODO: LocalId
-                    self.db[param.def_id].name,
-                    param.ty.display(self.db)
+                    local.name,
+                    local.ty.display(self.db)
                 ));
             }
 
@@ -51,15 +52,15 @@ impl PPCtxt<'_> {
     }
 
     fn pp_expr(&mut self, expr: ExprId) {
-        let expr = self.f.expr(expr);
+        let expr = self.fun.expr(expr);
 
         match &expr.kind {
-            ExprKind::Let { def_id, value } => {
+            ExprKind::Let { id, def_id: _, value } => {
+                let local = self.fun.local(*id);
                 self.builder.begin_child(format!(
                     "let {} (type: {})",
-                    // TODO: LocalId
-                    self.db[*def_id].qpath.standard_full_name(),
-                    self.f.expr(*value).ty.display(self.db)
+                    local.name,
+                    local.ty.display(self.db)
                 ));
                 self.pp_expr(*value);
                 self.builder.end_child();
@@ -138,7 +139,7 @@ impl PPCtxt<'_> {
                 Id::Local(lid) => {
                     self.builder.add_empty_child(format!(
                         "`{}` (type: {})",
-                        self.db[*lid].name,
+                        self.fun.local(*lid).name,
                         expr.ty.display(self.db)
                     ));
                 }
