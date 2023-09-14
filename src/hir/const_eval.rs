@@ -42,7 +42,10 @@ impl ConstStorage {
                     Const::Uint(v) => Const::Int(-i128::try_from(*v).unwrap()),
                     _ => unreachable!("invalid input in const neg: {:?}", val),
                 },
-                UnOp::Not => todo!(),
+                UnOp::Not => match val {
+                    Const::Bool(v) => Const::Bool(!v),
+                    _ => unreachable!("invalid input in const not: {:?}", val),
+                },
             }),
             ExprKind::Lit(lit) => Some(match lit {
                 Lit::Int(value) => Const::Uint(*value),
