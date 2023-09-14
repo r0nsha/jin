@@ -94,14 +94,17 @@ fn main() -> Result<()> {
 }
 
 fn build(db: &mut Db) {
+    // Create the output directory
     fs::create_dir_all(db.output_dir()).expect("failed creating build directory");
 
+    // Parse the entire module tree into an Ast
     db.time.start("parse");
-    let mut ast = parse::parse_modules(db);
+    let mut ast = parse::parse_module_tree(db);
     expect!(db);
 
     db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file)).expect("emitting ast failed");
 
+    // Resolve all root symbols into their corresponding id's
     db.time.start("resolve");
     passes::resolve(db, &mut ast);
     expect!(db);
@@ -109,6 +112,7 @@ fn build(db: &mut Db) {
     db.time.start("ast -> hir");
     let mut hir = hir::lower(db, ast);
 
+    // Type check pass
     db.time.start("typeck");
     if let Err(diag) = passes::typeck(db, &mut hir) {
         db.diagnostics.emit(diag);
@@ -119,11 +123,13 @@ fn build(db: &mut Db) {
     db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))
         .expect("emitting hir failed");
 
+    // Typed hir analysis
     db.time.start("analysis");
     passes::analysis(db, &hir);
     db.time.stop();
     expect!(db);
 
+    // Lower to TIR, includes monomorphization
     db.time.start("hir -> tir");
     let tir = tir::lower(db, &hir);
     db.time.stop();

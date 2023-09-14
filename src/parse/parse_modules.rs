@@ -8,7 +8,7 @@ use crate::{
     span::SourceId,
 };
 
-pub fn parse_modules(db: &mut Db) -> Ast {
+pub fn parse_module_tree(db: &mut Db) -> Ast {
     let mut ast = Ast::new();
 
     match parse_module(db, db.main_source_id()) {
