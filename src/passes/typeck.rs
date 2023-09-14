@@ -43,7 +43,8 @@ impl InferCtxt<'_> {
             self.db[f.id].ty = ty;
         }
 
-        for _ in &mut hir.lets {
+        for let_ in &mut hir.lets {
+            // self.typeck_let(let_, fx)
             todo!("global variables");
         }
 
@@ -390,8 +391,7 @@ impl InferCtxt<'_> {
 struct FnCtxt {
     pub id: DefId,
     pub ret_ty: Ty,
-    #[allow(unused)]
-    pub ty_params: Vec<ParamTy>,
+    // pub ty_params: Vec<ParamTy>,
 }
 
 impl FnCtxt {
@@ -399,20 +399,20 @@ impl FnCtxt {
         FnCtxt {
             id: fun.id,
             ret_ty: db[fun.id].ty.as_fn().unwrap().ret,
-            ty_params: fun
-                .sig
-                .ty_params
-                .iter()
-                .map(|tp| {
-                    db[tp.id]
-                        .kind
-                        .as_ty()
-                        .expect("to be a type")
-                        .as_param()
-                        .expect("to be a param type")
-                })
-                .cloned()
-                .collect(),
+            // ty_params: fun
+            //     .sig
+            //     .ty_params
+            //     .iter()
+            //     .map(|tp| {
+            //         db[tp.id]
+            //             .kind
+            //             .as_ty()
+            //             .expect("to be a type")
+            //             .as_param()
+            //             .expect("to be a param type")
+            //     })
+            //     .cloned()
+            //     .collect(),
         }
     }
 }
