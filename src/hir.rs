@@ -229,7 +229,7 @@ pub struct Cast {
 pub struct Name {
     pub id: DefId,
     pub args: Option<Vec<Ty>>,
-    pub instantiation: ty::Instantiation, // TODO: Turn into an Option<_>
+    pub instantiation: ty::Instantiation,
 }
 
 #[derive(Debug, Clone)]
