@@ -1,33 +1,6 @@
 fn main() = {
-	unary()
-	arithmetic()
-	cmp()
+	answer()
 }
 
-fn unary() = {
-	-48
-	--59
-	!true
-	!!false
-	# TODO: bitnot
-	# !54878
-}
-
-fn arithmetic() = {
-	1 + 2
-	3 - 4
-	5 * 6
-	7 / 8
-	9 % 10
-}
-
-fn cmp() = {
-	true && false
-	false || true
-	100 == 100
-	200 != 150
-	8 < 7
-	42 <= 999
-	2 > 1
-	264 >= 71
-}
+let global = 42
+fn answer() int = 42

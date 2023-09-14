@@ -23,8 +23,9 @@ pub fn resolve(db: &mut Db, ast: &mut Ast) {
 
     cx.resolve_modules(&mut ast.modules);
     cx.declare_builtin_defs();
-    cx.resolve_global_items(&mut ast.modules);
+    cx.declare_global_items(&mut ast.modules);
     cx.resolve_all(&mut ast.modules);
+    cx.report_cyclic_global_variables();
 
     if !cx.errors.is_empty() {
         let errors = cx.errors;
@@ -91,7 +92,7 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn resolve_global_items(&mut self, modules: &mut [Module]) {
+    fn declare_global_items(&mut self, modules: &mut [Module]) {
         for module in modules {
             for item in &mut module.items {
                 self.declare_global_item(module.id.expect("to be resolved"), item);
@@ -109,21 +110,27 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn declare_global_item(&mut self, module_id: ModuleId, item: &mut Item) -> DefId {
+    fn declare_global_item(&mut self, module_id: ModuleId, item: &mut Item) {
         match item {
             Item::Fn(fun) => {
-                let id = self.declare_global_def(
+                fun.id = Some(self.declare_global_def(
                     module_id,
                     Vis::Public,
                     DefKind::Fn(FnInfo::Bare),
                     fun.sig.name,
-                );
-
-                fun.id = Some(id);
-
-                id
+                ));
             }
-            Item::Let(_) => todo!(),
+            Item::Let(let_) => match &mut let_.pat {
+                Pat::Name(name) => {
+                    name.id = Some(self.declare_global_def(
+                        module_id,
+                        Vis::Public,
+                        DefKind::Variable,
+                        name.word,
+                    ));
+                }
+                Pat::Ignore(_) => (),
+            },
         }
     }
 
@@ -210,6 +217,10 @@ impl<'db> Resolver<'db> {
             }
         }
     }
+
+    fn report_cyclic_global_variables(&mut self) {
+        // TODO:
+    }
 }
 
 trait Resolve<'db> {
@@ -224,7 +235,11 @@ impl Resolve<'_> for Item {
 
         match self {
             Item::Fn(fun) => fun.resolve(cx, env),
-            Item::Let(let_) => let_.resolve(cx, env),
+            Item::Let(let_) => {
+                env.push(ustr("_"), ScopeKind::Initializer);
+                let_.resolve(cx, env);
+                env.pop();
+            }
         }
     }
 }

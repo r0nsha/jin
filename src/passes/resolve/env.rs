@@ -141,4 +141,5 @@ impl Scope {
 pub enum ScopeKind {
     Fn,
     Block,
+    Initializer,
 }
