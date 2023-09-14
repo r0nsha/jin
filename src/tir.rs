@@ -15,6 +15,7 @@ use crate::{
 
 new_key_type!(FnId);
 new_key_type!(FnSigId);
+new_key_type!(GlobalId);
 new_key_type!(LocalId);
 new_key_type!(ExprId);
 
@@ -22,12 +23,18 @@ new_key_type!(ExprId);
 pub struct Tir {
     pub sigs: IndexVec<FnSigId, FnSig>,
     pub fns: IndexVec<FnId, Fn>,
+    pub globals: IndexVec<GlobalId, Global>,
     pub main_fn: Option<FnSigId>,
 }
 
 impl Tir {
     pub fn new() -> Self {
-        Self { sigs: IndexVec::new(), fns: IndexVec::new(), main_fn: None }
+        Self {
+            sigs: IndexVec::new(),
+            fns: IndexVec::new(),
+            globals: IndexVec::new(),
+            main_fn: None,
+        }
     }
 
     pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
@@ -59,6 +66,28 @@ impl Fn {
     #[inline]
     pub fn params(&self, tir: &Tir) -> &[Local] {
         &self.locals.as_slice()[0..tir.sigs[self.sig].params.len()]
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Global {
+    pub id: GlobalId,
+    pub def_id: DefId,
+    pub value: ExprId,
+    pub ty: Ty,
+    exprs: Exprs,
+    locals: Locals,
+}
+
+impl Global {
+    #[inline]
+    pub fn expr(&self, id: ExprId) -> &Expr {
+        &self.exprs[id]
+    }
+
+    #[inline]
+    pub fn local(&self, id: LocalId) -> &Local {
+        &self.locals[id]
     }
 }
 

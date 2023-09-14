@@ -9,7 +9,8 @@ use crate::{
     hir::{const_eval::Const, Hir},
     passes::subst::{ParamFolder, Subst},
     tir::{
-        Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Id, Local, LocalId, Locals, Tir,
+        Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Global, Id, Local, LocalId,
+        Locals, Tir,
     },
     ty::{
         coerce::{CoercionKind, Coercions},
@@ -60,8 +61,8 @@ impl<'db> LowerCtxt<'db> {
             }
         }
 
-        for _ in &self.hir.lets {
-            todo!("global variables");
+        for let_ in &self.hir.lets {
+            LowerBodyCtxt::new(self).lower_let(let_);
         }
 
         for f in &self.hir.fns {
@@ -129,18 +130,18 @@ impl<'db> LowerCtxt<'db> {
             !self.db[f.id].ty.is_polymorphic(),
             "lowering polymorphic functions to TIR is not allowed"
         );
-        LowerFnCtxt::new(self).lower_fn(sig, f);
+        LowerBodyCtxt::new(self).lower_fn(sig, f);
     }
 }
 
-struct LowerFnCtxt<'cx, 'db> {
+struct LowerBodyCtxt<'cx, 'db> {
     cx: &'cx mut LowerCtxt<'db>,
     exprs: Exprs,
     locals: Locals,
     def_to_local: HashMap<DefId, LocalId>,
 }
 
-impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
+impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
     fn new(cx: &'cx mut LowerCtxt<'db>) -> Self {
         Self { cx, exprs: IndexVec::new(), locals: IndexVec::new(), def_to_local: HashMap::new() }
     }
@@ -166,6 +167,26 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
         self.cx.tir.fns.push(f);
     }
 
+    fn lower_let(mut self, let_: &hir::Let) {
+        let value = self.lower_expr(&let_.value);
+
+        match &let_.pat {
+            hir::Pat::Name(name) => {
+                let ty = self.cx.db[name.id].ty;
+
+                self.cx.tir.globals.push_with_key(|id| Global {
+                    id,
+                    def_id: name.id,
+                    value,
+                    ty,
+                    exprs: self.exprs,
+                    locals: self.locals,
+                });
+            }
+            hir::Pat::Ignore(_) => (),
+        }
+    }
+
     fn lower_expr(&mut self, expr: &hir::Expr) -> ExprId {
         let kind = if let Some(val) = self.cx.db.const_storage.expr(expr.id) {
             Self::lower_expr_from_const(val)
@@ -177,8 +198,6 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
                     match &let_.pat {
                         hir::Pat::Name(name) => {
                             let ty = self.cx.db[name.id].ty;
-                            // ParamFolder { db: self.cx.db, instantiation:&Instantiation }
-                            //     .fold(self.cx.db[name.id].ty);
                             let id = self.create_local(name.id, ty);
                             ExprKind::Let { id, def_id: name.id, value }
                         }
