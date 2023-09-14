@@ -136,7 +136,10 @@ impl InferCtxt<'_> {
             .or_coerce(self, let_.value.id)?;
 
         match &let_.pat {
-            Pat::Name(name) => self.db[name.id].ty = ty,
+            Pat::Name(name) => {
+                dbg!(name.id);
+                self.db[name.id].ty = ty
+            }
             Pat::Ignore(_) => (),
         }
 

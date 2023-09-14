@@ -3,4 +3,4 @@ fn main() = {
 }
 
 let global = 42
-fn answer() int = 42
+fn answer() int = global

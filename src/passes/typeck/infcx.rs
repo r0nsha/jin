@@ -22,7 +22,12 @@ impl<'db> InferCtxt<'db> {
 
     pub fn lookup(&self, id: DefId) -> Ty {
         let def = &self.db[id];
-        assert!(*def.ty != TyKind::Unknown, "definition `{}` wasn't assigned a Type", def.qpath);
+        assert!(
+            *def.ty != TyKind::Unknown,
+            "definition `{}` ({}) wasn't assigned a Type",
+            def.qpath,
+            def.id
+        );
         def.ty
     }
 
