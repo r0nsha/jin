@@ -232,15 +232,15 @@ impl Resolve<'_> for Item {
 impl Resolve<'_> for Expr {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         match self {
-            Self::Item(inner) => inner.resolve(cx, env),
-            Self::If(inner) => inner.resolve(cx, env),
-            Self::Block(inner) => inner.resolve(cx, env),
-            Self::Return(inner) => inner.resolve(cx, env),
-            Self::Call(inner) => inner.resolve(cx, env),
-            Self::Unary(inner) => inner.resolve(cx, env),
-            Self::Binary(inner) => inner.resolve(cx, env),
-            Self::Cast(inner) => inner.resolve(cx, env),
-            Self::Name(inner) => inner.resolve(cx, env),
+            Self::Item(x) => x.resolve(cx, env),
+            Self::If(x) => x.resolve(cx, env),
+            Self::Block(x) => x.resolve(cx, env),
+            Self::Return(x) => x.resolve(cx, env),
+            Self::Call(x) => x.resolve(cx, env),
+            Self::Unary(x) => x.resolve(cx, env),
+            Self::Binary(x) => x.resolve(cx, env),
+            Self::Cast(x) => x.resolve(cx, env),
+            Self::Name(x) => x.resolve(cx, env),
             Self::Lit(..) => (),
         }
     }

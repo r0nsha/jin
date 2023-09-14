@@ -9,12 +9,12 @@ use crate::{
 
 pub struct InferCtxt<'db> {
     pub db: &'db mut Db,
-    pub inner: RefCell<InferCtxtInner>,
+    pub storage: RefCell<InferCtxtStorage>,
 }
 
 impl<'db> InferCtxt<'db> {
     pub fn new(db: &'db mut Db) -> Self {
-        Self { db, inner: RefCell::new(InferCtxtInner::new()) }
+        Self { db, storage: RefCell::new(InferCtxtStorage::new()) }
     }
 
     pub fn lookup(&self, id: DefId) -> Ty {
@@ -30,23 +30,23 @@ impl<'db> InferCtxt<'db> {
 
     #[inline]
     pub fn fresh_var(&self) -> TyVar {
-        self.inner.borrow_mut().ty_unification_table.new_key(None)
+        self.storage.borrow_mut().ty_unification_table.new_key(None)
     }
 
     #[inline]
     pub fn fresh_int_var(&self) -> Ty {
         Ty::new(TyKind::Infer(InferTy::IntVar(
-            self.inner.borrow_mut().int_unification_table.new_key(None),
+            self.storage.borrow_mut().int_unification_table.new_key(None),
         )))
     }
 }
 
-pub struct InferCtxtInner {
+pub struct InferCtxtStorage {
     pub ty_unification_table: InPlaceUnificationTable<TyVar>,
     pub int_unification_table: InPlaceUnificationTable<IntVar>,
 }
 
-impl InferCtxtInner {
+impl InferCtxtStorage {
     pub fn new() -> Self {
         Self {
             ty_unification_table: InPlaceUnificationTable::new(),

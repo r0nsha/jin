@@ -13,14 +13,14 @@ pub trait CoerceExt<'db> {
 
 impl CoerceExt<'_> for EqResult<()> {
     fn or_coerce(self, infcx: &mut InferCtxt, expr_id: ExprId) -> Self {
-        let inner = &mut infcx.inner.borrow_mut();
+        let storage = &mut infcx.storage.borrow_mut();
         let target_metrics = infcx.db.target_metrics();
 
         match self {
             Ok(res) => Ok(res),
             Err(err) => {
-                let source = err.found.normalize(inner);
-                let target = err.expected.normalize(inner);
+                let source = err.found.normalize(storage);
+                let target = err.expected.normalize(storage);
 
                 match (source.kind(), target.kind()) {
                     (TyKind::Never, _) => {

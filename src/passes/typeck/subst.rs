@@ -7,7 +7,7 @@ use crate::{
         subst::{Subst, SubstTy},
         typeck::{
             error::InferError,
-            infcx::{InferCtxt, InferCtxtInner},
+            infcx::{InferCtxt, InferCtxtStorage},
             normalize::NormalizeTy,
         },
     },
@@ -18,7 +18,7 @@ use crate::{
 impl<'db> InferCtxt<'db> {
     pub fn subst_fn(&mut self, f: &mut Fn) {
         let mut cx =
-            SubstCtxt { db: self.db, infcx: &mut self.inner.borrow_mut(), errs: HashMap::new() };
+            SubstCtxt { db: self.db, infcx: &mut self.storage.borrow_mut(), errs: HashMap::new() };
 
         f.subst(&mut cx);
 
@@ -30,7 +30,7 @@ impl<'db> InferCtxt<'db> {
 
 struct SubstCtxt<'db> {
     db: &'db mut Db,
-    infcx: &'db mut InferCtxtInner,
+    infcx: &'db mut InferCtxtStorage,
     errs: HashMap<Span, InferError>,
 }
 

@@ -24,7 +24,7 @@ use crate::{
 pub type InferResult<T> = Result<T, InferError>;
 
 pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
-    fn inner(db: &mut Db, hir: &mut Hir) -> InferResult<()> {
+    fn aux(db: &mut Db, hir: &mut Hir) -> InferResult<()> {
         let mut cx = InferCtxt::new(db);
 
         cx.typeck_defs(hir)?;
@@ -33,7 +33,7 @@ pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
         Ok(())
     }
 
-    inner(db, hir).map_err(|err| err.into_diagnostic(db))
+    aux(db, hir).map_err(|err| err.into_diagnostic(db))
 }
 
 impl InferCtxt<'_> {
@@ -112,7 +112,8 @@ impl InferCtxt<'_> {
 
         // If the function's return type is `()`, we want to let the user end the body with
         // whatever expression they want, so that they don't need to end it with a `()`
-        if self.db[f.id].ty.as_fn().unwrap().ret.normalize(&mut self.inner.borrow_mut()).is_unit() {
+        if self.db[f.id].ty.as_fn().unwrap().ret.normalize(&mut self.storage.borrow_mut()).is_unit()
+        {
             Ok(())
         } else {
             unify_body_res.map_err(Into::into)
@@ -262,7 +263,7 @@ impl InferCtxt<'_> {
                 } else {
                     // TODO: assume a function here?
                     return Err(InferError::UncallableTy {
-                        ty: call.callee.ty.normalize(&mut self.inner.borrow_mut()),
+                        ty: call.callee.ty.normalize(&mut self.storage.borrow_mut()),
                         span: call.callee.span,
                     });
                 }
@@ -322,7 +323,7 @@ impl InferCtxt<'_> {
             }
             ExprKind::Name(name) => {
                 let def_ty = self.lookup(name.id);
-                let ty = def_ty.normalize(&mut self.inner.borrow_mut());
+                let ty = def_ty.normalize(&mut self.storage.borrow_mut());
 
                 let ty_params = ty.collect_params();
 
