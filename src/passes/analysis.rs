@@ -1,7 +1,7 @@
 use crate::{
     db::{Db, DefKind, FnInfo},
     diagnostics::{Diagnostic, Label},
-    hir::{ExprKind, Hir, ItemKind},
+    hir::{ExprKind, Hir},
     span::Span,
     ty::{Ty, TyKind},
 };
@@ -16,24 +16,21 @@ struct Context<'db> {
 
 impl Context<'_> {
     fn analyze(&mut self, hir: &Hir) {
-        for item in &hir.items {
-            match &item.kind {
-                ItemKind::Fn(f) => f.body.walk(|expr| {
-                    if let ExprKind::Cast(cast) = &expr.kind {
-                        let source = cast.expr.ty;
-                        let target = expr.ty;
+        for f in &hir.fns {
+            f.body.walk(|expr| {
+                if let ExprKind::Cast(cast) = &expr.kind {
+                    let source = cast.expr.ty;
+                    let target = expr.ty;
 
-                        if !is_valid_cast(source, target) {
-                            self.emit(AnalysisError::InvalidCast {
-                                source,
-                                target,
-                                span: expr.span,
-                            });
-                        }
+                    if !is_valid_cast(source, target) {
+                        self.emit(AnalysisError::InvalidCast { source, target, span: expr.span });
                     }
-                }),
-                ItemKind::Let(_) => todo!("global variables"),
-            }
+                }
+            });
+        }
+
+        for _ in &hir.lets {
+            todo!("global variables");
         }
 
         self.check_entry(hir);
@@ -69,19 +66,16 @@ impl Context<'_> {
         let fty = main_fun.ty.kind();
 
         if is_main_fun_ty(fty) {
-            for item in &hir.items {
-                match &item.kind {
-                    ItemKind::Fn(fun) if fun.id == main_fun.id => {
-                        let tp = &fun.sig.ty_params;
+            for fun in &hir.fns {
+                if fun.id == main_fun.id {
+                    let tp = &fun.sig.ty_params;
 
-                        if !tp.is_empty() {
-                            let span = tp[0].span.merge(tp.last().unwrap().span);
-                            self.emit(AnalysisError::EntryPointWithTyParams { span });
-                        }
-
-                        break;
+                    if !tp.is_empty() {
+                        let span = tp[0].span.merge(tp.last().unwrap().span);
+                        self.emit(AnalysisError::EntryPointWithTyParams { span });
                     }
-                    _ => (),
+
+                    break;
                 }
             }
         } else {

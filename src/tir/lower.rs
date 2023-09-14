@@ -51,38 +51,24 @@ impl<'db> LowerCtxt<'db> {
     }
 
     fn lower_all(&mut self) {
-        for item in &self.hir.items {
-            self.declare_fn_item(item);
-        }
-
-        for item in &self.hir.items {
-            self.lower_root_item(item);
-        }
-    }
-
-    fn declare_fn_item(&mut self, item: &hir::Item) {
-        match &item.kind {
-            hir::ItemKind::Fn(fun) => {
-                if !self.db[fun.id].ty.is_polymorphic() {
-                    let def = &self.db[fun.id];
-                    let sig =
-                        self.lower_fn_sig(&fun.sig, def.qpath.standard_full_name().into(), def.ty);
-                    self.fn_to_sig.insert(fun.id, sig);
-                }
+        // Declare fns
+        for f in &self.hir.fns {
+            if !self.db[f.id].ty.is_polymorphic() {
+                let def = &self.db[f.id];
+                let sig = self.lower_fn_sig(&f.sig, def.qpath.standard_full_name().into(), def.ty);
+                self.fn_to_sig.insert(f.id, sig);
             }
-            hir::ItemKind::Let(_) => (),
         }
-    }
 
-    fn lower_root_item(&mut self, item: &hir::Item) {
-        match &item.kind {
-            hir::ItemKind::Fn(fun) => {
-                if !self.db[fun.id].ty.is_polymorphic() {
-                    let sig = self.fn_to_sig[&fun.id];
-                    self.lower_fn_body(sig, fun);
-                }
+        for _ in &self.hir.lets {
+            todo!("global variables");
+        }
+
+        for f in &self.hir.fns {
+            if !self.db[f.id].ty.is_polymorphic() {
+                let sig = self.fn_to_sig[&f.id];
+                self.lower_fn_body(sig, f);
             }
-            hir::ItemKind::Let(_) => todo!("global variables"),
         }
     }
 
@@ -91,42 +77,39 @@ impl<'db> LowerCtxt<'db> {
             return target_id;
         }
 
-        for item in &self.hir.items {
-            match &item.kind {
-                hir::ItemKind::Fn(fun) if fun.id == mono_item.id => {
-                    let mut new_fun = fun.clone();
-                    new_fun.subst(&mut ParamFolder { db: self.db, instantiation });
+        let fun = self.hir.fns.iter().find(|f| f.id == mono_item.id);
 
-                    let name = {
-                        let args_str = instantiation
-                            .values()
-                            .map(|t| t.to_string(self.db))
-                            .collect::<Vec<String>>()
-                            .join("_");
+        if let Some(fun) = fun {
+            let mut new_fun = fun.clone();
+            new_fun.subst(&mut ParamFolder { db: self.db, instantiation });
 
-                        let def = &self.db[fun.id];
+            let name = {
+                let args_str = instantiation
+                    .values()
+                    .map(|t| t.to_string(self.db))
+                    .collect::<Vec<String>>()
+                    .join("_");
 
-                        let name = def
-                            .qpath
-                            .clone()
-                            .with_name(ustr(&format!("{}${}", def.name, args_str)))
-                            .standard_full_name();
+                let def = &self.db[fun.id];
 
-                        ustr(&name)
-                    };
+                let name = def
+                    .qpath
+                    .clone()
+                    .with_name(ustr(&format!("{}${}", def.name, args_str)))
+                    .standard_full_name();
 
-                    let sig = self.lower_fn_sig(&new_fun.sig, name, mono_item.ty);
+                ustr(&name)
+            };
 
-                    self.mono_fns.insert(mono_item.clone(), sig);
-                    self.lower_fn_body(sig, &new_fun);
+            let sig = self.lower_fn_sig(&new_fun.sig, name, mono_item.ty);
 
-                    return sig;
-                }
-                hir::ItemKind::Fn(_) | hir::ItemKind::Let(_) => (),
-            }
+            self.mono_fns.insert(mono_item.clone(), sig);
+            self.lower_fn_body(sig, &new_fun);
+
+            sig
+        } else {
+            panic!("function {} not found in hir.items", self.db[mono_item.id].qpath);
         }
-
-        panic!("function {} not found in hir.items", self.db[mono_item.id].qpath);
     }
 
     fn lower_fn_sig(&mut self, sig: &hir::FnSig, name: Ustr, ty: Ty) -> FnSigId {

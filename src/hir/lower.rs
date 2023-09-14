@@ -3,7 +3,7 @@ use crate::{
     db::Db,
     hir::{
         Binary, Block, Call, CallArg, Cast, Const, Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Hir,
-        If, Item, ItemKind, Let, Name, NamePat, Pat, Return, Ty, TyName, TyParam, Unary,
+        If, Let, Name, NamePat, Pat, Return, Ty, TyName, TyParam, Unary,
     },
     span::{Span, Spanned},
     ty::Instantiation,
@@ -27,8 +27,18 @@ struct LowerCtxt<'db> {
 
 impl<'db> LowerCtxt<'db> {
     fn lower_module(&mut self, module: ast::Module) {
-        let items: Vec<_> = module.items.into_iter().map(|item| item.lower(self)).collect();
-        self.hir.items.extend(items);
+        for item in module.items {
+            match item {
+                ast::Item::Fn(f) => {
+                    let f = f.lower(self);
+                    self.hir.fns.push(f);
+                }
+                ast::Item::Let(let_) => {
+                    let let_ = let_.lower(self);
+                    self.hir.lets.push(let_);
+                }
+            }
+        }
     }
 
     fn expr(&mut self, kind: ExprKind, span: Span) -> Expr {
@@ -43,17 +53,6 @@ impl<'db> LowerCtxt<'db> {
 
 trait Lower<'db, T> {
     fn lower(self, cx: &mut LowerCtxt<'db>) -> T;
-}
-
-impl Lower<'_, Item> for ast::Item {
-    fn lower(self, cx: &mut LowerCtxt<'_>) -> Item {
-        Item {
-            kind: match self {
-                Self::Fn(fun) => ItemKind::Fn(fun.lower(cx)),
-                Self::Let(let_) => ItemKind::Let(let_.lower(cx)),
-            },
-        }
-    }
 }
 
 impl Lower<'_, Fn> for ast::Fn {
@@ -96,23 +95,19 @@ impl Lower<'_, FnSig> for ast::FnSig {
 impl Lower<'_, Expr> for ast::Expr {
     fn lower(self, cx: &mut LowerCtxt<'_>) -> Expr {
         match self {
-            Self::Item(item) => {
-                let span = item.span();
-                let item = item.lower(cx);
-
-                match item.kind {
-                    ItemKind::Fn(_) => {
-                        cx.hir.items.push(item);
-                        // TODO: We need to create a dummy value because we must return an expression.
-                        // Maybe we can avoid this since we know that this must be a block statement?
-                        cx.expr(ExprKind::Const(Const::Unit), span)
-                    }
-                    ItemKind::Let(let_) => {
-                        let span = let_.span;
-                        cx.expr(ExprKind::Let(let_), span)
-                    }
+            Self::Item(item) => match item {
+                ast::Item::Fn(f) => {
+                    let span = f.span;
+                    let f = f.lower(cx);
+                    cx.hir.fns.push(f);
+                    cx.expr(ExprKind::Const(Const::Unit), span)
                 }
-            }
+                ast::Item::Let(let_) => {
+                    let span = let_.span;
+                    let let_ = let_.lower(cx);
+                    cx.expr(ExprKind::Let(let_), span)
+                }
+            },
             Self::Return(ret) => {
                 let span = ret.span;
                 let expr = if let Some(expr) = ret.expr {

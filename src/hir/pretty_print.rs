@@ -2,17 +2,18 @@ use std::io;
 
 use crate::{
     db::Db,
-    hir::{Const, Expr, ExprKind, Fn, Hir, ItemKind},
+    hir::{Const, Expr, ExprKind, Fn, Hir},
 };
 
 pub(super) fn print(db: &Db, hir: &Hir, w: &mut impl io::Write) -> io::Result<()> {
     let mut cx = PPCtxt { db, builder: ptree::TreeBuilder::new("Hir".to_string()) };
 
-    for item in &hir.items {
-        match &item.kind {
-            ItemKind::Fn(f) => cx.pp_fn(f),
-            ItemKind::Let(_) => todo!("global variables"),
-        }
+    for _ in &hir.lets {
+        todo!("global variables")
+    }
+
+    for f in &hir.fns {
+        cx.pp_fn(f);
     }
 
     let tree = cx.builder.build();

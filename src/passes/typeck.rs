@@ -12,7 +12,7 @@ use crate::{
     ast::{BinOp, UnOp},
     db::{Db, DefId, DefKind},
     diagnostics::Diagnostic,
-    hir::{self, Const, Expr, ExprKind, Fn, FnSig, Hir, ItemKind, Let, Pat},
+    hir::{self, Const, Expr, ExprKind, Fn, FnSig, Hir, Let, Pat},
     passes::typeck::{
         coerce::CoerceExt, error::InferError, infcx::InferCtxt, instantiate::instantiate,
         normalize::NormalizeTy, unify::Obligation,
@@ -32,21 +32,20 @@ fn typeck_inner(db: &mut Db, hir: &mut Hir) -> InferResult<()> {
     let mut cx = InferCtxt::new(db);
 
     cx.typeck_defs(hir)?;
-    cx.typeck_fn_bodies(hir)?;
+    cx.typeck_bodies(hir)?;
 
     Ok(())
 }
 
 impl InferCtxt<'_> {
     fn typeck_defs(&mut self, hir: &mut Hir) -> InferResult<()> {
-        for item in &mut hir.items {
-            match &mut item.kind {
-                ItemKind::Fn(fun) => {
-                    let ty = self.typeck_fn_sig(&mut fun.sig)?;
-                    self.db[fun.id].ty = ty;
-                }
-                ItemKind::Let(_) => todo!("global variables"),
-            }
+        for f in &mut hir.fns {
+            let ty = self.typeck_fn_sig(&mut f.sig)?;
+            self.db[f.id].ty = ty;
+        }
+
+        for _ in &mut hir.lets {
+            todo!("global variables");
         }
 
         Ok(())
@@ -80,14 +79,13 @@ impl InferCtxt<'_> {
         })))
     }
 
-    fn typeck_fn_bodies(&mut self, hir: &mut Hir) -> InferResult<()> {
-        for item in &mut hir.items {
-            match &mut item.kind {
-                ItemKind::Fn(f) => {
-                    self.typeck_fn(f)?;
-                }
-                ItemKind::Let(_) => todo!("global variables"),
-            }
+    fn typeck_bodies(&mut self, hir: &mut Hir) -> InferResult<()> {
+        for f in &mut hir.fns {
+            self.typeck_fn(f)?;
+        }
+
+        for _ in &mut hir.lets {
+            todo!("global variables");
         }
 
         Ok(())
@@ -388,6 +386,7 @@ impl InferCtxt<'_> {
 struct FnCtxt {
     pub id: DefId,
     pub ret_ty: Ty,
+    #[allow(unused)]
     pub ty_params: Vec<ParamTy>,
 }
 

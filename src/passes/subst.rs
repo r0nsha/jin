@@ -1,7 +1,7 @@
 use crate::{
     db::Db,
-    hir::{Expr, ExprKind, Fn, FnSig, Item, ItemKind, Let, Pat},
-    span::{Span, Spanned},
+    hir::{Expr, ExprKind, Fn, FnSig, Let, Pat},
+    span::Span,
     ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };
 
@@ -60,15 +60,6 @@ impl<S: SubstTy> Subst<S> for Expr {
         }
 
         self.ty = s.subst_ty(self.ty, self.span);
-    }
-}
-
-impl<S: SubstTy> Subst<S> for Item {
-    fn subst(&mut self, s: &mut S) {
-        match &mut self.kind {
-            ItemKind::Fn(fun) => fun.subst(s),
-            ItemKind::Let(_) => todo!("global variables"),
-        }
     }
 }
 

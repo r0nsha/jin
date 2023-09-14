@@ -16,53 +16,17 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct Hir {
-    pub items: Vec<Item>,
+    pub fns: Vec<Fn>,
+    pub lets: Vec<Let>,
 }
 
 impl Hir {
     pub fn new() -> Self {
-        Self { items: vec![] }
+        Self { fns: vec![], lets: vec![] }
     }
 
     pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
         pretty_print::print(db, self, w)
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Item {
-    pub kind: ItemKind,
-}
-
-impl Spanned for Item {
-    fn span(&self) -> Span {
-        self.kind.span()
-    }
-
-    fn span_mut(&mut self) -> &mut Span {
-        self.kind.span_mut()
-    }
-}
-
-#[derive(Debug, Clone, EnumAsInner)]
-pub enum ItemKind {
-    Fn(Fn),
-    Let(Let),
-}
-
-impl Spanned for ItemKind {
-    fn span(&self) -> Span {
-        match self {
-            Self::Fn(x) => x.span,
-            Self::Let(x) => x.span,
-        }
-    }
-
-    fn span_mut(&mut self) -> &mut Span {
-        match self {
-            Self::Fn(x) => &mut x.span,
-            Self::Let(x) => &mut x.span,
-        }
     }
 }
 
