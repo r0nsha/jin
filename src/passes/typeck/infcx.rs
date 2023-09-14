@@ -1,11 +1,10 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::cell::RefCell;
 
 use ena::unify::InPlaceUnificationTable;
 
 use crate::{
     db::{Db, DefId},
-    hir::ExprId,
-    passes::typeck::const_eval::{Const, ConstStorage},
+    passes::typeck::const_eval::ConstStorage,
     ty::{InferTy, IntVar, Ty, TyKind, TyVar},
 };
 
@@ -18,7 +17,11 @@ pub struct InferCtxt<'db> {
 
 impl<'db> InferCtxt<'db> {
     pub fn new(db: &'db mut Db) -> Self {
-        Self { db, storage: RefCell::new(InferCtxtStorage::new()), const_storage: ConstStorage::new() }
+        Self {
+            db,
+            storage: RefCell::new(InferCtxtStorage::new()),
+            const_storage: ConstStorage::new(),
+        }
     }
 
     pub fn lookup(&self, id: DefId) -> Ty {
