@@ -69,8 +69,6 @@ impl<S: SubstTy> Subst<S> for Item {
             ItemKind::Fn(fun) => fun.subst(s),
             ItemKind::Let(_) => todo!("global variables"),
         }
-
-        self.ty = s.subst_ty(self.ty, self.span());
     }
 }
 

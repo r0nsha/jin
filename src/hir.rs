@@ -32,7 +32,6 @@ impl Hir {
 #[derive(Debug, Clone)]
 pub struct Item {
     pub kind: ItemKind,
-    pub ty: ty::Ty,
 }
 
 impl Spanned for Item {

@@ -96,3 +96,8 @@ fn named_args() = {
 	add(1, second: 2)
 }
 
+# let global_answer = 42
+# fn global_vars() = {
+# 	fn my_answer() = global_answer
+# 	my_answer()
+# }

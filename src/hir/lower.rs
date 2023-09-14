@@ -52,7 +52,6 @@ impl Lower<'_, Item> for ast::Item {
                 Self::Fn(fun) => ItemKind::Fn(fun.lower(cx)),
                 Self::Let(let_) => ItemKind::Let(let_.lower(cx)),
             },
-            ty: cx.db.types.unknown,
         }
     }
 }
