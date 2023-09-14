@@ -1,7 +1,7 @@
 use crate::{
     db::{Db, DefKind, FnInfo},
     diagnostics::{Diagnostic, Label},
-    hir::{ExprKind, Hir},
+    hir::{Expr, ExprKind, Hir},
     span::Span,
     ty::{Ty, TyKind},
 };
@@ -17,23 +17,27 @@ struct Context<'db> {
 impl Context<'_> {
     fn analyze(&mut self, hir: &Hir) {
         for f in &hir.fns {
-            f.body.walk(|expr| {
-                if let ExprKind::Cast(cast) = &expr.kind {
-                    let source = cast.expr.ty;
-                    let target = expr.ty;
-
-                    if !is_valid_cast(source, target) {
-                        self.emit(AnalysisError::InvalidCast { source, target, span: expr.span });
-                    }
-                }
-            });
+            self.analyze_expr(&f.body);
         }
 
-        for _ in &hir.lets {
-            todo!("global variables");
+        for let_ in &hir.lets {
+            self.analyze_expr(&let_.value);
         }
 
         self.check_entry(hir);
+    }
+
+    fn analyze_expr(&mut self, expr: &Expr) {
+        expr.walk(|expr| {
+            if let ExprKind::Cast(cast) = &expr.kind {
+                let source = cast.expr.ty;
+                let target = expr.ty;
+
+                if !is_valid_cast(source, target) {
+                    self.emit(AnalysisError::InvalidCast { source, target, span: expr.span });
+                }
+            }
+        });
     }
 
     fn check_entry(&mut self, hir: &Hir) {

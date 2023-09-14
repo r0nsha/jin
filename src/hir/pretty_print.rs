@@ -2,14 +2,14 @@ use std::io;
 
 use crate::{
     db::Db,
-    hir::{Lit, Expr, ExprKind, Fn, Hir},
+    hir::{Expr, ExprKind, Fn, Hir, Let, Lit},
 };
 
 pub(super) fn print(db: &Db, hir: &Hir, w: &mut impl io::Write) -> io::Result<()> {
     let mut cx = PPCtxt { db, builder: ptree::TreeBuilder::new("Hir".to_string()) };
 
-    for _ in &hir.lets {
-        todo!("global variables")
+    for let_ in &hir.lets {
+        cx.pp_let(let_);
     }
 
     for f in &hir.fns {
@@ -52,12 +52,16 @@ impl PPCtxt<'_> {
         self.builder.end_child();
     }
 
+    fn pp_let(&mut self, let_: &Let) {
+        self.builder.begin_child(format!("let (type: {})", let_.value.ty.display(self.db)));
+        self.pp_expr(&let_.value);
+        self.builder.end_child();
+    }
+
     fn pp_expr(&mut self, expr: &Expr) {
         match &expr.kind {
             ExprKind::Let(let_) => {
-                self.builder.begin_child(format!("let (type: {})", let_.value.ty.display(self.db)));
-                self.pp_expr(&let_.value);
-                self.builder.end_child();
+                self.pp_let(let_);
             }
             ExprKind::If(if_) => {
                 self.builder.begin_child("if".to_string());

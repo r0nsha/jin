@@ -20,6 +20,7 @@ pub enum InferError {
     UncallableTy { ty: Ty, span: Span },
     ExpectedTy { ty: Ty, span: Span },
     CannotInfer { ty: Ty, span: Span },
+    InvalidReturn(Span),
 }
 
 impl InferError {
@@ -107,6 +108,9 @@ impl InferError {
             Self::CannotInfer { ty, span } => Diagnostic::error("typeck::cannot_infer")
                 .with_message(format!("type annotations needed for `{}`", ty.display(db)))
                 .with_label(Label::primary(span).with_message("cannot infer type")),
+            Self::InvalidReturn(span) => Diagnostic::error("typeck::invalid_return")
+                .with_message("cannot return outside of function scope")
+                .with_label(Label::primary(span)),
         }
     }
 }

@@ -10,12 +10,16 @@ use ustr::UstrMap;
 
 use crate::{
     ast::{BinOp, UnOp},
-    db::{Db, DefId, DefKind},
+    db::{Db, DefKind},
     diagnostics::Diagnostic,
     hir::{self, Expr, ExprKind, Fn, FnSig, Hir, Let, Lit, Pat},
     passes::typeck::{
-        coerce::CoerceExt, error::InferError, infcx::InferCtxt, instantiate::instantiate,
-        normalize::NormalizeTy, unify::Obligation,
+        coerce::CoerceExt,
+        error::InferError,
+        infcx::{FnCtxt, InferCtxt},
+        instantiate::instantiate,
+        normalize::NormalizeTy,
+        unify::Obligation,
     },
     span::{Span, Spanned},
     ty::{FnTy, FnTyParam, Instantiation, ParamTy, Ty, TyKind},
@@ -27,8 +31,10 @@ pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
     fn aux(db: &mut Db, hir: &mut Hir) -> InferResult<()> {
         let mut cx = InferCtxt::new(db);
 
-        cx.typeck_defs(hir)?;
+        cx.typeck_fn_sigs(hir)?;
+        cx.typeck_global_vars(hir)?;
         cx.typeck_bodies(hir)?;
+        cx.subst(hir);
 
         Ok(())
     }
@@ -37,15 +43,18 @@ pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
 }
 
 impl InferCtxt<'_> {
-    fn typeck_defs(&mut self, hir: &mut Hir) -> InferResult<()> {
+    fn typeck_fn_sigs(&mut self, hir: &mut Hir) -> InferResult<()> {
         for f in &mut hir.fns {
             let ty = self.typeck_fn_sig(&mut f.sig)?;
             self.db[f.id].ty = ty;
         }
 
+        Ok(())
+    }
+
+    fn typeck_global_vars(&mut self, hir: &mut Hir) -> InferResult<()> {
         for let_ in &mut hir.lets {
-            // self.typeck_let(let_, fx)
-            todo!("global variables");
+            self.typeck_let(let_)?;
         }
 
         Ok(())
@@ -84,10 +93,6 @@ impl InferCtxt<'_> {
             self.typeck_fn(f)?;
         }
 
-        for _ in &mut hir.lets {
-            todo!("global variables");
-        }
-
         Ok(())
     }
 
@@ -97,35 +102,34 @@ impl InferCtxt<'_> {
             self.db[f.id].ty = ty;
         }
 
-        let mut fx = FnCtxt::from_fn(self.db, f);
+        self.fx = Some(FnCtxt::from_fn(self.db, f));
 
-        self.typeck_expr(&mut f.body, &mut fx)?;
+        self.typeck_expr(&mut f.body)?;
+
+        let ret_ty = self.db[f.id].ty.as_fn().unwrap().ret;
 
         let unify_body_res = self
             .at(Obligation::return_ty(
                 f.body.span,
                 f.sig.ret.as_ref().map_or(self.db[f.id].span, Spanned::span),
             ))
-            .eq(fx.ret_ty, f.body.ty)
+            .eq(ret_ty, f.body.ty)
             .or_coerce(self, f.body.id);
-
-        self.subst_fn(f);
 
         // If the function's return type is `()`, we want to let the user end the body with
         // whatever expression they want, so that they don't need to end it with a `()`
-        if self.db[f.id].ty.as_fn().unwrap().ret.normalize(&mut self.storage.borrow_mut()).is_unit()
-        {
+        if ret_ty.normalize(&mut self.storage.borrow_mut()).is_unit() {
             Ok(())
         } else {
             unify_body_res.map_err(Into::into)
         }
     }
 
-    fn typeck_let(&mut self, let_: &mut Let, fx: &mut FnCtxt) -> InferResult<()> {
+    fn typeck_let(&mut self, let_: &mut Let) -> InferResult<()> {
         let ty =
             if let Some(ty) = &let_.ty_annot { self.typeck_ty(ty)? } else { self.fresh_ty_var() };
 
-        self.typeck_expr(&mut let_.value, fx)?;
+        self.typeck_expr(&mut let_.value)?;
 
         self.at(Obligation::obvious(let_.value.span))
             .eq(ty, let_.value.ty)
@@ -139,29 +143,29 @@ impl InferCtxt<'_> {
         Ok(())
     }
 
-    fn typeck_expr(&mut self, expr: &mut Expr, fx: &mut FnCtxt) -> InferResult<()> {
-        self.infer_expr(expr, fx)?;
+    fn typeck_expr(&mut self, expr: &mut Expr) -> InferResult<()> {
+        self.infer_expr(expr)?;
         self.db.const_storage.eval_expr(expr);
         Ok(())
     }
 
-    fn infer_expr(&mut self, expr: &mut Expr, fx: &mut FnCtxt) -> InferResult<()> {
+    fn infer_expr(&mut self, expr: &mut Expr) -> InferResult<()> {
         expr.ty = match &mut expr.kind {
             ExprKind::Let(let_) => {
-                self.typeck_let(let_, fx)?;
+                self.typeck_let(let_)?;
                 self.db.types.unit
             }
             ExprKind::If(if_) => {
-                self.typeck_expr(&mut if_.cond, fx)?;
+                self.typeck_expr(&mut if_.cond)?;
 
                 self.at(Obligation::obvious(if_.cond.span))
                     .eq(self.db.types.bool, if_.cond.ty)
                     .or_coerce(self, if_.cond.id)?;
 
-                self.typeck_expr(&mut if_.then, fx)?;
+                self.typeck_expr(&mut if_.then)?;
 
                 if let Some(otherwise) = if_.otherwise.as_mut() {
-                    self.typeck_expr(otherwise, fx)?;
+                    self.typeck_expr(otherwise)?;
                     self.at(Obligation::exprs(expr.span, if_.then.span, otherwise.span))
                         .eq(if_.then.ty, otherwise.ty)
                         .or_coerce(self, otherwise.id)?;
@@ -178,25 +182,29 @@ impl InferCtxt<'_> {
             }
             ExprKind::Block(blk) => {
                 for expr in &mut blk.exprs {
-                    self.typeck_expr(expr, fx)?;
+                    self.typeck_expr(expr)?;
                 }
 
                 blk.exprs.last().map_or_else(|| self.db.types.unit, |e| e.ty)
             }
             ExprKind::Return(ret) => {
-                self.typeck_expr(&mut ret.expr, fx)?;
+                self.typeck_expr(&mut ret.expr)?;
 
-                self.at(Obligation::return_ty(ret.expr.span, self.db[fx.id].span))
-                    .eq(fx.ret_ty, ret.expr.ty)
-                    .or_coerce(self, ret.expr.id)?;
+                if let Some(fx) = &self.fx {
+                    self.at(Obligation::return_ty(ret.expr.span, self.db[fx.id].span))
+                        .eq(fx.ret_ty, ret.expr.ty)
+                        .or_coerce(self, ret.expr.id)?;
 
-                self.db.types.never
+                    self.db.types.never
+                } else {
+                    return Err(InferError::InvalidReturn(expr.span));
+                }
             }
             ExprKind::Call(call) => {
-                self.typeck_expr(&mut call.callee, fx)?;
+                self.typeck_expr(&mut call.callee)?;
 
                 for arg in &mut call.args {
-                    self.typeck_expr(&mut arg.expr, fx)?;
+                    self.typeck_expr(&mut arg.expr)?;
                 }
 
                 if let TyKind::Fn(fun_ty) = call.callee.ty.kind() {
@@ -276,7 +284,7 @@ impl InferCtxt<'_> {
                 }
             }
             ExprKind::Unary(un) => {
-                self.typeck_expr(&mut un.expr, fx)?;
+                self.typeck_expr(&mut un.expr)?;
 
                 match un.op {
                     UnOp::Neg => {
@@ -296,8 +304,8 @@ impl InferCtxt<'_> {
                 un.expr.ty
             }
             ExprKind::Binary(bin) => {
-                self.typeck_expr(&mut bin.lhs, fx)?;
-                self.typeck_expr(&mut bin.rhs, fx)?;
+                self.typeck_expr(&mut bin.lhs)?;
+                self.typeck_expr(&mut bin.rhs)?;
 
                 self.at(Obligation::exprs(expr.span, bin.lhs.span, bin.rhs.span))
                     .eq(bin.lhs.ty, bin.rhs.ty)
@@ -325,7 +333,7 @@ impl InferCtxt<'_> {
                 }
             }
             ExprKind::Cast(cast) => {
-                self.typeck_expr(&mut cast.expr, fx)?;
+                self.typeck_expr(&mut cast.expr)?;
                 self.typeck_ty(&cast.target)?
             }
             ExprKind::Name(name) => {
@@ -384,35 +392,6 @@ impl InferCtxt<'_> {
             }
             hir::Ty::Unit(_) => Ok(self.db.types.unit),
             hir::Ty::Infer(_) => Ok(self.fresh_ty_var()),
-        }
-    }
-}
-
-struct FnCtxt {
-    pub id: DefId,
-    pub ret_ty: Ty,
-    // pub ty_params: Vec<ParamTy>,
-}
-
-impl FnCtxt {
-    fn from_fn(db: &Db, fun: &Fn) -> Self {
-        FnCtxt {
-            id: fun.id,
-            ret_ty: db[fun.id].ty.as_fn().unwrap().ret,
-            // ty_params: fun
-            //     .sig
-            //     .ty_params
-            //     .iter()
-            //     .map(|tp| {
-            //         db[tp.id]
-            //             .kind
-            //             .as_ty()
-            //             .expect("to be a type")
-            //             .as_param()
-            //             .expect("to be a param type")
-            //     })
-            //     .cloned()
-            //     .collect(),
         }
     }
 }

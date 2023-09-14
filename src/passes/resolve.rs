@@ -336,10 +336,6 @@ impl Resolve<'_> for Block {
 
 impl Resolve<'_> for Return {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        if !env.in_kind(ScopeKind::Fn) {
-            cx.errors.push(ResolveError::InvalidReturn(self.span));
-        }
-
         if let Some(expr) = self.expr.as_mut() {
             expr.resolve(cx, env);
         }

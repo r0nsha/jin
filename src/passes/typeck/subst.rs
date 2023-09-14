@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use crate::{
     db::Db,
-    hir::Fn,
+    hir::Hir,
     passes::{
         subst::{Subst, SubstTy},
         typeck::{
@@ -16,14 +16,21 @@ use crate::{
 };
 
 impl<'db> InferCtxt<'db> {
-    pub fn subst_fn(&mut self, f: &mut Fn) {
+    pub fn subst(&mut self, hir: &mut Hir) {
         let mut cx =
             SubstCtxt { db: self.db, infcx: &mut self.storage.borrow_mut(), errs: HashMap::new() };
 
-        f.subst(&mut cx);
+        for f in &mut hir.fns {
+            f.subst(&mut cx);
+        }
+
+        for let_ in &mut hir.lets {
+            let_.subst(&mut cx);
+        }
 
         let diagnostics: Vec<_> =
             cx.errs.into_values().map(|e| e.into_diagnostic(self.db)).collect();
+
         self.db.diagnostics.emit_many(diagnostics);
     }
 }
