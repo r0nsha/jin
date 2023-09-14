@@ -106,7 +106,7 @@ pub enum ExprKind {
     Unary { value: ExprId, op: UnOp },
     Cast { value: ExprId, target: Ty },
     Id(Id),
-    IntValue(usize),
+    IntValue(u128),
     BoolValue(bool),
     UnitValue,
 }

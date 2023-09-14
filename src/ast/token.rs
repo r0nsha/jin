@@ -78,7 +78,7 @@ pub enum TokenKind {
     As,
 
     // Literals
-    Int(usize),
+    Int(u128),
 }
 
 impl TokenKind {

@@ -234,7 +234,7 @@ pub struct Name {
 
 #[derive(Debug, Clone)]
 pub enum Lit {
-    Int(usize),
+    Int(u128),
     Bool(bool),
     Unit,
 }

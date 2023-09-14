@@ -44,8 +44,8 @@ impl ConstStorage {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Const {
-    Int(isize),
-    Uint(usize),
+    Int(i128),
+    Uint(u128),
     Bool(bool),
     Unit,
 }

@@ -409,7 +409,7 @@ pub struct Lit {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LitKind {
-    Int(usize),
+    Int(u128),
     Bool(bool),
     Unit,
 }
