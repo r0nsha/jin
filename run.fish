@@ -8,7 +8,7 @@ else
 
     cargo run -- build $src --timings --emit hir --emit tir --emit llvm-ir
 
-    if test -f $out
+    if test $status -eq 0 && test -f $out
         $out
     end
 end
