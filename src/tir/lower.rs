@@ -8,8 +8,8 @@ use crate::{
     hir::{const_eval::Const, Hir},
     passes::subst::{ParamFolder, Subst},
     tir::{
-        Body, Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Global, Id, Local,
-        LocalId, Tir,
+        Body, Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Global, GlobalId, Id,
+        Local, LocalId, Tir,
     },
     ty::{
         coerce::{CoercionKind, Coercions},
@@ -32,11 +32,14 @@ struct LowerCtxt<'db> {
     hir: &'db Hir,
     tir: &'db mut Tir,
 
-    // A mapping of functions to their predeclared signatures
+    // Maps functions to their lowered signatures
     fn_to_sig: HashMap<DefId, FnSigId>,
 
     // Already monomorphized functions
     mono_fns: HashMap<MonoItem, FnSigId>,
+
+    // Maps global lets to their lowered globals
+    globals_map: HashMap<DefId, GlobalId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -47,11 +50,17 @@ pub struct MonoItem {
 
 impl<'db> LowerCtxt<'db> {
     fn new(db: &'db mut Db, hir: &'db Hir, tir: &'db mut Tir) -> Self {
-        Self { db, hir, tir, fn_to_sig: HashMap::new(), mono_fns: HashMap::new() }
+        Self {
+            db,
+            hir,
+            tir,
+            fn_to_sig: HashMap::new(),
+            mono_fns: HashMap::new(),
+            globals_map: HashMap::new(),
+        }
     }
 
     fn lower_all(&mut self) {
-        // Declare fns
         for f in &self.hir.fns {
             if !self.db[f.id].ty.is_polymorphic() {
                 let def = &self.db[f.id];
@@ -61,7 +70,7 @@ impl<'db> LowerCtxt<'db> {
         }
 
         for let_ in &self.hir.lets {
-            LowerBodyCtxt::new(self).lower_let(let_);
+            self.lower_global_let(let_);
         }
 
         for f in &self.hir.fns {
@@ -70,6 +79,27 @@ impl<'db> LowerCtxt<'db> {
                 self.lower_fn_body(sig, f);
             }
         }
+    }
+
+    fn lower_global(&mut self, def_id: DefId) -> GlobalId {
+        if let Some(target_id) = self.globals_map.get(&def_id).copied() {
+            return target_id;
+        }
+
+        let let_ = self.hir.lets.iter().find(|let_| match &let_.pat {
+            hir::Pat::Name(n) => n.id == def_id,
+            hir::Pat::Ignore(_) => false,
+        });
+
+        if let Some(let_) = let_ {
+            self.lower_global_let(let_).expect("to output a GlobalId")
+        } else {
+            panic!("global let {} not found in hir.lets", self.db[def_id].qpath);
+        }
+    }
+
+    fn lower_global_let(&mut self, let_: &hir::Let) -> Option<GlobalId> {
+        LowerBodyCtxt::new(self).lower_global(let_)
     }
 
     fn monomorphize_fn(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> FnSigId {
@@ -108,7 +138,7 @@ impl<'db> LowerCtxt<'db> {
 
             sig
         } else {
-            panic!("function {} not found in hir.items", self.db[mono_item.id].qpath);
+            panic!("function {} not found in hir.fns", self.db[mono_item.id].qpath);
         }
     }
 
@@ -164,7 +194,7 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
         self.cx.tir.fns.push(f);
     }
 
-    fn lower_let(mut self, let_: &hir::Let) {
+    fn lower_global(mut self, let_: &hir::Let) -> Option<GlobalId> {
         let value = self.lower_expr(&let_.value);
 
         match &let_.pat {
@@ -172,16 +202,16 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
                 let full_name = self.cx.db[name.id].qpath.standard_full_name();
                 let ty = self.cx.db[name.id].ty;
 
-                self.cx.tir.globals.push_with_key(|id| Global {
+                Some(self.cx.tir.globals.push_with_key(|id| Global {
                     id,
                     def_id: name.id,
                     name: full_name.into(),
                     value,
                     ty,
                     body: self.body,
-                });
+                }))
             }
-            hir::Pat::Ignore(_) => (),
+            hir::Pat::Ignore(_) => None,
         }
     }
 
@@ -275,6 +305,7 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
 
                         ExprKind::Id(Id::Fn(id))
                     }
+                    DefKind::Global => ExprKind::Id(Id::Global(self.cx.lower_global(name.id))),
                     DefKind::Variable => ExprKind::Id(Id::Local(self.def_to_local[&name.id])),
                     DefKind::Ty(_) => unreachable!(),
                 },

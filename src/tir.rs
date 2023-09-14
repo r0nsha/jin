@@ -53,16 +53,6 @@ pub struct Fn {
 
 impl Fn {
     #[inline]
-    pub fn expr(&self, id: ExprId) -> &Expr {
-        self.body.expr(id)
-    }
-
-    #[inline]
-    pub fn local(&self, id: LocalId) -> &Local {
-        self.body.local(id)
-    }
-
-    #[inline]
     pub fn params(&self, tir: &Tir) -> &[Local] {
         &self.body.locals.as_slice()[0..tir.sigs[self.sig].params.len()]
     }
@@ -76,18 +66,6 @@ pub struct Global {
     pub value: ExprId,
     pub ty: Ty,
     pub body: Body,
-}
-
-impl Global {
-    #[inline]
-    pub fn expr(&self, id: ExprId) -> &Expr {
-        self.body.expr(id)
-    }
-
-    #[inline]
-    pub fn local(&self, id: LocalId) -> &Local {
-        self.body.local(id)
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -164,5 +142,6 @@ pub enum ExprKind {
 #[derive(Debug, Clone)]
 pub enum Id {
     Fn(FnSigId),
+    Global(GlobalId),
     Local(LocalId),
 }

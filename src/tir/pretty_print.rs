@@ -141,6 +141,13 @@ impl PPCtxt<'_> {
                         expr.ty.display(self.db)
                     ));
                 }
+                Id::Global(gid) => {
+                    self.builder.add_empty_child(format!(
+                        "`{}` (type: {})",
+                        self.tir.globals[*gid].name,
+                        expr.ty.display(self.db)
+                    ));
+                }
                 Id::Local(lid) => {
                     self.builder.add_empty_child(format!(
                         "`{}` (type: {})",

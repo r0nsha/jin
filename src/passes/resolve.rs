@@ -125,7 +125,7 @@ impl<'db> Resolver<'db> {
                     name.id = Some(self.declare_global_def(
                         module_id,
                         Vis::Public,
-                        DefKind::Variable,
+                        DefKind::Global,
                         name.word,
                     ));
                 }

@@ -44,7 +44,7 @@ pub fn codegen(db: &mut Db, tir: &Tir) -> PathBuf {
     let unit_ty = context.opaque_struct_type("unit");
     unit_ty.set_body(&[], false);
 
-    let mut cx = Generator {
+    let mut g = Generator {
         db,
         tir,
         context: &context,
@@ -53,14 +53,15 @@ pub fn codegen(db: &mut Db, tir: &Tir) -> PathBuf {
         isize_ty: context.ptr_sized_int_type(&target_machine.get_target_data(), None),
         unit_ty,
         functions: HashMap::default(),
+        globals: HashMap::default(),
     };
 
-    cx.db.time.start("llvm generation");
-    cx.run();
-    cx.db.time.stop();
+    g.db.time.start("llvm generation");
+    g.run();
+    g.db.time.stop();
 
-    if let Err(e) = cx.module.verify() {
-        cx.module.print_to_file("fail.ll").expect("printing llvm module to file to work");
+    if let Err(e) = g.module.verify() {
+        g.module.print_to_file("fail.ll").expect("printing llvm module to file to work");
         panic!("{}", e);
     }
 

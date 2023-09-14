@@ -6,7 +6,7 @@ use inkwell::{
     context::Context,
     module::{Linkage, Module},
     types::{BasicTypeEnum, IntType, StructType},
-    values::{AnyValue, BasicValue, BasicValueEnum, FunctionValue, PointerValue},
+    values::{AnyValue, BasicValue, BasicValueEnum, FunctionValue, GlobalValue, PointerValue},
     AddressSpace, IntPredicate,
 };
 
@@ -14,7 +14,7 @@ use crate::{
     ast::{BinOp, CmpOp, UnOp},
     db::Db,
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
-    tir::{ExprId, ExprKind, Fn, FnSigId, Id, LocalId, Tir},
+    tir::{Body, ExprId, ExprKind, Fn, FnSigId, GlobalId, Id, LocalId, Tir},
 };
 
 pub struct Generator<'db, 'cx> {
@@ -28,6 +28,7 @@ pub struct Generator<'db, 'cx> {
     pub unit_ty: StructType<'cx>,
 
     pub functions: HashMap<FnSigId, FunctionValue<'cx>>,
+    pub globals: HashMap<GlobalId, GlobalValue<'cx>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -38,7 +39,7 @@ pub enum Local<'cx> {
 
 #[derive(Debug, Clone)]
 pub struct FnState<'db, 'cx> {
-    pub fun: &'db Fn,
+    pub body: &'db Body,
     pub function_value: FunctionValue<'cx>,
     pub prologue_block: BasicBlock<'cx>,
     pub current_block: BasicBlock<'cx>,
@@ -47,13 +48,13 @@ pub struct FnState<'db, 'cx> {
 
 impl<'db, 'cx> FnState<'db, 'cx> {
     pub fn new(
-        f: &'db Fn,
+        body: &'db Body,
         function_value: FunctionValue<'cx>,
         prologue_block: BasicBlock<'cx>,
         first_block: BasicBlock<'cx>,
     ) -> Self {
         Self {
-            fun: f,
+            body,
             function_value,
             prologue_block,
             current_block: first_block,
@@ -81,8 +82,11 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             Some(Linkage::External),
         );
 
-        let entry_block = self.context.append_basic_block(function_value, "entry");
-        self.bx.position_at_end(entry_block);
+        let prologue_block = self.context.append_basic_block(function_value, "prologue");
+        let start_block = self.context.append_basic_block(function_value, "entry");
+        self.bx.position_at_end(start_block);
+
+        self.init_lazy_globals(function_value, prologue_block, start_block);
 
         let main_function_value = self.function(self.tir.main_fn.expect("to have a main function"));
 
@@ -90,6 +94,23 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
         if !self.current_block_is_terminating() {
             self.bx.build_return(Some(&self.context.i32_type().const_zero()));
+        }
+
+        self.bx.position_at_end(prologue_block);
+        self.bx.build_unconditional_branch(start_block);
+    }
+
+    pub fn init_lazy_globals(
+        &mut self,
+        main_function_value: FunctionValue<'cx>,
+        prologue_block: BasicBlock<'cx>,
+        start_block: BasicBlock<'cx>,
+    ) {
+        for glob in self.tir.globals.iter() {
+            let mut state =
+                FnState::new(&glob.body, main_function_value, prologue_block, start_block);
+            let value = self.codegen_expr(&mut state, glob.value);
+            self.bx.build_store(self.global(glob.id).as_pointer_value(), value);
         }
     }
 
@@ -100,6 +121,21 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
             let function = self.module.add_function(&sig.name, llvm_ty, Some(Linkage::Private));
             self.functions.insert(fun.sig, function);
+        }
+
+        for glob in self.tir.globals.iter() {
+            let llvm_ty = glob.ty.llty(self);
+
+            let glob_value =
+                self.module.add_global(llvm_ty, Some(AddressSpace::default()), &glob.name);
+
+            // TODO: extern globals
+            glob_value.set_linkage(Linkage::Private);
+            glob_value.set_externally_initialized(false);
+            // TODO: initialize const
+            glob_value.set_initializer(&Self::undef_value(llvm_ty));
+
+            self.globals.insert(glob.id, glob_value);
         }
     }
 
@@ -118,7 +154,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         let prologue_block = self.context.append_basic_block(function_value, "prologue");
         let start_block = self.context.append_basic_block(function_value, "start");
 
-        let mut state = FnState::new(fun, function_value, prologue_block, start_block);
+        let mut state = FnState::new(&fun.body, function_value, prologue_block, start_block);
 
         for (local, value) in fun.params(self.tir).iter().zip(function_value.get_param_iter()) {
             state.locals.insert(local.id, Local::Value(value));
@@ -129,7 +165,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
         if !self.current_block_is_terminating() {
             let ret_value =
-                if fty.as_fn().unwrap().ret.is_unit() && !state.fun.expr(fun.value).ty.is_unit() {
+                if fty.as_fn().unwrap().ret.is_unit() && !state.body.expr(fun.value).ty.is_unit() {
                     self.unit_value().as_basic_value_enum()
                 } else {
                     body
@@ -145,7 +181,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     }
 
     fn codegen_expr(&mut self, state: &mut FnState<'db, 'cx>, expr: ExprId) -> BasicValueEnum<'cx> {
-        let expr = &state.fun.expr(expr);
+        let expr = &state.body.expr(expr);
 
         if self.current_block_is_terminating() {
             return Self::undef_value(expr.ty.llty(self));
@@ -153,7 +189,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
         match &expr.kind {
             ExprKind::Let { id, def_id: _, value } => {
-                let local = state.fun.local(*id);
+                let local = state.body.local(*id);
                 let ty = local.ty.llty(self);
 
                 let ptr = self.build_stack_alloc(state, ty, &local.name);
@@ -217,7 +253,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 Self::undef_value(expr.ty.llty(self))
             }
             ExprKind::Call { callee, args } => {
-                let callee_ty = state.fun.expr(*callee).ty;
+                let callee_ty = state.body.expr(*callee).ty;
 
                 let args: Vec<_> =
                     args.iter().map(|arg| self.codegen_expr(state, *arg).into()).collect();
@@ -372,7 +408,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 }
             }
             ExprKind::Cast { value, target } => {
-                let source_ty = state.fun.expr(*value).ty;
+                let source_ty = state.body.expr(*value).ty;
                 let target_ty = *target;
 
                 let value = self.codegen_expr(state, *value);
@@ -400,11 +436,18 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 Id::Fn(fid) => {
                     self.function(*fid).as_global_value().as_pointer_value().as_basic_value_enum()
                 }
+                Id::Global(gid) => {
+                    let ptr = self.global(*gid).as_pointer_value();
+                    let glob = &self.tir.globals[*gid];
+                    self.bx.build_load(glob.ty.llty(self), ptr, &format!("load_{}", glob.name))
+                }
                 Id::Local(lid) => match state.local(*lid) {
-                    Local::Alloca(p, ty) => {
-                        self.bx.build_load(ty, p, &format!("load_{}", state.fun.local(*lid).name))
-                    }
-                    Local::Value(v) => v,
+                    Local::Alloca(ptr, ty) => self.bx.build_load(
+                        ty,
+                        ptr,
+                        &format!("load_{}", state.body.local(*lid).name),
+                    ),
+                    Local::Value(value) => value,
                 },
             },
             ExprKind::IntValue(value) => {
@@ -440,6 +483,14 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             .get(&id)
             .copied()
             .unwrap_or_else(|| panic!("function {} to be declared", self.tir.sigs[id].name))
+    }
+
+    #[track_caller]
+    fn global(&self, id: GlobalId) -> GlobalValue<'cx> {
+        self.globals
+            .get(&id)
+            .copied()
+            .unwrap_or_else(|| panic!("global {} to be declared", self.tir.globals[id].name))
     }
 }
 
