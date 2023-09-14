@@ -16,7 +16,7 @@ use crate::{
     passes::typeck::{
         coerce::CoerceExt,
         error::InferError,
-        infcx::{FnCtxt, InferCtxt},
+        infcx::{Env, InferCtxt},
         instantiate::instantiate,
         normalize::NormalizeTy,
         unify::Obligation,
@@ -109,9 +109,9 @@ impl InferCtxt<'_> {
             self.db[f.id].ty = ty;
         }
 
-        self.fx = Some(FnCtxt::from_fn(self.db, f));
+        let mut env = Env::new(Some(f.id));
 
-        self.typeck_expr(&mut f.body)?;
+        self.typeck_expr(&mut f.body, &mut env)?;
 
         let ret_ty = self.db[f.id].ty.as_fn().unwrap().ret;
 
@@ -133,10 +133,12 @@ impl InferCtxt<'_> {
     }
 
     fn typeck_let(&mut self, let_: &mut Let) -> InferResult<Ty> {
+        let mut env = Env::new(None);
+
         let ty =
             if let Some(ty) = &let_.ty_annot { self.typeck_ty(ty)? } else { self.fresh_ty_var() };
 
-        self.typeck_expr(&mut let_.value)?;
+        self.typeck_expr(&mut let_.value, &mut env)?;
 
         self.at(Obligation::obvious(let_.value.span))
             .eq(ty, let_.value.ty)
@@ -150,13 +152,13 @@ impl InferCtxt<'_> {
         Ok(ty)
     }
 
-    fn typeck_expr(&mut self, expr: &mut Expr) -> InferResult<()> {
-        self.infer_expr(expr)?;
+    fn typeck_expr(&mut self, expr: &mut Expr, env: &mut Env) -> InferResult<()> {
+        self.infer_expr(expr, env)?;
         self.db.const_storage.eval_expr(expr);
         Ok(())
     }
 
-    fn infer_expr(&mut self, expr: &mut Expr) -> InferResult<()> {
+    fn infer_expr(&mut self, expr: &mut Expr, env: &mut Env) -> InferResult<()> {
         expr.ty = match &mut expr.kind {
             ExprKind::Let(let_) => {
                 let ty = self.typeck_let(let_)?;
@@ -169,16 +171,16 @@ impl InferCtxt<'_> {
                 self.db.types.unit
             }
             ExprKind::If(if_) => {
-                self.typeck_expr(&mut if_.cond)?;
+                self.typeck_expr(&mut if_.cond, env)?;
 
                 self.at(Obligation::obvious(if_.cond.span))
                     .eq(self.db.types.bool, if_.cond.ty)
                     .or_coerce(self, if_.cond.id)?;
 
-                self.typeck_expr(&mut if_.then)?;
+                self.typeck_expr(&mut if_.then, env)?;
 
                 if let Some(otherwise) = if_.otherwise.as_mut() {
-                    self.typeck_expr(otherwise)?;
+                    self.typeck_expr(otherwise, env)?;
                     self.at(Obligation::exprs(expr.span, if_.then.span, otherwise.span))
                         .eq(if_.then.ty, otherwise.ty)
                         .or_coerce(self, otherwise.id)?;
@@ -195,17 +197,19 @@ impl InferCtxt<'_> {
             }
             ExprKind::Block(blk) => {
                 for expr in &mut blk.exprs {
-                    self.typeck_expr(expr)?;
+                    self.typeck_expr(expr, env)?;
                 }
 
                 blk.exprs.last().map_or_else(|| self.db.types.unit, |e| e.ty)
             }
             ExprKind::Return(ret) => {
-                self.typeck_expr(&mut ret.expr)?;
+                self.typeck_expr(&mut ret.expr, env)?;
 
-                if let Some(fx) = &self.fx {
-                    self.at(Obligation::return_ty(ret.expr.span, self.db[fx.id].span))
-                        .eq(fx.ret_ty, ret.expr.ty)
+                if let Some(fn_id) = env.fn_id {
+                    let ret_ty = self.db[fn_id].ty.as_fn().unwrap().ret;
+
+                    self.at(Obligation::return_ty(ret.expr.span, self.db[fn_id].span))
+                        .eq(ret_ty, ret.expr.ty)
                         .or_coerce(self, ret.expr.id)?;
 
                     self.db.types.never
@@ -214,10 +218,10 @@ impl InferCtxt<'_> {
                 }
             }
             ExprKind::Call(call) => {
-                self.typeck_expr(&mut call.callee)?;
+                self.typeck_expr(&mut call.callee, env)?;
 
                 for arg in &mut call.args {
-                    self.typeck_expr(&mut arg.expr)?;
+                    self.typeck_expr(&mut arg.expr, env)?;
                 }
 
                 if let TyKind::Fn(fun_ty) = call.callee.ty.kind() {
@@ -297,7 +301,7 @@ impl InferCtxt<'_> {
                 }
             }
             ExprKind::Unary(un) => {
-                self.typeck_expr(&mut un.expr)?;
+                self.typeck_expr(&mut un.expr, env)?;
 
                 match un.op {
                     UnOp::Neg => {
@@ -317,8 +321,8 @@ impl InferCtxt<'_> {
                 un.expr.ty
             }
             ExprKind::Binary(bin) => {
-                self.typeck_expr(&mut bin.lhs)?;
-                self.typeck_expr(&mut bin.rhs)?;
+                self.typeck_expr(&mut bin.lhs, env)?;
+                self.typeck_expr(&mut bin.rhs, env)?;
 
                 self.at(Obligation::exprs(expr.span, bin.lhs.span, bin.rhs.span))
                     .eq(bin.lhs.ty, bin.rhs.ty)
@@ -346,7 +350,7 @@ impl InferCtxt<'_> {
                 }
             }
             ExprKind::Cast(cast) => {
-                self.typeck_expr(&mut cast.expr)?;
+                self.typeck_expr(&mut cast.expr, env)?;
                 self.typeck_ty(&cast.target)?
             }
             ExprKind::Name(name) => {
