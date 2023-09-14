@@ -156,19 +156,21 @@ impl PPCtxt<'_> {
                     ));
                 }
             },
-            ExprKind::IntValue(value) => {
-                self.builder.add_empty_child(format!(
-                    "{} (type: {})",
-                    value,
-                    expr.ty.display(self.db)
-                ));
-            }
-            ExprKind::BoolValue(value) => {
-                self.builder.add_empty_child(value.to_string());
-            }
-            ExprKind::UnitValue => {
-                self.builder.add_empty_child("()".to_string());
-            }
+            ExprKind::Const(value) => match value {
+                Const::Int(value) => {
+                    self.builder.add_empty_child(format!(
+                        "{} (type: {})",
+                        value,
+                        expr.ty.display(self.db)
+                    ));
+                }
+                Const::Bool(value) => {
+                    self.builder.add_empty_child(value.to_string());
+                }
+                Const::Unit => {
+                    self.builder.add_empty_child("()".to_string());
+                }
+            },
         }
     }
 }

@@ -217,7 +217,7 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ExprId {
         let kind = if let Some(val) = self.cx.db.const_storage.expr(expr.id) {
-            Self::lower_expr_from_const(val)
+            ExprKind::Const(val.clone())
         } else {
             match &expr.kind {
                 hir::ExprKind::Let(let_) => {
@@ -229,7 +229,7 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
                             let id = self.create_local(name.id, ty);
                             ExprKind::Let { id, def_id: name.id, value }
                         }
-                        hir::Pat::Ignore(_) => ExprKind::UnitValue,
+                        hir::Pat::Ignore(_) => ExprKind::Const(Const::Unit),
                     }
                 }
                 hir::ExprKind::If(if_) => ExprKind::If {
@@ -245,7 +245,7 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
                     // when the expected type of the block is unit, but the last expression doesn't
                     // return ().
                     if expr.ty.is_unit() {
-                        exprs.push(self.create_expr(ExprKind::UnitValue, expr.ty));
+                        exprs.push(self.create_expr(ExprKind::Const(Const::Unit), expr.ty));
                     }
 
                     ExprKind::Block { exprs }
@@ -309,11 +309,7 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
                     DefKind::Variable => ExprKind::Id(Id::Local(self.def_to_local[&name.id])),
                     DefKind::Ty(_) => unreachable!(),
                 },
-                hir::ExprKind::Lit(value) => match value {
-                    hir::Lit::Int(value) => ExprKind::IntValue(i128::try_from(*value).unwrap()),
-                    hir::Lit::Bool(value) => ExprKind::BoolValue(*value),
-                    hir::Lit::Unit => ExprKind::UnitValue,
-                },
+                hir::ExprKind::Lit(_) => unreachable!("lits should always have a const value"),
             }
         };
 
@@ -323,14 +319,6 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
             coercions.apply(&mut self.body.exprs, new_expr)
         } else {
             new_expr
-        }
-    }
-
-    fn lower_expr_from_const(value: &Const) -> ExprKind {
-        match value {
-            Const::Int(value) => ExprKind::IntValue(*value),
-            Const::Bool(value) => ExprKind::BoolValue(*value),
-            Const::Unit => ExprKind::UnitValue,
         }
     }
 

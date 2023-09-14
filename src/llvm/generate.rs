@@ -13,6 +13,7 @@ use inkwell::{
 use crate::{
     ast::{BinOp, CmpOp, UnOp},
     db::Db,
+    hir::const_eval::Const,
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
     tir::{Body, ExprId, ExprKind, Fn, FnSigId, GlobalId, Id, LocalId, Tir},
 };
@@ -450,21 +451,23 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                     Local::Value(value) => value,
                 },
             },
-            ExprKind::IntValue(value) => {
-                let int = expr
-                    .ty
-                    .llty(self)
-                    .into_int_type()
-                    .const_int(u64::try_from(value.abs()).unwrap(), expr.ty.is_int());
+            ExprKind::Const(value) => match value {
+                Const::Int(value) => {
+                    let int = expr
+                        .ty
+                        .llty(self)
+                        .into_int_type()
+                        .const_int(u64::try_from(value.abs()).unwrap(), expr.ty.is_int());
 
-                if value.is_negative() {
-                    int.const_neg().into()
-                } else {
-                    int.into()
+                    if value.is_negative() {
+                        int.const_neg().into()
+                    } else {
+                        int.into()
+                    }
                 }
-            }
-            ExprKind::BoolValue(value) => self.bool_value(*value).into(),
-            ExprKind::UnitValue => self.unit_value().into(),
+                Const::Bool(value) => self.bool_value(*value).into(),
+                Const::Unit => self.unit_value().into(),
+            },
         }
     }
 

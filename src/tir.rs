@@ -10,6 +10,7 @@ use crate::{
     ast::{BinOp, UnOp},
     common::{new_key_type, IndexVec},
     db::{Db, DefId},
+    hir::const_eval::Const,
     ty::Ty,
 };
 
@@ -134,9 +135,7 @@ pub enum ExprKind {
     Unary { value: ExprId, op: UnOp },
     Cast { value: ExprId, target: Ty },
     Id(Id),
-    IntValue(i128),
-    BoolValue(bool),
-    UnitValue,
+    Const(Const),
 }
 
 #[derive(Debug, Clone)]
