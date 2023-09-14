@@ -33,7 +33,7 @@ struct LowerCtxt<'db> {
     tir: &'db mut Tir,
 
     // Maps functions to their lowered signatures
-    fn_to_sig: HashMap<DefId, FnSigId>,
+    fn_map: HashMap<DefId, FnSigId>,
 
     // Already monomorphized functions
     mono_fns: HashMap<MonoItem, FnSigId>,
@@ -54,7 +54,7 @@ impl<'db> LowerCtxt<'db> {
             db,
             hir,
             tir,
-            fn_to_sig: HashMap::new(),
+            fn_map: HashMap::new(),
             mono_fns: HashMap::new(),
             globals_map: HashMap::new(),
         }
@@ -65,7 +65,7 @@ impl<'db> LowerCtxt<'db> {
             if !self.db[f.id].ty.is_polymorphic() {
                 let def = &self.db[f.id];
                 let sig = self.lower_fn_sig(&f.sig, def.qpath.standard_full_name().into(), def.ty);
-                self.fn_to_sig.insert(f.id, sig);
+                self.fn_map.insert(f.id, sig);
             }
         }
 
@@ -75,7 +75,7 @@ impl<'db> LowerCtxt<'db> {
 
         for f in &self.hir.fns {
             if !self.db[f.id].ty.is_polymorphic() {
-                let sig = self.fn_to_sig[&f.id];
+                let sig = self.fn_map[&f.id];
                 self.lower_fn_body(sig, f);
             }
         }
@@ -286,7 +286,7 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
                 hir::ExprKind::Name(name) => match self.cx.db[name.id].kind.as_ref() {
                     DefKind::Fn(_) => {
                         let id = if name.instantiation.is_empty() {
-                            self.cx.fn_to_sig[&name.id]
+                            self.cx.fn_map[&name.id]
                         } else {
                             let mut folder =
                                 ParamFolder { db: self.cx.db, instantiation: &name.instantiation };
