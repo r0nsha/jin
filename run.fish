@@ -1,2 +1,14 @@
 #!/bin/fish
-cargo run -- build tests/demo.jin --timings --emit hir --emit mir --emit llvm-ir && tests/build/demo
+if set -q $argv[1]
+    echo Usage: run.fish [FILE_NAME]
+else
+    set -l name $argv[1]
+    set -l src tests/$name.jin
+    set -l out tests/build/$name
+
+    cargo run -- build $src --timings --emit hir --emit tir --emit llvm-ir
+
+    if test -f $out
+        $out
+    end
+end
