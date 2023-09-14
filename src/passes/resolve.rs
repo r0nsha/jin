@@ -22,7 +22,7 @@ pub fn resolve(db: &mut Db, ast: &mut Ast) {
     let mut cx = Resolver::new(db);
 
     cx.resolve_modules(&mut ast.modules);
-    cx.declare_builtin_defs();
+    cx.declare_builtins();
     cx.declare_global_items(&mut ast.modules);
     cx.resolve_all(&mut ast.modules);
     cx.report_cyclic_global_variables();
@@ -45,7 +45,7 @@ impl<'db> Resolver<'db> {
         Self { db, errors: vec![], global_scope: GlobalScope::new(), builtins: UstrMap::default() }
     }
 
-    fn declare_builtin_defs(&mut self) {
+    fn declare_builtins(&mut self) {
         let mut mk = |name: &str, ty: &dyn std::ops::Fn(&Db) -> ty::Ty| -> Option<DefId> {
             let name = ustr(name);
             self.builtins.insert(
