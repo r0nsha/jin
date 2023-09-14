@@ -70,10 +70,9 @@ impl<'db> LowerCtxt<'db> {
         }
 
         for let_ in &self.hir.lets {
-            if let_.pat.any(|name| self.globals_map.get(&name.id).is_some()) {
-                continue;
+            if !let_.pat.any(|name| self.globals_map.get(&name.id).is_some()) {
+                self.lower_global_let(let_);
             }
-            self.lower_global_let(let_);
         }
 
         for f in &self.hir.fns {
