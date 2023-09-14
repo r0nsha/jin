@@ -31,7 +31,7 @@ pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
     fn aux(db: &mut Db, hir: &mut Hir) -> InferResult<()> {
         let mut cx = InferCtxt::new(db);
 
-        cx.typeck_fn_sigs(hir)?;
+        cx.typeck_defs(hir)?;
         cx.typeck_global_vars(hir)?;
         cx.typeck_bodies(hir)?;
         cx.subst(hir);
@@ -43,10 +43,17 @@ pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
 }
 
 impl InferCtxt<'_> {
-    fn typeck_fn_sigs(&mut self, hir: &mut Hir) -> InferResult<()> {
+    fn typeck_defs(&mut self, hir: &mut Hir) -> InferResult<()> {
         for f in &mut hir.fns {
             let ty = self.typeck_fn_sig(&mut f.sig)?;
             self.db[f.id].ty = ty;
+        }
+
+        for let_ in &mut hir.lets {
+            match &let_.pat {
+                Pat::Name(name) => self.db[name.id].ty = self.fresh_ty_var(),
+                Pat::Ignore(_) => (),
+            }
         }
 
         Ok(())
@@ -125,7 +132,7 @@ impl InferCtxt<'_> {
         }
     }
 
-    fn typeck_let(&mut self, let_: &mut Let) -> InferResult<()> {
+    fn typeck_let(&mut self, let_: &mut Let) -> InferResult<Ty> {
         let ty =
             if let Some(ty) = &let_.ty_annot { self.typeck_ty(ty)? } else { self.fresh_ty_var() };
 
@@ -140,7 +147,7 @@ impl InferCtxt<'_> {
             Pat::Ignore(_) => (),
         }
 
-        Ok(())
+        Ok(ty)
     }
 
     fn typeck_expr(&mut self, expr: &mut Expr) -> InferResult<()> {
@@ -152,7 +159,13 @@ impl InferCtxt<'_> {
     fn infer_expr(&mut self, expr: &mut Expr) -> InferResult<()> {
         expr.ty = match &mut expr.kind {
             ExprKind::Let(let_) => {
-                self.typeck_let(let_)?;
+                let ty = self.typeck_let(let_)?;
+
+                match &let_.pat {
+                    Pat::Name(name) => self.db[name.id].ty = ty,
+                    Pat::Ignore(_) => (),
+                }
+
                 self.db.types.unit
             }
             ExprKind::If(if_) => {
