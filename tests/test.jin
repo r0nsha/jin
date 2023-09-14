@@ -1,8 +1,2 @@
 fn main() = {
-	foo()
 }
-
-let a = 1 + b
-let b = 2 + a
-
-fn foo() int = a + b
