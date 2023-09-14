@@ -32,9 +32,8 @@ impl InferError {
 
                 let msg = format!("expected type `{expected_ty}`, found `{found_ty}`");
 
-                let mut diag = Diagnostic::error("typeck::type_mismatch")
-                    .with_message(msg.clone())
-                    .with_label(
+                let mut diag =
+                    Diagnostic::error("check::type_mismatch").with_message(msg.clone()).with_label(
                         Label::primary(obligation.span())
                             .with_message(format!("expected `{expected_ty}` here")),
                     );
@@ -54,21 +53,19 @@ impl InferError {
 
                 diag
             }
-            Self::InfiniteTy { ty, obligation } => Diagnostic::error("typeck::infinite_type")
+            Self::InfiniteTy { ty, obligation } => Diagnostic::error("check::infinite_type")
                 .with_message(format!("type `{}` is an infinite type", ty.display(db)))
                 .with_label(Label::primary(obligation.span())),
-            Self::ArgMismatch { expected, found, span } => {
-                Diagnostic::error("typeck::arg_mismatch")
-                    .with_message(format!(
-                        "this function takes {expected} argument(s), but {found} were supplied"
-                    ))
-                    .with_label(
-                        Label::primary(span)
-                            .with_message(format!("expected {expected} arguments, found {found}")),
-                    )
-            }
+            Self::ArgMismatch { expected, found, span } => Diagnostic::error("check::arg_mismatch")
+                .with_message(format!(
+                    "this function takes {expected} argument(s), but {found} were supplied"
+                ))
+                .with_label(
+                    Label::primary(span)
+                        .with_message(format!("expected {expected} arguments, found {found}")),
+                ),
             Self::TyArgMismatch { expected, found, span } => {
-                Diagnostic::error("typeck::type_arg_mismatch")
+                Diagnostic::error("check::type_arg_mismatch")
                     .with_message(format!(
                         "expected {expected} type argument(s), but {found} were supplied"
                     ))
@@ -78,14 +75,14 @@ impl InferError {
                         )),
                     )
             }
-            Self::NamedParamNotFound { word } => Diagnostic::error("typeck::named_param_not_found")
+            Self::NamedParamNotFound { word } => Diagnostic::error("check::named_param_not_found")
                 .with_message(format!("cannot find parameter with the name `{}`", word.name()))
                 .with_label(
                     Label::primary(word.span())
                         .with_message(format!("found argument `{}` here", word.name())),
                 ),
             Self::MultipleNamedArgs { name, prev, dup, is_named } => {
-                Diagnostic::error("resolve::multiple_named_args")
+                Diagnostic::error("check::multiple_named_args")
                     .with_message(if is_named {
                         format!("argument `{name}` is passed multiple times")
                     } else {
@@ -99,16 +96,16 @@ impl InferError {
                             .with_message(format!("`{name}` is already passed here")),
                     )
             }
-            Self::UncallableTy { ty, span } => Diagnostic::error("typeck::uncallable_type")
+            Self::UncallableTy { ty, span } => Diagnostic::error("check::uncallable_type")
                 .with_message(format!("expected a function, found `{}`", ty.display(db)))
                 .with_label(Label::primary(span).with_message("expected a function")),
-            Self::ExpectedTy { ty, span } => Diagnostic::error("typeck::expected_ty")
+            Self::ExpectedTy { ty, span } => Diagnostic::error("check::expected_ty")
                 .with_message(format!("expected a type, found value of type `{}`", ty.display(db)))
                 .with_label(Label::primary(span).with_message("expected a type")),
-            Self::CannotInfer { ty, span } => Diagnostic::error("typeck::cannot_infer")
+            Self::CannotInfer { ty, span } => Diagnostic::error("check::cannot_infer")
                 .with_message(format!("type annotations needed for `{}`", ty.display(db)))
                 .with_label(Label::primary(span).with_message("cannot infer type")),
-            Self::InvalidReturn(span) => Diagnostic::error("typeck::invalid_return")
+            Self::InvalidReturn(span) => Diagnostic::error("check::invalid_return")
                 .with_message("cannot return outside of function scope")
                 .with_label(Label::primary(span)),
         }
