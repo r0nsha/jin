@@ -7,6 +7,7 @@ fn main() = {
 	nested_fn()
 	polymorphism()
 	named_args()
+	global_vars()
 }
 
 fn int_types() = {
@@ -92,8 +93,9 @@ fn named_args() = {
 	add(1, second: 2)
 }
 
-# let global_answer = 42
-# fn global_vars() = {
-# 	fn my_answer() = global_answer
-# 	my_answer()
-# }
+let global_answer = 42
+
+fn global_vars() = {
+	fn my_answer() int = global_answer
+	my_answer()
+}
