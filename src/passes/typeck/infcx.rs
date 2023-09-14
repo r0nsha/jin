@@ -4,19 +4,21 @@ use ena::unify::InPlaceUnificationTable;
 
 use crate::{
     db::{Db, DefId},
-    hir::{Lit, ExprId},
+    hir::ExprId,
+    passes::typeck::const_eval::{Const, ConstStorage},
     ty::{InferTy, IntVar, Ty, TyKind, TyVar},
 };
 
+#[derive(Debug)]
 pub struct InferCtxt<'db> {
     pub db: &'db mut Db,
     pub storage: RefCell<InferCtxtStorage>,
-    pub const_values: HashMap<ExprId, Lit>,
+    pub const_storage: ConstStorage,
 }
 
 impl<'db> InferCtxt<'db> {
     pub fn new(db: &'db mut Db) -> Self {
-        Self { db, storage: RefCell::new(InferCtxtStorage::new()), const_values: HashMap::new() }
+        Self { db, storage: RefCell::new(InferCtxtStorage::new()), const_storage: ConstStorage::new() }
     }
 
     pub fn lookup(&self, id: DefId) -> Ty {
@@ -43,6 +45,7 @@ impl<'db> InferCtxt<'db> {
     }
 }
 
+#[derive(Debug)]
 pub struct InferCtxtStorage {
     pub ty_unification_table: InPlaceUnificationTable<TyVar>,
     pub int_unification_table: InPlaceUnificationTable<IntVar>,
