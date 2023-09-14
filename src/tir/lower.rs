@@ -202,14 +202,18 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
                 let full_name = self.cx.db[name.id].qpath.standard_full_name();
                 let ty = self.cx.db[name.id].ty;
 
-                Some(self.cx.tir.globals.push_with_key(|id| Global {
+                let id = self.cx.tir.globals.push_with_key(|id| Global {
                     id,
                     def_id: name.id,
                     name: full_name.into(),
                     value,
                     ty,
                     body: self.body,
-                }))
+                });
+
+                self.cx.globals_map.insert(name.id, id);
+
+                Some(id)
             }
             hir::Pat::Ignore(_) => None,
         }
