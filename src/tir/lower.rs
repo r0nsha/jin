@@ -168,7 +168,7 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ExprId {
         let kind = if let Some(val) = self.cx.db.const_storage.expr(expr.id) {
-            self.lower_expr_from_const(val)
+            Self::lower_expr_from_const(val)
         } else {
             match &expr.kind {
                 hir::ExprKind::Let(let_) => {
@@ -278,7 +278,7 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
         }
     }
 
-    fn lower_expr_from_const(&self, value: &Const) -> ExprKind {
+    fn lower_expr_from_const(value: &Const) -> ExprKind {
         match value {
             Const::Int(value) => ExprKind::IntValue(*value),
             Const::Uint(value) => ExprKind::UintValue(*value),
