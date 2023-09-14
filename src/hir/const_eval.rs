@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use crate::{
-    ast::{BinOp, UnOp},
+    ast::{BinOp, CmpOp, UnOp},
     hir::{Expr, ExprId, ExprKind, Lit},
 };
 
@@ -30,10 +30,6 @@ impl ConstStorage {
     // TODO: errors: remainder by zero
     // TODO: errors: overflow
     pub fn eval_expr(&mut self, expr: &Expr) {
-        // TODO: const eval arithmetic
-        // TODO: const eval and
-        // TODO: const eval or
-        // TODO: const eval cmp
         // TODO: const eval block
         // TODO: const eval cast
         // TODO: const eval name
@@ -117,9 +113,9 @@ impl Const {
             BinOp::BitAnd => self.bitand(other),
             BinOp::BitOr => self.bitor(other),
             BinOp::BitXor => self.bitxor(other),
-            BinOp::And => todo!("and"),
-            BinOp::Or => todo!("or"),
-            BinOp::Cmp(_) => todo!("cmp"),
+            BinOp::And => self.and(other),
+            BinOp::Or => self.or(other),
+            BinOp::Cmp(cmp) => self.cmp(other, cmp),
         }
     }
 
@@ -133,4 +129,39 @@ impl Const {
     impl_const_op!(bitand, &);
     impl_const_op!(bitor, |);
     impl_const_op!(bitxor , ^);
+
+    fn and(&self, other: &Self) -> Const {
+        match (self, other) {
+            (Self::Bool(a), Self::Bool(b)) => Const::Bool(*a && *b),
+            _ => unreachable!("invalid && op on {:?} and {:?}", self, other),
+        }
+    }
+
+    fn or(&self, other: &Self) -> Const {
+        match (self, other) {
+            (Self::Bool(a), Self::Bool(b)) => Const::Bool(*a || *b),
+            _ => unreachable!("invalid || op on {:?} and {:?}", self, other),
+        }
+    }
+
+    fn cmp(&self, other: &Self, op: CmpOp) -> Const {
+        match (self, other) {
+            (&Self::Int(a), &Self::Int(b)) => Const::Bool(match op {
+                CmpOp::Eq => a == b,
+                CmpOp::Ne => a != b,
+                CmpOp::Lt => a < b,
+                CmpOp::Le => a <= b,
+                CmpOp::Gt => a > b,
+                CmpOp::Ge => a >= b,
+            }),
+            (&Self::Bool(a), &Self::Bool(b)) => Const::Bool(match op {
+                CmpOp::Eq => a == b,
+                CmpOp::Ne => a != b,
+                CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge => {
+                    unreachable!("invalid op {:?} on {:?} and {:?}", op, self, other)
+                }
+            }),
+            _ => unreachable!("invalid op {:?} on {:?} and {:?}", op, self, other),
+        }
+    }
 }
