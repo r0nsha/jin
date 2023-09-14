@@ -33,14 +33,11 @@ fn int_types() = {
 }
 
 fn unary() = {
-	fn neg() int = -(48 + 2) as int / 1
-	neg()
-
-	fn not() bool = !true
-	not()
-
-	# fn bitnot() int = !54878
-	# bitnot()
+	-48
+	!true
+	!!false
+	# TODO: bitnot
+	# !54878
 }
 
 fn arithmetic() = {
