@@ -3,6 +3,7 @@ mod pretty_print;
 
 use std::io;
 
+use enum_as_inner::EnumAsInner;
 pub use lower::lower;
 use ustr::Ustr;
 
@@ -124,7 +125,7 @@ pub struct Expr {
     pub ty: Ty,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, EnumAsInner)]
 pub enum ExprKind {
     Let { id: LocalId, def_id: DefId, value: ExprId },
     If { cond: ExprId, then: ExprId, otherwise: Option<ExprId> },

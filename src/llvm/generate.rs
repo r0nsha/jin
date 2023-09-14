@@ -16,6 +16,7 @@ use crate::{
     hir::const_eval::Const,
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
     tir::{Body, ExprId, ExprKind, Fn, FnSigId, GlobalId, Id, LocalId, Tir},
+    ty::Ty,
 };
 
 pub struct Generator<'db, 'cx> {
@@ -108,10 +109,12 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         start_block: BasicBlock<'cx>,
     ) {
         for glob in self.tir.globals.iter() {
-            let mut state =
-                FnState::new(&glob.body, main_function_value, prologue_block, start_block);
-            let value = self.codegen_expr(&mut state, glob.value);
-            self.bx.build_store(self.global(glob.id).as_pointer_value(), value);
+            if !glob.body.expr(glob.value).kind.is_const() {
+                let mut state =
+                    FnState::new(&glob.body, main_function_value, prologue_block, start_block);
+                let value = self.codegen_expr(&mut state, glob.value);
+                self.bx.build_store(self.global(glob.id).as_pointer_value(), value);
+            }
         }
     }
 
@@ -130,11 +133,14 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             let glob_value =
                 self.module.add_global(llvm_ty, Some(AddressSpace::default()), &glob.name);
 
-            // TODO: extern globals
             glob_value.set_linkage(Linkage::Private);
             glob_value.set_externally_initialized(false);
-            // TODO: initialize const
-            glob_value.set_initializer(&Self::undef_value(llvm_ty));
+
+            if let ExprKind::Const(value) = &glob.body.expr(glob.value).kind {
+                glob_value.set_initializer(&self.const_value(value, glob.ty));
+            } else {
+                glob_value.set_initializer(&Self::undef_value(llvm_ty));
+            }
 
             self.globals.insert(glob.id, glob_value);
         }
@@ -451,23 +457,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                     Local::Value(value) => value,
                 },
             },
-            ExprKind::Const(value) => match value {
-                Const::Int(value) => {
-                    let int = expr
-                        .ty
-                        .llty(self)
-                        .into_int_type()
-                        .const_int(u64::try_from(value.abs()).unwrap(), expr.ty.is_int());
-
-                    if value.is_negative() {
-                        int.const_neg().into()
-                    } else {
-                        int.into()
-                    }
-                }
-                Const::Bool(value) => self.bool_value(*value).into(),
-                Const::Unit => self.unit_value().into(),
-            },
+            ExprKind::Const(value) => self.const_value(value, expr.ty),
         }
     }
 
@@ -494,6 +484,25 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             .get(&id)
             .copied()
             .unwrap_or_else(|| panic!("global {} to be declared", self.tir.globals[id].name))
+    }
+
+    fn const_value(&self, value: &Const, ty: Ty) -> BasicValueEnum<'cx> {
+        match value {
+            Const::Int(value) => {
+                let int = ty
+                    .llty(self)
+                    .into_int_type()
+                    .const_int(u64::try_from(value.abs()).unwrap(), ty.is_int());
+
+                if value.is_negative() {
+                    int.const_neg().into()
+                } else {
+                    int.into()
+                }
+            }
+            Const::Bool(value) => self.bool_value(*value).into(),
+            Const::Unit => self.unit_value().into(),
+        }
     }
 }
 
