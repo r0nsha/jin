@@ -158,16 +158,6 @@ impl<'db> Resolver<'db> {
         id
     }
 
-    fn declare_item(&mut self, env: &mut Env, item: &mut Item) {
-        match item {
-            Item::Fn(fun) => {
-                let id = self.declare_def(env, DefKind::Fn(FnInfo::Bare), fun.sig.name);
-                fun.id = Some(id);
-            }
-            Item::Let(let_) => self.declare_pat(env, DefKind::Variable, &mut let_.pat),
-        }
-    }
-
     fn declare_def(&mut self, env: &mut Env, kind: DefKind, name: Word) -> DefId {
         let id = Def::alloc(
             self.db,
@@ -229,17 +219,9 @@ trait Resolve<'db> {
 
 impl Resolve<'_> for Item {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        if !env.in_global_scope() {
-            cx.declare_item(env, self);
-        }
-
         match self {
             Item::Fn(fun) => fun.resolve(cx, env),
-            Item::Let(let_) => {
-                env.push(ustr("_"), ScopeKind::Initializer);
-                let_.resolve(cx, env);
-                env.pop();
-            }
+            Item::Let(let_) => let_.resolve(cx, env),
         }
     }
 }
@@ -263,6 +245,11 @@ impl Resolve<'_> for Expr {
 
 impl Resolve<'_> for Fn {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
+        if !env.in_global_scope() {
+            let id = cx.declare_def(env, DefKind::Fn(FnInfo::Bare), self.sig.name);
+            self.id = Some(id);
+        }
+
         env.push(self.sig.name.name(), ScopeKind::Fn);
         self.sig.resolve(cx, env);
         self.body.resolve(cx, env);
@@ -272,18 +259,26 @@ impl Resolve<'_> for Fn {
 
 impl Resolve<'_> for Let {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        cx.declare_pat(env, DefKind::Variable, &mut self.pat);
-        self.pat.walk(|pat| {
-            env.insert(pat.word.name(), pat.id.unwrap());
-        });
+        if !env.in_global_scope() {
+            cx.declare_pat(env, DefKind::Variable, &mut self.pat);
+
+            self.pat.walk(|pat| {
+                env.insert(pat.word.name(), pat.id.unwrap());
+            });
+        }
+
+        env.push(ustr("_"), ScopeKind::Initializer);
 
         if let Some(ty) = &mut self.ty_annot {
             ty.resolve(cx, env);
         }
 
         self.value.resolve(cx, env);
+
+        env.pop();
     }
 }
+
 impl Resolve<'_> for FnSig {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         assert!(env.in_kind(ScopeKind::Fn), "FnSig must be resolved inside a ScopeKind::Fn");
