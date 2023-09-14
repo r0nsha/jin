@@ -47,25 +47,24 @@ pub struct Fn {
     pub id: FnId,
     pub def_id: DefId,
     pub sig: FnSigId,
-    pub body: ExprId,
-    exprs: Exprs,
-    locals: Locals,
+    pub value: ExprId,
+    pub body: Body,
 }
 
 impl Fn {
     #[inline]
     pub fn expr(&self, id: ExprId) -> &Expr {
-        &self.exprs[id]
+        self.body.expr(id)
     }
 
     #[inline]
     pub fn local(&self, id: LocalId) -> &Local {
-        &self.locals[id]
+        self.body.local(id)
     }
 
     #[inline]
     pub fn params(&self, tir: &Tir) -> &[Local] {
-        &self.locals.as_slice()[0..tir.sigs[self.sig].params.len()]
+        &self.body.locals.as_slice()[0..tir.sigs[self.sig].params.len()]
     }
 }
 
@@ -73,13 +72,35 @@ impl Fn {
 pub struct Global {
     pub id: GlobalId,
     pub def_id: DefId,
+    pub name: Ustr,
     pub value: ExprId,
     pub ty: Ty,
+    pub body: Body,
+}
+
+impl Global {
+    #[inline]
+    pub fn expr(&self, id: ExprId) -> &Expr {
+        self.body.expr(id)
+    }
+
+    #[inline]
+    pub fn local(&self, id: LocalId) -> &Local {
+        self.body.local(id)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Body {
     exprs: Exprs,
     locals: Locals,
 }
 
-impl Global {
+impl Body {
+    pub fn new() -> Self {
+        Self { exprs: IndexVec::new(), locals: IndexVec::new() }
+    }
+
     #[inline]
     pub fn expr(&self, id: ExprId) -> &Expr {
         &self.exprs[id]

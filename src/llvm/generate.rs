@@ -125,11 +125,11 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         }
 
         self.start_block(&mut state, start_block);
-        let body = self.codegen_expr(&mut state, fun.body);
+        let body = self.codegen_expr(&mut state, fun.value);
 
         if !self.current_block_is_terminating() {
             let ret_value =
-                if fty.as_fn().unwrap().ret.is_unit() && !state.fun.expr(fun.body).ty.is_unit() {
+                if fty.as_fn().unwrap().ret.is_unit() && !state.fun.expr(fun.value).ty.is_unit() {
                     self.unit_value().as_basic_value_enum()
                 } else {
                     body

@@ -5,8 +5,13 @@ use crate::{db::Db, tir::*};
 pub(super) fn print(db: &Db, tir: &Tir, w: &mut impl io::Write) -> io::Result<()> {
     let mut builder = ptree::TreeBuilder::new("Tir".to_string());
 
+    for glob in tir.globals.iter() {
+        PPCtxt { builder: &mut builder, db, tir, body: &glob.body }
+            .pp_let(glob.name, glob.ty, glob.value);
+    }
+
     for f in tir.fns.iter() {
-        PPCtxt { builder: &mut builder, db, tir, fun: f }.pp_fn(f);
+        PPCtxt { builder: &mut builder, db, tir, body: &f.body }.pp_fn(f);
     }
 
     let tree = builder.build();
@@ -17,7 +22,7 @@ struct PPCtxt<'db> {
     builder: &'db mut ptree::TreeBuilder,
     db: &'db Db,
     tir: &'db Tir,
-    fun: &'db Fn,
+    body: &'db Body,
 }
 
 impl PPCtxt<'_> {
@@ -34,7 +39,7 @@ impl PPCtxt<'_> {
             self.builder.begin_child("params".to_string());
 
             for param in f.params(self.tir) {
-                let local = self.fun.local(param.id);
+                let local = self.body.local(param.id);
 
                 self.builder.add_empty_child(format!(
                     "{} (type: {})",
@@ -46,24 +51,24 @@ impl PPCtxt<'_> {
             self.builder.end_child();
         }
 
-        self.pp_expr(f.body);
+        self.pp_expr(f.value);
 
         self.builder.end_child();
     }
 
+    fn pp_let(&mut self, name: Ustr, ty: Ty, value: ExprId) {
+        self.builder.begin_child(format!("let {} (type: {})", name, ty.display(self.db)));
+        self.pp_expr(value);
+        self.builder.end_child();
+    }
+
     fn pp_expr(&mut self, expr: ExprId) {
-        let expr = self.fun.expr(expr);
+        let expr = self.body.expr(expr);
 
         match &expr.kind {
             ExprKind::Let { id, def_id: _, value } => {
-                let local = self.fun.local(*id);
-                self.builder.begin_child(format!(
-                    "let {} (type: {})",
-                    local.name,
-                    local.ty.display(self.db)
-                ));
-                self.pp_expr(*value);
-                self.builder.end_child();
+                let local = self.body.local(*id);
+                self.pp_let(local.name, local.ty, *value);
             }
             ExprKind::If { cond, then, otherwise } => {
                 self.builder.begin_child("if".to_string());
@@ -139,7 +144,7 @@ impl PPCtxt<'_> {
                 Id::Local(lid) => {
                     self.builder.add_empty_child(format!(
                         "`{}` (type: {})",
-                        self.fun.local(*lid).name,
+                        self.body.local(*lid).name,
                         expr.ty.display(self.db)
                     ));
                 }

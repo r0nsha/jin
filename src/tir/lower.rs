@@ -3,14 +3,13 @@ use std::collections::HashMap;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    common::IndexVec,
     db::{Db, DefId, DefKind},
     hir,
     hir::{const_eval::Const, Hir},
     passes::subst::{ParamFolder, Subst},
     tir::{
-        Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Global, Id, Local, LocalId,
-        Locals, Tir,
+        Body, Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Global, Id, Local,
+        LocalId, Tir,
     },
     ty::{
         coerce::{CoercionKind, Coercions},
@@ -136,14 +135,13 @@ impl<'db> LowerCtxt<'db> {
 
 struct LowerBodyCtxt<'cx, 'db> {
     cx: &'cx mut LowerCtxt<'db>,
-    exprs: Exprs,
-    locals: Locals,
+    body: Body,
     def_to_local: HashMap<DefId, LocalId>,
 }
 
 impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
     fn new(cx: &'cx mut LowerCtxt<'db>) -> Self {
-        Self { cx, exprs: IndexVec::new(), locals: IndexVec::new(), def_to_local: HashMap::new() }
+        Self { cx, body: Body::new(), def_to_local: HashMap::new() }
     }
 
     fn lower_fn(mut self, sig: FnSigId, f: &hir::Fn) {
@@ -155,9 +153,8 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
             id: self.cx.tir.fns.next_key(),
             def_id: f.id,
             sig,
-            body: self.lower_expr(&f.body),
-            exprs: self.exprs,
-            locals: self.locals,
+            value: self.lower_expr(&f.body),
+            body: self.body,
         };
 
         if self.cx.db.main_function_id() == Some(f.def_id) {
@@ -172,15 +169,16 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
 
         match &let_.pat {
             hir::Pat::Name(name) => {
+                let full_name = self.cx.db[name.id].qpath.standard_full_name();
                 let ty = self.cx.db[name.id].ty;
 
                 self.cx.tir.globals.push_with_key(|id| Global {
                     id,
                     def_id: name.id,
+                    name: full_name.into(),
                     value,
                     ty,
-                    exprs: self.exprs,
-                    locals: self.locals,
+                    body: self.body,
                 });
             }
             hir::Pat::Ignore(_) => (),
@@ -291,7 +289,7 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
         let new_expr = self.create_expr(kind, expr.ty);
 
         if let Some(coercions) = self.cx.db.coercions.get(&expr.id) {
-            coercions.apply(&mut self.exprs, new_expr)
+            coercions.apply(&mut self.body.exprs, new_expr)
         } else {
             new_expr
         }
@@ -307,13 +305,17 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
 
     #[inline]
     pub fn create_expr(&mut self, kind: ExprKind, ty: Ty) -> ExprId {
-        self.exprs.push_with_key(|id| Expr { id, kind, ty })
+        self.body.exprs.push_with_key(|id| Expr { id, kind, ty })
     }
 
     #[inline]
     pub fn create_local(&mut self, def_id: DefId, ty: Ty) -> LocalId {
-        let id =
-            self.locals.push_with_key(|id| Local { id, def_id, name: self.cx.db[def_id].name, ty });
+        let id = self.body.locals.push_with_key(|id| Local {
+            id,
+            def_id,
+            name: self.cx.db[def_id].name,
+            ty,
+        });
         self.def_to_local.insert(def_id, id);
         id
     }
