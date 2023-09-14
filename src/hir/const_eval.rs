@@ -52,7 +52,7 @@ impl ConstStorage {
                 .zip(self.expr(bin.rhs.id))
                 .map(|(lhs, rhs)| lhs.apply_binary(rhs, bin.op)),
             ExprKind::Lit(lit) => Some(match lit {
-                Lit::Int(value) => Const::Int(*value as i128),
+                Lit::Int(value) => Const::Int(i128::try_from(*value).unwrap()),
                 Lit::Bool(value) => Const::Bool(*value),
                 Lit::Unit => Const::Unit,
             }),
