@@ -2,7 +2,7 @@ use crate::{
     ast,
     db::Db,
     hir::{
-        Binary, Block, Call, CallArg, Cast, Const, Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Hir,
+        Binary, Block, Call, CallArg, Cast, Lit, Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Hir,
         If, Let, Name, NamePat, Pat, Return, Ty, TyName, TyParam, Unary,
     },
     span::{Span, Spanned},
@@ -100,7 +100,7 @@ impl Lower<'_, Expr> for ast::Expr {
                     let span = f.span;
                     let f = f.lower(cx);
                     cx.hir.fns.push(f);
-                    cx.expr(ExprKind::Const(Const::Unit), span)
+                    cx.expr(ExprKind::Lit(Lit::Unit), span)
                 }
                 ast::Item::Let(let_) => {
                     let span = let_.span;
@@ -113,7 +113,7 @@ impl Lower<'_, Expr> for ast::Expr {
                 let expr = if let Some(expr) = ret.expr {
                     Box::new(expr.lower(cx))
                 } else {
-                    Box::new(cx.expr(ExprKind::Const(Const::Unit), span))
+                    Box::new(cx.expr(ExprKind::Lit(Lit::Unit), span))
                 };
                 cx.expr(ExprKind::Return(Return { expr }), span)
             }
@@ -163,10 +163,10 @@ impl Lower<'_, Expr> for ast::Expr {
                 cx.expr(kind, span)
             }
             Self::Lit(ast::Lit { kind, span }) => cx.expr(
-                ExprKind::Const(match kind {
-                    ast::LitKind::Int(v) => Const::Int(v),
-                    ast::LitKind::Bool(v) => Const::Bool(v),
-                    ast::LitKind::Unit => Const::Unit,
+                ExprKind::Lit(match kind {
+                    ast::LitKind::Int(v) => Lit::Int(v),
+                    ast::LitKind::Bool(v) => Lit::Bool(v),
+                    ast::LitKind::Unit => Lit::Unit,
                 }),
                 span,
             ),

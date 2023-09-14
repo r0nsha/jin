@@ -252,10 +252,10 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
                 DefKind::Variable => ExprKind::Id(Id::Local(self.def_to_local[&name.id])),
                 DefKind::Ty(_) => unreachable!(),
             },
-            hir::ExprKind::Const(value) => match value {
-                hir::Const::Int(value) => ExprKind::IntValue(*value),
-                hir::Const::Bool(value) => ExprKind::BoolValue(*value),
-                hir::Const::Unit => ExprKind::UnitValue,
+            hir::ExprKind::Lit(value) => match value {
+                hir::Lit::Int(value) => ExprKind::IntValue(*value),
+                hir::Lit::Bool(value) => ExprKind::BoolValue(*value),
+                hir::Lit::Unit => ExprKind::UnitValue,
             },
         };
 

@@ -4,14 +4,14 @@ use ena::unify::InPlaceUnificationTable;
 
 use crate::{
     db::{Db, DefId},
-    hir::{Const, ExprId},
+    hir::{Lit, ExprId},
     ty::{InferTy, IntVar, Ty, TyKind, TyVar},
 };
 
 pub struct InferCtxt<'db> {
     pub db: &'db mut Db,
     pub storage: RefCell<InferCtxtStorage>,
-    pub const_values: HashMap<ExprId, Const>,
+    pub const_values: HashMap<ExprId, Lit>,
 }
 
 impl<'db> InferCtxt<'db> {
