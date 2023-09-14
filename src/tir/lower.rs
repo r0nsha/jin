@@ -280,7 +280,7 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
 
     fn lower_expr_from_const(&self, value: &Const) -> ExprKind {
         match value {
-            Const::Int(_) => todo!(),
+            Const::Int(value) => ExprKind::IntValue(*value),
             Const::Uint(value) => ExprKind::UintValue(*value),
             Const::Bool(value) => ExprKind::BoolValue(*value),
             Const::Unit => ExprKind::UnitValue,

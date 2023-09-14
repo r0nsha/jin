@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
-use crate::hir::{Expr, ExprId, ExprKind, Lit};
+use crate::{
+    ast::UnOp,
+    hir::{Expr, ExprId, ExprKind, Lit},
+};
 
 #[derive(Debug)]
 pub struct ConstStorage {
@@ -18,7 +21,6 @@ impl ConstStorage {
     }
 
     pub fn eval_expr(&mut self, expr: &Expr) {
-        // TODO: const eval lit
         // TODO: const eval unary
         // TODO: const eval binary
         // TODO: const eval block
@@ -32,9 +34,16 @@ impl ConstStorage {
             | ExprKind::Call(_)
             | ExprKind::Cast(_)
             | ExprKind::Block(_)
-            | ExprKind::Unary(_)
             | ExprKind::Binary(_)
             | ExprKind::Name(_) => None,
+            ExprKind::Unary(un) => self.expr(un.expr.id).map(|val| match un.op {
+                UnOp::Neg => match val {
+                    Const::Int(v) => Const::Int(-v),
+                    Const::Uint(v) => Const::Int(-i128::try_from(*v).unwrap()),
+                    _ => unreachable!("invalid input in const neg: {:?}", val),
+                },
+                UnOp::Not => todo!(),
+            }),
             ExprKind::Lit(lit) => Some(match lit {
                 Lit::Int(value) => Const::Uint(*value),
                 Lit::Bool(value) => Const::Bool(*value),

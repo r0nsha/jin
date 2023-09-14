@@ -407,9 +407,25 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                     Local::Value(v) => v,
                 },
             },
-            ExprKind::UintValue(value) => {
-                expr.ty.llty(self).into_int_type().const_int(*value as u64, expr.ty.is_int()).into()
+            ExprKind::IntValue(value) => {
+                let int = expr
+                    .ty
+                    .llty(self)
+                    .into_int_type()
+                    .const_int(u64::try_from(value.abs()).unwrap(), expr.ty.is_int());
+
+                if value.is_negative() {
+                    int.const_neg().into()
+                } else {
+                    int.into()
+                }
             }
+            ExprKind::UintValue(value) => expr
+                .ty
+                .llty(self)
+                .into_int_type()
+                .const_int(u64::try_from(*value).unwrap(), expr.ty.is_int())
+                .into(),
             ExprKind::BoolValue(value) => self.bool_value(*value).into(),
             ExprKind::UnitValue => self.unit_value().into(),
         }

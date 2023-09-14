@@ -6,8 +6,9 @@ fn main() = {
 
 fn unary() = {
 	-48
-	!true
-	!!false
+	--59
+	#!true
+	#!!false
 	# TODO: bitnot
 	# !54878
 }
