@@ -150,6 +150,17 @@ impl Pat {
             Pat::Ignore(_) => (),
         }
     }
+
+    pub fn any(&self, mut f: impl FnMut(&NamePat) -> bool) -> bool {
+        self.any_(&mut f)
+    }
+
+    fn any_(&self, f: &mut impl FnMut(&NamePat) -> bool) -> bool {
+        match self {
+            Pat::Name(n) => f(n),
+            Pat::Ignore(_) => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
