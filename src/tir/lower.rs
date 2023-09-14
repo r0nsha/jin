@@ -6,7 +6,7 @@ use crate::{
     common::IndexVec,
     db::{Db, DefId, DefKind},
     hir,
-    hir::Hir,
+    hir::{const_eval::Const, Hir},
     passes::subst::{ParamFolder, Subst},
     tir::{
         Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Id, Local, LocalId, Locals, Tir,
@@ -167,96 +167,106 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
     }
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ExprId {
-        let kind = match &expr.kind {
-            hir::ExprKind::Let(let_) => {
-                let value = self.lower_expr(&let_.value);
+        let kind = if let Some(val) = self.cx.db.const_storage.expr(expr.id) {
+            self.lower_expr_from_const(val)
+        } else {
+            match &expr.kind {
+                hir::ExprKind::Let(let_) => {
+                    let value = self.lower_expr(&let_.value);
 
-                match &let_.pat {
-                    hir::Pat::Name(name) => {
-                        let ty = self.cx.db[name.id].ty;
-                        // ParamFolder { db: self.cx.db, instantiation:&Instantiation }
-                        //     .fold(self.cx.db[name.id].ty);
-                        let id = self.create_local(name.id, ty);
-                        ExprKind::Let { id, def_id: name.id, value }
+                    match &let_.pat {
+                        hir::Pat::Name(name) => {
+                            let ty = self.cx.db[name.id].ty;
+                            // ParamFolder { db: self.cx.db, instantiation:&Instantiation }
+                            //     .fold(self.cx.db[name.id].ty);
+                            let id = self.create_local(name.id, ty);
+                            ExprKind::Let { id, def_id: name.id, value }
+                        }
+                        hir::Pat::Ignore(_) => ExprKind::UnitValue,
                     }
-                    hir::Pat::Ignore(_) => ExprKind::UnitValue,
                 }
-            }
-            hir::ExprKind::If(if_) => ExprKind::If {
-                cond: self.lower_expr(&if_.cond),
-                then: self.lower_expr(&if_.then),
-                otherwise: if_.otherwise.as_ref().map(|o| self.lower_expr(o)),
-            },
-            hir::ExprKind::Block(blk) => {
-                let mut exprs: Vec<_> = blk.exprs.iter().map(|e| self.lower_expr(e)).collect();
+                hir::ExprKind::If(if_) => ExprKind::If {
+                    cond: self.lower_expr(&if_.cond),
+                    then: self.lower_expr(&if_.then),
+                    otherwise: if_.otherwise.as_ref().map(|o| self.lower_expr(o)),
+                },
+                hir::ExprKind::Block(blk) => {
+                    let mut exprs: Vec<_> = blk.exprs.iter().map(|e| self.lower_expr(e)).collect();
 
-                // NOTE: If the block ty is (), we must always return a () value.
-                // A situation where we don't return a () value can occur
-                // when the expected type of the block is unit, but the last expression doesn't
-                // return ().
-                if expr.ty.is_unit() {
-                    exprs.push(self.create_expr(ExprKind::UnitValue, expr.ty));
+                    // NOTE: If the block ty is (), we must always return a () value.
+                    // A situation where we don't return a () value can occur
+                    // when the expected type of the block is unit, but the last expression doesn't
+                    // return ().
+                    if expr.ty.is_unit() {
+                        exprs.push(self.create_expr(ExprKind::UnitValue, expr.ty));
+                    }
+
+                    ExprKind::Block { exprs }
                 }
-
-                ExprKind::Block { exprs }
-            }
-            hir::ExprKind::Return(ret) => ExprKind::Return { value: self.lower_expr(&ret.expr) },
-            hir::ExprKind::Call(call) => {
-                // NOTE: We evaluate args in passing order, and then sort them to the actual
-                // required parameter order
-                let mut args: Vec<_> = call
-                    .args
-                    .iter()
-                    .map(|arg| {
-                        (arg.index.expect("arg index to be resolved"), self.lower_expr(&arg.expr))
-                    })
-                    .collect();
-
-                args.sort_by_key(|(idx, _)| *idx);
-
-                let callee = self.lower_expr(&call.callee);
-                ExprKind::Call { callee, args: args.into_iter().map(|(_, arg)| arg).collect() }
-            }
-            hir::ExprKind::Unary(un) => {
-                ExprKind::Unary { value: self.lower_expr(&un.expr), op: un.op }
-            }
-            hir::ExprKind::Binary(bin) => ExprKind::Binary {
-                lhs: self.lower_expr(&bin.lhs),
-                rhs: self.lower_expr(&bin.rhs),
-                op: bin.op,
-            },
-            hir::ExprKind::Cast(cast) => {
-                ExprKind::Cast { value: self.lower_expr(&cast.expr), target: expr.ty }
-            }
-            hir::ExprKind::Name(name) => match self.cx.db[name.id].kind.as_ref() {
-                DefKind::Fn(_) => {
-                    let id = if name.instantiation.is_empty() {
-                        self.cx.fn_to_sig[&name.id]
-                    } else {
-                        let mut folder =
-                            ParamFolder { db: self.cx.db, instantiation: &name.instantiation };
-
-                        let ty = folder.fold(expr.ty);
-
-                        // let instantiation: Instantiation = name
-                        //     .instantiation
-                        //     .iter()
-                        //     .map(|(var, ty)| (*var, folder.fold(*ty)))
-                        //     .collect();
-
-                        self.cx.monomorphize_fn(&MonoItem { id: name.id, ty }, &name.instantiation)
-                    };
-
-                    ExprKind::Id(Id::Fn(id))
+                hir::ExprKind::Return(ret) => {
+                    ExprKind::Return { value: self.lower_expr(&ret.expr) }
                 }
-                DefKind::Variable => ExprKind::Id(Id::Local(self.def_to_local[&name.id])),
-                DefKind::Ty(_) => unreachable!(),
-            },
-            hir::ExprKind::Lit(value) => match value {
-                hir::Lit::Int(value) => ExprKind::IntValue(*value),
-                hir::Lit::Bool(value) => ExprKind::BoolValue(*value),
-                hir::Lit::Unit => ExprKind::UnitValue,
-            },
+                hir::ExprKind::Call(call) => {
+                    // NOTE: We evaluate args in passing order, and then sort them to the actual
+                    // required parameter order
+                    let mut args: Vec<_> = call
+                        .args
+                        .iter()
+                        .map(|arg| {
+                            (
+                                arg.index.expect("arg index to be resolved"),
+                                self.lower_expr(&arg.expr),
+                            )
+                        })
+                        .collect();
+
+                    args.sort_by_key(|(idx, _)| *idx);
+
+                    let callee = self.lower_expr(&call.callee);
+                    ExprKind::Call { callee, args: args.into_iter().map(|(_, arg)| arg).collect() }
+                }
+                hir::ExprKind::Unary(un) => {
+                    ExprKind::Unary { value: self.lower_expr(&un.expr), op: un.op }
+                }
+                hir::ExprKind::Binary(bin) => ExprKind::Binary {
+                    lhs: self.lower_expr(&bin.lhs),
+                    rhs: self.lower_expr(&bin.rhs),
+                    op: bin.op,
+                },
+                hir::ExprKind::Cast(cast) => {
+                    ExprKind::Cast { value: self.lower_expr(&cast.expr), target: expr.ty }
+                }
+                hir::ExprKind::Name(name) => match self.cx.db[name.id].kind.as_ref() {
+                    DefKind::Fn(_) => {
+                        let id = if name.instantiation.is_empty() {
+                            self.cx.fn_to_sig[&name.id]
+                        } else {
+                            let mut folder =
+                                ParamFolder { db: self.cx.db, instantiation: &name.instantiation };
+
+                            let ty = folder.fold(expr.ty);
+
+                            // let instantiation: Instantiation = name
+                            //     .instantiation
+                            //     .iter()
+                            //     .map(|(var, ty)| (*var, folder.fold(*ty)))
+                            //     .collect();
+
+                            self.cx
+                                .monomorphize_fn(&MonoItem { id: name.id, ty }, &name.instantiation)
+                        };
+
+                        ExprKind::Id(Id::Fn(id))
+                    }
+                    DefKind::Variable => ExprKind::Id(Id::Local(self.def_to_local[&name.id])),
+                    DefKind::Ty(_) => unreachable!(),
+                },
+                hir::ExprKind::Lit(value) => match value {
+                    hir::Lit::Int(value) => ExprKind::UintValue(*value),
+                    hir::Lit::Bool(value) => ExprKind::BoolValue(*value),
+                    hir::Lit::Unit => ExprKind::UnitValue,
+                },
+            }
         };
 
         let new_expr = self.create_expr(kind, expr.ty);
@@ -265,6 +275,15 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
             coercions.apply(&mut self.exprs, new_expr)
         } else {
             new_expr
+        }
+    }
+
+    fn lower_expr_from_const(&self, value: &Const) -> ExprKind {
+        match value {
+            Const::Int(_) => todo!(),
+            Const::Uint(value) => ExprKind::UintValue(*value),
+            Const::Bool(value) => ExprKind::BoolValue(*value),
+            Const::Unit => ExprKind::UnitValue,
         }
     }
 

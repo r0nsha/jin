@@ -1,3 +1,4 @@
+pub mod const_eval;
 mod lower;
 mod pretty_print;
 

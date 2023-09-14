@@ -144,7 +144,7 @@ impl PPCtxt<'_> {
                     ));
                 }
             },
-            ExprKind::IntValue(value) => {
+            ExprKind::UintValue(value) => {
                 self.builder.add_empty_child(format!(
                     "{} (type: {})",
                     value,

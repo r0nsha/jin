@@ -1,5 +1,4 @@
 mod coerce;
-mod const_eval;
 mod error;
 mod infcx;
 mod instantiate;
@@ -141,7 +140,7 @@ impl InferCtxt<'_> {
 
     fn typeck_expr(&mut self, expr: &mut Expr, fx: &mut FnCtxt) -> InferResult<()> {
         self.infer_expr(expr, fx)?;
-        self.const_storage.eval_expr(expr);
+        self.db.const_storage.eval_expr(expr);
         Ok(())
     }
 

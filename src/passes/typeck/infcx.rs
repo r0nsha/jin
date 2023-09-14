@@ -4,7 +4,6 @@ use ena::unify::InPlaceUnificationTable;
 
 use crate::{
     db::{Db, DefId},
-    passes::typeck::const_eval::ConstStorage,
     ty::{InferTy, IntVar, Ty, TyKind, TyVar},
 };
 
@@ -12,16 +11,11 @@ use crate::{
 pub struct InferCtxt<'db> {
     pub db: &'db mut Db,
     pub storage: RefCell<InferCtxtStorage>,
-    pub const_storage: ConstStorage,
 }
 
 impl<'db> InferCtxt<'db> {
     pub fn new(db: &'db mut Db) -> Self {
-        Self {
-            db,
-            storage: RefCell::new(InferCtxtStorage::new()),
-            const_storage: ConstStorage::new(),
-        }
+        Self { db, storage: RefCell::new(InferCtxtStorage::new()) }
     }
 
     pub fn lookup(&self, id: DefId) -> Ty {
