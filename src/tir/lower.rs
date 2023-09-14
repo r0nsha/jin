@@ -262,7 +262,7 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
                     DefKind::Ty(_) => unreachable!(),
                 },
                 hir::ExprKind::Lit(value) => match value {
-                    hir::Lit::Int(value) => ExprKind::UintValue(*value),
+                    hir::Lit::Int(value) => ExprKind::IntValue(*value as i128),
                     hir::Lit::Bool(value) => ExprKind::BoolValue(*value),
                     hir::Lit::Unit => ExprKind::UnitValue,
                 },
@@ -281,7 +281,6 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
     fn lower_expr_from_const(value: &Const) -> ExprKind {
         match value {
             Const::Int(value) => ExprKind::IntValue(*value),
-            Const::Uint(value) => ExprKind::UintValue(*value),
             Const::Bool(value) => ExprKind::BoolValue(*value),
             Const::Unit => ExprKind::UnitValue,
         }

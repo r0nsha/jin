@@ -151,13 +151,6 @@ impl PPCtxt<'_> {
                     expr.ty.display(self.db)
                 ));
             }
-            ExprKind::UintValue(value) => {
-                self.builder.add_empty_child(format!(
-                    "{} (type: {})",
-                    value,
-                    expr.ty.display(self.db)
-                ));
-            }
             ExprKind::BoolValue(value) => {
                 self.builder.add_empty_child(value.to_string());
             }

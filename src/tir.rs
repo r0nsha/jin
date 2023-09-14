@@ -107,7 +107,6 @@ pub enum ExprKind {
     Cast { value: ExprId, target: Ty },
     Id(Id),
     IntValue(i128),
-    UintValue(u128),
     BoolValue(bool),
     UnitValue,
 }

@@ -341,7 +341,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                                     self.bx.build_int_signed_div(lhs, rhs, "result").into()
                                 }
                             }
-                            BinOp::Mod => {
+                            BinOp::Rem => {
                                 if ty.is_uint() {
                                     self.bx.build_int_unsigned_rem(lhs, rhs, "result").into()
                                 } else {
@@ -420,12 +420,6 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                     int.into()
                 }
             }
-            ExprKind::UintValue(value) => expr
-                .ty
-                .llty(self)
-                .into_int_type()
-                .const_int(u64::try_from(*value).unwrap(), expr.ty.is_int())
-                .into(),
             ExprKind::BoolValue(value) => self.bool_value(*value).into(),
             ExprKind::UnitValue => self.unit_value().into(),
         }
