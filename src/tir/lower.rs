@@ -179,7 +179,7 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
                         let id = self.create_local(name.id, ty);
                         ExprKind::Let { id, def_id: name.id, value }
                     }
-                    hir::Pat::Ignore(_) => ExprKind::UnitLit,
+                    hir::Pat::Ignore(_) => ExprKind::UnitValue,
                 }
             }
             hir::ExprKind::If(if_) => ExprKind::If {
@@ -195,7 +195,7 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
                 // when the expected type of the block is unit, but the last expression doesn't
                 // return ().
                 if expr.ty.is_unit() {
-                    exprs.push(self.create_expr(ExprKind::UnitLit, expr.ty));
+                    exprs.push(self.create_expr(ExprKind::UnitValue, expr.ty));
                 }
 
                 ExprKind::Block { exprs }
@@ -247,15 +247,15 @@ impl<'cx, 'db> LowerFnCtxt<'cx, 'db> {
                         self.cx.monomorphize_fn(&MonoItem { id: name.id, ty }, &name.instantiation)
                     };
 
-                    ExprKind::Id { id: Id::Fn(id) }
+                    ExprKind::Id(Id::Fn(id))
                 }
-                DefKind::Variable => ExprKind::Id { id: Id::Local(self.def_to_local[&name.id]) },
+                DefKind::Variable => ExprKind::Id(Id::Local(self.def_to_local[&name.id])),
                 DefKind::Ty(_) => unreachable!(),
             },
             hir::ExprKind::Const(value) => match value {
-                hir::Const::Int(value) => ExprKind::IntLit { value: *value },
-                hir::Const::Bool(value) => ExprKind::BoolLit { value: *value },
-                hir::Const::Unit => ExprKind::UnitLit,
+                hir::Const::Int(value) => ExprKind::IntValue(*value),
+                hir::Const::Bool(value) => ExprKind::BoolValue(*value),
+                hir::Const::Unit => ExprKind::UnitValue,
             },
         };
 

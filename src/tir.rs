@@ -105,10 +105,10 @@ pub enum ExprKind {
     Binary { lhs: ExprId, rhs: ExprId, op: BinOp },
     Unary { value: ExprId, op: UnOp },
     Cast { value: ExprId, target: Ty },
-    Id { id: Id },
-    IntLit { value: usize },
-    BoolLit { value: bool },
-    UnitLit,
+    Id(Id),
+    IntValue(usize),
+    BoolValue(bool),
+    UnitValue,
 }
 
 #[derive(Debug, Clone)]

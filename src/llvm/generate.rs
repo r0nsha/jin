@@ -396,7 +396,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                     ),
                 }
             }
-            ExprKind::Id { id } => match id {
+            ExprKind::Id(id) => match id {
                 Id::Fn(fid) => {
                     self.function(*fid).as_global_value().as_pointer_value().as_basic_value_enum()
                 }
@@ -407,11 +407,11 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                     Local::Value(v) => v,
                 },
             },
-            ExprKind::IntLit { value } => {
+            ExprKind::IntValue(value) => {
                 expr.ty.llty(self).into_int_type().const_int(*value as u64, expr.ty.is_int()).into()
             }
-            ExprKind::BoolLit { value } => self.bool_value(*value).into(),
-            ExprKind::UnitLit => self.unit_value().into(),
+            ExprKind::BoolValue(value) => self.bool_value(*value).into(),
+            ExprKind::UnitValue => self.unit_value().into(),
         }
     }
 

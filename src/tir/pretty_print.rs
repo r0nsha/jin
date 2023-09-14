@@ -128,7 +128,7 @@ impl PPCtxt<'_> {
                 self.pp_expr(*value);
                 self.builder.end_child();
             }
-            ExprKind::Id { id } => match id {
+            ExprKind::Id(id) => match id {
                 Id::Fn(fid) => {
                     self.builder.add_empty_child(format!(
                         "`{}` (type: {})",
@@ -144,17 +144,17 @@ impl PPCtxt<'_> {
                     ));
                 }
             },
-            ExprKind::IntLit { value } => {
+            ExprKind::IntValue(value) => {
                 self.builder.add_empty_child(format!(
                     "{} (type: {})",
                     value,
                     expr.ty.display(self.db)
                 ));
             }
-            ExprKind::BoolLit { value } => {
+            ExprKind::BoolValue(value) => {
                 self.builder.add_empty_child(value.to_string());
             }
-            ExprKind::UnitLit => {
+            ExprKind::UnitValue => {
                 self.builder.add_empty_child("()".to_string());
             }
         }
