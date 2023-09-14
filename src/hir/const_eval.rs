@@ -21,8 +21,8 @@ impl ConstStorage {
     }
 
     pub fn eval_expr(&mut self, expr: &Expr) {
-        // TODO: const eval unary
-        // TODO: const eval binary
+        // TODO: const eval arithmetic
+        // TODO: const eval cmp
         // TODO: const eval block
         // TODO: const eval cast
         // TODO: const eval name

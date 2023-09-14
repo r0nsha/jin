@@ -1,6 +1,6 @@
 fn main() = {
 	unary()
-	#arithmetic()
+	arithmetic()
 	#cmp()
 }
 
@@ -13,14 +13,14 @@ fn unary() = {
 	# !54878
 }
 
-#fn arithmetic() = {
-#	1 + 2
-#	3 - 4
-#	5 * 6
-#	7 / 8
-#	9 % 10
-#}
-#
+fn arithmetic() = {
+	1 + 2
+	3 - 4
+	5 * 6
+	7 / 8
+	9 % 10
+}
+
 #fn cmp() = {
 #	100 == 100
 #	200 != 150
