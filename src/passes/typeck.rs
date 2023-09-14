@@ -24,17 +24,16 @@ use crate::{
 pub type InferResult<T> = Result<T, InferError>;
 
 pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
-    typeck_inner(db, hir).map_err(|err| err.into_diagnostic(db))?;
-    Ok(())
-}
+    fn inner(db: &mut Db, hir: &mut Hir) -> InferResult<()> {
+        let mut cx = InferCtxt::new(db);
 
-fn typeck_inner(db: &mut Db, hir: &mut Hir) -> InferResult<()> {
-    let mut cx = InferCtxt::new(db);
+        cx.typeck_defs(hir)?;
+        cx.typeck_bodies(hir)?;
 
-    cx.typeck_defs(hir)?;
-    cx.typeck_bodies(hir)?;
+        Ok(())
+    }
 
-    Ok(())
+    inner(db, hir).map_err(|err| err.into_diagnostic(db))
 }
 
 impl InferCtxt<'_> {
