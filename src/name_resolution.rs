@@ -384,6 +384,7 @@ impl Resolve<'_> for Ty {
         match self {
             Self::Name(name) => name.resolve(cx, env),
             Self::Infer(span) if env.current().kind == ScopeKind::Fn => {
+                // TODO: pass a `allow_infer_ty: AllowInferTy::{Yes/No}` instead of scope kind
                 cx.errors.push(ResolveError::InvalidInferTy(*span));
             }
             _ => (),
