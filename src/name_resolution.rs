@@ -10,7 +10,7 @@ use crate::{
     },
     common::{QPath, Word},
     db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
-    passes::name_resolution::{
+    name_resolution::{
         env::{Env, GlobalScope, ScopeKind},
         error::ResolveError,
     },
@@ -18,7 +18,7 @@ use crate::{
     sym, ty,
 };
 
-pub fn name_resolution(db: &mut Db, ast: &mut Ast) {
+pub fn resolve(db: &mut Db, ast: &mut Ast) {
     let mut cx = Resolver::new(db);
 
     cx.define_modules(ast);

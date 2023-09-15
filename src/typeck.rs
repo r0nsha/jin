@@ -13,7 +13,7 @@ use crate::{
     db::{Db, DefKind},
     diagnostics::Diagnostic,
     hir::{self, Expr, ExprKind, Fn, FnSig, Hir, Let, Lit, Pat},
-    passes::typeck::{
+    typeck::{
         coerce::CoerceExt,
         error::InferError,
         instantiate::instantiate,

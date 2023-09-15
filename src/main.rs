@@ -21,13 +21,16 @@ mod common;
 mod db;
 mod diagnostics;
 mod hir;
+mod hir_analysis;
 mod llvm;
+mod name_resolution;
 mod parse;
-mod passes;
 mod span;
+mod subst;
 mod sym;
 mod tir;
 mod ty;
+mod typeck;
 
 use std::{fs, path::PathBuf};
 
@@ -106,7 +109,7 @@ fn build(db: &mut Db) {
 
     // Resolve all root symbols into their corresponding id's
     db.time.start("resolve");
-    passes::name_resolution(db, &mut ast);
+    name_resolution::resolve(db, &mut ast);
     expect!(db);
 
     db.time.start("ast -> hir");
@@ -114,7 +117,7 @@ fn build(db: &mut Db) {
 
     // Type check pass
     db.time.start("typeck");
-    if let Err(diag) = passes::typeck(db, &mut hir) {
+    if let Err(diag) = typeck::typeck(db, &mut hir) {
         db.diagnostics.emit(diag);
     }
     db.time.stop();
@@ -124,8 +127,8 @@ fn build(db: &mut Db) {
         .expect("emitting hir failed");
 
     // Typed hir analysis
-    db.time.start("analysis");
-    passes::analysis(db, &hir);
+    db.time.start("hir analysis");
+    hir_analysis::analyze(db, &hir);
     db.time.stop();
     expect!(db);
 

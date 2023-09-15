@@ -6,7 +6,7 @@ use crate::{
     ty::{Ty, TyKind},
 };
 
-pub fn analysis(db: &mut Db, hir: &Hir) {
+pub fn analyze(db: &mut Db, hir: &Hir) {
     Context { db }.analyze(hir);
 }
 

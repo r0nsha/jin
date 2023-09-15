@@ -3,15 +3,13 @@ use std::collections::HashMap;
 use crate::{
     db::Db,
     hir::Hir,
-    passes::{
-        subst::{Subst, SubstTy},
-        typeck::{
-            error::InferError,
-            normalize::NormalizeTy,
-            tcx::{TyCtxt, TyCtxtStorage},
-        },
+    typeck::{
+        error::InferError,
+        normalize::NormalizeTy,
+        tcx::{TyCtxt, TyCtxtStorage},
     },
     span::Span,
+    subst::{Subst, SubstTy},
     ty::{fold::TyFolder, InferTy, Ty, TyKind},
 };
 

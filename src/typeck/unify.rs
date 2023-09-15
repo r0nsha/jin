@@ -1,7 +1,7 @@
 use ena::unify::{EqUnifyValue, UnifyKey};
 
 use crate::{
-    passes::typeck::{error::InferError, normalize::NormalizeTy, tcx::TyCtxt},
+    typeck::{error::InferError, normalize::NormalizeTy, tcx::TyCtxt},
     span::Span,
     ty::{InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
 };

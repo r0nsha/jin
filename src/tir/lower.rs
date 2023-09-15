@@ -6,7 +6,7 @@ use crate::{
     db::{Db, DefId, DefKind},
     hir,
     hir::{const_eval::Const, Hir},
-    passes::subst::{ParamFolder, Subst},
+    subst::{ParamFolder, Subst},
     tir::{
         Body, Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Global, GlobalId, Id,
         Local, LocalId, Tir,

@@ -1,10 +1,10 @@
 use crate::{
     hir::ExprId,
-    passes::typeck::{normalize::NormalizeTy, tcx::TyCtxt, unify::EqResult},
     ty::{
         coerce::{Coercion, CoercionKind},
         TyKind,
     },
+    typeck::{normalize::NormalizeTy, tcx::TyCtxt, unify::EqResult},
 };
 
 pub trait CoerceExt<'db> {

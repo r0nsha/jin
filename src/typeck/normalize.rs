@@ -1,5 +1,5 @@
 use crate::{
-    passes::typeck::tcx::TyCtxtStorage,
+    typeck::tcx::TyCtxtStorage,
     ty::{FnTy, FnTyParam, InferTy, Ty, TyKind},
 };
 

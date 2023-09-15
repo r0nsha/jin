@@ -4,7 +4,7 @@ use crate::{
     common::Word,
     db::Db,
     diagnostics::{Diagnostic, Label},
-    passes::typeck::unify::{Obligation, ObligationKind},
+    typeck::unify::{Obligation, ObligationKind},
     span::{Span, Spanned},
     ty::Ty,
 };
