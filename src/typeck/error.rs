@@ -127,7 +127,7 @@ impl TypeckError {
                     )
             }
             Self::ConstEval(err, span) => Diagnostic::error("check::const_eval_error")
-                .with_message("constant value evaluation failed")
+                .with_message("constant evaluation failed")
                 .with_label(Label::primary(span).with_message(match err {
                     ConstEvalError::DivByZero => "caught division by zero",
                     ConstEvalError::RemByZero => "caught reminder by zero",
