@@ -5,8 +5,8 @@ use ustr::{ustr, UstrMap};
 
 use crate::{
     ast::{
-        Ast, Binary, Block, Call, CallArg, Cast, Expr, Fn, FnSig, If, Item, Let, Module, Name, Pat,
-        Return, Ty, TyName, TyParam, Unary,
+        Ast, Binary, Block, Call, CallArg, Cast, Expr, Fn, FnSig, If, Item, Let, Name, Pat, Return,
+        Ty, TyName, TyParam, Unary,
     },
     common::{QPath, Word},
     db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
@@ -21,10 +21,10 @@ use crate::{
 pub fn resolve(db: &mut Db, ast: &mut Ast) {
     let mut cx = Resolver::new(db);
 
-    cx.define_modules(&mut ast.modules);
+    cx.define_modules(ast);
     cx.define_builtins();
-    cx.define_global_items(&mut ast.modules);
-    cx.resolve_all(&mut ast.modules);
+    cx.define_global_items(ast);
+    cx.resolve_all(ast);
     cx.report_cyclic_global_variables();
 
     if !cx.errors.is_empty() {
@@ -81,8 +81,8 @@ impl<'db> Resolver<'db> {
         mk(sym::NEVER, &|db| db.types.never);
     }
 
-    fn define_modules(&mut self, modules: &mut [Module]) {
-        for module in modules {
+    fn define_modules(&mut self, ast: &mut Ast) {
+        for module in &mut ast.modules {
             module.id = Some(ModuleInfo::alloc(
                 self.db,
                 module.source,
@@ -92,16 +92,16 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn define_global_items(&mut self, modules: &mut [Module]) {
-        for module in modules {
+    fn define_global_items(&mut self, ast: &mut Ast) {
+        for module in &mut ast.modules {
             for item in &mut module.items {
                 self.declare_global_item(module.id.expect("to be resolved"), item);
             }
         }
     }
 
-    fn resolve_all(&mut self, modules: &mut [Module]) {
-        for module in modules {
+    fn resolve_all(&mut self, ast: &mut Ast) {
+        for module in &mut ast.modules {
             let mut env = Env::new(module.id.expect("ModuleId to be resolved"));
 
             for item in &mut module.items {
