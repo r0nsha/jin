@@ -21,9 +21,9 @@ use crate::{
 pub fn resolve(db: &mut Db, ast: &mut Ast) {
     let mut cx = Resolver::new(db);
 
-    cx.resolve_modules(&mut ast.modules);
-    cx.declare_builtins();
-    cx.declare_global_items(&mut ast.modules);
+    cx.define_modules(&mut ast.modules);
+    cx.define_builtins();
+    cx.define_global_items(&mut ast.modules);
     cx.resolve_all(&mut ast.modules);
     cx.report_cyclic_global_variables();
 
@@ -45,7 +45,7 @@ impl<'db> Resolver<'db> {
         Self { db, errors: vec![], global_scope: GlobalScope::new(), builtins: UstrMap::default() }
     }
 
-    fn declare_builtins(&mut self) {
+    fn define_builtins(&mut self) {
         let mut mk = |name: &str, ty: &dyn std::ops::Fn(&Db) -> ty::Ty| -> Option<DefId> {
             let name = ustr(name);
             self.builtins.insert(
@@ -81,7 +81,7 @@ impl<'db> Resolver<'db> {
         mk(sym::NEVER, &|db| db.types.never);
     }
 
-    fn resolve_modules(&mut self, modules: &mut [Module]) {
+    fn define_modules(&mut self, modules: &mut [Module]) {
         for module in modules {
             module.id = Some(ModuleInfo::alloc(
                 self.db,
@@ -92,7 +92,7 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn declare_global_items(&mut self, modules: &mut [Module]) {
+    fn define_global_items(&mut self, modules: &mut [Module]) {
         for module in modules {
             for item in &mut module.items {
                 self.declare_global_item(module.id.expect("to be resolved"), item);
