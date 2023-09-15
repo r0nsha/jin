@@ -2,8 +2,8 @@ use crate::{
     ast,
     db::Db,
     hir::{
-        Binary, Block, Call, CallArg, Cast, Lit, Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Hir,
-        If, Let, Name, NamePat, Pat, Return, Ty, TyName, TyParam, Unary,
+        Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Hir, If,
+        Let, Lit, Name, NamePat, Pat, Return, Ty, TyName, TyParam, Unary,
     },
     span::{Span, Spanned},
     ty::Instantiation,

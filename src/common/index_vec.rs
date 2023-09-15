@@ -103,12 +103,12 @@ macro_rules! new_key_type {
         impl crate::common::Key for $name {}
 
         impl $name {
-            pub const NULL: Self = Self(usize::MAX);
+            pub const INVALID: Self = Self(usize::MAX);
 
             #[allow(unused)]
             #[inline]
             pub fn is_null(&self) -> bool {
-                *self == Self::NULL
+                *self == Self::INVALID
             }
         }
 
