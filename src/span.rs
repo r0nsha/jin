@@ -21,7 +21,7 @@ impl Span {
 
     #[allow(unused)]
     pub fn unknown() -> Self {
-        Self { source_id: SourceId::null(), start: 0, end: 0 }
+        Self { source_id: SourceId::NULL, start: 0, end: 0 }
     }
 
     pub fn initial(source_id: SourceId) -> Self {
@@ -160,7 +160,7 @@ impl TryFrom<PathBuf> for Source {
         let contents = fs::read_to_string(&value)?;
         let line_starts = line_starts(&contents).collect();
 
-        Ok(Self { id: SourceId::null(), path: value, contents, line_starts })
+        Ok(Self { id: SourceId::NULL, path: value, contents, line_starts })
     }
 }
 
