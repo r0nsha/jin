@@ -212,6 +212,17 @@ impl IntTy {
             Self::Int => target_metrics.word_size,
         }
     }
+
+    pub fn contains(self, value: i128) -> bool {
+        // TODO: use target_metrics
+        match self {
+            IntTy::I8 => i8::try_from(value).is_ok(),
+            IntTy::I16 => i16::try_from(value).is_ok(),
+            IntTy::I32 => i32::try_from(value).is_ok(),
+            IntTy::I64 => i64::try_from(value).is_ok(),
+            IntTy::Int => isize::try_from(value).is_ok(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -231,6 +242,17 @@ impl UintTy {
             Self::U32 => 32,
             Self::U64 => 64,
             Self::Uint => target_metrics.word_size,
+        }
+    }
+
+    pub fn contains(self, value: i128) -> bool {
+        // TODO: use target_metrics
+        match self {
+            UintTy::U8 => u8::try_from(value).is_ok(),
+            UintTy::U16 => u16::try_from(value).is_ok(),
+            UintTy::U32 => u32::try_from(value).is_ok(),
+            UintTy::U64 => u64::try_from(value).is_ok(),
+            UintTy::Uint => usize::try_from(value).is_ok(),
         }
     }
 }

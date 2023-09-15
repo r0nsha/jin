@@ -1,7 +1,7 @@
 use crate::{
     db::{Db, DefKind, FnInfo},
     diagnostics::{Diagnostic, Label},
-    hir::{Expr, ExprKind, Hir},
+    hir::{const_eval::Const, Expr, ExprKind, Hir},
     span::Span,
     ty::{Ty, TyKind},
 };
@@ -38,6 +38,12 @@ impl Context<'_> {
                 }
             }
         });
+
+        if let Some(value) = self.db.const_storage.expr(expr.id) {
+            if let Err(err) = check_const_value_range(value, expr.ty, expr.span) {
+                self.emit(err);
+            }
+        }
     }
 
     fn check_entry(&mut self, hir: &Hir) {
@@ -92,6 +98,29 @@ impl Context<'_> {
     }
 }
 
+fn check_const_value_range(value: &Const, ty: Ty, span: Span) -> Result<(), AnalysisError> {
+    match value {
+        Const::Int(value) => match ty.kind() {
+            TyKind::Int(ity) => {
+                if ity.contains(*value) {
+                    Ok(())
+                } else {
+                    Err(AnalysisError::IntOutOfRange { value: *value, ty, span })
+                }
+            }
+            TyKind::Uint(uty) => {
+                if uty.contains(*value) {
+                    Ok(())
+                } else {
+                    Err(AnalysisError::IntOutOfRange { value: *value, ty, span })
+                }
+            }
+            _ => Ok(()),
+        },
+        Const::Bool(_) | Const::Unit => Ok(()),
+    }
+}
+
 fn is_main_fun_ty(ty: &TyKind) -> bool {
     matches!(ty, TyKind::Fn(f) if f.params.is_empty() && f.ret.is_unit())
 }
@@ -102,6 +131,7 @@ pub enum AnalysisError {
     NoEntryPoint,
     WrongEntryPointTy { ty: Ty, span: Span },
     EntryPointWithTyParams { span: Span },
+    IntOutOfRange { value: i128, ty: Ty, span: Span },
 }
 
 impl AnalysisError {
@@ -136,6 +166,15 @@ impl AnalysisError {
                 Diagnostic::error("analysis::entry_point_with_type_params")
                     .with_message("type parameters in `main` function are not allowed")
                     .with_label(Label::primary(span).with_message("not allowed"))
+            }
+            Self::IntOutOfRange { value, ty, span } => {
+                Diagnostic::error("analysis::int_out_of_range")
+                    .with_message(format!(
+                        "integer {} is of range of its type `{}`",
+                        value,
+                        ty.display(db)
+                    ))
+                    .with_label(Label::primary(span).with_message("integer overflows its type"))
             }
         }
     }
