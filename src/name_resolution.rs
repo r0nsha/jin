@@ -25,7 +25,6 @@ pub fn resolve(db: &mut Db, ast: &mut Ast) {
     cx.define_builtins();
     cx.define_global_items(ast);
     cx.resolve_all(ast);
-    cx.report_cyclic_global_variables();
 
     if !cx.errors.is_empty() {
         let errors = cx.errors;
@@ -206,10 +205,6 @@ impl<'db> Resolver<'db> {
                 });
             }
         }
-    }
-
-    fn report_cyclic_global_variables(&mut self) {
-        // TODO:
     }
 }
 

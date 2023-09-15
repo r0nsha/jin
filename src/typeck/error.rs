@@ -2,15 +2,15 @@ use ustr::Ustr;
 
 use crate::{
     common::Word,
-    db::Db,
+    db::{Db, DefId},
     diagnostics::{Diagnostic, Label},
-    typeck::unify::{Obligation, ObligationKind},
     span::{Span, Spanned},
     ty::Ty,
+    typeck::unify::{Obligation, ObligationKind},
 };
 
 #[derive(Debug)]
-pub enum InferError {
+pub enum TypeckError {
     TyMismatch { expected: Ty, found: Ty, obligation: Obligation },
     InfiniteTy { ty: Ty, obligation: Obligation },
     ArgMismatch { expected: usize, found: usize, span: Span },
@@ -21,9 +21,10 @@ pub enum InferError {
     ExpectedTy { ty: Ty, span: Span },
     CannotInfer { ty: Ty, span: Span },
     InvalidReturn(Span),
+    CyclicGlobalVars { source: DefId, cyclic: DefId, cause_span: Span },
 }
 
-impl InferError {
+impl TypeckError {
     pub fn into_diagnostic(self, db: &Db) -> Diagnostic {
         match self {
             Self::TyMismatch { expected, found, obligation } => {
@@ -108,6 +109,21 @@ impl InferError {
             Self::InvalidReturn(span) => Diagnostic::error("check::invalid_return")
                 .with_message("cannot return outside of function scope")
                 .with_label(Label::primary(span)),
+            Self::CyclicGlobalVars { source, cyclic, cause_span } => {
+                Diagnostic::error("check::cyclic_global_vars")
+                    .with_message(format!(
+                        "cycle detected while type-checking `{}`, caused by `{}`",
+                        db[source].name, db[cyclic].name
+                    ))
+                    .with_label(Label::primary(cause_span).with_message(format!(
+                        "`{}` is referenced by `{}` here",
+                        db[source].name, db[cyclic].name
+                    )))
+                    .with_label(
+                        Label::secondary(db[source].span)
+                            .with_message(format!("`{}` is defined here", db[source].name)),
+                    )
+            }
         }
     }
 }

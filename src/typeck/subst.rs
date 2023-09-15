@@ -4,7 +4,7 @@ use crate::{
     db::Db,
     hir::Hir,
     typeck::{
-        error::InferError,
+        error::TypeckError,
         normalize::NormalizeTy,
         tcx::{TyCtxt, TyCtxtStorage},
     },
@@ -36,7 +36,7 @@ impl<'db> TyCtxt<'db> {
 struct SubstCtxt<'db> {
     db: &'db mut Db,
     tcx: &'db mut TyCtxtStorage,
-    errs: HashMap<Span, InferError>,
+    errs: HashMap<Span, TypeckError>,
 }
 
 impl SubstTy for SubstCtxt<'_> {
@@ -48,7 +48,7 @@ impl SubstTy for SubstCtxt<'_> {
             folder
                 .cx
                 .errs
-                .insert(span, InferError::CannotInfer { ty: ty.normalize(folder.cx.tcx), span });
+                .insert(span, TypeckError::CannotInfer { ty: ty.normalize(folder.cx.tcx), span });
         }
 
         ty

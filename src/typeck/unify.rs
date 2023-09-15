@@ -1,7 +1,7 @@
 use ena::unify::{EqUnifyValue, UnifyKey};
 
 use crate::{
-    typeck::{error::InferError, normalize::NormalizeTy, tcx::TyCtxt},
+    typeck::{error::TypeckError, normalize::NormalizeTy, tcx::TyCtxt},
     span::Span,
     ty::{InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
 };
@@ -25,12 +25,12 @@ impl At<'_, '_> {
             let mut storage = self.tcx.storage.borrow_mut();
 
             let err = match err {
-                UnifyError::TyMismatch { .. } => InferError::TyMismatch {
+                UnifyError::TyMismatch { .. } => TypeckError::TyMismatch {
                     expected: expected.normalize(&mut storage),
                     found: found.normalize(&mut storage),
                     obligation: self.obligation,
                 },
-                UnifyError::InfiniteTy { ty } => InferError::InfiniteTy {
+                UnifyError::InfiniteTy { ty } => TypeckError::InfiniteTy {
                     ty: ty.normalize(&mut storage),
                     obligation: Obligation::obvious(self.obligation.span()),
                 },
@@ -47,10 +47,10 @@ pub type EqResult<T> = Result<T, EqError>;
 pub struct EqError {
     pub expected: Ty,
     pub found: Ty,
-    pub err: InferError,
+    pub err: TypeckError,
 }
 
-impl From<EqError> for InferError {
+impl From<EqError> for TypeckError {
     fn from(value: EqError) -> Self {
         value.err
     }

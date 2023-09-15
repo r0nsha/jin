@@ -10,26 +10,28 @@ use ustr::UstrMap;
 
 use crate::{
     ast::{BinOp, UnOp},
-    db::{Db, DefKind},
+    db::{Db, DefId, DefKind},
     diagnostics::Diagnostic,
     hir::{self, Expr, ExprKind, Fn, FnSig, Hir, Let, Lit, Pat},
+    span::{Span, Spanned},
+    ty::{FnTy, FnTyParam, Instantiation, ParamTy, Ty, TyKind},
     typeck::{
         coerce::CoerceExt,
-        error::InferError,
+        error::TypeckError,
         instantiate::instantiate,
         normalize::NormalizeTy,
         tcx::{Env, TyCtxt},
         unify::Obligation,
     },
-    span::{Span, Spanned},
-    ty::{FnTy, FnTyParam, Instantiation, ParamTy, Ty, TyKind},
 };
 
-pub type InferResult<T> = Result<T, InferError>;
+pub type TypeckResult<T> = Result<T, TypeckError>;
 
 pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
-    fn aux(db: &mut Db, hir: &mut Hir) -> InferResult<()> {
+    fn inner(db: &mut Db, hir: &mut Hir) -> TypeckResult<()> {
         let mut cx = TyCtxt::new(db);
+
+        TyCtxt::report_cyclic_global_variables(hir)?;
 
         cx.typeck_defs(hir)?;
         cx.typeck_global_vars(hir)?;
@@ -39,11 +41,47 @@ pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
         Ok(())
     }
 
-    aux(db, hir).map_err(|err| err.into_diagnostic(db))
+    inner(db, hir).map_err(|err| err.into_diagnostic(db))
 }
 
 impl TyCtxt<'_> {
-    fn typeck_defs(&mut self, hir: &mut Hir) -> InferResult<()> {
+    fn report_cyclic_global_variables(hir: &Hir) -> TypeckResult<()> {
+        fn inner(hir: &Hir, let_: &Let, source_ids: &[DefId]) -> Option<(DefId, Span)> {
+            let mut found_cycle = None;
+
+            let_.value.walk(|expr| match &expr.kind {
+                ExprKind::Name(name) if source_ids.contains(&name.id) => {
+                    found_cycle = Some((let_.pat.ids()[0], expr.span));
+                }
+                ExprKind::Name(name) => {
+                    if let Some(let_) =
+                        hir.lets.iter().find(|let_| let_.pat.any(|n| n.id == name.id))
+                    {
+                        found_cycle = inner(hir, let_, source_ids);
+                    }
+                }
+                _ => (),
+            });
+
+            found_cycle
+        }
+
+        for let_ in &hir.lets {
+            let ids = let_.pat.ids();
+
+            if let Some((cyclic_id, cause_span)) = inner(hir, let_, &ids) {
+                return Err(TypeckError::CyclicGlobalVars {
+                    source: ids[0],
+                    cyclic: cyclic_id,
+                    cause_span,
+                });
+            }
+        }
+
+        Ok(())
+    }
+
+    fn typeck_defs(&mut self, hir: &mut Hir) -> TypeckResult<()> {
         for f in &mut hir.fns {
             let ty = self.typeck_fn_sig(&mut f.sig)?;
             self.db[f.id].ty = ty;
@@ -59,7 +97,7 @@ impl TyCtxt<'_> {
         Ok(())
     }
 
-    fn typeck_global_vars(&mut self, hir: &mut Hir) -> InferResult<()> {
+    fn typeck_global_vars(&mut self, hir: &mut Hir) -> TypeckResult<()> {
         for let_ in &mut hir.lets {
             self.typeck_let(let_)?;
         }
@@ -67,7 +105,7 @@ impl TyCtxt<'_> {
         Ok(())
     }
 
-    fn typeck_fn_sig(&mut self, sig: &mut FnSig) -> InferResult<Ty> {
+    fn typeck_fn_sig(&mut self, sig: &mut FnSig) -> TypeckResult<Ty> {
         for tp in &mut sig.ty_params {
             let ty = Ty::new(TyKind::Param(ParamTy {
                 name: self.db[tp.id].name,
@@ -95,7 +133,7 @@ impl TyCtxt<'_> {
         })))
     }
 
-    fn typeck_bodies(&mut self, hir: &mut Hir) -> InferResult<()> {
+    fn typeck_bodies(&mut self, hir: &mut Hir) -> TypeckResult<()> {
         for f in &mut hir.fns {
             self.typeck_fn(f)?;
         }
@@ -103,7 +141,7 @@ impl TyCtxt<'_> {
         Ok(())
     }
 
-    fn typeck_fn(&mut self, f: &mut Fn) -> InferResult<()> {
+    fn typeck_fn(&mut self, f: &mut Fn) -> TypeckResult<()> {
         if self.db[f.id].scope.level.is_local() {
             let ty = self.typeck_fn_sig(&mut f.sig)?;
             self.db[f.id].ty = ty;
@@ -132,7 +170,7 @@ impl TyCtxt<'_> {
         }
     }
 
-    fn typeck_let(&mut self, let_: &mut Let) -> InferResult<Ty> {
+    fn typeck_let(&mut self, let_: &mut Let) -> TypeckResult<Ty> {
         let mut env = Env::new(None);
 
         let ty =
@@ -152,13 +190,7 @@ impl TyCtxt<'_> {
         Ok(ty)
     }
 
-    fn typeck_expr(&mut self, expr: &mut Expr, env: &mut Env) -> InferResult<()> {
-        self.infer_expr(expr, env)?;
-        self.db.const_storage.eval_expr(expr);
-        Ok(())
-    }
-
-    fn infer_expr(&mut self, expr: &mut Expr, env: &mut Env) -> InferResult<()> {
+    fn typeck_expr(&mut self, expr: &mut Expr, env: &mut Env) -> TypeckResult<()> {
         expr.ty = match &mut expr.kind {
             ExprKind::Let(let_) => {
                 let ty = self.typeck_let(let_)?;
@@ -214,7 +246,7 @@ impl TyCtxt<'_> {
 
                     self.db.types.never
                 } else {
-                    return Err(InferError::InvalidReturn(expr.span));
+                    return Err(TypeckError::InvalidReturn(expr.span));
                 }
             }
             ExprKind::Call(call) => {
@@ -232,7 +264,7 @@ impl TyCtxt<'_> {
                     }
 
                     if call.args.len() != fun_ty.params.len() {
-                        return Err(InferError::ArgMismatch {
+                        return Err(TypeckError::ArgMismatch {
                             expected: fun_ty.params.len(),
                             found: call.args.len(),
                             span: expr.span,
@@ -264,14 +296,14 @@ impl TyCtxt<'_> {
                                 .find_map(
                                     |(i, p)| if p.name == Some(name) { Some(i) } else { None },
                                 )
-                                .ok_or(InferError::NamedParamNotFound { word: *arg_name })?;
+                                .ok_or(TypeckError::NamedParamNotFound { word: *arg_name })?;
 
                             // Report named arguments that are passed twice
                             if let Some(passed_arg) = already_passed_args.insert(
                                 arg_name.name(),
                                 PassedArg { is_named: true, span: arg_name.span() },
                             ) {
-                                return Err(InferError::MultipleNamedArgs {
+                                return Err(TypeckError::MultipleNamedArgs {
                                     name: arg_name.name(),
                                     prev: passed_arg.span,
                                     dup: arg_name.span(),
@@ -294,7 +326,7 @@ impl TyCtxt<'_> {
                     fun_ty.ret
                 } else {
                     // TODO: assume a function here?
-                    return Err(InferError::UncallableTy {
+                    return Err(TypeckError::UncallableTy {
                         ty: call.callee.ty.normalize(&mut self.storage.borrow_mut()),
                         span: call.callee.span,
                     });
@@ -311,7 +343,7 @@ impl TyCtxt<'_> {
                             .or_coerce(self, un.expr.id)?;
                     }
                     UnOp::Not => {
-                        // TODO: Allow bitnot (integers)
+                        // TODO: Allow bitnot (integers, need traits)
                         self.at(Obligation::obvious(un.expr.span))
                             .eq(self.db.types.bool, un.expr.ty)
                             .or_coerce(self, un.expr.id)?;
@@ -339,8 +371,8 @@ impl TyCtxt<'_> {
                             .or_coerce(self, bin.rhs.id)?;
                     }
                     _ => {
-                        // TODO: type check arithmetic operations
-                        // TODO: type check cmp operations
+                        // TODO: type check arithmetic operations (traits)
+                        // TODO: type check cmp operations (traits)
                     }
                 }
 
@@ -370,7 +402,7 @@ impl TyCtxt<'_> {
                             .collect()
                     }
                     Some(args) => {
-                        return Err(InferError::TyArgMismatch {
+                        return Err(TypeckError::TyArgMismatch {
                             expected: ty_params.len(),
                             found: args.len(),
                             span: expr.span,
@@ -394,17 +426,19 @@ impl TyCtxt<'_> {
             },
         };
 
+        self.db.const_storage.eval_expr(expr);
+
         Ok(())
     }
 
-    fn typeck_ty(&mut self, ty: &hir::Ty) -> InferResult<Ty> {
+    fn typeck_ty(&mut self, ty: &hir::Ty) -> TypeckResult<Ty> {
         match ty {
             hir::Ty::Name(name) => {
                 let def = &self.db[name.id];
 
                 match def.kind.as_ref() {
                     DefKind::Ty(ty) => Ok(*ty),
-                    _ => Err(InferError::ExpectedTy { ty: def.ty, span: name.span }),
+                    _ => Err(TypeckError::ExpectedTy { ty: def.ty, span: name.span }),
                 }
             }
             hir::Ty::Unit(_) => Ok(self.db.types.unit),

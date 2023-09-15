@@ -161,6 +161,12 @@ impl Pat {
             Pat::Ignore(_) => false,
         }
     }
+
+    pub fn ids(&self) -> Vec<DefId> {
+        let mut ids = vec![];
+        self.walk(|name| ids.push(name.id));
+        ids
+    }
 }
 
 #[derive(Debug, Clone)]
