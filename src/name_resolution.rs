@@ -366,10 +366,9 @@ impl Resolve<'_> for Cast {
 
 impl Resolve<'_> for Name {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        if let Ok(id) = cx.lookup(env, self.name) {
-            self.id = Some(id);
-        } else {
-            cx.errors.push(ResolveError::NameNotFound(self.name));
+        match cx.lookup(env, self.name) {
+            Ok(id) => self.id = Some(id),
+            Err(err) => cx.errors.push(err),
         }
 
         if let Some(args) = &mut self.args {
@@ -394,10 +393,9 @@ impl Resolve<'_> for Ty {
 
 impl Resolve<'_> for TyName {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        if let Ok(id) = cx.lookup(env, self.name) {
-            self.id = Some(id);
-        } else {
-            cx.errors.push(ResolveError::NameNotFound(self.name));
+        match cx.lookup(env, self.name) {
+            Ok(id) => self.id = Some(id),
+            Err(err) => cx.errors.push(err),
         }
     }
 }
