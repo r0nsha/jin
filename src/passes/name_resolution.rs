@@ -10,7 +10,7 @@ use crate::{
     },
     common::{QPath, Word},
     db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
-    passes::resolve::{
+    passes::name_resolution::{
         env::{Env, GlobalScope, ScopeKind},
         error::ResolveError,
     },
