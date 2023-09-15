@@ -4,6 +4,7 @@ use crate::{
     common::Word,
     db::{Db, DefId},
     diagnostics::{Diagnostic, Label},
+    hir::const_eval::ConstEvalError,
     span::{Span, Spanned},
     ty::Ty,
     typeck::unify::{Obligation, ObligationKind},
@@ -22,6 +23,7 @@ pub enum TypeckError {
     CannotInfer { ty: Ty, span: Span },
     InvalidReturn(Span),
     CyclicGlobalVars { source: DefId, cyclic: DefId, cause_span: Span },
+    ConstEval(ConstEvalError, Span),
 }
 
 impl TypeckError {
@@ -124,6 +126,13 @@ impl TypeckError {
                             .with_message(format!("`{}` is defined here", db[source].name)),
                     )
             }
+            Self::ConstEval(err, span) => Diagnostic::error("check::const_eval_error")
+                .with_message("failed to evaluate constant value")
+                .with_label(Label::primary(span).with_message(match err {
+                    ConstEvalError::DivByZero => "caught division by zero",
+                    ConstEvalError::RemByZero => "caught reminder by zero",
+                    ConstEvalError::Overflow => "caught integer overflow",
+                })),
         }
     }
 }

@@ -426,7 +426,7 @@ impl TyCtxt<'_> {
             },
         };
 
-        self.db.const_storage.eval_expr(expr);
+        self.db.const_storage.eval_expr(expr).map_err(|e| TypeckError::ConstEval(e, expr.span))?;
 
         Ok(())
     }

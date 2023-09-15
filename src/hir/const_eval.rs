@@ -29,7 +29,7 @@ impl ConstStorage {
     // TODO: errors: divide by zero
     // TODO: errors: remainder by zero
     // TODO: errors: overflow
-    pub fn eval_expr(&mut self, expr: &Expr) {
+    pub fn eval_expr(&mut self, expr: &Expr) -> Result<(), ConstEvalError> {
         // TODO: const eval block
         // TODO: const eval cast
         // TODO: const eval name
@@ -46,7 +46,8 @@ impl ConstStorage {
             ExprKind::Binary(bin) => self
                 .expr(bin.lhs.id)
                 .zip(self.expr(bin.rhs.id))
-                .map(|(lhs, rhs)| lhs.apply_binary(rhs, bin.op)),
+                .map(|(lhs, rhs)| lhs.apply_binary(rhs, bin.op))
+                .transpose()?,
             ExprKind::Lit(lit) => Some(match lit {
                 Lit::Int(value) => Const::Int(i128::try_from(*value).unwrap()),
                 Lit::Bool(value) => Const::Bool(*value),
@@ -57,6 +58,8 @@ impl ConstStorage {
         if let Some(result) = result {
             self.exprs.insert(expr.id, result);
         }
+
+        Ok(())
     }
 }
 
@@ -65,17 +68,6 @@ pub enum Const {
     Int(i128),
     Bool(bool),
     Unit,
-}
-
-macro_rules! impl_const_op {
-    ($name: ident, $op: tt) => {
-        fn $name(&self, other: &Self) -> Self {
-            match (self, other) {
-                (Self::Int(a), Self::Int(b)) => Self::Int(*a $op *b),
-                _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
-            }
-        }
-    };
 }
 
 impl Const {
@@ -101,7 +93,7 @@ impl Const {
         }
     }
 
-    fn apply_binary(&self, other: &Self, op: BinOp) -> Self {
+    fn apply_binary(&self, other: &Self, op: BinOp) -> ConstEvalResult {
         match op {
             BinOp::Add => self.add(other),
             BinOp::Sub => self.sub(other),
@@ -110,25 +102,102 @@ impl Const {
             BinOp::Rem => self.rem(other),
             BinOp::Shl => self.shl(other),
             BinOp::Shr => self.shr(other),
-            BinOp::BitAnd => self.bitand(other),
-            BinOp::BitOr => self.bitor(other),
-            BinOp::BitXor => self.bitxor(other),
-            BinOp::And => self.and(other),
-            BinOp::Or => self.or(other),
-            BinOp::Cmp(cmp) => self.cmp(other, cmp),
+            BinOp::BitAnd => Ok(self.bitand(other)),
+            BinOp::BitOr => Ok(self.bitor(other)),
+            BinOp::BitXor => Ok(self.bitxor(other)),
+            BinOp::And => Ok(self.and(other)),
+            BinOp::Or => Ok(self.or(other)),
+            BinOp::Cmp(cmp) => Ok(self.cmp(other, cmp)),
         }
     }
 
-    impl_const_op!(add, +);
-    impl_const_op!(sub, -);
-    impl_const_op!(mul,*);
-    impl_const_op!(div, /);
-    impl_const_op!(rem, %);
-    impl_const_op!(shl, <<);
-    impl_const_op!(shr, >>);
-    impl_const_op!(bitand, &);
-    impl_const_op!(bitor, |);
-    impl_const_op!(bitxor , ^);
+    fn add(&self, other: &Self) -> ConstEvalResult {
+        match (self, other) {
+            (Self::Int(a), Self::Int(b)) => {
+                Ok(Self::Int(a.checked_add(*b).ok_or(ConstEvalError::Overflow)?))
+            }
+            _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
+        }
+    }
+
+    fn sub(&self, other: &Self) -> ConstEvalResult {
+        match (self, other) {
+            (Self::Int(a), Self::Int(b)) => {
+                Ok(Self::Int(a.checked_sub(*b).ok_or(ConstEvalError::Overflow)?))
+            }
+            _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
+        }
+    }
+
+    fn mul(&self, other: &Self) -> ConstEvalResult {
+        match (self, other) {
+            (Self::Int(a), Self::Int(b)) => {
+                Ok(Self::Int(a.checked_mul(*b).ok_or(ConstEvalError::Overflow)?))
+            }
+            _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
+        }
+    }
+
+    fn div(&self, other: &Self) -> ConstEvalResult {
+        match (self, other) {
+            (Self::Int(a), Self::Int(b)) => {
+                Ok(Self::Int(a.checked_div(*b).ok_or(ConstEvalError::DivByZero)?))
+            }
+            _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
+        }
+    }
+
+    fn rem(&self, other: &Self) -> ConstEvalResult {
+        match (self, other) {
+            (Self::Int(a), Self::Int(b)) => {
+                Ok(Self::Int(a.checked_rem(*b).ok_or(ConstEvalError::DivByZero)?))
+            }
+            _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
+        }
+    }
+
+    fn shl(&self, other: &Self) -> ConstEvalResult {
+        match (self, other) {
+            (Self::Int(a), Self::Int(b)) => Ok(Self::Int(
+                u32::try_from(*b)
+                    .map_err(|_| ConstEvalError::Overflow)
+                    .and_then(|b| a.checked_shl(b).ok_or(ConstEvalError::Overflow))?,
+            )),
+            _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
+        }
+    }
+
+    fn shr(&self, other: &Self) -> ConstEvalResult {
+        match (self, other) {
+            (Self::Int(a), Self::Int(b)) => Ok(Self::Int(
+                u32::try_from(*b)
+                    .map_err(|_| ConstEvalError::Overflow)
+                    .and_then(|b| a.checked_shr(b).ok_or(ConstEvalError::Overflow))?,
+            )),
+            _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
+        }
+    }
+
+    fn bitand(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Self::Int(a), Self::Int(b)) => Self::Int(*a & *b),
+            _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
+        }
+    }
+
+    fn bitor(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Self::Int(a), Self::Int(b)) => Self::Int(*a | *b),
+            _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
+        }
+    }
+
+    fn bitxor(&self, other: &Self) -> Self {
+        match (self, other) {
+            (Self::Int(a), Self::Int(b)) => Self::Int(*a ^ *b),
+            _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
+        }
+    }
 
     fn and(&self, other: &Self) -> Const {
         match (self, other) {
@@ -164,4 +233,13 @@ impl Const {
             _ => unreachable!("invalid op {:?} on {:?} and {:?}", op, self, other),
         }
     }
+}
+
+pub type ConstEvalResult = Result<Const, ConstEvalError>;
+
+#[derive(Debug)]
+pub enum ConstEvalError {
+    DivByZero,
+    RemByZero,
+    Overflow,
 }
