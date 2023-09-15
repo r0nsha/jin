@@ -107,8 +107,8 @@ macro_rules! new_key_type {
 
             #[allow(unused)]
             #[inline]
-            pub fn is_null(&self) -> bool {
-                *self == Self::INVALID
+            pub fn is_null(self) -> bool {
+                self == Self::INVALID
             }
         }
 
