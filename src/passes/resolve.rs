@@ -95,7 +95,7 @@ impl<'db> Resolver<'db> {
     fn define_global_items(&mut self, ast: &mut Ast) {
         for module in &mut ast.modules {
             for item in &mut module.items {
-                self.declare_global_item(module.id.expect("to be resolved"), item);
+                self.define_global_item(module.id.expect("to be resolved"), item);
             }
         }
     }
@@ -110,10 +110,10 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn declare_global_item(&mut self, module_id: ModuleId, item: &mut Item) {
+    fn define_global_item(&mut self, module_id: ModuleId, item: &mut Item) {
         match item {
             Item::Fn(fun) => {
-                fun.id = Some(self.declare_global_def(
+                fun.id = Some(self.define_global_def(
                     module_id,
                     Vis::Public,
                     DefKind::Fn(FnInfo::Bare),
@@ -122,7 +122,7 @@ impl<'db> Resolver<'db> {
             }
             Item::Let(let_) => match &mut let_.pat {
                 Pat::Name(name) => {
-                    name.id = Some(self.declare_global_def(
+                    name.id = Some(self.define_global_def(
                         module_id,
                         Vis::Public,
                         DefKind::Global,
@@ -134,7 +134,7 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn declare_global_def(
+    fn define_global_def(
         &mut self,
         module_id: ModuleId,
         vis: Vis,
@@ -158,7 +158,7 @@ impl<'db> Resolver<'db> {
         id
     }
 
-    fn declare_def(&mut self, env: &mut Env, kind: DefKind, name: Word) -> DefId {
+    fn define_def(&mut self, env: &mut Env, kind: DefKind, name: Word) -> DefId {
         let id = Def::alloc(
             self.db,
             env.scope_path(self.db).child(name.name()),
@@ -173,10 +173,10 @@ impl<'db> Resolver<'db> {
         id
     }
 
-    fn declare_pat(&mut self, env: &mut Env, kind: DefKind, pat: &mut Pat) {
+    fn define_pat(&mut self, env: &mut Env, kind: DefKind, pat: &mut Pat) {
         match pat {
             Pat::Name(name) => {
-                name.id = Some(self.declare_def(env, kind, name.word));
+                name.id = Some(self.define_def(env, kind, name.word));
             }
             Pat::Ignore(_) => (),
         }
@@ -196,7 +196,7 @@ impl<'db> Resolver<'db> {
 
         for tp in ty_params {
             let ty = self.db.types.unknown;
-            tp.id = Some(self.declare_def(env, DefKind::Ty(ty), tp.name));
+            tp.id = Some(self.define_def(env, DefKind::Ty(ty), tp.name));
 
             if let Some(prev_span) = defined_ty_params.insert(tp.name.name(), tp.name.span()) {
                 self.errors.push(ResolveError::MultipleTyParams {
@@ -246,7 +246,7 @@ impl Resolve<'_> for Expr {
 impl Resolve<'_> for Fn {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         if !env.in_global_scope() {
-            let id = cx.declare_def(env, DefKind::Fn(FnInfo::Bare), self.sig.name);
+            let id = cx.define_def(env, DefKind::Fn(FnInfo::Bare), self.sig.name);
             self.id = Some(id);
         }
 
@@ -260,7 +260,7 @@ impl Resolve<'_> for Fn {
 impl Resolve<'_> for Let {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         if !env.in_global_scope() {
-            cx.declare_pat(env, DefKind::Variable, &mut self.pat);
+            cx.define_pat(env, DefKind::Variable, &mut self.pat);
 
             self.pat.walk(|pat| {
                 env.insert(pat.word.name(), pat.id.unwrap());
@@ -288,7 +288,7 @@ impl Resolve<'_> for FnSig {
         let mut defined_params = UstrMap::<Span>::default();
 
         for param in &mut self.params {
-            param.id = Some(cx.declare_def(env, DefKind::Variable, param.name));
+            param.id = Some(cx.define_def(env, DefKind::Variable, param.name));
             param.ty.resolve(cx, env);
 
             if let Some(prev_span) = defined_params.insert(param.name.name(), param.name.span()) {
