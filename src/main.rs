@@ -106,7 +106,7 @@ fn build(db: &mut Db) {
 
     // Resolve all root symbols into their corresponding id's
     db.time.start("resolve");
-    passes::resolve(db, &mut ast);
+    passes::name_resolution(db, &mut ast);
     expect!(db);
 
     db.time.start("ast -> hir");

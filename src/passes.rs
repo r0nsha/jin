@@ -1,8 +1,8 @@
 mod analysis;
-mod resolve;
+mod name_resolution;
 pub mod subst;
 mod typeck;
 
 pub use analysis::analysis;
-pub use resolve::resolve;
+pub use name_resolution::name_resolution;
 pub use typeck::typeck;
