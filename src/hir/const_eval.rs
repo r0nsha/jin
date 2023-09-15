@@ -150,7 +150,7 @@ impl Const {
     fn rem(&self, other: &Self) -> ConstEvalResult {
         match (self, other) {
             (Self::Int(a), Self::Int(b)) => {
-                Ok(Self::Int(a.checked_rem(*b).ok_or(ConstEvalError::DivByZero)?))
+                Ok(Self::Int(a.checked_rem(*b).ok_or(ConstEvalError::RemByZero)?))
             }
             _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
         }
