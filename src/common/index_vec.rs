@@ -89,12 +89,14 @@ macro_rules! new_key_type {
         pub struct $name(usize);
 
         impl From<usize> for $name {
+            #[inline]
             fn from(value: usize) -> Self {
                 Self(value)
             }
         }
 
         impl From<$name> for usize {
+            #[inline]
             fn from(value: $name) -> Self {
                 value.0
             }
@@ -115,7 +117,7 @@ macro_rules! new_key_type {
         impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 if self.is_null() {
-                    f.write_str("NUL")
+                    f.write_str("INVALID")
                 } else {
                     f.write_str(&self.0.to_string())
                 }
