@@ -7,18 +7,18 @@ use crate::{
         subst::{Subst, SubstTy},
         typeck::{
             error::InferError,
-            infcx::{InferCtxt, InferCtxtStorage},
             normalize::NormalizeTy,
+            tcx::{TyCtxt, TyCtxtStorage},
         },
     },
     span::Span,
     ty::{fold::TyFolder, InferTy, Ty, TyKind},
 };
 
-impl<'db> InferCtxt<'db> {
+impl<'db> TyCtxt<'db> {
     pub fn subst(&mut self, hir: &mut Hir) {
         let mut cx =
-            SubstCtxt { db: self.db, infcx: &mut self.storage.borrow_mut(), errs: HashMap::new() };
+            SubstCtxt { db: self.db, tcx: &mut self.storage.borrow_mut(), errs: HashMap::new() };
 
         for f in &mut hir.fns {
             f.subst(&mut cx);
@@ -37,7 +37,7 @@ impl<'db> InferCtxt<'db> {
 
 struct SubstCtxt<'db> {
     db: &'db mut Db,
-    infcx: &'db mut InferCtxtStorage,
+    tcx: &'db mut TyCtxtStorage,
     errs: HashMap<Span, InferError>,
 }
 
@@ -50,7 +50,7 @@ impl SubstTy for SubstCtxt<'_> {
             folder
                 .cx
                 .errs
-                .insert(span, InferError::CannotInfer { ty: ty.normalize(folder.cx.infcx), span });
+                .insert(span, InferError::CannotInfer { ty: ty.normalize(folder.cx.tcx), span });
         }
 
         ty
@@ -70,9 +70,9 @@ impl TyFolder for VarFolder<'_, '_> {
     fn fold(&mut self, ty: Ty) -> Ty {
         match ty.kind() {
             TyKind::Infer(InferTy::TyVar(var)) => {
-                let root = self.cx.infcx.ty_unification_table.find(*var);
+                let root = self.cx.tcx.ty_unification_table.find(*var);
 
-                if let Some(ty) = self.cx.infcx.ty_unification_table.probe_value(root) {
+                if let Some(ty) = self.cx.tcx.ty_unification_table.probe_value(root) {
                     self.fold(ty)
                 } else {
                     self.has_unbound_vars = true;
@@ -80,10 +80,10 @@ impl TyFolder for VarFolder<'_, '_> {
                 }
             }
             TyKind::Infer(InferTy::IntVar(var)) => {
-                let root = self.cx.infcx.int_unification_table.find(*var);
+                let root = self.cx.tcx.int_unification_table.find(*var);
 
                 self.cx
-                    .infcx
+                    .tcx
                     .int_unification_table
                     .probe_value(root)
                     .map_or_else(|| TyKind::DEFAULT_INT, Into::into)

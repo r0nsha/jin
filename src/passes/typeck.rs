@@ -1,9 +1,9 @@
 mod coerce;
 mod error;
-mod infcx;
 mod instantiate;
 mod normalize;
 mod subst;
+mod tcx;
 mod unify;
 
 use ustr::UstrMap;
@@ -16,9 +16,9 @@ use crate::{
     passes::typeck::{
         coerce::CoerceExt,
         error::InferError,
-        infcx::{Env, InferCtxt},
         instantiate::instantiate,
         normalize::NormalizeTy,
+        tcx::{Env, TyCtxt},
         unify::Obligation,
     },
     span::{Span, Spanned},
@@ -29,7 +29,7 @@ pub type InferResult<T> = Result<T, InferError>;
 
 pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
     fn aux(db: &mut Db, hir: &mut Hir) -> InferResult<()> {
-        let mut cx = InferCtxt::new(db);
+        let mut cx = TyCtxt::new(db);
 
         cx.typeck_defs(hir)?;
         cx.typeck_global_vars(hir)?;
@@ -42,7 +42,7 @@ pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
     aux(db, hir).map_err(|err| err.into_diagnostic(db))
 }
 
-impl InferCtxt<'_> {
+impl TyCtxt<'_> {
     fn typeck_defs(&mut self, hir: &mut Hir) -> InferResult<()> {
         for f in &mut hir.fns {
             let ty = self.typeck_fn_sig(&mut f.sig)?;

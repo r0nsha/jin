@@ -8,14 +8,14 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct InferCtxt<'db> {
+pub struct TyCtxt<'db> {
     pub db: &'db mut Db,
-    pub storage: RefCell<InferCtxtStorage>,
+    pub storage: RefCell<TyCtxtStorage>,
 }
 
-impl<'db> InferCtxt<'db> {
+impl<'db> TyCtxt<'db> {
     pub fn new(db: &'db mut Db) -> Self {
-        Self { db, storage: RefCell::new(InferCtxtStorage::new()) }
+        Self { db, storage: RefCell::new(TyCtxtStorage::new()) }
     }
 
     pub fn lookup(&self, id: DefId) -> Ty {
@@ -48,12 +48,12 @@ impl<'db> InferCtxt<'db> {
 }
 
 #[derive(Debug)]
-pub struct InferCtxtStorage {
+pub struct TyCtxtStorage {
     pub ty_unification_table: InPlaceUnificationTable<TyVar>,
     pub int_unification_table: InPlaceUnificationTable<IntVar>,
 }
 
-impl InferCtxtStorage {
+impl TyCtxtStorage {
     pub fn new() -> Self {
         Self {
             ty_unification_table: InPlaceUnificationTable::new(),
