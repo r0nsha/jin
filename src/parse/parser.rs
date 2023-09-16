@@ -17,8 +17,7 @@ pub fn parse(db: &Db, source: &Source, tokens: Vec<Token>) -> Result<Module, Dia
     let name = QPath::from_path(db.root_dir(), source.path()).unwrap();
     let is_main = source_id == db.main_source().id();
 
-    let module = Parser::new(db.sources.borrow().get(source_id).expect("to exist"), tokens)
-        .parse(source_id, name, is_main)?;
+    let module = Parser::new(source, tokens).parse(source_id, name, is_main)?;
 
     Ok(module)
 }
