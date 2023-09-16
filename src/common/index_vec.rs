@@ -62,22 +62,39 @@ impl<K: Key, V> IndexVec<K, V> {
     }
 
     #[inline]
+    pub fn as_slice_mut(&mut self) -> &mut [V] {
+        &mut self.vec
+    }
+
+    #[inline]
     pub fn next_key(&self) -> K {
         self.vec.len().into()
     }
 }
 
-impl<I: Key, T> ops::Index<I> for IndexVec<I, T> {
+impl<K: Key, T> ops::Index<K> for IndexVec<K, T> {
     type Output = T;
 
-    fn index(&self, index: I) -> &Self::Output {
+    fn index(&self, index: K) -> &Self::Output {
         &self.vec[index.into()]
     }
 }
 
-impl<I: Key, T> ops::IndexMut<I> for IndexVec<I, T> {
-    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+impl<K: Key, T> ops::IndexMut<K> for IndexVec<K, T> {
+    fn index_mut(&mut self, index: K) -> &mut Self::Output {
         &mut self.vec[index.into()]
+    }
+}
+
+impl<K: Key, T> AsRef<[T]> for IndexVec<K, T> {
+    fn as_ref(&self) -> &[T] {
+        self.as_slice()
+    }
+}
+
+impl<K: Key, T> AsMut<[T]> for IndexVec<K, T> {
+    fn as_mut(&mut self) -> &mut [T] {
+        self.as_slice_mut()
     }
 }
 
