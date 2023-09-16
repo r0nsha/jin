@@ -18,7 +18,7 @@ use crate::{
 pub fn resolve(db: &mut Db, ast: &mut Ast) {
     let mut cx = Resolver::new(db);
 
-    cx.define_builtins();
+    cx.define_builtin_tys();
     cx.define_global_items(ast);
     cx.resolve_all(ast);
 
@@ -40,7 +40,7 @@ impl<'db> Resolver<'db> {
         Self { db, errors: vec![], global_scope: GlobalScope::new(), builtins: UstrMap::default() }
     }
 
-    fn define_builtins(&mut self) {
+    fn define_builtin_tys(&mut self) {
         let mut mk = |name: &str, ty: &dyn std::ops::Fn(&Db) -> ty::Ty| -> Option<DefId> {
             let name = ustr(name);
             self.builtins.insert(
