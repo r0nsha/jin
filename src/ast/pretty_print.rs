@@ -96,7 +96,7 @@ impl PrettyPrint for Expr {
                 cx.builder.end_child();
             }
             Self::Name(name) => {
-                cx.builder.add_empty_child(format!("`{}`", name.name));
+                cx.builder.add_empty_child(format!("`{}`", name.word));
             }
             Self::Lit(lit) => match lit.kind {
                 LitKind::Int(value) => {
@@ -178,7 +178,7 @@ impl PrettyPrint for Ty {
     fn pretty_print(&self, cx: &mut PPCtxt) {
         match self {
             Ty::Name(name) => {
-                cx.builder.add_empty_child(name.name.to_string());
+                cx.builder.add_empty_child(name.word.to_string());
 
                 if !name.args.is_empty() {
                     cx.builder.begin_child("type args".to_string());

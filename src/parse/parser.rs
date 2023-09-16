@@ -318,7 +318,7 @@ impl<'a> Parser<'a> {
             TokenKind::False => Expr::Lit(Lit { kind: LitKind::Bool(false), span: tok.span }),
             TokenKind::Ident(..) => {
                 let args = self.parse_optional_ty_args()?;
-                Expr::Name(Name { id: None, name: tok.spanned_word(), args, span: tok.span })
+                Expr::Name(Name { id: None, word: tok.spanned_word(), args, span: tok.span })
             }
             TokenKind::Int(value) => Expr::Lit(Lit { kind: LitKind::Int(value), span: tok.span }),
             _ => {
@@ -339,7 +339,7 @@ impl<'a> Parser<'a> {
         let ty = match tok.kind {
             TokenKind::Ident(..) => Ty::Name(TyName {
                 id: None,
-                name: tok.spanned_word(),
+                word: tok.spanned_word(),
                 args: vec![],
                 span: tok.span,
             }),

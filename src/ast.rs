@@ -90,7 +90,7 @@ impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
             Self::Item(x) => x.span(),
-            Self::Name(x) => x.name.span(),
+            Self::Name(x) => x.word.span(),
             Self::Return(Return { span, .. })
             | Self::If(If { span, .. })
             | Self::Block(Block { span, .. })
@@ -112,7 +112,7 @@ impl Spanned for Expr {
             Self::Unary(x) => &mut x.span,
             Self::Binary(x) => &mut x.span,
             Self::Cast(x) => &mut x.span,
-            Self::Name(x) => x.name.span_mut(),
+            Self::Name(x) => x.word.span_mut(),
             Self::Lit(x) => &mut x.span,
         }
     }
@@ -396,7 +396,7 @@ pub struct Cast {
 #[derive(Debug, Clone)]
 pub struct Name {
     pub id: Option<DefId>,
-    pub name: Word,
+    pub word: Word,
     pub args: Option<Vec<Ty>>,
     pub span: Span,
 }
@@ -436,7 +436,7 @@ impl Spanned for Ty {
 #[derive(Debug, Clone)]
 pub struct TyName {
     pub id: Option<DefId>,
-    pub name: Word,
+    pub word: Word,
     pub args: Vec<Ty>,
     pub span: Span,
 }

@@ -154,7 +154,7 @@ impl Lower<'_, Expr> for ast::Expr {
                     ExprKind::Cast(Cast { expr: Box::new(expr.lower(cx)), target: ty.lower(cx) });
                 cx.expr(kind, span)
             }
-            Self::Name(ast::Name { id, name: _, args, span }) => {
+            Self::Name(ast::Name { id, word: _, args, span }) => {
                 let kind = ExprKind::Name(Name {
                     id: id.expect("to be resolved"),
                     args: args.map(|args| args.into_iter().map(|arg| arg.lower(cx)).collect()),

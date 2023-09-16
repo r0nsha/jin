@@ -4,10 +4,7 @@ mod error;
 use ustr::{ustr, UstrMap};
 
 use crate::{
-    ast::{
-        Ast, Binary, Block, Call, CallArg, Cast, Expr, Fn, FnSig, If, Item, Let, Name, Pat, Return,
-        Ty, TyName, TyParam, Unary,
-    },
+    ast::{Ast, Block, CallArg, Expr, Fn, FnSig, Item, Let, Pat, Ty, TyParam},
     common::{QPath, Word},
     db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     name_resolution::{
@@ -83,16 +80,6 @@ impl<'db> Resolver<'db> {
         for module in &mut ast.modules {
             for item in &mut module.items {
                 self.define_global_item(module.id.expect("to be resolved"), item);
-            }
-        }
-    }
-
-    fn resolve_all(&mut self, ast: &mut Ast) {
-        for module in &mut ast.modules {
-            let mut env = Env::new(module.id.expect("ModuleId to be resolved"));
-
-            for item in &mut module.items {
-                item.resolve(self, &mut env);
             }
         }
     }
@@ -178,6 +165,141 @@ impl<'db> Resolver<'db> {
             .ok_or(ResolveError::NameNotFound(word))
     }
 
+    fn resolve_all(&mut self, ast: &mut Ast) {
+        for module in &mut ast.modules {
+            let mut env = Env::new(module.id.expect("ModuleId to be resolved"));
+
+            for item in &mut module.items {
+                self.resolve_item(item, &mut env);
+            }
+        }
+    }
+
+    fn resolve_item(&mut self, item: &mut Item, env: &mut Env) {
+        match item {
+            Item::Fn(fun) => self.resolve_fn(env, fun),
+            Item::Let(let_) => self.resolve_let(env, let_),
+        }
+    }
+
+    fn resolve_fn(&mut self, env: &mut Env, fun: &mut Fn) {
+        if !env.in_global_scope() {
+            fun.id =
+                Some(self.define_def(EnvKind::Local(env), DefKind::Fn(FnInfo::Bare), fun.sig.name));
+        }
+
+        env.with_scope(fun.sig.name.name(), ScopeKind::Fn, |env| {
+            self.resolve_sig(env, &mut fun.sig);
+            self.resolve_block(env, &mut fun.body);
+        });
+    }
+
+    fn resolve_sig(&mut self, env: &mut Env, sig: &mut FnSig) {
+        assert!(env.in_kind(ScopeKind::Fn), "FnSig must be resolved inside a ScopeKind::Fn");
+
+        self.resolve_ty_params(env, &mut sig.ty_params);
+
+        let mut defined_params = UstrMap::<Span>::default();
+
+        for p in &mut sig.params {
+            p.id = Some(self.define_local_def(env, DefKind::Variable, p.name));
+            self.resolve_ty(env, &mut p.ty);
+
+            if let Some(prev_span) = defined_params.insert(p.name.name(), p.name.span()) {
+                self.errors.push(ResolveError::MultipleParams {
+                    name: p.name.name(),
+                    prev_span,
+                    dup_span: p.name.span(),
+                });
+            }
+        }
+
+        if let Some(ret) = sig.ret.as_mut() {
+            self.resolve_ty(env, ret);
+        }
+    }
+
+    fn resolve_let(&mut self, env: &mut Env, let_: &mut Let) {
+        if !env.in_global_scope() {
+            self.define_pat(EnvKind::Local(env), DefKind::Variable, &mut let_.pat);
+
+            let_.pat.walk(|pat| {
+                env.insert(pat.word.name(), pat.id.unwrap());
+            });
+        }
+
+        env.with_anon_scope(ScopeKind::Initializer, |env| {
+            if let Some(ty) = &mut let_.ty_annot {
+                self.resolve_ty(env, ty);
+            }
+
+            self.resolve_expr(env, &mut let_.value);
+        });
+    }
+
+    fn resolve_block(&mut self, env: &mut Env, blk: &mut Block) {
+        env.with_anon_scope(ScopeKind::Block, |env| {
+            for expr in &mut blk.exprs {
+                self.resolve_expr(env, expr);
+            }
+        });
+    }
+
+    fn resolve_expr(&mut self, env: &mut Env, expr: &mut Expr) {
+        match expr {
+            Expr::Item(item) => self.resolve_item(item, env),
+            Expr::Return(ret) => {
+                if let Some(expr) = ret.expr.as_mut() {
+                    self.resolve_expr(env, expr);
+                }
+            }
+            Expr::If(if_) => {
+                self.resolve_expr(env, &mut if_.cond);
+                self.resolve_expr(env, &mut if_.then);
+
+                if let Some(otherwise) = &mut if_.otherwise {
+                    self.resolve_expr(env, otherwise);
+                }
+            }
+            Expr::Block(blk) => self.resolve_block(env, blk),
+            Expr::Call(call) => {
+                self.resolve_expr(env, &mut call.callee);
+
+                for arg in &mut call.args {
+                    match arg {
+                        CallArg::Named(_, expr) | CallArg::Positional(expr) => {
+                            self.resolve_expr(env, expr);
+                        }
+                    }
+                }
+            }
+            Expr::Unary(un) => {
+                self.resolve_expr(env, &mut un.expr);
+            }
+            Expr::Binary(bin) => {
+                self.resolve_expr(env, &mut bin.lhs);
+                self.resolve_expr(env, &mut bin.rhs);
+            }
+            Expr::Cast(cast) => {
+                self.resolve_expr(env, &mut cast.expr);
+                self.resolve_ty(env, &mut cast.ty);
+            }
+            Expr::Name(name) => {
+                match self.lookup(env, name.word) {
+                    Ok(id) => name.id = Some(id),
+                    Err(err) => self.errors.push(err),
+                }
+
+                if let Some(args) = &mut name.args {
+                    for arg in args {
+                        self.resolve_ty(env, arg);
+                    }
+                }
+            }
+            Expr::Lit(_) => (),
+        }
+    }
+
     fn resolve_ty_params(&mut self, env: &mut Env, ty_params: &mut [TyParam]) {
         let mut defined_ty_params = UstrMap::<Span>::default();
 
@@ -194,193 +316,18 @@ impl<'db> Resolver<'db> {
             }
         }
     }
-}
 
-trait Resolve<'db> {
-    fn resolve(&mut self, cx: &mut Resolver<'db>, env: &mut Env);
-}
-
-impl Resolve<'_> for Item {
-    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        match self {
-            Item::Fn(fun) => fun.resolve(cx, env),
-            Item::Let(let_) => let_.resolve(cx, env),
-        }
-    }
-}
-
-impl Resolve<'_> for Expr {
-    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        match self {
-            Self::Item(x) => x.resolve(cx, env),
-            Self::If(x) => x.resolve(cx, env),
-            Self::Block(x) => x.resolve(cx, env),
-            Self::Return(x) => x.resolve(cx, env),
-            Self::Call(x) => x.resolve(cx, env),
-            Self::Unary(x) => x.resolve(cx, env),
-            Self::Binary(x) => x.resolve(cx, env),
-            Self::Cast(x) => x.resolve(cx, env),
-            Self::Name(x) => x.resolve(cx, env),
-            Self::Lit(..) => (),
-        }
-    }
-}
-
-impl Resolve<'_> for Fn {
-    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        if !env.in_global_scope() {
-            self.id =
-                Some(cx.define_def(EnvKind::Local(env), DefKind::Fn(FnInfo::Bare), self.sig.name));
-        }
-
-        env.with_scope(self.sig.name.name(), ScopeKind::Fn, |env| {
-            self.sig.resolve(cx, env);
-            self.body.resolve(cx, env);
-        });
-    }
-}
-
-impl Resolve<'_> for Let {
-    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        if !env.in_global_scope() {
-            cx.define_pat(EnvKind::Local(env), DefKind::Variable, &mut self.pat);
-
-            self.pat.walk(|pat| {
-                env.insert(pat.word.name(), pat.id.unwrap());
-            });
-        }
-
-        env.with_anon_scope(ScopeKind::Initializer, |env| {
-            if let Some(ty) = &mut self.ty_annot {
-                ty.resolve(cx, env);
-            }
-
-            self.value.resolve(cx, env);
-        });
-    }
-}
-
-impl Resolve<'_> for FnSig {
-    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        assert!(env.in_kind(ScopeKind::Fn), "FnSig must be resolved inside a ScopeKind::Fn");
-
-        cx.resolve_ty_params(env, &mut self.ty_params);
-
-        let mut defined_params = UstrMap::<Span>::default();
-
-        for param in &mut self.params {
-            param.id = Some(cx.define_local_def(env, DefKind::Variable, param.name));
-            param.ty.resolve(cx, env);
-
-            if let Some(prev_span) = defined_params.insert(param.name.name(), param.name.span()) {
-                cx.errors.push(ResolveError::MultipleParams {
-                    name: param.name.name(),
-                    prev_span,
-                    dup_span: param.name.span(),
-                });
-            }
-        }
-
-        if let Some(ret) = self.ret.as_mut() {
-            ret.resolve(cx, env);
-        }
-    }
-}
-
-impl Resolve<'_> for If {
-    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        self.cond.resolve(cx, env);
-        self.then.resolve(cx, env);
-
-        if let Some(otherwise) = &mut self.otherwise {
-            otherwise.resolve(cx, env);
-        }
-    }
-}
-
-impl Resolve<'_> for Block {
-    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        env.with_anon_scope(ScopeKind::Block, |env| {
-            for expr in &mut self.exprs {
-                expr.resolve(cx, env);
-            }
-        });
-    }
-}
-
-impl Resolve<'_> for Return {
-    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        if let Some(expr) = self.expr.as_mut() {
-            expr.resolve(cx, env);
-        }
-    }
-}
-
-impl Resolve<'_> for Call {
-    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        self.callee.resolve(cx, env);
-
-        for arg in &mut self.args {
-            match arg {
-                CallArg::Named(_, expr) | CallArg::Positional(expr) => expr.resolve(cx, env),
-            }
-        }
-    }
-}
-
-impl Resolve<'_> for Unary {
-    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        self.expr.resolve(cx, env);
-    }
-}
-
-impl Resolve<'_> for Binary {
-    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        self.lhs.resolve(cx, env);
-        self.rhs.resolve(cx, env);
-    }
-}
-
-impl Resolve<'_> for Cast {
-    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        self.expr.resolve(cx, env);
-        self.ty.resolve(cx, env);
-    }
-}
-
-impl Resolve<'_> for Name {
-    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        match cx.lookup(env, self.name) {
-            Ok(id) => self.id = Some(id),
-            Err(err) => cx.errors.push(err),
-        }
-
-        if let Some(args) = &mut self.args {
-            for arg in args {
-                arg.resolve(cx, env);
-            }
-        }
-    }
-}
-
-impl Resolve<'_> for Ty {
-    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        match self {
-            Self::Name(name) => name.resolve(cx, env),
-            Self::Infer(span) if env.current().kind == ScopeKind::Fn => {
+    fn resolve_ty(&mut self, env: &Env, ty: &mut Ty) {
+        match ty {
+            Ty::Name(name) => match self.lookup(env, name.word) {
+                Ok(id) => name.id = Some(id),
+                Err(err) => self.errors.push(err),
+            },
+            Ty::Infer(span) if env.current().kind == ScopeKind::Fn => {
                 // TODO: pass a `allow_infer_ty: AllowInferTy::{Yes/No}` instead of scope kind
-                cx.errors.push(ResolveError::InvalidInferTy(*span));
+                self.errors.push(ResolveError::InvalidInferTy(*span));
             }
             _ => (),
-        }
-    }
-}
-
-impl Resolve<'_> for TyName {
-    fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        match cx.lookup(env, self.name) {
-            Ok(id) => self.id = Some(id),
-            Err(err) => cx.errors.push(err),
         }
     }
 }
