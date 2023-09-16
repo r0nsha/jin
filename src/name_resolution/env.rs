@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use ustr::{Ustr, UstrMap};
 
+use crate::db::Vis;
 use crate::{
     common::QPath,
     db::{Db, DefId, ModuleId, ScopeLevel},
@@ -142,4 +143,10 @@ pub enum ScopeKind {
     Fn,
     Block,
     Initializer,
+}
+
+#[derive(Debug)]
+pub enum EnvKind<'a> {
+    Global(ModuleId, Vis),
+    Local(&'a mut Env),
 }
