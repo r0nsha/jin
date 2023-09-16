@@ -34,7 +34,6 @@ pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
         TyCtxt::report_cyclic_global_variables(hir)?;
 
         cx.typeck_defs(hir)?;
-        cx.typeck_global_vars(hir)?;
         cx.typeck_bodies(hir)?;
         cx.subst(hir);
 
@@ -94,10 +93,6 @@ impl TyCtxt<'_> {
             }
         }
 
-        Ok(())
-    }
-
-    fn typeck_global_vars(&mut self, hir: &mut Hir) -> TypeckResult<()> {
         for let_ in &mut hir.lets {
             self.typeck_let(let_)?;
         }
