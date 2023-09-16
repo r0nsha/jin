@@ -233,10 +233,10 @@ impl Resolve<'_> for Fn {
                 Some(cx.define_def(EnvKind::Local(env), DefKind::Fn(FnInfo::Bare), self.sig.name));
         }
 
-        env.push(self.sig.name.name(), ScopeKind::Fn);
-        self.sig.resolve(cx, env);
-        self.body.resolve(cx, env);
-        env.pop();
+        env.with_scope(self.sig.name.name(), ScopeKind::Fn, |env| {
+            self.sig.resolve(cx, env);
+            self.body.resolve(cx, env);
+        });
     }
 }
 
@@ -250,15 +250,13 @@ impl Resolve<'_> for Let {
             });
         }
 
-        env.push(ustr("_"), ScopeKind::Initializer);
+        env.with_anon_scope(ScopeKind::Initializer, |env| {
+            if let Some(ty) = &mut self.ty_annot {
+                ty.resolve(cx, env);
+            }
 
-        if let Some(ty) = &mut self.ty_annot {
-            ty.resolve(cx, env);
-        }
-
-        self.value.resolve(cx, env);
-
-        env.pop();
+            self.value.resolve(cx, env);
+        });
     }
 }
 
@@ -302,13 +300,11 @@ impl Resolve<'_> for If {
 
 impl Resolve<'_> for Block {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
-        env.push(ustr("_"), ScopeKind::Block);
-
-        for expr in &mut self.exprs {
-            expr.resolve(cx, env);
-        }
-
-        env.pop();
+        env.with_anon_scope(ScopeKind::Block, |env| {
+            for expr in &mut self.exprs {
+                expr.resolve(cx, env);
+            }
+        });
     }
 }
 

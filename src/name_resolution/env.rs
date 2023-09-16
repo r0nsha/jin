@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
-use ustr::{Ustr, UstrMap};
+use ustr::{ustr, Ustr, UstrMap};
 
-use crate::db::Vis;
 use crate::{
     common::QPath,
-    db::{Db, DefId, ModuleId, ScopeLevel},
+    db::{Db, DefId, ModuleId, ScopeLevel, Vis},
 };
 
 #[derive(Debug)]
@@ -35,16 +34,37 @@ pub struct Env {
 
 #[allow(unused)]
 impl Env {
+    const ANON_SCOPE: &str = "_";
+
     pub fn new(module_id: ModuleId) -> Self {
         Self { module_id, scopes: vec![] }
     }
 
-    pub fn push(&mut self, name: Ustr, kind: ScopeKind) {
+    pub fn push_scope(&mut self, name: Ustr, kind: ScopeKind) {
         self.scopes.push(Scope { kind, name, defs: UstrMap::default() });
     }
 
-    pub fn pop(&mut self) -> Option<Scope> {
+    pub fn pop_scope(&mut self) -> Option<Scope> {
         self.scopes.pop()
+    }
+
+    pub fn with_scope<R>(
+        &mut self,
+        name: Ustr,
+        kind: ScopeKind,
+        mut f: impl FnMut(&mut Self) -> R,
+    ) -> R {
+        self.push_scope(name, kind);
+        let res = f(self);
+        self.pop_scope();
+        res
+    }
+
+    pub fn with_anon_scope<R>(&mut self, kind: ScopeKind, mut f: impl FnMut(&mut Self) -> R) -> R {
+        self.push_scope(ustr(Self::ANON_SCOPE), kind);
+        let res = f(self);
+        self.pop_scope();
+        res
     }
 
     pub fn current(&self) -> &Scope {
