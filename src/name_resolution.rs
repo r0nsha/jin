@@ -9,7 +9,7 @@ use crate::{
         Ty, TyName, TyParam, Unary,
     },
     common::{QPath, Word},
-    db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ModuleInfo, ScopeInfo, ScopeLevel, Vis},
+    db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     name_resolution::{
         env::{Env, GlobalScope, ScopeKind},
         error::ResolveError,
@@ -21,7 +21,6 @@ use crate::{
 pub fn resolve(db: &mut Db, ast: &mut Ast) {
     let mut cx = Resolver::new(db);
 
-    cx.define_modules(ast);
     cx.define_builtins();
     cx.define_global_items(ast);
     cx.resolve_all(ast);
@@ -78,17 +77,6 @@ impl<'db> Resolver<'db> {
 
         mk(sym::BOOL, &|db| db.types.bool);
         mk(sym::NEVER, &|db| db.types.never);
-    }
-
-    fn define_modules(&mut self, ast: &mut Ast) {
-        for module in &mut ast.modules {
-            module.id = Some(ModuleInfo::alloc(
-                self.db,
-                module.source,
-                module.name.clone(),
-                module.is_main(),
-            ));
-        }
     }
 
     fn define_global_items(&mut self, ast: &mut Ast) {
