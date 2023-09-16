@@ -43,16 +43,18 @@ impl<'db> Resolver<'db> {
     fn define_builtin_tys(&mut self) {
         let mut mk = |name: &str, ty: &dyn std::ops::Fn(&Db) -> ty::Ty| -> Option<DefId> {
             let name = ustr(name);
+            let scope_info = ScopeInfo {
+                module_id: self.db.main_module_id().expect("to be resolved"),
+                level: ScopeLevel::Global,
+                vis: Vis::Public,
+            };
+
             self.builtins.insert(
                 name,
                 Def::alloc(
                     self.db,
                     QPath::from(name),
-                    ScopeInfo {
-                        module_id: self.db.main_module_id().expect("to be resolved"),
-                        level: ScopeLevel::Global,
-                        vis: Vis::Public,
-                    },
+                    scope_info,
                     DefKind::Ty(ty(self.db)),
                     self.db.types.typ,
                     Span::unknown(),
