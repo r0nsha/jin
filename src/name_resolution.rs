@@ -99,22 +99,19 @@ impl<'db> Resolver<'db> {
 
     fn define_global_item(&mut self, module_id: ModuleId, item: &mut Item) {
         match item {
-            Item::Fn(fun) => self.define_fn(module_id, fun),
+            Item::Fn(fun) => {
+                fun.id = Some(self.define_def(
+                    EnvKind::Global(module_id, Vis::Public),
+                    DefKind::Fn(FnInfo::Bare),
+                    fun.sig.name,
+                ));
+            }
             Item::Let(let_) => self.define_pat(
                 EnvKind::Global(module_id, Vis::Public),
                 DefKind::Global,
                 &mut let_.pat,
             ),
         }
-    }
-
-    fn define_fn(&mut self, module_id: ModuleId, fun: &mut Fn) {
-        fun.id = Some(self.define_global_def(
-            module_id,
-            Vis::Public,
-            DefKind::Fn(FnInfo::Bare),
-            fun.sig.name,
-        ));
     }
 
     fn define_global_def(
@@ -232,8 +229,8 @@ impl Resolve<'_> for Expr {
 impl Resolve<'_> for Fn {
     fn resolve(&mut self, cx: &mut Resolver<'_>, env: &mut Env) {
         if !env.in_global_scope() {
-            let id = cx.define_def(EnvKind::Local(env), DefKind::Fn(FnInfo::Bare), self.sig.name);
-            self.id = Some(id);
+            self.id =
+                Some(cx.define_def(EnvKind::Local(env), DefKind::Fn(FnInfo::Bare), self.sig.name));
         }
 
         env.push(self.sig.name.name(), ScopeKind::Fn);
