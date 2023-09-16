@@ -72,6 +72,16 @@ impl<K: Key, V> IndexVec<K, V> {
     }
 }
 
+impl<K: Key, T> IntoIterator for IndexVec<K, T> {
+    type Item = T;
+
+    type IntoIter = std::vec::IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.vec.into_iter()
+    }
+}
+
 impl<K: Key, T> ops::Index<K> for IndexVec<K, T> {
     type Output = T;
 
