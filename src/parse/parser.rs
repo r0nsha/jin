@@ -13,12 +13,9 @@ use crate::{
 };
 
 pub fn parse(db: &Db, source: &Source, tokens: Vec<Token>) -> Result<Module, Diagnostic> {
-    let source_id = source.id();
     let name = QPath::from_path(db.root_dir(), source.path()).unwrap();
-    let is_main = source_id == db.main_source().id();
-
-    let module = Parser::new(source, tokens).parse(source_id, name, is_main)?;
-
+    let is_main = source.id() == db.main_source().id();
+    let module = Parser::new(source, tokens).parse(source.id(), name, is_main)?;
     Ok(module)
 }
 

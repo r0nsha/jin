@@ -121,10 +121,12 @@ pub struct Source {
 }
 
 impl Source {
+    #[inline]
     pub fn id(&self) -> SourceId {
         self.id
     }
 
+    #[inline]
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -133,6 +135,7 @@ impl Source {
         self.path.file_stem().expect("a source to be a file").to_string_lossy().to_string()
     }
 
+    #[inline]
     pub fn contents(&self) -> &str {
         self.contents.as_ref()
     }
