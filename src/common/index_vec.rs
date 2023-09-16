@@ -72,16 +72,6 @@ impl<K: Key, V> IndexVec<K, V> {
     }
 }
 
-impl<K: Key, T> IntoIterator for IndexVec<K, T> {
-    type Item = T;
-
-    type IntoIter = std::vec::IntoIter<T>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        self.vec.into_iter()
-    }
-}
-
 impl<K: Key, T> ops::Index<K> for IndexVec<K, T> {
     type Output = T;
 
@@ -105,6 +95,36 @@ impl<K: Key, T> AsRef<[T]> for IndexVec<K, T> {
 impl<K: Key, T> AsMut<[T]> for IndexVec<K, T> {
     fn as_mut(&mut self) -> &mut [T] {
         self.as_slice_mut()
+    }
+}
+
+impl<K: Key, T> IntoIterator for IndexVec<K, T> {
+    type Item = T;
+
+    type IntoIter = std::vec::IntoIter<T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.vec.into_iter()
+    }
+}
+
+impl<'a, K: Key, T> IntoIterator for &'a IndexVec<K, T> {
+    type Item = &'a T;
+
+    type IntoIter = std::slice::Iter<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.vec.iter()
+    }
+}
+
+impl<'a, K: Key, T> IntoIterator for &'a mut IndexVec<K, T> {
+    type Item = &'a mut T;
+
+    type IntoIter = std::slice::IterMut<'a, T>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.vec.iter_mut()
     }
 }
 
