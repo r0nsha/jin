@@ -108,7 +108,7 @@ fn build(db: &mut Db) {
     db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file)).expect("emitting ast failed");
 
     // Resolve all root symbols into their corresponding id's
-    db.time.start("resolve");
+    db.time.start("name resolution");
     name_resolution::resolve(db, &mut ast);
     expect!(db);
 
