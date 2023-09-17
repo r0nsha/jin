@@ -9,7 +9,7 @@ use inkwell::{
     values::{AnyValue, BasicValue, BasicValueEnum, FunctionValue, GlobalValue, PointerValue},
     AddressSpace, IntPredicate,
 };
-use ustr::{Ustr, UstrMap};
+use ustr::UstrMap;
 
 use crate::{
     ast::{BinOp, CmpOp, UnOp},
@@ -32,7 +32,8 @@ pub struct Generator<'db, 'cx> {
 
     pub functions: HashMap<FnSigId, FunctionValue<'cx>>,
     pub globals: HashMap<GlobalId, GlobalValue<'cx>>,
-    pub global_strs: UstrMap<GlobalValue<'cx>>,
+    pub static_strs: UstrMap<PointerValue<'cx>>,
+    pub static_str_slices: UstrMap<PointerValue<'cx>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -442,11 +443,14 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 }
             }
             ExprKind::Index { value, index } => {
-                let pty = state.body.expr(*value).ty.llgepty(self);
-                dbg!(pty);
-                let value = self.codegen_expr(state, *value);
-                // self.bx.build_in_bounds_gep(value.ty, ptr, ordered_indexes, name)
-                todo!()
+                let gepped_ty = state.body.expr(*value).ty.llpointee(self);
+                let pointee_ty = expr.ty.llty(self);
+                let ptr = self.codegen_expr(state, *value).into_pointer_value();
+
+                let gep =
+                    self.bx.build_struct_gep(gepped_ty, ptr, *index as u32, "index_gap").unwrap();
+
+                self.bx.build_load(pointee_ty, gep, "load_index_gep")
             }
             ExprKind::Id(id) => match id {
                 Id::Fn(fid) => {
@@ -497,7 +501,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
     fn const_value(&mut self, value: &Const, ty: Ty) -> BasicValueEnum<'cx> {
         match value {
-            Const::Str(value) => self.global_str(*value).as_pointer_value().into(),
+            Const::Str(value) => self.const_str_slice(*value, "str").into(),
             Const::Int(value) => {
                 let int = ty
                     .llty(self)
@@ -513,13 +517,6 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             Const::Bool(value) => self.bool_value(*value).into(),
             Const::Unit => self.unit_value().into(),
         }
-    }
-
-    fn global_str(&mut self, value: Ustr) -> GlobalValue<'cx> {
-        *self
-            .global_strs
-            .entry(value)
-            .or_insert_with(|| self.bx.build_global_string_ptr(value.as_str(), "str"))
     }
 }
 

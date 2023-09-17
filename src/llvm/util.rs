@@ -1,31 +1,71 @@
 use inkwell::{
     basic_block::BasicBlock,
     types::BasicTypeEnum,
-    values::{BasicValueEnum, IntValue, PointerValue, StructValue},
+    values::{BasicValue, BasicValueEnum, IntValue, PointerValue, StructValue},
 };
+use ustr::Ustr;
 
 use crate::llvm::generate::{FnState, Generator};
 
 impl<'db, 'cx> Generator<'db, 'cx> {
+    #[inline]
     pub fn append_block(&self, state: &FnState<'db, 'cx>, name: &str) -> BasicBlock<'cx> {
         self.context.append_basic_block(state.function_value, name)
     }
 
+    #[inline]
     pub fn current_block(&self) -> BasicBlock<'cx> {
         self.bx.get_insert_block().unwrap()
     }
 
+    #[inline]
     pub fn start_block(&self, state: &mut FnState<'db, 'cx>, bb: BasicBlock<'cx>) {
         state.current_block = bb;
         self.bx.position_at_end(bb);
     }
 
+    #[inline]
     pub fn unit_value(&self) -> StructValue<'cx> {
         self.unit_ty.const_named_struct(&[])
     }
 
+    #[inline]
     pub fn bool_value(&self, value: bool) -> IntValue<'cx> {
         self.context.bool_type().const_int(u64::from(value), false)
+    }
+
+    pub fn const_str_slice(&mut self, value: impl Into<Ustr>, name: &str) -> PointerValue<'cx> {
+        let value = value.into();
+
+        if let Some(slice) = self.static_str_slices.get(&value) {
+            *slice
+        } else {
+            let static_str = self
+                .bx
+                .build_global_string_ptr(value.as_str(), &format!("{name}_str"))
+                .as_pointer_value();
+
+            self.static_strs.insert(value, static_str);
+
+            let len = self.isize_ty.const_int(value.len() as u64, false);
+            let slice = self.const_slice(static_str, len);
+            let static_slice = self.module.add_global(slice.get_type(), None, name);
+            static_slice.set_initializer(&slice);
+
+            self.static_str_slices.insert(value, static_slice.as_pointer_value());
+
+            static_slice.as_pointer_value()
+        }
+    }
+
+    #[inline]
+    pub fn const_slice(&self, ptr: PointerValue<'cx>, len: IntValue<'cx>) -> StructValue<'cx> {
+        self.const_struct(&[ptr.as_basic_value_enum(), len.as_basic_value_enum()])
+    }
+
+    #[inline]
+    pub fn const_struct(&self, values: &[BasicValueEnum<'cx>]) -> StructValue<'cx> {
+        self.context.const_struct(values, false)
     }
 
     pub fn current_block_is_terminating(&self) -> bool {
@@ -60,22 +100,6 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         self.bx.position_at_end(state.current_block);
         ptr
     }
-
-    // #[allow(unused)]
-    // fn gep_at_index(
-    //     &mut self,
-    //     load: BasicValueEnum<'cx>,
-    //     index: u32,
-    //     name: &str,
-    // ) -> BasicValueEnum<'cx> {
-    //     let instruction = load.as_instruction_value().unwrap();
-    //     assert_eq!(instruction.get_opcode(), InstructionOpcode::Load);
-    //
-    //     let pointer = instruction.get_operand(0).unwrap().left().unwrap().into_pointer_value();
-    //
-    //     let gep = self.builder.build_struct_gep(pointer, index, name).unwrap();
-    //     self.builder.build_load(gep, name)
-    // }
 
     #[allow(unused)]
     pub fn print_current_state(&self, state: &FnState<'db, 'cx>) {

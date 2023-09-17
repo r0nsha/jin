@@ -55,7 +55,8 @@ pub fn codegen(db: &mut Db, tir: &Tir) -> PathBuf {
         unit_ty,
         functions: HashMap::default(),
         globals: HashMap::default(),
-        global_strs: UstrMap::default(),
+        static_strs: UstrMap::default(),
+        static_str_slices: UstrMap::default(),
     };
 
     g.db.time.start("llvm generation");

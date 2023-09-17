@@ -1,4 +1,7 @@
 fn main() = {
-	let hello = "Hello, World!\0"
-	let len = hello.len
+	fn foo() uint = {
+		let hello = "Hello, World!\0"
+		hello.len
+	}
+	foo()
 }

@@ -30,7 +30,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
 pub trait LlvmTy<'db, 'cx, T> {
     fn llty(&self, cx: &Generator<'db, 'cx>) -> T;
-    fn llgepty(&self, cx: &Generator<'db, 'cx>) -> StructType<'cx>;
+    fn llpointee(&self, cx: &Generator<'db, 'cx>) -> BasicTypeEnum<'cx>;
 }
 
 impl<'db, 'cx> LlvmTy<'db, 'cx, BasicTypeEnum<'cx>> for TyKind {
@@ -42,13 +42,13 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, BasicTypeEnum<'cx>> for TyKind {
             Self::Bool => cx.context.bool_type().into(),
             Self::Unit => cx.unit_ty().into(),
             Self::Never => cx.never_ty().into(),
-            _ => panic!("cannot gep {self:?}"),
+            _ => panic!("{self:?} has no pointee"),
         }
     }
 
-    fn llgepty(&self, cx: &Generator<'db, 'cx>) -> StructType<'cx> {
+    fn llpointee(&self, cx: &Generator<'db, 'cx>) -> BasicTypeEnum<'cx> {
         match self {
-            Self::Str => cx.str_ty(),
+            Self::Str => cx.str_ty().into(),
             _ => panic!("unexpected type: {self:?}"),
         }
     }
@@ -65,8 +65,8 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, IntType<'cx>> for IntTy {
         }
     }
 
-    fn llgepty(&self, _: &Generator<'db, 'cx>) -> StructType<'cx> {
-        panic!("cannot gep {self:?}");
+    fn llpointee(&self, _: &Generator<'db, 'cx>) -> BasicTypeEnum<'cx> {
+        panic!("{self:?} has no pointee");
     }
 }
 
@@ -81,8 +81,8 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, IntType<'cx>> for UintTy {
         }
     }
 
-    fn llgepty(&self, _: &Generator<'db, 'cx>) -> StructType<'cx> {
-        panic!("cannot gep {self:?}");
+    fn llpointee(&self, _: &Generator<'db, 'cx>) -> BasicTypeEnum<'cx> {
+        panic!("{self:?} has no pointee");
     }
 }
 
@@ -92,7 +92,7 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, FunctionType<'cx>> for FnTy {
         self.ret.llty(cx).fn_type(&param_tys, false)
     }
 
-    fn llgepty(&self, _: &Generator<'db, 'cx>) -> StructType<'cx> {
-        panic!("cannot gep {self:?}");
+    fn llpointee(&self, _: &Generator<'db, 'cx>) -> BasicTypeEnum<'cx> {
+        panic!("{self:?} has no pointee");
     }
 }
