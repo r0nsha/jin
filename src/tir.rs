@@ -15,6 +15,7 @@ use crate::{
     ty::Ty,
 };
 
+new_key_type!(ExternFnId);
 new_key_type!(FnId);
 new_key_type!(FnSigId);
 new_key_type!(GlobalId);
@@ -25,6 +26,7 @@ new_key_type!(ExprId);
 pub struct Tir {
     pub sigs: IndexVec<FnSigId, FnSig>,
     pub fns: IndexVec<FnId, Fn>,
+    pub extern_fns: IndexVec<ExternFnId, ExternFn>,
     pub globals: IndexVec<GlobalId, Global>,
     pub main_fn: Option<FnSigId>,
 }
@@ -34,6 +36,7 @@ impl Tir {
         Self {
             sigs: IndexVec::new(),
             fns: IndexVec::new(),
+            extern_fns: IndexVec::new(),
             globals: IndexVec::new(),
             main_fn: None,
         }
@@ -51,6 +54,13 @@ pub struct Fn {
     pub sig: FnSigId,
     pub value: ExprId,
     pub body: Body,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExternFn {
+    pub id: ExternFnId,
+    pub def_id: DefId,
+    pub sig: FnSigId,
 }
 
 impl Fn {

@@ -5,12 +5,12 @@ use ustr::{ustr, Ustr};
 use crate::{
     db::{Db, DefId, DefKind},
     hir,
-    hir::{const_eval::Const, Hir},
+    hir::{const_eval::Const, FnKind, Hir},
     subst::{ParamFolder, Subst},
     sym,
     tir::{
-        Body, Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Global, GlobalId, Id,
-        Local, LocalId, Tir,
+        Body, Expr, ExprId, ExprKind, Exprs, ExternFn, Fn, FnParam, FnSig, FnSigId, Global,
+        GlobalId, Id, Local, LocalId, Tir,
     },
     ty::{
         coerce::{CoercionKind, Coercions},
@@ -182,20 +182,26 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
             self.create_local(param.def_id, param.ty);
         }
 
-        todo!();
-        // let f = Fn {
-        //     id: self.cx.tir.fns.next_key(),
-        //     def_id: f.id,
-        //     sig,
-        //     value: self.lower_expr(&f.body),
-        //     body: self.body,
-        // };
-        //
-        // if self.cx.db.main_function_id() == Some(f.def_id) {
-        //     self.cx.tir.main_fn = Some(f.sig);
-        // }
-        //
-        // self.cx.tir.fns.push(f);
+        match &f.kind {
+            FnKind::Bare { body } => {
+                if self.cx.db.main_function_id() == Some(f.id) {
+                    self.cx.tir.main_fn = Some(sig);
+                }
+
+                let value = self.lower_expr(body);
+
+                self.cx.tir.fns.push_with_key(|id| Fn {
+                    id,
+                    def_id: f.id,
+                    sig,
+                    value,
+                    body: self.body,
+                });
+            }
+            FnKind::Extern => {
+                self.cx.tir.extern_fns.push_with_key(|id| ExternFn { id, def_id: f.id, sig });
+            }
+        }
     }
 
     fn lower_global(mut self, let_: &hir::Let) -> Option<GlobalId> {
