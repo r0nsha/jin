@@ -47,4 +47,25 @@ impl<'db> TyCtxt<'db> {
 
         Ok(())
     }
+
+    pub fn validate_attrs(attrs: &[Attr], placement: AttrsPlacement) -> TypeckResult<()> {
+        for attr in attrs {
+            match (attr.kind, placement) {
+                (AttrKind::Lib, AttrsPlacement::ExternFn | AttrsPlacement::ExternLet) => (),
+                (kind, _) => {
+                    return Err(TypeckError::InvalidAttrPlacement { kind, span: attr.span })
+                }
+            }
+        }
+
+        Ok(())
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum AttrsPlacement {
+    Fn,
+    ExternFn,
+    Let,
+    ExternLet,
 }

@@ -18,6 +18,7 @@ use crate::{
     sym,
     ty::{FnTy, FnTyParam, Instantiation, ParamTy, Ty, TyKind},
     typeck::{
+        attrs::AttrsPlacement,
         coerce::CoerceExt,
         error::TypeckError,
         instantiate::instantiate,
@@ -97,6 +98,7 @@ impl TyCtxt<'_> {
         for let_ in &mut hir.extern_lets {
             self.typeck_attrs(let_.module_id, &mut let_.attrs)?;
             self.db[let_.id].ty = self.typeck_ty(&let_.ty_annot)?;
+            Self::validate_attrs(&let_.attrs, AttrsPlacement::ExternLet)?;
         }
 
         Ok(())
@@ -156,6 +158,8 @@ impl TyCtxt<'_> {
 
         match &mut f.kind {
             FnKind::Bare { body } => {
+                Self::validate_attrs(&f.attrs, AttrsPlacement::Fn)?;
+
                 self.typeck_expr(body, &mut env, Some(ret_ty))?;
 
                 let unify_body_res = self
@@ -174,7 +178,10 @@ impl TyCtxt<'_> {
                     unify_body_res.map_err(Into::into)
                 }
             }
-            FnKind::Extern => Ok(()),
+            FnKind::Extern => {
+                Self::validate_attrs(&f.attrs, AttrsPlacement::ExternFn)?;
+                Ok(())
+            }
         }
     }
 
@@ -185,6 +192,8 @@ impl TyCtxt<'_> {
 
         let ty =
             if let Some(ty) = &let_.ty_annot { self.typeck_ty(ty)? } else { self.fresh_ty_var() };
+
+        Self::validate_attrs(&let_.attrs, AttrsPlacement::Let)?;
 
         self.typeck_expr(&mut let_.value, &mut env, Some(ty))?;
 

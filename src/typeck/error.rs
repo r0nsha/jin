@@ -1,6 +1,7 @@
 use ustr::Ustr;
 
 use crate::{
+    ast::AttrKind,
     common::Word,
     db::{Db, DefId},
     diagnostics::{Diagnostic, Label},
@@ -27,6 +28,7 @@ pub enum TypeckError {
     InvalidMember { ty: Ty, member: Word },
     NonConstAttrValue { ty: Ty, span: Span },
     PathNotFound { path: Ustr, span: Span },
+    InvalidAttrPlacement { kind: AttrKind, span: Span },
 }
 
 impl TypeckError {
@@ -148,8 +150,13 @@ impl TypeckError {
                     .with_label(Label::primary(span).with_message("not a constant"))
             }
             Self::PathNotFound { path, span } => Diagnostic::error("check::path_not_found")
-                .with_message(format!("path `{path}` not found",))
+                .with_message(format!("path `{path}` not found"))
                 .with_label(Label::primary(span).with_message("not found")),
+            Self::InvalidAttrPlacement { kind, span } => {
+                Diagnostic::error("check::invalid_attr_placement")
+                    .with_message(format!("attribute `{kind}` cannot be placed here"))
+                    .with_label(Label::primary(span).with_message("invalid attribute"))
+            }
         }
     }
 }
