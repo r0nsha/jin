@@ -21,10 +21,7 @@ use crate::{
 
 pub fn lower(db: &mut Db, hir: &Hir) -> Tir {
     let mut tir = Tir::new();
-    let mut cx = LowerCtxt::new(db, hir, &mut tir);
-
-    cx.lower_all();
-
+    LowerCtxt::new(db, hir, &mut tir).lower_all();
     tir
 }
 
