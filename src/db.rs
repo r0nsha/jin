@@ -218,6 +218,10 @@ impl ModuleInfo {
 
         id
     }
+
+    pub fn source(&self, db: &Db) -> &Source {
+        db.sources.borrow().get(self.source_id).unwrap()
+    }
 }
 
 #[derive(Debug, Clone)]

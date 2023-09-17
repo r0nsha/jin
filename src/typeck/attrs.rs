@@ -28,8 +28,11 @@ impl<'db> TyCtxt<'db> {
                 AttrKind::Lib => {
                     self.at(Obligation::obvious(value_span)).eq(self.db.types.str, value_ty)?;
                     let path = *value.as_str().unwrap();
-                    let lib = ExternLib::try_from_str(path, self.db[env.module_id()])
-                        .ok_or(TypeckError::PathNotFound { path, span: value_span })?;
+                    let lib = ExternLib::try_from_str(
+                        &path,
+                        &self.db[env.module_id()].source(self.db).path,
+                    )
+                    .ok_or(TypeckError::PathNotFound { path, span: value_span })?;
                     self.db.extern_libs.insert(lib);
                 }
             }
