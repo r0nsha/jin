@@ -27,7 +27,6 @@ impl ConstStorage {
     }
 
     pub fn eval_expr(&mut self, expr: &Expr) -> Result<(), ConstEvalError> {
-        // TODO: const eval block
         // TODO: const eval name
 
         let result = match &expr.kind {
@@ -36,8 +35,10 @@ impl ConstStorage {
             | ExprKind::Return(_)
             | ExprKind::Call(_)
             | ExprKind::Cast(_)
-            | ExprKind::Block(_)
             | ExprKind::Name(_) => None,
+            ExprKind::Block(blk) => (blk.exprs.len() == 1)
+                .then(|| self.expr(blk.exprs.last().unwrap().id).cloned())
+                .flatten(),
             ExprKind::Unary(un) => self.expr(un.expr.id).map(|val| val.apply_unary(un.op)),
             ExprKind::Binary(bin) => self
                 .expr(bin.lhs.id)
