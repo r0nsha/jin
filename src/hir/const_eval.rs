@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use enum_as_inner::EnumAsInner;
 use ustr::Ustr;
 
 use crate::{
@@ -75,7 +76,7 @@ impl ConstStorage {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, EnumAsInner)]
 pub enum Const {
     Str(Ustr),
     Int(i128),

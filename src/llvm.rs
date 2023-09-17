@@ -175,6 +175,15 @@ fn link(target_metrics: &TargetMetrics, exe_file: &Path, object_file: &Path) {
     let lib_paths = HashSet::<String>::new();
     let libs = HashSet::<String>::new();
 
+    // impl ExternLibrary {
+    //     pub fn lib_dir(&self) -> &Path {
+    //         self.path.parent().unwrap()
+    //     }
+    //
+    //     pub fn lib_name(&self) -> &OsStr {
+    //         self.path.file_name().unwrap()
+    //     }
+    // }
     // TODO: externally linked libraries
     // for lib in extern_libraries.iter() {
     //     match lib {

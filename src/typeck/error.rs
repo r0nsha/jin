@@ -25,6 +25,8 @@ pub enum TypeckError {
     CyclicGlobalVars { source: DefId, cyclic: DefId, cause_span: Span },
     ConstEval(ConstEvalError, Span),
     InvalidMember { ty: Ty, member: Word },
+    NonConstAttrValue { ty: Ty, span: Span },
+    PathNotFound { path: Ustr, span: Span },
 }
 
 impl TypeckError {
@@ -137,6 +139,17 @@ impl TypeckError {
             Self::InvalidMember { ty, member } => Diagnostic::error("check::invalid_member")
                 .with_message(format!("type `{}` has no member `{}`", ty.display(db), member))
                 .with_label(Label::primary(member.span()).with_message("unknown member")),
+            Self::NonConstAttrValue { ty, span } => {
+                Diagnostic::error("check::non_const_attr_value")
+                    .with_message(format!(
+                "value of type `{}` must be a constant, because it is passed to an attribute",
+                ty.display(db),
+            ))
+                    .with_label(Label::primary(span).with_message("not a constant"))
+            }
+            Self::PathNotFound { path, span } => Diagnostic::error("check::path_not_found")
+                .with_message(format!("path `{path}` not found",))
+                .with_label(Label::primary(span).with_message("not found")),
         }
     }
 }

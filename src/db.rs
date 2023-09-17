@@ -1,10 +1,11 @@
 pub mod build_options;
 mod timing;
 
+use core::fmt;
 use std::{
     cell::{Ref, RefCell},
     cmp,
-    collections::hash_map::Entry,
+    collections::{hash_map::Entry, HashSet},
     fs, io,
     path::{Path, PathBuf},
     rc::Rc,
@@ -42,6 +43,7 @@ pub struct Db {
     pub types: CommonTypes,
     pub coercions: HirMap<Coercions>,
     pub const_storage: ConstStorage,
+    pub extern_libs: HashSet<ExternLib>,
     pub diagnostics: Diagnostics,
     build_options: BuildOptions,
     root_dir: PathBuf,
@@ -75,6 +77,7 @@ impl Db {
             types: CommonTypes::new(),
             coercions: HirMap::new(),
             const_storage: ConstStorage::new(),
+            extern_libs: HashSet::new(),
             root_dir,
             main_source,
             main_module: None,
@@ -391,6 +394,33 @@ impl CommonTypes {
             never: Ty::new(TyKind::Never),
             typ: Ty::new(TyKind::Type),
             unknown: Ty::new(TyKind::Unknown),
+        }
+    }
+}
+
+#[derive(Debug, Eq, PartialEq, Clone, Hash)]
+pub enum ExternLib {
+    Sys(String),
+    Path(PathBuf),
+}
+
+impl fmt::Display for ExternLib {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ExternLib::Sys(s) => f.write_str(s),
+            ExternLib::Path(p) => f.write_str(p.to_string_lossy().as_ref()),
+        }
+    }
+}
+
+impl ExternLib {
+    pub fn try_from_str(s: &str, relative_to: impl AsRef<Path>) -> Option<Self> {
+        let path = Path::new(s);
+
+        if s.starts_with(['.', '/', '\\']) || path.has_root() || path.extension().is_some() {
+            path.absolutize_from(relative_to).ok().map(|p| Self::Path(p.into_owned()))
+        } else {
+            Some(Self::Sys(s.to_string()))
         }
     }
 }
