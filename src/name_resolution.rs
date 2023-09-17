@@ -91,7 +91,10 @@ impl<'db> Resolver<'db> {
             Item::Fn(fun) => {
                 fun.id = Some(self.define_def(
                     EnvKind::Global(module_id, Vis::Public),
-                    DefKind::Fn(FnInfo::Bare),
+                    DefKind::Fn(match &fun.kind {
+                        FnKind::Bare { .. } => FnInfo::Bare,
+                        FnKind::Extern => FnInfo::Extern,
+                    }),
                     fun.sig.name,
                 ));
             }

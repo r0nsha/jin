@@ -343,6 +343,7 @@ impl Ord for ScopeLevel {
 #[derive(Debug, Clone)]
 pub enum FnInfo {
     Bare,
+    Extern,
 }
 
 #[derive(Debug)]
