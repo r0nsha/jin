@@ -143,7 +143,7 @@ impl TyCtxt<'_> {
             self.db[f.id].ty = ty;
         }
 
-        let mut env = Env::new(Some(f.id));
+        let mut env = Env::new(f.module_id, Some(f.id));
 
         self.typeck_attrs(&mut f.attrs, &mut env)?;
 
@@ -174,7 +174,7 @@ impl TyCtxt<'_> {
     }
 
     fn typeck_let(&mut self, let_: &mut Let) -> TypeckResult<Ty> {
-        let mut env = Env::new(None);
+        let mut env = Env::new(let_.module_id, None);
 
         let ty =
             if let Some(ty) = &let_.ty_annot { self.typeck_ty(ty)? } else { self.fresh_ty_var() };
@@ -257,7 +257,7 @@ impl TyCtxt<'_> {
                 }
             }
             ExprKind::Return(ret) => {
-                if let Some(fn_id) = env.fn_id {
+                if let Some(fn_id) = env.fn_id() {
                     let ret_ty = self.db[fn_id].ty.as_fn().unwrap().ret;
 
                     self.typeck_expr(&mut ret.expr, env, Some(ret_ty))?;

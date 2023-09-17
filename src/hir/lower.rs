@@ -1,6 +1,6 @@
 use crate::{
     ast,
-    db::Db,
+    db::{Db, ModuleId},
     hir::{
         Attr, AttrKind, Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, Fn, FnKind,
         FnParam, FnSig, Hir, If, Let, Lit, MemberAccess, Name, NamePat, Pat, Return, Ty, TyName,
@@ -11,18 +11,20 @@ use crate::{
 };
 
 pub fn lower(db: &mut Db, ast: ast::Ast) -> Hir {
-    let mut cx = LowerCtxt { db, hir: Hir::new(), id: 0 };
+    let mut hir = Hir::new();
 
     for module in ast.modules {
-        cx.lower_module(module);
+        LowerCtxt { db, hir: &mut hir, module_id: module.id.expect("to be resolved"), id: 0 }
+            .lower_module(module);
     }
 
-    cx.hir
+    hir
 }
 
 struct LowerCtxt<'db> {
     db: &'db mut Db,
-    hir: Hir,
+    hir: &'db mut Hir,
+    module_id: ModuleId,
     id: usize,
 }
 
@@ -59,6 +61,7 @@ trait Lower<'db, T> {
 impl Lower<'_, Fn> for ast::Fn {
     fn lower(self, cx: &mut LowerCtxt<'_>) -> Fn {
         Fn {
+            module_id: cx.module_id,
             id: self.id.expect("to be resolved"),
             attrs: self
                 .attrs
@@ -199,6 +202,7 @@ impl Lower<'_, Expr> for ast::Expr {
 impl Lower<'_, Let> for ast::Let {
     fn lower(self, cx: &mut LowerCtxt<'_>) -> Let {
         Let {
+            module_id: cx.module_id,
             pat: self.pat.lower(cx),
             ty_annot: self.ty_annot.map(|t| t.lower(cx)),
             value: Box::new(self.value.lower(cx)),

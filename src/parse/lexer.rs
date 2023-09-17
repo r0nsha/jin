@@ -172,6 +172,9 @@ impl<'s> Lexer<'s> {
             match self.bump() {
                 Some('"') => {
                     let str = self.range(start);
+                    // Removes the ending double-quote
+                    let str = &str[..str.len() - 1];
+
                     let stripped = unescaper::unescape(str).map_err(|err| match err {
                         unescaper::Error::IncompleteStr(pos) => TokenizeError::EscapeIncompleteStr(
                             Span::uniform(self.source_id, start + pos as u32),

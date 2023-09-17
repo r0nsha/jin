@@ -30,7 +30,7 @@ impl<'db> TyCtxt<'db> {
                     let path = *value.as_str().unwrap();
                     let lib = ExternLib::try_from_str(
                         &path,
-                        &self.db[env.module_id()].source(self.db).path,
+                        self.db.sources.borrow()[self.db[env.module_id()].source_id].path(),
                     )
                     .ok_or(TypeckError::PathNotFound { path, span: value_span })?;
                     self.db.extern_libs.insert(lib);

@@ -112,7 +112,9 @@ impl UnifyCtxt<'_, '_> {
         };
 
         match (a.kind(), b.kind()) {
-            (TyKind::Bool, TyKind::Bool) | (TyKind::Unit, TyKind::Unit) => Ok(()),
+            (TyKind::Bool, TyKind::Bool)
+            | (TyKind::Unit, TyKind::Unit)
+            | (TyKind::Str, TyKind::Str) => Ok(()),
             (TyKind::Uint(a), TyKind::Uint(b)) if a == b => Ok(()),
             (TyKind::Int(a), TyKind::Int(b)) if a == b => Ok(()),
 

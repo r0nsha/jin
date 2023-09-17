@@ -106,6 +106,14 @@ impl Sources {
     }
 }
 
+impl ops::Index<SourceId> for Sources {
+    type Output = Source;
+
+    fn index(&self, index: SourceId) -> &Self::Output {
+        self.get(index).unwrap()
+    }
+}
+
 impl Default for Sources {
     fn default() -> Self {
         Self::new()

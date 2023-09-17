@@ -3,7 +3,7 @@ use std::cell::RefCell;
 use ena::unify::InPlaceUnificationTable;
 
 use crate::{
-    db::{Db, DefId},
+    db::{Db, DefId, ModuleId},
     ty::{InferTy, IntVar, Ty, TyKind, TyVar},
     typeck::normalize::NormalizeTy,
 };
@@ -70,11 +70,22 @@ impl TyCtxtStorage {
 
 #[derive(Debug)]
 pub struct Env {
-    pub fn_id: Option<DefId>,
+    module_id: ModuleId,
+    fn_id: Option<DefId>,
 }
 
 impl Env {
-    pub fn new(fn_id: Option<DefId>) -> Self {
-        Self { fn_id }
+    pub fn new(module_id: ModuleId, fn_id: Option<DefId>) -> Self {
+        Self { module_id, fn_id }
+    }
+
+    #[inline]
+    pub fn module_id(&self) -> ModuleId {
+        self.module_id
+    }
+
+    #[inline]
+    pub fn fn_id(&self) -> Option<DefId> {
+        self.fn_id
     }
 }

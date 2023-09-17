@@ -11,7 +11,7 @@ use ustr::Ustr;
 use crate::{
     ast::{BinOp, UnOp},
     common::{new_key_type, Word},
-    db::{Db, DefId},
+    db::{Db, DefId, ModuleId},
     span::{Span, Spanned},
     ty::{self, Typed},
 };
@@ -99,6 +99,7 @@ pub enum ExprKind {
 
 #[derive(Debug, Clone)]
 pub struct Fn {
+    pub module_id: ModuleId,
     pub id: DefId,
     pub attrs: Attrs,
     pub sig: FnSig,
@@ -135,6 +136,7 @@ pub struct FnParam {
 
 #[derive(Debug, Clone)]
 pub struct Let {
+    pub module_id: ModuleId,
     pub pat: Pat,
     pub ty_annot: Option<Ty>,
     pub value: Box<Expr>,

@@ -25,7 +25,7 @@ use ustr::UstrMap;
 
 use crate::{
     common::target::{Arch, Os, TargetMetrics},
-    db::{build_options::EmitOption, Db},
+    db::{build_options::EmitOption, Db, ExternLib},
     llvm::generate::Generator,
     tir::Tir,
 };
@@ -131,7 +131,7 @@ fn build_exe(db: &mut Db, target_machine: &TargetMachine, module: &Module) -> Pa
         .write_to_file(module, FileType::Object, &object_file)
         .expect("writing the object file to work");
 
-    link(db.target_metrics(), &output_file, &object_file);
+    link(db.target_metrics(), &db.extern_libs, &output_file, &object_file);
     db.time.stop();
 
     let _ = std::fs::remove_file(object_file);
@@ -139,7 +139,12 @@ fn build_exe(db: &mut Db, target_machine: &TargetMachine, module: &Module) -> Pa
     output_file
 }
 
-fn link(target_metrics: &TargetMetrics, exe_file: &Path, object_file: &Path) {
+fn link(
+    target_metrics: &TargetMetrics,
+    extern_libs: &HashSet<ExternLib>,
+    exe_file: &Path,
+    object_file: &Path,
+) {
     let link_flags = match target_metrics.arch {
         Arch::Amd64 => match target_metrics.os {
             Os::Windows => vec!["/machine:x64"],
@@ -172,32 +177,22 @@ fn link(target_metrics: &TargetMetrics, exe_file: &Path, object_file: &Path) {
         }
     };
 
-    let lib_paths = HashSet::<String>::new();
-    let libs = HashSet::<String>::new();
+    let mut lib_paths = HashSet::<String>::new();
+    let mut libs = HashSet::<String>::new();
 
-    // impl ExternLibrary {
-    //     pub fn lib_dir(&self) -> &Path {
-    //         self.path.parent().unwrap()
-    //     }
-    //
-    //     pub fn lib_name(&self) -> &OsStr {
-    //         self.path.file_name().unwrap()
-    //     }
-    // }
-    // TODO: externally linked libraries
-    // for lib in extern_libraries.iter() {
-    //     match lib {
-    //         ast::ExternLibrary::System(lib_name) => {
-    //             if !is_libc(lib_name) {
-    //                 libs.push(lib_name.clone())
-    //             }
-    //         }
-    //         ast::ExternLibrary::Path(path) => {
-    //             lib_paths.push(path.lib_dir().to_str().unwrap().to_string());
-    //             libs.push(path.lib_name().to_str().unwrap().to_string());
-    //         }
-    //     }
-    // }
+    for lib in extern_libs {
+        match lib {
+            ExternLib::Sys(lib_name) => {
+                if lib_name != "c" && lib_name != "C" {
+                    libs.insert(lib_name.clone());
+                }
+            }
+            ExternLib::Path(path) => {
+                lib_paths.insert(path.parent().unwrap().to_string_lossy().to_string());
+                libs.insert(path.file_name().unwrap().to_string_lossy().to_string());
+            }
+        }
+    }
 
     #[cfg(windows)]
     {
