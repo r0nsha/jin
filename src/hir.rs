@@ -132,7 +132,7 @@ pub struct FnParam {
     pub id: DefId,
     pub ty_annot: Ty,
     pub span: Span,
-    pub ty: ty::Ty, // TODO: Remove
+    pub ty: ty::Ty,
 }
 
 #[derive(Debug, Clone)]
