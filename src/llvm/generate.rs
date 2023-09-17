@@ -501,7 +501,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
     fn const_value(&mut self, value: &Const, ty: Ty) -> BasicValueEnum<'cx> {
         match value {
-            Const::Str(value) => self.const_str_slice(*value, "str").into(),
+            Const::Str(value) => self.const_str_slice(*value, "").into(),
             Const::Int(value) => {
                 let int = ty
                     .llty(self)

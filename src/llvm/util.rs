@@ -40,10 +40,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         if let Some(slice) = self.static_str_slices.get(&value) {
             *slice
         } else {
-            let static_str = self
-                .bx
-                .build_global_string_ptr(value.as_str(), &format!("{name}_str"))
-                .as_pointer_value();
+            let static_str = self.bx.build_global_string_ptr(value.as_str(), "").as_pointer_value();
 
             self.static_strs.insert(value, static_str);
 
