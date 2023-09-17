@@ -228,15 +228,19 @@ impl TyCtxt<'_> {
                 }
             }
             ExprKind::Block(blk) => {
-                let last = blk.exprs.len() - 1;
+                if blk.exprs.is_empty() {
+                    self.db.types.unit
+                } else {
+                    let last = blk.exprs.len() - 1;
 
-                for (i, expr) in blk.exprs.iter_mut().enumerate() {
-                    let expected_ty =
-                        if i == last { expected_ty } else { Some(self.db.types.unit) };
-                    self.typeck_expr(expr, env, expected_ty)?;
+                    for (i, expr) in blk.exprs.iter_mut().enumerate() {
+                        let expected_ty =
+                            if i == last { expected_ty } else { Some(self.db.types.unit) };
+                        self.typeck_expr(expr, env, expected_ty)?;
+                    }
+
+                    blk.exprs.last().unwrap().ty
                 }
-
-                blk.exprs.last().map_or_else(|| self.db.types.unit, |e| e.ty)
             }
             ExprKind::Return(ret) => {
                 if let Some(fn_id) = env.fn_id {

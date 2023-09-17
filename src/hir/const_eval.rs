@@ -28,7 +28,6 @@ impl ConstStorage {
 
     pub fn eval_expr(&mut self, expr: &Expr) -> Result<(), ConstEvalError> {
         // TODO: const eval block
-        // TODO: const eval cast
         // TODO: const eval name
 
         let result = match &expr.kind {
