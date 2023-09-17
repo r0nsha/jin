@@ -26,9 +26,6 @@ impl ConstStorage {
         self.exprs.get(&id)
     }
 
-    // TODO: errors: divide by zero
-    // TODO: errors: remainder by zero
-    // TODO: errors: overflow
     pub fn eval_expr(&mut self, expr: &Expr) -> Result<(), ConstEvalError> {
         // TODO: const eval block
         // TODO: const eval cast
