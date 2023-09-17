@@ -146,15 +146,13 @@ impl<'db> LowerCtxt<'db> {
     }
 
     fn lower_fn_sig(&mut self, sig: &hir::FnSig, name: Ustr, ty: Ty) -> FnSigId {
-        let sig = FnSig {
-            id: self.tir.sigs.next_key(),
+        self.tir.sigs.push_with_key(|id| FnSig {
+            id,
             name,
             params: sig.params.iter().map(|p| FnParam { def_id: p.id, ty: p.ty }).collect(),
             ret: ty.as_fn().unwrap().ret,
             ty,
-        };
-
-        self.tir.sigs.push(sig)
+        })
     }
 
     fn lower_fn_body(&mut self, sig: FnSigId, f: &hir::Fn) {
