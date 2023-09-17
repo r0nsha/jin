@@ -9,8 +9,8 @@ use crate::{
     subst::{ParamFolder, Subst},
     sym,
     tir::{
-        Body, Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Global, GlobalId, Id,
-        Local, LocalId, Tir,
+        Body, Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Global, GlobalId,
+        GlobalKind, Id, Local, LocalId, Tir,
     },
     ty::{
         coerce::{CoercionKind, Coercions},
@@ -76,6 +76,18 @@ impl<'db> LowerCtxt<'db> {
             if !let_.pat.any(|name| self.globals_map.get(&name.id).is_some()) {
                 self.lower_global_let(let_);
             }
+        }
+
+        for let_ in &self.hir.extern_lets {
+            let id = self.tir.globals.push_with_key(|id| Global {
+                id,
+                def_id: let_.id,
+                name: let_.word.name(),
+                ty: self.db[let_.id].ty,
+                kind: GlobalKind::Extern,
+            });
+
+            self.globals_map.insert(let_.id, id);
         }
 
         for f in &self.hir.fns {
@@ -214,9 +226,8 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
                     id,
                     def_id: name.id,
                     name: full_name.into(),
-                    value,
                     ty,
-                    body: self.body,
+                    kind: GlobalKind::Bare { value, body: self.body },
                 });
 
                 self.cx.globals_map.insert(name.id, id);

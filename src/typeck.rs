@@ -94,6 +94,10 @@ impl TyCtxt<'_> {
             }
         }
 
+        for let_ in &mut hir.extern_lets {
+            self.db[let_.id].ty = self.typeck_ty(&let_.ty_annot)?;
+        }
+
         Ok(())
     }
 

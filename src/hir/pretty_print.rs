@@ -12,6 +12,14 @@ pub(super) fn print(db: &Db, hir: &Hir, w: &mut impl io::Write) -> io::Result<()
         cx.pp_let(let_);
     }
 
+    for let_ in &hir.extern_lets {
+        cx.builder.add_empty_child(format!(
+            "let extern `{}` (type: {})",
+            let_.word,
+            cx.db[let_.id].ty.display(cx.db)
+        ));
+    }
+
     for f in &hir.fns {
         cx.pp_fn(f);
     }

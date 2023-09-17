@@ -19,12 +19,13 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct Hir {
     pub fns: Vec<Fn>,
+    pub extern_lets: Vec<ExternLet>,
     pub lets: Vec<Let>,
 }
 
 impl Hir {
     pub fn new() -> Self {
-        Self { fns: vec![], lets: vec![] }
+        Self { fns: vec![], extern_lets: vec![], lets: vec![] }
     }
 
     pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
@@ -140,6 +141,15 @@ pub struct Let {
     pub pat: Pat,
     pub ty_annot: Option<Ty>,
     pub value: Box<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExternLet {
+    pub module_id: ModuleId,
+    pub id: DefId,
+    pub word: Word,
+    pub ty_annot: Ty,
     pub span: Span,
 }
 

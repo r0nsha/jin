@@ -2,9 +2,9 @@ use crate::{
     ast,
     db::{Db, ModuleId},
     hir::{
-        Attr, AttrKind, Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, Fn, FnKind,
-        FnParam, FnSig, Hir, If, Let, Lit, MemberAccess, Name, NamePat, Pat, Return, Ty, TyName,
-        TyParam, Unary,
+        Attr, AttrKind, Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, ExternLet, Fn,
+        FnKind, FnParam, FnSig, Hir, If, Let, Lit, MemberAccess, Name, NamePat, Pat, Return, Ty,
+        TyName, TyParam, Unary,
     },
     span::{Span, Spanned},
     ty::Instantiation,
@@ -125,6 +125,12 @@ impl Lower<'_, Expr> for ast::Expr {
                     cx.hir.fns.push(f);
                     cx.expr(ExprKind::Lit(Lit::Unit), span)
                 }
+                ast::Item::ExternLet(let_) => {
+                    let span = let_.span;
+                    let let_ = let_.lower(cx);
+                    cx.hir.extern_lets.push(let_);
+                    cx.expr(ExprKind::Lit(Lit::Unit), span)
+                }
                 ast::Item::Let(let_) => {
                     let span = let_.span;
                     let let_ = let_.lower(cx);
@@ -199,6 +205,18 @@ impl Lower<'_, Expr> for ast::Expr {
                 }),
                 span,
             ),
+        }
+    }
+}
+
+impl Lower<'_, ExternLet> for ast::ExternLet {
+    fn lower(self, cx: &mut LowerCtxt<'_>) -> ExternLet {
+        ExternLet {
+            module_id: cx.module_id,
+            id: self.id.expect("to be resolved"),
+            word: self.word,
+            ty_annot: self.ty_annot.lower(cx),
+            span: self.span,
         }
     }
 }

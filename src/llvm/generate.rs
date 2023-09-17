@@ -16,7 +16,7 @@ use crate::{
     db::Db,
     hir::const_eval::Const,
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
-    tir::{Body, ExprId, ExprKind, Fn, FnSigId, GlobalId, Id, LocalId, Tir},
+    tir::{Body, ExprId, ExprKind, Fn, FnSigId, GlobalId, GlobalKind, Id, LocalId, Tir},
     ty::Ty,
 };
 
@@ -112,11 +112,16 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         start_block: BasicBlock<'cx>,
     ) {
         for glob in self.tir.globals.iter() {
-            if !glob.body.expr(glob.value).kind.is_const() {
-                let mut state =
-                    FnState::new(&glob.body, main_function_value, prologue_block, start_block);
-                let value = self.codegen_expr(&mut state, glob.value);
-                self.bx.build_store(self.global(glob.id).as_pointer_value(), value);
+            match &glob.kind {
+                GlobalKind::Bare { value, body } => {
+                    if !body.expr(*value).kind.is_const() {
+                        let mut state =
+                            FnState::new(body, main_function_value, prologue_block, start_block);
+                        let value = self.codegen_expr(&mut state, *value);
+                        self.bx.build_store(self.global(glob.id).as_pointer_value(), value);
+                    }
+                }
+                GlobalKind::Extern => (),
             }
         }
     }
@@ -135,13 +140,21 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             let glob_value =
                 self.module.add_global(llvm_ty, Some(AddressSpace::default()), &glob.name);
 
-            glob_value.set_linkage(Linkage::Private);
-            glob_value.set_externally_initialized(false);
+            match &glob.kind {
+                GlobalKind::Bare { value, body } => {
+                    glob_value.set_linkage(Linkage::Private);
+                    glob_value.set_externally_initialized(false);
 
-            if let ExprKind::Const(value) = &glob.body.expr(glob.value).kind {
-                glob_value.set_initializer(&self.const_value(value, glob.ty));
-            } else {
-                glob_value.set_initializer(&Self::undef_value(llvm_ty));
+                    if let ExprKind::Const(value) = &body.expr(*value).kind {
+                        glob_value.set_initializer(&self.const_value(value, glob.ty));
+                    } else {
+                        glob_value.set_initializer(&Self::undef_value(llvm_ty));
+                    }
+                }
+                GlobalKind::Extern => {
+                    glob_value.set_linkage(Linkage::External);
+                    glob_value.set_externally_initialized(true);
+                }
             }
 
             self.globals.insert(glob.id, glob_value);

@@ -81,9 +81,14 @@ pub struct Global {
     pub id: GlobalId,
     pub def_id: DefId,
     pub name: Ustr,
-    pub value: ExprId,
     pub ty: Ty,
-    pub body: Body,
+    pub kind: GlobalKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum GlobalKind {
+    Bare { value: ExprId, body: Body },
+    Extern,
 }
 
 #[derive(Debug, Clone)]

@@ -6,8 +6,18 @@ pub(super) fn print(db: &Db, tir: &Tir, w: &mut impl io::Write) -> io::Result<()
     let mut builder = ptree::TreeBuilder::new("Tir".to_string());
 
     for glob in tir.globals.iter() {
-        PPCtxt { builder: &mut builder, db, tir, body: &glob.body }
-            .pp_let(glob.name, glob.ty, glob.value);
+        match &glob.kind {
+            GlobalKind::Bare { value, body } => {
+                PPCtxt { builder: &mut builder, db, tir, body }.pp_let(glob.name, glob.ty, *value);
+            }
+            GlobalKind::Extern => {
+                builder.add_empty_child(format!(
+                    "let extern `{}` (type: {})",
+                    glob.name,
+                    glob.ty.display(db)
+                ));
+            }
+        }
     }
 
     for f in &tir.fns {
