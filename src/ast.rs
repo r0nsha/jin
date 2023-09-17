@@ -55,18 +55,23 @@ impl Module {
 pub enum Item {
     Fn(Fn),
     Let(Let),
+    ExternLet(ExternLet),
 }
 
 impl Spanned for Item {
     fn span(&self) -> Span {
         match self {
-            Self::Fn(Fn { span, .. }) | Self::Let(Let { span, .. }) => *span,
+            Self::Fn(Fn { span, .. })
+            | Self::Let(Let { span, .. })
+            | Self::ExternLet(ExternLet { span, .. }) => *span,
         }
     }
 
     fn span_mut(&mut self) -> &mut Span {
         match self {
-            Self::Fn(Fn { span, .. }) | Self::Let(Let { span, .. }) => span,
+            Self::Fn(Fn { span, .. })
+            | Self::Let(Let { span, .. })
+            | Self::ExternLet(ExternLet { span, .. }) => span,
         }
     }
 }
@@ -162,6 +167,13 @@ pub struct Let {
     pub pat: Pat,
     pub ty_annot: Option<Ty>,
     pub value: Box<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExternLet {
+    pub name: Word,
+    pub ty_annot: Ty,
     pub span: Span,
 }
 

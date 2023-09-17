@@ -4,7 +4,12 @@ fn extern puts(s *u8) int
 @(lib = "./foo")
 fn extern hello() ()
 
+@(lib = "./foo")
+let extern answer int
+
 fn main() = {
 	puts("Hello, World!\0".ptr)
 	hello()
+	fn my_answer() = answer
+	my_answer()
 }

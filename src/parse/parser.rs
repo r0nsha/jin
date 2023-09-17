@@ -3,9 +3,9 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Attr, AttrKind, Attrs, BinOp, Binary, Block, Call, CallArg, Cast, Expr, Fn, FnKind,
-        FnParam, FnSig, If, Item, Let, Lit, LitKind, MemberAccess, Module, Name, NamePat, Pat,
-        Return, Ty, TyName, TyParam, UnOp, Unary,
+        Attr, AttrKind, Attrs, BinOp, Binary, Block, Call, CallArg, Cast, Expr, ExternLet, Fn,
+        FnKind, FnParam, FnSig, If, Item, Let, Lit, LitKind, MemberAccess, Module, Name, NamePat,
+        Pat, Return, Ty, TyName, TyParam, UnOp, Unary,
     },
     common::{QPath, Word},
     db::Db,
@@ -63,7 +63,11 @@ impl<'a> Parser<'a> {
         if self.is(TokenKind::Fn) {
             self.parse_fn(attrs).map(|f| Some(Item::Fn(f)))
         } else if self.is(TokenKind::Let) {
-            self.parse_let().map(|l| Some(Item::Let(l)))
+            if self.is(TokenKind::Extern) {
+                self.parse_let().map(|l| Some(Item::Let(l)))
+            } else {
+                self.parse_extern_let().map(|l| Some(Item::ExternLet(l)))
+            }
         } else {
             Ok(None)
         }
@@ -125,15 +129,22 @@ impl<'a> Parser<'a> {
         let start = self.last_span();
         let pat = self.parse_pat()?;
 
-        let ty = if self.peek_is(TokenKind::Eq) { None } else { Some(self.parse_ty()?) };
+        let ty_annot = if self.peek_is(TokenKind::Eq) { None } else { Some(self.parse_ty()?) };
 
         self.eat(TokenKind::Eq)?;
 
         let value = self.parse_expr()?;
 
-        Ok(Let { pat, ty_annot: ty, span: start.merge(value.span()), value: Box::new(value) })
+        Ok(Let { pat, ty_annot, span: start.merge(value.span()), value: Box::new(value) })
     }
 
+    fn parse_extern_let(&mut self) -> ParseResult<ExternLet> {
+        let start = self.last_span();
+        let ident = self.eat(TokenKind::empty_ident())?;
+        let ty_annot = self.parse_ty()?;
+        let span = start.merge(ty_annot.span());
+        Ok(ExternLet { name: ident.word(), ty_annot, span })
+    }
     fn parse_pat(&mut self) -> ParseResult<Pat> {
         let tok = self.eat_any()?;
 
