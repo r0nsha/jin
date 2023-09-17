@@ -9,7 +9,7 @@ pub use lower::lower;
 use ustr::Ustr;
 
 use crate::{
-    ast::{BinOp, UnOp},
+    ast::{AttrKind, BinOp, UnOp},
     common::{new_key_type, Word},
     db::{Db, DefId, ModuleId},
     span::{Span, Spanned},
@@ -328,17 +328,4 @@ pub struct Attr {
     pub kind: AttrKind,
     pub value: Option<Expr>,
     pub span: Span,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AttrKind {
-    Lib,
-}
-
-impl fmt::Display for AttrKind {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            AttrKind::Lib => "lib",
-        })
-    }
 }

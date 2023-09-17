@@ -1,6 +1,7 @@
 use crate::{
+    ast::AttrKind,
     db::ExternLib,
-    hir::{const_eval::Const, Attr, AttrKind},
+    hir::{const_eval::Const, Attr},
     typeck::{
         error::TypeckError,
         tcx::{Env, TyCtxt},
