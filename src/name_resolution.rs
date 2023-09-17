@@ -287,7 +287,7 @@ impl<'db> Resolver<'db> {
                 self.resolve_ty(env, &mut cast.ty);
             }
             Expr::MemberAccess(access) => {
-                todo!()
+                self.resolve_expr(env, &mut access.expr);
             }
             Expr::Name(name) => {
                 match self.lookup(env, name.word) {
