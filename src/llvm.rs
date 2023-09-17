@@ -183,16 +183,16 @@ fn link(
     for lib in extern_libs {
         match lib {
             ExternLib::Sys(lib_name) => {
-                if lib_name != "c" && lib_name != "C" {
-                    libs.insert(lib_name.clone());
-                }
+                libs.insert(lib_name.clone());
             }
-            ExternLib::Path(path) => {
-                lib_paths.insert(path.parent().unwrap().to_string_lossy().to_string());
-                libs.insert(path.file_name().unwrap().to_string_lossy().to_string());
+            ExternLib::Path { search_path, name } => {
+                lib_paths.insert(search_path.to_string_lossy().to_string());
+                libs.insert(name.clone());
             }
         }
     }
+
+    dbg!(&lib_paths, &libs);
 
     #[cfg(windows)]
     {
@@ -233,7 +233,7 @@ fn link(
         .arg(object_file.to_string_lossy().as_ref())
         .arg(format!("-o{}", exe_file.display()))
         .args(lib_paths.iter().map(|path| format!("-L{}", path)))
-        .args(libs.iter().map(|path| format!("-l:{}", path)))
+        .args(libs.iter().map(|path| format!("-l{}", path)))
         .arg("-fuse-ld=mold")
         .arg("-lc")
         .arg("-lm")

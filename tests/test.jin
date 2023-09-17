@@ -1,9 +1,10 @@
 @(lib = "c")
 fn extern puts(s *u8) int
 
-let x = "Hello, World!\0"
+@(lib = "./foo")
+fn extern hello() ()
 
 fn main() = {
-	puts(x.ptr)
-	# puts("Hello, World!\0".ptr)
+	puts("Hello, World!\0".ptr)
+	hello()
 }

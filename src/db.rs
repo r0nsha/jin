@@ -402,26 +402,29 @@ impl CommonTypes {
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub enum ExternLib {
     Sys(String),
-    Path(PathBuf),
+    Path { search_path: PathBuf, name: String },
 }
 
 impl fmt::Display for ExternLib {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ExternLib::Sys(s) => f.write_str(s),
-            ExternLib::Path(p) => f.write_str(p.to_string_lossy().as_ref()),
+            ExternLib::Sys(name) | ExternLib::Path { name, .. } => f.write_str(name),
         }
     }
 }
 
 impl ExternLib {
-    pub fn try_from_str(s: &str, relative_to: impl AsRef<Path>) -> Option<Self> {
-        let path = Path::new(s);
+    pub fn try_from_str(name: &str, relative_to: impl AsRef<Path>) -> Option<Self> {
+        let path = Path::new(name);
 
-        if s.starts_with(['.', '/', '\\']) || path.has_root() || path.extension().is_some() {
-            path.absolutize_from(relative_to).ok().map(|p| Self::Path(p.into_owned()))
+        if name.starts_with(['.', '/', '\\']) || path.has_root() || path.extension().is_some() {
+            path.absolutize_from(relative_to).ok().map(|p| {
+                let search_path = p.parent().unwrap().to_path_buf();
+                let name = p.file_name().unwrap().to_string_lossy().to_string();
+                Self::Path { search_path, name }
+            })
         } else {
-            Some(Self::Sys(s.to_string()))
+            Some(Self::Sys(name.to_string()))
         }
     }
 }
