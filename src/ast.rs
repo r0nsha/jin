@@ -164,6 +164,7 @@ pub struct FnParam {
 
 #[derive(Debug, Clone)]
 pub struct Let {
+    pub attrs: Attrs,
     pub pat: Pat,
     pub ty_annot: Option<Ty>,
     pub value: Box<Expr>,
@@ -173,6 +174,7 @@ pub struct Let {
 #[derive(Debug, Clone)]
 pub struct ExternLet {
     pub id: Option<DefId>,
+    pub attrs: Attrs,
     pub word: Word,
     pub ty_annot: Ty,
     pub span: Span,

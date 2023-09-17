@@ -64,9 +64,9 @@ impl<'a> Parser<'a> {
             self.parse_fn(attrs).map(|f| Some(Item::Fn(f)))
         } else if self.is(TokenKind::Let) {
             if self.is(TokenKind::Extern) {
-                self.parse_extern_let().map(|l| Some(Item::ExternLet(l)))
+                self.parse_extern_let(attrs).map(|l| Some(Item::ExternLet(l)))
             } else {
-                self.parse_let().map(|l| Some(Item::Let(l)))
+                self.parse_let(attrs).map(|l| Some(Item::Let(l)))
             }
         } else {
             Ok(None)
@@ -125,7 +125,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_let(&mut self) -> ParseResult<Let> {
+    fn parse_let(&mut self, attrs: Attrs) -> ParseResult<Let> {
         let start = self.last_span();
         let pat = self.parse_pat()?;
 
@@ -135,15 +135,15 @@ impl<'a> Parser<'a> {
 
         let value = self.parse_expr()?;
 
-        Ok(Let { pat, ty_annot, span: start.merge(value.span()), value: Box::new(value) })
+        Ok(Let { attrs, pat, ty_annot, span: start.merge(value.span()), value: Box::new(value) })
     }
 
-    fn parse_extern_let(&mut self) -> ParseResult<ExternLet> {
+    fn parse_extern_let(&mut self, attrs: Attrs) -> ParseResult<ExternLet> {
         let start = self.last_span();
         let ident = self.eat(TokenKind::empty_ident())?;
         let ty_annot = self.parse_ty()?;
         let span = start.merge(ty_annot.span());
-        Ok(ExternLet { id: None, word: ident.word(), ty_annot, span })
+        Ok(ExternLet { id: None, attrs, word: ident.word(), ty_annot, span })
     }
     fn parse_pat(&mut self) -> ParseResult<Pat> {
         let tok = self.eat_any()?;

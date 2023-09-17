@@ -1,9 +1,10 @@
 @(lib = "c")
 fn extern puts(s *u8) int
 
-# @(lib = "./foo")
+@(lib = "./foo")
 fn extern hello()
 
+@(lib = "./foo")
 let extern answer int
 
 @(lib = "./foo")

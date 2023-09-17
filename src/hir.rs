@@ -138,6 +138,7 @@ pub struct FnParam {
 #[derive(Debug, Clone)]
 pub struct Let {
     pub module_id: ModuleId,
+    pub attrs: Attrs,
     pub pat: Pat,
     pub ty_annot: Option<Ty>,
     pub value: Box<Expr>,
@@ -148,6 +149,7 @@ pub struct Let {
 pub struct ExternLet {
     pub module_id: ModuleId,
     pub id: DefId,
+    pub attrs: Attrs,
     pub word: Word,
     pub ty_annot: Ty,
     pub span: Span,

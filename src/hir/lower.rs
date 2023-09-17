@@ -2,7 +2,7 @@ use crate::{
     ast,
     db::{Db, ModuleId},
     hir::{
-        Attr, AttrKind, Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, ExternLet, Fn,
+        Attr, Attrs, Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, ExternLet, Fn,
         FnKind, FnParam, FnSig, Hir, If, Let, Lit, MemberAccess, Name, NamePat, Pat, Return, Ty,
         TyName, TyParam, Unary,
     },
@@ -67,17 +67,7 @@ impl Lower<'_, Fn> for ast::Fn {
         Fn {
             module_id: cx.module_id,
             id: self.id.expect("to be resolved"),
-            attrs: self
-                .attrs
-                .into_iter()
-                .map(|attr| Attr {
-                    kind: match attr.kind {
-                        ast::AttrKind::Lib => AttrKind::Lib,
-                    },
-                    value: attr.value.map(|v| v.lower(cx)),
-                    span: attr.span,
-                })
-                .collect(),
+            attrs: self.attrs.lower(cx),
             sig: self.sig.lower(cx),
             kind: match self.kind {
                 ast::FnKind::Bare { body } => {
@@ -89,6 +79,18 @@ impl Lower<'_, Fn> for ast::Fn {
             },
             span: self.span,
         }
+    }
+}
+
+impl Lower<'_, Attrs> for ast::Attrs {
+    fn lower(self, cx: &mut LowerCtxt<'_>) -> Attrs {
+        self.into_iter()
+            .map(|attr| Attr {
+                kind: attr.kind,
+                value: attr.value.map(|v| v.lower(cx)),
+                span: attr.span,
+            })
+            .collect()
     }
 }
 
@@ -214,6 +216,7 @@ impl Lower<'_, ExternLet> for ast::ExternLet {
         ExternLet {
             module_id: cx.module_id,
             id: self.id.expect("to be resolved"),
+            attrs: self.attrs.lower(cx),
             word: self.word,
             ty_annot: self.ty_annot.lower(cx),
             span: self.span,
@@ -225,6 +228,7 @@ impl Lower<'_, Let> for ast::Let {
     fn lower(self, cx: &mut LowerCtxt<'_>) -> Let {
         Let {
             module_id: cx.module_id,
+            attrs: self.attrs.lower(cx),
             pat: self.pat.lower(cx),
             ty_annot: self.ty_annot.map(|t| t.lower(cx)),
             value: Box::new(self.value.lower(cx)),
