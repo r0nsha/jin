@@ -1,4 +1,6 @@
-@(lib = "c")
+let C = "c"
+
+@(lib = C)
 fn extern puts(s *u8) int
 
 fn main() = {

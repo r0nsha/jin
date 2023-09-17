@@ -1,3 +1,4 @@
+mod attrs;
 mod coerce;
 mod error;
 mod instantiate;
@@ -143,6 +144,8 @@ impl TyCtxt<'_> {
         }
 
         let mut env = Env::new(Some(f.id));
+
+        self.typeck_attrs(&mut f.attrs, &mut env)?;
 
         let ret_ty = self.db[f.id].ty.as_fn().unwrap().ret;
 

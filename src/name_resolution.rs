@@ -190,6 +190,12 @@ impl<'db> Resolver<'db> {
                 Some(self.define_def(EnvKind::Local(env), DefKind::Fn(FnInfo::Bare), fun.sig.name));
         }
 
+        for attr in &mut fun.attrs {
+            if let Some(value) = &mut attr.value {
+                self.resolve_expr(env, value);
+            }
+        }
+
         env.with_scope(fun.sig.name.name(), ScopeKind::Fn, |env| {
             self.resolve_sig(env, &mut fun.sig);
 

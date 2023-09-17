@@ -2,8 +2,9 @@ use crate::{
     ast,
     db::Db,
     hir::{
-        Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, Fn, FnKind, FnParam, FnSig,
-        Hir, If, Let, Lit, MemberAccess, Name, NamePat, Pat, Return, Ty, TyName, TyParam, Unary,
+        Attr, AttrKind, Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, Fn, FnKind,
+        FnParam, FnSig, Hir, If, Let, Lit, MemberAccess, Name, NamePat, Pat, Return, Ty, TyName,
+        TyParam, Unary,
     },
     span::{Span, Spanned},
     ty::Instantiation,
@@ -59,6 +60,17 @@ impl Lower<'_, Fn> for ast::Fn {
     fn lower(self, cx: &mut LowerCtxt<'_>) -> Fn {
         Fn {
             id: self.id.expect("to be resolved"),
+            attrs: self
+                .attrs
+                .into_iter()
+                .map(|attr| Attr {
+                    kind: match attr.kind {
+                        ast::AttrKind::Lib => AttrKind::Lib,
+                    },
+                    value: attr.value.map(|v| v.lower(cx)),
+                    span: attr.span,
+                })
+                .collect(),
             sig: self.sig.lower(cx),
             kind: match self.kind {
                 ast::FnKind::Bare { body } => {

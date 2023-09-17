@@ -100,6 +100,7 @@ pub enum ExprKind {
 #[derive(Debug, Clone)]
 pub struct Fn {
     pub id: DefId,
+    pub attrs: Attrs,
     pub sig: FnSig,
     pub kind: FnKind,
     pub span: Span,
@@ -307,3 +308,25 @@ impl Spanned for Ty {
 new_key_type!(ExprId);
 
 pub type HirMap<T> = HashMap<ExprId, T>;
+
+pub type Attrs = Vec<Attr>;
+
+#[derive(Debug, Clone)]
+pub struct Attr {
+    pub kind: AttrKind,
+    pub value: Option<Expr>,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AttrKind {
+    Lib,
+}
+
+impl fmt::Display for AttrKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            AttrKind::Lib => "lib",
+        })
+    }
+}
