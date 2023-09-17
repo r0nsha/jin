@@ -172,18 +172,18 @@ impl<'s> Lexer<'s> {
                     let str = self.range(start + 1);
                     let stripped = unescaper::unescape(str).map_err(|err| match err {
                         unescaper::Error::IncompleteStr(pos) => TokenizeError::EscapeIncompleteStr(
-                            Span::uniform(self.source_id, pos as u32),
+                            Span::uniform(self.source_id, start + pos as u32),
                         ),
                         unescaper::Error::InvalidChar { char, pos } => {
                             TokenizeError::EscapeInvalidChar(
                                 char,
-                                Span::uniform(self.source_id, pos as u32),
+                                Span::uniform(self.source_id, start + pos as u32),
                             )
                         }
                         unescaper::Error::ParseIntError { pos, .. } => {
                             TokenizeError::EscapeParseIntError(Span::uniform(
                                 self.source_id,
-                                pos as u32,
+                                start + pos as u32,
                             ))
                         }
                     })?;
