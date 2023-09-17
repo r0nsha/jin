@@ -16,7 +16,7 @@ use crate::{
     db::Db,
     hir::const_eval::Const,
     llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
-    tir::{Body, ExprId, ExprKind, Fn, FnSig, FnSigId, Global, GlobalId, Id, LocalId, Tir},
+    tir::{Body, ExprId, ExprKind, Fn, FnSigId, GlobalId, Id, LocalId, Tir},
     ty::Ty,
 };
 
@@ -123,38 +123,29 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
     pub fn predefine_all(&mut self) {
         for sig in &self.tir.sigs {
-            self.predefine_sig(
-                sig,
-                if sig.is_extern { Linkage::External } else { Linkage::Private },
-            );
+            let llvm_ty = sig.ty.as_fn().expect("a function type").llty(self);
+            let linkage = if sig.is_extern { Linkage::External } else { Linkage::Private };
+            let function = self.module.add_function(&sig.name, llvm_ty, Some(linkage));
+            self.functions.insert(sig.id, function);
         }
 
         for glob in self.tir.globals.iter() {
-            self.predefine_global(glob);
+            let llvm_ty = glob.ty.llty(self);
+
+            let glob_value =
+                self.module.add_global(llvm_ty, Some(AddressSpace::default()), &glob.name);
+
+            glob_value.set_linkage(Linkage::Private);
+            glob_value.set_externally_initialized(false);
+
+            if let ExprKind::Const(value) = &glob.body.expr(glob.value).kind {
+                glob_value.set_initializer(&self.const_value(value, glob.ty));
+            } else {
+                glob_value.set_initializer(&Self::undef_value(llvm_ty));
+            }
+
+            self.globals.insert(glob.id, glob_value);
         }
-    }
-
-    pub fn predefine_sig(&mut self, sig: &FnSig, linkage: Linkage) {
-        let llvm_ty = sig.ty.as_fn().expect("a function type").llty(self);
-        let function = self.module.add_function(&sig.name, llvm_ty, Some(linkage));
-        self.functions.insert(sig.id, function);
-    }
-
-    pub fn predefine_global(&mut self, glob: &Global) {
-        let llvm_ty = glob.ty.llty(self);
-
-        let glob_value = self.module.add_global(llvm_ty, Some(AddressSpace::default()), &glob.name);
-
-        glob_value.set_linkage(Linkage::Private);
-        glob_value.set_externally_initialized(false);
-
-        if let ExprKind::Const(value) = &glob.body.expr(glob.value).kind {
-            glob_value.set_initializer(&self.const_value(value, glob.ty));
-        } else {
-            glob_value.set_initializer(&Self::undef_value(llvm_ty));
-        }
-
-        self.globals.insert(glob.id, glob_value);
     }
 
     pub fn define_all(&mut self) {
