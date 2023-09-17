@@ -20,15 +20,13 @@ use crate::{
 };
 
 pub fn lower(db: &mut Db, hir: &Hir) -> Tir {
-    let mut tir = Tir::new();
-    LowerCtxt::new(db, hir, &mut tir).lower_all();
-    tir
+    LowerCtxt::new(db, hir).lower_all()
 }
 
 struct LowerCtxt<'db> {
     db: &'db mut Db,
     hir: &'db Hir,
-    tir: &'db mut Tir,
+    tir: Tir,
 
     // Maps functions to their lowered signatures
     fn_map: HashMap<DefId, FnSigId>,
@@ -47,18 +45,18 @@ pub struct MonoItem {
 }
 
 impl<'db> LowerCtxt<'db> {
-    fn new(db: &'db mut Db, hir: &'db Hir, tir: &'db mut Tir) -> Self {
+    fn new(db: &'db mut Db, hir: &'db Hir) -> Self {
         Self {
             db,
             hir,
-            tir,
+            tir: Tir::new(),
             fn_map: HashMap::new(),
             mono_fns: HashMap::new(),
             globals_map: HashMap::new(),
         }
     }
 
-    fn lower_all(&mut self) {
+    fn lower_all(mut self) -> Tir {
         for f in &self.hir.fns {
             if !self.db[f.id].ty.is_polymorphic() {
                 let def = &self.db[f.id];
@@ -93,6 +91,8 @@ impl<'db> LowerCtxt<'db> {
                 self.lower_fn_body(sig, f);
             }
         }
+
+        self.tir
     }
 
     fn lower_global(&mut self, def_id: DefId) -> GlobalId {
