@@ -47,7 +47,7 @@ impl<'s> Lexer<'s> {
                     ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
                     ch if ch.is_ascii_digit() => self.numeric(start),
                     ch if ch.is_ascii_whitespace() => return self.eat_token(),
-                    DQUOTE => self.eat_str(start)?,
+                    DQUOTE => self.eat_str(start + 1)?,
                     '#' => {
                         self.eat_comment();
                         return self.eat_token();
@@ -169,7 +169,7 @@ impl<'s> Lexer<'s> {
         loop {
             match self.bump() {
                 Some('"') => {
-                    let str = self.range(start + 1);
+                    let str = self.range(start);
                     let stripped = unescaper::unescape(str).map_err(|err| match err {
                         unescaper::Error::IncompleteStr(pos) => TokenizeError::EscapeIncompleteStr(
                             Span::uniform(self.source_id, start + pos as u32),
