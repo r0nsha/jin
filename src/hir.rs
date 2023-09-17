@@ -6,6 +6,7 @@ use std::{collections::HashMap, fmt, io};
 
 use enum_as_inner::EnumAsInner;
 pub use lower::lower;
+use ustr::Ustr;
 
 use crate::{
     ast::{BinOp, UnOp},
@@ -252,6 +253,7 @@ pub struct Name {
 
 #[derive(Debug, Clone)]
 pub enum Lit {
+    Str(Ustr),
     Int(u128),
     Bool(bool),
     Unit,

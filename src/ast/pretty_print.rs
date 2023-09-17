@@ -99,6 +99,9 @@ impl PrettyPrint for Expr {
                 cx.builder.add_empty_child(format!("`{}`", name.word));
             }
             Self::Lit(lit) => match lit.kind {
+                LitKind::Str(value) => {
+                    cx.builder.add_empty_child(format!("str: {value}"));
+                }
                 LitKind::Int(value) => {
                     cx.builder.add_empty_child(format!("int: {value}"));
                 }

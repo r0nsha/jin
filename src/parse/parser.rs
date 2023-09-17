@@ -320,6 +320,7 @@ impl<'a> Parser<'a> {
                 let args = self.parse_optional_ty_args()?;
                 Expr::Name(Name { id: None, word: tok.spanned_word(), args, span: tok.span })
             }
+            TokenKind::Str(value) => Expr::Lit(Lit { kind: LitKind::Str(value), span: tok.span }),
             TokenKind::Int(value) => Expr::Lit(Lit { kind: LitKind::Int(value), span: tok.span }),
             _ => {
                 return Err(ParseError::UnexpectedToken {

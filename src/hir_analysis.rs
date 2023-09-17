@@ -117,7 +117,7 @@ fn check_const_value_range(value: &Const, ty: Ty, span: Span) -> Result<(), Anal
             }
             _ => Ok(()),
         },
-        Const::Bool(_) | Const::Unit => Ok(()),
+        _ => Ok(()),
     }
 }
 

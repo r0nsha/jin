@@ -9,6 +9,7 @@ use inkwell::{
     values::{AnyValue, BasicValue, BasicValueEnum, FunctionValue, GlobalValue, PointerValue},
     AddressSpace, IntPredicate,
 };
+use ustr::{Ustr, UstrMap};
 
 use crate::{
     ast::{BinOp, CmpOp, UnOp},
@@ -31,6 +32,7 @@ pub struct Generator<'db, 'cx> {
 
     pub functions: HashMap<FnSigId, FunctionValue<'cx>>,
     pub globals: HashMap<GlobalId, GlobalValue<'cx>>,
+    pub global_strs: UstrMap<GlobalValue<'cx>>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -486,8 +488,9 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             .unwrap_or_else(|| panic!("global {} to be declared", self.tir.globals[id].name))
     }
 
-    fn const_value(&self, value: &Const, ty: Ty) -> BasicValueEnum<'cx> {
+    fn const_value(&mut self, value: &Const, ty: Ty) -> BasicValueEnum<'cx> {
         match value {
+            Const::Str(value) => self.global_str(*value).as_pointer_value().into(),
             Const::Int(value) => {
                 let int = ty
                     .llty(self)
@@ -503,6 +506,13 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             Const::Bool(value) => self.bool_value(*value).into(),
             Const::Unit => self.unit_value().into(),
         }
+    }
+
+    fn global_str(&mut self, value: Ustr) -> GlobalValue<'cx> {
+        *self
+            .global_strs
+            .entry(value)
+            .or_insert_with(|| self.bx.build_global_string_ptr(value.as_str(), "str"))
     }
 }
 

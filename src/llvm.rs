@@ -21,6 +21,7 @@ use inkwell::{
     },
     OptimizationLevel,
 };
+use ustr::UstrMap;
 
 use crate::{
     common::target::{Arch, Os, TargetMetrics},
@@ -54,6 +55,7 @@ pub fn codegen(db: &mut Db, tir: &Tir) -> PathBuf {
         unit_ty,
         functions: HashMap::default(),
         globals: HashMap::default(),
+        global_strs: UstrMap::default(),
     };
 
     g.db.time.start("llvm generation");

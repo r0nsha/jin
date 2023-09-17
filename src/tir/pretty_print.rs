@@ -157,6 +157,13 @@ impl PPCtxt<'_> {
                 }
             },
             ExprKind::Const(value) => match value {
+                Const::Str(value) => {
+                    self.builder.add_empty_child(format!(
+                        "{} (type: {})",
+                        value,
+                        expr.ty.display(self.db)
+                    ));
+                }
                 Const::Int(value) => {
                     self.builder.add_empty_child(format!(
                         "{} (type: {})",

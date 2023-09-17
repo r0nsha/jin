@@ -4,6 +4,7 @@ pub mod token;
 use std::{fmt, io};
 
 use enum_as_inner::EnumAsInner;
+use ustr::Ustr;
 
 use crate::{
     ast::token::TokenKind,
@@ -409,6 +410,7 @@ pub struct Lit {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LitKind {
+    Str(Ustr),
     Int(u128),
     Bool(bool),
     Unit,

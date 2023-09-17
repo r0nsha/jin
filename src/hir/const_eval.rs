@@ -1,5 +1,7 @@
 use std::collections::HashMap;
 
+use ustr::Ustr;
+
 use crate::{
     ast::{BinOp, CmpOp, UnOp},
     db::DefId,
@@ -52,6 +54,7 @@ impl ConstStorage {
                 .map(|(lhs, rhs)| lhs.apply_binary(rhs, bin.op))
                 .transpose()?,
             ExprKind::Lit(lit) => Some(match lit {
+                Lit::Str(value) => Const::Str(*value),
                 Lit::Int(value) => Const::Int(i128::try_from(*value).unwrap()),
                 Lit::Bool(value) => Const::Bool(*value),
                 Lit::Unit => Const::Unit,
@@ -73,6 +76,7 @@ impl ConstStorage {
 
 #[derive(Debug, Clone)]
 pub enum Const {
+    Str(Ustr),
     Int(i128),
     Bool(bool),
     Unit,
@@ -97,7 +101,7 @@ impl Const {
         match self {
             Self::Bool(v) => Self::Bool(!v),
             Self::Int(v) => Self::Int(!v),
-            Self::Unit => unreachable!("invalid input in const not: {:?}", self),
+            _ => unreachable!("invalid input in const not: {:?}", self),
         }
     }
 

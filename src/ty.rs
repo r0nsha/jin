@@ -149,6 +149,7 @@ pub enum TyKind {
     // Primitives types
     Int(IntTy),
     Uint(UintTy),
+    Str,
     Bool,
     Unit, // TODO: when we implement tuples, Unit should become Tuple([])
     Never,

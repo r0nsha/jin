@@ -10,5 +10,6 @@ pub const U32: &str = "u32";
 pub const U64: &str = "u64";
 pub const UINT: &str = "uint";
 
+pub const STR: &str = "str";
 pub const BOOL: &str = "bool";
 pub const NEVER: &str = "never";

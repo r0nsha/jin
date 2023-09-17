@@ -356,6 +356,7 @@ pub struct CommonTypes {
     pub u64: Ty,
     pub uint: Ty,
 
+    pub str: Ty,
     pub bool: Ty,
     pub unit: Ty,
     pub never: Ty,
@@ -384,6 +385,7 @@ impl CommonTypes {
             u64: Ty::new(TyKind::Uint(UintTy::U64)),
             uint: Ty::new(TyKind::Uint(UintTy::Uint)),
 
+            str: Ty::new(TyKind::Str),
             bool: Ty::new(TyKind::Bool),
             unit: Ty::new(TyKind::Unit),
             never: Ty::new(TyKind::Never),

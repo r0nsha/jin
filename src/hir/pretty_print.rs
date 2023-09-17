@@ -151,6 +151,7 @@ impl PPCtxt<'_> {
             }
             ExprKind::Lit(value) => {
                 let value_str = match value {
+                    Lit::Str(v) => v.to_string(),
                     Lit::Int(v) => v.to_string(),
                     Lit::Bool(v) => v.to_string(),
                     Lit::Unit => "()".to_string(),

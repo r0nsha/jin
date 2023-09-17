@@ -29,7 +29,7 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, BasicTypeEnum<'cx>> for TyKind {
         match self {
             Self::Int(ity) => ity.llty(cx).into(),
             Self::Uint(uty) => uty.llty(cx).into(),
-            Self::Fn(_) => cx.context.ptr_type(AddressSpace::default()).into(),
+            Self::Fn(_) | Self::Str => cx.context.ptr_type(AddressSpace::default()).into(),
             Self::Bool => cx.context.bool_type().into(),
             Self::Unit => cx.unit_ty().into(),
             Self::Never => cx.never_ty().into(),

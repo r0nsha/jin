@@ -164,6 +164,7 @@ impl Lower<'_, Expr> for ast::Expr {
             }
             Self::Lit(ast::Lit { kind, span }) => cx.expr(
                 ExprKind::Lit(match kind {
+                    ast::LitKind::Str(v) => Lit::Str(v),
                     ast::LitKind::Int(v) => Lit::Int(v),
                     ast::LitKind::Bool(v) => Lit::Bool(v),
                     ast::LitKind::Unit => Lit::Unit,

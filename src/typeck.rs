@@ -434,6 +434,7 @@ impl TyCtxt<'_> {
                 ty
             }
             ExprKind::Lit(value) => match value {
+                Lit::Str(..) => self.db.types.str,
                 Lit::Int(..) => self.fresh_int_var(),
                 Lit::Bool(..) => self.db.types.bool,
                 Lit::Unit => self.db.types.unit,
