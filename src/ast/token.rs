@@ -79,6 +79,7 @@ pub enum TokenKind {
 
     // Literals
     Int(u128),
+    Str(Ustr),
 }
 
 impl TokenKind {
@@ -131,6 +132,7 @@ impl fmt::Display for TokenKind {
             Self::False => f.write_str("`false`"),
             Self::As => f.write_str("`as`"),
             Self::Int(..) => f.write_str("int literal"),
+            Self::Str(..) => f.write_str("str literal"),
         }
     }
 }

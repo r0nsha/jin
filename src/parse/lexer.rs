@@ -47,6 +47,7 @@ impl<'s> Lexer<'s> {
                     ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
                     ch if ch.is_ascii_digit() => self.numeric(start),
                     ch if ch.is_ascii_whitespace() => return self.eat_token(),
+                    DQUOTE => self.eat_str(start),
                     '#' => {
                         self.eat_comment();
                         return self.eat_token();
@@ -164,6 +165,22 @@ impl<'s> Lexer<'s> {
         unreachable!()
     }
 
+    fn eat_str(&mut self, start: u32) -> TokenKind {
+        loop {
+            match self.peek() {
+                Some('"') => {
+                    let str = ustr(self.range(start + 1));
+                    self.next();
+                    return TokenKind::Str(str);
+                }
+                Some(_) => self.next(),
+                None => break,
+            }
+        }
+
+        unreachable!()
+    }
+
     fn eat_comment(&mut self) {
         while let Some(ch) = self.peek() {
             if ch == '\n' {
@@ -212,6 +229,7 @@ impl<'s> Lexer<'s> {
         Span::new(self.source_id, start, self.pos)
     }
 }
+
 type TokenizeResult<T> = Result<T, TokenizeError>;
 
 #[derive(Debug)]
@@ -228,3 +246,5 @@ impl From<TokenizeError> for Diagnostic {
         }
     }
 }
+
+const DQUOTE: char = '"';
