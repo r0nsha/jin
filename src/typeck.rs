@@ -93,10 +93,6 @@ impl TyCtxt<'_> {
             }
         }
 
-        for let_ in &mut hir.lets {
-            self.typeck_let(let_)?;
-        }
-
         Ok(())
     }
 
@@ -129,6 +125,10 @@ impl TyCtxt<'_> {
     }
 
     fn typeck_bodies(&mut self, hir: &mut Hir) -> TypeckResult<()> {
+        for let_ in &mut hir.lets {
+            self.typeck_let(let_)?;
+        }
+
         for f in &mut hir.fns {
             self.typeck_fn(f)?;
         }
