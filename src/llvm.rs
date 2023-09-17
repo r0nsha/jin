@@ -192,8 +192,6 @@ fn link(
         }
     }
 
-    dbg!(&lib_paths, &libs);
-
     #[cfg(windows)]
     {
         let find_result = unsafe { microsoft_craziness::find_visual_studio_and_windows_sdk() };

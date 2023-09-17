@@ -3,5 +3,7 @@
 
 /tests/*
 !/tests/*.jin
+!/tests/*.c
+!/tests/*.h
 
 fail.ll
