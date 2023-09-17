@@ -10,6 +10,14 @@ use crate::{
 
 impl<'db, 'cx> Generator<'db, 'cx> {
     #[inline]
+    pub fn str_ty(&self) -> StructType<'cx> {
+        self.context.struct_type(
+            &[self.context.ptr_type(AddressSpace::default()).into(), self.isize_ty.into()],
+            false,
+        )
+    }
+
+    #[inline]
     pub fn unit_ty(&self) -> StructType<'cx> {
         self.unit_ty
     }
@@ -22,6 +30,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
 
 pub trait LlvmTy<'db, 'cx, T> {
     fn llty(&self, cx: &Generator<'db, 'cx>) -> T;
+    fn llgepty(&self, cx: &Generator<'db, 'cx>) -> StructType<'cx>;
 }
 
 impl<'db, 'cx> LlvmTy<'db, 'cx, BasicTypeEnum<'cx>> for TyKind {
@@ -33,6 +42,13 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, BasicTypeEnum<'cx>> for TyKind {
             Self::Bool => cx.context.bool_type().into(),
             Self::Unit => cx.unit_ty().into(),
             Self::Never => cx.never_ty().into(),
+            _ => panic!("cannot gep {self:?}"),
+        }
+    }
+
+    fn llgepty(&self, cx: &Generator<'db, 'cx>) -> StructType<'cx> {
+        match self {
+            Self::Str => cx.str_ty(),
             _ => panic!("unexpected type: {self:?}"),
         }
     }
@@ -48,6 +64,10 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, IntType<'cx>> for IntTy {
             Self::Int => cx.isize_ty,
         }
     }
+
+    fn llgepty(&self, _: &Generator<'db, 'cx>) -> StructType<'cx> {
+        panic!("cannot gep {self:?}");
+    }
 }
 
 impl<'db, 'cx> LlvmTy<'db, 'cx, IntType<'cx>> for UintTy {
@@ -60,11 +80,19 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, IntType<'cx>> for UintTy {
             Self::Uint => cx.isize_ty,
         }
     }
+
+    fn llgepty(&self, _: &Generator<'db, 'cx>) -> StructType<'cx> {
+        panic!("cannot gep {self:?}");
+    }
 }
 
 impl<'db, 'cx> LlvmTy<'db, 'cx, FunctionType<'cx>> for FnTy {
     fn llty(&self, cx: &Generator<'db, 'cx>) -> FunctionType<'cx> {
         let param_tys: Vec<_> = self.params.iter().map(|p| p.ty.llty(cx).into()).collect();
         self.ret.llty(cx).fn_type(&param_tys, false)
+    }
+
+    fn llgepty(&self, _: &Generator<'db, 'cx>) -> StructType<'cx> {
+        panic!("cannot gep {self:?}");
     }
 }

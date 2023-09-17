@@ -442,7 +442,10 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 }
             }
             ExprKind::Index { value, index } => {
+                let pty = state.body.expr(*value).ty.llgepty(self);
+                dbg!(pty);
                 let value = self.codegen_expr(state, *value);
+                // self.bx.build_in_bounds_gep(value.ty, ptr, ordered_indexes, name)
                 todo!()
             }
             ExprKind::Id(id) => match id {
