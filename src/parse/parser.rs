@@ -3,9 +3,9 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Attr, Attrs, BinOp, Binary, Block, Call, CallArg, Cast, Expr, Fn, FnKind, FnParam, FnSig,
-        If, Item, Let, Lit, LitKind, MemberAccess, Module, Name, NamePat, Pat, Return, Ty, TyName,
-        TyParam, UnOp, Unary,
+        Attr, AttrKind, Attrs, BinOp, Binary, Block, Call, CallArg, Cast, Expr, Fn, FnKind,
+        FnParam, FnSig, If, Item, Let, Lit, LitKind, MemberAccess, Module, Name, NamePat, Pat,
+        Return, Ty, TyName, TyParam, UnOp, Unary,
     },
     common::{QPath, Word},
     db::Db,
@@ -61,7 +61,7 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_attrs()?;
 
         if self.is(TokenKind::Fn) {
-            self.parse_fn(vec![]).map(|f| Some(Item::Fn(f)))
+            self.parse_fn(attrs).map(|f| Some(Item::Fn(f)))
         } else if self.is(TokenKind::Let) {
             self.parse_let().map(|l| Some(Item::Let(l)))
         } else {
@@ -70,7 +70,32 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_attrs(&mut self) -> ParseResult<Vec<Attr>> {
-        todo!()
+        let mut attrs = vec![];
+
+        while self.is(TokenKind::At) {
+            attrs.push(self.parse_attr()?);
+        }
+
+        Ok(attrs)
+    }
+
+    fn parse_attr(&mut self) -> ParseResult<Attr> {
+        if self.is(TokenKind::OpenParen) {
+            let (kind, span) = self.parse_attr_kind()?;
+            let value = if self.is(TokenKind::Eq) { Some(self.parse_expr()?) } else { None };
+            self.eat(TokenKind::CloseParen)?;
+            Ok(Attr { kind, value, span })
+        } else {
+            let (kind, span) = self.parse_attr_kind()?;
+            Ok(Attr { kind, value: None, span })
+        }
+    }
+
+    fn parse_attr_kind(&mut self) -> ParseResult<(AttrKind, Span)> {
+        let ident = self.eat(TokenKind::empty_ident())?;
+        let kind = AttrKind::try_from(ident.ident().as_str())
+            .map_err(|()| ParseError::InvalidAttr(ident.word()))?;
+        Ok((kind, ident.span))
     }
 
     fn parse_fn(&mut self, attrs: Attrs) -> ParseResult<Fn> {
@@ -467,7 +492,7 @@ impl<'a> Parser<'a> {
                 match &arg {
                     CallArg::Positional(expr) => {
                         if passed_named_arg {
-                            return Err(ParseError::MixedArgs { span: expr.span() });
+                            return Err(ParseError::MixedArgs(expr.span()));
                         }
                     }
                     CallArg::Named(..) => passed_named_arg = true,
@@ -535,7 +560,7 @@ impl<'a> Parser<'a> {
     }
 
     fn require(&mut self) -> ParseResult<Token> {
-        self.token().ok_or_else(|| ParseError::UnexpectedEof { span: self.last_span() })
+        self.token().ok_or_else(|| ParseError::UnexpectedEof(self.last_span()))
     }
 
     fn is(&mut self, expected: TokenKind) -> bool {
@@ -612,8 +637,9 @@ type ParseResult<T> = Result<T, ParseError>;
 #[derive(Debug)]
 enum ParseError {
     UnexpectedToken { expected: String, found: TokenKind, span: Span },
-    UnexpectedEof { span: Span },
-    MixedArgs { span: Span },
+    UnexpectedEof(Span),
+    MixedArgs(Span),
+    InvalidAttr(Word),
 }
 
 impl From<ParseError> for Diagnostic {
@@ -624,12 +650,15 @@ impl From<ParseError> for Diagnostic {
                     .with_message(format!("expected {expected}, found {found}"))
                     .with_label(Label::primary(span).with_message("found here"))
             }
-            ParseError::UnexpectedEof { span } => Self::error("parse::unexpected_eof")
+            ParseError::UnexpectedEof(span) => Self::error("parse::unexpected_eof")
                 .with_message("unexpected end of file")
                 .with_label(Label::primary(span).with_message("here")),
-            ParseError::MixedArgs { span } => Self::error("parse::mixed_args")
+            ParseError::MixedArgs(span) => Self::error("parse::mixed_args")
                 .with_message("positional arguments are not allowed after named arguments")
                 .with_label(Label::primary(span).with_message("unexpected positional argument")),
+            ParseError::InvalidAttr(word) => Self::error("parse::invalid_attr")
+                .with_message("unknown attribute {word}")
+                .with_label(Label::primary(word.span()).with_message("unknown attribute")),
         }
     }
 }

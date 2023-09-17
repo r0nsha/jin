@@ -471,6 +471,7 @@ pub type Attrs = Vec<Attr>;
 pub struct Attr {
     pub kind: AttrKind,
     pub value: Option<Expr>,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -484,7 +485,7 @@ impl TryFrom<&str> for AttrKind {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
             "lib" => Ok(Self::Lib),
-            value => Err(()),
+            _ => Err(()),
         }
     }
 }
