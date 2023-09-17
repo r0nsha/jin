@@ -45,22 +45,29 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_top_level(&mut self) -> ParseResult<Item> {
-        if self.is(TokenKind::Fn) {
-            Ok(Item::Fn(self.parse_function()?))
-        } else if self.is(TokenKind::Let) {
-            Ok(Item::Let(self.parse_let()?))
+        if let Some(result) = self.maybe_parse_item() {
+            result
         } else {
             let token = self.require()?;
-
             Err(ParseError::UnexpectedToken {
-                expected: "fn".to_string(),
+                expected: "`fn` or `let`".to_string(),
                 found: token.kind,
                 span: token.span,
             })
         }
     }
 
-    fn parse_function(&mut self) -> ParseResult<Fn> {
+    fn maybe_parse_item(&mut self) -> Option<ParseResult<Item>> {
+        if self.is(TokenKind::Fn) {
+            Some(self.parse_fn().map(|f| Item::Fn(f)))
+        } else if self.is(TokenKind::Let) {
+            Some(self.parse_let().map(|l| Item::Let(l)))
+        } else {
+            None
+        }
+    }
+
+    fn parse_fn(&mut self) -> ParseResult<Fn> {
         let start = self.last_span();
 
         let name_ident = self.eat(TokenKind::empty_ident())?;
@@ -169,14 +176,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_stmt(&mut self) -> ParseResult<Expr> {
-        if self.is(TokenKind::Fn) {
-            Ok(Expr::Item(Item::Fn(self.parse_function()?)))
-        } else if self.is(TokenKind::Let) {
-            Ok(Expr::Item(Item::Let(self.parse_let()?)))
-        } else if self.is(TokenKind::Return) {
-            Ok(Expr::Return(self.parse_return()?))
+        if let Some(result) = self.maybe_parse_item() {
+            result.map(Expr::Item)
         } else {
-            Ok(self.parse_expr()?)
+            self.parse_expr()
         }
     }
 

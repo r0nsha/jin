@@ -54,21 +54,24 @@ impl Module {
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum Item {
     Fn(Fn),
+    ExternFn(ExternFn),
     Let(Let),
 }
 
 impl Spanned for Item {
     fn span(&self) -> Span {
         match self {
-            Self::Fn(x) => x.span,
-            Self::Let(x) => x.span,
+            Self::Fn(Fn { span, .. })
+            | Self::ExternFn(ExternFn { span, .. })
+            | Self::Let(Let { span, .. }) => *span,
         }
     }
 
     fn span_mut(&mut self) -> &mut Span {
         match self {
-            Self::Fn(x) => &mut x.span,
-            Self::Let(x) => &mut x.span,
+            Self::Fn(Fn { span, .. })
+            | Self::ExternFn(ExternFn { span, .. })
+            | Self::Let(Let { span, .. }) => span,
         }
     }
 }
@@ -127,6 +130,13 @@ pub struct Fn {
     pub id: Option<DefId>,
     pub sig: FnSig,
     pub body: Block,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct ExternFn {
+    pub id: Option<DefId>,
+    pub sig: FnSig,
     pub span: Span,
 }
 

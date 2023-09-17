@@ -1,7 +1,6 @@
+#@(lib = "c")
+fn extern puts(s *u8) int
+
 fn main() = {
-	fn foo() *u8 = {
-		let hello = "Hello, World!\0"
-		hello.ptr
-	}
-	foo()
+	puts("Hello, World!\0".ptr)
 }

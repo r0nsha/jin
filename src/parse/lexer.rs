@@ -135,6 +135,7 @@ impl<'s> Lexer<'s> {
                     "return" => TokenKind::Return,
                     "fn" => TokenKind::Fn,
                     "let" => TokenKind::Let,
+                    "extern" => TokenKind::Extern,
                     "if" => TokenKind::If,
                     "else" => TokenKind::Else,
                     "true" => TokenKind::True,
