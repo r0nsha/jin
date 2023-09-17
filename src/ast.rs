@@ -172,7 +172,8 @@ pub struct Let {
 
 #[derive(Debug, Clone)]
 pub struct ExternLet {
-    pub name: Word,
+    pub id: Option<DefId>,
+    pub word: Word,
     pub ty_annot: Ty,
     pub span: Span,
 }

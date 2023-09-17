@@ -143,7 +143,7 @@ impl<'a> Parser<'a> {
         let ident = self.eat(TokenKind::empty_ident())?;
         let ty_annot = self.parse_ty()?;
         let span = start.merge(ty_annot.span());
-        Ok(ExternLet { name: ident.word(), ty_annot, span })
+        Ok(ExternLet { id: None, word: ident.word(), ty_annot, span })
     }
     fn parse_pat(&mut self) -> ParseResult<Pat> {
         let tok = self.eat_any()?;

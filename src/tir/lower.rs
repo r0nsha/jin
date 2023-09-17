@@ -332,7 +332,9 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
 
                         ExprKind::Id(Id::Fn(id))
                     }
-                    DefKind::Global => ExprKind::Id(Id::Global(self.cx.lower_global(name.id))),
+                    DefKind::ExternGlobal | DefKind::Global => {
+                        ExprKind::Id(Id::Global(self.cx.lower_global(name.id)))
+                    }
                     DefKind::Variable => ExprKind::Id(Id::Local(self.def_to_local[&name.id])),
                     DefKind::Ty(_) => unreachable!(),
                 },

@@ -36,6 +36,10 @@ impl<'db> LowerCtxt<'db> {
                     let f = f.lower(self);
                     self.hir.fns.push(f);
                 }
+                ast::Item::ExternLet(let_) => {
+                    let let_ = let_.lower(self);
+                    self.hir.extern_lets.push(let_);
+                }
                 ast::Item::Let(let_) => {
                     let let_ = let_.lower(self);
                     self.hir.lets.push(let_);

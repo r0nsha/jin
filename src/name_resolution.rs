@@ -4,7 +4,7 @@ mod error;
 use ustr::{ustr, UstrMap};
 
 use crate::{
-    ast::{Ast, Block, CallArg, Expr, Fn, FnKind, FnSig, Item, Let, Pat, Ty, TyParam},
+    ast::{Ast, Block, CallArg, Expr, ExternLet, Fn, FnKind, FnSig, Item, Let, Pat, Ty, TyParam},
     common::{QPath, Word},
     db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     name_resolution::{
@@ -98,6 +98,13 @@ impl<'db> Resolver<'db> {
                     fun.sig.name,
                 ));
             }
+            Item::ExternLet(let_) => {
+                let_.id = Some(self.define_def(
+                    EnvKind::Global(module_id, Vis::Public),
+                    DefKind::ExternGlobal,
+                    let_.word,
+                ));
+            }
             Item::Let(let_) => self.define_pat(
                 EnvKind::Global(module_id, Vis::Public),
                 DefKind::Global,
@@ -184,6 +191,7 @@ impl<'db> Resolver<'db> {
         match item {
             Item::Fn(fun) => self.resolve_fn(env, fun),
             Item::Let(let_) => self.resolve_let(env, let_),
+            Item::ExternLet(let_) => self.resolve_extern_let(env, let_),
         }
     }
 
@@ -250,6 +258,14 @@ impl<'db> Resolver<'db> {
 
             self.resolve_expr(env, &mut let_.value);
         });
+    }
+
+    fn resolve_extern_let(&mut self, env: &mut Env, let_: &mut ExternLet) {
+        if !env.in_global_scope() {
+            let_.id = Some(self.define_def(EnvKind::Local(env), DefKind::ExternGlobal, let_.word));
+        }
+
+        self.resolve_ty(env, &mut let_.ty_annot);
     }
 
     fn resolve_block(&mut self, env: &mut Env, blk: &mut Block) {

@@ -186,7 +186,7 @@ impl PrettyPrint for Let {
 
 impl PrettyPrint for ExternLet {
     fn pretty_print(&self, cx: &mut PPCtxt) {
-        cx.builder.begin_child(format!("let extern {}", self.name));
+        cx.builder.begin_child(format!("let extern {}", self.word));
 
         cx.builder.begin_child("type".to_string());
         self.ty_annot.pretty_print(cx);
