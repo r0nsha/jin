@@ -324,6 +324,7 @@ impl<'db> Resolver<'db> {
 
     fn resolve_ty(&mut self, env: &Env, ty: &mut Ty) {
         match ty {
+            Ty::RawPtr(pointee, _) => self.resolve_ty(env, pointee),
             Ty::Name(name) => match self.lookup(env, name.word) {
                 Ok(id) => name.id = Some(id),
                 Err(err) => self.errors.push(err),

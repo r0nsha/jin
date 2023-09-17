@@ -1,7 +1,7 @@
 fn main() = {
-	fn foo() uint = {
+	fn foo() *u8 = {
 		let hello = "Hello, World!\0"
-		hello.len
+		hello.ptr
 	}
 	foo()
 }

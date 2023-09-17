@@ -428,6 +428,7 @@ pub enum LitKind {
 
 #[derive(Debug, Clone)]
 pub enum Ty {
+    RawPtr(Box<Ty>, Span),
     Name(TyName),
     Unit(Span),
     Infer(Span),
@@ -436,14 +437,17 @@ pub enum Ty {
 impl Spanned for Ty {
     fn span(&self) -> Span {
         match self {
-            Self::Name(TyName { span, .. }) | Self::Unit(span) | Self::Infer(span) => *span,
+            Self::RawPtr(_, span)
+            | Self::Name(TyName { span, .. })
+            | Self::Unit(span)
+            | Self::Infer(span) => *span,
         }
     }
 
     fn span_mut(&mut self) -> &mut Span {
         match self {
             Ty::Name(x) => &mut x.span,
-            Ty::Unit(span) | Ty::Infer(span) => span,
+            Self::RawPtr(_, span) | Ty::Unit(span) | Ty::Infer(span) => span,
         }
     }
 }

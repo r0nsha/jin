@@ -1,9 +1,9 @@
 use ena::unify::{EqUnifyValue, UnifyKey};
 
 use crate::{
-    typeck::{error::TypeckError, normalize::NormalizeTy, tcx::TyCtxt},
     span::Span,
     ty::{InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
+    typeck::{error::TypeckError, normalize::NormalizeTy, tcx::TyCtxt},
 };
 
 impl<'db> TyCtxt<'db> {
@@ -115,6 +115,8 @@ impl UnifyCtxt<'_, '_> {
             (TyKind::Bool, TyKind::Bool) | (TyKind::Unit, TyKind::Unit) => Ok(()),
             (TyKind::Uint(a), TyKind::Uint(b)) if a == b => Ok(()),
             (TyKind::Int(a), TyKind::Int(b)) if a == b => Ok(()),
+
+            (TyKind::RawPtr(a), TyKind::RawPtr(b)) => self.unify_ty_ty(*a, *b),
 
             (TyKind::Fn(ref fex), TyKind::Fn(ref fact)) => {
                 self.unify_ty_ty(fex.ret, fact.ret)?;

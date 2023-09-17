@@ -185,6 +185,11 @@ impl PrettyPrint for Block {
 impl PrettyPrint for Ty {
     fn pretty_print(&self, cx: &mut PPCtxt) {
         match self {
+            Ty::RawPtr(pointee, _) => {
+                cx.builder.begin_child("raw ptr".to_string());
+                pointee.pretty_print(cx);
+                cx.builder.end_child();
+            }
             Ty::Name(name) => {
                 cx.builder.add_empty_child(name.word.to_string());
 

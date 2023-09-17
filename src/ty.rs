@@ -146,7 +146,7 @@ impl From<&TyKind> for TyKind {
 pub enum TyKind {
     // Composite types
     Fn(FnTy),
-    RawPtr(Box<TyKind>),
+    RawPtr(Ty),
 
     // Primitive types
     Int(IntTy),

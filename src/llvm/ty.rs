@@ -38,17 +38,20 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, BasicTypeEnum<'cx>> for TyKind {
         match self {
             Self::Int(ity) => ity.llty(cx).into(),
             Self::Uint(uty) => uty.llty(cx).into(),
-            Self::Fn(_) | Self::Str => cx.context.ptr_type(AddressSpace::default()).into(),
+            Self::Fn(_) | Self::Str | Self::RawPtr(_) => {
+                cx.context.ptr_type(AddressSpace::default()).into()
+            }
             Self::Bool => cx.context.bool_type().into(),
             Self::Unit => cx.unit_ty().into(),
             Self::Never => cx.never_ty().into(),
-            _ => panic!("{self:?} has no pointee"),
+            _ => panic!("unexpected type {self:?}"),
         }
     }
 
     fn llpointee(&self, cx: &Generator<'db, 'cx>) -> BasicTypeEnum<'cx> {
         match self {
             Self::Str => cx.str_ty().into(),
+            Self::RawPtr(pointee) => pointee.llty(cx),
             _ => panic!("unexpected type: {self:?}"),
         }
     }

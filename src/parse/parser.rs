@@ -339,6 +339,11 @@ impl<'a> Parser<'a> {
         let tok = self.eat_any()?;
 
         let ty = match tok.kind {
+            TokenKind::Star => {
+                let pointee = self.parse_ty()?;
+                let span = tok.span.merge(pointee.span());
+                Ty::RawPtr(Box::new(pointee), span)
+            }
             TokenKind::Ident(..) => {
                 Ty::Name(TyName { id: None, word: tok.word(), args: vec![], span: tok.span })
             }

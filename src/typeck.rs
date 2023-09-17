@@ -405,7 +405,9 @@ impl TyCtxt<'_> {
                 let ty = self.normalize(access.expr.ty);
 
                 match ty.kind() {
-                    TyKind::Str if access.member.name() == sym::PTR => todo!(),
+                    TyKind::Str if access.member.name() == sym::PTR => {
+                        Ty::new(TyKind::RawPtr(self.db.types.u8))
+                    }
                     TyKind::Str if access.member.name() == sym::LEN => self.db.types.uint,
                     _ => return Err(TypeckError::InvalidMember { ty, member: access.member }),
                 }
@@ -459,6 +461,7 @@ impl TyCtxt<'_> {
 
     fn typeck_ty(&mut self, ty: &hir::Ty) -> TypeckResult<Ty> {
         match ty {
+            hir::Ty::RawPtr(pointee, _) => Ok(Ty::new(TyKind::RawPtr(self.typeck_ty(pointee)?))),
             hir::Ty::Name(name) => {
                 let def = &self.db[name.id];
 

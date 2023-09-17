@@ -223,6 +223,7 @@ impl Lower<'_, Block> for ast::Block {
 impl Lower<'_, Ty> for ast::Ty {
     fn lower(self, cx: &mut LowerCtxt<'_>) -> Ty {
         match self {
+            ast::Ty::RawPtr(pointee, span) => Ty::RawPtr(Box::new(pointee.lower(cx)), span),
             ast::Ty::Name(name) => Ty::Name(TyName {
                 id: name.id.expect("to be resolved"),
                 args: name.args.into_iter().map(|a| a.lower(cx)).collect(),
