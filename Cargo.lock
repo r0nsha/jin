@@ -587,6 +587,7 @@ dependencies = [
  "path-absolutize",
  "pretty",
  "ptree",
+ "unescaper",
  "ustr",
  "widestring",
  "winapi",
@@ -1168,6 +1169,15 @@ name = "typenum"
 version = "1.16.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "497961ef93d974e23eb6f433eb5fe1b7930b659f06d12dec6fc44a8f554c0bba"
+
+[[package]]
+name = "unescaper"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a96a44ae11e25afb520af4534fd7b0bd8cd613e35a78def813b8cf41631fa3c8"
+dependencies = [
+ "thiserror",
+]
 
 [[package]]
 name = "unicode-ident"

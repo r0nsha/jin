@@ -47,7 +47,7 @@ impl<'s> Lexer<'s> {
                     ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
                     ch if ch.is_ascii_digit() => self.numeric(start),
                     ch if ch.is_ascii_whitespace() => return self.eat_token(),
-                    DQUOTE => self.eat_str(start),
+                    DQUOTE => self.eat_str(start)?,
                     '#' => {
                         self.eat_comment();
                         return self.eat_token();
@@ -115,7 +115,7 @@ impl<'s> Lexer<'s> {
                     '^' => TokenKind::Caret,
                     ch => {
                         let span = self.create_span(start);
-                        return Err(TokenizeError::InvalidChar { ch, span });
+                        return Err(TokenizeError::InvalidChar(ch, span));
                     }
                 };
 
@@ -165,10 +165,30 @@ impl<'s> Lexer<'s> {
         unreachable!()
     }
 
-    fn eat_str(&mut self, start: u32) -> TokenKind {
+    fn eat_str(&mut self, start: u32) -> Result<TokenKind, TokenizeError> {
         loop {
             match self.bump() {
-                Some('"') => return TokenKind::Str(ustr(self.range(start + 1))),
+                Some('"') => {
+                    let str = self.range(start + 1);
+                    let stripped = unescaper::unescape(str).map_err(|err| match err {
+                        unescaper::Error::IncompleteStr(pos) => TokenizeError::EscapeIncompleteStr(
+                            Span::uniform(self.source_id, pos as u32),
+                        ),
+                        unescaper::Error::InvalidChar { char, pos } => {
+                            TokenizeError::EscapeInvalidChar(
+                                char,
+                                Span::uniform(self.source_id, pos as u32),
+                            )
+                        }
+                        unescaper::Error::ParseIntError { pos, .. } => {
+                            TokenizeError::EscapeParseIntError(Span::uniform(
+                                self.source_id,
+                                pos as u32,
+                            ))
+                        }
+                    })?;
+                    return Ok(TokenKind::Str(ustr(&stripped)));
+                }
                 Some(_) => (),
                 None => break,
             }
@@ -230,14 +250,26 @@ type TokenizeResult<T> = Result<T, TokenizeError>;
 
 #[derive(Debug)]
 enum TokenizeError {
-    InvalidChar { ch: char, span: Span },
+    InvalidChar(char, Span),
+    EscapeIncompleteStr(Span),
+    EscapeInvalidChar(char, Span),
+    EscapeParseIntError(Span),
 }
 
 impl From<TokenizeError> for Diagnostic {
     fn from(err: TokenizeError) -> Self {
         match err {
-            TokenizeError::InvalidChar { ch, span } => Self::error("parse::invalid_char")
+            TokenizeError::InvalidChar(ch, span) => Self::error("parse::invalid_char")
                 .with_message(format!("invalid character {ch}"))
+                .with_label(Label::primary(span)),
+            TokenizeError::EscapeIncompleteStr(span) => Self::error("parse::escape_incomplete_str")
+                .with_message("incomplete string in escape sequence")
+                .with_label(Label::primary(span)),
+            TokenizeError::EscapeInvalidChar(ch, span) => Self::error("parse::escape_invalid_char")
+                .with_message(format!("invalid character {ch} in escape sequence"))
+                .with_label(Label::primary(span)),
+            TokenizeError::EscapeParseIntError(span) => Self::error("parse::escape_invalid_int")
+                .with_message("invalid integer in escape sequence")
                 .with_label(Label::primary(span)),
         }
     }

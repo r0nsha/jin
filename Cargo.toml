@@ -20,7 +20,7 @@ pretty = { version = "0.12.1" }
 ptree = "0.4.0"
 ustr = "0.10.0"
 inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = [
-	"llvm15-0-force-dynamic",
+  "llvm15-0-force-dynamic",
 ] }
 llvm-sys = { version = "150", features = ["force-dynamic"] }
 libc = "0.2"
@@ -28,14 +28,15 @@ execute = "0.2.12"
 anyhow = "1.0.75"
 internment = "0.7.1"
 lazy_static = "1.4.0"
+unescaper = "0.1.2"
 
 [target.'cfg(windows)'.dependencies]
 libc = "0.2.132"
 widestring = "1.0.2"
 winapi = { version = "0.3.9", features = [
-	"winuser",
-	"impl-default",
-	"oleauto",
+  "winuser",
+  "impl-default",
+  "oleauto",
 ] }
 
 [build-dependencies]
