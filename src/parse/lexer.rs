@@ -167,13 +167,9 @@ impl<'s> Lexer<'s> {
 
     fn eat_str(&mut self, start: u32) -> TokenKind {
         loop {
-            match self.peek() {
-                Some('"') => {
-                    let str = ustr(self.range(start + 1));
-                    self.next();
-                    return TokenKind::Str(str);
-                }
-                Some(_) => self.next(),
+            match self.bump() {
+                Some('"') => return TokenKind::Str(ustr(self.range(start + 1))),
+                Some(_) => (),
                 None => break,
             }
         }
