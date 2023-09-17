@@ -2,12 +2,14 @@ use std::collections::HashMap;
 
 use crate::{
     ast::{BinOp, CmpOp, UnOp},
+    db::DefId,
     hir::{Expr, ExprId, ExprKind, Lit},
 };
 
 #[derive(Debug)]
 pub struct ConstStorage {
     exprs: HashMap<ExprId, Const>,
+    defs: HashMap<DefId, Const>,
 }
 
 impl Default for ConstStorage {
@@ -18,7 +20,7 @@ impl Default for ConstStorage {
 
 impl ConstStorage {
     pub fn new() -> Self {
-        Self { exprs: HashMap::new() }
+        Self { exprs: HashMap::new(), defs: HashMap::new() }
     }
 
     #[inline]
@@ -26,16 +28,20 @@ impl ConstStorage {
         self.exprs.get(&id)
     }
 
-    pub fn eval_expr(&mut self, expr: &Expr) -> Result<(), ConstEvalError> {
-        // TODO: const eval name
+    #[inline]
+    pub fn def(&self, id: DefId) -> Option<&Const> {
+        self.defs.get(&id)
+    }
 
+    #[inline]
+    #[track_caller]
+    pub fn insert_def(&mut self, id: DefId, value: Const) {
+        assert!(self.defs.insert(id, value).is_none(), "def const value set twice");
+    }
+
+    pub fn eval_expr(&mut self, expr: &Expr) -> Result<(), ConstEvalError> {
         let result = match &expr.kind {
-            ExprKind::Let(_)
-            | ExprKind::If(_)
-            | ExprKind::Return(_)
-            | ExprKind::Call(_)
-            | ExprKind::Cast(_)
-            | ExprKind::Name(_) => None,
+            ExprKind::Name(name) => self.def(name.id).cloned(),
             ExprKind::Block(blk) => (blk.exprs.len() == 1)
                 .then(|| self.expr(blk.exprs.last().unwrap().id).cloned())
                 .flatten(),
@@ -50,6 +56,11 @@ impl ConstStorage {
                 Lit::Bool(value) => Const::Bool(*value),
                 Lit::Unit => Const::Unit,
             }),
+            ExprKind::Let(_)
+            | ExprKind::If(_)
+            | ExprKind::Return(_)
+            | ExprKind::Call(_)
+            | ExprKind::Cast(_) => None,
         };
 
         if let Some(result) = result {

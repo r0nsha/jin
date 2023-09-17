@@ -178,7 +178,13 @@ impl TyCtxt<'_> {
             .or_coerce(self, let_.value.id)?;
 
         match &let_.pat {
-            Pat::Name(name) => self.db[name.id].ty = ty,
+            Pat::Name(name) => {
+                self.db[name.id].ty = ty;
+
+                if let Some(value) = self.db.const_storage.expr(let_.value.id) {
+                    self.db.const_storage.insert_def(name.id, value.clone());
+                }
+            }
             Pat::Ignore(_) => (),
         }
 
