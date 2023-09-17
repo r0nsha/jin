@@ -45,6 +45,10 @@ impl<'db> TyPrinter<'db> {
                 f.write_str(") ")?;
                 Self::fmt_type(f, &fun.ret)
             }
+            TyKind::RawPtr(pointee) => {
+                f.write_str("*")?;
+                Self::fmt_type(f, pointee)
+            }
             TyKind::Int(ity) => f.write_str(match ity {
                 IntTy::I8 => sym::I8,
                 IntTy::I16 => sym::I16,

@@ -144,9 +144,11 @@ impl From<&TyKind> for TyKind {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash, EnumAsInner)]
 pub enum TyKind {
+    // Composite types
     Fn(FnTy),
+    RawPtr(Box<TyKind>),
 
-    // Primitives types
+    // Primitive types
     Int(IntTy),
     Uint(UintTy),
     Str,
