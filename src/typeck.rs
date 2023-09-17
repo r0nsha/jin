@@ -144,9 +144,9 @@ impl TyCtxt<'_> {
 
         let mut env = Env::new(Some(f.id));
 
-        self.typeck_expr(&mut f.body, &mut env)?;
-
         let ret_ty = self.db[f.id].ty.as_fn().unwrap().ret;
+
+        self.typeck_expr(&mut f.body, &mut env, Some(ret_ty))?;
 
         let unify_body_res = self
             .at(Obligation::return_ty(
@@ -171,7 +171,7 @@ impl TyCtxt<'_> {
         let ty =
             if let Some(ty) = &let_.ty_annot { self.typeck_ty(ty)? } else { self.fresh_ty_var() };
 
-        self.typeck_expr(&mut let_.value, &mut env)?;
+        self.typeck_expr(&mut let_.value, &mut env, Some(ty))?;
 
         self.at(Obligation::obvious(let_.value.span))
             .eq(ty, let_.value.ty)
@@ -185,7 +185,12 @@ impl TyCtxt<'_> {
         Ok(ty)
     }
 
-    fn typeck_expr(&mut self, expr: &mut Expr, env: &mut Env) -> TypeckResult<()> {
+    fn typeck_expr(
+        &mut self,
+        expr: &mut Expr,
+        env: &mut Env,
+        expected_ty: Option<Ty>,
+    ) -> TypeckResult<()> {
         expr.ty = match &mut expr.kind {
             ExprKind::Let(let_) => {
                 let ty = self.typeck_let(let_)?;
@@ -198,16 +203,16 @@ impl TyCtxt<'_> {
                 self.db.types.unit
             }
             ExprKind::If(if_) => {
-                self.typeck_expr(&mut if_.cond, env)?;
+                self.typeck_expr(&mut if_.cond, env, Some(self.db.types.bool))?;
 
                 self.at(Obligation::obvious(if_.cond.span))
                     .eq(self.db.types.bool, if_.cond.ty)
                     .or_coerce(self, if_.cond.id)?;
 
-                self.typeck_expr(&mut if_.then, env)?;
+                self.typeck_expr(&mut if_.then, env, expected_ty)?;
 
                 if let Some(otherwise) = if_.otherwise.as_mut() {
-                    self.typeck_expr(otherwise, env)?;
+                    self.typeck_expr(otherwise, env, Some(if_.then.ty))?;
                     self.at(Obligation::exprs(expr.span, if_.then.span, otherwise.span))
                         .eq(if_.then.ty, otherwise.ty)
                         .or_coerce(self, otherwise.id)?;
@@ -223,17 +228,21 @@ impl TyCtxt<'_> {
                 }
             }
             ExprKind::Block(blk) => {
-                for expr in &mut blk.exprs {
-                    self.typeck_expr(expr, env)?;
+                let last = blk.exprs.len() - 1;
+
+                for (i, expr) in blk.exprs.iter_mut().enumerate() {
+                    let expected_ty =
+                        if i == last { expected_ty } else { Some(self.db.types.unit) };
+                    self.typeck_expr(expr, env, expected_ty)?;
                 }
 
                 blk.exprs.last().map_or_else(|| self.db.types.unit, |e| e.ty)
             }
             ExprKind::Return(ret) => {
-                self.typeck_expr(&mut ret.expr, env)?;
-
                 if let Some(fn_id) = env.fn_id {
                     let ret_ty = self.db[fn_id].ty.as_fn().unwrap().ret;
+
+                    self.typeck_expr(&mut ret.expr, env, Some(ret_ty))?;
 
                     self.at(Obligation::return_ty(ret.expr.span, self.db[fn_id].span))
                         .eq(ret_ty, ret.expr.ty)
@@ -245,10 +254,10 @@ impl TyCtxt<'_> {
                 }
             }
             ExprKind::Call(call) => {
-                self.typeck_expr(&mut call.callee, env)?;
+                self.typeck_expr(&mut call.callee, env, None)?;
 
                 for arg in &mut call.args {
-                    self.typeck_expr(&mut arg.expr, env)?;
+                    self.typeck_expr(&mut arg.expr, env, None)?;
                 }
 
                 if let TyKind::Fn(fun_ty) = call.callee.ty.kind() {
@@ -328,7 +337,7 @@ impl TyCtxt<'_> {
                 }
             }
             ExprKind::Unary(un) => {
-                self.typeck_expr(&mut un.expr, env)?;
+                self.typeck_expr(&mut un.expr, env, None)?;
 
                 match un.op {
                     UnOp::Neg => {
@@ -348,8 +357,8 @@ impl TyCtxt<'_> {
                 un.expr.ty
             }
             ExprKind::Binary(bin) => {
-                self.typeck_expr(&mut bin.lhs, env)?;
-                self.typeck_expr(&mut bin.rhs, env)?;
+                self.typeck_expr(&mut bin.lhs, env, None)?;
+                self.typeck_expr(&mut bin.rhs, env, Some(bin.lhs.ty))?;
 
                 self.at(Obligation::exprs(expr.span, bin.lhs.span, bin.rhs.span))
                     .eq(bin.lhs.ty, bin.rhs.ty)
@@ -377,7 +386,7 @@ impl TyCtxt<'_> {
                 }
             }
             ExprKind::Cast(cast) => {
-                self.typeck_expr(&mut cast.expr, env)?;
+                self.typeck_expr(&mut cast.expr, env, None)?;
                 self.typeck_ty(&cast.target)?
             }
             ExprKind::Name(name) => {
