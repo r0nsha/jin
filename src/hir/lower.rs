@@ -3,7 +3,7 @@ use crate::{
     db::Db,
     hir::{
         Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Hir, If,
-        Let, Lit, Name, NamePat, Pat, Return, Ty, TyName, TyParam, Unary,
+        Let, Lit, MemberAccess, Name, NamePat, Pat, Return, Ty, TyName, TyParam, Unary,
     },
     span::{Span, Spanned},
     ty::Instantiation,
@@ -154,8 +154,10 @@ impl Lower<'_, Expr> for ast::Expr {
                     ExprKind::Cast(Cast { expr: Box::new(expr.lower(cx)), target: ty.lower(cx) });
                 cx.expr(kind, span)
             }
-            Self::MemberAccess(access) => {
-                todo!()
+            Self::MemberAccess(ast::MemberAccess { expr, member, span }) => {
+                let kind =
+                    ExprKind::MemberAccess(MemberAccess { expr: Box::new(expr.lower(cx)), member });
+                cx.expr(kind, span)
             }
             Self::Name(ast::Name { id, word: _, args, span }) => {
                 let kind = ExprKind::Name(Name {

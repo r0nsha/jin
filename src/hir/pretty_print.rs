@@ -142,6 +142,15 @@ impl PPCtxt<'_> {
                 self.pp_expr(&cast.expr);
                 self.builder.end_child();
             }
+            ExprKind::MemberAccess(access) => {
+                self.builder.begin_child(format!(
+                    "member access `{}` (type: {})",
+                    access.member,
+                    expr.ty.display(self.db)
+                ));
+                self.pp_expr(&access.expr);
+                self.builder.end_child();
+            }
             ExprKind::Name(name) => {
                 self.builder.add_empty_child(format!(
                     "`{}` (type: {})",

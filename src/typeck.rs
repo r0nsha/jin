@@ -399,6 +399,9 @@ impl TyCtxt<'_> {
                 self.typeck_expr(&mut cast.expr, env, None)?;
                 self.typeck_ty(&cast.target)?
             }
+            ExprKind::MemberAccess(access) => {
+                todo!()
+            }
             ExprKind::Name(name) => {
                 let def_ty = self.lookup(name.id);
                 let ty = def_ty.normalize(&mut self.storage.borrow_mut());

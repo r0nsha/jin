@@ -289,6 +289,9 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
                 hir::ExprKind::Cast(cast) => {
                     ExprKind::Cast { value: self.lower_expr(&cast.expr), target: expr.ty }
                 }
+                hir::ExprKind::MemberAccess(access) => {
+                    todo!()
+                }
                 hir::ExprKind::Name(name) => match self.cx.db[name.id].kind.as_ref() {
                     DefKind::Fn(_) => {
                         let id = if name.instantiation.is_empty() {
