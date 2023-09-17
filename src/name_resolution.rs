@@ -211,7 +211,7 @@ impl<'db> Resolver<'db> {
             self.resolve_sig(env, &mut fun.sig);
 
             match &mut fun.kind {
-                FnKind::Bare { body } => self.resolve_block(env, body),
+                FnKind::Bare { body } => self.resolve_expr(env, body),
                 FnKind::Extern => (),
             }
         });

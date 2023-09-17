@@ -70,11 +70,7 @@ impl Lower<'_, Fn> for ast::Fn {
             attrs: self.attrs.lower(cx),
             sig: self.sig.lower(cx),
             kind: match self.kind {
-                ast::FnKind::Bare { body } => {
-                    let body_span = body.span;
-                    let body = ExprKind::Block(body.lower(cx));
-                    FnKind::Bare { body: cx.expr(body, body_span) }
-                }
+                ast::FnKind::Bare { body } => FnKind::Bare { body: body.lower(cx) },
                 ast::FnKind::Extern => FnKind::Extern,
             },
             span: self.span,

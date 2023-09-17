@@ -117,11 +117,17 @@ impl<'a> Parser<'a> {
             let expr = self.parse_expr()?;
 
             let body = match expr {
-                Expr::Block(blk) => blk,
-                _ => Block { span: expr.span(), exprs: vec![expr] },
+                Expr::Block(_) => expr,
+                _ => Expr::Block(Block { span: expr.span(), exprs: vec![expr] }),
             };
 
-            Ok(Fn { id: None, attrs, sig, kind: FnKind::Bare { body }, span: name_ident.span })
+            Ok(Fn {
+                id: None,
+                attrs,
+                sig,
+                kind: FnKind::Bare { body: Box::new(body) },
+                span: name_ident.span,
+            })
         }
     }
 

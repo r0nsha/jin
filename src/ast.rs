@@ -136,7 +136,7 @@ pub struct Fn {
 
 #[derive(Debug, Clone)]
 pub enum FnKind {
-    Bare { body: Block },
+    Bare { body: Box<Expr> },
     Extern,
 }
 
