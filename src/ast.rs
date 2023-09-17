@@ -436,12 +436,15 @@ pub enum Ty {
 impl Spanned for Ty {
     fn span(&self) -> Span {
         match self {
-            Ty::Name(TyName { span, .. }) | Ty::Unit(span) | Ty::Infer(span) => *span,
+            Self::Name(TyName { span, .. }) | Self::Unit(span) | Self::Infer(span) => *span,
         }
     }
 
     fn span_mut(&mut self) -> &mut Span {
-        todo!()
+        match self {
+            Ty::Name(x) => &mut x.span,
+            Ty::Unit(span) | Ty::Infer(span) => span,
+        }
     }
 }
 
