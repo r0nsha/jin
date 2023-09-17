@@ -1,6 +1,6 @@
 use crate::{
     ast::AttrKind,
-    db::ExternLib,
+    db::{ExternLib, ModuleId},
     hir::{const_eval::Const, Attr},
     typeck::{
         error::TypeckError,
@@ -12,11 +12,12 @@ use crate::{
 
 impl<'db> TyCtxt<'db> {
     // TODO: check that attrs are valid on the item they're placed on
-    pub fn typeck_attrs(&mut self, attrs: &mut [Attr], env: &mut Env) -> TypeckResult<()> {
+    pub fn typeck_attrs(&mut self, module_id: ModuleId, attrs: &mut [Attr]) -> TypeckResult<()> {
         for attr in attrs {
             let (value, value_ty, value_span) =
                 if let Some(value) = &mut attr.value {
-                    self.typeck_expr(value, env, None)?;
+                    self.typeck_expr(value, &mut Env::new(module_id, None), None)?;
+
                     let const_ =
                         self.db.const_storage.expr(value.id).cloned().ok_or(
                             TypeckError::NonConstAttrValue { ty: value.ty, span: value.span },
@@ -34,7 +35,7 @@ impl<'db> TyCtxt<'db> {
                         let path = *value.as_str().unwrap();
                         let sources = &self.db.sources.borrow();
                         let relative_to =
-                            sources[self.db[env.module_id()].source_id].path().parent().unwrap();
+                            sources[self.db[module_id].source_id].path().parent().unwrap();
                         ExternLib::try_from_str(&path, relative_to)
                             .ok_or(TypeckError::PathNotFound { path, span: value_span })?
                     };

@@ -95,7 +95,7 @@ impl TyCtxt<'_> {
         }
 
         for let_ in &mut hir.extern_lets {
-            // TODO: typeck attrs
+            self.typeck_attrs(let_.module_id, &mut let_.attrs)?;
             self.db[let_.id].ty = self.typeck_ty(&let_.ty_annot)?;
         }
 
@@ -150,7 +150,7 @@ impl TyCtxt<'_> {
 
         let mut env = Env::new(f.module_id, Some(f.id));
 
-        self.typeck_attrs(&mut f.attrs, &mut env)?;
+        self.typeck_attrs(env.module_id(), &mut f.attrs)?;
 
         let ret_ty = self.db[f.id].ty.as_fn().unwrap().ret;
 
@@ -181,7 +181,7 @@ impl TyCtxt<'_> {
     fn typeck_let(&mut self, let_: &mut Let) -> TypeckResult<Ty> {
         let mut env = Env::new(let_.module_id, None);
 
-        self.typeck_attrs(&mut let_.attrs, &mut env)?;
+        self.typeck_attrs(env.module_id(), &mut let_.attrs)?;
 
         let ty =
             if let Some(ty) = &let_.ty_annot { self.typeck_ty(ty)? } else { self.fresh_ty_var() };
