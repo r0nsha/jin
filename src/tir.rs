@@ -135,6 +135,7 @@ pub enum ExprKind {
     Binary { lhs: ExprId, rhs: ExprId, op: BinOp },
     Unary { value: ExprId, op: UnOp },
     Cast { value: ExprId, target: Ty },
+    Index { value: ExprId, index: usize },
     Id(Id),
     Const(Const),
 }

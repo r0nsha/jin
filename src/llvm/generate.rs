@@ -441,6 +441,10 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                     ),
                 }
             }
+            ExprKind::Index { value, index } => {
+                let value = self.codegen_expr(state, *value);
+                todo!()
+            }
             ExprKind::Id(id) => match id {
                 Id::Fn(fid) => {
                     self.function(*fid).as_global_value().as_pointer_value().as_basic_value_enum()

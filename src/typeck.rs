@@ -405,8 +405,8 @@ impl TyCtxt<'_> {
                 let ty = self.normalize(access.expr.ty);
 
                 match ty.kind() {
-                    TyKind::Str if access.member.name() == sym::LEN => self.db.types.uint,
                     TyKind::Str if access.member.name() == sym::PTR => todo!(),
+                    TyKind::Str if access.member.name() == sym::LEN => self.db.types.uint,
                     _ => return Err(TypeckError::InvalidMember { ty, member: access.member }),
                 }
             }

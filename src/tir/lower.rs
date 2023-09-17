@@ -7,6 +7,7 @@ use crate::{
     hir,
     hir::{const_eval::Const, Hir},
     subst::{ParamFolder, Subst},
+    sym,
     tir::{
         Body, Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Global, GlobalId, Id,
         Local, LocalId, Tir,
@@ -14,7 +15,7 @@ use crate::{
     ty::{
         coerce::{CoercionKind, Coercions},
         fold::TyFolder,
-        Instantiation, Ty,
+        Instantiation, Ty, TyKind,
     },
 };
 
@@ -290,7 +291,19 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
                     ExprKind::Cast { value: self.lower_expr(&cast.expr), target: expr.ty }
                 }
                 hir::ExprKind::MemberAccess(access) => {
-                    todo!()
+                    let value = self.lower_expr(&access.expr);
+
+                    match access.expr.ty.kind() {
+                        TyKind::Str if access.member.name() == sym::PTR => {
+                            ExprKind::Index { value, index: 0 }
+                        }
+                        TyKind::Str if access.member.name() == sym::LEN => {
+                            ExprKind::Index { value, index: 1 }
+                        }
+                        _ => {
+                            panic!("invalid type when lowering MemberAccess: {:?}", expr.ty.kind())
+                        }
+                    }
                 }
                 hir::ExprKind::Name(name) => match self.cx.db[name.id].kind.as_ref() {
                     DefKind::Fn(_) => {

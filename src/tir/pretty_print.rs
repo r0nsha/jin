@@ -133,6 +133,15 @@ impl PPCtxt<'_> {
                 self.pp_expr(*value);
                 self.builder.end_child();
             }
+            ExprKind::Index { value, index } => {
+                self.builder.begin_child(format!(
+                    "index {} (type: {})",
+                    index,
+                    expr.ty.display(self.db)
+                ));
+                self.pp_expr(*value);
+                self.builder.end_child();
+            }
             ExprKind::Id(id) => match id {
                 Id::Fn(fid) => {
                     self.builder.add_empty_child(format!(
