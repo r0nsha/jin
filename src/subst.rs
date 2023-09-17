@@ -1,6 +1,6 @@
 use crate::{
     db::Db,
-    hir::{Expr, ExprKind, Fn, FnSig, Let, Pat},
+    hir::{Expr, ExprKind, Fn, FnKind, FnSig, Let, Pat},
     span::Span,
     ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };
@@ -69,7 +69,11 @@ impl<S: SubstTy> Subst<S> for Expr {
 impl<S: SubstTy> Subst<S> for Fn {
     fn subst(&mut self, s: &mut S) {
         self.sig.subst(s);
-        self.body.subst(s);
+
+        match &mut self.kind {
+            FnKind::Bare { body } => body.subst(s),
+            FnKind::Extern => (),
+        }
 
         let ty = {
             let ty = s.db()[self.id].ty;

@@ -2,7 +2,7 @@ use std::io;
 
 use crate::{
     db::Db,
-    hir::{Expr, ExprKind, Fn, Hir, Let, Lit},
+    hir::{Expr, ExprKind, Fn, FnKind, Hir, Let, Lit},
 };
 
 pub(super) fn print(db: &Db, hir: &Hir, w: &mut impl io::Write) -> io::Result<()> {
@@ -47,7 +47,14 @@ impl PPCtxt<'_> {
             self.builder.end_child();
         }
 
-        self.pp_expr(&f.body);
+        match &f.kind {
+            FnKind::Bare { body } => {
+                self.pp_expr(body);
+            }
+            FnKind::Extern => {
+                self.builder.add_empty_child("extern".to_string());
+            }
+        }
 
         self.builder.end_child();
     }

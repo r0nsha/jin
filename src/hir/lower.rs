@@ -2,8 +2,8 @@ use crate::{
     ast,
     db::Db,
     hir::{
-        Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, Fn, FnParam, FnSig, Hir, If,
-        Let, Lit, MemberAccess, Name, NamePat, Pat, Return, Ty, TyName, TyParam, Unary,
+        Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, Fn, FnKind, FnParam, FnSig,
+        Hir, If, Let, Lit, MemberAccess, Name, NamePat, Pat, Return, Ty, TyName, TyParam, Unary,
     },
     span::{Span, Spanned},
     ty::Instantiation,
@@ -57,13 +57,17 @@ trait Lower<'db, T> {
 
 impl Lower<'_, Fn> for ast::Fn {
     fn lower(self, cx: &mut LowerCtxt<'_>) -> Fn {
-        let body_span = self.body.span;
-        let body = ExprKind::Block(self.body.lower(cx));
-
         Fn {
             id: self.id.expect("to be resolved"),
             sig: self.sig.lower(cx),
-            body: cx.expr(body, body_span),
+            kind: match self.kind {
+                ast::FnKind::Bare { body } => {
+                    let body_span = body.span;
+                    let body = ExprKind::Block(body.lower(cx));
+                    FnKind::Bare { body: cx.expr(body, body_span) }
+                }
+                ast::FnKind::Extern => FnKind::Extern,
+            },
             span: self.span,
         }
     }

@@ -3,8 +3,8 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        BinOp, Binary, Block, Call, CallArg, Cast, Expr, Fn, FnParam, FnSig, If, Item, Let, Lit,
-        LitKind, MemberAccess, Module, Name, NamePat, Pat, Return, Ty, TyName, TyParam, UnOp,
+        BinOp, Binary, Block, Call, CallArg, Cast, Expr, Fn, FnKind, FnParam, FnSig, If, Item, Let,
+        Lit, LitKind, MemberAccess, Module, Name, NamePat, Pat, Return, Ty, TyName, TyParam, UnOp,
         Unary,
     },
     common::{QPath, Word},
@@ -59,30 +59,35 @@ impl<'a> Parser<'a> {
 
     fn maybe_parse_item(&mut self) -> Option<ParseResult<Item>> {
         if self.is(TokenKind::Fn) {
-            Some(self.parse_fn().map(|f| Item::Fn(f)))
+            Some(self.parse_fn().map(Item::Fn))
         } else if self.is(TokenKind::Let) {
-            Some(self.parse_let().map(|l| Item::Let(l)))
+            Some(self.parse_let().map(Item::Let))
         } else {
             None
         }
     }
 
     fn parse_fn(&mut self) -> ParseResult<Fn> {
-        let start = self.last_span();
+        if self.is(TokenKind::Extern) {
+            let name_ident = self.eat(TokenKind::empty_ident())?;
+            let sig = self.parse_function_sig(name_ident.word())?;
 
-        let name_ident = self.eat(TokenKind::empty_ident())?;
-        let sig = self.parse_function_sig(name_ident.word())?;
+            Ok(Fn { id: None, sig, kind: FnKind::Extern, span: name_ident.span })
+        } else {
+            let name_ident = self.eat(TokenKind::empty_ident())?;
+            let sig = self.parse_function_sig(name_ident.word())?;
 
-        self.eat(TokenKind::Eq)?;
+            self.eat(TokenKind::Eq)?;
 
-        let expr = self.parse_expr()?;
+            let expr = self.parse_expr()?;
 
-        let body = match expr {
-            Expr::Block(blk) => blk,
-            _ => Block { span: expr.span(), exprs: vec![expr] },
-        };
+            let body = match expr {
+                Expr::Block(blk) => blk,
+                _ => Block { span: expr.span(), exprs: vec![expr] },
+            };
 
-        Ok(Fn { id: None, sig, span: start.merge(body.span), body })
+            Ok(Fn { id: None, sig, kind: FnKind::Bare { body }, span: name_ident.span })
+        }
     }
 
     fn parse_let(&mut self) -> ParseResult<Let> {

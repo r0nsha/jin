@@ -1,7 +1,7 @@
 use crate::{
     db::{Db, DefKind, FnInfo},
     diagnostics::{Diagnostic, Label},
-    hir::{const_eval::Const, Expr, ExprKind, Hir},
+    hir::{const_eval::Const, Expr, ExprKind, FnKind, Hir},
     span::Span,
     ty::{Ty, TyKind},
 };
@@ -17,7 +17,10 @@ struct Context<'db> {
 impl Context<'_> {
     fn analyze(&mut self, hir: &Hir) {
         for f in &hir.fns {
-            self.analyze_expr(&f.body);
+            match &f.kind {
+                FnKind::Bare { body } => self.analyze_expr(body),
+                FnKind::Extern => (),
+            }
         }
 
         for let_ in &hir.lets {

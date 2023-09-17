@@ -1,7 +1,7 @@
 use std::io;
 
 use super::{Expr, Fn, Item, LitKind, Module};
-use crate::ast::{Block, CallArg, Let, Ty};
+use crate::ast::{Block, CallArg, FnKind, FnSig, Let, Ty};
 
 pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Result<()> {
     let mut cx = PPCtxt { builder: ptree::TreeBuilder::new(module.name.standard_full_name()) };
@@ -133,25 +133,37 @@ impl PrettyPrint for Item {
 impl PrettyPrint for Fn {
     fn pretty_print(&self, cx: &mut PPCtxt) {
         cx.builder.begin_child(format!("fn {}", self.sig.name));
+        self.sig.pretty_print(cx);
 
-        if !self.sig.params.is_empty() {
+        match &self.kind {
+            FnKind::Bare { body } => body.pretty_print(cx),
+            FnKind::Extern {} => {
+                cx.builder.add_empty_child("extern".to_string());
+            }
+        }
+
+        cx.builder.end_child();
+    }
+}
+
+impl PrettyPrint for FnSig {
+    fn pretty_print(&self, cx: &mut PPCtxt) {
+        if !self.params.is_empty() {
             cx.builder.begin_child("params".to_string());
 
-            for param in &self.sig.params {
+            for param in &self.params {
                 cx.builder.add_empty_child(format!("{}", param.name));
                 param.ty.pretty_print(cx);
-            }
-
-            if let Some(ret) = &self.sig.ret {
-                ret.pretty_print(cx);
             }
 
             cx.builder.end_child();
         }
 
-        self.body.pretty_print(cx);
-
-        cx.builder.end_child();
+        if let Some(ret) = &self.ret {
+            cx.builder.begin_child("ret".to_string());
+            ret.pretty_print(cx);
+            cx.builder.end_child();
+        }
     }
 }
 

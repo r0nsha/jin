@@ -182,19 +182,20 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
             self.create_local(param.def_id, param.ty);
         }
 
-        let f = Fn {
-            id: self.cx.tir.fns.next_key(),
-            def_id: f.id,
-            sig,
-            value: self.lower_expr(&f.body),
-            body: self.body,
-        };
-
-        if self.cx.db.main_function_id() == Some(f.def_id) {
-            self.cx.tir.main_fn = Some(f.sig);
-        }
-
-        self.cx.tir.fns.push(f);
+        todo!();
+        // let f = Fn {
+        //     id: self.cx.tir.fns.next_key(),
+        //     def_id: f.id,
+        //     sig,
+        //     value: self.lower_expr(&f.body),
+        //     body: self.body,
+        // };
+        //
+        // if self.cx.db.main_function_id() == Some(f.def_id) {
+        //     self.cx.tir.main_fn = Some(f.sig);
+        // }
+        //
+        // self.cx.tir.fns.push(f);
     }
 
     fn lower_global(mut self, let_: &hir::Let) -> Option<GlobalId> {

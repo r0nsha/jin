@@ -4,7 +4,7 @@ mod error;
 use ustr::{ustr, UstrMap};
 
 use crate::{
-    ast::{Ast, Block, CallArg, Expr, Fn, FnSig, Item, Let, Pat, Ty, TyParam},
+    ast::{Ast, Block, CallArg, Expr, Fn, FnKind, FnSig, Item, Let, Pat, Ty, TyParam},
     common::{QPath, Word},
     db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     name_resolution::{
@@ -192,7 +192,11 @@ impl<'db> Resolver<'db> {
 
         env.with_scope(fun.sig.name.name(), ScopeKind::Fn, |env| {
             self.resolve_sig(env, &mut fun.sig);
-            self.resolve_block(env, &mut fun.body);
+
+            match &mut fun.kind {
+                FnKind::Bare { body } => self.resolve_block(env, body),
+                FnKind::Extern => (),
+            }
         });
     }
 

@@ -146,23 +146,24 @@ impl TyCtxt<'_> {
 
         let ret_ty = self.db[f.id].ty.as_fn().unwrap().ret;
 
-        self.typeck_expr(&mut f.body, &mut env, Some(ret_ty))?;
-
-        let unify_body_res = self
-            .at(Obligation::return_ty(
-                f.body.span,
-                f.sig.ret.as_ref().map_or(self.db[f.id].span, Spanned::span),
-            ))
-            .eq(ret_ty, f.body.ty)
-            .or_coerce(self, f.body.id);
-
-        // If the function's return type is `()`, we want to let the user end the body with
-        // whatever expression they want, so that they don't need to end it with a `()`
-        if self.normalize(ret_ty).is_unit() {
-            Ok(())
-        } else {
-            unify_body_res.map_err(Into::into)
-        }
+        todo!();
+        // self.typeck_expr(&mut f.body, &mut env, Some(ret_ty))?;
+        //
+        // let unify_body_res = self
+        //     .at(Obligation::return_ty(
+        //         f.body.span,
+        //         f.sig.ret.as_ref().map_or(self.db[f.id].span, Spanned::span),
+        //     ))
+        //     .eq(ret_ty, f.body.ty)
+        //     .or_coerce(self, f.body.id);
+        //
+        // // If the function's return type is `()`, we want to let the user end the body with
+        // // whatever expression they want, so that they don't need to end it with a `()`
+        // if self.normalize(ret_ty).is_unit() {
+        //     Ok(())
+        // } else {
+        //     unify_body_res.map_err(Into::into)
+        // }
     }
 
     fn typeck_let(&mut self, let_: &mut Let) -> TypeckResult<Ty> {

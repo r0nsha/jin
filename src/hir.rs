@@ -101,8 +101,14 @@ pub enum ExprKind {
 pub struct Fn {
     pub id: DefId,
     pub sig: FnSig,
-    pub body: Expr,
+    pub kind: FnKind,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum FnKind {
+    Bare { body: Expr },
+    Extern,
 }
 
 #[derive(Debug, Clone)]
