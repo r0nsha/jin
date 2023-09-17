@@ -9,8 +9,8 @@ use crate::{
     subst::{ParamFolder, Subst},
     sym,
     tir::{
-        Body, Expr, ExprId, ExprKind, Exprs, ExternFn, Fn, FnParam, FnSig, FnSigId, Global,
-        GlobalId, Id, Local, LocalId, Tir,
+        Body, Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Global, GlobalId, Id,
+        Local, LocalId, Tir,
     },
     ty::{
         coerce::{CoercionKind, Coercions},
@@ -65,7 +65,9 @@ impl<'db> LowerCtxt<'db> {
         for f in &self.hir.fns {
             if !self.db[f.id].ty.is_polymorphic() {
                 let def = &self.db[f.id];
-                let sig = self.lower_fn_sig(&f.sig, def.qpath.standard_full_name().into(), def.ty);
+                let is_extern = f.kind.is_extern();
+                let name = if is_extern { def.name } else { def.qpath.standard_full_name().into() };
+                let sig = self.lower_fn_sig(&f.sig, name, def.ty, is_extern);
                 self.fn_map.insert(f.id, sig);
             }
         }
@@ -134,7 +136,7 @@ impl<'db> LowerCtxt<'db> {
                 ustr(&name)
             };
 
-            let sig = self.lower_fn_sig(&new_fun.sig, name, mono_item.ty);
+            let sig = self.lower_fn_sig(&new_fun.sig, name, mono_item.ty, false);
 
             self.mono_fns.insert(mono_item.clone(), sig);
             self.lower_fn_body(sig, &new_fun);
@@ -145,21 +147,27 @@ impl<'db> LowerCtxt<'db> {
         }
     }
 
-    fn lower_fn_sig(&mut self, sig: &hir::FnSig, name: Ustr, ty: Ty) -> FnSigId {
+    fn lower_fn_sig(&mut self, sig: &hir::FnSig, name: Ustr, ty: Ty, is_extern: bool) -> FnSigId {
         self.tir.sigs.push_with_key(|id| FnSig {
             id,
             name,
             params: sig.params.iter().map(|p| FnParam { def_id: p.id, ty: p.ty }).collect(),
             ret: ty.as_fn().unwrap().ret,
             ty,
+            is_extern,
         })
     }
 
     fn lower_fn_body(&mut self, sig: FnSigId, f: &hir::Fn) {
+        if f.kind.is_extern() {
+            return;
+        }
+
         assert!(
             !self.db[f.id].ty.is_polymorphic(),
             "lowering polymorphic functions to TIR is not allowed"
         );
+
         LowerBodyCtxt::new(self).lower_fn(sig, f);
     }
 }
@@ -188,17 +196,9 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
 
                 let value = self.lower_expr(body);
 
-                self.cx.tir.fns.push_with_key(|id| Fn {
-                    id,
-                    def_id: f.id,
-                    sig,
-                    value,
-                    body: self.body,
-                });
+                self.cx.tir.fns.push(Fn { def_id: f.id, sig, value, body: self.body });
             }
-            FnKind::Extern => {
-                self.cx.tir.extern_fns.push_with_key(|id| ExternFn { id, def_id: f.id, sig });
-            }
+            FnKind::Extern => unreachable!(),
         }
     }
 

@@ -105,7 +105,7 @@ pub struct Fn {
     pub span: Span,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, EnumAsInner)]
 pub enum FnKind {
     Bare { body: Expr },
     Extern,

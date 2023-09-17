@@ -10,7 +10,7 @@ pub(super) fn print(db: &Db, tir: &Tir, w: &mut impl io::Write) -> io::Result<()
             .pp_let(glob.name, glob.ty, glob.value);
     }
 
-    for f in tir.fns.iter() {
+    for f in &tir.fns {
         PPCtxt { builder: &mut builder, db, tir, body: &f.body }.pp_fn(f);
     }
 

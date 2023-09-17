@@ -15,8 +15,6 @@ use crate::{
     ty::Ty,
 };
 
-new_key_type!(ExternFnId);
-new_key_type!(FnId);
 new_key_type!(FnSigId);
 new_key_type!(GlobalId);
 new_key_type!(LocalId);
@@ -25,8 +23,8 @@ new_key_type!(ExprId);
 #[derive(Debug)]
 pub struct Tir {
     pub sigs: IndexVec<FnSigId, FnSig>,
-    pub fns: IndexVec<FnId, Fn>,
-    pub extern_fns: IndexVec<ExternFnId, ExternFn>,
+    pub fns: Vec<Fn>,
+    pub extern_fns: Vec<ExternFn>,
     pub globals: IndexVec<GlobalId, Global>,
     pub main_fn: Option<FnSigId>,
 }
@@ -35,8 +33,8 @@ impl Tir {
     pub fn new() -> Self {
         Self {
             sigs: IndexVec::new(),
-            fns: IndexVec::new(),
-            extern_fns: IndexVec::new(),
+            fns: vec![],
+            extern_fns: vec![],
             globals: IndexVec::new(),
             main_fn: None,
         }
@@ -49,18 +47,10 @@ impl Tir {
 
 #[derive(Debug, Clone)]
 pub struct Fn {
-    pub id: FnId,
     pub def_id: DefId,
     pub sig: FnSigId,
     pub value: ExprId,
     pub body: Body,
-}
-
-#[derive(Debug, Clone)]
-pub struct ExternFn {
-    pub id: ExternFnId,
-    pub def_id: DefId,
-    pub sig: FnSigId,
 }
 
 impl Fn {
@@ -68,6 +58,22 @@ impl Fn {
     pub fn params(&self, tir: &Tir) -> &[Local] {
         &self.body.locals.as_slice()[0..tir.sigs[self.sig].params.len()]
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct ExternFn {
+    pub def_id: DefId,
+    pub sig: FnSigId,
+}
+
+#[derive(Debug, Clone)]
+pub struct FnSig {
+    pub id: FnSigId,
+    pub name: Ustr,
+    pub params: Vec<FnParam>,
+    pub ret: Ty,
+    pub ty: Ty,
+    pub is_extern: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -110,15 +116,6 @@ pub struct Local {
     pub id: LocalId,
     pub def_id: DefId,
     pub name: Ustr,
-    pub ty: Ty,
-}
-
-#[derive(Debug, Clone)]
-pub struct FnSig {
-    pub id: FnSigId,
-    pub name: Ustr,
-    pub params: Vec<FnParam>,
-    pub ret: Ty,
     pub ty: Ty,
 }
 
