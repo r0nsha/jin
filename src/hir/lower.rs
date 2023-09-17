@@ -154,6 +154,9 @@ impl Lower<'_, Expr> for ast::Expr {
                     ExprKind::Cast(Cast { expr: Box::new(expr.lower(cx)), target: ty.lower(cx) });
                 cx.expr(kind, span)
             }
+            Self::MemberAccess(access) => {
+                todo!()
+            }
             Self::Name(ast::Name { id, word: _, args, span }) => {
                 let kind = ExprKind::Name(Name {
                     id: id.expect("to be resolved"),

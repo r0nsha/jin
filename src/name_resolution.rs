@@ -286,6 +286,9 @@ impl<'db> Resolver<'db> {
                 self.resolve_expr(env, &mut cast.expr);
                 self.resolve_ty(env, &mut cast.ty);
             }
+            Expr::MemberAccess(access) => {
+                todo!()
+            }
             Expr::Name(name) => {
                 match self.lookup(env, name.word) {
                     Ok(id) => name.id = Some(id),

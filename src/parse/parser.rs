@@ -4,7 +4,8 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         BinOp, Binary, Block, Call, CallArg, Cast, Expr, Fn, FnParam, FnSig, If, Item, Let, Lit,
-        LitKind, Module, Name, NamePat, Pat, Return, Ty, TyName, TyParam, UnOp, Unary,
+        LitKind, MemberAccess, Module, Name, NamePat, Pat, Return, Ty, TyName, TyParam, UnOp,
+        Unary,
     },
     common::{QPath, Word},
     db::Db,
@@ -63,7 +64,7 @@ impl<'a> Parser<'a> {
         let start = self.last_span();
 
         let name_ident = self.eat(TokenKind::empty_ident())?;
-        let sig = self.parse_function_sig(name_ident.spanned_word())?;
+        let sig = self.parse_function_sig(name_ident.word())?;
 
         self.eat(TokenKind::Eq)?;
 
@@ -94,7 +95,7 @@ impl<'a> Parser<'a> {
         let tok = self.eat_any()?;
 
         match tok.kind {
-            TokenKind::Ident(_) => Ok(Pat::Name(NamePat { id: None, word: tok.spanned_word() })),
+            TokenKind::Ident(_) => Ok(Pat::Name(NamePat { id: None, word: tok.word() })),
             TokenKind::Underscore => Ok(Pat::Ignore(tok.span)),
             _ => Err(ParseError::UnexpectedToken {
                 expected: "a pattern".to_string(),
@@ -128,7 +129,7 @@ impl<'a> Parser<'a> {
     fn parse_ty_params(&mut self) -> ParseResult<(Vec<TyParam>, Span)> {
         self.parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
             let ident = this.eat(TokenKind::empty_ident())?;
-            Ok(TyParam { id: None, name: ident.spanned_word() })
+            Ok(TyParam { id: None, name: ident.word() })
         })
     }
 
@@ -149,7 +150,7 @@ impl<'a> Parser<'a> {
         self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             let ident = this.eat(TokenKind::empty_ident())?;
             let ty = this.parse_ty()?;
-            Ok(FnParam { id: None, name: ident.spanned_word(), ty, span: ident.span })
+            Ok(FnParam { id: None, name: ident.word(), ty, span: ident.span })
         })
     }
 
@@ -318,7 +319,7 @@ impl<'a> Parser<'a> {
             TokenKind::False => Expr::Lit(Lit { kind: LitKind::Bool(false), span: tok.span }),
             TokenKind::Ident(..) => {
                 let args = self.parse_optional_ty_args()?;
-                Expr::Name(Name { id: None, word: tok.spanned_word(), args, span: tok.span })
+                Expr::Name(Name { id: None, word: tok.word(), args, span: tok.span })
             }
             TokenKind::Str(value) => Expr::Lit(Lit { kind: LitKind::Str(value), span: tok.span }),
             TokenKind::Int(value) => Expr::Lit(Lit { kind: LitKind::Int(value), span: tok.span }),
@@ -338,12 +339,9 @@ impl<'a> Parser<'a> {
         let tok = self.eat_any()?;
 
         let ty = match tok.kind {
-            TokenKind::Ident(..) => Ty::Name(TyName {
-                id: None,
-                word: tok.spanned_word(),
-                args: vec![],
-                span: tok.span,
-            }),
+            TokenKind::Ident(..) => {
+                Ty::Name(TyName { id: None, word: tok.word(), args: vec![], span: tok.span })
+            }
             TokenKind::OpenParen => {
                 let end = self.eat(TokenKind::CloseParen)?.span;
                 Ty::Unit(tok.span.merge(end))
@@ -405,6 +403,16 @@ impl<'a> Parser<'a> {
                     let span = expr.span().merge(ty.span());
                     Ok(Expr::Cast(Cast { expr: Box::new(expr), ty, span }))
                 }
+                TokenKind::Dot => {
+                    self.next();
+                    let name_ident = self.eat(TokenKind::empty_ident())?;
+                    let span = expr.span().merge(name_ident.span);
+                    Ok(Expr::MemberAccess(MemberAccess {
+                        expr: Box::new(expr),
+                        member: name_ident.word(),
+                        span,
+                    }))
+                }
                 // TokenKind::Dot => {
                 //     self.next();
                 //     let tok = self.require()?;
@@ -460,7 +468,7 @@ impl<'a> Parser<'a> {
 
             if self.is(TokenKind::Colon) {
                 let expr = self.parse_expr()?;
-                return Ok(CallArg::Named(ident_tok.spanned_word(), expr));
+                return Ok(CallArg::Named(ident_tok.word(), expr));
             }
 
             self.prev();

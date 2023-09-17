@@ -83,6 +83,7 @@ pub enum Expr {
     Unary(Unary),
     Binary(Binary),
     Cast(Cast),
+    MemberAccess(MemberAccess),
     Name(Name),
     Lit(Lit),
 }
@@ -91,8 +92,9 @@ impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
             Self::Item(x) => x.span(),
-            Self::Name(x) => x.word.span(),
-            Self::Return(Return { span, .. })
+            Self::Name(Name { span, .. })
+            | Self::MemberAccess(MemberAccess { span, .. })
+            | Self::Return(Return { span, .. })
             | Self::If(If { span, .. })
             | Self::Block(Block { span, .. })
             | Self::Call(Call { span, .. })
@@ -113,7 +115,8 @@ impl Spanned for Expr {
             Self::Unary(x) => &mut x.span,
             Self::Binary(x) => &mut x.span,
             Self::Cast(x) => &mut x.span,
-            Self::Name(x) => x.word.span_mut(),
+            Self::MemberAccess(x) => &mut x.span,
+            Self::Name(x) => &mut x.span,
             Self::Lit(x) => &mut x.span,
         }
     }
@@ -391,6 +394,13 @@ impl TryFrom<TokenKind> for BinOp {
 pub struct Cast {
     pub expr: Box<Expr>,
     pub ty: Ty,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct MemberAccess {
+    pub expr: Box<Expr>,
+    pub member: Word,
     pub span: Span,
 }
 

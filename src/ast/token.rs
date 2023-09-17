@@ -21,7 +21,7 @@ impl Token {
         }
     }
 
-    pub fn spanned_word(&self) -> Word {
+    pub fn word(&self) -> Word {
         Word::new(self.ident(), self.span)
     }
 

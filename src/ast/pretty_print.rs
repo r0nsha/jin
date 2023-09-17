@@ -95,6 +95,11 @@ impl PrettyPrint for Expr {
                 cx.builder.end_child();
                 cx.builder.end_child();
             }
+            Self::MemberAccess(access) => {
+                cx.builder.begin_child(format!("member access `{}`", access.member));
+                access.expr.pretty_print(cx);
+                cx.builder.end_child();
+            }
             Self::Name(name) => {
                 cx.builder.add_empty_child(format!("`{}`", name.word));
             }
