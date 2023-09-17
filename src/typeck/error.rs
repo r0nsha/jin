@@ -24,6 +24,7 @@ pub enum TypeckError {
     InvalidReturn(Span),
     CyclicGlobalVars { source: DefId, cyclic: DefId, cause_span: Span },
     ConstEval(ConstEvalError, Span),
+    InvalidMember { ty: Ty, member: Word },
 }
 
 impl TypeckError {
@@ -133,6 +134,9 @@ impl TypeckError {
                     ConstEvalError::RemByZero => "caught reminder by zero",
                     ConstEvalError::Overflow => "caught integer overflow",
                 })),
+            Self::InvalidMember { ty, member } => Diagnostic::error("check::invalid_member")
+                .with_message(format!("type `{}` has no member `{}`", ty.display(db), member))
+                .with_label(Label::primary(member.span()).with_message("unknown member")),
         }
     }
 }

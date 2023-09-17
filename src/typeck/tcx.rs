@@ -5,6 +5,7 @@ use ena::unify::InPlaceUnificationTable;
 use crate::{
     db::{Db, DefId},
     ty::{InferTy, IntVar, Ty, TyKind, TyVar},
+    typeck::normalize::NormalizeTy,
 };
 
 #[derive(Debug)]
@@ -44,6 +45,11 @@ impl<'db> TyCtxt<'db> {
         Ty::new(TyKind::Infer(InferTy::IntVar(
             self.storage.borrow_mut().int_unification_table.new_key(None),
         )))
+    }
+
+    #[inline]
+    pub fn normalize(&self, ty: Ty) -> Ty {
+        ty.normalize(&mut self.storage.borrow_mut())
     }
 }
 

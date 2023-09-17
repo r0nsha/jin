@@ -14,12 +14,12 @@ use crate::{
     diagnostics::Diagnostic,
     hir::{self, Expr, ExprKind, Fn, FnSig, Hir, Let, Lit, Pat},
     span::{Span, Spanned},
+    sym,
     ty::{FnTy, FnTyParam, Instantiation, ParamTy, Ty, TyKind},
     typeck::{
         coerce::CoerceExt,
         error::TypeckError,
         instantiate::instantiate,
-        normalize::NormalizeTy,
         tcx::{Env, TyCtxt},
         unify::Obligation,
     },
@@ -158,7 +158,7 @@ impl TyCtxt<'_> {
 
         // If the function's return type is `()`, we want to let the user end the body with
         // whatever expression they want, so that they don't need to end it with a `()`
-        if ret_ty.normalize(&mut self.storage.borrow_mut()).is_unit() {
+        if self.normalize(ret_ty).is_unit() {
             Ok(())
         } else {
             unify_body_res.map_err(Into::into)
@@ -341,7 +341,7 @@ impl TyCtxt<'_> {
                 } else {
                     // TODO: assume a function here?
                     return Err(TypeckError::UncallableTy {
-                        ty: call.callee.ty.normalize(&mut self.storage.borrow_mut()),
+                        ty: self.normalize(call.callee.ty),
                         span: call.callee.span,
                     });
                 }
@@ -400,11 +400,19 @@ impl TyCtxt<'_> {
                 self.typeck_ty(&cast.target)?
             }
             ExprKind::MemberAccess(access) => {
-                todo!()
+                self.typeck_expr(&mut access.expr, env, None)?;
+
+                let ty = self.normalize(access.expr.ty);
+
+                match ty.kind() {
+                    TyKind::Str if access.member.name() == sym::LEN => self.db.types.uint,
+                    TyKind::Str if access.member.name() == sym::PTR => todo!(),
+                    _ => return Err(TypeckError::InvalidMember { ty, member: access.member }),
+                }
             }
             ExprKind::Name(name) => {
                 let def_ty = self.lookup(name.id);
-                let ty = def_ty.normalize(&mut self.storage.borrow_mut());
+                let ty = self.normalize(def_ty);
 
                 let ty_params = ty.collect_params();
 
