@@ -34,15 +34,26 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         self.context.bool_type().const_int(u64::from(value), false)
     }
 
-    pub fn const_str_slice(&mut self, value: impl Into<Ustr>, name: &str) -> PointerValue<'cx> {
+    pub fn build_static_str(&mut self, value: Ustr) -> PointerValue<'cx> {
+        let static_str =
+            self.module.add_global(self.context.i8_type().array_type(value.len() as u32), None, "");
+        static_str.set_initializer(&self.context.const_string(value.as_bytes(), false));
+        let ptr = static_str.as_pointer_value();
+        self.static_strs.insert(value, ptr);
+        ptr
+    }
+
+    pub fn build_static_str_slice(
+        &mut self,
+        value: impl Into<Ustr>,
+        name: &str,
+    ) -> PointerValue<'cx> {
         let value = value.into();
 
         if let Some(slice) = self.static_str_slices.get(&value) {
             *slice
         } else {
-            let static_str = self.bx.build_global_string_ptr(value.as_str(), "").as_pointer_value();
-
-            self.static_strs.insert(value, static_str);
+            let static_str = self.build_static_str(value);
 
             let len = self.isize_ty.const_int(value.len() as u64, false);
             let slice = self.const_slice(static_str, len);

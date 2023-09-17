@@ -1,8 +1,11 @@
-let C = "c"
+#let C = "c"
 
-@(lib = C)
+@(lib = "c")
 fn extern puts(s *u8) int
 
+let x ="Hello, World!\0"
+
 fn main() = {
-	puts("Hello, World!\0".ptr)
+	puts(x.ptr)
+	#puts("Hello, World!\0".ptr)
 }
