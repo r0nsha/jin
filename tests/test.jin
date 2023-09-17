@@ -1,4 +1,4 @@
-#@(lib = "c")
+@(lib = "c")
 fn extern puts(s *u8) int
 
 fn main() = {

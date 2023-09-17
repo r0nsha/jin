@@ -3,9 +3,9 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        BinOp, Binary, Block, Call, CallArg, Cast, Expr, Fn, FnKind, FnParam, FnSig, If, Item, Let,
-        Lit, LitKind, MemberAccess, Module, Name, NamePat, Pat, Return, Ty, TyName, TyParam, UnOp,
-        Unary,
+        Attr, Attrs, BinOp, Binary, Block, Call, CallArg, Cast, Expr, Fn, FnKind, FnParam, FnSig,
+        If, Item, Let, Lit, LitKind, MemberAccess, Module, Name, NamePat, Pat, Return, Ty, TyName,
+        TyParam, UnOp, Unary,
     },
     common::{QPath, Word},
     db::Db,
@@ -45,8 +45,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_top_level(&mut self) -> ParseResult<Item> {
-        if let Some(result) = self.maybe_parse_item() {
-            result
+        if let Some(item) = self.maybe_parse_item()? {
+            Ok(item)
         } else {
             let token = self.require()?;
             Err(ParseError::UnexpectedToken {
@@ -57,22 +57,28 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn maybe_parse_item(&mut self) -> Option<ParseResult<Item>> {
+    fn maybe_parse_item(&mut self) -> ParseResult<Option<Item>> {
+        let attrs = self.parse_attrs()?;
+
         if self.is(TokenKind::Fn) {
-            Some(self.parse_fn().map(Item::Fn))
+            self.parse_fn(vec![]).map(|f| Some(Item::Fn(f)))
         } else if self.is(TokenKind::Let) {
-            Some(self.parse_let().map(Item::Let))
+            self.parse_let().map(|l| Some(Item::Let(l)))
         } else {
-            None
+            Ok(None)
         }
     }
 
-    fn parse_fn(&mut self) -> ParseResult<Fn> {
+    fn parse_attrs(&mut self) -> ParseResult<Vec<Attr>> {
+        todo!()
+    }
+
+    fn parse_fn(&mut self, attrs: Attrs) -> ParseResult<Fn> {
         if self.is(TokenKind::Extern) {
             let name_ident = self.eat(TokenKind::empty_ident())?;
             let sig = self.parse_function_sig(name_ident.word())?;
 
-            Ok(Fn { id: None, sig, kind: FnKind::Extern, span: name_ident.span })
+            Ok(Fn { id: None, attrs, sig, kind: FnKind::Extern, span: name_ident.span })
         } else {
             let name_ident = self.eat(TokenKind::empty_ident())?;
             let sig = self.parse_function_sig(name_ident.word())?;
@@ -86,7 +92,7 @@ impl<'a> Parser<'a> {
                 _ => Block { span: expr.span(), exprs: vec![expr] },
             };
 
-            Ok(Fn { id: None, sig, kind: FnKind::Bare { body }, span: name_ident.span })
+            Ok(Fn { id: None, attrs, sig, kind: FnKind::Bare { body }, span: name_ident.span })
         }
     }
 
@@ -181,8 +187,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_stmt(&mut self) -> ParseResult<Expr> {
-        if let Some(result) = self.maybe_parse_item() {
-            result.map(Expr::Item)
+        if let Some(item) = self.maybe_parse_item()? {
+            Ok(Expr::Item(item))
         } else {
             self.parse_expr()
         }

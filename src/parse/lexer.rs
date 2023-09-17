@@ -61,6 +61,7 @@ impl<'s> Lexer<'s> {
                     ',' => TokenKind::Comma,
                     '.' => TokenKind::Dot,
                     ':' => TokenKind::Colon,
+                    '@' => TokenKind::At,
                     '=' => {
                         if self.eat('=') {
                             TokenKind::EqEq

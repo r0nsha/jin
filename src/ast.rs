@@ -123,6 +123,7 @@ impl Spanned for Expr {
 #[derive(Debug, Clone)]
 pub struct Fn {
     pub id: Option<DefId>,
+    pub attrs: Attrs,
     pub sig: FnSig,
     pub kind: FnKind,
     pub span: Span,
@@ -462,4 +463,36 @@ pub struct TyName {
     pub word: Word,
     pub args: Vec<Ty>,
     pub span: Span,
+}
+
+pub type Attrs = Vec<Attr>;
+
+#[derive(Debug, Clone)]
+pub struct Attr {
+    pub kind: AttrKind,
+    pub value: Option<Expr>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AttrKind {
+    Lib,
+}
+
+impl TryFrom<&str> for AttrKind {
+    type Error = ();
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "lib" => Ok(Self::Lib),
+            value => Err(()),
+        }
+    }
+}
+
+impl fmt::Display for AttrKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            AttrKind::Lib => "lib",
+        })
+    }
 }
