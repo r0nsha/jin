@@ -10,6 +10,6 @@ let extern answer int
 fn main() = {
 	puts("Hello, World!\0".ptr)
 	hello()
-	fn my_answer() = answer
+	fn my_answer() int = answer
 	my_answer()
 }

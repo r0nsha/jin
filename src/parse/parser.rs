@@ -64,9 +64,9 @@ impl<'a> Parser<'a> {
             self.parse_fn(attrs).map(|f| Some(Item::Fn(f)))
         } else if self.is(TokenKind::Let) {
             if self.is(TokenKind::Extern) {
-                self.parse_let().map(|l| Some(Item::Let(l)))
-            } else {
                 self.parse_extern_let().map(|l| Some(Item::ExternLet(l)))
+            } else {
+                self.parse_let().map(|l| Some(Item::Let(l)))
             }
         } else {
             Ok(None)
