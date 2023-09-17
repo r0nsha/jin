@@ -163,10 +163,10 @@ impl<'a> Parser<'a> {
         let ty_params = self.parse_optional_ty_params()?;
         let (params, _) = self.parse_function_params()?;
 
-        let ret = if self.peek_is(TokenKind::Eq) || self.peek_is(TokenKind::OpenCurly) {
-            None
-        } else {
-            Some(self.parse_ty()?)
+        let ret = match self.token() {
+            Some(Token { kind: TokenKind::Eq | TokenKind::OpenCurly, .. }) => None,
+            Some(tok) if !self.are_on_same_line(tok.span, self.last_span()) => None,
+            _ => Some(self.parse_ty()?),
         };
 
         Ok(FnSig { name, ty_params, params, ret })

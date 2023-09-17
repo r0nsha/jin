@@ -2,7 +2,7 @@
 fn extern puts(s *u8) int
 
 @(lib = "./foo")
-fn extern hello() ()
+fn extern hello()
 
 @(lib = "./foo")
 let extern answer int
