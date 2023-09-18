@@ -5,7 +5,7 @@ use inkwell::{
     builder::Builder,
     context::Context,
     module::{Linkage, Module},
-    types::{BasicTypeEnum, IntType, StructType},
+    types::BasicTypeEnum,
     values::{AnyValue, BasicValue, BasicValueEnum, FunctionValue, GlobalValue, PointerValue},
     AddressSpace, IntPredicate,
 };
@@ -15,7 +15,7 @@ use crate::{
     ast::{BinOp, CmpOp, UnOp},
     db::Db,
     hir::const_eval::Const,
-    llvm::{inkwell_ext::ContextExt, ty::LlvmTy},
+    llvm::{inkwell_ext::ContextExt, layout::Layout, ty::LlvmTy},
     tir::{Body, ExprId, ExprKind, Fn, FnSigId, GlobalId, GlobalKind, Id, LocalId, Tir},
     ty::Ty,
 };
@@ -27,8 +27,7 @@ pub struct Generator<'db, 'cx> {
     pub context: &'cx Context,
     pub module: &'db Module<'cx>,
     pub bx: &'db Builder<'cx>,
-    pub int_ty: IntType<'cx>,
-    pub unit_ty: StructType<'cx>,
+    pub layout: Layout<'cx>,
 
     pub functions: HashMap<FnSigId, FunctionValue<'cx>>,
     pub globals: HashMap<GlobalId, GlobalValue<'cx>>,
@@ -300,7 +299,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                     let printf = self.module.get_function("printf").unwrap_or_else(|| {
                         self.module.add_function(
                             "printf",
-                            self.int_ty.fn_type(
+                            self.layout.int_ty.fn_type(
                                 &[self.context.ptr_type(AddressSpace::default()).into()],
                                 true,
                             ),
@@ -319,7 +318,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                                 self.bx
                                     .build_int_cast_sign_flag(
                                         v,
-                                        self.int_ty,
+                                        self.layout.int_ty,
                                         false,
                                         "cast_to_i64",
                                     )

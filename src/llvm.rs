@@ -1,5 +1,6 @@
 mod generate;
 mod inkwell_ext;
+mod layout;
 #[cfg(windows)]
 mod microsoft_craziness;
 mod ty;
@@ -26,7 +27,7 @@ use ustr::UstrMap;
 use crate::{
     common::target::{Arch, Os, TargetMetrics},
     db::{build_options::EmitOption, Db, ExternLib},
-    llvm::generate::Generator,
+    llvm::{generate::Generator, layout::Layout},
     tir::Tir,
 };
 
@@ -42,8 +43,7 @@ pub fn codegen(db: &mut Db, tir: &Tir) -> PathBuf {
 
     let builder = context.create_builder();
 
-    let unit_ty = context.opaque_struct_type("unit");
-    unit_ty.set_body(&[], false);
+    let layout = Layout::new(&context, &target_machine);
 
     let mut g = Generator {
         db,
@@ -51,8 +51,7 @@ pub fn codegen(db: &mut Db, tir: &Tir) -> PathBuf {
         context: &context,
         module: &module,
         bx: &builder,
-        int_ty: context.ptr_sized_int_type(&target_machine.get_target_data(), None),
-        unit_ty,
+        layout,
         functions: HashMap::default(),
         globals: HashMap::default(),
         static_strs: UstrMap::default(),

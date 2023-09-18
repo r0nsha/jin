@@ -12,19 +12,9 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     #[inline]
     pub fn str_ty(&self) -> StructType<'cx> {
         self.context.struct_type(
-            &[self.context.ptr_type(AddressSpace::default()).into(), self.int_ty.into()],
+            &[self.context.ptr_type(AddressSpace::default()).into(), self.layout.int_ty.into()],
             false,
         )
-    }
-
-    #[inline]
-    pub fn unit_ty(&self) -> StructType<'cx> {
-        self.unit_ty
-    }
-
-    #[inline]
-    pub fn never_ty(&self) -> StructType<'cx> {
-        self.unit_ty
     }
 }
 
@@ -42,8 +32,7 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, BasicTypeEnum<'cx>> for TyKind {
                 cx.context.ptr_type(AddressSpace::default()).into()
             }
             Self::Bool => cx.context.bool_type().into(),
-            Self::Unit => cx.unit_ty().into(),
-            Self::Never => cx.never_ty().into(),
+            Self::Unit | Self::Never => cx.layout.unit_ty.into(),
             _ => panic!("unexpected type {self:?}"),
         }
     }
@@ -64,7 +53,7 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, IntType<'cx>> for IntTy {
             Self::I16 => cx.context.i16_type(),
             Self::I32 => cx.context.i32_type(),
             Self::I64 => cx.context.i64_type(),
-            Self::Int => cx.int_ty,
+            Self::Int => cx.layout.int_ty,
         }
     }
 
@@ -80,7 +69,7 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, IntType<'cx>> for UintTy {
             Self::U16 => cx.context.i16_type(),
             Self::U32 => cx.context.i32_type(),
             Self::U64 => cx.context.i64_type(),
-            Self::Uint => cx.int_ty,
+            Self::Uint => cx.layout.int_ty,
         }
     }
 
