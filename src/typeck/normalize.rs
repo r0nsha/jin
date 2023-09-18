@@ -1,14 +1,14 @@
 use crate::{
-    typeck::tcx::TyCtxtStorage,
+    typeck::tcx::TyStorage,
     ty::{FnTy, FnTyParam, InferTy, Ty, TyKind},
 };
 
 pub trait NormalizeTy {
-    fn normalize(self, storage: &mut TyCtxtStorage) -> Self;
+    fn normalize(self, storage: &mut TyStorage) -> Self;
 }
 
 impl NormalizeTy for Ty {
-    fn normalize(self, storage: &mut TyCtxtStorage) -> Self {
+    fn normalize(self, storage: &mut TyStorage) -> Self {
         match self.kind() {
             TyKind::Fn(fun) => TyKind::Fn(FnTy {
                 params: fun

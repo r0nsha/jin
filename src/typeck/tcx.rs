@@ -11,12 +11,12 @@ use crate::{
 #[derive(Debug)]
 pub struct TyCtxt<'db> {
     pub db: &'db mut Db,
-    pub storage: RefCell<TyCtxtStorage>,
+    pub storage: RefCell<TyStorage>,
 }
 
 impl<'db> TyCtxt<'db> {
     pub fn new(db: &'db mut Db) -> Self {
-        Self { db, storage: RefCell::new(TyCtxtStorage::new()) }
+        Self { db, storage: RefCell::new(TyStorage::new()) }
     }
 
     pub fn lookup(&self, id: DefId) -> Ty {
@@ -54,12 +54,12 @@ impl<'db> TyCtxt<'db> {
 }
 
 #[derive(Debug)]
-pub struct TyCtxtStorage {
+pub struct TyStorage {
     pub ty_unification_table: InPlaceUnificationTable<TyVar>,
     pub int_unification_table: InPlaceUnificationTable<IntVar>,
 }
 
-impl TyCtxtStorage {
+impl TyStorage {
     pub fn new() -> Self {
         Self {
             ty_unification_table: InPlaceUnificationTable::new(),

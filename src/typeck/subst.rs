@@ -6,7 +6,7 @@ use crate::{
     typeck::{
         error::TypeckError,
         normalize::NormalizeTy,
-        tcx::{TyCtxt, TyCtxtStorage},
+        tcx::{TyCtxt, TyStorage},
     },
     span::Span,
     subst::{Subst, SubstTy},
@@ -35,7 +35,7 @@ impl<'db> TyCtxt<'db> {
 
 struct SubstCtxt<'db> {
     db: &'db mut Db,
-    tcx: &'db mut TyCtxtStorage,
+    tcx: &'db mut TyStorage,
     errs: HashMap<Span, TypeckError>,
 }
 
