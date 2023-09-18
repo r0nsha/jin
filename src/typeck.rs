@@ -495,7 +495,7 @@ impl TyCtxt<'_> {
                 }
             }
             hir::Ty::Unit(_) => Ok(self.db.types.unit),
-            hir::Ty::Infer(_) => Ok(self.fresh_ty_var()),
+            hir::Ty::Hole(_) => Ok(self.fresh_ty_var()),
         }
     }
 }

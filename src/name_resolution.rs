@@ -358,7 +358,7 @@ impl<'db> Resolver<'db> {
                 Ok(id) => name.id = Some(id),
                 Err(err) => self.errors.push(err),
             },
-            Ty::Infer(span) if env.current().kind == ScopeKind::Fn => {
+            Ty::Hole(span) if env.current().kind == ScopeKind::Fn => {
                 // TODO: pass a `allow_infer_ty: AllowInferTy::{Yes/No}` instead of scope kind
                 self.errors.push(ResolveError::InvalidInferTy(*span));
             }

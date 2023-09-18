@@ -293,7 +293,7 @@ pub enum Ty {
     RawPtr(Box<Ty>, Span),
     Name(TyName),
     Unit(Span),
-    Infer(Span),
+    Hole(Span),
 }
 
 #[derive(Debug, Clone)]
@@ -307,14 +307,14 @@ impl Spanned for Ty {
     fn span(&self) -> Span {
         match self {
             Ty::Name(n) => n.span,
-            Self::RawPtr(_, span) | Ty::Unit(span) | Ty::Infer(span) => *span,
+            Self::RawPtr(_, span) | Ty::Unit(span) | Ty::Hole(span) => *span,
         }
     }
 
     fn span_mut(&mut self) -> &mut Span {
         match self {
             Ty::Name(n) => &mut n.span,
-            Self::RawPtr(_, span) | Ty::Unit(span) | Ty::Infer(span) => span,
+            Self::RawPtr(_, span) | Ty::Unit(span) | Ty::Hole(span) => span,
         }
     }
 }

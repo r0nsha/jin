@@ -230,7 +230,7 @@ impl PrettyPrint for Ty {
             Ty::Unit(_) => {
                 cx.builder.add_empty_child("()".to_string());
             }
-            Ty::Infer(_) => {
+            Ty::Hole(_) => {
                 cx.builder.add_empty_child("_".to_string());
             }
         }

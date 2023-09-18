@@ -407,7 +407,7 @@ impl<'a> Parser<'a> {
                 let end = self.eat(TokenKind::CloseParen)?.span;
                 Ty::Unit(tok.span.merge(end))
             }
-            TokenKind::Underscore => Ty::Infer(tok.span),
+            TokenKind::Underscore => Ty::Hole(tok.span),
             _ => {
                 return Err(ParseError::UnexpectedToken {
                     expected: "a type".to_string(),
