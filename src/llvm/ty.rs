@@ -12,7 +12,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     #[inline]
     pub fn str_ty(&self) -> StructType<'cx> {
         self.context.struct_type(
-            &[self.context.ptr_type(AddressSpace::default()).into(), self.isize_ty.into()],
+            &[self.context.ptr_type(AddressSpace::default()).into(), self.int_ty.into()],
             false,
         )
     }
@@ -64,7 +64,7 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, IntType<'cx>> for IntTy {
             Self::I16 => cx.context.i16_type(),
             Self::I32 => cx.context.i32_type(),
             Self::I64 => cx.context.i64_type(),
-            Self::Int => cx.isize_ty,
+            Self::Int => cx.int_ty,
         }
     }
 
@@ -80,7 +80,7 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, IntType<'cx>> for UintTy {
             Self::U16 => cx.context.i16_type(),
             Self::U32 => cx.context.i32_type(),
             Self::U64 => cx.context.i64_type(),
-            Self::Uint => cx.isize_ty,
+            Self::Uint => cx.int_ty,
         }
     }
 

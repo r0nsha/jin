@@ -27,7 +27,7 @@ pub struct Generator<'db, 'cx> {
     pub context: &'cx Context,
     pub module: &'db Module<'cx>,
     pub bx: &'db Builder<'cx>,
-    pub isize_ty: IntType<'cx>,
+    pub int_ty: IntType<'cx>,
     pub unit_ty: StructType<'cx>,
 
     pub functions: HashMap<FnSigId, FunctionValue<'cx>>,
@@ -300,7 +300,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                     let printf = self.module.get_function("printf").unwrap_or_else(|| {
                         self.module.add_function(
                             "printf",
-                            self.isize_ty.fn_type(
+                            self.int_ty.fn_type(
                                 &[self.context.ptr_type(AddressSpace::default()).into()],
                                 true,
                             ),
@@ -319,7 +319,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                                 self.bx
                                     .build_int_cast_sign_flag(
                                         v,
-                                        self.isize_ty,
+                                        self.int_ty,
                                         false,
                                         "cast_to_i64",
                                     )

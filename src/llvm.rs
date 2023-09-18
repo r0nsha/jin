@@ -51,7 +51,7 @@ pub fn codegen(db: &mut Db, tir: &Tir) -> PathBuf {
         context: &context,
         module: &module,
         bx: &builder,
-        isize_ty: context.ptr_sized_int_type(&target_machine.get_target_data(), None),
+        int_ty: context.ptr_sized_int_type(&target_machine.get_target_data(), None),
         unit_ty,
         functions: HashMap::default(),
         globals: HashMap::default(),

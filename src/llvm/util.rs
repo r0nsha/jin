@@ -55,7 +55,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         } else {
             let static_str = self.build_static_str(value);
 
-            let len = self.isize_ty.const_int(value.len() as u64, false);
+            let len = self.int_ty.const_int(value.len() as u64, false);
             let slice = self.const_slice(static_str, len);
             let static_slice = self.module.add_global(slice.get_type(), None, name);
             static_slice.set_initializer(&slice);
