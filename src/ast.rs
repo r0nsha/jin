@@ -89,6 +89,7 @@ pub enum Expr {
     MemberAccess(MemberAccess),
     Name(Name),
     Lit(Lit),
+    Group(Box<Self>, Span),
 }
 
 impl Spanned for Expr {
@@ -104,7 +105,8 @@ impl Spanned for Expr {
             | Self::Unary(Unary { span, .. })
             | Self::Binary(Binary { span, .. })
             | Self::Cast(Cast { span, .. })
-            | Self::Lit(Lit { span, .. }) => *span,
+            | Self::Lit(Lit { span, .. })
+            | Self::Group(_, span) => *span,
         }
     }
 
@@ -121,6 +123,7 @@ impl Spanned for Expr {
             Self::MemberAccess(x) => &mut x.span,
             Self::Name(x) => &mut x.span,
             Self::Lit(x) => &mut x.span,
+            Self::Group(_, span) => span,
         }
     }
 }

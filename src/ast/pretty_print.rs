@@ -117,6 +117,11 @@ impl PrettyPrint for Expr {
                     cx.builder.add_empty_child("()".to_string());
                 }
             },
+            Self::Group(expr, _) => {
+                cx.builder.begin_child("group".to_string());
+                expr.pretty_print(cx);
+                cx.builder.end_child();
+            }
         }
     }
 }

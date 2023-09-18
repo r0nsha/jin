@@ -367,7 +367,7 @@ impl<'a> Parser<'a> {
                 } else {
                     let expr = self.parse_expr()?;
                     let end = self.eat(TokenKind::CloseParen)?.span;
-                    expr.with_span(tok.span.merge(end))
+                    Expr::Group(Box::new(expr), tok.span.merge(end))
                 }
             }
             TokenKind::OpenCurly => Expr::Block(self.parse_block()?),

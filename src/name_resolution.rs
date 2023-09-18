@@ -6,7 +6,7 @@ use ustr::{ustr, UstrMap};
 use crate::{
     ast::{Ast, Block, CallArg, Expr, ExternLet, Fn, FnKind, FnSig, Item, Let, Pat, Ty, TyParam},
     common::{QPath, Word},
-    db::{Db, DefInfo, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
+    db::{Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     name_resolution::{
         env::{Env, EnvKind, GlobalScope, ScopeKind},
         error::ResolveError,
@@ -330,6 +330,7 @@ impl<'db> Resolver<'db> {
                     }
                 }
             }
+            Expr::Group(expr, _) => self.resolve_expr(env, expr),
             Expr::Lit(_) => (),
         }
     }

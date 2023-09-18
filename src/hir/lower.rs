@@ -194,6 +194,11 @@ impl Lower<'_, Expr> for ast::Expr {
                 });
                 cx.expr(kind, span)
             }
+            Self::Group(expr, span) => {
+                let mut expr = expr.lower(cx);
+                expr.span = span;
+                expr
+            }
             Self::Lit(ast::Lit { kind, span }) => cx.expr(
                 ExprKind::Lit(match kind {
                     ast::LitKind::Str(v) => Lit::Str(v),
