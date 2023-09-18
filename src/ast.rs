@@ -71,34 +71,34 @@ impl Spanned for Item {
 #[derive(Debug, Clone)]
 pub enum Expr {
     Item(Item),
-    Return(Return),
-    If(If),
-    Block(Block),
-    Call(Call),
-    Unary(Unary),
-    Binary(Binary),
-    Cast(Cast),
-    MemberAccess(MemberAccess),
-    Name(Name),
-    Lit(Lit),
-    Group(Box<Self>, Span),
+    Return { expr: Option<Box<Self>>, span: Span },
+    If { cond: Box<Self>, then: Box<Self>, otherwise: Option<Box<Self>>, span: Span },
+    Block { exprs: Vec<Self>, span: Span },
+    Call { callee: Box<Expr>, args: Vec<CallArg>, span: Span },
+    Unary { expr: Box<Self>, op: UnOp, span: Span },
+    Binary { lhs: Box<Self>, rhs: Box<Self>, op: BinOp, span: Span },
+    Cast { expr: Box<Expr>, ty: Ty, span: Span },
+    MemberAccess { expr: Box<Expr>, member: Word, span: Span },
+    Name { id: Option<DefId>, word: Word, args: Option<Vec<Ty>>, span: Span },
+    Lit { kind: LitKind, span: Span },
+    Group { expr: Box<Self>, span: Span },
 }
 
 impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
             Self::Item(x) => x.span(),
-            Self::Name(Name { span, .. })
-            | Self::MemberAccess(MemberAccess { span, .. })
-            | Self::Return(Return { span, .. })
-            | Self::If(If { span, .. })
-            | Self::Block(Block { span, .. })
-            | Self::Call(Call { span, .. })
-            | Self::Unary(Unary { span, .. })
-            | Self::Binary(Binary { span, .. })
-            | Self::Cast(Cast { span, .. })
-            | Self::Lit(Lit { span, .. })
-            | Self::Group(_, span) => *span,
+            Self::Name { span, .. }
+            | Self::MemberAccess { span, .. }
+            | Self::Return { span, .. }
+            | Self::If { span, .. }
+            | Self::Block { span, .. }
+            | Self::Call { span, .. }
+            | Self::Unary { span, .. }
+            | Self::Binary { span, .. }
+            | Self::Cast { span, .. }
+            | Self::Lit { span, .. }
+            | Self::Group { expr: _, span } => *span,
         }
     }
 }

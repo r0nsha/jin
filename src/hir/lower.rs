@@ -194,7 +194,7 @@ impl Lower<'_, Expr> for ast::Expr {
                 });
                 cx.expr(kind, span)
             }
-            Self::Group(expr, span) => {
+            Self::Group { expr, span } => {
                 let mut expr = expr.lower(cx);
                 expr.span = span;
                 expr

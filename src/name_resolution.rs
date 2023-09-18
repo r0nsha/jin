@@ -279,24 +279,28 @@ impl<'db> Resolver<'db> {
     fn resolve_expr(&mut self, env: &mut Env, expr: &mut Expr) {
         match expr {
             Expr::Item(item) => self.resolve_item(item, env),
-            Expr::Return(ret) => {
-                if let Some(expr) = ret.expr.as_mut() {
+            Expr::Return { expr, .. } => {
+                if let Some(expr) = expr {
                     self.resolve_expr(env, expr);
                 }
             }
-            Expr::If(if_) => {
-                self.resolve_expr(env, &mut if_.cond);
-                self.resolve_expr(env, &mut if_.then);
+            Expr::If { cond, then, otherwise, .. } => {
+                self.resolve_expr(env, cond);
+                self.resolve_expr(env, then);
 
-                if let Some(otherwise) = &mut if_.otherwise {
+                if let Some(otherwise) = otherwise {
                     self.resolve_expr(env, otherwise);
                 }
             }
-            Expr::Block(blk) => self.resolve_block(env, blk),
-            Expr::Call(call) => {
-                self.resolve_expr(env, &mut call.callee);
+            Expr::Block { exprs, .. } => env.with_anon_scope(ScopeKind::Block, |env| {
+                for expr in exprs {
+                    self.resolve_expr(env, expr);
+                }
+            }),
+            Expr::Call { callee, args, .. } => {
+                self.resolve_expr(env, callee);
 
-                for arg in &mut call.args {
+                for arg in args {
                     match arg {
                         CallArg::Named(_, expr) | CallArg::Positional(expr) => {
                             self.resolve_expr(env, expr);
@@ -304,34 +308,34 @@ impl<'db> Resolver<'db> {
                     }
                 }
             }
-            Expr::Unary(un) => {
-                self.resolve_expr(env, &mut un.expr);
+            Expr::Unary { expr, .. } => {
+                self.resolve_expr(env, expr);
             }
-            Expr::Binary(bin) => {
-                self.resolve_expr(env, &mut bin.lhs);
-                self.resolve_expr(env, &mut bin.rhs);
+            Expr::Binary { lhs, rhs, .. } => {
+                self.resolve_expr(env, lhs);
+                self.resolve_expr(env, rhs);
             }
-            Expr::Cast(cast) => {
-                self.resolve_expr(env, &mut cast.expr);
-                self.resolve_ty(env, &mut cast.ty);
+            Expr::Cast { expr, ty, .. } => {
+                self.resolve_expr(env, expr);
+                self.resolve_ty(env, ty);
             }
-            Expr::MemberAccess(access) => {
-                self.resolve_expr(env, &mut access.expr);
+            Expr::MemberAccess { expr, .. } => {
+                self.resolve_expr(env, expr);
             }
-            Expr::Name(name) => {
-                match self.lookup(env, name.word) {
-                    Ok(id) => name.id = Some(id),
+            Expr::Name { id, word, args, .. } => {
+                match self.lookup(env, *word) {
+                    Ok(res) => *id = Some(res),
                     Err(err) => self.errors.push(err),
                 }
 
-                if let Some(args) = &mut name.args {
+                if let Some(args) = args {
                     for arg in args {
                         self.resolve_ty(env, arg);
                     }
                 }
             }
-            Expr::Group(expr, _) => self.resolve_expr(env, expr),
-            Expr::Lit(_) => (),
+            Expr::Group { expr, span: _ } => self.resolve_expr(env, expr),
+            Expr::Lit { .. } => (),
         }
     }
 
