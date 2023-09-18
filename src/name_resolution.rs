@@ -164,7 +164,7 @@ impl<'db> Resolver<'db> {
             Pat::Name(name) => {
                 name.id = Some(self.define_def(env, kind, name.word));
             }
-            Pat::Ignore(_) => (),
+            Pat::Discard(_) => (),
         }
     }
 

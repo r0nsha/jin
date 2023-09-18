@@ -99,7 +99,7 @@ impl<S: SubstTy> Subst<S> for Let {
 
         match &self.pat {
             Pat::Name(name) => s.db()[name.id].ty = self.value.ty,
-            Pat::Ignore(_) => (),
+            Pat::Discard(_) => (),
         }
     }
 }

@@ -239,7 +239,7 @@ impl Lower<'_, Pat> for ast::Pat {
             ast::Pat::Name(name) => {
                 Pat::Name(NamePat { id: name.id.expect("to be resolved"), word: name.word })
             }
-            ast::Pat::Ignore(span) => Pat::Ignore(span),
+            ast::Pat::Discard(span) => Pat::Discard(span),
         }
     }
 }

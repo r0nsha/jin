@@ -158,7 +158,7 @@ pub struct ExternLet {
 #[derive(Debug, Clone)]
 pub enum Pat {
     Name(NamePat),
-    Ignore(Span),
+    Discard(Span),
 }
 
 impl Pat {
@@ -171,7 +171,7 @@ impl Pat {
     fn walk_(&self, f: &mut impl FnMut(&NamePat)) {
         match self {
             Pat::Name(n) => f(n),
-            Pat::Ignore(_) => (),
+            Pat::Discard(_) => (),
         }
     }
 
@@ -182,7 +182,7 @@ impl Pat {
     fn any_(&self, f: &mut impl FnMut(&NamePat) -> bool) -> bool {
         match self {
             Pat::Name(n) => f(n),
-            Pat::Ignore(_) => false,
+            Pat::Discard(_) => false,
         }
     }
 
@@ -203,7 +203,7 @@ impl fmt::Display for Pat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Pat::Name(n) => n.word.fmt(f),
-            Pat::Ignore(_) => f.write_str("_"),
+            Pat::Discard(_) => f.write_str("_"),
         }
     }
 }

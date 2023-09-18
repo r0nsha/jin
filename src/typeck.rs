@@ -91,7 +91,7 @@ impl TyCtxt<'_> {
         for let_ in &mut hir.lets {
             match &let_.pat {
                 Pat::Name(name) => self.db[name.id].ty = self.fresh_ty_var(),
-                Pat::Ignore(_) => (),
+                Pat::Discard(_) => (),
             }
         }
 
@@ -209,7 +209,7 @@ impl TyCtxt<'_> {
                     self.db.const_storage.insert_def(name.id, value.clone());
                 }
             }
-            Pat::Ignore(_) => (),
+            Pat::Discard(_) => (),
         }
 
         Ok(ty)
@@ -227,7 +227,7 @@ impl TyCtxt<'_> {
 
                 match &let_.pat {
                     Pat::Name(name) => self.db[name.id].ty = ty,
-                    Pat::Ignore(_) => (),
+                    Pat::Discard(_) => (),
                 }
 
                 self.db.types.unit

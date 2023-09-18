@@ -102,7 +102,7 @@ impl<'db> LowerCtxt<'db> {
 
         let let_ = self.hir.lets.iter().find(|let_| match &let_.pat {
             hir::Pat::Name(n) => n.id == def_id,
-            hir::Pat::Ignore(_) => false,
+            hir::Pat::Discard(_) => false,
         });
 
         if let Some(let_) = let_ {
@@ -231,7 +231,7 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
 
                 Some(id)
             }
-            hir::Pat::Ignore(_) => None,
+            hir::Pat::Discard(_) => None,
         }
     }
 
@@ -249,7 +249,7 @@ impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
                             let id = self.create_local(name.id, ty);
                             ExprKind::Let { id, def_id: name.id, value }
                         }
-                        hir::Pat::Ignore(_) => ExprKind::Const(Const::Unit),
+                        hir::Pat::Discard(_) => ExprKind::Const(Const::Unit),
                     }
                 }
                 hir::ExprKind::If(if_) => ExprKind::If {
