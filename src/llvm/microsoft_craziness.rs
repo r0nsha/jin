@@ -33,6 +33,7 @@ use winapi::{
     RIDL,
 };
 
+// TODO: wrap things that need a defer in structs with Drop
 struct Defer<R, F: FnOnce() -> R>(Option<F>);
 
 impl<R, F: FnOnce() -> R> Drop for Defer<R, F> {

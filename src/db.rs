@@ -39,7 +39,7 @@ pub struct Db {
     pub time: Timings,
     pub sources: Rc<RefCell<Sources>>,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
-    pub defs: IndexVec<DefId, Def>,
+    pub defs: IndexVec<DefId, DefInfo>,
     pub types: CommonTypes,
     pub coercions: HirMap<Coercions>,
     pub const_storage: ConstStorage,
@@ -139,7 +139,7 @@ impl Db {
         self.main_fun
     }
 
-    pub fn main_function(&self) -> Option<&Def> {
+    pub fn main_function(&self) -> Option<&DefInfo> {
         self.main_fun.and_then(|id| self.defs.get(id))
     }
 
@@ -195,7 +195,7 @@ macro_rules! new_db_key {
 }
 
 new_db_key!(ModuleId -> modules : ModuleInfo);
-new_db_key!(DefId -> defs : Def);
+new_db_key!(DefId -> defs : DefInfo);
 
 #[derive(Debug, Clone)]
 pub struct ModuleInfo {
@@ -221,7 +221,7 @@ impl ModuleInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct Def {
+pub struct DefInfo {
     pub id: DefId,
     pub name: Ustr,
     pub qpath: QPath,
@@ -263,7 +263,7 @@ impl DefKind {
     }
 }
 
-impl Def {
+impl DefInfo {
     pub fn alloc(
         db: &mut Db,
         qpath: QPath,
@@ -284,7 +284,7 @@ impl Def {
     }
 }
 
-impl Typed for Def {
+impl Typed for DefInfo {
     fn ty(&self) -> Ty {
         self.ty
     }

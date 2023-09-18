@@ -6,7 +6,7 @@ use ustr::{ustr, UstrMap};
 use crate::{
     ast::{Ast, Block, CallArg, Expr, ExternLet, Fn, FnKind, FnSig, Item, Let, Pat, Ty, TyParam},
     common::{QPath, Word},
-    db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
+    db::{Db, DefInfo, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     name_resolution::{
         env::{Env, EnvKind, GlobalScope, ScopeKind},
         error::ResolveError,
@@ -51,7 +51,7 @@ impl<'db> Resolver<'db> {
 
             self.builtins.insert(
                 name,
-                Def::alloc(
+                DefInfo::alloc(
                     self.db,
                     QPath::from(name),
                     scope_info,
@@ -123,7 +123,7 @@ impl<'db> Resolver<'db> {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].name.clone().child(name.name());
 
-        let id = Def::alloc(self.db, qpath, scope, kind, self.db.types.unknown, name.span());
+        let id = DefInfo::alloc(self.db, qpath, scope, kind, self.db.types.unknown, name.span());
 
         if let Some(prev_id) = self.global_scope.insert(module_id, name.name(), id) {
             let def = &self.db[prev_id];
@@ -138,7 +138,7 @@ impl<'db> Resolver<'db> {
     }
 
     fn define_local_def(&mut self, env: &mut Env, kind: DefKind, name: Word) -> DefId {
-        let id = Def::alloc(
+        let id = DefInfo::alloc(
             self.db,
             env.scope_path(self.db).child(name.name()),
             ScopeInfo { module_id: env.module_id(), level: env.scope_level(), vis: Vis::Private },
