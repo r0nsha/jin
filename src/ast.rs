@@ -193,44 +193,9 @@ impl fmt::Display for Pat {
 }
 
 #[derive(Debug, Clone)]
-pub struct If {
-    pub cond: Box<Expr>,
-    pub then: Box<Expr>,
-    pub otherwise: Option<Box<Expr>>,
-    pub span: Span,
-}
-
-#[derive(Debug, Clone)]
-pub struct Block {
-    pub exprs: Vec<Expr>,
-    pub span: Span,
-}
-
-#[derive(Debug, Clone)]
-pub struct Return {
-    pub expr: Option<Box<Expr>>,
-    pub span: Span,
-}
-
-#[derive(Debug, Clone)]
-pub struct Call {
-    pub callee: Box<Expr>,
-    pub args: Vec<CallArg>,
-    pub span: Span,
-}
-
-#[derive(Debug, Clone)]
 pub enum CallArg {
     Positional(Expr),
     Named(Word, Expr),
-}
-
-#[derive(Debug, Clone)]
-pub struct Binary {
-    pub lhs: Box<Expr>,
-    pub rhs: Box<Expr>,
-    pub op: BinOp,
-    pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -324,13 +289,6 @@ pub enum CmpOp {
     Ge,
 }
 
-#[derive(Debug, Clone)]
-pub struct Unary {
-    pub expr: Box<Expr>,
-    pub op: UnOp,
-    pub span: Span,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UnOp {
     Neg,
@@ -386,34 +344,6 @@ impl TryFrom<TokenKind> for BinOp {
 
         Ok(op)
     }
-}
-
-#[derive(Debug, Clone)]
-pub struct Cast {
-    pub expr: Box<Expr>,
-    pub ty: Ty,
-    pub span: Span,
-}
-
-#[derive(Debug, Clone)]
-pub struct MemberAccess {
-    pub expr: Box<Expr>,
-    pub member: Word,
-    pub span: Span,
-}
-
-#[derive(Debug, Clone)]
-pub struct Name {
-    pub id: Option<DefId>,
-    pub word: Word,
-    pub args: Option<Vec<Ty>>,
-    pub span: Span,
-}
-
-#[derive(Debug, Clone)]
-pub struct Lit {
-    pub kind: LitKind,
-    pub span: Span,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

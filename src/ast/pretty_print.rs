@@ -104,12 +104,12 @@ impl PrettyPrint for Expr {
                 cx.builder.end_child();
             }
             Self::MemberAccess { expr, member, .. } => {
-                cx.builder.begin_child(format!("member access `{}`", member));
+                cx.builder.begin_child(format!("member access `{member}`"));
                 expr.pretty_print(cx);
                 cx.builder.end_child();
             }
             Self::Name { word, .. } => {
-                cx.builder.add_empty_child(format!("`{}`", word));
+                cx.builder.add_empty_child(format!("`{word}`"));
             }
             Self::Lit { kind, .. } => match kind {
                 LitKind::Str(value) => {

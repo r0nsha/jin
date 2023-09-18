@@ -4,7 +4,7 @@ mod error;
 use ustr::{ustr, UstrMap};
 
 use crate::{
-    ast::{Ast, Block, CallArg, Expr, ExternLet, Fn, FnKind, FnSig, Item, Let, Pat, Ty, TyParam},
+    ast::{Ast, CallArg, Expr, ExternLet, Fn, FnKind, FnSig, Item, Let, Pat, Ty, TyParam},
     common::{QPath, Word},
     db::{Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     name_resolution::{
@@ -268,14 +268,6 @@ impl<'db> Resolver<'db> {
         self.resolve_ty(env, &mut let_.ty_annot);
     }
 
-    fn resolve_block(&mut self, env: &mut Env, blk: &mut Block) {
-        env.with_anon_scope(ScopeKind::Block, |env| {
-            for expr in &mut blk.exprs {
-                self.resolve_expr(env, expr);
-            }
-        });
-    }
-
     fn resolve_expr(&mut self, env: &mut Env, expr: &mut Expr) {
         match expr {
             Expr::Item(item) => self.resolve_item(item, env),
@@ -293,7 +285,7 @@ impl<'db> Resolver<'db> {
                 }
             }
             Expr::Block { exprs, .. } => env.with_anon_scope(ScopeKind::Block, |env| {
-                for expr in exprs {
+                for expr in &mut *exprs {
                     self.resolve_expr(env, expr);
                 }
             }),
@@ -308,7 +300,7 @@ impl<'db> Resolver<'db> {
                     }
                 }
             }
-            Expr::Unary { expr, .. } => {
+            Expr::Unary { expr, .. } | Expr::MemberAccess { expr, .. } => {
                 self.resolve_expr(env, expr);
             }
             Expr::Binary { lhs, rhs, .. } => {
@@ -318,9 +310,6 @@ impl<'db> Resolver<'db> {
             Expr::Cast { expr, ty, .. } => {
                 self.resolve_expr(env, expr);
                 self.resolve_ty(env, ty);
-            }
-            Expr::MemberAccess { expr, .. } => {
-                self.resolve_expr(env, expr);
             }
             Expr::Name { id, word, args, .. } => {
                 match self.lookup(env, *word) {

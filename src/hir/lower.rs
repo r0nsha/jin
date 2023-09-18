@@ -135,16 +135,16 @@ impl Lower<'_, Expr> for ast::Expr {
                     cx.expr(ExprKind::Let(let_), span)
                 }
             },
-            Self::Return(ret) => {
-                let span = ret.span;
-                let expr = if let Some(expr) = ret.expr {
+            Self::Return { expr, span } => {
+                let expr = if let Some(expr) = expr {
                     Box::new(expr.lower(cx))
                 } else {
                     Box::new(cx.expr(ExprKind::Lit(Lit::Unit), span))
                 };
+
                 cx.expr(ExprKind::Return(Return { expr }), span)
             }
-            Self::If(ast::If { cond, then, otherwise, span }) => {
+            Self::If { cond, then, otherwise, span } => {
                 let kind = ExprKind::If(If {
                     cond: Box::new(cond.lower(cx)),
                     then: Box::new(then.lower(cx)),
@@ -152,23 +152,24 @@ impl Lower<'_, Expr> for ast::Expr {
                 });
                 cx.expr(kind, span)
             }
-            Self::Block(blk) => {
-                let span = blk.span;
-                let kind = ExprKind::Block(blk.lower(cx));
+            Self::Block { exprs, span } => {
+                let kind = ExprKind::Block(Block {
+                    exprs: exprs.into_iter().map(|e| e.lower(cx)).collect(),
+                });
                 cx.expr(kind, span)
             }
-            Self::Call(ast::Call { callee, args, span }) => {
+            Self::Call { callee, args, span } => {
                 let kind = ExprKind::Call(Call {
                     callee: Box::new(callee.lower(cx)),
                     args: args.into_iter().map(|arg| arg.lower(cx)).collect(),
                 });
                 cx.expr(kind, span)
             }
-            Self::Unary(ast::Unary { expr, op, span }) => {
+            Self::Unary { expr, op, span } => {
                 let kind = ExprKind::Unary(Unary { expr: Box::new(expr.lower(cx)), op });
                 cx.expr(kind, span)
             }
-            Self::Binary(ast::Binary { lhs, rhs, op, span }) => {
+            Self::Binary { lhs, rhs, op, span } => {
                 let kind = ExprKind::Binary(Binary {
                     lhs: Box::new(lhs.lower(cx)),
                     rhs: Box::new(rhs.lower(cx)),
@@ -176,17 +177,17 @@ impl Lower<'_, Expr> for ast::Expr {
                 });
                 cx.expr(kind, span)
             }
-            Self::Cast(ast::Cast { expr, ty, span }) => {
+            Self::Cast { expr, ty, span } => {
                 let kind =
                     ExprKind::Cast(Cast { expr: Box::new(expr.lower(cx)), target: ty.lower(cx) });
                 cx.expr(kind, span)
             }
-            Self::MemberAccess(ast::MemberAccess { expr, member, span }) => {
+            Self::MemberAccess { expr, member, span } => {
                 let kind =
                     ExprKind::MemberAccess(MemberAccess { expr: Box::new(expr.lower(cx)), member });
                 cx.expr(kind, span)
             }
-            Self::Name(ast::Name { id, word: _, args, span }) => {
+            Self::Name { id, word: _, args, span } => {
                 let kind = ExprKind::Name(Name {
                     id: id.expect("to be resolved"),
                     args: args.map(|args| args.into_iter().map(|arg| arg.lower(cx)).collect()),
@@ -199,7 +200,7 @@ impl Lower<'_, Expr> for ast::Expr {
                 expr.span = span;
                 expr
             }
-            Self::Lit(ast::Lit { kind, span }) => cx.expr(
+            Self::Lit { kind, span } => cx.expr(
                 ExprKind::Lit(match kind {
                     ast::LitKind::Str(v) => Lit::Str(v),
                     ast::LitKind::Int(v) => Lit::Int(v),
@@ -257,12 +258,6 @@ impl Lower<'_, CallArg> for ast::CallArg {
                 CallArg { name: Some(name), expr: expr.lower(cx), index: None }
             }
         }
-    }
-}
-
-impl Lower<'_, Block> for ast::Block {
-    fn lower(self, cx: &mut LowerCtxt<'_>) -> Block {
-        Block { exprs: self.exprs.into_iter().map(|e| e.lower(cx)).collect() }
     }
 }
 
