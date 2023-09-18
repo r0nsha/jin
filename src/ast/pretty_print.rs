@@ -1,7 +1,7 @@
 use std::io;
 
 use super::{Expr, Fn, Item, LitKind, Module};
-use crate::ast::{Block, CallArg, ExternLet, FnKind, FnSig, Let, Ty};
+use crate::ast::{CallArg, ExternLet, FnKind, FnSig, Let, Ty};
 
 pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Result<()> {
     let mut cx = PPCtxt { builder: ptree::TreeBuilder::new(module.name.standard_full_name()) };
@@ -26,27 +26,27 @@ impl PrettyPrint for Expr {
     fn pretty_print(&self, cx: &mut PPCtxt) {
         match self {
             Self::Item(item) => item.pretty_print(cx),
-            Self::Return(ret) => {
+            Self::Return { expr, .. } => {
                 cx.builder.begin_child("return".to_string());
 
-                if let Some(value) = &ret.expr {
-                    value.pretty_print(cx);
+                if let Some(expr) = expr {
+                    expr.pretty_print(cx);
                 }
 
                 cx.builder.end_child();
             }
-            Self::If(if_) => {
+            Self::If { cond, then, otherwise, .. } => {
                 cx.builder.begin_child("if".to_string());
 
                 cx.builder.begin_child("cond".to_string());
-                if_.cond.pretty_print(cx);
+                cond.pretty_print(cx);
                 cx.builder.end_child();
 
                 cx.builder.begin_child("then".to_string());
-                if_.then.pretty_print(cx);
+                then.pretty_print(cx);
                 cx.builder.end_child();
 
-                if let Some(otherwise) = &if_.otherwise {
+                if let Some(otherwise) = otherwise {
                     cx.builder.begin_child("else".to_string());
                     otherwise.pretty_print(cx);
                     cx.builder.end_child();
@@ -54,14 +54,22 @@ impl PrettyPrint for Expr {
 
                 cx.builder.end_child();
             }
-            Self::Block(blk) => blk.pretty_print(cx),
-            Self::Call(call) => {
-                cx.builder.begin_child("call".to_string());
-                call.callee.pretty_print(cx);
+            Self::Block { exprs, .. } => {
+                cx.builder.begin_child("block".to_string());
 
-                if !call.args.is_empty() {
+                for expr in exprs {
+                    expr.pretty_print(cx);
+                }
+
+                cx.builder.end_child();
+            }
+            Self::Call { callee, args, .. } => {
+                cx.builder.begin_child("call".to_string());
+                callee.pretty_print(cx);
+
+                if !args.is_empty() {
                     cx.builder.begin_child("args".to_string());
-                    for arg in &call.args {
+                    for arg in args {
                         match arg {
                             CallArg::Positional(expr) => expr.pretty_print(cx),
                             CallArg::Named(name, expr) => {
@@ -76,34 +84,34 @@ impl PrettyPrint for Expr {
 
                 cx.builder.end_child();
             }
-            Self::Unary(un) => {
-                cx.builder.begin_child(un.op.to_string());
-                un.expr.pretty_print(cx);
+            Self::Unary { expr, op, .. } => {
+                cx.builder.begin_child(op.to_string());
+                expr.pretty_print(cx);
                 cx.builder.end_child();
             }
-            Self::Binary(bin) => {
-                cx.builder.begin_child(bin.op.to_string());
-                bin.lhs.pretty_print(cx);
-                bin.rhs.pretty_print(cx);
+            Self::Binary { lhs, rhs, op, .. } => {
+                cx.builder.begin_child(op.to_string());
+                lhs.pretty_print(cx);
+                rhs.pretty_print(cx);
                 cx.builder.end_child();
             }
-            Self::Cast(cast) => {
+            Self::Cast { expr, ty, .. } => {
                 cx.builder.begin_child("cast".to_string());
-                cast.expr.pretty_print(cx);
+                expr.pretty_print(cx);
                 cx.builder.begin_child("to".to_string());
-                cast.ty.pretty_print(cx);
+                ty.pretty_print(cx);
                 cx.builder.end_child();
                 cx.builder.end_child();
             }
-            Self::MemberAccess(access) => {
-                cx.builder.begin_child(format!("member access `{}`", access.member));
-                access.expr.pretty_print(cx);
+            Self::MemberAccess { expr, member, .. } => {
+                cx.builder.begin_child(format!("member access `{}`", member));
+                expr.pretty_print(cx);
                 cx.builder.end_child();
             }
-            Self::Name(name) => {
-                cx.builder.add_empty_child(format!("`{}`", name.word));
+            Self::Name { word, .. } => {
+                cx.builder.add_empty_child(format!("`{}`", word));
             }
-            Self::Lit(lit) => match lit.kind {
+            Self::Lit { kind, .. } => match kind {
                 LitKind::Str(value) => {
                     cx.builder.add_empty_child(format!("str: {value}"));
                 }
@@ -196,18 +204,6 @@ impl PrettyPrint for ExternLet {
         cx.builder.begin_child("type".to_string());
         self.ty_annot.pretty_print(cx);
         cx.builder.end_child();
-
-        cx.builder.end_child();
-    }
-}
-
-impl PrettyPrint for Block {
-    fn pretty_print(&self, cx: &mut PPCtxt) {
-        cx.builder.begin_child("block".to_string());
-
-        for expr in &self.exprs {
-            expr.pretty_print(cx);
-        }
 
         cx.builder.end_child();
     }
