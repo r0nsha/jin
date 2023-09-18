@@ -70,16 +70,6 @@ where
     Self: Sized,
 {
     fn span(&self) -> Span;
-    fn span_mut(&mut self) -> &mut Span;
-
-    fn set_span(&mut self, span: Span) {
-        *self.span_mut() = span;
-    }
-
-    fn with_span(mut self, span: Span) -> Self {
-        self.set_span(span);
-        self
-    }
 }
 
 #[derive(Debug)]

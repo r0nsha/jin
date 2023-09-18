@@ -51,10 +51,6 @@ impl Spanned for Word {
     fn span(&self) -> Span {
         self.1
     }
-
-    fn span_mut(&mut self) -> &mut Span {
-        &mut self.1
-    }
 }
 
 impl cmp::PartialEq for Word {

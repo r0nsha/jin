@@ -310,13 +310,6 @@ impl Spanned for Ty {
             Self::RawPtr(_, span) | Ty::Unit(span) | Ty::Hole(span) => *span,
         }
     }
-
-    fn span_mut(&mut self) -> &mut Span {
-        match self {
-            Ty::Name(n) => &mut n.span,
-            Self::RawPtr(_, span) | Ty::Unit(span) | Ty::Hole(span) => span,
-        }
-    }
 }
 
 new_key_type!(ExprId);

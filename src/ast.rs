@@ -66,14 +66,6 @@ impl Spanned for Item {
             | Self::ExternLet(ExternLet { span, .. }) => *span,
         }
     }
-
-    fn span_mut(&mut self) -> &mut Span {
-        match self {
-            Self::Fn(Fn { span, .. })
-            | Self::Let(Let { span, .. })
-            | Self::ExternLet(ExternLet { span, .. }) => span,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -107,23 +99,6 @@ impl Spanned for Expr {
             | Self::Cast(Cast { span, .. })
             | Self::Lit(Lit { span, .. })
             | Self::Group(_, span) => *span,
-        }
-    }
-
-    fn span_mut(&mut self) -> &mut Span {
-        match self {
-            Self::Item(x) => x.span_mut(),
-            Self::Return(x) => &mut x.span,
-            Self::If(x) => &mut x.span,
-            Self::Block(x) => &mut x.span,
-            Self::Call(x) => &mut x.span,
-            Self::Unary(x) => &mut x.span,
-            Self::Binary(x) => &mut x.span,
-            Self::Cast(x) => &mut x.span,
-            Self::MemberAccess(x) => &mut x.span,
-            Self::Name(x) => &mut x.span,
-            Self::Lit(x) => &mut x.span,
-            Self::Group(_, span) => span,
         }
     }
 }
@@ -464,13 +439,6 @@ impl Spanned for Ty {
             | Self::Name(TyName { span, .. })
             | Self::Unit(span)
             | Self::Hole(span) => *span,
-        }
-    }
-
-    fn span_mut(&mut self) -> &mut Span {
-        match self {
-            Ty::Name(x) => &mut x.span,
-            Self::RawPtr(_, span) | Ty::Unit(span) | Ty::Hole(span) => span,
         }
     }
 }
