@@ -1,5 +1,5 @@
 use inkwell::{
-    types::{BasicType, BasicTypeEnum, FunctionType, IntType, StructType},
+    types::{BasicType, BasicTypeEnum, FunctionType, IntType},
     AddressSpace,
 };
 
@@ -7,16 +7,6 @@ use crate::{
     llvm::{generate::Generator, inkwell_ext::ContextExt},
     ty::{FnTy, IntTy, TyKind, UintTy},
 };
-
-impl<'db, 'cx> Generator<'db, 'cx> {
-    #[inline]
-    pub fn str_ty(&self) -> StructType<'cx> {
-        self.context.struct_type(
-            &[self.context.ptr_type(AddressSpace::default()).into(), self.layout.int_ty.into()],
-            false,
-        )
-    }
-}
 
 pub trait LlvmTy<'db, 'cx, T> {
     fn llty(&self, cx: &Generator<'db, 'cx>) -> T;
@@ -39,7 +29,7 @@ impl<'db, 'cx> LlvmTy<'db, 'cx, BasicTypeEnum<'cx>> for TyKind {
 
     fn llpointee(&self, cx: &Generator<'db, 'cx>) -> BasicTypeEnum<'cx> {
         match self {
-            Self::Str => cx.str_ty().into(),
+            Self::Str => cx.layout.str_ty.into(),
             Self::RawPtr(pointee) => pointee.llty(cx),
             _ => panic!("unexpected type: {self:?}"),
         }
