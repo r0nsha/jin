@@ -1,6 +1,6 @@
 use crate::{
-    typeck::tcx::TyStorage,
     ty::{FnTy, FnTyParam, InferTy, Ty, TyKind},
+    typeck::tcx::TyStorage,
 };
 
 pub trait NormalizeTy {

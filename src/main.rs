@@ -22,6 +22,7 @@ mod db;
 mod diagnostics;
 mod hir;
 mod llvm;
+mod macros;
 mod name_resolution;
 mod parse;
 mod span;
@@ -30,7 +31,6 @@ mod sym;
 mod tir;
 mod ty;
 mod typeck;
-mod macros;
 
 use std::{fs, path::PathBuf};
 
