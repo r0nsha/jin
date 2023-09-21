@@ -94,6 +94,7 @@ impl Ty {
             TyKind::Fn(fun) => {
                 fun.params.iter().any(|p| p.ty.walk_short_(f)) || fun.ret.walk_short_(f)
             }
+            TyKind::RawPtr(pointee) => pointee.walk_short_(f),
             _ => f(self),
         }
     }

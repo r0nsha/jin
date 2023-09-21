@@ -274,20 +274,12 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 Self::undef_value(expr.ty.llty(self))
             }
             ExprKind::Call { callee, args } => {
-                let callee_ty = state.body.expr(*callee).ty;
-
                 let args: Vec<_> =
                     args.iter().map(|arg| self.codegen_expr(state, *arg).into()).collect();
 
                 // TODO: this doesn't take indirect calls (function pointers) into account
                 let callee =
                     self.codegen_expr(state, *callee).as_any_value_enum().into_function_value();
-
-                // Don't call actually call the function if it's diverging
-                if callee_ty.is_diverging() {
-                    self.build_unreachable();
-                    return Self::undef_value(expr.ty.llty(self));
-                }
 
                 let result = self.bx.build_direct_call(callee, &args, "call");
 

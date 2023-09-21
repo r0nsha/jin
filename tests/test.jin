@@ -5,6 +5,9 @@ fn extern hello()
 let extern answer int
 
 @(lib = "c")
+fn extern exit(status int) never
+
+@(lib = "c")
 fn extern write(fd i32, buf *u8, count uint) int
 
 let stdout = 1
@@ -19,8 +22,9 @@ fn println(fmt str) = {
 }
 
 fn main() = {
-	println("Hello, World!\0")
+	println("Hello, World!")
 	hello()
 	fn my_answer() int = answer
 	my_answer()
+	exit(0)
 }
