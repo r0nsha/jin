@@ -75,7 +75,7 @@ fn nested_fn() = {
 }
 
 fn polymorphism() = {
-	fn id[t](x t) t = x
+	fn id[a](x a) a = x
 
 	# Inferred type arguments
 	id(42)
