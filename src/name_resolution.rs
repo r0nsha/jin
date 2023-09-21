@@ -75,6 +75,7 @@ impl<'db> Resolver<'db> {
         mk(sym::U64, &|db| db.types.u64);
         mk(sym::UINT, &|db| db.types.uint);
 
+        mk(sym::STR, &|db| db.types.str);
         mk(sym::BOOL, &|db| db.types.bool);
         mk(sym::NEVER, &|db| db.types.never);
     }

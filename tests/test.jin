@@ -1,14 +1,25 @@
-@(lib = "c")
-fn extern puts(s *u8) int
-
 @(lib = "./foo")
 fn extern hello()
 
 @(lib = "./foo")
 let extern answer int
 
+@(lib = "c")
+fn extern write(fd i32, buf *u8, count uint) int
+
+let stdout = 1
+
+fn print(fmt str) = {
+	write(stdout, fmt.ptr, fmt.len)
+}
+
+fn println(fmt str) = {
+	print(fmt)
+	print("\n")
+}
+
 fn main() = {
-	puts("Hello, World!\0".ptr)
+	println("Hello, World!\0")
 	hello()
 	fn my_answer() int = answer
 	my_answer()
