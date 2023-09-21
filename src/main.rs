@@ -21,7 +21,6 @@ mod common;
 mod db;
 mod diagnostics;
 mod hir;
-mod hir_analysis;
 mod llvm;
 mod name_resolution;
 mod parse;
@@ -116,7 +115,7 @@ fn build(db: &mut Db) {
     let mut hir = hir::lower(db, ast);
 
     // Type check pass
-    db.time.start("typeck");
+    db.time.start("type check");
     if let Err(diag) = typeck::typeck(db, &mut hir) {
         db.diagnostics.emit(diag);
     }
@@ -125,12 +124,6 @@ fn build(db: &mut Db) {
 
     db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))
         .expect("emitting hir failed");
-
-    // Typed hir analysis
-    db.time.start("hir analysis");
-    hir_analysis::analyze(db, &hir);
-    db.time.stop();
-    expect!(db);
 
     // Lower to TIR, includes monomorphization
     db.time.start("hir -> tir");

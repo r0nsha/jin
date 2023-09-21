@@ -1,3 +1,4 @@
+mod analysis;
 mod attrs;
 mod coerce;
 mod error;
@@ -38,6 +39,8 @@ pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
         cx.typeck_defs(hir)?;
         cx.typeck_bodies(hir)?;
         cx.subst(hir);
+
+        analysis::analyze(db, hir);
 
         Ok(())
     }
@@ -485,7 +488,9 @@ impl TyCtxt<'_> {
 
     fn typeck_ty(&mut self, ty: &hir::TyExpr) -> TypeckResult<Ty> {
         match ty {
-            hir::TyExpr::RawPtr(pointee, _) => Ok(Ty::new(TyKind::RawPtr(self.typeck_ty(pointee)?))),
+            hir::TyExpr::RawPtr(pointee, _) => {
+                Ok(Ty::new(TyKind::RawPtr(self.typeck_ty(pointee)?)))
+            }
             hir::TyExpr::Name(name) => {
                 let def = &self.db[name.id];
 
