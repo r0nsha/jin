@@ -550,25 +550,38 @@ impl<'a> Parser<'a> {
 }
 
 impl<'a> Parser<'a> {
+    #[inline]
     fn eat(&mut self, expected: TokenKind) -> ParseResult<Token> {
         let tok = self.eat_any()?;
         Self::require_kind(tok, expected)
     }
 
+    #[inline]
     fn eat_any(&mut self) -> ParseResult<Token> {
         let tok = self.require()?;
         self.next();
         Ok(tok)
     }
 
+    #[inline]
     fn require(&mut self) -> ParseResult<Token> {
         self.token().ok_or_else(|| ParseError::UnexpectedEof(self.last_span()))
     }
 
+    #[inline]
     fn is(&mut self, expected: TokenKind) -> bool {
         self.is_predicate(|_, tok| tok.kind_is(expected))
     }
 
+    #[allow(unused)]
+    #[inline]
+    fn is_same_line(&mut self, expected: TokenKind) -> bool {
+        self.is_predicate(|p, tok| {
+            tok.kind_is(expected) && p.spans_are_on_same_line(p.last_span(), tok.span)
+        })
+    }
+
+    #[inline]
     fn is_predicate(&mut self, mut f: impl FnMut(&mut Self, Token) -> bool) -> bool {
         match self.token() {
             Some(tok) if f(self, tok) => {
@@ -579,6 +592,7 @@ impl<'a> Parser<'a> {
         }
     }
 
+    #[inline]
     fn spans_are_on_same_line(&self, s1: Span, s2: Span) -> bool {
         fn line_index(parser: &Parser, pos: u32) -> usize {
             parser.source.line_index(parser.source.id(), pos as usize).unwrap()
@@ -587,22 +601,27 @@ impl<'a> Parser<'a> {
         line_index(self, s1.end()) == line_index(self, s2.start())
     }
 
+    #[inline]
     fn token(&self) -> Option<Token> {
         self.tokens.get(self.pos).copied()
     }
 
+    #[inline]
     fn peek<R: Default>(&self, f: impl FnOnce(Token) -> R) -> R {
         self.token().map(f).unwrap_or_default()
     }
 
+    #[inline]
     fn peek_is(&self, expected: TokenKind) -> bool {
         self.peek(|t| t.kind_is(expected))
     }
 
+    #[inline]
     fn last_span(&self) -> Span {
         self.last_token().span
     }
 
+    #[inline]
     fn last_token(&self) -> Token {
         self.tokens[self.pos - 1]
     }
@@ -622,6 +641,7 @@ impl<'a> Parser<'a> {
         self.pos == self.tokens.len()
     }
 
+    #[inline]
     fn require_kind(tok: Token, expected: TokenKind) -> ParseResult<Token> {
         if tok.kind_is(expected) {
             Ok(tok)
