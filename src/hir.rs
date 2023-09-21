@@ -13,7 +13,7 @@ use crate::{
     common::{new_key_type, Word},
     db::{Db, DefId, ModuleId},
     span::{Span, Spanned},
-    ty::{self, Typed},
+    ty::{Instantiation, Ty, Typed},
 };
 
 #[derive(Debug, Clone)]
@@ -38,7 +38,7 @@ pub struct Expr {
     pub id: ExprId,
     pub kind: ExprKind,
     pub span: Span,
-    pub ty: ty::Ty,
+    pub ty: Ty,
 }
 
 impl Expr {
@@ -118,7 +118,7 @@ pub enum FnKind {
 pub struct FnSig {
     pub ty_params: Vec<TyParam>,
     pub params: Vec<FnParam>,
-    pub ret: Option<Ty>,
+    pub ret: Option<TyExpr>,
 }
 
 #[derive(Debug, Clone)]
@@ -130,9 +130,9 @@ pub struct TyParam {
 #[derive(Debug, Clone)]
 pub struct FnParam {
     pub id: DefId,
-    pub ty_annot: Ty,
+    pub ty_annot: TyExpr,
     pub span: Span,
-    pub ty: ty::Ty,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone)]
@@ -140,7 +140,7 @@ pub struct Let {
     pub module_id: ModuleId,
     pub attrs: Attrs,
     pub pat: Pat,
-    pub ty_annot: Option<Ty>,
+    pub ty_annot: Option<TyExpr>,
     pub value: Box<Expr>,
     pub span: Span,
 }
@@ -151,7 +151,7 @@ pub struct ExternLet {
     pub id: DefId,
     pub attrs: Attrs,
     pub word: Word,
-    pub ty_annot: Ty,
+    pub ty_annot: TyExpr,
     pub span: Span,
 }
 
@@ -239,11 +239,11 @@ pub struct CallArg {
 }
 
 impl Typed for CallArg {
-    fn ty(&self) -> ty::Ty {
+    fn ty(&self) -> Ty {
         self.expr.ty
     }
 
-    fn ty_mut(&mut self) -> &mut ty::Ty {
+    fn ty_mut(&mut self) -> &mut Ty {
         &mut self.expr.ty
     }
 }
@@ -264,7 +264,7 @@ pub struct Binary {
 #[derive(Debug, Clone)]
 pub struct Cast {
     pub expr: Box<Expr>,
-    pub target: Ty,
+    pub target: TyExpr,
 }
 
 #[derive(Debug, Clone)]
@@ -276,8 +276,8 @@ pub struct MemberAccess {
 #[derive(Debug, Clone)]
 pub struct Name {
     pub id: DefId,
-    pub args: Option<Vec<Ty>>,
-    pub instantiation: ty::Instantiation,
+    pub args: Option<Vec<TyExpr>>,
+    pub instantiation: Instantiation,
 }
 
 #[derive(Debug, Clone)]
@@ -289,8 +289,8 @@ pub enum Lit {
 }
 
 #[derive(Debug, Clone)]
-pub enum Ty {
-    RawPtr(Box<Ty>, Span),
+pub enum TyExpr {
+    RawPtr(Box<TyExpr>, Span),
     Name(TyName),
     Unit(Span),
     Hole(Span),
@@ -299,15 +299,15 @@ pub enum Ty {
 #[derive(Debug, Clone)]
 pub struct TyName {
     pub id: DefId,
-    pub args: Vec<Ty>,
+    pub args: Vec<TyExpr>,
     pub span: Span,
 }
 
-impl Spanned for Ty {
+impl Spanned for TyExpr {
     fn span(&self) -> Span {
         match self {
-            Ty::Name(n) => n.span,
-            Self::RawPtr(_, span) | Ty::Unit(span) | Ty::Hole(span) => *span,
+            TyExpr::Name(n) => n.span,
+            Self::RawPtr(_, span) | TyExpr::Unit(span) | TyExpr::Hole(span) => *span,
         }
     }
 }

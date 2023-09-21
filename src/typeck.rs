@@ -483,10 +483,10 @@ impl TyCtxt<'_> {
         Ok(())
     }
 
-    fn typeck_ty(&mut self, ty: &hir::Ty) -> TypeckResult<Ty> {
+    fn typeck_ty(&mut self, ty: &hir::TyExpr) -> TypeckResult<Ty> {
         match ty {
-            hir::Ty::RawPtr(pointee, _) => Ok(Ty::new(TyKind::RawPtr(self.typeck_ty(pointee)?))),
-            hir::Ty::Name(name) => {
+            hir::TyExpr::RawPtr(pointee, _) => Ok(Ty::new(TyKind::RawPtr(self.typeck_ty(pointee)?))),
+            hir::TyExpr::Name(name) => {
                 let def = &self.db[name.id];
 
                 match def.kind.as_ref() {
@@ -494,8 +494,8 @@ impl TyCtxt<'_> {
                     _ => Err(TypeckError::ExpectedTy { ty: def.ty, span: name.span }),
                 }
             }
-            hir::Ty::Unit(_) => Ok(self.db.types.unit),
-            hir::Ty::Hole(_) => Ok(self.fresh_ty_var()),
+            hir::TyExpr::Unit(_) => Ok(self.db.types.unit),
+            hir::TyExpr::Hole(_) => Ok(self.fresh_ty_var()),
         }
     }
 }

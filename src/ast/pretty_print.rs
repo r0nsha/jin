@@ -1,7 +1,7 @@
 use std::io;
 
 use super::{Expr, Fn, Item, LitKind, Module};
-use crate::ast::{CallArg, ExternLet, FnKind, FnSig, Let, Ty};
+use crate::ast::{CallArg, ExternLet, FnKind, FnSig, Let, TyExpr};
 
 pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Result<()> {
     let mut cx = PPCtxt { builder: ptree::TreeBuilder::new(module.name.standard_full_name()) };
@@ -209,15 +209,15 @@ impl PrettyPrint for ExternLet {
     }
 }
 
-impl PrettyPrint for Ty {
+impl PrettyPrint for TyExpr {
     fn pretty_print(&self, cx: &mut PPCtxt) {
         match self {
-            Ty::RawPtr(pointee, _) => {
+            TyExpr::RawPtr(pointee, _) => {
                 cx.builder.begin_child("raw ptr".to_string());
                 pointee.pretty_print(cx);
                 cx.builder.end_child();
             }
-            Ty::Name(name) => {
+            TyExpr::Name(name) => {
                 cx.builder.add_empty_child(name.word.to_string());
 
                 if !name.args.is_empty() {
@@ -228,10 +228,10 @@ impl PrettyPrint for Ty {
                     cx.builder.end_child();
                 }
             }
-            Ty::Unit(_) => {
+            TyExpr::Unit(_) => {
                 cx.builder.add_empty_child("()".to_string());
             }
-            Ty::Hole(_) => {
+            TyExpr::Hole(_) => {
                 cx.builder.add_empty_child("_".to_string());
             }
         }

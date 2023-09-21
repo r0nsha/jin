@@ -4,7 +4,7 @@ mod error;
 use ustr::{ustr, UstrMap};
 
 use crate::{
-    ast::{Ast, CallArg, Expr, ExternLet, Fn, FnKind, FnSig, Item, Let, Pat, Ty, TyParam},
+    ast::{Ast, CallArg, Expr, ExternLet, Fn, FnKind, FnSig, Item, Let, Pat, TyExpr, TyParam},
     common::{QPath, Word},
     db::{Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     name_resolution::{
@@ -345,14 +345,14 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn resolve_ty(&mut self, env: &Env, ty: &mut Ty) {
+    fn resolve_ty(&mut self, env: &Env, ty: &mut TyExpr) {
         match ty {
-            Ty::RawPtr(pointee, _) => self.resolve_ty(env, pointee),
-            Ty::Name(name) => match self.lookup(env, name.word) {
+            TyExpr::RawPtr(pointee, _) => self.resolve_ty(env, pointee),
+            TyExpr::Name(name) => match self.lookup(env, name.word) {
                 Ok(id) => name.id = Some(id),
                 Err(err) => self.errors.push(err),
             },
-            Ty::Hole(span) if env.current().kind == ScopeKind::Fn => {
+            TyExpr::Hole(span) if env.current().kind == ScopeKind::Fn => {
                 // TODO: pass a `allow_infer_ty: AllowInferTy::{Yes/No}` instead of scope kind
                 self.errors.push(ResolveError::InvalidInferTy(*span));
             }

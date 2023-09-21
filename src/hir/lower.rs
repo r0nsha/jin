@@ -3,7 +3,7 @@ use crate::{
     db::{Db, ModuleId},
     hir::{
         Attr, Attrs, Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, ExternLet, Fn,
-        FnKind, FnParam, FnSig, Hir, If, Let, Lit, MemberAccess, Name, NamePat, Pat, Return, Ty,
+        FnKind, FnParam, FnSig, Hir, If, Let, Lit, MemberAccess, Name, NamePat, Pat, Return, TyExpr,
         TyName, TyParam, Unary,
     },
     span::{Span, Spanned},
@@ -262,17 +262,17 @@ impl Lower<'_, CallArg> for ast::CallArg {
 }
 
 #[allow(clippy::complexity)]
-impl Lower<'_, Ty> for ast::Ty {
-    fn lower(self, cx: &mut LowerCtxt<'_>) -> Ty {
+impl Lower<'_, TyExpr> for ast::TyExpr {
+    fn lower(self, cx: &mut LowerCtxt<'_>) -> TyExpr {
         match self {
-            ast::Ty::RawPtr(pointee, span) => Ty::RawPtr(Box::new(pointee.lower(cx)), span),
-            ast::Ty::Name(name) => Ty::Name(TyName {
+            ast::TyExpr::RawPtr(pointee, span) => TyExpr::RawPtr(Box::new(pointee.lower(cx)), span),
+            ast::TyExpr::Name(name) => TyExpr::Name(TyName {
                 id: name.id.expect("to be resolved"),
                 args: name.args.into_iter().map(|a| a.lower(cx)).collect(),
                 span: name.span,
             }),
-            ast::Ty::Unit(span) => Ty::Unit(span),
-            ast::Ty::Hole(span) => Ty::Hole(span),
+            ast::TyExpr::Unit(span) => TyExpr::Unit(span),
+            ast::TyExpr::Hole(span) => TyExpr::Hole(span),
         }
     }
 }

@@ -77,9 +77,9 @@ pub enum Expr {
     Call { callee: Box<Expr>, args: Vec<CallArg>, span: Span },
     Unary { expr: Box<Self>, op: UnOp, span: Span },
     Binary { lhs: Box<Self>, rhs: Box<Self>, op: BinOp, span: Span },
-    Cast { expr: Box<Expr>, ty: Ty, span: Span },
+    Cast { expr: Box<Expr>, ty: TyExpr, span: Span },
     MemberAccess { expr: Box<Expr>, member: Word, span: Span },
-    Name { id: Option<DefId>, word: Word, args: Option<Vec<Ty>>, span: Span },
+    Name { id: Option<DefId>, word: Word, args: Option<Vec<TyExpr>>, span: Span },
     Lit { kind: LitKind, span: Span },
     Group { expr: Box<Self>, span: Span },
 }
@@ -123,7 +123,7 @@ pub struct FnSig {
     pub name: Word,
     pub ty_params: Vec<TyParam>,
     pub params: Vec<FnParam>,
-    pub ret: Option<Ty>,
+    pub ret: Option<TyExpr>,
 }
 
 #[derive(Debug, Clone)]
@@ -136,7 +136,7 @@ pub struct TyParam {
 pub struct FnParam {
     pub id: Option<DefId>,
     pub name: Word,
-    pub ty: Ty,
+    pub ty: TyExpr,
     pub span: Span,
 }
 
@@ -144,7 +144,7 @@ pub struct FnParam {
 pub struct Let {
     pub attrs: Attrs,
     pub pat: Pat,
-    pub ty_annot: Option<Ty>,
+    pub ty_annot: Option<TyExpr>,
     pub value: Box<Expr>,
     pub span: Span,
 }
@@ -154,7 +154,7 @@ pub struct ExternLet {
     pub id: Option<DefId>,
     pub attrs: Attrs,
     pub word: Word,
-    pub ty_annot: Ty,
+    pub ty_annot: TyExpr,
     pub span: Span,
 }
 
@@ -355,14 +355,14 @@ pub enum LitKind {
 }
 
 #[derive(Debug, Clone)]
-pub enum Ty {
-    RawPtr(Box<Ty>, Span),
+pub enum TyExpr {
+    RawPtr(Box<TyExpr>, Span),
     Name(TyName),
     Unit(Span),
     Hole(Span),
 }
 
-impl Spanned for Ty {
+impl Spanned for TyExpr {
     fn span(&self) -> Span {
         match self {
             Self::RawPtr(_, span)
@@ -377,7 +377,7 @@ impl Spanned for Ty {
 pub struct TyName {
     pub id: Option<DefId>,
     pub word: Word,
-    pub args: Vec<Ty>,
+    pub args: Vec<TyExpr>,
     pub span: Span,
 }
 

@@ -4,7 +4,7 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         Attr, AttrKind, Attrs, BinOp, CallArg, Expr, ExternLet, Fn, FnKind, FnParam, FnSig, Item,
-        Let, LitKind, Module, NamePat, Pat, Ty, TyName, TyParam, UnOp,
+        Let, LitKind, Module, NamePat, Pat, TyExpr, TyName, TyParam, UnOp,
     },
     common::{QPath, Word},
     db::Db,
@@ -192,7 +192,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_optional_ty_args(&mut self) -> ParseResult<Option<Vec<Ty>>> {
+    fn parse_optional_ty_args(&mut self) -> ParseResult<Option<Vec<TyExpr>>> {
         if self.peek_is(TokenKind::OpenBracket) {
             let args = self.parse_ty_args().map(|(t, _)| t)?;
             Ok(Some(args))
@@ -201,7 +201,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_ty_args(&mut self) -> ParseResult<(Vec<Ty>, Span)> {
+    fn parse_ty_args(&mut self) -> ParseResult<(Vec<TyExpr>, Span)> {
         self.parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, Self::parse_ty)
     }
 
@@ -380,23 +380,23 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn parse_ty(&mut self) -> ParseResult<Ty> {
+    fn parse_ty(&mut self) -> ParseResult<TyExpr> {
         let tok = self.eat_any()?;
 
         let ty = match tok.kind {
             TokenKind::Star => {
                 let pointee = self.parse_ty()?;
                 let span = tok.span.merge(pointee.span());
-                Ty::RawPtr(Box::new(pointee), span)
+                TyExpr::RawPtr(Box::new(pointee), span)
             }
             TokenKind::Ident(..) => {
-                Ty::Name(TyName { id: None, word: tok.word(), args: vec![], span: tok.span })
+                TyExpr::Name(TyName { id: None, word: tok.word(), args: vec![], span: tok.span })
             }
             TokenKind::OpenParen => {
                 let end = self.eat(TokenKind::CloseParen)?.span;
-                Ty::Unit(tok.span.merge(end))
+                TyExpr::Unit(tok.span.merge(end))
             }
-            TokenKind::Underscore => Ty::Hole(tok.span),
+            TokenKind::Underscore => TyExpr::Hole(tok.span),
             _ => {
                 return Err(ParseError::UnexpectedToken {
                     expected: "a type".to_string(),
