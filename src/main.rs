@@ -30,6 +30,7 @@ mod sym;
 mod tir;
 mod ty;
 mod typeck;
+mod macros;
 
 use std::{fs, path::PathBuf};
 

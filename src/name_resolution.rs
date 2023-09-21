@@ -4,9 +4,10 @@ mod error;
 use ustr::{ustr, UstrMap};
 
 use crate::{
-    ast::{Ast, CallArg, Expr, ExternLet, Fn, FnKind, FnSig, Item, Let, Pat, TyExpr, TyParam},
+    ast::{self, Ast},
     common::{QPath, Word},
     db::{Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
+    macros::create_bool_enum,
     name_resolution::{
         env::{Env, EnvKind, GlobalScope, ScopeKind},
         error::ResolveError,
@@ -86,26 +87,26 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn define_global_item(&mut self, module_id: ModuleId, item: &mut Item) {
+    fn define_global_item(&mut self, module_id: ModuleId, item: &mut ast::Item) {
         match item {
-            Item::Fn(fun) => {
+            ast::Item::Fn(fun) => {
                 fun.id = Some(self.define_def(
                     EnvKind::Global(module_id, Vis::Public),
                     DefKind::Fn(match &fun.kind {
-                        FnKind::Bare { .. } => FnInfo::Bare,
-                        FnKind::Extern => FnInfo::Extern,
+                        ast::FnKind::Bare { .. } => FnInfo::Bare,
+                        ast::FnKind::Extern => FnInfo::Extern,
                     }),
                     fun.sig.name,
                 ));
             }
-            Item::ExternLet(let_) => {
+            ast::Item::ExternLet(let_) => {
                 let_.id = Some(self.define_def(
                     EnvKind::Global(module_id, Vis::Public),
                     DefKind::ExternGlobal,
                     let_.word,
                 ));
             }
-            Item::Let(let_) => self.define_pat(
+            ast::Item::Let(let_) => self.define_pat(
                 EnvKind::Global(module_id, Vis::Public),
                 DefKind::Global,
                 &mut let_.pat,
@@ -159,12 +160,12 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn define_pat(&mut self, env: EnvKind, kind: DefKind, pat: &mut Pat) {
+    fn define_pat(&mut self, env: EnvKind, kind: DefKind, pat: &mut ast::Pat) {
         match pat {
-            Pat::Name(name) => {
+            ast::Pat::Name(name) => {
                 name.id = Some(self.define_def(env, kind, name.word));
             }
-            Pat::Discard(_) => (),
+            ast::Pat::Discard(_) => (),
         }
     }
 
@@ -187,15 +188,15 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn resolve_item(&mut self, item: &mut Item, env: &mut Env) {
+    fn resolve_item(&mut self, item: &mut ast::Item, env: &mut Env) {
         match item {
-            Item::Fn(fun) => self.resolve_fn(env, fun),
-            Item::Let(let_) => self.resolve_let(env, let_),
-            Item::ExternLet(let_) => self.resolve_extern_let(env, let_),
+            ast::Item::Fn(fun) => self.resolve_fn(env, fun),
+            ast::Item::Let(let_) => self.resolve_let(env, let_),
+            ast::Item::ExternLet(let_) => self.resolve_extern_let(env, let_),
         }
     }
 
-    fn resolve_fn(&mut self, env: &mut Env, fun: &mut Fn) {
+    fn resolve_fn(&mut self, env: &mut Env, fun: &mut ast::Fn) {
         if !env.in_global_scope() {
             fun.id =
                 Some(self.define_def(EnvKind::Local(env), DefKind::Fn(FnInfo::Bare), fun.sig.name));
@@ -211,13 +212,13 @@ impl<'db> Resolver<'db> {
             self.resolve_sig(env, &mut fun.sig);
 
             match &mut fun.kind {
-                FnKind::Bare { body } => self.resolve_expr(env, body),
-                FnKind::Extern => (),
+                ast::FnKind::Bare { body } => self.resolve_expr(env, body),
+                ast::FnKind::Extern => (),
             }
         });
     }
 
-    fn resolve_sig(&mut self, env: &mut Env, sig: &mut FnSig) {
+    fn resolve_sig(&mut self, env: &mut Env, sig: &mut ast::FnSig) {
         assert!(env.in_kind(ScopeKind::Fn), "FnSig must be resolved inside a ScopeKind::Fn");
 
         self.resolve_ty_params(env, &mut sig.ty_params);
@@ -226,7 +227,7 @@ impl<'db> Resolver<'db> {
 
         for p in &mut sig.params {
             p.id = Some(self.define_local_def(env, DefKind::Variable, p.name));
-            self.resolve_ty(env, &mut p.ty);
+            self.resolve_ty(env, &mut p.ty, AllowTyHole::No);
 
             if let Some(prev_span) = defined_params.insert(p.name.name(), p.name.span()) {
                 self.errors.push(ResolveError::MultipleParams {
@@ -238,11 +239,11 @@ impl<'db> Resolver<'db> {
         }
 
         if let Some(ret) = sig.ret.as_mut() {
-            self.resolve_ty(env, ret);
+            self.resolve_ty(env, ret, AllowTyHole::No);
         }
     }
 
-    fn resolve_let(&mut self, env: &mut Env, let_: &mut Let) {
+    fn resolve_let(&mut self, env: &mut Env, let_: &mut ast::Let) {
         if !env.in_global_scope() {
             self.define_pat(EnvKind::Local(env), DefKind::Variable, &mut let_.pat);
 
@@ -253,30 +254,30 @@ impl<'db> Resolver<'db> {
 
         env.with_anon_scope(ScopeKind::Initializer, |env| {
             if let Some(ty) = &mut let_.ty_annot {
-                self.resolve_ty(env, ty);
+                self.resolve_ty(env, ty, AllowTyHole::Yes);
             }
 
             self.resolve_expr(env, &mut let_.value);
         });
     }
 
-    fn resolve_extern_let(&mut self, env: &mut Env, let_: &mut ExternLet) {
+    fn resolve_extern_let(&mut self, env: &mut Env, let_: &mut ast::ExternLet) {
         if !env.in_global_scope() {
             let_.id = Some(self.define_def(EnvKind::Local(env), DefKind::ExternGlobal, let_.word));
         }
 
-        self.resolve_ty(env, &mut let_.ty_annot);
+        self.resolve_ty(env, &mut let_.ty_annot, AllowTyHole::No);
     }
 
-    fn resolve_expr(&mut self, env: &mut Env, expr: &mut Expr) {
+    fn resolve_expr(&mut self, env: &mut Env, expr: &mut ast::Expr) {
         match expr {
-            Expr::Item(item) => self.resolve_item(item, env),
-            Expr::Return { expr, .. } => {
+            ast::Expr::Item(item) => self.resolve_item(item, env),
+            ast::Expr::Return { expr, .. } => {
                 if let Some(expr) = expr {
                     self.resolve_expr(env, expr);
                 }
             }
-            Expr::If { cond, then, otherwise, .. } => {
+            ast::Expr::If { cond, then, otherwise, .. } => {
                 self.resolve_expr(env, cond);
                 self.resolve_expr(env, then);
 
@@ -284,34 +285,34 @@ impl<'db> Resolver<'db> {
                     self.resolve_expr(env, otherwise);
                 }
             }
-            Expr::Block { exprs, .. } => env.with_anon_scope(ScopeKind::Block, |env| {
+            ast::Expr::Block { exprs, .. } => env.with_anon_scope(ScopeKind::Block, |env| {
                 for expr in &mut *exprs {
                     self.resolve_expr(env, expr);
                 }
             }),
-            Expr::Call { callee, args, .. } => {
+            ast::Expr::Call { callee, args, .. } => {
                 self.resolve_expr(env, callee);
 
                 for arg in args {
                     match arg {
-                        CallArg::Named(_, expr) | CallArg::Positional(expr) => {
+                        ast::CallArg::Named(_, expr) | ast::CallArg::Positional(expr) => {
                             self.resolve_expr(env, expr);
                         }
                     }
                 }
             }
-            Expr::Unary { expr, .. } | Expr::MemberAccess { expr, .. } => {
+            ast::Expr::Unary { expr, .. } | ast::Expr::MemberAccess { expr, .. } => {
                 self.resolve_expr(env, expr);
             }
-            Expr::Binary { lhs, rhs, .. } => {
+            ast::Expr::Binary { lhs, rhs, .. } => {
                 self.resolve_expr(env, lhs);
                 self.resolve_expr(env, rhs);
             }
-            Expr::Cast { expr, ty, .. } => {
+            ast::Expr::Cast { expr, ty, .. } => {
                 self.resolve_expr(env, expr);
-                self.resolve_ty(env, ty);
+                self.resolve_ty(env, ty, AllowTyHole::Yes);
             }
-            Expr::Name { id, word, args, .. } => {
+            ast::Expr::Name { id, word, args, .. } => {
                 match self.lookup(env, *word) {
                     Ok(res) => *id = Some(res),
                     Err(err) => self.errors.push(err),
@@ -319,16 +320,16 @@ impl<'db> Resolver<'db> {
 
                 if let Some(args) = args {
                     for arg in args {
-                        self.resolve_ty(env, arg);
+                        self.resolve_ty(env, arg, AllowTyHole::Yes);
                     }
                 }
             }
-            Expr::Group { expr, span: _ } => self.resolve_expr(env, expr),
-            Expr::Lit { .. } => (),
+            ast::Expr::Group { expr, span: _ } => self.resolve_expr(env, expr),
+            ast::Expr::Lit { .. } => (),
         }
     }
 
-    fn resolve_ty_params(&mut self, env: &mut Env, ty_params: &mut [TyParam]) {
+    fn resolve_ty_params(&mut self, env: &mut Env, ty_params: &mut [ast::TyParam]) {
         let mut defined_ty_params = UstrMap::<Span>::default();
 
         for tp in ty_params {
@@ -345,18 +346,21 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn resolve_ty(&mut self, env: &Env, ty: &mut TyExpr) {
+    fn resolve_ty(&mut self, env: &Env, ty: &mut ast::TyExpr, allow_hole: AllowTyHole) {
         match ty {
-            TyExpr::RawPtr(pointee, _) => self.resolve_ty(env, pointee),
-            TyExpr::Name(name) => match self.lookup(env, name.word) {
+            ast::TyExpr::RawPtr(pointee, _) => self.resolve_ty(env, pointee, allow_hole),
+            ast::TyExpr::Name(name) => match self.lookup(env, name.word) {
                 Ok(id) => name.id = Some(id),
                 Err(err) => self.errors.push(err),
             },
-            TyExpr::Hole(span) if env.current().kind == ScopeKind::Fn => {
-                // TODO: pass a `allow_infer_ty: AllowInferTy::{Yes/No}` instead of scope kind
-                self.errors.push(ResolveError::InvalidInferTy(*span));
+            ast::TyExpr::Hole(span) => {
+                if !allow_hole {
+                    self.errors.push(ResolveError::InvalidInferTy(*span));
+                }
             }
-            _ => (),
+            ast::TyExpr::Unit(_) => (),
         }
     }
 }
+
+create_bool_enum!(AllowTyHole);
