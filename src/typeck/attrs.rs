@@ -4,13 +4,13 @@ use crate::{
     hir::{const_eval::Const, Attr},
     typeck::{
         error::TypeckError,
-        tcx::{Env, TyCtxt},
+        tcx::{Env, TyCx},
         unify::Obligation,
         TypeckResult,
     },
 };
 
-impl<'db> TyCtxt<'db> {
+impl<'db> TyCx<'db> {
     // TODO: check that attrs are valid on the item they're placed on
     pub fn typeck_attrs(&mut self, module_id: ModuleId, attrs: &mut [Attr]) -> TypeckResult<()> {
         for attr in attrs {

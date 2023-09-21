@@ -9,12 +9,12 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct TyCtxt<'db> {
+pub struct TyCx<'db> {
     pub db: &'db mut Db,
     pub storage: RefCell<TyStorage>,
 }
 
-impl<'db> TyCtxt<'db> {
+impl<'db> TyCx<'db> {
     pub fn new(db: &'db mut Db) -> Self {
         Self { db, storage: RefCell::new(TyStorage::new()) }
     }

@@ -6,14 +6,14 @@ use crate::{
     typeck::{
         error::TypeckError,
         normalize::NormalizeTy,
-        tcx::{TyCtxt, TyStorage},
+        tcx::{TyCx, TyStorage},
     },
     span::Span,
     subst::{Subst, SubstTy},
     ty::{fold::TyFolder, InferTy, Ty, TyKind},
 };
 
-impl<'db> TyCtxt<'db> {
+impl<'db> TyCx<'db> {
     pub fn subst(&mut self, hir: &mut Hir) {
         let mut cx =
             SubstCtxt { db: self.db, tcx: &mut self.storage.borrow_mut(), errs: HashMap::new() };

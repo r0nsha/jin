@@ -23,7 +23,7 @@ use crate::{
         coerce::CoerceExt,
         error::TypeckError,
         instantiate::instantiate,
-        tcx::{Env, TyCtxt},
+        tcx::{Env, TyCx},
         unify::Obligation,
     },
 };
@@ -32,9 +32,9 @@ pub type TypeckResult<T> = Result<T, TypeckError>;
 
 pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
     fn inner(db: &mut Db, hir: &mut Hir) -> TypeckResult<()> {
-        let mut cx = TyCtxt::new(db);
+        let mut cx = TyCx::new(db);
 
-        TyCtxt::report_cyclic_global_variables(hir)?;
+        TyCx::report_cyclic_global_variables(hir)?;
 
         cx.typeck_defs(hir)?;
         cx.typeck_bodies(hir)?;
@@ -48,7 +48,7 @@ pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
     inner(db, hir).map_err(|err| err.into_diagnostic(db))
 }
 
-impl TyCtxt<'_> {
+impl TyCx<'_> {
     fn report_cyclic_global_variables(hir: &Hir) -> TypeckResult<()> {
         fn inner(hir: &Hir, let_: &Let, source_ids: &[DefId]) -> Option<(DefId, Span)> {
             let mut found_cycle = None;

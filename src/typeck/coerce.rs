@@ -4,15 +4,15 @@ use crate::{
         coerce::{Coercion, CoercionKind},
         TyKind,
     },
-    typeck::{normalize::NormalizeTy, tcx::TyCtxt, unify::EqResult},
+    typeck::{normalize::NormalizeTy, tcx::TyCx, unify::EqResult},
 };
 
 pub trait CoerceExt<'db> {
-    fn or_coerce(self, tcx: &mut TyCtxt<'db>, expr_id: ExprId) -> Self;
+    fn or_coerce(self, tcx: &mut TyCx<'db>, expr_id: ExprId) -> Self;
 }
 
 impl CoerceExt<'_> for EqResult<()> {
-    fn or_coerce(self, tcx: &mut TyCtxt, expr_id: ExprId) -> Self {
+    fn or_coerce(self, tcx: &mut TyCx, expr_id: ExprId) -> Self {
         let storage = &mut tcx.storage.borrow_mut();
         let target_metrics = tcx.db.target_metrics();
 

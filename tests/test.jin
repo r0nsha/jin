@@ -4,6 +4,13 @@ fn extern hello()
 @(lib = "./foo")
 let extern answer int
 
+import extern "./foo"
+
+extern foo {
+	let answer int
+	fn hello()
+}
+
 @(lib = "c")
 fn extern exit(status int) never
 

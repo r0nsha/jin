@@ -3,10 +3,10 @@ use ena::unify::{EqUnifyValue, UnifyKey};
 use crate::{
     span::Span,
     ty::{InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
-    typeck::{error::TypeckError, normalize::NormalizeTy, tcx::TyCtxt},
+    typeck::{error::TypeckError, normalize::NormalizeTy, tcx::TyCx},
 };
 
-impl<'db> TyCtxt<'db> {
+impl<'db> TyCx<'db> {
     #[inline]
     #[must_use]
     pub fn at(&self, obligation: Obligation) -> At<'_, '_> {
@@ -15,7 +15,7 @@ impl<'db> TyCtxt<'db> {
 }
 
 pub struct At<'db, 'a> {
-    tcx: &'a TyCtxt<'db>,
+    tcx: &'a TyCx<'db>,
     obligation: Obligation,
 }
 
@@ -99,7 +99,7 @@ pub enum ObligationKind {
 }
 
 struct UnifyCtxt<'db, 'a> {
-    tcx: &'a TyCtxt<'db>,
+    tcx: &'a TyCx<'db>,
 }
 
 impl UnifyCtxt<'_, '_> {
