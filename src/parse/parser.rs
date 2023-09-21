@@ -170,7 +170,7 @@ impl<'a> Parser<'a> {
 
         let ret = match self.token() {
             Some(Token { kind: TokenKind::Eq | TokenKind::OpenCurly, .. }) => None,
-            Some(tok) if !self.are_on_same_line(tok.span, self.last_span()) => None,
+            Some(tok) if !self.spans_are_on_same_line(tok.span, self.last_span()) => None,
             _ => Some(self.parse_ty()?),
         };
 
@@ -239,7 +239,7 @@ impl<'a> Parser<'a> {
         let start = self.last_span();
 
         let expr = match self.token() {
-            Some(tok) if self.are_on_same_line(start, tok.span) => {
+            Some(tok) if self.spans_are_on_same_line(start, tok.span) => {
                 Some(Box::new(self.parse_expr()?))
             }
             _ => None,
@@ -266,7 +266,7 @@ impl<'a> Parser<'a> {
                 // For these specific operators, we check if they are on the same line as the last
                 // expr, to avoid ambiguity with unary operators
                 Some(BinOp::BitAnd | BinOp::Sub)
-                    if !self.are_on_same_line(
+                    if !self.spans_are_on_same_line(
                         expr_stack.last().expect("to have an expr").span(),
                         tok.span,
                     ) =>
@@ -444,7 +444,7 @@ impl<'a> Parser<'a> {
 
         match self.token() {
             Some(tok) => match tok.kind {
-                TokenKind::OpenParen if self.are_on_same_line(start, tok.span) => {
+                TokenKind::OpenParen if self.spans_are_on_same_line(start, tok.span) => {
                     self.parse_call(expr)
                 }
                 TokenKind::As => {
@@ -579,11 +579,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn are_on_same_line(&self, s1: Span, s2: Span) -> bool {
-        let l1 = self.source.line_index(self.source.id(), s1.end() as usize).unwrap();
-        let l2 = self.source.line_index(self.source.id(), s2.start() as usize).unwrap();
+    fn spans_are_on_same_line(&self, s1: Span, s2: Span) -> bool {
+        fn line_index(parser: &Parser, pos: u32) -> usize {
+            parser.source.line_index(parser.source.id(), pos as usize).unwrap()
+        }
 
-        l1 == l2
+        line_index(self, s1.end()) == line_index(self, s2.start())
     }
 
     fn token(&self) -> Option<Token> {
