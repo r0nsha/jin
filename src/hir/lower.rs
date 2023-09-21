@@ -3,8 +3,8 @@ use crate::{
     db::{Db, ModuleId},
     hir::{
         Attr, Attrs, Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, ExternLet, Fn,
-        FnKind, FnParam, FnSig, Hir, If, Let, Lit, MemberAccess, Name, NamePat, Pat, Return, TyExpr,
-        TyName, TyParam, Unary,
+        FnKind, FnParam, FnSig, Hir, If, Let, Lit, MemberAccess, Name, NamePat, Pat, Return,
+        TyExpr, TyName, TyParam, Unary,
     },
     span::{Span, Spanned},
     ty::Instantiation,
@@ -14,21 +14,21 @@ pub fn lower(db: &mut Db, ast: ast::Ast) -> Hir {
     let mut hir = Hir::new();
 
     for module in ast.modules {
-        LowerCtxt { db, hir: &mut hir, module_id: module.id.expect("to be resolved"), id: 0 }
+        LowerCx { db, hir: &mut hir, module_id: module.id.expect("to be resolved"), id: 0 }
             .lower_module(module);
     }
 
     hir
 }
 
-struct LowerCtxt<'db> {
+struct LowerCx<'db> {
     db: &'db mut Db,
     hir: &'db mut Hir,
     module_id: ModuleId,
     id: usize,
 }
 
-impl<'db> LowerCtxt<'db> {
+impl<'db> LowerCx<'db> {
     fn lower_module(&mut self, module: ast::Module) {
         for item in module.items {
             match item {
@@ -59,11 +59,11 @@ impl<'db> LowerCtxt<'db> {
 }
 
 trait Lower<'db, T> {
-    fn lower(self, cx: &mut LowerCtxt<'db>) -> T;
+    fn lower(self, cx: &mut LowerCx<'db>) -> T;
 }
 
 impl Lower<'_, Fn> for ast::Fn {
-    fn lower(self, cx: &mut LowerCtxt<'_>) -> Fn {
+    fn lower(self, cx: &mut LowerCx<'_>) -> Fn {
         Fn {
             module_id: cx.module_id,
             id: self.id.expect("to be resolved"),
@@ -79,7 +79,7 @@ impl Lower<'_, Fn> for ast::Fn {
 }
 
 impl Lower<'_, Attrs> for ast::Attrs {
-    fn lower(self, cx: &mut LowerCtxt<'_>) -> Attrs {
+    fn lower(self, cx: &mut LowerCx<'_>) -> Attrs {
         self.into_iter()
             .map(|attr| Attr {
                 kind: attr.kind,
@@ -91,7 +91,7 @@ impl Lower<'_, Attrs> for ast::Attrs {
 }
 
 impl Lower<'_, FnSig> for ast::FnSig {
-    fn lower(self, cx: &mut LowerCtxt<'_>) -> FnSig {
+    fn lower(self, cx: &mut LowerCx<'_>) -> FnSig {
         FnSig {
             ty_params: self
                 .ty_params
@@ -114,7 +114,7 @@ impl Lower<'_, FnSig> for ast::FnSig {
 }
 
 impl Lower<'_, Expr> for ast::Expr {
-    fn lower(self, cx: &mut LowerCtxt<'_>) -> Expr {
+    fn lower(self, cx: &mut LowerCx<'_>) -> Expr {
         match self {
             Self::Item(item) => match item {
                 ast::Item::Fn(f) => {
@@ -214,7 +214,7 @@ impl Lower<'_, Expr> for ast::Expr {
 }
 
 impl Lower<'_, ExternLet> for ast::ExternLet {
-    fn lower(self, cx: &mut LowerCtxt<'_>) -> ExternLet {
+    fn lower(self, cx: &mut LowerCx<'_>) -> ExternLet {
         ExternLet {
             module_id: cx.module_id,
             id: self.id.expect("to be resolved"),
@@ -227,7 +227,7 @@ impl Lower<'_, ExternLet> for ast::ExternLet {
 }
 
 impl Lower<'_, Let> for ast::Let {
-    fn lower(self, cx: &mut LowerCtxt<'_>) -> Let {
+    fn lower(self, cx: &mut LowerCx<'_>) -> Let {
         Let {
             module_id: cx.module_id,
             attrs: self.attrs.lower(cx),
@@ -240,7 +240,7 @@ impl Lower<'_, Let> for ast::Let {
 }
 
 impl Lower<'_, Pat> for ast::Pat {
-    fn lower(self, _cx: &mut LowerCtxt<'_>) -> Pat {
+    fn lower(self, _cx: &mut LowerCx<'_>) -> Pat {
         match self {
             ast::Pat::Name(name) => {
                 Pat::Name(NamePat { id: name.id.expect("to be resolved"), word: name.word })
@@ -251,7 +251,7 @@ impl Lower<'_, Pat> for ast::Pat {
 }
 
 impl Lower<'_, CallArg> for ast::CallArg {
-    fn lower(self, cx: &mut LowerCtxt<'_>) -> CallArg {
+    fn lower(self, cx: &mut LowerCx<'_>) -> CallArg {
         match self {
             Self::Positional(expr) => CallArg { name: None, expr: expr.lower(cx), index: None },
             Self::Named(name, expr) => {
@@ -263,7 +263,7 @@ impl Lower<'_, CallArg> for ast::CallArg {
 
 #[allow(clippy::complexity)]
 impl Lower<'_, TyExpr> for ast::TyExpr {
-    fn lower(self, cx: &mut LowerCtxt<'_>) -> TyExpr {
+    fn lower(self, cx: &mut LowerCx<'_>) -> TyExpr {
         match self {
             ast::TyExpr::RawPtr(pointee, span) => TyExpr::RawPtr(Box::new(pointee.lower(cx)), span),
             ast::TyExpr::Name(name) => TyExpr::Name(TyName {

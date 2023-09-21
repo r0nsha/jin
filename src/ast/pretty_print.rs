@@ -4,7 +4,7 @@ use super::{Expr, Fn, Item, LitKind, Module};
 use crate::ast::{CallArg, ExternLet, FnKind, FnSig, Let, TyExpr};
 
 pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Result<()> {
-    let mut cx = PPCtxt { builder: ptree::TreeBuilder::new(module.name.standard_full_name()) };
+    let mut cx = PrettyCx { builder: ptree::TreeBuilder::new(module.name.standard_full_name()) };
 
     for item in &module.items {
         item.pretty_print(&mut cx);
@@ -14,16 +14,16 @@ pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Resul
     ptree::write_tree_with(&tree, w, &ptree::PrintConfig::default())
 }
 
-struct PPCtxt {
+struct PrettyCx {
     builder: ptree::TreeBuilder,
 }
 
 trait PrettyPrint {
-    fn pretty_print(&self, cx: &mut PPCtxt);
+    fn pretty_print(&self, cx: &mut PrettyCx);
 }
 
 impl PrettyPrint for Expr {
-    fn pretty_print(&self, cx: &mut PPCtxt) {
+    fn pretty_print(&self, cx: &mut PrettyCx) {
         match self {
             Self::Item(item) => item.pretty_print(cx),
             Self::Return { expr, .. } => {
@@ -135,7 +135,7 @@ impl PrettyPrint for Expr {
 }
 
 impl PrettyPrint for Item {
-    fn pretty_print(&self, cx: &mut PPCtxt) {
+    fn pretty_print(&self, cx: &mut PrettyCx) {
         match self {
             Self::Fn(f) => f.pretty_print(cx),
             Self::Let(l) => l.pretty_print(cx),
@@ -145,7 +145,7 @@ impl PrettyPrint for Item {
 }
 
 impl PrettyPrint for Fn {
-    fn pretty_print(&self, cx: &mut PPCtxt) {
+    fn pretty_print(&self, cx: &mut PrettyCx) {
         cx.builder.begin_child(format!("fn {}", self.sig.name));
         self.sig.pretty_print(cx);
 
@@ -161,7 +161,7 @@ impl PrettyPrint for Fn {
 }
 
 impl PrettyPrint for FnSig {
-    fn pretty_print(&self, cx: &mut PPCtxt) {
+    fn pretty_print(&self, cx: &mut PrettyCx) {
         if !self.params.is_empty() {
             cx.builder.begin_child("params".to_string());
 
@@ -182,7 +182,7 @@ impl PrettyPrint for FnSig {
 }
 
 impl PrettyPrint for Let {
-    fn pretty_print(&self, cx: &mut PPCtxt) {
+    fn pretty_print(&self, cx: &mut PrettyCx) {
         cx.builder.begin_child(format!("let {}", self.pat));
 
         if let Some(ty) = &self.ty_annot {
@@ -198,7 +198,7 @@ impl PrettyPrint for Let {
 }
 
 impl PrettyPrint for ExternLet {
-    fn pretty_print(&self, cx: &mut PPCtxt) {
+    fn pretty_print(&self, cx: &mut PrettyCx) {
         cx.builder.begin_child(format!("let extern {}", self.word));
 
         cx.builder.begin_child("type".to_string());
@@ -210,7 +210,7 @@ impl PrettyPrint for ExternLet {
 }
 
 impl PrettyPrint for TyExpr {
-    fn pretty_print(&self, cx: &mut PPCtxt) {
+    fn pretty_print(&self, cx: &mut PrettyCx) {
         match self {
             TyExpr::RawPtr(pointee, _) => {
                 cx.builder.begin_child("raw ptr".to_string());

@@ -21,7 +21,7 @@ pub struct At<'db, 'a> {
 
 impl At<'_, '_> {
     pub fn eq(&self, expected: Ty, found: Ty) -> EqResult<()> {
-        UnifyCtxt { tcx: self.tcx }.unify_ty_ty(expected, found).map_err(|err| {
+        UnifyCx { tcx: self.tcx }.unify_ty_ty(expected, found).map_err(|err| {
             let mut storage = self.tcx.storage.borrow_mut();
 
             let err = match err {
@@ -98,11 +98,11 @@ pub enum ObligationKind {
     ReturnTy(Span),
 }
 
-struct UnifyCtxt<'db, 'a> {
+struct UnifyCx<'db, 'a> {
     tcx: &'a TyCx<'db>,
 }
 
-impl UnifyCtxt<'_, '_> {
+impl UnifyCx<'_, '_> {
     fn unify_ty_ty(&mut self, a: Ty, b: Ty) -> Result<(), UnifyError> {
         let (a, b) = {
             let mut storage = self.tcx.storage.borrow_mut();

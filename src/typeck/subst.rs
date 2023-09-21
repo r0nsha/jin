@@ -3,20 +3,20 @@ use std::collections::HashMap;
 use crate::{
     db::Db,
     hir::Hir,
+    span::Span,
+    subst::{Subst, SubstTy},
+    ty::{fold::TyFolder, InferTy, Ty, TyKind},
     typeck::{
         error::TypeckError,
         normalize::NormalizeTy,
         tcx::{TyCx, TyStorage},
     },
-    span::Span,
-    subst::{Subst, SubstTy},
-    ty::{fold::TyFolder, InferTy, Ty, TyKind},
 };
 
 impl<'db> TyCx<'db> {
     pub fn subst(&mut self, hir: &mut Hir) {
         let mut cx =
-            SubstCtxt { db: self.db, tcx: &mut self.storage.borrow_mut(), errs: HashMap::new() };
+            SubstCx { db: self.db, tcx: &mut self.storage.borrow_mut(), errs: HashMap::new() };
 
         for f in &mut hir.fns {
             f.subst(&mut cx);
@@ -33,13 +33,13 @@ impl<'db> TyCx<'db> {
     }
 }
 
-struct SubstCtxt<'db> {
+struct SubstCx<'db> {
     db: &'db mut Db,
     tcx: &'db mut TyStorage,
     errs: HashMap<Span, TypeckError>,
 }
 
-impl SubstTy for SubstCtxt<'_> {
+impl SubstTy for SubstCx<'_> {
     fn subst_ty(&mut self, ty: Ty, span: Span) -> Ty {
         let mut folder = VarFolder { cx: self, has_unbound_vars: false };
         let ty = folder.fold(ty);
@@ -60,7 +60,7 @@ impl SubstTy for SubstCtxt<'_> {
 }
 
 struct VarFolder<'db, 'a> {
-    cx: &'a mut SubstCtxt<'db>,
+    cx: &'a mut SubstCx<'db>,
     has_unbound_vars: bool,
 }
 

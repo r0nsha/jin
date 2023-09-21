@@ -20,10 +20,10 @@ use crate::{
 };
 
 pub fn lower(db: &mut Db, hir: &Hir) -> Tir {
-    LowerCtxt::new(db, hir).lower_all()
+    LowerCx::new(db, hir).lower_all()
 }
 
-struct LowerCtxt<'db> {
+struct LowerCx<'db> {
     db: &'db mut Db,
     hir: &'db Hir,
     tir: Tir,
@@ -44,7 +44,7 @@ pub struct MonoItem {
     pub ty: Ty,
 }
 
-impl<'db> LowerCtxt<'db> {
+impl<'db> LowerCx<'db> {
     fn new(db: &'db mut Db, hir: &'db Hir) -> Self {
         Self {
             db,
@@ -113,7 +113,7 @@ impl<'db> LowerCtxt<'db> {
     }
 
     fn lower_global_let(&mut self, let_: &hir::Let) -> Option<GlobalId> {
-        LowerBodyCtxt::new(self).lower_global(let_)
+        LowerBodyCx::new(self).lower_global(let_)
     }
 
     fn monomorphize_fn(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> FnSigId {
@@ -177,18 +177,18 @@ impl<'db> LowerCtxt<'db> {
             "lowering polymorphic functions to TIR is not allowed"
         );
 
-        LowerBodyCtxt::new(self).lower_fn(sig, f);
+        LowerBodyCx::new(self).lower_fn(sig, f);
     }
 }
 
-struct LowerBodyCtxt<'cx, 'db> {
-    cx: &'cx mut LowerCtxt<'db>,
+struct LowerBodyCx<'cx, 'db> {
+    cx: &'cx mut LowerCx<'db>,
     body: Body,
     def_to_local: HashMap<DefId, LocalId>,
 }
 
-impl<'cx, 'db> LowerBodyCtxt<'cx, 'db> {
-    fn new(cx: &'cx mut LowerCtxt<'db>) -> Self {
+impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
+    fn new(cx: &'cx mut LowerCx<'db>) -> Self {
         Self { cx, body: Body::new(), def_to_local: HashMap::new() }
     }
 

@@ -6,7 +6,7 @@ use crate::{
 };
 
 pub(super) fn print(db: &Db, hir: &Hir, w: &mut impl io::Write) -> io::Result<()> {
-    let mut cx = PPCtxt { db, builder: ptree::TreeBuilder::new("Hir".to_string()) };
+    let mut cx = PrettyCx { db, builder: ptree::TreeBuilder::new("Hir".to_string()) };
 
     for let_ in &hir.lets {
         cx.pp_let(let_);
@@ -28,12 +28,12 @@ pub(super) fn print(db: &Db, hir: &Hir, w: &mut impl io::Write) -> io::Result<()
     ptree::write_tree_with(&tree, w, &ptree::PrintConfig::default())
 }
 
-struct PPCtxt<'db> {
+struct PrettyCx<'db> {
     db: &'db Db,
     builder: ptree::TreeBuilder,
 }
 
-impl PPCtxt<'_> {
+impl PrettyCx<'_> {
     fn pp_fn(&mut self, f: &Fn) {
         self.builder.begin_child(format!(
             "fn {} (returns: {})",

@@ -8,7 +8,8 @@ pub(super) fn print(db: &Db, tir: &Tir, w: &mut impl io::Write) -> io::Result<()
     for glob in tir.globals.iter() {
         match &glob.kind {
             GlobalKind::Bare { value, body } => {
-                PPCtxt { builder: &mut builder, db, tir, body }.pp_let(glob.name, glob.ty, *value);
+                PrettyCx { builder: &mut builder, db, tir, body }
+                    .pp_let(glob.name, glob.ty, *value);
             }
             GlobalKind::Extern => {
                 builder.add_empty_child(format!(
@@ -21,21 +22,21 @@ pub(super) fn print(db: &Db, tir: &Tir, w: &mut impl io::Write) -> io::Result<()
     }
 
     for f in &tir.fns {
-        PPCtxt { builder: &mut builder, db, tir, body: &f.body }.pp_fn(f);
+        PrettyCx { builder: &mut builder, db, tir, body: &f.body }.pp_fn(f);
     }
 
     let tree = builder.build();
     ptree::write_tree_with(&tree, w, &ptree::PrintConfig::default())
 }
 
-struct PPCtxt<'db> {
+struct PrettyCx<'db> {
     builder: &'db mut ptree::TreeBuilder,
     db: &'db Db,
     tir: &'db Tir,
     body: &'db Body,
 }
 
-impl PPCtxt<'_> {
+impl PrettyCx<'_> {
     fn pp_fn(&mut self, f: &Fn) {
         self.builder.begin_child(format!(
             "fn {} (returns: {})",
