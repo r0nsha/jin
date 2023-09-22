@@ -83,15 +83,21 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_attr(&mut self) -> ParseResult<Attr> {
-        if self.is(TokenKind::OpenParen) {
-            let (kind, span) = self.parse_attr_kind()?;
-            let value = if self.is(TokenKind::Eq) { Some(self.parse_expr()?) } else { None };
+        self.eat(TokenKind::OpenBracket)?;
+
+        let (kind, span) = self.parse_attr_kind()?;
+
+        let value = if self.is(TokenKind::OpenParen) {
+            let value = self.parse_expr()?;
             self.eat(TokenKind::CloseParen)?;
-            Ok(Attr { kind, value, span })
+            Some(value)
         } else {
-            let (kind, span) = self.parse_attr_kind()?;
-            Ok(Attr { kind, value: None, span })
-        }
+            None
+        };
+
+        self.eat(TokenKind::CloseBracket)?;
+
+        Ok(Attr { kind, value, span })
     }
 
     fn parse_attr_kind(&mut self) -> ParseResult<(AttrKind, Span)> {

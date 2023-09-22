@@ -1,13 +1,13 @@
-@(link = "./foo")
+@[link("./foo")]
 fn extern hello()
 
-@(link = "./foo")
+@[link("./foo")]
 let extern answer int
 
-@(link = "c")
+@[link("c")]
 fn extern exit(status int) never
 
-@(link = "c")
+@[link("c")]
 fn extern write(fd i32, buf *u8, count uint) int
 
 let stdout = 1
