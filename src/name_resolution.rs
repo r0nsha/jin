@@ -17,6 +17,7 @@ use crate::{
     },
     span::{Span, Spanned},
     sym, ty,
+    ty::Instantiation,
 };
 
 pub fn resolve(db: &mut Db, ast: &mut Ast) -> Result<(), Diagnostic> {
@@ -38,11 +39,19 @@ struct Resolver<'db> {
     hir: Hir,
     global_scope: GlobalScope,
     builtins: UstrMap<DefId>,
+    // TODO: Counter
+    expr_id: usize,
 }
 
 impl<'db> Resolver<'db> {
     fn new(db: &'db mut Db) -> Self {
-        Self { db, hir: Hir::new(), global_scope: GlobalScope::new(), builtins: UstrMap::default() }
+        Self {
+            db,
+            hir: Hir::new(),
+            global_scope: GlobalScope::new(),
+            builtins: UstrMap::default(),
+            expr_id: 0,
+        }
     }
 
     fn define_builtin_tys(&mut self) {
@@ -249,6 +258,7 @@ impl<'db> Resolver<'db> {
     }
 
     fn resolve_fn(&mut self, env: &mut Env, fun: &mut ast::Fn) -> Result<hir::Fn, ResolveError> {
+        // TODO: instead of checking global scope here, pass the already defined id? or smth else
         if !env.in_global_scope() {
             fun.id = Some(self.define_def(
                 EnvKind::Local(env),
@@ -346,18 +356,28 @@ impl<'db> Resolver<'db> {
             self.resolve_expr(env, &mut let_.value)
         })?;
 
-        let value = self.resolve_expr(env, &mut let_.value)?;
+        let attrs = self.resolve_attrs(env, &let_.attrs)?;
+
         let ty_annot = let_
             .ty_annot
             .as_mut()
             .map(|t| self.resolve_ty_expr(env, t, AllowTyHole::Yes))
             .transpose()?;
 
+        let value = self.resolve_expr(env, &mut let_.value)?;
+
         Ok(hir::Let {
             module_id: env.module_id(),
-            attrs: let_.attrs.lower(cx),
-            pat: let_.pat.lower(cx),
-            ty_annot: let_.ty_annot.map(|t| t.lower(cx)),
+            attrs,
+            // TODO: move to function that both defines and lowers this Pat
+            pat: match &let_.pat {
+                ast::Pat::Name(name) => hir::Pat::Name(hir::NamePat {
+                    id: name.id.expect("to be resolved"),
+                    word: name.word,
+                }),
+                ast::Pat::Discard(span) => hir::Pat::Discard(*span),
+            },
+            ty_annot,
             value: Box::new(value),
             span: let_.span,
         })
@@ -373,14 +393,16 @@ impl<'db> Resolver<'db> {
             let_.id = Some(id);
         }
 
-        self.resolve_ty_expr(env, &mut let_.ty_annot, AllowTyHole::No)?;
+        let attrs = self.resolve_attrs(env, &let_.attrs)?;
+
+        let ty_annot = self.resolve_ty_expr(env, &mut let_.ty_annot, AllowTyHole::No)?;
 
         Ok(hir::ExternLet {
             module_id: env.module_id(),
             id: let_.id.expect("to be resolved"),
-            attrs: let_.attrs.lower(cx),
+            attrs,
             word: let_.word,
-            ty_annot: let_.ty_annot.lower(cx),
+            ty_annot,
             span: let_.span,
         })
     }
@@ -408,69 +430,132 @@ impl<'db> Resolver<'db> {
         expr: &mut ast::Expr,
     ) -> Result<hir::Expr, ResolveError> {
         match expr {
-            ast::Expr::Item(item) => {
-                self.resolve_item(item, env)?;
+            ast::Expr::Item(item) => match self.resolve_item(item, env)? {
+                ItemResult::Let(let_) => Ok(self.expr(hir::ExprKind::Let(let_), item.span())),
+                ItemResult::Unit => Ok(self.unit(item.span())),
+            },
+            ast::Expr::Return { expr, span } => {
+                let expr = if let Some(expr) = expr {
+                    self.resolve_expr(env, expr)?
+                } else {
+                    self.unit(*span)
+                };
+
+                Ok(self.expr(hir::ExprKind::Return(hir::Return { expr: Box::new(expr) }), *span))
             }
-            ast::Expr::Return { expr, .. } => {
-                if let Some(expr) = expr {
-                    self.resolve_expr(env, expr)?;
+            ast::Expr::If { cond, then, otherwise, span } => {
+                let otherwise = if let Some(otherwise) = otherwise {
+                    Some(Box::new(self.resolve_expr(env, otherwise)?))
+                } else {
+                    None
+                };
+
+                Ok(self.expr(
+                    hir::ExprKind::If(hir::If {
+                        cond: Box::new(self.resolve_expr(env, cond)?),
+                        then: Box::new(self.resolve_expr(env, then)?),
+                        otherwise,
+                    }),
+                    *span,
+                ))
+            }
+            ast::Expr::Block { exprs, span } => env.with_anon_scope(ScopeKind::Block, |env| {
+                let exprs = exprs.iter_mut().map(|e| self.resolve_expr(env, e)).try_collect()?;
+                Ok(self.expr(hir::ExprKind::Block(hir::Block { exprs }), *span))
+            }),
+            ast::Expr::Call { callee, args, span } => {
+                let callee = self.resolve_expr(env, callee)?;
+
+                let mut new_args = vec![];
+
+                for arg in args.iter_mut() {
+                    new_args.push(match arg {
+                        ast::CallArg::Named(name, expr) => hir::CallArg {
+                            name: Some(*name),
+                            expr: self.resolve_expr(env, expr)?,
+                            index: None,
+                        },
+                        ast::CallArg::Positional(expr) => hir::CallArg {
+                            name: None,
+                            expr: self.resolve_expr(env, expr)?,
+                            index: None,
+                        },
+                    })
                 }
-            }
-            ast::Expr::If { cond, then, otherwise, .. } => {
-                self.resolve_expr(env, cond)?;
-                self.resolve_expr(env, then)?;
 
-                if let Some(otherwise) = otherwise {
-                    self.resolve_expr(env, otherwise)?;
-                }
+                Ok(self.expr(
+                    hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args: new_args }),
+                    *span,
+                ))
             }
-            ast::Expr::Block { exprs, .. } => {
-                env.with_anon_scope(ScopeKind::Block, |env| {
-                    for expr in &mut *exprs {
-                        self.resolve_expr(env, expr)?;
-                    }
+            ast::Expr::Unary { expr, op, span } => Ok(self.expr(
+                hir::ExprKind::Unary(hir::Unary {
+                    expr: Box::new(self.resolve_expr(env, expr)?),
+                    op: *op,
+                }),
+                *span,
+            )),
+            ast::Expr::Member { expr, member, span } => Ok(self.expr(
+                hir::ExprKind::Member(hir::Member {
+                    expr: Box::new(self.resolve_expr(env, expr)?),
+                    member: *member,
+                }),
+                *span,
+            )),
+            ast::Expr::Binary { lhs, rhs, op, span } => Ok(self.expr(
+                hir::ExprKind::Binary(hir::Binary {
+                    lhs: Box::new(self.resolve_expr(env, lhs)?),
+                    rhs: Box::new(self.resolve_expr(env, rhs)?),
+                    op: *op,
+                }),
+                *span,
+            )),
+            ast::Expr::Cast { expr, ty, span } => Ok(self.expr(
+                hir::ExprKind::Cast(hir::Cast {
+                    expr: Box::new(self.resolve_expr(env, expr)?),
+                    target: self.resolve_ty_expr(env, ty, AllowTyHole::Yes)?,
+                }),
+                *span,
+            )),
+            ast::Expr::Name { id, word, args, span } => {
+                let id = self.lookup(env, *word)?;
 
-                    Ok(())
-                })?;
-            }
-            ast::Expr::Call { callee, args, .. } => {
-                self.resolve_expr(env, callee)?;
+                let args = if let Some(args) = args {
+                    let mut new_args = vec![];
 
-                for arg in args {
-                    match arg {
-                        ast::CallArg::Named(_, expr) | ast::CallArg::Positional(expr) => {
-                            self.resolve_expr(env, expr)?;
-                        }
-                    }
-                }
-            }
-            ast::Expr::Unary { expr, .. } | ast::Expr::Member { expr, .. } => {
-                self.resolve_expr(env, expr)?;
-            }
-            ast::Expr::Binary { lhs, rhs, .. } => {
-                self.resolve_expr(env, lhs)?;
-                self.resolve_expr(env, rhs)?;
-            }
-            ast::Expr::Cast { expr, ty, .. } => {
-                self.resolve_expr(env, expr)?;
-                self.resolve_ty_expr(env, ty, AllowTyHole::Yes)?;
-            }
-            ast::Expr::Name { id, word, args, .. } => {
-                *id = Some(self.lookup(env, *word)?);
-
-                if let Some(args) = args {
                     for arg in args {
-                        self.resolve_ty_expr(env, arg, AllowTyHole::Yes)?;
+                        new_args.push(self.resolve_ty_expr(env, arg, AllowTyHole::Yes)?);
                     }
-                }
-            }
-            ast::Expr::Group { expr, span: _ } => {
-                self.resolve_expr(env, expr)?;
-            }
-            ast::Expr::Lit { .. } => (),
-        }
 
-        Ok(())
+                    Some(new_args)
+                } else {
+                    None
+                };
+
+                Ok(self.expr(
+                    hir::ExprKind::Name(hir::Name {
+                        id,
+                        args,
+                        instantiation: Instantiation::new(),
+                    }),
+                    *span,
+                ))
+            }
+            ast::Expr::Group { expr, span } => {
+                let mut expr = self.resolve_expr(env, expr)?;
+                expr.span = *span;
+                Ok(expr)
+            }
+            ast::Expr::Lit { kind, span } => Ok(self.expr(
+                hir::ExprKind::Lit(match kind {
+                    ast::LitKind::Str(v) => hir::Lit::Str(*v),
+                    ast::LitKind::Int(v) => hir::Lit::Int(*v),
+                    ast::LitKind::Bool(v) => hir::Lit::Bool(*v),
+                    ast::LitKind::Unit => hir::Lit::Unit,
+                }),
+                *span,
+            )),
+        }
     }
 
     fn resolve_ty_params(
@@ -525,6 +610,19 @@ impl<'db> Resolver<'db> {
             }
             ast::TyExpr::Unit(span) => Ok(hir::TyExpr::Unit(*span)),
         }
+    }
+
+    fn expr(&mut self, kind: hir::ExprKind, span: Span) -> hir::Expr {
+        hir::Expr { id: self.next_id(), kind, span, ty: self.db.types.unknown }
+    }
+
+    fn next_id(&mut self) -> hir::ExprId {
+        self.expr_id += 1;
+        self.expr_id.into()
+    }
+
+    fn unit(&mut self, span: Span) -> hir::Expr {
+        self.expr(hir::ExprKind::Lit(hir::Lit::Unit), span)
     }
 }
 
