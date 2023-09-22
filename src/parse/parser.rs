@@ -215,7 +215,7 @@ impl<'a> Parser<'a> {
         self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             let ident = this.eat(TokenKind::empty_ident())?;
             let ty = this.parse_ty()?;
-            Ok(FnParam { id: None, name: ident.word(), ty, span: ident.span })
+            Ok(FnParam { id: None, name: ident.word(), ty_annot: ty, span: ident.span })
         })
     }
 

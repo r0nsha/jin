@@ -136,7 +136,7 @@ pub struct TyParam {
 pub struct FnParam {
     pub id: Option<DefId>,
     pub name: Word,
-    pub ty: TyExpr,
+    pub ty_annot: TyExpr,
     pub span: Span,
 }
 

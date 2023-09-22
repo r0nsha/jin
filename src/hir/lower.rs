@@ -104,7 +104,7 @@ impl Lower<'_, FnSig> for ast::FnSig {
                 .into_iter()
                 .map(|p| FnParam {
                     id: p.id.expect("to be resolved"),
-                    ty_annot: p.ty.lower(cx),
+                    ty_annot: p.ty_annot.lower(cx),
                     span: p.span,
                     ty: cx.db.types.unknown,
                 })
