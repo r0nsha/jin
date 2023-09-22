@@ -28,7 +28,7 @@ impl<'db> TyCx<'db> {
                 };
 
             match attr.kind {
-                AttrKind::Lib => {
+                AttrKind::Link => {
                     self.at(Obligation::obvious(value_span)).eq(self.db.types.str, value_ty)?;
 
                     let lib = {
@@ -51,7 +51,7 @@ impl<'db> TyCx<'db> {
     pub fn validate_attrs(attrs: &[Attr], placement: AttrsPlacement) -> TypeckResult<()> {
         for attr in attrs {
             match (attr.kind, placement) {
-                (AttrKind::Lib, AttrsPlacement::ExternFn | AttrsPlacement::ExternLet) => (),
+                (AttrKind::Link, AttrsPlacement::ExternFn | AttrsPlacement::ExternLet) => (),
                 (kind, _) => {
                     return Err(TypeckError::InvalidAttrPlacement { kind, span: attr.span })
                 }

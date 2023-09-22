@@ -392,7 +392,7 @@ pub struct Attr {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AttrKind {
-    Lib,
+    Link,
 }
 
 impl TryFrom<&str> for AttrKind {
@@ -400,7 +400,7 @@ impl TryFrom<&str> for AttrKind {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "lib" => Ok(Self::Lib),
+            "link" => Ok(Self::Link),
             _ => Err(()),
         }
     }
@@ -409,7 +409,7 @@ impl TryFrom<&str> for AttrKind {
 impl fmt::Display for AttrKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            AttrKind::Lib => "lib",
+            AttrKind::Link => "lib",
         })
     }
 }

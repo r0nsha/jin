@@ -1,13 +1,13 @@
-@(lib = "./foo")
+@(link = "./foo")
 fn extern hello()
 
-@(lib = "./foo")
+@(link = "./foo")
 let extern answer int
 
-@(lib = "c")
+@(link = "c")
 fn extern exit(status int) never
 
-@(lib = "c")
+@(link = "c")
 fn extern write(fd i32, buf *u8, count uint) int
 
 let stdout = 1
