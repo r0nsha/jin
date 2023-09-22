@@ -3,8 +3,8 @@ use crate::{
     db::{Db, ModuleId},
     hir::{
         Attr, Attrs, Binary, Block, Call, CallArg, Cast, Expr, ExprId, ExprKind, ExternLet, Fn,
-        FnKind, FnParam, FnSig, Hir, If, Let, Lit, Member, Name, NamePat, Pat, Return,
-        TyExpr, TyName, TyParam, Unary,
+        FnKind, FnParam, FnSig, Hir, If, Let, Lit, Member, Name, NamePat, Pat, Return, TyExpr,
+        TyName, TyParam, Unary,
     },
     span::{Span, Spanned},
     ty::Instantiation,
@@ -183,8 +183,7 @@ impl Lower<'_, Expr> for ast::Expr {
                 cx.expr(kind, span)
             }
             Self::Member { expr, member, span } => {
-                let kind =
-                    ExprKind::Member(Member { expr: Box::new(expr.lower(cx)), member });
+                let kind = ExprKind::Member(Member { expr: Box::new(expr.lower(cx)), member });
                 cx.expr(kind, span)
             }
             Self::Name { id, word: _, args, span } => {
