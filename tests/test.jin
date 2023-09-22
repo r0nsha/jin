@@ -1,9 +1,6 @@
 @[link("./foo")]
 fn extern hello()
 
-extern foo {
-}
-
 @[link("./foo")]
 let extern answer int
 
