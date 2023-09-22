@@ -14,7 +14,7 @@ pub fn lower(db: &mut Db, ast: ast::Ast) -> Hir {
     let mut hir = Hir::new();
 
     for module in ast.modules {
-        LowerCx { db, hir: &mut hir, module_id: module.id.expect("to be resolved"), id: 0 }
+        LowerCx { db, hir: &mut hir, module_id: module.id.expect("to be resolved"), expr_id: 0 }
             .lower_module(module);
     }
 
@@ -25,7 +25,8 @@ struct LowerCx<'db> {
     db: &'db mut Db,
     hir: &'db mut Hir,
     module_id: ModuleId,
-    id: usize,
+    // TODO: Counter
+    expr_id: usize,
 }
 
 impl<'db> LowerCx<'db> {
@@ -53,8 +54,8 @@ impl<'db> LowerCx<'db> {
     }
 
     fn next_id(&mut self) -> ExprId {
-        self.id += 1;
-        self.id.into()
+        self.expr_id += 1;
+        self.expr_id.into()
     }
 }
 

@@ -8,6 +8,8 @@ use crate::{
     common::{QPath, Word},
     db::{Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     diagnostics::Diagnostic,
+    hir,
+    hir::Hir,
     macros::create_bool_enum,
     name_resolution::{
         env::{Env, EnvKind, GlobalScope, ScopeKind},
@@ -33,13 +35,14 @@ pub fn resolve(db: &mut Db, ast: &mut Ast) -> Result<(), Diagnostic> {
 
 struct Resolver<'db> {
     db: &'db mut Db,
+    hir: Hir,
     global_scope: GlobalScope,
     builtins: UstrMap<DefId>,
 }
 
 impl<'db> Resolver<'db> {
     fn new(db: &'db mut Db) -> Self {
-        Self { db, global_scope: GlobalScope::new(), builtins: UstrMap::default() }
+        Self { db, hir: Hir::new(), global_scope: GlobalScope::new(), builtins: UstrMap::default() }
     }
 
     fn define_builtin_tys(&mut self) {
@@ -305,16 +308,46 @@ impl<'db> Resolver<'db> {
         &mut self,
         env: &mut Env,
         let_: &mut ast::ExternLet,
-    ) -> Result<(), ResolveError> {
+    ) -> Result<hir::ExternLet, ResolveError> {
         if !env.in_global_scope() {
             let id = self.define_def(EnvKind::Local(env), DefKind::ExternGlobal, let_.word)?;
             let_.id = Some(id);
         }
 
-        self.resolve_ty(env, &mut let_.ty_annot, AllowTyHole::No)
+        self.resolve_ty(env, &mut let_.ty_annot, AllowTyHole::No)?;
+
+        Ok(hir::ExternLet {
+            module_id: env.module_id(),
+            id: let_.id.expect("to be resolved"),
+            attrs: let_.attrs.lower(cx),
+            word: let_.word,
+            ty_annot: let_.ty_annot.lower(cx),
+            span: let_.span,
+        })
     }
 
-    fn resolve_expr(&mut self, env: &mut Env, expr: &mut ast::Expr) -> Result<(), ResolveError> {
+    fn resolve_attrs(
+        &mut self,
+        env: &mut Env,
+        attrs: &ast::Attrs,
+    ) -> Result<hir::Attrs, ResolveError> {
+        attrs
+            .into_iter()
+            .map(|attr| {
+                Ok(hir::Attr {
+                    kind: attr.kind,
+                    value: attr.value.as_mut().map(|v| self.resolve_expr(env, v)).transpose()?,
+                    span: attr.span,
+                })
+            })
+            .try_collect()
+    }
+
+    fn resolve_expr(
+        &mut self,
+        env: &mut Env,
+        expr: &mut ast::Expr,
+    ) -> Result<hir::Expr, ResolveError> {
         match expr {
             ast::Expr::Item(item) => {
                 self.resolve_item(item, env)?;
