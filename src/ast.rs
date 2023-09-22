@@ -78,7 +78,7 @@ pub enum Expr {
     Unary { expr: Box<Self>, op: UnOp, span: Span },
     Binary { lhs: Box<Self>, rhs: Box<Self>, op: BinOp, span: Span },
     Cast { expr: Box<Expr>, ty: TyExpr, span: Span },
-    MemberAccess { expr: Box<Expr>, member: Word, span: Span },
+    Member { expr: Box<Expr>, member: Word, span: Span },
     Name { id: Option<DefId>, word: Word, args: Option<Vec<TyExpr>>, span: Span },
     Lit { kind: LitKind, span: Span },
     Group { expr: Box<Self>, span: Span },
@@ -89,7 +89,7 @@ impl Spanned for Expr {
         match self {
             Self::Item(x) => x.span(),
             Self::Name { span, .. }
-            | Self::MemberAccess { span, .. }
+            | Self::Member { span, .. }
             | Self::Return { span, .. }
             | Self::If { span, .. }
             | Self::Block { span, .. }

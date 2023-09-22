@@ -51,7 +51,7 @@ impl<S: SubstTy> Subst<S> for Expr {
             ExprKind::Cast(cast) => {
                 cast.expr.subst(s);
             }
-            ExprKind::MemberAccess(access) => {
+            ExprKind::Member(access) => {
                 access.expr.subst(s);
             }
             ExprKind::Name(name) => {

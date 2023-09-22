@@ -302,7 +302,7 @@ impl<'db> Resolver<'db> {
                     }
                 }
             }
-            ast::Expr::Unary { expr, .. } | ast::Expr::MemberAccess { expr, .. } => {
+            ast::Expr::Unary { expr, .. } | ast::Expr::Member { expr, .. } => {
                 self.resolve_expr(env, expr);
             }
             ast::Expr::Binary { lhs, rhs, .. } => {

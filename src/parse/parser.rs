@@ -463,7 +463,7 @@ impl<'a> Parser<'a> {
                     self.next();
                     let name_ident = self.eat(TokenKind::empty_ident())?;
                     let span = expr.span().merge(name_ident.span);
-                    Ok(Expr::MemberAccess { expr: Box::new(expr), member: name_ident.word(), span })
+                    Ok(Expr::Member { expr: Box::new(expr), member: name_ident.word(), span })
                 }
                 // TokenKind::Dot => {
                 //     self.next();

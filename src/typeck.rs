@@ -426,7 +426,7 @@ impl TyCx<'_> {
                 self.typeck_expr(&mut cast.expr, env, None)?;
                 self.typeck_ty(&cast.target)?
             }
-            ExprKind::MemberAccess(access) => {
+            ExprKind::Member(access) => {
                 self.typeck_expr(&mut access.expr, env, None)?;
 
                 let ty = self.normalize(access.expr.ty);

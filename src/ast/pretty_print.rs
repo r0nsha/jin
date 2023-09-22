@@ -103,7 +103,7 @@ impl PrettyPrint for Expr {
                 cx.builder.end_child();
                 cx.builder.end_child();
             }
-            Self::MemberAccess { expr, member, .. } => {
+            Self::Member { expr, member, .. } => {
                 cx.builder.begin_child(format!("member access `{member}`"));
                 expr.pretty_print(cx);
                 cx.builder.end_child();

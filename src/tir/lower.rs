@@ -303,7 +303,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 hir::ExprKind::Cast(cast) => {
                     ExprKind::Cast { value: self.lower_expr(&cast.expr), target: expr.ty }
                 }
-                hir::ExprKind::MemberAccess(access) => {
+                hir::ExprKind::Member(access) => {
                     let value = self.lower_expr(&access.expr);
 
                     match access.expr.ty.kind() {
@@ -314,7 +314,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                             ExprKind::Index { value, index: 1 }
                         }
                         _ => {
-                            panic!("invalid type when lowering MemberAccess: {:?}", expr.ty.kind())
+                            panic!("invalid type when lowering Member: {:?}", expr.ty.kind())
                         }
                     }
                 }

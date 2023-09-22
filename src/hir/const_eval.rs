@@ -64,7 +64,7 @@ impl ConstStorage {
             | ExprKind::If(_)
             | ExprKind::Return(_)
             | ExprKind::Call(_)
-            | ExprKind::MemberAccess(_)
+            | ExprKind::Member(_)
             | ExprKind::Cast(_) => None,
         };
 

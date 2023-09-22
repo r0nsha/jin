@@ -157,7 +157,7 @@ impl PrettyCx<'_> {
                 self.pp_expr(&cast.expr);
                 self.builder.end_child();
             }
-            ExprKind::MemberAccess(access) => {
+            ExprKind::Member(access) => {
                 self.builder.begin_child(format!(
                     "member access `{}` (type: {})",
                     access.member,
