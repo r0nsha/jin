@@ -5,7 +5,7 @@ use core::fmt;
 use std::{
     cell::{Ref, RefCell},
     cmp,
-    collections::{hash_map::Entry, HashSet},
+    collections::hash_map::Entry,
     fs, io,
     path::{Path, PathBuf},
     rc::Rc,
@@ -13,6 +13,7 @@ use std::{
 
 use anyhow::{bail, Result};
 use path_absolutize::Absolutize;
+use rustc_hash::FxHashSet;
 use ustr::Ustr;
 
 use crate::{
@@ -43,7 +44,7 @@ pub struct Db {
     pub types: CommonTypes,
     pub coercions: HirMap<Coercions>,
     pub const_storage: ConstStorage,
-    pub extern_libs: HashSet<ExternLib>,
+    pub extern_libs: FxHashSet<ExternLib>,
     pub diagnostics: Diagnostics,
     build_options: BuildOptions,
     root_dir: PathBuf,
@@ -75,9 +76,9 @@ impl Db {
             modules: IndexVec::new(),
             defs: IndexVec::new(),
             types: CommonTypes::new(),
-            coercions: HirMap::new(),
+            coercions: HirMap::default(),
             const_storage: ConstStorage::new(),
-            extern_libs: HashSet::new(),
+            extern_libs: FxHashSet::default(),
             root_dir,
             main_source,
             main_module: None,

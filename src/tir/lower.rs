@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-
+use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr};
 
 use crate::{
@@ -29,13 +28,13 @@ struct LowerCx<'db> {
     tir: Tir,
 
     // Maps functions to their lowered signatures
-    fn_map: HashMap<DefId, FnSigId>,
+    fn_map: FxHashMap<DefId, FnSigId>,
 
     // Already monomorphized functions
-    mono_fns: HashMap<MonoItem, FnSigId>,
+    mono_fns: FxHashMap<MonoItem, FnSigId>,
 
     // Maps global lets to their lowered globals
-    globals_map: HashMap<DefId, GlobalId>,
+    globals_map: FxHashMap<DefId, GlobalId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -50,9 +49,9 @@ impl<'db> LowerCx<'db> {
             db,
             hir,
             tir: Tir::new(),
-            fn_map: HashMap::new(),
-            mono_fns: HashMap::new(),
-            globals_map: HashMap::new(),
+            fn_map: FxHashMap::default(),
+            mono_fns: FxHashMap::default(),
+            globals_map: FxHashMap::default(),
         }
     }
 
@@ -184,12 +183,12 @@ impl<'db> LowerCx<'db> {
 struct LowerBodyCx<'cx, 'db> {
     cx: &'cx mut LowerCx<'db>,
     body: Body,
-    def_to_local: HashMap<DefId, LocalId>,
+    def_to_local: FxHashMap<DefId, LocalId>,
 }
 
 impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     fn new(cx: &'cx mut LowerCx<'db>) -> Self {
-        Self { cx, body: Body::new(), def_to_local: HashMap::new() }
+        Self { cx, body: Body::new(), def_to_local: FxHashMap::default() }
     }
 
     fn lower_fn(mut self, sig: FnSigId, f: &hir::Fn) {

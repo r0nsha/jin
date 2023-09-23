@@ -2,14 +2,12 @@ pub mod coerce;
 pub mod fold;
 mod printer;
 
-use std::{
-    collections::{HashMap, HashSet},
-    ops::Deref,
-};
+use std::ops::Deref;
 
 use derive_more::{From, Into};
 use enum_as_inner::EnumAsInner;
 use internment::Intern;
+use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
 use crate::{common::target::TargetMetrics, db::Db, ty::printer::TyPrinter};
@@ -56,12 +54,12 @@ impl Ty {
     }
 
     pub fn collect_params(self) -> Vec<ParamTy> {
-        let mut params = HashSet::new();
+        let mut params = FxHashSet::default();
         self.collect_params_inner(&mut params);
         params.into_iter().collect()
     }
 
-    fn collect_params_inner(self, params: &mut HashSet<ParamTy>) {
+    fn collect_params_inner(self, params: &mut FxHashSet<ParamTy>) {
         match self.kind() {
             TyKind::Fn(fun) => {
                 for p in &fun.params {
@@ -286,7 +284,7 @@ impl ParamTy {
     }
 }
 
-pub type Instantiation = HashMap<TyVar, Ty>;
+pub type Instantiation = FxHashMap<TyVar, Ty>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InferTy {

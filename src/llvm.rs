@@ -7,7 +7,6 @@ mod ty;
 mod util;
 
 use std::{
-    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
     process::Command,
 };
@@ -22,6 +21,7 @@ use inkwell::{
     },
     OptimizationLevel,
 };
+use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::UstrMap;
 
 use crate::{
@@ -52,8 +52,8 @@ pub fn codegen(db: &mut Db, tir: &Tir) -> PathBuf {
         module: &module,
         bx: &builder,
         layout,
-        functions: HashMap::default(),
-        globals: HashMap::default(),
+        functions: FxHashMap::default(),
+        globals: FxHashMap::default(),
         static_strs: UstrMap::default(),
         static_str_slices: UstrMap::default(),
     };
@@ -140,7 +140,7 @@ fn build_exe(db: &mut Db, target_machine: &TargetMachine, module: &Module) -> Pa
 
 fn link(
     target_metrics: &TargetMetrics,
-    extern_libs: &HashSet<ExternLib>,
+    extern_libs: &FxHashSet<ExternLib>,
     exe_file: &Path,
     object_file: &Path,
 ) {
@@ -176,8 +176,8 @@ fn link(
         }
     };
 
-    let mut lib_paths = HashSet::<String>::new();
-    let mut libs = HashSet::<String>::new();
+    let mut lib_paths = FxHashSet::<String>::default();
+    let mut libs = FxHashSet::<String>::default();
 
     for lib in extern_libs {
         match lib {

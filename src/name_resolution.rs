@@ -532,7 +532,7 @@ impl<'db> Resolver<'db> {
                     hir::ExprKind::Name(hir::Name {
                         id,
                         args,
-                        instantiation: Instantiation::new(),
+                        instantiation: Instantiation::default(),
                     }),
                     *span,
                 ))

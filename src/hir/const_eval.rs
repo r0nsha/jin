@@ -1,6 +1,5 @@
-use std::collections::HashMap;
-
 use enum_as_inner::EnumAsInner;
+use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
@@ -11,8 +10,8 @@ use crate::{
 
 #[derive(Debug)]
 pub struct ConstStorage {
-    exprs: HashMap<ExprId, Const>,
-    defs: HashMap<DefId, Const>,
+    exprs: FxHashMap<ExprId, Const>,
+    defs: FxHashMap<DefId, Const>,
 }
 
 impl Default for ConstStorage {
@@ -23,7 +22,7 @@ impl Default for ConstStorage {
 
 impl ConstStorage {
     pub fn new() -> Self {
-        Self { exprs: HashMap::new(), defs: HashMap::new() }
+        Self { exprs: FxHashMap::default(), defs: FxHashMap::default() }
     }
 
     #[inline]

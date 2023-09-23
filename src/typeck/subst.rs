@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use rustc_hash::FxHashMap;
 
 use crate::{
     db::Db,
@@ -15,8 +15,11 @@ use crate::{
 
 impl<'db> TyCx<'db> {
     pub fn subst(&mut self, hir: &mut Hir) {
-        let mut cx =
-            SubstCx { db: self.db, tcx: &mut self.storage.borrow_mut(), errs: HashMap::new() };
+        let mut cx = SubstCx {
+            db: self.db,
+            tcx: &mut self.storage.borrow_mut(),
+            errs: FxHashMap::default(),
+        };
 
         for f in &mut hir.fns {
             f.subst(&mut cx);
@@ -36,7 +39,7 @@ impl<'db> TyCx<'db> {
 struct SubstCx<'db> {
     db: &'db mut Db,
     tcx: &'db mut TyStorage,
-    errs: HashMap<Span, TypeckError>,
+    errs: FxHashMap<Span, TypeckError>,
 }
 
 impl SubstTy for SubstCx<'_> {

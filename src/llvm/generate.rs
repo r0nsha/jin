@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Not};
+use std::ops::Not;
 
 use inkwell::{
     basic_block::BasicBlock,
@@ -9,6 +9,7 @@ use inkwell::{
     values::{AnyValue, BasicValue, BasicValueEnum, FunctionValue, GlobalValue, PointerValue},
     AddressSpace, IntPredicate,
 };
+use rustc_hash::FxHashMap;
 use ustr::UstrMap;
 
 use crate::{
@@ -29,8 +30,8 @@ pub struct Generator<'db, 'cx> {
     pub bx: &'db Builder<'cx>,
     pub layout: Layout<'cx>,
 
-    pub functions: HashMap<FnSigId, FunctionValue<'cx>>,
-    pub globals: HashMap<GlobalId, GlobalValue<'cx>>,
+    pub functions: FxHashMap<FnSigId, FunctionValue<'cx>>,
+    pub globals: FxHashMap<GlobalId, GlobalValue<'cx>>,
     pub static_strs: UstrMap<PointerValue<'cx>>,
     pub static_str_slices: UstrMap<PointerValue<'cx>>,
 }
@@ -47,7 +48,7 @@ pub struct FnState<'db, 'cx> {
     pub function_value: FunctionValue<'cx>,
     pub prologue_block: BasicBlock<'cx>,
     pub current_block: BasicBlock<'cx>,
-    pub locals: HashMap<LocalId, Local<'cx>>,
+    pub locals: FxHashMap<LocalId, Local<'cx>>,
 }
 
 impl<'db, 'cx> FnState<'db, 'cx> {
@@ -62,7 +63,7 @@ impl<'db, 'cx> FnState<'db, 'cx> {
             function_value,
             prologue_block,
             current_block: first_block,
-            locals: HashMap::new(),
+            locals: FxHashMap::default(),
         }
     }
 

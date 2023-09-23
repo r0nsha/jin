@@ -1,9 +1,10 @@
 pub mod const_eval;
 mod pretty_print;
 
-use std::{collections::HashMap, fmt, io};
+use std::{fmt, io};
 
 use enum_as_inner::EnumAsInner;
+use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
@@ -312,7 +313,7 @@ impl Spanned for TyExpr {
 
 new_key_type!(ExprId);
 
-pub type HirMap<T> = HashMap<ExprId, T>;
+pub type HirMap<T> = FxHashMap<ExprId, T>;
 
 pub type Attrs = Vec<Attr>;
 

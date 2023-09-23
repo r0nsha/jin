@@ -29,6 +29,7 @@ anyhow = "1.0.75"
 internment = "0.7.1"
 lazy_static = "1.4.0"
 unescaper = "0.1.2"
+rustc-hash = "1.1.0"
 
 [target.'cfg(windows)'.dependencies]
 libc = "0.2.132"
