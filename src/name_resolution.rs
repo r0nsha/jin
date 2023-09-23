@@ -5,11 +5,11 @@ use ustr::{ustr, UstrMap};
 
 use crate::{
     ast::{self, Ast},
-    common::{QPath, Word},
+    common::{Counter, QPath, Word},
     db::{Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     diagnostics::Diagnostic,
     hir,
-    hir::Hir,
+    hir::{ExprId, Hir},
     macros::create_bool_enum,
     name_resolution::{
         env::{Env, EnvKind, GlobalScope, ScopeKind},
@@ -39,8 +39,7 @@ struct Resolver<'db> {
     hir: Hir,
     global_scope: GlobalScope,
     builtins: UstrMap<DefId>,
-    // TODO: Counter
-    expr_id: usize,
+    expr_id: Counter<ExprId>,
 }
 
 impl<'db> Resolver<'db> {
@@ -50,7 +49,7 @@ impl<'db> Resolver<'db> {
             hir: Hir::new(),
             global_scope: GlobalScope::new(),
             builtins: UstrMap::default(),
-            expr_id: 0,
+            expr_id: Counter::new(),
         }
     }
 
@@ -626,12 +625,7 @@ impl<'db> Resolver<'db> {
     }
 
     fn expr(&mut self, kind: hir::ExprKind, span: Span) -> hir::Expr {
-        hir::Expr { id: self.next_id(), kind, span, ty: self.db.types.unknown }
-    }
-
-    fn next_id(&mut self) -> hir::ExprId {
-        self.expr_id += 1;
-        self.expr_id.into()
+        hir::Expr { id: self.expr_id.next(), kind, span, ty: self.db.types.unknown }
     }
 
     fn unit(&mut self, span: Span) -> hir::Expr {
