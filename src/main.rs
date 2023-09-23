@@ -109,7 +109,7 @@ fn build(db: &mut Db) {
 
     // Resolve all root symbols into their corresponding id's
     db.time.start("name resolution");
-    let mut hir = match name_resolution::resolve(db, ast) {
+    let mut hir = match name_resolution::resolve(db, &ast) {
         Ok(hir) => hir,
         Err(diag) => {
             db.diagnostics.emit(diag);
