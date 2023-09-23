@@ -20,8 +20,8 @@ use crate::{
     ty::Instantiation,
 };
 
-pub fn resolve(db: &mut Db, ast: &Ast) -> Result<(), Diagnostic> {
-    fn inner(db: &mut Db, ast: &Ast) -> Result<(), ResolveError> {
+pub fn resolve(db: &mut Db, ast: &mut Ast) -> Result<(), Diagnostic> {
+    fn inner(db: &mut Db, ast: &mut Ast) -> Result<(), ResolveError> {
         let mut cx = Resolver::new(db);
 
         cx.define_builtin_tys();
@@ -93,9 +93,9 @@ impl<'db> Resolver<'db> {
         mk(sym::NEVER, &|db| db.types.never);
     }
 
-    fn define_global_items(&mut self, ast: &Ast) -> Result<(), ResolveError> {
-        for module in &ast.modules {
-            for item in &module.items {
+    fn define_global_items(&mut self, ast: &mut Ast) -> Result<(), ResolveError> {
+        for module in &mut ast.modules {
+            for item in &mut module.items {
                 self.define_global_item(module.id.expect("to be resolved"), item)?;
             }
         }
@@ -106,7 +106,7 @@ impl<'db> Resolver<'db> {
     fn define_global_item(
         &mut self,
         module_id: ModuleId,
-        item: &ast::Item,
+        item: &mut ast::Item,
     ) -> Result<(), ResolveError> {
         match item {
             ast::Item::Fn(fun) => {
@@ -197,7 +197,7 @@ impl<'db> Resolver<'db> {
         &mut self,
         env: EnvKind,
         kind: DefKind,
-        pat: &ast::Pat,
+        pat: &mut ast::Pat,
     ) -> Result<(), ResolveError> {
         match pat {
             ast::Pat::Name(name) => {
@@ -212,7 +212,6 @@ impl<'db> Resolver<'db> {
 
     fn lookup(&self, env: &Env, word: Word) -> Result<DefId, ResolveError> {
         let name = word.name();
-
         env.lookup(name)
             .copied()
             .or_else(|| self.global_scope.lookup(env.module_id(), name))
@@ -220,8 +219,8 @@ impl<'db> Resolver<'db> {
             .ok_or(ResolveError::NameNotFound(word))
     }
 
-    fn resolve_all(&mut self, ast: &Ast) -> Result<(), ResolveError> {
-        for module in &ast.modules {
+    fn resolve_all(&mut self, ast: &mut Ast) -> Result<(), ResolveError> {
+        for module in &mut ast.modules {
             let mut env = Env::new(module.id.expect("ModuleId to be resolved"));
 
             for item in &mut module.items {
@@ -237,7 +236,7 @@ impl<'db> Resolver<'db> {
 
     fn resolve_item(
         &mut self,
-        item: &ast::Item,
+        item: &mut ast::Item,
         env: &mut Env,
     ) -> Result<ItemResult, ResolveError> {
         match item {
@@ -258,7 +257,7 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn resolve_fn(&mut self, env: &mut Env, fun: &ast::Fn) -> Result<hir::Fn, ResolveError> {
+    fn resolve_fn(&mut self, env: &mut Env, fun: &mut ast::Fn) -> Result<hir::Fn, ResolveError> {
         // TODO: instead of checking global scope here, pass the already defined id? or smth else
         if !env.in_global_scope() {
             fun.id = Some(self.define_def(
@@ -274,7 +273,7 @@ impl<'db> Resolver<'db> {
             }
         }
 
-        let attrs = self.resolve_attrs(env, &fun.attrs)?;
+        let attrs = self.resolve_attrs(env, &mut fun.attrs)?;
 
         let sig = self.resolve_sig(env, &mut fun.sig)?;
 
@@ -299,7 +298,11 @@ impl<'db> Resolver<'db> {
         })
     }
 
-    fn resolve_sig(&mut self, env: &mut Env, sig: &ast::FnSig) -> Result<hir::FnSig, ResolveError> {
+    fn resolve_sig(
+        &mut self,
+        env: &mut Env,
+        sig: &mut ast::FnSig,
+    ) -> Result<hir::FnSig, ResolveError> {
         assert!(env.in_kind(ScopeKind::Fn), "FnSig must be resolved inside a ScopeKind::Fn");
 
         let ty_params = self.resolve_ty_params(env, &mut sig.ty_params)?;
@@ -332,7 +335,11 @@ impl<'db> Resolver<'db> {
         Ok(hir::FnSig { ty_params, params, ret })
     }
 
-    fn resolve_let(&mut self, env: &mut Env, let_: &ast::Let) -> Result<hir::Let, ResolveError> {
+    fn resolve_let(
+        &mut self,
+        env: &mut Env,
+        let_: &mut ast::Let,
+    ) -> Result<hir::Let, ResolveError> {
         if !env.in_global_scope() {
             self.define_pat(EnvKind::Local(env), DefKind::Variable, &mut let_.pat)?;
 
@@ -349,7 +356,7 @@ impl<'db> Resolver<'db> {
             self.resolve_expr(env, &mut let_.value)
         })?;
 
-        let attrs = self.resolve_attrs(env, &let_.attrs)?;
+        let attrs = self.resolve_attrs(env, &mut let_.attrs)?;
 
         let ty_annot = let_
             .ty_annot
@@ -379,14 +386,14 @@ impl<'db> Resolver<'db> {
     fn resolve_extern_let(
         &mut self,
         env: &mut Env,
-        let_: &ast::ExternLet,
+        let_: &mut ast::ExternLet,
     ) -> Result<hir::ExternLet, ResolveError> {
         if !env.in_global_scope() {
             let id = self.define_def(EnvKind::Local(env), DefKind::ExternGlobal, let_.word)?;
             let_.id = Some(id);
         }
 
-        let attrs = self.resolve_attrs(env, &let_.attrs)?;
+        let attrs = self.resolve_attrs(env, &mut let_.attrs)?;
 
         let ty_annot = self.resolve_ty_expr(env, &mut let_.ty_annot, AllowTyHole::No)?;
 
@@ -403,7 +410,7 @@ impl<'db> Resolver<'db> {
     fn resolve_attrs(
         &mut self,
         env: &mut Env,
-        attrs: &ast::Attrs,
+        attrs: &mut ast::Attrs,
     ) -> Result<hir::Attrs, ResolveError> {
         attrs
             .into_iter()
@@ -417,7 +424,11 @@ impl<'db> Resolver<'db> {
             .try_collect()
     }
 
-    fn resolve_expr(&mut self, env: &mut Env, expr: &ast::Expr) -> Result<hir::Expr, ResolveError> {
+    fn resolve_expr(
+        &mut self,
+        env: &mut Env,
+        expr: &mut ast::Expr,
+    ) -> Result<hir::Expr, ResolveError> {
         match expr {
             ast::Expr::Item(item) => match self.resolve_item(item, env)? {
                 ItemResult::Let(let_) => Ok(self.expr(hir::ExprKind::Let(let_), item.span())),
@@ -433,6 +444,9 @@ impl<'db> Resolver<'db> {
                 Ok(self.expr(hir::ExprKind::Return(hir::Return { expr: Box::new(expr) }), *span))
             }
             ast::Expr::If { cond, then, otherwise, span } => {
+                let cond = self.resolve_expr(env, cond)?;
+                let then = self.resolve_expr(env, then)?;
+
                 let otherwise = if let Some(otherwise) = otherwise {
                     Some(Box::new(self.resolve_expr(env, otherwise)?))
                 } else {
@@ -441,8 +455,8 @@ impl<'db> Resolver<'db> {
 
                 Ok(self.expr(
                     hir::ExprKind::If(hir::If {
-                        cond: Box::new(self.resolve_expr(env, cond)?),
-                        then: Box::new(self.resolve_expr(env, then)?),
+                        cond: Box::new(cond),
+                        then: Box::new(then),
                         otherwise,
                     }),
                     *span,
@@ -469,7 +483,7 @@ impl<'db> Resolver<'db> {
                             expr: self.resolve_expr(env, expr)?,
                             index: None,
                         },
-                    })
+                    });
                 }
 
                 Ok(self.expr(
@@ -477,35 +491,42 @@ impl<'db> Resolver<'db> {
                     *span,
                 ))
             }
-            ast::Expr::Unary { expr, op, span } => Ok(self.expr(
-                hir::ExprKind::Unary(hir::Unary {
-                    expr: Box::new(self.resolve_expr(env, expr)?),
-                    op: *op,
-                }),
-                *span,
-            )),
-            ast::Expr::Member { expr, member, span } => Ok(self.expr(
-                hir::ExprKind::Member(hir::Member {
-                    expr: Box::new(self.resolve_expr(env, expr)?),
-                    member: *member,
-                }),
-                *span,
-            )),
-            ast::Expr::Binary { lhs, rhs, op, span } => Ok(self.expr(
-                hir::ExprKind::Binary(hir::Binary {
-                    lhs: Box::new(self.resolve_expr(env, lhs)?),
-                    rhs: Box::new(self.resolve_expr(env, rhs)?),
-                    op: *op,
-                }),
-                *span,
-            )),
-            ast::Expr::Cast { expr, ty, span } => Ok(self.expr(
-                hir::ExprKind::Cast(hir::Cast {
-                    expr: Box::new(self.resolve_expr(env, expr)?),
-                    target: self.resolve_ty_expr(env, ty, AllowTyHole::Yes)?,
-                }),
-                *span,
-            )),
+            ast::Expr::Unary { expr, op, span } => {
+                let expr = self.resolve_expr(env, expr)?;
+
+                Ok(self.expr(
+                    hir::ExprKind::Unary(hir::Unary { expr: Box::new(expr), op: *op }),
+                    *span,
+                ))
+            }
+            ast::Expr::Member { expr, member, span } => {
+                let expr = self.resolve_expr(env, expr)?;
+
+                Ok(self.expr(
+                    hir::ExprKind::Member(hir::Member { expr: Box::new(expr), member: *member }),
+                    *span,
+                ))
+            }
+            ast::Expr::Binary { lhs, rhs, op, span } => {
+                let lhs = self.resolve_expr(env, lhs)?;
+                let rhs = self.resolve_expr(env, rhs)?;
+
+                Ok(self.expr(
+                    hir::ExprKind::Binary(hir::Binary {
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(rhs),
+                        op: *op,
+                    }),
+                    *span,
+                ))
+            }
+            ast::Expr::Cast { expr, ty, span } => {
+                let expr = self.resolve_expr(env, expr)?;
+                let target = self.resolve_ty_expr(env, ty, AllowTyHole::Yes)?;
+
+                Ok(self
+                    .expr(hir::ExprKind::Cast(hir::Cast { expr: Box::new(expr), target }), *span))
+            }
             ast::Expr::Name { id, word, args, span } => {
                 let id = self.lookup(env, *word)?;
 
@@ -576,7 +597,7 @@ impl<'db> Resolver<'db> {
     fn resolve_ty_expr(
         &mut self,
         env: &Env,
-        ty: &ast::TyExpr,
+        ty: &mut ast::TyExpr,
         allow_hole: AllowTyHole,
     ) -> Result<hir::TyExpr, ResolveError> {
         match ty {
