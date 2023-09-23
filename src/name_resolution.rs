@@ -213,10 +213,9 @@ impl<'db> Resolver<'db> {
     }
 
     fn lookup_def(&self, env: &Env, word: Word) -> Result<DefId, ResolveError> {
-        let name = word.name();
-        env.lookup(name)
+        env.lookup(word.name())
             .copied()
-            .or_else(|| self.lookup_global_def(env.module_id(), name))
+            .or_else(|| self.lookup_global_def(env.module_id(), word.name()))
             .ok_or(ResolveError::NameNotFound(word))
     }
 
