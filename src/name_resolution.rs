@@ -1,7 +1,7 @@
 mod env;
 mod error;
 
-use ustr::{ustr, UstrMap};
+use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     ast::{self, Ast},
@@ -216,9 +216,12 @@ impl<'db> Resolver<'db> {
         let name = word.name();
         env.lookup(name)
             .copied()
-            .or_else(|| self.global_scope.lookup(env.module_id(), name))
-            .or_else(|| self.builtins.get(&name).copied())
+            .or_else(|| self.lookup_global_def(env.module_id(), name))
             .ok_or(ResolveError::NameNotFound(word))
+    }
+
+    fn lookup_global_def(&self, module_id: ModuleId, name: Ustr) -> Option<DefId> {
+        self.global_scope.lookup(module_id, name).or_else(|| self.builtins.get(&name).copied())
     }
 
     fn resolve_all(&mut self, ast: &Ast) -> Result<(), ResolveError> {
