@@ -11,12 +11,12 @@ use crate::{
 #[derive(Debug)]
 pub struct GlobalScope {
     modules: HashMap<(ModuleId, Ustr), DefId>,
-    pub resolved_global_pats: HashMap<(ModuleId, usize /* ItemId */), hir::Pat>,
+    pub resolved_pats: HashMap<(ModuleId, usize /* ItemId */), hir::Pat>,
 }
 
 impl GlobalScope {
     pub fn new() -> Self {
-        Self { modules: HashMap::new(), resolved_global_pats: HashMap::new() }
+        Self { modules: HashMap::new(), resolved_pats: HashMap::new() }
     }
 
     pub fn lookup(&self, module_id: ModuleId, name: Ustr) -> Option<DefId> {

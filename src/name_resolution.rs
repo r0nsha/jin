@@ -94,8 +94,10 @@ impl<'db> Resolver<'db> {
 
     fn define_global_items(&mut self, ast: &mut Ast) -> Result<(), ResolveError> {
         for module in &mut ast.modules {
-            for item in &mut module.items {
-                self.define_global_item(module.id.expect("to be resolved"), item)?;
+            let module_id = module.id.expect("to be resolved");
+
+            for (idx, item) in module.items.iter().enumerate() {
+                self.define_global_item(module_id, item, idx)?;
             }
         }
 
@@ -105,7 +107,8 @@ impl<'db> Resolver<'db> {
     fn define_global_item(
         &mut self,
         module_id: ModuleId,
-        item: &mut ast::Item,
+        item: &ast::Item,
+        item_idx: usize,
     ) -> Result<(), ResolveError> {
         match item {
             ast::Item::Fn(fun) => {
@@ -129,11 +132,17 @@ impl<'db> Resolver<'db> {
 
                 Ok(())
             }
-            ast::Item::Let(let_) => self.define_pat(
-                EnvKind::Global(module_id, Vis::Public),
-                DefKind::Global,
-                &mut let_.pat,
-            ),
+            ast::Item::Let(let_) => {
+                let pat = self.define_pat(
+                    EnvKind::Global(module_id, Vis::Public),
+                    DefKind::Global,
+                    &let_.pat,
+                )?;
+
+                self.global_scope.resolved_pats.insert((module_id, item_idx), pat);
+
+                Ok(())
+            }
         }
     }
 
@@ -192,17 +201,15 @@ impl<'db> Resolver<'db> {
         &mut self,
         env: EnvKind,
         kind: DefKind,
-        pat: &mut ast::Pat,
-    ) -> Result<(), ResolveError> {
+        pat: &ast::Pat,
+    ) -> Result<hir::Pat, ResolveError> {
         match pat {
-            ast::Pat::Name(name) => {
-                let id = self.define_def(env, kind, name.word)?;
-                name.id = Some(id);
-            }
-            ast::Pat::Discard(_) => (),
+            ast::Pat::Name(name) => Ok(hir::Pat::Name(hir::NamePat {
+                id: self.define_def(env, kind, name.word)?,
+                word: name.word,
+            })),
+            ast::Pat::Discard(span) => Ok(hir::Pat::Discard(*span)),
         }
-
-        Ok(())
     }
 
     fn lookup(&self, env: &Env, word: Word) -> Result<DefId, ResolveError> {
@@ -218,8 +225,8 @@ impl<'db> Resolver<'db> {
         for module in &mut ast.modules {
             let mut env = Env::new(module.id.expect("ModuleId to be resolved"));
 
-            for item in &mut module.items {
-                match self.resolve_item(item, &mut env)? {
+            for (idx, item) in module.items.iter_mut().enumerate() {
+                match self.resolve_item(&mut env, item, Some(idx))? {
                     ItemResult::Let(let_) => self.hir.lets.push(let_),
                     ItemResult::Unit => (),
                 }
@@ -231,8 +238,9 @@ impl<'db> Resolver<'db> {
 
     fn resolve_item(
         &mut self,
-        item: &mut ast::Item,
         env: &mut Env,
+        item: &mut ast::Item,
+        item_idx: Option<usize>,
     ) -> Result<ItemResult, ResolveError> {
         match item {
             ast::Item::Fn(fun) => {
@@ -241,7 +249,7 @@ impl<'db> Resolver<'db> {
                 Ok(ItemResult::Unit)
             }
             ast::Item::Let(let_) => {
-                let let_ = self.resolve_let(env, let_)?;
+                let let_ = self.resolve_let(env, let_, item_idx)?;
                 Ok(ItemResult::Let(let_))
             }
             ast::Item::ExternLet(let_) => {
@@ -326,14 +334,18 @@ impl<'db> Resolver<'db> {
         &mut self,
         env: &mut Env,
         let_: &mut ast::Let,
+        item_idx: Option<usize>,
     ) -> Result<hir::Let, ResolveError> {
-        if !env.in_global_scope() {
-            self.define_pat(EnvKind::Local(env), DefKind::Variable, &mut let_.pat)?;
-
-            let_.pat.walk(|pat| {
-                env.insert(pat.word.name(), pat.id.unwrap());
-            });
-        }
+        let pat = if env.in_global_scope() {
+            let item_idx = item_idx.expect("to be passed in");
+            self.global_scope
+                .resolved_pats
+                .get(&(env.module_id(), item_idx))
+                .cloned()
+                .expect("global resolved pat to be defined")
+        } else {
+            self.define_pat(EnvKind::Local(env), DefKind::Variable, &let_.pat)?
+        };
 
         env.with_anon_scope(ScopeKind::Initializer, |env| {
             if let Some(ty) = &mut let_.ty_annot {
@@ -356,14 +368,7 @@ impl<'db> Resolver<'db> {
         Ok(hir::Let {
             module_id: env.module_id(),
             attrs,
-            // TODO: move to function that both defines and lowers this Pat
-            pat: match &let_.pat {
-                ast::Pat::Name(name) => hir::Pat::Name(hir::NamePat {
-                    id: name.id.expect("to be resolved"),
-                    word: name.word,
-                }),
-                ast::Pat::Discard(span) => hir::Pat::Discard(*span),
-            },
+            pat,
             ty_annot,
             value: Box::new(value),
             span: let_.span,
@@ -419,7 +424,7 @@ impl<'db> Resolver<'db> {
         expr: &mut ast::Expr,
     ) -> Result<hir::Expr, ResolveError> {
         match expr {
-            ast::Expr::Item(item) => match self.resolve_item(item, env)? {
+            ast::Expr::Item(item) => match self.resolve_item(env, item, None)? {
                 ItemResult::Let(let_) => Ok(self.expr(hir::ExprKind::Let(let_), item.span())),
                 ItemResult::Unit => Ok(self.unit(item.span())),
             },
