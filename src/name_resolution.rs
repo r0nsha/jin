@@ -526,7 +526,7 @@ impl<'db> Resolver<'db> {
                 Ok(self
                     .expr(hir::ExprKind::Cast(hir::Cast { expr: Box::new(expr), target }), *span))
             }
-            ast::Expr::Name { id, word, args, span } => {
+            ast::Expr::Name { word, args, span } => {
                 let id = self.lookup(env, *word)?;
 
                 let args = if let Some(args) = args {

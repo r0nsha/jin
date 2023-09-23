@@ -79,7 +79,7 @@ pub enum Expr {
     Binary { lhs: Box<Self>, rhs: Box<Self>, op: BinOp, span: Span },
     Cast { expr: Box<Expr>, ty: TyExpr, span: Span },
     Member { expr: Box<Expr>, member: Word, span: Span },
-    Name { id: Option<DefId>, word: Word, args: Option<Vec<TyExpr>>, span: Span },
+    Name { word: Word, args: Option<Vec<TyExpr>>, span: Span },
     Lit { kind: LitKind, span: Span },
     Group { expr: Box<Self>, span: Span },
 }
@@ -128,13 +128,11 @@ pub struct FnSig {
 
 #[derive(Debug, Clone)]
 pub struct TyParam {
-    pub id: Option<DefId>,
     pub name: Word,
 }
 
 #[derive(Debug, Clone)]
 pub struct FnParam {
-    pub id: Option<DefId>,
     pub name: Word,
     pub ty_annot: TyExpr,
     pub span: Span,
@@ -375,7 +373,6 @@ impl Spanned for TyExpr {
 
 #[derive(Debug, Clone)]
 pub struct TyName {
-    pub id: Option<DefId>,
     pub word: Word,
     pub args: Vec<TyExpr>,
     pub span: Span,

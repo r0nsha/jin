@@ -194,7 +194,7 @@ impl<'a> Parser<'a> {
     fn parse_ty_params(&mut self) -> ParseResult<(Vec<TyParam>, Span)> {
         self.parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
             let ident = this.eat(TokenKind::empty_ident())?;
-            Ok(TyParam { id: None, name: ident.word() })
+            Ok(TyParam { name: ident.word() })
         })
     }
 
@@ -215,7 +215,7 @@ impl<'a> Parser<'a> {
         self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             let ident = this.eat(TokenKind::empty_ident())?;
             let ty = this.parse_ty()?;
-            Ok(FnParam { id: None, name: ident.word(), ty_annot: ty, span: ident.span })
+            Ok(FnParam { name: ident.word(), ty_annot: ty, span: ident.span })
         })
     }
 
@@ -370,7 +370,7 @@ impl<'a> Parser<'a> {
             TokenKind::False => Expr::Lit { kind: LitKind::Bool(false), span: tok.span },
             TokenKind::Ident(..) => {
                 let args = self.parse_optional_ty_args()?;
-                Expr::Name { id: None, word: tok.word(), args, span: tok.span }
+                Expr::Name { word: tok.word(), args, span: tok.span }
             }
             TokenKind::Str(value) => Expr::Lit { kind: LitKind::Str(value), span: tok.span },
             TokenKind::Int(value) => Expr::Lit { kind: LitKind::Int(value), span: tok.span },
@@ -396,7 +396,7 @@ impl<'a> Parser<'a> {
                 TyExpr::RawPtr(Box::new(pointee), span)
             }
             TokenKind::Ident(..) => {
-                TyExpr::Name(TyName { id: None, word: tok.word(), args: vec![], span: tok.span })
+                TyExpr::Name(TyName { word: tok.word(), args: vec![], span: tok.span })
             }
             TokenKind::OpenParen => {
                 let end = self.eat(TokenKind::CloseParen)?.span;
