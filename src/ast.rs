@@ -9,7 +9,7 @@ use ustr::Ustr;
 use crate::{
     ast::token::TokenKind,
     common::{QPath, Word},
-    db::{DefId, ModuleId},
+    db::ModuleId,
     span::{SourceId, Span, Spanned},
 };
 
@@ -105,7 +105,6 @@ impl Spanned for Expr {
 
 #[derive(Debug, Clone)]
 pub struct Fn {
-    pub id: Option<DefId>,
     pub attrs: Attrs,
     pub sig: FnSig,
     pub kind: FnKind,
@@ -149,7 +148,6 @@ pub struct Let {
 
 #[derive(Debug, Clone)]
 pub struct ExternLet {
-    pub id: Option<DefId>,
     pub attrs: Attrs,
     pub word: Word,
     pub ty_annot: TyExpr,
@@ -162,22 +160,8 @@ pub enum Pat {
     Discard(Span),
 }
 
-impl Pat {
-    pub fn walk(&self, mut f: impl FnMut(&NamePat)) {
-        self.walk_(&mut f);
-    }
-
-    fn walk_(&self, f: &mut impl FnMut(&NamePat)) {
-        match self {
-            Pat::Name(n) => f(n),
-            Pat::Discard(_) => (),
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub struct NamePat {
-    pub id: Option<DefId>,
     pub word: Word,
 }
 

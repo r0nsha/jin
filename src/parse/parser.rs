@@ -112,7 +112,7 @@ impl<'a> Parser<'a> {
             let name_ident = self.eat(TokenKind::empty_ident())?;
             let sig = self.parse_function_sig(name_ident.word())?;
 
-            Ok(Fn { id: None, attrs, sig, kind: FnKind::Extern, span: name_ident.span })
+            Ok(Fn { attrs, sig, kind: FnKind::Extern, span: name_ident.span })
         } else {
             let name_ident = self.eat(TokenKind::empty_ident())?;
             let sig = self.parse_function_sig(name_ident.word())?;
@@ -127,7 +127,6 @@ impl<'a> Parser<'a> {
             };
 
             Ok(Fn {
-                id: None,
                 attrs,
                 sig,
                 kind: FnKind::Bare { body: Box::new(body) },
@@ -154,13 +153,13 @@ impl<'a> Parser<'a> {
         let ident = self.eat(TokenKind::empty_ident())?;
         let ty_annot = self.parse_ty()?;
         let span = start.merge(ty_annot.span());
-        Ok(ExternLet { id: None, attrs, word: ident.word(), ty_annot, span })
+        Ok(ExternLet { attrs, word: ident.word(), ty_annot, span })
     }
     fn parse_pat(&mut self) -> ParseResult<Pat> {
         let tok = self.eat_any()?;
 
         match tok.kind {
-            TokenKind::Ident(_) => Ok(Pat::Name(NamePat { id: None, word: tok.word() })),
+            TokenKind::Ident(_) => Ok(Pat::Name(NamePat { word: tok.word() })),
             TokenKind::Underscore => Ok(Pat::Discard(tok.span)),
             _ => Err(ParseError::UnexpectedToken {
                 expected: "a pattern".to_string(),
