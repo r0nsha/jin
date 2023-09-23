@@ -1,11 +1,9 @@
 pub mod const_eval;
-mod lower;
 mod pretty_print;
 
 use std::{collections::HashMap, fmt, io};
 
 use enum_as_inner::EnumAsInner;
-pub use lower::lower;
 use ustr::Ustr;
 
 use crate::{

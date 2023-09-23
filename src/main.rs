@@ -102,20 +102,21 @@ fn build(db: &mut Db) {
 
     // Parse the entire module tree into an Ast
     db.time.start("parse");
-    let mut ast = parse::parse_module_tree(db);
+    let ast = parse::parse_module_tree(db);
     expect!(db);
 
     db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file)).expect("emitting ast failed");
 
     // Resolve all root symbols into their corresponding id's
     db.time.start("name resolution");
-    if let Err(diag) = name_resolution::resolve(db, &mut ast) {
-        db.diagnostics.emit(diag);
-    }
+    let mut hir = match name_resolution::resolve(db, ast) {
+        Ok(hir) => hir,
+        Err(diag) => {
+            db.diagnostics.emit(diag);
+            return;
+        }
+    };
     expect!(db);
-
-    db.time.start("ast -> hir");
-    let mut hir = hir::lower(db, ast);
 
     // Type check pass
     db.time.start("type check");

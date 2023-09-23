@@ -20,15 +20,15 @@ use crate::{
     ty::Instantiation,
 };
 
-pub fn resolve(db: &mut Db, ast: &mut Ast) -> Result<(), Diagnostic> {
-    fn inner(db: &mut Db, ast: &mut Ast) -> Result<(), ResolveError> {
+pub fn resolve(db: &mut Db, ast: Ast) -> Result<Hir, Diagnostic> {
+    fn inner(db: &mut Db, mut ast: Ast) -> Result<Hir, ResolveError> {
         let mut cx = Resolver::new(db);
 
         cx.define_builtin_tys();
-        cx.define_global_items(ast)?;
-        cx.resolve_all(ast)?;
+        cx.define_global_items(&mut ast)?;
+        cx.resolve_all(&mut ast)?;
 
-        Ok(())
+        Ok(cx.hir)
     }
 
     inner(db, ast).map_err(|err| err.into_diagnostic(db))
@@ -275,17 +275,17 @@ impl<'db> Resolver<'db> {
 
         let attrs = self.resolve_attrs(env, &mut fun.attrs)?;
 
-        let sig = self.resolve_sig(env, &mut fun.sig)?;
+        let (sig, kind) = env.with_scope(fun.sig.name.name(), ScopeKind::Fn, |env| {
+            let sig = self.resolve_sig(env, &mut fun.sig)?;
 
-        let kind = env.with_scope(fun.sig.name.name(), ScopeKind::Fn, |env| {
-            self.resolve_sig(env, &mut fun.sig)?;
-
-            match &mut fun.kind {
+            let kind = match &mut fun.kind {
                 ast::FnKind::Bare { body } => {
-                    Ok(hir::FnKind::Bare { body: self.resolve_expr(env, body)? })
+                    hir::FnKind::Bare { body: self.resolve_expr(env, body)? }
                 }
-                ast::FnKind::Extern => Ok(hir::FnKind::Extern),
-            }
+                ast::FnKind::Extern => hir::FnKind::Extern,
+            };
+
+            Ok((sig, kind))
         })?;
 
         Ok(hir::Fn {
@@ -413,7 +413,7 @@ impl<'db> Resolver<'db> {
         attrs: &mut ast::Attrs,
     ) -> Result<hir::Attrs, ResolveError> {
         attrs
-            .into_iter()
+            .iter_mut()
             .map(|attr| {
                 Ok(hir::Attr {
                     kind: attr.kind,
@@ -471,7 +471,7 @@ impl<'db> Resolver<'db> {
 
                 let mut new_args = vec![];
 
-                for arg in args.iter_mut() {
+                for arg in &mut *args {
                     new_args.push(match arg {
                         ast::CallArg::Named(name, expr) => hir::CallArg {
                             name: Some(*name),
@@ -601,7 +601,10 @@ impl<'db> Resolver<'db> {
         allow_hole: AllowTyHole,
     ) -> Result<hir::TyExpr, ResolveError> {
         match ty {
-            ast::TyExpr::RawPtr(pointee, _) => self.resolve_ty_expr(env, pointee, allow_hole),
+            ast::TyExpr::RawPtr(pointee, span) => {
+                let pointee = self.resolve_ty_expr(env, pointee, allow_hole)?;
+                Ok(hir::TyExpr::RawPtr(Box::new(pointee), *span))
+            }
             ast::TyExpr::Name(name) => {
                 let id = self.lookup(env, name.word)?;
                 let args = name
