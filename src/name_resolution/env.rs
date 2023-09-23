@@ -5,16 +5,18 @@ use ustr::{ustr, Ustr, UstrMap};
 use crate::{
     common::QPath,
     db::{Db, DefId, ModuleId, ScopeLevel, Vis},
+    hir,
 };
 
 #[derive(Debug)]
 pub struct GlobalScope {
     modules: HashMap<(ModuleId, Ustr), DefId>,
+    pub resolved_global_pats: HashMap<(ModuleId, usize /* ItemId */), hir::Pat>,
 }
 
 impl GlobalScope {
     pub fn new() -> Self {
-        Self { modules: HashMap::new() }
+        Self { modules: HashMap::new(), resolved_global_pats: HashMap::new() }
     }
 
     pub fn lookup(&self, module_id: ModuleId, name: Ustr) -> Option<DefId> {
@@ -32,7 +34,6 @@ pub struct Env {
     scopes: Vec<Scope>,
 }
 
-#[allow(unused)]
 impl Env {
     const ANON_SCOPE: &str = "_";
 
@@ -67,6 +68,7 @@ impl Env {
         res
     }
 
+    #[allow(unused)]
     pub fn current(&self) -> &Scope {
         self.scopes.last().expect("to have a scope")
     }

@@ -109,7 +109,7 @@ impl<'db> Resolver<'db> {
     ) -> Result<(), ResolveError> {
         match item {
             ast::Item::Fn(fun) => {
-                let id = self.define_def(
+                self.define_def(
                     EnvKind::Global(module_id, Vis::Public),
                     DefKind::Fn(match &fun.kind {
                         ast::FnKind::Bare { .. } => FnInfo::Bare,
@@ -118,18 +118,14 @@ impl<'db> Resolver<'db> {
                     fun.sig.name,
                 )?;
 
-                fun.id = Some(id);
-
                 Ok(())
             }
             ast::Item::ExternLet(let_) => {
-                let id = self.define_def(
+                self.define_def(
                     EnvKind::Global(module_id, Vis::Public),
                     DefKind::ExternGlobal,
                     let_.word,
                 )?;
-
-                let_.id = Some(id);
 
                 Ok(())
             }
@@ -257,14 +253,13 @@ impl<'db> Resolver<'db> {
     }
 
     fn resolve_fn(&mut self, env: &mut Env, fun: &mut ast::Fn) -> Result<hir::Fn, ResolveError> {
-        // TODO: instead of checking global scope here, pass the already defined id? or smth else
-        if !env.in_global_scope() {
-            fun.id = Some(self.define_def(
-                EnvKind::Local(env),
-                DefKind::Fn(FnInfo::Bare),
-                fun.sig.name,
-            )?);
-        }
+        let id = if env.in_global_scope() {
+            self.global_scope
+                .lookup(env.module_id(), fun.sig.name.name())
+                .expect("global fn to be defined")
+        } else {
+            self.define_def(EnvKind::Local(env), DefKind::Fn(FnInfo::Bare), fun.sig.name)?
+        };
 
         for attr in &mut fun.attrs {
             if let Some(value) = &mut attr.value {
@@ -287,14 +282,7 @@ impl<'db> Resolver<'db> {
             Ok((sig, kind))
         })?;
 
-        Ok(hir::Fn {
-            module_id: env.module_id(),
-            id: fun.id.expect("to be resolved"),
-            attrs,
-            sig,
-            kind,
-            span: fun.span,
-        })
+        Ok(hir::Fn { module_id: env.module_id(), id, attrs, sig, kind, span: fun.span })
     }
 
     fn resolve_sig(
@@ -387,18 +375,20 @@ impl<'db> Resolver<'db> {
         env: &mut Env,
         let_: &mut ast::ExternLet,
     ) -> Result<hir::ExternLet, ResolveError> {
-        if !env.in_global_scope() {
-            let id = self.define_def(EnvKind::Local(env), DefKind::ExternGlobal, let_.word)?;
-            let_.id = Some(id);
-        }
+        let id = if env.in_global_scope() {
+            self.global_scope
+                .lookup(env.module_id(), let_.word.name())
+                .expect("global extern let to be defined")
+        } else {
+            self.define_def(EnvKind::Local(env), DefKind::ExternGlobal, let_.word)?
+        };
 
         let attrs = self.resolve_attrs(env, &mut let_.attrs)?;
-
         let ty_annot = self.resolve_ty_expr(env, &mut let_.ty_annot, AllowTyHole::No)?;
 
         Ok(hir::ExternLet {
             module_id: env.module_id(),
-            id: let_.id.expect("to be resolved"),
+            id,
             attrs,
             word: let_.word,
             ty_annot,
