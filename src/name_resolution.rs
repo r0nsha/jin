@@ -212,7 +212,7 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn lookup(&self, env: &Env, word: Word) -> Result<DefId, ResolveError> {
+    fn lookup_def(&self, env: &Env, word: Word) -> Result<DefId, ResolveError> {
         let name = word.name();
         env.lookup(name)
             .copied()
@@ -514,7 +514,7 @@ impl<'db> Resolver<'db> {
                     .expr(hir::ExprKind::Cast(hir::Cast { expr: Box::new(expr), target }), *span))
             }
             ast::Expr::Name { word, args, span } => {
-                let id = self.lookup(env, *word)?;
+                let id = self.lookup_def(env, *word)?;
 
                 let args = if let Some(args) = args {
                     let mut new_args = vec![];
@@ -592,7 +592,7 @@ impl<'db> Resolver<'db> {
                 Ok(hir::TyExpr::RawPtr(Box::new(pointee), *span))
             }
             ast::TyExpr::Name(name) => {
-                let id = self.lookup(env, name.word)?;
+                let id = self.lookup_def(env, name.word)?;
                 let args = name
                     .args
                     .iter()
