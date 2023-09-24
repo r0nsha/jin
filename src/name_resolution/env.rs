@@ -37,47 +37,47 @@ pub struct BuiltinTys {
 
 impl BuiltinTys {
     pub fn new(db: &mut Db) -> Self {
-        let mut inner = UstrMap::default();
+        let mut this = Self { inner: UstrMap::default() };
+
+        this.define_ty(db, sym::I8, db.types.i8);
+        this.define_ty(db, sym::I16, db.types.i16);
+        this.define_ty(db, sym::I32, db.types.i32);
+        this.define_ty(db, sym::I64, db.types.i64);
+        this.define_ty(db, sym::INT, db.types.int);
+
+        this.define_ty(db, sym::U8, db.types.u8);
+        this.define_ty(db, sym::U16, db.types.u16);
+        this.define_ty(db, sym::U32, db.types.u32);
+        this.define_ty(db, sym::U64, db.types.u64);
+        this.define_ty(db, sym::UINT, db.types.uint);
+
+        this.define_ty(db, sym::STR, db.types.str);
+        this.define_ty(db, sym::BOOL, db.types.bool);
+        this.define_ty(db, sym::NEVER, db.types.never);
+
+        this
+    }
+
+    fn define_ty(&mut self, db: &mut Db, name: &str, ty: Ty) -> Option<DefId> {
         let typ = db.types.typ;
-
-        let mut mk = |name: &str, ty: &dyn std::ops::Fn(&Db) -> Ty| -> Option<DefId> {
-            let name = ustr(name);
-            let scope_info = ScopeInfo {
-                module_id: db.main_module_id().expect("to be resolved"),
-                level: ScopeLevel::Global,
-                vis: Vis::Public,
-            };
-
-            inner.insert(
-                name,
-                DefInfo::alloc(
-                    db,
-                    QPath::from(name),
-                    scope_info,
-                    DefKind::Ty(ty(db)),
-                    typ,
-                    Span::unknown(),
-                ),
-            )
+        let name = ustr(name);
+        let scope_info = ScopeInfo {
+            module_id: db.main_module_id().expect("to be resolved"),
+            level: ScopeLevel::Global,
+            vis: Vis::Public,
         };
 
-        mk(sym::I8, &|db| db.types.i8);
-        mk(sym::I16, &|db| db.types.i16);
-        mk(sym::I32, &|db| db.types.i32);
-        mk(sym::I64, &|db| db.types.i64);
-        mk(sym::INT, &|db| db.types.int);
-
-        mk(sym::U8, &|db| db.types.u8);
-        mk(sym::U16, &|db| db.types.u16);
-        mk(sym::U32, &|db| db.types.u32);
-        mk(sym::U64, &|db| db.types.u64);
-        mk(sym::UINT, &|db| db.types.uint);
-
-        mk(sym::STR, &|db| db.types.str);
-        mk(sym::BOOL, &|db| db.types.bool);
-        mk(sym::NEVER, &|db| db.types.never);
-
-        Self { inner }
+        self.inner.insert(
+            name,
+            DefInfo::alloc(
+                db,
+                QPath::from(name),
+                scope_info,
+                DefKind::Ty(ty),
+                typ,
+                Span::unknown(),
+            ),
+        )
     }
 
     pub fn get(&self, name: Ustr) -> Option<DefId> {
