@@ -25,10 +25,8 @@ pub fn resolve(db: &mut Db, ast: &Ast) -> Result<Hir, Diagnostic> {
 
 fn resolve_inner(db: &mut Db, ast: &Ast) -> Result<Hir, ResolveError> {
     let mut cx = Resolver::new(db, ast);
-
-    cx.define_global_items()?;
+    // cx.define_global_items()?;
     cx.resolve_all()?;
-
     Ok(cx.hir)
 }
 
@@ -53,59 +51,67 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn define_global_items(&mut self) -> Result<(), ResolveError> {
-        for module in &self.ast.modules {
-            let module_id = module.id.expect("to be resolved");
+    // fn define_global_items(&mut self) -> Result<(), ResolveError> {
+    //     for module in &self.ast.modules {
+    //         let module_id = module.id.expect("to be resolved");
+    //
+    //         for (idx, item) in module.items.iter().enumerate() {
+    //             self.define_global_item(module_id, item, idx)?;
+    //         }
+    //     }
+    //
+    //     Ok(())
+    // }
 
-            for (idx, item) in module.items.iter().enumerate() {
-                self.define_global_item(module_id, item, idx)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn define_global_item(
-        &mut self,
+    fn find_and_resolve_global_item(
+        &self,
         module_id: ModuleId,
-        item: &ast::Item,
-        item_idx: usize,
-    ) -> Result<(), ResolveError> {
-        match item {
-            ast::Item::Fn(fun) => {
-                self.define_def(
-                    EnvKind::Global(module_id, Vis::Public),
-                    DefKind::Fn(match &fun.kind {
-                        ast::FnKind::Bare { .. } => FnInfo::Bare,
-                        ast::FnKind::Extern => FnInfo::Extern,
-                    }),
-                    fun.sig.name,
-                )?;
-
-                Ok(())
-            }
-            ast::Item::ExternLet(let_) => {
-                self.define_def(
-                    EnvKind::Global(module_id, Vis::Public),
-                    DefKind::ExternGlobal,
-                    let_.word,
-                )?;
-
-                Ok(())
-            }
-            ast::Item::Let(let_) => {
-                let pat = self.define_pat(
-                    EnvKind::Global(module_id, Vis::Public),
-                    DefKind::Global,
-                    &let_.pat,
-                )?;
-
-                self.global_scope.resolved_pats.insert((module_id, item_idx), pat);
-
-                Ok(())
-            }
-        }
+        name: Ustr,
+    ) -> Result<Option<DefId>, ResolveError> {
+        todo!()
     }
+
+    // fn define_global_item(
+    //     &mut self,
+    //     env: &mut Env,
+    //     item: &ast::Item,
+    //     item_idx: usize,
+    // ) -> Result<(), ResolveError> {
+    //     match item {
+    //         ast::Item::Fn(fun) => {
+    //             self.define_def(
+    //                 EnvKind::Global(module_id, Vis::Public),
+    //                 DefKind::Fn(match &fun.kind {
+    //                     ast::FnKind::Bare { .. } => FnInfo::Bare,
+    //                     ast::FnKind::Extern => FnInfo::Extern,
+    //                 }),
+    //                 fun.sig.name,
+    //             )?;
+    //
+    //             Ok(())
+    //         }
+    //         ast::Item::ExternLet(let_) => {
+    //             self.define_def(
+    //                 EnvKind::Global(module_id, Vis::Public),
+    //                 DefKind::ExternGlobal,
+    //                 let_.word,
+    //             )?;
+    //
+    //             Ok(())
+    //         }
+    //         ast::Item::Let(let_) => {
+    //             let pat = self.define_pat(
+    //                 EnvKind::Global(module_id, Vis::Public),
+    //                 DefKind::Global,
+    //                 &let_.pat,
+    //             )?;
+    //
+    //             self.global_scope.resolved_pats.insert((module_id, item_idx), pat);
+    //
+    //             Ok(())
+    //         }
+    //     }
+    // }
 
     fn define_global_def(
         &mut self,
@@ -148,25 +154,28 @@ impl<'db> Resolver<'db> {
 
     fn define_def(
         &mut self,
-        env: EnvKind,
+        env: &mut Env,
+        vis: Vis,
         kind: DefKind,
         name: Word,
     ) -> Result<DefId, ResolveError> {
-        match env {
-            EnvKind::Global(module_id, vis) => self.define_global_def(module_id, vis, kind, name),
-            EnvKind::Local(env) => Ok(self.define_local_def(env, kind, name)),
+        if env.in_global_scope() {
+            self.define_global_def(env.module_id(), vis, kind, name)
+        } else {
+            Ok(self.define_local_def(env, kind, name))
         }
     }
 
     fn define_pat(
         &mut self,
-        env: EnvKind,
+        env: &mut Env,
+        vis: Vis,
         kind: DefKind,
         pat: &ast::Pat,
     ) -> Result<hir::Pat, ResolveError> {
         match pat {
             ast::Pat::Name(name) => Ok(hir::Pat::Name(hir::NamePat {
-                id: self.define_def(env, kind, name.word)?,
+                id: self.define_def(env, vis, kind, name.word)?,
                 word: name.word,
             })),
             ast::Pat::Discard(span) => Ok(hir::Pat::Discard(*span)),
@@ -174,15 +183,29 @@ impl<'db> Resolver<'db> {
     }
 
     fn lookup_def(&self, env: &Env, word: Word) -> Result<DefId, ResolveError> {
-        env.lookup(word.name())
-            .copied()
-            .or_else(|| self.lookup_global_def(env.module_id(), word.name()))
-            .ok_or(ResolveError::NameNotFound(word))
+        if let Some(id) = env.lookup(word.name()).copied() {
+            Ok(id)
+        } else if let Some(id) = self.lookup_global_def(env.module_id(), word.name())? {
+            Ok(id)
+        } else {
+            Err(ResolveError::NameNotFound(word))
+        }
     }
 
-    #[inline]
-    fn lookup_global_def(&self, module_id: ModuleId, name: Ustr) -> Option<DefId> {
-        self.global_scope.lookup(module_id, name).or_else(|| self.builtin_tys.get(name))
+    fn lookup_global_def(
+        &self,
+        module_id: ModuleId,
+        name: Ustr,
+    ) -> Result<Option<DefId>, ResolveError> {
+        let id = if let Some(id) = self.global_scope.lookup(module_id, name) {
+            Some(id)
+        } else if let Some(id) = self.find_and_resolve_global_item(module_id, name)? {
+            Some(id)
+        } else {
+            self.builtin_tys.get(name)
+        };
+
+        Ok(id)
     }
 
     fn resolve_all(&mut self) -> Result<(), ResolveError> {
@@ -225,13 +248,7 @@ impl<'db> Resolver<'db> {
     }
 
     fn resolve_fn(&mut self, env: &mut Env, fun: &ast::Fn) -> Result<hir::Fn, ResolveError> {
-        let id = if env.in_global_scope() {
-            self.global_scope
-                .lookup(env.module_id(), fun.sig.name.name())
-                .expect("global fn to be defined")
-        } else {
-            self.define_def(EnvKind::Local(env), DefKind::Fn(FnInfo::Bare), fun.sig.name)?
-        };
+        let id = self.define_def(env, Vis::Private, DefKind::Fn(FnInfo::Bare), fun.sig.name)?;
 
         for attr in &fun.attrs {
             if let Some(value) = &attr.value {
@@ -296,16 +313,7 @@ impl<'db> Resolver<'db> {
         let_: &ast::Let,
         item_idx: Option<usize>,
     ) -> Result<hir::Let, ResolveError> {
-        let pat = if env.in_global_scope() {
-            let item_idx = item_idx.expect("to be passed in");
-            self.global_scope
-                .resolved_pats
-                .get(&(env.module_id(), item_idx))
-                .cloned()
-                .expect("global resolved pat to be defined")
-        } else {
-            self.define_pat(EnvKind::Local(env), DefKind::Variable, &let_.pat)?
-        };
+        let pat = self.define_pat(env, Vis::Private, DefKind::Variable, &let_.pat)?;
 
         env.with_anon_scope(ScopeKind::Initializer, |env| {
             if let Some(ty) = &let_.ty_annot {
@@ -340,13 +348,7 @@ impl<'db> Resolver<'db> {
         env: &mut Env,
         let_: &ast::ExternLet,
     ) -> Result<hir::ExternLet, ResolveError> {
-        let id = if env.in_global_scope() {
-            self.global_scope
-                .lookup(env.module_id(), let_.word.name())
-                .expect("global extern let to be defined")
-        } else {
-            self.define_def(EnvKind::Local(env), DefKind::ExternGlobal, let_.word)?
-        };
+        let id = self.define_def(env, Vis::Private, DefKind::ExternGlobal, let_.word)?;
 
         let attrs = self.resolve_attrs(env, &let_.attrs)?;
         let ty_annot = self.resolve_ty_expr(env, &let_.ty_annot, AllowTyHole::No)?;
