@@ -22,11 +22,11 @@ use crate::{
 
 pub fn resolve(db: &mut Db, ast: &Ast) -> Result<Hir, Diagnostic> {
     fn inner(db: &mut Db, ast: &Ast) -> Result<Hir, ResolveError> {
-        let mut cx = Resolver::new(db);
+        let mut cx = Resolver::new(db, ast);
 
         cx.define_builtin_tys();
-        cx.define_global_items(ast)?;
-        cx.resolve_all(ast)?;
+        cx.define_global_items()?;
+        cx.resolve_all()?;
 
         Ok(cx.hir)
     }
@@ -36,6 +36,7 @@ pub fn resolve(db: &mut Db, ast: &Ast) -> Result<Hir, Diagnostic> {
 
 struct Resolver<'db> {
     db: &'db mut Db,
+    ast: &'db Ast,
     hir: Hir,
     global_scope: GlobalScope,
     builtins: UstrMap<DefId>,
@@ -43,9 +44,10 @@ struct Resolver<'db> {
 }
 
 impl<'db> Resolver<'db> {
-    fn new(db: &'db mut Db) -> Self {
+    fn new(db: &'db mut Db, ast: &'db Ast) -> Self {
         Self {
             db,
+            ast,
             hir: Hir::new(),
             global_scope: GlobalScope::new(),
             builtins: UstrMap::default(),
@@ -92,8 +94,8 @@ impl<'db> Resolver<'db> {
         mk(sym::NEVER, &|db| db.types.never);
     }
 
-    fn define_global_items(&mut self, ast: &Ast) -> Result<(), ResolveError> {
-        for module in &ast.modules {
+    fn define_global_items(&mut self) -> Result<(), ResolveError> {
+        for module in &self.ast.modules {
             let module_id = module.id.expect("to be resolved");
 
             for (idx, item) in module.items.iter().enumerate() {
@@ -223,8 +225,8 @@ impl<'db> Resolver<'db> {
         self.global_scope.lookup(module_id, name).or_else(|| self.builtins.get(&name).copied())
     }
 
-    fn resolve_all(&mut self, ast: &Ast) -> Result<(), ResolveError> {
-        for module in &ast.modules {
+    fn resolve_all(&mut self) -> Result<(), ResolveError> {
+        for module in &self.ast.modules {
             let mut env = Env::new(module.id.expect("ModuleId to be resolved"));
 
             for (idx, item) in module.items.iter().enumerate() {
