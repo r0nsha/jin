@@ -21,17 +21,17 @@ use crate::{
 };
 
 pub fn resolve(db: &mut Db, ast: &Ast) -> Result<Hir, Diagnostic> {
-    fn inner(db: &mut Db, ast: &Ast) -> Result<Hir, ResolveError> {
-        let mut cx = Resolver::new(db, ast);
+    resolve_inner(db, ast).map_err(|err| err.into_diagnostic(db))
+}
 
-        cx.define_builtin_tys();
-        cx.define_global_items()?;
-        cx.resolve_all()?;
+fn resolve_inner(db: &mut Db, ast: &Ast) -> Result<Hir, ResolveError> {
+    let mut cx = Resolver::new(db, ast);
 
-        Ok(cx.hir)
-    }
+    cx.define_builtin_tys();
+    cx.define_global_items()?;
+    cx.resolve_all()?;
 
-    inner(db, ast).map_err(|err| err.into_diagnostic(db))
+    Ok(cx.hir)
 }
 
 struct Resolver<'db> {
