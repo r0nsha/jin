@@ -221,6 +221,7 @@ impl<'db> Resolver<'db> {
             .ok_or(ResolveError::NameNotFound(word))
     }
 
+    #[inline]
     fn lookup_global_def(&self, module_id: ModuleId, name: Ustr) -> Option<DefId> {
         self.global_scope.lookup(module_id, name).or_else(|| self.builtins.get(&name).copied())
     }
@@ -597,11 +598,13 @@ impl<'db> Resolver<'db> {
             }
             ast::TyExpr::Name(name) => {
                 let id = self.lookup_def(env, name.word)?;
+
                 let args = name
                     .args
                     .iter()
                     .map(|a| self.resolve_ty_expr(env, a, AllowTyHole::Yes))
                     .try_collect()?;
+
                 Ok(hir::TyExpr::Name(hir::TyName { id, args, span: name.span }))
             }
             ast::TyExpr::Hole(span) => {
