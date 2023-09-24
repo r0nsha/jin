@@ -3,8 +3,11 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     common::QPath,
-    db::{Db, DefId, ModuleId, ScopeLevel, Vis},
+    db::{Db, DefId, DefInfo, DefKind, ModuleId, ScopeInfo, ScopeLevel, Vis},
     hir,
+    span::Span,
+    sym,
+    ty::Ty,
 };
 
 #[derive(Debug)]
@@ -24,6 +27,61 @@ impl GlobalScope {
 
     pub fn insert(&mut self, module_id: ModuleId, name: Ustr, id: DefId) -> Option<DefId> {
         self.modules.insert((module_id, name), id)
+    }
+}
+
+#[derive(Debug)]
+pub struct BuiltinTys {
+    inner: UstrMap<DefId>,
+}
+
+impl BuiltinTys {
+    pub fn new(db: &mut Db) -> Self {
+        let mut inner = UstrMap::default();
+        let typ = db.types.typ;
+
+        let mut mk = |name: &str, ty: &dyn std::ops::Fn(&Db) -> Ty| -> Option<DefId> {
+            let name = ustr(name);
+            let scope_info = ScopeInfo {
+                module_id: db.main_module_id().expect("to be resolved"),
+                level: ScopeLevel::Global,
+                vis: Vis::Public,
+            };
+
+            inner.insert(
+                name,
+                DefInfo::alloc(
+                    db,
+                    QPath::from(name),
+                    scope_info,
+                    DefKind::Ty(ty(db)),
+                    typ,
+                    Span::unknown(),
+                ),
+            )
+        };
+
+        mk(sym::I8, &|db| db.types.i8);
+        mk(sym::I16, &|db| db.types.i16);
+        mk(sym::I32, &|db| db.types.i32);
+        mk(sym::I64, &|db| db.types.i64);
+        mk(sym::INT, &|db| db.types.int);
+
+        mk(sym::U8, &|db| db.types.u8);
+        mk(sym::U16, &|db| db.types.u16);
+        mk(sym::U32, &|db| db.types.u32);
+        mk(sym::U64, &|db| db.types.u64);
+        mk(sym::UINT, &|db| db.types.uint);
+
+        mk(sym::STR, &|db| db.types.str);
+        mk(sym::BOOL, &|db| db.types.bool);
+        mk(sym::NEVER, &|db| db.types.never);
+
+        Self { inner }
+    }
+
+    pub fn get(&self, name: Ustr) -> Option<DefId> {
+        self.inner.get(&name).copied()
     }
 }
 

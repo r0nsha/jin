@@ -1,22 +1,21 @@
 mod env;
 mod error;
 
-use ustr::{ustr, Ustr, UstrMap};
+use ustr::{Ustr, UstrMap};
 
 use crate::{
     ast::{self, Ast},
-    common::{Counter, QPath, Word},
+    common::{Counter, Word},
     db::{Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     diagnostics::Diagnostic,
     hir,
     hir::{ExprId, Hir},
     macros::create_bool_enum,
     name_resolution::{
-        env::{Env, EnvKind, GlobalScope, ScopeKind},
+        env::{BuiltinTys, Env, EnvKind, GlobalScope, ScopeKind},
         error::ResolveError,
     },
     span::{Span, Spanned},
-    sym, ty,
     ty::Instantiation,
 };
 
@@ -27,7 +26,6 @@ pub fn resolve(db: &mut Db, ast: &Ast) -> Result<Hir, Diagnostic> {
 fn resolve_inner(db: &mut Db, ast: &Ast) -> Result<Hir, ResolveError> {
     let mut cx = Resolver::new(db, ast);
 
-    cx.define_builtin_tys();
     cx.define_global_items()?;
     cx.resolve_all()?;
 
@@ -39,59 +37,20 @@ struct Resolver<'db> {
     ast: &'db Ast,
     hir: Hir,
     global_scope: GlobalScope,
-    builtins: UstrMap<DefId>,
+    builtin_tys: BuiltinTys,
     expr_id: Counter<ExprId>,
 }
 
 impl<'db> Resolver<'db> {
     fn new(db: &'db mut Db, ast: &'db Ast) -> Self {
         Self {
+            builtin_tys: BuiltinTys::new(db),
             db,
             ast,
             hir: Hir::new(),
             global_scope: GlobalScope::new(),
-            builtins: UstrMap::default(),
             expr_id: Counter::new(),
         }
-    }
-
-    fn define_builtin_tys(&mut self) {
-        let mut mk = |name: &str, ty: &dyn std::ops::Fn(&Db) -> ty::Ty| -> Option<DefId> {
-            let name = ustr(name);
-            let scope_info = ScopeInfo {
-                module_id: self.db.main_module_id().expect("to be resolved"),
-                level: ScopeLevel::Global,
-                vis: Vis::Public,
-            };
-
-            self.builtins.insert(
-                name,
-                DefInfo::alloc(
-                    self.db,
-                    QPath::from(name),
-                    scope_info,
-                    DefKind::Ty(ty(self.db)),
-                    self.db.types.typ,
-                    Span::unknown(),
-                ),
-            )
-        };
-
-        mk(sym::I8, &|db| db.types.i8);
-        mk(sym::I16, &|db| db.types.i16);
-        mk(sym::I32, &|db| db.types.i32);
-        mk(sym::I64, &|db| db.types.i64);
-        mk(sym::INT, &|db| db.types.int);
-
-        mk(sym::U8, &|db| db.types.u8);
-        mk(sym::U16, &|db| db.types.u16);
-        mk(sym::U32, &|db| db.types.u32);
-        mk(sym::U64, &|db| db.types.u64);
-        mk(sym::UINT, &|db| db.types.uint);
-
-        mk(sym::STR, &|db| db.types.str);
-        mk(sym::BOOL, &|db| db.types.bool);
-        mk(sym::NEVER, &|db| db.types.never);
     }
 
     fn define_global_items(&mut self) -> Result<(), ResolveError> {
@@ -223,7 +182,7 @@ impl<'db> Resolver<'db> {
 
     #[inline]
     fn lookup_global_def(&self, module_id: ModuleId, name: Ustr) -> Option<DefId> {
-        self.global_scope.lookup(module_id, name).or_else(|| self.builtins.get(&name).copied())
+        self.global_scope.lookup(module_id, name).or_else(|| self.builtin_tys.get(name))
     }
 
     fn resolve_all(&mut self) -> Result<(), ResolveError> {
