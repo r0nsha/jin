@@ -31,20 +31,9 @@ impl GlobalScope {
             for (idx, item) in module.items.iter().enumerate() {
                 let id = ast::ItemId::from(idx);
 
-                match item {
-                    ast::Item::Fn(f) => {
-                        items.insert((module_id, f.sig.word.name()), id);
-                    }
-                    ast::Item::Let(let_) => match &let_.pat {
-                        ast::Pat::Name(name) => {
-                            items.insert((module_id, name.word.name()), id);
-                        }
-                        ast::Pat::Discard(_) => (),
-                    },
-                    ast::Item::ExternLet(let_) => {
-                        items.insert((module_id, let_.word.name()), id);
-                    }
-                }
+                item.walk_names(|word| {
+                    items.insert((module_id, word.name()), id);
+                });
             }
         }
 

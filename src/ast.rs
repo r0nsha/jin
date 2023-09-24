@@ -60,6 +60,20 @@ pub enum Item {
     ExternLet(ExternLet),
 }
 
+impl Item {
+    pub fn walk_names(&self, mut f: impl FnMut(Word)) {
+        self._walk_names(&mut f);
+    }
+
+    fn _walk_names(&self, f: &mut impl FnMut(Word)) {
+        match self {
+            Self::Fn(fun) => f(fun.sig.word),
+            Self::Let(let_) => let_.pat.walk(|p| f(p.word)),
+            Self::ExternLet(let_) => f(let_.word),
+        }
+    }
+}
+
 impl Spanned for Item {
     fn span(&self) -> Span {
         match self {
@@ -160,6 +174,19 @@ pub struct ExternLet {
 pub enum Pat {
     Name(NamePat),
     Discard(Span),
+}
+
+impl Pat {
+    pub fn walk(&self, mut f: impl FnMut(&NamePat)) {
+        self.walk_(&mut f);
+    }
+
+    fn walk_(&self, f: &mut impl FnMut(&NamePat)) {
+        match self {
+            Self::Name(n) => f(n),
+            Self::Discard(_) => (),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
