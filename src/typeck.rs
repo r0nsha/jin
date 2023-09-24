@@ -31,21 +31,21 @@ use crate::{
 pub type TypeckResult<T> = Result<T, TypeckError>;
 
 pub fn typeck(db: &mut Db, hir: &mut Hir) -> Result<(), Diagnostic> {
-    fn inner(db: &mut Db, hir: &mut Hir) -> TypeckResult<()> {
-        let mut cx = TyCx::new(db);
+    typeck_inner(db, hir).map_err(|err| err.into_diagnostic(db))
+}
 
-        TyCx::report_cyclic_global_variables(hir)?;
+fn typeck_inner(db: &mut Db, hir: &mut Hir) -> TypeckResult<()> {
+    let mut cx = TyCx::new(db);
 
-        cx.typeck_defs(hir)?;
-        cx.typeck_bodies(hir)?;
-        cx.subst(hir);
+    TyCx::report_cyclic_global_variables(hir)?;
 
-        analysis::analyze(db, hir);
+    cx.typeck_defs(hir)?;
+    cx.typeck_bodies(hir)?;
+    cx.subst(hir);
 
-        Ok(())
-    }
+    analysis::analyze(db, hir);
 
-    inner(db, hir).map_err(|err| err.into_diagnostic(db))
+    Ok(())
 }
 
 impl TyCx<'_> {
