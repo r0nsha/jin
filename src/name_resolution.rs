@@ -25,9 +25,7 @@ pub fn resolve(db: &mut Db, ast: &Ast) -> Result<Hir, Diagnostic> {
 }
 
 fn resolve_inner(db: &mut Db, ast: &Ast) -> Result<Hir, ResolveError> {
-    let mut cx = Resolver::new(db, ast);
-    cx.resolve_all()?;
-    Ok(cx.hir)
+    Resolver::new(db, ast).run()
 }
 
 struct Resolver<'db> {
@@ -53,17 +51,22 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    // fn define_global_items(&mut self) -> Result<(), ResolveError> {
-    //     for module in &self.ast.modules {
-    //         let module_id = module.id.expect("to be resolved");
-    //
-    //         for (idx, item) in module.items.iter().enumerate() {
-    //             self.define_global_item(module_id, item, idx)?;
-    //         }
-    //     }
-    //
-    //     Ok(())
-    // }
+    fn run(mut self) -> Result<Hir, ResolveError> {
+        for module in &self.ast.modules {
+            let mut env = Env::new(module.id.expect("ModuleId to be resolved"));
+
+            for (item_id, item) in module.items.iter().enumerate() {
+                if !self.completed_items.contains(&item_id.into()) {
+                    match self.resolve_item(&mut env, item)? {
+                        ItemResult::Let(let_) => self.hir.lets.push(let_),
+                        ItemResult::Unit(_) => (),
+                    }
+                }
+            }
+        }
+
+        Ok(self.hir)
+    }
 
     fn find_and_resolve_global_item(
         &mut self,
@@ -96,48 +99,6 @@ impl<'db> Resolver<'db> {
             Ok(None)
         }
     }
-
-    // fn define_global_item(
-    //     &mut self,
-    //     env: &mut Env,
-    //     item: &ast::Item,
-    //     item_idx: usize,
-    // ) -> Result<(), ResolveError> {
-    //     match item {
-    //         ast::Item::Fn(fun) => {
-    //             self.define_def(
-    //                 EnvKind::Global(module_id, Vis::Public),
-    //                 DefKind::Fn(match &fun.kind {
-    //                     ast::FnKind::Bare { .. } => FnInfo::Bare,
-    //                     ast::FnKind::Extern => FnInfo::Extern,
-    //                 }),
-    //                 fun.sig.name,
-    //             )?;
-    //
-    //             Ok(())
-    //         }
-    //         ast::Item::ExternLet(let_) => {
-    //             self.define_def(
-    //                 EnvKind::Global(module_id, Vis::Public),
-    //                 DefKind::ExternGlobal,
-    //                 let_.word,
-    //             )?;
-    //
-    //             Ok(())
-    //         }
-    //         ast::Item::Let(let_) => {
-    //             let pat = self.define_pat(
-    //                 EnvKind::Global(module_id, Vis::Public),
-    //                 DefKind::Global,
-    //                 &let_.pat,
-    //             )?;
-    //
-    //             self.global_scope.resolved_pats.insert((module_id, item_idx), pat);
-    //
-    //             Ok(())
-    //         }
-    //     }
-    // }
 
     fn define_global_def(
         &mut self,
@@ -232,23 +193,6 @@ impl<'db> Resolver<'db> {
         };
 
         Ok(id)
-    }
-
-    fn resolve_all(&mut self) -> Result<(), ResolveError> {
-        for module in &self.ast.modules {
-            let mut env = Env::new(module.id.expect("ModuleId to be resolved"));
-
-            for (item_id, item) in module.items.iter().enumerate() {
-                if !self.completed_items.contains(&item_id.into()) {
-                    match self.resolve_item(&mut env, item)? {
-                        ItemResult::Let(let_) => self.hir.lets.push(let_),
-                        ItemResult::Unit(_) => (),
-                    }
-                }
-            }
-        }
-
-        Ok(())
     }
 
     fn resolve_item(
