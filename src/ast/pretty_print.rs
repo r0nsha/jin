@@ -146,7 +146,7 @@ impl PrettyPrint for Item {
 
 impl PrettyPrint for Fn {
     fn pretty_print(&self, cx: &mut PrettyCx) {
-        cx.builder.begin_child(format!("fn {}", self.sig.name));
+        cx.builder.begin_child(format!("fn {}", self.sig.word));
         self.sig.pretty_print(cx);
 
         match &self.kind {

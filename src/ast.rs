@@ -8,19 +8,19 @@ use ustr::Ustr;
 
 use crate::{
     ast::token::TokenKind,
-    common::{QPath, Word},
+    common::{new_key_type, IndexVec, QPath, Word},
     db::ModuleId,
     span::{SourceId, Span, Spanned},
 };
 
 #[derive(Debug, Clone)]
 pub struct Ast {
-    pub modules: Vec<Module>,
+    pub modules: IndexVec<ModuleId, Module>,
 }
 
 impl Ast {
     pub fn new() -> Self {
-        Self { modules: vec![] }
+        Self { modules: IndexVec::new() }
     }
 
     pub fn pretty_print(&self, w: &mut impl io::Write) -> io::Result<()> {
@@ -37,19 +37,21 @@ pub struct Module {
     pub id: Option<ModuleId>,
     pub source: SourceId,
     pub name: QPath,
-    pub items: Vec<Item>,
+    pub items: IndexVec<ItemId, Item>,
     is_main: bool,
 }
 
 impl Module {
     pub fn new(source_id: SourceId, name: QPath, is_main: bool) -> Self {
-        Self { id: None, source: source_id, name, is_main, items: vec![] }
+        Self { id: None, source: source_id, name, is_main, items: IndexVec::new() }
     }
 
     pub fn is_main(&self) -> bool {
         self.is_main
     }
 }
+
+new_key_type!(ItemId);
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum Item {
@@ -119,7 +121,7 @@ pub enum FnKind {
 
 #[derive(Debug, Clone)]
 pub struct FnSig {
-    pub name: Word,
+    pub word: Word,
     pub ty_params: Vec<TyParam>,
     pub params: Vec<FnParam>,
     pub ret: Option<TyExpr>,

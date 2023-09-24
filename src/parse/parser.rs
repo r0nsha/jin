@@ -179,7 +179,7 @@ impl<'a> Parser<'a> {
             _ => Some(self.parse_ty()?),
         };
 
-        Ok(FnSig { name, ty_params, params, ret })
+        Ok(FnSig { word: name, ty_params, params, ret })
     }
 
     fn parse_optional_ty_params(&mut self) -> ParseResult<Vec<TyParam>> {

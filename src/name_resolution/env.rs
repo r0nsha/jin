@@ -2,6 +2,8 @@ use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
+    ast,
+    ast::Ast,
     common::QPath,
     db::{Db, DefId, DefInfo, DefKind, ModuleId, ScopeInfo, ScopeLevel, Vis},
     hir,
@@ -12,21 +14,59 @@ use crate::{
 
 #[derive(Debug)]
 pub struct GlobalScope {
-    modules: FxHashMap<(ModuleId, Ustr), DefId>,
+    defs: FxHashMap<(ModuleId, Ustr), DefId>,
+    items: FxHashMap<(ModuleId, Ustr), ast::ItemId>,
     pub resolved_pats: FxHashMap<(ModuleId, usize /* ItemId */), hir::Pat>,
 }
 
 impl GlobalScope {
-    pub fn new() -> Self {
-        Self { modules: FxHashMap::default(), resolved_pats: FxHashMap::default() }
+    pub fn new(ast: &Ast) -> Self {
+        Self {
+            defs: FxHashMap::default(),
+            items: Self::init_items(ast),
+            resolved_pats: FxHashMap::default(),
+        }
     }
 
-    pub fn lookup(&self, module_id: ModuleId, name: Ustr) -> Option<DefId> {
-        self.modules.get(&(module_id, name)).copied()
+    fn init_items(ast: &Ast) -> FxHashMap<(ModuleId, Ustr), ast::ItemId> {
+        let mut items = FxHashMap::default();
+
+        for module in &ast.modules {
+            let module_id = module.id.expect("to be resolved");
+
+            for (idx, item) in module.items.iter().enumerate() {
+                let id = ast::ItemId::from(idx);
+
+                match item {
+                    ast::Item::Fn(f) => {
+                        items.insert((module_id, f.sig.word.name()), id);
+                    }
+                    ast::Item::Let(let_) => match &let_.pat {
+                        ast::Pat::Name(name) => {
+                            items.insert((module_id, name.word.name()), id);
+                        }
+                        ast::Pat::Discard(_) => (),
+                    },
+                    ast::Item::ExternLet(let_) => {
+                        items.insert((module_id, let_.word.name()), id);
+                    }
+                }
+            }
+        }
+
+        items
     }
 
-    pub fn insert(&mut self, module_id: ModuleId, name: Ustr, id: DefId) -> Option<DefId> {
-        self.modules.insert((module_id, name), id)
+    pub fn get_def(&self, module_id: ModuleId, name: Ustr) -> Option<DefId> {
+        self.defs.get(&(module_id, name)).copied()
+    }
+
+    pub fn insert_def(&mut self, module_id: ModuleId, name: Ustr, id: DefId) -> Option<DefId> {
+        self.defs.insert((module_id, name), id)
+    }
+
+    pub fn get_item(&self, module_id: ModuleId, name: Ustr) -> Option<ast::ItemId> {
+        self.items.get(&(module_id, name)).copied()
     }
 }
 
@@ -222,10 +262,4 @@ pub enum ScopeKind {
     Fn,
     Block,
     Initializer,
-}
-
-#[derive(Debug)]
-pub enum EnvKind<'a> {
-    Global(ModuleId, Vis),
-    Local(&'a mut Env),
 }

@@ -1,6 +1,7 @@
 mod env;
 mod error;
 
+use rustc_hash::FxHashSet;
 use ustr::{Ustr, UstrMap};
 
 use crate::{
@@ -12,7 +13,7 @@ use crate::{
     hir::{ExprId, Hir},
     macros::create_bool_enum,
     name_resolution::{
-        env::{BuiltinTys, Env, EnvKind, GlobalScope, ScopeKind},
+        env::{BuiltinTys, Env, GlobalScope, ScopeKind},
         error::ResolveError,
     },
     span::{Span, Spanned},
@@ -25,7 +26,6 @@ pub fn resolve(db: &mut Db, ast: &Ast) -> Result<Hir, Diagnostic> {
 
 fn resolve_inner(db: &mut Db, ast: &Ast) -> Result<Hir, ResolveError> {
     let mut cx = Resolver::new(db, ast);
-    // cx.define_global_items()?;
     cx.resolve_all()?;
     Ok(cx.hir)
 }
@@ -36,6 +36,7 @@ struct Resolver<'db> {
     hir: Hir,
     global_scope: GlobalScope,
     builtin_tys: BuiltinTys,
+    completed_items: FxHashSet<ast::ItemId>,
     expr_id: Counter<ExprId>,
 }
 
@@ -43,10 +44,11 @@ impl<'db> Resolver<'db> {
     fn new(db: &'db mut Db, ast: &'db Ast) -> Self {
         Self {
             builtin_tys: BuiltinTys::new(db),
+            global_scope: GlobalScope::new(ast),
             db,
             ast,
             hir: Hir::new(),
-            global_scope: GlobalScope::new(),
+            completed_items: FxHashSet::default(),
             expr_id: Counter::new(),
         }
     }
@@ -64,11 +66,35 @@ impl<'db> Resolver<'db> {
     // }
 
     fn find_and_resolve_global_item(
-        &self,
+        &mut self,
         module_id: ModuleId,
         name: Ustr,
     ) -> Result<Option<DefId>, ResolveError> {
-        todo!()
+        if let Some(item_id) = self.global_scope.get_item(module_id, name) {
+            let item = &self.ast.modules[module_id].items[item_id];
+
+            let mut env = Env::new(module_id);
+
+            let id = match self.resolve_item(&mut env, item)? {
+                ItemResult::Let(let_) => {
+                    let id = match &let_.pat {
+                        hir::Pat::Name(name) => name.id,
+                        hir::Pat::Discard(_) => unreachable!(),
+                    };
+
+                    self.hir.lets.push(let_);
+
+                    id
+                }
+                ItemResult::Unit(id) => id,
+            };
+
+            self.completed_items.insert(item_id);
+
+            Ok(Some(id))
+        } else {
+            Ok(None)
+        }
     }
 
     // fn define_global_item(
@@ -125,7 +151,7 @@ impl<'db> Resolver<'db> {
 
         let id = DefInfo::alloc(self.db, qpath, scope, kind, self.db.types.unknown, name.span());
 
-        if let Some(prev_id) = self.global_scope.insert(module_id, name.name(), id) {
+        if let Some(prev_id) = self.global_scope.insert_def(module_id, name.name(), id) {
             let def = &self.db[prev_id];
             return Err(ResolveError::MultipleItems {
                 name: def.qpath.name(),
@@ -182,7 +208,7 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn lookup_def(&self, env: &Env, word: Word) -> Result<DefId, ResolveError> {
+    fn lookup_def(&mut self, env: &Env, word: Word) -> Result<DefId, ResolveError> {
         if let Some(id) = env.lookup(word.name()).copied() {
             Ok(id)
         } else if let Some(id) = self.lookup_global_def(env.module_id(), word.name())? {
@@ -193,11 +219,11 @@ impl<'db> Resolver<'db> {
     }
 
     fn lookup_global_def(
-        &self,
+        &mut self,
         module_id: ModuleId,
         name: Ustr,
     ) -> Result<Option<DefId>, ResolveError> {
-        let id = if let Some(id) = self.global_scope.lookup(module_id, name) {
+        let id = if let Some(id) = self.global_scope.get_def(module_id, name) {
             Some(id)
         } else if let Some(id) = self.find_and_resolve_global_item(module_id, name)? {
             Some(id)
@@ -212,10 +238,12 @@ impl<'db> Resolver<'db> {
         for module in &self.ast.modules {
             let mut env = Env::new(module.id.expect("ModuleId to be resolved"));
 
-            for (idx, item) in module.items.iter().enumerate() {
-                match self.resolve_item(&mut env, item, Some(idx))? {
-                    ItemResult::Let(let_) => self.hir.lets.push(let_),
-                    ItemResult::Unit => (),
+            for (item_id, item) in module.items.iter().enumerate() {
+                if !self.completed_items.contains(&item_id.into()) {
+                    match self.resolve_item(&mut env, item)? {
+                        ItemResult::Let(let_) => self.hir.lets.push(let_),
+                        ItemResult::Unit(_) => (),
+                    }
                 }
             }
         }
@@ -227,28 +255,29 @@ impl<'db> Resolver<'db> {
         &mut self,
         env: &mut Env,
         item: &ast::Item,
-        item_idx: Option<usize>,
     ) -> Result<ItemResult, ResolveError> {
         match item {
             ast::Item::Fn(fun) => {
                 let f = self.resolve_fn(env, fun)?;
+                let id = f.id;
                 self.hir.fns.push(f);
-                Ok(ItemResult::Unit)
+                Ok(ItemResult::Unit(id))
             }
             ast::Item::Let(let_) => {
-                let let_ = self.resolve_let(env, let_, item_idx)?;
+                let let_ = self.resolve_let(env, let_)?;
                 Ok(ItemResult::Let(let_))
             }
             ast::Item::ExternLet(let_) => {
                 let let_ = self.resolve_extern_let(env, let_)?;
+                let id = let_.id;
                 self.hir.extern_lets.push(let_);
-                Ok(ItemResult::Unit)
+                Ok(ItemResult::Unit(id))
             }
         }
     }
 
     fn resolve_fn(&mut self, env: &mut Env, fun: &ast::Fn) -> Result<hir::Fn, ResolveError> {
-        let id = self.define_def(env, Vis::Private, DefKind::Fn(FnInfo::Bare), fun.sig.name)?;
+        let id = self.define_def(env, Vis::Private, DefKind::Fn(FnInfo::Bare), fun.sig.word)?;
 
         for attr in &fun.attrs {
             if let Some(value) = &attr.value {
@@ -258,7 +287,7 @@ impl<'db> Resolver<'db> {
 
         let attrs = self.resolve_attrs(env, &fun.attrs)?;
 
-        let (sig, kind) = env.with_scope(fun.sig.name.name(), ScopeKind::Fn, |env| {
+        let (sig, kind) = env.with_scope(fun.sig.word.name(), ScopeKind::Fn, |env| {
             let sig = self.resolve_sig(env, &fun.sig)?;
 
             let kind = match &fun.kind {
@@ -307,12 +336,7 @@ impl<'db> Resolver<'db> {
         Ok(hir::FnSig { ty_params, params, ret })
     }
 
-    fn resolve_let(
-        &mut self,
-        env: &mut Env,
-        let_: &ast::Let,
-        item_idx: Option<usize>,
-    ) -> Result<hir::Let, ResolveError> {
+    fn resolve_let(&mut self, env: &mut Env, let_: &ast::Let) -> Result<hir::Let, ResolveError> {
         let pat = self.define_pat(env, Vis::Private, DefKind::Variable, &let_.pat)?;
 
         env.with_anon_scope(ScopeKind::Initializer, |env| {
@@ -382,9 +406,9 @@ impl<'db> Resolver<'db> {
 
     fn resolve_expr(&mut self, env: &mut Env, expr: &ast::Expr) -> Result<hir::Expr, ResolveError> {
         match expr {
-            ast::Expr::Item(item) => match self.resolve_item(env, item, None)? {
+            ast::Expr::Item(item) => match self.resolve_item(env, item)? {
                 ItemResult::Let(let_) => Ok(self.expr(hir::ExprKind::Let(let_), item.span())),
-                ItemResult::Unit => Ok(self.unit(item.span())),
+                ItemResult::Unit(_) => Ok(self.unit(item.span())),
             },
             ast::Expr::Return { expr, span } => {
                 let expr = if let Some(expr) = expr {
@@ -590,7 +614,7 @@ impl<'db> Resolver<'db> {
 
 enum ItemResult {
     Let(hir::Let),
-    Unit,
+    Unit(DefId),
 }
 
 create_bool_enum!(AllowTyHole);
