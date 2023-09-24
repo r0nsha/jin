@@ -6,7 +6,6 @@ use crate::{
     ast::Ast,
     common::QPath,
     db::{Db, DefId, DefInfo, DefKind, ModuleId, ScopeInfo, ScopeLevel, Vis},
-    hir,
     span::Span,
     sym,
     ty::Ty,
@@ -16,16 +15,11 @@ use crate::{
 pub struct GlobalScope {
     defs: FxHashMap<(ModuleId, Ustr), DefId>,
     items: FxHashMap<(ModuleId, Ustr), ast::ItemId>,
-    pub resolved_pats: FxHashMap<(ModuleId, usize /* ItemId */), hir::Pat>,
 }
 
 impl GlobalScope {
     pub fn new(ast: &Ast) -> Self {
-        Self {
-            defs: FxHashMap::default(),
-            items: Self::init_items(ast),
-            resolved_pats: FxHashMap::default(),
-        }
+        Self { defs: FxHashMap::default(), items: Self::init_items(ast) }
     }
 
     fn init_items(ast: &Ast) -> FxHashMap<(ModuleId, Ustr), ast::ItemId> {
