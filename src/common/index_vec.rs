@@ -156,14 +156,14 @@ macro_rules! new_key_type {
 
             #[allow(unused)]
             #[inline]
-            pub fn is_null(self) -> bool {
+            pub fn is_invalid(self) -> bool {
                 self == Self::INVALID
             }
         }
 
         impl std::fmt::Display for $name {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                if self.is_null() {
+                if self.is_invalid() {
                     f.write_str("INVALID")
                 } else {
                     f.write_str(&self.0.to_string())

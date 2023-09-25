@@ -27,7 +27,7 @@ use crate::{
         normalize::NormalizeTy,
     },
     span::{Span, Spanned},
-    ty::{InferTy, Instantiation, IntVar, Ty, TyKind, TyVar},
+    ty::{FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty, TyKind, TyVar},
 };
 
 pub type ResolveResult<T> = Result<T, ResolveError>;
@@ -152,6 +152,7 @@ impl<'db> Resolver<'db> {
         vis: Vis,
         kind: DefKind,
         name: Word,
+        ty: Ty,
     ) -> ResolveResult<DefId> {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].name.clone().child(name.name());
@@ -170,7 +171,7 @@ impl<'db> Resolver<'db> {
         Ok(id)
     }
 
-    fn define_local_def(&mut self, env: &mut Env, kind: DefKind, name: Word) -> DefId {
+    fn define_local_def(&mut self, env: &mut Env, kind: DefKind, name: Word, ty: Ty) -> DefId {
         let id = DefInfo::alloc(
             self.db,
             env.scope_path(self.db).child(name.name()),
@@ -191,11 +192,12 @@ impl<'db> Resolver<'db> {
         vis: Vis,
         kind: DefKind,
         name: Word,
+        ty: Ty,
     ) -> ResolveResult<DefId> {
         if env.in_global_scope() {
-            self.define_global_def(env.module_id(), vis, kind, name)
+            self.define_global_def(env.module_id(), vis, kind, name, ty)
         } else {
-            Ok(self.define_local_def(env, kind, name))
+            Ok(self.define_local_def(env, kind, name, ty))
         }
     }
 
@@ -205,10 +207,11 @@ impl<'db> Resolver<'db> {
         vis: Vis,
         kind: DefKind,
         pat: &ast::Pat,
+        ty: Ty,
     ) -> ResolveResult<hir::Pat> {
         match pat {
             ast::Pat::Name(name) => Ok(hir::Pat::Name(hir::NamePat {
-                id: self.define_def(env, vis, kind, name.word)?,
+                id: self.define_def(env, vis, kind, name.word, ty)?,
                 word: name.word,
             })),
             ast::Pat::Discard(span) => Ok(hir::Pat::Discard(*span)),
@@ -269,14 +272,23 @@ impl<'db> Resolver<'db> {
                 self.resolve_sig(env, &fun.sig)
             })?;
 
-        let id = self.define_def(env, Vis::Private, DefKind::Fn(FnInfo::Bare), fun.sig.word)?;
+        let id = self.define_def(
+            env,
+            Vis::Private,
+            DefKind::Fn(match fun.kind {
+                ast::FnKind::Bare { .. } => FnInfo::Bare,
+                ast::FnKind::Extern => FnInfo::Extern,
+            }),
+            fun.sig.word,
+            sig.ty,
+        )?;
 
         let attrs = self.resolve_attrs(env, &fun.attrs)?;
 
         let kind =
             env.with_scope(fun.sig.word.name(), ScopeKind::Fn, |env| -> Result<_, ResolveError> {
                 for p in &mut sig.params {
-                    p.id = self.define_local_def(env, DefKind::Variable, p.name);
+                    p.id = self.define_local_def(env, DefKind::Variable, p.name, p.ty);
                 }
 
                 match &fun.kind {
@@ -297,8 +309,6 @@ impl<'db> Resolver<'db> {
         let mut defined_params = UstrMap::<Span>::default();
 
         for p in &sig.params {
-            let id = self.define_local_def(env, DefKind::Variable, p.name);
-
             let ty_annot = self.resolve_ty_expr(env, &p.ty_annot, AllowTyHole::No)?;
 
             if let Some(prev_span) = defined_params.insert(p.name.name(), p.name.span()) {
@@ -309,36 +319,44 @@ impl<'db> Resolver<'db> {
                 });
             }
 
-            params.push(hir::FnParam { id, name: p.name, ty_annot, ty: self.db.types.unknown });
+            params.push(hir::FnParam {
+                id: DefId::INVALID,
+                name: p.name,
+                ty_annot,
+                ty: self.db.types.unknown,
+            });
         }
 
-        let ret = sig
-            .ret
-            .as_ref()
-            .map(|ret| self.resolve_ty_expr(env, ret, AllowTyHole::No))
-            .transpose()?;
+        let (ret, ret_ty) = if let Some(ret) = &sig.ret {
+            let ret = self.resolve_ty_expr(env, ret, AllowTyHole::No)?;
+            let ret_ty = self.check_ty_expr(&ret)?;
+            (Some(ret), ret_ty)
+        } else {
+            (None, self.db.types.unit)
+        };
 
-        Ok(hir::FnSig { ty_params, params, ret })
+        let ty = Ty::new(TyKind::Fn(FnTy {
+            params: params
+                .iter()
+                .map(|p| FnTyParam { name: Some(p.name.name()), ty: p.ty })
+                .collect(),
+            ret: ret_ty,
+        }));
+
+        Ok(hir::FnSig { ty_params, params, ret, ty })
     }
 
     fn resolve_let(&mut self, env: &mut Env, let_: &ast::Let) -> ResolveResult<hir::Let> {
-        let pat = self.define_pat(env, Vis::Private, DefKind::Variable, &let_.pat)?;
+        let (ty_annot, ty) = if let Some(ty_annot) = &let_.ty_annot {
+            let ty_annot = self.resolve_ty_expr(env, ty_annot, AllowTyHole::Yes)?;
+            let ty = self.check_ty_expr(&ty_annot)?;
+            (Some(ty_annot), ty)
+        } else {
+            (None, self.fresh_ty_var())
+        };
 
-        env.with_anon_scope(ScopeKind::Initializer, |env| {
-            if let Some(ty) = &let_.ty_annot {
-                self.resolve_ty_expr(env, ty, AllowTyHole::Yes)?;
-            }
-
-            self.resolve_expr(env, &let_.value)
-        })?;
-
+        let pat = self.define_pat(env, Vis::Private, DefKind::Variable, &let_.pat, ty)?;
         let attrs = self.resolve_attrs(env, &let_.attrs)?;
-
-        let ty_annot = let_
-            .ty_annot
-            .as_ref()
-            .map(|t| self.resolve_ty_expr(env, t, AllowTyHole::Yes))
-            .transpose()?;
 
         let value = self.resolve_expr(env, &let_.value)?;
 
@@ -357,10 +375,10 @@ impl<'db> Resolver<'db> {
         env: &mut Env,
         let_: &ast::ExternLet,
     ) -> ResolveResult<hir::ExternLet> {
-        let id = self.define_def(env, Vis::Private, DefKind::ExternGlobal, let_.word)?;
-
-        let attrs = self.resolve_attrs(env, &let_.attrs)?;
         let ty_annot = self.resolve_ty_expr(env, &let_.ty_annot, AllowTyHole::No)?;
+        let ty = self.check_ty_expr(&ty_annot)?;
+        let attrs = self.resolve_attrs(env, &let_.attrs)?;
+        let id = self.define_def(env, Vis::Private, DefKind::ExternGlobal, let_.word, ty)?;
 
         Ok(hir::ExternLet {
             module_id: env.module_id(),
@@ -543,8 +561,10 @@ impl<'db> Resolver<'db> {
         let mut defined_ty_params = UstrMap::<Span>::default();
 
         for tp in ty_params {
-            let ty = self.db.types.unknown;
-            let id = self.define_local_def(env, DefKind::Ty(ty), tp.name);
+            let ty =
+                Ty::new(TyKind::Param(ParamTy { name: tp.name.name(), var: self.fresh_var() }));
+
+            let id = self.define_local_def(env, DefKind::Ty(ty), tp.name, self.db.types.typ);
 
             if let Some(prev_span) = defined_ty_params.insert(tp.name.name(), tp.name.span()) {
                 return Err(ResolveError::MultipleTyParams {
@@ -599,6 +619,24 @@ impl<'db> Resolver<'db> {
 
     fn unit(&mut self, span: Span) -> hir::Expr {
         self.expr(hir::ExprKind::Lit(hir::Lit::Unit), span)
+    }
+
+    fn check_ty_expr(&mut self, ty: &hir::TyExpr) -> ResolveResult<Ty> {
+        match ty {
+            hir::TyExpr::RawPtr(pointee, _) => {
+                Ok(Ty::new(TyKind::RawPtr(self.check_ty_expr(pointee)?)))
+            }
+            hir::TyExpr::Name(name) => {
+                let def = &self.db[name.id];
+
+                match def.kind.as_ref() {
+                    DefKind::Ty(ty) => Ok(*ty),
+                    _ => Err(ResolveError::ExpectedTy { ty: def.ty, span: name.span }),
+                }
+            }
+            hir::TyExpr::Unit(_) => Ok(self.db.types.unit),
+            hir::TyExpr::Hole(_) => Ok(self.fresh_ty_var()),
+        }
     }
 }
 

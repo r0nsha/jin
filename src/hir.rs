@@ -118,6 +118,7 @@ pub struct FnSig {
     pub ty_params: Vec<TyParam>,
     pub params: Vec<FnParam>,
     pub ret: Option<TyExpr>,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone)]
