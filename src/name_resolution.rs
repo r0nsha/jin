@@ -179,7 +179,7 @@ impl<'db> Resolver<'db> {
             env.scope_path(self.db).child(name.name()),
             ScopeInfo { module_id: env.module_id(), level: env.scope_level(), vis: Vis::Private },
             kind,
-            self.db.types.unknown,
+            ty,
             name.span(),
         );
 
@@ -269,10 +269,11 @@ impl<'db> Resolver<'db> {
     }
 
     fn resolve_fn(&mut self, env: &mut Env, fun: &ast::Fn) -> ResolveResult<hir::Fn> {
-        let mut sig =
-            env.with_scope(fun.sig.word.name(), ScopeKind::Fn, |env| -> Result<_, ResolveError> {
-                self.resolve_sig(env, &fun.sig)
-            })?;
+        let mut sig = env.with_scope(
+            fun.sig.word.name(),
+            ScopeKind::FnSig,
+            |env| -> Result<_, ResolveError> { self.resolve_sig(env, &fun.sig) },
+        )?;
 
         let id = self.define_def(
             env,
@@ -294,19 +295,40 @@ impl<'db> Resolver<'db> {
             },
         )?;
 
-        let kind =
-            env.with_scope(fun.sig.word.name(), ScopeKind::Fn, |env| -> Result<_, ResolveError> {
+        let kind = env.with_scope(
+            fun.sig.word.name(),
+            ScopeKind::Fn(id),
+            |env| -> Result<_, ResolveError> {
                 for p in &mut sig.params {
                     p.id = self.define_local_def(env, DefKind::Variable, p.name, p.ty);
                 }
 
                 match &fun.kind {
                     ast::FnKind::Bare { body } => {
-                        Ok(hir::FnKind::Bare { body: self.resolve_expr(env, body)? })
+                        let ret_ty = sig.ty.as_fn().unwrap().ret;
+
+                        let body = self.resolve_expr(env, body, Some(ret_ty))?;
+
+                        let unify_body_res = self
+                            .at(Obligation::return_ty(
+                                body.span,
+                                sig.ret.as_ref().map_or(self.db[id].span, Spanned::span),
+                            ))
+                            .eq(ret_ty, body.ty)
+                            .or_coerce(self, body.id);
+
+                        // If the function's return type is `()`, we want to let the user end the body with
+                        // whatever expression they want, so that they don't need to end it with a `()`
+                        if !self.normalize(ret_ty).is_unit() {
+                            unify_body_res?;
+                        }
+
+                        Ok(hir::FnKind::Bare { body })
                     }
                     ast::FnKind::Extern => Ok(hir::FnKind::Extern),
                 }
-            })?;
+            },
+        )?;
 
         Ok(hir::Fn { module_id: env.module_id(), id, attrs: vec![], sig, kind, span: fun.span })
     }
@@ -367,7 +389,7 @@ impl<'db> Resolver<'db> {
         let pat = self.define_pat(env, Vis::Private, DefKind::Variable, &let_.pat, ty)?;
         self.resolve_attrs(env, &let_.attrs, AttrsPlacement::Let)?;
 
-        let value = self.resolve_expr(env, &let_.value)?;
+        let value = self.resolve_expr(env, &let_.value, Some(ty))?;
 
         self.at(Obligation::obvious(value.span)).eq(ty, value.ty).or_coerce(self, value.id)?;
 
@@ -420,7 +442,7 @@ impl<'db> Resolver<'db> {
     ) -> ResolveResult<()> {
         for attr in attrs {
             let (value, value_ty, value_span) = if let Some(value) = &attr.value {
-                let value = self.resolve_expr(&mut Env::new(env.module_id()), value)?;
+                let value = self.resolve_expr(&mut Env::new(env.module_id()), value, None)?;
 
                 let const_ =
                     self.db.const_storage.expr(value.id).cloned().ok_or(
@@ -463,10 +485,16 @@ impl<'db> Resolver<'db> {
         Ok(())
     }
 
-    fn resolve_expr(&mut self, env: &mut Env, expr: &ast::Expr) -> ResolveResult<hir::Expr> {
+    fn resolve_expr(
+        &mut self,
+        env: &mut Env,
+        expr: &ast::Expr,
+        expected_ty: Option<Ty>,
+    ) -> ResolveResult<hir::Expr> {
         match expr {
             ast::Expr::Item(item) => {
                 let span = item.span();
+
                 match item {
                     ast::Item::Fn(_) | ast::Item::ExternLet(_) => {
                         self.resolve_item(env, item)?;
@@ -474,41 +502,93 @@ impl<'db> Resolver<'db> {
                     }
                     ast::Item::Let(let_) => {
                         let let_ = self.resolve_let(env, let_)?;
-                        Ok(self.expr(hir::ExprKind::Let(let_), span))
+                        Ok(self.expr(hir::ExprKind::Let(let_), self.db.types.unit, span))
                     }
                 }
             }
             ast::Expr::Return { expr, span } => {
-                let expr = if let Some(expr) = expr {
-                    self.resolve_expr(env, expr)?
+                if let Some(fn_id) = env.fn_id() {
+                    let ret_ty = self.db[fn_id].ty.as_fn().unwrap().ret;
+
+                    let expr = if let Some(expr) = expr {
+                        self.resolve_expr(env, expr, Some(ret_ty))?
+                    } else {
+                        self.unit(*span)
+                    };
+
+                    self.at(Obligation::return_ty(expr.span, self.db[fn_id].span))
+                        .eq(ret_ty, expr.ty)
+                        .or_coerce(self, expr.id)?;
+
+                    Ok(self.expr(
+                        hir::ExprKind::Return(hir::Return { expr: Box::new(expr) }),
+                        self.db.types.never,
+                        *span,
+                    ))
                 } else {
+                    return Err(ResolveError::InvalidReturn(*span));
+                }
+            }
+            ast::Expr::If { cond, then, otherwise, span } => {
+                let cond = self.resolve_expr(env, cond, Some(self.db.types.bool))?;
+
+                self.at(Obligation::obvious(cond.span))
+                    .eq(self.db.types.bool, cond.ty)
+                    .or_coerce(self, cond.id)?;
+
+                let mut then = self.resolve_expr(env, then, expected_ty)?;
+
+                // let otherwise = if let Some(otherwise) = otherwise {
+                //     Some(Box::new(self.resolve_expr(env, otherwise)?))
+                // } else {
+                //     None
+                // };
+
+                let otherwise = if let Some(otherwise) = otherwise.as_ref() {
+                    let otherwise = self.resolve_expr(env, otherwise, Some(then.ty))?;
+
+                    self.at(Obligation::exprs(*span, then.span, otherwise.span))
+                        .eq(then.ty, otherwise.ty)
+                        .or_coerce(self, otherwise.id)?;
+
+                    otherwise
+                } else {
+                    // NOTE: We don't unify here since, since we allow non-unit blocks to
+                    // _become_ unit blocks, meaning that a block that doesn't return a unit value,
+                    // but is expected to - is assumed to return it anyways.
+                    then.ty = self.db.types.unit;
                     self.unit(*span)
                 };
 
-                Ok(self.expr(hir::ExprKind::Return(hir::Return { expr: Box::new(expr) }), *span))
-            }
-            ast::Expr::If { cond, then, otherwise, span } => {
-                let cond = self.resolve_expr(env, cond)?;
-                let then = self.resolve_expr(env, then)?;
-
-                let otherwise = if let Some(otherwise) = otherwise {
-                    Some(Box::new(self.resolve_expr(env, otherwise)?))
-                } else {
-                    None
-                };
+                let ty = then.ty;
 
                 Ok(self.expr(
                     hir::ExprKind::If(hir::If {
                         cond: Box::new(cond),
                         then: Box::new(then),
-                        otherwise,
+                        otherwise: Some(Box::new(otherwise)),
                     }),
+                    ty,
                     *span,
                 ))
             }
             ast::Expr::Block { exprs, span } => env.with_anon_scope(ScopeKind::Block, |env| {
-                let exprs = exprs.iter().map(|e| self.resolve_expr(env, e)).try_collect()?;
-                Ok(self.expr(hir::ExprKind::Block(hir::Block { exprs }), *span))
+                if exprs.is_empty() {
+                    Ok(self.unit(*span))
+                } else {
+                    let mut new_exprs = vec![];
+                    let last = exprs.len() - 1;
+
+                    for (i, expr) in exprs.iter_mut().enumerate() {
+                        let expected_ty =
+                            if i == last { expected_ty } else { Some(self.db.types.unit) };
+                        new_exprs.push(self.resolve_expr(env, expr, expected_ty)?);
+                    }
+
+                    let ty = new_exprs.last().unwrap().ty;
+
+                    Ok(self.expr(hir::ExprKind::Block(hir::Block { exprs: new_exprs }), ty, *span))
+                }
             }),
             ast::Expr::Call { callee, args, span } => {
                 let callee = self.resolve_expr(env, callee)?;
@@ -673,12 +753,12 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn expr(&mut self, kind: hir::ExprKind, span: Span) -> hir::Expr {
-        hir::Expr { id: self.expr_id.next(), kind, span, ty: self.db.types.unknown }
+    fn expr(&mut self, kind: hir::ExprKind, ty: Ty, span: Span) -> hir::Expr {
+        hir::Expr { id: self.expr_id.next(), kind, ty, span }
     }
 
     fn unit(&mut self, span: Span) -> hir::Expr {
-        self.expr(hir::ExprKind::Lit(hir::Lit::Unit), span)
+        self.expr(hir::ExprKind::Lit(hir::Lit::Unit), self.db.types.unit, span)
     }
 
     fn check_ty_expr(&mut self, ty: &hir::TyExpr) -> ResolveResult<Ty> {

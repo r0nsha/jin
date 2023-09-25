@@ -204,6 +204,14 @@ impl Env {
     }
 
     #[inline]
+    pub fn fn_id(&self) -> Option<DefId> {
+        self.scopes.iter().find_map(|s| match s.kind {
+            ScopeKind::Fn(id) => Some(id),
+            _ => None,
+        })
+    }
+
+    #[inline]
     pub fn depth(&self) -> usize {
         self.scopes.len()
     }
@@ -238,6 +246,7 @@ impl Scope {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ScopeKind {
-    Fn,
+    FnSig,
+    Fn(DefId),
     Block,
 }
