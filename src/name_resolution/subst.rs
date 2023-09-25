@@ -2,7 +2,6 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     db::Db,
-    hir::Hir,
     name_resolution::{error::ResolveError, normalize::NormalizeTy, Resolver, TyStorage},
     span::Span,
     subst::{Subst, SubstTy},
@@ -10,18 +9,18 @@ use crate::{
 };
 
 impl<'db> Resolver<'db> {
-    pub fn subst(&mut self, hir: &mut Hir) {
+    pub fn subst_hir(&mut self) {
         let mut cx = SubstCx {
             db: self.db,
             storage: &mut self.storage.borrow_mut(),
             errors: FxHashMap::default(),
         };
 
-        for f in &mut hir.fns {
+        for f in &mut self.hir.fns {
             f.subst(&mut cx);
         }
 
-        for let_ in &mut hir.lets {
+        for let_ in &mut self.hir.lets {
             let_.subst(&mut cx);
         }
 
