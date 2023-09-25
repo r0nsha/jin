@@ -25,10 +25,12 @@ use crate::{
         coerce::CoerceExt,
         env::{BuiltinTys, Env, GlobalScope, ScopeKind},
         error::ResolveError,
+        instantiate::instantiate,
         normalize::NormalizeTy,
         unify::Obligation,
     },
     span::{Span, Spanned},
+    sym,
     ty::{FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty, TyKind, TyVar},
 };
 
@@ -159,7 +161,7 @@ impl<'db> Resolver<'db> {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].name.clone().child(name.name());
 
-        let id = DefInfo::alloc(self.db, qpath, scope, kind, self.db.types.unknown, name.span());
+        let id = DefInfo::alloc(self.db, qpath, scope, kind, ty, name.span());
 
         if let Some(prev_id) = self.global_scope.insert_def(module_id, name.name(), id) {
             let def = &self.db[prev_id];
@@ -341,6 +343,7 @@ impl<'db> Resolver<'db> {
 
         for p in &sig.params {
             let ty_annot = self.resolve_ty_expr(env, &p.ty_annot, AllowTyHole::No)?;
+            let ty = self.check_ty_expr(&ty_annot)?;
 
             if let Some(prev_span) = defined_params.insert(p.name.name(), p.name.span()) {
                 return Err(ResolveError::MultipleParams {
@@ -350,12 +353,7 @@ impl<'db> Resolver<'db> {
                 });
             }
 
-            params.push(hir::FnParam {
-                id: DefId::INVALID,
-                name: p.name,
-                ty_annot,
-                ty: self.db.types.unknown,
-            });
+            params.push(hir::FnParam { id: DefId::INVALID, name: p.name, ty_annot, ty });
         }
 
         let (ret, ret_ty) = if let Some(ret) = &sig.ret {
@@ -491,7 +489,7 @@ impl<'db> Resolver<'db> {
         expr: &ast::Expr,
         expected_ty: Option<Ty>,
     ) -> ResolveResult<hir::Expr> {
-        match expr {
+        let expr: ResolveResult<hir::Expr> = match expr {
             ast::Expr::Item(item) => {
                 let span = item.span();
 
@@ -579,7 +577,7 @@ impl<'db> Resolver<'db> {
                     let mut new_exprs = vec![];
                     let last = exprs.len() - 1;
 
-                    for (i, expr) in exprs.iter_mut().enumerate() {
+                    for (i, expr) in exprs.iter().enumerate() {
                         let expected_ty =
                             if i == last { expected_ty } else { Some(self.db.types.unit) };
                         new_exprs.push(self.resolve_expr(env, expr, expected_ty)?);
@@ -639,7 +637,7 @@ impl<'db> Resolver<'db> {
                     }
 
                     // Resolve named arg indices
-                    for arg in new_args {
+                    for arg in &mut new_args {
                         if let Some(arg_name) = &arg.name {
                             let name = arg_name.name();
 
@@ -677,9 +675,11 @@ impl<'db> Resolver<'db> {
                             .or_coerce(self, arg.expr.id)?;
                     }
 
+                    let ty = fun_ty.ret;
+
                     Ok(self.expr(
                         hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args: new_args }),
-                        fun_ty.ret,
+                        ty,
                         *span,
                     ))
                 } else {
@@ -707,9 +707,11 @@ impl<'db> Resolver<'db> {
                     }
                 }
 
+                let ty = expr.ty;
+
                 Ok(self.expr(
                     hir::ExprKind::Unary(hir::Unary { expr: Box::new(expr), op: *op }),
-                    expr.ty,
+                    ty,
                     *span,
                 ))
             }
@@ -753,22 +755,40 @@ impl<'db> Resolver<'db> {
                 ))
             }
             ast::Expr::Cast { expr, ty, span } => {
-                let expr = self.resolve_expr(env, expr)?;
+                let expr = self.resolve_expr(env, expr, None)?;
                 let target = self.resolve_ty_expr(env, ty, AllowTyHole::Yes)?;
+                let ty = self.check_ty_expr(&target)?;
 
-                Ok(self
-                    .expr(hir::ExprKind::Cast(hir::Cast { expr: Box::new(expr), target }), *span))
+                Ok(self.expr(
+                    hir::ExprKind::Cast(hir::Cast { expr: Box::new(expr), target }),
+                    ty,
+                    *span,
+                ))
             }
             ast::Expr::Member { expr, member, span } => {
-                let expr = self.resolve_expr(env, expr)?;
+                let expr = self.resolve_expr(env, expr, None)?;
+
+                let ty = self.normalize(expr.ty);
+
+                let res_ty = match ty.kind() {
+                    TyKind::Str if member.name() == sym::PTR => {
+                        Ty::new(TyKind::RawPtr(self.db.types.u8))
+                    }
+                    TyKind::Str if member.name() == sym::LEN => self.db.types.uint,
+                    _ => return Err(ResolveError::InvalidMember { ty, member: *member }),
+                };
 
                 Ok(self.expr(
                     hir::ExprKind::Member(hir::Member { expr: Box::new(expr), member: *member }),
+                    res_ty,
                     *span,
                 ))
             }
             ast::Expr::Name { word, args, span } => {
                 let id = self.lookup_def(env, *word)?;
+
+                let def_ty = self.normalize(self.db[id].ty);
+                let ty_params = def_ty.collect_params();
 
                 let args = if let Some(args) = args {
                     let mut new_args = vec![];
@@ -782,30 +802,59 @@ impl<'db> Resolver<'db> {
                     None
                 };
 
-                Ok(self.expr(
-                    hir::ExprKind::Name(hir::Name {
-                        id,
-                        args,
-                        instantiation: Instantiation::default(),
-                    }),
-                    *span,
-                ))
+                let instantiation: Instantiation = match &args {
+                    Some(args) if args.len() == ty_params.len() => {
+                        let arg_tys: Vec<Ty> =
+                            args.iter().map(|arg| self.check_ty_expr(arg)).try_collect()?;
+
+                        ty_params
+                            .into_iter()
+                            .zip(arg_tys)
+                            .map(|(param, arg)| (param.var, arg))
+                            .collect()
+                    }
+                    Some(args) => {
+                        return Err(ResolveError::TyArgMismatch {
+                            expected: ty_params.len(),
+                            found: args.len(),
+                            span: *span,
+                        });
+                    }
+                    _ => ty_params
+                        .into_iter()
+                        .map(|param| (param.var, self.fresh_ty_var()))
+                        .collect(),
+                };
+
+                let ty = instantiate(def_ty, instantiation.clone());
+
+                Ok(self.expr(hir::ExprKind::Name(hir::Name { id, args, instantiation }), ty, *span))
             }
             ast::Expr::Group { expr, span } => {
-                let mut expr = self.resolve_expr(env, expr)?;
+                let mut expr = self.resolve_expr(env, expr, expected_ty)?;
                 expr.span = *span;
                 Ok(expr)
             }
-            ast::Expr::Lit { kind, span } => Ok(self.expr(
-                hir::ExprKind::Lit(match kind {
-                    ast::LitKind::Str(v) => hir::Lit::Str(*v),
-                    ast::LitKind::Int(v) => hir::Lit::Int(*v),
-                    ast::LitKind::Bool(v) => hir::Lit::Bool(*v),
-                    ast::LitKind::Unit => hir::Lit::Unit,
-                }),
-                *span,
-            )),
-        }
+            ast::Expr::Lit { kind, span } => {
+                let (kind, ty) = match kind {
+                    ast::LitKind::Str(v) => (hir::Lit::Str(*v), self.db.types.str),
+                    ast::LitKind::Int(v) => (hir::Lit::Int(*v), self.fresh_int_var()),
+                    ast::LitKind::Bool(v) => (hir::Lit::Bool(*v), self.db.types.bool),
+                    ast::LitKind::Unit => (hir::Lit::Unit, self.db.types.unit),
+                };
+
+                Ok(self.expr(hir::ExprKind::Lit(kind), ty, *span))
+            }
+        };
+
+        let expr = expr?;
+
+        self.db
+            .const_storage
+            .eval_expr(&expr)
+            .map_err(|e| ResolveError::ConstEval(e, expr.span))?;
+
+        Ok(expr)
     }
 
     fn resolve_ty_params(
@@ -894,11 +943,6 @@ impl<'db> Resolver<'db> {
             hir::TyExpr::Hole(_) => Ok(self.fresh_ty_var()),
         }
     }
-}
-
-enum ItemResult {
-    Let(hir::Let),
-    Unit(DefId),
 }
 
 create_bool_enum!(AllowTyHole);
