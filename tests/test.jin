@@ -12,9 +12,6 @@ fn extern write(fd i32, buf *u8, count uint) int
 
 let stdout = 1
 
-let a = b + 1
-let b = a + 1
-
 fn print(fmt str) = {
 	write(stdout, fmt.ptr, fmt.len)
 }
