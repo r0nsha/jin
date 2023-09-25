@@ -90,6 +90,9 @@ impl<'db> Resolver<'db> {
             }
         }
 
+        passes::check_entry(self.db, &self.hir);
+        passes::check_bodies(self.db, &self.hir);
+
         Ok(self.hir)
     }
 
