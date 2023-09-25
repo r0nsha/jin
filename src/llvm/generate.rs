@@ -236,11 +236,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                 self.bx.build_unconditional_branch(merge_block);
 
                 self.start_block(state, else_block);
-                let else_value = if let Some(otherwise) = otherwise {
-                    self.codegen_br(state, *otherwise)
-                } else {
-                    Some(self.unit_value().into())
-                };
+                let else_value = self.codegen_br(state, *otherwise);
 
                 self.bx.build_unconditional_branch(merge_block);
                 self.start_block(state, merge_block);

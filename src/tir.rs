@@ -140,7 +140,7 @@ pub struct Expr {
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum ExprKind {
     Let { id: LocalId, def_id: DefId, value: ExprId },
-    If { cond: ExprId, then: ExprId, otherwise: Option<ExprId> },
+    If { cond: ExprId, then: ExprId, otherwise: ExprId },
     Block { exprs: Vec<ExprId> },
     Return { value: ExprId },
     Call { callee: ExprId, args: Vec<ExprId> },

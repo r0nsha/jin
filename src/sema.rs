@@ -559,7 +559,7 @@ impl<'db> Sema<'db> {
                     hir::ExprKind::If(hir::If {
                         cond: Box::new(cond),
                         then: Box::new(then),
-                        otherwise: Some(Box::new(otherwise)),
+                        otherwise: Box::new(otherwise),
                     }),
                     ty,
                     *span,

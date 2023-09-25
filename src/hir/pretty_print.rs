@@ -89,11 +89,9 @@ impl PrettyCx<'_> {
                 self.pp_expr(&if_.then);
                 self.builder.end_child();
 
-                if let Some(otherwise) = &if_.otherwise {
-                    self.builder.begin_child("else".to_string());
-                    self.pp_expr(otherwise);
-                    self.builder.end_child();
-                }
+                self.builder.begin_child("else".to_string());
+                self.pp_expr(&if_.otherwise);
+                self.builder.end_child();
 
                 self.builder.end_child();
             }

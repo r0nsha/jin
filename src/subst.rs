@@ -21,10 +21,7 @@ impl<S: SubstTy> Subst<S> for Expr {
             ExprKind::If(if_) => {
                 if_.cond.subst(s);
                 if_.then.subst(s);
-
-                if let Some(o) = &mut if_.otherwise {
-                    o.subst(s);
-                }
+                if_.otherwise.subst(s);
             }
             ExprKind::Block(blk) => {
                 for stmt in &mut blk.exprs {

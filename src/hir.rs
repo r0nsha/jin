@@ -51,9 +51,7 @@ impl Expr {
             ExprKind::If(if_) => {
                 if_.cond.walk_(f);
                 if_.then.walk_(f);
-                if let Some(otherwise) = &if_.otherwise {
-                    otherwise.walk_(f);
-                }
+                if_.otherwise.walk_(f);
             }
             ExprKind::Block(blk) => {
                 for expr in &blk.exprs {
@@ -210,7 +208,7 @@ impl fmt::Display for Pat {
 pub struct If {
     pub cond: Box<Expr>,
     pub then: Box<Expr>,
-    pub otherwise: Option<Box<Expr>>,
+    pub otherwise: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]

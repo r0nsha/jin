@@ -254,7 +254,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 hir::ExprKind::If(if_) => ExprKind::If {
                     cond: self.lower_expr(&if_.cond),
                     then: self.lower_expr(&if_.then),
-                    otherwise: if_.otherwise.as_ref().map(|o| self.lower_expr(o)),
+                    otherwise: self.lower_expr(&if_.otherwise),
                 },
                 hir::ExprKind::Block(blk) => {
                     let mut exprs: Vec<_> = blk.exprs.iter().map(|e| self.lower_expr(e)).collect();
