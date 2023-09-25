@@ -1,9 +1,9 @@
-mod analysis;
 mod attrs;
 mod coerce;
 mod error;
 mod instantiate;
 mod normalize;
+mod passes;
 mod subst;
 mod tcx;
 mod unify;
@@ -43,7 +43,8 @@ fn typeck_inner(db: &mut Db, hir: &mut Hir) -> TypeckResult<()> {
     cx.typeck_bodies(hir)?;
     cx.subst(hir);
 
-    analysis::analyze(db, hir);
+    passes::analyze(db, hir);
+    passes::check_entry(db, hir);
 
     Ok(())
 }
