@@ -10,7 +10,7 @@ mod unify;
 use std::cell::RefCell;
 
 use ena::unify::InPlaceUnificationTable;
-use rustc_hash::FxHashSet;
+use rustc_hash::FxHashMap;
 use ustr::{Ustr, UstrMap};
 
 use crate::{
@@ -42,9 +42,16 @@ pub struct Resolver<'db> {
     hir: Hir,
     global_scope: GlobalScope,
     builtin_tys: BuiltinTys,
-    completed_items: FxHashSet<ast::ItemId>,
+    item_statuses: FxHashMap<ast::ItemId, ItemStatus>,
     storage: RefCell<TyStorage>,
     expr_id: Counter<ExprId>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum ItemStatus {
+    Unresolved,
+    InProgress,
+    Complete,
 }
 
 #[derive(Debug)]
@@ -70,7 +77,7 @@ impl<'db> Resolver<'db> {
             db,
             ast,
             hir: Hir::new(),
-            completed_items: FxHashSet::default(),
+            item_statuses: FxHashMap::default(),
             storage: RefCell::new(TyStorage::new()),
             expr_id: Counter::new(),
         }
@@ -80,22 +87,26 @@ impl<'db> Resolver<'db> {
         for module in &self.ast.modules {
             let mut env = Env::new(module.id.expect("ModuleId to be resolved"));
 
-            for (item_id, item) in module.items.iter().enumerate() {
-                if !self.completed_items.contains(&item_id.into()) {
-                    match self.resolve_item(&mut env, item)? {
-                        ItemResult::Let(let_) => self.hir.lets.push(let_),
-                        ItemResult::Unit(_) => (),
-                    }
+            for (idx, item) in module.items.iter().enumerate() {
+                let item_id = ast::ItemId::from(idx);
+
+                if let ItemStatus::Unresolved = self.item_status(item_id) {
+                    self.resolve_global_item(&mut env, item_id, item)?;
                 }
             }
         }
 
-        self.subst_hir();
+        // self.subst_hir();
 
-        passes::check_bodies(self.db, &self.hir);
-        passes::check_entry(self.db, &self.hir);
+        // passes::check_bodies(self.db, &self.hir);
+        // passes::check_entry(self.db, &self.hir);
 
         Ok(self.hir)
+    }
+
+    #[inline]
+    fn item_status(&self, id: ast::ItemId) -> ItemStatus {
+        self.item_statuses.get(&id).copied().unwrap_or(ItemStatus::Unresolved)
     }
 
     #[inline]
@@ -127,25 +138,8 @@ impl<'db> Resolver<'db> {
     ) -> ResolveResult<Option<DefId>> {
         if let Some(item_id) = self.global_scope.get_item(module_id, name) {
             let item = &self.ast.modules[module_id].items[item_id];
-
-            let mut env = Env::new(module_id);
-
-            let id = match self.resolve_item(&mut env, item)? {
-                ItemResult::Let(let_) => {
-                    let id = match &let_.pat {
-                        hir::Pat::Name(name) => name.id,
-                        hir::Pat::Discard(_) => unreachable!(),
-                    };
-
-                    self.hir.lets.push(let_);
-
-                    id
-                }
-                ItemResult::Unit(id) => id,
-            };
-
-            self.completed_items.insert(item_id);
-
+            self.resolve_global_item(&mut Env::new(module_id), item_id, item)?;
+            let id = self.global_scope.get_def(module_id, name).expect("global def to be defined");
             Ok(Some(id))
         } else {
             Ok(None)
@@ -222,50 +216,51 @@ impl<'db> Resolver<'db> {
     }
 
     fn lookup_def(&mut self, env: &Env, word: Word) -> ResolveResult<DefId> {
-        if let Some(id) = env.lookup(word.name()).copied() {
+        let module_id = env.module_id();
+        let name = word.name();
+
+        if let Some(id) = env.lookup(name).copied() {
             Ok(id)
-        } else if let Some(id) = self.lookup_global_def(env.module_id(), word.name())? {
+        } else if let Some(id) = self.global_scope.get_def(module_id, name) {
+            Ok(id)
+        } else if let Some(id) = self.find_and_resolve_global_item(module_id, name)? {
+            Ok(id)
+        } else if let Some(id) = self.builtin_tys.get(name) {
             Ok(id)
         } else {
             Err(ResolveError::NameNotFound(word))
         }
     }
 
-    fn lookup_global_def(
+    fn resolve_global_item(
         &mut self,
-        module_id: ModuleId,
-        name: Ustr,
-    ) -> ResolveResult<Option<DefId>> {
-        let id = if let Some(id) = self.global_scope.get_def(module_id, name) {
-            Some(id)
-        } else if let Some(id) = self.find_and_resolve_global_item(module_id, name)? {
-            Some(id)
-        } else {
-            self.builtin_tys.get(name)
-        };
-
-        Ok(id)
+        env: &mut Env,
+        item_id: ast::ItemId,
+        item: &ast::Item,
+    ) -> ResolveResult<()> {
+        self.item_statuses.insert(item_id, ItemStatus::InProgress);
+        self.resolve_item(env, item)?;
+        self.item_statuses.insert(item_id, ItemStatus::Complete);
+        Ok(())
     }
 
-    fn resolve_item(&mut self, env: &mut Env, item: &ast::Item) -> ResolveResult<ItemResult> {
+    fn resolve_item(&mut self, env: &mut Env, item: &ast::Item) -> ResolveResult<()> {
         match item {
             ast::Item::Fn(fun) => {
                 let f = self.resolve_fn(env, fun)?;
-                let id = f.id;
                 self.hir.fns.push(f);
-                Ok(ItemResult::Unit(id))
             }
             ast::Item::Let(let_) => {
                 let let_ = self.resolve_let(env, let_)?;
-                Ok(ItemResult::Let(let_))
+                self.hir.lets.push(let_);
             }
             ast::Item::ExternLet(let_) => {
                 let let_ = self.resolve_extern_let(env, let_)?;
-                let id = let_.id;
                 self.hir.extern_lets.push(let_);
-                Ok(ItemResult::Unit(id))
             }
         }
+
+        Ok(())
     }
 
     fn resolve_fn(&mut self, env: &mut Env, fun: &ast::Fn) -> ResolveResult<hir::Fn> {
@@ -395,10 +390,19 @@ impl<'db> Resolver<'db> {
 
     fn resolve_expr(&mut self, env: &mut Env, expr: &ast::Expr) -> ResolveResult<hir::Expr> {
         match expr {
-            ast::Expr::Item(item) => match self.resolve_item(env, item)? {
-                ItemResult::Let(let_) => Ok(self.expr(hir::ExprKind::Let(let_), item.span())),
-                ItemResult::Unit(_) => Ok(self.unit(item.span())),
-            },
+            ast::Expr::Item(item) => {
+                let span = item.span();
+                match item {
+                    ast::Item::Fn(_) | ast::Item::ExternLet(_) => {
+                        self.resolve_item(env, item)?;
+                        Ok(self.unit(span))
+                    }
+                    ast::Item::Let(let_) => {
+                        let let_ = self.resolve_let(env, let_)?;
+                        Ok(self.expr(hir::ExprKind::Let(let_), span))
+                    }
+                }
+            }
             ast::Expr::Return { expr, span } => {
                 let expr = if let Some(expr) = expr {
                     self.resolve_expr(env, expr)?
