@@ -6,7 +6,7 @@ use crate::{
     db::{Db, DefId},
     diagnostics::{Diagnostic, Label},
     hir::const_eval::ConstEvalError,
-    name_resolution::unify::{Obligation, ObligationKind},
+    sema::unify::{Obligation, ObligationKind},
     span::{Span, Spanned},
     ty::Ty,
 };

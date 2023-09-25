@@ -23,8 +23,8 @@ mod diagnostics;
 mod hir;
 mod llvm;
 mod macros;
-mod name_resolution;
 mod parse;
+mod sema;
 mod span;
 mod subst;
 mod sym;
@@ -108,7 +108,7 @@ fn build(db: &mut Db) {
 
     // Resolve all root symbols into their corresponding id's
     db.time.start("sema");
-    let hir = match name_resolution::resolve(db, &ast) {
+    let hir = match sema::resolve(db, &ast) {
         Ok(hir) => hir,
         Err(diag) => {
             db.diagnostics.emit(diag);

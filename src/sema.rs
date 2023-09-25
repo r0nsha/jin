@@ -21,7 +21,7 @@ use crate::{
     hir,
     hir::{const_eval::Const, ExprId, Hir},
     macros::create_bool_enum,
-    name_resolution::{
+    sema::{
         coerce::CoerceExt,
         env::{BuiltinTys, Env, GlobalScope, ScopeKind},
         error::ResolveError,

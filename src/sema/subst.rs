@@ -2,7 +2,7 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     db::Db,
-    name_resolution::{error::ResolveError, normalize::NormalizeTy, Resolver, TyStorage},
+    sema::{error::ResolveError, normalize::NormalizeTy, Resolver, TyStorage},
     span::Span,
     subst::{Subst, SubstTy},
     ty::{fold::TyFolder, InferTy, Ty, TyKind},

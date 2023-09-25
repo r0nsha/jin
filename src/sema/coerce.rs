@@ -1,6 +1,6 @@
 use crate::{
     hir::ExprId,
-    name_resolution::{normalize::NormalizeTy, unify::EqResult, Resolver},
+    sema::{normalize::NormalizeTy, unify::EqResult, Resolver},
     ty::{
         coerce::{Coercion, CoercionKind},
         TyKind,

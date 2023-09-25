@@ -1,7 +1,7 @@
 use ena::unify::{EqUnifyValue, UnifyKey};
 
 use crate::{
-    name_resolution::{error::ResolveError, normalize::NormalizeTy, Resolver},
+    sema::{error::ResolveError, normalize::NormalizeTy, Resolver},
     span::Span,
     ty::{InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
 };
