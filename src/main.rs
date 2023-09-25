@@ -16,7 +16,6 @@
 )]
 #![feature(iterator_try_collect)]
 
-mod analysis;
 mod ast;
 mod common;
 mod db;
@@ -108,7 +107,7 @@ fn build(db: &mut Db) {
     db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file)).expect("emitting ast failed");
 
     // Resolve all root symbols into their corresponding id's
-    db.time.start("name resolution");
+    db.time.start("sema");
     let hir = match name_resolution::resolve(db, &ast) {
         Ok(hir) => hir,
         Err(diag) => {
@@ -118,14 +117,6 @@ fn build(db: &mut Db) {
     };
     db.time.stop();
     expect!(db);
-
-    // Type check pass
-    // db.time.start("analysis");
-    // if let Err(diag) = analysis::typeck(db, &mut hir) {
-    //     db.diagnostics.emit(diag);
-    // }
-    // db.time.stop();
-    // expect!(db);
 
     db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))
         .expect("emitting hir failed");
