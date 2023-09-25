@@ -278,18 +278,19 @@ impl<'db> Resolver<'db> {
 
         let attrs = self.resolve_attrs(env, &fun.attrs)?;
 
-        let (sig, kind) = env.with_scope(fun.sig.word.name(), ScopeKind::Fn, |env| {
-            let sig = self.resolve_sig(env, &fun.sig)?;
+        let (sig, kind) =
+            env.with_scope(fun.sig.word.name(), ScopeKind::Fn, |env| -> Result<_, ResolveError> {
+                let sig = self.resolve_sig(env, &fun.sig)?;
 
-            let kind = match &fun.kind {
-                ast::FnKind::Bare { body } => {
-                    hir::FnKind::Bare { body: self.resolve_expr(env, body)? }
-                }
-                ast::FnKind::Extern => hir::FnKind::Extern,
-            };
+                let kind = match &fun.kind {
+                    ast::FnKind::Bare { body } => {
+                        hir::FnKind::Bare { body: self.resolve_expr(env, body)? }
+                    }
+                    ast::FnKind::Extern => hir::FnKind::Extern,
+                };
 
-            Ok((sig, kind))
-        })?;
+                Ok((sig, kind))
+            })?;
 
         Ok(hir::Fn { module_id: env.module_id(), id, attrs, sig, kind, span: fun.span })
     }

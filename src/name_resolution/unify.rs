@@ -50,11 +50,11 @@ pub struct EqError {
     pub err: ResolveError,
 }
 
-// impl From<EqError> for ResolveError {
-//     fn from(value: EqError) -> Self {
-//         value.err
-//     }
-// }
+impl From<EqError> for ResolveError {
+    fn from(value: EqError) -> Self {
+        value.err
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 pub struct Obligation {
