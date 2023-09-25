@@ -34,6 +34,7 @@ pub enum CheckError {
     NonConstAttrValue { ty: Ty, span: Span },
     PathNotFound { path: Ustr, span: Span },
     InvalidAttrPlacement { kind: AttrKind, span: Span },
+    NonConstGlobalLet { span: Span },
 }
 
 impl CheckError {
@@ -166,7 +167,7 @@ impl CheckError {
                 .with_message("cycle detected while checking definition")
                 .with_label(Label::primary(span)),
             Self::ConstEval(err, span) => Diagnostic::error("check::const_eval_error")
-                .with_message("constant evaluation failed")
+                .with_message("const evaluation failed")
                 .with_label(Label::primary(span).with_message(match err {
                     ConstEvalError::DivByZero => "caught division by zero",
                     ConstEvalError::RemByZero => "caught reminder by zero",
@@ -178,10 +179,10 @@ impl CheckError {
             Self::NonConstAttrValue { ty, span } => {
                 Diagnostic::error("check::non_const_attr_value")
                     .with_message(format!(
-                "value of type `{}` must be a constant, because it is passed to an attribute",
-                ty.display(db),
-            ))
-                    .with_label(Label::primary(span).with_message("not a constant"))
+                        "value of type `{}` must resolve to a const, because it is passed to an attribute",
+                        ty.display(db),
+                    ))
+                    .with_label(Label::primary(span).with_message("not const"))
             }
             Self::PathNotFound { path, span } => Diagnostic::error("check::path_not_found")
                 .with_message(format!("path `{path}` not found"))
@@ -191,6 +192,9 @@ impl CheckError {
                     .with_message(format!("attribute `{kind}` cannot be placed here"))
                     .with_label(Label::primary(span).with_message("invalid attribute"))
             }
+            Self::NonConstGlobalLet { span } => Diagnostic::error("check::non_const_global_let")
+                .with_message("global variable must resolve to a const value")
+                .with_label(Label::primary(span).with_message("not a const value")),
         }
     }
 }

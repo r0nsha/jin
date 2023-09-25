@@ -387,6 +387,10 @@ impl<'db> Sema<'db> {
         self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::Let)?;
         let value = self.check_expr(env, &let_.value, Some(ty))?;
 
+        if env.in_global_scope() && self.db.const_storage.expr(value.id).is_none() {
+            return Err(CheckError::NonConstGlobalLet { span: value.span });
+        }
+
         self.at(Obligation::obvious(value.span)).eq(ty, value.ty).or_coerce(self, value.id)?;
 
         let pat = self.define_pat(env, Vis::Private, DefKind::Variable, &let_.pat, ty)?;
