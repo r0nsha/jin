@@ -14,7 +14,7 @@ use rustc_hash::FxHashMap;
 use ustr::{Ustr, UstrMap};
 
 use crate::{
-    ast::{self, Ast, AttrKind},
+    ast::{self, Ast, AttrKind, BinOp, UnOp},
     common::{Counter, Word},
     db::{Db, DefId, DefInfo, DefKind, ExternLib, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     diagnostics::Diagnostic,
@@ -591,7 +591,7 @@ impl<'db> Resolver<'db> {
                 }
             }),
             ast::Expr::Call { callee, args, span } => {
-                let callee = self.resolve_expr(env, callee)?;
+                let callee = self.resolve_expr(env, callee, None)?;
 
                 let mut new_args = vec![];
 
@@ -599,41 +599,148 @@ impl<'db> Resolver<'db> {
                     new_args.push(match arg {
                         ast::CallArg::Named(name, expr) => hir::CallArg {
                             name: Some(*name),
-                            expr: self.resolve_expr(env, expr)?,
+                            expr: self.resolve_expr(env, expr, None)?,
                             index: None,
                         },
                         ast::CallArg::Positional(expr) => hir::CallArg {
                             name: None,
-                            expr: self.resolve_expr(env, expr)?,
+                            expr: self.resolve_expr(env, expr, None)?,
                             index: None,
                         },
                     });
                 }
 
-                Ok(self.expr(
-                    hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args: new_args }),
-                    *span,
-                ))
+                if let TyKind::Fn(fun_ty) = callee.ty.kind() {
+                    #[derive(Debug)]
+                    struct PassedArg {
+                        is_named: bool,
+                        span: Span,
+                    }
+
+                    if new_args.len() != fun_ty.params.len() {
+                        return Err(ResolveError::ArgMismatch {
+                            expected: fun_ty.params.len(),
+                            found: new_args.len(),
+                            span: *span,
+                        });
+                    }
+
+                    let mut already_passed_args = UstrMap::<PassedArg>::default();
+
+                    // Resolve positional arg indices
+                    for (idx, arg) in new_args.iter_mut().enumerate() {
+                        if arg.name.is_none() {
+                            arg.index = Some(idx);
+                            already_passed_args.insert(
+                                fun_ty.params[idx].name.expect("to have a name"),
+                                PassedArg { is_named: false, span: arg.expr.span },
+                            );
+                        }
+                    }
+
+                    // Resolve named arg indices
+                    for arg in new_args {
+                        if let Some(arg_name) = &arg.name {
+                            let name = arg_name.name();
+
+                            let idx = fun_ty
+                                .params
+                                .iter()
+                                .enumerate()
+                                .find_map(
+                                    |(i, p)| if p.name == Some(name) { Some(i) } else { None },
+                                )
+                                .ok_or(ResolveError::NamedParamNotFound { word: *arg_name })?;
+
+                            // Report named arguments that are passed twice
+                            if let Some(passed_arg) = already_passed_args.insert(
+                                arg_name.name(),
+                                PassedArg { is_named: true, span: arg_name.span() },
+                            ) {
+                                return Err(ResolveError::MultipleNamedArgs {
+                                    name: arg_name.name(),
+                                    prev: passed_arg.span,
+                                    dup: arg_name.span(),
+                                    is_named: passed_arg.is_named,
+                                });
+                            }
+
+                            arg.index = Some(idx);
+                        }
+                    }
+
+                    // Unify all args with their corresponding param type
+                    for arg in &new_args {
+                        let idx = arg.index.expect("arg index to be resolved");
+                        self.at(Obligation::obvious(arg.expr.span))
+                            .eq(fun_ty.params[idx].ty, arg.expr.ty)
+                            .or_coerce(self, arg.expr.id)?;
+                    }
+
+                    Ok(self.expr(
+                        hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args: new_args }),
+                        fun_ty.ret,
+                        *span,
+                    ))
+                } else {
+                    return Err(ResolveError::UncallableTy {
+                        ty: self.normalize(callee.ty),
+                        span: callee.span,
+                    });
+                }
             }
             ast::Expr::Unary { expr, op, span } => {
-                let expr = self.resolve_expr(env, expr)?;
+                let expr = self.resolve_expr(env, expr, None)?;
+
+                match op {
+                    UnOp::Neg => {
+                        // TODO: Only allow signed integers (need traits)
+                        self.at(Obligation::obvious(expr.span))
+                            .eq(self.fresh_int_var(), expr.ty)
+                            .or_coerce(self, expr.id)?;
+                    }
+                    UnOp::Not => {
+                        // TODO: Allow bitnot (integers, need traits)
+                        self.at(Obligation::obvious(expr.span))
+                            .eq(self.db.types.bool, expr.ty)
+                            .or_coerce(self, expr.id)?;
+                    }
+                }
 
                 Ok(self.expr(
                     hir::ExprKind::Unary(hir::Unary { expr: Box::new(expr), op: *op }),
-                    *span,
-                ))
-            }
-            ast::Expr::Member { expr, member, span } => {
-                let expr = self.resolve_expr(env, expr)?;
-
-                Ok(self.expr(
-                    hir::ExprKind::Member(hir::Member { expr: Box::new(expr), member: *member }),
+                    expr.ty,
                     *span,
                 ))
             }
             ast::Expr::Binary { lhs, rhs, op, span } => {
-                let lhs = self.resolve_expr(env, lhs)?;
-                let rhs = self.resolve_expr(env, rhs)?;
+                let lhs = self.resolve_expr(env, lhs, None)?;
+                let rhs = self.resolve_expr(env, rhs, Some(lhs.ty))?;
+
+                self.at(Obligation::exprs(*span, lhs.span, rhs.span))
+                    .eq(lhs.ty, rhs.ty)
+                    .or_coerce(self, rhs.id)?;
+
+                match op {
+                    BinOp::And | BinOp::Or => {
+                        self.at(Obligation::obvious(lhs.span))
+                            .eq(self.db.types.bool, lhs.ty)
+                            .or_coerce(self, lhs.id)?;
+
+                        self.at(Obligation::obvious(rhs.span))
+                            .eq(self.db.types.bool, rhs.ty)
+                            .or_coerce(self, rhs.id)?;
+                    }
+                    _ => {
+                        // TODO: type check arithmetic operations (traits)
+                        // TODO: type check cmp operations (traits)
+                    }
+                }
+
+                let ty = match op {
+                    BinOp::Cmp(..) => self.db.types.bool,
+                    _ => lhs.ty,
+                };
 
                 Ok(self.expr(
                     hir::ExprKind::Binary(hir::Binary {
@@ -641,6 +748,7 @@ impl<'db> Resolver<'db> {
                         rhs: Box::new(rhs),
                         op: *op,
                     }),
+                    ty,
                     *span,
                 ))
             }
@@ -650,6 +758,14 @@ impl<'db> Resolver<'db> {
 
                 Ok(self
                     .expr(hir::ExprKind::Cast(hir::Cast { expr: Box::new(expr), target }), *span))
+            }
+            ast::Expr::Member { expr, member, span } => {
+                let expr = self.resolve_expr(env, expr)?;
+
+                Ok(self.expr(
+                    hir::ExprKind::Member(hir::Member { expr: Box::new(expr), member: *member }),
+                    *span,
+                ))
             }
             ast::Expr::Name { word, args, span } => {
                 let id = self.lookup_def(env, *word)?;
