@@ -1,6 +1,15 @@
+mod coerce;
 mod env;
 mod error;
+mod instantiate;
+mod normalize;
+mod passes;
+mod subst;
+mod unify;
 
+use std::cell::RefCell;
+
+use ena::unify::InPlaceUnificationTable;
 use rustc_hash::FxHashSet;
 use ustr::{Ustr, UstrMap};
 
@@ -15,27 +24,46 @@ use crate::{
     name_resolution::{
         env::{BuiltinTys, Env, GlobalScope, ScopeKind},
         error::ResolveError,
+        normalize::NormalizeTy,
     },
     span::{Span, Spanned},
-    ty::Instantiation,
+    ty::{InferTy, Instantiation, IntVar, Ty, TyKind, TyVar},
 };
+
+pub type ResolveResult<T> = Result<T, ResolveError>;
 
 pub fn resolve(db: &mut Db, ast: &Ast) -> Result<Hir, Diagnostic> {
     resolve_inner(db, ast).map_err(|err| err.into_diagnostic(db))
 }
 
-fn resolve_inner(db: &mut Db, ast: &Ast) -> Result<Hir, ResolveError> {
+fn resolve_inner(db: &mut Db, ast: &Ast) -> ResolveResult<Hir> {
     Resolver::new(db, ast).run()
 }
 
-struct Resolver<'db> {
+pub struct Resolver<'db> {
     db: &'db mut Db,
     ast: &'db Ast,
     hir: Hir,
     global_scope: GlobalScope,
     builtin_tys: BuiltinTys,
     completed_items: FxHashSet<ast::ItemId>,
+    storage: RefCell<TyStorage>,
     expr_id: Counter<ExprId>,
+}
+
+#[derive(Debug)]
+pub struct TyStorage {
+    pub ty_unification_table: InPlaceUnificationTable<TyVar>,
+    pub int_unification_table: InPlaceUnificationTable<IntVar>,
+}
+
+impl TyStorage {
+    pub fn new() -> Self {
+        Self {
+            ty_unification_table: InPlaceUnificationTable::new(),
+            int_unification_table: InPlaceUnificationTable::new(),
+        }
+    }
 }
 
 impl<'db> Resolver<'db> {
@@ -47,11 +75,12 @@ impl<'db> Resolver<'db> {
             ast,
             hir: Hir::new(),
             completed_items: FxHashSet::default(),
+            storage: RefCell::new(TyStorage::new()),
             expr_id: Counter::new(),
         }
     }
 
-    fn run(mut self) -> Result<Hir, ResolveError> {
+    fn run(mut self) -> ResolveResult<Hir> {
         for module in &self.ast.modules {
             let mut env = Env::new(module.id.expect("ModuleId to be resolved"));
 
@@ -68,11 +97,33 @@ impl<'db> Resolver<'db> {
         Ok(self.hir)
     }
 
+    #[inline]
+    pub fn fresh_ty_var(&self) -> Ty {
+        Ty::new(TyKind::Infer(InferTy::TyVar(self.fresh_var())))
+    }
+
+    #[inline]
+    pub fn fresh_var(&self) -> TyVar {
+        self.storage.borrow_mut().ty_unification_table.new_key(None)
+    }
+
+    #[inline]
+    pub fn fresh_int_var(&self) -> Ty {
+        Ty::new(TyKind::Infer(InferTy::IntVar(
+            self.storage.borrow_mut().int_unification_table.new_key(None),
+        )))
+    }
+
+    #[inline]
+    pub fn normalize(&self, ty: Ty) -> Ty {
+        ty.normalize(&mut self.storage.borrow_mut())
+    }
+
     fn find_and_resolve_global_item(
         &mut self,
         module_id: ModuleId,
         name: Ustr,
-    ) -> Result<Option<DefId>, ResolveError> {
+    ) -> ResolveResult<Option<DefId>> {
         if let Some(item_id) = self.global_scope.get_item(module_id, name) {
             let item = &self.ast.modules[module_id].items[item_id];
 
@@ -106,7 +157,7 @@ impl<'db> Resolver<'db> {
         vis: Vis,
         kind: DefKind,
         name: Word,
-    ) -> Result<DefId, ResolveError> {
+    ) -> ResolveResult<DefId> {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].name.clone().child(name.name());
 
@@ -145,7 +196,7 @@ impl<'db> Resolver<'db> {
         vis: Vis,
         kind: DefKind,
         name: Word,
-    ) -> Result<DefId, ResolveError> {
+    ) -> ResolveResult<DefId> {
         if env.in_global_scope() {
             self.define_global_def(env.module_id(), vis, kind, name)
         } else {
@@ -159,7 +210,7 @@ impl<'db> Resolver<'db> {
         vis: Vis,
         kind: DefKind,
         pat: &ast::Pat,
-    ) -> Result<hir::Pat, ResolveError> {
+    ) -> ResolveResult<hir::Pat> {
         match pat {
             ast::Pat::Name(name) => Ok(hir::Pat::Name(hir::NamePat {
                 id: self.define_def(env, vis, kind, name.word)?,
@@ -169,7 +220,7 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn lookup_def(&mut self, env: &Env, word: Word) -> Result<DefId, ResolveError> {
+    fn lookup_def(&mut self, env: &Env, word: Word) -> ResolveResult<DefId> {
         if let Some(id) = env.lookup(word.name()).copied() {
             Ok(id)
         } else if let Some(id) = self.lookup_global_def(env.module_id(), word.name())? {
@@ -183,7 +234,7 @@ impl<'db> Resolver<'db> {
         &mut self,
         module_id: ModuleId,
         name: Ustr,
-    ) -> Result<Option<DefId>, ResolveError> {
+    ) -> ResolveResult<Option<DefId>> {
         let id = if let Some(id) = self.global_scope.get_def(module_id, name) {
             Some(id)
         } else if let Some(id) = self.find_and_resolve_global_item(module_id, name)? {
@@ -195,11 +246,7 @@ impl<'db> Resolver<'db> {
         Ok(id)
     }
 
-    fn resolve_item(
-        &mut self,
-        env: &mut Env,
-        item: &ast::Item,
-    ) -> Result<ItemResult, ResolveError> {
+    fn resolve_item(&mut self, env: &mut Env, item: &ast::Item) -> ResolveResult<ItemResult> {
         match item {
             ast::Item::Fn(fun) => {
                 let f = self.resolve_fn(env, fun)?;
@@ -220,7 +267,7 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn resolve_fn(&mut self, env: &mut Env, fun: &ast::Fn) -> Result<hir::Fn, ResolveError> {
+    fn resolve_fn(&mut self, env: &mut Env, fun: &ast::Fn) -> ResolveResult<hir::Fn> {
         let id = self.define_def(env, Vis::Private, DefKind::Fn(FnInfo::Bare), fun.sig.word)?;
 
         for attr in &fun.attrs {
@@ -247,7 +294,7 @@ impl<'db> Resolver<'db> {
         Ok(hir::Fn { module_id: env.module_id(), id, attrs, sig, kind, span: fun.span })
     }
 
-    fn resolve_sig(&mut self, env: &mut Env, sig: &ast::FnSig) -> Result<hir::FnSig, ResolveError> {
+    fn resolve_sig(&mut self, env: &mut Env, sig: &ast::FnSig) -> ResolveResult<hir::FnSig> {
         assert!(env.in_kind(ScopeKind::Fn), "FnSig must be resolved inside a ScopeKind::Fn");
 
         let ty_params = self.resolve_ty_params(env, &sig.ty_params)?;
@@ -280,7 +327,7 @@ impl<'db> Resolver<'db> {
         Ok(hir::FnSig { ty_params, params, ret })
     }
 
-    fn resolve_let(&mut self, env: &mut Env, let_: &ast::Let) -> Result<hir::Let, ResolveError> {
+    fn resolve_let(&mut self, env: &mut Env, let_: &ast::Let) -> ResolveResult<hir::Let> {
         let pat = self.define_pat(env, Vis::Private, DefKind::Variable, &let_.pat)?;
 
         env.with_anon_scope(ScopeKind::Initializer, |env| {
@@ -315,7 +362,7 @@ impl<'db> Resolver<'db> {
         &mut self,
         env: &mut Env,
         let_: &ast::ExternLet,
-    ) -> Result<hir::ExternLet, ResolveError> {
+    ) -> ResolveResult<hir::ExternLet> {
         let id = self.define_def(env, Vis::Private, DefKind::ExternGlobal, let_.word)?;
 
         let attrs = self.resolve_attrs(env, &let_.attrs)?;
@@ -331,11 +378,7 @@ impl<'db> Resolver<'db> {
         })
     }
 
-    fn resolve_attrs(
-        &mut self,
-        env: &mut Env,
-        attrs: &ast::Attrs,
-    ) -> Result<hir::Attrs, ResolveError> {
+    fn resolve_attrs(&mut self, env: &mut Env, attrs: &ast::Attrs) -> ResolveResult<hir::Attrs> {
         attrs
             .iter()
             .map(|attr| {
@@ -348,7 +391,7 @@ impl<'db> Resolver<'db> {
             .try_collect()
     }
 
-    fn resolve_expr(&mut self, env: &mut Env, expr: &ast::Expr) -> Result<hir::Expr, ResolveError> {
+    fn resolve_expr(&mut self, env: &mut Env, expr: &ast::Expr) -> ResolveResult<hir::Expr> {
         match expr {
             ast::Expr::Item(item) => match self.resolve_item(env, item)? {
                 ItemResult::Let(let_) => Ok(self.expr(hir::ExprKind::Let(let_), item.span())),
@@ -492,7 +535,7 @@ impl<'db> Resolver<'db> {
         &mut self,
         env: &mut Env,
         ty_params: &[ast::TyParam],
-    ) -> Result<Vec<hir::TyParam>, ResolveError> {
+    ) -> ResolveResult<Vec<hir::TyParam>> {
         let mut new_ty_params = vec![];
         let mut defined_ty_params = UstrMap::<Span>::default();
 
@@ -519,7 +562,7 @@ impl<'db> Resolver<'db> {
         env: &Env,
         ty: &ast::TyExpr,
         allow_hole: AllowTyHole,
-    ) -> Result<hir::TyExpr, ResolveError> {
+    ) -> ResolveResult<hir::TyExpr> {
         match ty {
             ast::TyExpr::RawPtr(pointee, span) => {
                 let pointee = self.resolve_ty_expr(env, pointee, allow_hole)?;

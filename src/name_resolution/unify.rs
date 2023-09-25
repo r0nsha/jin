@@ -1,34 +1,36 @@
+use ena::unify::{EqUnifyValue, UnifyKey};
+
 use crate::{
-    analysis::{error::TypeckError, normalize::NormalizeTy, tcx::TyCx},
+    name_resolution::{error::ResolveError, normalize::NormalizeTy, Resolver},
     span::Span,
-    ty::{InferTy, IntVarValue, Ty, TyKind, TyVar},
+    ty::{InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
 };
 
-impl<'db> TyCx<'db> {
+impl<'db> Resolver<'db> {
     #[inline]
     #[must_use]
     pub fn at(&self, obligation: Obligation) -> At<'_, '_> {
-        At { tcx: self, obligation }
+        At { cx: self, obligation }
     }
 }
 
 pub struct At<'db, 'a> {
-    tcx: &'a TyCx<'db>,
+    cx: &'a Resolver<'db>,
     obligation: Obligation,
 }
 
 impl At<'_, '_> {
     pub fn eq(&self, expected: Ty, found: Ty) -> EqResult<()> {
-        UnifyCx { tcx: self.tcx }.unify_ty_ty(expected, found).map_err(|err| {
-            let mut storage = self.tcx.storage.borrow_mut();
+        UnifyCx { cx: self.cx }.unify_ty_ty(expected, found).map_err(|err| {
+            let mut storage = self.cx.storage.borrow_mut();
 
             let err = match err {
-                UnifyError::TyMismatch { .. } => TypeckError::TyMismatch {
+                UnifyError::TyMismatch { .. } => ResolveError::TyMismatch {
                     expected: expected.normalize(&mut storage),
                     found: found.normalize(&mut storage),
                     obligation: self.obligation,
                 },
-                UnifyError::InfiniteTy { ty } => TypeckError::InfiniteTy {
+                UnifyError::InfiniteTy { ty } => ResolveError::InfiniteTy {
                     ty: ty.normalize(&mut storage),
                     obligation: Obligation::obvious(self.obligation.span()),
                 },
@@ -45,14 +47,14 @@ pub type EqResult<T> = Result<T, EqError>;
 pub struct EqError {
     pub expected: Ty,
     pub found: Ty,
-    pub err: TypeckError,
+    pub err: ResolveError,
 }
 
-impl From<EqError> for TypeckError {
-    fn from(value: EqError) -> Self {
-        value.err
-    }
-}
+// impl From<EqError> for ResolveError {
+//     fn from(value: EqError) -> Self {
+//         value.err
+//     }
+// }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Obligation {
@@ -97,13 +99,13 @@ pub enum ObligationKind {
 }
 
 struct UnifyCx<'db, 'a> {
-    tcx: &'a TyCx<'db>,
+    cx: &'a Resolver<'db>,
 }
 
 impl UnifyCx<'_, '_> {
     fn unify_ty_ty(&mut self, a: Ty, b: Ty) -> Result<(), UnifyError> {
         let (a, b) = {
-            let mut storage = self.tcx.storage.borrow_mut();
+            let mut storage = self.cx.storage.borrow_mut();
             let a = a.normalize(&mut storage);
             let b = b.normalize(&mut storage);
             (a, b)
@@ -134,7 +136,7 @@ impl UnifyCx<'_, '_> {
 
             // Unify ?T1 ~ ?T2
             (TyKind::Infer(InferTy::TyVar(expected)), TyKind::Infer(InferTy::TyVar(found))) => {
-                self.tcx
+                self.cx
                     .storage
                     .borrow_mut()
                     .ty_unification_table
@@ -144,7 +146,7 @@ impl UnifyCx<'_, '_> {
 
             // Unify ?int ~ ?int
             (TyKind::Infer(InferTy::IntVar(expected)), TyKind::Infer(InferTy::IntVar(found))) => {
-                self.tcx
+                self.cx
                     .storage
                     .borrow_mut()
                     .int_unification_table
@@ -155,7 +157,7 @@ impl UnifyCx<'_, '_> {
             // Unify ?int ~ int
             (TyKind::Int(ity), TyKind::Infer(InferTy::IntVar(var)))
             | (TyKind::Infer(InferTy::IntVar(var)), TyKind::Int(ity)) => {
-                self.tcx
+                self.cx
                     .storage
                     .borrow_mut()
                     .int_unification_table
@@ -166,7 +168,7 @@ impl UnifyCx<'_, '_> {
             // Unify ?int ~ uint
             (TyKind::Uint(uty), TyKind::Infer(InferTy::IntVar(var)))
             | (TyKind::Infer(InferTy::IntVar(var)), TyKind::Uint(uty)) => {
-                self.tcx
+                self.cx
                     .storage
                     .borrow_mut()
                     .int_unification_table
@@ -188,10 +190,46 @@ impl UnifyCx<'_, '_> {
 
     fn unify_ty_var(&mut self, ty: Ty, var: TyVar) -> Result<(), UnifyError> {
         ty.occurs_check(var).map_err(|ty| UnifyError::InfiniteTy { ty })?;
-        self.tcx.storage.borrow_mut().ty_unification_table.unify_var_value(var, Some(ty))?;
+        self.cx.storage.borrow_mut().ty_unification_table.unify_var_value(var, Some(ty))?;
         Ok(())
     }
 }
+
+impl UnifyKey for TyVar {
+    type Value = Option<Ty>;
+
+    fn index(&self) -> u32 {
+        (*self).into()
+    }
+
+    fn from_index(u: u32) -> Self {
+        Self::from(u)
+    }
+
+    fn tag() -> &'static str {
+        "TyVar"
+    }
+}
+
+impl EqUnifyValue for Ty {}
+
+impl UnifyKey for IntVar {
+    type Value = Option<IntVarValue>;
+
+    fn index(&self) -> u32 {
+        (*self).into()
+    }
+
+    fn from_index(u: u32) -> Self {
+        Self::from(u)
+    }
+
+    fn tag() -> &'static str {
+        "IntTy"
+    }
+}
+
+impl EqUnifyValue for IntVarValue {}
 
 pub enum UnifyError {
     TyMismatch { a: Ty, b: Ty },
