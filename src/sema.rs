@@ -379,17 +379,15 @@ impl<'db> Sema<'db> {
             self.fresh_ty_var()
         };
 
-        let pat = self.define_pat(env, Vis::Private, DefKind::Variable, &let_.pat, ty)?;
         self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::Let)?;
-
         let value = self.check_expr(env, &let_.value, Some(ty))?;
 
         self.at(Obligation::obvious(value.span)).eq(ty, value.ty).or_coerce(self, value.id)?;
 
+        let pat = self.define_pat(env, Vis::Private, DefKind::Variable, &let_.pat, ty)?;
+
         match &pat {
             hir::Pat::Name(name) => {
-                self.db[name.id].ty = ty;
-
                 if let Some(value) = self.db.const_storage.expr(value.id) {
                     self.db.const_storage.insert_def(name.id, value.clone());
                 }
