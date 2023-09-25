@@ -332,7 +332,7 @@ impl<'db> Sema<'db> {
             },
         )?;
 
-        Ok(hir::Fn { module_id: env.module_id(), id, attrs: vec![], sig, kind, span: fun.span })
+        Ok(hir::Fn { module_id: env.module_id(), id, sig, kind, span: fun.span })
     }
 
     fn check_fn_sig(&mut self, env: &mut Env, sig: &ast::FnSig) -> CheckResult<hir::FnSig> {
@@ -404,7 +404,6 @@ impl<'db> Sema<'db> {
 
         Ok(hir::Let {
             module_id: env.module_id(),
-            attrs: vec![],
             pat,
             ty_annot,
             value: Box::new(value),
@@ -425,7 +424,6 @@ impl<'db> Sema<'db> {
         Ok(hir::ExternLet {
             module_id: env.module_id(),
             id,
-            attrs: vec![],
             word: let_.word,
             ty_annot,
             span: let_.span,

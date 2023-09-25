@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
-    ast::{AttrKind, BinOp, UnOp},
+    ast::{BinOp, UnOp},
     common::{new_key_type, Word},
     db::{Db, DefId, ModuleId},
     span::{Span, Spanned},
@@ -99,7 +99,6 @@ pub enum ExprKind {
 pub struct Fn {
     pub module_id: ModuleId,
     pub id: DefId,
-    pub attrs: Attrs,
     pub sig: FnSig,
     pub kind: FnKind,
     pub span: Span,
@@ -136,7 +135,6 @@ pub struct FnParam {
 #[derive(Debug, Clone)]
 pub struct Let {
     pub module_id: ModuleId,
-    pub attrs: Attrs,
     pub pat: Pat,
     pub ty_annot: Option<TyExpr>,
     pub value: Box<Expr>,
@@ -147,7 +145,6 @@ pub struct Let {
 pub struct ExternLet {
     pub module_id: ModuleId,
     pub id: DefId,
-    pub attrs: Attrs,
     pub word: Word,
     pub ty_annot: TyExpr,
     pub span: Span,
@@ -311,12 +308,3 @@ impl Spanned for TyExpr {
 new_key_type!(ExprId);
 
 pub type HirMap<T> = FxHashMap<ExprId, T>;
-
-pub type Attrs = Vec<Attr>;
-
-#[derive(Debug, Clone)]
-pub struct Attr {
-    pub kind: AttrKind,
-    pub value: Option<Expr>,
-    pub span: Span,
-}
