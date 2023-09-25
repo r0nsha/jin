@@ -22,6 +22,7 @@ use crate::{
     hir::{const_eval::Const, ExprId, Hir},
     macros::create_bool_enum,
     name_resolution::{
+        coerce::CoerceExt,
         env::{BuiltinTys, Env, GlobalScope, ScopeKind},
         error::ResolveError,
         normalize::NormalizeTy,
@@ -367,6 +368,19 @@ impl<'db> Resolver<'db> {
         self.resolve_attrs(env, &let_.attrs, AttrsPlacement::Let)?;
 
         let value = self.resolve_expr(env, &let_.value)?;
+
+        self.at(Obligation::obvious(value.span)).eq(ty, value.ty).or_coerce(self, value.id)?;
+
+        match &pat {
+            hir::Pat::Name(name) => {
+                self.db[name.id].ty = ty;
+
+                if let Some(value) = self.db.const_storage.expr(value.id) {
+                    self.db.const_storage.insert_def(name.id, value.clone());
+                }
+            }
+            hir::Pat::Discard(_) => (),
+        }
 
         Ok(hir::Let {
             module_id: env.module_id(),
