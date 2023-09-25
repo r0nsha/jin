@@ -95,7 +95,7 @@ impl<'db> Sema<'db> {
                 let item_id = ast::ItemId::from(idx);
 
                 if let ItemStatus::Unresolved = self.item_status(item_id) {
-                    self.resolve_global_item(&mut env, item_id, item)?;
+                    self.check_global_item(&mut env, item_id, item)?;
                 }
             }
         }
@@ -135,14 +135,14 @@ impl<'db> Sema<'db> {
         ty.normalize(&mut self.storage.borrow_mut())
     }
 
-    fn find_and_resolve_global_item(
+    fn find_and_check_global_item(
         &mut self,
         module_id: ModuleId,
         name: Ustr,
     ) -> CheckResult<Option<DefId>> {
         if let Some(item_id) = self.global_scope.get_item(module_id, name) {
             let item = &self.ast.modules[module_id].items[item_id];
-            self.resolve_global_item(&mut Env::new(module_id), item_id, item)?;
+            self.check_global_item(&mut Env::new(module_id), item_id, item)?;
             let id = self.global_scope.get_def(module_id, name).expect("global def to be defined");
             Ok(Some(id))
         } else {
@@ -230,7 +230,7 @@ impl<'db> Sema<'db> {
             Ok(id)
         } else if let Some(id) = self.global_scope.get_def(module_id, name) {
             Ok(id)
-        } else if let Some(id) = self.find_and_resolve_global_item(module_id, name)? {
+        } else if let Some(id) = self.find_and_check_global_item(module_id, name)? {
             Ok(id)
         } else if let Some(id) = self.builtin_tys.get(name) {
             Ok(id)
@@ -239,30 +239,30 @@ impl<'db> Sema<'db> {
         }
     }
 
-    fn resolve_global_item(
+    fn check_global_item(
         &mut self,
         env: &mut Env,
         item_id: ast::ItemId,
         item: &ast::Item,
     ) -> CheckResult<()> {
         self.item_statuses.insert(item_id, ItemStatus::InProgress);
-        self.resolve_item(env, item)?;
+        self.check_item(env, item)?;
         self.item_statuses.insert(item_id, ItemStatus::Complete);
         Ok(())
     }
 
-    fn resolve_item(&mut self, env: &mut Env, item: &ast::Item) -> CheckResult<()> {
+    fn check_item(&mut self, env: &mut Env, item: &ast::Item) -> CheckResult<()> {
         match item {
             ast::Item::Fn(fun) => {
-                let f = self.resolve_fn(env, fun)?;
+                let f = self.check_fn(env, fun)?;
                 self.hir.fns.push(f);
             }
             ast::Item::Let(let_) => {
-                let let_ = self.resolve_let(env, let_)?;
+                let let_ = self.check_let(env, let_)?;
                 self.hir.lets.push(let_);
             }
             ast::Item::ExternLet(let_) => {
-                let let_ = self.resolve_extern_let(env, let_)?;
+                let let_ = self.check_extern_let(env, let_)?;
                 self.hir.extern_lets.push(let_);
             }
         }
@@ -270,11 +270,11 @@ impl<'db> Sema<'db> {
         Ok(())
     }
 
-    fn resolve_fn(&mut self, env: &mut Env, fun: &ast::Fn) -> CheckResult<hir::Fn> {
+    fn check_fn(&mut self, env: &mut Env, fun: &ast::Fn) -> CheckResult<hir::Fn> {
         let mut sig = env.with_scope(
             fun.sig.word.name(),
             ScopeKind::FnSig,
-            |env| -> Result<_, CheckError> { self.resolve_sig(env, &fun.sig) },
+            |env| -> Result<_, CheckError> { self.check_fn_sig(env, &fun.sig) },
         )?;
 
         let id = self.define_def(
@@ -288,7 +288,7 @@ impl<'db> Sema<'db> {
             sig.ty,
         )?;
 
-        self.resolve_attrs(
+        self.check_attrs(
             env.module_id(),
             &fun.attrs,
             match &fun.kind {
@@ -309,7 +309,7 @@ impl<'db> Sema<'db> {
                     ast::FnKind::Bare { body } => {
                         let ret_ty = sig.ty.as_fn().unwrap().ret;
 
-                        let body = self.resolve_expr(env, body, Some(ret_ty))?;
+                        let body = self.check_expr(env, body, Some(ret_ty))?;
 
                         let unify_body_res = self
                             .at(Obligation::return_ty(
@@ -335,8 +335,8 @@ impl<'db> Sema<'db> {
         Ok(hir::Fn { module_id: env.module_id(), id, attrs: vec![], sig, kind, span: fun.span })
     }
 
-    fn resolve_sig(&mut self, env: &mut Env, sig: &ast::FnSig) -> CheckResult<hir::FnSig> {
-        let ty_params = self.resolve_ty_params(env, &sig.ty_params)?;
+    fn check_fn_sig(&mut self, env: &mut Env, sig: &ast::FnSig) -> CheckResult<hir::FnSig> {
+        let ty_params = self.check_ty_params(env, &sig.ty_params)?;
 
         let mut params = vec![];
         let mut defined_params = UstrMap::<Span>::default();
@@ -375,7 +375,7 @@ impl<'db> Sema<'db> {
         Ok(hir::FnSig { ty_params, params, ret, ty })
     }
 
-    fn resolve_let(&mut self, env: &mut Env, let_: &ast::Let) -> CheckResult<hir::Let> {
+    fn check_let(&mut self, env: &mut Env, let_: &ast::Let) -> CheckResult<hir::Let> {
         let (ty_annot, ty) = if let Some(ty_annot) = &let_.ty_annot {
             let ty_annot = self.resolve_ty_expr(env, ty_annot, AllowTyHole::Yes)?;
             let ty = self.check_ty_expr(&ty_annot)?;
@@ -385,9 +385,9 @@ impl<'db> Sema<'db> {
         };
 
         let pat = self.define_pat(env, Vis::Private, DefKind::Variable, &let_.pat, ty)?;
-        self.resolve_attrs(env.module_id(), &let_.attrs, AttrsPlacement::Let)?;
+        self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::Let)?;
 
-        let value = self.resolve_expr(env, &let_.value, Some(ty))?;
+        let value = self.check_expr(env, &let_.value, Some(ty))?;
 
         self.at(Obligation::obvious(value.span)).eq(ty, value.ty).or_coerce(self, value.id)?;
 
@@ -412,14 +412,14 @@ impl<'db> Sema<'db> {
         })
     }
 
-    fn resolve_extern_let(
+    fn check_extern_let(
         &mut self,
         env: &mut Env,
         let_: &ast::ExternLet,
     ) -> CheckResult<hir::ExternLet> {
         let ty_annot = self.resolve_ty_expr(env, &let_.ty_annot, AllowTyHole::No)?;
         let ty = self.check_ty_expr(&ty_annot)?;
-        self.resolve_attrs(env.module_id(), &let_.attrs, AttrsPlacement::ExternLet)?;
+        self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::ExternLet)?;
         let id = self.define_def(env, Vis::Private, DefKind::ExternGlobal, let_.word, ty)?;
 
         Ok(hir::ExternLet {
@@ -432,7 +432,7 @@ impl<'db> Sema<'db> {
         })
     }
 
-    fn resolve_attrs(
+    fn check_attrs(
         &mut self,
         module_id: ModuleId,
         attrs: &ast::Attrs,
@@ -441,7 +441,7 @@ impl<'db> Sema<'db> {
         for attr in attrs {
             let (value, value_ty, value_span) =
                 if let Some(value) = &attr.value {
-                    let value = self.resolve_expr(&mut Env::new(module_id), value, None)?;
+                    let value = self.check_expr(&mut Env::new(module_id), value, None)?;
 
                     let const_ =
                         self.db.const_storage.expr(value.id).cloned().ok_or(
@@ -484,7 +484,7 @@ impl<'db> Sema<'db> {
         Ok(())
     }
 
-    fn resolve_expr(
+    fn check_expr(
         &mut self,
         env: &mut Env,
         expr: &ast::Expr,
@@ -496,11 +496,11 @@ impl<'db> Sema<'db> {
 
                 match item {
                     ast::Item::Fn(_) | ast::Item::ExternLet(_) => {
-                        self.resolve_item(env, item)?;
+                        self.check_item(env, item)?;
                         Ok(self.unit(span))
                     }
                     ast::Item::Let(let_) => {
-                        let let_ = self.resolve_let(env, let_)?;
+                        let let_ = self.check_let(env, let_)?;
                         Ok(self.expr(hir::ExprKind::Let(let_), self.db.types.unit, span))
                     }
                 }
@@ -510,7 +510,7 @@ impl<'db> Sema<'db> {
                     let ret_ty = self.db[fn_id].ty.as_fn().unwrap().ret;
 
                     let expr = if let Some(expr) = expr {
-                        self.resolve_expr(env, expr, Some(ret_ty))?
+                        self.check_expr(env, expr, Some(ret_ty))?
                     } else {
                         self.unit(*span)
                     };
@@ -529,22 +529,16 @@ impl<'db> Sema<'db> {
                 }
             }
             ast::Expr::If { cond, then, otherwise, span } => {
-                let cond = self.resolve_expr(env, cond, Some(self.db.types.bool))?;
+                let cond = self.check_expr(env, cond, Some(self.db.types.bool))?;
 
                 self.at(Obligation::obvious(cond.span))
                     .eq(self.db.types.bool, cond.ty)
                     .or_coerce(self, cond.id)?;
 
-                let mut then = self.resolve_expr(env, then, expected_ty)?;
-
-                // let otherwise = if let Some(otherwise) = otherwise {
-                //     Some(Box::new(self.resolve_expr(env, otherwise)?))
-                // } else {
-                //     None
-                // };
+                let mut then = self.check_expr(env, then, expected_ty)?;
 
                 let otherwise = if let Some(otherwise) = otherwise.as_ref() {
-                    let otherwise = self.resolve_expr(env, otherwise, Some(then.ty))?;
+                    let otherwise = self.check_expr(env, otherwise, Some(then.ty))?;
 
                     self.at(Obligation::exprs(*span, then.span, otherwise.span))
                         .eq(then.ty, otherwise.ty)
@@ -581,7 +575,7 @@ impl<'db> Sema<'db> {
                     for (i, expr) in exprs.iter().enumerate() {
                         let expected_ty =
                             if i == last { expected_ty } else { Some(self.db.types.unit) };
-                        new_exprs.push(self.resolve_expr(env, expr, expected_ty)?);
+                        new_exprs.push(self.check_expr(env, expr, expected_ty)?);
                     }
 
                     let ty = new_exprs.last().unwrap().ty;
@@ -590,7 +584,7 @@ impl<'db> Sema<'db> {
                 }
             }),
             ast::Expr::Call { callee, args, span } => {
-                let callee = self.resolve_expr(env, callee, None)?;
+                let callee = self.check_expr(env, callee, None)?;
 
                 let mut new_args = vec![];
 
@@ -598,12 +592,12 @@ impl<'db> Sema<'db> {
                     new_args.push(match arg {
                         ast::CallArg::Named(name, expr) => hir::CallArg {
                             name: Some(*name),
-                            expr: self.resolve_expr(env, expr, None)?,
+                            expr: self.check_expr(env, expr, None)?,
                             index: None,
                         },
                         ast::CallArg::Positional(expr) => hir::CallArg {
                             name: None,
-                            expr: self.resolve_expr(env, expr, None)?,
+                            expr: self.check_expr(env, expr, None)?,
                             index: None,
                         },
                     });
@@ -691,7 +685,7 @@ impl<'db> Sema<'db> {
                 }
             }
             ast::Expr::Unary { expr, op, span } => {
-                let expr = self.resolve_expr(env, expr, None)?;
+                let expr = self.check_expr(env, expr, None)?;
 
                 match op {
                     UnOp::Neg => {
@@ -717,8 +711,8 @@ impl<'db> Sema<'db> {
                 ))
             }
             ast::Expr::Binary { lhs, rhs, op, span } => {
-                let lhs = self.resolve_expr(env, lhs, None)?;
-                let rhs = self.resolve_expr(env, rhs, Some(lhs.ty))?;
+                let lhs = self.check_expr(env, lhs, None)?;
+                let rhs = self.check_expr(env, rhs, Some(lhs.ty))?;
 
                 self.at(Obligation::exprs(*span, lhs.span, rhs.span))
                     .eq(lhs.ty, rhs.ty)
@@ -756,7 +750,7 @@ impl<'db> Sema<'db> {
                 ))
             }
             ast::Expr::Cast { expr, ty, span } => {
-                let expr = self.resolve_expr(env, expr, None)?;
+                let expr = self.check_expr(env, expr, None)?;
                 let target = self.resolve_ty_expr(env, ty, AllowTyHole::Yes)?;
                 let ty = self.check_ty_expr(&target)?;
 
@@ -767,7 +761,7 @@ impl<'db> Sema<'db> {
                 ))
             }
             ast::Expr::Member { expr, member, span } => {
-                let expr = self.resolve_expr(env, expr, None)?;
+                let expr = self.check_expr(env, expr, None)?;
 
                 let ty = self.normalize(expr.ty);
 
@@ -832,7 +826,7 @@ impl<'db> Sema<'db> {
                 Ok(self.expr(hir::ExprKind::Name(hir::Name { id, args, instantiation }), ty, *span))
             }
             ast::Expr::Group { expr, span } => {
-                let mut expr = self.resolve_expr(env, expr, expected_ty)?;
+                let mut expr = self.check_expr(env, expr, expected_ty)?;
                 expr.span = *span;
                 Ok(expr)
             }
@@ -855,7 +849,7 @@ impl<'db> Sema<'db> {
         Ok(expr)
     }
 
-    fn resolve_ty_params(
+    fn check_ty_params(
         &mut self,
         env: &mut Env,
         ty_params: &[ast::TyParam],
@@ -916,14 +910,6 @@ impl<'db> Sema<'db> {
         }
     }
 
-    fn expr(&mut self, kind: hir::ExprKind, ty: Ty, span: Span) -> hir::Expr {
-        hir::Expr { id: self.expr_id.next(), kind, ty, span }
-    }
-
-    fn unit(&mut self, span: Span) -> hir::Expr {
-        self.expr(hir::ExprKind::Lit(hir::Lit::Unit), self.db.types.unit, span)
-    }
-
     fn check_ty_expr(&mut self, ty: &hir::TyExpr) -> CheckResult<Ty> {
         match ty {
             hir::TyExpr::RawPtr(pointee, _) => {
@@ -940,6 +926,14 @@ impl<'db> Sema<'db> {
             hir::TyExpr::Unit(_) => Ok(self.db.types.unit),
             hir::TyExpr::Hole(_) => Ok(self.fresh_ty_var()),
         }
+    }
+
+    fn expr(&mut self, kind: hir::ExprKind, ty: Ty, span: Span) -> hir::Expr {
+        hir::Expr { id: self.expr_id.next(), kind, ty, span }
+    }
+
+    fn unit(&mut self, span: Span) -> hir::Expr {
+        self.expr(hir::ExprKind::Lit(hir::Lit::Unit), self.db.types.unit, span)
     }
 }
 
