@@ -213,10 +213,6 @@ impl Env {
         self.depth() == 0
     }
 
-    pub fn in_kind(&self, kind: ScopeKind) -> bool {
-        self.scopes.iter().any(|s| s.kind == kind)
-    }
-
     pub fn module_id(&self) -> ModuleId {
         self.module_id
     }

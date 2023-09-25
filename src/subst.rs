@@ -1,7 +1,7 @@
 use crate::{
     db::Db,
     hir::{Expr, ExprKind, Fn, FnKind, FnSig, Let, Pat},
-    span::Span,
+    span::{Span, Spanned},
     ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };
 
@@ -87,7 +87,7 @@ impl<S: SubstTy> Subst<S> for Fn {
 impl<S: SubstTy> Subst<S> for FnSig {
     fn subst(&mut self, s: &mut S) {
         for param in &mut self.params {
-            param.ty = s.subst_ty(param.ty, param.span);
+            param.ty = s.subst_ty(param.ty, param.name.span());
             s.db()[param.id].ty = param.ty;
         }
     }

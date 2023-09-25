@@ -264,36 +264,33 @@ impl<'db> Resolver<'db> {
     }
 
     fn resolve_fn(&mut self, env: &mut Env, fun: &ast::Fn) -> ResolveResult<hir::Fn> {
-        let id = self.define_def(env, Vis::Private, DefKind::Fn(FnInfo::Bare), fun.sig.word)?;
+        let mut sig =
+            env.with_scope(fun.sig.word.name(), ScopeKind::Fn, |env| -> Result<_, ResolveError> {
+                self.resolve_sig(env, &fun.sig)
+            })?;
 
-        for attr in &fun.attrs {
-            if let Some(value) = &attr.value {
-                self.resolve_expr(env, value)?;
-            }
-        }
+        let id = self.define_def(env, Vis::Private, DefKind::Fn(FnInfo::Bare), fun.sig.word)?;
 
         let attrs = self.resolve_attrs(env, &fun.attrs)?;
 
-        let (sig, kind) =
+        let kind =
             env.with_scope(fun.sig.word.name(), ScopeKind::Fn, |env| -> Result<_, ResolveError> {
-                let sig = self.resolve_sig(env, &fun.sig)?;
+                for p in &mut sig.params {
+                    p.id = self.define_local_def(env, DefKind::Variable, p.name);
+                }
 
-                let kind = match &fun.kind {
+                match &fun.kind {
                     ast::FnKind::Bare { body } => {
-                        hir::FnKind::Bare { body: self.resolve_expr(env, body)? }
+                        Ok(hir::FnKind::Bare { body: self.resolve_expr(env, body)? })
                     }
-                    ast::FnKind::Extern => hir::FnKind::Extern,
-                };
-
-                Ok((sig, kind))
+                    ast::FnKind::Extern => Ok(hir::FnKind::Extern),
+                }
             })?;
 
         Ok(hir::Fn { module_id: env.module_id(), id, attrs, sig, kind, span: fun.span })
     }
 
     fn resolve_sig(&mut self, env: &mut Env, sig: &ast::FnSig) -> ResolveResult<hir::FnSig> {
-        assert!(env.in_kind(ScopeKind::Fn), "FnSig must be resolved inside a ScopeKind::Fn");
-
         let ty_params = self.resolve_ty_params(env, &sig.ty_params)?;
 
         let mut params = vec![];
@@ -312,7 +309,7 @@ impl<'db> Resolver<'db> {
                 });
             }
 
-            params.push(hir::FnParam { id, ty_annot, span: p.span, ty: self.db.types.unknown });
+            params.push(hir::FnParam { id, name: p.name, ty_annot, ty: self.db.types.unknown });
         }
 
         let ret = sig

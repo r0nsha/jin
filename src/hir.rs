@@ -129,8 +129,8 @@ pub struct TyParam {
 #[derive(Debug, Clone)]
 pub struct FnParam {
     pub id: DefId,
+    pub name: Word,
     pub ty_annot: TyExpr,
-    pub span: Span,
     pub ty: Ty,
 }
 
