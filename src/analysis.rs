@@ -43,8 +43,8 @@ fn typeck_inner(db: &mut Db, hir: &mut Hir) -> TypeckResult<()> {
     cx.typeck_bodies(hir)?;
     cx.subst(hir);
 
-    passes::analyze(db, hir);
     passes::check_entry(db, hir);
+    passes::check_bodies(db, hir);
 
     Ok(())
 }
