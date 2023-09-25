@@ -33,11 +33,7 @@ use crate::{
 pub type ResolveResult<T> = Result<T, ResolveError>;
 
 pub fn resolve(db: &mut Db, ast: &Ast) -> Result<Hir, Diagnostic> {
-    resolve_inner(db, ast).map_err(|err| err.into_diagnostic(db))
-}
-
-fn resolve_inner(db: &mut Db, ast: &Ast) -> ResolveResult<Hir> {
-    Resolver::new(db, ast).run()
+    Resolver::new(db, ast).run().map_err(|err| err.into_diagnostic(db))
 }
 
 pub struct Resolver<'db> {
