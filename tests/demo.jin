@@ -4,33 +4,17 @@ fn main() = {
 	arithmetic()
 	cmp()
 	variables()
-	nested_fn()
 	polymorphism()
 	named_args()
 	global_vars()
 }
 
 fn int_types() = {
-	fn id(x i8) i8 = x
-	id(126)
-
-	fn promote(x i32) i64 = x as i64
-	promote(55554)
-
-	fn demote_inferred(x int) i8 = x as _
-	demote_inferred(129)
-
-	fn auto_promote(x i16) i32 = x
-	auto_promote(4688)
-
-	fn promote_to_signed(x u16) int = x as int
-	promote_to_signed(555)
-
-	fn demote_to_unsigned_inferred(x int) u8 = x as _
-	demote_to_unsigned_inferred(34)
-
-	fn uint_to_int(x uint) int = x as int
-	uint_to_int(663151)
+	let id i8 = 126
+	let promoted i64 = id + 5555
+	let demoted_inferred i32 = promoted as _
+	let demoted_explicit i16 = (demoted_inferred - 4000) as _
+	let int_to_uint uint = (663151 as int) as _
 }
 
 fn unary() = {
@@ -66,17 +50,9 @@ fn variables() int = {
 	x + y
 }
 
-fn nested_fn() = {
-	fn foo() = {
-		fn bar() = ()
-	}
-
-	foo()
-}
+fn id[a](x a) a = x
 
 fn polymorphism() = {
-	fn id[a](x a) a = x
-
 	# Inferred type arguments
 	id(42)
 	id(true)
@@ -86,16 +62,16 @@ fn polymorphism() = {
 	id[bool](false)
 }
 
+fn add_named(first int, second int) int = first + second
+
 fn named_args() = {
-	fn add(first int, second int) int = first + second
-	add(first: 1, second: 2)
-	add(second: 2, first: 1)
-	add(1, second: 2)
+	add_named(first: 1, second: 2)
+	add_named(second: 2, first: 1)
+	add_named(1, second: 2)
 }
 
 let global_answer = 42
 
 fn global_vars() = {
-	fn my_answer() int = global_answer
-	my_answer()
+	let answer = global_answer
 }

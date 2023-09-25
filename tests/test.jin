@@ -21,10 +21,11 @@ fn println(fmt str) = {
 	print("\n")
 }
 
+fn my_answer() int = answer
+
 fn main() = {
 	println("Hello, World!")
 	hello()
-	fn my_answer() int = answer
 	my_answer()
 	exit(0)
 }
