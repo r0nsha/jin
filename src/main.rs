@@ -109,22 +109,23 @@ fn build(db: &mut Db) {
 
     // Resolve all root symbols into their corresponding id's
     db.time.start("name resolution");
-    let mut hir = match name_resolution::resolve(db, &ast) {
+    let hir = match name_resolution::resolve(db, &ast) {
         Ok(hir) => hir,
         Err(diag) => {
             db.diagnostics.emit(diag);
             return;
         }
     };
+    db.time.stop();
     expect!(db);
 
     // Type check pass
-    db.time.start("analysis");
-    if let Err(diag) = analysis::typeck(db, &mut hir) {
-        db.diagnostics.emit(diag);
-    }
-    db.time.stop();
-    expect!(db);
+    // db.time.start("analysis");
+    // if let Err(diag) = analysis::typeck(db, &mut hir) {
+    //     db.diagnostics.emit(diag);
+    // }
+    // db.time.stop();
+    // expect!(db);
 
     db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))
         .expect("emitting hir failed");
