@@ -11,7 +11,7 @@ use crate::{
     ast::{BinOp, UnOp},
     common::{new_key_type, Word},
     db::{Db, DefId, ModuleId},
-    span::{Span, Spanned},
+    span::Span,
     ty::{Instantiation, Ty, Typed},
 };
 
@@ -114,7 +114,7 @@ pub enum FnKind {
 pub struct FnSig {
     pub ty_params: Vec<TyParam>,
     pub params: Vec<FnParam>,
-    pub ret: Option<TyExpr>,
+    pub ret: Ty,
     pub ty: Ty,
 }
 
@@ -128,7 +128,6 @@ pub struct TyParam {
 pub struct FnParam {
     pub id: DefId,
     pub name: Word,
-    pub ty_annot: TyExpr,
     pub ty: Ty,
 }
 
@@ -136,7 +135,6 @@ pub struct FnParam {
 pub struct Let {
     pub module_id: ModuleId,
     pub pat: Pat,
-    pub ty_annot: Option<TyExpr>,
     pub value: Box<Expr>,
     pub span: Span,
 }
@@ -146,7 +144,6 @@ pub struct ExternLet {
     pub module_id: ModuleId,
     pub id: DefId,
     pub word: Word,
-    pub ty_annot: TyExpr,
     pub span: Span,
 }
 
@@ -257,7 +254,7 @@ pub struct Binary {
 #[derive(Debug, Clone)]
 pub struct Cast {
     pub expr: Box<Expr>,
-    pub target: TyExpr,
+    pub target: Ty,
 }
 
 #[derive(Debug, Clone)]
@@ -269,7 +266,6 @@ pub struct Member {
 #[derive(Debug, Clone)]
 pub struct Name {
     pub id: DefId,
-    pub args: Option<Vec<TyExpr>>,
     pub instantiation: Instantiation,
 }
 
@@ -279,30 +275,6 @@ pub enum Lit {
     Int(u128),
     Bool(bool),
     Unit,
-}
-
-#[derive(Debug, Clone)]
-pub enum TyExpr {
-    RawPtr(Box<TyExpr>, Span),
-    Name(TyName),
-    Unit(Span),
-    Hole(Span),
-}
-
-#[derive(Debug, Clone)]
-pub struct TyName {
-    pub id: DefId,
-    pub args: Vec<TyExpr>,
-    pub span: Span,
-}
-
-impl Spanned for TyExpr {
-    fn span(&self) -> Span {
-        match self {
-            TyExpr::Name(n) => n.span,
-            Self::RawPtr(_, span) | TyExpr::Unit(span) | TyExpr::Hole(span) => *span,
-        }
-    }
 }
 
 new_key_type!(ExprId);

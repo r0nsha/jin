@@ -314,7 +314,7 @@ impl<'db> Sema<'db> {
                         let unify_body_res = self
                             .at(Obligation::return_ty(
                                 body.span,
-                                sig.ret.as_ref().map_or(self.db[id].span, Spanned::span),
+                                fun.sig.ret.as_ref().map_or(self.db[id].span, Spanned::span),
                             ))
                             .eq(ret_ty, body.ty)
                             .or_coerce(self, body.id);
@@ -342,8 +342,7 @@ impl<'db> Sema<'db> {
         let mut defined_params = UstrMap::<Span>::default();
 
         for p in &sig.params {
-            let ty_annot = self.resolve_ty_expr(env, &p.ty_annot, AllowTyHole::No)?;
-            let ty = self.check_ty_expr(&ty_annot)?;
+            let ty = self.check_ty_expr(env, &p.ty_annot, AllowTyHole::No)?;
 
             if let Some(prev_span) = defined_params.insert(p.name.name(), p.name.span()) {
                 return Err(CheckError::MultipleParams {
@@ -353,15 +352,13 @@ impl<'db> Sema<'db> {
                 });
             }
 
-            params.push(hir::FnParam { id: DefId::INVALID, name: p.name, ty_annot, ty });
+            params.push(hir::FnParam { id: DefId::INVALID, name: p.name, ty });
         }
 
-        let (ret, ret_ty) = if let Some(ret) = &sig.ret {
-            let ret = self.resolve_ty_expr(env, ret, AllowTyHole::No)?;
-            let ret_ty = self.check_ty_expr(&ret)?;
-            (Some(ret), ret_ty)
+        let ret = if let Some(ret) = &sig.ret {
+            self.check_ty_expr(env, ret, AllowTyHole::No)?
         } else {
-            (None, self.db.types.unit)
+            self.db.types.unit
         };
 
         let ty = Ty::new(TyKind::Fn(FnTy {
@@ -369,19 +366,17 @@ impl<'db> Sema<'db> {
                 .iter()
                 .map(|p| FnTyParam { name: Some(p.name.name()), ty: p.ty })
                 .collect(),
-            ret: ret_ty,
+            ret,
         }));
 
         Ok(hir::FnSig { ty_params, params, ret, ty })
     }
 
     fn check_let(&mut self, env: &mut Env, let_: &ast::Let) -> CheckResult<hir::Let> {
-        let (ty_annot, ty) = if let Some(ty_annot) = &let_.ty_annot {
-            let ty_annot = self.resolve_ty_expr(env, ty_annot, AllowTyHole::Yes)?;
-            let ty = self.check_ty_expr(&ty_annot)?;
-            (Some(ty_annot), ty)
+        let ty = if let Some(ty_annot) = &let_.ty_annot {
+            self.check_ty_expr(env, ty_annot, AllowTyHole::Yes)?
         } else {
-            (None, self.fresh_ty_var())
+            self.fresh_ty_var()
         };
 
         let pat = self.define_pat(env, Vis::Private, DefKind::Variable, &let_.pat, ty)?;
@@ -402,13 +397,7 @@ impl<'db> Sema<'db> {
             hir::Pat::Discard(_) => (),
         }
 
-        Ok(hir::Let {
-            module_id: env.module_id(),
-            pat,
-            ty_annot,
-            value: Box::new(value),
-            span: let_.span,
-        })
+        Ok(hir::Let { module_id: env.module_id(), pat, value: Box::new(value), span: let_.span })
     }
 
     fn check_extern_let(
@@ -416,18 +405,11 @@ impl<'db> Sema<'db> {
         env: &mut Env,
         let_: &ast::ExternLet,
     ) -> CheckResult<hir::ExternLet> {
-        let ty_annot = self.resolve_ty_expr(env, &let_.ty_annot, AllowTyHole::No)?;
-        let ty = self.check_ty_expr(&ty_annot)?;
+        let ty = self.check_ty_expr(env, &let_.ty_annot, AllowTyHole::No)?;
         self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::ExternLet)?;
         let id = self.define_def(env, Vis::Private, DefKind::ExternGlobal, let_.word, ty)?;
 
-        Ok(hir::ExternLet {
-            module_id: env.module_id(),
-            id,
-            word: let_.word,
-            ty_annot,
-            span: let_.span,
-        })
+        Ok(hir::ExternLet { module_id: env.module_id(), id, word: let_.word, span: let_.span })
     }
 
     fn check_attrs(
@@ -749,12 +731,11 @@ impl<'db> Sema<'db> {
             }
             ast::Expr::Cast { expr, ty, span } => {
                 let expr = self.check_expr(env, expr, None)?;
-                let target = self.resolve_ty_expr(env, ty, AllowTyHole::Yes)?;
-                let ty = self.check_ty_expr(&target)?;
+                let target = self.check_ty_expr(env, ty, AllowTyHole::Yes)?;
 
                 Ok(self.expr(
                     hir::ExprKind::Cast(hir::Cast { expr: Box::new(expr), target }),
-                    ty,
+                    target,
                     *span,
                 ))
             }
@@ -784,28 +765,22 @@ impl<'db> Sema<'db> {
                 let ty_params = def_ty.collect_params();
 
                 let args = if let Some(args) = args {
-                    let mut new_args = vec![];
+                    let args: Vec<Ty> = args
+                        .iter()
+                        .map(|arg| self.check_ty_expr(env, arg, AllowTyHole::Yes))
+                        .try_collect()?;
 
-                    for arg in args {
-                        new_args.push(self.resolve_ty_expr(env, arg, AllowTyHole::Yes)?);
-                    }
-
-                    Some(new_args)
+                    Some(args)
                 } else {
                     None
                 };
 
                 let instantiation: Instantiation = match &args {
-                    Some(args) if args.len() == ty_params.len() => {
-                        let arg_tys: Vec<Ty> =
-                            args.iter().map(|arg| self.check_ty_expr(arg)).try_collect()?;
-
-                        ty_params
-                            .into_iter()
-                            .zip(arg_tys)
-                            .map(|(param, arg)| (param.var, arg))
-                            .collect()
-                    }
+                    Some(args) if args.len() == ty_params.len() => ty_params
+                        .into_iter()
+                        .zip(args)
+                        .map(|(param, arg)| (param.var, *arg))
+                        .collect(),
                     Some(args) => {
                         return Err(CheckError::TyArgMismatch {
                             expected: ty_params.len(),
@@ -821,7 +796,7 @@ impl<'db> Sema<'db> {
 
                 let ty = instantiate(def_ty, instantiation.clone());
 
-                Ok(self.expr(hir::ExprKind::Name(hir::Name { id, args, instantiation }), ty, *span))
+                Ok(self.expr(hir::ExprKind::Name(hir::Name { id, instantiation }), ty, *span))
             }
             ast::Expr::Group { expr, span } => {
                 let mut expr = self.check_expr(env, expr, expected_ty)?;
@@ -875,54 +850,42 @@ impl<'db> Sema<'db> {
         Ok(new_ty_params)
     }
 
-    fn resolve_ty_expr(
+    fn check_ty_expr(
         &mut self,
         env: &Env,
         ty: &ast::TyExpr,
         allow_hole: AllowTyHole,
-    ) -> CheckResult<hir::TyExpr> {
+    ) -> CheckResult<Ty> {
         match ty {
-            ast::TyExpr::RawPtr(pointee, span) => {
-                let pointee = self.resolve_ty_expr(env, pointee, allow_hole)?;
-                Ok(hir::TyExpr::RawPtr(Box::new(pointee), *span))
+            ast::TyExpr::RawPtr(pointee, _) => {
+                let pointee = self.check_ty_expr(env, pointee, allow_hole)?;
+                Ok(Ty::new(TyKind::RawPtr(pointee)))
             }
             ast::TyExpr::Name(name) => {
                 let id = self.lookup_def(env, name.word)?;
 
-                let args = name
-                    .args
-                    .iter()
-                    .map(|a| self.resolve_ty_expr(env, a, AllowTyHole::Yes))
-                    .try_collect()?;
+                // TODO: use args when we implement polymorphic types
+                // let args: Vec<Ty> = name
+                //     .args
+                //     .iter()
+                //     .map(|a| self.check_ty_expr(env, a, allow_hole))
+                //     .try_collect()?;
 
-                Ok(hir::TyExpr::Name(hir::TyName { id, args, span: name.span }))
-            }
-            ast::TyExpr::Hole(span) => {
-                if allow_hole.into() {
-                    Ok(hir::TyExpr::Hole(*span))
-                } else {
-                    Err(CheckError::InvalidInferTy(*span))
-                }
-            }
-            ast::TyExpr::Unit(span) => Ok(hir::TyExpr::Unit(*span)),
-        }
-    }
-
-    fn check_ty_expr(&mut self, ty: &hir::TyExpr) -> CheckResult<Ty> {
-        match ty {
-            hir::TyExpr::RawPtr(pointee, _) => {
-                Ok(Ty::new(TyKind::RawPtr(self.check_ty_expr(pointee)?)))
-            }
-            hir::TyExpr::Name(name) => {
-                let def = &self.db[name.id];
+                let def = &self.db[id];
 
                 match def.kind.as_ref() {
                     DefKind::Ty(ty) => Ok(*ty),
                     _ => Err(CheckError::ExpectedTy { ty: def.ty, span: name.span }),
                 }
             }
-            hir::TyExpr::Unit(_) => Ok(self.db.types.unit),
-            hir::TyExpr::Hole(_) => Ok(self.fresh_ty_var()),
+            ast::TyExpr::Unit(_) => Ok(self.db.types.unit),
+            ast::TyExpr::Hole(span) => {
+                if allow_hole.into() {
+                    Ok(self.fresh_ty_var())
+                } else {
+                    Err(CheckError::InvalidInferTy(*span))
+                }
+            }
         }
     }
 
