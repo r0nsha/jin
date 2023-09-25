@@ -14,17 +14,18 @@ use rustc_hash::FxHashMap;
 use ustr::{Ustr, UstrMap};
 
 use crate::{
-    ast::{self, Ast},
+    ast::{self, Ast, AttrKind},
     common::{Counter, Word},
-    db::{Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
+    db::{Db, DefId, DefInfo, DefKind, ExternLib, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     diagnostics::Diagnostic,
     hir,
-    hir::{ExprId, Hir},
+    hir::{const_eval::Const, ExprId, Hir},
     macros::create_bool_enum,
     name_resolution::{
         env::{BuiltinTys, Env, GlobalScope, ScopeKind},
         error::ResolveError,
         normalize::NormalizeTy,
+        unify::Obligation,
     },
     span::{Span, Spanned},
     ty::{FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty, TyKind, TyVar},
@@ -283,7 +284,14 @@ impl<'db> Resolver<'db> {
             sig.ty,
         )?;
 
-        let attrs = self.resolve_attrs(env, &fun.attrs)?;
+        self.resolve_attrs(
+            env,
+            &fun.attrs,
+            match &fun.kind {
+                ast::FnKind::Bare { .. } => AttrsPlacement::Fn,
+                ast::FnKind::Extern => AttrsPlacement::ExternFn,
+            },
+        )?;
 
         let kind =
             env.with_scope(fun.sig.word.name(), ScopeKind::Fn, |env| -> Result<_, ResolveError> {
@@ -299,7 +307,7 @@ impl<'db> Resolver<'db> {
                 }
             })?;
 
-        Ok(hir::Fn { module_id: env.module_id(), id, attrs, sig, kind, span: fun.span })
+        Ok(hir::Fn { module_id: env.module_id(), id, attrs: vec![], sig, kind, span: fun.span })
     }
 
     fn resolve_sig(&mut self, env: &mut Env, sig: &ast::FnSig) -> ResolveResult<hir::FnSig> {
@@ -356,13 +364,13 @@ impl<'db> Resolver<'db> {
         };
 
         let pat = self.define_pat(env, Vis::Private, DefKind::Variable, &let_.pat, ty)?;
-        let attrs = self.resolve_attrs(env, &let_.attrs)?;
+        self.resolve_attrs(env, &let_.attrs, AttrsPlacement::Let)?;
 
         let value = self.resolve_expr(env, &let_.value)?;
 
         Ok(hir::Let {
             module_id: env.module_id(),
-            attrs,
+            attrs: vec![],
             pat,
             ty_annot,
             value: Box::new(value),
@@ -377,30 +385,68 @@ impl<'db> Resolver<'db> {
     ) -> ResolveResult<hir::ExternLet> {
         let ty_annot = self.resolve_ty_expr(env, &let_.ty_annot, AllowTyHole::No)?;
         let ty = self.check_ty_expr(&ty_annot)?;
-        let attrs = self.resolve_attrs(env, &let_.attrs)?;
+        self.resolve_attrs(env, &let_.attrs, AttrsPlacement::ExternLet)?;
         let id = self.define_def(env, Vis::Private, DefKind::ExternGlobal, let_.word, ty)?;
 
         Ok(hir::ExternLet {
             module_id: env.module_id(),
             id,
-            attrs,
+            attrs: vec![],
             word: let_.word,
             ty_annot,
             span: let_.span,
         })
     }
 
-    fn resolve_attrs(&mut self, env: &mut Env, attrs: &ast::Attrs) -> ResolveResult<hir::Attrs> {
-        attrs
-            .iter()
-            .map(|attr| {
-                Ok(hir::Attr {
-                    kind: attr.kind,
-                    value: attr.value.as_ref().map(|v| self.resolve_expr(env, v)).transpose()?,
-                    span: attr.span,
-                })
-            })
-            .try_collect()
+    fn resolve_attrs(
+        &mut self,
+        env: &mut Env,
+        attrs: &ast::Attrs,
+        placement: AttrsPlacement,
+    ) -> ResolveResult<()> {
+        for attr in attrs {
+            let (value, value_ty, value_span) = if let Some(value) = &attr.value {
+                let value = self.resolve_expr(&mut Env::new(env.module_id()), value)?;
+
+                let const_ =
+                    self.db.const_storage.expr(value.id).cloned().ok_or(
+                        ResolveError::NonConstAttrValue { ty: value.ty, span: value.span },
+                    )?;
+
+                (const_, value.ty, value.span)
+            } else {
+                (Const::Bool(true), self.db.types.bool, attr.span)
+            };
+
+            match attr.kind {
+                AttrKind::Link => {
+                    self.at(Obligation::obvious(value_span)).eq(self.db.types.str, value_ty)?;
+
+                    let lib = {
+                        let path = *value.as_str().unwrap();
+                        let sources = &self.db.sources.borrow();
+                        let relative_to =
+                            sources[self.db[env.module_id()].source_id].path().parent().unwrap();
+
+                        ExternLib::try_from_str(&path, relative_to)
+                            .ok_or(ResolveError::PathNotFound { path, span: value_span })?
+                    };
+
+                    self.db.extern_libs.insert(lib);
+                }
+            }
+        }
+
+        for attr in attrs {
+            match (attr.kind, placement) {
+                (AttrKind::Link, AttrsPlacement::ExternFn | AttrsPlacement::ExternLet) => (),
+                (kind, _) => {
+                    return Err(ResolveError::InvalidAttrPlacement { kind, span: attr.span })
+                }
+            }
+        }
+
+        Ok(())
     }
 
     fn resolve_expr(&mut self, env: &mut Env, expr: &ast::Expr) -> ResolveResult<hir::Expr> {
@@ -646,3 +692,11 @@ enum ItemResult {
 }
 
 create_bool_enum!(AllowTyHole);
+
+#[derive(Debug, Clone, Copy)]
+enum AttrsPlacement {
+    Fn,
+    ExternFn,
+    Let,
+    ExternLet,
+}
