@@ -41,7 +41,7 @@ impl<'db> CheckEntry<'db> {
             );
 
             self.db.diagnostics.emit(
-                Diagnostic::error("analysis::no_entry_point")
+                Diagnostic::error("check::no_entry_point")
                     .with_message("`main` function not found")
                     .with_label(
                         Label::primary(source_end_span)
@@ -66,7 +66,7 @@ impl<'db> CheckEntry<'db> {
                         let tp_span = tp[0].span.merge(tp.last().unwrap().span);
 
                         self.db.diagnostics.emit(
-                            Diagnostic::error("analysis::entry_point_with_type_params")
+                            Diagnostic::error("check::entry_point_with_type_params")
                                 .with_message("type parameters in `main` function are not allowed")
                                 .with_label(Label::primary(tp_span).with_message("not allowed")),
                         );
@@ -77,7 +77,7 @@ impl<'db> CheckEntry<'db> {
             }
         } else {
             self.db.diagnostics.emit(
-                Diagnostic::error("analysis::wrong_entry_point_type")
+                Diagnostic::error("check::wrong_entry_point_type")
                     .with_message("`main` function's type must be `fn() ()`")
                     .with_label(
                         Label::primary(main_fun.span)

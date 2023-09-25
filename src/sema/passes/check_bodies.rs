@@ -88,12 +88,12 @@ impl AnalysisError {
                 let source = source.display(db);
                 let target = target.display(db);
 
-                Diagnostic::error("analysis::invalid_cast")
+                Diagnostic::error("check::invalid_cast")
                     .with_message(format!("cannot cast `{source}` to `{target}`"))
                     .with_label(Label::primary(span).with_message("invalid cast"))
             }
             Self::IntOutOfRange { value, ty, span } => {
-                Diagnostic::error("analysis::int_out_of_range")
+                Diagnostic::error("check::int_out_of_range")
                     .with_message(format!(
                         "integer {} is of range of its type `{}`",
                         value,

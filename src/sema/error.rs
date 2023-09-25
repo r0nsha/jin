@@ -3,7 +3,7 @@ use ustr::Ustr;
 use crate::{
     ast::AttrKind,
     common::Word,
-    db::{Db, DefId},
+    db::Db,
     diagnostics::{Diagnostic, Label},
     hir::const_eval::ConstEvalError,
     sema::unify::{Obligation, ObligationKind},
@@ -28,7 +28,7 @@ pub enum CheckError {
     ExpectedTy { ty: Ty, span: Span },
     CannotInfer { ty: Ty, span: Span },
     InvalidReturn(Span),
-    CyclicGlobalVars { source: DefId, cyclic: DefId, cause_span: Span },
+    CyclicGlobalVar { span: Span },
     ConstEval(ConstEvalError, Span),
     InvalidMember { ty: Ty, member: Word },
     NonConstAttrValue { ty: Ty, span: Span },
@@ -162,21 +162,9 @@ impl CheckError {
             Self::InvalidReturn(span) => Diagnostic::error("check::invalid_return")
                 .with_message("cannot return outside of function scope")
                 .with_label(Label::primary(span)),
-            Self::CyclicGlobalVars { source, cyclic, cause_span } => {
-                Diagnostic::error("check::cyclic_global_vars")
-                    .with_message(format!(
-                        "cycle detected while type-checking `{}`, caused by `{}`",
-                        db[source].name, db[cyclic].name
-                    ))
-                    .with_label(Label::primary(cause_span).with_message(format!(
-                        "`{}` is referenced by `{}` here",
-                        db[source].name, db[cyclic].name
-                    )))
-                    .with_label(
-                        Label::secondary(db[source].span)
-                            .with_message(format!("`{}` is defined here", db[source].name)),
-                    )
-            }
+            Self::CyclicGlobalVar { span } => Diagnostic::error("check::cyclic_global_vars")
+                .with_message("cycle detected while checking definition")
+                .with_label(Label::primary(span)),
             Self::ConstEval(err, span) => Diagnostic::error("check::const_eval_error")
                 .with_message("constant evaluation failed")
                 .with_label(Label::primary(span).with_message(match err {
