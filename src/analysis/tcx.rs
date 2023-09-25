@@ -3,9 +3,9 @@ use std::cell::RefCell;
 use ena::unify::InPlaceUnificationTable;
 
 use crate::{
+    analysis::normalize::NormalizeTy,
     db::{Db, DefId, ModuleId},
     ty::{InferTy, IntVar, Ty, TyKind, TyVar},
-    typeck::normalize::NormalizeTy,
 };
 
 #[derive(Debug)]

@@ -1,9 +1,9 @@
 use ena::unify::{EqUnifyValue, UnifyKey};
 
 use crate::{
+    analysis::{error::TypeckError, normalize::NormalizeTy, tcx::TyCx},
     span::Span,
     ty::{InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
-    typeck::{error::TypeckError, normalize::NormalizeTy, tcx::TyCx},
 };
 
 impl<'db> TyCx<'db> {

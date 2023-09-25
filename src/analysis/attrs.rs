@@ -1,13 +1,13 @@
 use crate::{
-    ast::AttrKind,
-    db::{ExternLib, ModuleId},
-    hir::{const_eval::Const, Attr},
-    typeck::{
+    analysis::{
         error::TypeckError,
         tcx::{Env, TyCx},
         unify::Obligation,
         TypeckResult,
     },
+    ast::AttrKind,
+    db::{ExternLib, ModuleId},
+    hir::{const_eval::Const, Attr},
 };
 
 impl<'db> TyCx<'db> {

@@ -1,16 +1,16 @@
 use rustc_hash::FxHashMap;
 
 use crate::{
+    analysis::{
+        error::TypeckError,
+        normalize::NormalizeTy,
+        tcx::{TyCx, TyStorage},
+    },
     db::Db,
     hir::Hir,
     span::Span,
     subst::{Subst, SubstTy},
     ty::{fold::TyFolder, InferTy, Ty, TyKind},
-    typeck::{
-        error::TypeckError,
-        normalize::NormalizeTy,
-        tcx::{TyCx, TyStorage},
-    },
 };
 
 impl<'db> TyCx<'db> {

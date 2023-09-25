@@ -16,6 +16,7 @@
 )]
 #![feature(iterator_try_collect)]
 
+mod analysis;
 mod ast;
 mod common;
 mod db;
@@ -30,7 +31,6 @@ mod subst;
 mod sym;
 mod tir;
 mod ty;
-mod typeck;
 
 use std::{fs, path::PathBuf};
 
@@ -119,8 +119,8 @@ fn build(db: &mut Db) {
     expect!(db);
 
     // Type check pass
-    db.time.start("type check");
-    if let Err(diag) = typeck::typeck(db, &mut hir) {
+    db.time.start("analysis");
+    if let Err(diag) = analysis::typeck(db, &mut hir) {
         db.diagnostics.emit(diag);
     }
     db.time.stop();

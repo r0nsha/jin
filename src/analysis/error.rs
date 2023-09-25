@@ -1,6 +1,7 @@
 use ustr::Ustr;
 
 use crate::{
+    analysis::unify::{Obligation, ObligationKind},
     ast::AttrKind,
     common::Word,
     db::{Db, DefId},
@@ -8,7 +9,6 @@ use crate::{
     hir::const_eval::ConstEvalError,
     span::{Span, Spanned},
     ty::Ty,
-    typeck::unify::{Obligation, ObligationKind},
 };
 
 #[derive(Debug)]
