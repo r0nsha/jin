@@ -24,7 +24,7 @@ use crate::{
     sema::{
         coerce::CoerceExt,
         env::{BuiltinTys, Env, GlobalScope, ScopeKind},
-        error::ResolveError,
+        error::CheckError,
         instantiate::instantiate,
         normalize::NormalizeTy,
         unify::Obligation,
@@ -34,13 +34,13 @@ use crate::{
     ty::{FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty, TyKind, TyVar},
 };
 
-pub type ResolveResult<T> = Result<T, ResolveError>;
+pub type CheckResult<T> = Result<T, CheckError>;
 
-pub fn resolve(db: &mut Db, ast: &Ast) -> Result<Hir, Diagnostic> {
-    Resolver::new(db, ast).run().map_err(|err| err.into_diagnostic(db))
+pub fn check(db: &mut Db, ast: &Ast) -> Result<Hir, Diagnostic> {
+    Sema::new(db, ast).run().map_err(|err| err.into_diagnostic(db))
 }
 
-pub struct Resolver<'db> {
+pub struct Sema<'db> {
     db: &'db mut Db,
     ast: &'db Ast,
     hir: Hir,
@@ -73,7 +73,7 @@ impl TyStorage {
     }
 }
 
-impl<'db> Resolver<'db> {
+impl<'db> Sema<'db> {
     fn new(db: &'db mut Db, ast: &'db Ast) -> Self {
         Self {
             builtin_tys: BuiltinTys::new(db),
@@ -87,7 +87,7 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn run(mut self) -> ResolveResult<Hir> {
+    fn run(mut self) -> CheckResult<Hir> {
         for module in &self.ast.modules {
             let mut env = Env::new(module.id.expect("ModuleId to be resolved"));
 
@@ -139,7 +139,7 @@ impl<'db> Resolver<'db> {
         &mut self,
         module_id: ModuleId,
         name: Ustr,
-    ) -> ResolveResult<Option<DefId>> {
+    ) -> CheckResult<Option<DefId>> {
         if let Some(item_id) = self.global_scope.get_item(module_id, name) {
             let item = &self.ast.modules[module_id].items[item_id];
             self.resolve_global_item(&mut Env::new(module_id), item_id, item)?;
@@ -157,7 +157,7 @@ impl<'db> Resolver<'db> {
         kind: DefKind,
         name: Word,
         ty: Ty,
-    ) -> ResolveResult<DefId> {
+    ) -> CheckResult<DefId> {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].name.clone().child(name.name());
 
@@ -165,7 +165,7 @@ impl<'db> Resolver<'db> {
 
         if let Some(prev_id) = self.global_scope.insert_def(module_id, name.name(), id) {
             let def = &self.db[prev_id];
-            return Err(ResolveError::MultipleItems {
+            return Err(CheckError::MultipleItems {
                 name: def.qpath.name(),
                 prev_span: def.span,
                 dup_span: name.span(),
@@ -197,7 +197,7 @@ impl<'db> Resolver<'db> {
         kind: DefKind,
         name: Word,
         ty: Ty,
-    ) -> ResolveResult<DefId> {
+    ) -> CheckResult<DefId> {
         if env.in_global_scope() {
             self.define_global_def(env.module_id(), vis, kind, name, ty)
         } else {
@@ -212,7 +212,7 @@ impl<'db> Resolver<'db> {
         kind: DefKind,
         pat: &ast::Pat,
         ty: Ty,
-    ) -> ResolveResult<hir::Pat> {
+    ) -> CheckResult<hir::Pat> {
         match pat {
             ast::Pat::Name(name) => Ok(hir::Pat::Name(hir::NamePat {
                 id: self.define_def(env, vis, kind, name.word, ty)?,
@@ -222,7 +222,7 @@ impl<'db> Resolver<'db> {
         }
     }
 
-    fn lookup_def(&mut self, env: &Env, word: Word) -> ResolveResult<DefId> {
+    fn lookup_def(&mut self, env: &Env, word: Word) -> CheckResult<DefId> {
         let module_id = env.module_id();
         let name = word.name();
 
@@ -235,7 +235,7 @@ impl<'db> Resolver<'db> {
         } else if let Some(id) = self.builtin_tys.get(name) {
             Ok(id)
         } else {
-            Err(ResolveError::NameNotFound(word))
+            Err(CheckError::NameNotFound(word))
         }
     }
 
@@ -244,14 +244,14 @@ impl<'db> Resolver<'db> {
         env: &mut Env,
         item_id: ast::ItemId,
         item: &ast::Item,
-    ) -> ResolveResult<()> {
+    ) -> CheckResult<()> {
         self.item_statuses.insert(item_id, ItemStatus::InProgress);
         self.resolve_item(env, item)?;
         self.item_statuses.insert(item_id, ItemStatus::Complete);
         Ok(())
     }
 
-    fn resolve_item(&mut self, env: &mut Env, item: &ast::Item) -> ResolveResult<()> {
+    fn resolve_item(&mut self, env: &mut Env, item: &ast::Item) -> CheckResult<()> {
         match item {
             ast::Item::Fn(fun) => {
                 let f = self.resolve_fn(env, fun)?;
@@ -270,11 +270,11 @@ impl<'db> Resolver<'db> {
         Ok(())
     }
 
-    fn resolve_fn(&mut self, env: &mut Env, fun: &ast::Fn) -> ResolveResult<hir::Fn> {
+    fn resolve_fn(&mut self, env: &mut Env, fun: &ast::Fn) -> CheckResult<hir::Fn> {
         let mut sig = env.with_scope(
             fun.sig.word.name(),
             ScopeKind::FnSig,
-            |env| -> Result<_, ResolveError> { self.resolve_sig(env, &fun.sig) },
+            |env| -> Result<_, CheckError> { self.resolve_sig(env, &fun.sig) },
         )?;
 
         let id = self.define_def(
@@ -289,7 +289,7 @@ impl<'db> Resolver<'db> {
         )?;
 
         self.resolve_attrs(
-            env,
+            env.module_id(),
             &fun.attrs,
             match &fun.kind {
                 ast::FnKind::Bare { .. } => AttrsPlacement::Fn,
@@ -300,7 +300,7 @@ impl<'db> Resolver<'db> {
         let kind = env.with_scope(
             fun.sig.word.name(),
             ScopeKind::Fn(id),
-            |env| -> Result<_, ResolveError> {
+            |env| -> Result<_, CheckError> {
                 for p in &mut sig.params {
                     p.id = self.define_local_def(env, DefKind::Variable, p.name, p.ty);
                 }
@@ -335,7 +335,7 @@ impl<'db> Resolver<'db> {
         Ok(hir::Fn { module_id: env.module_id(), id, attrs: vec![], sig, kind, span: fun.span })
     }
 
-    fn resolve_sig(&mut self, env: &mut Env, sig: &ast::FnSig) -> ResolveResult<hir::FnSig> {
+    fn resolve_sig(&mut self, env: &mut Env, sig: &ast::FnSig) -> CheckResult<hir::FnSig> {
         let ty_params = self.resolve_ty_params(env, &sig.ty_params)?;
 
         let mut params = vec![];
@@ -346,7 +346,7 @@ impl<'db> Resolver<'db> {
             let ty = self.check_ty_expr(&ty_annot)?;
 
             if let Some(prev_span) = defined_params.insert(p.name.name(), p.name.span()) {
-                return Err(ResolveError::MultipleParams {
+                return Err(CheckError::MultipleParams {
                     name: p.name.name(),
                     prev_span,
                     dup_span: p.name.span(),
@@ -375,7 +375,7 @@ impl<'db> Resolver<'db> {
         Ok(hir::FnSig { ty_params, params, ret, ty })
     }
 
-    fn resolve_let(&mut self, env: &mut Env, let_: &ast::Let) -> ResolveResult<hir::Let> {
+    fn resolve_let(&mut self, env: &mut Env, let_: &ast::Let) -> CheckResult<hir::Let> {
         let (ty_annot, ty) = if let Some(ty_annot) = &let_.ty_annot {
             let ty_annot = self.resolve_ty_expr(env, ty_annot, AllowTyHole::Yes)?;
             let ty = self.check_ty_expr(&ty_annot)?;
@@ -385,7 +385,7 @@ impl<'db> Resolver<'db> {
         };
 
         let pat = self.define_pat(env, Vis::Private, DefKind::Variable, &let_.pat, ty)?;
-        self.resolve_attrs(env, &let_.attrs, AttrsPlacement::Let)?;
+        self.resolve_attrs(env.module_id(), &let_.attrs, AttrsPlacement::Let)?;
 
         let value = self.resolve_expr(env, &let_.value, Some(ty))?;
 
@@ -416,10 +416,10 @@ impl<'db> Resolver<'db> {
         &mut self,
         env: &mut Env,
         let_: &ast::ExternLet,
-    ) -> ResolveResult<hir::ExternLet> {
+    ) -> CheckResult<hir::ExternLet> {
         let ty_annot = self.resolve_ty_expr(env, &let_.ty_annot, AllowTyHole::No)?;
         let ty = self.check_ty_expr(&ty_annot)?;
-        self.resolve_attrs(env, &let_.attrs, AttrsPlacement::ExternLet)?;
+        self.resolve_attrs(env.module_id(), &let_.attrs, AttrsPlacement::ExternLet)?;
         let id = self.define_def(env, Vis::Private, DefKind::ExternGlobal, let_.word, ty)?;
 
         Ok(hir::ExternLet {
@@ -434,23 +434,24 @@ impl<'db> Resolver<'db> {
 
     fn resolve_attrs(
         &mut self,
-        env: &mut Env,
+        module_id: ModuleId,
         attrs: &ast::Attrs,
         placement: AttrsPlacement,
-    ) -> ResolveResult<()> {
+    ) -> CheckResult<()> {
         for attr in attrs {
-            let (value, value_ty, value_span) = if let Some(value) = &attr.value {
-                let value = self.resolve_expr(&mut Env::new(env.module_id()), value, None)?;
+            let (value, value_ty, value_span) =
+                if let Some(value) = &attr.value {
+                    let value = self.resolve_expr(&mut Env::new(module_id), value, None)?;
 
-                let const_ =
-                    self.db.const_storage.expr(value.id).cloned().ok_or(
-                        ResolveError::NonConstAttrValue { ty: value.ty, span: value.span },
-                    )?;
+                    let const_ =
+                        self.db.const_storage.expr(value.id).cloned().ok_or(
+                            CheckError::NonConstAttrValue { ty: value.ty, span: value.span },
+                        )?;
 
-                (const_, value.ty, value.span)
-            } else {
-                (Const::Bool(true), self.db.types.bool, attr.span)
-            };
+                    (const_, value.ty, value.span)
+                } else {
+                    (Const::Bool(true), self.db.types.bool, attr.span)
+                };
 
             match attr.kind {
                 AttrKind::Link => {
@@ -460,10 +461,10 @@ impl<'db> Resolver<'db> {
                         let path = *value.as_str().unwrap();
                         let sources = &self.db.sources.borrow();
                         let relative_to =
-                            sources[self.db[env.module_id()].source_id].path().parent().unwrap();
+                            sources[self.db[module_id].source_id].path().parent().unwrap();
 
                         ExternLib::try_from_str(&path, relative_to)
-                            .ok_or(ResolveError::PathNotFound { path, span: value_span })?
+                            .ok_or(CheckError::PathNotFound { path, span: value_span })?
                     };
 
                     self.db.extern_libs.insert(lib);
@@ -475,7 +476,7 @@ impl<'db> Resolver<'db> {
             match (attr.kind, placement) {
                 (AttrKind::Link, AttrsPlacement::ExternFn | AttrsPlacement::ExternLet) => (),
                 (kind, _) => {
-                    return Err(ResolveError::InvalidAttrPlacement { kind, span: attr.span })
+                    return Err(CheckError::InvalidAttrPlacement { kind, span: attr.span })
                 }
             }
         }
@@ -488,8 +489,8 @@ impl<'db> Resolver<'db> {
         env: &mut Env,
         expr: &ast::Expr,
         expected_ty: Option<Ty>,
-    ) -> ResolveResult<hir::Expr> {
-        let expr: ResolveResult<hir::Expr> = match expr {
+    ) -> CheckResult<hir::Expr> {
+        let expr: CheckResult<hir::Expr> = match expr {
             ast::Expr::Item(item) => {
                 let span = item.span();
 
@@ -524,7 +525,7 @@ impl<'db> Resolver<'db> {
                         *span,
                     ))
                 } else {
-                    return Err(ResolveError::InvalidReturn(*span));
+                    return Err(CheckError::InvalidReturn(*span));
                 }
             }
             ast::Expr::If { cond, then, otherwise, span } => {
@@ -616,7 +617,7 @@ impl<'db> Resolver<'db> {
                     }
 
                     if new_args.len() != fun_ty.params.len() {
-                        return Err(ResolveError::ArgMismatch {
+                        return Err(CheckError::ArgMismatch {
                             expected: fun_ty.params.len(),
                             found: new_args.len(),
                             span: *span,
@@ -648,14 +649,14 @@ impl<'db> Resolver<'db> {
                                 .find_map(
                                     |(i, p)| if p.name == Some(name) { Some(i) } else { None },
                                 )
-                                .ok_or(ResolveError::NamedParamNotFound { word: *arg_name })?;
+                                .ok_or(CheckError::NamedParamNotFound { word: *arg_name })?;
 
                             // Report named arguments that are passed twice
                             if let Some(passed_arg) = already_passed_args.insert(
                                 arg_name.name(),
                                 PassedArg { is_named: true, span: arg_name.span() },
                             ) {
-                                return Err(ResolveError::MultipleNamedArgs {
+                                return Err(CheckError::MultipleNamedArgs {
                                     name: arg_name.name(),
                                     prev: passed_arg.span,
                                     dup: arg_name.span(),
@@ -683,7 +684,7 @@ impl<'db> Resolver<'db> {
                         *span,
                     ))
                 } else {
-                    return Err(ResolveError::UncallableTy {
+                    return Err(CheckError::UncallableTy {
                         ty: self.normalize(callee.ty),
                         span: callee.span,
                     });
@@ -775,7 +776,7 @@ impl<'db> Resolver<'db> {
                         Ty::new(TyKind::RawPtr(self.db.types.u8))
                     }
                     TyKind::Str if member.name() == sym::LEN => self.db.types.uint,
-                    _ => return Err(ResolveError::InvalidMember { ty, member: *member }),
+                    _ => return Err(CheckError::InvalidMember { ty, member: *member }),
                 };
 
                 Ok(self.expr(
@@ -814,7 +815,7 @@ impl<'db> Resolver<'db> {
                             .collect()
                     }
                     Some(args) => {
-                        return Err(ResolveError::TyArgMismatch {
+                        return Err(CheckError::TyArgMismatch {
                             expected: ty_params.len(),
                             found: args.len(),
                             span: *span,
@@ -849,10 +850,7 @@ impl<'db> Resolver<'db> {
 
         let expr = expr?;
 
-        self.db
-            .const_storage
-            .eval_expr(&expr)
-            .map_err(|e| ResolveError::ConstEval(e, expr.span))?;
+        self.db.const_storage.eval_expr(&expr).map_err(|e| CheckError::ConstEval(e, expr.span))?;
 
         Ok(expr)
     }
@@ -861,7 +859,7 @@ impl<'db> Resolver<'db> {
         &mut self,
         env: &mut Env,
         ty_params: &[ast::TyParam],
-    ) -> ResolveResult<Vec<hir::TyParam>> {
+    ) -> CheckResult<Vec<hir::TyParam>> {
         let mut new_ty_params = vec![];
         let mut defined_ty_params = UstrMap::<Span>::default();
 
@@ -872,7 +870,7 @@ impl<'db> Resolver<'db> {
             let id = self.define_local_def(env, DefKind::Ty(ty), tp.name, self.db.types.typ);
 
             if let Some(prev_span) = defined_ty_params.insert(tp.name.name(), tp.name.span()) {
-                return Err(ResolveError::MultipleTyParams {
+                return Err(CheckError::MultipleTyParams {
                     name: tp.name.name(),
                     prev_span,
                     dup_span: tp.name.span(),
@@ -890,7 +888,7 @@ impl<'db> Resolver<'db> {
         env: &Env,
         ty: &ast::TyExpr,
         allow_hole: AllowTyHole,
-    ) -> ResolveResult<hir::TyExpr> {
+    ) -> CheckResult<hir::TyExpr> {
         match ty {
             ast::TyExpr::RawPtr(pointee, span) => {
                 let pointee = self.resolve_ty_expr(env, pointee, allow_hole)?;
@@ -911,7 +909,7 @@ impl<'db> Resolver<'db> {
                 if allow_hole.into() {
                     Ok(hir::TyExpr::Hole(*span))
                 } else {
-                    Err(ResolveError::InvalidInferTy(*span))
+                    Err(CheckError::InvalidInferTy(*span))
                 }
             }
             ast::TyExpr::Unit(span) => Ok(hir::TyExpr::Unit(*span)),
@@ -926,7 +924,7 @@ impl<'db> Resolver<'db> {
         self.expr(hir::ExprKind::Lit(hir::Lit::Unit), self.db.types.unit, span)
     }
 
-    fn check_ty_expr(&mut self, ty: &hir::TyExpr) -> ResolveResult<Ty> {
+    fn check_ty_expr(&mut self, ty: &hir::TyExpr) -> CheckResult<Ty> {
         match ty {
             hir::TyExpr::RawPtr(pointee, _) => {
                 Ok(Ty::new(TyKind::RawPtr(self.check_ty_expr(pointee)?)))
@@ -936,7 +934,7 @@ impl<'db> Resolver<'db> {
 
                 match def.kind.as_ref() {
                     DefKind::Ty(ty) => Ok(*ty),
-                    _ => Err(ResolveError::ExpectedTy { ty: def.ty, span: name.span }),
+                    _ => Err(CheckError::ExpectedTy { ty: def.ty, span: name.span }),
                 }
             }
             hir::TyExpr::Unit(_) => Ok(self.db.types.unit),

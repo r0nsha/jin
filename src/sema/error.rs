@@ -12,7 +12,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub enum ResolveError {
+pub enum CheckError {
     MultipleItems { name: Ustr, prev_span: Span, dup_span: Span },
     MultipleParams { name: Ustr, prev_span: Span, dup_span: Span },
     MultipleTyParams { name: Ustr, prev_span: Span, dup_span: Span },
@@ -36,7 +36,7 @@ pub enum ResolveError {
     InvalidAttrPlacement { kind: AttrKind, span: Span },
 }
 
-impl ResolveError {
+impl CheckError {
     pub fn into_diagnostic(self, db: &Db) -> Diagnostic {
         match self {
             Self::MultipleItems { name, prev_span, dup_span } => {

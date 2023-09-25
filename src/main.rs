@@ -108,7 +108,7 @@ fn build(db: &mut Db) {
 
     // Resolve all root symbols into their corresponding id's
     db.time.start("sema");
-    let hir = match sema::resolve(db, &ast) {
+    let hir = match sema::check(db, &ast) {
         Ok(hir) => hir,
         Err(diag) => {
             db.diagnostics.emit(diag);

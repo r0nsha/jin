@@ -2,13 +2,13 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     db::Db,
-    sema::{error::ResolveError, normalize::NormalizeTy, Resolver, TyStorage},
+    sema::{error::CheckError, normalize::NormalizeTy, Sema, TyStorage},
     span::Span,
     subst::{Subst, SubstTy},
     ty::{fold::TyFolder, InferTy, Ty, TyKind},
 };
 
-impl<'db> Resolver<'db> {
+impl<'db> Sema<'db> {
     pub fn subst_hir(&mut self) {
         let mut cx = SubstCx {
             db: self.db,
@@ -34,7 +34,7 @@ impl<'db> Resolver<'db> {
 struct SubstCx<'db> {
     db: &'db mut Db,
     storage: &'db mut TyStorage,
-    errors: FxHashMap<Span, ResolveError>,
+    errors: FxHashMap<Span, CheckError>,
 }
 
 impl SubstTy for SubstCx<'_> {
@@ -45,7 +45,7 @@ impl SubstTy for SubstCx<'_> {
         if folder.has_unbound_vars {
             folder.cx.errors.insert(
                 span,
-                ResolveError::CannotInfer { ty: ty.normalize(folder.cx.storage), span },
+                CheckError::CannotInfer { ty: ty.normalize(folder.cx.storage), span },
             );
         }
 

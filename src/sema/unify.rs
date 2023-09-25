@@ -1,12 +1,12 @@
 use ena::unify::{EqUnifyValue, UnifyKey};
 
 use crate::{
-    sema::{error::ResolveError, normalize::NormalizeTy, Resolver},
+    sema::{error::CheckError, normalize::NormalizeTy, Sema},
     span::Span,
     ty::{InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
 };
 
-impl<'db> Resolver<'db> {
+impl<'db> Sema<'db> {
     #[inline]
     #[must_use]
     pub fn at(&self, obligation: Obligation) -> At<'_, '_> {
@@ -15,7 +15,7 @@ impl<'db> Resolver<'db> {
 }
 
 pub struct At<'db, 'a> {
-    cx: &'a Resolver<'db>,
+    cx: &'a Sema<'db>,
     obligation: Obligation,
 }
 
@@ -25,12 +25,12 @@ impl At<'_, '_> {
             let mut storage = self.cx.storage.borrow_mut();
 
             let err = match err {
-                UnifyError::TyMismatch { .. } => ResolveError::TyMismatch {
+                UnifyError::TyMismatch { .. } => CheckError::TyMismatch {
                     expected: expected.normalize(&mut storage),
                     found: found.normalize(&mut storage),
                     obligation: self.obligation,
                 },
-                UnifyError::InfiniteTy { ty } => ResolveError::InfiniteTy {
+                UnifyError::InfiniteTy { ty } => CheckError::InfiniteTy {
                     ty: ty.normalize(&mut storage),
                     obligation: Obligation::obvious(self.obligation.span()),
                 },
@@ -47,10 +47,10 @@ pub type EqResult<T> = Result<T, EqError>;
 pub struct EqError {
     pub expected: Ty,
     pub found: Ty,
-    pub err: ResolveError,
+    pub err: CheckError,
 }
 
-impl From<EqError> for ResolveError {
+impl From<EqError> for CheckError {
     fn from(value: EqError) -> Self {
         value.err
     }
@@ -99,7 +99,7 @@ pub enum ObligationKind {
 }
 
 struct UnifyCx<'db, 'a> {
-    cx: &'a Resolver<'db>,
+    cx: &'a Sema<'db>,
 }
 
 impl UnifyCx<'_, '_> {
