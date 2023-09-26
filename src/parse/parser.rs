@@ -83,8 +83,6 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_attr(&mut self) -> ParseResult<Attr> {
-        self.eat(TokenKind::OpenBracket)?;
-
         let (kind, span) = self.parse_attr_kind()?;
 
         let value = if self.is(TokenKind::OpenParen) {
@@ -94,8 +92,6 @@ impl<'a> Parser<'a> {
         } else {
             None
         };
-
-        self.eat(TokenKind::CloseBracket)?;
 
         Ok(Attr { kind, value, span })
     }
