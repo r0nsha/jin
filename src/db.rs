@@ -7,11 +7,12 @@ use std::{
     cmp,
     collections::hash_map::Entry,
     fs, io,
-    path::{Path, PathBuf},
+    path::Path,
     rc::Rc,
 };
 
 use anyhow::{bail, Result};
+use camino::{Utf8Path, Utf8PathBuf};
 use path_absolutize::Absolutize;
 use rustc_hash::FxHashSet;
 use ustr::Ustr;
@@ -47,18 +48,19 @@ pub struct Db {
     pub extern_libs: FxHashSet<ExternLib>,
     pub diagnostics: Diagnostics,
     build_options: BuildOptions,
-    root_dir: PathBuf,
+    root_dir: Utf8PathBuf,
     main_source: SourceId,
     main_module: Option<ModuleId>,
     main_fun: Option<DefId>,
 }
 
 impl Db {
-    pub fn new(build_options: BuildOptions, root_file: &Path) -> Result<Self> {
-        let absolute_path = root_file.absolutize()?;
+    pub fn new(build_options: BuildOptions, root_file: &Utf8Path) -> Result<Self> {
+        let absolute_path: Utf8PathBuf =
+            root_file.as_std_path().absolutize()?.into_owned().try_into()?;
 
         if !absolute_path.is_file() {
-            bail!("provided path `{}` in not a file", absolute_path.display());
+            bail!("provided path `{}` in not a file", absolute_path);
         }
 
         let root_dir = absolute_path.parent().expect("to have a parent directory").to_path_buf();
@@ -98,7 +100,7 @@ impl Db {
         &self.build_options.target_metrics
     }
 
-    pub fn output_path(&self) -> PathBuf {
+    pub fn output_path(&self) -> Utf8PathBuf {
         let binding = self.main_source();
         let main_path = binding.path();
         let file_name = main_path.file_stem().expect("main source to be a file");
@@ -106,14 +108,14 @@ impl Db {
         src_dir.join(self.build_options.output_dir.clone()).join(file_name)
     }
 
-    pub fn output_dir(&self) -> PathBuf {
+    pub fn output_dir(&self) -> Utf8PathBuf {
         self.output_path()
             .parent()
             .expect("expected to have a parent directory for output_path")
             .to_owned()
     }
 
-    pub fn root_dir(&self) -> &Path {
+    pub fn root_dir(&self) -> &Utf8Path {
         &self.root_dir
     }
 
@@ -404,7 +406,7 @@ impl CommonTypes {
 #[derive(Debug, Eq, PartialEq, Clone, Hash)]
 pub enum ExternLib {
     Sys(String),
-    Path { search_path: PathBuf, name: String },
+    Path { search_path: Utf8PathBuf, name: String },
 }
 
 impl fmt::Display for ExternLib {
@@ -416,13 +418,14 @@ impl fmt::Display for ExternLib {
 }
 
 impl ExternLib {
-    pub fn try_from_str(name: &str, relative_to: impl AsRef<Path>) -> Option<Self> {
+    pub fn try_from_str(name: &str, relative_to: impl AsRef<Utf8Path>) -> Option<Self> {
         let path = Path::new(name);
 
         if name.starts_with(['.', '/', '\\']) || path.has_root() || path.extension().is_some() {
-            path.absolutize_from(relative_to).ok().map(|p| {
+            path.absolutize_from(relative_to.as_ref().as_std_path()).ok().map(|p| {
+                let p: Utf8PathBuf = p.into_owned().try_into().unwrap();
                 let search_path = p.parent().unwrap().to_path_buf();
-                let name = p.file_name().unwrap().to_string_lossy().to_string();
+                let name = p.file_name().unwrap().to_string();
                 Self::Path { search_path, name }
             })
         } else {

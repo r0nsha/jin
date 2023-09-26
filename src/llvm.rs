@@ -6,11 +6,9 @@ mod microsoft_craziness;
 mod ty;
 mod util;
 
-use std::{
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::process::Command;
 
+use camino::{Utf8Path, Utf8PathBuf};
 use execute::Execute;
 use inkwell::{
     context::Context,
@@ -31,7 +29,7 @@ use crate::{
     tir::Tir,
 };
 
-pub fn codegen(db: &mut Db, tir: &Tir) -> PathBuf {
+pub fn codegen(db: &mut Db, tir: &Tir) -> Utf8PathBuf {
     let target_machine = create_target_machine(db).expect("to create a LLVM TargetMachine");
 
     let context = Context::create();
@@ -112,7 +110,7 @@ fn optimize(module: &Module) {
     pass_manager.run_on(module);
 }
 
-fn build_exe(db: &mut Db, target_machine: &TargetMachine, module: &Module) -> PathBuf {
+fn build_exe(db: &mut Db, target_machine: &TargetMachine, module: &Module) -> Utf8PathBuf {
     let output_path = db.output_path();
 
     if db.build_options().should_emit(EmitOption::LlvmIr) {
@@ -127,7 +125,7 @@ fn build_exe(db: &mut Db, target_machine: &TargetMachine, module: &Module) -> Pa
 
     db.time.start("link");
     target_machine
-        .write_to_file(module, FileType::Object, &object_file)
+        .write_to_file(module, FileType::Object, object_file.as_std_path())
         .expect("writing the object file to work");
 
     link(db.target_metrics(), &db.extern_libs, &output_file, &object_file);
@@ -141,8 +139,8 @@ fn build_exe(db: &mut Db, target_machine: &TargetMachine, module: &Module) -> Pa
 fn link(
     target_metrics: &TargetMetrics,
     extern_libs: &FxHashSet<ExternLib>,
-    exe_file: &Path,
-    object_file: &Path,
+    exe_file: &Utf8Path,
+    object_file: &Utf8Path,
 ) {
     let link_flags = match target_metrics.arch {
         Arch::Amd64 => match target_metrics.os {
@@ -185,7 +183,7 @@ fn link(
                 libs.insert(lib_name.clone());
             }
             ExternLib::Path { search_path, name } => {
-                lib_paths.insert(search_path.to_string_lossy().to_string());
+                lib_paths.insert(search_path.to_string());
                 libs.insert(name.clone());
             }
         }
@@ -227,8 +225,8 @@ fn link(
     #[cfg(not(windows))]
     Command::new("clang")
         .arg("-Wno-unused-command-line-argument")
-        .arg(object_file.to_string_lossy().as_ref())
-        .arg(format!("-o{}", exe_file.display()))
+        .arg(object_file.as_str())
+        .arg(format!("-o{exe_file}"))
         .args(lib_paths.iter().map(|path| format!("-L{}", path)))
         .args(libs.iter().map(|path| format!("-l{}", path)))
         .arg("-fuse-ld=mold")

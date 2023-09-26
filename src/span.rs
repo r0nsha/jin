@@ -1,8 +1,6 @@
-use std::{
-    fs, io, ops,
-    path::{Path, PathBuf},
-};
+use std::{fs, io, ops};
 
+use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::files::{self, line_starts};
 
 use crate::common::{new_key_type, IndexVec};
@@ -82,7 +80,7 @@ impl Sources {
         Self(IndexVec::new())
     }
 
-    pub fn load_file(&mut self, path: PathBuf) -> io::Result<SourceId> {
+    pub fn load_file(&mut self, path: Utf8PathBuf) -> io::Result<SourceId> {
         let mut source = Source::try_from(path)?;
 
         Ok(self.0.push_with_key(|id| {
@@ -113,7 +111,7 @@ impl Default for Sources {
 #[derive(Debug, Clone)]
 pub struct Source {
     id: SourceId,
-    path: PathBuf,
+    path: Utf8PathBuf,
     contents: String,
     line_starts: Vec<usize>,
 }
@@ -125,12 +123,12 @@ impl Source {
     }
 
     #[inline]
-    pub fn path(&self) -> &Path {
+    pub fn path(&self) -> &Utf8Path {
         &self.path
     }
 
     pub fn file_name(&self) -> String {
-        self.path.file_stem().expect("a source to be a file").to_string_lossy().to_string()
+        self.path.file_stem().expect("a source to be a file").to_string()
     }
 
     #[inline]
@@ -154,10 +152,10 @@ impl Source {
     }
 }
 
-impl TryFrom<PathBuf> for Source {
+impl TryFrom<Utf8PathBuf> for Source {
     type Error = io::Error;
 
-    fn try_from(value: PathBuf) -> Result<Self, Self::Error> {
+    fn try_from(value: Utf8PathBuf) -> Result<Self, Self::Error> {
         let contents = fs::read_to_string(&value)?;
         let line_starts = line_starts(&contents).collect();
 
@@ -173,7 +171,7 @@ impl<'a> files::Files<'a> for Source {
     type Source = &'a str;
 
     fn name(&'a self, _id: Self::FileId) -> Result<Self::Name, files::Error> {
-        Ok(self.path().to_str().expect("path to be a valid str"))
+        Ok(self.path().as_str())
     }
 
     fn source(&'a self, _id: Self::FileId) -> Result<Self::Source, files::Error> {

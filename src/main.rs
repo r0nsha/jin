@@ -31,9 +31,10 @@ mod sym;
 mod tir;
 mod ty;
 
-use std::{fs, path::PathBuf};
+use std::fs;
 
 use anyhow::Result;
+use camino::Utf8PathBuf;
 use clap::{Parser, Subcommand};
 
 use crate::{
@@ -63,7 +64,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    Build { file: PathBuf },
+    Build { file: Utf8PathBuf },
 }
 
 macro_rules! expect {

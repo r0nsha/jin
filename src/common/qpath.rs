@@ -1,5 +1,6 @@
-use std::{fmt, path::Path};
+use std::fmt;
 
+use camino::Utf8Path;
 use ustr::{ustr, Ustr};
 
 use crate::common::Word;
@@ -8,11 +9,11 @@ use crate::common::Word;
 pub struct QPath(Vec<Ustr>);
 
 impl QPath {
-    pub fn from_path(root: &Path, target: &Path) -> Option<Self> {
+    pub fn from_path(root: &Utf8Path, target: &Utf8Path) -> Option<Self> {
         let target = target.with_extension("");
         let stripped = target.strip_prefix(root).ok()?;
 
-        Some(Self(stripped.iter().map(|seg| ustr(seg.to_string_lossy().as_ref())).collect()))
+        Some(Self(stripped.iter().map(ustr).collect()))
     }
 
     pub fn name(&self) -> Ustr {
