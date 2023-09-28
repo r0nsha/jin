@@ -21,8 +21,8 @@ fn unary() = {
 	-48
 	!true
 	!!false
-	# TODO: bitnot
-	# !54878
+	// TODO: bitnot
+	// !54878
 }
 
 fn arithmetic() = {
@@ -45,19 +45,19 @@ fn cmp() = {
 }
 
 fn variables() int = {
-	let x = 39 # Inferred to `int`
-	let y int = 3 # Explicit type annotation
+	let x = 39 // Inferred to `int`
+	let y int = 3 // Explicit type annotation
 	x + y
 }
 
 fn id[a](x a) a = x
 
 fn polymorphism() = {
-	# Inferred type arguments
+	// Inferred type arguments
 	id(42)
 	id(true)
 
-	# Explicit type arguments
+	// Explicit type arguments
 	id[int](111)
 	id[bool](false)
 }
