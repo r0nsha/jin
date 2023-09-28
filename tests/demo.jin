@@ -50,7 +50,7 @@ fn variables() int = {
 	x + y
 }
 
-fn id[a](x a) a = x
+fn id[t](x t) t = x
 
 fn polymorphism() = {
 	// Inferred type arguments
