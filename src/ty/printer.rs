@@ -65,7 +65,7 @@ impl<'db> TyPrinter<'db> {
             }),
             TyKind::Str => f.write_str(sym::STR),
             TyKind::Bool => f.write_str(sym::BOOL),
-            TyKind::Unit => f.write_str("()"),
+            TyKind::Unit => f.write_str(sym::UNIT),
             TyKind::Never => f.write_str(sym::NEVER),
             TyKind::Param(p) => f.write_str(p.name.as_str()),
             // TyKind::Infer(InferTy::TyVar(_)) => f.write_str("{unknown}"),

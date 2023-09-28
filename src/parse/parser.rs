@@ -393,10 +393,6 @@ impl<'a> Parser<'a> {
             TokenKind::Ident(..) => {
                 TyExpr::Name(TyName { word: tok.word(), args: vec![], span: tok.span })
             }
-            TokenKind::OpenParen => {
-                let end = self.eat(TokenKind::CloseParen)?.span;
-                TyExpr::Unit(tok.span.merge(end))
-            }
             TokenKind::Underscore => TyExpr::Hole(tok.span),
             _ => {
                 return Err(ParseError::UnexpectedToken {

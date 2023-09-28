@@ -885,7 +885,6 @@ impl<'db> Sema<'db> {
                     _ => Err(CheckError::ExpectedTy { ty: def.ty, span: name.span }),
                 }
             }
-            ast::TyExpr::Unit(_) => Ok(self.db.types.unit),
             ast::TyExpr::Hole(span) => {
                 if allow_hole.into() {
                     Ok(self.fresh_ty_var())

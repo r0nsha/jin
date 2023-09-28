@@ -78,9 +78,9 @@ impl<'s> Lexer<'s> {
                         if self.eat('/') {
                             self.eat_comment();
                             return self.eat_token();
-                        } else {
-                            TokenKind::FwSlash
                         }
+
+                        TokenKind::FwSlash
                     }
                     '%' => TokenKind::Percent,
                     '+' => TokenKind::Plus,
