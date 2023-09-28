@@ -815,7 +815,6 @@ impl<'db> Sema<'db> {
                     ast::LitKind::Str(v) => (hir::Lit::Str(*v), self.db.types.str),
                     ast::LitKind::Int(v) => (hir::Lit::Int(*v), self.fresh_int_var()),
                     ast::LitKind::Bool(v) => (hir::Lit::Bool(*v), self.db.types.bool),
-                    ast::LitKind::Unit => (hir::Lit::Unit, self.db.types.unit),
                 };
 
                 Ok(self.expr(hir::ExprKind::Lit(kind), ty, *span))
@@ -900,7 +899,7 @@ impl<'db> Sema<'db> {
     }
 
     fn unit(&mut self, span: Span) -> hir::Expr {
-        self.expr(hir::ExprKind::Lit(hir::Lit::Unit), self.db.types.unit, span)
+        self.expr(hir::ExprKind::Block(hir::Block { exprs: vec![] }), self.db.types.unit, span)
     }
 }
 

@@ -176,7 +176,6 @@ impl PrettyCx<'_> {
                     Lit::Str(v) => v.to_string(),
                     Lit::Int(v) => v.to_string(),
                     Lit::Bool(v) => v.to_string(),
-                    Lit::Unit => "()".to_string(),
                 };
 
                 self.builder

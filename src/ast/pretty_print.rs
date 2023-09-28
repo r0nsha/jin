@@ -121,9 +121,6 @@ impl PrettyPrint for Expr {
                 LitKind::Bool(value) => {
                     cx.builder.add_empty_child(format!("bool: {value}"));
                 }
-                LitKind::Unit => {
-                    cx.builder.add_empty_child("()".to_string());
-                }
             },
             Self::Group { expr, span: _ } => {
                 cx.builder.begin_child("group".to_string());

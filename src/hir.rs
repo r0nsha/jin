@@ -274,7 +274,6 @@ pub enum Lit {
     Str(Ustr),
     Int(u128),
     Bool(bool),
-    Unit,
 }
 
 new_key_type!(ExprId);

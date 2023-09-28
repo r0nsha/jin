@@ -57,7 +57,6 @@ impl ConstStorage {
                 Lit::Str(value) => Const::Str(*value),
                 Lit::Int(value) => Const::Int(i128::try_from(*value).unwrap()),
                 Lit::Bool(value) => Const::Bool(*value),
-                Lit::Unit => Const::Unit,
             }),
             ExprKind::Let(_)
             | ExprKind::If(_)

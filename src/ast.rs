@@ -362,7 +362,6 @@ pub enum LitKind {
     Str(Ustr),
     Int(u128),
     Bool(bool),
-    Unit,
 }
 
 #[derive(Debug, Clone)]
