@@ -351,11 +351,6 @@ impl<'a> Parser<'a> {
                     op: UnOp::Not,
                 }
             }
-            TokenKind::OpenParen => {
-                let expr = self.parse_expr()?;
-                let end = self.eat(TokenKind::CloseParen)?.span;
-                Expr::Group { expr: Box::new(expr), span: tok.span.merge(end) }
-            }
             TokenKind::OpenCurly => self.parse_block()?,
             TokenKind::True => Expr::Lit { kind: LitKind::Bool(true), span: tok.span },
             TokenKind::False => Expr::Lit { kind: LitKind::Bool(false), span: tok.span },

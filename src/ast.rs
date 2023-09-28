@@ -97,7 +97,6 @@ pub enum Expr {
     Member { expr: Box<Self>, member: Word, span: Span },
     Name { word: Word, args: Option<Vec<TyExpr>>, span: Span },
     Lit { kind: LitKind, span: Span },
-    Group { expr: Box<Self>, span: Span },
 }
 
 impl Spanned for Expr {
@@ -113,8 +112,7 @@ impl Spanned for Expr {
             | Self::Unary { span, .. }
             | Self::Binary { span, .. }
             | Self::Cast { span, .. }
-            | Self::Lit { span, .. }
-            | Self::Group { expr: _, span } => *span,
+            | Self::Lit { span, .. } => *span,
         }
     }
 }

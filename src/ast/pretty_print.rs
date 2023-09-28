@@ -122,11 +122,6 @@ impl PrettyPrint for Expr {
                     cx.builder.add_empty_child(format!("bool: {value}"));
                 }
             },
-            Self::Group { expr, span: _ } => {
-                cx.builder.begin_child("group".to_string());
-                expr.pretty_print(cx);
-                cx.builder.end_child();
-            }
         }
     }
 }

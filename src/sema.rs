@@ -805,11 +805,6 @@ impl<'db> Sema<'db> {
 
                 Ok(self.expr(hir::ExprKind::Name(hir::Name { id, instantiation }), ty, *span))
             }
-            ast::Expr::Group { expr, span } => {
-                let mut expr = self.check_expr(env, expr, expected_ty)?;
-                expr.span = *span;
-                Ok(expr)
-            }
             ast::Expr::Lit { kind, span } => {
                 let (kind, ty) = match kind {
                     ast::LitKind::Str(v) => (hir::Lit::Str(*v), self.db.types.str),
