@@ -560,14 +560,6 @@ impl<'a> Parser<'a> {
         self.is_predicate(|_, tok| tok.kind_is(expected))
     }
 
-    #[allow(unused)]
-    #[inline]
-    fn is_same_line(&mut self, expected: TokenKind) -> bool {
-        self.is_predicate(|p, tok| {
-            tok.kind_is(expected) && p.spans_are_on_same_line(p.last_span(), tok.span)
-        })
-    }
-
     #[inline]
     fn is_predicate(&mut self, mut f: impl FnMut(&mut Self, Token) -> bool) -> bool {
         match self.token() {
