@@ -1,4 +1,4 @@
-fn main() = {
+fn main() {
 	int_types()
 	unary()
 	arithmetic()
@@ -9,7 +9,7 @@ fn main() = {
 	global_vars()
 }
 
-fn int_types() = {
+fn int_types() {
 	let id i8 = 126
 	let promoted i64 = id + 5555
 	let demoted_inferred i32 = promoted as _
@@ -17,7 +17,7 @@ fn int_types() = {
 	let int_to_uint uint = { 663151 as int } as _
 }
 
-fn unary() = {
+fn unary() {
 	-48
 	!true
 	!!false
@@ -25,7 +25,7 @@ fn unary() = {
 	// !54878
 }
 
-fn arithmetic() = {
+fn arithmetic() {
 	1 + 2
 	3 - 4
 	5 * 6
@@ -33,7 +33,7 @@ fn arithmetic() = {
 	9 % 10
 }
 
-fn cmp() = {
+fn cmp() {
 	true && false
 	false || true
 	100 == 100
@@ -44,15 +44,17 @@ fn cmp() = {
 	264 >= 71
 }
 
-fn variables() int = {
+fn variables() int {
 	let x = 39 // Inferred to `int`
 	let y int = 3 // Explicit type annotation
 	x + y
 }
 
-fn id[t](x t) t = x
+fn id[t](x t) t {
+	x
+}
 
-fn polymorphism() = {
+fn polymorphism() {
 	// Inferred type arguments
 	id(42)
 	id(true)
@@ -62,9 +64,11 @@ fn polymorphism() = {
 	id[bool](false)
 }
 
-fn add_named(first int, second int) int = first + second
+fn add_named(first int, second int) int {
+	first + second
+}
 
-fn named_args() = {
+fn named_args() {
 	add_named(first: 1, second: 2)
 	add_named(second: 2, first: 1)
 	add_named(1, second: 2)
@@ -72,6 +76,6 @@ fn named_args() = {
 
 let global_answer = 42
 
-fn global_vars() = {
+fn global_vars() {
 	let answer = global_answer
 }

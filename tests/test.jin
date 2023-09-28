@@ -12,18 +12,20 @@ fn extern write(fd i32, buf *u8, count uint) int
 
 let stdout = 1
 
-fn print(fmt str) = {
+fn print(fmt str) {
 	write(stdout, fmt.ptr, fmt.len)
 }
 
-fn println(fmt str) = {
+fn println(fmt str) {
 	print(fmt)
 	print("\n")
 }
 
-fn my_answer() int = answer
+fn my_answer() int {
+	answer
+}
 
-fn main() = {
+fn main() {
 	println("Hello, World!")
 	hello()
 	my_answer()

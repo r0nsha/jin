@@ -113,14 +113,8 @@ impl<'a> Parser<'a> {
             let name_ident = self.eat(TokenKind::empty_ident())?;
             let sig = self.parse_function_sig(name_ident.word())?;
 
-            self.eat(TokenKind::Eq)?;
-
-            let expr = self.parse_expr()?;
-
-            let body = match expr {
-                Expr::Block { .. } => expr,
-                _ => Expr::Block { span: expr.span(), exprs: vec![expr] },
-            };
+            self.eat(TokenKind::OpenCurly)?;
+            let body = self.parse_block()?;
 
             Ok(Fn {
                 attrs,
