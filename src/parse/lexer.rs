@@ -84,7 +84,13 @@ impl<'s> Lexer<'s> {
                     }
                     '%' => TokenKind::Percent,
                     '+' => TokenKind::Plus,
-                    '-' => TokenKind::Minus,
+                    '-' => {
+                        if self.eat('>') {
+                            TokenKind::Arrow
+                        } else {
+                            TokenKind::Minus
+                        }
+                    }
                     '<' => {
                         if self.eat('<') {
                             TokenKind::LtLt

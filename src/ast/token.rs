@@ -44,6 +44,7 @@ pub enum TokenKind {
     Colon,
     At,
     Hash,
+    Arrow,
 
     // Operators
     Eq,
@@ -106,6 +107,7 @@ impl fmt::Display for TokenKind {
             Self::Colon => f.write_char(':'),
             Self::At => f.write_char('@'),
             Self::Hash => f.write_char('#'),
+            Self::Arrow => f.write_str("->"),
             Self::Eq => f.write_char('='),
             Self::EqEq => f.write_str("=="),
             Self::Bang => f.write_str("!"),

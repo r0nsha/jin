@@ -106,12 +106,12 @@ impl<'a> Parser<'a> {
     fn parse_fn(&mut self, attrs: Attrs) -> ParseResult<Fn> {
         if self.is(TokenKind::Extern) {
             let name_ident = self.eat(TokenKind::empty_ident())?;
-            let sig = self.parse_function_sig(name_ident.word())?;
+            let sig = self.parse_fn_sig(name_ident.word())?;
 
             Ok(Fn { attrs, sig, kind: FnKind::Extern, span: name_ident.span })
         } else {
             let name_ident = self.eat(TokenKind::empty_ident())?;
-            let sig = self.parse_function_sig(name_ident.word())?;
+            let sig = self.parse_fn_sig(name_ident.word())?;
 
             self.eat(TokenKind::OpenCurly)?;
             let body = self.parse_block()?;
@@ -129,8 +129,7 @@ impl<'a> Parser<'a> {
         let start = self.last_span();
         let pat = self.parse_pat()?;
 
-        let ty_annot = if self.peek_is(TokenKind::Eq) { None } else { Some(self.parse_ty()?) };
-
+        let ty_annot = self.is_and(TokenKind::Colon, |this, _| this.parse_ty()).transpose()?;
         self.eat(TokenKind::Eq)?;
 
         let value = self.parse_expr()?;
@@ -141,6 +140,7 @@ impl<'a> Parser<'a> {
     fn parse_extern_let(&mut self, attrs: Attrs) -> ParseResult<ExternLet> {
         let start = self.last_span();
         let ident = self.eat(TokenKind::empty_ident())?;
+        self.eat(TokenKind::Colon)?;
         let ty_annot = self.parse_ty()?;
         let span = start.merge(ty_annot.span());
         Ok(ExternLet { attrs, word: ident.word(), ty_annot, span })
@@ -159,16 +159,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_function_sig(&mut self, name: Word) -> ParseResult<FnSig> {
+    fn parse_fn_sig(&mut self, name: Word) -> ParseResult<FnSig> {
         let ty_params = self.parse_optional_ty_params()?;
-        let (params, _) = self.parse_function_params()?;
-
-        let ret = match self.token() {
-            Some(Token { kind: TokenKind::Eq | TokenKind::OpenCurly, .. }) => None,
-            Some(tok) if !self.spans_are_on_same_line(tok.span, self.last_span()) => None,
-            _ => Some(self.parse_ty()?),
-        };
-
+        let (params, _) = self.parse_fn_params()?;
+        let ret = self.is_and(TokenKind::Arrow, |this, _| this.parse_ty()).transpose()?;
         Ok(FnSig { word: name, ty_params, params, ret })
     }
 
@@ -200,11 +194,12 @@ impl<'a> Parser<'a> {
         self.parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, Self::parse_ty)
     }
 
-    fn parse_function_params(&mut self) -> ParseResult<(Vec<FnParam>, Span)> {
+    fn parse_fn_params(&mut self) -> ParseResult<(Vec<FnParam>, Span)> {
         self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             let ident = this.eat(TokenKind::empty_ident())?;
-            let ty = this.parse_ty()?;
-            Ok(FnParam { name: ident.word(), ty_annot: ty, span: ident.span })
+            this.eat(TokenKind::Colon)?;
+            let ty_annot = this.parse_ty()?;
+            Ok(FnParam { name: ident.word(), ty_annot, span: ident.span })
         })
     }
 
@@ -547,6 +542,21 @@ impl<'a> Parser<'a> {
     #[inline]
     fn require(&mut self) -> ParseResult<Token> {
         self.token().ok_or_else(|| ParseError::UnexpectedEof(self.last_span()))
+    }
+
+    #[inline]
+    fn is_and<T>(
+        &mut self,
+        expected: TokenKind,
+        mut f: impl FnMut(&mut Self, Token) -> T,
+    ) -> Option<T> {
+        match self.token() {
+            Some(tok) if tok.kind_is(expected) => {
+                self.next();
+                Some(f(self, tok))
+            }
+            _ => None,
+        }
     }
 
     #[inline]

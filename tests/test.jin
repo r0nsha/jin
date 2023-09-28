@@ -2,26 +2,26 @@
 fn extern hello()
 
 @link("./foo")
-let extern answer int
+let extern answer: int
 
 @link("c")
-fn extern exit(status int) never
+fn extern exit(status: int) -> never
 
 @link("c")
-fn extern write(fd i32, buf *u8, count uint) int
+fn extern write(fd: i32, buf: *u8, count: uint) -> int
 
 let stdout = 1
 
-fn print(fmt str) {
+fn print(fmt: str) {
 	write(stdout, fmt.ptr, fmt.len)
 }
 
-fn println(fmt str) {
+fn println(fmt: str) {
 	print(fmt)
 	print("\n")
 }
 
-fn my_answer() int {
+fn my_answer() -> int {
 	answer
 }
 
