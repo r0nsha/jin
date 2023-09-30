@@ -32,19 +32,21 @@ impl Token {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TokenKind {
-    // Delimiters & Symbols
-    OpenParen,
-    CloseParen,
-    OpenBracket,
-    CloseBracket,
-    OpenCurly,
-    CloseCurly,
+    // Punctuation
     Comma,
     Dot,
     Colon,
     At,
     Hash,
     Arrow,
+
+    // Delimiters
+    OpenParen,
+    CloseParen,
+    OpenBracket,
+    CloseBracket,
+    OpenCurly,
+    CloseCurly,
 
     // Operators
     Eq,
