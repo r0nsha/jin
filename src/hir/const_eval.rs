@@ -3,9 +3,9 @@ use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
-    ast::{BinOp, CmpOp, UnOp},
     db::DefId,
     hir::{Expr, ExprId, ExprKind, Lit},
+    middle::{BinOp, CmpOp, UnOp},
 };
 
 #[derive(Debug)]

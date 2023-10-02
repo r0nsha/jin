@@ -8,10 +8,10 @@ pub use lower::lower;
 use ustr::Ustr;
 
 use crate::{
-    ast::{BinOp, UnOp},
     common::{new_key_type, IndexVec},
     db::{Db, DefId},
     hir::const_eval::Const,
+    middle::{BinOp, UnOp},
     ty::Ty,
 };
 

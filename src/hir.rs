@@ -8,9 +8,9 @@ use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
-    ast::{BinOp, UnOp},
     common::{new_key_type, Word},
     db::{Db, DefId, ModuleId},
+    middle::{BinOp, UnOp},
     span::Span,
     ty::{Instantiation, Ty, Typed},
 };

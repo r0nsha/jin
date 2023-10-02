@@ -15,13 +15,14 @@ use rustc_hash::FxHashMap;
 use ustr::{Ustr, UstrMap};
 
 use crate::{
-    ast::{self, Ast, AttrKind, BinOp, UnOp},
+    ast::{self, Ast, AttrKind},
     common::{Counter, Word},
     db::{Db, DefId, DefInfo, DefKind, ExternLib, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     diagnostics::Diagnostic,
     hir,
     hir::{const_eval::Const, ExprId, Hir},
     macros::create_bool_enum,
+    middle::{BinOp, UnOp},
     sema::{
         coerce::CoerceExt,
         env::{BuiltinTys, Env, GlobalScope, ScopeKind},

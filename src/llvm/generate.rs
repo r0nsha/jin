@@ -13,7 +13,7 @@ use rustc_hash::FxHashMap;
 use ustr::UstrMap;
 
 use crate::{
-    ast::{BinOp, CmpOp, UnOp},
+    middle::{BinOp, CmpOp, UnOp},
     db::Db,
     hir::const_eval::Const,
     llvm::{inkwell_ext::ContextExt, layout::Layout, ty::LlvmTy},

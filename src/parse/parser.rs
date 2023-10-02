@@ -3,12 +3,13 @@ use codespan_reporting::files::Files;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Attr, AttrKind, Attrs, BinOp, CallArg, Expr, ExternLet, Fn, FnKind, FnParam, FnSig, Item,
-        Let, LitKind, Module, NamePat, Pat, TyExpr, TyName, TyParam, UnOp,
+        Attr, AttrKind, Attrs, CallArg, Expr, ExternLet, Fn, FnKind, FnParam, FnSig, Item, Let,
+        LitKind, Module, NamePat, Pat, TyExpr, TyName, TyParam,
     },
     common::{QPath, Word},
     db::Db,
     diagnostics::{Diagnostic, Label},
+    middle::{BinOp, UnOp},
     span::{Source, SourceId, Span, Spanned},
 };
 

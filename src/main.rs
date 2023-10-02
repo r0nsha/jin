@@ -30,6 +30,7 @@ mod subst;
 mod sym;
 mod tir;
 mod ty;
+mod middle;
 
 use std::fs;
 
