@@ -50,7 +50,7 @@ fn variables() -> int {
 	x + y
 }
 
-fn id[t](x: t) -> t {
+fn id[a](x: a) -> a {
 	x
 }
 
