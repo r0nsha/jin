@@ -168,18 +168,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_optional_ty_params(&mut self) -> ParseResult<Vec<TyParam>> {
-        if self.peek_is(TokenKind::OpenBracket) {
-            self.parse_ty_params().map(|(t, _)| t)
-        } else {
-            Ok(vec![])
-        }
-    }
-
-    fn parse_ty_params(&mut self) -> ParseResult<(Vec<TyParam>, Span)> {
-        self.parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
+        self.parse_list_optional(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
             let ident = this.eat(TokenKind::empty_ident())?;
             Ok(TyParam { name: ident.word() })
         })
+        .map(|(t, _)| t)
     }
 
     fn parse_optional_ty_args(&mut self) -> ParseResult<Option<Vec<TyExpr>>> {
@@ -196,7 +189,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_fn_params(&mut self) -> ParseResult<(Vec<FnParam>, Span)> {
-        self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
+        self.parse_list_optional(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             let ident = this.eat(TokenKind::empty_ident())?;
             this.eat(TokenKind::Colon)?;
             let ty_annot = this.parse_ty()?;
@@ -522,6 +515,19 @@ impl<'a> Parser<'a> {
             } else if self.peek_is(TokenKind::Comma) {
                 self.next();
             }
+        }
+    }
+
+    fn parse_list_optional<T>(
+        &mut self,
+        open: TokenKind,
+        close: TokenKind,
+        f: impl FnMut(&mut Self) -> Result<T, ParseError>,
+    ) -> ParseResult<(Vec<T>, Span)> {
+        if self.peek_is(open) {
+            self.parse_list(open, close, f)
+        } else {
+            Ok((vec![], self.last_span()))
         }
     }
 }

@@ -1,5 +1,5 @@
 @link("./foo")
-fn extern hello()
+fn extern hello
 
 @link("./foo")
 let extern answer: int
@@ -21,11 +21,11 @@ fn println(fmt: str) {
 	print("\n")
 }
 
-fn my_answer() -> int {
+fn my_answer -> int {
 	answer
 }
 
-fn main() {
+fn main {
 	println("Hello, World!")
 	hello()
 	my_answer()
