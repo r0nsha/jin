@@ -1,6 +1,10 @@
 use std::fmt;
 
-use crate::ast::token::TokenKind;
+use crate::{
+    ast::token::TokenKind,
+    common::Word,
+    span::{Span, Spanned},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinOp {
@@ -148,4 +152,26 @@ impl UnOp {
             Self::Not => "!",
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum TyExpr {
+    RawPtr(Box<TyExpr>, Span),
+    Name(TyName),
+    Hole(Span),
+}
+
+impl Spanned for TyExpr {
+    fn span(&self) -> Span {
+        match self {
+            Self::RawPtr(_, span) | Self::Name(TyName { span, .. }) | Self::Hole(span) => *span,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TyName {
+    pub word: Word,
+    pub args: Vec<TyExpr>,
+    pub span: Span,
 }

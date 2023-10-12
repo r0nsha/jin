@@ -9,7 +9,7 @@ use ustr::Ustr;
 use crate::{
     common::{new_key_type, IndexVec, QPath, Word},
     db::ModuleId,
-    middle::{BinOp, UnOp},
+    middle::{BinOp, TyExpr, UnOp},
     span::{SourceId, Span, Spanned},
 };
 
@@ -212,28 +212,6 @@ pub enum LitKind {
     Str(Ustr),
     Int(u128),
     Bool(bool),
-}
-
-#[derive(Debug, Clone)]
-pub enum TyExpr {
-    RawPtr(Box<TyExpr>, Span),
-    Name(TyName),
-    Hole(Span),
-}
-
-impl Spanned for TyExpr {
-    fn span(&self) -> Span {
-        match self {
-            Self::RawPtr(_, span) | Self::Name(TyName { span, .. }) | Self::Hole(span) => *span,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct TyName {
-    pub word: Word,
-    pub args: Vec<TyExpr>,
-    pub span: Span,
 }
 
 pub type Attrs = Vec<Attr>;

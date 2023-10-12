@@ -22,7 +22,7 @@ use crate::{
     hir,
     hir::{const_eval::Const, ExprId, Hir},
     macros::create_bool_enum,
-    middle::{BinOp, UnOp},
+    middle::{BinOp, TyExpr, UnOp},
     sema::{
         coerce::CoerceExt,
         env::{BuiltinTys, Env, GlobalScope, ScopeKind},
@@ -857,15 +857,15 @@ impl<'db> Sema<'db> {
     fn check_ty_expr(
         &mut self,
         env: &Env,
-        ty: &ast::TyExpr,
+        ty: &TyExpr,
         allow_hole: AllowTyHole,
     ) -> CheckResult<Ty> {
         match ty {
-            ast::TyExpr::RawPtr(pointee, _) => {
+            TyExpr::RawPtr(pointee, _) => {
                 let pointee = self.check_ty_expr(env, pointee, allow_hole)?;
                 Ok(Ty::new(TyKind::RawPtr(pointee)))
             }
-            ast::TyExpr::Name(name) => {
+            TyExpr::Name(name) => {
                 let id = self.lookup_def(env, name.word)?;
 
                 // TODO: use args when we implement polymorphic types
@@ -882,7 +882,7 @@ impl<'db> Sema<'db> {
                     _ => Err(CheckError::ExpectedTy { ty: def.ty, span: name.span }),
                 }
             }
-            ast::TyExpr::Hole(span) => {
+            TyExpr::Hole(span) => {
                 if allow_hole.into() {
                     Ok(self.fresh_ty_var())
                 } else {
