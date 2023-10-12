@@ -68,6 +68,13 @@ impl<'a> Parser<'a> {
             } else {
                 self.parse_let(attrs).map(|l| Some(Item::Let(l)))
             }
+        } else if !attrs.is_empty() {
+            let token = self.require()?;
+            Err(ParseError::UnexpectedToken {
+                expected: "an item after attribute".to_string(),
+                found: token.kind,
+                span: token.span,
+            })
         } else {
             Ok(None)
         }
