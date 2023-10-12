@@ -32,6 +32,10 @@ impl Hir {
     }
 }
 
+new_key_type!(ExprId);
+
+pub type HirMap<T> = FxHashMap<ExprId, T>;
+
 #[derive(Debug, Clone)]
 pub struct Expr {
     pub id: ExprId,
@@ -275,7 +279,3 @@ pub enum Lit {
     Int(u128),
     Bool(bool),
 }
-
-new_key_type!(ExprId);
-
-pub type HirMap<T> = FxHashMap<ExprId, T>;
