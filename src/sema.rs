@@ -375,7 +375,7 @@ impl<'db> Sema<'db> {
             ret,
         }));
 
-        Ok(hir::FnSig { ty_params, params, ret, ty })
+        Ok(hir::FnSig { word: sig.word, ty_params, params, ret, ty })
     }
 
     fn check_let(&mut self, env: &mut Env, let_: &ast::Let) -> CheckResult<hir::Let> {
@@ -806,7 +806,11 @@ impl<'db> Sema<'db> {
 
                 let ty = instantiate(def_ty, instantiation.clone());
 
-                Ok(self.expr(hir::ExprKind::Name(hir::Name { id, instantiation }), ty, *span))
+                Ok(self.expr(
+                    hir::ExprKind::Name(hir::Name { id, word: *word, instantiation }),
+                    ty,
+                    *span,
+                ))
             }
             ast::Expr::Lit { kind, span } => {
                 let (kind, ty) = match kind {

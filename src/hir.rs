@@ -116,6 +116,7 @@ pub enum FnKind {
 
 #[derive(Debug, Clone)]
 pub struct FnSig {
+    pub word: Word,
     pub ty_params: Vec<TyParam>,
     pub params: Vec<FnParam>,
     pub ret: Ty,
@@ -270,6 +271,7 @@ pub struct Member {
 #[derive(Debug, Clone)]
 pub struct Name {
     pub id: DefId,
+    pub word: Word,
     pub instantiation: Instantiation,
 }
 
