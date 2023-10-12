@@ -84,7 +84,7 @@ impl Expr {
     }
 }
 
-#[derive(Debug, Clone, EnumAsInner)]
+#[derive(Debug, Clone)]
 pub enum ExprKind {
     Let(Let),
     If(If),
