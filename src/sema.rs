@@ -277,6 +277,15 @@ impl<'db> Sema<'db> {
     }
 
     fn check_fn(&mut self, env: &mut Env, fun: &ast::Fn) -> CheckResult<hir::Fn> {
+        self.check_attrs(
+            env.module_id(),
+            &fun.attrs,
+            match &fun.kind {
+                ast::FnKind::Bare { .. } => AttrsPlacement::Fn,
+                ast::FnKind::Extern => AttrsPlacement::ExternFn,
+            },
+        )?;
+
         let mut sig = env.with_scope(
             fun.sig.word.name(),
             ScopeKind::FnSig,
@@ -292,15 +301,6 @@ impl<'db> Sema<'db> {
             }),
             fun.sig.word,
             sig.ty,
-        )?;
-
-        self.check_attrs(
-            env.module_id(),
-            &fun.attrs,
-            match &fun.kind {
-                ast::FnKind::Bare { .. } => AttrsPlacement::Fn,
-                ast::FnKind::Extern => AttrsPlacement::ExternFn,
-            },
         )?;
 
         let kind = env.with_scope(
@@ -379,13 +379,14 @@ impl<'db> Sema<'db> {
     }
 
     fn check_let(&mut self, env: &mut Env, let_: &ast::Let) -> CheckResult<hir::Let> {
+        self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::Let)?;
+
         let ty = if let Some(ty_annot) = &let_.ty_annot {
             self.check_ty_expr(env, ty_annot, AllowTyHole::Yes)?
         } else {
             self.fresh_ty_var()
         };
 
-        self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::Let)?;
         let value = self.check_expr(env, &let_.value, Some(ty))?;
 
         if env.in_global_scope() && self.db.const_storage.expr(value.id).is_none() {
@@ -413,8 +414,9 @@ impl<'db> Sema<'db> {
         env: &mut Env,
         let_: &ast::ExternLet,
     ) -> CheckResult<hir::ExternLet> {
-        let ty = self.check_ty_expr(env, &let_.ty_annot, AllowTyHole::No)?;
         self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::ExternLet)?;
+
+        let ty = self.check_ty_expr(env, &let_.ty_annot, AllowTyHole::No)?;
         let id = self.define_def(env, Vis::Private, DefKind::ExternGlobal, let_.word, ty)?;
 
         Ok(hir::ExternLet { module_id: env.module_id(), id, word: let_.word, span: let_.span })
