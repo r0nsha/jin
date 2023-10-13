@@ -40,11 +40,11 @@ impl PrettyCx<'_> {
     fn pp_fn(&mut self, f: &Fn) {
         self.builder.begin_child(format!(
             "fn {} (returns: {})",
-            self.tir.sigs[f.sig].name,
-            self.tir.sigs[f.sig].ty.as_fn().expect("to be a function").ret.display(self.db)
+            self.tir.fn_sigs[f.sig].name,
+            self.tir.fn_sigs[f.sig].ty.as_fn().expect("to be a function").ret.display(self.db)
         ));
 
-        let sig = &self.tir.sigs[f.sig];
+        let sig = &self.tir.fn_sigs[f.sig];
 
         if !sig.params.is_empty() {
             self.builder.begin_child("params".to_string());
@@ -155,7 +155,7 @@ impl PrettyCx<'_> {
                 Id::Fn(fid) => {
                     self.builder.add_empty_child(format!(
                         "`{}` (type: {})",
-                        self.tir.sigs[*fid].name,
+                        self.tir.fn_sigs[*fid].name,
                         expr.ty.display(self.db)
                     ));
                 }

@@ -127,7 +127,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     }
 
     pub fn predefine_all(&mut self) {
-        for sig in &self.tir.sigs {
+        for sig in &self.tir.fn_sigs {
             let llvm_ty = sig.ty.as_fn().expect("a function type").llty(self);
             let linkage = if sig.is_extern { Linkage::External } else { Linkage::Private };
             let function = self.module.add_function(&sig.name, llvm_ty, Some(linkage));
@@ -168,7 +168,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
     }
 
     fn codegen_fn(&mut self, fun: &'db Fn) -> BasicValueEnum<'cx> {
-        let sig = &self.tir.sigs[fun.sig];
+        let sig = &self.tir.fn_sigs[fun.sig];
         let fty = sig.ty;
 
         let function_value = self.function(fun.sig);
@@ -488,7 +488,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         self.functions
             .get(&id)
             .copied()
-            .unwrap_or_else(|| panic!("function {} to be declared", self.tir.sigs[id].name))
+            .unwrap_or_else(|| panic!("function {} to be declared", self.tir.fn_sigs[id].name))
     }
 
     #[track_caller]

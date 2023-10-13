@@ -22,7 +22,7 @@ new_key_type!(ExprId);
 
 #[derive(Debug)]
 pub struct Tir {
-    pub sigs: IndexVec<FnSigId, FnSig>,
+    pub fn_sigs: IndexVec<FnSigId, FnSig>,
     pub fns: Vec<Fn>,
     pub extern_fns: Vec<ExternFn>,
     pub globals: IndexVec<GlobalId, Global>,
@@ -32,7 +32,7 @@ pub struct Tir {
 impl Tir {
     pub fn new() -> Self {
         Self {
-            sigs: IndexVec::new(),
+            fn_sigs: IndexVec::new(),
             fns: vec![],
             extern_fns: vec![],
             globals: IndexVec::new(),
@@ -56,7 +56,7 @@ pub struct Fn {
 impl Fn {
     #[inline]
     pub fn params(&self, tir: &Tir) -> &[Local] {
-        &self.body.locals.as_slice()[0..tir.sigs[self.sig].params.len()]
+        &self.body.locals.as_slice()[0..tir.fn_sigs[self.sig].params.len()]
     }
 }
 

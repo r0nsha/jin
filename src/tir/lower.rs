@@ -156,7 +156,7 @@ impl<'db> LowerCx<'db> {
     }
 
     fn lower_fn_sig(&mut self, sig: &hir::FnSig, name: Ustr, ty: Ty, is_extern: bool) -> FnSigId {
-        self.tir.sigs.push_with_key(|id| FnSig {
+        self.tir.fn_sigs.push_with_key(|id| FnSig {
             id,
             name,
             params: sig.params.iter().map(|p| FnParam { def_id: p.id, ty: p.ty }).collect(),
@@ -192,7 +192,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     }
 
     fn lower_fn(mut self, sig: FnSigId, f: &hir::Fn) {
-        for param in self.cx.tir.sigs[sig].params.clone() {
+        for param in self.cx.tir.fn_sigs[sig].params.clone() {
             self.create_local(param.def_id, param.ty);
         }
 
