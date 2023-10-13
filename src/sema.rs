@@ -508,8 +508,8 @@ impl<'db> Sema<'db> {
             }
             ast::Expr::Block { exprs, span } => {
                 env.with_anon_scope(ScopeKind::Block, |env| -> CheckResult<hir::Expr> {
-                    if exprs.is_empty() {
-                        Ok(self.unit_expr(*span))
+                    let (exprs, ty) = if exprs.is_empty() {
+                        (vec![], self.db.types.unit)
                     } else {
                         let mut new_exprs = vec![];
                         let last = exprs.len() - 1;
@@ -522,12 +522,10 @@ impl<'db> Sema<'db> {
 
                         let ty = new_exprs.last().unwrap().ty;
 
-                        Ok(self.expr(
-                            hir::ExprKind::Block(hir::Block { exprs: new_exprs }),
-                            ty,
-                            *span,
-                        ))
-                    }
+                        (new_exprs, ty)
+                    };
+
+                    Ok(self.expr(hir::ExprKind::Block(hir::Block { exprs }), ty, *span))
                 })?
             }
             ast::Expr::Call { callee, args, span } => {
