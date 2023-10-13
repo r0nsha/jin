@@ -246,15 +246,16 @@ impl<'db> Sema<'db> {
         item_id: ast::ItemId,
         item: &ast::Item,
     ) -> CheckResult<()> {
-        if self.item_status(item_id).is_in_progress() {
-            return Err(CheckError::CyclicGlobalVar { span: item.span() });
+        match self.item_status(item_id) {
+            ItemStatus::Unresolved => {
+                self.item_statuses.insert(item_id, ItemStatus::InProgress);
+                self.check_item(env, item)?;
+                self.item_statuses.insert(item_id, ItemStatus::Resolved);
+                Ok(())
+            }
+            ItemStatus::InProgress => Err(CheckError::CyclicGlobalVar { span: item.span() }),
+            ItemStatus::Resolved => Ok(()),
         }
-
-        self.item_statuses.insert(item_id, ItemStatus::InProgress);
-        self.check_item(env, item)?;
-        self.item_statuses.insert(item_id, ItemStatus::Resolved);
-
-        Ok(())
     }
 
     fn check_item(&mut self, env: &mut Env, item: &ast::Item) -> CheckResult<()> {
