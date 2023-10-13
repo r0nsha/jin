@@ -103,7 +103,7 @@ impl<'db> Sema<'db> {
             }
         }
 
-        self.subst_hir();
+        self.subst();
 
         passes::check_bodies(self.db, &self.hir);
         passes::check_entry(self.db, &self.hir);

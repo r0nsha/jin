@@ -9,7 +9,7 @@ use crate::{
 };
 
 impl<'db> Sema<'db> {
-    pub fn subst_hir(&mut self) {
+    pub fn subst(&mut self) {
         let mut cx = SubstCx {
             db: self.db,
             storage: &mut self.storage.borrow_mut(),
