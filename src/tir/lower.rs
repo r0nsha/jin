@@ -294,11 +294,12 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 hir::ExprKind::Unary(un) => {
                     ExprKind::Unary { value: self.lower_expr(&un.expr), op: un.op }
                 }
-                hir::ExprKind::Binary(bin) => ExprKind::Binary {
-                    lhs: self.lower_expr(&bin.lhs),
-                    rhs: self.lower_expr(&bin.rhs),
-                    op: bin.op,
-                },
+                hir::ExprKind::Binary(bin) => {
+                    let lhs = self.lower_expr(&bin.lhs);
+                    let rhs = self.lower_expr(&bin.rhs);
+
+                    ExprKind::Binary { lhs, rhs, op: bin.op }
+                }
                 hir::ExprKind::Cast(cast) => {
                     ExprKind::Cast { value: self.lower_expr(&cast.expr), target: expr.ty }
                 }
