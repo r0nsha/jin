@@ -54,7 +54,7 @@ pub struct Sema<'db> {
     expr_id: Counter<ExprId>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, EnumAsInner)]
+#[derive(Debug, Clone, Copy, EnumAsInner)]
 enum ItemStatus {
     None,
     InProgress,
