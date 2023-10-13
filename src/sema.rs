@@ -255,6 +255,7 @@ impl<'db> Sema<'db> {
         self.item_statuses.insert(item_id, ItemStatus::InProgress);
         self.check_item(env, item)?;
         self.item_statuses.insert(item_id, ItemStatus::Complete);
+
         Ok(())
     }
 
