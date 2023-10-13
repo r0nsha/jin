@@ -56,7 +56,7 @@ pub struct Sema<'db> {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumAsInner)]
 enum ItemStatus {
-    Unresolved,
+    None,
     InProgress,
     Complete,
 }
@@ -97,7 +97,7 @@ impl<'db> Sema<'db> {
             for (idx, item) in module.items.iter().enumerate() {
                 let item_id = ast::ItemId::from(idx);
 
-                if let ItemStatus::Unresolved = self.item_status(item_id) {
+                if let ItemStatus::None = self.item_status(item_id) {
                     self.check_global_item(&mut env, item_id, item)?;
                 }
             }
@@ -113,7 +113,7 @@ impl<'db> Sema<'db> {
 
     #[inline]
     fn item_status(&self, id: ast::ItemId) -> ItemStatus {
-        self.item_statuses.get(&id).copied().unwrap_or(ItemStatus::Unresolved)
+        self.item_statuses.get(&id).copied().unwrap_or(ItemStatus::None)
     }
 
     #[inline]
