@@ -1,3 +1,4 @@
+mod attrs;
 mod coerce;
 mod env;
 mod error;
@@ -15,15 +16,16 @@ use rustc_hash::FxHashMap;
 use ustr::UstrMap;
 
 use crate::{
-    ast::{self, Ast, AttrKind},
+    ast::{self, Ast},
     counter::Counter,
-    db::{Db, DefId, DefInfo, DefKind, ExternLib, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
+    db::{Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     diagnostics::Diagnostic,
     hir,
-    hir::{const_eval::Const, ExprId, Hir},
+    hir::{ExprId, Hir},
     macros::create_bool_enum,
     middle::{BinOp, TyExpr, UnOp},
     sema::{
+        attrs::AttrsPlacement,
         coerce::CoerceExt,
         env::{BuiltinTys, Env, GlobalScope, ScopeKind, Symbol},
         error::CheckError,
@@ -421,58 +423,6 @@ impl<'db> Sema<'db> {
         let id = self.define_def(env, Vis::Private, DefKind::ExternGlobal, let_.word, ty)?;
 
         Ok(hir::ExternLet { module_id: env.module_id(), id, word: let_.word, span: let_.span })
-    }
-
-    fn check_attrs(
-        &mut self,
-        module_id: ModuleId,
-        attrs: &ast::Attrs,
-        placement: AttrsPlacement,
-    ) -> CheckResult<()> {
-        for attr in attrs {
-            let (value, value_ty, value_span) =
-                if let Some(value) = &attr.value {
-                    let value = self.check_expr(&mut Env::new(module_id), value, None)?;
-
-                    let const_ =
-                        self.db.const_storage.expr(value.id).cloned().ok_or(
-                            CheckError::NonConstAttrValue { ty: value.ty, span: value.span },
-                        )?;
-
-                    (const_, value.ty, value.span)
-                } else {
-                    (Const::Bool(true), self.db.types.bool, attr.span)
-                };
-
-            match attr.kind {
-                AttrKind::Link => {
-                    self.at(Obligation::obvious(value_span)).eq(self.db.types.str, value_ty)?;
-
-                    let lib = {
-                        let path = *value.as_str().unwrap();
-                        let sources = &self.db.sources.borrow();
-                        let relative_to =
-                            sources[self.db[module_id].source_id].path().parent().unwrap();
-
-                        ExternLib::try_from_str(&path, relative_to)
-                            .ok_or(CheckError::PathNotFound { path, span: value_span })?
-                    };
-
-                    self.db.extern_libs.insert(lib);
-                }
-            }
-        }
-
-        for attr in attrs {
-            match (attr.kind, placement) {
-                (AttrKind::Link, AttrsPlacement::ExternFn | AttrsPlacement::ExternLet) => (),
-                (kind, _) => {
-                    return Err(CheckError::InvalidAttrPlacement { kind, span: attr.span })
-                }
-            }
-        }
-
-        Ok(())
     }
 
     fn check_expr(
@@ -911,11 +861,3 @@ impl<'db> Sema<'db> {
 }
 
 create_bool_enum!(AllowTyHole);
-
-#[derive(Debug, Clone, Copy)]
-enum AttrsPlacement {
-    Fn,
-    ExternFn,
-    Let,
-    ExternLet,
-}
