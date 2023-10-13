@@ -11,10 +11,22 @@ use crate::{
     ty::Ty,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct Symbol {
+    pub module_id: ModuleId,
+    pub name: Ustr,
+}
+
+impl Symbol {
+    pub fn new(module_id: ModuleId, name: Ustr) -> Self {
+        Self { module_id, name }
+    }
+}
+
 #[derive(Debug)]
 pub struct GlobalScope {
-    defs: FxHashMap<(ModuleId, Ustr), DefId>,
-    items: FxHashMap<(ModuleId, Ustr), ast::ItemId>,
+    defs: FxHashMap<Symbol, DefId>,
+    items: FxHashMap<Symbol, ast::ItemId>,
 }
 
 impl GlobalScope {
@@ -22,7 +34,7 @@ impl GlobalScope {
         Self { defs: FxHashMap::default(), items: Self::init_items(ast) }
     }
 
-    fn init_items(ast: &Ast) -> FxHashMap<(ModuleId, Ustr), ast::ItemId> {
+    fn init_items(ast: &Ast) -> FxHashMap<Symbol, ast::ItemId> {
         let mut items = FxHashMap::default();
 
         for module in &ast.modules {
@@ -32,7 +44,7 @@ impl GlobalScope {
                 let id = ast::ItemId::from(idx);
 
                 item.walk_names(|word| {
-                    items.insert((module_id, word.name()), id);
+                    items.insert(Symbol::new(module_id, word.name()), id);
                 });
             }
         }
@@ -40,16 +52,16 @@ impl GlobalScope {
         items
     }
 
-    pub fn get_def(&self, module_id: ModuleId, name: Ustr) -> Option<DefId> {
-        self.defs.get(&(module_id, name)).copied()
+    pub fn get_def(&self, symbol: &Symbol) -> Option<DefId> {
+        self.defs.get(symbol).copied()
     }
 
-    pub fn insert_def(&mut self, module_id: ModuleId, name: Ustr, id: DefId) -> Option<DefId> {
-        self.defs.insert((module_id, name), id)
+    pub fn insert_def(&mut self, symbol: Symbol, id: DefId) -> Option<DefId> {
+        self.defs.insert(symbol, id)
     }
 
-    pub fn get_item(&self, module_id: ModuleId, name: Ustr) -> Option<ast::ItemId> {
-        self.items.get(&(module_id, name)).copied()
+    pub fn get_item(&self, symbol: &Symbol) -> Option<ast::ItemId> {
+        self.items.get(symbol).copied()
     }
 }
 

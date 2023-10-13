@@ -12,7 +12,7 @@ use std::cell::RefCell;
 use ena::unify::InPlaceUnificationTable;
 use enum_as_inner::EnumAsInner;
 use rustc_hash::FxHashMap;
-use ustr::{Ustr, UstrMap};
+use ustr::UstrMap;
 
 use crate::{
     ast::{self, Ast, AttrKind},
@@ -25,7 +25,7 @@ use crate::{
     middle::{BinOp, TyExpr, UnOp},
     sema::{
         coerce::CoerceExt,
-        env::{BuiltinTys, Env, GlobalScope, ScopeKind},
+        env::{BuiltinTys, Env, GlobalScope, ScopeKind, Symbol},
         error::CheckError,
         instantiate::instantiate,
         normalize::NormalizeTy,
@@ -138,15 +138,11 @@ impl<'db> Sema<'db> {
         ty.normalize(&mut self.storage.borrow_mut())
     }
 
-    fn find_and_check_global_item(
-        &mut self,
-        module_id: ModuleId,
-        name: Ustr,
-    ) -> CheckResult<Option<DefId>> {
-        if let Some(item_id) = self.global_scope.get_item(module_id, name) {
-            let item = &self.ast.modules[module_id].items[item_id];
-            self.check_global_item(&mut Env::new(module_id), item_id, item)?;
-            let id = self.global_scope.get_def(module_id, name).expect("global def to be defined");
+    fn find_and_check_global_item(&mut self, symbol: &Symbol) -> CheckResult<Option<DefId>> {
+        if let Some(item_id) = self.global_scope.get_item(symbol) {
+            let item = &self.ast.modules[symbol.module_id].items[item_id];
+            self.check_global_item(&mut Env::new(symbol.module_id), item_id, item)?;
+            let id = self.global_scope.get_def(symbol).expect("global def to be defined");
             Ok(Some(id))
         } else {
             Ok(None)
@@ -166,7 +162,8 @@ impl<'db> Sema<'db> {
 
         let id = DefInfo::alloc(self.db, qpath, scope, kind, ty, name.span());
 
-        if let Some(prev_id) = self.global_scope.insert_def(module_id, name.name(), id) {
+        if let Some(prev_id) = self.global_scope.insert_def(Symbol::new(module_id, name.name()), id)
+        {
             let def = &self.db[prev_id];
             return Err(CheckError::MultipleItems {
                 name: def.qpath.name(),
@@ -228,12 +225,13 @@ impl<'db> Sema<'db> {
     fn lookup_def(&mut self, env: &Env, word: Word) -> CheckResult<DefId> {
         let module_id = env.module_id();
         let name = word.name();
+        let symbol = Symbol::new(module_id, name);
 
         if let Some(id) = env.lookup(name).copied() {
             Ok(id)
-        } else if let Some(id) = self.global_scope.get_def(module_id, name) {
+        } else if let Some(id) = self.global_scope.get_def(&symbol) {
             Ok(id)
-        } else if let Some(id) = self.find_and_check_global_item(module_id, name)? {
+        } else if let Some(id) = self.find_and_check_global_item(&symbol)? {
             Ok(id)
         } else if let Some(id) = self.builtin_tys.get(name) {
             Ok(id)
