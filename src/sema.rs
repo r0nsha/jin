@@ -438,7 +438,7 @@ impl<'db> Sema<'db> {
                 match item {
                     ast::Item::Fn(_) | ast::Item::ExternLet(_) => {
                         self.check_item(env, item)?;
-                        self.unit(span)
+                        self.unit_expr(span)
                     }
                     ast::Item::Let(let_) => {
                         let let_ = self.check_let(env, let_)?;
@@ -453,7 +453,7 @@ impl<'db> Sema<'db> {
                     let expr = if let Some(expr) = expr {
                         self.check_expr(env, expr, Some(ret_ty))?
                     } else {
-                        self.unit(*span)
+                        self.unit_expr(*span)
                     };
 
                     self.at(Obligation::return_ty(expr.span, self.db[fn_id].span))
@@ -491,7 +491,7 @@ impl<'db> Sema<'db> {
                     // _become_ unit blocks, meaning that a block that doesn't return a unit value,
                     // but is expected to - is assumed to return it anyways.
                     then.ty = self.db.types.unit;
-                    self.unit(*span)
+                    self.unit_expr(*span)
                 };
 
                 let ty = then.ty;
@@ -509,7 +509,7 @@ impl<'db> Sema<'db> {
             ast::Expr::Block { exprs, span } => {
                 env.with_anon_scope(ScopeKind::Block, |env| -> CheckResult<hir::Expr> {
                     if exprs.is_empty() {
-                        Ok(self.unit(*span))
+                        Ok(self.unit_expr(*span))
                     } else {
                         let mut new_exprs = vec![];
                         let last = exprs.len() - 1;
@@ -855,7 +855,7 @@ impl<'db> Sema<'db> {
         hir::Expr { id: self.expr_id.next(), kind, ty, span }
     }
 
-    fn unit(&mut self, span: Span) -> hir::Expr {
+    fn unit_expr(&mut self, span: Span) -> hir::Expr {
         self.expr(hir::ExprKind::Block(hir::Block { exprs: vec![] }), self.db.types.unit, span)
     }
 }
