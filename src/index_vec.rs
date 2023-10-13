@@ -149,7 +149,7 @@ macro_rules! new_key_type {
             }
         }
 
-        impl crate::common::Key for $name {}
+        impl crate::index_vec::Key for $name {}
 
         impl $name {
             pub const INVALID: Self = Self(usize::MAX);

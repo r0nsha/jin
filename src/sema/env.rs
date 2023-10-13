@@ -4,8 +4,8 @@ use ustr::{ustr, Ustr, UstrMap};
 use crate::{
     ast,
     ast::Ast,
-    common::QPath,
     db::{Db, DefId, DefInfo, DefKind, ModuleId, ScopeInfo, ScopeLevel, Vis},
+    qpath::QPath,
     span::Span,
     sym,
     ty::Ty,

@@ -23,7 +23,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::UstrMap;
 
 use crate::{
-    common::target::{Arch, Os, TargetMetrics},
+    target::{Arch, Os, TargetMetrics},
     db::{build_options::EmitOption, Db, ExternLib},
     llvm::{generate::Generator, layout::Layout},
     tir::Tir,

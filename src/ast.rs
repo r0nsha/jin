@@ -7,10 +7,12 @@ use enum_as_inner::EnumAsInner;
 use ustr::Ustr;
 
 use crate::{
-    common::{new_key_type, IndexVec, QPath, Word},
     db::ModuleId,
+    index_vec::{new_key_type, IndexVec},
     middle::{BinOp, TyExpr, UnOp},
+    qpath::QPath,
     span::{SourceId, Span, Spanned},
+    word::Word,
 };
 
 #[derive(Debug, Clone)]

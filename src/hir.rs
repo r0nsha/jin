@@ -8,11 +8,12 @@ use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
-    common::{new_key_type, Word},
     db::{Db, DefId, ModuleId},
+    index_vec::new_key_type,
     middle::{BinOp, UnOp},
     span::Span,
     ty::{Instantiation, Ty, Typed},
+    word::Word,
 };
 
 #[derive(Debug, Clone)]

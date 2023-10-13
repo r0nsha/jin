@@ -17,20 +17,24 @@
 #![feature(iterator_try_collect)]
 
 mod ast;
-mod common;
+mod counter;
 mod db;
 mod diagnostics;
 mod hir;
+mod index_vec;
 mod llvm;
 mod macros;
+mod middle;
 mod parse;
+mod qpath;
 mod sema;
 mod span;
 mod subst;
 mod sym;
+mod target;
 mod tir;
 mod ty;
-mod middle;
+mod word;
 
 use std::fs;
 
@@ -39,11 +43,11 @@ use camino::Utf8PathBuf;
 use clap::{Parser, Subcommand};
 
 use crate::{
-    common::target::TargetPlatform,
     db::{
         build_options::{BuildOptions, EmitOption},
         Db,
     },
+    target::TargetPlatform,
 };
 
 #[derive(Parser)]

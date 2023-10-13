@@ -5,7 +5,7 @@ use std::{
 
 use ustr::{ustr, Ustr};
 
-use crate::{common::Word, span::Span};
+use crate::{span::Span, word::Word};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Token {

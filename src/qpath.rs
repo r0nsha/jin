@@ -3,7 +3,7 @@ use std::fmt;
 use camino::Utf8Path;
 use ustr::{ustr, Ustr};
 
-use crate::common::Word;
+use crate::word::Word;
 
 #[derive(Debug, Clone)]
 pub struct QPath(Vec<Ustr>);

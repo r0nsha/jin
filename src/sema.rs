@@ -16,7 +16,7 @@ use ustr::{Ustr, UstrMap};
 
 use crate::{
     ast::{self, Ast, AttrKind},
-    common::{Counter, Word},
+    counter::Counter,
     db::{Db, DefId, DefInfo, DefKind, ExternLib, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
     diagnostics::Diagnostic,
     hir,
@@ -34,6 +34,7 @@ use crate::{
     span::{Span, Spanned},
     sym,
     ty::{FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty, TyKind, TyVar},
+    word::Word,
 };
 
 pub type CheckResult<T> = Result<T, CheckError>;

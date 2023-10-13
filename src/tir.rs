@@ -8,9 +8,9 @@ pub use lower::lower;
 use ustr::Ustr;
 
 use crate::{
-    common::{new_key_type, IndexVec},
     db::{Db, DefId},
     hir::const_eval::Const,
+    index_vec::{new_key_type, IndexVec},
     middle::{BinOp, UnOp},
     ty::Ty,
 };

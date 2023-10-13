@@ -1,6 +1,6 @@
 use clap::ValueEnum;
 
-use crate::common::target::{TargetMetrics, TargetPlatform};
+use crate::target::{TargetMetrics, TargetPlatform};
 
 #[derive(Debug)]
 pub struct BuildOptions {

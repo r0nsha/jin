@@ -2,8 +2,8 @@ use std::fmt;
 
 use crate::{
     ast::token::TokenKind,
-    common::Word,
     span::{Span, Spanned},
+    word::Word,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

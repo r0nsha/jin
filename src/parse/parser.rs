@@ -6,11 +6,12 @@ use crate::{
         Attr, AttrKind, Attrs, CallArg, Expr, ExternLet, Fn, FnKind, FnParam, FnSig, Item, Let,
         LitKind, Module, NamePat, Pat, TyParam,
     },
-    common::{QPath, Word},
     db::Db,
     diagnostics::{Diagnostic, Label},
     middle::{BinOp, TyExpr, TyName, UnOp},
+    qpath::QPath,
     span::{Source, SourceId, Span, Spanned},
+    word::Word,
 };
 
 pub fn parse(db: &Db, source: &Source, tokens: Vec<Token>) -> Result<Module, Diagnostic> {

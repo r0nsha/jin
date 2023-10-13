@@ -2,13 +2,13 @@ use ustr::Ustr;
 
 use crate::{
     ast::AttrKind,
-    common::Word,
     db::Db,
     diagnostics::{Diagnostic, Label},
     hir::const_eval::ConstEvalError,
     sema::unify::{Obligation, ObligationKind},
     span::{Span, Spanned},
     ty::Ty,
+    word::Word,
 };
 
 #[derive(Debug)]
@@ -176,14 +176,14 @@ impl CheckError {
             Self::InvalidMember { ty, member } => Diagnostic::error("check::invalid_member")
                 .with_message(format!("type `{}` has no member `{}`", ty.display(db), member))
                 .with_label(Label::primary(member.span()).with_message("unknown member")),
-            Self::NonConstAttrValue { ty, span } => {
-                Diagnostic::error("check::non_const_attr_value")
-                    .with_message(format!(
-                        "value of type `{}` must resolve to a const, because it is passed to an attribute",
-                        ty.display(db),
-                    ))
-                    .with_label(Label::primary(span).with_message("not const"))
-            }
+            Self::NonConstAttrValue { ty, span } => Diagnostic::error(
+                "check::non_const_attr_value",
+            )
+            .with_message(format!(
+                "value of type `{}` must resolve to a const, because it is passed to an attribute",
+                ty.display(db),
+            ))
+            .with_label(Label::primary(span).with_message("not const")),
             Self::PathNotFound { path, span } => Diagnostic::error("check::path_not_found")
                 .with_message(format!("path `{path}` not found"))
                 .with_label(Label::primary(span).with_message("not found")),

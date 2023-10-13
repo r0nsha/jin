@@ -18,18 +18,16 @@ use rustc_hash::FxHashSet;
 use ustr::Ustr;
 
 use crate::{
-    common::{
-        new_key_type,
-        target::{TargetMetrics, TargetPlatform},
-        IndexVec, QPath,
-    },
     db::{
         build_options::{BuildOptions, EmitOption},
         timing::Timings,
     },
     diagnostics::Diagnostics,
     hir::{const_eval::ConstStorage, ExprId, HirMap},
+    index_vec::{new_key_type, IndexVec},
+    qpath::QPath,
     span::{Source, SourceId, Sources, Span},
+    target::{TargetMetrics, TargetPlatform},
     ty::{
         coerce::{Coercion, Coercions},
         IntTy, Ty, TyKind, Typed, UintTy,
