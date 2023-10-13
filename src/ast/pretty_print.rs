@@ -95,7 +95,7 @@ impl PrettyPrint for Expr {
                 rhs.pretty_print(cx);
                 cx.builder.end_child();
             }
-            Self::Cast { expr, ty, .. } => {
+            Self::Cast { expr, ty_expr: ty, .. } => {
                 cx.builder.begin_child("cast".to_string());
                 expr.pretty_print(cx);
                 cx.builder.begin_child("to".to_string());
@@ -159,7 +159,7 @@ impl PrettyPrint for FnSig {
 
             for param in &self.params {
                 cx.builder.add_empty_child(format!("{}", param.name));
-                param.ty_annot.pretty_print(cx);
+                param.ty_expr.pretty_print(cx);
             }
 
             cx.builder.end_child();
@@ -177,7 +177,7 @@ impl PrettyPrint for Let {
     fn pretty_print(&self, cx: &mut PrettyCx) {
         cx.builder.begin_child(format!("let {}", self.pat));
 
-        if let Some(ty) = &self.ty_annot {
+        if let Some(ty) = &self.ty_expr {
             cx.builder.begin_child("type".to_string());
             ty.pretty_print(cx);
             cx.builder.end_child();
@@ -194,7 +194,7 @@ impl PrettyPrint for ExternLet {
         cx.builder.begin_child(format!("let extern {}", self.word));
 
         cx.builder.begin_child("type".to_string());
-        self.ty_annot.pretty_print(cx);
+        self.ty_expr.pretty_print(cx);
         cx.builder.end_child();
 
         cx.builder.end_child();

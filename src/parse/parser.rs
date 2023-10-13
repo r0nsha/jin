@@ -138,21 +138,21 @@ impl<'a> Parser<'a> {
         let start = self.last_span();
         let pat = self.parse_pat()?;
 
-        let ty_annot = self.is_and(TokenKind::Colon, |this, _| this.parse_ty()).transpose()?;
+        let ty_expr = self.is_and(TokenKind::Colon, |this, _| this.parse_ty()).transpose()?;
         self.eat(TokenKind::Eq)?;
 
         let value = self.parse_expr()?;
 
-        Ok(Let { attrs, pat, ty_annot, span: start.merge(value.span()), value: Box::new(value) })
+        Ok(Let { attrs, pat, ty_expr, span: start.merge(value.span()), value: Box::new(value) })
     }
 
     fn parse_extern_let(&mut self, attrs: Attrs) -> ParseResult<ExternLet> {
         let start = self.last_span();
         let ident = self.eat(TokenKind::empty_ident())?;
         self.eat(TokenKind::Colon)?;
-        let ty_annot = self.parse_ty()?;
-        let span = start.merge(ty_annot.span());
-        Ok(ExternLet { attrs, word: ident.word(), ty_annot, span })
+        let ty_expr = self.parse_ty()?;
+        let span = start.merge(ty_expr.span());
+        Ok(ExternLet { attrs, word: ident.word(), ty_expr, span })
     }
     fn parse_pat(&mut self) -> ParseResult<Pat> {
         let tok = self.eat_any()?;
@@ -200,8 +200,8 @@ impl<'a> Parser<'a> {
         self.parse_list_optional(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             let ident = this.eat(TokenKind::empty_ident())?;
             this.eat(TokenKind::Colon)?;
-            let ty_annot = this.parse_ty()?;
-            Ok(FnParam { name: ident.word(), ty_annot, span: ident.span })
+            let ty_expr = this.parse_ty()?;
+            Ok(FnParam { name: ident.word(), ty_expr, span: ident.span })
         })
     }
 
@@ -430,7 +430,7 @@ impl<'a> Parser<'a> {
                     self.next();
                     let ty = self.parse_ty()?;
                     let span = expr.span().merge(ty.span());
-                    Ok(Expr::Cast { expr: Box::new(expr), ty, span })
+                    Ok(Expr::Cast { expr: Box::new(expr), ty_expr: ty, span })
                 }
                 TokenKind::Dot => {
                     self.next();

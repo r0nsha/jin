@@ -95,7 +95,7 @@ pub enum Expr {
     Call { callee: Box<Self>, args: Vec<CallArg>, span: Span },
     Unary { expr: Box<Self>, op: UnOp, span: Span },
     Binary { lhs: Box<Self>, rhs: Box<Self>, op: BinOp, span: Span },
-    Cast { expr: Box<Self>, ty: TyExpr, span: Span },
+    Cast { expr: Box<Self>, ty_expr: TyExpr, span: Span },
     Member { expr: Box<Self>, member: Word, span: Span },
     Name { word: Word, args: Option<Vec<TyExpr>>, span: Span },
     Lit { kind: LitKind, span: Span },
@@ -149,7 +149,7 @@ pub struct TyParam {
 #[derive(Debug, Clone)]
 pub struct FnParam {
     pub name: Word,
-    pub ty_annot: TyExpr,
+    pub ty_expr: TyExpr,
     pub span: Span,
 }
 
@@ -157,7 +157,7 @@ pub struct FnParam {
 pub struct Let {
     pub attrs: Attrs,
     pub pat: Pat,
-    pub ty_annot: Option<TyExpr>,
+    pub ty_expr: Option<TyExpr>,
     pub value: Box<Expr>,
     pub span: Span,
 }
@@ -166,7 +166,7 @@ pub struct Let {
 pub struct ExternLet {
     pub attrs: Attrs,
     pub word: Word,
-    pub ty_annot: TyExpr,
+    pub ty_expr: TyExpr,
     pub span: Span,
 }
 

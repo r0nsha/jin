@@ -351,7 +351,7 @@ impl<'db> Sema<'db> {
         let mut defined_params = UstrMap::<Span>::default();
 
         for p in &sig.params {
-            let ty = self.check_ty_expr(env, &p.ty_annot, AllowTyHole::No)?;
+            let ty = self.check_ty_expr(env, &p.ty_expr, AllowTyHole::No)?;
 
             if let Some(prev_span) = defined_params.insert(p.name.name(), p.name.span()) {
                 return Err(CheckError::MultipleParams {
@@ -384,8 +384,8 @@ impl<'db> Sema<'db> {
     fn check_let(&mut self, env: &mut Env, let_: &ast::Let) -> CheckResult<hir::Let> {
         self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::Let)?;
 
-        let ty = if let Some(ty_annot) = &let_.ty_annot {
-            self.check_ty_expr(env, ty_annot, AllowTyHole::Yes)?
+        let ty = if let Some(ty_expr) = &let_.ty_expr {
+            self.check_ty_expr(env, ty_expr, AllowTyHole::Yes)?
         } else {
             self.fresh_ty_var()
         };
@@ -419,7 +419,7 @@ impl<'db> Sema<'db> {
     ) -> CheckResult<hir::ExternLet> {
         self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::ExternLet)?;
 
-        let ty = self.check_ty_expr(env, &let_.ty_annot, AllowTyHole::No)?;
+        let ty = self.check_ty_expr(env, &let_.ty_expr, AllowTyHole::No)?;
         let id = self.define_def(env, Vis::Private, DefKind::ExternGlobal, let_.word, ty)?;
 
         Ok(hir::ExternLet { module_id: env.module_id(), id, word: let_.word, span: let_.span })
@@ -694,7 +694,7 @@ impl<'db> Sema<'db> {
                     *span,
                 )
             }
-            ast::Expr::Cast { expr, ty, span } => {
+            ast::Expr::Cast { expr, ty_expr: ty, span } => {
                 let expr = self.check_expr(env, expr, None)?;
                 let target = self.check_ty_expr(env, ty, AllowTyHole::Yes)?;
 
