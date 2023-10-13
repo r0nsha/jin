@@ -480,18 +480,18 @@ impl<'db> Sema<'db> {
         expr: &ast::Expr,
         expected_ty: Option<Ty>,
     ) -> CheckResult<hir::Expr> {
-        let expr: CheckResult<hir::Expr> = match expr {
+        let expr = match expr {
             ast::Expr::Item(item) => {
                 let span = item.span();
 
                 match item {
                     ast::Item::Fn(_) | ast::Item::ExternLet(_) => {
                         self.check_item(env, item)?;
-                        Ok(self.unit(span))
+                        self.unit(span)
                     }
                     ast::Item::Let(let_) => {
                         let let_ = self.check_let(env, let_)?;
-                        Ok(self.expr(hir::ExprKind::Let(let_), self.db.types.unit, span))
+                        self.expr(hir::ExprKind::Let(let_), self.db.types.unit, span)
                     }
                 }
             }
@@ -509,11 +509,11 @@ impl<'db> Sema<'db> {
                         .eq(ret_ty, expr.ty)
                         .or_coerce(self, expr.id)?;
 
-                    Ok(self.expr(
+                    self.expr(
                         hir::ExprKind::Return(hir::Return { expr: Box::new(expr) }),
                         self.db.types.never,
                         *span,
-                    ))
+                    )
                 } else {
                     return Err(CheckError::InvalidReturn(*span));
                 }
@@ -545,7 +545,7 @@ impl<'db> Sema<'db> {
 
                 let ty = then.ty;
 
-                Ok(self.expr(
+                self.expr(
                     hir::ExprKind::If(hir::If {
                         cond: Box::new(cond),
                         then: Box::new(then),
@@ -553,26 +553,32 @@ impl<'db> Sema<'db> {
                     }),
                     ty,
                     *span,
-                ))
+                )
             }
-            ast::Expr::Block { exprs, span } => env.with_anon_scope(ScopeKind::Block, |env| {
-                if exprs.is_empty() {
-                    Ok(self.unit(*span))
-                } else {
-                    let mut new_exprs = vec![];
-                    let last = exprs.len() - 1;
+            ast::Expr::Block { exprs, span } => {
+                env.with_anon_scope(ScopeKind::Block, |env| -> CheckResult<hir::Expr> {
+                    if exprs.is_empty() {
+                        Ok(self.unit(*span))
+                    } else {
+                        let mut new_exprs = vec![];
+                        let last = exprs.len() - 1;
 
-                    for (i, expr) in exprs.iter().enumerate() {
-                        let expected_ty =
-                            if i == last { expected_ty } else { Some(self.db.types.unit) };
-                        new_exprs.push(self.check_expr(env, expr, expected_ty)?);
+                        for (i, expr) in exprs.iter().enumerate() {
+                            let expected_ty =
+                                if i == last { expected_ty } else { Some(self.db.types.unit) };
+                            new_exprs.push(self.check_expr(env, expr, expected_ty)?);
+                        }
+
+                        let ty = new_exprs.last().unwrap().ty;
+
+                        Ok(self.expr(
+                            hir::ExprKind::Block(hir::Block { exprs: new_exprs }),
+                            ty,
+                            *span,
+                        ))
                     }
-
-                    let ty = new_exprs.last().unwrap().ty;
-
-                    Ok(self.expr(hir::ExprKind::Block(hir::Block { exprs: new_exprs }), ty, *span))
-                }
-            }),
+                })?
+            }
             ast::Expr::Call { callee, args, span } => {
                 let callee = self.check_expr(env, callee, None)?;
 
@@ -662,11 +668,11 @@ impl<'db> Sema<'db> {
 
                     let ty = fun_ty.ret;
 
-                    Ok(self.expr(
+                    self.expr(
                         hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args: new_args }),
                         ty,
                         *span,
-                    ))
+                    )
                 } else {
                     return Err(CheckError::UncallableTy {
                         ty: self.normalize(callee.ty),
@@ -694,11 +700,11 @@ impl<'db> Sema<'db> {
 
                 let ty = expr.ty;
 
-                Ok(self.expr(
+                self.expr(
                     hir::ExprKind::Unary(hir::Unary { expr: Box::new(expr), op: *op }),
                     ty,
                     *span,
-                ))
+                )
             }
             ast::Expr::Binary { lhs, rhs, op, span } => {
                 let lhs = self.check_expr(env, lhs, None)?;
@@ -729,7 +735,7 @@ impl<'db> Sema<'db> {
                     _ => lhs.ty,
                 };
 
-                Ok(self.expr(
+                self.expr(
                     hir::ExprKind::Binary(hir::Binary {
                         lhs: Box::new(lhs),
                         rhs: Box::new(rhs),
@@ -737,17 +743,17 @@ impl<'db> Sema<'db> {
                     }),
                     ty,
                     *span,
-                ))
+                )
             }
             ast::Expr::Cast { expr, ty, span } => {
                 let expr = self.check_expr(env, expr, None)?;
                 let target = self.check_ty_expr(env, ty, AllowTyHole::Yes)?;
 
-                Ok(self.expr(
+                self.expr(
                     hir::ExprKind::Cast(hir::Cast { expr: Box::new(expr), target }),
                     target,
                     *span,
-                ))
+                )
             }
             ast::Expr::Member { expr, member, span } => {
                 let expr = self.check_expr(env, expr, None)?;
@@ -762,11 +768,11 @@ impl<'db> Sema<'db> {
                     _ => return Err(CheckError::InvalidMember { ty, member: *member }),
                 };
 
-                Ok(self.expr(
+                self.expr(
                     hir::ExprKind::Member(hir::Member { expr: Box::new(expr), member: *member }),
                     res_ty,
                     *span,
-                ))
+                )
             }
             ast::Expr::Name { word, args, span } => {
                 let id = self.lookup_def(env, *word)?;
@@ -806,11 +812,11 @@ impl<'db> Sema<'db> {
 
                 let ty = instantiate(def_ty, instantiation.clone());
 
-                Ok(self.expr(
+                self.expr(
                     hir::ExprKind::Name(hir::Name { id, word: *word, instantiation }),
                     ty,
                     *span,
-                ))
+                )
             }
             ast::Expr::Lit { kind, span } => {
                 let (kind, ty) = match kind {
@@ -819,11 +825,9 @@ impl<'db> Sema<'db> {
                     ast::LitKind::Bool(v) => (hir::Lit::Bool(*v), self.db.types.bool),
                 };
 
-                Ok(self.expr(hir::ExprKind::Lit(kind), ty, *span))
+                self.expr(hir::ExprKind::Lit(kind), ty, *span)
             }
         };
-
-        let expr = expr?;
 
         self.db.const_storage.eval_expr(&expr).map_err(|e| CheckError::ConstEval(e, expr.span))?;
 
