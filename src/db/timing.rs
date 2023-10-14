@@ -62,6 +62,6 @@ impl Timing {
             format!("{millis}ms")
         };
 
-        println!("{: <25}{time_str}", self.name.color(color).bold());
+        println!("{: <15}{time_str}", self.name.color(color).bold());
     }
 }
