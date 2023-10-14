@@ -166,24 +166,27 @@ impl CheckError {
             Self::CyclicGlobalVar { span } => Diagnostic::error("check::cyclic_global_vars")
                 .with_message("cycle detected while checking definition")
                 .with_label(Label::primary(span)),
-            Self::ConstEval(err, span) => Diagnostic::error("check::const_eval_error")
-                .with_message("const evaluation failed")
-                .with_label(Label::primary(span).with_message(match err {
-                    ConstEvalError::DivByZero => "caught division by zero",
-                    ConstEvalError::RemByZero => "caught reminder by zero",
-                    ConstEvalError::Overflow => "caught integer overflow",
-                })),
+            Self::ConstEval(err, span) => {
+                let msg = match err {
+                    ConstEvalError::DivByZero => "division by zero",
+                    ConstEvalError::RemByZero => "reminder by zero",
+                    ConstEvalError::Overflow => "integer overflow",
+                };
+                Diagnostic::error("check::const_eval_error")
+                    .with_message(format!("const evaluation failed: {msg}"))
+                    .with_label(Label::primary(span).with_message(format!("caught {msg}")))
+            }
             Self::InvalidMember { ty, member } => Diagnostic::error("check::invalid_member")
                 .with_message(format!("type `{}` has no member `{}`", ty.display(db), member))
                 .with_label(Label::primary(member.span()).with_message("unknown member")),
-            Self::NonConstAttrValue { ty, span } => Diagnostic::error(
-                "check::non_const_attr_value",
-            )
-            .with_message(format!(
+            Self::NonConstAttrValue { ty, span } => {
+                Diagnostic::error("check::non_const_attr_value")
+                    .with_message(format!(
                 "value of type `{}` must resolve to a const, because it is passed to an attribute",
                 ty.display(db),
             ))
-            .with_label(Label::primary(span).with_message("not const")),
+                    .with_label(Label::primary(span).with_message("not const"))
+            }
             Self::PathNotFound { path, span } => Diagnostic::error("check::path_not_found")
                 .with_message(format!("path `{path}` not found"))
                 .with_label(Label::primary(span).with_message("not found")),
