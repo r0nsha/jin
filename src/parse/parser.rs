@@ -242,6 +242,7 @@ impl<'a> Parser<'a> {
         Ok(Expr::Return { expr, span })
     }
 
+    // TODO: gotta clean this implementation a bit
     fn parse_expr(&mut self) -> ParseResult<Expr> {
         let mut expr_stack: Vec<Expr> = vec![];
         let mut op_stack: Vec<BinOp> = vec![];
