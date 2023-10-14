@@ -13,10 +13,10 @@ use rustc_hash::FxHashMap;
 use ustr::UstrMap;
 
 use crate::{
-    middle::{BinOp, CmpOp, UnOp},
     db::Db,
     hir::const_eval::Const,
     llvm::{inkwell_ext::ContextExt, layout::Layout, ty::LlvmTy},
+    middle::{BinOp, CmpOp, UnOp},
     tir::{Body, ExprId, ExprKind, Fn, FnSigId, GlobalId, GlobalKind, Id, LocalId, Tir},
     ty::Ty,
 };

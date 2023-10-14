@@ -10,7 +10,7 @@ use internment::Intern;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
-use crate::{target::TargetMetrics, db::Db, ty::printer::TyPrinter};
+use crate::{db::Db, target::TargetMetrics, ty::printer::TyPrinter};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Ty(Intern<TyKind>);

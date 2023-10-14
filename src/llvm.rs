@@ -23,9 +23,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::UstrMap;
 
 use crate::{
-    target::{Arch, Os, TargetMetrics},
     db::{build_options::EmitOption, Db, ExternLib},
     llvm::{generate::Generator, layout::Layout},
+    target::{Arch, Os, TargetMetrics},
     tir::Tir,
 };
 
@@ -56,7 +56,7 @@ pub fn codegen(db: &mut Db, tir: &Tir) -> Utf8PathBuf {
         static_str_slices: UstrMap::default(),
     };
 
-    g.db.time.start("llvm generation");
+    g.db.time.start("llvm");
     g.run();
     g.db.time.stop();
 

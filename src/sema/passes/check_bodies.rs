@@ -92,15 +92,13 @@ impl AnalysisError {
                     .with_message(format!("cannot cast `{source}` to `{target}`"))
                     .with_label(Label::primary(span).with_message("invalid cast"))
             }
-            Self::IntOutOfRange { value, ty, span } => {
-                Diagnostic::error("check::int_out_of_range")
-                    .with_message(format!(
-                        "integer {} is of range of its type `{}`",
-                        value,
-                        ty.display(db)
-                    ))
-                    .with_label(Label::primary(span).with_message("integer overflows its type"))
-            }
+            Self::IntOutOfRange { value, ty, span } => Diagnostic::error("check::int_out_of_range")
+                .with_message(format!(
+                    "integer {} is of range of its type `{}`",
+                    value,
+                    ty.display(db)
+                ))
+                .with_label(Label::primary(span).with_message("integer overflows its type")),
         }
     }
 }
