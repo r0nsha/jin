@@ -351,7 +351,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
                         phi.as_basic_value()
                     }
                     BinOp::Or => {
-                        // if !lhs { rhs } else { true }
+                        // if !lhs { rhs } else { false }
                         let then_block = self.append_block(state, "or_then");
                         let else_block = self.append_block(state, "or_else");
                         let merge_block = self.append_block(state, "or_merge");
