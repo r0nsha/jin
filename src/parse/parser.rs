@@ -314,11 +314,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_operand(&mut self) -> ParseResult<Expr> {
-        let term = self.parse_term()?;
-        self.parse_postfix(term)
+        let atom = self.parse_atom()?;
+        self.parse_postfix(atom)
     }
 
-    fn parse_term(&mut self) -> ParseResult<Expr> {
+    fn parse_atom(&mut self) -> ParseResult<Expr> {
         let tok = self.eat_any()?;
 
         let expr = match tok.kind {
