@@ -214,12 +214,18 @@ impl<'db> Sema<'db> {
         kind: DefKind,
         pat: &ast::Pat,
         ty: Ty,
+        value_id: ExprId,
     ) -> CheckResult<hir::Pat> {
         match pat {
-            ast::Pat::Name(name) => Ok(hir::Pat::Name(hir::NamePat {
-                id: self.define_def(env, vis, kind, name.word, ty)?,
-                word: name.word,
-            })),
+            ast::Pat::Name(name) => {
+                let id = self.define_def(env, vis, kind, name.word, ty)?;
+
+                if let Some(value) = self.db.const_storage.expr(value_id) {
+                    self.db.const_storage.insert_def(id, value.clone());
+                }
+
+                Ok(hir::Pat::Name(hir::NamePat { id, word: name.word }))
+            }
             ast::Pat::Discard(span) => Ok(hir::Pat::Discard(*span)),
         }
     }
@@ -398,16 +404,7 @@ impl<'db> Sema<'db> {
 
         self.at(Obligation::obvious(value.span)).eq(ty, value.ty).or_coerce(self, value.id)?;
 
-        let pat = self.define_pat(env, Vis::Private, DefKind::Variable, &let_.pat, ty)?;
-
-        match &pat {
-            hir::Pat::Name(name) => {
-                if let Some(value) = self.db.const_storage.expr(value.id) {
-                    self.db.const_storage.insert_def(name.id, value.clone());
-                }
-            }
-            hir::Pat::Discard(_) => (),
-        }
+        let pat = self.define_pat(env, Vis::Private, DefKind::Variable, &let_.pat, ty, value.id)?;
 
         Ok(hir::Let { module_id: env.module_id(), pat, value: Box::new(value), span: let_.span })
     }
