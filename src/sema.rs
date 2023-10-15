@@ -261,7 +261,7 @@ impl<'db> Sema<'db> {
                 self.item_statuses.insert(item_id, ItemStatus::Resolved);
                 Ok(())
             }
-            ItemStatus::InProgress => Err(CheckError::CyclicGlobalVar { span: item.span() }),
+            ItemStatus::InProgress => Err(CheckError::CyclicDefinitions { span: item.span() }),
             ItemStatus::Resolved => Ok(()),
         }
     }
