@@ -346,7 +346,13 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     DefKind::Variable => ExprKind::Id(Id::Local(self.def_to_local[&name.id])),
                     DefKind::Ty(_) => unreachable!(),
                 },
-                hir::ExprKind::Lit(_) => unreachable!("lits should always have a const value"),
+                hir::ExprKind::Lit(lit) => match lit {
+                    hir::Lit::Str(value) => ExprKind::Const(Const::Str(*value)),
+                    hir::Lit::Int(value) => {
+                        ExprKind::Const(Const::Int(i128::try_from(*value).unwrap()))
+                    }
+                    hir::Lit::Bool(value) => ExprKind::Const(Const::Bool(*value)),
+                },
             }
         };
 
