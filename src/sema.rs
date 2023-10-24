@@ -224,21 +224,27 @@ impl<'db> Sema<'db> {
     }
 
     fn lookup_def(&mut self, env: &Env, word: Word) -> CheckResult<DefId> {
-        let module_id = env.module_id();
         let name = word.name();
-        let symbol = Symbol::new(module_id, name);
 
         if let Some(id) = env.lookup(name).copied() {
-            Ok(id)
-        } else if let Some(id) = self.global_scope.get_def(&symbol) {
-            Ok(id)
-        } else if let Some(id) = self.find_and_check_global_item(&symbol)? {
-            Ok(id)
-        } else if let Some(id) = self.builtin_tys.get(name) {
-            Ok(id)
-        } else {
-            Err(CheckError::NameNotFound(word))
+            return Ok(id);
         }
+
+        let symbol = Symbol::new(env.module_id(), name);
+
+        if let Some(id) = self.global_scope.get_def(&symbol) {
+            return Ok(id);
+        }
+
+        if let Some(id) = self.find_and_check_global_item(&symbol)? {
+            return Ok(id);
+        }
+
+        if let Some(id) = self.builtin_tys.get(name) {
+            return Ok(id);
+        }
+
+        Err(CheckError::NameNotFound(word))
     }
 
     fn check_global_item(
