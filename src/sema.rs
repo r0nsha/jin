@@ -5,7 +5,7 @@ mod error;
 mod instantiate;
 mod item_state;
 mod normalize;
-mod passes;
+mod post;
 mod subst;
 mod unify;
 
@@ -101,8 +101,8 @@ impl<'db> Sema<'db> {
 
         self.subst();
 
-        passes::check_bodies(self.db, &self.hir);
-        passes::check_entry(self.db, &self.hir);
+        post::check_bodies(self.db, &self.hir);
+        post::check_entry(self.db, &self.hir);
 
         Ok(self.hir)
     }
