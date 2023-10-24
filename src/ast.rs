@@ -25,6 +25,10 @@ impl Ast {
         Self { modules: IndexVec::new() }
     }
 
+    pub fn find_item(&self, id: GlobalItemId) -> Option<&Item> {
+        self.modules.get(id.module_id).map(|m| m.items.get(id.item_id)).flatten()
+    }
+
     pub fn pretty_print(&self, w: &mut impl io::Write) -> io::Result<()> {
         for module in &self.modules {
             pretty_print::print_module(module, w)?;
@@ -54,6 +58,18 @@ impl Module {
 }
 
 new_key_type!(ItemId);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GlobalItemId {
+    pub module_id: ModuleId,
+    pub item_id: ItemId,
+}
+
+impl GlobalItemId {
+    pub fn new(module_id: ModuleId, item_id: ItemId) -> Self {
+        Self { module_id, item_id }
+    }
+}
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum Item {

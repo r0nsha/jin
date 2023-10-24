@@ -3,6 +3,7 @@ mod coerce;
 mod env;
 mod error;
 mod instantiate;
+mod item_state;
 mod normalize;
 mod passes;
 mod subst;
@@ -11,8 +12,6 @@ mod unify;
 use std::cell::RefCell;
 
 use ena::unify::InPlaceUnificationTable;
-use enum_as_inner::EnumAsInner;
-use rustc_hash::FxHashMap;
 use ustr::UstrMap;
 
 use crate::{
@@ -30,6 +29,7 @@ use crate::{
         env::{BuiltinTys, Env, GlobalScope, ScopeKind, Symbol},
         error::CheckError,
         instantiate::instantiate,
+        item_state::{ItemState, ItemStatus},
         normalize::NormalizeTy,
         unify::Obligation,
     },
@@ -51,16 +51,9 @@ pub struct Sema<'db> {
     hir: Hir,
     global_scope: GlobalScope,
     builtin_tys: BuiltinTys,
-    item_statuses: FxHashMap<ast::ItemId, ItemStatus>,
+    item_state: ItemState,
     storage: RefCell<TyStorage>,
     expr_id: Counter<ExprId>,
-}
-
-#[derive(Debug, Clone, Copy, EnumAsInner)]
-enum ItemStatus {
-    Unresolved,
-    InProgress,
-    Resolved,
 }
 
 #[derive(Debug)]
@@ -86,7 +79,7 @@ impl<'db> Sema<'db> {
             db,
             ast,
             hir: Hir::new(),
-            item_statuses: FxHashMap::default(),
+            item_state: ItemState::new(),
             storage: RefCell::new(TyStorage::new()),
             expr_id: Counter::new(),
         }
@@ -94,12 +87,13 @@ impl<'db> Sema<'db> {
 
     fn run(mut self) -> CheckResult<Hir> {
         for module in &self.ast.modules {
-            let mut env = Env::new(module.id.expect("ModuleId to be resolved"));
+            let module_id = module.id.expect("ModuleId to be resolved");
+            let mut env = Env::new(module_id);
 
             for (idx, item) in module.items.iter().enumerate() {
-                let item_id = ast::ItemId::from(idx);
+                let item_id = ast::GlobalItemId::new(module_id, ast::ItemId::from(idx));
 
-                if let ItemStatus::Unresolved = self.item_status(item_id) {
+                if let ItemStatus::Unresolved = self.item_state.status(item_id) {
                     self.check_global_item(&mut env, item_id, item)?;
                 }
             }
@@ -111,11 +105,6 @@ impl<'db> Sema<'db> {
         passes::check_entry(self.db, &self.hir);
 
         Ok(self.hir)
-    }
-
-    #[inline]
-    fn item_status(&self, id: ast::ItemId) -> ItemStatus {
-        self.item_statuses.get(&id).copied().unwrap_or(ItemStatus::Unresolved)
     }
 
     #[inline]
@@ -143,7 +132,11 @@ impl<'db> Sema<'db> {
     fn find_and_check_global_item(&mut self, symbol: &Symbol) -> CheckResult<Option<DefId>> {
         if let Some(item_id) = self.global_scope.get_item(symbol) {
             let item = &self.ast.modules[symbol.module_id].items[item_id];
-            self.check_global_item(&mut Env::new(symbol.module_id), item_id, item)?;
+            self.check_global_item(
+                &mut Env::new(symbol.module_id),
+                ast::GlobalItemId::new(symbol.module_id, item_id),
+                item,
+            )?;
             let id = self.global_scope.get_def(symbol).expect("global def to be defined");
             Ok(Some(id))
         } else {
@@ -251,19 +244,19 @@ impl<'db> Sema<'db> {
     fn check_global_item(
         &mut self,
         env: &mut Env,
-        item_id: ast::ItemId,
+        item_id: ast::GlobalItemId,
         item: &ast::Item,
     ) -> CheckResult<()> {
-        match self.item_status(item_id) {
-            ItemStatus::Unresolved => {
-                self.item_statuses.insert(item_id, ItemStatus::InProgress);
-                self.check_item(env, item)?;
-                self.item_statuses.insert(item_id, ItemStatus::Resolved);
-                Ok(())
-            }
-            ItemStatus::InProgress => Err(CheckError::CyclicDefinitions { span: item.span() }),
-            ItemStatus::Resolved => Ok(()),
+        if let Err(err) = self.item_state.mark_as_in_progress(item_id) {
+            return Err(CheckError::CyclicItems {
+                origin_span: item.span(),
+                reference_span: self.ast.find_item(err.causee).expect("item to exist").span(),
+            });
         }
+
+        self.check_item(env, item)?;
+        self.item_state.mark_as_resolved(item_id);
+        Ok(())
     }
 
     fn check_item(&mut self, env: &mut Env, item: &ast::Item) -> CheckResult<()> {

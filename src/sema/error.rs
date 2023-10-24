@@ -28,7 +28,7 @@ pub enum CheckError {
     ExpectedTy { ty: Ty, span: Span },
     CannotInfer { ty: Ty, span: Span },
     InvalidReturn(Span),
-    CyclicDefinitions { span: Span },
+    CyclicItems { origin_span: Span, reference_span: Span },
     ConstEval(ConstEvalError, Span),
     InvalidMember { ty: Ty, member: Word },
     NonConstAttrValue { ty: Ty, span: Span },
@@ -163,9 +163,14 @@ impl CheckError {
             Self::InvalidReturn(span) => Diagnostic::error("check::invalid_return")
                 .with_message("cannot return outside of function scope")
                 .with_label(Label::primary(span)),
-            Self::CyclicDefinitions { span } => Diagnostic::error("check::cyclic_definitions")
-                .with_message("cycle detected while checking definition")
-                .with_label(Label::primary(span)),
+            Self::CyclicItems { origin_span, reference_span } => {
+                Diagnostic::error("check::cyclic_items")
+                    .with_message("cycle detected while checking definition")
+                    .with_label(Label::primary(origin_span).with_message("definition here"))
+                    .with_label(
+                        Label::secondary(reference_span).with_message("cyclic reference here"),
+                    )
+            }
             Self::ConstEval(err, span) => {
                 let msg = match err {
                     ConstEvalError::DivByZero => "division by zero",
