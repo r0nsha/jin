@@ -5,7 +5,7 @@ use crate::{db::Db, tir::*};
 pub(super) fn print(db: &Db, tir: &Tir, w: &mut impl io::Write) -> io::Result<()> {
     let mut builder = ptree::TreeBuilder::new("Tir".to_string());
 
-    for glob in tir.globals.iter() {
+    for glob in &tir.globals {
         match &glob.kind {
             GlobalKind::Bare { value, body } => {
                 PrettyCx { builder: &mut builder, db, tir, body }

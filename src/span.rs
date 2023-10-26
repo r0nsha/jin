@@ -3,7 +3,7 @@ use std::{fs, io, ops};
 use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::files::{self, line_starts};
 
-use crate::index_vec::{new_key_type, IndexVec};
+use crate::index_vec::{new_key_type, IndexVec, IndexVecExt};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {

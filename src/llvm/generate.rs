@@ -111,7 +111,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
         prologue_block: BasicBlock<'cx>,
         start_block: BasicBlock<'cx>,
     ) {
-        for glob in self.tir.globals.iter() {
+        for glob in &self.tir.globals {
             match &glob.kind {
                 GlobalKind::Bare { value, body } => {
                     if !body.expr(*value).kind.is_const() {
@@ -134,7 +134,7 @@ impl<'db, 'cx> Generator<'db, 'cx> {
             self.functions.insert(sig.id, function);
         }
 
-        for glob in self.tir.globals.iter() {
+        for glob in &self.tir.globals {
             let llvm_ty = glob.ty.llty(self);
 
             let glob_value =

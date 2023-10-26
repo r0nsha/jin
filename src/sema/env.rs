@@ -25,13 +25,13 @@ impl Symbol {
 
 #[derive(Debug)]
 pub struct GlobalScope {
-    def_map: FxHashMap<Symbol, DefId>,
-    item_map: FxHashMap<Symbol, ast::ItemId>,
+    defs: FxHashMap<Symbol, DefId>,
+    items: FxHashMap<Symbol, ast::ItemId>,
 }
 
 impl GlobalScope {
     pub fn new(ast: &Ast) -> Self {
-        Self { def_map: FxHashMap::default(), item_map: Self::init_items(ast) }
+        Self { defs: FxHashMap::default(), items: Self::init_items(ast) }
     }
 
     fn init_items(ast: &Ast) -> FxHashMap<Symbol, ast::ItemId> {
@@ -40,9 +40,7 @@ impl GlobalScope {
         for module in &ast.modules {
             let module_id = module.id.expect("to be resolved");
 
-            for (idx, item) in module.items.iter().enumerate() {
-                let id = ast::ItemId::from(idx);
-
+            for (id, item) in module.items.iter_enumerated() {
                 item.walk_names(|word| {
                     item_map.insert(Symbol::new(module_id, word.name()), id);
                 });
@@ -53,15 +51,15 @@ impl GlobalScope {
     }
 
     pub fn get_def(&self, symbol: &Symbol) -> Option<DefId> {
-        self.def_map.get(symbol).copied()
+        self.defs.get(symbol).copied()
     }
 
     pub fn insert_def(&mut self, symbol: Symbol, id: DefId) -> Option<DefId> {
-        self.def_map.insert(symbol, id)
+        self.defs.insert(symbol, id)
     }
 
     pub fn get_item(&self, symbol: &Symbol) -> Option<ast::ItemId> {
-        self.item_map.get(symbol).copied()
+        self.items.get(symbol).copied()
     }
 }
 

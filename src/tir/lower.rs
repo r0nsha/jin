@@ -5,6 +5,7 @@ use crate::{
     db::{Db, DefId, DefKind},
     hir,
     hir::{const_eval::Const, FnKind, Hir},
+    index_vec::IndexVecExt,
     subst::{ParamFolder, Subst},
     sym,
     tir::{

@@ -26,7 +26,7 @@ impl Ast {
     }
 
     pub fn find_item(&self, id: GlobalItemId) -> Option<&Item> {
-        self.modules.get(id.module_id).map(|m| m.items.get(id.item_id)).flatten()
+        self.modules.get(id.module_id).and_then(|m| m.items.get(id.item_id))
     }
 
     pub fn pretty_print(&self, w: &mut impl io::Write) -> io::Result<()> {

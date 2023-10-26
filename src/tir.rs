@@ -10,7 +10,7 @@ use ustr::Ustr;
 use crate::{
     db::{Db, DefId},
     hir::const_eval::Const,
-    index_vec::{new_key_type, IndexVec},
+    index_vec::{new_key_type, IndexSlice, IndexVec},
     middle::{BinOp, UnOp},
     ty::Ty,
 };
@@ -55,8 +55,8 @@ pub struct Fn {
 
 impl Fn {
     #[inline]
-    pub fn params(&self, tir: &Tir) -> &[Local] {
-        &self.body.locals.as_slice()[0..tir.fn_sigs[self.sig].params.len()]
+    pub fn params(&self, tir: &Tir) -> &IndexSlice<LocalId, Local> {
+        &self.body.locals.as_slice()[LocalId(0)..LocalId(tir.fn_sigs[self.sig].params.len())]
     }
 }
 
