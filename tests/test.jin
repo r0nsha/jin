@@ -4,30 +4,30 @@ fn extern hello
 @link("./foo")
 let extern answer: Int
 
-@link("c")
-fn extern exit(status: Int) -> Never
+//@link("c")
+//fn extern exit(status: Int) -> Never
 
-@link("c")
-fn extern write(fd: I32, buf: *U8, count: Uint) -> Int
+//@link("c")
+//fn extern write(fd: I32, buf: *U8, count: Uint) -> Int
 
 let stdout = 1
 
-fn print(fmt: Str) {
-	write(stdout, fmt.ptr, fmt.len)
-}
-
-fn println(fmt: Str) {
-	print(fmt)
-	print("\n")
-}
+//fn print(fmt: Str) {
+//	write(stdout, fmt.ptr, fmt.len)
+//}
+//
+//fn println(fmt: Str) {
+//	print(fmt)
+//	print("\n")
+//}
 
 fn my_answer -> Int {
 	answer
 }
 
 fn main {
-	println("Hello, World!")
+	//println("Hello, World!")
 	hello()
 	my_answer()
-	exit(0)
+	//exit(0)
 }

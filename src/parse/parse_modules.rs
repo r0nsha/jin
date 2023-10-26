@@ -13,8 +13,7 @@ pub fn parse_module_tree(db: &mut Db) -> Ast {
 
     match parse_module(db, db.main_source_id()) {
         Ok(mut module) => {
-            module.id =
-                Some(ModuleInfo::alloc(db, module.source, module.name.clone(), module.is_main()));
+            module.id = ModuleInfo::alloc(db, module.source, module.name.clone(), module.is_main());
             ast.modules.push(module);
         }
         Err(diag) => db.diagnostics.emit(diag),

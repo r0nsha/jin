@@ -38,11 +38,9 @@ impl GlobalScope {
         let mut item_map = FxHashMap::default();
 
         for module in &ast.modules {
-            let module_id = module.id.expect("to be resolved");
-
             for (id, item) in module.items.iter_enumerated() {
                 item.walk_names(|word| {
-                    item_map.insert(Symbol::new(module_id, word.name()), id);
+                    item_map.insert(Symbol::new(module.id, word.name()), id);
                 });
             }
         }

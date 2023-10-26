@@ -86,25 +86,45 @@ impl<'db> Sema<'db> {
     }
 
     fn run(mut self) -> CheckResult<Hir> {
+        self.define_all()?;
+
+        dbg!(&self.global_scope);
+        todo!();
+
+        // for module in &self.ast.modules {
+        //     let mut env = Env::new(module.id);
+        //
+        //     for (item_id, item) in module.items.iter_enumerated() {
+        //         let global_item_id = ast::GlobalItemId::new(module.id, item_id);
+        //
+        //         if let ItemStatus::Unresolved = self.item_state.get_status(&global_item_id) {
+        //             self.check_global_item(&mut env, global_item_id, item)?;
+        //         }
+        //     }
+        // }
+
+        // self.subst();
+
+        // post::check_bodies(self.db, &self.hir);
+        // post::check_entry(self.db, &self.hir);
+
+        Ok(self.hir)
+    }
+
+    fn define_all(&mut self) -> CheckResult<()> {
         for module in &self.ast.modules {
-            let module_id = module.id.expect("ModuleId to be resolved");
-            let mut env = Env::new(module_id);
+            let mut env = Env::new(module.id);
 
             for (item_id, item) in module.items.iter_enumerated() {
-                let global_item_id = ast::GlobalItemId::new(module_id, item_id);
+                let global_item_id = ast::GlobalItemId::new(module.id, item_id);
 
-                if let ItemStatus::Unresolved = self.item_state.status(global_item_id) {
+                if let ItemStatus::Unresolved = self.item_state.get_status(&global_item_id) {
                     self.check_global_item(&mut env, global_item_id, item)?;
                 }
             }
         }
 
-        self.subst();
-
-        post::check_bodies(self.db, &self.hir);
-        post::check_entry(self.db, &self.hir);
-
-        Ok(self.hir)
+        Ok(())
     }
 
     #[inline]

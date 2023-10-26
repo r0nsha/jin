@@ -41,7 +41,7 @@ impl Ast {
 
 #[derive(Debug, Clone)]
 pub struct Module {
-    pub id: Option<ModuleId>,
+    pub id: ModuleId,
     pub source: SourceId,
     pub name: QPath,
     pub items: IndexVec<ItemId, Item>,
@@ -50,7 +50,7 @@ pub struct Module {
 
 impl Module {
     pub fn new(source_id: SourceId, name: QPath, is_main: bool) -> Self {
-        Self { id: None, source: source_id, name, is_main, items: IndexVec::new() }
+        Self { id: ModuleId::INVALID, source: source_id, name, is_main, items: IndexVec::new() }
     }
 
     pub fn is_main(&self) -> bool {
