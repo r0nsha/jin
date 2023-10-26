@@ -4,6 +4,7 @@ pub mod token;
 use std::{fmt, io};
 
 use enum_as_inner::EnumAsInner;
+use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
@@ -70,6 +71,8 @@ impl GlobalItemId {
         Self { module_id, item_id }
     }
 }
+
+pub type ItemMap<T> = FxHashMap<GlobalItemId, T>;
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum Item {

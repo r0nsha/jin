@@ -4,23 +4,23 @@ use rustc_hash::FxHashMap;
 use crate::ast;
 
 pub struct ItemState {
-    item_statuses: FxHashMap<ast::GlobalItemId, ItemStatus>,
+    statuses: ast::ItemMap<ItemStatus>,
     check_stack: Vec<ast::GlobalItemId>,
 }
 
 impl ItemState {
     pub fn new() -> Self {
-        Self { item_statuses: FxHashMap::default(), check_stack: vec![] }
+        Self { statuses: FxHashMap::default(), check_stack: vec![] }
     }
 
     pub fn status(&self, id: ast::GlobalItemId) -> ItemStatus {
-        self.item_statuses.get(&id).copied().unwrap_or(ItemStatus::Unresolved)
+        self.statuses.get(&id).copied().unwrap_or(ItemStatus::Unresolved)
     }
 
     pub fn mark_as_in_progress(&mut self, id: ast::GlobalItemId) -> Result<(), CyclicItemErr> {
         match self.status(id) {
             ItemStatus::Unresolved => {
-                self.item_statuses.insert(id, ItemStatus::InProgress);
+                self.statuses.insert(id, ItemStatus::InProgress);
                 self.check_stack.push(id);
                 Ok(())
             }
@@ -33,7 +33,7 @@ impl ItemState {
     }
 
     pub fn mark_as_resolved(&mut self, id: ast::GlobalItemId) {
-        self.item_statuses.insert(id, ItemStatus::Resolved);
+        self.statuses.insert(id, ItemStatus::Resolved);
         self.check_stack.pop();
     }
 }
