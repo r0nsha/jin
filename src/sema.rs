@@ -90,11 +90,11 @@ impl<'db> Sema<'db> {
             let module_id = module.id.expect("ModuleId to be resolved");
             let mut env = Env::new(module_id);
 
-            for (idx, item) in module.items.iter().enumerate() {
-                let item_id = ast::GlobalItemId::new(module_id, ast::ItemId::from(idx));
+            for (item_id, item) in module.items.iter_enumerated() {
+                let global_item_id = ast::GlobalItemId::new(module_id, item_id);
 
-                if let ItemStatus::Unresolved = self.item_state.status(item_id) {
-                    self.check_global_item(&mut env, item_id, item)?;
+                if let ItemStatus::Unresolved = self.item_state.status(global_item_id) {
+                    self.check_global_item(&mut env, global_item_id, item)?;
                 }
             }
         }
