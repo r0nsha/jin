@@ -9,7 +9,7 @@ use ustr::Ustr;
 
 use crate::{
     db::{Db, DefId, ModuleId},
-    index_vec::new_key_type,
+    index_vec::{new_key_type, IndexVec},
     middle::{BinOp, UnOp},
     span::Span,
     ty::{Instantiation, Ty, Typed},
@@ -18,14 +18,14 @@ use crate::{
 
 #[derive(Debug, Clone)]
 pub struct Hir {
-    pub fns: Vec<Fn>,
-    pub extern_lets: Vec<ExternLet>,
-    pub lets: Vec<Let>,
+    pub fns: IndexVec<FnId, Fn>,
+    pub extern_lets: IndexVec<ExternLetId, ExternLet>,
+    pub lets: IndexVec<LetId, Let>,
 }
 
 impl Hir {
     pub fn new() -> Self {
-        Self { fns: vec![], extern_lets: vec![], lets: vec![] }
+        Self { fns: IndexVec::new(), extern_lets: IndexVec::new(), lets: IndexVec::new() }
     }
 
     pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
@@ -34,6 +34,9 @@ impl Hir {
 }
 
 new_key_type!(ExprId);
+new_key_type!(FnId);
+new_key_type!(ExternLetId);
+new_key_type!(LetId);
 
 pub type HirMap<T> = FxHashMap<ExprId, T>;
 
