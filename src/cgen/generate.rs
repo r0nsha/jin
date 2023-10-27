@@ -6,7 +6,7 @@ use std::{
 use camino::Utf8PathBuf;
 use pretty::{docs, RcDoc};
 use rustc_hash::FxHashMap;
-use ustr::UstrMap;
+use ustr::{Ustr, UstrMap};
 
 use crate::{
     cgen::ty::CTy,
@@ -41,39 +41,25 @@ pub struct Generator<'db, 'a> {
 #[derive(Debug, Clone)]
 pub struct FnState<'db> {
     pub body: &'db Body,
-    // pub function_value: FunctionValue<'cx>,
-    // pub prologue_block: BasicBlock<'cx>,
-    // pub current_block: BasicBlock<'cx>,
-    // pub locals: FxHashMap<LocalId, Local<'cx>>,
+    pub locals: FxHashMap<LocalId, Ustr>,
 }
 
 impl<'db> FnState<'db> {
-    pub fn new(
-        body: &'db Body,
-        // function_value: FunctionValue<'cx>,
-        // prologue_block: BasicBlock<'cx>,
-        // first_block: BasicBlock<'cx>,
-    ) -> Self {
-        Self {
-            body,
-            // function_value,
-            // prologue_block,
-            // current_block: first_block,
-            // locals: FxHashMap::default(),
-        }
+    pub fn new(body: &'db Body) -> Self {
+        Self { body, locals: FxHashMap::default() }
     }
 
-    // #[track_caller]
-    // fn local(&self, id: LocalId) -> Local<'cx> {
-    //     self.locals.get(&id).copied().unwrap_or_else(|| panic!("local {} to be declared", id))
-    // }
+    #[track_caller]
+    fn local(&self, id: LocalId) -> Ustr {
+        self.locals.get(&id).copied().unwrap_or_else(|| panic!("local {} to be declared", id))
+    }
 }
 
 impl<'db, 'a> Generator<'db, 'a> {
     pub fn run(mut self) -> Utf8PathBuf {
         self.predefine_fns();
         self.define_globals();
-        // self.define_all();
+        self.define_fns();
         let main_function = self.codegen_main_function();
         self.write_to_file(main_function)
     }
@@ -116,28 +102,6 @@ impl<'db, 'a> Generator<'db, 'a> {
             )
             .append(RcDoc::hardline())
             .append(RcDoc::text("}"))
-        // let function_value = self.module.add_function(
-        //     "main",
-        //     self.context.i32_type().fn_type(&[], false),
-        //     Some(Linkage::External),
-        // );
-        //
-        // let prologue_block = self.context.append_basic_block(function_value, "prologue");
-        // let start_block = self.context.append_basic_block(function_value, "entry");
-        // self.bx.position_at_end(start_block);
-        //
-        // self.init_lazy_globals(function_value, prologue_block, start_block);
-        //
-        // let main_function_value = self.function(self.tir.main_fn.expect("to have a main function"));
-        //
-        // self.bx.build_direct_call(main_function_value, &[], "call_main");
-        //
-        // if !self.current_block_is_terminating() {
-        //     self.bx.build_return(Some(&self.context.i32_type().const_zero()));
-        // }
-        //
-        // self.bx.position_at_end(prologue_block);
-        // self.bx.build_unconditional_branch(start_block);
     }
 
     pub fn init_lazy_globals(
@@ -229,319 +193,325 @@ impl<'db, 'a> Generator<'db, 'a> {
         initial.append(sig_doc)
     }
 
-    pub fn define_all(&mut self) {
-        todo!();
-        // for fun in &self.tir.fns {
-        //     self.codegen_fn(fun);
+    pub fn define_fns(&mut self) {
+        for fun in &self.tir.fns {
+            self.define_fn(fun);
+        }
+    }
+
+    fn define_fn(&mut self, fun: &'db Fn) {
+        let sig = &self.tir.fn_sigs[fun.sig];
+        let fty = sig.ty;
+
+        let mut state = FnState::new(&fun.body);
+
+        for local in fun.params(self.tir).iter() {
+            state.locals.insert(local.id, local.name);
+        }
+
+        let body = self.codegen_expr(&mut state, fun.value);
+
+        // TODO:
+        // if !self.current_block_is_terminating() {
+        //     let ret_value =
+        //         if fty.as_fn().unwrap().ret.is_unit() && !state.body.expr(fun.value).ty.is_unit() {
+        //             self.unit_value().as_basic_value_enum()
+        //         } else {
+        //             body
+        //         };
+        //
+        //     self.bx.build_return(Some(&ret_value));
         // }
     }
 
-    fn codegen_fn(&mut self, fun: &'db Fn) {
-        todo!();
-        //     let sig = &self.tir.fn_sigs[fun.sig];
-        //     let fty = sig.ty;
-        //
-        //     let function_value = self.function(fun.sig);
-        //
-        //     let prologue_block = self.context.append_basic_block(function_value, "prologue");
-        //     let start_block = self.context.append_basic_block(function_value, "start");
-        //
-        //     let mut state = FnState::new(&fun.body, function_value, prologue_block, start_block);
-        //
-        //     for (local, value) in fun.params(self.tir).iter().zip(function_value.get_param_iter()) {
-        //         state.locals.insert(local.id, Local::Value(value));
-        //     }
-        //
-        //     self.start_block(&mut state, start_block);
-        //     let body = self.codegen_expr(&mut state, fun.value);
-        //
-        //     if !self.current_block_is_terminating() {
-        //         let ret_value =
-        //             if fty.as_fn().unwrap().ret.is_unit() && !state.body.expr(fun.value).ty.is_unit() {
-        //                 self.unit_value().as_basic_value_enum()
-        //             } else {
-        //                 body
-        //             };
-        //
-        //         self.bx.build_return(Some(&ret_value));
-        //     }
-        //
-        //     self.bx.position_at_end(prologue_block);
-        //     self.bx.build_unconditional_branch(start_block);
-        //
-        //     function_value.as_global_value().as_pointer_value().into()
-    }
+    fn codegen_expr(&mut self, state: &mut FnState<'db>, expr: ExprId) -> RcDoc<'a> {
+        let expr = &state.body.expr(expr);
 
-    fn codegen_expr(&mut self, state: &mut FnState<'db>, expr: ExprId) {
-        // let expr = &state.body.expr(expr);
-        //
+        // TODO:
         // if self.current_block_is_terminating() {
         //     return Self::undef_value(expr.ty.cty(self));
         // }
-        //
-        // match &expr.kind {
-        //     ExprKind::Let { id, def_id: _, value } => {
-        //         let local = state.body.local(*id);
-        //         let ty = local.ty.cty(self);
-        //
-        //         let ptr = self.build_stack_alloc(state, ty, &local.name);
-        //         let value = self.codegen_expr(state, *value);
-        //         self.bx.build_store(ptr, value);
-        //
-        //         state.locals.insert(*id, Local::Alloca(ptr, ty));
-        //
-        //         self.unit_value().into()
-        //     }
-        //     ExprKind::If { cond, then, otherwise } => {
-        //         let cond = self.codegen_expr(state, *cond).into_int_value();
-        //
-        //         let then_block = self.append_block(state, "if_then");
-        //         let else_block = self.append_block(state, "if_else");
-        //         let merge_block = self.append_block(state, "if_merge");
-        //
-        //         self.bx.build_conditional_branch(cond, then_block, else_block);
-        //
-        //         self.start_block(state, then_block);
-        //         let then_value = self.codegen_br(state, *then);
-        //         self.bx.build_unconditional_branch(merge_block);
-        //
-        //         self.start_block(state, else_block);
-        //         let else_value = self.codegen_br(state, *otherwise);
-        //
-        //         self.bx.build_unconditional_branch(merge_block);
-        //         self.start_block(state, merge_block);
-        //
-        //         let ty = expr.ty.cty(self);
-        //         match (then_value, else_value) {
-        //             (Some(then_value), Some(else_value)) => {
-        //                 let phi = self.bx.build_phi(ty, "phi");
-        //                 phi.add_incoming(&[(&then_value, then_block), (&else_value, else_block)]);
-        //                 phi.as_basic_value()
-        //             }
-        //             (Some(then_value), None) => then_value,
-        //             (None, Some(else_value)) => else_value,
-        //             (None, None) => {
-        //                 self.build_unreachable();
-        //                 Self::undef_value(ty)
-        //             }
-        //         }
-        //     }
-        //     ExprKind::Block { exprs } => {
-        //         let mut result = self.unit_value().as_basic_value_enum();
-        //
-        //         for expr in exprs {
-        //             result = self.codegen_expr(state, *expr);
-        //         }
-        //
-        //         result
-        //     }
-        //     ExprKind::Return { value } => {
-        //         let value = self.codegen_expr(state, *value);
-        //         self.bx.build_return(Some(&value));
-        //         Self::undef_value(expr.ty.cty(self))
-        //     }
-        //     ExprKind::Call { callee, args } => {
-        //         let args: Vec<_> =
-        //             args.iter().map(|arg| self.codegen_expr(state, *arg).into()).collect();
-        //
-        //         // TODO: this doesn't take indirect calls (function pointers) into account
-        //         let callee =
-        //             self.codegen_expr(state, *callee).as_any_value_enum().into_function_value();
-        //
-        //         let result = self.bx.build_direct_call(callee, &args, "call");
-        //
-        //         let result_value =
-        //             result.try_as_basic_value().expect_left("expected a return value");
-        //
-        //         // TODO: remove this debug printf call
-        //         {
-        //             let printf = self.module.get_function("printf").unwrap_or_else(|| {
-        //                 self.module.add_function(
-        //                     "printf",
-        //                     self.layout.int_ty.fn_type(
-        //                         &[self.context.ptr_type(AddressSpace::default()).into()],
-        //                         true,
-        //                     ),
-        //                     Some(Linkage::External),
-        //                 )
-        //             });
-        //
-        //             self.bx.build_direct_call(
-        //                 printf,
-        //                 &[
-        //                     self.bx
-        //                         .build_global_string_ptr("result = %d\n\0", "fmt")
-        //                         .as_pointer_value()
-        //                         .into(),
-        //                     if let BasicValueEnum::IntValue(v) = result_value {
-        //                         self.bx
-        //                             .build_int_cast_sign_flag(
-        //                                 v,
-        //                                 self.layout.int_ty,
-        //                                 false,
-        //                                 "cast_to_i64",
-        //                             )
-        //                             .into()
-        //                     } else {
-        //                         result_value.into()
-        //                     },
-        //                 ],
-        //                 "printf_call",
-        //             );
-        //         }
-        //
-        //         result_value
-        //     }
-        //     ExprKind::Binary { lhs, rhs, op } => {
-        //         let ty = expr.ty;
-        //         let lhs = self.codegen_expr(state, *lhs).into_int_value();
-        //
-        //         match op {
-        //             BinOp::And => {
-        //                 // if lhs { rhs } else { false }
-        //                 let then_block = self.append_block(state, "and_then");
-        //                 let else_block = self.append_block(state, "and_else");
-        //                 let merge_block = self.append_block(state, "and_merge");
-        //
-        //                 self.bx.build_conditional_branch(lhs, then_block, else_block);
-        //
-        //                 self.start_block(state, then_block);
-        //                 let then_value = self.codegen_expr(state, *rhs);
-        //                 self.bx.build_unconditional_branch(merge_block);
-        //
-        //                 self.start_block(state, else_block);
-        //                 let else_value = self.bool_value(false);
-        //
-        //                 self.bx.build_unconditional_branch(merge_block);
-        //                 self.start_block(state, merge_block);
-        //
-        //                 let ty = expr.ty.cty(self);
-        //                 let phi = self.bx.build_phi(ty, "phi");
-        //                 phi.add_incoming(&[(&then_value, then_block), (&else_value, else_block)]);
-        //                 phi.as_basic_value()
-        //             }
-        //             BinOp::Or => {
-        //                 // if !lhs { rhs } else { false }
-        //                 let then_block = self.append_block(state, "or_then");
-        //                 let else_block = self.append_block(state, "or_else");
-        //                 let merge_block = self.append_block(state, "or_merge");
-        //
-        //                 self.bx.build_conditional_branch(lhs, then_block, else_block);
-        //
-        //                 self.start_block(state, then_block);
-        //                 let then_value = self.bool_value(true);
-        //                 self.bx.build_unconditional_branch(merge_block);
-        //
-        //                 self.start_block(state, else_block);
-        //                 let else_value = self.codegen_expr(state, *rhs);
-        //
-        //                 self.bx.build_unconditional_branch(merge_block);
-        //                 self.start_block(state, merge_block);
-        //
-        //                 let ty = expr.ty.cty(self);
-        //                 let phi = self.bx.build_phi(ty, "phi");
-        //                 phi.add_incoming(&[(&then_value, then_block), (&else_value, else_block)]);
-        //                 phi.as_basic_value()
-        //             }
-        //             _ => {
-        //                 let rhs = self.codegen_expr(state, *rhs).into_int_value();
-        //
-        //                 match op {
-        //                     BinOp::Add => self.bx.build_int_add(lhs, rhs, "result").into(),
-        //                     BinOp::Sub => self.bx.build_int_sub(lhs, rhs, "result").into(),
-        //                     BinOp::Mul => self.bx.build_int_mul(lhs, rhs, "result").into(),
-        //                     BinOp::Div => {
-        //                         if ty.is_uint() {
-        //                             self.bx.build_int_unsigned_div(lhs, rhs, "result").into()
-        //                         } else {
-        //                             self.bx.build_int_signed_div(lhs, rhs, "result").into()
-        //                         }
-        //                     }
-        //                     BinOp::Rem => {
-        //                         if ty.is_uint() {
-        //                             self.bx.build_int_unsigned_rem(lhs, rhs, "result").into()
-        //                         } else {
-        //                             self.bx.build_int_signed_rem(lhs, rhs, "result").into()
-        //                         }
-        //                     }
-        //                     BinOp::Shl => self.bx.build_left_shift(lhs, rhs, "result").into(),
-        //                     BinOp::Shr => {
-        //                         self.bx.build_right_shift(lhs, rhs, ty.is_int(), "result").into()
-        //                     }
-        //                     BinOp::BitAnd => self.bx.build_and(lhs, rhs, "result").into(),
-        //                     BinOp::BitOr => self.bx.build_or(lhs, rhs, "result").into(),
-        //                     BinOp::BitXor => self.bx.build_xor(lhs, rhs, "result").into(),
-        //                     BinOp::Cmp(op) => {
-        //                         let pred = get_int_predicate(*op, ty.is_int());
-        //                         self.bx.build_int_compare(pred, lhs, rhs, "result").into()
-        //                     }
-        //                     BinOp::And | BinOp::Or => unreachable!(),
-        //                 }
-        //             }
-        //         }
-        //     }
-        //     ExprKind::Unary { value, op } => {
-        //         let value = self.codegen_expr(state, *value).into_int_value();
-        //         match op {
-        //             UnOp::Neg => self.bx.build_int_neg(value, "result").into(),
-        //             UnOp::Not => self.bx.build_not(value, "result").into(),
-        //         }
-        //     }
-        //     ExprKind::Cast { value, target } => {
-        //         let source_ty = state.body.expr(*value).ty;
-        //         let target_ty = *target;
-        //
-        //         let value = self.codegen_expr(state, *value);
-        //
-        //         match (source_ty.cty(self), target_ty.cty(self)) {
-        //             (BasicTypeEnum::IntType(_), BasicTypeEnum::IntType(target)) => self
-        //                 .bx
-        //                 .build_int_cast_sign_flag(
-        //                     value.into_int_value(),
-        //                     target,
-        //                     target_ty.is_uint(),
-        //                     "cast_result",
-        //                 )
-        //                 .into(),
-        //             (source, target) => panic!(
-        //                 "unexpected types in cast: {} : {} and {} : {}",
-        //                 source,
-        //                 source_ty.display(self.db),
-        //                 target,
-        //                 target_ty.display(self.db)
-        //             ),
-        //         }
-        //     }
-        //     ExprKind::Index { value, index } => {
-        //         let gepped_ty = state.body.expr(*value).ty.llpointee(self);
-        //         let pointee_ty = expr.ty.cty(self);
-        //         let ptr = self.codegen_expr(state, *value).into_pointer_value();
-        //
-        //         let gep =
-        //             self.bx.build_struct_gep(gepped_ty, ptr, *index as u32, "index_gap").unwrap();
-        //
-        //         self.bx.build_load(pointee_ty, gep, "load_index_gep")
-        //     }
-        //     ExprKind::Id(id) => match id {
-        //         Id::Fn(fid) => {
-        //             self.function(*fid).as_global_value().as_pointer_value().as_basic_value_enum()
-        //         }
-        //         Id::Global(gid) => {
-        //             let ptr = self.global(*gid).as_pointer_value();
-        //             let glob = &self.tir.globals[*gid];
-        //             self.bx.build_load(glob.ty.cty(self), ptr, &format!("load_{}", glob.name))
-        //         }
-        //         Id::Local(lid) => match state.local(*lid) {
-        //             Local::Alloca(ptr, ty) => self.bx.build_load(
-        //                 ty,
-        //                 ptr,
-        //                 &format!("load_{}", state.body.local(*lid).name),
-        //             ),
-        //             Local::Value(value) => value,
-        //         },
-        //     },
-        //     ExprKind::Const(value) => self.const_value(value, expr.ty),
-        // }
+
+        match &expr.kind {
+            ExprKind::Let { id, def_id: _, value } => {
+                todo!();
+                // let local = state.body.local(*id);
+                // let ty = local.ty.cty(self);
+                //
+                // let ptr = self.build_stack_alloc(state, ty, &local.name);
+                // let value = self.codegen_expr(state, *value);
+                // self.bx.build_store(ptr, value);
+                //
+                // state.locals.insert(*id, Local::Alloca(ptr, ty));
+                //
+                // self.unit_value().into()
+            }
+            ExprKind::If { cond, then, otherwise } => {
+                todo!();
+                // let cond = self.codegen_expr(state, *cond).into_int_value();
+                //
+                // let then_block = self.append_block(state, "if_then");
+                // let else_block = self.append_block(state, "if_else");
+                // let merge_block = self.append_block(state, "if_merge");
+                //
+                // self.bx.build_conditional_branch(cond, then_block, else_block);
+                //
+                // self.start_block(state, then_block);
+                // let then_value = self.codegen_br(state, *then);
+                // self.bx.build_unconditional_branch(merge_block);
+                //
+                // self.start_block(state, else_block);
+                // let else_value = self.codegen_br(state, *otherwise);
+                //
+                // self.bx.build_unconditional_branch(merge_block);
+                // self.start_block(state, merge_block);
+                //
+                // let ty = expr.ty.cty(self);
+                // match (then_value, else_value) {
+                //     (Some(then_value), Some(else_value)) => {
+                //         let phi = self.bx.build_phi(ty, "phi");
+                //         phi.add_incoming(&[(&then_value, then_block), (&else_value, else_block)]);
+                //         phi.as_basic_value()
+                //     }
+                //     (Some(then_value), None) => then_value,
+                //     (None, Some(else_value)) => else_value,
+                //     (None, None) => {
+                //         self.build_unreachable();
+                //         Self::undef_value(ty)
+                //     }
+                // }
+            }
+            ExprKind::Block { exprs } => {
+                todo!();
+                // let mut result = self.unit_value().as_basic_value_enum();
+
+                // for expr in exprs {
+                //     result = self.codegen_expr(state, *expr);
+                // }
+
+                // result
+            }
+            ExprKind::Return { value } => {
+                todo!();
+                // let value = self.codegen_expr(state, *value);
+                // self.bx.build_return(Some(&value));
+                // Self::undef_value(expr.ty.cty(self))
+            }
+            ExprKind::Call { callee, args } => {
+                todo!();
+                // let args: Vec<_> =
+                //     args.iter().map(|arg| self.codegen_expr(state, *arg).into()).collect();
+                //
+                // // TODO: this doesn't take indirect calls (function pointers) into account
+                // let callee =
+                //     self.codegen_expr(state, *callee).as_any_value_enum().into_function_value();
+                //
+                // let result = self.bx.build_direct_call(callee, &args, "call");
+                //
+                // let result_value =
+                //     result.try_as_basic_value().expect_left("expected a return value");
+                //
+                // // TODO: remove this debug printf call
+                // {
+                //     let printf = self.module.get_function("printf").unwrap_or_else(|| {
+                //         self.module.add_function(
+                //             "printf",
+                //             self.layout.int_ty.fn_type(
+                //                 &[self.context.ptr_type(AddressSpace::default()).into()],
+                //                 true,
+                //             ),
+                //             Some(Linkage::External),
+                //         )
+                //     });
+                //
+                //     self.bx.build_direct_call(
+                //         printf,
+                //         &[
+                //             self.bx
+                //                 .build_global_string_ptr("result = %d\n\0", "fmt")
+                //                 .as_pointer_value()
+                //                 .into(),
+                //             if let BasicValueEnum::IntValue(v) = result_value {
+                //                 self.bx
+                //                     .build_int_cast_sign_flag(
+                //                         v,
+                //                         self.layout.int_ty,
+                //                         false,
+                //                         "cast_to_i64",
+                //                     )
+                //                     .into()
+                //             } else {
+                //                 result_value.into()
+                //             },
+                //         ],
+                //         "printf_call",
+                //     );
+                // }
+                //
+                // result_value
+            }
+            ExprKind::Binary { lhs, rhs, op } => {
+                todo!();
+                // let ty = expr.ty;
+                // let lhs = self.codegen_expr(state, *lhs).into_int_value();
+                //
+                // match op {
+                //     BinOp::And => {
+                //         // if lhs { rhs } else { false }
+                //         let then_block = self.append_block(state, "and_then");
+                //         let else_block = self.append_block(state, "and_else");
+                //         let merge_block = self.append_block(state, "and_merge");
+                //
+                //         self.bx.build_conditional_branch(lhs, then_block, else_block);
+                //
+                //         self.start_block(state, then_block);
+                //         let then_value = self.codegen_expr(state, *rhs);
+                //         self.bx.build_unconditional_branch(merge_block);
+                //
+                //         self.start_block(state, else_block);
+                //         let else_value = self.bool_value(false);
+                //
+                //         self.bx.build_unconditional_branch(merge_block);
+                //         self.start_block(state, merge_block);
+                //
+                //         let ty = expr.ty.cty(self);
+                //         let phi = self.bx.build_phi(ty, "phi");
+                //         phi.add_incoming(&[(&then_value, then_block), (&else_value, else_block)]);
+                //         phi.as_basic_value()
+                //     }
+                //     BinOp::Or => {
+                //         // if !lhs { rhs } else { false }
+                //         let then_block = self.append_block(state, "or_then");
+                //         let else_block = self.append_block(state, "or_else");
+                //         let merge_block = self.append_block(state, "or_merge");
+                //
+                //         self.bx.build_conditional_branch(lhs, then_block, else_block);
+                //
+                //         self.start_block(state, then_block);
+                //         let then_value = self.bool_value(true);
+                //         self.bx.build_unconditional_branch(merge_block);
+                //
+                //         self.start_block(state, else_block);
+                //         let else_value = self.codegen_expr(state, *rhs);
+                //
+                //         self.bx.build_unconditional_branch(merge_block);
+                //         self.start_block(state, merge_block);
+                //
+                //         let ty = expr.ty.cty(self);
+                //         let phi = self.bx.build_phi(ty, "phi");
+                //         phi.add_incoming(&[(&then_value, then_block), (&else_value, else_block)]);
+                //         phi.as_basic_value()
+                //     }
+                //     _ => {
+                //         let rhs = self.codegen_expr(state, *rhs).into_int_value();
+                //
+                //         match op {
+                //             BinOp::Add => self.bx.build_int_add(lhs, rhs, "result").into(),
+                //             BinOp::Sub => self.bx.build_int_sub(lhs, rhs, "result").into(),
+                //             BinOp::Mul => self.bx.build_int_mul(lhs, rhs, "result").into(),
+                //             BinOp::Div => {
+                //                 if ty.is_uint() {
+                //                     self.bx.build_int_unsigned_div(lhs, rhs, "result").into()
+                //                 } else {
+                //                     self.bx.build_int_signed_div(lhs, rhs, "result").into()
+                //                 }
+                //             }
+                //             BinOp::Rem => {
+                //                 if ty.is_uint() {
+                //                     self.bx.build_int_unsigned_rem(lhs, rhs, "result").into()
+                //                 } else {
+                //                     self.bx.build_int_signed_rem(lhs, rhs, "result").into()
+                //                 }
+                //             }
+                //             BinOp::Shl => self.bx.build_left_shift(lhs, rhs, "result").into(),
+                //             BinOp::Shr => {
+                //                 self.bx.build_right_shift(lhs, rhs, ty.is_int(), "result").into()
+                //             }
+                //             BinOp::BitAnd => self.bx.build_and(lhs, rhs, "result").into(),
+                //             BinOp::BitOr => self.bx.build_or(lhs, rhs, "result").into(),
+                //             BinOp::BitXor => self.bx.build_xor(lhs, rhs, "result").into(),
+                //             BinOp::Cmp(op) => {
+                //                 let pred = get_int_predicate(*op, ty.is_int());
+                //                 self.bx.build_int_compare(pred, lhs, rhs, "result").into()
+                //             }
+                //             BinOp::And | BinOp::Or => unreachable!(),
+                //         }
+                //     }
+                // }
+            }
+            ExprKind::Unary { value, op } => {
+                todo!();
+                // let value = self.codegen_expr(state, *value).into_int_value();
+                // match op {
+                //     UnOp::Neg => self.bx.build_int_neg(value, "result").into(),
+                //     UnOp::Not => self.bx.build_not(value, "result").into(),
+                // }
+            }
+            ExprKind::Cast { value, target } => {
+                todo!();
+                // let source_ty = state.body.expr(*value).ty;
+                // let target_ty = *target;
+                //
+                // let value = self.codegen_expr(state, *value);
+                //
+                // match (source_ty.cty(self), target_ty.cty(self)) {
+                //     (BasicTypeEnum::IntType(_), BasicTypeEnum::IntType(target)) => self
+                //         .bx
+                //         .build_int_cast_sign_flag(
+                //             value.into_int_value(),
+                //             target,
+                //             target_ty.is_uint(),
+                //             "cast_result",
+                //         )
+                //         .into(),
+                //     (source, target) => panic!(
+                //         "unexpected types in cast: {} : {} and {} : {}",
+                //         source,
+                //         source_ty.display(self.db),
+                //         target,
+                //         target_ty.display(self.db)
+                //     ),
+                // }
+            }
+            ExprKind::Index { value, index } => {
+                todo!();
+                // let gepped_ty = state.body.expr(*value).ty.llpointee(self);
+                // let pointee_ty = expr.ty.cty(self);
+                // let ptr = self.codegen_expr(state, *value).into_pointer_value();
+                //
+                // let gep =
+                //     self.bx.build_struct_gep(gepped_ty, ptr, *index as u32, "index_gap").unwrap();
+                //
+                // self.bx.build_load(pointee_ty, gep, "load_index_gep")
+            }
+            ExprKind::Id(id) => match id {
+                Id::Fn(fid) => {
+                    todo!();
+                    // self.function(*fid).as_global_value().as_pointer_value().as_basic_value_enum()
+                }
+                Id::Global(gid) => {
+                    todo!();
+                    // let ptr = self.global(*gid).as_pointer_value();
+                    // let glob = &self.tir.globals[*gid];
+                    // self.bx.build_load(glob.ty.cty(self), ptr, &format!("load_{}", glob.name))
+                }
+                Id::Local(lid) => {
+                    todo!();
+                    // match state.local(*lid) {
+                    //     Local::Alloca(ptr, ty) => self.bx.build_load(
+                    //         ty,
+                    //         ptr,
+                    //         &format!("load_{}", state.body.local(*lid).name),
+                    //     ),
+                    //     Local::Value(value) => value,
+                    // }
+                }
+            },
+            ExprKind::Const(value) => {
+                todo!();
+                // self.const_value(value, expr.ty)
+            }
+        }
     }
 
     fn codegen_br(&mut self, state: &mut FnState<'db>, expr: ExprId) {
