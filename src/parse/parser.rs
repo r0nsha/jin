@@ -121,7 +121,7 @@ impl<'a> Parser<'a> {
             Ok(Fn { attrs, sig, kind: FnKind::Extern, span: name_ident.span })
         } else {
             let name_ident = self.eat(TokenKind::empty_ident())?;
-            let sig = self.parse_fn_sig(name_ident.word(), AllowTyParams::No)?;
+            let sig = self.parse_fn_sig(name_ident.word(), AllowTyParams::Yes)?;
 
             self.eat(TokenKind::OpenCurly)?;
             let body = self.parse_block()?;
@@ -226,8 +226,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_stmt(&mut self) -> ParseResult<Expr> {
-        if let Some(item) = self.maybe_parse_item()? {
-            Ok(Expr::Item(item))
+        if self.is(TokenKind::Let) {
+            let let_ = self.parse_let(Attrs::new())?;
+            Ok(Expr::Let(let_))
         } else {
             self.parse_expr()
         }

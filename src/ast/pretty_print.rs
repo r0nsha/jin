@@ -25,7 +25,7 @@ trait PrettyPrint {
 impl PrettyPrint for Expr {
     fn pretty_print(&self, cx: &mut PrettyCx) {
         match self {
-            Self::Item(item) => item.pretty_print(cx),
+            Self::Let(let_) => let_.pretty_print(cx),
             Self::Return { expr, .. } => {
                 cx.builder.begin_child("return".to_string());
 

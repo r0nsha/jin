@@ -453,27 +453,10 @@ impl<'db> Sema<'db> {
         expected_ty: Option<Ty>,
     ) -> CheckResult<hir::Expr> {
         let expr = match expr {
-            ast::Expr::Item(item) => {
-                let span = item.span();
-
-                match item {
-                    ast::Item::Fn(_) => {
-                        todo!("remove");
-                        // let f = self.check_fn(env, fun)?;
-                        // self.hir.fns.push(f);
-                        // self.unit_expr(span)
-                    }
-                    ast::Item::ExternLet(_) => {
-                        todo!("remove");
-                        // let let_ = self.check_extern_let(env, let_)?;
-                        // self.hir.extern_lets.push(let_);
-                        // self.unit_expr(span)
-                    }
-                    ast::Item::Let(let_) => {
-                        let let_ = self.check_let(env, let_)?;
-                        self.expr(hir::ExprKind::Let(let_), self.db.types.unit, span)
-                    }
-                }
+            ast::Expr::Let(let_) => {
+                let span = let_.span;
+                let let_ = self.check_let(env, let_)?;
+                self.expr(hir::ExprKind::Let(let_), self.db.types.unit, span)
             }
             ast::Expr::Return { expr, span } => {
                 if let Some(fn_id) = env.fn_id() {

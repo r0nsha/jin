@@ -107,7 +107,7 @@ impl Spanned for Item {
 
 #[derive(Debug, Clone)]
 pub enum Expr {
-    Item(Item),
+    Let(Let),
     Return { expr: Option<Box<Self>>, span: Span },
     If { cond: Box<Self>, then: Box<Self>, otherwise: Option<Box<Self>>, span: Span },
     Block { exprs: Vec<Self>, span: Span },
@@ -123,8 +123,8 @@ pub enum Expr {
 impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
-            Self::Item(x) => x.span(),
-            Self::Name { span, .. }
+            Self::Let(Let { span, .. })
+            | Self::Name { span, .. }
             | Self::Member { span, .. }
             | Self::Return { span, .. }
             | Self::If { span, .. }
