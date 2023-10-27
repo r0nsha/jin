@@ -1,5 +1,5 @@
 @link("./foo")
-fn extern hello
+fn extern hello()
 
 @link("./foo")
 let extern answer: Int

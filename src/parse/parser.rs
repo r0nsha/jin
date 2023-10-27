@@ -8,6 +8,7 @@ use crate::{
     },
     db::Db,
     diagnostics::{Diagnostic, Label},
+    macros::create_bool_enum,
     middle::{BinOp, TyExpr, TyName, UnOp},
     qpath::QPath,
     span::{Source, SourceId, Span, Spanned},
@@ -115,12 +116,12 @@ impl<'a> Parser<'a> {
     fn parse_fn(&mut self, attrs: Attrs) -> ParseResult<Fn> {
         if self.is(TokenKind::Extern) {
             let name_ident = self.eat(TokenKind::empty_ident())?;
-            let sig = self.parse_fn_sig(name_ident.word())?;
+            let sig = self.parse_fn_sig(name_ident.word(), AllowTyParams::No)?;
 
             Ok(Fn { attrs, sig, kind: FnKind::Extern, span: name_ident.span })
         } else {
             let name_ident = self.eat(TokenKind::empty_ident())?;
-            let sig = self.parse_fn_sig(name_ident.word())?;
+            let sig = self.parse_fn_sig(name_ident.word(), AllowTyParams::No)?;
 
             self.eat(TokenKind::OpenCurly)?;
             let body = self.parse_block()?;
@@ -168,8 +169,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_fn_sig(&mut self, name: Word) -> ParseResult<FnSig> {
-        let ty_params = self.parse_optional_ty_params()?;
+    fn parse_fn_sig(&mut self, name: Word, allow_ty_params: AllowTyParams) -> ParseResult<FnSig> {
+        let ty_params = if allow_ty_params == AllowTyParams::Yes {
+            self.parse_optional_ty_params()?
+        } else {
+            vec![]
+        };
+
         let (params, _) = self.parse_fn_params()?;
         let ret = self.is_and(TokenKind::Arrow, |this, _| this.parse_ty()).transpose()?;
         Ok(FnSig { word: name, ty_params, params, ret })
@@ -684,3 +690,5 @@ impl From<ParseError> for Diagnostic {
         }
     }
 }
+
+create_bool_enum!(AllowTyParams);
