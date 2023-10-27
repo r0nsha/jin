@@ -18,6 +18,7 @@ use crate::{
 };
 
 const PRELUDE: &str = include_str!("../../jin.c");
+const NEST: isize = 2;
 
 pub struct Generator<'db, 'a> {
     pub db: &'db mut Db,
@@ -104,14 +105,14 @@ impl<'db, 'a> Generator<'db, 'a> {
         let main_fn_name = &self.tir.fn_sigs[self.tir.main_fn.expect("to have a main fn")].name;
 
         RcDoc::text("int main() {")
-            .append(RcDoc::hardline())
             .append(
-                RcDoc::intersperse(
-                    [RcDoc::text(main_fn_name.as_str()).append(RcDoc::text("();"))],
-                    RcDoc::text(";").append(RcDoc::hardline()),
-                )
-                .nest(1)
-                .group(),
+                RcDoc::hardline()
+                    .append(RcDoc::intersperse(
+                        [RcDoc::text(main_fn_name.as_str()).append(RcDoc::text("();"))],
+                        RcDoc::text(";").append(RcDoc::hardline()),
+                    ))
+                    .nest(NEST)
+                    .group(),
             )
             .append(RcDoc::hardline())
             .append(RcDoc::text("}"))
