@@ -306,25 +306,6 @@ impl<'db> Sema<'db> {
         Ok(())
     }
 
-    fn check_item(&mut self, env: &mut Env, item: &ast::Item) -> CheckResult<()> {
-        match item {
-            ast::Item::Fn(fun) => {
-                let f = self.check_fn(env, fun)?;
-                self.hir.fns.push(f);
-            }
-            ast::Item::Let(let_) => {
-                let let_ = self.check_let(env, let_)?;
-                self.hir.lets.push(let_);
-            }
-            ast::Item::ExternLet(let_) => {
-                let let_ = self.check_extern_let(env, let_)?;
-                self.hir.extern_lets.push(let_);
-            }
-        }
-
-        Ok(())
-    }
-
     fn check_fn(&mut self, env: &mut Env, fun: &ast::Fn) -> CheckResult<hir::Fn> {
         self.check_attrs(
             env.module_id(),
