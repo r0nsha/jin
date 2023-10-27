@@ -32,10 +32,10 @@ pub fn codegen(db: &mut Db, tir: &Tir) -> Utf8PathBuf {
     let code = Generator {
         db,
         tir,
-        functions: FxHashMap::default(),
-        globals: FxHashMap::default(),
-        static_strs: UstrMap::default(),
-        static_str_slices: UstrMap::default(),
+        // functions: FxHashMap::default(),
+        // globals: FxHashMap::default(),
+        // static_strs: UstrMap::default(),
+        // static_str_slices: UstrMap::default(),
     }
     .run();
 
