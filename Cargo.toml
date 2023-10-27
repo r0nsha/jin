@@ -16,7 +16,6 @@ ena = "0.14.2"
 enum-as-inner = "0.6.0"
 owo-colors = "3.5.0"
 path-absolutize = "3.1.0"
-pretty = { version = "0.12.1" }
 ptree = "0.4.0"
 ustr = "0.10.0"
 inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = [
