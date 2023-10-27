@@ -442,6 +442,21 @@ impl<'db> Sema<'db> {
         Ok(hir::ExternLet { module_id: env.module_id(), id, word: let_.word, span: let_.span })
     }
 
+    fn check_local_item(&mut self, env: &mut Env, item: &ast::Item) -> CheckResult<hir::Expr> {
+        let span = item.span();
+
+        match item {
+            ast::Item::Fn(_) | ast::Item::ExternLet(_) => {
+                self.check_item(env, item)?;
+                Ok(self.unit_expr(span))
+            }
+            ast::Item::Let(let_) => {
+                let let_ = self.check_let(env, let_)?;
+                Ok(self.expr(hir::ExprKind::Let(let_), self.db.types.unit, span))
+            }
+        }
+    }
+
     fn check_expr(
         &mut self,
         env: &mut Env,
@@ -449,20 +464,7 @@ impl<'db> Sema<'db> {
         expected_ty: Option<Ty>,
     ) -> CheckResult<hir::Expr> {
         let expr = match expr {
-            ast::Expr::Item(item) => {
-                let span = item.span();
-
-                match item {
-                    ast::Item::Fn(_) | ast::Item::ExternLet(_) => {
-                        self.check_item(env, item)?;
-                        self.unit_expr(span)
-                    }
-                    ast::Item::Let(let_) => {
-                        let let_ = self.check_let(env, let_)?;
-                        self.expr(hir::ExprKind::Let(let_), self.db.types.unit, span)
-                    }
-                }
-            }
+            ast::Expr::Item(item) => self.check_local_item(env, item)?,
             ast::Expr::Return { expr, span } => {
                 if let Some(fn_id) = env.fn_id() {
                     let ret_ty = self.db[fn_id].ty.as_fn().unwrap().ret;
