@@ -1,75 +1,40 @@
+use pretty::RcDoc;
 use ustr::Ustr;
 
 use crate::cgen::generate::{FnState, Generator};
 
 impl<'db, 'a> Generator<'db, 'a> {
-    // #[inline]
     // pub fn append_block(&self, state: &FnState<'db, 'cx>, name: &str) -> BasicBlock<'cx> {
     //     self.context.append_basic_block(state.function_value, name)
     // }
 
-    // #[inline]
     // pub fn current_block(&self) -> BasicBlock<'cx> {
     //     self.bx.get_insert_block().unwrap()
     // }
 
-    // #[inline]
     // pub fn start_block(&self, state: &mut FnState<'db, 'cx>, bb: BasicBlock<'cx>) {
     //     state.current_block = bb;
     //     self.bx.position_at_end(bb);
     // }
 
-    // #[inline]
-    // pub fn unit_value(&self) -> StructValue<'cx> {
-    //     self.layout.unit_ty.const_named_struct(&[])
-    // }
+    pub fn unit_value(&self) -> RcDoc<'a> {
+        RcDoc::text("{0}")
+    }
 
-    // #[inline]
-    // pub fn bool_value(&self, value: bool) -> IntValue<'cx> {
-    //     self.context.bool_type().const_int(u64::from(value), false)
-    // }
+    pub fn bool_value(&self, value: bool) -> RcDoc<'a> {
+        RcDoc::text(if value { "true" } else { "false" })
+    }
 
-    // pub fn build_static_str(&mut self, value: Ustr) -> PointerValue<'cx> {
-    //     let static_str =
-    //         self.module.add_global(self.context.i8_type().array_type(value.len() as u32), None, "");
-    //     static_str.set_initializer(&self.context.const_string(value.as_bytes(), false));
-    //     let ptr = static_str.as_pointer_value();
-    //     self.static_strs.insert(value, ptr);
-    //     ptr
-    // }
+    pub fn str_value(&self, value: &str) -> RcDoc<'a> {
+        RcDoc::text("{")
+            .append(RcDoc::text(".data = ").append(self.str_lit(value)))
+            .append(RcDoc::text(format!(".len = {}", value.len())))
+            .append(RcDoc::text("}"))
+    }
 
-    // pub fn build_static_str_slice(
-    //     &mut self,
-    //     value: impl Into<Ustr>,
-    //     name: &str,
-    // ) -> PointerValue<'cx> {
-    //     let value = value.into();
-    //
-    //     if let Some(slice) = self.static_str_slices.get(&value) {
-    //         *slice
-    //     } else {
-    //         let static_str = self.build_static_str(value);
-    //
-    //         let len = self.layout.int_ty.const_int(value.len() as u64, false);
-    //         let slice = self.const_slice(static_str, len);
-    //         let static_slice = self.module.add_global(slice.get_type(), None, name);
-    //         static_slice.set_initializer(&slice);
-    //
-    //         self.static_str_slices.insert(value, static_slice.as_pointer_value());
-    //
-    //         static_slice.as_pointer_value()
-    //     }
-    // }
-
-    // #[inline]
-    // pub fn const_slice(&self, ptr: PointerValue<'cx>, len: IntValue<'cx>) -> StructValue<'cx> {
-    //     self.const_struct(&[ptr.as_basic_value_enum(), len.as_basic_value_enum()])
-    // }
-
-    // #[inline]
-    // pub fn const_struct(&self, values: &[BasicValueEnum<'cx>]) -> StructValue<'cx> {
-    //     self.context.const_struct(values, false)
-    // }
+    pub fn str_lit(&self, value: &str) -> RcDoc<'a> {
+        RcDoc::text(format!("\"{value}\""))
+    }
 
     // pub fn current_block_is_terminating(&self) -> bool {
     //     self.current_block().get_terminator().is_some()

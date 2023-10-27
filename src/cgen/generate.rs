@@ -87,9 +87,9 @@ impl<'db, 'a> Generator<'db, 'a> {
         file.write_all(b"\n").unwrap();
 
         let final_doc = RcDoc::intersperse(self.fn_decls, RcDoc::hardline())
-            .append(RcDoc::hardline())
+            .append(RcDoc::hardline().append(RcDoc::hardline()))
             .append(RcDoc::intersperse(self.globals, RcDoc::hardline()))
-            .append(RcDoc::hardline())
+            .append(RcDoc::hardline().append(RcDoc::hardline()))
             .append(RcDoc::intersperse(self.fn_defs, RcDoc::hardline().append(RcDoc::hardline())));
 
         final_doc.render(WIDTH, &mut file).expect("writing to work");
@@ -145,13 +145,17 @@ impl<'db, 'a> Generator<'db, 'a> {
         // }
     }
 
-    fn add_fn_decl(&mut self, decl: RcDoc<'a>) {
-        self.fn_decls.push(decl.append(RcDoc::text(";")));
+    fn add_fn_decl(&mut self, doc: RcDoc<'a>) {
+        self.fn_decls.push(doc.append(RcDoc::text(";")));
+    }
+
+    fn add_global(&mut self, doc: RcDoc<'a>) {
+        self.globals.push(doc.append(RcDoc::text(";")));
     }
 
     pub fn predefine_fns(&mut self) {
         for sig in &self.tir.fn_sigs {
-            self.add_decl(self.codegen_fn_sig(sig));
+            self.add_fn_decl(self.codegen_fn_sig(sig));
         }
     }
 
@@ -159,24 +163,26 @@ impl<'db, 'a> Generator<'db, 'a> {
         for glob in &self.tir.globals {
             let cty = glob.ty.cty(self);
 
-            match &glob.kind {
-                GlobalKind::Bare { value, body } => {
-                    glob_value.set_linkage(Linkage::Private);
-                    glob_value.set_externally_initialized(false);
+            let tyname_doc = cty.append(RcDoc::space()).append(RcDoc::text(glob.name.as_str()));
 
+            let doc = match &glob.kind {
+                GlobalKind::Bare { value, body } => {
                     if let ExprKind::Const(value) = &body.expr(*value).kind {
-                        glob_value.set_initializer(&self.const_value(value, glob.ty));
+                        tyname_doc
+                            .append(RcDoc::space())
+                            .append(RcDoc::text("="))
+                            .append(RcDoc::space())
+                            .append(self.const_value(value))
                     } else {
-                        glob_value.set_initializer(&Self::undef_value(cty));
+                        tyname_doc
                     }
                 }
                 GlobalKind::Extern => {
-                    glob_value.set_linkage(Linkage::External);
-                    glob_value.set_externally_initialized(true);
+                    RcDoc::text("extern").append(RcDoc::space()).append(tyname_doc)
                 }
-            }
+            };
 
-            self.globals.insert(glob.id, glob_value);
+            self.add_global(doc);
         }
     }
 
@@ -186,7 +192,7 @@ impl<'db, 'a> Generator<'db, 'a> {
         let initial =
             if sig.is_extern { RcDoc::text("extern").append(RcDoc::space()) } else { RcDoc::nil() };
 
-        let sig_doc = fn_ty.ret.cty(self).append(RcDoc::space()).append(&sig.name).append(
+        let sig_doc = fn_ty.ret.cty(self).append(RcDoc::space()).append(sig.name.as_str()).append(
             RcDoc::text("(")
                 .append(RcDoc::intersperse(
                     sig.params.iter().map(|p| {
@@ -540,25 +546,19 @@ impl<'db, 'a> Generator<'db, 'a> {
         //     .unwrap_or_else(|| panic!("global {} to be declared", self.tir.globals[id].name))
     }
 
-    fn const_value(&mut self, value: &Const, ty: Ty) {
-        todo!()
-        // match value {
-        //     Const::Str(value) => self.build_static_str_slice(*value, "").into(),
-        //     Const::Int(value) => {
-        //         let int = ty
-        //             .cty(self)
-        //             .into_int_type()
-        //             .const_int(u64::try_from(value.abs()).unwrap(), ty.is_int());
-        //
-        //         if value.is_negative() {
-        //             int.const_neg().into()
-        //         } else {
-        //             int.into()
-        //         }
-        //     }
-        //     Const::Bool(value) => self.bool_value(*value).into(),
-        //     Const::Unit => self.unit_value().into(),
-        // }
+    fn const_value(&mut self, value: &Const) -> RcDoc<'a> {
+        match value {
+            Const::Str(value) => self.str_value(value),
+            Const::Int(value) => {
+                if value.is_negative() {
+                    RcDoc::text("-{value}")
+                } else {
+                    RcDoc::text(value.to_string())
+                }
+            }
+            Const::Bool(value) => self.bool_value(*value),
+            Const::Unit => self.unit_value(),
+        }
     }
 }
 
