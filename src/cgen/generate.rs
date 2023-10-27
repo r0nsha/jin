@@ -1,3 +1,9 @@
+use std::{
+    fs::{self, File},
+    io::Write,
+};
+
+use camino::Utf8PathBuf;
 use rustc_hash::FxHashMap;
 use ustr::UstrMap;
 
@@ -9,9 +15,13 @@ use crate::{
     ty::Ty,
 };
 
+const PRELUDE: &str = include_str!("../../jin.c");
+
 pub struct Generator<'db> {
     pub db: &'db mut Db,
     pub tir: &'db Tir,
+    pub decl_section: String,
+    pub def_section: String,
     // pub functions: FxHashMap<FnSigId, FunctionValue<'cx>>,
     // pub globals: FxHashMap<GlobalId, GlobalValue<'cx>>,
     // pub static_strs: UstrMap<PointerValue<'cx>>,
@@ -56,10 +66,24 @@ impl<'db> FnState<'db> {
 }
 
 impl<'db> Generator<'db> {
-    pub fn run(&mut self) {
+    pub fn run(mut self) -> Utf8PathBuf {
         self.predefine_all();
-        self.define_all();
-        self.codegen_main_function();
+        // self.define_all();
+        // self.codegen_main_function();
+        self.write_to_file()
+    }
+
+    fn write_to_file(self) -> Utf8PathBuf {
+        let path = self.db.output_path().with_extension("c");
+        let mut file = File::create(self.db.output_path().with_extension("c")).unwrap();
+
+        file.write_all(PRELUDE.as_bytes()).unwrap();
+        file.write_all(b"\n").unwrap();
+        file.write_all(self.decl_section.as_bytes()).unwrap();
+        file.write_all(b"\n").unwrap();
+        file.write_all(self.def_section.as_bytes()).unwrap();
+
+        path
     }
 
     pub fn codegen_main_function(&mut self) {

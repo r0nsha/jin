@@ -17,13 +17,13 @@
 #![feature(iterator_try_collect)]
 
 mod ast;
+mod cgen;
 mod counter;
 mod db;
 mod diagnostics;
 mod hir;
 mod index_vec;
 mod llvm;
-mod cgen;
 mod macros;
 mod middle;
 mod parse;
@@ -137,7 +137,7 @@ fn build(db: &mut Db) {
     db.emit_file(EmitOption::Tir, |db, file| tir.pretty_print(db, file))
         .expect("emitting tir failed");
 
-    llvm::codegen(db, &tir);
+    cgen::codegen(db, &tir);
 
     db.time.print();
 }

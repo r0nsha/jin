@@ -27,11 +27,15 @@ use crate::{
     tir::Tir,
 };
 
+const ONE_MB: usize = 1 * 1024 * 1024;
+
 pub fn codegen(db: &mut Db, tir: &Tir) -> Utf8PathBuf {
     db.time.start("codegen");
     let code = Generator {
         db,
         tir,
+        decl_section: String::with_capacity(ONE_MB),
+        def_section: String::with_capacity(ONE_MB),
         // functions: FxHashMap::default(),
         // globals: FxHashMap::default(),
         // static_strs: UstrMap::default(),
