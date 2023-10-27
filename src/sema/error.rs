@@ -31,9 +31,8 @@ pub enum CheckError {
     CyclicItems { origin_span: Span, reference_span: Span },
     ConstEval(ConstEvalError, Span),
     InvalidMember { ty: Ty, member: Word },
-    NonConstAttrValue { ty: Ty, span: Span },
-    PathNotFound { path: Ustr, span: Span },
-    InvalidAttrPlacement { kind: AttrKind, span: Span },
+    // NonConstAttrValue { ty: Ty, span: Span },
+    // InvalidAttrPlacement { kind: AttrKind, span: Span },
     NonConstGlobalLet { span: Span },
 }
 
@@ -184,22 +183,19 @@ impl CheckError {
             Self::InvalidMember { ty, member } => Diagnostic::error("check::invalid_member")
                 .with_message(format!("type `{}` has no member `{}`", ty.display(db), member))
                 .with_label(Label::primary(member.span()).with_message("unknown member")),
-            Self::NonConstAttrValue { ty, span } => {
-                Diagnostic::error("check::non_const_attr_value")
-                    .with_message(format!(
-                "value of type `{}` must resolve to a const, because it is passed to an attribute",
-                ty.display(db),
-            ))
-                    .with_label(Label::primary(span).with_message("not const"))
-            }
-            Self::PathNotFound { path, span } => Diagnostic::error("check::path_not_found")
-                .with_message(format!("path `{path}` not found"))
-                .with_label(Label::primary(span).with_message("not found")),
-            Self::InvalidAttrPlacement { kind, span } => {
-                Diagnostic::error("check::invalid_attr_placement")
-                    .with_message(format!("attribute `{kind}` cannot be placed here"))
-                    .with_label(Label::primary(span).with_message("invalid attribute"))
-            }
+            // Self::NonConstAttrValue { ty, span } => {
+            //     Diagnostic::error("check::non_const_attr_value")
+            //         .with_message(format!(
+            //     "value of type `{}` must resolve to a const, because it is passed to an attribute",
+            //     ty.display(db),
+            // ))
+            //         .with_label(Label::primary(span).with_message("not const"))
+            // }
+            // Self::InvalidAttrPlacement { kind, span } => {
+            //     Diagnostic::error("check::invalid_attr_placement")
+            //         .with_message(format!("attribute `{kind}` cannot be placed here"))
+            //         .with_label(Label::primary(span).with_message("invalid attribute"))
+            // }
             Self::NonConstGlobalLet { span } => Diagnostic::error("check::non_const_global_let")
                 .with_message("global variable must resolve to a const value")
                 .with_label(Label::primary(span).with_message("not a const value")),
