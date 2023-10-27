@@ -281,6 +281,9 @@ impl<'db> Sema<'db> {
                 let let_ = self.check_extern_let(env, let_)?;
                 self.hir.extern_lets.push(let_);
             }
+            ast::Item::ExternImport(import) => {
+                self.db.extern_libs.insert(import.lib.clone());
+            }
         }
 
         self.item_state.mark_as_resolved(item_id);

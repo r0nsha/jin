@@ -1,13 +1,9 @@
-@link("./foo")
-fn extern hello()
+import extern "./foo"
 
-@link("./foo")
+fn extern hello()
 let extern answer: Int
 
-@link("c")
 fn extern exit(status: Int) -> Never
-
-@link("c")
 fn extern write(fd: I32, buf: *U8, count: Uint) -> Int
 
 let stdout = 1

@@ -1,12 +1,14 @@
+use camino::Utf8Path;
 use codespan_reporting::files::Files;
+use ustr::Ustr;
 
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Attr, AttrKind, Attrs, CallArg, Expr, ExternLet, Fn, FnKind, FnParam, FnSig, Item, Let,
-        LitKind, Module, NamePat, Pat, TyParam,
+        Attr, AttrKind, Attrs, CallArg, Expr, ExternImport, ExternLet, Fn, FnKind, FnParam, FnSig,
+        Item, Let, LitKind, Module, NamePat, Pat, TyParam,
     },
-    db::Db,
+    db::{Db, ExternLib},
     diagnostics::{Diagnostic, Label},
     macros::create_bool_enum,
     middle::{BinOp, TyExpr, TyName, UnOp},
@@ -63,23 +65,46 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_attrs()?;
 
         if self.is(TokenKind::Fn) {
-            self.parse_fn(attrs).map(|f| Some(Item::Fn(f)))
-        } else if self.is(TokenKind::Let) {
-            if self.is(TokenKind::Extern) {
+            return self.parse_fn(attrs).map(|f| Some(Item::Fn(f)));
+        }
+
+        if self.is(TokenKind::Let) {
+            return if self.is(TokenKind::Extern) {
                 self.parse_extern_let(attrs).map(|l| Some(Item::ExternLet(l)))
             } else {
                 self.parse_let(attrs).map(|l| Some(Item::Let(l)))
-            }
-        } else if !attrs.is_empty() {
+            };
+        }
+
+        if self.is(TokenKind::Import) {
+            let start = self.last_span();
+
+            self.eat(TokenKind::Extern)?;
+
+            let path_tok = self.eat(TokenKind::empty_str())?;
+            let path = path_tok.str_value();
+
+            let relative_to = self.parent_path().unwrap();
+            let lib = ExternLib::try_from_str(&path, relative_to)
+                .ok_or(ParseError::PathNotFound { path, span: path_tok.span })?;
+
+            return Ok(Some(Item::ExternImport(ExternImport {
+                attrs,
+                lib,
+                span: start.merge(path_tok.span),
+            })));
+        }
+
+        if !attrs.is_empty() {
             let token = self.require()?;
-            Err(ParseError::UnexpectedToken {
+            return Err(ParseError::UnexpectedToken {
                 expected: "an item after attribute".to_string(),
                 found: token.kind,
                 span: token.span,
-            })
-        } else {
-            Ok(None)
+            });
         }
+
+        Ok(None)
     }
 
     fn parse_attrs(&mut self) -> ParseResult<Vec<Attr>> {
@@ -108,7 +133,7 @@ impl<'a> Parser<'a> {
 
     fn parse_attr_kind(&mut self) -> ParseResult<(AttrKind, Span)> {
         let ident = self.eat(TokenKind::empty_ident())?;
-        let kind = AttrKind::try_from(ident.ident().as_str())
+        let kind = AttrKind::try_from(ident.str_value().as_str())
             .map_err(|()| ParseError::InvalidAttr(ident.word()))?;
         Ok((kind, ident.span))
     }
@@ -659,6 +684,11 @@ impl<'a> Parser<'a> {
             })
         }
     }
+
+    #[inline]
+    fn parent_path(&self) -> Option<&Utf8Path> {
+        self.source.path().parent()
+    }
 }
 
 type ParseResult<T> = Result<T, ParseError>;
@@ -669,6 +699,7 @@ enum ParseError {
     UnexpectedEof(Span),
     MixedArgs(Span),
     InvalidAttr(Word),
+    PathNotFound { path: Ustr, span: Span },
 }
 
 impl From<ParseError> for Diagnostic {
@@ -688,6 +719,9 @@ impl From<ParseError> for Diagnostic {
             ParseError::InvalidAttr(word) => Self::error("parse::invalid_attr")
                 .with_message("unknown attribute {word}")
                 .with_label(Label::primary(word.span()).with_message("unknown attribute")),
+            ParseError::PathNotFound { path, span } => Diagnostic::error("check::path_not_found")
+                .with_message(format!("path `{path}` not found"))
+                .with_label(Label::primary(span).with_message("not found")),
         }
     }
 }

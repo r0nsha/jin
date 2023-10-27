@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
-    db::ModuleId,
+    db::{ExternLib, ModuleId},
     index_vec::{new_key_type, IndexVec},
     middle::{BinOp, TyExpr, UnOp},
     qpath::QPath,
@@ -79,6 +79,7 @@ pub enum Item {
     Fn(Fn),
     Let(Let),
     ExternLet(ExternLet),
+    ExternImport(ExternImport),
 }
 
 impl Item {
@@ -91,6 +92,7 @@ impl Item {
             Self::Fn(fun) => f(fun.sig.word),
             Self::Let(let_) => let_.pat.walk(|p| f(p.word)),
             Self::ExternLet(let_) => f(let_.word),
+            Self::ExternImport(_) => (),
         }
     }
 }
@@ -100,7 +102,8 @@ impl Spanned for Item {
         match self {
             Self::Fn(Fn { span, .. })
             | Self::Let(Let { span, .. })
-            | Self::ExternLet(ExternLet { span, .. }) => *span,
+            | Self::ExternLet(ExternLet { span, .. })
+            | Self::ExternImport(ExternImport { span, .. }) => *span,
         }
     }
 }
@@ -190,6 +193,13 @@ pub struct ExternLet {
 }
 
 #[derive(Debug, Clone)]
+pub struct ExternImport {
+    pub attrs: Attrs,
+    pub lib: ExternLib,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
 pub enum Pat {
     Name(NamePat),
     Discard(Span),
@@ -245,16 +255,13 @@ pub struct Attr {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AttrKind {
-    Link,
-}
+pub enum AttrKind {}
 
 impl TryFrom<&str> for AttrKind {
     type Error = ();
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "link" => Ok(Self::Link),
             _ => Err(()),
         }
     }
@@ -262,8 +269,7 @@ impl TryFrom<&str> for AttrKind {
 
 impl fmt::Display for AttrKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            AttrKind::Link => "lib",
-        })
+        // f.write_str(match self {})
+        f.write_str("")
     }
 }

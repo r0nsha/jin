@@ -14,15 +14,15 @@ pub struct Token {
 }
 
 impl Token {
-    pub fn ident(&self) -> Ustr {
+    pub fn str_value(&self) -> Ustr {
         match self.kind {
-            TokenKind::Ident(ident) => ident,
-            kind => panic!("expected Ident, found {kind:?}"),
+            TokenKind::Ident(v) | TokenKind::Str(v) => v,
+            kind => panic!("expected Ident or Str, found {kind:?}"),
         }
     }
 
     pub fn word(&self) -> Word {
-        Word::new(self.ident(), self.span)
+        Word::new(self.str_value(), self.span)
     }
 
     pub fn kind_is(&self, other: TokenKind) -> bool {
@@ -82,6 +82,7 @@ pub enum TokenKind {
     True,
     False,
     As,
+    Import,
 
     // Literals
     Int(u128),
@@ -92,6 +93,11 @@ impl TokenKind {
     #[inline]
     pub fn empty_ident() -> Self {
         Self::Ident(ustr(""))
+    }
+
+    #[inline]
+    pub fn empty_str() -> Self {
+        Self::Str(ustr(""))
     }
 }
 
@@ -141,6 +147,7 @@ impl fmt::Display for TokenKind {
             Self::True => f.write_str("`true`"),
             Self::False => f.write_str("`false`"),
             Self::As => f.write_str("`as`"),
+            Self::Import => f.write_str("`import`"),
             Self::Int(..) => f.write_str("int literal"),
             Self::Str(..) => f.write_str("str literal"),
         }

@@ -152,6 +152,7 @@ impl<'s> Lexer<'s> {
                     "true" => TokenKind::True,
                     "false" => TokenKind::False,
                     "as" => TokenKind::As,
+                    "import" => TokenKind::Import,
                     str => TokenKind::Ident(ustr(str)),
                 };
             }

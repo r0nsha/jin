@@ -1,7 +1,7 @@
 use std::io;
 
 use super::{Expr, Fn, Item, LitKind, Module};
-use crate::ast::{CallArg, ExternLet, FnKind, FnSig, Let, TyExpr};
+use crate::ast::{CallArg, ExternImport, ExternLet, FnKind, FnSig, Let, TyExpr};
 
 pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Result<()> {
     let mut cx = PrettyCx { builder: ptree::TreeBuilder::new(module.name.standard_full_name()) };
@@ -129,9 +129,10 @@ impl PrettyPrint for Expr {
 impl PrettyPrint for Item {
     fn pretty_print(&self, cx: &mut PrettyCx) {
         match self {
-            Self::Fn(f) => f.pretty_print(cx),
-            Self::Let(l) => l.pretty_print(cx),
-            Self::ExternLet(l) => l.pretty_print(cx),
+            Self::Fn(x) => x.pretty_print(cx),
+            Self::Let(x) => x.pretty_print(cx),
+            Self::ExternLet(x) => x.pretty_print(cx),
+            Self::ExternImport(x) => x.pretty_print(cx),
         }
     }
 }
@@ -198,6 +199,12 @@ impl PrettyPrint for ExternLet {
         cx.builder.end_child();
 
         cx.builder.end_child();
+    }
+}
+
+impl PrettyPrint for ExternImport {
+    fn pretty_print(&self, cx: &mut PrettyCx) {
+        cx.builder.add_empty_child(format!("import extern \"{}\"", self.lib));
     }
 }
 
