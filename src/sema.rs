@@ -286,7 +286,21 @@ impl<'db> Sema<'db> {
             reference_span: self.ast.find_item(err.causee).expect("item to exist").span(),
         })?;
 
-        self.check_item(env, item)?;
+        match item {
+            ast::Item::Fn(fun) => {
+                let f = self.check_fn(env, fun)?;
+                self.hir.fns.push(f);
+            }
+            ast::Item::Let(let_) => {
+                let let_ = self.check_let(env, let_)?;
+                self.hir.lets.push(let_);
+            }
+            ast::Item::ExternLet(let_) => {
+                let let_ = self.check_extern_let(env, let_)?;
+                self.hir.extern_lets.push(let_);
+            }
+        }
+
         self.item_state.mark_as_resolved(item_id);
 
         Ok(())
@@ -459,8 +473,14 @@ impl<'db> Sema<'db> {
                 let span = item.span();
 
                 match item {
-                    ast::Item::Fn(_) | ast::Item::ExternLet(_) => {
-                        self.check_item(env, item)?;
+                    ast::Item::Fn(fun) => {
+                        let f = self.check_fn(env, fun)?;
+                        self.hir.fns.push(f);
+                        self.unit_expr(span)
+                    }
+                    ast::Item::ExternLet(let_) => {
+                        let let_ = self.check_extern_let(env, let_)?;
+                        self.hir.extern_lets.push(let_);
                         self.unit_expr(span)
                     }
                     ast::Item::Let(let_) => {
