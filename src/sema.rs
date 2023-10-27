@@ -88,8 +88,9 @@ impl<'db> Sema<'db> {
     }
 
     fn run(mut self) -> CheckResult<Hir> {
-        self.check_items()?;
+        self.check_global_items()?;
         self.checking_global_items = false;
+        self.check_fn_bodies()?;
 
         // for module in &self.ast.modules {
         //     let mut env = Env::new(module.id);
@@ -111,7 +112,7 @@ impl<'db> Sema<'db> {
         Ok(self.hir)
     }
 
-    fn check_items(&mut self) -> CheckResult<()> {
+    fn check_global_items(&mut self) -> CheckResult<()> {
         for module in &self.ast.modules {
             let mut env = Env::new(module.id);
 
@@ -124,6 +125,11 @@ impl<'db> Sema<'db> {
             }
         }
 
+        Ok(())
+    }
+
+    fn check_fn_bodies(&mut self) -> CheckResult<()> {
+        todo!();
         Ok(())
     }
 

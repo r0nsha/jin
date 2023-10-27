@@ -1,11 +1,11 @@
 use enum_as_inner::EnumAsInner;
 use rustc_hash::FxHashMap;
 
-use crate::{ast, hir::FnSig};
+use crate::{ast, db::DefId, hir::FnSig};
 
 pub struct ItemState {
     statuses: ast::ItemMap<ItemStatus>,
-    fn_sigs: ast::ItemMap<FnSig>,
+    fn_sigs: ast::ItemMap<(FnSig, DefId)>,
     check_stack: Vec<ast::GlobalItemId>,
 }
 
@@ -38,12 +38,12 @@ impl ItemState {
         self.check_stack.pop();
     }
 
-    pub fn get_fn_sig(&self, id: ast::GlobalItemId) -> Option<&FnSig> {
+    pub fn get_fn_sig(&self, id: ast::GlobalItemId) -> Option<&(FnSig, DefId)> {
         self.fn_sigs.get(&id)
     }
 
-    pub fn insert_fn_sig(&mut self, id: ast::GlobalItemId, sig: FnSig) {
-        self.fn_sigs.insert(id, sig);
+    pub fn insert_fn_sig(&mut self, id: ast::GlobalItemId, sig: FnSig, def_id: DefId) {
+        self.fn_sigs.insert(id, (sig, def_id));
     }
 }
 
