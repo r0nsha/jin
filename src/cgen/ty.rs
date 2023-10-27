@@ -1,25 +1,25 @@
 use std::fmt;
 
-use ustr::Ustr;
+use pretty::RcDoc;
 
 use crate::{
     cgen::generate::Generator,
     ty::{FnTy, IntTy, TyKind, UintTy},
 };
 
-pub trait CTy<'db>
+pub trait CTy<'db, 'a>
 where
     Self: fmt::Debug,
 {
-    fn cty(&self, cx: &Generator<'db>) -> Ustr;
+    fn cty(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a>;
 
-    fn cpointee(&self, cx: &Generator<'db>) -> Ustr {
+    fn cpointee(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a> {
         panic!("{self:?} has no pointee");
     }
 }
 
-impl<'db> CTy<'db> for TyKind {
-    fn cty(&self, cx: &Generator<'db>) -> Ustr {
+impl<'db, 'a> CTy<'db, 'a> for TyKind {
+    fn cty(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a> {
         match self {
             Self::Int(ity) => ity.cty(cx).into(),
             Self::Uint(uty) => uty.cty(cx).into(),
@@ -33,7 +33,7 @@ impl<'db> CTy<'db> for TyKind {
         }
     }
 
-    fn cpointee(&self, cx: &Generator<'db>) -> Ustr {
+    fn cpointee(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a> {
         match self {
             Self::Str => todo!(),             // cx.layout.str_ty.into(),
             Self::RawPtr(pointee) => todo!(), //pointee.cty(cx),
@@ -42,8 +42,8 @@ impl<'db> CTy<'db> for TyKind {
     }
 }
 
-impl<'db> CTy<'db> for IntTy {
-    fn cty(&self, cx: &Generator<'db>) -> Ustr {
+impl<'db, 'a> CTy<'db, 'a> for IntTy {
+    fn cty(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a> {
         todo!()
         // match self {
         //     Self::I8 => cx.context.i8_type(),
@@ -55,8 +55,8 @@ impl<'db> CTy<'db> for IntTy {
     }
 }
 
-impl<'db> CTy<'db> for UintTy {
-    fn cty(&self, cx: &Generator<'db>) -> Ustr {
+impl<'db, 'a> CTy<'db, 'a> for UintTy {
+    fn cty(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a> {
         todo!()
         // match self {
         //     Self::U8 => cx.context.i8_type(),
@@ -68,8 +68,8 @@ impl<'db> CTy<'db> for UintTy {
     }
 }
 
-impl<'db> CTy<'db> for FnTy {
-    fn cty(&self, cx: &Generator<'db>) -> Ustr {
+impl<'db, 'a> CTy<'db, 'a> for FnTy {
+    fn cty(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a> {
         todo!("c fn types");
         // let param_tys: Vec<_> = self.params.iter().map(|p| p.ty.cty(cx).into()).collect();
         // self.ret.cty(cx).fn_type(&param_tys, false)

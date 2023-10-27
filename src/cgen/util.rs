@@ -2,7 +2,7 @@ use ustr::Ustr;
 
 use crate::cgen::generate::{FnState, Generator};
 
-impl<'db> Generator<'db> {
+impl<'db, 'a> Generator<'db, 'a> {
     // #[inline]
     // pub fn append_block(&self, state: &FnState<'db, 'cx>, name: &str) -> BasicBlock<'cx> {
     //     self.context.append_basic_block(state.function_value, name)

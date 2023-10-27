@@ -4,24 +4,26 @@ use std::{
 };
 
 use camino::Utf8PathBuf;
+use pretty::RcDoc;
 use rustc_hash::FxHashMap;
 use ustr::UstrMap;
 
 use crate::{
+    cgen::ty::CTy,
     db::Db,
     hir::const_eval::Const,
     middle::{BinOp, CmpOp, UnOp},
-    tir::{Body, ExprId, ExprKind, Fn, FnSigId, GlobalId, GlobalKind, Id, LocalId, Tir},
+    tir::{Body, ExprId, ExprKind, Fn, FnSig, FnSigId, GlobalId, GlobalKind, Id, LocalId, Tir},
     ty::Ty,
 };
 
 const PRELUDE: &str = include_str!("../../jin.c");
 
-pub struct Generator<'db> {
+pub struct Generator<'db, 'a> {
     pub db: &'db mut Db,
     pub tir: &'db Tir,
-    pub decl_section: String,
-    pub def_section: String,
+    pub decls: Vec<RcDoc<'a>>,
+    pub defs: Vec<RcDoc<'a>>,
     // pub functions: FxHashMap<FnSigId, FunctionValue<'cx>>,
     // pub globals: FxHashMap<GlobalId, GlobalValue<'cx>>,
     // pub static_strs: UstrMap<PointerValue<'cx>>,
@@ -65,7 +67,7 @@ impl<'db> FnState<'db> {
     // }
 }
 
-impl<'db> Generator<'db> {
+impl<'db, 'a> Generator<'db, 'a> {
     pub fn run(mut self) -> Utf8PathBuf {
         self.predefine_all();
         // self.define_all();
@@ -74,14 +76,20 @@ impl<'db> Generator<'db> {
     }
 
     fn write_to_file(self) -> Utf8PathBuf {
+        const WIDTH: usize = 100;
+
         let path = self.db.output_path().with_extension("c");
         let mut file = File::create(self.db.output_path().with_extension("c")).unwrap();
 
         file.write_all(PRELUDE.as_bytes()).unwrap();
         file.write_all(b"\n").unwrap();
-        file.write_all(self.decl_section.as_bytes()).unwrap();
-        file.write_all(b"\n").unwrap();
-        file.write_all(self.def_section.as_bytes()).unwrap();
+
+        RcDoc::intersperse(
+            self.decls.into_iter().chain(self.defs),
+            RcDoc::hardline().append(RcDoc::hardline()),
+        )
+        .render(WIDTH, &mut file)
+        .expect("writing to work");
 
         path
     }
@@ -134,15 +142,15 @@ impl<'db> Generator<'db> {
         // }
     }
 
+    fn add_decl(&mut self, decl: RcDoc<'a>) {
+        self.decls.push(decl.append(RcDoc::text(";")));
+    }
+
     pub fn predefine_all(&mut self) {
-        todo!();
-        // for sig in &self.tir.fn_sigs {
-        //     let cty = sig.ty.as_fn().expect("a function type").cty(self);
-        //     let linkage = if sig.is_extern { Linkage::External } else { Linkage::Private };
-        //     let function = self.module.add_function(&sig.name, cty, Some(linkage));
-        //     self.functions.insert(sig.id, function);
-        // }
-        //
+        for sig in &self.tir.fn_sigs {
+            self.add_decl(self.codegen_fn_sig(sig));
+        }
+
         // for glob in &self.tir.globals {
         //     let cty = glob.ty.cty(self);
         //
@@ -168,6 +176,23 @@ impl<'db> Generator<'db> {
         //
         //     self.globals.insert(glob.id, glob_value);
         // }
+    }
+
+    fn codegen_fn_sig(&self, sig: &FnSig) -> RcDoc<'a> {
+        let fn_ty = sig.ty.as_fn().expect("a function type");
+
+        fn_ty.ret.cty(self).append(RcDoc::space()).append(sig.name.as_str()).append(
+            RcDoc::text("(")
+                .append(RcDoc::intersperse(
+                    sig.params.iter().map(|p| {
+                        p.ty.cty(self)
+                            .append(RcDoc::space())
+                            .append(RcDoc::text(self.db[p.def_id].name.as_str()))
+                    }),
+                    ", ",
+                ))
+                .append(RcDoc::text(")")),
+        )
     }
 
     pub fn define_all(&mut self) {
