@@ -54,6 +54,7 @@ pub struct Sema<'db> {
     item_state: ItemState,
     storage: RefCell<TyStorage>,
     expr_id: Counter<ExprId>,
+    checking_global_items: bool,
 }
 
 #[derive(Debug)]
@@ -82,14 +83,13 @@ impl<'db> Sema<'db> {
             item_state: ItemState::new(),
             storage: RefCell::new(TyStorage::new()),
             expr_id: Counter::new(),
+            checking_global_items: true,
         }
     }
 
     fn run(mut self) -> CheckResult<Hir> {
-        self.define_all()?;
-
-        dbg!(&self.global_scope);
-        todo!();
+        self.check_items()?;
+        self.checking_global_items = false;
 
         // for module in &self.ast.modules {
         //     let mut env = Env::new(module.id);
@@ -103,15 +103,15 @@ impl<'db> Sema<'db> {
         //     }
         // }
 
-        // self.subst();
+        self.subst();
 
-        // post::check_bodies(self.db, &self.hir);
-        // post::check_entry(self.db, &self.hir);
+        post::check_bodies(self.db, &self.hir);
+        post::check_entry(self.db, &self.hir);
 
         Ok(self.hir)
     }
 
-    fn define_all(&mut self) -> CheckResult<()> {
+    fn check_items(&mut self) -> CheckResult<()> {
         for module in &self.ast.modules {
             let mut env = Env::new(module.id);
 
@@ -147,21 +147,6 @@ impl<'db> Sema<'db> {
     #[inline]
     pub fn normalize(&self, ty: Ty) -> Ty {
         ty.normalize(&mut self.storage.borrow_mut())
-    }
-
-    fn find_and_check_global_item(&mut self, symbol: &Symbol) -> CheckResult<Option<DefId>> {
-        if let Some(item_id) = self.global_scope.get_item(symbol) {
-            let item = &self.ast.modules[symbol.module_id].items[item_id];
-            self.check_global_item(
-                &mut Env::new(symbol.module_id),
-                ast::GlobalItemId::new(symbol.module_id, item_id),
-                item,
-            )?;
-            let id = self.global_scope.get_def(symbol).expect("global def to be defined");
-            Ok(Some(id))
-        } else {
-            Ok(None)
-        }
     }
 
     fn define_global_def(
@@ -256,8 +241,10 @@ impl<'db> Sema<'db> {
             return Ok(id);
         }
 
-        if let Some(id) = self.find_and_check_global_item(&symbol)? {
-            return Ok(id);
+        if self.checking_global_items {
+            if let Some(id) = self.find_and_check_global_item(&symbol)? {
+                return Ok(id);
+            }
         }
 
         if let Some(id) = self.builtin_tys.get(name) {
@@ -265,6 +252,21 @@ impl<'db> Sema<'db> {
         }
 
         Err(CheckError::NameNotFound(word))
+    }
+
+    fn find_and_check_global_item(&mut self, symbol: &Symbol) -> CheckResult<Option<DefId>> {
+        if let Some(item_id) = self.global_scope.get_item(symbol) {
+            let item = &self.ast.modules[symbol.module_id].items[item_id];
+            self.check_global_item(
+                &mut Env::new(symbol.module_id),
+                ast::GlobalItemId::new(symbol.module_id, item_id),
+                item,
+            )?;
+            let id = self.global_scope.get_def(symbol).expect("global def to be defined");
+            Ok(Some(id))
+        } else {
+            Ok(None)
+        }
     }
 
     fn check_global_item(
@@ -856,7 +858,7 @@ impl<'db> Sema<'db> {
                 }
             }
             TyExpr::Hole(span) => {
-                if allow_hole.into() {
+                if allow_hole == AllowTyHole::Yes {
                     Ok(self.fresh_ty_var())
                 } else {
                     Err(CheckError::InvalidInferTy(*span))

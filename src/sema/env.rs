@@ -70,27 +70,27 @@ impl BuiltinTys {
     pub fn new(db: &mut Db) -> Self {
         let mut this = Self { inner: UstrMap::default() };
 
-        this.define_ty(db, sym::I8, db.types.i8);
-        this.define_ty(db, sym::I16, db.types.i16);
-        this.define_ty(db, sym::I32, db.types.i32);
-        this.define_ty(db, sym::I64, db.types.i64);
-        this.define_ty(db, sym::INT, db.types.int);
+        this.define(db, sym::I8, db.types.i8);
+        this.define(db, sym::I16, db.types.i16);
+        this.define(db, sym::I32, db.types.i32);
+        this.define(db, sym::I64, db.types.i64);
+        this.define(db, sym::INT, db.types.int);
 
-        this.define_ty(db, sym::U8, db.types.u8);
-        this.define_ty(db, sym::U16, db.types.u16);
-        this.define_ty(db, sym::U32, db.types.u32);
-        this.define_ty(db, sym::U64, db.types.u64);
-        this.define_ty(db, sym::UINT, db.types.uint);
+        this.define(db, sym::U8, db.types.u8);
+        this.define(db, sym::U16, db.types.u16);
+        this.define(db, sym::U32, db.types.u32);
+        this.define(db, sym::U64, db.types.u64);
+        this.define(db, sym::UINT, db.types.uint);
 
-        this.define_ty(db, sym::STR, db.types.str);
-        this.define_ty(db, sym::BOOL, db.types.bool);
-        this.define_ty(db, sym::UNIT, db.types.unit);
-        this.define_ty(db, sym::NEVER, db.types.never);
+        this.define(db, sym::STR, db.types.str);
+        this.define(db, sym::BOOL, db.types.bool);
+        this.define(db, sym::UNIT, db.types.unit);
+        this.define(db, sym::NEVER, db.types.never);
 
         this
     }
 
-    fn define_ty(&mut self, db: &mut Db, name: &str, ty: Ty) -> Option<DefId> {
+    fn define(&mut self, db: &mut Db, name: &str, ty: Ty) -> Option<DefId> {
         let typ = db.types.typ;
         let name = ustr(name);
         let scope_info = ScopeInfo {

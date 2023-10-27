@@ -1,21 +1,17 @@
 use enum_as_inner::EnumAsInner;
 use rustc_hash::FxHashMap;
 
-use crate::{ast, db::DefId, hir};
+use crate::{ast, hir::FnSig};
 
 pub struct ItemState {
     statuses: ast::ItemMap<ItemStatus>,
-    resolved_ids: ast::ItemMap<ItemResolvedId>,
+    fn_sigs: ast::ItemMap<FnSig>,
     check_stack: Vec<ast::GlobalItemId>,
 }
 
 impl ItemState {
     pub fn new() -> Self {
-        Self {
-            statuses: FxHashMap::default(),
-            resolved_ids: FxHashMap::default(),
-            check_stack: vec![],
-        }
+        Self { statuses: FxHashMap::default(), fn_sigs: FxHashMap::default(), check_stack: vec![] }
     }
 
     pub fn get_status(&self, id: &ast::GlobalItemId) -> ItemStatus {
@@ -42,8 +38,12 @@ impl ItemState {
         self.check_stack.pop();
     }
 
-    pub fn get_resolved_id(&self, id: ast::GlobalItemId) -> Option<&ItemResolvedId> {
-        self.resolved_ids.get(&id)
+    pub fn get_fn_sig(&self, id: ast::GlobalItemId) -> Option<&FnSig> {
+        self.fn_sigs.get(&id)
+    }
+
+    pub fn insert_fn_sig(&mut self, id: ast::GlobalItemId, sig: FnSig) {
+        self.fn_sigs.insert(id, sig);
     }
 }
 
@@ -52,12 +52,6 @@ pub enum ItemStatus {
     Unresolved,
     InProgress,
     Resolved,
-}
-
-#[derive(Debug, Clone, EnumAsInner)]
-pub enum ItemResolvedId {
-    DefId(DefId),
-    Pat(hir::Pat),
 }
 
 #[derive(Debug, Clone, Copy)]
