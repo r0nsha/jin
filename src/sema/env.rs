@@ -255,7 +255,6 @@ impl Scope {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum ScopeKind {
-    FnSig,
     Fn(DefId),
     Block,
 }

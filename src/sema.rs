@@ -316,23 +316,18 @@ impl<'db> Sema<'db> {
             },
         )?;
 
-        let mut sig = env.with_scope(
-            fun.sig.word.name(),
-            ScopeKind::FnSig,
-            |env| -> Result<_, CheckError> { self.check_fn_sig(env, &fun.sig) },
-        )?;
+        let (sig, id) = self.check_and_define_fn_sig(env, &fun.sig, fun.fn_info())?;
 
-        let id = self.define_def(
-            env,
-            Vis::Private,
-            DefKind::Fn(match fun.kind {
-                ast::FnKind::Bare { .. } => FnInfo::Bare,
-                ast::FnKind::Extern => FnInfo::Extern,
-            }),
-            fun.sig.word,
-            sig.ty,
-        )?;
+        self.check_fn_body(env, fun, sig, id)
+    }
 
+    fn check_fn_body(
+        &mut self,
+        env: &mut Env,
+        fun: &ast::Fn,
+        mut sig: hir::FnSig,
+        id: DefId,
+    ) -> CheckResult<hir::Fn> {
         let kind = env.with_scope(
             fun.sig.word.name(),
             ScopeKind::Fn(id),
@@ -369,6 +364,23 @@ impl<'db> Sema<'db> {
         )?;
 
         Ok(hir::Fn { module_id: env.module_id(), id, sig, kind, span: fun.span })
+    }
+
+    fn check_and_define_fn_sig(
+        &mut self,
+        env: &mut Env,
+        sig: &ast::FnSig,
+        fn_info: FnInfo,
+    ) -> CheckResult<(hir::FnSig, DefId)> {
+        let sig = env.with_scope(
+            sig.word.name(),
+            ScopeKind::Fn(DefId::INVALID),
+            |env| -> Result<_, CheckError> { self.check_fn_sig(env, sig) },
+        )?;
+
+        let id = self.define_def(env, Vis::Private, DefKind::Fn(fn_info), sig.word, sig.ty)?;
+
+        Ok((sig, id))
     }
 
     fn check_fn_sig(&mut self, env: &mut Env, sig: &ast::FnSig) -> CheckResult<hir::FnSig> {

@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
-    db::ModuleId,
+    db::{FnInfo, ModuleId},
     index_vec::{new_key_type, IndexVec},
     middle::{BinOp, TyExpr, UnOp},
     qpath::QPath,
@@ -144,6 +144,15 @@ pub struct Fn {
     pub sig: FnSig,
     pub kind: FnKind,
     pub span: Span,
+}
+
+impl Fn {
+    pub fn fn_info(&self) -> FnInfo {
+        match &self.kind {
+            FnKind::Bare { .. } => FnInfo::Bare,
+            FnKind::Extern => FnInfo::Extern,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
