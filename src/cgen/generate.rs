@@ -137,17 +137,17 @@ impl<'db> Generator<'db> {
     pub fn predefine_all(&mut self) {
         todo!();
         // for sig in &self.tir.fn_sigs {
-        //     let llvm_ty = sig.ty.as_fn().expect("a function type").llty(self);
+        //     let cty = sig.ty.as_fn().expect("a function type").cty(self);
         //     let linkage = if sig.is_extern { Linkage::External } else { Linkage::Private };
-        //     let function = self.module.add_function(&sig.name, llvm_ty, Some(linkage));
+        //     let function = self.module.add_function(&sig.name, cty, Some(linkage));
         //     self.functions.insert(sig.id, function);
         // }
         //
         // for glob in &self.tir.globals {
-        //     let llvm_ty = glob.ty.llty(self);
+        //     let cty = glob.ty.cty(self);
         //
         //     let glob_value =
-        //         self.module.add_global(llvm_ty, Some(AddressSpace::default()), &glob.name);
+        //         self.module.add_global(cty, Some(AddressSpace::default()), &glob.name);
         //
         //     match &glob.kind {
         //         GlobalKind::Bare { value, body } => {
@@ -157,7 +157,7 @@ impl<'db> Generator<'db> {
         //             if let ExprKind::Const(value) = &body.expr(*value).kind {
         //                 glob_value.set_initializer(&self.const_value(value, glob.ty));
         //             } else {
-        //                 glob_value.set_initializer(&Self::undef_value(llvm_ty));
+        //                 glob_value.set_initializer(&Self::undef_value(cty));
         //             }
         //         }
         //         GlobalKind::Extern => {
@@ -217,13 +217,13 @@ impl<'db> Generator<'db> {
         // let expr = &state.body.expr(expr);
         //
         // if self.current_block_is_terminating() {
-        //     return Self::undef_value(expr.ty.llty(self));
+        //     return Self::undef_value(expr.ty.cty(self));
         // }
         //
         // match &expr.kind {
         //     ExprKind::Let { id, def_id: _, value } => {
         //         let local = state.body.local(*id);
-        //         let ty = local.ty.llty(self);
+        //         let ty = local.ty.cty(self);
         //
         //         let ptr = self.build_stack_alloc(state, ty, &local.name);
         //         let value = self.codegen_expr(state, *value);
@@ -252,7 +252,7 @@ impl<'db> Generator<'db> {
         //         self.bx.build_unconditional_branch(merge_block);
         //         self.start_block(state, merge_block);
         //
-        //         let ty = expr.ty.llty(self);
+        //         let ty = expr.ty.cty(self);
         //         match (then_value, else_value) {
         //             (Some(then_value), Some(else_value)) => {
         //                 let phi = self.bx.build_phi(ty, "phi");
@@ -279,7 +279,7 @@ impl<'db> Generator<'db> {
         //     ExprKind::Return { value } => {
         //         let value = self.codegen_expr(state, *value);
         //         self.bx.build_return(Some(&value));
-        //         Self::undef_value(expr.ty.llty(self))
+        //         Self::undef_value(expr.ty.cty(self))
         //     }
         //     ExprKind::Call { callee, args } => {
         //         let args: Vec<_> =
@@ -356,7 +356,7 @@ impl<'db> Generator<'db> {
         //                 self.bx.build_unconditional_branch(merge_block);
         //                 self.start_block(state, merge_block);
         //
-        //                 let ty = expr.ty.llty(self);
+        //                 let ty = expr.ty.cty(self);
         //                 let phi = self.bx.build_phi(ty, "phi");
         //                 phi.add_incoming(&[(&then_value, then_block), (&else_value, else_block)]);
         //                 phi.as_basic_value()
@@ -379,7 +379,7 @@ impl<'db> Generator<'db> {
         //                 self.bx.build_unconditional_branch(merge_block);
         //                 self.start_block(state, merge_block);
         //
-        //                 let ty = expr.ty.llty(self);
+        //                 let ty = expr.ty.cty(self);
         //                 let phi = self.bx.build_phi(ty, "phi");
         //                 phi.add_incoming(&[(&then_value, then_block), (&else_value, else_block)]);
         //                 phi.as_basic_value()
@@ -434,7 +434,7 @@ impl<'db> Generator<'db> {
         //
         //         let value = self.codegen_expr(state, *value);
         //
-        //         match (source_ty.llty(self), target_ty.llty(self)) {
+        //         match (source_ty.cty(self), target_ty.cty(self)) {
         //             (BasicTypeEnum::IntType(_), BasicTypeEnum::IntType(target)) => self
         //                 .bx
         //                 .build_int_cast_sign_flag(
@@ -455,7 +455,7 @@ impl<'db> Generator<'db> {
         //     }
         //     ExprKind::Index { value, index } => {
         //         let gepped_ty = state.body.expr(*value).ty.llpointee(self);
-        //         let pointee_ty = expr.ty.llty(self);
+        //         let pointee_ty = expr.ty.cty(self);
         //         let ptr = self.codegen_expr(state, *value).into_pointer_value();
         //
         //         let gep =
@@ -470,7 +470,7 @@ impl<'db> Generator<'db> {
         //         Id::Global(gid) => {
         //             let ptr = self.global(*gid).as_pointer_value();
         //             let glob = &self.tir.globals[*gid];
-        //             self.bx.build_load(glob.ty.llty(self), ptr, &format!("load_{}", glob.name))
+        //             self.bx.build_load(glob.ty.cty(self), ptr, &format!("load_{}", glob.name))
         //         }
         //         Id::Local(lid) => match state.local(*lid) {
         //             Local::Alloca(ptr, ty) => self.bx.build_load(
@@ -514,7 +514,7 @@ impl<'db> Generator<'db> {
         //     Const::Str(value) => self.build_static_str_slice(*value, "").into(),
         //     Const::Int(value) => {
         //         let int = ty
-        //             .llty(self)
+        //             .cty(self)
         //             .into_int_type()
         //             .const_int(u64::try_from(value.abs()).unwrap(), ty.is_int());
         //
