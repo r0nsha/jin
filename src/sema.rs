@@ -275,15 +275,14 @@ impl<'db> Sema<'db> {
         item_id: ast::GlobalItemId,
         item: &ast::Item,
     ) -> CheckResult<()> {
-        if let Err(err) = self.item_state.mark_as_in_progress(item_id) {
-            return Err(CheckError::CyclicItems {
-                origin_span: item.span(),
-                reference_span: self.ast.find_item(err.causee).expect("item to exist").span(),
-            });
-        }
+        self.item_state.mark_as_in_progress(item_id).map_err(|err| CheckError::CyclicItems {
+            origin_span: item.span(),
+            reference_span: self.ast.find_item(err.causee).expect("item to exist").span(),
+        })?;
 
         self.check_item(env, item)?;
         self.item_state.mark_as_resolved(item_id);
+
         Ok(())
     }
 
