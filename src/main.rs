@@ -23,6 +23,7 @@ mod diagnostics;
 mod hir;
 mod index_vec;
 mod llvm;
+mod cgen;
 mod macros;
 mod middle;
 mod parse;
