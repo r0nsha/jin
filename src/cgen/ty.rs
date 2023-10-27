@@ -21,11 +21,11 @@ impl<'db, 'a> CTy<'db, 'a> for TyKind {
             Self::Int(ity) => ity.cty(cx),
             Self::Uint(uty) => uty.cty(cx),
             Self::Fn(fty) => fty.cty(cx),
-            Self::Str => RcDoc::text("str"),
+            Self::Str => RcDoc::text(sym::STR),
             Self::RawPtr(ty) => RcDoc::text("*").append(ty.cty(cx)),
-            Self::Bool => RcDoc::text("bool"),
-            Self::Unit => RcDoc::text("unit"),
-            Self::Never => RcDoc::text("never"),
+            Self::Bool => RcDoc::text(sym::BOOL),
+            Self::Unit => RcDoc::text(sym::UNIT),
+            Self::Never => RcDoc::text(sym::NEVER),
             _ => panic!("unexpected type {self:?}"),
         }
     }

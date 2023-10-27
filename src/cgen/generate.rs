@@ -181,7 +181,10 @@ impl<'db, 'a> Generator<'db, 'a> {
     fn codegen_fn_sig(&self, sig: &FnSig) -> RcDoc<'a> {
         let fn_ty = sig.ty.as_fn().expect("a function type");
 
-        fn_ty.ret.cty(self).append(RcDoc::space()).append(c_name(&sig.name)).append(
+        let initial =
+            if sig.is_extern { RcDoc::text("extern").append(RcDoc::space()) } else { RcDoc::nil() };
+
+        let sig_doc = fn_ty.ret.cty(self).append(RcDoc::space()).append(c_name(&sig.name)).append(
             RcDoc::text("(")
                 .append(RcDoc::intersperse(
                     sig.params.iter().map(|p| {
@@ -192,7 +195,9 @@ impl<'db, 'a> Generator<'db, 'a> {
                     ", ",
                 ))
                 .append(RcDoc::text(")")),
-        )
+        );
+
+        initial.append(sig_doc)
     }
 
     pub fn define_all(&mut self) {
