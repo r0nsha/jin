@@ -311,43 +311,6 @@ impl<'db, 'a> Generator<'db, 'a> {
                 // let result_value =
                 //     result.try_as_basic_value().expect_left("expected a return value");
                 //
-                // // TODO: remove this debug printf call
-                // {
-                //     let printf = self.module.get_function("printf").unwrap_or_else(|| {
-                //         self.module.add_function(
-                //             "printf",
-                //             self.layout.int_ty.fn_type(
-                //                 &[self.context.ptr_type(AddressSpace::default()).into()],
-                //                 true,
-                //             ),
-                //             Some(Linkage::External),
-                //         )
-                //     });
-                //
-                //     self.bx.build_direct_call(
-                //         printf,
-                //         &[
-                //             self.bx
-                //                 .build_global_string_ptr("result = %d\n\0", "fmt")
-                //                 .as_pointer_value()
-                //                 .into(),
-                //             if let BasicValueEnum::IntValue(v) = result_value {
-                //                 self.bx
-                //                     .build_int_cast_sign_flag(
-                //                         v,
-                //                         self.layout.int_ty,
-                //                         false,
-                //                         "cast_to_i64",
-                //                     )
-                //                     .into()
-                //             } else {
-                //                 result_value.into()
-                //             },
-                //         ],
-                //         "printf_call",
-                //     );
-                // }
-                //
                 // result_value
             }
             ExprKind::Binary { lhs, rhs, op } => {
