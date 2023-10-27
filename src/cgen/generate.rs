@@ -22,8 +22,9 @@ const PRELUDE: &str = include_str!("../../jin.c");
 pub struct Generator<'db, 'a> {
     pub db: &'db mut Db,
     pub tir: &'db Tir,
-    pub decls: Vec<RcDoc<'a>>,
-    pub defs: Vec<RcDoc<'a>>,
+    pub fn_decls: Vec<RcDoc<'a>>,
+    pub globals: Vec<RcDoc<'a>>,
+    pub fn_defs: Vec<RcDoc<'a>>,
     // pub functions: FxHashMap<FnSigId, FunctionValue<'cx>>,
     // pub globals: FxHashMap<GlobalId, GlobalValue<'cx>>,
     // pub static_strs: UstrMap<PointerValue<'cx>>,
@@ -69,7 +70,8 @@ impl<'db> FnState<'db> {
 
 impl<'db, 'a> Generator<'db, 'a> {
     pub fn run(mut self) -> Utf8PathBuf {
-        self.predefine_all();
+        self.predefine_fns();
+        self.define_globals();
         // self.define_all();
         // self.codegen_main_function();
         self.write_to_file()
@@ -84,12 +86,13 @@ impl<'db, 'a> Generator<'db, 'a> {
         file.write_all(PRELUDE.as_bytes()).unwrap();
         file.write_all(b"\n").unwrap();
 
-        RcDoc::intersperse(
-            self.decls.into_iter().chain(self.defs),
-            RcDoc::hardline().append(RcDoc::hardline()),
-        )
-        .render(WIDTH, &mut file)
-        .expect("writing to work");
+        let final_doc = RcDoc::intersperse(self.fn_decls, RcDoc::hardline())
+            .append(RcDoc::hardline())
+            .append(RcDoc::intersperse(self.globals, RcDoc::hardline()))
+            .append(RcDoc::hardline())
+            .append(RcDoc::intersperse(self.fn_defs, RcDoc::hardline().append(RcDoc::hardline())));
+
+        final_doc.render(WIDTH, &mut file).expect("writing to work");
 
         path
     }
@@ -142,40 +145,39 @@ impl<'db, 'a> Generator<'db, 'a> {
         // }
     }
 
-    fn add_decl(&mut self, decl: RcDoc<'a>) {
-        self.decls.push(decl.append(RcDoc::text(";")));
+    fn add_fn_decl(&mut self, decl: RcDoc<'a>) {
+        self.fn_decls.push(decl.append(RcDoc::text(";")));
     }
 
-    pub fn predefine_all(&mut self) {
+    pub fn predefine_fns(&mut self) {
         for sig in &self.tir.fn_sigs {
             self.add_decl(self.codegen_fn_sig(sig));
         }
+    }
 
-        // for glob in &self.tir.globals {
-        //     let cty = glob.ty.cty(self);
-        //
-        //     let glob_value =
-        //         self.module.add_global(cty, Some(AddressSpace::default()), &glob.name);
-        //
-        //     match &glob.kind {
-        //         GlobalKind::Bare { value, body } => {
-        //             glob_value.set_linkage(Linkage::Private);
-        //             glob_value.set_externally_initialized(false);
-        //
-        //             if let ExprKind::Const(value) = &body.expr(*value).kind {
-        //                 glob_value.set_initializer(&self.const_value(value, glob.ty));
-        //             } else {
-        //                 glob_value.set_initializer(&Self::undef_value(cty));
-        //             }
-        //         }
-        //         GlobalKind::Extern => {
-        //             glob_value.set_linkage(Linkage::External);
-        //             glob_value.set_externally_initialized(true);
-        //         }
-        //     }
-        //
-        //     self.globals.insert(glob.id, glob_value);
-        // }
+    pub fn define_globals(&mut self) {
+        for glob in &self.tir.globals {
+            let cty = glob.ty.cty(self);
+
+            match &glob.kind {
+                GlobalKind::Bare { value, body } => {
+                    glob_value.set_linkage(Linkage::Private);
+                    glob_value.set_externally_initialized(false);
+
+                    if let ExprKind::Const(value) = &body.expr(*value).kind {
+                        glob_value.set_initializer(&self.const_value(value, glob.ty));
+                    } else {
+                        glob_value.set_initializer(&Self::undef_value(cty));
+                    }
+                }
+                GlobalKind::Extern => {
+                    glob_value.set_linkage(Linkage::External);
+                    glob_value.set_externally_initialized(true);
+                }
+            }
+
+            self.globals.insert(glob.id, glob_value);
+        }
     }
 
     fn codegen_fn_sig(&self, sig: &FnSig) -> RcDoc<'a> {
@@ -184,7 +186,7 @@ impl<'db, 'a> Generator<'db, 'a> {
         let initial =
             if sig.is_extern { RcDoc::text("extern").append(RcDoc::space()) } else { RcDoc::nil() };
 
-        let sig_doc = fn_ty.ret.cty(self).append(RcDoc::space()).append(c_name(&sig.name)).append(
+        let sig_doc = fn_ty.ret.cty(self).append(RcDoc::space()).append(&sig.name).append(
             RcDoc::text("(")
                 .append(RcDoc::intersperse(
                     sig.params.iter().map(|p| {
@@ -594,7 +596,3 @@ impl<'db, 'a> Generator<'db, 'a> {
 //         }
 //     }
 // }
-
-fn c_name(name: &str) -> String {
-    name.replace('.', "_")
-}

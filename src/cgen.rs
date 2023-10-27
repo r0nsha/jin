@@ -29,19 +29,9 @@ use crate::{
 };
 
 pub fn codegen(db: &mut Db, tir: &Tir) -> Utf8PathBuf {
-    db.time.start("codegen");
-    let c_output_path = Generator {
-        db,
-        tir,
-        decls: vec![],
-        defs: vec![],
-        // functions: FxHashMap::default(),
-        // globals: FxHashMap::default(),
-        // static_strs: UstrMap::default(),
-        // static_str_slices: UstrMap::default(),
-    }
-    .run();
-
+    db.time.start("cgen");
+    let c_output_path =
+        Generator { db, tir, fn_decls: vec![], globals: vec![], fn_defs: vec![] }.run();
     db.time.stop();
 
     todo!()

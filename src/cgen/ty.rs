@@ -22,7 +22,7 @@ impl<'db, 'a> CTy<'db, 'a> for TyKind {
             Self::Uint(uty) => uty.cty(cx),
             Self::Fn(fty) => fty.cty(cx),
             Self::Str => RcDoc::text(sym::STR),
-            Self::RawPtr(ty) => RcDoc::text("*").append(ty.cty(cx)),
+            Self::RawPtr(ty) => ty.cty(cx).append(RcDoc::text("*")),
             Self::Bool => RcDoc::text(sym::BOOL),
             Self::Unit => RcDoc::text(sym::UNIT),
             Self::Never => RcDoc::text(sym::NEVER),
