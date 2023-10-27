@@ -130,7 +130,7 @@ pub struct FnSig {
 #[derive(Debug, Clone)]
 pub struct TyParam {
     pub id: DefId,
-    pub span: Span,
+    pub word: Word,
 }
 
 #[derive(Debug, Clone)]

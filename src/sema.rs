@@ -29,7 +29,7 @@ use crate::{
         env::{BuiltinTys, Env, GlobalScope, ScopeKind, Symbol},
         error::CheckError,
         instantiate::instantiate,
-        item_state::{ItemState, ItemStatus},
+        item_state::{ItemState, ItemStatus, ResolvedFnSig},
         normalize::NormalizeTy,
         unify::Obligation,
     },
@@ -54,7 +54,7 @@ pub struct Sema<'db> {
     item_state: ItemState,
     storage: RefCell<TyStorage>,
     expr_id: Counter<ExprId>,
-    checking_global_items: bool,
+    checking_items: bool,
 }
 
 #[derive(Debug)]
@@ -83,26 +83,14 @@ impl<'db> Sema<'db> {
             item_state: ItemState::new(),
             storage: RefCell::new(TyStorage::new()),
             expr_id: Counter::new(),
-            checking_global_items: true,
+            checking_items: true,
         }
     }
 
     fn run(mut self) -> CheckResult<Hir> {
-        self.check_global_items()?;
-        self.checking_global_items = false;
+        self.check_items()?;
+        self.checking_items = false;
         self.check_fn_bodies()?;
-
-        // for module in &self.ast.modules {
-        //     let mut env = Env::new(module.id);
-        //
-        //     for (item_id, item) in module.items.iter_enumerated() {
-        //         let global_item_id = ast::GlobalItemId::new(module.id, item_id);
-        //
-        //         if let ItemStatus::Unresolved = self.item_state.get_status(&global_item_id) {
-        //             self.check_global_item(&mut env, global_item_id, item)?;
-        //         }
-        //     }
-        // }
 
         self.subst();
 
@@ -112,7 +100,7 @@ impl<'db> Sema<'db> {
         Ok(self.hir)
     }
 
-    fn check_global_items(&mut self) -> CheckResult<()> {
+    fn check_items(&mut self) -> CheckResult<()> {
         for module in &self.ast.modules {
             let mut env = Env::new(module.id);
 
@@ -120,7 +108,7 @@ impl<'db> Sema<'db> {
                 let global_item_id = ast::GlobalItemId::new(module.id, item_id);
 
                 if let ItemStatus::Unresolved = self.item_state.get_status(&global_item_id) {
-                    self.check_global_item(&mut env, global_item_id, item)?;
+                    self.check_item(&mut env, item, global_item_id)?;
                 }
             }
         }
@@ -129,30 +117,24 @@ impl<'db> Sema<'db> {
     }
 
     fn check_fn_bodies(&mut self) -> CheckResult<()> {
-        todo!();
+        for module in &self.ast.modules {
+            let mut env = Env::new(module.id);
+
+            for (item_id, item) in module.items.iter_enumerated() {
+                if let ast::Item::Fn(fun) = item {
+                    let global_item_id = ast::GlobalItemId::new(module.id, item_id);
+                    let ResolvedFnSig { id, sig } = self
+                        .item_state
+                        .get_resolved_fn_sig(global_item_id)
+                        .expect("fn to be resolved")
+                        .clone();
+                    let f = self.check_fn_body(&mut env, fun, sig, id)?;
+                    self.hir.fns.push(f);
+                }
+            }
+        }
+
         Ok(())
-    }
-
-    #[inline]
-    pub fn fresh_ty_var(&self) -> Ty {
-        Ty::new(TyKind::Infer(InferTy::TyVar(self.fresh_var())))
-    }
-
-    #[inline]
-    pub fn fresh_var(&self) -> TyVar {
-        self.storage.borrow_mut().ty_unification_table.new_key(None)
-    }
-
-    #[inline]
-    pub fn fresh_int_var(&self) -> Ty {
-        Ty::new(TyKind::Infer(InferTy::IntVar(
-            self.storage.borrow_mut().int_unification_table.new_key(None),
-        )))
-    }
-
-    #[inline]
-    pub fn normalize(&self, ty: Ty) -> Ty {
-        ty.normalize(&mut self.storage.borrow_mut())
     }
 
     fn define_global_def(
@@ -247,8 +229,8 @@ impl<'db> Sema<'db> {
             return Ok(id);
         }
 
-        if self.checking_global_items {
-            if let Some(id) = self.find_and_check_global_item(&symbol)? {
+        if self.checking_items {
+            if let Some(id) = self.find_and_check_item(&symbol)? {
                 return Ok(id);
             }
         }
@@ -260,13 +242,13 @@ impl<'db> Sema<'db> {
         Err(CheckError::NameNotFound(word))
     }
 
-    fn find_and_check_global_item(&mut self, symbol: &Symbol) -> CheckResult<Option<DefId>> {
+    fn find_and_check_item(&mut self, symbol: &Symbol) -> CheckResult<Option<DefId>> {
         if let Some(item_id) = self.global_scope.get_item(symbol) {
             let item = &self.ast.modules[symbol.module_id].items[item_id];
-            self.check_global_item(
+            self.check_item(
                 &mut Env::new(symbol.module_id),
-                ast::GlobalItemId::new(symbol.module_id, item_id),
                 item,
+                ast::GlobalItemId::new(symbol.module_id, item_id),
             )?;
             let id = self.global_scope.get_def(symbol).expect("global def to be defined");
             Ok(Some(id))
@@ -275,11 +257,11 @@ impl<'db> Sema<'db> {
         }
     }
 
-    fn check_global_item(
+    fn check_item(
         &mut self,
         env: &mut Env,
-        item_id: ast::GlobalItemId,
         item: &ast::Item,
+        item_id: ast::GlobalItemId,
     ) -> CheckResult<()> {
         self.item_state.mark_as_in_progress(item_id).map_err(|err| CheckError::CyclicItems {
             origin_span: item.span(),
@@ -288,8 +270,8 @@ impl<'db> Sema<'db> {
 
         match item {
             ast::Item::Fn(fun) => {
-                let f = self.check_fn(env, fun)?;
-                self.hir.fns.push(f);
+                self.check_fn_item(env, fun, item_id)?;
+                // Fn will be added to Hir after `check_fn_bodies`
             }
             ast::Item::Let(let_) => {
                 let let_ = self.check_let(env, let_)?;
@@ -306,21 +288,6 @@ impl<'db> Sema<'db> {
         Ok(())
     }
 
-    fn check_fn(&mut self, env: &mut Env, fun: &ast::Fn) -> CheckResult<hir::Fn> {
-        self.check_attrs(
-            env.module_id(),
-            &fun.attrs,
-            match &fun.kind {
-                ast::FnKind::Bare { .. } => AttrsPlacement::Fn,
-                ast::FnKind::Extern => AttrsPlacement::ExternFn,
-            },
-        )?;
-
-        let (sig, id) = self.check_and_define_fn_sig(env, &fun.sig, fun.fn_info())?;
-
-        self.check_fn_body(env, fun, sig, id)
-    }
-
     fn check_fn_body(
         &mut self,
         env: &mut Env,
@@ -332,6 +299,10 @@ impl<'db> Sema<'db> {
             fun.sig.word.name(),
             ScopeKind::Fn(id),
             |env| -> Result<_, CheckError> {
+                for tp in &sig.ty_params {
+                    env.insert(tp.word.name(), tp.id);
+                }
+
                 for p in &mut sig.params {
                     p.id = self.define_local_def(env, DefKind::Variable, p.name, p.ty);
                 }
@@ -366,21 +337,41 @@ impl<'db> Sema<'db> {
         Ok(hir::Fn { module_id: env.module_id(), id, sig, kind, span: fun.span })
     }
 
-    fn check_and_define_fn_sig(
+    fn check_fn_item(
         &mut self,
         env: &mut Env,
-        sig: &ast::FnSig,
-        fn_info: FnInfo,
-    ) -> CheckResult<(hir::FnSig, DefId)> {
-        let sig = env.with_scope(
-            sig.word.name(),
-            ScopeKind::Fn(DefId::INVALID),
-            |env| -> Result<_, CheckError> { self.check_fn_sig(env, sig) },
+        fun: &ast::Fn,
+        item_id: ast::GlobalItemId,
+    ) -> CheckResult<()> {
+        self.check_attrs(
+            env.module_id(),
+            &fun.attrs,
+            match &fun.kind {
+                ast::FnKind::Bare { .. } => AttrsPlacement::Fn,
+                ast::FnKind::Extern => AttrsPlacement::ExternFn,
+            },
         )?;
 
-        let id = self.define_def(env, Vis::Private, DefKind::Fn(fn_info), sig.word, sig.ty)?;
+        let sig = env.with_scope(
+            fun.sig.word.name(),
+            ScopeKind::Fn(DefId::INVALID),
+            |env| -> Result<_, CheckError> { self.check_fn_sig(env, &fun.sig) },
+        )?;
 
-        Ok((sig, id))
+        let id = self.define_def(
+            env,
+            Vis::Private,
+            DefKind::Fn(match &fun.kind {
+                ast::FnKind::Bare { .. } => FnInfo::Bare,
+                ast::FnKind::Extern => FnInfo::Extern,
+            }),
+            sig.word,
+            sig.ty,
+        )?;
+
+        self.item_state.insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig });
+
+        Ok(())
     }
 
     fn check_fn_sig(&mut self, env: &mut Env, sig: &ast::FnSig) -> CheckResult<hir::FnSig> {
@@ -466,15 +457,17 @@ impl<'db> Sema<'db> {
                 let span = item.span();
 
                 match item {
-                    ast::Item::Fn(fun) => {
-                        let f = self.check_fn(env, fun)?;
-                        self.hir.fns.push(f);
-                        self.unit_expr(span)
+                    ast::Item::Fn(_) => {
+                        todo!("remove");
+                        // let f = self.check_fn(env, fun)?;
+                        // self.hir.fns.push(f);
+                        // self.unit_expr(span)
                     }
-                    ast::Item::ExternLet(let_) => {
-                        let let_ = self.check_extern_let(env, let_)?;
-                        self.hir.extern_lets.push(let_);
-                        self.unit_expr(span)
+                    ast::Item::ExternLet(_) => {
+                        todo!("remove");
+                        // let let_ = self.check_extern_let(env, let_)?;
+                        // self.hir.extern_lets.push(let_);
+                        // self.unit_expr(span)
                     }
                     ast::Item::Let(let_) => {
                         let let_ = self.check_let(env, let_)?;
@@ -829,19 +822,19 @@ impl<'db> Sema<'db> {
 
         for tp in ty_params {
             let ty =
-                Ty::new(TyKind::Param(ParamTy { name: tp.name.name(), var: self.fresh_var() }));
+                Ty::new(TyKind::Param(ParamTy { name: tp.word.name(), var: self.fresh_var() }));
 
-            let id = self.define_local_def(env, DefKind::Ty(ty), tp.name, self.db.types.typ);
+            let id = self.define_local_def(env, DefKind::Ty(ty), tp.word, self.db.types.typ);
 
-            if let Some(prev_span) = defined_ty_params.insert(tp.name.name(), tp.name.span()) {
+            if let Some(prev_span) = defined_ty_params.insert(tp.word.name(), tp.word.span()) {
                 return Err(CheckError::MultipleTyParams {
-                    name: tp.name.name(),
+                    name: tp.word.name(),
                     prev_span,
-                    dup_span: tp.name.span(),
+                    dup_span: tp.word.span(),
                 });
             }
 
-            new_ty_params.push(hir::TyParam { id, span: tp.name.span() });
+            new_ty_params.push(hir::TyParam { id, word: tp.word });
         }
 
         Ok(new_ty_params)
@@ -891,6 +884,28 @@ impl<'db> Sema<'db> {
 
     fn unit_expr(&mut self, span: Span) -> hir::Expr {
         self.expr(hir::ExprKind::Block(hir::Block { exprs: vec![] }), self.db.types.unit, span)
+    }
+
+    #[inline]
+    pub fn fresh_ty_var(&self) -> Ty {
+        Ty::new(TyKind::Infer(InferTy::TyVar(self.fresh_var())))
+    }
+
+    #[inline]
+    pub fn fresh_var(&self) -> TyVar {
+        self.storage.borrow_mut().ty_unification_table.new_key(None)
+    }
+
+    #[inline]
+    pub fn fresh_int_var(&self) -> Ty {
+        Ty::new(TyKind::Infer(InferTy::IntVar(
+            self.storage.borrow_mut().int_unification_table.new_key(None),
+        )))
+    }
+
+    #[inline]
+    pub fn normalize(&self, ty: Ty) -> Ty {
+        ty.normalize(&mut self.storage.borrow_mut())
     }
 }
 

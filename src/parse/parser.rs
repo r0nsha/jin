@@ -178,7 +178,7 @@ impl<'a> Parser<'a> {
     fn parse_optional_ty_params(&mut self) -> ParseResult<Vec<TyParam>> {
         self.parse_list_optional(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
             let ident = this.eat(TokenKind::empty_ident())?;
-            Ok(TyParam { name: ident.word() })
+            Ok(TyParam { word: ident.word() })
         })
         .map(|(t, _)| t)
     }

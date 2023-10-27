@@ -2,7 +2,7 @@ use crate::{
     db::{Db, DefKind, FnInfo},
     diagnostics::{Diagnostic, Label},
     hir::Hir,
-    span::Span,
+    span::{Span, Spanned},
     ty::TyKind,
 };
 
@@ -63,7 +63,7 @@ impl<'db> CheckEntry<'db> {
                     let tp = &fun.sig.ty_params;
 
                     if !tp.is_empty() {
-                        let tp_span = tp[0].span.merge(tp.last().unwrap().span);
+                        let tp_span = tp[0].word.span().merge(tp.last().unwrap().word.span());
 
                         self.db.diagnostics.emit(
                             Diagnostic::error("check::entry_point_with_type_params")

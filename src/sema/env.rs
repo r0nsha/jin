@@ -216,7 +216,7 @@ impl Env {
     pub fn fn_id(&self) -> Option<DefId> {
         self.scopes.iter().find_map(|s| match s.kind {
             ScopeKind::Fn(id) => Some(id),
-            _ => None,
+            ScopeKind::Block => None,
         })
     }
 

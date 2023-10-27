@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
-    db::{FnInfo, ModuleId},
+    db::ModuleId,
     index_vec::{new_key_type, IndexVec},
     middle::{BinOp, TyExpr, UnOp},
     qpath::QPath,
@@ -146,15 +146,6 @@ pub struct Fn {
     pub span: Span,
 }
 
-impl Fn {
-    pub fn fn_info(&self) -> FnInfo {
-        match &self.kind {
-            FnKind::Bare { .. } => FnInfo::Bare,
-            FnKind::Extern => FnInfo::Extern,
-        }
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum FnKind {
     Bare { body: Box<Expr> },
@@ -171,7 +162,7 @@ pub struct FnSig {
 
 #[derive(Debug, Clone)]
 pub struct TyParam {
-    pub name: Word,
+    pub word: Word,
 }
 
 #[derive(Debug, Clone)]
