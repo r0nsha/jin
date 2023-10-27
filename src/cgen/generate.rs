@@ -181,7 +181,7 @@ impl<'db, 'a> Generator<'db, 'a> {
     fn codegen_fn_sig(&self, sig: &FnSig) -> RcDoc<'a> {
         let fn_ty = sig.ty.as_fn().expect("a function type");
 
-        fn_ty.ret.cty(self).append(RcDoc::space()).append(sig.name.as_str()).append(
+        fn_ty.ret.cty(self).append(RcDoc::space()).append(c_name(&sig.name)).append(
             RcDoc::text("(")
                 .append(RcDoc::intersperse(
                     sig.params.iter().map(|p| {
@@ -589,3 +589,7 @@ impl<'db, 'a> Generator<'db, 'a> {
 //         }
 //     }
 // }
+
+fn c_name(name: &str) -> String {
+    name.replace('.', "_")
+}

@@ -4,7 +4,7 @@ use super::{Expr, Fn, Item, LitKind, Module};
 use crate::ast::{CallArg, ExternImport, ExternLet, FnKind, FnSig, Let, TyExpr};
 
 pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Result<()> {
-    let mut cx = PrettyCx { builder: ptree::TreeBuilder::new(module.name.standard_full_name()) };
+    let mut cx = PrettyCx { builder: ptree::TreeBuilder::new(module.name.join()) };
 
     for item in &module.items {
         item.pretty_print(&mut cx);

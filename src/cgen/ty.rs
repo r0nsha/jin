@@ -4,6 +4,7 @@ use pretty::RcDoc;
 
 use crate::{
     cgen::generate::Generator,
+    sym,
     ty::{FnTy, IntTy, TyKind, UintTy},
 };
 
@@ -12,66 +13,50 @@ where
     Self: fmt::Debug,
 {
     fn cty(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a>;
-
-    fn cpointee(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a> {
-        panic!("{self:?} has no pointee");
-    }
 }
 
 impl<'db, 'a> CTy<'db, 'a> for TyKind {
     fn cty(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a> {
         match self {
-            Self::Int(ity) => ity.cty(cx).into(),
-            Self::Uint(uty) => uty.cty(cx).into(),
-            Self::Fn(_) | Self::Str | Self::RawPtr(_) => {
-                todo!()
-                // cx.context.ptr_type(AddressSpace::default()).into()
-            }
-            Self::Bool => todo!(), //cx.context.bool_type().into(),
-            Self::Unit | Self::Never => todo!(), // cx.layout.unit_ty.into(),
+            Self::Int(ity) => ity.cty(cx),
+            Self::Uint(uty) => uty.cty(cx),
+            Self::Fn(fty) => fty.cty(cx),
+            Self::Str => RcDoc::text("str"),
+            Self::RawPtr(ty) => RcDoc::text("*").append(ty.cty(cx)),
+            Self::Bool => RcDoc::text("bool"),
+            Self::Unit => RcDoc::text("unit"),
+            Self::Never => RcDoc::text("never"),
             _ => panic!("unexpected type {self:?}"),
-        }
-    }
-
-    fn cpointee(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a> {
-        match self {
-            Self::Str => todo!(),             // cx.layout.str_ty.into(),
-            Self::RawPtr(pointee) => todo!(), //pointee.cty(cx),
-            _ => panic!("unexpected type: {self:?}"),
         }
     }
 }
 
 impl<'db, 'a> CTy<'db, 'a> for IntTy {
-    fn cty(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a> {
-        todo!()
-        // match self {
-        //     Self::I8 => cx.context.i8_type(),
-        //     Self::I16 => cx.context.i16_type(),
-        //     Self::I32 => cx.context.i32_type(),
-        //     Self::I64 => cx.context.i64_type(),
-        //     Self::Int => cx.layout.int_ty,
-        // }
+    fn cty(&self, _: &Generator<'db, 'a>) -> RcDoc<'a> {
+        RcDoc::text(match self {
+            Self::I8 => sym::I8,
+            Self::I16 => sym::I16,
+            Self::I32 => sym::I32,
+            Self::I64 => sym::I64,
+            Self::Int => sym::INT,
+        })
     }
 }
 
 impl<'db, 'a> CTy<'db, 'a> for UintTy {
-    fn cty(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a> {
-        todo!()
-        // match self {
-        //     Self::U8 => cx.context.i8_type(),
-        //     Self::U16 => cx.context.i16_type(),
-        //     Self::U32 => cx.context.i32_type(),
-        //     Self::U64 => cx.context.i64_type(),
-        //     Self::Uint => cx.layout.int_ty,
-        // }
+    fn cty(&self, _: &Generator<'db, 'a>) -> RcDoc<'a> {
+        RcDoc::text(match self {
+            Self::U8 => sym::U8,
+            Self::U16 => sym::U16,
+            Self::U32 => sym::U32,
+            Self::U64 => sym::U64,
+            Self::Uint => sym::UINT,
+        })
     }
 }
 
 impl<'db, 'a> CTy<'db, 'a> for FnTy {
-    fn cty(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a> {
+    fn cty(&self, _: &Generator<'db, 'a>) -> RcDoc<'a> {
         todo!("c fn types");
-        // let param_tys: Vec<_> = self.params.iter().map(|p| p.ty.cty(cx).into()).collect();
-        // self.ret.cty(cx).fn_type(&param_tys, false)
     }
 }

@@ -61,7 +61,7 @@ impl<'db> LowerCx<'db> {
             if !self.db[f.id].ty.is_polymorphic() {
                 let def = &self.db[f.id];
                 let is_extern = f.kind.is_extern();
-                let name = if is_extern { def.name } else { def.qpath.standard_full_name().into() };
+                let name = if is_extern { def.name } else { def.qpath.join().into() };
                 let sig = self.lower_fn_sig(&f.sig, name, def.ty, is_extern);
                 self.fn_map.insert(f.id, sig);
             }
@@ -136,11 +136,8 @@ impl<'db> LowerCx<'db> {
 
                 let def = &self.db[fun.id];
 
-                let name = def
-                    .qpath
-                    .clone()
-                    .with_name(ustr(&format!("{}${}", def.name, args_str)))
-                    .standard_full_name();
+                let name =
+                    def.qpath.clone().with_name(ustr(&format!("{}${}", def.name, args_str))).join();
 
                 ustr(&name)
             };
@@ -216,7 +213,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
         match &let_.pat {
             hir::Pat::Name(name) => {
-                let full_name = self.cx.db[name.id].qpath.standard_full_name();
+                let full_name = self.cx.db[name.id].qpath.join();
                 let ty = self.cx.db[name.id].ty;
 
                 let id = self.cx.tir.globals.push_with_key(|id| Global {

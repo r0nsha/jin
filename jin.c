@@ -1,4 +1,5 @@
 #include <stdint.h>
+#include <stdbool.h>
 
 typedef int8_t i8;
 typedef int16_t i16;
@@ -14,3 +15,8 @@ typedef uintptr_t usize;
 
 typedef struct {} unit;
 typedef unit never;
+
+typedef {
+	char* data;
+	usize len;
+} str;
