@@ -4,7 +4,7 @@ use std::{
 };
 
 use camino::Utf8PathBuf;
-use pretty::RcDoc;
+use pretty::{docs, RcDoc};
 use rustc_hash::FxHashMap;
 use ustr::UstrMap;
 
@@ -73,12 +73,12 @@ impl<'db, 'a> Generator<'db, 'a> {
         self.predefine_fns();
         self.define_globals();
         // self.define_all();
-        // self.codegen_main_function();
-        self.write_to_file()
+        let main_function = self.codegen_main_function();
+        self.write_to_file(main_function)
     }
 
-    fn write_to_file(self) -> Utf8PathBuf {
-        const WIDTH: usize = 100;
+    fn write_to_file(self, main_function: RcDoc<'a>) -> Utf8PathBuf {
+        const WIDTH: usize = 80;
 
         let path = self.db.output_path().with_extension("c");
         let mut file = File::create(self.db.output_path().with_extension("c")).unwrap();
@@ -86,19 +86,35 @@ impl<'db, 'a> Generator<'db, 'a> {
         file.write_all(PRELUDE.as_bytes()).unwrap();
         file.write_all(b"\n").unwrap();
 
-        let final_doc = RcDoc::intersperse(self.fn_decls, RcDoc::hardline())
-            .append(RcDoc::hardline().append(RcDoc::hardline()))
-            .append(RcDoc::intersperse(self.globals, RcDoc::hardline()))
-            .append(RcDoc::hardline().append(RcDoc::hardline()))
-            .append(RcDoc::intersperse(self.fn_defs, RcDoc::hardline().append(RcDoc::hardline())));
+        let fn_decls = RcDoc::intersperse(self.fn_decls, RcDoc::hardline());
+        let globals = RcDoc::intersperse(self.globals, RcDoc::hardline());
+        let fn_defs = RcDoc::intersperse(self.fn_defs, RcDoc::hardline().append(RcDoc::hardline()));
+
+        let final_doc = RcDoc::intersperse(
+            [fn_decls, globals, fn_defs, main_function],
+            RcDoc::hardline().append(RcDoc::hardline()),
+        );
 
         final_doc.render(WIDTH, &mut file).expect("writing to work");
 
         path
     }
 
-    pub fn codegen_main_function(&mut self) {
-        todo!();
+    pub fn codegen_main_function(&mut self) -> RcDoc<'a> {
+        let main_fn_name = &self.tir.fn_sigs[self.tir.main_fn.expect("to have a main fn")].name;
+
+        RcDoc::text("int main() {")
+            .append(RcDoc::hardline())
+            .append(
+                RcDoc::intersperse(
+                    [RcDoc::text(main_fn_name.as_str()).append(RcDoc::text("();"))],
+                    RcDoc::text(";").append(RcDoc::hardline()),
+                )
+                .nest(1)
+                .group(),
+            )
+            .append(RcDoc::hardline())
+            .append(RcDoc::text("}"))
         // let function_value = self.module.add_function(
         //     "main",
         //     self.context.i32_type().fn_type(&[], false),
@@ -194,14 +210,18 @@ impl<'db, 'a> Generator<'db, 'a> {
 
         let sig_doc = fn_ty.ret.cty(self).append(RcDoc::space()).append(sig.name.as_str()).append(
             RcDoc::text("(")
-                .append(RcDoc::intersperse(
-                    sig.params.iter().map(|p| {
-                        p.ty.cty(self)
-                            .append(RcDoc::space())
-                            .append(RcDoc::text(self.db[p.def_id].name.as_str()))
-                    }),
-                    ", ",
-                ))
+                .append(
+                    RcDoc::intersperse(
+                        sig.params.iter().map(|p| {
+                            p.ty.cty(self)
+                                .append(RcDoc::space())
+                                .append(RcDoc::text(self.db[p.def_id].name.as_str()))
+                        }),
+                        ", ",
+                    )
+                    .nest(1)
+                    .group(),
+                )
                 .append(RcDoc::text(")")),
         );
 
