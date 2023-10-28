@@ -1,6 +1,5 @@
 use camino::Utf8Path;
 use codespan_reporting::files::Files;
-use ustr::Ustr;
 
 use crate::{
     ast::{
@@ -53,11 +52,7 @@ impl<'a> Parser<'a> {
             Ok(item)
         } else {
             let token = self.require()?;
-            Err(ParseError::UnexpectedToken {
-                expected: "`fn` or `let`".to_string(),
-                found: token.kind,
-                span: token.span,
-            })
+            Err(unexpected_token_err("`fn` or `let`", token.kind, token.span))
         }
     }
 
@@ -85,8 +80,11 @@ impl<'a> Parser<'a> {
             let path = path_tok.str_value();
 
             let relative_to = self.parent_path().unwrap();
-            let lib = ExternLib::try_from_str(&path, relative_to)
-                .ok_or(ParseError::PathNotFound { path, span: path_tok.span })?;
+            let lib = ExternLib::try_from_str(&path, relative_to).ok_or_else(|| {
+                Diagnostic::error("check::path_not_found")
+                    .with_message(format!("path `{path}` not found"))
+                    .with_label(Label::primary(path_tok.span).with_message("not found"))
+            })?;
 
             return Ok(Some(Item::ExternImport(ExternImport {
                 attrs,
@@ -97,11 +95,7 @@ impl<'a> Parser<'a> {
 
         if !attrs.is_empty() {
             let token = self.require()?;
-            return Err(ParseError::UnexpectedToken {
-                expected: "an item after attribute".to_string(),
-                found: token.kind,
-                span: token.span,
-            });
+            return Err(unexpected_token_err("an item after attribute", token.kind, token.span));
         }
 
         Ok(None)
@@ -133,8 +127,14 @@ impl<'a> Parser<'a> {
 
     fn parse_attr_kind(&mut self) -> ParseResult<(AttrKind, Span)> {
         let ident = self.eat(TokenKind::empty_ident())?;
-        let kind = AttrKind::try_from(ident.str_value().as_str())
-            .map_err(|()| ParseError::InvalidAttr(ident.word()))?;
+        let attr_name = ident.str_value().as_str();
+
+        let kind = AttrKind::try_from(attr_name).map_err(|()| {
+            Diagnostic::error("parse::invalid_attr")
+                .with_message("unknown attribute {attr_name}")
+                .with_label(Label::primary(ident.span).with_message("unknown attribute"))
+        })?;
+
         Ok((kind, ident.span))
     }
 
@@ -186,11 +186,7 @@ impl<'a> Parser<'a> {
         match tok.kind {
             TokenKind::Ident(_) => Ok(Pat::Name(NamePat { word: tok.word() })),
             TokenKind::Underscore => Ok(Pat::Discard(tok.span)),
-            _ => Err(ParseError::UnexpectedToken {
-                expected: "a pattern".to_string(),
-                found: tok.kind,
-                span: tok.span,
-            }),
+            _ => Err(unexpected_token_err("a pattern", tok.kind, tok.span)),
         }
     }
 
@@ -384,13 +380,7 @@ impl<'a> Parser<'a> {
             }
             TokenKind::Str(value) => Expr::Lit { kind: LitKind::Str(value), span: tok.span },
             TokenKind::Int(value) => Expr::Lit { kind: LitKind::Int(value), span: tok.span },
-            _ => {
-                return Err(ParseError::UnexpectedToken {
-                    expected: "an expression".to_string(),
-                    found: tok.kind,
-                    span: tok.span,
-                })
-            }
+            _ => return Err(unexpected_token_err("an expression", tok.kind, tok.span)),
         };
 
         Ok(expr)
@@ -409,13 +399,7 @@ impl<'a> Parser<'a> {
                 TyExpr::Name(TyName { word: tok.word(), args: vec![], span: tok.span })
             }
             TokenKind::Underscore => TyExpr::Hole(tok.span),
-            _ => {
-                return Err(ParseError::UnexpectedToken {
-                    expected: "a type".to_string(),
-                    found: tok.kind,
-                    span: tok.span,
-                })
-            }
+            _ => return Err(unexpected_token_err("a type", tok.kind, tok.span)),
         };
 
         Ok(ty)
@@ -436,11 +420,7 @@ impl<'a> Parser<'a> {
             } else {
                 let tok = self.require()?;
 
-                return Err(ParseError::UnexpectedToken {
-                    expected: "{ or `if`".to_string(),
-                    found: tok.kind,
-                    span: tok.span,
-                });
+                return Err(unexpected_token_err("{ or `if`", tok.kind, tok.span));
             }
         } else {
             None
@@ -482,12 +462,11 @@ impl<'a> Parser<'a> {
                 //         let span = expr.span().merge(end);
                 //         Ok(Expr::Cast(Cast { expr: Box::new(expr), ty, span }))
                 //     } else {
-                //         Err(ParseError::UnexpectedToken {
-                //             expected: "`as`".to_owned(),
-                //             // expected: "an identifier or `as`".to_owned(),
-                //             found: tok.kind,
-                //             span: tok.span,
-                //         })
+                //         Err(unexpected_token_err(
+                //             "`as`",
+                //             tok.kind,
+                //             tok.span,
+                //         ))
                 //     }
                 // }
                 _ => Ok(expr),
@@ -505,7 +484,14 @@ impl<'a> Parser<'a> {
 
                 match &arg {
                     CallArg::Positional(expr) if passed_named_arg => {
-                        return Err(ParseError::MixedArgs(expr.span()));
+                        return Err(Diagnostic::error("parse::mixed_args")
+                            .with_message(
+                                "positional arguments are not allowed after named arguments",
+                            )
+                            .with_label(
+                                Label::primary(expr.span())
+                                    .with_message("unexpected positional argument"),
+                            ));
                     }
                     CallArg::Positional(_) => (),
                     CallArg::Named(..) => passed_named_arg = true,
@@ -539,7 +525,7 @@ impl<'a> Parser<'a> {
         &mut self,
         open: TokenKind,
         close: TokenKind,
-        mut f: impl FnMut(&mut Self) -> Result<T, ParseError>,
+        mut f: impl FnMut(&mut Self) -> Result<T, Diagnostic>,
     ) -> ParseResult<(Vec<T>, Span)> {
         let mut values = Vec::new();
         let open_tok = self.eat(open)?;
@@ -563,7 +549,7 @@ impl<'a> Parser<'a> {
         &mut self,
         open: TokenKind,
         close: TokenKind,
-        f: impl FnMut(&mut Self) -> Result<T, ParseError>,
+        f: impl FnMut(&mut Self) -> ParseResult<T>,
     ) -> ParseResult<(Vec<T>, Span)> {
         if self.peek_is(open) {
             self.parse_list(open, close, f)
@@ -589,7 +575,11 @@ impl<'a> Parser<'a> {
 
     #[inline]
     fn require(&mut self) -> ParseResult<Token> {
-        self.token().ok_or_else(|| ParseError::UnexpectedEof(self.last_span()))
+        self.token().ok_or_else(|| {
+            Diagnostic::error("parse::unexpected_eof")
+                .with_message("unexpected end of file")
+                .with_label(Label::primary(self.last_span()).with_message("here"))
+        })
     }
 
     #[inline]
@@ -677,11 +667,7 @@ impl<'a> Parser<'a> {
         if tok.kind_is(expected) {
             Ok(tok)
         } else {
-            Err(ParseError::UnexpectedToken {
-                expected: expected.to_string(),
-                found: tok.kind,
-                span: tok.span,
-            })
+            Err(unexpected_token_err(&expected.to_string(), tok.kind, tok.span))
         }
     }
 
@@ -691,39 +677,13 @@ impl<'a> Parser<'a> {
     }
 }
 
-type ParseResult<T> = Result<T, ParseError>;
-
-#[derive(Debug)]
-enum ParseError {
-    UnexpectedToken { expected: String, found: TokenKind, span: Span },
-    UnexpectedEof(Span),
-    MixedArgs(Span),
-    InvalidAttr(Word),
-    PathNotFound { path: Ustr, span: Span },
+#[inline]
+fn unexpected_token_err(expected: &str, found: TokenKind, span: Span) -> Diagnostic {
+    Diagnostic::error("parse::unexpected_token")
+        .with_message(format!("expected {expected}, found {found}"))
+        .with_label(Label::primary(span).with_message("found here"))
 }
 
-impl From<ParseError> for Diagnostic {
-    fn from(err: ParseError) -> Self {
-        match err {
-            ParseError::UnexpectedToken { expected, found, span } => {
-                Self::error("parse::unexpected_token")
-                    .with_message(format!("expected {expected}, found {found}"))
-                    .with_label(Label::primary(span).with_message("found here"))
-            }
-            ParseError::UnexpectedEof(span) => Self::error("parse::unexpected_eof")
-                .with_message("unexpected end of file")
-                .with_label(Label::primary(span).with_message("here")),
-            ParseError::MixedArgs(span) => Self::error("parse::mixed_args")
-                .with_message("positional arguments are not allowed after named arguments")
-                .with_label(Label::primary(span).with_message("unexpected positional argument")),
-            ParseError::InvalidAttr(word) => Self::error("parse::invalid_attr")
-                .with_message("unknown attribute {word}")
-                .with_label(Label::primary(word.span()).with_message("unknown attribute")),
-            ParseError::PathNotFound { path, span } => Diagnostic::error("check::path_not_found")
-                .with_message(format!("path `{path}` not found"))
-                .with_label(Label::primary(span).with_message("not found")),
-        }
-    }
-}
+type ParseResult<T> = Result<T, Diagnostic>;
 
 create_bool_enum!(AllowTyParams);
