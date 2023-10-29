@@ -35,71 +35,49 @@ impl CheckBodies<'_> {
                 let target = expr.ty;
 
                 if !is_valid_cast(source, target) {
-                    self.emit(AnalysisError::InvalidCast { source, target, span: expr.span });
+                    let source = source.display(self.db);
+                    let target = target.display(self.db);
+
+                    self.db.diagnostics.emit(
+                        Diagnostic::error("check::invalid_cast")
+                            .with_message(format!("cannot cast `{source}` to `{target}`"))
+                            .with_label(Label::primary(expr.span).with_message("invalid cast")),
+                    );
                 }
             }
         });
 
-        if let Some(value) = self.db.const_storage.expr(expr.id) {
-            if let Err(err) = check_const_value_range(value, expr.ty, expr.span) {
-                self.emit(err);
-            }
+        if let Some(Const::Int(value)) = self.db.const_storage.expr(expr.id) {
+            self.check_const_int_range(*value, expr.ty, expr.span);
         }
     }
 
-    fn emit(&mut self, err: AnalysisError) {
-        self.db.diagnostics.emit(err.into_diagnostic(self.db));
-    }
-}
-
-fn check_const_value_range(value: &Const, ty: Ty, span: Span) -> Result<(), AnalysisError> {
-    match value {
-        Const::Int(value) => match ty.kind() {
+    fn check_const_int_range(&mut self, value: i128, ty: Ty, span: Span) {
+        match ty.kind() {
             TyKind::Int(ity) => {
-                if ity.contains(*value) {
-                    Ok(())
-                } else {
-                    Err(AnalysisError::IntOutOfRange { value: *value, ty, span })
+                if !ity.contains(value) {
+                    self.int_out_of_range_err(value, ty, span);
                 }
             }
             TyKind::Uint(uty) => {
-                if uty.contains(*value) {
-                    Ok(())
-                } else {
-                    Err(AnalysisError::IntOutOfRange { value: *value, ty, span })
+                if !uty.contains(value) {
+                    self.int_out_of_range_err(value, ty, span);
                 }
             }
-            _ => Ok(()),
-        },
-        _ => Ok(()),
+            _ => (),
+        }
     }
-}
 
-#[derive(Debug)]
-pub enum AnalysisError {
-    InvalidCast { source: Ty, target: Ty, span: Span },
-    IntOutOfRange { value: i128, ty: Ty, span: Span },
-}
-
-impl AnalysisError {
-    pub fn into_diagnostic(self, db: &Db) -> Diagnostic {
-        match self {
-            Self::InvalidCast { source, target, span } => {
-                let source = source.display(db);
-                let target = target.display(db);
-
-                Diagnostic::error("check::invalid_cast")
-                    .with_message(format!("cannot cast `{source}` to `{target}`"))
-                    .with_label(Label::primary(span).with_message("invalid cast"))
-            }
-            Self::IntOutOfRange { value, ty, span } => Diagnostic::error("check::int_out_of_range")
+    fn int_out_of_range_err(&mut self, value: i128, ty: Ty, span: Span) {
+        self.db.diagnostics.emit(
+            Diagnostic::error("check::int_out_of_range")
                 .with_message(format!(
                     "integer {} is of range of its type `{}`",
                     value,
-                    ty.display(db)
+                    ty.display(self.db)
                 ))
                 .with_label(Label::primary(span).with_message("integer overflows its type")),
-        }
+        );
     }
 }
 
