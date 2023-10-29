@@ -2,7 +2,8 @@ use rustc_hash::FxHashMap;
 
 use crate::{
     db::Db,
-    sema::{error::CheckError, normalize::NormalizeTy, Sema, TyStorage},
+    diagnostics::{Diagnostic, Label},
+    sema::{normalize::NormalizeTy, Sema, TyStorage},
     span::Span,
     subst::{Subst, SubstTy},
     ty::{fold::TyFolder, InferTy, Ty, TyKind},
@@ -24,8 +25,7 @@ impl<'db> Sema<'db> {
             let_.subst(&mut cx);
         }
 
-        let diagnostics: Vec<_> =
-            cx.errors.into_values().map(|e| e.into_diagnostic(self.db)).collect();
+        let diagnostics: Vec<_> = cx.errors.into_values().collect();
 
         self.db.diagnostics.emit_many(diagnostics);
     }
@@ -34,7 +34,7 @@ impl<'db> Sema<'db> {
 struct SubstCx<'db> {
     db: &'db mut Db,
     storage: &'db mut TyStorage,
-    errors: FxHashMap<Span, CheckError>,
+    errors: FxHashMap<Span, Diagnostic>,
 }
 
 impl SubstTy for SubstCx<'_> {
@@ -43,10 +43,12 @@ impl SubstTy for SubstCx<'_> {
         let ty = folder.fold(ty);
 
         if folder.has_unbound_vars {
-            folder.cx.errors.insert(
-                span,
-                CheckError::CannotInfer { ty: ty.normalize(folder.cx.storage), span },
-            );
+            self.errors.entry(span).or_insert_with(|| {
+                let ty = ty.normalize(self.storage);
+                Diagnostic::error("check::cannot_infer")
+                    .with_message(format!("type annotations needed for `{}`", ty.display(self.db)))
+                    .with_label(Label::primary(span).with_message("cannot infer type"))
+            });
         }
 
         ty

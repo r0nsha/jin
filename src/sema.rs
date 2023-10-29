@@ -1,7 +1,6 @@
 mod attrs;
 mod coerce;
 mod env;
-mod error;
 mod instantiate;
 mod item_state;
 mod normalize;
@@ -18,16 +17,15 @@ use crate::{
     ast::{self, Ast},
     counter::Counter,
     db::{Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
-    diagnostics::Diagnostic,
+    diagnostics::{Diagnostic, Label},
     hir,
-    hir::{ExprId, Hir},
+    hir::{const_eval::ConstEvalError, ExprId, Hir},
     macros::create_bool_enum,
     middle::{BinOp, TyExpr, UnOp},
     sema::{
         attrs::AttrsPlacement,
         coerce::CoerceExt,
         env::{BuiltinTys, Env, GlobalScope, ScopeKind, Symbol},
-        error::CheckError,
         instantiate::instantiate,
         item_state::{ItemState, ItemStatus, ResolvedFnSig},
         normalize::NormalizeTy,
@@ -39,10 +37,10 @@ use crate::{
     word::Word,
 };
 
-pub type CheckResult<T> = Result<T, CheckError>;
+pub type CheckResult<T> = Result<T, Diagnostic>;
 
-pub fn check(db: &mut Db, ast: &Ast) -> Result<Hir, Diagnostic> {
-    Sema::new(db, ast).run().map_err(|err| err.into_diagnostic(db))
+pub fn check(db: &mut Db, ast: &Ast) -> CheckResult<Hir> {
+    Sema::new(db, ast).run()
 }
 
 pub struct Sema<'db> {
@@ -153,11 +151,21 @@ impl<'db> Sema<'db> {
         if let Some(prev_id) = self.global_scope.insert_def(Symbol::new(module_id, name.name()), id)
         {
             let def = &self.db[prev_id];
-            return Err(CheckError::MultipleItems {
-                name: def.qpath.name(),
-                prev_span: def.span,
-                dup_span: name.span(),
-            });
+
+            let dup_span = name.span();
+            let name = def.qpath.name();
+            let prev_span = def.span;
+
+            return Err(Diagnostic::error("check::multiple_items")
+                .with_message(format!("the item `{name}` is defined multiple times"))
+                .with_label(
+                    Label::primary(dup_span).with_message(format!("`{name}` defined again here")),
+                )
+                .with_label(
+                    Label::secondary(prev_span)
+                        .with_message(format!("first definition of `{name}`")),
+                )
+                .with_help("you can only define items once in a module"));
         }
 
         Ok(id)
@@ -239,7 +247,9 @@ impl<'db> Sema<'db> {
             return Ok(id);
         }
 
-        Err(CheckError::NameNotFound(word))
+        Err(Diagnostic::error("check::name_not_found")
+            .with_message(format!("cannot find `{word}` in this scope"))
+            .with_label(Label::primary(word.span()).with_message("not found in this scope")))
     }
 
     fn find_and_check_item(&mut self, symbol: &Symbol) -> CheckResult<Option<DefId>> {
@@ -263,9 +273,14 @@ impl<'db> Sema<'db> {
         item: &ast::Item,
         item_id: ast::GlobalItemId,
     ) -> CheckResult<()> {
-        self.item_state.mark_as_in_progress(item_id).map_err(|err| CheckError::CyclicItems {
-            origin_span: item.span(),
-            reference_span: self.ast.find_item(err.causee).expect("item to exist").span(),
+        self.item_state.mark_as_in_progress(item_id).map_err(|err| {
+            let origin_span = item.span();
+            let reference_span = self.ast.find_item(err.causee).expect("item to exist").span();
+
+            Diagnostic::error("check::cyclic_items")
+                .with_message("cycle detected while checking definition")
+                .with_label(Label::primary(origin_span).with_message("definition here"))
+                .with_label(Label::secondary(reference_span).with_message("cyclic reference here"))
         })?;
 
         match item {
@@ -298,10 +313,8 @@ impl<'db> Sema<'db> {
         mut sig: hir::FnSig,
         id: DefId,
     ) -> CheckResult<hir::Fn> {
-        let kind = env.with_scope(
-            fun.sig.word.name(),
-            ScopeKind::Fn(id),
-            |env| -> Result<_, CheckError> {
+        let kind =
+            env.with_scope(fun.sig.word.name(), ScopeKind::Fn(id), |env| -> CheckResult<_> {
                 for tp in &sig.ty_params {
                     env.insert(tp.word.name(), tp.id);
                 }
@@ -334,8 +347,7 @@ impl<'db> Sema<'db> {
                     }
                     ast::FnKind::Extern => Ok(hir::FnKind::Extern),
                 }
-            },
-        )?;
+            })?;
 
         Ok(hir::Fn { module_id: env.module_id(), id, sig, kind, span: fun.span })
     }
@@ -358,7 +370,7 @@ impl<'db> Sema<'db> {
         let sig = env.with_scope(
             fun.sig.word.name(),
             ScopeKind::Fn(DefId::INVALID),
-            |env| -> Result<_, CheckError> { self.check_fn_sig(env, &fun.sig) },
+            |env| -> CheckResult<_> { self.check_fn_sig(env, &fun.sig) },
         )?;
 
         let id = self.define_def(
@@ -387,11 +399,17 @@ impl<'db> Sema<'db> {
             let ty = self.check_ty_expr(env, &p.ty_expr, AllowTyHole::No)?;
 
             if let Some(prev_span) = defined_params.insert(p.name.name(), p.name.span()) {
-                return Err(CheckError::MultipleParams {
-                    name: p.name.name(),
-                    prev_span,
-                    dup_span: p.name.span(),
-                });
+                let name = p.name.name();
+                let dup_span = p.name.span();
+
+                return Err(Diagnostic::error("check::multiple_params")
+                    .with_message(format!("the name `{name}` is already used as a parameter name"))
+                    .with_label(
+                        Label::primary(dup_span).with_message(format!("`{name}` used again here")),
+                    )
+                    .with_label(
+                        Label::secondary(prev_span).with_message(format!("first use of `{name}`")),
+                    ));
             }
 
             params.push(hir::FnParam { id: DefId::INVALID, name: p.name, ty });
@@ -426,7 +444,9 @@ impl<'db> Sema<'db> {
         let value = self.check_expr(env, &let_.value, Some(ty))?;
 
         if env.in_global_scope() && self.db.const_storage.expr(value.id).is_none() {
-            return Err(CheckError::NonConstGlobalLet { span: value.span });
+            return Err(Diagnostic::error("check::non_const_global_let")
+                .with_message("global variable must resolve to a const value")
+                .with_label(Label::primary(value.span).with_message("not a const value")));
         }
 
         self.at(Obligation::obvious(value.span)).eq(ty, value.ty).or_coerce(self, value.id)?;
@@ -481,7 +501,9 @@ impl<'db> Sema<'db> {
                         *span,
                     )
                 } else {
-                    return Err(CheckError::InvalidReturn(*span));
+                    return Err(Diagnostic::error("check::invalid_return")
+                        .with_message("cannot return outside of function scope")
+                        .with_label(Label::primary(*span)));
                 }
             }
             ast::Expr::If { cond, then, otherwise, span } => {
@@ -571,11 +593,16 @@ impl<'db> Sema<'db> {
                     }
 
                     if new_args.len() != fun_ty.params.len() {
-                        return Err(CheckError::ArgMismatch {
-                            expected: fun_ty.params.len(),
-                            found: new_args.len(),
-                            span: *span,
-                        });
+                        let expected = fun_ty.params.len();
+                        let found = new_args.len();
+
+                        return Err(Diagnostic::error("check::arg_mismatch")
+                            .with_message(format!(
+                    "this function takes {expected} argument(s), but {found} were supplied"
+                ))
+                            .with_label(Label::primary(*span).with_message(format!(
+                                "expected {expected} arguments, found {found}"
+                            ))));
                     }
 
                     let mut already_passed_args = UstrMap::<PassedArg>::default();
@@ -603,19 +630,40 @@ impl<'db> Sema<'db> {
                                 .find_map(
                                     |(i, p)| if p.name == Some(name) { Some(i) } else { None },
                                 )
-                                .ok_or(CheckError::NamedParamNotFound { word: *arg_name })?;
+                                .ok_or_else(|| {
+                                    Diagnostic::error("check::named_param_not_found")
+                                        .with_message(format!(
+                                            "cannot find parameter with the name `{}`",
+                                            arg_name.name()
+                                        ))
+                                        .with_label(Label::primary(arg_name.span()).with_message(
+                                            format!("found argument `{}` here", arg_name.name()),
+                                        ))
+                                })?;
 
                             // Report named arguments that are passed twice
                             if let Some(passed_arg) = already_passed_args.insert(
                                 arg_name.name(),
                                 PassedArg { is_named: true, span: arg_name.span() },
                             ) {
-                                return Err(CheckError::MultipleNamedArgs {
-                                    name: arg_name.name(),
-                                    prev: passed_arg.span,
-                                    dup: arg_name.span(),
-                                    is_named: passed_arg.is_named,
-                                });
+                                let name = arg_name.name();
+                                let prev = passed_arg.span;
+                                let dup = arg_name.span();
+                                let is_named = passed_arg.is_named;
+
+                                return Err(Diagnostic::error("check::multiple_named_args")
+                                    .with_message(if is_named {
+                                        format!("argument `{name}` is passed multiple times")
+                                    } else {
+                                        format!("argument `{name}` is already passed positionally")
+                                    })
+                                    .with_label(
+                                        Label::primary(dup)
+                                            .with_message(format!("`{name}` is passed again here")),
+                                    )
+                                    .with_label(Label::secondary(prev).with_message(format!(
+                                        "`{name}` is already passed here"
+                                    ))));
                             }
 
                             arg.index = Some(idx);
@@ -638,10 +686,15 @@ impl<'db> Sema<'db> {
                         *span,
                     )
                 } else {
-                    return Err(CheckError::UncallableTy {
-                        ty: self.normalize(callee.ty),
-                        span: callee.span,
-                    });
+                    let ty = self.normalize(callee.ty);
+                    let span = callee.span;
+
+                    return Err(Diagnostic::error("check::uncallable_type")
+                        .with_message(format!(
+                            "expected a function, found `{}`",
+                            ty.display(self.db)
+                        ))
+                        .with_label(Label::primary(span).with_message("expected a function")));
                 }
             }
             ast::Expr::Unary { expr, op, span } => {
@@ -729,7 +782,17 @@ impl<'db> Sema<'db> {
                         Ty::new(TyKind::RawPtr(self.db.types.u8))
                     }
                     TyKind::Str if member.name() == sym::LEN => self.db.types.uint,
-                    _ => return Err(CheckError::InvalidMember { ty, member: *member }),
+                    _ => {
+                        return Err(Diagnostic::error("check::invalid_member")
+                            .with_message(format!(
+                                "type `{}` has no member `{}`",
+                                ty.display(self.db),
+                                member
+                            ))
+                            .with_label(
+                                Label::primary(member.span()).with_message("unknown member"),
+                            ))
+                    }
                 };
 
                 self.expr(
@@ -762,11 +825,16 @@ impl<'db> Sema<'db> {
                         .map(|(param, arg)| (param.var, *arg))
                         .collect(),
                     Some(args) => {
-                        return Err(CheckError::TyArgMismatch {
-                            expected: ty_params.len(),
-                            found: args.len(),
-                            span: *span,
-                        });
+                        let expected = ty_params.len();
+                        let found = args.len();
+
+                        return Err(Diagnostic::error("check::type_arg_mismatch")
+                            .with_message(format!(
+                                "expected {expected} type argument(s), but {found} were supplied"
+                            ))
+                            .with_label(Label::primary(*span).with_message(format!(
+                                "expected {expected} type arguments, found {found}"
+                            ))));
                     }
                     _ => ty_params
                         .into_iter()
@@ -793,7 +861,17 @@ impl<'db> Sema<'db> {
             }
         };
 
-        self.db.const_storage.eval_expr(&expr).map_err(|e| CheckError::ConstEval(e, expr.span))?;
+        self.db.const_storage.eval_expr(&expr).map_err(|err| {
+            let msg = match err {
+                ConstEvalError::DivByZero => "division by zero",
+                ConstEvalError::RemByZero => "reminder by zero",
+                ConstEvalError::Overflow => "integer overflow",
+            };
+
+            Diagnostic::error("check::const_eval_error")
+                .with_message(format!("const evaluation failed: {msg}"))
+                .with_label(Label::primary(expr.span).with_message(format!("caught {msg}")))
+        })?;
 
         Ok(expr)
     }
@@ -813,11 +891,19 @@ impl<'db> Sema<'db> {
             let id = self.define_local_def(env, DefKind::Ty(ty), tp.word, self.db.types.typ);
 
             if let Some(prev_span) = defined_ty_params.insert(tp.word.name(), tp.word.span()) {
-                return Err(CheckError::MultipleTyParams {
-                    name: tp.word.name(),
-                    prev_span,
-                    dup_span: tp.word.span(),
-                });
+                let name = tp.word.name();
+                let dup_span = tp.word.span();
+
+                return Err(Diagnostic::error("check::multiple_type_params")
+                    .with_message(format!(
+                        "the name `{name}` is already used as a type parameter name"
+                    ))
+                    .with_label(
+                        Label::primary(dup_span).with_message(format!("`{name}` used again here")),
+                    )
+                    .with_label(
+                        Label::secondary(prev_span).with_message(format!("first use of `{name}`")),
+                    ));
             }
 
             new_ty_params.push(hir::TyParam { id, word: tp.word });
@@ -851,14 +937,21 @@ impl<'db> Sema<'db> {
 
                 match def.kind.as_ref() {
                     DefKind::Ty(ty) => Ok(*ty),
-                    _ => Err(CheckError::ExpectedTy { ty: def.ty, span: name.span }),
+                    _ => Err(Diagnostic::error("check::expected_ty")
+                        .with_message(format!(
+                            "expected a type, found value of type `{}`",
+                            def.ty.display(self.db)
+                        ))
+                        .with_label(Label::primary(name.span).with_message("expected a type"))),
                 }
             }
             TyExpr::Hole(span) => {
                 if allow_hole == AllowTyHole::Yes {
                     Ok(self.fresh_ty_var())
                 } else {
-                    Err(CheckError::InvalidInferTy(*span))
+                    Err(Diagnostic::error("check::invalid_infer_type")
+                        .with_message("cannot use a _ type in a function's signature")
+                        .with_label(Label::primary(*span)))
                 }
             }
         }

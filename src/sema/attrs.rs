@@ -23,6 +23,15 @@ impl<'db> Sema<'db> {
         //                     CheckError::NonConstAttrValue { ty: value.ty, span: value.span },
         //                 )?;
         //
+        // Self::NonConstAttrValue { ty, span } => {
+        //     Diagnostic::error("check::non_const_attr_value")
+        //         .with_message(format!(
+        //     "value of type `{}` must resolve to a const, because it is passed to an attribute",
+        //     ty.display(db),
+        // ))
+        //         .with_label(Label::primary(span).with_message("not const"))
+        // }
+        //
         //             AttrValue { value: const_, ty: value.ty, span: value.span }
         //         } else {
         //             AttrValue { value: Const::Bool(true), ty: self.db.types.bool, span: attr.span }
@@ -36,6 +45,12 @@ impl<'db> Sema<'db> {
         //         (AttrKind::Link, AttrsPlacement::ExternFn | AttrsPlacement::ExternLet) => (),
         //         (kind, _) => {
         //             return Err(CheckError::InvalidAttrPlacement { kind, span: attr.span })
+        //
+        // Self::InvalidAttrPlacement { kind, span } => {
+        //     Diagnostic::error("check::invalid_attr_placement")
+        //         .with_message(format!("attribute `{kind}` cannot be placed here"))
+        //         .with_label(Label::primary(span).with_message("invalid attribute"))
+        // }
         //         }
         //     }
         // }

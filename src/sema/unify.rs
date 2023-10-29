@@ -1,7 +1,8 @@
 use ena::unify::{EqUnifyValue, UnifyKey};
 
 use crate::{
-    sema::{error::CheckError, normalize::NormalizeTy, Sema},
+    diagnostics::{Diagnostic, Label},
+    sema::{normalize::NormalizeTy, Sema},
     span::Span,
     ty::{InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
 };
@@ -24,19 +25,53 @@ impl At<'_, '_> {
         UnifyCx { cx: self.cx }.unify_ty_ty(expected, found).map_err(|err| {
             let mut storage = self.cx.storage.borrow_mut();
 
-            let err = match err {
-                UnifyError::TyMismatch { .. } => CheckError::TyMismatch {
-                    expected: expected.normalize(&mut storage),
-                    found: found.normalize(&mut storage),
-                    obligation: self.obligation,
-                },
-                UnifyError::InfiniteTy { ty } => CheckError::InfiniteTy {
-                    ty: ty.normalize(&mut storage),
-                    obligation: Obligation::obvious(self.obligation.span()),
-                },
+            let diagnostic = match err {
+                UnifyError::TyMismatch { .. } => {
+                    let expected = expected.normalize(&mut storage);
+                    let found = found.normalize(&mut storage);
+
+                    let expected_ty = expected.display(self.cx.db).to_string();
+                    let found_ty = found.display(self.cx.db).to_string();
+
+                    let msg = format!("expected type `{expected_ty}`, found `{found_ty}`");
+
+                    let mut diag = Diagnostic::error("check::type_mismatch")
+                        .with_message(msg.clone())
+                        .with_label(
+                            Label::primary(self.obligation.span())
+                                .with_message(format!("expected `{expected_ty}` here")),
+                        );
+
+                    match *self.obligation.kind() {
+                        ObligationKind::Obvious => (),
+                        ObligationKind::Exprs(expected_span, found_span) => diag.push_labels([
+                            Label::secondary(expected_span).with_message(expected_ty.to_string()),
+                            Label::secondary(found_span).with_message(found_ty.to_string()),
+                        ]),
+                        ObligationKind::ReturnTy(return_ty_span) => {
+                            diag.push_label(
+                                Label::secondary(return_ty_span)
+                                    .with_message("because of return type"),
+                            );
+                        }
+                    }
+
+                    diag
+                }
+                UnifyError::InfiniteTy { ty } => {
+                    let ty = ty.normalize(&mut storage);
+                    let obligation = Obligation::obvious(self.obligation.span());
+
+                    Diagnostic::error("check::infinite_type")
+                        .with_message(format!(
+                            "type `{}` is an infinite type",
+                            ty.display(self.cx.db)
+                        ))
+                        .with_label(Label::primary(obligation.span()))
+                }
             };
 
-            EqError { expected, found, err }
+            EqError { expected, found, diagnostic }
         })
     }
 }
@@ -47,12 +82,12 @@ pub type EqResult<T> = Result<T, EqError>;
 pub struct EqError {
     pub expected: Ty,
     pub found: Ty,
-    pub err: CheckError,
+    pub diagnostic: Diagnostic,
 }
 
-impl From<EqError> for CheckError {
+impl From<EqError> for Diagnostic {
     fn from(value: EqError) -> Self {
-        value.err
+        value.diagnostic
     }
 }
 
