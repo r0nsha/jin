@@ -47,7 +47,7 @@ impl<'db> PrettyCx<'db> {
             ret: RcDoc::text(sig.ret.to_string(self.db)),
             blocks: f.body.blocks.iter().map(|b| self.pp_blk(b)).collect(),
         }
-        .to_doc()
+        .into_doc()
     }
 
     fn pp_blk(&mut self, blk: &'db Block) -> PrintBlock<'db> {
@@ -70,7 +70,7 @@ struct PrintFn<'a> {
 }
 
 impl<'a> PrintFn<'a> {
-    fn to_doc(self) -> RcDoc<'a> {
+    fn into_doc(self) -> RcDoc<'a> {
         RcDoc::text("fn")
             .append(RcDoc::space())
             .append(self.name)
@@ -85,12 +85,14 @@ impl<'a> PrintFn<'a> {
             .append(RcDoc::space())
             .append(RcDoc::text("->"))
             .append(RcDoc::space())
+            .append(self.ret)
+            .append(RcDoc::space())
             .append(
                 RcDoc::text("{")
                     .append(RcDoc::hardline())
                     .append(
                         RcDoc::intersperse(
-                            self.blocks.into_iter().map(|b| b.to_doc()),
+                            self.blocks.into_iter().map(PrintBlock::into_doc),
                             RcDoc::hardline().append(RcDoc::hardline()),
                         )
                         .nest(NEST)
@@ -108,7 +110,7 @@ struct PrintBlock<'a> {
 }
 
 impl<'a> PrintBlock<'a> {
-    fn to_doc(self) -> RcDoc<'a> {
+    fn into_doc(self) -> RcDoc<'a> {
         self.name
             .append(RcDoc::text(":"))
             .append(RcDoc::hardline())
@@ -116,13 +118,12 @@ impl<'a> PrintBlock<'a> {
     }
 }
 
-fn global_name(name: &str) -> RcDoc {
+fn global_name(name: &str) -> RcDoc<'_> {
     RcDoc::text("%").append(name)
 }
 
-// TODO:
-// fn value_name(id: ValueId) -> RcDoc {
-//    RcDoc::text("v").append(id.to_string())
-// }
+fn value_name<'a>(id: ValueId) -> RcDoc<'a> {
+    RcDoc::text("v").append(id.to_string())
+}
 
 const NEST: isize = 2;
