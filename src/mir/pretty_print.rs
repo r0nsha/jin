@@ -1,6 +1,6 @@
 use std::io;
 
-use pretty::RcDoc;
+use pretty::RcDoc as D;
 
 use crate::{db::Db, mir::*};
 
@@ -21,30 +21,29 @@ pub(super) fn print(db: &Db, mir: &Mir, w: &mut impl io::Write) -> io::Result<()
     //     }
     // }
 
-    let mut docs: Vec<RcDoc> = vec![];
+    let mut docs: Vec<D> = vec![];
 
     for f in &mir.fns {
-        let fn_doc = PrettyCx { db, mir, body: &f.body }.pp_fn(f);
-        docs.push(fn_doc);
+        docs.push(PrettyCx { db, mir, _body: &f.body }.pp_fn(f));
     }
 
-    RcDoc::intersperse(docs, RcDoc::hardline().append(RcDoc::hardline())).render(80, w)
+    D::intersperse(docs, D::hardline().append(D::hardline())).render(80, w)
 }
 
 struct PrettyCx<'db> {
     db: &'db Db,
     mir: &'db Mir,
-    body: &'db Body,
+    _body: &'db Body,
 }
 
 impl<'db> PrettyCx<'db> {
-    fn pp_fn(&mut self, f: &'db Fn) -> RcDoc<'db> {
+    fn pp_fn(&mut self, f: &'db Fn) -> D<'db> {
         let sig = &self.mir.fn_sigs[f.sig];
 
         PrintFn {
             name: global_name(&sig.name),
-            params: sig.params.iter().map(|p| RcDoc::text(p.ty.to_string(self.db))).collect(),
-            ret: RcDoc::text(sig.ret.to_string(self.db)),
+            params: sig.params.iter().map(|p| D::text(p.ty.to_string(self.db))).collect(),
+            ret: D::text(sig.ret.to_string(self.db)),
             blocks: f.body.blocks.iter().map(|b| self.pp_blk(b)).collect(),
         }
         .into_doc()
@@ -52,78 +51,97 @@ impl<'db> PrettyCx<'db> {
 
     fn pp_blk(&mut self, blk: &'db Block) -> PrintBlock<'db> {
         PrintBlock {
-            name: RcDoc::text(blk.name()),
+            name: D::text(blk.name()),
             insts: blk.insts.iter().map(|i| self.pp_inst(i)).collect(),
         }
     }
 
-    fn pp_inst(&mut self, inst: &Inst) -> RcDoc<'db> {
-        RcDoc::text("todo: inst")
+    fn pp_inst(&mut self, inst: &Inst) -> D<'db> {
+        match inst {
+            Inst::Call { value, callee, args } => value_assign(*value)
+                .append(D::text("call"))
+                .append(D::space())
+                .append(value_name(*callee))
+                .append(D::text("("))
+                .append(D::intersperse(
+                    args.iter().map(|a| value_name(*a)),
+                    D::text(",").append(D::space()),
+                ))
+                .append(D::text(")")),
+            Inst::LoadGlobal { value, id } => value_assign(*value).append(global_name(match id {
+                Id::Fn(sig_id) => self.mir.fn_sigs[*sig_id].name.as_str(),
+            })),
+            Inst::StrLit { value, lit } => value_assign(*value).append(D::text(lit.as_str())),
+            Inst::IntLit { value, lit } => value_assign(*value).append(D::text(lit.to_string())),
+            Inst::BoolLit { value, lit } => value_assign(*value).append(D::text(lit.to_string())),
+            Inst::UnitLit { value } => value_assign(*value).append(D::text("{}")),
+        }
     }
 }
 
 struct PrintFn<'a> {
-    name: RcDoc<'a>,
-    params: Vec<RcDoc<'a>>,
-    ret: RcDoc<'a>,
+    name: D<'a>,
+    params: Vec<D<'a>>,
+    ret: D<'a>,
     blocks: Vec<PrintBlock<'a>>,
 }
 
 impl<'a> PrintFn<'a> {
-    fn into_doc(self) -> RcDoc<'a> {
-        RcDoc::text("fn")
-            .append(RcDoc::space())
+    fn into_doc(self) -> D<'a> {
+        D::text("fn")
+            .append(D::space())
             .append(self.name)
             .append(
-                RcDoc::text("(")
-                    .append(RcDoc::intersperse(
-                        self.params,
-                        RcDoc::text(",").append(RcDoc::space()),
-                    ))
-                    .append(RcDoc::text(")").nest(NEST).group()),
+                D::text("(")
+                    .append(D::intersperse(self.params, D::text(",").append(D::space())))
+                    .append(D::text(")").nest(NEST).group()),
             )
-            .append(RcDoc::space())
-            .append(RcDoc::text("->"))
-            .append(RcDoc::space())
+            .append(D::space())
+            .append(D::text("->"))
+            .append(D::space())
             .append(self.ret)
-            .append(RcDoc::space())
+            .append(D::space())
             .append(
-                RcDoc::text("{")
-                    .append(RcDoc::hardline())
+                D::text("{")
+                    .append(D::hardline())
                     .append(
-                        RcDoc::intersperse(
+                        D::intersperse(
                             self.blocks.into_iter().map(PrintBlock::into_doc),
-                            RcDoc::hardline().append(RcDoc::hardline()),
+                            D::hardline().append(D::hardline()),
                         )
                         .nest(NEST)
                         .group(),
                     )
-                    .append(RcDoc::hardline())
-                    .append(RcDoc::text("}")),
+                    .append(D::hardline())
+                    .append(D::text("}")),
             )
     }
 }
 
 struct PrintBlock<'a> {
-    name: RcDoc<'a>,
-    insts: Vec<RcDoc<'a>>,
+    name: D<'a>,
+    insts: Vec<D<'a>>,
 }
 
 impl<'a> PrintBlock<'a> {
-    fn into_doc(self) -> RcDoc<'a> {
+    fn into_doc(self) -> D<'a> {
         self.name
-            .append(RcDoc::text(":"))
-            .append(RcDoc::hardline())
-            .append(RcDoc::intersperse(self.insts, RcDoc::hardline()).group())
+            .append(D::text(":"))
+            .append(D::hardline())
+            .append(D::intersperse(self.insts, D::hardline()).group())
     }
 }
 
-fn global_name(name: &str) -> RcDoc<'_> {
-    RcDoc::text("%").append(name)
+fn global_name(name: &str) -> D<'_> {
+    D::text("%").append(name)
 }
 
-fn value_name<'a>(id: ValueId) -> RcDoc<'a> {
-    RcDoc::text("v").append(id.to_string())
+fn value_name<'a>(id: ValueId) -> D<'a> {
+    D::text("v").append(id.to_string())
+}
+
+fn value_assign<'a>(id: ValueId) -> D<'a> {
+    value_name(id).append(D::space()).append(D::text("=")).append(D::space())
 }
 
 const NEST: isize = 2;
