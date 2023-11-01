@@ -49,7 +49,6 @@ impl Mir {
 pub struct Fn {
     pub def_id: DefId,
     pub sig: FnSigId,
-    pub value: BlockId,
     pub body: Body,
 }
 
@@ -86,7 +85,7 @@ pub struct Global {
 
 #[derive(Debug, Clone)]
 pub enum GlobalKind {
-    Bare { value: BlockId, body: Body },
+    Bare { value: ValueId, body: Body },
     Extern,
 }
 
@@ -110,6 +109,16 @@ impl Body {
     }
 
     #[inline]
+    pub fn start_block(&self) -> &Block {
+        &self.blocks[BlockId::from(0)]
+    }
+
+    #[inline]
+    pub fn last_block_mut(&mut self) -> &mut Block {
+        self.blocks.last_mut().unwrap()
+    }
+
+    #[inline]
     pub fn value(&self, id: ValueId) -> &Value {
         &self.values[id]
     }
@@ -117,12 +126,17 @@ impl Body {
 
 #[derive(Debug, Clone)]
 pub struct Block {
+    name: String,
     insts: Vec<Inst>,
 }
 
 impl Block {
-    pub fn new() -> Self {
-        Self { insts: vec![] }
+    pub fn new(name: String) -> Self {
+        Self { name, insts: vec![] }
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
     }
 
     pub fn insts(&self) -> &[Inst] {
