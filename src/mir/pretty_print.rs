@@ -68,13 +68,13 @@ impl PrettyCx<'_> {
         // self.builder.end_child();
     }
 
-    fn pp_let(&mut self, name: Ustr, ty: Ty, value: ExprId) {
+    fn pp_let(&mut self, name: Ustr, ty: Ty, value: BlockId) {
         // self.builder.begin_child(format!("let {} (type: {})", name, ty.display(self.db)));
         // self.pp_expr(value);
         // self.builder.end_child();
     }
 
-    fn pp_expr(&mut self, expr: ExprId) {
+    fn pp_expr(&mut self, expr: BlockId) {
         // let expr = self.body.expr(expr);
         //
         // match &expr.kind {

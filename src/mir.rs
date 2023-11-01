@@ -17,8 +17,8 @@ use crate::{
 
 new_key_type!(FnSigId);
 new_key_type!(GlobalId);
-new_key_type!(LocalId);
-new_key_type!(ExprId);
+new_key_type!(BlockId);
+new_key_type!(ValueId);
 
 #[derive(Debug)]
 pub struct Mir {
@@ -49,21 +49,20 @@ impl Mir {
 pub struct Fn {
     pub def_id: DefId,
     pub sig: FnSigId,
-    pub value: ExprId,
+    pub value: BlockId,
     pub body: Body,
-}
-
-impl Fn {
-    #[inline]
-    pub fn params(&self, mir: &Mir) -> &IndexSlice<LocalId, Local> {
-        &self.body.locals.as_slice()[LocalId(0)..LocalId(mir.fn_sigs[self.sig].params.len())]
-    }
 }
 
 #[derive(Debug, Clone)]
 pub struct ExternFn {
     pub def_id: DefId,
     pub sig: FnSigId,
+}
+
+#[derive(Debug, Clone)]
+pub struct FnParam {
+    pub def_id: DefId,
+    pub ty: Ty,
 }
 
 #[derive(Debug, Clone)]
@@ -87,74 +86,69 @@ pub struct Global {
 
 #[derive(Debug, Clone)]
 pub enum GlobalKind {
-    Bare { value: ExprId, body: Body },
+    Bare { value: BlockId, body: Body },
     Extern,
 }
 
 #[derive(Debug, Clone)]
 pub struct Body {
-    exprs: Exprs,
-    locals: Locals,
+    blocks: Blocks,
+    values: Values,
 }
+
+pub type Blocks = IndexVec<BlockId, Block>;
+pub type Values = IndexVec<ValueId, Value>;
 
 impl Body {
     pub fn new() -> Self {
-        Self { exprs: IndexVec::new(), locals: IndexVec::new() }
+        Self { blocks: IndexVec::new(), values: IndexVec::new() }
     }
 
     #[inline]
-    pub fn expr(&self, id: ExprId) -> &Expr {
-        &self.exprs[id]
+    pub fn block(&self, id: BlockId) -> &Block {
+        &self.blocks[id]
     }
 
     #[inline]
-    pub fn local(&self, id: LocalId) -> &Local {
-        &self.locals[id]
+    pub fn value(&self, id: ValueId) -> &Value {
+        &self.values[id]
     }
 }
 
-pub type Exprs = IndexVec<ExprId, Expr>;
-pub type Locals = IndexVec<LocalId, Local>;
+#[derive(Debug, Clone)]
+pub struct Block {
+    insts: Vec<Inst>,
+}
+
+impl Block {
+    pub fn new() -> Self {
+        Self { insts: vec![] }
+    }
+
+    pub fn insts(&self) -> &[Inst] {
+        &self.insts
+    }
+
+    pub fn push_inst(&mut self, inst: Inst) {
+        self.insts.push(inst);
+    }
+}
 
 #[derive(Debug, Clone)]
-pub struct Local {
-    pub id: LocalId,
-    pub def_id: DefId,
-    pub name: Ustr,
+pub enum Inst {
+    // StackAlloc { id: LocalId, def_id: DefId, value: ValueId },
+    // If { cond: ValueId, then: ValueId, otherwise: ValueId },
+    // Return { value: ValueId },
+    // Call { callee: ValueId, args: Vec<ValueId> },
+    // Binary { lhs: ValueId, rhs: ValueId, op: BinOp },
+    // Unary { value: ValueId, op: UnOp },
+    // Cast { value: ValueId, target: Ty },
+    // Index { value: ValueId, index: usize },
+    // Const(Const),
+}
+
+#[derive(Debug, Clone)]
+pub struct Value {
+    pub id: ValueId,
     pub ty: Ty,
-}
-
-#[derive(Debug, Clone)]
-pub struct FnParam {
-    pub def_id: DefId,
-    pub ty: Ty,
-}
-
-#[derive(Debug, Clone)]
-pub struct Expr {
-    pub id: ExprId,
-    pub kind: ExprKind,
-    pub ty: Ty,
-}
-
-#[derive(Debug, Clone, EnumAsInner)]
-pub enum ExprKind {
-    Let { id: LocalId, def_id: DefId, value: ExprId },
-    If { cond: ExprId, then: ExprId, otherwise: ExprId },
-    Block { exprs: Vec<ExprId> },
-    Return { value: ExprId },
-    Call { callee: ExprId, args: Vec<ExprId> },
-    Binary { lhs: ExprId, rhs: ExprId, op: BinOp },
-    Unary { value: ExprId, op: UnOp },
-    Cast { value: ExprId, target: Ty },
-    Index { value: ExprId, index: usize },
-    Id(Id),
-    Const(Const),
-}
-
-#[derive(Debug, Clone)]
-pub enum Id {
-    Fn(FnSigId),
-    Global(GlobalId),
-    Local(LocalId),
 }

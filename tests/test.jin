@@ -1,9 +1,9 @@
-// import extern "./foo"
-// 
-// fn extern hello()
+import extern "./foo"
+
+fn extern hello()
 // let extern answer: Int
-// 
-// fn extern exit(status: Int) -> Never
+
+fn extern exit(status: Int) -> Never
 // fn extern write(fd: I32, buf: *U8, count: Uint) -> Int
 // 
 // let stdout = 1
@@ -19,6 +19,6 @@
 
 fn main {
 	// println("Hello, World!")
-	// hello()
-	// exit(0)
+	hello()
+	exit(0)
 }

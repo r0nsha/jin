@@ -7,7 +7,7 @@ use crate::{
     hir::{const_eval::Const, FnKind, Hir},
     index_vec::IndexVecExt,
     mir::{
-        Body, Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Global, GlobalId,
+        Body, Expr, BlockId, ExprKind, Blocks, Fn, FnParam, FnSig, FnSigId, Global, GlobalId,
         GlobalKind, Id, Local, LocalId, Mir,
     },
     subst::{ParamFolder, Subst},
@@ -235,7 +235,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         }
     }
 
-    fn lower_expr(&mut self, expr: &hir::Expr) -> ExprId {
+    fn lower_expr(&mut self, expr: &hir::Expr) -> BlockId {
         let kind = if let Some(val) = self.cx.db.const_storage.expr(expr.id) {
             ExprKind::Const(val.clone())
         } else {
@@ -367,7 +367,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     }
 
     #[inline]
-    pub fn create_expr(&mut self, kind: ExprKind, ty: Ty) -> ExprId {
+    pub fn create_expr(&mut self, kind: ExprKind, ty: Ty) -> BlockId {
         self.body.exprs.push_with_key(|id| Expr { id, kind, ty })
     }
 
@@ -384,7 +384,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     }
 }
 
-pub fn apply_coercions(exprs: &mut Exprs, coercions: &Coercions, mut expr: ExprId) -> ExprId {
+pub fn apply_coercions(exprs: &mut Blocks, coercions: &Coercions, mut expr: BlockId) -> BlockId {
     for coercion in coercions.iter() {
         expr = match coercion.kind {
             CoercionKind::NeverToAny => expr,
