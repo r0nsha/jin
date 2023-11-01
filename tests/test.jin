@@ -1,24 +1,24 @@
-import extern "./foo"
-
-fn extern hello()
-let extern answer: Int
-
-fn extern exit(status: Int) -> Never
-fn extern write(fd: I32, buf: *U8, count: Uint) -> Int
-
-let stdout = 1
-
-fn print(fmt: Str) {
-	write(stdout, fmt.ptr, fmt.len)
-}
-
-fn println(fmt: Str) {
-	print(fmt)
-	print("\n")
-}
+// import extern "./foo"
+// 
+// fn extern hello()
+// let extern answer: Int
+// 
+// fn extern exit(status: Int) -> Never
+// fn extern write(fd: I32, buf: *U8, count: Uint) -> Int
+// 
+// let stdout = 1
+// 
+// fn print(fmt: Str) {
+// 	write(stdout, fmt.ptr, fmt.len)
+// }
+// 
+// fn println(fmt: Str) {
+// 	print(fmt)
+// 	print("\n")
+// }
 
 fn main {
-	//println("Hello, World!")
-	hello()
-	exit(0)
+	// println("Hello, World!")
+	// hello()
+	// exit(0)
 }
