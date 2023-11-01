@@ -10,7 +10,7 @@ use ustr::Ustr;
 use crate::{
     db::{Db, DefId},
     hir::const_eval::Const,
-    index_vec::{new_key_type, IndexSlice, IndexVec},
+    index_vec::{new_key_type, IndexSlice, IndexVec, IndexVecExt},
     middle::{BinOp, UnOp},
     ty::Ty,
 };
@@ -122,6 +122,11 @@ impl Body {
     pub fn value(&self, id: ValueId) -> &Value {
         &self.values[id]
     }
+
+    #[inline]
+    pub fn push_value(&mut self, ty: Ty) -> ValueId {
+        self.values.push_with_key(|id| Value { id, ty })
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -158,7 +163,10 @@ pub enum Inst {
     // Unary { value: ValueId, op: UnOp },
     // Cast { value: ValueId, target: Ty },
     // Index { value: ValueId, index: usize },
-    // Const(Const),
+    StrLit { value: ValueId, lit: Ustr },
+    IntLit { value: ValueId, lit: i128 },
+    BoolLit { value: ValueId, lit: bool },
+    UnitLit { value: ValueId },
 }
 
 #[derive(Debug, Clone)]
