@@ -258,9 +258,13 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     //             }
                 }
                 hir::ExprKind::Block(blk) => {
-                    todo!()
-                    // let mut exprs: Vec<_> = blk.exprs.iter().map(|e| self.lower_expr(e)).collect();
-                    //
+                    let mut result: Option<ValueId> = None;
+
+                    for expr in &blk.exprs {
+                        result = Some(self.lower_expr(expr));
+                    }
+
+                    // TODO: is this necessary now?
                     // // NOTE: If the block ty is (), we must always return a () value.
                     // // A situation where we don't return a () value can occur
                     // // when the expected type of the block is unit, but the last expression doesn't
@@ -268,33 +272,34 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     // if expr.ty.is_unit() {
                     //     exprs.push(self.create_expr(ExprKind::Const(Const::Unit), expr.ty));
                     // }
-                    //
-                    // ExprKind::Block { exprs }
+
+                    result.unwrap_or_else(|| self.push_unit_lit())
                 }
                 hir::ExprKind::Return(ret) => {
                     todo!()
                     // ExprKind::Return { value: self.lower_expr(&ret.expr) }
                 }
                 hir::ExprKind::Call(call) => {
-                    todo!()
+                    // NOTE: We evaluate args in passing order, and then sort them to the actual
+                    // required parameter order
+                    let mut args: Vec<_> = call
+                        .args
+                        .iter()
+                        .map(|arg| {
+                            (
+                                arg.index.expect("arg index to be resolved"),
+                                self.lower_expr(&arg.expr),
+                            )
+                        })
+                        .collect();
 
-                    // // NOTE: We evaluate args in passing order, and then sort them to the actual
-                    // // required parameter order
-                    // let mut args: Vec<_> = call
-                    //     .args
-                    //     .iter()
-                    //     .map(|arg| {
-                    //         (
-                    //             arg.index.expect("arg index to be resolved"),
-                    //             self.lower_expr(&arg.expr),
-                    //         )
-                    //     })
-                    //     .collect();
-                    //
-                    // args.sort_by_key(|(idx, _)| *idx);
-                    //
-                    // let callee = self.lower_expr(&call.callee);
-                    // ExprKind::Call { callee, args: args.into_iter().map(|(_, arg)| arg).collect() }
+                    args.sort_by_key(|(idx, _)| *idx);
+
+                    let callee = self.lower_expr(&call.callee);
+                    self.push_inst_with(expr.ty, |value| Inst::Call {
+                        callee,
+                        args: args.into_iter().map(|(_, arg)| arg).collect(),
+                    })
                 }
                 hir::ExprKind::Unary(un) => {
                     todo!()
@@ -394,14 +399,16 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         }
     }
 
-    #[inline]
+    pub fn push_unit_lit(&mut self) -> ValueId {
+        self.push_inst_with(Ty::new(TyKind::Unit), |value| Inst::UnitLit { value })
+    }
+
     pub fn push_inst_with(&mut self, value_ty: Ty, f: impl FnOnce(ValueId) -> Inst) -> ValueId {
         let value = self.body.push_value(value_ty);
         self.push_inst(f(value));
         value
     }
 
-    #[inline]
     pub fn push_inst(&mut self, inst: Inst) {
         self.body.last_block_mut().push_inst(inst);
     }
