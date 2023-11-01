@@ -113,7 +113,10 @@ impl Body {
         &self.blocks[BlockId::from(0)]
     }
 
-    #[inline]
+    pub fn push_block(&mut self, name: impl Into<String>) -> BlockId {
+        self.blocks.push_with_key(|id| Block::new(id, name.into()))
+    }
+
     pub fn last_block_mut(&mut self) -> &mut Block {
         self.blocks.last_mut().unwrap()
     }
@@ -123,7 +126,6 @@ impl Body {
         &self.values[id]
     }
 
-    #[inline]
     pub fn push_value(&mut self, ty: Ty) -> ValueId {
         self.values.push_with_key(|id| Value { id, ty })
     }
@@ -131,13 +133,14 @@ impl Body {
 
 #[derive(Debug, Clone)]
 pub struct Block {
+    id: BlockId,
     name: String,
     insts: Vec<Inst>,
 }
 
 impl Block {
-    pub fn new(name: String) -> Self {
-        Self { name, insts: vec![] }
+    pub fn new(id: BlockId, name: String) -> Self {
+        Self { id, name, insts: vec![] }
     }
 
     pub fn name(&self) -> &str {
@@ -163,6 +166,7 @@ pub enum Inst {
     // Unary { value: ValueId, inner: ValueId, op: UnOp },
     // Cast { value: ValueId, inner: ValueId, target: Ty },
     // Index { value: ValueId, inner: ValueId, index: usize },
+    LoadGlobal { value: ValueId, id: Id },
     StrLit { value: ValueId, lit: Ustr },
     IntLit { value: ValueId, lit: i128 },
     BoolLit { value: ValueId, lit: bool },
@@ -173,4 +177,9 @@ pub enum Inst {
 pub struct Value {
     pub id: ValueId,
     pub ty: Ty,
+}
+
+#[derive(Debug, Clone)]
+pub enum Id {
+    Fn(FnSigId),
 }

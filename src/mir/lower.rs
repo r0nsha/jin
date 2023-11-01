@@ -190,6 +190,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     }
 
     fn lower_fn(mut self, sig: FnSigId, f: &hir::Fn) {
+        // TODO: params
         // for param in self.cx.mir.fn_sigs[sig].params.clone() {
         //     self.create_local(param.def_id, param.ty);
         // }
@@ -200,6 +201,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     self.cx.mir.main_fn = Some(sig);
                 }
 
+                self.body.push_block("start");
                 self.lower_expr(body);
                 self.cx.mir.fns.push(Fn { def_id: f.id, sig, body: self.body });
             }
@@ -335,37 +337,42 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     // }
                 }
                 hir::ExprKind::Name(name) => {
-                    todo!()
-                    // match self.cx.db[name.id].kind.as_ref() {
-                    //                 DefKind::Fn(_) => {
-                    //                     let id = if name.instantiation.is_empty() {
-                    //                         self.cx.fn_map[&name.id]
-                    //                     } else {
-                    //                         let mut folder =
-                    //                             ParamFolder { db: self.cx.db, instantiation: &name.instantiation };
-                    //
-                    //                         let ty = folder.fold(expr.ty);
-                    //
-                    //                         // let instantiation: Instantiation = name
-                    //                         //     .instantiation
-                    //                         //     .iter()
-                    //                         //     .map(|(var, ty)| (*var, folder.fold(*ty)))
-                    //                         //     .collect();
-                    //
-                    //                         self.cx
-                    //                             .monomorphize_fn(&MonoItem { id: name.id, ty }, &name.instantiation)
-                    //                     };
-                    //
-                    //                     ExprKind::Id(Id::Fn(id))
-                    //                 }
-                    //                 DefKind::ExternGlobal | DefKind::Global => {
-                    //                     todo!()
-                    //                     // ExprKind::Id(Id::Global(self.cx.lower_global(name.id)))
-                    //                 }
-                    //                 DefKind::Variable => todo!(),
-                    //                 // ExprKind::Id(Id::Local(self.def_to_local[&name.id])),
-                    //                 DefKind::Ty(_) => unreachable!(),
-                    //             }
+                    match self.cx.db[name.id].kind.as_ref() {
+                        DefKind::Fn(_) => {
+                            let id = if name.instantiation.is_empty() {
+                                self.cx.fn_map[&name.id]
+                            } else {
+                                let mut folder = ParamFolder {
+                                    db: self.cx.db,
+                                    instantiation: &name.instantiation,
+                                };
+
+                                let ty = folder.fold(expr.ty);
+
+                                // let instantiation: Instantiation = name
+                                //     .instantiation
+                                //     .iter()
+                                //     .map(|(var, ty)| (*var, folder.fold(*ty)))
+                                //     .collect();
+
+                                self.cx.monomorphize_fn(
+                                    &MonoItem { id: name.id, ty },
+                                    &name.instantiation,
+                                )
+                            };
+
+                            self.push_inst_with(self.cx.mir.fn_sigs[id].ty, |value| {
+                                Inst::LoadGlobal { value, id: Id::Fn(id) }
+                            })
+                        }
+                        DefKind::ExternGlobal | DefKind::Global => {
+                            todo!()
+                            // ExprKind::Id(Id::Global(self.cx.lower_global(name.id)))
+                        }
+                        DefKind::Variable => todo!(),
+                        // ExprKind::Id(Id::Local(self.def_to_local[&name.id])),
+                        DefKind::Ty(_) => unreachable!(),
+                    }
                 }
                 hir::ExprKind::Lit(lit) => match lit {
                     hir::Lit::Str(lit) => {

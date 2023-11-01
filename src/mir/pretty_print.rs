@@ -112,7 +112,7 @@ impl<'a> PrintBlock<'a> {
         self.name
             .append(RcDoc::text(":"))
             .append(RcDoc::hardline())
-            .append(RcDoc::intersperse(self.insts, RcDoc::hardline()).nest(NEST).group())
+            .append(RcDoc::intersperse(self.insts, RcDoc::hardline()).group())
     }
 }
 
