@@ -387,14 +387,11 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
             }
         };
 
-        // TODO: apply coercions
-        // let new_expr = self.create_expr(kind, expr.ty);
-        //
-        // if let Some(coercions) = self.cx.db.coercions.get(&expr.id) {
-        //     apply_coercions(&mut self.body.exprs, coercions, new_expr)
-        // } else {
-        //     new_expr
-        // }
+        if let Some(coercions) = self.cx.db.coercions.get(&expr.id) {
+            self.apply_coercions(coercions, new_expr)
+        } else {
+            new_expr
+        }
 
         value
     }
@@ -422,6 +419,22 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         self.body.last_block_mut().push_inst(inst);
     }
 
+    pub fn apply_coercions(&mut self, coercions: &Coercions, mut value: ValueId) -> ValueId {
+        for coercion in coercions.iter() {
+            value = match coercion.kind {
+                CoercionKind::NeverToAny => value,
+                CoercionKind::IntPromotion => self.push_inst_with(coercion.target, |_value| {
+                    // ExprKind::Cast { value, target: coercion.target }
+                    todo!()
+                }),
+            };
+
+            self.body.value_mut(value).ty = coercion.target;
+        }
+
+        value
+    }
+
     // #[inline]
     // pub fn create_local(&mut self, def_id: DefId, ty: Ty) -> LocalId {
     //     let id = self.body.locals.push_with_key(|id| Local {
@@ -434,21 +447,3 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     //     id
     // }
 }
-
-// TODO:
-// pub fn apply_coercions(exprs: &mut Blocks, coercions: &Coercions, mut expr: BlockId) -> BlockId {
-//     for coercion in coercions.iter() {
-//         expr = match coercion.kind {
-//             CoercionKind::NeverToAny => expr,
-//             CoercionKind::IntPromotion => exprs.push_with_key(|id| Expr {
-//                 id,
-//                 ty: coercion.target,
-//                 kind: ExprKind::Cast { value: expr, target: coercion.target },
-//             }),
-//         };
-//
-//         exprs[expr].ty = coercion.target;
-//     }
-//
-//     expr
-// }

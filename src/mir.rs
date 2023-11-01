@@ -126,6 +126,11 @@ impl Body {
         &self.values[id]
     }
 
+    #[inline]
+    pub fn value_mut(&mut self, id: ValueId) -> &mut Value {
+        &mut self.values[id]
+    }
+
     pub fn push_value(&mut self, ty: Ty) -> ValueId {
         self.values.push_with_key(|id| Value { id, ty })
     }
