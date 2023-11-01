@@ -182,7 +182,7 @@ impl<'db, 'a> Generator<'db, 'a> {
                                 .append(RcDoc::space())
                                 .append(RcDoc::text(self.db[p.def_id].name.as_str()))
                         }),
-                        ", ",
+                        RcDoc::text(",").append(RcDoc::space()),
                     )
                     .nest(1)
                     .group(),

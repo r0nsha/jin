@@ -8,7 +8,7 @@ use crate::{
     index_vec::IndexVecExt,
     mir::{
         Body, Expr, ExprId, ExprKind, Exprs, Fn, FnParam, FnSig, FnSigId, Global, GlobalId,
-        GlobalKind, Id, Local, LocalId, Tir,
+        GlobalKind, Id, Local, LocalId, Mir,
     },
     subst::{ParamFolder, Subst},
     sym,
@@ -19,14 +19,14 @@ use crate::{
     },
 };
 
-pub fn lower(db: &mut Db, hir: &Hir) -> Tir {
+pub fn lower(db: &mut Db, hir: &Hir) -> Mir {
     LowerCx::new(db, hir).lower_all()
 }
 
 struct LowerCx<'db> {
     db: &'db mut Db,
     hir: &'db Hir,
-    tir: Tir,
+    mir: Mir,
 
     // Maps functions to their lowered signatures
     fn_map: FxHashMap<DefId, FnSigId>,
@@ -49,14 +49,14 @@ impl<'db> LowerCx<'db> {
         Self {
             db,
             hir,
-            tir: Tir::new(),
+            mir: Mir::new(),
             fn_map: FxHashMap::default(),
             mono_fns: FxHashMap::default(),
             globals_map: FxHashMap::default(),
         }
     }
 
-    fn lower_all(mut self) -> Tir {
+    fn lower_all(mut self) -> Mir {
         for f in &self.hir.fns {
             if !self.db[f.id].ty.is_polymorphic() {
                 let def = &self.db[f.id];
@@ -74,7 +74,7 @@ impl<'db> LowerCx<'db> {
         }
 
         for let_ in &self.hir.extern_lets {
-            let id = self.tir.globals.push_with_key(|id| Global {
+            let id = self.mir.globals.push_with_key(|id| Global {
                 id,
                 def_id: let_.id,
                 name: let_.word.name(),
@@ -92,7 +92,7 @@ impl<'db> LowerCx<'db> {
             }
         }
 
-        self.tir
+        self.mir
     }
 
     fn lower_global(&mut self, def_id: DefId) -> GlobalId {
@@ -157,7 +157,7 @@ impl<'db> LowerCx<'db> {
     }
 
     fn lower_fn_sig(&mut self, sig: &hir::FnSig, name: Ustr, ty: Ty, is_extern: bool) -> FnSigId {
-        self.tir.fn_sigs.push_with_key(|id| FnSig {
+        self.mir.fn_sigs.push_with_key(|id| FnSig {
             id,
             name,
             params: sig.params.iter().map(|p| FnParam { def_id: p.id, ty: p.ty }).collect(),
@@ -174,7 +174,7 @@ impl<'db> LowerCx<'db> {
 
         assert!(
             !self.db[f.id].ty.is_polymorphic(),
-            "lowering polymorphic functions to TIR is not allowed"
+            "lowering polymorphic functions to mir is not allowed"
         );
 
         LowerBodyCx::new(self).lower_fn(sig, f);
@@ -193,19 +193,19 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     }
 
     fn lower_fn(mut self, sig: FnSigId, f: &hir::Fn) {
-        for param in self.cx.tir.fn_sigs[sig].params.clone() {
+        for param in self.cx.mir.fn_sigs[sig].params.clone() {
             self.create_local(param.def_id, param.ty);
         }
 
         match &f.kind {
             FnKind::Bare { body } => {
                 if self.cx.db.main_function_id() == Some(f.id) {
-                    self.cx.tir.main_fn = Some(sig);
+                    self.cx.mir.main_fn = Some(sig);
                 }
 
                 let value = self.lower_expr(body);
 
-                self.cx.tir.fns.push(Fn { def_id: f.id, sig, value, body: self.body });
+                self.cx.mir.fns.push(Fn { def_id: f.id, sig, value, body: self.body });
             }
             FnKind::Extern => unreachable!(),
         }
@@ -219,7 +219,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 let full_name = self.cx.db[name.id].qpath.join_with("_");
                 let ty = self.cx.db[name.id].ty;
 
-                let id = self.cx.tir.globals.push_with_key(|id| Global {
+                let id = self.cx.mir.globals.push_with_key(|id| Global {
                     id,
                     def_id: name.id,
                     name: full_name.into(),
