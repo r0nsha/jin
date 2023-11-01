@@ -26,6 +26,7 @@ mod index_vec;
 mod llvm;
 mod macros;
 mod middle;
+mod mir;
 mod parse;
 mod qpath;
 mod sema;
