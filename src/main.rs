@@ -129,16 +129,26 @@ fn build(db: &mut Db) {
     db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))
         .expect("emitting hir failed");
 
-    // Lower to TIR, includes monomorphization
-    db.time.start("hir -> tir");
-    let tir = tir::lower(db, &hir);
+    // // Lower to TIR, includes monomorphization
+    // db.time.start("hir -> tir");
+    // let tir = tir::lower(db, &hir);
+    // db.time.stop();
+    // expect!(db);
+    //
+    // db.emit_file(EmitOption::Tir, |db, file| tir.pretty_print(db, file))
+    //     .expect("emitting tir failed");
+
+    // Lower to MIR, includes monomorphization
+    db.time.start("hir -> mir");
+    let mir = mir::lower(db, &hir);
     db.time.stop();
     expect!(db);
 
-    db.emit_file(EmitOption::Tir, |db, file| tir.pretty_print(db, file))
+    db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
         .expect("emitting tir failed");
 
-    cgen::codegen(db, &tir);
+    // TODO:
+    // cgen::codegen(db, &tir);
 
     db.time.print();
 }

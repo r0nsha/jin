@@ -41,6 +41,7 @@ pub enum EmitOption {
     Ast,
     Hir,
     Tir,
+    Mir,
     LlvmIr,
 }
 
@@ -50,6 +51,7 @@ impl EmitOption {
             Self::Ast => "ast",
             Self::Hir => "hir",
             Self::Tir => "tir",
+            Self::Mir => "mir",
             Self::LlvmIr => "ll",
         }
     }
