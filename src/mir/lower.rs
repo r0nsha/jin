@@ -388,12 +388,10 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         };
 
         if let Some(coercions) = self.cx.db.coercions.get(&expr.id) {
-            self.apply_coercions(coercions, new_expr)
+            self.apply_coercions(&coercions.clone(), value)
         } else {
-            new_expr
+            value
         }
-
-        value
     }
 
     fn lower_const(&mut self, value: &Const, ty: Ty) -> ValueId {
