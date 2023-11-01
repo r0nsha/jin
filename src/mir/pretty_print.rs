@@ -41,9 +41,11 @@ impl<'db> PrettyCx<'db> {
         let sig = &self.mir.fn_sigs[f.sig];
 
         PrintFn {
-            name: global_name(&sig.name),
-            params: sig.params.iter().map(|p| D::text(p.ty.to_string(self.db))).collect(),
-            ret: D::text(sig.ret.to_string(self.db)),
+            sig: PrintFnSig {
+                name: global_name(&sig.name),
+                params: sig.params.iter().map(|p| D::text(p.ty.to_string(self.db))).collect(),
+                ret: D::text(sig.ret.to_string(self.db)),
+            },
             blocks: f.body.blocks.iter().map(|b| self.pp_blk(b)).collect(),
         }
         .into_doc()
@@ -80,13 +82,36 @@ impl<'db> PrettyCx<'db> {
 }
 
 struct PrintFn<'a> {
-    name: D<'a>,
-    params: Vec<D<'a>>,
-    ret: D<'a>,
+    sig: PrintFnSig<'a>,
     blocks: Vec<PrintBlock<'a>>,
 }
 
 impl<'a> PrintFn<'a> {
+    fn into_doc(self) -> D<'a> {
+        self.sig.into_doc().append(D::space()).append(
+            D::text("{")
+                .append(D::hardline())
+                .append(
+                    D::intersperse(
+                        self.blocks.into_iter().map(PrintBlock::into_doc),
+                        D::hardline().append(D::hardline()),
+                    )
+                    .nest(NEST)
+                    .group(),
+                )
+                .append(D::hardline())
+                .append(D::text("}")),
+        )
+    }
+}
+
+struct PrintFnSig<'a> {
+    name: D<'a>,
+    params: Vec<D<'a>>,
+    ret: D<'a>,
+}
+
+impl<'a> PrintFnSig<'a> {
     fn into_doc(self) -> D<'a> {
         D::text("fn")
             .append(D::space())
@@ -100,21 +125,6 @@ impl<'a> PrintFn<'a> {
             .append(D::text("->"))
             .append(D::space())
             .append(self.ret)
-            .append(D::space())
-            .append(
-                D::text("{")
-                    .append(D::hardline())
-                    .append(
-                        D::intersperse(
-                            self.blocks.into_iter().map(PrintBlock::into_doc),
-                            D::hardline().append(D::hardline()),
-                        )
-                        .nest(NEST)
-                        .group(),
-                    )
-                    .append(D::hardline())
-                    .append(D::text("}")),
-            )
     }
 }
 
