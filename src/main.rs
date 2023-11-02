@@ -147,6 +147,7 @@ fn build(db: &mut Db) {
     db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
         .expect("emitting mir failed");
 
+    // Generate C code from Mir
     cgen::codegen(db, &mir);
 
     db.time.print();
