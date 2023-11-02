@@ -123,6 +123,10 @@ impl Body {
         self.blocks.push_with_key(|id| Block::new(id, name.into()))
     }
 
+    pub fn last_block(&self) -> &Block {
+        self.blocks.last().unwrap()
+    }
+
     pub fn last_block_mut(&mut self) -> &mut Block {
         self.blocks.last_mut().unwrap()
     }
@@ -139,6 +143,10 @@ impl Body {
 
     pub fn push_value(&mut self, ty: Ty) -> ValueId {
         self.values.push_with_key(|id| Value { id, ty })
+    }
+
+    pub fn is_terminating(&self) -> bool {
+        matches!(self.last_block().insts().last(), Some(Inst::Return { .. }))
     }
 }
 
@@ -175,7 +183,7 @@ impl Block {
 pub enum Inst {
     // StackAlloc { id: LocalId, def_id: DefId, value: ValueId },
     // If { cond: ValueId, then: ValueId, otherwise: ValueId },
-    // Return { value: ValueId },
+    Return { value: ValueId },
     Call { value: ValueId, callee: ValueId, args: Vec<ValueId> },
     // Binary { value: ValueId, lhs: ValueId, rhs: ValueId, op: BinOp },
     // Unary { value: ValueId, inner: ValueId, op: UnOp },

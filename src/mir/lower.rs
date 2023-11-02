@@ -201,19 +201,20 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 }
 
                 self.body.push_block("start");
-                self.lower_expr(body);
+                let last_value = self.lower_expr(body);
 
-                // TODO:
-                // if !self.current_block_is_terminating() {
-                //     let ret_value =
-                //         if fty.as_fn().unwrap().ret.is_unit() && !state.body.expr(fun.value).ty.is_unit() {
-                //             self.unit_value().as_basic_value_enum()
-                //         } else {
-                //             body
-                //         };
-                //
-                //     self.bx.build_return(Some(&ret_value));
-                // }
+                if !self.body.is_terminating() {
+                    let fn_ty = self.cx.mir.fn_sigs[sig].ty.as_fn().unwrap();
+
+                    let ret_value =
+                        if fn_ty.ret.is_unit() && !self.body.value(last_value).ty.is_unit() {
+                            self.push_unit_lit()
+                        } else {
+                            last_value
+                        };
+
+                    self.push_inst(Inst::Return { value: ret_value });
+                }
 
                 self.cx.mir.fns.push(Fn { def_id: f.id, sig, body: self.body });
             }

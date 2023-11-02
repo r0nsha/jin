@@ -238,6 +238,9 @@ impl<'db> Generator<'db> {
 
     fn codegen_inst(&mut self, state: &mut FnState<'db>, inst: &'db Inst) -> D<'db> {
         match inst {
+            Inst::Return { value } => {
+                statement(|| D::text("return").append(D::space()).append(value_name(*value)))
+            }
             Inst::Call { value, callee, args } => self.value_assign(state, *value, || {
                 value_name(*callee)
                     .append(D::text("("))

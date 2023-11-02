@@ -70,6 +70,7 @@ impl<'db> PrettyCx<'db> {
 
     fn pp_inst(&mut self, inst: &Inst) -> D<'db> {
         match inst {
+            Inst::Return { value } => D::text("ret").append(D::space()).append(value_name(*value)),
             Inst::Call { value, callee, args } => value_assign(*value)
                 .append(D::text("call"))
                 .append(D::space())
