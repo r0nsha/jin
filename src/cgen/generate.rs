@@ -255,7 +255,7 @@ impl<'db> Generator<'db> {
                 self.value_assign(state, *value, || D::text(lit.to_string()))
             }
             Inst::BoolLit { value, lit } => self.value_assign(state, *value, || bool_value(*lit)),
-            Inst::UnitLit { value } => self.value_assign(state, *value, || unit_value()),
+            Inst::UnitLit { value } => self.value_decl(state, *value),
         }
     }
 

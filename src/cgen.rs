@@ -65,7 +65,7 @@ fn compile_with_tcc(
         }
     }
 
-    Command::new("cc")
+    Command::new("tcc")
         .arg(c_file_path)
         .arg(format!("-o{exe_file_path}"))
         .arg("-std=c99")
@@ -74,7 +74,6 @@ fn compile_with_tcc(
         .args(libs.iter().map(|path| format!("-l{}", path)))
         .arg("-lc")
         .arg("-lm")
-        .arg("-fno-pie")
         .execute_output()
         .expect("linking to work");
 }
