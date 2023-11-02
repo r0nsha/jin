@@ -81,6 +81,10 @@ impl<'db> PrettyCx<'db> {
                     D::text(",").append(D::space()),
                 ))
                 .append(D::text(")")),
+            Inst::Member { value, inner, member } => value_assign(*value)
+                .append(value_name(*inner))
+                .append(D::text("."))
+                .append(D::text(member.as_str())),
             Inst::LoadGlobal { value, id } => value_assign(*value)
                 .append(D::text("load"))
                 .append(D::space())

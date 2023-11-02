@@ -188,7 +188,7 @@ pub enum Inst {
     // Binary { value: ValueId, lhs: ValueId, rhs: ValueId, op: BinOp },
     // Unary { value: ValueId, inner: ValueId, op: UnOp },
     // Cast { value: ValueId, inner: ValueId, target: Ty },
-    // Index { value: ValueId, inner: ValueId, index: usize },
+    Member { value: ValueId, inner: ValueId, member: Ustr },
     LoadGlobal { value: ValueId, id: Id },
     StrLit { value: ValueId, lit: Ustr },
     IntLit { value: ValueId, lit: i128 },

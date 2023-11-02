@@ -17,6 +17,6 @@ typedef struct {} Unit;
 typedef Unit Never;
 
 typedef struct {
-  U8* data;
+  U8* ptr;
   Uint len;
 } Str;

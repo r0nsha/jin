@@ -254,6 +254,9 @@ impl<'db> Generator<'db> {
                     )
                     .append(D::text(")"))
             }),
+            Inst::Member { value, inner, member } => self.value_assign(state, *value, || {
+                value_name(*inner).append(D::text(".")).append(D::text(member.as_str()))
+            }),
             Inst::LoadGlobal { value, id } => self.value_assign(state, *value, || match id {
                 Id::Fn(sig_id) => D::text(self.mir.fn_sigs[*sig_id].name.as_str()),
             }),

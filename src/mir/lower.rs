@@ -334,20 +334,13 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     // ExprKind::Cast { value: self.lower_expr(&cast.expr), target: expr.ty }
                 }
                 hir::ExprKind::Member(access) => {
-                    todo!()
-                    // let value = self.lower_expr(&access.expr);
-                    //
-                    // match access.expr.ty.kind() {
-                    //     TyKind::Str if access.member.name() == sym::PTR => {
-                    //         ExprKind::Index { value, index: 0 }
-                    //     }
-                    //     TyKind::Str if access.member.name() == sym::LEN => {
-                    //         ExprKind::Index { value, index: 1 }
-                    //     }
-                    //     _ => {
-                    //         panic!("invalid type when lowering Member: {:?}", expr.ty.kind())
-                    //     }
-                    // }
+                    let inner = self.lower_expr(&access.expr);
+
+                    self.push_inst_with(expr.ty, |value| Inst::Member {
+                        value,
+                        inner,
+                        member: access.member.name(),
+                    })
                 }
                 hir::ExprKind::Name(name) => {
                     match self.cx.db[name.id].kind.as_ref() {
