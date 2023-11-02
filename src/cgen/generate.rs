@@ -230,17 +230,10 @@ impl<'db> Generator<'db> {
     }
 
     fn codegen_block(&mut self, state: &mut FnState<'db>, blk: &'db Block) -> D<'db> {
-        D::text(blk.name())
-            .append(D::text(blk.id().to_string()))
-            .append(D::text(":"))
-            .append(D::hardline())
-            .append(
-                D::intersperse(
-                    blk.insts().iter().map(|i| self.codegen_inst(state, i)),
-                    D::hardline(),
-                )
+        D::text(blk.name()).append(D::text(":;")).append(D::hardline()).append(
+            D::intersperse(blk.insts().iter().map(|i| self.codegen_inst(state, i)), D::hardline())
                 .group(),
-            )
+        )
     }
 
     fn codegen_inst(&mut self, state: &mut FnState<'db>, inst: &'db Inst) -> D<'db> {
@@ -283,9 +276,9 @@ impl<'db> Generator<'db> {
 
             value
                 .ty
-                .cty(self)
-                .append(D::space())
-                .append(value_name(value.id))
+                .cdecl(self, value_name(value.id))
+                // .append(D::space())
+                // .append(value_name(value.id))
                 .append(D::space())
                 .append(D::text("="))
                 .append(D::space())

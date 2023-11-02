@@ -33,7 +33,7 @@ impl<'db> CTy<'db> for TyKind {
 
     fn cdecl(&self, cx: &Generator<'db>, name: D<'db>) -> D<'db> {
         match self {
-            Self::Fn(fty) => fty.cty(cx),
+            Self::Fn(fty) => fty.cdecl(cx, name),
             _ => ty_and_name(self, cx, name),
         }
     }
