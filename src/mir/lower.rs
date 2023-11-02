@@ -8,7 +8,6 @@ use crate::{
     index_vec::IndexVecExt,
     mir::*,
     subst::{ParamFolder, Subst},
-    sym,
     ty::{
         coerce::{CoercionKind, Coercions},
         fold::TyFolder,
