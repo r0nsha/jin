@@ -26,20 +26,13 @@ new_key_type!(ValueId);
 pub struct Mir {
     pub fn_sigs: IndexVec<FnSigId, FnSig>,
     pub fns: Vec<Fn>,
-    pub extern_fns: Vec<ExternFn>,
     pub globals: IndexVec<GlobalId, Global>,
     pub main_fn: Option<FnSigId>,
 }
 
 impl Mir {
     pub fn new() -> Self {
-        Self {
-            fn_sigs: IndexVec::new(),
-            fns: vec![],
-            extern_fns: vec![],
-            globals: IndexVec::new(),
-            main_fn: None,
-        }
+        Self { fn_sigs: IndexVec::new(), fns: vec![], globals: IndexVec::new(), main_fn: None }
     }
 
     pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
@@ -87,7 +80,7 @@ pub struct Global {
 
 #[derive(Debug, Clone)]
 pub enum GlobalKind {
-    Bare { value: ValueId, body: Body },
+    Const(Const),
     Extern,
 }
 

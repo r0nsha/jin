@@ -94,28 +94,6 @@ impl<'db> Generator<'db> {
             .append(D::text("}"))
     }
 
-    pub fn init_lazy_globals(
-        &mut self,
-        // main_function_value: FunctionValue<'cx>,
-        // prologue_block: BasicBlock<'cx>,
-        // start_block: BasicBlock<'cx>,
-    ) {
-        todo!()
-        // for glob in &self.tir.globals {
-        //     match &glob.kind {
-        //         GlobalKind::Bare { value, body } => {
-        //             if !body.expr(*value).kind.is_const() {
-        //                 let mut state =
-        //                     FnState::new(body, main_function_value, prologue_block, start_block);
-        //                 let value = self.codegen_expr(&mut state, *value);
-        //                 self.bx.build_store(self.global(glob.id).as_pointer_value(), value);
-        //             }
-        //         }
-        //         GlobalKind::Extern => (),
-        //     }
-        // }
-    }
-
     fn add_fn_decl(&mut self, doc: D<'db>) {
         self.fn_decls.push(doc.append(D::text(";")));
     }
@@ -137,7 +115,7 @@ impl<'db> Generator<'db> {
             let tyname_doc = cty.append(D::space()).append(D::text(glob.name.as_str()));
 
             let doc = match &glob.kind {
-                GlobalKind::Bare { value, body } => {
+                GlobalKind::Const(value) => {
                     todo!()
                     // if let ExprKind::Const(value) = &body.expr(*value).kind {
                     //     tyname_doc

@@ -6,11 +6,11 @@ let extern answer: Int
 fn extern exit(status: Int) -> Never
 fn extern write(fd: I32, buf: *U8, count: Uint) -> Int
 
-// let stdout = 1
+let stdout = 1
 
 fn print(fmt: Str) {
 	// TODO: use stdout constant
-	write(1, fmt.ptr, fmt.len)
+	write(stdout, fmt.ptr, fmt.len)
 }
 
 fn println(fmt: Str) {

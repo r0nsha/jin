@@ -21,16 +21,21 @@ pub(super) fn print(db: &Db, mir: &Mir, w: &mut impl io::Write) -> io::Result<()
     //     }
     // }
 
+    let mut cx = PrettyCx { db, mir };
     let mut docs: Vec<D> = vec![];
 
-    for sig in &mir.fn_sigs {
-        if sig.is_extern {
-            docs.push(PrettyCx { db, mir }.pp_fn_sig(sig).into_doc());
-        }
+    for glob in &mir.globals {
+        docs.push(cx.pp_global(glob));
     }
 
     for f in &mir.fns {
-        docs.push(PrettyCx { db, mir }.pp_fn(f));
+        docs.push(cx.pp_fn(f));
+    }
+
+    for sig in &mir.fn_sigs {
+        if sig.is_extern {
+            docs.push(cx.pp_fn_sig(sig).into_doc());
+        }
     }
 
     D::intersperse(docs, D::hardline().append(D::hardline())).render(80, w)
@@ -42,6 +47,29 @@ struct PrettyCx<'db> {
 }
 
 impl<'db> PrettyCx<'db> {
+    fn pp_global(&mut self, glob: &'db Global) -> D<'db> {
+        match &glob.kind {
+            GlobalKind::Const(value) => D::text("let")
+                .append(D::space())
+                .append(global_name(glob.name.as_str()))
+                .append(D::text(":"))
+                .append(D::space())
+                .append(D::text(glob.ty.to_string(self.db)))
+                .append(D::space())
+                .append(D::text("="))
+                .append(D::space())
+                .append(self.pp_const_value(value)),
+            GlobalKind::Extern => D::text("let")
+                .append(D::space())
+                .append(D::text("extern"))
+                .append(D::space())
+                .append(global_name(glob.name.as_str()))
+                .append(D::text(":"))
+                .append(D::space())
+                .append(D::text(glob.ty.to_string(self.db))),
+        }
+    }
+
     fn pp_fn(&mut self, f: &'db Fn) -> D<'db> {
         let sig = &self.mir.fn_sigs[f.sig];
 
@@ -52,19 +80,19 @@ impl<'db> PrettyCx<'db> {
         .into_doc()
     }
 
-    fn pp_blk(&mut self, blk: &'db Block) -> PrintBlock<'db> {
-        PrintBlock {
-            name: D::text(blk.name()),
-            insts: blk.insts.iter().map(|i| self.pp_inst(i)).collect(),
-        }
-    }
-
     fn pp_fn_sig(&mut self, sig: &'db FnSig) -> PrintFnSig<'db> {
         PrintFnSig {
             name: global_name(&sig.name),
             params: sig.params.iter().map(|p| D::text(p.ty.to_string(self.db))).collect(),
             ret: D::text(sig.ret.to_string(self.db)),
             is_extern: sig.is_extern,
+        }
+    }
+
+    fn pp_blk(&mut self, blk: &'db Block) -> PrintBlock<'db> {
+        PrintBlock {
+            name: D::text(blk.name()),
+            insts: blk.insts.iter().map(|i| self.pp_inst(i)).collect(),
         }
     }
 
@@ -98,6 +126,17 @@ impl<'db> PrettyCx<'db> {
             Inst::IntLit { value, lit } => value_assign(*value).append(D::text(lit.to_string())),
             Inst::BoolLit { value, lit } => value_assign(*value).append(D::text(lit.to_string())),
             Inst::UnitLit { value } => value_assign(*value).append(D::text("{}")),
+        }
+    }
+
+    fn pp_const_value(&self, value: &Const) -> D<'db> {
+        match value {
+            Const::Str(value) => {
+                D::text("\"").append(D::text(value.as_str())).append(D::text("\""))
+            }
+            Const::Int(value) => D::text(value.to_string()),
+            Const::Bool(value) => D::text(value.to_string()),
+            Const::Unit => D::text("{}"),
         }
     }
 }
