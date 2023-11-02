@@ -180,20 +180,15 @@ impl<'db> LowerCx<'db> {
 struct LowerBodyCx<'cx, 'db> {
     cx: &'cx mut LowerCx<'db>,
     body: Body,
-    // def_to_local: FxHashMap<DefId, LocalId>,
+    def_to_local: FxHashMap<DefId, ValueId>,
 }
 
 impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     fn new(cx: &'cx mut LowerCx<'db>) -> Self {
-        Self { cx, body: Body::new() /* def_to_local: FxHashMap::default() */ }
+        Self { cx, body: Body::new(), def_to_local: FxHashMap::default() }
     }
 
     fn lower_fn(mut self, sig: FnSigId, f: &hir::Fn) {
-        // TODO: params
-        // for param in self.cx.mir.fn_sigs[sig].params.clone() {
-        //     self.create_local(param.def_id, param.ty);
-        // }
-
         match &f.kind {
             FnKind::Bare { body } => {
                 if self.cx.db.main_function_id() == Some(f.id) {
@@ -201,6 +196,14 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 }
 
                 self.body.push_block("start");
+
+                for (idx, param) in self.cx.mir.fn_sigs[sig].params.clone().iter().enumerate() {
+                    self.push_inst_with(param.ty, |value| Inst::Load {
+                        value,
+                        kind: LoadKind::Param(idx),
+                    });
+                }
+
                 let last_value = self.lower_expr(body);
 
                 if !self.body.is_terminating() {
@@ -367,8 +370,9 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                                 )
                             };
 
-                            self.push_inst_with(self.cx.mir.fn_sigs[id].ty, |value| {
-                                Inst::LoadGlobal { value, id: Id::Fn(id) }
+                            self.push_inst_with(self.cx.mir.fn_sigs[id].ty, |value| Inst::Load {
+                                value,
+                                kind: LoadKind::Fn(id),
                             })
                         }
                         DefKind::ExternGlobal | DefKind::Global => {
@@ -440,15 +444,9 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         value
     }
 
-    // #[inline]
-    // pub fn create_local(&mut self, def_id: DefId, ty: Ty) -> LocalId {
-    //     let id = self.body.locals.push_with_key(|id| Local {
-    //         id,
-    //         def_id,
-    //         name: self.cx.db[def_id].name,
-    //         ty,
-    //     });
-    //     self.def_to_local.insert(def_id, id);
-    //     id
-    // }
+    #[inline]
+    pub fn create_local(&mut self, def_id: DefId, value: ValueId) -> ValueId {
+        self.def_to_local.insert(def_id, value);
+        value
+    }
 }

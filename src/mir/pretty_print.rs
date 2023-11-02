@@ -85,12 +85,14 @@ impl<'db> PrettyCx<'db> {
                 .append(value_name(*inner))
                 .append(D::text("."))
                 .append(D::text(member.as_str())),
-            Inst::LoadGlobal { value, id } => value_assign(*value)
-                .append(D::text("load"))
-                .append(D::space())
-                .append(global_name(match id {
-                    Id::Fn(sig_id) => self.mir.fn_sigs[*sig_id].name.as_str(),
-                })),
+            Inst::Load { value, kind } => {
+                value_assign(*value).append(D::text("load")).append(D::space()).append(match kind {
+                    LoadKind::Fn(id) => global_name(self.mir.fn_sigs[*id].name.as_str()),
+                    LoadKind::Param(idx) => {
+                        D::text("param(").append(D::text(idx.to_string())).append(D::text(")"))
+                    }
+                })
+            }
             Inst::StrLit { value, lit } => value_assign(*value).append(D::text(lit.as_str())),
             Inst::IntLit { value, lit } => value_assign(*value).append(D::text(lit.to_string())),
             Inst::BoolLit { value, lit } => value_assign(*value).append(D::text(lit.to_string())),

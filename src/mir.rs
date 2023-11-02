@@ -189,7 +189,7 @@ pub enum Inst {
     // Unary { value: ValueId, inner: ValueId, op: UnOp },
     // Cast { value: ValueId, inner: ValueId, target: Ty },
     Member { value: ValueId, inner: ValueId, member: Ustr },
-    LoadGlobal { value: ValueId, id: Id },
+    Load { value: ValueId, kind: LoadKind },
     StrLit { value: ValueId, lit: Ustr },
     IntLit { value: ValueId, lit: i128 },
     BoolLit { value: ValueId, lit: bool },
@@ -203,6 +203,7 @@ pub struct Value {
 }
 
 #[derive(Debug, Clone)]
-pub enum Id {
+pub enum LoadKind {
     Fn(FnSigId),
+    Param(usize),
 }

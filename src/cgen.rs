@@ -74,6 +74,7 @@ fn compile_with_tcc(
         .args(libs.iter().map(|path| format!("-l{}", path)))
         .arg("-lc")
         .arg("-lm")
+        .arg("-fno-pie")
         .execute_output()
         .expect("linking to work");
 }

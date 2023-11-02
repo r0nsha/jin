@@ -13,7 +13,9 @@ use crate::{
     db::Db,
     hir::const_eval::Const,
     middle::{BinOp, CmpOp, UnOp},
-    mir::{Block, Body, Fn, FnSig, FnSigId, GlobalId, GlobalKind, Id, Inst, Mir, Value, ValueId},
+    mir::{
+        Block, Body, Fn, FnSig, FnSigId, GlobalId, GlobalKind, Inst, LoadKind, Mir, Value, ValueId,
+    },
     ty::Ty,
 };
 
@@ -257,8 +259,9 @@ impl<'db> Generator<'db> {
             Inst::Member { value, inner, member } => self.value_assign(state, *value, || {
                 value_name(*inner).append(D::text(".")).append(D::text(member.as_str()))
             }),
-            Inst::LoadGlobal { value, id } => self.value_assign(state, *value, || match id {
-                Id::Fn(sig_id) => D::text(self.mir.fn_sigs[*sig_id].name.as_str()),
+            Inst::Load { value, kind } => self.value_assign(state, *value, || match kind {
+                LoadKind::Fn(id) => D::text(self.mir.fn_sigs[*id].name.as_str()),
+                LoadKind::Param(_) => todo!(),
             }),
             Inst::StrLit { value, lit } => self.value_assign(state, *value, || str_value(lit)),
             Inst::IntLit { value, lit } => {
