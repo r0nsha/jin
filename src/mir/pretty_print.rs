@@ -80,9 +80,12 @@ impl<'db> PrettyCx<'db> {
                     D::text(",").append(D::space()),
                 ))
                 .append(D::text(")")),
-            Inst::LoadGlobal { value, id } => value_assign(*value).append(global_name(match id {
-                Id::Fn(sig_id) => self.mir.fn_sigs[*sig_id].name.as_str(),
-            })),
+            Inst::LoadGlobal { value, id } => value_assign(*value)
+                .append(D::text("load"))
+                .append(D::space())
+                .append(global_name(match id {
+                    Id::Fn(sig_id) => self.mir.fn_sigs[*sig_id].name.as_str(),
+                })),
             Inst::StrLit { value, lit } => value_assign(*value).append(D::text(lit.as_str())),
             Inst::IntLit { value, lit } => value_assign(*value).append(D::text(lit.to_string())),
             Inst::BoolLit { value, lit } => value_assign(*value).append(D::text(lit.to_string())),
