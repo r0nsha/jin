@@ -8,67 +8,81 @@ use std::process::Command;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use execute::Execute;
-use inkwell::{
-    context::Context,
-    module::Module,
-    passes::{PassManager, PassManagerBuilder},
-    targets::{
-        CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine, TargetTriple,
-    },
-    OptimizationLevel,
-};
-use pretty::RcDoc;
-use rustc_hash::{FxHashMap, FxHashSet};
-use ustr::UstrMap;
+use rustc_hash::FxHashSet;
 
 use crate::{
     cgen::generate::Generator,
-    db::{Db, ExternLib},
+    db::{build_options::EmitOption, Db, ExternLib},
     mir::Mir,
-    target::{Arch, Os, TargetMetrics},
+    target::Os,
 };
 
 pub fn codegen(db: &mut Db, mir: &Mir) -> Utf8PathBuf {
     db.time.start("cgen");
-    let c_output_path =
+    let c_file_path =
         Generator { db, mir, fn_decls: vec![], globals: vec![], fn_defs: vec![] }.run();
     db.time.stop();
-
-    todo!()
-    // build_exe(db, &target_machine, &module)
+    build_exe(db, &c_file_path)
 }
 
-// fn build_exe(db: &mut Db, target_machine: &TargetMachine, module: &Module) -> Utf8PathBuf {
-//     let output_path = db.output_path();
-//
-//     if db.build_options().should_emit(EmitOption::LlvmIr) {
-//         module.print_to_file(output_path.with_extension("ll")).expect("printing llvm ir to work");
-//     }
-//
-//     let (object_file, output_file) = if db.target_metrics().os == Os::Windows {
-//         (output_path.with_extension("obj"), output_path.with_extension("exe"))
-//     } else {
-//         (output_path.with_extension("o"), output_path.with_extension(""))
-//     };
-//
-//     db.time.start("link");
-//     target_machine
-//         .write_to_file(module, FileType::Object, object_file.as_std_path())
-//         .expect("writing the object file to work");
-//
-//     link(db.target_metrics(), &db.extern_libs, &output_file, &object_file);
-//     db.time.stop();
-//
-//     let _ = std::fs::remove_file(object_file);
-//
-//     output_file
-// }
-//
-// fn link(
+fn build_exe(db: &mut Db, c_file_path: &Utf8Path) -> Utf8PathBuf {
+    let output_path = db.output_path();
+
+    let exe_file_path = if db.target_metrics().os == Os::Windows {
+        output_path.with_extension("exe")
+    } else {
+        output_path.with_extension("")
+    };
+
+    db.time.start("tcc");
+    compile_with_tcc(&db.extern_libs, c_file_path, &exe_file_path);
+    db.time.stop();
+
+    if !db.build_options().should_emit(EmitOption::C) {
+        let _ = std::fs::remove_file(c_file_path);
+    }
+
+    exe_file_path
+}
+
+fn compile_with_tcc(
+    extern_libs: &FxHashSet<ExternLib>,
+    c_file_path: &Utf8Path,
+    exe_file_path: &Utf8Path,
+) {
+    let mut lib_paths = FxHashSet::<String>::default();
+    let mut libs = FxHashSet::<String>::default();
+
+    for lib in extern_libs {
+        match lib {
+            ExternLib::Sys(lib_name) => {
+                libs.insert(lib_name.clone());
+            }
+            ExternLib::Path { search_path, name } => {
+                lib_paths.insert(search_path.to_string());
+                libs.insert(name.clone());
+            }
+        }
+    }
+
+    Command::new("tcc")
+        .arg(c_file_path)
+        .arg(format!("-o{exe_file_path}"))
+        .arg("-std=c99")
+        .arg("-w")
+        .args(lib_paths.iter().map(|path| format!("-L{}", path)))
+        .args(libs.iter().map(|path| format!("-l{}", path)))
+        .arg("-lc")
+        .arg("-lm")
+        .execute_output()
+        .expect("linking to work");
+}
+
+// fn compile_with_clang(
 //     target_metrics: &TargetMetrics,
 //     extern_libs: &FxHashSet<ExternLib>,
-//     exe_file: &Utf8Path,
-//     object_file: &Utf8Path,
+//     c_file_path: &Utf8Path,
+//     exe_file_path: &Utf8Path,
 // ) {
 //     let link_flags = match target_metrics.arch {
 //         Arch::Amd64 => match target_metrics.os {
@@ -134,7 +148,7 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> Utf8PathBuf {
 //         }
 //
 //         Command::new("lld-link")
-//             .arg(format!("/out:{}", executable_file.to_str().unwrap()))
+//             .arg(format!("/out:{}", exe_file_path))
 //             .arg("/entry:mainCRTStartup")
 //             .arg("/defaultlib:libcmt")
 //             .arg("/nologo")
@@ -143,7 +157,7 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> Utf8PathBuf {
 //             .arg("/threads:8")
 //             .arg("/subsystem:CONSOLE")
 //             .args(lib_paths.iter().map(|path| format!("/libpath:{}", path)))
-//             .arg(object_file.to_str().unwrap())
+//             .arg(c_file_path.to_str().unwrap())
 //             .args(libs)
 //             .args(link_flags)
 //             .execute_output()
@@ -153,8 +167,8 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> Utf8PathBuf {
 //     #[cfg(not(windows))]
 //     Command::new("clang")
 //         .arg("-Wno-unused-command-line-argument")
-//         .arg(object_file.as_str())
-//         .arg(format!("-o{exe_file}"))
+//         .arg(c_file_path.as_str())
+//         .arg(format!("-o{exe_file_path}"))
 //         .args(lib_paths.iter().map(|path| format!("-L{}", path)))
 //         .args(libs.iter().map(|path| format!("-l{}", path)))
 //         .arg("-fuse-ld=mold")

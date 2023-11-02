@@ -6,7 +6,7 @@ else
     set -l src tests/$name.jin
     set -l out tests/build/$name.c
 
-    cargo run -- build $src --timings --emit hir --emit mir --emit llvm-ir
+    cargo run -- build $src --timings --emit hir --emit mir --emit c
 
     cat $out
 end
