@@ -9,7 +9,10 @@ use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
-    cgen::{ty::CTy, util::str_value},
+    cgen::{
+        ty::CTy,
+        util::{bool_value, str_value, unit_value},
+    },
     db::{Db, DefId},
     hir::const_eval::Const,
     middle::{BinOp, CmpOp, UnOp},
@@ -251,10 +254,8 @@ impl<'db> Generator<'db> {
             Inst::IntLit { value, lit } => {
                 self.value_assign(state, *value, || D::text(lit.to_string()))
             }
-            Inst::BoolLit { value, lit } => {
-                self.value_assign(state, *value, || D::text(if *lit { "true" } else { "false" }))
-            }
-            Inst::UnitLit { value } => self.value_decl(state, *value),
+            Inst::BoolLit { value, lit } => self.value_assign(state, *value, || bool_value(*lit)),
+            Inst::UnitLit { value } => self.value_assign(state, *value, || unit_value()),
         }
     }
 

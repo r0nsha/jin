@@ -93,7 +93,8 @@ impl<'db> PrettyCx<'db> {
                         .append(D::text(")")),
                 })
             }
-            Inst::StrLit { value, lit } => value_assign(*value).append(D::text(lit.as_str())),
+            Inst::StrLit { value, lit } => value_assign(*value)
+                .append(D::text("\"").append(D::text(lit.as_str())).append(D::text("\""))),
             Inst::IntLit { value, lit } => value_assign(*value).append(D::text(lit.to_string())),
             Inst::BoolLit { value, lit } => value_assign(*value).append(D::text(lit.to_string())),
             Inst::UnitLit { value } => value_assign(*value).append(D::text("{}")),

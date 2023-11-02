@@ -17,14 +17,6 @@ impl<'db> Generator<'db> {
     //     self.bx.position_at_end(bb);
     // }
 
-    pub fn unit_value(&self) -> RcDoc<'db> {
-        RcDoc::text("{0}")
-    }
-
-    pub fn bool_value(&self, value: bool) -> RcDoc<'db> {
-        RcDoc::text(if value { "true" } else { "false" })
-    }
-
     // pub fn current_block_is_terminating(&self) -> bool {
     //     self.current_block().get_terminator().is_some()
     // }
@@ -70,4 +62,12 @@ pub fn str_value(value: &str) -> RcDoc {
 
 pub fn str_lit(value: &str) -> RcDoc {
     RcDoc::text(format!("\"{value}\""))
+}
+
+pub fn unit_value<'a>() -> RcDoc<'a> {
+    RcDoc::text("{0}")
+}
+
+pub fn bool_value<'a>(value: bool) -> RcDoc<'a> {
+    RcDoc::text(if value { "true" } else { "false" })
 }

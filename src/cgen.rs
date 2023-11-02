@@ -65,7 +65,7 @@ fn compile_with_tcc(
         }
     }
 
-    Command::new("tcc")
+    Command::new("cc")
         .arg(c_file_path)
         .arg(format!("-o{exe_file_path}"))
         .arg("-std=c99")
