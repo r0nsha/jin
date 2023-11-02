@@ -377,6 +377,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     hir::Lit::Str(lit) => {
                         self.push_inst_with(expr.ty, |value| Inst::StrLit { value, lit: *lit })
                     }
+                    #[allow(clippy::cast_possible_wrap)]
                     hir::Lit::Int(lit) => self
                         .push_inst_with(expr.ty, |value| Inst::IntLit { value, lit: *lit as i128 }),
                     hir::Lit::Bool(lit) => {

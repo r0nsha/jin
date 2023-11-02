@@ -26,15 +26,11 @@ pub struct Generator<'db, 'a> {
     pub fn_decls: Vec<RcDoc<'a>>,
     pub globals: Vec<RcDoc<'a>>,
     pub fn_defs: Vec<RcDoc<'a>>,
-    // pub functions: FxHashMap<FnSigId, FunctionValue<'cx>>,
-    // pub globals: FxHashMap<GlobalId, GlobalValue<'cx>>,
-    // pub static_strs: UstrMap<PointerValue<'cx>>,
-    // pub static_str_slices: UstrMap<PointerValue<'cx>>,
 }
 
 // #[derive(Debug, Clone, Copy)]
 // pub enum Local<'cx> {
-//     Alloca(PointerValue<'cx>, BasicTypeEnum<'cx>),
+//     StackAlloc(PointerValue<'cx>, BasicTypeEnum<'cx>),
 //     Value(BasicValueEnum<'cx>),
 // }
 
@@ -242,7 +238,7 @@ impl<'db, 'a> Generator<'db, 'a> {
                 // let value = self.codegen_expr(state, *value);
                 // self.bx.build_store(ptr, value);
                 //
-                // state.locals.insert(*id, Local::Alloca(ptr, ty));
+                // state.locals.insert(*id, Local::StackAlloc(ptr, ty));
                 //
                 // self.unit_value().into()
             }
@@ -461,7 +457,7 @@ impl<'db, 'a> Generator<'db, 'a> {
                 Id::Local(lid) => {
                     todo!();
                     // match state.local(*lid) {
-                    //     Local::Alloca(ptr, ty) => self.bx.build_load(
+                    //     Local::StackAlloc(ptr, ty) => self.bx.build_load(
                     //         ty,
                     //         ptr,
                     //         &format!("load_{}", state.body.local(*lid).name),
