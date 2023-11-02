@@ -9,7 +9,7 @@ use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
-    cgen::ty::CTy,
+    cgen::{ty::CTy, util::str_value},
     db::Db,
     hir::const_eval::Const,
     middle::{BinOp, CmpOp, UnOp},
@@ -37,7 +37,6 @@ pub struct Generator<'db> {
 #[derive(Debug, Clone)]
 pub struct FnState<'db> {
     pub body: &'db Body,
-    pub blocks: Vec<D<'db>>,
     // pub locals: FxHashMap<LocalId, Ustr>,
 }
 
@@ -45,7 +44,6 @@ impl<'db> FnState<'db> {
     pub fn new(body: &'db Body) -> Self {
         Self {
             body,
-            blocks: vec![],
             // locals: FxHashMap::default()
         }
     }
@@ -200,7 +198,6 @@ impl<'db> Generator<'db> {
 
     fn define_fn(&mut self, fun: &'db Fn) {
         let sig = &self.mir.fn_sigs[fun.sig];
-        let fty = sig.ty;
 
         let mut state = FnState::new(&fun.body);
 
@@ -208,19 +205,19 @@ impl<'db> Generator<'db> {
             todo!("fn params");
         }
 
+        // TODO: params
         // for local in fun.params(self.mir).iter() {
         // state.locals.insert(local.id, local.name);
         // }
 
-        for blk in fun.body.blocks() {
-            self.codegen_block(&mut state, blk);
-        }
+        let block_docs: Vec<D> =
+            fun.body.blocks().iter().map(|blk| self.codegen_block(&mut state, blk)).collect();
 
         let doc = self.codegen_fn_sig(sig).append(D::space()).append(
             D::text("{")
                 .append(D::hardline())
                 .append(
-                    D::intersperse(state.blocks, D::hardline().append(D::hardline()))
+                    D::intersperse(block_docs, D::hardline().append(D::hardline()))
                         .nest(NEST)
                         .group(),
                 )
@@ -245,43 +242,58 @@ impl<'db> Generator<'db> {
             )
     }
 
-    fn codegen_inst(&mut self, state: &mut FnState<'db>, inst: &Inst) -> D<'db> {
+    fn codegen_inst(&mut self, state: &mut FnState<'db>, inst: &'db Inst) -> D<'db> {
         match inst {
-            Inst::Call { value, callee, args } => todo!(),
-            Inst::LoadGlobal { value, id } => self.value_assign(state, *value),
-            Inst::StrLit { value, lit } => todo!(),
-            Inst::IntLit { value, lit } => todo!(),
-            Inst::BoolLit { value, lit } => todo!(),
-            Inst::UnitLit { value } => todo!(),
-        }
-    }
-
-    fn const_value(&mut self, value: &Const) -> D<'db> {
-        match value {
-            Const::Str(value) => self.str_value(value),
-            Const::Int(value) => {
-                if value.is_negative() {
-                    D::text("-{value}")
-                } else {
-                    D::text(value.to_string())
-                }
+            Inst::Call { value, callee, args } => self.value_assign(state, *value, || {
+                value_name(*callee)
+                    .append(D::text("("))
+                    .append(
+                        D::intersperse(
+                            args.iter().copied().map(value_name),
+                            D::text(",").append(D::space()),
+                        )
+                        .nest(1)
+                        .group(),
+                    )
+                    .append(D::text(")"))
+            }),
+            Inst::LoadGlobal { value, id } => self.value_assign(state, *value, || match id {
+                Id::Fn(sig_id) => D::text(self.mir.fn_sigs[*sig_id].name.as_str()),
+            }),
+            Inst::StrLit { value, lit } => self.value_assign(state, *value, || str_value(lit)),
+            Inst::IntLit { value, lit } => {
+                self.value_assign(state, *value, || D::text(lit.to_string()))
             }
-            Const::Bool(value) => self.bool_value(*value),
-            Const::Unit => self.unit_value(),
+            Inst::BoolLit { value, lit } => {
+                self.value_assign(state, *value, || D::text(if *lit { "true" } else { "false" }))
+            }
+            Inst::UnitLit { value } => self.value_assign(state, *value, || D::text("{0}")),
         }
     }
 
-    fn value_assign(&self, state: &FnState<'db>, id: ValueId) -> D<'db> {
-        let value = state.body.value(id);
+    fn value_assign(
+        &self,
+        state: &FnState<'db>,
+        id: ValueId,
+        f: impl FnOnce() -> D<'db>,
+    ) -> D<'db> {
+        self.statement(|| {
+            let value = state.body.value(id);
 
-        value
-            .ty
-            .cty(self)
-            .append(D::space())
-            .append(value_name(value.id))
-            .append(D::space())
-            .append(D::text("="))
-            .append(D::space())
+            value
+                .ty
+                .cty(self)
+                .append(D::space())
+                .append(value_name(value.id))
+                .append(D::space())
+                .append(D::text("="))
+                .append(D::space())
+                .append(f())
+        })
+    }
+
+    fn statement(&self, f: impl FnOnce() -> D<'db>) -> D<'db> {
+        f().append(D::text(";"))
     }
 }
 

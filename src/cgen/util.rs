@@ -25,17 +25,6 @@ impl<'db> Generator<'db> {
         RcDoc::text(if value { "true" } else { "false" })
     }
 
-    pub fn str_value(&self, value: &str) -> RcDoc<'db> {
-        RcDoc::text("{")
-            .append(RcDoc::text(".data = ").append(self.str_lit(value)))
-            .append(RcDoc::text(format!(".len = {}", value.len())))
-            .append(RcDoc::text("}"))
-    }
-
-    pub fn str_lit(&self, value: &str) -> RcDoc<'db> {
-        RcDoc::text(format!("\"{value}\""))
-    }
-
     // pub fn current_block_is_terminating(&self) -> bool {
     //     self.current_block().get_terminator().is_some()
     // }
@@ -68,4 +57,15 @@ impl<'db> Generator<'db> {
     //     self.bx.position_at_end(state.current_block);
     //     ptr
     // }
+}
+
+pub fn str_value(value: &str) -> RcDoc {
+    RcDoc::text("{")
+        .append(RcDoc::text(".data = ").append(str_lit(value)))
+        .append(RcDoc::text(format!(".len = {}", value.len())))
+        .append(RcDoc::text("}"))
+}
+
+pub fn str_lit(value: &str) -> RcDoc {
+    RcDoc::text(format!("\"{value}\""))
 }
