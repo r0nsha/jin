@@ -5,6 +5,7 @@ use std::io;
 
 use enum_as_inner::EnumAsInner;
 pub use lower::lower;
+use typed_index_collections::TiSlice;
 use ustr::Ustr;
 
 use crate::{
@@ -113,6 +114,11 @@ impl Body {
         &self.blocks[BlockId::from(0)]
     }
 
+    #[inline]
+    pub fn blocks(&self) -> &TiSlice<BlockId, Block> {
+        &self.blocks
+    }
+
     pub fn push_block(&mut self, name: impl Into<String>) -> BlockId {
         self.blocks.push_with_key(|id| Block::new(id, name.into()))
     }
@@ -146,6 +152,10 @@ pub struct Block {
 impl Block {
     pub fn new(id: BlockId, name: String) -> Self {
         Self { id, name, insts: vec![] }
+    }
+
+    pub fn id(&self) -> BlockId {
+        self.id
     }
 
     pub fn name(&self) -> &str {

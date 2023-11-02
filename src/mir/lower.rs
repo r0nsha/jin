@@ -202,6 +202,19 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                 self.body.push_block("start");
                 self.lower_expr(body);
+
+                // TODO:
+                // if !self.current_block_is_terminating() {
+                //     let ret_value =
+                //         if fty.as_fn().unwrap().ret.is_unit() && !state.body.expr(fun.value).ty.is_unit() {
+                //             self.unit_value().as_basic_value_enum()
+                //         } else {
+                //             body
+                //         };
+                //
+                //     self.bx.build_return(Some(&ret_value));
+                // }
+
                 self.cx.mir.fns.push(Fn { def_id: f.id, sig, body: self.body });
             }
             FnKind::Extern => unreachable!(),

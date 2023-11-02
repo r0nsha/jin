@@ -3,7 +3,7 @@ use ustr::Ustr;
 
 use crate::cgen::generate::{FnState, Generator};
 
-impl<'db, 'a> Generator<'db, 'a> {
+impl<'db> Generator<'db> {
     // pub fn append_block(&self, state: &FnState<'db, 'cx>, name: &str) -> BasicBlock<'cx> {
     //     self.context.append_basic_block(state.function_value, name)
     // }
@@ -17,22 +17,22 @@ impl<'db, 'a> Generator<'db, 'a> {
     //     self.bx.position_at_end(bb);
     // }
 
-    pub fn unit_value(&self) -> RcDoc<'a> {
+    pub fn unit_value(&self) -> RcDoc<'db> {
         RcDoc::text("{0}")
     }
 
-    pub fn bool_value(&self, value: bool) -> RcDoc<'a> {
+    pub fn bool_value(&self, value: bool) -> RcDoc<'db> {
         RcDoc::text(if value { "true" } else { "false" })
     }
 
-    pub fn str_value(&self, value: &str) -> RcDoc<'a> {
+    pub fn str_value(&self, value: &str) -> RcDoc<'db> {
         RcDoc::text("{")
             .append(RcDoc::text(".data = ").append(self.str_lit(value)))
             .append(RcDoc::text(format!(".len = {}", value.len())))
             .append(RcDoc::text("}"))
     }
 
-    pub fn str_lit(&self, value: &str) -> RcDoc<'a> {
+    pub fn str_lit(&self, value: &str) -> RcDoc<'db> {
         RcDoc::text(format!("\"{value}\""))
     }
 

@@ -8,15 +8,15 @@ use crate::{
     ty::{FnTy, IntTy, TyKind, UintTy},
 };
 
-pub trait CTy<'db, 'a>
+pub trait CTy<'db>
 where
     Self: fmt::Debug,
 {
-    fn cty(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a>;
+    fn cty(&self, cx: &Generator<'db>) -> RcDoc<'db>;
 }
 
-impl<'db, 'a> CTy<'db, 'a> for TyKind {
-    fn cty(&self, cx: &Generator<'db, 'a>) -> RcDoc<'a> {
+impl<'db> CTy<'db> for TyKind {
+    fn cty(&self, cx: &Generator<'db>) -> RcDoc<'db> {
         match self {
             Self::Int(ity) => ity.cty(cx),
             Self::Uint(uty) => uty.cty(cx),
@@ -31,8 +31,8 @@ impl<'db, 'a> CTy<'db, 'a> for TyKind {
     }
 }
 
-impl<'db, 'a> CTy<'db, 'a> for IntTy {
-    fn cty(&self, _: &Generator<'db, 'a>) -> RcDoc<'a> {
+impl<'db> CTy<'db> for IntTy {
+    fn cty(&self, _: &Generator<'db>) -> RcDoc<'db> {
         RcDoc::text(match self {
             Self::I8 => sym::I8,
             Self::I16 => sym::I16,
@@ -43,8 +43,8 @@ impl<'db, 'a> CTy<'db, 'a> for IntTy {
     }
 }
 
-impl<'db, 'a> CTy<'db, 'a> for UintTy {
-    fn cty(&self, _: &Generator<'db, 'a>) -> RcDoc<'a> {
+impl<'db> CTy<'db> for UintTy {
+    fn cty(&self, _: &Generator<'db>) -> RcDoc<'db> {
         RcDoc::text(match self {
             Self::U8 => sym::U8,
             Self::U16 => sym::U16,
@@ -55,8 +55,8 @@ impl<'db, 'a> CTy<'db, 'a> for UintTy {
     }
 }
 
-impl<'db, 'a> CTy<'db, 'a> for FnTy {
-    fn cty(&self, _: &Generator<'db, 'a>) -> RcDoc<'a> {
+impl<'db> CTy<'db> for FnTy {
+    fn cty(&self, _: &Generator<'db>) -> RcDoc<'db> {
         todo!("c fn types");
     }
 }
