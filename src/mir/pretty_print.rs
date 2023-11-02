@@ -5,22 +5,6 @@ use pretty::RcDoc as D;
 use crate::{db::Db, mir::*};
 
 pub(super) fn print(db: &Db, mir: &Mir, w: &mut impl io::Write) -> io::Result<()> {
-    // for glob in &mir.globals {
-    //     match &glob.kind {
-    //         GlobalKind::Bare { value, body } => {
-    //             PrettyCx { builder: &mut builder, db, mir, body }
-    //                 .pp_let(glob.name, glob.ty, *value);
-    //         }
-    //         GlobalKind::Extern => {
-    //             builder.add_empty_child(format!(
-    //                 "let extern `{}` (type: {})",
-    //                 glob.name,
-    //                 glob.ty.display(db)
-    //             ));
-    //         }
-    //     }
-    // }
-
     let mut cx = PrettyCx { db, mir };
     let mut docs: Vec<D> = vec![];
 
