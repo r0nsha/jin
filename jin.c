@@ -16,7 +16,7 @@ typedef uintptr_t Uint;
 typedef struct {} Unit;
 typedef Unit Never;
 
-typedef {
-	char* data;
-	usize len;
+typedef struct {
+	U8* data;
+	Uint len;
 } Str;

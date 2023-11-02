@@ -187,7 +187,7 @@ impl<'db> Generator<'db> {
                 .append(D::text(")")),
         );
 
-        initial.append(sig_doc)
+        initial.append(sig_doc).group()
     }
 
     pub fn define_fns(&mut self) {
@@ -222,7 +222,8 @@ impl<'db> Generator<'db> {
                         .group(),
                 )
                 .append(D::hardline())
-                .append(D::text("}")),
+                .append(D::text("}"))
+                .group(),
         );
 
         self.fn_defs.push(doc);
@@ -277,7 +278,7 @@ impl<'db> Generator<'db> {
         id: ValueId,
         f: impl FnOnce() -> D<'db>,
     ) -> D<'db> {
-        self.statement(|| {
+        statement(|| {
             let value = state.body.value(id);
 
             value
@@ -291,10 +292,10 @@ impl<'db> Generator<'db> {
                 .append(f())
         })
     }
+}
 
-    fn statement(&self, f: impl FnOnce() -> D<'db>) -> D<'db> {
-        f().append(D::text(";"))
-    }
+fn statement<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
+    f().append(D::text(";"))
 }
 
 fn value_name<'a>(id: ValueId) -> D<'a> {
