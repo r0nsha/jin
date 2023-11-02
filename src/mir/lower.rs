@@ -384,8 +384,12 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                             })
                         }
                         DefKind::ExternGlobal | DefKind::Global => {
-                            todo!()
-                            // ExprKind::Id(Id::Global(self.cx.lower_global(name.id)))
+                            let id = self.cx.lower_global(name.id);
+
+                            self.push_inst_with(self.cx.mir.globals[id].ty, |value| Inst::Load {
+                                value,
+                                kind: LoadKind::Global(id),
+                            })
                         }
                         DefKind::Variable => self.def_to_local[&name.id],
                         DefKind::Ty(_) => unreachable!(),

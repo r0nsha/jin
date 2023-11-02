@@ -199,5 +199,6 @@ pub struct Value {
 #[derive(Debug, Clone)]
 pub enum LoadKind {
     Fn(FnSigId),
+    Global(GlobalId),
     Param(DefId),
 }

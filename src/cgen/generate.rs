@@ -94,17 +94,10 @@ impl<'db> Generator<'db> {
             .append(D::text("}"))
     }
 
-    fn add_fn_decl(&mut self, doc: D<'db>) {
-        self.fn_decls.push(doc.append(D::text(";")));
-    }
-
-    fn add_global(&mut self, doc: D<'db>) {
-        self.globals.push(doc.append(D::text(";")));
-    }
-
     pub fn predefine_fns(&mut self) {
         for sig in &self.mir.fn_sigs {
-            self.add_fn_decl(self.codegen_fn_sig(sig));
+            let doc = self.codegen_fn_sig(sig);
+            self.fn_decls.push(statement(|| doc));
         }
     }
 
@@ -115,22 +108,15 @@ impl<'db> Generator<'db> {
             let tyname_doc = cty.append(D::space()).append(D::text(glob.name.as_str()));
 
             let doc = match &glob.kind {
-                GlobalKind::Const(value) => {
-                    todo!()
-                    // if let ExprKind::Const(value) = &body.expr(*value).kind {
-                    //     tyname_doc
-                    //         .append(D::space())
-                    //         .append(D::text("="))
-                    //         .append(D::space())
-                    //         .append(self.const_value(value))
-                    // } else {
-                    //     tyname_doc
-                    // }
-                }
+                GlobalKind::Const(value) => tyname_doc
+                    .append(D::space())
+                    .append(D::text("="))
+                    .append(D::space())
+                    .append(codegen_const_value(value)),
                 GlobalKind::Extern => D::text("extern").append(D::space()).append(tyname_doc),
             };
 
-            self.add_global(doc);
+            self.globals.push(statement(|| doc));
         }
     }
 
@@ -226,6 +212,7 @@ impl<'db> Generator<'db> {
             }),
             Inst::Load { value, kind } => self.value_assign(state, *value, || match kind {
                 LoadKind::Fn(id) => D::text(self.mir.fn_sigs[*id].name.as_str()),
+                LoadKind::Global(id) => D::text(self.mir.globals[*id].name.as_str()),
                 LoadKind::Param(id) => D::text(self.db[*id].name.as_str()),
             }),
             Inst::StrLit { value, lit } => self.value_assign(state, *value, || str_value(lit)),
@@ -261,6 +248,15 @@ impl<'db> Generator<'db> {
             let value = state.body.value(id);
             value.ty.cdecl(self, value_name(value.id))
         })
+    }
+}
+
+fn codegen_const_value<'a>(value: &'a Const) -> D<'a> {
+    match value {
+        Const::Str(value) => str_value(value),
+        Const::Int(value) => D::text(value.to_string()),
+        Const::Bool(value) => bool_value(*value),
+        Const::Unit => D::nil(),
     }
 }
 

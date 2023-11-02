@@ -9,7 +9,6 @@ fn extern write(fd: I32, buf: *U8, count: Uint) -> Int
 let stdout = 1
 
 fn print(fmt: Str) {
-	// TODO: use stdout constant
 	write(stdout, fmt.ptr, fmt.len)
 }
 
@@ -21,5 +20,5 @@ fn println(fmt: Str) {
 fn main {
 	println("Hello, World!")
 	hello()
-	exit(0)
+	exit(answer)
 }
