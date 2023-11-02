@@ -6,14 +6,14 @@ use std::{
 use camino::Utf8PathBuf;
 use pretty::{docs, RcDoc as D};
 use rustc_hash::FxHashMap;
-use ustr::{Ustr, UstrMap};
+use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     cgen::ty::CTy,
     db::Db,
     hir::const_eval::Const,
     middle::{BinOp, CmpOp, UnOp},
-    mir::{Block, Body, Fn, FnSig, FnSigId, GlobalId, GlobalKind, Id, Inst, Mir},
+    mir::{Block, Body, Fn, FnSig, FnSigId, GlobalId, GlobalKind, Id, Inst, Mir, Value, ValueId},
     ty::Ty,
 };
 
@@ -43,7 +43,11 @@ pub struct FnState<'db> {
 
 impl<'db> FnState<'db> {
     pub fn new(body: &'db Body) -> Self {
-        Self { body, blocks: vec![] /* locals: FxHashMap::default() */ }
+        Self {
+            body,
+            blocks: vec![],
+            // locals: FxHashMap::default()
+        }
     }
 
     // #[track_caller]
@@ -244,30 +248,12 @@ impl<'db> Generator<'db> {
     fn codegen_inst(&mut self, state: &mut FnState<'db>, inst: &Inst) -> D<'db> {
         match inst {
             Inst::Call { value, callee, args } => todo!(),
-            Inst::LoadGlobal { value, id } => todo!(),
+            Inst::LoadGlobal { value, id } => self.value_assign(state, *value),
             Inst::StrLit { value, lit } => todo!(),
             Inst::IntLit { value, lit } => todo!(),
             Inst::BoolLit { value, lit } => todo!(),
             Inst::UnitLit { value } => todo!(),
         }
-    }
-
-    #[track_caller]
-    fn function(&self, id: FnSigId) {
-        todo!()
-        // self.functions
-        //     .get(&id)
-        //     .copied()
-        //     .unwrap_or_else(|| panic!("function {} to be declared", self.tir.fn_sigs[id].name))
-    }
-
-    #[track_caller]
-    fn global(&self, id: GlobalId) {
-        todo!()
-        // self.globals
-        //     .get(&id)
-        //     .copied()
-        //     .unwrap_or_else(|| panic!("global {} to be declared", self.tir.globals[id].name))
     }
 
     fn const_value(&mut self, value: &Const) -> D<'db> {
@@ -284,4 +270,21 @@ impl<'db> Generator<'db> {
             Const::Unit => self.unit_value(),
         }
     }
+
+    fn value_assign(&self, state: &FnState<'db>, id: ValueId) -> D<'db> {
+        let value = state.body.value(id);
+
+        value
+            .ty
+            .cty(self)
+            .append(D::space())
+            .append(value_name(value.id))
+            .append(D::space())
+            .append(D::text("="))
+            .append(D::space())
+    }
+}
+
+fn value_name<'a>(id: ValueId) -> D<'a> {
+    D::text("v").append(id.to_string())
 }
