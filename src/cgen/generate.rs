@@ -10,7 +10,7 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     cgen::{ty::CTy, util::str_value},
-    db::Db,
+    db::{Db, DefId},
     hir::const_eval::Const,
     middle::{BinOp, CmpOp, UnOp},
     mir::{
@@ -30,30 +30,16 @@ pub struct Generator<'db> {
     pub fn_defs: Vec<D<'db>>,
 }
 
-// #[derive(Debug, Clone, Copy)]
-// pub enum Local<'cx> {
-//     StackAlloc(PointerValue<'cx>, BasicTypeEnum<'cx>),
-//     Value(BasicValueEnum<'cx>),
-// }
-
 #[derive(Debug, Clone)]
 pub struct FnState<'db> {
     pub body: &'db Body,
-    // pub locals: FxHashMap<LocalId, Ustr>,
+    pub params: FxHashMap<DefId, ValueId>,
 }
 
 impl<'db> FnState<'db> {
     pub fn new(body: &'db Body) -> Self {
-        Self {
-            body,
-            // locals: FxHashMap::default()
-        }
+        Self { body, params: FxHashMap::default() }
     }
-
-    // #[track_caller]
-    // fn local(&self, id: LocalId) -> Ustr {
-    //     self.locals.get(&id).copied().unwrap_or_else(|| panic!("local {} to be declared", id))
-    // }
 }
 
 impl<'db> Generator<'db> {
@@ -203,14 +189,12 @@ impl<'db> Generator<'db> {
 
         let mut state = FnState::new(&fun.body);
 
-        if !sig.params.is_empty() {
-            todo!("fn params");
-        }
-
-        // TODO: params
-        // for local in fun.params(self.mir).iter() {
-        // state.locals.insert(local.id, local.name);
-        // }
+        //         for param in &sig.params{
+        //             state.params.insert(
+        // param.def_id
+        //                 , )
+        //
+        //         }
 
         let block_docs: Vec<D> =
             fun.body.blocks().iter().map(|blk| self.codegen_block(&mut state, blk)).collect();
@@ -261,7 +245,7 @@ impl<'db> Generator<'db> {
             }),
             Inst::Load { value, kind } => self.value_assign(state, *value, || match kind {
                 LoadKind::Fn(id) => D::text(self.mir.fn_sigs[*id].name.as_str()),
-                LoadKind::Param(_) => todo!(),
+                LoadKind::Param(id) => D::text(self.db[*id].name.as_str()),
             }),
             Inst::StrLit { value, lit } => self.value_assign(state, *value, || str_value(lit)),
             Inst::IntLit { value, lit } => {
@@ -270,7 +254,7 @@ impl<'db> Generator<'db> {
             Inst::BoolLit { value, lit } => {
                 self.value_assign(state, *value, || D::text(if *lit { "true" } else { "false" }))
             }
-            Inst::UnitLit { value } => self.value_assign(state, *value, || D::text("{0}")),
+            Inst::UnitLit { value } => self.value_decl(state, *value),
         }
     }
 
@@ -286,12 +270,17 @@ impl<'db> Generator<'db> {
             value
                 .ty
                 .cdecl(self, value_name(value.id))
-                // .append(D::space())
-                // .append(value_name(value.id))
                 .append(D::space())
                 .append(D::text("="))
                 .append(D::space())
                 .append(f())
+        })
+    }
+
+    fn value_decl(&self, state: &FnState<'db>, id: ValueId) -> D<'db> {
+        statement(|| {
+            let value = state.body.value(id);
+            value.ty.cdecl(self, value_name(value.id))
         })
     }
 }

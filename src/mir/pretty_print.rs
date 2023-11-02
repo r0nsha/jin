@@ -88,9 +88,9 @@ impl<'db> PrettyCx<'db> {
             Inst::Load { value, kind } => {
                 value_assign(*value).append(D::text("load")).append(D::space()).append(match kind {
                     LoadKind::Fn(id) => global_name(self.mir.fn_sigs[*id].name.as_str()),
-                    LoadKind::Param(idx) => {
-                        D::text("param(").append(D::text(idx.to_string())).append(D::text(")"))
-                    }
+                    LoadKind::Param(id) => D::text("param(")
+                        .append(D::text(self.db[*id].name.as_str()))
+                        .append(D::text(")")),
                 })
             }
             Inst::StrLit { value, lit } => value_assign(*value).append(D::text(lit.as_str())),

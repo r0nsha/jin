@@ -197,11 +197,13 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                 self.body.push_block("start");
 
-                for (idx, param) in self.cx.mir.fn_sigs[sig].params.clone().iter().enumerate() {
-                    self.push_inst_with(param.ty, |value| Inst::Load {
+                for param in self.cx.mir.fn_sigs[sig].params.clone() {
+                    let value = self.push_inst_with(param.ty, |value| Inst::Load {
                         value,
-                        kind: LoadKind::Param(idx),
+                        kind: LoadKind::Param(param.def_id),
                     });
+
+                    self.def_to_local.insert(param.def_id, value);
                 }
 
                 let last_value = self.lower_expr(body);
@@ -379,8 +381,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                             todo!()
                             // ExprKind::Id(Id::Global(self.cx.lower_global(name.id)))
                         }
-                        DefKind::Variable => todo!(),
-                        // ExprKind::Id(Id::Local(self.def_to_local[&name.id])),
+                        DefKind::Variable => self.def_to_local[&name.id],
                         DefKind::Ty(_) => unreachable!(),
                     }
                 }
@@ -441,12 +442,6 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
             self.body.value_mut(value).ty = coercion.target;
         }
 
-        value
-    }
-
-    #[inline]
-    pub fn create_local(&mut self, def_id: DefId, value: ValueId) -> ValueId {
-        self.def_to_local.insert(def_id, value);
         value
     }
 }

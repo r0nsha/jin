@@ -5,6 +5,7 @@ use std::io;
 
 use enum_as_inner::EnumAsInner;
 pub use lower::lower;
+use rustc_hash::FxHashMap;
 use typed_index_collections::TiSlice;
 use ustr::Ustr;
 
@@ -205,5 +206,5 @@ pub struct Value {
 #[derive(Debug, Clone)]
 pub enum LoadKind {
     Fn(FnSigId),
-    Param(usize),
+    Param(DefId),
 }

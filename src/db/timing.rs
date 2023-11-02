@@ -36,7 +36,7 @@ impl Timings {
             let total: Duration = self.passes.iter().map(|p| p.duration).sum();
             println!(
                 "{: <15}{}ms",
-                "total:".color(AnsiColors::BrightWhite).bold(),
+                "total".color(AnsiColors::BrightWhite).bold(),
                 total.as_millis()
             );
         }
