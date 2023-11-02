@@ -145,10 +145,9 @@ fn build(db: &mut Db) {
     expect!(db);
 
     db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
-        .expect("emitting tir failed");
+        .expect("emitting mir failed");
 
-    // TODO:
-    // cgen::codegen(db, &tir);
+    cgen::codegen(db, &mir);
 
     db.time.print();
 }

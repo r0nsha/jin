@@ -24,14 +24,14 @@ use ustr::UstrMap;
 use crate::{
     cgen::generate::Generator,
     db::{Db, ExternLib},
+    mir::Mir,
     target::{Arch, Os, TargetMetrics},
-    tir::Tir,
 };
 
-pub fn codegen(db: &mut Db, tir: &Tir) -> Utf8PathBuf {
+pub fn codegen(db: &mut Db, mir: &Mir) -> Utf8PathBuf {
     db.time.start("cgen");
     let c_output_path =
-        Generator { db, tir, fn_decls: vec![], globals: vec![], fn_defs: vec![] }.run();
+        Generator { db, mir, fn_decls: vec![], globals: vec![], fn_defs: vec![] }.run();
     db.time.stop();
 
     todo!()
