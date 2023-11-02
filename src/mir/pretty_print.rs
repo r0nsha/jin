@@ -42,7 +42,7 @@ impl<'db> PrettyCx<'db> {
                 .append(D::space())
                 .append(D::text("="))
                 .append(D::space())
-                .append(self.pp_const_value(value)),
+                .append(pp_const_value(value)),
             GlobalKind::Extern => D::text("let")
                 .append(D::space())
                 .append(D::text("extern"))
@@ -112,16 +112,14 @@ impl<'db> PrettyCx<'db> {
             Inst::UnitLit { value } => value_assign(*value).append(D::text("{}")),
         }
     }
+}
 
-    fn pp_const_value(&self, value: &Const) -> D<'db> {
-        match value {
-            Const::Str(value) => {
-                D::text("\"").append(D::text(value.as_str())).append(D::text("\""))
-            }
-            Const::Int(value) => D::text(value.to_string()),
-            Const::Bool(value) => D::text(value.to_string()),
-            Const::Unit => D::text("{}"),
-        }
+fn pp_const_value<'a>(value: &Const) -> D<'a> {
+    match value {
+        Const::Str(value) => D::text("\"").append(D::text(value.as_str())).append(D::text("\"")),
+        Const::Int(value) => D::text(value.to_string()),
+        Const::Bool(value) => D::text(value.to_string()),
+        Const::Unit => D::text("{}"),
     }
 }
 
