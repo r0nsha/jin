@@ -186,24 +186,26 @@ impl<'s> Lexer<'s> {
                     // Removes the ending double-quote
                     let str = &str[..str.len() - 1];
 
-                    let stripped = unescaper::unescape(str).map_err(|err| match err {
-                        unescaper::Error::IncompleteStr(pos) => TokenizeError::EscapeIncompleteStr(
-                            Span::uniform(self.source_id, start + pos as u32),
-                        ),
-                        unescaper::Error::InvalidChar { char, pos } => {
-                            TokenizeError::EscapeInvalidChar(
-                                char,
-                                Span::uniform(self.source_id, start + pos as u32),
-                            )
-                        }
-                        unescaper::Error::ParseIntError { pos, .. } => {
-                            TokenizeError::EscapeParseIntError(Span::uniform(
-                                self.source_id,
-                                start + pos as u32,
-                            ))
-                        }
-                    })?;
-                    return Ok(TokenKind::Str(ustr(&stripped)));
+                    // TODO: unescaping
+                    // let stripped_str = unescaper::unescape(str).map_err(|err| match err {
+                    //     unescaper::Error::IncompleteStr(pos) => TokenizeError::EscapeIncompleteStr(
+                    //         Span::uniform(self.source_id, start + pos as u32),
+                    //     ),
+                    //     unescaper::Error::InvalidChar { char, pos } => {
+                    //         TokenizeError::EscapeInvalidChar(
+                    //             char,
+                    //             Span::uniform(self.source_id, start + pos as u32),
+                    //         )
+                    //     }
+                    //     unescaper::Error::ParseIntError { pos, .. } => {
+                    //         TokenizeError::EscapeParseIntError(Span::uniform(
+                    //             self.source_id,
+                    //             start + pos as u32,
+                    //         ))
+                    //     }
+                    // })?;
+
+                    return Ok(TokenKind::Str(ustr(str)));
                 }
                 Some(_) => (),
                 None => break,
