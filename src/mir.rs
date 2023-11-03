@@ -181,7 +181,7 @@ pub enum Inst {
     Call { value: ValueId, callee: ValueId, args: Vec<ValueId> },
     // Binary { value: ValueId, lhs: ValueId, rhs: ValueId, op: BinOp },
     // Unary { value: ValueId, inner: ValueId, op: UnOp },
-    // Cast { value: ValueId, inner: ValueId, target: Ty },
+    Cast { value: ValueId, inner: ValueId, target: Ty },
     Member { value: ValueId, inner: ValueId, member: Ustr },
     Load { value: ValueId, kind: LoadKind },
     StrLit { value: ValueId, lit: Ustr },

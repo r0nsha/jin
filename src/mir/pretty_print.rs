@@ -97,6 +97,13 @@ impl<'db> PrettyCx<'db> {
                     D::text(",").append(D::space()),
                 ))
                 .append(D::text(")")),
+            Inst::Cast { value, inner, target } => value_assign(*value)
+                .append(D::text("cast"))
+                .append(D::space())
+                .append(value_name(*inner))
+                .append(D::space())
+                .append(D::text("to"))
+                .append(D::text(target.to_string(self.db))),
             Inst::Member { value, inner, member } => value_assign(*value)
                 .append(value_name(*inner))
                 .append(D::text("."))
