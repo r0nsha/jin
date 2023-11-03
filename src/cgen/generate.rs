@@ -192,14 +192,16 @@ impl<'db> Generator<'db> {
     fn codegen_inst(&mut self, state: &mut FnState<'db>, inst: &'db Inst) -> D<'db> {
         match inst {
             Inst::StackAlloc { value, id, init } => {
+                let name = D::text(self.db[*id].name.as_str());
+
                 let stack_alloc = VariableDoc::assign(
                     self,
                     state.body.value(*value).ty,
-                    D::text(self.db[*id].name.as_str()),
+                    name.clone(),
                     value_name(*init),
                 );
 
-                let value_assign = self.value_assign(state, *value, || stack_alloc.clone());
+                let value_assign = self.value_assign(state, *value, || name);
 
                 D::intersperse([stack_alloc, value_assign], D::hardline())
             }
