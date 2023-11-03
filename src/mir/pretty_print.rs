@@ -82,6 +82,10 @@ impl<'db> PrettyCx<'db> {
 
     fn pp_inst(&mut self, inst: &Inst) -> D<'db> {
         match inst {
+            Inst::StackAlloc { value, id, init } => value_assign(*value)
+                .append(D::text(format!("stack_alloc({})", self.db[*id].name)))
+                .append(D::space())
+                .append(value_name(*init)),
             Inst::Return { value } => D::text("ret").append(D::space()).append(value_name(*value)),
             Inst::Call { value, callee, args } => value_assign(*value)
                 .append(D::text("call"))

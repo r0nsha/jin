@@ -191,6 +191,20 @@ impl<'db> Generator<'db> {
 
     fn codegen_inst(&mut self, state: &mut FnState<'db>, inst: &'db Inst) -> D<'db> {
         match inst {
+            Inst::StackAlloc { value, id, init } => D::intersperse(
+                [statement(|| {
+                    let value = state.body.value(id);
+
+                    value
+                        .ty
+                        .cdecl(self, value_name(value.id))
+                        .append(D::space())
+                        .append(D::text("="))
+                        .append(D::space())
+                        .append(f())
+                })],
+                D::hardline(),
+            ),
             Inst::Return { value } => {
                 statement(|| D::text("return").append(D::space()).append(value_name(*value)))
             }
@@ -244,10 +258,12 @@ impl<'db> Generator<'db> {
     }
 
     fn value_decl(&self, state: &FnState<'db>, id: ValueId) -> D<'db> {
-        statement(|| {
-            let value = state.body.value(id);
-            value.ty.cdecl(self, value_name(value.id))
-        })
+        let value = state.body.value(id);
+        self.variable_decl(value.ty, value_name(value.id))
+    }
+
+    fn variable_decl(&self, ty: Ty, name: D<'db>) -> D<'db> {
+        statement(|| ty.cdecl(self, name))
     }
 }
 

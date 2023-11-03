@@ -175,7 +175,7 @@ impl Block {
 
 #[derive(Debug, Clone)]
 pub enum Inst {
-    // StackAlloc { id: LocalId, def_id: DefId, value: ValueId },
+    StackAlloc { value: ValueId, id: DefId, init: ValueId },
     // If { cond: ValueId, then: ValueId, otherwise: ValueId },
     Return { value: ValueId },
     Call { value: ValueId, callee: ValueId, args: Vec<ValueId> },
