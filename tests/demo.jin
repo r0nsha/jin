@@ -9,14 +9,14 @@ fn main {
 	//global_vars()
 }
 
-fn int_types {
-	let id: I8 = 126
-	let promoted: I64 = id + 5555
-	let demoted_inferred: I32 = promoted as _
-	let demoted_explicit: I16 = { demoted_inferred - 4000 } as _
-	let int_to_uint: Uint = { 663151 as Int } as _
-}
-
+//fn int_types {
+//	let id: I8 = 126
+//	let promoted: I64 = id + 5555
+//	let demoted_inferred: I32 = promoted as _
+//	let demoted_explicit: I16 = { demoted_inferred - 4000 } as _
+//	let int_to_uint: Uint = { 663151 as Int } as _
+//}
+//
 //fn unary {
 //	-48
 //	!true

@@ -343,8 +343,13 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                         // ExprKind::Binary { lhs, rhs, op: bin.op }
                     }
                     hir::ExprKind::Cast(cast) => {
-                        todo!()
-                        // ExprKind::Cast { value: self.lower_expr(&cast.expr), target: expr.ty }
+                        let inner = self.lower_expr(&cast.expr);
+
+                        self.push_inst_with(cast.target, |value| Inst::Cast {
+                            value,
+                            inner,
+                            target: cast.target,
+                        })
                     }
                     hir::ExprKind::Member(access) => {
                         let inner = self.lower_expr(&access.expr);
@@ -445,19 +450,22 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         self.body.last_block_mut().push_inst(inst);
     }
 
-    pub fn apply_coercions(&mut self, coercions: &Coercions, mut value: ValueId) -> ValueId {
+    pub fn apply_coercions(
+        &mut self,
+        coercions: &Coercions,
+        mut coerced_value: ValueId,
+    ) -> ValueId {
         for coercion in coercions.iter() {
-            value = match coercion.kind {
-                CoercionKind::NeverToAny => value,
-                CoercionKind::IntPromotion => self.push_inst_with(coercion.target, |_value| {
-                    // ExprKind::Cast { value, target: coercion.target }
-                    todo!()
+            coerced_value = match coercion.kind {
+                CoercionKind::NeverToAny => coerced_value,
+                CoercionKind::IntPromotion => self.push_inst_with(coercion.target, |value| {
+                    Inst::Cast { value, inner: coerced_value, target: coercion.target }
                 }),
             };
 
-            self.body.value_mut(value).ty = coercion.target;
+            self.body.value_mut(coerced_value).ty = coercion.target;
         }
 
-        value
+        coerced_value
     }
 }
