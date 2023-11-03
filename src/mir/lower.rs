@@ -198,12 +198,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 self.body.push_block("start");
 
                 for param in self.cx.mir.fn_sigs[sig].params.clone() {
-                    let value = self.push_inst_with(param.ty, |value| Inst::Load {
-                        value,
-                        kind: LoadKind::Param(param.def_id),
-                    });
-
-                    self.def_to_local.insert(param.def_id, value);
+                    self.create_local(param.def_id, param.ty);
                 }
 
                 let last_value = self.lower_expr(body);
@@ -262,19 +257,10 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
             self.lower_const(&val, expr.ty)
         } else {
             match &expr.kind {
-                hir::ExprKind::Let(let_) => {
-                    todo!()
-                    // let value = self.lower_expr(&let_.value);
-                    //
-                    // match &let_.pat {
-                    //     hir::Pat::Name(name) => {
-                    //         let ty = self.cx.db[name.id].ty;
-                    //         let id = self.create_local(name.id, ty);
-                    //         ExprKind::Let { id, def_id: name.id, value }
-                    //     }
-                    //     hir::Pat::Discard(_) => ExprKind::Const(Const::Unit),
-                    // }
-                }
+                hir::ExprKind::Let(let_) => match &let_.pat {
+                    hir::Pat::Name(name) => self.create_local(name.id, let_.ty),
+                    hir::Pat::Discard(_) => self.push_unit_lit(),
+                },
                 hir::ExprKind::If(if_) => {
                     todo!()
                     // ExprKind::If {
@@ -420,9 +406,13 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         match value {
             Const::Str(lit) => self.push_inst_with(ty, |value| Inst::StrLit { value, lit: *lit }),
             Const::Int(lit) => self.push_inst_with(ty, |value| Inst::IntLit { value, lit: *lit }),
-            Const::Bool(lit) => self.push_inst_with(ty, |value| Inst::BoolLit { value, lit: *lit }),
-            Const::Unit => self.push_inst_with(ty, |value| Inst::UnitLit { value }),
+            Const::Bool(lit) => self.push_bool_lit(*lit),
+            Const::Unit => self.push_unit_lit(),
         }
+    }
+
+    pub fn push_bool_lit(&mut self, lit: bool) -> ValueId {
+        self.push_inst_with(Ty::new(TyKind::Bool), |value| Inst::BoolLit { value, lit })
     }
 
     pub fn push_unit_lit(&mut self) -> ValueId {
@@ -437,6 +427,13 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
     pub fn push_inst(&mut self, inst: Inst) {
         self.body.last_block_mut().push_inst(inst);
+    }
+
+    pub fn create_local(&mut self, id: DefId, ty: Ty) -> ValueId {
+        let value =
+            self.push_inst_with(ty, |value| Inst::Load { value, kind: LoadKind::Local(id) });
+        self.def_to_local.insert(id, value);
+        value
     }
 
     pub fn apply_coercions(&mut self, coercions: &Coercions, mut value: ValueId) -> ValueId {

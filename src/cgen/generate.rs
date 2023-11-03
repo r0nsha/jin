@@ -213,7 +213,7 @@ impl<'db> Generator<'db> {
             Inst::Load { value, kind } => self.value_assign(state, *value, || match kind {
                 LoadKind::Fn(id) => D::text(self.mir.fn_sigs[*id].name.as_str()),
                 LoadKind::Global(id) => D::text(self.mir.globals[*id].name.as_str()),
-                LoadKind::Param(id) => D::text(self.db[*id].name.as_str()),
+                LoadKind::Local(id) => D::text(self.db[*id].name.as_str()),
             }),
             Inst::StrLit { value, lit } => self.value_assign(state, *value, || str_value(lit)),
             Inst::IntLit { value, lit } => {

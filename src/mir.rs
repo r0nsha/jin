@@ -200,5 +200,5 @@ pub struct Value {
 pub enum LoadKind {
     Fn(FnSigId),
     Global(GlobalId),
-    Param(DefId),
+    Local(DefId),
 }

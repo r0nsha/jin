@@ -434,7 +434,13 @@ impl<'db> Sema<'db> {
         let def_kind = if env.in_global_scope() { DefKind::Global } else { DefKind::Variable };
         let pat = self.define_pat(env, Vis::Private, def_kind, &let_.pat, ty, value.id)?;
 
-        Ok(hir::Let { module_id: env.module_id(), pat, value: Box::new(value), span: let_.span })
+        Ok(hir::Let {
+            module_id: env.module_id(),
+            pat,
+            value: Box::new(value),
+            ty,
+            span: let_.span,
+        })
     }
 
     fn check_extern_let(
