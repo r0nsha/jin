@@ -191,20 +191,18 @@ impl<'db> Generator<'db> {
 
     fn codegen_inst(&mut self, state: &mut FnState<'db>, inst: &'db Inst) -> D<'db> {
         match inst {
-            Inst::StackAlloc { value, id, init } => D::intersperse(
-                [statement(|| {
-                    let value = state.body.value(id);
+            Inst::StackAlloc { value, id, init } => {
+                let stack_alloc = VariableDoc::assign(
+                    self,
+                    state.body.value(*value).ty,
+                    D::text(self.db[*id].name.as_str()),
+                    value_name(*init),
+                );
 
-                    value
-                        .ty
-                        .cdecl(self, value_name(value.id))
-                        .append(D::space())
-                        .append(D::text("="))
-                        .append(D::space())
-                        .append(f())
-                })],
-                D::hardline(),
-            ),
+                let value_assign = self.value_assign(state, *value, || stack_alloc.clone());
+
+                D::intersperse([stack_alloc, value_assign], D::hardline())
+            }
             Inst::Return { value } => {
                 statement(|| D::text("return").append(D::space()).append(value_name(*value)))
             }
@@ -244,35 +242,52 @@ impl<'db> Generator<'db> {
         id: ValueId,
         f: impl FnOnce() -> D<'db>,
     ) -> D<'db> {
-        statement(|| {
-            let value = state.body.value(id);
-
-            value
-                .ty
-                .cdecl(self, value_name(value.id))
-                .append(D::space())
-                .append(D::text("="))
-                .append(D::space())
-                .append(f())
-        })
+        let value = state.body.value(id);
+        VariableDoc::assign(self, value.ty, value_name(id), f())
     }
 
     fn value_decl(&self, state: &FnState<'db>, id: ValueId) -> D<'db> {
         let value = state.body.value(id);
-        self.variable_decl(value.ty, value_name(value.id))
-    }
-
-    fn variable_decl(&self, ty: Ty, name: D<'db>) -> D<'db> {
-        statement(|| ty.cdecl(self, name))
+        VariableDoc::decl(self, value.ty, value_name(value.id))
     }
 }
 
-fn codegen_const_value<'a>(value: &'a Const) -> D<'a> {
+fn codegen_const_value(value: &Const) -> D<'_> {
     match value {
         Const::Str(value) => str_value(value),
         Const::Int(value) => D::text(value.to_string()),
         Const::Bool(value) => bool_value(*value),
         Const::Unit => D::nil(),
+    }
+}
+
+struct VariableDoc<'a> {
+    ty: Ty,
+    name: D<'a>,
+    value: Option<D<'a>>,
+}
+
+impl<'a> VariableDoc<'a> {
+    fn decl(cx: &Generator<'a>, ty: Ty, name: D<'a>) -> D<'a> {
+        Self { ty, name, value: None }.into_doc(cx)
+    }
+
+    fn assign(cx: &Generator<'a>, ty: Ty, name: D<'a>, value: D<'a>) -> D<'a> {
+        Self { ty, name, value: Some(value) }.into_doc(cx)
+    }
+
+    fn into_doc(self, cx: &Generator<'a>) -> D<'a> {
+        statement(|| {
+            let decl = self.ty.cdecl(cx, self.name);
+
+            let value = if let Some(value) = self.value {
+                D::space().append(D::text("=")).append(D::space()).append(value)
+            } else {
+                D::nil()
+            };
+
+            decl.append(value)
+        })
     }
 }
 
