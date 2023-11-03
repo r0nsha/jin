@@ -15,6 +15,7 @@ typedef uintptr_t Uint;
 
 typedef struct {} Unit;
 typedef Unit Never;
+typedef bool Bool;
 
 typedef struct {
   U8* ptr;

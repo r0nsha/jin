@@ -135,7 +135,7 @@ impl<'db> LowerCx<'db> {
                 let name = def
                     .qpath
                     .clone()
-                    .with_name(ustr(&format!("{}${}", def.name, args_str)))
+                    .with_name(ustr(&format!("{}_{}", def.name, args_str)))
                     .join_with("_");
 
                 ustr(&name)
