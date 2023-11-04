@@ -103,13 +103,9 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text(op.as_str()))
                 .append(D::space())
                 .append(value_name(*rhs)),
-            Inst::Unary { value, inner, op } => value_assign(*value)
-                .append(match op {
-                    UnOp::Neg => D::text("neg"),
-                    UnOp::Not => D::text("not"),
-                })
-                .append(D::space())
-                .append(value_name(*inner)),
+            Inst::Unary { value, inner, op } => {
+                value_assign(*value).append(D::text(op.as_str())).append(value_name(*inner))
+            }
             Inst::Cast { value, inner, target } => value_assign(*value)
                 .append(D::text("cast"))
                 .append(D::space())
