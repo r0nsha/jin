@@ -1,24 +1,17 @@
-use std::{
-    fs::{self, File},
-    io::Write,
-};
+use std::{fs::File, io::Write};
 
 use camino::Utf8PathBuf;
-use pretty::{docs, RcDoc as D};
-use rustc_hash::FxHashMap;
-use ustr::{ustr, Ustr, UstrMap};
+use pretty::RcDoc as D;
 
 use crate::{
     cgen::{
+        name_gen::LocalNames,
         ty::CTy,
-        util::{bool_value, str_value, unit_value},
+        util::{bool_value, str_value},
     },
-    db::{Db, DefId},
+    db::Db,
     hir::const_eval::Const,
-    middle::{BinOp, CmpOp, UnOp},
-    mir::{
-        Block, Body, Fn, FnSig, FnSigId, GlobalId, GlobalKind, Inst, LoadKind, Mir, Value, ValueId,
-    },
+    mir::{Block, Body, Fn, FnSig, GlobalKind, Inst, LoadKind, Mir, ValueId},
     ty::Ty,
 };
 
@@ -36,12 +29,12 @@ pub struct Generator<'db> {
 #[derive(Debug, Clone)]
 pub struct FnState<'db> {
     pub body: &'db Body,
-    pub params: FxHashMap<DefId, ValueId>,
+    pub local_names: LocalNames,
 }
 
 impl<'db> FnState<'db> {
     pub fn new(body: &'db Body) -> Self {
-        Self { body, params: FxHashMap::default() }
+        Self { body, local_names: LocalNames::new() }
     }
 }
 
@@ -156,6 +149,10 @@ impl<'db> Generator<'db> {
 
         let mut state = FnState::new(&fun.body);
 
+        for param in &sig.params {
+            state.local_names.insert(param.def_id, self.db[param.def_id].name);
+        }
+
         let block_docs: Vec<D> =
             fun.body.blocks().iter().map(|blk| self.codegen_block(&mut state, blk)).collect();
 
@@ -189,16 +186,17 @@ impl<'db> Generator<'db> {
     fn codegen_inst(&mut self, state: &mut FnState<'db>, inst: &'db Inst) -> D<'db> {
         match inst {
             Inst::StackAlloc { value, id, init } => {
-                let name = D::text(self.db[*id].name.as_str());
+                let name = state.local_names.insert_unique(*id, self.db[*id].name);
+                let name_doc = D::text(name.as_str());
 
                 let stack_alloc = VariableDoc::assign(
                     self,
                     state.body.value(*value).ty,
-                    name.clone(),
+                    name_doc.clone(),
                     value_name(*init),
                 );
 
-                let value_assign = self.value_assign(state, *value, || name);
+                let value_assign = self.value_assign(state, *value, || name_doc);
 
                 D::intersperse([stack_alloc, value_assign], D::hardline())
             }
@@ -257,7 +255,7 @@ impl<'db> Generator<'db> {
             Inst::Load { value, kind } => self.value_assign(state, *value, || match kind {
                 LoadKind::Fn(id) => D::text(self.mir.fn_sigs[*id].name.as_str()),
                 LoadKind::Global(id) => D::text(self.mir.globals[*id].name.as_str()),
-                LoadKind::Local(id) => D::text(self.db[*id].name.as_str()),
+                LoadKind::Local(id) => D::text(state.local_names.get(*id).unwrap().as_str()),
             }),
             Inst::StrLit { value, lit } => self.value_assign(state, *value, || str_value(lit)),
             Inst::IntLit { value, lit } => {
@@ -331,11 +329,11 @@ fn value_name<'a>(id: ValueId) -> D<'a> {
     D::text("v").append(id.to_string())
 }
 
-fn block_name<'a>(blk: &'a Block) -> D<'a> {
+fn block_name(blk: &Block) -> D<'_> {
     D::text(format!("{}_{}", blk.name(), blk.id()))
 }
 
-fn goto_stmt<'a>(blk: &'a Block) -> D<'a> {
+fn goto_stmt(blk: &Block) -> D<'_> {
     stmt(|| D::text("goto").append(D::space()).append(block_name(blk)))
 }
 
