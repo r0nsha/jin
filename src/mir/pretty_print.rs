@@ -227,7 +227,8 @@ impl<'a> PrintBlock<'a> {
         self.name
             .append(D::text(":"))
             .append(D::hardline())
-            .append(D::intersperse(self.insts, D::hardline()).nest(NEST).group())
+            .append(D::intersperse(self.insts, D::hardline()).group())
+            .nest(NEST)
     }
 }
 
