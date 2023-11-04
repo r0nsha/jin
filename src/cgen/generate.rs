@@ -77,7 +77,10 @@ impl<'db> Generator<'db> {
             .append(
                 D::hardline()
                     .append(D::intersperse(
-                        [D::text(main_fn_name.as_str()).append(D::text("();"))],
+                        [
+                            D::text("printf(\"Hello\\n\")"),
+                            D::text(main_fn_name.as_str()).append(D::text("();")),
+                        ],
                         D::text(";").append(D::hardline()),
                     ))
                     .nest(NEST)

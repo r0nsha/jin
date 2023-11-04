@@ -1,5 +1,5 @@
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef int8_t I8;
 typedef int16_t I16;
@@ -13,11 +13,14 @@ typedef uint32_t U32;
 typedef uint64_t U64;
 typedef uintptr_t Uint;
 
-typedef struct {} Unit;
+typedef struct {
+} Unit;
 typedef Unit Never;
 typedef bool Bool;
 
 typedef struct {
-  U8* ptr;
+  U8 *ptr;
   Uint len;
 } Str;
+
+void panic(U8 *fmt) { printf("panic: %s\n", fmt); }
