@@ -47,6 +47,7 @@ impl<S: SubstTy> Subst<S> for Expr {
             }
             ExprKind::Cast(cast) => {
                 cast.expr.subst(s);
+                cast.target = s.subst_ty(cast.target, self.span);
             }
             ExprKind::Member(access) => {
                 access.expr.subst(s);

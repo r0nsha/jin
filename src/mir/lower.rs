@@ -305,8 +305,10 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     result.unwrap_or_else(|| self.push_unit_lit())
                 }
                 hir::ExprKind::Return(ret) => {
-                    todo!()
-                    // ExprKind::Return { value: self.lower_expr(&ret.expr) }
+                    let value = self.lower_expr(&ret.expr);
+                    self.push_inst(Inst::Return { value });
+                    // TODO: push unreachable inst instead of unit literal
+                    self.push_unit_lit()
                 }
                 hir::ExprKind::Call(call) => {
                     let callee = self.lower_expr(&call.callee);
