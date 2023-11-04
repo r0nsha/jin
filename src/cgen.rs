@@ -1,10 +1,10 @@
+mod builtin;
 mod generate;
 #[cfg(windows)]
 mod microsoft_craziness;
 mod name_gen;
 mod ty;
 mod util;
-mod builtin;
 
 use std::process::Command;
 
