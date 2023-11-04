@@ -97,7 +97,7 @@ impl<'db> Generator<'db> {
     pub fn predefine_fns(&mut self) {
         for sig in &self.mir.fn_sigs {
             let doc = self.codegen_fn_sig(sig);
-            self.fn_decls.push(statement(|| doc));
+            self.fn_decls.push(stmt(|| doc));
         }
     }
 
@@ -116,7 +116,7 @@ impl<'db> Generator<'db> {
                 GlobalKind::Extern => D::text("extern").append(D::space()).append(tyname_doc),
             };
 
-            self.globals.push(statement(|| doc));
+            self.globals.push(stmt(|| doc));
         }
     }
 
@@ -156,24 +156,13 @@ impl<'db> Generator<'db> {
 
         let mut state = FnState::new(&fun.body);
 
-        //         for param in &sig.params{
-        //             state.params.insert(
-        // param.def_id
-        //                 , )
-        //
-        //         }
-
         let block_docs: Vec<D> =
             fun.body.blocks().iter().map(|blk| self.codegen_block(&mut state, blk)).collect();
 
         let doc = self.codegen_fn_sig(sig).append(D::space()).append(
             D::text("{")
                 .append(D::hardline())
-                .append(
-                    D::intersperse(block_docs, D::hardline().append(D::hardline()))
-                        .nest(NEST)
-                        .group(),
-                )
+                .append(D::intersperse(block_docs, D::hardline().append(D::hardline())).group())
                 .append(D::hardline())
                 .append(D::text("}"))
                 .group(),
@@ -183,7 +172,7 @@ impl<'db> Generator<'db> {
     }
 
     fn codegen_block(&mut self, state: &mut FnState<'db>, blk: &'db Block) -> D<'db> {
-        D::text(format!("{}_{}", blk.name(), blk.id()))
+        block_name(blk)
             .append(D::text(":;"))
             .append(D::hardline())
             .append(
@@ -193,6 +182,8 @@ impl<'db> Generator<'db> {
                 )
                 .group(),
             )
+            .nest(NEST)
+            .group()
     }
 
     fn codegen_inst(&mut self, state: &mut FnState<'db>, inst: &'db Inst) -> D<'db> {
@@ -211,11 +202,25 @@ impl<'db> Generator<'db> {
 
                 D::intersperse([stack_alloc, value_assign], D::hardline())
             }
-            Inst::Br { target } => todo!(),
-            Inst::BrIf { cond, then, otherwise } => todo!(),
-            Inst::If { value, cond, then, otherwise } => todo!(),
+            Inst::Br { target } => goto_stmt(state.body.block(*target)),
+            Inst::BrIf { cond, then, otherwise } => if_stmt(
+                value_name(*cond),
+                goto_stmt(state.body.block(*then)),
+                goto_stmt(state.body.block(*otherwise)),
+            ),
+            Inst::If { value, cond, then, otherwise } => self.value_assign(state, *value, || {
+                value_name(*cond)
+                    .append(D::space())
+                    .append(D::text("?"))
+                    .append(D::space())
+                    .append(value_name(*then))
+                    .append(D::space())
+                    .append(D::text(":"))
+                    .append(D::space())
+                    .append(value_name(*otherwise))
+            }),
             Inst::Return { value } => {
-                statement(|| D::text("return").append(D::space()).append(value_name(*value)))
+                stmt(|| D::text("return").append(D::space()).append(value_name(*value)))
             }
             Inst::Call { value, callee, args } => self.value_assign(state, *value, || {
                 value_name(*callee)
@@ -304,7 +309,7 @@ impl<'a> VariableDoc<'a> {
     }
 
     fn into_doc(self, cx: &Generator<'a>) -> D<'a> {
-        statement(|| {
+        stmt(|| {
             let decl = self.ty.cdecl(cx, self.name);
 
             let value = if let Some(value) = self.value {
@@ -318,10 +323,42 @@ impl<'a> VariableDoc<'a> {
     }
 }
 
-fn statement<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
+fn stmt<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
     f().append(D::text(";"))
 }
 
 fn value_name<'a>(id: ValueId) -> D<'a> {
     D::text("v").append(id.to_string())
+}
+
+fn block_name<'a>(blk: &'a Block) -> D<'a> {
+    D::text(format!("{}_{}", blk.name(), blk.id()))
+}
+
+fn goto_stmt<'a>(blk: &'a Block) -> D<'a> {
+    stmt(|| D::text("goto").append(D::space()).append(block_name(blk)))
+}
+
+fn if_stmt<'a>(cond: D<'a>, then: D<'a>, otherwise: D<'a>) -> D<'a> {
+    stmt(|| {
+        D::text("if")
+            .append(D::space())
+            .append(D::text("("))
+            .append(cond)
+            .append(D::text(")"))
+            .append(D::space())
+            .append(D::text("{"))
+            .append(D::space())
+            .append(then)
+            .append(D::space())
+            .append(D::text("}"))
+            .append(D::space())
+            .append(D::text("else"))
+            .append(D::space())
+            .append(D::text("{"))
+            .append(D::space())
+            .append(otherwise)
+            .append(D::space())
+            .append(D::text("}"))
+    })
 }

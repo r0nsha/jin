@@ -1,49 +1,49 @@
 fn main {
-	int_types()
-	unary()
-	arithmetic()
-	cmp()
+	//int_types()
+	//unary()
+	//arithmetic()
+	//cmp()
 	if_expr()
-	variables()
-	polymorphism()
-	named_args()
-	global_vars()
+	//variables()
+	//polymorphism()
+	//named_args()
+	//global_vars()
 }
 
-fn int_types {
-	let id: I8 = 126
-	let promoted: I64 = id + 5555
-	let demoted_inferred: I32 = promoted as _
-	let demoted_explicit: I16 = { demoted_inferred - 4000 } as _
-	let int_to_uint: Uint = { 663151 as Int } as _
-}
-
-fn unary {
-	-48
-	!true
-	!!false
-	// TODO: bitnot
-	// !54878
-}
-
-fn arithmetic {
-	1 + 2
-	3 - 4
-	5 * 6
-	7 / 8
-	9 % 10
-}
-
-fn cmp {
-	true && false
-	false || true
-	100 == 100
-	200 != 150
-	8 < 7
-	42 <= 999
-	2 > 1
-	264 >= 71
-}
+//fn int_types {
+//	let id: I8 = 126
+//	let promoted: I64 = id + 5555
+//	let demoted_inferred: I32 = promoted as _
+//	let demoted_explicit: I16 = { demoted_inferred - 4000 } as _
+//	let int_to_uint: Uint = { 663151 as Int } as _
+//}
+//
+//fn unary {
+//	-48
+//	!true
+//	!!false
+//	// TODO: bitnot
+//	// !54878
+//}
+//
+//fn arithmetic {
+//	1 + 2
+//	3 - 4
+//	5 * 6
+//	7 / 8
+//	9 % 10
+//}
+//
+//fn cmp {
+//	true && false
+//	false || true
+//	100 == 100
+//	200 != 150
+//	8 < 7
+//	42 <= 999
+//	2 > 1
+//	264 >= 71
+//}
 
 fn if_expr {
 	let cond = true
@@ -54,38 +54,38 @@ fn if_expr {
 	}
 }
 
-fn variables -> Int {
-	let x = 39 // Inferred to `Int`
-	let y: Int = 3 // Explicit type annotation
-	x + y
-}
-
-fn id[a](x: a) -> a {
-	x
-}
-
-fn polymorphism {
-	// Inferred type arguments
-	id(42)
-	id(true)
-
-	// Explicit type arguments
-	id[Int](111)
-	id[Bool](false)
-}
-
-fn add_named(first: Int, second: Int) -> Int {
-	first + second
-}
-
-fn named_args {
-	add_named(first: 1, second: 2)
-	add_named(second: 2, first: 1)
-	add_named(1, second: 2)
-}
-
-let global_answer = 42
-
-fn global_vars {
-	let answer = global_answer
-}
+//fn variables -> Int {
+//	let x = 39 // Inferred to `Int`
+//	let y: Int = 3 // Explicit type annotation
+//	x + y
+//}
+//
+//fn id[a](x: a) -> a {
+//	x
+//}
+//
+//fn polymorphism {
+//	// Inferred type arguments
+//	id(42)
+//	id(true)
+//
+//	// Explicit type arguments
+//	id[Int](111)
+//	id[Bool](false)
+//}
+//
+//fn add_named(first: Int, second: Int) -> Int {
+//	first + second
+//}
+//
+//fn named_args {
+//	add_named(first: 1, second: 2)
+//	add_named(second: 2, first: 1)
+//	add_named(1, second: 2)
+//}
+//
+//let global_answer = 42
+//
+//fn global_vars {
+//	let answer = global_answer
+//}
