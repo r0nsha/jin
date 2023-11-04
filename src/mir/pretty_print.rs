@@ -90,13 +90,12 @@ impl<'db> PrettyCx<'db> {
                 D::text("br").append(D::space()).append(D::text(body.block(*target).name()))
             }
             Inst::BrIf { cond, then, otherwise } => D::text("brif")
-                .append(D::space())
+                .append(D::text("("))
                 .append(value_name(*cond))
-                .append(D::text(","))
+                .append(D::text(")"))
                 .append(D::space())
                 .append(body.block(*then).name())
-                .append(D::text(","))
-                .append(D::space())
+                .append(D::text(", "))
                 .append(body.block(*otherwise).name()),
             Inst::If { value, cond, then, otherwise } => value_assign(*value)
                 .append(D::text("if"))
@@ -105,7 +104,7 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text(")"))
                 .append(D::space())
                 .append(value_name(*then))
-                .append(D::text("/"))
+                .append(D::text(", "))
                 .append(value_name(*otherwise)),
             Inst::Return { value } => D::text("ret").append(D::space()).append(value_name(*value)),
             Inst::Call { value, callee, args } => value_assign(*value)
