@@ -55,8 +55,9 @@ fn if_expr {
 }
 
 fn variables -> Int {
-	let x = 39 // Inferred to `Int`
+	let x = 7 // Inferred to `Int`
 	let y: Int = 3 // Explicit type annotation
+	let x = 39  // Variables can be shadowed
 	x + y
 }
 
