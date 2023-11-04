@@ -50,11 +50,11 @@ impl<'db> Generator<'db> {
         self.predefine_fns();
         self.define_globals();
         self.define_fns();
-        let main_function = self.codegen_main_function();
-        self.write_to_file(main_function)
+        let main_fn = self.codegen_main_fn();
+        self.write_to_file(main_fn)
     }
 
-    fn write_to_file(self, main_function: D<'db>) -> Utf8PathBuf {
+    fn write_to_file(self, main_fn: D<'db>) -> Utf8PathBuf {
         const WIDTH: usize = 80;
 
         let path = self.db.output_path().with_extension("c");
@@ -68,7 +68,7 @@ impl<'db> Generator<'db> {
         let fn_defs = D::intersperse(self.fn_defs, D::hardline().append(D::hardline()));
 
         let final_doc = D::intersperse(
-            [fn_decls, globals, fn_defs, main_function],
+            [fn_decls, globals, fn_defs, main_fn],
             D::hardline().append(D::hardline()),
         );
 
@@ -77,7 +77,7 @@ impl<'db> Generator<'db> {
         path
     }
 
-    pub fn codegen_main_function(&mut self) -> D<'db> {
+    pub fn codegen_main_fn(&mut self) -> D<'db> {
         let main_fn_name = &self.mir.fn_sigs[self.mir.main_fn.expect("to have a main fn")].name;
 
         D::text("int main() {")
@@ -347,18 +347,20 @@ fn if_stmt<'a>(cond: D<'a>, then: D<'a>, otherwise: D<'a>) -> D<'a> {
             .append(cond)
             .append(D::text(")"))
             .append(D::space())
-            .append(D::text("{"))
-            .append(D::space())
-            .append(then)
-            .append(D::space())
-            .append(D::text("}"))
+            .append(block(|| then))
             .append(D::space())
             .append(D::text("else"))
             .append(D::space())
-            .append(D::text("{"))
-            .append(D::space())
-            .append(otherwise)
-            .append(D::space())
-            .append(D::text("}"))
+            .append(block(|| otherwise))
     })
+}
+
+fn block<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
+    D::text("{")
+        .append(D::softline())
+        .append(f())
+        .nest(NEST)
+        .group()
+        .append(D::softline())
+        .append(D::text("}"))
 }
