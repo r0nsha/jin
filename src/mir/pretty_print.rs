@@ -73,22 +73,40 @@ impl<'db> PrettyCx<'db> {
         }
     }
 
-    fn pp_blk(&mut self, body: &Body, blk: &'db Block) -> PrintBlock<'db> {
+    fn pp_blk(&mut self, body: &'db Body, blk: &'db Block) -> PrintBlock<'db> {
         PrintBlock {
             name: D::text(blk.name()),
             insts: blk.insts.iter().map(|i| self.pp_inst(body, i)).collect(),
         }
     }
 
-    fn pp_inst(&mut self, body: &Body, inst: &Inst) -> D<'db> {
+    fn pp_inst(&mut self, body: &'db Body, inst: &'db Inst) -> D<'db> {
         match inst {
             Inst::StackAlloc { value, id, init } => value_assign(*value)
                 .append(D::text(format!("stack_alloc({})", self.db[*id].name)))
                 .append(D::space())
                 .append(value_name(*init)),
-            Inst::Br { target } => todo!(),
-            Inst::BrIf { cond, then, otherwise } => todo!(),
-            Inst::If { value, cond, then, otherwise } => todo!(),
+            Inst::Br { target } => {
+                D::text("br").append(D::space()).append(D::text(body.block(*target).name()))
+            }
+            Inst::BrIf { cond, then, otherwise } => D::text("brif")
+                .append(D::space())
+                .append(value_name(*cond))
+                .append(D::text(","))
+                .append(D::space())
+                .append(body.block(*then).name())
+                .append(D::text(","))
+                .append(D::space())
+                .append(body.block(*otherwise).name()),
+            Inst::If { value, cond, then, otherwise } => value_assign(*value)
+                .append(D::text("if"))
+                .append(D::text("("))
+                .append(value_name(*cond))
+                .append(D::text(")"))
+                .append(D::space())
+                .append(value_name(*then))
+                .append(D::text("/"))
+                .append(value_name(*otherwise)),
             Inst::Return { value } => D::text("ret").append(D::space()).append(value_name(*value)),
             Inst::Call { value, callee, args } => value_assign(*value)
                 .append(D::text("call"))
@@ -163,7 +181,6 @@ impl<'a> PrintFn<'a> {
                         self.blocks.into_iter().map(PrintBlock::into_doc),
                         D::hardline().append(D::hardline()),
                     )
-                    .nest(NEST)
                     .group(),
                 )
                 .append(D::hardline())
@@ -210,7 +227,7 @@ impl<'a> PrintBlock<'a> {
         self.name
             .append(D::text(":"))
             .append(D::hardline())
-            .append(D::intersperse(self.insts, D::hardline()).group())
+            .append(D::intersperse(self.insts, D::hardline()).nest(NEST).group())
     }
 }
 
