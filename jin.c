@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 typedef int8_t I8;
 typedef int16_t I16;
@@ -23,4 +24,7 @@ typedef struct {
   Uint len;
 } Str;
 
-void panic(U8 *fmt) { printf("panic: %s\n", fmt); }
+void jin_panic_arithmetic_overflow(U8 *opname) {
+  printf("panic: attempt to %s with overflow\n", opname);
+  exit(1);
+}

@@ -216,13 +216,35 @@ impl IntTy {
     }
 
     pub fn contains(self, value: i128) -> bool {
-        // TODO: use target_metrics
+        // TODO: use target_metrics for Int
         match self {
-            IntTy::I8 => i8::try_from(value).is_ok(),
-            IntTy::I16 => i16::try_from(value).is_ok(),
-            IntTy::I32 => i32::try_from(value).is_ok(),
-            IntTy::I64 => i64::try_from(value).is_ok(),
-            IntTy::Int => isize::try_from(value).is_ok(),
+            Self::I8 => i8::try_from(value).is_ok(),
+            Self::I16 => i16::try_from(value).is_ok(),
+            Self::I32 => i32::try_from(value).is_ok(),
+            Self::I64 => i64::try_from(value).is_ok(),
+            Self::Int => isize::try_from(value).is_ok(),
+        }
+    }
+
+    pub fn min(self) -> i64 {
+        // TODO: use target_metrics for Int
+        match self {
+            Self::I8 => i64::from(i8::MIN),
+            Self::I16 => i64::from(i16::MIN),
+            Self::I32 => i64::from(i32::MIN),
+            Self::I64 => i64::MIN,
+            Self::Int => isize::MIN as _,
+        }
+    }
+
+    pub fn max(self) -> i64 {
+        // TODO: use target_metrics for Int
+        match self {
+            Self::I8 => i64::from(i8::MAX),
+            Self::I16 => i64::from(i16::MAX),
+            Self::I32 => i64::from(i32::MAX),
+            Self::I64 => i64::MAX,
+            Self::Int => isize::MAX as _,
         }
     }
 }
@@ -255,6 +277,28 @@ impl UintTy {
             UintTy::U32 => u32::try_from(value).is_ok(),
             UintTy::U64 => u64::try_from(value).is_ok(),
             UintTy::Uint => usize::try_from(value).is_ok(),
+        }
+    }
+
+    pub fn min(self) -> u64 {
+        // TODO: use target_metrics for Uint
+        match self {
+            Self::U8 => u64::from(u8::MIN),
+            Self::U16 => u64::from(u16::MIN),
+            Self::U32 => u64::from(u32::MIN),
+            Self::U64 => u64::MIN,
+            Self::Uint => usize::MIN as _,
+        }
+    }
+
+    pub fn max(self) -> u64 {
+        // TODO: use target_metrics for Uint
+        match self {
+            Self::U8 => u64::from(u8::MAX),
+            Self::U16 => u64::from(u16::MAX),
+            Self::U32 => u64::from(u32::MAX),
+            Self::U64 => u64::MAX,
+            Self::Uint => usize::MAX as _,
         }
     }
 }

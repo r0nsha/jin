@@ -7,7 +7,7 @@ use crate::{
     cgen::{
         name_gen::LocalNames,
         ty::CTy,
-        util::{bool_value, str_value},
+        util::{block_name, bool_value, goto_stmt, if_stmt, stmt, str_value, value_name, NEST},
     },
     db::Db,
     hir::const_eval::Const,
@@ -16,7 +16,6 @@ use crate::{
 };
 
 const PRELUDE: &str = include_str!("../../jin.c");
-const NEST: isize = 2;
 
 pub struct Generator<'db> {
     pub db: &'db mut Db,
@@ -132,7 +131,7 @@ impl<'db> Generator<'db> {
                         }),
                         D::text(",").append(D::space()),
                     )
-                    .nest(1)
+                    .nest(2)
                     .group(),
                 )
                 .append(D::text(")")),
@@ -322,46 +321,4 @@ impl<'a> VariableDoc<'a> {
             decl.append(value)
         })
     }
-}
-
-fn stmt<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
-    f().append(D::text(";"))
-}
-
-fn value_name<'a>(id: ValueId) -> D<'a> {
-    D::text("v").append(id.to_string())
-}
-
-fn block_name(blk: &Block) -> D<'_> {
-    D::text(format!("{}_{}", blk.name(), blk.id()))
-}
-
-fn goto_stmt(blk: &Block) -> D<'_> {
-    stmt(|| D::text("goto").append(D::space()).append(block_name(blk)))
-}
-
-fn if_stmt<'a>(cond: D<'a>, then: D<'a>, otherwise: D<'a>) -> D<'a> {
-    stmt(|| {
-        D::text("if")
-            .append(D::space())
-            .append(D::text("("))
-            .append(cond)
-            .append(D::text(")"))
-            .append(D::space())
-            .append(block(|| then))
-            .append(D::space())
-            .append(D::text("else"))
-            .append(D::space())
-            .append(block(|| otherwise))
-    })
-}
-
-fn block<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
-    D::text("{")
-        .append(D::softline())
-        .append(f())
-        .nest(NEST)
-        .group()
-        .append(D::softline())
-        .append(D::text("}"))
 }
