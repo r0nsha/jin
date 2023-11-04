@@ -330,12 +330,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "either"
-version = "1.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a26ae43d7bcc3b814de94796a5e736d4029efb0ee900c12e2d54c993ad1a1e07"
-
-[[package]]
 name = "ena"
 version = "0.14.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -522,29 +516,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "inkwell"
-version = "0.2.0"
-source = "git+https://github.com/TheDan64/inkwell?branch=master#bbe1f3d76c45fc137a125665861fc6382ab352d6"
-dependencies = [
- "either",
- "inkwell_internals",
- "libc",
- "llvm-sys",
- "once_cell",
- "parking_lot",
-]
-
-[[package]]
-name = "inkwell_internals"
-version = "0.8.0"
-source = "git+https://github.com/TheDan64/inkwell?branch=master#bbe1f3d76c45fc137a125665861fc6382ab352d6"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.29",
-]
-
-[[package]]
 name = "internment"
 version = "0.7.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -585,11 +556,9 @@ dependencies = [
  "enum-as-inner",
  "execute",
  "fs_extra",
- "inkwell",
  "internment",
  "lazy_static 1.4.0",
  "libc",
- "llvm-sys",
  "owo-colors",
  "path-absolutize",
  "pretty",
@@ -644,19 +613,6 @@ name = "linux-raw-sys"
 version = "0.4.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "57bcfdad1b858c2db7c38303a6d2ad4dfaf5eb53dfeb0910128b2c26d6158503"
-
-[[package]]
-name = "llvm-sys"
-version = "150.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "417dbaef2fece3b186fe15704e010849279de5f7eea1caa8845558130867bdd2"
-dependencies = [
- "cc",
- "lazy_static 1.4.0",
- "libc",
- "regex",
- "semver",
-]
 
 [[package]]
 name = "lock_api"

@@ -40,9 +40,7 @@ impl BuildOptions {
 pub enum EmitOption {
     Ast,
     Hir,
-    Tir,
     Mir,
-    LlvmIr,
     C,
 }
 
@@ -51,9 +49,7 @@ impl EmitOption {
         match self {
             Self::Ast => "ast",
             Self::Hir => "hir",
-            Self::Tir => "tir",
             Self::Mir => "mir",
-            Self::LlvmIr => "ll",
             Self::C => "c",
         }
     }

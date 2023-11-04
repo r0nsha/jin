@@ -3,17 +3,6 @@
 // const STDLIB: &str = "stdlib";
 
 fn main() {
-    // #[cfg(windows)]
-    // {
-    //     println!("cargo:rustc-link-search=./llvm/windows");
-    //     println!("cargo:rustc-link-lib=dylib=LLVM-C");
-    // }
-    //
-    // #[cfg(not(windows))]
-    // {
-    //     println!("cargo:rustc-link-lib=dylib=LLVM-12");
-    // }
-
     // TODO: stdlib
     // let cwd = std::env::current_dir().unwrap();
     //
