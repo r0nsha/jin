@@ -14,14 +14,7 @@ pub fn bin_op_safety_check<'a>(ty: Ty, lhs: ValueId, rhs: ValueId, op: BinOp) ->
         BinOp::Mul => todo!(),
         BinOp::Div => todo!(),
         BinOp::Rem => todo!(),
-        BinOp::Shl => todo!(),
-        BinOp::Shr => todo!(),
-        BinOp::BitAnd => todo!(),
-        BinOp::BitOr => todo!(),
-        BinOp::BitXor => todo!(),
-        BinOp::And => todo!(),
-        BinOp::Or => todo!(),
-        BinOp::Cmp(_) => todo!(),
+        _ => D::nil(),
     }
 }
 
