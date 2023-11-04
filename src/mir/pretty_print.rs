@@ -59,7 +59,7 @@ impl<'db> PrettyCx<'db> {
 
         PrintFn {
             sig: self.pp_fn_sig(sig),
-            blocks: f.body.blocks.iter().map(|b| self.pp_blk(b)).collect(),
+            blocks: f.body.blocks.iter().map(|b| self.pp_blk(&f.body, b)).collect(),
         }
         .into_doc()
     }
@@ -73,19 +73,22 @@ impl<'db> PrettyCx<'db> {
         }
     }
 
-    fn pp_blk(&mut self, blk: &'db Block) -> PrintBlock<'db> {
+    fn pp_blk(&mut self, body: &Body, blk: &'db Block) -> PrintBlock<'db> {
         PrintBlock {
             name: D::text(blk.name()),
-            insts: blk.insts.iter().map(|i| self.pp_inst(i)).collect(),
+            insts: blk.insts.iter().map(|i| self.pp_inst(body, i)).collect(),
         }
     }
 
-    fn pp_inst(&mut self, inst: &Inst) -> D<'db> {
+    fn pp_inst(&mut self, body: &Body, inst: &Inst) -> D<'db> {
         match inst {
             Inst::StackAlloc { value, id, init } => value_assign(*value)
                 .append(D::text(format!("stack_alloc({})", self.db[*id].name)))
                 .append(D::space())
                 .append(value_name(*init)),
+            Inst::Br { target } => todo!(),
+            Inst::BrIf { cond, then, otherwise } => todo!(),
+            Inst::If { value, cond, then, otherwise } => todo!(),
             Inst::Return { value } => D::text("ret").append(D::space()).append(value_name(*value)),
             Inst::Call { value, callee, args } => value_assign(*value)
                 .append(D::text("call"))

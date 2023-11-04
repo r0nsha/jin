@@ -183,10 +183,16 @@ impl<'db> Generator<'db> {
     }
 
     fn codegen_block(&mut self, state: &mut FnState<'db>, blk: &'db Block) -> D<'db> {
-        D::text(blk.name()).append(D::text(":;")).append(D::hardline()).append(
-            D::intersperse(blk.insts().iter().map(|i| self.codegen_inst(state, i)), D::hardline())
+        D::text(format!("{}_{}", blk.name(), blk.id()))
+            .append(D::text(":;"))
+            .append(D::hardline())
+            .append(
+                D::intersperse(
+                    blk.insts().iter().map(|i| self.codegen_inst(state, i)),
+                    D::hardline(),
+                )
                 .group(),
-        )
+            )
     }
 
     fn codegen_inst(&mut self, state: &mut FnState<'db>, inst: &'db Inst) -> D<'db> {
@@ -205,6 +211,9 @@ impl<'db> Generator<'db> {
 
                 D::intersperse([stack_alloc, value_assign], D::hardline())
             }
+            Inst::Br { target } => todo!(),
+            Inst::BrIf { cond, then, otherwise } => todo!(),
+            Inst::If { value, cond, then, otherwise } => todo!(),
             Inst::Return { value } => {
                 statement(|| D::text("return").append(D::space()).append(value_name(*value)))
             }

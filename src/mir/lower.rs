@@ -180,12 +180,18 @@ impl<'db> LowerCx<'db> {
 struct LowerBodyCx<'cx, 'db> {
     cx: &'cx mut LowerCx<'db>,
     body: Body,
+    curr_block: BlockId,
     def_to_local: FxHashMap<DefId, ValueId>,
 }
 
 impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     fn new(cx: &'cx mut LowerCx<'db>) -> Self {
-        Self { cx, body: Body::new(), def_to_local: FxHashMap::default() }
+        Self {
+            cx,
+            body: Body::new(),
+            curr_block: BlockId::start(),
+            def_to_local: FxHashMap::default(),
+        }
     }
 
     fn lower_fn(mut self, sig: FnSigId, f: &hir::Fn) {
@@ -195,7 +201,8 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     self.cx.mir.main_fn = Some(sig);
                 }
 
-                self.body.push_block("start");
+                let start_blk = self.body.create_block("start");
+                self.position_at(start_blk);
 
                 for param in self.cx.mir.fn_sigs[sig].params.clone() {
                     let value = self.push_inst_with(param.ty, |value| Inst::Load {
@@ -279,12 +286,28 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     self.push_unit_lit()
                 }
                 hir::ExprKind::If(if_) => {
-                    todo!()
-                    // ExprKind::If {
-                    //                 cond: self.lower_expr(&if_.cond),
-                    //                 then: self.lower_expr(&if_.then),
-                    //                 otherwise: self.lower_expr(&if_.otherwise),
-                    //             }
+                    let then_blk = self.body.create_block("if_then");
+                    let else_blk = self.body.create_block("if_else");
+                    let merge_blk = self.body.create_block("if_merge");
+
+                    let cond = self.lower_expr(&if_.cond);
+                    self.push_inst(Inst::BrIf { cond, then: then_blk, otherwise: else_blk });
+
+                    self.position_at(then_blk);
+                    let then_value = self.lower_expr(&if_.then);
+                    self.push_inst(Inst::Br { target: merge_blk });
+
+                    self.position_at(else_blk);
+                    let else_value = self.lower_expr(&if_.otherwise);
+                    self.push_inst(Inst::Br { target: merge_blk });
+
+                    self.position_at(merge_blk);
+                    self.push_inst_with(expr.ty, |value| Inst::If {
+                        value,
+                        cond,
+                        then: then_value,
+                        otherwise: else_value,
+                    })
                 }
                 hir::ExprKind::Block(blk) => {
                     let mut result: Option<ValueId> = None;
@@ -447,13 +470,18 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     }
 
     pub fn push_inst_with(&mut self, value_ty: Ty, f: impl FnOnce(ValueId) -> Inst) -> ValueId {
-        let value = self.body.push_value(value_ty);
+        let value = self.body.create_value(value_ty);
         self.push_inst(f(value));
         value
     }
 
     pub fn push_inst(&mut self, inst: Inst) {
-        self.body.last_block_mut().push_inst(inst);
+        self.body.block_mut(self.curr_block).push_inst(inst);
+    }
+
+    #[inline]
+    pub fn position_at(&mut self, id: BlockId) {
+        self.curr_block = id;
     }
 
     pub fn apply_coercions(

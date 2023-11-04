@@ -93,6 +93,13 @@ pub struct Body {
 pub type Blocks = IndexVec<BlockId, Block>;
 pub type Values = IndexVec<ValueId, Value>;
 
+impl BlockId {
+    #[inline]
+    pub fn start() -> Self {
+        Self::from(0)
+    }
+}
+
 impl Body {
     pub fn new() -> Self {
         Self { blocks: IndexVec::new(), values: IndexVec::new() }
@@ -104,8 +111,13 @@ impl Body {
     }
 
     #[inline]
+    pub fn block_mut(&mut self, id: BlockId) -> &mut Block {
+        &mut self.blocks[id]
+    }
+
+    #[inline]
     pub fn start_block(&self) -> &Block {
-        &self.blocks[BlockId::from(0)]
+        &self.blocks[BlockId::start()]
     }
 
     #[inline]
@@ -113,7 +125,7 @@ impl Body {
         &self.blocks
     }
 
-    pub fn push_block(&mut self, name: impl Into<String>) -> BlockId {
+    pub fn create_block(&mut self, name: impl Into<String>) -> BlockId {
         self.blocks.push_with_key(|id| Block::new(id, name.into()))
     }
 
@@ -135,7 +147,7 @@ impl Body {
         &mut self.values[id]
     }
 
-    pub fn push_value(&mut self, ty: Ty) -> ValueId {
+    pub fn create_value(&mut self, ty: Ty) -> ValueId {
         self.values.push_with_key(|id| Value { id, ty })
     }
 
@@ -176,7 +188,9 @@ impl Block {
 #[derive(Debug, Clone)]
 pub enum Inst {
     StackAlloc { value: ValueId, id: DefId, init: ValueId },
-    // If { cond: ValueId, then: ValueId, otherwise: ValueId },
+    Br { target: BlockId },
+    BrIf { cond: ValueId, then: BlockId, otherwise: BlockId },
+    If { value: ValueId, cond: ValueId, then: ValueId, otherwise: ValueId },
     Return { value: ValueId },
     Call { value: ValueId, callee: ValueId, args: Vec<ValueId> },
     Binary { value: ValueId, lhs: ValueId, rhs: ValueId, op: BinOp },

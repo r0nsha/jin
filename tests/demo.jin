@@ -1,8 +1,9 @@
 fn main {
 	int_types()
-	//unary()
+	unary()
 	arithmetic()
 	cmp()
+	if_expr()
 	variables()
 	polymorphism()
 	named_args()
@@ -17,13 +18,13 @@ fn int_types {
 	let int_to_uint: Uint = { 663151 as Int } as _
 }
 
-//fn unary {
-//	-48
-//	!true
-//	!!false
-//	// TODO: bitnot
-//	// !54878
-//}
+fn unary {
+	-48
+	!true
+	!!false
+	// TODO: bitnot
+	// !54878
+}
 
 fn arithmetic {
 	1 + 2
@@ -42,6 +43,15 @@ fn cmp {
 	42 <= 999
 	2 > 1
 	264 >= 71
+}
+
+fn if_expr {
+	let cond = true
+	let result = if cond {
+		69
+	} else {
+		420
+	}
 }
 
 fn variables -> Int {
