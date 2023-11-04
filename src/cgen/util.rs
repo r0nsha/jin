@@ -37,7 +37,7 @@ pub fn goto_stmt(blk: &Block) -> D<'_> {
     stmt(|| D::text("goto").append(D::space()).append(block_name(blk)))
 }
 
-pub fn if_stmt<'a>(cond: D<'a>, then: D<'a>, otherwise: D<'a>) -> D<'a> {
+pub fn if_stmt<'a>(cond: D<'a>, then: D<'a>, otherwise: Option<D<'a>>) -> D<'a> {
     stmt(|| {
         D::text("if")
             .append(D::space())
@@ -49,7 +49,7 @@ pub fn if_stmt<'a>(cond: D<'a>, then: D<'a>, otherwise: D<'a>) -> D<'a> {
             .append(D::space())
             .append(D::text("else"))
             .append(D::space())
-            .append(block(|| otherwise))
+            .append(otherwise.map(|o| block(|| o)).unwrap_or(D::nil()))
     })
 }
 

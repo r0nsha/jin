@@ -206,7 +206,7 @@ impl<'db> Generator<'db> {
             Inst::BrIf { cond, then, otherwise } => if_stmt(
                 value_name(*cond),
                 goto_stmt(state.body.block(*then)),
-                goto_stmt(state.body.block(*otherwise)),
+                Some(goto_stmt(state.body.block(*otherwise))),
             ),
             Inst::If { value, cond, then, otherwise } => self.value_assign(state, *value, || {
                 value_name(*cond)
@@ -235,13 +235,18 @@ impl<'db> Generator<'db> {
                     )
                     .append(D::text(")"))
             }),
-            Inst::Binary { value, lhs, rhs, op } => self.value_assign(state, *value, || {
-                value_name(*lhs)
-                    .append(D::space())
-                    .append(D::text(op.as_str()))
-                    .append(D::space())
-                    .append(value_name(*rhs))
-            }),
+            Inst::Binary { value, lhs, rhs, op } => {
+                let safety_check = self.bin_op_safety_check(expr.ty, *lhs, *rhs, *op);
+                let binop = self.value_assign(state, *value, || {
+                    value_name(*lhs)
+                        .append(D::space())
+                        .append(D::text(op.as_str()))
+                        .append(D::space())
+                        .append(value_name(*rhs))
+                });
+
+                D::intersperse([safety_check, binop], D::hardline())
+            }
             Inst::Unary { value, inner, op } => {
                 self.value_assign(state, *value, || D::text(op.as_str()).append(value_name(*inner)))
             }
