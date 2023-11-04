@@ -257,164 +257,168 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     }
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
-        let value =
-            if let Some(val) = self.cx.db.const_storage.expr(expr.id).cloned() {
-                self.lower_const(&val, expr.ty)
-            } else {
-                match &expr.kind {
-                    hir::ExprKind::Let(let_) => {
-                        let init = self.lower_expr(&let_.value);
+        let value = if let Some(val) = self.cx.db.const_storage.expr(expr.id).cloned() {
+            self.lower_const(&val, expr.ty)
+        } else {
+            match &expr.kind {
+                hir::ExprKind::Let(let_) => {
+                    let init = self.lower_expr(&let_.value);
 
-                        match &let_.pat {
-                            hir::Pat::Name(name) => {
-                                let value = self.push_inst_with(let_.ty, |value| {
-                                    Inst::StackAlloc { value, id: name.id, init }
-                                });
-                                self.def_to_local.insert(name.id, value);
-                            }
-                            hir::Pat::Discard(_) => (),
+                    match &let_.pat {
+                        hir::Pat::Name(name) => {
+                            let value = self.push_inst_with(let_.ty, |value| Inst::StackAlloc {
+                                value,
+                                id: name.id,
+                                init,
+                            });
+                            self.def_to_local.insert(name.id, value);
                         }
-
-                        self.push_unit_lit()
+                        hir::Pat::Discard(_) => (),
                     }
-                    hir::ExprKind::If(if_) => {
-                        todo!()
-                        // ExprKind::If {
-                        //                 cond: self.lower_expr(&if_.cond),
-                        //                 then: self.lower_expr(&if_.then),
-                        //                 otherwise: self.lower_expr(&if_.otherwise),
-                        //             }
+
+                    self.push_unit_lit()
+                }
+                hir::ExprKind::If(if_) => {
+                    todo!()
+                    // ExprKind::If {
+                    //                 cond: self.lower_expr(&if_.cond),
+                    //                 then: self.lower_expr(&if_.then),
+                    //                 otherwise: self.lower_expr(&if_.otherwise),
+                    //             }
+                }
+                hir::ExprKind::Block(blk) => {
+                    let mut result: Option<ValueId> = None;
+
+                    for expr in &blk.exprs {
+                        result = Some(self.lower_expr(expr));
                     }
-                    hir::ExprKind::Block(blk) => {
-                        let mut result: Option<ValueId> = None;
 
-                        for expr in &blk.exprs {
-                            result = Some(self.lower_expr(expr));
-                        }
+                    // TODO: is this necessary now?
+                    // // NOTE: If the block ty is (), we must always return a () value.
+                    // // A situation where we don't return a () value can occur
+                    // // when the expected type of the block is unit, but the last expression doesn't
+                    // // return ().
+                    // if expr.ty.is_unit() {
+                    //     exprs.push(self.create_expr(ExprKind::Const(Const::Unit), expr.ty));
+                    // }
 
-                        // TODO: is this necessary now?
-                        // // NOTE: If the block ty is (), we must always return a () value.
-                        // // A situation where we don't return a () value can occur
-                        // // when the expected type of the block is unit, but the last expression doesn't
-                        // // return ().
-                        // if expr.ty.is_unit() {
-                        //     exprs.push(self.create_expr(ExprKind::Const(Const::Unit), expr.ty));
-                        // }
+                    result.unwrap_or_else(|| self.push_unit_lit())
+                }
+                hir::ExprKind::Return(ret) => {
+                    todo!()
+                    // ExprKind::Return { value: self.lower_expr(&ret.expr) }
+                }
+                hir::ExprKind::Call(call) => {
+                    let callee = self.lower_expr(&call.callee);
 
-                        result.unwrap_or_else(|| self.push_unit_lit())
-                    }
-                    hir::ExprKind::Return(ret) => {
-                        todo!()
-                        // ExprKind::Return { value: self.lower_expr(&ret.expr) }
-                    }
-                    hir::ExprKind::Call(call) => {
-                        let callee = self.lower_expr(&call.callee);
-
-                        // NOTE: We evaluate args in passing order, and then sort them to the actual
-                        // required parameter order
-                        let mut args: Vec<_> = call
-                            .args
-                            .iter()
-                            .map(|arg| {
-                                (
-                                    arg.index.expect("arg index to be resolved"),
-                                    self.lower_expr(&arg.expr),
-                                )
-                            })
-                            .collect();
-
-                        args.sort_by_key(|(idx, _)| *idx);
-
-                        self.push_inst_with(expr.ty, |value| Inst::Call {
-                            value,
-                            callee,
-                            args: args.into_iter().map(|(_, arg)| arg).collect(),
+                    // NOTE: We evaluate args in passing order, and then sort them to the actual
+                    // required parameter order
+                    let mut args: Vec<_> = call
+                        .args
+                        .iter()
+                        .map(|arg| {
+                            (
+                                arg.index.expect("arg index to be resolved"),
+                                self.lower_expr(&arg.expr),
+                            )
                         })
-                    }
-                    hir::ExprKind::Unary(un) => {
-                        todo!()
-                        // ExprKind::Unary { value: self.lower_expr(&un.expr), op: un.op }
-                    }
-                    hir::ExprKind::Binary(bin) => {
-                        todo!()
-                        // let lhs = self.lower_expr(&bin.lhs);
-                        // let rhs = self.lower_expr(&bin.rhs);
-                        //
-                        // ExprKind::Binary { lhs, rhs, op: bin.op }
-                    }
-                    hir::ExprKind::Cast(cast) => {
-                        let inner = self.lower_expr(&cast.expr);
+                        .collect();
 
-                        self.push_inst_with(cast.target, |value| Inst::Cast {
-                            value,
-                            inner,
-                            target: cast.target,
-                        })
-                    }
-                    hir::ExprKind::Member(access) => {
-                        let inner = self.lower_expr(&access.expr);
+                    args.sort_by_key(|(idx, _)| *idx);
 
-                        self.push_inst_with(expr.ty, |value| Inst::Member {
-                            value,
-                            inner,
-                            member: access.member.name(),
-                        })
-                    }
-                    hir::ExprKind::Name(name) => {
-                        match self.cx.db[name.id].kind.as_ref() {
-                            DefKind::Fn(_) => {
-                                let id = if name.instantiation.is_empty() {
-                                    self.cx.fn_map[&name.id]
-                                } else {
-                                    let mut folder = ParamFolder {
-                                        db: self.cx.db,
-                                        instantiation: &name.instantiation,
-                                    };
+                    self.push_inst_with(expr.ty, |value| Inst::Call {
+                        value,
+                        callee,
+                        args: args.into_iter().map(|(_, arg)| arg).collect(),
+                    })
+                }
+                hir::ExprKind::Unary(un) => {
+                    let inner = self.lower_expr(&un.expr);
+                    self.push_inst_with(expr.ty, |value| Inst::Unary { value, inner, op: un.op })
+                }
+                hir::ExprKind::Binary(bin) => {
+                    let lhs = self.lower_expr(&bin.lhs);
+                    let rhs = self.lower_expr(&bin.rhs);
+                    self.push_inst_with(expr.ty, |value| Inst::Binary {
+                        value,
+                        lhs,
+                        rhs,
+                        op: bin.op,
+                    })
+                }
+                hir::ExprKind::Cast(cast) => {
+                    let inner = self.lower_expr(&cast.expr);
 
-                                    let ty = folder.fold(expr.ty);
+                    self.push_inst_with(cast.target, |value| Inst::Cast {
+                        value,
+                        inner,
+                        target: cast.target,
+                    })
+                }
+                hir::ExprKind::Member(access) => {
+                    let inner = self.lower_expr(&access.expr);
 
-                                    // let instantiation: Instantiation = name
-                                    //     .instantiation
-                                    //     .iter()
-                                    //     .map(|(var, ty)| (*var, folder.fold(*ty)))
-                                    //     .collect();
-
-                                    self.cx.monomorphize_fn(
-                                        &MonoItem { id: name.id, ty },
-                                        &name.instantiation,
-                                    )
+                    self.push_inst_with(expr.ty, |value| Inst::Member {
+                        value,
+                        inner,
+                        member: access.member.name(),
+                    })
+                }
+                hir::ExprKind::Name(name) => {
+                    match self.cx.db[name.id].kind.as_ref() {
+                        DefKind::Fn(_) => {
+                            let id = if name.instantiation.is_empty() {
+                                self.cx.fn_map[&name.id]
+                            } else {
+                                let mut folder = ParamFolder {
+                                    db: self.cx.db,
+                                    instantiation: &name.instantiation,
                                 };
 
-                                self.push_inst_with(self.cx.mir.fn_sigs[id].ty, |value| {
-                                    Inst::Load { value, kind: LoadKind::Fn(id) }
-                                })
-                            }
-                            DefKind::ExternGlobal | DefKind::Global => {
-                                let id = self.cx.lower_global(name.id);
+                                let ty = folder.fold(expr.ty);
 
-                                self.push_inst_with(self.cx.mir.globals[id].ty, |value| {
-                                    Inst::Load { value, kind: LoadKind::Global(id) }
-                                })
-                            }
-                            DefKind::Variable => self.def_to_local[&name.id],
-                            DefKind::Ty(_) => unreachable!(),
+                                // let instantiation: Instantiation = name
+                                //     .instantiation
+                                //     .iter()
+                                //     .map(|(var, ty)| (*var, folder.fold(*ty)))
+                                //     .collect();
+
+                                self.cx.monomorphize_fn(
+                                    &MonoItem { id: name.id, ty },
+                                    &name.instantiation,
+                                )
+                            };
+
+                            self.push_inst_with(self.cx.mir.fn_sigs[id].ty, |value| Inst::Load {
+                                value,
+                                kind: LoadKind::Fn(id),
+                            })
                         }
-                    }
-                    hir::ExprKind::Lit(lit) => {
-                        match lit {
-                            hir::Lit::Str(lit) => self
-                                .push_inst_with(expr.ty, |value| Inst::StrLit { value, lit: *lit }),
-                            #[allow(clippy::cast_possible_wrap)]
-                            hir::Lit::Int(lit) => self.push_inst_with(expr.ty, |value| {
-                                Inst::IntLit { value, lit: *lit as i128 }
-                            }),
-                            hir::Lit::Bool(lit) => self.push_inst_with(expr.ty, |value| {
-                                Inst::BoolLit { value, lit: *lit }
-                            }),
+                        DefKind::ExternGlobal | DefKind::Global => {
+                            let id = self.cx.lower_global(name.id);
+
+                            self.push_inst_with(self.cx.mir.globals[id].ty, |value| Inst::Load {
+                                value,
+                                kind: LoadKind::Global(id),
+                            })
                         }
+                        DefKind::Variable => self.def_to_local[&name.id],
+                        DefKind::Ty(_) => unreachable!(),
                     }
                 }
-            };
+                hir::ExprKind::Lit(lit) => match lit {
+                    hir::Lit::Str(lit) => {
+                        self.push_inst_with(expr.ty, |value| Inst::StrLit { value, lit: *lit })
+                    }
+                    #[allow(clippy::cast_possible_wrap)]
+                    hir::Lit::Int(lit) => self
+                        .push_inst_with(expr.ty, |value| Inst::IntLit { value, lit: *lit as i128 }),
+                    hir::Lit::Bool(lit) => {
+                        self.push_inst_with(expr.ty, |value| Inst::BoolLit { value, lit: *lit })
+                    }
+                },
+            }
+        };
 
         if let Some(coercions) = self.cx.db.coercions.get(&expr.id) {
             self.apply_coercions(&coercions.clone(), value)

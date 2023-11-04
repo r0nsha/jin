@@ -221,6 +221,8 @@ impl<'db> Generator<'db> {
                     )
                     .append(D::text(")"))
             }),
+            Inst::Binary { value, lhs, rhs, op } => todo!(),
+            Inst::Unary { value, inner, op } => todo!(),
             Inst::Cast { value, inner, target } => todo!(),
             Inst::Member { value, inner, member } => self.value_assign(state, *value, || {
                 value_name(*inner).append(D::text(".")).append(D::text(member.as_str()))
