@@ -3,16 +3,14 @@ mod pretty_print;
 
 use std::io;
 
-use enum_as_inner::EnumAsInner;
 pub use lower::lower;
-use rustc_hash::FxHashMap;
 use typed_index_collections::TiSlice;
 use ustr::Ustr;
 
 use crate::{
     db::{Db, DefId},
     hir::const_eval::Const,
-    index_vec::{new_key_type, IndexSlice, IndexVec, IndexVecExt},
+    index_vec::{new_key_type, IndexVec, IndexVecExt},
     middle::{BinOp, UnOp},
     ty::Ty,
 };
@@ -116,25 +114,12 @@ impl Body {
     }
 
     #[inline]
-    pub fn start_block(&self) -> &Block {
-        &self.blocks[BlockId::start()]
-    }
-
-    #[inline]
     pub fn blocks(&self) -> &TiSlice<BlockId, Block> {
         &self.blocks
     }
 
     pub fn create_block(&mut self, name: impl Into<String>) -> BlockId {
         self.blocks.push_with_key(|id| Block::new(id, name.into()))
-    }
-
-    pub fn last_block(&self) -> &Block {
-        self.blocks.last().unwrap()
-    }
-
-    pub fn last_block_mut(&mut self) -> &mut Block {
-        self.blocks.last_mut().unwrap()
     }
 
     #[inline]
@@ -152,7 +137,10 @@ impl Body {
     }
 
     pub fn is_terminating(&self) -> bool {
-        matches!(self.last_block().insts().last(), Some(Inst::Return { .. }))
+        self.blocks()
+            .last()
+            .map(|blk| matches!(blk.insts().last(), Some(Inst::Return { .. })))
+            .unwrap_or_default()
     }
 }
 
