@@ -260,10 +260,8 @@ pub enum AttrKind {}
 impl TryFrom<&str> for AttrKind {
     type Error = ();
 
-    fn try_from(value: &str) -> Result<Self, Self::Error> {
-        match value {
-            _ => Err(()),
-        }
+    fn try_from(_value: &str) -> Result<Self, Self::Error> {
+        Err(())
     }
 }
 

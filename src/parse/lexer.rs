@@ -269,9 +269,6 @@ type TokenizeResult<T> = Result<T, TokenizeError>;
 #[derive(Debug)]
 enum TokenizeError {
     InvalidChar(char, Span),
-    EscapeIncompleteStr(Span),
-    EscapeInvalidChar(char, Span),
-    EscapeParseIntError(Span),
 }
 
 impl From<TokenizeError> for Diagnostic {
@@ -279,15 +276,6 @@ impl From<TokenizeError> for Diagnostic {
         match err {
             TokenizeError::InvalidChar(ch, span) => Self::error("parse::invalid_char")
                 .with_message(format!("invalid character {ch}"))
-                .with_label(Label::primary(span)),
-            TokenizeError::EscapeIncompleteStr(span) => Self::error("parse::escape_incomplete_str")
-                .with_message("incomplete string in escape sequence")
-                .with_label(Label::primary(span)),
-            TokenizeError::EscapeInvalidChar(ch, span) => Self::error("parse::escape_invalid_char")
-                .with_message(format!("invalid character {ch} in escape sequence"))
-                .with_label(Label::primary(span)),
-            TokenizeError::EscapeParseIntError(span) => Self::error("parse::escape_invalid_int")
-                .with_message("invalid integer in escape sequence")
                 .with_label(Label::primary(span)),
         }
     }

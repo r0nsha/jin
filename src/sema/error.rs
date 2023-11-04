@@ -1,7 +1,6 @@
 use ustr::Ustr;
 
 use crate::{
-    ast::AttrKind,
     db::Db,
     diagnostics::{Diagnostic, Label},
     hir::const_eval::ConstEvalError,

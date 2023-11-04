@@ -4,13 +4,12 @@ mod pretty_print;
 use std::io;
 
 pub use lower::lower;
-use typed_index_collections::TiSlice;
 use ustr::Ustr;
 
 use crate::{
     db::{Db, DefId},
     hir::const_eval::Const,
-    index_vec::{new_key_type, IndexVec, IndexVecExt},
+    index_vec::{new_key_type, IndexSlice, IndexVec, IndexVecExt},
     middle::{BinOp, UnOp},
     ty::Ty,
 };
@@ -114,7 +113,7 @@ impl Body {
     }
 
     #[inline]
-    pub fn blocks(&self) -> &TiSlice<BlockId, Block> {
+    pub fn blocks(&self) -> &IndexSlice<BlockId, Block> {
         &self.blocks
     }
 
