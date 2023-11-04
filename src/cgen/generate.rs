@@ -5,6 +5,7 @@ use pretty::RcDoc as D;
 
 use crate::{
     cgen::{
+        builtin::bin_op_safety_check,
         name_gen::LocalNames,
         ty::CTy,
         util::{block_name, bool_value, goto_stmt, if_stmt, stmt, str_value, value_name, NEST},
@@ -236,7 +237,9 @@ impl<'db> Generator<'db> {
                     .append(D::text(")"))
             }),
             Inst::Binary { value, lhs, rhs, op } => {
-                let safety_check = self.bin_op_safety_check(expr.ty, *lhs, *rhs, *op);
+                let safety_check =
+                    bin_op_safety_check(state.body.value(*value).ty, *lhs, *rhs, *op);
+
                 let binop = self.value_assign(state, *value, || {
                     value_name(*lhs)
                         .append(D::space())
