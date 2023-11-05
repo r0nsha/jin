@@ -1,7 +1,7 @@
 use pretty::RcDoc as D;
 
 use crate::{
-    cgen::util::{if_stmt, stmt},
+    cgen::util::{if_stmt, stmt, value_name_str},
     middle::BinOp,
     mir::ValueId,
     ty::Ty,
@@ -22,8 +22,13 @@ pub fn add_safety_check<'a>(ty: Ty, lhs: ValueId, rhs: ValueId) -> D<'a> {
 }
 
 pub fn sub_safety_check<'a>(ty: Ty, lhs: ValueId, rhs: ValueId) -> D<'a> {
+    let (lhs, rhs) = (value_name_str(lhs), value_name_str(rhs));
     let (min, max) = (ty.min(), ty.max());
-    todo!()
+    let cond = D::text(format!(
+        "(({rhs} < 0) && ({lhs} > ({max} + {rhs}))) || \
+        (({rhs} >= 0) && ({lhs} < ({min} + {rhs})))"
+    ));
+    panic_if(cond, &overflow_msg("subtract"))
 }
 
 pub fn mul_safety_check<'a>(ty: Ty, lhs: ValueId, rhs: ValueId) -> D<'a> {

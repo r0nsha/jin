@@ -1,6 +1,5 @@
 #include <stdbool.h>
 #include <stdint.h>
-#include <stdlib.h>
 
 typedef int8_t I8;
 typedef int16_t I16;

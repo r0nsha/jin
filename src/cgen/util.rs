@@ -26,7 +26,11 @@ pub fn stmt<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
 }
 
 pub fn value_name<'a>(id: ValueId) -> D<'a> {
-    D::text("v").append(id.to_string())
+    D::text(value_name_str(id))
+}
+
+pub fn value_name_str(id: ValueId) -> String {
+    format!("v{id}")
 }
 
 pub fn block_name(blk: &Block) -> D<'_> {
@@ -38,27 +42,24 @@ pub fn goto_stmt(blk: &Block) -> D<'_> {
 }
 
 pub fn if_stmt<'a>(cond: D<'a>, then: D<'a>, otherwise: Option<D<'a>>) -> D<'a> {
-    stmt(|| {
-        D::text("if")
-            .append(D::space())
-            .append(D::text("("))
-            .append(cond)
-            .append(D::text(")"))
-            .append(D::space())
-            .append(block(|| then))
-            .append(D::space())
-            .append(D::text("else"))
-            .append(D::space())
-            .append(otherwise.map(|o| block(|| o)).unwrap_or(D::nil()))
-    })
+    D::text("if")
+        .append(D::space())
+        .append(D::text("("))
+        .append(cond)
+        .append(D::text(")"))
+        .append(D::space())
+        .append(block(|| then))
+        .append(otherwise.map_or(D::nil(), |o| {
+            D::space().append(D::text("else")).append(D::space()).append(block(|| o))
+        }))
 }
 
 pub fn block<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
     D::text("{")
-        .append(D::softline())
+        .append(D::hardline())
         .append(f())
         .nest(NEST)
         .group()
-        .append(D::softline())
+        .append(D::hardline())
         .append(D::text("}"))
 }
