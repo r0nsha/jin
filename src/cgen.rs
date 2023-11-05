@@ -36,7 +36,7 @@ fn build_exe(db: &mut Db, c_file_path: &Utf8Path) -> Utf8PathBuf {
         output_path.with_extension("")
     };
 
-    db.time.start("cc");
+    db.time.start("clang");
     compile_with_tcc(&db.extern_libs, c_file_path, &exe_file_path);
     db.time.stop();
 
@@ -67,7 +67,7 @@ fn compile_with_tcc(
         }
     }
 
-    Command::new("cc")
+    Command::new("clang")
         .arg(c_file_path)
         .arg(format!("-o{exe_file_path}"))
         .arg("-std=c99")
