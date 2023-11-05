@@ -5,7 +5,6 @@ use pretty::RcDoc as D;
 
 use crate::{
     cgen::{
-        builtin::bin_op_safety_check,
         name_gen::LocalNames,
         ty::CTy,
         util::{block_name, bool_value, goto_stmt, if_stmt, stmt, str_value, value_name, NEST},
@@ -234,18 +233,7 @@ impl<'db> Generator<'db> {
                     .append(D::text(")"))
             }),
             Inst::Binary { value, lhs, rhs, op } => {
-                let safety_check =
-                    bin_op_safety_check(state.body.value(*value).ty, *lhs, *rhs, *op);
-
-                let binop = self.value_assign(state, *value, || {
-                    value_name(*lhs)
-                        .append(D::space())
-                        .append(D::text(op.as_str()))
-                        .append(D::space())
-                        .append(value_name(*rhs))
-                });
-
-                D::intersperse([safety_check, binop], D::hardline())
+                self.codegen_bin_op(state, *value, *lhs, *rhs, *op, state.body.value(*value).ty)
             }
             Inst::Unary { value, inner, op } => {
                 self.value_assign(state, *value, || D::text(op.as_str()).append(value_name(*inner)))
@@ -283,7 +271,7 @@ impl<'db> Generator<'db> {
         VariableDoc::assign(self, value.ty, value_name(id), f())
     }
 
-    fn value_decl(&self, state: &FnState<'db>, id: ValueId) -> D<'db> {
+    pub fn value_decl(&self, state: &FnState<'db>, id: ValueId) -> D<'db> {
         let value = state.body.value(id);
         VariableDoc::decl(self, value.ty, value_name(value.id))
     }

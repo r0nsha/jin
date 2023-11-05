@@ -165,6 +165,18 @@ pub enum TyKind {
 impl TyKind {
     pub const DEFAULT_INT: Self = Self::Int(IntTy::Int);
 
+    pub fn is_signed(&self) -> bool {
+        matches!(self, TyKind::Int(_))
+    }
+
+    pub fn bits(&self) -> usize {
+        match self {
+            TyKind::Int(i) => i.bits(),
+            TyKind::Uint(u) => u.bits(),
+            _ => panic!("cant find bits of {self:?}"),
+        }
+    }
+
     pub fn min(&self) -> i128 {
         match self {
             TyKind::Int(i) => i128::from(i.min()),
@@ -242,6 +254,16 @@ impl IntTy {
         }
     }
 
+    pub fn bits(self) -> usize {
+        // TODO: use target_metrics for Int
+        match self {
+            Self::I8 => 8,
+            Self::I16 => 16,
+            Self::I32 => 32,
+            Self::I64 | Self::Int => 64,
+        }
+    }
+
     pub fn min(self) -> i64 {
         // TODO: use target_metrics for Int
         match self {
@@ -293,6 +315,16 @@ impl UintTy {
             UintTy::U32 => u32::try_from(value).is_ok(),
             UintTy::U64 => u64::try_from(value).is_ok(),
             UintTy::Uint => usize::try_from(value).is_ok(),
+        }
+    }
+
+    pub fn bits(self) -> usize {
+        // TODO: use target_metrics for Int
+        match self {
+            Self::U8 => 8,
+            Self::U16 => 16,
+            Self::U32 => 32,
+            Self::U64 | Self::Uint => 64,
         }
     }
 

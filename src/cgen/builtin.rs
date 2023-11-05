@@ -1,49 +1,120 @@
 use pretty::RcDoc as D;
 
 use crate::{
-    cgen::util::{if_stmt, stmt, value_name_str},
+    cgen::{
+        generate::{FnState, Generator},
+        util::{if_stmt, stmt, value_name_str},
+    },
     middle::BinOp,
     mir::ValueId,
     ty::Ty,
 };
 
-pub fn bin_op_safety_check<'a>(ty: Ty, lhs: ValueId, rhs: ValueId, op: BinOp) -> D<'a> {
-    match op {
-        BinOp::Add => add_safety_check(ty, lhs, rhs),
-        BinOp::Sub => sub_safety_check(ty, lhs, rhs),
-        BinOp::Mul => mul_safety_check(ty, lhs, rhs),
-        BinOp::Div | BinOp::Rem => div_safety_check(ty, lhs, rhs),
-        _ => D::nil(),
+impl<'db> Generator<'db> {
+    pub fn codegen_bin_op(
+        &self,
+        state: &FnState<'db>,
+        target: ValueId,
+        lhs: ValueId,
+        rhs: ValueId,
+        op: BinOp,
+        ty: Ty,
+    ) -> D<'db> {
+        match op {
+            BinOp::Add => self.codegen_bin_op_add(state, target, lhs, rhs, ty),
+            BinOp::Sub => self.codegen_bin_op_sub(state, target, lhs, rhs, ty),
+            BinOp::Mul => self.codegen_bin_op_mul(state, target, lhs, rhs, ty),
+            BinOp::Div | BinOp::Rem => self.codegen_bin_op_div(state, target, lhs, rhs, ty, op),
+            _ => D::nil(),
+        }
+    }
+
+    pub fn codegen_bin_op_add(
+        &self,
+        state: &FnState<'db>,
+        target: ValueId,
+        lhs: ValueId,
+        rhs: ValueId,
+        ty: Ty,
+    ) -> D<'db> {
+        self.codegen_bin_op_aux(state, "add", "add", target, lhs, rhs, ty)
+    }
+
+    pub fn codegen_bin_op_sub(
+        &self,
+        state: &FnState<'db>,
+        target: ValueId,
+        lhs: ValueId,
+        rhs: ValueId,
+        ty: Ty,
+    ) -> D<'db> {
+        self.codegen_bin_op_aux(state, "sub", "subtract", target, lhs, rhs, ty)
+    }
+
+    pub fn codegen_bin_op_mul(
+        &self,
+        state: &FnState<'db>,
+        target: ValueId,
+        lhs: ValueId,
+        rhs: ValueId,
+        ty: Ty,
+    ) -> D<'db> {
+        self.codegen_bin_op_aux(state, "mul", "multiply", target, lhs, rhs, ty)
+    }
+
+    pub fn codegen_bin_op_div(
+        &self,
+        state: &FnState<'db>,
+        target: ValueId,
+        lhs: ValueId,
+        rhs: ValueId,
+        ty: Ty,
+        op: BinOp,
+    ) -> D<'db> {
+        todo!("divide by zero check")
+    }
+
+    fn codegen_bin_op_aux(
+        &self,
+        state: &FnState<'db>,
+        fname: &str,
+        action: &str,
+        target: ValueId,
+        lhs: ValueId,
+        rhs: ValueId,
+        ty: Ty,
+    ) -> D<'db> {
+        let decl = self.value_decl(state, target);
+        let call = D::text(call_safe_arith_fn(fname, ty, lhs, rhs, target));
+        D::intersperse([decl, panic_if(call, &overflow_msg(action))], D::hardline())
     }
 }
 
-pub fn add_safety_check<'a>(ty: Ty, lhs: ValueId, rhs: ValueId) -> D<'a> {
-    todo!()
-}
-
-pub fn sub_safety_check<'a>(ty: Ty, lhs: ValueId, rhs: ValueId) -> D<'a> {
-    let (lhs, rhs) = (value_name_str(lhs), value_name_str(rhs));
-    let (min, max) = (ty.min(), ty.max());
-    let cond = D::text(format!(
-        "(({rhs} < 0) && ({lhs} > ({max} + {rhs}))) || \
-        (({rhs} >= 0) && ({lhs} < ({min} + {rhs})))"
-    ));
-    panic_if(cond, &overflow_msg("subtract"))
-}
-
-pub fn mul_safety_check<'a>(ty: Ty, lhs: ValueId, rhs: ValueId) -> D<'a> {
-    todo!()
-}
-
-pub fn div_safety_check<'a>(ty: Ty, lhs: ValueId, rhs: ValueId) -> D<'a> {
-    todo!()
-}
-
-pub fn panic_if<'a>(cond: D<'a>, msg: &str) -> D<'a> {
+fn panic_if<'a>(cond: D<'a>, msg: &str) -> D<'a> {
     let print_msg = stmt(|| D::text(format!("printf(\"panic: {msg}\\n\")")));
     let exit = stmt(|| D::text("exit(1)"));
     let then = D::intersperse([print_msg, exit], D::hardline());
     if_stmt(cond, then, None)
+}
+
+fn call_safe_arith_fn(action: &str, ty: Ty, lhs: ValueId, rhs: ValueId, target: ValueId) -> String {
+    let (target, lhs, rhs) = (value_name_str(target), value_name_str(lhs), value_name_str(rhs));
+    let builtin_name = get_safe_arith_fn(action, ty);
+    format!("{builtin_name}({lhs}, {rhs}, &{target})")
+}
+
+fn get_safe_arith_fn(action: &str, ty: Ty) -> String {
+    format!(
+        "__builtin_{}{}{}_overflow",
+        if ty.is_signed() { "s" } else { "u" },
+        action,
+        match ty.bits() {
+            8..=16 => "",
+            32 => "l",
+            64 => "ll",
+            _ => unreachable!(),
+        }
+    )
 }
 
 fn overflow_msg(action: &str) -> String {
