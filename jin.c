@@ -23,8 +23,3 @@ typedef struct {
   U8 *ptr;
   Uint len;
 } Str;
-
-void jin_panic_arithmetic_overflow(U8 *opname) {
-  printf("panic: attempt to %s with overflow\n", opname);
-  exit(1);
-}

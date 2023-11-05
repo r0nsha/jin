@@ -22,6 +22,7 @@ pub fn add_safety_check<'a>(ty: Ty, lhs: ValueId, rhs: ValueId) -> D<'a> {
 }
 
 pub fn sub_safety_check<'a>(ty: Ty, lhs: ValueId, rhs: ValueId) -> D<'a> {
+    let (min, max) = (ty.min(), ty.max());
     todo!()
 }
 

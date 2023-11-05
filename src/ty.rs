@@ -165,6 +165,22 @@ pub enum TyKind {
 impl TyKind {
     pub const DEFAULT_INT: Self = Self::Int(IntTy::Int);
 
+    pub fn min(&self) -> i128 {
+        match self {
+            TyKind::Int(i) => i128::from(i.min()),
+            TyKind::Uint(u) => i128::from(u.min()),
+            _ => panic!("ty {self:?} doesn't have a min"),
+        }
+    }
+
+    pub fn max(&self) -> i128 {
+        match self {
+            TyKind::Int(i) => i128::from(i.max()),
+            TyKind::Uint(u) => i128::from(u.max()),
+            _ => panic!("ty {self:?} doesn't have a min"),
+        }
+    }
+
     pub fn display<'db>(&'db self, db: &'db Db) -> TyPrinter<'db> {
         TyPrinter::new(db, self)
     }
