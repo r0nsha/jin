@@ -21,6 +21,10 @@ pub fn bool_value<'a>(value: bool) -> D<'a> {
     D::text(if value { "true" } else { "false" })
 }
 
+pub fn unit_value<'a>() -> D<'a> {
+    D::text("{0}")
+}
+
 pub fn stmt<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
     f().append(D::text(";"))
 }

@@ -7,7 +7,10 @@ use crate::{
     cgen::{
         name_gen::LocalNames,
         ty::CTy,
-        util::{block_name, bool_value, goto_stmt, if_stmt, stmt, str_value, value_name, NEST},
+        util::{
+            block_name, bool_value, goto_stmt, if_stmt, stmt, str_value, unit_value, value_name,
+            NEST,
+        },
     },
     db::Db,
     hir::const_eval::Const,
@@ -257,7 +260,7 @@ impl<'db> Generator<'db> {
                 self.value_assign(state, *value, || D::text(lit.to_string()))
             }
             Inst::BoolLit { value, lit } => self.value_assign(state, *value, || bool_value(*lit)),
-            Inst::UnitLit { value } => self.value_decl(state, *value),
+            Inst::UnitLit { value } => self.value_assign(state, *value, unit_value),
         }
     }
 
@@ -282,7 +285,7 @@ fn codegen_const_value(value: &Const) -> D<'_> {
         Const::Str(value) => str_value(value),
         Const::Int(value) => D::text(value.to_string()),
         Const::Bool(value) => bool_value(*value),
-        Const::Unit => D::nil(),
+        Const::Unit => unit_value(),
     }
 }
 
