@@ -3,6 +3,7 @@ fn main {
 	unary()
 	arithmetic()
 	cmp()
+	if_expr()
 	variables()
 	polymorphism()
 	named_args()
@@ -30,8 +31,11 @@ fn arithmetic {
 	3 - 4
 	5 * 6
 	7 / 8
+	1 / x()
 	9 % 10
 }
+
+fn x() -> Int { 0 }
 
 fn cmp {
 	true && false
@@ -44,9 +48,19 @@ fn cmp {
 	264 >= 71
 }
 
+fn if_expr {
+	let cond = true
+	let result = if cond {
+		69
+	} else {
+		420
+	}
+}
+
 fn variables -> Int {
-	let x = 39 // Inferred to `Int`
+	let x = 7 // Inferred to `Int`
 	let y: Int = 3 // Explicit type annotation
+	let x = 39  // Variables can be shadowed
 	x + y
 }
 

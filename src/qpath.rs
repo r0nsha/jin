@@ -20,12 +20,12 @@ impl QPath {
         *self.0.last().expect("to have at least one segment")
     }
 
-    pub fn full_name(&self, separator: &str) -> String {
-        self.0.iter().map(Ustr::as_str).collect::<Vec<_>>().join(separator)
+    pub fn join(&self) -> String {
+        self.join_with(".")
     }
 
-    pub fn standard_full_name(&self) -> String {
-        self.full_name(".")
+    pub fn join_with(&self, separator: &str) -> String {
+        self.0.iter().map(Ustr::as_str).collect::<Vec<_>>().join(separator)
     }
 
     pub fn push(&mut self, seg: impl Into<Segment>) {
@@ -94,6 +94,6 @@ impl Extend<Ustr> for QPath {
 
 impl fmt::Display for QPath {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(&self.standard_full_name())
+        f.write_str(&self.join())
     }
 }

@@ -47,6 +47,7 @@ impl<S: SubstTy> Subst<S> for Expr {
             }
             ExprKind::Cast(cast) => {
                 cast.expr.subst(s);
+                cast.target = s.subst_ty(cast.target, self.span);
             }
             ExprKind::Member(access) => {
                 access.expr.subst(s);
@@ -85,6 +86,7 @@ impl<S: SubstTy> Subst<S> for FnSig {
     fn subst(&mut self, s: &mut S) {
         for param in &mut self.params {
             param.ty = s.subst_ty(param.ty, param.name.span());
+            // TODO: remove?
             s.db()[param.id].ty = param.ty;
         }
     }
@@ -93,7 +95,9 @@ impl<S: SubstTy> Subst<S> for FnSig {
 impl<S: SubstTy> Subst<S> for Let {
     fn subst(&mut self, s: &mut S) {
         self.value.subst(s);
+        self.ty = self.value.ty;
 
+        // TODO: remove?
         match &self.pat {
             Pat::Name(name) => s.db()[name.id].ty = self.value.ty,
             Pat::Discard(_) => (),

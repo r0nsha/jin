@@ -4,11 +4,9 @@ if set -q $argv[1]
 else
     set -l name $argv[1]
     set -l src tests/$name.jin
-    set -l out tests/build/$name
+    set -l out tests/build/$name.c
 
     cargo run -- build $src --timings --emit hir --emit mir --emit c
 
-    if test $status -eq 0 && test -f $out
-        $out
-    end
+    cat $out
 end

@@ -17,14 +17,15 @@
 #![feature(iterator_try_collect)]
 
 mod ast;
+mod cgen;
 mod counter;
 mod db;
 mod diagnostics;
 mod hir;
 mod index_vec;
-mod llvm;
 mod macros;
 mod middle;
+mod mir;
 mod parse;
 mod qpath;
 mod sema;
@@ -32,7 +33,6 @@ mod span;
 mod subst;
 mod sym;
 mod target;
-mod tir;
 mod ty;
 mod word;
 
@@ -127,16 +127,17 @@ fn build(db: &mut Db) {
     db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))
         .expect("emitting hir failed");
 
-    // Lower to TIR, includes monomorphization
-    db.time.start("hir -> tir");
-    let tir = tir::lower(db, &hir);
+    // Lower to MIR, includes monomorphization
+    db.time.start("hir -> mir");
+    let mir = mir::lower(db, &hir);
     db.time.stop();
     expect!(db);
 
-    db.emit_file(EmitOption::Tir, |db, file| tir.pretty_print(db, file))
-        .expect("emitting tir failed");
+    db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
+        .expect("emitting mir failed");
 
-    llvm::codegen(db, &tir);
+    // Generate C code from Mir
+    cgen::codegen(db, &mir);
 
     db.time.print();
 }

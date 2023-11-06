@@ -262,9 +262,6 @@ impl TryFrom<&str> for AttrKind {
 
     fn try_from(_value: &str) -> Result<Self, Self::Error> {
         Err(())
-        // match value {
-        //     _ => Err(()),
-        // }
     }
 }
 

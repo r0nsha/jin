@@ -3,7 +3,7 @@ import extern "./foo"
 fn extern hello()
 let extern answer: Int
 
-fn extern exit(status: Int) -> Never
+fn extern exit(status: I32) -> Never
 fn extern write(fd: I32, buf: *U8, count: Uint) -> Int
 
 let stdout = 1
@@ -17,13 +17,8 @@ fn println(fmt: Str) {
 	print("\n")
 }
 
-fn my_answer -> Int {
-	answer
-}
-
 fn main {
 	println("Hello, World!")
 	hello()
-	my_answer()
-	exit(0)
+	exit(answer)
 }

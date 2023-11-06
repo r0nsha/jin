@@ -16,22 +16,17 @@ ena = "0.14.2"
 enum-as-inner = "0.6.0"
 owo-colors = "3.5.0"
 path-absolutize = "3.1.0"
-pretty = { version = "0.12.1" }
 ptree = "0.4.0"
 ustr = "0.10.0"
-inkwell = { git = "https://github.com/TheDan64/inkwell", branch = "master", features = [
-  "llvm15-0-force-dynamic",
-] }
-llvm-sys = { version = "150", features = ["force-dynamic"] }
 libc = "0.2"
 execute = "0.2.12"
 anyhow = "1.0.75"
 internment = "0.7.1"
 lazy_static = "1.4.0"
-unescaper = "0.1.2"
 rustc-hash = "1.1.0"
 camino = "1.1.6"
 typed-index-collections = "3.1.0"
+pretty = "0.12.3"
 
 [target.'cfg(windows)'.dependencies]
 libc = "0.2.132"

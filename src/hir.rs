@@ -145,6 +145,7 @@ pub struct Let {
     pub module_id: ModuleId,
     pub pat: Pat,
     pub value: Box<Expr>,
+    pub ty: Ty,
     pub span: Span,
 }
 

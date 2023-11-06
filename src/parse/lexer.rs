@@ -6,7 +6,7 @@ use crate::{
     span::{Source, SourceId, Span},
 };
 
-pub fn tokenize(source: &Source) -> Result<Vec<Token>, Diagnostic> {
+pub fn tokenize(source: &Source) -> TokenizeResult<Vec<Token>> {
     Lexer::new(source).scan()
 }
 
@@ -187,35 +187,26 @@ impl<'s> Lexer<'s> {
                     // Removes the ending double-quote
                     let str = &str[..str.len() - 1];
 
-                    let stripped = unescaper::unescape(str).map_err(|err| match err {
-                        unescaper::Error::IncompleteStr(pos) => {
-                            Diagnostic::error("parse::escape_incomplete_str")
-                                .with_message("incomplete string in escape sequence")
-                                .with_label(Label::primary(Span::uniform(
-                                    self.source_id,
-                                    start + pos as u32,
-                                )))
-                        }
-                        unescaper::Error::InvalidChar { char, pos } => {
-                            Diagnostic::error("parse::escape_invalid_char")
-                                .with_message(format!(
-                                    "invalid character {char} in escape sequence"
-                                ))
-                                .with_label(Label::primary(Span::uniform(
-                                    self.source_id,
-                                    start + pos as u32,
-                                )))
-                        }
-                        unescaper::Error::ParseIntError { pos, .. } => {
-                            Diagnostic::error("parse::escape_invalid_int")
-                                .with_message("invalid integer in escape sequence")
-                                .with_label(Label::primary(Span::uniform(
-                                    self.source_id,
-                                    start + pos as u32,
-                                )))
-                        }
-                    })?;
-                    return Ok(TokenKind::Str(ustr(&stripped)));
+                    // TODO: unescaping
+                    // let stripped_str = unescaper::unescape(str).map_err(|err| match err {
+                    //     unescaper::Error::IncompleteStr(pos) => TokenizeError::EscapeIncompleteStr(
+                    //         Span::uniform(self.source_id, start + pos as u32),
+                    //     ),
+                    //     unescaper::Error::InvalidChar { char, pos } => {
+                    //         TokenizeError::EscapeInvalidChar(
+                    //             char,
+                    //             Span::uniform(self.source_id, start + pos as u32),
+                    //         )
+                    //     }
+                    //     unescaper::Error::ParseIntError { pos, .. } => {
+                    //         TokenizeError::EscapeParseIntError(Span::uniform(
+                    //             self.source_id,
+                    //             start + pos as u32,
+                    //         ))
+                    //     }
+                    // })?;
+
+                    return Ok(TokenKind::Str(ustr(str)));
                 }
                 Some(_) => (),
                 None => break,
