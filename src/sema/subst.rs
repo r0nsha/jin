@@ -6,7 +6,7 @@ use crate::{
     sema::{normalize::NormalizeTy, Sema, TyStorage},
     span::Span,
     subst::{Subst, SubstTy},
-    ty::{fold::TyFolder, InferTy, Ty, TyKind},
+    ty::{fold::TyFolder, InferTy, IntVar, Ty, TyKind, TyVar},
 };
 
 impl<'db> Sema<'db> {
@@ -64,29 +64,35 @@ struct VarFolder<'db, 'a> {
     has_unbound_vars: bool,
 }
 
+impl VarFolder<'_, '_> {
+    fn fold_tyvar(&mut self, var: TyVar) -> Ty {
+        let root = self.cx.storage.ty_unification_table.find(var);
+
+        if let Some(ty) = self.cx.storage.ty_unification_table.probe_value(root) {
+            self.fold(ty)
+        } else {
+            self.has_unbound_vars = true;
+            TyKind::Infer(InferTy::TyVar(var)).into()
+        }
+    }
+
+    fn fold_intvar(&mut self, var: IntVar) -> Ty {
+        let root = self.cx.storage.int_unification_table.find(var);
+
+        self.cx
+            .storage
+            .int_unification_table
+            .probe_value(root)
+            .map_or_else(|| TyKind::DEFAULT_INT, Into::into)
+            .into()
+    }
+}
+
 impl TyFolder for VarFolder<'_, '_> {
     fn fold(&mut self, ty: Ty) -> Ty {
         match ty.kind() {
-            TyKind::Infer(InferTy::TyVar(var)) => {
-                let root = self.cx.storage.ty_unification_table.find(*var);
-
-                if let Some(ty) = self.cx.storage.ty_unification_table.probe_value(root) {
-                    self.fold(ty)
-                } else {
-                    self.has_unbound_vars = true;
-                    TyKind::Infer(InferTy::TyVar(*var)).into()
-                }
-            }
-            TyKind::Infer(InferTy::IntVar(var)) => {
-                let root = self.cx.storage.int_unification_table.find(*var);
-
-                self.cx
-                    .storage
-                    .int_unification_table
-                    .probe_value(root)
-                    .map_or_else(|| TyKind::DEFAULT_INT, Into::into)
-                    .into()
-            }
+            TyKind::Infer(InferTy::TyVar(var)) => self.fold_tyvar(*var),
+            TyKind::Infer(InferTy::IntVar(var)) => self.fold_intvar(*var),
             _ => self.super_fold(ty),
         }
     }

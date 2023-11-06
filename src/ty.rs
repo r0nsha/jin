@@ -379,7 +379,7 @@ impl ParamTy {
 
 pub type Instantiation = FxHashMap<TyVar, Ty>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumAsInner)]
 pub enum InferTy {
     TyVar(TyVar),
     IntVar(IntVar),
