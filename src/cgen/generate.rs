@@ -125,11 +125,9 @@ impl<'db> Generator<'db> {
             D::text("(")
                 .append(
                     D::intersperse(
-                        sig.params.iter().map(|p| {
-                            p.ty.cty(self)
-                                .append(D::space())
-                                .append(D::text(self.db[p.def_id].name.as_str()))
-                        }),
+                        sig.params
+                            .iter()
+                            .map(|p| p.ty.cdecl(self, D::text(self.db[p.def_id].name.as_str()))),
                         D::text(",").append(D::space()),
                     )
                     .nest(2)

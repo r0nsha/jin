@@ -20,6 +20,13 @@ fn println(fmt: str) {
 fn main {
 	println("Hello, World!")
 	hello()
+	run(print_answer)
+	run1(print_answer)
+	run2(print_answer)
+	run3(print_answer)
+}
+
+fn print_answer() {
 	printf("The answer is %d\n".ptr, answer)
 }
 
