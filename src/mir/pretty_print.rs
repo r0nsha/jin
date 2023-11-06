@@ -70,6 +70,7 @@ impl<'db> PrettyCx<'db> {
             params: sig.params.iter().map(|p| D::text(p.ty.to_string(self.db))).collect(),
             ret: D::text(sig.ret.to_string(self.db)),
             is_extern: sig.is_extern,
+            is_c_variadic: sig.is_c_variadic,
         }
     }
 
@@ -193,6 +194,7 @@ struct PrintFnSig<'a> {
     params: Vec<D<'a>>,
     ret: D<'a>,
     is_extern: bool,
+    is_c_variadic: bool,
 }
 
 impl<'a> PrintFnSig<'a> {
@@ -207,6 +209,7 @@ impl<'a> PrintFnSig<'a> {
             .append(
                 D::text("(")
                     .append(D::intersperse(self.params, D::text(",").append(D::space())))
+                    .append(if self.is_c_variadic { D::text(", ..") } else { D::nil() })
                     .append(D::text(")").nest(NEST).group()),
             )
             .append(D::space())

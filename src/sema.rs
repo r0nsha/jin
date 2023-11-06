@@ -345,7 +345,9 @@ impl<'db> Sema<'db> {
 
                         Ok(hir::FnKind::Bare { body })
                     }
-                    ast::FnKind::Extern => Ok(hir::FnKind::Extern),
+                    ast::FnKind::Extern { is_c_variadic } => {
+                        Ok(hir::FnKind::Extern { is_c_variadic: *is_c_variadic })
+                    }
                 }
             })?;
 
@@ -427,6 +429,7 @@ impl<'db> Sema<'db> {
                 .map(|p| FnTyParam { name: Some(p.name.name()), ty: p.ty })
                 .collect(),
             ret,
+            is_c_variadic: sig.is_c_variadic,
         }));
 
         Ok(hir::FnSig { word: sig.word, ty_params, params, ret, ty })
@@ -599,7 +602,7 @@ impl<'db> Sema<'db> {
                         span: Span,
                     }
 
-                    if new_args.len() != fun_ty.params.len() {
+                    if !fun_ty.is_c_variadic && new_args.len() != fun_ty.params.len() {
                         let expected = fun_ty.params.len();
                         let found = new_args.len();
 
@@ -618,10 +621,13 @@ impl<'db> Sema<'db> {
                     for (idx, arg) in new_args.iter_mut().enumerate() {
                         if arg.name.is_none() {
                             arg.index = Some(idx);
-                            already_passed_args.insert(
-                                fun_ty.params[idx].name.expect("to have a name"),
-                                PassedArg { is_named: false, span: arg.expr.span },
-                            );
+
+                            if let Some(param) = fun_ty.params.get(idx) {
+                                already_passed_args.insert(
+                                    param.name.expect("to have a name"),
+                                    PassedArg { is_named: false, span: arg.expr.span },
+                                );
+                            }
                         }
                     }
 
@@ -680,9 +686,12 @@ impl<'db> Sema<'db> {
                     // Unify all args with their corresponding param type
                     for arg in &new_args {
                         let idx = arg.index.expect("arg index to be resolved");
-                        self.at(Obligation::obvious(arg.expr.span))
-                            .eq(fun_ty.params[idx].ty, arg.expr.ty)
-                            .or_coerce(self, arg.expr.id)?;
+
+                        if let Some(param) = fun_ty.params.get(idx) {
+                            self.at(Obligation::obvious(arg.expr.span))
+                                .eq(param.ty, arg.expr.ty)
+                                .or_coerce(self, arg.expr.id)?;
+                        }
                     }
 
                     let ty = fun_ty.ret;

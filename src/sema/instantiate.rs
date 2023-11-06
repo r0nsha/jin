@@ -30,6 +30,7 @@ impl Instantiate {
                     })
                     .collect(),
                 ret: self.instantiate_inner(fun.ret),
+                is_c_variadic: fun.is_c_variadic,
             })
             .into(),
             TyKind::Param(p) => match self.instantiation.get(&p.var) {

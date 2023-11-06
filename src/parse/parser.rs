@@ -141,12 +141,18 @@ impl<'a> Parser<'a> {
     fn parse_fn(&mut self, attrs: Attrs) -> ParseResult<Fn> {
         if self.is(TokenKind::Extern) {
             let name_ident = self.eat(TokenKind::empty_ident())?;
-            let sig = self.parse_fn_sig(name_ident.word(), AllowTyParams::No)?;
+            let (sig, is_c_variadic) = self.parse_fn_sig(name_ident.word(), AllowTyParams::No)?;
 
-            Ok(Fn { attrs, sig, kind: FnKind::Extern, span: name_ident.span })
+            Ok(Fn { attrs, sig, kind: FnKind::Extern { is_c_variadic }, span: name_ident.span })
         } else {
             let name_ident = self.eat(TokenKind::empty_ident())?;
-            let sig = self.parse_fn_sig(name_ident.word(), AllowTyParams::Yes)?;
+            let (sig, is_c_variadic) = self.parse_fn_sig(name_ident.word(), AllowTyParams::Yes)?;
+
+            if is_c_variadic {
+                return Err(Diagnostic::error("parse::invaild_c_varargs")
+                    .with_message("non extern function cannot use c varargs")
+                    .with_label(Label::primary(name_ident.span).with_message("here")));
+            }
 
             self.eat(TokenKind::OpenCurly)?;
             let body = self.parse_block()?;
@@ -190,17 +196,21 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_fn_sig(&mut self, name: Word, allow_ty_params: AllowTyParams) -> ParseResult<FnSig> {
+    fn parse_fn_sig(
+        &mut self,
+        name: Word,
+        allow_ty_params: AllowTyParams,
+    ) -> ParseResult<(FnSig, bool)> {
         let ty_params = if allow_ty_params == AllowTyParams::Yes {
             self.parse_optional_ty_params()?
         } else {
             vec![]
         };
 
-        let (params, _) = self.parse_fn_params()?;
+        let (params, is_c_variadic) = self.parse_fn_params()?;
         let ret = self.is_and(TokenKind::Arrow, |this, _| this.parse_ty()).transpose()?;
 
-        Ok(FnSig { word: name, ty_params, params, ret })
+        Ok((FnSig { word: name, ty_params, params, ret }, is_c_variadic))
     }
 
     fn parse_optional_ty_params(&mut self) -> ParseResult<Vec<TyParam>> {

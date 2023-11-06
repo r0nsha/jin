@@ -355,6 +355,7 @@ impl UintTy {
 pub struct FnTy {
     pub params: Vec<FnTyParam>,
     pub ret: Ty,
+    pub is_c_variadic: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

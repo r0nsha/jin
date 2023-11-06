@@ -19,7 +19,7 @@ impl CheckBodies<'_> {
         for f in &hir.fns {
             match &f.kind {
                 FnKind::Bare { body } => self.analyze_expr(body),
-                FnKind::Extern => (),
+                FnKind::Extern { .. } => (),
             }
         }
 

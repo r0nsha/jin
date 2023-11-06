@@ -17,6 +17,7 @@ impl NormalizeTy for Ty {
                     .map(|param| FnTyParam { name: param.name, ty: param.ty.normalize(storage) })
                     .collect(),
                 ret: fun.ret.normalize(storage),
+                is_c_variadic: fun.is_c_variadic,
             })
             .into(),
             TyKind::Infer(InferTy::TyVar(var)) => storage

@@ -152,7 +152,7 @@ pub struct Fn {
 #[derive(Debug, Clone)]
 pub enum FnKind {
     Bare { body: Box<Expr> },
-    Extern,
+    Extern { is_c_variadic: bool },
 }
 
 #[derive(Debug, Clone)]

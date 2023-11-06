@@ -70,7 +70,7 @@ impl<S: SubstTy> Subst<S> for Fn {
 
         match &mut self.kind {
             FnKind::Bare { body } => body.subst(s),
-            FnKind::Extern => (),
+            FnKind::Extern { .. } => (),
         }
 
         let ty = {

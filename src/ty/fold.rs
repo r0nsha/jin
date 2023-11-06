@@ -12,6 +12,7 @@ pub trait TyFolder {
                     .map(|param| FnTyParam { name: param.name, ty: self.fold(param.ty) })
                     .collect(),
                 ret: self.fold(fun.ret),
+                is_c_variadic: fun.is_c_variadic,
             })
             .into(),
             _ => ty,

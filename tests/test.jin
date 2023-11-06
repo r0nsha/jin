@@ -20,4 +20,5 @@ fn println(fmt: str) {
 fn main {
 	println("Hello, World!")
 	hello()
+	printf("The answer is %d".ptr, answer)
 }

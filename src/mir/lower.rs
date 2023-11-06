@@ -58,7 +58,7 @@ impl<'db> LowerCx<'db> {
                 let def = &self.db[f.id];
                 let is_extern = f.kind.is_extern();
                 let name = if is_extern { def.name } else { def.qpath.join_with("_").into() };
-                let sig = self.lower_fn_sig(&f.sig, name, def.ty, is_extern);
+                let sig = self.lower_fn_sig(&f.sig, &f.kind, name, def.ty);
                 self.fn_map.insert(f.id, sig);
             }
         }
@@ -152,7 +152,18 @@ impl<'db> LowerCx<'db> {
         }
     }
 
-    fn lower_fn_sig(&mut self, sig: &hir::FnSig, name: Ustr, ty: Ty, is_extern: bool) -> FnSigId {
+    fn lower_fn_sig(
+        &mut self,
+        sig: &hir::FnSig,
+        kind: &hir::FnKind,
+        name: Ustr,
+        ty: Ty,
+    ) -> FnSigId {
+        let (is_extern, is_c_variadic) = match kind {
+            FnKind::Extern { is_c_variadic } => (true, *is_c_variadic),
+            FnKind::Bare { .. } => (false, false),
+        };
+
         self.mir.fn_sigs.push_with_key(|id| FnSig {
             id,
             name,
@@ -160,6 +171,7 @@ impl<'db> LowerCx<'db> {
             ret: ty.as_fn().unwrap().ret,
             ty,
             is_extern,
+            is_c_variadic,
         })
     }
 
@@ -229,7 +241,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                 self.cx.mir.fns.push(Fn { def_id: f.id, sig, body: self.body });
             }
-            FnKind::Extern => unreachable!(),
+            FnKind::Extern { .. } => unreachable!(),
         }
     }
 

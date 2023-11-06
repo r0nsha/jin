@@ -35,10 +35,13 @@ struct PrettyCx<'db> {
 
 impl PrettyCx<'_> {
     fn pp_fn(&mut self, f: &Fn) {
+        let fn_ty = self.db[f.id].ty.as_fn().expect("to be a function");
+
         self.builder.begin_child(format!(
-            "fn {} (returns: {})",
+            "fn {} (returns: {}{})",
             self.db[f.id].qpath,
-            self.db[f.id].ty.as_fn().expect("to be a function").ret.display(self.db)
+            fn_ty.ret.display(self.db),
+            if fn_ty.is_c_variadic { ", c variadic" } else { "" }
         ));
 
         if !f.sig.params.is_empty() {
@@ -59,7 +62,7 @@ impl PrettyCx<'_> {
             FnKind::Bare { body } => {
                 self.pp_expr(body);
             }
-            FnKind::Extern => {
+            FnKind::Extern { .. } => {
                 self.builder.add_empty_child("extern".to_string());
             }
         }
