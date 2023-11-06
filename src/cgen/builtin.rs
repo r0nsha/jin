@@ -43,10 +43,10 @@ impl<'db> Generator<'db> {
     }
 
     pub fn codegen_bin_op_div(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
-        let safety_check = panic_if(D::text(format!("{} == 0", data.rhs)), div_by_zero_msg());
-        let op = self.value_assign(state, data.target, || {
-            D::text(format!("{} {} {}", data.lhs, data.op, data.rhs))
-        });
+        let (lhs, rhs) = (value_name_str(data.lhs), value_name_str(data.rhs));
+        let safety_check = panic_if(D::text(format!("{rhs} == 0")), div_by_zero_msg());
+        let op = self
+            .value_assign(state, data.target, || D::text(format!("{} {} {}", lhs, data.op, rhs)));
         D::intersperse([safety_check, op], D::hardline())
     }
 
