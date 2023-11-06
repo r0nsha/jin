@@ -135,6 +135,7 @@ impl<'db> Generator<'db> {
                     .nest(2)
                     .group(),
                 )
+                .append(if sig.is_c_variadic { D::text(", ...") } else { D::nil() })
                 .append(D::text(")")),
         );
 

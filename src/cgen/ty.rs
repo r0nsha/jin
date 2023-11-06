@@ -100,6 +100,7 @@ fn fn_ty<'a>(fn_ty: &FnTy, cx: &Generator<'a>, name: Option<D<'a>>) -> D<'a> {
                     .nest(1)
                     .group(),
                 )
+                .append(if fn_ty.is_c_variadic { D::text(", ...") } else { D::nil() })
                 .append(D::text(")")),
         )
 }
