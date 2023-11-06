@@ -3,7 +3,7 @@ use pretty::RcDoc as D;
 use crate::{
     cgen::{
         generate::{FnState, Generator},
-        util::{if_stmt, stmt, value_name_str},
+        util::{if_stmt, panic_if, stmt, value_name_str},
     },
     middle::BinOp,
     mir::ValueId,
@@ -61,13 +61,6 @@ impl<'db> Generator<'db> {
         let call = D::text(call_checked_arithmetic_builtin(fname, data));
         D::intersperse([decl, panic_if(call, &overflow_msg(action))], D::hardline())
     }
-}
-
-fn panic_if<'a>(cond: D<'a>, msg: &str) -> D<'a> {
-    let print_msg = stmt(|| D::text(format!("printf(\"panic: {msg}\\n\")")));
-    let exit = stmt(|| D::text("exit(1)"));
-    let then = D::intersperse([print_msg, exit], D::hardline());
-    if_stmt(cond, then, None)
 }
 
 fn call_checked_arithmetic_builtin(action: &str, data: &BinOpData) -> String {

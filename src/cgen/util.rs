@@ -71,3 +71,10 @@ pub fn block<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
 pub fn attr<'a>(name: &str) -> D<'a> {
     D::text(format!("__attribute__(({name}))"))
 }
+
+pub fn panic_if<'a>(cond: D<'a>, msg: &str) -> D<'a> {
+    let print_msg = stmt(|| D::text(format!("printf(\"panic: {msg}\\n\")")));
+    let exit = stmt(|| D::text("exit(1)"));
+    let then = D::intersperse([print_msg, exit], D::hardline());
+    if_stmt(cond, then, None)
+}
