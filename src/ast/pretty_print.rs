@@ -144,8 +144,11 @@ impl PrettyPrint for Fn {
 
         match &self.kind {
             FnKind::Bare { body } => body.pretty_print(cx),
-            FnKind::Extern {} => {
-                cx.builder.add_empty_child("extern".to_string());
+            FnKind::Extern { is_c_variadic } => {
+                cx.builder.add_empty_child(format!(
+                    "extern{}",
+                    if *is_c_variadic { "(variadic)" } else { "" }
+                ));
             }
         }
 

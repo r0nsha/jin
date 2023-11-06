@@ -141,7 +141,7 @@ impl<'db> LowerCx<'db> {
                 ustr(&name)
             };
 
-            let sig = self.lower_fn_sig(&new_fun.sig, name, mono_item.ty, false);
+            let sig = self.lower_fn_sig(&new_fun.sig, &new_fun.kind, name, mono_item.ty);
 
             self.mono_fns.insert(mono_item.clone(), sig);
             self.lower_fn_body(sig, &new_fun);
@@ -160,8 +160,8 @@ impl<'db> LowerCx<'db> {
         ty: Ty,
     ) -> FnSigId {
         let (is_extern, is_c_variadic) = match kind {
-            FnKind::Extern { is_c_variadic } => (true, *is_c_variadic),
             FnKind::Bare { .. } => (false, false),
+            FnKind::Extern { is_c_variadic } => (true, *is_c_variadic),
         };
 
         self.mir.fn_sigs.push_with_key(|id| FnSig {

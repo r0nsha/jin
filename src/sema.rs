@@ -365,14 +365,19 @@ impl<'db> Sema<'db> {
             &fun.attrs,
             match &fun.kind {
                 ast::FnKind::Bare { .. } => AttrsPlacement::Fn,
-                ast::FnKind::Extern => AttrsPlacement::ExternFn,
+                ast::FnKind::Extern { .. } => AttrsPlacement::ExternFn,
             },
         )?;
+
+        let is_c_variadic = match &fun.kind {
+            ast::FnKind::Bare { .. } => false,
+            ast::FnKind::Extern { is_c_variadic } => *is_c_variadic,
+        };
 
         let sig = env.with_scope(
             fun.sig.word.name(),
             ScopeKind::Fn(DefId::INVALID),
-            |env| -> CheckResult<_> { self.check_fn_sig(env, &fun.sig) },
+            |env| -> CheckResult<_> { self.check_fn_sig(env, &fun.sig, is_c_variadic) },
         )?;
 
         let id = self.define_def(
@@ -380,7 +385,7 @@ impl<'db> Sema<'db> {
             Vis::Private,
             DefKind::Fn(match &fun.kind {
                 ast::FnKind::Bare { .. } => FnInfo::Bare,
-                ast::FnKind::Extern => FnInfo::Extern,
+                ast::FnKind::Extern { .. } => FnInfo::Extern,
             }),
             sig.word,
             sig.ty,
@@ -391,7 +396,12 @@ impl<'db> Sema<'db> {
         Ok(())
     }
 
-    fn check_fn_sig(&mut self, env: &mut Env, sig: &ast::FnSig) -> CheckResult<hir::FnSig> {
+    fn check_fn_sig(
+        &mut self,
+        env: &mut Env,
+        sig: &ast::FnSig,
+        is_c_variadic: bool,
+    ) -> CheckResult<hir::FnSig> {
         let ty_params = self.check_ty_params(env, &sig.ty_params)?;
 
         let mut params = vec![];
@@ -429,7 +439,7 @@ impl<'db> Sema<'db> {
                 .map(|p| FnTyParam { name: Some(p.name.name()), ty: p.ty })
                 .collect(),
             ret,
-            is_c_variadic: sig.is_c_variadic,
+            is_c_variadic,
         }));
 
         Ok(hir::FnSig { word: sig.word, ty_params, params, ret, ty })
