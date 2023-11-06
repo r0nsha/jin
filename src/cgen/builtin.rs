@@ -21,8 +21,43 @@ pub struct BinOpData {
 }
 
 impl<'db> Generator<'db> {
-    pub fn codegen_cast(&self, value: ValueId, target: Ty) -> D<'db> {
-        D::text("(").append(target.cty(self)).append(D::text(")")).append(value_name(value))
+    pub fn codegen_cast(
+        &self,
+        state: &FnState<'db>,
+        value: ValueId,
+        casted: ValueId,
+        target: Ty,
+    ) -> D<'db> {
+        let cast = self.value_assign(state, value, || {
+            D::text("(").append(target.cty(self)).append(D::text(")")).append(value_name(casted))
+        });
+
+        let casted_ty = state.body.value(casted).ty;
+
+        if casted_ty.is_any_int() && target.is_any_int() {
+            let (value_bits, target_bits) = (casted_ty.bits(), target.bits());
+
+            if target_bits < value_bits {
+                let casted_str = value_name_str(casted);
+                let (min, max) = (target.min(), target.max());
+
+                return D::intersperse(
+                    [
+                        panic_if(
+                            D::text(format!("{casted_str} >= {min} && {casted_str} <= {max}")),
+                            &format!(
+                                "value is out of range of type `{}`: {min}..{max}",
+                                target.display(self.db)
+                            ),
+                        ),
+                        cast,
+                    ],
+                    D::hardline(),
+                );
+            }
+        }
+
+        cast
     }
 
     pub fn codegen_bin_op(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
@@ -73,7 +108,7 @@ fn call_checked_arithmetic_builtin(action: &str, data: &BinOpData) -> String {
         (value_name_str(data.target), value_name_str(data.lhs), value_name_str(data.rhs));
     let builtin_name = format!(
         "__builtin_{}{}{}_overflow",
-        if data.ty.is_signed() { "s" } else { "u" },
+        if data.ty.is_int() { "s" } else { "u" },
         action,
         match data.ty.bits() {
             8..=16 => "",

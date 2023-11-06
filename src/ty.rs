@@ -165,8 +165,8 @@ pub enum TyKind {
 impl TyKind {
     pub const DEFAULT_INT: Self = Self::Int(IntTy::Int);
 
-    pub fn is_signed(&self) -> bool {
-        matches!(self, TyKind::Int(_))
+    pub fn is_any_int(&self) -> bool {
+        matches!(self, TyKind::Int(_) | TyKind::Uint(_))
     }
 
     pub fn bits(&self) -> usize {
