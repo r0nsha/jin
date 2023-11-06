@@ -15,6 +15,7 @@ pub trait TyFolder {
                 is_c_variadic: fun.is_c_variadic,
             })
             .into(),
+            TyKind::RawPtr(pointee) => TyKind::RawPtr(self.fold(*pointee)).into(),
             _ => ty,
         }
     }
