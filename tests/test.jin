@@ -20,6 +20,5 @@ fn println(fmt: Str) {
 fn main {
 	println("Hello, World!")
 	hello()
-	-9223372036854775808 - answer
 	exit(answer)
 }

@@ -5,6 +5,7 @@ use pretty::RcDoc as D;
 
 use crate::{
     cgen::{
+        builtin::BinOpData,
         name_gen::LocalNames,
         ty::CTy,
         util::{
@@ -235,9 +236,16 @@ impl<'db> Generator<'db> {
                     )
                     .append(D::text(")"))
             }),
-            Inst::Binary { value, lhs, rhs, op } => {
-                self.codegen_bin_op(state, *value, *lhs, *rhs, *op, state.body.value(*value).ty)
-            }
+            Inst::Binary { value, lhs, rhs, op } => self.codegen_bin_op(
+                state,
+                &BinOpData {
+                    target: *value,
+                    lhs: *lhs,
+                    rhs: *rhs,
+                    op: *op,
+                    ty: state.body.value(*value).ty,
+                },
+            ),
             Inst::Unary { value, inner, op } => {
                 self.value_assign(state, *value, || D::text(op.as_str()).append(value_name(*inner)))
             }
@@ -264,7 +272,7 @@ impl<'db> Generator<'db> {
         }
     }
 
-    fn value_assign(
+    pub fn value_assign(
         &self,
         state: &FnState<'db>,
         id: ValueId,
