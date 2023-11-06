@@ -605,7 +605,9 @@ impl<'db> Sema<'db> {
                     });
                 }
 
-                if let TyKind::Fn(fun_ty) = callee.ty.kind() {
+                let callee_ty = self.normalize(callee.ty);
+
+                if let TyKind::Fn(fun_ty) = callee_ty.kind() {
                     #[derive(Debug)]
                     struct PassedArg {
                         is_named: bool,
@@ -617,9 +619,7 @@ impl<'db> Sema<'db> {
                         let found = new_args.len();
 
                         return Err(Diagnostic::error("check::arg_mismatch")
-                            .with_message(format!(
-                    "this function takes {expected} argument(s), but {found} were supplied"
-                ))
+                            .with_message(format!("this function takes {expected} argument(s), but {found} were supplied"))
                             .with_label(Label::primary(*span).with_message(format!(
                                 "expected {expected} arguments, found {found}"
                             ))));
@@ -704,11 +704,9 @@ impl<'db> Sema<'db> {
                         }
                     }
 
-                    let ty = fun_ty.ret;
-
                     self.expr(
                         hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args: new_args }),
-                        ty,
+                        fun_ty.ret,
                         *span,
                     )
                 } else {

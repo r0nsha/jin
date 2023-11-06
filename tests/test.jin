@@ -39,6 +39,10 @@ fn do_add(f: fn(int, int) -> int, a: int, b: int) {
 	printf("a + b = %d\n".ptr, f(a, b))
 }
 
+fn map[a, b](val: a, f: fn(a) -> b) -> b {
+	f(val)
+}
+
 fn run(f: fn) { f() }
 fn run1(f: fn()) { f() }
 fn run2(f: fn() -> {}) { f() }
