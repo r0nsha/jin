@@ -945,6 +945,24 @@ impl<'db> Sema<'db> {
         allow_hole: AllowTyHole,
     ) -> CheckResult<Ty> {
         match ty {
+            TyExpr::Fn(fn_ty) => {
+                let params = fn_ty
+                    .params
+                    .iter()
+                    .map(|ty| {
+                        self.check_ty_expr(env, ty, allow_hole)
+                            .map(|ty| FnTyParam { name: None, ty })
+                    })
+                    .try_collect()?;
+
+                let ret = if let Some(ret) = &fn_ty.ret {
+                    self.check_ty_expr(env, ret, allow_hole)?
+                } else {
+                    self.db.types.unit
+                };
+
+                Ok(Ty::new(TyKind::Fn(FnTy { params, ret, is_c_variadic: fn_ty.is_c_variadic })))
+            }
             TyExpr::RawPtr(pointee, _) => {
                 let pointee = self.check_ty_expr(env, pointee, allow_hole)?;
                 Ok(Ty::new(TyKind::RawPtr(pointee)))

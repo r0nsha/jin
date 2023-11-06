@@ -156,8 +156,9 @@ impl UnOp {
 
 #[derive(Debug, Clone)]
 pub enum TyExpr {
+    Fn(TyExprFn),
     RawPtr(Box<TyExpr>, Span),
-    Name(TyName),
+    Name(TyExprName),
     Unit(Span),
     Hole(Span),
 }
@@ -165,8 +166,9 @@ pub enum TyExpr {
 impl Spanned for TyExpr {
     fn span(&self) -> Span {
         match self {
-            Self::RawPtr(_, span)
-            | Self::Name(TyName { span, .. })
+            Self::Fn(TyExprFn { span, .. })
+            | Self::RawPtr(_, span)
+            | Self::Name(TyExprName { span, .. })
             | Self::Unit(span)
             | Self::Hole(span) => *span,
         }
@@ -174,7 +176,15 @@ impl Spanned for TyExpr {
 }
 
 #[derive(Debug, Clone)]
-pub struct TyName {
+pub struct TyExprFn {
+    pub params: Vec<TyExpr>,
+    pub ret: Option<Box<TyExpr>>,
+    pub is_c_variadic: bool,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct TyExprName {
     pub word: Word,
     pub args: Vec<TyExpr>,
     pub span: Span,

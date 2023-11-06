@@ -10,7 +10,7 @@ use crate::{
     db::{Db, ExternLib},
     diagnostics::{Diagnostic, Label},
     macros::create_bool_enum,
-    middle::{BinOp, TyExpr, TyName, UnOp},
+    middle::{BinOp, TyExpr, TyExprFn, TyExprName, UnOp},
     qpath::QPath,
     span::{Source, SourceId, Span, Spanned},
     word::Word,
@@ -237,29 +237,27 @@ impl<'a> Parser<'a> {
     fn parse_fn_params(&mut self) -> ParseResult<(Vec<FnParam>, bool)> {
         let mut params = vec![];
 
-        if !self.is(TokenKind::OpenParen) {
-            return Ok((params, false));
-        }
+        if self.is(TokenKind::OpenParen) {
+            loop {
+                if self.is(TokenKind::DotDot) {
+                    self.eat(TokenKind::CloseParen)?;
+                    return Ok((params, true));
+                }
 
-        loop {
-            if self.is(TokenKind::DotDot) {
-                self.eat(TokenKind::CloseParen)?;
-                return Ok((params, true));
-            }
+                if self.is(TokenKind::CloseParen) {
+                    break;
+                }
 
-            if self.is(TokenKind::CloseParen) {
-                break;
-            }
+                let ident = self.eat(TokenKind::empty_ident())?;
+                self.eat(TokenKind::Colon)?;
+                let ty_expr = self.parse_ty()?;
+                params.push(FnParam { name: ident.word(), ty_expr, span: ident.span });
 
-            let ident = self.eat(TokenKind::empty_ident())?;
-            self.eat(TokenKind::Colon)?;
-            let ty_expr = self.parse_ty()?;
-            params.push(FnParam { name: ident.word(), ty_expr, span: ident.span });
-
-            if !params.is_empty() && !self.peek_is(TokenKind::CloseParen) {
-                self.eat(TokenKind::Comma)?;
-            } else if self.peek_is(TokenKind::Comma) {
-                self.next();
+                if !params.is_empty() && !self.peek_is(TokenKind::CloseParen) {
+                    self.eat(TokenKind::Comma)?;
+                } else if self.peek_is(TokenKind::Comma) {
+                    self.next();
+                }
             }
         }
 
@@ -424,6 +422,10 @@ impl<'a> Parser<'a> {
         let tok = self.eat_any()?;
 
         let ty = match tok.kind {
+            TokenKind::Fn => {
+                let fty = self.parse_fn_ty()?;
+                TyExpr::Fn(fty)
+            }
             TokenKind::Star => {
                 let pointee = self.parse_ty()?;
                 let span = tok.span.merge(pointee.span());
@@ -434,13 +436,48 @@ impl<'a> Parser<'a> {
                 TyExpr::Unit(tok.span.merge(end.span))
             }
             TokenKind::Ident(..) => {
-                TyExpr::Name(TyName { word: tok.word(), args: vec![], span: tok.span })
+                TyExpr::Name(TyExprName { word: tok.word(), args: vec![], span: tok.span })
             }
             TokenKind::Underscore => TyExpr::Hole(tok.span),
             _ => return Err(unexpected_token_err("a type", tok.kind, tok.span)),
         };
 
         Ok(ty)
+    }
+
+    fn parse_fn_ty(&mut self) -> ParseResult<TyExprFn> {
+        let start = self.last_span();
+        let (params, is_c_variadic) = self.parse_fn_ty_params()?;
+        let ret =
+            self.is_and(TokenKind::Arrow, |this, _| this.parse_ty()).transpose()?.map(Box::new);
+        Ok(TyExprFn { params, ret, is_c_variadic, span: start.merge(self.last_span()) })
+    }
+
+    fn parse_fn_ty_params(&mut self) -> ParseResult<(Vec<TyExpr>, bool)> {
+        let mut params = vec![];
+
+        if self.is(TokenKind::OpenParen) {
+            loop {
+                if self.is(TokenKind::DotDot) {
+                    self.eat(TokenKind::CloseParen)?;
+                    return Ok((params, true));
+                }
+
+                if self.is(TokenKind::CloseParen) {
+                    break;
+                }
+
+                params.push(self.parse_ty()?);
+
+                if !params.is_empty() && !self.peek_is(TokenKind::CloseParen) {
+                    self.eat(TokenKind::Comma)?;
+                } else if self.peek_is(TokenKind::Comma) {
+                    self.next();
+                }
+            }
+        }
+
+        Ok((params, false))
     }
 
     fn parse_if(&mut self) -> ParseResult<Expr> {

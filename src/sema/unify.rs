@@ -163,7 +163,11 @@ impl UnifyCx<'_, '_> {
                         self.unify_ty_ty(p1.ty, p2.ty)?;
                     }
 
-                    Ok(())
+                    if fex.is_c_variadic == fact.is_c_variadic {
+                        Ok(())
+                    } else {
+                        Err(UnifyError::TyMismatch { a, b })
+                    }
                 } else {
                     Err(UnifyError::TyMismatch { a, b })
                 }

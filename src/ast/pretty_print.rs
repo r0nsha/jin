@@ -214,6 +214,27 @@ impl PrettyPrint for ExternImport {
 impl PrettyPrint for TyExpr {
     fn pretty_print(&self, cx: &mut PrettyCx) {
         match self {
+            TyExpr::Fn(f) => {
+                cx.builder.begin_child("fn type".to_string());
+
+                if !f.params.is_empty() {
+                    cx.builder.begin_child("params".to_string());
+
+                    for param in &f.params {
+                        param.pretty_print(cx);
+                    }
+
+                    cx.builder.end_child();
+                }
+
+                if let Some(ret) = &f.ret {
+                    cx.builder.begin_child("ret".to_string());
+                    ret.pretty_print(cx);
+                    cx.builder.end_child();
+                }
+
+                cx.builder.end_child();
+            }
             TyExpr::RawPtr(pointee, _) => {
                 cx.builder.begin_child("raw ptr".to_string());
                 pointee.pretty_print(cx);
