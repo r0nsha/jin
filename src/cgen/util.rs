@@ -22,7 +22,7 @@ pub fn bool_value<'a>(value: bool) -> D<'a> {
 }
 
 pub fn unit_value<'a>() -> D<'a> {
-    D::text("{0}")
+    D::text("{}")
 }
 
 pub fn stmt<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
