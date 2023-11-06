@@ -1,18 +1,18 @@
 import extern "./foo"
 
 fn extern hello()
-let extern answer: Int
+let extern answer: int
 
-fn extern exit(status: I32) -> Never
-fn extern write(fd: I32, buf: *U8, count: Uint) -> Int
+fn extern exit(status: i32) -> never
+fn extern write(fd: i32, buf: *u8, count: uint) -> int
 
 let stdout = 1
 
-fn print(fmt: Str) {
+fn print(fmt: str) {
 	write(stdout, fmt.ptr, fmt.len)
 }
 
-fn println(fmt: Str) {
+fn println(fmt: str) {
 	print(fmt)
 	print("\n")
 }

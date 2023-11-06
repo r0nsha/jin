@@ -1,24 +1,24 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef int8_t I8;
-typedef int16_t I16;
-typedef int32_t I32;
-typedef int64_t I64;
-typedef intptr_t Int;
+typedef int8_t i8_t;
+typedef int16_t i16_t;
+typedef int32_t i32_t;
+typedef int64_t i64_t;
+typedef intptr_t int_t;
 
-typedef uint8_t U8;
-typedef uint16_t U16;
-typedef uint32_t U32;
-typedef uint64_t U64;
-typedef uintptr_t Uint;
-
-typedef struct {
-} Unit;
-typedef Unit Never;
-typedef bool Bool;
+typedef uint8_t u8_t;
+typedef uint16_t u16_t;
+typedef uint32_t u32_t;
+typedef uint64_t u64_t;
+typedef uintptr_t uint_t;
 
 typedef struct {
-  U8 *ptr;
-  Uint len;
-} Str;
+} unit_t;
+typedef unit_t never_t;
+typedef bool bool_t;
+
+typedef struct {
+  u8_t *ptr;
+  uint_t len;
+} str_t;

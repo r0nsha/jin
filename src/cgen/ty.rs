@@ -22,11 +22,11 @@ impl<'db> CTy<'db> for TyKind {
             Self::Int(ity) => ity.cty(cx),
             Self::Uint(uty) => uty.cty(cx),
             Self::Fn(fty) => fty.cty(cx),
-            Self::Str => D::text(sym::STR),
+            Self::Str => D::text(sym::STR).append(D::text("_t")),
             Self::RawPtr(ty) => ty.cty(cx).append(D::text("*")),
-            Self::Bool => D::text(sym::BOOL),
-            Self::Unit => D::text(sym::UNIT),
-            Self::Never => D::text(sym::NEVER),
+            Self::Bool => D::text(sym::BOOL).append(D::text("_t")),
+            Self::Unit => D::text(sym::UNIT).append(D::text("_t")),
+            Self::Never => D::text(sym::NEVER).append(D::text("_t")),
             _ => panic!("unexpected type {self:?}"),
         }
     }
@@ -48,6 +48,7 @@ impl<'db> CTy<'db> for IntTy {
             Self::I64 => sym::I64,
             Self::Int => sym::INT,
         })
+        .append(D::text("_t"))
     }
 
     fn cdecl(&self, cx: &Generator<'db>, name: D<'db>) -> D<'db> {
@@ -64,6 +65,7 @@ impl<'db> CTy<'db> for UintTy {
             Self::U64 => sym::U64,
             Self::Uint => sym::UINT,
         })
+        .append(D::text("_t"))
     }
 
     fn cdecl(&self, cx: &Generator<'db>, name: D<'db>) -> D<'db> {
