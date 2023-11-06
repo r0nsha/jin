@@ -44,7 +44,7 @@ impl<'db> Generator<'db> {
                 return D::intersperse(
                     [
                         panic_if(
-                            D::text(format!("{casted_str} >= {min} && {casted_str} <= {max}")),
+                            D::text(format!("({casted_str} < {min}) || ({casted_str} > {max})")),
                             &format!(
                                 "value is out of range of type `{}`: {min}..{max}",
                                 target.display(self.db)
