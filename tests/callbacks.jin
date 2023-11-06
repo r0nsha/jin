@@ -1,30 +1,30 @@
-fn extern printf(fmt: *u8, ..) -> i32
+//fn extern printf(fmt: *u8, ..) -> i32
 
 fn main {
-	run(print_answer)
-	run1(print_answer)
-	run2(print_answer)
-	run3(print_answer)
-	do_add(add, 1, 2)
+	//run(print_answer)
+	//run1(print_answer)
+	//run2(print_answer)
+	//run3(print_answer)
+	//do_add(add, 1, 2)
 }
 
-fn print_answer() {
-	printf("The answer is %d\n".ptr, 42)
-}
-
-fn add(a: int, b: int) -> int {
-	a + b
-}
-
-fn do_add(f: fn(int, int) -> int, a: int, b: int) {
-	printf("a + b = %d\n".ptr, f(a, b))
-}
+//fn print_answer() {
+//	printf("The answer is %d\n".ptr, 42)
+//}
+//
+//fn add(a: int, b: int) -> int {
+//	a + b
+//}
+//
+//fn do_add(f: fn(int, int) -> int, a: int, b: int) {
+//	printf("a + b = %d\n".ptr, f(a, b))
+//}
 
 fn map[a, b](val: a, f: fn(a) -> b) -> b {
 	f(val)
 }
 
-fn run(f: fn) { f() }
-fn run1(f: fn()) { f() }
-fn run2(f: fn() -> {}) { f() }
-fn run3(f: fn -> {}) { f() }
+//fn run(f: fn) { f() }
+//fn run1(f: fn()) { f() }
+//fn run2(f: fn() -> {}) { f() }
+//fn run3(f: fn -> {}) { f() }

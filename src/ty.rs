@@ -42,7 +42,8 @@ impl Ty {
     pub fn occurs_check(self, var: TyVar) -> Result<(), Self> {
         match self.kind() {
             TyKind::Fn(fun) => fun.ret.occurs_check(var).map_err(|_| self),
-            TyKind::Infer(InferTy::TyVar(v)) => {
+            TyKind::RawPtr(pointee) => pointee.occurs_check(var).map_err(|_| self),
+            TyKind::Param(ParamTy { var: v, .. }) | TyKind::Infer(InferTy::TyVar(v)) => {
                 if *v == var {
                     Err(self)
                 } else {

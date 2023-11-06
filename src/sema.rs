@@ -704,6 +704,8 @@ impl<'db> Sema<'db> {
                         }
                     }
 
+                    dbg!(self.normalize(callee_ty));
+
                     self.expr(
                         hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args: new_args }),
                         fun_ty.ret,

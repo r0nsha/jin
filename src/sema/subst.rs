@@ -6,7 +6,7 @@ use crate::{
     sema::{normalize::NormalizeTy, Sema, TyStorage},
     span::Span,
     subst::{Subst, SubstTy},
-    ty::{fold::TyFolder, InferTy, IntVar, ParamTy, Ty, TyKind, TyVar},
+    ty::{fold::TyFolder, InferTy, IntVar, Ty, TyKind, TyVar},
 };
 
 impl<'db> Sema<'db> {
@@ -28,6 +28,12 @@ impl<'db> Sema<'db> {
         let diagnostics: Vec<_> = cx.errors.into_values().collect();
 
         self.db.diagnostics.emit_many(diagnostics);
+
+        self.db
+            .emit_file(crate::db::build_options::EmitOption::Hir, |db, file| {
+                self.hir.pretty_print(db, file)
+            })
+            .expect("emitting hir failed");
     }
 }
 
