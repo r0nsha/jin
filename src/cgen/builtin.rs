@@ -44,7 +44,7 @@ impl<'db> Generator<'db> {
 
     pub fn codegen_bin_op_div(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
         let (lhs, rhs) = (value_name_str(data.lhs), value_name_str(data.rhs));
-        let safety_check = panic_if(D::text(format!("{rhs} == 0")), div_by_zero_msg());
+        let safety_check = panic_if(D::text(format!("{rhs} == 0")), "attempt to divide by zero");
         let op = self
             .value_assign(state, data.target, || D::text(format!("{} {} {}", lhs, data.op, rhs)));
         D::intersperse([safety_check, op], D::hardline())
@@ -58,7 +58,7 @@ impl<'db> Generator<'db> {
         data: &BinOpData,
     ) -> D<'db> {
         let decl = self.value_decl(state, data.target);
-        let call = D::text(call_safe_arith_fn(fname, data));
+        let call = D::text(call_checked_arithmetic_builtin(fname, data));
         D::intersperse([decl, panic_if(call, &overflow_msg(action))], D::hardline())
     }
 }
@@ -70,31 +70,23 @@ fn panic_if<'a>(cond: D<'a>, msg: &str) -> D<'a> {
     if_stmt(cond, then, None)
 }
 
-fn call_safe_arith_fn(action: &str, data: &BinOpData) -> String {
+fn call_checked_arithmetic_builtin(action: &str, data: &BinOpData) -> String {
     let (target, lhs, rhs) =
         (value_name_str(data.target), value_name_str(data.lhs), value_name_str(data.rhs));
-    let builtin_name = get_safe_arith_fn(action, data.ty);
-    format!("{builtin_name}({lhs}, {rhs}, &{target})")
-}
-
-fn get_safe_arith_fn(action: &str, ty: Ty) -> String {
-    format!(
+    let builtin_name = format!(
         "__builtin_{}{}{}_overflow",
-        if ty.is_signed() { "s" } else { "u" },
+        if data.ty.is_signed() { "s" } else { "u" },
         action,
-        match ty.bits() {
+        match data.ty.bits() {
             8..=16 => "",
             32 => "l",
             64 => "ll",
             _ => unreachable!(),
         }
-    )
+    );
+    format!("{builtin_name}({lhs}, {rhs}, &{target})")
 }
 
 fn overflow_msg(action: &str) -> String {
     format!("attempt to {action} with overflow")
-}
-
-fn div_by_zero_msg() -> &'static str {
-    "attempt to divide by zero"
 }
