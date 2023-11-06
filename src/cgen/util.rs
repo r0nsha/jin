@@ -67,3 +67,7 @@ pub fn block<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
         .append(D::hardline())
         .append(D::text("}"))
 }
+
+pub fn attr<'a>(name: &str) -> D<'a> {
+    D::text(format!("__attribute__(({name}))"))
+}

@@ -9,8 +9,8 @@ use crate::{
         name_gen::LocalNames,
         ty::CTy,
         util::{
-            block_name, bool_value, goto_stmt, if_stmt, stmt, str_value, unit_value, value_name,
-            NEST,
+            attr, block_name, bool_value, goto_stmt, if_stmt, stmt, str_value, unit_value,
+            value_name, NEST,
         },
     },
     db::Db,
@@ -121,7 +121,7 @@ impl<'db> Generator<'db> {
 
         let initial = if sig.is_extern { D::text("extern").append(D::space()) } else { D::nil() };
 
-        let sig_doc = fn_ty.ret.cty(self).append(D::space()).append(sig.name.as_str()).append(
+        let mut sig_doc = fn_ty.ret.cty(self).append(D::space()).append(sig.name.as_str()).append(
             D::text("(")
                 .append(
                     D::intersperse(
@@ -137,6 +137,10 @@ impl<'db> Generator<'db> {
                 )
                 .append(D::text(")")),
         );
+
+        if fn_ty.ret.is_never() {
+            sig_doc = sig_doc.append(D::space()).append(attr("noreturn"));
+        }
 
         initial.append(sig_doc).group()
     }
