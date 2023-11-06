@@ -11,11 +11,11 @@ fn main {
 }
 
 fn int_types {
-	let id: I8 = 126
-	let promoted: I64 = id + 5555
-	let demoted_inferred: I32 = promoted as _
-	let demoted_explicit: I16 = { demoted_inferred - 4000 } as _
-	let int_to_uint: Uint = { 663151 as Int } as _
+	let id: i8 = 126
+	let promoted: i64 = id + 5555
+	let demoted_inferred: i32 = promoted as _
+	let demoted_explicit: i16 = { demoted_inferred - 4000 } as _
+	let int_to_uint: uint = { 663151 as int } as _
 }
 
 fn unary {
@@ -31,11 +31,8 @@ fn arithmetic {
 	3 - 4
 	5 * 6
 	7 / 8
-	1 / x()
 	9 % 10
 }
-
-fn x() -> Int { 0 }
 
 fn cmp {
 	true && false
@@ -57,9 +54,9 @@ fn if_expr {
 	}
 }
 
-fn variables -> Int {
-	let x = 7 // Inferred to `Int`
-	let y: Int = 3 // Explicit type annotation
+fn variables -> int {
+	let x = 7 // Inferred to `int`
+	let y: int = 3 // Explicit type annotation
 	let x = 39  // Variables can be shadowed
 	x + y
 }
@@ -74,11 +71,11 @@ fn polymorphism {
 	id(true)
 
 	// Explicit type arguments
-	id[Int](111)
-	id[Bool](false)
+	id[int](111)
+	id[bool](false)
 }
 
-fn add_named(first: Int, second: Int) -> Int {
+fn add_named(first: int, second: int) -> int {
 	first + second
 }
 
