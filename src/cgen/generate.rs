@@ -240,7 +240,7 @@ impl<'db> Generator<'db> {
                     )
                     .append(D::text(")"))
             }),
-            Inst::Binary { value, lhs, rhs, op } => self.codegen_bin_op(
+            Inst::Binary { value, lhs, rhs, op, span } => self.codegen_bin_op(
                 state,
                 &BinOpData {
                     target: *value,
@@ -248,13 +248,14 @@ impl<'db> Generator<'db> {
                     rhs: *rhs,
                     op: *op,
                     ty: state.body.value(*value).ty,
+                    span: *span,
                 },
             ),
             Inst::Unary { value, inner, op } => {
                 self.value_assign(state, *value, || D::text(op.as_str()).append(value_name(*inner)))
             }
-            Inst::Cast { value, inner, target } => {
-                self.codegen_cast(state, *value, *inner, *target)
+            Inst::Cast { value, inner, target, span } => {
+                self.codegen_cast(state, *value, *inner, *target, *span)
             }
             Inst::Member { value, inner, member } => self.value_assign(state, *value, || {
                 value_name(*inner).append(D::text(".")).append(D::text(member.as_str()))

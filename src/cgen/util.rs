@@ -1,6 +1,33 @@
+use codespan_reporting::files::{Files, Location};
 use pretty::RcDoc as D;
 
-use crate::mir::{Block, ValueId};
+use crate::{
+    cgen::generate::Generator,
+    mir::{Block, ValueId},
+    span::Span,
+};
+
+impl<'db> Generator<'db> {
+    pub fn panic_if(&self, cond: D<'db>, msg: &str, span: Span) -> D<'db> {
+        let print_call = {
+            let sources = self.db.sources.borrow();
+            let source = sources.get(span.source_id()).unwrap();
+
+            let path = source.path();
+            let Location { line_number, column_number } =
+                source.location(span.source_id(), span.start() as usize).unwrap();
+
+            let fmt =
+                format!("printf(\"panic at {path}:{line_number}:{column_number}:\\n{msg}\\n\")");
+
+            stmt(|| D::text(fmt))
+        };
+        let exit = stmt(|| D::text("exit(1)"));
+        let then = D::intersperse([print_call, exit], D::hardline());
+
+        if_stmt(cond, then, None)
+    }
+}
 
 pub const NEST: isize = 2;
 
@@ -70,11 +97,4 @@ pub fn block<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
 
 pub fn attr<'a>(name: &str) -> D<'a> {
     D::text(format!("__attribute__(({name}))"))
-}
-
-pub fn panic_if<'a>(cond: D<'a>, msg: &str) -> D<'a> {
-    let print_msg = stmt(|| D::text(format!("printf(\"panic: {msg}\\n\")")));
-    let exit = stmt(|| D::text("exit(1)"));
-    let then = D::intersperse([print_msg, exit], D::hardline());
-    if_stmt(cond, then, None)
 }

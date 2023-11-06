@@ -11,6 +11,7 @@ use crate::{
     hir::const_eval::Const,
     index_vec::{new_key_type, IndexSlice, IndexVec, IndexVecExt},
     middle::{BinOp, UnOp},
+    span::Span,
     ty::Ty,
 };
 
@@ -180,9 +181,9 @@ pub enum Inst {
     If { value: ValueId, cond: ValueId, then: ValueId, otherwise: ValueId },
     Return { value: ValueId },
     Call { value: ValueId, callee: ValueId, args: Vec<ValueId> },
-    Binary { value: ValueId, lhs: ValueId, rhs: ValueId, op: BinOp },
+    Binary { value: ValueId, lhs: ValueId, rhs: ValueId, op: BinOp, span: Span },
     Unary { value: ValueId, inner: ValueId, op: UnOp },
-    Cast { value: ValueId, inner: ValueId, target: Ty },
+    Cast { value: ValueId, inner: ValueId, target: Ty, span: Span },
     Member { value: ValueId, inner: ValueId, member: Ustr },
     Load { value: ValueId, kind: LoadKind },
     StrLit { value: ValueId, lit: Ustr },

@@ -369,6 +369,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                         lhs,
                         rhs,
                         op: bin.op,
+                        span: expr.span,
                     })
                 }
                 hir::ExprKind::Cast(cast) => {
@@ -378,6 +379,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                         value,
                         inner,
                         target: cast.target,
+                        span: expr.span,
                     })
                 }
                 hir::ExprKind::Member(access) => {
@@ -446,7 +448,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         };
 
         if let Some(coercions) = self.cx.db.coercions.get(&expr.id) {
-            self.apply_coercions(&coercions.clone(), value)
+            self.apply_coercions(&coercions.clone(), value, expr.span)
         } else {
             value
         }
@@ -488,12 +490,13 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         &mut self,
         coercions: &Coercions,
         mut coerced_value: ValueId,
+        span: Span,
     ) -> ValueId {
         for coercion in coercions.iter() {
             coerced_value = match coercion.kind {
                 CoercionKind::NeverToAny => coerced_value,
                 CoercionKind::IntPromotion => self.push_inst_with(coercion.target, |value| {
-                    Inst::Cast { value, inner: coerced_value, target: coercion.target }
+                    Inst::Cast { value, inner: coerced_value, target: coercion.target, span }
                 }),
             };
 

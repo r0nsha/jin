@@ -4,10 +4,11 @@ use crate::{
     cgen::{
         generate::{FnState, Generator},
         ty::CTy,
-        util::{panic_if, value_name, value_name_str},
+        util::{value_name, value_name_str},
     },
     middle::BinOp,
     mir::ValueId,
+    span::Span,
     ty::Ty,
 };
 
@@ -18,6 +19,7 @@ pub struct BinOpData {
     pub rhs: ValueId,
     pub op: BinOp,
     pub ty: Ty,
+    pub span: Span,
 }
 
 impl<'db> Generator<'db> {
@@ -27,6 +29,7 @@ impl<'db> Generator<'db> {
         value: ValueId,
         casted: ValueId,
         target: Ty,
+        span: Span,
     ) -> D<'db> {
         let cast = self.value_assign(state, value, || {
             D::text("(").append(target.cty(self)).append(D::text(")")).append(value_name(casted))
@@ -43,12 +46,13 @@ impl<'db> Generator<'db> {
 
                 return D::intersperse(
                     [
-                        panic_if(
+                        self.panic_if(
                             D::text(format!("({casted_str} < {min}) || ({casted_str} > {max})")),
                             &format!(
                                 "value is out of range of type `{}`: {min}..{max}",
                                 target.display(self.db)
                             ),
+                            span,
                         ),
                         cast,
                     ],
@@ -84,7 +88,8 @@ impl<'db> Generator<'db> {
 
     fn codegen_bin_op_div(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
         let (lhs, rhs) = (value_name_str(data.lhs), value_name_str(data.rhs));
-        let safety_check = panic_if(D::text(format!("{rhs} == 0")), "attempt to divide by zero");
+        let safety_check =
+            self.panic_if(D::text(format!("{rhs} == 0")), "attempt to divide by zero", data.span);
         let op = self
             .value_assign(state, data.target, || D::text(format!("{} {} {}", lhs, data.op, rhs)));
         D::intersperse([safety_check, op], D::hardline())
@@ -99,7 +104,7 @@ impl<'db> Generator<'db> {
     ) -> D<'db> {
         let decl = self.value_decl(state, data.target);
         let call = D::text(call_checked_arithmetic_builtin(fname, data));
-        D::intersperse([decl, panic_if(call, &overflow_msg(action))], D::hardline())
+        D::intersperse([decl, self.panic_if(call, &overflow_msg(action), data.span)], D::hardline())
     }
 }
 
