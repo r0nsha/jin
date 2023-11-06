@@ -25,7 +25,7 @@ impl<'db> CTy<'db> for TyKind {
             Self::Str => D::text(sym::STR),
             Self::RawPtr(ty) => ty.cty(cx).append(D::text("*")),
             Self::Bool => D::text(sym::BOOL),
-            Self::Unit => D::text(sym::UNIT),
+            Self::Unit => D::text("unit"),
             Self::Never => D::text(sym::NEVER),
             _ => panic!("unexpected type {self:?}"),
         }

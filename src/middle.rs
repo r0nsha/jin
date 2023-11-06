@@ -158,13 +158,17 @@ impl UnOp {
 pub enum TyExpr {
     RawPtr(Box<TyExpr>, Span),
     Name(TyName),
+    Unit(Span),
     Hole(Span),
 }
 
 impl Spanned for TyExpr {
     fn span(&self) -> Span {
         match self {
-            Self::RawPtr(_, span) | Self::Name(TyName { span, .. }) | Self::Hole(span) => *span,
+            Self::RawPtr(_, span)
+            | Self::Name(TyName { span, .. })
+            | Self::Unit(span)
+            | Self::Hole(span) => *span,
         }
     }
 }

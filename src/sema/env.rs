@@ -84,7 +84,6 @@ impl BuiltinTys {
 
         this.define(db, sym::STR, db.types.str);
         this.define(db, sym::BOOL, db.types.bool);
-        this.define(db, sym::UNIT, db.types.unit);
         this.define(db, sym::NEVER, db.types.never);
 
         this

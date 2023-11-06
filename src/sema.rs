@@ -952,6 +952,7 @@ impl<'db> Sema<'db> {
                         .with_label(Label::primary(name.span).with_message("expected a type"))),
                 }
             }
+            TyExpr::Unit(_) => Ok(self.db.types.unit),
             TyExpr::Hole(span) => {
                 if allow_hole == AllowTyHole::Yes {
                     Ok(self.fresh_ty_var())

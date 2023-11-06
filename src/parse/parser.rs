@@ -395,6 +395,10 @@ impl<'a> Parser<'a> {
                 let span = tok.span.merge(pointee.span());
                 TyExpr::RawPtr(Box::new(pointee), span)
             }
+            TokenKind::OpenCurly => {
+                let end = self.eat(TokenKind::CloseCurly)?;
+                TyExpr::Unit(tok.span.merge(end.span))
+            }
             TokenKind::Ident(..) => {
                 TyExpr::Name(TyName { word: tok.word(), args: vec![], span: tok.span })
             }

@@ -12,7 +12,6 @@ pub const UINT: &str = "uint";
 
 pub const STR: &str = "str";
 pub const BOOL: &str = "bool";
-pub const UNIT: &str = "unit";
 pub const NEVER: &str = "never";
 
 pub const LEN: &str = "len";
