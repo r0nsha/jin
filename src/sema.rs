@@ -632,9 +632,9 @@ impl<'db> Sema<'db> {
                         if arg.name.is_none() {
                             arg.index = Some(idx);
 
-                            if let Some(param) = fun_ty.params.get(idx) {
+                            if let Some(param_name) = fun_ty.params.get(idx).and_then(|p| p.name) {
                                 already_passed_args.insert(
-                                    param.name.expect("to have a name"),
+                                    param_name,
                                     PassedArg { is_named: false, span: arg.expr.span },
                                 );
                             }

@@ -24,10 +24,19 @@ fn main {
 	run1(print_answer)
 	run2(print_answer)
 	run3(print_answer)
+	do_add(add, 1, 2)
 }
 
 fn print_answer() {
 	printf("The answer is %d\n".ptr, answer)
+}
+
+fn add(a: int, b: int) -> int {
+	a + b
+}
+
+fn do_add(f: fn(int, int) -> int, a: int, b: int) {
+	printf("a + b = %d\n".ptr, f(a, b))
 }
 
 fn run(f: fn) { f() }
