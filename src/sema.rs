@@ -704,8 +704,6 @@ impl<'db> Sema<'db> {
                         }
                     }
 
-                    dbg!(self.normalize(callee_ty));
-
                     self.expr(
                         hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args: new_args }),
                         fun_ty.ret,
@@ -831,7 +829,19 @@ impl<'db> Sema<'db> {
                 let id = self.lookup_def(env, *word)?;
 
                 let def_ty = self.normalize(self.db[id].ty);
-                let ty_params = def_ty.collect_params();
+                let mut ty_params = def_ty.collect_params();
+
+                if let Some(fn_id) = env.fn_id() {
+                    let fn_ty_params = self.db[fn_id].ty.collect_params();
+                    for ftp in fn_ty_params {
+                        if let Some(tp) = ty_params.iter_mut().find(|p| p.var == ftp.var) {
+                            *tp = ftp.clone();
+                        }
+                    }
+                    // if !fn_ty_params.is_empty() {
+                    //     ty_params.retain(|p| !fn_ty_params.iter().any(|p2| p.var == p2.var));
+                    // }
+                }
 
                 let args = if let Some(args) = args {
                     let args: Vec<Ty> = args
@@ -862,10 +872,26 @@ impl<'db> Sema<'db> {
                                 "expected {expected} type arguments, found {found}"
                             ))));
                     }
-                    _ => ty_params
-                        .into_iter()
-                        .map(|param| (param.var, self.fresh_ty_var()))
-                        .collect(),
+                    _ => {
+                        let fn_ty_params =
+                            env.fn_id().map_or(vec![], |id| self.db[id].ty.collect_params());
+
+                        ty_params
+                            .into_iter()
+                            .map(|param| {
+                                (
+                                    param.var,
+                                    // If the type param is one of the current function's type
+                                    // params, we don't want to instantiate it
+                                    if fn_ty_params.iter().any(|p| p.var == param.var) {
+                                        Ty::new(TyKind::Param(param))
+                                    } else {
+                                        self.fresh_ty_var()
+                                    },
+                                )
+                            })
+                            .collect()
+                    }
                 };
 
                 let ty = instantiate(def_ty, instantiation.clone());

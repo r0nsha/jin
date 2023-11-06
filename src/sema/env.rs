@@ -211,7 +211,6 @@ impl Env {
         qpath
     }
 
-    #[inline]
     pub fn fn_id(&self) -> Option<DefId> {
         self.scopes.iter().find_map(|s| match s.kind {
             ScopeKind::Fn(id) => Some(id),
@@ -252,7 +251,7 @@ impl Scope {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ScopeKind {
     Fn(DefId),
     Block,

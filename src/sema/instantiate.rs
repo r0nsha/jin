@@ -33,16 +33,16 @@ impl Instantiate {
                 is_c_variadic: fun.is_c_variadic,
             })
             .into(),
+            TyKind::RawPtr(pointee) => TyKind::RawPtr(self.instantiate_inner(*pointee)).into(),
             TyKind::Param(p) => match self.instantiation.get(&p.var) {
                 Some(ty) => *ty,
                 None => {
-                    ty
                     // NOTE: It currently makes sense to not instantiate params that are part of
                     // the currently typechecked function.
-                    // panic!(
-                    //     "type param `{:?}` ({:?}/{:?}) out of when instantiating, args={:?}",
-                    //     p, self.ty, p.var, self.instantiation
-                    // )
+                    panic!(
+                        "type param `{:?}` ({:?}/{:?}) not part of instantation, args={:?}",
+                        p, self.ty, p.var, self.instantiation
+                    )
                 }
             },
             _ => ty,

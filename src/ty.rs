@@ -69,6 +69,9 @@ impl Ty {
 
                 fun.ret.collect_params_inner(params);
             }
+            TyKind::RawPtr(pointee) => {
+                pointee.collect_params_inner(params);
+            }
             TyKind::Param(p) => {
                 params.insert(p.clone());
             }
