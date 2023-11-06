@@ -6,7 +6,7 @@ use crate::{
     sema::{normalize::NormalizeTy, Sema, TyStorage},
     span::Span,
     subst::{Subst, SubstTy},
-    ty::{fold::TyFolder, InferTy, IntVar, Ty, TyKind, TyVar},
+    ty::{fold::TyFolder, InferTy, IntVar, ParamTy, Ty, TyKind, TyVar},
 };
 
 impl<'db> Sema<'db> {
@@ -91,6 +91,11 @@ impl VarFolder<'_, '_> {
 impl TyFolder for VarFolder<'_, '_> {
     fn fold(&mut self, ty: Ty) -> Ty {
         match ty.kind() {
+            // TyKind::Param(p) => TyKind::Param(ParamTy {
+            //     name: p.name,
+            //     var: self.cx.storage.ty_unification_table.find(p.var),
+            // })
+            // .into(),
             TyKind::Infer(InferTy::TyVar(var)) => self.fold_tyvar(*var),
             TyKind::Infer(InferTy::IntVar(var)) => self.fold_intvar(*var),
             _ => self.super_fold(ty),
