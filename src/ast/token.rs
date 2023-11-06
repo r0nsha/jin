@@ -35,6 +35,7 @@ pub enum TokenKind {
     // Punctuation
     Comma,
     Dot,
+    DotDot,
     Colon,
     At,
     Hash,
@@ -112,6 +113,7 @@ impl fmt::Display for TokenKind {
             Self::CloseCurly => f.write_char('}'),
             Self::Comma => f.write_char(','),
             Self::Dot => f.write_char('.'),
+            Self::DotDot => f.write_str(".."),
             Self::Colon => f.write_char(':'),
             Self::At => f.write_char('@'),
             Self::Hash => f.write_char('#'),

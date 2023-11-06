@@ -199,6 +199,7 @@ impl<'a> Parser<'a> {
 
         let (params, _) = self.parse_fn_params()?;
         let ret = self.is_and(TokenKind::Arrow, |this, _| this.parse_ty()).transpose()?;
+
         Ok(FnSig { word: name, ty_params, params, ret })
     }
 
@@ -223,13 +224,36 @@ impl<'a> Parser<'a> {
         self.parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, Self::parse_ty)
     }
 
-    fn parse_fn_params(&mut self) -> ParseResult<(Vec<FnParam>, Span)> {
-        self.parse_list_optional(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
-            let ident = this.eat(TokenKind::empty_ident())?;
-            this.eat(TokenKind::Colon)?;
-            let ty_expr = this.parse_ty()?;
-            Ok(FnParam { name: ident.word(), ty_expr, span: ident.span })
-        })
+    fn parse_fn_params(&mut self) -> ParseResult<(Vec<FnParam>, bool)> {
+        let mut params = vec![];
+
+        if !self.is(TokenKind::OpenParen) {
+            return Ok((params, false));
+        }
+
+        loop {
+            if self.is(TokenKind::DotDot) {
+                self.eat(TokenKind::CloseParen)?;
+                return Ok((params, true));
+            }
+
+            if self.is(TokenKind::CloseParen) {
+                break;
+            }
+
+            let ident = self.eat(TokenKind::empty_ident())?;
+            self.eat(TokenKind::Colon)?;
+            let ty_expr = self.parse_ty()?;
+            params.push(FnParam { name: ident.word(), ty_expr, span: ident.span });
+
+            if !params.is_empty() && !self.peek_is(TokenKind::CloseParen) {
+                self.eat(TokenKind::Comma)?;
+            } else if self.peek_is(TokenKind::Comma) {
+                self.next();
+            }
+        }
+
+        Ok((params, false))
     }
 
     fn parse_block(&mut self) -> ParseResult<Expr> {

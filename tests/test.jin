@@ -3,8 +3,8 @@ import extern "./foo"
 fn extern hello()
 let extern answer: int
 
-fn extern exit(status: i32) -> never
-fn extern write(fd: i32, buf: *u8, count: uint) -> int
+fn extern printf(fmt: *u8, ..) -> i32
+fn extern write(fd: i32, buf: *u8, count: uint) -> i32
 
 let stdout = 1
 
@@ -20,5 +20,4 @@ fn println(fmt: str) {
 fn main {
 	println("Hello, World!")
 	hello()
-	exit(answer)
 }
