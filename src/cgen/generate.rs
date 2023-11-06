@@ -9,7 +9,7 @@ use crate::{
         name_gen::LocalNames,
         ty::CTy,
         util::{
-            attr, block_name, bool_value, goto_stmt, if_stmt, stmt, str_value, unit_value,
+            attr, block_, block_name, bool_value, goto_stmt, if_stmt, stmt, str_value, unit_value,
             value_name, NEST,
         },
     },
@@ -163,14 +163,10 @@ impl<'db> Generator<'db> {
         let block_docs: Vec<D> =
             fun.body.blocks().iter().map(|blk| self.codegen_block(&mut state, blk)).collect();
 
-        let doc = self.codegen_fn_sig(sig).append(D::space()).append(
-            D::text("{")
-                .append(D::hardline())
-                .append(D::intersperse(block_docs, D::hardline().append(D::hardline())).group())
-                .append(D::hardline())
-                .append(D::text("}"))
-                .group(),
-        );
+        let doc = self.codegen_fn_sig(sig).append(D::space()).append(block_(
+            || D::intersperse(block_docs, D::hardline().append(D::hardline())).group(),
+            0,
+        ));
 
         self.fn_defs.push(doc);
     }

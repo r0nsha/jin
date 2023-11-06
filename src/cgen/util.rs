@@ -86,10 +86,14 @@ pub fn if_stmt<'a>(cond: D<'a>, then: D<'a>, otherwise: Option<D<'a>>) -> D<'a> 
 }
 
 pub fn block<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
+    block_(f, NEST)
+}
+
+pub fn block_<'a>(f: impl FnOnce() -> D<'a>, nest: isize) -> D<'a> {
     D::text("{")
         .append(D::hardline())
         .append(f())
-        .nest(NEST)
+        .nest(nest)
         .group()
         .append(D::hardline())
         .append(D::text("}"))
