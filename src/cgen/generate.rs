@@ -253,12 +253,9 @@ impl<'db> Generator<'db> {
             Inst::Unary { value, inner, op } => {
                 self.value_assign(state, *value, || D::text(op.as_str()).append(value_name(*inner)))
             }
-            Inst::Cast { value, inner, target } => self.value_assign(state, *value, || {
-                D::text("(")
-                    .append(target.cty(self))
-                    .append(D::text(")"))
-                    .append(value_name(*inner))
-            }),
+            Inst::Cast { value, inner, target } => {
+                self.value_assign(state, *value, || self.codegen_cast(*inner, *target))
+            }
             Inst::Member { value, inner, member } => self.value_assign(state, *value, || {
                 value_name(*inner).append(D::text(".")).append(D::text(member.as_str()))
             }),

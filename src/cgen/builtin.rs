@@ -3,7 +3,8 @@ use pretty::RcDoc as D;
 use crate::{
     cgen::{
         generate::{FnState, Generator},
-        util::{if_stmt, panic_if, stmt, value_name_str},
+        ty::CTy,
+        util::{panic_if, value_name, value_name_str},
     },
     middle::BinOp,
     mir::ValueId,
@@ -20,6 +21,10 @@ pub struct BinOpData {
 }
 
 impl<'db> Generator<'db> {
+    pub fn codegen_cast(&self, value: ValueId, target: Ty) -> D<'db> {
+        D::text("(").append(target.cty(self)).append(D::text(")")).append(value_name(value))
+    }
+
     pub fn codegen_bin_op(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
         match data.op {
             BinOp::Add => self.codegen_bin_op_add(state, data),
@@ -30,19 +35,19 @@ impl<'db> Generator<'db> {
         }
     }
 
-    pub fn codegen_bin_op_add(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
+    fn codegen_bin_op_add(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
         self.codegen_bin_op_aux(state, "add", "add", data)
     }
 
-    pub fn codegen_bin_op_sub(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
+    fn codegen_bin_op_sub(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
         self.codegen_bin_op_aux(state, "sub", "subtract", data)
     }
 
-    pub fn codegen_bin_op_mul(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
+    fn codegen_bin_op_mul(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
         self.codegen_bin_op_aux(state, "mul", "multiply", data)
     }
 
-    pub fn codegen_bin_op_div(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
+    fn codegen_bin_op_div(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
         let (lhs, rhs) = (value_name_str(data.lhs), value_name_str(data.rhs));
         let safety_check = panic_if(D::text(format!("{rhs} == 0")), "attempt to divide by zero");
         let op = self
