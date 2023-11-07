@@ -765,15 +765,14 @@ impl<'db> Sema<'db> {
 
                 match op {
                     UnOp::Neg => {
-                        if !ty.is_int() {
+                        if !ty.is_any_int() {
                             return Err(Diagnostic::error("check::invalid_neg")
                                 .with_message(format!(
-                                    "expected a signed integer, found {}",
+                                    "expected an integer, found {}",
                                     ty.display(self.db)
                                 ))
                                 .with_label(
-                                    Label::primary(expr.span)
-                                        .with_message("expected a signed integer"),
+                                    Label::primary(expr.span).with_message("expected an integer"),
                                 ));
                         }
                     }
@@ -818,13 +817,33 @@ impl<'db> Sema<'db> {
                             .eq(self.db.types.bool, rhs.ty)
                             .or_coerce(self, rhs.id)?;
                     }
-                    _ => {
-                        // TODO: type check arithmetic operations (traits)
-                        // TODO: type check cmp operations (traits)
+                    BinOp::Add
+                    | BinOp::Sub
+                    | BinOp::Mul
+                    | BinOp::Div
+                    | BinOp::Rem
+                    | BinOp::Shl
+                    | BinOp::Shr
+                    | BinOp::BitAnd
+                    | BinOp::BitOr
+                    | BinOp::BitXor => {
+                        let ty = self.normalize(lhs.ty);
+
+                        if !ty.is_any_int() {
+                            return Err(Diagnostic::error("check::invalid_binary_op")
+                                .with_message(format!(
+                                    "expected an integer, found {}",
+                                    ty.display(self.db)
+                                ))
+                                .with_label(
+                                    Label::primary(lhs.span).with_message("expected an integer"),
+                                ));
+                        }
                     }
+                    BinOp::Cmp(_) => (),
                 }
 
-                let ty = match op {
+                let result_ty = match op {
                     BinOp::Cmp(..) => self.db.types.bool,
                     _ => lhs.ty,
                 };
@@ -835,7 +854,7 @@ impl<'db> Sema<'db> {
                         rhs: Box::new(rhs),
                         op: *op,
                     }),
-                    ty,
+                    result_ty,
                     *span,
                 )
             }
