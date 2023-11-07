@@ -97,7 +97,11 @@ impl<'db> PrettyCx<'db> {
                 .append(D::space())
                 .append(body.block(*then).name())
                 .append(D::text(", "))
-                .append(body.block(*otherwise).name()),
+                .append(if let Some(o) = otherwise {
+                    D::text(body.block(*o).name())
+                } else {
+                    D::nil()
+                }),
             Inst::If { value, cond, then, otherwise } => value_assign(*value)
                 .append(D::text("if"))
                 .append(D::text("("))

@@ -222,6 +222,7 @@ pub struct If {
 
 #[derive(Debug, Clone)]
 pub struct Loop {
+    pub cond: Option<Box<Expr>>,
     pub expr: Box<Expr>,
 }
 

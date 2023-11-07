@@ -1,8 +1,8 @@
 fn extern printf(fmt: *u8, ..) -> i32
 
 fn main {
-	loop {
+	let x = false
+	loop if x {
 		printf("Hello\n".ptr)
-		break
 	}
 }

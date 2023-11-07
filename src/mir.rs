@@ -178,7 +178,7 @@ impl Block {
 pub enum Inst {
     StackAlloc { value: ValueId, id: DefId, init: ValueId },
     Br { target: BlockId },
-    BrIf { cond: ValueId, then: BlockId, otherwise: BlockId },
+    BrIf { cond: ValueId, then: BlockId, otherwise: Option<BlockId> },
     If { value: ValueId, cond: ValueId, then: ValueId, otherwise: ValueId },
     Return { value: ValueId },
     Call { value: ValueId, callee: ValueId, args: Vec<ValueId> },

@@ -54,8 +54,14 @@ impl PrettyPrint for Expr {
 
                 cx.builder.end_child();
             }
-            Self::Loop { expr, .. } => {
+            Self::Loop { cond, expr, .. } => {
                 cx.builder.begin_child("loop".to_string());
+
+                if let Some(cond) = cond {
+                    cx.builder.begin_child("cond".to_string());
+                    cond.pretty_print(cx);
+                    cx.builder.end_child();
+                }
 
                 cx.builder.begin_child("expr".to_string());
                 expr.pretty_print(cx);

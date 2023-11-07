@@ -206,7 +206,7 @@ impl<'db> Generator<'db> {
             Inst::BrIf { cond, then, otherwise } => if_stmt(
                 value_name(*cond),
                 goto_stmt(state.body.block(*then)),
-                Some(goto_stmt(state.body.block(*otherwise))),
+                otherwise.map(|o| goto_stmt(state.body.block(o))),
             ),
             Inst::If { value, cond, then, otherwise } => self.value_assign(state, *value, || {
                 value_name(*cond)

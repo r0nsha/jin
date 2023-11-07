@@ -304,7 +304,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     let merge_blk = self.body.create_block("if_merge");
 
                     let cond = self.lower_expr(&if_.cond);
-                    self.push_inst(Inst::BrIf { cond, then: then_blk, otherwise: else_blk });
+                    self.push_inst(Inst::BrIf { cond, then: then_blk, otherwise: Some(else_blk) });
 
                     self.position_at(then_blk);
                     let then_value = self.lower_expr(&if_.then);
@@ -329,6 +329,20 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     self.push_inst(Inst::Br { target: start_blk });
 
                     self.position_at(start_blk);
+
+                    if let Some(cond) = &loop_.cond {
+                        let cond = self.lower_expr(cond);
+                        let not_cond = self.push_inst_with(self.cx.db.types.bool, |value| {
+                            Inst::Unary { value, inner: cond, op: UnOp::Not }
+                        });
+
+                        self.push_inst(Inst::BrIf {
+                            cond: not_cond,
+                            then: end_blk,
+                            otherwise: None,
+                        });
+                    }
+
                     self.loop_blocks.push(end_blk);
                     self.lower_expr(&loop_.expr);
                     self.push_inst(Inst::Br { target: start_blk });

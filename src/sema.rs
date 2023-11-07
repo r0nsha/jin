@@ -563,7 +563,19 @@ impl<'db> Sema<'db> {
                     *span,
                 )
             }
-            ast::Expr::Loop { expr, span } => {
+            ast::Expr::Loop { cond, expr, span } => {
+                let cond = if let Some(cond) = cond.as_ref() {
+                    let cond = self.check_expr(env, cond, Some(self.db.types.bool))?;
+
+                    self.at(Obligation::obvious(cond.span))
+                        .eq(self.db.types.bool, cond.ty)
+                        .or_coerce(self, cond.id)?;
+
+                    Some(Box::new(cond))
+                } else {
+                    None
+                };
+
                 let expr = env.with_anon_scope(ScopeKind::Loop, |env| {
                     self.check_expr(env, expr, Some(self.db.types.never))
                 })?;
@@ -574,7 +586,7 @@ impl<'db> Sema<'db> {
                     .or_coerce(self, expr.id)?;
 
                 self.expr(
-                    hir::ExprKind::Loop(hir::Loop { expr: Box::new(expr) }),
+                    hir::ExprKind::Loop(hir::Loop { cond, expr: Box::new(expr) }),
                     self.db.types.never,
                     *span,
                 )

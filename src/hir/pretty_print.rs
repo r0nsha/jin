@@ -101,6 +101,12 @@ impl PrettyCx<'_> {
             ExprKind::Loop(loop_) => {
                 self.builder.begin_child("loop".to_string());
 
+                if let Some(cond) = &loop_.cond {
+                    self.builder.begin_child("cond".to_string());
+                    self.pp_expr(cond);
+                    self.builder.end_child();
+                }
+
                 self.builder.begin_child("expr".to_string());
                 self.pp_expr(&loop_.expr);
                 self.builder.end_child();
