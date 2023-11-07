@@ -15,6 +15,7 @@ use crate::{
     },
     db::Db,
     hir::const_eval::Const,
+    middle::UnOp,
     mir::{Block, Body, Fn, FnSig, GlobalKind, Inst, LoadKind, Mir, ValueId},
     ty::Ty,
 };
@@ -247,7 +248,19 @@ impl<'db> Generator<'db> {
                 },
             ),
             Inst::Unary { value, inner, op } => {
-                self.value_assign(state, *value, || D::text(op.as_str()).append(value_name(*inner)))
+                let inner_ty = state.body.value(*inner).ty;
+                let op_str = match op {
+                    UnOp::Neg => op.as_str(),
+                    UnOp::Not => {
+                        if inner_ty.is_bool() {
+                            "!"
+                        } else {
+                            "~"
+                        }
+                    }
+                };
+
+                self.value_assign(state, *value, || D::text(op_str).append(value_name(*inner)))
             }
             Inst::Cast { value, inner, target, span } => {
                 self.codegen_cast(state, *value, *inner, *target, *span)

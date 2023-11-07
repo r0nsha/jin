@@ -70,7 +70,12 @@ impl<'db> Generator<'db> {
             BinOp::Sub => self.codegen_bin_op_sub(state, data),
             BinOp::Mul => self.codegen_bin_op_mul(state, data),
             BinOp::Div | BinOp::Rem => self.codegen_bin_op_div(state, data),
-            _ => D::nil(),
+            _ => {
+                let (lhs, rhs) = (value_name_str(data.lhs), value_name_str(data.rhs));
+                self.value_assign(state, data.target, || {
+                    D::text(format!("{} {} {}", lhs, data.op, rhs))
+                })
+            }
         }
     }
 
