@@ -761,18 +761,34 @@ impl<'db> Sema<'db> {
             ast::Expr::Unary { expr, op, span } => {
                 let expr = self.check_expr(env, expr, None)?;
 
+                let ty = self.normalize(expr.ty);
+
                 match op {
                     UnOp::Neg => {
-                        // TODO: Only allow signed integers (need traits)
-                        self.at(Obligation::obvious(expr.span))
-                            .eq(self.fresh_int_var(), expr.ty)
-                            .or_coerce(self, expr.id)?;
+                        if !ty.is_int() {
+                            return Err(Diagnostic::error("check::invalid_neg")
+                                .with_message(format!(
+                                    "expected a signed integer, found {}",
+                                    ty.display(self.db)
+                                ))
+                                .with_label(
+                                    Label::primary(expr.span)
+                                        .with_message("expected a signed integer"),
+                                ));
+                        }
                     }
                     UnOp::Not => {
-                        // TODO: Allow bitnot (integers, need traits)
-                        self.at(Obligation::obvious(expr.span))
-                            .eq(self.db.types.bool, expr.ty)
-                            .or_coerce(self, expr.id)?;
+                        if !ty.is_any_int() && !ty.is_bool() {
+                            return Err(Diagnostic::error("check::invalid_not")
+                                .with_message(format!(
+                                    "expected an integer or a bool, found {}",
+                                    ty.display(self.db)
+                                ))
+                                .with_label(
+                                    Label::primary(expr.span)
+                                        .with_message("expected integer or bool"),
+                                ));
+                        }
                     }
                 }
 
