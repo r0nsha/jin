@@ -331,6 +331,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     self.push_inst(Inst::Br { target: start_blk });
 
                     self.position_at(end_blk);
+                    // TODO: emit an unreachable instruction here?
                     self.push_unit_lit()
                 }
                 hir::ExprKind::Block(blk) => {

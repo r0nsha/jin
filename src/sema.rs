@@ -564,15 +564,15 @@ impl<'db> Sema<'db> {
                 )
             }
             ast::Expr::Loop { expr, span } => {
-                let expr = self.check_expr(env, expr, Some(self.db.types.unit))?;
+                let expr = self.check_expr(env, expr, Some(self.db.types.never))?;
 
                 self.at(Obligation::obvious(expr.span))
-                    .eq(self.db.types.unit, expr.ty)
+                    .eq(self.db.types.never, expr.ty)
                     .or_coerce(self, expr.id)?;
 
                 self.expr(
                     hir::ExprKind::Loop(hir::Loop { expr: Box::new(expr) }),
-                    self.db.types.unit,
+                    self.db.types.never,
                     *span,
                 )
             }
