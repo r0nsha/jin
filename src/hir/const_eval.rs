@@ -61,6 +61,7 @@ impl ConstStorage {
             ExprKind::Let(_)
             | ExprKind::If(_)
             | ExprKind::Loop(_)
+            | ExprKind::Break
             | ExprKind::Return(_)
             | ExprKind::Call(_)
             | ExprKind::Member(_)

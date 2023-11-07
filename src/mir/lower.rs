@@ -193,6 +193,7 @@ struct LowerBodyCx<'cx, 'db> {
     body: Body,
     curr_block: BlockId,
     def_to_local: FxHashMap<DefId, ValueId>,
+    loop_blocks: Vec<BlockId>,
 }
 
 impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
@@ -202,6 +203,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
             body: Body::new(),
             curr_block: BlockId::start(),
             def_to_local: FxHashMap::default(),
+            loop_blocks: vec![],
         }
     }
 
@@ -327,11 +329,17 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     self.push_inst(Inst::Br { target: start_blk });
 
                     self.position_at(start_blk);
+                    self.loop_blocks.push(end_blk);
                     self.lower_expr(&loop_.expr);
                     self.push_inst(Inst::Br { target: start_blk });
+                    self.loop_blocks.pop();
 
                     self.position_at(end_blk);
-                    // TODO: emit an unreachable instruction here?
+                    self.push_unit_lit()
+                }
+                hir::ExprKind::Break => {
+                    let loop_blk = self.loop_blocks.last().expect("to be inside a loop block");
+                    self.push_inst(Inst::Br { target: *loop_blk });
                     self.push_unit_lit()
                 }
                 hir::ExprKind::Block(blk) => {

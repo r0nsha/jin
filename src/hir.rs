@@ -84,7 +84,7 @@ impl Expr {
             }
             ExprKind::Cast(cast) => cast.expr.walk_(f),
             ExprKind::Member(access) => access.expr.walk_(f),
-            ExprKind::Name(_) | ExprKind::Lit(_) => (),
+            ExprKind::Break | ExprKind::Name(_) | ExprKind::Lit(_) => (),
         }
 
         f(self);
@@ -96,6 +96,7 @@ pub enum ExprKind {
     Let(Let),
     If(If),
     Loop(Loop),
+    Break,
     Block(Block),
     Return(Return),
     Call(Call),

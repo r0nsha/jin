@@ -161,6 +161,7 @@ impl<'s> Lexer<'s> {
                     "as" => TokenKind::As,
                     "import" => TokenKind::Import,
                     "loop" => TokenKind::Loop,
+                    "break" => TokenKind::Break,
                     str => TokenKind::Ident(ustr(str)),
                 };
             }

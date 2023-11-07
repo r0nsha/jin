@@ -386,6 +386,7 @@ impl<'a> Parser<'a> {
             TokenKind::Return => self.parse_return()?,
             TokenKind::If => self.parse_if()?,
             TokenKind::Loop => self.parse_loop()?,
+            TokenKind::Break => Expr::Break { span: tok.span },
             TokenKind::Minus => {
                 let expr = self.parse_operand()?;
 

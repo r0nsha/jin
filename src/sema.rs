@@ -564,10 +564,13 @@ impl<'db> Sema<'db> {
                 )
             }
             ast::Expr::Loop { expr, span } => {
-                let expr = self.check_expr(env, expr, Some(self.db.types.never))?;
+                let expr = env.with_anon_scope(ScopeKind::Loop, |env| {
+                    self.check_expr(env, expr, Some(self.db.types.never))
+                })?;
 
+                // NOTE: expected & actual types are flipped here so that all types are accepted
                 self.at(Obligation::obvious(expr.span))
-                    .eq(self.db.types.never, expr.ty)
+                    .eq(expr.ty, self.db.types.never)
                     .or_coerce(self, expr.id)?;
 
                 self.expr(
@@ -575,6 +578,15 @@ impl<'db> Sema<'db> {
                     self.db.types.never,
                     *span,
                 )
+            }
+            ast::Expr::Break { span } => {
+                if env.in_scope_kind(&ScopeKind::Loop) {
+                    self.expr(hir::ExprKind::Break, self.db.types.never, *span)
+                } else {
+                    return Err(Diagnostic::error("check::invalid_break")
+                        .with_message("cannot break outside of a loop")
+                        .with_label(Label::primary(*span).with_message("break outside of loop")));
+                }
             }
             ast::Expr::Block { exprs, span } => {
                 env.with_anon_scope(ScopeKind::Block, |env| -> CheckResult<hir::Expr> {

@@ -107,6 +107,9 @@ impl PrettyCx<'_> {
 
                 self.builder.end_child();
             }
+            ExprKind::Break => {
+                self.builder.add_empty_child("break".to_string());
+            }
             ExprKind::Block(blk) => {
                 self.builder.begin_child("block".to_string());
 

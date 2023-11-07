@@ -114,6 +114,7 @@ pub enum Expr {
     Return { expr: Option<Box<Self>>, span: Span },
     If { cond: Box<Self>, then: Box<Self>, otherwise: Option<Box<Self>>, span: Span },
     Loop { expr: Box<Self>, span: Span },
+    Break { span: Span },
     Block { exprs: Vec<Self>, span: Span },
     Call { callee: Box<Self>, args: Vec<CallArg>, span: Span },
     Unary { expr: Box<Self>, op: UnOp, span: Span },
@@ -133,6 +134,7 @@ impl Spanned for Expr {
             | Self::Return { span, .. }
             | Self::If { span, .. }
             | Self::Loop { span, .. }
+            | Self::Break { span, .. }
             | Self::Block { span, .. }
             | Self::Call { span, .. }
             | Self::Unary { span, .. }

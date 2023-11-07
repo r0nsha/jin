@@ -85,6 +85,7 @@ pub enum TokenKind {
     As,
     Import,
     Loop,
+    Break,
 
     // Literals
     Int(u128),
@@ -152,6 +153,7 @@ impl fmt::Display for TokenKind {
             Self::As => f.write_str("`as`"),
             Self::Import => f.write_str("`import`"),
             Self::Loop => f.write_str("`loop`"),
+            Self::Break => f.write_str("`break`"),
             Self::Int(..) => f.write_str("int literal"),
             Self::Str(..) => f.write_str("str literal"),
         }

@@ -60,7 +60,7 @@ impl<S: SubstTy> Subst<S> for Expr {
                     *ty = s.subst_ty(*ty, self.span);
                 }
             }
-            ExprKind::Lit(_) => (),
+            ExprKind::Break | ExprKind::Lit(_) => (),
         }
 
         self.ty = s.subst_ty(self.ty, self.span);

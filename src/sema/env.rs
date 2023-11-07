@@ -1,3 +1,5 @@
+use std::mem;
+
 use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr, UstrMap};
 
@@ -214,8 +216,13 @@ impl Env {
     pub fn fn_id(&self) -> Option<DefId> {
         self.scopes.iter().find_map(|s| match s.kind {
             ScopeKind::Fn(id) => Some(id),
-            ScopeKind::Block => None,
+            ScopeKind::Loop | ScopeKind::Block => None,
         })
+    }
+
+    pub fn in_scope_kind(&self, kind: &ScopeKind) -> bool {
+        let discriminant = mem::discriminant(kind);
+        self.scopes.iter().any(|s| mem::discriminant(&s.kind) == discriminant)
     }
 
     #[inline]
@@ -228,6 +235,7 @@ impl Env {
         self.depth() == 0
     }
 
+    #[inline]
     pub fn module_id(&self) -> ModuleId {
         self.module_id
     }
@@ -254,5 +262,6 @@ impl Scope {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ScopeKind {
     Fn(DefId),
+    Loop,
     Block,
 }

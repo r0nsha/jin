@@ -63,6 +63,9 @@ impl PrettyPrint for Expr {
 
                 cx.builder.end_child();
             }
+            Self::Break { .. } => {
+                cx.builder.add_empty_child("break".to_string());
+            }
             Self::Block { exprs, .. } => {
                 cx.builder.begin_child("block".to_string());
 
