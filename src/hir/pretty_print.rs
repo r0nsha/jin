@@ -176,7 +176,7 @@ impl PrettyCx<'_> {
             }
             ExprKind::Lit(value) => {
                 let value_str = match value {
-                    Lit::Str(v) => v.to_string(),
+                    Lit::Str(v) => format!("\"{v}\""),
                     Lit::Int(v) => v.to_string(),
                     Lit::Bool(v) => v.to_string(),
                 };
