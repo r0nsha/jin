@@ -61,6 +61,9 @@ impl Expr {
                 if_.then.walk_(f);
                 if_.otherwise.walk_(f);
             }
+            ExprKind::Loop(loop_) => {
+                loop_.expr.walk_(f);
+            }
             ExprKind::Block(blk) => {
                 for expr in &blk.exprs {
                     expr.walk_(f);
@@ -92,6 +95,7 @@ impl Expr {
 pub enum ExprKind {
     Let(Let),
     If(If),
+    Loop(Loop),
     Block(Block),
     Return(Return),
     Call(Call),
@@ -213,6 +217,11 @@ pub struct If {
     pub cond: Box<Expr>,
     pub then: Box<Expr>,
     pub otherwise: Box<Expr>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Loop {
+    pub expr: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]

@@ -23,6 +23,9 @@ impl<S: SubstTy> Subst<S> for Expr {
                 if_.then.subst(s);
                 if_.otherwise.subst(s);
             }
+            ExprKind::Loop(loop_) => {
+                loop_.expr.subst(s);
+            }
             ExprKind::Block(blk) => {
                 for stmt in &mut blk.exprs {
                     stmt.subst(s);

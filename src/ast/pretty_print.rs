@@ -54,6 +54,15 @@ impl PrettyPrint for Expr {
 
                 cx.builder.end_child();
             }
+            Self::Loop { expr, .. } => {
+                cx.builder.begin_child("loop".to_string());
+
+                cx.builder.begin_child("expr".to_string());
+                expr.pretty_print(cx);
+                cx.builder.end_child();
+
+                cx.builder.end_child();
+            }
             Self::Block { exprs, .. } => {
                 cx.builder.begin_child("block".to_string());
 

@@ -98,6 +98,15 @@ impl PrettyCx<'_> {
 
                 self.builder.end_child();
             }
+            ExprKind::Loop(loop_) => {
+                self.builder.begin_child("loop".to_string());
+
+                self.builder.begin_child("expr".to_string());
+                self.pp_expr(&loop_.expr);
+                self.builder.end_child();
+
+                self.builder.end_child();
+            }
             ExprKind::Block(blk) => {
                 self.builder.begin_child("block".to_string());
 

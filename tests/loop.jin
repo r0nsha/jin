@@ -1,0 +1,8 @@
+fn extern printf(fmt: *u8, ..) -> i32
+
+fn main {
+	loop {
+		printf("Hello\n".ptr)
+		{}
+	}
+}

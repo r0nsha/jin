@@ -160,6 +160,7 @@ impl<'s> Lexer<'s> {
                     "false" => TokenKind::False,
                     "as" => TokenKind::As,
                     "import" => TokenKind::Import,
+                    "loop" => TokenKind::Loop,
                     str => TokenKind::Ident(ustr(str)),
                 };
             }

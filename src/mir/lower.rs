@@ -320,6 +320,19 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                         otherwise: else_value,
                     })
                 }
+                hir::ExprKind::Loop(loop_) => {
+                    let start_blk = self.body.create_block("loop_start");
+                    let end_blk = self.body.create_block("loop_end");
+
+                    self.push_inst(Inst::Br { target: start_blk });
+
+                    self.position_at(start_blk);
+                    self.lower_expr(&loop_.expr);
+                    self.push_inst(Inst::Br { target: start_blk });
+
+                    self.position_at(end_blk);
+                    self.push_unit_lit()
+                }
                 hir::ExprKind::Block(blk) => {
                     let mut result: Option<ValueId> = None;
 

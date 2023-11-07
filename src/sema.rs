@@ -563,6 +563,19 @@ impl<'db> Sema<'db> {
                     *span,
                 )
             }
+            ast::Expr::Loop { expr, span } => {
+                let expr = self.check_expr(env, expr, Some(self.db.types.unit))?;
+
+                self.at(Obligation::obvious(expr.span))
+                    .eq(self.db.types.unit, expr.ty)
+                    .or_coerce(self, expr.id)?;
+
+                self.expr(
+                    hir::ExprKind::Loop(hir::Loop { expr: Box::new(expr) }),
+                    self.db.types.unit,
+                    *span,
+                )
+            }
             ast::Expr::Block { exprs, span } => {
                 env.with_anon_scope(ScopeKind::Block, |env| -> CheckResult<hir::Expr> {
                     let (exprs, ty) = if exprs.is_empty() {

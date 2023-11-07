@@ -385,6 +385,7 @@ impl<'a> Parser<'a> {
         let expr = match tok.kind {
             TokenKind::Return => self.parse_return()?,
             TokenKind::If => self.parse_if()?,
+            TokenKind::Loop => self.parse_loop()?,
             TokenKind::Minus => {
                 let expr = self.parse_operand()?;
 
@@ -504,6 +505,18 @@ impl<'a> Parser<'a> {
         let span = start.merge(otherwise.as_ref().map_or(then.span(), |o| o.span()));
 
         Ok(Expr::If { cond: Box::new(cond), then: Box::new(then), otherwise, span })
+    }
+
+    fn parse_loop(&mut self) -> ParseResult<Expr> {
+        let start = self.last_span();
+        // let cond = self.parse_expr()?;
+
+        self.eat(TokenKind::OpenCurly)?;
+        let expr = self.parse_block()?;
+
+        let span = start.merge(expr.span());
+
+        Ok(Expr::Loop { expr: Box::new(expr), span })
     }
 
     fn parse_postfix(&mut self, expr: Expr) -> ParseResult<Expr> {
