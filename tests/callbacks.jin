@@ -6,7 +6,7 @@ fn main {
 	//run2(print_answer)
 	//run3(print_answer)
 	//do_add(add, 1, 2)
-	printf("map: %d".ptr, map(1, itu))
+	printf("map: %d\n".ptr, map(1, itu))
 }
 
 //fn run(f: fn) { f() }

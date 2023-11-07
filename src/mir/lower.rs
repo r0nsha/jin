@@ -54,7 +54,7 @@ impl<'db> LowerCx<'db> {
 
     fn lower_all(mut self) -> Mir {
         for f in &self.hir.fns {
-            if !self.db[f.id].ty.is_polymorphic() {
+            if !f.sig.ty.is_polymorphic() {
                 let def = &self.db[f.id];
                 let is_extern = f.kind.is_extern();
                 let name = if is_extern { def.name } else { def.qpath.join_with("_").into() };
@@ -82,7 +82,7 @@ impl<'db> LowerCx<'db> {
         }
 
         for f in &self.hir.fns {
-            if !self.db[f.id].ty.is_polymorphic() {
+            if !f.sig.ty.is_polymorphic() {
                 let sig = self.fn_map[&f.id];
                 self.lower_fn_body(sig, f);
             }
@@ -179,9 +179,8 @@ impl<'db> LowerCx<'db> {
         if f.kind.is_extern() {
             return;
         }
-
         assert!(
-            !self.db[f.id].ty.is_polymorphic(),
+            !self.mir.fn_sigs[sig].ty.is_polymorphic(),
             "lowering polymorphic functions to mir is not allowed"
         );
 
