@@ -1,7 +1,7 @@
 use std::io;
 
 use super::{Expr, Fn, Item, LitKind, Module};
-use crate::ast::{CallArg, ExternImport, ExternLet, FnKind, FnSig, Let, TyExpr};
+use crate::ast::{CallArg, ExternImport, ExternLet, FnKind, FnSig, Let, TyDef, TyDefKind, TyExpr};
 
 pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Result<()> {
     let mut cx = PrettyCx { builder: ptree::TreeBuilder::new(module.name.join()) };
@@ -146,9 +146,7 @@ impl PrettyPrint for Item {
         match self {
             Self::Fn(x) => x.pretty_print(cx),
             Self::Let(x) => x.pretty_print(cx),
-            Self::Type(tydef) => {
-                todo!("sema");
-            }
+            Self::Type(x) => x.pretty_print(cx),
             Self::ExternLet(x) => x.pretty_print(cx),
             Self::ExternImport(x) => x.pretty_print(cx),
         }
@@ -206,6 +204,32 @@ impl PrettyPrint for Let {
         }
 
         self.value.pretty_print(cx);
+
+        cx.builder.end_child();
+    }
+}
+
+impl PrettyPrint for TyDef {
+    fn pretty_print(&self, cx: &mut PrettyCx) {
+        cx.builder.begin_child(format!("type {}", self.word));
+
+        match &self.kind {
+            TyDefKind::Struct(sdef) => {
+                cx.builder.add_empty_child(format!(
+                    "{}struct",
+                    if sdef.is_extern { "extern " } else { "" }
+                ));
+                cx.builder.begin_child("fields".to_string());
+
+                for field in &sdef.fields {
+                    cx.builder.begin_child(field.name.to_string());
+                    field.ty_expr.pretty_print(cx);
+                    cx.builder.end_child();
+                }
+
+                cx.builder.end_child();
+            }
+        }
 
         cx.builder.end_child();
     }

@@ -24,12 +24,13 @@ where
 impl<'db> CTy<'db> for TyKind {
     fn cty(&self, cx: &Generator<'db>) -> D<'db> {
         match self {
+            Self::Fn(fty) => fty.cty(cx),
+            Self::Struct(sid) => D::text(cx.db.struct_def(*sid).qpath.join_with("_")),
+            Self::RawPtr(ty) => ty.cty(cx).append(D::text("*")),
             Self::Int(ity) => ity.cty(cx),
             Self::Uint(uty) => uty.cty(cx),
             Self::Float(fty) => fty.cty(cx),
-            Self::Fn(fty) => fty.cty(cx),
             Self::Str => D::text(sym::STR),
-            Self::RawPtr(ty) => ty.cty(cx).append(D::text("*")),
             Self::Bool => D::text(sym::BOOL),
             Self::Unit => D::text("unit"),
             Self::Never => D::text(sym::NEVER),
