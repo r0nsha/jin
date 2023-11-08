@@ -2,6 +2,7 @@ use std::{fs::File, io::Write};
 
 use camino::Utf8PathBuf;
 use pretty::RcDoc as D;
+use rustc_hash::FxHashMap;
 
 use crate::{
     cgen::{
@@ -9,11 +10,11 @@ use crate::{
         name_gen::LocalNames,
         ty::CTy,
         util::{
-            attr, block_, block_name, bool_value, goto_stmt, if_stmt, stmt, str_value, unit_value,
-            value_name, NEST,
+            attr, block, block_, block_name, bool_value, goto_stmt, if_stmt, stmt, str_value,
+            unit_value, value_name, NEST,
         },
     },
-    db::Db,
+    db::{Db, StructId, StructInfo},
     hir::const_eval::Const,
     middle::UnOp,
     mir::{Block, Body, Fn, FnSig, GlobalKind, Inst, LoadKind, Mir, ValueId},
@@ -26,10 +27,12 @@ const PRELUDE: &str = include_str!("../../jin.c");
 pub struct Generator<'db> {
     pub db: &'db mut Db,
     pub mir: &'db Mir,
+    pub types: Vec<D<'db>>,
     pub fn_decls: Vec<D<'db>>,
     pub globals: Vec<D<'db>>,
     pub fn_defs: Vec<D<'db>>,
     pub target_metrics: TargetMetrics,
+    pub struct_names: FxHashMap<StructId, String>,
 }
 
 #[derive(Debug, Clone)]
@@ -46,6 +49,7 @@ impl<'db> FnState<'db> {
 
 impl<'db> Generator<'db> {
     pub fn run(mut self) -> Utf8PathBuf {
+        self.define_types();
         self.predefine_fns();
         self.define_globals();
         self.define_fns();
@@ -62,12 +66,13 @@ impl<'db> Generator<'db> {
         file.write_all(PRELUDE.as_bytes()).unwrap();
         file.write_all(b"\n").unwrap();
 
+        let types = D::intersperse(self.types, D::hardline());
         let fn_decls = D::intersperse(self.fn_decls, D::hardline());
         let globals = D::intersperse(self.globals, D::hardline());
         let fn_defs = D::intersperse(self.fn_defs, D::hardline().append(D::hardline()));
 
         let final_doc = D::intersperse(
-            [fn_decls, globals, fn_defs, main_fn],
+            [types, fn_decls, globals, fn_defs, main_fn],
             D::hardline().append(D::hardline()),
         );
 
@@ -91,6 +96,16 @@ impl<'db> Generator<'db> {
             )
             .append(D::hardline())
             .append(D::text("}"))
+    }
+
+    pub fn define_types(&mut self) {
+        for struct_info in &self.db.structs {
+            let name = self.db[struct_info.def_id].qpath.join_with("_");
+            self.struct_names.insert(struct_info.id, name.clone());
+
+            let doc = self.codegen_struct_def(struct_info, name);
+            self.types.push(stmt(|| doc));
+        }
     }
 
     pub fn predefine_fns(&mut self) {
@@ -117,6 +132,23 @@ impl<'db> Generator<'db> {
 
             self.globals.push(stmt(|| doc));
         }
+    }
+
+    fn codegen_struct_def(&self, struct_info: &StructInfo, name: String) -> D<'db> {
+        D::text("typedef")
+            .append(D::space())
+            .append("struct")
+            .append(block(|| {
+                D::intersperse(
+                    struct_info
+                        .fields
+                        .iter()
+                        .map(|f| stmt(|| f.ty.cdecl(self, D::text(f.name.name().as_str())))),
+                    D::hardline(),
+                )
+            }))
+            .append(D::space())
+            .append(name)
     }
 
     fn codegen_fn_sig(&self, sig: &FnSig) -> D<'db> {

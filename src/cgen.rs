@@ -10,7 +10,7 @@ use std::process::Command;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use execute::Execute;
-use rustc_hash::FxHashSet;
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     cgen::generate::Generator,
@@ -25,9 +25,11 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> Utf8PathBuf {
         target_metrics: *db.target_metrics(),
         db,
         mir,
+        types: vec![],
         fn_decls: vec![],
         globals: vec![],
         fn_defs: vec![],
+        struct_names: FxHashMap::default(),
     }
     .run();
     db.time.stop();

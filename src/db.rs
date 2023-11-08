@@ -174,10 +174,6 @@ impl Db {
             Ok(())
         }
     }
-
-    pub fn struct_def(&self, sid: StructId) -> &DefInfo {
-        &self[self[sid].def_id]
-    }
 }
 
 macro_rules! new_db_key {
