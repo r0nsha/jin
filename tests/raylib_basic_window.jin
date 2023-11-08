@@ -1,0 +1,9 @@
+import extern "raylib"
+
+fn extern printf(fmt: *u8, ..) -> i32
+
+type Point extern(x: int, y: int)
+
+fn main {
+	printf("hello\n".ptr)
+}
