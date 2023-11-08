@@ -30,7 +30,7 @@ use crate::{
     target::{TargetMetrics, TargetPlatform},
     ty::{
         coerce::{Coercion, Coercions},
-        IntTy, Ty, TyKind, Typed, UintTy,
+        FloatTy, IntTy, Ty, TyKind, Typed, UintTy,
     },
 };
 
@@ -362,6 +362,9 @@ pub struct CommonTypes {
     pub u64: Ty,
     pub uint: Ty,
 
+    pub f32: Ty,
+    pub f64: Ty,
+
     pub str: Ty,
     pub bool: Ty,
     pub unit: Ty,
@@ -390,6 +393,9 @@ impl CommonTypes {
             u32: Ty::new(TyKind::Uint(UintTy::U32)),
             u64: Ty::new(TyKind::Uint(UintTy::U64)),
             uint: Ty::new(TyKind::Uint(UintTy::Uint)),
+
+            f32: Ty::new(TyKind::Float(FloatTy::F32)),
+            f64: Ty::new(TyKind::Float(FloatTy::F64)),
 
             str: Ty::new(TyKind::Str),
             bool: Ty::new(TyKind::Bool),

@@ -148,7 +148,7 @@ impl<'s> Lexer<'s> {
             if ch.is_ascii_alphanumeric() || ch == '_' {
                 self.next();
             } else {
-                return match self.range(start) {
+                return match self.range_from(start) {
                     "_" => TokenKind::Underscore,
                     "return" => TokenKind::Return,
                     "fn" => TokenKind::Fn,
@@ -171,16 +171,23 @@ impl<'s> Lexer<'s> {
     }
 
     fn numeric(&mut self, start: u32) -> TokenKind {
+        self.eat_int_aux();
+
+        if self.peek() == Some('.') && self.peek_offset(1).map_or(false, |c| c.is_ascii_digit()) {
+            self.next();
+            self.eat_int_aux();
+            TokenKind::Float(ustr(self.range_from(start)))
+        } else {
+            TokenKind::Int(ustr(self.range_from(start)))
+        }
+    }
+
+    fn eat_int_aux(&mut self) {
         while let Some(ch) = self.peek() {
-            if ch.is_ascii_digit() {
-                self.next();
-            } else if ch == '_' && self.peek_offset(1).map_or(false, |c| c.is_ascii_digit()) {
-                self.next();
+            if ch.is_ascii_digit() || ch == '_' {
                 self.next();
             } else {
-                return TokenKind::Int(
-                    self.range(start).replace('_', "").parse().expect("to be a valid integer"),
-                );
+                return;
             }
         }
 
@@ -191,7 +198,7 @@ impl<'s> Lexer<'s> {
         loop {
             match self.bump() {
                 Some('"') => {
-                    let str = self.range(start);
+                    let str = self.range_from(start);
                     // Removes the ending double-quote
                     let str = &str[..str.len() - 1];
 
@@ -239,7 +246,7 @@ impl<'s> Lexer<'s> {
         self.pos += 1;
     }
 
-    fn range(&self, start: u32) -> &str {
+    fn range_from(&self, start: u32) -> &str {
         let start = start as usize;
         let end = start + (self.pos as usize - start);
         &self.source_contents[start..end]

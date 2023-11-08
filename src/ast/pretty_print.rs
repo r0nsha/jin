@@ -129,17 +129,14 @@ impl PrettyPrint for Expr {
             Self::Name { word, .. } => {
                 cx.builder.add_empty_child(format!("`{word}`"));
             }
-            Self::Lit { kind, .. } => match kind {
-                LitKind::Str(value) => {
-                    cx.builder.add_empty_child(format!("str: {value}"));
-                }
-                LitKind::Int(value) => {
-                    cx.builder.add_empty_child(format!("int: {value}"));
-                }
-                LitKind::Bool(value) => {
-                    cx.builder.add_empty_child(format!("bool: {value}"));
-                }
-            },
+            Self::Lit { kind, .. } => {
+                match kind {
+                    LitKind::Bool(value) => cx.builder.add_empty_child(format!("bool: {value}")),
+                    LitKind::Int(value) => cx.builder.add_empty_child(format!("int: {value}")),
+                    LitKind::Float(value) => cx.builder.add_empty_child(format!("float: {value}")),
+                    LitKind::Str(value) => cx.builder.add_empty_child(format!("str: {value}")),
+                };
+            }
         }
     }
 }

@@ -487,6 +487,9 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     #[allow(clippy::cast_possible_wrap)]
                     hir::Lit::Int(lit) => self
                         .push_inst_with(expr.ty, |value| Inst::IntLit { value, lit: *lit as i128 }),
+                    hir::Lit::Float(lit) => {
+                        self.push_inst_with(expr.ty, |value| Inst::FloatLit { value, lit: *lit })
+                    }
                     hir::Lit::Bool(lit) => {
                         self.push_inst_with(expr.ty, |value| Inst::BoolLit { value, lit: *lit })
                     }
@@ -505,6 +508,9 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         match value {
             Const::Str(lit) => self.push_inst_with(ty, |value| Inst::StrLit { value, lit: *lit }),
             Const::Int(lit) => self.push_inst_with(ty, |value| Inst::IntLit { value, lit: *lit }),
+            Const::Float(lit) => {
+                self.push_inst_with(ty, |value| Inst::FloatLit { value, lit: *lit })
+            }
             Const::Bool(lit) => self.push_bool_lit(*lit),
             Const::Unit => self.push_unit_lit(),
         }

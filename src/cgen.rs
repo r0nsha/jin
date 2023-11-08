@@ -21,8 +21,15 @@ use crate::{
 
 pub fn codegen(db: &mut Db, mir: &Mir) -> Utf8PathBuf {
     db.time.start("cgen");
-    let c_file_path =
-        Generator { db, mir, fn_decls: vec![], globals: vec![], fn_defs: vec![] }.run();
+    let c_file_path = Generator {
+        target_metrics: *db.target_metrics(),
+        db,
+        mir,
+        fn_decls: vec![],
+        globals: vec![],
+        fn_defs: vec![],
+    }
+    .run();
     db.time.stop();
     build_exe(db, &c_file_path)
 }

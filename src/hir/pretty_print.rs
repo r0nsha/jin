@@ -196,6 +196,7 @@ impl PrettyCx<'_> {
                 let value_str = match value {
                     Lit::Str(v) => format!("\"{v}\""),
                     Lit::Int(v) => v.to_string(),
+                    Lit::Float(v) => v.to_string(),
                     Lit::Bool(v) => v.to_string(),
                 };
 

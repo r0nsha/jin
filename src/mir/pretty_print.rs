@@ -155,6 +155,9 @@ impl<'db> PrettyCx<'db> {
             Inst::StrLit { value, lit } => value_assign(*value)
                 .append(D::text("\"").append(D::text(lit.as_str())).append(D::text("\""))),
             Inst::IntLit { value, lit } => value_assign(*value).append(D::text(lit.to_string())),
+            Inst::FloatLit { value, lit } => {
+                value_assign(*value).append(D::text(format!("{lit:?}")))
+            }
             Inst::BoolLit { value, lit } => value_assign(*value).append(D::text(lit.to_string())),
             Inst::UnitLit { value } => value_assign(*value).append(D::text("{}")),
         }
@@ -163,9 +166,10 @@ impl<'db> PrettyCx<'db> {
 
 fn pp_const_value<'a>(value: &Const) -> D<'a> {
     match value {
-        Const::Str(value) => D::text("\"").append(D::text(value.as_str())).append(D::text("\"")),
-        Const::Int(value) => D::text(value.to_string()),
-        Const::Bool(value) => D::text(value.to_string()),
+        Const::Str(v) => D::text("\"").append(D::text(v.as_str())).append(D::text("\"")),
+        Const::Int(v) => D::text(v.to_string()),
+        Const::Float(v) => D::text(v.to_string()),
+        Const::Bool(v) => D::text(v.to_string()),
         Const::Unit => D::text("{}"),
     }
 }

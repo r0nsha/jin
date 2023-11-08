@@ -17,6 +17,7 @@ use crate::{
     hir::const_eval::Const,
     middle::UnOp,
     mir::{Block, Body, Fn, FnSig, GlobalKind, Inst, LoadKind, Mir, ValueId},
+    target::TargetMetrics,
     ty::Ty,
 };
 
@@ -28,6 +29,7 @@ pub struct Generator<'db> {
     pub fn_decls: Vec<D<'db>>,
     pub globals: Vec<D<'db>>,
     pub fn_defs: Vec<D<'db>>,
+    pub target_metrics: TargetMetrics,
 }
 
 #[derive(Debug, Clone)]
@@ -277,6 +279,9 @@ impl<'db> Generator<'db> {
             Inst::IntLit { value, lit } => {
                 self.value_assign(state, *value, || D::text(lit.to_string()))
             }
+            Inst::FloatLit { value, lit } => {
+                self.value_assign(state, *value, || D::text(format!("{lit:?}")))
+            }
             Inst::BoolLit { value, lit } => self.value_assign(state, *value, || bool_value(*lit)),
             Inst::UnitLit { value } => self.value_assign(state, *value, unit_value),
         }
@@ -302,6 +307,7 @@ fn codegen_const_value(value: &Const) -> D<'_> {
     match value {
         Const::Str(value) => str_value(value),
         Const::Int(value) => D::text(value.to_string()),
+        Const::Float(value) => D::text(value.to_string()),
         Const::Bool(value) => bool_value(*value),
         Const::Unit => unit_value(),
     }

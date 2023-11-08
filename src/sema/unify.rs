@@ -4,7 +4,7 @@ use crate::{
     diagnostics::{Diagnostic, Label},
     sema::{normalize::NormalizeTy, Sema},
     span::Span,
-    ty::{InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
+    ty::{FloatTy, FloatVar, InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
 };
 
 impl<'db> Sema<'db> {
@@ -174,7 +174,7 @@ impl UnifyCx<'_, '_> {
             }
 
             // Unify ?T1 ~ ?T2
-            (TyKind::Infer(InferTy::TyVar(expected)), TyKind::Infer(InferTy::TyVar(found))) => {
+            (TyKind::Infer(InferTy::Ty(expected)), TyKind::Infer(InferTy::Ty(found))) => {
                 self.cx
                     .storage
                     .borrow_mut()
@@ -184,7 +184,7 @@ impl UnifyCx<'_, '_> {
             }
 
             // Unify ?int ~ ?int
-            (TyKind::Infer(InferTy::IntVar(expected)), TyKind::Infer(InferTy::IntVar(found))) => {
+            (TyKind::Infer(InferTy::Int(expected)), TyKind::Infer(InferTy::Int(found))) => {
                 self.cx
                     .storage
                     .borrow_mut()
@@ -194,8 +194,8 @@ impl UnifyCx<'_, '_> {
             }
 
             // Unify ?int ~ int
-            (TyKind::Int(ity), TyKind::Infer(InferTy::IntVar(var)))
-            | (TyKind::Infer(InferTy::IntVar(var)), TyKind::Int(ity)) => {
+            (TyKind::Int(ity), TyKind::Infer(InferTy::Int(var)))
+            | (TyKind::Infer(InferTy::Int(var)), TyKind::Int(ity)) => {
                 self.cx
                     .storage
                     .borrow_mut()
@@ -205,8 +205,8 @@ impl UnifyCx<'_, '_> {
             }
 
             // Unify ?int ~ uint
-            (TyKind::Uint(uty), TyKind::Infer(InferTy::IntVar(var)))
-            | (TyKind::Infer(InferTy::IntVar(var)), TyKind::Uint(uty)) => {
+            (TyKind::Uint(uty), TyKind::Infer(InferTy::Int(var)))
+            | (TyKind::Infer(InferTy::Int(var)), TyKind::Uint(uty)) => {
                 self.cx
                     .storage
                     .borrow_mut()
@@ -215,11 +215,32 @@ impl UnifyCx<'_, '_> {
                 Ok(())
             }
 
+            // Unify ?float ~ ?float
+            (TyKind::Infer(InferTy::Float(expected)), TyKind::Infer(InferTy::Float(found))) => {
+                self.cx
+                    .storage
+                    .borrow_mut()
+                    .float_unification_table
+                    .unify_var_var(*expected, *found)?;
+                Ok(())
+            }
+
+            // Unify ?float ~ float
+            (TyKind::Float(fty), TyKind::Infer(InferTy::Float(var)))
+            | (TyKind::Infer(InferTy::Float(var)), TyKind::Float(fty)) => {
+                self.cx
+                    .storage
+                    .borrow_mut()
+                    .float_unification_table
+                    .unify_var_value(*var, Some(*fty))?;
+                Ok(())
+            }
+
             // Unify ?T ~ T
-            (TyKind::Infer(InferTy::TyVar(var)), _) => self.unify_ty_var(b, *var),
+            (TyKind::Infer(InferTy::Ty(var)), _) => self.unify_ty_var(b, *var),
 
             // Unify T ~ ?T
-            (_, TyKind::Infer(InferTy::TyVar(var))) => self.unify_ty_var(a, *var),
+            (_, TyKind::Infer(InferTy::Ty(var))) => self.unify_ty_var(a, *var),
 
             (TyKind::Param(p1), TyKind::Param(p2)) if p1.var == p2.var => Ok(()),
 
@@ -264,11 +285,29 @@ impl UnifyKey for IntVar {
     }
 
     fn tag() -> &'static str {
-        "IntTy"
+        "IntVar"
     }
 }
 
 impl EqUnifyValue for IntVarValue {}
+
+impl UnifyKey for FloatVar {
+    type Value = Option<FloatTy>;
+
+    fn index(&self) -> u32 {
+        (*self).into()
+    }
+
+    fn from_index(u: u32) -> Self {
+        Self::from(u)
+    }
+
+    fn tag() -> &'static str {
+        "FloatVar"
+    }
+}
+
+impl EqUnifyValue for FloatTy {}
 
 pub enum UnifyError {
     TyMismatch { a: Ty, b: Ty },
@@ -281,8 +320,12 @@ impl From<(Ty, Ty)> for UnifyError {
     }
 }
 
-impl From<(IntVarValue, IntVarValue)> for UnifyError {
-    fn from((a, b): (IntVarValue, IntVarValue)) -> Self {
+impl<A, B> From<(A, B)> for UnifyError
+where
+    A: Into<TyKind>,
+    B: Into<TyKind>,
+{
+    fn from((a, b): (A, B)) -> Self {
         Self::TyMismatch { a: Ty::new(a.into()), b: Ty::new(b.into()) }
     }
 }

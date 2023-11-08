@@ -13,6 +13,9 @@ typedef uint32_t u32;
 typedef uint64_t u64;
 typedef uintptr_t usize;
 
+typedef float f32;
+typedef double f64;
+
 typedef struct {
 } unit;
 typedef unit never;

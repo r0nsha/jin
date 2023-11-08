@@ -5,7 +5,7 @@ use pretty::RcDoc as D;
 use crate::{
     cgen::generate::Generator,
     sym,
-    ty::{FnTy, IntTy, TyKind, UintTy},
+    ty::{FloatTy, FnTy, IntTy, TyKind, UintTy},
 };
 
 pub trait CTy<'db>
@@ -13,7 +13,12 @@ where
     Self: fmt::Debug,
 {
     fn cty(&self, cx: &Generator<'db>) -> D<'db>;
-    fn cdecl(&self, cx: &Generator<'db>, name: D<'db>) -> D<'db>;
+    fn cdecl(&self, cx: &Generator<'db>, name: D<'db>) -> D<'db>
+    where
+        Self: Sized,
+    {
+        ty_and_name(self, cx, name)
+    }
 }
 
 impl<'db> CTy<'db> for TyKind {
@@ -21,6 +26,7 @@ impl<'db> CTy<'db> for TyKind {
         match self {
             Self::Int(ity) => ity.cty(cx),
             Self::Uint(uty) => uty.cty(cx),
+            Self::Float(fty) => fty.cty(cx),
             Self::Fn(fty) => fty.cty(cx),
             Self::Str => D::text(sym::STR),
             Self::RawPtr(ty) => ty.cty(cx).append(D::text("*")),
@@ -49,10 +55,6 @@ impl<'db> CTy<'db> for IntTy {
             Self::Int => "isize",
         })
     }
-
-    fn cdecl(&self, cx: &Generator<'db>, name: D<'db>) -> D<'db> {
-        ty_and_name(self, cx, name)
-    }
 }
 
 impl<'db> CTy<'db> for UintTy {
@@ -65,9 +67,14 @@ impl<'db> CTy<'db> for UintTy {
             Self::Uint => "usize",
         })
     }
+}
 
-    fn cdecl(&self, cx: &Generator<'db>, name: D<'db>) -> D<'db> {
-        ty_and_name(self, cx, name)
+impl<'db> CTy<'db> for FloatTy {
+    fn cty(&self, _: &Generator<'db>) -> D<'db> {
+        D::text(match self {
+            Self::F32 => sym::F32,
+            Self::F64 => sym::F64,
+        })
     }
 }
 

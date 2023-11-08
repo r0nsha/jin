@@ -21,12 +21,16 @@ impl NormalizeTy for Ty {
             })
             .into(),
             TyKind::RawPtr(pointee) => TyKind::RawPtr(pointee.normalize(storage)).into(),
-            TyKind::Infer(InferTy::TyVar(var)) => storage
+            TyKind::Infer(InferTy::Ty(var)) => storage
                 .ty_unification_table
                 .probe_value(*var)
                 .map_or(self, |ty| ty.normalize(storage)),
-            TyKind::Infer(InferTy::IntVar(var)) => storage
+            TyKind::Infer(InferTy::Int(var)) => storage
                 .int_unification_table
+                .probe_value(*var)
+                .map_or(self, |ty| TyKind::from(ty).into()),
+            TyKind::Infer(InferTy::Float(var)) => storage
+                .float_unification_table
                 .probe_value(*var)
                 .map_or(self, |ty| TyKind::from(ty).into()),
             _ => self,

@@ -33,7 +33,7 @@ use crate::{
     },
     span::{Span, Spanned},
     sym,
-    ty::{FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty, TyKind, TyVar},
+    ty::{FloatVar, FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty, TyKind, TyVar},
     word::Word,
 };
 
@@ -59,6 +59,7 @@ pub struct Sema<'db> {
 pub struct TyStorage {
     pub ty_unification_table: InPlaceUnificationTable<TyVar>,
     pub int_unification_table: InPlaceUnificationTable<IntVar>,
+    pub float_unification_table: InPlaceUnificationTable<FloatVar>,
 }
 
 impl TyStorage {
@@ -66,6 +67,7 @@ impl TyStorage {
         Self {
             ty_unification_table: InPlaceUnificationTable::new(),
             int_unification_table: InPlaceUnificationTable::new(),
+            float_unification_table: InPlaceUnificationTable::new(),
         }
     }
 }
@@ -765,14 +767,16 @@ impl<'db> Sema<'db> {
 
                 match op {
                     UnOp::Neg => {
-                        if !ty.is_any_int() {
+                        if !ty.is_any_int() && !ty.is_any_float() {
                             return Err(Diagnostic::error("check::invalid_neg")
                                 .with_message(format!(
-                                    "expected an integer, found {}",
+                                    "cannot use `{}` on `{}`",
+                                    op,
                                     ty.display(self.db)
                                 ))
                                 .with_label(
-                                    Label::primary(expr.span).with_message("expected an integer"),
+                                    Label::primary(expr.span)
+                                        .with_message(format!("invalid use of `{op}`")),
                                 ));
                         }
                     }
@@ -780,12 +784,13 @@ impl<'db> Sema<'db> {
                         if !ty.is_any_int() && !ty.is_bool() {
                             return Err(Diagnostic::error("check::invalid_not")
                                 .with_message(format!(
-                                    "expected an integer or a bool, found {}",
+                                    "cannot use `{}` on `{}`",
+                                    op,
                                     ty.display(self.db)
                                 ))
                                 .with_label(
                                     Label::primary(expr.span)
-                                        .with_message("expected integer or bool"),
+                                        .with_message(format!("invalid use of `{op}`")),
                                 ));
                         }
                     }
@@ -817,26 +822,35 @@ impl<'db> Sema<'db> {
                             .eq(self.db.types.bool, rhs.ty)
                             .or_coerce(self, rhs.id)?;
                     }
-                    BinOp::Add
-                    | BinOp::Sub
-                    | BinOp::Mul
-                    | BinOp::Div
-                    | BinOp::Rem
-                    | BinOp::Shl
-                    | BinOp::Shr
-                    | BinOp::BitAnd
-                    | BinOp::BitOr
-                    | BinOp::BitXor => {
+                    BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem => {
+                        let ty = self.normalize(lhs.ty);
+
+                        if !ty.is_any_int() && !ty.is_any_float() {
+                            return Err(Diagnostic::error("check::invalid_binary_op")
+                                .with_message(format!(
+                                    "cannot use `{}` on `{}`",
+                                    op,
+                                    ty.display(self.db)
+                                ))
+                                .with_label(
+                                    Label::primary(lhs.span)
+                                        .with_message(format!("invalid use of `{op}`")),
+                                ));
+                        }
+                    }
+                    BinOp::Shl | BinOp::Shr | BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => {
                         let ty = self.normalize(lhs.ty);
 
                         if !ty.is_any_int() {
                             return Err(Diagnostic::error("check::invalid_binary_op")
                                 .with_message(format!(
-                                    "expected an integer, found {}",
+                                    "cannot use `{}` on `{}`",
+                                    op,
                                     ty.display(self.db)
                                 ))
                                 .with_label(
-                                    Label::primary(lhs.span).with_message("expected an integer"),
+                                    Label::primary(lhs.span)
+                                        .with_message(format!("invalid use of `{op}`")),
                                 ));
                         }
                     }
@@ -978,6 +992,7 @@ impl<'db> Sema<'db> {
                 let (kind, ty) = match kind {
                     ast::LitKind::Str(v) => (hir::Lit::Str(*v), self.db.types.str),
                     ast::LitKind::Int(v) => (hir::Lit::Int(*v), self.fresh_int_var()),
+                    ast::LitKind::Float(v) => (hir::Lit::Float(*v), self.fresh_float_var()),
                     ast::LitKind::Bool(v) => (hir::Lit::Bool(*v), self.db.types.bool),
                 };
 
@@ -1110,7 +1125,7 @@ impl<'db> Sema<'db> {
 
     #[inline]
     pub fn fresh_ty_var(&self) -> Ty {
-        Ty::new(TyKind::Infer(InferTy::TyVar(self.fresh_var())))
+        Ty::new(TyKind::Infer(InferTy::Ty(self.fresh_var())))
     }
 
     #[inline]
@@ -1120,8 +1135,15 @@ impl<'db> Sema<'db> {
 
     #[inline]
     pub fn fresh_int_var(&self) -> Ty {
-        Ty::new(TyKind::Infer(InferTy::IntVar(
+        Ty::new(TyKind::Infer(InferTy::Int(
             self.storage.borrow_mut().int_unification_table.new_key(None),
+        )))
+    }
+
+    #[inline]
+    pub fn fresh_float_var(&self) -> Ty {
+        Ty::new(TyKind::Infer(InferTy::Float(
+            self.storage.borrow_mut().float_unification_table.new_key(None),
         )))
     }
 

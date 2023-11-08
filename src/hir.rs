@@ -293,7 +293,8 @@ pub struct Name {
 
 #[derive(Debug, Clone)]
 pub enum Lit {
-    Str(Ustr),
-    Int(u128),
     Bool(bool),
+    Int(u128),
+    Float(f64),
+    Str(Ustr),
 }

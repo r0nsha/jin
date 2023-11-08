@@ -6,7 +6,7 @@ use crate::{
     sema::{normalize::NormalizeTy, Sema, TyStorage},
     span::Span,
     subst::{Subst, SubstTy},
-    ty::{fold::TyFolder, InferTy, IntVar, Ty, TyKind, TyVar},
+    ty::{fold::TyFolder, FloatVar, InferTy, IntVar, Ty, TyKind, TyVar},
 };
 
 impl<'db> Sema<'db> {
@@ -78,7 +78,7 @@ impl VarFolder<'_, '_> {
             self.fold(ty)
         } else {
             self.has_unbound_vars = true;
-            TyKind::Infer(InferTy::TyVar(var)).into()
+            TyKind::Infer(InferTy::Ty(var)).into()
         }
     }
 
@@ -92,6 +92,17 @@ impl VarFolder<'_, '_> {
             .map_or_else(|| TyKind::DEFAULT_INT, Into::into)
             .into()
     }
+
+    fn fold_floatvar(&mut self, var: FloatVar) -> Ty {
+        let root = self.cx.storage.float_unification_table.find(var);
+
+        self.cx
+            .storage
+            .float_unification_table
+            .probe_value(root)
+            .map_or_else(|| TyKind::DEFAULT_FLOAT, Into::into)
+            .into()
+    }
 }
 
 impl TyFolder for VarFolder<'_, '_> {
@@ -102,8 +113,9 @@ impl TyFolder for VarFolder<'_, '_> {
             //     var: self.cx.storage.ty_unification_table.find(p.var),
             // })
             // .into(),
-            TyKind::Infer(InferTy::TyVar(var)) => self.fold_tyvar(*var),
-            TyKind::Infer(InferTy::IntVar(var)) => self.fold_intvar(*var),
+            TyKind::Infer(InferTy::Ty(var)) => self.fold_tyvar(*var),
+            TyKind::Infer(InferTy::Int(var)) => self.fold_intvar(*var),
+            TyKind::Infer(InferTy::Float(var)) => self.fold_floatvar(*var),
             _ => self.super_fold(ty),
         }
     }

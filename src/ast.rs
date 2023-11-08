@@ -242,11 +242,12 @@ pub enum CallArg {
     Named(Word, Expr),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum LitKind {
-    Str(Ustr),
-    Int(u128),
     Bool(bool),
+    Int(u128),
+    Float(f64),
+    Str(Ustr),
 }
 
 pub type Attrs = Vec<Attr>;

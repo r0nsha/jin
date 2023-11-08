@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter, Result};
 use crate::{
     db::Db,
     sym,
-    ty::{InferTy, IntTy, TyKind, UintTy},
+    ty::{FloatTy, InferTy, IntTy, TyKind, UintTy},
 };
 
 pub struct TyPrinter<'db> {
@@ -63,14 +63,31 @@ impl<'db> TyPrinter<'db> {
                 UintTy::U64 => sym::U64,
                 UintTy::Uint => sym::UINT,
             }),
+            TyKind::Float(fty) => f.write_str(match fty {
+                FloatTy::F32 => sym::F32,
+                FloatTy::F64 => sym::F64,
+            }),
             TyKind::Str => f.write_str(sym::STR),
             TyKind::Bool => f.write_str(sym::BOOL),
             TyKind::Unit => f.write_str("{}"),
             TyKind::Never => f.write_str(sym::NEVER),
             TyKind::Param(p) => f.write_str(p.name.as_str()),
-            // TyKind::Infer(InferTy::TyVar(_)) => f.write_str("{unknown}"),
-            TyKind::Infer(InferTy::TyVar(v)) => write!(f, "?{}", v.0),
-            TyKind::Infer(InferTy::IntVar(..)) => f.write_str("{int}"),
+
+            #[cfg(debug_assertions)]
+            TyKind::Infer(InferTy::Ty(v)) => write!(f, "?{}", v.0),
+            #[cfg(not(debug_assertions))]
+            TyKind::Infer(InferTy::Ty(_)) => f.write_str("{unknown}"),
+
+            #[cfg(debug_assertions)]
+            TyKind::Infer(InferTy::Int(v)) => write!(f, "i?{}", v.0),
+            #[cfg(not(debug_assertions))]
+            TyKind::Infer(InferTy::Int(_)) => f.write_str("{int}"),
+
+            #[cfg(debug_assertions)]
+            TyKind::Infer(InferTy::Float(v)) => write!(f, "f?{}", v.0),
+            #[cfg(not(debug_assertions))]
+            TyKind::Infer(InferTy::Float(_)) => f.write_str("{float}"),
+
             TyKind::Type => f.write_str("{type}"),
             TyKind::Unknown => f.write_str("{unknown}"),
         }

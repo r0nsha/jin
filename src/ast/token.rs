@@ -30,7 +30,7 @@ impl Token {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum TokenKind {
     // Punctuation
     Comma,
@@ -88,7 +88,8 @@ pub enum TokenKind {
     Break,
 
     // Literals
-    Int(u128),
+    Int(Ustr),
+    Float(Ustr),
     Str(Ustr),
 }
 
@@ -154,8 +155,9 @@ impl fmt::Display for TokenKind {
             Self::Import => f.write_str("`import`"),
             Self::Loop => f.write_str("`loop`"),
             Self::Break => f.write_str("`break`"),
-            Self::Int(..) => f.write_str("int literal"),
-            Self::Str(..) => f.write_str("str literal"),
+            Self::Int(lit) => write!(f, "integer literal `{lit}`"),
+            Self::Float(lit) => write!(f, "float literal `{lit}`"),
+            Self::Str(lit) => write!(f, "\"{lit}\""),
         }
     }
 }

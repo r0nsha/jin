@@ -34,7 +34,7 @@ impl Ty {
     #[inline]
     pub fn as_tyvar(self) -> Option<TyVar> {
         match self.kind() {
-            TyKind::Infer(InferTy::TyVar(tv)) => Some(*tv),
+            TyKind::Infer(InferTy::Ty(tv)) => Some(*tv),
             _ => None,
         }
     }
@@ -43,7 +43,7 @@ impl Ty {
         match self.kind() {
             TyKind::Fn(fun) => fun.ret.occurs_check(var).map_err(|_| self),
             TyKind::RawPtr(pointee) => pointee.occurs_check(var).map_err(|_| self),
-            TyKind::Param(ParamTy { var: v, .. }) | TyKind::Infer(InferTy::TyVar(v)) => {
+            TyKind::Param(ParamTy { var: v, .. }) | TyKind::Infer(InferTy::Ty(v)) => {
                 if *v == var {
                     Err(self)
                 } else {
@@ -154,6 +154,7 @@ pub enum TyKind {
     // Primitive types
     Int(IntTy),
     Uint(UintTy),
+    Float(FloatTy),
     Str,
     Bool,
     Unit, // TODO: when we implement tuples, Unit should become Tuple([])
@@ -168,16 +169,22 @@ pub enum TyKind {
 
 impl TyKind {
     pub const DEFAULT_INT: Self = Self::Int(IntTy::Int);
+    pub const DEFAULT_FLOAT: Self = Self::Float(FloatTy::F32);
 
     pub fn is_any_int(&self) -> bool {
-        matches!(self, TyKind::Int(_) | TyKind::Uint(_) | TyKind::Infer(InferTy::IntVar(_)))
+        matches!(self, TyKind::Int(_) | TyKind::Uint(_) | TyKind::Infer(InferTy::Int(_)))
     }
 
-    pub fn bits(&self) -> usize {
+    pub fn is_any_float(&self) -> bool {
+        matches!(self, TyKind::Float(_) | TyKind::Infer(InferTy::Float(_)))
+    }
+
+    pub fn size(&self, target_metrics: &TargetMetrics) -> usize {
         match self {
-            TyKind::Int(i) => i.bits(),
-            TyKind::Uint(u) => u.bits(),
-            _ => panic!("cant find bits of {self:?}"),
+            TyKind::Int(x) => x.size(target_metrics),
+            TyKind::Uint(x) => x.size(target_metrics),
+            TyKind::Float(x) => x.size(),
+            _ => panic!("cant find size of {self:?}"),
         }
     }
 
@@ -211,6 +218,9 @@ pub struct TyVar(u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]
 pub struct IntVar(u32);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]
+pub struct FloatVar(u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntVarValue {
@@ -255,16 +265,6 @@ impl IntTy {
             Self::I32 => i32::try_from(value).is_ok(),
             Self::I64 => i64::try_from(value).is_ok(),
             Self::Int => isize::try_from(value).is_ok(),
-        }
-    }
-
-    pub fn bits(self) -> usize {
-        // TODO: use target_metrics for Int
-        match self {
-            Self::I8 => 8,
-            Self::I16 => 16,
-            Self::I32 => 32,
-            Self::I64 | Self::Int => 64,
         }
     }
 
@@ -314,21 +314,11 @@ impl UintTy {
     pub fn contains(self, value: i128) -> bool {
         // TODO: use target_metrics
         match self {
-            UintTy::U8 => u8::try_from(value).is_ok(),
-            UintTy::U16 => u16::try_from(value).is_ok(),
-            UintTy::U32 => u32::try_from(value).is_ok(),
-            UintTy::U64 => u64::try_from(value).is_ok(),
-            UintTy::Uint => usize::try_from(value).is_ok(),
-        }
-    }
-
-    pub fn bits(self) -> usize {
-        // TODO: use target_metrics for Int
-        match self {
-            Self::U8 => 8,
-            Self::U16 => 16,
-            Self::U32 => 32,
-            Self::U64 | Self::Uint => 64,
+            Self::U8 => u8::try_from(value).is_ok(),
+            Self::U16 => u16::try_from(value).is_ok(),
+            Self::U32 => u32::try_from(value).is_ok(),
+            Self::U64 => u64::try_from(value).is_ok(),
+            Self::Uint => usize::try_from(value).is_ok(),
         }
     }
 
@@ -351,6 +341,48 @@ impl UintTy {
             Self::U32 => u64::from(u32::MAX),
             Self::U64 => u64::MAX,
             Self::Uint => usize::MAX as _,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum FloatTy {
+    F32,
+    F64,
+}
+
+impl From<FloatTy> for TyKind {
+    fn from(value: FloatTy) -> Self {
+        Self::Float(value)
+    }
+}
+
+impl FloatTy {
+    pub fn size(self) -> usize {
+        match self {
+            Self::F32 => 32,
+            Self::F64 => 64,
+        }
+    }
+
+    pub fn contains(self, value: f64) -> bool {
+        match self {
+            Self::F32 => value >= f64::from(f32::MIN) && value <= f64::from(f32::MAX),
+            Self::F64 => true,
+        }
+    }
+
+    pub fn min(self) -> f64 {
+        match self {
+            Self::F32 => f64::from(f32::MIN),
+            Self::F64 => f64::MIN,
+        }
+    }
+
+    pub fn max(self) -> f64 {
+        match self {
+            Self::F32 => f64::from(f32::MAX),
+            Self::F64 => f64::MAX,
         }
     }
 }
@@ -385,8 +417,9 @@ pub type Instantiation = FxHashMap<TyVar, Ty>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumAsInner)]
 pub enum InferTy {
-    TyVar(TyVar),
-    IntVar(IntVar),
+    Ty(TyVar),
+    Int(IntVar),
+    Float(FloatVar),
 }
 
 pub trait Typed {

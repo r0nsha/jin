@@ -189,6 +189,7 @@ pub enum Inst {
     Load { value: ValueId, kind: LoadKind },
     StrLit { value: ValueId, lit: Ustr },
     IntLit { value: ValueId, lit: i128 },
+    FloatLit { value: ValueId, lit: f64 },
     BoolLit { value: ValueId, lit: bool },
     UnitLit { value: ValueId },
 }

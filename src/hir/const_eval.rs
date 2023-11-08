@@ -56,6 +56,7 @@ impl ConstStorage {
             ExprKind::Lit(lit) => Some(match lit {
                 Lit::Str(value) => Const::Str(*value),
                 Lit::Int(value) => Const::Int(i128::try_from(*value).unwrap()),
+                Lit::Float(value) => Const::Float(*value),
                 Lit::Bool(value) => Const::Bool(*value),
             }),
             ExprKind::Let(_)
@@ -80,6 +81,7 @@ impl ConstStorage {
 pub enum Const {
     Str(Ustr),
     Int(i128),
+    Float(f64),
     Bool(bool),
     Unit,
 }
@@ -95,6 +97,7 @@ impl Const {
     fn neg(&self) -> Self {
         match self {
             Self::Int(v) => Self::Int(-v),
+            Self::Float(v) => Self::Float(-v),
             _ => unreachable!("invalid input in const neg: {:?}", self),
         }
     }
@@ -130,6 +133,7 @@ impl Const {
             (Self::Int(a), Self::Int(b)) => {
                 Ok(Self::Int(a.checked_add(*b).ok_or(ConstEvalError::Overflow)?))
             }
+            (Self::Float(a), Self::Float(b)) => Ok(Self::Float(*a + *b)),
             _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
         }
     }
@@ -139,6 +143,7 @@ impl Const {
             (Self::Int(a), Self::Int(b)) => {
                 Ok(Self::Int(a.checked_sub(*b).ok_or(ConstEvalError::Overflow)?))
             }
+            (Self::Float(a), Self::Float(b)) => Ok(Self::Float(*a - *b)),
             _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
         }
     }
@@ -148,6 +153,7 @@ impl Const {
             (Self::Int(a), Self::Int(b)) => {
                 Ok(Self::Int(a.checked_mul(*b).ok_or(ConstEvalError::Overflow)?))
             }
+            (Self::Float(a), Self::Float(b)) => Ok(Self::Float(*a * *b)),
             _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
         }
     }
@@ -157,6 +163,7 @@ impl Const {
             (Self::Int(a), Self::Int(b)) => {
                 Ok(Self::Int(a.checked_div(*b).ok_or(ConstEvalError::DivByZero)?))
             }
+            (Self::Float(a), Self::Float(b)) => Ok(Self::Float(*a / *b)),
             _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
         }
     }
@@ -166,6 +173,7 @@ impl Const {
             (Self::Int(a), Self::Int(b)) => {
                 Ok(Self::Int(a.checked_rem(*b).ok_or(ConstEvalError::RemByZero)?))
             }
+            (Self::Float(a), Self::Float(b)) => Ok(Self::Float(*a % *b)),
             _ => unreachable!("invalid const binary op on {:?} and {:?}", self, other),
         }
     }
@@ -244,9 +252,30 @@ impl Const {
                     unreachable!("invalid op {:?} on {:?} and {:?}", op, self, other)
                 }
             }),
+            (&Self::Float(a), &Self::Float(b)) => Const::Bool(match op {
+                CmpOp::Eq => float_approx_eq(a, b),
+                CmpOp::Ne => !float_approx_eq(a, b),
+                CmpOp::Lt => a < b,
+                CmpOp::Le => a <= b,
+                CmpOp::Gt => a > b,
+                CmpOp::Ge => a >= b,
+            }),
+            (&Self::Str(a), &Self::Str(b)) => Const::Bool(match op {
+                CmpOp::Eq => a == b,
+                CmpOp::Ne => a != b,
+                CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge => {
+                    unreachable!("invalid op {:?} on {:?} and {:?}", op, self, other)
+                }
+            }),
+            (&Self::Unit, &Self::Unit) => Const::Bool(true),
             _ => unreachable!("invalid op {:?} on {:?} and {:?}", op, self, other),
         }
     }
+}
+
+#[inline]
+fn float_approx_eq(a: f64, b: f64) -> bool {
+    (a - b).abs() < f64::EPSILON
 }
 
 pub type ConstEvalResult = Result<Const, ConstEvalError>;

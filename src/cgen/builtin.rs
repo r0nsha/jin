@@ -38,7 +38,8 @@ impl<'db> Generator<'db> {
         let casted_ty = state.body.value(casted).ty;
 
         if casted_ty.is_any_int() && target.is_any_int() {
-            let (value_bits, target_bits) = (casted_ty.bits(), target.bits());
+            let (value_bits, target_bits) =
+                (casted_ty.size(&self.target_metrics), target.size(&self.target_metrics));
 
             if target_bits < value_bits {
                 let casted_str = value_name_str(casted);
@@ -108,26 +109,29 @@ impl<'db> Generator<'db> {
         data: &BinOpData,
     ) -> D<'db> {
         let decl = self.value_decl(state, data.target);
-        let call = D::text(call_checked_arithmetic_builtin(fname, data));
-        D::intersperse([decl, self.panic_if(call, &overflow_msg(action), data.span)], D::hardline())
-    }
-}
 
-fn call_checked_arithmetic_builtin(action: &str, data: &BinOpData) -> String {
-    let (target, lhs, rhs) =
-        (value_name_str(data.target), value_name_str(data.lhs), value_name_str(data.rhs));
-    let builtin_name = format!(
-        "__builtin_{}{}{}_overflow",
-        if data.ty.is_int() { "s" } else { "u" },
-        action,
-        match data.ty.bits() {
-            8..=16 => "",
-            32 => "l",
-            64 => "ll",
-            _ => unreachable!(),
-        }
-    );
-    format!("{builtin_name}({lhs}, {rhs}, &{target})")
+        let (target, lhs, rhs) =
+            (value_name_str(data.target), value_name_str(data.lhs), value_name_str(data.rhs));
+
+        let builtin_name = format!(
+            "__builtin_{}{}{}_overflow",
+            if data.ty.is_int() { "s" } else { "u" },
+            fname,
+            match data.ty.size(&self.target_metrics) {
+                8..=16 => "",
+                32 => "l",
+                64 => "ll",
+                _ => unreachable!(),
+            }
+        );
+
+        let builtin_call = D::text(format!("{builtin_name}({lhs}, {rhs}, &{target})"));
+
+        D::intersperse(
+            [decl, self.panic_if(builtin_call, &overflow_msg(action), data.span)],
+            D::hardline(),
+        )
+    }
 }
 
 fn overflow_msg(action: &str) -> String {

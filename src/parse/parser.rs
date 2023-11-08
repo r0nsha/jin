@@ -412,8 +412,15 @@ impl<'a> Parser<'a> {
                 let args = self.parse_optional_ty_args()?;
                 Expr::Name { word: tok.word(), args, span: tok.span }
             }
+            TokenKind::Int(value) => Expr::Lit {
+                kind: LitKind::Int(value.replace('_', "").parse().expect("to be a valid integer")),
+                span: tok.span,
+            },
+            TokenKind::Float(value) => Expr::Lit {
+                kind: LitKind::Float(value.replace('_', "").parse().expect("to be a valid float")),
+                span: tok.span,
+            },
             TokenKind::Str(value) => Expr::Lit { kind: LitKind::Str(value), span: tok.span },
-            TokenKind::Int(value) => Expr::Lit { kind: LitKind::Int(value), span: tok.span },
             _ => return Err(unexpected_token_err("an expression", tok.kind, tok.span)),
         };
 
