@@ -4,6 +4,7 @@ use pretty::RcDoc as D;
 
 use crate::{
     cgen::generate::Generator,
+    db::StructId,
     sym,
     ty::{FloatTy, FnTy, IntTy, TyKind, UintTy},
 };
@@ -25,7 +26,7 @@ impl<'db> CTy<'db> for TyKind {
     fn cty(&self, cx: &Generator<'db>) -> D<'db> {
         match self {
             Self::Fn(fty) => fty.cty(cx),
-            Self::Struct(sid) => D::text(cx.struct_names[sid].clone()),
+            Self::Struct(sid) => sid.cty(cx),
             Self::RawPtr(ty) => ty.cty(cx).append(D::text("*")),
             Self::Int(ity) => ity.cty(cx),
             Self::Uint(uty) => uty.cty(cx),
@@ -77,6 +78,16 @@ impl<'db> CTy<'db> for FloatTy {
             Self::F64 => sym::F64,
         })
     }
+}
+
+impl<'db> CTy<'db> for StructId {
+    fn cty(&self, cx: &Generator<'db>) -> D<'db> {
+        D::text(cx.struct_names[self].clone())
+    }
+
+    // fn cdecl(&self, cx: &Generator<'db>, name: D<'db>) -> D<'db> {
+    //     D::text("struct").append(D::space()).append(self.cty(cx)).append(D::space()).append(name)
+    // }
 }
 
 impl<'db> CTy<'db> for FnTy {
