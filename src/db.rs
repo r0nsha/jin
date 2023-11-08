@@ -32,6 +32,7 @@ use crate::{
         coerce::{Coercion, Coercions},
         FloatTy, IntTy, Ty, TyKind, Typed, UintTy,
     },
+    word::Word,
 };
 
 #[derive(Debug)]
@@ -40,6 +41,7 @@ pub struct Db {
     pub sources: Rc<RefCell<Sources>>,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
     pub defs: IndexVec<DefId, DefInfo>,
+    pub structs: IndexVec<StructId, StructInfo>,
     pub types: CommonTypes,
     pub coercions: HirMap<Coercions>,
     pub const_storage: ConstStorage,
@@ -75,6 +77,7 @@ impl Db {
             sources,
             modules: IndexVec::new(),
             defs: IndexVec::new(),
+            structs: IndexVec::new(),
             types: CommonTypes::new(),
             coercions: HirMap::default(),
             const_storage: ConstStorage::new(),
@@ -197,6 +200,7 @@ macro_rules! new_db_key {
 
 new_db_key!(ModuleId -> modules : ModuleInfo);
 new_db_key!(DefId -> defs : DefInfo);
+new_db_key!(StructId -> structs : StructInfo);
 
 #[derive(Debug, Clone)]
 pub struct ModuleInfo {
@@ -346,6 +350,21 @@ impl Ord for ScopeLevel {
 pub enum FnInfo {
     Bare,
     Extern,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructInfo {
+    pub id: StructId,
+    pub def_id: DefId,
+    pub fields: Vec<StructField>,
+    pub is_extern: bool,
+    pub fn_ty: Ty,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructField {
+    pub name: Word,
+    pub ty: Ty,
 }
 
 #[derive(Debug)]

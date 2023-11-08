@@ -5,7 +5,8 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         Attr, AttrKind, Attrs, CallArg, Expr, ExternImport, ExternLet, Fn, FnKind, FnParam, FnSig,
-        Item, Let, LitKind, Module, NamePat, Pat, TyDef, TyDefKind, TyParam,
+        Item, Let, LitKind, Module, NamePat, Pat, StructTyDef, StructTyField, TyDef, TyDefKind,
+        TyParam,
     },
     db::{Db, ExternLib},
     diagnostics::{Diagnostic, Label},
@@ -201,13 +202,24 @@ impl<'a> Parser<'a> {
 
     fn parse_ty_def_kind(&mut self) -> ParseResult<TyDefKind> {
         if self.is(TokenKind::Extern) {
-            todo!("extern struct")
-        } else if self.is(TokenKind::OpenParen) {
-            todo!("regular struct")
+            self.parse_struct_ty_def(true)
+        } else if self.peek_is(TokenKind::OpenParen) {
+            self.parse_struct_ty_def(false)
         } else {
             let tok = self.require()?;
             Err(unexpected_token_err("( or `extern`", tok.kind, tok.span))
         }
+    }
+
+    fn parse_struct_ty_def(&mut self, is_extern: bool) -> ParseResult<TyDefKind> {
+        let (fields, _) = self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
+            let ident = this.eat(TokenKind::empty_ident())?;
+            this.eat(TokenKind::Colon)?;
+            let ty_expr = this.parse_ty()?;
+            Ok(StructTyField { name: ident.word(), ty_expr })
+        })?;
+
+        Ok(TyDefKind::Struct(StructTyDef { fields, is_extern }))
     }
 
     fn parse_pat(&mut self) -> ParseResult<Pat> {

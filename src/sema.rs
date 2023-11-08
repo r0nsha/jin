@@ -16,10 +16,14 @@ use ustr::UstrMap;
 use crate::{
     ast::{self, Ast},
     counter::Counter,
-    db::{Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, Vis},
+    db::{
+        Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, StructField,
+        StructInfo, Vis,
+    },
     diagnostics::{Diagnostic, Label},
     hir,
     hir::{const_eval::ConstEvalError, ExprId, Hir},
+    index_vec::IndexVecExt,
     macros::create_bool_enum,
     middle::{BinOp, TyExpr, UnOp},
     sema::{
@@ -295,7 +299,7 @@ impl<'db> Sema<'db> {
                 self.hir.lets.push(let_);
             }
             ast::Item::Type(tydef) => {
-                todo!("sema");
+                self.check_ty_def(env, tydef)?;
             }
             ast::Item::ExternLet(let_) => {
                 let let_ = self.check_extern_let(env, let_)?;
@@ -479,6 +483,68 @@ impl<'db> Sema<'db> {
             ty,
             span: let_.span,
         })
+    }
+
+    fn check_ty_def(&mut self, env: &mut Env, tydef: &ast::TyDef) -> CheckResult<()> {
+        self.check_attrs(env.module_id(), &tydef.attrs, AttrsPlacement::ExternLet)?;
+
+        match &tydef.kind {
+            ast::TyDefKind::Struct(struct_def) => {
+                let mut fields = vec![];
+                let mut defined_fields = UstrMap::<Span>::default();
+
+                for field in &struct_def.fields {
+                    if let Some(prev_span) =
+                        defined_fields.insert(field.name.name(), field.name.span())
+                    {
+                        let name = field.name.name();
+                        let dup_span = field.name.span();
+
+                        return Err(Diagnostic::error("check::multiple_fields")
+                            .with_message(format!(
+                                "the name `{name}` is already used as a field name"
+                            ))
+                            .with_label(
+                                Label::primary(dup_span)
+                                    .with_message(format!("`{name}` used again here")),
+                            )
+                            .with_label(
+                                Label::secondary(prev_span)
+                                    .with_message(format!("first use of `{name}`")),
+                            ));
+                    }
+
+                    fields.push(StructField { name: field.name, ty: self.db.types.unknown });
+                }
+
+                let struct_id = self.db.structs.push_with_key(|id| StructInfo {
+                    id,
+                    def_id: DefId::INVALID,
+                    fields,
+                    is_extern: struct_def.is_extern,
+                    fn_ty: self.db.types.unknown,
+                });
+
+                let def_id = self.define_def(
+                    env,
+                    Vis::Private,
+                    DefKind::Ty(todo!("TyKind::Struct(struct_id)")),
+                    tydef.word,
+                    self.db.types.typ,
+                )?;
+
+                self.db.structs[struct_id].def_id = def_id;
+
+                // TODO: set field types
+                // for field in &struct_def.fields {
+                //     let ty = self.check_ty_expr(env, &field.ty_expr, AllowTyHole::No)?;
+                // }
+
+                // TODO: fill fn_ty
+            }
+        }
+
+        Ok(())
     }
 
     fn check_extern_let(
