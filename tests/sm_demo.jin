@@ -22,8 +22,7 @@ fn unary {
 	-48
 	!true
 	!!false
-	// TODO: bitnot
-	// !54878
+	!54878
 }
 
 fn arithmetic {
