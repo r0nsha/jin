@@ -1,6 +1,7 @@
 mod attrs;
 mod coerce;
 mod env;
+mod errors;
 mod instantiate;
 mod item_state;
 mod normalize;
@@ -958,6 +959,15 @@ impl<'db> Sema<'db> {
                 let ty = self.normalize(expr.ty);
 
                 let res_ty = match ty.kind() {
+                    TyKind::Struct(sid) => {
+                        let struct_info = &self.db[*sid];
+
+                        if let Some(field) = struct_info.field_by_name(member.name().as_str()) {
+                            field.ty
+                        } else {
+                            return Err(errors::invalid_member(self.db, ty, *member));
+                        }
+                    }
                     TyKind::Str if member.name() == sym::PTR => {
                         Ty::new(TyKind::RawPtr(self.db.types.u8))
                     }

@@ -368,6 +368,10 @@ impl StructInfo {
         TyKind::Struct(self.id).into()
     }
 
+    pub fn field_by_name(&self, name: &str) -> Option<&StructField> {
+        self.fields.iter().find(|f| f.name.name() == name)
+    }
+
     pub fn fill_ctor_ty(&mut self) {
         self.ctor_ty = Ty::new(TyKind::Fn(FnTy {
             params: self
