@@ -173,7 +173,6 @@ impl<'db> LowerCx<'db> {
             ty: struct_info.ctor_ty,
             is_extern: false,
             is_c_variadic: false,
-            is_inline: true,
         });
 
         self.mir.struct_ctors.insert(sid, sig_id);
@@ -205,7 +204,6 @@ impl<'db> LowerCx<'db> {
             ty,
             is_extern,
             is_c_variadic,
-            is_inline: false,
         })
     }
 
