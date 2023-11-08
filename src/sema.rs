@@ -294,6 +294,9 @@ impl<'db> Sema<'db> {
                 let let_ = self.check_let(env, let_)?;
                 self.hir.lets.push(let_);
             }
+            ast::Item::Type(tydef) => {
+                todo!("sema");
+            }
             ast::Item::ExternLet(let_) => {
                 let let_ = self.check_extern_let(env, let_)?;
                 self.hir.extern_lets.push(let_);

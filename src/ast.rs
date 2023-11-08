@@ -78,6 +78,7 @@ pub type ItemMap<T> = FxHashMap<GlobalItemId, T>;
 pub enum Item {
     Fn(Fn),
     Let(Let),
+    Type(TyDef),
     ExternLet(ExternLet),
     ExternImport(ExternImport),
 }
@@ -91,6 +92,7 @@ impl Item {
         match self {
             Self::Fn(fun) => f(fun.sig.word),
             Self::Let(let_) => let_.pat.walk(|p| f(p.word)),
+            Self::Type(tydef) => f(tydef.word),
             Self::ExternLet(let_) => f(let_.word),
             Self::ExternImport(_) => (),
         }
@@ -102,6 +104,7 @@ impl Spanned for Item {
         match self {
             Self::Fn(Fn { span, .. })
             | Self::Let(Let { span, .. })
+            | Self::Type(TyDef { span, .. })
             | Self::ExternLet(ExternLet { span, .. })
             | Self::ExternImport(ExternImport { span, .. }) => *span,
         }
@@ -186,6 +189,31 @@ pub struct Let {
     pub ty_expr: Option<TyExpr>,
     pub value: Box<Expr>,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub struct TyDef {
+    pub attrs: Attrs,
+    pub word: Word,
+    pub kind: TyDefKind,
+    pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum TyDefKind {
+    Struct(StructTyDef),
+}
+
+#[derive(Debug, Clone)]
+pub struct StructTyDef {
+    pub fields: Vec<StructTyField>,
+    pub is_extern: bool,
+}
+
+#[derive(Debug, Clone)]
+pub struct StructTyField {
+    pub name: Word,
+    pub ty_expr: TyExpr,
 }
 
 #[derive(Debug, Clone)]

@@ -5,7 +5,7 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         Attr, AttrKind, Attrs, CallArg, Expr, ExternImport, ExternLet, Fn, FnKind, FnParam, FnSig,
-        Item, Let, LitKind, Module, NamePat, Pat, TyParam,
+        Item, Let, LitKind, Module, NamePat, Pat, TyDef, TyDefKind, TyParam,
     },
     db::{Db, ExternLib},
     diagnostics::{Diagnostic, Label},
@@ -52,7 +52,7 @@ impl<'a> Parser<'a> {
             Ok(item)
         } else {
             let token = self.require()?;
-            Err(unexpected_token_err("`fn` or `let`", token.kind, token.span))
+            Err(unexpected_token_err("an item", token.kind, token.span))
         }
     }
 
@@ -69,6 +69,10 @@ impl<'a> Parser<'a> {
             } else {
                 self.parse_let(attrs).map(|l| Some(Item::Let(l)))
             };
+        }
+
+        if self.is(TokenKind::Type) {
+            return self.parse_ty_def(attrs).map(|t| Some(Item::Type(t)));
         }
 
         if self.is(TokenKind::Import) {
@@ -186,6 +190,26 @@ impl<'a> Parser<'a> {
         let span = start.merge(ty_expr.span());
         Ok(ExternLet { attrs, word: ident.word(), ty_expr, span })
     }
+
+    fn parse_ty_def(&mut self, attrs: Attrs) -> ParseResult<TyDef> {
+        let start = self.last_span();
+        let ident = self.eat(TokenKind::empty_ident())?;
+        let kind = self.parse_ty_def_kind()?;
+        let span = start.merge(self.last_span());
+        Ok(TyDef { attrs, word: ident.word(), kind, span })
+    }
+
+    fn parse_ty_def_kind(&mut self) -> ParseResult<TyDefKind> {
+        if self.is(TokenKind::Extern) {
+            todo!("extern struct")
+        } else if self.is(TokenKind::OpenParen) {
+            todo!("regular struct")
+        } else {
+            let tok = self.require()?;
+            Err(unexpected_token_err("( or `extern`", tok.kind, tok.span))
+        }
+    }
+
     fn parse_pat(&mut self) -> ParseResult<Pat> {
         let tok = self.eat_any()?;
 

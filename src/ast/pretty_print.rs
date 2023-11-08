@@ -146,6 +146,9 @@ impl PrettyPrint for Item {
         match self {
             Self::Fn(x) => x.pretty_print(cx),
             Self::Let(x) => x.pretty_print(cx),
+            Self::Type(tydef) => {
+                todo!("sema");
+            }
             Self::ExternLet(x) => x.pretty_print(cx),
             Self::ExternImport(x) => x.pretty_print(cx),
         }
