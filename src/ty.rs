@@ -10,7 +10,11 @@ use internment::Intern;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
-use crate::{db::Db, target::TargetMetrics, ty::printer::TyPrinter};
+use crate::{
+    db::{Db, StructId},
+    target::TargetMetrics,
+    ty::printer::TyPrinter,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Ty(Intern<TyKind>);
@@ -149,6 +153,7 @@ impl From<&TyKind> for TyKind {
 pub enum TyKind {
     // Composite types
     Fn(FnTy),
+    Struct(StructId),
     RawPtr(Ty),
 
     // Primitive types

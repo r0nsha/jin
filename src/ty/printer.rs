@@ -7,23 +7,22 @@ use crate::{
 };
 
 pub struct TyPrinter<'db> {
-    _db: &'db Db,
+    db: &'db Db,
     ty: &'db TyKind,
 }
 
 impl Display for TyPrinter<'_> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        TyPrinter::fmt_type(f, self.ty)
+        self.fmt_type(f, self.ty)
     }
 }
 
 impl<'db> TyPrinter<'db> {
     pub fn new(db: &'db Db, ty: &'db TyKind) -> Self {
-        Self { _db: db, ty }
+        Self { db, ty }
     }
 
-    #[allow(clippy::match_same_arms)]
-    fn fmt_type(f: &mut Formatter, ty: &TyKind) -> Result {
+    fn fmt_type(&self, f: &mut Formatter, ty: &TyKind) -> Result {
         match ty {
             TyKind::Fn(fun) => {
                 f.write_str("fn")?;
@@ -35,7 +34,7 @@ impl<'db> TyPrinter<'db> {
                         f.write_str(" ")?;
                     }
 
-                    Self::fmt_type(f, &param.ty)?;
+                    self.fmt_type(f, &param.ty)?;
 
                     if i != fun.params.len() - 1 {
                         f.write_str(", ")?;
@@ -43,11 +42,12 @@ impl<'db> TyPrinter<'db> {
                 }
 
                 f.write_str(") ")?;
-                Self::fmt_type(f, &fun.ret)
+                self.fmt_type(f, &fun.ret)
             }
+            TyKind::Struct(sid) => f.write_str(self.db.structs[*sid].name.as_str()),
             TyKind::RawPtr(pointee) => {
                 f.write_str("*")?;
-                Self::fmt_type(f, pointee)
+                self.fmt_type(f, pointee)
             }
             TyKind::Int(ity) => f.write_str(match ity {
                 IntTy::I8 => sym::I8,

@@ -520,6 +520,7 @@ impl<'db> Sema<'db> {
                 let struct_id = self.db.structs.push_with_key(|id| StructInfo {
                     id,
                     def_id: DefId::INVALID,
+                    name: tydef.word,
                     fields,
                     is_extern: struct_def.is_extern,
                     fn_ty: self.db.types.unknown,
@@ -528,17 +529,17 @@ impl<'db> Sema<'db> {
                 let def_id = self.define_def(
                     env,
                     Vis::Private,
-                    DefKind::Ty(todo!("TyKind::Struct(struct_id)")),
+                    DefKind::Ty(TyKind::Struct(struct_id).into()),
                     tydef.word,
                     self.db.types.typ,
                 )?;
 
                 self.db.structs[struct_id].def_id = def_id;
 
-                // TODO: set field types
-                // for field in &struct_def.fields {
-                //     let ty = self.check_ty_expr(env, &field.ty_expr, AllowTyHole::No)?;
-                // }
+                for (idx, field) in struct_def.fields.iter().enumerate() {
+                    let ty = self.check_ty_expr(env, &field.ty_expr, AllowTyHole::No)?;
+                    self.db.structs[struct_id].fields[idx].ty = ty;
+                }
 
                 // TODO: fill fn_ty
             }

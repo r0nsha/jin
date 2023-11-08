@@ -356,6 +356,7 @@ pub enum FnInfo {
 pub struct StructInfo {
     pub id: StructId,
     pub def_id: DefId,
+    pub name: Word,
     pub fields: Vec<StructField>,
     pub is_extern: bool,
     pub fn_ty: Ty,
