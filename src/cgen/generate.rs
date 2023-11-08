@@ -154,13 +154,7 @@ impl<'db> Generator<'db> {
     fn codegen_fn_sig(&self, sig: &FnSig) -> D<'db> {
         let fn_ty = sig.ty.as_fn().expect("a function type");
 
-        let initial = if sig.is_extern {
-            D::text("extern").append(D::space())
-        } else if sig.is_inline {
-            D::text("FORCE_INLINE").append(D::space())
-        } else {
-            D::nil()
-        };
+        let initial = if sig.is_extern { D::text("extern").append(D::space()) } else { D::nil() };
 
         let sig_doc = fn_ty.ret.cty(self).append(D::space()).append(sig.name.as_str()).append(
             D::text("(")
