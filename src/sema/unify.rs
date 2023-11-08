@@ -153,8 +153,6 @@ impl UnifyCx<'_, '_> {
             (TyKind::Uint(a), TyKind::Uint(b)) if a == b => Ok(()),
             (TyKind::Int(a), TyKind::Int(b)) if a == b => Ok(()),
 
-            (TyKind::RawPtr(a), TyKind::RawPtr(b)) => self.unify_ty_ty(*a, *b),
-
             (TyKind::Fn(ref fex), TyKind::Fn(ref fact)) => {
                 self.unify_ty_ty(fex.ret, fact.ret)?;
 
@@ -172,6 +170,10 @@ impl UnifyCx<'_, '_> {
                     Err(UnifyError::TyMismatch { a, b })
                 }
             }
+
+            (TyKind::Struct(a), TyKind::Struct(b)) if *a == *b => Ok(()),
+
+            (TyKind::RawPtr(a), TyKind::RawPtr(b)) => self.unify_ty_ty(*a, *b),
 
             // Unify ?T1 ~ ?T2
             (TyKind::Infer(InferTy::Ty(expected)), TyKind::Infer(InferTy::Ty(found))) => {

@@ -30,7 +30,7 @@ use crate::{
     target::{TargetMetrics, TargetPlatform},
     ty::{
         coerce::{Coercion, Coercions},
-        FloatTy, IntTy, Ty, TyKind, Typed, UintTy,
+        FloatTy, FnTy, FnTyParam, IntTy, Ty, TyKind, Typed, UintTy,
     },
     word::Word,
 };
@@ -359,7 +359,21 @@ pub struct StructInfo {
     pub name: Word,
     pub fields: Vec<StructField>,
     pub is_extern: bool,
-    pub fn_ty: Ty,
+    pub ctor_ty: Ty,
+}
+
+impl StructInfo {
+    pub fn fill_ctor_ty(&mut self) {
+        self.ctor_ty = Ty::new(TyKind::Fn(FnTy {
+            params: self
+                .fields
+                .iter()
+                .map(|f| FnTyParam { name: Some(f.name.name()), ty: f.ty })
+                .collect(),
+            ret: Ty::new(TyKind::Struct(self.id)),
+            is_c_variadic: false,
+        }));
+    }
 }
 
 #[derive(Debug, Clone)]

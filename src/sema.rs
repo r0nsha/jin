@@ -523,13 +523,15 @@ impl<'db> Sema<'db> {
                     name: tydef.word,
                     fields,
                     is_extern: struct_def.is_extern,
-                    fn_ty: self.db.types.unknown,
+                    ctor_ty: self.db.types.unknown,
                 });
+
+                let struct_ty = Ty::new(TyKind::Struct(struct_id));
 
                 let def_id = self.define_def(
                     env,
                     Vis::Private,
-                    DefKind::Ty(TyKind::Struct(struct_id).into()),
+                    DefKind::Ty(struct_ty),
                     tydef.word,
                     self.db.types.typ,
                 )?;
@@ -541,7 +543,7 @@ impl<'db> Sema<'db> {
                     self.db.structs[struct_id].fields[idx].ty = ty;
                 }
 
-                // TODO: fill fn_ty
+                self.db.structs[struct_id].fill_ctor_ty();
             }
         }
 
