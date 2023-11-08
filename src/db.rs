@@ -383,6 +383,28 @@ impl StructInfo {
             is_c_variadic: false,
         }));
     }
+
+    pub fn is_infinitely_sized(&self) -> Option<&StructField> {
+        fn contains_struct(ty: Ty, sid: StructId) -> bool {
+            match ty.kind() {
+                TyKind::Fn(fun) => {
+                    if fun.params.iter().any(|p| contains_struct(p.ty, sid)) {
+                        return false;
+                    }
+
+                    contains_struct(fun.ret, sid)
+                }
+                TyKind::Struct(sid2) if *sid2 == sid => true,
+                _ => false,
+            }
+        }
+
+        if self.is_extern {
+            self.fields.iter().find(|f| contains_struct(f.ty, self.id))
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

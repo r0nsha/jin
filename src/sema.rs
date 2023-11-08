@@ -543,6 +543,20 @@ impl<'db> Sema<'db> {
                 }
 
                 self.db.structs[struct_id].fill_ctor_ty();
+
+                let struct_info = &self.db.structs[struct_id];
+
+                if let Some(field) = self.db.structs[struct_id].is_infinitely_sized() {
+                    return Err(Diagnostic::error("check::infinitely_sized_type")
+                        .with_message(format!("type `{}` is infinitely sized", struct_info.name))
+                        .with_label(
+                            Label::primary(struct_info.name.span()).with_message("defined here"),
+                        )
+                        .with_label(Label::secondary(field.name.span()).with_message(format!(
+                            "field has type `{}` without indirection",
+                            struct_info.name
+                        ))));
+                }
             }
         }
 
