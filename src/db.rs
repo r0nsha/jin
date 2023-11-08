@@ -247,6 +247,7 @@ pub struct ScopeInfo {
 pub enum DefKind {
     Fn(FnInfo),
     Ty(Ty),
+    Struct(StructId),
     ExternGlobal,
     Global,
     Variable,

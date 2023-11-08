@@ -477,6 +477,12 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                             })
                         }
                         DefKind::Variable => self.def_to_local[&name.id],
+                        DefKind::Struct(sid) => {
+                            let fn_sig_id: FnSigId = todo!();
+                            self.push_inst_with(self.cx.mir.fn_sigs[fn_sig_id].ty, |value| {
+                                Inst::Load { value, kind: LoadKind::Fn(fn_sig_id) }
+                            })
+                        }
                         DefKind::Ty(_) => unreachable!(),
                     }
                 }

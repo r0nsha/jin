@@ -526,12 +526,10 @@ impl<'db> Sema<'db> {
                     ctor_ty: self.db.types.unknown,
                 });
 
-                let struct_ty = Ty::new(TyKind::Struct(struct_id));
-
                 let def_id = self.define_def(
                     env,
                     Vis::Private,
-                    DefKind::Ty(struct_ty),
+                    DefKind::Struct(struct_id),
                     tydef.word,
                     self.db.types.typ,
                 )?;
@@ -986,79 +984,92 @@ impl<'db> Sema<'db> {
             ast::Expr::Name { word, args, span } => {
                 let id = self.lookup_def(env, *word)?;
 
-                let def_ty = self.normalize(self.db[id].ty);
-                let mut ty_params = def_ty.collect_params();
+                if let DefKind::Struct(sid) = self.db[id].kind.as_ref() {
+                    // NOTE: if the named definition is a struct, we want to return its
+                    // constructor function's type
+                    self.expr(
+                        hir::ExprKind::Name(hir::Name {
+                            id,
+                            word: *word,
+                            instantiation: Instantiation::default(),
+                        }),
+                        self.db[*sid].ctor_ty,
+                        *span,
+                    )
+                } else {
+                    let def_ty = self.normalize(self.db[id].ty);
+                    let mut ty_params = def_ty.collect_params();
 
-                if let Some(fn_id) = env.fn_id() {
-                    let fn_ty_params = self.db[fn_id].ty.collect_params();
-                    for ftp in fn_ty_params {
-                        if let Some(tp) = ty_params.iter_mut().find(|p| p.var == ftp.var) {
-                            *tp = ftp.clone();
+                    // NOTE: map type params that are part of the current polymorphic function to themselves, so
+                    // that we don't instantiate them. that's quite ugly though.
+                    if let Some(fn_id) = env.fn_id() {
+                        let fn_ty_params = self.db[fn_id].ty.collect_params();
+                        for ftp in fn_ty_params {
+                            if let Some(tp) = ty_params.iter_mut().find(|p| p.var == ftp.var) {
+                                *tp = ftp.clone();
+                            }
                         }
                     }
-                    // if !fn_ty_params.is_empty() {
-                    //     ty_params.retain(|p| !fn_ty_params.iter().any(|p2| p.var == p2.var));
-                    // }
-                }
 
-                let args = if let Some(args) = args {
-                    let args: Vec<Ty> = args
-                        .iter()
-                        .map(|arg| self.check_ty_expr(env, arg, AllowTyHole::Yes))
-                        .try_collect()?;
+                    let args = if let Some(args) = args {
+                        let args: Vec<Ty> = args
+                            .iter()
+                            .map(|arg| self.check_ty_expr(env, arg, AllowTyHole::Yes))
+                            .try_collect()?;
 
-                    Some(args)
-                } else {
-                    None
-                };
+                        Some(args)
+                    } else {
+                        None
+                    };
 
-                let instantiation: Instantiation = match &args {
-                    Some(args) if args.len() == ty_params.len() => ty_params
-                        .into_iter()
-                        .zip(args)
-                        .map(|(param, arg)| (param.var, *arg))
-                        .collect(),
-                    Some(args) => {
-                        let expected = ty_params.len();
-                        let found = args.len();
-
-                        return Err(Diagnostic::error("check::type_arg_mismatch")
-                            .with_message(format!(
-                                "expected {expected} type argument(s), but {found} were supplied"
-                            ))
-                            .with_label(Label::primary(*span).with_message(format!(
-                                "expected {expected} type arguments, found {found}"
-                            ))));
-                    }
-                    _ => {
-                        let fn_ty_params =
-                            env.fn_id().map_or(vec![], |id| self.db[id].ty.collect_params());
-
-                        ty_params
+                    let instantiation: Instantiation = match &args {
+                        Some(args) if args.len() == ty_params.len() => ty_params
                             .into_iter()
-                            .map(|param| {
-                                (
-                                    param.var,
-                                    // If the type param is one of the current function's type
-                                    // params, we don't want to instantiate it
-                                    if fn_ty_params.iter().any(|p| p.var == param.var) {
-                                        Ty::new(TyKind::Param(param))
-                                    } else {
-                                        self.fresh_ty_var()
-                                    },
-                                )
-                            })
-                            .collect()
-                    }
-                };
+                            .zip(args)
+                            .map(|(param, arg)| (param.var, *arg))
+                            .collect(),
+                        Some(args) => {
+                            let expected = ty_params.len();
+                            let found = args.len();
 
-                let ty = instantiate(def_ty, instantiation.clone());
+                            return Err(Diagnostic::error("check::type_arg_mismatch")
+                                                    .with_message(format!(
+                                                "expected {expected} type argument(s), but {found} were supplied"
+                                            ))
+                                                    .with_label(Label::primary(*span).with_message(format!(
+                                                        "expected {expected} type arguments, found {found}"
+                                                    ))));
+                        }
+                        _ => {
+                            let fn_ty_params =
+                                env.fn_id().map_or(vec![], |id| self.db[id].ty.collect_params());
 
-                self.expr(
-                    hir::ExprKind::Name(hir::Name { id, word: *word, instantiation }),
-                    ty,
-                    *span,
-                )
+                            ty_params
+                                .into_iter()
+                                .map(|param| {
+                                    (
+                                        param.var,
+                                        // If the type param is one of the current function's type
+                                        // params, we don't want to instantiate it
+                                        if fn_ty_params.iter().any(|p| p.var == param.var) {
+                                            Ty::new(TyKind::Param(param))
+                                        } else {
+                                            self.fresh_ty_var()
+                                        },
+                                    )
+                                })
+                                .collect()
+                        }
+                    };
+
+                    let ty = instantiate(def_ty, instantiation.clone());
+
+                    self.expr(
+                        hir::ExprKind::Name(hir::Name { id, word: *word, instantiation }),
+                        ty,
+                        *span,
+                    )
+                }
             }
             ast::Expr::Lit { kind, span } => {
                 let (kind, ty) = match kind {
@@ -1166,6 +1177,7 @@ impl<'db> Sema<'db> {
 
                 match def.kind.as_ref() {
                     DefKind::Ty(ty) => Ok(*ty),
+                    DefKind::Struct(sid) => Ok(Ty::new(TyKind::Struct(*sid))),
                     _ => Err(Diagnostic::error("check::expected_ty")
                         .with_message(format!(
                             "expected a type, found value of type `{}`",
