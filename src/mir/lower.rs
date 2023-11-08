@@ -152,6 +152,35 @@ impl<'db> LowerCx<'db> {
         }
     }
 
+    fn get_or_create_struct_ctor(&mut self, sid: StructId) -> FnSigId {
+        if let Some(sig_id) = self.mir.struct_ctors.get(&sid) {
+            return *sig_id;
+        }
+
+        let struct_info = &self.db[sid];
+        let name =
+            ustr(&self.db[struct_info.def_id].qpath.clone().child(ustr("ctor")).join_with("_"));
+
+        let sig_id = self.mir.fn_sigs.push_with_key(|id| FnSig {
+            id,
+            name,
+            params: struct_info
+                .fields
+                .iter()
+                .map(|f| FnParam { def_id: DefId::INVALID, name: f.name.name(), ty: f.ty })
+                .collect(),
+            ret: TyKind::Struct(sid).into(),
+            ty: struct_info.ctor_ty,
+            is_extern: false,
+            is_c_variadic: false,
+            is_inline: true,
+        });
+
+        self.mir.struct_ctors.insert(sid, sig_id);
+
+        sig_id
+    }
+
     fn lower_fn_sig(
         &mut self,
         sig: &hir::FnSig,
@@ -167,11 +196,16 @@ impl<'db> LowerCx<'db> {
         self.mir.fn_sigs.push_with_key(|id| FnSig {
             id,
             name,
-            params: sig.params.iter().map(|p| FnParam { def_id: p.id, ty: p.ty }).collect(),
+            params: sig
+                .params
+                .iter()
+                .map(|p| FnParam { def_id: p.id, name: p.name.name(), ty: p.ty })
+                .collect(),
             ret: ty.as_fn().unwrap().ret,
             ty,
             is_extern,
             is_c_variadic,
+            is_inline: false,
         })
     }
 
@@ -478,7 +512,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                         }
                         DefKind::Variable => self.def_to_local[&name.id],
                         DefKind::Struct(sid) => {
-                            let fn_sig_id: FnSigId = todo!();
+                            let fn_sig_id = self.cx.get_or_create_struct_ctor(*sid);
                             self.push_inst_with(self.cx.mir.fn_sigs[fn_sig_id].ty, |value| {
                                 Inst::Load { value, kind: LoadKind::Fn(fn_sig_id) }
                             })

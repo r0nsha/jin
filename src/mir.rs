@@ -4,10 +4,11 @@ mod pretty_print;
 use std::io;
 
 pub use lower::lower;
+use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
-    db::{Db, DefId},
+    db::{Db, DefId, StructId},
     hir::const_eval::Const,
     index_vec::{new_key_type, IndexSlice, IndexVec, IndexVecExt},
     middle::{BinOp, UnOp},
@@ -25,12 +26,19 @@ pub struct Mir {
     pub fn_sigs: IndexVec<FnSigId, FnSig>,
     pub fns: Vec<Fn>,
     pub globals: IndexVec<GlobalId, Global>,
+    pub struct_ctors: FxHashMap<StructId, FnSigId>,
     pub main_fn: Option<FnSigId>,
 }
 
 impl Mir {
     pub fn new() -> Self {
-        Self { fn_sigs: IndexVec::new(), fns: vec![], globals: IndexVec::new(), main_fn: None }
+        Self {
+            fn_sigs: IndexVec::new(),
+            fns: vec![],
+            globals: IndexVec::new(),
+            struct_ctors: FxHashMap::default(),
+            main_fn: None,
+        }
     }
 
     pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
@@ -54,6 +62,7 @@ pub struct ExternFn {
 #[derive(Debug, Clone)]
 pub struct FnParam {
     pub def_id: DefId,
+    pub name: Ustr,
     pub ty: Ty,
 }
 
@@ -66,6 +75,7 @@ pub struct FnSig {
     pub ty: Ty,
     pub is_extern: bool,
     pub is_c_variadic: bool,
+    pub is_inline: bool,
 }
 
 #[derive(Debug, Clone)]

@@ -11,13 +11,13 @@ use crate::{
         ty::CTy,
         util::{
             attr, block, block_, block_name, bool_value, goto_stmt, if_stmt, stmt, str_value,
-            unit_value, value_name, NEST,
+            struct_lit, unit_value, value_name, NEST,
         },
     },
     db::{Db, StructId, StructInfo},
     hir::const_eval::Const,
     middle::UnOp,
-    mir::{Block, Body, Fn, FnSig, GlobalKind, Inst, LoadKind, Mir, ValueId},
+    mir::{Block, Body, Fn, FnSig, FnSigId, GlobalKind, Inst, LoadKind, Mir, ValueId},
     target::TargetMetrics,
     ty::Ty,
 };
@@ -154,15 +154,19 @@ impl<'db> Generator<'db> {
     fn codegen_fn_sig(&self, sig: &FnSig) -> D<'db> {
         let fn_ty = sig.ty.as_fn().expect("a function type");
 
-        let initial = if sig.is_extern { D::text("extern").append(D::space()) } else { D::nil() };
+        let initial = if sig.is_extern {
+            D::text("extern").append(D::space())
+        } else if sig.is_inline {
+            D::text("FORCE_INLINE").append(D::space())
+        } else {
+            D::nil()
+        };
 
-        let mut sig_doc = fn_ty.ret.cty(self).append(D::space()).append(sig.name.as_str()).append(
+        let sig_doc = fn_ty.ret.cty(self).append(D::space()).append(sig.name.as_str()).append(
             D::text("(")
                 .append(
                     D::intersperse(
-                        sig.params
-                            .iter()
-                            .map(|p| p.ty.cdecl(self, D::text(self.db[p.def_id].name.as_str()))),
+                        sig.params.iter().map(|p| p.ty.cdecl(self, D::text(p.name.as_str()))),
                         D::text(",").append(D::space()),
                     )
                     .nest(2)
@@ -172,20 +176,34 @@ impl<'db> Generator<'db> {
                 .append(D::text(")")),
         );
 
+        let mut attr_docs = vec![];
+
         if fn_ty.ret.is_never() {
-            sig_doc = sig_doc.append(D::space()).append(attr("noreturn"));
+            attr_docs.push(attr("noreturn"));
         }
 
-        initial.append(sig_doc).group()
+        let attrs = if attr_docs.is_empty() {
+            D::nil()
+        } else {
+            D::space().append(D::intersperse(attr_docs, D::space()))
+        };
+
+        initial.append(sig_doc).append(attrs).group()
     }
 
     pub fn define_fns(&mut self) {
         for fun in &self.mir.fns {
-            self.define_fn(fun);
+            let doc = self.codegen_fn_def(fun);
+            self.fn_defs.push(doc);
+        }
+
+        for (sid, sig) in &self.mir.struct_ctors {
+            let doc = self.codegen_struct_ctor(*sid, *sig);
+            self.fn_decls.push(stmt(|| doc));
         }
     }
 
-    fn define_fn(&mut self, fun: &'db Fn) {
+    fn codegen_fn_def(&mut self, fun: &'db Fn) -> D<'db> {
         let sig = &self.mir.fn_sigs[fun.sig];
 
         let mut state = FnState::new(&fun.body);
@@ -197,12 +215,36 @@ impl<'db> Generator<'db> {
         let block_docs: Vec<D> =
             fun.body.blocks().iter().map(|blk| self.codegen_block(&mut state, blk)).collect();
 
-        let doc = self.codegen_fn_sig(sig).append(D::space()).append(block_(
+        self.codegen_fn_sig(sig).append(D::space()).append(block_(
             || D::intersperse(block_docs, D::hardline().append(D::hardline())).group(),
             0,
-        ));
+        ))
+    }
 
-        self.fn_defs.push(doc);
+    fn codegen_struct_ctor(&mut self, sid: StructId, sig_id: FnSigId) -> D<'db> {
+        let struct_info = &self.db[sid];
+        let sig = &self.mir.fn_sigs[sig_id];
+
+        let struct_lit_doc = struct_lit(
+            struct_info
+                .fields
+                .iter()
+                .map(|f| {
+                    let name = f.name.name().as_str();
+                    (name, D::text(name))
+                })
+                .collect(),
+        );
+
+        let lit_name = D::text("lit");
+        let lit_decl_doc =
+            VariableDoc::assign(self, struct_info.ty(), lit_name.clone(), struct_lit_doc);
+
+        let return_doc = stmt(|| D::text("return").append(D::space()).append(lit_name));
+
+        self.codegen_fn_sig(sig)
+            .append(D::space())
+            .append(block(|| D::intersperse([lit_decl_doc, return_doc], D::hardline())))
     }
 
     fn codegen_block(&mut self, state: &mut FnState<'db>, blk: &'db Block) -> D<'db> {

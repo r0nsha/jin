@@ -364,6 +364,10 @@ pub struct StructInfo {
 }
 
 impl StructInfo {
+    pub fn ty(&self) -> Ty {
+        TyKind::Struct(self.id).into()
+    }
+
     pub fn fill_ctor_ty(&mut self) {
         self.ctor_ty = Ty::new(TyKind::Fn(FnTy {
             params: self
@@ -371,7 +375,7 @@ impl StructInfo {
                 .iter()
                 .map(|f| FnTyParam { name: Some(f.name.name()), ty: f.ty })
                 .collect(),
-            ret: Ty::new(TyKind::Struct(self.id)),
+            ret: self.ty(),
             is_c_variadic: false,
         }));
     }

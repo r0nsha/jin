@@ -48,10 +48,10 @@ pub fn unit_value<'a>() -> D<'a> {
 }
 
 pub fn struct_lit<'a>(fields: Vec<(&'a str, D<'a>)>) -> D<'a> {
-    block(|| {
+    soft_block(|| {
         D::intersperse(
             fields.into_iter().map(|(name, value)| D::text(format!(".{name} = ")).append(value)),
-            D::text(", "),
+            D::text(",").append(D::softline()),
         )
     })
 }
@@ -100,6 +100,20 @@ pub fn block_<'a>(f: impl FnOnce() -> D<'a>, nest: isize) -> D<'a> {
         .nest(nest)
         .group()
         .append(D::hardline())
+        .append(D::text("}"))
+}
+
+pub fn soft_block<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
+    soft_block_(f, NEST)
+}
+
+pub fn soft_block_<'a>(f: impl FnOnce() -> D<'a>, nest: isize) -> D<'a> {
+    D::text("{")
+        .append(D::softline())
+        .append(f())
+        .nest(nest)
+        .group()
+        .append(D::softline())
         .append(D::text("}"))
 }
 

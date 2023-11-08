@@ -1,6 +1,8 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#define FORCE_INLINE __attribute__((always_inline)) inline
+
 typedef int8_t i8;
 typedef int16_t i16;
 typedef int32_t i32;
