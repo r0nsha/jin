@@ -82,12 +82,13 @@ impl<'db> CTy<'db> for FloatTy {
 
 impl<'db> CTy<'db> for StructId {
     fn cty(&self, cx: &Generator<'db>) -> D<'db> {
-        D::text(cx.struct_names[self].clone())
-    }
+        let name = D::text(cx.struct_names[self].clone());
 
-    // fn cdecl(&self, cx: &Generator<'db>, name: D<'db>) -> D<'db> {
-    //     D::text("struct").append(D::space()).append(self.cty(cx)).append(D::space()).append(name)
-    // }
+        match cx.curr_generated_struct {
+            Some(sid) if sid == *self => D::text("struct").append(D::space()).append(name),
+            _ => name,
+        }
+    }
 }
 
 impl<'db> CTy<'db> for FnTy {

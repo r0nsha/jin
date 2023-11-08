@@ -33,6 +33,7 @@ pub struct Generator<'db> {
     pub fn_defs: Vec<D<'db>>,
     pub target_metrics: TargetMetrics,
     pub struct_names: FxHashMap<StructId, String>,
+    pub curr_generated_struct: Option<StructId>,
 }
 
 #[derive(Debug, Clone)]
@@ -103,7 +104,10 @@ impl<'db> Generator<'db> {
             let name = self.db[struct_info.def_id].qpath.join_with("_");
             self.struct_names.insert(struct_info.id, name.clone());
 
+            self.curr_generated_struct = Some(struct_info.id);
             let doc = self.codegen_struct_def(struct_info, name);
+            self.curr_generated_struct = None;
+
             self.types.push(stmt(|| doc));
         }
     }
