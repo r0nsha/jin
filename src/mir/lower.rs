@@ -279,13 +279,13 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     }
 
     fn lower_global(self, let_: &hir::Let) -> Option<GlobalId> {
-        let value = self
-            .cx
-            .db
-            .const_storage
-            .expr(let_.value.id)
-            .cloned()
-            .expect("global value must be a constant. static globals are not supported yet");
+        let kind = if let Some(value) = self.cx.db.const_storage.expr(let_.value.id).cloned() {
+            GlobalKind::Const(value)
+        } else {
+            let mut cx = LowerBodyCx::new(self.cx);
+            let value = cx.lower_expr(&let_.value);
+            GlobalKind::Static(cx.body, value)
+        };
 
         match &let_.pat {
             hir::Pat::Name(name) => {
@@ -297,7 +297,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     def_id: name.id,
                     name: full_name.into(),
                     ty,
-                    kind: GlobalKind::Const(value),
+                    kind,
                 });
 
                 self.cx.globals_map.insert(name.id, id);

@@ -89,6 +89,7 @@ pub struct Global {
 #[derive(Debug, Clone)]
 pub enum GlobalKind {
     Const(Const),
+    Static(Body, ValueId),
     Extern,
 }
 

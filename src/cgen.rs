@@ -151,7 +151,6 @@ fn compile_with_clang(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path)
         .arg("-fuse-ld=mold")
         .arg("-lc")
         .arg("-no-pie")
-        .arg("-O3")
         .args(link_flags)
         .execute_output()
         .expect("linking to work");
