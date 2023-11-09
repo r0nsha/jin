@@ -143,8 +143,8 @@ impl Body {
         &mut self.values[id]
     }
 
-    pub fn create_value(&mut self, ty: Ty) -> ValueId {
-        self.values.push_with_key(|id| Value { id, ty })
+    pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
+        self.values.push_with_key(|id| Value { id, ty, kind })
     }
 
     pub fn is_terminating(&self) -> bool {
@@ -208,6 +208,15 @@ pub enum Inst {
 pub struct Value {
     pub id: ValueId,
     pub ty: Ty,
+    pub kind: ValueKind,
+}
+
+#[derive(Debug, Clone)]
+pub enum ValueKind {
+    Register,
+    // Local(DefId),
+    // Global(GlobalId),
+    // Fn(FnSigId),
 }
 
 #[derive(Debug, Clone)]

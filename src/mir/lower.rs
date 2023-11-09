@@ -250,7 +250,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 self.position_at(start_blk);
 
                 for param in self.cx.mir.fn_sigs[sig].params.clone() {
-                    let value = self.push_inst_with(param.ty, |value| Inst::Load {
+                    let value = self.push_inst_with_register(param.ty, |value| Inst::Load {
                         value,
                         kind: LoadKind::Local(param.def_id),
                     });
@@ -320,10 +320,8 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                     match &let_.pat {
                         hir::Pat::Name(name) => {
-                            let value = self.push_inst_with(let_.ty, |value| Inst::StackAlloc {
-                                value,
-                                id: name.id,
-                                init,
+                            let value = self.push_inst_with_register(let_.ty, |value| {
+                                Inst::StackAlloc { value, id: name.id, init }
                             });
                             self.def_to_local.insert(name.id, value);
                         }
@@ -349,7 +347,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     self.push_inst(Inst::Br { target: merge_blk });
 
                     self.position_at(merge_blk);
-                    self.push_inst_with(expr.ty, |value| Inst::If {
+                    self.push_inst_with_register(expr.ty, |value| Inst::If {
                         value,
                         cond,
                         then: then_value,
@@ -366,9 +364,10 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                     if let Some(cond) = &loop_.cond {
                         let cond = self.lower_expr(cond);
-                        let not_cond = self.push_inst_with(self.cx.db.types.bool, |value| {
-                            Inst::Unary { value, inner: cond, op: UnOp::Not }
-                        });
+                        let not_cond =
+                            self.push_inst_with_register(self.cx.db.types.bool, |value| {
+                                Inst::Unary { value, inner: cond, op: UnOp::Not }
+                            });
 
                         self.push_inst(Inst::BrIf {
                             cond: not_cond,
@@ -432,7 +431,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                     args.sort_by_key(|(idx, _)| *idx);
 
-                    self.push_inst_with(expr.ty, |value| Inst::Call {
+                    self.push_inst_with_register(expr.ty, |value| Inst::Call {
                         value,
                         callee,
                         args: args.into_iter().map(|(_, arg)| arg).collect(),
@@ -440,12 +439,16 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 }
                 hir::ExprKind::Unary(un) => {
                     let inner = self.lower_expr(&un.expr);
-                    self.push_inst_with(expr.ty, |value| Inst::Unary { value, inner, op: un.op })
+                    self.push_inst_with_register(expr.ty, |value| Inst::Unary {
+                        value,
+                        inner,
+                        op: un.op,
+                    })
                 }
                 hir::ExprKind::Binary(bin) => {
                     let lhs = self.lower_expr(&bin.lhs);
                     let rhs = self.lower_expr(&bin.rhs);
-                    self.push_inst_with(expr.ty, |value| Inst::Binary {
+                    self.push_inst_with_register(expr.ty, |value| Inst::Binary {
                         value,
                         lhs,
                         rhs,
@@ -456,7 +459,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 hir::ExprKind::Cast(cast) => {
                     let inner = self.lower_expr(&cast.expr);
 
-                    self.push_inst_with(cast.target, |value| Inst::Cast {
+                    self.push_inst_with_register(cast.target, |value| Inst::Cast {
                         value,
                         inner,
                         target: cast.target,
@@ -466,7 +469,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 hir::ExprKind::Member(access) => {
                     let inner = self.lower_expr(&access.expr);
 
-                    self.push_inst_with(expr.ty, |value| Inst::Member {
+                    self.push_inst_with_register(expr.ty, |value| Inst::Member {
                         value,
                         inner,
                         member: access.member.name(),
@@ -497,42 +500,42 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                                 )
                             };
 
-                            self.push_inst_with(self.cx.mir.fn_sigs[id].ty, |value| Inst::Load {
-                                value,
-                                kind: LoadKind::Fn(id),
+                            self.push_inst_with_register(self.cx.mir.fn_sigs[id].ty, |value| {
+                                Inst::Load { value, kind: LoadKind::Fn(id) }
                             })
                         }
                         DefKind::ExternGlobal | DefKind::Global => {
                             let id = self.cx.lower_global(name.id);
 
-                            self.push_inst_with(self.cx.mir.globals[id].ty, |value| Inst::Load {
-                                value,
-                                kind: LoadKind::Global(id),
+                            self.push_inst_with_register(self.cx.mir.globals[id].ty, |value| {
+                                Inst::Load { value, kind: LoadKind::Global(id) }
                             })
                         }
                         DefKind::Variable => self.def_to_local[&name.id],
                         DefKind::Struct(sid) => {
                             let fn_sig_id = self.cx.get_or_create_struct_ctor(*sid);
-                            self.push_inst_with(self.cx.mir.fn_sigs[fn_sig_id].ty, |value| {
-                                Inst::Load { value, kind: LoadKind::Fn(fn_sig_id) }
-                            })
+                            self.push_inst_with_register(
+                                self.cx.mir.fn_sigs[fn_sig_id].ty,
+                                |value| Inst::Load { value, kind: LoadKind::Fn(fn_sig_id) },
+                            )
                         }
                         DefKind::Ty(_) => unreachable!(),
                     }
                 }
                 hir::ExprKind::Lit(lit) => match lit {
-                    hir::Lit::Str(lit) => {
-                        self.push_inst_with(expr.ty, |value| Inst::StrLit { value, lit: *lit })
-                    }
+                    hir::Lit::Str(lit) => self.push_inst_with_register(expr.ty, |value| {
+                        Inst::StrLit { value, lit: *lit }
+                    }),
                     #[allow(clippy::cast_possible_wrap)]
-                    hir::Lit::Int(lit) => self
-                        .push_inst_with(expr.ty, |value| Inst::IntLit { value, lit: *lit as i128 }),
-                    hir::Lit::Float(lit) => {
-                        self.push_inst_with(expr.ty, |value| Inst::FloatLit { value, lit: *lit })
-                    }
-                    hir::Lit::Bool(lit) => {
-                        self.push_inst_with(expr.ty, |value| Inst::BoolLit { value, lit: *lit })
-                    }
+                    hir::Lit::Int(lit) => self.push_inst_with_register(expr.ty, |value| {
+                        Inst::IntLit { value, lit: *lit as i128 }
+                    }),
+                    hir::Lit::Float(lit) => self.push_inst_with_register(expr.ty, |value| {
+                        Inst::FloatLit { value, lit: *lit }
+                    }),
+                    hir::Lit::Bool(lit) => self.push_inst_with_register(expr.ty, |value| {
+                        Inst::BoolLit { value, lit: *lit }
+                    }),
                 },
             }
         };
@@ -546,10 +549,14 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
     fn lower_const(&mut self, value: &Const, ty: Ty) -> ValueId {
         match value {
-            Const::Str(lit) => self.push_inst_with(ty, |value| Inst::StrLit { value, lit: *lit }),
-            Const::Int(lit) => self.push_inst_with(ty, |value| Inst::IntLit { value, lit: *lit }),
+            Const::Str(lit) => {
+                self.push_inst_with_register(ty, |value| Inst::StrLit { value, lit: *lit })
+            }
+            Const::Int(lit) => {
+                self.push_inst_with_register(ty, |value| Inst::IntLit { value, lit: *lit })
+            }
             Const::Float(lit) => {
-                self.push_inst_with(ty, |value| Inst::FloatLit { value, lit: *lit })
+                self.push_inst_with_register(ty, |value| Inst::FloatLit { value, lit: *lit })
             }
             Const::Bool(lit) => self.push_bool_lit(*lit),
             Const::Unit => self.push_unit_lit(),
@@ -557,15 +564,19 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     }
 
     pub fn push_bool_lit(&mut self, lit: bool) -> ValueId {
-        self.push_inst_with(Ty::new(TyKind::Bool), |value| Inst::BoolLit { value, lit })
+        self.push_inst_with_register(Ty::new(TyKind::Bool), |value| Inst::BoolLit { value, lit })
     }
 
     pub fn push_unit_lit(&mut self) -> ValueId {
-        self.push_inst_with(Ty::new(TyKind::Unit), |value| Inst::UnitLit { value })
+        self.push_inst_with_register(Ty::new(TyKind::Unit), |value| Inst::UnitLit { value })
     }
 
-    pub fn push_inst_with(&mut self, value_ty: Ty, f: impl FnOnce(ValueId) -> Inst) -> ValueId {
-        let value = self.body.create_value(value_ty);
+    pub fn push_inst_with_register(
+        &mut self,
+        value_ty: Ty,
+        f: impl FnOnce(ValueId) -> Inst,
+    ) -> ValueId {
+        let value = self.body.create_value(value_ty, ValueKind::Register);
         self.push_inst(f(value));
         value
     }
@@ -588,9 +599,14 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         for coercion in coercions.iter() {
             coerced_value = match coercion.kind {
                 CoercionKind::NeverToAny => coerced_value,
-                CoercionKind::IntPromotion => self.push_inst_with(coercion.target, |value| {
-                    Inst::Cast { value, inner: coerced_value, target: coercion.target, span }
-                }),
+                CoercionKind::IntPromotion => {
+                    self.push_inst_with_register(coercion.target, |value| Inst::Cast {
+                        value,
+                        inner: coerced_value,
+                        target: coercion.target,
+                        span,
+                    })
+                }
             };
 
             self.body.value_mut(coerced_value).ty = coercion.target;
