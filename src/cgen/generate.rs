@@ -34,7 +34,6 @@ pub struct Generator<'db> {
     pub target_metrics: TargetMetrics,
     pub struct_names: FxHashMap<StructId, String>,
     pub curr_generated_struct: Option<StructId>,
-    pub global_init_fn_names: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -83,10 +82,12 @@ impl<'db> Generator<'db> {
         path
     }
 
-    pub fn codegen_main_fn(&mut self) -> D<'db> {
+    pub fn codegen_main_fn(&self) -> D<'db> {
+        let global_init_order = self.get_global_init_order();
+        dbg!(global_init_order);
+        todo!();
         let main_fn_name = &self.mir.fn_sigs[self.mir.main_fn.expect("to have a main fn")].name;
-
-        let call_entry_point = stmt(|| D::text(main_fn_name.as_str()).append(D::text("();")));
+        let call_entry_point = stmt(|| D::text(main_fn_name.as_str()).append(D::text("()")));
 
         D::text("int main() {")
             .append(
