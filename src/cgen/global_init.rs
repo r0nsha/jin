@@ -18,7 +18,9 @@ impl GlobalInitOrder<'_, '_> {
     fn get(mut self) -> Vec<GlobalId> {
         for glob in &self.cx.mir.globals {
             self.search_global(glob);
-            self.add_global(glob.id);
+            if let GlobalKind::Static(..) = &glob.kind {
+                self.add_global(glob.id);
+            }
         }
 
         self.order
