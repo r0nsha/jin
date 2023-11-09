@@ -60,6 +60,10 @@ pub fn stmt<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
     f().append(D::text(";"))
 }
 
+pub fn assign<'a>(l: D<'a>, r: D<'a>) -> D<'a> {
+    l.append(D::space()).append(D::text("=")).append(D::space()).append(r)
+}
+
 pub fn value_name<'a>(id: ValueId) -> D<'a> {
     D::text(value_name_str(id))
 }

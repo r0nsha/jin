@@ -10,14 +10,14 @@ use crate::{
         name_gen::LocalNames,
         ty::CTy,
         util::{
-            attr, block, block_, block_name, bool_value, goto_stmt, if_stmt, stmt, str_value,
-            struct_lit, unit_value, value_name, NEST,
+            assign, attr, block, block_, block_name, bool_value, goto_stmt, if_stmt, stmt,
+            str_value, struct_lit, unit_value, value_name, NEST,
         },
     },
     db::{Db, StructId, StructInfo},
     hir::const_eval::Const,
     middle::UnOp,
-    mir::{Block, Body, Fn, FnSig, FnSigId, GlobalKind, Inst, LoadKind, Mir, ValueId},
+    mir::{Block, Body, Fn, FnSig, FnSigId, Global, GlobalKind, Inst, LoadKind, Mir, ValueId},
     target::TargetMetrics,
     ty::Ty,
 };
@@ -84,15 +84,30 @@ impl<'db> Generator<'db> {
 
     pub fn codegen_main_fn(&self) -> D<'db> {
         let global_init_order = self.get_global_init_order();
-        dbg!(global_init_order);
-        todo!();
+
+        let global_inits: Vec<D> = global_init_order
+            .into_iter()
+            .map(|id| {
+                let glob = &self.mir.globals[id];
+                stmt(|| {
+                    assign(
+                        D::text(glob.name.as_str()),
+                        D::text(global_init_fn_name(glob)).append(D::text("()")),
+                    )
+                })
+            })
+            .collect();
+
         let main_fn_name = &self.mir.fn_sigs[self.mir.main_fn.expect("to have a main fn")].name;
         let call_entry_point = stmt(|| D::text(main_fn_name.as_str()).append(D::text("()")));
 
         D::text("int main() {")
             .append(
                 D::hardline()
-                    .append(D::intersperse([call_entry_point], D::hardline()))
+                    .append(D::intersperse(
+                        global_inits.into_iter().chain(iter::once(call_entry_point)),
+                        D::hardline(),
+                    ))
                     .nest(NEST)
                     .group(),
             )
@@ -149,11 +164,9 @@ impl<'db> Generator<'db> {
                     .chain(iter::once(return_stmt))
                     .collect();
 
-                let init_fn_name = format!("{}_init", glob.name.as_str());
-
                 let init_fn_doc = D::text("FORCE_INLINE")
                     .append(D::space())
-                    .append(glob.ty.cdecl(self, D::text(init_fn_name)))
+                    .append(glob.ty.cdecl(self, D::text(global_init_fn_name(glob))))
                     .append(D::text("()"))
                     .append(D::space())
                     .append(block_(
@@ -441,4 +454,8 @@ impl<'a> VariableDoc<'a> {
             decl.append(value)
         })
     }
+}
+
+fn global_init_fn_name(glob: &Global) -> String {
+    format!("{}_init", glob.name.as_str())
 }
