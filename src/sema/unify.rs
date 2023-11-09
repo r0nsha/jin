@@ -150,8 +150,10 @@ impl UnifyCx<'_, '_> {
             (TyKind::Bool, TyKind::Bool)
             | (TyKind::Unit, TyKind::Unit)
             | (TyKind::Str, TyKind::Str) => Ok(()),
+
             (TyKind::Uint(a), TyKind::Uint(b)) if a == b => Ok(()),
             (TyKind::Int(a), TyKind::Int(b)) if a == b => Ok(()),
+            (TyKind::Float(a), TyKind::Float(b)) if a == b => Ok(()),
 
             (TyKind::Fn(ref fex), TyKind::Fn(ref fact)) => {
                 self.unify_ty_ty(fex.ret, fact.ret)?;

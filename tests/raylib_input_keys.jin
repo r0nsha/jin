@@ -9,10 +9,13 @@ fn main {
 	InitWindow(screen_width, screen_height, "raylib - basic window".ptr)
 	SetTargetFPS(60)
 
+	let ball_position = Vector2({screen_width / 2} as f32, {screen_height / 2} as f32)
+
 	loop if !WindowShouldClose() {
 		BeginDrawing()
 		ClearBackground(ColorRayWhite())
-		DrawText("Congrats! You created your first window!".ptr, 190, 200, 20, ColorLightGray())
+		DrawText("move the ball with arrow keys".ptr, 10, 10, 20, ColorDarkGray())
+		DrawCircleV(ball_position, 50.0, ColorMaroon())
 		EndDrawing()
 	}
 
@@ -31,6 +34,7 @@ fn extern BeginDrawing()
 fn extern EndDrawing()
 fn extern ClearBackground(color: Color)
 fn extern DrawCircle(center_x: i32, center_y: i32, radius: f32, color: Color)
+fn extern DrawCircleV(center: Vector2, radius: f32, color: Color)
 fn extern DrawRectangle(pos_x: i32, pos_y: i32, width: i32, height: i32, color: Color)
 fn extern DrawFPS(pos_x: i32, pos_y: i32)
 fn extern DrawText(text: *u8, pos_x: i32, pos_y: i32, font_size: i32, tint: Color)
@@ -39,4 +43,7 @@ type Color extern(r: u8, g: u8, b: u8, a: u8)
 
 fn ColorRayWhite() -> Color { Color(245, 245, 245, 255) }
 fn ColorLightGray() -> Color { Color(200, 200, 200, 255) }
+fn ColorDarkGray() -> Color { Color(80, 80, 80, 255) }
 fn ColorMaroon() -> Color { Color(190, 33, 55, 255) }
+
+type Vector2 extern(x: f32, y: f32)

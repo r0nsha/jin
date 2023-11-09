@@ -84,6 +84,9 @@ impl CheckBodies<'_> {
 fn is_valid_cast(source: Ty, target: Ty) -> bool {
     matches!(
         (source.kind(), target.kind()),
-        (TyKind::Int(_) | TyKind::Uint(_), TyKind::Int(_) | TyKind::Uint(_))
+        (
+            TyKind::Int(_) | TyKind::Uint(_) | TyKind::Float(_),
+            TyKind::Int(_) | TyKind::Uint(_) | TyKind::Float(_)
+        )
     )
 }
