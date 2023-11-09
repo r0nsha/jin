@@ -386,14 +386,6 @@ impl<'db> Generator<'db> {
                 self.value(state, *inner).append(D::text(".")).append(D::text(member.as_str()))
             }),
             Inst::StrLit { value, lit } => self.value_assign(state, *value, || str_value(lit)),
-            Inst::IntLit { value, lit } => {
-                self.value_assign(state, *value, || D::text(lit.to_string()))
-            }
-            Inst::FloatLit { value, lit } => {
-                self.value_assign(state, *value, || D::text(format!("{lit:?}")))
-            }
-            Inst::BoolLit { value, lit } => self.value_assign(state, *value, || bool_value(*lit)),
-            Inst::UnitLit { value } => self.value_assign(state, *value, unit_value),
         }
     }
 

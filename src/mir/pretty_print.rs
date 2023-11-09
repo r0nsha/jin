@@ -35,7 +35,7 @@ impl<'db> PrettyCx<'db> {
         match &glob.kind {
             GlobalKind::Const(value) => D::text("let")
                 .append(D::space())
-                .append(self.global(glob.name.as_str()))
+                .append(Self::global(glob.name.as_str()))
                 .append(D::text(":"))
                 .append(D::space())
                 .append(D::text(glob.ty.to_string(self.db)))
@@ -45,7 +45,7 @@ impl<'db> PrettyCx<'db> {
                 .append(pp_const_value(value)),
             GlobalKind::Static(body, _) => D::text("let")
                 .append(D::space())
-                .append(self.global(glob.name.as_str()))
+                .append(Self::global(glob.name.as_str()))
                 .append(D::text(":"))
                 .append(D::space())
                 .append(D::text(glob.ty.to_string(self.db)))
@@ -69,7 +69,7 @@ impl<'db> PrettyCx<'db> {
                 .append(D::space())
                 .append(D::text("extern"))
                 .append(D::space())
-                .append(self.global(glob.name.as_str()))
+                .append(Self::global(glob.name.as_str()))
                 .append(D::text(":"))
                 .append(D::space())
                 .append(D::text(glob.ty.to_string(self.db))),
@@ -88,7 +88,7 @@ impl<'db> PrettyCx<'db> {
 
     fn pp_fn_sig(&mut self, sig: &'db FnSig) -> PrintFnSig<'db> {
         PrintFnSig {
-            name: self.global(&sig.name),
+            name: Self::global(&sig.name),
             params: sig.params.iter().map(|p| D::text(p.ty.to_string(self.db))).collect(),
             ret: D::text(sig.ret.to_string(self.db)),
             is_extern: sig.is_extern,
@@ -177,16 +177,6 @@ impl<'db> PrettyCx<'db> {
             Inst::StrLit { value, lit } => self
                 .value_assign(body, *value)
                 .append(D::text("\"").append(D::text(lit.as_str())).append(D::text("\""))),
-            Inst::IntLit { value, lit } => {
-                self.value_assign(body, *value).append(D::text(lit.to_string()))
-            }
-            Inst::FloatLit { value, lit } => {
-                self.value_assign(body, *value).append(D::text(format!("{lit:?}")))
-            }
-            Inst::BoolLit { value, lit } => {
-                self.value_assign(body, *value).append(D::text(lit.to_string()))
-            }
-            Inst::UnitLit { value } => self.value_assign(body, *value).append(D::text("{}")),
         }
     }
 
@@ -194,7 +184,7 @@ impl<'db> PrettyCx<'db> {
         self.value(body, id).append(D::space()).append(D::text("=")).append(D::space())
     }
 
-    fn global(&self, name: &'db str) -> D<'db> {
+    fn global(name: &'db str) -> D<'db> {
         D::text("%").append(name)
     }
 
@@ -204,8 +194,8 @@ impl<'db> PrettyCx<'db> {
         match &value.kind {
             ValueKind::Register => D::text("v").append(id.to_string()),
             ValueKind::Local(id) => D::text(self.db[*id].name.as_str()),
-            ValueKind::Global(id) => self.global(&self.mir.globals[*id].name),
-            ValueKind::Fn(id) => self.global(&self.mir.fn_sigs[*id].name),
+            ValueKind::Global(id) => Self::global(&self.mir.globals[*id].name),
+            ValueKind::Fn(id) => Self::global(&self.mir.fn_sigs[*id].name),
             ValueKind::Const(value) => pp_const_value(value),
         }
     }

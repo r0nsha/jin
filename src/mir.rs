@@ -203,10 +203,6 @@ pub enum Inst {
     Cast { value: ValueId, inner: ValueId, target: Ty, span: Span },
     Member { value: ValueId, inner: ValueId, member: Ustr },
     StrLit { value: ValueId, lit: Ustr },
-    IntLit { value: ValueId, lit: i128 },
-    FloatLit { value: ValueId, lit: f64 },
-    BoolLit { value: ValueId, lit: bool },
-    UnitLit { value: ValueId },
 }
 
 #[derive(Debug, Clone)]

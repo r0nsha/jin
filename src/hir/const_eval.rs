@@ -1,4 +1,4 @@
-use derive_more::{From, Into};
+use derive_more::From;
 use enum_as_inner::EnumAsInner;
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
