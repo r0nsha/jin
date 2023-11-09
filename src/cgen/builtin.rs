@@ -4,7 +4,6 @@ use crate::{
     cgen::{
         generate::{FnState, Generator},
         ty::CTy,
-        util::{value_name, value_name_str},
     },
     middle::BinOp,
     mir::ValueId,
@@ -32,7 +31,10 @@ impl<'db> Generator<'db> {
         span: Span,
     ) -> D<'db> {
         let cast = self.value_assign(state, value, || {
-            D::text("(").append(target.cty(self)).append(D::text(")")).append(value_name(casted))
+            D::text("(")
+                .append(target.cty(self))
+                .append(D::text(")"))
+                .append(self.value(state, casted))
         });
 
         let casted_ty = state.body.value(casted).ty;
@@ -42,7 +44,7 @@ impl<'db> Generator<'db> {
                 (casted_ty.size(&self.target_metrics), target.size(&self.target_metrics));
 
             if target_bits < value_bits {
-                let casted_str = value_name_str(casted);
+                let casted_str = self.value_str(state, casted);
                 let (min, max) = (target.min(), target.max());
 
                 return D::intersperse(
@@ -72,7 +74,8 @@ impl<'db> Generator<'db> {
             BinOp::Mul => self.codegen_bin_op_mul(state, data),
             BinOp::Div | BinOp::Rem => self.codegen_bin_op_div(state, data),
             _ => {
-                let (lhs, rhs) = (value_name_str(data.lhs), value_name_str(data.rhs));
+                let (lhs, rhs) = (self.value_str(state, data.lhs), self.value_str(state, data.rhs));
+
                 self.value_assign(state, data.target, || {
                     D::text(format!("{} {} {}", lhs, data.op, rhs))
                 })
@@ -93,11 +96,14 @@ impl<'db> Generator<'db> {
     }
 
     fn codegen_bin_op_div(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
-        let (lhs, rhs) = (value_name_str(data.lhs), value_name_str(data.rhs));
+        let (lhs, rhs) = (self.value_str(state, data.lhs), self.value_str(state, data.rhs));
+
         let safety_check =
             self.panic_if(D::text(format!("{rhs} == 0")), "attempt to divide by zero", data.span);
+
         let op = self
             .value_assign(state, data.target, || D::text(format!("{} {} {}", lhs, data.op, rhs)));
+
         D::intersperse([safety_check, op], D::hardline())
     }
 
@@ -110,8 +116,11 @@ impl<'db> Generator<'db> {
     ) -> D<'db> {
         let decl = self.value_decl(state, data.target);
 
-        let (target, lhs, rhs) =
-            (value_name_str(data.target), value_name_str(data.lhs), value_name_str(data.rhs));
+        let (target, lhs, rhs) = (
+            self.value_str(state, data.target),
+            self.value_str(state, data.lhs),
+            self.value_str(state, data.rhs),
+        );
 
         let builtin_name = format!(
             "__builtin_{}{}{}_overflow",

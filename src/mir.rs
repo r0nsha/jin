@@ -3,6 +3,7 @@ mod pretty_print;
 
 use std::io;
 
+use enum_as_inner::EnumAsInner;
 pub use lower::lower;
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
@@ -186,7 +187,7 @@ impl Block {
 
 #[derive(Debug, Clone)]
 pub enum Inst {
-    StackAlloc { value: ValueId, id: DefId, init: ValueId },
+    Local { value: ValueId, init: ValueId },
     Br { target: BlockId },
     BrIf { cond: ValueId, then: BlockId, otherwise: Option<BlockId> },
     If { value: ValueId, cond: ValueId, then: ValueId, otherwise: ValueId },
@@ -211,10 +212,10 @@ pub struct Value {
     pub kind: ValueKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, EnumAsInner)]
 pub enum ValueKind {
     Register,
-    // Local(DefId),
+    Local(DefId),
     // Global(GlobalId),
     // Fn(FnSigId),
 }
@@ -223,5 +224,4 @@ pub enum ValueKind {
 pub enum LoadKind {
     Fn(FnSigId),
     Global(GlobalId),
-    Local(DefId),
 }

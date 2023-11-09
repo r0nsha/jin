@@ -64,14 +64,6 @@ pub fn assign<'a>(l: D<'a>, r: D<'a>) -> D<'a> {
     l.append(D::space()).append(D::text("=")).append(D::space()).append(r)
 }
 
-pub fn value_name<'a>(id: ValueId) -> D<'a> {
-    D::text(value_name_str(id))
-}
-
-pub fn value_name_str(id: ValueId) -> String {
-    format!("v{id}")
-}
-
 pub fn block_name(blk: &Block) -> D<'_> {
     D::text(format!("{}_{}", blk.name(), blk.id()))
 }

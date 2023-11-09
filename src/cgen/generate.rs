@@ -11,13 +11,16 @@ use crate::{
         ty::CTy,
         util::{
             assign, attr, block, block_, block_name, bool_value, goto_stmt, if_stmt, stmt,
-            str_value, struct_lit, unit_value, value_name, NEST,
+            str_value, struct_lit, unit_value, NEST,
         },
     },
     db::{Db, StructId, StructInfo},
     hir::const_eval::Const,
     middle::UnOp,
-    mir::{Block, Body, Fn, FnSig, FnSigId, Global, GlobalKind, Inst, LoadKind, Mir, ValueId},
+    mir::{
+        Block, Body, Fn, FnSig, FnSigId, Global, GlobalKind, Inst, LoadKind, Mir, ValueId,
+        ValueKind,
+    },
     target::TargetMetrics,
     ty::Ty,
 };
@@ -154,8 +157,9 @@ impl<'db> Generator<'db> {
             if let GlobalKind::Static(body, value) = &glob.kind {
                 let mut state = FnState::new(body);
 
-                let return_stmt =
-                    stmt(|| D::text("return").append(D::space()).append(value_name(*value)));
+                let return_stmt = stmt(|| {
+                    D::text("return").append(D::space()).append(self.value(&state, *value))
+                });
 
                 let block_docs: Vec<D> = body
                     .blocks()
@@ -303,47 +307,46 @@ impl<'db> Generator<'db> {
 
     fn codegen_inst(&mut self, state: &mut FnState<'db>, inst: &'db Inst) -> D<'db> {
         match inst {
-            Inst::StackAlloc { value, id, init } => {
-                let name = state.local_names.insert_unique(*id, self.db[*id].name);
-                let name_doc = D::text(name.as_str());
+            Inst::Local { value, init } => {
+                let value = state.body.value(*value);
+                let def_id = *value.kind.as_local().unwrap();
+                let name_doc =
+                    D::text(state.local_names.insert_unique(def_id, self.db[def_id].name).as_str());
 
-                let stack_alloc = VariableDoc::assign(
-                    self,
-                    state.body.value(*value).ty,
-                    name_doc.clone(),
-                    value_name(*init),
-                );
+                VariableDoc::assign(self, value.ty, name_doc.clone(), self.value(state, *init))
 
-                let value_assign = self.value_assign(state, *value, || name_doc);
-
-                D::intersperse([stack_alloc, value_assign], D::hardline())
+                // let stack_alloc =
+                //     VariableDoc::assign(self, value.ty, name_doc.clone(), value_name(*init));
+                // let value_assign = self.value_assign(state, value.id, || name_doc);
+                //
+                // D::intersperse([stack_alloc, value_assign], D::hardline())
             }
             Inst::Br { target } => goto_stmt(state.body.block(*target)),
             Inst::BrIf { cond, then, otherwise } => if_stmt(
-                value_name(*cond),
+                self.value(state, *cond),
                 goto_stmt(state.body.block(*then)),
                 otherwise.map(|o| goto_stmt(state.body.block(o))),
             ),
             Inst::If { value, cond, then, otherwise } => self.value_assign(state, *value, || {
-                value_name(*cond)
+                self.value(state, *cond)
                     .append(D::space())
                     .append(D::text("?"))
                     .append(D::space())
-                    .append(value_name(*then))
+                    .append(self.value(state, *then))
                     .append(D::space())
                     .append(D::text(":"))
                     .append(D::space())
-                    .append(value_name(*otherwise))
+                    .append(self.value(state, *otherwise))
             }),
             Inst::Return { value } => {
-                stmt(|| D::text("return").append(D::space()).append(value_name(*value)))
+                stmt(|| D::text("return").append(D::space()).append(self.value(state, *value)))
             }
             Inst::Call { value, callee, args } => self.value_assign(state, *value, || {
-                value_name(*callee)
+                self.value(state, *callee)
                     .append(D::text("("))
                     .append(
                         D::intersperse(
-                            args.iter().copied().map(value_name),
+                            args.iter().copied().map(|a| self.value(state, a)),
                             D::text(",").append(D::space()),
                         )
                         .nest(1)
@@ -375,18 +378,20 @@ impl<'db> Generator<'db> {
                     }
                 };
 
-                self.value_assign(state, *value, || D::text(op_str).append(value_name(*inner)))
+                self.value_assign(state, *value, || {
+                    D::text(op_str).append(self.value(state, *inner))
+                })
             }
             Inst::Cast { value, inner, target, span } => {
                 self.codegen_cast(state, *value, *inner, *target, *span)
             }
             Inst::Member { value, inner, member } => self.value_assign(state, *value, || {
-                value_name(*inner).append(D::text(".")).append(D::text(member.as_str()))
+                self.value(state, *inner).append(D::text(".")).append(D::text(member.as_str()))
             }),
             Inst::Load { value, kind } => self.value_assign(state, *value, || match kind {
                 LoadKind::Fn(id) => D::text(self.mir.fn_sigs[*id].name.as_str()),
                 LoadKind::Global(id) => D::text(self.mir.globals[*id].name.as_str()),
-                LoadKind::Local(id) => D::text(state.local_names.get(*id).unwrap().as_str()),
+                //D::text(state.local_names.get(*id).unwrap().as_str()),
             }),
             Inst::StrLit { value, lit } => self.value_assign(state, *value, || str_value(lit)),
             Inst::IntLit { value, lit } => {
@@ -407,12 +412,23 @@ impl<'db> Generator<'db> {
         f: impl FnOnce() -> D<'db>,
     ) -> D<'db> {
         let value = state.body.value(id);
-        VariableDoc::assign(self, value.ty, value_name(id), f())
+        VariableDoc::assign(self, value.ty, self.value(state, id), f())
     }
 
     pub fn value_decl(&self, state: &FnState<'db>, id: ValueId) -> D<'db> {
         let value = state.body.value(id);
-        VariableDoc::decl(self, value.ty, value_name(value.id))
+        VariableDoc::decl(self, value.ty, self.value(state, value.id))
+    }
+
+    pub fn value(&self, state: &FnState<'db>, id: ValueId) -> D<'db> {
+        D::text(self.value_str(state, id))
+    }
+
+    pub fn value_str(&self, state: &FnState<'db>, id: ValueId) -> String {
+        match &state.body.value(id).kind {
+            ValueKind::Register => format!("v{id}"),
+            ValueKind::Local(id) => state.local_names.get(*id).unwrap().to_string(),
+        }
     }
 }
 

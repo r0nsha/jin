@@ -35,7 +35,7 @@ impl<'db> PrettyCx<'db> {
         match &glob.kind {
             GlobalKind::Const(value) => D::text("let")
                 .append(D::space())
-                .append(global_name(glob.name.as_str()))
+                .append(self.global(glob.name.as_str()))
                 .append(D::text(":"))
                 .append(D::space())
                 .append(D::text(glob.ty.to_string(self.db)))
@@ -45,7 +45,7 @@ impl<'db> PrettyCx<'db> {
                 .append(pp_const_value(value)),
             GlobalKind::Static(body, _) => D::text("let")
                 .append(D::space())
-                .append(global_name(glob.name.as_str()))
+                .append(self.global(glob.name.as_str()))
                 .append(D::text(":"))
                 .append(D::space())
                 .append(D::text(glob.ty.to_string(self.db)))
@@ -69,7 +69,7 @@ impl<'db> PrettyCx<'db> {
                 .append(D::space())
                 .append(D::text("extern"))
                 .append(D::space())
-                .append(global_name(glob.name.as_str()))
+                .append(self.global(glob.name.as_str()))
                 .append(D::text(":"))
                 .append(D::space())
                 .append(D::text(glob.ty.to_string(self.db))),
@@ -88,7 +88,7 @@ impl<'db> PrettyCx<'db> {
 
     fn pp_fn_sig(&mut self, sig: &'db FnSig) -> PrintFnSig<'db> {
         PrintFnSig {
-            name: global_name(&sig.name),
+            name: self.global(&sig.name),
             params: sig.params.iter().map(|p| D::text(p.ty.to_string(self.db))).collect(),
             ret: D::text(sig.ret.to_string(self.db)),
             is_extern: sig.is_extern,
@@ -105,16 +105,17 @@ impl<'db> PrettyCx<'db> {
 
     fn pp_inst(&mut self, body: &'db Body, inst: &'db Inst) -> D<'db> {
         match inst {
-            Inst::StackAlloc { value, id, init } => value_assign(*value)
-                .append(D::text(format!("stack_alloc({})", self.db[*id].name)))
+            Inst::Local { value, init } => self
+                .value_assign(body, *value)
+                .append(D::text("local"))
                 .append(D::space())
-                .append(value_name(*init)),
+                .append(self.value(body, *init)),
             Inst::Br { target } => {
                 D::text("br").append(D::space()).append(D::text(body.block(*target).name()))
             }
             Inst::BrIf { cond, then, otherwise } => D::text("brif")
                 .append(D::text("("))
-                .append(value_name(*cond))
+                .append(self.value(body, *cond))
                 .append(D::text(")"))
                 .append(D::space())
                 .append(body.block(*then).name())
@@ -124,64 +125,93 @@ impl<'db> PrettyCx<'db> {
                 } else {
                     D::nil()
                 }),
-            Inst::If { value, cond, then, otherwise } => value_assign(*value)
+            Inst::If { value, cond, then, otherwise } => self
+                .value_assign(body, *value)
                 .append(D::text("if"))
                 .append(D::text("("))
-                .append(value_name(*cond))
+                .append(self.value(body, *cond))
                 .append(D::text(")"))
                 .append(D::space())
-                .append(value_name(*then))
+                .append(self.value(body, *then))
                 .append(D::text(", "))
-                .append(value_name(*otherwise)),
-            Inst::Return { value } => D::text("ret").append(D::space()).append(value_name(*value)),
-            Inst::Call { value, callee, args } => value_assign(*value)
+                .append(self.value(body, *otherwise)),
+            Inst::Return { value } => {
+                D::text("ret").append(D::space()).append(self.value(body, *value))
+            }
+            Inst::Call { value, callee, args } => self
+                .value_assign(body, *value)
                 .append(D::text("call"))
                 .append(D::space())
-                .append(value_name(*callee))
+                .append(self.value(body, *callee))
                 .append(D::text("("))
                 .append(D::intersperse(
-                    args.iter().map(|a| value_name(*a)),
+                    args.iter().map(|a| self.value(body, *a)),
                     D::text(",").append(D::space()),
                 ))
                 .append(D::text(")")),
-            Inst::Binary { value, lhs, rhs, op, .. } => value_assign(*value)
-                .append(value_name(*lhs))
+            Inst::Binary { value, lhs, rhs, op, .. } => self
+                .value_assign(body, *value)
+                .append(self.value(body, *lhs))
                 .append(D::space())
                 .append(D::text(op.as_str()))
                 .append(D::space())
-                .append(value_name(*rhs)),
-            Inst::Unary { value, inner, op } => {
-                value_assign(*value).append(D::text(op.as_str())).append(value_name(*inner))
-            }
-            Inst::Cast { value, inner, target, .. } => value_assign(*value)
+                .append(self.value(body, *rhs)),
+            Inst::Unary { value, inner, op } => self
+                .value_assign(body, *value)
+                .append(D::text(op.as_str()))
+                .append(self.value(body, *inner)),
+            Inst::Cast { value, inner, target, .. } => self
+                .value_assign(body, *value)
                 .append(D::text("cast"))
                 .append(D::space())
-                .append(value_name(*inner))
+                .append(self.value(body, *inner))
                 .append(D::space())
                 .append(D::text("to"))
                 .append(D::space())
                 .append(D::text(target.to_string(self.db))),
-            Inst::Member { value, inner, member } => value_assign(*value)
-                .append(value_name(*inner))
+            Inst::Member { value, inner, member } => self
+                .value_assign(body, *value)
+                .append(self.value(body, *inner))
                 .append(D::text("."))
                 .append(D::text(member.as_str())),
             Inst::Load { value, kind } => {
-                value_assign(*value).append(D::text("load")).append(D::space()).append(match kind {
-                    LoadKind::Fn(id) => global_name(self.mir.fn_sigs[*id].name.as_str()),
-                    LoadKind::Global(id) => global_name(self.mir.globals[*id].name.as_str()),
-                    LoadKind::Local(id) => D::text("local(")
-                        .append(D::text(self.db[*id].name.as_str()))
-                        .append(D::text(")")),
-                })
+                self.value_assign(body, *value).append(D::text("load")).append(D::space()).append(
+                    match kind {
+                        LoadKind::Fn(id) => self.global(self.mir.fn_sigs[*id].name.as_str()),
+                        LoadKind::Global(id) => self.global(self.mir.globals[*id].name.as_str()),
+                    },
+                )
             }
-            Inst::StrLit { value, lit } => value_assign(*value)
+            Inst::StrLit { value, lit } => self
+                .value_assign(body, *value)
                 .append(D::text("\"").append(D::text(lit.as_str())).append(D::text("\""))),
-            Inst::IntLit { value, lit } => value_assign(*value).append(D::text(lit.to_string())),
-            Inst::FloatLit { value, lit } => {
-                value_assign(*value).append(D::text(format!("{lit:?}")))
+            Inst::IntLit { value, lit } => {
+                self.value_assign(body, *value).append(D::text(lit.to_string()))
             }
-            Inst::BoolLit { value, lit } => value_assign(*value).append(D::text(lit.to_string())),
-            Inst::UnitLit { value } => value_assign(*value).append(D::text("{}")),
+            Inst::FloatLit { value, lit } => {
+                self.value_assign(body, *value).append(D::text(format!("{lit:?}")))
+            }
+            Inst::BoolLit { value, lit } => {
+                self.value_assign(body, *value).append(D::text(lit.to_string()))
+            }
+            Inst::UnitLit { value } => self.value_assign(body, *value).append(D::text("{}")),
+        }
+    }
+
+    fn value_assign(&self, body: &'db Body, id: ValueId) -> D<'db> {
+        self.value(body, id).append(D::space()).append(D::text("=")).append(D::space())
+    }
+
+    fn global(&self, name: &'db str) -> D<'db> {
+        D::text("%").append(name)
+    }
+
+    fn value(&self, body: &'db Body, id: ValueId) -> D<'db> {
+        let value = body.value(id);
+
+        match value.kind {
+            ValueKind::Register => D::text("v").append(id.to_string()),
+            ValueKind::Local(id) => D::text(self.db[id].name.as_str()),
         }
     }
 }
@@ -262,18 +292,6 @@ impl<'a> PrintBlock<'a> {
             .append(D::intersperse(self.insts, D::hardline()).group())
             .nest(NEST)
     }
-}
-
-fn global_name(name: &str) -> D<'_> {
-    D::text("%").append(name)
-}
-
-fn value_name<'a>(id: ValueId) -> D<'a> {
-    D::text("v").append(id.to_string())
-}
-
-fn value_assign<'a>(id: ValueId) -> D<'a> {
-    value_name(id).append(D::space()).append(D::text("=")).append(D::space())
 }
 
 const NEST: isize = 2;

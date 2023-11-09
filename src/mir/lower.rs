@@ -252,7 +252,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 for param in self.cx.mir.fn_sigs[sig].params.clone() {
                     let value = self.push_inst_with_register(param.ty, |value| Inst::Load {
                         value,
-                        kind: LoadKind::Local(param.def_id),
+                        kind: LoadKind::Global(GlobalId::INVALID),
                     });
                     self.def_to_local.insert(param.def_id, value);
                 }
@@ -320,9 +320,10 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                     match &let_.pat {
                         hir::Pat::Name(name) => {
-                            let value = self.push_inst_with_register(let_.ty, |value| {
-                                Inst::StackAlloc { value, id: name.id, init }
-                            });
+                            let value =
+                                self.push_inst_with(let_.ty, ValueKind::Local(name.id), |value| {
+                                    Inst::Local { value, init }
+                                });
                             self.def_to_local.insert(name.id, value);
                         }
                         hir::Pat::Discard(_) => (),
@@ -511,7 +512,9 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                                 Inst::Load { value, kind: LoadKind::Global(id) }
                             })
                         }
-                        DefKind::Variable => self.def_to_local[&name.id],
+                        DefKind::Variable => {
+                            self.body.create_value(expr.ty, ValueKind::Local(name.id))
+                        }
                         DefKind::Struct(sid) => {
                             let fn_sig_id = self.cx.get_or_create_struct_ctor(*sid);
                             self.push_inst_with_register(
@@ -576,7 +579,16 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         value_ty: Ty,
         f: impl FnOnce(ValueId) -> Inst,
     ) -> ValueId {
-        let value = self.body.create_value(value_ty, ValueKind::Register);
+        self.push_inst_with(value_ty, ValueKind::Register, f)
+    }
+
+    pub fn push_inst_with(
+        &mut self,
+        value_ty: Ty,
+        kind: ValueKind,
+        f: impl FnOnce(ValueId) -> Inst,
+    ) -> ValueId {
+        let value = self.body.create_value(value_ty, kind);
         self.push_inst(f(value));
         value
     }
