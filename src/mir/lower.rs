@@ -224,19 +224,12 @@ struct LowerBodyCx<'cx, 'db> {
     cx: &'cx mut LowerCx<'db>,
     body: Body,
     curr_block: BlockId,
-    def_to_local: FxHashMap<DefId, ValueId>,
     loop_blocks: Vec<BlockId>,
 }
 
 impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     fn new(cx: &'cx mut LowerCx<'db>) -> Self {
-        Self {
-            cx,
-            body: Body::new(),
-            curr_block: BlockId::start(),
-            def_to_local: FxHashMap::default(),
-            loop_blocks: vec![],
-        }
+        Self { cx, body: Body::new(), curr_block: BlockId::start(), loop_blocks: vec![] }
     }
 
     fn lower_fn(mut self, sig: FnSigId, f: &hir::Fn) {
@@ -248,14 +241,6 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                 let start_blk = self.body.create_block("start");
                 self.position_at(start_blk);
-
-                for param in self.cx.mir.fn_sigs[sig].params.clone() {
-                    let value = self.push_inst_with_register(param.ty, |value| Inst::Load {
-                        value,
-                        kind: LoadKind::Global(GlobalId::INVALID),
-                    });
-                    self.def_to_local.insert(param.def_id, value);
-                }
 
                 let last_value = self.lower_expr(body);
 
@@ -320,11 +305,9 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                     match &let_.pat {
                         hir::Pat::Name(name) => {
-                            let value =
-                                self.push_inst_with(let_.ty, ValueKind::Local(name.id), |value| {
-                                    Inst::Local { value, init }
-                                });
-                            self.def_to_local.insert(name.id, value);
+                            self.push_inst_with(let_.ty, ValueKind::Local(name.id), |value| {
+                                Inst::Local { value, init }
+                            });
                         }
                         hir::Pat::Discard(_) => (),
                     }
