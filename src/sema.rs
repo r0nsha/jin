@@ -466,12 +466,6 @@ impl<'db> Sema<'db> {
 
         let value = self.check_expr(env, &let_.value, Some(ty))?;
 
-        if env.in_global_scope() && self.db.const_storage.expr(value.id).is_none() {
-            return Err(Diagnostic::error("check::non_const_global_let")
-                .with_message("global variable must resolve to a const value")
-                .with_label(Label::primary(value.span).with_message("not a const value")));
-        }
-
         self.at(Obligation::obvious(value.span)).eq(ty, value.ty).or_coerce(self, value.id)?;
 
         let def_kind = if env.in_global_scope() { DefKind::Global } else { DefKind::Variable };
