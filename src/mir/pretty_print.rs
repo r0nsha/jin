@@ -43,6 +43,28 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text("="))
                 .append(D::space())
                 .append(pp_const_value(value)),
+            GlobalKind::Static(body, _) => D::text("let")
+                .append(D::space())
+                .append(global_name(glob.name.as_str()))
+                .append(D::text(":"))
+                .append(D::space())
+                .append(D::text(glob.ty.to_string(self.db)))
+                .append(D::space())
+                .append(D::text("="))
+                .append(D::space())
+                .append(
+                    D::text("{")
+                        .append(D::hardline())
+                        .append(
+                            D::intersperse(
+                                body.blocks.iter().map(|blk| self.pp_blk(body, blk).into_doc()),
+                                D::hardline().append(D::hardline()),
+                            )
+                            .group(),
+                        )
+                        .append(D::hardline())
+                        .append(D::text("}")),
+                ),
             GlobalKind::Extern => D::text("let")
                 .append(D::space())
                 .append(D::text("extern"))

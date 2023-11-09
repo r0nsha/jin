@@ -121,17 +121,16 @@ impl<'db> Generator<'db> {
 
     pub fn define_globals(&mut self) {
         for glob in &self.mir.globals {
-            let cty = glob.ty.cty(self);
-
-            let tyname_doc = cty.append(D::space()).append(D::text(glob.name.as_str()));
+            let decl = glob.ty.cdecl(self, D::text(glob.name.as_str()));
 
             let doc = match &glob.kind {
-                GlobalKind::Const(value) => tyname_doc
+                GlobalKind::Const(value) => decl
                     .append(D::space())
                     .append(D::text("="))
                     .append(D::space())
                     .append(codegen_const_value(value)),
-                GlobalKind::Extern => D::text("extern").append(D::space()).append(tyname_doc),
+                GlobalKind::Static(..) => decl,
+                GlobalKind::Extern => D::text("extern").append(D::space()).append(decl),
             };
 
             self.globals.push(stmt(|| doc));

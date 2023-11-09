@@ -283,6 +283,8 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
             GlobalKind::Const(value)
         } else {
             let mut cx = LowerBodyCx::new(self.cx);
+            let start_blk = cx.body.create_block("start");
+            cx.position_at(start_blk);
             let value = cx.lower_expr(&let_.value);
             GlobalKind::Static(cx.body, value)
         };
