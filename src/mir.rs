@@ -144,6 +144,11 @@ impl Body {
         &mut self.values[id]
     }
 
+    #[inline]
+    pub fn values(&self) -> &IndexSlice<ValueId, Value> {
+        &self.values
+    }
+
     pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
         self.values.push_with_key(|id| Value { id, ty, kind })
     }
@@ -216,12 +221,12 @@ pub struct Value {
 pub enum ValueKind {
     Register,
     Local(DefId),
-    // Global(GlobalId),
+    Global(GlobalId),
     // Fn(FnSigId),
+    // Const(Const),
 }
 
 #[derive(Debug, Clone)]
 pub enum LoadKind {
     Fn(FnSigId),
-    Global(GlobalId),
 }

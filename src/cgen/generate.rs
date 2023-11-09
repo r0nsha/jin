@@ -390,8 +390,6 @@ impl<'db> Generator<'db> {
             }),
             Inst::Load { value, kind } => self.value_assign(state, *value, || match kind {
                 LoadKind::Fn(id) => D::text(self.mir.fn_sigs[*id].name.as_str()),
-                LoadKind::Global(id) => D::text(self.mir.globals[*id].name.as_str()),
-                //D::text(state.local_names.get(*id).unwrap().as_str()),
             }),
             Inst::StrLit { value, lit } => self.value_assign(state, *value, || str_value(lit)),
             Inst::IntLit { value, lit } => {
@@ -428,6 +426,7 @@ impl<'db> Generator<'db> {
         match &state.body.value(id).kind {
             ValueKind::Register => format!("v{id}"),
             ValueKind::Local(id) => state.local_names.get(*id).unwrap().to_string(),
+            ValueKind::Global(id) => self.mir.globals[*id].name.to_string(),
         }
     }
 }

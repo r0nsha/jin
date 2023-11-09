@@ -178,7 +178,6 @@ impl<'db> PrettyCx<'db> {
                 self.value_assign(body, *value).append(D::text("load")).append(D::space()).append(
                     match kind {
                         LoadKind::Fn(id) => self.global(self.mir.fn_sigs[*id].name.as_str()),
-                        LoadKind::Global(id) => self.global(self.mir.globals[*id].name.as_str()),
                     },
                 )
             }
@@ -212,6 +211,7 @@ impl<'db> PrettyCx<'db> {
         match value.kind {
             ValueKind::Register => D::text("v").append(id.to_string()),
             ValueKind::Local(id) => D::text(self.db[id].name.as_str()),
+            ValueKind::Global(id) => self.global(&self.mir.globals[id].name),
         }
     }
 }

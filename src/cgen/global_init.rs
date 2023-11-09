@@ -1,6 +1,6 @@
 use crate::{
     cgen::generate::Generator,
-    mir::{Global, GlobalId, GlobalKind, Inst, LoadKind},
+    mir::{Global, GlobalId, GlobalKind, ValueKind},
 };
 
 impl<'db> Generator<'db> {
@@ -26,12 +26,10 @@ impl GlobalInitOrder<'_, '_> {
 
     fn search_global(&mut self, glob: &Global) {
         if let GlobalKind::Static(body, _) = &glob.kind {
-            for blk in body.blocks() {
-                for inst in blk.insts() {
-                    if let Inst::Load { kind: LoadKind::Global(gid), .. } = inst {
-                        if !self.add_global(*gid) {
-                            self.search_global_by_id(*gid);
-                        }
+            for value in body.values() {
+                if let ValueKind::Global(gid) = &value.kind {
+                    if !self.add_global(*gid) {
+                        self.search_global_by_id(*gid);
                     }
                 }
             }

@@ -490,10 +490,8 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                         }
                         DefKind::ExternGlobal | DefKind::Global => {
                             let id = self.cx.lower_global(name.id);
-
-                            self.push_inst_with_register(self.cx.mir.globals[id].ty, |value| {
-                                Inst::Load { value, kind: LoadKind::Global(id) }
-                            })
+                            self.body
+                                .create_value(self.cx.mir.globals[id].ty, ValueKind::Global(id))
                         }
                         DefKind::Variable => {
                             self.body.create_value(expr.ty, ValueKind::Local(name.id))
