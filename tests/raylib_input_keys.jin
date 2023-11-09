@@ -12,6 +12,16 @@ fn main {
 	let ball_position = Vector2({screen_width / 2} as f32, {screen_height / 2} as f32)
 
 	loop if !WindowShouldClose() {
+		//if IsKeyDown(KEY_RIGHT) { ball_position.x += 2.0 }
+        //if IsKeyDown(KEY_LEFT) { ball_position.x -= 2.0 }
+        //if IsKeyDown(KEY_UP) { ball_position.y -= 2.0 }
+        //if IsKeyDown(KEY_DOWN) { ball_position.y += 2.0 }
+
+		if IsKeyDown(KEY_RIGHT) { ball_position.x = 700.0 }
+        if IsKeyDown(KEY_LEFT) { ball_position.x = 100.0 }
+        if IsKeyDown(KEY_UP) { ball_position.y = 100.0 }
+        if IsKeyDown(KEY_DOWN) { ball_position.y = 350.0 }
+
 		BeginDrawing()
 		ClearBackground(ColorRayWhite())
 		DrawText("move the ball with arrow keys".ptr, 10, 10, 20, ColorDarkGray())
@@ -47,3 +57,11 @@ fn ColorDarkGray() -> Color { Color(80, 80, 80, 255) }
 fn ColorMaroon() -> Color { Color(190, 33, 55, 255) }
 
 type Vector2 extern(x: f32, y: f32)
+
+fn extern IsKeyDown(key: i32) -> bool
+
+let KEY_RIGHT = 262
+let KEY_LEFT = 263
+let KEY_DOWN = 264
+let KEY_UP = 265
+
