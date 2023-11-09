@@ -23,9 +23,9 @@ fn main {
         if IsKeyDown(KEY_DOWN) { ball_position.y = 350.0 }
 
 		BeginDrawing()
-		ClearBackground(ColorRayWhite())
-		DrawText("move the ball with arrow keys".ptr, 10, 10, 20, ColorDarkGray())
-		DrawCircleV(ball_position, 50.0, ColorMaroon())
+		ClearBackground(RAYWHITE)
+		DrawText("move the ball with arrow keys".ptr, 10, 10, 20, DARKGRAY)
+		DrawCircleV(ball_position, 50.0, MAROON)
 		EndDrawing()
 	}
 
@@ -51,10 +51,10 @@ fn extern DrawText(text: *u8, pos_x: i32, pos_y: i32, font_size: i32, tint: Colo
 
 type Color extern(r: u8, g: u8, b: u8, a: u8)
 
-fn ColorRayWhite() -> Color { Color(245, 245, 245, 255) }
-fn ColorLightGray() -> Color { Color(200, 200, 200, 255) }
-fn ColorDarkGray() -> Color { Color(80, 80, 80, 255) }
-fn ColorMaroon() -> Color { Color(190, 33, 55, 255) }
+let RAYWHITE = Color(245, 245, 245, 255)
+let LIGHTGRAY = Color(200, 200, 200, 255)
+let DARKGRAY = Color(80, 80, 80, 255)
+let MAROON = Color(190, 33, 55, 255)
 
 type Vector2 extern(x: f32, y: f32)
 
