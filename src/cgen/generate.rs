@@ -86,13 +86,12 @@ impl<'db> Generator<'db> {
     pub fn codegen_main_fn(&mut self) -> D<'db> {
         let main_fn_name = &self.mir.fn_sigs[self.mir.main_fn.expect("to have a main fn")].name;
 
+        let call_entry_point = stmt(|| D::text(main_fn_name.as_str()).append(D::text("();")));
+
         D::text("int main() {")
             .append(
                 D::hardline()
-                    .append(D::intersperse(
-                        [D::text(main_fn_name.as_str()).append(D::text("();"))],
-                        D::text(";").append(D::hardline()),
-                    ))
+                    .append(D::intersperse([call_entry_point], D::hardline()))
                     .nest(NEST)
                     .group(),
             )
