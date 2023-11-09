@@ -1,4 +1,4 @@
-use std::{fs::File, io::Write};
+use std::{fs::File, io::Write, iter};
 
 use camino::Utf8PathBuf;
 use pretty::RcDoc as D;
@@ -34,6 +34,7 @@ pub struct Generator<'db> {
     pub target_metrics: TargetMetrics,
     pub struct_names: FxHashMap<StructId, String>,
     pub curr_generated_struct: Option<StructId>,
+    pub global_init_fn_names: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -123,7 +124,7 @@ impl<'db> Generator<'db> {
         for glob in &self.mir.globals {
             let decl = glob.ty.cdecl(self, D::text(glob.name.as_str()));
 
-            let doc = match &glob.kind {
+            let glob_doc = match &glob.kind {
                 GlobalKind::Const(value) => decl
                     .append(D::space())
                     .append(D::text("="))
@@ -133,7 +134,35 @@ impl<'db> Generator<'db> {
                 GlobalKind::Extern => D::text("extern").append(D::space()).append(decl),
             };
 
-            self.globals.push(stmt(|| doc));
+            self.globals.push(stmt(|| glob_doc));
+
+            if let GlobalKind::Static(body, value) = &glob.kind {
+                let mut state = FnState::new(body);
+
+                let return_stmt =
+                    stmt(|| D::text("return").append(D::space()).append(value_name(*value)));
+
+                let block_docs: Vec<D> = body
+                    .blocks()
+                    .iter()
+                    .map(|blk| self.codegen_block(&mut state, blk))
+                    .chain(iter::once(return_stmt))
+                    .collect();
+
+                let init_fn_name = format!("{}_init", glob.name.as_str());
+
+                let init_fn_doc = D::text("FORCE_INLINE")
+                    .append(D::space())
+                    .append(glob.ty.cdecl(self, D::text(init_fn_name)))
+                    .append(D::text("()"))
+                    .append(D::space())
+                    .append(block_(
+                        || D::intersperse(block_docs, D::hardline().append(D::hardline())).group(),
+                        0,
+                    ));
+
+                self.globals.push(stmt(|| init_fn_doc));
+            }
         }
     }
 
@@ -159,7 +188,7 @@ impl<'db> Generator<'db> {
 
         let initial = if sig.is_extern { D::text("extern").append(D::space()) } else { D::nil() };
 
-        let sig_doc = fn_ty.ret.cty(self).append(D::space()).append(sig.name.as_str()).append(
+        let sig_doc = fn_ty.ret.cdecl(self, D::text(sig.name.as_str())).append(
             D::text("(")
                 .append(
                     D::intersperse(
