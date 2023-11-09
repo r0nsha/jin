@@ -417,11 +417,11 @@ impl<'db> Generator<'db> {
     }
 
     pub fn value_str(&self, state: &FnState<'db>, id: ValueId) -> String {
-        match state.body.value(id).kind {
+        match &state.body.value(id).kind {
             ValueKind::Register => format!("v{id}"),
-            ValueKind::Local(id) => state.local_names.get(id).unwrap().to_string(),
-            ValueKind::Global(id) => self.mir.globals[id].name.to_string(),
-            ValueKind::Fn(id) => self.mir.fn_sigs[id].name.to_string(),
+            ValueKind::Local(id) => state.local_names.get(*id).unwrap().to_string(),
+            ValueKind::Global(id) => self.mir.globals[*id].name.to_string(),
+            ValueKind::Fn(id) => self.mir.fn_sigs[*id].name.to_string(),
         }
     }
 }
