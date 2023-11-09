@@ -206,6 +206,7 @@ impl<'db> PrettyCx<'db> {
             ValueKind::Local(id) => D::text(self.db[*id].name.as_str()),
             ValueKind::Global(id) => self.global(&self.mir.globals[*id].name),
             ValueKind::Fn(id) => self.global(&self.mir.fn_sigs[*id].name),
+            ValueKind::Const(value) => pp_const_value(value),
         }
     }
 }

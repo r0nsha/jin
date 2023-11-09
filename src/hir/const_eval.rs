@@ -1,3 +1,4 @@
+use derive_more::{From, Into};
 use enum_as_inner::EnumAsInner;
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
@@ -77,7 +78,7 @@ impl ConstStorage {
     }
 }
 
-#[derive(Debug, Clone, EnumAsInner)]
+#[derive(Debug, Clone, From, EnumAsInner)]
 pub enum Const {
     Str(Ustr),
     Int(i128),

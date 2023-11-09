@@ -249,7 +249,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                     let ret_value =
                         if fn_ty.ret.is_unit() && !self.body.value(last_value).ty.is_unit() {
-                            self.push_unit_lit()
+                            self.const_unit()
                         } else {
                             last_value
                         };
@@ -296,8 +296,8 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     }
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
-        let value = if let Some(val) = self.cx.db.const_storage.expr(expr.id).cloned() {
-            self.lower_const(&val, expr.ty)
+        let value = if let Some(value) = self.cx.db.const_storage.expr(expr.id).cloned() {
+            self.lower_const(&value, expr.ty)
         } else {
             match &expr.kind {
                 hir::ExprKind::Let(let_) => {
@@ -312,7 +312,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                         hir::Pat::Discard(_) => (),
                     }
 
-                    self.push_unit_lit()
+                    self.const_unit()
                 }
                 hir::ExprKind::If(if_) => {
                     let then_blk = self.body.create_block("if_then");
@@ -366,12 +366,12 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     self.loop_blocks.pop();
 
                     self.position_at(end_blk);
-                    self.push_unit_lit()
+                    self.const_unit()
                 }
                 hir::ExprKind::Break => {
                     let loop_blk = self.loop_blocks.last().expect("to be inside a loop block");
                     self.push_inst(Inst::Br { target: *loop_blk });
-                    self.push_unit_lit()
+                    self.const_unit()
                 }
                 hir::ExprKind::Block(blk) => {
                     let mut result: Option<ValueId> = None;
@@ -389,13 +389,13 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     //     exprs.push(self.create_expr(ExprKind::Const(Const::Unit), expr.ty));
                     // }
 
-                    result.unwrap_or_else(|| self.push_unit_lit())
+                    result.unwrap_or_else(|| self.const_unit())
                 }
                 hir::ExprKind::Return(ret) => {
                     let value = self.lower_expr(&ret.expr);
                     self.push_inst(Inst::Return { value });
                     // TODO: push unreachable inst instead of unit literal
-                    self.push_unit_lit()
+                    self.const_unit()
                 }
                 hir::ExprKind::Call(call) => {
                     let callee = self.lower_expr(&call.callee);
@@ -501,21 +501,17 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                         DefKind::Ty(_) => unreachable!(),
                     }
                 }
-                hir::ExprKind::Lit(lit) => match lit {
-                    hir::Lit::Str(lit) => self.push_inst_with_register(expr.ty, |value| {
-                        Inst::StrLit { value, lit: *lit }
-                    }),
-                    #[allow(clippy::cast_possible_wrap)]
-                    hir::Lit::Int(lit) => self.push_inst_with_register(expr.ty, |value| {
-                        Inst::IntLit { value, lit: *lit as i128 }
-                    }),
-                    hir::Lit::Float(lit) => self.push_inst_with_register(expr.ty, |value| {
-                        Inst::FloatLit { value, lit: *lit }
-                    }),
-                    hir::Lit::Bool(lit) => self.push_inst_with_register(expr.ty, |value| {
-                        Inst::BoolLit { value, lit: *lit }
-                    }),
-                },
+                hir::ExprKind::Lit(lit) => {
+                    let value = match lit {
+                        hir::Lit::Str(lit) => Const::from(*lit),
+                        #[allow(clippy::cast_possible_wrap)]
+                        hir::Lit::Int(lit) => Const::from(*lit as i128),
+                        hir::Lit::Float(lit) => Const::from(*lit),
+                        hir::Lit::Bool(lit) => Const::from(*lit),
+                    };
+
+                    self.lower_const(&value, expr.ty)
+                }
             }
         };
 
@@ -526,28 +522,22 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         }
     }
 
-    fn lower_const(&mut self, value: &Const, ty: Ty) -> ValueId {
+    pub fn lower_const(&mut self, value: &Const, ty: Ty) -> ValueId {
         match value {
             Const::Str(lit) => {
                 self.push_inst_with_register(ty, |value| Inst::StrLit { value, lit: *lit })
             }
-            Const::Int(lit) => {
-                self.push_inst_with_register(ty, |value| Inst::IntLit { value, lit: *lit })
+            Const::Int(value) => self.body.create_value(ty, ValueKind::Const(Const::from(*value))),
+            Const::Float(value) => {
+                self.body.create_value(ty, ValueKind::Const(Const::from(*value)))
             }
-            Const::Float(lit) => {
-                self.push_inst_with_register(ty, |value| Inst::FloatLit { value, lit: *lit })
-            }
-            Const::Bool(lit) => self.push_bool_lit(*lit),
-            Const::Unit => self.push_unit_lit(),
+            Const::Bool(value) => self.body.create_value(ty, ValueKind::Const(Const::from(*value))),
+            Const::Unit => self.body.create_value(ty, ValueKind::Const(Const::Unit)),
         }
     }
 
-    pub fn push_bool_lit(&mut self, lit: bool) -> ValueId {
-        self.push_inst_with_register(Ty::new(TyKind::Bool), |value| Inst::BoolLit { value, lit })
-    }
-
-    pub fn push_unit_lit(&mut self) -> ValueId {
-        self.push_inst_with_register(Ty::new(TyKind::Unit), |value| Inst::UnitLit { value })
+    pub fn const_unit(&mut self) -> ValueId {
+        self.body.create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit))
     }
 
     pub fn push_inst_with_register(

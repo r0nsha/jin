@@ -40,7 +40,7 @@ pub fn bool_value<'a>(value: bool) -> D<'a> {
 }
 
 pub fn unit_value<'a>() -> D<'a> {
-    D::text("{}")
+    D::text("(unit){}")
 }
 
 pub fn struct_lit<'a>(fields: Vec<(&'a str, D<'a>)>) -> D<'a> {

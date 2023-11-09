@@ -44,13 +44,19 @@ impl<'db> Generator<'db> {
                 (casted_ty.size(&self.target_metrics), target.size(&self.target_metrics));
 
             if target_bits < value_bits {
-                let casted_str = self.value_str(state, casted);
+                let casted_doc = self.value(state, casted);
                 let (min, max) = (target.min(), target.max());
+
+                let cond = D::text("(")
+                    .append(casted_doc.clone())
+                    .append(format!(" < {min}) || ("))
+                    .append(casted_doc)
+                    .append(format!(" > {max})"));
 
                 return D::intersperse(
                     [
                         self.panic_if(
-                            D::text(format!("({casted_str} < {min}) || ({casted_str} > {max})")),
+                            cond,
                             &format!(
                                 "value is out of range of type `{}`: {min}..{max}",
                                 target.display(self.db)
@@ -74,10 +80,10 @@ impl<'db> Generator<'db> {
             BinOp::Mul => self.codegen_bin_op_mul(state, data),
             BinOp::Div | BinOp::Rem => self.codegen_bin_op_div(state, data),
             _ => {
-                let (lhs, rhs) = (self.value_str(state, data.lhs), self.value_str(state, data.rhs));
+                let (lhs, rhs) = (self.value(state, data.lhs), self.value(state, data.rhs));
 
                 self.value_assign(state, data.target, || {
-                    D::text(format!("{} {} {}", lhs, data.op, rhs))
+                    D::intersperse([lhs, D::text(data.op.to_string()), rhs], D::space())
                 })
             }
         }
@@ -96,13 +102,14 @@ impl<'db> Generator<'db> {
     }
 
     fn codegen_bin_op_div(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
-        let (lhs, rhs) = (self.value_str(state, data.lhs), self.value_str(state, data.rhs));
+        let (lhs, rhs) = (self.value(state, data.lhs), self.value(state, data.rhs));
 
-        let safety_check =
-            self.panic_if(D::text(format!("{rhs} == 0")), "attempt to divide by zero", data.span);
+        let cond = rhs.clone().append(D::text(" == 0"));
+        let safety_check = self.panic_if(cond, "attempt to divide by zero", data.span);
 
-        let op = self
-            .value_assign(state, data.target, || D::text(format!("{} {} {}", lhs, data.op, rhs)));
+        let op = self.value_assign(state, data.target, || {
+            D::intersperse([lhs, D::text(data.op.to_string()), rhs], D::space())
+        });
 
         D::intersperse([safety_check, op], D::hardline())
     }
@@ -116,12 +123,6 @@ impl<'db> Generator<'db> {
     ) -> D<'db> {
         let decl = self.value_decl(state, data.target);
 
-        let (target, lhs, rhs) = (
-            self.value_str(state, data.target),
-            self.value_str(state, data.lhs),
-            self.value_str(state, data.rhs),
-        );
-
         let builtin_name = format!(
             "__builtin_{}{}{}_overflow",
             if data.ty.is_int() { "s" } else { "u" },
@@ -134,7 +135,20 @@ impl<'db> Generator<'db> {
             }
         );
 
-        let builtin_call = D::text(format!("{builtin_name}({lhs}, {rhs}, &{target})"));
+        let (target, lhs, rhs) = (
+            self.value(state, data.target),
+            self.value(state, data.lhs),
+            self.value(state, data.rhs),
+        );
+
+        let builtin_call = D::text(builtin_name)
+            .append("(")
+            .append(lhs)
+            .append(", ")
+            .append(rhs)
+            .append(", &")
+            .append(target)
+            .append(")");
 
         D::intersperse(
             [decl, self.panic_if(builtin_call, &overflow_msg(action), data.span)],

@@ -222,5 +222,5 @@ pub enum ValueKind {
     Local(DefId),
     Global(GlobalId),
     Fn(FnSigId),
-    // Const(Const),
+    Const(Const),
 }
