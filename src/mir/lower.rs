@@ -484,9 +484,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                                 )
                             };
 
-                            self.push_inst_with_register(self.cx.mir.fn_sigs[id].ty, |value| {
-                                Inst::Load { value, kind: LoadKind::Fn(id) }
-                            })
+                            self.body.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
                         }
                         DefKind::ExternGlobal | DefKind::Global => {
                             let id = self.cx.lower_global(name.id);
@@ -497,11 +495,8 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                             self.body.create_value(expr.ty, ValueKind::Local(name.id))
                         }
                         DefKind::Struct(sid) => {
-                            let fn_sig_id = self.cx.get_or_create_struct_ctor(*sid);
-                            self.push_inst_with_register(
-                                self.cx.mir.fn_sigs[fn_sig_id].ty,
-                                |value| Inst::Load { value, kind: LoadKind::Fn(fn_sig_id) },
-                            )
+                            let id = self.cx.get_or_create_struct_ctor(*sid);
+                            self.body.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
                         }
                         DefKind::Ty(_) => unreachable!(),
                     }

@@ -17,10 +17,7 @@ use crate::{
     db::{Db, StructId, StructInfo},
     hir::const_eval::Const,
     middle::UnOp,
-    mir::{
-        Block, Body, Fn, FnSig, FnSigId, Global, GlobalKind, Inst, LoadKind, Mir, ValueId,
-        ValueKind,
-    },
+    mir::{Block, Body, Fn, FnSig, FnSigId, Global, GlobalKind, Inst, Mir, ValueId, ValueKind},
     target::TargetMetrics,
     ty::Ty,
 };
@@ -388,9 +385,6 @@ impl<'db> Generator<'db> {
             Inst::Member { value, inner, member } => self.value_assign(state, *value, || {
                 self.value(state, *inner).append(D::text(".")).append(D::text(member.as_str()))
             }),
-            Inst::Load { value, kind } => self.value_assign(state, *value, || match kind {
-                LoadKind::Fn(id) => D::text(self.mir.fn_sigs[*id].name.as_str()),
-            }),
             Inst::StrLit { value, lit } => self.value_assign(state, *value, || str_value(lit)),
             Inst::IntLit { value, lit } => {
                 self.value_assign(state, *value, || D::text(lit.to_string()))
@@ -423,10 +417,11 @@ impl<'db> Generator<'db> {
     }
 
     pub fn value_str(&self, state: &FnState<'db>, id: ValueId) -> String {
-        match &state.body.value(id).kind {
+        match state.body.value(id).kind {
             ValueKind::Register => format!("v{id}"),
-            ValueKind::Local(id) => state.local_names.get(*id).unwrap().to_string(),
-            ValueKind::Global(id) => self.mir.globals[*id].name.to_string(),
+            ValueKind::Local(id) => state.local_names.get(id).unwrap().to_string(),
+            ValueKind::Global(id) => self.mir.globals[id].name.to_string(),
+            ValueKind::Fn(id) => self.mir.fn_sigs[id].name.to_string(),
         }
     }
 }

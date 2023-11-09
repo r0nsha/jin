@@ -202,7 +202,6 @@ pub enum Inst {
     Unary { value: ValueId, inner: ValueId, op: UnOp },
     Cast { value: ValueId, inner: ValueId, target: Ty, span: Span },
     Member { value: ValueId, inner: ValueId, member: Ustr },
-    Load { value: ValueId, kind: LoadKind },
     StrLit { value: ValueId, lit: Ustr },
     IntLit { value: ValueId, lit: i128 },
     FloatLit { value: ValueId, lit: f64 },
@@ -222,11 +221,6 @@ pub enum ValueKind {
     Register,
     Local(DefId),
     Global(GlobalId),
-    // Fn(FnSigId),
-    // Const(Const),
-}
-
-#[derive(Debug, Clone)]
-pub enum LoadKind {
     Fn(FnSigId),
+    // Const(Const),
 }

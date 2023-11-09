@@ -1,11 +1,7 @@
 use codespan_reporting::files::{Files, Location};
 use pretty::RcDoc as D;
 
-use crate::{
-    cgen::generate::Generator,
-    mir::{Block, ValueId},
-    span::Span,
-};
+use crate::{cgen::generate::Generator, mir::Block, span::Span};
 
 impl<'db> Generator<'db> {
     pub fn panic_if(&self, cond: D<'db>, msg: &str, span: Span) -> D<'db> {
