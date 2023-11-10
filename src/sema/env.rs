@@ -6,7 +6,8 @@ use ustr::{ustr, Ustr, UstrMap};
 use crate::{
     ast,
     ast::Ast,
-    db::{Db, DefId, DefInfo, DefKind, ModuleId, ScopeInfo, ScopeLevel, Vis},
+    db::{Db, DefId, DefInfo, DefKind, ModuleId, ScopeInfo, ScopeLevel},
+    middle::Vis,
     qpath::QPath,
     span::Span,
     sym,

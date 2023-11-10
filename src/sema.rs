@@ -19,14 +19,14 @@ use crate::{
     counter::Counter,
     db::{
         Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, StructField,
-        StructInfo, Vis,
+        StructInfo,
     },
     diagnostics::{Diagnostic, Label},
     hir,
     hir::{const_eval::ConstEvalError, ExprId, Hir},
     index_vec::IndexVecExt,
     macros::create_bool_enum,
-    middle::{BinOp, TyExpr, UnOp},
+    middle::{BinOp, TyExpr, UnOp, Vis},
     sema::{
         attrs::AttrsPlacement,
         coerce::CoerceExt,

@@ -25,6 +25,7 @@ use crate::{
     diagnostics::Diagnostics,
     hir::{const_eval::ConstStorage, ExprId, HirMap},
     index_vec::{new_key_type, IndexVec, IndexVecExt},
+    middle::Vis,
     qpath::QPath,
     span::{Source, SourceId, Sources, Span},
     target::{TargetMetrics, TargetPlatform},
@@ -298,12 +299,6 @@ impl Typed for DefInfo {
     fn ty_mut(&mut self) -> &mut Ty {
         &mut self.ty
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Vis {
-    Private,
-    Public,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
