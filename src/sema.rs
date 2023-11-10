@@ -584,6 +584,8 @@ impl<'db> Sema<'db> {
             }
             ast::Expr::Assign { lhs, rhs, span } => {
                 let lhs = self.check_expr(env, lhs, None)?;
+                self.check_assign_lhs(&lhs)?;
+
                 let rhs = self.check_expr(env, rhs, Some(lhs.ty))?;
 
                 self.at(Obligation::exprs(*span, lhs.span, lhs.span))
@@ -1266,6 +1268,17 @@ impl<'db> Sema<'db> {
     #[inline]
     pub fn normalize(&self, ty: Ty) -> Ty {
         ty.normalize(&mut self.storage.borrow_mut())
+    }
+
+    fn check_assign_lhs(&self, lhs: &hir::Expr) -> CheckResult<()> {
+        match &lhs.kind {
+            hir::ExprKind::Member(_) | hir::ExprKind::Name(_) => Ok(()),
+            _ => Err(Diagnostic::error("check::invalid_assign")
+                .with_message("invalid left expression in assignment")
+                .with_label(
+                    Label::primary(lhs.span).with_message("cannot assign to this expression"),
+                )),
+        }
     }
 }
 
