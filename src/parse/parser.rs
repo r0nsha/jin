@@ -335,15 +335,36 @@ impl<'a> Parser<'a> {
             Ok(Expr::Let(let_))
         } else {
             let expr = self.parse_expr()?;
+            self.parse_assign(expr)
+        }
+    }
 
+    fn parse_assign(&mut self, expr: Expr) -> ParseResult<Expr> {
+        if let Some(tok) = self.token() {
             if self.is(TokenKind::Eq) {
                 let rhs = self.parse_expr()?;
                 let span = expr.span().merge(rhs.span());
-                Ok(Expr::Assign { lhs: Box::new(expr), rhs: Box::new(rhs), span })
-            } else {
-                Ok(expr)
+                return Ok(Expr::Assign {
+                    lhs: Box::new(expr),
+                    rhs: Box::new(rhs),
+                    op: None,
+                    span,
+                });
+            }
+
+            if let Some(op) = BinOp::try_from_assign_op(tok.kind) {
+                let rhs = self.parse_expr()?;
+                let span = expr.span().merge(rhs.span());
+                return Ok(Expr::Assign {
+                    lhs: Box::new(expr),
+                    rhs: Box::new(rhs),
+                    op: Some(op),
+                    span,
+                });
             }
         }
+
+        Ok(expr)
     }
 
     fn parse_return(&mut self) -> ParseResult<Expr> {

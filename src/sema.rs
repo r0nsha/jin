@@ -609,18 +609,22 @@ impl<'db> Sema<'db> {
                 let let_ = self.check_let(env, let_)?;
                 self.expr(hir::ExprKind::Let(let_), self.db.types.unit, span)
             }
-            ast::Expr::Assign { lhs, rhs, span } => {
+            ast::Expr::Assign { lhs, rhs, op, span } => {
                 let lhs = self.check_expr(env, lhs, None)?;
                 self.check_assign_lhs(&lhs)?;
 
                 let rhs = self.check_expr(env, rhs, Some(lhs.ty))?;
 
-                self.at(Obligation::exprs(*span, lhs.span, lhs.span))
-                    .eq(lhs.ty, lhs.ty)
-                    .or_coerce(self, lhs.id)?;
+                if let Some(op) = op {
+                    self.check_bin_op(&lhs, &rhs, *op, *span)?;
+                }
 
                 self.expr(
-                    hir::ExprKind::Assign(hir::Assign { lhs: Box::new(lhs), rhs: Box::new(rhs) }),
+                    hir::ExprKind::Assign(hir::Assign {
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(rhs),
+                        op: *op,
+                    }),
                     self.db.types.unit,
                     *span,
                 )
@@ -930,54 +934,7 @@ impl<'db> Sema<'db> {
                 let lhs = self.check_expr(env, lhs, None)?;
                 let rhs = self.check_expr(env, rhs, Some(lhs.ty))?;
 
-                self.at(Obligation::exprs(*span, lhs.span, rhs.span))
-                    .eq(lhs.ty, rhs.ty)
-                    .or_coerce(self, rhs.id)?;
-
-                match op {
-                    BinOp::And | BinOp::Or => {
-                        self.at(Obligation::obvious(lhs.span))
-                            .eq(self.db.types.bool, lhs.ty)
-                            .or_coerce(self, lhs.id)?;
-
-                        self.at(Obligation::obvious(rhs.span))
-                            .eq(self.db.types.bool, rhs.ty)
-                            .or_coerce(self, rhs.id)?;
-                    }
-                    BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem => {
-                        let ty = self.normalize(lhs.ty);
-
-                        if !ty.is_any_int() && !ty.is_any_float() {
-                            return Err(Diagnostic::error("check::invalid_binary_op")
-                                .with_message(format!(
-                                    "cannot use `{}` on `{}`",
-                                    op,
-                                    ty.display(self.db)
-                                ))
-                                .with_label(
-                                    Label::primary(lhs.span)
-                                        .with_message(format!("invalid use of `{op}`")),
-                                ));
-                        }
-                    }
-                    BinOp::Shl | BinOp::Shr | BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => {
-                        let ty = self.normalize(lhs.ty);
-
-                        if !ty.is_any_int() {
-                            return Err(Diagnostic::error("check::invalid_binary_op")
-                                .with_message(format!(
-                                    "cannot use `{}` on `{}`",
-                                    op,
-                                    ty.display(self.db)
-                                ))
-                                .with_label(
-                                    Label::primary(lhs.span)
-                                        .with_message(format!("invalid use of `{op}`")),
-                                ));
-                        }
-                    }
-                    BinOp::Cmp(_) => (),
-                }
+                self.check_bin_op(&lhs, &rhs, *op, *span)?;
 
                 let result_ty = match op {
                     BinOp::Cmp(..) => self.db.types.bool,
@@ -1335,6 +1292,55 @@ impl<'db> Sema<'db> {
                         .with_message(format!("`{}` is immutable", def.name)),
                 ))
         }
+    }
+
+    fn check_bin_op(
+        &mut self,
+        lhs: &hir::Expr,
+        rhs: &hir::Expr,
+        op: BinOp,
+        span: Span,
+    ) -> CheckResult<()> {
+        self.at(Obligation::exprs(span, lhs.span, lhs.span))
+            .eq(lhs.ty, lhs.ty)
+            .or_coerce(self, lhs.id)?;
+
+        match op {
+            BinOp::And | BinOp::Or => {
+                self.at(Obligation::obvious(lhs.span))
+                    .eq(self.db.types.bool, lhs.ty)
+                    .or_coerce(self, lhs.id)?;
+
+                self.at(Obligation::obvious(rhs.span))
+                    .eq(self.db.types.bool, rhs.ty)
+                    .or_coerce(self, rhs.id)?;
+            }
+            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem => {
+                let ty = self.normalize(lhs.ty);
+
+                if !ty.is_any_int() && !ty.is_any_float() {
+                    return Err(Diagnostic::error("check::invalid_binary_op")
+                        .with_message(format!("cannot use `{}` on `{}`", op, ty.display(self.db)))
+                        .with_label(
+                            Label::primary(lhs.span).with_message(format!("invalid use of `{op}`")),
+                        ));
+                }
+            }
+            BinOp::Shl | BinOp::Shr | BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => {
+                let ty = self.normalize(lhs.ty);
+
+                if !ty.is_any_int() {
+                    return Err(Diagnostic::error("check::invalid_binary_op")
+                        .with_message(format!("cannot use `{}` on `{}`", op, ty.display(self.db)))
+                        .with_label(
+                            Label::primary(lhs.span).with_message(format!("invalid use of `{op}`")),
+                        ));
+                }
+            }
+            BinOp::Cmp(_) => (),
+        }
+
+        Ok(())
     }
 }
 

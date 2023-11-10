@@ -222,6 +222,7 @@ impl fmt::Display for Pat {
 pub struct Assign {
     pub lhs: Box<Expr>,
     pub rhs: Box<Expr>,
+    pub op: Option<BinOp>,
 }
 
 #[derive(Debug, Clone)]

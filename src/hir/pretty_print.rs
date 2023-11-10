@@ -3,6 +3,7 @@ use std::io;
 use crate::{
     db::Db,
     hir::{Expr, ExprKind, Fn, FnKind, Hir, Let, Lit},
+    middle::BinOp,
 };
 
 pub(super) fn print(db: &Db, hir: &Hir, w: &mut impl io::Write) -> io::Result<()> {
@@ -82,7 +83,8 @@ impl PrettyCx<'_> {
                 self.pp_let(let_);
             }
             ExprKind::Assign(assign) => {
-                self.builder.begin_child("assign".to_string());
+                self.builder
+                    .begin_child(format!("{}=", assign.op.map(BinOp::as_str).unwrap_or_default()));
                 self.pp_expr(&assign.lhs);
                 self.builder.add_empty_child("to".to_string());
                 self.pp_expr(&assign.rhs);

@@ -1,7 +1,10 @@
 use std::io;
 
 use super::{Expr, Fn, Item, LitKind, Module};
-use crate::ast::{CallArg, ExternImport, ExternLet, FnKind, FnSig, Let, TyDef, TyDefKind, TyExpr};
+use crate::{
+    ast::{CallArg, ExternImport, ExternLet, FnKind, FnSig, Let, TyDef, TyDefKind, TyExpr},
+    middle::BinOp,
+};
 
 pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Result<()> {
     let mut cx = PrettyCx { builder: ptree::TreeBuilder::new(module.name.join()) };
@@ -26,8 +29,8 @@ impl PrettyPrint for Expr {
     fn pretty_print(&self, cx: &mut PrettyCx) {
         match self {
             Self::Let(let_) => let_.pretty_print(cx),
-            Self::Assign { lhs, rhs, .. } => {
-                cx.builder.begin_child("assign".to_string());
+            Self::Assign { lhs, rhs, op, .. } => {
+                cx.builder.begin_child(format!("{}=", op.map(BinOp::as_str).unwrap_or_default()));
                 lhs.pretty_print(cx);
                 cx.builder.add_empty_child("to".to_string());
                 rhs.pretty_print(cx);

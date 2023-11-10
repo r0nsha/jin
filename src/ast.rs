@@ -114,7 +114,7 @@ impl Spanned for Item {
 #[derive(Debug, Clone)]
 pub enum Expr {
     Let(Let),
-    Assign { lhs: Box<Self>, rhs: Box<Self>, span: Span },
+    Assign { lhs: Box<Self>, rhs: Box<Self>, op: Option<BinOp>, span: Span },
     Return { expr: Option<Box<Self>>, span: Span },
     If { cond: Box<Self>, then: Box<Self>, otherwise: Option<Box<Self>>, span: Span },
     Loop { cond: Option<Box<Self>>, expr: Box<Self>, span: Span },

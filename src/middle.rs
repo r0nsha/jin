@@ -113,6 +113,24 @@ impl BinOp {
             Self::Or => 2,
         }
     }
+
+    pub fn try_from_assign_op(tk: TokenKind) -> Option<Self> {
+        let op = match tk {
+            TokenKind::StarEq => Self::Mul,
+            TokenKind::FwSlashEq => Self::Div,
+            TokenKind::PercentEq => Self::Rem,
+            TokenKind::PlusEq => Self::Add,
+            TokenKind::MinusEq => Self::Sub,
+            TokenKind::LtLtEq => Self::Shl,
+            TokenKind::GtGtEq => Self::Shr,
+            TokenKind::AmpEq => Self::BitAnd,
+            TokenKind::CaretEq => Self::BitXor,
+            TokenKind::PipeEq => Self::BitOr,
+            _ => return None,
+        };
+
+        Some(op)
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

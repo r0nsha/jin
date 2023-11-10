@@ -78,17 +78,37 @@ impl<'s> Lexer<'s> {
                             TokenKind::Bang
                         }
                     }
-                    '*' => TokenKind::Star,
+                    '*' => {
+                        if self.eat('=') {
+                            TokenKind::StarEq
+                        } else {
+                            TokenKind::Star
+                        }
+                    }
                     '/' => {
-                        if self.eat('/') {
+                        if self.eat('=') {
+                            TokenKind::FwSlashEq
+                        } else if self.eat('/') {
                             self.eat_comment();
                             return self.eat_token();
+                        } else {
+                            TokenKind::FwSlash
                         }
-
-                        TokenKind::FwSlash
                     }
-                    '%' => TokenKind::Percent,
-                    '+' => TokenKind::Plus,
+                    '%' => {
+                        if self.eat('=') {
+                            TokenKind::PercentEq
+                        } else {
+                            TokenKind::Percent
+                        }
+                    }
+                    '+' => {
+                        if self.eat('=') {
+                            TokenKind::PlusEq
+                        } else {
+                            TokenKind::Plus
+                        }
+                    }
                     '-' => {
                         if self.eat('>') {
                             TokenKind::Arrow
@@ -98,7 +118,11 @@ impl<'s> Lexer<'s> {
                     }
                     '<' => {
                         if self.eat('<') {
-                            TokenKind::LtLt
+                            if self.eat('=') {
+                                TokenKind::LtLtEq
+                            } else {
+                                TokenKind::LtLt
+                            }
                         } else if self.eat('=') {
                             TokenKind::LtEq
                         } else {
@@ -107,7 +131,11 @@ impl<'s> Lexer<'s> {
                     }
                     '>' => {
                         if self.eat('>') {
-                            TokenKind::GtGt
+                            if self.eat('=') {
+                                TokenKind::GtGtEq
+                            } else {
+                                TokenKind::GtGt
+                            }
                         } else if self.eat('=') {
                             TokenKind::GtEq
                         } else {
@@ -115,20 +143,30 @@ impl<'s> Lexer<'s> {
                         }
                     }
                     '&' => {
-                        if self.eat('&') {
+                        if self.eat('=') {
+                            TokenKind::AmpEq
+                        } else if self.eat('&') {
                             TokenKind::AmpAmp
                         } else {
                             TokenKind::Amp
                         }
                     }
                     '|' => {
-                        if self.eat('|') {
+                        if self.eat('=') {
+                            TokenKind::PipeEq
+                        } else if self.eat('|') {
                             TokenKind::PipePipe
                         } else {
                             TokenKind::Pipe
                         }
                     }
-                    '^' => TokenKind::Caret,
+                    '^' => {
+                        if self.eat('=') {
+                            TokenKind::CaretEq
+                        } else {
+                            TokenKind::Caret
+                        }
+                    }
                     ch => {
                         let span = self.create_span(start);
                         return Err(Diagnostic::error("parse::invalid_char")
