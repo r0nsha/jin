@@ -1,12 +1,10 @@
 fn extern printf(fmt: *u8, ..) -> i32
 
-type Point extern(x: int, y: int)
-
 fn main {
 	let screen_width = 800
 	let screen_height = 450
 
-	InitWindow(screen_width, screen_height, "raylib - basic window".ptr)
+	InitWindow(screen_width, screen_height, "raylib - input keys".ptr)
 	SetTargetFPS(60)
 
 	let mut ball_position = Vector2({screen_width / 2} as f32, {screen_height / 2} as f32)

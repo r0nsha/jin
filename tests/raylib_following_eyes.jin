@@ -1,0 +1,110 @@
+fn extern printf(fmt: *u8, ..) -> i32
+
+fn main {
+	let screen_width = 800
+	let screen_height = 450
+
+	InitWindow(screen_width, screen_height, "raylib - following eyes".ptr)
+	SetTargetFPS(60)
+
+	let mut sclera_left_pos = Vector2({{screen_width / 2} as f32} - 100.0, {screen_height / 2} as f32)
+	let mut sclera_right_pos = Vector2({{screen_width / 2} as f32} + 100.0, {screen_height / 2} as f32)
+	let sclera_radius = 80.0
+
+	let mut iris_left_pos = Vector2({{screen_width / 2} as f32} - 100.0, {screen_height / 2} as f32)
+	let mut iris_right_pos = Vector2({{screen_width / 2} as f32} + 100.0, {screen_height / 2} as f32)
+	let iris_radius = 24.0
+
+	let mut angle = 0.0
+	let mut dx = 0.0
+	let mut dy = 0.0
+	let mut dxx = 0.0
+	let mut dyy = 0.0
+
+	loop if !WindowShouldClose() {
+		iris_left_pos = GetMousePosition()
+		iris_right_pos = GetMousePosition()
+
+		// TODO: move angle to local
+		// TODO: move dx, dy to local
+		// TODO: move dxx, dyy to local
+		if !CheckCollisionPointCircle(iris_left_pos, sclera_left_pos, sclera_radius - 20.0) {
+			dx = iris_left_pos.x - sclera_left_pos.x
+			dy = iris_left_pos.y - sclera_left_pos.y
+
+			angle = atan2f(dy, dx)
+
+			dxx = {sclera_radius - iris_radius} * cosf(angle)
+			dy = {sclera_radius - iris_radius} * sinf(angle)
+
+			iris_left_pos.x = sclera_left_pos + dxx
+			iris_left_pos.y = sclera_left_pos + dyy
+		}
+
+		if !CheckCollisionPointCircle(iris_right_pos, sclera_right_pos, sclera_radius - 20.0) {
+			dx = iris_right_pos.x - sclera_right_pos.x
+			dy = iris_right_pos.y - sclera_right_pos.y
+
+			angle = atan2f(dy, dx)
+
+			dxx = {sclera_radius - iris_radius} * cosf(angle)
+			dy = {sclera_radius - iris_radius} * sinf(angle)
+
+			iris_right_pos.x = sclera_right_pos + dxx
+			iris_right_pos.y = sclera_right_pos + dyy
+		}
+
+		BeginDrawing()
+		ClearBackground(RAYWHITE)
+		DrawCircleV(sclera_left_pos, scleraRadius, LIGHTGRAY)
+		DrawCircleV(iris_left_pos, irisRadius, BROWN)
+		DrawCircleV(iris_left_pos, 10, BLACK)
+		DrawCircleV(sclera_right_pos, scleraRadius, LIGHTGRAY)
+		DrawCircleV(iris_right_pos, irisRadius, DARKGREEN)
+		DrawCircleV(iris_right_pos, 10, BLACK)
+		DrawFPS(10, 10)
+		EndDrawing()
+	}
+
+	CloseWindow()
+}
+
+// Raylib bindings
+import extern "raylib"
+import extern "m"
+
+fn extern InitWindow(width: i32, height: i32, title: *u8)
+fn extern CloseWindow()
+fn extern WindowShouldClose() -> bool
+fn extern SetTargetFPS(fps: i32)
+fn extern BeginDrawing()
+fn extern EndDrawing()
+fn extern ClearBackground(color: Color)
+fn extern DrawCircle(center_x: i32, center_y: i32, radius: f32, color: Color)
+fn extern DrawCircleV(center: Vector2, radius: f32, color: Color)
+fn extern DrawRectangle(pos_x: i32, pos_y: i32, width: i32, height: i32, color: Color)
+fn extern DrawFPS(pos_x: i32, pos_y: i32)
+fn extern DrawText(text: *u8, pos_x: i32, pos_y: i32, font_size: i32, tint: Color)
+
+type Color extern(r: u8, g: u8, b: u8, a: u8)
+
+let RAYWHITE = Color(245, 245, 245, 255)
+let LIGHTGRAY = Color(200, 200, 200, 255)
+let DARKGRAY = Color(80, 80, 80, 255)
+let BLACK = Color(0, 0, 0, 255)
+let MAROON = Color(190, 33, 55, 255)
+let BROWN = Color(127, 106, 79, 255)
+let DARKGREEN = Color(0, 117, 44, 255)
+
+type Vector2 extern(x: f32, y: f32)
+
+fn extern GetMousePosition() -> Vector2
+
+fn extern IsKeyDown(key: i32) -> bool
+
+let KEY_RIGHT = 262
+let KEY_LEFT = 263
+let KEY_DOWN = 264
+let KEY_UP = 265
+
+fn extern CheckCollisionPointCircle(point: Vector2, center: Vector2, radius: f32) -> bool

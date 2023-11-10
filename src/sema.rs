@@ -1301,9 +1301,9 @@ impl<'db> Sema<'db> {
         op: BinOp,
         span: Span,
     ) -> CheckResult<()> {
-        self.at(Obligation::exprs(span, lhs.span, lhs.span))
-            .eq(lhs.ty, lhs.ty)
-            .or_coerce(self, lhs.id)?;
+        self.at(Obligation::exprs(span, lhs.span, rhs.span))
+            .eq(lhs.ty, rhs.ty)
+            .or_coerce(self, rhs.id)?;
 
         match op {
             BinOp::And | BinOp::Or => {
