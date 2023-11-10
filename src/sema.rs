@@ -26,7 +26,7 @@ use crate::{
     hir::{const_eval::ConstEvalError, ExprId, Hir},
     index_vec::IndexVecExt,
     macros::create_bool_enum,
-    middle::{BinOp, TyExpr, UnOp, Vis},
+    middle::{BinOp, Mutability, TyExpr, UnOp, Vis},
     sema::{
         attrs::AttrsPlacement,
         coerce::CoerceExt,
@@ -148,12 +148,13 @@ impl<'db> Sema<'db> {
         vis: Vis,
         kind: DefKind,
         name: Word,
+        mutability: Mutability,
         ty: Ty,
     ) -> CheckResult<DefId> {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].name.clone().child(name.name());
 
-        let id = DefInfo::alloc(self.db, qpath, scope, kind, ty, name.span());
+        let id = DefInfo::alloc(self.db, qpath, scope, kind, mutability, ty, name.span());
 
         if let Some(prev_id) = self.global_scope.insert_def(Symbol::new(module_id, name.name()), id)
         {
@@ -178,12 +179,20 @@ impl<'db> Sema<'db> {
         Ok(id)
     }
 
-    fn define_local_def(&mut self, env: &mut Env, kind: DefKind, name: Word, ty: Ty) -> DefId {
+    fn define_local_def(
+        &mut self,
+        env: &mut Env,
+        kind: DefKind,
+        name: Word,
+        mutability: Mutability,
+        ty: Ty,
+    ) -> DefId {
         let id = DefInfo::alloc(
             self.db,
             env.scope_path(self.db).child(name.name()),
             ScopeInfo { module_id: env.module_id(), level: env.scope_level(), vis: Vis::Private },
             kind,
+            mutability,
             ty,
             name.span(),
         );
@@ -199,12 +208,13 @@ impl<'db> Sema<'db> {
         vis: Vis,
         kind: DefKind,
         name: Word,
+        mutability: Mutability,
         ty: Ty,
     ) -> CheckResult<DefId> {
         if env.in_global_scope() {
-            self.define_global_def(env.module_id(), vis, kind, name, ty)
+            self.define_global_def(env.module_id(), vis, kind, name, mutability, ty)
         } else {
-            Ok(self.define_local_def(env, kind, name, ty))
+            Ok(self.define_local_def(env, kind, name, mutability, ty))
         }
     }
 
@@ -219,7 +229,7 @@ impl<'db> Sema<'db> {
     ) -> CheckResult<hir::Pat> {
         match pat {
             ast::Pat::Name(name) => {
-                let id = self.define_def(env, vis, kind, name.word, ty)?;
+                let id = self.define_def(env, vis, kind, name.word, name.mutability, ty)?;
 
                 if let Some(value) = self.db.const_storage.expr(value_id) {
                     self.db.const_storage.insert_def(id, value.clone());
@@ -330,7 +340,13 @@ impl<'db> Sema<'db> {
                 }
 
                 for p in &mut sig.params {
-                    p.id = self.define_local_def(env, DefKind::Variable, p.name, p.ty);
+                    p.id = self.define_local_def(
+                        env,
+                        DefKind::Variable,
+                        p.name,
+                        Mutability::Imm,
+                        p.ty,
+                    );
                 }
 
                 match &fun.kind {
@@ -398,6 +414,7 @@ impl<'db> Sema<'db> {
                 ast::FnKind::Extern { .. } => FnInfo::Extern,
             }),
             sig.word,
+            Mutability::Imm,
             sig.ty,
         )?;
 
@@ -526,6 +543,7 @@ impl<'db> Sema<'db> {
                     Vis::Private,
                     DefKind::Struct(struct_id),
                     tydef.word,
+                    Mutability::Imm,
                     self.db.types.typ,
                 )?;
 
@@ -565,7 +583,14 @@ impl<'db> Sema<'db> {
         self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::ExternLet)?;
 
         let ty = self.check_ty_expr(env, &let_.ty_expr, AllowTyHole::No)?;
-        let id = self.define_def(env, Vis::Private, DefKind::ExternGlobal, let_.word, ty)?;
+        let id = self.define_def(
+            env,
+            Vis::Private,
+            DefKind::ExternGlobal,
+            let_.word,
+            let_.mutability,
+            ty,
+        )?;
 
         Ok(hir::ExternLet { module_id: env.module_id(), id, word: let_.word, span: let_.span })
     }
@@ -1144,7 +1169,13 @@ impl<'db> Sema<'db> {
             let ty =
                 Ty::new(TyKind::Param(ParamTy { name: tp.word.name(), var: self.fresh_var() }));
 
-            let id = self.define_local_def(env, DefKind::Ty(ty), tp.word, self.db.types.typ);
+            let id = self.define_local_def(
+                env,
+                DefKind::Ty(ty),
+                tp.word,
+                Mutability::Imm,
+                self.db.types.typ,
+            );
 
             if let Some(prev_span) = defined_ty_params.insert(tp.word.name(), tp.word.span()) {
                 let name = tp.word.name();
@@ -1270,14 +1301,45 @@ impl<'db> Sema<'db> {
         ty.normalize(&mut self.storage.borrow_mut())
     }
 
-    fn check_assign_lhs(&self, lhs: &hir::Expr) -> CheckResult<()> {
-        match &lhs.kind {
-            hir::ExprKind::Member(_) | hir::ExprKind::Name(_) => Ok(()),
+    fn check_assign_lhs(&self, expr: &hir::Expr) -> CheckResult<()> {
+        match &expr.kind {
+            hir::ExprKind::Member(access) => self.check_assign_lhs_inner(&access.expr, expr.span),
+            hir::ExprKind::Name(name) => self.check_assign_lhs_name(name, expr.span, expr.span),
             _ => Err(Diagnostic::error("check::invalid_assign")
                 .with_message("invalid left expression in assignment")
                 .with_label(
-                    Label::primary(lhs.span).with_message("cannot assign to this expression"),
+                    Label::primary(expr.span).with_message("cannot assign to this expression"),
                 )),
+        }
+    }
+
+    fn check_assign_lhs_inner(&self, expr: &hir::Expr, origin_span: Span) -> CheckResult<()> {
+        match &expr.kind {
+            hir::ExprKind::Name(name) => self.check_assign_lhs_name(name, expr.span, origin_span),
+            _ => Ok(()),
+        }
+    }
+
+    fn check_assign_lhs_name(
+        &self,
+        name: &hir::Name,
+        span: Span,
+        origin_span: Span,
+    ) -> CheckResult<()> {
+        let def = &self.db[name.id];
+
+        if def.mutability.is_mut() {
+            Ok(())
+        } else {
+            Err(Diagnostic::error("check::invalid_assign")
+                .with_message("invalid left expression in assignment")
+                .with_label(
+                    Label::primary(origin_span).with_message("cannot assign to this expression"),
+                )
+                .with_label(
+                    Label::primary(span)
+                        .with_message(format!("because `{}` is immutable", def.name)),
+                ))
         }
     }
 }

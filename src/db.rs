@@ -25,7 +25,7 @@ use crate::{
     diagnostics::Diagnostics,
     hir::{const_eval::ConstStorage, ExprId, HirMap},
     index_vec::{new_key_type, IndexVec, IndexVecExt},
-    middle::Vis,
+    middle::{Mutability, Vis},
     qpath::QPath,
     span::{Source, SourceId, Sources, Span},
     target::{TargetMetrics, TargetPlatform},
@@ -233,6 +233,7 @@ pub struct DefInfo {
     pub qpath: QPath,
     pub scope: ScopeInfo,
     pub kind: Box<DefKind>,
+    pub mutability: Mutability,
     pub ty: Ty,
     pub span: Span,
 }
@@ -276,6 +277,7 @@ impl DefInfo {
         qpath: QPath,
         scope: ScopeInfo,
         kind: DefKind,
+        mutability: Mutability,
         ty: Ty,
         span: Span,
     ) -> DefId {
@@ -285,6 +287,7 @@ impl DefInfo {
             qpath,
             scope,
             kind: Box::new(kind),
+            mutability,
             ty,
             span,
         })

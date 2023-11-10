@@ -9,7 +9,7 @@ fn main {
 	InitWindow(screen_width, screen_height, "raylib - basic window".ptr)
 	SetTargetFPS(60)
 
-	let ball_position = Vector2({screen_width / 2} as f32, {screen_height / 2} as f32)
+	let mut ball_position = Vector2({screen_width / 2} as f32, {screen_height / 2} as f32)
 
 	loop if !WindowShouldClose() {
 		//if IsKeyDown(KEY_RIGHT) { ball_position.x += 2.0 }

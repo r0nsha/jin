@@ -11,7 +11,7 @@ use crate::{
     db::{Db, ExternLib},
     diagnostics::{Diagnostic, Label},
     macros::create_bool_enum,
-    middle::{BinOp, TyExpr, TyExprFn, TyExprName, UnOp},
+    middle::{BinOp, Mutability, TyExpr, TyExprFn, TyExprName, UnOp},
     qpath::QPath,
     span::{Source, SourceId, Span, Spanned},
     word::Word,
@@ -185,11 +185,12 @@ impl<'a> Parser<'a> {
 
     fn parse_extern_let(&mut self, attrs: Attrs) -> ParseResult<ExternLet> {
         let start = self.last_span();
+        let mutability = self.parse_optional_mutability().unwrap_or_default();
         let ident = self.eat(TokenKind::empty_ident())?;
         self.eat(TokenKind::Colon)?;
         let ty_expr = self.parse_ty()?;
         let span = start.merge(ty_expr.span());
-        Ok(ExternLet { attrs, word: ident.word(), ty_expr, span })
+        Ok(ExternLet { attrs, mutability, word: ident.word(), ty_expr, span })
     }
 
     fn parse_ty_def(&mut self, attrs: Attrs) -> ParseResult<TyDef> {
@@ -223,12 +224,26 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_pat(&mut self) -> ParseResult<Pat> {
+        let mutability = self.parse_optional_mutability();
         let tok = self.eat_any()?;
 
         match tok.kind {
-            TokenKind::Ident(_) => Ok(Pat::Name(NamePat { word: tok.word() })),
+            TokenKind::Ident(_) => Ok(Pat::Name(NamePat {
+                word: tok.word(),
+                mutability: mutability.unwrap_or_default(),
+            })),
             TokenKind::Underscore => Ok(Pat::Discard(tok.span)),
             _ => Err(unexpected_token_err("a pattern", tok.kind, tok.span)),
+        }
+    }
+
+    fn parse_optional_mutability(&mut self) -> Option<Mutability> {
+        if self.is(TokenKind::Mut) {
+            Some(Mutability::Mut)
+        } else if self.is(TokenKind::Imm) {
+            Some(Mutability::Imm)
+        } else {
+            None
         }
     }
 

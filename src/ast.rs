@@ -10,7 +10,7 @@ use ustr::Ustr;
 use crate::{
     db::{ExternLib, ModuleId},
     index_vec::{new_key_type, IndexVec},
-    middle::{BinOp, TyExpr, UnOp},
+    middle::{BinOp, Mutability, TyExpr, UnOp},
     qpath::QPath,
     span::{SourceId, Span, Spanned},
     word::Word,
@@ -221,6 +221,7 @@ pub struct StructTyField {
 #[derive(Debug, Clone)]
 pub struct ExternLet {
     pub attrs: Attrs,
+    pub mutability: Mutability,
     pub word: Word,
     pub ty_expr: TyExpr,
     pub span: Span,
@@ -255,6 +256,7 @@ impl Pat {
 #[derive(Debug, Clone)]
 pub struct NamePat {
     pub word: Word,
+    pub mutability: Mutability,
 }
 
 impl fmt::Display for Pat {

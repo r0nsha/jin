@@ -7,7 +7,7 @@ use crate::{
     ast,
     ast::Ast,
     db::{Db, DefId, DefInfo, DefKind, ModuleId, ScopeInfo, ScopeLevel},
-    middle::Vis,
+    middle::{Mutability, Vis},
     qpath::QPath,
     span::Span,
     sym,
@@ -96,7 +96,6 @@ impl BuiltinTys {
     }
 
     fn define(&mut self, db: &mut Db, name: &str, ty: Ty) -> Option<DefId> {
-        let typ = db.types.typ;
         let name = ustr(name);
         let scope_info = ScopeInfo {
             module_id: db.main_module_id().expect("to be resolved"),
@@ -111,7 +110,8 @@ impl BuiltinTys {
                 QPath::from(name),
                 scope_info,
                 DefKind::Ty(ty),
-                typ,
+                Mutability::Imm,
+                db.types.typ,
                 Span::unknown(),
             ),
         )

@@ -13,6 +13,28 @@ pub enum Vis {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Mutability {
+    Imm,
+    Mut,
+}
+
+impl Mutability {
+    pub fn is_imm(self) -> bool {
+        matches!(self, Mutability::Imm)
+    }
+
+    pub fn is_mut(self) -> bool {
+        matches!(self, Mutability::Mut)
+    }
+}
+
+impl Default for Mutability {
+    fn default() -> Self {
+        Self::Imm
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum BinOp {
     Add,
     Sub,
