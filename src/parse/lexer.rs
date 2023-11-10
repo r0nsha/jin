@@ -110,7 +110,9 @@ impl<'s> Lexer<'s> {
                         }
                     }
                     '-' => {
-                        if self.eat('>') {
+                        if self.eat('=') {
+                            TokenKind::MinusEq
+                        } else if self.eat('>') {
                             TokenKind::Arrow
                         } else {
                             TokenKind::Minus
