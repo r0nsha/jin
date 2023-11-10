@@ -330,6 +330,18 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 let lhs = self.lower_place(&assign.lhs);
                 let rhs = self.lower_expr(&assign.rhs);
 
+                let rhs = if let Some(op) = assign.op {
+                    self.push_inst_with_register(assign.lhs.ty, |value| Inst::Binary {
+                        value,
+                        lhs,
+                        rhs,
+                        op,
+                        span: expr.span,
+                    })
+                } else {
+                    rhs
+                };
+
                 self.push_inst(Inst::Store { value: rhs, target: lhs });
 
                 self.const_unit()
