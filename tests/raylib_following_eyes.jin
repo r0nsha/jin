@@ -1,4 +1,7 @@
 fn extern printf(fmt: *u8, ..) -> i32
+fn extern atan2f(y: f32, x: f32) -> f32
+fn extern cosf(arg: f32) -> f32
+fn extern sinf(arg: f32) -> f32
 
 fn main {
 	let screen_width = 800
@@ -15,53 +18,44 @@ fn main {
 	let mut iris_right_pos = Vector2({{screen_width / 2} as f32} + 100.0, {screen_height / 2} as f32)
 	let iris_radius = 24.0
 
-	let mut angle = 0.0
-	let mut dx = 0.0
-	let mut dy = 0.0
-	let mut dxx = 0.0
-	let mut dyy = 0.0
-
 	loop if !WindowShouldClose() {
 		iris_left_pos = GetMousePosition()
 		iris_right_pos = GetMousePosition()
 
-		// TODO: move angle to local
-		// TODO: move dx, dy to local
-		// TODO: move dxx, dyy to local
 		if !CheckCollisionPointCircle(iris_left_pos, sclera_left_pos, sclera_radius - 20.0) {
-			dx = iris_left_pos.x - sclera_left_pos.x
-			dy = iris_left_pos.y - sclera_left_pos.y
+			let dx = iris_left_pos.x - sclera_left_pos.x
+			let dy = iris_left_pos.y - sclera_left_pos.y
 
-			angle = atan2f(dy, dx)
+			let angle = atan2f(dy, dx)
 
-			dxx = {sclera_radius - iris_radius} * cosf(angle)
-			dy = {sclera_radius - iris_radius} * sinf(angle)
+			let dxx = {sclera_radius - iris_radius} * cosf(angle)
+			let dyy = {sclera_radius - iris_radius} * sinf(angle)
 
-			iris_left_pos.x = sclera_left_pos + dxx
-			iris_left_pos.y = sclera_left_pos + dyy
+			iris_left_pos.x = sclera_left_pos.x + dxx
+			iris_left_pos.y = sclera_left_pos.y + dyy
 		}
 
 		if !CheckCollisionPointCircle(iris_right_pos, sclera_right_pos, sclera_radius - 20.0) {
-			dx = iris_right_pos.x - sclera_right_pos.x
-			dy = iris_right_pos.y - sclera_right_pos.y
+			let dx = iris_right_pos.x - sclera_right_pos.x
+			let dy = iris_right_pos.y - sclera_right_pos.y
 
-			angle = atan2f(dy, dx)
+			let angle = atan2f(dy, dx)
 
-			dxx = {sclera_radius - iris_radius} * cosf(angle)
-			dy = {sclera_radius - iris_radius} * sinf(angle)
+			let dxx = {sclera_radius - iris_radius} * cosf(angle)
+			let dyy = {sclera_radius - iris_radius} * sinf(angle)
 
-			iris_right_pos.x = sclera_right_pos + dxx
-			iris_right_pos.y = sclera_right_pos + dyy
+			iris_right_pos.x = sclera_right_pos.x + dxx
+			iris_right_pos.y = sclera_right_pos.y + dyy
 		}
 
 		BeginDrawing()
 		ClearBackground(RAYWHITE)
-		DrawCircleV(sclera_left_pos, scleraRadius, LIGHTGRAY)
-		DrawCircleV(iris_left_pos, irisRadius, BROWN)
-		DrawCircleV(iris_left_pos, 10, BLACK)
-		DrawCircleV(sclera_right_pos, scleraRadius, LIGHTGRAY)
-		DrawCircleV(iris_right_pos, irisRadius, DARKGREEN)
-		DrawCircleV(iris_right_pos, 10, BLACK)
+		DrawCircleV(sclera_left_pos, sclera_radius, LIGHTGRAY)
+		DrawCircleV(iris_left_pos, iris_radius, BROWN)
+		DrawCircleV(iris_left_pos, 10.0, BLACK)
+		DrawCircleV(sclera_right_pos, sclera_radius, LIGHTGRAY)
+		DrawCircleV(iris_right_pos, iris_radius, DARKGREEN)
+		DrawCircleV(iris_right_pos, 10.0, BLACK)
 		DrawFPS(10, 10)
 		EndDrawing()
 	}
