@@ -1304,9 +1304,9 @@ impl<'db> Sema<'db> {
     fn check_assign_lhs(&self, expr: &hir::Expr) -> CheckResult<()> {
         match &expr.kind {
             hir::ExprKind::Member(access) => self.check_assign_lhs_inner(&access.expr, expr.span),
-            hir::ExprKind::Name(name) => self.check_assign_lhs_name(name, expr.span, expr.span),
+            hir::ExprKind::Name(name) => self.check_assign_lhs_name(name, expr.span),
             _ => Err(Diagnostic::error("check::invalid_assign")
-                .with_message("invalid left expression in assignment")
+                .with_message("invalid left-hand side of assignment")
                 .with_label(
                     Label::primary(expr.span).with_message("cannot assign to this expression"),
                 )),
@@ -1315,30 +1315,22 @@ impl<'db> Sema<'db> {
 
     fn check_assign_lhs_inner(&self, expr: &hir::Expr, origin_span: Span) -> CheckResult<()> {
         match &expr.kind {
-            hir::ExprKind::Name(name) => self.check_assign_lhs_name(name, expr.span, origin_span),
+            hir::ExprKind::Name(name) => self.check_assign_lhs_name(name, origin_span),
             _ => Ok(()),
         }
     }
 
-    fn check_assign_lhs_name(
-        &self,
-        name: &hir::Name,
-        span: Span,
-        origin_span: Span,
-    ) -> CheckResult<()> {
+    fn check_assign_lhs_name(&self, name: &hir::Name, origin_span: Span) -> CheckResult<()> {
         let def = &self.db[name.id];
 
         if def.mutability.is_mut() {
             Ok(())
         } else {
-            Err(Diagnostic::error("check::invalid_assign")
-                .with_message("invalid left expression in assignment")
+            Err(Diagnostic::error("check::immutable_assign")
+                .with_message(format!("cannot assign twice to immutable value `{}`", def.name))
                 .with_label(
-                    Label::primary(origin_span).with_message("cannot assign to this expression"),
-                )
-                .with_label(
-                    Label::primary(span)
-                        .with_message(format!("because `{}` is immutable", def.name)),
+                    Label::primary(origin_span)
+                        .with_message(format!("`{}` is immutable", def.name)),
                 ))
         }
     }
