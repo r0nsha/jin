@@ -74,31 +74,31 @@ impl<'db> Generator<'db> {
     }
 
     pub fn codegen_bin_op(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
-        match data.op {
-            BinOp::Add => self.codegen_bin_op_add(state, data),
-            BinOp::Sub => self.codegen_bin_op_sub(state, data),
-            BinOp::Mul => self.codegen_bin_op_mul(state, data),
-            BinOp::Div | BinOp::Rem => self.codegen_bin_op_div(state, data),
-            _ => {
-                let (lhs, rhs) = (self.value(state, data.lhs), self.value(state, data.rhs));
-
-                self.value_assign(state, data.target, || {
-                    D::intersperse([lhs, D::text(data.op.to_string()), rhs], D::space())
-                })
+        if data.ty.is_any_int() {
+            // Perform safety checked ops
+            match data.op {
+                BinOp::Add => return self.codegen_bin_op_add(state, data),
+                BinOp::Sub => return self.codegen_bin_op_sub(state, data),
+                BinOp::Mul => return self.codegen_bin_op_mul(state, data),
+                BinOp::Div | BinOp::Rem => return self.codegen_bin_op_div(state, data),
+                _ => (),
             }
         }
+
+        let (lhs, rhs) = (self.value(state, data.lhs), self.value(state, data.rhs));
+        self.value_assign(state, data.target, || bin_op(lhs, data.op, rhs))
     }
 
     fn codegen_bin_op_add(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
-        self.codegen_bin_op_aux(state, "add", "add", data)
+        self.codegen_safe_bin_op(state, "add", "add", data)
     }
 
     fn codegen_bin_op_sub(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
-        self.codegen_bin_op_aux(state, "sub", "subtract", data)
+        self.codegen_safe_bin_op(state, "sub", "subtract", data)
     }
 
     fn codegen_bin_op_mul(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
-        self.codegen_bin_op_aux(state, "mul", "multiply", data)
+        self.codegen_safe_bin_op(state, "mul", "multiply", data)
     }
 
     fn codegen_bin_op_div(&self, state: &FnState<'db>, data: &BinOpData) -> D<'db> {
@@ -107,14 +107,12 @@ impl<'db> Generator<'db> {
         let cond = rhs.clone().append(D::text(" == 0"));
         let safety_check = self.panic_if(cond, "attempt to divide by zero", data.span);
 
-        let op = self.value_assign(state, data.target, || {
-            D::intersperse([lhs, D::text(data.op.to_string()), rhs], D::space())
-        });
+        let op = self.value_assign(state, data.target, || bin_op(lhs, data.op, rhs));
 
         D::intersperse([safety_check, op], D::hardline())
     }
 
-    fn codegen_bin_op_aux(
+    fn codegen_safe_bin_op(
         &self,
         state: &FnState<'db>,
         fname: &str,
@@ -159,4 +157,8 @@ impl<'db> Generator<'db> {
 
 fn overflow_msg(action: &str) -> String {
     format!("attempt to {action} with overflow")
+}
+
+fn bin_op<'a>(lhs: D<'a>, op: BinOp, rhs: D<'a>) -> D<'a> {
+    D::intersperse([lhs, D::text(op.to_string()), rhs], D::space())
 }
