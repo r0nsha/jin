@@ -174,11 +174,6 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text("to"))
                 .append(D::space())
                 .append(D::text(target.to_string(self.db))),
-            Inst::Member { value, inner, member } => self
-                .value_assign(body, *value)
-                .append(self.value(body, *inner))
-                .append(D::text("."))
-                .append(D::text(member.as_str())),
             Inst::StrLit { value, lit } => self
                 .value_assign(body, *value)
                 .append(D::text("\"").append(D::text(lit.as_str())).append(D::text("\""))),
@@ -202,6 +197,9 @@ impl<'db> PrettyCx<'db> {
             ValueKind::Global(id) => Self::global(&self.mir.globals[*id].name),
             ValueKind::Fn(id) => Self::global(&self.mir.fn_sigs[*id].name),
             ValueKind::Const(value) => pp_const_value(value),
+            ValueKind::Member(value, member) => {
+                self.value(body, *value).append(D::text(format!(".{member}")))
+            }
         }
     }
 }

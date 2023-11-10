@@ -379,9 +379,6 @@ impl<'db> Generator<'db> {
             Inst::Cast { value, inner, target, span } => {
                 self.codegen_cast(state, *value, *inner, *target, *span)
             }
-            Inst::Member { value, inner, member } => self.value_assign(state, *value, || {
-                self.value(state, *inner).append(D::text(".")).append(D::text(member.as_str()))
-            }),
             Inst::StrLit { value, lit } => self.value_assign(state, *value, || str_value(lit)),
         }
     }
@@ -408,6 +405,9 @@ impl<'db> Generator<'db> {
             ValueKind::Global(id) => D::text(self.mir.globals[*id].name.as_str()),
             ValueKind::Fn(id) => D::text(self.mir.fn_sigs[*id].name.as_str()),
             ValueKind::Const(value) => codegen_const_value(value),
+            ValueKind::Member(value, member) => {
+                self.value(state, *value).append(D::text(format!(".{member}")))
+            }
         }
     }
 }

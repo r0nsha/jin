@@ -202,7 +202,6 @@ pub enum Inst {
     Binary { value: ValueId, lhs: ValueId, rhs: ValueId, op: BinOp, span: Span },
     Unary { value: ValueId, inner: ValueId, op: UnOp },
     Cast { value: ValueId, inner: ValueId, target: Ty, span: Span },
-    Member { value: ValueId, inner: ValueId, member: Ustr },
     StrLit { value: ValueId, lit: Ustr },
 }
 
@@ -220,4 +219,5 @@ pub enum ValueKind {
     Global(GlobalId),
     Fn(FnSigId),
     Const(Const),
+    Member(ValueId, Ustr),
 }
