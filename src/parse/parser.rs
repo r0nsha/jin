@@ -319,7 +319,15 @@ impl<'a> Parser<'a> {
             let let_ = self.parse_let(Attrs::new())?;
             Ok(Expr::Let(let_))
         } else {
-            self.parse_expr()
+            let expr = self.parse_expr()?;
+
+            if self.is(TokenKind::Eq) {
+                let rhs = self.parse_expr()?;
+                let span = expr.span().merge(rhs.span());
+                Ok(Expr::Assign { lhs: Box::new(expr), rhs: Box::new(rhs), span })
+            } else {
+                Ok(expr)
+            }
         }
     }
 

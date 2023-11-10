@@ -56,6 +56,10 @@ impl Expr {
     fn walk_(&self, f: &mut impl FnMut(&Expr)) {
         match &self.kind {
             ExprKind::Let(let_) => let_.value.walk_(f),
+            ExprKind::Assign(assign) => {
+                assign.lhs.walk_(f);
+                assign.rhs.walk_(f);
+            }
             ExprKind::If(if_) => {
                 if_.cond.walk_(f);
                 if_.then.walk_(f);
@@ -94,6 +98,7 @@ impl Expr {
 #[derive(Debug, Clone)]
 pub enum ExprKind {
     Let(Let),
+    Assign(Assign),
     If(If),
     Loop(Loop),
     Break,
@@ -211,6 +216,12 @@ impl fmt::Display for Pat {
             Pat::Discard(_) => f.write_str("_"),
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct Assign {
+    pub lhs: Box<Expr>,
+    pub rhs: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]

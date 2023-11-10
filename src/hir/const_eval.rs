@@ -60,14 +60,7 @@ impl ConstStorage {
                 Lit::Float(value) => Const::Float(*value),
                 Lit::Bool(value) => Const::Bool(*value),
             }),
-            ExprKind::Let(_)
-            | ExprKind::If(_)
-            | ExprKind::Loop(_)
-            | ExprKind::Break
-            | ExprKind::Return(_)
-            | ExprKind::Call(_)
-            | ExprKind::Member(_)
-            | ExprKind::Cast(_) => None,
+            _ => None,
         };
 
         if let Some(result) = result {

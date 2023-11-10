@@ -81,6 +81,13 @@ impl PrettyCx<'_> {
             ExprKind::Let(let_) => {
                 self.pp_let(let_);
             }
+            ExprKind::Assign(assign) => {
+                self.builder.begin_child("assign".to_string());
+                self.pp_expr(&assign.lhs);
+                self.builder.add_empty_child("to".to_string());
+                self.pp_expr(&assign.rhs);
+                self.builder.end_child();
+            }
             ExprKind::If(if_) => {
                 self.builder.begin_child("if".to_string());
 

@@ -314,6 +314,14 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                     self.const_unit()
                 }
+                hir::ExprKind::Assign(assign) => {
+                    let lhs = self.lower_expr(&assign.lhs);
+                    let rhs = self.lower_expr(&assign.rhs);
+
+                    self.push_inst(Inst::Store { value: rhs, target: lhs });
+
+                    self.const_unit()
+                }
                 hir::ExprKind::If(if_) => {
                     let then_blk = self.body.create_block("if_then");
                     let else_blk = self.body.create_block("if_else");

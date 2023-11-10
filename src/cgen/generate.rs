@@ -311,12 +311,9 @@ impl<'db> Generator<'db> {
                     D::text(state.local_names.insert_unique(def_id, self.db[def_id].name).as_str());
 
                 VariableDoc::assign(self, value.ty, name_doc.clone(), self.value(state, *init))
-
-                // let stack_alloc =
-                //     VariableDoc::assign(self, value.ty, name_doc.clone(), value_name(*init));
-                // let value_assign = self.value_assign(state, value.id, || name_doc);
-                //
-                // D::intersperse([stack_alloc, value_assign], D::hardline())
+            }
+            Inst::Store { value, target } => {
+                stmt(|| assign(self.value(state, *target), self.value(state, *value)))
             }
             Inst::Br { target } => goto_stmt(state.body.block(*target)),
             Inst::BrIf { cond, then, otherwise } => if_stmt(

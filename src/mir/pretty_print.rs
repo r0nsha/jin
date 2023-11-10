@@ -110,6 +110,11 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text("local"))
                 .append(D::space())
                 .append(self.value(body, *init)),
+            Inst::Store { value, target } => D::text("store")
+                .append(D::space())
+                .append(self.value(body, *value))
+                .append(D::space())
+                .append(self.value(body, *target)),
             Inst::Br { target } => {
                 D::text("br").append(D::space()).append(D::text(body.block(*target).name()))
             }

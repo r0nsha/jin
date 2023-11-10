@@ -193,6 +193,7 @@ impl Block {
 #[derive(Debug, Clone)]
 pub enum Inst {
     Local { value: ValueId, init: ValueId },
+    Store { value: ValueId, target: ValueId },
     Br { target: BlockId },
     BrIf { cond: ValueId, then: BlockId, otherwise: Option<BlockId> },
     If { value: ValueId, cond: ValueId, then: ValueId, otherwise: ValueId },

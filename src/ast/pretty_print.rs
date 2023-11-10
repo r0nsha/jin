@@ -26,6 +26,13 @@ impl PrettyPrint for Expr {
     fn pretty_print(&self, cx: &mut PrettyCx) {
         match self {
             Self::Let(let_) => let_.pretty_print(cx),
+            Self::Assign { lhs, rhs, .. } => {
+                cx.builder.begin_child("assign".to_string());
+                lhs.pretty_print(cx);
+                cx.builder.add_empty_child("to".to_string());
+                rhs.pretty_print(cx);
+                cx.builder.end_child();
+            }
             Self::Return { expr, .. } => {
                 cx.builder.begin_child("return".to_string());
 

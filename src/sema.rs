@@ -582,6 +582,20 @@ impl<'db> Sema<'db> {
                 let let_ = self.check_let(env, let_)?;
                 self.expr(hir::ExprKind::Let(let_), self.db.types.unit, span)
             }
+            ast::Expr::Assign { lhs, rhs, span } => {
+                let lhs = self.check_expr(env, lhs, None)?;
+                let rhs = self.check_expr(env, rhs, Some(lhs.ty))?;
+
+                self.at(Obligation::exprs(*span, lhs.span, lhs.span))
+                    .eq(lhs.ty, lhs.ty)
+                    .or_coerce(self, lhs.id)?;
+
+                self.expr(
+                    hir::ExprKind::Assign(hir::Assign { lhs: Box::new(lhs), rhs: Box::new(rhs) }),
+                    self.db.types.unit,
+                    *span,
+                )
+            }
             ast::Expr::Return { expr, span } => {
                 if let Some(fn_id) = env.fn_id() {
                     let ret_ty = self.db[fn_id].ty.as_fn().unwrap().ret;
