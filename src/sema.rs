@@ -231,8 +231,10 @@ impl<'db> Sema<'db> {
             ast::Pat::Name(name) => {
                 let id = self.define_def(env, vis, kind, name.word, name.mutability, ty)?;
 
-                if let Some(value) = self.db.const_storage.expr(value_id) {
-                    self.db.const_storage.insert_def(id, value.clone());
+                if name.mutability.is_imm() {
+                    if let Some(value) = self.db.const_storage.expr(value_id) {
+                        self.db.const_storage.insert_def(id, value.clone());
+                    }
                 }
 
                 Ok(hir::Pat::Name(hir::NamePat { id, word: name.word }))
