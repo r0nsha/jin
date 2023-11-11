@@ -285,22 +285,53 @@ impl<'db> Sema<'db> {
             .with_label(Label::primary(word.span()).with_message("not found in this scope")))
     }
 
-    fn lookup_def_in_module(&mut self, module_id: ModuleId, word: Word) -> CheckResult<DefId> {
-        let symbol = Symbol::new(module_id, word.name());
+    fn lookup_def_in_module(
+        &mut self,
+        from_module_id: ModuleId,
+        in_module_id: ModuleId,
+        word: Word,
+    ) -> CheckResult<DefId> {
+        let symbol = Symbol::new(in_module_id, word.name());
 
-        if let Some(id) = self.global_scope.get_def(&symbol) {
-            return Ok(id);
+        let id = if let Some(id) = self.global_scope.get_def(&symbol) {
+            id
+        } else {
+            self.find_and_check_item(&symbol)?.ok_or_else(|| {
+                let module_name = self.db[in_module_id].name.join();
+
+                Diagnostic::error("check::name_not_found_in_module")
+                    .with_message(format!("cannot find `{word}` in module `{module_name}`",))
+                    .with_label(
+                        Label::primary(word.span())
+                            .with_message(format!("not found in {module_name}")),
+                    )
+            })?
+        };
+
+        self.check_def_access(from_module_id, id, word.span())?;
+
+        Ok(id)
+    }
+
+    fn check_def_access(
+        &self,
+        module_id: ModuleId,
+        accessed: DefId,
+        span: Span,
+    ) -> CheckResult<()> {
+        let def = &self.db[accessed];
+
+        match def.scope.vis {
+            Vis::Private if module_id != def.scope.module_id => {
+                Err(Diagnostic::error("check::access_private_member")
+                    .with_message(format!(
+                        "`{}` is private to module `{}`",
+                        def.name, self.db[def.scope.module_id].name
+                    ))
+                    .with_label(Label::primary(span).with_message("private member")))
+            }
+            _ => Ok(()),
         }
-
-        self.find_and_check_item(&symbol)?.ok_or_else(|| {
-            let module_name = self.db[module_id].name.join();
-
-            Diagnostic::error("check::name_not_found_in_module")
-                .with_message(format!("cannot find `{word}` in module `{module_name}`",))
-                .with_label(
-                    Label::primary(word.span()).with_message(format!("not found in {module_name}")),
-                )
-        })
     }
 
     fn find_and_check_item(&mut self, symbol: &Symbol) -> CheckResult<Option<DefId>> {
@@ -900,7 +931,8 @@ impl<'db> Sema<'db> {
                         }
                     }
                     TyKind::Module(module_id) => {
-                        let def_id = self.lookup_def_in_module(*module_id, *member)?;
+                        let def_id =
+                            self.lookup_def_in_module(env.module_id(), *module_id, *member)?;
 
                         return Ok(self.expr(
                             hir::ExprKind::Name(hir::Name {
