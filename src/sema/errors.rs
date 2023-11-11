@@ -6,10 +6,14 @@ use crate::{
     word::Word,
 };
 
-pub fn invalid_member(db: &Db, ty: Ty, member: Word) -> Diagnostic {
+pub fn invalid_member(db: &Db, expr_ty: Ty, expr_span: Span, member: Word) -> Diagnostic {
     Diagnostic::error("check::invalid_member")
-        .with_message(format!("type `{}` has no member `{}`", ty.display(db), member))
+        .with_message(format!("no member `{}` on type `{}`", member, expr_ty.display(db)))
         .with_label(Label::primary(member.span()).with_message("unknown member"))
+        .with_label(
+            Label::secondary(expr_span)
+                .with_message(format!("expression has type `{}`", expr_ty.display(db))),
+        )
 }
 
 pub fn named_param_not_found(name: Word) -> Diagnostic {

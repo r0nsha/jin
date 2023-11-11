@@ -40,8 +40,8 @@ impl<'db> TyPrinter<'db> {
                         f.write_str(", ")?;
                     }
                 }
+                f.write_str(") -> ")?;
 
-                f.write_str(") ")?;
                 self.fmt_type(f, &fun.ret)
             }
             TyKind::Struct(sid) => f.write_str(self.db.structs[*sid].name.as_str()),

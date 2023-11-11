@@ -4,6 +4,6 @@ fn main {
 	bar.hello()
 }
 
-fn get_str -> str {
+fn get_hello_world -> str {
 	"Hello from bar!\n"
 }

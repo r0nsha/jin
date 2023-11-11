@@ -890,7 +890,7 @@ impl<'db> Sema<'db> {
                         if let Some(field) = struct_info.field_by_name(member.name().as_str()) {
                             field.ty
                         } else {
-                            return Err(errors::invalid_member(self.db, ty, *member));
+                            return Err(errors::invalid_member(self.db, ty, expr.span, *member));
                         }
                     }
                     TyKind::Module(module_id) => {
@@ -910,17 +910,7 @@ impl<'db> Sema<'db> {
                         Ty::new(TyKind::RawPtr(self.db.types.u8))
                     }
                     TyKind::Str if member.name() == sym::LEN => self.db.types.uint,
-                    _ => {
-                        return Err(Diagnostic::error("check::invalid_member")
-                            .with_message(format!(
-                                "type `{}` has no member `{}`",
-                                ty.display(self.db),
-                                member
-                            ))
-                            .with_label(
-                                Label::primary(member.span()).with_message("unknown member"),
-                            ))
-                    }
+                    _ => return Err(errors::invalid_member(self.db, ty, expr.span, *member)),
                 };
 
                 self.expr(
