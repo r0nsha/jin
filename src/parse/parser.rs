@@ -5,8 +5,8 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         Attr, AttrKind, Attrs, CallArg, Expr, ExternImport, ExternLet, Fn, FnKind, FnParam, FnSig,
-        Item, Let, LitKind, Module, NamePat, Pat, StructTyDef, StructTyField, TyDef, TyDefKind,
-        TyParam,
+        Import, Item, Let, LitKind, Module, NamePat, Pat, StructTyDef, StructTyField, TyDef,
+        TyDefKind, TyParam,
     },
     db::{Db, ExternLib, StructKind},
     diagnostics::{Diagnostic, Label},
@@ -79,23 +79,13 @@ impl<'a> Parser<'a> {
         if self.is(TokenKind::Import) {
             let start = self.last_span();
 
-            self.eat(TokenKind::Extern)?;
+            if self.is(TokenKind::Extern) {
+                return self
+                    .parse_extern_import(&attrs, start)
+                    .map(|i| Some(Item::ExternImport(i)));
+            }
 
-            let path_tok = self.eat(TokenKind::empty_str())?;
-            let path = path_tok.str_value();
-
-            let relative_to = self.parent_path().unwrap();
-            let lib = ExternLib::try_from_str(&path, relative_to).ok_or_else(|| {
-                Diagnostic::error("check::path_not_found")
-                    .with_message(format!("path `{path}` not found"))
-                    .with_label(Label::primary(path_tok.span).with_message("not found"))
-            })?;
-
-            return Ok(Some(Item::ExternImport(ExternImport {
-                attrs,
-                lib,
-                span: start.merge(path_tok.span),
-            })));
+            return self.parse_import(&attrs, start).map(|i| Some(Item::Import(i)));
         }
 
         if !attrs.is_empty() {
@@ -104,6 +94,29 @@ impl<'a> Parser<'a> {
         }
 
         Ok(None)
+    }
+
+    fn parse_import(&mut self, attrs: &[Attr], start: Span) -> Result<Import, Diagnostic> {
+        let ident = self.eat(TokenKind::empty_ident())?;
+        Ok(Import { attrs: attrs.to_owned(), word: ident.word(), span: start.merge(ident.span) })
+    }
+
+    fn parse_extern_import(
+        &mut self,
+        attrs: &[Attr],
+        start: Span,
+    ) -> Result<ExternImport, Diagnostic> {
+        let path_tok = self.eat(TokenKind::empty_str())?;
+        let path = path_tok.str_value();
+        let relative_to = self.parent_path().unwrap();
+
+        let lib = ExternLib::try_from_str(&path, relative_to).ok_or_else(|| {
+            Diagnostic::error("check::path_not_found")
+                .with_message(format!("path `{path}` not found"))
+                .with_label(Label::primary(path_tok.span).with_message("not found"))
+        })?;
+
+        Ok(ExternImport { attrs: attrs.to_owned(), lib, span: start.merge(path_tok.span) })
     }
 
     fn parse_attrs(&mut self) -> ParseResult<Vec<Attr>> {
@@ -608,48 +621,27 @@ impl<'a> Parser<'a> {
         Ok(Expr::Loop { cond, expr: Box::new(expr), span })
     }
 
-    fn parse_postfix(&mut self, expr: Expr) -> ParseResult<Expr> {
-        let start = self.last_span();
-
-        match self.token() {
-            Some(tok) => match tok.kind {
-                TokenKind::OpenParen if self.spans_are_on_same_line(start, tok.span) => {
-                    self.parse_call(expr)
-                }
+    fn parse_postfix(&mut self, mut expr: Expr) -> ParseResult<Expr> {
+        while let Some(tok) = self.token() {
+            expr = match tok.kind {
+                TokenKind::OpenParen => self.parse_call(expr)?,
                 TokenKind::As => {
                     self.next();
                     let ty = self.parse_ty()?;
                     let span = expr.span().merge(ty.span());
-                    Ok(Expr::Cast { expr: Box::new(expr), ty_expr: ty, span })
+                    Expr::Cast { expr: Box::new(expr), ty_expr: ty, span }
                 }
                 TokenKind::Dot => {
                     self.next();
                     let name_ident = self.eat(TokenKind::empty_ident())?;
                     let span = expr.span().merge(name_ident.span);
-                    Ok(Expr::Member { expr: Box::new(expr), member: name_ident.word(), span })
+                    Expr::Member { expr: Box::new(expr), member: name_ident.word(), span }
                 }
-                // TokenKind::Dot => {
-                //     self.next();
-                //     let tok = self.require()?;
-                //
-                //     if self.is(TokenKind::As) {
-                //         self.eat(TokenKind::OpenParen)?;
-                //         let ty = self.parse_ty()?;
-                //         let end = self.eat(TokenKind::CloseParen)?.span;
-                //         let span = expr.span().merge(end);
-                //         Ok(Expr::Cast(Cast { expr: Box::new(expr), ty, span }))
-                //     } else {
-                //         Err(unexpected_token_err(
-                //             "`as`",
-                //             tok.kind,
-                //             tok.span,
-                //         ))
-                //     }
-                // }
-                _ => Ok(expr),
-            },
-            _ => Ok(expr),
+                _ => break,
+            }
         }
+
+        Ok(expr)
     }
 
     fn parse_call(&mut self, expr: Expr) -> ParseResult<Expr> {

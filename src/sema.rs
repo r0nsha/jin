@@ -3,9 +3,9 @@ mod coerce;
 mod env;
 mod errors;
 mod instantiate;
-mod item_state;
 mod normalize;
 mod post;
+mod resolution_state;
 mod subst;
 mod unify;
 
@@ -32,8 +32,8 @@ use crate::{
         coerce::CoerceExt,
         env::{BuiltinTys, Env, GlobalScope, ScopeKind, Symbol},
         instantiate::instantiate,
-        item_state::{ItemState, ItemStatus, ResolvedFnSig},
         normalize::NormalizeTy,
+        resolution_state::{ItemStatus, ModuleStatus, ResolutionState, ResolvedFnSig},
         unify::Obligation,
     },
     span::{Span, Spanned},
@@ -54,10 +54,10 @@ pub struct Sema<'db> {
     hir: Hir,
     global_scope: GlobalScope,
     builtin_tys: BuiltinTys,
-    item_state: ItemState,
+    resolution_state: ResolutionState,
     storage: RefCell<TyStorage>,
     expr_id: Counter<ExprId>,
-    checking_items: bool,
+    checking_modules: bool,
 }
 
 #[derive(Debug)]
@@ -85,17 +85,17 @@ impl<'db> Sema<'db> {
             db,
             ast,
             hir: Hir::new(),
-            item_state: ItemState::new(),
+            resolution_state: ResolutionState::new(),
             storage: RefCell::new(TyStorage::new()),
             expr_id: Counter::new(),
-            checking_items: true,
+            checking_modules: true,
         }
     }
 
     fn run(mut self) -> CheckResult<Hir> {
-        self.check_items()?;
-        self.checking_items = false;
-        self.check_fn_bodies()?;
+        self.check_all_modules()?;
+        self.checking_modules = false;
+        self.check_all_fn_bodies()?;
 
         self.subst();
 
@@ -105,23 +105,37 @@ impl<'db> Sema<'db> {
         Ok(self.hir)
     }
 
-    fn check_items(&mut self) -> CheckResult<()> {
+    fn check_all_modules(&mut self) -> CheckResult<()> {
         for module in &self.ast.modules {
-            let mut env = Env::new(module.id);
-
-            for (item_id, item) in module.items.iter_enumerated() {
-                let global_item_id = ast::GlobalItemId::new(module.id, item_id);
-
-                if let ItemStatus::Unresolved = self.item_state.get_status(&global_item_id) {
-                    self.check_item(&mut env, item, global_item_id)?;
-                }
-            }
+            self.check_module(module)?;
         }
 
         Ok(())
     }
 
-    fn check_fn_bodies(&mut self) -> CheckResult<()> {
+    fn check_module(&mut self, module: &ast::Module) -> Result<(), Diagnostic> {
+        if let ModuleStatus::Resolved = self.resolution_state.get_module_status(&module.id) {
+            return Ok(());
+        }
+
+        self.resolution_state.mark_module_status(module.id, ModuleStatus::InProgress);
+
+        let mut env = Env::new(module.id);
+
+        for (item_id, item) in module.items.iter_enumerated() {
+            let global_item_id = ast::GlobalItemId::new(module.id, item_id);
+
+            if let ItemStatus::Unresolved = self.resolution_state.get_item_status(&global_item_id) {
+                self.check_item(&mut env, item, global_item_id)?;
+            }
+        }
+
+        self.resolution_state.mark_module_status(module.id, ModuleStatus::Resolved);
+
+        Ok(())
+    }
+
+    fn check_all_fn_bodies(&mut self) -> CheckResult<()> {
         for module in &self.ast.modules {
             let mut env = Env::new(module.id);
 
@@ -129,7 +143,7 @@ impl<'db> Sema<'db> {
                 if let ast::Item::Fn(fun) = item {
                     let global_item_id = ast::GlobalItemId::new(module.id, item_id);
                     let ResolvedFnSig { id, sig } = self
-                        .item_state
+                        .resolution_state
                         .get_resolved_fn_sig(global_item_id)
                         .expect("fn to be resolved")
                         .clone();
@@ -256,7 +270,7 @@ impl<'db> Sema<'db> {
             return Ok(id);
         }
 
-        if self.checking_items {
+        if self.checking_modules {
             if let Some(id) = self.find_and_check_item(&symbol)? {
                 return Ok(id);
             }
@@ -292,7 +306,7 @@ impl<'db> Sema<'db> {
         item: &ast::Item,
         item_id: ast::GlobalItemId,
     ) -> CheckResult<()> {
-        self.item_state.mark_as_in_progress(item_id).map_err(|err| {
+        self.resolution_state.mark_in_progress_item(item_id).map_err(|err| {
             let origin_span = item.span();
             let reference_span = self.ast.find_item(err.causee).expect("item to exist").span();
 
@@ -315,7 +329,7 @@ impl<'db> Sema<'db> {
                 self.check_ty_def(env, tydef)?;
             }
             ast::Item::Import(import) => {
-                todo!("check import");
+                self.check_import(env, import)?;
             }
             ast::Item::ExternLet(let_) => {
                 let let_ = self.check_extern_let(env, let_)?;
@@ -326,7 +340,7 @@ impl<'db> Sema<'db> {
             }
         }
 
-        self.item_state.mark_as_resolved(item_id);
+        self.resolution_state.mark_resolved_item(item_id);
 
         Ok(())
     }
@@ -423,7 +437,7 @@ impl<'db> Sema<'db> {
             sig.ty,
         )?;
 
-        self.item_state.insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig });
+        self.resolution_state.insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig });
 
         Ok(())
     }
@@ -577,6 +591,10 @@ impl<'db> Sema<'db> {
             }
         }
 
+        Ok(())
+    }
+
+    fn check_import(&mut self, env: &mut Env, import: &ast::Import) -> CheckResult<()> {
         Ok(())
     }
 

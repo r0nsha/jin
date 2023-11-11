@@ -1,31 +1,45 @@
 use enum_as_inner::EnumAsInner;
 use rustc_hash::FxHashMap;
 
-use crate::{ast, db::DefId, hir};
+use crate::{
+    ast,
+    db::{DefId, ModuleId},
+    hir,
+};
 
-pub struct ItemState {
-    statuses: ast::ItemMap<ItemStatus>,
+pub struct ResolutionState {
+    module_statuses: FxHashMap<ModuleId, ModuleStatus>,
+    item_statuses: FxHashMap<ast::GlobalItemId, ItemStatus>,
     resolved_fn_sigs: ast::ItemMap<ResolvedFnSig>,
     check_stack: Vec<ast::GlobalItemId>,
 }
 
-impl ItemState {
+impl ResolutionState {
     pub fn new() -> Self {
         Self {
-            statuses: FxHashMap::default(),
+            module_statuses: FxHashMap::default(),
+            item_statuses: FxHashMap::default(),
             resolved_fn_sigs: FxHashMap::default(),
             check_stack: vec![],
         }
     }
 
-    pub fn get_status(&self, id: &ast::GlobalItemId) -> ItemStatus {
-        self.statuses.get(id).copied().unwrap_or(ItemStatus::Unresolved)
+    pub fn get_module_status(&self, id: &ModuleId) -> ModuleStatus {
+        self.module_statuses.get(id).copied().unwrap_or(ModuleStatus::Unresolved)
     }
 
-    pub fn mark_as_in_progress(&mut self, id: ast::GlobalItemId) -> Result<(), CyclicItemErr> {
-        match self.get_status(&id) {
+    pub fn mark_module_status(&mut self, id: ModuleId, status: ModuleStatus) {
+        self.module_statuses.insert(id, status);
+    }
+
+    pub fn get_item_status(&self, id: &ast::GlobalItemId) -> ItemStatus {
+        self.item_statuses.get(id).copied().unwrap_or(ItemStatus::Unresolved)
+    }
+
+    pub fn mark_in_progress_item(&mut self, id: ast::GlobalItemId) -> Result<(), CyclicItemErr> {
+        match self.get_item_status(&id) {
             ItemStatus::Unresolved => {
-                self.statuses.insert(id, ItemStatus::InProgress);
+                self.item_statuses.insert(id, ItemStatus::InProgress);
                 self.check_stack.push(id);
                 Ok(())
             }
@@ -37,8 +51,8 @@ impl ItemState {
         }
     }
 
-    pub fn mark_as_resolved(&mut self, id: ast::GlobalItemId) {
-        self.statuses.insert(id, ItemStatus::Resolved);
+    pub fn mark_resolved_item(&mut self, id: ast::GlobalItemId) {
+        self.item_statuses.insert(id, ItemStatus::Resolved);
         self.check_stack.pop();
     }
 
@@ -49,6 +63,13 @@ impl ItemState {
     pub fn insert_resolved_fn_sig(&mut self, id: ast::GlobalItemId, resolved_sig: ResolvedFnSig) {
         self.resolved_fn_sigs.insert(id, resolved_sig);
     }
+}
+
+#[derive(Debug, Clone, Copy, EnumAsInner)]
+pub enum ModuleStatus {
+    Unresolved,
+    InProgress,
+    Resolved,
 }
 
 #[derive(Debug, Clone, Copy, EnumAsInner)]
