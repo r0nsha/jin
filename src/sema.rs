@@ -114,7 +114,7 @@ impl<'db> Sema<'db> {
     }
 
     fn check_module(&mut self, module: &ast::Module) -> Result<(), Diagnostic> {
-        if let ModuleStatus::Resolved = self.resolution_state.get_module_status(&module.id) {
+        if let ModuleStatus::Resolved = self.resolution_state.get_module_status(module.id) {
             return Ok(());
         }
 

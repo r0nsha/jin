@@ -24,8 +24,8 @@ impl ResolutionState {
         }
     }
 
-    pub fn get_module_status(&self, id: &ModuleId) -> ModuleStatus {
-        self.module_statuses.get(id).copied().unwrap_or(ModuleStatus::Unresolved)
+    pub fn get_module_status(&self, id: ModuleId) -> ModuleStatus {
+        self.module_statuses.get(&id).copied().unwrap_or(ModuleStatus::Unresolved)
     }
 
     pub fn mark_module_status(&mut self, id: ModuleId, status: ModuleStatus) {

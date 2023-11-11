@@ -23,9 +23,7 @@ pub fn named_param_not_found(name: Word) -> Diagnostic {
 
 pub fn arg_mismatch(expected: usize, found: usize, span: Span) -> Diagnostic {
     Diagnostic::error("check::arg_mismatch")
-        .with_message(format!(
-            "function takes {expected} argument(s), but {found} were supplied"
-        ))
+        .with_message(format!("function takes {expected} argument(s), but {found} were supplied"))
         .with_label(
             Label::primary(span)
                 .with_message(format!("expected {expected} arguments, found {found}")),
