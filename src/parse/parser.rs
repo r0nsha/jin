@@ -13,7 +13,7 @@ use crate::{
     db::{Db, ExternLib, StructKind},
     diagnostics::{Diagnostic, Label},
     macros::create_bool_enum,
-    middle::{BinOp, Mutability, TyExpr, TyExprFn, TyExprName, UnOp},
+    middle::{BinOp, Mutability, TyExpr, TyExprFn, TyExprName, UnOp, Vis},
     qpath::QPath,
     span::{Source, SourceId, Span, Spanned},
     word::Word,
@@ -108,6 +108,7 @@ impl<'a> Parser<'a> {
 
     fn parse_import(&mut self, attrs: &[Attr], start: Span) -> Result<Import, Diagnostic> {
         let mod_name = self.eat(TokenKind::empty_ident())?.word();
+        let vis = self.parse_vis();
         let absolute_path = self.search_import_path(mod_name)?;
         self.imported_module_paths.insert(absolute_path.clone());
 
@@ -115,6 +116,7 @@ impl<'a> Parser<'a> {
             attrs: attrs.to_owned(),
             path: absolute_path,
             word: mod_name,
+            vis,
             span: start.merge(mod_name.span()),
         })
     }
@@ -200,11 +202,19 @@ impl<'a> Parser<'a> {
     fn parse_fn(&mut self, attrs: Attrs) -> ParseResult<Fn> {
         if self.is(TokenKind::Extern) {
             let name_ident = self.eat(TokenKind::empty_ident())?;
+            let vis = self.parse_vis();
             let (sig, is_c_variadic) = self.parse_fn_sig(name_ident.word(), AllowTyParams::No)?;
 
-            Ok(Fn { attrs, sig, kind: FnKind::Extern { is_c_variadic }, span: name_ident.span })
+            Ok(Fn {
+                attrs,
+                vis,
+                sig,
+                kind: FnKind::Extern { is_c_variadic },
+                span: name_ident.span,
+            })
         } else {
             let name_ident = self.eat(TokenKind::empty_ident())?;
+            let vis = self.parse_vis();
             let (sig, is_c_variadic) = self.parse_fn_sig(name_ident.word(), AllowTyParams::Yes)?;
 
             if is_c_variadic {
@@ -218,6 +228,7 @@ impl<'a> Parser<'a> {
 
             Ok(Fn {
                 attrs,
+                vis,
                 sig,
                 kind: FnKind::Bare { body: Box::new(body) },
                 span: name_ident.span,
@@ -239,20 +250,29 @@ impl<'a> Parser<'a> {
 
     fn parse_extern_let(&mut self, attrs: Attrs) -> ParseResult<ExternLet> {
         let start = self.last_span();
+
         let mutability = self.parse_optional_mutability().unwrap_or_default();
         let ident = self.eat(TokenKind::empty_ident())?;
+        let vis = self.parse_vis();
+
         self.eat(TokenKind::Colon)?;
         let ty_expr = self.parse_ty()?;
+
         let span = start.merge(ty_expr.span());
-        Ok(ExternLet { attrs, mutability, word: ident.word(), ty_expr, span })
+
+        Ok(ExternLet { attrs, mutability, vis, word: ident.word(), ty_expr, span })
     }
 
     fn parse_ty_def(&mut self, attrs: Attrs) -> ParseResult<TyDef> {
         let start = self.last_span();
+
         let ident = self.eat(TokenKind::empty_ident())?;
+        let vis = self.parse_vis();
+
         let kind = self.parse_ty_def_kind()?;
         let span = start.merge(self.last_span());
-        Ok(TyDef { attrs, word: ident.word(), kind, span })
+
+        Ok(TyDef { attrs, word: ident.word(), vis, kind, span })
     }
 
     fn parse_ty_def_kind(&mut self) -> ParseResult<TyDefKind> {
@@ -283,10 +303,14 @@ impl<'a> Parser<'a> {
         let tok = self.eat_any()?;
 
         match tok.kind {
-            TokenKind::Ident(_) => Ok(Pat::Name(NamePat {
-                word: tok.word(),
-                mutability: mutability.unwrap_or_default(),
-            })),
+            TokenKind::Ident(_) => {
+                let vis = self.parse_vis();
+                Ok(Pat::Name(NamePat {
+                    word: tok.word(),
+                    vis,
+                    mutability: mutability.unwrap_or_default(),
+                }))
+            }
             TokenKind::Underscore => Ok(Pat::Discard(tok.span)),
             _ => Err(unexpected_token_err("a pattern", tok.kind, tok.span)),
         }
@@ -299,6 +323,14 @@ impl<'a> Parser<'a> {
             Some(Mutability::Imm)
         } else {
             None
+        }
+    }
+
+    fn parse_vis(&mut self) -> Vis {
+        if self.is(TokenKind::Star) {
+            Vis::Public
+        } else {
+            Vis::Private
         }
     }
 

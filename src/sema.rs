@@ -235,7 +235,6 @@ impl<'db> Sema<'db> {
     fn define_pat(
         &mut self,
         env: &mut Env,
-        vis: Vis,
         kind: DefKind,
         pat: &ast::Pat,
         ty: Ty,
@@ -243,7 +242,7 @@ impl<'db> Sema<'db> {
     ) -> CheckResult<hir::Pat> {
         match pat {
             ast::Pat::Name(name) => {
-                let id = self.define_def(env, vis, kind, name.word, name.mutability, ty)?;
+                let id = self.define_def(env, name.vis, kind, name.word, name.mutability, ty)?;
 
                 if name.mutability.is_imm() {
                     if let Some(value) = self.db.const_storage.expr(value_id) {
@@ -323,7 +322,7 @@ impl<'db> Sema<'db> {
 
         match def.scope.vis {
             Vis::Private if module_id != def.scope.module_id => {
-                Err(Diagnostic::error("check::access_private_member")
+                Err(Diagnostic::error("check::private_member")
                     .with_message(format!(
                         "`{}` is private to module `{}`",
                         def.name, self.db[def.scope.module_id].name
@@ -477,7 +476,7 @@ impl<'db> Sema<'db> {
 
         let id = self.define_def(
             env,
-            Vis::Private,
+            fun.vis,
             DefKind::Fn(match &fun.kind {
                 ast::FnKind::Bare { .. } => FnInfo::Bare,
                 ast::FnKind::Extern { .. } => FnInfo::Extern,
@@ -561,7 +560,7 @@ impl<'db> Sema<'db> {
         }
 
         let def_kind = if env.in_global_scope() { DefKind::Global } else { DefKind::Variable };
-        let pat = self.define_pat(env, Vis::Private, def_kind, &let_.pat, ty, value.id)?;
+        let pat = self.define_pat(env, def_kind, &let_.pat, ty, value.id)?;
 
         Ok(hir::Let {
             module_id: env.module_id(),
@@ -572,10 +571,10 @@ impl<'db> Sema<'db> {
         })
     }
 
-    fn check_ty_def(&mut self, env: &mut Env, tydef: &ast::TyDef) -> CheckResult<()> {
-        self.check_attrs(env.module_id(), &tydef.attrs, AttrsPlacement::ExternLet)?;
+    fn check_ty_def(&mut self, env: &mut Env, ty_def: &ast::TyDef) -> CheckResult<()> {
+        self.check_attrs(env.module_id(), &ty_def.attrs, AttrsPlacement::ExternLet)?;
 
-        match &tydef.kind {
+        match &ty_def.kind {
             ast::TyDefKind::Struct(struct_def) => {
                 let mut fields = vec![];
                 let mut defined_fields = UstrMap::<Span>::default();
@@ -607,7 +606,7 @@ impl<'db> Sema<'db> {
                 let struct_id = self.db.structs.push_with_key(|id| StructInfo {
                     id,
                     def_id: DefId::INVALID,
-                    name: tydef.word,
+                    name: ty_def.word,
                     fields,
                     kind: struct_def.kind,
                     ctor_ty: self.db.types.unknown,
@@ -615,9 +614,9 @@ impl<'db> Sema<'db> {
 
                 let def_id = self.define_def(
                     env,
-                    Vis::Private,
+                    ty_def.vis,
                     DefKind::Struct(struct_id),
-                    tydef.word,
+                    ty_def.word,
                     Mutability::Imm,
                     TyKind::Type(TyKind::Struct(struct_id).into()).into(),
                 )?;
@@ -656,7 +655,7 @@ impl<'db> Sema<'db> {
 
         self.define_def(
             env,
-            Vis::Private,
+            import.vis,
             DefKind::ExternGlobal,
             import.word,
             Mutability::Imm,
@@ -674,14 +673,8 @@ impl<'db> Sema<'db> {
         self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::ExternLet)?;
 
         let ty = self.check_ty_expr(env, &let_.ty_expr, AllowTyHole::No)?;
-        let id = self.define_def(
-            env,
-            Vis::Private,
-            DefKind::ExternGlobal,
-            let_.word,
-            let_.mutability,
-            ty,
-        )?;
+        let id =
+            self.define_def(env, let_.vis, DefKind::ExternGlobal, let_.word, let_.mutability, ty)?;
 
         Ok(hir::ExternLet { module_id: env.module_id(), id, word: let_.word, span: let_.span })
     }

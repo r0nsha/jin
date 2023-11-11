@@ -10,7 +10,7 @@ use ustr::Ustr;
 use crate::{
     db::{ExternLib, ModuleId, StructKind},
     index_vec::{new_key_type, IndexVec},
-    middle::{BinOp, Mutability, TyExpr, UnOp},
+    middle::{BinOp, Mutability, TyExpr, UnOp, Vis},
     qpath::QPath,
     span::{SourceId, Span, Spanned},
     word::Word,
@@ -156,6 +156,7 @@ impl Spanned for Expr {
 #[derive(Debug, Clone)]
 pub struct Fn {
     pub attrs: Attrs,
+    pub vis: Vis,
     pub sig: FnSig,
     pub kind: FnKind,
     pub span: Span,
@@ -200,6 +201,7 @@ pub struct Let {
 pub struct TyDef {
     pub attrs: Attrs,
     pub word: Word,
+    pub vis: Vis,
     pub kind: TyDefKind,
     pub span: Span,
 }
@@ -226,14 +228,16 @@ pub struct Import {
     pub attrs: Attrs,
     pub path: Utf8PathBuf,
     pub word: Word,
+    pub vis: Vis,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
 pub struct ExternLet {
     pub attrs: Attrs,
-    pub mutability: Mutability,
     pub word: Word,
+    pub vis: Vis,
+    pub mutability: Mutability,
     pub ty_expr: TyExpr,
     pub span: Span,
 }
@@ -267,6 +271,7 @@ impl Pat {
 #[derive(Debug, Clone)]
 pub struct NamePat {
     pub word: Word,
+    pub vis: Vis,
     pub mutability: Mutability,
 }
 
