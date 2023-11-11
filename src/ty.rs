@@ -263,6 +263,14 @@ impl TyKind {
     pub fn is_never(&self) -> bool {
         matches!(self, Self::Never)
     }
+
+    /// Returns `true` if the ty kind is [`Module`].
+    ///
+    /// [`Module`]: TyKind::Module
+    #[must_use]
+    pub fn is_module(&self) -> bool {
+        matches!(self, Self::Module(..))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]

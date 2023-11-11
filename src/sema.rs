@@ -523,6 +523,12 @@ impl<'db> Sema<'db> {
 
         self.at(Obligation::obvious(value.span)).eq(ty, value.ty).or_coerce(self, value.id)?;
 
+        if self.normalize(ty).is_module() {
+            return Err(Diagnostic::error("check::module_in_let")
+                .with_message("cannot store a module as a value")
+                .with_label(Label::primary(value.span).with_message("expected a value")));
+        }
+
         let def_kind = if env.in_global_scope() { DefKind::Global } else { DefKind::Variable };
         let pat = self.define_pat(env, Vis::Private, def_kind, &let_.pat, ty, value.id)?;
 
