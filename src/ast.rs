@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
-    db::{ExternLib, ModuleId},
+    db::{ExternLib, ModuleId, StructKind},
     index_vec::{new_key_type, IndexVec},
     middle::{BinOp, Mutability, TyExpr, UnOp},
     qpath::QPath,
@@ -208,8 +208,8 @@ pub enum TyDefKind {
 
 #[derive(Debug, Clone)]
 pub struct StructTyDef {
+    pub kind: StructKind,
     pub fields: Vec<StructTyField>,
-    pub is_extern: bool,
 }
 
 #[derive(Debug, Clone)]

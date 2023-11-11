@@ -536,7 +536,7 @@ impl<'db> Sema<'db> {
                     def_id: DefId::INVALID,
                     name: tydef.word,
                     fields,
-                    is_extern: struct_def.is_extern,
+                    kind: struct_def.kind,
                     ctor_ty: self.db.types.unknown,
                 });
 

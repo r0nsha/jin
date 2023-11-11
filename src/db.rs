@@ -357,8 +357,13 @@ pub struct StructInfo {
     pub def_id: DefId,
     pub name: Word,
     pub fields: Vec<StructField>,
-    pub is_extern: bool,
+    pub kind: StructKind,
     pub ctor_ty: Ty,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum StructKind {
+    Extern,
 }
 
 impl StructInfo {
@@ -397,7 +402,8 @@ impl StructInfo {
             }
         }
 
-        if self.is_extern {
+        #[allow(irrefutable_let_patterns)]
+        if let StructKind::Extern = self.kind {
             self.fields.iter().find(|f| contains_struct(f.ty, self.id))
         } else {
             None

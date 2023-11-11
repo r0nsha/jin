@@ -3,6 +3,7 @@ use std::io;
 use super::{Expr, Fn, Item, LitKind, Module};
 use crate::{
     ast::{CallArg, ExternImport, ExternLet, FnKind, FnSig, Let, TyDef, TyDefKind, TyExpr},
+    db::StructKind,
     middle::BinOp,
 };
 
@@ -227,7 +228,9 @@ impl PrettyPrint for TyDef {
             TyDefKind::Struct(sdef) => {
                 cx.builder.add_empty_child(format!(
                     "{}struct",
-                    if sdef.is_extern { "extern " } else { "" }
+                    match sdef.kind {
+                        StructKind::Extern => "extern ",
+                    }
                 ));
                 cx.builder.begin_child("fields".to_string());
 

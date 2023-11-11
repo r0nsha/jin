@@ -8,7 +8,7 @@ use crate::{
         Item, Let, LitKind, Module, NamePat, Pat, StructTyDef, StructTyField, TyDef, TyDefKind,
         TyParam,
     },
-    db::{Db, ExternLib},
+    db::{Db, ExternLib, StructKind},
     diagnostics::{Diagnostic, Label},
     macros::create_bool_enum,
     middle::{BinOp, Mutability, TyExpr, TyExprFn, TyExprName, UnOp},
@@ -203,16 +203,17 @@ impl<'a> Parser<'a> {
 
     fn parse_ty_def_kind(&mut self) -> ParseResult<TyDefKind> {
         if self.is(TokenKind::Extern) {
-            self.parse_struct_ty_def(true)
+            self.parse_struct_ty_def(StructKind::Extern)
         } else if self.peek_is(TokenKind::OpenParen) {
-            self.parse_struct_ty_def(false)
+            todo!("StructKind::Ref");
+            // self.parse_struct_ty_def(StructKind::Ref)
         } else {
             let tok = self.require()?;
             Err(unexpected_token_err("( or `extern`", tok.kind, tok.span))
         }
     }
 
-    fn parse_struct_ty_def(&mut self, is_extern: bool) -> ParseResult<TyDefKind> {
+    fn parse_struct_ty_def(&mut self, kind: StructKind) -> ParseResult<TyDefKind> {
         let (fields, _) = self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             let ident = this.eat(TokenKind::empty_ident())?;
             this.eat(TokenKind::Colon)?;
@@ -220,7 +221,7 @@ impl<'a> Parser<'a> {
             Ok(StructTyField { name: ident.word(), ty_expr })
         })?;
 
-        Ok(TyDefKind::Struct(StructTyDef { fields, is_extern }))
+        Ok(TyDefKind::Struct(StructTyDef { kind, fields }))
     }
 
     fn parse_pat(&mut self) -> ParseResult<Pat> {
