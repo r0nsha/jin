@@ -101,16 +101,13 @@ impl BinOp {
 
     pub fn precedence(self) -> usize {
         match self {
-            Self::Mul | Self::Div | Self::Rem => 11,
-            Self::Add | Self::Sub => 10,
-            Self::Shl | Self::Shr => 9,
-            Self::BitAnd => 8,
-            Self::BitXor => 7,
-            Self::BitOr => 6,
-            Self::Cmp(CmpOp::Eq | CmpOp::Ne) => 5,
-            Self::Cmp(CmpOp::Lt | CmpOp::Le | CmpOp::Gt | CmpOp::Ge) => 4,
-            Self::And => 3,
-            Self::Or => 2,
+            Self::Mul | Self::Div | Self::Rem => 7,
+            Self::Add | Self::Sub => 6,
+            Self::Shl | Self::Shr => 5,
+            Self::BitAnd | Self::BitXor | Self::BitOr => 4,
+            Self::Cmp(..) => 3,
+            Self::And => 2,
+            Self::Or => 1,
         }
     }
 
