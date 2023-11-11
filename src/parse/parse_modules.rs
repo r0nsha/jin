@@ -7,8 +7,8 @@ use super::{lexer, parser};
 use crate::{
     ast::{Ast, Module},
     db::{Db, ModuleInfo},
-    diagnostics::Diagnostic,
-    span::SourceId,
+    diagnostics::{Diagnostic, Label},
+    span::{SourceId, Span},
 };
 
 pub fn parse_module_tree(db: &mut Db) -> Ast {
@@ -26,10 +26,6 @@ fn parse_module(db: &mut Db, ast: &mut Ast, source_id: SourceId) {
 
             for path in imported_module_paths {
                 parse_module_from_path(db, path, ast);
-                // if resolved_paths.insert(path) {
-                // let source = db.sources.borrow_mut().load_file(path.to_path_buf())?;
-                // parse_module(db, ast, resolved_paths, source_id);
-                // }
             }
         }
         Err(diag) => db.diagnostics.emit(diag),
@@ -47,6 +43,17 @@ fn parse_module_inner(
     };
 
     module.id = ModuleInfo::alloc(db, module.source, module.name.clone(), module.is_main());
+
+    match module.name.name().as_str() {
+        "std" | "lib" | "super" => {
+            db.diagnostics.emit(
+                Diagnostic::error("parse::reserved_module_name")
+                    .with_message(format!("module name `{}` is reserved", module.name.name()))
+                    .with_label(Label::primary(Span::initial(module.source))),
+            );
+        }
+        _ => (),
+    }
 
     Ok((module, paths))
 }
