@@ -114,7 +114,7 @@ impl<'db> Sema<'db> {
     }
 
     fn check_module(&mut self, module: &ast::Module) -> Result<(), Diagnostic> {
-        if let ModuleStatus::Resolved = self.resolution_state.get_module_status(module.id) {
+        if !self.resolution_state.get_module_status(module.id).is_unresolved() {
             return Ok(());
         }
 
@@ -285,9 +285,28 @@ impl<'db> Sema<'db> {
             .with_label(Label::primary(word.span()).with_message("not found in this scope")))
     }
 
+    fn lookup_def_in_module(&mut self, module_id: ModuleId, word: Word) -> CheckResult<DefId> {
+        let symbol = Symbol::new(module_id, word.name());
+
+        if let Some(id) = self.global_scope.get_def(&symbol) {
+            return Ok(id);
+        }
+
+        self.find_and_check_item(&symbol)?.ok_or_else(|| {
+            let module_name = self.db[module_id].name.join();
+
+            Diagnostic::error("check::name_not_found_in_module")
+                .with_message(format!("cannot find `{word}` in module `{module_name}`",))
+                .with_label(
+                    Label::primary(word.span()).with_message(format!("not found in {module_name}")),
+                )
+        })
+    }
+
     fn find_and_check_item(&mut self, symbol: &Symbol) -> CheckResult<Option<DefId>> {
         if let Some(item_id) = self.global_scope.get_item(symbol) {
             let item = &self.ast.modules[symbol.module_id].items[item_id];
+
             self.check_item(
                 &mut Env::new(symbol.module_id),
                 item,
@@ -865,14 +884,27 @@ impl<'db> Sema<'db> {
                 let ty = self.normalize(expr.ty);
 
                 let res_ty = match ty.kind() {
-                    TyKind::Struct(sid) => {
-                        let struct_info = &self.db[*sid];
+                    TyKind::Struct(struct_id) => {
+                        let struct_info = &self.db[*struct_id];
 
                         if let Some(field) = struct_info.field_by_name(member.name().as_str()) {
                             field.ty
                         } else {
                             return Err(errors::invalid_member(self.db, ty, *member));
                         }
+                    }
+                    TyKind::Module(module_id) => {
+                        let def_id = self.lookup_def_in_module(*module_id, *member)?;
+
+                        return Ok(self.expr(
+                            hir::ExprKind::Name(hir::Name {
+                                id: def_id,
+                                word: *member,
+                                instantiation: Instantiation::default(),
+                            }),
+                            self.db[def_id].ty,
+                            *span,
+                        ));
                     }
                     TyKind::Str if member.name() == sym::PTR => {
                         Ty::new(TyKind::RawPtr(self.db.types.u8))
