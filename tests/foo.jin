@@ -3,3 +3,7 @@ import bar
 fn main {
 	bar.hello()
 }
+
+fn get_str -> str {
+	"Hello from bar!\n"
+}

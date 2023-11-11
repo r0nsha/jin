@@ -1,5 +1,7 @@
+import foo
+
 fn extern printf(fmt: *u8, ..) -> i32
 
 fn hello {
-	printf("Hello from bar!\n".ptr)
+	printf(foo.get_str.ptr)
 }
