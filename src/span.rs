@@ -92,6 +92,10 @@ impl Sources {
     pub fn get(&self, id: SourceId) -> Option<&Source> {
         self.0.get(id)
     }
+
+    pub fn find_by_path(&self, path: &Utf8Path) -> Option<&Source> {
+        self.0.iter().find(|s| s.path == path)
+    }
 }
 
 impl ops::Index<SourceId> for Sources {

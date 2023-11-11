@@ -187,7 +187,7 @@ impl<'db> Sema<'db> {
                     Label::secondary(prev_span)
                         .with_message(format!("first definition of `{name}`")),
                 )
-                .with_help("you can only define items once in a module"));
+                .with_note("you can only define items once in a module"));
         }
 
         Ok(id)

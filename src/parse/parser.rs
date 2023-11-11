@@ -1,5 +1,7 @@
-use camino::Utf8Path;
+use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::files::Files;
+use path_absolutize::Absolutize;
+use rustc_hash::FxHashSet;
 
 use crate::{
     ast::{
@@ -17,11 +19,18 @@ use crate::{
     word::Word,
 };
 
-pub fn parse(db: &Db, source: &Source, tokens: Vec<Token>) -> Result<Module, Diagnostic> {
+pub fn parse(
+    db: &Db,
+    source: &Source,
+    tokens: Vec<Token>,
+) -> ParseResult<(Module, FxHashSet<Utf8PathBuf>)> {
     let name = QPath::from_path(db.root_dir(), source.path()).unwrap();
     let is_main = source.id() == db.main_source().id();
-    let module = Parser::new(source, tokens).parse(source.id(), name, is_main)?;
-    Ok(module)
+
+    let mut parser = Parser::new(source, tokens);
+    let module = parser.parse(source.id(), name, is_main)?;
+
+    Ok((module, parser.imported_module_paths))
 }
 
 #[derive(Debug)]
@@ -29,16 +38,17 @@ struct Parser<'a> {
     source: &'a Source,
     tokens: Vec<Token>,
     pos: usize,
+    imported_module_paths: FxHashSet<Utf8PathBuf>,
 }
 
 impl<'a> Parser<'a> {
     fn new(source: &'a Source, tokens: Vec<Token>) -> Self {
-        Self { source, tokens, pos: 0 }
+        Self { source, tokens, pos: 0, imported_module_paths: FxHashSet::default() }
     }
 }
 
 impl<'a> Parser<'a> {
-    fn parse(mut self, source_id: SourceId, name: QPath, is_main: bool) -> ParseResult<Module> {
+    fn parse(&mut self, source_id: SourceId, name: QPath, is_main: bool) -> ParseResult<Module> {
         let mut module = Module::new(source_id, name, is_main);
 
         while !self.eof() {
@@ -97,8 +107,42 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_import(&mut self, attrs: &[Attr], start: Span) -> Result<Import, Diagnostic> {
-        let ident = self.eat(TokenKind::empty_ident())?;
-        Ok(Import { attrs: attrs.to_owned(), word: ident.word(), span: start.merge(ident.span) })
+        let mod_name = self.eat(TokenKind::empty_ident())?.word();
+        let absolute_path = self.search_import_path(mod_name)?;
+        self.imported_module_paths.insert(absolute_path.clone());
+
+        Ok(Import {
+            attrs: attrs.to_owned(),
+            path: absolute_path,
+            word: mod_name,
+            span: start.merge(mod_name.span()),
+        })
+    }
+
+    fn search_import_path(&self, name: Word) -> Result<Utf8PathBuf, Diagnostic> {
+        let path = Utf8Path::new(&name.name()).with_extension("jin");
+        let relative_to = self.parent_path().unwrap();
+
+        let absolute_path: Utf8PathBuf = path
+            .as_std_path()
+            .absolutize_from(relative_to.as_std_path())
+            .ok()
+            .ok_or_else(|| errors::path_not_found(path.as_str(), name.span()))?
+            .to_path_buf()
+            .try_into()
+            .expect("path to be utf8");
+
+        let mut search_notes = vec![];
+        search_notes.push(format!("searched path: {absolute_path}"));
+
+        if !absolute_path.exists() {
+            return Err(Diagnostic::error("parse::module_not_found")
+                .with_message(format!("could not find module or library `{name}`"))
+                .with_label(Label::primary(name.span()))
+                .with_notes(search_notes));
+        }
+
+        Ok(absolute_path)
     }
 
     fn parse_extern_import(
@@ -110,11 +154,8 @@ impl<'a> Parser<'a> {
         let path = path_tok.str_value();
         let relative_to = self.parent_path().unwrap();
 
-        let lib = ExternLib::try_from_str(&path, relative_to).ok_or_else(|| {
-            Diagnostic::error("check::path_not_found")
-                .with_message(format!("path `{path}` not found"))
-                .with_label(Label::primary(path_tok.span).with_message("not found"))
-        })?;
+        let lib = ExternLib::try_from_str(&path, relative_to)
+            .ok_or_else(|| errors::path_not_found(path.as_str(), path_tok.span))?;
 
         Ok(ExternImport { attrs: attrs.to_owned(), lib, span: start.merge(path_tok.span) })
     }
@@ -856,3 +897,16 @@ fn unexpected_token_err(expected: &str, found: TokenKind, span: Span) -> Diagnos
 type ParseResult<T> = Result<T, Diagnostic>;
 
 create_bool_enum!(AllowTyParams);
+
+mod errors {
+    use crate::{
+        diagnostics::{Diagnostic, Label},
+        span::Span,
+    };
+
+    pub fn path_not_found(path: &str, span: Span) -> Diagnostic {
+        Diagnostic::error("parse::path_not_found")
+            .with_message(format!("path `{path}` not found"))
+            .with_label(Label::primary(span).with_message("not found"))
+    }
+}

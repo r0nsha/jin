@@ -3,6 +3,7 @@ pub mod token;
 
 use std::{fmt, io};
 
+use camino::Utf8PathBuf;
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
@@ -223,6 +224,7 @@ pub struct StructTyField {
 #[derive(Debug, Clone)]
 pub struct Import {
     pub attrs: Attrs,
+    pub path: Utf8PathBuf,
     pub word: Word,
     pub span: Span,
 }

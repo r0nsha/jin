@@ -14,7 +14,7 @@ pub struct Diagnostic {
     code: String,
     message: Option<String>,
     labels: Vec<Label>,
-    help: Option<String>,
+    notes: Vec<String>,
 }
 
 impl Diagnostic {
@@ -24,7 +24,7 @@ impl Diagnostic {
             code: code.into(),
             message: None,
             labels: vec![],
-            help: None,
+            notes: vec![],
         }
     }
 
@@ -55,12 +55,13 @@ impl Diagnostic {
         self
     }
 
-    pub fn set_help(&mut self, help: impl Into<String>) {
-        self.help = Some(help.into());
+    pub fn with_note(mut self, note: impl Into<String>) -> Self {
+        self.notes.push(note.into());
+        self
     }
 
-    pub fn with_help(mut self, help: impl Into<String>) -> Self {
-        self.set_help(help);
+    pub fn with_notes(mut self, notes: impl IntoIterator<Item = String>) -> Self {
+        self.notes.extend(notes);
         self
     }
 
@@ -109,7 +110,7 @@ impl From<Diagnostic> for codespan_diagnostic::Diagnostic<SourceId> {
             code: Some(val.code),
             message: val.message.unwrap_or_default(),
             labels: val.labels.into_iter().map(Into::into).collect(),
-            notes: val.help.map_or(vec![], |help| vec![help]),
+            notes: val.notes,
         }
     }
 }
