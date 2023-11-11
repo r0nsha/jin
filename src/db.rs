@@ -152,6 +152,14 @@ impl Db {
         self.main_fun = Some(id);
     }
 
+    pub fn find_module_by_path(&self, path: &Utf8Path) -> Option<&ModuleInfo> {
+        let sources = &self.sources.borrow();
+
+        self.modules
+            .iter()
+            .find(|m| matches!(sources.get(m.source_id), Some(s) if s.path() == path))
+    }
+
     pub fn push_coercion(&mut self, expr_id: ExprId, c: Coercion) {
         match self.coercions.entry(expr_id) {
             Entry::Occupied(mut entry) => {

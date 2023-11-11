@@ -88,7 +88,16 @@ impl<'db> TyPrinter<'db> {
             #[cfg(not(debug_assertions))]
             TyKind::Infer(InferTy::Float(_)) => f.write_str("{float}"),
 
+            #[cfg(debug_assertions)]
+            TyKind::Type(ty) => write!(f, "type({})", ty.display(self.db)),
+            #[cfg(not(debug_assertions))]
             TyKind::Type(_) => f.write_str("{type}"),
+
+            #[cfg(debug_assertions)]
+            TyKind::Module(id) => write!(f, "module({id})"),
+            #[cfg(not(debug_assertions))]
+            TyKind::Module(_) => f.write_str("{module}"),
+
             TyKind::Unknown => f.write_str("{unknown}"),
         }
     }

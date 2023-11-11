@@ -10,7 +10,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
 use crate::{
-    db::{Db, StructId},
+    db::{Db, ModuleId, StructId},
     target::TargetMetrics,
     ty::printer::TyPrinter,
 };
@@ -174,6 +174,7 @@ pub enum TyKind {
     Param(ParamTy),
     Infer(InferTy),
     Type(Ty),
+    Module(ModuleId),
     Unknown,
 }
 
