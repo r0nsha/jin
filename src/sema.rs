@@ -546,7 +546,7 @@ impl<'db> Sema<'db> {
                     DefKind::Struct(struct_id),
                     tydef.word,
                     Mutability::Imm,
-                    self.db.types.typ,
+                    TyKind::Type(TyKind::Struct(struct_id).into()).into(),
                 )?;
 
                 self.db.structs[struct_id].def_id = def_id;
@@ -750,142 +750,7 @@ impl<'db> Sema<'db> {
                     Ok(self.expr(hir::ExprKind::Block(hir::Block { exprs }), ty, *span))
                 })?
             }
-            ast::Expr::Call { callee, args, span } => {
-                let callee = self.check_expr(env, callee, None)?;
-
-                let mut new_args = vec![];
-
-                for arg in args {
-                    new_args.push(match arg {
-                        ast::CallArg::Named(name, expr) => hir::CallArg {
-                            name: Some(*name),
-                            expr: self.check_expr(env, expr, None)?,
-                            index: None,
-                        },
-                        ast::CallArg::Positional(expr) => hir::CallArg {
-                            name: None,
-                            expr: self.check_expr(env, expr, None)?,
-                            index: None,
-                        },
-                    });
-                }
-
-                let callee_ty = self.normalize(callee.ty);
-
-                if let TyKind::Fn(fun_ty) = callee_ty.kind() {
-                    #[derive(Debug)]
-                    struct PassedArg {
-                        is_named: bool,
-                        span: Span,
-                    }
-
-                    if !fun_ty.is_c_variadic && new_args.len() != fun_ty.params.len() {
-                        let expected = fun_ty.params.len();
-                        let found = new_args.len();
-
-                        return Err(Diagnostic::error("check::arg_mismatch")
-                            .with_message(format!("this function takes {expected} argument(s), but {found} were supplied"))
-                            .with_label(Label::primary(*span).with_message(format!(
-                                "expected {expected} arguments, found {found}"
-                            ))));
-                    }
-
-                    let mut already_passed_args = UstrMap::<PassedArg>::default();
-
-                    // Resolve positional arg indices
-                    for (idx, arg) in new_args.iter_mut().enumerate() {
-                        if arg.name.is_none() {
-                            arg.index = Some(idx);
-
-                            if let Some(param_name) = fun_ty.params.get(idx).and_then(|p| p.name) {
-                                already_passed_args.insert(
-                                    param_name,
-                                    PassedArg { is_named: false, span: arg.expr.span },
-                                );
-                            }
-                        }
-                    }
-
-                    // Resolve named arg indices
-                    for arg in &mut new_args {
-                        if let Some(arg_name) = &arg.name {
-                            let name = arg_name.name();
-
-                            let idx = fun_ty
-                                .params
-                                .iter()
-                                .enumerate()
-                                .find_map(
-                                    |(i, p)| if p.name == Some(name) { Some(i) } else { None },
-                                )
-                                .ok_or_else(|| {
-                                    Diagnostic::error("check::named_param_not_found")
-                                        .with_message(format!(
-                                            "cannot find parameter with the name `{}`",
-                                            arg_name.name()
-                                        ))
-                                        .with_label(Label::primary(arg_name.span()).with_message(
-                                            format!("found argument `{}` here", arg_name.name()),
-                                        ))
-                                })?;
-
-                            // Report named arguments that are passed twice
-                            if let Some(passed_arg) = already_passed_args.insert(
-                                arg_name.name(),
-                                PassedArg { is_named: true, span: arg_name.span() },
-                            ) {
-                                let name = arg_name.name();
-                                let prev = passed_arg.span;
-                                let dup = arg_name.span();
-                                let is_named = passed_arg.is_named;
-
-                                return Err(Diagnostic::error("check::multiple_named_args")
-                                    .with_message(if is_named {
-                                        format!("argument `{name}` is passed multiple times")
-                                    } else {
-                                        format!("argument `{name}` is already passed positionally")
-                                    })
-                                    .with_label(
-                                        Label::primary(dup)
-                                            .with_message(format!("`{name}` is passed again here")),
-                                    )
-                                    .with_label(Label::secondary(prev).with_message(format!(
-                                        "`{name}` is already passed here"
-                                    ))));
-                            }
-
-                            arg.index = Some(idx);
-                        }
-                    }
-
-                    // Unify all args with their corresponding param type
-                    for arg in &new_args {
-                        let idx = arg.index.expect("arg index to be resolved");
-
-                        if let Some(param) = fun_ty.params.get(idx) {
-                            self.at(Obligation::obvious(arg.expr.span))
-                                .eq(param.ty, arg.expr.ty)
-                                .or_coerce(self, arg.expr.id)?;
-                        }
-                    }
-
-                    self.expr(
-                        hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args: new_args }),
-                        fun_ty.ret,
-                        *span,
-                    )
-                } else {
-                    let ty = self.normalize(callee.ty);
-                    let span = callee.span;
-
-                    return Err(Diagnostic::error("check::uncallable_type")
-                        .with_message(format!(
-                            "expected a function, found `{}`",
-                            ty.display(self.db)
-                        ))
-                        .with_label(Label::primary(span).with_message("expected a function")));
-                }
-            }
+            ast::Expr::Call { callee, args, span } => self.check_call(env, callee, args, *span)?,
             ast::Expr::Unary { expr, op, span } => {
                 let expr = self.check_expr(env, expr, None)?;
 
@@ -1116,6 +981,152 @@ impl<'db> Sema<'db> {
         Ok(expr)
     }
 
+    fn check_call(
+        &mut self,
+        env: &mut Env,
+        callee: &ast::Expr,
+        args: &[ast::CallArg],
+        span: Span,
+    ) -> Result<hir::Expr, Diagnostic> {
+        let callee = self.check_expr(env, callee, None)?;
+
+        let mut new_args = vec![];
+
+        for arg in args {
+            new_args.push(match arg {
+                ast::CallArg::Named(name, expr) => hir::CallArg {
+                    name: Some(*name),
+                    expr: self.check_expr(env, expr, None)?,
+                    index: None,
+                },
+                ast::CallArg::Positional(expr) => hir::CallArg {
+                    name: None,
+                    expr: self.check_expr(env, expr, None)?,
+                    index: None,
+                },
+            });
+        }
+
+        let callee_ty = self.normalize(callee.ty);
+
+        match callee_ty.kind() {
+            TyKind::Fn(fun_ty) => {
+                #[derive(Debug)]
+                struct PassedArg {
+                    is_named: bool,
+                    span: Span,
+                }
+
+                if !fun_ty.is_c_variadic && new_args.len() != fun_ty.params.len() {
+                    return Err(errors::arg_mismatch(fun_ty.params.len(), new_args.len(), span));
+                }
+
+                let mut already_passed_args = UstrMap::<PassedArg>::default();
+
+                // Resolve positional arg indices
+                for (idx, arg) in new_args.iter_mut().enumerate() {
+                    if arg.name.is_none() {
+                        arg.index = Some(idx);
+
+                        if let Some(param_name) = fun_ty.params.get(idx).and_then(|p| p.name) {
+                            already_passed_args.insert(
+                                param_name,
+                                PassedArg { is_named: false, span: arg.expr.span },
+                            );
+                        }
+                    }
+                }
+
+                // Resolve named arg indices
+                for arg in &mut new_args {
+                    if let Some(arg_name) = &arg.name {
+                        let name = arg_name.name();
+
+                        let idx = fun_ty
+                            .params
+                            .iter()
+                            .enumerate()
+                            .find_map(|(i, p)| if p.name == Some(name) { Some(i) } else { None })
+                            .ok_or_else(|| errors::named_param_not_found(*arg_name))?;
+
+                        // Report named arguments that are passed twice
+                        if let Some(passed_arg) = already_passed_args.insert(
+                            arg_name.name(),
+                            PassedArg { is_named: true, span: arg_name.span() },
+                        ) {
+                            let name = arg_name.name();
+                            let prev = passed_arg.span;
+                            let dup = arg_name.span();
+                            let is_named = passed_arg.is_named;
+
+                            return Err(Diagnostic::error("check::multiple_named_args")
+                                .with_message(if is_named {
+                                    format!("argument `{name}` is passed multiple times")
+                                } else {
+                                    format!("argument `{name}` is already passed positionally")
+                                })
+                                .with_label(
+                                    Label::primary(dup)
+                                        .with_message(format!("`{name}` is passed again here")),
+                                )
+                                .with_label(
+                                    Label::secondary(prev)
+                                        .with_message(format!("`{name}` is already passed here")),
+                                ));
+                        }
+
+                        arg.index = Some(idx);
+                    }
+                }
+
+                // Unify all args with their corresponding param type
+                for arg in &new_args {
+                    let idx = arg.index.expect("arg index to be resolved");
+
+                    if let Some(param) = fun_ty.params.get(idx) {
+                        self.at(Obligation::obvious(arg.expr.span))
+                            .eq(param.ty, arg.expr.ty)
+                            .or_coerce(self, arg.expr.id)?;
+                    }
+                }
+
+                Ok(self.expr(
+                    hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args: new_args }),
+                    fun_ty.ret,
+                    span,
+                ))
+            }
+            TyKind::Type(ty) => {
+                if new_args.len() != 1 {
+                    return Err(errors::arg_mismatch(1, new_args.len(), span));
+                }
+
+                let arg = &new_args[0];
+
+                if let Some(name) = arg.name {
+                    return Err(errors::named_param_not_found(name));
+                }
+
+                Ok(self.expr(
+                    hir::ExprKind::Cast(hir::Cast {
+                        expr: Box::new(arg.expr.clone()),
+                        target: *ty,
+                    }),
+                    *ty,
+                    span,
+                ))
+            }
+            _ => {
+                let ty = self.normalize(callee.ty);
+                let span = callee.span;
+
+                Err(Diagnostic::error("check::uncallable_type")
+                    .with_message(format!("expected a function, found `{}`", ty.display(self.db)))
+                    .with_label(Label::primary(span).with_message("expected a function")))
+            }
+        }
+    }
+
     fn check_ty_params(
         &mut self,
         env: &mut Env,
@@ -1133,7 +1144,7 @@ impl<'db> Sema<'db> {
                 DefKind::Ty(ty),
                 tp.word,
                 Mutability::Imm,
-                self.db.types.typ,
+                TyKind::Type(ty).into(),
             );
 
             if let Some(prev_span) = defined_ty_params.insert(tp.word.name(), tp.word.span()) {

@@ -88,7 +88,7 @@ impl<'db> TyPrinter<'db> {
             #[cfg(not(debug_assertions))]
             TyKind::Infer(InferTy::Float(_)) => f.write_str("{float}"),
 
-            TyKind::Type => f.write_str("{type}"),
+            TyKind::Type(_) => f.write_str("{type}"),
             TyKind::Unknown => f.write_str("{unknown}"),
         }
     }

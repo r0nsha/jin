@@ -7,6 +7,7 @@ use codespan_reporting::{
 
 use crate::span::{SourceId, Sources, Span};
 
+#[must_use]
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
     severity: Severity,

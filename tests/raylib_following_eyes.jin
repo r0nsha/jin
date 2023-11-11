@@ -10,12 +10,12 @@ fn main {
 	InitWindow(screen_width, screen_height, "raylib - following eyes".ptr)
 	SetTargetFPS(60)
 
-	let mut sclera_left_pos = Vector2({{screen_width / 2} as f32} - 100.0, {screen_height / 2} as f32)
-	let mut sclera_right_pos = Vector2({{screen_width / 2} as f32} + 100.0, {screen_height / 2} as f32)
+	let mut sclera_left_pos = Vector2(f32(screen_width / 2) - 100.0, f32(screen_height / 2))
+	let mut sclera_right_pos = Vector2({f32(screen_width / 2)} + 100.0, f32(screen_height / 2))
 	let sclera_radius = 80.0
 
-	let mut iris_left_pos = Vector2({{screen_width / 2} as f32} - 100.0, {screen_height / 2} as f32)
-	let mut iris_right_pos = Vector2({{screen_width / 2} as f32} + 100.0, {screen_height / 2} as f32)
+	let mut iris_left_pos = Vector2({f32(screen_width / 2)} - 100.0, f32(screen_height / 2, "fds"))
+	let mut iris_right_pos = Vector2({f32(screen_width / 2)} + 100.0, f32(screen_height / 2))
 	let iris_radius = 24.0
 
 	loop if !WindowShouldClose() {

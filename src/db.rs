@@ -438,7 +438,6 @@ pub struct CommonTypes {
     pub bool: Ty,
     pub unit: Ty,
     pub never: Ty,
-    pub typ: Ty,
     pub unknown: Ty,
 }
 
@@ -470,7 +469,6 @@ impl CommonTypes {
             bool: Ty::new(TyKind::Bool),
             unit: Ty::new(TyKind::Unit),
             never: Ty::new(TyKind::Never),
-            typ: Ty::new(TyKind::Type),
             unknown: Ty::new(TyKind::Unknown),
         }
     }

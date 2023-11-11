@@ -11,7 +11,7 @@ use crate::{
     qpath::QPath,
     span::Span,
     sym,
-    ty::Ty,
+    ty::{Ty, TyKind},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -111,7 +111,7 @@ impl BuiltinTys {
                 scope_info,
                 DefKind::Ty(ty),
                 Mutability::Imm,
-                db.types.typ,
+                TyKind::Type(ty).into(),
                 Span::unknown(),
             ),
         )

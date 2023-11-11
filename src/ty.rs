@@ -174,7 +174,7 @@ pub enum TyKind {
     // Types related to phases inside or before the typeck pass
     Param(ParamTy),
     Infer(InferTy),
-    Type,
+    Type(Ty),
     Unknown,
 }
 
