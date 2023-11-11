@@ -35,10 +35,9 @@ impl<'db> CheckEntry<'db> {
             self.db.set_main_fun(main_id);
             true
         } else {
-            let source_end_span = Span::uniform(
-                self.db.main_source_id(),
-                (self.db.main_source().contents().len() - 1) as u32,
-            );
+            let main_source_end =
+                self.db.main_source().contents().len().checked_sub(1).unwrap_or_default();
+            let source_end_span = Span::uniform(self.db.main_source_id(), main_source_end as u32);
 
             self.db.diagnostics.emit(
                 Diagnostic::error("check::no_entry_point")
