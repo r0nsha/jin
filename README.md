@@ -5,8 +5,9 @@ Jin is a work-in-progress programming language, and is intended to be a general-
 ## Hello, World
 
 ```
-fn main() =
+fn main() {
     println("Hello, World!")
+}
 ```
 
 ## Goals
