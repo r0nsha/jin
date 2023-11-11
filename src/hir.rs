@@ -3,7 +3,6 @@ mod pretty_print;
 
 use std::{fmt, io};
 
-use enum_as_inner::EnumAsInner;
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
@@ -122,10 +121,20 @@ pub struct Fn {
     pub span: Span,
 }
 
-#[derive(Debug, Clone, EnumAsInner)]
+#[derive(Debug, Clone)]
 pub enum FnKind {
     Bare { body: Expr },
     Extern { is_c_variadic: bool },
+}
+
+impl FnKind {
+    /// Returns `true` if the fn kind is [`Extern`].
+    ///
+    /// [`Extern`]: FnKind::Extern
+    #[must_use]
+    pub fn is_extern(&self) -> bool {
+        matches!(self, Self::Extern { .. })
+    }
 }
 
 #[derive(Debug, Clone)]

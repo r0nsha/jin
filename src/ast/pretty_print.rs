@@ -2,7 +2,7 @@ use std::io;
 
 use super::{Expr, Fn, Item, LitKind, Module};
 use crate::{
-    ast::{CallArg, ExternImport, ExternLet, FnKind, FnSig, Let, TyDef, TyDefKind, TyExpr},
+    ast::{CallArg, ExternImport, ExternLet, FnKind, FnSig, Import, Let, TyDef, TyDefKind, TyExpr},
     db::StructKind,
     middle::BinOp,
 };
@@ -158,6 +158,7 @@ impl PrettyPrint for Item {
             Self::Fn(x) => x.pretty_print(cx),
             Self::Let(x) => x.pretty_print(cx),
             Self::Type(x) => x.pretty_print(cx),
+            Self::Import(x) => x.pretty_print(cx),
             Self::ExternLet(x) => x.pretty_print(cx),
             Self::ExternImport(x) => x.pretty_print(cx),
         }
@@ -245,6 +246,12 @@ impl PrettyPrint for TyDef {
         }
 
         cx.builder.end_child();
+    }
+}
+
+impl PrettyPrint for Import {
+    fn pretty_print(&self, cx: &mut PrettyCx) {
+        cx.builder.add_empty_child(format!("import {}", self.word));
     }
 }
 

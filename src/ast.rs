@@ -3,7 +3,6 @@ pub mod token;
 
 use std::{fmt, io};
 
-use enum_as_inner::EnumAsInner;
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
@@ -74,11 +73,12 @@ impl GlobalItemId {
 
 pub type ItemMap<T> = FxHashMap<GlobalItemId, T>;
 
-#[derive(Debug, Clone, EnumAsInner)]
+#[derive(Debug, Clone)]
 pub enum Item {
     Fn(Fn),
     Let(Let),
     Type(TyDef),
+    Import(Import),
     ExternLet(ExternLet),
     ExternImport(ExternImport),
 }
@@ -93,6 +93,7 @@ impl Item {
             Self::Fn(fun) => f(fun.sig.word),
             Self::Let(let_) => let_.pat.walk(|p| f(p.word)),
             Self::Type(tydef) => f(tydef.word),
+            Self::Import(import) => f(import.word),
             Self::ExternLet(let_) => f(let_.word),
             Self::ExternImport(_) => (),
         }
@@ -105,6 +106,7 @@ impl Spanned for Item {
             Self::Fn(Fn { span, .. })
             | Self::Let(Let { span, .. })
             | Self::Type(TyDef { span, .. })
+            | Self::Import(Import { span, .. })
             | Self::ExternLet(ExternLet { span, .. })
             | Self::ExternImport(ExternImport { span, .. }) => *span,
         }
@@ -216,6 +218,13 @@ pub struct StructTyDef {
 pub struct StructTyField {
     pub name: Word,
     pub ty_expr: TyExpr,
+}
+
+#[derive(Debug, Clone)]
+pub struct Import {
+    pub attrs: Attrs,
+    pub word: Word,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]

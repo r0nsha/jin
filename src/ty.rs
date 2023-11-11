@@ -5,7 +5,6 @@ mod printer;
 use std::ops::Deref;
 
 use derive_more::{From, Into};
-use enum_as_inner::EnumAsInner;
 use internment::Intern;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
@@ -155,7 +154,7 @@ impl From<&TyKind> for TyKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, EnumAsInner)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum TyKind {
     // Composite types
     Fn(FnTy),
@@ -221,6 +220,47 @@ impl TyKind {
 
     pub fn to_string(&self, db: &Db) -> String {
         self.display(db).to_string()
+    }
+
+    /// Returns `true` if the ty kind is [`Int`].
+    ///
+    /// [`Int`]: TyKind::Int
+    #[must_use]
+    pub fn is_int(&self) -> bool {
+        matches!(self, Self::Int(..))
+    }
+
+    /// Returns `true` if the ty kind is [`Bool`].
+    ///
+    /// [`Bool`]: TyKind::Bool
+    #[must_use]
+    pub fn is_bool(&self) -> bool {
+        matches!(self, Self::Bool)
+    }
+
+    /// Returns `true` if the ty kind is [`Unit`].
+    ///
+    /// [`Unit`]: TyKind::Unit
+    #[must_use]
+    pub fn is_unit(&self) -> bool {
+        matches!(self, Self::Unit)
+    }
+
+    #[must_use]
+    pub fn as_fn(&self) -> Option<&FnTy> {
+        if let Self::Fn(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    /// Returns `true` if the ty kind is [`Never`].
+    ///
+    /// [`Never`]: TyKind::Never
+    #[must_use]
+    pub fn is_never(&self) -> bool {
+        matches!(self, Self::Never)
     }
 }
 
@@ -426,7 +466,7 @@ impl ParamTy {
 
 pub type Instantiation = FxHashMap<TyVar, Ty>;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, EnumAsInner)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InferTy {
     Ty(TyVar),
     Int(IntVar),

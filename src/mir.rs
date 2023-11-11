@@ -3,7 +3,6 @@ mod pretty_print;
 
 use std::io;
 
-use enum_as_inner::EnumAsInner;
 pub use lower::lower;
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
@@ -212,7 +211,7 @@ pub struct Value {
     pub kind: ValueKind,
 }
 
-#[derive(Debug, Clone, EnumAsInner)]
+#[derive(Debug, Clone)]
 pub enum ValueKind {
     Register,
     Local(DefId),
@@ -220,4 +219,15 @@ pub enum ValueKind {
     Fn(FnSigId),
     Const(Const),
     Member(ValueId, Ustr),
+}
+
+impl ValueKind {
+    #[must_use]
+    pub fn as_local(&self) -> Option<&DefId> {
+        if let Self::Local(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }
