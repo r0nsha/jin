@@ -44,17 +44,6 @@ fn parse_module_inner(
 
     module.id = ModuleInfo::alloc(db, module.source, module.name.clone(), module.is_main());
 
-    match module.name.name().as_str() {
-        "std" | "lib" | "super" => {
-            db.diagnostics.emit(
-                Diagnostic::error("parse::reserved_module_name")
-                    .with_message(format!("module name `{}` is reserved", module.name.name()))
-                    .with_label(Label::primary(Span::initial(module.source))),
-            );
-        }
-        _ => (),
-    }
-
     Ok((module, paths))
 }
 
