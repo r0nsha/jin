@@ -471,7 +471,7 @@ impl<'db> Sema<'db> {
     fn check_import(&mut self, env: &mut Env, import: &ast::Import) -> CheckResult<()> {
         let module_info = self
             .db
-            .find_module_by_path(&import.module_path)
+            .find_module_by_file_path(&import.module_path)
             .expect("import to have a registered module");
 
         match &import.import_path {

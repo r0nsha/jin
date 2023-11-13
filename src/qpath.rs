@@ -5,7 +5,7 @@ use ustr::{ustr, Ustr};
 
 use crate::word::Word;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QPath(Vec<Ustr>);
 
 impl QPath {

@@ -30,7 +30,7 @@ impl<'db> Sema<'db> {
         ty: Ty,
     ) -> CheckResult<DefId> {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
-        let qpath = self.db[module_id].name.clone().child(name.name());
+        let qpath = self.db[module_id].qpath.clone().child(name.name());
         let id = DefInfo::alloc(self.db, qpath, scope, kind, mutability, ty, name.span());
         self.define_global_def_alias(module_id, name, id)
     }
@@ -178,7 +178,7 @@ impl<'db> Sema<'db> {
             id
         } else {
             self.find_and_check_item(&symbol)?.ok_or_else(|| {
-                let module_name = self.db[in_module_id].name.join();
+                let module_name = self.db[in_module_id].qpath.join();
 
                 Diagnostic::error("check::name_not_found_in_module")
                     .with_message(format!("cannot find `{word}` in module `{module_name}`",))
@@ -207,7 +207,7 @@ impl<'db> Sema<'db> {
                 Err(Diagnostic::error("check::private_member")
                     .with_message(format!(
                         "`{}` is private to module `{}`",
-                        def.name, self.db[def.scope.module_id].name
+                        def.name, self.db[def.scope.module_id].qpath
                     ))
                     .with_label(Label::primary(span).with_message("private member")))
             }
@@ -414,7 +414,7 @@ impl Env {
     }
 
     pub fn scope_path(&self, db: &Db) -> QPath {
-        let mut qpath = db[self.module_id].name.clone();
+        let mut qpath = db[self.module_id].qpath.clone();
         qpath.extend(self.scopes.iter().map(|s| s.name));
         qpath
     }

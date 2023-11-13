@@ -166,12 +166,16 @@ impl Db {
         self.main_fun = Some(id);
     }
 
-    pub fn find_module_by_path(&self, path: &Utf8Path) -> Option<&ModuleInfo> {
+    pub fn find_module_by_file_path(&self, path: &Utf8Path) -> Option<&ModuleInfo> {
         let sources = &self.sources.borrow();
 
         self.modules
             .iter()
             .find(|m| matches!(sources.get(m.source_id), Some(s) if s.path() == path))
+    }
+
+    pub fn find_module_by_qpath(&self, qpath: &QPath) -> Option<&ModuleInfo> {
+        self.modules.iter().find(|m| &m.qpath == qpath)
     }
 
     pub fn push_coercion(&mut self, expr_id: ExprId, c: Coercion) {
@@ -243,7 +247,7 @@ pub struct ModuleInfo {
     pub id: ModuleId,
     pub package: Ustr,
     pub source_id: SourceId,
-    pub name: QPath,
+    pub qpath: QPath,
     #[allow(unused)]
     pub is_main: bool,
 }
@@ -256,7 +260,8 @@ impl ModuleInfo {
         name: QPath,
         is_main: bool,
     ) -> ModuleId {
-        let id = db.modules.push_with_key(|id| Self { id, package, source_id, name, is_main });
+        let id =
+            db.modules.push_with_key(|id| Self { id, package, source_id, qpath: name, is_main });
 
         if is_main {
             assert!(db.main_module.is_none());
