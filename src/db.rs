@@ -14,8 +14,8 @@ use std::{
 use anyhow::{bail, Result};
 use camino::{Utf8Path, Utf8PathBuf};
 use path_absolutize::Absolutize;
-use rustc_hash::FxHashSet;
-use ustr::Ustr;
+use rustc_hash::{FxHashMap, FxHashSet};
+use ustr::{ustr, Ustr};
 
 use crate::{
     db::{
@@ -40,6 +40,7 @@ use crate::{
 pub struct Db {
     pub time: Timings,
     pub sources: Rc<RefCell<Sources>>,
+    pub packages: FxHashMap<Ustr, Package>,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
     pub defs: IndexVec<DefId, DefInfo>,
     pub structs: IndexVec<StructId, StructInfo>,
@@ -49,7 +50,7 @@ pub struct Db {
     pub extern_libs: FxHashSet<ExternLib>,
     pub diagnostics: Diagnostics,
     build_options: BuildOptions,
-    root_dir: Utf8PathBuf,
+    main_package_name: Ustr,
     main_source: SourceId,
     main_module: Option<ModuleId>,
     main_fun: Option<DefId>,
@@ -64,10 +65,19 @@ impl Db {
             bail!("provided path `{}` in not a file", absolute_path);
         }
 
-        let root_dir = absolute_path.parent().expect("to have a parent directory").to_path_buf();
-
         let mut sources = Sources::new();
         let main_source = sources.load_file(absolute_path.to_path_buf())?;
+
+        let main_package_name = ustr(&sources.get(main_source).unwrap().file_name());
+
+        let packages: FxHashMap<_, _> = {
+            let main_package_root_path =
+                absolute_path.parent().expect("to have a parent directory").to_path_buf();
+
+            [(main_package_name, Package::new(main_package_name, main_package_root_path.clone()))]
+                .into_iter()
+                .collect()
+        };
 
         let sources = Rc::new(RefCell::new(sources));
 
@@ -76,6 +86,7 @@ impl Db {
             build_options,
             diagnostics: Diagnostics::new(sources.clone()),
             sources,
+            packages,
             modules: IndexVec::new(),
             defs: IndexVec::new(),
             structs: IndexVec::new(),
@@ -83,7 +94,7 @@ impl Db {
             coercions: HirMap::default(),
             const_storage: ConstStorage::new(),
             extern_libs: FxHashSet::default(),
-            root_dir,
+            main_package_name,
             main_source,
             main_module: None,
             main_fun: None,
@@ -117,8 +128,8 @@ impl Db {
             .to_owned()
     }
 
-    pub fn root_dir(&self) -> &Utf8Path {
-        &self.root_dir
+    pub fn main_package(&self) -> &Package {
+        &self.packages[&self.main_package_name]
     }
 
     pub fn main_source_id(&self) -> SourceId {
@@ -212,9 +223,21 @@ new_db_key!(DefId -> defs : DefInfo);
 new_db_key!(StructId -> structs : StructInfo);
 
 #[derive(Debug, Clone)]
+pub struct Package {
+    pub name: Ustr,
+    pub root_path: Utf8PathBuf,
+}
+
+impl Package {
+    pub fn new(name: Ustr, root_path: Utf8PathBuf) -> Self {
+        Self { name, root_path }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub struct ModuleInfo {
-    #[allow(unused)]
     pub id: ModuleId,
+    pub package: Ustr,
     pub source_id: SourceId,
     pub name: QPath,
     #[allow(unused)]
@@ -222,8 +245,14 @@ pub struct ModuleInfo {
 }
 
 impl ModuleInfo {
-    pub fn alloc(db: &mut Db, source_id: SourceId, name: QPath, is_main: bool) -> ModuleId {
-        let id = db.modules.push_with_key(|id| Self { id, source_id, name, is_main });
+    pub fn alloc(
+        db: &mut Db,
+        package: Ustr,
+        source_id: SourceId,
+        name: QPath,
+        is_main: bool,
+    ) -> ModuleId {
+        let id = db.modules.push_with_key(|id| Self { id, package, source_id, name, is_main });
 
         if is_main {
             assert!(db.main_module.is_none());

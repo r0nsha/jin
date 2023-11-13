@@ -1,19 +1,19 @@
 use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::files::Files;
-use path_absolutize::Absolutize;
 use rustc_hash::FxHashSet;
 
 use crate::{
     ast::{
         token::{Token, TokenKind},
         Attr, AttrKind, Attrs, CallArg, Expr, ExternImport, ExternLet, Fn, FnKind, FnParam, FnSig,
-        Import, Item, Let, LitKind, Module, NamePat, Pat, StructTyDef, StructTyField, TyDef,
-        TyDefKind, TyParam,
+        Item, Let, LitKind, Module, NamePat, Pat, StructTyDef, StructTyField, TyDef, TyDefKind,
+        TyParam,
     },
     db::{Db, ExternLib, StructKind},
     diagnostics::{Diagnostic, Label},
     macros::create_bool_enum,
     middle::{BinOp, Mutability, TyExpr, TyExprFn, TyExprName, UnOp, Vis},
+    parse::errors,
     qpath::QPath,
     span::{Source, SourceId, Span, Spanned},
     word::Word,
@@ -24,30 +24,29 @@ pub fn parse(
     source: &Source,
     tokens: Vec<Token>,
 ) -> ParseResult<(Module, FxHashSet<Utf8PathBuf>)> {
-    let name = QPath::from_path(db.root_dir(), source.path()).unwrap();
+    let name = QPath::from_path(&db.main_package().root_path, source.path()).unwrap();
     let is_main = source.id() == db.main_source().id();
 
-    let mut parser = Parser::new(source, tokens);
+    let mut parser = Parser::new(db, source, tokens);
     let module = parser.parse(source.id(), name, is_main)?;
 
     Ok((module, parser.imported_module_paths))
 }
 
 #[derive(Debug)]
-struct Parser<'a> {
-    source: &'a Source,
-    tokens: Vec<Token>,
-    pos: usize,
-    imported_module_paths: FxHashSet<Utf8PathBuf>,
+pub(super) struct Parser<'a> {
+    pub(super) db: &'a Db,
+    pub(super) source: &'a Source,
+    pub(super) tokens: Vec<Token>,
+    pub(super) pos: usize,
+    pub(super) imported_module_paths: FxHashSet<Utf8PathBuf>,
 }
 
 impl<'a> Parser<'a> {
-    fn new(source: &'a Source, tokens: Vec<Token>) -> Self {
-        Self { source, tokens, pos: 0, imported_module_paths: FxHashSet::default() }
+    fn new(db: &'a Db, source: &'a Source, tokens: Vec<Token>) -> Self {
+        Self { db, source, tokens, pos: 0, imported_module_paths: FxHashSet::default() }
     }
-}
 
-impl<'a> Parser<'a> {
     fn parse(&mut self, source_id: SourceId, name: QPath, is_main: bool) -> ParseResult<Module> {
         let mut module = Module::new(source_id, name, is_main);
 
@@ -104,47 +103,6 @@ impl<'a> Parser<'a> {
         }
 
         Ok(None)
-    }
-
-    fn parse_import(&mut self, attrs: &[Attr], start: Span) -> Result<Import, Diagnostic> {
-        let mod_name = self.eat(TokenKind::empty_ident())?.word();
-        let vis = self.parse_vis();
-        let absolute_path = self.search_import_path(mod_name)?;
-        self.imported_module_paths.insert(absolute_path.clone());
-
-        Ok(Import {
-            attrs: attrs.to_owned(),
-            path: absolute_path,
-            word: mod_name,
-            vis,
-            span: start.merge(mod_name.span()),
-        })
-    }
-
-    fn search_import_path(&self, name: Word) -> Result<Utf8PathBuf, Diagnostic> {
-        let path = Utf8Path::new(&name.name()).with_extension("jin");
-        let relative_to = self.parent_path().unwrap();
-
-        let absolute_path: Utf8PathBuf = path
-            .as_std_path()
-            .absolutize_from(relative_to.as_std_path())
-            .ok()
-            .ok_or_else(|| errors::path_not_found(path.as_str(), name.span()))?
-            .to_path_buf()
-            .try_into()
-            .expect("path to be utf8");
-
-        let mut search_notes = vec![];
-        search_notes.push(format!("searched path: {absolute_path}"));
-
-        if !absolute_path.exists() {
-            return Err(Diagnostic::error("parse::module_not_found")
-                .with_message(format!("could not find module or library `{name}`"))
-                .with_label(Label::primary(name.span()))
-                .with_notes(search_notes));
-        }
-
-        Ok(absolute_path)
     }
 
     fn parse_extern_import(
@@ -326,7 +284,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_vis(&mut self) -> Vis {
+    pub fn parse_vis(&mut self) -> Vis {
         if self.is(TokenKind::Star) {
             Vis::Public
         } else {
@@ -803,20 +761,20 @@ impl<'a> Parser<'a> {
 
 impl<'a> Parser<'a> {
     #[inline]
-    fn eat(&mut self, expected: TokenKind) -> ParseResult<Token> {
+    pub(super) fn eat(&mut self, expected: TokenKind) -> ParseResult<Token> {
         let tok = self.eat_any()?;
         Self::require_kind(tok, expected)
     }
 
     #[inline]
-    fn eat_any(&mut self) -> ParseResult<Token> {
+    pub(super) fn eat_any(&mut self) -> ParseResult<Token> {
         let tok = self.require()?;
         self.next();
         Ok(tok)
     }
 
     #[inline]
-    fn require(&mut self) -> ParseResult<Token> {
+    pub(super) fn require(&mut self) -> ParseResult<Token> {
         self.token().ok_or_else(|| {
             Diagnostic::error("parse::unexpected_eof")
                 .with_message("unexpected end of file")
@@ -825,7 +783,7 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
-    fn is_and<T>(
+    pub(super) fn is_and<T>(
         &mut self,
         expected: TokenKind,
         mut f: impl FnMut(&mut Self, Token) -> T,
@@ -840,12 +798,12 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
-    fn is(&mut self, expected: TokenKind) -> bool {
+    pub(super) fn is(&mut self, expected: TokenKind) -> bool {
         self.is_predicate(|_, tok| tok.kind_is(expected))
     }
 
     #[inline]
-    fn is_predicate(&mut self, mut f: impl FnMut(&mut Self, Token) -> bool) -> bool {
+    pub(super) fn is_predicate(&mut self, mut f: impl FnMut(&mut Self, Token) -> bool) -> bool {
         match self.token() {
             Some(tok) if f(self, tok) => {
                 self.next();
@@ -856,7 +814,7 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
-    fn spans_are_on_same_line(&self, s1: Span, s2: Span) -> bool {
+    pub(super) fn spans_are_on_same_line(&self, s1: Span, s2: Span) -> bool {
         fn line_index(parser: &Parser, pos: u32) -> usize {
             parser.source.line_index(parser.source.id(), pos as usize).unwrap()
         }
@@ -865,47 +823,47 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
-    fn token(&self) -> Option<Token> {
+    pub(super) fn token(&self) -> Option<Token> {
         self.tokens.get(self.pos).copied()
     }
 
     #[inline]
-    fn peek<R: Default>(&self, f: impl FnOnce(Token) -> R) -> R {
+    pub(super) fn peek<R: Default>(&self, f: impl FnOnce(Token) -> R) -> R {
         self.token().map(f).unwrap_or_default()
     }
 
     #[inline]
-    fn peek_is(&self, expected: TokenKind) -> bool {
+    pub(super) fn peek_is(&self, expected: TokenKind) -> bool {
         self.peek(|t| t.kind_is(expected))
     }
 
     #[inline]
-    fn last_span(&self) -> Span {
+    pub(super) fn last_span(&self) -> Span {
         self.last_token().span
     }
 
     #[inline]
-    fn last_token(&self) -> Token {
+    pub(super) fn last_token(&self) -> Token {
         self.tokens[self.pos - 1]
     }
 
     #[inline]
-    fn next(&mut self) {
+    pub(super) fn next(&mut self) {
         self.pos += 1;
     }
 
     #[inline]
-    fn prev(&mut self) {
+    pub(super) fn prev(&mut self) {
         self.pos -= 1;
     }
 
     #[inline]
-    fn eof(&self) -> bool {
+    pub(super) fn eof(&self) -> bool {
         self.pos == self.tokens.len()
     }
 
     #[inline]
-    fn require_kind(tok: Token, expected: TokenKind) -> ParseResult<Token> {
+    pub(super) fn require_kind(tok: Token, expected: TokenKind) -> ParseResult<Token> {
         if tok.kind_is(expected) {
             Ok(tok)
         } else {
@@ -914,7 +872,7 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
-    fn parent_path(&self) -> Option<&Utf8Path> {
+    pub(super) fn parent_path(&self) -> Option<&Utf8Path> {
         self.source.path().parent()
     }
 }
@@ -926,19 +884,6 @@ fn unexpected_token_err(expected: &str, found: TokenKind, span: Span) -> Diagnos
         .with_label(Label::primary(span).with_message("found here"))
 }
 
-type ParseResult<T> = Result<T, Diagnostic>;
+pub(super) type ParseResult<T> = Result<T, Diagnostic>;
 
 create_bool_enum!(AllowTyParams);
-
-mod errors {
-    use crate::{
-        diagnostics::{Diagnostic, Label},
-        span::Span,
-    };
-
-    pub fn path_not_found(path: &str, span: Span) -> Diagnostic {
-        Diagnostic::error("parse::path_not_found")
-            .with_message(format!("path `{path}` not found"))
-            .with_label(Label::primary(span).with_message("not found"))
-    }
-}

@@ -7,8 +7,8 @@ use super::{lexer, parser};
 use crate::{
     ast::{Ast, Module},
     db::{Db, ModuleInfo},
-    diagnostics::{Diagnostic, Label},
-    span::{SourceId, Span},
+    diagnostics::Diagnostic,
+    span::SourceId,
 };
 
 pub fn parse_module_tree(db: &mut Db) -> Ast {
@@ -42,7 +42,13 @@ fn parse_module_inner(
         parser::parse(db, source, tokens)?
     };
 
-    module.id = ModuleInfo::alloc(db, module.source, module.name.clone(), module.is_main());
+    module.id = ModuleInfo::alloc(
+        db,
+        db.main_package().name,
+        module.source,
+        module.name.clone(),
+        module.is_main(),
+    );
 
     Ok((module, paths))
 }
