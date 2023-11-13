@@ -13,8 +13,15 @@ impl<'a> Parser<'a> {
     pub fn parse_import(&mut self, attrs: &[Attr], start: Span) -> ParseResult<Import> {
         let mod_name = self.eat(TokenKind::empty_ident())?.word();
         let vis = self.parse_vis();
+
         let absolute_path = self.search_import_path(mod_name)?;
         self.imported_module_paths.insert(absolute_path.clone());
+
+        if absolute_path == self.source.path() {
+            return Err(Diagnostic::error("parse::import_self")
+                .with_message(format!("module `{mod_name}` cannot import itself"))
+                .with_label(Label::primary(mod_name.span()).with_message("here")));
+        }
 
         Ok(Import {
             attrs: attrs.to_owned(),
