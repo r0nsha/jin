@@ -25,7 +25,7 @@ impl<'a> Parser<'a> {
 
         Ok(Import {
             attrs: attrs.to_owned(),
-            path: absolute_path,
+            module_path: absolute_path,
             word: mod_name,
             vis,
             span: start.merge(mod_name.span()),

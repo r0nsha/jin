@@ -226,7 +226,7 @@ pub struct StructTyField {
 #[derive(Debug, Clone)]
 pub struct Import {
     pub attrs: Attrs,
-    pub path: Utf8PathBuf,
+    pub module_path: Utf8PathBuf,
     pub word: Word,
     pub vis: Vis,
     pub span: Span,
