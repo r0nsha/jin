@@ -74,9 +74,12 @@ impl Db {
             let main_package_root_path =
                 absolute_path.parent().expect("to have a parent directory").to_path_buf();
 
-            [(main_package_name, Package::new(main_package_name, main_package_root_path.clone()))]
-                .into_iter()
-                .collect()
+            [(
+                main_package_name,
+                Package::new(main_package_name, main_package_root_path.clone(), main_source),
+            )]
+            .into_iter()
+            .collect()
         };
 
         let sources = Rc::new(RefCell::new(sources));
@@ -226,11 +229,12 @@ new_db_key!(StructId -> structs : StructInfo);
 pub struct Package {
     pub name: Ustr,
     pub root_path: Utf8PathBuf,
+    pub main_source_id: SourceId,
 }
 
 impl Package {
-    pub fn new(name: Ustr, root_path: Utf8PathBuf) -> Self {
-        Self { name, root_path }
+    pub fn new(name: Ustr, root_path: Utf8PathBuf, main_source_id: SourceId) -> Self {
+        Self { name, root_path, main_source_id }
     }
 }
 

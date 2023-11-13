@@ -84,15 +84,13 @@ impl<'a> Parser<'a> {
     }
 
     fn search_package(&self, name: Word, search_notes: &mut Vec<String>) -> Option<Utf8PathBuf> {
-        todo!("find package in self.db.packages")
-        // let absolute_path: Utf8PathBuf = path
-        //     .as_std_path()
-        //     .absolutize_from(relative_to.as_std_path())
-        //     .ok()?
-        //     .to_path_buf()
-        //     .try_into()
-        //     .expect("path to be utf8");
-        //
-        // search_notes.push(format!("searched package: {name}"));
+        if let Some(pkg) = self.db.packages.get(&name.name()) {
+            let sources = self.db.sources.borrow();
+            let source = sources.get(pkg.main_source_id).unwrap();
+            Some(source.path().to_path_buf())
+        } else {
+            search_notes.push(format!("searched package: {name}"));
+            None
+        }
     }
 }
