@@ -34,7 +34,7 @@ pub fn arg_mismatch(expected: usize, found: usize, span: Span) -> Diagnostic {
         )
 }
 
-pub fn ty_mismatch(expected: String, found: String, span: Span) -> Diagnostic {
+pub fn ty_mismatch(expected: &str, found: &str, span: Span) -> Diagnostic {
     Diagnostic::error("check::type_mismatch")
         .with_message(format!("expected type `{expected}`, found `{found}`"))
         .with_label(Label::primary(span).with_message(format!("expected `{expected}` here")))

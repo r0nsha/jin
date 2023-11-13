@@ -7,12 +7,196 @@ use crate::{
     ast,
     ast::Ast,
     db::{Db, DefId, DefInfo, DefKind, ModuleId, ScopeInfo, ScopeLevel},
+    diagnostics::{Diagnostic, Label},
+    hir,
+    hir::ExprId,
     middle::{Mutability, Vis},
     qpath::QPath,
-    span::Span,
+    sema::{CheckResult, Sema},
+    span::{Span, Spanned},
     sym,
     ty::{Ty, TyKind},
+    word::Word,
 };
+
+impl<'db> Sema<'db> {
+    pub fn define_global_def(
+        &mut self,
+        module_id: ModuleId,
+        vis: Vis,
+        kind: DefKind,
+        name: Word,
+        mutability: Mutability,
+        ty: Ty,
+    ) -> CheckResult<DefId> {
+        let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
+        let qpath = self.db[module_id].name.clone().child(name.name());
+
+        let id = DefInfo::alloc(self.db, qpath, scope, kind, mutability, ty, name.span());
+
+        if let Some(prev_id) = self.global_scope.insert_def(Symbol::new(module_id, name.name()), id)
+        {
+            let def = &self.db[prev_id];
+
+            let dup_span = name.span();
+            let name = def.qpath.name();
+            let prev_span = def.span;
+
+            return Err(Diagnostic::error("check::multiple_items")
+                .with_message(format!("the item `{name}` is defined multiple times"))
+                .with_label(
+                    Label::primary(dup_span).with_message(format!("`{name}` defined again here")),
+                )
+                .with_label(
+                    Label::secondary(prev_span)
+                        .with_message(format!("first definition of `{name}`")),
+                )
+                .with_note("you can only define items once in a module"));
+        }
+
+        Ok(id)
+    }
+
+    pub fn define_local_def(
+        &mut self,
+        env: &mut Env,
+        kind: DefKind,
+        name: Word,
+        mutability: Mutability,
+        ty: Ty,
+    ) -> DefId {
+        let id = DefInfo::alloc(
+            self.db,
+            env.scope_path(self.db).child(name.name()),
+            ScopeInfo { module_id: env.module_id(), level: env.scope_level(), vis: Vis::Private },
+            kind,
+            mutability,
+            ty,
+            name.span(),
+        );
+
+        env.current_mut().insert(name.name(), id);
+
+        id
+    }
+
+    pub fn define_def(
+        &mut self,
+        env: &mut Env,
+        vis: Vis,
+        kind: DefKind,
+        name: Word,
+        mutability: Mutability,
+        ty: Ty,
+    ) -> CheckResult<DefId> {
+        if env.in_global_scope() {
+            self.define_global_def(env.module_id(), vis, kind, name, mutability, ty)
+        } else {
+            Ok(self.define_local_def(env, kind, name, mutability, ty))
+        }
+    }
+
+    pub fn define_pat(
+        &mut self,
+        env: &mut Env,
+        kind: DefKind,
+        pat: &ast::Pat,
+        ty: Ty,
+        value_id: ExprId,
+    ) -> CheckResult<hir::Pat> {
+        match pat {
+            ast::Pat::Name(name) => {
+                let id = self.define_def(env, name.vis, kind, name.word, name.mutability, ty)?;
+
+                if name.mutability.is_imm() {
+                    if let Some(value) = self.db.const_storage.expr(value_id) {
+                        self.db.const_storage.insert_def(id, value.clone());
+                    }
+                }
+
+                Ok(hir::Pat::Name(hir::NamePat { id, word: name.word }))
+            }
+            ast::Pat::Discard(span) => Ok(hir::Pat::Discard(*span)),
+        }
+    }
+
+    pub fn lookup_def(&mut self, env: &Env, word: Word) -> CheckResult<DefId> {
+        let name = word.name();
+
+        if let Some(id) = env.lookup(name).copied() {
+            return Ok(id);
+        }
+
+        let symbol = Symbol::new(env.module_id(), name);
+
+        if let Some(id) = self.global_scope.get_def(&symbol) {
+            return Ok(id);
+        }
+
+        if self.checking_modules {
+            if let Some(id) = self.find_and_check_item(&symbol)? {
+                return Ok(id);
+            }
+        }
+
+        if let Some(id) = self.builtin_tys.get(name) {
+            return Ok(id);
+        }
+
+        Err(Diagnostic::error("check::name_not_found")
+            .with_message(format!("cannot find `{word}` in this scope"))
+            .with_label(Label::primary(word.span()).with_message("not found in this scope")))
+    }
+
+    pub fn lookup_def_in_module(
+        &mut self,
+        from_module_id: ModuleId,
+        in_module_id: ModuleId,
+        word: Word,
+    ) -> CheckResult<DefId> {
+        let symbol = Symbol::new(in_module_id, word.name());
+
+        let id = if let Some(id) = self.global_scope.get_def(&symbol) {
+            id
+        } else {
+            self.find_and_check_item(&symbol)?.ok_or_else(|| {
+                let module_name = self.db[in_module_id].name.join();
+
+                Diagnostic::error("check::name_not_found_in_module")
+                    .with_message(format!("cannot find `{word}` in module `{module_name}`",))
+                    .with_label(
+                        Label::primary(word.span())
+                            .with_message(format!("not found in {module_name}")),
+                    )
+            })?
+        };
+
+        self.check_def_access(from_module_id, id, word.span())?;
+
+        Ok(id)
+    }
+
+    fn check_def_access(
+        &self,
+        module_id: ModuleId,
+        accessed: DefId,
+        span: Span,
+    ) -> CheckResult<()> {
+        let def = &self.db[accessed];
+
+        match def.scope.vis {
+            Vis::Private if module_id != def.scope.module_id => {
+                Err(Diagnostic::error("check::private_member")
+                    .with_message(format!(
+                        "`{}` is private to module `{}`",
+                        def.name, self.db[def.scope.module_id].name
+                    ))
+                    .with_label(Label::primary(span).with_message("private member")))
+            }
+            _ => Ok(()),
+        }
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Symbol {

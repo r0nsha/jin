@@ -33,11 +33,8 @@ impl At<'_, '_> {
                     let expected_ty = expected.display(self.cx.db).to_string();
                     let found_ty = found.display(self.cx.db).to_string();
 
-                    let mut diag = errors::ty_mismatch(
-                        expected_ty.clone(),
-                        found_ty.clone(),
-                        self.obligation.span(),
-                    );
+                    let mut diag =
+                        errors::ty_mismatch(&expected_ty, &found_ty, self.obligation.span());
 
                     match *self.obligation.kind() {
                         ObligationKind::Obvious => (),

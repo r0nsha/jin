@@ -1,7 +1,7 @@
-import bar.bar
+import bar.bar.hello
 
 fn main {
-	bar.hello()
+	hello()
 }
 
 fn get_hello_world* -> str {
