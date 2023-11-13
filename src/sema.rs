@@ -23,7 +23,7 @@ use crate::{
     hir::{const_eval::ConstEvalError, ExprId, Hir},
     index_vec::IndexVecExt,
     macros::create_bool_enum,
-    middle::{BinOp, Mutability, TyExpr, UnOp, Vis},
+    middle::{BinOp, Mutability, TyExpr, UnOp},
     sema::{
         attrs::AttrsPlacement,
         coerce::CoerceExt,
@@ -36,7 +36,6 @@ use crate::{
     span::{Span, Spanned},
     sym,
     ty::{FloatVar, FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty, TyKind, TyVar},
-    word::Word,
 };
 
 pub type CheckResult<T> = Result<T, Diagnostic>;
@@ -475,31 +474,18 @@ impl<'db> Sema<'db> {
             .find_module_by_path(&import.module_path)
             .expect("import to have a registered module");
 
-        self.check_import_path(env, module_info.id, import.word, import.vis, &import.import_path)?;
-
-        Ok(())
-    }
-
-    fn check_import_path(
-        &mut self,
-        env: &mut Env,
-        module_id: ModuleId,
-        name: Word,
-        vis: Vis,
-        import_path: &ast::ImportPath,
-    ) -> CheckResult<()> {
-        match import_path {
+        match &import.import_path {
             ast::ImportPath::Node(node) => {
-                self.check_import_node(env, module_id, node)?;
+                self.check_import_node(env, module_info.id, node)?;
             }
             ast::ImportPath::None => {
                 self.define_def(
                     env,
-                    vis,
+                    import.vis,
                     DefKind::Variable,
-                    name,
+                    import.word,
                     Mutability::Imm,
-                    Ty::new(TyKind::Module(module_id)),
+                    Ty::new(TyKind::Module(module_info.id)),
                 )?;
             }
         }
@@ -529,14 +515,7 @@ impl<'db> Sema<'db> {
                 }
             },
             ast::ImportPath::None => {
-                self.define_def(
-                    env,
-                    node.vis,
-                    *self.db[def_id].kind.clone(),
-                    node.word,
-                    Mutability::Imm,
-                    self.db[def_id].ty,
-                )?;
+                self.define_def_alias(env, node.word, def_id)?;
             }
         }
 

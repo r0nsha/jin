@@ -31,9 +31,53 @@ impl<'db> Sema<'db> {
     ) -> CheckResult<DefId> {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].name.clone().child(name.name());
-
         let id = DefInfo::alloc(self.db, qpath, scope, kind, mutability, ty, name.span());
+        self.define_global_def_alias(module_id, name, id)
+    }
 
+    pub fn define_local_def(
+        &mut self,
+        env: &mut Env,
+        kind: DefKind,
+        name: Word,
+        mutability: Mutability,
+        ty: Ty,
+    ) -> DefId {
+        let id = DefInfo::alloc(
+            self.db,
+            env.scope_path(self.db).child(name.name()),
+            ScopeInfo { module_id: env.module_id(), level: env.scope_level(), vis: Vis::Private },
+            kind,
+            mutability,
+            ty,
+            name.span(),
+        );
+
+        Self::define_local_def_alias(env, name, id)
+    }
+
+    pub fn define_def(
+        &mut self,
+        env: &mut Env,
+        vis: Vis,
+        kind: DefKind,
+        name: Word,
+        mutability: Mutability,
+        ty: Ty,
+    ) -> CheckResult<DefId> {
+        if env.in_global_scope() {
+            self.define_global_def(env.module_id(), vis, kind, name, mutability, ty)
+        } else {
+            Ok(self.define_local_def(env, kind, name, mutability, ty))
+        }
+    }
+
+    pub fn define_global_def_alias(
+        &mut self,
+        module_id: ModuleId,
+        name: Word,
+        id: DefId,
+    ) -> CheckResult<DefId> {
         if let Some(prev_id) = self.global_scope.insert_def(Symbol::new(module_id, name.name()), id)
         {
             let def = &self.db[prev_id];
@@ -57,42 +101,16 @@ impl<'db> Sema<'db> {
         Ok(id)
     }
 
-    pub fn define_local_def(
-        &mut self,
-        env: &mut Env,
-        kind: DefKind,
-        name: Word,
-        mutability: Mutability,
-        ty: Ty,
-    ) -> DefId {
-        let id = DefInfo::alloc(
-            self.db,
-            env.scope_path(self.db).child(name.name()),
-            ScopeInfo { module_id: env.module_id(), level: env.scope_level(), vis: Vis::Private },
-            kind,
-            mutability,
-            ty,
-            name.span(),
-        );
-
+    pub fn define_local_def_alias(env: &mut Env, name: Word, id: DefId) -> DefId {
         env.current_mut().insert(name.name(), id);
-
         id
     }
 
-    pub fn define_def(
-        &mut self,
-        env: &mut Env,
-        vis: Vis,
-        kind: DefKind,
-        name: Word,
-        mutability: Mutability,
-        ty: Ty,
-    ) -> CheckResult<DefId> {
+    pub fn define_def_alias(&mut self, env: &mut Env, name: Word, id: DefId) -> CheckResult<DefId> {
         if env.in_global_scope() {
-            self.define_global_def(env.module_id(), vis, kind, name, mutability, ty)
+            self.define_global_def_alias(env.module_id(), name, id)
         } else {
-            Ok(self.define_local_def(env, kind, name, mutability, ty))
+            Ok(Self::define_local_def_alias(env, name, id))
         }
     }
 
