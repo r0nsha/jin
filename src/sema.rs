@@ -650,9 +650,12 @@ impl<'db> Sema<'db> {
     }
 
     fn check_import(&mut self, env: &mut Env, import: &ast::Import) -> CheckResult<()> {
-        let module_info =
-            self.db.find_module_by_path(&import.module_path).expect("import to have a registered module");
+        let module_info = self
+            .db
+            .find_module_by_path(&import.module_path)
+            .expect("import to have a registered module");
 
+        todo!("import path");
         self.define_def(
             env,
             import.vis,

@@ -2,7 +2,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use path_absolutize::Absolutize;
 
 use crate::{
-    ast::{token::TokenKind, Attr, Import},
+    ast::{token::TokenKind, Attr, Import, ImportNode, ImportPath},
     diagnostics::{Diagnostic, Label},
     parse::parser::{ParseResult, Parser},
     span::{Span, Spanned},
@@ -23,13 +23,28 @@ impl<'a> Parser<'a> {
                 .with_label(Label::primary(mod_name.span()).with_message("here")));
         }
 
+        let import_path = self.parse_import_path()?;
+
         Ok(Import {
             attrs: attrs.to_owned(),
             module_path: absolute_path,
             word: mod_name,
             vis,
+            import_path,
             span: start.merge(mod_name.span()),
         })
+    }
+
+    fn parse_import_path(&mut self) -> ParseResult<ImportPath> {
+        if self.is(TokenKind::Dot) {
+            let name = self.eat(TokenKind::empty_ident())?.word();
+            let vis = self.parse_vis();
+            let import_path = self.parse_import_path()?;
+
+            Ok(ImportPath::Node(Box::new(ImportNode { word: name, vis, import_path })))
+        } else {
+            Ok(ImportPath::None)
+        }
     }
 
     fn search_import_path(&self, name: Word) -> ParseResult<Utf8PathBuf> {

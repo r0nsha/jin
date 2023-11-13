@@ -1,4 +1,4 @@
-import bar
+import bar.bar
 
 fn main {
 	bar.hello()

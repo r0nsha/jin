@@ -229,7 +229,21 @@ pub struct Import {
     pub module_path: Utf8PathBuf,
     pub word: Word,
     pub vis: Vis,
+    pub import_path: ImportPath,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum ImportPath {
+    Node(Box<ImportNode>),
+    None,
+}
+
+#[derive(Debug, Clone)]
+pub struct ImportNode {
+    pub word: Word,
+    pub vis: Vis,
+    pub import_path: ImportPath,
 }
 
 #[derive(Debug, Clone)]
