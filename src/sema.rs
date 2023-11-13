@@ -655,15 +655,76 @@ impl<'db> Sema<'db> {
             .find_module_by_path(&import.module_path)
             .expect("import to have a registered module");
 
-        todo!("import path");
-        self.define_def(
-            env,
-            import.vis,
-            DefKind::ExternGlobal,
-            import.word,
-            Mutability::Imm,
-            Ty::new(TyKind::Module(module_info.id)),
-        )?;
+        self.check_import_path(env, module_info.id, import.word, import.vis, &import.import_path)?;
+
+        Ok(())
+    }
+
+    fn check_import_path(
+        &mut self,
+        env: &mut Env,
+        module_id: ModuleId,
+        name: Word,
+        vis: Vis,
+        import_path: &ast::ImportPath,
+    ) -> CheckResult<()> {
+        match import_path {
+            ast::ImportPath::Node(node) => {
+                self.check_import_node(env, module_id, node)?;
+            }
+            ast::ImportPath::None => {
+                self.define_def(
+                    env,
+                    vis,
+                    DefKind::Variable,
+                    name,
+                    Mutability::Imm,
+                    Ty::new(TyKind::Module(module_id)),
+                )?;
+            }
+        }
+
+        Ok(())
+    }
+
+    fn check_import_node(
+        &mut self,
+        env: &mut Env,
+        module_id: ModuleId,
+        node: &ast::ImportNode,
+    ) -> Result<(), Diagnostic> {
+        let def_id = self.lookup_def_in_module(env.module_id(), module_id, node.word)?;
+
+        match &node.import_path {
+            ast::ImportPath::Node(node) => match self.normalize(self.db[def_id].ty).kind() {
+                TyKind::Module(module_id) => {
+                    self.check_import_path(
+                        env,
+                        *module_id,
+                        node.word,
+                        node.vis,
+                        &node.import_path,
+                    )?;
+                }
+                ty => {
+                    return Err(errors::ty_mismatch(
+                        TyKind::Module(ModuleId::INVALID).to_string(self.db),
+                        ty.to_string(self.db),
+                        node.word.span(),
+                    ));
+                }
+            },
+            ast::ImportPath::None => {
+                self.define_def(
+                    env,
+                    node.vis,
+                    *self.db[def_id].kind.clone(),
+                    node.word,
+                    Mutability::Imm,
+                    self.db[def_id].ty,
+                )?;
+            }
+        }
 
         Ok(())
     }
@@ -1302,7 +1363,7 @@ impl<'db> Sema<'db> {
                 match def.kind.as_ref() {
                     DefKind::Ty(ty) => Ok(*ty),
                     DefKind::Struct(sid) => Ok(Ty::new(TyKind::Struct(*sid))),
-                    _ => Err(Diagnostic::error("check::expected_ty")
+                    _ => Err(Diagnostic::error("check::expected_type")
                         .with_message(format!(
                             "expected a type, found value of type `{}`",
                             def.ty.display(self.db)

@@ -2,7 +2,7 @@ use ena::unify::{EqUnifyValue, UnifyKey};
 
 use crate::{
     diagnostics::{Diagnostic, Label},
-    sema::{normalize::NormalizeTy, Sema},
+    sema::{errors, normalize::NormalizeTy, Sema},
     span::Span,
     ty::{FloatTy, FloatVar, InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
 };
@@ -33,14 +33,11 @@ impl At<'_, '_> {
                     let expected_ty = expected.display(self.cx.db).to_string();
                     let found_ty = found.display(self.cx.db).to_string();
 
-                    let msg = format!("expected type `{expected_ty}`, found `{found_ty}`");
-
-                    let mut diag = Diagnostic::error("check::type_mismatch")
-                        .with_message(msg.clone())
-                        .with_label(
-                            Label::primary(self.obligation.span())
-                                .with_message(format!("expected `{expected_ty}` here")),
-                        );
+                    let mut diag = errors::ty_mismatch(
+                        expected_ty.clone(),
+                        found_ty.clone(),
+                        self.obligation.span(),
+                    );
 
                     match *self.obligation.kind() {
                         ObligationKind::Obvious => (),
