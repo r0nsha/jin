@@ -716,6 +716,7 @@ impl<'db> Sema<'db> {
                 })?;
 
                 // NOTE: expected & actual types are flipped here so that all types are accepted
+                // (since all types coerce to `never`)
                 self.at(Obligation::obvious(expr.span))
                     .eq(expr.ty, self.db.types.never)
                     .or_coerce(self, expr.id)?;
