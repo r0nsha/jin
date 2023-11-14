@@ -316,6 +316,15 @@ impl DefKind {
             None
         }
     }
+
+    #[must_use]
+    pub fn as_alias(&self) -> Option<DefId> {
+        if let Self::Alias(v) = self {
+            Some(*v)
+        } else {
+            None
+        }
+    }
 }
 
 impl DefInfo {

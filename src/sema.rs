@@ -855,8 +855,9 @@ impl<'db> Sema<'db> {
             }
             ast::Expr::Name { word, args, span } => {
                 let id = self.lookup_def(env, *word)?;
+                let id = self.db[id].kind.as_alias().unwrap_or(id);
 
-                if let DefKind::Struct(sid) = self.db[id].kind.as_ref() {
+                if let DefKind::Struct(struct_id) = self.db[id].kind.as_ref() {
                     // NOTE: if the named definition is a struct, we want to return its
                     // constructor function's type
                     self.expr(
@@ -865,7 +866,7 @@ impl<'db> Sema<'db> {
                             word: *word,
                             instantiation: Instantiation::default(),
                         }),
-                        self.db[*sid].ctor_ty,
+                        self.db[*struct_id].ctor_ty,
                         *span,
                     )
                 } else {
@@ -913,7 +914,7 @@ impl<'db> Sema<'db> {
                                                     ))));
                         }
                         _ => {
-                            let fn_ty_params =
+                            let env_fn_ty_params =
                                 env.fn_id().map_or(vec![], |id| self.db[id].ty.collect_params());
 
                             ty_params
@@ -923,7 +924,7 @@ impl<'db> Sema<'db> {
                                         param.var,
                                         // If the type param is one of the current function's type
                                         // params, we don't want to instantiate it
-                                        if fn_ty_params.iter().any(|p| p.var == param.var) {
+                                        if env_fn_ty_params.iter().any(|p| p.var == param.var) {
                                             Ty::new(TyKind::Param(param))
                                         } else {
                                             self.fresh_ty_var()
