@@ -1,9 +1,9 @@
 /target
 /out
 
-/tests/*
-!/tests/*.jin
-!/tests/*.c
-!/tests/*.h
+/tests/build
+/tests/*.a
+/tests/*.so
+
 
 fail.ll
