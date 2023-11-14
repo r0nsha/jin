@@ -1,7 +1,9 @@
 use bar.baz.hello as my_hello
+use bar.baz.goodbye
 
 fn main {
 	my_hello()
+	goodbye()
 }
 
 fn get_hello_world* -> str {

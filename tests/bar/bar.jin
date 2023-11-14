@@ -5,3 +5,7 @@ fn extern printf(fmt: *u8, ..) -> i32
 fn hello* {
 	printf(foo.get_hello_world().ptr)
 }
+
+fn goodbye* {
+	printf("Goodbye...\n".ptr)
+}
