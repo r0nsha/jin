@@ -1,5 +1,5 @@
-use bar.baz.hello as my_hello
-use bar.baz.goodbye
+use bar.baz.{hello as my_hello, goodbye}
+//use bar.baz.goodbye
 
 fn main {
 	my_hello()

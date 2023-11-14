@@ -721,7 +721,7 @@ impl<'a> Parser<'a> {
         Ok(CallArg::Positional(expr))
     }
 
-    fn parse_list<T>(
+    pub(super) fn parse_list<T>(
         &mut self,
         open: TokenKind,
         close: TokenKind,
@@ -745,7 +745,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_list_optional<T>(
+    pub(super) fn parse_list_optional<T>(
         &mut self,
         open: TokenKind,
         close: TokenKind,

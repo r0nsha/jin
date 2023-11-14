@@ -3,8 +3,8 @@ use std::io;
 use super::{Expr, Fn, Item, LitKind, Module};
 use crate::{
     ast::{
-        CallArg, ExternImport, ExternLet, FnKind, FnSig, Import, ImportPath, Let, TyDef, TyDefKind,
-        TyExpr,
+        CallArg, ExternImport, ExternLet, FnKind, FnSig, Import, ImportNode, ImportPath, Let,
+        TyDef, TyDefKind, TyExpr,
     },
     db::StructKind,
     middle::BinOp,
@@ -264,11 +264,24 @@ impl PrettyPrint for ImportPath {
     fn pretty_print(&self, cx: &mut PrettyCx) {
         match self {
             ImportPath::Node(node) => {
-                cx.builder.add_empty_child(node.name().to_string());
-                node.import_path.pretty_print(cx);
+                node.pretty_print(cx);
+            }
+            ImportPath::Group(nodes) => {
+                cx.builder.begin_child("group".to_string());
+                for n in nodes {
+                    n.pretty_print(cx);
+                }
+                cx.builder.end_child();
             }
             ImportPath::None => todo!(),
         }
+    }
+}
+
+impl PrettyPrint for ImportNode {
+    fn pretty_print(&self, cx: &mut PrettyCx) {
+        cx.builder.add_empty_child(self.name().to_string());
+        self.import_path.pretty_print(cx);
     }
 }
 

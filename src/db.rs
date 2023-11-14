@@ -296,6 +296,7 @@ pub enum DefKind {
     Fn(FnInfo),
     Ty(Ty),
     Struct(StructId),
+    Alias(DefId),
     ExternGlobal,
     Global,
     Variable,

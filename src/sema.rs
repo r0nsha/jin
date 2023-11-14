@@ -479,9 +479,23 @@ impl<'db> Sema<'db> {
             .find_module_by_file_path(&import.path)
             .expect("import to have a registered module");
 
+        self.check_import_root(env, module_info.id, import)?;
+
+        Ok(())
+    }
+
+    fn check_import_root(
+        &mut self,
+        env: &mut Env,
+        module_id: ModuleId,
+        import: &ast::Import,
+    ) -> Result<(), Diagnostic> {
         match &import.root.import_path {
             ast::ImportPath::Node(node) => {
-                self.check_import_node(env, module_info.id, node)?;
+                self.check_import_node(env, module_id, node)?;
+            }
+            ast::ImportPath::Group(nodes) => {
+                self.check_import_group(env, module_id, nodes)?;
             }
             ast::ImportPath::None => {
                 self.define_def(
@@ -490,10 +504,10 @@ impl<'db> Sema<'db> {
                     DefKind::Variable,
                     import.root.name(),
                     Mutability::Imm,
-                    Ty::new(TyKind::Module(module_info.id)),
+                    Ty::new(TyKind::Module(module_id)),
                 )?;
             }
-        }
+        };
 
         Ok(())
     }
@@ -507,24 +521,51 @@ impl<'db> Sema<'db> {
         let def_id = self.lookup_def_in_module(env.module_id(), module_id, node.word)?;
 
         match &node.import_path {
-            ast::ImportPath::Node(node) => match self.normalize(self.db[def_id].ty).kind() {
-                TyKind::Module(module_id) => {
-                    self.check_import_node(env, *module_id, node)?;
-                }
-                ty => {
-                    return Err(errors::ty_mismatch(
-                        &TyKind::Module(ModuleId::INVALID).to_string(self.db),
-                        &ty.to_string(self.db),
-                        node.span(),
-                    ));
-                }
-            },
+            ast::ImportPath::Node(node) => {
+                let module_id = self.is_module_def(def_id, node.span())?;
+                self.check_import_node(env, module_id, node)?;
+            }
+            ast::ImportPath::Group(nodes) => {
+                let module_id = self.is_module_def(def_id, node.span())?;
+                self.check_import_group(env, module_id, nodes)?;
+            }
             ast::ImportPath::None => {
-                self.define_def_alias(env, node.name(), def_id)?;
+                self.define_def(
+                    env,
+                    node.vis,
+                    DefKind::Alias(def_id),
+                    node.name(),
+                    Mutability::Imm,
+                    self.db[def_id].ty,
+                )?;
             }
         }
 
         Ok(())
+    }
+
+    fn check_import_group(
+        &mut self,
+        env: &mut Env,
+        module_id: ModuleId,
+        nodes: &[ast::ImportNode],
+    ) -> Result<(), Diagnostic> {
+        for node in nodes {
+            self.check_import_node(env, module_id, node)?;
+        }
+
+        Ok(())
+    }
+
+    fn is_module_def(&self, def_id: DefId, span: Span) -> CheckResult<ModuleId> {
+        match self.normalize(self.db[def_id].ty).kind() {
+            TyKind::Module(module_id) => Ok(*module_id),
+            ty => Err(errors::ty_mismatch(
+                &TyKind::Module(ModuleId::INVALID).to_string(self.db),
+                &ty.to_string(self.db),
+                span,
+            )),
+        }
     }
 
     fn check_extern_let(

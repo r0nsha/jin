@@ -234,6 +234,7 @@ pub struct Import {
 #[derive(Debug, Clone)]
 pub enum ImportPath {
     Node(Box<ImportNode>),
+    Group(Vec<ImportNode>),
     None,
 }
 

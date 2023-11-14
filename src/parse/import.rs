@@ -42,11 +42,23 @@ impl<'a> Parser<'a> {
 
     fn parse_import_path(&mut self) -> ParseResult<ImportPath> {
         if self.is(TokenKind::Dot) {
-            let node = self.parse_import_node()?;
-            Ok(ImportPath::Node(Box::new(node)))
+            if self.peek_is(TokenKind::OpenCurly) {
+                let group = self.parse_import_group()?;
+                Ok(ImportPath::Group(group))
+            } else {
+                let node = self.parse_import_node()?;
+                Ok(ImportPath::Node(Box::new(node)))
+            }
         } else {
             Ok(ImportPath::None)
         }
+    }
+
+    fn parse_import_group(&mut self) -> ParseResult<Vec<ImportNode>> {
+        self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
+            this.parse_import_node()
+        })
+        .map(|(l, _)| l)
     }
 
     fn search_import_path(&self, name: Word) -> ParseResult<Utf8PathBuf> {

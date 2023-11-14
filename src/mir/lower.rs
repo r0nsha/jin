@@ -478,41 +478,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 let value = self.lower_expr(&access.expr);
                 self.body.create_value(expr.ty, ValueKind::Member(value, access.member.name()))
             }
-            hir::ExprKind::Name(name) => {
-                match self.cx.db[name.id].kind.as_ref() {
-                    DefKind::Fn(_) => {
-                        let id = if name.instantiation.is_empty() {
-                            self.cx.fn_map[&name.id]
-                        } else {
-                            let mut folder =
-                                ParamFolder { db: self.cx.db, instantiation: &name.instantiation };
-
-                            let ty = folder.fold(expr.ty);
-
-                            // let instantiation: Instantiation = name
-                            //     .instantiation
-                            //     .iter()
-                            //     .map(|(var, ty)| (*var, folder.fold(*ty)))
-                            //     .collect();
-
-                            self.cx
-                                .monomorphize_fn(&MonoItem { id: name.id, ty }, &name.instantiation)
-                        };
-
-                        self.body.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
-                    }
-                    DefKind::ExternGlobal | DefKind::Global => {
-                        let id = self.cx.lower_global(name.id);
-                        self.body.create_value(self.cx.mir.globals[id].ty, ValueKind::Global(id))
-                    }
-                    DefKind::Variable => self.body.create_value(expr.ty, ValueKind::Local(name.id)),
-                    DefKind::Struct(sid) => {
-                        let id = self.cx.get_or_create_struct_ctor(*sid);
-                        self.body.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
-                    }
-                    DefKind::Ty(_) => unreachable!(),
-                }
-            }
+            hir::ExprKind::Name(name) => self.lower_name(name.id, expr.ty, &name.instantiation),
             hir::ExprKind::Lit(lit) => {
                 let value = match lit {
                     hir::Lit::Str(lit) => Const::from(*lit),
@@ -524,6 +490,41 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                 self.lower_const(&value, expr.ty)
             }
+        }
+    }
+
+    fn lower_name(&mut self, id: DefId, ty: Ty, instantiation: &Instantiation) -> ValueId {
+        match self.cx.db[id].kind.as_ref() {
+            DefKind::Fn(_) => {
+                let id = if instantiation.is_empty() {
+                    self.cx.fn_map[&id]
+                } else {
+                    let mut folder = ParamFolder { db: self.cx.db, instantiation };
+
+                    let ty = folder.fold(ty);
+
+                    // let instantiation: Instantiation = name
+                    //     .instantiation
+                    //     .iter()
+                    //     .map(|(var, ty)| (*var, folder.fold(*ty)))
+                    //     .collect();
+
+                    self.cx.monomorphize_fn(&MonoItem { id, ty }, instantiation)
+                };
+
+                self.body.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
+            }
+            DefKind::ExternGlobal | DefKind::Global => {
+                let id = self.cx.lower_global(id);
+                self.body.create_value(self.cx.mir.globals[id].ty, ValueKind::Global(id))
+            }
+            DefKind::Variable => self.body.create_value(ty, ValueKind::Local(id)),
+            DefKind::Struct(sid) => {
+                let id = self.cx.get_or_create_struct_ctor(*sid);
+                self.body.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
+            }
+            DefKind::Alias(id) => self.lower_name(*id, ty, instantiation),
+            DefKind::Ty(_) => unreachable!(),
         }
     }
 
