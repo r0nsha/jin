@@ -9,7 +9,6 @@ use crate::{
     db::{Db, DefId, DefInfo, DefKind, ModuleId, ScopeInfo, ScopeLevel},
     diagnostics::{Diagnostic, Label},
     hir,
-    hir::ExprId,
     middle::{Mutability, Vis},
     qpath::QPath,
     sema::{CheckResult, Sema},
@@ -101,18 +100,10 @@ impl<'db> Sema<'db> {
         kind: DefKind,
         pat: &ast::Pat,
         ty: Ty,
-        value_id: ExprId,
     ) -> CheckResult<hir::Pat> {
         match pat {
             ast::Pat::Name(name) => {
                 let id = self.define_def(env, name.vis, kind, name.word, name.mutability, ty)?;
-
-                if name.mutability.is_imm() {
-                    if let Some(value) = self.db.const_storage.expr(value_id) {
-                        self.db.const_storage.insert_def(id, value.clone());
-                    }
-                }
-
                 Ok(hir::Pat::Name(hir::NamePat { id, word: name.word }))
             }
             ast::Pat::Discard(span) => Ok(hir::Pat::Discard(*span)),

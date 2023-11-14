@@ -4,7 +4,7 @@ use ustr::{ustr, Ustr};
 use crate::{
     db::{Db, DefId, DefKind},
     hir,
-    hir::{const_eval::Const, FnKind, Hir},
+    hir::{FnKind, Hir},
     index_vec::IndexVecExt,
     mir::*,
     subst::{ParamFolder, Subst},
@@ -264,20 +264,18 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     }
 
     fn lower_global(self, let_: &hir::Let) -> Option<GlobalId> {
-        let kind = if let Some(value) = self.cx.db.const_storage.expr(let_.value.id).cloned() {
-            GlobalKind::Const(value)
-        } else {
-            let mut cx = LowerBodyCx::new(self.cx);
-            let start_blk = cx.body.create_block("start");
-            cx.position_at(start_blk);
-            let value = cx.lower_expr(&let_.value);
-            GlobalKind::Static(cx.body, value)
-        };
-
         match &let_.pat {
             hir::Pat::Name(name) => {
                 let full_name = self.cx.db[name.id].qpath.join_with("_");
                 let ty = self.cx.db[name.id].ty;
+
+                let mut cx = LowerBodyCx::new(self.cx);
+
+                let start_blk = cx.body.create_block("start");
+                cx.position_at(start_blk);
+
+                let value = cx.lower_expr(&let_.value);
+                let kind = GlobalKind::Static(cx.body, value);
 
                 let id = self.cx.mir.globals.push_with_key(|id| Global {
                     id,
@@ -296,16 +294,6 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     }
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
-        let value = if let Some(value) = self.cx.db.const_storage.expr(expr.id).cloned() {
-            self.lower_const(&value, expr.ty)
-        } else {
-            self.lower_expr_inner(expr)
-        };
-
-        self.apply_coercions_to_expr(expr, value)
-    }
-
-    fn lower_place(&mut self, expr: &hir::Expr) -> ValueId {
         let value = self.lower_expr_inner(expr);
         self.apply_coercions_to_expr(expr, value)
     }
@@ -327,7 +315,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::Assign(assign) => {
-                let lhs = self.lower_place(&assign.lhs);
+                let lhs = self.lower_expr(&assign.lhs);
                 let rhs = self.lower_expr(&assign.rhs);
 
                 let rhs = if let Some(op) = assign.op {

@@ -3,13 +3,13 @@ mod pretty_print;
 
 use std::io;
 
+use derive_more::From;
 pub use lower::lower;
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
     db::{Db, DefId, StructId},
-    hir::const_eval::Const,
     index_vec::{new_key_type, IndexSlice, IndexVec, IndexVecExt},
     middle::{BinOp, UnOp},
     span::Span,
@@ -88,7 +88,6 @@ pub struct Global {
 
 #[derive(Debug, Clone)]
 pub enum GlobalKind {
-    Const(Const),
     Static(Body, ValueId),
     Extern,
 }
@@ -230,4 +229,13 @@ impl ValueKind {
             None
         }
     }
+}
+
+#[derive(Debug, Clone, From)]
+pub enum Const {
+    Str(Ustr),
+    Int(i128),
+    Float(f64),
+    Bool(bool),
+    Unit,
 }

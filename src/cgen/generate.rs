@@ -15,9 +15,10 @@ use crate::{
         },
     },
     db::{Db, StructId, StructInfo},
-    hir::const_eval::Const,
     middle::UnOp,
-    mir::{Block, Body, Fn, FnSig, FnSigId, Global, GlobalKind, Inst, Mir, ValueId, ValueKind},
+    mir::{
+        Block, Body, Const, Fn, FnSig, FnSigId, Global, GlobalKind, Inst, Mir, ValueId, ValueKind,
+    },
     target::TargetMetrics,
     ty::Ty,
 };
@@ -140,11 +141,6 @@ impl<'db> Generator<'db> {
             let decl = glob.ty.cdecl(self, D::text(glob.name.as_str()));
 
             let glob_doc = match &glob.kind {
-                GlobalKind::Const(value) => decl
-                    .append(D::space())
-                    .append(D::text("="))
-                    .append(D::space())
-                    .append(codegen_const_value(value)),
                 GlobalKind::Static(..) => decl,
                 GlobalKind::Extern => D::text("extern").append(D::space()).append(decl),
             };

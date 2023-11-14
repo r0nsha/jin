@@ -1,8 +1,7 @@
 use crate::{
     db::Db,
     diagnostics::{Diagnostic, Label},
-    hir::{const_eval::Const, Expr, ExprKind, FnKind, Hir},
-    span::Span,
+    hir::{Expr, ExprKind, FnKind, Hir},
     ty::{Ty, TyKind},
 };
 
@@ -46,38 +45,6 @@ impl CheckBodies<'_> {
                 }
             }
         });
-
-        if let Some(Const::Int(value)) = self.db.const_storage.expr(expr.id) {
-            self.check_const_int_range(*value, expr.ty, expr.span);
-        }
-    }
-
-    fn check_const_int_range(&mut self, value: i128, ty: Ty, span: Span) {
-        match ty.kind() {
-            TyKind::Int(ity) => {
-                if !ity.contains(value) {
-                    self.int_out_of_range_err(value, ty, span);
-                }
-            }
-            TyKind::Uint(uty) => {
-                if !uty.contains(value) {
-                    self.int_out_of_range_err(value, ty, span);
-                }
-            }
-            _ => (),
-        }
-    }
-
-    fn int_out_of_range_err(&mut self, value: i128, ty: Ty, span: Span) {
-        self.db.diagnostics.emit(
-            Diagnostic::error("check::int_out_of_range")
-                .with_message(format!(
-                    "integer {} is of range of its type `{}`",
-                    value,
-                    ty.display(self.db)
-                ))
-                .with_label(Label::primary(span).with_message("integer overflows its type")),
-        );
     }
 }
 

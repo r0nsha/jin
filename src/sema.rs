@@ -20,7 +20,7 @@ use crate::{
     db::{Db, DefId, DefKind, FnInfo, ModuleId, StructField, StructInfo},
     diagnostics::{Diagnostic, Label},
     hir,
-    hir::{const_eval::ConstEvalError, ExprId, Hir},
+    hir::{ExprId, Hir},
     index_vec::IndexVecExt,
     macros::create_bool_enum,
     middle::{BinOp, Mutability, TyExpr, UnOp},
@@ -383,7 +383,7 @@ impl<'db> Sema<'db> {
         }
 
         let def_kind = if env.in_global_scope() { DefKind::Global } else { DefKind::Variable };
-        let pat = self.define_pat(env, def_kind, &let_.pat, ty, value.id)?;
+        let pat = self.define_pat(env, def_kind, &let_.pat, ty)?;
 
         Ok(hir::Let {
             module_id: env.module_id(),
@@ -582,29 +582,6 @@ impl<'db> Sema<'db> {
     }
 
     fn check_expr(
-        &mut self,
-        env: &mut Env,
-        expr: &ast::Expr,
-        expected_ty: Option<Ty>,
-    ) -> CheckResult<hir::Expr> {
-        let expr = self.check_expr_inner(env, expr, expected_ty)?;
-
-        self.db.const_storage.eval_expr(&expr).map_err(|err| {
-            let msg = match err {
-                ConstEvalError::DivByZero => "division by zero",
-                ConstEvalError::RemByZero => "reminder by zero",
-                ConstEvalError::Overflow => "integer overflow",
-            };
-
-            Diagnostic::error("check::const_eval_error")
-                .with_message(format!("const evaluation failed: {msg}"))
-                .with_label(Label::primary(expr.span).with_message(format!("caught {msg}")))
-        })?;
-
-        Ok(expr)
-    }
-
-    fn check_expr_inner(
         &mut self,
         env: &mut Env,
         expr: &ast::Expr,

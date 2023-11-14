@@ -1,4 +1,3 @@
-pub mod const_eval;
 mod pretty_print;
 
 use std::{fmt, io};
@@ -183,17 +182,6 @@ pub enum Pat {
 }
 
 impl Pat {
-    pub fn walk(&self, mut f: impl FnMut(&NamePat)) {
-        self.walk_(&mut f);
-    }
-
-    fn walk_(&self, f: &mut impl FnMut(&NamePat)) {
-        match self {
-            Self::Name(n) => f(n),
-            Self::Discard(_) => (),
-        }
-    }
-
     pub fn any(&self, mut f: impl FnMut(&NamePat) -> bool) -> bool {
         self.any_(&mut f)
     }
@@ -203,12 +191,6 @@ impl Pat {
             Self::Name(n) => f(n),
             Self::Discard(_) => false,
         }
-    }
-
-    pub fn ids(&self) -> Vec<DefId> {
-        let mut ids = vec![];
-        self.walk(|name| ids.push(name.id));
-        ids
     }
 }
 

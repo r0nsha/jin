@@ -33,16 +33,6 @@ struct PrettyCx<'db> {
 impl<'db> PrettyCx<'db> {
     fn pp_global(&mut self, glob: &'db Global) -> D<'db> {
         match &glob.kind {
-            GlobalKind::Const(value) => D::text("let")
-                .append(D::space())
-                .append(Self::global(glob.name.as_str()))
-                .append(D::text(":"))
-                .append(D::space())
-                .append(D::text(glob.ty.to_string(self.db)))
-                .append(D::space())
-                .append(D::text("="))
-                .append(D::space())
-                .append(pp_const_value(value)),
             GlobalKind::Static(body, _) => D::text("let")
                 .append(D::space())
                 .append(Self::global(glob.name.as_str()))
