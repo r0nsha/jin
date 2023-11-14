@@ -293,11 +293,9 @@ impl<'db> Sema<'db> {
             ast::FnKind::Extern { is_c_variadic } => *is_c_variadic,
         };
 
-        let sig = env.with_scope(
-            fun.sig.word.name(),
-            ScopeKind::Fn(DefId::INVALID),
-            |env| -> CheckResult<_> { self.check_fn_sig(env, &fun.sig, is_c_variadic) },
-        )?;
+        let sig = env.with_scope(fun.sig.word.name(), ScopeKind::Fn(DefId::INVALID), |env| {
+            self.check_fn_sig(env, &fun.sig, is_c_variadic)
+        })?;
 
         let id = self.define_def(
             env,
