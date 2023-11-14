@@ -22,7 +22,7 @@ use crate::{
     ty::Ty,
 };
 
-const PRELUDE: &str = include_str!("../../jin.c");
+const PRELUDE: &str = include_str!("../../rt/jin.c");
 
 pub struct Generator<'db> {
     pub db: &'db mut Db,
