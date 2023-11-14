@@ -1,1 +1,1 @@
-use bar*
+use bar as baz*

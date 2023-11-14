@@ -161,7 +161,12 @@ impl<'db> Sema<'db> {
                 item,
                 ast::GlobalItemId::new(symbol.module_id, item_id),
             )?;
-            let id = self.global_scope.get_def(symbol).expect("global def to be defined");
+
+            let id = self
+                .global_scope
+                .get_def(symbol)
+                .unwrap_or_else(|| panic!("global symbol to be defined: {symbol:?}"));
+
             Ok(Some(id))
         } else {
             Ok(None)
@@ -483,7 +488,7 @@ impl<'db> Sema<'db> {
                     env,
                     import.root.vis,
                     DefKind::Variable,
-                    import.root.word,
+                    import.root.name(),
                     Mutability::Imm,
                     Ty::new(TyKind::Module(module_info.id)),
                 )?;
@@ -510,12 +515,12 @@ impl<'db> Sema<'db> {
                     return Err(errors::ty_mismatch(
                         &TyKind::Module(ModuleId::INVALID).to_string(self.db),
                         &ty.to_string(self.db),
-                        node.word.span(),
+                        node.span(),
                     ));
                 }
             },
             ast::ImportPath::None => {
-                self.define_def_alias(env, node.word, def_id)?;
+                self.define_def_alias(env, node.name(), def_id)?;
             }
         }
 

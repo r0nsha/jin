@@ -27,9 +27,17 @@ impl<'a> Parser<'a> {
 
     fn parse_import_node(&mut self) -> ParseResult<ImportNode> {
         let word = self.eat(TokenKind::empty_ident())?.word();
-        let vis = self.parse_vis();
-        let import_path = self.parse_import_path()?;
-        Ok(ImportNode { word, vis, import_path })
+
+        let (alias, vis, import_path) = if self.is(TokenKind::As) {
+            let alias = self.eat(TokenKind::empty_ident())?.word();
+            let vis = self.parse_vis();
+            (Some(alias), vis, ImportPath::None)
+        } else {
+            let vis = self.parse_vis();
+            (None, vis, self.parse_import_path()?)
+        };
+
+        Ok(ImportNode { word, vis, alias, import_path })
     }
 
     fn parse_import_path(&mut self) -> ParseResult<ImportPath> {

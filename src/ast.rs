@@ -94,7 +94,7 @@ impl Item {
             Self::Fn(fun) => f(fun.sig.word),
             Self::Let(let_) => let_.pat.walk(|p| f(p.word)),
             Self::Type(tydef) => f(tydef.word),
-            Self::Import(import) => f(import.root.word),
+            Self::Import(import) => f(import.root.name()),
             Self::ExternLet(let_) => f(let_.word),
             Self::ExternImport(_) => (),
         }
@@ -241,7 +241,18 @@ pub enum ImportPath {
 pub struct ImportNode {
     pub word: Word,
     pub vis: Vis,
+    pub alias: Option<Word>,
     pub import_path: ImportPath,
+}
+
+impl ImportNode {
+    pub fn name(&self) -> Word {
+        self.alias.unwrap_or(self.word)
+    }
+
+    pub fn span(&self) -> Span {
+        self.name().span()
+    }
 }
 
 #[derive(Debug, Clone)]
