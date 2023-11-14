@@ -1,39 +1,18 @@
-fn extern printf(fmt: *u8, ..) -> i32
+use raylib as r
 
 fn main {
 	let screen_width = 800
 	let screen_height = 450
 
-	InitWindow(screen_width, screen_height, "raylib - basic window".ptr)
-	SetTargetFPS(60)
+	r.InitWindow(screen_width, screen_height, "raylib - basic window".ptr)
+	r.SetTargetFPS(60)
 
-	loop if !WindowShouldClose() {
-		BeginDrawing()
-		ClearBackground(RAYWHITE)
-		DrawText("Congrats! You created your first window!".ptr, 190, 200, 20, LIGHTGRAY)
-		EndDrawing()
+	loop if !r.WindowShouldClose() {
+		r.BeginDrawing()
+		r.ClearBackground(r.RAYWHITE)
+		r.DrawText("Congrats! You created your first window!".ptr, 190, 200, 20, r.LIGHTGRAY)
+		r.EndDrawing()
 	}
 
-	CloseWindow()
+	r.CloseWindow()
 }
-
-// Raylib bindings
-import extern "raylib"
-import extern "m"
-
-fn extern InitWindow(width: i32, height: i32, title: *u8)
-fn extern CloseWindow()
-fn extern WindowShouldClose() -> bool
-fn extern SetTargetFPS(fps: i32)
-fn extern BeginDrawing()
-fn extern EndDrawing()
-fn extern ClearBackground(color: Color)
-fn extern DrawCircle(center_x: i32, center_y: i32, radius: f32, color: Color)
-fn extern DrawRectangle(pos_x: i32, pos_y: i32, width: i32, height: i32, color: Color)
-fn extern DrawFPS(pos_x: i32, pos_y: i32)
-fn extern DrawText(text: *u8, pos_x: i32, pos_y: i32, font_size: i32, tint: Color)
-
-type Color extern(r: u8, g: u8, b: u8, a: u8)
-
-let RAYWHITE = Color(245, 245, 245, 255)
-let LIGHTGRAY = Color(200, 200, 200, 255)

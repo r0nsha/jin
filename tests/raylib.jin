@@ -19,13 +19,19 @@ type Color* extern(r: u8, g: u8, b: u8, a: u8)
 let RAYWHITE* = Color(245, 245, 245, 255)
 let LIGHTGRAY* = Color(200, 200, 200, 255)
 let DARKGRAY* = Color(80, 80, 80, 255)
+let BLACK* = Color(0, 0, 0, 255)
 let MAROON* = Color(190, 33, 55, 255)
+let BROWN* = Color(127, 106, 79, 255)
+let DARKGREEN* = Color(0, 117, 44, 255)
 
 type Vector2* extern(x: f32, y: f32)
 
+fn extern GetMousePosition*() -> Vector2
 fn extern IsKeyDown*(key: i32) -> bool
 
 let KEY_RIGHT* = 262
 let KEY_LEFT* = 263
 let KEY_DOWN* = 264
 let KEY_UP* = 265
+
+fn extern CheckCollisionPointCircle*(point: Vector2, center: Vector2, radius: f32) -> bool
