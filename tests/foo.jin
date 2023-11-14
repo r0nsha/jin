@@ -1,4 +1,4 @@
-import bar.bar.hello
+use bar.bar.hello
 
 fn main {
 	hello()
