@@ -36,6 +36,7 @@ use crate::{
     span::{Span, Spanned},
     sym,
     ty::{FloatVar, FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty, TyKind, TyVar},
+    word::Word,
 };
 
 pub type CheckResult<T> = Result<T, Diagnostic>;
@@ -588,11 +589,34 @@ impl<'db> Sema<'db> {
         expr: &ast::Expr,
         expected_ty: Option<Ty>,
     ) -> CheckResult<hir::Expr> {
-        let expr = match expr {
+        let expr = self.check_expr_inner(env, expr, expected_ty)?;
+
+        self.db.const_storage.eval_expr(&expr).map_err(|err| {
+            let msg = match err {
+                ConstEvalError::DivByZero => "division by zero",
+                ConstEvalError::RemByZero => "reminder by zero",
+                ConstEvalError::Overflow => "integer overflow",
+            };
+
+            Diagnostic::error("check::const_eval_error")
+                .with_message(format!("const evaluation failed: {msg}"))
+                .with_label(Label::primary(expr.span).with_message(format!("caught {msg}")))
+        })?;
+
+        Ok(expr)
+    }
+
+    fn check_expr_inner(
+        &mut self,
+        env: &mut Env,
+        expr: &ast::Expr,
+        expected_ty: Option<Ty>,
+    ) -> CheckResult<hir::Expr> {
+        match expr {
             ast::Expr::Let(let_) => {
                 let span = let_.span;
                 let let_ = self.check_let(env, let_)?;
-                self.expr(hir::ExprKind::Let(let_), self.db.types.unit, span)
+                Ok(self.expr(hir::ExprKind::Let(let_), self.db.types.unit, span))
             }
             ast::Expr::Assign { lhs, rhs, op, span } => {
                 let lhs = self.check_expr(env, lhs, None)?;
@@ -604,7 +628,7 @@ impl<'db> Sema<'db> {
                     self.check_bin_op(&lhs, &rhs, *op, *span)?;
                 }
 
-                self.expr(
+                Ok(self.expr(
                     hir::ExprKind::Assign(hir::Assign {
                         lhs: Box::new(lhs),
                         rhs: Box::new(rhs),
@@ -612,7 +636,7 @@ impl<'db> Sema<'db> {
                     }),
                     self.db.types.unit,
                     *span,
-                )
+                ))
             }
             ast::Expr::Return { expr, span } => {
                 if let Some(fn_id) = env.fn_id() {
@@ -628,15 +652,15 @@ impl<'db> Sema<'db> {
                         .eq(ret_ty, expr.ty)
                         .or_coerce(self, expr.id)?;
 
-                    self.expr(
+                    Ok(self.expr(
                         hir::ExprKind::Return(hir::Return { expr: Box::new(expr) }),
                         self.db.types.never,
                         *span,
-                    )
+                    ))
                 } else {
-                    return Err(Diagnostic::error("check::invalid_return")
+                    Err(Diagnostic::error("check::invalid_return")
                         .with_message("cannot return outside of function scope")
-                        .with_label(Label::primary(*span)));
+                        .with_label(Label::primary(*span)))
                 }
             }
             ast::Expr::If { cond, then, otherwise, span } => {
@@ -666,7 +690,7 @@ impl<'db> Sema<'db> {
 
                 let ty = then.ty;
 
-                self.expr(
+                Ok(self.expr(
                     hir::ExprKind::If(hir::If {
                         cond: Box::new(cond),
                         then: Box::new(then),
@@ -674,7 +698,7 @@ impl<'db> Sema<'db> {
                     }),
                     ty,
                     *span,
-                )
+                ))
             }
             ast::Expr::Loop { cond, expr, span } => {
                 let cond = if let Some(cond) = cond.as_ref() {
@@ -698,19 +722,19 @@ impl<'db> Sema<'db> {
                     .eq(expr.ty, self.db.types.never)
                     .or_coerce(self, expr.id)?;
 
-                self.expr(
+                Ok(self.expr(
                     hir::ExprKind::Loop(hir::Loop { cond, expr: Box::new(expr) }),
                     self.db.types.never,
                     *span,
-                )
+                ))
             }
             ast::Expr::Break { span } => {
                 if env.in_scope_kind(&ScopeKind::Loop) {
-                    self.expr(hir::ExprKind::Break, self.db.types.never, *span)
+                    Ok(self.expr(hir::ExprKind::Break, self.db.types.never, *span))
                 } else {
-                    return Err(Diagnostic::error("check::invalid_break")
+                    Err(Diagnostic::error("check::invalid_break")
                         .with_message("cannot break outside of a loop")
-                        .with_label(Label::primary(*span).with_message("break outside of loop")));
+                        .with_label(Label::primary(*span).with_message("break outside of loop")))
                 }
             }
             ast::Expr::Block { exprs, span } => {
@@ -733,9 +757,9 @@ impl<'db> Sema<'db> {
                     };
 
                     Ok(self.expr(hir::ExprKind::Block(hir::Block { exprs }), ty, *span))
-                })?
+                })
             }
-            ast::Expr::Call { callee, args, span } => self.check_call(env, callee, args, *span)?,
+            ast::Expr::Call { callee, args, span } => self.check_call(env, callee, args, *span),
             ast::Expr::Unary { expr, op, span } => {
                 let expr = self.check_expr(env, expr, None)?;
 
@@ -774,11 +798,11 @@ impl<'db> Sema<'db> {
 
                 let ty = expr.ty;
 
-                self.expr(
+                Ok(self.expr(
                     hir::ExprKind::Unary(hir::Unary { expr: Box::new(expr), op: *op }),
                     ty,
                     *span,
-                )
+                ))
             }
             ast::Expr::Binary { lhs, rhs, op, span } => {
                 let lhs = self.check_expr(env, lhs, None)?;
@@ -791,7 +815,7 @@ impl<'db> Sema<'db> {
                     _ => lhs.ty,
                 };
 
-                self.expr(
+                Ok(self.expr(
                     hir::ExprKind::Binary(hir::Binary {
                         lhs: Box::new(lhs),
                         rhs: Box::new(rhs),
@@ -799,17 +823,17 @@ impl<'db> Sema<'db> {
                     }),
                     result_ty,
                     *span,
-                )
+                ))
             }
             ast::Expr::Cast { expr, ty_expr: ty, span } => {
                 let expr = self.check_expr(env, expr, None)?;
                 let target = self.check_ty_expr(env, ty, AllowTyHole::Yes)?;
 
-                self.expr(
+                Ok(self.expr(
                     hir::ExprKind::Cast(hir::Cast { expr: Box::new(expr), target }),
                     target,
                     *span,
-                )
+                ))
             }
             ast::Expr::Member { expr, member, span } => {
                 let expr = self.check_expr(env, expr, None)?;
@@ -827,18 +851,8 @@ impl<'db> Sema<'db> {
                         }
                     }
                     TyKind::Module(module_id) => {
-                        let def_id =
-                            self.lookup_def_in_module(env.module_id(), *module_id, *member)?;
-
-                        return Ok(self.expr(
-                            hir::ExprKind::Name(hir::Name {
-                                id: def_id,
-                                word: *member,
-                                instantiation: Instantiation::default(),
-                            }),
-                            self.db[def_id].ty,
-                            *span,
-                        ));
+                        let id = self.lookup_def_in_module(env.module_id(), *module_id, *member)?;
+                        return self.check_name(env, id, *member, *span, None);
                     }
                     TyKind::Str if member.name() == sym::PTR => {
                         Ty::new(TyKind::RawPtr(self.db.types.u8))
@@ -847,101 +861,15 @@ impl<'db> Sema<'db> {
                     _ => return Err(errors::invalid_member(self.db, ty, expr.span, *member)),
                 };
 
-                self.expr(
+                Ok(self.expr(
                     hir::ExprKind::Member(hir::Member { expr: Box::new(expr), member: *member }),
                     res_ty,
                     *span,
-                )
+                ))
             }
             ast::Expr::Name { word, args, span } => {
                 let id = self.lookup_def(env, *word)?;
-
-                if let DefKind::Struct(struct_id) = self.db[id].kind.as_ref() {
-                    // NOTE: if the named definition is a struct, we want to return its
-                    // constructor function's type
-                    self.expr(
-                        hir::ExprKind::Name(hir::Name {
-                            id,
-                            word: *word,
-                            instantiation: Instantiation::default(),
-                        }),
-                        self.db[*struct_id].ctor_ty,
-                        *span,
-                    )
-                } else {
-                    let def_ty = self.normalize(self.db[id].ty);
-                    let mut ty_params = def_ty.collect_params();
-
-                    // NOTE: map type params that are part of the current polymorphic function to themselves, so
-                    // that we don't instantiate them. that's quite ugly though.
-                    if let Some(fn_id) = env.fn_id() {
-                        let fn_ty_params = self.db[fn_id].ty.collect_params();
-                        for ftp in fn_ty_params {
-                            if let Some(tp) = ty_params.iter_mut().find(|p| p.var == ftp.var) {
-                                *tp = ftp.clone();
-                            }
-                        }
-                    }
-
-                    let args = if let Some(args) = args {
-                        let args: Vec<Ty> = args
-                            .iter()
-                            .map(|arg| self.check_ty_expr(env, arg, AllowTyHole::Yes))
-                            .try_collect()?;
-
-                        Some(args)
-                    } else {
-                        None
-                    };
-
-                    let instantiation: Instantiation = match &args {
-                        Some(args) if args.len() == ty_params.len() => ty_params
-                            .into_iter()
-                            .zip(args)
-                            .map(|(param, arg)| (param.var, *arg))
-                            .collect(),
-                        Some(args) => {
-                            let expected = ty_params.len();
-                            let found = args.len();
-
-                            return Err(Diagnostic::error("check::type_arg_mismatch")
-                                                    .with_message(format!(
-                                                "expected {expected} type argument(s), but {found} were supplied"
-                                            ))
-                                                    .with_label(Label::primary(*span).with_message(format!(
-                                                        "expected {expected} type arguments, found {found}"
-                                                    ))));
-                        }
-                        _ => {
-                            let env_fn_ty_params =
-                                env.fn_id().map_or(vec![], |id| self.db[id].ty.collect_params());
-
-                            ty_params
-                                .into_iter()
-                                .map(|param| {
-                                    (
-                                        param.var,
-                                        // If the type param is one of the current function's type
-                                        // params, we don't want to instantiate it
-                                        if env_fn_ty_params.iter().any(|p| p.var == param.var) {
-                                            Ty::new(TyKind::Param(param))
-                                        } else {
-                                            self.fresh_ty_var()
-                                        },
-                                    )
-                                })
-                                .collect()
-                        }
-                    };
-
-                    let ty = instantiate(def_ty, instantiation.clone());
-
-                    self.expr(
-                        hir::ExprKind::Name(hir::Name { id, word: *word, instantiation }),
-                        ty,
-                        *span,
-                    )
-                }
+                self.check_name(env, id, *word, *span, args.as_ref().map(Vec::as_slice))
             }
             ast::Expr::Lit { kind, span } => {
                 let (kind, ty) = match kind {
@@ -951,23 +879,99 @@ impl<'db> Sema<'db> {
                     ast::LitKind::Bool(v) => (hir::Lit::Bool(*v), self.db.types.bool),
                 };
 
-                self.expr(hir::ExprKind::Lit(kind), ty, *span)
+                Ok(self.expr(hir::ExprKind::Lit(kind), ty, *span))
             }
-        };
+        }
+    }
 
-        self.db.const_storage.eval_expr(&expr).map_err(|err| {
-            let msg = match err {
-                ConstEvalError::DivByZero => "division by zero",
-                ConstEvalError::RemByZero => "reminder by zero",
-                ConstEvalError::Overflow => "integer overflow",
+    fn check_name(
+        &mut self,
+        env: &Env,
+        id: DefId,
+        word: Word,
+        span: Span,
+        args: Option<&[TyExpr]>,
+    ) -> CheckResult<hir::Expr> {
+        if let DefKind::Struct(struct_id) = self.db[id].kind.as_ref() {
+            // NOTE: if the named definition is a struct, we want to return its
+            // constructor function's type
+            Ok(self.expr(
+                hir::ExprKind::Name(hir::Name {
+                    id,
+                    word,
+                    instantiation: Instantiation::default(),
+                }),
+                self.db[*struct_id].ctor_ty,
+                span,
+            ))
+        } else {
+            let def_ty = self.normalize(self.db[id].ty);
+            let mut ty_params = def_ty.collect_params();
+
+            // NOTE: map type params that are part of the current polymorphic function to themselves, so
+            // that we don't instantiate them. that's quite ugly though.
+            if let Some(fn_id) = env.fn_id() {
+                let fn_ty_params = self.db[fn_id].ty.collect_params();
+                for ftp in fn_ty_params {
+                    if let Some(tp) = ty_params.iter_mut().find(|p| p.var == ftp.var) {
+                        *tp = ftp.clone();
+                    }
+                }
+            }
+
+            let args = if let Some(args) = args {
+                let args: Vec<Ty> = args
+                    .iter()
+                    .map(|arg| self.check_ty_expr(env, arg, AllowTyHole::Yes))
+                    .try_collect()?;
+
+                Some(args)
+            } else {
+                None
             };
 
-            Diagnostic::error("check::const_eval_error")
-                .with_message(format!("const evaluation failed: {msg}"))
-                .with_label(Label::primary(expr.span).with_message(format!("caught {msg}")))
-        })?;
+            let instantiation: Instantiation = match &args {
+                Some(args) if args.len() == ty_params.len() => {
+                    ty_params.into_iter().zip(args).map(|(param, arg)| (param.var, *arg)).collect()
+                }
+                Some(args) => {
+                    let expected = ty_params.len();
+                    let found = args.len();
 
-        Ok(expr)
+                    return Err(Diagnostic::error("check::type_arg_mismatch")
+                        .with_message(format!(
+                            "expected {expected} type argument(s), but {found} were supplied"
+                        ))
+                        .with_label(Label::primary(span).with_message(format!(
+                            "expected {expected} type arguments, found {found}"
+                        ))));
+                }
+                _ => {
+                    let env_fn_ty_params =
+                        env.fn_id().map_or(vec![], |id| self.db[id].ty.collect_params());
+
+                    ty_params
+                        .into_iter()
+                        .map(|param| {
+                            (
+                                param.var,
+                                // If the type param is one of the current function's type
+                                // params, we don't want to instantiate it
+                                if env_fn_ty_params.iter().any(|p| p.var == param.var) {
+                                    Ty::new(TyKind::Param(param))
+                                } else {
+                                    self.fresh_ty_var()
+                                },
+                            )
+                        })
+                        .collect()
+                }
+            };
+
+            let ty = instantiate(def_ty, instantiation.clone());
+
+            Ok(self.expr(hir::ExprKind::Name(hir::Name { id, word, instantiation }), ty, span))
+        }
     }
 
     fn check_call(
