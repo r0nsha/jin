@@ -120,6 +120,11 @@ impl<'db> Sema<'db> {
     }
 
     pub fn lookup_def(&mut self, env: &Env, word: Word) -> CheckResult<DefId> {
+        let id = self.lookup_def_inner(env, word)?;
+        Ok(self.db[id].kind.as_alias().unwrap_or(id))
+    }
+
+    fn lookup_def_inner(&mut self, env: &Env, word: Word) -> CheckResult<DefId> {
         let name = word.name();
 
         if let Some(id) = env.lookup(name).copied() {
@@ -172,7 +177,7 @@ impl<'db> Sema<'db> {
 
         self.check_def_access(from_module_id, id, word.span())?;
 
-        Ok(id)
+        Ok(self.db[id].kind.as_alias().unwrap_or(id))
     }
 
     fn check_def_access(

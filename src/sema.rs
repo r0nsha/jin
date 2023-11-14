@@ -855,7 +855,6 @@ impl<'db> Sema<'db> {
             }
             ast::Expr::Name { word, args, span } => {
                 let id = self.lookup_def(env, *word)?;
-                let id = self.db[id].kind.as_alias().unwrap_or(id);
 
                 if let DefKind::Struct(struct_id) = self.db[id].kind.as_ref() {
                     // NOTE: if the named definition is a struct, we want to return its

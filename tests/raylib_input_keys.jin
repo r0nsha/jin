@@ -4,6 +4,8 @@ use raylib.{
 	DrawCircleV, EndDrawing, CloseWindow, RAYWHITE, DARKGRAY, MAROON
 }
 
+//use raylib.*
+
 fn main {
 	let screen_width = 800
 	let screen_height = 450
