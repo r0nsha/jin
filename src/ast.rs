@@ -84,23 +84,6 @@ pub enum Item {
     ExternImport(ExternImport),
 }
 
-impl Item {
-    pub fn walk_names(&self, mut f: impl FnMut(Word)) {
-        self._walk_names(&mut f);
-    }
-
-    fn _walk_names(&self, f: &mut impl FnMut(Word)) {
-        match self {
-            Self::Fn(fun) => f(fun.sig.word),
-            Self::Let(let_) => let_.pat.walk(|p| f(p.word)),
-            Self::Type(tydef) => f(tydef.word),
-            Self::Import(import) => f(import.root.name()),
-            Self::ExternLet(let_) => f(let_.word),
-            Self::ExternImport(_) => (),
-        }
-    }
-}
-
 impl Spanned for Item {
     fn span(&self) -> Span {
         match self {

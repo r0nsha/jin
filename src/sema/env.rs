@@ -228,11 +228,20 @@ impl GlobalScope {
     fn init_items(ast: &Ast) -> FxHashMap<Symbol, ast::ItemId> {
         let mut item_map = FxHashMap::default();
 
+        let mut add_name = |module_id: ModuleId, word: Word, item_id: ast::ItemId| {
+            item_map.insert(Symbol::new(module_id, word.name()), item_id);
+        };
+
         for module in &ast.modules {
             for (id, item) in module.items.iter_enumerated() {
-                item.walk_names(|word| {
-                    item_map.insert(Symbol::new(module.id, word.name()), id);
-                });
+                match item {
+                    ast::Item::Fn(fun) => add_name(module.id, fun.sig.word, id),
+                    ast::Item::Let(let_) => let_.pat.walk(|p| add_name(module.id, p.word, id)),
+                    ast::Item::Type(tydef) => add_name(module.id, tydef.word, id),
+                    ast::Item::Import(import) => add_name(module.id, import.root.name(), id),
+                    ast::Item::ExternLet(let_) => add_name(module.id, let_.word, id),
+                    ast::Item::ExternImport(_) => (),
+                }
             }
         }
 
