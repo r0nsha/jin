@@ -2,7 +2,10 @@ use std::io;
 
 use super::{Expr, Fn, Item, LitKind, Module};
 use crate::{
-    ast::{CallArg, ExternImport, ExternLet, FnKind, FnSig, Import, Let, TyDef, TyDefKind, TyExpr},
+    ast::{
+        CallArg, ExternImport, ExternLet, FnKind, FnSig, Import, ImportPath, Let, TyDef, TyDefKind,
+        TyExpr,
+    },
     db::StructKind,
     middle::BinOp,
 };
@@ -251,7 +254,21 @@ impl PrettyPrint for TyDef {
 
 impl PrettyPrint for Import {
     fn pretty_print(&self, cx: &mut PrettyCx) {
-        cx.builder.add_empty_child(format!("import {}", self.word));
+        cx.builder.begin_child(format!("import {}", self.root.word));
+        self.root.import_path.pretty_print(cx);
+        cx.builder.end_child();
+    }
+}
+
+impl PrettyPrint for ImportPath {
+    fn pretty_print(&self, cx: &mut PrettyCx) {
+        match self {
+            ImportPath::Node(node) => {
+                cx.builder.add_empty_child(node.word.to_string());
+                node.import_path.pretty_print(cx);
+            }
+            ImportPath::None => todo!(),
+        }
     }
 }
 

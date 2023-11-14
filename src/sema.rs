@@ -471,19 +471,19 @@ impl<'db> Sema<'db> {
     fn check_import(&mut self, env: &mut Env, import: &ast::Import) -> CheckResult<()> {
         let module_info = self
             .db
-            .find_module_by_file_path(&import.module_path)
+            .find_module_by_file_path(&import.path)
             .expect("import to have a registered module");
 
-        match &import.import_path {
+        match &import.root.import_path {
             ast::ImportPath::Node(node) => {
                 self.check_import_node(env, module_info.id, node)?;
             }
             ast::ImportPath::None => {
                 self.define_def(
                     env,
-                    import.vis,
+                    import.root.vis,
                     DefKind::Variable,
-                    import.word,
+                    import.root.word,
                     Mutability::Imm,
                     Ty::new(TyKind::Module(module_info.id)),
                 )?;

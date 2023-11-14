@@ -11,37 +11,31 @@ use crate::{
 
 impl<'a> Parser<'a> {
     pub fn parse_import(&mut self, attrs: &[Attr], start: Span) -> ParseResult<Import> {
-        let mod_name = self.eat(TokenKind::empty_ident())?.word();
-        let vis = self.parse_vis();
+        let root = self.parse_import_node()?;
 
-        let absolute_path = self.search_import_path(mod_name)?;
-        self.imported_module_paths.insert(absolute_path.clone());
+        let path = self.search_import_path(root.word)?;
+        self.imported_module_paths.insert(path.clone());
 
-        if absolute_path == self.source.path() {
+        if path == self.source.path() {
             return Err(Diagnostic::error("parse::import_self")
-                .with_message(format!("module `{mod_name}` cannot import itself"))
-                .with_label(Label::primary(mod_name.span()).with_message("here")));
+                .with_message(format!("module `{}` cannot import itself", root.word))
+                .with_label(Label::primary(root.word.span()).with_message("here")));
         }
 
-        let import_path = self.parse_import_path()?;
+        Ok(Import { attrs: attrs.to_owned(), path, root, span: start.merge(self.last_span()) })
+    }
 
-        Ok(Import {
-            attrs: attrs.to_owned(),
-            module_path: absolute_path,
-            word: mod_name,
-            vis,
-            import_path,
-            span: start.merge(mod_name.span()),
-        })
+    fn parse_import_node(&mut self) -> ParseResult<ImportNode> {
+        let word = self.eat(TokenKind::empty_ident())?.word();
+        let vis = self.parse_vis();
+        let import_path = self.parse_import_path()?;
+        Ok(ImportNode { word, vis, import_path })
     }
 
     fn parse_import_path(&mut self) -> ParseResult<ImportPath> {
         if self.is(TokenKind::Dot) {
-            let name = self.eat(TokenKind::empty_ident())?.word();
-            let vis = self.parse_vis();
-            let import_path = self.parse_import_path()?;
-
-            Ok(ImportPath::Node(Box::new(ImportNode { word: name, vis, import_path })))
+            let node = self.parse_import_node()?;
+            Ok(ImportPath::Node(Box::new(node)))
         } else {
             Ok(ImportPath::None)
         }

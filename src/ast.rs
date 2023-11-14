@@ -94,7 +94,7 @@ impl Item {
             Self::Fn(fun) => f(fun.sig.word),
             Self::Let(let_) => let_.pat.walk(|p| f(p.word)),
             Self::Type(tydef) => f(tydef.word),
-            Self::Import(import) => f(import.word),
+            Self::Import(import) => f(import.root.word),
             Self::ExternLet(let_) => f(let_.word),
             Self::ExternImport(_) => (),
         }
@@ -226,10 +226,8 @@ pub struct StructTyField {
 #[derive(Debug, Clone)]
 pub struct Import {
     pub attrs: Attrs,
-    pub module_path: Utf8PathBuf,
-    pub word: Word,
-    pub vis: Vis,
-    pub import_path: ImportPath,
+    pub path: Utf8PathBuf,
+    pub root: ImportNode,
     pub span: Span,
 }
 
