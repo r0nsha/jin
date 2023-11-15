@@ -60,8 +60,8 @@ impl ResolutionState {
         self.check_stack.pop();
     }
 
-    pub fn get_resolved_fn_sig(&self, id: ast::GlobalItemId) -> Option<&ResolvedFnSig> {
-        self.resolved_fn_sigs.get(&id)
+    pub fn take_resolved_fn_sig(&mut self, id: ast::GlobalItemId) -> Option<ResolvedFnSig> {
+        self.resolved_fn_sigs.remove(&id)
     }
 
     pub fn insert_resolved_fn_sig(&mut self, id: ast::GlobalItemId, resolved_sig: ResolvedFnSig) {

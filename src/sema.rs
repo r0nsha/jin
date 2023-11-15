@@ -142,9 +142,8 @@ impl<'db> Sema<'db> {
                 if let ast::Item::Fn(fun) = item {
                     let ResolvedFnSig { id, sig } = self
                         .resolution_state
-                        .get_resolved_fn_sig(ast::GlobalItemId::new(module.id, item_id))
-                        .expect("fn to be resolved")
-                        .clone();
+                        .take_resolved_fn_sig(ast::GlobalItemId::new(module.id, item_id))
+                        .expect("fn to be resolved");
                     let f = self.check_fn_body(&mut env, fun, sig, id)?;
                     self.hir.fns.push(f);
                 }
