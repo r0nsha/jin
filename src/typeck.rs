@@ -24,6 +24,9 @@ use crate::{
     index_vec::IndexVecExt,
     macros::create_bool_enum,
     middle::{BinOp, Mutability, TyExpr, UnOp},
+    span::{Span, Spanned},
+    sym,
+    ty::{FloatVar, FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty, TyKind, TyVar},
     typeck::{
         attrs::AttrsPlacement,
         coerce::CoerceExt,
@@ -33,9 +36,6 @@ use crate::{
         resolution_state::{ItemStatus, ModuleStatus, ResolutionState, ResolvedFnSig},
         unify::Obligation,
     },
-    span::{Span, Spanned},
-    sym,
-    ty::{FloatVar, FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty, TyKind, TyVar},
     word::Word,
 };
 
@@ -547,14 +547,7 @@ impl<'db> Typeck<'db> {
                 self.check_import_group(env, module_id, nodes)?;
             }
             ast::ImportPath::None => {
-                self.define_def(
-                    env,
-                    name.vis,
-                    DefKind::Alias(def_id),
-                    name.name(),
-                    Mutability::Imm,
-                    self.db[def_id].ty,
-                )?;
+                self.insert_def(env, name.name(), def_id)?;
             }
         }
 

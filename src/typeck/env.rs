@@ -42,12 +42,9 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<DefId> {
         let symbol = Symbol::new(module_id, name.name());
 
-        if let Some(prev_id) = self.global_scope.insert_def(symbol, id) {
-            let def = &self.db[prev_id];
-
+        if let Some((_, prev_span)) = self.global_scope.insert_def(symbol, (id, name.span())) {
             let dup_span = name.span();
-            let name = def.qpath.name();
-            let prev_span = def.span;
+            let name = symbol.name;
 
             return Err(Diagnostic::error()
                 .with_message(format!("the item `{name}` is defined multiple times"))
@@ -118,12 +115,17 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    pub fn lookup_def(&mut self, env: &Env, word: Word) -> TypeckResult<DefId> {
-        let id = self.lookup_def_inner(env, word)?;
-        Ok(self.unroll_def_aliases(id))
+    pub fn insert_def(&mut self, env: &mut Env, name: Word, id: DefId) -> TypeckResult<()> {
+        if env.in_global_scope() {
+            self.insert_global_def(env.module_id(), name, id)?;
+        } else {
+            env.current_mut().defs.insert(name.name(), id);
+        }
+
+        Ok(())
     }
 
-    fn lookup_def_inner(&mut self, env: &Env, word: Word) -> TypeckResult<DefId> {
+    pub fn lookup_def(&mut self, env: &Env, word: Word) -> TypeckResult<DefId> {
         let name = word.name();
 
         if let Some(id) = env.lookup(name).copied() {
@@ -176,7 +178,7 @@ impl<'db> Typeck<'db> {
 
         self.check_def_access(from_module_id, id, word.span())?;
 
-        Ok(self.unroll_def_aliases(id))
+        Ok(id)
     }
 
     fn lookup_global_symbol(&self, module_id: ModuleId, symbol: &Symbol) -> Option<DefId> {
@@ -193,14 +195,6 @@ impl<'db> Typeck<'db> {
 
             None
         }
-    }
-
-    fn unroll_def_aliases(&self, mut id: DefId) -> DefId {
-        while let DefKind::Alias(aliased) = self.db[id].kind.as_ref() {
-            id = *aliased;
-        }
-
-        id
     }
 
     fn check_def_access(
@@ -241,7 +235,7 @@ impl Symbol {
 
 #[derive(Debug)]
 pub struct GlobalScope {
-    defs: FxHashMap<Symbol, DefId>,
+    defs: FxHashMap<Symbol, GlobalScopeDef>,
     items: FxHashMap<Symbol, ast::ItemId>,
 }
 
@@ -307,17 +301,19 @@ impl GlobalScope {
     }
 
     pub fn get_def(&self, symbol: &Symbol) -> Option<DefId> {
-        self.defs.get(symbol).copied()
+        self.defs.get(symbol).map(|(id, _)| *id)
     }
 
-    pub fn insert_def(&mut self, symbol: Symbol, id: DefId) -> Option<DefId> {
-        self.defs.insert(symbol, id)
+    pub fn insert_def(&mut self, symbol: Symbol, def: GlobalScopeDef) -> Option<GlobalScopeDef> {
+        self.defs.insert(symbol, def)
     }
 
     pub fn get_item(&self, symbol: &Symbol) -> Option<ast::ItemId> {
         self.items.get(symbol).copied()
     }
 }
+
+type GlobalScopeDef = (DefId, Span);
 
 #[derive(Debug)]
 pub struct BuiltinTys {

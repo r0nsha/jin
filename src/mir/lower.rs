@@ -511,7 +511,6 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 let id = self.cx.get_or_create_struct_ctor(*sid);
                 self.body.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
             }
-            DefKind::Alias(id) => self.lower_name(*id, ty, instantiation),
             DefKind::Ty(_) => unreachable!(),
         }
     }
