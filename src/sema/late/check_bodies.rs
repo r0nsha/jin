@@ -17,17 +17,17 @@ impl CheckBodies<'_> {
     fn run(&mut self, hir: &Hir) {
         for f in &hir.fns {
             match &f.kind {
-                FnKind::Bare { body } => self.analyze_expr(body),
+                FnKind::Bare { body } => self.expr(body),
                 FnKind::Extern { .. } => (),
             }
         }
 
         for let_ in &hir.lets {
-            self.analyze_expr(&let_.value);
+            self.expr(&let_.value);
         }
     }
 
-    fn analyze_expr(&mut self, expr: &Expr) {
+    fn expr(&mut self, expr: &Expr) {
         expr.walk(|expr| {
             if let ExprKind::Cast(cast) = &expr.kind {
                 let source = cast.expr.ty;
