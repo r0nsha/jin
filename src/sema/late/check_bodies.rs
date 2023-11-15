@@ -38,7 +38,7 @@ impl CheckBodies<'_> {
                     let target = target.display(self.db);
 
                     self.db.diagnostics.emit(
-                        Diagnostic::error("check::invalid_cast")
+                        Diagnostic::error()
                             .with_message(format!("cannot cast `{source}` to `{target}`"))
                             .with_label(Label::primary(expr.span).with_message("invalid cast")),
                     );

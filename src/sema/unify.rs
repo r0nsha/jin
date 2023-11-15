@@ -56,7 +56,7 @@ impl At<'_, '_> {
                     let ty = ty.normalize(&mut storage);
                     let obligation = Obligation::obvious(self.obligation.span());
 
-                    Diagnostic::error("check::infinite_type")
+                    Diagnostic::error()
                         .with_message(format!(
                             "type `{}` is an infinite type",
                             ty.display(self.cx.db)

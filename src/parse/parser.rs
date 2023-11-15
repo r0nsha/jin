@@ -149,7 +149,7 @@ impl<'a> Parser<'a> {
         let attr_name = ident.str_value().as_str();
 
         let kind = AttrKind::try_from(attr_name).map_err(|()| {
-            Diagnostic::error("parse::invalid_attr")
+            Diagnostic::error()
                 .with_message("unknown attribute {attr_name}")
                 .with_label(Label::primary(ident.span).with_message("unknown attribute"))
         })?;
@@ -176,7 +176,7 @@ impl<'a> Parser<'a> {
             let (sig, is_c_variadic) = self.parse_fn_sig(name_ident.word(), AllowTyParams::Yes)?;
 
             if is_c_variadic {
-                return Err(Diagnostic::error("parse::invaild_c_varargs")
+                return Err(Diagnostic::error()
                     .with_message("non extern function cannot use c varargs")
                     .with_label(Label::primary(name_ident.span).with_message("here")));
             }
@@ -684,7 +684,7 @@ impl<'a> Parser<'a> {
 
                 match &arg {
                     CallArg::Positional(expr) if passed_named_arg => {
-                        return Err(Diagnostic::error("parse::mixed_args")
+                        return Err(Diagnostic::error()
                             .with_message(
                                 "positional arguments are not allowed after named arguments",
                             )
@@ -776,7 +776,7 @@ impl<'a> Parser<'a> {
     #[inline]
     pub(super) fn require(&mut self) -> ParseResult<Token> {
         self.token().ok_or_else(|| {
-            Diagnostic::error("parse::unexpected_eof")
+            Diagnostic::error()
                 .with_message("unexpected end of file")
                 .with_label(Label::primary(self.last_span()).with_message("here"))
         })
@@ -879,7 +879,7 @@ impl<'a> Parser<'a> {
 
 #[inline]
 fn unexpected_token_err(expected: &str, found: TokenKind, span: Span) -> Diagnostic {
-    Diagnostic::error("parse::unexpected_token")
+    Diagnostic::error()
         .with_message(format!("expected {expected}, found {found}"))
         .with_label(Label::primary(span).with_message("found here"))
 }

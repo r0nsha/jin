@@ -11,21 +11,14 @@ use crate::span::{SourceId, Sources, Span};
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
     severity: Severity,
-    code: String,
     message: Option<String>,
     labels: Vec<Label>,
     notes: Vec<String>,
 }
 
 impl Diagnostic {
-    pub fn error(code: impl Into<String>) -> Self {
-        Self {
-            severity: Severity::Error,
-            code: code.into(),
-            message: None,
-            labels: vec![],
-            notes: vec![],
-        }
+    pub fn error() -> Self {
+        Self { severity: Severity::Error, message: None, labels: vec![], notes: vec![] }
     }
 
     pub fn set_message(&mut self, message: impl Into<String>) {
@@ -107,7 +100,7 @@ impl From<Diagnostic> for codespan_diagnostic::Diagnostic<SourceId> {
     fn from(val: Diagnostic) -> Self {
         Self {
             severity: val.severity.into(),
-            code: Some(val.code),
+            code: None,
             message: val.message.unwrap_or_default(),
             labels: val.labels.into_iter().map(Into::into).collect(),
             notes: val.notes,

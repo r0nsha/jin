@@ -17,7 +17,7 @@ impl<'a> Parser<'a> {
         self.imported_module_paths.insert(path.clone());
 
         if path == self.source.path() {
-            return Err(Diagnostic::error("parse::import_self")
+            return Err(Diagnostic::error()
                 .with_message(format!("module `{}` cannot import itself", root.word))
                 .with_label(Label::primary(root.word.span()).with_message("here")));
         }
@@ -79,7 +79,7 @@ impl<'a> Parser<'a> {
             .or_else(|| self.search_package(name, &mut search_notes));
 
         path.ok_or_else(|| {
-            Diagnostic::error("parse::module_not_found")
+            Diagnostic::error()
                 .with_message(format!("could not find module or library `{name}`"))
                 .with_label(Label::primary(name.span()))
                 .with_notes(search_notes)

@@ -186,7 +186,7 @@ impl<'db> Sema<'db> {
             let origin_span = item.span();
             let reference_span = self.ast.find_item(err.causee).expect("item to exist").span();
 
-            Diagnostic::error("check::cyclic_items")
+            Diagnostic::error()
                 .with_message("cycle detected while checking definition")
                 .with_label(Label::primary(origin_span).with_message("definition here"))
                 .with_label(Label::secondary(reference_span).with_message("cyclic reference here"))
@@ -334,7 +334,7 @@ impl<'db> Sema<'db> {
                 let name = p.name.name();
                 let dup_span = p.name.span();
 
-                return Err(Diagnostic::error("check::multiple_params")
+                return Err(Diagnostic::error()
                     .with_message(format!("the name `{name}` is already used as a parameter name"))
                     .with_label(
                         Label::primary(dup_span).with_message(format!("`{name}` used again here")),
@@ -379,7 +379,7 @@ impl<'db> Sema<'db> {
         self.at(Obligation::obvious(value.span)).eq(ty, value.ty).or_coerce(self, value.id)?;
 
         if self.normalize(ty).is_module() {
-            return Err(Diagnostic::error("check::module_in_let")
+            return Err(Diagnostic::error()
                 .with_message("cannot store a module as a value")
                 .with_label(Label::primary(value.span).with_message("expected a value")));
         }
@@ -411,7 +411,7 @@ impl<'db> Sema<'db> {
                         let name = field.name.name();
                         let dup_span = field.name.span();
 
-                        return Err(Diagnostic::error("check::multiple_fields")
+                        return Err(Diagnostic::error()
                             .with_message(format!(
                                 "the name `{name}` is already used as a field name"
                             ))
@@ -458,7 +458,7 @@ impl<'db> Sema<'db> {
                 let struct_info = &self.db.structs[struct_id];
 
                 if let Some(field) = self.db.structs[struct_id].is_infinitely_sized() {
-                    return Err(Diagnostic::error("check::infinitely_sized_type")
+                    return Err(Diagnostic::error()
                         .with_message(format!("type `{}` is infinitely sized", struct_info.name))
                         .with_label(
                             Label::primary(struct_info.name.span()).with_message("defined here"),
@@ -657,7 +657,7 @@ impl<'db> Sema<'db> {
                         *span,
                     ))
                 } else {
-                    Err(Diagnostic::error("check::invalid_return")
+                    Err(Diagnostic::error()
                         .with_message("cannot return outside of function scope")
                         .with_label(Label::primary(*span)))
                 }
@@ -732,7 +732,7 @@ impl<'db> Sema<'db> {
                 if env.in_scope_kind(&ScopeKind::Loop) {
                     Ok(self.expr(hir::ExprKind::Break, self.db.types.never, *span))
                 } else {
-                    Err(Diagnostic::error("check::invalid_break")
+                    Err(Diagnostic::error()
                         .with_message("cannot break outside of a loop")
                         .with_label(Label::primary(*span).with_message("break outside of loop")))
                 }
@@ -768,7 +768,7 @@ impl<'db> Sema<'db> {
                 match op {
                     UnOp::Neg => {
                         if !ty.is_any_int() && !ty.is_any_float() {
-                            return Err(Diagnostic::error("check::invalid_neg")
+                            return Err(Diagnostic::error()
                                 .with_message(format!(
                                     "cannot use `{}` on `{}`",
                                     op,
@@ -782,7 +782,7 @@ impl<'db> Sema<'db> {
                     }
                     UnOp::Not => {
                         if !ty.is_any_int() && !ty.is_bool() {
-                            return Err(Diagnostic::error("check::invalid_not")
+                            return Err(Diagnostic::error()
                                 .with_message(format!(
                                     "cannot use `{}` on `{}`",
                                     op,
@@ -938,7 +938,7 @@ impl<'db> Sema<'db> {
                     let expected = ty_params.len();
                     let found = args.len();
 
-                    return Err(Diagnostic::error("check::type_arg_mismatch")
+                    return Err(Diagnostic::error()
                         .with_message(format!(
                             "expected {expected} type argument(s), but {found} were supplied"
                         ))
@@ -1052,7 +1052,7 @@ impl<'db> Sema<'db> {
                             let dup = arg_name.span();
                             let is_named = passed_arg.is_named;
 
-                            return Err(Diagnostic::error("check::multiple_named_args")
+                            return Err(Diagnostic::error()
                                 .with_message(if is_named {
                                     format!("argument `{name}` is passed multiple times")
                                 } else {
@@ -1113,7 +1113,7 @@ impl<'db> Sema<'db> {
                 let ty = self.normalize(callee.ty);
                 let span = callee.span;
 
-                Err(Diagnostic::error("check::uncallable_type")
+                Err(Diagnostic::error()
                     .with_message(format!("expected a function, found `{}`", ty.display(self.db)))
                     .with_label(Label::primary(span).with_message("expected a function")))
             }
@@ -1144,7 +1144,7 @@ impl<'db> Sema<'db> {
                 let name = tp.word.name();
                 let dup_span = tp.word.span();
 
-                return Err(Diagnostic::error("check::multiple_type_params")
+                return Err(Diagnostic::error()
                     .with_message(format!(
                         "the name `{name}` is already used as a type parameter name"
                     ))
@@ -1206,7 +1206,7 @@ impl<'db> Sema<'db> {
                 match def.kind.as_ref() {
                     DefKind::Ty(ty) => Ok(*ty),
                     DefKind::Struct(sid) => Ok(Ty::new(TyKind::Struct(*sid))),
-                    _ => Err(Diagnostic::error("check::expected_type")
+                    _ => Err(Diagnostic::error()
                         .with_message(format!(
                             "expected a type, found value of type `{}`",
                             def.ty.display(self.db)
@@ -1219,7 +1219,7 @@ impl<'db> Sema<'db> {
                 if allow_hole == AllowTyHole::Yes {
                     Ok(self.fresh_ty_var())
                 } else {
-                    Err(Diagnostic::error("check::invalid_infer_type")
+                    Err(Diagnostic::error()
                         .with_message("cannot use a _ type in a function's signature")
                         .with_label(Label::primary(*span)))
                 }
@@ -1268,7 +1268,7 @@ impl<'db> Sema<'db> {
         match &expr.kind {
             hir::ExprKind::Member(access) => self.check_assign_lhs_inner(&access.expr, expr.span),
             hir::ExprKind::Name(name) => self.check_assign_lhs_name(name, expr.span),
-            _ => Err(Diagnostic::error("check::invalid_assign")
+            _ => Err(Diagnostic::error()
                 .with_message("invalid left-hand side of assignment")
                 .with_label(
                     Label::primary(expr.span).with_message("cannot assign to this expression"),
@@ -1289,7 +1289,7 @@ impl<'db> Sema<'db> {
         if def.mutability.is_mut() {
             Ok(())
         } else {
-            Err(Diagnostic::error("check::immutable_assign")
+            Err(Diagnostic::error()
                 .with_message(format!("cannot assign twice to immutable value `{}`", def.name))
                 .with_label(
                     Label::primary(origin_span)
@@ -1323,7 +1323,7 @@ impl<'db> Sema<'db> {
                 let ty = self.normalize(lhs.ty);
 
                 if !ty.is_any_int() && !ty.is_any_float() {
-                    return Err(Diagnostic::error("check::invalid_binary_op")
+                    return Err(Diagnostic::error()
                         .with_message(format!("cannot use `{}` on `{}`", op, ty.display(self.db)))
                         .with_label(
                             Label::primary(lhs.span).with_message(format!("invalid use of `{op}`")),
@@ -1334,7 +1334,7 @@ impl<'db> Sema<'db> {
                 let ty = self.normalize(lhs.ty);
 
                 if !ty.is_any_int() {
-                    return Err(Diagnostic::error("check::invalid_binary_op")
+                    return Err(Diagnostic::error()
                         .with_message(format!("cannot use `{}` on `{}`", op, ty.display(self.db)))
                         .with_label(
                             Label::primary(lhs.span).with_message(format!("invalid use of `{op}`")),

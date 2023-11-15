@@ -51,7 +51,7 @@ impl SubstTy for SubstCx<'_> {
         if folder.has_unbound_vars {
             self.errors.entry(span).or_insert_with(|| {
                 let ty = ty.normalize(self.storage);
-                Diagnostic::error("check::cannot_infer")
+                Diagnostic::error()
                     .with_message(format!("type annotations needed for `{}`", ty.display(self.db)))
                     .with_label(Label::primary(span).with_message("cannot infer type"))
             });

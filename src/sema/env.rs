@@ -41,7 +41,7 @@ impl<'db> Sema<'db> {
             let name = def.qpath.name();
             let prev_span = def.span;
 
-            return Err(Diagnostic::error("check::multiple_items")
+            return Err(Diagnostic::error()
                 .with_message(format!("the item `{name}` is defined multiple times"))
                 .with_label(
                     Label::primary(dup_span).with_message(format!("`{name}` defined again here")),
@@ -138,7 +138,7 @@ impl<'db> Sema<'db> {
             return Ok(id);
         }
 
-        Err(Diagnostic::error("check::name_not_found")
+        Err(Diagnostic::error()
             .with_message(format!("cannot find `{word}` in this scope"))
             .with_label(Label::primary(word.span()).with_message("not found in this scope")))
     }
@@ -157,7 +157,7 @@ impl<'db> Sema<'db> {
             self.find_and_check_item(&symbol)?.ok_or_else(|| {
                 let module_name = self.db[in_module_id].qpath.join();
 
-                Diagnostic::error("check::name_not_found_in_module")
+                Diagnostic::error()
                     .with_message(format!("cannot find `{word}` in module `{module_name}`",))
                     .with_label(
                         Label::primary(word.span())
@@ -204,14 +204,12 @@ impl<'db> Sema<'db> {
         let def = &self.db[accessed];
 
         match def.scope.vis {
-            Vis::Private if module_id != def.scope.module_id => {
-                Err(Diagnostic::error("check::private_member")
-                    .with_message(format!(
-                        "`{}` is private to module `{}`",
-                        def.name, self.db[def.scope.module_id].qpath
-                    ))
-                    .with_label(Label::primary(span).with_message("private member")))
-            }
+            Vis::Private if module_id != def.scope.module_id => Err(Diagnostic::error()
+                .with_message(format!(
+                    "`{}` is private to module `{}`",
+                    def.name, self.db[def.scope.module_id].qpath
+                ))
+                .with_label(Label::primary(span).with_message("private member"))),
             _ => Ok(()),
         }
     }
