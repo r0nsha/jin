@@ -11,10 +11,10 @@ use crate::{
     hir,
     middle::{Mutability, Vis},
     qpath::QPath,
-    typeck::{TypeckResult, Typeck},
     span::{Span, Spanned},
     sym,
     ty::{Ty, TyKind},
+    typeck::{Typeck, TypeckResult},
     word::Word,
 };
 
@@ -31,7 +31,15 @@ impl<'db> Typeck<'db> {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].qpath.clone().child(name.name());
         let id = DefInfo::alloc(self.db, qpath, scope, kind, mutability, ty, name.span());
+        self.insert_global_def(module_id, name, id)
+    }
 
+    pub fn insert_global_def(
+        &mut self,
+        module_id: ModuleId,
+        name: Word,
+        id: DefId,
+    ) -> TypeckResult<DefId> {
         let symbol = Symbol::new(module_id, name.name());
 
         if let Some(prev_id) = self.global_scope.insert_def(symbol, id) {
