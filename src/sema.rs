@@ -154,7 +154,6 @@ impl<'db> Sema<'db> {
     }
 
     fn find_and_check_item(&mut self, symbol: &Symbol) -> CheckResult<Option<DefId>> {
-        // TODO: check for globs if needed
         if let Some(item_id) = self.global_scope.get_item(symbol) {
             let item = &self.ast.modules[symbol.module_id].items[item_id];
 
