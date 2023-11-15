@@ -112,7 +112,7 @@ impl<'db> Sema<'db> {
 
     pub fn lookup_def(&mut self, env: &Env, word: Word) -> CheckResult<DefId> {
         let id = self.lookup_def_inner(env, word)?;
-        Ok(self.db[id].kind.as_alias().unwrap_or(id))
+        Ok(self.unroll_def_aliases(id))
     }
 
     fn lookup_def_inner(&mut self, env: &Env, word: Word) -> CheckResult<DefId> {
@@ -124,7 +124,7 @@ impl<'db> Sema<'db> {
 
         let symbol = Symbol::new(env.module_id(), name);
 
-        if let Some(id) = self.global_scope.get_def(&symbol) {
+        if let Some(id) = self.lookup_global_symbol(env.module_id(), &symbol) {
             return Ok(id);
         }
 
@@ -151,7 +151,7 @@ impl<'db> Sema<'db> {
     ) -> CheckResult<DefId> {
         let symbol = Symbol::new(in_module_id, word.name());
 
-        let id = if let Some(id) = self.global_scope.get_def(&symbol) {
+        let id = if let Some(id) = self.lookup_global_symbol(from_module_id, &symbol) {
             id
         } else {
             self.find_and_check_item(&symbol)?.ok_or_else(|| {
@@ -168,7 +168,31 @@ impl<'db> Sema<'db> {
 
         self.check_def_access(from_module_id, id, word.span())?;
 
-        Ok(self.db[id].kind.as_alias().unwrap_or(id))
+        Ok(self.unroll_def_aliases(id))
+    }
+
+    fn lookup_global_symbol(&self, module_id: ModuleId, symbol: &Symbol) -> Option<DefId> {
+        if let Some(id) = self.global_scope.get_def(symbol) {
+            Some(id)
+        } else {
+            for module_id in &self.resolution_state.module_state(module_id).globs {
+                let new_symbol = symbol.with_module_id(*module_id);
+
+                if let Some(id) = self.global_scope.get_def(&new_symbol) {
+                    return Some(id);
+                }
+            }
+
+            None
+        }
+    }
+
+    fn unroll_def_aliases(&self, mut id: DefId) -> DefId {
+        while let DefKind::Alias(aliased) = self.db[id].kind.as_ref() {
+            id = *aliased;
+        }
+
+        id
     }
 
     fn check_def_access(
@@ -203,6 +227,10 @@ impl Symbol {
     pub fn new(module_id: ModuleId, name: Ustr) -> Self {
         Self { module_id, name }
     }
+
+    pub fn with_module_id(&self, module_id: ModuleId) -> Self {
+        Self { module_id, name: self.name }
+    }
 }
 
 #[derive(Debug)]
@@ -213,30 +241,63 @@ pub struct GlobalScope {
 
 impl GlobalScope {
     pub fn new(ast: &Ast) -> Self {
-        Self { defs: FxHashMap::default(), items: Self::init_items(ast) }
+        let mut this = Self { defs: FxHashMap::default(), items: FxHashMap::default() };
+        this.insert_all_items(ast);
+        this
     }
 
-    fn init_items(ast: &Ast) -> FxHashMap<Symbol, ast::ItemId> {
-        let mut item_map = FxHashMap::default();
-
-        let mut add_name = |module_id: ModuleId, word: Word, item_id: ast::ItemId| {
-            item_map.insert(Symbol::new(module_id, word.name()), item_id);
-        };
-
+    fn insert_all_items(&mut self, ast: &Ast) {
         for module in &ast.modules {
-            for (id, item) in module.items.iter_enumerated() {
+            for (item_id, item) in module.items.iter_enumerated() {
                 match item {
-                    ast::Item::Fn(fun) => add_name(module.id, fun.sig.word, id),
-                    ast::Item::Let(let_) => let_.pat.walk(|p| add_name(module.id, p.word, id)),
-                    ast::Item::Type(tydef) => add_name(module.id, tydef.word, id),
-                    ast::Item::Import(import) => add_name(module.id, import.root.name(), id),
-                    ast::Item::ExternLet(let_) => add_name(module.id, let_.word, id),
+                    ast::Item::Fn(fun) => self.insert_item(module.id, fun.sig.word, item_id),
+                    ast::Item::Let(let_) => {
+                        let_.pat.walk(|p| self.insert_item(module.id, p.word, item_id));
+                    }
+                    ast::Item::Type(tydef) => self.insert_item(module.id, tydef.word, item_id),
+                    ast::Item::Import(import) => {
+                        self.insert_import_name(module.id, &import.root, item_id);
+                    }
+                    ast::Item::ExternLet(let_) => self.insert_item(module.id, let_.word, item_id),
                     ast::Item::ExternImport(_) => (),
                 }
             }
         }
+    }
 
-        item_map
+    fn insert_import_name(
+        &mut self,
+        module_id: ModuleId,
+        name: &ast::ImportName,
+        item_id: ast::ItemId,
+    ) {
+        match &name.import_path {
+            ast::ImportPath::Node(node) => {
+                self.insert_import_node(module_id, node, item_id);
+            }
+            ast::ImportPath::Group(nodes) => {
+                for node in nodes {
+                    self.insert_import_node(module_id, node, item_id);
+                }
+            }
+            ast::ImportPath::None => self.insert_item(module_id, name.name(), item_id),
+        }
+    }
+
+    fn insert_import_node(
+        &mut self,
+        module_id: ModuleId,
+        node: &ast::ImportNode,
+        item_id: ast::ItemId,
+    ) {
+        match node {
+            ast::ImportNode::Name(name) => self.insert_import_name(module_id, name, item_id),
+            ast::ImportNode::Glob(_) => (),
+        }
+    }
+
+    fn insert_item(&mut self, module_id: ModuleId, word: Word, item_id: ast::ItemId) {
+        self.items.insert(Symbol::new(module_id, word.name()), item_id);
     }
 
     pub fn get_def(&self, symbol: &Symbol) -> Option<DefId> {

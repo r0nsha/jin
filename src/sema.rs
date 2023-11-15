@@ -3,8 +3,8 @@ mod coerce;
 mod env;
 mod errors;
 mod instantiate;
+mod late;
 mod normalize;
-mod post;
 mod resolution_state;
 mod subst;
 mod unify;
@@ -96,8 +96,8 @@ impl<'db> Sema<'db> {
 
         self.subst();
 
-        post::check_bodies(self.db, &self.hir);
-        post::check_entry(self.db, &self.hir);
+        late::check_bodies(self.db, &self.hir);
+        late::check_entry(self.db, &self.hir);
 
         Ok(self.hir)
     }
@@ -111,11 +111,13 @@ impl<'db> Sema<'db> {
     }
 
     fn check_module(&mut self, module: &ast::Module) -> Result<(), Diagnostic> {
-        if !self.resolution_state.get_module_status(module.id).is_unresolved() {
+        self.resolution_state.create_module_state(module.id);
+
+        if !self.resolution_state.module_state(module.id).status.is_unresolved() {
             return Ok(());
         }
 
-        self.resolution_state.mark_module_status(module.id, ModuleStatus::InProgress);
+        self.resolution_state.module_state_mut(module.id).status = ModuleStatus::InProgress;
 
         let mut env = Env::new(module.id);
 
@@ -127,7 +129,7 @@ impl<'db> Sema<'db> {
             }
         }
 
-        self.resolution_state.mark_module_status(module.id, ModuleStatus::Resolved);
+        self.resolution_state.module_state_mut(module.id).status = ModuleStatus::Resolved;
 
         Ok(())
     }
@@ -154,6 +156,7 @@ impl<'db> Sema<'db> {
     }
 
     fn find_and_check_item(&mut self, symbol: &Symbol) -> CheckResult<Option<DefId>> {
+        // TODO: check for globs if needed
         if let Some(item_id) = self.global_scope.get_item(symbol) {
             let item = &self.ast.modules[symbol.module_id].items[item_id];
 
@@ -517,23 +520,41 @@ impl<'db> Sema<'db> {
         module_id: ModuleId,
         node: &ast::ImportNode,
     ) -> Result<(), Diagnostic> {
-        let def_id = self.lookup_def_in_module(env.module_id(), module_id, node.word)?;
+        match node {
+            ast::ImportNode::Name(name) => {
+                self.check_import_name(env, module_id, name)?;
+            }
+            ast::ImportNode::Glob(_) => {
+                self.check_import_glob(env, module_id);
+            }
+        }
 
-        match &node.import_path {
+        Ok(())
+    }
+
+    fn check_import_name(
+        &mut self,
+        env: &mut Env,
+        module_id: ModuleId,
+        name: &ast::ImportName,
+    ) -> Result<(), Diagnostic> {
+        let def_id = self.lookup_def_in_module(env.module_id(), module_id, name.word)?;
+
+        match &name.import_path {
             ast::ImportPath::Node(node) => {
                 let module_id = self.is_module_def(def_id, node.span())?;
                 self.check_import_node(env, module_id, node)?;
             }
             ast::ImportPath::Group(nodes) => {
-                let module_id = self.is_module_def(def_id, node.span())?;
+                let module_id = self.is_module_def(def_id, name.span())?;
                 self.check_import_group(env, module_id, nodes)?;
             }
             ast::ImportPath::None => {
                 self.define_def(
                     env,
-                    node.vis,
+                    name.vis,
                     DefKind::Alias(def_id),
-                    node.name(),
+                    name.name(),
                     Mutability::Imm,
                     self.db[def_id].ty,
                 )?;
@@ -541,6 +562,10 @@ impl<'db> Sema<'db> {
         }
 
         Ok(())
+    }
+
+    fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {
+        self.resolution_state.module_state_mut(env.module_id()).globs.insert(module_id);
     }
 
     fn check_import_group(

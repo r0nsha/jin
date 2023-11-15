@@ -2,7 +2,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use path_absolutize::Absolutize;
 
 use crate::{
-    ast::{token::TokenKind, Attr, Import, ImportNode, ImportPath},
+    ast::{token::TokenKind, Attr, Import, ImportName, ImportNode, ImportPath},
     diagnostics::{Diagnostic, Label},
     parse::parser::{ParseResult, Parser},
     span::{Span, Spanned},
@@ -11,7 +11,7 @@ use crate::{
 
 impl<'a> Parser<'a> {
     pub fn parse_import(&mut self, attrs: &[Attr], start: Span) -> ParseResult<Import> {
-        let root = self.parse_import_node()?;
+        let root = self.parse_import_name()?;
 
         let path = self.search_import_path(root.word)?;
         self.imported_module_paths.insert(path.clone());
@@ -26,6 +26,15 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_import_node(&mut self) -> ParseResult<ImportNode> {
+        if self.is(TokenKind::Star) {
+            Ok(ImportNode::Glob(self.last_span()))
+        } else {
+            let name = self.parse_import_name()?;
+            Ok(ImportNode::Name(name))
+        }
+    }
+
+    fn parse_import_name(&mut self) -> ParseResult<ImportName> {
         let word = self.eat(TokenKind::empty_ident())?.word();
 
         let (alias, vis, import_path) = if self.is(TokenKind::As) {
@@ -37,7 +46,7 @@ impl<'a> Parser<'a> {
             (None, vis, self.parse_import_path()?)
         };
 
-        Ok(ImportNode { word, vis, alias, import_path })
+        Ok(ImportName { word, vis, alias, import_path })
     }
 
     fn parse_import_path(&mut self) -> ParseResult<ImportPath> {

@@ -1,26 +1,26 @@
-use raylib as r
+use raylib.{*, *}
 
 fn main {
 	let screen_width = 800
 	let screen_height = 450
 
-	r.InitWindow(screen_width, screen_height, "raylib - input keys".ptr)
-	r.SetTargetFPS(60)
+	InitWindow(screen_width, screen_height, "raylib - input keys".ptr)
+	SetTargetFPS(60)
 
-	let mut ball_position = r.Vector2({screen_width / 2} as f32, {screen_height / 2} as f32)
+	let mut ball_position = Vector2({screen_width / 2} as f32, {screen_height / 2} as f32)
 
-	loop if !r.WindowShouldClose() {
-		if r.IsKeyDown(r.KEY_RIGHT) { ball_position.x += 2.0 }
-        if r.IsKeyDown(r.KEY_LEFT) { ball_position.x -= 2.0 }
-        if r.IsKeyDown(r.KEY_UP) { ball_position.y -= 2.0 }
-        if r.IsKeyDown(r.KEY_DOWN) { ball_position.y += 2.0 }
+	loop if !WindowShouldClose() {
+		if IsKeyDown(KEY_RIGHT) { ball_position.x += 2.0 }
+        if IsKeyDown(KEY_LEFT) { ball_position.x -= 2.0 }
+        if IsKeyDown(KEY_UP) { ball_position.y -= 2.0 }
+        if IsKeyDown(KEY_DOWN) { ball_position.y += 2.0 }
 
-		r.BeginDrawing()
-		r.ClearBackground(r.RAYWHITE)
-		r.DrawText("move the ball with arrow keys".ptr, 10, 10, 20, r.DARKGRAY)
-		r.DrawCircleV(ball_position, 50.0, r.MAROON)
-		r.EndDrawing()
+		BeginDrawing()
+		ClearBackground(RAYWHITE)
+		DrawText("move the ball with arrow keys".ptr, 10, 10, 20, DARKGRAY)
+		DrawCircleV(ball_position, 50.0, MAROON)
+		EndDrawing()
 	}
 
-	r.CloseWindow()
+	CloseWindow()
 }
