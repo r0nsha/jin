@@ -140,10 +140,9 @@ impl<'db> Sema<'db> {
 
             for (item_id, item) in module.items.iter_enumerated() {
                 if let ast::Item::Fn(fun) = item {
-                    let global_item_id = ast::GlobalItemId::new(module.id, item_id);
                     let ResolvedFnSig { id, sig } = self
                         .resolution_state
-                        .get_resolved_fn_sig(global_item_id)
+                        .get_resolved_fn_sig(ast::GlobalItemId::new(module.id, item_id))
                         .expect("fn to be resolved")
                         .clone();
                     let f = self.check_fn_body(&mut env, fun, sig, id)?;
