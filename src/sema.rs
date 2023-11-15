@@ -97,7 +97,7 @@ impl<'db> Sema<'db> {
         self.subst();
 
         late::check_bodies(self.db, &self.hir);
-        late::check_entry(self.db, &self.hir);
+        late::check_main(self.db, &self.hir);
 
         Ok(self.hir)
     }

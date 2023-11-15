@@ -6,22 +6,22 @@ use crate::{
     ty::TyKind,
 };
 
-pub fn check_entry(db: &mut Db, hir: &Hir) {
-    CheckEntry { db }.run(hir);
+pub fn check_main(db: &mut Db, hir: &Hir) {
+    CheckMain { db }.run(hir);
 }
 
-struct CheckEntry<'db> {
+struct CheckMain<'db> {
     db: &'db mut Db,
 }
 
-impl<'db> CheckEntry<'db> {
+impl<'db> CheckMain<'db> {
     fn run(&mut self, hir: &Hir) {
-        if self.check_entry_exists() {
-            self.check_entry_ty(hir);
+        if self.exists() {
+            self.check_ty(hir);
         }
     }
 
-    fn check_entry_exists(&mut self) -> bool {
+    fn exists(&mut self) -> bool {
         let main_module_id = self.db.main_module_id().unwrap();
 
         let main_id = self.db.defs.iter().find_map(|def| {
@@ -50,11 +50,11 @@ impl<'db> CheckEntry<'db> {
         }
     }
 
-    fn check_entry_ty(&mut self, hir: &Hir) {
+    fn check_ty(&mut self, hir: &Hir) {
         let main_fun = self.db.main_function().expect("to exist");
         let fty = main_fun.ty.kind();
 
-        if is_main_fun_ty(fty) {
+        if is_main_ty(fty) {
             for fun in &hir.fns {
                 if fun.id == main_fun.id {
                     let tp = &fun.sig.ty_params;
@@ -85,6 +85,6 @@ impl<'db> CheckEntry<'db> {
     }
 }
 
-fn is_main_fun_ty(ty: &TyKind) -> bool {
+fn is_main_ty(ty: &TyKind) -> bool {
     matches!(ty, TyKind::Fn(f) if f.params.is_empty() && f.ret.is_unit())
 }
