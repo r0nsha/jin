@@ -1,5 +1,5 @@
 use crate::{
-    sema::TyStorage,
+    typeck::TyStorage,
     ty::{FnTy, FnTyParam, InferTy, Ty, TyKind},
 };
 

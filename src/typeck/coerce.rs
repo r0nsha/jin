@@ -1,6 +1,6 @@
 use crate::{
     hir::ExprId,
-    sema::{normalize::NormalizeTy, unify::EqResult, Sema},
+    typeck::{normalize::NormalizeTy, unify::EqResult, Typeck},
     ty::{
         coerce::{Coercion, CoercionKind},
         TyKind,
@@ -8,11 +8,11 @@ use crate::{
 };
 
 pub trait CoerceExt<'db> {
-    fn or_coerce(self, cx: &mut Sema<'db>, expr_id: ExprId) -> Self;
+    fn or_coerce(self, cx: &mut Typeck<'db>, expr_id: ExprId) -> Self;
 }
 
 impl CoerceExt<'_> for EqResult<()> {
-    fn or_coerce(self, cx: &mut Sema, expr_id: ExprId) -> Self {
+    fn or_coerce(self, cx: &mut Typeck, expr_id: ExprId) -> Self {
         let storage = &mut cx.storage.borrow_mut();
         let target_metrics = cx.db.target_metrics();
 

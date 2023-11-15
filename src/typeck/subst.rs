@@ -3,13 +3,13 @@ use rustc_hash::FxHashMap;
 use crate::{
     db::Db,
     diagnostics::{Diagnostic, Label},
-    sema::{normalize::NormalizeTy, Sema, TyStorage},
+    typeck::{normalize::NormalizeTy, Typeck, TyStorage},
     span::Span,
     subst::{Subst, SubstTy},
     ty::{fold::TyFolder, FloatVar, InferTy, IntVar, Ty, TyKind, TyVar},
 };
 
-impl<'db> Sema<'db> {
+impl<'db> Typeck<'db> {
     pub fn subst(&mut self) {
         let mut cx = SubstCx {
             db: self.db,

@@ -24,7 +24,7 @@ use crate::{
     index_vec::IndexVecExt,
     macros::create_bool_enum,
     middle::{BinOp, Mutability, TyExpr, UnOp},
-    sema::{
+    typeck::{
         attrs::AttrsPlacement,
         coerce::CoerceExt,
         env::{BuiltinTys, Env, GlobalScope, ScopeKind, Symbol},
@@ -39,13 +39,13 @@ use crate::{
     word::Word,
 };
 
-pub type CheckResult<T> = Result<T, Diagnostic>;
+pub type TypeckResult<T> = Result<T, Diagnostic>;
 
-pub fn check(db: &mut Db, ast: &Ast) -> CheckResult<Hir> {
-    Sema::new(db, ast).run()
+pub fn typeck(db: &mut Db, ast: &Ast) -> TypeckResult<Hir> {
+    Typeck::new(db, ast).run()
 }
 
-pub struct Sema<'db> {
+pub struct Typeck<'db> {
     db: &'db mut Db,
     ast: &'db Ast,
     hir: Hir,
@@ -74,7 +74,7 @@ impl TyStorage {
     }
 }
 
-impl<'db> Sema<'db> {
+impl<'db> Typeck<'db> {
     fn new(db: &'db mut Db, ast: &'db Ast) -> Self {
         Self {
             builtin_tys: BuiltinTys::new(db),
@@ -89,7 +89,7 @@ impl<'db> Sema<'db> {
         }
     }
 
-    fn run(mut self) -> CheckResult<Hir> {
+    fn run(mut self) -> TypeckResult<Hir> {
         self.check_all_modules()?;
         self.checking_modules = false;
         self.check_all_fn_bodies()?;
@@ -102,7 +102,7 @@ impl<'db> Sema<'db> {
         Ok(self.hir)
     }
 
-    fn check_all_modules(&mut self) -> CheckResult<()> {
+    fn check_all_modules(&mut self) -> TypeckResult<()> {
         for module in &self.ast.modules {
             self.check_module(module)?;
         }
@@ -134,7 +134,7 @@ impl<'db> Sema<'db> {
         Ok(())
     }
 
-    fn check_all_fn_bodies(&mut self) -> CheckResult<()> {
+    fn check_all_fn_bodies(&mut self) -> TypeckResult<()> {
         for module in &self.ast.modules {
             let mut env = Env::new(module.id);
 
@@ -153,7 +153,7 @@ impl<'db> Sema<'db> {
         Ok(())
     }
 
-    fn find_and_check_item(&mut self, symbol: &Symbol) -> CheckResult<Option<DefId>> {
+    fn find_and_check_item(&mut self, symbol: &Symbol) -> TypeckResult<Option<DefId>> {
         if let Some(item_id) = self.global_scope.get_item(symbol) {
             let item = &self.ast.modules[symbol.module_id].items[item_id];
 
@@ -179,7 +179,7 @@ impl<'db> Sema<'db> {
         env: &mut Env,
         item: &ast::Item,
         item_id: ast::GlobalItemId,
-    ) -> CheckResult<()> {
+    ) -> TypeckResult<()> {
         self.resolution_state.mark_in_progress_item(item_id).map_err(|err| {
             let origin_span = item.span();
             let reference_span = self.ast.find_item(err.causee).expect("item to exist").span();
@@ -225,9 +225,9 @@ impl<'db> Sema<'db> {
         fun: &ast::Fn,
         mut sig: hir::FnSig,
         id: DefId,
-    ) -> CheckResult<hir::Fn> {
+    ) -> TypeckResult<hir::Fn> {
         let kind =
-            env.with_scope(fun.sig.word.name(), ScopeKind::Fn(id), |env| -> CheckResult<_> {
+            env.with_scope(fun.sig.word.name(), ScopeKind::Fn(id), |env| -> TypeckResult<_> {
                 for tp in &sig.ty_params {
                     env.insert(tp.word.name(), tp.id);
                 }
@@ -278,7 +278,7 @@ impl<'db> Sema<'db> {
         env: &mut Env,
         fun: &ast::Fn,
         item_id: ast::GlobalItemId,
-    ) -> CheckResult<()> {
+    ) -> TypeckResult<()> {
         self.check_attrs(
             env.module_id(),
             &fun.attrs,
@@ -319,7 +319,7 @@ impl<'db> Sema<'db> {
         env: &mut Env,
         sig: &ast::FnSig,
         is_c_variadic: bool,
-    ) -> CheckResult<hir::FnSig> {
+    ) -> TypeckResult<hir::FnSig> {
         let ty_params = self.check_ty_params(env, &sig.ty_params)?;
 
         let mut params = vec![];
@@ -363,7 +363,7 @@ impl<'db> Sema<'db> {
         Ok(hir::FnSig { word: sig.word, ty_params, params, ret, ty })
     }
 
-    fn check_let(&mut self, env: &mut Env, let_: &ast::Let) -> CheckResult<hir::Let> {
+    fn check_let(&mut self, env: &mut Env, let_: &ast::Let) -> TypeckResult<hir::Let> {
         self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::Let)?;
 
         let ty = if let Some(ty_expr) = &let_.ty_expr {
@@ -394,7 +394,7 @@ impl<'db> Sema<'db> {
         })
     }
 
-    fn check_ty_def(&mut self, env: &mut Env, ty_def: &ast::TyDef) -> CheckResult<()> {
+    fn check_ty_def(&mut self, env: &mut Env, ty_def: &ast::TyDef) -> TypeckResult<()> {
         self.check_attrs(env.module_id(), &ty_def.attrs, AttrsPlacement::ExternLet)?;
 
         match &ty_def.kind {
@@ -472,7 +472,7 @@ impl<'db> Sema<'db> {
         Ok(())
     }
 
-    fn check_import(&mut self, env: &mut Env, import: &ast::Import) -> CheckResult<()> {
+    fn check_import(&mut self, env: &mut Env, import: &ast::Import) -> TypeckResult<()> {
         let module_info = self
             .db
             .find_module_by_file_path(&import.path)
@@ -578,7 +578,7 @@ impl<'db> Sema<'db> {
         Ok(())
     }
 
-    fn is_module_def(&self, def_id: DefId, span: Span) -> CheckResult<ModuleId> {
+    fn is_module_def(&self, def_id: DefId, span: Span) -> TypeckResult<ModuleId> {
         match self.normalize(self.db[def_id].ty).kind() {
             TyKind::Module(module_id) => Ok(*module_id),
             ty => Err(errors::ty_mismatch(
@@ -593,7 +593,7 @@ impl<'db> Sema<'db> {
         &mut self,
         env: &mut Env,
         let_: &ast::ExternLet,
-    ) -> CheckResult<hir::ExternLet> {
+    ) -> TypeckResult<hir::ExternLet> {
         self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::ExternLet)?;
 
         let ty = self.check_ty_expr(env, &let_.ty_expr, AllowTyHole::No)?;
@@ -608,7 +608,7 @@ impl<'db> Sema<'db> {
         env: &mut Env,
         expr: &ast::Expr,
         expected_ty: Option<Ty>,
-    ) -> CheckResult<hir::Expr> {
+    ) -> TypeckResult<hir::Expr> {
         match expr {
             ast::Expr::Let(let_) => {
                 let span = let_.span;
@@ -736,7 +736,7 @@ impl<'db> Sema<'db> {
                 }
             }
             ast::Expr::Block { exprs, span } => {
-                env.with_anon_scope(ScopeKind::Block, |env| -> CheckResult<hir::Expr> {
+                env.with_anon_scope(ScopeKind::Block, |env| -> TypeckResult<hir::Expr> {
                     let (exprs, ty) = if exprs.is_empty() {
                         (vec![], self.db.types.unit)
                     } else {
@@ -889,7 +889,7 @@ impl<'db> Sema<'db> {
         word: Word,
         span: Span,
         args: Option<&[TyExpr]>,
-    ) -> CheckResult<hir::Expr> {
+    ) -> TypeckResult<hir::Expr> {
         if let DefKind::Struct(struct_id) = self.db[id].kind.as_ref() {
             // NOTE: if the named definition is a struct, we want to return its
             // constructor function's type
@@ -1122,7 +1122,7 @@ impl<'db> Sema<'db> {
         &mut self,
         env: &mut Env,
         ty_params: &[ast::TyParam],
-    ) -> CheckResult<Vec<hir::TyParam>> {
+    ) -> TypeckResult<Vec<hir::TyParam>> {
         let mut new_ty_params = vec![];
         let mut defined_ty_params = UstrMap::<Span>::default();
 
@@ -1165,7 +1165,7 @@ impl<'db> Sema<'db> {
         env: &Env,
         ty: &TyExpr,
         allow_hole: AllowTyHole,
-    ) -> CheckResult<Ty> {
+    ) -> TypeckResult<Ty> {
         match ty {
             TyExpr::Fn(fn_ty) => {
                 let params = fn_ty
@@ -1262,7 +1262,7 @@ impl<'db> Sema<'db> {
         ty.normalize(&mut self.storage.borrow_mut())
     }
 
-    fn check_assign_lhs(&self, expr: &hir::Expr) -> CheckResult<()> {
+    fn check_assign_lhs(&self, expr: &hir::Expr) -> TypeckResult<()> {
         match &expr.kind {
             hir::ExprKind::Member(access) => self.check_assign_lhs_inner(&access.expr, expr.span),
             hir::ExprKind::Name(name) => self.check_assign_lhs_name(name, expr.span),
@@ -1274,14 +1274,14 @@ impl<'db> Sema<'db> {
         }
     }
 
-    fn check_assign_lhs_inner(&self, expr: &hir::Expr, origin_span: Span) -> CheckResult<()> {
+    fn check_assign_lhs_inner(&self, expr: &hir::Expr, origin_span: Span) -> TypeckResult<()> {
         match &expr.kind {
             hir::ExprKind::Name(name) => self.check_assign_lhs_name(name, origin_span),
             _ => Ok(()),
         }
     }
 
-    fn check_assign_lhs_name(&self, name: &hir::Name, origin_span: Span) -> CheckResult<()> {
+    fn check_assign_lhs_name(&self, name: &hir::Name, origin_span: Span) -> TypeckResult<()> {
         let def = &self.db[name.id];
 
         if def.mutability.is_mut() {
@@ -1302,7 +1302,7 @@ impl<'db> Sema<'db> {
         rhs: &hir::Expr,
         op: BinOp,
         span: Span,
-    ) -> CheckResult<()> {
+    ) -> TypeckResult<()> {
         self.at(Obligation::exprs(span, lhs.span, rhs.span))
             .eq(lhs.ty, rhs.ty)
             .or_coerce(self, rhs.id)?;

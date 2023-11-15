@@ -2,12 +2,12 @@ use ena::unify::{EqUnifyValue, UnifyKey};
 
 use crate::{
     diagnostics::{Diagnostic, Label},
-    sema::{errors, normalize::NormalizeTy, Sema},
+    typeck::{errors, normalize::NormalizeTy, Typeck},
     span::Span,
     ty::{FloatTy, FloatVar, InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
 };
 
-impl<'db> Sema<'db> {
+impl<'db> Typeck<'db> {
     #[inline]
     #[must_use]
     pub fn at(&self, obligation: Obligation) -> At<'_, '_> {
@@ -16,7 +16,7 @@ impl<'db> Sema<'db> {
 }
 
 pub struct At<'db, 'a> {
-    cx: &'a Sema<'db>,
+    cx: &'a Typeck<'db>,
     obligation: Obligation,
 }
 
@@ -128,7 +128,7 @@ pub enum ObligationKind {
 }
 
 struct UnifyCx<'db, 'a> {
-    cx: &'a Sema<'db>,
+    cx: &'a Typeck<'db>,
 }
 
 impl UnifyCx<'_, '_> {

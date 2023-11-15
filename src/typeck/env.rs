@@ -11,14 +11,14 @@ use crate::{
     hir,
     middle::{Mutability, Vis},
     qpath::QPath,
-    sema::{CheckResult, Sema},
+    typeck::{TypeckResult, Typeck},
     span::{Span, Spanned},
     sym,
     ty::{Ty, TyKind},
     word::Word,
 };
 
-impl<'db> Sema<'db> {
+impl<'db> Typeck<'db> {
     pub fn define_global_def(
         &mut self,
         module_id: ModuleId,
@@ -27,7 +27,7 @@ impl<'db> Sema<'db> {
         name: Word,
         mutability: Mutability,
         ty: Ty,
-    ) -> CheckResult<DefId> {
+    ) -> TypeckResult<DefId> {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].qpath.clone().child(name.name());
         let id = DefInfo::alloc(self.db, qpath, scope, kind, mutability, ty, name.span());
@@ -86,7 +86,7 @@ impl<'db> Sema<'db> {
         name: Word,
         mutability: Mutability,
         ty: Ty,
-    ) -> CheckResult<DefId> {
+    ) -> TypeckResult<DefId> {
         if env.in_global_scope() {
             self.define_global_def(env.module_id(), vis, kind, name, mutability, ty)
         } else {
@@ -100,7 +100,7 @@ impl<'db> Sema<'db> {
         kind: DefKind,
         pat: &ast::Pat,
         ty: Ty,
-    ) -> CheckResult<hir::Pat> {
+    ) -> TypeckResult<hir::Pat> {
         match pat {
             ast::Pat::Name(name) => {
                 let id = self.define_def(env, name.vis, kind, name.word, name.mutability, ty)?;
@@ -110,12 +110,12 @@ impl<'db> Sema<'db> {
         }
     }
 
-    pub fn lookup_def(&mut self, env: &Env, word: Word) -> CheckResult<DefId> {
+    pub fn lookup_def(&mut self, env: &Env, word: Word) -> TypeckResult<DefId> {
         let id = self.lookup_def_inner(env, word)?;
         Ok(self.unroll_def_aliases(id))
     }
 
-    fn lookup_def_inner(&mut self, env: &Env, word: Word) -> CheckResult<DefId> {
+    fn lookup_def_inner(&mut self, env: &Env, word: Word) -> TypeckResult<DefId> {
         let name = word.name();
 
         if let Some(id) = env.lookup(name).copied() {
@@ -148,7 +148,7 @@ impl<'db> Sema<'db> {
         from_module_id: ModuleId,
         in_module_id: ModuleId,
         word: Word,
-    ) -> CheckResult<DefId> {
+    ) -> TypeckResult<DefId> {
         let symbol = Symbol::new(in_module_id, word.name());
 
         let id = if let Some(id) = self.lookup_global_symbol(from_module_id, &symbol) {
@@ -200,7 +200,7 @@ impl<'db> Sema<'db> {
         module_id: ModuleId,
         accessed: DefId,
         span: Span,
-    ) -> CheckResult<()> {
+    ) -> TypeckResult<()> {
         let def = &self.db[accessed];
 
         match def.scope.vis {

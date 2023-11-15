@@ -1,10 +1,10 @@
 use crate::{
     ast::{self},
     db::ModuleId,
-    sema::{CheckResult, Sema},
+    typeck::{TypeckResult, Typeck},
 };
 
-impl<'db> Sema<'db> {
+impl<'db> Typeck<'db> {
     // TODO: remove attrs when we implement some attribute
     #[allow(unused, clippy::unnecessary_wraps, clippy::unused_self)]
     pub fn check_attrs(
@@ -12,7 +12,7 @@ impl<'db> Sema<'db> {
         module_id: ModuleId,
         attrs: &ast::Attrs,
         placement: AttrsPlacement,
-    ) -> CheckResult<()> {
+    ) -> TypeckResult<()> {
         // for attr in attrs {
         //     let attr_value =
         //         if let Some(value) = &attr.value {

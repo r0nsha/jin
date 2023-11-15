@@ -28,12 +28,12 @@ mod middle;
 mod mir;
 mod parse;
 mod qpath;
-mod sema;
 mod span;
 mod subst;
 mod sym;
 mod target;
 mod ty;
+mod typeck;
 mod word;
 
 use std::fs;
@@ -113,8 +113,8 @@ fn build(db: &mut Db) {
     db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file)).expect("emitting ast failed");
 
     // Resolve all root symbols into their corresponding id's
-    db.time.start("sema");
-    let hir = match sema::check(db, &ast) {
+    db.time.start("typeck");
+    let hir = match typeck::typeck(db, &ast) {
         Ok(hir) => hir,
         Err(diag) => {
             db.diagnostics.emit(diag);
