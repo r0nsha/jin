@@ -1,4 +1,4 @@
-import foo.bar
+import foo.baz
 //import foo.bar.{hello as my_hello, goodbye}
 
 fn main {

@@ -51,6 +51,13 @@ impl<'a> Parser<'a> {
     //     Ok(ImportName { word, vis, alias, import_path })
     // }
 
+    // fn parse_import_group(&mut self) -> ParseResult<Vec<ImportNode>> {
+    //     self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
+    //         this.parse_import_node()
+    //     })
+    //     .map(|(l, _)| l)
+    // }
+
     fn parse_import_qpath(&mut self, root: Word) -> ParseResult<(QPath, Span)> {
         let start = root.span();
         let mut qpath = QPath::from(root);
@@ -63,42 +70,31 @@ impl<'a> Parser<'a> {
         Ok((qpath, start.merge(self.last_span())))
     }
 
-    // fn parse_import_group(&mut self) -> ParseResult<Vec<ImportNode>> {
-    //     self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
-    //         this.parse_import_node()
-    //     })
-    //     .map(|(l, _)| l)
-    // }
-
     fn search_import_path(&self, qpath: &QPath, span: Span) -> ParseResult<Utf8PathBuf> {
-        let mut search_notes = vec![];
-
-        let path = self.search_package_root(qpath.root(), &mut search_notes);
+        let package_name = qpath.root();
+        let path = self.search_package_root(package_name);
 
         if let Some(mut path) = path {
             path.extend(qpath.iter().map(Ustr::as_str));
             path.set_extension("jin");
-            if path.exists() {
-                return Ok(path);
-            }
-        }
 
-        Err(Diagnostic::error()
-            .with_message(format!("could not find module or library `{qpath}`"))
-            .with_label(Label::primary(span))
-            .with_notes(search_notes))
+            if path.exists() {
+                Ok(path)
+            } else {
+                Err(Diagnostic::error()
+                    .with_message(format!(
+                        "could not find module `{qpath}` in package `{package_name}`"
+                    ))
+                    .with_label(Label::primary(span)))
+            }
+        } else {
+            Err(Diagnostic::error()
+                .with_message(format!("could not find package `{package_name}`"))
+                .with_label(Label::primary(span)))
+        }
     }
 
-    fn search_package_root(
-        &self,
-        name: Ustr,
-        search_notes: &mut Vec<String>,
-    ) -> Option<Utf8PathBuf> {
-        if let Some(pkg) = self.db.packages.get(&name) {
-            Some(pkg.root_path.clone())
-        } else {
-            search_notes.push(format!("searched package: {name}"));
-            None
-        }
+    fn search_package_root(&self, name: Ustr) -> Option<Utf8PathBuf> {
+        self.db.packages.get(&name).map(|pkg| pkg.root_path.clone())
     }
 }
