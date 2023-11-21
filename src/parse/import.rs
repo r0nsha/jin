@@ -4,28 +4,43 @@ use ustr::Ustr;
 use crate::{
     ast::{token::TokenKind, Attr, Import, ImportName, ImportSymbol},
     diagnostics::{Diagnostic, Label},
-    parse::parser::{ParseResult, Parser},
+    parse::{
+        errors,
+        parser::{ParseResult, Parser},
+    },
     qpath::QPath,
     span::{Span, Spanned},
-    word::Word,
 };
 
 impl<'a> Parser<'a> {
     pub fn parse_import(&mut self, attrs: &[Attr], start: Span) -> ParseResult<Import> {
         let root = self.eat_ident()?.word();
-        let (qpath, path_span) = self.parse_import_qpath(root)?;
-        let path = self.search_import_path(&qpath, path_span)?;
 
-        let (alias, symbols) = if self.is(TokenKind::As) {
+        let mut qpath = QPath::from(root);
+        let mut symbols = None;
+
+        while self.is(TokenKind::Dot) {
+            if self.is_ident() {
+                qpath.push(self.last_token().str_value());
+            } else if self.peek_is(TokenKind::OpenCurly) {
+                symbols = Some(self.parse_import_symbols()?);
+                break;
+            } else {
+                let tok = self.require()?;
+                return Err(errors::unexpected_token_err("an identifier or {", tok.kind, tok.span));
+            }
+        }
+
+        let path_span = root.span().merge(self.last_span());
+
+        let alias = if symbols.is_none() && self.is(TokenKind::As) {
             let alias = self.eat_ident()?.word();
-            (Some(alias), None)
-        } else if self.peek_is(TokenKind::OpenCurly) {
-            let symbols = self.parse_import_symbols()?;
-            (None, Some(symbols))
+            Some(alias)
         } else {
-            (None, None)
+            None
         };
 
+        let path = self.search_import_path(&qpath, path_span)?;
         self.imported_module_paths.insert(path.clone());
 
         Ok(Import {
@@ -37,18 +52,6 @@ impl<'a> Parser<'a> {
             symbols,
             span: start.merge(self.last_span()),
         })
-    }
-
-    fn parse_import_qpath(&mut self, root: Word) -> ParseResult<(QPath, Span)> {
-        let start = root.span();
-        let mut qpath = QPath::from(root);
-
-        while self.is(TokenKind::Dot) && !self.peek_is(TokenKind::OpenCurly) {
-            let seg = self.eat_ident()?.str_value();
-            qpath.push(seg);
-        }
-
-        Ok((qpath, start.merge(self.last_span())))
     }
 
     fn search_import_path(&self, qpath: &QPath, span: Span) -> ParseResult<Utf8PathBuf> {

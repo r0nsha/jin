@@ -62,7 +62,7 @@ impl<'a> Parser<'a> {
             Ok(item)
         } else {
             let token = self.require()?;
-            Err(unexpected_token_err("an item", token.kind, token.span))
+            Err(errors::unexpected_token_err("an item", token.kind, token.span))
         }
     }
 
@@ -99,7 +99,11 @@ impl<'a> Parser<'a> {
 
         if !attrs.is_empty() {
             let token = self.require()?;
-            return Err(unexpected_token_err("an item after attribute", token.kind, token.span));
+            return Err(errors::unexpected_token_err(
+                "an item after attribute",
+                token.kind,
+                token.span,
+            ));
         }
 
         Ok(None)
@@ -241,7 +245,7 @@ impl<'a> Parser<'a> {
             // self.parse_struct_ty_def(StructKind::Ref)
         } else {
             let tok = self.require()?;
-            Err(unexpected_token_err("( or `extern`", tok.kind, tok.span))
+            Err(errors::unexpected_token_err("( or `extern`", tok.kind, tok.span))
         }
     }
 
@@ -270,7 +274,7 @@ impl<'a> Parser<'a> {
                 }))
             }
             TokenKind::Underscore => Ok(Pat::Discard(tok.span)),
-            _ => Err(unexpected_token_err("a pattern", tok.kind, tok.span)),
+            _ => Err(errors::unexpected_token_err("a pattern", tok.kind, tok.span)),
         }
     }
 
@@ -545,7 +549,7 @@ impl<'a> Parser<'a> {
                 span: tok.span,
             },
             TokenKind::Str(value) => Expr::Lit { kind: LitKind::Str(value), span: tok.span },
-            _ => return Err(unexpected_token_err("an expression", tok.kind, tok.span)),
+            _ => return Err(errors::unexpected_token_err("an expression", tok.kind, tok.span)),
         };
 
         Ok(expr)
@@ -572,7 +576,7 @@ impl<'a> Parser<'a> {
                 TyExpr::Name(TyExprName { word: tok.word(), args: vec![], span: tok.span })
             }
             TokenKind::Underscore => TyExpr::Hole(tok.span),
-            _ => return Err(unexpected_token_err("a type", tok.kind, tok.span)),
+            _ => return Err(errors::unexpected_token_err("a type", tok.kind, tok.span)),
         };
 
         Ok(ty)
@@ -628,7 +632,7 @@ impl<'a> Parser<'a> {
             } else {
                 let tok = self.require()?;
 
-                return Err(unexpected_token_err("{ or `if`", tok.kind, tok.span));
+                return Err(errors::unexpected_token_err("{ or `if`", tok.kind, tok.span));
             }
         } else {
             None
@@ -877,7 +881,7 @@ impl<'a> Parser<'a> {
         if tok.kind_is(expected) {
             Ok(tok)
         } else {
-            Err(unexpected_token_err(&expected.to_string(), tok.kind, tok.span))
+            Err(errors::unexpected_token_err(&expected.to_string(), tok.kind, tok.span))
         }
     }
 
@@ -885,13 +889,6 @@ impl<'a> Parser<'a> {
     pub(super) fn parent_path(&self) -> Option<&Utf8Path> {
         self.source.path().parent()
     }
-}
-
-#[inline]
-fn unexpected_token_err(expected: &str, found: TokenKind, span: Span) -> Diagnostic {
-    Diagnostic::error()
-        .with_message(format!("expected {expected}, found {found}"))
-        .with_label(Label::primary(span).with_message("found here"))
 }
 
 pub(super) type ParseResult<T> = Result<T, Diagnostic>;
