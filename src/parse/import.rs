@@ -18,7 +18,6 @@ impl<'a> Parser<'a> {
         let root = self.eat_ident()?.word();
 
         let mut qpath = QPath::from(root);
-        let mut path_span = root.span();
         let mut last_qpath_span = root.span();
 
         let kind = loop {
