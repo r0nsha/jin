@@ -19,7 +19,6 @@ impl<'a> Parser<'a> {
         let mut qpath = QPath::from(root);
         let mut path_span = root.span();
 
-        // self.alias.map_or_else(|| self.qpath.name(), |a| a.name())
         let kind = loop {
             if self.is(TokenKind::Dot) {
                 if self.is_ident() {
@@ -28,6 +27,8 @@ impl<'a> Parser<'a> {
                     path_span = path_span.merge(tok.span);
                 } else if self.peek_is(TokenKind::OpenCurly) {
                     break ImportKind::Names(self.parse_import_symbols()?);
+                } else if self.is(TokenKind::Star) {
+                    break ImportKind::Glob(self.last_span());
                 } else {
                     let tok = self.require()?;
                     return Err(errors::unexpected_token_err(
