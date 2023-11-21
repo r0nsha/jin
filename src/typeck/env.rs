@@ -256,7 +256,8 @@ impl GlobalScope {
                     }
                     ast::Item::Type(tydef) => self.insert_item(module.id, tydef.word, item_id),
                     ast::Item::Import(import) => {
-                        self.insert_import_name(module.id, &import.root, item_id);
+                        // TODO:
+                        // self.insert_import_name(module.id, &import.root, item_id);
                     }
                     ast::Item::ExternLet(let_) => self.insert_item(module.id, let_.word, item_id),
                     ast::Item::ExternImport(_) => (),
@@ -265,36 +266,36 @@ impl GlobalScope {
         }
     }
 
-    fn insert_import_name(
-        &mut self,
-        module_id: ModuleId,
-        name: &ast::ImportName,
-        item_id: ast::ItemId,
-    ) {
-        match &name.import_path {
-            ast::ImportPath::Node(node) => {
-                self.insert_import_node(module_id, node, item_id);
-            }
-            ast::ImportPath::Group(nodes) => {
-                for node in nodes {
-                    self.insert_import_node(module_id, node, item_id);
-                }
-            }
-            ast::ImportPath::None => self.insert_item(module_id, name.name(), item_id),
-        }
-    }
+    // fn insert_import_name(
+    //     &mut self,
+    //     module_id: ModuleId,
+    //     name: &ast::ImportName,
+    //     item_id: ast::ItemId,
+    // ) {
+    //     match &name.import_path {
+    //         ast::ImportPath::Node(node) => {
+    //             self.insert_import_node(module_id, node, item_id);
+    //         }
+    //         ast::ImportPath::Group(nodes) => {
+    //             for node in nodes {
+    //                 self.insert_import_node(module_id, node, item_id);
+    //             }
+    //         }
+    //         ast::ImportPath::None => self.insert_item(module_id, name.name(), item_id),
+    //     }
+    // }
 
-    fn insert_import_node(
-        &mut self,
-        module_id: ModuleId,
-        node: &ast::ImportNode,
-        item_id: ast::ItemId,
-    ) {
-        match node {
-            ast::ImportNode::Name(name) => self.insert_import_name(module_id, name, item_id),
-            ast::ImportNode::Glob(_) => (),
-        }
-    }
+    // fn insert_import_node(
+    //     &mut self,
+    //     module_id: ModuleId,
+    //     node: &ast::ImportNode,
+    //     item_id: ast::ItemId,
+    // ) {
+    //     match node {
+    //         ast::ImportNode::Name(name) => self.insert_import_name(module_id, name, item_id),
+    //         ast::ImportNode::Glob(_) => (),
+    //     }
+    // }
 
     fn insert_item(&mut self, module_id: ModuleId, word: Word, item_id: ast::ItemId) {
         self.items.insert(Symbol::new(module_id, word.name()), item_id);

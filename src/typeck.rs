@@ -473,103 +473,104 @@ impl<'db> Typeck<'db> {
     }
 
     fn check_import(&mut self, env: &mut Env, import: &ast::Import) -> TypeckResult<()> {
-        let module_info = self
-            .db
-            .find_module_by_file_path(&import.path)
-            .expect("import to have a registered module");
-
-        self.check_import_root(env, module_info.id, import)?;
-
-        Ok(())
+        todo!()
+        // let module_info = self
+        //     .db
+        //     .find_module_by_file_path(&import.path)
+        //     .expect("import to have a registered module");
+        //
+        // self.check_import_root(env, module_info.id, import)?;
+        //
+        // Ok(())
     }
 
-    fn check_import_root(
-        &mut self,
-        env: &mut Env,
-        module_id: ModuleId,
-        import: &ast::Import,
-    ) -> Result<(), Diagnostic> {
-        match &import.root.import_path {
-            ast::ImportPath::Node(node) => {
-                self.check_import_node(env, module_id, node)?;
-            }
-            ast::ImportPath::Group(nodes) => {
-                self.check_import_group(env, module_id, nodes)?;
-            }
-            ast::ImportPath::None => {
-                self.define_def(
-                    env,
-                    import.root.vis,
-                    DefKind::Variable,
-                    import.root.name(),
-                    Mutability::Imm,
-                    Ty::new(TyKind::Module(module_id)),
-                )?;
-            }
-        };
+    // fn check_import_root(
+    //     &mut self,
+    //     env: &mut Env,
+    //     module_id: ModuleId,
+    //     import: &ast::Import,
+    // ) -> TypeckResult<()> {
+    //     match &import.root.import_path {
+    //         ast::ImportPath::Node(node) => {
+    //             self.check_import_node(env, module_id, node)?;
+    //         }
+    //         ast::ImportPath::Group(nodes) => {
+    //             self.check_import_group(env, module_id, nodes)?;
+    //         }
+    //         ast::ImportPath::None => {
+    //             self.define_def(
+    //                 env,
+    //                 import.root.vis,
+    //                 DefKind::Variable,
+    //                 import.root.name(),
+    //                 Mutability::Imm,
+    //                 Ty::new(TyKind::Module(module_id)),
+    //             )?;
+    //         }
+    //     };
+    //
+    //     Ok(())
+    // }
 
-        Ok(())
-    }
+    // fn check_import_node(
+    //     &mut self,
+    //     env: &mut Env,
+    //     module_id: ModuleId,
+    //     node: &ast::ImportNode,
+    // ) -> Result<(), Diagnostic> {
+    //     match node {
+    //         ast::ImportNode::Name(name) => {
+    //             self.check_import_name(env, module_id, name)?;
+    //         }
+    //         ast::ImportNode::Glob(_) => {
+    //             self.check_import_glob(env, module_id);
+    //         }
+    //     }
+    //
+    //     Ok(())
+    // }
 
-    fn check_import_node(
-        &mut self,
-        env: &mut Env,
-        module_id: ModuleId,
-        node: &ast::ImportNode,
-    ) -> Result<(), Diagnostic> {
-        match node {
-            ast::ImportNode::Name(name) => {
-                self.check_import_name(env, module_id, name)?;
-            }
-            ast::ImportNode::Glob(_) => {
-                self.check_import_glob(env, module_id);
-            }
-        }
+    // fn check_import_name(
+    //     &mut self,
+    //     env: &mut Env,
+    //     module_id: ModuleId,
+    //     name: &ast::ImportName,
+    // ) -> Result<(), Diagnostic> {
+    //     let def_id = self.lookup_def_in_module(env.module_id(), module_id, name.word)?;
+    //
+    //     match &name.import_path {
+    //         ast::ImportPath::Node(node) => {
+    //             let module_id = self.is_module_def(def_id, node.span())?;
+    //             self.check_import_node(env, module_id, node)?;
+    //         }
+    //         ast::ImportPath::Group(nodes) => {
+    //             let module_id = self.is_module_def(def_id, name.span())?;
+    //             self.check_import_group(env, module_id, nodes)?;
+    //         }
+    //         ast::ImportPath::None => {
+    //             self.insert_def(env, name.name(), def_id)?;
+    //         }
+    //     }
+    //
+    //     Ok(())
+    // }
 
-        Ok(())
-    }
+    // fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {
+    //     self.resolution_state.module_state_mut(env.module_id()).globs.insert(module_id);
+    // }
 
-    fn check_import_name(
-        &mut self,
-        env: &mut Env,
-        module_id: ModuleId,
-        name: &ast::ImportName,
-    ) -> Result<(), Diagnostic> {
-        let def_id = self.lookup_def_in_module(env.module_id(), module_id, name.word)?;
-
-        match &name.import_path {
-            ast::ImportPath::Node(node) => {
-                let module_id = self.is_module_def(def_id, node.span())?;
-                self.check_import_node(env, module_id, node)?;
-            }
-            ast::ImportPath::Group(nodes) => {
-                let module_id = self.is_module_def(def_id, name.span())?;
-                self.check_import_group(env, module_id, nodes)?;
-            }
-            ast::ImportPath::None => {
-                self.insert_def(env, name.name(), def_id)?;
-            }
-        }
-
-        Ok(())
-    }
-
-    fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {
-        self.resolution_state.module_state_mut(env.module_id()).globs.insert(module_id);
-    }
-
-    fn check_import_group(
-        &mut self,
-        env: &mut Env,
-        module_id: ModuleId,
-        nodes: &[ast::ImportNode],
-    ) -> Result<(), Diagnostic> {
-        for node in nodes {
-            self.check_import_node(env, module_id, node)?;
-        }
-
-        Ok(())
-    }
+    // fn check_import_group(
+    //     &mut self,
+    //     env: &mut Env,
+    //     module_id: ModuleId,
+    //     nodes: &[ast::ImportNode],
+    // ) -> Result<(), Diagnostic> {
+    //     for node in nodes {
+    //         self.check_import_node(env, module_id, node)?;
+    //     }
+    //
+    //     Ok(())
+    // }
 
     fn is_module_def(&self, def_id: DefId, span: Span) -> TypeckResult<ModuleId> {
         match self.normalize(self.db[def_id].ty).kind() {

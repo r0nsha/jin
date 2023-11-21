@@ -2,10 +2,7 @@ use std::io;
 
 use super::{Expr, Fn, Item, LitKind, Module};
 use crate::{
-    ast::{
-        CallArg, ExternImport, ExternLet, FnKind, FnSig, Import, ImportName, ImportNode,
-        ImportPath, Let, TyDef, TyDefKind, TyExpr,
-    },
+    ast::{CallArg, ExternImport, ExternLet, FnKind, FnSig, Import, Let, TyDef, TyDefKind, TyExpr},
     db::StructKind,
     middle::BinOp,
 };
@@ -254,47 +251,48 @@ impl PrettyPrint for TyDef {
 
 impl PrettyPrint for Import {
     fn pretty_print(&self, cx: &mut PrettyCx) {
-        cx.builder.begin_child(format!("import {}", self.root.name()));
-        self.root.import_path.pretty_print(cx);
-        cx.builder.end_child();
+        todo!();
+        // cx.builder.begin_child(format!("import {}", self.root.name()));
+        // self.root.import_path.pretty_print(cx);
+        // cx.builder.end_child();
     }
 }
 
-impl PrettyPrint for ImportPath {
-    fn pretty_print(&self, cx: &mut PrettyCx) {
-        match self {
-            ImportPath::Node(node) => {
-                node.pretty_print(cx);
-            }
-            ImportPath::Group(nodes) => {
-                cx.builder.begin_child("group".to_string());
-                for n in nodes {
-                    n.pretty_print(cx);
-                }
-                cx.builder.end_child();
-            }
-            ImportPath::None => todo!(),
-        }
-    }
-}
+// impl PrettyPrint for ImportPath {
+//     fn pretty_print(&self, cx: &mut PrettyCx) {
+//         match self {
+//             ImportPath::Node(node) => {
+//                 node.pretty_print(cx);
+//             }
+//             ImportPath::Group(nodes) => {
+//                 cx.builder.begin_child("group".to_string());
+//                 for n in nodes {
+//                     n.pretty_print(cx);
+//                 }
+//                 cx.builder.end_child();
+//             }
+//             ImportPath::None => todo!(),
+//         }
+//     }
+// }
 
-impl PrettyPrint for ImportNode {
-    fn pretty_print(&self, cx: &mut PrettyCx) {
-        match self {
-            ImportNode::Name(n) => n.pretty_print(cx),
-            ImportNode::Glob(_) => {
-                cx.builder.add_empty_child("*".to_string());
-            }
-        }
-    }
-}
+// impl PrettyPrint for ImportNode {
+//     fn pretty_print(&self, cx: &mut PrettyCx) {
+//         match self {
+//             ImportNode::Name(n) => n.pretty_print(cx),
+//             ImportNode::Glob(_) => {
+//                 cx.builder.add_empty_child("*".to_string());
+//             }
+//         }
+//     }
+// }
 
-impl PrettyPrint for ImportName {
-    fn pretty_print(&self, cx: &mut PrettyCx) {
-        cx.builder.add_empty_child(self.name().to_string());
-        self.import_path.pretty_print(cx);
-    }
-}
+// impl PrettyPrint for ImportName {
+//     fn pretty_print(&self, cx: &mut PrettyCx) {
+//         cx.builder.add_empty_child(self.name().to_string());
+//         self.import_path.pretty_print(cx);
+//     }
+// }
 
 impl PrettyPrint for ExternLet {
     fn pretty_print(&self, cx: &mut PrettyCx) {
