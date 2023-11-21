@@ -2,7 +2,7 @@ use camino::Utf8PathBuf;
 use ustr::Ustr;
 
 use crate::{
-    ast::{token::TokenKind, Attr, Import},
+    ast::{token::TokenKind, Attr, Import, ImportName, ImportSymbol},
     diagnostics::{Diagnostic, Label},
     parse::parser::{ParseResult, Parser},
     qpath::QPath,
@@ -16,11 +16,14 @@ impl<'a> Parser<'a> {
         let (qpath, path_span) = self.parse_import_qpath(root)?;
         let path = self.search_import_path(&qpath, path_span)?;
 
-        let alias = if self.is(TokenKind::As) {
+        let (alias, symbols) = if self.is(TokenKind::As) {
             let alias = self.eat(TokenKind::empty_ident())?.word();
-            Some(alias)
+            (Some(alias), None)
+        } else if self.peek_is(TokenKind::OpenCurly) {
+            let symbols = self.parse_import_symbols()?;
+            (None, Some(symbols))
         } else {
-            None
+            (None, None)
         };
 
         self.imported_module_paths.insert(path.clone());
@@ -31,46 +34,16 @@ impl<'a> Parser<'a> {
             path_span,
             qpath,
             alias,
+            symbols,
             span: start.merge(self.last_span()),
         })
     }
-
-    // fn parse_import_node(&mut self) -> ParseResult<ImportNode> {
-    //     if self.is(TokenKind::Star) {
-    //         Ok(ImportNode::Glob(self.last_span()))
-    //     } else {
-    //         let name = self.parse_import_name()?;
-    //         Ok(ImportNode::Name(name))
-    //     }
-    // }
-
-    // fn parse_import_name(&mut self) -> ParseResult<ImportName> {
-    //     let word = self.eat(TokenKind::empty_ident())?.word();
-    //
-    //     let (alias, vis, import_path) = if self.is(TokenKind::As) {
-    //         let alias = self.eat(TokenKind::empty_ident())?.word();
-    //         let vis = self.parse_vis();
-    //         (Some(alias), vis, ImportPath::None)
-    //     } else {
-    //         let vis = self.parse_vis();
-    //         (None, vis, self.parse_import_path()?)
-    //     };
-    //
-    //     Ok(ImportName { word, vis, alias, import_path })
-    // }
-
-    // fn parse_import_group(&mut self) -> ParseResult<Vec<ImportNode>> {
-    //     self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
-    //         this.parse_import_node()
-    //     })
-    //     .map(|(l, _)| l)
-    // }
 
     fn parse_import_qpath(&mut self, root: Word) -> ParseResult<(QPath, Span)> {
         let start = root.span();
         let mut qpath = QPath::from(root);
 
-        while self.is(TokenKind::Dot) {
+        while self.is(TokenKind::Dot) && !self.peek_is(TokenKind::OpenCurly) {
             let seg = self.eat(TokenKind::empty_ident())?.str_value();
             qpath.push(seg);
         }
@@ -104,5 +77,32 @@ impl<'a> Parser<'a> {
 
     fn search_package_root(&self, name: Ustr) -> Option<Utf8PathBuf> {
         self.db.packages.get(&name).map(|pkg| pkg.root_path.clone())
+    }
+
+    fn parse_import_symbols(&mut self) -> ParseResult<Vec<ImportSymbol>> {
+        self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, Self::parse_import_node)
+            .map(|(l, _)| l)
+    }
+
+    fn parse_import_node(&mut self) -> ParseResult<ImportSymbol> {
+        if self.is(TokenKind::Star) {
+            Ok(ImportSymbol::Glob(self.last_span()))
+        } else {
+            let name = self.parse_import_name()?;
+            Ok(ImportSymbol::Name(name))
+        }
+    }
+
+    fn parse_import_name(&mut self) -> ParseResult<ImportName> {
+        let word = self.eat(TokenKind::empty_ident())?.word();
+
+        let alias = if self.is(TokenKind::As) {
+            let alias = self.eat(TokenKind::empty_ident())?.word();
+            Some(alias)
+        } else {
+            None
+        };
+
+        Ok(ImportName { word, alias })
     }
 }

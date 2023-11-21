@@ -213,6 +213,7 @@ pub struct Import {
     pub path_span: Span,
     pub qpath: QPath,
     pub alias: Option<Word>,
+    pub symbols: Option<Vec<ImportSymbol>>,
     pub span: Span,
 }
 
@@ -222,40 +223,38 @@ impl Import {
     }
 }
 
-// #[derive(Debug, Clone)]
-// pub enum ImportNode {
-//     Name(ImportName),
-//     Glob(Span),
-// }
+#[derive(Debug, Clone)]
+pub enum ImportSymbol {
+    Name(ImportName),
+    Glob(Span),
+}
 
-// impl Spanned for ImportNode {
-//     fn span(&self) -> Span {
-//         match self {
-//             ImportNode::Name(n) => n.span(),
-//             ImportNode::Glob(s) => *s,
-//         }
-//     }
-// }
+impl Spanned for ImportSymbol {
+    fn span(&self) -> Span {
+        match self {
+            ImportSymbol::Name(n) => n.span(),
+            ImportSymbol::Glob(s) => *s,
+        }
+    }
+}
 
-// #[derive(Debug, Clone)]
-// pub struct ImportName {
-//     pub word: Word,
-//     pub vis: Vis,
-//     pub alias: Option<Word>,
-//     pub import_path: ImportPath,
-// }
+#[derive(Debug, Clone)]
+pub struct ImportName {
+    pub word: Word,
+    pub alias: Option<Word>,
+}
 
-// impl ImportName {
-//     pub fn name(&self) -> Word {
-//         self.alias.unwrap_or(self.word)
-//     }
-// }
+impl ImportName {
+    pub fn name(&self) -> Word {
+        self.alias.unwrap_or(self.word)
+    }
+}
 
-// impl Spanned for ImportName {
-//     fn span(&self) -> Span {
-//         self.name().span()
-//     }
-// }
+impl Spanned for ImportName {
+    fn span(&self) -> Span {
+        self.name().span()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct ExternLet {
