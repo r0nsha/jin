@@ -10,6 +10,7 @@ use crate::{
     },
     qpath::QPath,
     span::{Span, Spanned},
+    word::Word,
 };
 
 impl<'a> Parser<'a> {
@@ -18,13 +19,14 @@ impl<'a> Parser<'a> {
 
         let mut qpath = QPath::from(root);
         let mut path_span = root.span();
+        let mut last_qpath_span = root.span();
 
         let kind = loop {
             if self.is(TokenKind::Dot) {
                 if self.is_ident() {
                     let tok = self.last_token();
                     qpath.push(tok.str_value());
-                    path_span = path_span.merge(tok.span);
+                    last_qpath_span = tok.span;
                 } else if self.peek_is(TokenKind::OpenCurly) {
                     break ImportKind::Names(self.parse_import_symbols()?);
                 } else if self.is(TokenKind::Star) {
@@ -40,9 +42,11 @@ impl<'a> Parser<'a> {
             } else if self.is(TokenKind::As) {
                 break ImportKind::Module(self.eat_ident()?.word());
             } else {
-                break ImportKind::Module(root);
+                break ImportKind::Module(Word::new(qpath.name(), last_qpath_span));
             }
         };
+
+        let path_span = root.span().merge(last_qpath_span);
 
         let path = self.search_import_path(&qpath, path_span)?;
         self.imported_module_paths.insert(path.clone());
