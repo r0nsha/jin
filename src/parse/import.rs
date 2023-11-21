@@ -18,10 +18,13 @@ impl<'a> Parser<'a> {
 
         let mut qpath = QPath::from(root);
         let mut symbols = None;
+        let mut path_span = root.span();
 
         while self.is(TokenKind::Dot) {
             if self.is_ident() {
-                qpath.push(self.last_token().str_value());
+                let tok = self.last_token();
+                qpath.push(tok.str_value());
+                path_span = path_span.merge(tok.span);
             } else if self.peek_is(TokenKind::OpenCurly) {
                 symbols = Some(self.parse_import_symbols()?);
                 break;
@@ -30,8 +33,6 @@ impl<'a> Parser<'a> {
                 return Err(errors::unexpected_token_err("an identifier or {", tok.kind, tok.span));
             }
         }
-
-        let path_span = root.span().merge(self.last_span());
 
         let alias = if symbols.is_none() && self.is(TokenKind::As) {
             let alias = self.eat_ident()?.word();
