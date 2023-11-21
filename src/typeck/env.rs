@@ -216,12 +216,15 @@ impl<'db> Typeck<'db> {
         let def = &self.db[accessed];
 
         match def.scope.vis {
-            Vis::Private if module_id != def.scope.module_id => Err(Diagnostic::error()
-                .with_message(format!(
-                    "`{}` is private to module `{}`",
-                    def.name, self.db[def.scope.module_id].qpath
-                ))
-                .with_label(Label::primary(span).with_message("private member"))),
+            Vis::Private if module_id != def.scope.module_id => {
+                let module_name = self.db[def.scope.module_id].qpath.join();
+
+                Err(Diagnostic::error()
+                    .with_message(format!("`{}` is private to module `{}`", def.name, module_name))
+                    .with_label(
+                        Label::primary(span).with_message(format!("private to `{module_name}`")),
+                    ))
+            }
             _ => Ok(()),
         }
     }
