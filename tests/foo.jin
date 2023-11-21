@@ -1,8 +1,9 @@
-use bar.baz.{hello as my_hello, goodbye}
+use foo.bar
+//use foo.bar.{hello as my_hello, goodbye}
 
 fn main {
-	my_hello()
-	goodbye()
+	bar.hello()
+	bar.goodbye()
 }
 
 fn get_hello_world* -> str {

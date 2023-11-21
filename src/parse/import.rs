@@ -1,10 +1,11 @@
-use camino::{Utf8Path, Utf8PathBuf};
-use path_absolutize::Absolutize;
+use camino::Utf8PathBuf;
+use ustr::Ustr;
 
 use crate::{
     ast::{token::TokenKind, Attr, Import},
     diagnostics::{Diagnostic, Label},
     parse::parser::{ParseResult, Parser},
+    qpath::QPath,
     span::{Span, Spanned},
     word::Word,
 };
@@ -12,13 +13,12 @@ use crate::{
 impl<'a> Parser<'a> {
     pub fn parse_import(&mut self, attrs: &[Attr], start: Span) -> ParseResult<Import> {
         let root = self.eat(TokenKind::empty_ident())?.word();
-        todo!();
-        // let qpath = self.parse_import_qpath(root)?;
-        // let path = self.search_import_path(qpath)?;
+        let (qpath, span) = self.parse_import_qpath(root)?;
+        let path = self.search_import_path(&qpath, span)?;
 
-        // self.imported_module_paths.insert(path.clone());
+        self.imported_module_paths.insert(path.clone());
 
-        // Ok(Import { attrs: attrs.to_owned(), path, root, span: start.merge(self.last_span()) })
+        Ok(Import { attrs: attrs.to_owned(), path, qpath, span: start.merge(self.last_span()) })
     }
 
     // fn parse_import_node(&mut self) -> ParseResult<ImportNode> {
@@ -45,19 +45,17 @@ impl<'a> Parser<'a> {
     //     Ok(ImportName { word, vis, alias, import_path })
     // }
 
-    // fn parse_import_path(&mut self) -> ParseResult<ImportPath> {
-    //     if self.is(TokenKind::Dot) {
-    //         if self.peek_is(TokenKind::OpenCurly) {
-    //             let group = self.parse_import_group()?;
-    //             Ok(ImportPath::Group(group))
-    //         } else {
-    //             let node = self.parse_import_node()?;
-    //             Ok(ImportPath::Node(Box::new(node)))
-    //         }
-    //     } else {
-    //         Ok(ImportPath::None)
-    //     }
-    // }
+    fn parse_import_qpath(&mut self, root: Word) -> ParseResult<(QPath, Span)> {
+        let start = root.span();
+        let mut qpath = QPath::from(root);
+
+        while self.is(TokenKind::Dot) {
+            let seg = self.eat(TokenKind::empty_ident())?.str_value();
+            qpath.push(seg);
+        }
+
+        Ok((qpath, start.merge(self.last_span())))
+    }
 
     // fn parse_import_group(&mut self) -> ParseResult<Vec<ImportNode>> {
     //     self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
@@ -66,69 +64,32 @@ impl<'a> Parser<'a> {
     //     .map(|(l, _)| l)
     // }
 
-    fn search_import_path(&self, name: Word) -> ParseResult<Utf8PathBuf> {
+    fn search_import_path(&self, qpath: &QPath, span: Span) -> ParseResult<Utf8PathBuf> {
         let mut search_notes = vec![];
 
-        let path = self
-            .search_module_in_subdir(name, &mut search_notes)
-            .or_else(|| self.search_module_in_curr_dir(name, &mut search_notes))
-            .or_else(|| self.search_package(name, &mut search_notes));
+        let path = self.search_package_root(qpath.root(), &mut search_notes);
 
-        path.ok_or_else(|| {
-            Diagnostic::error()
-                .with_message(format!("could not find module or library `{name}`"))
-                .with_label(Label::primary(name.span()))
-                .with_notes(search_notes)
-        })
+        if let Some(mut path) = path {
+            path.extend(qpath.iter().map(Ustr::as_str));
+            path.set_extension("jin");
+            if path.exists() {
+                return Ok(path);
+            }
+        }
+
+        Err(Diagnostic::error()
+            .with_message(format!("could not find module or library `{qpath}`"))
+            .with_label(Label::primary(span))
+            .with_notes(search_notes))
     }
 
-    fn search_module_in_subdir(
+    fn search_package_root(
         &self,
-        name: Word,
+        name: Ustr,
         search_notes: &mut Vec<String>,
     ) -> Option<Utf8PathBuf> {
-        let path = Utf8Path::new(&name.name()).with_extension("jin");
-        let relative_to = self.source.path().with_extension("");
-
-        let absolute_path: Utf8PathBuf = path
-            .as_std_path()
-            .absolutize_from(relative_to.as_std_path())
-            .ok()?
-            .to_path_buf()
-            .try_into()
-            .expect("path to be utf8");
-
-        search_notes.push(format!("searched path: {absolute_path}"));
-
-        absolute_path.exists().then_some(absolute_path)
-    }
-
-    fn search_module_in_curr_dir(
-        &self,
-        name: Word,
-        search_notes: &mut Vec<String>,
-    ) -> Option<Utf8PathBuf> {
-        let path = Utf8Path::new(&name.name()).with_extension("jin");
-        let relative_to = self.parent_path().unwrap();
-
-        let absolute_path: Utf8PathBuf = path
-            .as_std_path()
-            .absolutize_from(relative_to.as_std_path())
-            .ok()?
-            .to_path_buf()
-            .try_into()
-            .expect("path to be utf8");
-
-        search_notes.push(format!("searched path: {absolute_path}"));
-
-        absolute_path.exists().then_some(absolute_path)
-    }
-
-    fn search_package(&self, name: Word, search_notes: &mut Vec<String>) -> Option<Utf8PathBuf> {
-        if let Some(pkg) = self.db.packages.get(&name.name()) {
-            let sources = self.db.sources.borrow();
-            let source = sources.get(pkg.main_source_id).unwrap();
-            Some(source.path().to_path_buf())
+        if let Some(pkg) = self.db.packages.get(&name) {
+            Some(pkg.root_path.clone())
         } else {
             search_notes.push(format!("searched package: {name}"));
             None

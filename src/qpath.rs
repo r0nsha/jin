@@ -16,6 +16,10 @@ impl QPath {
         Some(Self(stripped.iter().map(ustr).collect()))
     }
 
+    pub fn root(&self) -> Ustr {
+        *self.0.first().expect("to have at least one segment")
+    }
+
     pub fn name(&self) -> Ustr {
         *self.0.last().expect("to have at least one segment")
     }
@@ -43,6 +47,10 @@ impl QPath {
     pub fn with_name(mut self, name: Ustr) -> Self {
         *self.0.last_mut().expect("to have at least one segment") = name;
         self
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Ustr> {
+        self.0.iter()
     }
 }
 
