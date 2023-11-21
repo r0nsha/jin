@@ -212,30 +212,15 @@ pub struct Import {
     pub path: Utf8PathBuf,
     pub path_span: Span,
     pub qpath: QPath,
-    pub alias: Option<Word>,
-    pub symbols: Option<Vec<ImportSymbol>>,
+    pub kind: ImportKind,
     pub span: Span,
 }
 
-impl Import {
-    pub fn name(&self) -> Ustr {
-        self.alias.map_or_else(|| self.qpath.name(), |a| a.name())
-    }
-}
-
 #[derive(Debug, Clone)]
-pub enum ImportSymbol {
-    Name(ImportName),
+pub enum ImportKind {
+    Module(Word),
+    Names(Vec<ImportName>),
     Glob(Span),
-}
-
-impl Spanned for ImportSymbol {
-    fn span(&self) -> Span {
-        match self {
-            ImportSymbol::Name(n) => n.span(),
-            ImportSymbol::Glob(s) => *s,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]

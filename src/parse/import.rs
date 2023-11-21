@@ -2,7 +2,7 @@ use camino::Utf8PathBuf;
 use ustr::Ustr;
 
 use crate::{
-    ast::{token::TokenKind, Attr, Import, ImportName, ImportSymbol},
+    ast::{token::TokenKind, Attr, Import, ImportKind, ImportName},
     diagnostics::{Diagnostic, Label},
     parse::{
         errors,
@@ -17,28 +17,30 @@ impl<'a> Parser<'a> {
         let root = self.eat_ident()?.word();
 
         let mut qpath = QPath::from(root);
-        let mut symbols = None;
         let mut path_span = root.span();
 
-        while self.is(TokenKind::Dot) {
-            if self.is_ident() {
-                let tok = self.last_token();
-                qpath.push(tok.str_value());
-                path_span = path_span.merge(tok.span);
-            } else if self.peek_is(TokenKind::OpenCurly) {
-                symbols = Some(self.parse_import_symbols()?);
-                break;
+        // self.alias.map_or_else(|| self.qpath.name(), |a| a.name())
+        let kind = loop {
+            if self.is(TokenKind::Dot) {
+                if self.is_ident() {
+                    let tok = self.last_token();
+                    qpath.push(tok.str_value());
+                    path_span = path_span.merge(tok.span);
+                } else if self.peek_is(TokenKind::OpenCurly) {
+                    break ImportKind::Names(self.parse_import_symbols()?);
+                } else {
+                    let tok = self.require()?;
+                    return Err(errors::unexpected_token_err(
+                        "an identifier, { or *",
+                        tok.kind,
+                        tok.span,
+                    ));
+                }
+            } else if self.is(TokenKind::As) {
+                break ImportKind::Module(self.eat_ident()?.word());
             } else {
-                let tok = self.require()?;
-                return Err(errors::unexpected_token_err("an identifier or {", tok.kind, tok.span));
+                break ImportKind::Module(root);
             }
-        }
-
-        let alias = if symbols.is_none() && self.is(TokenKind::As) {
-            let alias = self.eat_ident()?.word();
-            Some(alias)
-        } else {
-            None
         };
 
         let path = self.search_import_path(&qpath, path_span)?;
@@ -49,8 +51,7 @@ impl<'a> Parser<'a> {
             path,
             path_span,
             qpath,
-            alias,
-            symbols,
+            kind,
             span: start.merge(self.last_span()),
         })
     }
@@ -83,18 +84,9 @@ impl<'a> Parser<'a> {
         self.db.packages.get(&name).map(|pkg| pkg.root_path.clone())
     }
 
-    fn parse_import_symbols(&mut self) -> ParseResult<Vec<ImportSymbol>> {
-        self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, Self::parse_import_node)
+    fn parse_import_symbols(&mut self) -> ParseResult<Vec<ImportName>> {
+        self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, Self::parse_import_name)
             .map(|(l, _)| l)
-    }
-
-    fn parse_import_node(&mut self) -> ParseResult<ImportSymbol> {
-        if self.is(TokenKind::Star) {
-            Ok(ImportSymbol::Glob(self.last_span()))
-        } else {
-            let name = self.parse_import_name()?;
-            Ok(ImportSymbol::Name(name))
-        }
     }
 
     fn parse_import_name(&mut self) -> ParseResult<ImportName> {

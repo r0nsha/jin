@@ -480,48 +480,26 @@ impl<'db> Typeck<'db> {
             .find(|m| m.qpath == import.qpath)
             .expect("import to use an existing module");
 
-        if let Some(symbols) = &import.symbols {
-            self.check_import_symbols(env, module_info.id, symbols)?;
-        } else {
-            self.define_def(
-                env,
-                Vis::Internal,
-                DefKind::Variable,
-                Word::new(import.name(), import.path_span),
-                Mutability::Imm,
-                Ty::new(TyKind::Module(module_info.id)),
-            )?;
-        }
+        let module_id = module_info.id;
 
-        Ok(())
-    }
-
-    fn check_import_symbols(
-        &mut self,
-        env: &mut Env,
-        module_id: ModuleId,
-        symbols: &[ast::ImportSymbol],
-    ) -> TypeckResult<()> {
-        for symbol in symbols {
-            self.check_import_node(env, module_id, symbol)?;
-        }
-
-        Ok(())
-    }
-
-    fn check_import_node(
-        &mut self,
-        env: &mut Env,
-        module_id: ModuleId,
-        symbol: &ast::ImportSymbol,
-    ) -> TypeckResult<()> {
-        match symbol {
-            ast::ImportSymbol::Name(name) => {
-                self.check_import_name(env, module_id, name)?;
+        match &import.kind {
+            ast::ImportKind::Module(name) => {
+                self.define_def(
+                    env,
+                    Vis::Internal,
+                    DefKind::Variable,
+                    *name,
+                    Mutability::Imm,
+                    Ty::new(TyKind::Module(module_id)),
+                )?;
             }
-            ast::ImportSymbol::Glob(_) => {
-                todo!("glob")
-                // self.check_import_glob(env, module_id);
+            ast::ImportKind::Names(names) => {
+                for name in names {
+                    self.check_import_name(env, module_id, name)?;
+                }
+            }
+            ast::ImportKind::Glob(_) => {
+                self.check_import_glob(env, module_id);
             }
         }
 
@@ -539,19 +517,8 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
-    // fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {
-    //     self.resolution_state.module_state_mut(env.module_id()).globs.insert(module_id);
-    // }
-
-    fn is_module_def(&self, def_id: DefId, span: Span) -> TypeckResult<ModuleId> {
-        match self.normalize(self.db[def_id].ty).kind() {
-            TyKind::Module(module_id) => Ok(*module_id),
-            ty => Err(errors::ty_mismatch(
-                &TyKind::Module(ModuleId::INVALID).to_string(self.db),
-                &ty.to_string(self.db),
-                span,
-            )),
-        }
+    fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {
+        self.resolution_state.module_state_mut(env.module_id()).globs.insert(module_id);
     }
 
     fn check_extern_let(
