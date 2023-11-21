@@ -145,7 +145,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_attr_kind(&mut self) -> ParseResult<(AttrKind, Span)> {
-        let ident = self.eat(TokenKind::empty_ident())?;
+        let ident = self.eat_ident()?;
         let attr_name = ident.str_value().as_str();
 
         let kind = AttrKind::try_from(attr_name).map_err(|()| {
@@ -159,7 +159,7 @@ impl<'a> Parser<'a> {
 
     fn parse_fn(&mut self, attrs: Attrs) -> ParseResult<Fn> {
         if self.is(TokenKind::Extern) {
-            let name_ident = self.eat(TokenKind::empty_ident())?;
+            let name_ident = self.eat_ident()?;
             let vis = self.parse_vis();
             let (sig, is_c_variadic) = self.parse_fn_sig(name_ident.word(), AllowTyParams::No)?;
 
@@ -171,7 +171,7 @@ impl<'a> Parser<'a> {
                 span: name_ident.span,
             })
         } else {
-            let name_ident = self.eat(TokenKind::empty_ident())?;
+            let name_ident = self.eat_ident()?;
             let vis = self.parse_vis();
             let (sig, is_c_variadic) = self.parse_fn_sig(name_ident.word(), AllowTyParams::Yes)?;
 
@@ -210,7 +210,7 @@ impl<'a> Parser<'a> {
         let start = self.last_span();
 
         let mutability = self.parse_optional_mutability().unwrap_or_default();
-        let ident = self.eat(TokenKind::empty_ident())?;
+        let ident = self.eat_ident()?;
         let vis = self.parse_vis();
 
         self.eat(TokenKind::Colon)?;
@@ -224,7 +224,7 @@ impl<'a> Parser<'a> {
     fn parse_ty_def(&mut self, attrs: Attrs) -> ParseResult<TyDef> {
         let start = self.last_span();
 
-        let ident = self.eat(TokenKind::empty_ident())?;
+        let ident = self.eat_ident()?;
         let vis = self.parse_vis();
 
         let kind = self.parse_ty_def_kind()?;
@@ -247,7 +247,7 @@ impl<'a> Parser<'a> {
 
     fn parse_struct_ty_def(&mut self, kind: StructKind) -> ParseResult<TyDefKind> {
         let (fields, _) = self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
-            let ident = this.eat(TokenKind::empty_ident())?;
+            let ident = this.eat_ident()?;
             this.eat(TokenKind::Colon)?;
             let ty_expr = this.parse_ty()?;
             Ok(StructTyField { name: ident.word(), ty_expr })
@@ -311,7 +311,7 @@ impl<'a> Parser<'a> {
 
     fn parse_optional_ty_params(&mut self) -> ParseResult<Vec<TyParam>> {
         self.parse_list_optional(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
-            let ident = this.eat(TokenKind::empty_ident())?;
+            let ident = this.eat_ident()?;
             Ok(TyParam { word: ident.word() })
         })
         .map(|(t, _)| t)
@@ -344,7 +344,7 @@ impl<'a> Parser<'a> {
                     break;
                 }
 
-                let ident = self.eat(TokenKind::empty_ident())?;
+                let ident = self.eat_ident()?;
                 self.eat(TokenKind::Colon)?;
                 let ty_expr = self.parse_ty()?;
                 params.push(FnParam { name: ident.word(), ty_expr, span: ident.span });
@@ -664,7 +664,7 @@ impl<'a> Parser<'a> {
                 }
                 TokenKind::Dot => {
                     self.next();
-                    let name_ident = self.eat(TokenKind::empty_ident())?;
+                    let name_ident = self.eat_ident()?;
                     let span = expr.span().merge(name_ident.span);
                     Expr::Member { expr: Box::new(expr), member: name_ident.word(), span }
                 }
@@ -706,7 +706,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_arg(&mut self) -> ParseResult<CallArg> {
-        if self.is(TokenKind::empty_ident()) {
+        if self.is_ident() {
             let ident_tok = self.last_token();
 
             if self.is(TokenKind::Colon) {
@@ -767,6 +767,11 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
+    pub(super) fn eat_ident(&mut self) -> ParseResult<Token> {
+        self.eat(TokenKind::empty_ident())
+    }
+
+    #[inline]
     pub(super) fn eat_any(&mut self) -> ParseResult<Token> {
         let tok = self.require()?;
         self.next();
@@ -800,6 +805,11 @@ impl<'a> Parser<'a> {
     #[inline]
     pub(super) fn is(&mut self, expected: TokenKind) -> bool {
         self.is_predicate(|_, tok| tok.kind_is(expected))
+    }
+
+    #[inline]
+    pub(super) fn is_ident(&mut self) -> bool {
+        self.is(TokenKind::empty_ident())
     }
 
     #[inline]

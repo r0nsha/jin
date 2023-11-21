@@ -1,4 +1,5 @@
 import foo.bar.{hello as my_hello, goodbye}
+//import foo.bar.*
 
 fn main {
 	my_hello()

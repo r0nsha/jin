@@ -12,12 +12,12 @@ use crate::{
 
 impl<'a> Parser<'a> {
     pub fn parse_import(&mut self, attrs: &[Attr], start: Span) -> ParseResult<Import> {
-        let root = self.eat(TokenKind::empty_ident())?.word();
+        let root = self.eat_ident()?.word();
         let (qpath, path_span) = self.parse_import_qpath(root)?;
         let path = self.search_import_path(&qpath, path_span)?;
 
         let (alias, symbols) = if self.is(TokenKind::As) {
-            let alias = self.eat(TokenKind::empty_ident())?.word();
+            let alias = self.eat_ident()?.word();
             (Some(alias), None)
         } else if self.peek_is(TokenKind::OpenCurly) {
             let symbols = self.parse_import_symbols()?;
@@ -44,7 +44,7 @@ impl<'a> Parser<'a> {
         let mut qpath = QPath::from(root);
 
         while self.is(TokenKind::Dot) && !self.peek_is(TokenKind::OpenCurly) {
-            let seg = self.eat(TokenKind::empty_ident())?.str_value();
+            let seg = self.eat_ident()?.str_value();
             qpath.push(seg);
         }
 
@@ -94,10 +94,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_import_name(&mut self) -> ParseResult<ImportName> {
-        let word = self.eat(TokenKind::empty_ident())?.word();
+        let word = self.eat_ident()?.word();
 
         let alias = if self.is(TokenKind::As) {
-            let alias = self.eat(TokenKind::empty_ident())?.word();
+            let alias = self.eat_ident()?.word();
             Some(alias)
         } else {
             None
