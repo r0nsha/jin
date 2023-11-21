@@ -42,7 +42,10 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<DefId> {
         let symbol = Symbol::new(module_id, name.name());
 
-        if let Some((_, prev_span)) = self.global_scope.insert_def(symbol, (id, name.span())) {
+        if let Some(def) =
+            self.global_scope.insert_def(symbol, GlobalScopeDef::new(id, name.span()))
+        {
+            let prev_span = def.span;
             let dup_span = name.span();
             let name = symbol.name;
 
@@ -181,11 +184,11 @@ impl<'db> Typeck<'db> {
         Ok(id)
     }
 
-    fn lookup_global_symbol(&self, module_id: ModuleId, symbol: &Symbol) -> Option<DefId> {
+    fn lookup_global_symbol(&self, from_module_id: ModuleId, symbol: &Symbol) -> Option<DefId> {
         if let Some(id) = self.global_scope.get_def(symbol) {
             Some(id)
         } else {
-            for module_id in &self.resolution_state.module_state(module_id).globs {
+            for module_id in &self.resolution_state.module_state(from_module_id).globs {
                 let new_symbol = symbol.with_module_id(*module_id);
 
                 if let Some(id) = self.global_scope.get_def(&new_symbol) {
@@ -302,10 +305,10 @@ impl GlobalScope {
     }
 
     pub fn get_def(&self, symbol: &Symbol) -> Option<DefId> {
-        self.defs.get(symbol).map(|(id, _)| *id)
+        self.defs.get(symbol).map(|def| def.id)
     }
 
-    pub fn insert_def(&mut self, symbol: Symbol, def: GlobalScopeDef) -> Option<GlobalScopeDef> {
+    fn insert_def(&mut self, symbol: Symbol, def: GlobalScopeDef) -> Option<GlobalScopeDef> {
         self.defs.insert(symbol, def)
     }
 
@@ -314,7 +317,17 @@ impl GlobalScope {
     }
 }
 
-type GlobalScopeDef = (DefId, Span);
+#[derive(Debug)]
+struct GlobalScopeDef {
+    pub id: DefId,
+    pub span: Span,
+}
+
+impl GlobalScopeDef {
+    fn new(id: DefId, span: Span) -> Self {
+        Self { id, span }
+    }
+}
 
 #[derive(Debug)]
 pub struct BuiltinTys {

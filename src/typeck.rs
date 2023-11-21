@@ -23,7 +23,7 @@ use crate::{
     hir::{ExprId, Hir},
     index_vec::IndexVecExt,
     macros::create_bool_enum,
-    middle::{BinOp, Mutability, TyExpr, UnOp},
+    middle::{BinOp, Mutability, TyExpr, UnOp, Vis},
     span::{Span, Spanned},
     sym,
     ty::{FloatVar, FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty, TyKind, TyVar},
@@ -473,15 +473,25 @@ impl<'db> Typeck<'db> {
     }
 
     fn check_import(&mut self, env: &mut Env, import: &ast::Import) -> TypeckResult<()> {
-        todo!()
-        // let module_info = self
-        //     .db
-        //     .find_module_by_file_path(&import.path)
-        //     .expect("import to have a registered module");
-        //
+        let module_info = self
+            .db
+            .modules
+            .iter()
+            .find(|m| m.qpath == import.qpath)
+            .expect("import to use an existing module");
+
+        self.define_def(
+            env,
+            Vis::Private,
+            DefKind::Variable,
+            Word::new(import.qpath.name(), import.path_span),
+            Mutability::Imm,
+            Ty::new(TyKind::Module(module_info.id)),
+        )?;
+
         // self.check_import_root(env, module_info.id, import)?;
-        //
-        // Ok(())
+
+        Ok(())
     }
 
     // fn check_import_root(

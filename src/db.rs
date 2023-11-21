@@ -164,7 +164,7 @@ impl Db {
         self.main_fun = Some(id);
     }
 
-    pub fn find_module_by_file_path(&self, path: &Utf8Path) -> Option<&ModuleInfo> {
+    pub fn find_module_by_path(&self, path: &Utf8Path) -> Option<&ModuleInfo> {
         let sources = &self.sources.borrow();
 
         self.modules

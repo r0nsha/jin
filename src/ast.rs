@@ -211,6 +211,7 @@ pub struct Import {
     pub attrs: Attrs,
     pub path: Utf8PathBuf,
     pub qpath: QPath,
+    pub path_span: Span,
     pub span: Span,
 }
 

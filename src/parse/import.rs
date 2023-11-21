@@ -13,12 +13,18 @@ use crate::{
 impl<'a> Parser<'a> {
     pub fn parse_import(&mut self, attrs: &[Attr], start: Span) -> ParseResult<Import> {
         let root = self.eat(TokenKind::empty_ident())?.word();
-        let (qpath, span) = self.parse_import_qpath(root)?;
-        let path = self.search_import_path(&qpath, span)?;
+        let (qpath, path_span) = self.parse_import_qpath(root)?;
+        let path = self.search_import_path(&qpath, path_span)?;
 
         self.imported_module_paths.insert(path.clone());
 
-        Ok(Import { attrs: attrs.to_owned(), path, qpath, span: start.merge(self.last_span()) })
+        Ok(Import {
+            attrs: attrs.to_owned(),
+            path,
+            qpath,
+            path_span,
+            span: start.merge(self.last_span()),
+        })
     }
 
     // fn parse_import_node(&mut self) -> ParseResult<ImportNode> {
