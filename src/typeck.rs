@@ -484,7 +484,7 @@ impl<'db> Typeck<'db> {
             env,
             Vis::Internal,
             DefKind::Variable,
-            Word::new(import.qpath.name(), import.path_span),
+            Word::new(import.name(), import.path_span),
             Mutability::Imm,
             Ty::new(TyKind::Module(module_info.id)),
         )?;

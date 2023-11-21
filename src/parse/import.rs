@@ -16,13 +16,21 @@ impl<'a> Parser<'a> {
         let (qpath, path_span) = self.parse_import_qpath(root)?;
         let path = self.search_import_path(&qpath, path_span)?;
 
+        let alias = if self.is(TokenKind::As) {
+            let alias = self.eat(TokenKind::empty_ident())?.word();
+            Some(alias)
+        } else {
+            None
+        };
+
         self.imported_module_paths.insert(path.clone());
 
         Ok(Import {
             attrs: attrs.to_owned(),
             path,
-            qpath,
             path_span,
+            qpath,
+            alias,
             span: start.merge(self.last_span()),
         })
     }

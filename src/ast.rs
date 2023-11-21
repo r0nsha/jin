@@ -210,9 +210,16 @@ pub struct StructTyField {
 pub struct Import {
     pub attrs: Attrs,
     pub path: Utf8PathBuf,
-    pub qpath: QPath,
     pub path_span: Span,
+    pub qpath: QPath,
+    pub alias: Option<Word>,
     pub span: Span,
+}
+
+impl Import {
+    pub fn name(&self) -> Ustr {
+        self.alias.map_or_else(|| self.qpath.name(), |a| a.name())
+    }
 }
 
 // #[derive(Debug, Clone)]
