@@ -165,7 +165,7 @@ impl<'db> Typeck<'db> {
 
             let id = self
                 .global_scope
-                .get_def(symbol)
+                .get_def(symbol.module_id, symbol)
                 .unwrap_or_else(|| panic!("global symbol to be defined: {symbol:?}"));
 
             Ok(Some(id))
@@ -482,7 +482,7 @@ impl<'db> Typeck<'db> {
 
         self.define_def(
             env,
-            Vis::Private,
+            Vis::Internal,
             DefKind::Variable,
             Word::new(import.qpath.name(), import.path_span),
             Mutability::Imm,

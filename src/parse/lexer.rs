@@ -200,7 +200,7 @@ impl<'s> Lexer<'s> {
                     "true" => TokenKind::True,
                     "false" => TokenKind::False,
                     "as" => TokenKind::As,
-                    "use" => TokenKind::Use,
+                    "import" => TokenKind::Import,
                     "loop" => TokenKind::Loop,
                     "break" => TokenKind::Break,
                     "mut" => TokenKind::Mut,

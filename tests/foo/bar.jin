@@ -1,4 +1,4 @@
-use foo
+import foo
 
 fn extern printf(fmt: *u8, ..) -> i32
 

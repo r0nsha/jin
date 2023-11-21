@@ -8,8 +8,9 @@ use crate::{
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Vis {
-    Private,
     Public,
+    Private,
+    Internal,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

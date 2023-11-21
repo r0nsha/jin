@@ -31,7 +31,7 @@ impl<'db> Typeck<'db> {
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].qpath.clone().child(name.name());
         let id = DefInfo::alloc(self.db, qpath, scope, kind, mutability, ty, name.span());
-        self.insert_global_def(module_id, name, id)
+        self.insert_global_def(module_id, name, id, vis)
     }
 
     pub fn insert_global_def(
@@ -39,11 +39,12 @@ impl<'db> Typeck<'db> {
         module_id: ModuleId,
         name: Word,
         id: DefId,
+        vis: Vis,
     ) -> TypeckResult<DefId> {
         let symbol = Symbol::new(module_id, name.name());
 
         if let Some(def) =
-            self.global_scope.insert_def(symbol, GlobalScopeDef::new(id, name.span()))
+            self.global_scope.insert_def(symbol, GlobalScopeDef::new(id, vis, name.span()))
         {
             let prev_span = def.span;
             let dup_span = name.span();
@@ -118,9 +119,15 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    pub fn insert_def(&mut self, env: &mut Env, name: Word, id: DefId) -> TypeckResult<()> {
+    pub fn insert_def(
+        &mut self,
+        env: &mut Env,
+        name: Word,
+        id: DefId,
+        vis: Vis,
+    ) -> TypeckResult<()> {
         if env.in_global_scope() {
-            self.insert_global_def(env.module_id(), name, id)?;
+            self.insert_global_def(env.module_id(), name, id, vis)?;
         } else {
             env.current_mut().defs.insert(name.name(), id);
         }
@@ -158,17 +165,17 @@ impl<'db> Typeck<'db> {
 
     pub fn lookup_def_in_module(
         &mut self,
-        from_module_id: ModuleId,
-        in_module_id: ModuleId,
+        from_module: ModuleId,
+        in_module: ModuleId,
         word: Word,
     ) -> TypeckResult<DefId> {
-        let symbol = Symbol::new(in_module_id, word.name());
+        let symbol = Symbol::new(in_module, word.name());
 
-        let id = if let Some(id) = self.lookup_global_symbol(from_module_id, &symbol) {
+        let id = if let Some(id) = self.lookup_global_symbol(from_module, &symbol) {
             id
         } else {
             self.find_and_check_item(&symbol)?.ok_or_else(|| {
-                let module_name = self.db[in_module_id].qpath.join();
+                let module_name = self.db[in_module].qpath.join();
 
                 Diagnostic::error()
                     .with_message(format!("cannot find `{word}` in module `{module_name}`",))
@@ -179,19 +186,19 @@ impl<'db> Typeck<'db> {
             })?
         };
 
-        self.check_def_access(from_module_id, id, word.span())?;
+        self.check_def_access(from_module, id, word.span())?;
 
         Ok(id)
     }
 
-    fn lookup_global_symbol(&self, from_module_id: ModuleId, symbol: &Symbol) -> Option<DefId> {
-        if let Some(id) = self.global_scope.get_def(symbol) {
+    fn lookup_global_symbol(&self, from_module: ModuleId, symbol: &Symbol) -> Option<DefId> {
+        if let Some(id) = self.global_scope.get_def(from_module, symbol) {
             Some(id)
         } else {
-            for module_id in &self.resolution_state.module_state(from_module_id).globs {
+            for module_id in &self.resolution_state.module_state(from_module).globs {
                 let new_symbol = symbol.with_module_id(*module_id);
 
-                if let Some(id) = self.global_scope.get_def(&new_symbol) {
+                if let Some(id) = self.global_scope.get_def(from_module, &new_symbol) {
                     return Some(id);
                 }
             }
@@ -304,8 +311,14 @@ impl GlobalScope {
         self.items.insert(Symbol::new(module_id, word.name()), item_id);
     }
 
-    pub fn get_def(&self, symbol: &Symbol) -> Option<DefId> {
-        self.defs.get(symbol).map(|def| def.id)
+    pub fn get_def(&self, from_module: ModuleId, symbol: &Symbol) -> Option<DefId> {
+        if let Some(def) = self.defs.get(symbol) {
+            if def.vis != Vis::Internal || from_module == symbol.module_id {
+                return Some(def.id);
+            }
+        }
+
+        None
     }
 
     fn insert_def(&mut self, symbol: Symbol, def: GlobalScopeDef) -> Option<GlobalScopeDef> {
@@ -320,12 +333,13 @@ impl GlobalScope {
 #[derive(Debug)]
 struct GlobalScopeDef {
     pub id: DefId,
+    pub vis: Vis,
     pub span: Span,
 }
 
 impl GlobalScopeDef {
-    fn new(id: DefId, span: Span) -> Self {
-        Self { id, span }
+    fn new(id: DefId, vis: Vis, span: Span) -> Self {
+        Self { id, vis, span }
     }
 }
 

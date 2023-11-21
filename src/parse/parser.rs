@@ -85,7 +85,7 @@ impl<'a> Parser<'a> {
             return self.parse_ty_def(attrs).map(|t| Some(Item::Type(t)));
         }
 
-        if self.is(TokenKind::Use) {
+        if self.is(TokenKind::Import) {
             let start = self.last_span();
 
             if self.is(TokenKind::Extern) {
