@@ -1,5 +1,9 @@
 import raylib.basic_window
+import raylib.input_keys
+import raylib.following_eyes
 
 fn main {
-	basic_window.run()
+	//basic_window.run()
+	input_keys.run()
+	//following_eyes.run()
 }
