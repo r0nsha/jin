@@ -18,8 +18,6 @@ fn main() {
 
 ## Usage
 
-There's no real CLI yet, but this is how I'd imagine it to work
-
 Run:
 
 ```sh
