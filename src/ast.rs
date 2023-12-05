@@ -219,7 +219,7 @@ pub struct ImportName {
     pub word: Word,
     pub vis: Vis,
     pub alias: Option<Word>,
-    // pub node: Option<ImportNode>,
+    pub node: Option<ImportNode>,
 }
 
 impl ImportName {
@@ -236,9 +236,9 @@ impl Spanned for ImportName {
 
 #[derive(Debug, Clone)]
 pub enum ImportNode {
-    Name(ImportName),
-    Names(Vec<ImportName>),
-    Glob(Span),
+    Name(Box<ImportName>),
+    // Group(Vec<ImportNode>),
+    // Glob(Span),
 }
 
 #[derive(Debug, Clone)]

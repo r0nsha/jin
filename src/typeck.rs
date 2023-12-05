@@ -488,49 +488,46 @@ impl<'db> Typeck<'db> {
         module_id: ModuleId,
         root: &ast::ImportName,
     ) -> Result<(), Diagnostic> {
-        self.define_def(
-            env,
-            Vis::Internal,
-            DefKind::Variable,
-            root.name(),
-            Mutability::Imm,
-            Ty::new(TyKind::Module(module_id)),
-        )?;
-
-        // match &import.kind {
-        //     ast::ImportKind::Module(name) => {
-        //         self.define_def(
-        //             env,
-        //             Vis::Internal,
-        //             DefKind::Variable,
-        //             *name,
-        //             Mutability::Imm,
-        //             Ty::new(TyKind::Module(module_id)),
-        //         )?;
-        //     }
-        //     ast::ImportKind::Names(names) => {
-        //         for name in names {
-        //             self.check_import_name(env, module_id, name)?;
-        //         }
-        //     }
-        //     ast::ImportKind::Glob(_) => {
-        //         self.check_import_glob(env, module_id);
-        //     }
-        // }
+        match &root.node {
+            Some(node) => {
+                self.check_import_node(env, module_id, node)?;
+            }
+            None => {
+                self.define_def(
+                    env,
+                    Vis::Internal,
+                    DefKind::Variable,
+                    root.name(),
+                    Mutability::Imm,
+                    Ty::new(TyKind::Module(module_id)),
+                )?;
+            }
+        }
 
         Ok(())
     }
 
-    // fn check_import_name(
-    //     &mut self,
-    //     env: &mut Env,
-    //     module_id: ModuleId,
-    //     name: &ast::ImportName,
-    // ) -> Result<(), Diagnostic> {
-    //     let def_id = self.lookup_def_in_module(env.module_id(), module_id, name.word)?;
-    //     self.insert_def(env, name.name(), def_id, Vis::Internal)?;
-    //     Ok(())
-    // }
+    fn check_import_node(
+        &mut self,
+        env: &mut Env,
+        module_id: ModuleId,
+        node: &ast::ImportNode,
+    ) -> Result<(), Diagnostic> {
+        match node {
+            ast::ImportNode::Name(name) => self.check_import_name(env, module_id, name),
+        }
+    }
+
+    fn check_import_name(
+        &mut self,
+        env: &mut Env,
+        module_id: ModuleId,
+        name: &ast::ImportName,
+    ) -> Result<(), Diagnostic> {
+        let def_id = self.lookup_def_in_module(env.module_id(), module_id, name.word)?;
+        self.insert_def(env, name.name(), def_id, Vis::Internal)?;
+        Ok(())
+    }
 
     // fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {
     //     self.resolution_state.module_state_mut(env.module_id()).globs.insert(module_id);

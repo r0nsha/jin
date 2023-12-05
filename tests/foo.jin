@@ -1,8 +1,10 @@
 //import foo.bar.*
 import bar
+import bar.baz
 
 fn main {
 	bar.hello()
+	baz.yup()
 	bar.goodbye()
 }
 

@@ -2,7 +2,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use path_absolutize::Absolutize as _;
 
 use crate::{
-    ast::{token::TokenKind, Attr, Import, ImportName},
+    ast::{token::TokenKind, Attr, Import, ImportName, ImportNode},
     diagnostics::{Diagnostic, Label},
     parse::parser::{ParseResult, Parser},
     span::{Span, Spanned},
@@ -22,27 +22,27 @@ impl<'a> Parser<'a> {
     fn parse_import_name(&mut self) -> ParseResult<ImportName> {
         let word = self.eat_ident()?.word();
 
-        let (alias, vis /* node */) = if self.is(TokenKind::As) {
+        let (alias, vis, node) = if self.is(TokenKind::As) {
             let alias = self.eat_ident()?.word();
             let vis = self.parse_vis();
-            (Some(alias), vis /* None */)
+            (Some(alias), vis, None)
         } else {
             let vis = self.parse_vis();
-            // let node = self.parse_import_child()?;
-            (None, vis /* Some(node) */)
+            let node = if self.is(TokenKind::Dot) { Some(self.parse_import_node()?) } else { None };
+            (None, vis, node)
         };
 
-        Ok(ImportName { word, vis, alias /* node */ })
+        Ok(ImportName { word, vis, alias, node })
     }
 
-    // fn parse_import_node(&mut self) -> ParseResult<ImportNode> {
-    //     if self.is(TokenKind::Star) {
-    //         Ok(ImportNode::Glob(self.last_span()))
-    //     } else {
-    //         let name = self.parse_import_name()?;
-    //         Ok(ImportNode::Name(name))
-    //     }
-    // }
+    fn parse_import_node(&mut self) -> ParseResult<ImportNode> {
+        // if self.is(TokenKind::Star) {
+        //     Ok(ImportNode::Glob(self.last_span()))
+        // } else {
+        let name = self.parse_import_name()?;
+        Ok(ImportNode::Name(Box::new(name)))
+        // }
+    }
 
     // fn parse_import_group(&mut self) -> ParseResult<Vec<ImportName>> {
     //     self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, Self::parse_import_node)
@@ -54,7 +54,6 @@ impl<'a> Parser<'a> {
 
         let path = self
             .search_module_in_subdir(name, &mut search_notes)
-            .or_else(|| self.search_module_in_curr_dir(name, &mut search_notes))
             .or_else(|| self.search_package(name, &mut search_notes));
 
         path.ok_or_else(|| {
@@ -72,27 +71,6 @@ impl<'a> Parser<'a> {
     ) -> Option<Utf8PathBuf> {
         let path = Utf8Path::new(&name.name()).with_extension("jin");
         let relative_to = self.source.path().with_extension("");
-
-        let absolute_path: Utf8PathBuf = path
-            .as_std_path()
-            .absolutize_from(relative_to.as_std_path())
-            .ok()?
-            .to_path_buf()
-            .try_into()
-            .expect("path to be utf8");
-
-        search_notes.push(format!("searched path: {absolute_path}"));
-
-        absolute_path.exists().then_some(absolute_path)
-    }
-
-    fn search_module_in_curr_dir(
-        &self,
-        name: Word,
-        search_notes: &mut Vec<String>,
-    ) -> Option<Utf8PathBuf> {
-        let path = Utf8Path::new(&name.name()).with_extension("jin");
-        let relative_to = self.parent_path().unwrap();
 
         let absolute_path: Utf8PathBuf = path
             .as_std_path()

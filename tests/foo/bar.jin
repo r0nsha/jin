@@ -1,4 +1,5 @@
 import foo
+import baz
 
 fn extern printf(fmt: *u8, ..) -> i32
 
