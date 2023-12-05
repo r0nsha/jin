@@ -285,8 +285,24 @@ impl GlobalScope {
         name: &ast::ImportName,
     ) {
         match &name.node {
-            Some(ast::ImportNode::Name(name)) => self.insert_import_name(module_id, item_id, name),
+            Some(node) => self.insert_import_node(module_id, item_id, node),
             None => self.insert_item(module_id, name.name(), item_id),
+        }
+    }
+
+    fn insert_import_node(
+        &mut self,
+        module_id: ModuleId,
+        item_id: ast::ItemId,
+        node: &ast::ImportNode,
+    ) {
+        match node {
+            ast::ImportNode::Name(name) => self.insert_import_name(module_id, item_id, name),
+            ast::ImportNode::Group(nodes) => {
+                for node in nodes {
+                    self.insert_import_node(module_id, item_id, node)
+                }
+            }
         }
     }
 

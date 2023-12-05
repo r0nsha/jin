@@ -1,0 +1,13 @@
+//import imports.bar.*
+import bar.{hello, goodbye, baz.yup}
+
+fn main {
+	//bar.hello()
+	hello()
+	yup()
+	goodbye()
+}
+
+fn get_hello_world* -> str {
+	"Hello from bar!\n"
+}

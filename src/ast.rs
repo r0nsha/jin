@@ -237,7 +237,7 @@ impl Spanned for ImportName {
 #[derive(Debug, Clone)]
 pub enum ImportNode {
     Name(Box<ImportName>),
-    // Group(Vec<ImportNode>),
+    Group(Vec<ImportNode>),
     // Glob(Span),
 }
 

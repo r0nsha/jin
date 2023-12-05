@@ -272,14 +272,14 @@ impl PrettyPrint for ImportNode {
         match self {
             ImportNode::Name(node) => {
                 node.pretty_print(cx);
-            } // ImportNode::Group(nodes) => {
-              //     cx.builder.begin_child("group".to_string());
-              //     for n in nodes {
-              //         n.pretty_print(cx);
-              //     }
-              //     cx.builder.end_child();
-              // }
-              // ImportNode::Glob(_) => {
+            }
+            ImportNode::Group(nodes) => {
+                cx.builder.begin_child("group".to_string());
+                for n in nodes {
+                    n.pretty_print(cx);
+                }
+                cx.builder.end_child();
+            } // ImportNode::Glob(_) => {
               //     cx.builder.add_empty_child("*".to_string());
               // }
         }

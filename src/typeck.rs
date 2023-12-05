@@ -514,8 +514,17 @@ impl<'db> Typeck<'db> {
         node: &ast::ImportNode,
     ) -> Result<(), Diagnostic> {
         match node {
-            ast::ImportNode::Name(name) => self.check_import_name(env, module_id, name),
+            ast::ImportNode::Name(name) => {
+                self.check_import_name(env, module_id, name)?;
+            }
+            ast::ImportNode::Group(nodes) => {
+                for node in nodes {
+                    self.check_import_node(env, module_id, node)?;
+                }
+            }
         }
+
+        Ok(())
     }
 
     fn check_import_name(
@@ -526,12 +535,29 @@ impl<'db> Typeck<'db> {
     ) -> Result<(), Diagnostic> {
         let def_id = self.lookup_def_in_module(env.module_id(), module_id, name.word)?;
         self.insert_def(env, name.name(), def_id, Vis::Internal)?;
+
+        if let Some(node) = &name.node {
+            let module_id = self.is_module_def(def_id, name.word.span())?;
+            self.check_import_node(env, module_id, node)?;
+        }
+
         Ok(())
     }
 
     // fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {
     //     self.resolution_state.module_state_mut(env.module_id()).globs.insert(module_id);
     // }
+
+    fn is_module_def(&self, def_id: DefId, span: Span) -> TypeckResult<ModuleId> {
+        match self.normalize(self.db[def_id].ty).kind() {
+            TyKind::Module(module_id) => Ok(*module_id),
+            ty => Err(errors::ty_mismatch(
+                &TyKind::Module(ModuleId::INVALID).to_string(self.db),
+                &ty.to_string(self.db),
+                span,
+            )),
+        }
+    }
 
     fn check_extern_let(
         &mut self,

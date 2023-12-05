@@ -38,16 +38,19 @@ impl<'a> Parser<'a> {
     fn parse_import_node(&mut self) -> ParseResult<ImportNode> {
         // if self.is(TokenKind::Star) {
         //     Ok(ImportNode::Glob(self.last_span()))
-        // } else {
-        let name = self.parse_import_name()?;
-        Ok(ImportNode::Name(Box::new(name)))
-        // }
+        // } else
+        if self.peek_is(TokenKind::OpenCurly) {
+            self.parse_import_group()
+        } else {
+            let name = self.parse_import_name()?;
+            Ok(ImportNode::Name(Box::new(name)))
+        }
     }
 
-    // fn parse_import_group(&mut self) -> ParseResult<Vec<ImportName>> {
-    //     self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, Self::parse_import_node)
-    //         .map(|(l, _)| l)
-    // }
+    fn parse_import_group(&mut self) -> ParseResult<ImportNode> {
+        self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, Self::parse_import_node)
+            .map(|(nodes, _)| ImportNode::Group(nodes))
+    }
 
     fn search_import_path(&self, name: Word) -> ParseResult<Utf8PathBuf> {
         let mut search_notes = vec![];
