@@ -473,53 +473,68 @@ impl<'db> Typeck<'db> {
     }
 
     fn check_import(&mut self, env: &mut Env, import: &ast::Import) -> TypeckResult<()> {
-        let module_info = self
-            .db
-            .modules
-            .iter()
-            .find(|m| m.qpath == import.qpath)
-            .expect("import to use an existing module");
+        let module_info =
+            self.db.find_module_by_path(&import.path).expect("import to use an existing module");
 
         let module_id = module_info.id;
-
-        match &import.kind {
-            ast::ImportKind::Module(name) => {
-                self.define_def(
-                    env,
-                    Vis::Internal,
-                    DefKind::Variable,
-                    *name,
-                    Mutability::Imm,
-                    Ty::new(TyKind::Module(module_id)),
-                )?;
-            }
-            ast::ImportKind::Names(names) => {
-                for name in names {
-                    self.check_import_name(env, module_id, name)?;
-                }
-            }
-            ast::ImportKind::Glob(_) => {
-                self.check_import_glob(env, module_id);
-            }
-        }
+        self.check_import_root(env, module_id, &import.root)?;
 
         Ok(())
     }
 
-    fn check_import_name(
+    fn check_import_root(
         &mut self,
         env: &mut Env,
         module_id: ModuleId,
-        name: &ast::ImportName,
+        root: &ast::ImportName,
     ) -> Result<(), Diagnostic> {
-        let def_id = self.lookup_def_in_module(env.module_id(), module_id, name.word)?;
-        self.insert_def(env, name.name(), def_id, Vis::Internal)?;
+        self.define_def(
+            env,
+            Vis::Internal,
+            DefKind::Variable,
+            root.name(),
+            Mutability::Imm,
+            Ty::new(TyKind::Module(module_id)),
+        )?;
+
+        // match &import.kind {
+        //     ast::ImportKind::Module(name) => {
+        //         self.define_def(
+        //             env,
+        //             Vis::Internal,
+        //             DefKind::Variable,
+        //             *name,
+        //             Mutability::Imm,
+        //             Ty::new(TyKind::Module(module_id)),
+        //         )?;
+        //     }
+        //     ast::ImportKind::Names(names) => {
+        //         for name in names {
+        //             self.check_import_name(env, module_id, name)?;
+        //         }
+        //     }
+        //     ast::ImportKind::Glob(_) => {
+        //         self.check_import_glob(env, module_id);
+        //     }
+        // }
+
         Ok(())
     }
 
-    fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {
-        self.resolution_state.module_state_mut(env.module_id()).globs.insert(module_id);
-    }
+    // fn check_import_name(
+    //     &mut self,
+    //     env: &mut Env,
+    //     module_id: ModuleId,
+    //     name: &ast::ImportName,
+    // ) -> Result<(), Diagnostic> {
+    //     let def_id = self.lookup_def_in_module(env.module_id(), module_id, name.word)?;
+    //     self.insert_def(env, name.name(), def_id, Vis::Internal)?;
+    //     Ok(())
+    // }
+
+    // fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {
+    //     self.resolution_state.module_state_mut(env.module_id()).globs.insert(module_id);
+    // }
 
     fn check_extern_let(
         &mut self,

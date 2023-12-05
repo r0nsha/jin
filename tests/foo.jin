@@ -1,8 +1,9 @@
-import foo.bar.*
+//import foo.bar.*
+import bar
 
 fn main {
-	hello()
-	goodbye()
+	bar.hello()
+	bar.goodbye()
 }
 
 fn get_hello_world* -> str {

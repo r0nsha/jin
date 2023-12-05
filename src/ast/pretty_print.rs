@@ -3,7 +3,7 @@ use std::io;
 use super::{Expr, Fn, Item, LitKind, Module};
 use crate::{
     ast::{
-        CallArg, ExternImport, ExternLet, FnKind, FnSig, Import, ImportKind, Let, TyDef, TyDefKind,
+        CallArg, ExternImport, ExternLet, FnKind, FnSig, Import, ImportName, Let, TyDef, TyDefKind,
         TyExpr,
     },
     db::StructKind,
@@ -254,29 +254,49 @@ impl PrettyPrint for TyDef {
 
 impl PrettyPrint for Import {
     fn pretty_print(&self, cx: &mut PrettyCx) {
-        cx.builder.begin_child(format!("import {}", self.qpath.name()));
-        self.kind.pretty_print(cx);
+        cx.builder.begin_child(format!("import {}", self.root.name()));
+        // self.root.node.pretty_print(cx);
         cx.builder.end_child();
     }
 }
 
-impl PrettyPrint for ImportKind {
+impl PrettyPrint for ImportName {
     fn pretty_print(&self, cx: &mut PrettyCx) {
-        match self {
-            ImportKind::Module(name) => {
-                cx.builder.add_empty_child(format!("as `{name}`"));
-            }
-            ImportKind::Names(names) => {
-                for name in names {
-                    cx.builder.add_empty_child(name.name().to_string());
-                }
-            }
-            ImportKind::Glob(_) => {
-                cx.builder.add_empty_child("*".to_string());
-            }
-        }
+        cx.builder.add_empty_child(self.name().to_string());
+        // self.node.pretty_print(cx);
     }
 }
+
+// impl PrettyPrint for ImportNode {
+//     fn pretty_print(&self, cx: &mut PrettyCx) {
+//         match self {
+//             ImportNode::Node(node) => {
+//                 node.pretty_print(cx);
+//             }
+//             ImportNode::Group(nodes) => {
+//                 cx.builder.begin_child("group".to_string());
+//                 for n in nodes {
+//                     n.pretty_print(cx);
+//                 }
+//                 cx.builder.end_child();
+//             }
+//             ImportNode::Glob(_) => {
+//                 cx.builder.add_empty_child("*".to_string());
+//             }
+//         }
+//     }
+// }
+
+// impl PrettyPrint for ImportNode {
+//     fn pretty_print(&self, cx: &mut PrettyCx) {
+//         match self {
+//             ImportNode::Name(n) => n.pretty_print(cx),
+//             ImportNode::Glob(_) => {
+//                 cx.builder.add_empty_child("*".to_string());
+//             }
+//         }
+//     }
+// }
 
 impl PrettyPrint for ExternLet {
     fn pretty_print(&self, cx: &mut PrettyCx) {

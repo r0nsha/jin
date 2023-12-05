@@ -268,17 +268,21 @@ impl GlobalScope {
                         let_.pat.walk(|p| self.insert_item(module.id, p.word, item_id));
                     }
                     ast::Item::Type(tydef) => self.insert_item(module.id, tydef.word, item_id),
-                    ast::Item::Import(import) => match &import.kind {
-                        ast::ImportKind::Module(name) => {
-                            self.insert_item(module.id, *name, item_id);
-                        }
-                        ast::ImportKind::Names(names) => {
-                            for name in names {
-                                self.insert_item(module.id, name.name(), item_id);
-                            }
-                        }
-                        ast::ImportKind::Glob(_) => (),
-                    },
+                    ast::Item::Import(import) => {
+                        self.insert_item(module.id, import.root.name(), item_id);
+                        // TODO: add node
+                        // match &import.kind {
+                        //                     ast::ImportKind::Module(name) => {
+                        //                         self.insert_item(module.id, *name, item_id);
+                        //                     }
+                        //                     ast::ImportKind::Names(names) => {
+                        //                         for name in names {
+                        //                             self.insert_item(module.id, name.name(), item_id);
+                        //                         }
+                        //                     }
+                        //                     ast::ImportKind::Glob(_) => (),
+                        //                 }
+                    }
                     ast::Item::ExternLet(let_) => self.insert_item(module.id, let_.word, item_id),
                     ast::Item::ExternImport(_) => (),
                 }
