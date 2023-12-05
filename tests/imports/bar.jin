@@ -1,5 +1,5 @@
 import imports as root
-import baz
+import baz*
 
 fn extern printf(fmt: *u8, ..) -> i32
 

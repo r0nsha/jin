@@ -23,7 +23,7 @@ use crate::{
     hir::{ExprId, Hir},
     index_vec::IndexVecExt,
     macros::create_bool_enum,
-    middle::{BinOp, Mutability, TyExpr, UnOp, Vis},
+    middle::{BinOp, Mutability, TyExpr, UnOp},
     span::{Span, Spanned},
     sym,
     ty::{FloatVar, FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty, TyKind, TyVar},
@@ -495,7 +495,7 @@ impl<'db> Typeck<'db> {
             None => {
                 self.define_def(
                     env,
-                    Vis::Internal,
+                    root.vis,
                     DefKind::Variable,
                     root.name(),
                     Mutability::Imm,
@@ -522,6 +522,9 @@ impl<'db> Typeck<'db> {
                     self.check_import_node(env, module_id, node)?;
                 }
             }
+            ast::ImportNode::Glob(_) => {
+                self.check_import_glob(env, module_id);
+            }
         }
 
         Ok(())
@@ -534,19 +537,20 @@ impl<'db> Typeck<'db> {
         name: &ast::ImportName,
     ) -> Result<(), Diagnostic> {
         let def_id = self.lookup_def_in_module(env.module_id(), module_id, name.word)?;
-        self.insert_def(env, name.name(), def_id, Vis::Internal)?;
 
         if let Some(node) = &name.node {
             let module_id = self.is_module_def(def_id, name.word.span())?;
             self.check_import_node(env, module_id, node)?;
+        } else {
+            self.insert_def(env, name.name(), def_id, name.vis)?;
         }
 
         Ok(())
     }
 
-    // fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {
-    //     self.resolution_state.module_state_mut(env.module_id()).globs.insert(module_id);
-    // }
+    fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {
+        self.resolution_state.module_state_mut(env.module_id()).globs.insert(module_id);
+    }
 
     fn is_module_def(&self, def_id: DefId, span: Span) -> TypeckResult<ModuleId> {
         match self.normalize(self.db[def_id].ty).kind() {

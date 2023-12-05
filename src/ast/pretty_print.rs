@@ -279,9 +279,10 @@ impl PrettyPrint for ImportNode {
                     n.pretty_print(cx);
                 }
                 cx.builder.end_child();
-            } // ImportNode::Glob(_) => {
-              //     cx.builder.add_empty_child("*".to_string());
-              // }
+            }
+            ImportNode::Glob(_) => {
+                cx.builder.add_empty_child("*".to_string());
+            }
         }
     }
 }

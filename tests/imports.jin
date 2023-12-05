@@ -1,8 +1,6 @@
-//import imports.bar.*
-import bar.{hello, goodbye, baz.yup}
+import bar.{baz.yup, *}
 
 fn main {
-	//bar.hello()
 	hello()
 	yup()
 	goodbye()

@@ -36,10 +36,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_import_node(&mut self) -> ParseResult<ImportNode> {
-        // if self.is(TokenKind::Star) {
-        //     Ok(ImportNode::Glob(self.last_span()))
-        // } else
-        if self.peek_is(TokenKind::OpenCurly) {
+        if self.is(TokenKind::Star) {
+            Ok(ImportNode::Glob(self.last_span()))
+        } else if self.peek_is(TokenKind::OpenCurly) {
             self.parse_import_group()
         } else {
             let name = self.parse_import_name()?;

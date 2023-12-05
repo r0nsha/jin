@@ -300,9 +300,10 @@ impl GlobalScope {
             ast::ImportNode::Name(name) => self.insert_import_name(module_id, item_id, name),
             ast::ImportNode::Group(nodes) => {
                 for node in nodes {
-                    self.insert_import_node(module_id, item_id, node)
+                    self.insert_import_node(module_id, item_id, node);
                 }
             }
+            ast::ImportNode::Glob(_) => (),
         }
     }
 
@@ -312,7 +313,7 @@ impl GlobalScope {
 
     pub fn get_def(&self, from_module: ModuleId, symbol: &Symbol) -> Option<DefId> {
         if let Some(def) = self.defs.get(symbol) {
-            if def.vis != Vis::Internal || from_module == symbol.module_id {
+            if def.vis == Vis::Public || from_module == symbol.module_id {
                 return Some(def.id);
             }
         }
