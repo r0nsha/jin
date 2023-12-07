@@ -236,7 +236,7 @@ impl<'db> Typeck<'db> {
                     p.id = self.define_local_def(
                         env,
                         DefKind::Variable,
-                        p.name,
+                        p.word,
                         Mutability::Imm,
                         p.ty,
                     );
@@ -342,7 +342,7 @@ impl<'db> Typeck<'db> {
                     ));
             }
 
-            params.push(hir::FnParam { id: DefId::INVALID, name: p.name, ty });
+            params.push(hir::FnParam { id: DefId::INVALID, word: p.name, ty });
         }
 
         let ret = if let Some(ret) = &sig.ret {
@@ -354,7 +354,7 @@ impl<'db> Typeck<'db> {
         let ty = Ty::new(TyKind::Fn(FnTy {
             params: params
                 .iter()
-                .map(|p| FnTyParam { name: Some(p.name.name()), ty: p.ty })
+                .map(|p| FnTyParam { name: Some(p.word.name()), ty: p.ty })
                 .collect(),
             ret,
             is_c_variadic,

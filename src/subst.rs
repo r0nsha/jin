@@ -92,7 +92,7 @@ impl<S: SubstTy> Subst<S> for Fn {
 impl<S: SubstTy> Subst<S> for FnSig {
     fn subst(&mut self, s: &mut S) {
         for param in &mut self.params {
-            param.ty = s.subst_ty(param.ty, param.name.span());
+            param.ty = s.subst_ty(param.ty, param.word.span());
             // TODO: remove?
             s.db()[param.id].ty = param.ty;
         }

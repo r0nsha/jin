@@ -154,7 +154,7 @@ pub struct TyParam {
 #[derive(Debug, Clone)]
 pub struct FnParam {
     pub id: DefId,
-    pub name: Word,
+    pub word: Word,
     pub ty: Ty,
 }
 
