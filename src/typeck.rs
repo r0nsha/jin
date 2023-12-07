@@ -110,7 +110,7 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
-    fn check_module(&mut self, module: &ast::Module) -> Result<(), Diagnostic> {
+    fn check_module(&mut self, module: &ast::Module) -> TypeckResult<()> {
         self.resolution_state.create_module_state(module.id);
 
         if !self.resolution_state.module_state(module.id).status.is_unresolved() {
@@ -487,7 +487,7 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         module_id: ModuleId,
         root: &ast::ImportName,
-    ) -> Result<(), Diagnostic> {
+    ) -> TypeckResult<()> {
         match &root.node {
             Some(node) => {
                 self.check_import_node(env, module_id, node)?;
@@ -512,7 +512,7 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         module_id: ModuleId,
         node: &ast::ImportNode,
-    ) -> Result<(), Diagnostic> {
+    ) -> TypeckResult<()> {
         match node {
             ast::ImportNode::Name(name) => {
                 self.check_import_name(env, module_id, name)?;
@@ -535,7 +535,7 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         module_id: ModuleId,
         name: &ast::ImportName,
-    ) -> Result<(), Diagnostic> {
+    ) -> TypeckResult<()> {
         let def_id = self.lookup_def_in_module(env.module_id(), module_id, name.word)?;
 
         if let Some(node) = &name.node {
@@ -952,7 +952,7 @@ impl<'db> Typeck<'db> {
         callee: &ast::Expr,
         args: &[ast::CallArg],
         span: Span,
-    ) -> Result<hir::Expr, Diagnostic> {
+    ) -> TypeckResult<hir::Expr> {
         let callee = self.check_expr(env, callee, None)?;
 
         let mut new_args = vec![];
