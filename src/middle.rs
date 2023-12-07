@@ -10,7 +10,6 @@ use crate::{
 pub enum Vis {
     Public,
     Private,
-    Internal,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

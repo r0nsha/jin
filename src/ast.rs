@@ -210,23 +210,16 @@ pub struct StructTyField {
 pub struct Import {
     pub attrs: Attrs,
     pub path: Utf8PathBuf,
-    pub path_span: Span,
-    pub qpath: QPath,
-    pub kind: ImportKind,
+    pub root: ImportName,
     pub span: Span,
-}
-
-#[derive(Debug, Clone)]
-pub enum ImportKind {
-    Module(Word),
-    Names(Vec<ImportName>),
-    Glob(Span),
 }
 
 #[derive(Debug, Clone)]
 pub struct ImportName {
     pub word: Word,
+    pub vis: Vis,
     pub alias: Option<Word>,
+    pub node: Option<ImportNode>,
 }
 
 impl ImportName {
@@ -239,6 +232,13 @@ impl Spanned for ImportName {
     fn span(&self) -> Span {
         self.name().span()
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum ImportNode {
+    Name(Box<ImportName>),
+    Group(Vec<ImportNode>),
+    Glob(Span),
 }
 
 #[derive(Debug, Clone)]

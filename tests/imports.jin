@@ -1,7 +1,8 @@
-import foo.bar.*
+import bar.{baz.yup, *}
 
 fn main {
 	hello()
+	yup()
 	goodbye()
 }
 

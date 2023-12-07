@@ -268,21 +268,42 @@ impl GlobalScope {
                         let_.pat.walk(|p| self.insert_item(module.id, p.word, item_id));
                     }
                     ast::Item::Type(tydef) => self.insert_item(module.id, tydef.word, item_id),
-                    ast::Item::Import(import) => match &import.kind {
-                        ast::ImportKind::Module(name) => {
-                            self.insert_item(module.id, *name, item_id);
-                        }
-                        ast::ImportKind::Names(names) => {
-                            for name in names {
-                                self.insert_item(module.id, name.name(), item_id);
-                            }
-                        }
-                        ast::ImportKind::Glob(_) => (),
-                    },
+                    ast::Item::Import(import) => {
+                        self.insert_import_name(module.id, item_id, &import.root);
+                    }
                     ast::Item::ExternLet(let_) => self.insert_item(module.id, let_.word, item_id),
                     ast::Item::ExternImport(_) => (),
                 }
             }
+        }
+    }
+
+    fn insert_import_name(
+        &mut self,
+        module_id: ModuleId,
+        item_id: ast::ItemId,
+        name: &ast::ImportName,
+    ) {
+        match &name.node {
+            Some(node) => self.insert_import_node(module_id, item_id, node),
+            None => self.insert_item(module_id, name.name(), item_id),
+        }
+    }
+
+    fn insert_import_node(
+        &mut self,
+        module_id: ModuleId,
+        item_id: ast::ItemId,
+        node: &ast::ImportNode,
+    ) {
+        match node {
+            ast::ImportNode::Name(name) => self.insert_import_name(module_id, item_id, name),
+            ast::ImportNode::Group(nodes) => {
+                for node in nodes {
+                    self.insert_import_node(module_id, item_id, node);
+                }
+            }
+            ast::ImportNode::Glob(_) => (),
         }
     }
 
@@ -292,7 +313,7 @@ impl GlobalScope {
 
     pub fn get_def(&self, from_module: ModuleId, symbol: &Symbol) -> Option<DefId> {
         if let Some(def) = self.defs.get(symbol) {
-            if def.vis != Vis::Internal || from_module == symbol.module_id {
+            if def.vis == Vis::Public || from_module == symbol.module_id {
                 return Some(def.id);
             }
         }
