@@ -426,25 +426,29 @@ impl<'db> Typeck<'db> {
                     fields.push(StructField { name: field.name, ty: self.db.types.unknown });
                 }
 
-                let struct_id = self.db.structs.push_with_key(|id| StructInfo {
-                    id,
-                    def_id: DefId::INVALID,
-                    name: ty_def.word,
-                    fields,
-                    kind: struct_def.kind,
-                    ctor_ty: self.db.types.unknown,
-                });
+                let struct_id = {
+                    let struct_id = self.db.structs.push_with_key(|id| StructInfo {
+                        id,
+                        def_id: DefId::INVALID,
+                        name: ty_def.word,
+                        fields,
+                        kind: struct_def.kind,
+                        ctor_ty: self.db.types.unknown,
+                    });
 
-                let def_id = self.define_def(
-                    env,
-                    ty_def.vis,
-                    DefKind::Struct(struct_id),
-                    ty_def.word,
-                    Mutability::Imm,
-                    TyKind::Type(TyKind::Struct(struct_id).into()).into(),
-                )?;
+                    let def_id = self.define_def(
+                        env,
+                        ty_def.vis,
+                        DefKind::Struct(struct_id),
+                        ty_def.word,
+                        Mutability::Imm,
+                        TyKind::Type(TyKind::Struct(struct_id).into()).into(),
+                    )?;
 
-                self.db.structs[struct_id].def_id = def_id;
+                    self.db.structs[struct_id].def_id = def_id;
+
+                    struct_id
+                };
 
                 for (idx, field) in struct_def.fields.iter().enumerate() {
                     let ty = self.check_ty_expr(env, &field.ty_expr, AllowTyHole::No)?;

@@ -25,6 +25,7 @@ fn main {
 	run2(print_answer)
 	run3(print_answer)
 	do_add(add, 1, 2)
+	printf("num = %d\n".ptr, map(1, id))
 }
 
 fn print_answer() {
@@ -39,11 +40,13 @@ fn do_add(f: fn(int, int) -> int, a: int, b: int) {
 	printf("a + b = %d\n".ptr, f(a, b))
 }
 
-fn map[a, b](val: a, f: fn(a) -> b) -> b {
-	f(val)
-}
-
 fn run(f: fn) { f() }
 fn run1(f: fn()) { f() }
 fn run2(f: fn() -> {}) { f() }
 fn run3(f: fn -> {}) { f() }
+
+fn id[a](x: a) -> a { x }
+
+fn map[a, b](val: a, f: fn(a) -> b) -> b {
+	f(val)
+}
