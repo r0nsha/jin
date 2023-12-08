@@ -248,7 +248,7 @@ impl Symbol {
 #[derive(Debug)]
 pub struct GlobalScope {
     symbol_to_def: FxHashMap<Symbol, GlobalScopeDef>,
-    pub symbol_to_item: FxHashMap<Symbol, ast::ItemId>,
+    pub symbol_to_item: FxHashMap<Symbol, Vec<ast::ItemId>>,
 }
 
 impl GlobalScope {

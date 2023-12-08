@@ -156,14 +156,16 @@ impl<'db> Typeck<'db> {
     }
 
     fn find_and_check_item(&mut self, symbol: &Symbol) -> TypeckResult<Option<DefId>> {
-        if let Some(item_id) = self.global_scope.symbol_to_item.get(symbol).copied() {
-            let item = &self.ast.modules[symbol.module_id].items[item_id];
+        if let Some(item_ids) = self.global_scope.symbol_to_item.get(symbol).cloned() {
+            for item_id in item_ids {
+                let item = &self.ast.modules[symbol.module_id].items[item_id];
 
-            self.check_item(
-                &mut Env::new(symbol.module_id),
-                item,
-                ast::GlobalItemId::new(symbol.module_id, item_id),
-            )?;
+                self.check_item(
+                    &mut Env::new(symbol.module_id),
+                    item,
+                    ast::GlobalItemId::new(symbol.module_id, item_id),
+                )?;
+            }
 
             let id = self
                 .global_scope

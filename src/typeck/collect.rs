@@ -55,6 +55,10 @@ impl<'db> Typeck<'db> {
     }
 
     fn collect_item(&mut self, module_id: ModuleId, word: Word, item_id: ast::ItemId) {
-        self.global_scope.symbol_to_item.insert(Symbol::new(module_id, word.name()), item_id);
+        self.global_scope
+            .symbol_to_item
+            .entry(Symbol::new(module_id, word.name()))
+            .or_insert_with(|| vec![])
+            .push(item_id);
     }
 }
