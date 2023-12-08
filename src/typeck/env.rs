@@ -200,13 +200,7 @@ impl<'db> Typeck<'db> {
             // }
         }
 
-        if let Some(id) = self.builtin_tys.get(name) {
-            return Ok(id);
-        }
-
-        Err(Diagnostic::error()
-            .with_message(format!("cannot find `{word}` in this scope"))
-            .with_label(Label::primary(word.span()).with_message("not found in this scope")))
+        self.lookup_global_def(&symbol, word.span())
     }
 
     fn lookup_fn_candidate(
@@ -221,7 +215,12 @@ impl<'db> Typeck<'db> {
 
         let Some(set) = self.global_scope.fns.get(symbol) else { return Ok(None) };
         let candidates = set.get(call_args);
-        todo!("{candidates:?}")
+
+        match candidates.len() {
+            0 => Ok(None),
+            1 => Ok(Some(candidates.first().unwrap().id)),
+            _ => todo!("multiple candidates: error!"),
+        }
     }
 
     pub fn lookup_def(&mut self, env: &Env, word: Word) -> TypeckResult<DefId> {
@@ -232,24 +231,27 @@ impl<'db> Typeck<'db> {
         }
 
         let symbol = Symbol::new(env.module_id(), name);
+        self.lookup_global_def(&symbol, word.span())
+    }
 
-        if let Some(id) = self.lookup_global_symbol(env.module_id(), &symbol) {
+    pub fn lookup_global_def(&mut self, symbol: &Symbol, span: Span) -> TypeckResult<DefId> {
+        if let Some(id) = self.lookup_def_in_global_scope(symbol.module_id, symbol) {
             return Ok(id);
         }
 
         if self.checking_modules {
-            if let Some(id) = self.find_and_check_item(&symbol)? {
+            if let Some(id) = self.find_and_check_item(symbol)? {
                 return Ok(id);
             }
         }
 
-        if let Some(id) = self.builtin_tys.get(name) {
+        if let Some(id) = self.builtin_tys.get(symbol.name) {
             return Ok(id);
         }
 
         Err(Diagnostic::error()
-            .with_message(format!("cannot find `{word}` in this scope"))
-            .with_label(Label::primary(word.span()).with_message("not found in this scope")))
+            .with_message(format!("cannot find `{}` in this scope", symbol.name))
+            .with_label(Label::primary(span).with_message("not found in this scope")))
     }
 
     pub fn lookup_def_in_module(
@@ -260,7 +262,7 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<DefId> {
         let symbol = Symbol::new(in_module, word.name());
 
-        let id = if let Some(id) = self.lookup_global_symbol(from_module, &symbol) {
+        let id = if let Some(id) = self.lookup_def_in_global_scope(from_module, &symbol) {
             id
         } else {
             self.find_and_check_item(&symbol)?.ok_or_else(|| {
@@ -280,7 +282,7 @@ impl<'db> Typeck<'db> {
         Ok(id)
     }
 
-    fn lookup_global_symbol(&self, from_module: ModuleId, symbol: &Symbol) -> Option<DefId> {
+    fn lookup_def_in_global_scope(&self, from_module: ModuleId, symbol: &Symbol) -> Option<DefId> {
         if let Some(id) = self.global_scope.get_def(from_module, symbol) {
             Some(id)
         } else {
@@ -594,11 +596,13 @@ impl FnCandidateSet {
         Ok(())
     }
 
-    pub fn get(&self, args: &[Ty]) -> Vec<DefId> {
+    pub fn get(&self, args: &[Ty]) -> Vec<&FnCandidate> {
         let scores = self.scores(args);
-        todo!("{scores:?}")
+        let Some(&min_score) = scores.iter().map(|(_, s)| s).min() else { return vec![] };
+        scores.into_iter().filter_map(|(c, s)| (s == min_score).then_some(c)).collect()
     }
 
+    // TODO: this can be an iterator
     fn scores(&self, args: &[Ty]) -> Vec<(&FnCandidate, u32)> {
         let mut scores = vec![];
 

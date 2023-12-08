@@ -55,13 +55,17 @@ impl<'db> LowerCx<'db> {
     }
 
     fn lower_all(mut self) -> Mir {
-        for f in &self.hir.fns {
-            if !f.sig.ty.is_polymorphic() {
-                let def = &self.db[f.id];
-                let is_extern = f.kind.is_extern();
-                let name = if is_extern { def.name } else { def.qpath.join_with("_").into() };
-                let sig = self.lower_fn_sig(&f.sig, &f.kind, name, def.ty);
-                self.fn_map.insert(f.id, sig);
+        for fun in &self.hir.fns {
+            if !fun.sig.ty.is_polymorphic() {
+                let def = &self.db[fun.id];
+                let is_extern = fun.kind.is_extern();
+                let name = if is_extern {
+                    def.name
+                } else {
+                    self.mangled_fn_name(fun, &Instantiation::default())
+                };
+                let sig = self.lower_fn_sig(&fun.sig, &fun.kind, name, def.ty);
+                self.fn_map.insert(fun.id, sig);
             }
         }
 
