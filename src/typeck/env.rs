@@ -99,32 +99,53 @@ impl<'db> Typeck<'db> {
         let word = fun.sig.word;
         let symbol = Symbol::new(module_id, word.name());
 
-        if let Some(def) = self.global_scope.defs.get(&symbol) {
-            return Err(errors::multiple_item_def_err(def.span, word));
-        }
+        match fun.kind {
+            ast::FnKind::Bare { .. } => {
+                let qpath = self.db[module_id].qpath.clone().child(word.name());
+                let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
 
-        let id = {
-            let qpath = self.db[module_id].qpath.clone().child(word.name());
-            let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
-            let kind = DefKind::Fn(match &fun.kind {
-                ast::FnKind::Bare { .. } => FnInfo::Bare,
-                ast::FnKind::Extern { .. } => FnInfo::Extern,
-            });
-            DefInfo::alloc(self.db, qpath, scope, kind, Mutability::Imm, sig.ty, word.span())
-        };
-
-        let candidate =
-            FnCandidate { id, vis, word, params: sig.params.iter().map(|p| p.ty).collect() };
-
-        self.global_scope.fns.entry(symbol).or_default().try_insert(candidate).map_err(|err| {
-            match err {
-                FnCandidateInsertError::AlreadyExists { prev, curr } => {
-                    errors::multiple_fn_def_err(prev.word.span(), curr.word)
+                if let Some(def) = self.global_scope.defs.get(&symbol) {
+                    return Err(errors::multiple_item_def_err(def.span, word));
                 }
-            }
-        })?;
 
-        Ok(id)
+                let id = {
+                    DefInfo::alloc(
+                        self.db,
+                        qpath,
+                        scope,
+                        DefKind::Fn(FnInfo::Bare),
+                        Mutability::Imm,
+                        sig.ty,
+                        word.span(),
+                    )
+                };
+
+                let candidate = FnCandidate {
+                    id,
+                    vis,
+                    word,
+                    params: sig.params.iter().map(|p| p.ty).collect(),
+                };
+
+                self.global_scope.fns.entry(symbol).or_default().try_insert(candidate).map_err(
+                    |err| match err {
+                        FnCandidateInsertError::AlreadyExists { prev, curr } => {
+                            errors::multiple_fn_def_err(prev.word.span(), curr.word)
+                        }
+                    },
+                )?;
+
+                Ok(id)
+            }
+            ast::FnKind::Extern { .. } => self.define_global_def(
+                module_id,
+                vis,
+                DefKind::Fn(FnInfo::Extern),
+                sig.word,
+                Mutability::Imm,
+                sig.ty,
+            ),
+        }
     }
 
     pub fn define_pat(
