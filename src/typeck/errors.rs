@@ -39,3 +39,29 @@ pub fn ty_mismatch(expected: &str, found: &str, span: Span) -> Diagnostic {
         .with_message(format!("expected type `{expected}`, found `{found}`"))
         .with_label(Label::primary(span).with_message(format!("expected `{expected}` here")))
 }
+
+pub fn multiple_item_def_err(prev_span: Span, dup_name: Word) -> Diagnostic {
+    Diagnostic::error()
+        .with_message(format!("item `{dup_name}` is defined multiple times"))
+        .with_label(
+            Label::primary(dup_name.span())
+                .with_message(format!("`{dup_name}` defined again here")),
+        )
+        .with_label(
+            Label::secondary(prev_span).with_message(format!("first definition of `{dup_name}`")),
+        )
+        .with_note("you can only define items once in a module (except functions)")
+}
+
+pub fn multiple_fn_def_err(prev_span: Span, dup_name: Word) -> Diagnostic {
+    Diagnostic::error()
+        .with_message(format!("function signature of `{dup_name}` is already defined"))
+        .with_label(
+            Label::primary(dup_name.span())
+                .with_message(format!("`{dup_name}` defined again here")),
+        )
+        .with_label(
+            Label::secondary(prev_span).with_message(format!("first definition of `{dup_name}`")),
+        )
+        .with_note("functions may be overloaded by their parameters")
+}

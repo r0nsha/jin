@@ -18,7 +18,7 @@ use ustr::UstrMap;
 use crate::{
     ast::{self, Ast},
     counter::Counter,
-    db::{Db, DefId, DefKind, FnInfo, ModuleId, StructField, StructInfo},
+    db::{Db, DefId, DefKind, ModuleId, StructField, StructInfo},
     diagnostics::{Diagnostic, Label},
     hir,
     hir::{ExprId, Hir},
@@ -308,17 +308,7 @@ impl<'db> Typeck<'db> {
             self.check_fn_sig(env, &fun.sig, is_c_variadic)
         })?;
 
-        let id = self.define_def(
-            env,
-            fun.vis,
-            DefKind::Fn(match &fun.kind {
-                ast::FnKind::Bare { .. } => FnInfo::Bare,
-                ast::FnKind::Extern { .. } => FnInfo::Extern,
-            }),
-            sig.word,
-            Mutability::Imm,
-            sig.ty,
-        )?;
+        let id = self.define_fn(env.module_id(), fun, &sig)?;
 
         self.resolution_state.insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig });
 

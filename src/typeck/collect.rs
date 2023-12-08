@@ -58,7 +58,7 @@ impl<'db> Typeck<'db> {
         self.global_scope
             .symbol_to_item
             .entry(Symbol::new(module_id, word.name()))
-            .or_insert_with(|| vec![])
+            .or_default()
             .push(item_id);
     }
 }

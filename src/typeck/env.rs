@@ -5,7 +5,7 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     ast,
-    db::{Db, DefId, DefInfo, DefKind, ModuleId, ScopeInfo, ScopeLevel},
+    db::{Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel},
     diagnostics::{Diagnostic, Label},
     hir,
     middle::{Mutability, Vis},
@@ -13,7 +13,7 @@ use crate::{
     span::{Span, Spanned},
     sym,
     ty::{Ty, TyKind},
-    typeck::{Typeck, TypeckResult},
+    typeck::{errors, Typeck, TypeckResult},
     word::Word,
 };
 
@@ -27,8 +27,8 @@ impl<'db> Typeck<'db> {
         mutability: Mutability,
         ty: Ty,
     ) -> TypeckResult<DefId> {
-        let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let qpath = self.db[module_id].qpath.clone().child(name.name());
+        let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let id = DefInfo::alloc(self.db, qpath, scope, kind, mutability, ty, name.span());
         self.insert_global_def(module_id, name, id, vis)
     }
@@ -45,20 +45,7 @@ impl<'db> Typeck<'db> {
         if let Some(def) =
             self.global_scope.insert_def(symbol, GlobalScopeDef::new(id, vis, name.span()))
         {
-            let prev_span = def.span;
-            let dup_span = name.span();
-            let name = symbol.name;
-
-            return Err(Diagnostic::error()
-                .with_message(format!("item `{name}` is defined multiple times"))
-                .with_label(
-                    Label::primary(dup_span).with_message(format!("`{name}` defined again here")),
-                )
-                .with_label(
-                    Label::secondary(prev_span)
-                        .with_message(format!("first definition of `{name}`")),
-                )
-                .with_note("you can only define items once in a module"));
+            return Err(errors::multiple_item_def_err(def.span, name));
         }
 
         Ok(id)
@@ -100,6 +87,44 @@ impl<'db> Typeck<'db> {
         } else {
             Ok(self.define_local_def(env, kind, name, mutability, ty))
         }
+    }
+
+    pub fn define_fn(
+        &mut self,
+        module_id: ModuleId,
+        fun: &ast::Fn,
+        sig: &hir::FnSig,
+    ) -> TypeckResult<DefId> {
+        let vis = fun.vis;
+        let word = fun.sig.word;
+        let symbol = Symbol::new(module_id, word.name());
+
+        if let Some(def) = self.global_scope.defs.get(&symbol) {
+            return Err(errors::multiple_item_def_err(def.span, word));
+        }
+
+        let id = {
+            let qpath = self.db[module_id].qpath.clone().child(word.name());
+            let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
+            let kind = DefKind::Fn(match &fun.kind {
+                ast::FnKind::Bare { .. } => FnInfo::Bare,
+                ast::FnKind::Extern { .. } => FnInfo::Extern,
+            });
+            DefInfo::alloc(self.db, qpath, scope, kind, Mutability::Imm, sig.ty, word.span())
+        };
+
+        let candidate =
+            FnCandidate { id, vis, word, params: sig.params.iter().map(|p| p.ty).collect() };
+
+        self.global_scope.fns.entry(symbol).or_default().try_insert(candidate).map_err(|err| {
+            match err {
+                FnCandidateInsertError::AlreadyExists { prev, curr } => {
+                    errors::multiple_fn_def_err(prev.word.span(), curr.word)
+                }
+            }
+        })?;
+
+        Ok(id)
     }
 
     pub fn define_pat(
@@ -247,17 +272,22 @@ impl Symbol {
 
 #[derive(Debug)]
 pub struct GlobalScope {
-    symbol_to_def: FxHashMap<Symbol, GlobalScopeDef>,
+    pub defs: FxHashMap<Symbol, GlobalScopeDef>,
+    pub fns: FxHashMap<Symbol, FnCandidateSet>,
     pub symbol_to_item: FxHashMap<Symbol, Vec<ast::ItemId>>,
 }
 
 impl GlobalScope {
     pub fn new() -> Self {
-        Self { symbol_to_def: FxHashMap::default(), symbol_to_item: FxHashMap::default() }
+        Self {
+            defs: FxHashMap::default(),
+            fns: FxHashMap::default(),
+            symbol_to_item: FxHashMap::default(),
+        }
     }
 
     pub fn get_def(&self, from_module: ModuleId, symbol: &Symbol) -> Option<DefId> {
-        if let Some(def) = self.symbol_to_def.get(symbol) {
+        if let Some(def) = self.defs.get(symbol) {
             if def.vis == Vis::Public || from_module == symbol.module_id {
                 return Some(def.id);
             }
@@ -267,12 +297,12 @@ impl GlobalScope {
     }
 
     fn insert_def(&mut self, symbol: Symbol, def: GlobalScopeDef) -> Option<GlobalScopeDef> {
-        self.symbol_to_def.insert(symbol, def)
+        self.defs.insert(symbol, def)
     }
 }
 
 #[derive(Debug)]
-struct GlobalScopeDef {
+pub struct GlobalScopeDef {
     pub id: DefId,
     pub vis: Vis,
     pub span: Span,
@@ -478,3 +508,52 @@ pub enum ScopeKind {
     Loop,
     Block,
 }
+
+#[derive(Debug)]
+pub struct FnCandidateSet(Vec<FnCandidate>);
+
+impl FnCandidateSet {
+    pub fn new() -> Self {
+        Self(vec![])
+    }
+
+    pub fn try_insert(&mut self, candidate: FnCandidate) -> Result<(), FnCandidateInsertError> {
+        if let Some(prev) = self.0.iter().find(|c| *c == &candidate) {
+            return Err(FnCandidateInsertError::AlreadyExists {
+                prev: prev.clone(),
+                curr: candidate,
+            });
+        }
+
+        self.0.push(candidate);
+        Ok(())
+    }
+}
+
+impl Default for FnCandidateSet {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Debug)]
+pub enum FnCandidateInsertError {
+    AlreadyExists { prev: FnCandidate, curr: FnCandidate },
+}
+
+#[derive(Debug, Clone)]
+pub struct FnCandidate {
+    pub id: DefId,
+    pub vis: Vis,
+    pub word: Word,
+    pub params: Vec<Ty>,
+}
+
+impl PartialEq for FnCandidate {
+    fn eq(&self, other: &Self) -> bool {
+        self.word.name() == other.word.name()
+            && self.params.iter().zip(other.params.iter()).all(|(p1, p2)| p1.kind() == p2.kind())
+    }
+}
+
+impl Eq for FnCandidate {}
