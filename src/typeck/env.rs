@@ -5,7 +5,6 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     ast,
-    ast::Ast,
     db::{Db, DefId, DefInfo, DefKind, ModuleId, ScopeInfo, ScopeLevel},
     diagnostics::{Diagnostic, Label},
     hir,
@@ -248,71 +247,17 @@ impl Symbol {
 
 #[derive(Debug)]
 pub struct GlobalScope {
-    defs: FxHashMap<Symbol, GlobalScopeDef>,
-    items: FxHashMap<Symbol, ast::ItemId>,
+    symbol_to_def: FxHashMap<Symbol, GlobalScopeDef>,
+    pub symbol_to_item: FxHashMap<Symbol, ast::ItemId>,
 }
 
 impl GlobalScope {
-    pub fn new(ast: &Ast) -> Self {
-        let mut this = Self { defs: FxHashMap::default(), items: FxHashMap::default() };
-        this.insert_all_items(ast);
-        this
-    }
-
-    fn insert_all_items(&mut self, ast: &Ast) {
-        for module in &ast.modules {
-            for (item_id, item) in module.items.iter_enumerated() {
-                match item {
-                    ast::Item::Fn(fun) => self.insert_item(module.id, fun.sig.word, item_id),
-                    ast::Item::Let(let_) => {
-                        let_.pat.walk(|p| self.insert_item(module.id, p.word, item_id));
-                    }
-                    ast::Item::Type(tydef) => self.insert_item(module.id, tydef.word, item_id),
-                    ast::Item::Import(import) => {
-                        self.insert_import_name(module.id, item_id, &import.root);
-                    }
-                    ast::Item::ExternLet(let_) => self.insert_item(module.id, let_.word, item_id),
-                    ast::Item::ExternImport(_) => (),
-                }
-            }
-        }
-    }
-
-    fn insert_import_name(
-        &mut self,
-        module_id: ModuleId,
-        item_id: ast::ItemId,
-        name: &ast::ImportName,
-    ) {
-        match &name.node {
-            Some(node) => self.insert_import_node(module_id, item_id, node),
-            None => self.insert_item(module_id, name.name(), item_id),
-        }
-    }
-
-    fn insert_import_node(
-        &mut self,
-        module_id: ModuleId,
-        item_id: ast::ItemId,
-        node: &ast::ImportNode,
-    ) {
-        match node {
-            ast::ImportNode::Name(name) => self.insert_import_name(module_id, item_id, name),
-            ast::ImportNode::Group(nodes) => {
-                for node in nodes {
-                    self.insert_import_node(module_id, item_id, node);
-                }
-            }
-            ast::ImportNode::Glob(_) => (),
-        }
-    }
-
-    fn insert_item(&mut self, module_id: ModuleId, word: Word, item_id: ast::ItemId) {
-        self.items.insert(Symbol::new(module_id, word.name()), item_id);
+    pub fn new() -> Self {
+        Self { symbol_to_def: FxHashMap::default(), symbol_to_item: FxHashMap::default() }
     }
 
     pub fn get_def(&self, from_module: ModuleId, symbol: &Symbol) -> Option<DefId> {
-        if let Some(def) = self.defs.get(symbol) {
+        if let Some(def) = self.symbol_to_def.get(symbol) {
             if def.vis == Vis::Public || from_module == symbol.module_id {
                 return Some(def.id);
             }
@@ -322,11 +267,7 @@ impl GlobalScope {
     }
 
     fn insert_def(&mut self, symbol: Symbol, def: GlobalScopeDef) -> Option<GlobalScopeDef> {
-        self.defs.insert(symbol, def)
-    }
-
-    pub fn get_item(&self, symbol: &Symbol) -> Option<ast::ItemId> {
-        self.items.get(symbol).copied()
+        self.symbol_to_def.insert(symbol, def)
     }
 }
 

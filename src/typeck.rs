@@ -1,5 +1,6 @@
 mod attrs;
 mod coerce;
+mod collect;
 mod env;
 mod errors;
 mod instantiate;
@@ -77,11 +78,11 @@ impl TyStorage {
 impl<'db> Typeck<'db> {
     fn new(db: &'db mut Db, ast: &'db Ast) -> Self {
         Self {
-            builtin_tys: BuiltinTys::new(db),
-            global_scope: GlobalScope::new(ast),
-            db,
             ast,
             hir: Hir::new(),
+            global_scope: GlobalScope::new(),
+            builtin_tys: BuiltinTys::new(db),
+            db,
             resolution_state: ResolutionState::new(),
             storage: RefCell::new(TyStorage::new()),
             expr_id: Counter::new(),
@@ -90,9 +91,10 @@ impl<'db> Typeck<'db> {
     }
 
     fn run(mut self) -> TypeckResult<Hir> {
-        self.check_all_modules()?;
+        self.collect_items();
+        self.check_items()?;
         self.checking_modules = false;
-        self.check_all_fn_bodies()?;
+        self.check_fn_bodies()?;
 
         self.subst();
 
@@ -102,7 +104,7 @@ impl<'db> Typeck<'db> {
         Ok(self.hir)
     }
 
-    fn check_all_modules(&mut self) -> TypeckResult<()> {
+    fn check_items(&mut self) -> TypeckResult<()> {
         for module in &self.ast.modules {
             self.check_module(module)?;
         }
@@ -134,7 +136,7 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
-    fn check_all_fn_bodies(&mut self) -> TypeckResult<()> {
+    fn check_fn_bodies(&mut self) -> TypeckResult<()> {
         for module in &self.ast.modules {
             let mut env = Env::new(module.id);
 
@@ -154,7 +156,7 @@ impl<'db> Typeck<'db> {
     }
 
     fn find_and_check_item(&mut self, symbol: &Symbol) -> TypeckResult<Option<DefId>> {
-        if let Some(item_id) = self.global_scope.get_item(symbol) {
+        if let Some(item_id) = self.global_scope.symbol_to_item.get(symbol).copied() {
             let item = &self.ast.modules[symbol.module_id].items[item_id];
 
             self.check_item(
