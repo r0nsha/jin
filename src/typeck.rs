@@ -814,35 +814,7 @@ impl<'db> Typeck<'db> {
             }
             ast::Expr::Member { expr, member, span } => {
                 let expr = self.check_expr(env, expr, None)?;
-
-                let ty = self.normalize(expr.ty);
-
-                let res_ty = match ty.kind() {
-                    TyKind::Struct(struct_id) => {
-                        let struct_info = &self.db[*struct_id];
-
-                        if let Some(field) = struct_info.field_by_name(member.name().as_str()) {
-                            field.ty
-                        } else {
-                            return Err(errors::invalid_member(self.db, ty, expr.span, *member));
-                        }
-                    }
-                    TyKind::Module(module_id) => {
-                        let id = self.lookup_def_in_module(env.module_id(), *module_id, *member)?;
-                        return self.check_name(env, id, *member, *span, None);
-                    }
-                    TyKind::Str if member.name() == sym::PTR => {
-                        Ty::new(TyKind::RawPtr(self.db.types.u8))
-                    }
-                    TyKind::Str if member.name() == sym::LEN => self.db.types.uint,
-                    _ => return Err(errors::invalid_member(self.db, ty, expr.span, *member)),
-                };
-
-                Ok(self.expr(
-                    hir::ExprKind::Member(hir::Member { expr: Box::new(expr), member: *member }),
-                    res_ty,
-                    *span,
-                ))
+                self.check_member(env, expr, *member, *span)
             }
             ast::Expr::Name { word, args, span } => {
                 let id = self.lookup_def(env, *word)?;
@@ -949,6 +921,41 @@ impl<'db> Typeck<'db> {
 
             Ok(self.expr(hir::ExprKind::Name(hir::Name { id, word, instantiation }), ty, span))
         }
+    }
+
+    fn check_member(
+        &mut self,
+        env: &Env,
+        expr: hir::Expr,
+        member: Word,
+        span: Span,
+    ) -> TypeckResult<hir::Expr> {
+        let ty = self.normalize(expr.ty);
+
+        let res_ty = match ty.kind() {
+            TyKind::Struct(struct_id) => {
+                let struct_info = &self.db[*struct_id];
+
+                if let Some(field) = struct_info.field_by_name(member.name().as_str()) {
+                    field.ty
+                } else {
+                    return Err(errors::invalid_member(self.db, ty, expr.span, member));
+                }
+            }
+            TyKind::Module(module_id) => {
+                let id = self.lookup_def_in_module(env.module_id(), *module_id, member)?;
+                return self.check_name(env, id, member, span, None);
+            }
+            TyKind::Str if member.name() == sym::PTR => Ty::new(TyKind::RawPtr(self.db.types.u8)),
+            TyKind::Str if member.name() == sym::LEN => self.db.types.uint,
+            _ => return Err(errors::invalid_member(self.db, ty, expr.span, member)),
+        };
+
+        Ok(self.expr(
+            hir::ExprKind::Member(hir::Member { expr: Box::new(expr), member }),
+            res_ty,
+            span,
+        ))
     }
 
     fn check_call(
