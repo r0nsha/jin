@@ -50,7 +50,7 @@ impl<'db> Typeck<'db> {
             let name = symbol.name;
 
             return Err(Diagnostic::error()
-                .with_message(format!("the item `{name}` is defined multiple times"))
+                .with_message(format!("item `{name}` is defined multiple times"))
                 .with_label(
                     Label::primary(dup_span).with_message(format!("`{name}` defined again here")),
                 )
