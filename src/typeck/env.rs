@@ -219,16 +219,20 @@ impl<'db> Typeck<'db> {
         call_args: &[Ty],
     ) -> Result<Option<DefId>, Diagnostic> {
         // TODO: collect candidates from globs
-        // TODO: take visibility into account
-        // TODO: on multiple candidates: ambiguous call, these functions apply: ... (fully qualified function names)
 
         let Some(set) = self.global_scope.fns.get(symbol) else { return Ok(None) };
         let candidates = set.get(call_args);
 
         match candidates.len() {
             0 => Ok(None),
-            1 => Ok(Some(candidates.first().unwrap().id)),
-            _ => todo!("multiple candidates: error!"),
+            1 => {
+                // TODO: take visibility into account
+                Ok(Some(candidates.first().unwrap().id))
+            }
+            _ => {
+                // TODO: on multiple candidates: ambiguous call, these functions apply: ... (fully qualified function names)
+                todo!("multiple candidates: error!")
+            }
         }
     }
 
@@ -252,7 +256,8 @@ impl<'db> Typeck<'db> {
         })
     }
 
-    pub fn lookup_global_def(&mut self, symbol: &Symbol) -> Option<DefId> {
+    pub fn lookup_global_def(&mut self, symbol: &Symbol) -> TypeckResult<Option<DefId>> {
+        // TODO: fixup result option stuff
         self.lookup_def_in_global_scope(symbol.module_id, symbol)
             .or_else(|| self.builtin_tys.get(symbol.name))
     }
@@ -266,7 +271,7 @@ impl<'db> Typeck<'db> {
         let symbol = Symbol::new(in_module, word.name());
         self.find_and_check_item(&symbol)?;
 
-        let Some(id) = self.lookup_def_in_global_scope(from_module, &symbol) else {
+        let Some(id) = self.lookup_def_in_global_scope(from_module, &symbol, word.span()) else {
             let module_name = self.db[in_module].qpath.join();
             return Err(Diagnostic::error()
                 .with_message(format!("cannot find `{word}` in module `{module_name}`",))
@@ -280,25 +285,43 @@ impl<'db> Typeck<'db> {
         Ok(id)
     }
 
-    fn lookup_def_in_global_scope(&self, from_module: ModuleId, symbol: &Symbol) -> Option<DefId> {
+    fn lookup_def_in_global_scope(
+        &self,
+        from_module: ModuleId,
+        symbol: &Symbol,
+        span: Span,
+    ) -> TypeckResult<Option<DefId>> {
         let lookup_modules =
             iter::once(&from_module).chain(&self.resolution_state.module_state(from_module).globs);
+
+        let mut defs = vec![];
 
         for module_id in lookup_modules {
             let symbol = symbol.with_module_id(*module_id);
 
             if let Some(id) = self.global_scope.get_def(from_module, &symbol) {
-                return Some(id);
+                defs.push(id);
             } else if let Some(candidates) = self.global_scope.fns.get(&symbol) {
                 if let Some(c) = candidates.single() {
-                    return Some(c.id);
+                    defs.push(c.id);
                 }
 
                 // TODO: consider multiple candidates using an `expected_ty`
             }
         }
 
-        None
+        match defs.len() {
+            0 => Ok(None),
+            1 => Ok(defs.first().copied()),
+            _ => Err(Diagnostic::error()
+                .with_message(format!("ambiguous use of item `{}`", symbol.name))
+                .with_label(Label::primary(span).with_message("used here"))
+                .with_labels(defs.iter().map(|id| {
+                    let def = &self.db[*id];
+                    Label::secondary(def.span)
+                        .with_message(format!("`{}` is defined here", def.name))
+                }))),
+        }
     }
 
     fn check_def_access(
