@@ -180,6 +180,50 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
+    pub fn lookup_fn(&mut self, env: &Env, word: Word, call_args: &[Ty]) -> TypeckResult<DefId> {
+        let name = word.name();
+
+        if let Some(id) = env.lookup(name).copied() {
+            return Ok(id);
+        }
+
+        let symbol = Symbol::new(env.module_id(), name);
+
+        if let Some(id) = self.lookup_fn_candidate(env.module_id(), &symbol, call_args)? {
+            return Ok(id);
+        }
+
+        if self.checking_modules {
+            // TODO: find from unresolved fn candidates
+            // if let Some(id) = self.find_and_check_item(&symbol)? {
+            //     return Ok(id);
+            // }
+        }
+
+        if let Some(id) = self.builtin_tys.get(name) {
+            return Ok(id);
+        }
+
+        Err(Diagnostic::error()
+            .with_message(format!("cannot find `{word}` in this scope"))
+            .with_label(Label::primary(word.span()).with_message("not found in this scope")))
+    }
+
+    fn lookup_fn_candidate(
+        &self,
+        from_module: ModuleId,
+        symbol: &Symbol,
+        call_args: &[Ty],
+    ) -> Result<Option<DefId>, Diagnostic> {
+        // TODO: collect candidates from globs
+        // TODO: take visibility into account
+        // TODO: on multiple candidates: ambiguous call, these functions apply: ... (fully qualified function names)
+
+        let Some(set) = self.global_scope.fns.get(symbol) else { return Ok(None) };
+        let candidates = set.get(call_args);
+        todo!("{candidates:?}")
+    }
+
     pub fn lookup_def(&mut self, env: &Env, word: Word) -> TypeckResult<DefId> {
         let name = word.name();
 
@@ -549,6 +593,23 @@ impl FnCandidateSet {
         self.0.push(candidate);
         Ok(())
     }
+
+    pub fn get(&self, args: &[Ty]) -> Vec<DefId> {
+        let scores = self.scores(args);
+        todo!("{scores:?}")
+    }
+
+    fn scores(&self, args: &[Ty]) -> Vec<(&FnCandidate, u32)> {
+        let mut scores = vec![];
+
+        for c in &self.0 {
+            if let Some(score) = c.score(args) {
+                scores.push((c, score));
+            }
+        }
+
+        scores
+    }
 }
 
 impl Default for FnCandidateSet {
@@ -568,6 +629,31 @@ pub struct FnCandidate {
     pub vis: Vis,
     pub word: Word,
     pub params: Vec<Ty>,
+}
+
+impl FnCandidate {
+    fn score(&self, args: &[Ty]) -> Option<u32> {
+        if self.params.len() != args.len() {
+            return None;
+        }
+
+        let mut score = 0;
+
+        for (param, arg) in self.params.iter().zip(args.iter()) {
+            let dist = Self::distance(*param, *arg)?;
+            score += dist;
+        }
+
+        Some(score)
+    }
+
+    fn distance(param: Ty, arg: Ty) -> Option<u32> {
+        if param == arg {
+            return Some(0);
+        }
+
+        None
+    }
 }
 
 impl PartialEq for FnCandidate {

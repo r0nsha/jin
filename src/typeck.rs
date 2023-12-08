@@ -965,8 +965,6 @@ impl<'db> Typeck<'db> {
         args: &[ast::CallArg],
         span: Span,
     ) -> TypeckResult<hir::Expr> {
-        let callee = self.check_expr(env, callee, None)?;
-
         let mut new_args = vec![];
 
         for arg in args {
@@ -983,6 +981,17 @@ impl<'db> Typeck<'db> {
                 },
             });
         }
+
+        let callee = match callee {
+            ast::Expr::Member { expr, member, span } => todo!(),
+            ast::Expr::Name { word, args, span } => {
+                let call_args: Vec<Ty> =
+                    new_args.iter().map(|a| self.normalize(a.expr.ty)).collect();
+                let id = self.lookup_fn(env, *word, &call_args)?;
+                self.check_name(env, id, *word, *span, args.as_ref().map(Vec::as_slice))?
+            }
+            _ => self.check_expr(env, callee, None)?,
+        };
 
         let callee_ty = self.normalize(callee.ty);
 
