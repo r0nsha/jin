@@ -55,7 +55,7 @@ pub struct Typeck<'db> {
     resolution_state: ResolutionState,
     storage: RefCell<TyStorage>,
     expr_id: Counter<ExprId>,
-    checking_modules: bool,
+    checking_items: bool,
 }
 
 #[derive(Debug)]
@@ -86,14 +86,14 @@ impl<'db> Typeck<'db> {
             resolution_state: ResolutionState::new(),
             storage: RefCell::new(TyStorage::new()),
             expr_id: Counter::new(),
-            checking_modules: true,
+            checking_items: true,
         }
     }
 
     fn run(mut self) -> TypeckResult<Hir> {
         self.collect_items();
         self.check_items()?;
-        self.checking_modules = false;
+        self.checking_items = false;
         self.check_fn_bodies()?;
 
         self.subst();
@@ -155,31 +155,14 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
-    fn find_and_check_item(&mut self, symbol: &Symbol) -> TypeckResult<Option<DefId>> {
+    fn find_and_check_item(&mut self, symbol: &Symbol) -> TypeckResult<()> {
         if let Some(item_ids) = self.global_scope.symbol_to_item.get(symbol).cloned() {
-            self.check_found_items(symbol, item_ids)?;
+            let mut env = Env::new(symbol.module_id);
 
-            let id = self
-                .global_scope
-                .get_def(symbol.module_id, symbol)
-                .unwrap_or_else(|| panic!("global symbol to be defined: {symbol:?}"));
-
-            Ok(Some(id))
-        } else {
-            Ok(None)
-        }
-    }
-
-    fn check_found_items(
-        &mut self,
-        symbol: &Symbol,
-        item_ids: Vec<ast::ItemId>,
-    ) -> TypeckResult<()> {
-        let mut env = Env::new(symbol.module_id);
-
-        for item_id in item_ids {
-            let item = &self.ast.modules[symbol.module_id].items[item_id];
-            self.check_item(&mut env, item, ast::GlobalItemId::new(symbol.module_id, item_id))?;
+            for item_id in item_ids {
+                let item = &self.ast.modules[symbol.module_id].items[item_id];
+                self.check_item(&mut env, item, ast::GlobalItemId::new(symbol.module_id, item_id))?;
+            }
         }
 
         Ok(())

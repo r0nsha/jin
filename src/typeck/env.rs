@@ -189,21 +189,26 @@ impl<'db> Typeck<'db> {
 
         let symbol = Symbol::new(env.module_id(), name);
 
+        if self.checking_items {
+            self.find_and_check_item(&symbol)?;
+        }
+
         if let Some(id) = self.lookup_fn_candidate(env.module_id(), &symbol, call_args)? {
             return Ok(id);
         }
 
-        if self.checking_modules {
-            // TODO: find from unresolved fn candidates
-            // if let Some(id) = self.find_and_check_item(&symbol)? {
-            //     return Ok(id);
-            // }
-        }
-
-        self.lookup_global_def(&symbol)?.ok_or_else(|| {
+        self.lookup_global_def(&symbol).ok_or_else(|| {
             Diagnostic::error()
-                .with_message(format!("cannot find `{}` in this scope", symbol.name))
-                .with_label(Label::primary(word.span()).with_message("not found in this scope"))
+                .with_message(format!(
+                    "cannot find function with the signature `{}({})`",
+                    symbol.name,
+                    call_args
+                        .iter()
+                        .map(|a| a.to_string(self.db))
+                        .collect::<Vec<String>>()
+                        .join(", ")
+                ))
+                .with_label(Label::primary(word.span()).with_message("function not found"))
         })
     }
 
@@ -236,29 +241,20 @@ impl<'db> Typeck<'db> {
 
         let symbol = Symbol::new(env.module_id(), name);
 
-        self.lookup_global_def(&symbol)?.ok_or_else(|| {
+        if self.checking_items {
+            self.find_and_check_item(&symbol)?;
+        }
+
+        self.lookup_global_def(&symbol).ok_or_else(|| {
             Diagnostic::error()
                 .with_message(format!("cannot find `{}` in this scope", symbol.name))
                 .with_label(Label::primary(word.span()).with_message("not found in this scope"))
         })
     }
 
-    pub fn lookup_global_def(&mut self, symbol: &Symbol) -> TypeckResult<Option<DefId>> {
-        if let Some(id) = self.lookup_def_in_global_scope(symbol.module_id, symbol) {
-            return Ok(Some(id));
-        }
-
-        if self.checking_modules {
-            if let Some(id) = self.find_and_check_item(symbol)? {
-                return Ok(Some(id));
-            }
-        }
-
-        if let Some(id) = self.builtin_tys.get(symbol.name) {
-            return Ok(Some(id));
-        }
-
-        Ok(None)
+    pub fn lookup_global_def(&mut self, symbol: &Symbol) -> Option<DefId> {
+        self.lookup_def_in_global_scope(symbol.module_id, symbol)
+            .or_else(|| self.builtin_tys.get(symbol.name))
     }
 
     pub fn lookup_def_in_module(
@@ -268,20 +264,15 @@ impl<'db> Typeck<'db> {
         word: Word,
     ) -> TypeckResult<DefId> {
         let symbol = Symbol::new(in_module, word.name());
+        self.find_and_check_item(&symbol)?;
 
-        let id = if let Some(id) = self.lookup_def_in_global_scope(from_module, &symbol) {
-            id
-        } else {
-            self.find_and_check_item(&symbol)?.ok_or_else(|| {
-                let module_name = self.db[in_module].qpath.join();
-
-                Diagnostic::error()
-                    .with_message(format!("cannot find `{word}` in module `{module_name}`",))
-                    .with_label(
-                        Label::primary(word.span())
-                            .with_message(format!("not found in {module_name}")),
-                    )
-            })?
+        let Some(id) = self.lookup_def_in_global_scope(from_module, &symbol) else {
+            let module_name = self.db[in_module].qpath.join();
+            return Err(Diagnostic::error()
+                .with_message(format!("cannot find `{word}` in module `{module_name}`",))
+                .with_label(
+                    Label::primary(word.span()).with_message(format!("not found in {module_name}")),
+                ));
         };
 
         self.check_def_access(from_module, id, word.span())?;
