@@ -1,4 +1,4 @@
-use std::mem;
+use std::{iter, mem};
 
 use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr, UstrMap};
@@ -290,19 +290,24 @@ impl<'db> Typeck<'db> {
     }
 
     fn lookup_def_in_global_scope(&self, from_module: ModuleId, symbol: &Symbol) -> Option<DefId> {
-        if let Some(id) = self.global_scope.get_def(from_module, symbol) {
-            Some(id)
-        } else {
-            for module_id in &self.resolution_state.module_state(from_module).globs {
-                let new_symbol = symbol.with_module_id(*module_id);
+        let lookup_modules =
+            iter::once(&from_module).chain(&self.resolution_state.module_state(from_module).globs);
 
-                if let Some(id) = self.global_scope.get_def(from_module, &new_symbol) {
-                    return Some(id);
+        for module_id in lookup_modules {
+            let symbol = symbol.with_module_id(*module_id);
+
+            if let Some(id) = self.global_scope.get_def(from_module, &symbol) {
+                return Some(id);
+            } else if let Some(candidates) = self.global_scope.fns.get(&symbol) {
+                if let Some(c) = candidates.single() {
+                    return Some(c.id);
                 }
-            }
 
-            None
+                // TODO: consider multiple candidates using an `expected_ty`
+            }
         }
+
+        None
     }
 
     fn check_def_access(
@@ -591,6 +596,18 @@ impl FnCandidateSet {
         Self(vec![])
     }
 
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn single(&self) -> Option<&FnCandidate> {
+        if self.len() == 1 {
+            self.0.first()
+        } else {
+            None
+        }
+    }
+
     pub fn try_insert(&mut self, candidate: FnCandidate) -> Result<(), FnCandidateInsertError> {
         if let Some(prev) = self.0.iter().find(|c| *c == &candidate) {
             return Err(FnCandidateInsertError::AlreadyExists {
@@ -609,7 +626,6 @@ impl FnCandidateSet {
         scores.into_iter().filter_map(|(c, s)| (s == min_score).then_some(c)).collect()
     }
 
-    // TODO: this can be an iterator
     fn scores(&self, args: &[Ty]) -> Vec<(&FnCandidate, u32)> {
         let mut scores = vec![];
 
