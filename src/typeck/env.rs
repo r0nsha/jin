@@ -12,8 +12,8 @@ use crate::{
     qpath::QPath,
     span::{Span, Spanned},
     sym,
-    ty::{Ty, TyKind},
-    typeck::{errors, Typeck, TypeckResult},
+    ty::{InferTy, Ty, TyKind},
+    typeck::{coerce::Coerce, errors, Typeck, TypeckResult},
     word::Word,
 };
 
@@ -221,7 +221,7 @@ impl<'db> Typeck<'db> {
         // TODO: collect candidates from globs
 
         let Some(set) = self.global_scope.fns.get(symbol) else { return Ok(None) };
-        let candidates = set.get(call_args);
+        let candidates = set.lookup(self, call_args);
 
         match candidates.len() {
             0 => Ok(None),
@@ -637,17 +637,17 @@ impl FnCandidateSet {
         Ok(())
     }
 
-    pub fn get(&self, args: &[Ty]) -> Vec<&FnCandidate> {
-        let scores = self.scores(args);
+    pub fn lookup(&self, cx: &Typeck, args: &[Ty]) -> Vec<&FnCandidate> {
+        let scores = self.scores(cx, args);
         let Some(&min_score) = scores.iter().map(|(_, s)| s).min() else { return vec![] };
         scores.into_iter().filter_map(|(c, s)| (s == min_score).then_some(c)).collect()
     }
 
-    fn scores(&self, args: &[Ty]) -> Vec<(&FnCandidate, u32)> {
+    fn scores(&self, cx: &Typeck, args: &[Ty]) -> Vec<(&FnCandidate, u32)> {
         let mut scores = vec![];
 
         for c in &self.0 {
-            if let Some(score) = c.score(args) {
+            if let Some(score) = c.score(cx, args) {
                 scores.push((c, score));
             }
         }
@@ -676,7 +676,7 @@ pub struct FnCandidate {
 }
 
 impl FnCandidate {
-    fn score(&self, args: &[Ty]) -> Option<u32> {
+    fn score(&self, cx: &Typeck, args: &[Ty]) -> Option<u32> {
         if self.params.len() != args.len() {
             return None;
         }
@@ -684,16 +684,26 @@ impl FnCandidate {
         let mut score = 0;
 
         for (param, arg) in self.params.iter().zip(args.iter()) {
-            let dist = Self::distance(*param, *arg)?;
+            let dist = Self::distance(cx, *param, *arg)?;
             score += dist;
         }
 
         Some(score)
     }
 
-    fn distance(param: Ty, arg: Ty) -> Option<u32> {
+    fn distance(cx: &Typeck, param: Ty, arg: Ty) -> Option<u32> {
         if param == arg {
             return Some(0);
+        }
+
+        match arg.kind() {
+            TyKind::Infer(InferTy::Int(_)) if param.is_any_int() => return Some(1),
+            TyKind::Infer(InferTy::Float(_)) if param.is_any_float() => return Some(1),
+            _ => (),
+        }
+
+        if arg.can_coerce(&param, cx) {
+            return Some(1);
         }
 
         None
