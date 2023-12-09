@@ -81,24 +81,24 @@ impl<'db> TyPrinter<'db> {
             #[cfg(debug_assertions)]
             TyKind::Infer(InferTy::Int(v)) => write!(f, "i?{}", v.0),
             #[cfg(not(debug_assertions))]
-            TyKind::Infer(InferTy::Int(_)) => f.write_str("{int}"),
+            TyKind::Infer(InferTy::Int(_)) => f.write_str("(untyped int)"),
 
             #[cfg(debug_assertions)]
             TyKind::Infer(InferTy::Float(v)) => write!(f, "f?{}", v.0),
             #[cfg(not(debug_assertions))]
-            TyKind::Infer(InferTy::Float(_)) => f.write_str("{float}"),
+            TyKind::Infer(InferTy::Float(_)) => f.write_str("(untyped float)"),
 
             #[cfg(debug_assertions)]
             TyKind::Type(ty) => write!(f, "type({})", ty.display(self.db)),
             #[cfg(not(debug_assertions))]
-            TyKind::Type(_) => f.write_str("{type}"),
+            TyKind::Type(_) => f.write_str("(type)"),
 
             #[cfg(debug_assertions)]
             TyKind::Module(id) => write!(f, "module({id})"),
             #[cfg(not(debug_assertions))]
-            TyKind::Module(_) => f.write_str("{module}"),
+            TyKind::Module(_) => f.write_str("(module)"),
 
-            TyKind::Unknown => f.write_str("{unknown}"),
+            TyKind::Unknown => f.write_str("(unknown)"),
         }
     }
 }
