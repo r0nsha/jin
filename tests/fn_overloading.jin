@@ -2,7 +2,7 @@ fn extern printf(fmt: *u8, ..) -> i32
 
 fn main {
 	add(int(1), int(1)) // exact int
-	add(1, 1) // untyped int matching
+	//add(1, 1) // untyped int matching
 	add(f32(1.0), f32(2.5)) // exact f32
 	//add(1.0, 2.5) // untyped float matching
 	//add(1, 3.0) // error

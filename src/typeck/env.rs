@@ -197,7 +197,7 @@ impl<'db> Typeck<'db> {
             return Ok(id);
         }
 
-        self.lookup_global_def(&symbol).ok_or_else(|| {
+        self.lookup_global_def(&symbol, word.span())?.ok_or_else(|| {
             Diagnostic::error()
                 .with_message(format!(
                     "cannot find function with the signature `{}({})`",
@@ -249,17 +249,20 @@ impl<'db> Typeck<'db> {
             self.find_and_check_item(&symbol)?;
         }
 
-        self.lookup_global_def(&symbol).ok_or_else(|| {
+        self.lookup_global_def(&symbol, word.span())?.ok_or_else(|| {
             Diagnostic::error()
                 .with_message(format!("cannot find `{}` in this scope", symbol.name))
                 .with_label(Label::primary(word.span()).with_message("not found in this scope"))
         })
     }
 
-    pub fn lookup_global_def(&mut self, symbol: &Symbol) -> TypeckResult<Option<DefId>> {
-        // TODO: fixup result option stuff
-        self.lookup_def_in_global_scope(symbol.module_id, symbol)
-            .or_else(|| self.builtin_tys.get(symbol.name))
+    pub fn lookup_global_def(
+        &mut self,
+        symbol: &Symbol,
+        span: Span,
+    ) -> TypeckResult<Option<DefId>> {
+        let def = self.lookup_def_in_global_scope(symbol.module_id, symbol, span)?;
+        Ok(def.or_else(|| self.builtin_tys.get(symbol.name)))
     }
 
     pub fn lookup_def_in_module(
@@ -271,7 +274,7 @@ impl<'db> Typeck<'db> {
         let symbol = Symbol::new(in_module, word.name());
         self.find_and_check_item(&symbol)?;
 
-        let Some(id) = self.lookup_def_in_global_scope(from_module, &symbol, word.span()) else {
+        let Some(id) = self.lookup_def_in_global_scope(from_module, &symbol, word.span())? else {
             let module_name = self.db[in_module].qpath.join();
             return Err(Diagnostic::error()
                 .with_message(format!("cannot find `{word}` in module `{module_name}`",))
