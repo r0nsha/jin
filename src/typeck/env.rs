@@ -1,3 +1,4 @@
+use core::fmt;
 use std::{iter, mem};
 
 use rustc_hash::FxHashMap;
@@ -180,9 +181,13 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
-    pub fn lookup_fn(&mut self, env: &Env, word: Word, call_args: &[Ty]) -> TypeckResult<DefId> {
-        let name = word.name();
-
+    pub fn lookup_fn(
+        &mut self,
+        env: &Env,
+        name: Ustr,
+        call_args: &[Ty],
+        span: Span,
+    ) -> TypeckResult<DefId> {
         if let Some(id) = env.lookup(name).copied() {
             return Ok(id);
         }
@@ -193,22 +198,16 @@ impl<'db> Typeck<'db> {
             self.find_and_check_item(&symbol)?;
         }
 
-        if let Some(id) = self.lookup_fn_candidate(env.module_id(), &symbol, call_args)? {
+        let fn_query = FnQuery::new(symbol.name, call_args);
+
+        if let Some(id) = self.lookup_fn_candidate(env.module_id(), &symbol, &fn_query, span)? {
             return Ok(id);
         }
 
-        self.lookup_global_def(&symbol, word.span())?.ok_or_else(|| {
+        self.lookup_global_def(&symbol, span)?.ok_or_else(|| {
             Diagnostic::error()
-                .with_message(format!(
-                    "cannot find function with the signature `{}({})`",
-                    symbol.name,
-                    call_args
-                        .iter()
-                        .map(|a| a.to_string(self.db))
-                        .collect::<Vec<String>>()
-                        .join(", ")
-                ))
-                .with_label(Label::primary(word.span()).with_message("function not found"))
+                .with_message(format!("cannot find function `{}`", fn_query.display(self.db)))
+                .with_label(Label::primary(span).with_message("function not found"))
         })
     }
 
@@ -216,12 +215,13 @@ impl<'db> Typeck<'db> {
         &self,
         from_module: ModuleId,
         symbol: &Symbol,
-        call_args: &[Ty],
+        fn_query: &FnQuery,
+        span: Span,
     ) -> Result<Option<DefId>, Diagnostic> {
         // TODO: collect candidates from globs
 
         let Some(set) = self.global_scope.fns.get(symbol) else { return Ok(None) };
-        let candidates = set.lookup(self, call_args);
+        let candidates = set.find(self, fn_query);
 
         match candidates.len() {
             0 => Ok(None),
@@ -229,10 +229,11 @@ impl<'db> Typeck<'db> {
                 // TODO: take visibility into account
                 Ok(Some(candidates.first().unwrap().id))
             }
-            _ => {
-                // TODO: on multiple candidates: ambiguous call, these functions apply: ... (fully qualified function names)
-                todo!("multiple candidates: error!")
-            }
+            _ => Err(Diagnostic::error()
+                .with_message(format!("ambiguous call to `{}`", fn_query.display(self.db)))
+                .with_label(Label::primary(span).with_message("call here"))
+                .with_note("these functions apply:")
+                .with_notes(candidates.into_iter().map(|c| c.display(self.db).to_string()))),
         }
     }
 
@@ -637,17 +638,17 @@ impl FnCandidateSet {
         Ok(())
     }
 
-    pub fn lookup(&self, cx: &Typeck, args: &[Ty]) -> Vec<&FnCandidate> {
-        let scores = self.scores(cx, args);
+    pub fn find(&self, cx: &Typeck, query: &FnQuery) -> Vec<&FnCandidate> {
+        let scores = self.scores(cx, query);
         let Some(&min_score) = scores.iter().map(|(_, s)| s).min() else { return vec![] };
         scores.into_iter().filter_map(|(c, s)| (s == min_score).then_some(c)).collect()
     }
 
-    fn scores(&self, cx: &Typeck, args: &[Ty]) -> Vec<(&FnCandidate, u32)> {
+    fn scores(&self, cx: &Typeck, query: &FnQuery) -> Vec<(&FnCandidate, u32)> {
         let mut scores = vec![];
 
         for c in &self.0 {
-            if let Some(score) = c.score(cx, args) {
+            if let Some(score) = c.score(cx, query) {
                 scores.push((c, score));
             }
         }
@@ -676,14 +677,14 @@ pub struct FnCandidate {
 }
 
 impl FnCandidate {
-    fn score(&self, cx: &Typeck, args: &[Ty]) -> Option<u32> {
-        if self.params.len() != args.len() {
+    fn score(&self, cx: &Typeck, query: &FnQuery) -> Option<u32> {
+        if self.params.len() != query.args.len() {
             return None;
         }
 
         let mut score = 0;
 
-        for (param, arg) in self.params.iter().zip(args.iter()) {
+        for (param, arg) in self.params.iter().zip(query.args.iter()) {
             let dist = Self::distance(cx, *param, *arg)?;
             score += dist;
         }
@@ -708,6 +709,10 @@ impl FnCandidate {
 
         None
     }
+
+    pub fn display<'db, 'a>(&'a self, db: &'db Db) -> DisplayFn<'db, 'a> {
+        DisplayFn { db, name: db[self.id].qpath.to_string(), params: &self.params }
+    }
 }
 
 impl PartialEq for FnCandidate {
@@ -718,3 +723,37 @@ impl PartialEq for FnCandidate {
 }
 
 impl Eq for FnCandidate {}
+
+#[derive(Debug, Clone)]
+pub struct FnQuery<'a> {
+    pub name: Ustr,
+    pub args: &'a [Ty],
+}
+
+impl<'a> FnQuery<'a> {
+    pub fn new(name: Ustr, args: &'a [Ty]) -> Self {
+        Self { name, args }
+    }
+
+    pub fn display<'db>(&self, db: &'db Db) -> DisplayFn<'db, 'a> {
+        DisplayFn { db, name: self.name.to_string(), params: self.args }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DisplayFn<'db, 'a> {
+    pub db: &'db Db,
+    pub name: String,
+    pub params: &'a [Ty],
+}
+
+impl<'db, 'a> fmt::Display for DisplayFn<'db, 'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "fn {}({})",
+            self.name,
+            self.params.iter().map(|a| a.to_string(self.db)).collect::<Vec<String>>().join(", ")
+        )
+    }
+}
