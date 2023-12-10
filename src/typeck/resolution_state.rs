@@ -28,12 +28,12 @@ impl ResolutionState {
         self.module_states.entry(id).or_default()
     }
 
-    pub fn module_state(&self, id: ModuleId) -> &ModuleState {
-        self.module_states.get(&id).unwrap()
+    pub fn module_state(&self, id: ModuleId) -> Option<&ModuleState> {
+        self.module_states.get(&id)
     }
 
-    pub fn module_state_mut(&mut self, id: ModuleId) -> &mut ModuleState {
-        self.module_states.get_mut(&id).unwrap()
+    pub fn module_state_mut(&mut self, id: ModuleId) -> Option<&mut ModuleState> {
+        self.module_states.get_mut(&id)
     }
 
     pub fn get_item_status(&self, id: &ast::GlobalItemId) -> ItemStatus {
@@ -77,7 +77,7 @@ pub struct ModuleState {
 
 impl ModuleState {
     pub fn new() -> Self {
-        Self { status: ModuleStatus::Unresolved, globs: FxHashSet::default() }
+        Self { status: ModuleStatus::InProgress, globs: FxHashSet::default() }
     }
 }
 

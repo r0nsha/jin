@@ -113,13 +113,11 @@ impl<'db> Typeck<'db> {
     }
 
     fn check_module(&mut self, module: &ast::Module) -> TypeckResult<()> {
-        self.resolution_state.create_module_state(module.id);
-
-        if !self.resolution_state.module_state(module.id).status.is_unresolved() {
+        if self.resolution_state.module_state(module.id).is_some() {
             return Ok(());
         }
 
-        self.resolution_state.module_state_mut(module.id).status = ModuleStatus::InProgress;
+        self.resolution_state.create_module_state(module.id);
 
         let mut env = Env::new(module.id);
 
@@ -131,7 +129,7 @@ impl<'db> Typeck<'db> {
             }
         }
 
-        self.resolution_state.module_state_mut(module.id).status = ModuleStatus::Resolved;
+        self.resolution_state.module_state_mut(module.id).unwrap().status = ModuleStatus::Resolved;
 
         Ok(())
     }
@@ -156,6 +154,8 @@ impl<'db> Typeck<'db> {
     }
 
     fn find_and_check_item(&mut self, symbol: &Symbol) -> TypeckResult<()> {
+        self.resolution_state.create_module_state(symbol.module_id);
+
         if let Some(item_ids) = self.global_scope.symbol_to_item.get(symbol).cloned() {
             let mut env = Env::new(symbol.module_id);
 
@@ -537,7 +537,7 @@ impl<'db> Typeck<'db> {
     }
 
     fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {
-        self.resolution_state.module_state_mut(env.module_id()).globs.insert(module_id);
+        self.resolution_state.module_state_mut(env.module_id()).unwrap().globs.insert(module_id);
     }
 
     fn is_module_def(&self, def_id: DefId, span: Span) -> TypeckResult<ModuleId> {

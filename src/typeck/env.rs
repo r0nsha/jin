@@ -269,8 +269,8 @@ impl<'db> Typeck<'db> {
         symbol: &Symbol,
         span: Span,
     ) -> TypeckResult<Option<DefId>> {
-        let lookup_modules =
-            iter::once(&from_module).chain(&self.resolution_state.module_state(from_module).globs);
+        let lookup_modules = iter::once(&from_module)
+            .chain(&self.resolution_state.module_state(from_module).unwrap().globs);
 
         let mut defs = vec![];
 
