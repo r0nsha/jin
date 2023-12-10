@@ -106,8 +106,7 @@ impl Display for FnTyPrinter<'_> {
         f.write_str("(")?;
         for (i, param) in self.params.iter().enumerate() {
             if let Some(name) = param.name {
-                f.write_str(name.as_str())?;
-                f.write_str(" ")?;
+                write!(f, "{name}: ")?;
             }
 
             write!(f, "{}", param.ty.display(self.db))?;

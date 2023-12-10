@@ -9,6 +9,7 @@ fn main {
 	add(f32(1.0), f32(2.5)) // exact f32
 	add(1.0, 2.5) // untyped float matching
 	add(5, 2.25) // mixed parameter type matching
+
 	named(x: 1) // picks `fn named(x: int)`
 	named(1, 2) // picks `fn named(x: int, y: int)`
 	named(y: 1, x: 2) // picks `fn named(x: int, y: int)`
