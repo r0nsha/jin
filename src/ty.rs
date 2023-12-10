@@ -1,6 +1,6 @@
 pub mod coerce;
 pub mod fold;
-mod printer;
+pub mod printer;
 
 use std::ops::Deref;
 
@@ -12,7 +12,7 @@ use ustr::Ustr;
 use crate::{
     db::{Db, ModuleId, StructId},
     target::TargetMetrics,
-    ty::printer::TyPrinter,
+    ty::printer::{FnTyPrinter, TyPrinter},
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -215,7 +215,7 @@ impl TyKind {
         }
     }
 
-    pub fn display<'db>(&'db self, db: &'db Db) -> TyPrinter<'db> {
+    pub fn display<'db>(&'db self, db: &'db Db) -> TyPrinter {
         TyPrinter::new(db, self)
     }
 
@@ -452,6 +452,16 @@ pub struct FnTy {
     pub params: Vec<FnTyParam>,
     pub ret: Ty,
     pub is_c_variadic: bool,
+}
+
+impl FnTy {
+    pub fn display<'db>(&'db self, db: &'db Db, name: Option<Ustr>) -> FnTyPrinter {
+        FnTyPrinter { db, name, params: &self.params, ret: Some(self.ret) }
+    }
+
+    pub fn to_string(&self, db: &Db, name: Option<Ustr>) -> String {
+        self.display(db, name).to_string()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]

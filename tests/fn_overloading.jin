@@ -10,3 +10,19 @@ fn main {
 	add(1.0, 2.5) // untyped float matching
 	add(5, 2.25) // mixed parameter type matching
 }
+
+fn named(x: int) {
+	printf("named. x = %d\n".ptr, x)
+}
+
+fn named(x: int) {
+	printf("named. z = %d\n".ptr, z)
+}
+
+//fn print_ints(x: int, y: int) {
+//	printf("%d %d\n".ptr, x, y)
+//}
+//
+//fn print_ints(y: int, x: int) {
+//	printf("%d %d\n".ptr, x, y)
+//}

@@ -1,4 +1,3 @@
-use core::fmt;
 use std::{iter, mem};
 
 use itertools::Itertools;
@@ -15,7 +14,7 @@ use crate::{
     qpath::QPath,
     span::{Span, Spanned},
     sym,
-    ty::{FnTy, FnTyParam, InferTy, Ty, TyKind},
+    ty::{printer::FnTyPrinter, FnTy, FnTyParam, InferTy, Ty, TyKind},
     typeck::{coerce::Coerce, errors, Typeck, TypeckResult},
     word::Word,
 };
@@ -166,7 +165,7 @@ impl<'db> Typeck<'db> {
         self.global_scope.fns.entry(symbol).or_default().try_insert(candidate).map_err(|err| {
             match err {
                 FnCandidateInsertError::AlreadyExists { prev, curr } => {
-                    errors::multiple_fn_def_err(self.db, prev.word.span(), &curr)
+                    errors::multiple_fn_def_err(self.db, symbol.module_id, prev.word.span(), &curr)
                 }
             }
         })
@@ -765,8 +764,8 @@ impl FnCandidate {
         None
     }
 
-    pub fn display<'db, 'a>(&'a self, db: &'db Db) -> DisplayFn<'db, 'a> {
-        DisplayFn { db, name: db[self.id].qpath.to_string(), params: &self.ty.params }
+    pub fn display<'a>(&'a self, db: &'a Db) -> FnTyPrinter {
+        self.ty.display(db, Some(db[self.id].name))
     }
 }
 
@@ -785,9 +784,27 @@ fn candidate_tys_eq(t1: Ty, t2: Ty) -> bool {
 
 impl PartialEq for FnCandidate {
     fn eq(&self, other: &Self) -> bool {
-        self.word.name() == other.word.name()
-            && self.ty.params.len() == other.ty.params.len()
-            && self.ty.params.iter().zip(other.ty.params.iter()).all(|(p1, p2)| p1 == p2)
+        if self.word.name() != other.word.name() || self.ty.params.len() != other.ty.params.len() {
+            return false;
+        }
+
+        // Both function parameters are the same, order is insignificant
+        if !self.ty.params.iter().all(|p1| {
+            if let Some(name) = p1.name {
+                other.ty.params.iter().any(|p2| Some(name) == p2.name)
+            } else {
+                false
+            }
+        }) {
+            return false;
+        }
+
+        // Both function parameters are the same, in order
+        if self.ty.params.iter().zip(other.ty.params.iter()).any(|(p1, p2)| p1.ty != p2.ty) {
+            return false;
+        }
+
+        true
     }
 }
 
@@ -829,26 +846,8 @@ impl<'a> FnQuery<'a> {
         Self { word, args }
     }
 
-    pub fn display<'db>(&self, db: &'db Db) -> DisplayFn<'db, 'a> {
-        DisplayFn { db, name: self.word.to_string(), params: self.args }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct DisplayFn<'db, 'a> {
-    pub db: &'db Db,
-    pub name: String,
-    pub params: &'a [FnTyParam],
-}
-
-impl<'db, 'a> fmt::Display for DisplayFn<'db, 'a> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "fn {}({})",
-            self.name,
-            self.params.iter().map(|p| p.ty.to_string(self.db)).collect::<Vec<_>>().join(", ")
-        )
+    pub fn display<'db>(&'db self, db: &'db Db) -> FnTyPrinter {
+        FnTyPrinter { db, name: Some(self.word.name()), params: self.args, ret: None }
     }
 }
 

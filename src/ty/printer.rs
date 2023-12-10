@@ -1,9 +1,11 @@
 use std::fmt::{Display, Formatter, Result};
 
+use ustr::Ustr;
+
 use crate::{
     db::Db,
     sym,
-    ty::{FloatTy, InferTy, IntTy, TyKind, UintTy},
+    ty::{FloatTy, FnTyParam, InferTy, IntTy, Ty, TyKind, UintTy},
 };
 
 pub struct TyPrinter<'db> {
@@ -25,24 +27,7 @@ impl<'db> TyPrinter<'db> {
     fn fmt_type(&self, f: &mut Formatter, ty: &TyKind) -> Result {
         match ty {
             TyKind::Fn(fun) => {
-                f.write_str("fn")?;
-
-                f.write_str("(")?;
-                for (i, param) in fun.params.iter().enumerate() {
-                    if let Some(name) = param.name {
-                        f.write_str(name.as_str())?;
-                        f.write_str(" ")?;
-                    }
-
-                    self.fmt_type(f, &param.ty)?;
-
-                    if i != fun.params.len() - 1 {
-                        f.write_str(", ")?;
-                    }
-                }
-                f.write_str(") -> ")?;
-
-                self.fmt_type(f, &fun.ret)
+                write!(f, "{}", fun.display(self.db, None))
             }
             TyKind::Struct(sid) => f.write_str(self.db.structs[*sid].name.as_str()),
             TyKind::RawPtr(pointee) => {
@@ -100,5 +85,43 @@ impl<'db> TyPrinter<'db> {
 
             TyKind::Unknown => f.write_str("(unknown)"),
         }
+    }
+}
+
+pub struct FnTyPrinter<'db> {
+    pub db: &'db Db,
+    pub name: Option<Ustr>,
+    pub params: &'db [FnTyParam],
+    pub ret: Option<Ty>,
+}
+
+impl Display for FnTyPrinter<'_> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result {
+        f.write_str("fn")?;
+
+        if let Some(name) = self.name {
+            write!(f, " {name}")?;
+        }
+
+        f.write_str("(")?;
+        for (i, param) in self.params.iter().enumerate() {
+            if let Some(name) = param.name {
+                f.write_str(name.as_str())?;
+                f.write_str(" ")?;
+            }
+
+            write!(f, "{}", param.ty.display(self.db))?;
+
+            if i != self.params.len() - 1 {
+                f.write_str(", ")?;
+            }
+        }
+        f.write_str(") -> ")?;
+
+        if let Some(ret) = &self.ret {
+            write!(f, "{}", ret.display(self.db))?;
+        }
+
+        Ok(())
     }
 }
