@@ -741,8 +741,11 @@ impl FnCandidate {
         Some(score)
     }
 
+    // Calculates the distances between an argument and the
+    // parameter it is applied to. The actual distance is calculated by the amount
+    // of "steps" required to convert the argument to the parameter.
     fn distance(cx: &Typeck, param: Ty, arg: Ty) -> Option<u32> {
-        if param == arg {
+        if candidate_tys_eq(param, arg) {
             return Some(0);
         }
 
@@ -761,6 +764,18 @@ impl FnCandidate {
 
     pub fn display<'db, 'a>(&'a self, db: &'db Db) -> DisplayFn<'db, 'a> {
         DisplayFn { db, name: db[self.id].qpath.to_string(), params: &self.params }
+    }
+}
+
+fn candidate_tys_eq(t1: Ty, t2: Ty) -> bool {
+    match (t1.kind(), t2.kind()) {
+        (TyKind::Fn(f1), TyKind::Fn(f2)) => {
+            f1.params.len() == f2.params.len()
+                && f1.params.iter().zip(&f2.params).all(|(p1, p2)| candidate_tys_eq(p1.ty, p2.ty))
+                && candidate_tys_eq(f1.ret, f2.ret)
+        }
+        _ if t1 == t2 => true,
+        _ => false,
     }
 }
 
