@@ -193,16 +193,19 @@ impl<'db> Typeck<'db> {
             self.find_and_check_item(&symbol)?;
         }
 
-        todo!()
-        // let id = self.lookup_inner(env, in_module, query)?;
-        //
-        // // TODO: do this check only if there's one result
-        // let from_module = env.module_id();
-        // if from_module != in_module {
-        //     self.check_def_access(from_module, id, query.span())?;
-        // }
-        //
-        // Ok(id)
+        let defs = self.lookup_global_many(in_module, &symbol);
+
+        if defs.is_empty() {
+            return Err(errors::name_not_found(self.db, from_module, in_module, word));
+        }
+
+        if from_module != in_module {
+            for id in &defs {
+                self.check_def_access(from_module, *id, word.span())?;
+            }
+        }
+
+        Ok(defs)
     }
 
     pub fn lookup(&mut self, env: &Env, in_module: ModuleId, query: &Query) -> TypeckResult<DefId> {
@@ -241,7 +244,7 @@ impl<'db> Typeck<'db> {
             }
         }
 
-        self.lookup_one(&symbol, span)?.ok_or_else(|| match query {
+        self.lookup_global_one(&symbol, span)?.ok_or_else(|| match query {
             Query::Name(word) => errors::name_not_found(self.db, env.module_id(), in_module, *word),
             Query::Fn(fn_query) => Diagnostic::error()
                 .with_message(format!("cannot find function `{}`", fn_query.display(self.db)))
@@ -289,11 +292,15 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    pub fn lookup_one(&mut self, symbol: &Symbol, span: Span) -> TypeckResult<Option<DefId>> {
-        let defs = self.lookup_global_defs(symbol.module_id, symbol);
+    pub fn lookup_global_one(
+        &mut self,
+        symbol: &Symbol,
+        span: Span,
+    ) -> TypeckResult<Option<DefId>> {
+        let defs = self.lookup_global_many(symbol.module_id, symbol);
 
         match defs.len() {
-            0 => Ok(self.builtin_tys.get(symbol.name)),
+            0 => Ok(None),
             1 => Ok(defs.first().copied()),
             _ => Err(Diagnostic::error()
                 .with_message(format!("ambiguous use of item `{}`", symbol.name))
@@ -306,24 +313,24 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    fn lookup_global_defs(&self, from_module: ModuleId, symbol: &Symbol) -> Vec<DefId> {
-        let lookup_modules = iter::once(&from_module)
-            .chain(&self.resolution_state.module_state(from_module).unwrap().globs);
+    fn lookup_global_many(&self, in_module: ModuleId, symbol: &Symbol) -> Vec<DefId> {
+        let lookup_modules = iter::once(&in_module)
+            .chain(&self.resolution_state.module_state(in_module).unwrap().globs);
 
         let mut defs = vec![];
 
         for module_id in lookup_modules {
             let symbol = symbol.with_module_id(*module_id);
 
-            if let Some(id) = self.global_scope.get_def(from_module, &symbol) {
+            if let Some(id) = self.global_scope.get_def(in_module, &symbol) {
                 defs.push(id);
             } else if let Some(candidates) = self.global_scope.fns.get(&symbol) {
-                if let Some(c) = candidates.single() {
-                    defs.push(c.id);
-                }
-
-                // TODO: consider multiple candidates using an `expected_ty`
+                defs.extend(candidates.iter().map(|c| c.id));
             }
+        }
+
+        if defs.is_empty() {
+            return self.builtin_tys.get(symbol.name).into_iter().collect();
         }
 
         defs
@@ -604,16 +611,8 @@ impl FnCandidateSet {
         Self(vec![])
     }
 
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    pub fn single(&self) -> Option<&FnCandidate> {
-        if self.len() == 1 {
-            self.0.first()
-        } else {
-            None
-        }
+    pub fn iter(&self) -> std::slice::Iter<'_, FnCandidate> {
+        self.0.iter()
     }
 
     pub fn try_insert(&mut self, candidate: FnCandidate) -> Result<(), FnCandidateInsertError> {
