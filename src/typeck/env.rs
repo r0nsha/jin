@@ -193,12 +193,15 @@ impl<'db> Typeck<'db> {
             self.find_and_check_item(&symbol)?;
         }
 
+        // TODO: need a function that returns a single DefId
+        // or multiple FnCandidate's
         let defs = self.lookup_global_many(in_module, &symbol);
 
         if defs.is_empty() {
             return Err(errors::name_not_found(self.db, from_module, in_module, word));
         }
 
+        // TODO: only do this if this is a LookupResult::Def
         if from_module != in_module {
             for id in &defs {
                 self.check_def_access(from_module, *id, word.span())?;
@@ -313,6 +316,7 @@ impl<'db> Typeck<'db> {
         }
     }
 
+    // TODO: return a LookupResult
     fn lookup_global_many(&self, in_module: ModuleId, symbol: &Symbol) -> Vec<DefId> {
         let lookup_modules = iter::once(&in_module)
             .chain(&self.resolution_state.module_state(in_module).unwrap().globs);
