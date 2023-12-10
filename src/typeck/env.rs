@@ -745,6 +745,7 @@ impl FnCandidate {
 impl PartialEq for FnCandidate {
     fn eq(&self, other: &Self) -> bool {
         self.word.name() == other.word.name()
+            && self.params.len() == other.params.len()
             && self.params.iter().zip(other.params.iter()).all(|(p1, p2)| p1.kind() == p2.kind())
     }
 }
