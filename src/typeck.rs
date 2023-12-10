@@ -1004,7 +1004,10 @@ impl<'db> Typeck<'db> {
         word: Word,
         args: &[hir::CallArg],
     ) -> TypeckResult<DefId> {
-        let args: Vec<Ty> = args.iter().map(|a| self.normalize(a.expr.ty)).collect();
+        let args = args
+            .iter()
+            .map(|a| FnTyParam { name: a.name.map(|w| w.name()), ty: self.normalize(a.expr.ty) })
+            .collect::<Vec<_>>();
         let query = FnQuery::new(word, &args);
         self.lookup(env, in_module, &Query::Fn(query))
     }

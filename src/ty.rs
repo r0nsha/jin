@@ -456,7 +456,6 @@ pub struct FnTy {
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct FnTyParam {
-    // TODO: This shouldn't be optional...
     pub name: Option<Ustr>,
     pub ty: Ty,
 }

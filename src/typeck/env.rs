@@ -15,7 +15,7 @@ use crate::{
     qpath::QPath,
     span::{Span, Spanned},
     sym,
-    ty::{InferTy, Ty, TyKind},
+    ty::{FnTy, FnTyParam, InferTy, Ty, TyKind},
     typeck::{coerce::Coerce, errors, Typeck, TypeckResult},
     word::Word,
 };
@@ -142,8 +142,7 @@ impl<'db> Typeck<'db> {
                     )
                 };
 
-                let candidate =
-                    FnCandidate { id, word, params: sig.params.iter().map(|p| p.ty).collect() };
+                let candidate = FnCandidate { id, word, ty: sig.ty.as_fn().cloned().unwrap() };
                 self.insert_fn_candidate(symbol, candidate)?;
 
                 Ok(id)
@@ -722,19 +721,19 @@ pub enum FnCandidateInsertError {
 pub struct FnCandidate {
     pub id: DefId,
     pub word: Word,
-    pub params: Vec<Ty>,
+    pub ty: FnTy,
 }
 
 impl FnCandidate {
     fn score(&self, cx: &Typeck, query: &FnQuery) -> Option<u32> {
-        if self.params.len() != query.args.len() {
+        if self.ty.params.len() != query.args.len() {
             return None;
         }
 
         let mut score = 0;
 
-        for (param, arg) in self.params.iter().zip(query.args.iter()) {
-            let dist = Self::distance(cx, *param, *arg)?;
+        for (param, arg) in self.ty.params.iter().zip(query.args.iter()) {
+            let dist = Self::distance(cx, param.ty, arg.ty)?;
             score += dist;
         }
 
@@ -767,7 +766,7 @@ impl FnCandidate {
     }
 
     pub fn display<'db, 'a>(&'a self, db: &'db Db) -> DisplayFn<'db, 'a> {
-        DisplayFn { db, name: db[self.id].qpath.to_string(), params: &self.params }
+        DisplayFn { db, name: db[self.id].qpath.to_string(), params: &self.ty.params }
     }
 }
 
@@ -787,8 +786,8 @@ fn candidate_tys_eq(t1: Ty, t2: Ty) -> bool {
 impl PartialEq for FnCandidate {
     fn eq(&self, other: &Self) -> bool {
         self.word.name() == other.word.name()
-            && self.params.len() == other.params.len()
-            && self.params.iter().zip(other.params.iter()).all(|(p1, p2)| p1.kind() == p2.kind())
+            && self.ty.params.len() == other.ty.params.len()
+            && self.ty.params.iter().zip(other.ty.params.iter()).all(|(p1, p2)| p1 == p2)
     }
 }
 
@@ -822,11 +821,11 @@ impl<'a> Query<'a> {
 #[derive(Debug, Clone)]
 pub struct FnQuery<'a> {
     pub word: Word,
-    pub args: &'a [Ty],
+    pub args: &'a [FnTyParam],
 }
 
 impl<'a> FnQuery<'a> {
-    pub fn new(word: Word, args: &'a [Ty]) -> Self {
+    pub fn new(word: Word, args: &'a [FnTyParam]) -> Self {
         Self { word, args }
     }
 
@@ -839,7 +838,7 @@ impl<'a> FnQuery<'a> {
 pub struct DisplayFn<'db, 'a> {
     pub db: &'db Db,
     pub name: String,
-    pub params: &'a [Ty],
+    pub params: &'a [FnTyParam],
 }
 
 impl<'db, 'a> fmt::Display for DisplayFn<'db, 'a> {
@@ -848,7 +847,7 @@ impl<'db, 'a> fmt::Display for DisplayFn<'db, 'a> {
             f,
             "fn {}({})",
             self.name,
-            self.params.iter().map(|a| a.to_string(self.db)).collect::<Vec<String>>().join(", ")
+            self.params.iter().map(|p| p.ty.to_string(self.db)).collect::<Vec<_>>().join(", ")
         )
     }
 }
