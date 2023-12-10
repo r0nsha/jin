@@ -89,7 +89,6 @@ impl Default for ModuleState {
 
 #[derive(Debug, Clone, Copy, EnumAsInner)]
 pub enum ModuleStatus {
-    Unresolved,
     InProgress,
     Resolved,
 }

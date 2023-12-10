@@ -31,7 +31,7 @@ use crate::{
     typeck::{
         attrs::AttrsPlacement,
         coerce::CoerceExt,
-        env::{BuiltinTys, Env, FnQuery, GlobalScope, Query, ScopeKind, Symbol},
+        env::{BuiltinTys, Env, FnQuery, GlobalScope, Query, ScopeKind},
         instantiate::instantiate,
         normalize::NormalizeTy,
         resolution_state::{ItemStatus, ModuleStatus, ResolutionState, ResolvedFnSig},
@@ -147,21 +147,6 @@ impl<'db> Typeck<'db> {
                     let f = self.check_fn_body(&mut env, fun, sig, id)?;
                     self.hir.fns.push(f);
                 }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn find_and_check_item(&mut self, symbol: &Symbol) -> TypeckResult<()> {
-        self.resolution_state.create_module_state(symbol.module_id);
-
-        if let Some(item_ids) = self.global_scope.symbol_to_item.get(symbol).cloned() {
-            let mut env = Env::new(symbol.module_id);
-
-            for item_id in item_ids {
-                let item = &self.ast.modules[symbol.module_id].items[item_id];
-                self.check_item(&mut env, item, ast::GlobalItemId::new(symbol.module_id, item_id))?;
             }
         }
 

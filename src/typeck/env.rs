@@ -231,6 +231,22 @@ impl<'db> Typeck<'db> {
         })
     }
 
+    #[inline]
+    fn find_and_check_item(&mut self, symbol: &Symbol) -> TypeckResult<()> {
+        self.resolution_state.create_module_state(symbol.module_id);
+
+        if let Some(item_ids) = self.global_scope.symbol_to_item.get(symbol).cloned() {
+            let mut env = Env::new(symbol.module_id);
+
+            for item_id in item_ids {
+                let item = &self.ast.modules[symbol.module_id].items[item_id];
+                self.check_item(&mut env, item, ast::GlobalItemId::new(symbol.module_id, item_id))?;
+            }
+        }
+
+        Ok(())
+    }
+
     fn lookup_fn_candidate(
         &self,
         from_module: ModuleId,
