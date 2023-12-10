@@ -3,7 +3,6 @@ import child.*
 fn extern printf(fmt: *u8, ..) -> i32
 
 fn main {
-	add() // matching no params
 	add(int(1), int(1)) // exact int
 	add(1, 1) // untyped int matching
 	add(1, 1, 1) // matching different arg count

@@ -34,8 +34,8 @@ pub fn name_not_found(
 
 pub fn fn_not_found(db: &Db, query: &FnQuery) -> Diagnostic {
     Diagnostic::error()
-        .with_message(format!("cannot find `{}`", query.display(db)))
-        .with_label(Label::primary(query.word.span()).with_message("function not found"))
+        .with_message(format!("cannot find a function matching `{}`", query.display(db)))
+        .with_label(Label::primary(query.word.span()).with_message("no matching function"))
 }
 
 pub fn private_access_violation(db: &Db, accessed: DefId, span: Span) -> Diagnostic {

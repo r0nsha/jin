@@ -10,6 +10,7 @@ use crate::{
     db::{Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel},
     diagnostics::{Diagnostic, Label},
     hir,
+    macros::create_bool_enum,
     middle::{Mutability, Vis},
     qpath::QPath,
     span::{Span, Spanned},
@@ -216,7 +217,7 @@ impl<'db> Typeck<'db> {
             self.find_and_check_items(&symbol)?;
         }
 
-        let results = self.lookup_global_many(in_module, &symbol);
+        let results = self.lookup_global_many(in_module, &symbol, ShouldLookupFns::Yes);
 
         if results.is_empty() {
             return Err(errors::name_not_found(self.db, from_module, in_module, word));
@@ -263,7 +264,9 @@ impl<'db> Typeck<'db> {
             }
         }
 
-        self.lookup_global_one(&symbol, query.span())?.ok_or_else(|| match query {
+        let lookup_fns = ShouldLookupFns::from(!matches!(query, Query::Fn(_)));
+
+        self.lookup_global_one(&symbol, query.span(), lookup_fns)?.ok_or_else(|| match query {
             Query::Name(word) => errors::name_not_found(self.db, from_module, in_module, *word),
             Query::Fn(fn_query) => errors::fn_not_found(self.db, fn_query),
         })
@@ -336,8 +339,9 @@ impl<'db> Typeck<'db> {
         &mut self,
         symbol: &Symbol,
         span: Span,
+        lookup_fns: ShouldLookupFns,
     ) -> TypeckResult<Option<DefId>> {
-        let results = self.lookup_global_many(symbol.module_id, symbol);
+        let results = self.lookup_global_many(symbol.module_id, symbol, lookup_fns);
 
         match results.len() {
             0 => Ok(None),
@@ -353,7 +357,12 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    fn lookup_global_many(&self, in_module: ModuleId, symbol: &Symbol) -> Vec<LookupResult> {
+    fn lookup_global_many(
+        &self,
+        in_module: ModuleId,
+        symbol: &Symbol,
+        lookup_fns: ShouldLookupFns,
+    ) -> Vec<LookupResult> {
         let lookup_modules = self.get_lookup_modules(in_module);
         let mut defs = vec![];
 
@@ -362,8 +371,10 @@ impl<'db> Typeck<'db> {
 
             if let Some(id) = self.global_scope.get_def(in_module, &symbol) {
                 defs.push(LookupResult::Def(id));
-            } else if let Some(candidates) = self.global_scope.fns.get(&symbol) {
-                defs.extend(candidates.iter().cloned().map(LookupResult::Fn));
+            } else if lookup_fns == ShouldLookupFns::Yes {
+                if let Some(candidates) = self.global_scope.fns.get(&symbol) {
+                    defs.extend(candidates.iter().cloned().map(LookupResult::Fn));
+                }
             }
         }
 
@@ -810,3 +821,5 @@ impl<'db, 'a> fmt::Display for DisplayFn<'db, 'a> {
         )
     }
 }
+
+create_bool_enum!(ShouldLookupFns);
