@@ -182,9 +182,9 @@ impl<'db> Typeck<'db> {
     }
 
     pub fn lookup(&mut self, env: &Env, in_module: ModuleId, query: &Query) -> TypeckResult<DefId> {
-        let from_module = env.module_id();
         let id = self.lookup_inner(env, in_module, query)?;
 
+        let from_module = env.module_id();
         if from_module != in_module {
             self.check_def_access(from_module, id, query.span())?;
         }
@@ -219,8 +219,12 @@ impl<'db> Typeck<'db> {
 
         self.lookup_global_def(&symbol, span)?.ok_or_else(|| match query {
             Query::Name(word) => Diagnostic::error()
-                .with_message(format!("cannot find `{word}` in this scope"))
-                .with_label(Label::primary(word.span()).with_message("not found in this scope")),
+                .with_message(if env.module_id() == in_module {
+                    format!("cannot find `{word}` in this scope")
+                } else {
+                    format!("cannot find `{}` in module `{}`", word, self.db[in_module].qpath)
+                })
+                .with_label(Label::primary(word.span()).with_message("not found")),
             Query::Fn(fn_query) => Diagnostic::error()
                 .with_message(format!("cannot find function `{}`", fn_query.display(self.db)))
                 .with_label(Label::primary(span).with_message("function not found")),
