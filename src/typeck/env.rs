@@ -756,7 +756,11 @@ impl FnCandidate {
         }
 
         if arg.can_coerce(&param, cx) {
-            return Some(1);
+            return Some(2);
+        }
+
+        if let (_, TyKind::Infer(InferTy::Ty(_)) | TyKind::Param(_)) = (arg.kind(), param.kind()) {
+            return Some(3);
         }
 
         None
@@ -774,6 +778,7 @@ fn candidate_tys_eq(t1: Ty, t2: Ty) -> bool {
                 && f1.params.iter().zip(&f2.params).all(|(p1, p2)| candidate_tys_eq(p1.ty, p2.ty))
                 && candidate_tys_eq(f1.ret, f2.ret)
         }
+        (TyKind::Infer(InferTy::Ty(_)), _) | (_, TyKind::Infer(InferTy::Ty(_))) => true,
         _ if t1 == t2 => true,
         _ => false,
     }
