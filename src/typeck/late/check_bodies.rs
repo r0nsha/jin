@@ -39,8 +39,13 @@ impl CheckBodies<'_> {
 
                     self.db.diagnostics.emit(
                         Diagnostic::error()
-                            .with_message(format!("cannot cast `{source}` to `{target}`"))
-                            .with_label(Label::primary(expr.span).with_message("invalid cast")),
+                            .with_message(format!(
+                                "cannot cast `{source}` to `{target}`"
+                            ))
+                            .with_label(
+                                Label::primary(expr.span)
+                                    .with_message("invalid cast"),
+                            ),
                     );
                 }
             }

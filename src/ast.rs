@@ -50,7 +50,13 @@ pub struct Module {
 
 impl Module {
     pub fn new(source_id: SourceId, name: QPath, is_main: bool) -> Self {
-        Self { id: ModuleId::INVALID, source: source_id, name, is_main, items: IndexVec::new() }
+        Self {
+            id: ModuleId::INVALID,
+            source: source_id,
+            name,
+            is_main,
+            items: IndexVec::new(),
+        }
     }
 
     pub fn is_main(&self) -> bool {
@@ -100,20 +106,75 @@ impl Spanned for Item {
 #[derive(Debug, Clone)]
 pub enum Expr {
     Let(Let),
-    Assign { lhs: Box<Self>, rhs: Box<Self>, op: Option<BinOp>, span: Span },
-    Return { expr: Option<Box<Self>>, span: Span },
-    If { cond: Box<Self>, then: Box<Self>, otherwise: Option<Box<Self>>, span: Span },
-    Loop { cond: Option<Box<Self>>, expr: Box<Self>, span: Span },
-    Break { span: Span },
-    Block { exprs: Vec<Self>, span: Span },
-    Call { callee: Box<Self>, args: Vec<CallArg>, span: Span },
-    MethodCall { expr: Box<Self>, method: Word, args: Vec<CallArg>, span: Span },
-    Unary { expr: Box<Self>, op: UnOp, span: Span },
-    Binary { lhs: Box<Self>, rhs: Box<Self>, op: BinOp, span: Span },
-    Cast { expr: Box<Self>, ty_expr: TyExpr, span: Span },
-    Member { expr: Box<Self>, member: Word, span: Span },
-    Name { word: Word, ty_args: Option<Vec<TyExpr>>, span: Span },
-    Lit { kind: LitKind, span: Span },
+    Assign {
+        lhs: Box<Self>,
+        rhs: Box<Self>,
+        op: Option<BinOp>,
+        span: Span,
+    },
+    Return {
+        expr: Option<Box<Self>>,
+        span: Span,
+    },
+    If {
+        cond: Box<Self>,
+        then: Box<Self>,
+        otherwise: Option<Box<Self>>,
+        span: Span,
+    },
+    Loop {
+        cond: Option<Box<Self>>,
+        expr: Box<Self>,
+        span: Span,
+    },
+    Break {
+        span: Span,
+    },
+    Block {
+        exprs: Vec<Self>,
+        span: Span,
+    },
+    Call {
+        callee: Box<Self>,
+        args: Vec<CallArg>,
+        span: Span,
+    },
+    MethodCall {
+        expr: Box<Self>,
+        method: Word,
+        args: Vec<CallArg>,
+        span: Span,
+    },
+    Unary {
+        expr: Box<Self>,
+        op: UnOp,
+        span: Span,
+    },
+    Binary {
+        lhs: Box<Self>,
+        rhs: Box<Self>,
+        op: BinOp,
+        span: Span,
+    },
+    Cast {
+        expr: Box<Self>,
+        ty_expr: TyExpr,
+        span: Span,
+    },
+    Member {
+        expr: Box<Self>,
+        member: Word,
+        span: Span,
+    },
+    Name {
+        word: Word,
+        ty_args: Option<Vec<TyExpr>>,
+        span: Span,
+    },
+    Lit {
+        kind: LitKind,
+        span: Span,
+    },
 }
 
 impl Spanned for Expr {

@@ -58,7 +58,11 @@ fn build_exe(db: &mut Db, c_file_path: &Utf8Path) -> Utf8PathBuf {
     exe_file_path
 }
 
-fn compile_with_clang(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
+fn compile_with_clang(
+    db: &Db,
+    c_file_path: &Utf8Path,
+    exe_file_path: &Utf8Path,
+) {
     let target_metrics = db.target_metrics();
 
     let link_flags = match target_metrics.arch {

@@ -10,8 +10,9 @@ impl<'db> Generator<'db> {
             let source = sources.get(span.source_id()).unwrap();
 
             let path = source.path();
-            let Location { line_number, column_number } =
-                source.location(span.source_id(), span.start() as usize).unwrap();
+            let Location { line_number, column_number } = source
+                .location(span.source_id(), span.start() as usize)
+                .unwrap();
 
             let fmt =
                 format!("printf(\"panic at {path}:{line_number}:{column_number}:\\n{msg}\\n\")");
@@ -28,7 +29,10 @@ impl<'db> Generator<'db> {
 pub const NEST: isize = 2;
 
 pub fn str_value(value: &str) -> D {
-    struct_lit(vec![("ptr", str_lit(value)), ("len", D::text(value.len().to_string()))])
+    struct_lit(vec![
+        ("ptr", str_lit(value)),
+        ("len", D::text(value.len().to_string())),
+    ])
 }
 
 pub fn str_lit(value: &str) -> D {
@@ -46,7 +50,9 @@ pub fn unit_value<'a>() -> D<'a> {
 pub fn struct_lit<'a>(fields: Vec<(&'a str, D<'a>)>) -> D<'a> {
     soft_block(|| {
         D::intersperse(
-            fields.into_iter().map(|(name, value)| D::text(format!(".{name} = ")).append(value)),
+            fields.into_iter().map(|(name, value)| {
+                D::text(format!(".{name} = ")).append(value)
+            }),
             D::text(",").append(D::softline()),
         )
     })
@@ -68,7 +74,11 @@ pub fn goto_stmt(blk: &Block) -> D<'_> {
     stmt(|| D::text("goto").append(D::space()).append(block_name(blk)))
 }
 
-pub fn if_stmt<'a>(cond: D<'a>, then: D<'a>, otherwise: Option<D<'a>>) -> D<'a> {
+pub fn if_stmt<'a>(
+    cond: D<'a>,
+    then: D<'a>,
+    otherwise: Option<D<'a>>,
+) -> D<'a> {
     D::text("if")
         .append(D::space())
         .append(D::text("("))
@@ -77,7 +87,10 @@ pub fn if_stmt<'a>(cond: D<'a>, then: D<'a>, otherwise: Option<D<'a>>) -> D<'a> 
         .append(D::space())
         .append(block(|| then))
         .append(otherwise.map_or(D::nil(), |o| {
-            D::space().append(D::text("else")).append(D::space()).append(block(|| o))
+            D::space()
+                .append(D::text("else"))
+                .append(D::space())
+                .append(block(|| o))
         }))
 }
 

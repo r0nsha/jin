@@ -43,7 +43,9 @@ impl<'s> Lexer<'s> {
         match self.bump() {
             Some(ch) => {
                 let kind = match ch {
-                    ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
+                    ch if ch.is_ascii_alphabetic() || ch == '_' => {
+                        self.ident(start)
+                    }
                     ch if ch.is_ascii_digit() => self.numeric(start),
                     ch if ch.is_ascii_whitespace() => return self.eat_token(),
                     DQUOTE => self.eat_str(start + 1)?,
@@ -216,7 +218,9 @@ impl<'s> Lexer<'s> {
     fn numeric(&mut self, start: u32) -> TokenKind {
         self.eat_int_aux();
 
-        if self.peek() == Some('.') && self.peek_offset(1).map_or(false, |c| c.is_ascii_digit()) {
+        if self.peek() == Some('.')
+            && self.peek_offset(1).map_or(false, |c| c.is_ascii_digit())
+        {
             self.next();
             self.eat_int_aux();
             TokenKind::Float(ustr(self.range_from(start)))

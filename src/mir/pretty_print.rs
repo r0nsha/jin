@@ -4,7 +4,11 @@ use pretty::RcDoc as D;
 
 use crate::{db::Db, mir::*};
 
-pub(super) fn print(db: &Db, mir: &Mir, w: &mut impl io::Write) -> io::Result<()> {
+pub(super) fn print(
+    db: &Db,
+    mir: &Mir,
+    w: &mut impl io::Write,
+) -> io::Result<()> {
     let mut cx = PrettyCx { db, mir };
     let mut docs: Vec<D> = vec![];
 
@@ -47,7 +51,9 @@ impl<'db> PrettyCx<'db> {
                         .append(D::hardline())
                         .append(
                             D::intersperse(
-                                body.blocks.iter().map(|blk| self.pp_blk(body, blk).into_doc()),
+                                body.blocks.iter().map(|blk| {
+                                    self.pp_blk(body, blk).into_doc()
+                                }),
                                 D::hardline().append(D::hardline()),
                             )
                             .group(),
@@ -71,7 +77,12 @@ impl<'db> PrettyCx<'db> {
 
         PrintFn {
             sig: self.pp_fn_sig(sig),
-            blocks: f.body.blocks.iter().map(|b| self.pp_blk(&f.body, b)).collect(),
+            blocks: f
+                .body
+                .blocks
+                .iter()
+                .map(|b| self.pp_blk(&f.body, b))
+                .collect(),
         }
         .into_doc()
     }
@@ -79,7 +90,11 @@ impl<'db> PrettyCx<'db> {
     fn pp_fn_sig(&mut self, sig: &'db FnSig) -> PrintFnSig<'db> {
         PrintFnSig {
             name: Self::global(&sig.name),
-            params: sig.params.iter().map(|p| D::text(p.ty.to_string(self.db))).collect(),
+            params: sig
+                .params
+                .iter()
+                .map(|p| D::text(p.ty.to_string(self.db)))
+                .collect(),
             ret: D::text(sig.ret.to_string(self.db)),
             is_extern: sig.is_extern,
             is_c_variadic: sig.is_c_variadic,
@@ -105,9 +120,9 @@ impl<'db> PrettyCx<'db> {
                 .append(self.value(body, *value))
                 .append(D::space())
                 .append(self.value(body, *target)),
-            Inst::Br { target } => {
-                D::text("br").append(D::space()).append(D::text(body.block(*target).name()))
-            }
+            Inst::Br { target } => D::text("br")
+                .append(D::space())
+                .append(D::text(body.block(*target).name())),
             Inst::BrIf { cond, then, otherwise } => D::text("brif")
                 .append(D::text("("))
                 .append(self.value(body, *cond))
@@ -130,9 +145,9 @@ impl<'db> PrettyCx<'db> {
                 .append(self.value(body, *then))
                 .append(D::text(", "))
                 .append(self.value(body, *otherwise)),
-            Inst::Return { value } => {
-                D::text("ret").append(D::space()).append(self.value(body, *value))
-            }
+            Inst::Return { value } => D::text("ret")
+                .append(D::space())
+                .append(self.value(body, *value)),
             Inst::Call { value, callee, args } => self
                 .value_assign(body, *value)
                 .append(D::text("call"))
@@ -164,14 +179,21 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text("to"))
                 .append(D::space())
                 .append(D::text(target.to_string(self.db))),
-            Inst::StrLit { value, lit } => self
-                .value_assign(body, *value)
-                .append(D::text("\"").append(D::text(lit.as_str())).append(D::text("\""))),
+            Inst::StrLit { value, lit } => {
+                self.value_assign(body, *value).append(
+                    D::text("\"")
+                        .append(D::text(lit.as_str()))
+                        .append(D::text("\"")),
+                )
+            }
         }
     }
 
     fn value_assign(&self, body: &'db Body, id: ValueId) -> D<'db> {
-        self.value(body, id).append(D::space()).append(D::text("=")).append(D::space())
+        self.value(body, id)
+            .append(D::space())
+            .append(D::text("="))
+            .append(D::space())
     }
 
     fn global(name: &'db str) -> D<'db> {
@@ -196,7 +218,9 @@ impl<'db> PrettyCx<'db> {
 
 fn pp_const_value<'a>(value: &Const) -> D<'a> {
     match value {
-        Const::Str(v) => D::text("\"").append(D::text(v.as_str())).append(D::text("\"")),
+        Const::Str(v) => {
+            D::text("\"").append(D::text(v.as_str())).append(D::text("\""))
+        }
         Const::Int(v) => D::text(v.to_string()),
         Const::Float(v) => D::text(v.to_string()),
         Const::Bool(v) => D::text(v.to_string()),
@@ -246,8 +270,15 @@ impl<'a> PrintFnSig<'a> {
         doc.append(self.name)
             .append(
                 D::text("(")
-                    .append(D::intersperse(self.params, D::text(",").append(D::space())))
-                    .append(if self.is_c_variadic { D::text(", ..") } else { D::nil() })
+                    .append(D::intersperse(
+                        self.params,
+                        D::text(",").append(D::space()),
+                    ))
+                    .append(if self.is_c_variadic {
+                        D::text(", ..")
+                    } else {
+                        D::nil()
+                    })
                     .append(D::text(")").nest(NEST).group()),
             )
             .append(D::space())

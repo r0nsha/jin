@@ -110,7 +110,10 @@ impl<'db> LowerCx<'db> {
         if let Some(let_) = let_ {
             self.lower_global_let(let_).expect("to output a GlobalId")
         } else {
-            panic!("global let {} not found in hir.lets", self.db[def_id].qpath);
+            panic!(
+                "global let {} not found in hir.lets",
+                self.db[def_id].qpath
+            );
         }
     }
 
@@ -118,7 +121,11 @@ impl<'db> LowerCx<'db> {
         LowerBodyCx::new(self).lower_global(let_)
     }
 
-    fn monomorphize_fn(&mut self, mono_item: &MonoItem, instantiation: &Instantiation) -> FnSigId {
+    fn monomorphize_fn(
+        &mut self,
+        mono_item: &MonoItem,
+        instantiation: &Instantiation,
+    ) -> FnSigId {
         if let Some(target_id) = self.mono_fns.get(mono_item).copied() {
             return target_id;
         }
@@ -130,29 +137,40 @@ impl<'db> LowerCx<'db> {
             new_fun.subst(&mut ParamFolder { db: self.db, instantiation });
 
             let name = self.mangled_fn_name(fun, instantiation);
-            let sig = self.lower_fn_sig(&new_fun.sig, &new_fun.kind, name, mono_item.ty);
+            let sig = self.lower_fn_sig(
+                &new_fun.sig,
+                &new_fun.kind,
+                name,
+                mono_item.ty,
+            );
 
             self.mono_fns.insert(mono_item.clone(), sig);
             self.lower_fn_body(sig, &new_fun);
 
             sig
         } else {
-            panic!("function {} not found in hir.fns", self.db[mono_item.id].qpath);
+            panic!(
+                "function {} not found in hir.fns",
+                self.db[mono_item.id].qpath
+            );
         }
     }
 
-    fn mangled_fn_name(&self, fun: &hir::Fn, instantiation: &Instantiation) -> Ustr {
+    fn mangled_fn_name(
+        &self,
+        fun: &hir::Fn,
+        instantiation: &Instantiation,
+    ) -> Ustr {
         let sig_str = {
-            let ty_args_str = instantiation.values().enumerate().map(|(idx, ty)| {
-                let ty_param = &fun.sig.ty_params[idx];
-                format!("{}_{}", ty_param.word, self.mangled_ty_name(*ty))
-            });
+            let ty_args_str =
+                instantiation.values().enumerate().map(|(idx, ty)| {
+                    let ty_param = &fun.sig.ty_params[idx];
+                    format!("{}_{}", ty_param.word, self.mangled_ty_name(*ty))
+                });
 
-            let params_str = fun
-                .sig
-                .params
-                .iter()
-                .map(|param| format!("{}_{}", param.word, self.mangled_ty_name(param.ty)));
+            let params_str = fun.sig.params.iter().map(|param| {
+                format!("{}_{}", param.word, self.mangled_ty_name(param.ty))
+            });
 
             ty_args_str.chain(params_str).collect::<Vec<String>>().join("_")
         };
@@ -160,7 +178,8 @@ impl<'db> LowerCx<'db> {
         let def = &self.db[fun.id];
 
         let mangled_name = format!("{}_{}", def.name, sig_str);
-        let qualified_name = def.qpath.clone().with_name(ustr(&mangled_name)).join_with("_");
+        let qualified_name =
+            def.qpath.clone().with_name(ustr(&mangled_name)).join_with("_");
 
         ustr(&qualified_name)
     }
@@ -179,8 +198,12 @@ impl<'db> LowerCx<'db> {
                 .chain(iter::once(self.mangled_ty_name(f.ret)))
                 .collect::<Vec<String>>()
                 .join("_"),
-            TyKind::Struct(sid) => self.db.get_struct_def(*sid).unwrap().qpath.join_with("_"),
-            TyKind::RawPtr(pointee) => format!("ptr_{}", self.mangled_ty_name(*pointee)),
+            TyKind::Struct(sid) => {
+                self.db.get_struct_def(*sid).unwrap().qpath.join_with("_")
+            }
+            TyKind::RawPtr(pointee) => {
+                format!("ptr_{}", self.mangled_ty_name(*pointee))
+            }
             TyKind::Unit => "unit".to_string(),
             TyKind::Param(p) => p.name.to_string(),
             TyKind::Int(_)
@@ -199,8 +222,13 @@ impl<'db> LowerCx<'db> {
         }
 
         let struct_info = &self.db[sid];
-        let name =
-            ustr(&self.db[struct_info.def_id].qpath.clone().child(ustr("ctor")).join_with("_"));
+        let name = ustr(
+            &self.db[struct_info.def_id]
+                .qpath
+                .clone()
+                .child(ustr("ctor"))
+                .join_with("_"),
+        );
 
         let sig_id = self.mir.fn_sigs.push_with_key(|id| FnSig {
             id,
@@ -208,7 +236,11 @@ impl<'db> LowerCx<'db> {
             params: struct_info
                 .fields
                 .iter()
-                .map(|f| FnParam { def_id: DefId::INVALID, name: f.name.name(), ty: f.ty })
+                .map(|f| FnParam {
+                    def_id: DefId::INVALID,
+                    name: f.name.name(),
+                    ty: f.ty,
+                })
                 .collect(),
             ret: TyKind::Struct(sid).into(),
             ty: struct_info.ctor_ty,
@@ -239,7 +271,11 @@ impl<'db> LowerCx<'db> {
             params: sig
                 .params
                 .iter()
-                .map(|p| FnParam { def_id: p.id, name: p.word.name(), ty: p.ty })
+                .map(|p| FnParam {
+                    def_id: p.id,
+                    name: p.word.name(),
+                    ty: p.ty,
+                })
                 .collect(),
             ret: ty.as_fn().unwrap().ret,
             ty,
@@ -270,7 +306,12 @@ struct LowerBodyCx<'cx, 'db> {
 
 impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     fn new(cx: &'cx mut LowerCx<'db>) -> Self {
-        Self { cx, body: Body::new(), curr_block: BlockId::start(), loop_blocks: vec![] }
+        Self {
+            cx,
+            body: Body::new(),
+            curr_block: BlockId::start(),
+            loop_blocks: vec![],
+        }
     }
 
     fn lower_fn(mut self, sig: FnSigId, f: &hir::Fn) {
@@ -288,12 +329,13 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 if !self.body.is_terminating() {
                     let fn_ty = self.cx.mir.fn_sigs[sig].ty.as_fn().unwrap();
 
-                    let ret_value =
-                        if fn_ty.ret.is_unit() && !self.body.value(last_value).ty.is_unit() {
-                            self.const_unit()
-                        } else {
-                            last_value
-                        };
+                    let ret_value = if fn_ty.ret.is_unit()
+                        && !self.body.value(last_value).ty.is_unit()
+                    {
+                        self.const_unit()
+                    } else {
+                        last_value
+                    };
 
                     self.push_inst(Inst::Return { value: ret_value });
                 }
@@ -346,9 +388,11 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                 match &let_.pat {
                     hir::Pat::Name(name) => {
-                        self.push_inst_with(let_.ty, ValueKind::Local(name.id), |value| {
-                            Inst::Local { value, init }
-                        });
+                        self.push_inst_with(
+                            let_.ty,
+                            ValueKind::Local(name.id),
+                            |value| Inst::Local { value, init },
+                        );
                     }
                     hir::Pat::Discard(_) => (),
                 }
@@ -360,12 +404,8 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 let rhs = self.lower_expr(&assign.rhs);
 
                 let rhs = if let Some(op) = assign.op {
-                    self.push_inst_with_register(assign.lhs.ty, |value| Inst::Binary {
-                        value,
-                        lhs,
-                        rhs,
-                        op,
-                        span: expr.span,
+                    self.push_inst_with_register(assign.lhs.ty, |value| {
+                        Inst::Binary { value, lhs, rhs, op, span: expr.span }
                     })
                 } else {
                     rhs
@@ -381,7 +421,11 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 let merge_blk = self.body.create_block("if_merge");
 
                 let cond = self.lower_expr(&if_.cond);
-                self.push_inst(Inst::BrIf { cond, then: then_blk, otherwise: Some(else_blk) });
+                self.push_inst(Inst::BrIf {
+                    cond,
+                    then: then_blk,
+                    otherwise: Some(else_blk),
+                });
 
                 self.position_at(then_blk);
                 let then_value = self.lower_expr(&if_.then);
@@ -409,11 +453,20 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                 if let Some(cond) = &loop_.cond {
                     let cond = self.lower_expr(cond);
-                    let not_cond = self.push_inst_with_register(self.cx.db.types.bool, |value| {
-                        Inst::Unary { value, inner: cond, op: UnOp::Not }
-                    });
+                    let not_cond = self.push_inst_with_register(
+                        self.cx.db.types.bool,
+                        |value| Inst::Unary {
+                            value,
+                            inner: cond,
+                            op: UnOp::Not,
+                        },
+                    );
 
-                    self.push_inst(Inst::BrIf { cond: not_cond, then: end_blk, otherwise: None });
+                    self.push_inst(Inst::BrIf {
+                        cond: not_cond,
+                        then: end_blk,
+                        otherwise: None,
+                    });
                 }
 
                 self.loop_blocks.push(end_blk);
@@ -425,7 +478,8 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::Break => {
-                let loop_blk = self.loop_blocks.last().expect("to be inside a loop block");
+                let loop_blk =
+                    self.loop_blocks.last().expect("to be inside a loop block");
                 self.push_inst(Inst::Br { target: *loop_blk });
                 self.const_unit()
             }
@@ -462,7 +516,10 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     .args
                     .iter()
                     .map(|arg| {
-                        (arg.index.expect("arg index to be resolved"), self.lower_expr(&arg.expr))
+                        (
+                            arg.index.expect("arg index to be resolved"),
+                            self.lower_expr(&arg.expr),
+                        )
                     })
                     .collect();
 
@@ -505,9 +562,14 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
             }
             hir::ExprKind::Member(access) => {
                 let value = self.lower_expr(&access.expr);
-                self.body.create_value(expr.ty, ValueKind::Member(value, access.member.name()))
+                self.body.create_value(
+                    expr.ty,
+                    ValueKind::Member(value, access.member.name()),
+                )
             }
-            hir::ExprKind::Name(name) => self.lower_name(name.id, expr.ty, &name.instantiation),
+            hir::ExprKind::Name(name) => {
+                self.lower_name(name.id, expr.ty, &name.instantiation)
+            }
             hir::ExprKind::Lit(lit) => {
                 let value = match lit {
                     hir::Lit::Str(lit) => Const::from(*lit),
@@ -522,13 +584,19 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         }
     }
 
-    fn lower_name(&mut self, id: DefId, ty: Ty, instantiation: &Instantiation) -> ValueId {
+    fn lower_name(
+        &mut self,
+        id: DefId,
+        ty: Ty,
+        instantiation: &Instantiation,
+    ) -> ValueId {
         match self.cx.db[id].kind.as_ref() {
             DefKind::Fn(_) => {
                 let id = if instantiation.is_empty() {
                     self.cx.fn_map[&id]
                 } else {
-                    let mut folder = ParamFolder { db: self.cx.db, instantiation };
+                    let mut folder =
+                        ParamFolder { db: self.cx.db, instantiation };
 
                     let ty = folder.fold(ty);
 
@@ -541,16 +609,23 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     self.cx.monomorphize_fn(&MonoItem { id, ty }, instantiation)
                 };
 
-                self.body.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
+                self.body
+                    .create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
             }
             DefKind::ExternGlobal | DefKind::Global => {
                 let id = self.cx.lower_global(id);
-                self.body.create_value(self.cx.mir.globals[id].ty, ValueKind::Global(id))
+                self.body.create_value(
+                    self.cx.mir.globals[id].ty,
+                    ValueKind::Global(id),
+                )
             }
-            DefKind::Variable => self.body.create_value(ty, ValueKind::Local(id)),
+            DefKind::Variable => {
+                self.body.create_value(ty, ValueKind::Local(id))
+            }
             DefKind::Struct(sid) => {
                 let id = self.cx.get_or_create_struct_ctor(*sid);
-                self.body.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
+                self.body
+                    .create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
             }
             DefKind::Ty(_) => unreachable!(),
         }
@@ -558,20 +633,27 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
     pub fn lower_const(&mut self, value: &Const, ty: Ty) -> ValueId {
         match value {
-            Const::Str(lit) => {
-                self.push_inst_with_register(ty, |value| Inst::StrLit { value, lit: *lit })
+            Const::Str(lit) => self.push_inst_with_register(ty, |value| {
+                Inst::StrLit { value, lit: *lit }
+            }),
+            Const::Int(value) => self
+                .body
+                .create_value(ty, ValueKind::Const(Const::from(*value))),
+            Const::Float(value) => self
+                .body
+                .create_value(ty, ValueKind::Const(Const::from(*value))),
+            Const::Bool(value) => self
+                .body
+                .create_value(ty, ValueKind::Const(Const::from(*value))),
+            Const::Unit => {
+                self.body.create_value(ty, ValueKind::Const(Const::Unit))
             }
-            Const::Int(value) => self.body.create_value(ty, ValueKind::Const(Const::from(*value))),
-            Const::Float(value) => {
-                self.body.create_value(ty, ValueKind::Const(Const::from(*value)))
-            }
-            Const::Bool(value) => self.body.create_value(ty, ValueKind::Const(Const::from(*value))),
-            Const::Unit => self.body.create_value(ty, ValueKind::Const(Const::Unit)),
         }
     }
 
     pub fn const_unit(&mut self) -> ValueId {
-        self.body.create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit))
+        self.body
+            .create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit))
     }
 
     pub fn push_inst_with_register(
@@ -602,7 +684,11 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         self.curr_block = id;
     }
 
-    pub fn apply_coercions_to_expr(&mut self, expr: &hir::Expr, value: ValueId) -> ValueId {
+    pub fn apply_coercions_to_expr(
+        &mut self,
+        expr: &hir::Expr,
+        value: ValueId,
+    ) -> ValueId {
         if let Some(coercions) = self.cx.db.coercions.get(&expr.id) {
             self.apply_coercions(&coercions.clone(), value, expr.span)
         } else {
@@ -620,11 +706,13 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
             coerced_value = match coercion.kind {
                 CoercionKind::NeverToAny => coerced_value,
                 CoercionKind::IntPromotion => {
-                    self.push_inst_with_register(coercion.target, |value| Inst::Cast {
-                        value,
-                        inner: coerced_value,
-                        target: coercion.target,
-                        span,
+                    self.push_inst_with_register(coercion.target, |value| {
+                        Inst::Cast {
+                            value,
+                            inner: coerced_value,
+                            target: coercion.target,
+                            span,
+                        }
                     })
                 }
             };

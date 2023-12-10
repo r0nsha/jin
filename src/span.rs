@@ -144,9 +144,11 @@ impl Source {
         use std::cmp::Ordering;
 
         match line_index.cmp(&self.line_starts.len()) {
-            Ordering::Less => {
-                Ok(self.line_starts.get(line_index).copied().expect("line index to be found"))
-            }
+            Ordering::Less => Ok(self
+                .line_starts
+                .get(line_index)
+                .copied()
+                .expect("line index to be found")),
             Ordering::Equal => Ok(self.contents.len()),
             Ordering::Greater => Err(files::Error::LineTooLarge {
                 given: line_index,
@@ -178,12 +180,22 @@ impl<'a> files::Files<'a> for Source {
         Ok(self.path().as_str())
     }
 
-    fn source(&'a self, _id: Self::FileId) -> Result<Self::Source, files::Error> {
+    fn source(
+        &'a self,
+        _id: Self::FileId,
+    ) -> Result<Self::Source, files::Error> {
         Ok(self.contents())
     }
 
-    fn line_index(&'a self, _id: Self::FileId, byte_index: usize) -> Result<usize, files::Error> {
-        Ok(self.line_starts.binary_search(&byte_index).unwrap_or_else(|next_line| next_line - 1))
+    fn line_index(
+        &'a self,
+        _id: Self::FileId,
+        byte_index: usize,
+    ) -> Result<usize, files::Error> {
+        Ok(self
+            .line_starts
+            .binary_search(&byte_index)
+            .unwrap_or_else(|next_line| next_line - 1))
     }
 
     fn line_range(
@@ -206,14 +218,25 @@ impl<'a> files::Files<'a> for Sources {
     type Source = &'a str;
 
     fn name(&'a self, id: Self::FileId) -> Result<Self::Name, files::Error> {
-        self.get(id).ok_or(files::Error::FileMissing).and_then(|source| source.name(id))
+        self.get(id)
+            .ok_or(files::Error::FileMissing)
+            .and_then(|source| source.name(id))
     }
 
-    fn source(&'a self, id: Self::FileId) -> Result<Self::Source, files::Error> {
-        self.get(id).ok_or(files::Error::FileMissing).and_then(|source| source.source(id))
+    fn source(
+        &'a self,
+        id: Self::FileId,
+    ) -> Result<Self::Source, files::Error> {
+        self.get(id)
+            .ok_or(files::Error::FileMissing)
+            .and_then(|source| source.source(id))
     }
 
-    fn line_index(&'a self, id: Self::FileId, byte_index: usize) -> Result<usize, files::Error> {
+    fn line_index(
+        &'a self,
+        id: Self::FileId,
+        byte_index: usize,
+    ) -> Result<usize, files::Error> {
         self.get(id)
             .ok_or(files::Error::FileMissing)
             .and_then(|source| source.line_index(id, byte_index))

@@ -10,14 +10,15 @@ use crate::{
         name_gen::LocalNames,
         ty::CTy,
         util::{
-            assign, attr, block, block_, block_name, bool_value, goto_stmt, if_stmt, stmt,
-            str_value, struct_lit, unit_value, NEST,
+            assign, attr, block, block_, block_name, bool_value, goto_stmt,
+            if_stmt, stmt, str_value, struct_lit, unit_value, NEST,
         },
     },
     db::{Db, StructId, StructInfo},
     middle::UnOp,
     mir::{
-        Block, Body, Const, Fn, FnSig, FnSigId, Global, GlobalKind, Inst, Mir, ValueId, ValueKind,
+        Block, Body, Const, Fn, FnSig, FnSigId, Global, GlobalKind, Inst, Mir,
+        ValueId, ValueKind,
     },
     target::TargetMetrics,
     ty::Ty,
@@ -63,7 +64,8 @@ impl<'db> Generator<'db> {
         const WIDTH: usize = 80;
 
         let path = self.db.output_path().with_extension("c");
-        let mut file = File::create(self.db.output_path().with_extension("c")).unwrap();
+        let mut file =
+            File::create(self.db.output_path().with_extension("c")).unwrap();
 
         file.write_all(PRELUDE.as_bytes()).unwrap();
         file.write_all(b"\n").unwrap();
@@ -71,7 +73,8 @@ impl<'db> Generator<'db> {
         let types = D::intersperse(self.types, D::hardline());
         let fn_decls = D::intersperse(self.fn_decls, D::hardline());
         let globals = D::intersperse(self.globals, D::hardline());
-        let fn_defs = D::intersperse(self.fn_defs, D::hardline().append(D::hardline()));
+        let fn_defs =
+            D::intersperse(self.fn_defs, D::hardline().append(D::hardline()));
 
         let final_doc = D::intersperse(
             [types, fn_decls, globals, fn_defs, main_fn],
@@ -93,20 +96,26 @@ impl<'db> Generator<'db> {
                 stmt(|| {
                     assign(
                         D::text(glob.name.as_str()),
-                        D::text(global_init_fn_name(glob)).append(D::text("()")),
+                        D::text(global_init_fn_name(glob))
+                            .append(D::text("()")),
                     )
                 })
             })
             .collect();
 
-        let main_fn_name = &self.mir.fn_sigs[self.mir.main_fn.expect("to have a main fn")].name;
-        let call_entry_point = stmt(|| D::text(main_fn_name.as_str()).append(D::text("()")));
+        let main_fn_name = &self.mir.fn_sigs
+            [self.mir.main_fn.expect("to have a main fn")]
+        .name;
+        let call_entry_point =
+            stmt(|| D::text(main_fn_name.as_str()).append(D::text("()")));
 
         D::text("int main() {")
             .append(
                 D::hardline()
                     .append(D::intersperse(
-                        global_inits.into_iter().chain(iter::once(call_entry_point)),
+                        global_inits
+                            .into_iter()
+                            .chain(iter::once(call_entry_point)),
                         D::hardline(),
                     ))
                     .nest(NEST)
@@ -142,7 +151,9 @@ impl<'db> Generator<'db> {
 
             let glob_doc = match &glob.kind {
                 GlobalKind::Static(..) => decl,
-                GlobalKind::Extern => D::text("extern").append(D::space()).append(decl),
+                GlobalKind::Extern => {
+                    D::text("extern").append(D::space()).append(decl)
+                }
             };
 
             self.globals.push(stmt(|| glob_doc));
@@ -151,7 +162,9 @@ impl<'db> Generator<'db> {
                 let mut state = FnState::new(body);
 
                 let return_stmt = stmt(|| {
-                    D::text("return").append(D::space()).append(self.value(&state, *value))
+                    D::text("return")
+                        .append(D::space())
+                        .append(self.value(&state, *value))
                 });
 
                 let block_docs: Vec<D> = body
@@ -163,11 +176,19 @@ impl<'db> Generator<'db> {
 
                 let init_fn_doc = D::text("FORCE_INLINE")
                     .append(D::space())
-                    .append(glob.ty.cdecl(self, D::text(global_init_fn_name(glob))))
+                    .append(
+                        glob.ty.cdecl(self, D::text(global_init_fn_name(glob))),
+                    )
                     .append(D::text("()"))
                     .append(D::space())
                     .append(block_(
-                        || D::intersperse(block_docs, D::hardline().append(D::hardline())).group(),
+                        || {
+                            D::intersperse(
+                                block_docs,
+                                D::hardline().append(D::hardline()),
+                            )
+                            .group()
+                        },
                         0,
                     ));
 
@@ -176,16 +197,21 @@ impl<'db> Generator<'db> {
         }
     }
 
-    fn codegen_struct_def(&self, struct_info: &StructInfo, name: String) -> D<'db> {
+    fn codegen_struct_def(
+        &self,
+        struct_info: &StructInfo,
+        name: String,
+    ) -> D<'db> {
         D::text("typedef")
             .append(D::space())
             .append("struct")
             .append(block(|| {
                 D::intersperse(
-                    struct_info
-                        .fields
-                        .iter()
-                        .map(|f| stmt(|| f.ty.cdecl(self, D::text(f.name.name().as_str())))),
+                    struct_info.fields.iter().map(|f| {
+                        stmt(|| {
+                            f.ty.cdecl(self, D::text(f.name.name().as_str()))
+                        })
+                    }),
                     D::hardline(),
                 )
             }))
@@ -196,19 +222,29 @@ impl<'db> Generator<'db> {
     fn codegen_fn_sig(&self, sig: &FnSig) -> D<'db> {
         let fn_ty = sig.ty.as_fn().expect("a function type");
 
-        let initial = if sig.is_extern { D::text("extern").append(D::space()) } else { D::nil() };
+        let initial = if sig.is_extern {
+            D::text("extern").append(D::space())
+        } else {
+            D::nil()
+        };
 
         let sig_doc = fn_ty.ret.cdecl(self, D::text(sig.name.as_str())).append(
             D::text("(")
                 .append(
                     D::intersperse(
-                        sig.params.iter().map(|p| p.ty.cdecl(self, D::text(p.name.as_str()))),
+                        sig.params.iter().map(|p| {
+                            p.ty.cdecl(self, D::text(p.name.as_str()))
+                        }),
                         D::text(",").append(D::space()),
                     )
                     .nest(2)
                     .group(),
                 )
-                .append(if sig.is_c_variadic { D::text(", ...") } else { D::nil() })
+                .append(if sig.is_c_variadic {
+                    D::text(", ...")
+                } else {
+                    D::nil()
+                })
                 .append(D::text(")")),
         );
 
@@ -248,16 +284,27 @@ impl<'db> Generator<'db> {
             state.local_names.insert(param.def_id, self.db[param.def_id].name);
         }
 
-        let block_docs: Vec<D> =
-            fun.body.blocks().iter().map(|blk| self.codegen_block(&mut state, blk)).collect();
+        let block_docs: Vec<D> = fun
+            .body
+            .blocks()
+            .iter()
+            .map(|blk| self.codegen_block(&mut state, blk))
+            .collect();
 
         self.codegen_fn_sig(sig).append(D::space()).append(block_(
-            || D::intersperse(block_docs, D::hardline().append(D::hardline())).group(),
+            || {
+                D::intersperse(block_docs, D::hardline().append(D::hardline()))
+                    .group()
+            },
             0,
         ))
     }
 
-    fn codegen_struct_ctor(&mut self, sid: StructId, sig_id: FnSigId) -> D<'db> {
+    fn codegen_struct_ctor(
+        &mut self,
+        sid: StructId,
+        sig_id: FnSigId,
+    ) -> D<'db> {
         let struct_info = &self.db[sid];
         let sig = &self.mir.fn_sigs[sig_id];
 
@@ -273,17 +320,26 @@ impl<'db> Generator<'db> {
         );
 
         let lit_name = D::text("lit");
-        let lit_decl_doc =
-            VariableDoc::assign(self, struct_info.ty(), lit_name.clone(), struct_lit_doc);
+        let lit_decl_doc = VariableDoc::assign(
+            self,
+            struct_info.ty(),
+            lit_name.clone(),
+            struct_lit_doc,
+        );
 
-        let return_doc = stmt(|| D::text("return").append(D::space()).append(lit_name));
+        let return_doc =
+            stmt(|| D::text("return").append(D::space()).append(lit_name));
 
-        self.codegen_fn_sig(sig)
-            .append(D::space())
-            .append(block(|| D::intersperse([lit_decl_doc, return_doc], D::hardline())))
+        self.codegen_fn_sig(sig).append(D::space()).append(block(|| {
+            D::intersperse([lit_decl_doc, return_doc], D::hardline())
+        }))
     }
 
-    fn codegen_block(&mut self, state: &mut FnState<'db>, blk: &'db Block) -> D<'db> {
+    fn codegen_block(
+        &mut self,
+        state: &mut FnState<'db>,
+        blk: &'db Block,
+    ) -> D<'db> {
         block_name(blk)
             .append(D::text(":;"))
             .append(D::hardline())
@@ -298,52 +354,73 @@ impl<'db> Generator<'db> {
             .group()
     }
 
-    fn codegen_inst(&mut self, state: &mut FnState<'db>, inst: &'db Inst) -> D<'db> {
+    fn codegen_inst(
+        &mut self,
+        state: &mut FnState<'db>,
+        inst: &'db Inst,
+    ) -> D<'db> {
         match inst {
             Inst::Local { value, init } => {
                 let value = state.body.value(*value);
                 let def_id = *value.kind.as_local().unwrap();
-                let name_doc =
-                    D::text(state.local_names.insert_unique(def_id, self.db[def_id].name).as_str());
+                let name_doc = D::text(
+                    state
+                        .local_names
+                        .insert_unique(def_id, self.db[def_id].name)
+                        .as_str(),
+                );
 
-                VariableDoc::assign(self, value.ty, name_doc.clone(), self.value(state, *init))
+                VariableDoc::assign(
+                    self,
+                    value.ty,
+                    name_doc.clone(),
+                    self.value(state, *init),
+                )
             }
-            Inst::Store { value, target } => {
-                stmt(|| assign(self.value(state, *target), self.value(state, *value)))
-            }
+            Inst::Store { value, target } => stmt(|| {
+                assign(self.value(state, *target), self.value(state, *value))
+            }),
             Inst::Br { target } => goto_stmt(state.body.block(*target)),
             Inst::BrIf { cond, then, otherwise } => if_stmt(
                 self.value(state, *cond),
                 goto_stmt(state.body.block(*then)),
                 otherwise.map(|o| goto_stmt(state.body.block(o))),
             ),
-            Inst::If { value, cond, then, otherwise } => self.value_assign(state, *value, || {
-                self.value(state, *cond)
-                    .append(D::space())
-                    .append(D::text("?"))
-                    .append(D::space())
-                    .append(self.value(state, *then))
-                    .append(D::space())
-                    .append(D::text(":"))
-                    .append(D::space())
-                    .append(self.value(state, *otherwise))
-            }),
-            Inst::Return { value } => {
-                stmt(|| D::text("return").append(D::space()).append(self.value(state, *value)))
+            Inst::If { value, cond, then, otherwise } => {
+                self.value_assign(state, *value, || {
+                    self.value(state, *cond)
+                        .append(D::space())
+                        .append(D::text("?"))
+                        .append(D::space())
+                        .append(self.value(state, *then))
+                        .append(D::space())
+                        .append(D::text(":"))
+                        .append(D::space())
+                        .append(self.value(state, *otherwise))
+                })
             }
-            Inst::Call { value, callee, args } => self.value_assign(state, *value, || {
-                self.value(state, *callee)
-                    .append(D::text("("))
-                    .append(
-                        D::intersperse(
-                            args.iter().copied().map(|a| self.value(state, a)),
-                            D::text(",").append(D::space()),
-                        )
-                        .nest(1)
-                        .group(),
-                    )
-                    .append(D::text(")"))
+            Inst::Return { value } => stmt(|| {
+                D::text("return")
+                    .append(D::space())
+                    .append(self.value(state, *value))
             }),
+            Inst::Call { value, callee, args } => {
+                self.value_assign(state, *value, || {
+                    self.value(state, *callee)
+                        .append(D::text("("))
+                        .append(
+                            D::intersperse(
+                                args.iter()
+                                    .copied()
+                                    .map(|a| self.value(state, a)),
+                                D::text(",").append(D::space()),
+                            )
+                            .nest(1)
+                            .group(),
+                        )
+                        .append(D::text(")"))
+                })
+            }
             Inst::Binary { value, lhs, rhs, op, span } => self.codegen_bin_op(
                 state,
                 &BinOpData {
@@ -375,7 +452,9 @@ impl<'db> Generator<'db> {
             Inst::Cast { value, inner, target, span } => {
                 self.codegen_cast(state, *value, *inner, *target, *span)
             }
-            Inst::StrLit { value, lit } => self.value_assign(state, *value, || str_value(lit)),
+            Inst::StrLit { value, lit } => {
+                self.value_assign(state, *value, || str_value(lit))
+            }
         }
     }
 
@@ -397,8 +476,12 @@ impl<'db> Generator<'db> {
     pub fn value(&self, state: &FnState<'db>, id: ValueId) -> D<'db> {
         match &state.body.value(id).kind {
             ValueKind::Register => D::text(format!("v{id}")),
-            ValueKind::Local(id) => D::text(state.local_names.get(*id).unwrap().as_str()),
-            ValueKind::Global(id) => D::text(self.mir.globals[*id].name.as_str()),
+            ValueKind::Local(id) => {
+                D::text(state.local_names.get(*id).unwrap().as_str())
+            }
+            ValueKind::Global(id) => {
+                D::text(self.mir.globals[*id].name.as_str())
+            }
             ValueKind::Fn(id) => D::text(self.mir.fn_sigs[*id].name.as_str()),
             ValueKind::Const(value) => codegen_const_value(value),
             ValueKind::Member(value, member) => {

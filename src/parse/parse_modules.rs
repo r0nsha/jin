@@ -37,7 +37,8 @@ fn parse_module_inner(
     source_id: SourceId,
 ) -> Result<(Module, FxHashSet<Utf8PathBuf>), Diagnostic> {
     let (mut module, paths) = {
-        let source = &Ref::map(db.sources.borrow(), |s| s.get(source_id).unwrap());
+        let source =
+            &Ref::map(db.sources.borrow(), |s| s.get(source_id).unwrap());
         let tokens = lexer::tokenize(source)?;
         parser::parse(db, source, tokens)?
     };
@@ -55,7 +56,11 @@ fn parse_module_inner(
 
 fn parse_module_from_path(db: &mut Db, path: Utf8PathBuf, ast: &mut Ast) {
     if db.sources.borrow().find_by_path(&path).is_none() {
-        let source_id = db.sources.borrow_mut().load_file(path).expect("import path to exist");
+        let source_id = db
+            .sources
+            .borrow_mut()
+            .load_file(path)
+            .expect("import path to exist");
         parse_module(db, ast, source_id);
     }
 }

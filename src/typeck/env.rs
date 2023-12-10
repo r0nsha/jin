@@ -6,7 +6,9 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     ast,
-    db::{Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel},
+    db::{
+        Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel,
+    },
     diagnostics::{Diagnostic, Label},
     hir,
     macros::create_bool_enum,
@@ -28,7 +30,8 @@ pub enum LookupResult {
 impl LookupResult {
     pub fn id(&self) -> DefId {
         match self {
-            LookupResult::Def(id) | LookupResult::Fn(FnCandidate { id, .. }) => *id,
+            LookupResult::Def(id)
+            | LookupResult::Fn(FnCandidate { id, .. }) => *id,
         }
     }
 }
@@ -45,7 +48,15 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<DefId> {
         let qpath = self.db[module_id].qpath.clone().child(name.name());
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
-        let id = DefInfo::alloc(self.db, qpath, scope, kind, mutability, ty, name.span());
+        let id = DefInfo::alloc(
+            self.db,
+            qpath,
+            scope,
+            kind,
+            mutability,
+            ty,
+            name.span(),
+        );
         self.insert_global_def(module_id, name, id, vis)
     }
 
@@ -60,11 +71,15 @@ impl<'db> Typeck<'db> {
 
         if let Some(candidates) = self.global_scope.fns.get(&symbol) {
             let last_candidate = candidates.iter().last().unwrap();
-            return Err(errors::multiple_item_def_err(last_candidate.word.span(), name));
+            return Err(errors::multiple_item_def_err(
+                last_candidate.word.span(),
+                name,
+            ));
         }
 
-        if let Some(prev) =
-            self.global_scope.insert_def(symbol, GlobalScopeDef::new(id, vis, name.span()))
+        if let Some(prev) = self
+            .global_scope
+            .insert_def(symbol, GlobalScopeDef::new(id, vis, name.span()))
         {
             return Err(errors::multiple_item_def_err(prev.span, name));
         }
@@ -83,7 +98,11 @@ impl<'db> Typeck<'db> {
         let id = DefInfo::alloc(
             self.db,
             env.scope_path(self.db).child(name.name()),
-            ScopeInfo { module_id: env.module_id(), level: env.scope_level(), vis: Vis::Private },
+            ScopeInfo {
+                module_id: env.module_id(),
+                level: env.scope_level(),
+                vis: Vis::Private,
+            },
             kind,
             mutability,
             ty,
@@ -104,7 +123,14 @@ impl<'db> Typeck<'db> {
         ty: Ty,
     ) -> TypeckResult<DefId> {
         if env.in_global_scope() {
-            self.define_global_def(env.module_id(), vis, kind, name, mutability, ty)
+            self.define_global_def(
+                env.module_id(),
+                vis,
+                kind,
+                name,
+                mutability,
+                ty,
+            )
         } else {
             Ok(self.define_local_def(env, kind, name, mutability, ty))
         }
@@ -123,7 +149,8 @@ impl<'db> Typeck<'db> {
         match fun.kind {
             ast::FnKind::Bare { .. } => {
                 let qpath = self.db[module_id].qpath.clone().child(word.name());
-                let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
+                let scope =
+                    ScopeInfo { module_id, level: ScopeLevel::Global, vis };
 
                 if let Some(def) = self.global_scope.defs.get(&symbol) {
                     return Err(errors::multiple_item_def_err(def.span, word));
@@ -141,7 +168,11 @@ impl<'db> Typeck<'db> {
                     )
                 };
 
-                let candidate = FnCandidate { id, word, ty: sig.ty.as_fn().cloned().unwrap() };
+                let candidate = FnCandidate {
+                    id,
+                    word,
+                    ty: sig.ty.as_fn().cloned().unwrap(),
+                };
                 self.insert_fn_candidate(symbol, candidate)?;
 
                 Ok(id)
@@ -162,13 +193,21 @@ impl<'db> Typeck<'db> {
         symbol: Symbol,
         candidate: FnCandidate,
     ) -> TypeckResult<()> {
-        self.global_scope.fns.entry(symbol).or_default().try_insert(candidate).map_err(|err| {
-            match err {
+        self.global_scope
+            .fns
+            .entry(symbol)
+            .or_default()
+            .try_insert(candidate)
+            .map_err(|err| match err {
                 FnCandidateInsertError::AlreadyExists { prev, curr } => {
-                    errors::multiple_fn_def_err(self.db, symbol.module_id, prev.word.span(), &curr)
+                    errors::multiple_fn_def_err(
+                        self.db,
+                        symbol.module_id,
+                        prev.word.span(),
+                        &curr,
+                    )
                 }
-            }
-        })
+            })
     }
 
     pub fn define_pat(
@@ -180,7 +219,14 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<hir::Pat> {
         match pat {
             ast::Pat::Name(name) => {
-                let id = self.define_def(env, name.vis, kind, name.word, name.mutability, ty)?;
+                let id = self.define_def(
+                    env,
+                    name.vis,
+                    kind,
+                    name.word,
+                    name.mutability,
+                    ty,
+                )?;
                 Ok(hir::Pat::Name(hir::NamePat { id, word: name.word }))
             }
             ast::Pat::Discard(span) => Ok(hir::Pat::Discard(*span)),
@@ -215,10 +261,16 @@ impl<'db> Typeck<'db> {
             self.find_and_check_items(&symbol)?;
         }
 
-        let results = self.lookup_global_many(in_module, &symbol, ShouldLookupFns::Yes);
+        let results =
+            self.lookup_global_many(in_module, &symbol, ShouldLookupFns::Yes);
 
         if results.is_empty() {
-            return Err(errors::name_not_found(self.db, from_module, in_module, word));
+            return Err(errors::name_not_found(
+                self.db,
+                from_module,
+                in_module,
+                word,
+            ));
         }
 
         if from_module != in_module {
@@ -230,7 +282,12 @@ impl<'db> Typeck<'db> {
         Ok(results)
     }
 
-    pub fn lookup(&mut self, env: &Env, in_module: ModuleId, query: &Query) -> TypeckResult<DefId> {
+    pub fn lookup(
+        &mut self,
+        env: &Env,
+        in_module: ModuleId,
+        query: &Query,
+    ) -> TypeckResult<DefId> {
         let id = self.lookup_inner(env, in_module, query)?;
         self.check_def_access(env.module_id(), id, query.span())?;
         Ok(id)
@@ -257,25 +314,37 @@ impl<'db> Typeck<'db> {
         let from_module = env.module_id();
 
         if let Query::Fn(fn_query) = query {
-            if let Some(id) = self.lookup_fn_candidate(from_module, in_module, fn_query)? {
+            if let Some(id) =
+                self.lookup_fn_candidate(from_module, in_module, fn_query)?
+            {
                 return Ok(id);
             }
         }
 
         let lookup_fns = ShouldLookupFns::from(!matches!(query, Query::Fn(_)));
 
-        self.lookup_global_one(&symbol, query.span(), lookup_fns)?.ok_or_else(|| match query {
-            Query::Name(word) => errors::name_not_found(self.db, from_module, in_module, *word),
-            Query::Fn(fn_query) => errors::fn_not_found(self.db, fn_query),
-        })
+        self.lookup_global_one(&symbol, query.span(), lookup_fns)?.ok_or_else(
+            || match query {
+                Query::Name(word) => errors::name_not_found(
+                    self.db,
+                    from_module,
+                    in_module,
+                    *word,
+                ),
+                Query::Fn(fn_query) => errors::fn_not_found(self.db, fn_query),
+            },
+        )
     }
 
     #[inline]
     fn find_and_check_items(&mut self, symbol: &Symbol) -> TypeckResult<()> {
-        let lookup_modules = self.get_lookup_modules(symbol.module_id).collect::<Vec<_>>();
+        let lookup_modules =
+            self.get_lookup_modules(symbol.module_id).collect::<Vec<_>>();
 
         for module_id in lookup_modules {
-            if let Some(item_ids) = self.global_scope.symbol_to_item.get(symbol).cloned() {
+            if let Some(item_ids) =
+                self.global_scope.symbol_to_item.get(symbol).cloned()
+            {
                 let mut env = Env::new(module_id);
 
                 for item_id in item_ids {
@@ -283,7 +352,9 @@ impl<'db> Typeck<'db> {
 
                     if self
                         .resolution_state
-                        .get_item_status(&ast::GlobalItemId::new(module_id, item_id))
+                        .get_item_status(&ast::GlobalItemId::new(
+                            module_id, item_id,
+                        ))
                         .is_unresolved()
                     {
                         self.check_item(
@@ -308,13 +379,16 @@ impl<'db> Typeck<'db> {
         let mut candidates = self
             .get_lookup_modules(in_module)
             .filter_map(|module_id| {
-                self.global_scope.fns.get(&Symbol::new(module_id, query.word.name()))
+                self.global_scope
+                    .fns
+                    .get(&Symbol::new(module_id, query.word.name()))
             })
             .flat_map(|set| set.find(self, query))
             .unique_by(|candidate| candidate.id)
             .collect::<Vec<_>>();
 
-        if !candidates.is_empty() && candidates.iter().all(|c| !self.can_access(from_module, c.id))
+        if !candidates.is_empty()
+            && candidates.iter().all(|c| !self.can_access(from_module, c.id))
         {
             return Err(Diagnostic::error()
                 .with_message(format!(
@@ -337,10 +411,19 @@ impl<'db> Typeck<'db> {
             0 => Ok(None),
             1 => Ok(Some(candidates.first().unwrap().id)),
             _ => Err(Diagnostic::error()
-                .with_message(format!("ambiguous call to `{}`", query.display(self.db)))
-                .with_label(Label::primary(query.word.span()).with_message("call here"))
+                .with_message(format!(
+                    "ambiguous call to `{}`",
+                    query.display(self.db)
+                ))
+                .with_label(
+                    Label::primary(query.word.span()).with_message("call here"),
+                )
                 .with_note("these functions apply:")
-                .with_notes(candidates.into_iter().map(|c| c.display(self.db).to_string()))),
+                .with_notes(
+                    candidates
+                        .into_iter()
+                        .map(|c| c.display(self.db).to_string()),
+                )),
         }
     }
 
@@ -350,13 +433,17 @@ impl<'db> Typeck<'db> {
         span: Span,
         lookup_fns: ShouldLookupFns,
     ) -> TypeckResult<Option<DefId>> {
-        let results = self.lookup_global_many(symbol.module_id, symbol, lookup_fns);
+        let results =
+            self.lookup_global_many(symbol.module_id, symbol, lookup_fns);
 
         match results.len() {
             0 => Ok(None),
             1 => Ok(results.first().map(LookupResult::id)),
             _ => Err(Diagnostic::error()
-                .with_message(format!("ambiguous use of item `{}`", symbol.name))
+                .with_message(format!(
+                    "ambiguous use of item `{}`",
+                    symbol.name
+                ))
                 .with_label(Label::primary(span).with_message("used here"))
                 .with_labels(results.iter().map(|res| {
                     let def = &self.db[res.id()];
@@ -382,21 +469,32 @@ impl<'db> Typeck<'db> {
                 defs.push(LookupResult::Def(id));
             } else if lookup_fns == ShouldLookupFns::Yes {
                 if let Some(candidates) = self.global_scope.fns.get(&symbol) {
-                    defs.extend(candidates.iter().cloned().map(LookupResult::Fn));
+                    defs.extend(
+                        candidates.iter().cloned().map(LookupResult::Fn),
+                    );
                 }
             }
         }
 
         if defs.is_empty() {
-            return self.builtin_tys.get(symbol.name).into_iter().map(LookupResult::Def).collect();
+            return self
+                .builtin_tys
+                .get(symbol.name)
+                .into_iter()
+                .map(LookupResult::Def)
+                .collect();
         }
 
         defs
     }
 
-    fn get_lookup_modules(&self, in_module: ModuleId) -> impl Iterator<Item = ModuleId> + '_ {
-        iter::once(in_module)
-            .chain(self.resolution_state.module_state(in_module).globs.iter().copied())
+    fn get_lookup_modules(
+        &self,
+        in_module: ModuleId,
+    ) -> impl Iterator<Item = ModuleId> + '_ {
+        iter::once(in_module).chain(
+            self.resolution_state.module_state(in_module).globs.iter().copied(),
+        )
     }
 
     fn check_def_access(
@@ -450,7 +548,11 @@ impl GlobalScope {
         }
     }
 
-    pub fn get_def(&self, from_module: ModuleId, symbol: &Symbol) -> Option<DefId> {
+    pub fn get_def(
+        &self,
+        from_module: ModuleId,
+        symbol: &Symbol,
+    ) -> Option<DefId> {
         if let Some(def) = self.defs.get(symbol) {
             if def.vis == Vis::Public || from_module == symbol.module_id {
                 return Some(def.id);
@@ -460,7 +562,11 @@ impl GlobalScope {
         None
     }
 
-    fn insert_def(&mut self, symbol: Symbol, def: GlobalScopeDef) -> Option<GlobalScopeDef> {
+    fn insert_def(
+        &mut self,
+        symbol: Symbol,
+        def: GlobalScopeDef,
+    ) -> Option<GlobalScopeDef> {
         self.defs.insert(symbol, def)
     }
 }
@@ -569,7 +675,11 @@ impl Env {
         res
     }
 
-    pub fn with_anon_scope<R>(&mut self, kind: ScopeKind, mut f: impl FnMut(&mut Self) -> R) -> R {
+    pub fn with_anon_scope<R>(
+        &mut self,
+        kind: ScopeKind,
+        mut f: impl FnMut(&mut Self) -> R,
+    ) -> R {
         self.push_scope(ustr(Self::ANON_SCOPE), kind);
         let res = f(self);
         self.pop_scope();
@@ -674,7 +784,10 @@ impl FnCandidateSet {
         self.0.iter()
     }
 
-    pub fn try_insert(&mut self, candidate: FnCandidate) -> Result<(), FnCandidateInsertError> {
+    pub fn try_insert(
+        &mut self,
+        candidate: FnCandidate,
+    ) -> Result<(), FnCandidateInsertError> {
         if let Some(prev) = self.0.iter().find(|c| *c == &candidate) {
             return Err(FnCandidateInsertError::AlreadyExists {
                 prev: prev.clone(),
@@ -688,8 +801,13 @@ impl FnCandidateSet {
 
     pub fn find(&self, cx: &Typeck, query: &FnQuery) -> Vec<&FnCandidate> {
         let scores = self.scores(cx, query);
-        let Some(&min_score) = scores.iter().map(|(_, s)| s).min() else { return vec![] };
-        scores.into_iter().filter_map(|(c, s)| (s == min_score).then_some(c)).collect()
+        let Some(&min_score) = scores.iter().map(|(_, s)| s).min() else {
+            return vec![];
+        };
+        scores
+            .into_iter()
+            .filter_map(|(c, s)| (s == min_score).then_some(c))
+            .collect()
     }
 
     fn scores(&self, cx: &Typeck, query: &FnQuery) -> Vec<(&FnCandidate, u32)> {
@@ -732,9 +850,23 @@ impl FnCandidate {
             return None;
         }
 
+        // Check that the amount of given type arguments == the amount of type
+        // parameters in this candidate
+        if !query.ty_args.is_empty()
+            && query.ty_args.len() != self.ty.collect_params().len()
+        {
+            return None;
+        }
+
+        if self.ty.params.len() != query.args.len() {
+            return None;
+        }
+
         // Make sure that all passed named arguments exist in this candidate
         if !query.args.iter().all(|arg| {
-            arg.name.map_or(true, |name| self.ty.params.iter().any(|p| Some(name) == p.name))
+            arg.name.map_or(true, |name| {
+                self.ty.params.iter().any(|p| Some(name) == p.name)
+            })
         }) {
             return None;
         }
@@ -758,8 +890,12 @@ impl FnCandidate {
         }
 
         match arg.kind() {
-            TyKind::Infer(InferTy::Int(_)) if param.is_any_int() => return Some(1),
-            TyKind::Infer(InferTy::Float(_)) if param.is_any_float() => return Some(1),
+            TyKind::Infer(InferTy::Int(_)) if param.is_any_int() => {
+                return Some(1)
+            }
+            TyKind::Infer(InferTy::Float(_)) if param.is_any_float() => {
+                return Some(1)
+            }
             _ => (),
         }
 
@@ -767,7 +903,9 @@ impl FnCandidate {
             return Some(2);
         }
 
-        if let (_, TyKind::Infer(InferTy::Ty(_)) | TyKind::Param(_)) = (arg.kind(), param.kind()) {
+        if let (_, TyKind::Infer(InferTy::Ty(_)) | TyKind::Param(_)) =
+            (arg.kind(), param.kind())
+        {
             return Some(3);
         }
 
@@ -783,10 +921,15 @@ fn candidate_tys_eq(t1: Ty, t2: Ty) -> bool {
     match (t1.kind(), t2.kind()) {
         (TyKind::Fn(f1), TyKind::Fn(f2)) => {
             f1.params.len() == f2.params.len()
-                && f1.params.iter().zip(&f2.params).all(|(p1, p2)| candidate_tys_eq(p1.ty, p2.ty))
+                && f1
+                    .params
+                    .iter()
+                    .zip(&f2.params)
+                    .all(|(p1, p2)| candidate_tys_eq(p1.ty, p2.ty))
                 && candidate_tys_eq(f1.ret, f2.ret)
         }
-        (TyKind::Infer(InferTy::Ty(_)), _) | (_, TyKind::Infer(InferTy::Ty(_))) => true,
+        (TyKind::Infer(InferTy::Ty(_)), _)
+        | (_, TyKind::Infer(InferTy::Ty(_))) => true,
         _ if t1 == t2 => true,
         _ => false,
     }
@@ -794,7 +937,9 @@ fn candidate_tys_eq(t1: Ty, t2: Ty) -> bool {
 
 impl PartialEq for FnCandidate {
     fn eq(&self, other: &Self) -> bool {
-        if self.word.name() != other.word.name() || self.ty.params.len() != other.ty.params.len() {
+        if self.word.name() != other.word.name()
+            || self.ty.params.len() != other.ty.params.len()
+        {
             return false;
         }
 
@@ -810,7 +955,13 @@ impl PartialEq for FnCandidate {
         }
 
         // Both function parameters are the same, in order
-        if self.ty.params.iter().zip(other.ty.params.iter()).any(|(p1, p2)| p1.ty != p2.ty) {
+        if self
+            .ty
+            .params
+            .iter()
+            .zip(other.ty.params.iter())
+            .any(|(p1, p2)| p1.ty != p2.ty)
+        {
             return false;
         }
 
@@ -848,16 +999,22 @@ impl<'a> Query<'a> {
 #[derive(Debug, Clone)]
 pub struct FnQuery<'a> {
     pub word: Word,
+    pub ty_args: &'a [Ty],
     pub args: &'a [FnTyParam],
 }
 
 impl<'a> FnQuery<'a> {
-    pub fn new(word: Word, args: &'a [FnTyParam]) -> Self {
-        Self { word, args }
+    pub fn new(word: Word, ty_args: &'a [Ty], args: &'a [FnTyParam]) -> Self {
+        Self { word, ty_args, args }
     }
 
     pub fn display<'db>(&'db self, db: &'db Db) -> FnTyPrinter {
-        FnTyPrinter { db, name: Some(self.word.name()), params: self.args, ret: None }
+        FnTyPrinter {
+            db,
+            name: Some(self.word.name()),
+            params: self.args,
+            ret: None,
+        }
     }
 }
 

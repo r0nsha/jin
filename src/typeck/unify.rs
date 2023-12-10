@@ -2,9 +2,9 @@ use ena::unify::{EqUnifyValue, UnifyKey};
 
 use crate::{
     diagnostics::{Diagnostic, Label},
-    typeck::{errors, normalize::NormalizeTy, Typeck},
     span::Span,
     ty::{FloatTy, FloatVar, InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
+    typeck::{errors, normalize::NormalizeTy, Typeck},
 };
 
 impl<'db> Typeck<'db> {
@@ -33,15 +33,22 @@ impl At<'_, '_> {
                     let expected_ty = expected.display(self.cx.db).to_string();
                     let found_ty = found.display(self.cx.db).to_string();
 
-                    let mut diag =
-                        errors::ty_mismatch(&expected_ty, &found_ty, self.obligation.span());
+                    let mut diag = errors::ty_mismatch(
+                        &expected_ty,
+                        &found_ty,
+                        self.obligation.span(),
+                    );
 
                     match *self.obligation.kind() {
                         ObligationKind::Obvious => (),
-                        ObligationKind::Exprs(expected_span, found_span) => diag.push_labels([
-                            Label::secondary(expected_span).with_message(expected_ty.to_string()),
-                            Label::secondary(found_span).with_message(found_ty.to_string()),
-                        ]),
+                        ObligationKind::Exprs(expected_span, found_span) => {
+                            diag.push_labels([
+                                Label::secondary(expected_span)
+                                    .with_message(expected_ty.to_string()),
+                                Label::secondary(found_span)
+                                    .with_message(found_ty.to_string()),
+                            ]);
+                        }
                         ObligationKind::ReturnTy(return_ty_span) => {
                             diag.push_label(
                                 Label::secondary(return_ty_span)
@@ -54,7 +61,8 @@ impl At<'_, '_> {
                 }
                 UnifyError::InfiniteTy { ty } => {
                     let ty = ty.normalize(&mut storage);
-                    let obligation = Obligation::obvious(self.obligation.span());
+                    let obligation =
+                        Obligation::obvious(self.obligation.span());
 
                     Diagnostic::error()
                         .with_message(format!(
@@ -172,7 +180,10 @@ impl UnifyCx<'_, '_> {
             (TyKind::RawPtr(a), TyKind::RawPtr(b)) => self.unify_ty_ty(*a, *b),
 
             // Unify ?T1 ~ ?T2
-            (TyKind::Infer(InferTy::Ty(expected)), TyKind::Infer(InferTy::Ty(found))) => {
+            (
+                TyKind::Infer(InferTy::Ty(expected)),
+                TyKind::Infer(InferTy::Ty(found)),
+            ) => {
                 self.cx
                     .storage
                     .borrow_mut()
@@ -182,7 +193,10 @@ impl UnifyCx<'_, '_> {
             }
 
             // Unify ?int ~ ?int
-            (TyKind::Infer(InferTy::Int(expected)), TyKind::Infer(InferTy::Int(found))) => {
+            (
+                TyKind::Infer(InferTy::Int(expected)),
+                TyKind::Infer(InferTy::Int(found)),
+            ) => {
                 self.cx
                     .storage
                     .borrow_mut()
@@ -214,7 +228,10 @@ impl UnifyCx<'_, '_> {
             }
 
             // Unify ?float ~ ?float
-            (TyKind::Infer(InferTy::Float(expected)), TyKind::Infer(InferTy::Float(found))) => {
+            (
+                TyKind::Infer(InferTy::Float(expected)),
+                TyKind::Infer(InferTy::Float(found)),
+            ) => {
                 self.cx
                     .storage
                     .borrow_mut()
@@ -240,7 +257,9 @@ impl UnifyCx<'_, '_> {
             // Unify T ~ ?T
             (_, TyKind::Infer(InferTy::Ty(var))) => self.unify_ty_var(a, *var),
 
-            (TyKind::Param(p1), TyKind::Param(p2)) if p1.var == p2.var => Ok(()),
+            (TyKind::Param(p1), TyKind::Param(p2)) if p1.var == p2.var => {
+                Ok(())
+            }
 
             (_, _) => Err(UnifyError::TyMismatch { a, b }),
         }
@@ -248,7 +267,11 @@ impl UnifyCx<'_, '_> {
 
     fn unify_ty_var(&mut self, ty: Ty, var: TyVar) -> Result<(), UnifyError> {
         ty.occurs_check(var).map_err(|ty| UnifyError::InfiniteTy { ty })?;
-        self.cx.storage.borrow_mut().ty_unification_table.unify_var_value(var, Some(ty))?;
+        self.cx
+            .storage
+            .borrow_mut()
+            .ty_unification_table
+            .unify_var_value(var, Some(ty))?;
         Ok(())
     }
 }

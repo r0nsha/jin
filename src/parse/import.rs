@@ -10,13 +10,22 @@ use crate::{
 };
 
 impl<'a> Parser<'a> {
-    pub fn parse_import(&mut self, attrs: &[Attr], start: Span) -> ParseResult<Import> {
+    pub fn parse_import(
+        &mut self,
+        attrs: &[Attr],
+        start: Span,
+    ) -> ParseResult<Import> {
         let root = self.parse_import_name()?;
 
         let path = self.search_import_path(root.word)?;
         self.imported_module_paths.insert(path.clone());
 
-        Ok(Import { attrs: attrs.to_owned(), path, root, span: start.merge(self.last_span()) })
+        Ok(Import {
+            attrs: attrs.to_owned(),
+            path,
+            root,
+            span: start.merge(self.last_span()),
+        })
     }
 
     fn parse_import_name(&mut self) -> ParseResult<ImportName> {
@@ -28,7 +37,11 @@ impl<'a> Parser<'a> {
             (Some(alias), vis, None)
         } else {
             let vis = self.parse_vis();
-            let node = if self.is(TokenKind::Dot) { Some(self.parse_import_node()?) } else { None };
+            let node = if self.is(TokenKind::Dot) {
+                Some(self.parse_import_node()?)
+            } else {
+                None
+            };
             (None, vis, node)
         };
 
@@ -47,8 +60,12 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_import_group(&mut self) -> ParseResult<ImportNode> {
-        self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, Self::parse_import_node)
-            .map(|(nodes, _)| ImportNode::Group(nodes))
+        self.parse_list(
+            TokenKind::OpenCurly,
+            TokenKind::CloseCurly,
+            Self::parse_import_node,
+        )
+        .map(|(nodes, _)| ImportNode::Group(nodes))
     }
 
     fn search_import_path(&self, name: Word) -> ParseResult<Utf8PathBuf> {
@@ -60,7 +77,9 @@ impl<'a> Parser<'a> {
 
         path.ok_or_else(|| {
             Diagnostic::error()
-                .with_message(format!("could not find module or library `{name}`"))
+                .with_message(format!(
+                    "could not find module or library `{name}`"
+                ))
                 .with_label(Label::primary(name.span()))
                 .with_notes(search_notes)
         })
@@ -87,7 +106,11 @@ impl<'a> Parser<'a> {
         absolute_path.exists().then_some(absolute_path)
     }
 
-    fn search_package(&self, name: Word, search_notes: &mut Vec<String>) -> Option<Utf8PathBuf> {
+    fn search_package(
+        &self,
+        name: Word,
+        search_notes: &mut Vec<String>,
+    ) -> Option<Utf8PathBuf> {
         if let Some(pkg) = self.db.packages.get(&name.name()) {
             let sources = self.db.sources.borrow();
             let source = sources.get(pkg.main_source_id).unwrap();

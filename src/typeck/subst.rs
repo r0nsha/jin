@@ -3,10 +3,10 @@ use rustc_hash::FxHashMap;
 use crate::{
     db::Db,
     diagnostics::{Diagnostic, Label},
-    typeck::{normalize::NormalizeTy, Typeck, TyStorage},
     span::Span,
     subst::{Subst, SubstTy},
     ty::{fold::TyFolder, FloatVar, InferTy, IntVar, Ty, TyKind, TyVar},
+    typeck::{normalize::NormalizeTy, TyStorage, Typeck},
 };
 
 impl<'db> Typeck<'db> {
@@ -52,8 +52,13 @@ impl SubstTy for SubstCx<'_> {
             self.errors.entry(span).or_insert_with(|| {
                 let ty = ty.normalize(self.storage);
                 Diagnostic::error()
-                    .with_message(format!("type annotations needed for `{}`", ty.display(self.db)))
-                    .with_label(Label::primary(span).with_message("cannot infer type"))
+                    .with_message(format!(
+                        "type annotations needed for `{}`",
+                        ty.display(self.db)
+                    ))
+                    .with_label(
+                        Label::primary(span).with_message("cannot infer type"),
+                    )
             });
         }
 
@@ -74,7 +79,8 @@ impl VarFolder<'_, '_> {
     fn fold_tyvar(&mut self, var: TyVar) -> Ty {
         let root = self.cx.storage.ty_unification_table.find(var);
 
-        if let Some(ty) = self.cx.storage.ty_unification_table.probe_value(root) {
+        if let Some(ty) = self.cx.storage.ty_unification_table.probe_value(root)
+        {
             self.fold(ty)
         } else {
             self.has_unbound_vars = true;

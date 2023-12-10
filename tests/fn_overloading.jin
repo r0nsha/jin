@@ -11,6 +11,7 @@ fn main {
 	add(5, 2.25) // mixed parameter type matching
 
 	named(x: 1) // picks `fn named(x: int)`
+	named[int](x: 1) // picks `fn named(x: int)`
 	named(1, 2) // picks `fn named(x: int, y: int)`
 	named(y: 1, x: 2) // picks `fn named(x: int, y: int)`
 	named(z: 1) // picks `fn named(z: int)`
@@ -26,4 +27,8 @@ fn named(x: int, y: int) {
 
 fn named(z: int) {
 	printf("named: z = %d\n".ptr, z)
+}
+
+fn named[a](x: a) {
+	printf("named[a]: x = %d\n".ptr, a)
 }

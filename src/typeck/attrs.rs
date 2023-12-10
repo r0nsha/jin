@@ -1,7 +1,7 @@
 use crate::{
     ast::{self},
     db::ModuleId,
-    typeck::{TypeckResult, Typeck},
+    typeck::{Typeck, TypeckResult},
 };
 
 impl<'db> Typeck<'db> {

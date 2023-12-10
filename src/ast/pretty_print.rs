@@ -3,16 +3,20 @@ use std::io;
 use super::{Expr, Fn, Item, LitKind, Module};
 use crate::{
     ast::{
-        CallArg, ExternImport, ExternLet, FnKind, FnSig, Import, ImportName, ImportNode, Let,
-        TyDef, TyDefKind, TyExpr,
+        CallArg, ExternImport, ExternLet, FnKind, FnSig, Import, ImportName,
+        ImportNode, Let, TyDef, TyDefKind, TyExpr,
     },
     db::StructKind,
     middle::BinOp,
     word::Word,
 };
 
-pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Result<()> {
-    let mut cx = PrettyCx { builder: ptree::TreeBuilder::new(module.name.join()) };
+pub(super) fn print_module(
+    module: &Module,
+    w: &mut impl io::Write,
+) -> io::Result<()> {
+    let mut cx =
+        PrettyCx { builder: ptree::TreeBuilder::new(module.name.join()) };
 
     for item in &module.items {
         item.pretty_print(&mut cx);
@@ -35,7 +39,10 @@ impl PrettyPrint for Expr {
         match self {
             Self::Let(let_) => let_.pretty_print(cx),
             Self::Assign { lhs, rhs, op, .. } => {
-                cx.builder.begin_child(format!("{}=", op.map(BinOp::as_str).unwrap_or_default()));
+                cx.builder.begin_child(format!(
+                    "{}=",
+                    op.map(BinOp::as_str).unwrap_or_default()
+                ));
                 lhs.pretty_print(cx);
                 cx.builder.add_empty_child("to".to_string());
                 rhs.pretty_print(cx);
@@ -131,10 +138,18 @@ impl PrettyPrint for Expr {
             }
             Self::Lit { kind, .. } => {
                 match kind {
-                    LitKind::Bool(value) => cx.builder.add_empty_child(format!("bool: {value}")),
-                    LitKind::Int(value) => cx.builder.add_empty_child(format!("int: {value}")),
-                    LitKind::Float(value) => cx.builder.add_empty_child(format!("float: {value}")),
-                    LitKind::Str(value) => cx.builder.add_empty_child(format!("str: {value}")),
+                    LitKind::Bool(value) => {
+                        cx.builder.add_empty_child(format!("bool: {value}"))
+                    }
+                    LitKind::Int(value) => {
+                        cx.builder.add_empty_child(format!("int: {value}"))
+                    }
+                    LitKind::Float(value) => {
+                        cx.builder.add_empty_child(format!("float: {value}"))
+                    }
+                    LitKind::Str(value) => {
+                        cx.builder.add_empty_child(format!("str: {value}"))
+                    }
                 };
             }
         }
@@ -356,7 +371,12 @@ impl PrettyPrint for TyExpr {
     }
 }
 
-fn print_call(cx: &mut PrettyCx, expr: &Expr, args: &[CallArg], method: Option<Word>) {
+fn print_call(
+    cx: &mut PrettyCx,
+    expr: &Expr,
+    args: &[CallArg],
+    method: Option<Word>,
+) {
     cx.builder.begin_child(if let Some(m) = method {
         format!("method call `{m}`")
     } else {

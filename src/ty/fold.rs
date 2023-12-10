@@ -9,13 +9,18 @@ pub trait TyFolder {
                 params: fun
                     .params
                     .iter()
-                    .map(|param| FnTyParam { name: param.name, ty: self.fold(param.ty) })
+                    .map(|param| FnTyParam {
+                        name: param.name,
+                        ty: self.fold(param.ty),
+                    })
                     .collect(),
                 ret: self.fold(fun.ret),
                 is_c_variadic: fun.is_c_variadic,
             })
             .into(),
-            TyKind::RawPtr(pointee) => TyKind::RawPtr(self.fold(*pointee)).into(),
+            TyKind::RawPtr(pointee) => {
+                TyKind::RawPtr(self.fold(*pointee)).into()
+            }
             _ => ty,
         }
     }

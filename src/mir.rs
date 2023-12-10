@@ -41,7 +41,11 @@ impl Mir {
         }
     }
 
-    pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
+    pub fn pretty_print(
+        &self,
+        db: &Db,
+        w: &mut impl io::Write,
+    ) -> io::Result<()> {
         pretty_print::print(db, self, w)
     }
 }

@@ -5,9 +5,9 @@ use rustc_hash::FxHashSet;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Attr, AttrKind, Attrs, CallArg, Expr, ExternImport, ExternLet, Fn, FnKind, FnParam, FnSig,
-        Item, Let, LitKind, Module, NamePat, Pat, StructTyDef, StructTyField, TyDef, TyDefKind,
-        TyParam,
+        Attr, AttrKind, Attrs, CallArg, Expr, ExternImport, ExternLet, Fn,
+        FnKind, FnParam, FnSig, Item, Let, LitKind, Module, NamePat, Pat,
+        StructTyDef, StructTyField, TyDef, TyDefKind, TyParam,
     },
     db::{Db, ExternLib, StructKind},
     diagnostics::{Diagnostic, Label},
@@ -24,7 +24,8 @@ pub fn parse(
     source: &Source,
     tokens: Vec<Token>,
 ) -> ParseResult<(Module, FxHashSet<Utf8PathBuf>)> {
-    let name = QPath::from_path(&db.main_package().root_path, source.path()).unwrap();
+    let name =
+        QPath::from_path(&db.main_package().root_path, source.path()).unwrap();
     let is_main = source.id() == db.main_source().id();
 
     let mut parser = Parser::new(db, source, tokens);
@@ -44,10 +45,21 @@ pub(super) struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     fn new(db: &'a Db, source: &'a Source, tokens: Vec<Token>) -> Self {
-        Self { db, source, tokens, pos: 0, imported_module_paths: FxHashSet::default() }
+        Self {
+            db,
+            source,
+            tokens,
+            pos: 0,
+            imported_module_paths: FxHashSet::default(),
+        }
     }
 
-    fn parse(&mut self, source_id: SourceId, name: QPath, is_main: bool) -> ParseResult<Module> {
+    fn parse(
+        &mut self,
+        source_id: SourceId,
+        name: QPath,
+        is_main: bool,
+    ) -> ParseResult<Module> {
         let mut module = Module::new(source_id, name, is_main);
 
         while !self.eof() {
@@ -94,7 +106,9 @@ impl<'a> Parser<'a> {
                     .map(|i| Some(Item::ExternImport(i)));
             }
 
-            return self.parse_import(&attrs, start).map(|i| Some(Item::Import(i)));
+            return self
+                .parse_import(&attrs, start)
+                .map(|i| Some(Item::Import(i)));
         }
 
         if !attrs.is_empty() {
@@ -118,10 +132,16 @@ impl<'a> Parser<'a> {
         let path = path_tok.str_value();
         let relative_to = self.parent_path().unwrap();
 
-        let lib = ExternLib::try_from_str(&path, relative_to)
-            .ok_or_else(|| errors::path_not_found(path.as_str(), path_tok.span))?;
+        let lib =
+            ExternLib::try_from_str(&path, relative_to).ok_or_else(|| {
+                errors::path_not_found(path.as_str(), path_tok.span)
+            })?;
 
-        Ok(ExternImport { attrs: attrs.to_owned(), lib, span: start.merge(path_tok.span) })
+        Ok(ExternImport {
+            attrs: attrs.to_owned(),
+            lib,
+            span: start.merge(path_tok.span),
+        })
     }
 
     fn parse_attrs(&mut self) -> ParseResult<Vec<Attr>> {
@@ -155,7 +175,10 @@ impl<'a> Parser<'a> {
         let kind = AttrKind::try_from(attr_name).map_err(|()| {
             Diagnostic::error()
                 .with_message("unknown attribute {attr_name}")
-                .with_label(Label::primary(ident.span).with_message("unknown attribute"))
+                .with_label(
+                    Label::primary(ident.span)
+                        .with_message("unknown attribute"),
+                )
         })?;
 
         Ok((kind, ident.span))
@@ -165,7 +188,8 @@ impl<'a> Parser<'a> {
         if self.is(TokenKind::Extern) {
             let name_ident = self.eat_ident()?;
             let vis = self.parse_vis();
-            let (sig, is_c_variadic) = self.parse_fn_sig(name_ident.word(), AllowTyParams::No)?;
+            let (sig, is_c_variadic) =
+                self.parse_fn_sig(name_ident.word(), AllowTyParams::No)?;
 
             Ok(Fn {
                 attrs,
@@ -177,12 +201,15 @@ impl<'a> Parser<'a> {
         } else {
             let name_ident = self.eat_ident()?;
             let vis = self.parse_vis();
-            let (sig, is_c_variadic) = self.parse_fn_sig(name_ident.word(), AllowTyParams::Yes)?;
+            let (sig, is_c_variadic) =
+                self.parse_fn_sig(name_ident.word(), AllowTyParams::Yes)?;
 
             if is_c_variadic {
                 return Err(Diagnostic::error()
                     .with_message("non extern function cannot use c varargs")
-                    .with_label(Label::primary(name_ident.span).with_message("here")));
+                    .with_label(
+                        Label::primary(name_ident.span).with_message("here"),
+                    ));
             }
 
             self.eat(TokenKind::OpenCurly)?;
@@ -202,12 +229,20 @@ impl<'a> Parser<'a> {
         let start = self.last_span();
         let pat = self.parse_pat()?;
 
-        let ty_expr = self.is_and(TokenKind::Colon, |this, _| this.parse_ty()).transpose()?;
+        let ty_expr = self
+            .is_and(TokenKind::Colon, |this, _| this.parse_ty())
+            .transpose()?;
         self.eat(TokenKind::Eq)?;
 
         let value = self.parse_expr()?;
 
-        Ok(Let { attrs, pat, ty_expr, span: start.merge(value.span()), value: Box::new(value) })
+        Ok(Let {
+            attrs,
+            pat,
+            ty_expr,
+            span: start.merge(value.span()),
+            value: Box::new(value),
+        })
     }
 
     fn parse_extern_let(&mut self, attrs: Attrs) -> ParseResult<ExternLet> {
@@ -222,7 +257,14 @@ impl<'a> Parser<'a> {
 
         let span = start.merge(ty_expr.span());
 
-        Ok(ExternLet { attrs, mutability, vis, word: ident.word(), ty_expr, span })
+        Ok(ExternLet {
+            attrs,
+            mutability,
+            vis,
+            word: ident.word(),
+            ty_expr,
+            span,
+        })
     }
 
     fn parse_ty_def(&mut self, attrs: Attrs) -> ParseResult<TyDef> {
@@ -245,17 +287,28 @@ impl<'a> Parser<'a> {
             // self.parse_struct_ty_def(StructKind::Ref)
         } else {
             let tok = self.require()?;
-            Err(errors::unexpected_token_err("( or `extern`", tok.kind, tok.span))
+            Err(errors::unexpected_token_err(
+                "( or `extern`",
+                tok.kind,
+                tok.span,
+            ))
         }
     }
 
-    fn parse_struct_ty_def(&mut self, kind: StructKind) -> ParseResult<TyDefKind> {
-        let (fields, _) = self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
-            let ident = this.eat_ident()?;
-            this.eat(TokenKind::Colon)?;
-            let ty_expr = this.parse_ty()?;
-            Ok(StructTyField { name: ident.word(), ty_expr })
-        })?;
+    fn parse_struct_ty_def(
+        &mut self,
+        kind: StructKind,
+    ) -> ParseResult<TyDefKind> {
+        let (fields, _) = self.parse_list(
+            TokenKind::OpenParen,
+            TokenKind::CloseParen,
+            |this| {
+                let ident = this.eat_ident()?;
+                this.eat(TokenKind::Colon)?;
+                let ty_expr = this.parse_ty()?;
+                Ok(StructTyField { name: ident.word(), ty_expr })
+            },
+        )?;
 
         Ok(TyDefKind::Struct(StructTyDef { kind, fields }))
     }
@@ -274,7 +327,11 @@ impl<'a> Parser<'a> {
                 }))
             }
             TokenKind::Underscore => Ok(Pat::Discard(tok.span)),
-            _ => Err(errors::unexpected_token_err("a pattern", tok.kind, tok.span)),
+            _ => Err(errors::unexpected_token_err(
+                "a pattern",
+                tok.kind,
+                tok.span,
+            )),
         }
     }
 
@@ -308,16 +365,22 @@ impl<'a> Parser<'a> {
         };
 
         let (params, is_c_variadic) = self.parse_fn_params()?;
-        let ret = self.is_and(TokenKind::Arrow, |this, _| this.parse_ty()).transpose()?;
+        let ret = self
+            .is_and(TokenKind::Arrow, |this, _| this.parse_ty())
+            .transpose()?;
 
         Ok((FnSig { word: name, ty_params, params, ret }, is_c_variadic))
     }
 
     fn parse_optional_ty_params(&mut self) -> ParseResult<Vec<TyParam>> {
-        self.parse_list_optional(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
-            let ident = this.eat_ident()?;
-            Ok(TyParam { word: ident.word() })
-        })
+        self.parse_list_optional(
+            TokenKind::OpenBracket,
+            TokenKind::CloseBracket,
+            |this| {
+                let ident = this.eat_ident()?;
+                Ok(TyParam { word: ident.word() })
+            },
+        )
         .map(|(t, _)| t)
     }
 
@@ -331,7 +394,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ty_args(&mut self) -> ParseResult<(Vec<TyExpr>, Span)> {
-        self.parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, Self::parse_ty)
+        self.parse_list(
+            TokenKind::OpenBracket,
+            TokenKind::CloseBracket,
+            Self::parse_ty,
+        )
     }
 
     fn parse_fn_params(&mut self) -> ParseResult<(Vec<FnParam>, bool)> {
@@ -351,7 +418,11 @@ impl<'a> Parser<'a> {
                 let ident = self.eat_ident()?;
                 self.eat(TokenKind::Colon)?;
                 let ty_expr = self.parse_ty()?;
-                params.push(FnParam { name: ident.word(), ty_expr, span: ident.span });
+                params.push(FnParam {
+                    name: ident.word(),
+                    ty_expr,
+                    span: ident.span,
+                });
 
                 if !params.is_empty() && !self.peek_is(TokenKind::CloseParen) {
                     self.eat(TokenKind::Comma)?;
@@ -393,7 +464,12 @@ impl<'a> Parser<'a> {
             let rhs = self.parse_expr()?;
             let span = expr.span().merge(rhs.span());
 
-            return Ok(Expr::Assign { lhs: Box::new(expr), rhs: Box::new(rhs), op: None, span });
+            return Ok(Expr::Assign {
+                lhs: Box::new(expr),
+                rhs: Box::new(rhs),
+                op: None,
+                span,
+            });
         }
 
         if let Some(tok) = self.token() {
@@ -480,7 +556,12 @@ impl<'a> Parser<'a> {
                 let lhs = expr_stack.pop().unwrap();
                 let span = lhs.span().merge(rhs.span());
 
-                expr_stack.push(Expr::Binary { lhs: Box::new(lhs), rhs: Box::new(rhs), op, span });
+                expr_stack.push(Expr::Binary {
+                    lhs: Box::new(lhs),
+                    rhs: Box::new(rhs),
+                    op,
+                    span,
+                });
             }
 
             op_stack.push(op);
@@ -496,7 +577,12 @@ impl<'a> Parser<'a> {
 
             let span = lhs.span().merge(rhs.span());
 
-            expr_stack.push(Expr::Binary { lhs: Box::new(lhs), op, rhs: Box::new(rhs), span });
+            expr_stack.push(Expr::Binary {
+                lhs: Box::new(lhs),
+                op,
+                rhs: Box::new(rhs),
+                span,
+            });
         }
 
         Ok(expr_stack.into_iter().next().unwrap())
@@ -534,22 +620,44 @@ impl<'a> Parser<'a> {
                 }
             }
             TokenKind::OpenCurly => self.parse_block()?,
-            TokenKind::True => Expr::Lit { kind: LitKind::Bool(true), span: tok.span },
-            TokenKind::False => Expr::Lit { kind: LitKind::Bool(false), span: tok.span },
+            TokenKind::True => {
+                Expr::Lit { kind: LitKind::Bool(true), span: tok.span }
+            }
+            TokenKind::False => {
+                Expr::Lit { kind: LitKind::Bool(false), span: tok.span }
+            }
             TokenKind::Ident(..) => {
                 let ty_args = self.parse_optional_ty_args()?;
                 Expr::Name { word: tok.word(), ty_args, span: tok.span }
             }
             TokenKind::Int(value) => Expr::Lit {
-                kind: LitKind::Int(value.replace('_', "").parse().expect("to be a valid integer")),
+                kind: LitKind::Int(
+                    value
+                        .replace('_', "")
+                        .parse()
+                        .expect("to be a valid integer"),
+                ),
                 span: tok.span,
             },
             TokenKind::Float(value) => Expr::Lit {
-                kind: LitKind::Float(value.replace('_', "").parse().expect("to be a valid float")),
+                kind: LitKind::Float(
+                    value
+                        .replace('_', "")
+                        .parse()
+                        .expect("to be a valid float"),
+                ),
                 span: tok.span,
             },
-            TokenKind::Str(value) => Expr::Lit { kind: LitKind::Str(value), span: tok.span },
-            _ => return Err(errors::unexpected_token_err("an expression", tok.kind, tok.span)),
+            TokenKind::Str(value) => {
+                Expr::Lit { kind: LitKind::Str(value), span: tok.span }
+            }
+            _ => {
+                return Err(errors::unexpected_token_err(
+                    "an expression",
+                    tok.kind,
+                    tok.span,
+                ))
+            }
         };
 
         Ok(expr)
@@ -572,11 +680,17 @@ impl<'a> Parser<'a> {
                 let end = self.eat(TokenKind::CloseCurly)?;
                 TyExpr::Unit(tok.span.merge(end.span))
             }
-            TokenKind::Ident(..) => {
-                TyExpr::Name(TyExprName { word: tok.word(), args: vec![], span: tok.span })
-            }
+            TokenKind::Ident(..) => TyExpr::Name(TyExprName {
+                word: tok.word(),
+                args: vec![],
+                span: tok.span,
+            }),
             TokenKind::Underscore => TyExpr::Hole(tok.span),
-            _ => return Err(errors::unexpected_token_err("a type", tok.kind, tok.span)),
+            _ => {
+                return Err(errors::unexpected_token_err(
+                    "a type", tok.kind, tok.span,
+                ))
+            }
         };
 
         Ok(ty)
@@ -585,9 +699,16 @@ impl<'a> Parser<'a> {
     fn parse_fn_ty(&mut self) -> ParseResult<TyExprFn> {
         let start = self.last_span();
         let (params, is_c_variadic) = self.parse_fn_ty_params()?;
-        let ret =
-            self.is_and(TokenKind::Arrow, |this, _| this.parse_ty()).transpose()?.map(Box::new);
-        Ok(TyExprFn { params, ret, is_c_variadic, span: start.merge(self.last_span()) })
+        let ret = self
+            .is_and(TokenKind::Arrow, |this, _| this.parse_ty())
+            .transpose()?
+            .map(Box::new);
+        Ok(TyExprFn {
+            params,
+            ret,
+            is_c_variadic,
+            span: start.merge(self.last_span()),
+        })
     }
 
     fn parse_fn_ty_params(&mut self) -> ParseResult<(Vec<TyExpr>, bool)> {
@@ -632,21 +753,35 @@ impl<'a> Parser<'a> {
             } else {
                 let tok = self.require()?;
 
-                return Err(errors::unexpected_token_err("{ or `if`", tok.kind, tok.span));
+                return Err(errors::unexpected_token_err(
+                    "{ or `if`",
+                    tok.kind,
+                    tok.span,
+                ));
             }
         } else {
             None
         };
 
-        let span = start.merge(otherwise.as_ref().map_or(then.span(), |o| o.span()));
+        let span =
+            start.merge(otherwise.as_ref().map_or(then.span(), |o| o.span()));
 
-        Ok(Expr::If { cond: Box::new(cond), then: Box::new(then), otherwise, span })
+        Ok(Expr::If {
+            cond: Box::new(cond),
+            then: Box::new(then),
+            otherwise,
+            span,
+        })
     }
 
     fn parse_loop(&mut self) -> ParseResult<Expr> {
         let start = self.last_span();
 
-        let cond = if self.is(TokenKind::If) { Some(Box::new(self.parse_expr()?)) } else { None };
+        let cond = if self.is(TokenKind::If) {
+            Some(Box::new(self.parse_expr()?))
+        } else {
+            None
+        };
 
         self.eat(TokenKind::OpenCurly)?;
         let expr = self.parse_block()?;
@@ -673,10 +808,19 @@ impl<'a> Parser<'a> {
                     if self.peek_is(TokenKind::OpenParen) {
                         let (args, args_span) = self.parse_call_args()?;
                         let span = expr.span().merge(args_span);
-                        Expr::MethodCall { expr: Box::new(expr), method: name, args, span }
+                        Expr::MethodCall {
+                            expr: Box::new(expr),
+                            method: name,
+                            args,
+                            span,
+                        }
                     } else {
                         let span = expr.span().merge(name.span());
-                        Expr::Member { expr: Box::new(expr), member: name, span }
+                        Expr::Member {
+                            expr: Box::new(expr),
+                            member: name,
+                            span,
+                        }
                     }
                 }
                 _ => break,
@@ -793,7 +937,9 @@ impl<'a> Parser<'a> {
         self.token().ok_or_else(|| {
             Diagnostic::error()
                 .with_message("unexpected end of file")
-                .with_label(Label::primary(self.last_span()).with_message("here"))
+                .with_label(
+                    Label::primary(self.last_span()).with_message("here"),
+                )
         })
     }
 
@@ -823,7 +969,10 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
-    pub(super) fn is_predicate(&mut self, mut f: impl FnMut(&mut Self, Token) -> bool) -> bool {
+    pub(super) fn is_predicate(
+        &mut self,
+        mut f: impl FnMut(&mut Self, Token) -> bool,
+    ) -> bool {
         match self.token() {
             Some(tok) if f(self, tok) => {
                 self.next();
@@ -883,11 +1032,18 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
-    pub(super) fn require_kind(tok: Token, expected: TokenKind) -> ParseResult<Token> {
+    pub(super) fn require_kind(
+        tok: Token,
+        expected: TokenKind,
+    ) -> ParseResult<Token> {
         if tok.kind_is(expected) {
             Ok(tok)
         } else {
-            Err(errors::unexpected_token_err(&expected.to_string(), tok.kind, tok.span))
+            Err(errors::unexpected_token_err(
+                &expected.to_string(),
+                tok.kind,
+                tok.span,
+            ))
         }
     }
 

@@ -42,7 +42,10 @@ impl ResolutionState {
         self.item_statuses.get(id).copied().unwrap_or(ItemStatus::Unresolved)
     }
 
-    pub fn mark_in_progress_item(&mut self, id: ast::GlobalItemId) -> Result<(), CyclicItemErr> {
+    pub fn mark_in_progress_item(
+        &mut self,
+        id: ast::GlobalItemId,
+    ) -> Result<(), CyclicItemErr> {
         match self.get_item_status(&id) {
             ItemStatus::Unresolved => {
                 self.item_statuses.insert(id, ItemStatus::InProgress);
@@ -51,7 +54,11 @@ impl ResolutionState {
             }
             ItemStatus::InProgress => Err(CyclicItemErr {
                 origin: id,
-                causee: self.check_stack.last().copied().expect("to have an checked item"),
+                causee: self
+                    .check_stack
+                    .last()
+                    .copied()
+                    .expect("to have an checked item"),
             }),
             ItemStatus::Resolved => Ok(()),
         }
@@ -62,11 +69,18 @@ impl ResolutionState {
         self.check_stack.pop();
     }
 
-    pub fn take_resolved_fn_sig(&mut self, id: ast::GlobalItemId) -> Option<ResolvedFnSig> {
+    pub fn take_resolved_fn_sig(
+        &mut self,
+        id: ast::GlobalItemId,
+    ) -> Option<ResolvedFnSig> {
         self.resolved_fn_sigs.remove(&id)
     }
 
-    pub fn insert_resolved_fn_sig(&mut self, id: ast::GlobalItemId, resolved_sig: ResolvedFnSig) {
+    pub fn insert_resolved_fn_sig(
+        &mut self,
+        id: ast::GlobalItemId,
+        resolved_sig: ResolvedFnSig,
+    ) {
         self.resolved_fn_sigs.insert(id, resolved_sig);
     }
 }

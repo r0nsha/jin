@@ -25,7 +25,8 @@ impl BuildOptions {
         Self {
             timings,
             emit,
-            output_dir: output_dir.unwrap_or(Self::DEFAULT_OUTPUT_DIR.to_string()),
+            output_dir: output_dir
+                .unwrap_or(Self::DEFAULT_OUTPUT_DIR.to_string()),
             target_platform,
             target_metrics,
         }

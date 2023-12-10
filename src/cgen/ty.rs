@@ -85,7 +85,9 @@ impl<'db> CTy<'db> for StructId {
         let name = D::text(cx.struct_names[self].clone());
 
         match cx.curr_generated_struct {
-            Some(sid) if sid == *self => D::text("struct").append(D::space()).append(name),
+            Some(sid) if sid == *self => {
+                D::text("struct").append(D::space()).append(name)
+            }
             _ => name,
         }
     }
@@ -120,11 +122,19 @@ fn fn_ty<'a>(fn_ty: &FnTy, cx: &Generator<'a>, name: Option<D<'a>>) -> D<'a> {
                     .nest(1)
                     .group(),
                 )
-                .append(if fn_ty.is_c_variadic { D::text(", ...") } else { D::nil() })
+                .append(if fn_ty.is_c_variadic {
+                    D::text(", ...")
+                } else {
+                    D::nil()
+                })
                 .append(D::text(")")),
         )
 }
 
-fn ty_and_name<'a>(ty: &impl CTy<'a>, cx: &Generator<'a>, name: D<'a>) -> D<'a> {
+fn ty_and_name<'a>(
+    ty: &impl CTy<'a>,
+    cx: &Generator<'a>,
+    name: D<'a>,
+) -> D<'a> {
     ty.cty(cx).append(D::space()).append(name)
 }

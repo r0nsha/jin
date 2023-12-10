@@ -51,8 +51,11 @@ impl Ty {
 
                 fun.ret.occurs_check(var).map_err(|_| self)
             }
-            TyKind::RawPtr(pointee) => pointee.occurs_check(var).map_err(|_| self),
-            TyKind::Param(ParamTy { var: v, .. }) | TyKind::Infer(InferTy::Ty(v)) => {
+            TyKind::RawPtr(pointee) => {
+                pointee.occurs_check(var).map_err(|_| self)
+            }
+            TyKind::Param(ParamTy { var: v, .. })
+            | TyKind::Infer(InferTy::Ty(v)) => {
                 if *v == var {
                     Err(self)
                 } else {
@@ -103,7 +106,8 @@ impl Ty {
     fn walk_short_(self, f: &mut impl Fn(Ty) -> bool) -> bool {
         match self.kind() {
             TyKind::Fn(fun) => {
-                fun.params.iter().any(|p| p.ty.walk_short_(f)) || fun.ret.walk_short_(f)
+                fun.params.iter().any(|p| p.ty.walk_short_(f))
+                    || fun.ret.walk_short_(f)
             }
             TyKind::RawPtr(pointee) => pointee.walk_short_(f),
             _ => f(self),
@@ -116,7 +120,9 @@ impl Ty {
 
     pub fn walk_(self, f: &mut impl Fn(Ty) -> bool) -> bool {
         match self.kind() {
-            TyKind::Fn(fun) => fun.params.iter().all(|p| p.ty.walk_(f)) && fun.ret.walk_(f),
+            TyKind::Fn(fun) => {
+                fun.params.iter().all(|p| p.ty.walk_(f)) && fun.ret.walk_(f)
+            }
             _ => f(self),
         }
     }
@@ -183,7 +189,10 @@ impl TyKind {
     pub const DEFAULT_FLOAT: Self = Self::Float(FloatTy::F32);
 
     pub fn is_any_int(&self) -> bool {
-        matches!(self, TyKind::Int(_) | TyKind::Uint(_) | TyKind::Infer(InferTy::Int(_)))
+        matches!(
+            self,
+            TyKind::Int(_) | TyKind::Uint(_) | TyKind::Infer(InferTy::Int(_))
+        )
     }
 
     pub fn is_any_float(&self) -> bool {
@@ -427,7 +436,9 @@ impl FloatTy {
 
     pub fn contains(self, value: f64) -> bool {
         match self {
-            Self::F32 => value >= f64::from(f32::MIN) && value <= f64::from(f32::MAX),
+            Self::F32 => {
+                value >= f64::from(f32::MIN) && value <= f64::from(f32::MAX)
+            }
             Self::F64 => true,
         }
     }
@@ -455,7 +466,25 @@ pub struct FnTy {
 }
 
 impl FnTy {
-    pub fn display<'db>(&'db self, db: &'db Db, name: Option<Ustr>) -> FnTyPrinter {
+    pub fn collect_params(&self) -> Vec<ParamTy> {
+        let mut params = FxHashSet::default();
+        self.collect_params_inner(&mut params);
+        params.into_iter().collect()
+    }
+
+    fn collect_params_inner(&self, params: &mut FxHashSet<ParamTy>) {
+        for p in &self.params {
+            p.ty.collect_params_inner(params);
+        }
+
+        self.ret.collect_params_inner(params);
+    }
+
+    pub fn display<'db>(
+        &'db self,
+        db: &'db Db,
+        name: Option<Ustr>,
+    ) -> FnTyPrinter {
         FnTyPrinter { db, name, params: &self.params, ret: Some(self.ret) }
     }
 

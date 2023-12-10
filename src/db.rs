@@ -56,7 +56,10 @@ pub struct Db {
 }
 
 impl Db {
-    pub fn new(build_options: BuildOptions, root_file: &Utf8Path) -> Result<Self> {
+    pub fn new(
+        build_options: BuildOptions,
+        root_file: &Utf8Path,
+    ) -> Result<Self> {
         let absolute_path: Utf8PathBuf =
             root_file.as_std_path().absolutize()?.into_owned().try_into()?;
 
@@ -67,15 +70,22 @@ impl Db {
         let mut sources = Sources::new();
         let main_source = sources.load_file(absolute_path.to_path_buf())?;
 
-        let main_package_name = ustr(&sources.get(main_source).unwrap().file_name());
+        let main_package_name =
+            ustr(&sources.get(main_source).unwrap().file_name());
 
         let packages: FxHashMap<_, _> = {
-            let main_package_root_path =
-                absolute_path.parent().expect("to have a parent directory").to_path_buf();
+            let main_package_root_path = absolute_path
+                .parent()
+                .expect("to have a parent directory")
+                .to_path_buf();
 
             [(
                 main_package_name,
-                Package::new(main_package_name, main_package_root_path.clone(), main_source),
+                Package::new(
+                    main_package_name,
+                    main_package_root_path.clone(),
+                    main_source,
+                ),
             )]
             .into_iter()
             .collect()
@@ -117,7 +127,8 @@ impl Db {
     pub fn output_path(&self) -> Utf8PathBuf {
         let binding = self.main_source();
         let main_path = binding.path();
-        let file_name = main_path.file_stem().expect("main source to be a file");
+        let file_name =
+            main_path.file_stem().expect("main source to be a file");
         let src_dir = main_path.parent().expect("to have a parent directory");
         src_dir.join(self.build_options.output_dir.clone()).join(file_name)
     }
@@ -167,9 +178,9 @@ impl Db {
     pub fn find_module_by_path(&self, path: &Utf8Path) -> Option<&ModuleInfo> {
         let sources = &self.sources.borrow();
 
-        self.modules
-            .iter()
-            .find(|m| matches!(sources.get(m.source_id), Some(s) if s.path() == path))
+        self.modules.iter().find(
+            |m| matches!(sources.get(m.source_id), Some(s) if s.path() == path),
+        )
     }
 
     pub fn find_module_by_qpath(&self, qpath: &QPath) -> Option<&ModuleInfo> {
@@ -197,7 +208,9 @@ impl Db {
         f: impl Fn(&Self, &mut fs::File) -> io::Result<()>,
     ) -> io::Result<()> {
         if self.build_options.should_emit(opt) {
-            let mut file = fs::File::create(self.output_path().with_extension(opt.as_extension()))?;
+            let mut file = fs::File::create(
+                self.output_path().with_extension(opt.as_extension()),
+            )?;
             f(self, &mut file)
         } else {
             Ok(())
@@ -239,7 +252,11 @@ pub struct Package {
 }
 
 impl Package {
-    pub fn new(name: Ustr, root_path: Utf8PathBuf, main_source_id: SourceId) -> Self {
+    pub fn new(
+        name: Ustr,
+        root_path: Utf8PathBuf,
+        main_source_id: SourceId,
+    ) -> Self {
         Self { name, root_path, main_source_id }
     }
 }
@@ -262,8 +279,13 @@ impl ModuleInfo {
         name: QPath,
         is_main: bool,
     ) -> ModuleId {
-        let id =
-            db.modules.push_with_key(|id| Self { id, package, source_id, qpath: name, is_main });
+        let id = db.modules.push_with_key(|id| Self {
+            id,
+            package,
+            source_id,
+            qpath: name,
+            is_main,
+        });
 
         if is_main {
             assert!(db.main_module.is_none());
@@ -531,22 +553,32 @@ pub enum ExternLib {
 impl fmt::Display for ExternLib {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ExternLib::Sys(name) | ExternLib::Path { name, .. } => f.write_str(name),
+            ExternLib::Sys(name) | ExternLib::Path { name, .. } => {
+                f.write_str(name)
+            }
         }
     }
 }
 
 impl ExternLib {
-    pub fn try_from_str(name: &str, relative_to: impl AsRef<Utf8Path>) -> Option<Self> {
+    pub fn try_from_str(
+        name: &str,
+        relative_to: impl AsRef<Utf8Path>,
+    ) -> Option<Self> {
         let path = Path::new(name);
 
-        if name.starts_with(['.', '/', '\\']) || path.has_root() || path.extension().is_some() {
-            path.absolutize_from(relative_to.as_ref().as_std_path()).ok().map(|p| {
-                let p: Utf8PathBuf = p.into_owned().try_into().unwrap();
-                let search_path = p.parent().unwrap().to_path_buf();
-                let name = p.file_name().unwrap().to_string();
-                Self::Path { search_path, name }
-            })
+        if name.starts_with(['.', '/', '\\'])
+            || path.has_root()
+            || path.extension().is_some()
+        {
+            path.absolutize_from(relative_to.as_ref().as_std_path()).ok().map(
+                |p| {
+                    let p: Utf8PathBuf = p.into_owned().try_into().unwrap();
+                    let search_path = p.parent().unwrap().to_path_buf();
+                    let name = p.file_name().unwrap().to_string();
+                    Self::Path { search_path, name }
+                },
+            )
         } else {
             Some(Self::Sys(name.to_string()))
         }

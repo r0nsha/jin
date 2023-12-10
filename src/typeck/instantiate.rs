@@ -33,7 +33,9 @@ impl Instantiate {
                 is_c_variadic: fun.is_c_variadic,
             })
             .into(),
-            TyKind::RawPtr(pointee) => TyKind::RawPtr(self.instantiate_inner(*pointee)).into(),
+            TyKind::RawPtr(pointee) => {
+                TyKind::RawPtr(self.instantiate_inner(*pointee)).into()
+            }
             TyKind::Param(p) => match self.instantiation.get(&p.var) {
                 Some(ty) => *ty,
                 None => {

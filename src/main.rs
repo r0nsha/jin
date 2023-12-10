@@ -103,14 +103,16 @@ fn main() -> Result<()> {
 
 fn build(db: &mut Db) {
     // Create the output directory
-    fs::create_dir_all(db.output_dir()).expect("failed creating build directory");
+    fs::create_dir_all(db.output_dir())
+        .expect("failed creating build directory");
 
     // Parse the entire module tree into an Ast
     db.time.start("parse");
     let ast = parse::parse_module_tree(db);
     expect!(db);
 
-    db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file)).expect("emitting ast failed");
+    db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file))
+        .expect("emitting ast failed");
 
     // Resolve all root symbols into their corresponding id's
     db.time.start("typeck");

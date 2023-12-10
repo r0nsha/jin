@@ -35,15 +35,24 @@ impl<'db> CheckMain<'db> {
             self.db.set_main_fun(main_id);
             true
         } else {
-            let main_source_end =
-                self.db.main_source().contents().len().checked_sub(1).unwrap_or_default();
-            let source_end_span = Span::uniform(self.db.main_source_id(), main_source_end as u32);
+            let main_source_end = self
+                .db
+                .main_source()
+                .contents()
+                .len()
+                .checked_sub(1)
+                .unwrap_or_default();
+            let source_end_span =
+                Span::uniform(self.db.main_source_id(), main_source_end as u32);
 
             self.db.diagnostics.emit(
-                Diagnostic::error().with_message("`main` function not found").with_label(
-                    Label::primary(source_end_span)
-                        .with_message("consider adding a main function here"),
-                ),
+                Diagnostic::error()
+                    .with_message("`main` function not found")
+                    .with_label(
+                        Label::primary(source_end_span).with_message(
+                            "consider adding a main function here",
+                        ),
+                    ),
             );
 
             false
@@ -60,7 +69,10 @@ impl<'db> CheckMain<'db> {
                     let tp = &fun.sig.ty_params;
 
                     if !tp.is_empty() {
-                        let tp_span = tp[0].word.span().merge(tp.last().unwrap().word.span());
+                        let tp_span = tp[0]
+                            .word
+                            .span()
+                            .merge(tp.last().unwrap().word.span());
 
                         self.db.diagnostics.emit(
                             Diagnostic::error()
@@ -76,10 +88,12 @@ impl<'db> CheckMain<'db> {
             self.db.diagnostics.emit(
                 Diagnostic::error()
                     .with_message("`main` function's type must be `fn() ()`")
-                    .with_label(
-                        Label::primary(main_fun.span)
-                            .with_message(format!("found type `{}`", main_fun.ty.display(self.db))),
-                    ),
+                    .with_label(Label::primary(main_fun.span).with_message(
+                        format!(
+                            "found type `{}`",
+                            main_fun.ty.display(self.db)
+                        ),
+                    )),
             );
         }
     }

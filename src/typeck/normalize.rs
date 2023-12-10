@@ -1,6 +1,6 @@
 use crate::{
-    typeck::TyStorage,
     ty::{FnTy, FnTyParam, InferTy, Ty, TyKind},
+    typeck::TyStorage,
 };
 
 pub trait NormalizeTy {
@@ -14,13 +14,18 @@ impl NormalizeTy for Ty {
                 params: fun
                     .params
                     .iter()
-                    .map(|param| FnTyParam { name: param.name, ty: param.ty.normalize(storage) })
+                    .map(|param| FnTyParam {
+                        name: param.name,
+                        ty: param.ty.normalize(storage),
+                    })
                     .collect(),
                 ret: fun.ret.normalize(storage),
                 is_c_variadic: fun.is_c_variadic,
             })
             .into(),
-            TyKind::RawPtr(pointee) => TyKind::RawPtr(pointee.normalize(storage)).into(),
+            TyKind::RawPtr(pointee) => {
+                TyKind::RawPtr(pointee.normalize(storage)).into()
+            }
             TyKind::Infer(InferTy::Ty(var)) => storage
                 .ty_unification_table
                 .probe_value(*var)

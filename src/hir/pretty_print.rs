@@ -6,8 +6,13 @@ use crate::{
     middle::BinOp,
 };
 
-pub(super) fn print(db: &Db, hir: &Hir, w: &mut impl io::Write) -> io::Result<()> {
-    let mut cx = PrettyCx { db, builder: ptree::TreeBuilder::new("Hir".to_string()) };
+pub(super) fn print(
+    db: &Db,
+    hir: &Hir,
+    w: &mut impl io::Write,
+) -> io::Result<()> {
+    let mut cx =
+        PrettyCx { db, builder: ptree::TreeBuilder::new("Hir".to_string()) };
 
     for let_ in &hir.lets {
         cx.pp_let(let_);
@@ -72,7 +77,10 @@ impl PrettyCx<'_> {
     }
 
     fn pp_let(&mut self, let_: &Let) {
-        self.builder.begin_child(format!("let (type: {})", let_.value.ty.display(self.db)));
+        self.builder.begin_child(format!(
+            "let (type: {})",
+            let_.value.ty.display(self.db)
+        ));
         self.pp_expr(&let_.value);
         self.builder.end_child();
     }
@@ -83,8 +91,10 @@ impl PrettyCx<'_> {
                 self.pp_let(let_);
             }
             ExprKind::Assign(assign) => {
-                self.builder
-                    .begin_child(format!("{}=", assign.op.map(BinOp::as_str).unwrap_or_default()));
+                self.builder.begin_child(format!(
+                    "{}=",
+                    assign.op.map(BinOp::as_str).unwrap_or_default()
+                ));
                 self.pp_expr(&assign.lhs);
                 self.builder.add_empty_child("to".to_string());
                 self.pp_expr(&assign.rhs);
@@ -140,7 +150,10 @@ impl PrettyCx<'_> {
                 self.builder.end_child();
             }
             ExprKind::Call(call) => {
-                self.builder.begin_child(format!("call (result: {})", expr.ty.display(self.db)));
+                self.builder.begin_child(format!(
+                    "call (result: {})",
+                    expr.ty.display(self.db)
+                ));
                 self.pp_expr(&call.callee);
 
                 if !call.args.is_empty() {
@@ -181,7 +194,10 @@ impl PrettyCx<'_> {
                 self.builder.end_child();
             }
             ExprKind::Cast(cast) => {
-                self.builder.begin_child(format!("cast (to: {})", expr.ty.display(self.db)));
+                self.builder.begin_child(format!(
+                    "cast (to: {})",
+                    expr.ty.display(self.db)
+                ));
                 self.pp_expr(&cast.expr);
                 self.builder.end_child();
             }
@@ -209,8 +225,10 @@ impl PrettyCx<'_> {
                     Lit::Bool(v) => v.to_string(),
                 };
 
-                self.builder
-                    .add_empty_child(format!("{value_str} (type: {})", expr.ty.display(self.db)));
+                self.builder.add_empty_child(format!(
+                    "{value_str} (type: {})",
+                    expr.ty.display(self.db)
+                ));
             }
         }
     }

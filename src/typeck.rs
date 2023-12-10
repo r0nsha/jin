@@ -27,11 +27,17 @@ use crate::{
     middle::{BinOp, Mutability, TyExpr, UnOp},
     span::{Span, Spanned},
     sym,
-    ty::{FloatVar, FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty, TyKind, TyVar},
+    ty::{
+        FloatVar, FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty,
+        TyKind, TyVar,
+    },
     typeck::{
         attrs::AttrsPlacement,
         coerce::CoerceExt,
-        env::{BuiltinTys, Env, FnQuery, GlobalScope, LookupResult, Query, ScopeKind, Symbol},
+        env::{
+            BuiltinTys, Env, FnQuery, GlobalScope, LookupResult, Query,
+            ScopeKind, Symbol,
+        },
         instantiate::instantiate,
         normalize::NormalizeTy,
         resolution_state::{ModuleStatus, ResolutionState, ResolvedFnSig},
@@ -124,7 +130,8 @@ impl<'db> Typeck<'db> {
             return Ok(());
         }
 
-        self.resolution_state.module_state_mut(module.id).status = ModuleStatus::InProgress;
+        self.resolution_state.module_state_mut(module.id).status =
+            ModuleStatus::InProgress;
 
         let mut env = Env::new(module.id);
 
@@ -135,7 +142,8 @@ impl<'db> Typeck<'db> {
             }
         }
 
-        self.resolution_state.module_state_mut(module.id).status = ModuleStatus::Resolved;
+        self.resolution_state.module_state_mut(module.id).status =
+            ModuleStatus::Resolved;
 
         Ok(())
     }
@@ -148,7 +156,9 @@ impl<'db> Typeck<'db> {
                 if let ast::Item::Fn(fun) = item {
                     let ResolvedFnSig { id, sig } = self
                         .resolution_state
-                        .take_resolved_fn_sig(ast::GlobalItemId::new(module.id, item_id))
+                        .take_resolved_fn_sig(ast::GlobalItemId::new(
+                            module.id, item_id,
+                        ))
                         .unwrap_or_else(|| {
                             panic!(
                                 "fn `{}` in module `{}` to be resolved",
@@ -174,15 +184,27 @@ impl<'db> Typeck<'db> {
             return Ok(());
         }
 
-        self.resolution_state.mark_in_progress_item(item_id).map_err(|err| {
-            let origin_span = item.span();
-            let reference_span = self.ast.find_item(err.causee).expect("item to exist").span();
+        self.resolution_state.mark_in_progress_item(item_id).map_err(
+            |err| {
+                let origin_span = item.span();
+                let reference_span = self
+                    .ast
+                    .find_item(err.causee)
+                    .expect("item to exist")
+                    .span();
 
-            Diagnostic::error()
-                .with_message("cycle detected while checking definition")
-                .with_label(Label::primary(origin_span).with_message("definition here"))
-                .with_label(Label::secondary(reference_span).with_message("cyclic reference here"))
-        })?;
+                Diagnostic::error()
+                    .with_message("cycle detected while checking definition")
+                    .with_label(
+                        Label::primary(origin_span)
+                            .with_message("definition here"),
+                    )
+                    .with_label(
+                        Label::secondary(reference_span)
+                            .with_message("cyclic reference here"),
+                    )
+            },
+        )?;
 
         match item {
             ast::Item::Fn(fun) => {
@@ -220,8 +242,10 @@ impl<'db> Typeck<'db> {
         mut sig: hir::FnSig,
         id: DefId,
     ) -> TypeckResult<hir::Fn> {
-        let kind =
-            env.with_scope(fun.sig.word.name(), ScopeKind::Fn(id), |env| -> TypeckResult<_> {
+        let kind = env.with_scope(
+            fun.sig.word.name(),
+            ScopeKind::Fn(id),
+            |env| -> TypeckResult<_> {
                 for tp in &sig.ty_params {
                     env.insert(tp.word.name(), tp.id);
                 }
@@ -245,7 +269,10 @@ impl<'db> Typeck<'db> {
                         let unify_body_res = self
                             .at(Obligation::return_ty(
                                 body.span,
-                                fun.sig.ret.as_ref().map_or(self.db[id].span, Spanned::span),
+                                fun.sig
+                                    .ret
+                                    .as_ref()
+                                    .map_or(self.db[id].span, Spanned::span),
                             ))
                             .eq(ret_ty, body.ty)
                             .or_coerce(self, body.id);
@@ -259,12 +286,21 @@ impl<'db> Typeck<'db> {
                         Ok(hir::FnKind::Bare { body })
                     }
                     ast::FnKind::Extern { is_c_variadic } => {
-                        Ok(hir::FnKind::Extern { is_c_variadic: *is_c_variadic })
+                        Ok(hir::FnKind::Extern {
+                            is_c_variadic: *is_c_variadic,
+                        })
                     }
                 }
-            })?;
+            },
+        )?;
 
-        Ok(hir::Fn { module_id: env.module_id(), id, sig, kind, span: fun.span })
+        Ok(hir::Fn {
+            module_id: env.module_id(),
+            id,
+            sig,
+            kind,
+            span: fun.span,
+        })
     }
 
     fn check_fn_item(
@@ -287,13 +323,16 @@ impl<'db> Typeck<'db> {
             ast::FnKind::Extern { is_c_variadic } => *is_c_variadic,
         };
 
-        let sig = env.with_scope(fun.sig.word.name(), ScopeKind::Fn(DefId::INVALID), |env| {
-            self.check_fn_sig(env, &fun.sig, is_c_variadic)
-        })?;
+        let sig = env.with_scope(
+            fun.sig.word.name(),
+            ScopeKind::Fn(DefId::INVALID),
+            |env| self.check_fn_sig(env, &fun.sig, is_c_variadic),
+        )?;
 
         let id = self.define_fn(env.module_id(), fun, &sig)?;
 
-        self.resolution_state.insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig });
+        self.resolution_state
+            .insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig });
 
         Ok(())
     }
@@ -312,17 +351,23 @@ impl<'db> Typeck<'db> {
         for p in &sig.params {
             let ty = self.check_ty_expr(env, &p.ty_expr, AllowTyHole::No)?;
 
-            if let Some(prev_span) = defined_params.insert(p.name.name(), p.name.span()) {
+            if let Some(prev_span) =
+                defined_params.insert(p.name.name(), p.name.span())
+            {
                 let name = p.name.name();
                 let dup_span = p.name.span();
 
                 return Err(Diagnostic::error()
-                    .with_message(format!("the name `{name}` is already used as a parameter name"))
+                    .with_message(format!(
+                        "the name `{name}` is already used as a parameter name"
+                    ))
                     .with_label(
-                        Label::primary(dup_span).with_message(format!("`{name}` used again here")),
+                        Label::primary(dup_span)
+                            .with_message(format!("`{name}` used again here")),
                     )
                     .with_label(
-                        Label::secondary(prev_span).with_message(format!("first use of `{name}`")),
+                        Label::secondary(prev_span)
+                            .with_message(format!("first use of `{name}`")),
                     ));
             }
 
@@ -347,7 +392,11 @@ impl<'db> Typeck<'db> {
         Ok(hir::FnSig { word: sig.word, ty_params, params, ret, ty })
     }
 
-    fn check_let(&mut self, env: &mut Env, let_: &ast::Let) -> TypeckResult<hir::Let> {
+    fn check_let(
+        &mut self,
+        env: &mut Env,
+        let_: &ast::Let,
+    ) -> TypeckResult<hir::Let> {
         self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::Let)?;
 
         let ty = if let Some(ty_expr) = &let_.ty_expr {
@@ -358,15 +407,23 @@ impl<'db> Typeck<'db> {
 
         let value = self.check_expr(env, &let_.value, Some(ty))?;
 
-        self.at(Obligation::obvious(value.span)).eq(ty, value.ty).or_coerce(self, value.id)?;
+        self.at(Obligation::obvious(value.span))
+            .eq(ty, value.ty)
+            .or_coerce(self, value.id)?;
 
         if self.normalize(ty).is_module() {
             return Err(Diagnostic::error()
                 .with_message("cannot store a module as a value")
-                .with_label(Label::primary(value.span).with_message("expected a value")));
+                .with_label(
+                    Label::primary(value.span).with_message("expected a value"),
+                ));
         }
 
-        let def_kind = if env.in_global_scope() { DefKind::Global } else { DefKind::Variable };
+        let def_kind = if env.in_global_scope() {
+            DefKind::Global
+        } else {
+            DefKind::Variable
+        };
         let pat = self.define_pat(env, def_kind, &let_.pat, ty)?;
 
         Ok(hir::Let {
@@ -378,8 +435,16 @@ impl<'db> Typeck<'db> {
         })
     }
 
-    fn check_ty_def(&mut self, env: &mut Env, ty_def: &ast::TyDef) -> TypeckResult<()> {
-        self.check_attrs(env.module_id(), &ty_def.attrs, AttrsPlacement::ExternLet)?;
+    fn check_ty_def(
+        &mut self,
+        env: &mut Env,
+        ty_def: &ast::TyDef,
+    ) -> TypeckResult<()> {
+        self.check_attrs(
+            env.module_id(),
+            &ty_def.attrs,
+            AttrsPlacement::ExternLet,
+        )?;
 
         match &ty_def.kind {
             ast::TyDefKind::Struct(struct_def) => {
@@ -387,8 +452,8 @@ impl<'db> Typeck<'db> {
                 let mut defined_fields = UstrMap::<Span>::default();
 
                 for field in &struct_def.fields {
-                    if let Some(prev_span) =
-                        defined_fields.insert(field.name.name(), field.name.span())
+                    if let Some(prev_span) = defined_fields
+                        .insert(field.name.name(), field.name.span())
                     {
                         let name = field.name.name();
                         let dup_span = field.name.span();
@@ -407,18 +472,22 @@ impl<'db> Typeck<'db> {
                             ));
                     }
 
-                    fields.push(StructField { name: field.name, ty: self.db.types.unknown });
+                    fields.push(StructField {
+                        name: field.name,
+                        ty: self.db.types.unknown,
+                    });
                 }
 
                 let struct_id = {
-                    let struct_id = self.db.structs.push_with_key(|id| StructInfo {
-                        id,
-                        def_id: DefId::INVALID,
-                        name: ty_def.word,
-                        fields,
-                        kind: struct_def.kind,
-                        ctor_ty: self.db.types.unknown,
-                    });
+                    let struct_id =
+                        self.db.structs.push_with_key(|id| StructInfo {
+                            id,
+                            def_id: DefId::INVALID,
+                            name: ty_def.word,
+                            fields,
+                            kind: struct_def.kind,
+                            ctor_ty: self.db.types.unknown,
+                        });
 
                     let def_id = self.define_def(
                         env,
@@ -435,7 +504,11 @@ impl<'db> Typeck<'db> {
                 };
 
                 for (idx, field) in struct_def.fields.iter().enumerate() {
-                    let ty = self.check_ty_expr(env, &field.ty_expr, AllowTyHole::No)?;
+                    let ty = self.check_ty_expr(
+                        env,
+                        &field.ty_expr,
+                        AllowTyHole::No,
+                    )?;
                     self.db.structs[struct_id].fields[idx].ty = ty;
                 }
 
@@ -443,16 +516,26 @@ impl<'db> Typeck<'db> {
 
                 let struct_info = &self.db.structs[struct_id];
 
-                if let Some(field) = self.db.structs[struct_id].is_infinitely_sized() {
+                if let Some(field) =
+                    self.db.structs[struct_id].is_infinitely_sized()
+                {
                     return Err(Diagnostic::error()
-                        .with_message(format!("type `{}` is infinitely sized", struct_info.name))
-                        .with_label(
-                            Label::primary(struct_info.name.span()).with_message("defined here"),
-                        )
-                        .with_label(Label::secondary(field.name.span()).with_message(format!(
-                            "field has type `{}` without indirection",
+                        .with_message(format!(
+                            "type `{}` is infinitely sized",
                             struct_info.name
-                        ))));
+                        ))
+                        .with_label(
+                            Label::primary(struct_info.name.span())
+                                .with_message("defined here"),
+                        )
+                        .with_label(
+                            Label::secondary(field.name.span()).with_message(
+                                format!(
+                                    "field has type `{}` without indirection",
+                                    struct_info.name
+                                ),
+                            ),
+                        ));
                 }
             }
         }
@@ -460,9 +543,15 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
-    fn check_import(&mut self, env: &mut Env, import: &ast::Import) -> TypeckResult<()> {
-        let module_info =
-            self.db.find_module_by_path(&import.path).expect("import to use an existing module");
+    fn check_import(
+        &mut self,
+        env: &mut Env,
+        import: &ast::Import,
+    ) -> TypeckResult<()> {
+        let module_info = self
+            .db
+            .find_module_by_path(&import.path)
+            .expect("import to use an existing module");
 
         let module_id = module_info.id;
         self.check_import_root(env, module_id, &import.root)?;
@@ -524,7 +613,8 @@ impl<'db> Typeck<'db> {
         module_id: ModuleId,
         name: &ast::ImportName,
     ) -> TypeckResult<()> {
-        let results = self.import_lookup(env.module_id(), module_id, name.word)?;
+        let results =
+            self.import_lookup(env.module_id(), module_id, name.word)?;
 
         match (&name.node, results.len()) {
             (Some(node), 1) => {
@@ -536,8 +626,14 @@ impl<'db> Typeck<'db> {
             (Some(_), _) => {
                 // We tried to traverse a nested import, but there are multiple results
                 Err(Diagnostic::error()
-                    .with_message(format!("expected a module, but `{}` isn't one", name.word))
-                    .with_label(Label::primary(name.word.span()).with_message("not a module")))
+                    .with_message(format!(
+                        "expected a module, but `{}` isn't one",
+                        name.word
+                    ))
+                    .with_label(
+                        Label::primary(name.word.span())
+                            .with_message("not a module"),
+                    ))
             }
             _ => {
                 for res in results {
@@ -547,7 +643,10 @@ impl<'db> Typeck<'db> {
                         }
                         LookupResult::Fn(candidate) => {
                             self.insert_fn_candidate(
-                                Symbol::new(env.module_id(), name.name().name()),
+                                Symbol::new(
+                                    env.module_id(),
+                                    name.name().name(),
+                                ),
                                 candidate,
                             )?;
                         }
@@ -560,10 +659,17 @@ impl<'db> Typeck<'db> {
     }
 
     fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {
-        self.resolution_state.module_state_mut(env.module_id()).globs.insert(module_id);
+        self.resolution_state
+            .module_state_mut(env.module_id())
+            .globs
+            .insert(module_id);
     }
 
-    fn is_module_def(&self, def_id: DefId, span: Span) -> TypeckResult<ModuleId> {
+    fn is_module_def(
+        &self,
+        def_id: DefId,
+        span: Span,
+    ) -> TypeckResult<ModuleId> {
         match self.normalize(self.db[def_id].ty).kind() {
             TyKind::Module(module_id) => Ok(*module_id),
             ty => Err(errors::ty_mismatch(
@@ -579,13 +685,28 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         let_: &ast::ExternLet,
     ) -> TypeckResult<hir::ExternLet> {
-        self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::ExternLet)?;
+        self.check_attrs(
+            env.module_id(),
+            &let_.attrs,
+            AttrsPlacement::ExternLet,
+        )?;
 
         let ty = self.check_ty_expr(env, &let_.ty_expr, AllowTyHole::No)?;
-        let id =
-            self.define_def(env, let_.vis, DefKind::ExternGlobal, let_.word, let_.mutability, ty)?;
+        let id = self.define_def(
+            env,
+            let_.vis,
+            DefKind::ExternGlobal,
+            let_.word,
+            let_.mutability,
+            ty,
+        )?;
 
-        Ok(hir::ExternLet { module_id: env.module_id(), id, word: let_.word, span: let_.span })
+        Ok(hir::ExternLet {
+            module_id: env.module_id(),
+            id,
+            word: let_.word,
+            span: let_.span,
+        })
     }
 
     fn check_expr(
@@ -598,7 +719,11 @@ impl<'db> Typeck<'db> {
             ast::Expr::Let(let_) => {
                 let span = let_.span;
                 let let_ = self.check_let(env, let_)?;
-                Ok(self.expr(hir::ExprKind::Let(let_), self.db.types.unit, span))
+                Ok(self.expr(
+                    hir::ExprKind::Let(let_),
+                    self.db.types.unit,
+                    span,
+                ))
             }
             ast::Expr::Assign { lhs, rhs, op, span } => {
                 let lhs = self.check_expr(env, lhs, None)?;
@@ -630,12 +755,17 @@ impl<'db> Typeck<'db> {
                         self.unit_expr(*span)
                     };
 
-                    self.at(Obligation::return_ty(expr.span, self.db[fn_id].span))
-                        .eq(ret_ty, expr.ty)
-                        .or_coerce(self, expr.id)?;
+                    self.at(Obligation::return_ty(
+                        expr.span,
+                        self.db[fn_id].span,
+                    ))
+                    .eq(ret_ty, expr.ty)
+                    .or_coerce(self, expr.id)?;
 
                     Ok(self.expr(
-                        hir::ExprKind::Return(hir::Return { expr: Box::new(expr) }),
+                        hir::ExprKind::Return(hir::Return {
+                            expr: Box::new(expr),
+                        }),
                         self.db.types.never,
                         *span,
                     ))
@@ -646,7 +776,8 @@ impl<'db> Typeck<'db> {
                 }
             }
             ast::Expr::If { cond, then, otherwise, span } => {
-                let cond = self.check_expr(env, cond, Some(self.db.types.bool))?;
+                let cond =
+                    self.check_expr(env, cond, Some(self.db.types.bool))?;
 
                 self.at(Obligation::obvious(cond.span))
                     .eq(self.db.types.bool, cond.ty)
@@ -655,11 +786,16 @@ impl<'db> Typeck<'db> {
                 let mut then = self.check_expr(env, then, expected_ty)?;
 
                 let otherwise = if let Some(otherwise) = otherwise.as_ref() {
-                    let otherwise = self.check_expr(env, otherwise, Some(then.ty))?;
+                    let otherwise =
+                        self.check_expr(env, otherwise, Some(then.ty))?;
 
-                    self.at(Obligation::exprs(*span, then.span, otherwise.span))
-                        .eq(then.ty, otherwise.ty)
-                        .or_coerce(self, otherwise.id)?;
+                    self.at(Obligation::exprs(
+                        *span,
+                        then.span,
+                        otherwise.span,
+                    ))
+                    .eq(then.ty, otherwise.ty)
+                    .or_coerce(self, otherwise.id)?;
 
                     otherwise
                 } else {
@@ -684,7 +820,8 @@ impl<'db> Typeck<'db> {
             }
             ast::Expr::Loop { cond, expr, span } => {
                 let cond = if let Some(cond) = cond.as_ref() {
-                    let cond = self.check_expr(env, cond, Some(self.db.types.bool))?;
+                    let cond =
+                        self.check_expr(env, cond, Some(self.db.types.bool))?;
 
                     self.at(Obligation::obvious(cond.span))
                         .eq(self.db.types.bool, cond.ty)
@@ -706,22 +843,33 @@ impl<'db> Typeck<'db> {
                     .or_coerce(self, expr.id)?;
 
                 Ok(self.expr(
-                    hir::ExprKind::Loop(hir::Loop { cond, expr: Box::new(expr) }),
+                    hir::ExprKind::Loop(hir::Loop {
+                        cond,
+                        expr: Box::new(expr),
+                    }),
                     self.db.types.never,
                     *span,
                 ))
             }
             ast::Expr::Break { span } => {
                 if env.in_scope_kind(&ScopeKind::Loop) {
-                    Ok(self.expr(hir::ExprKind::Break, self.db.types.never, *span))
+                    Ok(self.expr(
+                        hir::ExprKind::Break,
+                        self.db.types.never,
+                        *span,
+                    ))
                 } else {
                     Err(Diagnostic::error()
                         .with_message("cannot break outside of a loop")
-                        .with_label(Label::primary(*span).with_message("break outside of loop")))
+                        .with_label(
+                            Label::primary(*span)
+                                .with_message("break outside of loop"),
+                        ))
                 }
             }
-            ast::Expr::Block { exprs, span } => {
-                env.with_anon_scope(ScopeKind::Block, |env| -> TypeckResult<hir::Expr> {
+            ast::Expr::Block { exprs, span } => env.with_anon_scope(
+                ScopeKind::Block,
+                |env| -> TypeckResult<hir::Expr> {
                     let (exprs, ty) = if exprs.is_empty() {
                         (vec![], self.db.types.unit)
                     } else {
@@ -729,9 +877,16 @@ impl<'db> Typeck<'db> {
                         let last = exprs.len() - 1;
 
                         for (i, expr) in exprs.iter().enumerate() {
-                            let expected_ty =
-                                if i == last { expected_ty } else { Some(self.db.types.unit) };
-                            new_exprs.push(self.check_expr(env, expr, expected_ty)?);
+                            let expected_ty = if i == last {
+                                expected_ty
+                            } else {
+                                Some(self.db.types.unit)
+                            };
+                            new_exprs.push(self.check_expr(
+                                env,
+                                expr,
+                                expected_ty,
+                            )?);
                         }
 
                         let ty = new_exprs.last().unwrap().ty;
@@ -739,9 +894,13 @@ impl<'db> Typeck<'db> {
                         (new_exprs, ty)
                     };
 
-                    Ok(self.expr(hir::ExprKind::Block(hir::Block { exprs }), ty, *span))
-                })
-            }
+                    Ok(self.expr(
+                        hir::ExprKind::Block(hir::Block { exprs }),
+                        ty,
+                        *span,
+                    ))
+                },
+            ),
             ast::Expr::MethodCall { expr, method, args, span } => {
                 let args = self.check_call_args(env, args)?;
 
@@ -750,8 +909,12 @@ impl<'db> Typeck<'db> {
 
                 match expr_ty.kind() {
                     TyKind::Module(in_module) => {
-                        let id = self.lookup_fn_call(env, *in_module, *method, &args)?;
-                        let callee = self.check_name(env, id, *method, *span, None)?;
+                        // TODO: apply ty_args
+                        let id = self.lookup_fn_call(
+                            env, *in_module, *method, None, &args,
+                        )?;
+                        let callee =
+                            self.check_name(env, id, *method, *span, None)?;
                         self.check_call(callee, args, *span)
                     }
                     _ => Err(Diagnostic::error()
@@ -764,8 +927,22 @@ impl<'db> Typeck<'db> {
 
                 let callee = match callee.as_ref() {
                     ast::Expr::Name { word, ty_args, span } => {
-                        let id = self.lookup_fn_call(env, env.module_id(), *word, &args)?;
-                        self.check_name(env, id, *word, *span, ty_args.as_ref().map(Vec::as_slice))?
+                        let ty_args = self
+                            .check_optional_ty_args(env, ty_args.as_deref())?;
+                        let id = self.lookup_fn_call(
+                            env,
+                            env.module_id(),
+                            *word,
+                            ty_args.as_deref(),
+                            &args,
+                        )?;
+                        self.check_name(
+                            env,
+                            id,
+                            *word,
+                            *span,
+                            ty_args.as_deref(),
+                        )?
                     }
                     _ => self.check_expr(env, callee, None)?,
                 };
@@ -787,8 +964,9 @@ impl<'db> Typeck<'db> {
                                     ty.display(self.db)
                                 ))
                                 .with_label(
-                                    Label::primary(expr.span)
-                                        .with_message(format!("invalid use of `{op}`")),
+                                    Label::primary(expr.span).with_message(
+                                        format!("invalid use of `{op}`"),
+                                    ),
                                 ));
                         }
                     }
@@ -801,8 +979,9 @@ impl<'db> Typeck<'db> {
                                     ty.display(self.db)
                                 ))
                                 .with_label(
-                                    Label::primary(expr.span)
-                                        .with_message(format!("invalid use of `{op}`")),
+                                    Label::primary(expr.span).with_message(
+                                        format!("invalid use of `{op}`"),
+                                    ),
                                 ));
                         }
                     }
@@ -811,7 +990,10 @@ impl<'db> Typeck<'db> {
                 let ty = expr.ty;
 
                 Ok(self.expr(
-                    hir::ExprKind::Unary(hir::Unary { expr: Box::new(expr), op: *op }),
+                    hir::ExprKind::Unary(hir::Unary {
+                        expr: Box::new(expr),
+                        op: *op,
+                    }),
                     ty,
                     *span,
                 ))
@@ -842,7 +1024,10 @@ impl<'db> Typeck<'db> {
                 let target = self.check_ty_expr(env, ty, AllowTyHole::Yes)?;
 
                 Ok(self.expr(
-                    hir::ExprKind::Cast(hir::Cast { expr: Box::new(expr), target }),
+                    hir::ExprKind::Cast(hir::Cast {
+                        expr: Box::new(expr),
+                        target,
+                    }),
                     target,
                     *span,
                 ))
@@ -852,15 +1037,26 @@ impl<'db> Typeck<'db> {
                 self.check_member(env, expr, *member, *span)
             }
             ast::Expr::Name { word, ty_args, span } => {
-                let id = self.lookup(env, env.module_id(), &Query::Name(*word))?;
-                self.check_name(env, id, *word, *span, ty_args.as_ref().map(Vec::as_slice))
+                let id =
+                    self.lookup(env, env.module_id(), &Query::Name(*word))?;
+                let ty_args =
+                    self.check_optional_ty_args(env, ty_args.as_deref())?;
+                self.check_name(env, id, *word, *span, ty_args.as_deref())
             }
             ast::Expr::Lit { kind, span } => {
                 let (kind, ty) = match kind {
-                    ast::LitKind::Str(v) => (hir::Lit::Str(*v), self.db.types.str),
-                    ast::LitKind::Int(v) => (hir::Lit::Int(*v), self.fresh_int_var()),
-                    ast::LitKind::Float(v) => (hir::Lit::Float(*v), self.fresh_float_var()),
-                    ast::LitKind::Bool(v) => (hir::Lit::Bool(*v), self.db.types.bool),
+                    ast::LitKind::Str(v) => {
+                        (hir::Lit::Str(*v), self.db.types.str)
+                    }
+                    ast::LitKind::Int(v) => {
+                        (hir::Lit::Int(*v), self.fresh_int_var())
+                    }
+                    ast::LitKind::Float(v) => {
+                        (hir::Lit::Float(*v), self.fresh_float_var())
+                    }
+                    ast::LitKind::Bool(v) => {
+                        (hir::Lit::Bool(*v), self.db.types.bool)
+                    }
                 };
 
                 Ok(self.expr(hir::ExprKind::Lit(kind), ty, *span))
@@ -874,7 +1070,7 @@ impl<'db> Typeck<'db> {
         id: DefId,
         word: Word,
         span: Span,
-        args: Option<&[TyExpr]>,
+        ty_args: Option<&[Ty]>,
     ) -> TypeckResult<hir::Expr> {
         if let DefKind::Struct(struct_id) = self.db[id].kind.as_ref() {
             // NOTE: if the named definition is a struct, we want to return its
@@ -897,27 +1093,20 @@ impl<'db> Typeck<'db> {
             if let Some(fn_id) = env.fn_id() {
                 let fn_ty_params = self.db[fn_id].ty.collect_params();
                 for ftp in fn_ty_params {
-                    if let Some(tp) = ty_params.iter_mut().find(|p| p.var == ftp.var) {
+                    if let Some(tp) =
+                        ty_params.iter_mut().find(|p| p.var == ftp.var)
+                    {
                         *tp = ftp.clone();
                     }
                 }
             }
 
-            let args = if let Some(args) = args {
-                let args: Vec<Ty> = args
-                    .iter()
-                    .map(|arg| self.check_ty_expr(env, arg, AllowTyHole::Yes))
-                    .try_collect()?;
-
-                Some(args)
-            } else {
-                None
-            };
-
-            let instantiation: Instantiation = match &args {
-                Some(args) if args.len() == ty_params.len() => {
-                    ty_params.into_iter().zip(args).map(|(param, arg)| (param.var, *arg)).collect()
-                }
+            let instantiation: Instantiation = match &ty_args {
+                Some(args) if args.len() == ty_params.len() => ty_params
+                    .into_iter()
+                    .zip(args.iter())
+                    .map(|(param, arg)| (param.var, *arg))
+                    .collect(),
                 Some(args) => {
                     let expected = ty_params.len();
                     let found = args.len();
@@ -931,8 +1120,9 @@ impl<'db> Typeck<'db> {
                         ))));
                 }
                 _ => {
-                    let env_fn_ty_params =
-                        env.fn_id().map_or(vec![], |id| self.db[id].ty.collect_params());
+                    let env_fn_ty_params = env
+                        .fn_id()
+                        .map_or(vec![], |id| self.db[id].ty.collect_params());
 
                     ty_params
                         .into_iter()
@@ -941,7 +1131,10 @@ impl<'db> Typeck<'db> {
                                 param.var,
                                 // If the type param is one of the current function's type
                                 // params, we don't want to instantiate it
-                                if env_fn_ty_params.iter().any(|p| p.var == param.var) {
+                                if env_fn_ty_params
+                                    .iter()
+                                    .any(|p| p.var == param.var)
+                                {
                                     Ty::new(TyKind::Param(param))
                                 } else {
                                     self.fresh_ty_var()
@@ -954,8 +1147,27 @@ impl<'db> Typeck<'db> {
 
             let ty = instantiate(def_ty, instantiation.clone());
 
-            Ok(self.expr(hir::ExprKind::Name(hir::Name { id, word, instantiation }), ty, span))
+            Ok(self.expr(
+                hir::ExprKind::Name(hir::Name { id, word, instantiation }),
+                ty,
+                span,
+            ))
         }
+    }
+
+    fn check_optional_ty_args(
+        &mut self,
+        env: &Env,
+        ty_args: Option<&[TyExpr]>,
+    ) -> TypeckResult<Option<Vec<Ty>>> {
+        ty_args
+            .map(|ty_args| {
+                ty_args
+                    .iter()
+                    .map(|arg| self.check_ty_expr(env, arg, AllowTyHole::Yes))
+                    .try_collect::<Vec<_>>()
+            })
+            .transpose()
     }
 
     fn check_member(
@@ -972,10 +1184,14 @@ impl<'db> Typeck<'db> {
                 // TODO: ty_args are an error here
                 let struct_info = &self.db[*struct_id];
 
-                if let Some(field) = struct_info.field_by_name(member.name().as_str()) {
+                if let Some(field) =
+                    struct_info.field_by_name(member.name().as_str())
+                {
                     field.ty
                 } else {
-                    return Err(errors::member_not_found(self.db, ty, expr.span, member));
+                    return Err(errors::member_not_found(
+                        self.db, ty, expr.span, member,
+                    ));
                 }
             }
             TyKind::Module(module_id) => {
@@ -984,10 +1200,16 @@ impl<'db> Typeck<'db> {
                 return self.check_name(env, id, member, span, None);
             }
             // TODO: ty_args are an error here
-            TyKind::Str if member.name() == sym::PTR => Ty::new(TyKind::RawPtr(self.db.types.u8)),
+            TyKind::Str if member.name() == sym::PTR => {
+                Ty::new(TyKind::RawPtr(self.db.types.u8))
+            }
             // TODO: ty_args are an error here
             TyKind::Str if member.name() == sym::LEN => self.db.types.uint,
-            _ => return Err(errors::member_not_found(self.db, ty, expr.span, member)),
+            _ => {
+                return Err(errors::member_not_found(
+                    self.db, ty, expr.span, member,
+                ))
+            }
         };
 
         Ok(self.expr(
@@ -1002,13 +1224,17 @@ impl<'db> Typeck<'db> {
         env: &Env,
         in_module: ModuleId,
         word: Word,
+        ty_args: Option<&[Ty]>,
         args: &[hir::CallArg],
     ) -> TypeckResult<DefId> {
         let args = args
             .iter()
-            .map(|a| FnTyParam { name: a.name.map(|w| w.name()), ty: self.normalize(a.expr.ty) })
+            .map(|a| FnTyParam {
+                name: a.name.map(|w| w.name()),
+                ty: self.normalize(a.expr.ty),
+            })
             .collect::<Vec<_>>();
-        let query = FnQuery::new(word, &args);
+        let query = FnQuery::new(word, ty_args.unwrap_or_default(), &args);
         self.lookup(env, in_module, &Query::Fn(query))
     }
 
@@ -1029,7 +1255,11 @@ impl<'db> Typeck<'db> {
                 }
 
                 if !fun_ty.is_c_variadic && args.len() != fun_ty.params.len() {
-                    return Err(errors::arg_mismatch(fun_ty.params.len(), args.len(), span));
+                    return Err(errors::arg_mismatch(
+                        fun_ty.params.len(),
+                        args.len(),
+                        span,
+                    ));
                 }
 
                 let mut already_passed_args = UstrMap::<PassedArg>::default();
@@ -1039,10 +1269,15 @@ impl<'db> Typeck<'db> {
                     if arg.name.is_none() {
                         arg.index = Some(idx);
 
-                        if let Some(param_name) = fun_ty.params.get(idx).and_then(|p| p.name) {
+                        if let Some(param_name) =
+                            fun_ty.params.get(idx).and_then(|p| p.name)
+                        {
                             already_passed_args.insert(
                                 param_name,
-                                PassedArg { is_named: false, span: arg.expr.span },
+                                PassedArg {
+                                    is_named: false,
+                                    span: arg.expr.span,
+                                },
                             );
                         }
                     }
@@ -1057,8 +1292,16 @@ impl<'db> Typeck<'db> {
                             .params
                             .iter()
                             .enumerate()
-                            .find_map(|(i, p)| if p.name == Some(name) { Some(i) } else { None })
-                            .ok_or_else(|| errors::named_param_not_found(*arg_name))?;
+                            .find_map(|(i, p)| {
+                                if p.name == Some(name) {
+                                    Some(i)
+                                } else {
+                                    None
+                                }
+                            })
+                            .ok_or_else(|| {
+                                errors::named_param_not_found(*arg_name)
+                            })?;
 
                         // Report named arguments that are passed twice
                         if let Some(passed_arg) = already_passed_args.insert(
@@ -1102,7 +1345,10 @@ impl<'db> Typeck<'db> {
                 }
 
                 Ok(self.expr(
-                    hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args }),
+                    hir::ExprKind::Call(hir::Call {
+                        callee: Box::new(callee),
+                        args,
+                    }),
                     fun_ty.ret,
                     span,
                 ))
@@ -1132,8 +1378,14 @@ impl<'db> Typeck<'db> {
                 let span = callee.span;
 
                 Err(Diagnostic::error()
-                    .with_message(format!("expected a function, found `{}`", ty.display(self.db)))
-                    .with_label(Label::primary(span).with_message("expected a function")))
+                    .with_message(format!(
+                        "expected a function, found `{}`",
+                        ty.display(self.db)
+                    ))
+                    .with_label(
+                        Label::primary(span)
+                            .with_message("expected a function"),
+                    ))
             }
         }
     }
@@ -1172,8 +1424,10 @@ impl<'db> Typeck<'db> {
         let mut defined_ty_params = UstrMap::<Span>::default();
 
         for tp in ty_params {
-            let ty =
-                Ty::new(TyKind::Param(ParamTy { name: tp.word.name(), var: self.fresh_var() }));
+            let ty = Ty::new(TyKind::Param(ParamTy {
+                name: tp.word.name(),
+                var: self.fresh_var(),
+            }));
 
             let id = self.define_local_def(
                 env,
@@ -1183,7 +1437,9 @@ impl<'db> Typeck<'db> {
                 TyKind::Type(ty).into(),
             );
 
-            if let Some(prev_span) = defined_ty_params.insert(tp.word.name(), tp.word.span()) {
+            if let Some(prev_span) =
+                defined_ty_params.insert(tp.word.name(), tp.word.span())
+            {
                 let name = tp.word.name();
                 let dup_span = tp.word.span();
 
@@ -1228,14 +1484,19 @@ impl<'db> Typeck<'db> {
                     self.db.types.unit
                 };
 
-                Ok(Ty::new(TyKind::Fn(FnTy { params, ret, is_c_variadic: fn_ty.is_c_variadic })))
+                Ok(Ty::new(TyKind::Fn(FnTy {
+                    params,
+                    ret,
+                    is_c_variadic: fn_ty.is_c_variadic,
+                })))
             }
             TyExpr::RawPtr(pointee, _) => {
                 let pointee = self.check_ty_expr(env, pointee, allow_hole)?;
                 Ok(Ty::new(TyKind::RawPtr(pointee)))
             }
             TyExpr::Name(name) => {
-                let id = self.lookup(env, env.module_id(), &Query::Name(name.word))?;
+                let id =
+                    self.lookup(env, env.module_id(), &Query::Name(name.word))?;
 
                 // TODO: use args when we implement polymorphic types
                 // let args: Vec<Ty> = name
@@ -1254,7 +1515,10 @@ impl<'db> Typeck<'db> {
                             "expected a type, found value of type `{}`",
                             def.ty.display(self.db)
                         ))
-                        .with_label(Label::primary(name.span).with_message("expected a type"))),
+                        .with_label(
+                            Label::primary(name.span)
+                                .with_message("expected a type"),
+                        )),
                 }
             }
             TyExpr::Unit(_) => Ok(self.db.types.unit),
@@ -1263,7 +1527,9 @@ impl<'db> Typeck<'db> {
                     Ok(self.fresh_ty_var())
                 } else {
                     Err(Diagnostic::error()
-                        .with_message("cannot use a _ type in a function's signature")
+                        .with_message(
+                            "cannot use a _ type in a function's signature",
+                        )
                         .with_label(Label::primary(*span)))
                 }
             }
@@ -1275,7 +1541,11 @@ impl<'db> Typeck<'db> {
     }
 
     fn unit_expr(&mut self, span: Span) -> hir::Expr {
-        self.expr(hir::ExprKind::Block(hir::Block { exprs: vec![] }), self.db.types.unit, span)
+        self.expr(
+            hir::ExprKind::Block(hir::Block { exprs: vec![] }),
+            self.db.types.unit,
+            span,
+        )
     }
 
     #[inline]
@@ -1309,31 +1579,49 @@ impl<'db> Typeck<'db> {
 
     fn check_assign_lhs(&self, expr: &hir::Expr) -> TypeckResult<()> {
         match &expr.kind {
-            hir::ExprKind::Member(access) => self.check_assign_lhs_inner(&access.expr, expr.span),
-            hir::ExprKind::Name(name) => self.check_assign_lhs_name(name, expr.span),
+            hir::ExprKind::Member(access) => {
+                self.check_assign_lhs_inner(&access.expr, expr.span)
+            }
+            hir::ExprKind::Name(name) => {
+                self.check_assign_lhs_name(name, expr.span)
+            }
             _ => Err(Diagnostic::error()
                 .with_message("invalid left-hand side of assignment")
                 .with_label(
-                    Label::primary(expr.span).with_message("cannot assign to this expression"),
+                    Label::primary(expr.span)
+                        .with_message("cannot assign to this expression"),
                 )),
         }
     }
 
-    fn check_assign_lhs_inner(&self, expr: &hir::Expr, origin_span: Span) -> TypeckResult<()> {
+    fn check_assign_lhs_inner(
+        &self,
+        expr: &hir::Expr,
+        origin_span: Span,
+    ) -> TypeckResult<()> {
         match &expr.kind {
-            hir::ExprKind::Name(name) => self.check_assign_lhs_name(name, origin_span),
+            hir::ExprKind::Name(name) => {
+                self.check_assign_lhs_name(name, origin_span)
+            }
             _ => Ok(()),
         }
     }
 
-    fn check_assign_lhs_name(&self, name: &hir::Name, origin_span: Span) -> TypeckResult<()> {
+    fn check_assign_lhs_name(
+        &self,
+        name: &hir::Name,
+        origin_span: Span,
+    ) -> TypeckResult<()> {
         let def = &self.db[name.id];
 
         if def.mutability.is_mut() {
             Ok(())
         } else {
             Err(Diagnostic::error()
-                .with_message(format!("cannot assign twice to immutable value `{}`", def.name))
+                .with_message(format!(
+                    "cannot assign twice to immutable value `{}`",
+                    def.name
+                ))
                 .with_label(
                     Label::primary(origin_span)
                         .with_message(format!("`{}` is immutable", def.name)),
@@ -1367,20 +1655,34 @@ impl<'db> Typeck<'db> {
 
                 if !ty.is_any_int() && !ty.is_any_float() {
                     return Err(Diagnostic::error()
-                        .with_message(format!("cannot use `{}` on `{}`", op, ty.display(self.db)))
+                        .with_message(format!(
+                            "cannot use `{}` on `{}`",
+                            op,
+                            ty.display(self.db)
+                        ))
                         .with_label(
-                            Label::primary(lhs.span).with_message(format!("invalid use of `{op}`")),
+                            Label::primary(lhs.span)
+                                .with_message(format!("invalid use of `{op}`")),
                         ));
                 }
             }
-            BinOp::Shl | BinOp::Shr | BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => {
+            BinOp::Shl
+            | BinOp::Shr
+            | BinOp::BitAnd
+            | BinOp::BitOr
+            | BinOp::BitXor => {
                 let ty = self.normalize(lhs.ty);
 
                 if !ty.is_any_int() {
                     return Err(Diagnostic::error()
-                        .with_message(format!("cannot use `{}` on `{}`", op, ty.display(self.db)))
+                        .with_message(format!(
+                            "cannot use `{}` on `{}`",
+                            op,
+                            ty.display(self.db)
+                        ))
                         .with_label(
-                            Label::primary(lhs.span).with_message(format!("invalid use of `{op}`")),
+                            Label::primary(lhs.span)
+                                .with_message(format!("invalid use of `{op}`")),
                         ));
                 }
             }

@@ -2,7 +2,9 @@ use std::marker::PhantomData;
 
 use derive_more::{From, Into};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, From, Into)]
+#[derive(
+    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, From, Into,
+)]
 pub struct Counter<T> {
     value: usize,
     marker: PhantomData<T>,
