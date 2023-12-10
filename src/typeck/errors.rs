@@ -1,5 +1,5 @@
 use crate::{
-    db::Db,
+    db::{Db, ModuleId},
     diagnostics::{Diagnostic, Label},
     span::{Span, Spanned},
     ty::Ty,
@@ -14,6 +14,21 @@ pub fn invalid_member(db: &Db, expr_ty: Ty, expr_span: Span, member: Word) -> Di
             Label::secondary(expr_span)
                 .with_message(format!("expression has type `{}`", expr_ty.display(db))),
         )
+}
+
+pub fn name_not_found(
+    db: &Db,
+    from_module: ModuleId,
+    in_module: ModuleId,
+    word: Word,
+) -> Diagnostic {
+    Diagnostic::error()
+        .with_message(if from_module == in_module {
+            format!("cannot find `{word}` in this scope")
+        } else {
+            format!("cannot find `{}` in module `{}`", word, db[in_module].qpath)
+        })
+        .with_label(Label::primary(word.span()).with_message("not found"))
 }
 
 pub fn named_param_not_found(name: Word) -> Diagnostic {

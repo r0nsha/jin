@@ -509,16 +509,17 @@ impl<'db> Typeck<'db> {
         module_id: ModuleId,
         name: &ast::ImportName,
     ) -> TypeckResult<()> {
-        let def_id = self.lookup(env, module_id, &Query::Name(name.word))?;
+        let def_id = self.import_lookup(env.module_id(), module_id, name.word)?;
+        todo!("{def_id:?}");
 
-        if let Some(node) = &name.node {
-            let module_id = self.is_module_def(def_id, name.word.span())?;
-            self.check_import_node(env, module_id, node)?;
-        } else {
-            self.insert_def(env, name.name(), def_id, name.vis)?;
-        }
-
-        Ok(())
+        // TODO: only use this branch if def_id is one
+        // if let Some(node) = &name.node {
+        //     let module_id = self.is_module_def(def_id, name.word.span())?;
+        //     self.check_import_node(env, module_id, node)
+        // } else {
+        //     // TODO: insert all def id's
+        //     self.insert_def(env, name.name(), def_id, name.vis)
+        // }
     }
 
     fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {

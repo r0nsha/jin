@@ -181,6 +181,30 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
+    pub fn import_lookup(
+        &mut self,
+        from_module: ModuleId,
+        in_module: ModuleId,
+        word: Word,
+    ) -> TypeckResult<Vec<DefId>> {
+        let symbol = Symbol::new(in_module, word.name());
+
+        if self.checking_items {
+            self.find_and_check_item(&symbol)?;
+        }
+
+        todo!()
+        // let id = self.lookup_inner(env, in_module, query)?;
+        //
+        // // TODO: do this check only if there's one result
+        // let from_module = env.module_id();
+        // if from_module != in_module {
+        //     self.check_def_access(from_module, id, query.span())?;
+        // }
+        //
+        // Ok(id)
+    }
+
     pub fn lookup(&mut self, env: &Env, in_module: ModuleId, query: &Query) -> TypeckResult<DefId> {
         let id = self.lookup_inner(env, in_module, query)?;
 
@@ -217,14 +241,8 @@ impl<'db> Typeck<'db> {
             }
         }
 
-        self.lookup_global_def(&symbol, span)?.ok_or_else(|| match query {
-            Query::Name(word) => Diagnostic::error()
-                .with_message(if env.module_id() == in_module {
-                    format!("cannot find `{word}` in this scope")
-                } else {
-                    format!("cannot find `{}` in module `{}`", word, self.db[in_module].qpath)
-                })
-                .with_label(Label::primary(word.span()).with_message("not found")),
+        self.lookup_one(&symbol, span)?.ok_or_else(|| match query {
+            Query::Name(word) => errors::name_not_found(self.db, env.module_id(), in_module, *word),
             Query::Fn(fn_query) => Diagnostic::error()
                 .with_message(format!("cannot find function `{}`", fn_query.display(self.db)))
                 .with_label(Label::primary(span).with_message("function not found")),
@@ -271,22 +289,24 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    pub fn lookup_global_def(
-        &mut self,
-        symbol: &Symbol,
-        span: Span,
-    ) -> TypeckResult<Option<DefId>> {
-        let def = self.lookup_def_in_global_scope(symbol.module_id, symbol, span)?;
-        Ok(def.or_else(|| self.builtin_tys.get(symbol.name)))
+    pub fn lookup_one(&mut self, symbol: &Symbol, span: Span) -> TypeckResult<Option<DefId>> {
+        let defs = self.lookup_global_defs(symbol.module_id, symbol);
+
+        match defs.len() {
+            0 => Ok(self.builtin_tys.get(symbol.name)),
+            1 => Ok(defs.first().copied()),
+            _ => Err(Diagnostic::error()
+                .with_message(format!("ambiguous use of item `{}`", symbol.name))
+                .with_label(Label::primary(span).with_message("used here"))
+                .with_labels(defs.iter().map(|id| {
+                    let def = &self.db[*id];
+                    Label::secondary(def.span)
+                        .with_message(format!("`{}` is defined here", def.name))
+                }))),
+        }
     }
 
-    #[inline]
-    fn lookup_def_in_global_scope(
-        &self,
-        from_module: ModuleId,
-        symbol: &Symbol,
-        span: Span,
-    ) -> TypeckResult<Option<DefId>> {
+    fn lookup_global_defs(&self, from_module: ModuleId, symbol: &Symbol) -> Vec<DefId> {
         let lookup_modules = iter::once(&from_module)
             .chain(&self.resolution_state.module_state(from_module).unwrap().globs);
 
@@ -306,18 +326,7 @@ impl<'db> Typeck<'db> {
             }
         }
 
-        match defs.len() {
-            0 => Ok(None),
-            1 => Ok(defs.first().copied()),
-            _ => Err(Diagnostic::error()
-                .with_message(format!("ambiguous use of item `{}`", symbol.name))
-                .with_label(Label::primary(span).with_message("used here"))
-                .with_labels(defs.iter().map(|id| {
-                    let def = &self.db[*id];
-                    Label::secondary(def.span)
-                        .with_message(format!("`{}` is defined here", def.name))
-                }))),
-        }
+        defs
     }
 
     fn check_def_access(
