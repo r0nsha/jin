@@ -1,6 +1,7 @@
 use core::fmt;
 use std::{iter, mem};
 
+use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr, UstrMap};
 
@@ -310,7 +311,16 @@ impl<'db> Typeck<'db> {
                 self.global_scope.fns.get(&Symbol::new(module_id, query.word.name()))
             })
             .flat_map(|set| set.find(self, query))
+            .unique_by(|candidate| candidate.id)
             .collect::<Vec<_>>();
+
+        //         let candidates=if candidates.len()==1{
+        //             // check access
+        // candidates
+        //         }else {
+        //             // filter by visibility
+        //             candidates
+        //         }
 
         match candidates.len() {
             0 => Ok(None),
