@@ -3,7 +3,7 @@ use crate::{
     diagnostics::{Diagnostic, Label},
     span::{Span, Spanned},
     ty::Ty,
-    typeck::env::FnQuery,
+    typeck::env::{FnCandidate, FnQuery},
     word::Word,
 };
 
@@ -84,15 +84,10 @@ pub fn multiple_item_def_err(prev_span: Span, dup_name: Word) -> Diagnostic {
         .with_note("you can only define items once in a module (except functions)")
 }
 
-pub fn multiple_fn_def_err(prev_span: Span, dup_name: Word) -> Diagnostic {
+pub fn multiple_fn_def_err(db: &Db, prev_span: Span, candidate: &FnCandidate) -> Diagnostic {
     Diagnostic::error()
-        .with_message(format!("function signature of `{dup_name}` is already defined"))
-        .with_label(
-            Label::primary(dup_name.span())
-                .with_message(format!("`{dup_name}` defined again here")),
-        )
-        .with_label(
-            Label::secondary(prev_span).with_message(format!("first definition of `{dup_name}`")),
-        )
+        .with_message(format!("`{}` is already defined", candidate.display(db)))
+        .with_label(Label::primary(candidate.word.span()).with_message("defined again here"))
+        .with_label(Label::secondary(prev_span).with_message("previous definition here"))
         .with_note("functions may be overloaded by their parameters")
 }

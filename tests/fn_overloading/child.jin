@@ -7,3 +7,7 @@ fn add*(a: int, b: int) {
 fn add*(a: f32, b: f32) {
 	printf("add floats: %f\n".ptr, a + b)
 }
+
+fn add*(a: int, b: int, c: int) {
+	printf("add 3 ints: %f\n".ptr, a + b + c)
+}

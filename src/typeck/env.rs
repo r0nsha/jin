@@ -166,7 +166,7 @@ impl<'db> Typeck<'db> {
         self.global_scope.fns.entry(symbol).or_default().try_insert(candidate).map_err(|err| {
             match err {
                 FnCandidateInsertError::AlreadyExists { prev, curr } => {
-                    errors::multiple_fn_def_err(prev.word.span(), curr.word)
+                    errors::multiple_fn_def_err(self.db, prev.word.span(), &curr)
                 }
             }
         })
