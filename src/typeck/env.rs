@@ -212,7 +212,7 @@ impl<'db> Typeck<'db> {
         let symbol = Symbol::new(in_module, word.name());
 
         if self.checking_items {
-            self.find_and_check_item(&symbol)?;
+            self.find_and_check_items(&symbol)?;
         }
 
         // TODO: need a function that returns a single DefId
@@ -259,17 +259,19 @@ impl<'db> Typeck<'db> {
         let symbol = Symbol::new(in_module, name);
 
         if self.checking_items {
-            self.find_and_check_item(&symbol)?;
+            self.find_and_check_items(&symbol)?;
         }
 
+        let from_module = env.module_id();
+
         if let Query::Fn(fn_query) = query {
-            if let Some(id) = self.lookup_fn_candidate(env.module_id(), &symbol, fn_query, span)? {
+            if let Some(id) = self.lookup_fn_candidate(from_module, in_module, fn_query, span)? {
                 return Ok(id);
             }
         }
 
         self.lookup_global_one(&symbol, span)?.ok_or_else(|| match query {
-            Query::Name(word) => errors::name_not_found(self.db, env.module_id(), in_module, *word),
+            Query::Name(word) => errors::name_not_found(self.db, from_module, in_module, *word),
             Query::Fn(fn_query) => Diagnostic::error()
                 .with_message(format!("cannot find function `{}`", fn_query.display(self.db)))
                 .with_label(Label::primary(span).with_message("function not found")),
@@ -277,15 +279,17 @@ impl<'db> Typeck<'db> {
     }
 
     #[inline]
-    fn find_and_check_item(&mut self, symbol: &Symbol) -> TypeckResult<()> {
-        self.resolution_state.create_module_state(symbol.module_id);
+    fn find_and_check_items(&mut self, symbol: &Symbol) -> TypeckResult<()> {
+        let lookup_modules = self.get_lookup_modules(symbol.module_id).collect::<Vec<_>>();
 
-        if let Some(item_ids) = self.global_scope.symbol_to_item.get(symbol).cloned() {
-            let mut env = Env::new(symbol.module_id);
+        for module_id in lookup_modules {
+            if let Some(item_ids) = self.global_scope.symbol_to_item.get(symbol).cloned() {
+                let mut env = Env::new(module_id);
 
-            for item_id in item_ids {
-                let item = &self.ast.modules[symbol.module_id].items[item_id];
-                self.check_item(&mut env, item, ast::GlobalItemId::new(symbol.module_id, item_id))?;
+                for item_id in item_ids {
+                    let item = &self.ast.modules[module_id].items[item_id];
+                    self.check_item(&mut env, item, ast::GlobalItemId::new(module_id, item_id))?;
+                }
             }
         }
 
@@ -295,15 +299,18 @@ impl<'db> Typeck<'db> {
     fn lookup_fn_candidate(
         &self,
         from_module: ModuleId,
-        symbol: &Symbol,
+        in_module: ModuleId,
         query: &FnQuery,
         span: Span,
     ) -> Result<Option<DefId>, Diagnostic> {
-        // TODO: also collect candidates from globs
-        let Some(set) = self.global_scope.fns.get(symbol) else { return Ok(None) };
-
         // TODO: take visibility into account in query
-        let candidates = set.find(self, query);
+        let candidates = self
+            .get_lookup_modules(in_module)
+            .filter_map(|module_id| {
+                self.global_scope.fns.get(&Symbol::new(module_id, query.word.name()))
+            })
+            .flat_map(|set| set.find(self, query))
+            .collect::<Vec<_>>();
 
         match candidates.len() {
             0 => Ok(None),
@@ -338,13 +345,11 @@ impl<'db> Typeck<'db> {
     }
 
     fn lookup_global_many(&self, in_module: ModuleId, symbol: &Symbol) -> Vec<LookupResult> {
-        let lookup_modules = iter::once(&in_module)
-            .chain(&self.resolution_state.module_state(in_module).unwrap().globs);
-
+        let lookup_modules = self.get_lookup_modules(in_module);
         let mut defs = vec![];
 
         for module_id in lookup_modules {
-            let symbol = symbol.with_module_id(*module_id);
+            let symbol = symbol.with_module_id(module_id);
 
             if let Some(id) = self.global_scope.get_def(in_module, &symbol) {
                 defs.push(LookupResult::Def(id));
@@ -358,6 +363,11 @@ impl<'db> Typeck<'db> {
         }
 
         defs
+    }
+
+    fn get_lookup_modules(&self, in_module: ModuleId) -> impl Iterator<Item = ModuleId> + '_ {
+        iter::once(in_module)
+            .chain(self.resolution_state.module_state(in_module).globs.iter().copied())
     }
 
     fn check_def_access(

@@ -1,4 +1,4 @@
-import child.add
+import child.{add, *}
 
 fn extern printf(fmt: *u8, ..) -> i32
 

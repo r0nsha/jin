@@ -91,6 +91,7 @@ impl<'db> Typeck<'db> {
     }
 
     fn run(mut self) -> TypeckResult<Hir> {
+        self.create_module_states();
         self.collect_items();
         self.check_items()?;
         self.checking_items = false;
@@ -104,6 +105,12 @@ impl<'db> Typeck<'db> {
         Ok(self.hir)
     }
 
+    fn create_module_states(&mut self) {
+        for module in &self.ast.modules {
+            self.resolution_state.create_module_state(module.id);
+        }
+    }
+
     fn check_items(&mut self) -> TypeckResult<()> {
         for module in &self.ast.modules {
             self.check_module(module)?;
@@ -113,17 +120,11 @@ impl<'db> Typeck<'db> {
     }
 
     fn check_module(&mut self, module: &ast::Module) -> TypeckResult<()> {
-        self.resolution_state.create_module_state(module.id);
-
-        // If the module is already fully resolved, return early
-        if self
-            .resolution_state
-            .module_state(module.id)
-            .map(|s| s.status.is_resolved())
-            .unwrap_or_default()
-        {
+        if self.resolution_state.module_state(module.id).status.is_resolved() {
             return Ok(());
         }
+
+        self.resolution_state.module_state_mut(module.id).status = ModuleStatus::InProgress;
 
         let mut env = Env::new(module.id);
 
@@ -132,7 +133,7 @@ impl<'db> Typeck<'db> {
             self.check_item(&mut env, item, global_item_id)?;
         }
 
-        self.resolution_state.module_state_mut(module.id).unwrap().status = ModuleStatus::Resolved;
+        self.resolution_state.module_state_mut(module.id).status = ModuleStatus::Resolved;
 
         Ok(())
     }
@@ -557,7 +558,7 @@ impl<'db> Typeck<'db> {
     }
 
     fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {
-        self.resolution_state.module_state_mut(env.module_id()).unwrap().globs.insert(module_id);
+        self.resolution_state.module_state_mut(env.module_id()).globs.insert(module_id);
     }
 
     fn is_module_def(&self, def_id: DefId, span: Span) -> TypeckResult<ModuleId> {
