@@ -711,35 +711,37 @@ pub enum Query<'a> {
 }
 
 impl<'a> Query<'a> {
-    pub fn name(&self) -> Ustr {
+    #[inline]
+    pub fn word(&self) -> Word {
         match self {
-            Query::Name(w) => w.name(),
-            Query::Fn(f) => f.name,
+            Query::Name(word) | Query::Fn(FnQuery { word, .. }) => *word,
         }
     }
 
+    #[inline]
+    pub fn name(&self) -> Ustr {
+        self.word().name()
+    }
+
+    #[inline]
     pub fn span(&self) -> Span {
-        match self {
-            Query::Name(w) => w.span(),
-            Query::Fn(f) => f.span,
-        }
+        self.word().span()
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct FnQuery<'a> {
-    pub name: Ustr,
+    pub word: Word,
     pub args: &'a [Ty],
-    pub span: Span,
 }
 
 impl<'a> FnQuery<'a> {
-    pub fn new(name: Ustr, args: &'a [Ty], span: Span) -> Self {
-        Self { name, args, span }
+    pub fn new(word: Word, args: &'a [Ty]) -> Self {
+        Self { word, args }
     }
 
     pub fn display<'db>(&self, db: &'db Db) -> DisplayFn<'db, 'a> {
-        DisplayFn { db, name: self.name.to_string(), params: self.args }
+        DisplayFn { db, name: self.word.to_string(), params: self.args }
     }
 }
 
