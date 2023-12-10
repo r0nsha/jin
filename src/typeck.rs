@@ -129,8 +129,10 @@ impl<'db> Typeck<'db> {
         let mut env = Env::new(module.id);
 
         for (item_id, item) in module.items.iter_enumerated() {
-            let global_item_id = ast::GlobalItemId::new(module.id, item_id);
-            self.check_item(&mut env, item, global_item_id)?;
+            let item_id = ast::GlobalItemId::new(module.id, item_id);
+            if let ItemStatus::Unresolved = self.resolution_state.get_item_status(&item_id) {
+                self.check_item(&mut env, item, item_id)?;
+            }
         }
 
         self.resolution_state.module_state_mut(module.id).status = ModuleStatus::Resolved;
