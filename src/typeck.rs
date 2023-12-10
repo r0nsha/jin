@@ -970,8 +970,8 @@ impl<'db> Typeck<'db> {
             ast::Expr::Name { word, args, span } => {
                 let call_args: Vec<Ty> =
                     new_args.iter().map(|a| self.normalize(a.expr.ty)).collect();
-                let fn_query = FnQuery::new(word.name(), &call_args);
-                let id = self.lookup_fn(env, &fn_query, word.span())?;
+                let fn_query = FnQuery::new(word.name(), &call_args, word.span());
+                let id = self.lookup_fn(env, &fn_query)?;
                 self.check_name(env, id, *word, *span, args.as_ref().map(Vec::as_slice))?
             }
             _ => self.check_expr(env, callee, None)?,

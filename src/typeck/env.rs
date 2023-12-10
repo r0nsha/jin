@@ -181,7 +181,7 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
-    pub fn lookup_fn(&mut self, env: &Env, fn_query: &FnQuery, span: Span) -> TypeckResult<DefId> {
+    pub fn lookup_fn(&mut self, env: &Env, fn_query: &FnQuery) -> TypeckResult<DefId> {
         if let Some(id) = env.lookup(fn_query.name).copied() {
             return Ok(id);
         }
@@ -192,14 +192,16 @@ impl<'db> Typeck<'db> {
             self.find_and_check_item(&symbol)?;
         }
 
-        if let Some(id) = self.lookup_fn_candidate(env.module_id(), &symbol, fn_query, span)? {
+        if let Some(id) =
+            self.lookup_fn_candidate(env.module_id(), &symbol, fn_query, fn_query.span)?
+        {
             return Ok(id);
         }
 
-        self.lookup_global_def(&symbol, span)?.ok_or_else(|| {
+        self.lookup_global_def(&symbol, fn_query.span)?.ok_or_else(|| {
             Diagnostic::error()
                 .with_message(format!("cannot find function `{}`", fn_query.display(self.db)))
-                .with_label(Label::primary(span).with_message("function not found"))
+                .with_label(Label::primary(fn_query.span).with_message("function not found"))
         })
     }
 
@@ -720,11 +722,12 @@ impl Eq for FnCandidate {}
 pub struct FnQuery<'a> {
     pub name: Ustr,
     pub args: &'a [Ty],
+    pub span: Span,
 }
 
 impl<'a> FnQuery<'a> {
-    pub fn new(name: Ustr, args: &'a [Ty]) -> Self {
-        Self { name, args }
+    pub fn new(name: Ustr, args: &'a [Ty], span: Span) -> Self {
+        Self { name, args, span }
     }
 
     pub fn display<'db>(&self, db: &'db Db) -> DisplayFn<'db, 'a> {
