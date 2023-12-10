@@ -1,13 +1,12 @@
-//import child.*
-import child
+import child.*
 
 fn extern printf(fmt: *u8, ..) -> i32
 
 fn main {
-	child.add(int(1), int(1)) // exact int
-	child.add(1, 1) // untyped int matching
-	child.add(8, 13, 9) // matching different arg count
-	child.add(f32(1.0), f32(2.5)) // exact f32
-	child.add(1.0, 2.5) // untyped float matching
-	child.add(5, 2.25) // mixed parameter type matching
+	add(int(1), int(1)) // exact int
+	add(1, 1) // untyped int matching
+	add(8, 13, 9) // matching different arg count
+	add(f32(1.0), f32(2.5)) // exact f32
+	add(1.0, 2.5) // untyped float matching
+	add(5, 2.25) // mixed parameter type matching
 }

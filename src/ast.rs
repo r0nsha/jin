@@ -112,7 +112,7 @@ pub enum Expr {
     Binary { lhs: Box<Self>, rhs: Box<Self>, op: BinOp, span: Span },
     Cast { expr: Box<Self>, ty_expr: TyExpr, span: Span },
     Member { expr: Box<Self>, member: Word, span: Span },
-    Name { word: Word, args: Option<Vec<TyExpr>>, span: Span },
+    Name { word: Word, ty_args: Option<Vec<TyExpr>>, span: Span },
     Lit { kind: LitKind, span: Span },
 }
 

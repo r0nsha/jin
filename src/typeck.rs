@@ -741,24 +741,35 @@ impl<'db> Typeck<'db> {
                 })
             }
             ast::Expr::MethodCall { expr, method, args, span } => {
+                let args = self.check_call_args(env, args)?;
+
                 let expr = self.check_expr(env, expr, None)?;
                 let expr_ty = self.normalize(expr.ty);
 
                 match expr_ty.kind() {
-                    TyKind::Module(module_id) => {
-                        // TODO: lookup fn `method` in that module
-                        // TODO: run check_call
+                    TyKind::Module(in_module) => {
+                        let id = self.lookup_fn_call(env, *in_module, *method, &args)?;
+                        let callee = self.check_name(env, id, *method, *span, None)?;
+                        self.check_call(callee, args, *span)
                     }
-                    _ => {
-                        return Err(Diagnostic::error()
-                            .with_message("ufcs call is not supported yet")
-                            .with_label(Label::primary(*span)))
-                    }
+                    _ => Err(Diagnostic::error()
+                        .with_message("ufcs call is not supported yet")
+                        .with_label(Label::primary(*span))),
                 }
-
-                todo!()
             }
-            ast::Expr::Call { callee, args, span } => self.check_call(env, callee, args, *span),
+            ast::Expr::Call { callee, args, span } => {
+                let args = self.check_call_args(env, args)?;
+
+                let callee = match callee.as_ref() {
+                    ast::Expr::Name { word, ty_args, span } => {
+                        let id = self.lookup_fn_call(env, env.module_id(), *word, &args)?;
+                        self.check_name(env, id, *word, *span, ty_args.as_ref().map(Vec::as_slice))?
+                    }
+                    _ => self.check_expr(env, callee, None)?,
+                };
+
+                self.check_call(callee, args, *span)
+            }
             ast::Expr::Unary { expr, op, span } => {
                 let expr = self.check_expr(env, expr, None)?;
 
@@ -838,9 +849,9 @@ impl<'db> Typeck<'db> {
                 let expr = self.check_expr(env, expr, None)?;
                 self.check_member(env, expr, *member, *span)
             }
-            ast::Expr::Name { word, args, span } => {
+            ast::Expr::Name { word, ty_args, span } => {
                 let id = self.lookup(env, env.module_id(), &Query::Name(*word))?;
-                self.check_name(env, id, *word, *span, args.as_ref().map(Vec::as_slice))
+                self.check_name(env, id, *word, *span, ty_args.as_ref().map(Vec::as_slice))
             }
             ast::Expr::Lit { kind, span } => {
                 let (kind, ty) = match kind {
@@ -956,6 +967,7 @@ impl<'db> Typeck<'db> {
 
         let res_ty = match ty.kind() {
             TyKind::Struct(struct_id) => {
+                // TODO: ty_args are an error here
                 let struct_info = &self.db[*struct_id];
 
                 if let Some(field) = struct_info.field_by_name(member.name().as_str()) {
@@ -965,10 +977,13 @@ impl<'db> Typeck<'db> {
                 }
             }
             TyKind::Module(module_id) => {
+                // TODO: apply ty_args here
                 let id = self.lookup(env, *module_id, &Query::Name(member))?;
                 return self.check_name(env, id, member, span, None);
             }
+            // TODO: ty_args are an error here
             TyKind::Str if member.name() == sym::PTR => Ty::new(TyKind::RawPtr(self.db.types.u8)),
+            // TODO: ty_args are an error here
             TyKind::Str if member.name() == sym::LEN => self.db.types.uint,
             _ => return Err(errors::member_not_found(self.db, ty, expr.span, member)),
         };
@@ -980,41 +995,24 @@ impl<'db> Typeck<'db> {
         ))
     }
 
+    fn lookup_fn_call(
+        &mut self,
+        env: &Env,
+        in_module: ModuleId,
+        word: Word,
+        args: &[hir::CallArg],
+    ) -> TypeckResult<DefId> {
+        let args: Vec<Ty> = args.iter().map(|a| self.normalize(a.expr.ty)).collect();
+        let query = FnQuery::new(word, &args);
+        self.lookup(env, in_module, &Query::Fn(query))
+    }
+
     fn check_call(
         &mut self,
-        env: &mut Env,
-        callee: &ast::Expr,
-        args: &[ast::CallArg],
+        callee: hir::Expr,
+        mut args: Vec<hir::CallArg>,
         span: Span,
     ) -> TypeckResult<hir::Expr> {
-        let mut new_args = vec![];
-
-        for arg in args {
-            new_args.push(match arg {
-                ast::CallArg::Named(name, expr) => hir::CallArg {
-                    name: Some(*name),
-                    expr: self.check_expr(env, expr, None)?,
-                    index: None,
-                },
-                ast::CallArg::Positional(expr) => hir::CallArg {
-                    name: None,
-                    expr: self.check_expr(env, expr, None)?,
-                    index: None,
-                },
-            });
-        }
-
-        let callee = match callee {
-            ast::Expr::Name { word, args, span } => {
-                let call_args: Vec<Ty> =
-                    new_args.iter().map(|a| self.normalize(a.expr.ty)).collect();
-                let fn_query = FnQuery::new(*word, &call_args);
-                let id = self.lookup(env, env.module_id(), &Query::Fn(fn_query))?;
-                self.check_name(env, id, *word, *span, args.as_ref().map(Vec::as_slice))?
-            }
-            _ => self.check_expr(env, callee, None)?,
-        };
-
         let callee_ty = self.normalize(callee.ty);
 
         match callee_ty.kind() {
@@ -1025,14 +1023,14 @@ impl<'db> Typeck<'db> {
                     span: Span,
                 }
 
-                if !fun_ty.is_c_variadic && new_args.len() != fun_ty.params.len() {
-                    return Err(errors::arg_mismatch(fun_ty.params.len(), new_args.len(), span));
+                if !fun_ty.is_c_variadic && args.len() != fun_ty.params.len() {
+                    return Err(errors::arg_mismatch(fun_ty.params.len(), args.len(), span));
                 }
 
                 let mut already_passed_args = UstrMap::<PassedArg>::default();
 
                 // Resolve positional arg indices
-                for (idx, arg) in new_args.iter_mut().enumerate() {
+                for (idx, arg) in args.iter_mut().enumerate() {
                     if arg.name.is_none() {
                         arg.index = Some(idx);
 
@@ -1046,7 +1044,7 @@ impl<'db> Typeck<'db> {
                 }
 
                 // Resolve named arg indices
-                for arg in &mut new_args {
+                for arg in &mut args {
                     if let Some(arg_name) = &arg.name {
                         let name = arg_name.name();
 
@@ -1088,7 +1086,7 @@ impl<'db> Typeck<'db> {
                 }
 
                 // Unify all args with their corresponding param type
-                for arg in &new_args {
+                for arg in &args {
                     let idx = arg.index.expect("arg index to be resolved");
 
                     if let Some(param) = fun_ty.params.get(idx) {
@@ -1099,17 +1097,17 @@ impl<'db> Typeck<'db> {
                 }
 
                 Ok(self.expr(
-                    hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args: new_args }),
+                    hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args }),
                     fun_ty.ret,
                     span,
                 ))
             }
             TyKind::Type(ty) => {
-                if new_args.len() != 1 {
-                    return Err(errors::arg_mismatch(1, new_args.len(), span));
+                if args.len() != 1 {
+                    return Err(errors::arg_mismatch(1, args.len(), span));
                 }
 
-                let arg = &new_args[0];
+                let arg = &args[0];
 
                 if let Some(name) = arg.name {
                     return Err(errors::named_param_not_found(name));
@@ -1133,6 +1131,31 @@ impl<'db> Typeck<'db> {
                     .with_label(Label::primary(span).with_message("expected a function")))
             }
         }
+    }
+
+    fn check_call_args(
+        &mut self,
+        env: &mut Env,
+        args: &[ast::CallArg],
+    ) -> TypeckResult<Vec<hir::CallArg>> {
+        let mut new_args = vec![];
+
+        for arg in args {
+            new_args.push(match arg {
+                ast::CallArg::Named(name, expr) => hir::CallArg {
+                    name: Some(*name),
+                    expr: self.check_expr(env, expr, None)?,
+                    index: None,
+                },
+                ast::CallArg::Positional(expr) => hir::CallArg {
+                    name: None,
+                    expr: self.check_expr(env, expr, None)?,
+                    index: None,
+                },
+            });
+        }
+
+        Ok(new_args)
     }
 
     fn check_ty_params(

@@ -537,8 +537,8 @@ impl<'a> Parser<'a> {
             TokenKind::True => Expr::Lit { kind: LitKind::Bool(true), span: tok.span },
             TokenKind::False => Expr::Lit { kind: LitKind::Bool(false), span: tok.span },
             TokenKind::Ident(..) => {
-                let args = self.parse_optional_ty_args()?;
-                Expr::Name { word: tok.word(), args, span: tok.span }
+                let ty_args = self.parse_optional_ty_args()?;
+                Expr::Name { word: tok.word(), ty_args, span: tok.span }
             }
             TokenKind::Int(value) => Expr::Lit {
                 kind: LitKind::Int(value.replace('_', "").parse().expect("to be a valid integer")),
