@@ -235,22 +235,20 @@ impl<'db> Typeck<'db> {
         &self,
         from_module: ModuleId,
         symbol: &Symbol,
-        fn_query: &FnQuery,
+        query: &FnQuery,
         span: Span,
     ) -> Result<Option<DefId>, Diagnostic> {
-        // TODO: collect candidates from globs
-
+        // TODO: also collect candidates from globs
         let Some(set) = self.global_scope.fns.get(symbol) else { return Ok(None) };
-        let candidates = set.find(self, fn_query);
+
+        // TODO: take visibility into account in query
+        let candidates = set.find(self, query);
 
         match candidates.len() {
             0 => Ok(None),
-            1 => {
-                // TODO: take visibility into account
-                Ok(Some(candidates.first().unwrap().id))
-            }
+            1 => Ok(Some(candidates.first().unwrap().id)),
             _ => Err(Diagnostic::error()
-                .with_message(format!("ambiguous call to `{}`", fn_query.display(self.db)))
+                .with_message(format!("ambiguous call to `{}`", query.display(self.db)))
                 .with_label(Label::primary(span).with_message("call here"))
                 .with_note("these functions apply:")
                 .with_notes(candidates.into_iter().map(|c| c.display(self.db).to_string()))),
