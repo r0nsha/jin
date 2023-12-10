@@ -1,8 +1,9 @@
 use crate::{
-    db::{Db, ModuleId},
+    db::{Db, DefId, ModuleId},
     diagnostics::{Diagnostic, Label},
     span::{Span, Spanned},
     ty::Ty,
+    typeck::env::FnQuery,
     word::Word,
 };
 
@@ -29,6 +30,21 @@ pub fn name_not_found(
             format!("cannot find `{}` in module `{}`", word, db[in_module].qpath)
         })
         .with_label(Label::primary(word.span()).with_message("not found"))
+}
+
+pub fn fn_not_found(db: &Db, query: &FnQuery) -> Diagnostic {
+    Diagnostic::error()
+        .with_message(format!("cannot find `{}`", query.display(db)))
+        .with_label(Label::primary(query.word.span()).with_message("function not found"))
+}
+
+pub fn private_access_violation(db: &Db, accessed: DefId, span: Span) -> Diagnostic {
+    let def = &db[accessed];
+    let module_name = db[def.scope.module_id].qpath.join();
+
+    Diagnostic::error()
+        .with_message(format!("`{}` is private to module `{}`", def.name, module_name))
+        .with_label(Label::primary(span).with_message(format!("private to `{module_name}`")))
 }
 
 pub fn named_param_not_found(name: Word) -> Diagnostic {

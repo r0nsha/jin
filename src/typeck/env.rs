@@ -216,8 +216,6 @@ impl<'db> Typeck<'db> {
             self.find_and_check_items(&symbol)?;
         }
 
-        // TODO: need a function that returns a single DefId
-        // or multiple FnCandidate's
         let results = self.lookup_global_many(in_module, &symbol);
 
         if results.is_empty() {
@@ -235,12 +233,7 @@ impl<'db> Typeck<'db> {
 
     pub fn lookup(&mut self, env: &Env, in_module: ModuleId, query: &Query) -> TypeckResult<DefId> {
         let id = self.lookup_inner(env, in_module, query)?;
-
-        let from_module = env.module_id();
-        if from_module != in_module {
-            self.check_def_access(from_module, id, query.span())?;
-        }
-
+        self.check_def_access(env.module_id(), id, query.span())?;
         Ok(id)
     }
 
@@ -251,7 +244,6 @@ impl<'db> Typeck<'db> {
         query: &Query,
     ) -> TypeckResult<DefId> {
         let name = query.name();
-        let span = query.span();
 
         if let Some(id) = env.lookup(name).copied() {
             return Ok(id);
@@ -266,16 +258,14 @@ impl<'db> Typeck<'db> {
         let from_module = env.module_id();
 
         if let Query::Fn(fn_query) = query {
-            if let Some(id) = self.lookup_fn_candidate(from_module, in_module, fn_query, span)? {
+            if let Some(id) = self.lookup_fn_candidate(from_module, in_module, fn_query)? {
                 return Ok(id);
             }
         }
 
-        self.lookup_global_one(&symbol, span)?.ok_or_else(|| match query {
+        self.lookup_global_one(&symbol, query.span())?.ok_or_else(|| match query {
             Query::Name(word) => errors::name_not_found(self.db, from_module, in_module, *word),
-            Query::Fn(fn_query) => Diagnostic::error()
-                .with_message(format!("cannot find function `{}`", fn_query.display(self.db)))
-                .with_label(Label::primary(span).with_message("function not found")),
+            Query::Fn(fn_query) => errors::fn_not_found(self.db, fn_query),
         })
     }
 
@@ -302,10 +292,8 @@ impl<'db> Typeck<'db> {
         from_module: ModuleId,
         in_module: ModuleId,
         query: &FnQuery,
-        span: Span,
     ) -> Result<Option<DefId>, Diagnostic> {
-        // TODO: take visibility into account in query
-        let candidates = self
+        let mut candidates = self
             .get_lookup_modules(in_module)
             .filter_map(|module_id| {
                 self.global_scope.fns.get(&Symbol::new(module_id, query.word.name()))
@@ -314,20 +302,31 @@ impl<'db> Typeck<'db> {
             .unique_by(|candidate| candidate.id)
             .collect::<Vec<_>>();
 
-        //         let candidates=if candidates.len()==1{
-        //             // check access
-        // candidates
-        //         }else {
-        //             // filter by visibility
-        //             candidates
-        //         }
+        if !candidates.is_empty() && candidates.iter().all(|c| !self.can_access(from_module, c.id))
+        {
+            return Err(Diagnostic::error()
+                .with_message(format!(
+                    "all functions which apply to `{}` are private to their module",
+                    query.display(self.db)
+                ))
+                .with_label(
+                    Label::primary(query.word.span()).with_message("no accessible function found"),
+                ));
+        }
+
+        // Filter fn candidates by their visibility if there's more than one,
+        // otherwise, we want to emit a privacy error for better ux
+        candidates.retain(|c| {
+            let def = &self.db[c.id];
+            def.scope.vis == Vis::Public || from_module == def.scope.module_id
+        });
 
         match candidates.len() {
             0 => Ok(None),
             1 => Ok(Some(candidates.first().unwrap().id)),
             _ => Err(Diagnostic::error()
                 .with_message(format!("ambiguous call to `{}`", query.display(self.db)))
-                .with_label(Label::primary(span).with_message("call here"))
+                .with_label(Label::primary(query.word.span()).with_message("call here"))
                 .with_note("these functions apply:")
                 .with_notes(candidates.into_iter().map(|c| c.display(self.db).to_string()))),
         }
@@ -382,24 +381,20 @@ impl<'db> Typeck<'db> {
 
     fn check_def_access(
         &self,
-        module_id: ModuleId,
+        from_module: ModuleId,
         accessed: DefId,
         span: Span,
     ) -> TypeckResult<()> {
-        let def = &self.db[accessed];
-
-        match def.scope.vis {
-            Vis::Private if module_id != def.scope.module_id => {
-                let module_name = self.db[def.scope.module_id].qpath.join();
-
-                Err(Diagnostic::error()
-                    .with_message(format!("`{}` is private to module `{}`", def.name, module_name))
-                    .with_label(
-                        Label::primary(span).with_message(format!("private to `{module_name}`")),
-                    ))
-            }
-            _ => Ok(()),
+        if self.can_access(from_module, accessed) {
+            Ok(())
+        } else {
+            Err(errors::private_access_violation(self.db, accessed, span))
         }
+    }
+
+    fn can_access(&self, from_module: ModuleId, accessed: DefId) -> bool {
+        let def = &self.db[accessed];
+        def.scope.vis == Vis::Public || from_module == def.scope.module_id
     }
 }
 
