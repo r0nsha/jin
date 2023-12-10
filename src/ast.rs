@@ -107,7 +107,7 @@ pub enum Expr {
     Break { span: Span },
     Block { exprs: Vec<Self>, span: Span },
     Call { callee: Box<Self>, args: Vec<CallArg>, span: Span },
-    MethodCall { callee: Box<Self>, method: Word, args: Vec<CallArg>, span: Span },
+    MethodCall { expr: Box<Self>, method: Word, args: Vec<CallArg>, span: Span },
     Unary { expr: Box<Self>, op: UnOp, span: Span },
     Binary { lhs: Box<Self>, rhs: Box<Self>, op: BinOp, span: Span },
     Cast { expr: Box<Self>, ty_expr: TyExpr, span: Span },

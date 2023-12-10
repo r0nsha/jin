@@ -7,7 +7,7 @@ use crate::{
     word::Word,
 };
 
-pub fn invalid_member(db: &Db, expr_ty: Ty, expr_span: Span, member: Word) -> Diagnostic {
+pub fn member_not_found(db: &Db, expr_ty: Ty, expr_span: Span, member: Word) -> Diagnostic {
     Diagnostic::error()
         .with_message(format!("no member `{}` on type `{}`", member, expr_ty.display(db)))
         .with_label(Label::primary(member.span()).with_message("unknown member"))

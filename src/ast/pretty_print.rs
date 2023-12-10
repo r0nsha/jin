@@ -97,8 +97,8 @@ impl PrettyPrint for Expr {
                 cx.builder.end_child();
             }
             Self::Call { callee, args, .. } => print_call(cx, &callee, args, None),
-            Self::MethodCall { callee, method, args, .. } => {
-                print_call(cx, &callee, args, Some(*method))
+            Self::MethodCall { expr, method, args, .. } => {
+                print_call(cx, expr, args, Some(*method))
             }
             Self::Unary { expr, op, .. } => {
                 cx.builder.begin_child(op.to_string());

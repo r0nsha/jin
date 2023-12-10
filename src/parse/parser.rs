@@ -668,9 +668,16 @@ impl<'a> Parser<'a> {
                 }
                 TokenKind::Dot => {
                     self.next();
-                    let name_ident = self.eat_ident()?;
-                    let span = expr.span().merge(name_ident.span);
-                    Expr::Member { expr: Box::new(expr), member: name_ident.word(), span }
+                    let name = self.eat_ident()?.word();
+
+                    if self.peek_is(TokenKind::OpenParen) {
+                        let (args, args_span) = self.parse_call_args()?;
+                        let span = expr.span().merge(args_span);
+                        Expr::MethodCall { expr: Box::new(expr), method: name, args, span }
+                    } else {
+                        let span = expr.span().merge(name.span());
+                        Expr::Member { expr: Box::new(expr), member: name, span }
+                    }
                 }
                 _ => break,
             }
@@ -680,33 +687,32 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_call(&mut self, expr: Expr) -> ParseResult<Expr> {
+        let (args, args_span) = self.parse_call_args()?;
+        let span = expr.span().merge(args_span);
+        Ok(Expr::Call { callee: Box::new(expr), args, span })
+    }
+
+    fn parse_call_args(&mut self) -> ParseResult<(Vec<CallArg>, Span)> {
         let mut passed_named_arg = false;
 
-        let (args, args_span) =
-            self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
-                let arg = Parser::parse_arg(this)?;
+        self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
+            let arg = Parser::parse_arg(this)?;
 
-                match &arg {
-                    CallArg::Positional(expr) if passed_named_arg => {
-                        return Err(Diagnostic::error()
-                            .with_message(
-                                "positional arguments are not allowed after named arguments",
-                            )
-                            .with_label(
-                                Label::primary(expr.span())
-                                    .with_message("unexpected positional argument"),
-                            ));
-                    }
-                    CallArg::Positional(_) => (),
-                    CallArg::Named(..) => passed_named_arg = true,
+            match &arg {
+                CallArg::Positional(expr) if passed_named_arg => {
+                    return Err(Diagnostic::error()
+                        .with_message("positional arguments are not allowed after named arguments")
+                        .with_label(
+                            Label::primary(expr.span())
+                                .with_message("unexpected positional argument"),
+                        ));
                 }
+                CallArg::Positional(_) => (),
+                CallArg::Named(..) => passed_named_arg = true,
+            }
 
-                Ok(arg)
-            })?;
-
-        let span = expr.span().merge(args_span);
-
-        Ok(Expr::Call { callee: Box::new(expr), args, span })
+            Ok(arg)
+        })
     }
 
     fn parse_arg(&mut self) -> ParseResult<CallArg> {

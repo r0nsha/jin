@@ -740,7 +740,22 @@ impl<'db> Typeck<'db> {
                     Ok(self.expr(hir::ExprKind::Block(hir::Block { exprs }), ty, *span))
                 })
             }
-            ast::Expr::MethodCall { callee, method, args, span } => {
+            ast::Expr::MethodCall { expr, method, args, span } => {
+                let expr = self.check_expr(env, expr, None)?;
+                let expr_ty = self.normalize(expr.ty);
+
+                match expr_ty.kind() {
+                    TyKind::Module(module_id) => {
+                        // TODO: lookup fn `method` in that module
+                        // TODO: run check_call
+                    }
+                    _ => {
+                        return Err(Diagnostic::error()
+                            .with_message("ufcs call is not supported yet")
+                            .with_label(Label::primary(*span)))
+                    }
+                }
+
                 todo!()
             }
             ast::Expr::Call { callee, args, span } => self.check_call(env, callee, args, *span),
@@ -946,7 +961,7 @@ impl<'db> Typeck<'db> {
                 if let Some(field) = struct_info.field_by_name(member.name().as_str()) {
                     field.ty
                 } else {
-                    return Err(errors::invalid_member(self.db, ty, expr.span, member));
+                    return Err(errors::member_not_found(self.db, ty, expr.span, member));
                 }
             }
             TyKind::Module(module_id) => {
@@ -955,7 +970,7 @@ impl<'db> Typeck<'db> {
             }
             TyKind::Str if member.name() == sym::PTR => Ty::new(TyKind::RawPtr(self.db.types.u8)),
             TyKind::Str if member.name() == sym::LEN => self.db.types.uint,
-            _ => return Err(errors::invalid_member(self.db, ty, expr.span, member)),
+            _ => return Err(errors::member_not_found(self.db, ty, expr.span, member)),
         };
 
         Ok(self.expr(
