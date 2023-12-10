@@ -95,27 +95,7 @@ impl PrettyPrint for Expr {
 
                 cx.builder.end_child();
             }
-            Self::Call { callee, args, .. } => {
-                cx.builder.begin_child("call".to_string());
-                callee.pretty_print(cx);
-
-                if !args.is_empty() {
-                    cx.builder.begin_child("args".to_string());
-                    for arg in args {
-                        match arg {
-                            CallArg::Positional(expr) => expr.pretty_print(cx),
-                            CallArg::Named(name, expr) => {
-                                cx.builder.begin_child(name.to_string());
-                                expr.pretty_print(cx);
-                                cx.builder.end_child();
-                            }
-                        }
-                    }
-                    cx.builder.end_child();
-                }
-
-                cx.builder.end_child();
-            }
+            Self::Call { callee, args, .. } => print_call(cx, &callee, args),
             Self::Unary { expr, op, .. } => {
                 cx.builder.begin_child(op.to_string());
                 expr.pretty_print(cx);
@@ -368,4 +348,26 @@ impl PrettyPrint for TyExpr {
 
 impl<T> PrettyPrint for Option<T> {
     fn pretty_print(&self, _cx: &mut PrettyCx) {}
+}
+
+fn print_call(cx: &mut PrettyCx, expr: &Expr, args: &[CallArg]) {
+    cx.builder.begin_child("call".to_string());
+    expr.pretty_print(cx);
+
+    if !args.is_empty() {
+        cx.builder.begin_child("args".to_string());
+        for arg in args {
+            match arg {
+                CallArg::Positional(expr) => expr.pretty_print(cx),
+                CallArg::Named(name, expr) => {
+                    cx.builder.begin_child(name.to_string());
+                    expr.pretty_print(cx);
+                    cx.builder.end_child();
+                }
+            }
+        }
+        cx.builder.end_child();
+    }
+
+    cx.builder.end_child();
 }
