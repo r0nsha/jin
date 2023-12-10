@@ -57,10 +57,15 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<DefId> {
         let symbol = Symbol::new(module_id, name.name());
 
-        if let Some(def) =
+        if let Some(candidates) = self.global_scope.fns.get(&symbol) {
+            let last_candidate = candidates.iter().last().unwrap();
+            return Err(errors::multiple_item_def_err(last_candidate.word.span(), name));
+        }
+
+        if let Some(prev) =
             self.global_scope.insert_def(symbol, GlobalScopeDef::new(id, vis, name.span()))
         {
-            return Err(errors::multiple_item_def_err(def.span, name));
+            return Err(errors::multiple_item_def_err(prev.span, name));
         }
 
         Ok(id)
