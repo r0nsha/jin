@@ -1,6 +1,7 @@
-import raylib.basic_window
-import raylib.input_keys
-import raylib.following_eyes
+import basic_window
+import input_keys
+import following_eyes
+import bindings*
 
 fn main {
 	//basic_window.run()

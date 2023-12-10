@@ -282,7 +282,18 @@ impl<'db> Typeck<'db> {
 
                 for item_id in item_ids {
                     let item = &self.ast.modules[module_id].items[item_id];
-                    self.check_item(&mut env, item, ast::GlobalItemId::new(module_id, item_id))?;
+
+                    if self
+                        .resolution_state
+                        .get_item_status(&ast::GlobalItemId::new(module_id, item_id))
+                        .is_unresolved()
+                    {
+                        self.check_item(
+                            &mut env,
+                            item,
+                            ast::GlobalItemId::new(module_id, item_id),
+                        )?;
+                    }
                 }
             }
         }

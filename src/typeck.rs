@@ -34,7 +34,7 @@ use crate::{
         env::{BuiltinTys, Env, FnQuery, GlobalScope, LookupResult, Query, ScopeKind, Symbol},
         instantiate::instantiate,
         normalize::NormalizeTy,
-        resolution_state::{ItemStatus, ModuleStatus, ResolutionState, ResolvedFnSig},
+        resolution_state::{ModuleStatus, ResolutionState, ResolvedFnSig},
         unify::Obligation,
     },
     word::Word,
@@ -130,7 +130,7 @@ impl<'db> Typeck<'db> {
 
         for (item_id, item) in module.items.iter_enumerated() {
             let item_id = ast::GlobalItemId::new(module.id, item_id);
-            if let ItemStatus::Unresolved = self.resolution_state.get_item_status(&item_id) {
+            if self.resolution_state.get_item_status(&item_id).is_unresolved() {
                 self.check_item(&mut env, item, item_id)?;
             }
         }
@@ -170,7 +170,7 @@ impl<'db> Typeck<'db> {
         item: &ast::Item,
         item_id: ast::GlobalItemId,
     ) -> TypeckResult<()> {
-        if let ItemStatus::Resolved = self.resolution_state.get_item_status(&item_id) {
+        if self.resolution_state.get_item_status(&item_id).is_resolved() {
             return Ok(());
         }
 
