@@ -740,6 +740,9 @@ impl<'db> Typeck<'db> {
                     Ok(self.expr(hir::ExprKind::Block(hir::Block { exprs }), ty, *span))
                 })
             }
+            ast::Expr::MethodCall { callee, method, args, span } => {
+                todo!()
+            }
             ast::Expr::Call { callee, args, span } => self.check_call(env, callee, args, *span),
             ast::Expr::Unary { expr, op, span } => {
                 let expr = self.check_expr(env, expr, None)?;
@@ -987,7 +990,6 @@ impl<'db> Typeck<'db> {
         }
 
         let callee = match callee {
-            ast::Expr::Member { expr, member, span } => todo!(),
             ast::Expr::Name { word, args, span } => {
                 let call_args: Vec<Ty> =
                     new_args.iter().map(|a| self.normalize(a.expr.ty)).collect();

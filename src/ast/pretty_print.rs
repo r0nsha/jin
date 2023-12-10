@@ -8,6 +8,7 @@ use crate::{
     },
     db::StructKind,
     middle::BinOp,
+    word::Word,
 };
 
 pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Result<()> {
@@ -95,7 +96,10 @@ impl PrettyPrint for Expr {
 
                 cx.builder.end_child();
             }
-            Self::Call { callee, args, .. } => print_call(cx, &callee, args),
+            Self::Call { callee, args, .. } => print_call(cx, &callee, args, None),
+            Self::MethodCall { callee, method, args, .. } => {
+                print_call(cx, &callee, args, Some(*method))
+            }
             Self::Unary { expr, op, .. } => {
                 cx.builder.begin_child(op.to_string());
                 expr.pretty_print(cx);
@@ -235,7 +239,9 @@ impl PrettyPrint for TyDef {
 impl PrettyPrint for Import {
     fn pretty_print(&self, cx: &mut PrettyCx) {
         cx.builder.begin_child(format!("import {}", self.root.name()));
-        self.root.node.pretty_print(cx);
+        if let Some(node) = &self.root.node {
+            node.pretty_print(cx);
+        }
         cx.builder.end_child();
     }
 }
@@ -243,7 +249,9 @@ impl PrettyPrint for Import {
 impl PrettyPrint for ImportName {
     fn pretty_print(&self, cx: &mut PrettyCx) {
         cx.builder.add_empty_child(self.name().to_string());
-        self.node.pretty_print(cx);
+        if let Some(node) = &self.node {
+            node.pretty_print(cx);
+        }
     }
 }
 
@@ -346,12 +354,12 @@ impl PrettyPrint for TyExpr {
     }
 }
 
-impl<T> PrettyPrint for Option<T> {
-    fn pretty_print(&self, _cx: &mut PrettyCx) {}
-}
-
-fn print_call(cx: &mut PrettyCx, expr: &Expr, args: &[CallArg]) {
-    cx.builder.begin_child("call".to_string());
+fn print_call(cx: &mut PrettyCx, expr: &Expr, args: &[CallArg], method: Option<Word>) {
+    cx.builder.begin_child(if let Some(m) = method {
+        format!("method call `{m}`")
+    } else {
+        "call".to_string()
+    });
     expr.pretty_print(cx);
 
     if !args.is_empty() {
