@@ -181,7 +181,23 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
-    pub fn lookup(&mut self, env: &Env, query: &Query) -> TypeckResult<DefId> {
+    pub fn lookup(&mut self, env: &Env, in_module: ModuleId, query: &Query) -> TypeckResult<DefId> {
+        let from_module = env.module_id();
+        let id = self.lookup_inner(env, in_module, query)?;
+
+        if from_module != in_module {
+            self.check_def_access(from_module, id, query.span())?;
+        }
+
+        Ok(id)
+    }
+
+    fn lookup_inner(
+        &mut self,
+        env: &Env,
+        in_module: ModuleId,
+        query: &Query,
+    ) -> TypeckResult<DefId> {
         let name = query.name();
         let span = query.span();
 
@@ -189,7 +205,7 @@ impl<'db> Typeck<'db> {
             return Ok(id);
         }
 
-        let symbol = Symbol::new(env.module_id(), name);
+        let symbol = Symbol::new(in_module, name);
 
         if self.checking_items {
             self.find_and_check_item(&symbol)?;
@@ -246,29 +262,7 @@ impl<'db> Typeck<'db> {
         Ok(def.or_else(|| self.builtin_tys.get(symbol.name)))
     }
 
-    pub fn lookup_def_in_module(
-        &mut self,
-        from_module: ModuleId,
-        in_module: ModuleId,
-        word: Word,
-    ) -> TypeckResult<DefId> {
-        let symbol = Symbol::new(in_module, word.name());
-        self.find_and_check_item(&symbol)?;
-
-        let Some(id) = self.lookup_def_in_global_scope(from_module, &symbol, word.span())? else {
-            let module_name = self.db[in_module].qpath.join();
-            return Err(Diagnostic::error()
-                .with_message(format!("cannot find `{word}` in module `{module_name}`",))
-                .with_label(
-                    Label::primary(word.span()).with_message(format!("not found in {module_name}")),
-                ));
-        };
-
-        self.check_def_access(from_module, id, word.span())?;
-
-        Ok(id)
-    }
-
+    #[inline]
     fn lookup_def_in_global_scope(
         &self,
         from_module: ModuleId,
@@ -506,28 +500,17 @@ impl Env {
         self.lookup_depth(k).map(|r| r.1)
     }
 
-    #[allow(unused)]
-    pub fn lookup_mut(&mut self, k: Ustr) -> Option<&mut DefId> {
-        self.lookup_depth_mut(k).map(|r| r.1)
-    }
-
-    #[allow(unused)]
     pub fn lookup_depth(&self, k: Ustr) -> Option<(usize, &DefId)> {
+        if self.scopes.is_empty() {
+            return None;
+        }
+
         for (depth, scope) in self.scopes.iter().enumerate().rev() {
             if let Some(value) = scope.defs.get(&k) {
                 return Some((depth + 1, value));
             }
         }
-        None
-    }
 
-    #[allow(unused)]
-    pub fn lookup_depth_mut(&mut self, k: Ustr) -> Option<(usize, &mut DefId)> {
-        for (depth, scope) in self.scopes.iter_mut().enumerate().rev() {
-            if let Some(value) = scope.defs.get_mut(&k) {
-                return Some((depth + 1, value));
-            }
-        }
         None
     }
 

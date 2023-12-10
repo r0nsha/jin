@@ -524,7 +524,7 @@ impl<'db> Typeck<'db> {
         module_id: ModuleId,
         name: &ast::ImportName,
     ) -> TypeckResult<()> {
-        let def_id = self.lookup_def_in_module(env.module_id(), module_id, name.word)?;
+        let def_id = self.lookup(env, module_id, &Query::Name(name.word))?;
 
         if let Some(node) = &name.node {
             let module_id = self.is_module_def(def_id, name.word.span())?;
@@ -800,7 +800,7 @@ impl<'db> Typeck<'db> {
                 self.check_member(env, expr, *member, *span)
             }
             ast::Expr::Name { word, args, span } => {
-                let id = self.lookup(env, &Query::Name(*word))?;
+                let id = self.lookup(env, env.module_id(), &Query::Name(*word))?;
                 self.check_name(env, id, *word, *span, args.as_ref().map(Vec::as_slice))
             }
             ast::Expr::Lit { kind, span } => {
@@ -926,7 +926,7 @@ impl<'db> Typeck<'db> {
                 }
             }
             TyKind::Module(module_id) => {
-                let id = self.lookup_def_in_module(env.module_id(), *module_id, member)?;
+                let id = self.lookup(env, *module_id, &Query::Name(member))?;
                 return self.check_name(env, id, member, span, None);
             }
             TyKind::Str if member.name() == sym::PTR => Ty::new(TyKind::RawPtr(self.db.types.u8)),
@@ -971,7 +971,7 @@ impl<'db> Typeck<'db> {
                 let call_args: Vec<Ty> =
                     new_args.iter().map(|a| self.normalize(a.expr.ty)).collect();
                 let fn_query = FnQuery::new(*word, &call_args);
-                let id = self.lookup(env, &Query::Fn(fn_query))?;
+                let id = self.lookup(env, env.module_id(), &Query::Fn(fn_query))?;
                 self.check_name(env, id, *word, *span, args.as_ref().map(Vec::as_slice))?
             }
             _ => self.check_expr(env, callee, None)?,
@@ -1169,7 +1169,7 @@ impl<'db> Typeck<'db> {
                 Ok(Ty::new(TyKind::RawPtr(pointee)))
             }
             TyExpr::Name(name) => {
-                let id = self.lookup(env, &Query::Name(name.word))?;
+                let id = self.lookup(env, env.module_id(), &Query::Name(name.word))?;
 
                 // TODO: use args when we implement polymorphic types
                 // let args: Vec<Ty> = name
