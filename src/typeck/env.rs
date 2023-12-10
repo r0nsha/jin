@@ -181,27 +181,33 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
-    pub fn lookup_fn(&mut self, env: &Env, fn_query: &FnQuery) -> TypeckResult<DefId> {
-        if let Some(id) = env.lookup(fn_query.name).copied() {
+    pub fn lookup(&mut self, env: &Env, query: &Query) -> TypeckResult<DefId> {
+        let name = query.name();
+        let span = query.span();
+
+        if let Some(id) = env.lookup(name).copied() {
             return Ok(id);
         }
 
-        let symbol = Symbol::new(env.module_id(), fn_query.name);
+        let symbol = Symbol::new(env.module_id(), name);
 
         if self.checking_items {
             self.find_and_check_item(&symbol)?;
         }
 
-        if let Some(id) =
-            self.lookup_fn_candidate(env.module_id(), &symbol, fn_query, fn_query.span)?
-        {
-            return Ok(id);
+        if let Query::Fn(fn_query) = query {
+            if let Some(id) = self.lookup_fn_candidate(env.module_id(), &symbol, fn_query, span)? {
+                return Ok(id);
+            }
         }
 
-        self.lookup_global_def(&symbol, fn_query.span)?.ok_or_else(|| {
-            Diagnostic::error()
+        self.lookup_global_def(&symbol, span)?.ok_or_else(|| match query {
+            Query::Name(word) => Diagnostic::error()
+                .with_message(format!("cannot find `{word}` in this scope"))
+                .with_label(Label::primary(word.span()).with_message("not found in this scope")),
+            Query::Fn(fn_query) => Diagnostic::error()
                 .with_message(format!("cannot find function `{}`", fn_query.display(self.db)))
-                .with_label(Label::primary(fn_query.span).with_message("function not found"))
+                .with_label(Label::primary(span).with_message("function not found")),
         })
     }
 
@@ -229,26 +235,6 @@ impl<'db> Typeck<'db> {
                 .with_note("these functions apply:")
                 .with_notes(candidates.into_iter().map(|c| c.display(self.db).to_string()))),
         }
-    }
-
-    pub fn lookup_def(&mut self, env: &Env, word: Word) -> TypeckResult<DefId> {
-        let name = word.name();
-
-        if let Some(id) = env.lookup(name).copied() {
-            return Ok(id);
-        }
-
-        let symbol = Symbol::new(env.module_id(), name);
-
-        if self.checking_items {
-            self.find_and_check_item(&symbol)?;
-        }
-
-        self.lookup_global_def(&symbol, word.span())?.ok_or_else(|| {
-            Diagnostic::error()
-                .with_message(format!("cannot find `{}` in this scope", symbol.name))
-                .with_label(Label::primary(word.span()).with_message("not found in this scope"))
-        })
     }
 
     pub fn lookup_global_def(
@@ -717,6 +703,28 @@ impl PartialEq for FnCandidate {
 }
 
 impl Eq for FnCandidate {}
+
+#[derive(Debug, Clone)]
+pub enum Query<'a> {
+    Name(Word),
+    Fn(FnQuery<'a>),
+}
+
+impl<'a> Query<'a> {
+    pub fn name(&self) -> Ustr {
+        match self {
+            Query::Name(w) => w.name(),
+            Query::Fn(f) => f.name,
+        }
+    }
+
+    pub fn span(&self) -> Span {
+        match self {
+            Query::Name(w) => w.span(),
+            Query::Fn(f) => f.span,
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct FnQuery<'a> {

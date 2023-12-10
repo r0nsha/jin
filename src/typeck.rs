@@ -31,7 +31,7 @@ use crate::{
     typeck::{
         attrs::AttrsPlacement,
         coerce::CoerceExt,
-        env::{BuiltinTys, Env, FnQuery, GlobalScope, ScopeKind, Symbol},
+        env::{BuiltinTys, Env, FnQuery, GlobalScope, Query, ScopeKind, Symbol},
         instantiate::instantiate,
         normalize::NormalizeTy,
         resolution_state::{ItemStatus, ModuleStatus, ResolutionState, ResolvedFnSig},
@@ -800,7 +800,7 @@ impl<'db> Typeck<'db> {
                 self.check_member(env, expr, *member, *span)
             }
             ast::Expr::Name { word, args, span } => {
-                let id = self.lookup_def(env, *word)?;
+                let id = self.lookup(env, &Query::Name(*word))?;
                 self.check_name(env, id, *word, *span, args.as_ref().map(Vec::as_slice))
             }
             ast::Expr::Lit { kind, span } => {
@@ -971,7 +971,7 @@ impl<'db> Typeck<'db> {
                 let call_args: Vec<Ty> =
                     new_args.iter().map(|a| self.normalize(a.expr.ty)).collect();
                 let fn_query = FnQuery::new(word.name(), &call_args, word.span());
-                let id = self.lookup_fn(env, &fn_query)?;
+                let id = self.lookup(env, &Query::Fn(fn_query))?;
                 self.check_name(env, id, *word, *span, args.as_ref().map(Vec::as_slice))?
             }
             _ => self.check_expr(env, callee, None)?,
@@ -1169,7 +1169,7 @@ impl<'db> Typeck<'db> {
                 Ok(Ty::new(TyKind::RawPtr(pointee)))
             }
             TyExpr::Name(name) => {
-                let id = self.lookup_def(env, name.word)?;
+                let id = self.lookup(env, &Query::Name(name.word))?;
 
                 // TODO: use args when we implement polymorphic types
                 // let args: Vec<Ty> = name
