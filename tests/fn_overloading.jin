@@ -9,22 +9,20 @@ fn main {
 	add(f32(1.0), f32(2.5)) // exact f32
 	add(1.0, 2.5) // untyped float matching
 	add(5, 2.25) // mixed parameter type matching
-	named(x: 1)
-	named(z: 1)
+	named(x: 1) // picks `fn named(x: int)`
+	named(1, 2) // picks `fn named(x: int, y: int)`
+	named(y: 1, x: 2) // picks `fn named(x: int, y: int)`
+	named(z: 1) // picks `fn named(z: int)`
 }
 
 fn named(x: int) {
-	printf("named. x = %d\n".ptr, x)
+	printf("named: x = %d\n".ptr, x)
+}
+
+fn named(x: int, y: int) {
+	printf("named: x = %d, y = %d\n".ptr, x, y)
 }
 
 fn named(z: int) {
-	printf("named. z = %d\n".ptr, z)
+	printf("named: z = %d\n".ptr, z)
 }
-
-//fn print_ints(x: int, y: int) {
-//	printf("%d %d\n".ptr, x, y)
-//}
-//
-//fn print_ints(y: int, x: int) {
-//	printf("%d %d\n".ptr, x, y)
-//}
