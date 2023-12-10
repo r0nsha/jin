@@ -181,26 +181,18 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
-    pub fn lookup_fn(
-        &mut self,
-        env: &Env,
-        name: Ustr,
-        call_args: &[Ty],
-        span: Span,
-    ) -> TypeckResult<DefId> {
-        if let Some(id) = env.lookup(name).copied() {
+    pub fn lookup_fn(&mut self, env: &Env, fn_query: &FnQuery, span: Span) -> TypeckResult<DefId> {
+        if let Some(id) = env.lookup(fn_query.name).copied() {
             return Ok(id);
         }
 
-        let symbol = Symbol::new(env.module_id(), name);
+        let symbol = Symbol::new(env.module_id(), fn_query.name);
 
         if self.checking_items {
             self.find_and_check_item(&symbol)?;
         }
 
-        let fn_query = FnQuery::new(symbol.name, call_args);
-
-        if let Some(id) = self.lookup_fn_candidate(env.module_id(), &symbol, &fn_query, span)? {
+        if let Some(id) = self.lookup_fn_candidate(env.module_id(), &symbol, fn_query, span)? {
             return Ok(id);
         }
 

@@ -1,0 +1,7 @@
+fn add(a: int, b: int) {
+	printf("add ints: %d\n".ptr, a + b)
+}
+
+fn add(a: f32, b: f32) {
+	printf("add floats: %f\n".ptr, a + b)
+}

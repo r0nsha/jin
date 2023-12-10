@@ -31,7 +31,7 @@ use crate::{
     typeck::{
         attrs::AttrsPlacement,
         coerce::CoerceExt,
-        env::{BuiltinTys, Env, GlobalScope, ScopeKind, Symbol},
+        env::{BuiltinTys, Env, FnQuery, GlobalScope, ScopeKind, Symbol},
         instantiate::instantiate,
         normalize::NormalizeTy,
         resolution_state::{ItemStatus, ModuleStatus, ResolutionState, ResolvedFnSig},
@@ -970,7 +970,8 @@ impl<'db> Typeck<'db> {
             ast::Expr::Name { word, args, span } => {
                 let call_args: Vec<Ty> =
                     new_args.iter().map(|a| self.normalize(a.expr.ty)).collect();
-                let id = self.lookup_fn(env, word.name(), &call_args, word.span())?;
+                let fn_query = FnQuery::new(word.name(), &call_args);
+                let id = self.lookup_fn(env, &fn_query, word.span())?;
                 self.check_name(env, id, *word, *span, args.as_ref().map(Vec::as_slice))?
             }
             _ => self.check_expr(env, callee, None)?,

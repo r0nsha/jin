@@ -1,4 +1,4 @@
-import child.add
+//import child.add
 
 fn extern printf(fmt: *u8, ..) -> i32
 
@@ -7,4 +7,12 @@ fn main {
 	add(1, 1) // untyped int matching
 	add(f32(1.0), f32(2.5)) // exact f32
 	add(1.0, 2.5) // untyped float matching
+}
+
+fn add(a: int, b: int) {
+	printf("add ints: %d\n".ptr, a + b)
+}
+
+fn add(a: f32, b: f32) {
+	printf("add floats: %f\n".ptr, a + b)
 }
