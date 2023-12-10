@@ -31,7 +31,7 @@ use crate::{
     typeck::{
         attrs::AttrsPlacement,
         coerce::CoerceExt,
-        env::{BuiltinTys, Env, FnQuery, GlobalScope, Query, ScopeKind},
+        env::{BuiltinTys, Env, FnQuery, GlobalScope, LookupResult, Query, ScopeKind, Symbol},
         instantiate::instantiate,
         normalize::NormalizeTy,
         resolution_state::{ItemStatus, ModuleStatus, ResolutionState, ResolvedFnSig},
@@ -113,20 +113,23 @@ impl<'db> Typeck<'db> {
     }
 
     fn check_module(&mut self, module: &ast::Module) -> TypeckResult<()> {
-        if self.resolution_state.module_state(module.id).is_some() {
+        self.resolution_state.create_module_state(module.id);
+
+        // If the module is already fully resolved, return early
+        if self
+            .resolution_state
+            .module_state(module.id)
+            .map(|s| s.status.is_resolved())
+            .unwrap_or_default()
+        {
             return Ok(());
         }
-
-        self.resolution_state.create_module_state(module.id);
 
         let mut env = Env::new(module.id);
 
         for (item_id, item) in module.items.iter_enumerated() {
             let global_item_id = ast::GlobalItemId::new(module.id, item_id);
-
-            if let ItemStatus::Unresolved = self.resolution_state.get_item_status(&global_item_id) {
-                self.check_item(&mut env, item, global_item_id)?;
-            }
+            self.check_item(&mut env, item, global_item_id)?;
         }
 
         self.resolution_state.module_state_mut(module.id).unwrap().status = ModuleStatus::Resolved;
@@ -143,7 +146,12 @@ impl<'db> Typeck<'db> {
                     let ResolvedFnSig { id, sig } = self
                         .resolution_state
                         .take_resolved_fn_sig(ast::GlobalItemId::new(module.id, item_id))
-                        .expect("fn to be resolved");
+                        .unwrap_or_else(|| {
+                            panic!(
+                                "fn `{}` in module `{}` to be resolved",
+                                fun.sig.word, self.db[module.id].qpath
+                            )
+                        });
                     let f = self.check_fn_body(&mut env, fun, sig, id)?;
                     self.hir.fns.push(f);
                 }
@@ -159,6 +167,10 @@ impl<'db> Typeck<'db> {
         item: &ast::Item,
         item_id: ast::GlobalItemId,
     ) -> TypeckResult<()> {
+        if let ItemStatus::Resolved = self.resolution_state.get_item_status(&item_id) {
+            return Ok(());
+        }
+
         self.resolution_state.mark_in_progress_item(item_id).map_err(|err| {
             let origin_span = item.span();
             let reference_span = self.ast.find_item(err.causee).expect("item to exist").span();
@@ -509,17 +521,39 @@ impl<'db> Typeck<'db> {
         module_id: ModuleId,
         name: &ast::ImportName,
     ) -> TypeckResult<()> {
-        let def_id = self.import_lookup(env.module_id(), module_id, name.word)?;
-        todo!("{def_id:?}");
+        let results = self.import_lookup(env.module_id(), module_id, name.word)?;
 
-        // TODO: only use this branch if def_id is one
-        // if let Some(node) = &name.node {
-        //     let module_id = self.is_module_def(def_id, name.word.span())?;
-        //     self.check_import_node(env, module_id, node)
-        // } else {
-        //     // TODO: insert all def id's
-        //     self.insert_def(env, name.name(), def_id, name.vis)
-        // }
+        match (&name.node, results.len()) {
+            (Some(node), 1) => {
+                // We are traversing a nested module definition
+                let id = results[0].id();
+                let module_id = self.is_module_def(id, name.word.span())?;
+                self.check_import_node(env, module_id, node)
+            }
+            (Some(_), _) => {
+                // We tried to traverse a nested import, but there are multiple results
+                Err(Diagnostic::error()
+                    .with_message(format!("expected a module, but `{}` isn't one", name.word))
+                    .with_label(Label::primary(name.word.span()).with_message("not a module")))
+            }
+            _ => {
+                for res in results {
+                    match res {
+                        LookupResult::Def(id) => {
+                            self.insert_def(env, name.name(), id, name.vis)?;
+                        }
+                        LookupResult::Fn(candidate) => {
+                            self.insert_fn_candidate(
+                                Symbol::new(env.module_id(), name.name().name()),
+                                candidate,
+                            )?;
+                        }
+                    }
+                }
+
+                Ok(())
+            }
+        }
     }
 
     fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {

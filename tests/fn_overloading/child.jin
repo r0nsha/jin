@@ -1,3 +1,5 @@
+fn extern printf(fmt: *u8, ..) -> i32
+
 fn add*(a: int, b: int) {
 	printf("add ints: %d\n".ptr, a + b)
 }

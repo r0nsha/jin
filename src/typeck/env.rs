@@ -18,6 +18,20 @@ use crate::{
     word::Word,
 };
 
+#[derive(Debug, Clone)]
+pub enum LookupResult {
+    Def(DefId),
+    Fn(FnCandidate),
+}
+
+impl LookupResult {
+    pub fn id(&self) -> DefId {
+        match self {
+            LookupResult::Def(id) | LookupResult::Fn(FnCandidate { id, .. }) => *id,
+        }
+    }
+}
+
 impl<'db> Typeck<'db> {
     pub fn define_global_def(
         &mut self,
@@ -121,20 +135,9 @@ impl<'db> Typeck<'db> {
                     )
                 };
 
-                let candidate = FnCandidate {
-                    id,
-                    vis,
-                    word,
-                    params: sig.params.iter().map(|p| p.ty).collect(),
-                };
-
-                self.global_scope.fns.entry(symbol).or_default().try_insert(candidate).map_err(
-                    |err| match err {
-                        FnCandidateInsertError::AlreadyExists { prev, curr } => {
-                            errors::multiple_fn_def_err(prev.word.span(), curr.word)
-                        }
-                    },
-                )?;
+                let candidate =
+                    FnCandidate { id, word, params: sig.params.iter().map(|p| p.ty).collect() };
+                self.insert_fn_candidate(symbol, candidate)?;
 
                 Ok(id)
             }
@@ -147,6 +150,20 @@ impl<'db> Typeck<'db> {
                 sig.ty,
             ),
         }
+    }
+
+    pub fn insert_fn_candidate(
+        &mut self,
+        symbol: Symbol,
+        candidate: FnCandidate,
+    ) -> TypeckResult<()> {
+        self.global_scope.fns.entry(symbol).or_default().try_insert(candidate).map_err(|err| {
+            match err {
+                FnCandidateInsertError::AlreadyExists { prev, curr } => {
+                    errors::multiple_fn_def_err(prev.word.span(), curr.word)
+                }
+            }
+        })
     }
 
     pub fn define_pat(
@@ -186,7 +203,7 @@ impl<'db> Typeck<'db> {
         from_module: ModuleId,
         in_module: ModuleId,
         word: Word,
-    ) -> TypeckResult<Vec<DefId>> {
+    ) -> TypeckResult<Vec<LookupResult>> {
         let symbol = Symbol::new(in_module, word.name());
 
         if self.checking_items {
@@ -195,20 +212,19 @@ impl<'db> Typeck<'db> {
 
         // TODO: need a function that returns a single DefId
         // or multiple FnCandidate's
-        let defs = self.lookup_global_many(in_module, &symbol);
+        let results = self.lookup_global_many(in_module, &symbol);
 
-        if defs.is_empty() {
+        if results.is_empty() {
             return Err(errors::name_not_found(self.db, from_module, in_module, word));
         }
 
-        // TODO: only do this if this is a LookupResult::Def
         if from_module != in_module {
-            for id in &defs {
-                self.check_def_access(from_module, *id, word.span())?;
+            for res in &results {
+                self.check_def_access(from_module, res.id(), word.span())?;
             }
         }
 
-        Ok(defs)
+        Ok(results)
     }
 
     pub fn lookup(&mut self, env: &Env, in_module: ModuleId, query: &Query) -> TypeckResult<DefId> {
@@ -300,24 +316,23 @@ impl<'db> Typeck<'db> {
         symbol: &Symbol,
         span: Span,
     ) -> TypeckResult<Option<DefId>> {
-        let defs = self.lookup_global_many(symbol.module_id, symbol);
+        let results = self.lookup_global_many(symbol.module_id, symbol);
 
-        match defs.len() {
+        match results.len() {
             0 => Ok(None),
-            1 => Ok(defs.first().copied()),
+            1 => Ok(results.first().map(LookupResult::id)),
             _ => Err(Diagnostic::error()
                 .with_message(format!("ambiguous use of item `{}`", symbol.name))
                 .with_label(Label::primary(span).with_message("used here"))
-                .with_labels(defs.iter().map(|id| {
-                    let def = &self.db[*id];
+                .with_labels(results.iter().map(|res| {
+                    let def = &self.db[res.id()];
                     Label::secondary(def.span)
                         .with_message(format!("`{}` is defined here", def.name))
                 }))),
         }
     }
 
-    // TODO: return a LookupResult
-    fn lookup_global_many(&self, in_module: ModuleId, symbol: &Symbol) -> Vec<DefId> {
+    fn lookup_global_many(&self, in_module: ModuleId, symbol: &Symbol) -> Vec<LookupResult> {
         let lookup_modules = iter::once(&in_module)
             .chain(&self.resolution_state.module_state(in_module).unwrap().globs);
 
@@ -327,14 +342,14 @@ impl<'db> Typeck<'db> {
             let symbol = symbol.with_module_id(*module_id);
 
             if let Some(id) = self.global_scope.get_def(in_module, &symbol) {
-                defs.push(id);
+                defs.push(LookupResult::Def(id));
             } else if let Some(candidates) = self.global_scope.fns.get(&symbol) {
-                defs.extend(candidates.iter().map(|c| c.id));
+                defs.extend(candidates.iter().cloned().map(LookupResult::Fn));
             }
         }
 
         if defs.is_empty() {
-            return self.builtin_tys.get(symbol.name).into_iter().collect();
+            return self.builtin_tys.get(symbol.name).into_iter().map(LookupResult::Def).collect();
         }
 
         defs
@@ -664,7 +679,6 @@ pub enum FnCandidateInsertError {
 #[derive(Debug, Clone)]
 pub struct FnCandidate {
     pub id: DefId,
-    pub vis: Vis,
     pub word: Word,
     pub params: Vec<Ty>,
 }
