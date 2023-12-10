@@ -696,7 +696,7 @@ impl FnCandidateSet {
         let mut scores = vec![];
 
         for c in &self.0 {
-            if let Some(score) = c.score(cx, query) {
+            if let Some(score) = c.test(cx, query) {
                 scores.push((c, score));
             }
         }
@@ -724,7 +724,10 @@ pub struct FnCandidate {
 }
 
 impl FnCandidate {
-    fn score(&self, cx: &Typeck, query: &FnQuery) -> Option<u32> {
+    // Tests the given query against the function candidate, returning
+    // a Some(score) if there's a match, or a None if there isn't.
+    // See `distance` for how parameter scoring works.
+    fn test(&self, cx: &Typeck, query: &FnQuery) -> Option<u32> {
         if self.ty.params.len() != query.args.len() {
             return None;
         }
