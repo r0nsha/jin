@@ -732,6 +732,13 @@ impl FnCandidate {
             return None;
         }
 
+        // Make sure that all passed named arguments exist in this candidate
+        if !query.args.iter().all(|arg| {
+            arg.name.map_or(true, |name| self.ty.params.iter().any(|p| Some(name) == p.name))
+        }) {
+            return None;
+        }
+
         let mut score = 0;
 
         for (param, arg) in self.ty.params.iter().zip(query.args.iter()) {
