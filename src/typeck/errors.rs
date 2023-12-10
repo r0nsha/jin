@@ -100,11 +100,23 @@ pub fn arg_mismatch(expected: usize, found: usize, span: Span) -> Diagnostic {
 }
 
 pub fn ty_mismatch(expected: &str, found: &str, span: Span) -> Diagnostic {
+    generic_expected_found(
+        &format!("type `{expected}`"),
+        &format!("type `{found}`"),
+        span,
+    )
+}
+
+pub fn generic_expected_found(
+    expected: &str,
+    found: &str,
+    span: Span,
+) -> Diagnostic {
     Diagnostic::error()
-        .with_message(format!("expected type `{expected}`, found `{found}`"))
+        .with_message(format!("expected {expected}, found {found}"))
         .with_label(
             Label::primary(span)
-                .with_message(format!("expected `{expected}` here")),
+                .with_message(format!("expected {expected} here")),
         )
 }
 

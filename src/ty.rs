@@ -280,6 +280,14 @@ impl TyKind {
     pub fn is_module(&self) -> bool {
         matches!(self, Self::Module(..))
     }
+
+    /// Returns `true` if the ty kind is [`Type`].
+    ///
+    /// [`Type`]: TyKind::Type
+    #[must_use]
+    pub fn is_type(&self) -> bool {
+        matches!(self, Self::Type(..))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]

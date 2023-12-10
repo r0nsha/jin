@@ -1281,6 +1281,15 @@ impl<'db> Typeck<'db> {
                             );
                         }
                     }
+
+                    let arg_ty = self.normalize(arg.expr.ty);
+                    if arg_ty.is_type() {
+                        return Err(errors::generic_expected_found(
+                            "a value",
+                            &format!("type `{}`", arg_ty.display(self.db)),
+                            arg.expr.span,
+                        ));
+                    }
                 }
 
                 // Resolve named arg indices

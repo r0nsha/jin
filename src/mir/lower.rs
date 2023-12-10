@@ -627,7 +627,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 self.body
                     .create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
             }
-            DefKind::Ty(_) => unreachable!(),
+            DefKind::Ty(_) => todo!("{:?}", &self.cx.db[id]),
         }
     }
 
