@@ -77,10 +77,9 @@ impl<'db> Typeck<'db> {
             ));
         }
 
-        if let Some(prev) = self
-            .global_scope
-            .insert_def(symbol, GlobalScopeDef::new(id, vis, name.span()))
-        {
+        let new_def = GlobalScopeDef::new(id, vis, name.span());
+
+        if let Some(prev) = self.global_scope.insert_def(symbol, new_def) {
             return Err(errors::multiple_item_def_err(prev.span, name));
         }
 
@@ -231,6 +230,26 @@ impl<'db> Typeck<'db> {
             }
             ast::Pat::Discard(span) => Ok(hir::Pat::Discard(*span)),
         }
+    }
+
+    pub fn insert_pat(
+        &mut self,
+        env: &mut Env,
+        pat: &hir::Pat,
+    ) -> TypeckResult<()> {
+        match pat {
+            hir::Pat::Name(name) => {
+                self.insert_def(
+                    env,
+                    name.word,
+                    name.id,
+                    self.db[name.id].scope.vis,
+                )?;
+            }
+            hir::Pat::Discard(_) => (),
+        }
+
+        Ok(())
     }
 
     pub fn insert_def(

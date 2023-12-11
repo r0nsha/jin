@@ -251,10 +251,11 @@ impl<'db> Typeck<'db> {
                 }
 
                 for p in &mut sig.params {
+                    // TODO: use `insert_pat` here instead
                     p.id = self.define_local_def(
                         env,
                         DefKind::Variable,
-                        p.word,
+                        p.pat,
                         Mutability::Imm,
                         p.ty,
                     );
@@ -351,27 +352,35 @@ impl<'db> Typeck<'db> {
         for p in &sig.params {
             let ty = self.check_ty_expr(env, &p.ty_expr, AllowTyHole::No)?;
 
-            if let Some(prev_span) =
-                defined_params.insert(p.name.name(), p.name.span())
-            {
-                let name = p.name.name();
-                let dup_span = p.name.span();
-
-                return Err(Diagnostic::error()
-                    .with_message(format!(
-                        "the name `{name}` is already used as a parameter name"
-                    ))
-                    .with_label(
-                        Label::primary(dup_span)
-                            .with_message(format!("`{name}` used again here")),
-                    )
-                    .with_label(
-                        Label::secondary(prev_span)
-                            .with_message(format!("first use of `{name}`")),
-                    ));
-            }
-
-            params.push(hir::FnParam { id: DefId::INVALID, word: p.name, ty });
+            // HACK: this is copy-pasta because we don't want to define the names here...
+            // need to figure out how to use a reduced version of `define_pat`.
+            // TODO: Use `define_pat` and re-insert the id's when checking the fn body!
+            // match &p.pat {
+            //     ast::Pat::Name(name) => {
+            //         if let Some(prev_span) = defined_params
+            //             .insert(name.word.name(), name.word.span())
+            //         {
+            //             let name = name.word;
+            //             let dup_span = name.span();
+            //
+            //             return Err(Diagnostic::error()
+            //                 .with_message(format!(
+            //             "the name `{name}` is already used as a parameter name"
+            //         ))
+            //                 .with_label(Label::primary(dup_span).with_message(
+            //                     format!("`{name}` used again here"),
+            //                 ))
+            //                 .with_label(
+            //                     Label::secondary(prev_span).with_message(
+            //                         format!("first use of `{name}`"),
+            //                     ),
+            //                 ));
+            //         }
+            //     }
+            //     ast::Pat::Discard(_) => (),
+            // }
+            // params.push(hir::FnParam { id: DefId::INVALID, pat: p.word, ty });
+            todo!()
         }
 
         let ret = if let Some(ret) = &sig.ret {
@@ -380,10 +389,11 @@ impl<'db> Typeck<'db> {
             self.db.types.unit
         };
 
+        // TODO: extract `name` from `pat`
         let ty = Ty::new(TyKind::Fn(FnTy {
             params: params
                 .iter()
-                .map(|p| FnTyParam { name: Some(p.word.name()), ty: p.ty })
+                .map(|p| FnTyParam { name: Some(p.pat.name()), ty: p.ty })
                 .collect(),
             ret,
             is_c_variadic,
@@ -424,6 +434,7 @@ impl<'db> Typeck<'db> {
         } else {
             DefKind::Variable
         };
+
         let pat = self.define_pat(env, def_kind, &let_.pat, ty)?;
 
         Ok(hir::Let {

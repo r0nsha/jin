@@ -169,7 +169,7 @@ impl<'db> LowerCx<'db> {
                 });
 
             let params_str = fun.sig.params.iter().map(|param| {
-                format!("{}_{}", param.word, self.mangled_ty_name(param.ty))
+                format!("{}_{}", param.pat, self.mangled_ty_name(param.ty))
             });
 
             ty_args_str.chain(params_str).collect::<Vec<String>>().join("_")
@@ -265,17 +265,14 @@ impl<'db> LowerCx<'db> {
             FnKind::Extern { is_c_variadic } => (true, *is_c_variadic),
         };
 
+        // TODO: pass `Pat` to `FnParam`
         self.mir.fn_sigs.push_with_key(|id| FnSig {
             id,
             name,
             params: sig
                 .params
                 .iter()
-                .map(|p| FnParam {
-                    def_id: p.id,
-                    name: p.word.name(),
-                    ty: p.ty,
-                })
+                .map(|p| FnParam { def_id: p.id, name: p.pat.name(), ty: p.ty })
                 .collect(),
             ret: ty.as_fn().unwrap().ret,
             ty,
