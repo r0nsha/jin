@@ -885,30 +885,18 @@ impl FnCandidate {
     // parameter it is applied to. The actual distance is calculated by the amount
     // of "steps" required to convert the argument to the parameter.
     fn distance(cx: &Typeck, param: Ty, arg: Ty) -> Option<u32> {
-        // UnifyCx { cx }.unify_ty_ty(param, arg);
-
-        if candidate_tys_eq(param, arg) {
+        if param.unify(arg, cx).is_ok() {
             return Some(0);
         }
 
-        match arg.kind() {
-            TyKind::Infer(InferTy::Int(_)) if param.is_any_int() => {
-                return Some(1)
-            }
-            TyKind::Infer(InferTy::Float(_)) if param.is_any_float() => {
-                return Some(1)
-            }
-            _ => (),
-        }
-
         if arg.can_coerce(&param, cx) {
-            return Some(2);
+            return Some(1);
         }
 
         if let (_, TyKind::Infer(InferTy::Ty(_)) | TyKind::Param(_)) =
             (arg.kind(), param.kind())
         {
-            return Some(3);
+            return Some(2);
         }
 
         None
@@ -916,25 +904,6 @@ impl FnCandidate {
 
     pub fn display<'a>(&'a self, db: &'a Db) -> FnTyPrinter {
         self.ty.display(db, Some(db[self.id].name))
-    }
-}
-
-// TODO: we should try to unify the two types
-fn candidate_tys_eq(t1: Ty, t2: Ty) -> bool {
-    match (t1.kind(), t2.kind()) {
-        (TyKind::Fn(f1), TyKind::Fn(f2)) => {
-            f1.params.len() == f2.params.len()
-                && f1
-                    .params
-                    .iter()
-                    .zip(&f2.params)
-                    .all(|(p1, p2)| candidate_tys_eq(p1.ty, p2.ty))
-                && candidate_tys_eq(f1.ret, f2.ret)
-        }
-        (TyKind::Infer(InferTy::Ty(_)), _)
-        | (_, TyKind::Infer(InferTy::Ty(_))) => true,
-        _ if t1 == t2 => true,
-        _ => false,
     }
 }
 
