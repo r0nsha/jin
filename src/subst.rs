@@ -94,6 +94,7 @@ impl<S: SubstTy> Subst<S> for FnSig {
         for param in &mut self.params {
             // TODO: impl `Span` for `hir::Pat`
             param.ty = s.subst_ty(param.ty, param.pat.span());
+            // TODO: remove?
             s.db()[param.id].ty = param.ty;
         }
     }
