@@ -904,28 +904,35 @@ impl<'db> Typeck<'db> {
             ast::Expr::MethodCall { expr, method, ty_args, args, span } => {
                 let ty_args =
                     self.check_optional_ty_args(env, ty_args.as_deref())?;
-                let args = self.check_call_args(env, args)?;
+                let mut args = self.check_call_args(env, args)?;
 
                 let expr = self.check_expr(env, expr, None)?;
-                let expr_ty = self.normalize(expr.ty);
 
-                match expr_ty.kind() {
-                    TyKind::Module(in_module) => {
-                        let id = self.lookup_fn_call(
-                            env,
-                            *in_module,
-                            *method,
-                            ty_args.as_deref(),
-                            &args,
-                        )?;
-                        let callee =
-                            self.check_name(env, id, *method, *span, None)?;
-                        self.check_call(callee, args, *span)
-                    }
-                    _ => Err(Diagnostic::error()
-                        .with_message("ufcs call is not supported yet")
-                        .with_label(Label::primary(*span))),
-                }
+                let lookup_in_module = if let TyKind::Module(in_module) =
+                    self.normalize(expr.ty).kind()
+                {
+                    *in_module
+                } else {
+                    // This is a UFCS call: add `expr` as the first argument of the call
+                    args.insert(
+                        0,
+                        hir::CallArg { name: None, expr, index: None },
+                    );
+
+                    env.module_id()
+                };
+
+                let id = self.lookup_fn_for_call(
+                    env,
+                    lookup_in_module,
+                    *method,
+                    ty_args.as_deref(),
+                    &args,
+                )?;
+
+                let callee = self.check_name(env, id, *method, *span, None)?;
+
+                self.check_call(callee, args, *span)
             }
             ast::Expr::Call { callee, args, span } => {
                 let args = self.check_call_args(env, args)?;
@@ -934,7 +941,7 @@ impl<'db> Typeck<'db> {
                     ast::Expr::Name { word, ty_args, span } => {
                         let ty_args = self
                             .check_optional_ty_args(env, ty_args.as_deref())?;
-                        let id = self.lookup_fn_call(
+                        let id = self.lookup_fn_for_call(
                             env,
                             env.module_id(),
                             *word,
@@ -1224,7 +1231,7 @@ impl<'db> Typeck<'db> {
         ))
     }
 
-    fn lookup_fn_call(
+    fn lookup_fn_for_call(
         &mut self,
         env: &Env,
         in_module: ModuleId,
