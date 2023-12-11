@@ -682,7 +682,7 @@ impl<'a> Parser<'a> {
             }
             TokenKind::Ident(..) => TyExpr::Name(TyExprName {
                 word: tok.word(),
-                args: vec![],
+                ty_args: vec![],
                 span: tok.span,
             }),
             TokenKind::Underscore => TyExpr::Hole(tok.span),
@@ -805,12 +805,15 @@ impl<'a> Parser<'a> {
                     self.next();
                     let name = self.eat_ident()?.word();
 
-                    if self.peek_is(TokenKind::OpenParen) {
+                    let ty_args = self.parse_optional_ty_args()?;
+
+                    if ty_args.is_some() || self.peek_is(TokenKind::OpenParen) {
                         let (args, args_span) = self.parse_call_args()?;
                         let span = expr.span().merge(args_span);
                         Expr::MethodCall {
                             expr: Box::new(expr),
                             method: name,
+                            ty_args,
                             args,
                             span,
                         }

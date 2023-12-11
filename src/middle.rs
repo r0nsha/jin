@@ -229,6 +229,6 @@ pub struct TyExprFn {
 #[derive(Debug, Clone)]
 pub struct TyExprName {
     pub word: Word,
-    pub args: Vec<TyExpr>,
+    pub ty_args: Vec<TyExpr>,
     pub span: Span,
 }

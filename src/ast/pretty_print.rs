@@ -104,10 +104,10 @@ impl PrettyPrint for Expr {
                 cx.builder.end_child();
             }
             Self::Call { callee, args, .. } => {
-                print_call(cx, callee, args, None);
+                print_call(cx, callee, args, None, None);
             }
-            Self::MethodCall { expr, method, args, .. } => {
-                print_call(cx, expr, args, Some(*method));
+            Self::MethodCall { expr, method, ty_args, args, .. } => {
+                print_call(cx, expr, args, ty_args.as_deref(), Some(*method));
             }
             Self::Unary { expr, op, .. } => {
                 cx.builder.begin_child(op.to_string());
@@ -353,9 +353,9 @@ impl PrettyPrint for TyExpr {
             TyExpr::Name(name) => {
                 cx.builder.add_empty_child(name.word.to_string());
 
-                if !name.args.is_empty() {
+                if !name.ty_args.is_empty() {
                     cx.builder.begin_child("type args".to_string());
-                    for arg in &name.args {
+                    for arg in &name.ty_args {
                         arg.pretty_print(cx);
                     }
                     cx.builder.end_child();
@@ -375,6 +375,7 @@ fn print_call(
     cx: &mut PrettyCx,
     expr: &Expr,
     args: &[CallArg],
+    ty_args: Option<&[TyExpr]>,
     method: Option<Word>,
 ) {
     cx.builder.begin_child(if let Some(m) = method {
@@ -383,6 +384,14 @@ fn print_call(
         "call".to_string()
     });
     expr.pretty_print(cx);
+
+    if let Some(ty_args) = ty_args {
+        cx.builder.begin_child("type args".to_string());
+        for arg in ty_args {
+            arg.pretty_print(cx);
+        }
+        cx.builder.end_child();
+    }
 
     if !args.is_empty() {
         cx.builder.begin_child("args".to_string());

@@ -901,7 +901,9 @@ impl<'db> Typeck<'db> {
                     ))
                 },
             ),
-            ast::Expr::MethodCall { expr, method, args, span } => {
+            ast::Expr::MethodCall { expr, method, ty_args, args, span } => {
+                let ty_args =
+                    self.check_optional_ty_args(env, ty_args.as_deref())?;
                 let args = self.check_call_args(env, args)?;
 
                 let expr = self.check_expr(env, expr, None)?;
@@ -909,9 +911,12 @@ impl<'db> Typeck<'db> {
 
                 match expr_ty.kind() {
                     TyKind::Module(in_module) => {
-                        // TODO: apply ty_args
                         let id = self.lookup_fn_call(
-                            env, *in_module, *method, None, &args,
+                            env,
+                            *in_module,
+                            *method,
+                            ty_args.as_deref(),
+                            &args,
                         )?;
                         let callee =
                             self.check_name(env, id, *method, *span, None)?;
