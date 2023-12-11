@@ -885,6 +885,8 @@ impl FnCandidate {
     // parameter it is applied to. The actual distance is calculated by the amount
     // of "steps" required to convert the argument to the parameter.
     fn distance(cx: &Typeck, param: Ty, arg: Ty) -> Option<u32> {
+        // UnifyCx { cx }.unify_ty_ty(param, arg);
+
         if candidate_tys_eq(param, arg) {
             return Some(0);
         }

@@ -22,7 +22,7 @@ pub struct At<'db, 'a> {
 
 impl At<'_, '_> {
     pub fn eq(&self, expected: Ty, found: Ty) -> EqResult {
-        UnifyCx { cx: self.cx }.unify_ty_ty(expected, found).map_err(|err| {
+        expected.unify(found, self.cx).map_err(|err| {
             let mut storage = self.cx.storage.borrow_mut();
 
             let diagnostic = match err {
@@ -75,6 +75,12 @@ impl At<'_, '_> {
 
             EqError { expected, found, diagnostic }
         })
+    }
+}
+
+impl Ty {
+    pub fn unify(self, other: Ty, cx: &Typeck) -> Result<(), UnifyError> {
+        UnifyCx { cx }.unify_ty_ty(self, other)
     }
 }
 
