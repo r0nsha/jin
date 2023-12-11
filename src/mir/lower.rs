@@ -595,17 +595,8 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 let id = if instantiation.is_empty() {
                     self.cx.fn_map[&id]
                 } else {
-                    let mut folder =
-                        ParamFolder { db: self.cx.db, instantiation };
-
-                    let ty = folder.fold(ty);
-
-                    // let instantiation: Instantiation = name
-                    //     .instantiation
-                    //     .iter()
-                    //     .map(|(var, ty)| (*var, folder.fold(*ty)))
-                    //     .collect();
-
+                    let ty =
+                        ParamFolder { db: self.cx.db, instantiation }.fold(ty);
                     self.cx.monomorphize_fn(&MonoItem { id, ty }, instantiation)
                 };
 
