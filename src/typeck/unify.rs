@@ -21,7 +21,7 @@ pub struct At<'db, 'a> {
 }
 
 impl At<'_, '_> {
-    pub fn eq(&self, expected: Ty, found: Ty) -> EqResult<()> {
+    pub fn eq(&self, expected: Ty, found: Ty) -> EqResult {
         UnifyCx { cx: self.cx }.unify_ty_ty(expected, found).map_err(|err| {
             let mut storage = self.cx.storage.borrow_mut();
 
@@ -78,7 +78,7 @@ impl At<'_, '_> {
     }
 }
 
-pub type EqResult<T> = Result<T, EqError>;
+pub type EqResult = Result<(), EqError>;
 
 #[derive(Debug)]
 pub struct EqError {

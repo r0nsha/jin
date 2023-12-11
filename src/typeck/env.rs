@@ -917,6 +917,7 @@ impl FnCandidate {
     }
 }
 
+// TODO: we should try to unify the two types
 fn candidate_tys_eq(t1: Ty, t2: Ty) -> bool {
     match (t1.kind(), t2.kind()) {
         (TyKind::Fn(f1), TyKind::Fn(f2)) => {

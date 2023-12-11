@@ -11,7 +11,7 @@ pub trait CoerceExt<'db> {
     fn or_coerce(self, cx: &mut Typeck<'db>, expr_id: ExprId) -> Self;
 }
 
-impl CoerceExt<'_> for EqResult<()> {
+impl CoerceExt<'_> for EqResult {
     fn or_coerce(self, cx: &mut Typeck, expr_id: ExprId) -> Self {
         match self {
             Ok(res) => Ok(res),
