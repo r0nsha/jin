@@ -415,14 +415,11 @@ impl<'a> Parser<'a> {
                     break;
                 }
 
-                let ident = self.eat_ident()?;
+                let pat = self.parse_pat()?;
                 self.eat(TokenKind::Colon)?;
                 let ty_expr = self.parse_ty()?;
-                params.push(FnParam {
-                    name: ident.word(),
-                    ty_expr,
-                    span: ident.span,
-                });
+
+                params.push(FnParam { pat, ty_expr, span: pat.span() });
 
                 if !params.is_empty() && !self.peek_is(TokenKind::CloseParen) {
                     self.eat(TokenKind::Comma)?;

@@ -194,7 +194,7 @@ impl PrettyPrint for FnSig {
             cx.builder.begin_child("params".to_string());
 
             for param in &self.params {
-                cx.builder.add_empty_child(format!("{}", param.name));
+                cx.builder.add_empty_child(format!("{}", param.pat));
                 param.ty_expr.pretty_print(cx);
             }
 

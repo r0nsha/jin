@@ -230,7 +230,7 @@ pub struct TyParam {
 
 #[derive(Debug, Clone)]
 pub struct FnParam {
-    pub name: Word,
+    pub pat: Pat,
     pub ty_expr: TyExpr,
     pub span: Span,
 }
@@ -353,6 +353,15 @@ impl fmt::Display for Pat {
         match self {
             Pat::Name(n) => n.word.fmt(f),
             Pat::Discard(_) => f.write_str("_"),
+        }
+    }
+}
+
+impl Spanned for Pat {
+    fn span(&self) -> Span {
+        match self {
+            Pat::Name(n) => n.word.span(),
+            Pat::Discard(s) => *s,
         }
     }
 }
