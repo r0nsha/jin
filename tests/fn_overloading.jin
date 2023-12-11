@@ -28,8 +28,15 @@ fn main {
 	named(1, 2) // picks `fn named(x: int, y: int)`
 	named(y: 1, x: 2) // picks `fn named(x: int, y: int)`
 	named(z: 1) // picks `fn named(z: int)`
+	printf("\n".ptr)
+
+	printf("Chaining add calls: %d\n".ptr, 1.add_one().add_one().add_one())
 
 	child.poly[int](1) // picking a module function with type application
+}
+
+fn add_one(x: int) -> int {
+	x + 1
 }
 
 fn named(x: int) {
