@@ -21,7 +21,7 @@ use crate::{
     db::{Db, DefId, DefKind, ModuleId, StructField, StructInfo},
     diagnostics::{Diagnostic, Label},
     hir,
-    hir::{ExprId, Hir},
+    hir::{ExprId, FnParam, Hir},
     index_vec::IndexVecExt,
     macros::create_bool_enum,
     middle::{BinOp, Mutability, TyExpr, UnOp},
@@ -251,14 +251,7 @@ impl<'db> Typeck<'db> {
                 }
 
                 for p in &mut sig.params {
-                    // TODO: use `insert_pat` here instead
-                    p.id = self.define_local_def(
-                        env,
-                        DefKind::Variable,
-                        p.pat,
-                        Mutability::Imm,
-                        p.ty,
-                    );
+                    self.insert_pat(env, &p.pat)?;
                 }
 
                 match &fun.kind {
@@ -351,36 +344,42 @@ impl<'db> Typeck<'db> {
 
         for p in &sig.params {
             let ty = self.check_ty_expr(env, &p.ty_expr, AllowTyHole::No)?;
+            let pat = self.define_pat(env, DefKind::Variable, &p.pat, ty)?;
 
-            // HACK: this is copy-pasta because we don't want to define the names here...
-            // need to figure out how to use a reduced version of `define_pat`.
-            // TODO: Use `define_pat` and re-insert the id's when checking the fn body!
-            // match &p.pat {
-            //     ast::Pat::Name(name) => {
-            //         if let Some(prev_span) = defined_params
-            //             .insert(name.word.name(), name.word.span())
-            //         {
-            //             let name = name.word;
-            //             let dup_span = name.span();
-            //
-            //             return Err(Diagnostic::error()
-            //                 .with_message(format!(
-            //             "the name `{name}` is already used as a parameter name"
-            //         ))
-            //                 .with_label(Label::primary(dup_span).with_message(
-            //                     format!("`{name}` used again here"),
-            //                 ))
-            //                 .with_label(
-            //                     Label::secondary(prev_span).with_message(
-            //                         format!("first use of `{name}`"),
-            //                     ),
-            //                 ));
-            //         }
-            //     }
-            //     ast::Pat::Discard(_) => (),
-            // }
-            // params.push(hir::FnParam { id: DefId::INVALID, pat: p.word, ty });
-            todo!()
+            match &pat {
+                hir::Pat::Name(name) => {
+                    if let Some(prev_span) = defined_params
+                        .insert(name.word.name(), name.word.span())
+                    {
+                        let name = name.word;
+                        let dup_span = name.span();
+
+                        return Err(Diagnostic::error()
+                                    .with_message(format!(
+                                "the name `{name}` is already used as a parameter name"
+                            ))
+                                    .with_label(Label::primary(dup_span).with_message(
+                                        format!("`{name}` used again here"),
+                                    ))
+                                    .with_label(
+                                        Label::secondary(prev_span).with_message(
+                                            format!("first use of `{name}`"),
+                                        ),
+                                    ));
+                    }
+                }
+                hir::Pat::Discard(_) => (),
+            }
+
+            params.push(hir::FnParam {
+                id: if let hir::Pat::Name(n) = &pat {
+                    n.id
+                } else {
+                    DefId::INVALID
+                },
+                pat,
+                ty,
+            });
         }
 
         let ret = if let Some(ret) = &sig.ret {
@@ -389,11 +388,10 @@ impl<'db> Typeck<'db> {
             self.db.types.unit
         };
 
-        // TODO: extract `name` from `pat`
         let ty = Ty::new(TyKind::Fn(FnTy {
             params: params
                 .iter()
-                .map(|p| FnTyParam { name: Some(p.pat.name()), ty: p.ty })
+                .map(|p: &FnParam| FnTyParam { name: p.pat.name(), ty: p.ty })
                 .collect(),
             ret,
             is_c_variadic,

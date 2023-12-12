@@ -419,7 +419,7 @@ impl<'a> Parser<'a> {
                 self.eat(TokenKind::Colon)?;
                 let ty_expr = self.parse_ty()?;
 
-                params.push(FnParam { pat, ty_expr, span: pat.span() });
+                params.push(FnParam { span: pat.span(), pat, ty_expr });
 
                 if !params.is_empty() && !self.peek_is(TokenKind::CloseParen) {
                     self.eat(TokenKind::Comma)?;

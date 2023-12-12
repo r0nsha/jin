@@ -9,7 +9,7 @@ use crate::{
     db::{Db, DefId, ModuleId},
     index_vec::{new_key_type, IndexVec},
     middle::{BinOp, UnOp},
-    span::Span,
+    span::{Span, Spanned},
     ty::{Instantiation, Ty, Typed},
     word::Word,
 };
@@ -200,6 +200,17 @@ impl Pat {
             Self::Discard(_) => false,
         }
     }
+
+    pub fn word(&self) -> Option<Word> {
+        match self {
+            Pat::Name(n) => Some(n.word),
+            Pat::Discard(_) => None,
+        }
+    }
+
+    pub fn name(&self) -> Option<Ustr> {
+        self.word().map(|w| w.name())
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -213,6 +224,15 @@ impl fmt::Display for Pat {
         match self {
             Pat::Name(n) => n.word.fmt(f),
             Pat::Discard(_) => f.write_str("_"),
+        }
+    }
+}
+
+impl Spanned for Pat {
+    fn span(&self) -> Span {
+        match self {
+            Pat::Name(n) => n.word.span(),
+            Pat::Discard(s) => *s,
         }
     }
 }

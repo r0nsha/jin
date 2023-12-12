@@ -108,7 +108,7 @@ impl<'db> Typeck<'db> {
             name.span(),
         );
 
-        env.current_mut().defs.insert(name.name(), id);
+        env.insert(name.name(), id);
         id
     }
 
@@ -262,7 +262,7 @@ impl<'db> Typeck<'db> {
         if env.in_global_scope() {
             self.insert_global_def(env.module_id(), name, id, vis)?;
         } else {
-            env.current_mut().defs.insert(name.name(), id);
+            env.insert(name.name(), id);
         }
 
         Ok(())

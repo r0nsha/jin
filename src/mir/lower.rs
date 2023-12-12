@@ -238,7 +238,10 @@ impl<'db> LowerCx<'db> {
                 .iter()
                 .map(|f| FnParam {
                     def_id: DefId::INVALID,
-                    name: f.name.name(),
+                    pat: hir::Pat::Name(hir::NamePat {
+                        id: DefId::INVALID,
+                        word: f.name,
+                    }),
                     ty: f.ty,
                 })
                 .collect(),
@@ -265,14 +268,13 @@ impl<'db> LowerCx<'db> {
             FnKind::Extern { is_c_variadic } => (true, *is_c_variadic),
         };
 
-        // TODO: pass `Pat` to `FnParam`
         self.mir.fn_sigs.push_with_key(|id| FnSig {
             id,
             name,
             params: sig
                 .params
                 .iter()
-                .map(|p| FnParam { def_id: p.id, name: p.pat.name(), ty: p.ty })
+                .map(|p| FnParam { def_id: p.id, pat: p.pat.clone(), ty: p.ty })
                 .collect(),
             ret: ty.as_fn().unwrap().ret,
             ty,
@@ -487,16 +489,15 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     result = Some(self.lower_expr(expr));
                 }
 
-                // TODO: is this necessary now?
-                // // NOTE: If the block ty is (), we must always return a () value.
-                // // A situation where we don't return a () value can occur
-                // // when the expected type of the block is unit, but the last expression doesn't
-                // // return ().
-                // if expr.ty.is_unit() {
-                //     exprs.push(self.create_expr(ExprKind::Const(Const::Unit), expr.ty));
-                // }
-
-                result.unwrap_or_else(|| self.const_unit())
+                // NOTE: If the block ty is `unit`, we must always return a `unit` value.
+                // A situation where we don't return a `unit` value can occur
+                // when the expected type of the block is unit, but the last expression doesn't
+                // return `unit`.
+                if expr.ty.is_unit() {
+                    self.const_unit()
+                } else {
+                    result.unwrap_or_else(|| self.const_unit())
+                }
             }
             hir::ExprKind::Return(ret) => {
                 let value = self.lower_expr(&ret.expr);

@@ -1,8 +1,9 @@
-use std::{fs::File, io::Write, iter};
+use std::{borrow::Cow, fs::File, io::Write, iter};
 
 use camino::Utf8PathBuf;
 use pretty::RcDoc as D;
 use rustc_hash::FxHashMap;
+use ulid::Ulid;
 
 use crate::{
     cgen::{
@@ -15,6 +16,7 @@ use crate::{
         },
     },
     db::{Db, StructId, StructInfo},
+    hir,
     middle::UnOp,
     mir::{
         Block, Body, Const, Fn, FnSig, FnSigId, Global, GlobalKind, Inst, Mir,
@@ -233,7 +235,16 @@ impl<'db> Generator<'db> {
                 .append(
                     D::intersperse(
                         sig.params.iter().map(|p| {
-                            p.ty.cdecl(self, D::text(p.name.as_str()))
+                            let name: Cow<str> = match &p.pat {
+                                hir::Pat::Name(name) => {
+                                    name.word.name().as_str().into()
+                                }
+                                hir::Pat::Discard(_) => {
+                                    Ulid::new().to_string().into()
+                                }
+                            };
+
+                            p.ty.cdecl(self, D::text(name))
                         }),
                         D::text(",").append(D::space()),
                     )

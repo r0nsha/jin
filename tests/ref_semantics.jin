@@ -15,6 +15,9 @@ fn ext_type() {
 
 	ext.mutate()
 	printf("Ext(field: %d)\n".ptr, ext.field) // should still be 2
+
+	ext.field = 3
+	printf("Ext(field: %d)\n".ptr, ext.field) // should be 3
 }
 
 fn mutate(mut ext: Ext) {
