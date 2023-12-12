@@ -3,6 +3,8 @@ use std::{fs::File, io::Write, iter};
 use camino::Utf8PathBuf;
 use pretty::RcDoc as D;
 use rustc_hash::FxHashMap;
+use ulid::Ulid;
+use ustr::ustr;
 
 use crate::{
     cgen::{
@@ -15,8 +17,7 @@ use crate::{
         },
     },
     db::{Db, StructId, StructInfo},
-    hir,
-    middle::UnOp,
+    middle::{Pat, UnOp},
     mir::{
         Block, Body, Const, Fn, FnSig, FnSigId, Global, GlobalKind, Inst, Mir,
         ValueId, ValueKind,
@@ -235,8 +236,10 @@ impl<'db> Generator<'db> {
                     D::intersperse(
                         sig.params.iter().map(|p| {
                             let name = match &p.pat {
-                                hir::Pat::Name(name) => name.word.name(),
-                                hir::Pat::Discard(d) => d.hidden_name,
+                                Pat::Name(name) => name.word.name(),
+                                Pat::Discard(_) => {
+                                    ustr(&Ulid::new().to_string())
+                                }
                             };
 
                             p.ty.cdecl(self, D::text(name.as_str()))
@@ -288,10 +291,10 @@ impl<'db> Generator<'db> {
 
         for param in &sig.params {
             match &param.pat {
-                hir::Pat::Name(name) => {
+                Pat::Name(name) => {
                     state.local_names.insert(name.id, self.db[name.id].name);
                 }
-                hir::Pat::Discard(_) => (),
+                Pat::Discard(_) => (),
             }
         }
 

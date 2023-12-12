@@ -10,7 +10,7 @@ use ustr::Ustr;
 use crate::{
     db::{ExternLib, ModuleId, StructKind},
     index_vec::{new_key_type, IndexVec},
-    middle::{BinOp, Mutability, TyExpr, UnOp, Vis},
+    middle::{BinOp, Mutability, Pat, TyExpr, UnOp, Vis},
     qpath::QPath,
     span::{SourceId, Span, Spanned},
     word::Word,
@@ -320,50 +320,6 @@ pub struct ExternImport {
     pub attrs: Attrs,
     pub lib: ExternLib,
     pub span: Span,
-}
-
-#[derive(Debug, Clone)]
-pub enum Pat {
-    Name(NamePat),
-    Discard(Span),
-}
-
-impl Pat {
-    pub fn walk(&self, mut f: impl FnMut(&NamePat)) {
-        self.walk_(&mut f);
-    }
-
-    fn walk_(&self, f: &mut impl FnMut(&NamePat)) {
-        match self {
-            Self::Name(n) => f(n),
-            Self::Discard(_) => (),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct NamePat {
-    pub word: Word,
-    pub vis: Vis,
-    pub mutability: Mutability,
-}
-
-impl fmt::Display for Pat {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Pat::Name(n) => n.word.fmt(f),
-            Pat::Discard(_) => f.write_str("_"),
-        }
-    }
-}
-
-impl Spanned for Pat {
-    fn span(&self) -> Span {
-        match self {
-            Pat::Name(n) => n.word.span(),
-            Pat::Discard(s) => *s,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]

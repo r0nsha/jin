@@ -10,9 +10,8 @@ use ustr::Ustr;
 
 use crate::{
     db::{Db, DefId, StructId},
-    hir,
     index_vec::{new_key_type, IndexSlice, IndexVec, IndexVecExt},
-    middle::{BinOp, UnOp},
+    middle::{BinOp, Pat, UnOp},
     span::Span,
     ty::Ty,
 };
@@ -67,7 +66,7 @@ pub struct ExternFn {
 #[derive(Debug, Clone)]
 pub struct FnParam {
     pub def_id: DefId,
-    pub pat: hir::Pat,
+    pub pat: Pat,
     pub ty: Ty,
 }
 

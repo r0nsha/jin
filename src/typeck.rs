@@ -24,7 +24,7 @@ use crate::{
     hir::{ExprId, FnParam, Hir},
     index_vec::IndexVecExt,
     macros::create_bool_enum,
-    middle::{BinOp, Mutability, TyExpr, UnOp},
+    middle::{BinOp, Mutability, Pat, TyExpr, UnOp},
     span::{Span, Spanned},
     sym,
     ty::{
@@ -347,7 +347,7 @@ impl<'db> Typeck<'db> {
             let pat = self.define_pat(env, DefKind::Variable, &p.pat, ty)?;
 
             match &pat {
-                hir::Pat::Name(name) => {
+                Pat::Name(name) => {
                     if let Some(prev_span) = defined_params
                         .insert(name.word.name(), name.word.span())
                     {
@@ -368,15 +368,11 @@ impl<'db> Typeck<'db> {
                                     ));
                     }
                 }
-                hir::Pat::Discard(_) => (),
+                Pat::Discard(_) => (),
             }
 
             params.push(hir::FnParam {
-                id: if let hir::Pat::Name(n) = &pat {
-                    n.id
-                } else {
-                    DefId::INVALID
-                },
+                id: if let Pat::Name(n) = &pat { n.id } else { DefId::INVALID },
                 pat,
                 ty,
             });

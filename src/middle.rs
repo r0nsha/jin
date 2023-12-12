@@ -1,7 +1,10 @@
 use std::fmt;
 
+use ustr::Ustr;
+
 use crate::{
     ast::token::TokenKind,
+    db::DefId,
     span::{Span, Spanned},
     word::Word,
 };
@@ -231,4 +234,77 @@ pub struct TyExprName {
     pub word: Word,
     pub ty_args: Vec<TyExpr>,
     pub span: Span,
+}
+
+#[derive(Debug, Clone)]
+pub enum Pat {
+    Name(NamePat),
+    Discard(Span),
+}
+
+impl Pat {
+    pub fn walk(&self, mut f: impl FnMut(&NamePat)) {
+        self.walk_(&mut f);
+    }
+
+    fn walk_(&self, f: &mut impl FnMut(&NamePat)) {
+        match self {
+            Self::Name(n) => f(n),
+            Self::Discard(_) => (),
+        }
+    }
+
+    pub fn any(&self, mut f: impl FnMut(&NamePat) -> bool) -> bool {
+        self.any_(&mut f)
+    }
+
+    fn any_(&self, f: &mut impl FnMut(&NamePat) -> bool) -> bool {
+        match self {
+            Self::Name(n) => f(n),
+            Self::Discard(_) => false,
+        }
+    }
+
+    pub fn word(&self) -> Option<Word> {
+        match self {
+            Pat::Name(n) => Some(n.word),
+            Pat::Discard(_) => None,
+        }
+    }
+
+    pub fn name(&self) -> Option<Ustr> {
+        self.word().map(|w| w.name())
+    }
+}
+
+impl fmt::Display for Pat {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Pat::Name(n) => n.word.fmt(f),
+            Pat::Discard(_) => f.write_str("_"),
+        }
+    }
+}
+
+impl Spanned for Pat {
+    fn span(&self) -> Span {
+        match self {
+            Pat::Name(n) => n.span(),
+            Pat::Discard(span) => *span,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct NamePat {
+    pub id: DefId,
+    pub word: Word,
+    pub vis: Vis,
+    pub mutability: Mutability,
+}
+
+impl Spanned for NamePat {
+    fn span(&self) -> Span {
+        self.word.span()
+    }
 }

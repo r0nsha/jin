@@ -8,6 +8,7 @@ use crate::{
     hir,
     hir::{FnKind, Hir},
     index_vec::IndexVecExt,
+    middle::{Mutability, NamePat, Pat, Vis},
     mir::*,
     subst::{ParamFolder, Subst},
     ty::{
@@ -103,8 +104,8 @@ impl<'db> LowerCx<'db> {
         }
 
         let let_ = self.hir.lets.iter().find(|let_| match &let_.pat {
-            hir::Pat::Name(n) => n.id == def_id,
-            hir::Pat::Discard(_) => false,
+            Pat::Name(n) => n.id == def_id,
+            Pat::Discard(_) => false,
         });
 
         if let Some(let_) = let_ {
@@ -238,9 +239,11 @@ impl<'db> LowerCx<'db> {
                 .iter()
                 .map(|f| FnParam {
                     def_id: DefId::INVALID,
-                    pat: hir::Pat::Name(hir::NamePat {
+                    pat: Pat::Name(NamePat {
                         id: DefId::INVALID,
                         word: f.name,
+                        vis: Vis::Private,
+                        mutability: Mutability::Imm,
                     }),
                     ty: f.ty,
                 })
@@ -347,7 +350,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
     fn lower_global(self, let_: &hir::Let) -> Option<GlobalId> {
         match &let_.pat {
-            hir::Pat::Name(name) => {
+            Pat::Name(name) => {
                 let full_name = self.cx.db[name.id].qpath.join_with("_");
                 let ty = self.cx.db[name.id].ty;
 
@@ -371,7 +374,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                 Some(id)
             }
-            hir::Pat::Discard(_) => None,
+            Pat::Discard(_) => None,
         }
     }
 
@@ -386,14 +389,14 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 let init = self.lower_expr(&let_.value);
 
                 match &let_.pat {
-                    hir::Pat::Name(name) => {
+                    Pat::Name(name) => {
                         self.push_inst_with(
                             let_.ty,
                             ValueKind::Local(name.id),
                             |value| Inst::Local { value, init },
                         );
                     }
-                    hir::Pat::Discard(_) => (),
+                    Pat::Discard(_) => (),
                 }
 
                 self.const_unit()

@@ -2,7 +2,6 @@ use std::{iter, mem};
 
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
-use ulid::Ulid;
 use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
@@ -13,7 +12,7 @@ use crate::{
     diagnostics::{Diagnostic, Label},
     hir,
     macros::create_bool_enum,
-    middle::{Mutability, Vis},
+    middle::{Mutability, NamePat, Pat, Vis},
     qpath::QPath,
     span::{Span, Spanned},
     sym,
@@ -214,11 +213,11 @@ impl<'db> Typeck<'db> {
         &mut self,
         env: &mut Env,
         kind: DefKind,
-        pat: &ast::Pat,
+        pat: &Pat,
         ty: Ty,
-    ) -> TypeckResult<hir::Pat> {
+    ) -> TypeckResult<Pat> {
         match pat {
-            ast::Pat::Name(name) => {
+            Pat::Name(name) => {
                 let id = self.define_def(
                     env,
                     name.vis,
@@ -227,22 +226,16 @@ impl<'db> Typeck<'db> {
                     name.mutability,
                     ty,
                 )?;
-                Ok(hir::Pat::Name(hir::NamePat { id, word: name.word }))
+
+                Ok(Pat::Name(NamePat { id, ..name.clone() }))
             }
-            ast::Pat::Discard(span) => Ok(hir::Pat::Discard(hir::DiscardPat {
-                hidden_name: ustr(&format!("_{}", Ulid::new())),
-                span: *span,
-            })),
+            Pat::Discard(span) => Ok(Pat::Discard(*span)),
         }
     }
 
-    pub fn insert_pat(
-        &mut self,
-        env: &mut Env,
-        pat: &hir::Pat,
-    ) -> TypeckResult<()> {
+    pub fn insert_pat(&mut self, env: &mut Env, pat: &Pat) -> TypeckResult<()> {
         match pat {
-            hir::Pat::Name(name) => {
+            Pat::Name(name) => {
                 self.insert_def(
                     env,
                     name.word,
@@ -250,7 +243,7 @@ impl<'db> Typeck<'db> {
                     self.db[name.id].scope.vis,
                 )?;
             }
-            hir::Pat::Discard(_) => (),
+            Pat::Discard(_) => (),
         }
 
         Ok(())

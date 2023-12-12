@@ -6,13 +6,16 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         Attr, AttrKind, Attrs, CallArg, Expr, ExternImport, ExternLet, Fn,
-        FnKind, FnParam, FnSig, Item, Let, LitKind, Module, NamePat, Pat,
-        StructTyDef, StructTyField, TyDef, TyDefKind, TyParam,
+        FnKind, FnParam, FnSig, Item, Let, LitKind, Module, StructTyDef,
+        StructTyField, TyDef, TyDefKind, TyParam,
     },
-    db::{Db, ExternLib, StructKind},
+    db::{Db, DefId, ExternLib, StructKind},
     diagnostics::{Diagnostic, Label},
     macros::create_bool_enum,
-    middle::{BinOp, Mutability, TyExpr, TyExprFn, TyExprName, UnOp, Vis},
+    middle::{
+        BinOp, Mutability, NamePat, Pat, TyExpr, TyExprFn, TyExprName, UnOp,
+        Vis,
+    },
     parse::errors,
     qpath::QPath,
     span::{Source, SourceId, Span, Spanned},
@@ -320,7 +323,9 @@ impl<'a> Parser<'a> {
         match tok.kind {
             TokenKind::Ident(_) => {
                 let vis = self.parse_vis();
+
                 Ok(Pat::Name(NamePat {
+                    id: DefId::INVALID,
                     word: tok.word(),
                     vis,
                     mutability: mutability.unwrap_or_default(),

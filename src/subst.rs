@@ -1,6 +1,7 @@
 use crate::{
     db::Db,
-    hir::{Expr, ExprKind, Fn, FnKind, FnSig, Let, Pat},
+    hir::{Expr, ExprKind, Fn, FnKind, FnSig, Let},
+    middle::Pat,
     span::{Span, Spanned},
     ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };

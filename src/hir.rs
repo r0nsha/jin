@@ -1,6 +1,6 @@
 mod pretty_print;
 
-use std::{fmt, io};
+use std::io;
 
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
@@ -8,8 +8,8 @@ use ustr::Ustr;
 use crate::{
     db::{Db, DefId, ModuleId},
     index_vec::{new_key_type, IndexVec},
-    middle::{BinOp, UnOp},
-    span::{Span, Spanned},
+    middle::{BinOp, Pat, UnOp},
+    span::Span,
     ty::{Instantiation, Ty, Typed},
     word::Word,
 };
@@ -180,72 +180,6 @@ pub struct ExternLet {
     pub module_id: ModuleId,
     pub id: DefId,
     pub word: Word,
-    pub span: Span,
-}
-
-#[derive(Debug, Clone)]
-pub enum Pat {
-    Name(NamePat),
-    Discard(DiscardPat),
-}
-
-impl Pat {
-    pub fn any(&self, mut f: impl FnMut(&NamePat) -> bool) -> bool {
-        self.any_(&mut f)
-    }
-
-    fn any_(&self, f: &mut impl FnMut(&NamePat) -> bool) -> bool {
-        match self {
-            Self::Name(n) => f(n),
-            Self::Discard(_) => false,
-        }
-    }
-
-    pub fn word(&self) -> Option<Word> {
-        match self {
-            Pat::Name(n) => Some(n.word),
-            Pat::Discard(_) => None,
-        }
-    }
-
-    pub fn name(&self) -> Option<Ustr> {
-        self.word().map(|w| w.name())
-    }
-}
-
-impl fmt::Display for Pat {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Pat::Name(n) => n.word.fmt(f),
-            Pat::Discard(_) => f.write_str("_"),
-        }
-    }
-}
-
-impl Spanned for Pat {
-    fn span(&self) -> Span {
-        match self {
-            Pat::Name(n) => n.span(),
-            Pat::Discard(d) => d.span,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct NamePat {
-    pub id: DefId,
-    pub word: Word,
-}
-
-impl Spanned for NamePat {
-    fn span(&self) -> Span {
-        self.word.span()
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct DiscardPat {
-    pub hidden_name: Ustr,
     pub span: Span,
 }
 
