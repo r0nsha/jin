@@ -20,6 +20,6 @@ fn ext_type() {
 	printf("Ext(field: %d)\n".ptr, ext.field) // should be 3
 }
 
-fn mutate(mut _: Ext) {
-	//ext.field = 3
+fn mutate(mut ext: Ext) {
+	ext.field = 3
 }

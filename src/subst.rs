@@ -113,7 +113,7 @@ impl<S: SubstTy> Subst<S> for Pat {
         match self {
             Pat::Name(name) => {
                 let ty = s.db()[name.id].ty;
-                s.db()[name.id].ty = s.subst_ty(ty, name.word.span());
+                s.db()[name.id].ty = s.subst_ty(ty, name.span());
             }
             Pat::Discard(_) => (),
         }

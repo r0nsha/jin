@@ -1,9 +1,8 @@
-use std::{borrow::Cow, fs::File, io::Write, iter};
+use std::{fs::File, io::Write, iter};
 
 use camino::Utf8PathBuf;
 use pretty::RcDoc as D;
 use rustc_hash::FxHashMap;
-use ulid::Ulid;
 
 use crate::{
     cgen::{
@@ -235,16 +234,12 @@ impl<'db> Generator<'db> {
                 .append(
                     D::intersperse(
                         sig.params.iter().map(|p| {
-                            let name: Cow<str> = match &p.pat {
-                                hir::Pat::Name(name) => {
-                                    name.word.name().as_str().into()
-                                }
-                                hir::Pat::Discard(_) => {
-                                    Ulid::new().to_string().into()
-                                }
+                            let name = match &p.pat {
+                                hir::Pat::Name(name) => name.word.name(),
+                                hir::Pat::Discard(d) => d.hidden_name,
                             };
 
-                            p.ty.cdecl(self, D::text(name))
+                            p.ty.cdecl(self, D::text(name.as_str()))
                         }),
                         D::text(",").append(D::space()),
                     )
@@ -292,7 +287,12 @@ impl<'db> Generator<'db> {
         let mut state = FnState::new(&fun.body);
 
         for param in &sig.params {
-            state.local_names.insert(param.def_id, self.db[param.def_id].name);
+            match &param.pat {
+                hir::Pat::Name(name) => {
+                    state.local_names.insert(name.id, self.db[name.id].name);
+                }
+                hir::Pat::Discard(_) => (),
+            }
         }
 
         let block_docs: Vec<D> = fun

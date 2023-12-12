@@ -2,6 +2,7 @@ use std::{iter, mem};
 
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
+use ulid::Ulid;
 use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
@@ -228,7 +229,10 @@ impl<'db> Typeck<'db> {
                 )?;
                 Ok(hir::Pat::Name(hir::NamePat { id, word: name.word }))
             }
-            ast::Pat::Discard(span) => Ok(hir::Pat::Discard(*span)),
+            ast::Pat::Discard(span) => Ok(hir::Pat::Discard(hir::DiscardPat {
+                hidden_name: ustr(&format!("_{}", Ulid::new())),
+                span: *span,
+            })),
         }
     }
 

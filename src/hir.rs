@@ -186,7 +186,7 @@ pub struct ExternLet {
 #[derive(Debug, Clone)]
 pub enum Pat {
     Name(NamePat),
-    Discard(Span),
+    Discard(DiscardPat),
 }
 
 impl Pat {
@@ -213,12 +213,6 @@ impl Pat {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct NamePat {
-    pub id: DefId,
-    pub word: Word,
-}
-
 impl fmt::Display for Pat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -231,10 +225,28 @@ impl fmt::Display for Pat {
 impl Spanned for Pat {
     fn span(&self) -> Span {
         match self {
-            Pat::Name(n) => n.word.span(),
-            Pat::Discard(s) => *s,
+            Pat::Name(n) => n.span(),
+            Pat::Discard(d) => d.span,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct NamePat {
+    pub id: DefId,
+    pub word: Word,
+}
+
+impl Spanned for NamePat {
+    fn span(&self) -> Span {
+        self.word.span()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct DiscardPat {
+    pub hidden_name: Ustr,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
