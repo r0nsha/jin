@@ -4,10 +4,10 @@ fn main {
 	let a = 2.0
 	let b = 6.0
 
-	printf("-a = %f\n".ptr, -a)
-	printf("a + b = %f\n".ptr, a + b)
-	printf("a - b = %f\n".ptr, a - b)
-	printf("a * b = %f\n".ptr, a * b)
-	printf("a / b = %f\n".ptr, a / b)
-	printf("a %% b = %f\n".ptr, a % b)
+	//printf("-a = %f\n".ptr, -a)
+	//printf("a + b = %f\n".ptr, a + b)
+	//printf("a - b = %f\n".ptr, a - b)
+	//printf("a * b = %f\n".ptr, a * b)
+	//printf("a / b = %f\n".ptr, a / b)
+	//printf("a %% b = %f\n".ptr, a % b)
 }
