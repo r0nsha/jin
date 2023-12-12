@@ -260,22 +260,15 @@ impl<'db> Typeck<'db> {
 
                         let body = self.check_expr(env, body, Some(ret_ty))?;
 
-                        let unify_body_res = self
-                            .at(Obligation::return_ty(
-                                body.span,
-                                fun.sig
-                                    .ret
-                                    .as_ref()
-                                    .map_or(self.db[id].span, Spanned::span),
-                            ))
-                            .eq(ret_ty, body.ty)
-                            .or_coerce(self, body.id);
-
-                        // If the function's return type is `()`, we want to let the user end the body with
-                        // whatever expression they want, so that they don't need to end it with a `()`
-                        if !self.normalize(ret_ty).is_unit() {
-                            unify_body_res?;
-                        }
+                        self.at(Obligation::return_ty(
+                            body.span,
+                            fun.sig
+                                .ret
+                                .as_ref()
+                                .map_or(self.db[id].span, Spanned::span),
+                        ))
+                        .eq(ret_ty, body.ty)
+                        .or_coerce(self, body.id)?;
 
                         Ok(hir::FnKind::Bare { body })
                     }
@@ -890,7 +883,19 @@ impl<'db> Typeck<'db> {
                             )?);
                         }
 
-                        let ty = new_exprs.last().unwrap().ty;
+                        let mut ty = new_exprs.last().unwrap().ty;
+
+                        // If the expected type is `Unit` and the actual result type isn't,
+                        // we add a `unit` literal at the end of the block to accommodate.
+                        // This is useful for functions which return `Unit`, and if chains.
+                        if let Some(expected_ty) = expected_ty {
+                            if self.normalize(expected_ty).is_unit()
+                                && !self.normalize(ty).is_unit()
+                            {
+                                new_exprs.push(self.unit_expr(*span));
+                                ty = self.db.types.unit;
+                            }
+                        }
 
                         (new_exprs, ty)
                     };
