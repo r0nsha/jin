@@ -2,7 +2,7 @@ use std::io;
 
 use crate::{
     db::Db,
-    hir::{Expr, ExprKind, Fn, FnKind, Hir, Let, Lit},
+    hir::{Expr, ExprKind, Fn, FnKind, Hir, Let, Lit, Pat},
     middle::BinOp,
 };
 
@@ -56,7 +56,10 @@ impl PrettyCx<'_> {
             for param in &f.sig.params {
                 self.builder.add_empty_child(format!(
                     "{} (type: {})",
-                    self.db[param.id].name,
+                    match &param.pat {
+                        Pat::Name(name) => name.word.name().as_str(),
+                        Pat::Discard(_) => "_",
+                    },
                     param.ty.display(self.db)
                 ));
             }

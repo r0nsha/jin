@@ -94,7 +94,7 @@ impl<S: SubstTy> Subst<S> for FnSig {
         for param in &mut self.params {
             param.ty = s.subst_ty(param.ty, param.pat.span());
             // TODO: remove?
-            s.db()[param.id].ty = param.ty;
+            param.pat.subst(s);
         }
     }
 }
@@ -103,10 +103,18 @@ impl<S: SubstTy> Subst<S> for Let {
     fn subst(&mut self, s: &mut S) {
         self.value.subst(s);
         self.ty = self.value.ty;
-
         // TODO: remove?
-        match &self.pat {
-            Pat::Name(name) => s.db()[name.id].ty = self.value.ty,
+        self.pat.subst(s);
+    }
+}
+
+impl<S: SubstTy> Subst<S> for Pat {
+    fn subst(&mut self, s: &mut S) {
+        match self {
+            Pat::Name(name) => {
+                let ty = s.db()[name.id].ty;
+                s.db()[name.id].ty = s.subst_ty(ty, name.word.span());
+            }
             Pat::Discard(_) => (),
         }
     }
