@@ -777,7 +777,7 @@ impl<'db> Typeck<'db> {
                     .eq(self.db.types.bool, cond.ty)
                     .or_coerce(self, cond.id)?;
 
-                let mut then = self.check_expr(env, then, expected_ty)?;
+                let then = self.check_expr(env, then, expected_ty)?;
 
                 let otherwise = if let Some(otherwise) = otherwise.as_ref() {
                     let otherwise =
