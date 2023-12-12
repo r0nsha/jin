@@ -8,16 +8,16 @@ fn extern write(fd: i32, buf: *u8, count: uint) -> i32
 
 let stdout = 1
 
-fn print(fmt: str) {
+fn print(fmt: str) = {
 	write(stdout, fmt.ptr, fmt.len)
 }
 
-fn println(fmt: str) {
+fn println(fmt: str) = {
 	print(fmt)
 	print("\n")
 }
 
-fn main {
+fn main = {
 	println("Hello, World!")
 	hello()
 	run(print_answer)
@@ -28,25 +28,25 @@ fn main {
 	printf("num = %d\n".ptr, map(1, id))
 }
 
-fn print_answer() {
+fn print_answer() = {
 	printf("The answer is %d\n".ptr, answer)
 }
 
-fn add(a: int, b: int) -> int {
+fn add(a: int, b: int) -> int = {
 	a + b
 }
 
-fn do_add(f: fn(int, int) -> int, a: int, b: int) {
+fn do_add(f: fn(int, int) -> int, a: int, b: int) = {
 	printf("a + b = %d\n".ptr, f(a, b))
 }
 
-fn run(f: fn) { f() }
-fn run1(f: fn()) { f() }
-fn run2(f: fn() -> {}) { f() }
-fn run3(f: fn -> {}) { f() }
+fn run(f: fn) = { f() }
+fn run1(f: fn()) = { f() }
+fn run2(f: fn() -> {}) = { f() }
+fn run3(f: fn -> {}) = { f() }
 
-fn id[a](x: a) -> a { x }
+fn id[a](x: a) -> a = { x }
 
-fn map[a, b](val: a, f: fn(a) -> b) -> b {
+fn map[a, b](val: a, f: fn(a) -> b) -> b = {
 	f(val)
 }

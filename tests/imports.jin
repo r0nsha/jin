@@ -1,11 +1,11 @@
 import bar.{baz.yup, *}
 
-fn main {
+fn main = {
 	hello()
 	yup()
 	goodbye()
 }
 
-fn get_hello_world* -> str {
+fn get_hello_world* -> str = {
 	"Hello from bar!\n"
 }

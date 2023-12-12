@@ -1,12 +1,12 @@
 fn extern printf(fmt: *u8, ..) -> i32
 
-fn main {
+fn main = {
 	ext_type()
 }
 
 type Ext extern(field: int)
 
-fn ext_type() {
+fn ext_type() = {
 	let mut ext = Ext(1)
 	printf("Ext(field: %d)\n".ptr, ext.field) // should be 1
 
@@ -20,6 +20,6 @@ fn ext_type() {
 	printf("Ext(field: %d)\n".ptr, ext.field) // should be 3
 }
 
-fn mutate(mut ext: Ext) {
+fn mutate(mut ext: Ext) = {
 	ext.field = 3
 }

@@ -1,6 +1,6 @@
 import raylib.bindings.*
 
-fn run* {
+fn run* = {
 	let screen_width = 800
 	let screen_height = 450
 
