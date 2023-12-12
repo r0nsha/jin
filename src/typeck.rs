@@ -793,10 +793,6 @@ impl<'db> Typeck<'db> {
 
                     otherwise
                 } else {
-                    // NOTE: We don't unify here since, since we allow non-unit blocks to
-                    // _become_ unit blocks, meaning that a block that doesn't return a unit value,
-                    // but is expected to - is assumed to return it anyways.
-                    then.ty = self.db.types.unit;
                     self.unit_expr(*span)
                 };
 
