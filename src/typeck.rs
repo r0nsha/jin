@@ -371,11 +371,7 @@ impl<'db> Typeck<'db> {
                 Pat::Discard(_) => (),
             }
 
-            params.push(hir::FnParam {
-                id: if let Pat::Name(n) = &pat { n.id } else { DefId::INVALID },
-                pat,
-                ty,
-            });
+            params.push(hir::FnParam { pat, ty });
         }
 
         let ret = if let Some(ret) = &sig.ret {

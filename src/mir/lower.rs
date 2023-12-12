@@ -238,7 +238,6 @@ impl<'db> LowerCx<'db> {
                 .fields
                 .iter()
                 .map(|f| FnParam {
-                    def_id: DefId::INVALID,
                     pat: Pat::Name(NamePat {
                         id: DefId::INVALID,
                         word: f.name,
@@ -277,7 +276,7 @@ impl<'db> LowerCx<'db> {
             params: sig
                 .params
                 .iter()
-                .map(|p| FnParam { def_id: p.id, pat: p.pat.clone(), ty: p.ty })
+                .map(|p| FnParam { pat: p.pat.clone(), ty: p.ty })
                 .collect(),
             ret: ty.as_fn().unwrap().ret,
             ty,

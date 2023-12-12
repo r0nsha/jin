@@ -65,7 +65,6 @@ pub struct ExternFn {
 
 #[derive(Debug, Clone)]
 pub struct FnParam {
-    pub def_id: DefId,
     pub pat: Pat,
     pub ty: Ty,
 }
