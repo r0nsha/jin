@@ -11,8 +11,8 @@ fn main = {
 
 fn run(f: fn) = { f() }
 fn run1(f: fn()) = { f() }
-fn run2(f: fn() -> {}) = { f() }
-fn run3(f: fn -> {}) = { f() }
+fn run2(f: fn() -> unit) = { f() }
+fn run3(f: fn -> unit) = { f() }
 
 fn print_answer() = {
 	printf("The answer is %d\n".ptr, 42)

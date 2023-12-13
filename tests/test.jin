@@ -42,8 +42,8 @@ fn do_add(f: fn(int, int) -> int, a: int, b: int) = {
 
 fn run(f: fn) = { f() }
 fn run1(f: fn()) = { f() }
-fn run2(f: fn() -> {}) = { f() }
-fn run3(f: fn -> {}) = { f() }
+fn run2(f: fn() -> unit) = { f() }
+fn run3(f: fn -> unit) = { f() }
 
 fn id[a](x: a) -> a = { x }
 

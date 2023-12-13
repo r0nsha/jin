@@ -205,7 +205,6 @@ pub enum TyExpr {
     Fn(TyExprFn),
     RawPtr(Box<TyExpr>, Span),
     Name(TyExprName),
-    Unit(Span),
     Hole(Span),
 }
 
@@ -215,7 +214,6 @@ impl Spanned for TyExpr {
             Self::Fn(TyExprFn { span, .. })
             | Self::RawPtr(_, span)
             | Self::Name(TyExprName { span, .. })
-            | Self::Unit(span)
             | Self::Hole(span) => *span,
         }
     }

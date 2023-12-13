@@ -1544,7 +1544,6 @@ impl<'db> Typeck<'db> {
                         )),
                 }
             }
-            TyExpr::Unit(_) => Ok(self.db.types.unit),
             TyExpr::Hole(span) => {
                 if allow_hole == AllowTyHole::Yes {
                     Ok(self.fresh_ty_var())
