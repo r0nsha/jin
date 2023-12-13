@@ -294,8 +294,7 @@ impl<'a> Parser<'a> {
         if self.is(TokenKind::Extern) {
             self.parse_struct_ty_def(StructKind::Extern)
         } else if self.peek_is(TokenKind::OpenParen) {
-            todo!("StructKind::Ref");
-            // self.parse_struct_ty_def(StructKind::Ref)
+            self.parse_struct_ty_def(StructKind::Ref)
         } else {
             let tok = self.require()?;
             Err(errors::unexpected_token_err(

@@ -234,6 +234,7 @@ impl PrettyPrint for TyDef {
                 cx.builder.add_empty_child(format!(
                     "{}struct",
                     match sdef.kind {
+                        StructKind::Ref => "",
                         StructKind::Extern => "extern ",
                     }
                 ));

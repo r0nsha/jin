@@ -9,7 +9,7 @@ fn main() unit = {
 	ext_type()
 }
 
-type Ref extern(field: int)
+type Ref(field: int)
 
 fn ref_type() unit = {
 	let mut ref = Ref(1)
@@ -22,6 +22,7 @@ fn ref_type() unit = {
 	printf("Ref(field: %d)\n".ptr, ref.field) // should be 3
 }
 
+// TODO: change to &mut Ref when references are implemented
 fn mutate(mut ref: Ref) unit = {
 	ref.field = 3
 }

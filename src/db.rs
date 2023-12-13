@@ -433,6 +433,7 @@ pub struct StructInfo {
 
 #[derive(Debug, Clone, Copy)]
 pub enum StructKind {
+    Ref,
     Extern,
 }
 
