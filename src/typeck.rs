@@ -1144,6 +1144,7 @@ impl<'db> Typeck<'db> {
                     ));
             }
 
+            // TODO: apply type arguments
             Ok(self.expr(
                 hir::ExprKind::Name(hir::Name {
                     id,
