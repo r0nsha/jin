@@ -4,6 +4,7 @@ use crate::{
     cgen::{
         generate::{FnState, Generator},
         ty::CTy,
+        util,
     },
     middle::BinOp,
     mir::ValueId,
@@ -31,10 +32,7 @@ impl<'db> Generator<'db> {
         span: Span,
     ) -> D<'db> {
         let cast = self.value_assign(state, value, || {
-            D::text("(")
-                .append(target.cty(self))
-                .append(D::text(")"))
-                .append(self.value(state, casted))
+            util::cast(target.cty(self), self.value(state, casted))
         });
 
         let casted_ty = state.body.value(casted).ty;

@@ -1,6 +1,6 @@
-#include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdlib.h>
 
 #define FORCE_INLINE __attribute__((always_inline)) inline
 
@@ -28,10 +28,6 @@ typedef struct {
   usize len;
 } str;
 
-inline void* __jin_alloc(size_t size) {
-  return malloc(size);
-}
+FORCE_INLINE void *__jin_alloc(size_t size) { return malloc(size); }
 
-inline void __jin_dealloc(void *ptr) {
-  free(ptr);
-}
+FORCE_INLINE void __jin_dealloc(void *ptr) { free(ptr); }

@@ -23,9 +23,9 @@ fn ref_type() unit = {
 }
 
 // TODO: change to &mut Ref when references are implemented
-fn mutate(mut ref: Ref) unit = {
-	ref.field = 3
-}
+//fn mutate(mut ref: Ref) unit = {
+//	ref.field = 3
+//}
 
 type Ext extern(field: int)
 

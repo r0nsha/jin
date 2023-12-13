@@ -12,11 +12,11 @@ use crate::{
         name_gen::LocalNames,
         ty::CTy,
         util::{
-            assign, attr, block, block_, block_name, bool_value, goto_stmt,
-            if_stmt, stmt, str_value, struct_lit, unit_value, NEST,
+            self, assign, attr, block, block_, block_name, bool_value,
+            goto_stmt, if_stmt, stmt, str_value, struct_lit, unit_value, NEST,
         },
     },
-    db::{Db, StructId, StructInfo},
+    db::{Db, StructId, StructInfo, StructKind},
     middle::{Pat, UnOp},
     mir::{
         Block, Body, Const, Fn, FnSig, FnSigId, Global, GlobalKind, Inst, Mir,
@@ -322,31 +322,69 @@ impl<'db> Generator<'db> {
         let struct_info = &self.db[sid];
         let sig = &self.mir.fn_sigs[sig_id];
 
-        let struct_lit_doc = struct_lit(
-            struct_info
-                .fields
-                .iter()
-                .map(|f| {
-                    let name = f.name.name().as_str();
-                    (name, D::text(name))
-                })
-                .collect(),
-        );
+        let statements = match self.db[sid].kind {
+            StructKind::Ref => {
+                let alloc_doc =
+                    util::call_alloc(D::text(self.struct_names[&sid].clone()));
 
-        let lit_name = D::text("lit");
-        let lit_decl_doc = VariableDoc::assign(
-            self,
-            struct_info.ty(),
-            lit_name.clone(),
-            struct_lit_doc,
-        );
+                let lit_name = D::text("lit");
+                let lit_decl_doc = VariableDoc::assign(
+                    self,
+                    struct_info.ty(),
+                    lit_name.clone(),
+                    alloc_doc,
+                );
 
-        let return_doc =
-            stmt(|| D::text("return").append(D::space()).append(lit_name));
+                let struct_init_doc = D::intersperse(
+                    struct_info.fields.iter().map(|f| {
+                        stmt(|| {
+                            let name = f.name.name();
+                            lit_name
+                                .clone()
+                                .append(format!("->{name} = {name}"))
+                        })
+                    }),
+                    D::hardline(),
+                );
 
-        self.codegen_fn_sig(sig).append(D::space()).append(block(|| {
-            D::intersperse([lit_decl_doc, return_doc], D::hardline())
-        }))
+                let return_doc = stmt(|| {
+                    D::text("return").append(D::space()).append(lit_name)
+                });
+
+                D::intersperse(
+                    [lit_decl_doc, struct_init_doc, return_doc],
+                    D::hardline(),
+                )
+            }
+            StructKind::Extern => {
+                let struct_lit_doc = struct_lit(
+                    struct_info
+                        .fields
+                        .iter()
+                        .map(|f| {
+                            let name = f.name.name().as_str();
+                            (name, D::text(name))
+                        })
+                        .collect(),
+                );
+
+                let lit_name = D::text("lit");
+                let lit_decl_doc = VariableDoc::assign(
+                    self,
+                    struct_info.ty(),
+                    lit_name.clone(),
+                    struct_lit_doc,
+                );
+
+                let return_doc = stmt(|| {
+                    D::text("return").append(D::space()).append(lit_name)
+                });
+
+                D::intersperse([lit_decl_doc, return_doc], D::hardline())
+            }
+        };
+
+        self.codegen_fn_sig(sig).append(D::space()).append(block(|| statements))
     }
 
     fn codegen_block(

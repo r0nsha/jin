@@ -28,6 +28,13 @@ impl<'db> Generator<'db> {
 
 pub const NEST: isize = 2;
 
+pub fn call_alloc(ty: D<'_>) -> D<'_> {
+    cast(
+        ty.clone().append(D::text("*")),
+        D::text("__jin_alloc(sizeof(").append(ty).append("))"),
+    )
+}
+
 pub fn str_value(value: &str) -> D {
     struct_lit(vec![
         ("ptr", str_lit(value)),
@@ -72,6 +79,10 @@ pub fn block_name(blk: &Block) -> D<'_> {
 
 pub fn goto_stmt(blk: &Block) -> D<'_> {
     stmt(|| D::text("goto").append(D::space()).append(block_name(blk)))
+}
+
+pub fn cast<'a>(ty: D<'a>, value: D<'a>) -> D<'a> {
+    D::text("(").append(ty).append(D::text(")")).append(value)
 }
 
 pub fn if_stmt<'a>(
