@@ -178,7 +178,11 @@ impl<'db> LowerCx<'db> {
 
         let def = &self.db[fun.id];
 
-        let mangled_name = format!("{}_{}", def.name, sig_str);
+        let mangled_name = if sig_str.is_empty() {
+            def.name.to_string()
+        } else {
+            format!("{}_{}", def.name, sig_str)
+        };
         let qualified_name =
             def.qpath.clone().with_name(ustr(&mangled_name)).join_with("_");
 
