@@ -370,7 +370,7 @@ impl<'db> Typeck<'db> {
         let ret = if let Some(ret) = &sig.ret {
             self.check_ty_expr(env, ret, AllowTyHole::No)?
         } else {
-            self.db.types.unit
+            self.fresh_ty_var()
         };
 
         let ty = Ty::new(TyKind::Fn(FnTy {
@@ -1501,11 +1501,7 @@ impl<'db> Typeck<'db> {
                     })
                     .try_collect()?;
 
-                let ret = if let Some(ret) = &fn_ty.ret {
-                    self.check_ty_expr(env, ret, allow_hole)?
-                } else {
-                    self.db.types.unit
-                };
+                let ret = self.check_ty_expr(env, &fn_ty.ret, allow_hole)?;
 
                 Ok(Ty::new(TyKind::Fn(FnTy {
                     params,

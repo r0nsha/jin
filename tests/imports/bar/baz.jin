@@ -1,5 +1,5 @@
-fn extern printf(fmt: *u8, ..) -> i32
+fn extern printf(fmt: *u8, ..) i32
 
-fn yup* = {
+fn yup*() unit = {
 	printf("yup for baz :)\n".ptr)
 }

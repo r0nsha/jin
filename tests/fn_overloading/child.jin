@@ -1,25 +1,25 @@
-fn extern printf(fmt: *u8, ..) -> i32
+fn extern printf(fmt: *u8, ..) i32
 
-fn add*() = {
+fn add*() unit = {
 	printf("there's nothing to add...\n".ptr)
 }
 
-fn add*(a: int, b: int) = {
+fn add*(a: int, b: int) unit = {
 	printf("add ints: %d\n".ptr, a + b)
 }
 
-fn add*(a: int, b: int, c: int) = {
+fn add*(a: int, b: int, c: int) unit = {
 	printf("add 3 ints: %d\n".ptr, a + b + c)
 }
 
-fn add*(a: f32, b: f32) = {
+fn add*(a: f32, b: f32) unit = {
 	printf("add floats: %f\n".ptr, a + b)
 }
 
-fn add*(a: int, b: f32) = {
+fn add*(a: int, b: f32) unit = {
 	printf("add int & f32: %f\n".ptr, f32(a) + b)
 }
 
-fn poly*[a](x: a) = {
+fn poly*[a](x: a) unit = {
 	printf("poly[a]: x = %d\n".ptr, x)
 }

@@ -1,6 +1,6 @@
-fn extern printf(fmt: *u8, ..) -> i32
+fn extern printf(fmt: *u8, ..) i32
 
-fn main = {
+fn main() unit = {
 	run(print_answer)
 	run1(print_answer)
 	run2(print_answer)
@@ -9,27 +9,27 @@ fn main = {
 	printf("map: %d\n".ptr, map(1, int_to_uint))
 }
 
-fn run(f: fn) = { f() }
-fn run1(f: fn()) = { f() }
-fn run2(f: fn() -> unit) = { f() }
-fn run3(f: fn -> unit) = { f() }
+fn run(f: fn()) unit = { f() }
+fn run1(f: fn()) unit = { f() }
+fn run2(f: fn() unit) unit = { f() }
+fn run3(f: fn() unit) unit = { f() }
 
-fn print_answer() = {
+fn print_answer() unit = {
 	printf("The answer is %d\n".ptr, 42)
 }
 
-fn add(a: int, b: int) -> int = {
+fn add(a: int, b: int) int = {
 	a + b
 }
 
-fn do_add(f: fn(int, int) -> int, a: int, b: int) = {
+fn do_add(f: fn(int, int) int, a: int, b: int) unit = {
 	printf("a + b = %d\n".ptr, f(a, b))
 }
 
-fn map[a, b](val: a, f: fn(a) -> b) -> b = {
+fn map[a, b](val: a, f: fn(a) b) -> b = {
 	f(val)
 }
 
-fn int_to_uint(val: int) -> uint = {
+fn int_to_uint(val: int) uint = {
 	val as _
 }

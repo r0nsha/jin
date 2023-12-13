@@ -337,11 +337,9 @@ impl PrettyPrint for TyExpr {
                     cx.builder.end_child();
                 }
 
-                if let Some(ret) = &f.ret {
-                    cx.builder.begin_child("ret".to_string());
-                    ret.pretty_print(cx);
-                    cx.builder.end_child();
-                }
+                cx.builder.begin_child("ret".to_string());
+                f.ret.pretty_print(cx);
+                cx.builder.end_child();
 
                 cx.builder.end_child();
             }

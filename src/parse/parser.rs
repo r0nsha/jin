@@ -191,8 +191,11 @@ impl<'a> Parser<'a> {
         if self.is(TokenKind::Extern) {
             let name_ident = self.eat_ident()?;
             let vis = self.parse_vis();
-            let (sig, is_c_variadic) =
-                self.parse_fn_sig(name_ident.word(), AllowTyParams::No)?;
+            let (sig, is_c_variadic) = self.parse_fn_sig(
+                name_ident.word(),
+                AllowTyParams::No,
+                RequireRetTy::Yes,
+            )?;
 
             Ok(Fn {
                 attrs,
@@ -204,8 +207,11 @@ impl<'a> Parser<'a> {
         } else {
             let name_ident = self.eat_ident()?;
             let vis = self.parse_vis();
-            let (sig, is_c_variadic) =
-                self.parse_fn_sig(name_ident.word(), AllowTyParams::Yes)?;
+            let (sig, is_c_variadic) = self.parse_fn_sig(
+                name_ident.word(),
+                AllowTyParams::Yes,
+                RequireRetTy::Yes,
+            )?;
 
             if is_c_variadic {
                 return Err(Diagnostic::error()
@@ -362,6 +368,7 @@ impl<'a> Parser<'a> {
         &mut self,
         name: Word,
         allow_ty_params: AllowTyParams,
+        require_ret_ty: RequireRetTy,
     ) -> ParseResult<(FnSig, bool)> {
         let ty_params = if allow_ty_params == AllowTyParams::Yes {
             self.parse_optional_ty_params()?
@@ -370,9 +377,12 @@ impl<'a> Parser<'a> {
         };
 
         let (params, is_c_variadic) = self.parse_fn_params()?;
-        let ret = self
-            .is_and(TokenKind::Arrow, |this, _| this.parse_ty())
-            .transpose()?;
+        let ret = match require_ret_ty {
+            RequireRetTy::Yes => Some(self.parse_ty()?),
+            RequireRetTy::No(delimeter) => {
+                self.is_and(delimeter, |this, _| this.parse_ty()).transpose()?
+            }
+        };
 
         Ok((FnSig { word: name, ty_params, params, ret }, is_c_variadic))
     }
@@ -696,13 +706,11 @@ impl<'a> Parser<'a> {
     fn parse_fn_ty(&mut self) -> ParseResult<TyExprFn> {
         let start = self.last_span();
         let (params, is_c_variadic) = self.parse_fn_ty_params()?;
-        let ret = self
-            .is_and(TokenKind::Arrow, |this, _| this.parse_ty())
-            .transpose()?
-            .map(Box::new);
+        let ret = self.parse_ty()?;
+
         Ok(TyExprFn {
             params,
-            ret,
+            ret: Box::new(ret),
             is_c_variadic,
             span: start.merge(self.last_span()),
         })
@@ -1056,3 +1064,10 @@ impl<'a> Parser<'a> {
 pub(super) type ParseResult<T> = Result<T, Diagnostic>;
 
 create_bool_enum!(AllowTyParams);
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum RequireRetTy {
+    Yes,
+    #[allow(dead_code)]
+    No(TokenKind),
+}

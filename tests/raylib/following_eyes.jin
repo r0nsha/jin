@@ -1,11 +1,11 @@
 import raylib.bindings.*
 
-fn extern printf(fmt: *u8, ..) -> i32
-fn extern atan2f(y: f32, x: f32) -> f32
-fn extern cosf(arg: f32) -> f32
-fn extern sinf(arg: f32) -> f32
+fn extern printf(fmt: *u8, ..) i32
+fn extern atan2f(y: f32, x: f32) f32
+fn extern cosf(arg: f32) f32
+fn extern sinf(arg: f32) f32
 
-fn run* = {
+fn run*() unit = {
 	let screen_width = 800
 	let screen_height = 450
 

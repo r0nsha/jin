@@ -3,7 +3,7 @@ import extern "m"
 
 fn extern InitWindow*(width: i32, height: i32, title: *u8)
 fn extern CloseWindow*()
-fn extern WindowShouldClose*() -> bool
+fn extern WindowShouldClose*() bool
 fn extern SetTargetFPS*(fps: i32)
 fn extern BeginDrawing*()
 fn extern EndDrawing*()
@@ -26,12 +26,12 @@ let DARKGREEN* = Color(0, 117, 44, 255)
 
 type Vector2* extern(x: f32, y: f32)
 
-fn extern GetMousePosition*() -> Vector2
-fn extern IsKeyDown*(key: i32) -> bool
+fn extern GetMousePosition*() Vector2
+fn extern IsKeyDown*(key: i32) bool
 
 let KEY_RIGHT* = 262
 let KEY_LEFT* = 263
 let KEY_DOWN* = 264
 let KEY_UP* = 265
 
-fn extern CheckCollisionPointCircle*(point: Vector2, center: Vector2, radius: f32) -> bool
+fn extern CheckCollisionPointCircle*(point: Vector2, center: Vector2, radius: f32) bool
