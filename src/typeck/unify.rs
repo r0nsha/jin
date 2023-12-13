@@ -22,66 +22,82 @@ pub struct At<'db, 'a> {
 
 impl At<'_, '_> {
     pub fn eq(&self, expected: Ty, found: Ty) -> EqResult {
-        expected.unify(found, self.cx).map_err(|err| {
-            let mut storage = self.cx.storage.borrow_mut();
+        expected
+            .unify(found, self.cx, UnifyOptions { unify_param_tys: false })
+            .map_err(|err| {
+                let mut storage = self.cx.storage.borrow_mut();
 
-            let diagnostic = match err {
-                UnifyError::TyMismatch { .. } => {
-                    let expected = expected.normalize(&mut storage);
-                    let found = found.normalize(&mut storage);
+                let diagnostic = match err {
+                    UnifyError::TyMismatch { .. } => {
+                        let expected = expected.normalize(&mut storage);
+                        let found = found.normalize(&mut storage);
 
-                    let expected_ty = expected.display(self.cx.db).to_string();
-                    let found_ty = found.display(self.cx.db).to_string();
+                        let expected_ty =
+                            expected.display(self.cx.db).to_string();
+                        let found_ty = found.display(self.cx.db).to_string();
 
-                    let mut diag = errors::ty_mismatch(
-                        &expected_ty,
-                        &found_ty,
-                        self.obligation.span(),
-                    );
+                        let mut diag = errors::ty_mismatch(
+                            &expected_ty,
+                            &found_ty,
+                            self.obligation.span(),
+                        );
 
-                    match *self.obligation.kind() {
-                        ObligationKind::Obvious => (),
-                        ObligationKind::Exprs(expected_span, found_span) => {
-                            diag.push_labels([
-                                Label::secondary(expected_span)
-                                    .with_message(expected_ty.to_string()),
-                                Label::secondary(found_span)
-                                    .with_message(found_ty.to_string()),
-                            ]);
+                        match *self.obligation.kind() {
+                            ObligationKind::Obvious => (),
+                            ObligationKind::Exprs(
+                                expected_span,
+                                found_span,
+                            ) => {
+                                diag.push_labels([
+                                    Label::secondary(expected_span)
+                                        .with_message(expected_ty.to_string()),
+                                    Label::secondary(found_span)
+                                        .with_message(found_ty.to_string()),
+                                ]);
+                            }
+                            ObligationKind::ReturnTy(return_ty_span) => {
+                                diag.push_label(
+                                    Label::secondary(return_ty_span)
+                                        .with_message("because of return type"),
+                                );
+                            }
                         }
-                        ObligationKind::ReturnTy(return_ty_span) => {
-                            diag.push_label(
-                                Label::secondary(return_ty_span)
-                                    .with_message("because of return type"),
-                            );
-                        }
+
+                        diag
                     }
+                    UnifyError::InfiniteTy { ty } => {
+                        let ty = ty.normalize(&mut storage);
+                        let obligation =
+                            Obligation::obvious(self.obligation.span());
 
-                    diag
-                }
-                UnifyError::InfiniteTy { ty } => {
-                    let ty = ty.normalize(&mut storage);
-                    let obligation =
-                        Obligation::obvious(self.obligation.span());
+                        Diagnostic::error()
+                            .with_message(format!(
+                                "type `{}` is an infinite type",
+                                ty.display(self.cx.db)
+                            ))
+                            .with_label(Label::primary(obligation.span()))
+                    }
+                };
 
-                    Diagnostic::error()
-                        .with_message(format!(
-                            "type `{}` is an infinite type",
-                            ty.display(self.cx.db)
-                        ))
-                        .with_label(Label::primary(obligation.span()))
-                }
-            };
-
-            EqError { expected, found, diagnostic }
-        })
+                EqError { expected, found, diagnostic }
+            })
     }
 }
 
 impl Ty {
-    pub fn unify(self, other: Ty, cx: &Typeck) -> Result<(), UnifyError> {
-        UnifyCx { cx }.unify_ty_ty(self, other)
+    pub fn unify(
+        self,
+        other: Ty,
+        cx: &Typeck,
+        options: UnifyOptions,
+    ) -> Result<(), UnifyError> {
+        UnifyCx { cx, options }.unify_ty_ty(self, other)
     }
+}
+
+#[derive(Debug)]
+pub struct UnifyOptions {
+    pub unify_param_tys: bool,
 }
 
 pub type EqResult = Result<(), EqError>;
@@ -143,6 +159,7 @@ pub enum ObligationKind {
 
 struct UnifyCx<'db, 'a> {
     cx: &'a Typeck<'db>,
+    options: UnifyOptions,
 }
 
 impl UnifyCx<'_, '_> {
@@ -264,6 +281,16 @@ impl UnifyCx<'_, '_> {
             (_, TyKind::Infer(InferTy::Ty(var))) => self.unify_ty_var(a, *var),
 
             (TyKind::Param(p1), TyKind::Param(p2)) if p1.var == p2.var => {
+                if p1.var == p2.var {
+                    Ok(())
+                } else {
+                    Err(UnifyError::TyMismatch { a, b })
+                }
+            }
+
+            (TyKind::Param(_), _) | (_, TyKind::Param(_))
+                if self.options.unify_param_tys =>
+            {
                 Ok(())
             }
 

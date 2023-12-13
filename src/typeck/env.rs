@@ -16,8 +16,10 @@ use crate::{
     qpath::QPath,
     span::{Span, Spanned},
     sym,
-    ty::{printer::FnTyPrinter, FnTy, FnTyParam, InferTy, Ty, TyKind},
-    typeck::{coerce::Coerce, errors, Typeck, TypeckResult},
+    ty::{printer::FnTyPrinter, FnTy, FnTyParam, Ty, TyKind},
+    typeck::{
+        coerce::Coerce, errors, unify::UnifyOptions, Typeck, TypeckResult,
+    },
     word::Word,
 };
 
@@ -896,32 +898,32 @@ impl FnCandidate {
             return None;
         }
 
-        let mut score = 0;
+        let mut total_score = 0;
 
         for (param, arg) in self.ty.params.iter().zip(query.args.iter()) {
-            let dist = Self::distance(cx, param.ty, arg.ty)?;
-            score += dist;
+            let score = Self::distance(cx, param.ty, arg.ty)?;
+            total_score += score as u32;
         }
 
-        Some(score)
+        Some(total_score)
     }
 
-    // Calculates the distances between an argument and the
-    // parameter it is applied to. The actual distance is calculated by the amount
-    // of "steps" required to convert the argument to the parameter.
-    fn distance(cx: &Typeck, param: Ty, arg: Ty) -> Option<u32> {
-        if param.unify(arg, cx).is_ok() {
-            return Some(0);
+    // Calculates the distance between an argument and the parameter it is applied to.
+    // The actual distance is calculated by the amount of "steps"
+    // required to convert the argument to the parameter.
+    fn distance(cx: &Typeck, param: Ty, arg: Ty) -> Option<FnCandidateScore> {
+        if param.unify(arg, cx, UnifyOptions { unify_param_tys: false }).is_ok()
+        {
+            return Some(FnCandidateScore::Eq);
         }
 
         if arg.can_coerce(&param, cx) {
-            return Some(1);
+            return Some(FnCandidateScore::Coerce);
         }
 
-        if let (_, TyKind::Infer(InferTy::Ty(_)) | TyKind::Param(_)) =
-            (arg.kind(), param.kind())
+        if param.unify(arg, cx, UnifyOptions { unify_param_tys: true }).is_ok()
         {
-            return Some(2);
+            return Some(FnCandidateScore::Polymorphic);
         }
 
         None
@@ -967,6 +969,14 @@ impl PartialEq for FnCandidate {
 }
 
 impl Eq for FnCandidate {}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(u32)]
+pub enum FnCandidateScore {
+    Eq = 0,
+    Coerce = 1,
+    Polymorphic = 2,
+}
 
 #[derive(Debug, Clone)]
 pub enum Query<'a> {
