@@ -13,33 +13,42 @@ type Ref(field: int)
 
 fn ref_type() unit = {
 	let mut ref = Ref(1)
-	printf("Ref(field: %d)\n".ptr, ref.field) // should be 1
+	print(ref) // should be 1
 
 	ref.field = 2
-	printf("Ref(field: %d)\n".ptr, ref.field) // should be 2
+	print(ref) // should be 2
 
-	//ref.mutate()
-	//printf("Ref(field: %d)\n".ptr, ref.field) // should be 3
+	ref.mutate()
+	print(ref) // should be 3
 }
 
 // TODO: change to &mut Ref when references are implemented
-//fn mutate(mut ref: Ref) unit = {
-//	ref.field = 3
-//}
+fn mutate(mut ref: Ref) unit = {
+	ref.field = 3
+}
+
+fn print(ref: Ref) unit = {
+	printf("Ref(field: %d)\n".ptr, ref.field)
+}
 
 type Ext extern(field: int)
 
 fn ext_type() unit = {
 	let mut ext = Ext(1)
-	printf("Ext(field: %d)\n".ptr, ext.field) // should be 1
+	print(ext) // should be 1
 
 	ext.field = 2
-	printf("Ext(field: %d)\n".ptr, ext.field) // should be 2
+	print(ext) // should be 2
 
 	ext.mutate()
-	printf("Ext(field: %d)\n".ptr, ext.field) // should still be 2
+	print(ext) // should still be 2
 }
 
 fn mutate(mut ext: Ext) unit = {
 	ext.field = 3
 }
+
+fn print(ext: Ext) unit = {
+	printf("Ext(field: %d)\n".ptr, ext.field)	
+}
+
