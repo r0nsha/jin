@@ -4,7 +4,7 @@ use pretty::RcDoc as D;
 
 use crate::{
     cgen::generate::Generator,
-    db::StructId,
+    db::{StructId, StructKind},
     sym,
     ty::{FloatTy, FnTy, IntTy, TyKind, UintTy},
 };
@@ -83,11 +83,16 @@ impl<'db> CTy<'db> for StructId {
     fn cty(&self, cx: &Generator<'db>) -> D<'db> {
         let name = D::text(cx.struct_names[self].clone());
 
-        match cx.curr_generated_struct {
+        let name = match cx.curr_generated_struct {
             Some(sid) if sid == *self => {
                 D::text("struct").append(D::space()).append(name)
             }
             _ => name,
+        };
+
+        match cx.db.structs[*self].kind {
+            StructKind::Ref => name.append(D::text("*")),
+            StructKind::Extern => name,
         }
     }
 }
