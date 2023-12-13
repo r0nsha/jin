@@ -31,8 +31,7 @@ impl<'db> CTy<'db> for TyKind {
             Self::Int(ity) => ity.cty(cx),
             Self::Uint(uty) => uty.cty(cx),
             Self::Float(fty) => fty.cty(cx),
-            Self::Unit => D::text(sym::UNIT),
-            Self::Str | Self::Bool | Self::Never => {
+            Self::Str | Self::Bool | Self::Never | Self::Unit => {
                 D::text(self.to_string(cx.db))
             }
             _ => panic!("unexpected type {self:?}"),
