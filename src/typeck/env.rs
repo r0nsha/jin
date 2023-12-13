@@ -826,6 +826,7 @@ impl FnCandidateSet {
 
     pub fn find(&self, cx: &Typeck, query: &FnQuery) -> Vec<&FnCandidate> {
         let scores = self.scores(cx, query);
+
         let Some(&min_score) = scores.iter().map(|(_, s)| s).min() else {
             return vec![];
         };
@@ -881,7 +882,6 @@ impl FnCandidate {
             Some(ty_args)
                 if ty_args.len() != self.ty.collect_params().len() =>
             {
-                dbg!(&query.ty_args, self.ty.collect_params());
                 return None;
             }
             _ => (),
