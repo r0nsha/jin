@@ -1248,7 +1248,7 @@ impl<'db> Typeck<'db> {
                 ty: self.normalize(a.expr.ty),
             })
             .collect::<Vec<_>>();
-        let query = FnQuery::new(word, ty_args.unwrap_or_default(), &args);
+        let query = FnQuery::new(word, ty_args, &args);
         self.lookup(env, in_module, &Query::Fn(query))
     }
 

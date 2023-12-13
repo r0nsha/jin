@@ -877,14 +877,14 @@ impl FnCandidate {
 
         // Check that the amount of given type arguments == the amount of type
         // parameters in this candidate
-        if !query.ty_args.is_empty()
-            && query.ty_args.len() != self.ty.collect_params().len()
-        {
-            return None;
-        }
-
-        if self.ty.params.len() != query.args.len() {
-            return None;
+        match query.ty_args {
+            Some(ty_args)
+                if ty_args.len() != self.ty.collect_params().len() =>
+            {
+                dbg!(&query.ty_args, self.ty.collect_params());
+                return None;
+            }
+            _ => (),
         }
 
         // Make sure that all passed named arguments exist in this candidate
@@ -996,12 +996,16 @@ impl<'a> Query<'a> {
 #[derive(Debug, Clone)]
 pub struct FnQuery<'a> {
     pub word: Word,
-    pub ty_args: &'a [Ty],
+    pub ty_args: Option<&'a [Ty]>,
     pub args: &'a [FnTyParam],
 }
 
 impl<'a> FnQuery<'a> {
-    pub fn new(word: Word, ty_args: &'a [Ty], args: &'a [FnTyParam]) -> Self {
+    pub fn new(
+        word: Word,
+        ty_args: Option<&'a [Ty]>,
+        args: &'a [FnTyParam],
+    ) -> Self {
         Self { word, ty_args, args }
     }
 
