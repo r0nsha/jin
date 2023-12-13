@@ -912,7 +912,7 @@ impl FnCandidate {
     // The actual distance is calculated by the amount of "steps"
     // required to convert the argument to the parameter.
     fn distance(cx: &Typeck, param: Ty, arg: Ty) -> Option<FnCandidateScore> {
-        if param.unify(arg, cx, UnifyOptions { unify_param_tys: false }).is_ok()
+        if param.can_unify(arg, cx, UnifyOptions { unify_param_tys: false }).is_ok()
         {
             return Some(FnCandidateScore::Eq);
         }
@@ -921,7 +921,7 @@ impl FnCandidate {
             return Some(FnCandidateScore::Coerce);
         }
 
-        if param.unify(arg, cx, UnifyOptions { unify_param_tys: true }).is_ok()
+        if param.can_unify(arg, cx, UnifyOptions { unify_param_tys: true }).is_ok()
         {
             return Some(FnCandidateScore::Polymorphic);
         }

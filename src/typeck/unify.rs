@@ -90,8 +90,20 @@ impl Ty {
         other: Ty,
         cx: &Typeck,
         options: UnifyOptions,
-    ) -> Result<(), UnifyError> {
+    ) -> UnifyResult {
         UnifyCx { cx, options }.unify_ty_ty(self, other)
+    }
+
+    pub fn can_unify(
+        self,
+        other: Ty,
+        cx: &Typeck,
+        options: UnifyOptions,
+    ) -> UnifyResult {
+        let snapshot = cx.storage.borrow_mut().snapshot();
+        let result = UnifyCx { cx, options }.unify_ty_ty(self, other);
+        cx.storage.borrow_mut().rollback_to(snapshot);
+        result
     }
 }
 
@@ -163,7 +175,7 @@ struct UnifyCx<'db, 'a> {
 }
 
 impl UnifyCx<'_, '_> {
-    fn unify_ty_ty(&mut self, a: Ty, b: Ty) -> Result<(), UnifyError> {
+    fn unify_ty_ty(&mut self, a: Ty, b: Ty) -> UnifyResult {
         let (a, b) = {
             let mut storage = self.cx.storage.borrow_mut();
             let a = a.normalize(&mut storage);
@@ -298,7 +310,7 @@ impl UnifyCx<'_, '_> {
         }
     }
 
-    fn unify_ty_var(&mut self, ty: Ty, var: TyVar) -> Result<(), UnifyError> {
+    fn unify_ty_var(&mut self, ty: Ty, var: TyVar) -> UnifyResult {
         ty.occurs_check(var).map_err(|ty| UnifyError::InfiniteTy { ty })?;
         self.cx
             .storage
@@ -362,6 +374,8 @@ impl UnifyKey for FloatVar {
 }
 
 impl EqUnifyValue for FloatTy {}
+
+pub type UnifyResult = Result<(), UnifyError>;
 
 pub enum UnifyError {
     TyMismatch { a: Ty, b: Ty },

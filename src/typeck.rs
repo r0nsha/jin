@@ -12,7 +12,7 @@ mod unify;
 
 use std::cell::RefCell;
 
-use ena::unify::InPlaceUnificationTable;
+use ena::unify::{InPlace, InPlaceUnificationTable, Snapshot};
 use ustr::UstrMap;
 
 use crate::{
@@ -79,6 +79,26 @@ impl TyStorage {
             float_unification_table: InPlaceUnificationTable::new(),
         }
     }
+
+    pub fn snapshot(&mut self) -> TyStorageSnapshot {
+        TyStorageSnapshot {
+            ty_snapshot: self.ty_unification_table.snapshot(),
+            int_snapshot: self.int_unification_table.snapshot(),
+            float_snapshot: self.float_unification_table.snapshot(),
+        }
+    }
+
+    pub fn rollback_to(&mut self, to: TyStorageSnapshot) {
+        self.ty_unification_table.rollback_to(to.ty_snapshot);
+        self.int_unification_table.rollback_to(to.int_snapshot);
+        self.float_unification_table.rollback_to(to.float_snapshot);
+    }
+}
+
+pub struct TyStorageSnapshot {
+    ty_snapshot: Snapshot<InPlace<TyVar>>,
+    int_snapshot: Snapshot<InPlace<IntVar>>,
+    float_snapshot: Snapshot<InPlace<FloatVar>>,
 }
 
 impl<'db> Typeck<'db> {
