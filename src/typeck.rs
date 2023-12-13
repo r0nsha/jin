@@ -494,6 +494,13 @@ impl<'db> Typeck<'db> {
                 }
 
                 let struct_id = {
+                    let ctor_vis =
+                        if fields.iter().any(|f| f.vis == Vis::Private) {
+                            Vis::Private
+                        } else {
+                            Vis::Public
+                        };
+
                     let struct_id =
                         self.db.structs.push_with_key(|id| StructInfo {
                             id,
@@ -502,6 +509,7 @@ impl<'db> Typeck<'db> {
                             fields,
                             kind: struct_def.kind,
                             ctor_ty: self.db.types.unknown,
+                            ctor_vis,
                         });
 
                     let def_id = self.define_def(
@@ -1110,6 +1118,32 @@ impl<'db> Typeck<'db> {
         if let DefKind::Struct(struct_id) = self.db[id].kind.as_ref() {
             // NOTE: if the named definition is a struct, we want to return its
             // constructor function's type
+            let struct_info = &self.db[*struct_id];
+
+            if struct_info.ctor_vis == Vis::Private
+                && self.db[struct_info.def_id].scope.module_id
+                    != env.module_id()
+            {
+                let private_field = struct_info
+                    .fields
+                    .iter()
+                    .find(|f| f.vis == Vis::Private)
+                    .expect("to have at least one private field");
+
+                return Err(Diagnostic::error()
+                    .with_message(format!(
+                        "constructor of type `{}` is private because `{}` is private",
+                        struct_info.name, private_field.name
+                    ))
+                    .with_label(
+                        Label::primary(span)
+                            .with_message("private type constructor"),
+                    ).with_label(
+                        Label::secondary(private_field.name.span())
+                            .with_message(format!("`{}` is private", private_field.name)),
+                    ));
+            }
+
             Ok(self.expr(
                 hir::ExprKind::Name(hir::Name {
                     id,

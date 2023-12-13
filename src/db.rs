@@ -429,6 +429,7 @@ pub struct StructInfo {
     pub fields: Vec<StructField>,
     pub kind: StructKind,
     pub ctor_ty: Ty,
+    pub ctor_vis: Vis,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -458,6 +459,14 @@ impl StructInfo {
         }));
     }
 
+    pub fn ctor_vis(&self) -> Vis {
+        if self.fields.iter().any(|f| f.vis == Vis::Private) {
+            Vis::Private
+        } else {
+            Vis::Public
+        }
+    }
+
     pub fn is_infinitely_sized(&self) -> Option<&StructField> {
         fn contains_struct(ty: Ty, sid: StructId) -> bool {
             match ty.kind() {
@@ -473,7 +482,6 @@ impl StructInfo {
             }
         }
 
-        #[allow(irrefutable_let_patterns)]
         if let StructKind::Extern = self.kind {
             self.fields.iter().find(|f| contains_struct(f.ty, self.id))
         } else {
