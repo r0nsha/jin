@@ -6,7 +6,9 @@ fn main() unit = {
 		break
 	}
 
-	loop if true {
-		printf("Loop\n".ptr)
+	let mut i = 0
+	loop if i <= 10 {
+		printf("For loop: %d\n".ptr, i)
+		i += 1
 	}
 }
