@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use camino::{Utf8Path, Utf8PathBuf};
 use path_absolutize::Absolutize as _;
 
@@ -60,11 +62,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_import_group(&mut self) -> ParseResult<ImportNode> {
-        self.parse_list(
-            TokenKind::OpenCurly,
-            TokenKind::CloseCurly,
-            Self::parse_import_node,
-        )
+        self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
+            this.parse_import_node().map(ControlFlow::Continue)
+        })
         .map(|(nodes, _)| ImportNode::Group(nodes))
     }
 

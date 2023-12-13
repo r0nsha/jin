@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::files::Files;
 use rustc_hash::FxHashSet;
@@ -315,7 +317,10 @@ impl<'a> Parser<'a> {
                 let ident = this.eat_ident()?;
                 this.eat(TokenKind::Colon)?;
                 let ty_expr = this.parse_ty()?;
-                Ok(StructTyField { name: ident.word(), ty_expr })
+                Ok(ControlFlow::Continue(StructTyField {
+                    name: ident.word(),
+                    ty_expr,
+                }))
             },
         )?;
 
@@ -393,7 +398,7 @@ impl<'a> Parser<'a> {
             TokenKind::CloseBracket,
             |this| {
                 let ident = this.eat_ident()?;
-                Ok(TyParam { word: ident.word() })
+                Ok(ControlFlow::Continue(TyParam { word: ident.word() }))
             },
         )
         .map(|(t, _)| t)
@@ -412,35 +417,33 @@ impl<'a> Parser<'a> {
         self.parse_list(
             TokenKind::OpenBracket,
             TokenKind::CloseBracket,
-            Self::parse_ty,
+            |this| this.parse_ty().map(ControlFlow::Continue),
         )
     }
 
     fn parse_fn_params(&mut self) -> ParseResult<(Vec<FnParam>, bool)> {
-        let mut params = vec![];
         let mut is_c_variadic = false;
 
-        self.eat(TokenKind::OpenParen)?;
+        let (params, _) = self.parse_list(
+            TokenKind::OpenParen,
+            TokenKind::CloseParen,
+            |this| {
+                if this.is(TokenKind::DotDot) {
+                    is_c_variadic = true;
+                    return Ok(ControlFlow::Break(()));
+                }
 
-        while !self.is(TokenKind::CloseParen) {
-            if self.is(TokenKind::DotDot) {
-                self.eat(TokenKind::CloseParen)?;
-                is_c_variadic = true;
-                break;
-            }
+                let pat = this.parse_pat()?;
+                this.eat(TokenKind::Colon)?;
+                let ty_expr = this.parse_ty()?;
 
-            let pat = self.parse_pat()?;
-            self.eat(TokenKind::Colon)?;
-            let ty_expr = self.parse_ty()?;
-
-            params.push(FnParam { span: pat.span(), pat, ty_expr });
-
-            if !params.is_empty() && !self.peek_is(TokenKind::CloseParen) {
-                self.eat(TokenKind::Comma)?;
-            } else if self.peek_is(TokenKind::Comma) {
-                self.next();
-            }
-        }
+                Ok(ControlFlow::Continue(FnParam {
+                    span: pat.span(),
+                    pat,
+                    ty_expr,
+                }))
+            },
+        )?;
 
         Ok((params, is_c_variadic))
     }
@@ -715,26 +718,20 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_fn_ty_params(&mut self) -> ParseResult<(Vec<TyExpr>, bool)> {
-        let mut params = vec![];
         let mut is_c_variadic = false;
 
-        self.eat(TokenKind::OpenParen)?;
+        let (params, _) = self.parse_list(
+            TokenKind::OpenParen,
+            TokenKind::CloseParen,
+            |this| {
+                if this.is(TokenKind::DotDot) {
+                    is_c_variadic = true;
+                    return Ok(ControlFlow::Break(()));
+                }
 
-        while !self.is(TokenKind::CloseParen) {
-            if self.is(TokenKind::DotDot) {
-                self.eat(TokenKind::CloseParen)?;
-                is_c_variadic = true;
-                break;
-            }
-
-            params.push(self.parse_ty()?);
-
-            if !params.is_empty() && !self.peek_is(TokenKind::CloseParen) {
-                self.eat(TokenKind::Comma)?;
-            } else if self.peek_is(TokenKind::Comma) {
-                self.next();
-            }
-        }
+                this.parse_ty().map(ControlFlow::Continue)
+            },
+        )?;
 
         Ok((params, is_c_variadic))
     }
@@ -859,7 +856,7 @@ impl<'a> Parser<'a> {
                 CallArg::Named(..) => passed_named_arg = true,
             }
 
-            Ok(arg)
+            Ok(ControlFlow::Continue(arg))
         })
     }
 
@@ -883,13 +880,19 @@ impl<'a> Parser<'a> {
         &mut self,
         open: TokenKind,
         close: TokenKind,
-        mut f: impl FnMut(&mut Self) -> ParseResult<T>,
+        mut f: impl FnMut(&mut Self) -> ParseResult<ControlFlow<(), T>>,
     ) -> ParseResult<(Vec<T>, Span)> {
         let mut values = Vec::new();
         let open_tok = self.eat(open)?;
 
         while !self.is(close) {
-            values.push(f(self)?);
+            match f(self)? {
+                ControlFlow::Continue(v) => values.push(v),
+                ControlFlow::Break(()) => {
+                    self.eat(close)?;
+                    break;
+                }
+            }
 
             if !values.is_empty() && !self.peek_is(close) {
                 self.eat(TokenKind::Comma)?;
@@ -905,7 +908,7 @@ impl<'a> Parser<'a> {
         &mut self,
         open: TokenKind,
         close: TokenKind,
-        f: impl FnMut(&mut Self) -> ParseResult<T>,
+        f: impl FnMut(&mut Self) -> ParseResult<ControlFlow<(), T>>,
     ) -> ParseResult<(Vec<T>, Span)> {
         if self.peek_is(open) {
             self.parse_list(open, close, f)
