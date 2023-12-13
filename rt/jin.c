@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -26,3 +27,11 @@ typedef struct {
   u8 *ptr;
   usize len;
 } str;
+
+inline void* __jin_alloc(size_t size) {
+  return malloc(size);
+}
+
+inline void __jin_dealloc(void *ptr) {
+  free(ptr);
+}
