@@ -418,33 +418,31 @@ impl<'a> Parser<'a> {
 
     fn parse_fn_params(&mut self) -> ParseResult<(Vec<FnParam>, bool)> {
         let mut params = vec![];
+        let mut is_c_variadic = false;
 
-        if self.is(TokenKind::OpenParen) {
-            loop {
-                if self.is(TokenKind::DotDot) {
-                    self.eat(TokenKind::CloseParen)?;
-                    return Ok((params, true));
-                }
+        self.eat(TokenKind::OpenParen)?;
 
-                if self.is(TokenKind::CloseParen) {
-                    break;
-                }
+        while !self.is(TokenKind::CloseParen) {
+            if self.is(TokenKind::DotDot) {
+                self.eat(TokenKind::CloseParen)?;
+                is_c_variadic = true;
+                break;
+            }
 
-                let pat = self.parse_pat()?;
-                self.eat(TokenKind::Colon)?;
-                let ty_expr = self.parse_ty()?;
+            let pat = self.parse_pat()?;
+            self.eat(TokenKind::Colon)?;
+            let ty_expr = self.parse_ty()?;
 
-                params.push(FnParam { span: pat.span(), pat, ty_expr });
+            params.push(FnParam { span: pat.span(), pat, ty_expr });
 
-                if !params.is_empty() && !self.peek_is(TokenKind::CloseParen) {
-                    self.eat(TokenKind::Comma)?;
-                } else if self.peek_is(TokenKind::Comma) {
-                    self.next();
-                }
+            if !params.is_empty() && !self.peek_is(TokenKind::CloseParen) {
+                self.eat(TokenKind::Comma)?;
+            } else if self.peek_is(TokenKind::Comma) {
+                self.next();
             }
         }
 
-        Ok((params, false))
+        Ok((params, is_c_variadic))
     }
 
     fn parse_block(&mut self) -> ParseResult<Expr> {
@@ -718,29 +716,27 @@ impl<'a> Parser<'a> {
 
     fn parse_fn_ty_params(&mut self) -> ParseResult<(Vec<TyExpr>, bool)> {
         let mut params = vec![];
+        let mut is_c_variadic = false;
 
-        if self.is(TokenKind::OpenParen) {
-            loop {
-                if self.is(TokenKind::DotDot) {
-                    self.eat(TokenKind::CloseParen)?;
-                    return Ok((params, true));
-                }
+        self.eat(TokenKind::OpenParen)?;
 
-                if self.is(TokenKind::CloseParen) {
-                    break;
-                }
+        while !self.is(TokenKind::CloseParen) {
+            if self.is(TokenKind::DotDot) {
+                self.eat(TokenKind::CloseParen)?;
+                is_c_variadic = true;
+                break;
+            }
 
-                params.push(self.parse_ty()?);
+            params.push(self.parse_ty()?);
 
-                if !params.is_empty() && !self.peek_is(TokenKind::CloseParen) {
-                    self.eat(TokenKind::Comma)?;
-                } else if self.peek_is(TokenKind::Comma) {
-                    self.next();
-                }
+            if !params.is_empty() && !self.peek_is(TokenKind::CloseParen) {
+                self.eat(TokenKind::Comma)?;
+            } else if self.peek_is(TokenKind::Comma) {
+                self.next();
             }
         }
 
-        Ok((params, false))
+        Ok((params, is_c_variadic))
     }
 
     fn parse_if(&mut self) -> ParseResult<Expr> {
@@ -887,16 +883,12 @@ impl<'a> Parser<'a> {
         &mut self,
         open: TokenKind,
         close: TokenKind,
-        mut f: impl FnMut(&mut Self) -> Result<T, Diagnostic>,
+        mut f: impl FnMut(&mut Self) -> ParseResult<T>,
     ) -> ParseResult<(Vec<T>, Span)> {
         let mut values = Vec::new();
         let open_tok = self.eat(open)?;
 
-        loop {
-            if self.is(close) {
-                return Ok((values, open_tok.span.merge(self.last_span())));
-            }
-
+        while !self.is(close) {
             values.push(f(self)?);
 
             if !values.is_empty() && !self.peek_is(close) {
@@ -905,6 +897,8 @@ impl<'a> Parser<'a> {
                 self.next();
             }
         }
+
+        Ok((values, open_tok.span.merge(self.last_span())))
     }
 
     pub(super) fn parse_list_optional<T>(

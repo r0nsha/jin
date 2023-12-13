@@ -6,6 +6,6 @@ fn main() unit = {
 	goodbye()
 }
 
-fn get_hello_world* str = {
+fn get_hello_world*() str = {
 	"Hello from bar!\n"
 }

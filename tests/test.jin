@@ -1,6 +1,6 @@
 import extern "./foo"
 
-fn extern hello()
+fn extern hello() unit
 let extern answer: int
 
 fn extern printf(fmt: *u8, ..) i32
@@ -37,10 +37,9 @@ fn do_add(f: fn(int, int) int, a: int, b: int) unit = {
 	printf("a + b = %d\n".ptr, f(a, b))
 }
 
-fn run(f: fn() unit) unit = { f() }
+fn run(f: fn() unit) unit = f()
 
-fn id[a](x: a) a = { x }
+fn id[a](x: a) a = x
 
-fn map[a, b](val: a, f: fn(a) b) -> b = {
+fn map[a, b](val: a, f: fn(a) b) b =
 	f(val)
-}
