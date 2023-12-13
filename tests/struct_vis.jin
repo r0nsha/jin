@@ -1,0 +1,6 @@
+import child
+
+fn main() unit = {
+	let s = child.Struct(1)
+	let x = s.num
+}

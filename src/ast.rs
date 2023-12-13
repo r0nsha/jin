@@ -267,6 +267,7 @@ pub struct StructTyDef {
 #[derive(Debug, Clone)]
 pub struct StructTyField {
     pub name: Word,
+    pub vis: Vis,
     pub ty_expr: TyExpr,
 }
 

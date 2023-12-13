@@ -314,10 +314,12 @@ impl<'a> Parser<'a> {
             TokenKind::CloseParen,
             |this| {
                 let ident = this.eat_ident()?;
+                let vis = this.parse_vis();
                 this.eat(TokenKind::Colon)?;
                 let ty_expr = this.parse_ty()?;
                 Ok(ControlFlow::Continue(StructTyField {
                     name: ident.word(),
+                    vis,
                     ty_expr,
                 }))
             },
