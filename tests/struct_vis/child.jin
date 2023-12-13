@@ -1,1 +1,6 @@
-type Struct*(num*: int)
+type Struct*(num: int)
+
+fn foo() unit = {
+	let s = Struct(1)
+	let x = s.num
+}

@@ -24,7 +24,7 @@ use crate::{
     hir::{ExprId, FnParam, Hir},
     index_vec::IndexVecExt,
     macros::create_bool_enum,
-    middle::{BinOp, Mutability, Pat, TyExpr, UnOp},
+    middle::{BinOp, Mutability, Pat, TyExpr, UnOp, Vis},
     span::{Span, Spanned},
     sym,
     ty::{
@@ -488,6 +488,7 @@ impl<'db> Typeck<'db> {
 
                     fields.push(StructField {
                         name: field.name,
+                        vis: field.vis,
                         ty: self.db.types.unknown,
                     });
                 }
@@ -1221,6 +1222,21 @@ impl<'db> Typeck<'db> {
                 if let Some(field) =
                     struct_info.field_by_name(member.name().as_str())
                 {
+                    if field.vis == Vis::Private
+                        && self.db[struct_info.def_id].scope.module_id
+                            != env.module_id()
+                    {
+                        return Err(Diagnostic::error()
+                            .with_message(format!(
+                                "field `{}` of type `{}` is private",
+                                field.name, struct_info.name
+                            ))
+                            .with_label(
+                                Label::primary(span)
+                                    .with_message("private field"),
+                            ));
+                    }
+
                     field.ty
                 } else {
                     return Err(errors::member_not_found(

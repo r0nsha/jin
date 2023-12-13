@@ -485,6 +485,7 @@ impl StructInfo {
 #[derive(Debug, Clone)]
 pub struct StructField {
     pub name: Word,
+    pub vis: Vis,
     pub ty: Ty,
 }
 

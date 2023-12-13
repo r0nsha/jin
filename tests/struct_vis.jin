@@ -1,6 +1,6 @@
 import child
 
 fn main() unit = {
-	let s = child.Struct(1)
-	let x = s.num
+	let s = child.Struct(1) // private constructor 
+	let x = s.num // private field
 }
