@@ -13,7 +13,7 @@ type Ref(field: int)
 
 fn ref_type() unit = {
 	let mut ref = Ref(1)
-	//printf("Ref(field: %d)\n".ptr, ref.field) // should be 1
+	printf("Ref(field: %d)\n".ptr, ref.field) // should be 1
 
 	//ref.field = 2
 	//printf("Ref(field: %d)\n".ptr, ref.field) // should be 2
