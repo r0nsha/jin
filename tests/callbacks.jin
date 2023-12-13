@@ -2,17 +2,11 @@ fn extern printf(fmt: *u8, ..) i32
 
 fn main() unit = {
 	run(print_answer)
-	run1(print_answer)
-	run2(print_answer)
-	run3(print_answer)
 	do_add(add, 1, 2)
 	printf("map: %d\n".ptr, map(1, int_to_uint))
 }
 
-fn run(f: fn()) unit = { f() }
-fn run1(f: fn()) unit = { f() }
-fn run2(f: fn() unit) unit = { f() }
-fn run3(f: fn() unit) unit = { f() }
+fn run(f: fn() unit) unit = f()
 
 fn print_answer() unit = {
 	printf("The answer is %d\n".ptr, 42)
@@ -26,7 +20,7 @@ fn do_add(f: fn(int, int) int, a: int, b: int) unit = {
 	printf("a + b = %d\n".ptr, f(a, b))
 }
 
-fn map[a, b](val: a, f: fn(a) b) -> b = {
+fn map[a, b](val: a, f: fn(a) b) b = {
 	f(val)
 }
 
