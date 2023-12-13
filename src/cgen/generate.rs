@@ -338,10 +338,12 @@ impl<'db> Generator<'db> {
                 let struct_init_doc = D::intersperse(
                     struct_info.fields.iter().map(|f| {
                         stmt(|| {
-                            let name = f.name.name();
-                            lit_name
-                                .clone()
-                                .append(format!("->{name} = {name}"))
+                            let name = f.name.name().as_str();
+
+                            util::assign(
+                                util::member(lit_name.clone(), name, true),
+                                D::text(name),
+                            )
                         })
                     }),
                     D::hardline(),
@@ -536,9 +538,11 @@ impl<'db> Generator<'db> {
             }
             ValueKind::Fn(id) => D::text(self.mir.fn_sigs[*id].name.as_str()),
             ValueKind::Const(value) => codegen_const_value(value),
-            ValueKind::Member(value, member) => {
-                self.value(state, *value).append(D::text(format!(".{member}")))
-            }
+            ValueKind::Member(value, member) => util::member(
+                self.value(state, *value),
+                member,
+                state.body.value(*value).ty.is_ptr(self),
+            ),
         }
     }
 }

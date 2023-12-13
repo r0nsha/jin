@@ -14,11 +14,16 @@ where
     Self: fmt::Debug,
 {
     fn cty(&self, cx: &Generator<'db>) -> D<'db>;
+
     fn cdecl(&self, cx: &Generator<'db>, name: D<'db>) -> D<'db>
     where
         Self: Sized,
     {
         ty_and_name(self, cx, name)
+    }
+
+    fn is_ptr(&self, _cx: &Generator<'db>) -> bool {
+        false
     }
 }
 
@@ -34,6 +39,22 @@ impl<'db> CTy<'db> for TyKind {
             Self::Str | Self::Bool | Self::Never | Self::Unit => {
                 D::text(self.to_string(cx.db))
             }
+            _ => panic!("unexpected type {self:?}"),
+        }
+    }
+
+    fn is_ptr(&self, cx: &Generator<'db>) -> bool {
+        match self {
+            Self::Struct(sid) => matches!(cx.db[*sid].kind, StructKind::Ref),
+            Self::RawPtr(_) => true,
+            Self::Fn(_)
+            | Self::Int(_)
+            | Self::Uint(_)
+            | Self::Float(_)
+            | Self::Str
+            | Self::Bool
+            | Self::Never
+            | Self::Unit => false,
             _ => panic!("unexpected type {self:?}"),
         }
     }

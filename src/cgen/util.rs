@@ -73,6 +73,14 @@ pub fn assign<'a>(l: D<'a>, r: D<'a>) -> D<'a> {
     l.append(D::space()).append(D::text("=")).append(D::space()).append(r)
 }
 
+pub fn member<'a>(value: D<'a>, member: &str, is_ptr: bool) -> D<'a> {
+    value.append(D::text(format!(
+        "{}{}",
+        if is_ptr { "->" } else { "." },
+        member
+    )))
+}
+
 pub fn block_name(blk: &Block) -> D<'_> {
     D::text(format!("{}_{}", blk.name(), blk.id()))
 }
