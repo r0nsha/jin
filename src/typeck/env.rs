@@ -609,27 +609,35 @@ impl BuiltinTys {
     pub fn new(db: &mut Db) -> Self {
         let mut this = Self { inner: UstrMap::default() };
 
-        this.define(db, sym::I8, db.types.i8);
-        this.define(db, sym::I16, db.types.i16);
-        this.define(db, sym::I32, db.types.i32);
-        this.define(db, sym::I64, db.types.i64);
-        this.define(db, sym::INT, db.types.int);
-
-        this.define(db, sym::U8, db.types.u8);
-        this.define(db, sym::U16, db.types.u16);
-        this.define(db, sym::U32, db.types.u32);
-        this.define(db, sym::U64, db.types.u64);
-        this.define(db, sym::UINT, db.types.uint);
-
-        this.define(db, sym::F32, db.types.f32);
-        this.define(db, sym::F64, db.types.f64);
-
-        this.define(db, sym::STR, db.types.str);
-        this.define(db, sym::BOOL, db.types.bool);
-        this.define(db, sym::NEVER, db.types.never);
-        this.define(db, sym::UNIT, db.types.unit);
+        this.define_all(
+            db,
+            &[
+                (sym::I8, db.types.i8),
+                (sym::I16, db.types.i16),
+                (sym::I32, db.types.i32),
+                (sym::I64, db.types.i64),
+                (sym::INT, db.types.int),
+                (sym::U8, db.types.u8),
+                (sym::U16, db.types.u16),
+                (sym::U32, db.types.u32),
+                (sym::U64, db.types.u64),
+                (sym::UINT, db.types.uint),
+                (sym::F32, db.types.f32),
+                (sym::F64, db.types.f64),
+                (sym::STR, db.types.str),
+                (sym::BOOL, db.types.bool),
+                (sym::NEVER, db.types.never),
+                (sym::UNIT, db.types.unit),
+            ],
+        );
 
         this
+    }
+
+    fn define_all(&mut self, db: &mut Db, pairs: &[(&str, Ty)]) {
+        for (name, ty) in pairs {
+            self.define(db, name, *ty);
+        }
     }
 
     fn define(&mut self, db: &mut Db, name: &str, ty: Ty) -> Option<DefId> {
