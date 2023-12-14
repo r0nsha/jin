@@ -4,7 +4,7 @@ use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    db::{Db, DefId, DefKind},
+    db::{Db, DefId, DefKind, StructKind},
     hir,
     hir::{FnKind, Hir},
     index_vec::IndexVecExt,
@@ -258,6 +258,7 @@ impl<'db> LowerCx<'db> {
             is_c_variadic: false,
         });
 
+        // TODO: doesn't work for polymorphic structs...
         self.mir.struct_ctors.insert(sid, sig_id);
 
         sig_id
@@ -309,6 +310,7 @@ struct LowerBodyCx<'cx, 'db> {
     cx: &'cx mut LowerCx<'db>,
     destroy_glue: &'cx hir::DestroyGlue,
     body: Body,
+    expr_to_value: FxHashMap<hir::ExprId, ValueId>,
     curr_block: BlockId,
     loop_blocks: Vec<BlockId>,
 }
@@ -322,6 +324,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
             cx,
             destroy_glue,
             body: Body::new(),
+            expr_to_value: FxHashMap::default(),
             curr_block: BlockId::start(),
             loop_blocks: vec![],
         }
@@ -393,7 +396,9 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
         let value = self.lower_expr_inner(expr);
-        self.apply_coercions_to_expr(expr, value)
+        let coerced_value = self.apply_coercions_to_expr(expr, value);
+        self.expr_to_value.insert(expr.id, coerced_value);
+        coerced_value
     }
 
     fn lower_expr_inner(&mut self, expr: &hir::Expr) -> ValueId {
@@ -508,12 +513,13 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 if let Some(expr_ids) =
                     self.destroy_glue.exprs_to_destroy.get(&expr.id)
                 {
-                    // for expr_id in expr_ids
-                    //      get value_id for expr_id
-                    //          get value for value_id
-                    //              if needs_destroy(value.ty)
-                    //                  add destroy instruction for that value_id
-                    todo!("{expr_ids:?}");
+                    // Push all expressions that need to be destroyed in this block, in reverse
+                    for expr_id in expr_ids.iter().rev() {
+                        let value = self.expr_to_value[expr_id];
+                        if self.value_needs_destroy(value) {
+                            self.push_inst(Inst::Destroy { value });
+                        }
+                    }
                 }
 
                 // NOTE: If the block ty is `unit`, we must always return a `unit` value.
@@ -737,5 +743,19 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         }
 
         coerced_value
+    }
+
+    fn value_needs_destroy(&self, value_id: ValueId) -> bool {
+        let value = self.body.value(value_id);
+        self.ty_needs_destroy(value.ty)
+    }
+
+    fn ty_needs_destroy(&self, ty: Ty) -> bool {
+        match ty.kind() {
+            TyKind::Struct(sid) => {
+                matches!(self.cx.db[*sid].kind, StructKind::Ref)
+            }
+            _ => false,
+        }
     }
 }

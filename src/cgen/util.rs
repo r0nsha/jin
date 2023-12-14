@@ -35,6 +35,10 @@ pub fn call_alloc(ty: D<'_>) -> D<'_> {
     )
 }
 
+pub fn call_dealloc(value: D<'_>) -> D<'_> {
+    D::text("__jin_dealloc(").append(value).append(")")
+}
+
 pub fn str_value(value: &str) -> D {
     struct_lit(vec![
         ("ptr", str_lit(value)),

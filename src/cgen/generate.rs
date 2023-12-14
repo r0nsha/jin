@@ -23,7 +23,7 @@ use crate::{
         ValueId, ValueKind,
     },
     target::TargetMetrics,
-    ty::Ty,
+    ty::{Ty, TyKind},
 };
 
 const PRELUDE: &str = include_str!("../../rt/jin.c");
@@ -37,6 +37,7 @@ pub struct Generator<'db> {
     pub fn_defs: Vec<D<'db>>,
     pub target_metrics: TargetMetrics,
     pub struct_names: FxHashMap<StructId, String>,
+    pub struct_destroy_fns: FxHashMap<StructId, String>,
     pub curr_generated_struct: Option<StructId>,
 }
 
@@ -55,6 +56,7 @@ impl<'db> FnState<'db> {
 impl<'db> Generator<'db> {
     pub fn run(mut self) -> Utf8PathBuf {
         self.define_types();
+        self.define_struct_destroys();
         self.predefine_fns();
         self.define_globals();
         self.define_fns();
@@ -137,6 +139,12 @@ impl<'db> Generator<'db> {
             self.curr_generated_struct = None;
 
             self.types.push(stmt(|| doc));
+        }
+    }
+
+    pub fn define_struct_destroys(&mut self) {
+        for sid in self.db.structs.keys() {
+            self.codegen_struct_destroy(sid);
         }
     }
 
@@ -280,7 +288,7 @@ impl<'db> Generator<'db> {
 
         for (sid, sig) in &self.mir.struct_ctors {
             let doc = self.codegen_struct_ctor(*sid, *sig);
-            self.fn_decls.push(stmt(|| doc));
+            self.fn_defs.push(stmt(|| doc));
         }
     }
 
@@ -327,7 +335,7 @@ impl<'db> Generator<'db> {
                 let alloc_doc =
                     util::call_alloc(D::text(self.struct_names[&sid].clone()));
 
-                let lit_name = D::text("lit");
+                let lit_name = D::text("this");
                 let lit_decl_doc = VariableDoc::assign(
                     self,
                     struct_info.ty(),
@@ -370,7 +378,7 @@ impl<'db> Generator<'db> {
                         .collect(),
                 );
 
-                let lit_name = D::text("lit");
+                let lit_name = D::text("x");
                 let lit_decl_doc = VariableDoc::assign(
                     self,
                     struct_info.ty(),
@@ -387,6 +395,42 @@ impl<'db> Generator<'db> {
         };
 
         self.codegen_fn_sig(sig).append(D::space()).append(block(|| statements))
+    }
+
+    fn codegen_struct_destroy(&mut self, sid: StructId) {
+        let struct_info = &self.db[sid];
+
+        if let StructKind::Ref = struct_info.kind {
+            let fn_name = self.db[struct_info.def_id]
+                .qpath
+                .clone()
+                .child(ustr("destroy"))
+                .join_with("_");
+
+            let param = D::text("this");
+
+            // TODO: call destroy on all child structs
+
+            let dealloc_doc = stmt(|| util::call_dealloc(param.clone()));
+
+            let statements = D::intersperse([dealloc_doc], D::hardline());
+
+            let fn_decl_doc = D::text(format!("void {fn_name}"))
+                .append(D::text("("))
+                .append(sid.cty(self))
+                .append(D::space())
+                .append(param)
+                .append(D::text(")"));
+
+            let fn_def_doc = fn_decl_doc
+                .clone()
+                .append(D::space())
+                .append(block(|| statements));
+
+            self.fn_decls.push(stmt(|| fn_decl_doc));
+            self.fn_defs.push(fn_def_doc);
+            self.struct_destroy_fns.insert(sid, fn_name);
+        }
     }
 
     fn codegen_block(
@@ -434,14 +478,28 @@ impl<'db> Generator<'db> {
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
-            Inst::Destroy { value } => stmt(|| {
+            Inst::Destroy { value } => {
+                let value_ty = state.body.value(*value).ty;
+                let destroy_fn = match value_ty.kind() {
+                    TyKind::Struct(sid) => {
+                        D::text(self.struct_destroy_fns[sid].clone())
+                    }
+                    _ => unreachable!(
+                        "unexpected: destroyed value of type {value_ty:?}"
+                    ),
+                };
+
                 stmt(|| {
-                    D::text(format!(
-                        "printf(\"destroy call for value {}\\n\")",
-                        value
-                    ))
+                    destroy_fn
+                        .append(D::text("("))
+                        .append(self.value(state, *value))
+                        .append(D::text(")"))
+                    // D::text(format!(
+                    //     "printf(\"destroy call for value {}\\n\")",
+                    //     value
+                    // ))
                 })
-            }),
+            }
             Inst::Br { target } => goto_stmt(state.body.block(*target)),
             Inst::BrIf { cond, then, otherwise } => if_stmt(
                 self.value(state, *cond),
