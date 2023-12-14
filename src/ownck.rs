@@ -3,7 +3,7 @@ use crate::{
     hir::{self, Hir},
 };
 
-pub fn ownck(db: &mut Db, hir: &mut Hir) {
+pub fn ownck(db: &Db, hir: &mut Hir) {
     for fun in &hir.fns {
         match &fun.kind {
             hir::FnKind::Bare { body } => {
@@ -20,12 +20,12 @@ pub fn ownck(db: &mut Db, hir: &mut Hir) {
 }
 
 struct Ownck<'db> {
-    db: &'db mut Db,
+    db: &'db Db,
     scopes: Scopes,
 }
 
 impl<'db> Ownck<'db> {
-    fn new(db: &'db mut Db) -> Self {
+    fn new(db: &'db Db) -> Self {
         Self { db, scopes: Scopes::new() }
     }
 
