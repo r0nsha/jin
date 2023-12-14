@@ -4,12 +4,13 @@ use crate::{
     span::Span,
 };
 
-pub fn ownck(db: &Db, hir: &mut Hir) {
+pub fn ownck(db: &Db, hir: &Hir) {
     for fun in &hir.fns {
         match &fun.kind {
             hir::FnKind::Bare { body } => {
-                Ownck::new(db).expr(&mut Env::new(), body);
-                todo!("collect into destroy_glue")
+                let mut cx = Ownck::new(db);
+                cx.expr(&mut Env::new(), body);
+                todo!("{:?}", cx.destroy_glue);
             }
             hir::FnKind::Extern { .. } => (),
         }
@@ -22,11 +23,12 @@ pub fn ownck(db: &Db, hir: &mut Hir) {
 
 struct Ownck<'db> {
     db: &'db Db,
+    destroy_glue: hir::DestroyGlue,
 }
 
 impl<'db> Ownck<'db> {
     fn new(db: &'db Db) -> Self {
-        Self { db }
+        Self { db, destroy_glue: hir::DestroyGlue::new() }
     }
 
     fn expr(&mut self, env: &mut Env, expr: &hir::Expr) {
@@ -36,9 +38,23 @@ impl<'db> Ownck<'db> {
             hir::ExprKind::If(_) => todo!(),
             hir::ExprKind::Loop(_) => todo!(),
             hir::ExprKind::Break => todo!(),
-            hir::ExprKind::Block(block) => env.with(|env| {
+            hir::ExprKind::Block(block) => {
+                env.push_scope();
                 block.exprs.iter().for_each(|expr| self.expr(env, expr));
-            }),
+
+                let scope = env.pop_scope().unwrap();
+                let destroy_block_id = expr.id;
+
+                self.destroy_glue.exprs_to_destroy.extend(
+                    scope.expr_states.iter().filter_map(|(expr_id, value)| {
+                        if value.state == ValueState::Owned {
+                            Some((*expr_id, destroy_block_id))
+                        } else {
+                            None
+                        }
+                    }),
+                );
+            }
             hir::ExprKind::Return(_) => todo!(),
             hir::ExprKind::Call(call) => {
                 self.expr(env, &call.callee);
@@ -64,11 +80,12 @@ impl Env {
         Self(vec![])
     }
 
-    fn with<R>(&mut self, mut f: impl FnMut(&mut Self) -> R) -> R {
+    fn push_scope(&mut self) {
         self.0.push(Scope { expr_states: HirMap::default() });
-        let res = f(self);
-        self.0.pop();
-        res
+    }
+
+    fn pop_scope(&mut self) -> Option<Scope> {
+        self.0.pop()
     }
 
     fn create_owned(&mut self, expr: &hir::Expr) {
@@ -76,10 +93,6 @@ impl Env {
             expr.id,
             Value { state: ValueState::Owned, span: expr.span },
         );
-    }
-
-    fn lookup(&self) -> Option<Value> {
-        todo!("iter in reverse")
     }
 
     fn current_mut(&mut self) -> &mut Scope {
@@ -92,13 +105,13 @@ struct Scope {
     expr_states: HirMap<Value>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct Value {
     state: ValueState,
     span: Span,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum ValueState {
     Owned,
     Moved,

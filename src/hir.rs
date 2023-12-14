@@ -274,3 +274,17 @@ pub enum Lit {
     Float(f64),
     Str(Ustr),
 }
+
+#[derive(Debug)]
+pub struct DestroyGlue {
+    pub exprs_to_destroy: FxHashMap<ExprId, DestroyBlockId>,
+    //defs_to_destroy: FxHashMap<ExprId, DestroyBlockId>,
+}
+
+impl DestroyGlue {
+    pub fn new() -> Self {
+        Self { exprs_to_destroy: FxHashMap::default() }
+    }
+}
+
+pub type DestroyBlockId = ExprId;

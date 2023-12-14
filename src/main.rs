@@ -117,7 +117,7 @@ fn build(db: &mut Db) {
 
     // Resolve all root symbols into their corresponding id's
     db.time.start("typeck");
-    let mut hir = match typeck::typeck(db, &ast) {
+    let hir = match typeck::typeck(db, &ast) {
         Ok(hir) => hir,
         Err(diag) => {
             db.diagnostics.emit(diag);
@@ -132,7 +132,7 @@ fn build(db: &mut Db) {
 
     // Ownership checks
     db.time.start("ownck");
-    ownck::ownck(db, &mut hir);
+    ownck::ownck(db, &hir);
     db.time.stop();
     expect!(db);
 
