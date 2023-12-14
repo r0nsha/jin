@@ -147,6 +147,10 @@ impl<'db> Generator<'db> {
 
     pub fn define_struct_destroys(&mut self) {
         for sid in self.db.structs.keys() {
+            self.create_struct_destroy_entry(sid);
+        }
+
+        for sid in self.db.structs.keys() {
             self.codegen_struct_destroy(sid);
         }
     }
@@ -401,18 +405,22 @@ impl<'db> Generator<'db> {
         self.codegen_fn_sig(sig).append(D::space()).append(block(|| statements))
     }
 
+    fn create_struct_destroy_entry(&mut self, sid: StructId) {
+        let struct_info = &self.db[sid];
+        let fn_name = ustr(
+            &self.db[struct_info.def_id]
+                .qpath
+                .clone()
+                .child(ustr("destroy"))
+                .join_with("_"),
+        );
+        self.struct_destroy_fns.insert(sid, fn_name);
+    }
+
     fn codegen_struct_destroy(&mut self, sid: StructId) {
         let struct_info = &self.db[sid];
 
         if let StructKind::Ref = struct_info.kind {
-            let fn_name = ustr(
-                &self.db[struct_info.def_id]
-                    .qpath
-                    .clone()
-                    .child(ustr("destroy"))
-                    .join_with("_"),
-            );
-
             let param = D::text("this");
 
             let destroy_fields = D::intersperse(
@@ -432,6 +440,7 @@ impl<'db> Generator<'db> {
             let statements =
                 D::intersperse([destroy_fields, dealloc_this], D::hardline());
 
+            let fn_name = self.struct_destroy_fns[&sid];
             let fn_decl_doc = D::text(format!("void {fn_name}"))
                 .append(D::text("("))
                 .append(sid.cty(self))
@@ -446,7 +455,6 @@ impl<'db> Generator<'db> {
 
             self.fn_decls.push(stmt(|| fn_decl_doc));
             self.fn_defs.push(fn_def_doc);
-            self.struct_destroy_fns.insert(sid, fn_name);
         }
     }
 
