@@ -617,7 +617,10 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     hir::DestroyGlueItem::Expr(expr_id) => {
                         self.expr_to_value[expr_id]
                     }
-                    hir::DestroyGlueItem::Def(id) => self.def_to_value[id],
+                    hir::DestroyGlueItem::Def(id) => {
+                        let def_ty = self.cx.db[*id].ty;
+                        self.body.create_value(def_ty, ValueKind::Local(*id))
+                    }
                 };
 
                 if self.value_needs_destroy(value) {
@@ -654,9 +657,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 )
             }
             DefKind::Variable => {
-                let value = self.body.create_value(ty, ValueKind::Local(id));
-                self.def_to_value.insert(id, value);
-                value
+                self.body.create_value(ty, ValueKind::Local(id))
             }
             DefKind::Struct(sid) => {
                 let id = self.cx.get_or_create_struct_ctor(*sid);
