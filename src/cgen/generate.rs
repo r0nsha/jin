@@ -418,7 +418,7 @@ impl<'db> Generator<'db> {
             let destroy_fields = D::intersperse(
                 struct_info.fields.iter().filter_map(|f| {
                     self.get_ty_destroy_fn(f.ty).map(|fn_name| {
-                        self.codegen_destroy_call(
+                        Self::codegen_destroy_call(
                             fn_name,
                             util::member(param.clone(), f.name.as_str(), true),
                         )
@@ -589,7 +589,7 @@ impl<'db> Generator<'db> {
         let value_ty = state.body.value(value).ty;
 
         self.get_ty_destroy_fn(value_ty).map(|fn_name| {
-            self.codegen_destroy_call(fn_name, self.value(state, value))
+            Self::codegen_destroy_call(fn_name, self.value(state, value))
         })
     }
 
@@ -600,7 +600,7 @@ impl<'db> Generator<'db> {
         }
     }
 
-    fn codegen_destroy_call(&self, destroy_fn: Ustr, value: D<'db>) -> D<'db> {
+    fn codegen_destroy_call(destroy_fn: Ustr, value: D<'db>) -> D<'db> {
         stmt(|| {
             D::text(destroy_fn.as_str())
                 .append(D::text("("))
