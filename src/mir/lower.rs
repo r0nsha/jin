@@ -508,6 +508,11 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 if let Some(expr_ids) =
                     self.destroy_glue.exprs_to_destroy.get(&expr.id)
                 {
+                    // for expr_id in expr_ids
+                    //      get value_id for expr_id
+                    //          get value for value_id
+                    //              if needs_destroy(value.ty)
+                    //                  add destroy instruction for that value_id
                     todo!("{expr_ids:?}");
                 }
 

@@ -434,6 +434,14 @@ impl<'db> Generator<'db> {
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
+            Inst::Destroy { value } => stmt(|| {
+                stmt(|| {
+                    D::text(format!(
+                        "printf(\"destroy call for value {}\\n\")",
+                        value
+                    ))
+                })
+            }),
             Inst::Br { target } => goto_stmt(state.body.block(*target)),
             Inst::BrIf { cond, then, otherwise } => if_stmt(
                 self.value(state, *cond),
