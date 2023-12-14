@@ -129,8 +129,9 @@ pub enum ExprKind {
 
 #[derive(Debug, Clone)]
 pub struct Fn {
+    pub id: FnId,
     pub module_id: ModuleId,
-    pub id: DefId,
+    pub def_id: DefId,
     pub sig: FnSig,
     pub kind: FnKind,
     pub span: Span,

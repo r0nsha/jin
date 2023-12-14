@@ -65,7 +65,7 @@ impl<'db> CheckMain<'db> {
 
         if is_main_ty(fty) {
             for fun in &hir.fns {
-                if fun.id == main_fun.id {
+                if fun.def_id == main_fun.id {
                     let tp = &fun.sig.ty_params;
 
                     if !tp.is_empty() {

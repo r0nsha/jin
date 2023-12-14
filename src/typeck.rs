@@ -185,8 +185,12 @@ impl<'db> Typeck<'db> {
                                 fun.sig.word, self.db[module.id].qpath
                             )
                         });
-                    let f = self.check_fn_body(&mut env, fun, sig, id)?;
-                    self.hir.fns.push(f);
+
+                    let mut f = self.check_fn_body(&mut env, fun, sig, id)?;
+                    self.hir.fns.push_with_key(|id| {
+                        f.id = id;
+                        f
+                    });
                 }
             }
         }
@@ -302,8 +306,9 @@ impl<'db> Typeck<'db> {
         )?;
 
         Ok(hir::Fn {
+            id: hir::FnId::INVALID,
             module_id: env.module_id(),
-            id,
+            def_id: id,
             sig,
             kind,
             span: fun.span,

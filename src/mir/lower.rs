@@ -58,7 +58,7 @@ impl<'db> LowerCx<'db> {
     fn lower_all(mut self) -> Mir {
         for fun in &self.hir.fns {
             if !fun.sig.ty.is_polymorphic() {
-                let def = &self.db[fun.id];
+                let def = &self.db[fun.def_id];
                 let is_extern = fun.kind.is_extern();
                 let name = if is_extern {
                     def.name
@@ -66,7 +66,7 @@ impl<'db> LowerCx<'db> {
                     self.mangled_fn_name(fun, &Instantiation::default())
                 };
                 let sig = self.lower_fn_sig(&fun.sig, &fun.kind, name, def.ty);
-                self.fn_map.insert(fun.id, sig);
+                self.fn_map.insert(fun.def_id, sig);
             }
         }
 
@@ -90,7 +90,7 @@ impl<'db> LowerCx<'db> {
 
         for f in &self.hir.fns {
             if !f.sig.ty.is_polymorphic() {
-                let sig = self.fn_map[&f.id];
+                let sig = self.fn_map[&f.def_id];
                 self.lower_fn_body(sig, f);
             }
         }
@@ -119,7 +119,8 @@ impl<'db> LowerCx<'db> {
     }
 
     fn lower_global_let(&mut self, let_: &hir::Let) -> Option<GlobalId> {
-        LowerBodyCx::new(self, ()).lower_global(let_)
+        // TODO: pass in let_destroy_glue
+        LowerBodyCx::new(self, &hir::DestroyGlue::new()).lower_global_let(let_)
     }
 
     fn monomorphize_fn(
@@ -131,7 +132,7 @@ impl<'db> LowerCx<'db> {
             return target_id;
         }
 
-        let fun = self.hir.fns.iter().find(|f| f.id == mono_item.id);
+        let fun = self.hir.fns.iter().find(|f| f.def_id == mono_item.id);
 
         if let Some(fun) = fun {
             let mut new_fun = fun.clone();
@@ -176,7 +177,7 @@ impl<'db> LowerCx<'db> {
             ty_args_str.chain(params_str).collect::<Vec<String>>().join("_")
         };
 
-        let def = &self.db[fun.id];
+        let def = &self.db[fun.def_id];
 
         let mangled_name = if sig_str.is_empty() {
             def.name.to_string()
@@ -293,25 +294,30 @@ impl<'db> LowerCx<'db> {
         if f.kind.is_extern() {
             return;
         }
+
         assert!(
             !self.mir.fn_sigs[sig].ty.is_polymorphic(),
             "lowering polymorphic functions to mir is not allowed"
         );
 
-        LowerBodyCx::new(self, ()).lower_fn(sig, f);
+        let destroy_glue = &self.hir.fn_destroy_glues[&f.id];
+        LowerBodyCx::new(self, destroy_glue).lower_fn(sig, f);
     }
 }
 
 struct LowerBodyCx<'cx, 'db> {
     cx: &'cx mut LowerCx<'db>,
-    destroy_glue: (),
+    destroy_glue: &'cx hir::DestroyGlue,
     body: Body,
     curr_block: BlockId,
     loop_blocks: Vec<BlockId>,
 }
 
 impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
-    fn new(cx: &'cx mut LowerCx<'db>, destroy_glue: ()) -> Self {
+    fn new(
+        cx: &'cx mut LowerCx<'db>,
+        destroy_glue: &'cx hir::DestroyGlue,
+    ) -> Self {
         Self {
             cx,
             destroy_glue,
@@ -324,7 +330,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     fn lower_fn(mut self, sig: FnSigId, fun: &hir::Fn) {
         match &fun.kind {
             FnKind::Bare { body } => {
-                if self.cx.db.main_function_id() == Some(fun.id) {
+                if self.cx.db.main_function_id() == Some(fun.def_id) {
                     self.cx.mir.main_fn = Some(sig);
                 }
 
@@ -348,7 +354,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 }
 
                 self.cx.mir.fns.push(Fn {
-                    def_id: fun.id,
+                    def_id: fun.def_id,
                     sig,
                     body: self.body,
                 });
@@ -357,19 +363,17 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         }
     }
 
-    fn lower_global(self, let_: &hir::Let) -> Option<GlobalId> {
+    fn lower_global_let(mut self, let_: &hir::Let) -> Option<GlobalId> {
         match &let_.pat {
             Pat::Name(name) => {
                 let full_name = self.cx.db[name.id].qpath.join_with("_");
                 let ty = self.cx.db[name.id].ty;
 
-                let mut cx = LowerBodyCx::new(self.cx, ());
+                let start_blk = self.body.create_block("start");
+                self.position_at(start_blk);
 
-                let start_blk = cx.body.create_block("start");
-                cx.position_at(start_blk);
-
-                let value = cx.lower_expr(&let_.value);
-                let kind = GlobalKind::Static(cx.body, value);
+                let value = self.lower_expr(&let_.value);
+                let kind = GlobalKind::Static(self.body, value);
 
                 let id = self.cx.mir.globals.push_with_key(|id| Global {
                     id,
