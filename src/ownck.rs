@@ -4,13 +4,13 @@ use crate::{
     span::Span,
 };
 
-pub fn ownck(db: &Db, hir: &Hir) {
-    for fun in &hir.fns {
+pub fn ownck(db: &Db, hir: &mut Hir) {
+    for (fn_id, fun) in hir.fns.iter_enumerated() {
         match &fun.kind {
             hir::FnKind::Bare { body } => {
                 let mut cx = Ownck::new(db);
                 cx.expr(&mut Env::new(), body);
-                todo!("{:?}", cx.destroy_glue);
+                hir.fn_destroy_glues.insert(fn_id, cx.destroy_glue);
             }
             hir::FnKind::Extern { .. } => (),
         }
@@ -69,7 +69,9 @@ impl<'db> Ownck<'db> {
                 env.create_owned(expr);
             }
             hir::ExprKind::Member(_) => todo!("move: member"),
-            hir::ExprKind::Name(_) => todo!("move: name"),
+            hir::ExprKind::Name(_) => {
+                // TODO: move: name
+            }
             hir::ExprKind::Unary(_)
             | hir::ExprKind::Binary(_)
             | hir::ExprKind::Cast(_)
