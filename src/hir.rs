@@ -286,13 +286,18 @@ pub enum Lit {
 
 #[derive(Debug, Clone)]
 pub struct DestroyGlue {
-    pub exprs_to_destroy: FxHashMap<DestroyBlockId, Vec<ExprId>>,
-    //defs_to_destroy: FxHashMap<DestroyBlockId, Vec<DefId>>,
+    pub to_destroy: FxHashMap<DestroyBlockId, Vec<DestroyGlueItem>>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum DestroyGlueItem {
+    Expr(ExprId),
+    Def(DefId),
 }
 
 impl DestroyGlue {
     pub fn new() -> Self {
-        Self { exprs_to_destroy: FxHashMap::default() }
+        Self { to_destroy: FxHashMap::default() }
     }
 }
 

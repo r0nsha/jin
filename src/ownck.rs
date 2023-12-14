@@ -1,7 +1,10 @@
+use indexmap::IndexMap;
+
 use crate::{
-    db::Db,
-    hir::{self, Hir, HirMap},
-    span::Span,
+    db::{Db, DefId},
+    hir::{self, Hir},
+    middle::Pat,
+    span::{Span, Spanned},
 };
 
 pub fn ownck(db: &Db, hir: &mut Hir) {
@@ -11,7 +14,21 @@ pub fn ownck(db: &Db, hir: &mut Hir) {
                 let mut cx = Ownck::new(db);
                 let mut env = Env::new();
 
+                env.push_scope();
+
+                for p in &fun.sig.params {
+                    match &p.pat {
+                        Pat::Name(name) => {
+                            env.create_def_value(name.id, name.span());
+                        }
+                        Pat::Discard(_) => (),
+                    }
+                }
+
                 cx.expr(&mut env, body);
+
+                let scope = env.pop_scope().unwrap();
+                cx.collect_destroy_ids_from_scope(body.id, &scope);
 
                 hir.fn_destroy_glues.insert(fn_id, cx.destroy_glue);
             }
@@ -44,32 +61,12 @@ impl<'db> Ownck<'db> {
             hir::ExprKind::If(_) => todo!("move: if cond"),
             hir::ExprKind::Loop(_) => todo!("move: loop"),
             hir::ExprKind::Break => (),
-            hir::ExprKind::Block(block) => {
-                if block.exprs.is_empty() {
-                    return;
-                }
-
-                env.push_scope();
-                block.exprs.iter().for_each(|expr| self.expr(env, expr));
-
-                let scope = env.pop_scope().unwrap();
-                let destroy_block_id = expr.id;
-
-                self.destroy_glue.exprs_to_destroy.insert(
-                    destroy_block_id,
-                    scope
-                        .expr_states
-                        .iter()
-                        .filter(|(_, value)| value.state == ValueState::Owned)
-                        .map(|(expr_id, _)| *expr_id)
-                        .collect(),
-                );
-            }
+            hir::ExprKind::Block(block) => self.block(env, expr, block),
             hir::ExprKind::Return(_) => todo!("move: return"),
             hir::ExprKind::Call(call) => {
                 self.expr(env, &call.callee);
                 call.args.iter().for_each(|arg| self.expr(env, &arg.expr));
-                env.create_owned(expr);
+                env.create_expr_value(expr);
             }
             hir::ExprKind::Member(_) => todo!("move: member"),
             hir::ExprKind::Name(_) => {
@@ -79,9 +76,39 @@ impl<'db> Ownck<'db> {
             | hir::ExprKind::Binary(_)
             | hir::ExprKind::Cast(_)
             | hir::ExprKind::Lit(_) => {
-                env.create_owned(expr);
+                env.create_expr_value(expr);
             }
         }
+    }
+
+    fn block(&mut self, env: &mut Env, expr: &hir::Expr, block: &hir::Block) {
+        if block.exprs.is_empty() {
+            return;
+        }
+
+        env.push_scope();
+        block.exprs.iter().for_each(|expr| self.expr(env, expr));
+
+        let scope = env.pop_scope().unwrap();
+        self.collect_destroy_ids_from_scope(expr.id, &scope);
+    }
+
+    fn collect_destroy_ids_from_scope(
+        &mut self,
+        destroy_block_id: hir::DestroyBlockId,
+        scope: &Scope,
+    ) {
+        self.destroy_glue
+            .to_destroy
+            .entry(destroy_block_id)
+            .or_default()
+            .extend(
+                scope
+                    .values
+                    .iter()
+                    .filter(|(_, value)| value.state == ValueState::Owned)
+                    .map(|(item, _)| *item),
+            );
     }
 }
 
@@ -94,17 +121,24 @@ impl Env {
     }
 
     fn push_scope(&mut self) {
-        self.0.push(Scope { expr_states: HirMap::default() });
+        self.0.push(Scope { values: IndexMap::default() });
     }
 
     fn pop_scope(&mut self) -> Option<Scope> {
         self.0.pop()
     }
 
-    fn create_owned(&mut self, expr: &hir::Expr) {
-        self.current_mut().expr_states.insert(
-            expr.id,
+    fn create_expr_value(&mut self, expr: &hir::Expr) {
+        self.current_mut().values.insert(
+            hir::DestroyGlueItem::Expr(expr.id),
             Value { state: ValueState::Owned, span: expr.span },
+        );
+    }
+
+    fn create_def_value(&mut self, id: DefId, span: Span) {
+        self.current_mut().values.insert(
+            hir::DestroyGlueItem::Def(id),
+            Value { state: ValueState::Owned, span },
         );
     }
 
@@ -115,7 +149,7 @@ impl Env {
 
 #[derive(Debug)]
 struct Scope {
-    expr_states: HirMap<Value>,
+    values: IndexMap<hir::DestroyGlueItem, Value>,
 }
 
 #[derive(Debug, Clone, Copy)]

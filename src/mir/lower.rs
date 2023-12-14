@@ -311,6 +311,7 @@ struct LowerBodyCx<'cx, 'db> {
     destroy_glue: &'cx hir::DestroyGlue,
     body: Body,
     expr_to_value: FxHashMap<hir::ExprId, ValueId>,
+    def_to_value: FxHashMap<DefId, ValueId>,
     curr_block: BlockId,
     loop_blocks: Vec<BlockId>,
 }
@@ -325,6 +326,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
             destroy_glue,
             body: Body::new(),
             expr_to_value: FxHashMap::default(),
+            def_to_value: FxHashMap::default(),
             curr_block: BlockId::start(),
             loop_blocks: vec![],
         }
@@ -408,11 +410,12 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                 match &let_.pat {
                     Pat::Name(name) => {
-                        self.push_inst_with(
+                        let value = self.push_inst_with(
                             let_.ty,
                             ValueKind::Local(name.id),
                             |value| Inst::Local { value, init },
                         );
+                        self.def_to_value.insert(name.id, value);
                     }
                     Pat::Discard(_) => (),
                 }
@@ -510,17 +513,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     result = Some(self.lower_expr(expr));
                 }
 
-                if let Some(expr_ids) =
-                    self.destroy_glue.exprs_to_destroy.get(&expr.id)
-                {
-                    // Push all expressions that need to be destroyed in this block, in reverse
-                    for expr_id in expr_ids.iter().rev() {
-                        let value = self.expr_to_value[expr_id];
-                        if self.value_needs_destroy(value) {
-                            self.push_inst(Inst::Destroy { value });
-                        }
-                    }
-                }
+                self.lower_destroy_glue(expr.id);
 
                 // NOTE: If the block ty is `unit`, we must always return a `unit` value.
                 // A situation where we don't return a `unit` value can occur
@@ -615,6 +608,25 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         }
     }
 
+    // Generates Inst::Destroy for all expressions and definitions that need
+    // to be destroyed in this expr's scope (usually block), in reverse
+    fn lower_destroy_glue(&mut self, expr_id: hir::ExprId) {
+        if let Some(items) = self.destroy_glue.to_destroy.get(&expr_id) {
+            for item in items.iter().rev() {
+                let value = match item {
+                    hir::DestroyGlueItem::Expr(expr_id) => {
+                        self.expr_to_value[expr_id]
+                    }
+                    hir::DestroyGlueItem::Def(id) => self.def_to_value[id],
+                };
+
+                if self.value_needs_destroy(value) {
+                    self.push_inst(Inst::Destroy { value });
+                }
+            }
+        }
+    }
+
     fn lower_name(
         &mut self,
         id: DefId,
@@ -642,7 +654,9 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 )
             }
             DefKind::Variable => {
-                self.body.create_value(ty, ValueKind::Local(id))
+                let value = self.body.create_value(ty, ValueKind::Local(id));
+                self.def_to_value.insert(id, value);
+                value
             }
             DefKind::Struct(sid) => {
                 let id = self.cx.get_or_create_struct_ctor(*sid);
