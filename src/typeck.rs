@@ -290,21 +290,7 @@ impl<'db> Typeck<'db> {
                         .eq(ret_ty, body.ty)
                         .or_coerce(self, body.id)?;
 
-                        let body = if let hir::ExprKind::Block(_) = &body.kind {
-                            body
-                        } else {
-                            let ty = body.ty;
-                            let span = body.span;
-                            self.expr(
-                                hir::ExprKind::Block(hir::Block {
-                                    exprs: vec![body],
-                                }),
-                                ty,
-                                span,
-                            )
-                        };
-
-                        Ok(hir::FnKind::Bare { body })
+                        Ok(hir::FnKind::Bare { body: self.expr_or_block(body) })
                     }
                     ast::FnKind::Extern { is_c_variadic } => {
                         Ok(hir::FnKind::Extern {
@@ -453,6 +439,14 @@ impl<'db> Typeck<'db> {
         };
 
         let pat = self.define_pat(env, def_kind, &let_.pat, ty)?;
+
+        let value = if env.in_global_scope() {
+            // We do this so that global variable initialization always includes a block (needed
+            // for `ownck`)
+            self.expr_or_block(value)
+        } else {
+            value
+        };
 
         Ok(hir::Let {
             module_id: env.module_id(),
@@ -1641,6 +1635,21 @@ impl<'db> Typeck<'db> {
 
     fn expr(&mut self, kind: hir::ExprKind, ty: Ty, span: Span) -> hir::Expr {
         hir::Expr { id: self.expr_id.next(), kind, ty, span }
+    }
+
+    fn expr_or_block(&mut self, expr: hir::Expr) -> hir::Expr {
+        if let hir::ExprKind::Block(_) = &expr.kind {
+            return expr;
+        }
+
+        let ty = expr.ty;
+        let span = expr.span;
+
+        self.expr(
+            hir::ExprKind::Block(hir::Block { exprs: vec![expr] }),
+            ty,
+            span,
+        )
     }
 
     fn unit_expr(&mut self, span: Span) -> hir::Expr {
