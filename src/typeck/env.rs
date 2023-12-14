@@ -682,35 +682,24 @@ impl Env {
         Self { module_id, scopes: vec![] }
     }
 
-    pub fn push_scope(&mut self, name: Ustr, kind: ScopeKind) {
-        self.scopes.push(Scope { kind, name, defs: UstrMap::default() });
-    }
-
-    pub fn pop_scope(&mut self) -> Option<Scope> {
-        self.scopes.pop()
-    }
-
     pub fn with_scope<R>(
         &mut self,
         name: Ustr,
         kind: ScopeKind,
         mut f: impl FnMut(&mut Self) -> R,
     ) -> R {
-        self.push_scope(name, kind);
+        self.scopes.push(Scope { kind, name, defs: UstrMap::default() });
         let res = f(self);
-        self.pop_scope();
+        self.scopes.pop();
         res
     }
 
     pub fn with_anon_scope<R>(
         &mut self,
         kind: ScopeKind,
-        mut f: impl FnMut(&mut Self) -> R,
+        f: impl FnMut(&mut Self) -> R,
     ) -> R {
-        self.push_scope(ustr(Self::ANON_SCOPE), kind);
-        let res = f(self);
-        self.pop_scope();
-        res
+        self.with_scope(ustr(Self::ANON_SCOPE), kind, f)
     }
 
     #[allow(unused)]

@@ -35,6 +35,7 @@ mod target;
 mod ty;
 mod typeck;
 mod word;
+mod ownck;
 
 use std::fs;
 
