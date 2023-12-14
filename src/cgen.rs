@@ -32,7 +32,7 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> Utf8PathBuf {
         fn_defs: vec![],
         struct_names: FxHashMap::default(),
         struct_destroy_fns: FxHashMap::default(),
-        curr_generated_struct: None,
+        defining_types: false,
     }
     .run();
     db.time.stop();

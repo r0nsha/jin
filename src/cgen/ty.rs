@@ -102,13 +102,12 @@ impl<'db> CTy<'db> for FloatTy {
 
 impl<'db> CTy<'db> for StructId {
     fn cty(&self, cx: &Generator<'db>) -> D<'db> {
-        let name = D::text(cx.struct_names[self].clone());
+        let name = D::text(cx.struct_names[self].as_str());
 
-        let name = match cx.curr_generated_struct {
-            Some(sid) if sid == *self => {
-                D::text("struct").append(D::space()).append(name)
-            }
-            _ => name,
+        let name = if cx.defining_types {
+            D::text("struct").append(D::space()).append(name)
+        } else {
+            name
         };
 
         match cx.db.structs[*self].kind {

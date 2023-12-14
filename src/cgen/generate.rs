@@ -4,7 +4,7 @@ use camino::Utf8PathBuf;
 use pretty::RcDoc as D;
 use rustc_hash::FxHashMap;
 use ulid::Ulid;
-use ustr::ustr;
+use ustr::{ustr, Ustr};
 
 use crate::{
     cgen::{
@@ -36,9 +36,9 @@ pub struct Generator<'db> {
     pub globals: Vec<D<'db>>,
     pub fn_defs: Vec<D<'db>>,
     pub target_metrics: TargetMetrics,
-    pub struct_names: FxHashMap<StructId, String>,
-    pub struct_destroy_fns: FxHashMap<StructId, String>,
-    pub curr_generated_struct: Option<StructId>,
+    pub struct_names: FxHashMap<StructId, Ustr>,
+    pub struct_destroy_fns: FxHashMap<StructId, Ustr>,
+    pub defining_types: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -130,16 +130,19 @@ impl<'db> Generator<'db> {
     }
 
     pub fn define_types(&mut self) {
+        self.defining_types = true;
+
         for struct_info in &self.db.structs {
-            let name = self.db[struct_info.def_id].qpath.join_with("_");
-            self.struct_names.insert(struct_info.id, name.clone());
+            let name = ustr(&self.db[struct_info.def_id].qpath.join_with("_"));
+            self.struct_names.insert(struct_info.id, name);
+        }
 
-            self.curr_generated_struct = Some(struct_info.id);
-            let doc = self.codegen_struct_def(struct_info, name);
-            self.curr_generated_struct = None;
-
+        for struct_info in &self.db.structs {
+            let doc = self.codegen_struct_def(struct_info);
             self.types.push(stmt(|| doc));
         }
+
+        self.defining_types = false;
     }
 
     pub fn define_struct_destroys(&mut self) {
@@ -207,14 +210,15 @@ impl<'db> Generator<'db> {
         }
     }
 
-    fn codegen_struct_def(
-        &self,
-        struct_info: &StructInfo,
-        name: String,
-    ) -> D<'db> {
+    fn codegen_struct_def(&self, struct_info: &StructInfo) -> D<'db> {
+        let name = D::text(self.struct_names[&struct_info.id].as_str());
+
         D::text("typedef")
             .append(D::space())
-            .append("struct")
+            .append(D::text("struct"))
+            .append(D::space())
+            .append(name.clone())
+            .append(D::space())
             .append(block(|| {
                 D::intersperse(
                     struct_info.fields.iter().map(|f| {
@@ -332,8 +336,7 @@ impl<'db> Generator<'db> {
 
         let statements = match self.db[sid].kind {
             StructKind::Ref => {
-                let alloc_doc =
-                    util::call_alloc(D::text(self.struct_names[&sid].clone()));
+                let alloc_doc = util::call_alloc(sid.cty(self));
 
                 let lit_name = D::text("this");
                 let lit_decl_doc = VariableDoc::assign(
@@ -401,11 +404,13 @@ impl<'db> Generator<'db> {
         let struct_info = &self.db[sid];
 
         if let StructKind::Ref = struct_info.kind {
-            let fn_name = self.db[struct_info.def_id]
-                .qpath
-                .clone()
-                .child(ustr("destroy"))
-                .join_with("_");
+            let fn_name = ustr(
+                &self.db[struct_info.def_id]
+                    .qpath
+                    .clone()
+                    .child(ustr("destroy"))
+                    .join_with("_"),
+            );
 
             let param = D::text("this");
 
@@ -482,7 +487,7 @@ impl<'db> Generator<'db> {
                 let value_ty = state.body.value(*value).ty;
                 let destroy_fn = match value_ty.kind() {
                     TyKind::Struct(sid) => {
-                        D::text(self.struct_destroy_fns[sid].clone())
+                        D::text(self.struct_destroy_fns[sid].as_str())
                     }
                     _ => unreachable!(
                         "unexpected: destroyed value of type {value_ty:?}"
