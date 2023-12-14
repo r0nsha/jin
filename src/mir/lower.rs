@@ -505,6 +505,12 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     result = Some(self.lower_expr(expr));
                 }
 
+                if let Some(expr_ids) =
+                    self.destroy_glue.exprs_to_destroy.get(&expr.id)
+                {
+                    todo!("{expr_ids:?}");
+                }
+
                 // NOTE: If the block ty is `unit`, we must always return a `unit` value.
                 // A situation where we don't return a `unit` value can occur
                 // when the expected type of the block is unit, but the last expression doesn't
