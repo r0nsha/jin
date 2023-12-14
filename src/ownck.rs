@@ -9,7 +9,10 @@ pub fn ownck(db: &Db, hir: &mut Hir) {
         match &fun.kind {
             hir::FnKind::Bare { body } => {
                 let mut cx = Ownck::new(db);
-                cx.expr(&mut Env::new(), body);
+                let mut env = Env::new();
+
+                cx.expr(&mut env, body);
+
                 hir.fn_destroy_glues.insert(fn_id, cx.destroy_glue);
             }
             hir::FnKind::Extern { .. } => (),
@@ -22,13 +25,13 @@ pub fn ownck(db: &Db, hir: &mut Hir) {
 }
 
 struct Ownck<'db> {
-    db: &'db Db,
+    _db: &'db Db,
     destroy_glue: hir::DestroyGlue,
 }
 
 impl<'db> Ownck<'db> {
     fn new(db: &'db Db) -> Self {
-        Self { db, destroy_glue: hir::DestroyGlue::new() }
+        Self { _db: db, destroy_glue: hir::DestroyGlue::new() }
     }
 
     fn expr(&mut self, env: &mut Env, expr: &hir::Expr) {
