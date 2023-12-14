@@ -39,6 +39,10 @@ impl<'db> Ownck<'db> {
             hir::ExprKind::Loop(_) => todo!(),
             hir::ExprKind::Break => todo!(),
             hir::ExprKind::Block(block) => {
+                if block.exprs.is_empty() {
+                    return;
+                }
+
                 env.push_scope();
                 block.exprs.iter().for_each(|expr| self.expr(env, expr));
 
