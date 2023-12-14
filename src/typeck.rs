@@ -290,6 +290,20 @@ impl<'db> Typeck<'db> {
                         .eq(ret_ty, body.ty)
                         .or_coerce(self, body.id)?;
 
+                        let body = if let hir::ExprKind::Block(_) = &body.kind {
+                            body
+                        } else {
+                            let ty = body.ty;
+                            let span = body.span;
+                            self.expr(
+                                hir::ExprKind::Block(hir::Block {
+                                    exprs: vec![body],
+                                }),
+                                ty,
+                                span,
+                            )
+                        };
+
                         Ok(hir::FnKind::Bare { body })
                     }
                     ast::FnKind::Extern { is_c_variadic } => {
