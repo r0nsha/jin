@@ -119,7 +119,7 @@ impl<'db> LowerCx<'db> {
     }
 
     fn lower_global_let(&mut self, let_: &hir::Let) -> Option<GlobalId> {
-        LowerBodyCx::new(self).lower_global(let_)
+        LowerBodyCx::new(self, ()).lower_global(let_)
     }
 
     fn monomorphize_fn(
@@ -298,31 +298,33 @@ impl<'db> LowerCx<'db> {
             "lowering polymorphic functions to mir is not allowed"
         );
 
-        LowerBodyCx::new(self).lower_fn(sig, f);
+        LowerBodyCx::new(self, ()).lower_fn(sig, f);
     }
 }
 
 struct LowerBodyCx<'cx, 'db> {
     cx: &'cx mut LowerCx<'db>,
+    destroy_glue: (),
     body: Body,
     curr_block: BlockId,
     loop_blocks: Vec<BlockId>,
 }
 
 impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
-    fn new(cx: &'cx mut LowerCx<'db>) -> Self {
+    fn new(cx: &'cx mut LowerCx<'db>, destroy_glue: ()) -> Self {
         Self {
             cx,
+            destroy_glue,
             body: Body::new(),
             curr_block: BlockId::start(),
             loop_blocks: vec![],
         }
     }
 
-    fn lower_fn(mut self, sig: FnSigId, f: &hir::Fn) {
-        match &f.kind {
+    fn lower_fn(mut self, sig: FnSigId, fun: &hir::Fn) {
+        match &fun.kind {
             FnKind::Bare { body } => {
-                if self.cx.db.main_function_id() == Some(f.id) {
+                if self.cx.db.main_function_id() == Some(fun.id) {
                     self.cx.mir.main_fn = Some(sig);
                 }
 
@@ -345,7 +347,11 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     self.push_inst(Inst::Return { value: ret_value });
                 }
 
-                self.cx.mir.fns.push(Fn { def_id: f.id, sig, body: self.body });
+                self.cx.mir.fns.push(Fn {
+                    def_id: fun.id,
+                    sig,
+                    body: self.body,
+                });
             }
             FnKind::Extern { .. } => unreachable!(),
         }
@@ -357,7 +363,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 let full_name = self.cx.db[name.id].qpath.join_with("_");
                 let ty = self.cx.db[name.id].ty;
 
-                let mut cx = LowerBodyCx::new(self.cx);
+                let mut cx = LowerBodyCx::new(self.cx, ());
 
                 let start_blk = cx.body.create_block("start");
                 cx.position_at(start_blk);
