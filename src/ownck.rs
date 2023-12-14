@@ -32,12 +32,15 @@ impl<'db> Ownck<'db> {
     }
 
     fn expr(&mut self, env: &mut Env, expr: &hir::Expr) {
+        // TODO: move unary expr
+        // TODO: move unary lhs & rhs
+        // TODO: move cast
         match &expr.kind {
-            hir::ExprKind::Let(_) => todo!(),
-            hir::ExprKind::Assign(_) => todo!(),
-            hir::ExprKind::If(_) => todo!(),
-            hir::ExprKind::Loop(_) => todo!(),
-            hir::ExprKind::Break => todo!(),
+            hir::ExprKind::Let(_) => todo!("move: let"),
+            hir::ExprKind::Assign(_) => todo!("move: assign"),
+            hir::ExprKind::If(_) => todo!("move: if cond"),
+            hir::ExprKind::Loop(_) => todo!("move: loop"),
+            hir::ExprKind::Break => (),
             hir::ExprKind::Block(block) => {
                 if block.exprs.is_empty() {
                     return;
@@ -59,13 +62,14 @@ impl<'db> Ownck<'db> {
                         .collect(),
                 );
             }
-            hir::ExprKind::Return(_) => todo!(),
+            hir::ExprKind::Return(_) => todo!("move: return"),
             hir::ExprKind::Call(call) => {
                 self.expr(env, &call.callee);
                 call.args.iter().for_each(|arg| self.expr(env, &arg.expr));
+                env.create_owned(expr);
             }
-            hir::ExprKind::Member(_) => todo!(),
-            hir::ExprKind::Name(_) => (),
+            hir::ExprKind::Member(_) => todo!("move: member"),
+            hir::ExprKind::Name(_) => todo!("move: name"),
             hir::ExprKind::Unary(_)
             | hir::ExprKind::Binary(_)
             | hir::ExprKind::Cast(_)

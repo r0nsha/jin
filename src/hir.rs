@@ -17,16 +17,24 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct Hir {
     pub fns: IndexVec<FnId, Fn>,
-    pub extern_lets: IndexVec<ExternLetId, ExternLet>,
+    pub fn_destroy_glues: FxHashMap<FnId, DestroyGlue>,
+
     pub lets: IndexVec<LetId, Let>,
+    pub let_destroy_glues: FxHashMap<FnId, DestroyGlue>,
+
+    pub extern_lets: IndexVec<ExternLetId, ExternLet>,
 }
 
 impl Hir {
     pub fn new() -> Self {
         Self {
             fns: IndexVec::new(),
-            extern_lets: IndexVec::new(),
+            fn_destroy_glues: FxHashMap::default(),
+
             lets: IndexVec::new(),
+            let_destroy_glues: FxHashMap::default(),
+
+            extern_lets: IndexVec::new(),
         }
     }
 
@@ -275,7 +283,7 @@ pub enum Lit {
     Str(Ustr),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DestroyGlue {
     pub exprs_to_destroy: FxHashMap<DestroyBlockId, Vec<ExprId>>,
     //defs_to_destroy: FxHashMap<ExprId, DestroyBlockId>,
