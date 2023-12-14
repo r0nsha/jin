@@ -1,10 +1,10 @@
 fn extern printf(fmt: *u8, ..) i32
 
-type Wrapper(num: Num)
+type Wrapper(num: Num, other:int)
 type Num(inner: int)
 
 fn main() unit = {
-	Wrapper(Num(1))
+	Wrapper(Num(1), 2)
 	//Num(1).print()
 }
 

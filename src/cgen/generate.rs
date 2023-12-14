@@ -336,7 +336,8 @@ impl<'db> Generator<'db> {
 
         let statements = match self.db[sid].kind {
             StructKind::Ref => {
-                let alloc_doc = util::call_alloc(sid.cty(self));
+                let alloc_doc =
+                    util::call_alloc(D::text(self.struct_names[&sid].as_str()));
 
                 let lit_name = D::text("this");
                 let lit_decl_doc = VariableDoc::assign(
@@ -414,11 +415,22 @@ impl<'db> Generator<'db> {
 
             let param = D::text("this");
 
-            // TODO: call destroy on all child structs
+            let destroy_fields = D::intersperse(
+                struct_info.fields.iter().filter_map(|f| {
+                    self.get_ty_destroy_fn(f.ty).map(|fn_name| {
+                        self.codegen_destroy_call(
+                            fn_name,
+                            util::member(param.clone(), f.name.as_str(), true),
+                        )
+                    })
+                }),
+                D::hardline(),
+            );
 
-            let dealloc_doc = stmt(|| util::call_dealloc(param.clone()));
+            let dealloc_this = stmt(|| util::call_dealloc(param.clone()));
 
-            let statements = D::intersperse([dealloc_doc], D::hardline());
+            let statements =
+                D::intersperse([destroy_fields, dealloc_this], D::hardline());
 
             let fn_decl_doc = D::text(format!("void {fn_name}"))
                 .append(D::text("("))
@@ -484,25 +496,11 @@ impl<'db> Generator<'db> {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
             Inst::Destroy { value } => {
-                let value_ty = state.body.value(*value).ty;
-                let destroy_fn = match value_ty.kind() {
-                    TyKind::Struct(sid) => {
-                        D::text(self.struct_destroy_fns[sid].as_str())
-                    }
-                    _ => unreachable!(
-                        "unexpected: destroyed value of type {value_ty:?}"
-                    ),
-                };
-
-                stmt(|| {
-                    destroy_fn
-                        .append(D::text("("))
-                        .append(self.value(state, *value))
-                        .append(D::text(")"))
-                    // D::text(format!(
-                    //     "printf(\"destroy call for value {}\\n\")",
-                    //     value
-                    // ))
+                self.codegen_destroy(state, *value).unwrap_or_else(|| {
+                    unreachable!(
+                        "unexpected: destroyed value of type {:?}",
+                        state.body.value(*value)
+                    )
                 })
             }
             Inst::Br { target } => goto_stmt(state.body.block(*target)),
@@ -581,6 +579,34 @@ impl<'db> Generator<'db> {
                 self.value_assign(state, *value, || str_value(lit))
             }
         }
+    }
+
+    fn codegen_destroy(
+        &self,
+        state: &FnState<'db>,
+        value: ValueId,
+    ) -> Option<D<'db>> {
+        let value_ty = state.body.value(value).ty;
+
+        self.get_ty_destroy_fn(value_ty).map(|fn_name| {
+            self.codegen_destroy_call(fn_name, self.value(state, value))
+        })
+    }
+
+    fn get_ty_destroy_fn(&self, ty: Ty) -> Option<Ustr> {
+        match ty.kind() {
+            TyKind::Struct(sid) => self.struct_destroy_fns.get(sid).copied(),
+            _ => None,
+        }
+    }
+
+    fn codegen_destroy_call(&self, destroy_fn: Ustr, value: D<'db>) -> D<'db> {
+        stmt(|| {
+            D::text(destroy_fn.as_str())
+                .append(D::text("("))
+                .append(value)
+                .append(D::text(")"))
+        })
     }
 
     pub fn value_assign(
