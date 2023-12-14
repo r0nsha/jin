@@ -1,9 +1,11 @@
 fn extern printf(fmt: *u8, ..) i32
 
+type Wrapper(num: Num)
 type Num(inner: int)
 
 fn main() unit = {
-	Num(1).print()
+	Wrapper(Num(1))
+	//Num(1).print()
 }
 
 fn print(num: Num) unit = {
