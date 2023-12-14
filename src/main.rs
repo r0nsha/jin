@@ -26,6 +26,7 @@ mod index_vec;
 mod macros;
 mod middle;
 mod mir;
+mod ownck;
 mod parse;
 mod qpath;
 mod span;
@@ -35,7 +36,6 @@ mod target;
 mod ty;
 mod typeck;
 mod word;
-mod ownck;
 
 use std::fs;
 
@@ -117,7 +117,7 @@ fn build(db: &mut Db) {
 
     // Resolve all root symbols into their corresponding id's
     db.time.start("typeck");
-    let hir = match typeck::typeck(db, &ast) {
+    let mut hir = match typeck::typeck(db, &ast) {
         Ok(hir) => hir,
         Err(diag) => {
             db.diagnostics.emit(diag);
@@ -129,6 +129,12 @@ fn build(db: &mut Db) {
 
     db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))
         .expect("emitting hir failed");
+
+    // Ownership checks
+    db.time.start("ownck");
+    ownck::ownck(db, &mut hir);
+    db.time.stop();
+    expect!(db);
 
     // Lower to MIR, includes monomorphization
     db.time.start("hir -> mir");

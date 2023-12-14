@@ -3,9 +3,10 @@ fn extern printf(fmt: *u8, ..) i32
 type Num(inner: int)
 
 fn main() unit = {
-	Num(1).print()
+	Num(1)
+	//Num(1).print()
 }
 
-fn print(num: Num) unit = {
-	printf("Num(%d)\n".ptr, num.inner)
-}
+//fn print(num: Num) unit = {
+//	printf("Num(%d)\n".ptr, num.inner)
+//}
