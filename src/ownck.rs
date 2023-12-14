@@ -45,14 +45,14 @@ impl<'db> Ownck<'db> {
                 let scope = env.pop_scope().unwrap();
                 let destroy_block_id = expr.id;
 
-                self.destroy_glue.exprs_to_destroy.extend(
-                    scope.expr_states.iter().filter_map(|(expr_id, value)| {
-                        if value.state == ValueState::Owned {
-                            Some((*expr_id, destroy_block_id))
-                        } else {
-                            None
-                        }
-                    }),
+                self.destroy_glue.exprs_to_destroy.insert(
+                    destroy_block_id,
+                    scope
+                        .expr_states
+                        .iter()
+                        .filter(|(_, value)| value.state == ValueState::Owned)
+                        .map(|(expr_id, _)| *expr_id)
+                        .collect(),
                 );
             }
             hir::ExprKind::Return(_) => todo!(),

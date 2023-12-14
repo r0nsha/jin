@@ -277,7 +277,7 @@ pub enum Lit {
 
 #[derive(Debug)]
 pub struct DestroyGlue {
-    pub exprs_to_destroy: FxHashMap<ExprId, DestroyBlockId>,
+    pub exprs_to_destroy: FxHashMap<DestroyBlockId, Vec<ExprId>>,
     //defs_to_destroy: FxHashMap<ExprId, DestroyBlockId>,
 }
 
