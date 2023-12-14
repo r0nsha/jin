@@ -7,7 +7,8 @@ pub fn ownck(db: &mut Db, hir: &mut Hir) {
     for fun in &hir.fns {
         match &fun.kind {
             hir::FnKind::Bare { body } => {
-                todo!("ownck body")
+                Ownck::new(db).expr(body);
+                todo!("collect into destroy_glue")
             }
             hir::FnKind::Extern { .. } => (),
         }
@@ -18,8 +19,19 @@ pub fn ownck(db: &mut Db, hir: &mut Hir) {
     }
 }
 
-struct Ownck {
+struct Ownck<'db> {
+    db: &'db mut Db,
     scopes: Scopes,
+}
+
+impl<'db> Ownck<'db> {
+    fn new(db: &'db mut Db) -> Self {
+        Self { db, scopes: Scopes::new() }
+    }
+
+    fn expr(&mut self, expr: &hir::Expr) {
+        todo!("expr")
+    }
 }
 
 #[derive(Debug)]
