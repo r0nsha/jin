@@ -287,7 +287,7 @@ pub enum Lit {
 
 #[derive(Debug, Clone)]
 pub struct DestroyGlue {
-    pub to_destroy: FxHashMap<DestroyBlockId, Vec<DestroyGlueItem>>,
+    pub to_destroy: FxHashMap<BlockExprId, Vec<DestroyGlueItem>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From)]
@@ -302,4 +302,4 @@ impl DestroyGlue {
     }
 }
 
-pub type DestroyBlockId = ExprId;
+pub type BlockExprId = ExprId;
