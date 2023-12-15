@@ -4,13 +4,11 @@ type Wrapper(num: Num, other:int)
 type Num(inner: int)
 
 fn main() unit = {
-	let num = Num(1)
-	if is_one(num) {
-	}
+	let mut num = Num(1)
+	num.inner = 2
+	num.print()
 }
 
 fn print(num: Num) unit = {
 	printf("Num(%d)\n".ptr, num.inner)
 }
-
-fn is_one(num: Num) bool = num.inner == 1

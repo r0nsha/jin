@@ -56,6 +56,14 @@ impl<'db> Ownck<'db> {
     }
 
     fn expr(&mut self, expr: &hir::Expr) {
+        self.expr_inner(expr, OwnckKind::Value);
+    }
+
+    fn place(&mut self, expr: &hir::Expr) {
+        self.expr_inner(expr, OwnckKind::Place);
+    }
+
+    fn expr_inner(&mut self, expr: &hir::Expr, kind: OwnckKind) {
         match &expr.kind {
             hir::ExprKind::Let(let_) => {
                 self.expr(&let_.value);
@@ -71,7 +79,7 @@ impl<'db> Ownck<'db> {
                 self.try_mark_moved(&let_.value);
             }
             hir::ExprKind::Assign(assign) => {
-                self.expr(&assign.lhs);
+                self.place(&assign.lhs);
                 self.expr(&assign.rhs);
                 self.try_mark_moved(&assign.rhs);
             }
@@ -109,7 +117,9 @@ impl<'db> Ownck<'db> {
             }
             hir::ExprKind::Member(access) => {
                 self.expr(&access.expr);
-                self.try_mark_moved_ex(&access.expr, expr.span);
+                if kind != OwnckKind::Place {
+                    self.try_mark_moved_ex(&access.expr, expr.span);
+                }
                 self.env.insert_expr(expr);
             }
             hir::ExprKind::Name(name) => {
@@ -329,4 +339,10 @@ struct Value {
 enum ValueState {
     Owned,
     Moved(Span),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum OwnckKind {
+    Value,
+    Place,
 }
