@@ -21,7 +21,7 @@ pub struct Hir {
     pub fn_destroy_glues: FxHashMap<FnId, DestroyGlue>,
 
     pub lets: IndexVec<LetId, Let>,
-    pub let_destroy_glues: FxHashMap<FnId, DestroyGlue>,
+    pub let_destroy_glues: FxHashMap<LetId, DestroyGlue>,
 
     pub extern_lets: IndexVec<ExternLetId, ExternLet>,
 }
@@ -177,6 +177,7 @@ pub struct FnParam {
 
 #[derive(Debug, Clone)]
 pub struct Let {
+    pub id: LetId,
     pub module_id: ModuleId,
     pub pat: Pat,
     pub value: Box<Expr>,

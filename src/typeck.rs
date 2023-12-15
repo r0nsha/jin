@@ -237,8 +237,11 @@ impl<'db> Typeck<'db> {
                 // Fn will be added to Hir after `check_fn_bodies`
             }
             ast::Item::Let(let_) => {
-                let let_ = self.check_let(env, let_)?;
-                self.hir.lets.push(let_);
+                let mut let_ = self.check_let(env, let_)?;
+                self.hir.lets.push_with_key(|id| {
+                    let_.id = id;
+                    let_
+                });
             }
             ast::Item::Type(tydef) => {
                 self.check_ty_def(env, tydef)?;
@@ -455,6 +458,7 @@ impl<'db> Typeck<'db> {
         };
 
         Ok(hir::Let {
+            id: hir::LetId::INVALID,
             module_id: env.module_id(),
             pat,
             value: Box::new(value),

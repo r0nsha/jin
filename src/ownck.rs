@@ -11,7 +11,7 @@ use crate::{
 };
 
 pub fn ownck(db: &mut Db, hir: &mut Hir) {
-    for (fn_id, fun) in hir.fns.iter_enumerated() {
+    for fun in &hir.fns {
         match &fun.kind {
             hir::FnKind::Bare { body } => {
                 let mut cx = Ownck::new(db);
@@ -32,14 +32,16 @@ pub fn ownck(db: &mut Db, hir: &mut Hir) {
                 let scope = cx.env.pop_scope().unwrap();
                 cx.collect_destroy_ids_from_scope(&scope);
 
-                hir.fn_destroy_glues.insert(fn_id, cx.destroy_glue);
+                hir.fn_destroy_glues.insert(fun.id, cx.destroy_glue);
             }
             hir::FnKind::Extern { .. } => (),
         }
     }
 
     for let_ in &hir.lets {
-        todo!("ownck let_.value")
+        let mut cx = Ownck::new(db);
+        cx.expr(&let_.value);
+        hir.let_destroy_glues.insert(let_.id, cx.destroy_glue);
     }
 }
 
