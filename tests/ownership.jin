@@ -4,12 +4,7 @@ type Wrapper(num: Num, other:int)
 type Num(inner: int)
 
 fn main() unit = {
-	let w = Wrapper(Num(1), 2)
-	let y: unit = {
-		w
-	}
-	let y = w
-	
+	let num = Num(1)
 	//Num(1).print()
 }
 

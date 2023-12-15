@@ -1,5 +1,4 @@
 use indexmap::IndexSet;
-use itertools::{Itertools, Position};
 use rustc_hash::FxHashMap;
 
 use crate::{
