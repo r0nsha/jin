@@ -5,7 +5,11 @@ type Num(inner: int)
 
 fn main() unit = {
 	let w = Wrapper(Num(1), 2)
+	let y = {
+		w
+	}
 	let y = w
+	
 	//Num(1).print()
 }
 

@@ -69,14 +69,17 @@ impl<'db> Ownck<'db> {
                     Pat::Discard(_) => (),
                 }
 
-                self.try_mark_expr_moved(&let_.value);
+                self.try_mark_moved(&let_.value);
             }
             hir::ExprKind::Assign(_) => todo!("move: assign"),
             hir::ExprKind::If(_) => todo!("move: if cond"),
             hir::ExprKind::Loop(_) => todo!("move: loop"),
             hir::ExprKind::Break => (),
             hir::ExprKind::Block(block) => self.block(expr, block),
-            hir::ExprKind::Return(_) => todo!("move: return"),
+            hir::ExprKind::Return(ret) => {
+                self.expr(&ret.expr);
+                self.try_mark_moved(&ret.expr);
+            }
             hir::ExprKind::Call(call) => {
                 self.expr(&call.callee);
                 // TODO: mark callee as moved (needed for closures)
@@ -84,7 +87,7 @@ impl<'db> Ownck<'db> {
 
                 for arg in &call.args {
                     self.expr(&arg.expr);
-                    self.try_mark_expr_moved(&arg.expr);
+                    self.try_mark_moved(&arg.expr);
                 }
 
                 // Create an owned value for the call's result
@@ -94,16 +97,23 @@ impl<'db> Ownck<'db> {
             hir::ExprKind::Name(name) => {
                 self.env.insert(name.id, expr.span);
             }
-            hir::ExprKind::Unary(_) => {
-                // TODO: move unary expr
+            hir::ExprKind::Unary(un) => {
+                self.expr(&un.expr);
+                self.try_mark_moved(&un.expr);
                 self.env.insert_expr(expr);
             }
-            hir::ExprKind::Binary(_) => {
-                // TODO: move binary lhs & rhs
+            hir::ExprKind::Binary(bin) => {
+                self.expr(&bin.lhs);
+                self.try_mark_moved(&bin.lhs);
+
+                self.expr(&bin.rhs);
+                self.try_mark_moved(&bin.rhs);
+
                 self.env.insert_expr(expr);
             }
-            hir::ExprKind::Cast(_) => {
-                // TODO: move cast
+            hir::ExprKind::Cast(cast) => {
+                self.expr(&cast.expr);
+                self.try_mark_moved(&cast.expr);
                 self.env.insert_expr(expr);
             }
             hir::ExprKind::Lit(_) => self.env.insert_expr(expr),
@@ -145,17 +155,24 @@ impl<'db> Ownck<'db> {
     }
 
     #[track_caller]
-    fn try_mark_expr_moved(&mut self, expr: &hir::Expr) {
+    fn try_mark_moved(&mut self, expr: &hir::Expr) {
         match &expr.kind {
             hir::ExprKind::Name(name) => {
-                self.try_mark_moved(name.id, expr.span);
+                self.try_mark_moved_inner(name.id, expr.span);
             }
-            _ => self.try_mark_moved(expr.id, expr.span),
+            hir::ExprKind::Block(block) => {
+                if let Some(last) = block.exprs.last() {
+                    self.try_mark_moved(last);
+                } else {
+                    self.try_mark_moved_inner(expr.id, expr.span);
+                }
+            }
+            _ => self.try_mark_moved_inner(expr.id, expr.span),
         }
     }
 
     #[track_caller]
-    fn try_mark_moved(
+    fn try_mark_moved_inner(
         &mut self,
         item: impl Into<hir::DestroyGlueItem> + Copy,
         moved_to: Span,

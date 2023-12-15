@@ -152,11 +152,8 @@ pub struct Diagnostics {
 
 impl Diagnostics {
     pub fn new(sources: Rc<RefCell<Sources>>) -> Self {
-        Self {
-            sources,
-            config: codespan_reporting::term::Config::default(),
-            had_errors: false,
-        }
+        let config = codespan_reporting::term::Config::default();
+        Self { sources, config, had_errors: false }
     }
 
     pub fn emit(&mut self, diagnostic: impl Into<Diagnostic>) {
