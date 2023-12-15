@@ -1,7 +1,8 @@
 use indexmap::IndexMap;
+use itertools::{Itertools, Position};
 
 use crate::{
-    db::{Db, DefId},
+    db::Db,
     hir::{self, Hir},
     middle::Pat,
     span::{Span, Spanned},
@@ -95,7 +96,13 @@ impl<'db> Ownck<'db> {
         }
 
         self.env.push_scope();
-        block.exprs.iter().for_each(|expr| self.expr(expr));
+
+        for (pos, expr) in block.exprs.iter().with_position() {
+            self.expr(expr);
+            if pos == Position::Last {
+                // TODO: mark moved if block ty isn't unit
+            }
+        }
 
         let scope = self.env.pop_scope().unwrap();
         self.collect_destroy_ids_from_scope(expr.id, &scope);

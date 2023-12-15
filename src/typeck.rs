@@ -13,6 +13,7 @@ mod unify;
 use std::cell::RefCell;
 
 use ena::unify::{InPlace, InPlaceUnificationTable, Snapshot};
+use itertools::{Itertools, Position};
 use ustr::UstrMap;
 
 use crate::{
@@ -906,14 +907,13 @@ impl<'db> Typeck<'db> {
                         (vec![], self.db.types.unit)
                     } else {
                         let mut new_exprs = vec![];
-                        let last = exprs.len() - 1;
 
-                        for (i, expr) in exprs.iter().enumerate() {
-                            let expected_ty = if i == last {
-                                expected_ty
-                            } else {
-                                Some(self.db.types.unit)
+                        for (pos, expr) in exprs.iter().with_position() {
+                            let expected_ty = match pos {
+                                Position::Last => expected_ty,
+                                _ => Some(self.db.types.unit),
                             };
+
                             new_exprs.push(self.check_expr(
                                 env,
                                 expr,
@@ -1248,7 +1248,7 @@ impl<'db> Typeck<'db> {
                 ty_args
                     .iter()
                     .map(|arg| self.check_ty_expr(env, arg, AllowTyHole::Yes))
-                    .try_collect::<Vec<_>>()
+                    .try_collect()
             })
             .transpose()
     }

@@ -1,5 +1,6 @@
 use std::fmt::{Display, Formatter, Result};
 
+use itertools::{Itertools, Position};
 use ustr::Ustr;
 
 use crate::{
@@ -106,14 +107,14 @@ impl Display for FnTyPrinter<'_> {
         }
 
         f.write_str("(")?;
-        for (i, param) in self.params.iter().enumerate() {
+        for (pos, param) in self.params.iter().with_position() {
             if let Some(name) = param.name {
                 write!(f, "{name}: ")?;
             }
 
             write!(f, "{}", param.ty.display(self.db))?;
 
-            if i != self.params.len() - 1 {
+            if pos != Position::Last {
                 f.write_str(", ")?;
             }
         }
