@@ -18,7 +18,7 @@ pub fn ownck(db: &Db, hir: &mut Hir) {
                 for p in &fun.sig.params {
                     match &p.pat {
                         Pat::Name(name) => {
-                            cx.env.create_def_value(name.id, name.span());
+                            cx.env.insert(name.id, name.span());
                         }
                         Pat::Discard(_) => (),
                     }
@@ -65,8 +65,16 @@ impl<'db> Ownck<'db> {
             hir::ExprKind::Return(_) => todo!("move: return"),
             hir::ExprKind::Call(call) => {
                 self.expr(&call.callee);
-                call.args.iter().for_each(|arg| self.expr(&arg.expr));
-                self.env.create_expr_value(expr);
+                // TODO: mark callee as moved (needed for closures)
+                // self.env.mark_moved(call.callee.id);
+
+                for arg in &call.args {
+                    self.expr(&arg.expr);
+                    self.env.mark_moved(arg.expr.id);
+                }
+
+                // Create an owned value for the call's result
+                self.env.insert_expr(expr);
             }
             hir::ExprKind::Member(_) => todo!("move: member"),
             hir::ExprKind::Name(_) => {
@@ -76,7 +84,7 @@ impl<'db> Ownck<'db> {
             | hir::ExprKind::Binary(_)
             | hir::ExprKind::Cast(_)
             | hir::ExprKind::Lit(_) => {
-                self.env.create_expr_value(expr);
+                self.env.insert_expr(expr);
             }
         }
     }
@@ -128,18 +136,29 @@ impl Env {
         self.0.pop()
     }
 
-    fn create_expr_value(&mut self, expr: &hir::Expr) {
-        self.current_mut().values.insert(
-            hir::DestroyGlueItem::Expr(expr.id),
-            Value { state: ValueState::Owned, span: expr.span },
-        );
+    fn insert_expr(&mut self, expr: &hir::Expr) {
+        self.insert(expr.id, expr.span);
     }
 
-    fn create_def_value(&mut self, id: DefId, span: Span) {
-        self.current_mut().values.insert(
-            hir::DestroyGlueItem::Def(id),
-            Value { state: ValueState::Owned, span },
-        );
+    fn insert(&mut self, item: impl Into<hir::DestroyGlueItem>, span: Span) {
+        self.current_mut()
+            .values
+            .insert(item.into(), Value { state: ValueState::Owned, span });
+    }
+
+    fn lookup_mut(
+        &mut self,
+        item: impl Into<hir::DestroyGlueItem>,
+    ) -> Option<&mut Value> {
+        let key = item.into();
+        self.0.iter_mut().find_map(|s| s.values.get_mut(&key))
+    }
+
+    #[track_caller]
+    fn mark_moved(&mut self, item: impl Into<hir::DestroyGlueItem>) {
+        self.lookup_mut(item)
+            .expect("tried to mark a non existing value")
+            .state = ValueState::Moved;
     }
 
     fn current_mut(&mut self) -> &mut Scope {

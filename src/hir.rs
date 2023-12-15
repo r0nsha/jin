@@ -2,6 +2,7 @@ mod pretty_print;
 
 use std::io;
 
+use derive_more::From;
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
@@ -289,7 +290,7 @@ pub struct DestroyGlue {
     pub to_destroy: FxHashMap<DestroyBlockId, Vec<DestroyGlueItem>>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From)]
 pub enum DestroyGlueItem {
     Expr(ExprId),
     Def(DefId),
