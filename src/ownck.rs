@@ -120,7 +120,7 @@ impl<'db> Ownck<'db> {
     }
 
     fn block(&mut self, expr: &hir::Expr, block: &hir::Block) {
-        if expr.ty.is_unit() {
+        if expr.ty.is_unit() && self.env.current_block_id() != expr.id {
             self.env.insert_expr(expr);
         }
 
@@ -232,6 +232,7 @@ impl Env {
 
     fn insert(&mut self, item: impl Into<hir::DestroyGlueItem>, span: Span) {
         let item = item.into();
+        let current_block_id = self.current_block_id();
 
         if self.values.contains_key(&item) {
             assert!(
@@ -245,7 +246,7 @@ impl Env {
         self.values.insert(
             item,
             Value {
-                owning_block_id: self.current_block_id(),
+                owning_block_id: current_block_id,
                 state: ValueState::Owned,
                 span,
             },

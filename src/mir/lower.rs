@@ -610,8 +610,8 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
     // Generates Inst::Destroy for all expressions and definitions that need
     // to be destroyed in this expr's scope (usually block), in reverse
-    fn lower_destroy_glue(&mut self, expr_id: hir::ExprId) {
-        if let Some(items) = self.destroy_glue.to_destroy.get(&expr_id) {
+    fn lower_destroy_glue(&mut self, block_id: hir::BlockExprId) {
+        if let Some(items) = self.destroy_glue.to_destroy.get(&block_id) {
             for item in items.iter().rev() {
                 let value = match item {
                     hir::DestroyGlueItem::Expr(expr_id) => {
