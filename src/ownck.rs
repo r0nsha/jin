@@ -121,17 +121,18 @@ impl<'db> Ownck<'db> {
     }
 
     fn block(&mut self, expr: &hir::Expr, block: &hir::Block) {
+        if expr.ty.is_unit() {
+            self.env.insert_expr(expr);
+        }
+
         if block.exprs.is_empty() {
             return;
         }
 
         self.env.push_scope(expr.id);
 
-        for (pos, expr) in block.exprs.iter().with_position() {
+        for expr in &block.exprs {
             self.expr(expr);
-            if pos == Position::Last {
-                // TODO: mark moved if block ty isn't unit
-            }
         }
 
         let scope = self.env.pop_scope().unwrap();
@@ -160,13 +161,14 @@ impl<'db> Ownck<'db> {
             hir::ExprKind::Name(name) => {
                 self.try_mark_moved_inner(name.id, expr.span);
             }
-            hir::ExprKind::Block(block) => {
-                if let Some(last) = block.exprs.last() {
+            hir::ExprKind::Block(block) => match block.exprs.last() {
+                Some(last) if !expr.ty.is_unit() => {
                     self.try_mark_moved(last);
-                } else {
+                }
+                _ => {
                     self.try_mark_moved_inner(expr.id, expr.span);
                 }
-            }
+            },
             _ => self.try_mark_moved_inner(expr.id, expr.span),
         }
     }
