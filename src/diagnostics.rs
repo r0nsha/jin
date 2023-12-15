@@ -152,7 +152,10 @@ pub struct Diagnostics {
 
 impl Diagnostics {
     pub fn new(sources: Rc<RefCell<Sources>>) -> Self {
-        let config = codespan_reporting::term::Config::default();
+        let config = codespan_reporting::term::Config {
+            chars: codespan_reporting::term::Chars::ascii(),
+            ..Default::default()
+        };
         Self { sources, config, had_errors: false }
     }
 
