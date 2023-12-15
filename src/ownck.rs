@@ -3,12 +3,13 @@ use itertools::{Itertools, Position};
 
 use crate::{
     db::Db,
+    diagnostics::{Diagnostic, Label},
     hir::{self, Hir},
     middle::Pat,
     span::{Span, Spanned},
 };
 
-pub fn ownck(db: &Db, hir: &mut Hir) {
+pub fn ownck(db: &mut Db, hir: &mut Hir) {
     for (fn_id, fun) in hir.fns.iter_enumerated() {
         match &fun.kind {
             hir::FnKind::Bare { body } => {
@@ -42,22 +43,31 @@ pub fn ownck(db: &Db, hir: &mut Hir) {
 }
 
 struct Ownck<'db> {
-    _db: &'db Db,
+    db: &'db mut Db,
     destroy_glue: hir::DestroyGlue,
     env: Env,
 }
 
 impl<'db> Ownck<'db> {
-    fn new(db: &'db Db) -> Self {
-        Self { _db: db, destroy_glue: hir::DestroyGlue::new(), env: Env::new() }
+    fn new(db: &'db mut Db) -> Self {
+        Self { db, destroy_glue: hir::DestroyGlue::new(), env: Env::new() }
     }
 
     fn expr(&mut self, expr: &hir::Expr) {
-        // TODO: move unary expr
-        // TODO: move unary lhs & rhs
-        // TODO: move cast
         match &expr.kind {
-            hir::ExprKind::Let(_) => todo!("move: let"),
+            hir::ExprKind::Let(let_) => {
+                self.expr(&let_.value);
+
+                match &let_.pat {
+                    Pat::Name(name) => {
+                        // Create an owned value for the let's name
+                        self.env.insert(name.id, name.span());
+                    }
+                    Pat::Discard(_) => (),
+                }
+
+                self.try_mark_expr_moved(&let_.value);
+            }
             hir::ExprKind::Assign(_) => todo!("move: assign"),
             hir::ExprKind::If(_) => todo!("move: if cond"),
             hir::ExprKind::Loop(_) => todo!("move: loop"),
@@ -67,11 +77,11 @@ impl<'db> Ownck<'db> {
             hir::ExprKind::Call(call) => {
                 self.expr(&call.callee);
                 // TODO: mark callee as moved (needed for closures)
-                // self.env.mark_moved(call.callee.id);
+                // self.try_mark_expr_moved(&call.callee);
 
                 for arg in &call.args {
                     self.expr(&arg.expr);
-                    self.env.mark_moved(arg.expr.id);
+                    self.try_mark_expr_moved(&arg.expr);
                 }
 
                 // Create an owned value for the call's result
@@ -81,12 +91,19 @@ impl<'db> Ownck<'db> {
             hir::ExprKind::Name(_) => {
                 // TODO: move: name
             }
-            hir::ExprKind::Unary(_)
-            | hir::ExprKind::Binary(_)
-            | hir::ExprKind::Cast(_)
-            | hir::ExprKind::Lit(_) => {
-                self.env.insert_expr(expr);
+            hir::ExprKind::Unary(_) => {
+                // TODO: move unary expr
+                self.env.insert_expr(expr)
             }
+            hir::ExprKind::Binary(_) => {
+                // TODO: move binary lhs & rhs
+                self.env.insert_expr(expr)
+            }
+            hir::ExprKind::Cast(_) => {
+                // TODO: move cast
+                self.env.insert_expr(expr)
+            }
+            hir::ExprKind::Lit(_) => self.env.insert_expr(expr),
         }
     }
 
@@ -125,6 +142,45 @@ impl<'db> Ownck<'db> {
                     .map(|(item, _)| *item),
             );
     }
+
+    #[track_caller]
+    fn try_mark_expr_moved(&mut self, expr: &hir::Expr) {
+        self.try_mark_moved(expr.id, expr.span);
+    }
+
+    #[track_caller]
+    fn try_mark_moved(
+        &mut self,
+        item: impl Into<hir::DestroyGlueItem> + Copy,
+        moved_to: Span,
+    ) {
+        match self.env.mark_moved(item, moved_to) {
+            ValueState::Owned => (),
+            ValueState::Moved(already_moved_to) => {
+                let value_name = match item.into() {
+                    hir::DestroyGlueItem::Expr(_) => {
+                        "temporary value".to_string()
+                    }
+                    hir::DestroyGlueItem::Def(id) => {
+                        format!("value `{}`", self.db[id].name)
+                    }
+                };
+
+                self.db.diagnostics.emit(
+                    Diagnostic::error()
+                        .with_message(format!("use of moved {value_name}"))
+                        .with_label(Label::primary(moved_to).with_message(
+                            format!("{value_name} used here after being moved"),
+                        ))
+                        .with_label(
+                            Label::secondary(already_moved_to).with_message(
+                                format!("{value_name} already moved here"),
+                            ),
+                        ),
+                );
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -162,10 +218,21 @@ impl Env {
     }
 
     #[track_caller]
-    fn mark_moved(&mut self, item: impl Into<hir::DestroyGlueItem>) {
-        self.lookup_mut(item)
-            .expect("tried to mark a non existing value")
-            .state = ValueState::Moved;
+    fn mark_expr_moved(&mut self, expr: &hir::Expr) -> ValueState {
+        self.mark_moved(expr.id, expr.span)
+    }
+
+    #[track_caller]
+    fn mark_moved(
+        &mut self,
+        item: impl Into<hir::DestroyGlueItem>,
+        moved_to: Span,
+    ) -> ValueState {
+        let value =
+            self.lookup_mut(item).expect("tried to mark a non existing value");
+        let prev = value.state;
+        value.state = ValueState::Moved(moved_to);
+        prev
     }
 
     fn current_mut(&mut self) -> &mut Scope {
@@ -181,11 +248,11 @@ struct Scope {
 #[derive(Debug, Clone, Copy)]
 struct Value {
     state: ValueState,
-    span: Span,
+    span: Span, // TODO: remove?
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum ValueState {
     Owned,
-    Moved,
+    Moved(Span),
 }
