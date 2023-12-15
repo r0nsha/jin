@@ -12,22 +12,21 @@ pub fn ownck(db: &Db, hir: &mut Hir) {
         match &fun.kind {
             hir::FnKind::Bare { body } => {
                 let mut cx = Ownck::new(db);
-                let mut env = Env::new();
 
-                env.push_scope();
+                cx.env.push_scope();
 
                 for p in &fun.sig.params {
                     match &p.pat {
                         Pat::Name(name) => {
-                            env.create_def_value(name.id, name.span());
+                            cx.env.create_def_value(name.id, name.span());
                         }
                         Pat::Discard(_) => (),
                     }
                 }
 
-                cx.expr(&mut env, body);
+                cx.expr(body);
 
-                let scope = env.pop_scope().unwrap();
+                let scope = cx.env.pop_scope().unwrap();
                 cx.collect_destroy_ids_from_scope(body.id, &scope);
 
                 hir.fn_destroy_glues.insert(fn_id, cx.destroy_glue);
@@ -44,14 +43,15 @@ pub fn ownck(db: &Db, hir: &mut Hir) {
 struct Ownck<'db> {
     _db: &'db Db,
     destroy_glue: hir::DestroyGlue,
+    env: Env,
 }
 
 impl<'db> Ownck<'db> {
     fn new(db: &'db Db) -> Self {
-        Self { _db: db, destroy_glue: hir::DestroyGlue::new() }
+        Self { _db: db, destroy_glue: hir::DestroyGlue::new(), env: Env::new() }
     }
 
-    fn expr(&mut self, env: &mut Env, expr: &hir::Expr) {
+    fn expr(&mut self, expr: &hir::Expr) {
         // TODO: move unary expr
         // TODO: move unary lhs & rhs
         // TODO: move cast
@@ -61,12 +61,12 @@ impl<'db> Ownck<'db> {
             hir::ExprKind::If(_) => todo!("move: if cond"),
             hir::ExprKind::Loop(_) => todo!("move: loop"),
             hir::ExprKind::Break => (),
-            hir::ExprKind::Block(block) => self.block(env, expr, block),
+            hir::ExprKind::Block(block) => self.block(expr, block),
             hir::ExprKind::Return(_) => todo!("move: return"),
             hir::ExprKind::Call(call) => {
-                self.expr(env, &call.callee);
-                call.args.iter().for_each(|arg| self.expr(env, &arg.expr));
-                env.create_expr_value(expr);
+                self.expr(&call.callee);
+                call.args.iter().for_each(|arg| self.expr(&arg.expr));
+                self.env.create_expr_value(expr);
             }
             hir::ExprKind::Member(_) => todo!("move: member"),
             hir::ExprKind::Name(_) => {
@@ -76,20 +76,20 @@ impl<'db> Ownck<'db> {
             | hir::ExprKind::Binary(_)
             | hir::ExprKind::Cast(_)
             | hir::ExprKind::Lit(_) => {
-                env.create_expr_value(expr);
+                self.env.create_expr_value(expr);
             }
         }
     }
 
-    fn block(&mut self, env: &mut Env, expr: &hir::Expr, block: &hir::Block) {
+    fn block(&mut self, expr: &hir::Expr, block: &hir::Block) {
         if block.exprs.is_empty() {
             return;
         }
 
-        env.push_scope();
-        block.exprs.iter().for_each(|expr| self.expr(env, expr));
+        self.env.push_scope();
+        block.exprs.iter().for_each(|expr| self.expr(expr));
 
-        let scope = env.pop_scope().unwrap();
+        let scope = self.env.pop_scope().unwrap();
         self.collect_destroy_ids_from_scope(expr.id, &scope);
     }
 
