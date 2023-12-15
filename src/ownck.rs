@@ -211,12 +211,25 @@ impl Env {
     }
 
     fn insert(&mut self, item: impl Into<hir::DestroyGlueItem>, span: Span) {
-        let owning_block_id = self.current_block_id();
-        self.values.entry(item.into()).or_insert_with(|| Value {
-            owning_block_id,
-            state: ValueState::Owned,
-            span,
-        });
+        let item = item.into();
+
+        if self.values.contains_key(&item) {
+            assert!(
+                !matches!(item, hir::DestroyGlueItem::Expr(_)),
+                "inserting an Expr item twice doesn't make since"
+            );
+            return;
+        }
+
+        self.current_mut().items.insert(item);
+        self.values.insert(
+            item,
+            Value {
+                owning_block_id: self.current_block_id(),
+                state: ValueState::Owned,
+                span,
+            },
+        );
     }
 
     #[track_caller]
@@ -242,6 +255,10 @@ impl Env {
 
     fn current_block_id(&self) -> hir::BlockExprId {
         self.current().block_id
+    }
+
+    fn current_mut(&mut self) -> &mut Scope {
+        self.scopes.last_mut().unwrap()
     }
 }
 
