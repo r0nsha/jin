@@ -91,37 +91,35 @@ impl<'db> Generator<'db> {
     }
 
     pub fn codegen_main_fn(&self) -> D<'db> {
-        let global_init_order = self.get_global_init_order();
-
-        let global_inits: Vec<D> = global_init_order
-            .into_iter()
-            .map(|id| {
-                let glob = &self.mir.globals[id];
-                stmt(|| {
-                    assign(
-                        D::text(glob.name.as_str()),
-                        D::text(global_init_fn_name(glob))
-                            .append(D::text("()")),
-                    )
-                })
-            })
-            .collect();
-
         let main_fn_name = &self.mir.fn_sigs
             [self.mir.main_fn.expect("to have a main fn")]
         .name;
-        let call_entry_point =
-            stmt(|| D::text(main_fn_name.as_str()).append(D::text("()")));
+
+        let mut statements: Vec<D> = vec![];
+
+        // Global variable initialization
+        statements.extend(self.get_global_init_order().into_iter().map(|id| {
+            let glob = &self.mir.globals[id];
+            stmt(|| {
+                assign(
+                    D::text(glob.name.as_str()),
+                    D::text(global_init_fn_name(glob)).append(D::text("()")),
+                )
+            })
+        }));
+
+        // Call entry point
+        statements.push(stmt(|| {
+            D::text(main_fn_name.as_str()).append(D::text("()"))
+        }));
+
+        // return 0
+        statements.push(stmt(|| D::text("return 0")));
 
         D::text("int main() {")
             .append(
                 D::hardline()
-                    .append(D::intersperse(
-                        global_inits
-                            .into_iter()
-                            .chain(iter::once(call_entry_point)),
-                        D::hardline(),
-                    ))
+                    .append(D::intersperse(statements, D::hardline()))
                     .nest(NEST)
                     .group(),
             )
