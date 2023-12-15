@@ -70,7 +70,11 @@ impl<'db> Ownck<'db> {
 
                 self.try_mark_moved(&let_.value);
             }
-            hir::ExprKind::Assign(_) => todo!("move: assign"),
+            hir::ExprKind::Assign(assign) => {
+                self.expr(&assign.lhs);
+                self.expr(&assign.rhs);
+                self.try_mark_moved(&assign.rhs);
+            }
             hir::ExprKind::If(_) => todo!("move: if cond"),
             hir::ExprKind::Loop(_) => todo!("move: loop"),
             hir::ExprKind::Break => (),

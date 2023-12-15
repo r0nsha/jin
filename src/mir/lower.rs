@@ -434,6 +434,8 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     rhs
                 };
 
+                // The lhs needs to be dropped before it's assigned to
+                self.push_destroy_inst(lhs);
                 self.push_inst(Inst::Store { value: rhs, target: lhs });
 
                 self.const_unit()
@@ -623,9 +625,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     }
                 };
 
-                if self.value_needs_destroy(value) {
-                    self.push_inst(Inst::Destroy { value });
-                }
+                self.push_destroy_inst(value);
             }
         }
     }
@@ -758,6 +758,12 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         }
 
         coerced_value
+    }
+
+    fn push_destroy_inst(&mut self, value: ValueId) {
+        if self.value_needs_destroy(value) {
+            self.push_inst(Inst::Destroy { value });
+        }
     }
 
     fn value_needs_destroy(&self, value_id: ValueId) -> bool {
