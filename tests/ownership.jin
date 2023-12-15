@@ -5,9 +5,8 @@ type Num(inner: int)
 
 fn main() unit = {
 	let num = Num(1)
-	//if is_one(num) {
-	//}
-	num.print()
+	if is_one(num) {
+	}
 }
 
 fn print(num: Num) unit = {

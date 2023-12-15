@@ -75,8 +75,19 @@ impl<'db> Ownck<'db> {
                 self.expr(&assign.rhs);
                 self.try_mark_moved(&assign.rhs);
             }
-            hir::ExprKind::If(_) => todo!("move: if cond"),
-            hir::ExprKind::Loop(_) => todo!("move: loop"),
+            hir::ExprKind::If(if_) => {
+                self.expr(&if_.cond);
+                self.try_mark_moved(&if_.cond);
+                self.expr(&if_.then);
+                self.expr(&if_.otherwise);
+            }
+            hir::ExprKind::Loop(loop_) => {
+                if let Some(cond) = &loop_.cond {
+                    self.expr(cond);
+                    self.try_mark_moved(cond);
+                }
+                self.expr(&loop_.expr);
+            }
             hir::ExprKind::Break => (),
             hir::ExprKind::Block(block) => self.block(expr, block),
             hir::ExprKind::Return(ret) => {
