@@ -119,8 +119,8 @@ impl<'db> LowerCx<'db> {
     }
 
     fn lower_global_let(&mut self, let_: &hir::Let) -> Option<GlobalId> {
-        // TODO: pass in let_destroy_glue
-        LowerBodyCx::new(self, &hir::DestroyGlue::new()).lower_global_let(let_)
+        let destroy_glue = &self.hir.let_destroy_glues[&let_.id];
+        LowerBodyCx::new(self, destroy_glue).lower_global_let(let_)
     }
 
     fn monomorphize_fn(
