@@ -96,7 +96,11 @@ impl<'db> Ownck<'db> {
                 // Create an owned value for the call's result
                 self.env.insert_expr(expr);
             }
-            hir::ExprKind::Member(_) => todo!("move: member"),
+            hir::ExprKind::Member(access) => {
+                self.expr(&access.expr);
+                self.try_mark_moved_ex(&access.expr, expr.span);
+                self.env.insert_expr(expr);
+            }
             hir::ExprKind::Name(name) => {
                 self.env.insert(name.id, expr.span);
             }
@@ -160,19 +164,24 @@ impl<'db> Ownck<'db> {
 
     #[track_caller]
     fn try_mark_moved(&mut self, expr: &hir::Expr) {
+        self.try_mark_moved_ex(expr, expr.span);
+    }
+
+    #[track_caller]
+    fn try_mark_moved_ex(&mut self, expr: &hir::Expr, moved_to: Span) {
         match &expr.kind {
             hir::ExprKind::Name(name) => {
-                self.try_mark_moved_inner(name.id, expr.span);
+                self.try_mark_moved_inner(name.id, moved_to);
             }
             hir::ExprKind::Block(block) => match block.exprs.last() {
                 Some(last) if !expr.ty.is_unit() => {
                     self.try_mark_moved(last);
                 }
                 _ => {
-                    self.try_mark_moved_inner(expr.id, expr.span);
+                    self.try_mark_moved_inner(expr.id, moved_to);
                 }
             },
-            _ => self.try_mark_moved_inner(expr.id, expr.span),
+            _ => self.try_mark_moved_inner(expr.id, moved_to),
         }
     }
 
