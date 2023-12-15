@@ -246,7 +246,12 @@ impl Env {
             .expect("tried to mark a non existing value");
 
         value.owning_block_id = current_block_id;
-        std::mem::replace(&mut value.state, ValueState::Moved(moved_to))
+        match value.state {
+            ValueState::Owned => {
+                std::mem::replace(&mut value.state, ValueState::Moved(moved_to))
+            }
+            ValueState::Moved(_) => value.state,
+        }
     }
 
     fn current(&self) -> &Scope {

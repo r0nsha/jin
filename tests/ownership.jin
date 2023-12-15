@@ -4,9 +4,10 @@ type Wrapper(num: Num, other:int)
 type Num(inner: int)
 
 fn main() unit = {
-	let n = Num(1)
-	Wrapper(n, 2)
-	//Wrapper(Num(1), 2)
+	let x = 1
+	let y = x
+	let z = x
+	let z2 = x
 	//Num(1).print()
 }
 
