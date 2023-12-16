@@ -1,7 +1,7 @@
 mod errors;
 
 use indexmap::IndexSet;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
@@ -9,6 +9,7 @@ use crate::{
     hir::{self, Hir},
     middle::Pat,
     span::{Span, Spanned},
+    word::Word,
 };
 
 pub fn ownck(db: &mut Db, hir: &mut Hir) {
@@ -78,23 +79,23 @@ impl<'db> Ownck<'db> {
                     Pat::Discard(_) => (),
                 }
 
-                self.try_mark_moved(&let_.value);
+                self.try_move(&let_.value);
             }
             hir::ExprKind::Assign(assign) => {
                 self.place(&assign.lhs);
                 self.expr(&assign.rhs);
-                self.try_mark_moved(&assign.rhs);
+                self.try_move(&assign.rhs);
             }
             hir::ExprKind::If(if_) => {
                 self.expr(&if_.cond);
-                self.try_mark_moved(&if_.cond);
+                self.try_move(&if_.cond);
                 self.expr(&if_.then);
                 self.expr(&if_.otherwise);
             }
             hir::ExprKind::Loop(loop_) => {
                 if let Some(cond) = &loop_.cond {
                     self.expr(cond);
-                    self.try_mark_moved(cond);
+                    self.try_move(cond);
                 }
                 self.expr(&loop_.expr);
             }
@@ -102,7 +103,7 @@ impl<'db> Ownck<'db> {
             hir::ExprKind::Block(block) => self.block(expr, block),
             hir::ExprKind::Return(ret) => {
                 self.expr(&ret.expr);
-                self.try_mark_moved(&ret.expr);
+                self.try_move(&ret.expr);
             }
             hir::ExprKind::Call(call) => {
                 self.expr(&call.callee);
@@ -111,7 +112,7 @@ impl<'db> Ownck<'db> {
 
                 for arg in &call.args {
                     self.expr(&arg.expr);
-                    self.try_mark_moved(&arg.expr);
+                    self.try_move(&arg.expr);
                 }
 
                 // Create an owned value for the call's result
@@ -120,7 +121,7 @@ impl<'db> Ownck<'db> {
             hir::ExprKind::Member(access) => {
                 self.expr(&access.expr);
                 if kind != OwnckKind::Place {
-                    self.try_mark_moved_ex(&access.expr, expr.span);
+                    self.try_partial_move(&access.expr, access.member);
                 }
                 self.env.insert_expr(expr);
             }
@@ -129,21 +130,21 @@ impl<'db> Ownck<'db> {
             }
             hir::ExprKind::Unary(un) => {
                 self.expr(&un.expr);
-                self.try_mark_moved(&un.expr);
+                self.try_move(&un.expr);
                 self.env.insert_expr(expr);
             }
             hir::ExprKind::Binary(bin) => {
                 self.expr(&bin.lhs);
-                self.try_mark_moved(&bin.lhs);
+                self.try_move(&bin.lhs);
 
                 self.expr(&bin.rhs);
-                self.try_mark_moved(&bin.rhs);
+                self.try_move(&bin.rhs);
 
                 self.env.insert_expr(expr);
             }
             hir::ExprKind::Cast(cast) => {
                 self.expr(&cast.expr);
-                self.try_mark_moved(&cast.expr);
+                self.try_move(&cast.expr);
                 self.env.insert_expr(expr);
             }
             hir::ExprKind::Lit(_) => self.env.insert_expr(expr),
@@ -186,47 +187,55 @@ impl<'db> Ownck<'db> {
     }
 
     #[track_caller]
-    fn try_mark_moved(&mut self, expr: &hir::Expr) {
-        self.try_mark_moved_ex(expr, expr.span);
+    fn try_partial_move(&mut self, expr: &hir::Expr, member: Word) {
+        self.try_move_expr(expr, &MoveKind::PartialMove(member));
     }
 
     #[track_caller]
-    fn try_mark_moved_ex(&mut self, expr: &hir::Expr, moved_to: Span) {
+    fn try_move(&mut self, expr: &hir::Expr) {
+        self.try_move_expr(expr, &MoveKind::Move(expr.span));
+    }
+
+    #[track_caller]
+    fn try_move_expr(&mut self, expr: &hir::Expr, kind: &MoveKind) {
         match &expr.kind {
             hir::ExprKind::Name(name) => {
-                self.try_mark_moved_inner(name.id, moved_to);
+                self.try_move_inner(name.id, kind);
             }
             hir::ExprKind::Block(block) => match block.exprs.last() {
                 Some(last) if !expr.ty.is_unit() => {
-                    self.try_mark_moved(last);
+                    self.try_move_expr(last, kind);
                 }
                 _ => {
-                    self.try_mark_moved_inner(expr.id, moved_to);
+                    self.try_move_inner(expr.id, kind);
                 }
             },
-            _ => self.try_mark_moved_inner(expr.id, moved_to),
+            _ => self.try_move_inner(expr.id, kind),
         }
     }
 
     #[track_caller]
-    fn try_mark_moved_inner(
+    fn try_move_inner(
         &mut self,
         item: impl Into<hir::DestroyGlueItem> + Copy,
-        moved_to: Span,
+        kind: &MoveKind,
     ) {
-        match self.env.mark_moved(item, moved_to) {
-            ValueState::Owned => (),
-            ValueState::Moved(already_moved_to) => {
-                self.db.diagnostics.emit(errors::use_after_move(
-                    self.db,
-                    item.into(),
-                    moved_to,
-                    already_moved_to,
-                ));
-            }
-            ValueState::PartiallyMoved(moved_members, already_moved_to) => {
-                todo!()
-            }
+        match self.env.try_move(item, kind) {
+            Ok(()) => (),
+            Err(state) => match state {
+                ValueState::Owned => (),
+                ValueState::Moved(already_moved_to) => {
+                    self.db.diagnostics.emit(errors::use_after_move(
+                        self.db,
+                        item.into(),
+                        kind.moved_to(),
+                        *already_moved_to,
+                    ));
+                }
+                ValueState::PartiallyMoved(moved_members) => {
+                    todo!()
+                }
+            },
         }
     }
 }
@@ -278,11 +287,11 @@ impl Env {
     }
 
     #[track_caller]
-    fn mark_moved(
+    fn try_move(
         &mut self,
         item: impl Into<hir::DestroyGlueItem>,
-        moved_to: Span,
-    ) -> ValueState {
+        kind: &MoveKind,
+    ) -> Result<(), &ValueState> {
         let current_block_id = self.current_block_id();
 
         let value = self
@@ -291,12 +300,25 @@ impl Env {
             .expect("tried to mark a non existing value");
 
         value.owning_block_id = current_block_id;
+
         match value.state {
             ValueState::Owned => {
-                std::mem::replace(&mut value.state, ValueState::Moved(moved_to))
+                match kind {
+                    MoveKind::Move(moved_to) => {
+                        value.state = ValueState::Moved(*moved_to);
+                    }
+                    MoveKind::PartialMove(member) => {
+                        value.state =
+                            ValueState::PartiallyMoved(FxHashMap::from_iter([
+                                (member.name(), member.span()),
+                            ]));
+                    }
+                }
+
+                Ok(())
             }
-            ValueState::Moved(_) => value.state.clone(),
-            ValueState::PartiallyMoved(_, _) => todo!(),
+            ValueState::Moved(_) => Err(&value.state),
+            ValueState::PartiallyMoved(_) => todo!(),
         }
     }
 
@@ -327,10 +349,25 @@ struct Value {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+enum MoveKind {
+    Move(Span),
+    PartialMove(Word),
+}
+
+impl MoveKind {
+    fn moved_to(&self) -> Span {
+        match self {
+            MoveKind::Move(moved_to) => *moved_to,
+            MoveKind::PartialMove(member) => member.span(),
+        }
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum ValueState {
     Owned,
     Moved(Span),
-    PartiallyMoved(FxHashSet<Ustr>, Span),
+    PartiallyMoved(FxHashMap<Ustr, Span>),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
