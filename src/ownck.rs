@@ -1,9 +1,11 @@
+mod errors;
+
 use indexmap::IndexSet;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
+use ustr::Ustr;
 
 use crate::{
     db::Db,
-    diagnostics::{Diagnostic, Label},
     hir::{self, Hir},
     middle::Pat,
     span::{Span, Spanned},
@@ -215,27 +217,15 @@ impl<'db> Ownck<'db> {
         match self.env.mark_moved(item, moved_to) {
             ValueState::Owned => (),
             ValueState::Moved(already_moved_to) => {
-                let value_name = match item.into() {
-                    hir::DestroyGlueItem::Expr(_) => {
-                        "temporary value".to_string()
-                    }
-                    hir::DestroyGlueItem::Def(id) => {
-                        format!("value `{}`", self.db[id].name)
-                    }
-                };
-
-                self.db.diagnostics.emit(
-                    Diagnostic::error()
-                        .with_message(format!("use of moved {value_name}"))
-                        .with_label(Label::primary(moved_to).with_message(
-                            format!("{value_name} used here after being moved"),
-                        ))
-                        .with_label(
-                            Label::secondary(already_moved_to).with_message(
-                                format!("{value_name} already moved here"),
-                            ),
-                        ),
-                );
+                self.db.diagnostics.emit(errors::use_after_move(
+                    self.db,
+                    item.into(),
+                    moved_to,
+                    already_moved_to,
+                ));
+            }
+            ValueState::PartiallyMoved(moved_members, already_moved_to) => {
+                todo!()
             }
         }
     }
@@ -305,7 +295,8 @@ impl Env {
             ValueState::Owned => {
                 std::mem::replace(&mut value.state, ValueState::Moved(moved_to))
             }
-            ValueState::Moved(_) => value.state,
+            ValueState::Moved(_) => value.state.clone(),
+            ValueState::PartiallyMoved(_, _) => todo!(),
         }
     }
 
@@ -328,17 +319,18 @@ struct Scope {
     items: IndexSet<hir::DestroyGlueItem>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 struct Value {
     owning_block_id: hir::BlockExprId,
     state: ValueState,
     span: Span, // TODO: remove?
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum ValueState {
     Owned,
     Moved(Span),
+    PartiallyMoved(FxHashSet<Ustr>, Span),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
