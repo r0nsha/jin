@@ -382,6 +382,7 @@ struct Scope {
 struct Value {
     owning_block_id: hir::BlockExprId,
     state: ValueState,
+    #[allow(unused)]
     span: Span, // TODO: remove?
 }
 
@@ -391,6 +392,7 @@ enum MoveKind {
     PartialMove(Word),
 }
 
+#[allow(clippy::enum_variant_names)]
 #[derive(Debug, Clone)]
 enum MoveError {
     AlreadyMoved(Span),
