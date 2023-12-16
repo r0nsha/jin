@@ -222,20 +222,39 @@ impl<'db> Ownck<'db> {
     ) {
         match self.env.try_move(item, kind) {
             Ok(()) => (),
-            Err(state) => match state {
-                ValueState::Owned => (),
-                ValueState::Moved(already_moved_to) => {
-                    self.db.diagnostics.emit(errors::use_after_move(
-                        self.db,
-                        item.into(),
-                        kind.moved_to(),
-                        *already_moved_to,
-                    ));
-                }
-                ValueState::PartiallyMoved(moved_members) => {
-                    todo!()
-                }
-            },
+            Err(err) => {
+                let item = item.into();
+                let moved_to = kind.moved_to();
+
+                let diag = match err {
+                    MoveError::AlreadyMoved(already_moved_to) => {
+                        errors::already_moved(
+                            self.db,
+                            item,
+                            moved_to,
+                            already_moved_to,
+                        )
+                    }
+                    MoveError::AlreadyPartiallyMoved(already_moved_member) => {
+                        errors::already_partially_moved(
+                            self.db,
+                            item,
+                            moved_to,
+                            already_moved_member,
+                        )
+                    }
+                    MoveError::MoveAfterPartiallyMoved(already_moved_to) => {
+                        errors::move_after_partially_moved(
+                            self.db,
+                            item,
+                            moved_to,
+                            already_moved_to,
+                        )
+                    }
+                };
+
+                self.db.diagnostics.emit(diag);
+            }
         }
     }
 }
@@ -291,7 +310,7 @@ impl Env {
         &mut self,
         item: impl Into<hir::DestroyGlueItem>,
         kind: &MoveKind,
-    ) -> Result<(), &ValueState> {
+    ) -> Result<(), MoveError> {
         let current_block_id = self.current_block_id();
 
         let value = self
@@ -301,7 +320,7 @@ impl Env {
 
         value.owning_block_id = current_block_id;
 
-        match value.state {
+        match &mut value.state {
             ValueState::Owned => {
                 match kind {
                     MoveKind::Move(moved_to) => {
@@ -317,8 +336,26 @@ impl Env {
 
                 Ok(())
             }
-            ValueState::Moved(_) => Err(&value.state),
-            ValueState::PartiallyMoved(_) => todo!(),
+            ValueState::Moved(moved_to) => {
+                Err(MoveError::AlreadyMoved(*moved_to))
+            }
+            ValueState::PartiallyMoved(moved_members) => match kind {
+                MoveKind::Move(_) => Err(MoveError::MoveAfterPartiallyMoved(
+                    moved_members.values().copied().collect(),
+                )),
+                MoveKind::PartialMove(member) => {
+                    if let Some(moved_to) =
+                        moved_members.insert(member.name(), member.span())
+                    {
+                        Err(MoveError::AlreadyPartiallyMoved(Word::new(
+                            member.name(),
+                            moved_to,
+                        )))
+                    } else {
+                        Ok(())
+                    }
+                }
+            },
         }
     }
 
@@ -352,6 +389,13 @@ struct Value {
 enum MoveKind {
     Move(Span),
     PartialMove(Word),
+}
+
+#[derive(Debug, Clone)]
+enum MoveError {
+    AlreadyMoved(Span),
+    AlreadyPartiallyMoved(Word),
+    MoveAfterPartiallyMoved(Vec<Span>),
 }
 
 impl MoveKind {

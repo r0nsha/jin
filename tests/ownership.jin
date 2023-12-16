@@ -1,18 +1,11 @@
 fn extern printf(fmt: *u8, ..) i32
 
 type Wrapper(num: Num, other:int)
-type Num(inner: int, other: int)
+type Num(inner: int)
 
 fn main() unit = {
-	let mut num = Num(1, 2)
-	num.inner = 2
-	printf("inner = %d\n".ptr, num.inner)
-	printf("other = %d\n".ptr, num.other)
-
-	// Errors:
-	// printf("inner = %d\n".ptr, num.inner)
-	// printf("other = %d\n".ptr, num.other)
-	//num.print()
+	let num = Num(1)
+	num.print()
 }
 
 fn print(num: Num) unit = {
