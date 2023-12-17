@@ -67,18 +67,13 @@ impl<'db> Ownck<'db> {
     fn into_destroy_glue(self, env: &Env) -> hir::DestroyGlue {
         let mut glue = hir::DestroyGlue::new();
 
-        glue.to_destroy.extend(self.destroy_scopes.into_iter().map(|scope| {
-            (
-                scope.block_id,
-                scope
-                    .items
-                    .into_iter()
-                    .filter(|item| {
-                        env.values[item].should_destroy_in(scope.block_id)
-                    })
-                    .collect(),
-            )
-        }));
+        for scope in self.destroy_scopes {
+            glue.to_destroy.entry(scope.block_id).or_default().extend(
+                scope.items.into_iter().filter(|item| {
+                    env.values[item].should_destroy_in(scope.block_id)
+                }),
+            );
+        }
 
         glue
     }
