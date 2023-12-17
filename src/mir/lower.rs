@@ -614,8 +614,8 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     // to be destroyed in this expr's scope (usually block), in reverse
     fn lower_destroy_glue(&mut self, block_id: hir::BlockExprId) {
         if let Some(items) = self.destroy_glue.to_destroy.get(&block_id) {
-            for item in items.iter().rev() {
-                let value = match item {
+            for info in items.iter().rev() {
+                let value = match &info.item {
                     hir::DestroyGlueItem::Expr(expr_id) => {
                         self.expr_to_value[expr_id]
                     }

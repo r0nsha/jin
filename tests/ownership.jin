@@ -5,7 +5,7 @@ type Num(inner: int)
 fn main() unit = {
 	let n = Num(1)
 
-	if false {
+	if true {
 		let x = n
 	}
 }

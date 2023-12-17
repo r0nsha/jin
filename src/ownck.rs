@@ -68,8 +68,26 @@ impl<'db> Ownck<'db> {
 
         for scope in self.destroy_scopes {
             glue.to_destroy.entry(scope.block_id).or_default().extend(
-                scope.items.into_iter().filter(|item| {
-                    env.values[item].should_destroy_in(scope.block_id)
+                scope.items.into_iter().filter_map(|item| {
+                    let value = &env.values[&item];
+
+                    if value.owning_block_id != scope.block_id {
+                        return None;
+                    }
+
+                    match &value.state {
+                        ValueState::Owned => Some(hir::DestroyGlueInfo {
+                            item,
+                            is_conditional: false,
+                        }),
+                        ValueState::Moved(_, true) => {
+                            Some(hir::DestroyGlueInfo {
+                                item,
+                                is_conditional: true,
+                            })
+                        }
+                        _ => None,
+                    }
                 }),
             );
         }
@@ -418,20 +436,21 @@ impl Env {
             }
         }
 
-        {
-            let value = self.value(&item);
+        let current_block_id = self.current_block_id();
 
-            if let Some(loop_scope) =
-                self.is_value_moved_into_scope(value, ScopeKind::Loop)
-            {
-                return Err(MoveError::MoveIntoLoop {
-                    value_span: value.span,
-                    loop_span: loop_scope.span,
-                });
-            }
+        let value = self.value(&item);
+
+        if let Some(loop_scope) =
+            self.is_value_moved_into_scope(value, ScopeKind::Loop)
+        {
+            return Err(MoveError::MoveIntoLoop {
+                value_span: value.span,
+                loop_span: loop_scope.span,
+            });
         }
 
-        let current_block_id = self.current_block_id();
+        let is_conditional_move =
+            self.is_value_moved_into_scope(value, ScopeKind::Branch).is_some();
 
         let value = self.value_mut(&item);
 
@@ -439,8 +458,12 @@ impl Env {
             ValueState::Owned => {
                 match kind {
                     MoveKind::Move(moved_to) => {
-                        value.owning_block_id = current_block_id;
-                        value.state = ValueState::Moved(*moved_to);
+                        if !is_conditional_move {
+                            value.owning_block_id = current_block_id;
+                        }
+
+                        value.state =
+                            ValueState::Moved(*moved_to, is_conditional_move);
                     }
                     MoveKind::PartialMove(member) => {
                         value.state =
@@ -452,7 +475,7 @@ impl Env {
 
                 Ok(())
             }
-            ValueState::Moved(moved_to) => {
+            ValueState::Moved(moved_to, _) => {
                 Err(MoveError::AlreadyMoved(*moved_to))
             }
             ValueState::PartiallyMoved(moved_members) => match kind {
@@ -534,12 +557,6 @@ struct Value {
     span: Span,
 }
 
-impl Value {
-    fn should_destroy_in(&self, block_id: hir::BlockExprId) -> bool {
-        self.owning_block_id == block_id && !self.state.is_moved()
-    }
-}
-
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum ScopeKind {
     Block,
@@ -575,18 +592,8 @@ impl MoveKind {
 #[derive(Debug, PartialEq, Eq, Clone)]
 enum ValueState {
     Owned,
-    Moved(Span),
+    Moved(Span, bool),
     PartiallyMoved(FxHashMap<Ustr, Span>),
-}
-
-impl ValueState {
-    /// Returns `true` if the value state is [`Moved`].
-    ///
-    /// [`Moved`]: ValueState::Moved
-    #[must_use]
-    fn is_moved(&self) -> bool {
-        matches!(self, Self::Moved(..))
-    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
