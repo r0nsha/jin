@@ -3,10 +3,8 @@ fn extern printf(fmt: *u8, ..) i32
 type Wrapper(num: Num, other:int)
 type Num(inner: int)
 
-let n = 1
-
 fn main() unit = {
-	let num = Num(n)
+	let num = Num(1)
 	num.print()
 }
 
