@@ -7,7 +7,6 @@ let n = 1
 
 fn main() unit = {
 	let num = Num(n)
-	let x = n
 	num.print()
 }
 

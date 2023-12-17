@@ -1,5 +1,5 @@
 use crate::{
-    db::Db,
+    db::{Db, DefId},
     diagnostics::{Diagnostic, Label},
     hir,
     span::{Span, Spanned},
@@ -69,6 +69,17 @@ pub fn move_after_partially_moved(
                 "{short_name} already partially moved here"
             ))
         }))
+}
+
+pub fn move_global_item(db: &Db, id: DefId, moved_to: Span) -> Diagnostic {
+    Diagnostic::error()
+        .with_message(format!(
+            "cannot move out of global item `{}`",
+            db[id].qpath
+        ))
+        .with_label(
+            Label::primary(moved_to).with_message("global item moved here"),
+        )
 }
 
 fn get_item_names(db: &Db, item: hir::DestroyGlueItem) -> (String, String) {

@@ -5,7 +5,7 @@ use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
-    db::Db,
+    db::{Db, DefKind},
     hir::{self, Hir},
     middle::Pat,
     span::{Span, Spanned},
@@ -215,6 +215,19 @@ impl<'db> Ownck<'db> {
     }
 
     fn try_move_item(&mut self, item: hir::DestroyGlueItem, kind: &MoveKind) {
+        if let hir::DestroyGlueItem::Def(id) = item {
+            if let DefKind::Global | DefKind::ExternGlobal =
+                self.db[id].kind.as_ref()
+            {
+                self.db.diagnostics.emit(errors::move_global_item(
+                    self.db,
+                    id,
+                    kind.moved_to(),
+                ));
+                return;
+            }
+        }
+
         match self.env.try_move(item, kind) {
             Ok(()) => (),
             Err(err) => {
