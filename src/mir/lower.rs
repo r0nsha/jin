@@ -646,6 +646,8 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 }
             }
         }
+
+        // TODO: set destroy flags related to this block
     }
 
     fn lower_name(
@@ -804,12 +806,9 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     }
 
     fn push_unconditional_destroy(&mut self, value: ValueId) {
-        if !self.value_needs_destroy(value) {
-            return;
+        if self.value_needs_destroy(value) {
+            self.push_inst(Inst::Destroy { value });
         }
-
-        self.set_destroy_flag(value);
-        self.push_inst(Inst::Destroy { value });
     }
 
     fn value_needs_destroy(&self, value_id: ValueId) -> bool {
