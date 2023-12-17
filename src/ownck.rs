@@ -432,25 +432,7 @@ impl Env {
 
         let current_block_id = self.current_block_id();
 
-        // Check that the value isn't moved into a loop
-        {
-            let value = self
-                .values
-                .get(&item)
-                .expect("tried to mark a non existing value");
-
-            let current_scope = self.current();
-
-            if let ScopeKind::Loop = &current_scope.kind {
-                let value_scope = self.find_value_scope(value);
-                if value_scope.depth < current_scope.depth {
-                    return Err(MoveError::MoveIntoLoop {
-                        value_span: value.span,
-                        loop_span: current_scope.span,
-                    });
-                }
-            }
-        }
+        self.is_moved_into_loop(item)?;
 
         let value = self
             .values
@@ -495,6 +477,28 @@ impl Env {
                 }
             },
         }
+    }
+
+    fn is_moved_into_loop(
+        &self,
+        item: hir::DestroyGlueItem,
+    ) -> Result<(), MoveError> {
+        let value =
+            self.values.get(&item).expect("tried to mark a non existing value");
+
+        let current_scope = self.current();
+
+        if let ScopeKind::Loop = &current_scope.kind {
+            let value_scope = self.find_value_scope(value);
+            if value_scope.depth < current_scope.depth {
+                return Err(MoveError::MoveIntoLoop {
+                    value_span: value.span,
+                    loop_span: current_scope.span,
+                });
+            }
+        }
+
+        Ok(())
     }
 
     fn current(&self) -> &Scope {
