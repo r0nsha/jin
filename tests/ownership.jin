@@ -9,5 +9,4 @@ fn main() unit = {
 	} else {
 		let z = x
 	}
-	//let z = x
 }

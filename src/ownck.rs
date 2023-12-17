@@ -99,6 +99,9 @@ impl<'db> Ownck<'db> {
                 self.expr(&mut then_env, &if_.then);
 
                 self.expr(env, &if_.otherwise);
+
+                // After checking the separate envs, we merge them
+                // by extending the original env
                 env.extend(then_env);
             }
             hir::ExprKind::Loop(loop_) => {
