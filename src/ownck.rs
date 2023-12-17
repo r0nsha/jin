@@ -200,22 +200,22 @@ impl<'db> Ownck<'db> {
     fn try_move_expr(&mut self, expr: &hir::Expr, kind: &MoveKind) {
         match &expr.kind {
             hir::ExprKind::Name(name) => {
-                self.try_move_inner(name.id, kind);
+                self.try_move_item(name.id, kind);
             }
             hir::ExprKind::Block(block) => match block.exprs.last() {
                 Some(last) if !expr.ty.is_unit() => {
                     self.try_move_expr(last, kind);
                 }
                 _ => {
-                    self.try_move_inner(expr.id, kind);
+                    self.try_move_item(expr.id, kind);
                 }
             },
-            _ => self.try_move_inner(expr.id, kind),
+            _ => self.try_move_item(expr.id, kind),
         }
     }
 
     #[track_caller]
-    fn try_move_inner(
+    fn try_move_item(
         &mut self,
         item: impl Into<hir::DestroyGlueItem> + Copy,
         kind: &MoveKind,
