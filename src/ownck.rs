@@ -19,7 +19,7 @@ pub fn ownck(db: &mut Db, hir: &mut Hir) {
             hir::FnKind::Bare { body } => {
                 let mut cx = Ownck::new(db);
 
-                cx.env.push_scope(body.id, ScopeKind::Block);
+                cx.env.push_scope(body.id, ScopeKind::Block, body.span);
 
                 for p in &fun.sig.params {
                     match &p.pat {
@@ -174,7 +174,7 @@ impl<'db> Ownck<'db> {
             return;
         }
 
-        self.env.push_scope(expr.id, scope_kind);
+        self.env.push_scope(expr.id, scope_kind, expr.span);
 
         for expr in &block.exprs {
             self.expr(expr);
@@ -264,6 +264,15 @@ impl<'db> Ownck<'db> {
                 MoveError::MoveOutOfGlobal(id) => {
                     errors::move_global_item(self.db, id, kind.moved_to())
                 }
+                MoveError::MoveIntoLoop { value_span, loop_span } => {
+                    errors::move_into_loop(
+                        self.db,
+                        item,
+                        kind.moved_to(),
+                        value_span,
+                        loop_span,
+                    )
+                }
             }
         })
     }
@@ -280,8 +289,20 @@ impl Env {
         Self { values: FxHashMap::default(), scopes: vec![] }
     }
 
-    fn push_scope(&mut self, block_id: hir::BlockExprId, kind: ScopeKind) {
-        self.scopes.push(Scope { block_id, kind, items: IndexSet::default() });
+    fn push_scope(
+        &mut self,
+        block_id: hir::BlockExprId,
+        kind: ScopeKind,
+        span: Span,
+    ) {
+        let depth = self.scopes.len();
+        self.scopes.push(Scope {
+            block_id,
+            kind,
+            depth,
+            span,
+            items: IndexSet::default(),
+        });
     }
 
     fn pop_scope(&mut self) -> Option<Scope> {
@@ -331,13 +352,30 @@ impl Env {
 
         let current_block_id = self.current_block_id();
 
+        // Check that the value isn't moved into a loop
+        {
+            let value = self
+                .values
+                .get(&item)
+                .expect("tried to mark a non existing value");
+
+            let current_scope = self.current();
+
+            if let ScopeKind::Loop = &current_scope.kind {
+                let value_scope = self.find_value_scope(value);
+                if value_scope.depth < current_scope.depth {
+                    return Err(MoveError::MoveIntoLoop {
+                        value_span: value.span,
+                        loop_span: current_scope.span,
+                    });
+                }
+            }
+        }
+
         let value = self
             .values
             .get_mut(&item)
             .expect("tried to mark a non existing value");
-
-        // If current block is loop && defined outside current block -> error
-        // let value_scope = self.env.find_value_scope(value);
 
         value.owning_block_id = current_block_id;
 
@@ -404,6 +442,8 @@ impl Env {
 struct Scope {
     block_id: hir::BlockExprId,
     kind: ScopeKind,
+    depth: usize,
+    span: Span,
     items: IndexSet<hir::DestroyGlueItem>,
 }
 
@@ -411,8 +451,7 @@ struct Scope {
 struct Value {
     owning_block_id: hir::BlockExprId,
     state: ValueState,
-    #[allow(unused)]
-    span: Span, // TODO: remove?
+    span: Span,
 }
 
 impl Value {
@@ -440,6 +479,7 @@ enum MoveError {
     AlreadyPartiallyMoved(Word),
     MoveAfterPartiallyMoved(Vec<Span>),
     MoveOutOfGlobal(DefId),
+    MoveIntoLoop { value_span: Span, loop_span: Span },
 }
 
 impl MoveKind {

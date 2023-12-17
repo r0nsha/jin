@@ -82,6 +82,29 @@ pub fn move_global_item(db: &Db, id: DefId, moved_to: Span) -> Diagnostic {
         )
 }
 
+pub fn move_into_loop(
+    db: &Db,
+    item: hir::DestroyGlueItem,
+    moved_to: Span,
+    value_span: Span,
+    loop_span: Span,
+) -> Diagnostic {
+    let (name, short_name) = get_item_names(db, item);
+
+    Diagnostic::error()
+        .with_message(format!("use of moved {name}"))
+        .with_label(Label::primary(moved_to).with_message(format!(
+            "{short_name} moved here, in the previous loop iteration"
+        )))
+        .with_label(
+            Label::secondary(loop_span).with_message("inside this loop"),
+        )
+        .with_label(
+            Label::secondary(value_span)
+                .with_message(format!("{short_name} defined here")),
+        )
+}
+
 fn get_item_names(db: &Db, item: hir::DestroyGlueItem) -> (String, String) {
     let name = match item {
         hir::DestroyGlueItem::Expr(_) => "temporary value".to_string(),

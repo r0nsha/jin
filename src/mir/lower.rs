@@ -775,13 +775,4 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
             _ => false,
         }
     }
-
-    fn ty_needs_destroy(&self, ty: Ty) -> bool {
-        match ty.kind() {
-            TyKind::Struct(sid) => {
-                matches!(self.cx.db[*sid].kind, StructKind::Ref)
-            }
-            _ => false,
-        }
-    }
 }
