@@ -366,18 +366,8 @@ impl Env {
         span: Span,
         mut f: impl FnMut(&mut Self),
     ) -> Scope {
-        self.push_scope(block_id, kind, span);
-        f(self);
-        self.pop_scope().unwrap()
-    }
-
-    fn push_scope(
-        &mut self,
-        block_id: hir::BlockExprId,
-        kind: ScopeKind,
-        span: Span,
-    ) {
         let depth = self.scopes.len();
+
         self.scopes.push(Scope {
             block_id,
             kind,
@@ -385,11 +375,10 @@ impl Env {
             span,
             items: IndexSet::default(),
         });
-    }
 
-    #[must_use]
-    fn pop_scope(&mut self) -> Option<Scope> {
-        self.scopes.pop()
+        f(self);
+
+        self.scopes.pop().unwrap()
     }
 
     fn insert_expr(&mut self, expr: &hir::Expr) {

@@ -1,11 +1,8 @@
 fn extern printf(fmt: *u8, ..) i32
 
+type Wrapper(num: Num)
 type Num(inner: int)
 
 fn main() unit = {
-	let num = Num(1).add().add().add().add()
-	printf("Num(%d)\n".ptr, num.inner) // Should be 5
+	Wrapper(Num(1))
 }
-
-fn add(n: Num) Num =
-	Num(n.inner + 1)
