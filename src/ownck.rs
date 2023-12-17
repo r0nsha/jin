@@ -430,20 +430,20 @@ impl Env {
             }
         }
 
-        let current_block_id = self.current_block_id();
-
-        let value = self.value(&item);
-
-        if let Some(loop_scope) =
-            self.is_value_moved_into_scope(value, ScopeKind::Loop)
         {
-            return Err(MoveError::MoveIntoLoop {
-                value_span: value.span,
-                loop_span: loop_scope.span,
-            });
+            let value = self.value(&item);
+
+            if let Some(loop_scope) =
+                self.is_value_moved_into_scope(value, ScopeKind::Loop)
+            {
+                return Err(MoveError::MoveIntoLoop {
+                    value_span: value.span,
+                    loop_span: loop_scope.span,
+                });
+            }
         }
 
-        self.is_moved_into_loop(item)?;
+        let current_block_id = self.current_block_id();
 
         let value = self.value_mut(&item);
 
@@ -485,27 +485,6 @@ impl Env {
                 }
             },
         }
-    }
-
-    fn is_moved_into_loop(
-        &self,
-        item: hir::DestroyGlueItem,
-    ) -> Result<(), MoveError> {
-        let value = self.value(&item);
-        let value_scope_depth = self.find_value_scope(value).depth;
-
-        let Some(loop_scope) =
-            self.scopes.iter().rev().find(|s| {
-                s.kind == ScopeKind::Loop && s.depth > value_scope_depth
-            })
-        else {
-            return Ok(());
-        };
-
-        Err(MoveError::MoveIntoLoop {
-            value_span: value.span,
-            loop_span: loop_scope.span,
-        })
     }
 
     fn is_value_moved_into_scope(
