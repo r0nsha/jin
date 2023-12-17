@@ -32,7 +32,7 @@ pub fn ownck(db: &mut Db, hir: &mut Hir) {
                             }
                         }
 
-                        cx.block(env, body, body.kind.as_block().unwrap());
+                        cx.block(env, body);
                         cx.try_move(env, body);
                     });
 
@@ -113,9 +113,13 @@ impl<'db> Ownck<'db> {
                 // ownership can be moved into each of the branches without
                 // colliding with each other
                 let mut then_env = env.clone();
-                self.expr(&mut then_env, &if_.then);
+                self.block_with_scope(
+                    &mut then_env,
+                    &if_.then,
+                    ScopeKind::Branch,
+                );
 
-                self.expr(env, &if_.otherwise);
+                self.block_with_scope(env, &if_.otherwise, ScopeKind::Branch);
 
                 // After checking the separate envs, we merge them
                 // by extending the original env
@@ -127,16 +131,11 @@ impl<'db> Ownck<'db> {
                     self.try_move(env, cond);
                 }
 
-                self.block_with_scope(
-                    env,
-                    &loop_.expr,
-                    loop_.expr.kind.as_block().unwrap(),
-                    ScopeKind::Loop,
-                );
+                self.block_with_scope(env, &loop_.expr, ScopeKind::Loop);
             }
             hir::ExprKind::Break => (),
-            hir::ExprKind::Block(block) => {
-                self.block_with_scope(env, expr, block, ScopeKind::Block);
+            hir::ExprKind::Block(_) => {
+                self.block_with_scope(env, expr, ScopeKind::Block);
             }
             hir::ExprKind::Return(ret) => {
                 self.expr(env, &ret.expr);
@@ -193,10 +192,23 @@ impl<'db> Ownck<'db> {
         }
     }
 
-    fn block(&mut self, env: &mut Env, expr: &hir::Expr, block: &hir::Block) {
+    fn block_with_scope(
+        &mut self,
+        env: &mut Env,
+        expr: &hir::Expr,
+        scope_kind: ScopeKind,
+    ) {
+        let scope = env
+            .with(expr.id, scope_kind, expr.span, |env| self.block(env, expr));
+        self.destroy_scopes.push(scope);
+    }
+
+    fn block(&mut self, env: &mut Env, expr: &hir::Expr) {
         if expr.ty.is_unit() && env.current_block_id() != expr.id {
             env.insert_expr(expr);
         }
+
+        let block = expr.kind.as_block().unwrap();
 
         if block.exprs.is_empty() {
             return;
@@ -205,19 +217,6 @@ impl<'db> Ownck<'db> {
         for expr in &block.exprs {
             self.expr(env, expr);
         }
-    }
-
-    fn block_with_scope(
-        &mut self,
-        env: &mut Env,
-        expr: &hir::Expr,
-        block: &hir::Block,
-        scope_kind: ScopeKind,
-    ) {
-        let scope = env.with(expr.id, scope_kind, expr.span, |env| {
-            self.block(env, expr, block);
-        });
-        self.destroy_scopes.push(scope);
     }
 
     fn try_partial_move(
