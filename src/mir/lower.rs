@@ -448,8 +448,8 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     rhs
                 };
 
-                // The lhs needs to be dropped before it's assigned to
-                self.push_destroy_inst(lhs);
+                // The lhs needs to be destroyed before it's assigned to
+                self.push_unconditional_destroy(lhs);
                 self.push_inst(Inst::Store { value: rhs, target: lhs });
 
                 self.const_unit()
@@ -639,24 +639,10 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     }
                 };
 
-                if let Some(destroy_flag) = self.destroy_flags.get(&item) {
-                    // Conditional destroy
-                    let destroy_blk = self.body.create_block("destroy");
-                    let merge_blk = self.body.create_block("destroy_merge");
-
-                    self.push_inst(Inst::BrIf {
-                        cond: *destroy_flag,
-                        then: destroy_blk,
-                        otherwise: Some(merge_blk),
-                    });
-
-                    self.position_at(destroy_blk);
-                    self.push_destroy_inst(value);
-
-                    self.position_at(merge_blk);
+                if let Some(destroy_flag) = self.destroy_flags.get(item) {
+                    self.push_conditional_destroy(value, *destroy_flag);
                 } else {
-                    // Unconditional destroy
-                    self.push_destroy_inst(value);
+                    self.push_unconditional_destroy(value);
                 }
             }
         }
@@ -696,7 +682,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 self.body
                     .create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
             }
-            DefKind::Ty(_) => todo!("{:?}", &self.cx.db[id]),
+            DefKind::Ty(_) => unreachable!("{:?}", &self.cx.db[id]),
         }
     }
 
@@ -792,6 +778,48 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         coerced_value
     }
 
+    fn push_conditional_destroy(
+        &mut self,
+        value: ValueId,
+        destroy_flag: ValueId,
+    ) {
+        if !self.value_needs_destroy(value) {
+            return;
+        }
+
+        // Conditional destroy
+        let destroy_blk = self.body.create_block("destroy");
+        let merge_blk = self.body.create_block("no_destroy");
+
+        self.push_inst(Inst::BrIf {
+            cond: destroy_flag,
+            then: destroy_blk,
+            otherwise: Some(merge_blk),
+        });
+
+        self.position_at(destroy_blk);
+        self.push_inst(Inst::Destroy { value });
+
+        self.position_at(merge_blk);
+    }
+
+    fn push_unconditional_destroy(&mut self, value: ValueId) {
+        if !self.value_needs_destroy(value) {
+            return;
+        }
+
+        self.set_destroy_flag(value);
+        self.push_inst(Inst::Destroy { value });
+    }
+
+    fn value_needs_destroy(&self, value_id: ValueId) -> bool {
+        let value = self.body.value(value_id);
+        match value.ty.kind() {
+            TyKind::Struct(sid) => self.cx.db[*sid].kind.is_ref(),
+            _ => false,
+        }
+    }
+
     fn push_destroy_flag(&mut self, item: hir::DestroyGlueItem) {
         if !self.destroy_glue.needs_destroy_flag.contains(&item) {
             return;
@@ -810,17 +838,24 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         self.destroy_flags.insert(item, value);
     }
 
-    fn push_destroy_inst(&mut self, value: ValueId) {
-        if self.value_needs_destroy(value) {
-            self.push_inst(Inst::Destroy { value });
-        }
-    }
+    fn set_destroy_flag(&mut self, value: ValueId) {
+        let value = self.body.value(value);
 
-    fn value_needs_destroy(&self, value_id: ValueId) -> bool {
-        let value = self.body.value(value_id);
-        match value.ty.kind() {
-            TyKind::Struct(sid) => self.cx.db[*sid].kind.is_ref(),
-            _ => false,
+        let item = match value.kind {
+            ValueKind::Local(id) => hir::DestroyGlueItem::Def(id),
+            _ => return, // It doesn't make since for non-def values to have a destroy flag
+        };
+
+        if !self.destroy_glue.needs_destroy_flag.contains(&item) {
+            return;
         }
+
+        let false_lit = self.body.create_value(
+            self.cx.db.types.bool,
+            ValueKind::Const(Const::Bool(false)),
+        );
+
+        let destroy_flag = self.destroy_flags[&item];
+        self.push_inst(Inst::Store { value: false_lit, target: destroy_flag });
     }
 }
