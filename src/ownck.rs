@@ -213,13 +213,14 @@ impl<'db> Ownck<'db> {
 
     fn try_move_item(
         &mut self,
-        item: impl Into<hir::DestroyGlueItem> + Copy,
+        item: impl Into<hir::DestroyGlueItem>,
         kind: &MoveKind,
     ) {
+        let item = item.into();
+
         match self.env.try_move(item, kind) {
             Ok(()) => (),
             Err(err) => {
-                let item = item.into();
                 let moved_to = kind.moved_to();
 
                 let diag = match err {
@@ -303,14 +304,14 @@ impl Env {
 
     fn try_move(
         &mut self,
-        item: impl Into<hir::DestroyGlueItem>,
+        item: hir::DestroyGlueItem,
         kind: &MoveKind,
     ) -> Result<(), MoveError> {
         let current_block_id = self.current_block_id();
 
         let value = self
             .values
-            .get_mut(&item.into())
+            .get_mut(&item)
             .expect("tried to mark a non existing value");
 
         value.owning_block_id = current_block_id;
