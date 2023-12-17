@@ -5,22 +5,24 @@ use crate::{cgen::generate::Generator, mir::Block, span::Span};
 
 impl<'db> Generator<'db> {
     pub fn panic_if(&self, cond: D<'db>, msg: &str, span: Span) -> D<'db> {
-        let then = {
-            let sources = self.db.sources.borrow();
-            let source = sources.get(span.source_id()).unwrap();
+        let then = stmt(|| {
+            call_panic(format!(
+                "panic at {}:\\n{}",
+                self.get_location_info(span),
+                msg
+            ))
+        });
 
-            let path = source.path();
-            let Location { line_number, column_number } = source
-                .location(span.source_id(), span.start() as usize)
-                .unwrap();
-
-            stmt(|| {
-                call_panic(format!(
-                    "panic at {path}:{line_number}:{column_number}:\\n{msg}"
-                ))
-            })
-        };
         if_stmt(cond, then, None)
+    }
+
+    fn get_location_info(&self, span: Span) -> String {
+        let sources = self.db.sources.borrow();
+        let source = sources.get(span.source_id()).unwrap();
+        let path = source.path();
+        let Location { line_number, column_number } =
+            source.location(span.source_id(), span.start() as usize).unwrap();
+        format!("{path}:{line_number}:{column_number}")
     }
 }
 
