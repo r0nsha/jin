@@ -32,12 +32,16 @@ pub fn ownck(db: &mut Db, hir: &mut Hir) {
                             }
                         }
 
-                        cx.expr(env, body);
+                        let body_block = body
+                            .kind
+                            .as_block()
+                            .expect("fn body must be a block");
+
+                        cx.block(env, body, body_block);
                         cx.try_move(env, body);
                     });
 
                 cx.destroy_scopes.push(scope);
-
                 hir.fn_destroy_glues.insert(fun.id, cx.into_destroy_glue(&env));
             }
             hir::FnKind::Extern { .. } => (),
@@ -134,11 +138,16 @@ impl<'db> Ownck<'db> {
                     .as_block()
                     .expect("loop expr must be a block");
 
-                self.block(env, &loop_.expr, loop_block, ScopeKind::Loop);
+                self.block_with_scope(
+                    env,
+                    &loop_.expr,
+                    loop_block,
+                    ScopeKind::Loop,
+                );
             }
             hir::ExprKind::Break => (),
             hir::ExprKind::Block(block) => {
-                self.block(env, expr, block, ScopeKind::Block);
+                self.block_with_scope(env, expr, block, ScopeKind::Block);
             }
             hir::ExprKind::Return(ret) => {
                 self.expr(env, &ret.expr);
@@ -195,13 +204,7 @@ impl<'db> Ownck<'db> {
         }
     }
 
-    fn block(
-        &mut self,
-        env: &mut Env,
-        expr: &hir::Expr,
-        block: &hir::Block,
-        scope_kind: ScopeKind,
-    ) {
+    fn block(&mut self, env: &mut Env, expr: &hir::Expr, block: &hir::Block) {
         if expr.ty.is_unit() && env.current_block_id() != expr.id {
             env.insert_expr(expr);
         }
@@ -210,12 +213,21 @@ impl<'db> Ownck<'db> {
             return;
         }
 
-        let scope = env.with(expr.id, scope_kind, expr.span, |env| {
-            for expr in &block.exprs {
-                self.expr(env, expr);
-            }
-        });
+        for expr in &block.exprs {
+            self.expr(env, expr);
+        }
+    }
 
+    fn block_with_scope(
+        &mut self,
+        env: &mut Env,
+        expr: &hir::Expr,
+        block: &hir::Block,
+        scope_kind: ScopeKind,
+    ) {
+        let scope = env.with(expr.id, scope_kind, expr.span, |env| {
+            self.block(env, expr, block);
+        });
         self.destroy_scopes.push(scope);
     }
 
@@ -360,12 +372,10 @@ impl Env {
         span: Span,
         mut f: impl FnMut(&mut Self),
     ) -> Scope {
-        let depth = self.scopes.len();
-
         self.scopes.push(Scope {
             block_id,
             kind,
-            depth,
+            depth: self.scopes.len(),
             span,
             items: IndexSet::default(),
         });
