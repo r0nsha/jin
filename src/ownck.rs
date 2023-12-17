@@ -19,22 +19,23 @@ pub fn ownck(db: &mut Db, hir: &mut Hir) {
         match &fun.kind {
             hir::FnKind::Bare { body } => {
                 let mut cx = Ownck::new(db);
+                let mut env = Env::new();
 
-                cx.env.push_scope(body.id, ScopeKind::Block, body.span);
+                env.push_scope(body.id, ScopeKind::Block, body.span);
 
                 for p in &fun.sig.params {
                     match &p.pat {
                         Pat::Name(name) => {
-                            cx.env.insert(name.id, name.span());
+                            env.insert(name.id, name.span());
                         }
                         Pat::Discard(_) => (),
                     }
                 }
 
-                cx.expr(body);
+                cx.expr(&mut env, body);
 
-                let scope = cx.env.pop_scope().unwrap();
-                cx.collect_destroy_ids_from_scope(&scope);
+                let scope = env.pop_scope().unwrap();
+                cx.collect_destroy_ids_from_scope(&env, &scope);
 
                 hir.fn_destroy_glues.insert(fun.id, cx.destroy_glue);
             }
@@ -44,7 +45,7 @@ pub fn ownck(db: &mut Db, hir: &mut Hir) {
 
     for let_ in &hir.lets {
         let mut cx = Ownck::new(db);
-        cx.expr(&let_.value);
+        cx.expr(&mut Env::new(), &let_.value);
         hir.let_destroy_glues.insert(let_.id, cx.destroy_glue);
     }
 }
@@ -52,52 +53,51 @@ pub fn ownck(db: &mut Db, hir: &mut Hir) {
 struct Ownck<'db> {
     db: &'db mut Db,
     destroy_glue: hir::DestroyGlue,
-    env: Env,
 }
 
 impl<'db> Ownck<'db> {
     fn new(db: &'db mut Db) -> Self {
-        Self { db, destroy_glue: hir::DestroyGlue::new(), env: Env::new() }
+        Self { db, destroy_glue: hir::DestroyGlue::new() }
     }
 
-    fn expr(&mut self, expr: &hir::Expr) {
-        self.expr_inner(expr, OwnckKind::Value);
+    fn expr(&mut self, env: &mut Env, expr: &hir::Expr) {
+        self.expr_inner(env, expr, OwnckKind::Value);
     }
 
-    fn place(&mut self, expr: &hir::Expr) {
-        self.expr_inner(expr, OwnckKind::Place);
+    fn place(&mut self, env: &mut Env, expr: &hir::Expr) {
+        self.expr_inner(env, expr, OwnckKind::Place);
     }
 
-    fn expr_inner(&mut self, expr: &hir::Expr, kind: OwnckKind) {
+    fn expr_inner(&mut self, env: &mut Env, expr: &hir::Expr, kind: OwnckKind) {
         match &expr.kind {
             hir::ExprKind::Let(let_) => {
-                self.expr(&let_.value);
+                self.expr(env, &let_.value);
 
                 match &let_.pat {
                     Pat::Name(name) => {
                         // Create an owned value for the let's name
-                        self.env.insert(name.id, name.span());
+                        env.insert(name.id, name.span());
                     }
                     Pat::Discard(_) => (),
                 }
 
-                self.try_move(&let_.value);
+                self.try_move(env, &let_.value);
             }
             hir::ExprKind::Assign(assign) => {
-                self.place(&assign.lhs);
-                self.expr(&assign.rhs);
-                self.try_move(&assign.rhs);
+                self.place(env, &assign.lhs);
+                self.expr(env, &assign.rhs);
+                self.try_move(env, &assign.rhs);
             }
             hir::ExprKind::If(if_) => {
-                self.expr(&if_.cond);
-                self.try_move(&if_.cond);
-                self.expr(&if_.then);
-                self.expr(&if_.otherwise);
+                self.expr(env, &if_.cond);
+                self.try_move(env, &if_.cond);
+                self.expr(env, &if_.then);
+                self.expr(env, &if_.otherwise);
             }
             hir::ExprKind::Loop(loop_) => {
                 if let Some(cond) = &loop_.cond {
-                    self.expr(cond);
-                    self.try_move(cond);
+                    self.expr(env, cond);
+                    self.try_move(env, cond);
                 }
 
                 let loop_block = loop_
@@ -105,96 +105,104 @@ impl<'db> Ownck<'db> {
                     .kind
                     .as_block()
                     .expect("loop expr must be a block");
-                self.block(&loop_.expr, loop_block, ScopeKind::Loop);
+
+                self.block(env, &loop_.expr, loop_block, ScopeKind::Loop);
             }
             hir::ExprKind::Break => (),
             hir::ExprKind::Block(block) => {
-                self.block(expr, block, ScopeKind::Block);
+                self.block(env, expr, block, ScopeKind::Block);
             }
             hir::ExprKind::Return(ret) => {
-                self.expr(&ret.expr);
-                self.try_move(&ret.expr);
+                self.expr(env, &ret.expr);
+                self.try_move(env, &ret.expr);
             }
             hir::ExprKind::Call(call) => {
-                self.expr(&call.callee);
+                self.expr(env, &call.callee);
                 // TODO: mark callee as moved (needed for closures)
                 // self.try_mark_expr_moved(&call.callee);
 
                 for arg in &call.args {
-                    self.expr(&arg.expr);
-                    self.try_move(&arg.expr);
+                    self.expr(env, &arg.expr);
+                    self.try_move(env, &arg.expr);
                 }
 
                 // Create an owned value for the call's result
-                self.env.insert_expr(expr);
+                env.insert_expr(expr);
             }
             hir::ExprKind::Member(access) => {
-                self.expr(&access.expr);
+                self.expr(env, &access.expr);
                 if kind != OwnckKind::Place {
-                    self.try_partial_move(&access.expr, access.member, expr.ty);
+                    self.try_partial_move(
+                        env,
+                        &access.expr,
+                        access.member,
+                        expr.ty,
+                    );
                 }
-                self.env.insert_expr(expr);
+                env.insert_expr(expr);
             }
             hir::ExprKind::Name(name) => {
-                self.env.insert(name.id, expr.span);
+                env.insert(name.id, expr.span);
             }
             hir::ExprKind::Unary(un) => {
-                self.expr(&un.expr);
-                self.try_move(&un.expr);
-                self.env.insert_expr(expr);
+                self.expr(env, &un.expr);
+                self.try_move(env, &un.expr);
+                env.insert_expr(expr);
             }
             hir::ExprKind::Binary(bin) => {
-                self.expr(&bin.lhs);
-                self.try_move(&bin.lhs);
+                self.expr(env, &bin.lhs);
+                self.try_move(env, &bin.lhs);
 
-                self.expr(&bin.rhs);
-                self.try_move(&bin.rhs);
+                self.expr(env, &bin.rhs);
+                self.try_move(env, &bin.rhs);
 
-                self.env.insert_expr(expr);
+                env.insert_expr(expr);
             }
             hir::ExprKind::Cast(cast) => {
-                self.expr(&cast.expr);
-                self.try_move(&cast.expr);
-                self.env.insert_expr(expr);
+                self.expr(env, &cast.expr);
+                self.try_move(env, &cast.expr);
+                env.insert_expr(expr);
             }
-            hir::ExprKind::Lit(_) => self.env.insert_expr(expr),
+            hir::ExprKind::Lit(_) => env.insert_expr(expr),
         }
     }
 
     fn block(
         &mut self,
+        env: &mut Env,
         expr: &hir::Expr,
         block: &hir::Block,
         scope_kind: ScopeKind,
     ) {
-        if expr.ty.is_unit() && self.env.current_block_id() != expr.id {
-            self.env.insert_expr(expr);
+        if expr.ty.is_unit() && env.current_block_id() != expr.id {
+            env.insert_expr(expr);
         }
 
         if block.exprs.is_empty() {
             return;
         }
 
-        self.env.push_scope(expr.id, scope_kind, expr.span);
+        env.push_scope(expr.id, scope_kind, expr.span);
 
         for expr in &block.exprs {
-            self.expr(expr);
+            self.expr(env, expr);
         }
 
-        let scope = self.env.pop_scope().unwrap();
-        self.collect_destroy_ids_from_scope(&scope);
+        let scope = env.pop_scope().unwrap();
+        self.collect_destroy_ids_from_scope(env, &scope);
     }
 
-    fn collect_destroy_ids_from_scope(&mut self, scope: &Scope) {
+    fn collect_destroy_ids_from_scope(&mut self, env: &Env, scope: &Scope) {
         self.destroy_glue.to_destroy.entry(scope.block_id).or_default().extend(
             scope.items.iter().filter(|item| {
-                self.env.values[*item].should_destroy_in(scope.block_id)
+                env.values[*item].should_destroy_in(scope.block_id)
             }),
         );
     }
 
     fn try_partial_move(
         &mut self,
+        env: &mut Env,
         expr: &hir::Expr,
         member: Word,
         member_ty: Ty,
@@ -204,15 +212,15 @@ impl<'db> Ownck<'db> {
         }
 
         if let Err(diagnostic) =
-            self.try_move_expr(expr, &MoveKind::PartialMove(member))
+            self.try_move_expr(env, expr, &MoveKind::PartialMove(member))
         {
             self.db.diagnostics.emit(diagnostic);
         }
     }
 
-    fn try_move(&mut self, expr: &hir::Expr) {
+    fn try_move(&mut self, env: &mut Env, expr: &hir::Expr) {
         if let Err(diagnostic) =
-            self.try_move_expr(expr, &MoveKind::Move(expr.span))
+            self.try_move_expr(env, expr, &MoveKind::Move(expr.span))
         {
             self.db.diagnostics.emit(diagnostic);
         }
@@ -220,26 +228,30 @@ impl<'db> Ownck<'db> {
 
     fn try_move_expr(
         &mut self,
+        env: &mut Env,
         expr: &hir::Expr,
         kind: &MoveKind,
     ) -> Result<(), Diagnostic> {
         match &expr.kind {
             hir::ExprKind::Name(name) => self.try_move_item(
+                env,
                 hir::DestroyGlueItem::Def(name.id),
                 kind,
                 expr.ty,
             ),
             hir::ExprKind::Block(block) => match block.exprs.last() {
                 Some(last) if !expr.ty.is_unit() => {
-                    self.try_move_expr(last, kind)
+                    self.try_move_expr(env, last, kind)
                 }
                 _ => self.try_move_item(
+                    env,
                     hir::DestroyGlueItem::Expr(expr.id),
                     kind,
                     expr.ty,
                 ),
             },
             _ => self.try_move_item(
+                env,
                 hir::DestroyGlueItem::Expr(expr.id),
                 kind,
                 expr.ty,
@@ -249,6 +261,7 @@ impl<'db> Ownck<'db> {
 
     fn try_move_item(
         &mut self,
+        env: &mut Env,
         item: hir::DestroyGlueItem,
         kind: &MoveKind,
         ty: Ty,
@@ -257,7 +270,7 @@ impl<'db> Ownck<'db> {
             return Ok(());
         }
 
-        self.env.try_move(self.db, item, kind).map_err(|err| {
+        env.try_move(self.db, item, kind).map_err(|err| {
             let moved_to = kind.moved_to();
 
             match err {
