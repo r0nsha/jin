@@ -1,9 +1,9 @@
 fn extern printf(fmt: *u8, ..) i32
 
-type Num()
+type Num(inner: int)
 
 fn main() unit = {
-	let n = Num()
+	let n = Num(1)
 
 	if false {
 		let x = n
