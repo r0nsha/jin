@@ -131,7 +131,7 @@ impl<'db> Ownck<'db> {
             hir::ExprKind::Member(access) => {
                 self.expr(&access.expr);
                 if kind != OwnckKind::Place {
-                    self.try_partial_move(&access.expr, access.member);
+                    self.try_partial_move(&access.expr, access.member, expr.ty);
                 }
                 self.env.insert_expr(expr);
             }
@@ -193,7 +193,16 @@ impl<'db> Ownck<'db> {
         );
     }
 
-    fn try_partial_move(&mut self, expr: &hir::Expr, member: Word) {
+    fn try_partial_move(
+        &mut self,
+        expr: &hir::Expr,
+        member: Word,
+        member_ty: Ty,
+    ) {
+        if !self.ty_is_move(member_ty) {
+            return;
+        }
+
         if let Err(diagnostic) =
             self.try_move_expr(expr, &MoveKind::PartialMove(member))
         {

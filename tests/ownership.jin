@@ -10,4 +10,5 @@ fn main() unit = {
 
 fn print(num: Num) unit = {
 	printf("Num(%d)\n".ptr, num.inner)
+	let x = num
 }
