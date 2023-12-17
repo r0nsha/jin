@@ -32,12 +32,7 @@ pub fn ownck(db: &mut Db, hir: &mut Hir) {
                             }
                         }
 
-                        let body_block = body
-                            .kind
-                            .as_block()
-                            .expect("fn body must be a block");
-
-                        cx.block(env, body, body_block);
+                        cx.block(env, body, body.kind.as_block().unwrap());
                         cx.try_move(env, body);
                     });
 
@@ -132,16 +127,10 @@ impl<'db> Ownck<'db> {
                     self.try_move(env, cond);
                 }
 
-                let loop_block = loop_
-                    .expr
-                    .kind
-                    .as_block()
-                    .expect("loop expr must be a block");
-
                 self.block_with_scope(
                     env,
                     &loop_.expr,
-                    loop_block,
+                    loop_.expr.kind.as_block().unwrap(),
                     ScopeKind::Loop,
                 );
             }
@@ -555,6 +544,7 @@ impl Value {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum ScopeKind {
     Block,
+    Branch,
     Loop,
 }
 
