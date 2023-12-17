@@ -432,6 +432,17 @@ impl Env {
 
         let current_block_id = self.current_block_id();
 
+        let value = self.value(&item);
+
+        if let Some(loop_scope) =
+            self.is_value_moved_into_scope(value, ScopeKind::Loop)
+        {
+            return Err(MoveError::MoveIntoLoop {
+                value_span: value.span,
+                loop_span: loop_scope.span,
+            });
+        }
+
         self.is_moved_into_loop(item)?;
 
         let value = self.value_mut(&item);
@@ -497,6 +508,19 @@ impl Env {
         })
     }
 
+    fn is_value_moved_into_scope(
+        &self,
+        value: &Value,
+        scope_kind: ScopeKind,
+    ) -> Option<&Scope> {
+        let value_scope_depth = self.find_value_scope(value).depth;
+
+        self.scopes
+            .iter()
+            .rev()
+            .find(|s| s.kind == scope_kind && s.depth > value_scope_depth)
+    }
+
     #[track_caller]
     fn value(&self, item: &hir::DestroyGlueItem) -> &Value {
         self.values.get(item).unwrap()
@@ -549,7 +573,7 @@ impl Value {
     }
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum ScopeKind {
     Block,
     Loop,
