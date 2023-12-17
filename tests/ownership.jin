@@ -10,8 +10,8 @@ fn main() unit = {
 	}
 }
 
-fn drop(n: Num) unit = {
-	if true {
-		let x = n
-	}
-}
+//fn drop(n: Num) unit = {
+//	if true {
+//		let x = n
+//	}
+//}

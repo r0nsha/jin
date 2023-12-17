@@ -483,18 +483,19 @@ impl<'db> Generator<'db> {
         match inst {
             Inst::Local { value, init } => {
                 let value = state.body.value(*value);
-                let def_id = *value.kind.as_local().unwrap();
-                let name_doc = D::text(
-                    state
+                let name = match value.kind {
+                    ValueKind::Register => format!("v{}", value.id),
+                    ValueKind::Local(id) => state
                         .local_names
-                        .insert_unique(def_id, self.db[def_id].name)
-                        .as_str(),
-                );
+                        .insert_unique(id, self.db[id].name)
+                        .to_string(),
+                    _ => unreachable!(),
+                };
 
                 VariableDoc::assign(
                     self,
                     value.ty,
-                    name_doc.clone(),
+                    D::text(name),
                     self.value(state, *init),
                 )
             }

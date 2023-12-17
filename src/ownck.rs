@@ -68,25 +68,20 @@ impl<'db> Ownck<'db> {
 
         for scope in self.destroy_scopes {
             glue.to_destroy.entry(scope.block_id).or_default().extend(
-                scope.items.into_iter().filter_map(|item| {
-                    let value = &env.values[&item];
+                scope.items.into_iter().filter(|item| {
+                    let value = &env.values[item];
 
                     if value.owning_block_id != scope.block_id {
-                        return None;
+                        return false;
                     }
 
                     match &value.state {
-                        ValueState::Owned => Some(hir::DestroyGlueInfo {
-                            item,
-                            is_conditional: false,
-                        }),
+                        ValueState::Owned => true,
                         ValueState::Moved(_, true) => {
-                            Some(hir::DestroyGlueInfo {
-                                item,
-                                is_conditional: true,
-                            })
+                            glue.needs_destroy_flag.insert(*item);
+                            true
                         }
-                        _ => None,
+                        _ => false,
                     }
                 }),
             );

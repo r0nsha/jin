@@ -345,7 +345,9 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 for param in &fun.sig.params {
                     match &param.pat {
                         Pat::Name(name) => {
-                            todo!("param destroy flag");
+                            self.push_destroy_flag(hir::DestroyGlueItem::Def(
+                                name.id,
+                            ));
                         }
                         Pat::Discard(_) => (),
                     }
@@ -419,7 +421,10 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                 match &let_.pat {
                     Pat::Name(name) => {
-                        todo!("let destroy flag");
+                        self.push_destroy_flag(hir::DestroyGlueItem::Def(
+                            name.id,
+                        ));
+
                         self.push_inst_with(
                             let_.ty,
                             ValueKind::Local(name.id),
@@ -623,8 +628,8 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     // to be destroyed in this expr's scope (usually block), in reverse
     fn lower_destroy_glue(&mut self, block_id: hir::BlockExprId) {
         if let Some(items) = self.destroy_glue.to_destroy.get(&block_id) {
-            for info in items.iter().rev() {
-                let value = match &info.item {
+            for item in items.iter().rev() {
+                let value = match item {
                     hir::DestroyGlueItem::Expr(expr_id) => {
                         self.expr_to_value[expr_id]
                     }
@@ -634,8 +639,25 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     }
                 };
 
-                todo!("if conditional, check drop flag");
-                self.push_destroy_inst(value);
+                if let Some(destroy_flag) = self.destroy_flags.get(&item) {
+                    // Conditional destroy
+                    let destroy_blk = self.body.create_block("destroy");
+                    let merge_blk = self.body.create_block("destroy_merge");
+
+                    self.push_inst(Inst::BrIf {
+                        cond: *destroy_flag,
+                        then: destroy_blk,
+                        otherwise: Some(merge_blk),
+                    });
+
+                    self.position_at(destroy_blk);
+                    self.push_destroy_inst(value);
+
+                    self.position_at(merge_blk);
+                } else {
+                    // Unconditional destroy
+                    self.push_destroy_inst(value);
+                }
             }
         }
     }
@@ -768,6 +790,24 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         }
 
         coerced_value
+    }
+
+    fn push_destroy_flag(&mut self, item: hir::DestroyGlueItem) {
+        if !self.destroy_glue.needs_destroy_flag.contains(&item) {
+            return;
+        }
+
+        let bool_ty = self.cx.db.types.bool;
+
+        let true_lit = self
+            .body
+            .create_value(bool_ty, ValueKind::Const(Const::Bool(true)));
+
+        let value = self.push_inst_with_register(bool_ty, |value| {
+            Inst::Local { value, init: true_lit }
+        });
+
+        self.destroy_flags.insert(item, value);
     }
 
     fn push_destroy_inst(&mut self, value: ValueId) {

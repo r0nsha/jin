@@ -224,17 +224,6 @@ pub enum ValueKind {
     Member(ValueId, Ustr),
 }
 
-impl ValueKind {
-    #[must_use]
-    pub fn as_local(&self) -> Option<&DefId> {
-        if let Self::Local(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
-}
-
 #[derive(Debug, Clone, From)]
 pub enum Const {
     Str(Ustr),
