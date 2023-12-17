@@ -301,7 +301,6 @@ impl Env {
         );
     }
 
-    #[track_caller]
     fn try_move(
         &mut self,
         item: impl Into<hir::DestroyGlueItem>,
