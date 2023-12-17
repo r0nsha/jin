@@ -1,12 +1,11 @@
 fn extern printf(fmt: *u8, ..) i32
 
-type Move()
+type Num(inner: int)
 
 fn main() unit = {
-	let x = Move()
-	if true {
-		let y = x
-	} else {
-		let z = x
-	}
+	let num = Num(1).add().add().add().add()
+	printf("Num(%d)\n".ptr, num.inner) // Should be 5
 }
+
+fn add(n: Num) Num =
+	Num(n.inner + 1)

@@ -21,23 +21,24 @@ pub fn ownck(db: &mut Db, hir: &mut Hir) {
                 let mut cx = Ownck::new(db);
                 let mut env = Env::new();
 
-                env.push_scope(body.id, ScopeKind::Block, body.span);
-
-                for p in &fun.sig.params {
-                    match &p.pat {
-                        Pat::Name(name) => {
-                            env.insert(name.id, name.span());
+                let scope =
+                    env.with(body.id, ScopeKind::Block, body.span, |env| {
+                        for p in &fun.sig.params {
+                            match &p.pat {
+                                Pat::Name(name) => {
+                                    env.insert(name.id, name.span());
+                                }
+                                Pat::Discard(_) => (),
+                            }
                         }
-                        Pat::Discard(_) => (),
-                    }
-                }
 
-                cx.expr(&mut env, body);
+                        cx.expr(env, body);
+                        cx.try_move(env, body);
+                    });
 
-                let scope = env.pop_scope().unwrap();
-                cx.collect_destroy_ids_from_scope(&env, &scope);
+                cx.destroy_scopes.push(scope);
 
-                hir.fn_destroy_glues.insert(fun.id, cx.destroy_glue);
+                hir.fn_destroy_glues.insert(fun.id, cx.into_destroy_glue(&env));
             }
             hir::FnKind::Extern { .. } => (),
         }
@@ -45,19 +46,42 @@ pub fn ownck(db: &mut Db, hir: &mut Hir) {
 
     for let_ in &hir.lets {
         let mut cx = Ownck::new(db);
-        cx.expr(&mut Env::new(), &let_.value);
-        hir.let_destroy_glues.insert(let_.id, cx.destroy_glue);
+        let mut env = Env::new();
+
+        cx.expr(&mut env, &let_.value);
+
+        hir.let_destroy_glues.insert(let_.id, cx.into_destroy_glue(&env));
     }
 }
 
 struct Ownck<'db> {
     db: &'db mut Db,
-    destroy_glue: hir::DestroyGlue,
+    destroy_scopes: Vec<Scope>,
 }
 
 impl<'db> Ownck<'db> {
     fn new(db: &'db mut Db) -> Self {
-        Self { db, destroy_glue: hir::DestroyGlue::new() }
+        Self { db, destroy_scopes: vec![] }
+    }
+
+    fn into_destroy_glue(self, env: &Env) -> hir::DestroyGlue {
+        let mut glue = hir::DestroyGlue::new();
+
+        glue.to_destroy.extend(self.destroy_scopes.into_iter().map(|scope| {
+            (
+                scope.block_id,
+                scope
+                    .items
+                    .iter()
+                    .filter(|item| {
+                        env.values[*item].should_destroy_in(scope.block_id)
+                    })
+                    .copied()
+                    .collect(),
+            )
+        }));
+
+        glue
     }
 
     fn expr(&mut self, env: &mut Env, expr: &hir::Expr) {
@@ -192,22 +216,13 @@ impl<'db> Ownck<'db> {
             return;
         }
 
-        env.push_scope(expr.id, scope_kind, expr.span);
+        let scope = env.with(expr.id, scope_kind, expr.span, |env| {
+            for expr in &block.exprs {
+                self.expr(env, expr);
+            }
+        });
 
-        for expr in &block.exprs {
-            self.expr(env, expr);
-        }
-
-        let scope = env.pop_scope().unwrap();
-        self.collect_destroy_ids_from_scope(env, &scope);
-    }
-
-    fn collect_destroy_ids_from_scope(&mut self, env: &Env, scope: &Scope) {
-        self.destroy_glue.to_destroy.entry(scope.block_id).or_default().extend(
-            scope.items.iter().filter(|item| {
-                env.values[*item].should_destroy_in(scope.block_id)
-            }),
-        );
+        self.destroy_scopes.push(scope);
     }
 
     fn try_partial_move(
@@ -343,6 +358,19 @@ impl Env {
         Self { values: FxHashMap::default(), scopes: vec![] }
     }
 
+    #[must_use]
+    fn with(
+        &mut self,
+        block_id: hir::BlockExprId,
+        kind: ScopeKind,
+        span: Span,
+        mut f: impl FnMut(&mut Self),
+    ) -> Scope {
+        self.push_scope(block_id, kind, span);
+        f(self);
+        self.pop_scope().unwrap()
+    }
+
     fn push_scope(
         &mut self,
         block_id: hir::BlockExprId,
@@ -359,6 +387,7 @@ impl Env {
         });
     }
 
+    #[must_use]
     fn pop_scope(&mut self) -> Option<Scope> {
         self.scopes.pop()
     }
