@@ -3,7 +3,7 @@ mod pretty_print;
 use std::io;
 
 use derive_more::From;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
@@ -300,7 +300,7 @@ pub enum Lit {
 #[derive(Debug, Clone)]
 pub struct DestroyGlue {
     pub to_destroy: FxHashMap<BlockExprId, Vec<DestroyGlueItem>>,
-    pub needs_destroy_flag: FxHashSet<DestroyGlueItem>,
+    pub needs_destroy_flag: FxHashMap<DestroyGlueItem, BlockExprId>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From)]
@@ -313,7 +313,7 @@ impl DestroyGlue {
     pub fn new() -> Self {
         Self {
             to_destroy: FxHashMap::default(),
-            needs_destroy_flag: FxHashSet::default(),
+            needs_destroy_flag: FxHashMap::default(),
         }
     }
 }

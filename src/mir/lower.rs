@@ -647,7 +647,13 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
             }
         }
 
-        // TODO: set destroy flags related to this block
+        self.destroy_glue
+            .needs_destroy_flag
+            .iter()
+            .filter_map(|(item, moved_to)| {
+                (*moved_to == block_id).then_some(*item)
+            })
+            .for_each(|item| self.set_destroy_flag(item));
     }
 
     fn lower_name(
@@ -820,7 +826,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     }
 
     fn push_destroy_flag(&mut self, item: hir::DestroyGlueItem) {
-        if !self.destroy_glue.needs_destroy_flag.contains(&item) {
+        if !self.destroy_glue.needs_destroy_flag.contains_key(&item) {
             return;
         }
 
@@ -837,18 +843,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         self.destroy_flags.insert(item, value);
     }
 
-    fn set_destroy_flag(&mut self, value: ValueId) {
-        let value = self.body.value(value);
-
-        let item = match value.kind {
-            ValueKind::Local(id) => hir::DestroyGlueItem::Def(id),
-            _ => return, // It doesn't make since for non-def values to have a destroy flag
-        };
-
-        if !self.destroy_glue.needs_destroy_flag.contains(&item) {
-            return;
-        }
-
+    fn set_destroy_flag(&mut self, item: hir::DestroyGlueItem) {
         let false_lit = self.body.create_value(
             self.cx.db.types.bool,
             ValueKind::Const(Const::Bool(false)),
