@@ -2,8 +2,10 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+// Macros
 #define FORCE_INLINE __attribute__((always_inline)) inline
 
+// Builtin types
 typedef int8_t i8;
 typedef int16_t i16;
 typedef int32_t i32;
@@ -27,6 +29,11 @@ typedef struct {
   u8 *ptr;
   usize len;
 } str;
+
+// Built-in functions
+void jin_rt_panic(u8 *msg);
+void *jin_rt_alloc(size_t size);
+void jin_rt_dealloc(void *ptr);
 
 void jin_rt_panic(u8 *msg) {
   printf("%s\n", msg);
