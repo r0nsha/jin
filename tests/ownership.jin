@@ -1,8 +1,11 @@
 fn extern printf(fmt: *u8, ..) i32
 
-type Wrapper(num: Num)
-type Num(inner: int)
+type Num()
 
 fn main() unit = {
-	Wrapper(Num(1))
+	let n = Num()
+
+	if true {
+		let x = n
+	}
 }
