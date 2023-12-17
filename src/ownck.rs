@@ -480,21 +480,21 @@ impl Env {
         &self,
         item: hir::DestroyGlueItem,
     ) -> Result<(), MoveError> {
-        let current_scope = self.current();
+        let value = self.value(&item);
+        let value_scope_depth = self.find_value_scope(value).depth;
+        let loop_scope =
+            self.scopes.iter().rev().find(|s| {
+                s.kind == ScopeKind::Loop && s.depth > value_scope_depth
+            });
 
-        if let ScopeKind::Loop = &current_scope.kind {
-            let value = self.value(&item);
-            let value_scope = self.find_value_scope(value);
-
-            if value_scope.depth < current_scope.depth {
-                return Err(MoveError::MoveIntoLoop {
-                    value_span: value.span,
-                    loop_span: current_scope.span,
-                });
-            }
+        if let Some(loop_scope) = loop_scope {
+            Err(MoveError::MoveIntoLoop {
+                value_span: value.span,
+                loop_span: loop_scope.span,
+            })
+        } else {
+            Ok(())
         }
-
-        Ok(())
     }
 
     #[track_caller]
