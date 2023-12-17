@@ -309,6 +309,7 @@ impl<'db> LowerCx<'db> {
 struct LowerBodyCx<'cx, 'db> {
     cx: &'cx mut LowerCx<'db>,
     destroy_glue: &'cx hir::DestroyGlue,
+    destroy_flags: FxHashMap<hir::DestroyGlueItem, ValueId>,
     body: Body,
     expr_to_value: FxHashMap<hir::ExprId, ValueId>,
     curr_block: BlockId,
@@ -323,6 +324,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         Self {
             cx,
             destroy_glue,
+            destroy_flags: FxHashMap::default(),
             body: Body::new(),
             expr_to_value: FxHashMap::default(),
             curr_block: BlockId::start(),
@@ -339,6 +341,15 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                 let start_blk = self.body.create_block("start");
                 self.position_at(start_blk);
+
+                for param in &fun.sig.params {
+                    match &param.pat {
+                        Pat::Name(name) => {
+                            todo!("param destroy flag");
+                        }
+                        Pat::Discard(_) => (),
+                    }
+                }
 
                 let last_value = self.lower_expr(body);
 
@@ -408,6 +419,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                 match &let_.pat {
                     Pat::Name(name) => {
+                        todo!("let destroy flag");
                         self.push_inst_with(
                             let_.ty,
                             ValueKind::Local(name.id),
@@ -622,6 +634,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     }
                 };
 
+                todo!("if conditional, check drop flag");
                 self.push_destroy_inst(value);
             }
         }

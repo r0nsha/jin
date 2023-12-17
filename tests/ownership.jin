@@ -7,8 +7,11 @@ fn main() unit = {
 
 	if true {
 		let x = n
-		if true {
-			let y = x
-		}
+	}
+}
+
+fn drop(n: Num) unit = {
+	if true {
+		let x = n
 	}
 }
