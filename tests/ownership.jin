@@ -5,7 +5,9 @@ type Num(inner: int)
 
 fn main() unit = {
 	let num = Num(1)
-	num.print()
+	loop {
+		num.print()
+	}
 }
 
 fn print(num: Num) unit = {

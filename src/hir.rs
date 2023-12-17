@@ -128,6 +128,17 @@ pub enum ExprKind {
     Lit(Lit),
 }
 
+impl ExprKind {
+    #[must_use]
+    pub fn as_block(&self) -> Option<&Block> {
+        if let Self::Block(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Fn {
     pub id: FnId,

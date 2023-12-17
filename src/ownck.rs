@@ -5,7 +5,7 @@ use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
-    db::{Db, DefKind},
+    db::{Db, DefId, DefKind},
     diagnostics::Diagnostic,
     hir::{self, Hir},
     middle::Pat,
@@ -19,7 +19,7 @@ pub fn ownck(db: &mut Db, hir: &mut Hir) {
             hir::FnKind::Bare { body } => {
                 let mut cx = Ownck::new(db);
 
-                cx.env.push_scope(body.id);
+                cx.env.push_scope(body.id, ScopeKind::Block);
 
                 for p in &fun.sig.params {
                     match &p.pat {
@@ -98,10 +98,18 @@ impl<'db> Ownck<'db> {
                     self.expr(cond);
                     self.try_move(cond);
                 }
-                self.expr(&loop_.expr);
+
+                let loop_block = loop_
+                    .expr
+                    .kind
+                    .as_block()
+                    .expect("loop expr must be a block");
+                self.block(&loop_.expr, loop_block, ScopeKind::Loop);
             }
             hir::ExprKind::Break => (),
-            hir::ExprKind::Block(block) => self.block(expr, block),
+            hir::ExprKind::Block(block) => {
+                self.block(expr, block, ScopeKind::Block);
+            }
             hir::ExprKind::Return(ret) => {
                 self.expr(&ret.expr);
                 self.try_move(&ret.expr);
@@ -152,7 +160,12 @@ impl<'db> Ownck<'db> {
         }
     }
 
-    fn block(&mut self, expr: &hir::Expr, block: &hir::Block) {
+    fn block(
+        &mut self,
+        expr: &hir::Expr,
+        block: &hir::Block,
+        scope_kind: ScopeKind,
+    ) {
         if expr.ty.is_unit() && self.env.current_block_id() != expr.id {
             self.env.insert_expr(expr);
         }
@@ -161,7 +174,7 @@ impl<'db> Ownck<'db> {
             return;
         }
 
-        self.env.push_scope(expr.id);
+        self.env.push_scope(expr.id, scope_kind);
 
         for expr in &block.exprs {
             self.expr(expr);
@@ -220,51 +233,39 @@ impl<'db> Ownck<'db> {
         item: hir::DestroyGlueItem,
         kind: &MoveKind,
     ) -> Result<(), Diagnostic> {
-        if let hir::DestroyGlueItem::Def(id) = item {
-            if let DefKind::Global | DefKind::ExternGlobal =
-                self.db[id].kind.as_ref()
-            {
-                return Err(errors::move_global_item(
-                    self.db,
-                    id,
-                    kind.moved_to(),
-                ));
-            }
-        }
+        self.env.try_move(self.db, item, kind).map_err(|err| {
+            let moved_to = kind.moved_to();
 
-        match self.env.try_move(item, kind) {
-            Ok(()) => Ok(()),
-            Err(err) => {
-                let moved_to = kind.moved_to();
-
-                Err(match err {
-                    MoveError::AlreadyMoved(already_moved_to) => {
-                        errors::already_moved(
-                            self.db,
-                            item,
-                            moved_to,
-                            already_moved_to,
-                        )
-                    }
-                    MoveError::AlreadyPartiallyMoved(already_moved_member) => {
-                        errors::already_partially_moved(
-                            self.db,
-                            item,
-                            moved_to,
-                            already_moved_member,
-                        )
-                    }
-                    MoveError::MoveAfterPartiallyMoved(already_moved_to) => {
-                        errors::move_after_partially_moved(
-                            self.db,
-                            item,
-                            moved_to,
-                            already_moved_to,
-                        )
-                    }
-                })
+            match err {
+                MoveError::AlreadyMoved(already_moved_to) => {
+                    errors::already_moved(
+                        self.db,
+                        item,
+                        moved_to,
+                        already_moved_to,
+                    )
+                }
+                MoveError::AlreadyPartiallyMoved(already_moved_member) => {
+                    errors::already_partially_moved(
+                        self.db,
+                        item,
+                        moved_to,
+                        already_moved_member,
+                    )
+                }
+                MoveError::MoveAfterPartiallyMoved(already_moved_to) => {
+                    errors::move_after_partially_moved(
+                        self.db,
+                        item,
+                        moved_to,
+                        already_moved_to,
+                    )
+                }
+                MoveError::MoveOutOfGlobal(id) => {
+                    errors::move_global_item(self.db, id, kind.moved_to())
+                }
             }
-        }
+        })
     }
 }
 
@@ -279,8 +280,8 @@ impl Env {
         Self { values: FxHashMap::default(), scopes: vec![] }
     }
 
-    fn push_scope(&mut self, block_id: hir::BlockExprId) {
-        self.scopes.push(Scope { block_id, items: IndexSet::default() });
+    fn push_scope(&mut self, block_id: hir::BlockExprId, kind: ScopeKind) {
+        self.scopes.push(Scope { block_id, kind, items: IndexSet::default() });
     }
 
     fn pop_scope(&mut self) -> Option<Scope> {
@@ -316,15 +317,27 @@ impl Env {
 
     fn try_move(
         &mut self,
+        db: &Db,
         item: hir::DestroyGlueItem,
         kind: &MoveKind,
     ) -> Result<(), MoveError> {
+        if let hir::DestroyGlueItem::Def(id) = item {
+            if let DefKind::Global | DefKind::ExternGlobal =
+                db[id].kind.as_ref()
+            {
+                return Err(MoveError::MoveOutOfGlobal(id));
+            }
+        }
+
         let current_block_id = self.current_block_id();
 
         let value = self
             .values
             .get_mut(&item)
             .expect("tried to mark a non existing value");
+
+        // If current block is loop && defined outside current block -> error
+        // let value_scope = self.env.find_value_scope(value);
 
         value.owning_block_id = current_block_id;
 
@@ -378,11 +391,19 @@ impl Env {
     fn current_mut(&mut self) -> &mut Scope {
         self.scopes.last_mut().unwrap()
     }
+
+    fn find_value_scope(&self, value: &Value) -> &Scope {
+        self.scopes
+            .iter()
+            .find(|s| s.block_id == value.owning_block_id)
+            .expect("value's scope must exist while value exists")
+    }
 }
 
 #[derive(Debug)]
 struct Scope {
     block_id: hir::BlockExprId,
+    kind: ScopeKind,
     items: IndexSet<hir::DestroyGlueItem>,
 }
 
@@ -401,6 +422,12 @@ impl Value {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
+enum ScopeKind {
+    Block,
+    Loop,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
 enum MoveKind {
     Move(Span),
     PartialMove(Word),
@@ -412,6 +439,7 @@ enum MoveError {
     AlreadyMoved(Span),
     AlreadyPartiallyMoved(Word),
     MoveAfterPartiallyMoved(Vec<Span>),
+    MoveOutOfGlobal(DefId),
 }
 
 impl MoveKind {
