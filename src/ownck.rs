@@ -72,11 +72,10 @@ impl<'db> Ownck<'db> {
                 scope.block_id,
                 scope
                     .items
-                    .iter()
+                    .into_iter()
                     .filter(|item| {
-                        env.values[*item].should_destroy_in(scope.block_id)
+                        env.values[item].should_destroy_in(scope.block_id)
                     })
-                    .copied()
                     .collect(),
             )
         }));
@@ -453,12 +452,11 @@ impl Env {
             .get_mut(&item)
             .expect("tried to mark a non existing value");
 
-        value.owning_block_id = current_block_id;
-
         match &mut value.state {
             ValueState::Owned => {
                 match kind {
                     MoveKind::Move(moved_to) => {
+                        value.owning_block_id = current_block_id;
                         value.state = ValueState::Moved(*moved_to);
                     }
                     MoveKind::PartialMove(member) => {
