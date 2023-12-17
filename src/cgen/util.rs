@@ -31,12 +31,12 @@ pub const NEST: isize = 2;
 pub fn call_alloc(ty: D<'_>) -> D<'_> {
     cast(
         ty.clone().append(D::text("*")),
-        D::text("__jin_alloc(sizeof(").append(ty).append("))"),
+        D::text("jin_rt_alloc(sizeof(").append(ty).append("))"),
     )
 }
 
 pub fn call_dealloc(value: D<'_>) -> D<'_> {
-    D::text("__jin_dealloc(").append(value).append(")")
+    D::text("jin_rt_dealloc(").append(value).append(")")
 }
 
 pub fn str_value(value: &str) -> D {

@@ -28,6 +28,6 @@ typedef struct {
   usize len;
 } str;
 
-FORCE_INLINE void *__jin_alloc(size_t size) { return malloc(size); }
+FORCE_INLINE void *jin_rt_alloc(size_t size) { return malloc(size); }
 
-FORCE_INLINE void __jin_dealloc(void *ptr) { free(ptr); }
+FORCE_INLINE void jin_rt_dealloc(void *ptr) { free(ptr); }
