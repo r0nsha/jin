@@ -311,7 +311,6 @@ struct LowerBodyCx<'cx, 'db> {
     destroy_glue: &'cx hir::DestroyGlue,
     body: Body,
     expr_to_value: FxHashMap<hir::ExprId, ValueId>,
-    def_to_value: FxHashMap<DefId, ValueId>,
     curr_block: BlockId,
     loop_blocks: Vec<BlockId>,
 }
@@ -326,7 +325,6 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
             destroy_glue,
             body: Body::new(),
             expr_to_value: FxHashMap::default(),
-            def_to_value: FxHashMap::default(),
             curr_block: BlockId::start(),
             loop_blocks: vec![],
         }
@@ -410,12 +408,11 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                 match &let_.pat {
                     Pat::Name(name) => {
-                        let value = self.push_inst_with(
+                        self.push_inst_with(
                             let_.ty,
                             ValueKind::Local(name.id),
                             |value| Inst::Local { value, init },
                         );
-                        self.def_to_value.insert(name.id, value);
                     }
                     Pat::Discard(_) => (),
                 }

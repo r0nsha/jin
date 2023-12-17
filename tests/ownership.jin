@@ -7,5 +7,8 @@ fn main() unit = {
 
 	if true {
 		let x = n
+		if true {
+			let y = x
+		}
 	}
 }
