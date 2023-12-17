@@ -91,8 +91,15 @@ impl<'db> Ownck<'db> {
             hir::ExprKind::If(if_) => {
                 self.expr(env, &if_.cond);
                 self.try_move(env, &if_.cond);
-                self.expr(env, &if_.then);
+
+                // We create a new env for the `then` case, so that
+                // ownership can be moved into each of the branches without
+                // colliding with each other
+                let mut then_env = env.clone();
+                self.expr(&mut then_env, &if_.then);
+
                 self.expr(env, &if_.otherwise);
+                env.extend(then_env);
             }
             hir::ExprKind::Loop(loop_) => {
                 if let Some(cond) = &loop_.cond {
@@ -322,7 +329,7 @@ impl<'db> Ownck<'db> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Env {
     values: FxHashMap<hir::DestroyGlueItem, Value>,
     scopes: Vec<Scope>,
@@ -378,6 +385,10 @@ impl Env {
                 span,
             },
         );
+    }
+
+    fn extend(&mut self, other: Env) {
+        self.values.extend(other.values);
     }
 
     fn try_move(
@@ -482,7 +493,7 @@ impl Env {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Scope {
     block_id: hir::BlockExprId,
     kind: ScopeKind,
