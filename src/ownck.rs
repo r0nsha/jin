@@ -186,17 +186,14 @@ impl<'db> Ownck<'db> {
         );
     }
 
-    #[track_caller]
     fn try_partial_move(&mut self, expr: &hir::Expr, member: Word) {
         self.try_move_expr(expr, &MoveKind::PartialMove(member));
     }
 
-    #[track_caller]
     fn try_move(&mut self, expr: &hir::Expr) {
         self.try_move_expr(expr, &MoveKind::Move(expr.span));
     }
 
-    #[track_caller]
     fn try_move_expr(&mut self, expr: &hir::Expr, kind: &MoveKind) {
         match &expr.kind {
             hir::ExprKind::Name(name) => {
@@ -214,7 +211,6 @@ impl<'db> Ownck<'db> {
         }
     }
 
-    #[track_caller]
     fn try_move_item(
         &mut self,
         item: impl Into<hir::DestroyGlueItem> + Copy,
