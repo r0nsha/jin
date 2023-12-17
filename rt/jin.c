@@ -28,6 +28,11 @@ typedef struct {
   usize len;
 } str;
 
+void jin_rt_panic(u8 *msg) {
+  puts(msg);
+  exit(1);
+}
+
 FORCE_INLINE void *jin_rt_alloc(size_t size) { return malloc(size); }
 
 FORCE_INLINE void jin_rt_dealloc(void *ptr) { free(ptr); }

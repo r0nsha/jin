@@ -5,7 +5,7 @@ use crate::{cgen::generate::Generator, mir::Block, span::Span};
 
 impl<'db> Generator<'db> {
     pub fn panic_if(&self, cond: D<'db>, msg: &str, span: Span) -> D<'db> {
-        let print_call = {
+        let then = {
             let sources = self.db.sources.borrow();
             let source = sources.get(span.source_id()).unwrap();
 
@@ -14,14 +14,12 @@ impl<'db> Generator<'db> {
                 .location(span.source_id(), span.start() as usize)
                 .unwrap();
 
-            let fmt =
-                format!("printf(\"panic at {path}:{line_number}:{column_number}:\\n{msg}\\n\")");
-
-            stmt(|| D::text(fmt))
+            stmt(|| {
+                call_panic(format!(
+                    "panic at {path}:{line_number}:{column_number}:\\n{msg}\\n"
+                ))
+            })
         };
-        let exit = stmt(|| D::text("exit(1)"));
-        let then = D::intersperse([print_call, exit], D::hardline());
-
         if_stmt(cond, then, None)
     }
 }
@@ -31,12 +29,20 @@ pub const NEST: isize = 2;
 pub fn call_alloc(ty: D<'_>) -> D<'_> {
     cast(
         ty.clone().append(D::text("*")),
-        D::text("jin_rt_alloc(sizeof(").append(ty).append("))"),
+        call("jin_rt_alloc", call("sizeof", ty)),
     )
 }
 
 pub fn call_dealloc(value: D<'_>) -> D<'_> {
-    D::text("jin_rt_dealloc(").append(value).append(")")
+    call("jin_rt_dealloc", value)
+}
+
+pub fn call_panic<'a>(msg: impl std::fmt::Display) -> D<'a> {
+    call("jin_rt_panic", D::text(format!("\"{msg}\"")))
+}
+
+pub fn call<'a>(name: &'a str, params: D<'a>) -> D<'a> {
+    D::text(name).append("(").append(params).append(")")
 }
 
 pub fn str_value(value: &str) -> D {
