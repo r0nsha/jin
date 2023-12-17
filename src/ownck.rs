@@ -173,16 +173,8 @@ impl<'db> Ownck<'db> {
 
     fn collect_destroy_ids_from_scope(&mut self, scope: &Scope) {
         self.destroy_glue.to_destroy.entry(scope.block_id).or_default().extend(
-            scope.items.iter().filter_map(|item| {
-                let value = &self.env.values[item];
-
-                if value.state == ValueState::Owned
-                    && value.owning_block_id == scope.block_id
-                {
-                    Some(*item)
-                } else {
-                    None
-                }
+            scope.items.iter().filter(|item| {
+                self.env.values[*item].should_destroy_in(scope.block_id)
             }),
         );
     }
@@ -402,6 +394,12 @@ struct Value {
     span: Span, // TODO: remove?
 }
 
+impl Value {
+    fn should_destroy_in(&self, block_id: hir::BlockExprId) -> bool {
+        self.owning_block_id == block_id && !self.state.is_moved()
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 enum MoveKind {
     Move(Span),
@@ -430,6 +428,16 @@ enum ValueState {
     Owned,
     Moved(Span),
     PartiallyMoved(FxHashMap<Ustr, Span>),
+}
+
+impl ValueState {
+    /// Returns `true` if the value state is [`Moved`].
+    ///
+    /// [`Moved`]: ValueState::Moved
+    #[must_use]
+    fn is_moved(&self) -> bool {
+        matches!(self, Self::Moved(..))
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]

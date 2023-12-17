@@ -768,7 +768,12 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
     fn value_needs_destroy(&self, value_id: ValueId) -> bool {
         let value = self.body.value(value_id);
-        self.ty_needs_destroy(value.ty)
+        match value.ty.kind() {
+            TyKind::Struct(sid) => {
+                matches!(self.cx.db[*sid].kind, StructKind::Ref)
+            }
+            _ => false,
+        }
     }
 
     fn ty_needs_destroy(&self, ty: Ty) -> bool {
