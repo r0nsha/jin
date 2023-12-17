@@ -418,7 +418,7 @@ impl<'db> Generator<'db> {
     fn codegen_struct_destroy(&mut self, sid: StructId) {
         let struct_info = &self.db[sid];
 
-        if let StructKind::Ref = struct_info.kind {
+        if struct_info.kind.is_ref() {
             let param = D::text("this");
 
             let destroy_fields = D::intersperse(

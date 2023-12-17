@@ -45,7 +45,7 @@ impl<'db> CTy<'db> for TyKind {
 
     fn is_ptr(&self, cx: &Generator<'db>) -> bool {
         match self {
-            Self::Struct(sid) => matches!(cx.db[*sid].kind, StructKind::Ref),
+            Self::Struct(sid) => cx.db[*sid].kind.is_ref(),
             Self::RawPtr(_) => true,
             Self::Fn(_)
             | Self::Int(_)

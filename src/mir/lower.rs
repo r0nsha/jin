@@ -4,7 +4,7 @@ use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    db::{Db, DefId, DefKind, StructKind},
+    db::{Db, DefId, DefKind},
     hir,
     hir::{FnKind, Hir},
     index_vec::IndexVecExt,
@@ -769,9 +769,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     fn value_needs_destroy(&self, value_id: ValueId) -> bool {
         let value = self.body.value(value_id);
         match value.ty.kind() {
-            TyKind::Struct(sid) => {
-                matches!(self.cx.db[*sid].kind, StructKind::Ref)
-            }
+            TyKind::Struct(sid) => self.cx.db[*sid].kind.is_ref(),
             _ => false,
         }
     }

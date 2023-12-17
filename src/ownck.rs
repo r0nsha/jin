@@ -10,6 +10,7 @@ use crate::{
     hir::{self, Hir},
     middle::Pat,
     span::{Span, Spanned},
+    ty::{Ty, TyKind},
     word::Word,
 };
 
@@ -214,17 +215,26 @@ impl<'db> Ownck<'db> {
         kind: &MoveKind,
     ) -> Result<(), Diagnostic> {
         match &expr.kind {
-            hir::ExprKind::Name(name) => {
-                self.try_move_item(hir::DestroyGlueItem::Def(name.id), kind)
-            }
+            hir::ExprKind::Name(name) => self.try_move_item(
+                hir::DestroyGlueItem::Def(name.id),
+                kind,
+                expr.ty,
+            ),
             hir::ExprKind::Block(block) => match block.exprs.last() {
                 Some(last) if !expr.ty.is_unit() => {
                     self.try_move_expr(last, kind)
                 }
-                _ => self
-                    .try_move_item(hir::DestroyGlueItem::Expr(expr.id), kind),
+                _ => self.try_move_item(
+                    hir::DestroyGlueItem::Expr(expr.id),
+                    kind,
+                    expr.ty,
+                ),
             },
-            _ => self.try_move_item(hir::DestroyGlueItem::Expr(expr.id), kind),
+            _ => self.try_move_item(
+                hir::DestroyGlueItem::Expr(expr.id),
+                kind,
+                expr.ty,
+            ),
         }
     }
 
@@ -232,7 +242,12 @@ impl<'db> Ownck<'db> {
         &mut self,
         item: hir::DestroyGlueItem,
         kind: &MoveKind,
+        ty: Ty,
     ) -> Result<(), Diagnostic> {
+        if !self.ty_is_move(ty) {
+            return Ok(());
+        }
+
         self.env.try_move(self.db, item, kind).map_err(|err| {
             let moved_to = kind.moved_to();
 
@@ -275,6 +290,13 @@ impl<'db> Ownck<'db> {
                 }
             }
         })
+    }
+
+    fn ty_is_move(&self, ty: Ty) -> bool {
+        match ty.kind() {
+            TyKind::Struct(sid) => self.db[*sid].kind.is_ref(),
+            _ => false,
+        }
     }
 }
 

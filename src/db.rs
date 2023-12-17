@@ -438,6 +438,16 @@ pub enum StructKind {
     Extern,
 }
 
+impl StructKind {
+    /// Returns `true` if the struct kind is [`Ref`].
+    ///
+    /// [`Ref`]: StructKind::Ref
+    #[must_use]
+    pub fn is_ref(self) -> bool {
+        matches!(self, Self::Ref)
+    }
+}
+
 impl StructInfo {
     pub fn ty(&self) -> Ty {
         TyKind::Struct(self.id).into()
