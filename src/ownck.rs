@@ -434,10 +434,7 @@ impl Env {
 
         self.is_moved_into_loop(item)?;
 
-        let value = self
-            .values
-            .get_mut(&item)
-            .expect("tried to mark a non existing value");
+        let value = self.value_mut(&item);
 
         match &mut value.state {
             ValueState::Owned => {
@@ -483,13 +480,12 @@ impl Env {
         &self,
         item: hir::DestroyGlueItem,
     ) -> Result<(), MoveError> {
-        let value =
-            self.values.get(&item).expect("tried to mark a non existing value");
-
         let current_scope = self.current();
 
         if let ScopeKind::Loop = &current_scope.kind {
+            let value = self.value(&item);
             let value_scope = self.find_value_scope(value);
+
             if value_scope.depth < current_scope.depth {
                 return Err(MoveError::MoveIntoLoop {
                     value_span: value.span,
@@ -499,6 +495,16 @@ impl Env {
         }
 
         Ok(())
+    }
+
+    #[track_caller]
+    fn value(&self, item: &hir::DestroyGlueItem) -> &Value {
+        self.values.get(item).unwrap()
+    }
+
+    #[track_caller]
+    fn value_mut(&mut self, item: &hir::DestroyGlueItem) -> &mut Value {
+        self.values.get_mut(item).unwrap()
     }
 
     fn current(&self) -> &Scope {
