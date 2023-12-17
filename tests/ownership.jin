@@ -1,14 +1,12 @@
 fn extern printf(fmt: *u8, ..) i32
 
-type Wrapper(num: Num, other:int)
-type Num(inner: int)
+type Move()
 
 fn main() unit = {
-	let num = Num(1)
-	num.print()
-}
-
-fn print(num: Num) unit = {
-	printf("Num(%d)\n".ptr, num.inner)
-	let x = num
+	let x = Move()
+	if true {
+		let y = x
+	} else {
+		let z = x
+	}
 }
