@@ -482,19 +482,19 @@ impl Env {
     ) -> Result<(), MoveError> {
         let value = self.value(&item);
         let value_scope_depth = self.find_value_scope(value).depth;
-        let loop_scope =
+
+        let Some(loop_scope) =
             self.scopes.iter().rev().find(|s| {
                 s.kind == ScopeKind::Loop && s.depth > value_scope_depth
-            });
-
-        if let Some(loop_scope) = loop_scope {
-            Err(MoveError::MoveIntoLoop {
-                value_span: value.span,
-                loop_span: loop_scope.span,
             })
-        } else {
-            Ok(())
-        }
+        else {
+            return Ok(());
+        };
+
+        Err(MoveError::MoveIntoLoop {
+            value_span: value.span,
+            loop_span: loop_scope.span,
+        })
     }
 
     #[track_caller]
