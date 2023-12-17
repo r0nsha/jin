@@ -6,6 +6,7 @@ use ustr::Ustr;
 
 use crate::{
     db::{Db, DefKind},
+    diagnostics::Diagnostic,
     hir::{self, Hir},
     middle::Pat,
     span::{Span, Spanned},
@@ -187,53 +188,64 @@ impl<'db> Ownck<'db> {
     }
 
     fn try_partial_move(&mut self, expr: &hir::Expr, member: Word) {
-        self.try_move_expr(expr, &MoveKind::PartialMove(member));
+        if let Err(diagnostic) =
+            self.try_move_expr(expr, &MoveKind::PartialMove(member))
+        {
+            self.db.diagnostics.emit(diagnostic);
+        }
     }
 
     fn try_move(&mut self, expr: &hir::Expr) {
-        self.try_move_expr(expr, &MoveKind::Move(expr.span));
+        if let Err(diagnostic) =
+            self.try_move_expr(expr, &MoveKind::Move(expr.span))
+        {
+            self.db.diagnostics.emit(diagnostic);
+        }
     }
 
-    fn try_move_expr(&mut self, expr: &hir::Expr, kind: &MoveKind) {
+    fn try_move_expr(
+        &mut self,
+        expr: &hir::Expr,
+        kind: &MoveKind,
+    ) -> Result<(), Diagnostic> {
         match &expr.kind {
             hir::ExprKind::Name(name) => {
-                self.try_move_item(hir::DestroyGlueItem::Def(name.id), kind);
+                self.try_move_item(hir::DestroyGlueItem::Def(name.id), kind)
             }
             hir::ExprKind::Block(block) => match block.exprs.last() {
                 Some(last) if !expr.ty.is_unit() => {
-                    self.try_move_expr(last, kind);
+                    self.try_move_expr(last, kind)
                 }
-                _ => {
-                    self.try_move_item(
-                        hir::DestroyGlueItem::Expr(expr.id),
-                        kind,
-                    );
-                }
+                _ => self
+                    .try_move_item(hir::DestroyGlueItem::Expr(expr.id), kind),
             },
             _ => self.try_move_item(hir::DestroyGlueItem::Expr(expr.id), kind),
         }
     }
 
-    fn try_move_item(&mut self, item: hir::DestroyGlueItem, kind: &MoveKind) {
+    fn try_move_item(
+        &mut self,
+        item: hir::DestroyGlueItem,
+        kind: &MoveKind,
+    ) -> Result<(), Diagnostic> {
         if let hir::DestroyGlueItem::Def(id) = item {
             if let DefKind::Global | DefKind::ExternGlobal =
                 self.db[id].kind.as_ref()
             {
-                self.db.diagnostics.emit(errors::move_global_item(
+                return Err(errors::move_global_item(
                     self.db,
                     id,
                     kind.moved_to(),
                 ));
-                return;
             }
         }
 
         match self.env.try_move(item, kind) {
-            Ok(()) => (),
+            Ok(()) => Ok(()),
             Err(err) => {
                 let moved_to = kind.moved_to();
 
-                let diag = match err {
+                Err(match err {
                     MoveError::AlreadyMoved(already_moved_to) => {
                         errors::already_moved(
                             self.db,
@@ -258,9 +270,7 @@ impl<'db> Ownck<'db> {
                             already_moved_to,
                         )
                     }
-                };
-
-                self.db.diagnostics.emit(diag);
+                })
             }
         }
     }
