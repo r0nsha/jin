@@ -197,27 +197,24 @@ impl<'db> Ownck<'db> {
     fn try_move_expr(&mut self, expr: &hir::Expr, kind: &MoveKind) {
         match &expr.kind {
             hir::ExprKind::Name(name) => {
-                self.try_move_item(name.id, kind);
+                self.try_move_item(hir::DestroyGlueItem::Def(name.id), kind);
             }
             hir::ExprKind::Block(block) => match block.exprs.last() {
                 Some(last) if !expr.ty.is_unit() => {
                     self.try_move_expr(last, kind);
                 }
                 _ => {
-                    self.try_move_item(expr.id, kind);
+                    self.try_move_item(
+                        hir::DestroyGlueItem::Expr(expr.id),
+                        kind,
+                    );
                 }
             },
-            _ => self.try_move_item(expr.id, kind),
+            _ => self.try_move_item(hir::DestroyGlueItem::Expr(expr.id), kind),
         }
     }
 
-    fn try_move_item(
-        &mut self,
-        item: impl Into<hir::DestroyGlueItem>,
-        kind: &MoveKind,
-    ) {
-        let item = item.into();
-
+    fn try_move_item(&mut self, item: hir::DestroyGlueItem, kind: &MoveKind) {
         match self.env.try_move(item, kind) {
             Ok(()) => (),
             Err(err) => {
