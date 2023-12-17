@@ -29,10 +29,18 @@ typedef struct {
 } str;
 
 void jin_rt_panic(u8 *msg) {
-  puts(msg);
+  printf("%s\n", msg);
   exit(1);
 }
 
-FORCE_INLINE void *jin_rt_alloc(size_t size) { return malloc(size); }
+FORCE_INLINE void *jin_rt_alloc(size_t size) {
+  void *ptr = malloc(size);
+
+  if (!ptr) {
+    jin_rt_panic("out of memory");
+  }
+
+  return ptr;
+}
 
 FORCE_INLINE void jin_rt_dealloc(void *ptr) { free(ptr); }

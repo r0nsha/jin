@@ -16,7 +16,7 @@ impl<'db> Generator<'db> {
 
             stmt(|| {
                 call_panic(format!(
-                    "panic at {path}:{line_number}:{column_number}:\\n{msg}\\n"
+                    "panic at {path}:{line_number}:{column_number}:\\n{msg}"
                 ))
             })
         };
