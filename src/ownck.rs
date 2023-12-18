@@ -78,7 +78,7 @@ impl<'db> Ownck<'db> {
                 }
 
                 match &value.state {
-                    ValueState::Owned | ValueState::PartiallyMoved(_) => true,
+                    ValueState::Owned => true,
                     ValueState::Moved {
                         span: _,
                         is_conditional: true,
@@ -87,7 +87,8 @@ impl<'db> Ownck<'db> {
                         glue.needs_destroy_flag.insert(*item, *to_block);
                         true
                     }
-                    ValueState::Moved { .. } => false,
+                    ValueState::PartiallyMoved(_)
+                    | ValueState::Moved { .. } => false,
                 }
             }));
         }
