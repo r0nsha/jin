@@ -67,28 +67,29 @@ impl<'db> Ownck<'db> {
         let mut glue = hir::DestroyGlue::new();
 
         for scope in self.destroy_scopes {
-            glue.to_destroy.entry(scope.block_id).or_default().extend(
-                scope.items.into_iter().filter(|item| {
-                    let value = &env.values[item];
+            let block_items =
+                glue.to_destroy.entry(scope.block_id).or_default();
 
-                    if value.owning_block_id != scope.block_id {
-                        return false;
-                    }
+            block_items.extend(scope.items.into_iter().filter(|item| {
+                let value = &env.values[item];
 
-                    match &value.state {
-                        ValueState::Owned => true,
-                        ValueState::Moved {
-                            span: _,
-                            is_conditional: true,
-                            to_block,
-                        } => {
-                            glue.needs_destroy_flag.insert(*item, *to_block);
-                            true
-                        }
-                        _ => false,
+                if value.owning_block_id != scope.block_id {
+                    return false;
+                }
+
+                match &value.state {
+                    ValueState::Owned | ValueState::PartiallyMoved(_) => true,
+                    ValueState::Moved {
+                        span: _,
+                        is_conditional: true,
+                        to_block,
+                    } => {
+                        glue.needs_destroy_flag.insert(*item, *to_block);
+                        true
                     }
-                }),
-            );
+                    ValueState::Moved { .. } => false,
+                }
+            }));
         }
 
         glue
