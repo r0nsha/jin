@@ -12,8 +12,8 @@ use crate::{
         name_gen::LocalNames,
         ty::CTy,
         util::{
-            self, assign, attr, block, block_, block_name, bool_value,
-            goto_stmt, if_stmt, stmt, str_value, struct_lit, unit_value, NEST,
+            self, assign, attr, block, block_, bool_value, goto_stmt, if_stmt,
+            stmt, str_value, struct_lit, unit_value, NEST,
         },
     },
     db::{Db, StructId, StructInfo, StructKind},
@@ -461,7 +461,7 @@ impl<'db> Generator<'db> {
         state: &mut FnState<'db>,
         blk: &'db Block,
     ) -> D<'db> {
-        block_name(blk)
+        D::text(blk.display_name())
             .append(D::text(":;"))
             .append(D::hardline())
             .append(

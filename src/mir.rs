@@ -174,12 +174,18 @@ impl Block {
         Self { id, name, insts: vec![] }
     }
 
+    #[allow(unused)]
     pub fn id(&self) -> BlockId {
         self.id
     }
 
+    #[allow(unused)]
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn display_name(&self) -> String {
+        format!("{}_{}", self.name, self.id.0)
     }
 
     pub fn insts(&self) -> &[Inst] {

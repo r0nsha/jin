@@ -103,7 +103,7 @@ impl<'db> PrettyCx<'db> {
 
     fn pp_blk(&mut self, body: &'db Body, blk: &'db Block) -> PrintBlock<'db> {
         PrintBlock {
-            name: D::text(blk.name()),
+            name: D::text(blk.display_name()),
             insts: blk.insts.iter().map(|i| self.pp_inst(body, i)).collect(),
         }
     }
@@ -125,16 +125,16 @@ impl<'db> PrettyCx<'db> {
                 .append(self.value(body, *value)),
             Inst::Br { target } => D::text("br")
                 .append(D::space())
-                .append(D::text(body.block(*target).name())),
+                .append(D::text(body.block(*target).display_name())),
             Inst::BrIf { cond, then, otherwise } => D::text("brif")
                 .append(D::text("("))
                 .append(self.value(body, *cond))
                 .append(D::text(")"))
                 .append(D::space())
-                .append(body.block(*then).name())
+                .append(body.block(*then).display_name())
                 .append(D::text(", "))
                 .append(if let Some(o) = otherwise {
-                    D::text(body.block(*o).name())
+                    D::text(body.block(*o).display_name())
                 } else {
                     D::nil()
                 }),

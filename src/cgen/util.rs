@@ -93,12 +93,10 @@ pub fn member<'a>(value: D<'a>, member: &str, is_ptr: bool) -> D<'a> {
     )))
 }
 
-pub fn block_name(blk: &Block) -> D<'_> {
-    D::text(format!("{}_{}", blk.name(), blk.id()))
-}
-
 pub fn goto_stmt(blk: &Block) -> D<'_> {
-    stmt(|| D::text("goto").append(D::space()).append(block_name(blk)))
+    stmt(|| {
+        D::text("goto").append(D::space()).append(D::text(blk.display_name()))
+    })
 }
 
 pub fn cast<'a>(ty: D<'a>, value: D<'a>) -> D<'a> {
