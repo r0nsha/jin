@@ -73,7 +73,7 @@ impl<'db> Ownck<'db> {
             block_items.extend(scope.items.into_iter().filter(|item| {
                 let value = &env.values[item];
 
-                if value.owning_block_id != scope.block_id {
+                if value.owned_by != scope.block_id {
                     return false;
                 }
 
@@ -407,7 +407,7 @@ impl Env {
         self.current_mut().items.insert(item);
 
         let value = Value {
-            owning_block_id: self.current_block_id(),
+            owned_by: self.current_block_id(),
             scope_depth: self.scopes.len(),
             state: ValueState::Owned,
             span,
@@ -461,7 +461,7 @@ impl Env {
                                 to_block: current_block_id,
                             };
                         } else {
-                            value.owning_block_id = current_block_id;
+                            value.owned_by = current_block_id;
                             value.state = ValueState::Moved(*moved_to);
                         }
                     }
@@ -544,7 +544,7 @@ struct Scope {
 
 #[derive(Debug, Clone)]
 struct Value {
-    owning_block_id: hir::BlockExprId,
+    owned_by: hir::BlockExprId,
     scope_depth: usize,
     state: ValueState,
     span: Span,
