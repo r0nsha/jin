@@ -707,18 +707,21 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
             Const::Float(value) => self
                 .body
                 .create_value(ty, ValueKind::Const(Const::from(*value))),
-            Const::Bool(value) => self
-                .body
-                .create_value(ty, ValueKind::Const(Const::from(*value))),
-            Const::Unit => {
-                self.body.create_value(ty, ValueKind::Const(Const::Unit))
-            }
+            Const::Bool(value) => self.const_bool(*value),
+            Const::Unit => self.const_unit(),
         }
     }
 
     pub fn const_unit(&mut self) -> ValueId {
         self.body
             .create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit))
+    }
+
+    pub fn const_bool(&mut self, value: bool) -> ValueId {
+        self.body.create_value(
+            self.cx.db.types.bool,
+            ValueKind::Const(Const::Bool(value)),
+        )
     }
 
     pub fn push_inst_with_register(
@@ -834,24 +837,17 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
         let bool_ty = self.cx.db.types.bool;
 
-        let true_lit = self
-            .body
-            .create_value(bool_ty, ValueKind::Const(Const::Bool(true)));
-
+        let init = self.const_bool(true);
         let value = self.push_inst_with_register(bool_ty, |value| {
-            Inst::Local { value, init: true_lit }
+            Inst::Local { value, init }
         });
 
         self.destroy_flags.insert(item, value);
     }
 
     fn set_destroy_flag(&mut self, item: hir::DestroyGlueItem) {
-        let false_lit = self.body.create_value(
-            self.cx.db.types.bool,
-            ValueKind::Const(Const::Bool(false)),
-        );
-
         let destroy_flag = self.destroy_flags[&item];
-        self.push_inst(Inst::Store { value: false_lit, target: destroy_flag });
+        let value = self.const_bool(false);
+        self.push_inst(Inst::Store { value, target: destroy_flag });
     }
 }
