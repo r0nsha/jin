@@ -395,7 +395,6 @@ impl Env {
 
     fn insert(&mut self, item: impl Into<hir::DestroyGlueItem>, span: Span) {
         let item = item.into();
-        let current_block_id = self.current_block_id();
 
         if self.values.contains_key(&item) {
             assert!(
@@ -406,14 +405,14 @@ impl Env {
         }
 
         self.current_mut().items.insert(item);
-        self.values.insert(
-            item,
-            Value {
-                owning_block_id: current_block_id,
-                state: ValueState::Owned,
-                span,
-            },
-        );
+
+        let value = Value {
+            owning_block_id: self.current_block_id(),
+            scope_depth: self.scopes.len(),
+            state: ValueState::Owned,
+            span,
+        };
+        self.values.insert(item, value);
     }
 
     fn extend(&mut self, other: Env) {
@@ -505,12 +504,10 @@ impl Env {
         value: &Value,
         scope_kind: ScopeKind,
     ) -> Option<&Scope> {
-        let value_scope_depth = self.find_value_scope(value).depth;
-
         self.scopes
             .iter()
             .rev()
-            .find(|s| s.kind == scope_kind && s.depth > value_scope_depth)
+            .find(|s| s.kind == scope_kind && s.depth > value.scope_depth)
     }
 
     #[track_caller]
@@ -534,13 +531,6 @@ impl Env {
     fn current_mut(&mut self) -> &mut Scope {
         self.scopes.last_mut().unwrap()
     }
-
-    fn find_value_scope(&self, value: &Value) -> &Scope {
-        self.scopes
-            .iter()
-            .find(|s| s.block_id == value.owning_block_id)
-            .expect("value's scope must exist while value exists")
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -555,6 +545,7 @@ struct Scope {
 #[derive(Debug, Clone)]
 struct Value {
     owning_block_id: hir::BlockExprId,
+    scope_depth: usize,
     state: ValueState,
     span: Span,
 }
