@@ -1,0 +1,20 @@
+fn extern printf(fmt: *u8, ..) i32
+
+fn main() unit = {
+	printf("Hello, World!")
+	do_add(add, 1, 2)
+	printf("num = %d\n".ptr, map(1, id))
+}
+
+fn add(a: int, b: int) int = {
+	a + b
+}
+
+fn do_add(f: fn(int, int) int, a: int, b: int) unit = {
+	printf("a + b = %d\n".ptr, f(a, b))
+}
+
+fn id[a](x: a) a = x
+
+fn map[a, b](val: a, f: fn(a) b) b =
+	f(val)

@@ -14,7 +14,7 @@ use crate::{
     index_vec::{new_key_type, IndexSlice, IndexVec, IndexVecExt},
     middle::{BinOp, Pat, UnOp},
     span::Span,
-    ty::Ty,
+    ty::{Instantiation, Ty},
 };
 
 new_key_type!(FnSigId);
@@ -101,6 +101,9 @@ pub enum GlobalKind {
 pub struct Body {
     blocks: Blocks,
     values: Values,
+
+    // A mapping for values to their instantation, used for specialization
+    instantations: FxHashMap<ValueId, Instantiation>,
 }
 
 pub type Blocks = IndexVec<BlockId, Block>;
@@ -115,7 +118,11 @@ impl BlockId {
 
 impl Body {
     pub fn new() -> Self {
-        Self { blocks: IndexVec::new(), values: IndexVec::new() }
+        Self {
+            blocks: IndexVec::new(),
+            values: IndexVec::new(),
+            instantations: FxHashMap::default(),
+        }
     }
 
     #[inline]
@@ -164,6 +171,18 @@ impl Body {
 
     pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
         self.values.push_with_key(|id| Value { id, ty, kind })
+    }
+
+    pub fn instantation(&mut self, value: ValueId) -> Option<&Instantiation> {
+        self.instantations.get(&value)
+    }
+
+    pub fn create_instantation(
+        &mut self,
+        value: ValueId,
+        instantation: Instantiation,
+    ) {
+        self.instantations.insert(value, instantation);
     }
 
     pub fn is_terminating(&self) -> bool {
@@ -239,10 +258,10 @@ pub enum ValueKind {
 
     // A function signature
     Fn(FnSigId),
-    
+
     // A constant value
     Const(Const),
-    
+
     // A member of a value
     Member(ValueId, Ustr),
 }
