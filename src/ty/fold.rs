@@ -21,7 +21,19 @@ pub trait TyFolder {
             TyKind::RawPtr(pointee) => {
                 TyKind::RawPtr(self.fold(*pointee)).into()
             }
-            _ => ty,
+            TyKind::Struct(_)
+            | TyKind::Int(_)
+            | TyKind::Uint(_)
+            | TyKind::Float(_)
+            | TyKind::Str
+            | TyKind::Bool
+            | TyKind::Unit
+            | TyKind::Never
+            | TyKind::Param(_)
+            | TyKind::Infer(_)
+            | TyKind::Type(_)
+            | TyKind::Module(_)
+            | TyKind::Unknown => ty,
         }
     }
 }
