@@ -1,4 +1,5 @@
 mod pretty_print;
+pub mod subst;
 
 use std::io;
 
