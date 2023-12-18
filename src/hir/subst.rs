@@ -1,6 +1,5 @@
 use crate::{
     hir::{Expr, ExprKind, Fn, FnKind, FnSig, Let},
-    middle::Pat,
     span::Spanned,
     subst::{Subst, SubstTy},
 };

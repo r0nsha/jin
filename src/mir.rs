@@ -1,5 +1,6 @@
 mod lower;
 mod pretty_print;
+pub mod subst;
 
 use std::io;
 
@@ -131,6 +132,11 @@ impl Body {
         &self.blocks
     }
 
+    #[inline]
+    pub fn blocks_mut(&mut self) -> &mut IndexSlice<BlockId, Block> {
+        &mut self.blocks
+    }
+
     pub fn create_block(&mut self, name: impl Into<String>) -> BlockId {
         self.blocks.push_with_key(|id| Block::new(id, name.into()))
     }
@@ -148,6 +154,11 @@ impl Body {
     #[inline]
     pub fn values(&self) -> &IndexSlice<ValueId, Value> {
         &self.values
+    }
+
+    #[inline]
+    pub fn values_mut(&mut self) -> &mut IndexSlice<ValueId, Value> {
+        &mut self.values
     }
 
     pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
