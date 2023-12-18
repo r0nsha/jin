@@ -79,6 +79,7 @@ pub struct FnSig {
     pub ty: Ty,
     pub is_extern: bool,
     pub is_c_variadic: bool,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]

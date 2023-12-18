@@ -13,13 +13,11 @@ pub struct Span {
 }
 
 impl Span {
+    pub const UNKNOWN: Self =
+        Self { source_id: SourceId::INVALID, start: 0, end: 0 };
+
     pub fn new(source_id: SourceId, start: u32, end: u32) -> Self {
         Self { source_id, start, end }
-    }
-
-    #[allow(unused)]
-    pub fn unknown() -> Self {
-        Self { source_id: SourceId::INVALID, start: 0, end: 0 }
     }
 
     pub fn initial(source_id: SourceId) -> Self {

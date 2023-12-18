@@ -10,6 +10,7 @@ use crate::{
     index_vec::IndexVecExt,
     middle::{Mutability, NamePat, Pat, Vis},
     mir::*,
+    span::Spanned,
     subst::{ParamFolder, Subst},
     ty::{
         coerce::{CoercionKind, Coercions},
@@ -256,6 +257,7 @@ impl<'db> LowerCx<'db> {
             ty: struct_info.ctor_ty,
             is_extern: false,
             is_c_variadic: false,
+            span: struct_info.name.span(),
         });
 
         // TODO: doesn't work for polymorphic structs...
@@ -288,6 +290,7 @@ impl<'db> LowerCx<'db> {
             ty,
             is_extern,
             is_c_variadic,
+            span: sig.word.span(),
         })
     }
 
