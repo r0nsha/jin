@@ -79,16 +79,13 @@ impl<'db> Ownck<'db> {
 
                 match &value.state {
                     ValueState::Owned => true,
-                    ValueState::Moved {
-                        span: _,
-                        is_conditional: true,
-                        to_block,
-                    } => {
+                    ValueState::MaybeMoved { to_block, .. } => {
                         glue.needs_destroy_flag.insert(*item, *to_block);
                         true
                     }
-                    ValueState::PartiallyMoved(_)
-                    | ValueState::Moved { .. } => false,
+                    ValueState::PartiallyMoved(_) | ValueState::Moved(..) => {
+                        false
+                    }
                 }
             }));
         }
@@ -459,15 +456,15 @@ impl Env {
             ValueState::Owned => {
                 match kind {
                     MoveKind::Move(moved_to) => {
-                        if !is_conditional {
+                        if is_conditional {
+                            value.state = ValueState::MaybeMoved {
+                                moved_to: *moved_to,
+                                to_block: current_block_id,
+                            };
+                        } else {
                             value.owning_block_id = current_block_id;
+                            value.state = ValueState::Moved(*moved_to);
                         }
-
-                        value.state = ValueState::Moved {
-                            span: *moved_to,
-                            to_block: current_block_id,
-                            is_conditional,
-                        };
                     }
                     MoveKind::PartialMove(member) => {
                         value.state =
@@ -479,7 +476,8 @@ impl Env {
 
                 Ok(())
             }
-            ValueState::Moved { span: moved_to, .. } => {
+            ValueState::Moved(moved_to)
+            | ValueState::MaybeMoved { moved_to, .. } => {
                 Err(MoveError::AlreadyMoved(*moved_to))
             }
             ValueState::PartiallyMoved(moved_members) => match kind {
@@ -595,8 +593,17 @@ impl MoveKind {
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 enum ValueState {
+    /// The value is owned, and should be dropped at the end of its scope
     Owned,
-    Moved { span: Span, to_block: hir::BlockExprId, is_conditional: bool },
+
+    /// The value is has been moved
+    Moved(Span),
+
+    /// The value has been moved in one branch, but is still owned in another branch
+    /// This value should be dropped conditionally at the end of its scope
+    MaybeMoved { moved_to: Span, to_block: hir::BlockExprId },
+
+    /// Some of this value's fields have been moved
     PartiallyMoved(FxHashMap<Ustr, Span>),
 }
 
