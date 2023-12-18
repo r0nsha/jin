@@ -5,7 +5,7 @@ use std::io;
 
 use derive_more::From;
 pub use lower::lower;
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
 use crate::{
@@ -167,11 +167,19 @@ pub struct Block {
     id: BlockId,
     name: String,
     insts: Vec<Inst>,
+    predecessors: FxHashSet<BlockId>,
+    successors: FxHashSet<BlockId>,
 }
 
 impl Block {
     pub fn new(id: BlockId, name: String) -> Self {
-        Self { id, name, insts: vec![] }
+        Self {
+            id,
+            name,
+            insts: vec![],
+            predecessors: FxHashSet::default(),
+            successors: FxHashSet::default(),
+        }
     }
 
     #[allow(unused)]

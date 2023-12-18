@@ -460,19 +460,15 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 let merge_blk = self.body.create_block("if_merge");
 
                 let cond = self.lower_expr(&if_.cond);
-                self.push_inst(Inst::BrIf {
-                    cond,
-                    then: then_blk,
-                    otherwise: Some(else_blk),
-                });
+                self.push_br_if(cond, then_blk, Some(else_blk));
 
                 self.position_at(then_blk);
                 let then_value = self.lower_expr(&if_.then);
-                self.push_inst(Inst::Br { target: merge_blk });
+                self.push_br(merge_blk);
 
                 self.position_at(else_blk);
                 let else_value = self.lower_expr(&if_.otherwise);
-                self.push_inst(Inst::Br { target: merge_blk });
+                self.push_br(merge_blk);
 
                 self.position_at(merge_blk);
                 self.push_inst_with_register(expr.ty, |value| Inst::If {
@@ -486,8 +482,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 let start_blk = self.body.create_block("loop_start");
                 let end_blk = self.body.create_block("loop_end");
 
-                self.push_inst(Inst::Br { target: start_blk });
-
+                self.push_br(start_blk);
                 self.position_at(start_blk);
 
                 if let Some(cond) = &loop_.cond {
@@ -501,16 +496,12 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                         },
                     );
 
-                    self.push_inst(Inst::BrIf {
-                        cond: not_cond,
-                        then: end_blk,
-                        otherwise: None,
-                    });
+                    self.push_br_if(not_cond, end_blk, None);
                 }
 
                 self.loop_blocks.push(end_blk);
                 self.lower_expr(&loop_.expr);
-                self.push_inst(Inst::Br { target: start_blk });
+                self.push_br(start_blk);
                 self.loop_blocks.pop();
 
                 self.position_at(end_blk);
@@ -519,7 +510,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
             hir::ExprKind::Break => {
                 let loop_blk =
                     self.loop_blocks.last().expect("to be inside a loop block");
-                self.push_inst(Inst::Br { target: *loop_blk });
+                self.push_br(*loop_blk);
                 self.const_unit()
             }
             hir::ExprKind::Block(blk) => {
@@ -743,6 +734,19 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         value
     }
 
+    pub fn push_br(&mut self, target: BlockId) {
+        self.push_inst(Inst::Br { target });
+    }
+
+    pub fn push_br_if(
+        &mut self,
+        cond: ValueId,
+        then: BlockId,
+        otherwise: Option<BlockId>,
+    ) {
+        self.push_inst(Inst::BrIf { cond, then, otherwise });
+    }
+
     pub fn push_inst(&mut self, inst: Inst) {
         self.body.block_mut(self.curr_block).push_inst(inst);
     }
@@ -802,18 +806,14 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
         // Conditional destroy
         let destroy_blk = self.body.create_block("destroy");
-        let merge_blk = self.body.create_block("no_destroy");
+        let no_destroy_blk = self.body.create_block("no_destroy");
 
-        self.push_inst(Inst::BrIf {
-            cond: destroy_flag,
-            then: destroy_blk,
-            otherwise: Some(merge_blk),
-        });
+        self.push_br_if(destroy_flag, destroy_blk, Some(no_destroy_blk));
 
         self.position_at(destroy_blk);
         self.push_inst(Inst::Destroy { value });
 
-        self.position_at(merge_blk);
+        self.position_at(no_destroy_blk);
     }
 
     fn push_unconditional_destroy(&mut self, value: ValueId) {
