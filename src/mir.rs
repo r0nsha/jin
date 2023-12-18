@@ -228,11 +228,22 @@ pub struct Value {
 
 #[derive(Debug, Clone)]
 pub enum ValueKind {
+    // A temporary or unnamed value
     Register,
+
+    // A local variable or function parameter
     Local(DefId),
+
+    // A global variable
     Global(GlobalId),
+
+    // A function signature
     Fn(FnSigId),
+    
+    // A constant value
     Const(Const),
+    
+    // A member of a value
     Member(ValueId, Ustr),
 }
 
