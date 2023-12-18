@@ -466,7 +466,7 @@ impl<'db> Generator<'db> {
             .append(D::hardline())
             .append(
                 D::intersperse(
-                    blk.insts().iter().map(|i| self.codegen_inst(state, i)),
+                    blk.insts.iter().map(|i| self.codegen_inst(state, i)),
                     D::hardline(),
                 )
                 .group(),

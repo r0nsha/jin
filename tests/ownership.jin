@@ -6,4 +6,7 @@ type Wrapper(num: Num)
 fn main() unit = {
 	let w = Wrapper(Num())
 	let x = w.num
+	if true {
+
+	} else {}
 }

@@ -735,6 +735,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     }
 
     pub fn push_br(&mut self, target: BlockId) {
+        self.create_edge(target);
         self.push_inst(Inst::Br { target });
     }
 
@@ -744,7 +745,18 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         then: BlockId,
         otherwise: Option<BlockId>,
     ) {
+        self.create_edge(then);
+
+        if let Some(otherwise) = otherwise {
+            self.create_edge(otherwise);
+        }
+
         self.push_inst(Inst::BrIf { cond, then, otherwise });
+    }
+
+    pub fn create_edge(&mut self, target: BlockId) {
+        self.body.block_mut(self.curr_block).successors.insert(target);
+        self.body.block_mut(target).predecessors.insert(self.curr_block);
     }
 
     pub fn push_inst(&mut self, inst: Inst) {

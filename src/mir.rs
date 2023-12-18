@@ -157,18 +157,18 @@ impl Body {
     pub fn is_terminating(&self) -> bool {
         self.blocks()
             .last()
-            .map(|blk| matches!(blk.insts().last(), Some(Inst::Return { .. })))
+            .map(|blk| matches!(blk.insts.last(), Some(Inst::Return { .. })))
             .unwrap_or_default()
     }
 }
 
 #[derive(Debug, Clone)]
 pub struct Block {
-    id: BlockId,
-    name: String,
-    insts: Vec<Inst>,
-    predecessors: FxHashSet<BlockId>,
-    successors: FxHashSet<BlockId>,
+    pub id: BlockId,
+    pub name: String,
+    pub insts: Vec<Inst>,
+    pub predecessors: FxHashSet<BlockId>,
+    pub successors: FxHashSet<BlockId>,
 }
 
 impl Block {
@@ -182,22 +182,8 @@ impl Block {
         }
     }
 
-    #[allow(unused)]
-    pub fn id(&self) -> BlockId {
-        self.id
-    }
-
-    #[allow(unused)]
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
     pub fn display_name(&self) -> String {
         format!("{}_{}", self.name, self.id.0)
-    }
-
-    pub fn insts(&self) -> &[Inst] {
-        &self.insts
     }
 
     pub fn push_inst(&mut self, inst: Inst) {
