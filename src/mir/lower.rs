@@ -26,14 +26,11 @@ struct LowerCx<'db> {
     hir: &'db Hir,
     mir: Mir,
 
-    // Maps functions to their lowered signatures
-    fn_map: FxHashMap<DefId, FnSigId>,
+    id_to_fn_sig: FxHashMap<DefId, FnSigId>,
+    id_to_global: FxHashMap<DefId, GlobalId>,
 
-    // Already monomorphized functions
+    // A mapping of monomorphized functions
     mono_fns: FxHashMap<MonoItem, FnSigId>,
-
-    // Maps global lets to their lowered globals
-    globals_map: FxHashMap<DefId, GlobalId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -48,9 +45,9 @@ impl<'db> LowerCx<'db> {
             db,
             hir,
             mir: Mir::new(),
-            fn_map: FxHashMap::default(),
+            id_to_fn_sig: FxHashMap::default(),
             mono_fns: FxHashMap::default(),
-            globals_map: FxHashMap::default(),
+            id_to_global: FxHashMap::default(),
         }
     }
 
@@ -65,12 +62,12 @@ impl<'db> LowerCx<'db> {
                     hir::mangle::mangle_fn_name(self.db, fun)
                 };
                 let sig = self.lower_fn_sig(&fun.sig, &fun.kind, name, def.ty);
-                self.fn_map.insert(fun.def_id, sig);
+                self.id_to_fn_sig.insert(fun.def_id, sig);
             }
         }
 
         for let_ in &self.hir.lets {
-            if !let_.pat.any(|name| self.globals_map.get(&name.id).is_some()) {
+            if !let_.pat.any(|name| self.id_to_global.get(&name.id).is_some()) {
                 self.lower_global_let(let_);
             }
         }
@@ -84,12 +81,12 @@ impl<'db> LowerCx<'db> {
                 kind: GlobalKind::Extern,
             });
 
-            self.globals_map.insert(let_.id, id);
+            self.id_to_global.insert(let_.id, id);
         }
 
         for f in &self.hir.fns {
             if !f.sig.ty.is_polymorphic() {
-                let sig = self.fn_map[&f.def_id];
+                let sig = self.id_to_fn_sig[&f.def_id];
                 self.lower_fn_body(sig, f);
             }
         }
@@ -98,7 +95,7 @@ impl<'db> LowerCx<'db> {
     }
 
     fn lower_global(&mut self, def_id: DefId) -> GlobalId {
-        if let Some(target_id) = self.globals_map.get(&def_id).copied() {
+        if let Some(target_id) = self.id_to_global.get(&def_id).copied() {
             return target_id;
         }
 
@@ -336,7 +333,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     kind,
                 });
 
-                self.cx.globals_map.insert(name.id, id);
+                self.cx.id_to_global.insert(name.id, id);
 
                 Some(id)
             }
@@ -595,7 +592,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
         match self.cx.db[id].kind.as_ref() {
             DefKind::Fn(_) => {
                 let id = if instantiation.is_empty() {
-                    self.cx.fn_map[&id]
+                    self.cx.id_to_fn_sig[&id]
                 } else {
                     let ty =
                         ParamFolder { db: self.cx.db, instantiation }.fold(ty);
