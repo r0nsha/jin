@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 mod builtin;
 mod generate;
 mod global_init;
