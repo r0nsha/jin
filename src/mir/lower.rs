@@ -1,5 +1,3 @@
-use std::iter;
-
 use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr};
 
@@ -156,70 +154,6 @@ impl<'db> LowerCx<'db> {
                 "function {} not found in hir.fns",
                 self.db[mono_item.id].qpath
             );
-        }
-    }
-
-    fn mangled_fn_name(
-        &self,
-        fun: &hir::Fn,
-        instantiation: &Instantiation,
-    ) -> Ustr {
-        let sig_str = {
-            let ty_args_str =
-                instantiation.values().enumerate().map(|(idx, ty)| {
-                    let ty_param = &fun.sig.ty_params[idx];
-                    format!("{}_{}", ty_param.word, self.mangled_ty_name(*ty))
-                });
-
-            let params_str = fun.sig.params.iter().map(|param| {
-                format!("{}_{}", param.pat, self.mangled_ty_name(param.ty))
-            });
-
-            ty_args_str.chain(params_str).collect::<Vec<String>>().join("_")
-        };
-
-        let def = &self.db[fun.def_id];
-
-        let mangled_name = if sig_str.is_empty() {
-            def.name.to_string()
-        } else {
-            format!("{}_{}", def.name, sig_str)
-        };
-        let qualified_name =
-            def.qpath.clone().with_name(ustr(&mangled_name)).join_with("_");
-
-        ustr(&qualified_name)
-    }
-
-    fn mangled_ty_name(&self, ty: Ty) -> String {
-        match ty.kind() {
-            TyKind::Fn(f) => iter::once("fn".to_string())
-                .chain(f.params.iter().map(|p| {
-                    let ty_name = self.mangled_ty_name(p.ty);
-                    if let Some(name) = p.name {
-                        format!("{name}_{}", ty_name)
-                    } else {
-                        ty_name
-                    }
-                }))
-                .chain(iter::once(self.mangled_ty_name(f.ret)))
-                .collect::<Vec<String>>()
-                .join("_"),
-            TyKind::Struct(sid) => {
-                self.db.get_struct_def(*sid).unwrap().qpath.join_with("_")
-            }
-            TyKind::RawPtr(pointee) => {
-                format!("ptr_{}", self.mangled_ty_name(*pointee))
-            }
-            TyKind::Unit => "unit".to_string(),
-            TyKind::Param(p) => p.name.to_string(),
-            TyKind::Int(_)
-            | TyKind::Uint(_)
-            | TyKind::Float(_)
-            | TyKind::Str
-            | TyKind::Bool
-            | TyKind::Never => ty.to_string(self.db),
-            _ => unreachable!("unexpected ty {ty:?}"),
         }
     }
 
