@@ -64,7 +64,7 @@ impl<'db> LowerCx<'db> {
                 let name = if is_extern {
                     def.name
                 } else {
-                    self.mangled_fn_name(fun, &Instantiation::default())
+                    hir::mangle::mangle_fn_name(self.db, fun)
                 };
                 let sig = self.lower_fn_sig(&fun.sig, &fun.kind, name, def.ty);
                 self.fn_map.insert(fun.def_id, sig);
@@ -139,7 +139,7 @@ impl<'db> LowerCx<'db> {
             let mut new_fun = fun.clone();
             new_fun.subst(&mut ParamFolder { db: self.db, instantiation });
 
-            let name = self.mangled_fn_name(fun, instantiation);
+            let name = hir::mangle::mangle_fn_name(self.db, &new_fun);
             let sig = self.lower_fn_sig(
                 &new_fun.sig,
                 &new_fun.kind,
