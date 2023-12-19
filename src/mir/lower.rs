@@ -16,10 +16,10 @@ use crate::{
 };
 
 pub fn lower(db: &mut Db, hir: &Hir) -> Mir {
-    LowerCx::new(db, hir).lower_all()
+    Lower::new(db, hir).lower_all()
 }
 
-struct LowerCx<'db> {
+struct Lower<'db> {
     db: &'db mut Db,
     hir: &'db Hir,
     mir: Mir,
@@ -27,13 +27,7 @@ struct LowerCx<'db> {
     id_to_global: FxHashMap<DefId, GlobalId>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MonoItem {
-    pub id: DefId,
-    pub ty: Ty,
-}
-
-impl<'db> LowerCx<'db> {
+impl<'db> Lower<'db> {
     fn new(db: &'db mut Db, hir: &'db Hir) -> Self {
         Self {
             db,
@@ -110,7 +104,7 @@ impl<'db> LowerCx<'db> {
 
     fn lower_global_let(&mut self, let_: &hir::Let) -> Option<GlobalId> {
         let destroy_glue = &self.hir.let_destroy_glues[&let_.id];
-        LowerBodyCx::new(self, destroy_glue).lower_global_let(let_)
+        LowerBody::new(self, destroy_glue).lower_global_let(let_)
     }
 
     fn get_or_create_struct_ctor(&mut self, sid: StructId) -> FnSigId {
@@ -186,12 +180,12 @@ impl<'db> LowerCx<'db> {
 
     fn lower_fn_body(&mut self, sig: FnSigId, f: &hir::Fn) {
         let destroy_glue = &self.hir.fn_destroy_glues[&f.id];
-        LowerBodyCx::new(self, destroy_glue).lower_fn(sig, f);
+        LowerBody::new(self, destroy_glue).lower_fn(sig, f);
     }
 }
 
-struct LowerBodyCx<'cx, 'db> {
-    cx: &'cx mut LowerCx<'db>,
+struct LowerBody<'cx, 'db> {
+    cx: &'cx mut Lower<'db>,
     destroy_glue: &'cx hir::DestroyGlue,
     destroy_flags: FxHashMap<hir::DestroyGlueItem, ValueId>,
     body: Body,
@@ -200,9 +194,9 @@ struct LowerBodyCx<'cx, 'db> {
     loop_blocks: Vec<BlockId>,
 }
 
-impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
+impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn new(
-        cx: &'cx mut LowerCx<'db>,
+        cx: &'cx mut Lower<'db>,
         destroy_glue: &'cx hir::DestroyGlue,
     ) -> Self {
         Self {

@@ -136,11 +136,16 @@ fn build(db: &mut Db) {
     db.time.stop();
     expect!(db);
 
-    // Lower to MIR, includes monomorphization
+    // Lower HIR to MIR
     db.time.start("hir -> mir");
-    let mir = mir::lower(db, &hir);
+    let mut mir = mir::lower(db, &hir);
     db.time.stop();
     expect!(db);
+
+    // Specialize polymorphic MIR
+    db.time.start("mir specialization");
+    mir::specialize(db, &mut mir);
+    db.time.stop();
 
     db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
         .expect("emitting mir failed");

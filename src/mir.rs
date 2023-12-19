@@ -1,11 +1,13 @@
 mod lower;
 mod pretty_print;
 pub mod subst;
+mod specialize;
 
 use std::io;
 
 use derive_more::From;
 pub use lower::lower;
+pub use specialize::specialize;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
