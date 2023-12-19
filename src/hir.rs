@@ -1,6 +1,6 @@
+pub mod mangle;
 mod pretty_print;
 pub mod subst;
-pub mod mangle;
 
 use std::io;
 
