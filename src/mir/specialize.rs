@@ -146,12 +146,8 @@ impl<'db> Specialize<'db> {
 
         self.specialized_fns.insert(specialized_fn, new_sig_id);
 
-        let mut fun = mir
-            .fns
-            .iter()
-            .find(|f| f.sig == old_sig_id)
-            .expect("fn to exist")
-            .clone();
+        let mut fun =
+            mir.find_fn_by_sig(old_sig_id).expect("fn to exist").clone();
 
         fun.sig = new_sig_id;
         fun.subst(&mut ParamFolder { db: self.db, instantiation });

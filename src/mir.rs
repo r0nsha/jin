@@ -45,6 +45,10 @@ impl Mir {
         }
     }
 
+    pub fn find_fn_by_sig(&self, sig: FnSigId) -> Option<&Fn> {
+        self.fns.iter().find(|f| f.sig == sig)
+    }
+
     pub fn pretty_print(
         &self,
         db: &Db,
