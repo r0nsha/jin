@@ -9,12 +9,10 @@ use std::{
     fs, io,
     path::Path,
     rc::Rc,
-    time::Duration,
 };
 
 use anyhow::{bail, Result};
 use camino::{Utf8Path, Utf8PathBuf};
-use owo_colors::{AnsiColors, OwoColorize};
 use path_absolutize::Absolutize;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::{ustr, Ustr};
@@ -235,18 +233,9 @@ impl Db {
     }
 
     pub fn print_timings(&self) {
-        for t in &self.timings.passes {
-            t.print();
+        if self.build_options().timings {
+            self.timings.print();
         }
-
-        let total: Duration =
-            self.timings.passes.iter().map(|p| p.duration).sum();
-
-        println!(
-            "{: <15}{}ms",
-            "total".color(AnsiColors::BrightWhite).bold(),
-            total.as_millis()
-        );
     }
 }
 
