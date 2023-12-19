@@ -19,6 +19,8 @@ struct Specialize<'db> {
 
     // Functions that have already been specialized
     specialized_fns: FxHashMap<SpecializedFn, FnSigId>,
+    // A map of used function ids, pointing to their new function id
+    // used_fns: FxHashSet<FnSigId, FnSigId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -29,7 +31,11 @@ pub struct SpecializedFn {
 
 impl<'db> Specialize<'db> {
     fn new(db: &'db mut Db) -> Self {
-        Self { db, specialized_fns: FxHashMap::default() }
+        Self {
+            db,
+            specialized_fns: FxHashMap::default(),
+            // used_fns: FxHashMap::default(),
+        }
     }
 
     fn run(&mut self, mir: &mut Mir) {
