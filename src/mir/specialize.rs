@@ -55,7 +55,6 @@ impl<'db> Specialize<'db> {
         }
     }
 
-    // TODO: this function is hideous, clean it up
     fn specialize_global_instantations(&mut self, mir: &mut Mir, id: GlobalId) {
         let instantations = match &mir.globals[id].kind {
             GlobalKind::Static(body, _) => body.instantations.clone(),
@@ -93,13 +92,8 @@ impl<'db> Specialize<'db> {
 
                 let specialized_fn = SpecializedFn { id, ty };
 
-                let specialized_sig_id = self
-                    .specialized_fns
-                    .get(&specialized_fn)
-                    .copied()
-                    .unwrap_or_else(|| {
-                        self.specialize_fn(mir, specialized_fn, instantiation)
-                    });
+                let specialized_sig_id =
+                    self.specialize_fn(mir, specialized_fn, instantiation);
 
                 ValueKind::Fn(specialized_sig_id)
             }
