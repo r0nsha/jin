@@ -20,6 +20,7 @@ use crate::{
 };
 
 new_key_type!(FnSigId);
+new_key_type!(FnId);
 new_key_type!(GlobalId);
 new_key_type!(BlockId);
 new_key_type!(ValueId);
@@ -27,7 +28,7 @@ new_key_type!(ValueId);
 #[derive(Debug, Clone)]
 pub struct Mir {
     pub fn_sigs: IndexVec<FnSigId, FnSig>,
-    pub fns: Vec<Fn>,
+    pub fns: IndexVec<FnId, Fn>,
     pub globals: IndexVec<GlobalId, Global>,
     pub struct_ctors: FxHashMap<StructId, FnSigId>,
     pub main_fn: Option<FnSigId>,
@@ -37,7 +38,7 @@ impl Mir {
     pub fn new() -> Self {
         Self {
             fn_sigs: IndexVec::new(),
-            fns: vec![],
+            fns: IndexVec::new(),
             globals: IndexVec::new(),
             struct_ctors: FxHashMap::default(),
             main_fn: None,
@@ -55,6 +56,7 @@ impl Mir {
 
 #[derive(Debug, Clone)]
 pub struct Fn {
+    pub id: FnId,
     pub def_id: DefId,
     pub sig: FnSigId,
     pub body: Body,

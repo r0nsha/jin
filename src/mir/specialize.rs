@@ -19,55 +19,68 @@ use crate::{
 };
 
 pub fn specialize(db: &mut Db, mir: &mut Mir) {
-    Specialize::new(db, mir).run();
+    Specialize::new(db).run(mir);
 }
 
 struct Specialize<'db> {
     db: &'db mut Db,
-    mir: &'db mut Mir,
 
     // Functions that have already been monomorphized
-    mono_fns: FxHashMap<MonoValue, FnSigId>,
+    mono_fns: FxHashMap<MonoFn, FnSigId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MonoValue {
-    pub value: ValueId,
+pub struct MonoFn {
+    pub id: FnSigId,
     pub ty: Ty,
 }
 
 impl<'db> Specialize<'db> {
-    fn new(db: &'db mut Db, mir: &'db mut Mir) -> Self {
-        Self { db, mir, mono_fns: FxHashMap::default() }
+    fn new(db: &'db mut Db) -> Self {
+        Self { db, mono_fns: FxHashMap::default() }
     }
 
-    fn run(&mut self) {
-        for fun in &self.mir.fns {
-            for (value, instantiation) in &fun.body.instantations {
-                self.monomorphize_value(&fun.body, *value, instantiation);
+    fn run(&mut self, mir: &mut Mir) {
+        // TODO: work: VecDeqeue<Job>
+        // TODO: add main fn to work
+        // TODO: while job = work.pop()
+        // TODO: if no instantiations, return
+        // TODO: for each instantation
+        // TODO: if (value, instantation) wasn't monomorphized
+        // TODO: push (FnSigId, Instantation) to work
+
+        for fn_id in mir.fns.keys() {
+            for (value, instantiation) in
+                mir.fns[fn_id].body.instantations.clone()
+            {
+                self.monomorphize_value(mir, fn_id, value, &instantiation);
             }
         }
     }
 
     fn monomorphize_value(
         &mut self,
-        body: &Body,
+        mir: &mut Mir,
+        fn_id: FnId,
         value: ValueId,
         instantiation: &Instantiation,
-    ) -> ValueKind {
-        match &body.value(value).kind {
+    ) {
+        let value_kind = mir.fns[fn_id].body.value(value).kind.clone();
+
+        match value_kind {
             ValueKind::Fn(id) => {
                 let ty = ParamFolder { db: self.db, instantiation }
-                    .fold(self.mir.fn_sigs[*id].ty);
+                    .fold(mir.fn_sigs[id].ty);
 
-                let mono_value = MonoValue { value, ty };
+                let mono_fn = MonoFn { id, ty };
 
                 let mono_sig_id =
-                    self.mono_fns.get(&mono_value).copied().unwrap_or_else(
-                        || self.monomorphize_fn(&mono_value, instantiation),
-                    );
+                    self.mono_fns.get(&mono_fn).copied().unwrap_or_else(|| {
+                        self.monomorphize_fn(&mono_fn, instantiation)
+                    });
 
-                ValueKind::Fn(mono_sig_id)
+                mir.fns[fn_id].body.value_mut(value).kind =
+                    ValueKind::Fn(mono_sig_id);
             }
             kind => unreachable!(
                 "unexpected value kind in specialization: {kind:?}"
@@ -75,22 +88,25 @@ impl<'db> Specialize<'db> {
         }
     }
 
+    #[must_use]
     fn monomorphize_fn_sig(
         &mut self,
-        mono_value: &MonoValue,
+        mono_fn: &MonoFn,
         instantiation: &Instantiation,
     ) -> FnSigId {
         todo!("monomorphize_fn_sig")
     }
 
+    #[must_use]
     fn monomorphize_fn(
         &mut self,
-        mono_value: &MonoValue,
+        mono_fn: &MonoFn,
         instantiation: &Instantiation,
     ) -> FnSigId {
-        if let Some(target_value) = self.mono_fns.get(mono_value).copied() {
+        if let Some(target_value) = self.mono_fns.get(mono_fn).copied() {
             return target_value;
         }
+
         todo!("monomorphize_fn")
         //     let mut new_fun = fun.clone();
         //     new_fun.subst(&mut ParamFolder { db: self.db, instantiation });
