@@ -6,6 +6,7 @@ use ustr::{ustr, Ustr};
 use crate::{
     db::{Db, DefId, DefKind},
     hir,
+    hir::mangle,
     index_vec::IndexVecExt,
     middle::{Mutability, NamePat, Pat, Vis},
     mir::*,
@@ -25,19 +26,19 @@ pub fn specialize(db: &mut Db, mir: &mut Mir) {
 struct Specialize<'db> {
     db: &'db mut Db,
 
-    // Functions that have already been monomorphized
-    mono_fns: FxHashMap<MonoFn, FnSigId>,
+    // Functions that have already been specialized
+    specialized_fns: FxHashMap<SpecializedFn, FnSigId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct MonoFn {
+pub struct SpecializedFn {
     pub id: FnSigId,
     pub ty: Ty,
 }
 
 impl<'db> Specialize<'db> {
     fn new(db: &'db mut Db) -> Self {
-        Self { db, mono_fns: FxHashMap::default() }
+        Self { db, specialized_fns: FxHashMap::default() }
     }
 
     fn run(&mut self, mir: &mut Mir) {
@@ -46,21 +47,24 @@ impl<'db> Specialize<'db> {
         // TODO: while job = work.pop()
         // TODO: if no instantiations, return
         // TODO: for each instantation
-        // TODO: if (value, instantation) wasn't monomorphized
+        // TODO: if (value, instantation) wasn't specialized
         // TODO: push (FnSigId, Instantation) to work
 
         for fn_id in mir.fns.keys() {
-            for (value, instantiation) in
-                mir.fns[fn_id].body.instantations.clone()
-            {
-                self.monomorphize_value(mir, fn_id, value, &instantiation);
-            }
+            self.specialize_fn_instantations(mir, fn_id);
         }
 
         // TODO: go over global instantiations
     }
 
-    fn monomorphize_value(
+    fn specialize_fn_instantations(&mut self, mir: &mut Mir, fn_id: FnId) {
+        let instantations = mir.fns[fn_id].body.instantations.clone();
+        for (value, instantiation) in instantations {
+            self.specialize_value(mir, fn_id, value, &instantiation);
+        }
+    }
+
+    fn specialize_value(
         &mut self,
         mir: &mut Mir,
         fn_id: FnId,
@@ -74,15 +78,18 @@ impl<'db> Specialize<'db> {
                 let ty = ParamFolder { db: self.db, instantiation }
                     .fold(mir.fn_sigs[id].ty);
 
-                let mono_fn = MonoFn { id, ty };
+                let specialized_fn = SpecializedFn { id, ty };
 
-                let mono_sig_id =
-                    self.mono_fns.get(&mono_fn).copied().unwrap_or_else(|| {
-                        self.monomorphize_fn(&mono_fn, instantiation)
+                let specialized_sig_id = self
+                    .specialized_fns
+                    .get(&specialized_fn)
+                    .copied()
+                    .unwrap_or_else(|| {
+                        self.specialize_fn(mir, specialized_fn, instantiation)
                     });
 
                 mir.fns[fn_id].body.value_mut(value).kind =
-                    ValueKind::Fn(mono_sig_id);
+                    ValueKind::Fn(specialized_sig_id);
             }
             kind => unreachable!(
                 "unexpected value kind in specialization: {kind:?}"
@@ -91,38 +98,56 @@ impl<'db> Specialize<'db> {
     }
 
     #[must_use]
-    fn monomorphize_fn_sig(
+    fn specialize_fn_sig(
         &mut self,
-        mono_fn: &MonoFn,
+        mir: &mut Mir,
+        specialized_fn: &SpecializedFn,
         instantiation: &Instantiation,
     ) -> FnSigId {
-        todo!("monomorphize_fn_sig")
+        let mut sig = mir.fn_sigs[specialized_fn.id].clone();
+        sig.subst(&mut ParamFolder { db: self.db, instantiation });
+
+        let instantation_str = instantiation
+            .values()
+            .map(|&ty| mangle::mangle_ty_name(self.db, ty))
+            .collect::<Vec<_>>()
+            .join("_");
+
+        sig.name = ustr(&format!("{}{}", sig.name, instantation_str));
+
+        let new_sig_id = mir.fn_sigs.push_with_key(|id| {
+            sig.id = id;
+            sig
+        });
+
+        new_sig_id
     }
 
     #[must_use]
-    fn monomorphize_fn(
+    fn specialize_fn(
         &mut self,
-        mono_fn: &MonoFn,
+        mir: &mut Mir,
+        specialized_fn: SpecializedFn,
         instantiation: &Instantiation,
     ) -> FnSigId {
-        if let Some(target_value) = self.mono_fns.get(mono_fn).copied() {
+        if let Some(target_value) =
+            self.specialized_fns.get(&specialized_fn).copied()
+        {
             return target_value;
         }
 
-        todo!("monomorphize_fn")
-        //     let mut new_fun = fun.clone();
-        //     new_fun.subst(&mut ParamFolder { db: self.db, instantiation });
-        // TODO: sig:
-        // TODO:     get sig
-        // TODO:     clone sig
-        // TODO:     subst sig
-        // TODO:     add instantation types to function name
-        // TODO:     add sig to mir, get sig id
-        // TODO:     insert lowered into mono_fns
+        let new_sig_id =
+            self.specialize_fn_sig(mir, &specialized_fn, instantiation);
+
+        self.specialized_fns.insert(specialized_fn, new_sig_id);
+
         // TODO: fun:
+        // TODO:     get fun
         // TODO:     clone fun
         // TODO:     subst fun
-        // TODO: go over body's instantations (recursive)
+        // TODO: specialize body instantations (recursive)
+
+        new_sig_id
     }
 }
 
