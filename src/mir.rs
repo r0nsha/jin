@@ -1,14 +1,14 @@
 mod lower;
 mod pretty_print;
-pub mod subst;
 mod specialize;
+pub mod subst;
 
 use std::io;
 
 use derive_more::From;
 pub use lower::lower;
-pub use specialize::specialize;
 use rustc_hash::{FxHashMap, FxHashSet};
+pub use specialize::specialize;
 use ustr::Ustr;
 
 use crate::{
@@ -77,7 +77,6 @@ pub struct FnSig {
     pub id: FnSigId,
     pub name: Ustr,
     pub params: Vec<FnParam>,
-    pub ret: Ty,
     pub ty: Ty,
     pub is_extern: bool,
     pub is_c_variadic: bool,

@@ -137,7 +137,6 @@ impl<'db> Lower<'db> {
                     ty: f.ty,
                 })
                 .collect(),
-            ret: TyKind::Struct(sid).into(),
             ty: struct_info.ctor_ty,
             is_extern: false,
             is_c_variadic: false,
@@ -170,7 +169,6 @@ impl<'db> Lower<'db> {
                 .iter()
                 .map(|p| FnParam { pat: p.pat.clone(), ty: p.ty })
                 .collect(),
-            ret: ty.as_fn().unwrap().ret,
             ty,
             is_extern,
             is_c_variadic,

@@ -95,7 +95,7 @@ impl<'db> PrettyCx<'db> {
                 .iter()
                 .map(|p| D::text(p.ty.to_string(self.db)))
                 .collect(),
-            ret: D::text(sig.ret.to_string(self.db)),
+            ret: D::text(sig.ty.as_fn().unwrap().ret.to_string(self.db)),
             is_extern: sig.is_extern,
             is_c_variadic: sig.is_c_variadic,
         }
