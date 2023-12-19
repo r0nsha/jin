@@ -151,7 +151,7 @@ fn build(db: &mut Db) {
         .expect("emitting mir failed");
 
     // Generate C code from Mir
-    // cgen::codegen(db, &mir);
+    cgen::codegen(db, &mir);
 
     db.time.print();
 }

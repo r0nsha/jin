@@ -1,22 +1,13 @@
-use std::iter;
-
 use rustc_hash::FxHashMap;
-use ustr::{ustr, Ustr};
+use ustr::ustr;
 
 use crate::{
-    db::{Db, DefId, DefKind},
-    hir,
+    db::Db,
     hir::mangle,
     index_vec::IndexVecExt,
-    middle::{Mutability, NamePat, Pat, Vis},
     mir::*,
-    span::Spanned,
     subst::{ParamFolder, Subst},
-    ty::{
-        coerce::{CoercionKind, Coercions},
-        fold::TyFolder,
-        Instantiation, Ty, TyKind,
-    },
+    ty::{fold::TyFolder, Instantiation, Ty},
 };
 
 pub fn specialize(db: &mut Db, mir: &mut Mir) {
@@ -42,37 +33,59 @@ impl<'db> Specialize<'db> {
     }
 
     fn run(&mut self, mir: &mut Mir) {
-        // TODO: work: VecDeqeue<Job>
-        // TODO: add main fn to work
-        // TODO: while job = work.pop()
-        // TODO: if no instantiations, return
-        // TODO: for each instantation
-        // TODO: if (value, instantation) wasn't specialized
-        // TODO: push (FnSigId, Instantation) to work
-
-        for fn_id in mir.fns.keys() {
-            self.specialize_fn_instantations(mir, fn_id);
+        for id in mir.fns.keys() {
+            self.specialize_fn_instantations(mir, id);
         }
 
-        // TODO: go over global instantiations
+        for id in mir.globals.keys() {
+            self.specialize_global_instantations(mir, id);
+        }
     }
 
-    fn specialize_fn_instantations(&mut self, mir: &mut Mir, fn_id: FnId) {
-        let instantations = mir.fns[fn_id].body.instantations.clone();
+    fn specialize_fn_instantations(&mut self, mir: &mut Mir, id: FnId) {
+        let instantations = mir.fns[id].body.instantations.clone();
+
         for (value, instantiation) in instantations {
-            self.specialize_value(mir, fn_id, value, &instantiation);
+            let new_value_kind = self.specialize_value(
+                mir,
+                mir.fns[id].body.value(value).kind.clone(),
+                &instantiation,
+            );
+            mir.fns[id].body.value_mut(value).kind = new_value_kind;
+        }
+    }
+
+    // TODO: this function is hideous, clean it up
+    fn specialize_global_instantations(&mut self, mir: &mut Mir, id: GlobalId) {
+        let instantations = match &mir.globals[id].kind {
+            GlobalKind::Static(body, _) => body.instantations.clone(),
+            GlobalKind::Extern => return,
+        };
+
+        for (value, instantiation) in instantations {
+            let value_kind = match &mir.globals[id].kind {
+                GlobalKind::Static(body, _) => body.value(value).kind.clone(),
+                GlobalKind::Extern => unreachable!(),
+            };
+
+            let new_value_kind =
+                self.specialize_value(mir, value_kind, &instantiation);
+
+            match &mut mir.globals[id].kind {
+                GlobalKind::Static(body, _) => {
+                    body.value_mut(value).kind = new_value_kind;
+                }
+                GlobalKind::Extern => unreachable!(),
+            }
         }
     }
 
     fn specialize_value(
         &mut self,
         mir: &mut Mir,
-        fn_id: FnId,
-        value: ValueId,
+        value_kind: ValueKind,
         instantiation: &Instantiation,
-    ) {
-        let value_kind = mir.fns[fn_id].body.value(value).kind.clone();
-
+    ) -> ValueKind {
         match value_kind {
             ValueKind::Fn(id) => {
                 let ty = ParamFolder { db: self.db, instantiation }
@@ -88,8 +101,7 @@ impl<'db> Specialize<'db> {
                         self.specialize_fn(mir, specialized_fn, instantiation)
                     });
 
-                mir.fns[fn_id].body.value_mut(value).kind =
-                    ValueKind::Fn(specialized_sig_id);
+                ValueKind::Fn(specialized_sig_id)
             }
             kind => unreachable!(
                 "unexpected value kind in specialization: {kind:?}"
@@ -113,14 +125,12 @@ impl<'db> Specialize<'db> {
             .collect::<Vec<_>>()
             .join("_");
 
-        sig.name = ustr(&format!("{}{}", sig.name, instantation_str));
+        sig.name = ustr(&format!("{}__{}", sig.name, instantation_str));
 
-        let new_sig_id = mir.fn_sigs.push_with_key(|id| {
+        mir.fn_sigs.push_with_key(|id| {
             sig.id = id;
             sig
-        });
-
-        new_sig_id
+        })
     }
 
     #[must_use]
@@ -136,38 +146,28 @@ impl<'db> Specialize<'db> {
             return target_value;
         }
 
+        let old_sig_id = specialized_fn.id;
         let new_sig_id =
             self.specialize_fn_sig(mir, &specialized_fn, instantiation);
 
         self.specialized_fns.insert(specialized_fn, new_sig_id);
 
-        // TODO: fun:
-        // TODO:     get fun
-        // TODO:     clone fun
-        // TODO:     subst fun
-        // TODO: specialize body instantations (recursive)
+        let mut fun = mir
+            .fns
+            .iter()
+            .find(|f| f.sig == old_sig_id)
+            .expect("fn to exist")
+            .clone();
+
+        fun.subst(&mut ParamFolder { db: self.db, instantiation });
+
+        let new_fn_id = mir.fns.push_with_key(|id| {
+            fun.id = id;
+            fun
+        });
+
+        self.specialize_fn_instantations(mir, new_fn_id);
 
         new_sig_id
-    }
-}
-
-struct SpecializeBody<'cx, 'db> {
-    cx: &'cx mut Specialize<'db>,
-    body: &'cx mut Body,
-    // destroy_glue: &'cx hir::DestroyGlue,
-    // destroy_flags: FxHashMap<hir::DestroyGlueItem, ValueId>,
-}
-
-impl<'cx, 'db> SpecializeBody<'cx, 'db> {
-    fn new(
-        cx: &'cx mut Specialize<'db>,
-        body: &'cx mut Body,
-        // destroy_glue: &'cx hir::DestroyGlue,
-    ) -> Self {
-        Self { cx, body }
-    }
-
-    fn run(&mut self) {
-        todo!("SpecializeBody")
     }
 }

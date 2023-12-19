@@ -155,6 +155,10 @@ impl<'db> Generator<'db> {
 
     pub fn predefine_fns(&mut self) {
         for sig in &self.mir.fn_sigs {
+            if sig.ty.is_polymorphic() {
+                continue;
+            }
+
             let doc = self.codegen_fn_sig(sig);
             self.fn_decls.push(stmt(|| doc));
         }
@@ -288,6 +292,10 @@ impl<'db> Generator<'db> {
 
     pub fn define_fns(&mut self) {
         for fun in &self.mir.fns {
+            if self.mir.fn_sigs[fun.sig].ty.is_polymorphic() {
+                continue;
+            }
+
             let doc = self.codegen_fn_def(fun);
             self.fn_defs.push(doc);
         }

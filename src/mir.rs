@@ -176,6 +176,7 @@ impl Body {
         self.values.push_with_key(|id| Value { id, ty, kind })
     }
 
+    #[allow(unused)]
     pub fn instantation(&mut self, value: ValueId) -> Option<&Instantiation> {
         self.instantations.get(&value)
     }
