@@ -21,21 +21,22 @@ use crate::{
 };
 
 pub fn codegen(db: &mut Db, mir: &Mir) -> Utf8PathBuf {
-    db.time.start("cgen");
-    let c_file_path = Generator {
-        target_metrics: *db.target_metrics(),
-        db,
-        mir,
-        types: vec![],
-        fn_decls: vec![],
-        globals: vec![],
-        fn_defs: vec![],
-        struct_names: FxHashMap::default(),
-        struct_destroy_fns: FxHashMap::default(),
-        defining_types: false,
-    }
-    .run();
-    db.time.stop();
+    let c_file_path = db.time("c codegen", |db| {
+        Generator {
+            target_metrics: *db.target_metrics(),
+            db,
+            mir,
+            types: vec![],
+            fn_decls: vec![],
+            globals: vec![],
+            fn_defs: vec![],
+            struct_names: FxHashMap::default(),
+            struct_destroy_fns: FxHashMap::default(),
+            defining_types: false,
+        }
+        .run()
+    });
+
     build_exe(db, &c_file_path)
 }
 
@@ -48,9 +49,7 @@ fn build_exe(db: &mut Db, c_file_path: &Utf8Path) -> Utf8PathBuf {
         output_path.with_extension("")
     };
 
-    db.time.start("clang");
-    compile_with_clang(db, c_file_path, &exe_file_path);
-    db.time.stop();
+    db.time("clang", |db| compile_with_clang(db, c_file_path, &exe_file_path));
 
     if !db.build_options().should_emit(EmitOption::C) {
         let _ = std::fs::remove_file(c_file_path);

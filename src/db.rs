@@ -38,7 +38,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Db {
-    pub time: Timings,
+    pub timings: Timings,
     pub sources: Rc<RefCell<Sources>>,
     pub packages: FxHashMap<Ustr, Package>,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
@@ -94,7 +94,7 @@ impl Db {
         let sources = Rc::new(RefCell::new(sources));
 
         Ok(Self {
-            time: Timings::new(build_options.timings),
+            timings: Timings::new(build_options.timings),
             build_options,
             diagnostics: Diagnostics::new(sources.clone()),
             sources,
@@ -214,6 +214,21 @@ impl Db {
             f(self, &mut file)
         } else {
             Ok(())
+        }
+    }
+
+    pub fn time<R>(
+        &mut self,
+        name: impl Into<String>,
+        mut f: impl FnMut(&mut Self) -> R,
+    ) -> R {
+        if self.build_options().timings {
+            self.timings.start(name);
+            let result = f(self);
+            self.timings.stop();
+            result
+        } else {
+            f(self)
         }
     }
 }
