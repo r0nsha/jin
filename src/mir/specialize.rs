@@ -42,7 +42,10 @@ impl<'db> Specialize<'db> {
     }
 
     fn run(mut self) {
-        for fun in &mut self.mir.fn_sigs {
+        for sig in &mut self.mir.fn_sigs {
+            // TODO: clone sig
+            // TODO: fold ty
+            // TODO: fold param tys
             todo!("specialize sig")
         }
 
