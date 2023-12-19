@@ -53,17 +53,21 @@ impl<'db> Specialize<'db> {
         &mut self,
         body: &Body,
         value: ValueId,
-        instantiation: &std::collections::HashMap<
-            crate::ty::TyVar,
-            Ty,
-            std::hash::BuildHasherDefault<rustc_hash::FxHasher>,
-        >,
-    ) {
+        instantiation: &Instantiation,
+    ) -> ValueKind {
         match &body.value(value).kind {
             ValueKind::Fn(id) => {
                 let ty = ParamFolder { db: self.db, instantiation }
                     .fold(self.mir.fn_sigs[*id].ty);
-                self.monomorphize_fn(&MonoValue { value, ty }, instantiation);
+
+                let mono_value = MonoValue { value, ty };
+
+                let mono_sig_id =
+                    self.mono_fns.get(&mono_value).copied().unwrap_or_else(
+                        || self.monomorphize_fn(&mono_value, instantiation),
+                    );
+
+                ValueKind::Fn(mono_sig_id)
             }
             kind => unreachable!(
                 "unexpected value kind in specialization: {kind:?}"

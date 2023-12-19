@@ -24,7 +24,7 @@ new_key_type!(GlobalId);
 new_key_type!(BlockId);
 new_key_type!(ValueId);
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Mir {
     pub fn_sigs: IndexVec<FnSigId, FnSig>,
     pub fns: Vec<Fn>,
