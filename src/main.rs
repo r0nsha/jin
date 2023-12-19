@@ -144,5 +144,5 @@ fn build(db: &mut Db) {
     // Generate C code from Mir
     cgen::codegen(db, &mir);
 
-    db.timings.print();
+    db.print_timings();
 }

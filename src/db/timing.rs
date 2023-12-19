@@ -3,54 +3,55 @@ use std::time::{Duration, Instant};
 use owo_colors::{AnsiColors, OwoColorize};
 
 #[derive(Debug)]
-pub struct Timings {
-    enabled: bool,
-    passes: Vec<Timing>,
+pub(super) struct Timings {
+    pub(super) passes: Vec<Timing>,
     current: Option<(String, Instant)>,
 }
 
 impl Timings {
-    pub fn new(enabled: bool) -> Self {
-        Self { enabled, passes: vec![], current: None }
+    pub(super) fn new() -> Self {
+        Self { passes: vec![], current: None }
     }
 
-    pub fn start(&mut self, name: impl Into<String>) {
-        if self.enabled {
-            self.stop();
-            self.current = Some((name.into(), Instant::now()));
-        }
+    pub(super) fn start(&mut self, name: impl Into<String>) {
+        self.stop();
+        self.current = Some((name.into(), Instant::now()));
     }
 
-    pub fn stop(&mut self) {
+    pub(super) fn stop(&mut self) {
         if let Some((name, inst)) = self.current.take() {
             self.passes.push(Timing { name, duration: inst.elapsed() });
         }
     }
 
-    pub fn print(&self) {
-        if self.enabled {
-            for t in &self.passes {
-                t.print();
-            }
-
-            let total: Duration = self.passes.iter().map(|p| p.duration).sum();
-            println!(
-                "{: <15}{}ms",
-                "total".color(AnsiColors::BrightWhite).bold(),
-                total.as_millis()
-            );
+    pub(super) fn print(&self) {
+        for t in &self.passes {
+            t.print();
         }
+
+        let total: Duration = self.passes.iter().map(|p| p.duration).sum();
+        println!(
+            "{: <15}{}ms",
+            "total".color(AnsiColors::BrightWhite).bold(),
+            total.as_millis()
+        );
+    }
+}
+
+impl Default for Timings {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
 #[derive(Debug)]
-struct Timing {
-    name: String,
-    duration: Duration,
+pub(super) struct Timing {
+    pub(super) name: String,
+    pub(super) duration: Duration,
 }
 
 impl Timing {
-    fn print(&self) {
+    pub(super) fn print(&self) {
         let millis = self.duration.as_millis();
 
         let color = if millis < 5 {

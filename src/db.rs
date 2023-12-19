@@ -9,10 +9,12 @@ use std::{
     fs, io,
     path::Path,
     rc::Rc,
+    time::Duration,
 };
 
 use anyhow::{bail, Result};
 use camino::{Utf8Path, Utf8PathBuf};
+use owo_colors::{AnsiColors, OwoColorize};
 use path_absolutize::Absolutize;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::{ustr, Ustr};
@@ -38,7 +40,6 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Db {
-    pub timings: Timings,
     pub sources: Rc<RefCell<Sources>>,
     pub packages: FxHashMap<Ustr, Package>,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
@@ -48,6 +49,7 @@ pub struct Db {
     pub coercions: HirMap<Coercions>,
     pub extern_libs: FxHashSet<ExternLib>,
     pub diagnostics: Diagnostics,
+    timings: Timings,
     build_options: BuildOptions,
     main_package_name: Ustr,
     main_source: SourceId,
@@ -94,7 +96,7 @@ impl Db {
         let sources = Rc::new(RefCell::new(sources));
 
         Ok(Self {
-            timings: Timings::new(build_options.timings),
+            timings: Timings::new(),
             build_options,
             diagnostics: Diagnostics::new(sources.clone()),
             sources,
@@ -230,6 +232,21 @@ impl Db {
         } else {
             f(self)
         }
+    }
+
+    pub fn print_timings(&self) {
+        for t in &self.timings.passes {
+            t.print();
+        }
+
+        let total: Duration =
+            self.timings.passes.iter().map(|p| p.duration).sum();
+
+        println!(
+            "{: <15}{}ms",
+            "total".color(AnsiColors::BrightWhite).bold(),
+            total.as_millis()
+        );
     }
 }
 
