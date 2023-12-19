@@ -16,7 +16,7 @@ pub(super) fn print(
         docs.push(cx.pp_global(glob));
     }
 
-    for f in &mir.fns {
+    for f in mir.fns.values() {
         docs.push(cx.pp_fn(f));
     }
 

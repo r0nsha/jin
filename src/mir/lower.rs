@@ -246,12 +246,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.push_inst(Inst::Return { value: ret_value });
                 }
 
-                self.cx.mir.fns.push_with_key(|id| Fn {
-                    id,
-                    def_id: fun.def_id,
+                self.cx.mir.fns.insert(
                     sig,
-                    body: self.body,
-                });
+                    Fn { def_id: fun.def_id, sig, body: self.body },
+                );
             }
             FnKind::Extern { .. } => unreachable!(),
         }

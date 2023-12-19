@@ -39,8 +39,10 @@ impl<'db> Specialize<'db> {
     }
 
     fn run(&mut self, mir: &mut Mir) {
-        for id in mir.fns.keys() {
-            self.specialize_fn_instantations(mir, id);
+        for id in mir.fn_sigs.keys() {
+            if mir.fns.contains_key(&id) {
+                self.specialize_fn_instantations(mir, id);
+            }
         }
 
         for id in mir.globals.keys() {
@@ -48,16 +50,17 @@ impl<'db> Specialize<'db> {
         }
     }
 
-    fn specialize_fn_instantations(&mut self, mir: &mut Mir, id: FnId) {
-        let instantations = mir.fns[id].body.instantations.clone();
+    fn specialize_fn_instantations(&mut self, mir: &mut Mir, id: FnSigId) {
+        let instantations = mir.fns[&id].body.instantations.clone();
 
         for (value, instantiation) in instantations {
             let new_value_kind = self.specialize_value(
                 mir,
-                mir.fns[id].body.value(value).kind.clone(),
+                mir.fns[&id].body.value(value).kind.clone(),
                 &instantiation,
             );
-            mir.fns[id].body.value_mut(value).kind = new_value_kind;
+            mir.fns.get_mut(&id).unwrap().body.value_mut(value).kind =
+                new_value_kind;
         }
     }
 
@@ -152,18 +155,13 @@ impl<'db> Specialize<'db> {
 
         self.specialized_fns.insert(specialized_fn, new_sig_id);
 
-        let mut fun =
-            mir.find_fn_by_sig(old_sig_id).expect("fn to exist").clone();
+        let mut fun = mir.fns.get(&old_sig_id).expect("fn to exist").clone();
 
         fun.sig = new_sig_id;
         fun.subst(&mut ParamFolder { db: self.db, instantiation });
 
-        let new_fn_id = mir.fns.push_with_key(|id| {
-            fun.id = id;
-            fun
-        });
-
-        self.specialize_fn_instantations(mir, new_fn_id);
+        mir.fns.insert(new_sig_id, fun);
+        self.specialize_fn_instantations(mir, new_sig_id);
 
         new_sig_id
     }

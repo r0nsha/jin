@@ -291,7 +291,7 @@ impl<'db> Generator<'db> {
     }
 
     pub fn define_fns(&mut self) {
-        for fun in &self.mir.fns {
+        for fun in self.mir.fns.values() {
             if self.mir.fn_sigs[fun.sig].ty.is_polymorphic() {
                 continue;
             }
