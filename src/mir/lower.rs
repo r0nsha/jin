@@ -229,9 +229,10 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                 for param in &fun.sig.params {
                     match &param.pat {
                         Pat::Name(name) => {
-                            self.push_destroy_flag(hir::DestroyGlueItem::Def(
-                                name.id,
-                            ));
+                            // TODO:
+                            // self.push_destroy_flag(hir::DestroyGlueItem::Def(
+                            //     name.id,
+                            // ));
                         }
                         Pat::Discard(_) => (),
                     }
@@ -305,9 +306,10 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
 
                 match &let_.pat {
                     Pat::Name(name) => {
-                        self.push_destroy_flag(hir::DestroyGlueItem::Def(
-                            name.id,
-                        ));
+                        // TODO:
+                        // self.push_destroy_flag(hir::DestroyGlueItem::Def(
+                        //     name.id,
+                        // ));
 
                         self.push_inst_with(
                             let_.ty,
@@ -404,7 +406,7 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
                     result = Some(self.lower_expr(expr));
                 }
 
-                self.lower_destroy_glue(expr.id);
+                // TODO: self.lower_destroy_glue(expr.id);
 
                 // NOTE: If the block ty is `unit`, we must always return a `unit` value.
                 // A situation where we don't return a `unit` value can occur
