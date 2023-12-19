@@ -9,10 +9,8 @@ use crate::{
     middle::{Mutability, NamePat, Pat, Vis},
     mir::*,
     span::Spanned,
-    subst::{ParamFolder, Subst},
     ty::{
         coerce::{CoercionKind, Coercions},
-        fold::TyFolder,
         Instantiation, Ty, TyKind,
     },
 };
@@ -25,12 +23,8 @@ struct LowerCx<'db> {
     db: &'db mut Db,
     hir: &'db Hir,
     mir: Mir,
-
     id_to_fn_sig: FxHashMap<DefId, FnSigId>,
     id_to_global: FxHashMap<DefId, GlobalId>,
-
-    // A mapping of monomorphized functions
-    mono_fns: FxHashMap<MonoItem, FnSigId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -46,7 +40,6 @@ impl<'db> LowerCx<'db> {
             hir,
             mir: Mir::new(),
             id_to_fn_sig: FxHashMap::default(),
-            mono_fns: FxHashMap::default(),
             id_to_global: FxHashMap::default(),
         }
     }
@@ -118,41 +111,6 @@ impl<'db> LowerCx<'db> {
     fn lower_global_let(&mut self, let_: &hir::Let) -> Option<GlobalId> {
         let destroy_glue = &self.hir.let_destroy_glues[&let_.id];
         LowerBodyCx::new(self, destroy_glue).lower_global_let(let_)
-    }
-
-    fn monomorphize_fn(
-        &mut self,
-        mono_item: &MonoItem,
-        instantiation: &Instantiation,
-    ) -> FnSigId {
-        if let Some(target_id) = self.mono_fns.get(mono_item).copied() {
-            return target_id;
-        }
-
-        let fun = self.hir.fns.iter().find(|f| f.def_id == mono_item.id);
-
-        if let Some(fun) = fun {
-            let mut new_fun = fun.clone();
-            new_fun.subst(&mut ParamFolder { db: self.db, instantiation });
-
-            let name = hir::mangle::mangle_fn_name(self.db, &new_fun);
-            let sig = self.lower_fn_sig(
-                &new_fun.sig,
-                &new_fun.kind,
-                name,
-                mono_item.ty,
-            );
-
-            self.mono_fns.insert(mono_item.clone(), sig);
-            self.lower_fn_body(sig, &new_fun);
-
-            sig
-        } else {
-            panic!(
-                "function {} not found in hir.fns",
-                self.db[mono_item.id].qpath
-            );
-        }
     }
 
     fn get_or_create_struct_ctor(&mut self, sid: StructId) -> FnSigId {
@@ -583,16 +541,18 @@ impl<'cx, 'db> LowerBodyCx<'cx, 'db> {
     ) -> ValueId {
         match self.cx.db[id].kind.as_ref() {
             DefKind::Fn(_) => {
-                let id = if instantiation.is_empty() {
-                    self.cx.id_to_fn_sig[&id]
-                } else {
-                    let ty =
-                        ParamFolder { db: self.cx.db, instantiation }.fold(ty);
-                    self.cx.monomorphize_fn(&MonoItem { id, ty }, instantiation)
-                };
+                let id = self.cx.id_to_fn_sig[&id];
 
-                self.body
-                    .create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
+                let value = self.body.create_value(
+                    self.cx.mir.fn_sigs[id].ty,
+                    ValueKind::Fn(id),
+                );
+
+                if !instantiation.is_empty() {
+                    self.body.create_instantation(value, instantiation.clone());
+                }
+
+                value
             }
             DefKind::ExternGlobal | DefKind::Global => {
                 let id = self.cx.lower_global(id);
