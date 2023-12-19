@@ -1,6 +1,7 @@
 use crate::{
     mir::{Block, Body, Fn, FnSig, Global, GlobalKind, Inst, Mir, Value},
-    span::Span,
+    span::{Span, Spanned},
+    subst,
     subst::{Subst, SubstTy},
 };
 
@@ -15,6 +16,10 @@ impl<S: SubstTy> Subst<S> for Mir {
 impl<S: SubstTy> Subst<S> for FnSig {
     fn subst(&mut self, s: &mut S) {
         self.ty = s.subst_ty(self.ty, self.span);
+
+        for p in &mut self.params {
+            p.ty = s.subst_ty(p.ty, p.pat.span());
+        }
     }
 }
 
@@ -37,6 +42,9 @@ impl<S: SubstTy> Subst<S> for Body {
     fn subst(&mut self, s: &mut S) {
         self.blocks_mut().into_iter().for_each(|b| b.subst(s));
         self.values_mut().into_iter().for_each(|v| v.subst(s));
+        self.instantations_mut()
+            .iter_mut()
+            .for_each(|(_, i)| subst::subst_instantation(s, i, Span::UNKNOWN));
     }
 }
 

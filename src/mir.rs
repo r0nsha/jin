@@ -180,6 +180,12 @@ impl Body {
         self.instantations.get(&value)
     }
 
+    pub fn instantations_mut(
+        &mut self,
+    ) -> &mut FxHashMap<ValueId, Instantiation> {
+        &mut self.instantations
+    }
+
     pub fn create_instantation(
         &mut self,
         value: ValueId,

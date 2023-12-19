@@ -56,6 +56,8 @@ impl<'db> Specialize<'db> {
                 self.monomorphize_value(mir, fn_id, value, &instantiation);
             }
         }
+
+        // TODO: go over global instantiations
     }
 
     fn monomorphize_value(
@@ -113,20 +115,13 @@ impl<'db> Specialize<'db> {
         // TODO: sig:
         // TODO:     get sig
         // TODO:     clone sig
-        // TODO:     subst sig:
-        // TODO:         fold ty
-        // TODO:         fold param tys
+        // TODO:     subst sig
         // TODO:     add instantation types to function name
         // TODO:     add sig to mir, get sig id
         // TODO:     insert lowered into mono_fns
         // TODO: fun:
         // TODO:     clone fun
-        // TODO:     subst fun:
-        // TODO:         subst body:
-        // TODO:             subst values
-        // TODO:             subst blocks
-        // TODO:                 subst insts
-        // TODO:             subst instantations
+        // TODO:     subst fun
         // TODO: go over body's instantations (recursive)
     }
 }

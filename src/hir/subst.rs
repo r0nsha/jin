@@ -1,6 +1,7 @@
 use crate::{
     hir::{Expr, ExprKind, Fn, FnKind, FnSig, Let},
     span::Spanned,
+    subst,
     subst::{Subst, SubstTy},
 };
 
@@ -50,9 +51,11 @@ impl<S: SubstTy> Subst<S> for Expr {
                 access.expr.subst(s);
             }
             ExprKind::Name(name) => {
-                for ty in name.instantiation.values_mut() {
-                    *ty = s.subst_ty(*ty, self.span);
-                }
+                subst::subst_instantation(
+                    s,
+                    &mut name.instantiation,
+                    self.span,
+                );
             }
             ExprKind::Break | ExprKind::Lit(_) => (),
         }
