@@ -153,6 +153,7 @@ impl<'db> Specialize<'db> {
             .expect("fn to exist")
             .clone();
 
+        fun.sig = new_sig_id;
         fun.subst(&mut ParamFolder { db: self.db, instantiation });
 
         let new_fn_id = mir.fns.push_with_key(|id| {
