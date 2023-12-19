@@ -53,17 +53,15 @@ impl<'db> LowerCx<'db> {
 
     fn lower_all(mut self) -> Mir {
         for fun in &self.hir.fns {
-            if !fun.sig.ty.is_polymorphic() {
-                let def = &self.db[fun.def_id];
-                let is_extern = fun.kind.is_extern();
-                let name = if is_extern {
-                    def.name
-                } else {
-                    hir::mangle::mangle_fn_name(self.db, fun)
-                };
-                let sig = self.lower_fn_sig(&fun.sig, &fun.kind, name, def.ty);
-                self.id_to_fn_sig.insert(fun.def_id, sig);
-            }
+            let def = &self.db[fun.def_id];
+            let is_extern = fun.kind.is_extern();
+            let name = if is_extern {
+                def.name
+            } else {
+                hir::mangle::mangle_fn_name(self.db, fun)
+            };
+            let sig = self.lower_fn_sig(&fun.sig, &fun.kind, name, def.ty);
+            self.id_to_fn_sig.insert(fun.def_id, sig);
         }
 
         for let_ in &self.hir.lets {
@@ -84,11 +82,14 @@ impl<'db> LowerCx<'db> {
             self.id_to_global.insert(let_.id, id);
         }
 
-        for f in &self.hir.fns {
-            if !f.sig.ty.is_polymorphic() {
-                let sig = self.id_to_fn_sig[&f.def_id];
-                self.lower_fn_body(sig, f);
-            }
+        for f in self
+            .hir
+            .fns
+            .iter()
+            .filter(|f| matches!(f.kind, FnKind::Bare { .. }))
+        {
+            let sig = self.id_to_fn_sig[&f.def_id];
+            self.lower_fn_body(sig, f);
         }
 
         self.mir
@@ -226,15 +227,6 @@ impl<'db> LowerCx<'db> {
     }
 
     fn lower_fn_body(&mut self, sig: FnSigId, f: &hir::Fn) {
-        if f.kind.is_extern() {
-            return;
-        }
-
-        assert!(
-            !self.mir.fn_sigs[sig].ty.is_polymorphic(),
-            "lowering polymorphic functions to mir is not allowed"
-        );
-
         let destroy_glue = &self.hir.fn_destroy_glues[&f.id];
         LowerBodyCx::new(self, destroy_glue).lower_fn(sig, f);
     }
