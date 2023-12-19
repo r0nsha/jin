@@ -41,53 +41,73 @@ impl<'db> Specialize<'db> {
         Self { db, mir, mono_fns: FxHashMap::default() }
     }
 
-    fn run(mut self) {
-        for sig in &mut self.mir.fn_sigs {
-            // TODO: clone sig
-            // TODO: fold ty
-            // TODO: fold param tys
-            todo!("specialize sig")
+    fn run(&mut self) {
+        for fun in &self.mir.fns {
+            for (value, instantiation) in &fun.body.instantations {
+                self.monomorphize_value(&fun.body, *value, instantiation);
+            }
         }
+    }
 
-        for fun in &mut self.mir.fns {
-            todo!("specialize fn")
+    fn monomorphize_value(
+        &mut self,
+        body: &Body,
+        value: ValueId,
+        instantiation: &std::collections::HashMap<
+            crate::ty::TyVar,
+            Ty,
+            std::hash::BuildHasherDefault<rustc_hash::FxHasher>,
+        >,
+    ) {
+        match &body.value(value).kind {
+            ValueKind::Fn(id) => {
+                let ty = ParamFolder { db: self.db, instantiation }
+                    .fold(self.mir.fn_sigs[*id].ty);
+                self.monomorphize_fn(&MonoValue { value, ty }, instantiation);
+            }
+            kind => unreachable!(
+                "unexpected value kind in specialization: {kind:?}"
+            ),
         }
+    }
+
+    fn monomorphize_fn_sig(
+        &mut self,
+        mono_value: &MonoValue,
+        instantiation: &Instantiation,
+    ) -> FnSigId {
+        todo!("monomorphize_fn_sig")
     }
 
     fn monomorphize_fn(
         &mut self,
-        mono_item: &MonoValue,
+        mono_value: &MonoValue,
         instantiation: &Instantiation,
     ) -> FnSigId {
+        if let Some(target_value) = self.mono_fns.get(mono_value).copied() {
+            return target_value;
+        }
         todo!("monomorphize_fn")
-        // if let Some(target_id) = self.mono_fns.get(mono_item).copied() {
-        //     return target_id;
-        // }
-        //
-        // let fun = self.hir.fns.iter().find(|f| f.def_id == mono_item.value);
-        //
-        // if let Some(fun) = fun {
         //     let mut new_fun = fun.clone();
         //     new_fun.subst(&mut ParamFolder { db: self.db, instantiation });
-        //
-        //     let name = self.mangled_fn_name(fun, instantiation);
-        //     let sig = self.lower_fn_sig(
-        //         &new_fun.sig,
-        //         &new_fun.kind,
-        //         name,
-        //         mono_item.ty,
-        //     );
-        //
-        //     self.mono_fns.insert(mono_item.clone(), sig);
-        //     self.lower_fn_body(sig, &new_fun);
-        //
-        //     sig
-        // } else {
-        //     panic!(
-        //         "function {} not found in hir.fns",
-        //         self.db[mono_item.value].qpath
-        //     );
-        // }
+        // TODO: sig:
+        // TODO:     get sig
+        // TODO:     clone sig
+        // TODO:     subst sig:
+        // TODO:         fold ty
+        // TODO:         fold param tys
+        // TODO:     add instantation types to function name
+        // TODO:     add sig to mir, get sig id
+        // TODO:     insert lowered into mono_fns
+        // TODO: fun:
+        // TODO:     clone fun
+        // TODO:     subst fun:
+        // TODO:         subst body:
+        // TODO:             subst values
+        // TODO:             subst blocks
+        // TODO:                 subst insts
+        // TODO:             subst instantations
+        // TODO: go over body's instantations (recursive)
     }
 }
 
