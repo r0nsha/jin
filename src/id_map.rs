@@ -1,15 +1,20 @@
-use std::hash::Hash;
+use std::{collections::hash_map, hash::Hash, ops};
 
 use rustc_hash::FxHashMap;
 
 use crate::counter::Counter;
 
+#[derive(Debug, Clone)]
 pub struct IdMap<K, V> {
     map: FxHashMap<K, V>,
     counter: Counter<K>,
 }
 
 impl<K, V> IdMap<K, V> {
+    pub fn new() -> Self {
+        Self { map: FxHashMap::default(), counter: Counter::default() }
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
         self.map.iter()
     }
@@ -46,5 +51,47 @@ impl<K: From<usize> + Copy + Eq + Hash, V> IdMap<K, V> {
         let key = self.counter.next();
         self.map.insert(key, value);
         key
+    }
+}
+
+impl<K, V> Default for IdMap<K, V> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl<K: Eq + Hash, V> ops::Index<K> for IdMap<K, V> {
+    type Output = V;
+
+    #[inline]
+    fn index(&self, index: K) -> &Self::Output {
+        &self.map[&index]
+    }
+}
+
+impl<K: Eq + Hash, V> ops::IndexMut<K> for IdMap<K, V> {
+    #[inline]
+    fn index_mut(&mut self, index: K) -> &mut Self::Output {
+        &mut self.map[&index]
+    }
+}
+
+impl<'a, K, V> IntoIterator for &'a IdMap<K, V> {
+    type Item = (&'a K, &'a V);
+    type IntoIter = hash_map::Iter<'a, K, V>;
+
+    #[allow(clippy::into_iter_on_ref)]
+    fn into_iter(self) -> hash_map::Iter<'a, K, V> {
+        self.map.iter()
+    }
+}
+
+impl<'a, K, V> IntoIterator for &'a mut IdMap<K, V> {
+    type Item = (&'a K, &'a mut V);
+    type IntoIter = hash_map::IterMut<'a, K, V>;
+
+    #[allow(clippy::into_iter_on_ref)]
+    fn into_iter(self) -> hash_map::IterMut<'a, K, V> {
+        self.map.iter_mut()
     }
 }

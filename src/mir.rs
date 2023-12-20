@@ -11,6 +11,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 pub use specialize::specialize;
 use ustr::Ustr;
 
+use crate::id_map::IdMap;
 use crate::{
     data_structures::index_vec::{
         new_key_type, IndexSlice, IndexVec, IndexVecExt,
@@ -28,9 +29,9 @@ new_key_type!(ValueId);
 
 #[derive(Debug, Clone)]
 pub struct Mir {
-    pub fn_sigs: IndexVec<FnSigId, FnSig>,
+    pub fn_sigs: IdMap<FnSigId, FnSig>,
     pub fns: FxHashMap<FnSigId, Fn>,
-    pub globals: IndexVec<GlobalId, Global>,
+    pub globals: IdMap<GlobalId, Global>,
     pub struct_ctors: FxHashMap<StructId, FnSigId>,
     pub main_fn: Option<FnSigId>,
 }
@@ -38,9 +39,9 @@ pub struct Mir {
 impl Mir {
     pub fn new() -> Self {
         Self {
-            fn_sigs: IndexVec::new(),
+            fn_sigs: IdMap::new(),
             fns: FxHashMap::default(),
-            globals: IndexVec::new(),
+            globals: IdMap::new(),
             struct_ctors: FxHashMap::default(),
             main_fn: None,
         }
