@@ -16,11 +16,11 @@ impl<K, V> IdMap<K, V> {
         Self { map: FxHashMap::default(), counter: Counter::default() }
     }
 
-    pub fn map(&self) -> &FxHashMap<K, V> {
+    pub fn inner(&self) -> &FxHashMap<K, V> {
         &self.map
     }
 
-    pub fn map_mut(&mut self) -> &mut FxHashMap<K, V> {
+    pub fn inner_mut(&mut self) -> &mut FxHashMap<K, V> {
         &mut self.map
     }
 

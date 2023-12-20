@@ -50,24 +50,33 @@ impl<'db> Specialize<'db> {
 
         while let Some(job) = self.work.pop() {
             match job.target {
-                JobTarget::Fn(f) => self.do_fn_job(mir, f),
+                JobTarget::Fn(id) => self.do_fn_job(mir, id),
+                JobTarget::Global(id) => self.do_global_job(mir, id),
             }
         }
 
-        dbg!(mir.globals.keys().collect::<Vec<_>>());
-        mir.fn_sigs.map_mut().retain(|id, _| self.used_fns.contains(id));
+        mir.fn_sigs.inner_mut().retain(|id, _| self.used_fns.contains(id));
         mir.fns.retain(|id, _| self.used_fns.contains(id));
-        dbg!(mir.globals.keys().collect::<Vec<_>>());
+        mir.globals.inner_mut().retain(|id, _| self.used_globals.contains(id));
     }
 
-    fn do_fn_job(&mut self, mir: &Mir, sig: FnSigId) {
-        self.mark_used_fn(sig);
+    fn do_fn_job(&mut self, mir: &Mir, id: FnSigId) {
+        self.used_fns.insert(id);
+        let Some(fun) = mir.fns.get(&id) else { return };
+        self.iter_body(&fun.body);
+    }
 
-        let Some(fun) = mir.fns.get(&sig) else { return };
+    fn do_global_job(&mut self, mir: &Mir, id: GlobalId) {
+        self.used_globals.insert(id);
+        let Some(global) = mir.globals.get(&id) else { return };
+        let GlobalKind::Static(body, _) = &global.kind else { return };
+        self.iter_body(body);
+    }
 
-        for value in fun.body.values() {
-            match &value.kind {
-                &ValueKind::Fn(id) => {
+    fn iter_body(&mut self, body: &Body) {
+        for value in body.values() {
+            match value.kind {
+                ValueKind::Fn(id) => {
                     self.work.push(Job { target: JobTarget::Fn(id) });
                 }
                 ValueKind::Global(id) => {
@@ -76,14 +85,6 @@ impl<'db> Specialize<'db> {
                 _ => (),
             }
         }
-    }
-
-    fn mark_used_fn(&mut self, id: FnSigId) {
-        self.used_fns.insert(id);
-    }
-
-    fn mark_used_global(&mut self, id: GlobalId) {
-        self.used_globals.insert(id);
     }
 
     // fn specialize_fn_instantations(&mut self, mir: &mut Mir, id: FnSigId) {
