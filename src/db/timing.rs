@@ -1,4 +1,7 @@
-use std::time::{Duration, Instant};
+use std::{
+    fmt,
+    time::{Duration, Instant},
+};
 
 use owo_colors::{AnsiColors, OwoColorize};
 
@@ -30,10 +33,10 @@ impl Timings {
         }
 
         let total: Duration = self.passes.iter().map(|p| p.duration).sum();
-        println!(
-            "{: <15}{}ms",
+
+        print_row(
             "total".color(AnsiColors::BrightWhite).bold(),
-            total.as_millis()
+            total.as_millis(),
         );
     }
 }
@@ -70,6 +73,10 @@ impl Timing {
             format!("{millis}ms")
         };
 
-        println!("{: <15}{time_str}", self.name.color(color).bold());
+        print_row(self.name.color(color).bold(), time_str);
     }
+}
+
+fn print_row(title: impl fmt::Display, time: impl fmt::Display) {
+    println!("{title: <20}{time}");
 }

@@ -9,8 +9,8 @@ use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
+    data_structures::index_vec::{new_key_type, IndexVec},
     db::{Db, DefId, ModuleId},
-    index_vec::{new_key_type, IndexVec},
     middle::{BinOp, Pat, UnOp},
     span::Span,
     ty::{Instantiation, Ty, Typed},

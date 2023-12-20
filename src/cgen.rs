@@ -21,7 +21,7 @@ use crate::{
 };
 
 pub fn codegen(db: &mut Db, mir: &Mir) -> Utf8PathBuf {
-    let c_file_path = db.time("c codegen", |db| {
+    let c_file_path = db.time("Code generation", |db| {
         Generator {
             target_metrics: *db.target_metrics(),
             db,
@@ -49,7 +49,7 @@ fn build_exe(db: &mut Db, c_file_path: &Utf8Path) -> Utf8PathBuf {
         output_path.with_extension("")
     };
 
-    db.time("clang", |db| compile_with_clang(db, c_file_path, &exe_file_path));
+    db.time("Clang", |db| compile_with_clang(db, c_file_path, &exe_file_path));
 
     if !db.build_options().should_emit(EmitOption::C) {
         let _ = std::fs::remove_file(c_file_path);

@@ -12,8 +12,10 @@ pub use specialize::specialize;
 use ustr::Ustr;
 
 use crate::{
+    data_structures::index_vec::{
+        new_key_type, IndexSlice, IndexVec, IndexVecExt,
+    },
     db::{Db, DefId, StructId},
-    index_vec::{new_key_type, IndexSlice, IndexVec, IndexVecExt},
     middle::{BinOp, Pat, UnOp},
     span::Span,
     ty::{Instantiation, Ty},

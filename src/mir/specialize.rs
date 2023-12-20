@@ -2,9 +2,9 @@ use rustc_hash::FxHashMap;
 use ustr::ustr;
 
 use crate::{
+    data_structures::index_vec::IndexVecExt,
     db::Db,
     hir::mangle,
-    index_vec::IndexVecExt,
     mir::*,
     subst::{ParamFolder, Subst},
     ty::{fold::TyFolder, Instantiation, Ty},

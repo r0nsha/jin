@@ -18,13 +18,13 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::{ustr, Ustr};
 
 use crate::{
+    data_structures::index_vec::{new_key_type, IndexVec, IndexVecExt},
     db::{
         build_options::{BuildOptions, EmitOption},
         timing::Timings,
     },
     diagnostics::Diagnostics,
     hir::{ExprId, HirMap},
-    index_vec::{new_key_type, IndexVec, IndexVecExt},
     middle::{Mutability, Vis},
     qpath::QPath,
     span::{Source, SourceId, Sources, Span},

@@ -19,10 +19,10 @@
 mod ast;
 mod cgen;
 mod counter;
+mod data_structures;
 mod db;
 mod diagnostics;
 mod hir;
-mod index_vec;
 mod macros;
 mod middle;
 mod mir;
@@ -108,14 +108,15 @@ fn build(db: &mut Db) {
         .expect("failed creating build directory");
 
     // Parse the entire module tree into an Ast
-    let ast = db.time("parse", parse::parse_module_tree);
+    let ast = db.time("Parse", parse::parse_module_tree);
     expect!(db);
 
     db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file))
         .expect("emitting ast failed");
 
     // Resolve all root symbols into their corresponding id's
-    let mut hir = match db.time("typeck", |db| typeck::typeck(db, &ast)) {
+    let mut hir = match db.time("Type checking", |db| typeck::typeck(db, &ast))
+    {
         Ok(hir) => hir,
         Err(diag) => {
             db.diagnostics.emit(diag);
@@ -128,15 +129,15 @@ fn build(db: &mut Db) {
         .expect("emitting hir failed");
 
     // Ownership checks
-    db.time("ownck", |db| ownck::ownck(db, &mut hir));
+    db.time("Ownership checking", |db| ownck::ownck(db, &mut hir));
     expect!(db);
 
     // Lower HIR to MIR
-    let mut mir = db.time("hir -> mir", |db| mir::lower(db, &hir));
+    let mut mir = db.time("Hir -> Mir", |db| mir::lower(db, &hir));
     expect!(db);
 
     // Specialize polymorphic MIR
-    db.time("mir specialization", |db| mir::specialize(db, &mut mir));
+    db.time("Mir Specialization", |db| mir::specialize(db, &mut mir));
 
     db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
         .expect("emitting mir failed");

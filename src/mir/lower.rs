@@ -2,10 +2,10 @@ use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr};
 
 use crate::{
+    data_structures::index_vec::IndexVecExt,
     db::{Db, DefId, DefKind},
     hir,
     hir::{FnKind, Hir},
-    index_vec::IndexVecExt,
     middle::{Mutability, NamePat, Pat, Vis},
     mir::*,
     span::Spanned,

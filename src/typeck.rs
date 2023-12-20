@@ -19,11 +19,11 @@ use ustr::UstrMap;
 use crate::{
     ast::{self, Ast},
     counter::Counter,
+    data_structures::index_vec::IndexVecExt,
     db::{Db, DefId, DefKind, ModuleId, StructField, StructInfo},
     diagnostics::{Diagnostic, Label},
     hir,
     hir::{ExprId, FnParam, Hir},
-    index_vec::IndexVecExt,
     macros::create_bool_enum,
     middle::{BinOp, Mutability, Pat, TyExpr, UnOp, Vis},
     span::{Span, Spanned},

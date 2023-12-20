@@ -8,8 +8,8 @@ use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
+    data_structures::index_vec::{new_key_type, IndexVec},
     db::{ExternLib, ModuleId, StructKind},
-    index_vec::{new_key_type, IndexVec},
     middle::{BinOp, Mutability, Pat, TyExpr, UnOp, Vis},
     qpath::QPath,
     span::{SourceId, Span, Spanned},
