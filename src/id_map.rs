@@ -16,6 +16,14 @@ impl<K, V> IdMap<K, V> {
         Self { map: FxHashMap::default(), counter: Counter::default() }
     }
 
+    pub fn map(&self) -> &FxHashMap<K, V> {
+        &self.map
+    }
+
+    pub fn map_mut(&mut self) -> &mut FxHashMap<K, V> {
+        &mut self.map
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
         self.map.iter()
     }

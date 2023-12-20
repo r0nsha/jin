@@ -1,4 +1,6 @@
-use rustc_hash::FxHashMap;
+use std::collections::VecDeque;
+
+use rustc_hash::FxHashSet;
 use ustr::ustr;
 
 use crate::{
@@ -16,11 +18,13 @@ pub fn specialize(db: &mut Db, mir: &mut Mir) {
 
 struct Specialize<'db> {
     db: &'db mut Db,
+    work: Work,
 
-    // Functions that have already been specialized
-    specialized_fns: FxHashMap<SpecializedFn, FnSigId>,
     // A map of used function ids, pointing to their new function id
-    // used_fns: FxHashSet<FnSigId, FnSigId>,
+    used_fns: FxHashSet<FnSigId>,
+    used_globals: FxHashSet<GlobalId>,
+    // Functions that have already been specialized
+    // specialized_fns: FxHashMap<SpecializedFn, FnSigId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -33,21 +37,53 @@ impl<'db> Specialize<'db> {
     fn new(db: &'db mut Db) -> Self {
         Self {
             db,
-            specialized_fns: FxHashMap::default(),
-            // used_fns: FxHashMap::default(),
+            work: Work::new(),
+            used_fns: FxHashSet::default(),
+            used_globals: FxHashSet::default(),
+            // specialized_fns: FxHashMap::default(),
         }
     }
 
     fn run(&mut self, mir: &mut Mir) {
-        // for id in mir.fn_sigs.keys() {
-        //     if mir.fns.contains_key(&id) {
-        //         self.specialize_fn_instantations(mir, id);
-        //     }
-        // }
-        //
-        // for id in mir.globals.keys() {
-        //     self.specialize_global_instantations(mir, id);
-        // }
+        let main_fn = mir.main_fn.expect("to have a main fn");
+        self.work.push(Job { target: JobTarget::Fn(main_fn) });
+
+        while let Some(job) = self.work.pop() {
+            match job.target {
+                JobTarget::Fn(f) => self.do_fn_job(mir, f),
+            }
+        }
+
+        dbg!(mir.globals.keys().collect::<Vec<_>>());
+        mir.fn_sigs.map_mut().retain(|id, _| self.used_fns.contains(id));
+        mir.fns.retain(|id, _| self.used_fns.contains(id));
+        dbg!(mir.globals.keys().collect::<Vec<_>>());
+    }
+
+    fn do_fn_job(&mut self, mir: &Mir, sig: FnSigId) {
+        self.mark_used_fn(sig);
+
+        let Some(fun) = mir.fns.get(&sig) else { return };
+
+        for value in fun.body.values() {
+            match &value.kind {
+                &ValueKind::Fn(id) => {
+                    self.work.push(Job { target: JobTarget::Fn(id) });
+                }
+                ValueKind::Global(id) => {
+                    self.work.push(Job { target: JobTarget::Global(id) });
+                }
+                _ => (),
+            }
+        }
+    }
+
+    fn mark_used_fn(&mut self, id: FnSigId) {
+        self.used_fns.insert(id);
+    }
+
+    fn mark_used_global(&mut self, id: GlobalId) {
+        self.used_globals.insert(id);
     }
 
     // fn specialize_fn_instantations(&mut self, mir: &mut Mir, id: FnSigId) {
@@ -165,4 +201,41 @@ impl<'db> Specialize<'db> {
     //
     //     new_sig_id
     // }
+}
+
+#[derive(Debug)]
+struct Work {
+    queue: VecDeque<Job>,
+    done: FxHashSet<JobTarget>,
+}
+
+impl Work {
+    fn new() -> Self {
+        Self { queue: VecDeque::new(), done: FxHashSet::default() }
+    }
+
+    pub fn push(&mut self, job: Job) {
+        if !self.done.contains(&job.target) {
+            self.queue.push_back(job);
+        }
+    }
+
+    pub fn pop(&mut self) -> Option<Job> {
+        self.queue.pop_front()
+    }
+
+    pub fn mark_done(&mut self, target: JobTarget) {
+        self.done.insert(target);
+    }
+}
+
+#[derive(Debug)]
+struct Job {
+    target: JobTarget,
+}
+
+#[derive(Debug, PartialEq, Eq, Hash)]
+enum JobTarget {
+    Fn(FnSigId),
+    Global(GlobalId),
 }
