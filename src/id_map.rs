@@ -11,6 +11,7 @@ pub struct IdMap<K, V> {
 }
 
 impl<K, V> IdMap<K, V> {
+    #[must_use]
     pub fn new() -> Self {
         Self { map: FxHashMap::default(), counter: Counter::default() }
     }
