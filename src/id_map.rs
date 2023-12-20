@@ -52,6 +52,13 @@ impl<K: From<usize> + Copy + Eq + Hash, V> IdMap<K, V> {
         self.map.insert(key, value);
         key
     }
+
+    pub fn insert_with_key(&mut self, f: impl FnOnce(K) -> V) -> K {
+        let key = self.counter.next();
+        let value = f(key);
+        self.map.insert(key, value);
+        key
+    }
 }
 
 impl<K, V> Default for IdMap<K, V> {
@@ -70,9 +77,10 @@ impl<K: Eq + Hash, V> ops::Index<K> for IdMap<K, V> {
 }
 
 impl<K: Eq + Hash, V> ops::IndexMut<K> for IdMap<K, V> {
+    #[track_caller]
     #[inline]
     fn index_mut(&mut self, index: K) -> &mut Self::Output {
-        &mut self.map[&index]
+        self.map.get_mut(&index).unwrap()
     }
 }
 

@@ -16,7 +16,7 @@ struct GlobalInitOrder<'db, 'a> {
 
 impl GlobalInitOrder<'_, '_> {
     fn get(mut self) -> Vec<GlobalId> {
-        for glob in &self.cx.mir.globals {
+        for glob in self.cx.mir.globals.values() {
             self.search_global(glob);
             if let GlobalKind::Static(..) = &glob.kind {
                 self.add_global(glob.id);

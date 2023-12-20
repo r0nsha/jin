@@ -12,7 +12,7 @@ pub(super) fn print(
     let mut cx = PrettyCx { db, mir };
     let mut docs: Vec<D> = vec![];
 
-    for glob in &mir.globals {
+    for glob in mir.globals.values() {
         docs.push(cx.pp_global(glob));
     }
 
@@ -20,7 +20,7 @@ pub(super) fn print(
         docs.push(cx.pp_fn(f));
     }
 
-    for sig in &mir.fn_sigs {
+    for sig in mir.fn_sigs.values() {
         if sig.is_extern {
             docs.push(cx.pp_fn_sig(sig).into_doc());
         }

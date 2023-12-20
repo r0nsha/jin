@@ -2,7 +2,7 @@ fn extern printf(fmt: *u8, ..) i32
 
 fn main() unit = {
 	printf("Hello, World!\n".ptr)
-	//do_add(add, 1, 2)
+	do_add(add, 1, 2)
 	//printf("num = %d\n".ptr, map(1, id))
 }
 

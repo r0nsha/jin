@@ -7,9 +7,9 @@ use crate::{
 
 impl<S: SubstTy> Subst<S> for Mir {
     fn subst(&mut self, s: &mut S) {
-        self.fn_sigs.iter_mut().for_each(|f| f.subst(s));
+        self.fn_sigs.values_mut().for_each(|f| f.subst(s));
         self.fns.values_mut().for_each(|f| f.subst(s));
-        self.globals.iter_mut().for_each(|g| g.subst(s));
+        self.globals.values_mut().for_each(|g| g.subst(s));
     }
 }
 

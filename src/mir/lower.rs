@@ -58,7 +58,7 @@ impl<'db> Lower<'db> {
         }
 
         for let_ in &self.hir.extern_lets {
-            let id = self.mir.globals.push_with_key(|id| Global {
+            let id = self.mir.globals.insert_with_key(|id| Global {
                 id,
                 def_id: let_.id,
                 name: let_.word.name(),
@@ -121,7 +121,7 @@ impl<'db> Lower<'db> {
                 .join_with("_"),
         );
 
-        let sig_id = self.mir.fn_sigs.push_with_key(|id| FnSig {
+        let sig_id = self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
             name,
             params: struct_info
@@ -161,7 +161,7 @@ impl<'db> Lower<'db> {
             FnKind::Extern { is_c_variadic } => (true, *is_c_variadic),
         };
 
-        self.mir.fn_sigs.push_with_key(|id| FnSig {
+        self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
             name,
             params: sig
@@ -267,7 +267,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let value = self.lower_expr(&let_.value);
                 let kind = GlobalKind::Static(self.body, value);
 
-                let id = self.cx.mir.globals.push_with_key(|id| Global {
+                let id = self.cx.mir.globals.insert_with_key(|id| Global {
                     id,
                     def_id: name.id,
                     name: full_name.into(),

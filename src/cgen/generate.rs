@@ -154,7 +154,7 @@ impl<'db> Generator<'db> {
     }
 
     pub fn predefine_fns(&mut self) {
-        for sig in &self.mir.fn_sigs {
+        for sig in self.mir.fn_sigs.values() {
             if sig.ty.is_polymorphic() {
                 continue;
             }
@@ -165,7 +165,7 @@ impl<'db> Generator<'db> {
     }
 
     pub fn define_globals(&mut self) {
-        for glob in &self.mir.globals {
+        for glob in self.mir.globals.values() {
             let decl = glob.ty.cdecl(self, D::text(glob.name.as_str()));
 
             let glob_doc = match &glob.kind {
