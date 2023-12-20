@@ -36,6 +36,7 @@ mod target;
 mod ty;
 mod typeck;
 mod word;
+pub mod id_map;
 
 use std::fs;
 

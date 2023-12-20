@@ -1,59 +1,28 @@
-use typed_index_collections::{TiSlice, TiVec};
+use std::hash::Hash;
 
-pub type IndexVec<K, V> = TiVec<K, V>;
-pub type IndexSlice<K, V> = TiSlice<K, V>;
+use rustc_hash::FxHashMap;
 
-pub trait IndexVecExt<K, V> {
-    fn push_with_key(&mut self, f: impl FnOnce(K) -> V) -> K;
+use crate::counter::Counter;
+
+pub struct IdMap<K, V> {
+    map: FxHashMap<K, V>,
+    counter: Counter<K>,
 }
 
-impl<K: From<usize> + Copy, V> IndexVecExt<K, V> for TiVec<K, V> {
-    fn push_with_key(&mut self, f: impl FnOnce(K) -> V) -> K {
-        let key = self.next_key();
-        self.push(f(key));
-        key
+impl<K: Eq + Hash, V> IdMap<K, V> {
+    pub fn get(&self, key: &K) -> Option<&V> {
+        self.map.get(key)
+    }
+
+    pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
+        self.map.get_mut(key)
     }
 }
 
-macro_rules! new_key_type {
-    ($name: ident) => {
-        #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-        pub struct $name(usize);
-
-        impl From<usize> for $name {
-            #[inline]
-            fn from(value: usize) -> Self {
-                Self(value)
-            }
-        }
-
-        impl From<$name> for usize {
-            #[inline]
-            fn from(value: $name) -> Self {
-                value.0
-            }
-        }
-
-        impl $name {
-            pub const INVALID: Self = Self(usize::MAX);
-
-            #[allow(unused)]
-            #[inline]
-            pub fn is_invalid(self) -> bool {
-                self == Self::INVALID
-            }
-        }
-
-        impl std::fmt::Display for $name {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                if self.is_invalid() {
-                    f.write_str("INVALID")
-                } else {
-                    f.write_str(&self.0.to_string())
-                }
-            }
-        }
-    };
+impl<K: From<usize> + Copy + Eq + Hash, V> IdMap<K, V> {
+    pub fn insert(&mut self, value: V) -> K {
+        let key = self.counter.next();
+        self.map.insert(key, value);
+        key
+    }
 }
-
-pub(crate) use new_key_type;
