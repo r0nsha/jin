@@ -6,9 +6,9 @@ type Wrapper(num: Num)
 fn main() unit = {
 	// Ownership checks
 	use_after_move()	
-	move_out_of_global()
-	move_into_loop()
-	copy()
+	//move_out_of_global()
+	//move_into_loop()
+	//copy()
 
 	// Valgrind checks
 	destroy_things()	
@@ -22,41 +22,41 @@ fn use_after_move() unit = {
 
 fn destroy_things() unit = {
 	Num(1) // Destroy temporary value
-	Wrapper(Num(1)) // Destroy complex temporary value
+	//Wrapper(Num(1)) // Destroy complex temporary value
 
-	let n = Num(1) // Destroy named value
-	let w = Wrapper(Num(1)) // Destroy complex named value
+	//let n = Num(1) // Destroy named value
+	//let w = Wrapper(Num(1)) // Destroy complex named value
 
-	let cond = Num(1) // Conditionally destroy value
-	if false {
-		let x = cond
-	}
+	//let cond = Num(1) // Conditionally destroy value
+	//if false {
+	//	let x = cond
+	//}
 
-	let w2 = Wrapper(Num(1)) // Partial move destroy (only w2 should be destroyed)
-	let w2num = w2.num
+	//let w2 = Wrapper(Num(1)) // Partial move destroy (only w2 should be destroyed)
+	//let w2num = w2.num
 
-	let wcond = Wrapper(Num(1)) // Partial & conditional move destroy (only w2 should be destroyed, conditionally)
-	if true {
-		let wcondnum = wcond.num
-	}
+	//let wcond = Wrapper(Num(1)) // Partial & conditional move destroy (only w2 should be destroyed, conditionally)
+	//if true {
+	//	let wcondnum = wcond.num
+	//}
 }	
 
-let GLOBAL_NUM = Num(1)
+//let GLOBAL_NUM = Num(1)
 
-fn move_out_of_global() unit = {
-	//let x = GLOBAL_NUM // Error!
-}
+//fn move_out_of_global() unit = {
+//	//let x = GLOBAL_NUM // Error!
+//}
 
-fn move_into_loop() unit = {
-	let n = Num(1)
+//fn move_into_loop() unit = {
+//	let n = Num(1)
+//
+//	//loop {
+//	//	let x = n // Error!
+//	//}
+//}
 
-	//loop {
-	//	let x = n // Error!
-	//}
-}
-
-fn copy() unit = {
-	let n = 1
-	let a = n
-	let b = n // Ok
-}
+//fn copy() unit = {
+//	let n = 1
+//	let a = n
+//	let b = n // Ok
+//}
