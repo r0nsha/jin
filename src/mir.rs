@@ -6,6 +6,7 @@ pub mod subst;
 use std::io;
 
 use derive_more::From;
+use enum_as_inner::EnumAsInner;
 pub use lower::lower;
 use rustc_hash::{FxHashMap, FxHashSet};
 pub use specialize::specialize;
@@ -95,9 +96,9 @@ pub struct Global {
     pub kind: GlobalKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, EnumAsInner)]
 pub enum GlobalKind {
-    Static(Body, ValueId),
+    Static { body: Body, result: ValueId },
     Extern,
 }
 

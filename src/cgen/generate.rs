@@ -165,7 +165,7 @@ impl<'db> Generator<'db> {
             let decl = glob.ty.cdecl(self, D::text(glob.name.as_str()));
 
             let glob_doc = match &glob.kind {
-                GlobalKind::Static(..) => decl,
+                GlobalKind::Static { .. } => decl,
                 GlobalKind::Extern => {
                     D::text("extern").append(D::space()).append(decl)
                 }
@@ -173,7 +173,7 @@ impl<'db> Generator<'db> {
 
             self.globals.push(stmt(|| glob_doc));
 
-            if let GlobalKind::Static(body, value) = &glob.kind {
+            if let GlobalKind::Static { body, result: value } = &glob.kind {
                 let mut state = FnState::new(body);
 
                 let return_stmt = stmt(|| {

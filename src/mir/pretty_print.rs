@@ -37,7 +37,7 @@ struct PrettyCx<'db> {
 impl<'db> PrettyCx<'db> {
     fn pp_global(&mut self, glob: &'db Global) -> D<'db> {
         match &glob.kind {
-            GlobalKind::Static(body, _) => D::text("let")
+            GlobalKind::Static { body, result } => D::text("let")
                 .append(D::space())
                 .append(Self::global(glob.name.as_str()))
                 .append(D::text(":"))
@@ -45,6 +45,8 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text(glob.ty.to_string(self.db)))
                 .append(D::space())
                 .append(D::text("="))
+                .append(D::space())
+                .append(self.value(body, *result))
                 .append(D::space())
                 .append(
                     D::text("{")
@@ -93,7 +95,15 @@ impl<'db> PrettyCx<'db> {
             params: sig
                 .params
                 .iter()
-                .map(|p| D::text(p.ty.to_string(self.db)))
+                .map(|p| {
+                    D::text(match &p.pat {
+                        Pat::Name(name) => name.word.name().as_str(),
+                        Pat::Discard(_) => "_",
+                    })
+                    .append(D::text(":"))
+                    .append(D::space())
+                    .append(D::text(p.ty.to_string(self.db)))
+                })
                 .collect(),
             ret: D::text(sig.ty.as_fn().unwrap().ret.to_string(self.db)),
             is_extern: sig.is_extern,
@@ -238,19 +248,24 @@ struct PrintFn<'a> {
 
 impl<'a> PrintFn<'a> {
     fn into_doc(self) -> D<'a> {
-        self.sig.into_doc().append(D::space()).append(
-            D::text("{")
-                .append(D::hardline())
-                .append(
-                    D::intersperse(
-                        self.blocks.into_iter().map(PrintBlock::into_doc),
-                        D::hardline().append(D::hardline()),
+        self.sig
+            .into_doc()
+            .append(D::space())
+            .append(D::text("="))
+            .append(D::space())
+            .append(
+                D::text("{")
+                    .append(D::hardline())
+                    .append(
+                        D::intersperse(
+                            self.blocks.into_iter().map(PrintBlock::into_doc),
+                            D::hardline().append(D::hardline()),
+                        )
+                        .group(),
                     )
-                    .group(),
-                )
-                .append(D::hardline())
-                .append(D::text("}")),
-        )
+                    .append(D::hardline())
+                    .append(D::text("}")),
+            )
     }
 }
 
@@ -284,8 +299,6 @@ impl<'a> PrintFnSig<'a> {
                     })
                     .append(D::text(")").nest(NEST).group()),
             )
-            .append(D::space())
-            .append(D::text("->"))
             .append(D::space())
             .append(self.ret)
     }

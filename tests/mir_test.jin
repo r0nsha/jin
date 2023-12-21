@@ -1,12 +1,13 @@
 fn extern printf(fmt: *u8, ..) i32
 
-//let do = 1
+let GLOBAL = id(1.0)
 
 fn main() unit = {
 	printf("Hello, World!\n".ptr)
 	do_add(add, 1, 2)
 	printf("id(1) = %d\n".ptr, id(1))
 	printf("map(1, id) = %d\n".ptr, map(1, id))
+	printf("GLOBAL = %f\n".ptr, GLOBAL)
 }
 
 fn add(a: int, b: int) int = {

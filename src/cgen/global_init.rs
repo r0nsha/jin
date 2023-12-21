@@ -18,7 +18,7 @@ impl GlobalInitOrder<'_, '_> {
     fn get(mut self) -> Vec<GlobalId> {
         for glob in self.cx.mir.globals.values() {
             self.search_global(glob);
-            if let GlobalKind::Static(..) = &glob.kind {
+            if let GlobalKind::Static { .. } = &glob.kind {
                 self.add_global(glob.id);
             }
         }
@@ -27,7 +27,7 @@ impl GlobalInitOrder<'_, '_> {
     }
 
     fn search_global(&mut self, glob: &Global) {
-        if let GlobalKind::Static(body, _) = &glob.kind {
+        if let GlobalKind::Static { body, result: _ } = &glob.kind {
             for value in body.values() {
                 if let ValueKind::Global(gid) = &value.kind {
                     if !self.add_global(*gid) {

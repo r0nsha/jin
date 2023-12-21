@@ -32,7 +32,7 @@ impl<S: SubstTy> Subst<S> for Fn {
 impl<S: SubstTy> Subst<S> for Global {
     fn subst(&mut self, s: &mut S) {
         match &mut self.kind {
-            GlobalKind::Static(body, _) => body.subst(s),
+            GlobalKind::Static { body, result: _ } => body.subst(s),
             GlobalKind::Extern => (),
         }
     }

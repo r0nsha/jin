@@ -94,11 +94,19 @@ impl<'db> Specialize<'db> {
         body_subst.subst(&mut mir.fns.get_mut(&id).unwrap().body);
     }
 
-    fn do_global_job(&mut self, mir: &Mir, id: GlobalId) {
+    fn do_global_job(&mut self, mir: &mut Mir, id: GlobalId) {
         let global = mir.globals.get(&id).expect("global to exist");
-        if let GlobalKind::Static(body, _) = &global.kind {
+        if let GlobalKind::Static { body, result: _ } = &global.kind {
             let body_subst = self.specialize_body(mir, body);
-            todo!("{body_subst:?}");
+            body_subst.subst(
+                mir.globals
+                    .get_mut(&id)
+                    .unwrap()
+                    .kind
+                    .as_static_mut()
+                    .unwrap()
+                    .0,
+            );
         }
     }
 
