@@ -955,17 +955,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     //         }))
     // }
 
-    // pub fn move_global_item(db: &Db, id: DefId, moved_to: Span) -> Diagnostic {
-    //     Diagnostic::error()
-    //         .with_message(format!(
-    //             "cannot move out of global item `{}`",
-    //             db[id].qpath
-    //         ))
-    //         .with_label(
-    //             Label::primary(moved_to).with_message("global item moved here"),
-    //         )
-    // }
-
     // pub fn move_into_loop(
     //     db: &Db,
     //     item: hir::DestroyGlueItem,
