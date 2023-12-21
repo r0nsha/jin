@@ -187,7 +187,6 @@ struct LowerBody<'cx, 'db> {
     body: Body,
     value_states: ValueStates,
     scopes: Vec<Scope>,
-    loop_blocks: Vec<BlockId>,
     current_block: BlockId,
     id_to_value: FxHashMap<DefId, ValueId>,
 }
@@ -199,7 +198,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             body: Body::new(),
             value_states: ValueStates::new(),
             scopes: vec![],
-            loop_blocks: vec![],
             current_block: BlockId::start(),
             id_to_value: FxHashMap::default(),
         }
@@ -395,10 +393,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.push_br_if(not_cond, end_blk, None);
                 }
 
-                self.loop_blocks.push(end_blk);
                 self.lower_expr(&loop_.expr);
                 self.push_br(start_blk);
-                self.loop_blocks.pop();
 
                 if self.in_connected_block() {
                     self.check_loop_moves();
@@ -410,9 +406,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::Break => {
-                let loop_blk =
-                    self.loop_blocks.last().expect("to be inside a loop block");
-                self.push_br(*loop_blk);
+                let ScopeKind::Loop { end_block } = self
+                    .closest_loop_scope()
+                    .expect("to be inside a loop block")
+                    .kind
+                else {
+                    unreachable!()
+                };
+
+                self.push_br(end_block);
                 self.const_unit()
             }
             hir::ExprKind::Block(blk) => {
@@ -785,10 +787,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             _ => return,
         }
 
-        let closest_loop_scope_mut =
-            self.scopes.iter_mut().rev().find(|s| s.kind.is_loop());
-
-        if let Some(scope) = closest_loop_scope_mut {
+        if let Some(scope) = self.closest_loop_scope_mut() {
             scope.moved_in_loop.insert(value, span);
         }
     }
@@ -958,6 +957,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         // TODO: destroy scope values
         // TODO: self.lower_destroy_glue(expr.id);
         self.scopes.pop().expect("cannot exit the root scope")
+    }
+
+    fn closest_loop_scope(&self) -> Option<&Scope> {
+        self.scopes.iter().rev().find(|s| s.kind.is_loop())
+    }
+
+    fn closest_loop_scope_mut(&mut self) -> Option<&mut Scope> {
+        self.scopes.iter_mut().rev().find(|s| s.kind.is_loop())
     }
 
     // fn push_conditional_destroy(
