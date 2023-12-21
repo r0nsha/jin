@@ -1,0 +1,25 @@
+fn extern printf(fmt: *u8, ..) i32
+
+type Num(field: int)
+type Wrapper(num: Num)
+
+fn main() unit = {
+	Num(1) // Destroy temporary value
+	//Wrapper(Num(1)) // Destroy complex temporary value
+
+	//let n = Num(1) // Destroy named value
+	//let w = Wrapper(Num(1)) // Destroy complex named value
+
+	//let cond = Num(1) // Conditionally destroy value
+	//if false {
+	//	let x = cond
+	//}
+
+	//let w2 = Wrapper(Num(1)) // Partial move destroy (only w2 should be destroyed)
+	//let w2num = w2.num
+
+	//let wcond = Wrapper(Num(1)) // Partial & conditional move destroy (only w2 should be destroyed, conditionally)
+	//if true {
+	//	let wcondnum = wcond.num
+	//}
+}
