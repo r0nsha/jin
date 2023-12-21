@@ -369,10 +369,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 })
             }
             hir::ExprKind::Loop(loop_) => {
-                self.enter_scope(ScopeKind::Loop, expr.span);
-
                 let start_blk = self.body.create_block("loop_start");
                 let end_blk = self.body.create_block("loop_end");
+
+                self.enter_scope(
+                    ScopeKind::Loop { end_block: end_blk },
+                    expr.span,
+                );
 
                 self.push_br(start_blk);
                 self.position_at(start_blk);
@@ -782,11 +785,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             _ => return,
         }
 
-        let closest_loop_scope_mut = self
-            .scopes
-            .iter_mut()
-            .rev()
-            .find(|s| matches!(s.kind, ScopeKind::Loop));
+        let closest_loop_scope_mut =
+            self.scopes.iter_mut().rev().find(|s| s.kind.is_loop());
 
         if let Some(scope) = closest_loop_scope_mut {
             scope.moved_in_loop.insert(value, span);
@@ -1185,5 +1185,15 @@ struct Scope {
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum ScopeKind {
     Block,
-    Loop,
+    Loop { end_block: BlockId },
+}
+
+impl ScopeKind {
+    /// Returns `true` if the scope kind is [`Loop`].
+    ///
+    /// [`Loop`]: ScopeKind::Loop
+    #[must_use]
+    fn is_loop(&self) -> bool {
+        matches!(self, Self::Loop { .. })
+    }
 }
