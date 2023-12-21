@@ -1,4 +1,3 @@
-mod errors;
 mod lower;
 mod pretty_print;
 mod specialize;

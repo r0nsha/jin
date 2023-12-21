@@ -5,6 +5,7 @@ use ustr::{ustr, Ustr};
 
 use crate::{
     db::{Db, DefId, DefKind},
+    diagnostics::{Diagnostic, Label},
     hir,
     hir::{FnKind, Hir},
     middle::{Mutability, NamePat, Pat, Vis},
@@ -12,7 +13,7 @@ use crate::{
     span::Spanned,
     ty::{
         coerce::{CoercionKind, Coercions},
-        Instantiation, Ty,
+        Instantiation, Ty, TyKind,
     },
 };
 
@@ -289,6 +290,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         match &expr.kind {
             hir::ExprKind::Let(let_) => {
                 let init = self.lower_expr(&let_.value);
+                self.try_move(init, MoveKind::Move(let_.value.span));
 
                 match &let_.pat {
                     Pat::Name(name) => {
@@ -639,6 +641,50 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
+    pub fn try_move(&mut self, value: ValueId, kind: MoveKind) {
+        if let Err(diagnostic) = self.try_move_inner(value, kind) {
+            self.cx.db.diagnostics.emit(diagnostic);
+        }
+    }
+
+    pub fn try_move_inner(
+        &mut self,
+        value: ValueId,
+        kind: MoveKind,
+    ) -> Result<(), Diagnostic> {
+        let value_state = self.value_state(value);
+
+        match (value_state, kind) {
+            (ValueState::Owned, MoveKind::Move(span)) => {
+                self.value_states.insert(
+                    self.curr_block,
+                    value,
+                    ValueState::Moved(span),
+                );
+                Ok(())
+            }
+            (ValueState::Moved(already_moved_to), MoveKind::Move(moved_to)) => {
+                Err(self.already_moved_error(value, moved_to, already_moved_to))
+            }
+        }
+    }
+
+    pub fn value_state(&mut self, value: ValueId) -> ValueState {
+        if let Some(state) = self.value_states.get(self.curr_block, value) {
+            return state;
+        }
+
+        todo!("calculate value state from predecessors")
+    }
+
+    fn ty_is_move(&self, ty: Ty) -> bool {
+        match ty.kind() {
+            TyKind::Struct(sid) => self.cx.db[*sid].kind.is_ref(),
+            TyKind::Param(_) => true,
+            _ => false,
+        }
+    }
+
     #[inline]
     pub fn position_at(&mut self, id: BlockId) {
         self.curr_block = id;
@@ -738,6 +784,117 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     //     let value = self.const_bool(false);
     //     self.push_inst(Inst::Store { value, target: destroy_flag });
     // }
+
+    pub fn already_moved_error(
+        &self,
+        value: ValueId,
+        moved_to: Span,
+        already_moved_to: Span,
+    ) -> Diagnostic {
+        let name = self.get_value_name(value);
+
+        Diagnostic::error()
+            .with_message(format!("use of moved {name}"))
+            .with_label(
+                Label::primary(moved_to)
+                    .with_message(format!("{name} used here after move")),
+            )
+            .with_label(
+                Label::secondary(already_moved_to)
+                    .with_message(format!("{name} already moved here")),
+            )
+    }
+
+    // pub fn already_partially_moved(
+    //     db: &Db,
+    //     item: hir::DestroyGlueItem,
+    //     moved_to: Span,
+    //     already_moved_member: Word,
+    // ) -> Diagnostic {
+    //     let name = self.get_value_name(value);
+    //
+    //     Diagnostic::error()
+    //         .with_message(format!(
+    //             "use of partially moved member `{already_moved_member}` of {name}"
+    //         ))
+    //         .with_label(
+    //             Label::primary(moved_to).with_message(format!(
+    //                 "{name} used here after partial move"
+    //             )),
+    //         )
+    //         .with_label(
+    //             Label::secondary(already_moved_member.span())
+    //                 .with_message(format!("{name} partially moved here")),
+    //         )
+    // }
+
+    // pub fn move_after_partially_moved(
+    //     db: &Db,
+    //     item: hir::DestroyGlueItem,
+    //     moved_to: Span,
+    //     already_moved_to: Vec<Span>,
+    // ) -> Diagnostic {
+    //     let (name, name) = get_value_names(db, item);
+    //
+    //     Diagnostic::error()
+    //         .with_message(format!("use of partially moved {name}"))
+    //         .with_label(
+    //             Label::primary(moved_to).with_message(format!(
+    //                 "{name} used here after partial move"
+    //             )),
+    //         )
+    //         .with_labels(already_moved_to.into_iter().map(|moved_to| {
+    //             Label::secondary(moved_to).with_message(format!(
+    //                 "{name} already partially moved here"
+    //             ))
+    //         }))
+    // }
+
+    // pub fn move_global_item(db: &Db, id: DefId, moved_to: Span) -> Diagnostic {
+    //     Diagnostic::error()
+    //         .with_message(format!(
+    //             "cannot move out of global item `{}`",
+    //             db[id].qpath
+    //         ))
+    //         .with_label(
+    //             Label::primary(moved_to).with_message("global item moved here"),
+    //         )
+    // }
+
+    // pub fn move_into_loop(
+    //     db: &Db,
+    //     item: hir::DestroyGlueItem,
+    //     moved_to: Span,
+    //     value_span: Span,
+    //     loop_span: Span,
+    // ) -> Diagnostic {
+    //     let (name, name) = get_value_names(db, item);
+    //
+    //     Diagnostic::error()
+    //         .with_message(format!("use of moved {name}"))
+    //         .with_label(Label::primary(moved_to).with_message(format!(
+    //             "{name} moved here, in the previous loop iteration"
+    //         )))
+    //         .with_label(
+    //             Label::secondary(loop_span).with_message("inside this loop"),
+    //         )
+    //         .with_label(
+    //             Label::secondary(value_span)
+    //                 .with_message(format!("{name} defined here")),
+    //         )
+    // }
+
+    fn get_value_name(&self, value: ValueId) -> Ustr {
+        match &self.body.value(value).kind {
+            ValueKind::Local(id) => self.cx.db[*id].name,
+            ValueKind::Global(id) => self.cx.mir.globals[*id].name,
+            ValueKind::Fn(id) => self.cx.mir.fn_sigs[*id].name,
+            ValueKind::Register | ValueKind::Const(_) => {
+                ustr("temporary value")
+            }
+            ValueKind::Member(_, member) => *member,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -798,4 +955,29 @@ enum ValueState {
 
     // Some of this value's fields have been moved
     // PartiallyMoved(FxHashMap<Ustr, Span>),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum MoveKind {
+    Move(Span),
+    // PartialMove(Word),
+}
+
+impl Spanned for MoveKind {
+    fn span(&self) -> Span {
+        match self {
+            MoveKind::Move(moved_to) => *moved_to,
+            // MoveKind::PartialMove(member) => member.span(),
+        }
+    }
+}
+
+#[allow(clippy::enum_variant_names)]
+#[derive(Debug, Clone)]
+enum MoveError {
+    AlreadyMoved(Span),
+    // AlreadyPartiallyMoved(Word),
+    // MoveAfterPartiallyMoved(Vec<Span>),
+    // MoveOutOfGlobal(DefId),
+    // MoveIntoLoop { value_span: Span, loop_span: Span },
 }

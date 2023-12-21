@@ -159,8 +159,7 @@ impl<'db> Ownck<'db> {
             }
             hir::ExprKind::Call(call) => {
                 self.expr(env, &call.callee);
-                // TODO: mark callee as moved (needed for closures)
-                // self.try_mark_expr_moved(&call.callee);
+                self.try_move(env, &call.callee);
 
                 for arg in &call.args {
                     self.expr(env, &arg.expr);
