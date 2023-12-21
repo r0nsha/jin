@@ -5,7 +5,7 @@ fn main() unit = {
 	printf("Hello, World!\n".ptr)
 	do_add(add, 1, 2)
 	//printf("id(1) = %d\n".ptr, id(1))
-	//printf("num = %d\n".ptr, map(1, id))
+	//printf("map(1, id) = %d\n".ptr, map(1, id))
 }
 
 fn add(a: int, b: int) int = {

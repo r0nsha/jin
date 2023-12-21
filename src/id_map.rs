@@ -46,6 +46,10 @@ impl<K, V> IdMap<K, V> {
 }
 
 impl<K: Eq + Hash, V> IdMap<K, V> {
+    pub fn contains_key(&self, key: &K) -> bool {
+        self.map.contains_key(key)
+    }
+
     pub fn get(&self, key: &K) -> Option<&V> {
         self.map.get(key)
     }

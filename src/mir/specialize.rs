@@ -62,30 +62,25 @@ impl<'db> Specialize<'db> {
         mir.globals.inner_mut().retain(|id, _| self.used_globals.contains(id));
     }
 
-    fn do_fn_job(&mut self, mir: &Mir, id: FnSigId) {
+    fn do_fn_job(&mut self, mir: &mut Mir, id: FnSigId) {
         self.used_fns.insert(id);
-        let Some(fun) = mir.fns.get(&id) else { return };
-        self.iter_body(&fun.body);
+
+        let Some(fun) = mir.fns.get_mut(&id) else {
+            debug_assert!(
+                mir.fn_sigs.contains_key(&id),
+                "function must have an existing signature"
+            );
+            return;
+        };
+
+        SpecializeBody { cx: self, body: &mut fun.body }.run();
     }
 
-    fn do_global_job(&mut self, mir: &Mir, id: GlobalId) {
+    fn do_global_job(&mut self, mir: &mut Mir, id: GlobalId) {
         self.used_globals.insert(id);
-        let Some(global) = mir.globals.get(&id) else { return };
-        let GlobalKind::Static(body, _) = &global.kind else { return };
-        self.iter_body(body);
-    }
-
-    fn iter_body(&mut self, body: &Body) {
-        for value in body.values() {
-            match value.kind {
-                ValueKind::Fn(id) => {
-                    self.work.push(Job { target: JobTarget::Fn(id) });
-                }
-                ValueKind::Global(id) => {
-                    self.work.push(Job { target: JobTarget::Global(id) });
-                }
-                _ => (),
-            }
+        let global = mir.globals.get_mut(&id).expect("global to exist");
+        if let GlobalKind::Static(body, _) = &mut global.kind {
+            SpecializeBody { cx: self, body }.run();
         }
     }
 
@@ -241,4 +236,25 @@ struct Job {
 enum JobTarget {
     Fn(FnSigId),
     Global(GlobalId),
+}
+
+struct SpecializeBody<'db, 'cx> {
+    cx: &'cx mut Specialize<'db>,
+    body: &'cx mut Body,
+}
+
+impl<'db, 'cx> SpecializeBody<'db, 'cx> {
+    fn run(self) {
+        for value in self.body.values() {
+            match value.kind {
+                ValueKind::Fn(id) => {
+                    self.cx.work.push(Job { target: JobTarget::Fn(id) });
+                }
+                ValueKind::Global(id) => {
+                    self.cx.work.push(Job { target: JobTarget::Global(id) });
+                }
+                _ => (),
+            }
+        }
+    }
 }
