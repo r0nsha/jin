@@ -186,6 +186,7 @@ struct LowerBody<'cx, 'db> {
     cx: &'cx mut Lower<'db>,
     body: Body,
     value_states: ValueStates,
+    id_to_value: FxHashMap<DefId, ValueId>,
     curr_block: BlockId,
     loop_blocks: Vec<BlockId>,
 }
@@ -196,6 +197,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             cx,
             body: Body::new(),
             value_states: ValueStates::new(),
+            id_to_value: FxHashMap::default(),
             curr_block: BlockId::start(),
             loop_blocks: vec![],
         }
@@ -214,6 +216,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 for param in &fun.sig.params {
                     match &param.pat {
                         Pat::Name(name) => {
+                            let id = name.id;
+                            let value = self
+                                .create_value(param.ty, ValueKind::Local(id));
+                            self.id_to_value.insert(name.id, value);
                             // TODO:
                             // self.push_destroy_flag(hir::DestroyGlueItem::Def(
                             //     name.id,
@@ -299,11 +305,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         //     name.id,
                         // ));
 
-                        self.push_inst_with(
+                        let value = self.push_inst_with(
                             let_.ty,
                             ValueKind::Local(name.id),
                             |value| Inst::Local { value, init },
                         );
+                        self.id_to_value.insert(name.id, value);
                     }
                     Pat::Discard(_) => (),
                 }
@@ -551,7 +558,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     ValueKind::Global(id),
                 )
             }
-            DefKind::Variable => self.create_value(ty, ValueKind::Local(id)),
+            DefKind::Variable => self.id_to_value[&id],
             DefKind::Struct(sid) => {
                 let id = self.cx.get_or_create_struct_ctor(*sid);
                 self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
@@ -654,6 +661,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> Result<(), Diagnostic> {
         let value_state = self.value_state(value);
 
+        dbg!(value, value_state, kind);
         match (value_state, kind) {
             (ValueState::Owned, MoveKind::Move(span)) => {
                 self.value_states.insert(
