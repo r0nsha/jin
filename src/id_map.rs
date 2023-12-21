@@ -81,6 +81,10 @@ impl<K: From<usize> + Copy + Eq + Hash, V> IdMap<K, V> {
         self.map.insert(key, value);
         key
     }
+
+    pub fn extend(&mut self, iter: impl IntoIterator<Item = (K, V)>) {
+        self.map.extend(iter);
+    }
 }
 
 impl<K, V> Default for IdMap<K, V> {
@@ -103,6 +107,15 @@ impl<K: Eq + Hash, V> ops::IndexMut<K> for IdMap<K, V> {
     #[inline]
     fn index_mut(&mut self, index: K) -> &mut Self::Output {
         self.map.get_mut(&index).unwrap()
+    }
+}
+
+impl<K, V> IntoIterator for IdMap<K, V> {
+    type Item = (K, V);
+    type IntoIter = hash_map::IntoIter<K, V>;
+
+    fn into_iter(self) -> hash_map::IntoIter<K, V> {
+        self.map.into_iter()
     }
 }
 
