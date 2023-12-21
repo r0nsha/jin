@@ -182,6 +182,7 @@ impl<'db> Lower<'db> {
 struct LowerBody<'cx, 'db> {
     cx: &'cx mut Lower<'db>,
     body: Body,
+    value_states: ValueStates,
     curr_block: BlockId,
     loop_blocks: Vec<BlockId>,
 }
@@ -191,6 +192,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         Self {
             cx,
             body: Body::new(),
+            value_states: ValueStates::new(),
             curr_block: BlockId::start(),
             loop_blocks: vec![],
         }
@@ -233,6 +235,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                     self.push_inst(Inst::Return { value: ret_value });
                 }
+
+                dbg!(&self.value_states);
 
                 self.cx.mir.fns.insert(
                     sig,
@@ -457,7 +461,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Member(access) => {
                 let value = self.lower_expr(&access.expr);
-                self.body.create_value(
+                self.create_value(
                     expr.ty,
                     ValueKind::Member(value, access.member.name()),
                 )
@@ -491,7 +495,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     //                 }
     //                 hir::DestroyGlueItem::Def(id) => {
     //                     let def_ty = self.cx.db[*id].ty;
-    //                     self.body.create_value(def_ty, ValueKind::Local(*id))
+    //                     self.create_value(def_ty, ValueKind::Local(*id))
     //                 }
     //             };
     //
@@ -523,7 +527,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             DefKind::Fn(_) => {
                 let id = self.cx.id_to_fn_sig[&id];
 
-                let value = self.body.create_value(
+                let value = self.create_value(
                     self.cx.mir.fn_sigs[id].ty,
                     ValueKind::Fn(id),
                 );
@@ -536,18 +540,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             DefKind::ExternGlobal | DefKind::Global => {
                 let id = self.cx.lower_global(id);
-                self.body.create_value(
+                self.create_value(
                     self.cx.mir.globals[id].ty,
                     ValueKind::Global(id),
                 )
             }
-            DefKind::Variable => {
-                self.body.create_value(ty, ValueKind::Local(id))
-            }
+            DefKind::Variable => self.create_value(ty, ValueKind::Local(id)),
             DefKind::Struct(sid) => {
                 let id = self.cx.get_or_create_struct_ctor(*sid);
-                self.body
-                    .create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
+                self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
             }
             DefKind::Ty(_) => unreachable!("{:?}", &self.cx.db[id]),
         }
@@ -558,24 +559,23 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             Const::Str(lit) => self.push_inst_with_register(ty, |value| {
                 Inst::StrLit { value, lit: *lit }
             }),
-            Const::Int(value) => self
-                .body
-                .create_value(ty, ValueKind::Const(Const::from(*value))),
-            Const::Float(value) => self
-                .body
-                .create_value(ty, ValueKind::Const(Const::from(*value))),
+            Const::Int(value) => {
+                self.create_value(ty, ValueKind::Const(Const::from(*value)))
+            }
+            Const::Float(value) => {
+                self.create_value(ty, ValueKind::Const(Const::from(*value)))
+            }
             Const::Bool(value) => self.const_bool(*value),
             Const::Unit => self.const_unit(),
         }
     }
 
     pub fn const_unit(&mut self) -> ValueId {
-        self.body
-            .create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit))
+        self.create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit))
     }
 
     pub fn const_bool(&mut self, value: bool) -> ValueId {
-        self.body.create_value(
+        self.create_value(
             self.cx.db.types.bool,
             ValueKind::Const(Const::Bool(value)),
         )
@@ -595,7 +595,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         kind: ValueKind,
         f: impl FnOnce(ValueId) -> Inst,
     ) -> ValueId {
-        let value = self.body.create_value(value_ty, kind);
+        let value = self.create_value(value_ty, kind);
         self.push_inst(f(value));
         value
     }
@@ -627,6 +627,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub fn push_inst(&mut self, inst: Inst) {
         self.body.block_mut(self.curr_block).push_inst(inst);
+    }
+
+    pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
+        let value = self.body.create_value(ty, kind);
+        self.value_states.insert(self.curr_block, value, ValueState::Owned);
+        value
     }
 
     #[inline]
@@ -728,4 +734,42 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     //     let value = self.const_bool(false);
     //     self.push_inst(Inst::Store { value, target: destroy_flag });
     // }
+}
+
+#[derive(Debug)]
+struct ValueStates(FxHashMap<BlockId, FxHashMap<ValueId, ValueState>>);
+
+impl ValueStates {
+    fn new() -> Self {
+        Self(FxHashMap::default())
+    }
+
+    fn get(&self, block: BlockId, value: ValueId) -> Option<ValueState> {
+        self.0.get(&block).and_then(|b| b.get(&value)).copied()
+    }
+
+    fn insert(&mut self, block: BlockId, value: ValueId, state: ValueState) {
+        self.0.entry(block).or_default().insert(value, state);
+    }
+}
+
+impl Default for ValueStates {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum ValueState {
+    // The value is owned, and should be dropped at the end of its scope
+    Owned,
+
+    // The value is has been moved
+    Moved(Span),
+    // The value has been moved in one branch, but is still owned in another branch
+    // This value should be dropped conditionally at the end of its scope
+    // MaybeMoved { moved_to: Span, to_block: hir::BlockExprId },
+
+    // Some of this value's fields have been moved
+    // PartiallyMoved(FxHashMap<Ustr, Span>),
 }

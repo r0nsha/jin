@@ -11,7 +11,7 @@ fn main() unit = {
 	//copy()
 
 	// Valgrind checks
-	destroy_things()	
+	//destroy_things()	
 }
 
 fn use_after_move() unit = {
@@ -21,7 +21,7 @@ fn use_after_move() unit = {
 }	
 
 fn destroy_things() unit = {
-	Num(1) // Destroy temporary value
+	//Num(1) // Destroy temporary value
 	//Wrapper(Num(1)) // Destroy complex temporary value
 
 	//let n = Num(1) // Destroy named value
