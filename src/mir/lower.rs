@@ -1,4 +1,4 @@
-use std::fmt;
+use std::{fmt, mem};
 
 use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr};
@@ -212,6 +212,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.cx.mir.main_fn = Some(sig);
                 }
 
+                self.enter_scope(ScopeKind::Block, body.span);
                 let start_blk = self.body.create_block("start");
                 self.position_at(start_blk);
 
@@ -219,8 +220,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     match &param.pat {
                         Pat::Name(name) => {
                             let id = name.id;
-                            let value = self
-                                .create_value(param.ty, ValueKind::Local(id));
+                            let value = self.create_value(
+                                param.ty,
+                                ValueKind::Local(id, self.scope().depth),
+                            );
                             self.id_to_value.insert(name.id, value);
                             // TODO:
                             // self.push_destroy_flag(hir::DestroyGlueItem::Def(
@@ -246,6 +249,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                     self.push_inst(Inst::Return { value: ret_value });
                 }
+
+                self.exit_scope();
 
                 // println!("fn `{}`", fun.sig.word);
                 // println!("{}", self.value_states);
@@ -309,7 +314,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                         let value = self.push_inst_with(
                             let_.ty,
-                            ValueKind::Local(name.id),
+                            ValueKind::Local(name.id, self.scope().depth),
                             |value| Inst::Local { value, init },
                         );
                         self.id_to_value.insert(name.id, value);
@@ -713,6 +718,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return Ok(());
         }
 
+        self.insert_loop_move(value, kind.span());
         self.check_move_out_of_global(value, kind.span())?;
 
         let value_state = self.value_state(value);
@@ -763,8 +769,52 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    pub fn check_loop_moves(&self) {
-        todo!("check_loop_moves");
+    pub fn insert_loop_move(&mut self, value: ValueId, span: Span) {
+        let scope = self.scope();
+
+        if scope.loop_depth == 0 {
+            return;
+        }
+
+        match &self.body.value(value).kind {
+            ValueKind::Local(_, depth) if *depth < scope.loop_depth => (),
+            ValueKind::Member(_, _) => (),
+            _ => return,
+        }
+
+        let closest_loop_scope_mut = self
+            .scopes
+            .iter_mut()
+            .rev()
+            .find(|s| matches!(s.kind, ScopeKind::Loop));
+
+        if let Some(scope) = closest_loop_scope_mut {
+            scope.moved_in_loop.insert(value, span);
+        }
+    }
+
+    pub fn check_loop_moves(&mut self) {
+        let moved_in_loop = mem::take(&mut self.scope_mut().moved_in_loop);
+
+        for (value, moved_to) in moved_in_loop {
+            if !matches!(self.value_state(value), ValueState::Owned) {
+                let name = self.get_value_name(value);
+
+                self.cx.db.diagnostics.emit(
+                    Diagnostic::error()
+                        .with_message(format!("use of moved {name}"))
+                        .with_label(Label::primary(moved_to).with_message(
+                            format!(
+                            "{name} moved here, in the previous loop iteration"
+                        ),
+                        ))
+                        .with_label(
+                            Label::secondary(self.scope().span)
+                                .with_message("inside this loop"),
+                        ),
+                );
+            }
+        }
     }
 
     pub fn value_state(&mut self, value: ValueId) -> ValueState {
@@ -878,6 +928,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         coerced_value
+    }
+
+    #[track_caller]
+    fn scope(&self) -> &Scope {
+        self.scopes.last().unwrap()
+    }
+
+    #[track_caller]
+    fn scope_mut(&mut self) -> &mut Scope {
+        self.scopes.last_mut().unwrap()
     }
 
     fn enter_scope(&mut self, kind: ScopeKind, span: Span) {
@@ -1023,15 +1083,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     //         )
     // }
 
-    fn get_value_name(&self, value: ValueId) -> Ustr {
+    fn get_value_name(&self, value: ValueId) -> String {
         match &self.body.value(value).kind {
-            ValueKind::Local(id) => self.cx.db[*id].name,
-            ValueKind::Global(id) => self.cx.mir.globals[*id].name,
-            ValueKind::Fn(id) => self.cx.mir.fn_sigs[*id].name,
-            ValueKind::Register | ValueKind::Const(_) => {
-                ustr("temporary value")
+            ValueKind::Local(id, _) => format!("`{}`", self.cx.db[*id].name),
+            ValueKind::Global(id) => {
+                format!("`{}`", self.cx.mir.globals[*id].name)
             }
-            ValueKind::Member(_, member) => *member,
+            ValueKind::Fn(id) => format!("`{}`", self.cx.mir.fn_sigs[*id].name),
+            ValueKind::Register | ValueKind::Const(_) => {
+                "temporary value".to_string()
+            }
+            ValueKind::Member(_, member) => format!("`{member}`"),
         }
     }
 }

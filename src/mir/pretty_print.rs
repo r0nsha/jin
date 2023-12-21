@@ -218,7 +218,7 @@ impl<'db> PrettyCx<'db> {
 
         match &value.kind {
             ValueKind::Register => D::text("v").append(id.to_string()),
-            ValueKind::Local(id) => D::text(self.db[*id].name.as_str()),
+            ValueKind::Local(id, _) => D::text(self.db[*id].name.as_str()),
             ValueKind::Global(id) => Self::global(&self.mir.globals[*id].name),
             ValueKind::Fn(id) => Self::global(&self.mir.fn_sigs[*id].name),
             ValueKind::Const(value) => pp_const_value(value),

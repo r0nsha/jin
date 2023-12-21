@@ -485,7 +485,7 @@ impl<'db> Generator<'db> {
                 let value = state.body.value(*value);
                 let name = match value.kind {
                     ValueKind::Register => format!("v{}", value.id),
-                    ValueKind::Local(id) => state
+                    ValueKind::Local(id, _) => state
                         .local_names
                         .insert_unique(id, self.db[id].name)
                         .to_string(),
@@ -634,7 +634,7 @@ impl<'db> Generator<'db> {
     pub fn value(&self, state: &FnState<'db>, id: ValueId) -> D<'db> {
         match &state.body.value(id).kind {
             ValueKind::Register => D::text(format!("v{id}")),
-            ValueKind::Local(id) => {
+            ValueKind::Local(id, _) => {
                 D::text(state.local_names.get(*id).unwrap().as_str())
             }
             ValueKind::Global(id) => {

@@ -276,7 +276,7 @@ pub enum ValueKind {
     Register,
 
     // A local variable or function parameter
-    Local(DefId),
+    Local(DefId, usize),
 
     // A global variable
     Global(GlobalId),
