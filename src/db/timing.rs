@@ -36,7 +36,7 @@ impl Timings {
 
         print_row(
             "total".color(AnsiColors::BrightWhite).bold(),
-            total.as_millis(),
+            duration_display(total),
         );
     }
 }
@@ -67,16 +67,23 @@ impl Timing {
             AnsiColors::BrightRed
         };
 
-        let time_str = if millis == 0 {
-            format!("{}μs", self.duration.as_micros())
-        } else {
-            format!("{millis}ms")
-        };
-
-        print_row(self.name.color(color).bold(), time_str);
+        print_row(
+            self.name.color(color).bold(),
+            duration_display(self.duration),
+        );
     }
 }
 
 fn print_row(title: impl fmt::Display, time: impl fmt::Display) {
     println!("{title: <20}{time}");
+}
+
+fn duration_display(duration: Duration) -> impl fmt::Display {
+    let ms = duration.as_millis();
+
+    if ms == 0 {
+        format!("{}μs", duration.as_micros())
+    } else {
+        format!("{ms}ms")
+    }
 }
