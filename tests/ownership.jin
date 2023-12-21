@@ -6,6 +6,7 @@ type Wrapper(num: Num)
 fn main() unit = {
 	// Ownership checks
 	use_after_move()	
+	//use_after_move_scoped()	
 	//move_out_of_global()
 	//move_into_loop()
 	//copy()
@@ -20,7 +21,15 @@ fn use_after_move() unit = {
 	//let y = n // Error!
 }	
 
-fn destroy_things() unit = {
+//fn use_after_move_scoped() unit = {
+//	let n = Num(1)	
+//	let x = n
+//	{
+//		//let y = n // Error!
+//	}
+//}	
+
+//fn destroy_things() unit = {
 	//Num(1) // Destroy temporary value
 	//Wrapper(Num(1)) // Destroy complex temporary value
 
@@ -39,7 +48,7 @@ fn destroy_things() unit = {
 	//if true {
 	//	let wcondnum = wcond.num
 	//}
-}	
+//}	
 
 //let GLOBAL_NUM = Num(1)
 
