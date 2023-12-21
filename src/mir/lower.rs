@@ -1,3 +1,5 @@
+use std::fmt;
+
 use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr};
 
@@ -236,7 +238,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.push_inst(Inst::Return { value: ret_value });
                 }
 
-                dbg!(&self.value_states);
+                println!("fn {}:", fun.sig.word);
+                println!("{}", self.value_states);
+                println!("---------------------");
 
                 self.cx.mir.fns.insert(
                     sig,
@@ -756,6 +760,28 @@ impl ValueStates {
 impl Default for ValueStates {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl fmt::Display for ValueStates {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (block, value_states) in &self.0 {
+            writeln!(f, "block {}:", block.0)?;
+
+            for (value, state) in value_states {
+                writeln!(
+                    f,
+                    "\tv{} -> {}",
+                    value.0,
+                    match state {
+                        ValueState::Owned => "owned",
+                        ValueState::Moved(_) => "moved",
+                    }
+                )?;
+            }
+        }
+
+        Ok(())
     }
 }
 
