@@ -2,6 +2,7 @@ mod lower;
 mod pretty_print;
 mod specialize;
 pub mod subst;
+mod errors;
 
 use std::io;
 

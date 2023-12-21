@@ -1,3 +1,4 @@
+#![allow(unused)]
 mod errors;
 
 use indexmap::IndexSet;

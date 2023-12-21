@@ -23,6 +23,7 @@ mod data_structures;
 mod db;
 mod diagnostics;
 mod hir;
+pub mod id_map;
 mod macros;
 mod middle;
 mod mir;
@@ -36,7 +37,6 @@ mod target;
 mod ty;
 mod typeck;
 mod word;
-pub mod id_map;
 
 use std::fs;
 
@@ -116,8 +116,7 @@ fn build(db: &mut Db) {
         .expect("emitting ast failed");
 
     // Resolve all root symbols into their corresponding id's
-    let mut hir = match db.time("Type checking", |db| typeck::typeck(db, &ast))
-    {
+    let hir = match db.time("Type checking", |db| typeck::typeck(db, &ast)) {
         Ok(hir) => hir,
         Err(diag) => {
             db.diagnostics.emit(diag);
@@ -130,8 +129,8 @@ fn build(db: &mut Db) {
         .expect("emitting hir failed");
 
     // Ownership checks
-    db.time("Ownership checking", |db| ownck::ownck(db, &mut hir));
-    expect!(db);
+    // db.time("Ownership checking", |db| ownck::ownck(db, &mut hir));
+    // expect!(db);
 
     // Lower HIR to MIR
     let mut mir = db.time("Hir -> Mir", |db| mir::lower(db, &hir));
