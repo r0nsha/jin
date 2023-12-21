@@ -23,13 +23,8 @@ struct Specialize<'db> {
     used_fns: FxHashSet<FnSigId>,
     used_globals: FxHashSet<GlobalId>,
 
-    // New items that have been created that need to
-    // be merged into Mir afterwards
-    new_fn_sigs: IdMap<FnSigId, FnSig>,
-    new_fns: FxHashMap<FnSigId, Fn>,
-
-    // Functions that have already been specialized and should be re-used
-    specialized_fns: FxHashMap<SpecializedFn, FnSigId>,
+    // The specialized Mir that's generated
+    specialized_mir: SpecializedMir,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -45,9 +40,7 @@ impl<'db> Specialize<'db> {
             work: Work::new(),
             used_fns: FxHashSet::default(),
             used_globals: FxHashSet::default(),
-            new_fn_sigs: IdMap::new_with_counter(*mir.fn_sigs.counter()),
-            new_fns: FxHashMap::default(),
-            specialized_fns: FxHashMap::default(),
+            specialized_mir: SpecializedMir::from(mir),
         }
     }
 
@@ -60,12 +53,14 @@ impl<'db> Specialize<'db> {
             self.work.mark_done(job.target);
         }
 
+        self.retain_used_mir(mir);
+        self.specialized_mir.merge(mir);
+    }
+
+    fn retain_used_mir(&self, mir: &mut Mir) {
         mir.fn_sigs.inner_mut().retain(|id, _| self.used_fns.contains(id));
         mir.fns.retain(|id, _| self.used_fns.contains(id));
         mir.globals.inner_mut().retain(|id, _| self.used_globals.contains(id));
-
-        mir.fn_sigs.extend(self.new_fn_sigs);
-        mir.fns.extend(self.new_fns);
     }
 
     fn do_job(&mut self, mir: &mut Mir, job: &Job) {
@@ -83,7 +78,7 @@ impl<'db> Specialize<'db> {
         let Some(fun) = mir.fns.get(&id) else {
             debug_assert!(
                 mir.fn_sigs.contains_key(&id)
-                    || self.new_fn_sigs.contains_key(&id),
+                    || self.specialized_mir.fn_sigs.contains_key(&id),
                 "function must have an existing or new signature"
             );
             return;
@@ -178,7 +173,7 @@ impl<'db> Specialize<'db> {
         instantiation: &Instantiation,
     ) -> FnSigId {
         if let Some(target_value) =
-            self.specialized_fns.get(&specialized_fn).copied()
+            self.specialized_mir.specialized_fns.get(&specialized_fn).copied()
         {
             return target_value;
         }
@@ -187,14 +182,14 @@ impl<'db> Specialize<'db> {
         let new_sig_id =
             self.specialize_fn_sig(mir, &specialized_fn, instantiation);
 
-        self.specialized_fns.insert(specialized_fn, new_sig_id);
+        self.specialized_mir.specialized_fns.insert(specialized_fn, new_sig_id);
 
         let mut fun = mir.fns.get(&old_sig_id).expect("fn to exist").clone();
 
         fun.sig = new_sig_id;
         fun.subst(&mut ParamFolder { db: self.db, instantiation });
 
-        self.new_fns.insert(new_sig_id, fun);
+        self.specialized_mir.fns.insert(new_sig_id, fun);
         self.work.push(Job { target: JobTarget::Fn(new_sig_id) });
 
         new_sig_id
@@ -218,7 +213,7 @@ impl<'db> Specialize<'db> {
 
         sig.name = ustr(&format!("{}__{}", sig.name, instantation_str));
 
-        self.new_fn_sigs.insert_with_key(|id| {
+        self.specialized_mir.fn_sigs.insert_with_key(|id| {
             sig.id = id;
             sig
         })
@@ -279,6 +274,32 @@ impl BodySubst {
     fn subst(self, body: &mut Body) {
         for (id, kind) in self.value_subst {
             body.value_mut(id).kind = kind;
+        }
+    }
+}
+
+#[derive(Debug)]
+struct SpecializedMir {
+    fn_sigs: IdMap<FnSigId, FnSig>,
+    fns: FxHashMap<FnSigId, Fn>,
+
+    // Functions that have already been specialized and should be re-used
+    specialized_fns: FxHashMap<SpecializedFn, FnSigId>,
+}
+
+impl SpecializedMir {
+    fn merge(self, mir: &mut Mir) {
+        mir.fn_sigs.extend(self.fn_sigs);
+        mir.fns.extend(self.fns);
+    }
+}
+
+impl<'a> From<&'a Mir> for SpecializedMir {
+    fn from(mir: &'a Mir) -> Self {
+        Self {
+            fn_sigs: IdMap::new_with_counter(*mir.fn_sigs.counter()),
+            fns: FxHashMap::default(),
+            specialized_fns: FxHashMap::default(),
         }
     }
 }
