@@ -213,8 +213,8 @@ pub struct Block {
     pub id: BlockId,
     pub name: String,
     pub insts: Vec<Inst>,
-    pub predecessors: FxHashSet<BlockId>,
-    pub successors: FxHashSet<BlockId>,
+    pub predecessors: Vec<BlockId>,
+    pub successors: Vec<BlockId>,
 }
 
 impl Block {
@@ -223,8 +223,8 @@ impl Block {
             id,
             name,
             insts: vec![],
-            predecessors: FxHashSet::default(),
-            successors: FxHashSet::default(),
+            predecessors: vec![],
+            successors: vec![],
         }
     }
 

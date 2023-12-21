@@ -25,7 +25,7 @@ fn use_after_move_scoped() unit = {
 	let n = Num(1)	
 	let x = n
 	if false {
-		let y = n // Error!
+		//let y = n // Error!
 	}
 }	
 

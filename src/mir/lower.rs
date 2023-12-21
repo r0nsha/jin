@@ -187,7 +187,7 @@ struct LowerBody<'cx, 'db> {
     body: Body,
     value_states: ValueStates,
     id_to_value: FxHashMap<DefId, ValueId>,
-    curr_block: BlockId,
+    current_block: BlockId,
     loop_blocks: Vec<BlockId>,
 }
 
@@ -198,7 +198,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             body: Body::new(),
             value_states: ValueStates::new(),
             id_to_value: FxHashMap::default(),
-            curr_block: BlockId::start(),
+            current_block: BlockId::start(),
             loop_blocks: vec![],
         }
     }
@@ -245,9 +245,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.push_inst(Inst::Return { value: ret_value });
                 }
 
-                println!("fn `{}`", fun.sig.word);
-                println!("{}", self.value_states);
-                println!("---------------------");
+                // println!("fn `{}`", fun.sig.word);
+                // println!("{}", self.value_states);
+                // println!("---------------------");
 
                 self.cx.mir.fns.insert(
                     sig,
@@ -633,17 +633,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub fn create_edge(&mut self, target: BlockId) {
-        self.body.block_mut(self.curr_block).successors.insert(target);
-        self.body.block_mut(target).predecessors.insert(self.curr_block);
+        self.body.block_mut(self.current_block).successors.push(target);
+        self.body.block_mut(target).predecessors.push(self.current_block);
     }
 
     pub fn push_inst(&mut self, inst: Inst) {
-        self.body.block_mut(self.curr_block).push_inst(inst);
+        self.body.block_mut(self.current_block).push_inst(inst);
     }
 
     pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
         let value = self.body.create_value(ty, kind);
-        self.value_states.insert(self.curr_block, value, ValueState::Owned);
+        self.value_states.insert(self.current_block, value, ValueState::Owned);
         value
     }
 
@@ -663,7 +663,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         match (value_state, kind) {
             (ValueState::Owned, MoveKind::Move(span)) => {
                 self.value_states.insert(
-                    self.curr_block,
+                    self.current_block,
                     value,
                     ValueState::Moved(span),
                 );
@@ -676,11 +676,49 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub fn value_state(&mut self, value: ValueId) -> ValueState {
-        if let Some(state) = self.value_states.get(self.curr_block, value) {
+        if let Some(state) = self.value_states.get(self.current_block, value) {
             return state;
         }
 
-        todo!("calculate value state from predecessors")
+        let mut work = self.body.block(self.current_block).predecessors.clone();
+        let mut visited = FxHashSet::<BlockId>::default();
+        let mut result_state = ValueState::Owned;
+        let mut is_initial_state = true;
+
+        while let Some(block) = work.pop() {
+            visited.insert(block);
+
+            if let Some(state) = self.value_states.get(block, value) {
+                match result_state {
+                    ValueState::Owned if is_initial_state => {
+                        result_state = state;
+                        is_initial_state = false;
+                    }
+                    //ValueState::MaybeMoved(_) => break;
+                    ValueState::Owned | ValueState::Moved(_) => (),
+                    // {
+                    // if result_state != state {
+                    //     result_state = ValueState::MaybeMoved;
+                    // }
+                    // }
+                }
+            } else {
+                // Add this block's predecessors, since we need to
+                // calculate this value's state for this block too
+                work.extend(
+                    self.body
+                        .block(block)
+                        .predecessors
+                        .iter()
+                        .filter(|b| !visited.contains(b)),
+                );
+            }
+        }
+
+        // debug_assert!()
+
+        self.value_states.insert(self.current_block, value, result_state);
+        result_state
     }
 
     fn ty_is_move(&self, ty: Ty) -> bool {
@@ -693,7 +731,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     #[inline]
     pub fn position_at(&mut self, id: BlockId) {
-        self.curr_block = id;
+        self.current_block = id;
     }
 
     pub fn apply_coercions_to_expr(
