@@ -53,6 +53,8 @@ impl<'db> Specialize<'db> {
                 JobTarget::Fn(id) => self.do_fn_job(mir, id),
                 JobTarget::Global(id) => self.do_global_job(mir, id),
             }
+
+            self.work.mark_done(job.target);
         }
 
         mir.fn_sigs.inner_mut().retain(|id, _| self.used_fns.contains(id));
