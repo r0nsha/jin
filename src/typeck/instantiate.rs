@@ -36,8 +36,8 @@ impl Instantiate {
             TyKind::RawPtr(pointee) => {
                 TyKind::RawPtr(self.instantiate_inner(*pointee)).into()
             }
-            TyKind::Param(p) => match self.instantiation.get(&p.var) {
-                Some(ty) => *ty,
+            TyKind::Param(p) => match self.instantiation.get(p.var) {
+                Some(ty) => ty,
                 None => {
                     // NOTE: It currently makes sense to not instantiate params that are part of
                     // the currently typechecked function.

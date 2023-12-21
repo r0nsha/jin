@@ -206,8 +206,8 @@ impl<'db> Specialize<'db> {
         sig.subst(&mut ParamFolder { db: self.db, instantiation });
 
         let instantation_str = instantiation
-            .values()
-            .map(|&ty| mangle::mangle_ty_name(self.db, ty))
+            .tys()
+            .map(|ty| mangle::mangle_ty_name(self.db, ty))
             .collect::<Vec<_>>()
             .join("_");
 

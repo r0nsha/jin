@@ -2,7 +2,7 @@ pub mod coerce;
 pub mod fold;
 pub mod printer;
 
-use std::ops::Deref;
+use std::ops::{self, Deref};
 
 use derive_more::{From, Into};
 use internment::Intern;
@@ -519,7 +519,49 @@ impl ParamTy {
     }
 }
 
-pub type Instantiation = FxHashMap<TyVar, Ty>;
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct Instantiation(FxHashMap<TyVar, Ty>);
+
+impl Instantiation {
+    pub fn get(&self, var: TyVar) -> Option<Ty> {
+        self.0.get(&var).copied()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
+    pub fn tys(&self) -> impl Iterator<Item = Ty> + '_ {
+        self.0.values().copied()
+    }
+
+    pub fn tys_mut(&mut self) -> impl Iterator<Item = &mut Ty> + '_ {
+        self.0.values_mut()
+    }
+}
+
+impl ops::Index<TyVar> for Instantiation {
+    type Output = Ty;
+
+    #[inline]
+    fn index(&self, index: TyVar) -> &Self::Output {
+        &self.0[&index]
+    }
+}
+
+impl ops::IndexMut<TyVar> for Instantiation {
+    #[track_caller]
+    #[inline]
+    fn index_mut(&mut self, index: TyVar) -> &mut Self::Output {
+        self.0.get_mut(&index).unwrap()
+    }
+}
+
+impl FromIterator<(TyVar, Ty)> for Instantiation {
+    fn from_iter<T: IntoIterator<Item = (TyVar, Ty)>>(iter: T) -> Self {
+        Self(iter.into_iter().collect())
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum InferTy {

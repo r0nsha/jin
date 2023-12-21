@@ -31,7 +31,7 @@ pub fn subst_instantation(
     instantiation: &mut Instantiation,
     span: Span,
 ) {
-    for ty in instantiation.values_mut() {
+    for ty in instantiation.tys_mut() {
         *ty = s.subst_ty(*ty, span);
     }
 }
@@ -54,7 +54,7 @@ impl SubstTy for ParamFolder<'_, '_> {
 impl TyFolder for ParamFolder<'_, '_> {
     fn fold(&mut self, ty: Ty) -> Ty {
         match ty.kind() {
-            TyKind::Param(p) => self.instantiation[&p.var],
+            TyKind::Param(p) => self.instantiation[p.var],
             _ => self.super_fold(ty),
         }
     }
