@@ -186,9 +186,10 @@ struct LowerBody<'cx, 'db> {
     cx: &'cx mut Lower<'db>,
     body: Body,
     value_states: ValueStates,
-    id_to_value: FxHashMap<DefId, ValueId>,
-    current_block: BlockId,
+    scopes: Vec<Scope>,
     loop_blocks: Vec<BlockId>,
+    current_block: BlockId,
+    id_to_value: FxHashMap<DefId, ValueId>,
 }
 
 impl<'cx, 'db> LowerBody<'cx, 'db> {
@@ -197,9 +198,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             cx,
             body: Body::new(),
             value_states: ValueStates::new(),
-            id_to_value: FxHashMap::default(),
-            current_block: BlockId::start(),
+            scopes: vec![],
             loop_blocks: vec![],
+            current_block: BlockId::start(),
+            id_to_value: FxHashMap::default(),
         }
     }
 
@@ -861,6 +863,25 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         coerced_value
     }
 
+    fn enter_scope(&mut self, kind: ScopeKind, span: Span) {
+        self.scopes.push(Scope {
+            kind,
+            depth: self.scopes.len(),
+            loop_depth: self
+                .scopes
+                .last()
+                .map(|s| s.loop_depth + 1)
+                .unwrap_or_default(),
+            span,
+            moved_in_loop: FxHashMap::default(),
+        });
+    }
+
+    fn exit_scope(&mut self) -> Scope {
+        // TODO: destroy scope values
+        self.scopes.pop().expect("cannot exit the root scope")
+    }
+
     // fn push_conditional_destroy(
     //     &mut self,
     //     value: ValueId,
@@ -1070,4 +1091,19 @@ impl Spanned for MoveKind {
             // MoveKind::PartialMove(member) => member.span(),
         }
     }
+}
+
+#[derive(Debug, Clone)]
+struct Scope {
+    kind: ScopeKind,
+    depth: usize,
+    loop_depth: usize,
+    span: Span,
+    moved_in_loop: FxHashMap<ValueId, Span>,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum ScopeKind {
+    Block,
+    Loop,
 }
