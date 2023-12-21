@@ -1,6 +1,7 @@
 fn extern printf(fmt: *u8, ..) i32
 
-let do = 1
+//let do = 1
+
 fn main() unit = {
 	printf("Hello, World!\n".ptr)
 	do_add(add, 1, 2)

@@ -4,6 +4,7 @@ use rustc_hash::FxHashSet;
 use ustr::ustr;
 
 use crate::{
+    counter::Counter,
     data_structures::index_vec::IndexVecExt,
     db::Db,
     hir::mangle,
@@ -13,7 +14,7 @@ use crate::{
 };
 
 pub fn specialize(db: &mut Db, mir: &mut Mir) {
-    Specialize::new(db).run(mir);
+    Specialize::new(db, mir).run(mir);
 }
 
 struct Specialize<'db> {
@@ -23,6 +24,8 @@ struct Specialize<'db> {
     // A map of used function ids, pointing to their new function id
     used_fns: FxHashSet<FnSigId>,
     used_globals: FxHashSet<GlobalId>,
+    new_fn_sigs: IdMap<FnSigId, FnSig>,
+    new_fns: FxHashMap<FnSigId, Fn>,
     // Functions that have already been specialized
     // specialized_fns: FxHashMap<SpecializedFn, FnSigId>,
 }
@@ -34,13 +37,14 @@ pub struct SpecializedFn {
 }
 
 impl<'db> Specialize<'db> {
-    fn new(db: &'db mut Db) -> Self {
+    fn new(db: &'db mut Db, mir: &Mir) -> Self {
         Self {
             db,
             work: Work::new(),
             used_fns: FxHashSet::default(),
             used_globals: FxHashSet::default(),
-            // specialized_fns: FxHashMap::default(),
+            new_fn_sigs: IdMap::new_with_counter(*mir.fn_sigs.counter()),
+            new_fns: FxHashMap::default(),
         }
     }
 
@@ -59,6 +63,8 @@ impl<'db> Specialize<'db> {
     }
 
     fn do_job(&mut self, mir: &mut Mir, job: &Job) {
+        self.mark_used(job.target);
+
         match job.target {
             JobTarget::Fn(id) => self.do_fn_job(mir, id),
             JobTarget::Global(id) => self.do_global_job(mir, id),
@@ -68,9 +74,7 @@ impl<'db> Specialize<'db> {
     }
 
     fn do_fn_job(&mut self, mir: &mut Mir, id: FnSigId) {
-        self.used_fns.insert(id);
-
-        let Some(fun) = mir.fns.get_mut(&id) else {
+        let Some(fun) = mir.fns.get(&id) else {
             debug_assert!(
                 mir.fn_sigs.contains_key(&id),
                 "function must have an existing signature"
@@ -78,14 +82,60 @@ impl<'db> Specialize<'db> {
             return;
         };
 
-        SpecializeBody { cx: self, body: &mut fun.body }.run();
+        let body_subst = self.specialize_body(mir, &fun.body);
+        todo!("{body_subst:?}");
     }
 
-    fn do_global_job(&mut self, mir: &mut Mir, id: GlobalId) {
-        self.used_globals.insert(id);
-        let global = mir.globals.get_mut(&id).expect("global to exist");
-        if let GlobalKind::Static(body, _) = &mut global.kind {
-            SpecializeBody { cx: self, body }.run();
+    fn do_global_job(&mut self, mir: &Mir, id: GlobalId) {
+        let global = mir.globals.get(&id).expect("global to exist");
+        if let GlobalKind::Static(body, _) = &global.kind {
+            let body_subst = self.specialize_body(mir, body);
+            todo!("{body_subst:?}");
+        }
+    }
+
+    fn specialize_body(&mut self, mir: &Mir, body: &Body) -> BodySubst {
+        for value in body.values() {
+            match value.kind {
+                ValueKind::Fn(id) => {
+                    // TODO: specialize if polymorphic
+                    self.work.push(Job { target: JobTarget::Fn(id) });
+                }
+                ValueKind::Global(id) => {
+                    self.work.push(Job { target: JobTarget::Global(id) });
+                }
+                _ => (),
+            }
+        }
+
+        let mut body_subst = BodySubst::new();
+
+        for value in body.instantations() {
+            // TODO: create new fn_sig
+            // TODO: create new fn
+            // TODO: schedule job over the new fn
+            // TODO: if cached, replace value with cached
+            //
+            // let new_value_kind = self.specialize_value(
+            //     mir,
+            //     mir.fns[&id].body.value(value).kind.clone(),
+            //     &instantiation,
+            // );
+            //         mir.fns.get_mut(&id).unwrap().body.value_mut(value).kind =
+            //             new_value_kind;
+        }
+
+        body_subst
+    }
+
+    fn mark_used(&mut self, target: JobTarget) {
+        match target {
+            JobTarget::Fn(id) => {
+                self.used_fns.insert(id);
+            }
+            JobTarget::Global(id) => {
+                self.used_globals.insert(id);
+            }
         }
     }
 
@@ -180,6 +230,30 @@ impl<'db> Specialize<'db> {
     //
     //     new_sig_id
     // }
+
+    // fn specialize_value(
+    //     &mut self,
+    //     mir: &mut Mir,
+    //     value_kind: ValueKind,
+    //     instantiation: &Instantiation,
+    // ) -> ValueKind {
+    //     match value_kind {
+    //         ValueKind::Fn(id) => {
+    //             let ty = ParamFolder { db: self.db, instantiation }
+    //                 .fold(mir.fn_sigs[id].ty);
+    //
+    //             let specialized_fn = SpecializedFn { id, ty };
+    //
+    //             let specialized_sig_id =
+    //                 self.specialize_fn(mir, specialized_fn, instantiation);
+    //
+    //             ValueKind::Fn(specialized_sig_id)
+    //         }
+    //         kind => unreachable!(
+    //             "unexpected value kind in specialization: {kind:?}"
+    //         ),
+    //     }
+    // }
 }
 
 #[derive(Debug)]
@@ -219,47 +293,23 @@ enum JobTarget {
     Global(GlobalId),
 }
 
-struct SpecializeBody<'db, 'cx> {
-    cx: &'cx mut Specialize<'db>,
-    body: &'cx mut Body,
+#[derive(Debug)]
+struct BodySubst {
+    value_subst: FxHashMap<ValueId, ValueKind>,
 }
 
-impl<'db, 'cx> SpecializeBody<'db, 'cx> {
-    fn run(self) {
-        for value in self.body.values() {
-            match value.kind {
-                ValueKind::Fn(id) => {
-                    self.cx.work.push(Job { target: JobTarget::Fn(id) });
-                }
-                ValueKind::Global(id) => {
-                    self.cx.work.push(Job { target: JobTarget::Global(id) });
-                }
-                _ => (),
-            }
-        }
+impl BodySubst {
+    fn new() -> Self {
+        Self { value_subst: FxHashMap::default() }
     }
 
-    // fn specialize_value(
-    //     &mut self,
-    //     mir: &mut Mir,
-    //     value_kind: ValueKind,
-    //     instantiation: &Instantiation,
-    // ) -> ValueKind {
-    //     match value_kind {
-    //         ValueKind::Fn(id) => {
-    //             let ty = ParamFolder { db: self.db, instantiation }
-    //                 .fold(mir.fn_sigs[id].ty);
-    //
-    //             let specialized_fn = SpecializedFn { id, ty };
-    //
-    //             let specialized_sig_id =
-    //                 self.specialize_fn(mir, specialized_fn, instantiation);
-    //
-    //             ValueKind::Fn(specialized_sig_id)
-    //         }
-    //         kind => unreachable!(
-    //             "unexpected value kind in specialization: {kind:?}"
-    //         ),
-    //     }
-    // }
+    fn insert_value(&mut self, id: ValueId, kind: ValueKind) {
+        self.value_subst.insert(id, kind);
+    }
+
+    fn subst(self, body: &mut Body) {
+        for (id, kind) in self.value_subst {
+            body.value_mut(id).kind = kind;
+        }
+    }
 }

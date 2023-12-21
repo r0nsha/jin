@@ -11,12 +11,12 @@ use rustc_hash::{FxHashMap, FxHashSet};
 pub use specialize::specialize;
 use ustr::Ustr;
 
-use crate::id_map::IdMap;
 use crate::{
     data_structures::index_vec::{
         new_key_type, IndexSlice, IndexVec, IndexVecExt,
     },
     db::{Db, DefId, StructId},
+    id_map::IdMap,
     middle::{BinOp, Pat, UnOp},
     span::Span,
     ty::{Instantiation, Ty},
@@ -180,6 +180,10 @@ impl Body {
     #[allow(unused)]
     pub fn instantation(&mut self, value: ValueId) -> Option<&Instantiation> {
         self.instantations.get(&value)
+    }
+
+    pub fn instantations(&self) -> &FxHashMap<ValueId, Instantiation> {
+        &self.instantations
     }
 
     pub fn instantations_mut(
