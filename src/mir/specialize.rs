@@ -49,17 +49,22 @@ impl<'db> Specialize<'db> {
         self.work.push(Job { target: JobTarget::Fn(main_fn) });
 
         while let Some(job) = self.work.pop() {
-            match job.target {
-                JobTarget::Fn(id) => self.do_fn_job(mir, id),
-                JobTarget::Global(id) => self.do_global_job(mir, id),
-            }
-
+            self.do_job(mir, &job);
             self.work.mark_done(job.target);
         }
 
         mir.fn_sigs.inner_mut().retain(|id, _| self.used_fns.contains(id));
         mir.fns.retain(|id, _| self.used_fns.contains(id));
         mir.globals.inner_mut().retain(|id, _| self.used_globals.contains(id));
+    }
+
+    fn do_job(&mut self, mir: &mut Mir, job: &Job) {
+        match job.target {
+            JobTarget::Fn(id) => self.do_fn_job(mir, id),
+            JobTarget::Global(id) => self.do_global_job(mir, id),
+        }
+
+        self.work.mark_done(job.target);
     }
 
     fn do_fn_job(&mut self, mir: &mut Mir, id: FnSigId) {
@@ -232,7 +237,7 @@ struct Job {
     target: JobTarget,
 }
 
-#[derive(Debug, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum JobTarget {
     Fn(FnSigId),
     Global(GlobalId),
