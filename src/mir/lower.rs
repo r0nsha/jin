@@ -480,7 +480,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 )
             }
             hir::ExprKind::Name(name) => {
-                self.lower_name(name.id, expr.ty, &name.instantiation)
+                self.lower_name(name.id, &name.instantiation)
             }
             hir::ExprKind::Lit(lit) => {
                 let value = match lit {
@@ -533,7 +533,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn lower_name(
         &mut self,
         id: DefId,
-        ty: Ty,
         instantiation: &Instantiation,
     ) -> ValueId {
         match self.cx.db[id].kind.as_ref() {
@@ -661,7 +660,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> Result<(), Diagnostic> {
         let value_state = self.value_state(value);
 
-        dbg!(value, value_state, kind);
         match (value_state, kind) {
             (ValueState::Owned, MoveKind::Move(span)) => {
                 self.value_states.insert(
