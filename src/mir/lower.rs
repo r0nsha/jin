@@ -364,6 +364,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 })
             }
             hir::ExprKind::Loop(loop_) => {
+                self.enter_scope(ScopeKind::Loop, expr.span);
+
                 let start_blk = self.body.create_block("loop_start");
                 let end_blk = self.body.create_block("loop_end");
 
@@ -390,6 +392,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.push_br(start_blk);
                 self.loop_blocks.pop();
 
+                if self.in_connected_block() {
+                    self.check_loop_moves();
+                }
+
+                self.exit_scope();
+
                 self.position_at(end_blk);
                 self.const_unit()
             }
@@ -402,6 +410,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Block(blk) => {
                 let mut result: Option<ValueId> = None;
                 let mut result_span = expr.span;
+
+                self.enter_scope(ScopeKind::Block, expr.span);
 
                 for expr in &blk.exprs {
                     result = Some(self.lower_expr(expr));
@@ -419,8 +429,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 };
 
                 self.try_move(result, result_span);
-
-                // TODO: self.lower_destroy_glue(expr.id);
+                self.exit_scope();
 
                 result
             }
@@ -754,6 +763,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
+    pub fn check_loop_moves(&self) {
+        todo!("check_loop_moves");
+    }
+
     pub fn value_state(&mut self, value: ValueId) -> ValueState {
         if let Some(state) = self.value_states.get(self.current_block, value) {
             return state;
@@ -824,6 +837,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.current_block = id;
     }
 
+    pub fn in_connected_block(&self) -> bool {
+        self.body.block(self.current_block).is_connected()
+    }
+
     pub fn apply_coercions_to_expr(
         &mut self,
         expr: &hir::Expr,
@@ -879,6 +896,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn exit_scope(&mut self) -> Scope {
         // TODO: destroy scope values
+        // TODO: self.lower_destroy_glue(expr.id);
         self.scopes.pop().expect("cannot exit the root scope")
     }
 
