@@ -92,15 +92,15 @@ impl<'db> Specialize<'db> {
         let global = mir.globals.get(&id).expect("global to exist");
         if let GlobalKind::Static { body, result: _ } = &global.kind {
             let body_subst = self.specialize_body(mir, body);
-            body_subst.subst(
-                mir.globals
-                    .get_mut(&id)
-                    .unwrap()
-                    .kind
-                    .as_static_mut()
-                    .unwrap()
-                    .0,
-            );
+            let body_mut = mir
+                .globals
+                .get_mut(&id)
+                .unwrap()
+                .kind
+                .as_static_mut()
+                .unwrap()
+                .0;
+            body_subst.subst(body_mut);
         }
     }
 
