@@ -489,7 +489,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Member(access) => {
                 let value = self.lower_expr(&access.expr);
-                self.try_move(value, access.expr.span);
+                self.try_partial_move(value, access.expr.span, expr.ty);
                 self.create_value(
                     expr.ty,
                     ValueKind::Member(value, access.member.name()),
@@ -668,6 +668,23 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub fn try_move(&mut self, value: ValueId, span: Span) {
+        if let Err(diagnostic) =
+            self.try_move_inner(value, MoveKind::Move(span))
+        {
+            self.cx.db.diagnostics.emit(diagnostic);
+        }
+    }
+
+    pub fn try_partial_move(
+        &mut self,
+        value: ValueId,
+        span: Span,
+        member_ty: Ty,
+    ) {
+        if !self.ty_is_move(member_ty) {
+            return;
+        }
+
         if let Err(diagnostic) =
             self.try_move_inner(value, MoveKind::Move(span))
         {
