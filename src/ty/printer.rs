@@ -106,16 +106,20 @@ impl Display for FnTyPrinter<'_> {
         }
 
         f.write_str("(")?;
-        let last_idx = self.params.len() - 1;
-        for (idx, param) in self.params.iter().enumerate() {
-            if let Some(name) = param.name {
-                write!(f, "{name}: ")?;
-            }
 
-            write!(f, "{}", param.ty.display(self.db))?;
+        if !self.params.is_empty() {
+            let last_idx = self.params.len() - 1;
 
-            if idx != last_idx {
-                f.write_str(", ")?;
+            for (idx, param) in self.params.iter().enumerate() {
+                if let Some(name) = param.name {
+                    write!(f, "{name}: ")?;
+                }
+
+                write!(f, "{}", param.ty.display(self.db))?;
+
+                if idx != last_idx {
+                    f.write_str(", ")?;
+                }
             }
         }
 
