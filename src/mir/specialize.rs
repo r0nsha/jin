@@ -127,30 +127,6 @@ impl<'db> Specialize<'db> {
     //     }
     // }
 
-    // fn specialize_value(
-    //     &mut self,
-    //     mir: &mut Mir,
-    //     value_kind: ValueKind,
-    //     instantiation: &Instantiation,
-    // ) -> ValueKind {
-    //     match value_kind {
-    //         ValueKind::Fn(id) => {
-    //             let ty = ParamFolder { db: self.db, instantiation }
-    //                 .fold(mir.fn_sigs[id].ty);
-    //
-    //             let specialized_fn = SpecializedFn { id, ty };
-    //
-    //             let specialized_sig_id =
-    //                 self.specialize_fn(mir, specialized_fn, instantiation);
-    //
-    //             ValueKind::Fn(specialized_sig_id)
-    //         }
-    //         kind => unreachable!(
-    //             "unexpected value kind in specialization: {kind:?}"
-    //         ),
-    //     }
-    // }
-
     // #[must_use]
     // fn specialize_fn_sig(
     //     &mut self,
@@ -262,4 +238,28 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
             }
         }
     }
+
+    // fn specialize_value(
+    //     &mut self,
+    //     mir: &mut Mir,
+    //     value_kind: ValueKind,
+    //     instantiation: &Instantiation,
+    // ) -> ValueKind {
+    //     match value_kind {
+    //         ValueKind::Fn(id) => {
+    //             let ty = ParamFolder { db: self.db, instantiation }
+    //                 .fold(mir.fn_sigs[id].ty);
+    //
+    //             let specialized_fn = SpecializedFn { id, ty };
+    //
+    //             let specialized_sig_id =
+    //                 self.specialize_fn(mir, specialized_fn, instantiation);
+    //
+    //             ValueKind::Fn(specialized_sig_id)
+    //         }
+    //         kind => unreachable!(
+    //             "unexpected value kind in specialization: {kind:?}"
+    //         ),
+    //     }
+    // }
 }
