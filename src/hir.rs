@@ -4,7 +4,6 @@ pub mod subst;
 
 use std::io;
 
-use derive_more::From;
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
@@ -120,17 +119,6 @@ pub enum ExprKind {
     Member(Member),
     Name(Name),
     Lit(Lit),
-}
-
-impl ExprKind {
-    #[must_use]
-    pub fn as_block(&self) -> Option<&Block> {
-        if let Self::Block(v) = self {
-            Some(v)
-        } else {
-            None
-        }
-    }
 }
 
 #[derive(Debug, Clone)]

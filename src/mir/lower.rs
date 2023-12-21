@@ -681,6 +681,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         span: Span,
         member_ty: Ty,
     ) {
+        // If the moved member is copyable, we don't need to move its parent
         if !self.ty_is_move(member_ty) {
             return;
         }
@@ -697,9 +698,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value: ValueId,
         kind: MoveKind,
     ) -> Result<(), Diagnostic> {
+        // If the moved value is copyable, we don't need to move it
         if !self.ty_is_move(self.body.value(value).ty) {
             return Ok(());
         }
+
+        self.check_move_out_of_global(value, kind.span())?;
 
         let value_state = self.value_state(value);
 
@@ -709,8 +713,43 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 Ok(())
             }
             (ValueState::Moved(already_moved_to), MoveKind::Move(moved_to)) => {
-                Err(self.already_moved_error(value, moved_to, already_moved_to))
+                let name = self.get_value_name(value);
+
+                Err(Diagnostic::error()
+                    .with_message(format!("use of moved {name}"))
+                    .with_label(
+                        Label::primary(moved_to).with_message(format!(
+                            "{name} used here after move"
+                        )),
+                    )
+                    .with_label(
+                        Label::secondary(already_moved_to)
+                            .with_message(format!("{name} already moved here")),
+                    ))
             }
+        }
+    }
+
+    pub fn check_move_out_of_global(
+        &self,
+        value: ValueId,
+        moved_to: Span,
+    ) -> Result<(), Diagnostic> {
+        if let ValueKind::Global(id) = self.body.value(value).kind {
+            let global = &self.cx.mir.globals[id];
+            let def = &self.cx.db[global.def_id];
+
+            Err(Diagnostic::error()
+                .with_message(format!(
+                    "cannot move out of global item `{}`",
+                    def.qpath
+                ))
+                .with_label(
+                    Label::primary(moved_to)
+                        .with_message("global item moved here"),
+                ))
+        } else {
+            Ok(())
         }
     }
 
@@ -870,26 +909,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     //     let value = self.const_bool(false);
     //     self.push_inst(Inst::Store { value, target: destroy_flag });
     // }
-
-    pub fn already_moved_error(
-        &self,
-        value: ValueId,
-        moved_to: Span,
-        already_moved_to: Span,
-    ) -> Diagnostic {
-        let name = self.get_value_name(value);
-
-        Diagnostic::error()
-            .with_message(format!("use of moved {name}"))
-            .with_label(
-                Label::primary(moved_to)
-                    .with_message(format!("{name} used here after move")),
-            )
-            .with_label(
-                Label::secondary(already_moved_to)
-                    .with_message(format!("{name} already moved here")),
-            )
-    }
 
     // pub fn already_partially_moved(
     //     db: &Db,

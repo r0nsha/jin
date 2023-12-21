@@ -182,6 +182,7 @@ impl Body {
         self.instantations.get(&value)
     }
 
+    #[allow(unused)]
     pub fn instantations(&self) -> &FxHashMap<ValueId, Instantiation> {
         &self.instantations
     }
