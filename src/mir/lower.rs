@@ -659,8 +659,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
         let value = self.body.create_value(ty, kind);
-        self.value_states.insert(self.current_block, value, ValueState::Owned);
+        self.insert_value_state(value, ValueState::Owned);
         value
+    }
+
+    pub fn insert_value_state(&mut self, value: ValueId, state: ValueState) {
+        self.value_states.insert(self.current_block, value, state);
     }
 
     pub fn try_move(&mut self, value: ValueId, span: Span) {
@@ -676,15 +680,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value: ValueId,
         kind: MoveKind,
     ) -> Result<(), Diagnostic> {
+        if !self.ty_is_move(self.body.value(value).ty) {
+            return Ok(());
+        }
+
         let value_state = self.value_state(value);
 
         match (value_state, kind) {
             (ValueState::Owned, MoveKind::Move(span)) => {
-                self.value_states.insert(
-                    self.current_block,
-                    value,
-                    ValueState::Moved(span),
-                );
+                self.insert_value_state(value, ValueState::Moved(span));
                 Ok(())
             }
             (ValueState::Moved(already_moved_to), MoveKind::Move(moved_to)) => {
@@ -733,9 +737,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
         }
 
-        // debug_assert!()
+        debug_assert!(
+            !is_initial_state,
+            "value v{} is missing a state in block b{}",
+            value.0, self.current_block.0,
+        );
 
-        self.value_states.insert(self.current_block, value, result_state);
+        self.insert_value_state(value, result_state);
         result_state
     }
 
@@ -796,7 +804,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     //     value: ValueId,
     //     destroy_flag: ValueId,
     // ) {
-    //     if !self.value_needs_destroy(value) {
+    //     if !self.should_destroy_value(value) {
     //         return;
     //     }
     //
@@ -813,14 +821,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     // }
 
     // fn push_unconditional_destroy(&mut self, value: ValueId) {
-    //     if self.value_needs_destroy(value) {
+    //     if self.should_destroy_value(value) {
     //         self.push_inst(Inst::Destroy { value });
     //     }
     // }
 
-    // fn value_needs_destroy(&self, value_id: ValueId) -> bool {
-    //     let value = self.body.value(value_id);
-    //     match value.ty.kind() {
+    // fn should_destroy_value(&self, value_id: ValueId) -> bool {
+    //     match self.body.value(value_id).ty.kind() {
     //         TyKind::Struct(sid) => self.cx.db[*sid].kind.is_ref(),
     //         _ => false,
     //     }
@@ -985,7 +992,7 @@ impl Default for ValueStates {
 impl fmt::Display for ValueStates {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         for (block, value_states) in &self.0 {
-            writeln!(f, "block {}:", block.0)?;
+            writeln!(f, "b{}:", block.0)?;
 
             for (value, state) in value_states {
                 writeln!(
