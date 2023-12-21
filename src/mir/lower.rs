@@ -189,6 +189,7 @@ struct LowerBody<'cx, 'db> {
     scopes: Vec<Scope>,
     current_block: BlockId,
     id_to_value: FxHashMap<DefId, ValueId>,
+    value_depths: FxHashMap<ValueId, usize>,
 }
 
 impl<'cx, 'db> LowerBody<'cx, 'db> {
@@ -200,6 +201,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             scopes: vec![],
             current_block: BlockId::start(),
             id_to_value: FxHashMap::default(),
+            value_depths: FxHashMap::default(),
         }
     }
 
@@ -218,10 +220,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     match &param.pat {
                         Pat::Name(name) => {
                             let id = name.id;
-                            let value = self.create_value(
-                                param.ty,
-                                ValueKind::Local(id, self.scope().depth),
-                            );
+                            let value = self
+                                .create_value(param.ty, ValueKind::Local(id));
                             self.id_to_value.insert(name.id, value);
                             // TODO:
                             // self.push_destroy_flag(hir::DestroyGlueItem::Def(
@@ -312,7 +312,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                         let value = self.push_inst_with(
                             let_.ty,
-                            ValueKind::Local(name.id, self.scope().depth),
+                            ValueKind::Local(name.id),
                             |value| Inst::Local { value, init },
                         );
                         self.id_to_value.insert(name.id, value);
@@ -680,6 +680,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
         let value = self.body.create_value(ty, kind);
         self.insert_value_state(value, ValueState::Owned);
+        self.value_depths.insert(value, self.scope().depth);
         value
     }
 
@@ -687,10 +688,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.value_states.insert(self.current_block, value, state);
     }
 
-    pub fn try_move(&mut self, value: ValueId, span: Span) {
-        if let Err(diagnostic) =
-            self.try_move_inner(value, MoveKind::Move(span))
-        {
+    pub fn try_move(&mut self, value: ValueId, moved_to: Span) {
+        if let Err(diagnostic) = self.try_move_inner(value, moved_to) {
             self.cx.db.diagnostics.emit(diagnostic);
         }
     }
@@ -698,7 +697,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     pub fn try_partial_move(
         &mut self,
         value: ValueId,
-        span: Span,
+        moved_to: Span,
         member_ty: Ty,
     ) {
         // If the moved member is copyable, we don't need to move its parent
@@ -706,9 +705,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return;
         }
 
-        if let Err(diagnostic) =
-            self.try_move_inner(value, MoveKind::Move(span))
-        {
+        if let Err(diagnostic) = self.try_move_inner(value, moved_to) {
             self.cx.db.diagnostics.emit(diagnostic);
         }
     }
@@ -716,24 +713,24 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     pub fn try_move_inner(
         &mut self,
         value: ValueId,
-        kind: MoveKind,
+        moved_to: Span,
     ) -> Result<(), Diagnostic> {
         // If the moved value is copyable, we don't need to move it
         if !self.ty_is_move(self.body.value(value).ty) {
             return Ok(());
         }
 
-        self.insert_loop_move(value, kind.span());
-        self.check_move_out_of_global(value, kind.span())?;
+        self.insert_loop_move(value, moved_to);
+        self.check_move_out_of_global(value, moved_to)?;
 
         let value_state = self.value_state(value);
 
-        match (value_state, kind) {
-            (ValueState::Owned, MoveKind::Move(span)) => {
-                self.insert_value_state(value, ValueState::Moved(span));
+        match value_state {
+            ValueState::Owned => {
+                self.insert_value_state(value, ValueState::Moved(moved_to));
                 Ok(())
             }
-            (ValueState::Moved(already_moved_to), MoveKind::Move(moved_to)) => {
+            ValueState::Moved(already_moved_to) => {
                 let name = self.get_value_name(value);
 
                 Err(Diagnostic::error()
@@ -777,14 +774,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     pub fn insert_loop_move(&mut self, value: ValueId, span: Span) {
         let scope = self.scope();
 
-        if scope.loop_depth == 0 {
+        if scope.loop_depth == 0
+            || self.value_depths[&value] >= scope.loop_depth
+        {
             return;
-        }
-
-        match &self.body.value(value).kind {
-            ValueKind::Local(_, depth) if *depth < scope.loop_depth => (),
-            ValueKind::Member(_, _) => (),
-            _ => return,
         }
 
         if let Some(scope) = self.closest_loop_scope_mut() {
@@ -1067,32 +1060,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     //         }))
     // }
 
-    // pub fn move_into_loop(
-    //     db: &Db,
-    //     item: hir::DestroyGlueItem,
-    //     moved_to: Span,
-    //     value_span: Span,
-    //     loop_span: Span,
-    // ) -> Diagnostic {
-    //     let (name, name) = get_value_names(db, item);
-    //
-    //     Diagnostic::error()
-    //         .with_message(format!("use of moved {name}"))
-    //         .with_label(Label::primary(moved_to).with_message(format!(
-    //             "{name} moved here, in the previous loop iteration"
-    //         )))
-    //         .with_label(
-    //             Label::secondary(loop_span).with_message("inside this loop"),
-    //         )
-    //         .with_label(
-    //             Label::secondary(value_span)
-    //                 .with_message(format!("{name} defined here")),
-    //         )
-    // }
-
     fn get_value_name(&self, value: ValueId) -> String {
         match &self.body.value(value).kind {
-            ValueKind::Local(id, _) => format!("`{}`", self.cx.db[*id].name),
+            ValueKind::Local(id) => format!("`{}`", self.cx.db[*id].name),
             ValueKind::Global(id) => {
                 format!("`{}`", self.cx.mir.globals[*id].name)
             }
@@ -1163,21 +1133,6 @@ enum ValueState {
 
     // Some of this value's fields have been moved
     // PartiallyMoved(FxHashMap<Ustr, Span>),
-}
-
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
-enum MoveKind {
-    Move(Span),
-    // PartialMove(Word),
-}
-
-impl Spanned for MoveKind {
-    fn span(&self) -> Span {
-        match self {
-            MoveKind::Move(moved_to) => *moved_to,
-            // MoveKind::PartialMove(member) => member.span(),
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
