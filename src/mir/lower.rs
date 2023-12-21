@@ -399,22 +399,28 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Block(blk) => {
                 let mut result: Option<ValueId> = None;
+                let mut result_span = expr.span;
 
                 for expr in &blk.exprs {
                     result = Some(self.lower_expr(expr));
+                    result_span = expr.span;
                 }
-
-                // TODO: self.lower_destroy_glue(expr.id);
 
                 // NOTE: If the block ty is `unit`, we must always return a `unit` value.
                 // A situation where we don't return a `unit` value can occur
                 // when the expected type of the block is unit, but the last expression doesn't
                 // return `unit`.
-                if expr.ty.is_unit() {
+                let result = if expr.ty.is_unit() {
                     self.const_unit()
                 } else {
                     result.unwrap_or_else(|| self.const_unit())
-                }
+                };
+
+                self.try_move(result, result_span);
+
+                // TODO: self.lower_destroy_glue(expr.id);
+
+                result
             }
             hir::ExprKind::Return(ret) => {
                 let value = self.lower_expr(&ret.expr);
@@ -1026,14 +1032,4 @@ impl Spanned for MoveKind {
             // MoveKind::PartialMove(member) => member.span(),
         }
     }
-}
-
-#[allow(clippy::enum_variant_names)]
-#[derive(Debug, Clone)]
-enum MoveError {
-    AlreadyMoved(Span),
-    // AlreadyPartiallyMoved(Word),
-    // MoveAfterPartiallyMoved(Vec<Span>),
-    // MoveOutOfGlobal(DefId),
-    // MoveIntoLoop { value_span: Span, loop_span: Span },
 }
