@@ -238,7 +238,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.push_inst(Inst::Return { value: ret_value });
                 }
 
-                println!("fn {}:", fun.sig.word);
+                println!("fn `{}`", fun.sig.word);
                 println!("{}", self.value_states);
                 println!("---------------------");
 
@@ -771,7 +771,7 @@ impl fmt::Display for ValueStates {
             for (value, state) in value_states {
                 writeln!(
                     f,
-                    "\tv{} -> {}",
+                    "\tv{} : {}",
                     value.0,
                     match state {
                         ValueState::Owned => "owned",
