@@ -154,6 +154,11 @@ impl Body {
         self.blocks.push_with_key(|id| Block::new(id, name.into()))
     }
 
+    pub fn create_edge(&mut self, source: BlockId, target: BlockId) {
+        self.block_mut(source).successors.insert(target);
+        self.block_mut(target).predecessors.insert(source);
+    }
+
     #[inline]
     pub fn value(&self, id: ValueId) -> &Value {
         &self.values[id]
@@ -214,8 +219,8 @@ pub struct Block {
     pub id: BlockId,
     pub name: String,
     pub insts: Vec<Inst>,
-    pub predecessors: Vec<BlockId>,
-    pub successors: Vec<BlockId>,
+    pub predecessors: FxHashSet<BlockId>,
+    pub successors: FxHashSet<BlockId>,
 }
 
 impl Block {
@@ -224,8 +229,8 @@ impl Block {
             id,
             name,
             insts: vec![],
-            predecessors: vec![],
-            successors: vec![],
+            predecessors: FxHashSet::default(),
+            successors: FxHashSet::default(),
         }
     }
 
@@ -235,6 +240,10 @@ impl Block {
 
     pub fn push_inst(&mut self, inst: Inst) {
         self.insts.push(inst);
+    }
+
+    pub fn is_connected(&self) -> bool {
+        self.id == BlockId::start() || !self.predecessors.is_empty()
     }
 }
 

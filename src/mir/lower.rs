@@ -649,8 +649,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub fn create_edge(&mut self, target: BlockId) {
-        self.body.block_mut(self.current_block).successors.push(target);
-        self.body.block_mut(target).predecessors.push(self.current_block);
+        self.body.create_edge(self.current_block, target);
     }
 
     pub fn push_inst(&mut self, inst: Inst) {
@@ -758,7 +757,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return state;
         }
 
-        let mut work = self.body.block(self.current_block).predecessors.clone();
+        let mut work: Vec<BlockId> = self
+            .body
+            .block(self.current_block)
+            .predecessors
+            .iter()
+            .copied()
+            .collect();
+
         let mut visited = FxHashSet::<BlockId>::default();
         let mut result_state = ValueState::Owned;
         let mut is_initial_state = true;

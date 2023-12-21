@@ -8,7 +8,7 @@ fn main() unit = {
 	use_after_move()	
 	use_after_move_scoped()	
 	move_out_of_global()
-	//move_into_loop()
+	move_into_loop()
 	//copy()
 	// Valgrind checks
 	//destroy_things()	
@@ -54,16 +54,16 @@ let GLOBAL_NUM = Num(1)
 
 fn move_out_of_global() unit = {
 	let x = GLOBAL_INT // Ok
-	let y = GLOBAL_NUM // Error!
+	//let y = GLOBAL_NUM // Error!
 }
 
-//fn move_into_loop() unit = {
-//	let n = Num(1)
-//
-//	//loop {
-//	//	let x = n // Error!
-//	//}
-//}
+fn move_into_loop() unit = {
+	let n = Num(1)
+
+	loop {
+		let x = n // Error!
+	}
+}
 
 //fn copy() unit = {
 //	let n = 1
