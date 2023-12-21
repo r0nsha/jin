@@ -9,9 +9,10 @@ fn main() unit = {
 	use_after_move_scoped()	
 	move_out_of_global()
 	move_into_loop()
-	//copy()
+	copy()
+
 	// Valgrind checks
-	//destroy_things()	
+	destroy_things()	
 }
 
 fn use_after_move() unit = {
@@ -28,7 +29,7 @@ fn use_after_move_scoped() unit = {
 	}
 }	
 
-//fn destroy_things() unit = {
+fn destroy_things() unit = {
 	//Num(1) // Destroy temporary value
 	//Wrapper(Num(1)) // Destroy complex temporary value
 
@@ -47,7 +48,7 @@ fn use_after_move_scoped() unit = {
 	//if true {
 	//	let wcondnum = wcond.num
 	//}
-//}	
+}	
 
 let GLOBAL_INT = 1
 let GLOBAL_NUM = Num(1)
@@ -58,15 +59,16 @@ fn move_out_of_global() unit = {
 }
 
 fn move_into_loop() unit = {
-	let n = Num(1)
+	let mut n = Num(1)
 
-	loop {
-		let x = n // Error!
+	loop if n.field < 10 {
+		n.field += 1
+		//let x = n // Error!
 	}
 }
 
-//fn copy() unit = {
-//	let n = 1
-//	let a = n
-//	let b = n // Ok
-//}
+fn copy() unit = {
+	let n = 1
+	let a = n
+	let b = n // Ok
+}
