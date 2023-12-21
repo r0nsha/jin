@@ -66,7 +66,6 @@ impl<'db> Specialize<'db> {
 
         mir.fn_sigs.extend(self.new_fn_sigs);
         mir.fns.extend(self.new_fns);
-        // TODO: todo!("insert new globals");
     }
 
     fn do_job(&mut self, mir: &mut Mir, job: &Job) {
