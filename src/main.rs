@@ -27,7 +27,6 @@ pub mod id_map;
 mod macros;
 mod middle;
 mod mir;
-mod ownck;
 mod parse;
 mod qpath;
 mod span;

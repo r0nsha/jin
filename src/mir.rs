@@ -1,8 +1,8 @@
+mod errors;
 mod lower;
 mod pretty_print;
 mod specialize;
 pub mod subst;
-mod errors;
 
 use std::io;
 
@@ -290,3 +290,24 @@ pub enum Const {
     Bool(bool),
     Unit,
 }
+
+#[derive(Debug, Clone)]
+pub struct DestroyGlue {
+    // pub to_destroy: FxHashMap<BlockExprId, Vec<DestroyGlueItem>>,
+    // pub needs_destroy_flag: FxHashMap<DestroyGlueItem, BlockExprId>,
+}
+
+// #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From)]
+// pub enum DestroyGlueItem {
+//     Expr(ExprId),
+//     Def(DefId),
+// }
+
+// impl DestroyGlue {
+//     pub fn new() -> Self {
+//         Self {
+//             to_destroy: FxHashMap::default(),
+//             needs_destroy_flag: FxHashMap::default(),
+//         }
+//     }
+// }
