@@ -37,5 +37,5 @@ fn main() unit = {
 }
 
 fn print_poly[a](arg: a) unit = {
-	printf("arg: %d\n".ptr, arg)
+	//printf("arg: %d\n".ptr, arg)
 }

@@ -232,23 +232,31 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 let last_value = self.lower_expr(body);
 
-                if !self.body.is_terminating() {
+                if self.body.is_terminating() {
+                    self.exit_scope();
+                } else {
+                    // If the body isn't terminating, we must insert a return instruction at the
+                    // end.
                     let fn_ty = self.cx.mir.fn_sigs[sig].ty.as_fn().unwrap();
 
                     let ret_value = if fn_ty.ret.is_unit()
                         && !self.body.value(last_value).ty.is_unit()
                     {
+                        // If the value of this function's block has been coerced to unit, we must
+                        // return a unit value
                         self.const_unit()
                     } else {
                         last_value
                     };
 
+                    // We must exit the function's scope before inserting the return instruction,
+                    // since the destroy glue won't run after the function is returned from.
+                    self.exit_scope();
                     self.push_inst(Inst::Return { value: ret_value });
                 }
 
-                self.exit_scope();
-
                 // println!("fn `{}`", fun.sig.word);
+                // println!("created_values:\n{:?}", self.scope().created_values);
                 // println!("{}", self.value_states);
                 // println!("---------------------");
 
@@ -722,7 +730,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         moved_to: Span,
     ) -> Result<(), Diagnostic> {
         // If the moved value is copyable, we don't need to move it
-        if !self.ty_is_move(self.body.value(value).ty) {
+        if !self.value_is_move(value) {
             return Ok(());
         }
 
@@ -876,6 +884,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         result_state
     }
 
+    fn value_is_move(&self, value: ValueId) -> bool {
+        self.ty_is_move(self.body.value(value).ty)
+    }
+
     fn ty_is_move(&self, ty: Ty) -> bool {
         match ty.kind() {
             TyKind::Struct(sid) => self.cx.db[*sid].kind.is_ref(),
@@ -957,8 +969,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn exit_scope(&mut self) -> Scope {
-        // TODO: destroy scope values
-        // TODO: self.lower_destroy_glue(expr.id);
         let scope = self.scopes.pop().expect("cannot exit the root scope");
         self.destroy_scope_values(&scope);
         scope
@@ -1022,7 +1032,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn should_destroy_value(&mut self, value: ValueId) -> bool {
         // TODO: also consider MaybeMoved
-        self.ty_is_move(self.body.value(value).ty)
+        self.value_is_move(value)
             && matches!(self.value_state(value), ValueState::Owned)
     }
 
