@@ -44,7 +44,9 @@ impl<'a> Coerce<'a> for Ty {
         let target_metrics = cx.db.target_metrics();
 
         match (self.kind(), target.kind()) {
-            (TyKind::Never, _) => Some(CoercionKind::NeverToAny),
+            (TyKind::Never, _) | (TyKind::Unit, TyKind::Never) => {
+                Some(CoercionKind::NeverToAny)
+            }
             (TyKind::Int(a), TyKind::Int(b))
                 if b.size(target_metrics) >= a.size(target_metrics) =>
             {
