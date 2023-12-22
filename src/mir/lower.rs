@@ -371,7 +371,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let end_blk = self.body.create_block("loop_end");
 
                 self.enter_scope(
-                    ScopeKind::Loop { end_block: end_blk },
+                    ScopeKind::Loop(LoopScope::new(end_blk)),
                     expr.span,
                 );
 
@@ -406,7 +406,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::Break => {
-                let ScopeKind::Loop { end_block } = self
+                let ScopeKind::Loop(loop_scope) = &self
                     .closest_loop_scope()
                     .expect("to be inside a loop block")
                     .kind
@@ -414,7 +414,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     unreachable!()
                 };
 
-                self.push_br(end_block);
+                self.push_br(loop_scope.end_block);
                 self.const_unit()
             }
             hir::ExprKind::Block(blk) => {
@@ -681,6 +681,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let value = self.body.create_value(ty, kind);
         self.insert_value_state(value, ValueState::Owned);
         self.value_depths.insert(value, self.scope().depth);
+        self.scope_mut().created_values.push(value);
         value
     }
 
@@ -781,12 +782,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         if let Some(scope) = self.closest_loop_scope_mut() {
-            scope.moved_in_loop.insert(value, span);
+            scope.kind.as_loop_mut().unwrap().moved_in.insert(value, span);
         }
     }
 
     pub fn check_loop_moves(&mut self) {
-        let moved_in_loop = mem::take(&mut self.scope_mut().moved_in_loop);
+        let Some(loop_scope) = self.scope_mut().kind.as_loop_mut() else {
+            return;
+        };
+
+        let moved_in_loop = mem::take(&mut loop_scope.moved_in);
 
         for (value, moved_to) in moved_in_loop {
             if !matches!(self.value_state(value), ValueState::Owned) {
@@ -942,7 +947,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 .map(|s| s.loop_depth + 1)
                 .unwrap_or_default(),
             span,
-            moved_in_loop: FxHashMap::default(),
+            created_values: vec![],
         });
     }
 
@@ -961,12 +966,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         let span = scope.span.tail();
 
-        todo!()
-        // for value in scope.created_values.into_iter().rev() {
-        //     if self.should_destroy_value(value) {
-        //         self.destroy_value(value, span);
-        //     }
-        // }
+        for &value in scope.created_values.iter().rev() {
+            if self.should_destroy_value(value) {
+                self.destroy_value(value, span);
+            }
+        }
     }
 
     fn closest_loop_scope(&self) -> Option<&Scope> {
@@ -1011,8 +1015,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         // }
     }
 
-    fn should_destroy_value(&self, value: ValueId) -> bool {
+    fn should_destroy_value(&mut self, value: ValueId) -> bool {
+        // TODO: also consider MaybeMoved
         self.ty_is_move(self.body.value(value).ty)
+            && matches!(self.value_state(value), ValueState::Owned)
     }
 
     // fn push_destroy_flag(&mut self, item: hir::DestroyGlueItem) {
@@ -1162,21 +1168,25 @@ struct Scope {
     depth: usize,
     loop_depth: usize,
     span: Span,
-    moved_in_loop: FxHashMap<ValueId, Span>,
+
+    // Values that were created in this scope
+    created_values: Vec<ValueId>,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, Clone, EnumAsInner)]
 enum ScopeKind {
     Block,
-    Loop { end_block: BlockId },
+    Loop(LoopScope),
 }
 
-impl ScopeKind {
-    /// Returns `true` if the scope kind is [`Loop`].
-    ///
-    /// [`Loop`]: ScopeKind::Loop
-    #[must_use]
-    fn is_loop(&self) -> bool {
-        matches!(self, Self::Loop { .. })
+#[derive(Debug, Clone)]
+struct LoopScope {
+    end_block: BlockId,
+    moved_in: FxHashMap<ValueId, Span>,
+}
+
+impl LoopScope {
+    fn new(end_block: BlockId) -> Self {
+        Self { end_block, moved_in: FxHashMap::default() }
     }
 }
