@@ -1,5 +1,6 @@
 use std::{fmt, mem};
 
+use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr};
 
@@ -410,15 +411,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::Break => {
-                let ScopeKind::Loop(loop_scope) = &self
+                let end_block = self
                     .closest_loop_scope()
                     .expect("to be inside a loop block")
                     .kind
-                else {
-                    unreachable!()
-                };
+                    .as_loop()
+                    .unwrap()
+                    .end_block;
 
-                self.push_br(loop_scope.end_block);
+                self.destroy_loop_values(expr.span);
+                self.push_br(end_block);
                 self.const_unit()
             }
             hir::ExprKind::Block(blk) => {
@@ -985,6 +987,21 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let span = scope.span.tail();
 
         for &value in scope.created_values.iter().rev() {
+            self.destroy_value(value, span);
+        }
+    }
+
+    fn destroy_loop_values(&mut self, span: Span) {
+        let values_to_destroy = self
+            .scopes
+            .iter()
+            .rev()
+            .take_while_inclusive(|s| !matches!(s.kind, ScopeKind::Loop(_)))
+            .flat_map(|s| s.created_values.iter().rev())
+            .copied()
+            .collect::<Vec<_>>();
+
+        for value in values_to_destroy {
             self.destroy_value(value, span);
         }
     }

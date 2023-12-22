@@ -17,6 +17,19 @@ fn main() unit = {
 	let mut n = Num(1)
 	n = Num(2)
 
+	let mut i = 10 // Destroy in loop
+	loop {
+		let n = Num(1)
+		i -= 1
+
+		if i == 0 {
+		  //let n2 = Num(1)
+		  break
+		} else {
+		  printf("i = %d\n".ptr, i)
+		}
+	}
+
 	//let cond = Num(1) // Conditionally destroy value
 	//if false {
 	//	let x = cond
@@ -28,16 +41,6 @@ fn main() unit = {
 	//let wcond = Wrapper(Num(1)) // Partial & conditional move destroy (only w2 should be destroyed, conditionally)
 	//if true {
 	//	let wcondnum = wcond.num
-	//}
-
-	//let mut i = 10 // Destroy in loop
-	//loop {
-	//	let n = Num(1)
-	//  i -= 1
-	//	if i == 0  {
-	//	  let n2 = Num(1)
-	//	  break
-	//	}
 	//}
 }
 
