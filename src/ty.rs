@@ -330,7 +330,7 @@ impl IntTy {
             Self::I16 => 16,
             Self::I32 => 32,
             Self::I64 => 64,
-            Self::Int => target_metrics.word_size,
+            Self::Int => target_metrics.word_bit_size(),
         }
     }
 
@@ -384,7 +384,7 @@ impl UintTy {
             Self::U16 => 16,
             Self::U32 => 32,
             Self::U64 => 64,
-            Self::Uint => target_metrics.word_size,
+            Self::Uint => target_metrics.word_bit_size(),
         }
     }
 

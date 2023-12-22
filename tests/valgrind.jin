@@ -23,12 +23,12 @@ fn main() unit = {
 	// Destroy in loop & break
 	let mut i = 10
 	loop {
-		//let n = Num(1)
+		let n = Num(1)
 		printf("i = %d\n".ptr, i)
 		i -= 1
 
 		if i == 0 {
-			//let n2 = Num(1)
+			let n2 = Num(1)
 			break
 		}
 	}

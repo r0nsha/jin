@@ -156,6 +156,7 @@ fn compile_with_clang(
         .arg("-fuse-ld=mold")
         .arg("-lc")
         .arg("-no-pie")
+        //.arg("-g") // Debug symbols
         .args(link_flags)
         .execute_output()
         .expect("linking to work");

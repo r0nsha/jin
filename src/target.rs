@@ -176,6 +176,14 @@ pub struct TargetMetrics {
     pub target_data_layout: &'static str,
 }
 
+impl TargetMetrics {
+    const BITS: usize = 8;
+
+    pub fn word_bit_size(&self) -> usize {
+        self.word_size * Self::BITS
+    }
+}
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum Os {
     Windows,
