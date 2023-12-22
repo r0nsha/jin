@@ -55,10 +55,7 @@ impl<'db> Specialize<'db> {
             self.work.mark_done(job.target);
         }
 
-        self.retain_used_mir(mir);
-    }
-
-    fn retain_used_mir(&self, mir: &mut Mir) {
+        // Retain used Mir
         mir.fn_sigs.inner_mut().retain(|id, _| self.used_fns.contains(id));
         mir.fns.retain(|id, _| self.used_fns.contains(id));
         mir.globals.inner_mut().retain(|id, _| self.used_globals.contains(id));
