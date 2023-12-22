@@ -70,9 +70,8 @@ impl<'db> Specialize<'db> {
             JobTarget::Fn(id) => {
                 let Some(fun) = mir.fns.get(&id) else {
                     debug_assert!(
-                        //|| self.specialized_mir.fn_sigs.contains_key(&id),
                         mir.fn_sigs.contains_key(&id),
-                        "function must have an existing or new signature"
+                        "function must have an existing signature"
                     );
                     return;
                 };
