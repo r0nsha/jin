@@ -37,7 +37,7 @@ struct PrettyCx<'db> {
 impl<'db> PrettyCx<'db> {
     fn pp_global(&mut self, glob: &'db Global) -> D<'db> {
         match &glob.kind {
-            GlobalKind::Static { body, result } => D::text("let")
+            GlobalKind::Static(StaticGlobal { body, result }) => D::text("let")
                 .append(D::space())
                 .append(Self::global(glob.name.as_str()))
                 .append(D::text(":"))

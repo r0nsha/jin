@@ -98,8 +98,14 @@ pub struct Global {
 
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum GlobalKind {
-    Static { body: Body, result: ValueId },
+    Static(StaticGlobal),
     Extern,
+}
+
+#[derive(Debug, Clone)]
+pub struct StaticGlobal {
+    pub body: Body,
+    pub result: ValueId,
 }
 
 #[derive(Debug, Clone)]

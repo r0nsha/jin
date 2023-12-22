@@ -1,5 +1,8 @@
 use crate::{
-    mir::{Block, Body, Fn, FnSig, Global, GlobalKind, Inst, Mir, Value},
+    mir::{
+        Block, Body, Fn, FnSig, Global, GlobalKind, Inst, Mir, StaticGlobal,
+        Value,
+    },
     span::{Span, Spanned},
     subst,
     subst::{Subst, SubstTy},
@@ -32,7 +35,9 @@ impl<S: SubstTy> Subst<S> for Fn {
 impl<S: SubstTy> Subst<S> for Global {
     fn subst(&mut self, s: &mut S) {
         match &mut self.kind {
-            GlobalKind::Static { body, result: _ } => body.subst(s),
+            GlobalKind::Static(StaticGlobal { body, result: _ }) => {
+                body.subst(s);
+            }
             GlobalKind::Extern => (),
         }
     }

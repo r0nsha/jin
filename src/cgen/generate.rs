@@ -20,7 +20,7 @@ use crate::{
     middle::{Pat, UnOp},
     mir::{
         Block, Body, Const, Fn, FnSig, FnSigId, Global, GlobalKind, Inst, Mir,
-        ValueId, ValueKind,
+        StaticGlobal, ValueId, ValueKind,
     },
     target::TargetMetrics,
     ty::{Ty, TyKind},
@@ -173,42 +173,44 @@ impl<'db> Generator<'db> {
 
             self.globals.push(stmt(|| glob_doc));
 
-            if let GlobalKind::Static { body, result: value } = &glob.kind {
-                let mut state = FnState::new(body);
+            let GlobalKind::Static(StaticGlobal { body, result: value }) =
+                &glob.kind
+            else {
+                return;
+            };
 
-                let return_stmt = stmt(|| {
-                    D::text("return")
-                        .append(D::space())
-                        .append(self.value(&state, *value))
-                });
+            let mut state = FnState::new(body);
 
-                let block_docs: Vec<D> = body
-                    .blocks()
-                    .iter()
-                    .map(|blk| self.codegen_block(&mut state, blk))
-                    .chain(iter::once(return_stmt))
-                    .collect();
-
-                let init_fn_doc = D::text("FORCE_INLINE")
+            let return_stmt = stmt(|| {
+                D::text("return")
                     .append(D::space())
-                    .append(
-                        glob.ty.cdecl(self, D::text(global_init_fn_name(glob))),
-                    )
-                    .append(D::text("()"))
-                    .append(D::space())
-                    .append(block_(
-                        || {
-                            D::intersperse(
-                                block_docs,
-                                D::hardline().append(D::hardline()),
-                            )
-                            .group()
-                        },
-                        0,
-                    ));
+                    .append(self.value(&state, *value))
+            });
 
-                self.globals.push(stmt(|| init_fn_doc));
-            }
+            let block_docs: Vec<D> = body
+                .blocks()
+                .iter()
+                .map(|blk| self.codegen_block(&mut state, blk))
+                .chain(iter::once(return_stmt))
+                .collect();
+
+            let init_fn_doc = D::text("FORCE_INLINE")
+                .append(D::space())
+                .append(glob.ty.cdecl(self, D::text(global_init_fn_name(glob))))
+                .append(D::text("()"))
+                .append(D::space())
+                .append(block_(
+                    || {
+                        D::intersperse(
+                            block_docs,
+                            D::hardline().append(D::hardline()),
+                        )
+                        .group()
+                    },
+                    0,
+                ));
+
+            self.globals.push(stmt(|| init_fn_doc));
         }
     }
 

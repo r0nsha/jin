@@ -279,8 +279,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.position_at(start_blk);
 
                 let value = self.lower_expr(&let_.value);
-                let kind =
-                    GlobalKind::Static { body: self.body, result: value };
+                let kind = GlobalKind::Static(StaticGlobal {
+                    body: self.body,
+                    result: value,
+                });
 
                 let id = self.cx.mir.globals.insert_with_key(|id| Global {
                     id,
