@@ -411,6 +411,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::Break => {
+                self.destroy_loop_values(expr.span);
+
                 let end_block = self
                     .closest_loop_scope()
                     .expect("to be inside a loop block")
@@ -418,9 +420,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     .as_loop()
                     .unwrap()
                     .end_block;
-
-                self.destroy_loop_values(expr.span);
                 self.push_br(end_block);
+
                 self.const_unit()
             }
             hir::ExprKind::Block(blk) => {
