@@ -22,4 +22,14 @@ fn main() unit = {
 	//if true {
 	//	let wcondnum = wcond.num
 	//}
+
+	//let mut i = 10 // Destroy in loop
+	//loop {
+	//	let n = Num(1)
+	//  i -= 1
+	//	if i == 0  {
+	//	  let n2 = Num(1)
+	//	  break
+	//	}
+	//}
 }
