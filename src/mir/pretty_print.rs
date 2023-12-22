@@ -213,11 +213,11 @@ impl<'db> PrettyCx<'db> {
         D::text("%").append(name)
     }
 
-    fn value(&self, body: &'db Body, id: ValueId) -> D<'db> {
-        let value = body.value(id);
+    fn value(&self, body: &'db Body, value_id: ValueId) -> D<'db> {
+        let value = body.value(value_id);
 
         match &value.kind {
-            ValueKind::Register => D::text("v").append(id.to_string()),
+            ValueKind::Register => D::text("v").append(value_id.to_string()),
             ValueKind::Local(id) => D::text(self.db[*id].name.as_str()),
             ValueKind::Global(id) => Self::global(&self.mir.globals[*id].name),
             ValueKind::Fn(id) => Self::global(&self.mir.fn_sigs[*id].name),

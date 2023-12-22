@@ -36,6 +36,10 @@ impl<K, V> IdMap<K, V> {
         &self.counter
     }
 
+    pub fn set_counter(&mut self, counter: Counter<K>) {
+        self.counter = counter;
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (&K, &V)> {
         self.map.iter()
     }

@@ -1,4 +1,4 @@
-use std::collections::VecDeque;
+use std::{collections::VecDeque, mem};
 
 use rustc_hash::FxHashSet;
 use ustr::ustr;
@@ -40,7 +40,7 @@ impl<'db> Specialize<'db> {
             work: Work::new(),
             used_fns: FxHashSet::default(),
             used_globals: FxHashSet::default(),
-            specialized_mir: SpecializedMir::from(mir),
+            specialized_mir: SpecializedMir::new(mir),
         }
     }
 
@@ -50,11 +50,11 @@ impl<'db> Specialize<'db> {
 
         while let Some(job) = self.work.pop() {
             self.do_job(mir, &job);
+            self.specialized_mir.merge(mir);
             self.work.mark_done(job.target);
         }
 
         self.retain_used_mir(mir);
-        self.specialized_mir.merge(mir);
     }
 
     fn retain_used_mir(&self, mir: &mut Mir) {
@@ -288,18 +288,18 @@ struct SpecializedMir {
 }
 
 impl SpecializedMir {
-    fn merge(self, mir: &mut Mir) {
-        mir.fn_sigs.extend(self.fn_sigs);
-        mir.fns.extend(self.fns);
-    }
-}
-
-impl<'a> From<&'a Mir> for SpecializedMir {
-    fn from(mir: &'a Mir) -> Self {
+    fn new(mir: &Mir) -> Self {
         Self {
             fn_sigs: IdMap::new_with_counter(*mir.fn_sigs.counter()),
             fns: FxHashMap::default(),
             specialized_fns: FxHashMap::default(),
         }
+    }
+
+    fn merge(&mut self, mir: &mut Mir) {
+        let fn_sigs_counter = *self.fn_sigs.counter();
+        mir.fn_sigs.extend(mem::take(&mut self.fn_sigs));
+        self.fn_sigs.set_counter(fn_sigs_counter);
+        mir.fns.extend(mem::take(&mut self.fns));
     }
 }
