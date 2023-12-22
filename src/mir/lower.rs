@@ -256,7 +256,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // println!("---------------------");
 
                 self.exit_scope();
-                self.remove_unused_destroy_flags();
 
                 self.cx.mir.fns.insert(
                     sig,
@@ -280,7 +279,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let value = self.lower_expr(&let_.value);
 
                 self.exit_scope();
-                self.remove_unused_destroy_flags();
 
                 let id = self.cx.mir.globals.insert_with_key(|id| Global {
                     id,
@@ -1150,10 +1148,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             ValueKind::Member(_, member) => format!("`{member}`"),
         }
-    }
-
-    fn remove_unused_destroy_flags(&mut self) {
-        todo!("remove_unused_destroy_flags")
     }
 }
 
