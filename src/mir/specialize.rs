@@ -81,14 +81,8 @@ impl<'db> Specialize<'db> {
                     &global.kind
                 {
                     let body_subst = self.specialize_body(mir, body);
-                    let body_mut = &mut mir
-                        .globals
-                        .get_mut(&id)
-                        .unwrap()
-                        .kind
-                        .as_static_mut()
-                        .unwrap()
-                        .body;
+                    let body_mut =
+                        &mut mir.globals[id].kind.as_static_mut().unwrap().body;
                     body_subst.subst(body_mut);
                 }
             }
