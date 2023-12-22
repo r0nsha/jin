@@ -49,8 +49,10 @@ impl<'db> Specialize<'db> {
         self.work.push(Job { target: JobTarget::Fn(main_fn) });
 
         while let Some(job) = self.work.pop() {
-            self.do_job(mir, &job);
-            self.specialized_mir.merge(mir);
+            self.mark_used(job.target);
+            self.specialize_job_target(mir, job.target);
+            self.work.mark_done(job.target);
+            self.specialized_mir.merge_into(mir);
             self.work.mark_done(job.target);
         }
 
@@ -63,44 +65,38 @@ impl<'db> Specialize<'db> {
         mir.globals.inner_mut().retain(|id, _| self.used_globals.contains(id));
     }
 
-    fn do_job(&mut self, mir: &mut Mir, job: &Job) {
-        self.mark_used(job.target);
+    fn specialize_job_target(&mut self, mir: &mut Mir, target: JobTarget) {
+        match target {
+            JobTarget::Fn(id) => {
+                let Some(fun) = mir.fns.get(&id) else {
+                    debug_assert!(
+                        //|| self.specialized_mir.fn_sigs.contains_key(&id),
+                        mir.fn_sigs.contains_key(&id),
+                        "function must have an existing or new signature"
+                    );
+                    return;
+                };
 
-        match job.target {
-            JobTarget::Fn(id) => self.do_fn_job(mir, id),
-            JobTarget::Global(id) => self.do_global_job(mir, id),
-        }
-
-        self.work.mark_done(job.target);
-    }
-
-    fn do_fn_job(&mut self, mir: &mut Mir, id: FnSigId) {
-        let Some(fun) = mir.fns.get(&id) else {
-            debug_assert!(
-                mir.fn_sigs.contains_key(&id)
-                    || self.specialized_mir.fn_sigs.contains_key(&id),
-                "function must have an existing or new signature"
-            );
-            return;
-        };
-
-        let body_subst = self.specialize_body(mir, &fun.body);
-        body_subst.subst(&mut mir.fns.get_mut(&id).unwrap().body);
-    }
-
-    fn do_global_job(&mut self, mir: &mut Mir, id: GlobalId) {
-        let global = mir.globals.get(&id).expect("global to exist");
-        if let GlobalKind::Static(StaticGlobal { body, .. }) = &global.kind {
-            let body_subst = self.specialize_body(mir, body);
-            let body_mut = &mut mir
-                .globals
-                .get_mut(&id)
-                .unwrap()
-                .kind
-                .as_static_mut()
-                .unwrap()
-                .body;
-            body_subst.subst(body_mut);
+                let body_subst = self.specialize_body(mir, &fun.body);
+                body_subst.subst(&mut mir.fns.get_mut(&id).unwrap().body);
+            }
+            JobTarget::Global(id) => {
+                let global = mir.globals.get(&id).expect("global to exist");
+                if let GlobalKind::Static(StaticGlobal { body, .. }) =
+                    &global.kind
+                {
+                    let body_subst = self.specialize_body(mir, body);
+                    let body_mut = &mut mir
+                        .globals
+                        .get_mut(&id)
+                        .unwrap()
+                        .kind
+                        .as_static_mut()
+                        .unwrap()
+                        .body;
+                    body_subst.subst(body_mut);
+                }
+            }
         }
     }
 
@@ -339,7 +335,7 @@ impl SpecializedMir {
         }
     }
 
-    fn merge(&mut self, mir: &mut Mir) {
+    fn merge_into(&mut self, mir: &mut Mir) {
         let fn_sigs_counter = *self.fn_sigs.counter();
         mir.fn_sigs.extend(mem::take(&mut self.fn_sigs));
         self.fn_sigs.set_counter(fn_sigs_counter);
