@@ -7,7 +7,8 @@ fn main() unit = {
 	Num(1) // Destroy temporary value
 	Wrapper(Num(1)) // Destroy complex temporary value
 
-	print_poly(Num(1))
+	destroy_poly(Num(1)) // Should be destroyed at `destroy_poly`
+	destroy_poly(1) // Shouldn't be destroyed at `destroy_poly`
 
 	//let n = Num(1) // Destroy named value
 	//let w = Wrapper(Num(1)) // Destroy complex named value
@@ -36,6 +37,4 @@ fn main() unit = {
 	//}
 }
 
-fn print_poly[a](arg: a) unit = {
-	//printf("arg: %d\n".ptr, arg)
-}
+fn destroy_poly[a](arg: a) unit = {}

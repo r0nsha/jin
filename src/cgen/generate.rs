@@ -505,7 +505,7 @@ impl<'db> Generator<'db> {
             Inst::Destroy { value, span: _ } => {
                 self.codegen_destroy(state, *value).unwrap_or_else(|| {
                     unreachable!(
-                        "unexpected: destroyed value of type {:?}",
+                        "tried to destroy value by mistake: {:?}",
                         state.body.value(*value)
                     )
                 })
