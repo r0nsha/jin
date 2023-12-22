@@ -21,22 +21,22 @@ fn main() unit = {
 	//n = Num(2)
 
 	// Destroy in loop & break
-	let mut i = 10
-	loop {
-		let n = Num(1)
-		printf("i = %d\n".ptr, i)
-		i -= 1
-
-		if i == 0 {
-			let n2 = Num(1)
-			break
-		}
-	}
-
-	//let cond = Num(1) // Conditionally destroy value
-	//if false {
-	//	let x = cond
+	//let mut i = 10
+	//loop {
+	//	let n = Num(1)
+	//	printf("i = %d\n".ptr, i)
+	//	i -= 1
+	//
+	//	if i == 0 {
+	//		let n2 = Num(1)
+	//		break
+	//	}
 	//}
+
+	let cond = Num(1) // Conditionally destroy value
+	if true {
+		let x = cond
+	}
 
 	//let w2 = Wrapper(Num(1)) // Partial move destroy (only w2 should be destroyed)
 	//let w2num = w2.num

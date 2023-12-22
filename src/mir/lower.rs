@@ -252,7 +252,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
 
                 // println!("fn `{}`", fun.sig.word);
-                // println!("created_values:\n{:?}", self.scope().created_values);
                 // println!("{}", self.value_states);
                 // println!("---------------------");
 
