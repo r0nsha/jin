@@ -502,7 +502,7 @@ impl<'db> Generator<'db> {
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
-            Inst::Destroy { value } => {
+            Inst::Destroy { value, span: _ } => {
                 self.codegen_destroy(state, *value).unwrap_or_else(|| {
                     unreachable!(
                         "unexpected: destroyed value of type {:?}",

@@ -40,6 +40,12 @@ impl Span {
         self.end
     }
 
+    pub fn tail(&self) -> Span {
+        let mut new = *self;
+        new.start = self.end;
+        new
+    }
+
     #[allow(unused)]
     pub fn len(&self) -> u32 {
         self.end - self.start

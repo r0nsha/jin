@@ -130,7 +130,7 @@ impl<'db> PrettyCx<'db> {
                 .append(self.value(body, *value))
                 .append(D::space())
                 .append(self.value(body, *target)),
-            Inst::Destroy { value } => D::text("destroy")
+            Inst::Destroy { value, .. } => D::text("destroy")
                 .append(D::space())
                 .append(self.value(body, *value)),
             Inst::Br { target } => D::text("br")

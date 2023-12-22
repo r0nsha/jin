@@ -949,7 +949,24 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn exit_scope(&mut self) -> Scope {
         // TODO: destroy scope values
         // TODO: self.lower_destroy_glue(expr.id);
-        self.scopes.pop().expect("cannot exit the root scope")
+        let scope = self.scopes.pop().expect("cannot exit the root scope");
+        self.destroy_scope_values(&scope);
+        scope
+    }
+
+    fn destroy_scope_values(&mut self, scope: &Scope) {
+        if !self.in_connected_block() {
+            return;
+        }
+
+        let span = scope.span.tail();
+
+        todo!()
+        // for value in scope.created_values.into_iter().rev() {
+        //     if self.should_destroy_value(value) {
+        //         self.destroy_value(value, span);
+        //     }
+        // }
     }
 
     fn closest_loop_scope(&self) -> Option<&Scope> {
@@ -981,18 +998,22 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     //     self.position_at(no_destroy_blk);
     // }
 
-    // fn push_unconditional_destroy(&mut self, value: ValueId) {
-    //     if self.should_destroy_value(value) {
-    //         self.push_inst(Inst::Destroy { value });
-    //     }
-    // }
+    fn destroy_value(&mut self, value: ValueId, span: Span) {
+        if !self.should_destroy_value(value) {
+            return;
+        }
 
-    // fn should_destroy_value(&self, value_id: ValueId) -> bool {
-    //     match self.body.value(value_id).ty.kind() {
-    //         TyKind::Struct(sid) => self.cx.db[*sid].kind.is_ref(),
-    //         _ => false,
-    //     }
-    // }
+        // TODO: conditional destroy
+        // if let Some(destroy_flag) = self.destroy_flags.get(item) {
+        //     self.push_conditional_destroy(value, *destroy_flag);
+        // } else {
+        self.push_inst(Inst::Destroy { value, span });
+        // }
+    }
+
+    fn should_destroy_value(&self, value: ValueId) -> bool {
+        self.ty_is_move(self.body.value(value).ty)
+    }
 
     // fn push_destroy_flag(&mut self, item: hir::DestroyGlueItem) {
     //     if !self.destroy_glue.needs_destroy_flag.contains_key(&item) {
