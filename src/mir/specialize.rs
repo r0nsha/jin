@@ -8,7 +8,7 @@ use crate::{
     hir::mangle,
     mir::*,
     subst::{ParamFolder, Subst},
-    ty::{fold::TyFolder, Instantiation, Ty},
+    ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };
 
 pub fn specialize(db: &mut Db, mir: &mut Mir) {
@@ -127,6 +127,19 @@ impl<'db> Specialize<'db> {
             }
         }
 
+        for block in body.blocks() {
+            for (idx, inst) in block.insts.iter().enumerate() {
+                match inst {
+                    Inst::Destroy { value, .. }
+                        if !self.should_destroy_value(body, *value) =>
+                    {
+                        body_subst.remove_inst(block.id, idx);
+                    }
+                    _ => (),
+                }
+            }
+        }
+
         body_subst
     }
 
@@ -218,6 +231,17 @@ impl<'db> Specialize<'db> {
             sig
         })
     }
+
+    fn should_destroy_value(&self, body: &Body, value: ValueId) -> bool {
+        self.should_destroy_ty(body.value(value).ty)
+    }
+
+    fn should_destroy_ty(&self, ty: Ty) -> bool {
+        match ty.kind() {
+            TyKind::Struct(sid) => self.db[*sid].kind.is_ref(),
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -260,20 +284,39 @@ enum JobTarget {
 #[derive(Debug)]
 struct BodySubst {
     value_subst: FxHashMap<ValueId, ValueKind>,
+    removed_insts: FxHashMap<BlockId, Vec<usize>>,
 }
 
 impl BodySubst {
     fn new() -> Self {
-        Self { value_subst: FxHashMap::default() }
+        Self {
+            value_subst: FxHashMap::default(),
+            removed_insts: FxHashMap::default(),
+        }
     }
 
     fn insert_value(&mut self, id: ValueId, kind: ValueKind) {
         self.value_subst.insert(id, kind);
     }
 
+    fn remove_inst(&mut self, block: BlockId, idx: usize) {
+        self.removed_insts.entry(block).or_default().push(idx);
+    }
+
     fn subst(self, body: &mut Body) {
         for (id, kind) in self.value_subst {
             body.value_mut(id).kind = kind;
+        }
+
+        for block in body.blocks_mut() {
+            if let Some(removed_insts) = self.removed_insts.get(&block.id) {
+                let mut idx = 0usize;
+                block.insts.retain(|_| {
+                    let retain = !removed_insts.contains(&idx);
+                    idx += 1;
+                    retain
+                });
+            }
         }
     }
 }
