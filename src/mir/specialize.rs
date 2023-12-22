@@ -12,7 +12,7 @@ use crate::{
 };
 
 pub fn specialize(db: &mut Db, mir: &mut Mir) {
-    Specialize::new(db, mir).run(mir);
+    Specialize::new(db).run(mir);
 }
 
 struct Specialize<'db> {
@@ -22,9 +22,6 @@ struct Specialize<'db> {
     // A map of used function ids, pointing to their new function id
     used_fns: FxHashSet<FnSigId>,
     used_globals: FxHashSet<GlobalId>,
-
-    // The specialized Mir that's generated
-    specialized_mir: SpecializedMir,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -34,98 +31,33 @@ pub struct SpecializedFn {
 }
 
 impl<'db> Specialize<'db> {
-    fn new(db: &'db mut Db, mir: &Mir) -> Self {
+    fn new(db: &'db mut Db) -> Self {
         Self {
             db,
             work: Work::new(),
             used_fns: FxHashSet::default(),
             used_globals: FxHashSet::default(),
-            specialized_mir: SpecializedMir::new(mir),
         }
     }
 
     fn run(mut self, mir: &mut Mir) {
+        self.specialize_bodies(mir);
+        self.retain_used_mir(mir);
+    }
+
+    fn specialize_bodies(&mut self, mir: &mut Mir) {
         let main_fn = mir.main_fn.expect("to have a main fn");
         self.work.push(Job { target: JobTarget::Fn(main_fn) });
 
         while let Some(job) = self.work.pop() {
-            self.mark_used(job.target);
-            self.specialize_job_target(mir, job.target);
-            self.specialized_mir.merge_into(mir);
-            self.work.mark_done(job.target);
+            SpecializeBody::new(self, mir).run(mir, &job);
         }
+    }
 
-        // Retain used Mir
+    fn retain_used_mir(&mut self, mir: &mut Mir) {
         mir.fn_sigs.inner_mut().retain(|id, _| self.used_fns.contains(id));
         mir.fns.retain(|id, _| self.used_fns.contains(id));
         mir.globals.inner_mut().retain(|id, _| self.used_globals.contains(id));
-    }
-
-    fn specialize_job_target(&mut self, mir: &mut Mir, target: JobTarget) {
-        match target {
-            JobTarget::Fn(id) => {
-                let Some(fun) = mir.fns.get(&id) else {
-                    debug_assert!(
-                        mir.fn_sigs.contains_key(&id),
-                        "function must have an existing signature"
-                    );
-                    return;
-                };
-
-                let body_subst = self.specialize_body(mir, &fun.body);
-                body_subst.subst(&mut mir.fns.get_mut(&id).unwrap().body);
-            }
-            JobTarget::Global(id) => {
-                let global = mir.globals.get(&id).expect("global to exist");
-                if let GlobalKind::Static(StaticGlobal { body, .. }) =
-                    &global.kind
-                {
-                    let body_subst = self.specialize_body(mir, body);
-                    let body_mut =
-                        &mut mir.globals[id].kind.as_static_mut().unwrap().body;
-                    body_subst.subst(body_mut);
-                }
-            }
-        }
-    }
-
-    fn specialize_body(&mut self, mir: &Mir, body: &Body) -> BodySubst {
-        let mut body_subst = BodySubst::new();
-
-        for value in body.values() {
-            if let Some(instantiation) = body.instantation(value.id) {
-                // This is a polymorphic value which requires specialization
-                let new_kind =
-                    self.specialize_value(mir, &value.kind, instantiation);
-                body_subst.insert_value(value.id, new_kind);
-            } else {
-                // This is a monomorphic value, we can enqueue it safely
-                match value.kind {
-                    ValueKind::Fn(id) => {
-                        self.work.push(Job { target: JobTarget::Fn(id) });
-                    }
-                    ValueKind::Global(id) => {
-                        self.work.push(Job { target: JobTarget::Global(id) });
-                    }
-                    _ => (),
-                }
-            }
-        }
-
-        for block in body.blocks() {
-            for (idx, inst) in block.insts.iter().enumerate() {
-                match inst {
-                    Inst::Destroy { value, .. }
-                        if !self.should_destroy_value(body, *value) =>
-                    {
-                        body_subst.remove_inst(block.id, idx);
-                    }
-                    _ => (),
-                }
-            }
-        }
-
-        body_subst
     }
 
     fn mark_used(&mut self, target: JobTarget) {
@@ -137,84 +69,6 @@ impl<'db> Specialize<'db> {
                 self.used_globals.insert(id);
             }
         }
-    }
-
-    fn specialize_value(
-        &mut self,
-        mir: &Mir,
-        value_kind: &ValueKind,
-        instantiation: &Instantiation,
-    ) -> ValueKind {
-        match value_kind {
-            &ValueKind::Fn(id) => {
-                let ty = ParamFolder { db: self.db, instantiation }
-                    .fold(mir.fn_sigs[id].ty);
-
-                let specialized_fn = SpecializedFn { id, ty };
-
-                let specialized_sig_id =
-                    self.specialize_fn(mir, specialized_fn, instantiation);
-
-                ValueKind::Fn(specialized_sig_id)
-            }
-            kind => unreachable!(
-                "unexpected value kind in specialization: {kind:?}"
-            ),
-        }
-    }
-
-    #[must_use]
-    fn specialize_fn(
-        &mut self,
-        mir: &Mir,
-        specialized_fn: SpecializedFn,
-        instantiation: &Instantiation,
-    ) -> FnSigId {
-        if let Some(target_value) =
-            self.specialized_mir.specialized_fns.get(&specialized_fn).copied()
-        {
-            return target_value;
-        }
-
-        let old_sig_id = specialized_fn.id;
-        let new_sig_id =
-            self.specialize_fn_sig(mir, &specialized_fn, instantiation);
-
-        self.specialized_mir.specialized_fns.insert(specialized_fn, new_sig_id);
-
-        let mut fun = mir.fns.get(&old_sig_id).expect("fn to exist").clone();
-
-        fun.sig = new_sig_id;
-        fun.subst(&mut ParamFolder { db: self.db, instantiation });
-
-        self.specialized_mir.fns.insert(new_sig_id, fun);
-        self.work.push(Job { target: JobTarget::Fn(new_sig_id) });
-
-        new_sig_id
-    }
-
-    #[must_use]
-    fn specialize_fn_sig(
-        &mut self,
-        mir: &Mir,
-        specialized_fn: &SpecializedFn,
-        instantiation: &Instantiation,
-    ) -> FnSigId {
-        let mut sig = mir.fn_sigs[specialized_fn.id].clone();
-        sig.subst(&mut ParamFolder { db: self.db, instantiation });
-
-        let instantation_str = instantiation
-            .tys()
-            .map(|ty| mangle::mangle_ty_name(self.db, ty))
-            .collect::<Vec<_>>()
-            .join("_");
-
-        sig.name = ustr(&format!("{}__{}", sig.name, instantation_str));
-
-        self.specialized_mir.fn_sigs.insert_with_key(|id| {
-            sig.id = id;
-            sig
-        })
     }
 
     fn should_destroy_value(&self, body: &Body, value: ValueId) -> bool {
@@ -264,6 +118,171 @@ struct Job {
 enum JobTarget {
     Fn(FnSigId),
     Global(GlobalId),
+}
+
+struct SpecializeBody<'db, 'cx> {
+    cx: &'cx mut Specialize<'db>,
+    specialized_mir: SpecializedMir,
+}
+
+impl<'db, 'cx> SpecializeBody<'db, 'cx> {
+    fn new(cx: &'cx mut Specialize<'db>, mir: &Mir) -> Self {
+        Self { cx, specialized_mir: SpecializedMir::new(mir) }
+    }
+
+    fn run(mut self, mir: &mut Mir, job: &Job) {
+        self.cx.mark_used(job.target);
+        self.specialize(mir, job.target);
+        self.specialized_mir.merge_into(mir);
+        self.cx.work.mark_done(job.target);
+    }
+
+    fn specialize(&mut self, mir: &mut Mir, target: JobTarget) {
+        match target {
+            JobTarget::Fn(id) => {
+                let Some(fun) = mir.fns.get(&id) else {
+                    debug_assert!(
+                        mir.fn_sigs.contains_key(&id),
+                        "function must have an existing signature"
+                    );
+                    return;
+                };
+
+                let body_subst = self.specialize_body(mir, &fun.body);
+                body_subst.subst(&mut mir.fns.get_mut(&id).unwrap().body);
+            }
+            JobTarget::Global(id) => {
+                let global = mir.globals.get(&id).expect("global to exist");
+                if let GlobalKind::Static(StaticGlobal { body, .. }) =
+                    &global.kind
+                {
+                    let body_subst = self.specialize_body(mir, body);
+                    let body_mut =
+                        &mut mir.globals[id].kind.as_static_mut().unwrap().body;
+                    body_subst.subst(body_mut);
+                }
+            }
+        }
+    }
+
+    fn specialize_body(&mut self, mir: &Mir, body: &Body) -> BodySubst {
+        let mut body_subst = BodySubst::new();
+
+        for value in body.values() {
+            if let Some(instantiation) = body.instantation(value.id) {
+                // This is a polymorphic value which requires specialization
+                let new_kind =
+                    self.specialize_value(mir, &value.kind, instantiation);
+                body_subst.insert_value(value.id, new_kind);
+            } else {
+                // This is a monomorphic value, we can enqueue it safely
+                match value.kind {
+                    ValueKind::Fn(id) => {
+                        self.cx.work.push(Job { target: JobTarget::Fn(id) });
+                    }
+                    ValueKind::Global(id) => {
+                        self.cx
+                            .work
+                            .push(Job { target: JobTarget::Global(id) });
+                    }
+                    _ => (),
+                }
+            }
+        }
+
+        for block in body.blocks() {
+            for (idx, inst) in block.insts.iter().enumerate() {
+                match inst {
+                    Inst::Destroy { value, .. }
+                        if !self.cx.should_destroy_value(body, *value) =>
+                    {
+                        body_subst.remove_inst(block.id, idx);
+                    }
+                    _ => (),
+                }
+            }
+        }
+
+        body_subst
+    }
+
+    fn specialize_value(
+        &mut self,
+        mir: &Mir,
+        value_kind: &ValueKind,
+        instantiation: &Instantiation,
+    ) -> ValueKind {
+        match value_kind {
+            &ValueKind::Fn(id) => {
+                let ty = ParamFolder { db: self.cx.db, instantiation }
+                    .fold(mir.fn_sigs[id].ty);
+
+                let specialized_fn = SpecializedFn { id, ty };
+
+                let specialized_sig_id =
+                    self.specialize_fn(mir, specialized_fn, instantiation);
+
+                ValueKind::Fn(specialized_sig_id)
+            }
+            kind => unreachable!(
+                "unexpected value kind in specialization: {kind:?}"
+            ),
+        }
+    }
+
+    #[must_use]
+    fn specialize_fn(
+        &mut self,
+        mir: &Mir,
+        specialized_fn: SpecializedFn,
+        instantiation: &Instantiation,
+    ) -> FnSigId {
+        if let Some(target_value) =
+            self.specialized_mir.specialized_fns.get(&specialized_fn).copied()
+        {
+            return target_value;
+        }
+
+        let old_sig_id = specialized_fn.id;
+        let new_sig_id =
+            self.specialize_fn_sig(mir, &specialized_fn, instantiation);
+
+        self.specialized_mir.specialized_fns.insert(specialized_fn, new_sig_id);
+
+        let mut fun = mir.fns.get(&old_sig_id).expect("fn to exist").clone();
+
+        fun.sig = new_sig_id;
+        fun.subst(&mut ParamFolder { db: self.cx.db, instantiation });
+
+        self.specialized_mir.fns.insert(new_sig_id, fun);
+        self.cx.work.push(Job { target: JobTarget::Fn(new_sig_id) });
+
+        new_sig_id
+    }
+
+    #[must_use]
+    fn specialize_fn_sig(
+        &mut self,
+        mir: &Mir,
+        specialized_fn: &SpecializedFn,
+        instantiation: &Instantiation,
+    ) -> FnSigId {
+        let mut sig = mir.fn_sigs[specialized_fn.id].clone();
+        sig.subst(&mut ParamFolder { db: self.cx.db, instantiation });
+
+        let instantation_str = instantiation
+            .tys()
+            .map(|ty| mangle::mangle_ty_name(self.cx.db, ty))
+            .collect::<Vec<_>>()
+            .join("_");
+
+        sig.name = ustr(&format!("{}__{}", sig.name, instantation_str));
+
+        self.specialized_mir.fn_sigs.insert_with_key(|id| {
+            sig.id = id;
+            sig
+        })
+    }
 }
 
 #[derive(Debug)]
