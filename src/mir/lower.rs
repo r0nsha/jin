@@ -220,9 +220,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     match &param.pat {
                         Pat::Name(name) => {
                             let id = name.id;
-                            let value = self
-                                .create_value(param.ty, ValueKind::Local(id));
-                            self.id_to_value.insert(name.id, value);
+                            self.create_value(param.ty, ValueKind::Local(id));
                             // TODO:
                             // self.push_destroy_flag(hir::DestroyGlueItem::Def(
                             //     name.id,
@@ -310,12 +308,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         //     name.id,
                         // ));
 
-                        let value = self.push_inst_with(
+                        self.push_inst_with(
                             let_.ty,
                             ValueKind::Local(name.id),
                             |value| Inst::Local { value, init },
                         );
-                        self.id_to_value.insert(name.id, value);
                     }
                     Pat::Discard(_) => (),
                 }
@@ -678,10 +675,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
+        let id = if let ValueKind::Local(id) = kind { Some(id) } else { None };
+
         let value = self.body.create_value(ty, kind);
+
         self.insert_value_state(value, ValueState::Owned);
         self.value_depths.insert(value, self.scope().depth);
         self.scope_mut().created_values.push(value);
+
+        if let Some(id) = id {
+            self.id_to_value.insert(id, value);
+        }
+
         value
     }
 
