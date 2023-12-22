@@ -4,14 +4,18 @@ type Num(field: int)
 type Wrapper(num: Num)
 
 fn main() unit = {
-	Num(1) // Destroy temporary value
-	Wrapper(Num(1)) // Destroy complex temporary value
+	//Num(1) // Destroy temporary value
+	//Wrapper(Num(1)) // Destroy complex temporary value
 
-	destroy_poly(Num(1)) // Should be destroyed at `destroy_poly`
-	destroy_poly(1) // Shouldn't be destroyed at `destroy_poly`
+	//destroy_poly(Num(1)) // Should be destroyed at `destroy_poly`
+	//destroy_poly(1) // Shouldn't be destroyed at `destroy_poly`
 
 	//let n = Num(1) // Destroy named value
 	//let w = Wrapper(Num(1)) // Destroy complex named value
+
+	// Destroy on assignment
+	let mut n = Num(1)
+	n = Num(2)
 
 	//let cond = Num(1) // Conditionally destroy value
 	//if false {

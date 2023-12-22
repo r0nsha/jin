@@ -342,8 +342,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     rhs
                 };
 
-                // TODO: The lhs needs to be destroyed before it's assigned to
-                // self.push_unconditional_destroy(lhs);
+                // NOTE: The lhs needs to be destroyed before it's assigned to
+                self.destroy_value(lhs, assign.lhs.span);
                 self.push_inst(Inst::Store { value: rhs, target: lhs });
 
                 self.const_unit()
@@ -984,9 +984,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let span = scope.span.tail();
 
         for &value in scope.created_values.iter().rev() {
-            if self.should_destroy_value(value) {
-                self.destroy_value(value, span);
-            }
+            self.destroy_value(value, span);
         }
     }
 
