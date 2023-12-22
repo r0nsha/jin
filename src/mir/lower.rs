@@ -257,6 +257,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // println!("---------------------");
 
                 self.exit_scope();
+                self.remove_unused_destroy_flags();
 
                 self.cx.mir.fns.insert(
                     sig,
@@ -273,21 +274,24 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let full_name = self.cx.db[name.id].qpath.join_with("_");
                 let ty = self.cx.db[name.id].ty;
 
+                self.enter_scope(ScopeKind::Block, let_.value.span);
                 let start_blk = self.body.create_block("start");
                 self.position_at(start_blk);
 
                 let value = self.lower_expr(&let_.value);
-                let kind = GlobalKind::Static(StaticGlobal {
-                    body: self.body,
-                    result: value,
-                });
+
+                self.exit_scope();
+                self.remove_unused_destroy_flags();
 
                 let id = self.cx.mir.globals.insert_with_key(|id| Global {
                     id,
                     def_id: name.id,
                     name: full_name.into(),
                     ty,
-                    kind,
+                    kind: GlobalKind::Static(StaticGlobal {
+                        body: self.body,
+                        result: value,
+                    }),
                 });
 
                 self.cx.id_to_global.insert(name.id, id);
@@ -1147,6 +1151,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             ValueKind::Member(_, member) => format!("`{member}`"),
         }
+    }
+
+    fn remove_unused_destroy_flags(&mut self) {
+        todo!("remove_unused_destroy_flags")
     }
 }
 
