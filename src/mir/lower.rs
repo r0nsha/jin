@@ -232,11 +232,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 let last_value = self.lower_expr(body);
 
-                if self.body.is_terminating() {
-                    self.exit_scope();
-                } else {
-                    // If the body isn't terminating, we must insert a return instruction at the
-                    // end.
+                if !self.body.is_terminating() {
+                    // If the body isn't terminating, we must push a return instruction at the
+                    // for the function's last value.
                     let fn_ty = self.cx.mir.fn_sigs[sig].ty.as_fn().unwrap();
 
                     let ret_value = if fn_ty.ret.is_unit()
@@ -249,16 +247,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         last_value
                     };
 
-                    // We must exit the function's scope before inserting the return instruction,
-                    // since the destroy glue won't run after the function is returned from.
-                    self.exit_scope();
-                    self.push_inst(Inst::Return { value: ret_value });
+                    self.push_return(ret_value, body.span.tail());
                 }
 
                 // println!("fn `{}`", fun.sig.word);
                 // println!("created_values:\n{:?}", self.scope().created_values);
                 // println!("{}", self.value_states);
                 // println!("---------------------");
+
+                self.exit_scope();
 
                 self.cx.mir.fns.insert(
                     sig,
@@ -453,8 +450,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Return(ret) => {
                 let value = self.lower_expr(&ret.expr);
                 self.try_move(value, ret.expr.span);
-                self.push_inst(Inst::Return { value });
-                // TODO: push unreachable inst instead of unit literal
+                self.push_return(value, expr.span);
                 self.const_unit()
             }
             hir::ExprKind::Call(call) => {
@@ -654,6 +650,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let value = self.create_value(value_ty, kind);
         self.push_inst(f(value));
         value
+    }
+
+    fn push_return(&mut self, value: ValueId, span: Span) {
+        self.destroy_all_values(span);
+        self.push_inst(Inst::Return { value });
     }
 
     pub fn push_br(&mut self, target: BlockId) {
@@ -984,6 +985,20 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let span = scope.span.tail();
 
         for &value in scope.created_values.iter().rev() {
+            self.destroy_value(value, span);
+        }
+    }
+
+    fn destroy_all_values(&mut self, span: Span) {
+        let values_to_destroy = self
+            .scopes
+            .iter()
+            .rev()
+            .flat_map(|s| s.created_values.iter().rev())
+            .copied()
+            .collect::<Vec<_>>();
+
+        for value in values_to_destroy {
             self.destroy_value(value, span);
         }
     }
