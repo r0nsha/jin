@@ -51,7 +51,6 @@ impl<'db> Specialize<'db> {
         while let Some(job) = self.work.pop() {
             self.mark_used(job.target);
             self.specialize_job_target(mir, job.target);
-            self.work.mark_done(job.target);
             self.specialized_mir.merge_into(mir);
             self.work.mark_done(job.target);
         }
