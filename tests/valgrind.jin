@@ -4,29 +4,32 @@ type Num(field: int)
 type Wrapper(num: Num)
 
 fn main() unit = {
-	//Num(1) // Destroy temporary value
-	//Wrapper(Num(1)) // Destroy complex temporary value
+	// Destroy temporary values
+	//Num(1)
+	//Wrapper(Num(1))
 
+	// Destroy named values
+	//let n = Num(1) 
+	//let w = Wrapper(Num(1))
+
+	// Moving into specialized functions
 	//destroy_poly(Num(1)) // Should be destroyed at `destroy_poly`
 	//destroy_poly(1) // Shouldn't be destroyed at `destroy_poly`
 
-	//let n = Num(1) // Destroy named value
-	//let w = Wrapper(Num(1)) // Destroy complex named value
-
 	// Destroy on assignment
-	let mut n = Num(1)
-	n = Num(2)
+	//let mut n = Num(1)
+	//n = Num(2)
 
-	// Destroy in loop
+	// Destroy in loop & break
 	let mut i = 10
 	loop {
 		//let n = Num(1)
-		i -= 1
 		printf("i = %d\n".ptr, i)
+		i -= 1
 
 		if i == 0 {
-		  //let n2 = Num(1)
-		  break
+			//let n2 = Num(1)
+			break
 		}
 	}
 
