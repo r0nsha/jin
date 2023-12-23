@@ -855,20 +855,30 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         let mut visited = FxHashSet::<BlockId>::default();
         let mut result_state = ValueState::Owned;
+        let mut last_move_span: Option<Span> = None;
         let mut is_initial_state = true;
 
         while let Some(block) = work.pop() {
             visited.insert(block);
 
             if let Some(state) = self.value_states.get(block, value) {
+                last_move_span = match state {
+                    ValueState::Owned => last_move_span,
+                    ValueState::Moved(moved_to)
+                    | ValueState::MaybeMoved(moved_to) => Some(moved_to),
+                };
+
                 match result_state {
                     ValueState::Owned if is_initial_state => {
                         result_state = state;
                         is_initial_state = false;
                     }
-                    ValueState::Owned | ValueState::Moved(moved_to) => {
+                    ValueState::Owned | ValueState::Moved(_) => {
                         if result_state != state {
-                            result_state = ValueState::MaybeMoved(moved_to);
+                            result_state = ValueState::MaybeMoved(
+                                last_move_span
+                                    .expect("to have been moved somewhere"),
+                            );
                         }
                     }
                     ValueState::MaybeMoved(_) => break,
@@ -1182,12 +1192,11 @@ impl Default for ValueStates {
 #[derive(Debug)]
 struct BlockState {
     states: FxHashMap<ValueId, ValueState>,
-    spans: FxHashMap<ValueId, ValueState>,
 }
 
 impl BlockState {
     fn new() -> Self {
-        Self { states: FxHashMap::default(), spans: FxHashMap::default() }
+        Self { states: FxHashMap::default() }
     }
 }
 
