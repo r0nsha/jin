@@ -865,13 +865,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         result_state = state;
                         is_initial_state = false;
                     }
-                    //ValueState::MaybeMoved(_) => break;
-                    ValueState::Owned | ValueState::Moved(_) => (),
-                    // {
-                    // if result_state != state {
-                    //     result_state = ValueState::MaybeMoved;
-                    // }
-                    // }
+                    ValueState::MaybeMoved(_) => break,
+                    ValueState::Owned | ValueState::Moved(moved_to) => {
+                        if result_state != state {
+                            result_state = ValueState::MaybeMoved(moved_to);
+                        }
+                    }
                 }
             } else {
                 // Add this block's predecessors, since we need to
@@ -1203,17 +1202,16 @@ impl fmt::Display for ValueStates {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum ValueState {
-    // The value is owned, and should be dropped at the end of its scope
+    /// The value is owned, and should be dropped at the end of its scope
     Owned,
 
-    // The value is has been moved
+    /// The value is has been moved
     Moved(Span),
-    // The value has been moved in one branch, but is still owned in another branch
-    // This value should be dropped conditionally at the end of its scope
-    // MaybeMoved { moved_to: Span, to_block: hir::BlockExprId },
 
-    // Some of this value's fields have been moved
-    // PartiallyMoved(FxHashMap<Ustr, Span>),
+    /// The value has been moved in one branch, but is still owned in another branch
+    /// This value should be dropped conditionally at the end of its scope
+    MaybeMoved(Span), // Some of this value's fields have been moved
+                      // PartiallyMoved(FxHashMap<Ustr, Span>),
 }
 
 #[derive(Debug, Clone)]
