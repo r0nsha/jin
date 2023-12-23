@@ -190,7 +190,7 @@ struct LowerBody<'cx, 'db> {
     scopes: Vec<Scope>,
     current_block: BlockId,
     id_to_value: FxHashMap<DefId, ValueId>,
-    // value_to_destroy_flag: FxHashMap<DefId, ValueId>,
+    destroy_flags: FxHashMap<ValueId, ValueId>,
 }
 
 impl<'cx, 'db> LowerBody<'cx, 'db> {
@@ -202,6 +202,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             scopes: vec![],
             current_block: BlockId::start(),
             id_to_value: FxHashMap::default(),
+            destroy_flags: FxHashMap::default(),
         }
     }
 
@@ -220,11 +221,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     match &param.pat {
                         Pat::Name(name) => {
                             let id = name.id;
-                            self.create_value(param.ty, ValueKind::Local(id));
-                            // TODO:
-                            // self.push_destroy_flag(hir::DestroyGlueItem::Def(
-                            //     name.id,
-                            // ));
+                            let value = self
+                                .create_value(param.ty, ValueKind::Local(id));
+                            self.push_destroy_flag(value);
                         }
                         Pat::Discard(_) => (),
                     }
@@ -250,9 +249,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.push_return(ret_value, body.span.tail());
                 }
 
-                // println!("fn `{}`", fun.sig.word);
-                // println!("{}", self.value_states);
-                // println!("---------------------");
+                println!("fn `{}`", fun.sig.word);
+                println!("{}", self.value_states);
+                println!("---------------------");
 
                 self.exit_scope();
 
@@ -311,16 +310,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 match &let_.pat {
                     Pat::Name(name) => {
-                        // TODO:
-                        // self.push_destroy_flag(hir::DestroyGlueItem::Def(
-                        //     name.id,
-                        // ));
-
-                        self.push_inst_with(
+                        let value = self.push_inst_with(
                             let_.ty,
                             ValueKind::Local(name.id),
                             |value| Inst::Local { value, init },
                         );
+
+                        self.push_destroy_flag(value);
                     }
                     Pat::Discard(_) => (),
                 }
@@ -539,40 +535,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    // Generates Inst::Destroy for all expressions and definitions that need
-    // to be destroyed in this expr's scope (usually block), in reverse.
-    // Also Sets destroy flags for values that have been conditionally moved to this scope.
-    // fn lower_destroy_glue(&mut self, block_id: hir::BlockExprId) {
-    //     if let Some(items) = self.destroy_glue.to_destroy.get(&block_id) {
-    //         for item in items.iter().rev() {
-    //             let value = match item {
-    //                 hir::DestroyGlueItem::Expr(expr_id) => {
-    //                     self.expr_to_value[expr_id]
-    //                 }
-    //                 hir::DestroyGlueItem::Def(id) => {
-    //                     let def_ty = self.cx.db[*id].ty;
-    //                     self.create_value(def_ty, ValueKind::Local(*id))
-    //                 }
-    //             };
-    //
-    //             if let Some(destroy_flag) = self.destroy_flags.get(item) {
-    //                 self.push_conditional_destroy(value, *destroy_flag);
-    //             } else {
-    //                 self.push_unconditional_destroy(value);
-    //             }
-    //         }
-    //     }
-    //
-    //     // Set all destroy flags for values that were conditionally moved to this block
-    //     self.destroy_glue
-    //         .needs_destroy_flag
-    //         .iter()
-    //         .filter_map(|(item, moved_to)| {
-    //             (*moved_to == block_id).then_some(*item)
-    //         })
-    //         .for_each(|item| self.set_destroy_flag(item));
-    // }
-
     fn lower_name(
         &mut self,
         id: DefId,
@@ -746,6 +708,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         match value_state {
             ValueState::Owned => {
+                self.set_destroy_flag(value);
                 self.insert_value_state(value, ValueState::Moved(moved_to));
                 Ok(())
             }
@@ -1045,15 +1008,41 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.scopes.iter_mut().rev().find(|s| s.kind.is_loop())
     }
 
-    // fn push_conditional_destroy(
+    fn destroy_value(&mut self, value: ValueId, span: Span) {
+        if !self.should_destroy_value(value) {
+            return;
+        }
+
+        if let ValueState::MaybeMoved(_) = self.value_state(value) {
+            // Conditional destroy
+            // let destroy_blk = self.body.create_block("destroy");
+            // let no_destroy_blk = self.body.create_block("no_destroy");
+            //
+            // self.push_br_if(destroy_flag, destroy_blk, Some(no_destroy_blk));
+            //
+            // self.position_at(destroy_blk);
+            // self.push_inst(Inst::Destroy { value });
+            //
+            // self.position_at(no_destroy_blk);
+            todo!("set cond: Some(destroy_flag)");
+            self.push_inst(Inst::Destroy { value, span });
+        } else {
+            // Unconditional destroy
+            self.push_inst(Inst::Destroy { value, span });
+        }
+    }
+
+    fn should_destroy_value(&mut self, value: ValueId) -> bool {
+        // TODO: also consider MaybeMoved
+        self.value_is_move(value)
+            && matches!(self.value_state(value), ValueState::Owned)
+    }
+
+    // fn conditional_destroy_value(
     //     &mut self,
     //     value: ValueId,
     //     destroy_flag: ValueId,
     // ) {
-    //     if !self.should_destroy_value(value) {
-    //         return;
-    //     }
-    //
     //     // Conditional destroy
     //     let destroy_blk = self.body.create_block("destroy");
     //     let no_destroy_blk = self.body.create_block("no_destroy");
@@ -1066,45 +1055,22 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     //     self.position_at(no_destroy_blk);
     // }
 
-    fn destroy_value(&mut self, value: ValueId, span: Span) {
-        if !self.should_destroy_value(value) {
+    fn push_destroy_flag(&mut self, value: ValueId) {
+        let init = self.const_bool(true);
+        let flag = self
+            .push_inst_with_register(self.cx.db.types.bool, |value| {
+                Inst::Local { value, init }
+            });
+        self.destroy_flags.insert(value, flag);
+    }
+
+    fn set_destroy_flag(&mut self, value: ValueId) {
+        let Some(destroy_flag) = self.destroy_flags.get(&value).copied() else {
             return;
-        }
-
-        // TODO: conditional destroy
-        // if let Some(destroy_flag) = self.destroy_flags.get(item) {
-        //     self.push_conditional_destroy(value, *destroy_flag);
-        // } else {
-        self.push_inst(Inst::Destroy { value, span });
-        // }
+        };
+        let value = self.const_bool(false);
+        self.push_inst(Inst::Store { value, target: destroy_flag });
     }
-
-    fn should_destroy_value(&mut self, value: ValueId) -> bool {
-        // TODO: also consider MaybeMoved
-        self.value_is_move(value)
-            && matches!(self.value_state(value), ValueState::Owned)
-    }
-
-    // fn push_destroy_flag(&mut self, item: hir::DestroyGlueItem) {
-    //     if !self.destroy_glue.needs_destroy_flag.contains_key(&item) {
-    //         return;
-    //     }
-    //
-    //     let bool_ty = self.cx.db.types.bool;
-    //
-    //     let init = self.const_bool(true);
-    //     let value = self.push_inst_with_register(bool_ty, |value| {
-    //         Inst::Local { value, init }
-    //     });
-    //
-    //     self.destroy_flags.insert(item, value);
-    // }
-
-    // fn set_destroy_flag(&mut self, item: hir::DestroyGlueItem) {
-    //     let destroy_flag = self.destroy_flags[&item];
-    //     let value = self.const_bool(false);
-    //     self.push_inst(Inst::Store { value, target: destroy_flag });
-    // }
 
     // pub fn already_partially_moved(
     //     db: &Db,
