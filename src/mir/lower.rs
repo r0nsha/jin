@@ -190,7 +190,7 @@ struct LowerBody<'cx, 'db> {
     scopes: Vec<Scope>,
     current_block: BlockId,
     id_to_value: FxHashMap<DefId, ValueId>,
-    value_depths: FxHashMap<ValueId, usize>,
+    // value_to_destroy_flag: FxHashMap<DefId, ValueId>,
 }
 
 impl<'cx, 'db> LowerBody<'cx, 'db> {
@@ -202,7 +202,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             scopes: vec![],
             current_block: BlockId::start(),
             id_to_value: FxHashMap::default(),
-            value_depths: FxHashMap::default(),
         }
     }
 
@@ -695,7 +694,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let value = self.body.create_value(ty, kind);
 
         self.insert_value_state(value, ValueState::Owned);
-        self.value_depths.insert(value, self.scope().depth);
         self.scope_mut().created_values.push(value);
 
         if let Some(id) = id {
@@ -795,8 +793,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     pub fn insert_loop_move(&mut self, value: ValueId, span: Span) {
         let scope = self.scope();
 
-        if scope.loop_depth == 0
-            || self.value_depths[&value] >= scope.loop_depth
+        if scope.loop_depth == 0 || self.value_depth(value) >= scope.loop_depth
         {
             return;
         }
@@ -804,6 +801,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         if let Some(scope) = self.closest_loop_scope_mut() {
             scope.kind.as_loop_mut().unwrap().moved_in.insert(value, span);
         }
+    }
+
+    fn value_depth(&self, value: ValueId) -> usize {
+        self.scopes
+            .iter()
+            .find(|s| s.created_values.contains(&value))
+            .expect("to have been created in one of the preceding scopes")
+            .depth
     }
 
     pub fn check_loop_moves(&mut self) {
