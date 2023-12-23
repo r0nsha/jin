@@ -749,7 +749,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.insert_value_state(value, ValueState::Moved(moved_to));
                 Ok(())
             }
-            ValueState::Moved(already_moved_to) => {
+            ValueState::Moved(already_moved_to)
+            | ValueState::MaybeMoved(already_moved_to) => {
                 let name = self.get_value_name(value);
 
                 Err(Diagnostic::error()
@@ -865,12 +866,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         result_state = state;
                         is_initial_state = false;
                     }
-                    ValueState::MaybeMoved(_) => break,
                     ValueState::Owned | ValueState::Moved(moved_to) => {
                         if result_state != state {
                             result_state = ValueState::MaybeMoved(moved_to);
                         }
                     }
+                    ValueState::MaybeMoved(_) => break,
                 }
             } else {
                 // Add this block's predecessors, since we need to
@@ -1191,6 +1192,7 @@ impl fmt::Display for ValueStates {
                     match state {
                         ValueState::Owned => "owned",
                         ValueState::Moved(_) => "moved",
+                        ValueState::MaybeMoved(_) => "maybe moved",
                     }
                 )?;
             }
