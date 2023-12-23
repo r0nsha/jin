@@ -1157,7 +1157,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 }
 
 #[derive(Debug)]
-struct ValueStates(FxHashMap<BlockId, FxHashMap<ValueId, ValueState>>);
+struct ValueStates(FxHashMap<BlockId, BlockState>);
 
 impl ValueStates {
     fn new() -> Self {
@@ -1165,11 +1165,11 @@ impl ValueStates {
     }
 
     fn get(&self, block: BlockId, value: ValueId) -> Option<ValueState> {
-        self.0.get(&block).and_then(|b| b.get(&value)).copied()
+        self.0.get(&block).and_then(|b| b.states.get(&value)).copied()
     }
 
     fn insert(&mut self, block: BlockId, value: ValueId, state: ValueState) {
-        self.0.entry(block).or_default().insert(value, state);
+        self.0.entry(block).or_default().states.insert(value, state);
     }
 }
 
@@ -1179,23 +1179,47 @@ impl Default for ValueStates {
     }
 }
 
+#[derive(Debug)]
+struct BlockState {
+    states: FxHashMap<ValueId, ValueState>,
+    spans: FxHashMap<ValueId, ValueState>,
+}
+
+impl BlockState {
+    fn new() -> Self {
+        Self { states: FxHashMap::default(), spans: FxHashMap::default() }
+    }
+}
+
+impl Default for BlockState {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl fmt::Display for ValueStates {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (block, value_states) in &self.0 {
-            writeln!(f, "b{}:", block.0)?;
+        for (block, block_state) in &self.0 {
+            writeln!(f, "b{}:\n{}", block.0, block_state)?;
+        }
 
-            for (value, state) in value_states {
-                writeln!(
-                    f,
-                    "\tv{} : {}",
-                    value.0,
-                    match state {
-                        ValueState::Owned => "owned",
-                        ValueState::Moved(_) => "moved",
-                        ValueState::MaybeMoved(_) => "maybe moved",
-                    }
-                )?;
-            }
+        Ok(())
+    }
+}
+
+impl fmt::Display for BlockState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for (value, state) in &self.states {
+            writeln!(
+                f,
+                "\tv{} : {}",
+                value.0,
+                match state {
+                    ValueState::Owned => "owned",
+                    ValueState::Moved(_) => "moved",
+                    ValueState::MaybeMoved(_) => "maybe moved",
+                }
+            )?;
         }
 
         Ok(())
