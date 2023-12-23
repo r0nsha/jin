@@ -223,6 +223,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             let id = name.id;
                             let value = self
                                 .create_value(param.ty, ValueKind::Local(id));
+                            self.id_to_value.insert(id, value);
                             self.push_destroy_flag(value);
                         }
                         Pat::Discard(_) => (),
@@ -249,9 +250,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.push_return(ret_value, body.span.tail());
                 }
 
-                println!("fn `{}`", fun.sig.word);
-                println!("{}", self.value_states);
-                println!("---------------------");
+                // println!("fn `{}`", fun.sig.word);
+                // println!("{}", self.value_states);
+                // println!("---------------------");
 
                 self.exit_scope();
 
@@ -315,7 +316,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             ValueKind::Local(name.id),
                             |value| Inst::Local { value, init },
                         );
-
+                        self.id_to_value.insert(name.id, value);
                         self.push_destroy_flag(value);
                     }
                     Pat::Discard(_) => (),
@@ -651,17 +652,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
-        let id = if let ValueKind::Local(id) = kind { Some(id) } else { None };
-
         let value = self.body.create_value(ty, kind);
-
         self.insert_value_state(value, ValueState::Owned);
         self.scope_mut().created_values.push(value);
-
-        if let Some(id) = id {
-            self.id_to_value.insert(id, value);
-        }
-
         value
     }
 
@@ -1024,18 +1017,20 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             // self.push_inst(Inst::Destroy { value });
             //
             // self.position_at(no_destroy_blk);
-            todo!("set cond: Some(destroy_flag)");
-            self.push_inst(Inst::Destroy { value, span });
+            self.push_inst(Inst::Destroy {
+                value,
+                destroy_flag: Some(self.destroy_flags[&value]),
+                span,
+            });
         } else {
             // Unconditional destroy
-            self.push_inst(Inst::Destroy { value, span });
+            self.push_inst(Inst::Destroy { value, destroy_flag: None, span });
         }
     }
 
     fn should_destroy_value(&mut self, value: ValueId) -> bool {
-        // TODO: also consider MaybeMoved
-        self.value_is_move(value)
-            && matches!(self.value_state(value), ValueState::Owned)
+        !matches!(self.value_state(value), ValueState::Moved(_))
+            && self.value_is_move(value)
     }
 
     // fn conditional_destroy_value(
