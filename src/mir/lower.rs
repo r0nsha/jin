@@ -190,7 +190,7 @@ struct LowerBody<'cx, 'db> {
     value_states: ValueStates,
     scopes: Vec<Scope>,
     current_block: BlockId,
-    id_to_value: FxHashMap<DefId, ValueId>,
+    locals: FxHashMap<DefId, ValueId>,
 }
 
 impl<'cx, 'db> LowerBody<'cx, 'db> {
@@ -201,7 +201,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             value_states: ValueStates::new(),
             scopes: vec![],
             current_block: BlockId::start(),
-            id_to_value: FxHashMap::default(),
+            locals: FxHashMap::default(),
         }
     }
 
@@ -222,7 +222,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             let id = name.id;
                             let value = self
                                 .create_value(param.ty, ValueKind::Local(id));
-                            self.id_to_value.insert(id, value);
+                            self.locals.insert(id, value);
                             self.create_destroy_flag(value);
                         }
                         Pat::Discard(_) => (),
@@ -315,7 +315,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             ValueKind::Local(name.id),
                             |value| Inst::Local { value, init },
                         );
-                        self.id_to_value.insert(name.id, value);
+                        self.locals.insert(name.id, value);
                         self.create_destroy_flag(value);
                     }
                     Pat::Discard(_) => (),
@@ -511,17 +511,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 })
             }
             hir::ExprKind::Member(access) => {
+                let member = access.member.name();
                 let value = self.lower_expr(&access.expr);
-                self.try_partial_move(
-                    value,
-                    expr.span,
-                    access.member.name(),
-                    expr.ty,
-                );
-                self.create_value(
-                    expr.ty,
-                    ValueKind::Member(value, access.member.name()),
-                )
+                self.try_partial_move(value, expr.span, member, expr.ty);
+                self.create_value(expr.ty, ValueKind::Member(value, member))
             }
             hir::ExprKind::Name(name) => {
                 self.lower_name(name.id, &name.instantiation)
@@ -567,7 +560,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     ValueKind::Global(id),
                 )
             }
-            DefKind::Variable => self.id_to_value[&id],
+            DefKind::Variable => self.locals[&id],
             DefKind::Struct(sid) => {
                 let id = self.cx.get_or_create_struct_ctor(*sid);
                 self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
@@ -669,6 +662,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.insert_value_state(value, ValueState::Owned);
         self.scope_mut().created_values.push(value);
         value
+    }
+
+    pub fn create_untracked_value(
+        &mut self,
+        ty: Ty,
+        kind: ValueKind,
+    ) -> ValueId {
+        self.body.create_value(ty, kind)
     }
 
     pub fn insert_value_state(&mut self, value: ValueId, state: ValueState) {
@@ -951,7 +952,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn ty_is_move(&self, ty: Ty) -> bool {
         match ty.kind() {
             TyKind::Struct(sid) => self.cx.db[*sid].kind.is_ref(),
-            TyKind::Param(_) => true,
+            TyKind::Str | TyKind::Param(_) => true,
             _ => false,
         }
     }
@@ -1093,13 +1094,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 if let Some(fields) =
                     self.body.value(value).ty.fields(self.cx.db)
                 {
-                    // Destroy all non-moved fields for this value
+                    // Destroy all non-partially-moved fields
                     let fields = fields.to_vec();
 
                     for field in fields {
                         let name = field.name.name();
                         if !moved_members.contains_key(&name) {
-                            let member_value = self.create_value(
+                            let member_value = self.create_untracked_value(
                                 field.ty,
                                 ValueKind::Member(value, name),
                             );
@@ -1132,6 +1133,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // self.push_inst(Inst::Destroy { value });
                 //
                 // self.position_at(no_destroy_blk);
+                dbg!(&value);
                 self.push_inst(Inst::Destroy {
                     value,
                     with_destroyer: true,
