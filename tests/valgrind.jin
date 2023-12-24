@@ -33,7 +33,6 @@ fn main() unit = {
 	//	}
 	//}
 
-	let other = Num(1)
 	let cond = Num(1) // Conditionally destroy value
 	if true {
 		let x = cond

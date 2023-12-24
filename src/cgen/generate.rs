@@ -435,10 +435,7 @@ impl<'db> Generator<'db> {
                 D::hardline(),
             );
 
-            let dealloc_this = stmt(|| util::call_dealloc(param.clone()));
-
-            let statements =
-                D::intersperse([destroy_fields, dealloc_this], D::hardline());
+            let statements = D::intersperse([destroy_fields], D::hardline());
 
             let fn_name = self.struct_destroy_fns[&sid];
             let fn_decl_doc = D::text(format!("void {fn_name}"))
@@ -506,7 +503,7 @@ impl<'db> Generator<'db> {
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
-            Inst::Destroy { value, destroy_flag, span: _ } => {
+            Inst::Destroy { value, with_destroyer, destroy_flag, span: _ } => {
                 let destroy_call =
                     self.codegen_destroy(state, *value).unwrap_or_else(|| {
                         unreachable!(
@@ -515,14 +512,18 @@ impl<'db> Generator<'db> {
                         )
                     });
 
-                if let &Some(destroy_flag) = destroy_flag {
-                    util::if_stmt(
-                        self.value(state, destroy_flag),
-                        destroy_call,
-                        None,
-                    )
+                let stmts = if *with_destroyer {
+                    let dealloc_value =
+                        stmt(|| util::call_dealloc(self.value(state, *value)));
+                    D::intersperse([destroy_call, dealloc_value], D::hardline())
                 } else {
                     destroy_call
+                };
+
+                if let &Some(destroy_flag) = destroy_flag {
+                    util::if_stmt(self.value(state, destroy_flag), stmts, None)
+                } else {
+                    stmts
                 }
             }
             Inst::Br { target } => goto_stmt(state.body.block(*target)),

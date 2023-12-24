@@ -1026,12 +1026,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             // self.position_at(no_destroy_blk);
             self.push_inst(Inst::Destroy {
                 value,
+                with_destroyer: true,
                 destroy_flag: Some(self.body.destroy_flags[&value]),
                 span,
             });
         } else {
             // Unconditional destroy
-            self.push_inst(Inst::Destroy { value, destroy_flag: None, span });
+            self.push_inst(Inst::Destroy {
+                value,
+                with_destroyer: true,
+                destroy_flag: None,
+                span,
+            });
         }
     }
 
