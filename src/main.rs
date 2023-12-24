@@ -23,7 +23,6 @@ mod data_structures;
 mod db;
 mod diagnostics;
 mod hir;
-pub mod id_map;
 mod macros;
 mod middle;
 mod mir;

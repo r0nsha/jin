@@ -13,6 +13,7 @@ use crate::{
 
 pub fn specialize(db: &mut Db, mir: &mut Mir) {
     Specialize::new(db).run(mir);
+    ExpandDestroys::new(db).run(mir);
 }
 
 struct Specialize<'db> {
@@ -312,16 +313,16 @@ impl BodySubst {
             body.value_mut(id).kind = kind;
         }
 
-        for block in body.blocks_mut() {
-            if let Some(removed_insts) = self.removed_insts.get(&block.id) {
-                let mut idx = 0usize;
-                block.insts.retain(|_| {
-                    let retain = !removed_insts.contains(&idx);
-                    idx += 1;
-                    retain
-                });
-            }
-        }
+        // for block in body.blocks_mut() {
+        //     if let Some(removed_insts) = self.removed_insts.get(&block.id) {
+        //         let mut idx = 0usize;
+        //         block.insts.retain(|_| {
+        //             let retain = !removed_insts.contains(&idx);
+        //             idx += 1;
+        //             retain
+        //         });
+        //     }
+        // }
     }
 }
 
@@ -348,5 +349,63 @@ impl SpecializedMir {
         mir.fn_sigs.extend(mem::take(&mut self.fn_sigs));
         self.fn_sigs.set_counter(fn_sigs_counter);
         mir.fns.extend(mem::take(&mut self.fns));
+    }
+}
+
+struct ExpandDestroys<'db> {
+    db: &'db Db,
+}
+
+impl<'db> ExpandDestroys<'db> {
+    fn new(db: &'db Db) -> Self {
+        Self { db }
+    }
+
+    fn run(self, mir: &mut Mir) {
+        for fun in mir.fns.values_mut() {
+            self.remove_unused_destroys(&mut fun.body);
+        }
+
+        for global in mir.globals.values_mut() {
+            if let GlobalKind::Static(StaticGlobal { body, .. }) =
+                &mut global.kind
+            {
+                self.remove_unused_destroys(body);
+            }
+        }
+    }
+
+    fn remove_unused_destroys(&self, body: &mut Body) {
+        let mut need_destroy = Vec::with_capacity(256);
+
+        for block_id in body.blocks().keys() {
+            need_destroy.clear();
+            need_destroy.extend(body.block(block_id).insts.iter().filter_map(
+                |inst| {
+                    match inst {
+                        Inst::Destroy { value, .. } => self
+                            .should_destroy_value(body, *value)
+                            .then_some(*value),
+                        _ => None,
+                    }
+                },
+            ));
+
+            body.block_mut(block_id).insts.retain(|inst| match inst {
+                Inst::Destroy { value, .. } => need_destroy.contains(value),
+                _ => true,
+            });
+        }
+    }
+
+    fn should_destroy_value(&self, body: &Body, value: ValueId) -> bool {
+        self.should_destroy_ty(body.value(value).ty)
+    }
+
+    fn should_destroy_ty(&self, ty: Ty) -> bool {
+        match ty.kind() {
+            TyKind::Struct(sid) => self.db[*sid].kind.is_ref(),
+            _ => false,
+        }
     }
 }

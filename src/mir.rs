@@ -13,11 +13,11 @@ pub use specialize::specialize;
 use ustr::Ustr;
 
 use crate::{
-    data_structures::index_vec::{
-        new_key_type, IndexSlice, IndexVec, IndexVecExt,
+    data_structures::{
+        id_map::IdMap,
+        index_vec::{new_key_type, IndexSlice, IndexVec, IndexVecExt},
     },
     db::{Db, DefId, StructId},
-    id_map::IdMap,
     middle::{BinOp, Pat, UnOp},
     span::Span,
     ty::{Instantiation, Ty},
