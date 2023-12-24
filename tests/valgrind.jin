@@ -13,8 +13,8 @@ fn main() unit = {
 	//let w = Wrapper(Num(1))
 
 	// Moving into specialized functions
-	destroy_poly(Num(1)) // Should be destroyed at `destroy_poly`
-	destroy_poly(1) // Shouldn't be destroyed at `destroy_poly`
+	//destroy_poly(Num(1)) // Should be destroyed at `destroy_poly`
+	//destroy_poly(1) // Shouldn't be destroyed at `destroy_poly`
 
 	// Destroy on assignment
 	//let mut n = Num(1)
@@ -33,13 +33,13 @@ fn main() unit = {
 	//	}
 	//}
 
-	let cond = Num(1) // Conditionally destroy value
-	if true {
-		let x = cond
-	}
+	//let cond = Num(1) // Conditionally destroy value
+	//if true {
+	//	let x = cond
+	//}
 
-	//let w2 = Wrapper(Num(1)) // Partial move destroy (only w2 should be destroyed)
-	//let w2num = w2.num
+	let w2 = Wrapper(Num(1)) // Partial move destroy (only w2 should be destroyed)
+	let w2num = w2.num
 
 	//let wcond = Wrapper(Num(1)) // Partial & conditional move destroy (only w2 should be destroyed, conditionally)
 	//if true {
