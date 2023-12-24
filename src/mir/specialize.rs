@@ -19,8 +19,6 @@ pub fn specialize(db: &mut Db, mir: &mut Mir) {
 struct Specialize<'db> {
     db: &'db mut Db,
     work: Work,
-
-    // A map of used function ids, pointing to their new function id
     used_fns: FxHashSet<FnSigId>,
     used_globals: FxHashSet<GlobalId>,
 }
