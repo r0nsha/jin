@@ -1,5 +1,6 @@
 use std::{fmt, mem};
 
+use indexmap::IndexMap;
 use itertools::Itertools;
 use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr};
@@ -726,7 +727,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             (ValueState::Owned, MoveKind::Partial(member)) => {
                 self.insert_value_state(
                     value,
-                    ValueState::PartiallyMoved(FxHashMap::from_iter([(
+                    ValueState::PartiallyMoved(IndexMap::from_iter([(
                         member, moved_to,
                     )])),
                 );
@@ -894,7 +895,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     ValueState::Moved(moved_to)
                     | ValueState::MaybeMoved(moved_to) => Some(*moved_to),
                     ValueState::PartiallyMoved(moved_members) => {
-                        moved_members.values().last().copied()
+                        moved_members.last().map(|(_, span)| *span)
                     }
                 };
 
@@ -1255,7 +1256,7 @@ enum ValueState {
 
     // Some of this value's fields have been moved, and the parent value is considered as moved.
     // The partial moves are stored in a different `partial_moves` map.
-    PartiallyMoved(FxHashMap<Ustr, Span>),
+    PartiallyMoved(IndexMap<Ustr, Span>),
 }
 
 #[derive(Debug, Clone)]
