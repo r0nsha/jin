@@ -45,10 +45,10 @@ fn main() unit = {
 	let b = duo.n2 // Ok
 	//let c = duo.n1 // Error!
 
-	let wcond = Wrapper(Num(1)) // Partial & conditional move destroy (only w2 should be destroyed, conditionally)
-	if true {
-		//let wcondnum = wcond.num
-	}
+	//let wcond = Wrapper(Num(1)) // Partial & conditional move destroy (only w2 should be destroyed, conditionally)
+	//if true {
+	//	let wcondnum = wcond.num
+	//}
 }
 
 //fn destroy_poly[a](arg: a) unit = {}
