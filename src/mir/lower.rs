@@ -1089,8 +1089,31 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         match self.value_state(value) {
-            ValueState::PartiallyMoved(_) => {
-                // TODO: Also destroy all members that weren't moved
+            ValueState::PartiallyMoved(moved_members) => {
+                if let Some(fields) =
+                    self.body.value(value).ty.fields(self.cx.db)
+                {
+                    // Destroy all non-moved fields for this value
+                    let fields = fields.to_vec();
+
+                    for field in fields {
+                        let name = field.name.name();
+                        if !moved_members.contains_key(&name) {
+                            let member_value = self.create_value(
+                                field.ty,
+                                ValueKind::Member(value, name),
+                            );
+
+                            self.push_inst(Inst::Destroy {
+                                value: member_value,
+                                with_destroyer: true,
+                                destroy_flag: None,
+                                span,
+                            });
+                        }
+                    }
+                }
+
                 self.push_inst(Inst::Destroy {
                     value,
                     with_destroyer: false,

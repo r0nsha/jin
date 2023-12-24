@@ -10,7 +10,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
 use crate::{
-    db::{Db, ModuleId, StructId},
+    db::{Db, ModuleId, StructField, StructId},
     target::TargetMetrics,
     ty::printer::{FnTyPrinter, TyPrinter},
 };
@@ -124,6 +124,13 @@ impl Ty {
                 fun.params.iter().all(|p| p.ty.walk_(f)) && fun.ret.walk_(f)
             }
             _ => f(self),
+        }
+    }
+
+    pub fn fields(self, db: &Db) -> Option<&[StructField]> {
+        match self.kind() {
+            TyKind::Struct(sid) => Some(&db[*sid].fields),
+            _ => None,
         }
     }
 }
