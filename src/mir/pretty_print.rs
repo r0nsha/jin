@@ -131,11 +131,11 @@ impl<'db> PrettyCx<'db> {
                 .append(self.value(body, *value))
                 .append(D::space())
                 .append(self.value(body, *target)),
-            Inst::Destroy { value, with_destroyer, destroy_flag, .. } => {
+            Inst::Destroy { value, free, destroy_flag, .. } => {
                 D::text("destroy")
                     .append(D::space())
                     .append(self.value(body, *value))
-                    .append(if *with_destroyer {
+                    .append(if *free {
                         D::text(" (and free)")
                     } else {
                         D::nil()
