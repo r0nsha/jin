@@ -137,7 +137,7 @@ impl<'db> PrettyCx<'db> {
                 .append(D::space())
                 .append(self.value(body, *value))
                 .append(if *with_destroyer {
-                    D::text(" (and free)")
+                    D::text(" (w/ free)")
                 } else {
                     D::nil()
                 })
