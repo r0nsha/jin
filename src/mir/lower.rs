@@ -904,14 +904,21 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     last_move_span = new_move_span;
                 }
 
-                match result_state {
-                    ValueState::Owned if is_initial_state => {
+                match (&result_state, &state) {
+                    (ValueState::Owned, _) if is_initial_state => {
                         result_state = state;
                         is_initial_state = false;
                     }
-                    ValueState::Owned
-                    | ValueState::Moved(_)
-                    | ValueState::PartiallyMoved(_) => {
+                    (
+                        ValueState::PartiallyMoved(m1),
+                        ValueState::PartiallyMoved(m2),
+                    ) => {
+                        let mut new_members = m1.clone();
+                        new_members.extend(m2);
+                        result_state = ValueState::PartiallyMoved(new_members);
+                    }
+                    (ValueState::MaybeMoved(_), _) => break,
+                    _ => {
                         if result_state != state {
                             result_state = ValueState::MaybeMoved(
                                 last_move_span
@@ -919,7 +926,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             );
                         }
                     }
-                    ValueState::MaybeMoved(_) => break,
                 }
             } else {
                 // Add this block's predecessors, since we need to
