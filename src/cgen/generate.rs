@@ -423,19 +423,21 @@ impl<'db> Generator<'db> {
         if struct_info.kind.is_ref() {
             let param = D::text("this");
 
-            let destroy_fields = D::intersperse(
-                struct_info.fields.iter().filter_map(|f| {
-                    self.get_ty_destroy_fn(f.ty).map(|fn_name| {
-                        Self::codegen_destroy_call(
-                            fn_name,
-                            util::member(param.clone(), f.name.as_str(), true),
-                        )
-                    })
-                }),
-                D::hardline(),
-            );
+            let mut statements = vec![];
 
-            let statements = D::intersperse([destroy_fields], D::hardline());
+            for field in &struct_info.fields {
+                let value =
+                    util::member(param.clone(), field.name.as_str(), true);
+
+                if let Some(destroy_call) =
+                    self.codegen_destroy_ex(value.clone(), field.ty)
+                {
+                    statements.push(destroy_call);
+                    statements.push(stmt(|| util::call_dealloc(value)));
+                }
+            }
+
+            let statements = D::intersperse(statements, D::hardline());
 
             let fn_name = self.struct_destroy_fns[&sid];
             let fn_decl_doc = D::text(format!("void {fn_name}"))
@@ -611,10 +613,13 @@ impl<'db> Generator<'db> {
         state: &FnState<'db>,
         value: ValueId,
     ) -> Option<D<'db>> {
-        let value_ty = state.body.value(value).ty;
-        self.get_ty_destroy_fn(value_ty).map(|fn_name| {
-            Self::codegen_destroy_call(fn_name, self.value(state, value))
-        })
+        let ty = state.body.value(value).ty;
+        self.codegen_destroy_ex(self.value(state, value), ty)
+    }
+
+    fn codegen_destroy_ex(&self, value: D<'db>, ty: Ty) -> Option<D<'db>> {
+        self.get_ty_destroy_fn(ty)
+            .map(|fn_name| Self::codegen_destroy_call(fn_name, value))
     }
 
     fn get_ty_destroy_fn(&self, ty: Ty) -> Option<Ustr> {
