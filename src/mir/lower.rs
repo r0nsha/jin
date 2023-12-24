@@ -1082,34 +1082,43 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return;
         }
 
-        let with_destroyer =
-            !matches!(self.value_state(value), ValueState::PartiallyMoved);
-
-        if let ValueState::MaybeMoved(_) = self.value_state(value) {
-            // Conditional destroy
-            // let destroy_blk = self.body.create_block("destroy");
-            // let no_destroy_blk = self.body.create_block("no_destroy");
-            //
-            // self.push_br_if(destroy_flag, destroy_blk, Some(no_destroy_blk));
-            //
-            // self.position_at(destroy_blk);
-            // self.push_inst(Inst::Destroy { value });
-            //
-            // self.position_at(no_destroy_blk);
-            self.push_inst(Inst::Destroy {
-                value,
-                with_destroyer,
-                destroy_flag: Some(self.body.destroy_flags[&value]),
-                span,
-            });
-        } else {
-            // Unconditional destroy
-            self.push_inst(Inst::Destroy {
-                value,
-                with_destroyer,
-                destroy_flag: None,
-                span,
-            });
+        match self.value_state(value) {
+            ValueState::PartiallyMoved => {
+                // TODO: Also destroy all members that weren't moved
+                self.push_inst(Inst::Destroy {
+                    value,
+                    with_destroyer: false,
+                    destroy_flag: Some(self.body.destroy_flags[&value]),
+                    span,
+                });
+            }
+            ValueState::MaybeMoved(_) => {
+                // Conditional destroy
+                // let destroy_blk = self.body.create_block("destroy");
+                // let no_destroy_blk = self.body.create_block("no_destroy");
+                //
+                // self.push_br_if(destroy_flag, destroy_blk, Some(no_destroy_blk));
+                //
+                // self.position_at(destroy_blk);
+                // self.push_inst(Inst::Destroy { value });
+                //
+                // self.position_at(no_destroy_blk);
+                self.push_inst(Inst::Destroy {
+                    value,
+                    with_destroyer: true,
+                    destroy_flag: Some(self.body.destroy_flags[&value]),
+                    span,
+                });
+            }
+            _ => {
+                // Unconditional destroy
+                self.push_inst(Inst::Destroy {
+                    value,
+                    with_destroyer: true,
+                    destroy_flag: None,
+                    span,
+                });
+            }
         }
     }
 

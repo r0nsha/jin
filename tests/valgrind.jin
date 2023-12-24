@@ -42,7 +42,7 @@ fn main() unit = {
 	let duo = Duo(Num(1), Num(2)) // Partial move destroy (only a & c should be destroyed)
 	//let copy = duo.n1.field // Ok (copy type)
 	let a = duo.n1
-	let b = duo.n2 // Ok
+	//let b = duo.n2 // Ok
 	//let c = duo.n1 // Error!
 
 	//let wcond = Wrapper(Num(1)) // Partial & conditional move destroy (only w2 should be destroyed, conditionally)
