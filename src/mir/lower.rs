@@ -1106,7 +1106,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.push_inst(Inst::Destroy {
                     value,
                     with_destroyer: false,
-                    destroy_flag: Some(self.body.destroy_flags[&value]),
+                    destroy_flag: None,
                     span,
                 });
             }
