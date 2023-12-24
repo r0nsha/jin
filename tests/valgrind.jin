@@ -2,6 +2,7 @@ fn extern printf(fmt: *u8, ..) i32
 
 type Num(field: int)
 type Wrapper(num: Num)
+type Duo(n1: Num, n2: Num)
 
 fn main() unit = {
 	// Destroy temporary values
@@ -38,8 +39,10 @@ fn main() unit = {
 	//	let x = cond
 	//}
 
-	//let w2 = Wrapper(Num(1)) // Partial move destroy (only w2 should be destroyed)
-	//let w2num = w2.num
+	let duo = Duo(Num(1), Num(2)) // Partial move destroy (only a & c should be destroyed)
+	let a = duo.n1
+	//let b = duo.n2 // Ok
+	let c = duo.n1 // Error!
 
 	//let wcond = Wrapper(Num(1)) // Partial & conditional move destroy (only w2 should be destroyed, conditionally)
 	//if true {
