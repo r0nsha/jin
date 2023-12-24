@@ -487,7 +487,7 @@ impl<'db> Generator<'db> {
                 let value = state.body.value(*value);
                 let name = match value.kind {
                     ValueKind::Register(name) => {
-                        self.register_name(value.id, name)
+                        Self::register_name(value.id, name)
                     }
                     ValueKind::Local(id) => state
                         .local_names
@@ -647,7 +647,9 @@ impl<'db> Generator<'db> {
 
     pub fn value(&self, state: &FnState<'db>, id: ValueId) -> D<'db> {
         match &state.body.value(id).kind {
-            ValueKind::Register(name) => D::text(self.register_name(id, *name)),
+            ValueKind::Register(name) => {
+                D::text(Self::register_name(id, *name))
+            }
             ValueKind::Local(id) => {
                 D::text(state.local_names.get(*id).unwrap().as_str())
             }
@@ -664,7 +666,7 @@ impl<'db> Generator<'db> {
         }
     }
 
-    fn register_name(&self, value: ValueId, name: Option<Ustr>) -> String {
+    fn register_name(value: ValueId, name: Option<Ustr>) -> String {
         format!("{}{}", name.unwrap_or(ustr("v")), value)
     }
 }
