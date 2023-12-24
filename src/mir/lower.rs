@@ -1139,7 +1139,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     span,
                 });
             }
-            ValueState::MaybeMoved(_) => {
+            ValueState::MaybeMoved(span) => {
                 // Conditional destroy
                 // let destroy_blk = self.body.create_block("destroy");
                 // let no_destroy_blk = self.body.create_block("no_destroy");
@@ -1150,13 +1150,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // self.push_inst(Inst::Destroy { value });
                 //
                 // self.position_at(no_destroy_blk);
-                dbg!(&value);
                 self.push_inst(Inst::Destroy {
                     value,
                     with_destroyer: true,
                     destroy_flag: Some(self.body.destroy_flags[&value]),
                     span,
                 });
+
+                self.insert_value_state(value, ValueState::Moved(span));
             }
             _ => {
                 // Unconditional destroy
