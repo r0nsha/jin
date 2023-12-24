@@ -248,9 +248,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.push_return(ret_value, body.span.tail());
                 }
 
-                // println!("fn `{}`", fun.sig.word);
-                // println!("{}", self.value_states);
-                // println!("---------------------");
+                println!("fn `{}`", fun.sig.word);
+                println!("{}", self.value_states);
+                println!("---------------------");
 
                 self.exit_scope();
 
@@ -511,7 +511,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Member(access) => {
                 let value = self.lower_expr(&access.expr);
-                self.try_partial_move(value, access.expr.span, expr.ty);
+                self.try_partial_move(
+                    value,
+                    expr.span,
+                    access.member.name(),
+                    expr.ty,
+                );
                 self.create_value(
                     expr.ty,
                     ValueKind::Member(value, access.member.name()),
@@ -670,7 +675,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub fn try_move(&mut self, value: ValueId, moved_to: Span) {
-        if let Err(diagnostic) = self.try_move_inner(value, moved_to) {
+        if let Err(diagnostic) =
+            self.try_move_inner(value, MoveKind::Move, moved_to)
+        {
             self.cx.db.diagnostics.emit(diagnostic);
         }
     }
@@ -679,6 +686,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         &mut self,
         value: ValueId,
         moved_to: Span,
+        member: Ustr,
         member_ty: Ty,
     ) {
         // If the moved member is copyable, we don't need to move its parent
@@ -686,7 +694,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return;
         }
 
-        if let Err(diagnostic) = self.try_move_inner(value, moved_to) {
+        if let Err(diagnostic) =
+            self.try_move_inner(value, MoveKind::Partial(member), moved_to)
+        {
             self.cx.db.diagnostics.emit(diagnostic);
         }
     }
@@ -694,6 +704,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     pub fn try_move_inner(
         &mut self,
         value: ValueId,
+        kind: MoveKind,
         moved_to: Span,
     ) -> Result<(), Diagnostic> {
         // If the moved value is copyable, we don't need to move it
@@ -706,14 +717,27 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         let value_state = self.value_state(value);
 
-        match value_state {
-            ValueState::Owned => {
+        match (value_state, kind) {
+            (ValueState::Owned, MoveKind::Move) => {
                 self.set_destroy_flag(value);
                 self.insert_value_state(value, ValueState::Moved(moved_to));
                 Ok(())
             }
-            ValueState::Moved(already_moved_to)
-            | ValueState::MaybeMoved(already_moved_to) => {
+            (ValueState::Owned, MoveKind::Partial(member)) => {
+                self.insert_value_state(value, ValueState::PartiallyMoved);
+                self.value_states.insert_partial_move(
+                    self.current_block,
+                    value,
+                    member,
+                    moved_to,
+                );
+                Ok(())
+            }
+            (
+                ValueState::Moved(already_moved_to)
+                | ValueState::MaybeMoved(already_moved_to),
+                _,
+            ) => {
                 let name = self.get_value_name(value);
 
                 Err(Diagnostic::error()
@@ -727,6 +751,38 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         Label::secondary(already_moved_to)
                             .with_message(format!("{name} already moved here")),
                     ))
+            }
+            (ValueState::PartiallyMoved, MoveKind::Move) => {
+                todo!("partial, move")
+            }
+            (ValueState::PartiallyMoved, MoveKind::Partial(member)) => {
+                if let Some(already_moved_to) = self
+                    .value_states
+                    .get_partial_move(self.current_block, value, member)
+                {
+                    let name = self.get_value_name(value);
+
+                    Err(Diagnostic::error()
+                        .with_message(format!(
+                        "use of partially moved member `{member}` of {name}"
+                    ))
+                        .with_label(Label::primary(moved_to).with_message(
+                            format!("{name} used here after partial move"),
+                        ))
+                        .with_label(
+                            Label::secondary(already_moved_to).with_message(
+                                format!("{name} already partially moved here"),
+                            ),
+                        ))
+                } else {
+                    self.value_states.insert_partial_move(
+                        self.current_block,
+                        value,
+                        member,
+                        moved_to,
+                    );
+                    Ok(())
+                }
             }
         }
     }
@@ -825,18 +881,31 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             visited.insert(block);
 
             if let Some(state) = self.value_states.get(block, value) {
-                last_move_span = match state {
+                let new_move_span = match state {
                     ValueState::Owned => last_move_span,
                     ValueState::Moved(moved_to)
                     | ValueState::MaybeMoved(moved_to) => Some(moved_to),
+                    ValueState::PartiallyMoved => self
+                        .value_states
+                        .get_partial_moves(block, value)
+                        .unwrap()
+                        .values()
+                        .last()
+                        .copied(),
                 };
+
+                if new_move_span.is_some() {
+                    last_move_span = new_move_span;
+                }
 
                 match result_state {
                     ValueState::Owned if is_initial_state => {
                         result_state = state;
                         is_initial_state = false;
                     }
-                    ValueState::Owned | ValueState::Moved(_) => {
+                    ValueState::Owned
+                    | ValueState::Moved(_)
+                    | ValueState::PartiallyMoved => {
                         if result_state != state {
                             result_state = ValueState::MaybeMoved(
                                 last_move_span
@@ -1065,29 +1134,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.push_inst(Inst::Store { value, target: destroy_flag });
     }
 
-    // pub fn already_partially_moved(
-    //     db: &Db,
-    //     item: hir::DestroyGlueItem,
-    //     moved_to: Span,
-    //     already_moved_member: Word,
-    // ) -> Diagnostic {
-    //     let name = self.get_value_name(value);
-    //
-    //     Diagnostic::error()
-    //         .with_message(format!(
-    //             "use of partially moved member `{already_moved_member}` of {name}"
-    //         ))
-    //         .with_label(
-    //             Label::primary(moved_to).with_message(format!(
-    //                 "{name} used here after partial move"
-    //             )),
-    //         )
-    //         .with_label(
-    //             Label::secondary(already_moved_member.span())
-    //                 .with_message(format!("{name} partially moved here")),
-    //         )
-    // }
-
     // pub fn move_after_partially_moved(
     //     db: &Db,
     //     item: hir::DestroyGlueItem,
@@ -1140,6 +1186,43 @@ impl ValueStates {
     fn insert(&mut self, block: BlockId, value: ValueId, state: ValueState) {
         self.0.entry(block).or_default().states.insert(value, state);
     }
+
+    fn get_partial_moves(
+        &self,
+        block: BlockId,
+        value: ValueId,
+    ) -> Option<&FxHashMap<Ustr, Span>> {
+        self.0.get(&block).and_then(|b| b.partial_moves.get(&value))
+    }
+
+    fn get_partial_move(
+        &self,
+        block: BlockId,
+        value: ValueId,
+        member: Ustr,
+    ) -> Option<Span> {
+        self.0
+            .get(&block)
+            .and_then(|b| b.partial_moves.get(&value))
+            .and_then(|m| m.get(&member))
+            .copied()
+    }
+
+    fn insert_partial_move(
+        &mut self,
+        block: BlockId,
+        value: ValueId,
+        member: Ustr,
+        moved_to: Span,
+    ) {
+        self.0
+            .entry(block)
+            .or_default()
+            .partial_moves
+            .entry(value)
+            .or_default()
+            .insert(member, moved_to);
+    }
 }
 
 impl Default for ValueStates {
@@ -1151,11 +1234,15 @@ impl Default for ValueStates {
 #[derive(Debug)]
 struct BlockState {
     states: FxHashMap<ValueId, ValueState>,
+    partial_moves: FxHashMap<ValueId, FxHashMap<Ustr, Span>>,
 }
 
 impl BlockState {
     fn new() -> Self {
-        Self { states: FxHashMap::default() }
+        Self {
+            states: FxHashMap::default(),
+            partial_moves: FxHashMap::default(),
+        }
     }
 }
 
@@ -1183,9 +1270,13 @@ impl fmt::Display for BlockState {
                 "\tv{} : {}",
                 value.0,
                 match state {
-                    ValueState::Owned => "owned",
-                    ValueState::Moved(_) => "moved",
-                    ValueState::MaybeMoved(_) => "maybe moved",
+                    ValueState::Owned => "owned".to_string(),
+                    ValueState::Moved(_) => "moved".to_string(),
+                    ValueState::MaybeMoved(_) => "maybe moved".to_string(),
+                    ValueState::PartiallyMoved => format!(
+                        "partially moved ({:?})",
+                        self.partial_moves[value].keys().collect::<Vec<_>>()
+                    ),
                 }
             )?;
         }
@@ -1204,8 +1295,17 @@ enum ValueState {
 
     /// The value has been moved in one branch, but is still owned in another branch
     /// This value should be dropped conditionally at the end of its scope
-    MaybeMoved(Span), // Some of this value's fields have been moved
-                      // PartiallyMoved(FxHashMap<Ustr, Span>),
+    MaybeMoved(Span),
+
+    // Some of this value's fields have been moved, and the parent value is considered as moved.
+    // The partial moves are stored in a different `partial_moves` map.
+    PartiallyMoved,
+}
+
+#[derive(Debug, Clone)]
+enum MoveKind {
+    Move,
+    Partial(Ustr),
 }
 
 #[derive(Debug, Clone)]
