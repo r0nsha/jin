@@ -248,9 +248,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.push_return(ret_value, body.span.tail());
                 }
 
-                println!("fn `{}`", fun.sig.word);
-                println!("{}", self.value_states);
-                println!("---------------------");
+                // println!("fn `{}`", fun.sig.word);
+                // println!("{}", self.value_states);
+                // println!("---------------------");
 
                 self.exit_scope();
 
@@ -1273,10 +1273,13 @@ impl fmt::Display for BlockState {
                     ValueState::Owned => "owned".to_string(),
                     ValueState::Moved(_) => "moved".to_string(),
                     ValueState::MaybeMoved(_) => "maybe moved".to_string(),
-                    ValueState::PartiallyMoved => format!(
-                        "partially moved ({:?})",
-                        self.partial_moves[value].keys().collect::<Vec<_>>()
-                    ),
+                    ValueState::PartiallyMoved => {
+                        "partially moved".to_string()
+                        // format!(
+                        //             "partially moved ({:?})",
+                        //             self.partial_moves[value].keys().collect::<Vec<_>>()
+                        //         ),
+                    }
                 }
             )?;
         }
