@@ -1042,23 +1042,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             && self.value_is_move(value)
     }
 
-    // fn conditional_destroy_value(
-    //     &mut self,
-    //     value: ValueId,
-    //     destroy_flag: ValueId,
-    // ) {
-    //     // Conditional destroy
-    //     let destroy_blk = self.body.create_block("destroy");
-    //     let no_destroy_blk = self.body.create_block("no_destroy");
-    //
-    //     self.push_br_if(destroy_flag, destroy_blk, Some(no_destroy_blk));
-    //
-    //     self.position_at(destroy_blk);
-    //     self.push_inst(Inst::Destroy { value });
-    //
-    //     self.position_at(no_destroy_blk);
-    // }
-
     fn create_destroy_flag(&mut self, value: ValueId) {
         let init = self.const_bool(true);
         let flag = self.push_inst_with_named_register(
