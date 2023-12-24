@@ -157,7 +157,7 @@ fn compile_with_clang(
         .arg("-lc")
         .arg("-no-pie")
         // .arg("-O1")
-        .arg("-g")
+        // .arg("-g")
         .args(link_flags)
         .execute_output()
         .expect("linking to work");
