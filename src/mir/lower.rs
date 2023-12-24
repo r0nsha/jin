@@ -789,6 +789,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             ),
                         ))
                 } else {
+                    let Some(ValueState::PartiallyMoved(moved_members)) =
+                        self.value_states.get_mut(self.current_block, value)
+                    else {
+                        unreachable!()
+                    };
+
+                    moved_members.insert(member, moved_to);
                     Ok(())
                 }
             }
@@ -874,6 +881,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return state;
         }
 
+        let state = self.solve_value_state(value);
+        self.insert_value_state(value, state.clone());
+        state
+    }
+
+    pub fn solve_value_state(&self, value: ValueId) -> ValueState {
         let mut work: Vec<BlockId> = self
             .body
             .block(self.current_block)
@@ -945,8 +958,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             "value v{} is missing a state in block b{}",
             value.0, self.current_block.0,
         );
-
-        self.insert_value_state(value, result_state.clone());
 
         result_state
     }
@@ -1208,6 +1219,14 @@ impl ValueStates {
 
     fn get(&self, block: BlockId, value: ValueId) -> Option<&ValueState> {
         self.0.get(&block).and_then(|b| b.states.get(&value))
+    }
+
+    fn get_mut(
+        &mut self,
+        block: BlockId,
+        value: ValueId,
+    ) -> Option<&mut ValueState> {
+        self.0.get_mut(&block).and_then(|b| b.states.get_mut(&value))
     }
 
     fn insert(&mut self, block: BlockId, value: ValueId, state: ValueState) {
