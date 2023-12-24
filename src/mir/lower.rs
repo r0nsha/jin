@@ -224,7 +224,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             let value = self
                                 .create_value(param.ty, ValueKind::Local(id));
                             self.id_to_value.insert(id, value);
-                            self.push_destroy_flag(value);
+                            self.create_destroy_flag(value);
                         }
                         Pat::Discard(_) => (),
                     }
@@ -317,7 +317,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             |value| Inst::Local { value, init },
                         );
                         self.id_to_value.insert(name.id, value);
-                        self.push_destroy_flag(value);
+                        self.create_destroy_flag(value);
                     }
                     Pat::Discard(_) => (),
                 }
@@ -604,7 +604,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value_ty: Ty,
         f: impl FnOnce(ValueId) -> Inst,
     ) -> ValueId {
-        self.push_inst_with(value_ty, ValueKind::Register, f)
+        self.push_inst_with(value_ty, ValueKind::Register(None), f)
+    }
+
+    pub fn push_inst_with_named_register(
+        &mut self,
+        value_ty: Ty,
+        name: Ustr,
+        f: impl FnOnce(ValueId) -> Inst,
+    ) -> ValueId {
+        self.push_inst_with(value_ty, ValueKind::Register(Some(name)), f)
     }
 
     pub fn push_inst_with(
@@ -1050,12 +1059,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     //     self.position_at(no_destroy_blk);
     // }
 
-    fn push_destroy_flag(&mut self, value: ValueId) {
+    fn create_destroy_flag(&mut self, value: ValueId) {
         let init = self.const_bool(true);
-        let flag = self
-            .push_inst_with_register(self.cx.db.types.bool, |value| {
-                Inst::Local { value, init }
-            });
+        let flag = self.push_inst_with_named_register(
+            self.cx.db.types.bool,
+            ustr("destroy_flag"),
+            |value| Inst::Local { value, init },
+        );
         self.destroy_flags.insert(value, flag);
     }
 
@@ -1119,7 +1129,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 format!("`{}`", self.cx.mir.globals[*id].name)
             }
             ValueKind::Fn(id) => format!("`{}`", self.cx.mir.fn_sigs[*id].name),
-            ValueKind::Register | ValueKind::Const(_) => {
+            ValueKind::Register(_) | ValueKind::Const(_) => {
                 "temporary value".to_string()
             }
             ValueKind::Member(_, member) => format!("`{member}`"),

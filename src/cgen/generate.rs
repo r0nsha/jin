@@ -486,7 +486,9 @@ impl<'db> Generator<'db> {
             Inst::Local { value, init } => {
                 let value = state.body.value(*value);
                 let name = match value.kind {
-                    ValueKind::Register => format!("v{}", value.id),
+                    ValueKind::Register(name) => {
+                        self.register_name(value.id, name)
+                    }
                     ValueKind::Local(id) => state
                         .local_names
                         .insert_unique(id, self.db[id].name)
@@ -645,7 +647,7 @@ impl<'db> Generator<'db> {
 
     pub fn value(&self, state: &FnState<'db>, id: ValueId) -> D<'db> {
         match &state.body.value(id).kind {
-            ValueKind::Register => D::text(format!("v{id}")),
+            ValueKind::Register(name) => D::text(self.register_name(id, *name)),
             ValueKind::Local(id) => {
                 D::text(state.local_names.get(*id).unwrap().as_str())
             }
@@ -660,6 +662,10 @@ impl<'db> Generator<'db> {
                 state.body.value(*value).ty.is_ptr(self),
             ),
         }
+    }
+
+    fn register_name(&self, value: ValueId, name: Option<Ustr>) -> String {
+        format!("{}{}", name.unwrap_or(ustr("v")), value)
     }
 }
 

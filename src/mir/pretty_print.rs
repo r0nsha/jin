@@ -1,6 +1,7 @@
 use std::io;
 
 use pretty::RcDoc as D;
+use ustr::ustr;
 
 use crate::{db::Db, mir::*};
 
@@ -217,7 +218,9 @@ impl<'db> PrettyCx<'db> {
         let value = body.value(value_id);
 
         match &value.kind {
-            ValueKind::Register => D::text("v").append(value_id.to_string()),
+            ValueKind::Register(name) => {
+                D::text(format!("{}{}", name.unwrap_or(ustr("v")), value_id))
+            }
             ValueKind::Local(id) => D::text(self.db[*id].name.as_str()),
             ValueKind::Global(id) => Self::global(&self.mir.globals[*id].name),
             ValueKind::Fn(id) => Self::global(&self.mir.fn_sigs[*id].name),

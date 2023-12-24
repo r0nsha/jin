@@ -278,8 +278,8 @@ pub struct Value {
 
 #[derive(Debug, Clone)]
 pub enum ValueKind {
-    // A temporary or unnamed value
-    Register,
+    // A temporary or unnamed value, with a possible alias
+    Register(Option<Ustr>),
 
     // A local variable or function parameter
     Local(DefId),
