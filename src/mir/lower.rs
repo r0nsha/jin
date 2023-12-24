@@ -190,7 +190,6 @@ struct LowerBody<'cx, 'db> {
     scopes: Vec<Scope>,
     current_block: BlockId,
     id_to_value: FxHashMap<DefId, ValueId>,
-    destroy_flags: FxHashMap<ValueId, ValueId>,
 }
 
 impl<'cx, 'db> LowerBody<'cx, 'db> {
@@ -202,7 +201,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             scopes: vec![],
             current_block: BlockId::start(),
             id_to_value: FxHashMap::default(),
-            destroy_flags: FxHashMap::default(),
         }
     }
 
@@ -1028,7 +1026,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             // self.position_at(no_destroy_blk);
             self.push_inst(Inst::Destroy {
                 value,
-                destroy_flag: Some(self.destroy_flags[&value]),
+                destroy_flag: Some(self.body.destroy_flags[&value]),
                 span,
             });
         } else {
@@ -1049,11 +1047,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             ustr("destroy_flag"),
             |value| Inst::Local { value, init },
         );
-        self.destroy_flags.insert(value, flag);
+        self.body.destroy_flags.insert(value, flag);
     }
 
     fn set_destroy_flag(&mut self, value: ValueId) {
-        let Some(destroy_flag) = self.destroy_flags.get(&value).copied() else {
+        let Some(destroy_flag) = self.body.destroy_flags.get(&value).copied()
+        else {
             return;
         };
         let value = self.const_bool(false);

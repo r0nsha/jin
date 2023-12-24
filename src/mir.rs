@@ -115,6 +115,9 @@ pub struct Body {
 
     // A mapping for values to their instantation, used for specialization
     instantations: FxHashMap<ValueId, Instantiation>,
+
+    // A mapping of values to their destroy flags
+    destroy_flags: FxHashMap<ValueId, ValueId>,
 }
 
 pub type Blocks = IndexVec<BlockId, Block>;
@@ -133,6 +136,7 @@ impl Body {
             blocks: IndexVec::new(),
             values: IndexVec::new(),
             instantations: FxHashMap::default(),
+            destroy_flags: FxHashMap::default(),
         }
     }
 

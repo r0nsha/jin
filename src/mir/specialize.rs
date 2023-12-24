@@ -333,23 +333,42 @@ impl<'db> ExpandDestroys<'db> {
     }
 
     fn remove_unused_destroys(&self, body: &mut Body) {
-        let mut need_destroy = Vec::with_capacity(256);
+        let mut destroyed_values = FxHashSet::<ValueId>::default();
+        let mut used_destroy_flags: FxHashMap<ValueId, bool> =
+            body.destroy_flags.values().map(|flag| (*flag, false)).collect();
 
         for block_id in body.blocks().keys() {
-            need_destroy.clear();
-            need_destroy.extend(body.block(block_id).insts.iter().filter_map(
-                |inst| {
-                    match inst {
-                        Inst::Destroy { value, .. } => self
-                            .should_destroy_value(body, *value)
-                            .then_some(*value),
-                        _ => None,
-                    }
-                },
-            ));
+            destroyed_values.extend(
+                body.block(block_id).insts.iter().filter_map(
+                    |inst| match inst {
+                        Inst::Destroy { value, destroy_flag, .. } => {
+                            let should_destroy =
+                                self.should_destroy_value(body, *value);
 
-            body.block_mut(block_id).insts.retain(|inst| match inst {
-                Inst::Destroy { value, .. } => need_destroy.contains(value),
+                            if should_destroy {
+                                if let Some(destroy_flag) = destroy_flag {
+                                    used_destroy_flags
+                                        .insert(*destroy_flag, true);
+                                }
+
+                                Some(*value)
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None,
+                    },
+                ),
+            );
+        }
+
+        for block in body.blocks_mut() {
+            block.insts.retain(|inst| match inst {
+                Inst::Local { value, .. }
+                | Inst::Store { target: value, .. } => {
+                    used_destroy_flags.get(value).copied().unwrap_or(true)
+                }
+                Inst::Destroy { value, .. } => destroyed_values.contains(value),
                 _ => true,
             });
         }
