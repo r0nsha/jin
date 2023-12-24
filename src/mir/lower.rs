@@ -753,7 +753,25 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     ))
             }
             (ValueState::PartiallyMoved, MoveKind::Move) => {
-                todo!("partial, move")
+                let name = self.get_value_name(value);
+
+                Err(Diagnostic::error()
+                    .with_message(format!("use of partially moved {name}"))
+                    .with_label(Label::primary(moved_to).with_message(format!(
+                        "{name} used here after partial move"
+                    )))
+                    .with_labels(
+                        self.value_states
+                            .get_partial_moves(self.current_block, value)
+                            .unwrap()
+                            .values()
+                            .map(|already_moved_to| {
+                                Label::secondary(*already_moved_to)
+                                    .with_message(format!(
+                                        "{name} already partially moved here"
+                                    ))
+                            }),
+                    ))
             }
             (ValueState::PartiallyMoved, MoveKind::Partial(member)) => {
                 if let Some(already_moved_to) = self
@@ -1145,28 +1163,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let value = self.const_bool(false);
         self.push_inst(Inst::Store { value, target: destroy_flag });
     }
-
-    // pub fn move_after_partially_moved(
-    //     db: &Db,
-    //     item: hir::DestroyGlueItem,
-    //     moved_to: Span,
-    //     already_moved_to: Vec<Span>,
-    // ) -> Diagnostic {
-    //     let (name, name) = get_value_names(db, item);
-    //
-    //     Diagnostic::error()
-    //         .with_message(format!("use of partially moved {name}"))
-    //         .with_label(
-    //             Label::primary(moved_to).with_message(format!(
-    //                 "{name} used here after partial move"
-    //             )),
-    //         )
-    //         .with_labels(already_moved_to.into_iter().map(|moved_to| {
-    //             Label::secondary(moved_to).with_message(format!(
-    //                 "{name} already partially moved here"
-    //             ))
-    //         }))
-    // }
 
     fn get_value_name(&self, value: ValueId) -> String {
         match &self.body.value(value).kind {
