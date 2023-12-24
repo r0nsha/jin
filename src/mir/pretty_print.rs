@@ -131,24 +131,24 @@ impl<'db> PrettyCx<'db> {
                 .append(self.value(body, *value))
                 .append(D::space())
                 .append(self.value(body, *target)),
-            Inst::Destroy { value, free, destroy_flag, .. } => {
-                D::text("destroy")
-                    .append(D::space())
-                    .append(self.value(body, *value))
-                    .append(if *free {
-                        D::text(" (and free)")
-                    } else {
-                        D::nil()
-                    })
-                    .append(if let Some(destroy_flag) = destroy_flag {
-                        D::space()
-                            .append(D::text("if"))
-                            .append(D::space())
-                            .append(self.value(body, *destroy_flag))
-                    } else {
-                        D::nil()
-                    })
-            }
+            Inst::Destroy {
+                value, with_destroyer, destroy_flag, ..
+            } => D::text("destroy")
+                .append(D::space())
+                .append(self.value(body, *value))
+                .append(if *with_destroyer {
+                    D::text(" (and free)")
+                } else {
+                    D::nil()
+                })
+                .append(if let Some(destroy_flag) = destroy_flag {
+                    D::space()
+                        .append(D::text("if"))
+                        .append(D::space())
+                        .append(self.value(body, *destroy_flag))
+                } else {
+                    D::nil()
+                }),
 
             Inst::Br { target } => D::text("br")
                 .append(D::space())

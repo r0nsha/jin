@@ -503,21 +503,23 @@ impl<'db> Generator<'db> {
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
-            Inst::Destroy { value, free, destroy_flag, span: _ } => {
-                let destroy_call =
-                    self.codegen_destroy(state, *value).unwrap_or_else(|| {
-                        unreachable!(
-                            "tried to destroy value by mistake: {:?}",
-                            state.body.value(*value)
-                        )
-                    });
+            Inst::Destroy { value, with_destroyer, destroy_flag, span: _ } => {
+                let dealloc_value =
+                    stmt(|| util::call_dealloc(self.value(state, *value)));
 
-                let stmts = if *free {
-                    let dealloc_value =
-                        stmt(|| util::call_dealloc(self.value(state, *value)));
+                let stmts = if *with_destroyer {
+                    let destroy_call = self
+                        .codegen_destroy(state, *value)
+                        .unwrap_or_else(|| {
+                            unreachable!(
+                                "tried to destroy value by mistake: {:?}",
+                                state.body.value(*value)
+                            )
+                        });
+
                     D::intersperse([destroy_call, dealloc_value], D::hardline())
                 } else {
-                    destroy_call
+                    dealloc_value
                 };
 
                 if let &Some(destroy_flag) = destroy_flag {

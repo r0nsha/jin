@@ -269,7 +269,7 @@ pub enum Inst {
     },
     Destroy {
         value: ValueId,
-        free: bool,
+        with_destroyer: bool,
         destroy_flag: Option<ValueId>,
         span: Span,
     },
