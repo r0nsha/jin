@@ -655,7 +655,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
         let value = self.body.create_value(ty, kind);
-        self.insert_value_state(value, ValueState::Owned);
+        self.value_states.insert(self.current_block, value, ValueState::Owned);
         self.scope_mut().created_values.push(value);
         value
     }
@@ -666,10 +666,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         kind: ValueKind,
     ) -> ValueId {
         self.body.create_value(ty, kind)
-    }
-
-    pub fn insert_value_state(&mut self, value: ValueId, state: ValueState) {
-        self.value_states.insert(self.current_block, value, state);
     }
 
     pub fn try_move(&mut self, value: ValueId, moved_to: Span) {
@@ -718,14 +714,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         match (value_state, kind) {
             (ValueState::Owned, MoveKind::Move) => {
                 self.set_destroy_flag(value);
-                self.insert_value_state(
+                self.value_states.insert(
+                    self.current_block,
                     value,
                     ValueState::Moved { moved_to, conditional: false },
                 );
                 Ok(())
             }
             (ValueState::Owned, MoveKind::Partial(member)) => {
-                self.insert_value_state(
+                self.value_states.insert(
+                    self.current_block,
                     value,
                     ValueState::PartiallyMoved {
                         moved_members: IndexMap::from_iter([(
@@ -879,7 +877,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         let state = self.solve_value_state(value);
-        self.insert_value_state(value, state.clone());
+        self.value_states.insert(self.current_block, value, state.clone());
         state
     }
 
@@ -1148,7 +1146,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // self.push_inst(Inst::Destroy { value });
                 //
                 // Now that the value is destroyed, it has definitely been moved...
-                // self.insert_value_state(
+                // self.value_states.insert(
+                //     self.current_block,
                 //     value,
                 //     ValueState::Moved { moved_to, conditional: false },
                 // );
