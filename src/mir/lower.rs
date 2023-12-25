@@ -411,9 +411,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let end_block = self
                     .closest_loop_scope()
                     .expect("to be inside a loop block")
-                    .kind
-                    .as_loop()
-                    .unwrap()
                     .end_block;
                 self.push_br(end_block);
 
@@ -833,8 +830,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return;
         }
 
-        if let Some(scope) = self.closest_loop_scope_mut() {
-            scope.kind.as_loop_mut().unwrap().moved_in.insert(value, span);
+        if let Some(loop_scope) = self.closest_loop_scope_mut() {
+            loop_scope.moved_in.insert(value, span);
         }
     }
 
@@ -1094,12 +1091,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    fn closest_loop_scope(&self) -> Option<&Scope> {
-        self.scopes.iter().rev().find(|s| s.kind.is_loop())
+    fn closest_loop_scope(&self) -> Option<&LoopScope> {
+        self.scopes.iter().rev().find_map(|s| s.kind.as_loop())
     }
 
-    fn closest_loop_scope_mut(&mut self) -> Option<&mut Scope> {
-        self.scopes.iter_mut().rev().find(|s| s.kind.is_loop())
+    fn closest_loop_scope_mut(&mut self) -> Option<&mut LoopScope> {
+        self.scopes.iter_mut().rev().find_map(|s| s.kind.as_loop_mut())
     }
 
     fn destroy_value(&mut self, value: ValueId, span: Span) {
