@@ -1,8 +1,7 @@
 use std::{fmt, mem};
 
 use indexmap::IndexMap;
-use itertools::Itertools;
-use rustc_hash::FxHashMap;
+use itertools::Itertools as _;
 use ustr::{ustr, Ustr};
 
 use crate::{
@@ -722,7 +721,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         match (value_state, kind) {
             (ValueState::Owned, MoveKind::Move) => {
                 self.set_destroy_flag(value);
-                self.insert_value_state(value, ValueState::Moved(moved_to));
+                self.insert_value_state(
+                    value,
+                    ValueState::Moved { moved_to, conditional: false },
+                );
                 Ok(())
             }
             (ValueState::Owned, MoveKind::Partial(member)) => {
@@ -734,11 +736,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 );
                 Ok(())
             }
-            (
-                ValueState::Moved(already_moved_to)
-                | ValueState::MaybeMoved(already_moved_to),
-                _,
-            ) => {
+            (ValueState::Moved { moved_to: already_moved_to, .. }, _) => {
                 let name = self.get_value_name(value);
 
                 Err(Diagnostic::error()
@@ -906,8 +904,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             if let Some(state) = self.value_states.get(block, value).cloned() {
                 let new_move_span = match &state {
                     ValueState::Owned => last_move_span,
-                    ValueState::Moved(moved_to)
-                    | ValueState::MaybeMoved(moved_to) => Some(*moved_to),
+                    ValueState::Moved { moved_to, .. } => Some(*moved_to),
                     ValueState::PartiallyMoved(moved_members) => {
                         moved_members.last().map(|(_, span)| *span)
                     }
@@ -930,13 +927,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         new_members.extend(m2);
                         result_state = ValueState::PartiallyMoved(new_members);
                     }
-                    (ValueState::MaybeMoved(_), _) => break,
+                    (ValueState::Moved { conditional: true, .. }, _) => break,
                     _ => {
                         if result_state != state {
-                            result_state = ValueState::MaybeMoved(
-                                last_move_span
+                            result_state = ValueState::Moved {
+                                moved_to: last_move_span
                                     .expect("to have been moved somewhere"),
-                            );
+                                conditional: true,
+                            };
                         }
                     }
                 }
@@ -1139,7 +1137,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     span,
                 });
             }
-            ValueState::MaybeMoved(span) => {
+            ValueState::Moved { moved_to, conditional: true } => {
                 // Conditional destroy
                 // let destroy_blk = self.body.create_block("destroy");
                 // let no_destroy_blk = self.body.create_block("no_destroy");
@@ -1149,15 +1147,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // self.position_at(destroy_blk);
                 // self.push_inst(Inst::Destroy { value });
                 //
+                // Now that the value is destroyed, it has definitely been moved...
+                // self.insert_value_state(
+                //     value,
+                //     ValueState::Moved { moved_to, conditional: false },
+                // );
+                //
                 // self.position_at(no_destroy_blk);
                 self.push_inst(Inst::Destroy {
                     value,
                     with_destroyer: true,
                     destroy_flag: Some(self.body.destroy_flags[&value]),
-                    span,
+                    span: moved_to,
                 });
-
-                self.insert_value_state(value, ValueState::Moved(span));
             }
             _ => {
                 // Unconditional destroy
@@ -1172,8 +1174,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn should_destroy_value(&mut self, value: ValueId) -> bool {
-        !matches!(self.value_state(value), ValueState::Moved(_))
-            && self.value_is_move(value)
+        !matches!(
+            self.value_state(value),
+            ValueState::Moved { conditional: false, .. }
+        ) && self.value_is_move(value)
     }
 
     fn create_destroy_flag(&mut self, value: ValueId) {
@@ -1277,8 +1281,12 @@ impl fmt::Display for BlockState {
                 value.0,
                 match state {
                     ValueState::Owned => "owned".to_string(),
-                    ValueState::Moved(_) => "moved".to_string(),
-                    ValueState::MaybeMoved(_) => "maybe moved".to_string(),
+                    ValueState::Moved { conditional, .. } =>
+                        if *conditional {
+                            "maybe moved".to_string()
+                        } else {
+                            "moved".to_string()
+                        },
                     ValueState::PartiallyMoved(moved_members) => {
                         format!(
                             "partially moved ({:?})",
@@ -1298,12 +1306,13 @@ enum ValueState {
     /// The value is owned, and should be dropped at the end of its scope
     Owned,
 
-    /// The value is has been moved
-    Moved(Span),
-
-    /// The value has been moved in one branch, but is still owned in another branch
-    /// This value should be dropped conditionally at the end of its scope
-    MaybeMoved(Span),
+    /// If `conditional` is false, the value has been moved. It shouldn't be dropped in its scope.
+    /// If `conditional` is true, the value has been moved in one branch, but is still
+    /// owned in another branch. This value should be dropped conditionally at the end of its scope
+    Moved {
+        moved_to: Span,
+        conditional: bool,
+    },
 
     // Some of this value's fields have been moved, and the parent value is considered as moved.
     // The partial moves are stored in a different `partial_moves` map.
