@@ -450,8 +450,8 @@ impl<'db> Typeck<'db> {
         let pat = self.define_pat(env, def_kind, &let_.pat, ty)?;
 
         let value = if env.in_global_scope() {
-            // We do this so that global variable initialization always includes a block (needed
-            // for `ownck`)
+            // We do this so that global variable initialization always includes a block (required for
+            // destroys)
             self.expr_or_block(value)
         } else {
             value

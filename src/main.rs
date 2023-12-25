@@ -126,10 +126,6 @@ fn build(db: &mut Db) {
     db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))
         .expect("emitting hir failed");
 
-    // Ownership checks
-    // db.time("Ownership checking", |db| ownck::ownck(db, &mut hir));
-    // expect!(db);
-
     // Lower HIR to MIR
     let mut mir = db.time("Hir -> Mir", |db| mir::lower(db, &hir));
     expect!(db);
