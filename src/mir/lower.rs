@@ -730,9 +730,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             (ValueState::Owned, MoveKind::Partial(member)) => {
                 self.insert_value_state(
                     value,
-                    ValueState::PartiallyMoved(IndexMap::from_iter([(
-                        member, moved_to,
-                    )])),
+                    ValueState::PartiallyMoved {
+                        moved_members: IndexMap::from_iter([(
+                            member, moved_to,
+                        )]),
+                    },
                 );
                 Ok(())
             }
@@ -751,7 +753,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             .with_message(format!("{name} already moved here")),
                     ))
             }
-            (ValueState::PartiallyMoved(moved_members), MoveKind::Move) => {
+            (ValueState::PartiallyMoved { moved_members }, MoveKind::Move) => {
                 let name = self.get_value_name(value);
 
                 Err(Diagnostic::error()
@@ -768,7 +770,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     )))
             }
             (
-                ValueState::PartiallyMoved(moved_members),
+                ValueState::PartiallyMoved { moved_members },
                 MoveKind::Partial(member),
             ) => {
                 if let Some(already_moved_to) = moved_members.get(&member) {
@@ -787,7 +789,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             ),
                         ))
                 } else {
-                    let Some(ValueState::PartiallyMoved(moved_members)) =
+                    let Some(ValueState::PartiallyMoved { moved_members }) =
                         self.value_states.get_mut(self.current_block, value)
                     else {
                         unreachable!()
@@ -905,7 +907,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let new_move_span = match &state {
                     ValueState::Owned => last_move_span,
                     ValueState::Moved { moved_to, .. } => Some(*moved_to),
-                    ValueState::PartiallyMoved(moved_members) => {
+                    ValueState::PartiallyMoved { moved_members } => {
                         moved_members.last().map(|(_, span)| *span)
                     }
                 };
@@ -920,12 +922,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         is_initial_state = false;
                     }
                     (
-                        ValueState::PartiallyMoved(m1),
-                        ValueState::PartiallyMoved(m2),
+                        ValueState::PartiallyMoved { moved_members: m1 },
+                        ValueState::PartiallyMoved { moved_members: m2 },
                     ) => {
-                        let mut new_members = m1.clone();
-                        new_members.extend(m2);
-                        result_state = ValueState::PartiallyMoved(new_members);
+                        let mut moved_members = m1.clone();
+                        moved_members.extend(m2);
+                        result_state =
+                            ValueState::PartiallyMoved { moved_members };
                     }
                     (ValueState::Moved { conditional: true, .. }, _) => break,
                     _ => {
@@ -1105,7 +1108,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         match self.value_state(value) {
-            ValueState::PartiallyMoved(moved_members) => {
+            ValueState::PartiallyMoved { moved_members } => {
                 if let Some(fields) =
                     self.body.value(value).ty.fields(self.cx.db)
                 {
@@ -1287,7 +1290,7 @@ impl fmt::Display for BlockState {
                         } else {
                             "moved".to_string()
                         },
-                    ValueState::PartiallyMoved(moved_members) => {
+                    ValueState::PartiallyMoved { moved_members } => {
                         format!(
                             "partially moved ({:?})",
                             moved_members.keys().collect::<Vec<_>>()
@@ -1316,7 +1319,9 @@ enum ValueState {
 
     // Some of this value's fields have been moved, and the parent value is considered as moved.
     // The partial moves are stored in a different `partial_moves` map.
-    PartiallyMoved(IndexMap<Ustr, Span>),
+    PartiallyMoved {
+        moved_members: IndexMap<Ustr, Span>,
+    },
 }
 
 #[derive(Debug, Clone)]
