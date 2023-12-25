@@ -723,7 +723,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.set_destroy_flag(value);
                 self.insert_value_state(
                     value,
-                    ValueState::Moved { moved_to, is_conditional: false },
+                    ValueState::Moved { moved_to, conditional: false },
                 );
                 Ok(())
             }
@@ -927,15 +927,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         new_members.extend(m2);
                         result_state = ValueState::PartiallyMoved(new_members);
                     }
-                    (ValueState::Moved { is_conditional: true, .. }, _) => {
-                        break
-                    }
+                    (ValueState::Moved { conditional: true, .. }, _) => break,
                     _ => {
                         if result_state != state {
                             result_state = ValueState::Moved {
                                 moved_to: last_move_span
                                     .expect("to have been moved somewhere"),
-                                is_conditional: true,
+                                conditional: true,
                             };
                         }
                     }
@@ -1139,7 +1137,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     span,
                 });
             }
-            ValueState::Moved { moved_to, is_conditional: true } => {
+            ValueState::Moved { moved_to, conditional: true } => {
                 // Conditional destroy
                 // let destroy_blk = self.body.create_block("destroy");
                 // let no_destroy_blk = self.body.create_block("no_destroy");
@@ -1152,7 +1150,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // Now that the value is destroyed, it has definitely been moved...
                 // self.insert_value_state(
                 //     value,
-                //     ValueState::Moved { moved_to, is_conditional: false },
+                //     ValueState::Moved { moved_to, conditional: false },
                 // );
                 //
                 // self.position_at(no_destroy_blk);
@@ -1178,7 +1176,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn should_destroy_value(&mut self, value: ValueId) -> bool {
         !matches!(
             self.value_state(value),
-            ValueState::Moved { is_conditional: false, .. }
+            ValueState::Moved { conditional: false, .. }
         ) && self.value_is_move(value)
     }
 
@@ -1283,8 +1281,8 @@ impl fmt::Display for BlockState {
                 value.0,
                 match state {
                     ValueState::Owned => "owned".to_string(),
-                    ValueState::Moved { is_conditional, .. } =>
-                        if *is_conditional {
+                    ValueState::Moved { conditional, .. } =>
+                        if *conditional {
                             "maybe moved".to_string()
                         } else {
                             "moved".to_string()
@@ -1313,7 +1311,7 @@ enum ValueState {
     /// owned in another branch. This value should be dropped conditionally at the end of its scope
     Moved {
         moved_to: Span,
-        is_conditional: bool,
+        conditional: bool,
     },
 
     // Some of this value's fields have been moved, and the parent value is considered as moved.
