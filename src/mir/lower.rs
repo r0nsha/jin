@@ -655,7 +655,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
         let value = self.body.create_value(ty, kind);
-        self.value_states.insert(self.current_block, value, ValueState::Owned);
+        self.set_owned(value);
         self.scope_mut().created_values.push(value);
         value
     }
@@ -714,22 +714,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         match (value_state, kind) {
             (ValueState::Owned, MoveKind::Move) => {
                 self.set_destroy_flag(value);
-                self.value_states.insert(
-                    self.current_block,
-                    value,
-                    ValueState::Moved { moved_to, conditional: false },
-                );
+                self.set_moved(value, moved_to);
                 Ok(())
             }
             (ValueState::Owned, MoveKind::Partial(member)) => {
-                self.value_states.insert(
-                    self.current_block,
+                self.set_partially_moved(
                     value,
-                    ValueState::PartiallyMoved {
-                        moved_members: IndexMap::from_iter([(
-                            member, moved_to,
-                        )]),
-                    },
+                    IndexMap::from_iter([(member, moved_to)]),
                 );
                 Ok(())
             }
@@ -879,6 +870,30 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let state = self.solve_value_state(value);
         self.value_states.insert(self.current_block, value, state.clone());
         state
+    }
+
+    pub fn set_owned(&mut self, value: ValueId) {
+        self.value_states.insert(self.current_block, value, ValueState::Owned);
+    }
+
+    pub fn set_moved(&mut self, value: ValueId, moved_to: Span) {
+        self.value_states.insert(
+            self.current_block,
+            value,
+            ValueState::Moved { moved_to, conditional: false },
+        );
+    }
+
+    pub fn set_partially_moved(
+        &mut self,
+        value: ValueId,
+        moved_members: MovedMembers,
+    ) {
+        self.value_states.insert(
+            self.current_block,
+            value,
+            ValueState::PartiallyMoved { moved_members },
+        );
     }
 
     pub fn solve_value_state(&self, value: ValueId) -> ValueState {
@@ -1136,7 +1151,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 });
             }
             ValueState::Moved { moved_to, conditional: true } => {
-                // Conditional destroy
+                // // Conditional destroy
                 // let destroy_blk = self.body.create_block("destroy");
                 // let no_destroy_blk = self.body.create_block("no_destroy");
                 //
@@ -1145,12 +1160,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // self.position_at(destroy_blk);
                 // self.push_inst(Inst::Destroy { value });
                 //
-                // Now that the value is destroyed, it has definitely been moved...
-                // self.value_states.insert(
-                //     self.current_block,
-                //     value,
-                //     ValueState::Moved { moved_to, conditional: false },
-                // );
+                // // Now that the value is destroyed, it has definitely been moved...
+                // self.set_value_as_moved(value, moved_to);
                 //
                 // self.position_at(no_destroy_blk);
                 self.push_inst(Inst::Destroy {
@@ -1316,9 +1327,11 @@ enum ValueState {
     // Some of this value's fields have been moved, and the parent value is considered as moved.
     // The partial moves are stored in a different `partial_moves` map.
     PartiallyMoved {
-        moved_members: IndexMap<Ustr, Span>,
+        moved_members: MovedMembers,
     },
 }
+
+type MovedMembers = IndexMap<Ustr, Span>;
 
 #[derive(Debug, Clone)]
 enum MoveKind {
