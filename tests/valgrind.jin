@@ -49,7 +49,7 @@ fn main() unit = {
 	if true {
 		let d2n1 = d2.n1
 	} else {
-		//let d2n2 = d2.n2
+		let d2n2 = d2.n2
 	}
 }
 
