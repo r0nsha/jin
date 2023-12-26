@@ -788,7 +788,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 );
                 Ok(())
             }
-            (ValueState::Moved { moved_to: already_moved_to, .. }, _) => {
+            (
+                ValueState::Moved(already_moved_to)
+                | ValueState::MaybeMoved(already_moved_to),
+                _,
+            ) => {
                 let name = self.get_value_name(value);
 
                 Err(Diagnostic::error()
@@ -803,7 +807,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             .with_message(format!("{name} already moved here")),
                     ))
             }
-            (ValueState::PartiallyMoved { moved_members }, MoveKind::Move) => {
+            (ValueState::PartiallyMoved(moved_members), MoveKind::Move) => {
                 let name = self.get_value_name(value);
 
                 Err(Diagnostic::error()
@@ -820,7 +824,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     )))
             }
             (
-                ValueState::PartiallyMoved { moved_members },
+                ValueState::PartiallyMoved(moved_members),
                 MoveKind::Partial(member),
             ) => {
                 if let Some(already_moved_to) = moved_members.get(&member) {
@@ -839,7 +843,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             ),
                         ))
                 } else {
-                    let Some(ValueState::PartiallyMoved { moved_members }) =
+                    let Some(ValueState::PartiallyMoved(moved_members)) =
                         self.value_states.get_mut(self.current_block, value)
                     else {
                         unreachable!()
@@ -944,7 +948,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.value_states.insert(
             self.current_block,
             value,
-            ValueState::Moved { moved_to, conditional: false },
+            ValueState::Moved(moved_to),
         );
     }
 
@@ -956,7 +960,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.value_states.insert(
             self.current_block,
             value,
-            ValueState::PartiallyMoved { moved_members },
+            ValueState::PartiallyMoved(moved_members),
         );
     }
 
@@ -980,8 +984,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             if let Some(state) = self.value_states.get(block, value).cloned() {
                 let new_move_span = match &state {
                     ValueState::Owned => last_move_span,
-                    ValueState::Moved { moved_to, .. } => Some(*moved_to),
-                    ValueState::PartiallyMoved { moved_members } => {
+                    ValueState::Moved(moved_to)
+                    | ValueState::MaybeMoved(moved_to) => Some(*moved_to),
+                    ValueState::PartiallyMoved(moved_members) => {
                         moved_members.last().map(|(_, span)| *span)
                     }
                 };
@@ -996,22 +1001,21 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         is_initial_state = false;
                     }
                     (
-                        ValueState::PartiallyMoved { moved_members: m1 },
-                        ValueState::PartiallyMoved { moved_members: m2 },
+                        ValueState::PartiallyMoved(m1),
+                        ValueState::PartiallyMoved(m2),
                     ) => {
                         let mut moved_members = m1.clone();
                         moved_members.extend(m2);
                         result_state =
-                            ValueState::PartiallyMoved { moved_members };
+                            ValueState::PartiallyMoved(moved_members);
                     }
-                    (ValueState::Moved { conditional: true, .. }, _) => break,
+                    (ValueState::MaybeMoved(_), _) => break,
                     _ => {
                         if result_state != state {
-                            result_state = ValueState::Moved {
-                                moved_to: last_move_span
+                            result_state = ValueState::MaybeMoved(
+                                last_move_span
                                     .expect("to have been moved somewhere"),
-                                conditional: true,
-                            };
+                            );
                         }
                     }
                 }
@@ -1182,10 +1186,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         match self.value_state(value) {
-            ValueState::Moved { conditional: false, .. } => {
+            ValueState::Moved(_) => {
                 // Value has been moved, don't destroy
             }
-            ValueState::Moved { conditional: true, .. } => {
+            ValueState::MaybeMoved(_) => {
                 // let destroy_blk = self.body.create_block("destroy");
                 // let no_destroy_blk = self.body.create_block("no_destroy");
                 //
@@ -1320,13 +1324,9 @@ impl fmt::Display for BlockState {
                 value.0,
                 match state {
                     ValueState::Owned => "owned".to_string(),
-                    ValueState::Moved { conditional, .. } =>
-                        if *conditional {
-                            "maybe moved".to_string()
-                        } else {
-                            "moved".to_string()
-                        },
-                    ValueState::PartiallyMoved { moved_members } => {
+                    ValueState::Moved(_) => "moved".to_string(),
+                    ValueState::MaybeMoved(_) => "maybe moved".to_string(),
+                    ValueState::PartiallyMoved(moved_members) => {
                         format!(
                             "partially moved ({:?})",
                             moved_members.keys().collect::<Vec<_>>()
@@ -1345,19 +1345,16 @@ enum ValueState {
     /// The value is owned, and should be dropped at the end of its scope
     Owned,
 
-    /// If `conditional` is false, the value has been moved. It shouldn't be dropped in its scope.
-    /// If `conditional` is true, the value has been moved in one branch, but is still
+    /// The value has been moved. It shouldn't be dropped in its scope.
+    Moved(Span),
+
+    /// The value has been moved in one branch, but is still
     /// owned in another branch. This value should be dropped conditionally at the end of its scope
-    Moved {
-        moved_to: Span,
-        conditional: bool,
-    },
+    MaybeMoved(Span),
 
     // Some of this value's fields have been moved, and the parent value is considered as moved.
     // The partial moves are stored in a different `partial_moves` map.
-    PartiallyMoved {
-        moved_members: MovedMembers,
-    },
+    PartiallyMoved(MovedMembers),
 }
 
 type MovedMembers = IndexMap<Ustr, Span>;
