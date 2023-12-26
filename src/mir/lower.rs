@@ -188,6 +188,7 @@ struct LowerBody<'cx, 'db> {
     body: Body,
     value_states: ValueStates,
     scopes: Vec<Scope>,
+    rules: Vec<Rules>,
     current_block: BlockId,
     locals: FxHashMap<DefId, ValueId>,
     members: FxHashMap<ValueId, FxHashMap<Ustr, ValueId>>,
@@ -200,6 +201,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             body: Body::new(),
             value_states: ValueStates::new(),
             scopes: vec![],
+            rules: vec![],
             current_block: BlockId::start(),
             locals: FxHashMap::default(),
             members: FxHashMap::default(),
@@ -300,15 +302,23 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
-        let value = self.lower_expr_inner(expr);
+        self.lower_expr_with_rules(expr, Rules::new())
+    }
+
+    fn lower_expr_with_rules(
+        &mut self,
+        expr: &hir::Expr,
+        rules: Rules,
+    ) -> ValueId {
+        let value = self.lower_expr_inner(expr, rules);
         self.apply_coercions_to_expr(expr, value)
     }
 
-    fn lower_expr_inner(&mut self, expr: &hir::Expr) -> ValueId {
+    fn lower_expr_inner(&mut self, expr: &hir::Expr, rules: Rules) -> ValueId {
         match &expr.kind {
             hir::ExprKind::Let(let_) => {
                 let init = self.lower_expr(&let_.value);
-                self.try_move(init, let_.value.span);
+                self.try_move(init, let_.value.span, rules);
 
                 match &let_.pat {
                     Pat::Name(name) => {
@@ -328,7 +338,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Assign(assign) => {
                 let lhs = self.lower_expr(&assign.lhs);
                 let rhs = self.lower_expr(&assign.rhs);
-                self.try_move(rhs, assign.rhs.span);
+                self.try_move(rhs, assign.rhs.span, rules);
 
                 let rhs = if let Some(op) = assign.op {
                     self.push_inst_with_register(assign.lhs.ty, |value| {
@@ -351,7 +361,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let merge_blk = self.body.create_block("if_merge");
 
                 let cond = self.lower_expr(&if_.cond);
-                self.try_move(cond, if_.cond.span);
+                self.try_move(cond, if_.cond.span, rules);
                 self.push_br_if(cond, then_blk, Some(else_blk));
 
                 self.position_at(then_blk);
@@ -384,7 +394,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 if let Some(cond_expr) = &loop_.cond {
                     let cond = self.lower_expr(cond_expr);
-                    self.try_move(cond, cond_expr.span);
+                    self.try_move(cond, cond_expr.span, rules);
                     let not_cond = self.push_inst_with_register(
                         self.cx.db.types.bool,
                         |value| Inst::Unary {
@@ -441,20 +451,20 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     result.unwrap_or_else(|| self.const_unit())
                 };
 
-                self.try_move(result, result_span);
+                self.try_move(result, result_span, rules);
                 self.exit_scope();
 
                 result
             }
             hir::ExprKind::Return(ret) => {
                 let value = self.lower_expr(&ret.expr);
-                self.try_move(value, ret.expr.span);
+                self.try_move(value, ret.expr.span, rules);
                 self.push_return(value, expr.span);
                 self.const_unit()
             }
             hir::ExprKind::Call(call) => {
                 let callee = self.lower_expr(&call.callee);
-                self.try_move(callee, call.callee.span);
+                self.try_move(callee, call.callee.span, rules);
 
                 // NOTE: We evaluate args in passing order, and then sort them to the actual
                 // required parameter order
@@ -463,7 +473,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 for arg in &call.args {
                     let idx = arg.index.expect("arg index to be resolved");
                     let value = self.lower_expr(&arg.expr);
-                    self.try_move(value, arg.expr.span);
+                    self.try_move(value, arg.expr.span, rules);
                     args.push((idx, value));
                 }
 
@@ -477,7 +487,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Unary(un) => {
                 let inner = self.lower_expr(&un.expr);
-                self.try_move(inner, un.expr.span);
+                self.try_move(inner, un.expr.span, rules);
                 self.push_inst_with_register(expr.ty, |value| Inst::Unary {
                     value,
                     inner,
@@ -488,8 +498,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let lhs = self.lower_expr(&bin.lhs);
                 let rhs = self.lower_expr(&bin.rhs);
 
-                self.try_move(lhs, bin.lhs.span);
-                self.try_move(rhs, bin.rhs.span);
+                self.try_move(lhs, bin.lhs.span, rules);
+                self.try_move(rhs, bin.rhs.span, rules);
 
                 self.push_inst_with_register(expr.ty, |value| Inst::Binary {
                     value,
@@ -501,7 +511,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Cast(cast) => {
                 let inner = self.lower_expr(&cast.expr);
-                self.try_move(inner, cast.expr.span);
+                self.try_move(inner, cast.expr.span, rules);
 
                 self.push_inst_with_register(cast.target, |value| Inst::Cast {
                     value,
@@ -512,8 +522,22 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Member(access) => {
                 let member = access.member.name();
-                let value = self.lower_expr(&access.expr);
-                self.try_partial_move(value, expr.span, member, expr.ty);
+                let member_is_move = self.ty_is_move(expr.ty);
+
+                let value = self.lower_expr_with_rules(
+                    &access.expr,
+                    Rules::new().ignore_moves(!member_is_move),
+                );
+
+                if member_is_move {
+                    self.try_move_with(
+                        value,
+                        MoveKind::Partial(member),
+                        expr.span,
+                        rules,
+                    );
+                }
+
                 if let Some(member_value) = self
                     .members
                     .get(&value)
@@ -728,28 +752,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    pub fn try_move(&mut self, value: ValueId, moved_to: Span) {
-        if let Err(diagnostic) =
-            self.try_move_inner(value, MoveKind::Move, moved_to)
-        {
-            self.cx.db.diagnostics.emit(diagnostic);
-        }
+    pub fn try_move(&mut self, value: ValueId, moved_to: Span, rules: Rules) {
+        self.try_move_with(value, MoveKind::Move, moved_to, rules);
     }
 
-    pub fn try_partial_move(
+    pub fn try_move_with(
         &mut self,
         value: ValueId,
+        kind: MoveKind,
         moved_to: Span,
-        member: Ustr,
-        member_ty: Ty,
+        rules: Rules,
     ) {
-        // If the moved member is copyable, we don't need to move its parent
-        if !self.ty_is_move(member_ty) {
-            return;
-        }
-
         if let Err(diagnostic) =
-            self.try_move_inner(value, MoveKind::Partial(member), moved_to)
+            self.try_move_inner(value, kind, moved_to, rules)
         {
             self.cx.db.diagnostics.emit(diagnostic);
         }
@@ -760,9 +775,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value: ValueId,
         kind: MoveKind,
         moved_to: Span,
+        rules: Rules,
     ) -> Result<(), Diagnostic> {
         // If the moved value is copyable, we don't need to move it
-        if !self.value_is_move(value) {
+        if !self.value_is_move(value) || rules.ignore_moves {
             return Ok(());
         }
 
@@ -896,8 +912,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.scopes
             .iter()
             .find(|s| s.created_values.contains(&value))
-            .expect("to have been created in one of the preceding scopes")
-            .depth
+            .map_or(0, |s| s.depth)
     }
 
     pub fn check_loop_moves(&mut self) {
@@ -938,30 +953,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let state = self.solve_value_state(value);
         self.value_states.insert(self.current_block, value, state.clone());
         state
-    }
-
-    pub fn set_owned(&mut self, value: ValueId) {
-        self.value_states.insert(self.current_block, value, ValueState::Owned);
-    }
-
-    pub fn set_moved(&mut self, value: ValueId, moved_to: Span) {
-        self.value_states.insert(
-            self.current_block,
-            value,
-            ValueState::Moved(moved_to),
-        );
-    }
-
-    pub fn set_partially_moved(
-        &mut self,
-        value: ValueId,
-        moved_members: MovedMembers,
-    ) {
-        self.value_states.insert(
-            self.current_block,
-            value,
-            ValueState::PartiallyMoved(moved_members),
-        );
     }
 
     pub fn solve_value_state(&self, value: ValueId) -> ValueState {
@@ -1051,6 +1042,30 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             TyKind::Param(_) => true,
             _ => false,
         }
+    }
+
+    pub fn set_owned(&mut self, value: ValueId) {
+        self.value_states.insert(self.current_block, value, ValueState::Owned);
+    }
+
+    pub fn set_moved(&mut self, value: ValueId, moved_to: Span) {
+        self.value_states.insert(
+            self.current_block,
+            value,
+            ValueState::Moved(moved_to),
+        );
+    }
+
+    pub fn set_partially_moved(
+        &mut self,
+        value: ValueId,
+        moved_members: MovedMembers,
+    ) {
+        self.value_states.insert(
+            self.current_block,
+            value,
+            ValueState::PartiallyMoved(moved_members),
+        );
     }
 
     #[inline]
@@ -1391,5 +1406,21 @@ struct LoopScope {
 impl LoopScope {
     fn new(end_block: BlockId) -> Self {
         Self { end_block, moved_in: FxHashMap::default() }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct Rules {
+    ignore_moves: bool,
+}
+
+impl Rules {
+    fn new() -> Self {
+        Self { ignore_moves: false }
+    }
+
+    fn ignore_moves(mut self, value: bool) -> Self {
+        self.ignore_moves = value;
+        self
     }
 }

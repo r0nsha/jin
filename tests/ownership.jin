@@ -52,7 +52,7 @@ fn copy() unit = {
 	let a = n.field
 	let b = n.field // Ok
 
-	let w = Wrapper(Num(1))
-	let a = w.num.field
+	let w = { Wrapper(Num(1)) }
+	//let a = {w}.num.field
 	let b = w.num.field // Ok
 }
