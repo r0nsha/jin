@@ -188,7 +188,6 @@ struct LowerBody<'cx, 'db> {
     body: Body,
     value_states: ValueStates,
     scopes: Vec<Scope>,
-    rules: Vec<Rules>,
     current_block: BlockId,
     locals: FxHashMap<DefId, ValueId>,
     members: FxHashMap<ValueId, FxHashMap<Ustr, ValueId>>,
@@ -201,7 +200,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             body: Body::new(),
             value_states: ValueStates::new(),
             scopes: vec![],
-            rules: vec![],
             current_block: BlockId::start(),
             locals: FxHashMap::default(),
             members: FxHashMap::default(),
@@ -257,6 +255,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // println!("{}", self.value_states);
                 // println!("---------------------");
 
+                self.try_move(last_value, body.span, Rules::new());
                 self.exit_scope();
 
                 self.cx.mir.fns.insert(
@@ -279,7 +278,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.position_at(start_blk);
 
                 let value = self.lower_expr(&let_.value);
-
+                self.try_move(value, let_.value.span, Rules::new());
                 self.exit_scope();
 
                 let id = self.cx.mir.globals.insert_with_key(|id| Global {
@@ -432,13 +431,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Block(blk) => {
                 let mut result: Option<ValueId> = None;
-                let mut result_span = expr.span;
 
                 self.enter_scope(ScopeKind::Block, expr.span);
 
                 for expr in &blk.exprs {
                     result = Some(self.lower_expr(expr));
-                    result_span = expr.span;
                 }
 
                 // NOTE: If the block ty is `unit`, we must always return a `unit` value.
@@ -451,7 +448,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     result.unwrap_or_else(|| self.const_unit())
                 };
 
-                self.try_move(result, result_span, rules);
+                // self.try_move(result, result_span, rules);
+                self.move_out(result);
                 self.exit_scope();
 
                 result
@@ -736,20 +734,25 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value: ValueId,
         mut f: impl FnMut(&mut Self, ValueId),
     ) {
-        self.iter_members_aux(value, &mut f);
+        self.walk_members_aux(value, &mut f);
     }
 
-    fn iter_members_aux(
+    fn walk_members_aux(
         &mut self,
         value: ValueId,
         f: &mut impl FnMut(&mut Self, ValueId),
     ) {
         if let Some(members) = self.members.get(&value).cloned() {
             for member in members.values().copied() {
-                self.iter_members_aux(member, f);
+                self.walk_members_aux(member, f);
                 f(self, member);
             }
         }
+    }
+
+    pub fn move_out(&mut self, value: ValueId) {
+        self.scope_mut().created_values.retain(|v| *v != value);
+        self.walk_members(value, Self::move_out);
     }
 
     pub fn try_move(&mut self, value: ValueId, moved_to: Span, rules: Rules) {
