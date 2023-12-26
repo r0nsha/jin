@@ -55,7 +55,7 @@ fn main() unit = {
 
 	let wd = WrapperDuo(Wrapper(Num(1)), Wrapper(Num(2))) // Partial & conditional move destroy (nested structure)
 	if true {
-		//let wd1 = wd.w1
+		let wd1 = wd.w1
 	} else {
 		//let wd2 = wd.w2
 	}

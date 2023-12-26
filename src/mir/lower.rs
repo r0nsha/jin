@@ -669,7 +669,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let value = self.body.create_value(ty, kind);
         self.set_owned(value);
         self.scope_mut().created_values.push(value);
+        self.create_value_members(value, ty);
+        value
+    }
 
+    pub fn create_value_members(&mut self, value: ValueId, ty: Ty) {
         if let Some(fields) = ty.fields(self.cx.db) {
             #[allow(clippy::unnecessary_to_owned)]
             let members: FxHashMap<_, _> = fields
@@ -691,8 +695,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
             self.members.insert(value, members);
         }
-
-        value
     }
 
     pub fn create_value_with_destroy_flag(
@@ -1289,12 +1291,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn set_destroy_flag(&mut self, value: ValueId) {
-        let Some(destroy_flag) = self.body.destroy_flags.get(&value).copied()
-        else {
-            return;
-        };
-        let value = self.const_bool(false);
-        self.push_inst(Inst::Store { value, target: destroy_flag });
+        if let Some(destroy_flag) = self.body.destroy_flags.get(&value).copied()
+        {
+            let value = self.const_bool(false);
+            self.push_inst(Inst::Store { value, target: destroy_flag });
+            self.walk_members(value, Self::set_destroy_flag);
+        }
     }
 
     fn get_value_name(&self, value: ValueId) -> String {
