@@ -6,7 +6,7 @@ type Duo(n1: Num, n2: Num)
 
 fn main() unit = {
 	// Destroy temporary values
-	//Num(1)
+	Num(1)
 	//Wrapper(Num(1))
 
 	// Destroy named values
@@ -45,12 +45,12 @@ fn main() unit = {
 	//let b = duo.n2 // Ok (n1 was moved)
 	//let c = duo.n1 // Error!
 
-	let d2 = Duo(Num(1), Num(2)) // Partial & conditional move destroy (only w2 should be destroyed, conditionally)
-	if true {
-		let d2n1 = d2.n1
-	} else {
-		//let d2n2 = d2.n2
-	}
+	//let d2 = Duo(Num(1), Num(2)) // Partial & conditional move destroy (only w2 should be destroyed, conditionally)
+	//if true {
+	//	let d2n1 = d2.n1
+	//} else {
+	//	//let d2n2 = d2.n2
+	//}
 }
 
 //fn destroy_poly[a](arg: a) unit = {}

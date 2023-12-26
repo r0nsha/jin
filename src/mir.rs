@@ -259,64 +259,19 @@ impl Block {
 
 #[derive(Debug, Clone)]
 pub enum Inst {
-    Local {
-        value: ValueId,
-        init: ValueId,
-    },
-    Store {
-        value: ValueId,
-        target: ValueId,
-    },
-    Destroy {
-        value: ValueId,
-        with_destroyer: bool,
-        destroy_flag: Option<ValueId>,
-        span: Span,
-    },
-    Br {
-        target: BlockId,
-    },
-    BrIf {
-        cond: ValueId,
-        then: BlockId,
-        otherwise: Option<BlockId>,
-    },
-    If {
-        value: ValueId,
-        cond: ValueId,
-        then: ValueId,
-        otherwise: ValueId,
-    },
-    Return {
-        value: ValueId,
-    },
-    Call {
-        value: ValueId,
-        callee: ValueId,
-        args: Vec<ValueId>,
-    },
-    Binary {
-        value: ValueId,
-        lhs: ValueId,
-        rhs: ValueId,
-        op: BinOp,
-        span: Span,
-    },
-    Unary {
-        value: ValueId,
-        inner: ValueId,
-        op: UnOp,
-    },
-    Cast {
-        value: ValueId,
-        inner: ValueId,
-        target: Ty,
-        span: Span,
-    },
-    StrLit {
-        value: ValueId,
-        lit: Ustr,
-    },
+    Local { value: ValueId, init: ValueId },
+    Store { value: ValueId, target: ValueId },
+    Destroy { value: ValueId, destroy_flag: Option<ValueId>, span: Span },
+    Free { value: ValueId, destroy_flag: Option<ValueId>, span: Span },
+    Br { target: BlockId },
+    BrIf { cond: ValueId, then: BlockId, otherwise: Option<BlockId> },
+    If { value: ValueId, cond: ValueId, then: ValueId, otherwise: ValueId },
+    Return { value: ValueId },
+    Call { value: ValueId, callee: ValueId, args: Vec<ValueId> },
+    Binary { value: ValueId, lhs: ValueId, rhs: ValueId, op: BinOp, span: Span },
+    Unary { value: ValueId, inner: ValueId, op: UnOp },
+    Cast { value: ValueId, inner: ValueId, target: Ty, span: Span },
+    StrLit { value: ValueId, lit: Ustr },
 }
 
 #[derive(Debug, Clone)]

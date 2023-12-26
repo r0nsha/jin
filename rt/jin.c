@@ -33,7 +33,7 @@ typedef struct {
 // Built-in functions
 void jin_rt_panic(u8 *msg);
 void *jin_rt_alloc(size_t size);
-void jin_rt_dealloc(void *ptr);
+void jin_rt_free(void *ptr);
 
 void jin_rt_panic(u8 *msg) {
   printf("%s\n", msg);
@@ -50,4 +50,4 @@ FORCE_INLINE void *jin_rt_alloc(size_t size) {
   return ptr;
 }
 
-FORCE_INLINE void jin_rt_dealloc(void *ptr) { free(ptr); }
+FORCE_INLINE void jin_rt_free(void *ptr) { free(ptr); }

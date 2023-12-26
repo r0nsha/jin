@@ -433,7 +433,7 @@ impl<'db> Generator<'db> {
                     self.codegen_destroy_ex(value.clone(), field.ty)
                 {
                     statements.push(destroy_call);
-                    statements.push(stmt(|| util::call_dealloc(value)));
+                    statements.push(stmt(|| util::call_free(value)));
                 }
             }
 
@@ -505,29 +505,37 @@ impl<'db> Generator<'db> {
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
-            Inst::Destroy { value, with_destroyer, destroy_flag, span: _ } => {
-                let dealloc_value =
-                    stmt(|| util::call_dealloc(self.value(state, *value)));
-
-                let stmts = if *with_destroyer {
-                    let destroy_call = self
-                        .codegen_destroy(state, *value)
-                        .unwrap_or_else(|| {
-                            unreachable!(
-                                "tried to destroy value by mistake: {:?}",
-                                state.body.value(*value)
-                            )
-                        });
-
-                    D::intersperse([destroy_call, dealloc_value], D::hardline())
-                } else {
-                    dealloc_value
-                };
+            Inst::Destroy { value, destroy_flag, span: _ } => {
+                let destroy_call =
+                    self.codegen_destroy(state, *value).unwrap_or_else(|| {
+                        unreachable!(
+                            "tried to destroy value by mistake: {:?}",
+                            state.body.value(*value)
+                        )
+                    });
 
                 if let &Some(destroy_flag) = destroy_flag {
-                    util::if_stmt(self.value(state, destroy_flag), stmts, None)
+                    util::if_stmt(
+                        self.value(state, destroy_flag),
+                        destroy_call,
+                        None,
+                    )
                 } else {
-                    stmts
+                    destroy_call
+                }
+            }
+            Inst::Free { value, destroy_flag, span: _ } => {
+                let free_call =
+                    stmt(|| util::call_free(self.value(state, *value)));
+
+                if let &Some(destroy_flag) = destroy_flag {
+                    util::if_stmt(
+                        self.value(state, destroy_flag),
+                        free_call,
+                        None,
+                    )
+                } else {
+                    free_call
                 }
             }
             Inst::Br { target } => goto_stmt(state.body.block(*target)),

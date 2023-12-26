@@ -35,8 +35,8 @@ pub fn call_alloc(ty: D<'_>) -> D<'_> {
     )
 }
 
-pub fn call_dealloc(value: D<'_>) -> D<'_> {
-    call("jin_rt_dealloc", value)
+pub fn call_free(value: D<'_>) -> D<'_> {
+    call("jin_rt_free", value)
 }
 
 pub fn call_panic<'a>(msg: impl std::fmt::Display) -> D<'a> {

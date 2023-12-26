@@ -1135,7 +1135,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                             self.push_inst(Inst::Destroy {
                                 value: member_value,
-                                with_destroyer: true,
                                 destroy_flag: None,
                                 span,
                             });
@@ -1143,12 +1142,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     }
                 }
 
-                self.push_inst(Inst::Destroy {
-                    value,
-                    with_destroyer: false,
-                    destroy_flag: None,
-                    span,
-                });
+                self.push_inst(Inst::Free { value, destroy_flag: None, span });
             }
             ValueState::Moved { moved_to, conditional: true } => {
                 // // Conditional destroy
@@ -1164,10 +1158,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // self.set_value_as_moved(value, moved_to);
                 //
                 // self.position_at(no_destroy_blk);
+                let destroy_flag = Some(self.body.destroy_flags[&value]);
                 self.push_inst(Inst::Destroy {
                     value,
-                    with_destroyer: true,
-                    destroy_flag: Some(self.body.destroy_flags[&value]),
+                    destroy_flag,
                     span: moved_to,
                 });
             }
@@ -1175,7 +1169,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // Unconditional destroy
                 self.push_inst(Inst::Destroy {
                     value,
-                    with_destroyer: true,
                     destroy_flag: None,
                     span,
                 });
@@ -1287,7 +1280,7 @@ impl fmt::Display for BlockState {
         for (value, state) in &self.states {
             writeln!(
                 f,
-                "\tv{} : {}",
+                "- v{} : {}",
                 value.0,
                 match state {
                     ValueState::Owned => "owned".to_string(),
