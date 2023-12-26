@@ -705,6 +705,27 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
+    fn walk_members(
+        &mut self,
+        value: ValueId,
+        mut f: impl FnMut(&mut Self, ValueId),
+    ) {
+        self.iter_members_aux(value, &mut f);
+    }
+
+    fn iter_members_aux(
+        &mut self,
+        value: ValueId,
+        f: &mut impl FnMut(&mut Self, ValueId),
+    ) {
+        if let Some(members) = self.members.get(&value).cloned() {
+            for member in members.values().copied() {
+                self.iter_members_aux(member, f);
+                f(self, member);
+            }
+        }
+    }
+
     pub fn create_untracked_value(
         &mut self,
         ty: Ty,
@@ -761,11 +782,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.set_destroy_flag(value);
                 self.set_moved(value, moved_to);
 
-                if let Some(members) = self.members.get(&value).cloned() {
-                    for member in members.values().copied() {
-                        self.set_moved(member, moved_to);
-                    }
-                }
+                self.walk_members(value, |this, member| {
+                    this.set_moved(member, moved_to);
+                });
 
                 Ok(())
             }
@@ -1205,12 +1224,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn destroy_fields(&mut self, value: ValueId, span: Span) {
-        if let Some(members) = self.members.get(&value) {
-            let members: Vec<_> = members.values().copied().collect();
-            for member in members {
-                self.destroy_value(member, span);
-            }
-        }
+        self.walk_members(value, |this, member| {
+            this.destroy_value(member, span);
+        });
         // if let Some(fields) = self.body.value(value).ty.fields(self.cx.db) {
         //     // Destroy all non-partially-moved fields
         //     let fields = fields.to_vec();
