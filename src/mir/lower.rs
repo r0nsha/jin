@@ -1119,30 +1119,33 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         match self.value_state(value) {
             ValueState::PartiallyMoved { moved_members } => {
-                if let Some(fields) =
-                    self.body.value(value).ty.fields(self.cx.db)
-                {
-                    // Destroy all non-partially-moved fields
-                    let fields = fields.to_vec();
+                // if let Some(fields) =
+                //     self.body.value(value).ty.fields(self.cx.db)
+                // {
+                //     // Destroy all non-partially-moved fields
+                //     let fields = fields.to_vec();
+                //
+                //     for field in fields {
+                //         let name = field.name.name();
+                //         if !moved_members.contains_key(&name) {
+                //             let member_value = self.create_untracked_value(
+                //                 field.ty,
+                //                 ValueKind::Member(value, name),
+                //             );
+                //
+                //             // self.push_inst(Inst::Destroy {
+                //             //     value: member_value,
+                //             //     destroy_flag: None,
+                //             //     span,
+                //             // });
+                //         }
+                //     }
+                // }
 
-                    for field in fields {
-                        let name = field.name.name();
-                        if !moved_members.contains_key(&name) {
-                            let member_value = self.create_untracked_value(
-                                field.ty,
-                                ValueKind::Member(value, name),
-                            );
-
-                            self.push_inst(Inst::Destroy {
-                                value: member_value,
-                                destroy_flag: None,
-                                span,
-                            });
-                        }
-                    }
-                }
-
-                self.push_inst(Inst::Free { value, destroy_flag: None, span });
+                todo!("destory all fields which are not-moved (check in value_states, not in moved_members)");
+                todo!("consider conditionally moved fields");
+                todo!("free value");
+                // self.push_inst(Inst::Free { value, destroy_flag: None, span });
             }
             ValueState::Moved { conditional: true, .. } => {
                 // // Conditional destroy
@@ -1158,17 +1161,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // self.set_value_as_moved(value, moved_to);
                 //
                 // self.position_at(no_destroy_blk);
+
                 let destroy_flag = Some(self.body.destroy_flags[&value]);
-                self.push_inst(Inst::Destroy { value, destroy_flag, span });
+                // self.push_inst(Inst::Destroy { value, destroy_flag, span });
                 self.push_inst(Inst::Free { value, destroy_flag, span });
             }
             _ => {
                 // Unconditional destroy
-                self.push_inst(Inst::Destroy {
-                    value,
-                    destroy_flag: None,
-                    span,
-                });
+                // self.push_inst(Inst::Destroy {
+                //     value,
+                //     destroy_flag: None,
+                //     span,
+                // });
                 self.push_inst(Inst::Free { value, destroy_flag: None, span });
             }
         }
