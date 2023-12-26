@@ -1182,10 +1182,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         match self.value_state(value) {
-            ValueState::PartiallyMoved { .. } => {
-                // self.destroy_fields(value, span);
-                self.push_inst(Inst::Free { value, destroy_flag: None, span });
-            }
             ValueState::Moved { conditional: false, .. } => {
                 // Value has been moved, don't destroy
             }
@@ -1204,14 +1200,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // self.position_at(no_destroy_blk);
 
                 // Conditional destroy
-                // self.destroy_fields(value, span);
-                let destroy_flag = Some(self.body.destroy_flags[&value]);
-                self.push_inst(Inst::Free { value, destroy_flag, span });
+                self.push_inst(Inst::Free {
+                    value,
+                    destroy_flag: Some(self.body.destroy_flags[&value]),
+                    span,
+                });
             }
-            _ => {
+            ValueState::PartiallyMoved { .. } | ValueState::Owned => {
                 // Unconditional destroy
                 self.push_inst(Inst::Free { value, destroy_flag: None, span });
-                // self.destroy_and_free(value, None, span);
             }
         }
     }
@@ -1220,55 +1217,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.walk_members(value, |this, member| {
             this.destroy_value(member, span);
         });
-        // if let Some(fields) = self.body.value(value).ty.fields(self.cx.db) {
-        //     // Destroy all non-partially-moved fields
-        //     let fields = fields.to_vec();
-        //
-        //     for field in fields {
-        //         let name = field.name.name();
-        //
-        //         // PERF: Cache member values instead of linear search
-        //         if let Some(member_value) = self
-        //             .body
-        //             .values()
-        //             .iter()
-        //             .rev()
-        //             .find(|v| v.kind == ValueKind::Member(value, name))
-        //         {
-        //             self.destroy_value(member_value.id, span);
-        //         } else {
-        //             let member_value = self.create_untracked_value(
-        //                 field.ty,
-        //                 ValueKind::Member(value, name),
-        //             );
-        //
-        //             self.destroy_and_free(member_value, None, span);
-        //         }
-        //
-        //         // if !moved_members.contains_key(&name) {
-        //         //     let member_value = self.create_untracked_value(
-        //         //         field.ty,
-        //         //         ValueKind::Member(value, name),
-        //         //     );
-        //         //
-        //         //     // self.push_inst(Inst::Destroy {
-        //         //     //     value: member_value,
-        //         //     //     destroy_flag: None,
-        //         //     //     span,
-        //         //     // });
-        //         // }
-        //     }
-        // }
-    }
-
-    fn destroy_and_free(
-        &mut self,
-        value: ValueId,
-        destroy_flag: Option<ValueId>,
-        span: Span,
-    ) {
-        self.push_inst(Inst::Destroy { value, destroy_flag, span });
-        self.push_inst(Inst::Free { value, destroy_flag, span });
     }
 
     fn create_destroy_flag(&mut self, value: ValueId) {

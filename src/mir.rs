@@ -261,7 +261,6 @@ impl Block {
 pub enum Inst {
     Local { value: ValueId, init: ValueId },
     Store { value: ValueId, target: ValueId },
-    Destroy { value: ValueId, destroy_flag: Option<ValueId>, span: Span },
     Free { value: ValueId, destroy_flag: Option<ValueId>, span: Span },
     Br { target: BlockId },
     BrIf { cond: ValueId, then: BlockId, otherwise: Option<BlockId> },

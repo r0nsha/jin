@@ -339,8 +339,7 @@ impl<'db> ExpandDestroys<'db> {
             destroyed_values.extend(
                 body.block(block_id).insts.iter().filter_map(
                     |inst| match inst {
-                        Inst::Destroy { value, destroy_flag, .. }
-                        | Inst::Free { value, destroy_flag, .. } => {
+                        Inst::Free { value, destroy_flag, .. } => {
                             let should_destroy =
                                 self.should_destroy_value(body, *value);
 
@@ -367,9 +366,7 @@ impl<'db> ExpandDestroys<'db> {
                 | Inst::Store { target: value, .. } => {
                     used_destroy_flags.get(value).copied().unwrap_or(true)
                 }
-                Inst::Destroy { value, .. } | Inst::Free { value, .. } => {
-                    destroyed_values.contains(value)
-                }
+                Inst::Free { value, .. } => destroyed_values.contains(value),
                 _ => true,
             });
         }

@@ -1,7 +1,6 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <stdio.h>
 
 // Macros
 #define FORCE_INLINE __attribute__((always_inline)) inline

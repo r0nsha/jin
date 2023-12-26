@@ -23,7 +23,7 @@ use crate::{
         StaticGlobal, ValueId, ValueKind,
     },
     target::TargetMetrics,
-    ty::{Ty, TyKind},
+    ty::Ty,
 };
 
 const PRELUDE: &str = include_str!("../../rt/jin.c");
@@ -56,7 +56,6 @@ impl<'db> FnState<'db> {
 impl<'db> Generator<'db> {
     pub fn run(mut self) -> Utf8PathBuf {
         self.define_types();
-        self.define_struct_destroys();
         self.predefine_fns();
         self.define_globals();
         self.define_fns();
@@ -141,16 +140,6 @@ impl<'db> Generator<'db> {
         }
 
         self.defining_types = false;
-    }
-
-    pub fn define_struct_destroys(&mut self) {
-        for sid in self.db.structs.keys() {
-            self.create_struct_destroy_entry(sid);
-        }
-
-        for sid in self.db.structs.keys() {
-            self.codegen_struct_destroy(sid);
-        }
     }
 
     pub fn predefine_fns(&mut self) {
@@ -405,58 +394,6 @@ impl<'db> Generator<'db> {
         self.codegen_fn_sig(sig).append(D::space()).append(block(|| statements))
     }
 
-    fn create_struct_destroy_entry(&mut self, sid: StructId) {
-        let struct_info = &self.db[sid];
-        let fn_name = ustr(
-            &self.db[struct_info.def_id]
-                .qpath
-                .clone()
-                .child(ustr("destroy"))
-                .join_with("_"),
-        );
-        self.struct_destroy_fns.insert(sid, fn_name);
-    }
-
-    fn codegen_struct_destroy(&mut self, sid: StructId) {
-        let struct_info = &self.db[sid];
-
-        if struct_info.kind.is_ref() {
-            let param = D::text("this");
-
-            let mut statements = vec![];
-
-            for field in &struct_info.fields {
-                let value =
-                    util::member(param.clone(), field.name.as_str(), true);
-
-                if let Some(destroy_call) =
-                    self.codegen_destroy_ex(value.clone(), field.ty)
-                {
-                    statements.push(destroy_call);
-                    statements.push(stmt(|| util::call_free(value)));
-                }
-            }
-
-            let statements = D::intersperse(statements, D::hardline());
-
-            let fn_name = self.struct_destroy_fns[&sid];
-            let fn_decl_doc = D::text(format!("void {fn_name}"))
-                .append(D::text("("))
-                .append(sid.cty(self))
-                .append(D::space())
-                .append(param)
-                .append(D::text(")"));
-
-            let fn_def_doc = fn_decl_doc
-                .clone()
-                .append(D::space())
-                .append(block(|| statements));
-
-            self.fn_decls.push(stmt(|| fn_decl_doc));
-            self.fn_defs.push(fn_def_doc);
-        }
-    }
-
     fn codegen_block(
         &mut self,
         state: &mut FnState<'db>,
@@ -505,25 +442,6 @@ impl<'db> Generator<'db> {
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
-            Inst::Destroy { value, destroy_flag, span: _ } => {
-                let destroy_call =
-                    self.codegen_destroy(state, *value).unwrap_or_else(|| {
-                        unreachable!(
-                            "tried to destroy value by mistake: {:?}",
-                            state.body.value(*value)
-                        )
-                    });
-
-                if let &Some(destroy_flag) = destroy_flag {
-                    util::if_stmt(
-                        self.value(state, destroy_flag),
-                        destroy_call,
-                        None,
-                    )
-                } else {
-                    destroy_call
-                }
-            }
             Inst::Free { value, destroy_flag, span: _ } => {
                 let free_call =
                     stmt(|| util::call_free(self.value(state, *value)));
@@ -614,36 +532,6 @@ impl<'db> Generator<'db> {
                 self.value_assign(state, *value, || str_value(lit))
             }
         }
-    }
-
-    fn codegen_destroy(
-        &self,
-        state: &FnState<'db>,
-        value: ValueId,
-    ) -> Option<D<'db>> {
-        let ty = state.body.value(value).ty;
-        self.codegen_destroy_ex(self.value(state, value), ty)
-    }
-
-    fn codegen_destroy_ex(&self, value: D<'db>, ty: Ty) -> Option<D<'db>> {
-        self.get_ty_destroy_fn(ty)
-            .map(|fn_name| Self::codegen_destroy_call(fn_name, value))
-    }
-
-    fn get_ty_destroy_fn(&self, ty: Ty) -> Option<Ustr> {
-        match ty.kind() {
-            TyKind::Struct(sid) => self.struct_destroy_fns.get(sid).copied(),
-            _ => None,
-        }
-    }
-
-    fn codegen_destroy_call(destroy_fn: Ustr, value: D<'db>) -> D<'db> {
-        stmt(|| {
-            D::text(destroy_fn.as_str())
-                .append(D::text("("))
-                .append(value)
-                .append(D::text(")"))
-        })
     }
 
     pub fn value_assign(
