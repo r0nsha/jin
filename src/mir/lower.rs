@@ -190,6 +190,7 @@ struct LowerBody<'cx, 'db> {
     scopes: Vec<Scope>,
     current_block: BlockId,
     locals: FxHashMap<DefId, ValueId>,
+    members: FxHashMap<ValueId, FxHashMap<Ustr, ValueId>>,
 }
 
 impl<'cx, 'db> LowerBody<'cx, 'db> {
@@ -201,6 +202,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             scopes: vec![],
             current_block: BlockId::start(),
             locals: FxHashMap::default(),
+            members: FxHashMap::default(),
         }
     }
 
@@ -219,10 +221,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     match &param.pat {
                         Pat::Name(name) => {
                             let id = name.id;
-                            let value = self
-                                .create_value(param.ty, ValueKind::Local(id));
+                            let value = self.create_value_with_destroy_flag(
+                                param.ty,
+                                ValueKind::Local(id),
+                            );
                             self.locals.insert(id, value);
-                            self.create_destroy_flag(value);
                         }
                         Pat::Discard(_) => (),
                     }
@@ -336,6 +339,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 };
 
                 // NOTE: The lhs needs to be destroyed before it's assigned to
+                self.destroy_fields(lhs, assign.lhs.span);
                 self.destroy_value(lhs, assign.lhs.span);
                 self.push_inst(Inst::Store { value: rhs, target: lhs });
 
@@ -510,7 +514,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let member = access.member.name();
                 let value = self.lower_expr(&access.expr);
                 self.try_partial_move(value, expr.span, member, expr.ty);
-                self.create_value(expr.ty, ValueKind::Member(value, member))
+                if let Some(member_value) = self
+                    .members
+                    .get(&value)
+                    .and_then(|members| members.get(&member))
+                {
+                    *member_value
+                } else {
+                    self.create_value(expr.ty, ValueKind::Member(value, member))
+                }
             }
             hir::ExprKind::Name(name) => {
                 self.lower_name(name.id, &name.instantiation)
@@ -657,6 +669,39 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let value = self.body.create_value(ty, kind);
         self.set_owned(value);
         self.scope_mut().created_values.push(value);
+
+        if let Some(fields) = ty.fields(self.cx.db) {
+            #[allow(clippy::unnecessary_to_owned)]
+            let members: FxHashMap<_, _> = fields
+                .to_vec()
+                .into_iter()
+                .filter_map(|field| {
+                    let name = field.name.name();
+                    self.ty_is_move(field.ty).then(|| {
+                        (
+                            name,
+                            self.create_value_with_destroy_flag(
+                                field.ty,
+                                ValueKind::Member(value, name),
+                            ),
+                        )
+                    })
+                })
+                .collect();
+
+            self.members.insert(value, members);
+        }
+
+        value
+    }
+
+    pub fn create_value_with_destroy_flag(
+        &mut self,
+        ty: Ty,
+        kind: ValueKind,
+    ) -> ValueId {
+        let value = self.create_value(ty, kind);
+        self.create_destroy_flag(value);
         value
     }
 
@@ -715,6 +760,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             (ValueState::Owned, MoveKind::Move) => {
                 self.set_destroy_flag(value);
                 self.set_moved(value, moved_to);
+
+                if let Some(members) = self.members.get(&value).cloned() {
+                    for member in members.values().copied() {
+                        self.set_moved(member, moved_to);
+                    }
+                }
+
                 Ok(())
             }
             (ValueState::Owned, MoveKind::Partial(member)) => {
@@ -1119,7 +1171,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         match self.value_state(value) {
             ValueState::PartiallyMoved { .. } => {
-                self.destroy_fields(value, span);
+                // self.destroy_fields(value, span);
                 self.push_inst(Inst::Free { value, destroy_flag: None, span });
             }
             ValueState::Moved { conditional: false, .. } => {
@@ -1140,57 +1192,64 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // self.position_at(no_destroy_blk);
 
                 // Conditional destroy
-                self.destroy_fields(value, span);
+                // self.destroy_fields(value, span);
                 let destroy_flag = Some(self.body.destroy_flags[&value]);
                 self.push_inst(Inst::Free { value, destroy_flag, span });
             }
             _ => {
                 // Unconditional destroy
-                self.destroy_and_free(value, None, span);
+                self.push_inst(Inst::Free { value, destroy_flag: None, span });
+                // self.destroy_and_free(value, None, span);
             }
         }
     }
 
     fn destroy_fields(&mut self, value: ValueId, span: Span) {
-        if let Some(fields) = self.body.value(value).ty.fields(self.cx.db) {
-            // Destroy all non-partially-moved fields
-            let fields = fields.to_vec();
-
-            for field in fields {
-                let name = field.name.name();
-
-                // PERF: Cache member values instead of linear search
-                if let Some(member_value) = self
-                    .body
-                    .values()
-                    .iter()
-                    .rev()
-                    .find(|v| v.kind == ValueKind::Member(value, name))
-                {
-                    self.destroy_value(member_value.id, span);
-                } else {
-                    let member_value = self.create_untracked_value(
-                        field.ty,
-                        ValueKind::Member(value, name),
-                    );
-
-                    self.destroy_and_free(member_value, None, span);
-                }
-
-                // if !moved_members.contains_key(&name) {
-                //     let member_value = self.create_untracked_value(
-                //         field.ty,
-                //         ValueKind::Member(value, name),
-                //     );
-                //
-                //     // self.push_inst(Inst::Destroy {
-                //     //     value: member_value,
-                //     //     destroy_flag: None,
-                //     //     span,
-                //     // });
-                // }
+        if let Some(members) = self.members.get(&value) {
+            let members: Vec<_> = members.values().copied().collect();
+            for member in members {
+                self.destroy_value(member, span);
             }
         }
+        // if let Some(fields) = self.body.value(value).ty.fields(self.cx.db) {
+        //     // Destroy all non-partially-moved fields
+        //     let fields = fields.to_vec();
+        //
+        //     for field in fields {
+        //         let name = field.name.name();
+        //
+        //         // PERF: Cache member values instead of linear search
+        //         if let Some(member_value) = self
+        //             .body
+        //             .values()
+        //             .iter()
+        //             .rev()
+        //             .find(|v| v.kind == ValueKind::Member(value, name))
+        //         {
+        //             self.destroy_value(member_value.id, span);
+        //         } else {
+        //             let member_value = self.create_untracked_value(
+        //                 field.ty,
+        //                 ValueKind::Member(value, name),
+        //             );
+        //
+        //             self.destroy_and_free(member_value, None, span);
+        //         }
+        //
+        //         // if !moved_members.contains_key(&name) {
+        //         //     let member_value = self.create_untracked_value(
+        //         //         field.ty,
+        //         //         ValueKind::Member(value, name),
+        //         //     );
+        //         //
+        //         //     // self.push_inst(Inst::Destroy {
+        //         //     //     value: member_value,
+        //         //     //     destroy_flag: None,
+        //         //     //     span,
+        //         //     // });
+        //         // }
+        //     }
+        // }
     }
 
     fn destroy_and_free(
