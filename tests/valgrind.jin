@@ -46,10 +46,10 @@ fn main() unit = {
 	//let c = duo.n1 // Error!
 
 	let d2 = Duo(Num(1), Num(2)) // Partial & conditional move destroy (only w2 should be destroyed, conditionally)
-	if false {
+	if true {
 		let d2n1 = d2.n1
 	} else {
-		//let d2n2 = d2.n2
+		let d2n2 = d2.n2
 	}
 }
 

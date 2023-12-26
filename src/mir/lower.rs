@@ -1113,7 +1113,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn destroy_value(&mut self, value: ValueId, span: Span) {
-        if !self.should_destroy_value(value) {
+        if !self.value_is_move(value) {
             return;
         }
 
@@ -1121,6 +1121,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             ValueState::PartiallyMoved { .. } => {
                 self.destroy_fields(value, span);
                 self.push_inst(Inst::Free { value, destroy_flag: None, span });
+            }
+            ValueState::Moved { conditional: false, .. } => {
+                // Value has been moved, don't destroy
             }
             ValueState::Moved { conditional: true, .. } => {
                 // let destroy_blk = self.body.create_block("destroy");
@@ -1173,6 +1176,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                     self.destroy_and_free(member_value, None, span);
                 }
+
                 // if !moved_members.contains_key(&name) {
                 //     let member_value = self.create_untracked_value(
                 //         field.ty,
@@ -1197,13 +1201,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) {
         self.push_inst(Inst::Destroy { value, destroy_flag, span });
         self.push_inst(Inst::Free { value, destroy_flag, span });
-    }
-
-    fn should_destroy_value(&mut self, value: ValueId) -> bool {
-        !matches!(
-            self.value_state(value),
-            ValueState::Moved { conditional: false, .. }
-        ) && self.value_is_move(value)
     }
 
     fn create_destroy_flag(&mut self, value: ValueId) {
