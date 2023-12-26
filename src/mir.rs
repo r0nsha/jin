@@ -281,7 +281,7 @@ pub struct Value {
     pub kind: ValueKind,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ValueKind {
     // A temporary or unnamed value, with a possible alias
     Register(Option<Ustr>),
@@ -302,7 +302,7 @@ pub enum ValueKind {
     Member(ValueId, Ustr),
 }
 
-#[derive(Debug, Clone, From)]
+#[derive(Debug, Clone, PartialEq, From)]
 pub enum Const {
     Str(Ustr),
     Int(i128),
