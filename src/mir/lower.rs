@@ -728,14 +728,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    pub fn create_untracked_value(
-        &mut self,
-        ty: Ty,
-        kind: ValueKind,
-    ) -> ValueId {
-        self.body.create_value(ty, kind)
-    }
-
     pub fn try_move(&mut self, value: ValueId, moved_to: Span) {
         if let Err(diagnostic) =
             self.try_move_inner(value, MoveKind::Move, moved_to)
@@ -783,11 +775,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             (ValueState::Owned, MoveKind::Move) => {
                 self.set_destroy_flag(value);
                 self.set_moved(value, moved_to);
-
                 self.walk_members(value, |this, member| {
+                    this.set_destroy_flag(member);
                     this.set_moved(member, moved_to);
                 });
-
                 Ok(())
             }
             (ValueState::Owned, MoveKind::Partial(member)) => {
