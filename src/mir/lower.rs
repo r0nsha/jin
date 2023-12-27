@@ -777,12 +777,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> Result<(), Diagnostic> {
         self.check_if_moved(value, moved_to)?;
 
-        // If the value is copy, we don't need to move it
+        // If the value is copy, we don't need to move it.
+        // Just check that its parents can be used.
         if !self.value_is_move(value) {
             self.walk_parents(value, |this, parent| {
                 this.check_if_moved(parent, moved_to)
             })?;
-
             return Ok(());
         }
 
