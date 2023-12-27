@@ -9,7 +9,7 @@ fn main() unit = {
 	use_after_move_scoped()	
 	move_out_of_global()
 	move_into_loop()
-	//copy()
+	copy()
 	//assign_not_moved()
 }
 
@@ -44,19 +44,19 @@ fn move_into_loop() unit = {
 	}
 }
 
-//fn copy() unit = {
-//	let n = 1
-//	let a = n
-//	let b = n // Ok
-//
-//	let n = Num(1)
-//	let a = n.field
-//	let b = n.field // Ok
-//
-//	let w = { Wrapper(Num(1)) }
-//	let a = w.num.field
-//	let b = w.num.field // Ok
-//}
+fn copy() unit = {
+	let n = 1
+	let a = n
+	let b = n // Ok
+
+	let n = Num(1)
+	let a = n.field
+	let b = n.field // Ok
+
+	let w = { Wrapper(Num(1)) }
+	let a = w.num.field
+	let b = w.num.field // Ok
+}
 
 //fn assign_not_moved() unit = {
 //	let mut num = Num(1)
