@@ -33,7 +33,6 @@ pub struct Mir {
     pub fn_sigs: IdMap<FnSigId, FnSig>,
     pub fns: FxHashMap<FnSigId, Fn>,
     pub globals: IdMap<GlobalId, Global>,
-    pub struct_ctors: FxHashMap<StructId, FnSigId>,
     pub main_fn: Option<FnSigId>,
 }
 
@@ -43,7 +42,6 @@ impl Mir {
             fn_sigs: IdMap::new(),
             fns: FxHashMap::default(),
             globals: IdMap::new(),
-            struct_ctors: FxHashMap::default(),
             main_fn: None,
         }
     }

@@ -28,6 +28,7 @@ struct Lower<'db> {
     mir: Mir,
     id_to_fn_sig: FxHashMap<DefId, FnSigId>,
     id_to_global: FxHashMap<DefId, GlobalId>,
+    struct_ctors: FxHashMap<StructId, FnSigId>,
 }
 
 impl<'db> Lower<'db> {
@@ -38,6 +39,7 @@ impl<'db> Lower<'db> {
             mir: Mir::new(),
             id_to_fn_sig: FxHashMap::default(),
             id_to_global: FxHashMap::default(),
+            struct_ctors: FxHashMap::default(),
         }
     }
 
@@ -110,13 +112,13 @@ impl<'db> Lower<'db> {
     }
 
     fn get_or_create_struct_ctor(&mut self, sid: StructId) -> FnSigId {
-        if let Some(sig_id) = self.mir.struct_ctors.get(&sid) {
+        if let Some(sig_id) = self.struct_ctors.get(&sid) {
             return *sig_id;
         }
 
         // TODO: doesn't work for polymorphic structs...
         let sig_id = self.create_struct_ctor(sid);
-        self.mir.struct_ctors.insert(sid, sig_id);
+        self.struct_ctors.insert(sid, sig_id);
 
         sig_id
     }
