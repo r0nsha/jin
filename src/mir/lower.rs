@@ -1,4 +1,4 @@
-use std::{fmt, mem};
+use std::{fmt, mem, ops};
 
 use indexmap::IndexMap;
 use itertools::Itertools as _;
@@ -735,6 +735,27 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
+    fn walk_parents(
+        &mut self,
+        value: ValueId,
+        mut f: impl FnMut(&mut Self, ValueId) -> Result<(), Diagnostic>,
+    ) -> Result<(), Diagnostic> {
+        self.walk_parents_aux(value, &mut f)
+    }
+
+    fn walk_parents_aux(
+        &mut self,
+        value: ValueId,
+        f: &mut impl FnMut(&mut Self, ValueId) -> Result<(), Diagnostic>,
+    ) -> Result<(), Diagnostic> {
+        if let &ValueKind::Member(parent, _) = &self.body.value(value).kind {
+            f(self, parent)?;
+            self.walk_parents_aux(parent, f)
+        } else {
+            Ok(())
+        }
+    }
+
     pub fn move_out(&mut self, value: ValueId) {
         let scope = self.scope_mut();
         scope.created_values.retain(|v| *v != value);
@@ -754,27 +775,43 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         moved_to: Span,
         rules: Rules,
     ) -> Result<(), Diagnostic> {
+        self.check_if_moved(value, moved_to)?;
+
+        // If the value is copy, we don't need to move it
+        if !self.value_is_move(value) {
+            self.walk_parents(value, |this, parent| {
+                this.check_if_moved(parent, moved_to)
+            })?;
+
+            return Ok(());
+        }
+
+        // Mark the value and its members as moved.
+        // Mark its parents (if any) as partially moved
+        self.set_moved(value, moved_to);
+        self.walk_members(value, |this, member| {
+            this.set_moved(member, moved_to);
+        });
+        self.walk_parents(value, |this, parent| {
+            this.set_partially_moved(parent, moved_to);
+            Ok(())
+        })?;
+
+        self.insert_loop_move(value, moved_to);
+        self.check_move_out_of_global(value, moved_to)?;
+
+        self.set_destroy_flag(value);
+
+        Ok(())
+    }
+
+    pub fn check_if_moved(
+        &mut self,
+        value: ValueId,
+        moved_to: Span,
+    ) -> Result<(), Diagnostic> {
         match self.value_state(value) {
-            ValueState::Owned => {
-                // If the value is copy, we don't need to move it
-                if !self.value_is_move(value) {
-                    return Ok(());
-                }
-
-                self.set_moved(value, moved_to);
-                self.walk_members(value, |this, member| {
-                    this.set_moved(member, moved_to);
-                });
-
-                self.partially_move_parents(value, moved_to);
-
-                self.insert_loop_move(value, moved_to);
-                self.check_move_out_of_global(value, moved_to)?;
-
-                self.set_destroy_flag(value);
-
-                Ok(())
-            }
+            ValueState::Owned => Ok(()),
             ValueState::Moved(already_moved_to)
             | ValueState::MaybeMoved(already_moved_to) => Err(self
                 .use_after_move_err(
@@ -792,13 +829,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     "partial move",
                     "partially moved",
                 )),
-        }
-    }
-
-    fn partially_move_parents(&mut self, value: ValueId, moved_to: Span) {
-        if let &ValueKind::Member(parent, _) = &self.body.value(value).kind {
-            self.set_partially_moved(parent, moved_to);
-            self.partially_move_parents(parent, moved_to);
         }
     }
 
