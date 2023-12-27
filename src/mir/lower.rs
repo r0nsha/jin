@@ -328,6 +328,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Assign(assign) => {
                 let lhs = self.lower_expr(&assign.lhs);
+                self.try_use(lhs, assign.lhs.span);
+
                 let rhs = self.lower_expr(&assign.rhs);
                 self.try_move(rhs, assign.rhs.span);
 
@@ -357,10 +359,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 self.position_at(then_blk);
                 let then_value = self.lower_expr(&if_.then);
+                self.try_use(then_value, if_.then.span);
                 self.push_br(merge_blk);
 
                 self.position_at(else_blk);
                 let else_value = self.lower_expr(&if_.otherwise);
+                self.try_use(else_value, if_.otherwise.span);
                 self.push_br(merge_blk);
 
                 self.position_at(merge_blk);
@@ -386,6 +390,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 if let Some(cond_expr) = &loop_.cond {
                     let cond = self.lower_expr(cond_expr);
                     self.try_move(cond, cond_expr.span);
+
                     let not_cond = self.push_inst_with_register(
                         self.cx.db.types.bool,
                         |value| Inst::Unary {
@@ -488,9 +493,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Binary(bin) => {
                 let lhs = self.lower_expr(&bin.lhs);
-                let rhs = self.lower_expr(&bin.rhs);
-
                 self.try_move(lhs, bin.lhs.span);
+
+                let rhs = self.lower_expr(&bin.rhs);
                 self.try_move(rhs, bin.rhs.span);
 
                 self.push_inst_with_register(expr.ty, |value| Inst::Binary {
@@ -527,7 +532,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
             }
             hir::ExprKind::Name(name) => {
-                self.lower_name(name.id, &name.instantiation, expr.span)
+                self.lower_name(name.id, &name.instantiation)
             }
             hir::ExprKind::Lit(lit) => {
                 let value = match lit {
@@ -547,7 +552,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         &mut self,
         id: DefId,
         instantiation: &Instantiation,
-        span: Span,
     ) -> ValueId {
         match self.cx.db[id].kind.as_ref() {
             DefKind::Fn(_) => {
@@ -571,11 +575,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     ValueKind::Global(id),
                 )
             }
-            DefKind::Variable => {
-                let value = self.locals[&id];
-                self.report_if_moved(value, span);
-                value
-            }
+            DefKind::Variable => self.locals[&id],
             DefKind::Struct(sid) => {
                 let id = self.cx.get_or_create_struct_ctor(*sid);
                 self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
@@ -824,7 +824,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         Ok(())
     }
 
-    pub fn report_if_moved(&mut self, value: ValueId, moved_to: Span) {
+    pub fn try_use(&mut self, value: ValueId, moved_to: Span) {
         if let Err(diagnostic) = self.check_if_moved(value, moved_to) {
             self.cx.db.diagnostics.emit(diagnostic);
         }
