@@ -7,7 +7,7 @@ use super::{lexer, parser};
 use crate::{
     ast::{Ast, Module},
     db::{Db, ModuleInfo},
-    diagnostics::Diagnostic,
+    diagnostics::DiagnosticResult,
     span::SourceId,
 };
 
@@ -35,7 +35,7 @@ fn parse_module(db: &mut Db, ast: &mut Ast, source_id: SourceId) {
 fn parse_module_inner(
     db: &mut Db,
     source_id: SourceId,
-) -> Result<(Module, FxHashSet<Utf8PathBuf>), Diagnostic> {
+) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
     let (mut module, paths) = {
         let source =
             &Ref::map(db.sources.borrow(), |s| s.get(source_id).unwrap());

@@ -12,7 +12,7 @@ use crate::{
         StructTyField, TyDef, TyDefKind, TyParam,
     },
     db::{Db, DefId, ExternLib, StructKind},
-    diagnostics::{Diagnostic, Label},
+    diagnostics::{Diagnostic, DiagnosticResult, Label},
     macros::create_bool_enum,
     middle::{
         BinOp, Mutability, NamePat, Pat, TyExpr, TyExprFn, TyExprName, UnOp,
@@ -28,7 +28,7 @@ pub fn parse(
     db: &Db,
     source: &Source,
     tokens: Vec<Token>,
-) -> ParseResult<(Module, FxHashSet<Utf8PathBuf>)> {
+) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
     let name =
         QPath::from_path(&db.main_package().root_path, source.path()).unwrap();
     let is_main = source.id() == db.main_source().id();
@@ -64,7 +64,7 @@ impl<'a> Parser<'a> {
         source_id: SourceId,
         name: QPath,
         is_main: bool,
-    ) -> ParseResult<Module> {
+    ) -> DiagnosticResult<Module> {
         let mut module = Module::new(source_id, name, is_main);
 
         while !self.eof() {
@@ -74,7 +74,7 @@ impl<'a> Parser<'a> {
         Ok(module)
     }
 
-    fn parse_top_level(&mut self) -> ParseResult<Item> {
+    fn parse_top_level(&mut self) -> DiagnosticResult<Item> {
         if let Some(item) = self.maybe_parse_item()? {
             Ok(item)
         } else {
@@ -83,7 +83,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn maybe_parse_item(&mut self) -> ParseResult<Option<Item>> {
+    fn maybe_parse_item(&mut self) -> DiagnosticResult<Option<Item>> {
         let attrs = self.parse_attrs()?;
 
         if self.is(TokenKind::Fn) {
@@ -132,7 +132,7 @@ impl<'a> Parser<'a> {
         &mut self,
         attrs: &[Attr],
         start: Span,
-    ) -> Result<ExternImport, Diagnostic> {
+    ) -> DiagnosticResult<ExternImport> {
         let path_tok = self.eat(TokenKind::empty_str())?;
         let path = path_tok.str_value();
         let relative_to = self.parent_path().unwrap();
@@ -149,7 +149,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_attrs(&mut self) -> ParseResult<Vec<Attr>> {
+    fn parse_attrs(&mut self) -> DiagnosticResult<Vec<Attr>> {
         let mut attrs = vec![];
 
         while self.is(TokenKind::At) {
@@ -159,7 +159,7 @@ impl<'a> Parser<'a> {
         Ok(attrs)
     }
 
-    fn parse_attr(&mut self) -> ParseResult<Attr> {
+    fn parse_attr(&mut self) -> DiagnosticResult<Attr> {
         let (kind, span) = self.parse_attr_kind()?;
 
         let value = if self.is(TokenKind::OpenParen) {
@@ -173,7 +173,7 @@ impl<'a> Parser<'a> {
         Ok(Attr { kind, value, span })
     }
 
-    fn parse_attr_kind(&mut self) -> ParseResult<(AttrKind, Span)> {
+    fn parse_attr_kind(&mut self) -> DiagnosticResult<(AttrKind, Span)> {
         let ident = self.eat_ident()?;
         let attr_name = ident.str_value().as_str();
 
@@ -189,7 +189,7 @@ impl<'a> Parser<'a> {
         Ok((kind, ident.span))
     }
 
-    fn parse_fn(&mut self, attrs: Attrs) -> ParseResult<Fn> {
+    fn parse_fn(&mut self, attrs: Attrs) -> DiagnosticResult<Fn> {
         if self.is(TokenKind::Extern) {
             let name_ident = self.eat_ident()?;
             let vis = self.parse_vis();
@@ -236,7 +236,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_let(&mut self, attrs: Attrs) -> ParseResult<Let> {
+    fn parse_let(&mut self, attrs: Attrs) -> DiagnosticResult<Let> {
         let start = self.last_span();
         let pat = self.parse_pat()?;
 
@@ -256,7 +256,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_extern_let(&mut self, attrs: Attrs) -> ParseResult<ExternLet> {
+    fn parse_extern_let(&mut self, attrs: Attrs) -> DiagnosticResult<ExternLet> {
         let start = self.last_span();
 
         let mutability = self.parse_optional_mutability().unwrap_or_default();
@@ -278,7 +278,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_ty_def(&mut self, attrs: Attrs) -> ParseResult<TyDef> {
+    fn parse_ty_def(&mut self, attrs: Attrs) -> DiagnosticResult<TyDef> {
         let start = self.last_span();
 
         let ident = self.eat_ident()?;
@@ -290,7 +290,7 @@ impl<'a> Parser<'a> {
         Ok(TyDef { attrs, word: ident.word(), vis, kind, span })
     }
 
-    fn parse_ty_def_kind(&mut self) -> ParseResult<TyDefKind> {
+    fn parse_ty_def_kind(&mut self) -> DiagnosticResult<TyDefKind> {
         if self.is(TokenKind::Extern) {
             self.parse_struct_ty_def(StructKind::Extern)
         } else if self.peek_is(TokenKind::OpenParen) {
@@ -308,7 +308,7 @@ impl<'a> Parser<'a> {
     fn parse_struct_ty_def(
         &mut self,
         kind: StructKind,
-    ) -> ParseResult<TyDefKind> {
+    ) -> DiagnosticResult<TyDefKind> {
         let (fields, _) = self.parse_list(
             TokenKind::OpenParen,
             TokenKind::CloseParen,
@@ -328,7 +328,7 @@ impl<'a> Parser<'a> {
         Ok(TyDefKind::Struct(StructTyDef { kind, fields }))
     }
 
-    fn parse_pat(&mut self) -> ParseResult<Pat> {
+    fn parse_pat(&mut self) -> DiagnosticResult<Pat> {
         let mutability = self.parse_optional_mutability();
         let tok = self.eat_any()?;
 
@@ -375,7 +375,7 @@ impl<'a> Parser<'a> {
         name: Word,
         allow_ty_params: AllowTyParams,
         require_ret_ty: RequireRetTy,
-    ) -> ParseResult<(FnSig, bool)> {
+    ) -> DiagnosticResult<(FnSig, bool)> {
         let ty_params = if allow_ty_params == AllowTyParams::Yes {
             self.parse_optional_ty_params()?
         } else {
@@ -393,7 +393,7 @@ impl<'a> Parser<'a> {
         Ok((FnSig { word: name, ty_params, params, ret }, is_c_variadic))
     }
 
-    fn parse_optional_ty_params(&mut self) -> ParseResult<Vec<TyParam>> {
+    fn parse_optional_ty_params(&mut self) -> DiagnosticResult<Vec<TyParam>> {
         self.parse_list_optional(
             TokenKind::OpenBracket,
             TokenKind::CloseBracket,
@@ -405,7 +405,7 @@ impl<'a> Parser<'a> {
         .map(|(t, _)| t)
     }
 
-    fn parse_optional_ty_args(&mut self) -> ParseResult<Option<Vec<TyExpr>>> {
+    fn parse_optional_ty_args(&mut self) -> DiagnosticResult<Option<Vec<TyExpr>>> {
         if self.peek_is(TokenKind::OpenBracket) {
             let args = self.parse_ty_args().map(|(t, _)| t)?;
             Ok(Some(args))
@@ -414,7 +414,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_ty_args(&mut self) -> ParseResult<(Vec<TyExpr>, Span)> {
+    fn parse_ty_args(&mut self) -> DiagnosticResult<(Vec<TyExpr>, Span)> {
         self.parse_list(
             TokenKind::OpenBracket,
             TokenKind::CloseBracket,
@@ -422,7 +422,7 @@ impl<'a> Parser<'a> {
         )
     }
 
-    fn parse_fn_params(&mut self) -> ParseResult<(Vec<FnParam>, bool)> {
+    fn parse_fn_params(&mut self) -> DiagnosticResult<(Vec<FnParam>, bool)> {
         let mut is_c_variadic = false;
 
         let (params, _) = self.parse_list(
@@ -449,7 +449,7 @@ impl<'a> Parser<'a> {
         Ok((params, is_c_variadic))
     }
 
-    fn parse_block(&mut self) -> ParseResult<Expr> {
+    fn parse_block(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
         let mut stmts = vec![];
 
@@ -463,7 +463,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_stmt(&mut self) -> ParseResult<Expr> {
+    fn parse_stmt(&mut self) -> DiagnosticResult<Expr> {
         if self.is(TokenKind::Let) {
             let let_ = self.parse_let(Attrs::new())?;
             Ok(Expr::Let(let_))
@@ -473,7 +473,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_assign(&mut self, expr: Expr) -> ParseResult<Expr> {
+    fn parse_assign(&mut self, expr: Expr) -> DiagnosticResult<Expr> {
         if self.is(TokenKind::Eq) {
             let rhs = self.parse_expr()?;
             let span = expr.span().merge(rhs.span());
@@ -505,7 +505,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn parse_return(&mut self) -> ParseResult<Expr> {
+    fn parse_return(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
 
         let expr = match self.token() {
@@ -520,7 +520,7 @@ impl<'a> Parser<'a> {
         Ok(Expr::Return { expr, span })
     }
 
-    fn parse_expr(&mut self) -> ParseResult<Expr> {
+    fn parse_expr(&mut self) -> DiagnosticResult<Expr> {
         let mut expr_stack: Vec<Expr> = vec![];
         let mut op_stack: Vec<BinOp> = vec![];
         let mut last_precedence = usize::MAX;
@@ -601,12 +601,12 @@ impl<'a> Parser<'a> {
         Ok(expr_stack.into_iter().next().unwrap())
     }
 
-    fn parse_operand(&mut self) -> ParseResult<Expr> {
+    fn parse_operand(&mut self) -> DiagnosticResult<Expr> {
         let atom = self.parse_atom()?;
         self.parse_postfix(atom)
     }
 
-    fn parse_atom(&mut self) -> ParseResult<Expr> {
+    fn parse_atom(&mut self) -> DiagnosticResult<Expr> {
         let tok = self.eat_any()?;
 
         let expr = match tok.kind {
@@ -676,7 +676,7 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn parse_ty(&mut self) -> ParseResult<TyExpr> {
+    fn parse_ty(&mut self) -> DiagnosticResult<TyExpr> {
         let tok = self.eat_any()?;
 
         let ty = match tok.kind {
@@ -705,7 +705,7 @@ impl<'a> Parser<'a> {
         Ok(ty)
     }
 
-    fn parse_fn_ty(&mut self) -> ParseResult<TyExprFn> {
+    fn parse_fn_ty(&mut self) -> DiagnosticResult<TyExprFn> {
         let start = self.last_span();
         let (params, is_c_variadic) = self.parse_fn_ty_params()?;
         let ret = self.parse_ty()?;
@@ -718,7 +718,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_fn_ty_params(&mut self) -> ParseResult<(Vec<TyExpr>, bool)> {
+    fn parse_fn_ty_params(&mut self) -> DiagnosticResult<(Vec<TyExpr>, bool)> {
         let mut is_c_variadic = false;
 
         let (params, _) = self.parse_list(
@@ -737,7 +737,7 @@ impl<'a> Parser<'a> {
         Ok((params, is_c_variadic))
     }
 
-    fn parse_if(&mut self) -> ParseResult<Expr> {
+    fn parse_if(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
         let cond = self.parse_expr()?;
 
@@ -773,7 +773,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_loop(&mut self) -> ParseResult<Expr> {
+    fn parse_loop(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
 
         let cond = if self.is(TokenKind::If) {
@@ -790,7 +790,7 @@ impl<'a> Parser<'a> {
         Ok(Expr::Loop { cond, expr: Box::new(expr), span })
     }
 
-    fn parse_postfix(&mut self, mut expr: Expr) -> ParseResult<Expr> {
+    fn parse_postfix(&mut self, mut expr: Expr) -> DiagnosticResult<Expr> {
         while let Some(tok) = self.token() {
             expr = match tok.kind {
                 TokenKind::OpenParen => self.parse_call(expr)?,
@@ -832,13 +832,13 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    fn parse_call(&mut self, expr: Expr) -> ParseResult<Expr> {
+    fn parse_call(&mut self, expr: Expr) -> DiagnosticResult<Expr> {
         let (args, args_span) = self.parse_call_args()?;
         let span = expr.span().merge(args_span);
         Ok(Expr::Call { callee: Box::new(expr), args, span })
     }
 
-    fn parse_call_args(&mut self) -> ParseResult<(Vec<CallArg>, Span)> {
+    fn parse_call_args(&mut self) -> DiagnosticResult<(Vec<CallArg>, Span)> {
         let mut passed_named_arg = false;
 
         self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
@@ -861,7 +861,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_arg(&mut self) -> ParseResult<CallArg> {
+    fn parse_arg(&mut self) -> DiagnosticResult<CallArg> {
         if self.is_ident() {
             let ident_tok = self.last_token();
 
@@ -881,8 +881,8 @@ impl<'a> Parser<'a> {
         &mut self,
         open: TokenKind,
         close: TokenKind,
-        mut f: impl FnMut(&mut Self) -> ParseResult<ControlFlow<(), T>>,
-    ) -> ParseResult<(Vec<T>, Span)> {
+        mut f: impl FnMut(&mut Self) -> DiagnosticResult<ControlFlow<(), T>>,
+    ) -> DiagnosticResult<(Vec<T>, Span)> {
         let mut values = Vec::new();
         let open_tok = self.eat(open)?;
 
@@ -909,8 +909,8 @@ impl<'a> Parser<'a> {
         &mut self,
         open: TokenKind,
         close: TokenKind,
-        f: impl FnMut(&mut Self) -> ParseResult<ControlFlow<(), T>>,
-    ) -> ParseResult<(Vec<T>, Span)> {
+        f: impl FnMut(&mut Self) -> DiagnosticResult<ControlFlow<(), T>>,
+    ) -> DiagnosticResult<(Vec<T>, Span)> {
         if self.peek_is(open) {
             self.parse_list(open, close, f)
         } else {
@@ -921,25 +921,25 @@ impl<'a> Parser<'a> {
 
 impl<'a> Parser<'a> {
     #[inline]
-    pub(super) fn eat(&mut self, expected: TokenKind) -> ParseResult<Token> {
+    pub(super) fn eat(&mut self, expected: TokenKind) -> DiagnosticResult<Token> {
         let tok = self.eat_any()?;
         Self::require_kind(tok, expected)
     }
 
     #[inline]
-    pub(super) fn eat_ident(&mut self) -> ParseResult<Token> {
+    pub(super) fn eat_ident(&mut self) -> DiagnosticResult<Token> {
         self.eat(TokenKind::empty_ident())
     }
 
     #[inline]
-    pub(super) fn eat_any(&mut self) -> ParseResult<Token> {
+    pub(super) fn eat_any(&mut self) -> DiagnosticResult<Token> {
         let tok = self.require()?;
         self.next();
         Ok(tok)
     }
 
     #[inline]
-    pub(super) fn require(&mut self) -> ParseResult<Token> {
+    pub(super) fn require(&mut self) -> DiagnosticResult<Token> {
         self.token().ok_or_else(|| {
             Diagnostic::error()
                 .with_message("unexpected end of file")
@@ -1041,7 +1041,7 @@ impl<'a> Parser<'a> {
     pub(super) fn require_kind(
         tok: Token,
         expected: TokenKind,
-    ) -> ParseResult<Token> {
+    ) -> DiagnosticResult<Token> {
         if tok.kind_is(expected) {
             Ok(tok)
         } else {
@@ -1058,8 +1058,6 @@ impl<'a> Parser<'a> {
         self.source.path().parent()
     }
 }
-
-pub(super) type ParseResult<T> = Result<T, Diagnostic>;
 
 create_bool_enum!(AllowTyParams);
 

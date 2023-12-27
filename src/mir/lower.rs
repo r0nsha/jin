@@ -6,7 +6,7 @@ use ustr::{ustr, Ustr};
 
 use crate::{
     db::{Db, DefId, DefKind},
-    diagnostics::{Diagnostic, Label},
+    diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     hir::{FnKind, Hir},
     middle::{Mutability, NamePat, Pat, Vis},
@@ -717,16 +717,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn walk_members(
         &mut self,
         value: ValueId,
-        mut f: impl FnMut(&mut Self, ValueId) -> Result<(), Diagnostic>,
-    ) -> Result<(), Diagnostic> {
+        mut f: impl FnMut(&mut Self, ValueId) -> DiagnosticResult<()>,
+    ) -> DiagnosticResult<()> {
         self.walk_members_aux(value, &mut f)
     }
 
     fn walk_members_aux(
         &mut self,
         value: ValueId,
-        f: &mut impl FnMut(&mut Self, ValueId) -> Result<(), Diagnostic>,
-    ) -> Result<(), Diagnostic> {
+        f: &mut impl FnMut(&mut Self, ValueId) -> DiagnosticResult<()>,
+    ) -> DiagnosticResult<()> {
         if let Some(members) = self.members.get(&value).cloned() {
             for member in members.values().copied() {
                 f(self, member)?;
@@ -740,16 +740,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn walk_parents(
         &mut self,
         value: ValueId,
-        mut f: impl FnMut(&mut Self, ValueId) -> Result<(), Diagnostic>,
-    ) -> Result<(), Diagnostic> {
+        mut f: impl FnMut(&mut Self, ValueId) -> DiagnosticResult<()>,
+    ) -> DiagnosticResult<()> {
         self.walk_parents_aux(value, &mut f)
     }
 
     fn walk_parents_aux(
         &mut self,
         value: ValueId,
-        f: &mut impl FnMut(&mut Self, ValueId) -> Result<(), Diagnostic>,
-    ) -> Result<(), Diagnostic> {
+        f: &mut impl FnMut(&mut Self, ValueId) -> DiagnosticResult<()>,
+    ) -> DiagnosticResult<()> {
         if let &ValueKind::Member(parent, _) = &self.body.value(value).kind {
             f(self, parent)?;
             self.walk_parents_aux(parent, f)
@@ -768,7 +768,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         &mut self,
         value: ValueId,
         moved_to: Span,
-    ) -> Result<(), Diagnostic> {
+    ) -> DiagnosticResult<()> {
         self.check_if_moved(value, moved_to)?;
 
         let scope = self.scope_mut();
@@ -790,7 +790,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         &mut self,
         value: ValueId,
         moved_to: Span,
-    ) -> Result<(), Diagnostic> {
+    ) -> DiagnosticResult<()> {
         self.check_if_moved(value, moved_to)?;
 
         // If the value is copy, we don't need to move it.
@@ -834,7 +834,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         &mut self,
         value: ValueId,
         moved_to: Span,
-    ) -> Result<(), Diagnostic> {
+    ) -> DiagnosticResult<()> {
         match self.value_state(value) {
             ValueState::Owned => Ok(()),
             ValueState::Moved(already_moved_to)
@@ -885,7 +885,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         &self,
         value: ValueId,
         moved_to: Span,
-    ) -> Result<(), Diagnostic> {
+    ) -> DiagnosticResult<()> {
         if let ValueKind::Global(id) = self.body.value(value).kind {
             let global = &self.cx.mir.globals[id];
             let def = &self.cx.db[global.def_id];

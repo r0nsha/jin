@@ -9,7 +9,7 @@ use crate::{
     db::{
         Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel,
     },
-    diagnostics::{Diagnostic, Label},
+    diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     macros::create_bool_enum,
     middle::{Mutability, NamePat, Pat, Vis},
@@ -393,7 +393,7 @@ impl<'db> Typeck<'db> {
         from_module: ModuleId,
         in_module: ModuleId,
         query: &FnQuery,
-    ) -> Result<Option<DefId>, Diagnostic> {
+    ) -> DiagnosticResult<Option<DefId>> {
         let mut candidates = self
             .get_lookup_modules(in_module)
             .filter_map(|module_id| {

@@ -5,8 +5,8 @@ use path_absolutize::Absolutize as _;
 
 use crate::{
     ast::{token::TokenKind, Attr, Import, ImportName, ImportNode},
-    diagnostics::{Diagnostic, Label},
-    parse::parser::{ParseResult, Parser},
+    diagnostics::{Diagnostic, DiagnosticResult, Label},
+    parse::parser::Parser,
     span::{Span, Spanned},
     word::Word,
 };
@@ -16,7 +16,7 @@ impl<'a> Parser<'a> {
         &mut self,
         attrs: &[Attr],
         start: Span,
-    ) -> ParseResult<Import> {
+    ) -> DiagnosticResult<Import> {
         let root = self.parse_import_name()?;
 
         let path = self.search_import_path(root.word)?;
@@ -30,7 +30,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_import_name(&mut self) -> ParseResult<ImportName> {
+    fn parse_import_name(&mut self) -> DiagnosticResult<ImportName> {
         let word = self.eat_ident()?.word();
 
         let (alias, vis, node) = if self.is(TokenKind::As) {
@@ -50,7 +50,7 @@ impl<'a> Parser<'a> {
         Ok(ImportName { word, vis, alias, node })
     }
 
-    fn parse_import_node(&mut self) -> ParseResult<ImportNode> {
+    fn parse_import_node(&mut self) -> DiagnosticResult<ImportNode> {
         if self.is(TokenKind::Star) {
             Ok(ImportNode::Glob(self.last_span()))
         } else if self.peek_is(TokenKind::OpenCurly) {
@@ -61,14 +61,14 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_import_group(&mut self) -> ParseResult<ImportNode> {
+    fn parse_import_group(&mut self) -> DiagnosticResult<ImportNode> {
         self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
             this.parse_import_node().map(ControlFlow::Continue)
         })
         .map(|(nodes, _)| ImportNode::Group(nodes))
     }
 
-    fn search_import_path(&self, name: Word) -> ParseResult<Utf8PathBuf> {
+    fn search_import_path(&self, name: Word) -> DiagnosticResult<Utf8PathBuf> {
         let mut search_notes = vec![];
 
         let path = self

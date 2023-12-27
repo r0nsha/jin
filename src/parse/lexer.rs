@@ -2,11 +2,11 @@ use ustr::ustr;
 
 use crate::{
     ast::token::{Token, TokenKind},
-    diagnostics::{Diagnostic, Label},
+    diagnostics::{Diagnostic, DiagnosticResult, Label},
     span::{Source, SourceId, Span},
 };
 
-pub fn tokenize(source: &Source) -> TokenizeResult<Vec<Token>> {
+pub fn tokenize(source: &Source) -> DiagnosticResult<Vec<Token>> {
     Lexer::new(source).scan()
 }
 
@@ -27,7 +27,7 @@ impl<'s> Lexer<'s> {
         }
     }
 
-    fn scan(mut self) -> TokenizeResult<Vec<Token>> {
+    fn scan(mut self) -> DiagnosticResult<Vec<Token>> {
         let mut tokens = vec![];
 
         while let Some(token) = self.eat_token()? {
@@ -37,7 +37,7 @@ impl<'s> Lexer<'s> {
         Ok(tokens)
     }
 
-    fn eat_token(&mut self) -> TokenizeResult<Option<Token>> {
+    fn eat_token(&mut self) -> DiagnosticResult<Option<Token>> {
         let start = self.pos;
 
         match self.bump() {
@@ -241,7 +241,7 @@ impl<'s> Lexer<'s> {
         unreachable!()
     }
 
-    fn eat_str(&mut self, start: u32) -> TokenizeResult<TokenKind> {
+    fn eat_str(&mut self, start: u32) -> DiagnosticResult<TokenKind> {
         loop {
             match self.bump() {
                 Some('"') => {
@@ -326,7 +326,5 @@ impl<'s> Lexer<'s> {
         Span::new(self.source_id, start, self.pos)
     }
 }
-
-type TokenizeResult<T> = Result<T, Diagnostic>;
 
 const DQUOTE: char = '"';

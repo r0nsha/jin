@@ -7,6 +7,8 @@ use codespan_reporting::{
 
 use crate::span::{SourceId, Sources, Span};
 
+pub type DiagnosticResult<T> = Result<T, Diagnostic>;
+
 #[must_use]
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
