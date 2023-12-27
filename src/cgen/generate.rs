@@ -375,7 +375,14 @@ impl<'db> Generator<'db> {
                         .collect(),
                 );
 
-                let lit_name = D::text("x");
+                let lit_name = D::text(
+                    if struct_info.fields.iter().any(|f| f.name == "x") {
+                        "x0"
+                    } else {
+                        "x"
+                    },
+                );
+
                 let lit_decl_doc = VariableDoc::assign(
                     self,
                     struct_info.ty(),

@@ -59,6 +59,12 @@ impl cmp::PartialEq for Word {
     }
 }
 
+impl<'a> cmp::PartialEq<&'a str> for Word {
+    fn eq(&self, other: &&'a str) -> bool {
+        self.name() == *other
+    }
+}
+
 impl cmp::Eq for Word {}
 
 impl fmt::Display for Word {
