@@ -155,6 +155,7 @@ fn compile_with_clang(
         .args(libs.iter().map(|path| format!("-l{}", path)))
         .arg("-fuse-ld=mold")
         .arg("-lc")
+        .arg("-lm")
         .arg("-no-pie")
         // .arg("-O1")
         .arg("-g")
