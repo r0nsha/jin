@@ -991,16 +991,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             visited.insert(block);
 
             if let Some(state) = self.value_states.get(block, value).cloned() {
-                let new_move_span = match &state {
-                    ValueState::Owned => last_move_span,
+                match &state {
+                    ValueState::Owned => (),
                     ValueState::Moved(moved_to)
                     | ValueState::MaybeMoved(moved_to)
-                    | ValueState::PartiallyMoved(moved_to) => Some(*moved_to),
+                    | ValueState::PartiallyMoved(moved_to) => {
+                        last_move_span = Some(*moved_to);
+                    }
                 };
-
-                if new_move_span.is_some() {
-                    last_move_span = new_move_span;
-                }
 
                 match (&result_state, &state) {
                     (ValueState::Owned, _) if is_initial_state => {
