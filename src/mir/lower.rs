@@ -1,6 +1,6 @@
-use std::{fmt, mem, ops};
+use std::{fmt, mem};
 
-use indexmap::{IndexMap, IndexSet};
+use indexmap::IndexSet;
 use itertools::Itertools as _;
 use ustr::{ustr, Ustr};
 
@@ -255,7 +255,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // println!("{}", self.value_states);
                 // println!("---------------------");
 
-                self.try_move(last_value, body.span, Rules::new());
+                self.try_move(last_value, body.span);
                 self.exit_scope();
 
                 self.cx.mir.fns.insert(
@@ -278,7 +278,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.position_at(start_blk);
 
                 let value = self.lower_expr(&let_.value);
-                self.try_move(value, let_.value.span, Rules::new());
+                self.try_move(value, let_.value.span);
                 self.exit_scope();
 
                 let id = self.cx.mir.globals.insert_with_key(|id| Global {
@@ -301,23 +301,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
-        self.lower_expr_with_rules(expr, Rules::new())
-    }
-
-    fn lower_expr_with_rules(
-        &mut self,
-        expr: &hir::Expr,
-        rules: Rules,
-    ) -> ValueId {
-        let value = self.lower_expr_inner(expr, rules);
+        let value = self.lower_expr_inner(expr);
         self.apply_coercions_to_expr(expr, value)
     }
 
-    fn lower_expr_inner(&mut self, expr: &hir::Expr, rules: Rules) -> ValueId {
+    fn lower_expr_inner(&mut self, expr: &hir::Expr) -> ValueId {
         match &expr.kind {
             hir::ExprKind::Let(let_) => {
                 let init = self.lower_expr(&let_.value);
-                self.try_move(init, let_.value.span, rules);
+                self.try_move(init, let_.value.span);
 
                 match &let_.pat {
                     Pat::Name(name) => {
@@ -337,7 +329,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Assign(assign) => {
                 let lhs = self.lower_expr(&assign.lhs);
                 let rhs = self.lower_expr(&assign.rhs);
-                self.try_move(rhs, assign.rhs.span, rules);
+                self.try_move(rhs, assign.rhs.span);
 
                 let rhs = if let Some(op) = assign.op {
                     self.push_inst_with_register(assign.lhs.ty, |value| {
@@ -360,7 +352,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let merge_blk = self.body.create_block("if_merge");
 
                 let cond = self.lower_expr(&if_.cond);
-                self.try_move(cond, if_.cond.span, rules);
+                self.try_move(cond, if_.cond.span);
                 self.push_br_if(cond, then_blk, Some(else_blk));
 
                 self.position_at(then_blk);
@@ -393,7 +385,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 if let Some(cond_expr) = &loop_.cond {
                     let cond = self.lower_expr(cond_expr);
-                    self.try_move(cond, cond_expr.span, rules);
+                    self.try_move(cond, cond_expr.span);
                     let not_cond = self.push_inst_with_register(
                         self.cx.db.types.bool,
                         |value| Inst::Unary {
@@ -458,7 +450,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Return(ret) => {
                 let value = self.lower_expr(&ret.expr);
-                self.try_move(value, ret.expr.span, rules);
+                self.try_move(value, ret.expr.span);
                 self.push_return(value, expr.span);
                 self.const_unit()
             }
@@ -470,14 +462,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 for arg in &call.args {
                     let idx = arg.index.expect("arg index to be resolved");
                     let value = self.lower_expr(&arg.expr);
-                    self.try_move(value, arg.expr.span, rules);
+                    self.try_move(value, arg.expr.span);
                     args.push((idx, value));
                 }
 
                 args.sort_by_key(|(idx, _)| *idx);
 
                 let callee = self.lower_expr(&call.callee);
-                self.try_move(callee, call.callee.span, rules);
+                self.try_move(callee, call.callee.span);
 
                 self.push_inst_with_register(expr.ty, |value| Inst::Call {
                     value,
@@ -487,7 +479,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Unary(un) => {
                 let inner = self.lower_expr(&un.expr);
-                self.try_move(inner, un.expr.span, rules);
+                self.try_move(inner, un.expr.span);
                 self.push_inst_with_register(expr.ty, |value| Inst::Unary {
                     value,
                     inner,
@@ -498,8 +490,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let lhs = self.lower_expr(&bin.lhs);
                 let rhs = self.lower_expr(&bin.rhs);
 
-                self.try_move(lhs, bin.lhs.span, rules);
-                self.try_move(rhs, bin.rhs.span, rules);
+                self.try_move(lhs, bin.lhs.span);
+                self.try_move(rhs, bin.rhs.span);
 
                 self.push_inst_with_register(expr.ty, |value| Inst::Binary {
                     value,
@@ -511,7 +503,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Cast(cast) => {
                 let inner = self.lower_expr(&cast.expr);
-                self.try_move(inner, cast.expr.span, rules);
+                self.try_move(inner, cast.expr.span);
 
                 self.push_inst_with_register(cast.target, |value| Inst::Cast {
                     value,
@@ -788,8 +780,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         })
     }
 
-    pub fn try_move(&mut self, value: ValueId, moved_to: Span, rules: Rules) {
-        if let Err(diagnostic) = self.try_move_inner(value, moved_to, rules) {
+    pub fn try_move(&mut self, value: ValueId, moved_to: Span) {
+        if let Err(diagnostic) = self.try_move_inner(value, moved_to) {
             self.cx.db.diagnostics.emit(diagnostic);
         }
     }
@@ -798,7 +790,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         &mut self,
         value: ValueId,
         moved_to: Span,
-        rules: Rules,
     ) -> Result<(), Diagnostic> {
         self.check_if_moved(value, moved_to)?;
 
@@ -1310,6 +1301,7 @@ impl ValueStates {
         self.0.get(&block).and_then(|b| b.states.get(&value))
     }
 
+    #[allow(unused)]
     fn get_mut(
         &mut self,
         block: BlockId,
@@ -1420,21 +1412,5 @@ struct LoopScope {
 impl LoopScope {
     fn new(end_block: BlockId) -> Self {
         Self { end_block, moved_in: FxHashMap::default() }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-struct Rules {
-    ignore_moves: bool,
-}
-
-impl Rules {
-    fn new() -> Self {
-        Self { ignore_moves: false }
-    }
-
-    fn ignore_moves(mut self, value: bool) -> Self {
-        self.ignore_moves = value;
-        self
     }
 }
