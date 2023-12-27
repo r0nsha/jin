@@ -9,7 +9,7 @@ use crate::{
     middle::BinOp,
     mir::ValueId,
     span::Span,
-    ty::Ty,
+    ty::{FloatTy, Ty, TyKind},
 };
 
 #[derive(Debug)]
@@ -93,7 +93,18 @@ impl<'db> Generator<'db> {
 
         let (lhs, rhs) =
             (self.value(state, data.lhs), self.value(state, data.rhs));
-        self.value_assign(state, data.target, || bin_op(lhs, data.op, rhs))
+
+        let init = match (data.op, data.ty.kind()) {
+            (BinOp::Rem, TyKind::Float(FloatTy::F32)) => {
+                util::call("fmodf", lhs.append(D::text(", ").append(rhs)))
+            }
+            (BinOp::Rem, TyKind::Float(FloatTy::F64)) => {
+                util::call("fmod", lhs.append(D::text(", ").append(rhs)))
+            }
+            _ => bin_op(lhs, data.op, rhs),
+        };
+
+        self.value_assign(state, data.target, || init)
     }
 
     fn codegen_bin_op_add(
