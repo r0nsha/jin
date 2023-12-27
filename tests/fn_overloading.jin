@@ -23,11 +23,11 @@ fn main() unit = {
 	printf("\n".ptr)
 
 	printf("Calls with named arguments:\n".ptr)
-	named(x: 1) // picks `fn named(x: int)`
-	named[int](x: 1) // picks `fn named[a](x: a)`
+	named(x = 1) // picks `fn named(x: int)`
+	named[int](x = 1) // picks `fn named[a](x: a)`
 	named(1, 2) // picks `fn named(x: int, y: int)`
-	named(y: 1, x: 2) // picks `fn named(x: int, y: int)`
-	named(z: 1) // picks `fn named(z: int)`
+	named(y = 1, x = 2) // picks `fn named(x: int, y: int)`
+	named(z = 1) // picks `fn named(z: int)`
 	printf("\n".ptr)
 
 	printf("Chaining add calls with a print at the end:\n".ptr)
