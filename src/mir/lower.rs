@@ -114,6 +114,14 @@ impl<'db> Lower<'db> {
             return *sig_id;
         }
 
+        // TODO: doesn't work for polymorphic structs...
+        let sig_id = self.create_struct_ctor(sid);
+        self.mir.struct_ctors.insert(sid, sig_id);
+
+        sig_id
+    }
+
+    fn create_struct_ctor(&mut self, sid: StructId) -> FnSigId {
         let struct_info = &self.db[sid];
         let name = ustr(
             &self.db[struct_info.def_id]
@@ -123,7 +131,7 @@ impl<'db> Lower<'db> {
                 .join_with("_"),
         );
 
-        let sig_id = self.mir.fn_sigs.insert_with_key(|id| FnSig {
+        self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
             name,
             params: struct_info
@@ -143,12 +151,7 @@ impl<'db> Lower<'db> {
             is_extern: false,
             is_c_variadic: false,
             span: struct_info.name.span(),
-        });
-
-        // TODO: doesn't work for polymorphic structs...
-        self.mir.struct_ctors.insert(sid, sig_id);
-
-        sig_id
+        })
     }
 
     fn lower_fn_sig(
