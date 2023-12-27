@@ -754,13 +754,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         moved_to: Span,
         rules: Rules,
     ) -> Result<(), Diagnostic> {
-        // If the moved value is copyable, we don't need to move it
-        if !self.value_is_move(value) {
-            return Ok(());
-        }
-
         match self.value_state(value) {
             ValueState::Owned => {
+                // If the value is copy, we don't need to move it
+                if !self.value_is_move(value) {
+                    return Ok(());
+                }
+
                 self.set_moved(value, moved_to);
                 self.walk_members(value, |this, member| {
                     this.set_moved(member, moved_to);
