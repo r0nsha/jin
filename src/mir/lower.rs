@@ -359,12 +359,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 self.position_at(then_blk);
                 let then_value = self.lower_expr(&if_.then);
-                self.try_use(then_value, if_.then.span);
+                self.try_move(then_value, if_.then.span);
                 self.push_br(merge_blk);
 
                 self.position_at(else_blk);
                 let else_value = self.lower_expr(&if_.otherwise);
-                self.try_use(else_value, if_.otherwise.span);
+                self.try_move(else_value, if_.otherwise.span);
                 self.push_br(merge_blk);
 
                 self.position_at(merge_blk);
