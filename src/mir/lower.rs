@@ -771,7 +771,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.walk_members(value, |this, member| {
                     this.set_moved(member, moved_to);
                 });
-                // TODO: set parent as partially moved
+                self.partially_move_parents(value, moved_to);
                 Ok(())
             }
             ValueState::Moved(already_moved_to)
@@ -791,6 +791,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     "partial move",
                     "partially moved",
                 )),
+        }
+    }
+
+    fn partially_move_parents(&mut self, value: ValueId, moved_to: Span) {
+        if let &ValueKind::Member(parent, _) = &self.body.value(value).kind {
+            self.set_partially_moved(parent, moved_to);
+            self.partially_move_parents(parent, moved_to);
         }
     }
 
