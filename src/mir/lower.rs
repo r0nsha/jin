@@ -1,11 +1,11 @@
-use std::{fmt, mem};
+use std::{fmt, mem, task::Wake};
 
 use indexmap::IndexSet;
 use itertools::Itertools as _;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    db::{Db, DefId, DefKind},
+    db::{Db, DefId, DefInfo, DefKind, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     hir::{FnKind, Hir},
@@ -123,35 +123,138 @@ impl<'db> Lower<'db> {
 
     fn create_struct_ctor(&mut self, sid: StructId) -> FnSigId {
         let struct_info = &self.db[sid];
-        let name = ustr(
-            &self.db[struct_info.def_id]
-                .qpath
-                .clone()
-                .child(ustr("ctor"))
-                .join_with("_"),
-        );
+        let struct_def = &self.db[struct_info.def_id];
 
-        self.mir.fn_sigs.insert_with_key(|id| FnSig {
+        let name =
+            ustr(&struct_def.qpath.clone().child(ustr("ctor")).join_with("_"));
+
+        // HACK: We shouldn't be introducing new definitions at this point...
+        // Need to find an alternative for ad-hoc parameters/locals
+        let param_def_ids: Vec<_> = struct_info
+            .fields
+            .iter()
+            .map(|field| {
+                DefInfo::alloc(
+                    self.db,
+                    struct_def.qpath.clone().child(field.name.name()),
+                    struct_def.scope.clone(),
+                    DefKind::Variable,
+                    Mutability::Imm,
+                    field.ty,
+                    field.name.span(),
+                )
+            })
+            .collect();
+
+        let params: Vec<_> = struct_info
+            .fields
+            .iter()
+            .zip(param_def_ids.iter())
+            .map(|(field, &id)| FnParam {
+                pat: Pat::Name(NamePat {
+                    id,
+                    word: field.name,
+                    vis: Vis::Private,
+                    mutability: Mutability::Imm,
+                }),
+                ty: field.ty,
+            })
+            .collect();
+
+        let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
             name,
-            params: struct_info
-                .fields
-                .iter()
-                .map(|f| FnParam {
-                    pat: Pat::Name(NamePat {
-                        id: DefId::INVALID,
-                        word: f.name,
-                        vis: Vis::Private,
-                        mutability: Mutability::Imm,
-                    }),
-                    ty: f.ty,
-                })
-                .collect(),
+            params,
             ty: struct_info.ctor_ty,
             is_extern: false,
             is_c_variadic: false,
             span: struct_info.name.span(),
-        })
+        });
+
+        let mut body = Body::new();
+
+        let statements = match self.db[sid].kind {
+            StructKind::Ref => {
+                todo!("ref ctor")
+                // let alloc_doc =
+                //     util::call_alloc(D::text(self.struct_names[&sid].as_str()));
+                //
+                // let lit_name = D::text(
+                //     if struct_info.fields.iter().any(|f| f.name == "this") {
+                //         "this0"
+                //     } else {
+                //         "this"
+                //     },
+                // );
+                //
+                // let lit_decl_doc = VariableDoc::assign(
+                //     self,
+                //     struct_info.ty(),
+                //     lit_name.clone(),
+                //     alloc_doc,
+                // );
+                //
+                // let struct_init_doc = D::intersperse(
+                //     struct_info.fields.iter().map(|f| {
+                //         stmt(|| {
+                //             let name = f.name.name().as_str();
+                //
+                //             util::assign(
+                //                 util::field(lit_name.clone(), name, true),
+                //                 D::text(name),
+                //             )
+                //         })
+                //     }),
+                //     D::hardline(),
+                // );
+                //
+                // let return_doc = stmt(|| {
+                //     D::text("return").append(D::space()).append(lit_name)
+                // });
+                //
+                // D::intersperse(
+                //     [lit_decl_doc, struct_init_doc, return_doc],
+                //     D::hardline(),
+                // )
+            }
+            StructKind::Extern => {
+                // let struct_lit_doc = struct_lit(
+                //     struct_info
+                //         .fields
+                //         .iter()
+                //         .map(|f| {
+                //             let name = f.name.name().as_str();
+                //             (name, D::text(name))
+                //         })
+                //         .collect(),
+                // );
+                //
+                // let lit_name = D::text(
+                //     if struct_info.fields.iter().any(|f| f.name == "this") {
+                //         "this0"
+                //     } else {
+                //         "this"
+                //     },
+                // );
+                //
+                // let lit_decl_doc = VariableDoc::assign(
+                //     self,
+                //     struct_info.ty(),
+                //     lit_name.clone(),
+                //     struct_lit_doc,
+                // );
+                //
+                // let return_doc = stmt(|| {
+                //     D::text("return").append(D::space()).append(lit_name)
+                // });
+                //
+                // D::intersperse([lit_decl_doc, return_doc], D::hardline())
+            }
+        };
+
+        self.mir.fns.insert(sig, Fn { sig, body });
+
+        sig
     }
 
     fn lower_fn_sig(

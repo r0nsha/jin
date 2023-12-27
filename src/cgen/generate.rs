@@ -283,10 +283,10 @@ impl<'db> Generator<'db> {
             self.fn_defs.push(doc);
         }
 
-        // for (sid, sig) in &self.mir.struct_ctors {
-        //     let doc = self.codegen_struct_ctor(*sid, *sig);
-        //     self.fn_defs.push(stmt(|| doc));
-        // }
+        for (sid, sig) in &self.mir.struct_ctors {
+            let doc = self.codegen_struct_ctor(*sid, *sig);
+            self.fn_defs.push(stmt(|| doc));
+        }
     }
 
     fn codegen_fn_def(&mut self, fun: &'db Fn) -> D<'db> {

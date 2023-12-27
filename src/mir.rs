@@ -59,7 +59,6 @@ impl Mir {
 
 #[derive(Debug, Clone)]
 pub struct Fn {
-    pub def_id: DefId,
     pub sig: FnSigId,
     pub body: Body,
 }
