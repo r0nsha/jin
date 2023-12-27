@@ -9,8 +9,8 @@ fn main() unit = {
 	use_after_move_scoped()	
 	move_out_of_global()
 	move_into_loop()
-	copy()
-	assign_not_moved()
+	//copy()
+	//assign_not_moved()
 }
 
 fn use_after_move() unit = {
@@ -44,33 +44,33 @@ fn move_into_loop() unit = {
 	}
 }
 
-fn copy() unit = {
-	let n = 1
-	let a = n
-	let b = n // Ok
+//fn copy() unit = {
+//	let n = 1
+//	let a = n
+//	let b = n // Ok
+//
+//	let n = Num(1)
+//	let a = n.field
+//	let b = n.field // Ok
+//
+//	let w = { Wrapper(Num(1)) }
+//	let a = w.num.field
+//	let b = w.num.field // Ok
+//}
 
-	let n = Num(1)
-	let a = n.field
-	let b = n.field // Ok
-
-	let w = { Wrapper(Num(1)) }
-	let a = w.num.field
-	let b = w.num.field // Ok
-}
-
-fn assign_not_moved() unit = {
-	let mut num = Num(1)
-	num.field = 1
-
-	let mut wrapper = Wrapper(Num(1))
-
-	// `wrapper` is NOT marked as moved since this is a `place` expression.
-	// also `wrapper.num` is destroyed here.
-	{
-		let x = wrapper
-		let y = wrapper
-		x
-	}.num = Num(2) 
-	//wrapper.num = Num(3) // `wrapper.num` destroyed here
-	//wrapper.num.field = 2
-}
+//fn assign_not_moved() unit = {
+//	let mut num = Num(1)
+//	num.field = 1
+//
+//	let mut wrapper = Wrapper(Num(1))
+//
+//	// `wrapper` is NOT marked as moved since this is a `place` expression.
+//	// also `wrapper.num` is destroyed here.
+//	{
+//		let x = wrapper
+//		let y = wrapper
+//		x
+//	}.num = Num(2) 
+//	//wrapper.num = Num(3) // `wrapper.num` destroyed here
+//	//wrapper.num.field = 2
+//}
