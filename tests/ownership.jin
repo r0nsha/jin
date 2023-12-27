@@ -63,6 +63,10 @@ fn assign_not_moved() unit = {
 	num.field = 1
 
 	let mut wrapper = Wrapper(Num(1))
-	wrapper.num = Num(2) // `wrapper.num` destroyed here
+
+	// `wrapper` is NOT marked as moved since this is a `place` expression.
+	// also `wrapper.num` is destroyed here.
+	wrapper.num = Num(2) 
+	wrapper.num = Num(3) // `wrapper.num` destroyed here
 	wrapper.num.field = 2
 }
