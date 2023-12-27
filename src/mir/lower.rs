@@ -122,16 +122,13 @@ impl<'db> Lower<'db> {
     }
 
     fn create_struct_ctor(&mut self, sid: StructId) -> FnSigId {
-        let params = self.create_struct_ctor_params(sid);
+        let (param_ids, params) = self.create_struct_ctor_params(sid);
 
         let struct_info = &self.db[sid];
         let struct_def = &self.db[struct_info.def_id];
 
         let name =
             ustr(&struct_def.qpath.clone().child(ustr("ctor")).join_with("_"));
-
-        // HACK: We shouldn't be introducing new definitions at this point...
-        // Need to find an alternative for ad-hoc parameters/locals
 
         let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
@@ -144,106 +141,61 @@ impl<'db> Lower<'db> {
         });
 
         let mut body = Body::new();
+        let start_blk = body.create_block("start");
 
-        let statements = match self.db[sid].kind {
+        // Initialize the `this` value based on the adt kind
+        let this = match self.db[sid].kind {
             StructKind::Ref => {
-                todo!("ref ctor")
-                // let alloc_doc =
-                //     util::call_alloc(D::text(self.struct_names[&sid].as_str()));
-                //
-                // let lit_name = D::text(
-                //     if struct_info.fields.iter().any(|f| f.name == "this") {
-                //         "this0"
-                //     } else {
-                //         "this"
-                //     },
-                // );
-                //
-                // let lit_decl_doc = VariableDoc::assign(
-                //     self,
-                //     struct_info.ty(),
-                //     lit_name.clone(),
-                //     alloc_doc,
-                // );
-                //
-                // let struct_init_doc = D::intersperse(
-                //     struct_info.fields.iter().map(|f| {
-                //         stmt(|| {
-                //             let name = f.name.name().as_str();
-                //
-                //             util::assign(
-                //                 util::field(lit_name.clone(), name, true),
-                //                 D::text(name),
-                //             )
-                //         })
-                //     }),
-                //     D::hardline(),
-                // );
-                //
-                // let return_doc = stmt(|| {
-                //     D::text("return").append(D::space()).append(lit_name)
-                // });
-                //
-                // D::intersperse(
-                //     [lit_decl_doc, struct_init_doc, return_doc],
-                //     D::hardline(),
-                // )
+                let value = body
+                    .create_value(struct_info.ty(), ValueKind::Register(None));
+                body.block_mut(start_blk).push_inst(Inst::Alloc { value });
+                value
             }
             StructKind::Extern => {
-                // let struct_lit_doc = struct_lit(
-                //     struct_info
-                //         .fields
-                //         .iter()
-                //         .map(|f| {
-                //             let name = f.name.name().as_str();
-                //             (name, D::text(name))
-                //         })
-                //         .collect(),
-                // );
-                //
-                // let lit_name = D::text(
-                //     if struct_info.fields.iter().any(|f| f.name == "this") {
-                //         "this0"
-                //     } else {
-                //         "this"
-                //     },
-                // );
-                //
-                // let lit_decl_doc = VariableDoc::assign(
-                //     self,
-                //     struct_info.ty(),
-                //     lit_name.clone(),
-                //     struct_lit_doc,
-                // );
-                //
-                // let return_doc = stmt(|| {
-                //     D::text("return").append(D::space()).append(lit_name)
-                // });
-                //
-                // D::intersperse([lit_decl_doc, return_doc], D::hardline())
+                let value = body
+                    .create_value(struct_info.ty(), ValueKind::Register(None));
+                body.block_mut(start_blk)
+                    .push_inst(Inst::StackAlloc { value, init: None });
+                value
             }
         };
 
-        // self.mir.fns.insert(sig, Fn { sig, body });
+        // Initialize all of the adt's fields
+        for id in param_ids {
+            let ty = self.db[id].ty;
+            let field =
+                body.create_value(ty, ValueKind::Field(this, self.db[id].name));
+            let param = body.create_value(ty, ValueKind::Local(id));
+            body.block_mut(start_blk)
+                .push_inst(Inst::Store { value: param, target: field });
+        }
+
+        // Return the adt
+        body.block_mut(start_blk).push_inst(Inst::Return { value: this });
+
+        self.mir.fns.insert(sig, Fn { sig, body });
 
         sig
     }
 
-    // HACK: We shouldn't be introducing new definitions at this point...
-    // Need to find an alternative for ad-hoc parameters/locals
-    fn create_struct_ctor_params(&mut self, sid: StructId) -> Vec<FnParam> {
+    fn create_struct_ctor_params(
+        &mut self,
+        sid: StructId,
+    ) -> (Vec<DefId>, Vec<FnParam>) {
         let struct_info = &self.db[sid];
         let struct_def = &self.db[struct_info.def_id];
 
         let struct_qpath = struct_def.qpath.clone();
         let struct_scope = struct_def.scope.clone();
 
-        struct_info
+        // HACK: We shouldn't be introducing new definitions at this point...
+        // Need to find an alternative for ad-hoc parameters/locals
+        let param_ids: Vec<_> = struct_info
             .fields
             .clone()
             .iter()
             .map(|field| {
-                let id = DefInfo::alloc(
+                DefInfo::alloc(
                     self.db,
                     struct_qpath.clone().child(field.name.name()),
                     struct_scope.clone(),
@@ -251,19 +203,24 @@ impl<'db> Lower<'db> {
                     Mutability::Imm,
                     field.ty,
                     field.name.span(),
-                );
-
-                FnParam {
-                    pat: Pat::Name(NamePat {
-                        id,
-                        word: field.name,
-                        vis: Vis::Private,
-                        mutability: Mutability::Imm,
-                    }),
-                    ty: field.ty,
-                }
+                )
             })
-            .collect()
+            .collect();
+
+        let params = param_ids
+            .iter()
+            .map(|&id| FnParam {
+                pat: Pat::Name(NamePat {
+                    id,
+                    word: self.db[id].word(),
+                    vis: Vis::Private,
+                    mutability: Mutability::Imm,
+                }),
+                ty: self.db[id].ty,
+            })
+            .collect();
+
+        (param_ids, params)
     }
 
     fn lower_fn_sig(
@@ -427,7 +384,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         let value = self.push_inst_with(
                             let_.ty,
                             ValueKind::Local(name.id),
-                            |value| Inst::Local { value, init },
+                            |value| Inst::StackAlloc {
+                                value,
+                                init: Some(init),
+                            },
                         );
                         self.locals.insert(name.id, value);
                         self.create_destroy_flag(value);
@@ -1344,7 +1304,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let flag = self.push_inst_with_named_register(
             self.cx.db.types.bool,
             ustr("destroy_flag"),
-            |value| Inst::Local { value, init },
+            |value| Inst::StackAlloc { value, init: Some(init) },
         );
         self.body.destroy_flags.insert(value, flag);
     }

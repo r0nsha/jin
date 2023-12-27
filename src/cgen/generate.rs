@@ -13,17 +13,17 @@ use crate::{
         ty::CTy,
         util::{
             self, assign, attr, block, block_, bool_value, goto_stmt, if_stmt,
-            stmt, str_value, struct_lit, unit_value, NEST,
+            stmt, str_value, unit_value, NEST,
         },
     },
-    db::{Db, StructId, StructInfo, StructKind},
+    db::{Db, StructId, StructInfo},
     middle::{Pat, UnOp},
     mir::{
-        Block, Body, Const, Fn, FnSig, FnSigId, Global, GlobalKind, Inst, Mir,
+        Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir,
         StaticGlobal, ValueId, ValueKind,
     },
     target::TargetMetrics,
-    ty::Ty,
+    ty::{Ty, TyKind},
 };
 
 const PRELUDE: &str = include_str!("../../rt/jin.c");
@@ -282,11 +282,6 @@ impl<'db> Generator<'db> {
             let doc = self.codegen_fn_def(fun);
             self.fn_defs.push(doc);
         }
-
-        for (sid, sig) in &self.mir.struct_ctors {
-            let doc = self.codegen_struct_ctor(*sid, *sig);
-            self.fn_defs.push(stmt(|| doc));
-        }
     }
 
     fn codegen_fn_def(&mut self, fun: &'db Fn) -> D<'db> {
@@ -319,88 +314,6 @@ impl<'db> Generator<'db> {
         ))
     }
 
-    fn codegen_struct_ctor(
-        &mut self,
-        sid: StructId,
-        sig_id: FnSigId,
-    ) -> D<'db> {
-        let struct_info = &self.db[sid];
-        let sig = &self.mir.fn_sigs[sig_id];
-
-        let statements = match self.db[sid].kind {
-            StructKind::Ref => {
-                let alloc_doc =
-                    util::call_alloc(D::text(self.struct_names[&sid].as_str()));
-
-                let lit_name = D::text("this");
-                let lit_decl_doc = VariableDoc::assign(
-                    self,
-                    struct_info.ty(),
-                    lit_name.clone(),
-                    alloc_doc,
-                );
-
-                let struct_init_doc = D::intersperse(
-                    struct_info.fields.iter().map(|f| {
-                        stmt(|| {
-                            let name = f.name.name().as_str();
-
-                            util::assign(
-                                util::field(lit_name.clone(), name, true),
-                                D::text(name),
-                            )
-                        })
-                    }),
-                    D::hardline(),
-                );
-
-                let return_doc = stmt(|| {
-                    D::text("return").append(D::space()).append(lit_name)
-                });
-
-                D::intersperse(
-                    [lit_decl_doc, struct_init_doc, return_doc],
-                    D::hardline(),
-                )
-            }
-            StructKind::Extern => {
-                let struct_lit_doc = struct_lit(
-                    struct_info
-                        .fields
-                        .iter()
-                        .map(|f| {
-                            let name = f.name.name().as_str();
-                            (name, D::text(name))
-                        })
-                        .collect(),
-                );
-
-                let lit_name = D::text(
-                    if struct_info.fields.iter().any(|f| f.name == "x") {
-                        "x0"
-                    } else {
-                        "x"
-                    },
-                );
-
-                let lit_decl_doc = VariableDoc::assign(
-                    self,
-                    struct_info.ty(),
-                    lit_name.clone(),
-                    struct_lit_doc,
-                );
-
-                let return_doc = stmt(|| {
-                    D::text("return").append(D::space()).append(lit_name)
-                });
-
-                D::intersperse([lit_decl_doc, return_doc], D::hardline())
-            }
-        };
-
-        self.codegen_fn_sig(sig).append(D::space()).append(block(|| statements))
-    }
-
     fn codegen_block(
         &mut self,
         state: &mut FnState<'db>,
@@ -426,8 +339,9 @@ impl<'db> Generator<'db> {
         inst: &'db Inst,
     ) -> D<'db> {
         match inst {
-            Inst::Local { value, init } => {
+            Inst::StackAlloc { value, init } => {
                 let value = state.body.value(*value);
+
                 let name = match value.kind {
                     ValueKind::Register(name) => {
                         Self::register_name(value.id, name)
@@ -439,17 +353,25 @@ impl<'db> Generator<'db> {
                     _ => unreachable!(),
                 };
 
-                VariableDoc::assign(
-                    self,
-                    value.ty,
-                    D::text(name),
-                    self.value(state, *init),
-                )
+                match *init {
+                    Some(init) => VariableDoc::assign(
+                        self,
+                        value.ty,
+                        D::text(name),
+                        self.value(state, init),
+                    ),
+                    None => VariableDoc::decl(self, value.ty, D::text(name)),
+                }
             }
-            Inst::Param { value, index } => {
-                self.value_assign(state, *value, || {
-                    todo!("get param {index} name")
-                })
+            Inst::Alloc { value } => {
+                let ty_doc = match state.body.value(*value).ty.kind() {
+                    TyKind::Struct(sid) => {
+                        D::text(self.struct_names[sid].as_str())
+                    }
+                    kind => panic!("unexpected type {kind:?} in Inst::Alloc"),
+                };
+
+                self.value_assign(state, *value, || util::call_alloc(ty_doc))
             }
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))

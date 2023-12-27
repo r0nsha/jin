@@ -133,6 +133,17 @@ impl Ty {
             _ => None,
         }
     }
+
+    pub fn raw_ptr(self) -> Ty {
+        Ty::new(TyKind::RawPtr(self))
+    }
+
+    pub fn deref(self) -> Ty {
+        match self.kind() {
+            TyKind::RawPtr(ty) => *ty,
+            kind => panic!("type {kind:?} cannot be derefed"),
+        }
+    }
 }
 
 impl Deref for Ty {

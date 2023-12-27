@@ -362,7 +362,7 @@ impl<'db> ExpandDestroys<'db> {
 
         for block in body.blocks_mut() {
             block.insts.retain(|inst| match inst {
-                Inst::Local { value, .. }
+                Inst::StackAlloc { value, .. }
                 | Inst::Store { target: value, .. } => {
                     used_destroy_flags.get(value).copied().unwrap_or(true)
                 }

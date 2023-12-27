@@ -121,21 +121,24 @@ impl<'db> PrettyCx<'db> {
 
     fn pp_inst(&mut self, body: &'db Body, inst: &'db Inst) -> D<'db> {
         match inst {
-            Inst::Local { value, init } => self
+            Inst::StackAlloc { value, init } => self
                 .value_assign(body, *value)
-                .append(D::text("local"))
+                .append(D::text("stackalloc"))
                 .append(D::space())
-                .append(self.value(body, *init)),
-            Inst::Param { value, index } => self
-                .value_assign(body, *value)
-                .append(D::text("param"))
-                .append(D::space())
-                .append(D::text(index.to_string())),
+                .append(
+                    init.map(|init| self.value(body, init))
+                        .unwrap_or_else(|| D::text("uninitialized")),
+                ),
             Inst::Store { value, target } => D::text("store")
                 .append(D::space())
                 .append(self.value(body, *value))
                 .append(D::space())
                 .append(self.value(body, *target)),
+            Inst::Alloc { value } => self
+                .value_assign(body, *value)
+                .append(D::text("alloc"))
+                .append(D::space())
+                .append(body.value(*value).ty.to_string(self.db)),
             Inst::Free { value, destroy_flag, .. } => D::text("free")
                 .append(D::space())
                 .append(self.value(body, *value))

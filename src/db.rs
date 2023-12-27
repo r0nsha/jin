@@ -383,6 +383,10 @@ impl DefInfo {
             span,
         })
     }
+
+    pub fn word(&self) -> Word {
+        Word::new(self.name, self.span)
+    }
 }
 
 impl Typed for DefInfo {

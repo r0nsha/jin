@@ -258,9 +258,9 @@ impl Block {
 
 #[derive(Debug, Clone)]
 pub enum Inst {
-    Local { value: ValueId, init: ValueId },
-    Param { value: ValueId, index: usize },
+    StackAlloc { value: ValueId, init: Option<ValueId> },
     Store { value: ValueId, target: ValueId },
+    Alloc { value: ValueId },
     Free { value: ValueId, destroy_flag: Option<ValueId>, span: Span },
     Br { target: BlockId },
     BrIf { cond: ValueId, then: BlockId, otherwise: Option<BlockId> },
