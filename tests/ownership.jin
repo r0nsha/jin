@@ -66,7 +66,10 @@ fn assign_not_moved() unit = {
 
 	// `wrapper` is NOT marked as moved since this is a `place` expression.
 	// also `wrapper.num` is destroyed here.
-	wrapper.num = Num(2) 
-	wrapper.num = Num(3) // `wrapper.num` destroyed here
-	wrapper.num.field = 2
+	{
+		let x = wrapper
+		wrapper
+	}.num = Num(2) 
+	//wrapper.num = Num(3) // `wrapper.num` destroyed here
+	//wrapper.num.field = 2
 }

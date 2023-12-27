@@ -794,7 +794,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.set_destroy_flag(value);
                 self.set_moved(value, moved_to);
                 self.walk_members(value, |this, member| {
-                    this.set_destroy_flag(member);
                     this.set_moved(member, moved_to);
                 });
                 Ok(())
@@ -1253,8 +1252,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn set_destroy_flag(&mut self, value: ValueId) {
         if let Some(destroy_flag) = self.body.destroy_flags.get(&value).copied()
         {
-            let value = self.const_bool(false);
-            self.push_inst(Inst::Store { value, target: destroy_flag });
+            let const_false = self.const_bool(false);
+            self.push_inst(Inst::Store {
+                value: const_false,
+                target: destroy_flag,
+            });
             self.walk_members(value, Self::set_destroy_flag);
         }
     }
