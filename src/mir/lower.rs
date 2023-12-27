@@ -448,7 +448,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     result.unwrap_or_else(|| self.const_unit())
                 };
 
-                // self.try_move(result, result_span, rules);
                 self.move_out(result);
                 self.exit_scope();
 
