@@ -842,7 +842,7 @@ impl<'a> Parser<'a> {
         let mut passed_named_arg = false;
 
         self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
-            let arg = Self::parse_arg(this)?;
+            let arg = Parser::parse_arg(this)?;
 
             match &arg {
                 CallArg::Positional(expr) if passed_named_arg => {
@@ -865,7 +865,7 @@ impl<'a> Parser<'a> {
         if self.is_ident() {
             let ident_tok = self.last_token();
 
-            if self.is(TokenKind::Eq) {
+            if self.is(TokenKind::Colon) {
                 let expr = self.parse_expr()?;
                 return Ok(CallArg::Named(ident_tok.word(), expr));
             }
