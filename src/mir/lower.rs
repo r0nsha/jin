@@ -348,7 +348,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 };
 
                 // NOTE: The lhs needs to be destroyed before it's assigned to
-                self.destroy_fields(lhs, assign.lhs.span);
+                self.destroy_members(lhs, assign.lhs.span);
                 self.destroy_value(lhs, assign.lhs.span);
                 self.push_inst(Inst::Store { value: rhs, target: lhs });
 
@@ -448,7 +448,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     result.unwrap_or_else(|| self.const_unit())
                 };
 
-                self.move_out(result);
+                self.move_out(
+                    result,
+                    blk.exprs.last().map_or(expr.span, |e| e.span),
+                );
                 self.exit_scope();
 
                 result
@@ -717,22 +720,24 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn walk_members(
         &mut self,
         value: ValueId,
-        mut f: impl FnMut(&mut Self, ValueId),
-    ) {
-        self.walk_members_aux(value, &mut f);
+        mut f: impl FnMut(&mut Self, ValueId) -> Result<(), Diagnostic>,
+    ) -> Result<(), Diagnostic> {
+        self.walk_members_aux(value, &mut f)
     }
 
     fn walk_members_aux(
         &mut self,
         value: ValueId,
-        f: &mut impl FnMut(&mut Self, ValueId),
-    ) {
+        f: &mut impl FnMut(&mut Self, ValueId) -> Result<(), Diagnostic>,
+    ) -> Result<(), Diagnostic> {
         if let Some(members) = self.members.get(&value).cloned() {
             for member in members.values().copied() {
-                self.walk_members_aux(member, f);
-                f(self, member);
+                f(self, member)?;
+                self.walk_members_aux(member, f)?;
             }
         }
+
+        Ok(())
     }
 
     fn walk_parents(
@@ -756,11 +761,25 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    pub fn move_out(&mut self, value: ValueId) {
+    pub fn move_out(&mut self, value: ValueId, moved_to: Span) {
+        if let Err(diagnostic) = self.move_out_aux(value, moved_to) {
+            self.cx.db.diagnostics.emit(diagnostic);
+        }
+    }
+
+    pub fn move_out_aux(
+        &mut self,
+        value: ValueId,
+        moved_to: Span,
+    ) -> Result<(), Diagnostic> {
+        self.check_if_moved(value, moved_to)?;
+        self.walk_members(value, |this, member| {
+            this.move_out_aux(member, moved_to)
+        })?;
         let scope = self.scope_mut();
         scope.created_values.retain(|v| *v != value);
         scope.moved_out.push(value);
-        self.walk_members(value, Self::move_out);
+        Ok(())
     }
 
     pub fn try_move(&mut self, value: ValueId, moved_to: Span, rules: Rules) {
@@ -791,7 +810,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.set_moved(value, moved_to);
         self.walk_members(value, |this, member| {
             this.set_moved(member, moved_to);
-        });
+            Ok(())
+        })?;
         self.walk_parents(value, |this, parent| {
             this.set_partially_moved(parent, moved_to);
             Ok(())
@@ -803,6 +823,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.set_destroy_flag(value);
 
         Ok(())
+    }
+
+    pub fn check_if_moved_or_members_moved(
+        &mut self,
+        value: ValueId,
+        moved_to: Span,
+    ) -> Result<(), Diagnostic> {
+        self.check_if_moved(value, moved_to);
+        self.walk_members(value, |this, member| {
+            this.check_if_moved(member, moved_to)
+        })
     }
 
     pub fn check_if_moved(
@@ -1208,9 +1239,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    fn destroy_fields(&mut self, value: ValueId, span: Span) {
+    fn destroy_members(&mut self, value: ValueId, span: Span) {
         self.walk_members(value, |this, member| {
             this.destroy_value(member, span);
+            Ok(())
         });
     }
 
@@ -1232,7 +1264,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 value: const_false,
                 target: destroy_flag,
             });
-            self.walk_members(value, Self::set_destroy_flag);
+            self.walk_members(value, |this, member| {
+                this.set_destroy_flag(member);
+                Ok(())
+            });
         }
     }
 

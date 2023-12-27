@@ -77,7 +77,7 @@ fn assign_not_moved() unit = {
 	{
 		let x = wrapper
 		let y = x
-		x
+		y
 	}.num = Num(2) 
 
 	//{
