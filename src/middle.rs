@@ -114,7 +114,7 @@ impl BinOp {
         }
     }
 
-    pub fn try_from_assign_op(tk: TokenKind) -> Option<Self> {
+    pub fn from_assign_op(tk: TokenKind) -> Option<Self> {
         let op = match tk {
             TokenKind::StarEq => Self::Mul,
             TokenKind::FwSlashEq => Self::Div,

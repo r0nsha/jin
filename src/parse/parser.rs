@@ -256,7 +256,10 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_extern_let(&mut self, attrs: Attrs) -> DiagnosticResult<ExternLet> {
+    fn parse_extern_let(
+        &mut self,
+        attrs: Attrs,
+    ) -> DiagnosticResult<ExternLet> {
         let start = self.last_span();
 
         let mutability = self.parse_optional_mutability().unwrap_or_default();
@@ -405,7 +408,9 @@ impl<'a> Parser<'a> {
         .map(|(t, _)| t)
     }
 
-    fn parse_optional_ty_args(&mut self) -> DiagnosticResult<Option<Vec<TyExpr>>> {
+    fn parse_optional_ty_args(
+        &mut self,
+    ) -> DiagnosticResult<Option<Vec<TyExpr>>> {
         if self.peek_is(TokenKind::OpenBracket) {
             let args = self.parse_ty_args().map(|(t, _)| t)?;
             Ok(Some(args))
@@ -468,41 +473,8 @@ impl<'a> Parser<'a> {
             let let_ = self.parse_let(Attrs::new())?;
             Ok(Expr::Let(let_))
         } else {
-            let expr = self.parse_expr()?;
-            self.parse_assign(expr)
+            self.parse_expr()
         }
-    }
-
-    fn parse_assign(&mut self, expr: Expr) -> DiagnosticResult<Expr> {
-        if self.is(TokenKind::Eq) {
-            let rhs = self.parse_expr()?;
-            let span = expr.span().merge(rhs.span());
-
-            return Ok(Expr::Assign {
-                lhs: Box::new(expr),
-                rhs: Box::new(rhs),
-                op: None,
-                span,
-            });
-        }
-
-        if let Some(tok) = self.token() {
-            if let Some(op) = BinOp::try_from_assign_op(tok.kind) {
-                self.next();
-
-                let rhs = self.parse_expr()?;
-                let span = expr.span().merge(rhs.span());
-
-                return Ok(Expr::Assign {
-                    lhs: Box::new(expr),
-                    rhs: Box::new(rhs),
-                    op: Some(op),
-                    span,
-                });
-            }
-        }
-
-        Ok(expr)
     }
 
     fn parse_return(&mut self) -> DiagnosticResult<Expr> {
@@ -818,14 +790,39 @@ impl<'a> Parser<'a> {
                         }
                     } else {
                         let span = expr.span().merge(name.span());
-                        Expr::Field {
-                            expr: Box::new(expr),
-                            field: name,
-                            span,
-                        }
+                        Expr::Field { expr: Box::new(expr), field: name, span }
                     }
                 }
-                _ => break,
+                TokenKind::Eq => {
+                    self.next();
+                    let rhs = self.parse_expr()?;
+                    let span = expr.span().merge(rhs.span());
+
+                    Expr::Assign {
+                        lhs: Box::new(expr),
+                        rhs: Box::new(rhs),
+                        op: None,
+                        span,
+                    }
+                }
+                _ => {
+                    if let Some(op) = BinOp::from_assign_op(tok.kind) {
+                        // OpAssign (x += 1)
+                        self.next();
+
+                        let rhs = self.parse_expr()?;
+                        let span = expr.span().merge(rhs.span());
+
+                        Expr::Assign {
+                            lhs: Box::new(expr),
+                            rhs: Box::new(rhs),
+                            op: Some(op),
+                            span,
+                        }
+                    } else {
+                        break;
+                    }
+                }
             }
         }
 
@@ -921,7 +918,10 @@ impl<'a> Parser<'a> {
 
 impl<'a> Parser<'a> {
     #[inline]
-    pub(super) fn eat(&mut self, expected: TokenKind) -> DiagnosticResult<Token> {
+    pub(super) fn eat(
+        &mut self,
+        expected: TokenKind,
+    ) -> DiagnosticResult<Token> {
         let tok = self.eat_any()?;
         Self::require_kind(tok, expected)
     }
