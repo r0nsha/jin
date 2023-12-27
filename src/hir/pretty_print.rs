@@ -204,10 +204,10 @@ impl PrettyCx<'_> {
                 self.pp_expr(&cast.expr);
                 self.builder.end_child();
             }
-            ExprKind::Member(access) => {
+            ExprKind::Field(access) => {
                 self.builder.begin_child(format!(
-                    "member access `{}` (type: {})",
-                    access.member,
+                    "field `{}` (type: {})",
+                    access.field,
                     expr.ty.display(self.db)
                 ));
                 self.pp_expr(&access.expr);

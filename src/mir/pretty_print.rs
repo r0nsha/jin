@@ -233,8 +233,8 @@ impl<'db> PrettyCx<'db> {
             ValueKind::Global(id) => Self::global(&self.mir.globals[*id].name),
             ValueKind::Fn(id) => Self::global(&self.mir.fn_sigs[*id].name),
             ValueKind::Const(value) => pp_const_value(value),
-            ValueKind::Member(value, member) => {
-                self.value(body, *value).append(D::text(format!(".{member}")))
+            ValueKind::Field(value, field) => {
+                self.value(body, *value).append(D::text(format!(".{field}")))
             }
         }
     }

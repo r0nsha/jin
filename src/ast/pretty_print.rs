@@ -128,8 +128,8 @@ impl PrettyPrint for Expr {
                 cx.builder.end_child();
                 cx.builder.end_child();
             }
-            Self::Member { expr, member, .. } => {
-                cx.builder.begin_child(format!("member access `{member}`"));
+            Self::Field { expr, field, .. } => {
+                cx.builder.begin_child(format!("field `{field}`"));
                 expr.pretty_print(cx);
                 cx.builder.end_child();
             }

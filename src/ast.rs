@@ -162,9 +162,9 @@ pub enum Expr {
         ty_expr: TyExpr,
         span: Span,
     },
-    Member {
+    Field {
         expr: Box<Self>,
-        member: Word,
+        field: Word,
         span: Span,
     },
     Name {
@@ -184,7 +184,7 @@ impl Spanned for Expr {
             Self::Let(Let { span, .. })
             | Self::Assign { span, .. }
             | Self::Name { span, .. }
-            | Self::Member { span, .. }
+            | Self::Field { span, .. }
             | Self::Return { span, .. }
             | Self::If { span, .. }
             | Self::Loop { span, .. }

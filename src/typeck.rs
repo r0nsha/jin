@@ -1096,9 +1096,9 @@ impl<'db> Typeck<'db> {
                     *span,
                 ))
             }
-            ast::Expr::Member { expr, member, span } => {
+            ast::Expr::Field { expr, field, span } => {
                 let expr = self.check_expr(env, expr, None)?;
-                self.check_member(env, expr, *member, *span)
+                self.check_field(env, expr, *field, *span)
             }
             ast::Expr::Name { word, ty_args, span } => {
                 let id =
@@ -1261,11 +1261,11 @@ impl<'db> Typeck<'db> {
             .transpose()
     }
 
-    fn check_member(
+    fn check_field(
         &mut self,
         env: &Env,
         expr: hir::Expr,
-        member: Word,
+        field: Word,
         span: Span,
     ) -> TypeckResult<hir::Expr> {
         let ty = self.normalize(expr.ty);
@@ -1276,7 +1276,7 @@ impl<'db> Typeck<'db> {
                 let struct_info = &self.db[*struct_id];
 
                 if let Some(field) =
-                    struct_info.field_by_name(member.name().as_str())
+                    struct_info.field_by_name(field.name().as_str())
                 {
                     if field.vis == Vis::Private
                         && self.db[struct_info.def_id].scope.module_id
@@ -1295,31 +1295,31 @@ impl<'db> Typeck<'db> {
 
                     field.ty
                 } else {
-                    return Err(errors::member_not_found(
-                        self.db, ty, expr.span, member,
+                    return Err(errors::field_not_found(
+                        self.db, ty, expr.span, field,
                     ));
                 }
             }
             TyKind::Module(module_id) => {
                 // TODO: apply ty_args here
-                let id = self.lookup(env, *module_id, &Query::Name(member))?;
-                return self.check_name(env, id, member, span, None);
+                let id = self.lookup(env, *module_id, &Query::Name(field))?;
+                return self.check_name(env, id, field, span, None);
             }
             // TODO: ty_args are an error here
-            TyKind::Str if member.name() == sym::PTR => {
+            TyKind::Str if field.name() == sym::PTR => {
                 Ty::new(TyKind::RawPtr(self.db.types.u8))
             }
             // TODO: ty_args are an error here
-            TyKind::Str if member.name() == sym::LEN => self.db.types.uint,
+            TyKind::Str if field.name() == sym::LEN => self.db.types.uint,
             _ => {
-                return Err(errors::member_not_found(
-                    self.db, ty, expr.span, member,
+                return Err(errors::field_not_found(
+                    self.db, ty, expr.span, field,
                 ))
             }
         };
 
         Ok(self.expr(
-            hir::ExprKind::Member(hir::Member { expr: Box::new(expr), member }),
+            hir::ExprKind::Field(hir::Field { expr: Box::new(expr), field }),
             res_ty,
             span,
         ))
@@ -1704,7 +1704,7 @@ impl<'db> Typeck<'db> {
 
     fn check_assign_lhs(&self, expr: &hir::Expr) -> TypeckResult<()> {
         match &expr.kind {
-            hir::ExprKind::Member(access) => {
+            hir::ExprKind::Field(access) => {
                 self.check_assign_lhs_inner(&access.expr, expr.span)
             }
             hir::ExprKind::Name(name) => {

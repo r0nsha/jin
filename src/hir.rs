@@ -95,7 +95,7 @@ impl Expr {
                 bin.rhs.walk_(f);
             }
             ExprKind::Cast(cast) => cast.expr.walk_(f),
-            ExprKind::Member(access) => access.expr.walk_(f),
+            ExprKind::Field(access) => access.expr.walk_(f),
             ExprKind::Break | ExprKind::Name(_) | ExprKind::Lit(_) => (),
         }
 
@@ -116,7 +116,7 @@ pub enum ExprKind {
     Unary(Unary),
     Binary(Binary),
     Cast(Cast),
-    Member(Member),
+    Field(Field),
     Name(Name),
     Lit(Lit),
 }
@@ -259,9 +259,9 @@ pub struct Cast {
 }
 
 #[derive(Debug, Clone)]
-pub struct Member {
+pub struct Field {
     pub expr: Box<Expr>,
-    pub member: Word,
+    pub field: Word,
 }
 
 #[derive(Debug, Clone)]

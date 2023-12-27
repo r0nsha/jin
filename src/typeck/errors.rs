@@ -7,20 +7,20 @@ use crate::{
     word::Word,
 };
 
-pub fn member_not_found(
+pub fn field_not_found(
     db: &Db,
     expr_ty: Ty,
     expr_span: Span,
-    member: Word,
+    field: Word,
 ) -> Diagnostic {
     Diagnostic::error()
         .with_message(format!(
-            "no member `{}` on type `{}`",
-            member,
+            "no field `{}` on type `{}`",
+            field,
             expr_ty.display(db)
         ))
         .with_label(
-            Label::primary(member.span()).with_message("unknown member"),
+            Label::primary(field.span()).with_message("unknown field"),
         )
         .with_label(Label::secondary(expr_span).with_message(format!(
             "expression has type `{}`",

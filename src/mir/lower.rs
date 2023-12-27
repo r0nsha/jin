@@ -190,7 +190,7 @@ struct LowerBody<'cx, 'db> {
     scopes: Vec<Scope>,
     current_block: BlockId,
     locals: FxHashMap<DefId, ValueId>,
-    members: FxHashMap<ValueId, FxHashMap<Ustr, ValueId>>,
+    fields: FxHashMap<ValueId, FxHashMap<Ustr, ValueId>>,
 }
 
 impl<'cx, 'db> LowerBody<'cx, 'db> {
@@ -202,7 +202,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             scopes: vec![],
             current_block: BlockId::start(),
             locals: FxHashMap::default(),
-            members: FxHashMap::default(),
+            fields: FxHashMap::default(),
         }
     }
 
@@ -342,7 +342,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 };
 
                 // NOTE: The lhs needs to be destroyed before it's assigned to
-                self.destroy_members(lhs, assign.lhs.span);
+                self.destroy_fields(lhs, assign.lhs.span);
                 self.destroy_value(lhs, assign.lhs.span);
                 self.push_inst(Inst::Store { value: rhs, target: lhs });
 
@@ -517,18 +517,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     span: expr.span,
                 })
             }
-            hir::ExprKind::Member(access) => {
-                let member = access.member.name();
+            hir::ExprKind::Field(access) => {
+                let field = access.field.name();
                 let value = self.lower_expr(&access.expr);
 
-                if let Some(member_value) = self
-                    .members
+                if let Some(field_value) = self
+                    .fields
                     .get(&value)
-                    .and_then(|members| members.get(&member))
+                    .and_then(|fields| fields.get(&field))
                 {
-                    *member_value
+                    *field_value
                 } else {
-                    self.create_value(expr.ty, ValueKind::Member(value, member))
+                    self.create_value(expr.ty, ValueKind::Field(value, field))
                 }
             }
             hir::ExprKind::Name(name) => {
@@ -676,14 +676,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let value = self.body.create_value(ty, kind);
         self.set_owned(value);
         self.scope_mut().created_values.insert(value);
-        self.create_value_members(value, ty);
+        self.create_value_fields(value, ty);
         value
     }
 
-    pub fn create_value_members(&mut self, value: ValueId, ty: Ty) {
+    pub fn create_value_fields(&mut self, value: ValueId, ty: Ty) {
         if let Some(fields) = ty.fields(self.cx.db) {
             #[allow(clippy::unnecessary_to_owned)]
-            let members: FxHashMap<_, _> = fields
+            let fields: FxHashMap<_, _> = fields
                 .to_vec()
                 .into_iter()
                 .filter_map(|field| {
@@ -693,14 +693,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             name,
                             self.create_value_with_destroy_flag(
                                 field.ty,
-                                ValueKind::Member(value, name),
+                                ValueKind::Field(value, name),
                             ),
                         )
                     })
                 })
                 .collect();
 
-            self.members.insert(value, members);
+            self.fields.insert(value, fields);
         }
     }
 
@@ -714,23 +714,23 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
-    fn walk_members(
+    fn walk_fields(
         &mut self,
         value: ValueId,
         mut f: impl FnMut(&mut Self, ValueId) -> DiagnosticResult<()>,
     ) -> DiagnosticResult<()> {
-        self.walk_members_aux(value, &mut f)
+        self.walk_fields_aux(value, &mut f)
     }
 
-    fn walk_members_aux(
+    fn walk_fields_aux(
         &mut self,
         value: ValueId,
         f: &mut impl FnMut(&mut Self, ValueId) -> DiagnosticResult<()>,
     ) -> DiagnosticResult<()> {
-        if let Some(members) = self.members.get(&value).cloned() {
-            for member in members.values().copied() {
-                f(self, member)?;
-                self.walk_members_aux(member, f)?;
+        if let Some(fields) = self.fields.get(&value).cloned() {
+            for field in fields.values().copied() {
+                f(self, field)?;
+                self.walk_fields_aux(field, f)?;
             }
         }
 
@@ -750,7 +750,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value: ValueId,
         f: &mut impl FnMut(&mut Self, ValueId) -> DiagnosticResult<()>,
     ) -> DiagnosticResult<()> {
-        if let &ValueKind::Member(parent, _) = &self.body.value(value).kind {
+        if let &ValueKind::Field(parent, _) = &self.body.value(value).kind {
             f(self, parent)?;
             self.walk_parents_aux(parent, f)
         } else {
@@ -775,8 +775,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         scope.created_values.remove(&value);
         scope.moved_out.insert(value);
 
-        self.walk_members(value, |this, member| {
-            this.move_out_aux(member, moved_to)
+        self.walk_fields(value, |this, field| {
+            this.move_out_aux(field, moved_to)
         })
     }
 
@@ -802,11 +802,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return Ok(());
         }
 
-        // Mark the value and its members as moved.
+        // Mark the value and its fields as moved.
         // Mark its parents (if any) as partially moved
         self.set_moved(value, moved_to);
-        self.walk_members(value, |this, member| {
-            this.set_moved(member, moved_to);
+        self.walk_fields(value, |this, field| {
+            this.set_moved(field, moved_to);
             Ok(())
         })
         .unwrap();
@@ -1231,9 +1231,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    fn destroy_members(&mut self, value: ValueId, span: Span) {
-        self.walk_members(value, |this, member| {
-            this.destroy_value(member, span);
+    fn destroy_fields(&mut self, value: ValueId, span: Span) {
+        self.walk_fields(value, |this, field| {
+            this.destroy_value(field, span);
             Ok(())
         })
         .unwrap();
@@ -1257,8 +1257,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 value: const_false,
                 target: destroy_flag,
             });
-            self.walk_members(value, |this, member| {
-                this.set_destroy_flag(member);
+            self.walk_fields(value, |this, field| {
+                this.set_destroy_flag(field);
                 Ok(())
             })
             .unwrap();
@@ -1279,8 +1279,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             ValueKind::Local(id) => self.cx.db[*id].name.to_string(),
             ValueKind::Global(id) => self.cx.mir.globals[*id].name.to_string(),
             ValueKind::Fn(id) => self.cx.mir.fn_sigs[*id].name.to_string(),
-            ValueKind::Member(parent, member) => {
-                format!("{}.{}", self.value_name_aux(*parent), member)
+            ValueKind::Field(parent, field) => {
+                format!("{}.{}", self.value_name_aux(*parent), field)
             }
             ValueKind::Register(_) | ValueKind::Const(_) => {
                 "temporary value".to_string()

@@ -818,9 +818,9 @@ impl<'a> Parser<'a> {
                         }
                     } else {
                         let span = expr.span().merge(name.span());
-                        Expr::Member {
+                        Expr::Field {
                             expr: Box::new(expr),
-                            member: name,
+                            field: name,
                             span,
                         }
                     }

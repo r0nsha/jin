@@ -297,8 +297,8 @@ pub enum ValueKind {
     // A constant value
     Const(Const),
 
-    // A member of a value
-    Member(ValueId, Ustr),
+    // A field of a value
+    Field(ValueId, Ustr),
 }
 
 #[derive(Debug, Clone, PartialEq, From)]

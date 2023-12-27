@@ -346,7 +346,7 @@ impl<'db> Generator<'db> {
                             let name = f.name.name().as_str();
 
                             util::assign(
-                                util::member(lit_name.clone(), name, true),
+                                util::field(lit_name.clone(), name, true),
                                 D::text(name),
                             )
                         })
@@ -562,9 +562,9 @@ impl<'db> Generator<'db> {
             }
             ValueKind::Fn(id) => D::text(self.mir.fn_sigs[*id].name.as_str()),
             ValueKind::Const(value) => codegen_const_value(value),
-            ValueKind::Member(value, member) => util::member(
+            ValueKind::Field(value, field) => util::field(
                 self.value(state, *value),
-                member,
+                field,
                 state.body.value(*value).ty.is_ptr(self),
             ),
         }
