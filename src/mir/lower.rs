@@ -521,7 +521,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let member = access.member.name();
                 let value = self.lower_expr(&access.expr);
 
-                let member_value = if let Some(member_value) = self
+                if let Some(member_value) = self
                     .members
                     .get(&value)
                     .and_then(|members| members.get(&member))
@@ -529,11 +529,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     *member_value
                 } else {
                     self.create_value(expr.ty, ValueKind::Member(value, member))
-                };
-
-                self.try_move(member_value, expr.span, rules);
-
-                member_value
+                }
             }
             hir::ExprKind::Name(name) => {
                 self.lower_name(name.id, &name.instantiation)
@@ -1204,15 +1200,24 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn value_name(&self, value: ValueId) -> String {
         match &self.body.value(value).kind {
-            ValueKind::Local(id) => format!("`{}`", self.cx.db[*id].name),
-            ValueKind::Global(id) => {
-                format!("`{}`", self.cx.mir.globals[*id].name)
-            }
-            ValueKind::Fn(id) => format!("`{}`", self.cx.mir.fn_sigs[*id].name),
             ValueKind::Register(_) | ValueKind::Const(_) => {
                 "temporary value".to_string()
             }
-            ValueKind::Member(_, member) => format!("`{member}`"),
+            _ => format!("`{}`", self.value_name_aux(value)),
+        }
+    }
+
+    fn value_name_aux(&self, value: ValueId) -> String {
+        match &self.body.value(value).kind {
+            ValueKind::Local(id) => self.cx.db[*id].name.to_string(),
+            ValueKind::Global(id) => self.cx.mir.globals[*id].name.to_string(),
+            ValueKind::Fn(id) => self.cx.mir.fn_sigs[*id].name.to_string(),
+            ValueKind::Member(parent, member) => {
+                format!("{}.{}", self.value_name_aux(*parent), member)
+            }
+            ValueKind::Register(_) | ValueKind::Const(_) => {
+                "temporary value".to_string()
+            }
         }
     }
 }
