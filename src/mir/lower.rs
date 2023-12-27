@@ -535,7 +535,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
             }
             hir::ExprKind::Name(name) => {
-                self.lower_name(name.id, &name.instantiation)
+                self.lower_name(name.id, &name.instantiation, expr.span)
             }
             hir::ExprKind::Lit(lit) => {
                 let value = match lit {
@@ -555,6 +555,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         &mut self,
         id: DefId,
         instantiation: &Instantiation,
+        span: Span,
     ) -> ValueId {
         match self.cx.db[id].kind.as_ref() {
             DefKind::Fn(_) => {
@@ -578,7 +579,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     ValueKind::Global(id),
                 )
             }
-            DefKind::Variable => self.locals[&id],
+            DefKind::Variable => {
+                let value = self.locals[&id];
+                self.report_if_moved(value, span);
+                value
+            }
             DefKind::Struct(sid) => {
                 let id = self.cx.get_or_create_struct_ctor(*sid);
                 self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
@@ -811,11 +816,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.walk_members(value, |this, member| {
             this.set_moved(member, moved_to);
             Ok(())
-        })?;
+        })
+        .unwrap();
         self.walk_parents(value, |this, parent| {
             this.set_partially_moved(parent, moved_to);
             Ok(())
-        })?;
+        })
+        .unwrap();
 
         self.insert_loop_move(value, moved_to);
         self.check_move_out_of_global(value, moved_to)?;
@@ -825,15 +832,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         Ok(())
     }
 
-    pub fn check_if_moved_or_members_moved(
-        &mut self,
-        value: ValueId,
-        moved_to: Span,
-    ) -> Result<(), Diagnostic> {
-        self.check_if_moved(value, moved_to);
-        self.walk_members(value, |this, member| {
-            this.check_if_moved(member, moved_to)
-        })
+    pub fn report_if_moved(&mut self, value: ValueId, moved_to: Span) {
+        if let Err(diagnostic) = self.check_if_moved(value, moved_to) {
+            self.cx.db.diagnostics.emit(diagnostic);
+        }
     }
 
     pub fn check_if_moved(
@@ -1243,7 +1245,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.walk_members(value, |this, member| {
             this.destroy_value(member, span);
             Ok(())
-        });
+        })
+        .unwrap();
     }
 
     fn create_destroy_flag(&mut self, value: ValueId) {
@@ -1267,7 +1270,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.walk_members(value, |this, member| {
                 this.set_destroy_flag(member);
                 Ok(())
-            });
+            })
+            .unwrap();
         }
     }
 
