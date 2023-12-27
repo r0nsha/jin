@@ -1,6 +1,6 @@
 use std::{fmt, mem, ops};
 
-use indexmap::IndexMap;
+use indexmap::{IndexMap, IndexSet};
 use itertools::Itertools as _;
 use ustr::{ustr, Ustr};
 
@@ -683,7 +683,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
         let value = self.body.create_value(ty, kind);
         self.set_owned(value);
-        self.scope_mut().created_values.push(value);
+        self.scope_mut().created_values.insert(value);
         self.create_value_members(value, ty);
         value
     }
@@ -778,9 +778,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         moved_to: Span,
     ) -> Result<(), Diagnostic> {
         self.check_if_moved(value, moved_to)?;
+
         let scope = self.scope_mut();
-        scope.created_values.retain(|v| *v != value);
-        scope.moved_out.push(value);
+        scope.created_values.remove(&value);
+        scope.moved_out.insert(value);
 
         self.walk_members(value, |this, member| {
             this.move_out_aux(member, moved_to)
@@ -1138,8 +1139,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 .map(|s| s.loop_depth + 1)
                 .unwrap_or_default(),
             span,
-            created_values: vec![],
-            moved_out: vec![],
+            created_values: IndexSet::default(),
+            moved_out: IndexSet::default(),
         });
     }
 
@@ -1402,8 +1403,8 @@ struct Scope {
     span: Span,
 
     // Values that were created in this scope
-    created_values: Vec<ValueId>,
-    moved_out: Vec<ValueId>,
+    created_values: IndexSet<ValueId>,
+    moved_out: IndexSet<ValueId>,
 }
 
 #[derive(Debug, Clone, EnumAsInner)]
