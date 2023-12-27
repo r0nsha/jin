@@ -463,9 +463,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::Call(call) => {
-                let callee = self.lower_expr(&call.callee);
-                self.try_move(callee, call.callee.span, rules);
-
                 // NOTE: We evaluate args in passing order, and then sort them to the actual
                 // required parameter order
                 let mut args = vec![];
@@ -478,6 +475,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
 
                 args.sort_by_key(|(idx, _)| *idx);
+
+                let callee = self.lower_expr(&call.callee);
+                self.try_move(callee, call.callee.span, rules);
 
                 self.push_inst_with_register(expr.ty, |value| Inst::Call {
                     value,
