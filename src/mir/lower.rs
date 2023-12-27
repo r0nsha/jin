@@ -773,13 +773,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         moved_to: Span,
     ) -> Result<(), Diagnostic> {
         self.check_if_moved(value, moved_to)?;
-        self.walk_members(value, |this, member| {
-            this.move_out_aux(member, moved_to)
-        })?;
         let scope = self.scope_mut();
         scope.created_values.retain(|v| *v != value);
         scope.moved_out.push(value);
-        Ok(())
+
+        self.walk_members(value, |this, member| {
+            this.move_out_aux(member, moved_to)
+        })
     }
 
     pub fn try_move(&mut self, value: ValueId, moved_to: Span, rules: Rules) {
