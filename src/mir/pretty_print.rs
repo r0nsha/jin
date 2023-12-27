@@ -237,6 +237,7 @@ impl<'db> PrettyCx<'db> {
             ValueKind::Register(name) => {
                 D::text(format!("{}{}", name.unwrap_or(ustr("v")), value_id))
             }
+            ValueKind::Name(name) => D::text(name.as_str()),
             ValueKind::Local(id) => D::text(self.db[*id].name.as_str()),
             ValueKind::Global(id) => Self::global(&self.mir.globals[*id].name),
             ValueKind::Fn(id) => Self::global(&self.mir.fn_sigs[*id].name),

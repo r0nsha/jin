@@ -292,7 +292,13 @@ impl<'db> Generator<'db> {
         for param in &sig.params {
             match &param.pat {
                 Pat::Name(name) => {
-                    state.local_names.insert(name.id, self.db[name.id].name);
+                    // The parameter's name id could be INVALID when it's generated ad-hoc.
+                    // For example, in type constructor parameters.
+                    if !name.id.is_invalid() {
+                        state
+                            .local_names
+                            .insert(name.id, self.db[name.id].name);
+                    }
                 }
                 Pat::Discard(_) => (),
             }
@@ -488,6 +494,7 @@ impl<'db> Generator<'db> {
             ValueKind::Register(name) => {
                 D::text(Self::register_name(id, *name))
             }
+            ValueKind::Name(name) => D::text(name.as_str()),
             ValueKind::Local(id) => {
                 D::text(state.local_names.get(*id).unwrap().as_str())
             }

@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    db::{Db, DefId, DefInfo, DefKind, StructKind},
+    db::{Db, DefId, DefKind, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     hir::{FnKind, Hir},
@@ -124,13 +124,25 @@ impl<'db> Lower<'db> {
     }
 
     fn create_struct_ctor(&mut self, sid: StructId) -> FnSigId {
-        let (param_ids, params) = self.create_struct_ctor_params(sid);
-
         let struct_info = &self.db[sid];
         let struct_def = &self.db[struct_info.def_id];
 
         let name =
             ustr(&struct_def.qpath.clone().child(ustr("ctor")).join_with("_"));
+
+        let params: Vec<_> = struct_info
+            .fields
+            .iter()
+            .map(|field| FnParam {
+                pat: Pat::Name(NamePat {
+                    id: DefId::INVALID,
+                    word: field.name,
+                    vis: Vis::Private,
+                    mutability: Mutability::Imm,
+                }),
+                ty: field.ty,
+            })
+            .collect();
 
         let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
@@ -163,13 +175,15 @@ impl<'db> Lower<'db> {
         };
 
         // Initialize all of the adt's fields
-        for id in param_ids {
-            let ty = self.db[id].ty;
-            let field =
-                body.create_value(ty, ValueKind::Field(this, self.db[id].name));
-            let param = body.create_value(ty, ValueKind::Local(id));
+        for field in &struct_info.fields {
+            let name = field.name.name();
+            let ty = field.ty;
+
+            let field_value =
+                body.create_value(ty, ValueKind::Field(this, name));
+            let param = body.create_value(ty, ValueKind::Name(name));
             body.block_mut(start_blk)
-                .push_inst(Inst::Store { value: param, target: field });
+                .push_inst(Inst::Store { value: param, target: field_value });
         }
 
         // Return the adt
@@ -178,51 +192,6 @@ impl<'db> Lower<'db> {
         self.mir.fns.insert(sig, Fn { sig, body });
 
         sig
-    }
-
-    fn create_struct_ctor_params(
-        &mut self,
-        sid: StructId,
-    ) -> (Vec<DefId>, Vec<FnParam>) {
-        let struct_info = &self.db[sid];
-        let struct_def = &self.db[struct_info.def_id];
-
-        let struct_qpath = struct_def.qpath.clone();
-        let struct_scope = struct_def.scope.clone();
-
-        // HACK: We shouldn't be introducing new definitions at this point...
-        // Need to find an alternative for ad-hoc parameters/locals
-        let param_ids: Vec<_> = struct_info
-            .fields
-            .clone()
-            .iter()
-            .map(|field| {
-                DefInfo::alloc(
-                    self.db,
-                    struct_qpath.clone().child(field.name.name()),
-                    struct_scope.clone(),
-                    DefKind::Variable,
-                    Mutability::Imm,
-                    field.ty,
-                    field.name.span(),
-                )
-            })
-            .collect();
-
-        let params = param_ids
-            .iter()
-            .map(|&id| FnParam {
-                pat: Pat::Name(NamePat {
-                    id,
-                    word: self.db[id].word(),
-                    vis: Vis::Private,
-                    mutability: Mutability::Imm,
-                }),
-                ty: self.db[id].ty,
-            })
-            .collect();
-
-        (param_ids, params)
     }
 
     fn lower_fn_sig(
@@ -1344,6 +1313,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             ValueKind::Field(parent, field) => {
                 format!("{}.{}", self.value_name_aux(*parent), field)
             }
+            ValueKind::Name(name) => name.to_string(),
             ValueKind::Register(_) | ValueKind::Const(_) => {
                 "temporary value".to_string()
             }
