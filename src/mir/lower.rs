@@ -759,19 +759,20 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return Ok(());
         }
 
-        self.insert_loop_move(value, moved_to);
-        self.check_move_out_of_global(value, moved_to)?;
-
-        let value_state = self.value_state(value);
-
-        match value_state {
+        match self.value_state(value) {
             ValueState::Owned => {
-                self.set_destroy_flag(value);
                 self.set_moved(value, moved_to);
                 self.walk_members(value, |this, member| {
                     this.set_moved(member, moved_to);
                 });
+
                 self.partially_move_parents(value, moved_to);
+
+                self.insert_loop_move(value, moved_to);
+                self.check_move_out_of_global(value, moved_to)?;
+
+                self.set_destroy_flag(value);
+
                 Ok(())
             }
             ValueState::Moved(already_moved_to)
