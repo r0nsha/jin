@@ -750,7 +750,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub fn move_out(&mut self, value: ValueId) {
-        self.scope_mut().created_values.retain(|v| *v != value);
+        let scope = self.scope_mut();
+        scope.created_values.retain(|v| *v != value);
+        scope.moved_out.push(value);
         self.walk_members(value, Self::move_out);
     }
 
@@ -810,7 +812,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 | ValueState::MaybeMoved(already_moved_to),
                 _,
             ) => {
-                let name = self.get_value_name(value);
+                let name = self.value_name(value);
 
                 Err(Diagnostic::error()
                     .with_message(format!("use of moved {name}"))
@@ -825,7 +827,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     ))
             }
             (ValueState::PartiallyMoved(moved_members), MoveKind::Move) => {
-                let name = self.get_value_name(value);
+                let name = self.value_name(value);
 
                 Err(Diagnostic::error()
                     .with_message(format!("use of partially moved {name}"))
@@ -845,7 +847,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 MoveKind::Partial(member),
             ) => {
                 if let Some(already_moved_to) = moved_members.get(&member) {
-                    let name = self.get_value_name(value);
+                    let name = self.value_name(value);
 
                     Err(Diagnostic::error()
                         .with_message(format!(
@@ -925,7 +927,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         for (value, moved_to) in moved_in_loop {
             if !matches!(self.value_state(value), ValueState::Owned) {
-                let name = self.get_value_name(value);
+                let name = self.value_name(value);
 
                 self.cx.db.diagnostics.emit(
                     Diagnostic::error()
@@ -1138,12 +1140,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 .unwrap_or_default(),
             span,
             created_values: vec![],
+            moved_out: vec![],
         });
     }
 
     fn exit_scope(&mut self) -> Scope {
         let scope = self.scopes.pop().expect("cannot exit the root scope");
+
         self.destroy_scope_values(&scope);
+
+        if let Some(curr_scope) = self.scopes.last_mut() {
+            curr_scope.created_values.extend(&scope.moved_out);
+        }
+
         scope
     }
 
@@ -1261,7 +1270,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    fn get_value_name(&self, value: ValueId) -> String {
+    fn value_name(&self, value: ValueId) -> String {
         match &self.body.value(value).kind {
             ValueKind::Local(id) => format!("`{}`", self.cx.db[*id].name),
             ValueKind::Global(id) => {
@@ -1393,6 +1402,7 @@ struct Scope {
 
     // Values that were created in this scope
     created_values: Vec<ValueId>,
+    moved_out: Vec<ValueId>,
 }
 
 #[derive(Debug, Clone, EnumAsInner)]
