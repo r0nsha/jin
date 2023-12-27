@@ -446,6 +446,11 @@ impl<'db> Generator<'db> {
                     self.value(state, *init),
                 )
             }
+            Inst::Param { value, index } => {
+                self.value_assign(state, *value, || {
+                    todo!("get param {index} name")
+                })
+            }
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),

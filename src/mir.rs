@@ -259,6 +259,7 @@ impl Block {
 #[derive(Debug, Clone)]
 pub enum Inst {
     Local { value: ValueId, init: ValueId },
+    Param { value: ValueId, index: usize },
     Store { value: ValueId, target: ValueId },
     Free { value: ValueId, destroy_flag: Option<ValueId>, span: Span },
     Br { target: BlockId },

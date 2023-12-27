@@ -45,7 +45,7 @@ pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
             .collect::<Vec<String>>()
             .join("_"),
         TyKind::Struct(sid) => {
-            db.get_struct_def(*sid).unwrap().qpath.join_with("_")
+            db.struct_def(*sid).unwrap().qpath.join_with("_")
         }
         TyKind::RawPtr(pointee) => {
             format!("ptr_{}", mangle_ty_name(db, *pointee))

@@ -1,4 +1,4 @@
-use std::{fmt, mem, task::Wake};
+use std::{fmt, mem};
 
 use indexmap::IndexSet;
 use itertools::Itertools as _;
@@ -122,6 +122,8 @@ impl<'db> Lower<'db> {
     }
 
     fn create_struct_ctor(&mut self, sid: StructId) -> FnSigId {
+        let params = self.create_struct_ctor_params(sid);
+
         let struct_info = &self.db[sid];
         let struct_def = &self.db[struct_info.def_id];
 
@@ -130,36 +132,6 @@ impl<'db> Lower<'db> {
 
         // HACK: We shouldn't be introducing new definitions at this point...
         // Need to find an alternative for ad-hoc parameters/locals
-        let param_def_ids: Vec<_> = struct_info
-            .fields
-            .iter()
-            .map(|field| {
-                DefInfo::alloc(
-                    self.db,
-                    struct_def.qpath.clone().child(field.name.name()),
-                    struct_def.scope.clone(),
-                    DefKind::Variable,
-                    Mutability::Imm,
-                    field.ty,
-                    field.name.span(),
-                )
-            })
-            .collect();
-
-        let params: Vec<_> = struct_info
-            .fields
-            .iter()
-            .zip(param_def_ids.iter())
-            .map(|(field, &id)| FnParam {
-                pat: Pat::Name(NamePat {
-                    id,
-                    word: field.name,
-                    vis: Vis::Private,
-                    mutability: Mutability::Imm,
-                }),
-                ty: field.ty,
-            })
-            .collect();
 
         let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
@@ -252,9 +224,46 @@ impl<'db> Lower<'db> {
             }
         };
 
-        self.mir.fns.insert(sig, Fn { sig, body });
+        // self.mir.fns.insert(sig, Fn { sig, body });
 
         sig
+    }
+
+    // HACK: We shouldn't be introducing new definitions at this point...
+    // Need to find an alternative for ad-hoc parameters/locals
+    fn create_struct_ctor_params(&mut self, sid: StructId) -> Vec<FnParam> {
+        let struct_info = &self.db[sid];
+        let struct_def = &self.db[struct_info.def_id];
+
+        let struct_qpath = struct_def.qpath.clone();
+        let struct_scope = struct_def.scope.clone();
+
+        struct_info
+            .fields
+            .clone()
+            .iter()
+            .map(|field| {
+                let id = DefInfo::alloc(
+                    self.db,
+                    struct_qpath.clone().child(field.name.name()),
+                    struct_scope.clone(),
+                    DefKind::Variable,
+                    Mutability::Imm,
+                    field.ty,
+                    field.name.span(),
+                );
+
+                FnParam {
+                    pat: Pat::Name(NamePat {
+                        id,
+                        word: field.name,
+                        vis: Vis::Private,
+                        mutability: Mutability::Imm,
+                    }),
+                    ty: field.ty,
+                }
+            })
+            .collect()
     }
 
     fn lower_fn_sig(
@@ -327,10 +336,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     match &param.pat {
                         Pat::Name(name) => {
                             let id = name.id;
-                            let value = self.create_value_with_destroy_flag(
-                                param.ty,
-                                ValueKind::Local(id),
-                            );
+                            let value = self
+                                .create_value(param.ty, ValueKind::Local(id));
+                            self.create_destroy_flag(value);
                             self.locals.insert(id, value);
                         }
                         Pat::Discard(_) => (),
@@ -364,10 +372,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.try_move(last_value, body.span);
                 self.exit_scope();
 
-                self.cx.mir.fns.insert(
-                    sig,
-                    Fn { def_id: fun.def_id, sig, body: self.body },
-                );
+                self.cx.mir.fns.insert(sig, Fn { sig, body: self.body });
             }
             FnKind::Extern { .. } => unreachable!(),
         }
@@ -795,29 +800,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 .filter_map(|field| {
                     let name = field.name.name();
                     self.ty_is_move(field.ty).then(|| {
-                        (
-                            name,
-                            self.create_value_with_destroy_flag(
-                                field.ty,
-                                ValueKind::Field(value, name),
-                            ),
-                        )
+                        let value = self.create_value(
+                            field.ty,
+                            ValueKind::Field(value, name),
+                        );
+                        self.create_destroy_flag(value);
+                        (name, value)
                     })
                 })
                 .collect();
 
             self.fields.insert(value, fields);
         }
-    }
-
-    pub fn create_value_with_destroy_flag(
-        &mut self,
-        ty: Ty,
-        kind: ValueKind,
-    ) -> ValueId {
-        let value = self.create_value(ty, kind);
-        self.create_destroy_flag(value);
-        value
     }
 
     fn walk_fields(

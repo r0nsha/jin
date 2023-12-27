@@ -187,7 +187,7 @@ impl Db {
         self.modules.iter().find(|m| &m.qpath == qpath)
     }
 
-    pub fn get_struct_def(&self, struct_id: StructId) -> Option<&DefInfo> {
+    pub fn struct_def(&self, struct_id: StructId) -> Option<&DefInfo> {
         self.structs.get(struct_id).and_then(|s| self.defs.get(s.def_id))
     }
 
