@@ -774,6 +774,10 @@ impl<'db> Typeck<'db> {
 
                 if let Some(op) = op {
                     self.check_bin_op(&lhs, &rhs, *op, *span)?;
+                } else {
+                    self.at(Obligation::exprs(*span, lhs.span, rhs.span))
+                        .eq(lhs.ty, rhs.ty)
+                        .or_coerce(self, rhs.id)?;
                 }
 
                 Ok(self.expr(

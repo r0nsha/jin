@@ -10,6 +10,7 @@ fn main() unit = {
 	move_out_of_global()
 	move_into_loop()
 	copy()
+	assign_not_moved()
 }
 
 fn use_after_move() unit = {
@@ -52,8 +53,16 @@ fn copy() unit = {
 	let a = n.field
 	let b = n.field // Ok
 
-	let n = { Num(1) }
 	let w = { Wrapper(Num(1)) }
-	let a = {w}.num.field
+	let a = w.num.field
 	let b = w.num.field // Ok
+}
+
+fn assign_not_moved() unit = {
+	let mut num = Num(1)
+	num.field = 1
+
+	let mut wrapper = Wrapper(Num(1))
+	wrapper.num = Num(2) // `wrapper.num` destroyed here
+	wrapper.num.field = 2
 }
