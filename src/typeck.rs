@@ -534,9 +534,8 @@ impl<'db> Typeck<'db> {
                         TyKind::Type(TyKind::Adt(adt_id).into()).into(),
                     )?;
 
-                    self.db.adts[adt_id].def_id = def_id;
-                    self.db.adts[adt_id].as_struct_mut().unwrap().def_id =
-                        def_id;
+                    self.db[adt_id].def_id = def_id;
+                    self.db[adt_id].as_struct_mut().unwrap().def_id = def_id;
 
                     adt_id
                 };
@@ -547,13 +546,13 @@ impl<'db> Typeck<'db> {
                         &field.ty_expr,
                         AllowTyHole::No,
                     )?;
-                    self.db.adts[adt_id].as_struct_mut().unwrap().fields[idx]
-                        .ty = ty;
+                    self.db[adt_id].as_struct_mut().unwrap().fields[idx].ty =
+                        ty;
                 }
 
-                self.db.adts[adt_id].as_struct_mut().unwrap().fill_ctor_ty();
+                self.db[adt_id].as_struct_mut().unwrap().fill_ctor_ty();
 
-                let adt = &self.db.adts[adt_id];
+                let adt = &self.db[adt_id];
                 if let Some(field) = adt.is_infinitely_sized() {
                     return Err(Diagnostic::error()
                         .with_message(format!(

@@ -110,7 +110,7 @@ impl<'db> CTy<'db> for AdtId {
             name
         };
 
-        match &cx.db.adts[*self].kind {
+        match &cx.db[*self].kind {
             AdtKind::Struct(s) => match s.kind {
                 StructKind::Ref => name.append(D::text("*")),
                 StructKind::Extern => name,
