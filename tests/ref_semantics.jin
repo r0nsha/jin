@@ -23,11 +23,11 @@ fn ref_type() unit = {
 }
 
 // TODO: change to &mut Ref when references are implemented
-fn mutate(mut ref: Ref) unit = {
+fn mutate(ref: &mut Ref) unit = {
 	ref.field = 3
 }
 
-fn print(ref: Ref) unit = {
+fn print(ref: &Ref) unit = {
 	printf("Ref(field: %d)\n".ptr, ref.field)
 }
 
