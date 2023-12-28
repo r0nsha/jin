@@ -210,7 +210,7 @@ impl UnifyCx<'_, '_> {
                 }
             }
 
-            (TyKind::Struct(a), TyKind::Struct(b)) if *a == *b => Ok(()),
+            (TyKind::Adt(a), TyKind::Adt(b)) if *a == *b => Ok(()),
 
             (TyKind::RawPtr(a), TyKind::RawPtr(b)) => self.unify_ty_ty(*a, *b),
 

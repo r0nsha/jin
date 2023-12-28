@@ -29,8 +29,8 @@ impl<'db> TyPrinter<'db> {
             TyKind::Fn(fun) => {
                 write!(f, "{}", fun.display(self.db, None))
             }
-            TyKind::Struct(sid) => {
-                f.write_str(self.db.structs[*sid].name.as_str())
+            TyKind::Adt(adt_id) => {
+                f.write_str(self.db.adts[*adt_id].name.as_str())
             }
             TyKind::RawPtr(pointee) => {
                 f.write_str("*")?;

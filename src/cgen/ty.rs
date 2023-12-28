@@ -4,7 +4,7 @@ use pretty::RcDoc as D;
 
 use crate::{
     cgen::generate::Generator,
-    db::{StructId, StructKind},
+    db::{AdtId, AdtKind, StructKind},
     sym,
     ty::{FloatTy, FnTy, IntTy, TyKind, UintTy},
 };
@@ -31,7 +31,7 @@ impl<'db> CTy<'db> for TyKind {
     fn cty(&self, cx: &Generator<'db>) -> D<'db> {
         match self {
             Self::Fn(fty) => fty.cty(cx),
-            Self::Struct(sid) => sid.cty(cx),
+            Self::Adt(adt_id) => adt_id.cty(cx),
             Self::RawPtr(ty) => ty.cty(cx).append(D::text("*")),
             Self::Int(ity) => ity.cty(cx),
             Self::Uint(uty) => uty.cty(cx),
@@ -45,7 +45,7 @@ impl<'db> CTy<'db> for TyKind {
 
     fn is_ptr(&self, cx: &Generator<'db>) -> bool {
         match self {
-            Self::Struct(sid) => cx.db[*sid].kind.is_ref(),
+            Self::Adt(adt_id) => cx.db[*adt_id].is_ref(),
             Self::RawPtr(_) => true,
             Self::Fn(_)
             | Self::Int(_)
@@ -100,9 +100,9 @@ impl<'db> CTy<'db> for FloatTy {
     }
 }
 
-impl<'db> CTy<'db> for StructId {
+impl<'db> CTy<'db> for AdtId {
     fn cty(&self, cx: &Generator<'db>) -> D<'db> {
-        let name = D::text(cx.struct_names[self].as_str());
+        let name = D::text(cx.adt_names[self].as_str());
 
         let name = if cx.defining_types {
             D::text("struct").append(D::space()).append(name)
@@ -110,9 +110,11 @@ impl<'db> CTy<'db> for StructId {
             name
         };
 
-        match cx.db.structs[*self].kind {
-            StructKind::Ref => name.append(D::text("*")),
-            StructKind::Extern => name,
+        match &cx.db.adts[*self].kind {
+            AdtKind::Struct(s) => match s.kind {
+                StructKind::Ref => name.append(D::text("*")),
+                StructKind::Extern => name,
+            },
         }
     }
 }

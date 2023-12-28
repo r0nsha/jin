@@ -20,7 +20,7 @@ use crate::{
     ast::{self, Ast},
     counter::Counter,
     data_structures::index_vec::IndexVecExt,
-    db::{Db, DefId, DefKind, ModuleId, StructField, StructInfo},
+    db::{Adt, AdtKind, Db, DefId, DefKind, ModuleId, StructDef, StructField},
     diagnostics::{Diagnostic, Label},
     hir,
     hir::{ExprId, FnParam, Hir},
@@ -511,37 +511,34 @@ impl<'db> Typeck<'db> {
                     });
                 }
 
-                let struct_id = {
-                    let ctor_vis =
-                        if fields.iter().any(|f| f.vis == Vis::Private) {
-                            Vis::Private
-                        } else {
-                            Vis::Public
-                        };
-
-                    let struct_id =
-                        self.db.structs.push_with_key(|id| StructInfo {
+                let adt_id = {
+                    let adt_id = self.db.adts.push_with_key(|id| Adt {
+                        id,
+                        def_id: DefId::INVALID,
+                        name: ty_def.word,
+                        kind: AdtKind::Struct(StructDef::new(
                             id,
-                            def_id: DefId::INVALID,
-                            name: ty_def.word,
+                            ty_def.word,
                             fields,
-                            kind: struct_def.kind,
-                            ctor_ty: self.db.types.unknown,
-                            ctor_vis,
-                        });
+                            struct_def.kind,
+                            self.db.types.unknown,
+                        )),
+                    });
 
                     let def_id = self.define_def(
                         env,
                         ty_def.vis,
-                        DefKind::Struct(struct_id),
+                        DefKind::Adt(adt_id),
                         ty_def.word,
                         Mutability::Imm,
-                        TyKind::Type(TyKind::Struct(struct_id).into()).into(),
+                        TyKind::Type(TyKind::Adt(adt_id).into()).into(),
                     )?;
 
-                    self.db.structs[struct_id].def_id = def_id;
+                    self.db.adts[adt_id].def_id = def_id;
+                    self.db.adts[adt_id].as_struct_mut().unwrap().def_id =
+                        def_id;
 
-                    struct_id
+                    adt_id
                 };
 
                 for (idx, field) in struct_def.fields.iter().enumerate() {
@@ -550,30 +547,28 @@ impl<'db> Typeck<'db> {
                         &field.ty_expr,
                         AllowTyHole::No,
                     )?;
-                    self.db.structs[struct_id].fields[idx].ty = ty;
+                    self.db.adts[adt_id].as_struct_mut().unwrap().fields[idx]
+                        .ty = ty;
                 }
 
-                self.db.structs[struct_id].fill_ctor_ty();
+                self.db.adts[adt_id].as_struct_mut().unwrap().fill_ctor_ty();
 
-                let struct_info = &self.db.structs[struct_id];
-
-                if let Some(field) =
-                    self.db.structs[struct_id].is_infinitely_sized()
-                {
+                let adt = &self.db.adts[adt_id];
+                if let Some(field) = adt.is_infinitely_sized() {
                     return Err(Diagnostic::error()
                         .with_message(format!(
                             "type `{}` is infinitely sized",
-                            struct_info.name
+                            adt.name
                         ))
                         .with_label(
-                            Label::primary(struct_info.name.span())
+                            Label::primary(adt.name.span())
                                 .with_message("defined here"),
                         )
                         .with_label(
                             Label::secondary(field.name.span()).with_message(
                                 format!(
                                     "field has type `{}` without indirection",
-                                    struct_info.name
+                                    adt.name
                                 ),
                             ),
                         ));
@@ -1136,25 +1131,27 @@ impl<'db> Typeck<'db> {
         span: Span,
         ty_args: Option<&[Ty]>,
     ) -> TypeckResult<hir::Expr> {
-        if let DefKind::Struct(struct_id) = self.db[id].kind.as_ref() {
+        if let DefKind::Adt(adt_id) = self.db[id].kind.as_ref() {
             // NOTE: if the named definition is a struct, we want to return its
             // constructor function's type
-            let struct_info = &self.db[*struct_id];
+            let adt = &self.db[*adt_id];
 
-            if struct_info.ctor_vis == Vis::Private
-                && self.db[struct_info.def_id].scope.module_id
-                    != env.module_id()
-            {
-                let private_field = struct_info
-                    .fields
-                    .iter()
-                    .find(|f| f.vis == Vis::Private)
-                    .expect("to have at least one private field");
+            match &adt.kind {
+                AdtKind::Struct(struct_def) => {
+                    if struct_def.ctor_vis == Vis::Private
+                        && self.db[struct_def.def_id].scope.module_id
+                            != env.module_id()
+                    {
+                        let private_field = struct_def
+                            .fields
+                            .iter()
+                            .find(|f| f.vis == Vis::Private)
+                            .expect("to have at least one private field");
 
-                return Err(Diagnostic::error()
+                        return Err(Diagnostic::error()
                     .with_message(format!(
                         "constructor of type `{}` is private because `{}` is private",
-                        struct_info.name, private_field.name
+                        struct_def.name, private_field.name
                     ))
                     .with_label(
                         Label::primary(span)
@@ -1163,18 +1160,21 @@ impl<'db> Typeck<'db> {
                         Label::secondary(private_field.name.span())
                             .with_message(format!("`{}` is private", private_field.name)),
                     ));
-            }
+                    }
 
-            // TODO: apply type arguments
-            Ok(self.expr(
-                hir::ExprKind::Name(hir::Name {
-                    id,
-                    word,
-                    instantiation: Instantiation::default(),
-                }),
-                self.db[*struct_id].ctor_ty,
-                span,
-            ))
+                    // TODO: apply type arguments
+
+                    Ok(self.expr(
+                        hir::ExprKind::Name(hir::Name {
+                            id,
+                            word,
+                            instantiation: Instantiation::default(),
+                        }),
+                        struct_def.ctor_ty,
+                        span,
+                    ))
+                }
+            }
         } else {
             let def_ty = self.normalize(self.db[id].ty);
             let mut ty_params = def_ty.collect_params();
@@ -1271,33 +1271,38 @@ impl<'db> Typeck<'db> {
         let ty = self.normalize(expr.ty);
 
         let res_ty = match ty.kind() {
-            TyKind::Struct(struct_id) => {
+            TyKind::Adt(adt_id) => {
                 // TODO: ty_args are an error here
-                let struct_info = &self.db[*struct_id];
 
-                if let Some(field) =
-                    struct_info.field_by_name(field.name().as_str())
-                {
-                    if field.vis == Vis::Private
-                        && self.db[struct_info.def_id].scope.module_id
-                            != env.module_id()
-                    {
-                        return Err(Diagnostic::error()
-                            .with_message(format!(
-                                "field `{}` of type `{}` is private",
-                                field.name, struct_info.name
-                            ))
-                            .with_label(
-                                Label::primary(span)
-                                    .with_message("private field"),
+                let adt = &self.db[*adt_id];
+
+                match &adt.kind {
+                    AdtKind::Struct(struct_def) => {
+                        if let Some(field) =
+                            struct_def.field_by_name(field.name().as_str())
+                        {
+                            if field.vis == Vis::Private
+                                && self.db[struct_def.def_id].scope.module_id
+                                    != env.module_id()
+                            {
+                                return Err(Diagnostic::error()
+                                    .with_message(format!(
+                                        "field `{}` of type `{}` is private",
+                                        field.name, struct_def.name
+                                    ))
+                                    .with_label(
+                                        Label::primary(span)
+                                            .with_message("private field"),
+                                    ));
+                            }
+
+                            field.ty
+                        } else {
+                            return Err(errors::field_not_found(
+                                self.db, ty, expr.span, field,
                             ));
+                        }
                     }
-
-                    field.ty
-                } else {
-                    return Err(errors::field_not_found(
-                        self.db, ty, expr.span, field,
-                    ));
                 }
             }
             TyKind::Module(module_id) => {
@@ -1620,7 +1625,7 @@ impl<'db> Typeck<'db> {
 
                 match def.kind.as_ref() {
                     DefKind::Ty(ty) => Ok(*ty),
-                    DefKind::Struct(sid) => Ok(Ty::new(TyKind::Struct(*sid))),
+                    DefKind::Adt(adt_id) => Ok(Ty::new(TyKind::Adt(*adt_id))),
                     _ => Err(Diagnostic::error()
                         .with_message(format!(
                             "expected a type, found value of type `{}`",

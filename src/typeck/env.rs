@@ -7,7 +7,7 @@ use ustr::{ustr, Ustr, UstrMap};
 use crate::{
     ast,
     db::{
-        Db, DefId, DefInfo, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel,
+        Db, DefId, Def, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel,
     },
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
@@ -50,7 +50,7 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<DefId> {
         let qpath = self.db[module_id].qpath.clone().child(name.name());
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
-        let id = DefInfo::alloc(
+        let id = Def::alloc(
             self.db,
             qpath,
             scope,
@@ -96,7 +96,7 @@ impl<'db> Typeck<'db> {
         mutability: Mutability,
         ty: Ty,
     ) -> DefId {
-        let id = DefInfo::alloc(
+        let id = Def::alloc(
             self.db,
             env.scope_path(self.db).child(name.name()),
             ScopeInfo {
@@ -158,7 +158,7 @@ impl<'db> Typeck<'db> {
                 }
 
                 let id = {
-                    DefInfo::alloc(
+                    Def::alloc(
                         self.db,
                         qpath,
                         scope,
@@ -652,7 +652,7 @@ impl BuiltinTys {
 
         self.inner.insert(
             name,
-            DefInfo::alloc(
+            Def::alloc(
                 db,
                 QPath::from(name),
                 scope_info,

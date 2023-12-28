@@ -41,8 +41,8 @@ pub struct Db {
     pub sources: Rc<RefCell<Sources>>,
     pub packages: FxHashMap<Ustr, Package>,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
-    pub defs: IndexVec<DefId, DefInfo>,
-    pub structs: IndexVec<StructId, StructInfo>,
+    pub defs: IndexVec<DefId, Def>,
+    pub adts: IndexVec<AdtId, Adt>,
     pub types: CommonTypes,
     pub coercions: HirMap<Coercions>,
     pub extern_libs: FxHashSet<ExternLib>,
@@ -101,7 +101,7 @@ impl Db {
             packages,
             modules: IndexVec::new(),
             defs: IndexVec::new(),
-            structs: IndexVec::new(),
+            adts: IndexVec::new(),
             types: CommonTypes::new(),
             coercions: HirMap::default(),
             extern_libs: FxHashSet::default(),
@@ -167,7 +167,7 @@ impl Db {
         self.main_fun
     }
 
-    pub fn main_function(&self) -> Option<&DefInfo> {
+    pub fn main_function(&self) -> Option<&Def> {
         self.main_fun.and_then(|id| self.defs.get(id))
     }
 
@@ -187,8 +187,8 @@ impl Db {
         self.modules.iter().find(|m| &m.qpath == qpath)
     }
 
-    pub fn struct_def(&self, struct_id: StructId) -> Option<&DefInfo> {
-        self.structs.get(struct_id).and_then(|s| self.defs.get(s.def_id))
+    pub fn adt_def(&self, adt_id: AdtId) -> Option<&Def> {
+        self.adts.get(adt_id).and_then(|s| self.defs.get(s.def_id))
     }
 
     pub fn push_coercion(&mut self, expr_id: ExprId, c: Coercion) {
@@ -262,8 +262,8 @@ macro_rules! new_db_key {
 }
 
 new_db_key!(ModuleId -> modules : ModuleInfo);
-new_db_key!(DefId -> defs : DefInfo);
-new_db_key!(StructId -> structs : StructInfo);
+new_db_key!(DefId -> defs : Def);
+new_db_key!(AdtId -> adts : Adt);
 
 #[derive(Debug, Clone)]
 pub struct Package {
@@ -318,7 +318,7 @@ impl ModuleInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct DefInfo {
+pub struct Def {
     pub id: DefId,
     pub name: Ustr,
     pub qpath: QPath,
@@ -340,7 +340,7 @@ pub struct ScopeInfo {
 pub enum DefKind {
     Fn(FnInfo),
     Ty(Ty),
-    Struct(StructId),
+    Adt(AdtId),
     ExternGlobal,
     Global,
     Variable,
@@ -362,7 +362,7 @@ impl DefKind {
     }
 }
 
-impl DefInfo {
+impl Def {
     pub fn alloc(
         db: &mut Db,
         qpath: QPath,
@@ -389,7 +389,7 @@ impl DefInfo {
     }
 }
 
-impl Typed for DefInfo {
+impl Typed for Def {
     fn ty(&self) -> Ty {
         self.ty
     }
@@ -447,8 +447,63 @@ pub enum FnInfo {
 }
 
 #[derive(Debug, Clone)]
-pub struct StructInfo {
-    pub id: StructId,
+pub struct Adt {
+    pub id: AdtId,
+    pub def_id: DefId,
+    pub name: Word,
+    pub kind: AdtKind,
+}
+
+impl Adt {
+    #[must_use]
+    pub fn is_ref(&self) -> bool {
+        match &self.kind {
+            AdtKind::Struct(s) => s.kind.is_ref(),
+        }
+    }
+
+    #[must_use]
+    pub fn as_struct(&self) -> Option<&StructDef> {
+        self.kind.as_struct()
+    }
+
+    #[must_use]
+    pub fn as_struct_mut(&mut self) -> Option<&mut StructDef> {
+        self.kind.as_struct_mut()
+    }
+
+    #[must_use]
+    pub fn is_infinitely_sized(&self) -> Option<&StructField> {
+        match &self.kind {
+            AdtKind::Struct(s) => s.is_infinitely_sized(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum AdtKind {
+    Struct(StructDef),
+}
+
+impl AdtKind {
+    #[must_use]
+    pub fn as_struct(&self) -> Option<&StructDef> {
+        match self {
+            Self::Struct(v) => Some(v),
+        }
+    }
+
+    #[must_use]
+    pub fn as_struct_mut(&mut self) -> Option<&mut StructDef> {
+        match self {
+            Self::Struct(v) => Some(v),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct StructDef {
+    pub id: AdtId,
     pub def_id: DefId,
     pub name: Word,
     pub fields: Vec<StructField>,
@@ -473,9 +528,33 @@ impl StructKind {
     }
 }
 
-impl StructInfo {
+impl StructDef {
+    pub fn new(
+        id: AdtId,
+        name: Word,
+        fields: Vec<StructField>,
+        kind: StructKind,
+        ctor_ty: Ty,
+    ) -> Self {
+        let ctor_vis = if fields.iter().any(|f| f.vis == Vis::Private) {
+            Vis::Private
+        } else {
+            Vis::Public
+        };
+
+        Self {
+            id,
+            def_id: DefId::INVALID,
+            name,
+            fields,
+            kind,
+            ctor_ty,
+            ctor_vis,
+        }
+    }
+
     pub fn ty(&self) -> Ty {
-        TyKind::Struct(self.id).into()
+        TyKind::Adt(self.id).into()
     }
 
     pub fn field_by_name(&self, name: &str) -> Option<&StructField> {
@@ -494,25 +573,18 @@ impl StructInfo {
         }));
     }
 
-    pub fn ctor_vis(&self) -> Vis {
-        if self.fields.iter().any(|f| f.vis == Vis::Private) {
-            Vis::Private
-        } else {
-            Vis::Public
-        }
-    }
-
     pub fn is_infinitely_sized(&self) -> Option<&StructField> {
-        fn contains_struct(ty: Ty, sid: StructId) -> bool {
+        fn contains_struct(ty: Ty, adt_id: AdtId) -> bool {
             match ty.kind() {
                 TyKind::Fn(fun) => {
-                    if fun.params.iter().any(|p| contains_struct(p.ty, sid)) {
+                    if fun.params.iter().any(|p| contains_struct(p.ty, adt_id))
+                    {
                         return false;
                     }
 
-                    contains_struct(fun.ret, sid)
+                    contains_struct(fun.ret, adt_id)
                 }
-                TyKind::Struct(sid2) if *sid2 == sid => true,
+                TyKind::Adt(adt_id2) if *adt_id2 == adt_id => true,
                 _ => false,
             }
         }

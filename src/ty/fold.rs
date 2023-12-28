@@ -21,7 +21,7 @@ pub trait TyFolder {
             TyKind::RawPtr(pointee) => {
                 TyKind::RawPtr(self.fold(*pointee)).into()
             }
-            TyKind::Struct(_)
+            TyKind::Adt(_)
             | TyKind::Int(_)
             | TyKind::Uint(_)
             | TyKind::Float(_)

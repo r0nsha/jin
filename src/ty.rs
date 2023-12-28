@@ -10,7 +10,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
 use crate::{
-    db::{Db, ModuleId, StructField, StructId},
+    db::{AdtId, AdtKind, Db, ModuleId, StructField},
     target::TargetMetrics,
     ty::printer::{FnTyPrinter, TyPrinter},
 };
@@ -129,7 +129,9 @@ impl Ty {
 
     pub fn fields(self, db: &Db) -> Option<&[StructField]> {
         match self.kind() {
-            TyKind::Struct(sid) => Some(&db[*sid].fields),
+            TyKind::Adt(adt_id) => match &db[*adt_id].kind {
+                AdtKind::Struct(s) => Some(&s.fields),
+            },
             _ => None,
         }
     }
@@ -182,7 +184,7 @@ impl From<&TyKind> for TyKind {
 pub enum TyKind {
     // Composite types
     Fn(FnTy),
-    Struct(StructId),
+    Adt(AdtId),
     RawPtr(Ty),
 
     // Primitive types

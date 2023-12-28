@@ -38,7 +38,7 @@ impl NormalizeTy for Ty {
                 .float_unification_table
                 .probe_value(*var)
                 .map_or(self, |ty| TyKind::from(ty).into()),
-            TyKind::Struct(_)
+            TyKind::Adt(_)
             | TyKind::Int(_)
             | TyKind::Uint(_)
             | TyKind::Float(_)

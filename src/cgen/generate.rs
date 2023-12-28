@@ -16,7 +16,7 @@ use crate::{
             stmt, str_value, unit_value, NEST,
         },
     },
-    db::{Db, StructId, StructInfo},
+    db::{Adt, AdtId, AdtKind, Db, StructDef},
     middle::{Pat, UnOp},
     mir::{
         Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir,
@@ -36,7 +36,7 @@ pub struct Generator<'db> {
     pub globals: Vec<D<'db>>,
     pub fn_defs: Vec<D<'db>>,
     pub target_metrics: TargetMetrics,
-    pub struct_names: FxHashMap<StructId, Ustr>,
+    pub adt_names: FxHashMap<AdtId, Ustr>,
     pub defining_types: bool,
 }
 
@@ -128,13 +128,13 @@ impl<'db> Generator<'db> {
     pub fn define_types(&mut self) {
         self.defining_types = true;
 
-        for struct_info in &self.db.structs {
-            let name = ustr(&self.db[struct_info.def_id].qpath.join_with("_"));
-            self.struct_names.insert(struct_info.id, name);
+        for struct_def in &self.db.adts {
+            let name = ustr(&self.db[struct_def.def_id].qpath.join_with("_"));
+            self.adt_names.insert(struct_def.id, name);
         }
 
-        for struct_info in &self.db.structs {
-            let doc = self.codegen_struct_def(struct_info);
+        for adt in &self.db.adts {
+            let doc = self.codegen_adt(adt);
             self.types.push(stmt(|| doc));
         }
 
@@ -202,8 +202,14 @@ impl<'db> Generator<'db> {
         }
     }
 
-    fn codegen_struct_def(&self, struct_info: &StructInfo) -> D<'db> {
-        let name = D::text(self.struct_names[&struct_info.id].as_str());
+    fn codegen_adt(&self, adt: &Adt) -> D<'db> {
+        match &adt.kind {
+            AdtKind::Struct(struct_def) => self.codegen_struct_def(struct_def),
+        }
+    }
+
+    fn codegen_struct_def(&self, struct_def: &StructDef) -> D<'db> {
+        let name = D::text(self.adt_names[&struct_def.id].as_str());
 
         D::text("typedef")
             .append(D::space())
@@ -213,7 +219,7 @@ impl<'db> Generator<'db> {
             .append(D::space())
             .append(block(|| {
                 D::intersperse(
-                    struct_info.fields.iter().map(|f| {
+                    struct_def.fields.iter().map(|f| {
                         stmt(|| {
                             f.ty.cdecl(self, D::text(f.name.name().as_str()))
                         })
@@ -370,9 +376,7 @@ impl<'db> Generator<'db> {
             }
             Inst::Alloc { value } => {
                 let ty_doc = match state.body.value(*value).ty.kind() {
-                    TyKind::Struct(sid) => {
-                        D::text(self.struct_names[sid].as_str())
-                    }
+                    TyKind::Adt(sid) => D::text(self.adt_names[sid].as_str()),
                     kind => panic!("unexpected type {kind:?} in Inst::Alloc"),
                 };
 

@@ -28,7 +28,7 @@ struct Lower<'db> {
     mir: Mir,
     id_to_fn_sig: FxHashMap<DefId, FnSigId>,
     id_to_global: FxHashMap<DefId, GlobalId>,
-    struct_ctors: FxHashMap<StructId, FnSigId>,
+    struct_ctors: FxHashMap<AdtId, FnSigId>,
 }
 
 impl<'db> Lower<'db> {
@@ -111,26 +111,26 @@ impl<'db> Lower<'db> {
         LowerBody::new(self).lower_global_let(let_)
     }
 
-    fn get_or_create_struct_ctor(&mut self, sid: StructId) -> FnSigId {
-        if let Some(sig_id) = self.struct_ctors.get(&sid) {
+    fn get_or_create_struct_ctor(&mut self, adt_id: AdtId) -> FnSigId {
+        if let Some(sig_id) = self.struct_ctors.get(&adt_id) {
             return *sig_id;
         }
 
         // TODO: doesn't work for polymorphic structs...
-        let sig_id = self.create_struct_ctor(sid);
-        self.struct_ctors.insert(sid, sig_id);
+        let sig_id = self.create_struct_ctor(adt_id);
+        self.struct_ctors.insert(adt_id, sig_id);
 
         sig_id
     }
 
-    fn create_struct_ctor(&mut self, sid: StructId) -> FnSigId {
-        let struct_info = &self.db[sid];
-        let struct_def = &self.db[struct_info.def_id];
+    fn create_struct_ctor(&mut self, adt_id: AdtId) -> FnSigId {
+        let adt = &self.db[adt_id];
+        let def = &self.db[adt.def_id];
+        let struct_def = adt.as_struct().unwrap();
 
-        let name =
-            ustr(&struct_def.qpath.clone().child(ustr("ctor")).join_with("_"));
+        let name = ustr(&def.qpath.clone().child(ustr("ctor")).join_with("_"));
 
-        let params: Vec<_> = struct_info
+        let params: Vec<_> = struct_def
             .fields
             .iter()
             .map(|field| FnParam {
@@ -148,34 +148,34 @@ impl<'db> Lower<'db> {
             id,
             name,
             params,
-            ty: struct_info.ctor_ty,
+            ty: struct_def.ctor_ty,
             is_extern: false,
             is_c_variadic: false,
-            span: struct_info.name.span(),
+            span: struct_def.name.span(),
         });
 
         let mut body = Body::new();
         let start_blk = body.create_block("start");
 
-        // Initialize the `this` value based on the adt kind
-        let this = match self.db[sid].kind {
+        // Initialize the `this` value based on the struct kind
+        let this = match struct_def.kind {
             StructKind::Ref => {
                 let value = body
-                    .create_value(struct_info.ty(), ValueKind::Register(None));
+                    .create_value(struct_def.ty(), ValueKind::Register(None));
                 body.block_mut(start_blk).push_inst(Inst::Alloc { value });
                 value
             }
             StructKind::Extern => {
                 let value = body
-                    .create_value(struct_info.ty(), ValueKind::Register(None));
+                    .create_value(struct_def.ty(), ValueKind::Register(None));
                 body.block_mut(start_blk)
                     .push_inst(Inst::StackAlloc { value, init: None });
                 value
             }
         };
 
-        // Initialize all of the adt's fields
-        for field in &struct_info.fields {
+        // Initialize all of the struct's fields
+        for field in &struct_def.fields {
             let name = field.name.name();
             let ty = field.ty;
 
@@ -186,7 +186,7 @@ impl<'db> Lower<'db> {
                 .push_inst(Inst::Store { value: param, target: field_value });
         }
 
-        // Return the adt
+        // Return the struct
         body.block_mut(start_blk).push_inst(Inst::Return { value: this });
 
         self.mir.fns.insert(sig, Fn { sig, body });
@@ -618,8 +618,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 )
             }
             DefKind::Variable => self.locals[&id],
-            DefKind::Struct(sid) => {
-                let id = self.cx.get_or_create_struct_ctor(*sid);
+            DefKind::Adt(adt_id) => {
+                let id = self.cx.get_or_create_struct_ctor(*adt_id);
                 self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
             }
             DefKind::Ty(_) => unreachable!("{:?}", &self.cx.db[id]),
@@ -1065,7 +1065,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn ty_is_move(&self, ty: Ty) -> bool {
         match ty.kind() {
-            TyKind::Struct(sid) => self.cx.db[*sid].kind.is_ref(),
+            TyKind::Adt(adt_id) => self.cx.db[*adt_id].is_ref(),
             TyKind::Param(_) => true,
             _ => false,
         }

@@ -17,7 +17,7 @@ use crate::{
         id_map::IdMap,
         index_vec::{new_key_type, IndexSlice, IndexVec, IndexVecExt},
     },
-    db::{Db, DefId, StructId},
+    db::{Db, DefId, AdtId},
     middle::{BinOp, Pat, UnOp},
     span::Span,
     ty::{Instantiation, Ty},
