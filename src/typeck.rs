@@ -524,7 +524,7 @@ impl<'db> Typeck<'db> {
                         )),
                     });
 
-                    let def_id = self.define_def(
+                    self.db[adt_id].def_id = self.define_def(
                         env,
                         ty_def.vis,
                         DefKind::Adt(adt_id),
@@ -532,8 +532,6 @@ impl<'db> Typeck<'db> {
                         Mutability::Imm,
                         TyKind::Type(TyKind::Adt(adt_id).into()).into(),
                     )?;
-
-                    self.db[adt_id].def_id = def_id;
 
                     adt_id
                 };
