@@ -10,7 +10,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
 use crate::{
-    db::{AdtId, AdtKind, Db, ModuleId, StructField},
+    db::{AdtId, Db, ModuleId},
     target::TargetMetrics,
     ty::printer::{FnTyPrinter, TyPrinter},
 };

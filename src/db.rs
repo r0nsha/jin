@@ -486,6 +486,7 @@ pub enum AdtKind {
 }
 
 impl AdtKind {
+    #[allow(clippy::unnecessary_wraps)]
     #[must_use]
     pub fn as_struct(&self) -> Option<&StructDef> {
         match self {
@@ -493,6 +494,7 @@ impl AdtKind {
         }
     }
 
+    #[allow(clippy::unnecessary_wraps)]
     #[must_use]
     pub fn as_struct_mut(&mut self) -> Option<&mut StructDef> {
         match self {
@@ -504,7 +506,6 @@ impl AdtKind {
 #[derive(Debug, Clone)]
 pub struct StructDef {
     pub id: AdtId,
-    pub def_id: DefId,
     pub name: Word,
     pub fields: Vec<StructField>,
     pub kind: StructKind,
@@ -542,15 +543,7 @@ impl StructDef {
             Vis::Public
         };
 
-        Self {
-            id,
-            def_id: DefId::INVALID,
-            name,
-            fields,
-            kind,
-            ctor_ty,
-            ctor_vis,
-        }
+        Self { id, name, fields, kind, ctor_ty, ctor_vis }
     }
 
     pub fn ty(&self) -> Ty {

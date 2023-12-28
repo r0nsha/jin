@@ -535,7 +535,6 @@ impl<'db> Typeck<'db> {
                     )?;
 
                     self.db[adt_id].def_id = def_id;
-                    self.db[adt_id].as_struct_mut().unwrap().def_id = def_id;
 
                     adt_id
                 };
@@ -1138,7 +1137,7 @@ impl<'db> Typeck<'db> {
             match &adt.kind {
                 AdtKind::Struct(struct_def) => {
                     if struct_def.ctor_vis == Vis::Private
-                        && self.db[struct_def.def_id].scope.module_id
+                        && self.db[adt.def_id].scope.module_id
                             != env.module_id()
                     {
                         let private_field = struct_def
@@ -1281,7 +1280,7 @@ impl<'db> Typeck<'db> {
                             struct_def.field_by_name(field.name().as_str())
                         {
                             if field.vis == Vis::Private
-                                && self.db[struct_def.def_id].scope.module_id
+                                && self.db[adt.def_id].scope.module_id
                                     != env.module_id()
                             {
                                 return Err(Diagnostic::error()
