@@ -5,7 +5,7 @@ use itertools::Itertools as _;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    db::{Db, DefId, DefKind, StructKind},
+    db::{AdtKind, Db, DefId, DefKind, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     hir::{FnKind, Hir},
@@ -723,25 +723,29 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub fn create_value_fields(&mut self, value: ValueId, ty: Ty) {
-        if let Some(fields) = ty.fields(self.cx.db) {
-            #[allow(clippy::unnecessary_to_owned)]
-            let fields: FxHashMap<_, _> = fields
-                .to_vec()
-                .into_iter()
-                .filter_map(|field| {
-                    let name = field.name.name();
-                    self.ty_is_move(field.ty).then(|| {
-                        let value = self.create_value(
-                            field.ty,
-                            ValueKind::Field(value, name),
-                        );
-                        self.create_destroy_flag(value);
-                        (name, value)
-                    })
-                })
-                .collect();
+        if let TyKind::Adt(adt_id) = ty.kind() {
+            match &self.cx.db[*adt_id].kind {
+                AdtKind::Struct(struct_def) => {
+                    let fields: FxHashMap<_, _> = struct_def
+                        .fields
+                        .clone()
+                        .into_iter()
+                        .filter_map(|field| {
+                            let name = field.name.name();
+                            self.ty_is_move(field.ty).then(|| {
+                                let value = self.create_value(
+                                    field.ty,
+                                    ValueKind::Field(value, name),
+                                );
+                                self.create_destroy_flag(value);
+                                (name, value)
+                            })
+                        })
+                        .collect();
 
-            self.fields.insert(value, fields);
+                    self.fields.insert(value, fields);
+                }
+            }
         }
     }
 
