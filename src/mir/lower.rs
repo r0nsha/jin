@@ -1433,10 +1433,30 @@ struct Scope {
     moved_out: IndexSet<ValueId>,
 }
 
-#[derive(Debug, Clone, EnumAsInner)]
+#[derive(Debug, Clone)]
 enum ScopeKind {
     Block,
     Loop(LoopScope),
+}
+
+impl ScopeKind {
+    #[must_use]
+    fn as_loop(&self) -> Option<&LoopScope> {
+        if let Self::Loop(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    fn as_loop_mut(&mut self) -> Option<&mut LoopScope> {
+        if let Self::Loop(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
