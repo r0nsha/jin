@@ -37,7 +37,6 @@ pub struct Generator<'db> {
     pub fn_defs: Vec<D<'db>>,
     pub target_metrics: TargetMetrics,
     pub struct_names: FxHashMap<StructId, Ustr>,
-    pub struct_destroy_fns: FxHashMap<StructId, Ustr>,
     pub defining_types: bool,
 }
 
