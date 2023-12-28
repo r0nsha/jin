@@ -151,7 +151,7 @@ impl<'db> Lower<'db> {
             ty: struct_def.ctor_ty,
             is_extern: false,
             is_c_variadic: false,
-            span: struct_def.name.span(),
+            span: adt.name.span(),
         });
 
         let mut body = Body::new();

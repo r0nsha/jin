@@ -506,7 +506,6 @@ impl AdtKind {
 #[derive(Debug, Clone)]
 pub struct StructDef {
     pub id: AdtId,
-    pub name: Word,
     pub fields: Vec<StructField>,
     pub kind: StructKind,
     pub ctor_ty: Ty,
@@ -532,7 +531,6 @@ impl StructKind {
 impl StructDef {
     pub fn new(
         id: AdtId,
-        name: Word,
         fields: Vec<StructField>,
         kind: StructKind,
         ctor_ty: Ty,
@@ -543,7 +541,7 @@ impl StructDef {
             Vis::Public
         };
 
-        Self { id, name, fields, kind, ctor_ty, ctor_vis }
+        Self { id, fields, kind, ctor_ty, ctor_vis }
     }
 
     pub fn ty(&self) -> Ty {

@@ -518,7 +518,6 @@ impl<'db> Typeck<'db> {
                         name: ty_def.word,
                         kind: AdtKind::Struct(StructDef::new(
                             id,
-                            ty_def.word,
                             fields,
                             struct_def.kind,
                             self.db.types.unknown,
@@ -1149,7 +1148,7 @@ impl<'db> Typeck<'db> {
                         return Err(Diagnostic::error()
                     .with_message(format!(
                         "constructor of type `{}` is private because `{}` is private",
-                        struct_def.name, private_field.name
+                        adt.name, private_field.name
                     ))
                     .with_label(
                         Label::primary(span)
@@ -1286,7 +1285,7 @@ impl<'db> Typeck<'db> {
                                 return Err(Diagnostic::error()
                                     .with_message(format!(
                                         "field `{}` of type `{}` is private",
-                                        field.name, struct_def.name
+                                        field.name, adt.name
                                     ))
                                     .with_label(
                                         Label::primary(span)
