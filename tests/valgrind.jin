@@ -23,7 +23,7 @@ fn main() unit = {
 	n = Num(2)
 
 	// Destroy in loop & break
-	let mut i = 10
+	let mut i: uint = 10
 	loop {
 		let n = Num(1)
 		printf("i = %d\n".ptr, i)

@@ -526,18 +526,23 @@ fn codegen_const_value(value: &Const) -> D<'_> {
     }
 }
 
-struct VariableDoc<'a> {
+pub struct VariableDoc<'a> {
     ty: Ty,
     name: D<'a>,
     value: Option<D<'a>>,
 }
 
 impl<'a> VariableDoc<'a> {
-    fn decl(cx: &Generator<'a>, ty: Ty, name: D<'a>) -> D<'a> {
+    pub fn decl(cx: &Generator<'a>, ty: Ty, name: D<'a>) -> D<'a> {
         Self { ty, name, value: None }.into_doc(cx)
     }
 
-    fn assign(cx: &Generator<'a>, ty: Ty, name: D<'a>, value: D<'a>) -> D<'a> {
+    pub fn assign(
+        cx: &Generator<'a>,
+        ty: Ty,
+        name: D<'a>,
+        value: D<'a>,
+    ) -> D<'a> {
         Self { ty, name, value: Some(value) }.into_doc(cx)
     }
 

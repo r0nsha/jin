@@ -22,22 +22,35 @@ typedef uintptr_t usize;
 typedef float f32;
 typedef double f64;
 
-typedef struct {
+typedef struct never {
 } unit;
+
 typedef unit never;
 
-typedef struct {
+typedef struct str {
   u8 *ptr;
   usize len;
 } str;
 
+typedef struct jin_rt_location {
+  const char *path;
+  u32 line;
+  u32 column;
+} jin_rt_location;
+
 // Built-in functions
 void jin_rt_panic(u8 *msg);
+void jin_rt_panic_at(jin_rt_location loc, u8 *msg);
 void *jin_rt_alloc(size_t size);
 void jin_rt_free(void *ptr);
 
 void jin_rt_panic(u8 *msg) {
-  printf("%s\n", msg);
+  printf("panic: %s\n", msg);
+  exit(1);
+}
+
+void jin_rt_panic_at(jin_rt_location loc, u8 *msg) {
+  printf("panic at %s:%d:%d: %s\n", loc.path, loc.line, loc.column, msg);
   exit(1);
 }
 

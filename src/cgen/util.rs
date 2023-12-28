@@ -1,28 +1,41 @@
 use codespan_reporting::files::{Files, Location};
 use pretty::RcDoc as D;
 
-use crate::{cgen::generate::Generator, mir::Block, span::Span};
+use crate::{
+    cgen::{generate::Generator, util},
+    mir::Block,
+    span::Span,
+};
 
 impl<'db> Generator<'db> {
     pub fn panic_if(&self, cond: D<'db>, msg: &str, span: Span) -> D<'db> {
-        let then = stmt(|| {
-            call_panic(format!(
-                "panic at {}:\\n{}",
-                self.get_location_info(span),
-                msg
-            ))
-        });
-
+        let then = stmt(|| self.call_panic(msg, span));
         if_stmt(cond, then, None)
     }
 
-    fn get_location_info(&self, span: Span) -> String {
+    fn create_location_value(&self, span: Span) -> D<'db> {
         let sources = self.db.sources.borrow();
         let source = sources.get(span.source_id()).unwrap();
         let path = source.path();
         let Location { line_number, column_number } =
             source.location(span.source_id(), span.start() as usize).unwrap();
-        format!("{path}:{line_number}:{column_number}")
+
+        D::text("(struct jin_rt_location)").append(D::space()).append(
+            util::struct_lit(vec![
+                ("path", D::text(format!("\"{path}\""))),
+                ("line", D::text(line_number.to_string())),
+                ("column", D::text(column_number.to_string())),
+            ]),
+        )
+    }
+
+    pub fn call_panic(&self, msg: &str, span: Span) -> D<'db> {
+        call(
+            "jin_rt_panic_at",
+            self.create_location_value(span)
+                .append(", ")
+                .append(D::text(format!("\"{msg}\""))),
+        )
     }
 }
 
@@ -37,10 +50,6 @@ pub fn call_alloc(ty: D<'_>) -> D<'_> {
 
 pub fn call_free(value: D<'_>) -> D<'_> {
     call("jin_rt_free", value)
-}
-
-pub fn call_panic<'a>(msg: impl std::fmt::Display) -> D<'a> {
-    call("jin_rt_panic", D::text(format!("\"{msg}\"")))
 }
 
 pub fn call<'a>(name: &'a str, params: D<'a>) -> D<'a> {
