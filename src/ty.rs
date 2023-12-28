@@ -127,15 +127,6 @@ impl Ty {
         }
     }
 
-    pub fn fields(self, db: &Db) -> Option<&[StructField]> {
-        match self.kind() {
-            TyKind::Adt(adt_id) => match &db[*adt_id].kind {
-                AdtKind::Struct(s) => Some(&s.fields),
-            },
-            _ => None,
-        }
-    }
-
     pub fn raw_ptr(self) -> Ty {
         Ty::new(TyKind::RawPtr(self))
     }
