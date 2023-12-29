@@ -5,6 +5,9 @@
 
 // Macros
 #define FORCE_INLINE __attribute__((always_inline)) inline
+#define STDOUT 0
+#define STDIN 1
+#define STDERR 2
 
 // Builtin types
 typedef int8_t i8;
@@ -45,12 +48,13 @@ void *jin_rt_alloc(size_t size);
 void jin_rt_free(void *ptr);
 
 void jin_rt_panic(u8 *msg) {
-  printf("panic: %s\n", msg);
+  dprintf(STDERR, "panic at '%s'\n", msg);
   exit(1);
 }
 
 void jin_rt_panic_at(jin_rt_location loc, u8 *msg) {
-  printf("panic at %s:%d:%d: %s\n", loc.path, loc.line, loc.column, msg);
+  dprintf(STDERR, "panic at '%s', %s:%d:%d\n", msg, loc.path, loc.line,
+          loc.column);
   exit(1);
 }
 

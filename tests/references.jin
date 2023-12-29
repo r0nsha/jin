@@ -1,0 +1,5 @@
+type Box(value: int)
+
+fn main() unit = {
+	let box = Box(1)
+}
