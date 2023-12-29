@@ -11,6 +11,7 @@ use ustr::Ustr;
 
 use crate::{
     db::{AdtId, Db, ModuleId},
+    middle::Mutability,
     target::TargetMetrics,
     ty::printer::{FnTyPrinter, TyPrinter},
 };
@@ -131,11 +132,8 @@ impl Ty {
         Ty::new(TyKind::RawPtr(self))
     }
 
-    pub fn deref(self) -> Ty {
-        match self.kind() {
-            TyKind::RawPtr(ty) => *ty,
-            kind => panic!("type {kind:?} cannot be derefed"),
-        }
+    pub fn as_ref(self, mutability: Mutability) -> Ty {
+        Ty::new(TyKind::Ref(self, mutability))
     }
 }
 
@@ -176,6 +174,7 @@ pub enum TyKind {
     // Composite types
     Fn(FnTy),
     Adt(AdtId),
+    Ref(Ty, Mutability),
     RawPtr(Ty),
 
     // Primitive types

@@ -262,7 +262,7 @@ impl<'a> Parser<'a> {
     ) -> DiagnosticResult<ExternLet> {
         let start = self.last_span();
 
-        let mutability = self.parse_optional_mutability().unwrap_or_default();
+        let mutability = self.parse_mutability();
         let ident = self.eat_ident()?;
         let vis = self.parse_vis();
 
@@ -332,7 +332,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_pat(&mut self) -> DiagnosticResult<Pat> {
-        let mutability = self.parse_optional_mutability();
+        let mutability = self.parse_mutability();
         let tok = self.eat_any()?;
 
         match tok.kind {
@@ -343,7 +343,7 @@ impl<'a> Parser<'a> {
                     id: DefId::INVALID,
                     word: tok.word(),
                     vis,
-                    mutability: mutability.unwrap_or_default(),
+                    mutability,
                 }))
             }
             TokenKind::Underscore => Ok(Pat::Discard(tok.span)),
@@ -353,6 +353,10 @@ impl<'a> Parser<'a> {
                 tok.span,
             )),
         }
+    }
+
+    fn parse_mutability(&mut self) -> Mutability {
+        self.parse_optional_mutability().unwrap_or_default()
     }
 
     fn parse_optional_mutability(&mut self) -> Option<Mutability> {
@@ -593,6 +597,16 @@ impl<'a> Parser<'a> {
                     span: tok.span.merge(expr.span()),
                     expr: Box::new(expr),
                     op: UnOp::Neg,
+                }
+            }
+            TokenKind::Amp => {
+                let mutability = self.parse_mutability();
+                let expr = self.parse_operand()?;
+
+                Expr::Unary {
+                    span: tok.span.merge(expr.span()),
+                    expr: Box::new(expr),
+                    op: UnOp::Ref(mutability),
                 }
             }
             TokenKind::Bang => {

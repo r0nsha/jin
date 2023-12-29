@@ -212,6 +212,9 @@ impl UnifyCx<'_, '_> {
 
             (TyKind::Adt(a), TyKind::Adt(b)) if *a == *b => Ok(()),
 
+            (TyKind::Ref(a, ma), TyKind::Ref(b, mb)) if *ma == *mb => {
+                self.unify_ty_ty(*a, *b)
+            }
             (TyKind::RawPtr(a), TyKind::RawPtr(b)) => self.unify_ty_ty(*a, *b),
 
             // Unify ?T1 ~ ?T2

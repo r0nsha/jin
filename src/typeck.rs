@@ -1008,9 +1008,11 @@ impl<'db> Typeck<'db> {
 
                 let ty = self.normalize(expr.ty);
 
-                match op {
+                let result_ty = match op {
                     UnOp::Neg => {
-                        if !ty.is_any_int() && !ty.is_any_float() {
+                        if ty.is_any_int() || ty.is_any_float() {
+                            ty
+                        } else {
                             return Err(Diagnostic::error()
                                 .with_message(format!(
                                     "cannot use `{}` on `{}`",
@@ -1018,14 +1020,16 @@ impl<'db> Typeck<'db> {
                                     ty.display(self.db)
                                 ))
                                 .with_label(
-                                    Label::primary(expr.span).with_message(
+                                    Label::primary(*span).with_message(
                                         format!("invalid use of `{op}`"),
                                     ),
                                 ));
                         }
                     }
                     UnOp::Not => {
-                        if !ty.is_any_int() && !ty.is_bool() {
+                        if ty.is_any_int() || ty.is_bool() {
+                            ty
+                        } else {
                             return Err(Diagnostic::error()
                                 .with_message(format!(
                                     "cannot use `{}` on `{}`",
@@ -1033,22 +1037,34 @@ impl<'db> Typeck<'db> {
                                     ty.display(self.db)
                                 ))
                                 .with_label(
-                                    Label::primary(expr.span).with_message(
+                                    Label::primary(*span).with_message(
                                         format!("invalid use of `{op}`"),
                                     ),
                                 ));
                         }
                     }
-                }
-
-                let ty = expr.ty;
+                    UnOp::Ref(mutability) => match ty.kind() {
+                        TyKind::Adt(_) => ty.as_ref(*mutability),
+                        _ => {
+                            return Err(Diagnostic::error()
+                                .with_message(format!(
+                                "cannot take a reference to value of type `{}`",
+                                ty.display(self.db)
+                            ))
+                                .with_label(
+                                    Label::primary(*span)
+                                        .with_message("cannot take reference"),
+                                ))
+                        }
+                    },
+                };
 
                 Ok(self.expr(
                     hir::ExprKind::Unary(hir::Unary {
                         expr: Box::new(expr),
                         op: *op,
                     }),
-                    ty,
+                    result_ty,
                     *span,
                 ))
             }

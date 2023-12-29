@@ -15,7 +15,7 @@ pub enum Vis {
     Private,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Mutability {
     Imm,
     Mut,
@@ -183,6 +183,7 @@ impl TryFrom<TokenKind> for BinOp {
 pub enum UnOp {
     Neg,
     Not,
+    Ref(Mutability),
 }
 
 impl fmt::Display for UnOp {
@@ -196,6 +197,8 @@ impl UnOp {
         match self {
             Self::Neg => "-",
             Self::Not => "!",
+            Self::Ref(Mutability::Imm) => "&",
+            Self::Ref(Mutability::Mut) => "&mut",
         }
     }
 }

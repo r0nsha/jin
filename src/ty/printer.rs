@@ -4,6 +4,7 @@ use ustr::Ustr;
 
 use crate::{
     db::Db,
+    middle::Mutability,
     sym,
     ty::{FloatTy, FnTyParam, InferTy, IntTy, Ty, TyKind, UintTy},
 };
@@ -30,6 +31,13 @@ impl<'db> TyPrinter<'db> {
                 write!(f, "{}", fun.display(self.db, None))
             }
             TyKind::Adt(adt_id) => f.write_str(self.db[*adt_id].name.as_str()),
+            TyKind::Ref(inner, mutability) => {
+                f.write_str(match mutability {
+                    Mutability::Imm => "&",
+                    Mutability::Mut => "&mut ",
+                })?;
+                self.fmt_type(f, inner)
+            }
             TyKind::RawPtr(pointee) => {
                 f.write_str("*")?;
                 self.fmt_type(f, pointee)

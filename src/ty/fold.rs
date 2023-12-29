@@ -18,6 +18,9 @@ pub trait TyFolder {
                 is_c_variadic: fun.is_c_variadic,
             })
             .into(),
+            TyKind::Ref(inner, mutability) => {
+                TyKind::Ref(self.fold(*inner), *mutability).into()
+            }
             TyKind::RawPtr(pointee) => {
                 TyKind::RawPtr(self.fold(*pointee)).into()
             }

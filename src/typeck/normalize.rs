@@ -23,6 +23,9 @@ impl NormalizeTy for Ty {
                 is_c_variadic: fun.is_c_variadic,
             })
             .into(),
+            TyKind::Ref(inner, mutability) => {
+                TyKind::Ref(inner.normalize(storage), *mutability).into()
+            }
             TyKind::RawPtr(pointee) => {
                 TyKind::RawPtr(pointee.normalize(storage)).into()
             }

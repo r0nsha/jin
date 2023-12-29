@@ -462,6 +462,7 @@ impl<'db> Generator<'db> {
                             "~"
                         }
                     }
+                    UnOp::Ref(_) => unreachable!(),
                 };
 
                 self.value_assign(state, *value, || {
