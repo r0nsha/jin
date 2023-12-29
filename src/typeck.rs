@@ -1044,7 +1044,9 @@ impl<'db> Typeck<'db> {
                         }
                     }
                     UnOp::Ref(mutability) => match ty.kind() {
-                        TyKind::Adt(_) => ty.as_ref(*mutability),
+                        TyKind::Adt(adt_id) if self.db[*adt_id].is_ref() => {
+                            ty.as_ref(*mutability)
+                        }
                         _ => {
                             return Err(Diagnostic::error()
                                 .with_message(format!(

@@ -2,9 +2,14 @@ use codespan_reporting::files::{Files, Location};
 use pretty::RcDoc as D;
 
 use crate::{
-    cgen::{generate::Generator, util},
-    mir::Block,
+    cgen::{
+        generate::{FnState, Generator},
+        ty::CTy,
+        util,
+    },
+    mir::{Block, ValueId},
     span::Span,
+    ty::TyKind,
 };
 
 impl<'db> Generator<'db> {
@@ -42,6 +47,33 @@ impl<'db> Generator<'db> {
                 .append(", ")
                 .append(D::text(format!("\"{msg}\""))),
         )
+    }
+
+    pub fn field(
+        &self,
+        state: &FnState<'db>,
+        value: ValueId,
+        field: &str,
+    ) -> D<'db> {
+        let ty = state.body.value(value).ty;
+
+        match ty.kind() {
+            TyKind::Adt(adt) if self.db[*adt].is_ref() => {
+                self.adt_field(state, value, field)
+            }
+            TyKind::Ref(_, _) => self.adt_field(state, value, field),
+            _ => util::field(self.value(state, value), field, ty.is_ptr(self)),
+        }
+    }
+
+    pub fn adt_field(
+        &self,
+        state: &FnState<'db>,
+        value: ValueId,
+        field: &str,
+    ) -> D<'db> {
+        let data_field = util::field(self.value(state, value), "data", true);
+        util::field(data_field, field, false)
     }
 }
 
