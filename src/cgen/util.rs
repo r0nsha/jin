@@ -16,7 +16,13 @@ impl<'db> Generator<'db> {
     fn create_location_value(&self, span: Span) -> D<'db> {
         let sources = self.db.sources.borrow();
         let source = sources.get(span.source_id()).unwrap();
+
+        let root_path =
+            &self.db.find_package_by_source_id(source.id()).unwrap().root_path;
+        let root_parent = root_path.parent().unwrap_or(root_path);
         let path = source.path();
+        let path = path.strip_prefix(root_parent).unwrap_or(path);
+
         let Location { line_number, column_number } =
             source.location(span.source_id(), span.start() as usize).unwrap();
 

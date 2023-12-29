@@ -175,6 +175,13 @@ impl Db {
         self.main_fun = Some(id);
     }
 
+    pub fn find_module_by_source_id(
+        &self,
+        id: SourceId,
+    ) -> Option<&ModuleInfo> {
+        self.modules.iter().find(|m| m.source_id == id)
+    }
+
     pub fn find_module_by_path(&self, path: &Utf8Path) -> Option<&ModuleInfo> {
         let sources = &self.sources.borrow();
 
@@ -185,6 +192,11 @@ impl Db {
 
     pub fn find_module_by_qpath(&self, qpath: &QPath) -> Option<&ModuleInfo> {
         self.modules.iter().find(|m| &m.qpath == qpath)
+    }
+
+    pub fn find_package_by_source_id(&self, id: SourceId) -> Option<&Package> {
+        self.find_module_by_source_id(id)
+            .and_then(|m| self.packages.get(&m.package))
     }
 
     pub fn adt_def(&self, adt_id: AdtId) -> Option<&Def> {
