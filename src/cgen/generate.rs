@@ -420,7 +420,15 @@ impl<'db> Generator<'db> {
                     kind => panic!("unexpected type {kind:?} in Inst::Alloc"),
                 };
 
-                self.value_assign(state, *value, || util::call_alloc(ty_doc))
+                let value_doc = self
+                    .value_assign(state, *value, || util::call_alloc(ty_doc));
+
+                let zero_refcnt = stmt(|| {
+                    util::field(self.value(state, *value), REFCNT_FIELD, true)
+                        .append(" = 0")
+                });
+
+                D::intersperse([value_doc, zero_refcnt], D::hardline())
             }
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
