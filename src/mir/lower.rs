@@ -732,6 +732,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         .into_iter()
                         .filter_map(|field| {
                             let name = field.name.name();
+
                             self.ty_is_move(field.ty).then(|| {
                                 let value = self.create_value(
                                     field.ty,
