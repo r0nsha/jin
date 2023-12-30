@@ -32,6 +32,7 @@ impl<'db> CTy<'db> for TyKind {
         match self {
             Self::Fn(fty) => fty.cty(cx),
             Self::Adt(adt_id) => adt_id.cty(cx),
+            Self::Ref(ty, _) => ty.cty(cx),
             Self::RawPtr(ty) => ty.cty(cx).append(D::text("*")),
             Self::Int(ity) => ity.cty(cx),
             Self::Uint(uty) => uty.cty(cx),
@@ -46,7 +47,7 @@ impl<'db> CTy<'db> for TyKind {
     fn is_ptr(&self, cx: &Generator<'db>) -> bool {
         match self {
             Self::Adt(adt_id) => cx.db[*adt_id].is_ref(),
-            Self::RawPtr(_) => true,
+            Self::Ref(..) | Self::RawPtr(_) => true,
             Self::Fn(_)
             | Self::Int(_)
             | Self::Uint(_)
