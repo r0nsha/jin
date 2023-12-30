@@ -27,8 +27,8 @@ use crate::{
 };
 
 const PRELUDE: &str = include_str!("../../rt/jin.c");
-const DATA_FIELD: &str = "data";
-const REFCNT_FIELD: &str = "refcnt";
+pub const DATA_FIELD: &str = "data";
+pub const REFCNT_FIELD: &str = "refcnt";
 
 pub struct Generator<'db> {
     pub db: &'db mut Db,
@@ -423,34 +423,35 @@ impl<'db> Generator<'db> {
                 let value_doc = self
                     .value_assign(state, *value, || util::call_alloc(ty_doc));
 
-                let zero_refcnt = stmt(|| {
-                    util::field(self.value(state, *value), REFCNT_FIELD, true)
-                        .append(" = 0")
-                });
+                let zero_refcnt =
+                    stmt(|| self.refcnt_field(state, *value).append(" = 0"));
 
                 D::intersperse([value_doc, zero_refcnt], D::hardline())
             }
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
-            Inst::Free { value, destroy_flag, span: _ } => {
-                let free_call =
-                    stmt(|| util::call_free(self.value(state, *value)));
+            Inst::Free { value, destroy_flag, span } => {
+                let stmts = self.check_refcnt_and_free(state, *value, *span);
 
                 if let &Some(destroy_flag) = destroy_flag {
-                    util::if_stmt(
-                        self.value(state, destroy_flag),
-                        free_call,
-                        None,
-                    )
+                    util::if_stmt(self.value(state, destroy_flag), stmts, None)
                 } else {
-                    free_call
+                    stmts
                 }
             }
-            Inst::IncRef { value } => stmt(|| {
-                util::field(self.value(state, *value), REFCNT_FIELD, true)
-                    .append(" += 1")
-            }),
+            Inst::IncRef { value, target } => {
+                let target_doc = self.value(state, *target);
+                let incref = stmt(|| {
+                    util::field(target_doc.clone(), REFCNT_FIELD, true)
+                        .append(" += 1")
+                });
+
+                D::intersperse(
+                    [incref, self.value_assign(state, *value, || target_doc)],
+                    D::hardline(),
+                )
+            }
             Inst::Br { target } => goto_stmt(state.body.block(*target)),
             Inst::BrIf { cond, then, otherwise } => if_stmt(
                 self.value(state, *cond),

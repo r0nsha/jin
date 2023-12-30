@@ -3,7 +3,7 @@ use pretty::RcDoc as D;
 
 use crate::{
     cgen::{
-        generate::{FnState, Generator},
+        generate::{FnState, Generator, DATA_FIELD, REFCNT_FIELD},
         ty::CTy,
         util,
     },
@@ -72,8 +72,32 @@ impl<'db> Generator<'db> {
         value: ValueId,
         field: &str,
     ) -> D<'db> {
-        let data_field = util::field(self.value(state, value), "data", true);
+        let data_field =
+            util::field(self.value(state, value), DATA_FIELD, true);
         util::field(data_field, field, false)
+    }
+
+    pub fn refcnt_field(&self, state: &FnState<'db>, value: ValueId) -> D<'db> {
+        util::field(self.value(state, value), REFCNT_FIELD, true)
+    }
+
+    pub fn check_refcnt_and_free(
+        &self,
+        state: &FnState<'db>,
+        value: ValueId,
+        span: Span,
+    ) -> D<'db> {
+        let refcnt_check = self.panic_if(
+            self.refcnt_field(state, value).append(D::text(" != 0")),
+            &format!(
+                "can't destroy a value of type `{}` \
+                as it still has N reference(s)",
+                state.body.value(value).ty.display(self.db)
+            ),
+            span,
+        );
+        let free_call = stmt(|| util::call_free(self.value(state, value)));
+        D::intersperse([refcnt_check, free_call], D::hardline())
     }
 }
 

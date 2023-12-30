@@ -534,10 +534,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             Inst::Unary { value, inner, op: un.op }
                         })
                     }
-                    UnOp::Ref(_) => {
-                        self.push_inst(Inst::IncRef { value: inner });
-                        inner
-                    }
+                    UnOp::Ref(_) => self
+                        .push_inst_with_register(expr.ty, |value| {
+                            Inst::IncRef { value, target: inner }
+                        }),
                 }
             }
             hir::ExprKind::Binary(bin) => {
