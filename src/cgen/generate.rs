@@ -440,18 +440,10 @@ impl<'db> Generator<'db> {
                     stmts
                 }
             }
-            Inst::IncRef { value, target } => {
-                let target_doc = self.value(state, *target);
-                let incref = stmt(|| {
-                    util::field(target_doc.clone(), REFCNT_FIELD, true)
-                        .append(" += 1")
-                });
-
-                D::intersperse(
-                    [incref, self.value_assign(state, *value, || target_doc)],
-                    D::hardline(),
-                )
-            }
+            Inst::IncRef { value } => stmt(|| {
+                util::field(self.value(state, *value), REFCNT_FIELD, true)
+                    .append(" += 1")
+            }),
             Inst::Br { target } => goto_stmt(state.body.block(*target)),
             Inst::BrIf { cond, then, otherwise } => if_stmt(
                 self.value(state, *cond),

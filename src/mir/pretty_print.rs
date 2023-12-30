@@ -150,11 +150,9 @@ impl<'db> PrettyCx<'db> {
                 } else {
                     D::nil()
                 }),
-            Inst::IncRef { value, target } => self
-                .value_assign(body, *value)
-                .append(D::text("incref"))
+            Inst::IncRef { value } => D::text("incref")
                 .append(D::space())
-                .append(self.value(body, *target)),
+                .append(self.value(body, *value)),
             Inst::Br { target } => D::text("br")
                 .append(D::space())
                 .append(D::text(body.block(*target).display_name())),
