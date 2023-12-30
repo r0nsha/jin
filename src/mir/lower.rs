@@ -526,12 +526,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Unary(un) => {
                 let inner = self.lower_expr(&un.expr);
-                self.try_move(inner, un.expr.span);
-                self.push_inst_with_register(expr.ty, |value| Inst::Unary {
-                    value,
-                    inner,
-                    op: un.op,
-                })
+
+                match un.op {
+                    UnOp::Neg | UnOp::Not => {
+                        self.try_move(inner, un.expr.span);
+                        self.push_inst_with_register(expr.ty, |value| {
+                            Inst::Unary { value, inner, op: un.op }
+                        })
+                    }
+                    UnOp::Ref(_) => {
+                        self.push_inst(Inst::IncRef { value: inner });
+                        inner
+                    }
+                }
             }
             hir::ExprKind::Binary(bin) => {
                 let lhs = self.lower_expr(&bin.lhs);
