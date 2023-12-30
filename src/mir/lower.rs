@@ -1091,10 +1091,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn value_is_ref(&self, value: ValueId) -> bool {
-        self.ty_is_ref(self.body.value(value).ty)
+        Self::ty_is_ref(self.body.value(value).ty)
     }
 
-    fn ty_is_ref(&self, ty: Ty) -> bool {
+    fn ty_is_ref(ty: Ty) -> bool {
         matches!(ty.kind(), TyKind::Ref(..))
     }
 
