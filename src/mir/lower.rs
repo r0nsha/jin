@@ -1091,11 +1091,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn value_is_ref(&self, value: ValueId) -> bool {
-        Self::ty_is_ref(self.body.value(value).ty)
-    }
-
-    fn ty_is_ref(ty: Ty) -> bool {
-        matches!(ty.kind(), TyKind::Ref(..))
+        self.body.value(value).ty.is_ref()
     }
 
     pub fn set_owned(&mut self, value: ValueId) {

@@ -298,6 +298,14 @@ impl TyKind {
     pub fn is_type(&self) -> bool {
         matches!(self, Self::Type(..))
     }
+
+    /// Returns `true` if the ty kind is [`Ref`].
+    ///
+    /// [`Ref`]: TyKind::Ref
+    #[must_use]
+    pub fn is_ref(&self) -> bool {
+        matches!(self, Self::Ref(..))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]
