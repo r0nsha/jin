@@ -1,3 +1,5 @@
+use std::fmt;
+
 use codespan_reporting::files::{Files, Location};
 use pretty::RcDoc as D;
 
@@ -33,7 +35,7 @@ impl<'db> Generator<'db> {
 
         D::text("(struct jin_rt_location)").append(D::space()).append(
             util::struct_lit(vec![
-                ("path", D::text(format!("\"{path}\""))),
+                ("path", str_lit(path)),
                 ("line", D::text(line_number.to_string())),
                 ("column", D::text(column_number.to_string())),
             ]),
@@ -43,9 +45,10 @@ impl<'db> Generator<'db> {
     pub fn call_panic(&self, msg: &str, span: Span) -> D<'db> {
         call(
             "jin_rt_panic_at",
-            self.create_location_value(span)
-                .append(", ")
-                .append(D::text(format!("\"{msg}\""))),
+            D::intersperse(
+                [str_lit(msg), self.create_location_value(span)],
+                ", ",
+            ),
         )
     }
 
@@ -81,23 +84,31 @@ impl<'db> Generator<'db> {
         util::field(self.value(state, value), REFCNT_FIELD, true)
     }
 
-    pub fn check_refcnt_and_free(
+    pub fn refcheck_and_free(
         &self,
         state: &FnState<'db>,
         value: ValueId,
         span: Span,
     ) -> D<'db> {
-        let refcnt_check = self.panic_if(
-            self.refcnt_field(state, value).append(D::text(" != 0")),
-            &format!(
-                "can't destroy a value of type `{}` \
-                as it still has N reference(s)",
-                state.body.value(value).ty.display(self.db)
-            ),
-            span,
-        );
+        let refcheck = stmt(|| self.refcheck(state, value, span));
         let free_call = stmt(|| util::call_free(self.value(state, value)));
-        D::intersperse([refcnt_check, free_call], D::hardline())
+        D::intersperse([refcheck, free_call], D::hardline())
+    }
+
+    pub fn refcheck(
+        &self,
+        state: &FnState<'db>,
+        value: ValueId,
+        span: Span,
+    ) -> D<'db> {
+        let refcnt = self.refcnt_field(state, value);
+        let fmt = str_lit(format!(
+            "can't destroy a value of type `{}` \
+                as it still has %d reference(s)",
+            state.body.value(value).ty.display(self.db)
+        ));
+        let loc = self.create_location_value(span);
+        call("jin_rt_refcheck", D::intersperse([refcnt, fmt, loc], ", "))
     }
 }
 
@@ -125,7 +136,7 @@ pub fn str_value(value: &str) -> D {
     ])
 }
 
-pub fn str_lit(value: &str) -> D {
+pub fn str_lit<'a>(value: impl fmt::Display) -> D<'a> {
     D::text(format!("\"{value}\""))
 }
 

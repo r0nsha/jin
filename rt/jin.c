@@ -42,21 +42,11 @@ typedef struct jin_rt_location {
 } jin_rt_location;
 
 // Built-in functions
-void jin_rt_panic(u8 *msg);
-void jin_rt_panic_at(jin_rt_location loc, u8 *msg);
 void *jin_rt_alloc(size_t size);
 void jin_rt_free(void *ptr);
-
-void jin_rt_panic(u8 *msg) {
-  dprintf(STDERR, "panic at '%s'\n", msg);
-  exit(1);
-}
-
-void jin_rt_panic_at(jin_rt_location loc, u8 *msg) {
-  dprintf(STDERR, "panic at '%s', %s:%d:%d\n", msg, loc.path, loc.line,
-          loc.column);
-  exit(1);
-}
+void jin_rt_panic(u8 *msg);
+void jin_rt_panic_at(u8 *msg, jin_rt_location loc);
+void jin_rt_refcheck(usize refcnt, u8 *fmt, jin_rt_location loc);
 
 FORCE_INLINE void *jin_rt_alloc(size_t size) {
   void *ptr = malloc(size);
@@ -69,3 +59,25 @@ FORCE_INLINE void *jin_rt_alloc(size_t size) {
 }
 
 FORCE_INLINE void jin_rt_free(void *ptr) { free(ptr); }
+
+FORCE_INLINE void jin_rt_panic(u8 *msg) {
+  dprintf(STDERR, "panic at '%s'\n", msg);
+  exit(1);
+}
+
+FORCE_INLINE void jin_rt_panic_at(u8 *msg, jin_rt_location loc) {
+  dprintf(STDERR, "panic at '%s', %s:%d:%d\n", msg, loc.path, loc.line,
+          loc.column);
+  exit(1);
+}
+
+void jin_rt_refcheck(usize refcnt, u8 *fmt, jin_rt_location loc) {
+  if (refcnt != 0) {
+    const char *fmt =
+        "can't destroy a value of type `{}` as it still has %d reference(s)";
+    size_t needed = snprintf(NULL, 0, fmt, refcnt);
+    char *msg = malloc(needed);
+    sprintf(msg, fmt, refcnt);
+    jin_rt_panic_at(msg, loc);
+  }
+}

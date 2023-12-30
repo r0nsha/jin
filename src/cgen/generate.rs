@@ -432,7 +432,7 @@ impl<'db> Generator<'db> {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
             Inst::Free { value, destroy_flag, span } => {
-                let stmts = self.check_refcnt_and_free(state, *value, *span);
+                let stmts = self.refcheck_and_free(state, *value, *span);
 
                 if let &Some(destroy_flag) = destroy_flag {
                     util::if_stmt(self.value(state, destroy_flag), stmts, None)
