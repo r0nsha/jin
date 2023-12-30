@@ -2,5 +2,7 @@ type Box(value: int)
 
 fn main() unit = {
 	let box = Box(1)
-	&box
+	let ref1 = &box
+	let ref2 = &box
+	let ref3 = &box
 }

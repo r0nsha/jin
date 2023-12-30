@@ -534,14 +534,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             Inst::Unary { value, inner, op: un.op }
                         })
                     }
-                    UnOp::Ref(_) => {
-                        let value = self.create_value(
-                            expr.ty,
-                            self.body.value(inner).kind.clone(),
-                        );
-                        self.push_inst(Inst::IncRef { value });
-                        value
-                    }
+                    UnOp::Ref(_) => self.create_value(
+                        expr.ty,
+                        self.body.value(inner).kind.clone(),
+                    ),
                 }
             }
             hir::ExprKind::Binary(bin) => {
@@ -744,6 +740,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         .filter_map(|field| {
                             let name = field.name.name();
 
+                            // TODO: include refs
                             self.ty_is_move(field.ty).then(|| {
                                 let value = self.create_value(
                                     field.ty,
@@ -846,6 +843,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.walk_parents(value, |this, parent| {
                 this.check_if_moved(parent, moved_to)
             })?;
+
+            // When a reference is moved, its refcount is incremented
+            if self.value_is_ref(value) {
+                self.push_inst(Inst::IncRef { value });
+            }
+
             return Ok(());
         }
 
@@ -1085,6 +1088,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             TyKind::Param(_) => true,
             _ => false,
         }
+    }
+
+    fn value_is_ref(&self, value: ValueId) -> bool {
+        self.ty_is_ref(self.body.value(value).ty)
+    }
+
+    fn ty_is_ref(&self, ty: Ty) -> bool {
+        matches!(ty.kind(), TyKind::Ref(..))
     }
 
     pub fn set_owned(&mut self, value: ValueId) {
