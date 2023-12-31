@@ -213,7 +213,7 @@ impl Body {
         self.instantations.insert(value, instantation);
     }
 
-    pub fn is_terminating(&self) -> bool {
+    pub fn last_inst_is_return(&self) -> bool {
         self.blocks()
             .last()
             .map(|blk| matches!(blk.insts.last(), Some(Inst::Return { .. })))

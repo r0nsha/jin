@@ -2,8 +2,9 @@ type Box(value: int)
 
 fn main() unit = {
 	let box = Box(1)
-	//let ref = &box
-	{ &box }.copy().copy()
+	let ref = &box
+	ref.copy().copy()
+	//{ &box }.copy().copy()
 }
 
 fn copy(b: &Box) &Box = b

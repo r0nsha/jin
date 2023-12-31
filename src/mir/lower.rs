@@ -275,7 +275,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 let last_value = self.lower_expr(body);
 
-                if !self.body.is_terminating() {
+                if !self.body.last_inst_is_return() {
                     // If the body isn't terminating, we must push a return instruction at the
                     // for the function's last value.
                     let fn_ty = self.cx.mir.fn_sigs[sig].ty.as_fn().unwrap();
@@ -718,7 +718,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub fn push_inst(&mut self, inst: Inst) {
-        self.body.block_mut(self.current_block).push_inst(inst);
+        self.current_block_mut().push_inst(inst);
     }
 
     pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
@@ -1118,10 +1118,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.current_block = id;
     }
 
-    pub fn in_connected_block(&self) -> bool {
-        self.body.block(self.current_block).is_connected()
-    }
-
     pub fn apply_coercions_to_expr(
         &mut self,
         expr: &hir::Expr,
@@ -1350,6 +1346,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 "temporary value".to_string()
             }
         }
+    }
+
+    fn current_block(&self) -> &Block {
+        self.body.block(self.current_block)
+    }
+
+    fn current_block_mut(&mut self) -> &mut Block {
+        self.body.block_mut(self.current_block)
+    }
+
+    pub fn in_connected_block(&self) -> bool {
+        self.current_block().is_connected()
     }
 }
 
