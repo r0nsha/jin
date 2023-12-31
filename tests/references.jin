@@ -15,12 +15,12 @@ fn main() unit = {
 	//let ref_b = &bag.b
 
 	let ref_bag = &bag
-	//let a = &ref_bag.a
+	let a = &ref_bag.a
 
 	//print(ref_a)
 	//print(ref_b)
 }
 
-fn print(box: &Box) unit = {
-	printf("Box(%d)\n".ptr, box.value)
-}
+//fn print(box: &Box) unit = {
+//	printf("Box(%d)\n".ptr, box.value)
+//}
