@@ -579,7 +579,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 {
                     *field_value
                 } else {
-                    self.create_value(expr.ty, ValueKind::Field(value, field))
+                    self.create_untracked_value(
+                        expr.ty,
+                        ValueKind::Field(value, field),
+                    )
                 }
             }
             hir::ExprKind::Name(name) => {
@@ -729,6 +732,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.set_owned(value);
         self.scope_mut().created_values.insert(value);
         self.create_value_fields(value, ty);
+        value
+    }
+
+    pub fn create_untracked_value(
+        &mut self,
+        ty: Ty,
+        kind: ValueKind,
+    ) -> ValueId {
+        let value = self.body.create_value(ty, kind);
+        self.set_owned(value);
         value
     }
 

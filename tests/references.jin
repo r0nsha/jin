@@ -5,7 +5,7 @@ type Ref(box: &Box)
 type Bag(a: Box, b: Box)
 
 fn main() unit = {
-	//let box = Box(1)
+	let box = Box(1)
 
 	//let ref = Ref(&box)
 	//print(ref.box)
@@ -14,13 +14,13 @@ fn main() unit = {
 	//let ref_a = &bag.a
 	//let ref_b = &bag.b
 
-	let ref_bag = &bag
-	let a = &ref_bag.a
+	//let ref_bag = &bag
+	//let a = &ref_bag.a
 
 	//print(ref_a)
 	//print(ref_b)
 }
 
-//fn print(box: &Box) unit = {
-//	printf("Box(%d)\n".ptr, box.value)
-//}
+fn print(box: &Box) unit = {
+	printf("Box(%d)\n".ptr, box.value)
+}
