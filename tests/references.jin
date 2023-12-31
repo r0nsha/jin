@@ -6,8 +6,15 @@ type Bag(a: Box, b: Box)
 
 fn main() unit = {
 	let box = Box(1)
+
 	let ref = Ref(&box)
 	print(ref.box)
+
+	let bag = Bag(Box(2), Box(3))
+	let ref_a = &bag.a
+	let ref_b = &bag.b
+	print(ref_a)
+	print(ref_b)
 }
 
 fn print(box: &Box) unit = {
