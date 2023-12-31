@@ -297,7 +297,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // println!("{}", self.value_states);
                 // println!("---------------------");
 
-                self.try_move(last_value, body.span);
                 self.exit_scope();
 
                 self.cx.mir.fns.insert(sig, Fn { sig, body: self.body });
@@ -497,7 +496,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Return(ret) => {
                 let value = self.lower_expr(&ret.expr);
-                self.try_move(value, ret.expr.span);
                 self.push_return(value, expr.span);
                 self.const_unit()
             }
@@ -693,6 +691,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn push_return(&mut self, value: ValueId, span: Span) {
+        self.try_move(value, span);
         self.destroy_all_values(span);
         self.push_inst(Inst::Return { value });
     }
@@ -848,7 +847,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             // When a reference is moved, its refcount is incremented
             if self.should_refcount(value) {
                 self.push_inst(Inst::IncRef { value });
-                // self.set_moved(value, moved_to);
+                self.set_moved(value, moved_to);
             }
 
             return Ok(());
@@ -1253,8 +1252,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn destroy_value(&mut self, value: ValueId, span: Span) {
-        if !self.value_is_move(value) && !self.value_is_ref(value) {
-            if self.should_refcount(value) {
+        if !self.value_is_move(value) {
+            if self.should_refcount(value)
+                && !matches!(self.value_state(value), ValueState::Moved(_))
+            {
                 self.push_inst(Inst::DecRef { value });
             }
 

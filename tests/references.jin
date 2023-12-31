@@ -4,11 +4,11 @@ fn main() unit = {
 	let box = Box(1)
 	//box.copy()
 
-	let ref = &box
-	//ref.copy()
+	//let ref = &box
+	//let jeff = ref.copy()
 	//ref.copy().copy()
 
-	//{ &box }.copy().copy()
+	{ &box }.copy().copy()
 }
 
 //fn copy(b: Box) &Box = &b
