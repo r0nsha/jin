@@ -846,11 +846,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
             // When a reference is moved, its refcount is incremented.
             if self.value_is_ref(value) {
-                // Since register values are only used once, we don't need to increment their ref's
-                if !self.body.value(value).kind.is_register() {
-                    self.push_inst(Inst::IncRef { value });
-                }
-                self.set_moved(value, moved_to);
+                self.push_inst(Inst::IncRef { value });
             }
 
             return Ok(());
@@ -1252,9 +1248,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn destroy_value(&mut self, value: ValueId, span: Span) {
         if !self.value_is_move(value) {
-            if self.value_is_ref(value)
-                && !matches!(self.value_state(value), ValueState::Moved(_))
-            {
+            if self.value_is_ref(value) {
                 self.push_inst(Inst::DecRef { value });
             }
 
