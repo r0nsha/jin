@@ -377,6 +377,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Assign(assign) => {
                 let lhs = self.lower_expr(&assign.lhs);
                 self.try_use(lhs, assign.lhs.span);
+                self.check_assign_mutability(lhs, expr.span);
 
                 let rhs = self.lower_expr(&assign.rhs);
                 self.try_move(rhs, assign.rhs.span);
@@ -811,19 +812,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         Ok(())
     }
 
-    fn walk_parents(
+    fn walk_parents<E>(
         &mut self,
         value: ValueId,
-        mut f: impl FnMut(&mut Self, ValueId, ValueId) -> DiagnosticResult<()>,
-    ) -> DiagnosticResult<()> {
+        mut f: impl FnMut(&mut Self, ValueId, ValueId) -> Result<(), E>,
+    ) -> Result<(), E> {
         self.walk_parents_aux(value, &mut f)
     }
 
-    fn walk_parents_aux(
+    fn walk_parents_aux<E>(
         &mut self,
         value: ValueId,
-        f: &mut impl FnMut(&mut Self, ValueId, ValueId) -> DiagnosticResult<()>,
-    ) -> DiagnosticResult<()> {
+        f: &mut impl FnMut(&mut Self, ValueId, ValueId) -> Result<(), E>,
+    ) -> Result<(), E> {
         if let &ValueKind::Field(parent, _) = &self.body.value(value).kind {
             f(self, parent, value)?;
             self.walk_parents_aux(parent, f)
@@ -833,9 +834,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub fn move_out(&mut self, value: ValueId, moved_to: Span) {
-        if let Err(diagnostic) = self.move_out_aux(value, moved_to) {
-            self.cx.db.diagnostics.emit(diagnostic);
-        }
+        let result = self.move_out_aux(value, moved_to);
+        self.emit_result(result);
     }
 
     pub fn move_out_aux(
@@ -855,9 +855,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub fn try_move(&mut self, value: ValueId, moved_to: Span) {
-        if let Err(diagnostic) = self.try_move_inner(value, moved_to) {
-            self.cx.db.diagnostics.emit(diagnostic);
-        }
+        let result = self.try_move_inner(value, moved_to);
+        self.emit_result(result);
     }
 
     pub fn try_move_inner(
@@ -890,11 +889,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             Ok(())
         })
         .unwrap();
-        self.walk_parents(value, |this, parent, child| {
-            this.check_move_out_of_ref(parent, child, moved_to)?;
-            this.set_partially_moved(parent, moved_to);
-            Ok(())
-        })?;
+        self.walk_parents(
+            value,
+            |this, parent, child| -> DiagnosticResult<()> {
+                this.check_move_out_of_ref(parent, child, moved_to)?;
+                this.set_partially_moved(parent, moved_to);
+                Ok(())
+            },
+        )?;
 
         self.insert_loop_move(value, moved_to);
         self.check_move_out_of_global(value, moved_to)?;
@@ -905,9 +907,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub fn try_use(&mut self, value: ValueId, moved_to: Span) {
-        if let Err(diagnostic) = self.check_if_moved(value, moved_to) {
-            self.cx.db.diagnostics.emit(diagnostic);
-        }
+        let result = self.check_if_moved(value, moved_to);
+        self.emit_result(result);
     }
 
     pub fn check_if_moved(
@@ -1417,6 +1418,62 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     pub fn in_connected_block(&self) -> bool {
         self.current_block().is_connected()
     }
+
+    fn check_assign_mutability(&mut self, lhs: ValueId, span: Span) {
+        if let Err(root) = self.value_imm_root(lhs) {
+            let diagnostic = match root {
+                ImmutableRoot::Def(root) => {
+                    let name = self.value_name(root);
+
+                    Diagnostic::error()
+                        .with_message(format!(
+                            "cannot assign twice to immutable value {name}",
+                        ))
+                        .with_label(
+                            Label::primary(span)
+                                .with_message(format!("{name} is immutable",)),
+                        )
+                }
+            };
+
+            self.cx.db.diagnostics.emit(diagnostic);
+        }
+    }
+
+    fn value_imm_root(&self, value: ValueId) -> Result<(), ImmutableRoot> {
+        // TODO: check ty is not immutable ref
+        match &self.body.value(value).kind {
+            ValueKind::Local(id) => {
+                if self.def_is_immutable(*id) {
+                    Err(ImmutableRoot::Def(value))
+                } else {
+                    Ok(())
+                }
+            }
+            ValueKind::Global(id) => {
+                if self.def_is_immutable(self.cx.mir.globals[*id].def_id) {
+                    Err(ImmutableRoot::Def(value))
+                } else {
+                    Ok(())
+                }
+            }
+            ValueKind::Field(parent, _) => self.value_imm_root(*parent),
+            ValueKind::Fn(_)
+            | ValueKind::Const(_)
+            | ValueKind::Register(_)
+            | ValueKind::Name(_) => Ok(()),
+        }
+    }
+
+    fn def_is_immutable(&self, id: DefId) -> bool {
+        self.cx.db[id].mutability.is_imm()
+    }
+
+    pub fn emit_result(&mut self, result: DiagnosticResult<()>) {
+        if let Err(diagnostic) = result {
+            self.cx.db.diagnostics.emit(diagnostic);
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -1563,4 +1620,9 @@ impl LoopScope {
     fn new(end_block: BlockId) -> Self {
         Self { end_block, moved_in: FxHashMap::default() }
     }
+}
+
+#[derive(Debug)]
+enum ImmutableRoot {
+    Def(ValueId),
 }

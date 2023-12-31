@@ -758,8 +758,6 @@ impl<'db> Typeck<'db> {
             }
             ast::Expr::Assign { lhs, rhs, op, span } => {
                 let lhs = self.check_expr(env, lhs, None)?;
-                self.check_assign_lhs(&lhs)?;
-
                 let rhs = self.check_expr(env, rhs, Some(lhs.ty))?;
 
                 if let Some(op) = op {
@@ -1756,58 +1754,6 @@ impl<'db> Typeck<'db> {
     #[inline]
     pub fn normalize(&self, ty: Ty) -> Ty {
         ty.normalize(&mut self.storage.borrow_mut())
-    }
-
-    fn check_assign_lhs(&self, expr: &hir::Expr) -> TypeckResult<()> {
-        match &expr.kind {
-            hir::ExprKind::Field(access) => {
-                self.check_assign_lhs_inner(&access.expr, expr.span)
-            }
-            hir::ExprKind::Name(name) => {
-                self.check_assign_lhs_name(name, expr.span)
-            }
-            _ => Err(Diagnostic::error()
-                .with_message("invalid left-hand side of assignment")
-                .with_label(
-                    Label::primary(expr.span)
-                        .with_message("cannot assign to this expression"),
-                )),
-        }
-    }
-
-    fn check_assign_lhs_inner(
-        &self,
-        expr: &hir::Expr,
-        origin_span: Span,
-    ) -> TypeckResult<()> {
-        match &expr.kind {
-            hir::ExprKind::Name(name) => {
-                self.check_assign_lhs_name(name, origin_span)
-            }
-            _ => Ok(()),
-        }
-    }
-
-    fn check_assign_lhs_name(
-        &self,
-        name: &hir::Name,
-        origin_span: Span,
-    ) -> TypeckResult<()> {
-        let def = &self.db[name.id];
-
-        if def.mutability.is_mut() {
-            Ok(())
-        } else {
-            Err(Diagnostic::error()
-                .with_message(format!(
-                    "cannot assign twice to immutable value `{}`",
-                    def.name
-                ))
-                .with_label(
-                    Label::primary(origin_span)
-                        .with_message(format!("`{}` is immutable", def.name)),
-                ))
-        }
     }
 
     fn check_bin_op(
