@@ -331,33 +331,28 @@ impl<'db> ExpandDestroys<'db> {
     }
 
     fn remove_unused_destroys(&self, body: &mut Body) {
-        let mut destroyed_values = FxHashSet::<ValueId>::default();
+        let destroyed_values: FxHashSet<ValueId> = body
+            .values()
+            .iter()
+            .filter_map(|v| self.should_destroy_ty(v.ty).then_some(v.id))
+            .collect();
+
         let mut used_destroy_flags: FxHashMap<ValueId, bool> =
             body.destroy_flags.values().map(|flag| (*flag, false)).collect();
 
         for block_id in body.blocks().keys() {
-            destroyed_values.extend(
-                body.block(block_id).insts.iter().filter_map(
-                    |inst| match inst {
-                        Inst::Free { value, destroy_flag, .. } => {
-                            let should_destroy =
-                                self.should_destroy_value(body, *value);
-
-                            if should_destroy {
-                                if let Some(destroy_flag) = destroy_flag {
-                                    used_destroy_flags
-                                        .insert(*destroy_flag, true);
-                                }
-
-                                Some(*value)
-                            } else {
-                                None
-                            }
-                        }
-                        _ => None,
-                    },
-                ),
-            );
+            for inst in &body.block(block_id).insts {
+                if let Inst::Free {
+                    value,
+                    destroy_flag: Some(destroy_flag),
+                    ..
+                } = inst
+                {
+                    if destroyed_values.contains(value) {
+                        used_destroy_flags.insert(*destroy_flag, true);
+                    }
+                }
+            }
         }
 
         for block in body.blocks_mut() {
@@ -370,10 +365,6 @@ impl<'db> ExpandDestroys<'db> {
                 _ => true,
             });
         }
-    }
-
-    fn should_destroy_value(&self, body: &Body, value: ValueId) -> bool {
-        self.should_destroy_ty(body.value(value).ty)
     }
 
     fn should_destroy_ty(&self, ty: Ty) -> bool {

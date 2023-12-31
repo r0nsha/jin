@@ -848,6 +848,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             // When a reference is moved, its refcount is incremented
             if self.should_refcount(value) {
                 self.push_inst(Inst::IncRef { value });
+                // self.set_moved(value, moved_to);
             }
 
             return Ok(());
@@ -1252,7 +1253,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn destroy_value(&mut self, value: ValueId, span: Span) {
-        if !self.value_is_move(value) {
+        if !self.value_is_move(value) && !self.value_is_ref(value) {
             if self.should_refcount(value) {
                 self.push_inst(Inst::DecRef { value });
             }
