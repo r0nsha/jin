@@ -4,3 +4,5 @@ fn main() unit = {
 	let box = Box(1)
 	let ref = &box
 }
+
+fn copy(b: &Box) &Box = b

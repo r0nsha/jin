@@ -670,6 +670,12 @@ impl<'a> Parser<'a> {
                 let fty = self.parse_fn_ty()?;
                 TyExpr::Fn(fty)
             }
+            TokenKind::Amp => {
+                let mutability = self.parse_mutability();
+                let inner = self.parse_ty()?;
+                let span = tok.span.merge(inner.span());
+                TyExpr::Ref(Box::new(inner), mutability, span)
+            }
             TokenKind::Star => {
                 let pointee = self.parse_ty()?;
                 let span = tok.span.merge(pointee.span());

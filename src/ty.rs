@@ -132,7 +132,7 @@ impl Ty {
         Ty::new(TyKind::RawPtr(self))
     }
 
-    pub fn as_ref(self, mutability: Mutability) -> Ty {
+    pub fn create_ref(self, mutability: Mutability) -> Ty {
         Ty::new(TyKind::Ref(self, mutability))
     }
 }

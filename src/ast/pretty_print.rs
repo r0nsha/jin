@@ -344,6 +344,11 @@ impl PrettyPrint for TyExpr {
 
                 cx.builder.end_child();
             }
+            TyExpr::Ref(inner, mutability, _) => {
+                cx.builder.begin_child(format!("ref ({mutability})"));
+                inner.pretty_print(cx);
+                cx.builder.end_child();
+            }
             TyExpr::RawPtr(pointee, _) => {
                 cx.builder.begin_child("raw ptr".to_string());
                 pointee.pretty_print(cx);

@@ -29,11 +29,24 @@ impl Mutability {
     pub fn is_mut(self) -> bool {
         matches!(self, Mutability::Mut)
     }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            Mutability::Imm => "imm",
+            Mutability::Mut => "mut",
+        }
+    }
 }
 
 impl Default for Mutability {
     fn default() -> Self {
         Self::Imm
+    }
+}
+
+impl fmt::Display for Mutability {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
     }
 }
 
@@ -206,6 +219,7 @@ impl UnOp {
 #[derive(Debug, Clone)]
 pub enum TyExpr {
     Fn(TyExprFn),
+    Ref(Box<TyExpr>, Mutability, Span),
     RawPtr(Box<TyExpr>, Span),
     Name(TyExprName),
     Hole(Span),
@@ -215,6 +229,7 @@ impl Spanned for TyExpr {
     fn span(&self) -> Span {
         match self {
             Self::Fn(TyExprFn { span, .. })
+            | Self::Ref(_, _, span)
             | Self::RawPtr(_, span)
             | Self::Name(TyExprName { span, .. })
             | Self::Hole(span) => *span,

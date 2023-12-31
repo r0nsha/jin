@@ -47,6 +47,13 @@ pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
         TyKind::Adt(adt_id) => {
             db.adt_def(*adt_id).unwrap().qpath.join_with("_")
         }
+        TyKind::Ref(inner, mutability) => {
+            format!(
+                "ref_{}_{}",
+                mutability,
+                mangle_ty_name(db, *inner)
+            )
+        }
         TyKind::RawPtr(pointee) => {
             format!("ptr_{}", mangle_ty_name(db, *pointee))
         }

@@ -1064,7 +1064,7 @@ impl<'db> Typeck<'db> {
                                     expr: Box::new(expr),
                                     op: *op,
                                 }),
-                                ty.as_ref(*mutability),
+                                ty.create_ref(*mutability),
                                 *span,
                             ))
                         }
@@ -1629,6 +1629,24 @@ impl<'db> Typeck<'db> {
                     ret,
                     is_c_variadic: fn_ty.is_c_variadic,
                 })))
+            }
+            TyExpr::Ref(inner, mutability, _) => {
+                let inner_ty = self.check_ty_expr(env, inner, allow_hole)?;
+
+                match inner_ty.kind() {
+                    TyKind::Adt(adt_id) if self.db[*adt_id].is_ref() => {
+                        Ok(inner_ty.create_ref(*mutability))
+                    }
+                    _ => Err(Diagnostic::error()
+                        .with_message(format!(
+                            "type `{}` cannot be referenced",
+                            inner_ty.display(self.db)
+                        ))
+                        .with_label(
+                            Label::primary(inner.span())
+                                .with_message("invalid referenced type"),
+                        )),
+                }
             }
             TyExpr::RawPtr(pointee, _) => {
                 let pointee = self.check_ty_expr(env, pointee, allow_hole)?;
