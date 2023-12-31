@@ -3,6 +3,4 @@ type Box(value: int)
 fn main() unit = {
 	let box = Box(1)
 	let ref = &box
-	let ref = &box
-	let ref = &box
 }

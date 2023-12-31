@@ -740,7 +740,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         .filter_map(|field| {
                             let name = field.name.name();
 
-                            // TODO: include refs
                             self.ty_is_move(field.ty).then(|| {
                                 let value = self.create_value(
                                     field.ty,
@@ -835,8 +834,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value: ValueId,
         moved_to: Span,
     ) -> DiagnosticResult<()> {
-        self.check_if_moved(value, moved_to)?;
-
         // If the value is copy, we don't need to move it.
         // Just check that its parents can be used.
         if !self.value_is_move(value) {
@@ -849,8 +846,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.push_inst(Inst::IncRef { value });
             }
 
+            self.set_moved(value, moved_to);
+
             return Ok(());
         }
+
+        self.check_if_moved(value, moved_to)?;
 
         // Mark the value and its fields as moved.
         // Mark its parents (if any) as partially moved
@@ -1250,6 +1251,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn destroy_value(&mut self, value: ValueId, span: Span) {
         if !self.value_is_move(value) {
+            if self.value_is_ref(value)
+                && matches!(self.value_state(value), ValueState::Owned)
+            {
+                self.push_inst(Inst::DecRef { value });
+            }
+
             return;
         }
 
@@ -1294,6 +1301,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn create_destroy_flag(&mut self, value: ValueId) {
+        if !self.value_is_move(value) {
+            return;
+        }
+
         let init = self.const_bool(true);
         let flag = self.push_inst_with_named_register(
             self.cx.db.types.bool,

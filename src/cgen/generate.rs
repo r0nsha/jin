@@ -440,10 +440,12 @@ impl<'db> Generator<'db> {
                     stmts
                 }
             }
-            Inst::IncRef { value } => stmt(|| {
-                util::field(self.value(state, *value), REFCNT_FIELD, true)
-                    .append(" += 1")
-            }),
+            Inst::IncRef { value } => {
+                stmt(|| self.refcnt_field(state, *value).append(" += 1"))
+            }
+            Inst::DecRef { value } => {
+                stmt(|| self.refcnt_field(state, *value).append(" -= 1"))
+            }
             Inst::Br { target } => goto_stmt(state.body.block(*target)),
             Inst::BrIf { cond, then, otherwise } => if_stmt(
                 self.value(state, *cond),

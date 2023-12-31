@@ -261,7 +261,7 @@ pub enum Inst {
     Alloc { value: ValueId },
     Free { value: ValueId, destroy_flag: Option<ValueId>, span: Span },
     IncRef { value: ValueId },
-    // DecRef { value: ValueId },
+    DecRef { value: ValueId },
     Br { target: BlockId },
     BrIf { cond: ValueId, then: BlockId, otherwise: Option<BlockId> },
     If { value: ValueId, cond: ValueId, then: ValueId, otherwise: ValueId },
