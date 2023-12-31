@@ -737,7 +737,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let value = self.body.create_value(ty, kind);
         self.set_owned(value);
         self.scope_mut().created_values.insert(value);
-        self.create_value_fields(value, ty);
+        self.create_value_fields(value);
         value
     }
 
@@ -751,10 +751,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
-    pub fn create_value_fields(&mut self, value: ValueId, ty: Ty) {
-        if let TyKind::Adt(adt_id) = ty.kind() {
+    pub fn create_value_fields(&mut self, value: ValueId) {
+        let value = self.body.value(value);
+
+        if matches!(&value.kind, ValueKind::Register(_)) {
+            return;
+        }
+
+        if let TyKind::Adt(adt_id) = value.ty.kind() {
             match &self.cx.db[*adt_id].kind {
                 AdtKind::Struct(struct_def) => {
+                    let value = value.id;
                     let fields: FxHashMap<_, _> = struct_def
                         .fields
                         .clone()
