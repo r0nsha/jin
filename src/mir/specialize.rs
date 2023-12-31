@@ -331,10 +331,12 @@ impl<'db> ExpandDestroys<'db> {
     }
 
     fn remove_unused_destroys(&self, body: &mut Body) {
-        let destroyed_values: FxHashSet<ValueId> = body
+        let destroyed_values: FxHashMap<ValueId, Ty> = body
             .values()
             .iter()
-            .filter_map(|v| self.should_destroy_ty(v.ty).then_some(v.id))
+            .filter_map(|v| {
+                self.should_destroy_ty(v.ty).then_some((v.id, v.ty))
+            })
             .collect();
 
         let mut used_destroy_flags: FxHashMap<ValueId, bool> =
@@ -347,7 +349,7 @@ impl<'db> ExpandDestroys<'db> {
                         value,
                         destroy_flag: Some(destroy_flag),
                         ..
-                    } if destroyed_values.contains(value) => {
+                    } if destroyed_values.contains_key(value) => {
                         used_destroy_flags.insert(*destroy_flag, true);
                     }
                     _ => (),
@@ -356,12 +358,23 @@ impl<'db> ExpandDestroys<'db> {
         }
 
         for block in body.blocks_mut() {
-            block.insts.retain(|inst| match inst {
+            block.insts.retain_mut(|inst| match inst {
                 Inst::StackAlloc { value, .. }
                 | Inst::Store { target: value, .. } => {
                     used_destroy_flags.get(value).copied().unwrap_or(true)
                 }
-                Inst::Free { value, .. } => destroyed_values.contains(value),
+                Inst::Free { value, .. } => {
+                    if let Some(ty) = destroyed_values.get(value) {
+                        if ty.is_ref() {
+                            // TODO: This may turn a conditional `Free` into an unconditional
+                            // `DecRef`. Do we need a `destroy_flag` for `DecRef` too?
+                            *inst = Inst::DecRef { value: *value };
+                        }
+                        true
+                    } else {
+                        false
+                    }
+                }
                 _ => true,
             });
         }
@@ -370,6 +383,7 @@ impl<'db> ExpandDestroys<'db> {
     fn should_destroy_ty(&self, ty: Ty) -> bool {
         match ty.kind() {
             TyKind::Adt(adt_id) => self.db[*adt_id].is_ref(),
+            TyKind::Ref(..) => true,
             _ => false,
         }
     }
