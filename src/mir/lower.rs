@@ -540,6 +540,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         })
                     }
                     UnOp::Ref(_) => {
+                        self.check_ref_mutability(inner, span);
                         let value = self.create_value(
                             expr.ty,
                             self.body.value(inner).kind.clone(),
@@ -1459,6 +1460,51 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             };
 
             self.cx.db.diagnostics.emit(diagnostic);
+        }
+    }
+
+    fn check_ref_mutability(&mut self, value: ValueId, span: Span) {
+        if let Err(root) = self.value_imm_root(value) {
+            let diagnostic = match root {
+                ImmutableRoot::Def(root) => {
+                    todo!("imm def")
+                    // let root_name = self.value_name(root);
+                    //
+                    // let message = if root == lhs {
+                    //     format!(
+                    //          "cannot assign twice to immutable value {root_name}"
+                    //     )
+                    // } else {
+                    //     format!(
+                    //         "cannot assign to {}, as {} is not declared as mutable",
+                    //         self.value_name(lhs),
+                    //         root_name
+                    //     )
+                    // };
+                    //
+                    // Diagnostic::error().with_message(message).with_label(
+                    //     Label::primary(span)
+                    //         .with_message(format!("{root_name} is immutable")),
+                    // )
+                }
+                ImmutableRoot::Ref(root) => {
+                    todo!("imm ref")
+                    // let message = format!(
+                    //     "cannot assign to {}, as {} is an immutable `{}`",
+                    //     self.value_name(lhs),
+                    //     self.value_name(root),
+                    //     self.body.value(root).ty.display(self.cx.db)
+                    // );
+                    //
+                    // Diagnostic::error().with_message(message).with_label(
+                    //     Label::primary(span).with_message(
+                    //         "cannot assign to immutable reference",
+                    //     ),
+                    // )
+                }
+            };
+
+            // self.cx.db.diagnostics.emit(diagnostic);
         }
     }
 
