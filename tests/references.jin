@@ -6,12 +6,14 @@ fn main() unit = {
 
 	let ref = &box
 	ref.copy()
-	let ref2 = ref.copy()
-	ref.copy().copy()
-	let ref3 = ref.copy().copy()
-
-	{ &box }.copy().copy()
+	//let ref2 = ref.copy()
+	//ref.copy().copy()
+	//let ref3 = ref.copy().copy()
+	//{ &box }.copy().copy()
 }
 
 //fn copy(b: Box) &Box = &b
 fn copy(b: &Box) &Box = b
+
+//fn copy[T](b: T) T = b
+//fn copy[T](b: T) &T = b
