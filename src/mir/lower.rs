@@ -538,6 +538,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         expr.ty,
                         self.body.value(inner).kind.clone(),
                     ),
+                    // self.push_inst_with_register(expr.ty, |value| {
+                    //     Inst::StackAlloc { value, init: Some(inner) }
+                    // })
                 }
             }
             hir::ExprKind::Binary(bin) => {
@@ -1249,9 +1252,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn destroy_value(&mut self, value: ValueId, span: Span) {
         if !self.value_is_move(value) {
-            if self.value_is_ref(value)
-                && matches!(self.value_state(value), ValueState::Owned)
-            {
+            if self.value_is_ref(value) {
                 self.push_inst(Inst::DecRef { value });
             }
 

@@ -167,13 +167,13 @@ impl Body {
     }
 
     #[inline]
-    pub fn value(&self, id: ValueId) -> &Value {
-        &self.values[id]
+    pub fn value(&self, value: ValueId) -> &Value {
+        &self.values[value]
     }
 
     #[inline]
-    pub fn value_mut(&mut self, id: ValueId) -> &mut Value {
-        &mut self.values[id]
+    pub fn value_mut(&mut self, value: ValueId) -> &mut Value {
+        &mut self.values[value]
     }
 
     #[inline]
