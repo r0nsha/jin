@@ -1423,16 +1423,24 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         if let Err(root) = self.value_imm_root(lhs) {
             let diagnostic = match root {
                 ImmutableRoot::Def(root) => {
-                    let name = self.value_name(root);
+                    let root_name = self.value_name(root);
 
-                    Diagnostic::error()
-                        .with_message(format!(
-                            "cannot assign twice to immutable value {name}",
-                        ))
-                        .with_label(
-                            Label::primary(span)
-                                .with_message(format!("{name} is immutable",)),
+                    let message = if root == lhs {
+                        format!(
+                             "cannot assign twice to immutable value {root_name}"
                         )
+                    } else {
+                        format!(
+                            "cannot assign to {}, as {} is immutable",
+                            self.value_name(lhs),
+                            root_name
+                        )
+                    };
+
+                    Diagnostic::error().with_message(message).with_label(
+                        Label::primary(span)
+                            .with_message(format!("{root_name} is immutable")),
+                    )
                 }
             };
 

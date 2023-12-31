@@ -103,7 +103,7 @@ impl<'db> Generator<'db> {
     ) -> D<'db> {
         let refcnt = self.refcnt_field(state, value);
         let fmt = str_lit(format!(
-            "can't destroy a value of type `{}` \
+            "cannot destroy a value of type `{}` \
                 as it still has %d reference(s)",
             state.body.value(value).ty.display(self.db)
         ));

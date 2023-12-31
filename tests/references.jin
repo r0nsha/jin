@@ -7,7 +7,8 @@ type Bag(a: Box, b: Box)
 fn main() unit = {
 	let mut box = Box(1)
 	box = Box(1)
-	//let ref = Ref(&box)
+	let ref = Ref(&box)
+	ref.box.value = 2
 }
 
 fn print(self: &Box) unit = {
