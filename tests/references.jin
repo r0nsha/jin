@@ -10,7 +10,7 @@ fn main() unit = {
 	let ref = Ref(&box)
 	print(ref.box)
 
-	let bag = get_bag().copy().copy()
+	let bag = Bag(Box(2), Box(3)).copy().copy()
 	let ref_a = &bag.a
 	let ref_b = &bag.b
 
@@ -21,9 +21,11 @@ fn main() unit = {
 	print(ref_b)
 }
 
-fn print(box: &Box) unit = {
-	printf("Box(%d)\n".ptr, box.value)
+fn print(self: &Box) unit = {
+	printf("Box(%d)\n".ptr, self.value)
 }
 
-fn get_bag() Bag = Bag(Box(2), Box(3))
+//fn set(self: &Box, value: int) unit =
+//	self.value = value
+
 fn copy(bag: Bag) Bag = Bag(bag.a, bag.b)

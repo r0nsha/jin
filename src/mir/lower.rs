@@ -733,14 +733,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.current_block_mut().push_inst(inst);
     }
 
-    pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
-        let value = self.body.create_value(ty, kind);
-        self.set_owned(value);
-        self.scope_mut().created_values.insert(value);
-        self.create_value_fields(value);
-        value
-    }
-
     pub fn create_untracked_value(
         &mut self,
         ty: Ty,
@@ -748,6 +740,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> ValueId {
         let value = self.body.create_value(ty, kind);
         self.set_owned(value);
+        value
+    }
+
+    pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
+        let value = self.body.create_value(ty, kind);
+        self.set_owned(value);
+        self.scope_mut().created_values.insert(value);
+        self.create_value_fields(value);
         value
     }
 
