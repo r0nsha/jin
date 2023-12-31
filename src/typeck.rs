@@ -1300,7 +1300,7 @@ impl<'db> Typeck<'db> {
         field: Word,
         span: Span,
     ) -> TypeckResult<hir::Expr> {
-        let ty = self.normalize(expr.ty);
+        let ty = self.normalize(expr.ty).auto_deref();
 
         let res_ty = match ty.kind() {
             TyKind::Adt(adt_id) => {
