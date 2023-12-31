@@ -844,8 +844,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 this.check_if_moved(parent, moved_to)
             })?;
 
-            // When a reference is moved, its refcount is incremented
-            if self.should_refcount(value) {
+            // When a reference is moved, its refcount is incremented.
+            // Since register values are only used once, we don't need to increment their ref's
+            if self.value_is_ref(value)
+                && !self.body.value(value).kind.is_register()
+            {
                 self.push_inst(Inst::IncRef { value });
                 self.set_moved(value, moved_to);
             }
@@ -1097,10 +1100,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.body.value(value).ty.is_ref()
     }
 
-    fn should_refcount(&self, value: ValueId) -> bool {
-        self.value_is_ref(value) && !self.body.value(value).kind.is_register()
-    }
-
     pub fn set_owned(&mut self, value: ValueId) {
         self.value_states.insert(self.current_block, value, ValueState::Owned);
     }
@@ -1253,7 +1252,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn destroy_value(&mut self, value: ValueId, span: Span) {
         if !self.value_is_move(value) {
-            if self.should_refcount(value)
+            if self.value_is_ref(value)
                 && !matches!(self.value_state(value), ValueState::Moved(_))
             {
                 self.push_inst(Inst::DecRef { value });
