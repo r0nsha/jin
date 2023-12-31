@@ -269,7 +269,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             self.create_destroy_flag(value);
                             self.locals.insert(id, value);
                         }
-                        Pat::Discard(_) => (),
+                        Pat::Discard(span) => {
+                            // TODO: self.destroy_value_and_fields(param, *span);
+                        }
                     }
                 }
 
@@ -362,7 +364,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         self.locals.insert(name.id, value);
                         self.create_destroy_flag(value);
                     }
-                    Pat::Discard(_) => (),
+                    Pat::Discard(span) => {
+                        self.destroy_value_and_fields(init, *span);
+                    }
                 }
 
                 self.const_unit()
@@ -383,8 +387,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 };
 
                 // NOTE: The lhs needs to be destroyed before it's assigned to
-                self.destroy_fields(lhs, assign.lhs.span);
-                self.destroy_value(lhs, assign.lhs.span);
+                self.destroy_value_and_fields(lhs, assign.lhs.span);
                 self.push_inst(Inst::Store { value: rhs, target: lhs });
 
                 self.const_unit()
@@ -756,14 +759,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         .filter_map(|field| {
                             let name = field.name.name();
 
-                            self.ty_is_move(field.ty).then(|| {
+                            if self.ty_is_move(field.ty) || field.ty.is_ref() {
+                                if field.ty.is_ref() {
+                                    println!("field: {}", field.name)
+                                }
                                 let value = self.create_value(
                                     field.ty,
                                     ValueKind::Field(value, name),
                                 );
                                 self.create_destroy_flag(value);
-                                (name, value)
-                            })
+                                Some((name, value))
+                            } else {
+                                None
+                            }
                         })
                         .collect();
 
@@ -1330,6 +1338,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             Ok(())
         })
         .unwrap();
+    }
+
+    fn destroy_value_and_fields(&mut self, value: ValueId, span: Span) {
+        self.destroy_fields(value, span);
+        self.destroy_value(value, span);
     }
 
     fn create_destroy_flag(&mut self, value: ValueId) {
