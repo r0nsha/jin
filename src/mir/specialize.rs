@@ -342,15 +342,15 @@ impl<'db> ExpandDestroys<'db> {
 
         for block_id in body.blocks().keys() {
             for inst in &body.block(block_id).insts {
-                if let Inst::Free {
-                    value,
-                    destroy_flag: Some(destroy_flag),
-                    ..
-                } = inst
-                {
-                    if destroyed_values.contains(value) {
+                match inst {
+                    Inst::Free {
+                        value,
+                        destroy_flag: Some(destroy_flag),
+                        ..
+                    } if destroyed_values.contains(value) => {
                         used_destroy_flags.insert(*destroy_flag, true);
                     }
+                    _ => (),
                 }
             }
         }
