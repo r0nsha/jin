@@ -534,10 +534,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             Inst::Unary { value, inner, op: un.op }
                         })
                     }
-                    UnOp::Ref(_) => self
-                        .push_inst_with_register(expr.ty, |value| {
-                            Inst::StackAlloc { value, init: Some(inner) }
-                        }),
+                    UnOp::Ref(_) => {
+                        let value =
+                            self.push_inst_with_register(expr.ty, |value| {
+                                Inst::StackAlloc { value, init: Some(inner) }
+                            });
+                        self.push_inst(Inst::IncRef { value });
+                        value
+                    }
                 }
             }
             hir::ExprKind::Binary(bin) => {
@@ -842,7 +846,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             })?;
 
             // When a reference is moved, its refcount is incremented
-            if self.value_is_ref(value) {
+            if self.should_refcount(value) {
                 self.push_inst(Inst::IncRef { value });
             }
 
@@ -1093,6 +1097,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.body.value(value).ty.is_ref()
     }
 
+    fn should_refcount(&self, value: ValueId) -> bool {
+        self.value_is_ref(value) && !self.body.value(value).kind.is_register()
+    }
+
     pub fn set_owned(&mut self, value: ValueId) {
         self.value_states.insert(self.current_block, value, ValueState::Owned);
     }
@@ -1245,9 +1253,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn destroy_value(&mut self, value: ValueId, span: Span) {
         if !self.value_is_move(value) {
-            if self.value_is_ref(value)
-                && !self.body.value(value).kind.is_register()
-            {
+            if self.should_refcount(value) {
                 self.push_inst(Inst::DecRef { value });
             }
 

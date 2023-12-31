@@ -7,4 +7,5 @@ fn main() unit = {
 	//{ &box }.copy().copy()
 }
 
+fn copy(b: Box) &Box = &b
 fn copy(b: &Box) &Box = b
