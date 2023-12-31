@@ -1008,12 +1008,19 @@ impl<'db> Typeck<'db> {
 
                 let ty = self.normalize(expr.ty);
 
-                let result_ty = match op {
+                match op {
                     UnOp::Neg => {
                         if ty.is_any_int() || ty.is_any_float() {
-                            ty
+                            Ok(self.expr(
+                                hir::ExprKind::Unary(hir::Unary {
+                                    expr: Box::new(expr),
+                                    op: *op,
+                                }),
+                                ty,
+                                *span,
+                            ))
                         } else {
-                            return Err(Diagnostic::error()
+                            Err(Diagnostic::error()
                                 .with_message(format!(
                                     "cannot use `{}` on `{}`",
                                     op,
@@ -1023,14 +1030,21 @@ impl<'db> Typeck<'db> {
                                     Label::primary(*span).with_message(
                                         format!("invalid use of `{op}`"),
                                     ),
-                                ));
+                                ))
                         }
                     }
                     UnOp::Not => {
                         if ty.is_any_int() || ty.is_bool() {
-                            ty
+                            Ok(self.expr(
+                                hir::ExprKind::Unary(hir::Unary {
+                                    expr: Box::new(expr),
+                                    op: *op,
+                                }),
+                                ty,
+                                *span,
+                            ))
                         } else {
-                            return Err(Diagnostic::error()
+                            Err(Diagnostic::error()
                                 .with_message(format!(
                                     "cannot use `{}` on `{}`",
                                     op,
@@ -1040,35 +1054,32 @@ impl<'db> Typeck<'db> {
                                     Label::primary(*span).with_message(
                                         format!("invalid use of `{op}`"),
                                     ),
-                                ));
+                                ))
                         }
                     }
                     UnOp::Ref(mutability) => match ty.kind() {
                         TyKind::Adt(adt_id) if self.db[*adt_id].is_ref() => {
-                            ty.as_ref(*mutability)
+                            Ok(self.expr(
+                                hir::ExprKind::Unary(hir::Unary {
+                                    expr: Box::new(expr),
+                                    op: *op,
+                                }),
+                                ty.as_ref(*mutability),
+                                *span,
+                            ))
                         }
-                        _ => {
-                            return Err(Diagnostic::error()
-                                .with_message(format!(
+                        TyKind::Ref(..) => Ok(expr),
+                        _ => Err(Diagnostic::error()
+                            .with_message(format!(
                                 "cannot take a reference to value of type `{}`",
                                 ty.display(self.db)
                             ))
-                                .with_label(
-                                    Label::primary(*span)
-                                        .with_message("cannot take reference"),
-                                ))
-                        }
+                            .with_label(
+                                Label::primary(*span)
+                                    .with_message("cannot take reference"),
+                            )),
                     },
-                };
-
-                Ok(self.expr(
-                    hir::ExprKind::Unary(hir::Unary {
-                        expr: Box::new(expr),
-                        op: *op,
-                    }),
-                    result_ty,
-                    *span,
-                ))
+                }
             }
             ast::Expr::Binary { lhs, rhs, op, span } => {
                 let lhs = self.check_expr(env, lhs, None)?;

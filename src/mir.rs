@@ -304,6 +304,16 @@ pub enum ValueKind {
     Field(ValueId, Ustr),
 }
 
+impl ValueKind {
+    /// Returns `true` if the value kind is [`Register`].
+    ///
+    /// [`Register`]: ValueKind::Register
+    #[must_use]
+    pub fn is_register(&self) -> bool {
+        matches!(self, Self::Register(..))
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, From)]
 pub enum Const {
     Str(Ustr),
