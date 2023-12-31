@@ -845,11 +845,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             })?;
 
             // When a reference is moved, its refcount is incremented.
-            // Since register values are only used once, we don't need to increment their ref's
-            if self.value_is_ref(value)
-                && !self.body.value(value).kind.is_register()
-            {
-                self.push_inst(Inst::IncRef { value });
+            if self.value_is_ref(value) {
+                // Since register values are only used once, we don't need to increment their ref's
+                if !self.body.value(value).kind.is_register() {
+                    self.push_inst(Inst::IncRef { value });
+                }
                 self.set_moved(value, moved_to);
             }
 
