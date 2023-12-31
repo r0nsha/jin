@@ -846,8 +846,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.push_inst(Inst::IncRef { value });
             }
 
-            self.set_moved(value, moved_to);
-
             return Ok(());
         }
 

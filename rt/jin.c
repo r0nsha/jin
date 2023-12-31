@@ -73,8 +73,6 @@ FORCE_INLINE void jin_rt_panic_at(u8 *msg, jin_rt_location loc) {
 
 void jin_rt_refcheck(usize refcnt, u8 *fmt, jin_rt_location loc) {
   if (refcnt != 0) {
-    const char *fmt =
-        "can't destroy a value of type `{}` as it still has %d reference(s)";
     size_t needed = snprintf(NULL, 0, fmt, refcnt);
     char *msg = malloc(needed);
     sprintf(msg, fmt, refcnt);
