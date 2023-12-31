@@ -786,7 +786,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn walk_parents(
         &mut self,
         value: ValueId,
-        mut f: impl FnMut(&mut Self, ValueId) -> DiagnosticResult<()>,
+        mut f: impl FnMut(&mut Self, ValueId, ValueId) -> DiagnosticResult<()>,
     ) -> DiagnosticResult<()> {
         self.walk_parents_aux(value, &mut f)
     }
@@ -794,10 +794,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn walk_parents_aux(
         &mut self,
         value: ValueId,
-        f: &mut impl FnMut(&mut Self, ValueId) -> DiagnosticResult<()>,
+        f: &mut impl FnMut(&mut Self, ValueId, ValueId) -> DiagnosticResult<()>,
     ) -> DiagnosticResult<()> {
         if let &ValueKind::Field(parent, _) = &self.body.value(value).kind {
-            f(self, parent)?;
+            f(self, parent, value)?;
             self.walk_parents_aux(parent, f)
         } else {
             Ok(())
@@ -840,7 +840,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         // If the value is copy, we don't need to move it.
         // Just check that its parents can be used.
         if !self.value_is_move(value) {
-            self.walk_parents(value, |this, parent| {
+            self.walk_parents(value, |this, parent, _| {
                 this.check_if_moved(parent, moved_to)
             })?;
 
@@ -862,11 +862,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             Ok(())
         })
         .unwrap();
-        self.walk_parents(value, |this, parent| {
+        self.walk_parents(value, |this, parent, child| {
+            this.check_move_out_of_ref(parent, child, moved_to)?;
             this.set_partially_moved(parent, moved_to);
             Ok(())
-        })
-        .unwrap();
+        })?;
 
         self.insert_loop_move(value, moved_to);
         self.check_move_out_of_global(value, moved_to)?;
@@ -951,6 +951,30 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     Label::primary(moved_to)
                         .with_message("global item moved here"),
                 ))
+        } else {
+            Ok(())
+        }
+    }
+
+    pub fn check_move_out_of_ref(
+        &self,
+        parent: ValueId,
+        field: ValueId,
+        moved_to: Span,
+    ) -> DiagnosticResult<()> {
+        let parent_ty = self.body.value(parent).ty;
+
+        if parent_ty.is_ref() {
+            Err(Diagnostic::error()
+                .with_message(format!(
+                    "cannot move {} out of reference `{}`",
+                    self.value_name(field),
+                    parent_ty.display(self.cx.db)
+                ))
+                .with_label(Label::primary(moved_to).with_message(format!(
+                    "cannot move out of {}",
+                    self.value_name(parent)
+                ))))
         } else {
             Ok(())
         }
