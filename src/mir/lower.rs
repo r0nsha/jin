@@ -1431,7 +1431,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         )
                     } else {
                         format!(
-                            "cannot assign to {}, as {} is immutable",
+                            "cannot assign to {}, as {} is not declared as mutable",
                             self.value_name(lhs),
                             root_name
                         )
@@ -1442,6 +1442,20 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             .with_message(format!("{root_name} is immutable")),
                     )
                 }
+                ImmutableRoot::Ref(root) => {
+                    let message = format!(
+                        "cannot assign to {}, as {} is an immutable `{}`",
+                        self.value_name(lhs),
+                        self.value_name(root),
+                        self.body.value(root).ty.display(self.cx.db)
+                    );
+
+                    Diagnostic::error().with_message(message).with_label(
+                        Label::primary(span).with_message(
+                            "cannot assign to immutable reference",
+                        ),
+                    )
+                }
             };
 
             self.cx.db.diagnostics.emit(diagnostic);
@@ -1449,7 +1463,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn value_imm_root(&self, value: ValueId) -> Result<(), ImmutableRoot> {
-        // TODO: check ty is not immutable ref
         match &self.body.value(value).kind {
             ValueKind::Local(id) => {
                 if self.def_is_immutable(*id) {
@@ -1465,7 +1478,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     Ok(())
                 }
             }
-            ValueKind::Field(parent, _) => self.value_imm_root(*parent),
+            ValueKind::Field(parent, _) => {
+                match self.body.value(*parent).ty.kind() {
+                    TyKind::Ref(_, Mutability::Imm) => {
+                        Err(ImmutableRoot::Ref(*parent))
+                    }
+                    _ => self.value_imm_root(*parent),
+                }
+            }
             ValueKind::Fn(_)
             | ValueKind::Const(_)
             | ValueKind::Register(_)
@@ -1633,4 +1653,5 @@ impl LoopScope {
 #[derive(Debug)]
 enum ImmutableRoot {
     Def(ValueId),
+    Ref(ValueId),
 }

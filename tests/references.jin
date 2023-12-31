@@ -1,13 +1,13 @@
 fn extern printf(fmt: *u8, ..) i32
 
 type Box(value: int)
-type Ref(box: &Box)
+type Ref(box: &mut Box)
 type Bag(a: Box, b: Box)
 
 fn main() unit = {
 	let mut box = Box(1)
 	box = Box(1)
-	let ref = Ref(&box)
+	let mut ref = Ref(&mut box)
 	ref.box.value = 2
 }
 
