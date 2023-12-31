@@ -1068,6 +1068,14 @@ impl<'db> Typeck<'db> {
                                 *span,
                             ))
                         }
+                        TyKind::Param(_) => Ok(self.expr(
+                            hir::ExprKind::Unary(hir::Unary {
+                                expr: Box::new(expr),
+                                op: *op,
+                            }),
+                            ty.create_ref(*mutability),
+                            *span,
+                        )),
                         TyKind::Ref(..) => Ok(expr),
                         _ => Err(Diagnostic::error()
                             .with_message(format!(
@@ -1637,6 +1645,7 @@ impl<'db> Typeck<'db> {
                     TyKind::Adt(adt_id) if self.db[*adt_id].is_ref() => {
                         Ok(inner_ty.create_ref(*mutability))
                     }
+                    TyKind::Param(_) => Ok(inner_ty.create_ref(*mutability)),
                     _ => Err(Diagnostic::error()
                         .with_message(format!(
                             "type `{}` cannot be referenced",

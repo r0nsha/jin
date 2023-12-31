@@ -33,6 +33,9 @@ impl Instantiate {
                 is_c_variadic: fun.is_c_variadic,
             })
             .into(),
+            TyKind::Ref(inner, mutability) => {
+                TyKind::Ref(self.instantiate_inner(*inner), *mutability).into()
+            }
             TyKind::RawPtr(pointee) => {
                 TyKind::RawPtr(self.instantiate_inner(*pointee)).into()
             }
@@ -47,7 +50,18 @@ impl Instantiate {
                     )
                 }
             },
-            _ => ty,
+            TyKind::Adt(_)
+            | TyKind::Int(_)
+            | TyKind::Uint(_)
+            | TyKind::Float(_)
+            | TyKind::Str
+            | TyKind::Bool
+            | TyKind::Unit
+            | TyKind::Never
+            | TyKind::Infer(_)
+            | TyKind::Type(_)
+            | TyKind::Module(_)
+            | TyKind::Unknown => ty,
         }
     }
 }

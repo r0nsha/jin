@@ -331,13 +331,14 @@ impl<'db> ExpandDestroys<'db> {
     }
 
     fn remove_unused_destroys(&self, body: &mut Body) {
-        let destroyed_values: FxHashMap<ValueId, Ty> = body
+        let destroyed_values: FxHashSet<ValueId> = body
             .values()
             .iter()
-            .filter_map(|v| {
-                self.should_destroy_ty(v.ty).then_some((v.id, v.ty))
-            })
+            .filter_map(|v| self.should_destroy_ty(v.ty).then_some(v.id))
             .collect();
+
+        let value_tys: FxHashMap<ValueId, Ty> =
+            body.values().iter().map(|v| (v.id, v.ty)).collect();
 
         let mut used_destroy_flags: FxHashMap<ValueId, bool> =
             body.destroy_flags.values().map(|flag| (*flag, false)).collect();
@@ -349,7 +350,7 @@ impl<'db> ExpandDestroys<'db> {
                         value,
                         destroy_flag: Some(destroy_flag),
                         ..
-                    } if destroyed_values.contains_key(value) => {
+                    } if destroyed_values.contains(value) => {
                         used_destroy_flags.insert(*destroy_flag, true);
                     }
                     _ => (),
@@ -364,8 +365,8 @@ impl<'db> ExpandDestroys<'db> {
                     used_destroy_flags.get(value).copied().unwrap_or(true)
                 }
                 Inst::Free { value, .. } => {
-                    if let Some(ty) = destroyed_values.get(value) {
-                        if ty.is_ref() {
+                    if destroyed_values.contains(value) {
+                        if value_tys[&*value].is_ref() {
                             // TODO: This may turn a conditional `Free` into an unconditional
                             // `DecRef`. Do we need a `destroy_flag` for `DecRef` too?
                             *inst = Inst::DecRef { value: *value };
@@ -374,6 +375,9 @@ impl<'db> ExpandDestroys<'db> {
                     } else {
                         false
                     }
+                }
+                Inst::IncRef { value, .. } | Inst::DecRef { value, .. } => {
+                    value_tys[&*value].is_ref()
                 }
                 _ => true,
             });

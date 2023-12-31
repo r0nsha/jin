@@ -82,13 +82,24 @@ impl Ty {
 
                 fun.ret.collect_params_inner(params);
             }
-            TyKind::RawPtr(pointee) => {
-                pointee.collect_params_inner(params);
+            TyKind::Ref(inner, _) | TyKind::RawPtr(inner) => {
+                inner.collect_params_inner(params);
             }
             TyKind::Param(p) => {
                 params.insert(p.clone());
             }
-            _ => (),
+            TyKind::Adt(_)
+            | TyKind::Int(_)
+            | TyKind::Uint(_)
+            | TyKind::Float(_)
+            | TyKind::Str
+            | TyKind::Bool
+            | TyKind::Unit
+            | TyKind::Never
+            | TyKind::Infer(_)
+            | TyKind::Type(_)
+            | TyKind::Module(_)
+            | TyKind::Unknown => (),
         }
     }
 
