@@ -269,7 +269,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             self.create_destroy_flag(value);
                             self.locals.insert(id, value);
                         }
-                        Pat::Discard(span) => {
+                        Pat::Discard(_) => {
+                            // TODO: Generate a name for this parameter using  `_{param_index}`
+                            // TODO: In cgen, generate the same name!
+                            // TODO: Destroy the parameter immediately
                             // TODO: self.destroy_value_and_fields(param, *span);
                         }
                     }
@@ -536,10 +539,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         })
                     }
                     UnOp::Ref(_) => {
-                        let value =
-                            self.push_inst_with_register(expr.ty, |value| {
-                                Inst::StackAlloc { value, init: Some(inner) }
-                            });
+                        let value = self.create_value(
+                            expr.ty,
+                            self.body.value(inner).kind.clone(),
+                        );
                         self.push_inst(Inst::IncRef { value });
                         value
                     }
@@ -760,9 +763,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             let name = field.name.name();
 
                             if self.ty_is_move(field.ty) || field.ty.is_ref() {
-                                if field.ty.is_ref() {
-                                    println!("field: {}", field.name)
-                                }
                                 let value = self.create_value(
                                     field.ty,
                                     ValueKind::Field(value, name),

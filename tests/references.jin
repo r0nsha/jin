@@ -8,17 +8,17 @@ fn main() unit = {
 	let box = Box(1)
 
 	let ref = Ref(&box)
-	//print(ref.box)
+	print(ref.box)
 
-	//let bag = Bag(Box(2), Box(3))
-	//let ref_a = &bag.a
-	//let ref_b = &bag.b
+	let bag = Bag(Box(2), Box(3))
+	let ref_a = &bag.a
+	let ref_b = &bag.b
 
-	//let ref_bag = &bag
-	//let a = &ref_bag.a
+	let ref_bag = &bag
+	let a = &ref_bag.a
 
-	//print(ref_a)
-	//print(ref_b)
+	print(ref_a)
+	print(ref_b)
 }
 
 fn print(box: &Box) unit = {
