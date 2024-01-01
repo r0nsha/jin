@@ -7,6 +7,7 @@ use crate::{
     db::DefId,
     macros::create_bool_enum,
     span::{Span, Spanned},
+    ty::Ty,
     word::Word,
 };
 
@@ -324,6 +325,13 @@ impl Spanned for NamePat {
     fn span(&self) -> Span {
         self.word.span()
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct TyParam {
+    pub id: DefId,
+    pub word: Word,
+    pub ty: Ty,
 }
 
 create_bool_enum!(IsUfcs);

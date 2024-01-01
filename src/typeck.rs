@@ -25,7 +25,7 @@ use crate::{
     hir,
     hir::{ExprId, FnParam, Hir},
     macros::create_bool_enum,
-    middle::{BinOp, IsUfcs, Mutability, Pat, TyExpr, UnOp, Vis},
+    middle::{BinOp, IsUfcs, Mutability, Pat, TyExpr, TyParam, UnOp, Vis},
     span::{Span, Spanned},
     sym,
     ty::{
@@ -528,11 +528,12 @@ impl<'db> Typeck<'db> {
                 id,
                 def_id: DefId::INVALID,
                 name: tydef.word,
+                ty_params: vec![],
                 kind: AdtKind::Struct(StructDef::new(
                     id,
                     fields,
                     struct_def.kind,
-                    self.db.types.unknown,
+                    self.db.types.unknown, // Will be filled later
                 )),
             });
 
@@ -542,15 +543,20 @@ impl<'db> Typeck<'db> {
                 DefKind::Adt(adt_id),
                 tydef.word,
                 Mutability::Imm,
-                TyKind::Type(self.db[adt_id].ty()).into(),
+                self.db.types.unknown, // Will be filled later
             )?;
 
             adt_id
         };
 
         env.with_anon_scope(ScopeKind::TyDef, |env| -> TypeckResult<()> {
-            todo!("add ty params to adt def");
-            self.check_ty_params(env, &tydef.ty_params)?;
+            {
+                let ty_params = self.check_ty_params(env, &tydef.ty_params)?;
+                self.db[adt_id].ty_params = ty_params;
+
+                let def_id = self.db[adt_id].def_id;
+                self.db[def_id].ty = TyKind::Type(self.db[adt_id].ty()).into();
+            }
 
             for (idx, field) in struct_def.fields.iter().enumerate() {
                 let ty =
@@ -1607,7 +1613,7 @@ impl<'db> Typeck<'db> {
         &mut self,
         env: &mut Env,
         ty_params: &[ast::TyParam],
-    ) -> TypeckResult<Vec<hir::TyParam>> {
+    ) -> TypeckResult<Vec<TyParam>> {
         let mut new_ty_params = vec![];
         let mut defined_ty_params = UstrMap::<Span>::default();
 
@@ -1646,7 +1652,7 @@ impl<'db> Typeck<'db> {
                     ));
             }
 
-            new_ty_params.push(hir::TyParam { id, word: tp.word });
+            new_ty_params.push(TyParam { id, word: tp.word, ty });
         }
 
         Ok(new_ty_params)

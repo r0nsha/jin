@@ -10,7 +10,7 @@ use ustr::Ustr;
 use crate::{
     data_structures::index_vec::{new_key_type, IndexVec},
     db::{Db, DefId, ModuleId},
-    middle::{BinOp, Pat, UnOp},
+    middle::{BinOp, Pat, TyParam, UnOp},
     span::Span,
     ty::{Instantiation, Ty, Typed},
     word::Word,
@@ -154,12 +154,6 @@ pub struct FnSig {
     pub params: Vec<FnParam>,
     pub ret: Ty,
     pub ty: Ty,
-}
-
-#[derive(Debug, Clone)]
-pub struct TyParam {
-    pub id: DefId,
-    pub word: Word,
 }
 
 #[derive(Debug, Clone)]

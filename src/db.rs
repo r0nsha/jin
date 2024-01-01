@@ -25,7 +25,7 @@ use crate::{
     },
     diagnostics::Diagnostics,
     hir::{ExprId, HirMap},
-    middle::{Mutability, Vis},
+    middle::{Mutability, TyParam, Vis},
     qpath::QPath,
     span::{Source, SourceId, Sources, Span},
     target::{TargetMetrics, TargetPlatform},
@@ -463,6 +463,7 @@ pub struct Adt {
     pub id: AdtId,
     pub def_id: DefId,
     pub name: Word,
+    pub ty_params: Vec<TyParam>,
     pub kind: AdtKind,
 }
 
@@ -492,7 +493,8 @@ impl Adt {
     }
 
     pub fn ty(&self) -> Ty {
-        TyKind::Adt(self.id, todo!("fill with the adt's ty params")).into()
+        TyKind::Adt(self.id, self.ty_params.iter().map(|tp| tp.ty).collect())
+            .into()
     }
 }
 
