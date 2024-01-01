@@ -762,10 +762,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     pub fn create_value_fields(&mut self, value: ValueId) {
         let value = self.body.value(value);
 
-        // if value.kind.is_register() {
-        //     return;
-        // }
-
         if let TyKind::Adt(adt_id) = value.ty.kind() {
             match &self.cx.db[*adt_id].kind {
                 AdtKind::Struct(struct_def) => {
