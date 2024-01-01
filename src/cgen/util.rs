@@ -61,7 +61,7 @@ impl<'db> Generator<'db> {
         let ty = state.body.value(value).ty;
 
         match ty.kind() {
-            TyKind::Adt(adt) if self.db[*adt].is_ref() => {
+            TyKind::Adt(adt, _) if self.db[*adt].is_ref() => {
                 self.adt_field(state, value, field)
             }
             TyKind::Ref(_, _) => self.adt_field(state, value, field),

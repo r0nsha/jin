@@ -490,6 +490,10 @@ impl Adt {
             AdtKind::Struct(s) => s.is_infinitely_sized(),
         }
     }
+
+    pub fn ty(&self) -> Ty {
+        TyKind::Adt(self.id, todo!("fill with the adt's ty params")).into()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -556,22 +560,18 @@ impl StructDef {
         Self { id, fields, kind, ctor_ty, ctor_vis }
     }
 
-    pub fn ty(&self) -> Ty {
-        TyKind::Adt(self.id).into()
-    }
-
     pub fn field_by_name(&self, name: &str) -> Option<&StructField> {
         self.fields.iter().find(|f| f.name.name() == name)
     }
 
-    pub fn fill_ctor_ty(&mut self) {
+    pub fn fill_ctor_ty(&mut self, ret: Ty) {
         self.ctor_ty = Ty::new(TyKind::Fn(FnTy {
             params: self
                 .fields
                 .iter()
                 .map(|f| FnTyParam { name: Some(f.name.name()), ty: f.ty })
                 .collect(),
-            ret: self.ty(),
+            ret,
             is_c_variadic: false,
         }));
     }
@@ -587,7 +587,7 @@ impl StructDef {
 
                     contains_struct(fun.ret, adt_id)
                 }
-                TyKind::Adt(adt_id2) if *adt_id2 == adt_id => true,
+                TyKind::Adt(adt_id2, _) if *adt_id2 == adt_id => true,
                 _ => false,
             }
         }

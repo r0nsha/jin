@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter, Result};
+use std::fmt::{Display, Formatter, Result, Write};
 
 use ustr::Ustr;
 
@@ -30,7 +30,26 @@ impl<'db> TyPrinter<'db> {
             TyKind::Fn(fun) => {
                 write!(f, "{}", fun.display(self.db, None))
             }
-            TyKind::Adt(adt_id) => f.write_str(self.db[*adt_id].name.as_str()),
+            TyKind::Adt(adt_id, targs) => {
+                f.write_str(self.db[*adt_id].name.as_str())?;
+
+                if !targs.is_empty() {
+                    f.write_char('[')?;
+
+                    let last_idx = targs.len() - 1;
+                    for (idx, ty) in targs.iter().enumerate() {
+                        write!(f, "{}", ty.display(self.db))?;
+
+                        if idx != last_idx {
+                            f.write_str(", ")?;
+                        }
+                    }
+
+                    f.write_char(']')?;
+                }
+
+                Ok(())
+            }
             TyKind::Ref(inner, mutability) => {
                 f.write_str(match mutability {
                     Mutability::Imm => "&",

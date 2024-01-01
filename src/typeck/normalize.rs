@@ -41,8 +41,12 @@ impl NormalizeTy for Ty {
                 .float_unification_table
                 .probe_value(*var)
                 .map_or(self, |ty| TyKind::from(ty).into()),
-            TyKind::Adt(_)
-            | TyKind::Int(_)
+            TyKind::Adt(id, targs) => TyKind::Adt(
+                *id,
+                targs.iter().map(|ty| ty.normalize(storage)).collect(),
+            )
+            .into(),
+            TyKind::Int(_)
             | TyKind::Uint(_)
             | TyKind::Float(_)
             | TyKind::Str

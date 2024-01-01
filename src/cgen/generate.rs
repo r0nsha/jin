@@ -446,7 +446,9 @@ impl<'db> Generator<'db> {
             }
             Inst::Alloc { value } => {
                 let ty_doc = match state.body.value(*value).ty.kind() {
-                    TyKind::Adt(sid) => D::text(self.adt_names[sid].as_str()),
+                    TyKind::Adt(adt_id, _) => {
+                        D::text(self.adt_names[adt_id].as_str())
+                    }
                     kind => panic!("unexpected type {kind:?} in Inst::Alloc"),
                 };
 

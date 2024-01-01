@@ -51,8 +51,12 @@ impl Instantiate {
                     )
                 }
             },
-            TyKind::Adt(_)
-            | TyKind::Int(_)
+            TyKind::Adt(id, targs) => TyKind::Adt(
+                *id,
+                targs.iter().map(|ty| self.instantiate_inner(*ty)).collect(),
+            )
+            .into(),
+            TyKind::Int(_)
             | TyKind::Uint(_)
             | TyKind::Float(_)
             | TyKind::Str

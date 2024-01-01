@@ -216,7 +216,17 @@ impl UnifyCx<'_, '_> {
                 }
             }
 
-            (TyKind::Adt(a), TyKind::Adt(b)) if *a == *b => Ok(()),
+            (TyKind::Adt(id_a, targs_a), TyKind::Adt(id_b, targs_b)) => {
+                if id_a == id_b {
+                    for (t1, t2) in targs_a.iter().zip(targs_b.iter()) {
+                        self.unify_ty_ty(*t1, *t2)?;
+                    }
+
+                    Ok(())
+                } else {
+                    Err(UnifyError::TyMismatch { a, b })
+                }
+            }
 
             (TyKind::Ref(a, ma), TyKind::Ref(b, mb)) if *ma == *mb => {
                 self.unify_ty_ty(*a, *b)

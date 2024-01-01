@@ -1,6 +1,7 @@
 fn extern printf(fmt: *u8, ..) i32
 
-type Box[a](value: a)
+type Box(value: int)
+//type Box[a](value: a)
 
 fn main() unit = {
 	//let box = Box(value: 1)

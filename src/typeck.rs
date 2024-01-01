@@ -542,13 +542,14 @@ impl<'db> Typeck<'db> {
                 DefKind::Adt(adt_id),
                 tydef.word,
                 Mutability::Imm,
-                TyKind::Type(TyKind::Adt(adt_id).into()).into(),
+                TyKind::Type(self.db[adt_id].ty()).into(),
             )?;
 
             adt_id
         };
 
         env.with_anon_scope(ScopeKind::TyDef, |env| -> TypeckResult<()> {
+            todo!("add ty params to adt def");
             self.check_ty_params(env, &tydef.ty_params)?;
 
             for (idx, field) in struct_def.fields.iter().enumerate() {
@@ -560,7 +561,9 @@ impl<'db> Typeck<'db> {
             Ok(())
         })?;
 
-        self.db[adt_id].as_struct_mut().unwrap().fill_ctor_ty();
+        let adt_ty = self.db[adt_id].ty();
+        self.db[adt_id].as_struct_mut().unwrap().fill_ctor_ty(adt_ty);
+
         let adt = &self.db[adt_id];
 
         if let Some(field) = adt.is_infinitely_sized() {
@@ -1300,7 +1303,7 @@ impl<'db> Typeck<'db> {
         let ty = self.normalize(expr.ty).auto_deref();
 
         let res_ty = match ty.kind() {
-            TyKind::Adt(adt_id) => {
+            TyKind::Adt(adt_id, _) => {
                 // TODO: ty_args are an error here
 
                 let adt = &self.db[*adt_id];
@@ -1325,6 +1328,7 @@ impl<'db> Typeck<'db> {
                                     ));
                             }
 
+                            todo!("replace field ty w/ poly one");
                             field.ty
                         } else {
                             return Err(errors::field_not_found(
@@ -1677,7 +1681,7 @@ impl<'db> Typeck<'db> {
                 let inner_ty = self.check_ty_expr(env, inner, allow_hole)?;
 
                 match inner_ty.kind() {
-                    TyKind::Adt(adt_id) if self.db[*adt_id].is_ref() => {
+                    TyKind::Adt(adt_id, _) if self.db[*adt_id].is_ref() => {
                         Ok(inner_ty.create_ref(*mutability))
                     }
                     TyKind::Param(_) => Ok(inner_ty.create_ref(*mutability)),
@@ -1700,18 +1704,23 @@ impl<'db> Typeck<'db> {
                 let id =
                     self.lookup(env, env.module_id(), &Query::Name(name.word))?;
 
-                // TODO: use args when we implement polymorphic types
-                // let args: Vec<Ty> = name
-                //     .args
-                //     .iter()
-                //     .map(|a| self.check_ty_expr(env, a, allow_hole))
-                //     .try_collect()?;
-
                 let def = &self.db[id];
 
                 match def.kind.as_ref() {
-                    DefKind::Ty(ty) => Ok(*ty),
-                    DefKind::Adt(adt_id) => Ok(Ty::new(TyKind::Adt(*adt_id))),
+                    DefKind::Ty(ty) => {
+                        // TODO: error: type args are invalid here
+                        Ok(*ty)
+                    }
+                    DefKind::Adt(adt_id) => {
+                        // TODO: apply type args to the adt's type params
+                        // let args: Vec<Ty> = name
+                        //     .args
+                        //     .iter()
+                        //     .map(|a| self.check_ty_expr(env, a, allow_hole))
+                        //     .try_collect()?;
+
+                        Ok(Ty::new(TyKind::Adt(*adt_id, vec![])))
+                    }
                     _ => Err(Diagnostic::error()
                         .with_message(format!(
                             "expected a type, found value of type `{}`",

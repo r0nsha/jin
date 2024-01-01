@@ -88,7 +88,7 @@ impl Ty {
             TyKind::Param(p) => {
                 params.insert(p.clone());
             }
-            TyKind::Adt(_)
+            TyKind::Adt(..)
             | TyKind::Int(_)
             | TyKind::Uint(_)
             | TyKind::Float(_)
@@ -194,7 +194,7 @@ impl From<&TyKind> for TyKind {
 pub enum TyKind {
     // Composite types
     Fn(FnTy),
-    Adt(AdtId),
+    Adt(AdtId, PolyTyArgs),
     Ref(Ty, Mutability),
     RawPtr(Ty),
 
@@ -214,6 +214,8 @@ pub enum TyKind {
     Module(ModuleId),
     Unknown,
 }
+
+pub type PolyTyArgs = Vec<Ty>;
 
 impl TyKind {
     pub const DEFAULT_INT: Self = Self::Int(IntTy::Int);
@@ -340,7 +342,7 @@ impl TyKind {
     #[must_use]
     pub fn can_create_ref(&self, db: &Db) -> bool {
         match self {
-            Self::Adt(adt_id) if db[*adt_id].is_ref() => true,
+            Self::Adt(adt_id, _) if db[*adt_id].is_ref() => true,
             Self::Param(_) | Self::Ref(..) => true,
             _ => false,
         }
@@ -350,7 +352,7 @@ impl TyKind {
     #[must_use]
     pub fn is_move(&self, db: &Db) -> bool {
         match self {
-            Self::Adt(adt_id) => db[*adt_id].is_ref(),
+            Self::Adt(adt_id, _) => db[*adt_id].is_ref(),
             Self::Param(_) => true,
             _ => false,
         }
