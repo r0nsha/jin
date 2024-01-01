@@ -161,14 +161,14 @@ impl<'db> Lower<'db> {
         // Initialize the `this` value based on the struct kind
         let this = match struct_def.kind {
             StructKind::Ref => {
-                let value = body
-                    .create_value(adt.ty(), ValueKind::Register(None));
+                let value =
+                    body.create_value(adt.ty(), ValueKind::Register(None));
                 body.block_mut(start_blk).push_inst(Inst::Alloc { value });
                 value
             }
             StructKind::Extern => {
-                let value = body
-                    .create_value(adt.ty(), ValueKind::Register(None));
+                let value =
+                    body.create_value(adt.ty(), ValueKind::Register(None));
                 body.block_mut(start_blk)
                     .push_inst(Inst::StackAlloc { value, init: None });
                 value
@@ -765,11 +765,20 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     pub fn create_value_fields(&mut self, value: ValueId) {
         let value = self.body.value(value);
 
-        if let TyKind::Adt(adt_id, _) = value.ty.kind() {
+        if let TyKind::Adt(adt_id, targs) = value.ty.kind() {
             match &self.cx.db[*adt_id].kind {
                 AdtKind::Struct(struct_def) => {
                     let value = value.id;
 
+                    todo!(
+                        "Adt::instantiate_field(field_idx: usize, targ_idx: \
+                         usize, targ: Ty)"
+                    );
+                    todo!(
+                        "Adt::instantiate_field - instantiates the given \
+                         field by building an instantiation w/ ParamFolder"
+                    );
+                    todo!("replace field ty w/ targs: {targs:?}");
                     let fields: FxHashMap<_, _> = struct_def
                         .fields
                         .clone()
@@ -779,7 +788,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                             if field.ty.is_move(self.cx.db) || field.ty.is_ref()
                             {
-                                todo!("replace field ty w/ ty args");
                                 let value = self.create_value(
                                     field.ty,
                                     ValueKind::Field(value, name),

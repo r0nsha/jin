@@ -4,8 +4,13 @@ type Box[a](value: a)
 
 fn main() unit = {
 	let box = Box(1)
+	//print(box.value)
 }
 
 //fn print(box: &Box) unit = {
 //	printf("Box(%d)\n".ptr, box.value)
+//}
+
+//fn print(value: int) unit = {
+//	printf("%d\n".ptr, value)
 //}
