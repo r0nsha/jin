@@ -182,7 +182,7 @@ impl<'db> Lower<'db> {
 
             let field_value =
                 body.create_value(ty, ValueKind::Field(this, name));
-            let param = body.create_value(ty, ValueKind::Name(name));
+            let param = body.create_value(ty, ValueKind::UniqueName(name));
             body.block_mut(start_blk)
                 .push_inst(Inst::Store { value: param, target: field_value });
         }
@@ -261,7 +261,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let start_blk = self.body.create_block("start");
                 self.position_at(start_blk);
 
-                for param in &fun.sig.params {
+                for (idx, param) in fun.sig.params.iter().enumerate() {
                     match &param.pat {
                         Pat::Name(name) => {
                             let id = name.id;
@@ -270,11 +270,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             self.create_destroy_flag(value);
                             self.locals.insert(id, value);
                         }
-                        Pat::Discard(_) => {
-                            // TODO: Generate a name for this parameter using  `_{param_index}`
-                            // TODO: In cgen, generate the same name!
-                            // TODO: Destroy the parameter immediately
-                            // TODO: self.destroy_value_and_fields(param, *span);
+                        Pat::Discard(span) => {
+                            let value = self.create_untracked_value(
+                                param.ty,
+                                ValueKind::UniqueName(ustr(&format!("_{idx}"))),
+                            );
+                            self.destroy_value_and_fields(value, *span);
                         }
                     }
                 }
@@ -1412,7 +1413,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             ValueKind::Field(parent, field) => {
                 format!("{}.{}", self.value_name_aux(*parent), field)
             }
-            ValueKind::Name(name) => name.to_string(),
+            ValueKind::UniqueName(name) => name.to_string(),
             ValueKind::Register(_) | ValueKind::Const(_) => "_".to_string(),
         }
     }
@@ -1537,7 +1538,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             ValueKind::Fn(_)
             | ValueKind::Const(_)
             | ValueKind::Register(_)
-            | ValueKind::Name(_) => Ok(()),
+            | ValueKind::UniqueName(_) => Ok(()),
         }
     }
 

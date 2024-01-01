@@ -286,7 +286,7 @@ pub enum ValueKind {
     Register(Option<Ustr>),
 
     // A named, ad-hoc value. Used for uniquely named values such as function parameters
-    Name(Ustr),
+    UniqueName(Ustr),
 
     // A local variable or function parameter
     Local(DefId),

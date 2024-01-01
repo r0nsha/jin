@@ -88,6 +88,6 @@ fn assign_not_moved() unit = {
 	}
 }
 
-fn destroy_discarded_values(num: Num) unit = {
+fn destroy_discarded_values(_: Num) unit = {
 	let _ = Num(2)
 }

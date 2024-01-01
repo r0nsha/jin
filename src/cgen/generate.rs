@@ -3,7 +3,6 @@ use std::{fs::File, io::Write, iter};
 use camino::Utf8PathBuf;
 use pretty::RcDoc as D;
 use rustc_hash::FxHashMap;
-use ulid::Ulid;
 use ustr::{ustr, Ustr};
 
 use crate::{
@@ -284,15 +283,13 @@ impl<'db> Generator<'db> {
             D::text("(")
                 .append(
                     D::intersperse(
-                        sig.params.iter().map(|p| {
-                            let name = match &p.pat {
+                        sig.params.iter().enumerate().map(|(idx, param)| {
+                            let name = match &param.pat {
                                 Pat::Name(name) => name.word.name(),
-                                Pat::Discard(_) => {
-                                    ustr(&Ulid::new().to_string())
-                                }
+                                Pat::Discard(_) => ustr(&format!("_{idx}")),
                             };
 
-                            p.ty.cdecl(self, D::text(name.as_str()))
+                            param.ty.cdecl(self, D::text(name.as_str()))
                         }),
                         D::text(",").append(D::space()),
                     )
@@ -545,7 +542,7 @@ impl<'db> Generator<'db> {
             ValueKind::Register(name) => {
                 D::text(Self::register_name(id, *name))
             }
-            ValueKind::Name(name) => D::text(name.as_str()),
+            ValueKind::UniqueName(name) => D::text(name.as_str()),
             ValueKind::Local(id) => {
                 D::text(state.local_names.get(*id).unwrap().as_str())
             }
