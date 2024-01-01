@@ -1196,7 +1196,12 @@ impl<'db> Typeck<'db> {
                             ));
                     }
 
-                    // TODO: apply type arguments
+                    let (ty, _) = self.apply_ty_args_to_ty(
+                        env,
+                        struct_def.ctor_ty,
+                        ty_args,
+                        span,
+                    )?;
 
                     Ok(self.expr(
                         hir::ExprKind::Name(hir::Name {
@@ -1204,77 +1209,15 @@ impl<'db> Typeck<'db> {
                             word,
                             instantiation: Instantiation::default(),
                         }),
-                        struct_def.ctor_ty,
+                        ty,
                         span,
                     ))
                 }
             }
         } else {
             let def_ty = self.normalize(self.db[id].ty);
-            let mut ty_params = def_ty.collect_params();
-
-            // NOTE: map type params that are part of the current polymorphic function to themselves, so
-            // that we don't instantiate them. that's quite ugly though.
-            if let Some(fn_id) = env.fn_id() {
-                let fn_ty_params = self.db[fn_id].ty.collect_params();
-                for ftp in fn_ty_params {
-                    if let Some(tp) =
-                        ty_params.iter_mut().find(|p| p.var == ftp.var)
-                    {
-                        *tp = ftp.clone();
-                    }
-                }
-            }
-
-            let instantiation: Instantiation = match &ty_args {
-                Some(args) if args.len() == ty_params.len() => ty_params
-                    .into_iter()
-                    .zip(args.iter())
-                    .map(|(param, arg)| (param.var, *arg))
-                    .collect(),
-                Some(args) => {
-                    let expected = ty_params.len();
-                    let found = args.len();
-
-                    return Err(Diagnostic::error()
-                        .with_message(format!(
-                            "expected {expected} type argument(s), but \
-                             {found} were supplied"
-                        ))
-                        .with_label(Label::primary(span).with_message(
-                            format!(
-                                "expected {expected} type arguments, found \
-                                 {found}"
-                            ),
-                        )));
-                }
-                _ => {
-                    let env_fn_ty_params = env
-                        .fn_id()
-                        .map_or(vec![], |id| self.db[id].ty.collect_params());
-
-                    ty_params
-                        .into_iter()
-                        .map(|param| {
-                            (
-                                param.var,
-                                // If the type param is one of the current function's type
-                                // params, we don't want to instantiate it
-                                if env_fn_ty_params
-                                    .iter()
-                                    .any(|p| p.var == param.var)
-                                {
-                                    Ty::new(TyKind::Param(param))
-                                } else {
-                                    self.fresh_ty_var()
-                                },
-                            )
-                        })
-                        .collect()
-                }
-            };
-
-            let ty = instantiate(def_ty, instantiation.clone());
+            let (ty, instantiation) =
+                self.apply_ty_args_to_ty(env, def_ty, ty_args, span)?;
 
             Ok(self.expr(
                 hir::ExprKind::Name(hir::Name { id, word, instantiation }),
@@ -1297,6 +1240,80 @@ impl<'db> Typeck<'db> {
                     .try_collect()
             })
             .transpose()
+    }
+
+    // Applies type arguments to the given type.
+    // Returns (instantiated type, instantiation)
+    fn apply_ty_args_to_ty(
+        &mut self,
+        env: &Env,
+        ty: Ty,
+        ty_args: Option<&[Ty]>,
+        span: Span,
+    ) -> TypeckResult<(Ty, Instantiation)> {
+        let mut ty_params = ty.collect_params();
+
+        // NOTE: map type params that are part of the current polymorphic function to themselves, so
+        // that we don't instantiate them. that's quite ugly though.
+        if let Some(fn_id) = env.fn_id() {
+            let fn_ty_params = self.db[fn_id].ty.collect_params();
+            for ftp in fn_ty_params {
+                if let Some(tp) =
+                    ty_params.iter_mut().find(|p| p.var == ftp.var)
+                {
+                    *tp = ftp.clone();
+                }
+            }
+        }
+
+        let instantiation: Instantiation = match &ty_args {
+            Some(args) if args.len() == ty_params.len() => ty_params
+                .into_iter()
+                .zip(args.iter())
+                .map(|(param, arg)| (param.var, *arg))
+                .collect(),
+            Some(args) => {
+                let expected = ty_params.len();
+                let found = args.len();
+
+                return Err(Diagnostic::error()
+                    .with_message(format!(
+                        "expected {expected} type argument(s), but {found} \
+                         were supplied"
+                    ))
+                    .with_label(Label::primary(span).with_message(format!(
+                        "expected {expected} type arguments, found {found}"
+                    ))));
+            }
+            _ => {
+                let env_fn_ty_params = env
+                    .fn_id()
+                    .map_or(vec![], |id| self.db[id].ty.collect_params());
+
+                ty_params
+                    .into_iter()
+                    .map(|param| {
+                        (
+                            param.var,
+                            // If the type param is one of the current function's type
+                            // params, we don't want to instantiate it
+                            if env_fn_ty_params
+                                .iter()
+                                .any(|p| p.var == param.var)
+                            {
+                                Ty::new(TyKind::Param(param))
+                            } else {
+                                self.fresh_ty_var()
+                            },
+                        )
+                    })
+                    .collect()
+            }
+        };
+
+        let ty = instantiate(ty, instantiation.clone());
+
+        Ok((ty, instantiation))
     }
 
     fn check_field(
