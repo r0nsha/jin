@@ -1204,7 +1204,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> ValueId {
         for coercion in coercions.iter() {
             coerced_value = match coercion.kind {
-                CoercionKind::NeverToAny => coerced_value,
+                CoercionKind::NeverToAny | CoercionKind::MutRefToImm => {
+                    coerced_value
+                }
                 CoercionKind::IntPromotion => {
                     self.push_inst_with_register(coercion.target, |value| {
                         Inst::Cast {

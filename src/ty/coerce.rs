@@ -37,4 +37,5 @@ pub struct Coercion {
 pub enum CoercionKind {
     NeverToAny,
     IntPromotion,
+    MutRefToImm,
 }
