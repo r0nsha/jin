@@ -1,9 +1,15 @@
 import bar.{baz.yup, *}
+import ufcs.*
+//import ufcs.?
 
 fn main() unit = {
 	hello()
 	yup()
 	goodbye()
+
+	// Ufcs imports
+	1.print_int()
+	print_int(1) // Error!
 }
 
 fn get_hello_world*() str = {
