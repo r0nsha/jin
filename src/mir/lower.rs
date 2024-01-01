@@ -544,12 +544,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             self.check_ref_mutability(inner, expr.span);
                         }
 
-                        let value =
-                            self.push_inst_with_register(expr.ty, |value| {
-                                Inst::StackAlloc { value, init: Some(inner) }
-                            });
-                        // self.push_inst(Inst::IncRef { value });
-                        value
+                        self.clone_ref(inner, expr.ty)
                     }
                 }
             }
@@ -756,6 +751,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
+    pub fn clone_ref(&mut self, to_clone: ValueId, ty: Ty) -> ValueId {
+        let value = self.push_inst_with_register(ty, |value| {
+            Inst::StackAlloc { value, init: Some(to_clone) }
+        });
+        self.push_inst(Inst::IncRef { value });
+        value
+    }
+
     pub fn create_value_fields(&mut self, value: ValueId) {
         let value = self.body.value(value);
 
@@ -877,8 +880,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
             // When a reference is moved, its refcount is incremented.
             if self.value_is_ref(value) {
-                println!("{} -> {}", value, self.value_name(value));
-                self.push_inst(Inst::IncRef { value });
+                self.clone_ref(value, self.body.value(value).ty);
             }
 
             self.set_moved(value, moved_to);

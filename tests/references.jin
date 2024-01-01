@@ -2,53 +2,39 @@ fn extern printf(fmt: *u8, ..) i32
 
 type Box(value: int)
 type Ref(box: &Box)
+type Mut(box: &mut Box)
 type Bag(a: Box, b: Box)
 
 fn main() unit = {
 	let box = Box(1)
 
-	//let ref = Ref(&box)
-	//print(ref.box)
+	let ref = Ref(&box)
+	print(ref.box)
 
-	let bag = get_bag().copy().copy()
+	let bag = Bag(Box(2), Box(3)).copy().copy()
 	let ref_a = &bag.a
 	let ref_b = &bag.b
 	let ref_a = ref_a
-	//let ref_b = ref_b
+	let ref_b = ref_b
 
-	//let ref_bag = &bag
-	//let a = &ref_bag.a
-	//let b = &ref_bag.b
+	let ref_bag = &bag
+	let a = &ref_bag.a
+	let b = &ref_bag.b
 
-	//print(ref_a)
-	//print(ref_b)
+	print(ref_a)
+	print(ref_b)
+
+	let mut box = Box(1)
+	let mut rmut = Mut(&mut box)
+	let m = &mut rmut.box
+	rmut.box.value = 2
 }
 
 fn print(box: &Box) unit = {
 	printf("Box(%d)\n".ptr, box.value)
 }
 
-fn get_bag() Bag = Bag(Box(2), Box(3))
-fn copy(bag: Bag) Bag = Bag(bag.a, bag.b)
+//fn set(self: &Box, value: int) unit =
+//	self.value = value
 
-//fn extern printf(fmt: *u8, ..) i32
-//  
-//type Box(value: int)
-//type Ref(box: &mut Box)
-//type Bag(a: Box, b: Box)
-//  
-//fn main() unit = {
-//	let mut box = Box(1)
-//	let mut ref = &mut Ref(&mut box)
-//	let m = &mut ref.box
-//	ref.box.value = 2
-//} 
-//  
-//fn print(self: &Box) unit = {
-//	printf("Box(%d)\n".ptr, self.value)
-//} 
-//  
-////fn set(self: &Box, value: int) unit =
-////	self.value = value
-//  
-//fn copy(bag: Bag) Bag = Bag(bag.a, bag.b)
+fn copy(bag: Bag) Bag = Bag(bag.a, bag.b)
