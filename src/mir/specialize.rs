@@ -385,10 +385,6 @@ impl<'db> ExpandDestroys<'db> {
     }
 
     fn should_destroy_ty(&self, ty: Ty) -> bool {
-        match ty.kind() {
-            TyKind::Adt(adt_id) => self.db[*adt_id].is_ref(),
-            TyKind::Ref(..) => true,
-            _ => false,
-        }
+        ty.is_move(self.db) || ty.is_ref()
     }
 }

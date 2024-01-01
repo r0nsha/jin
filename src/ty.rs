@@ -345,6 +345,16 @@ impl TyKind {
             _ => false,
         }
     }
+
+    /// Returns `true` if this type has move semantics
+    #[must_use]
+    pub fn is_move(&self, db: &Db) -> bool {
+        match self {
+            Self::Adt(adt_id) => db[*adt_id].is_ref(),
+            Self::Param(_) => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]

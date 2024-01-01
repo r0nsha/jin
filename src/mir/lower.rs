@@ -776,7 +776,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         .filter_map(|field| {
                             let name = field.name.name();
 
-                            if self.ty_is_move(field.ty) || field.ty.is_ref() {
+                            if field.ty.is_move(self.cx.db) || field.ty.is_ref()
+                            {
                                 let value = self.create_value(
                                     field.ty,
                                     ValueKind::Field(value, name),
@@ -1146,15 +1147,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn value_is_move(&self, value: ValueId) -> bool {
-        self.ty_is_move(self.body.value(value).ty)
-    }
-
-    fn ty_is_move(&self, ty: Ty) -> bool {
-        match ty.kind() {
-            TyKind::Adt(adt_id) => self.cx.db[*adt_id].is_ref(),
-            TyKind::Param(_) => true,
-            _ => false,
-        }
+        self.body.value(value).ty.is_move(self.cx.db)
     }
 
     fn value_is_ref(&self, value: ValueId) -> bool {

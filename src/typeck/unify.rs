@@ -22,65 +22,59 @@ pub struct At<'db, 'a> {
 
 impl At<'_, '_> {
     pub fn eq(&self, expected: Ty, found: Ty) -> EqResult {
-        expected
-            .unify(found, self.cx, UnifyOptions { unify_param_tys: false })
-            .map_err(|err| {
-                let mut storage = self.cx.storage.borrow_mut();
+        expected.unify(found, self.cx, UnifyOptions::default()).map_err(|err| {
+            let mut storage = self.cx.storage.borrow_mut();
 
-                let diagnostic = match err {
-                    UnifyError::TyMismatch { .. } => {
-                        let expected = expected.normalize(&mut storage);
-                        let found = found.normalize(&mut storage);
+            let diagnostic = match err {
+                UnifyError::TyMismatch { .. } => {
+                    let expected = expected.normalize(&mut storage);
+                    let found = found.normalize(&mut storage);
 
-                        let expected_ty =
-                            expected.display(self.cx.db).to_string();
-                        let found_ty = found.display(self.cx.db).to_string();
+                    let expected_ty = expected.display(self.cx.db).to_string();
+                    let found_ty = found.display(self.cx.db).to_string();
 
-                        let mut diag = errors::ty_mismatch(
-                            &expected_ty,
-                            &found_ty,
-                            self.obligation.span(),
-                        );
+                    let mut diag = errors::ty_mismatch(
+                        &expected_ty,
+                        &found_ty,
+                        self.obligation.span(),
+                    );
 
-                        match *self.obligation.kind() {
-                            ObligationKind::Obvious => (),
-                            ObligationKind::Exprs(
-                                expected_span,
-                                found_span,
-                            ) => {
-                                diag.push_labels([
-                                    Label::secondary(expected_span)
-                                        .with_message(expected_ty.to_string()),
-                                    Label::secondary(found_span)
-                                        .with_message(found_ty.to_string()),
-                                ]);
-                            }
-                            ObligationKind::ReturnTy(return_ty_span) => {
-                                diag.push_label(
-                                    Label::secondary(return_ty_span)
-                                        .with_message("because of return type"),
-                                );
-                            }
+                    match *self.obligation.kind() {
+                        ObligationKind::Obvious => (),
+                        ObligationKind::Exprs(expected_span, found_span) => {
+                            diag.push_labels([
+                                Label::secondary(expected_span)
+                                    .with_message(expected_ty.to_string()),
+                                Label::secondary(found_span)
+                                    .with_message(found_ty.to_string()),
+                            ]);
                         }
-
-                        diag
+                        ObligationKind::ReturnTy(return_ty_span) => {
+                            diag.push_label(
+                                Label::secondary(return_ty_span)
+                                    .with_message("because of return type"),
+                            );
+                        }
                     }
-                    UnifyError::InfiniteTy { ty } => {
-                        let ty = ty.normalize(&mut storage);
-                        let obligation =
-                            Obligation::obvious(self.obligation.span());
 
-                        Diagnostic::error()
-                            .with_message(format!(
-                                "type `{}` is an infinite type",
-                                ty.display(self.cx.db)
-                            ))
-                            .with_label(Label::primary(obligation.span()))
-                    }
-                };
+                    diag
+                }
+                UnifyError::InfiniteTy { ty } => {
+                    let ty = ty.normalize(&mut storage);
+                    let obligation =
+                        Obligation::obvious(self.obligation.span());
 
-                EqError { expected, found, diagnostic }
-            })
+                    Diagnostic::error()
+                        .with_message(format!(
+                            "type `{}` is an infinite type",
+                            ty.display(self.cx.db)
+                        ))
+                        .with_label(Label::primary(obligation.span()))
+                }
+            };
+
+            EqError { expected, found, diagnostic }
+        })
     }
 }
 
@@ -107,9 +101,21 @@ impl Ty {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct UnifyOptions {
     pub unify_param_tys: bool,
+}
+
+impl Default for UnifyOptions {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl UnifyOptions {
+    pub fn new() -> Self {
+        Self { unify_param_tys: false }
+    }
 }
 
 pub type EqResult = Result<(), EqError>;
@@ -215,31 +221,29 @@ impl UnifyCx<'_, '_> {
             (TyKind::Ref(a, ma), TyKind::Ref(b, mb)) if *ma == *mb => {
                 self.unify_ty_ty(*a, *b)
             }
+
             (TyKind::RawPtr(a), TyKind::RawPtr(b)) => self.unify_ty_ty(*a, *b),
 
             // Unify ?T1 ~ ?T2
-            (
-                TyKind::Infer(InferTy::Ty(expected)),
-                TyKind::Infer(InferTy::Ty(found)),
-            ) => {
+            (TyKind::Infer(InferTy::Ty(a)), TyKind::Infer(InferTy::Ty(b))) => {
                 self.cx
                     .storage
                     .borrow_mut()
                     .ty_unification_table
-                    .unify_var_var(*expected, *found)?;
+                    .unify_var_var(*a, *b)?;
                 Ok(())
             }
 
             // Unify ?int ~ ?int
             (
-                TyKind::Infer(InferTy::Int(expected)),
-                TyKind::Infer(InferTy::Int(found)),
+                TyKind::Infer(InferTy::Int(a)),
+                TyKind::Infer(InferTy::Int(b)),
             ) => {
                 self.cx
                     .storage
                     .borrow_mut()
                     .int_unification_table
-                    .unify_var_var(*expected, *found)?;
+                    .unify_var_var(*a, *b)?;
                 Ok(())
             }
 
@@ -267,14 +271,14 @@ impl UnifyCx<'_, '_> {
 
             // Unify ?float ~ ?float
             (
-                TyKind::Infer(InferTy::Float(expected)),
-                TyKind::Infer(InferTy::Float(found)),
+                TyKind::Infer(InferTy::Float(a)),
+                TyKind::Infer(InferTy::Float(b)),
             ) => {
                 self.cx
                     .storage
                     .borrow_mut()
                     .float_unification_table
-                    .unify_var_var(*expected, *found)?;
+                    .unify_var_var(*a, *b)?;
                 Ok(())
             }
 

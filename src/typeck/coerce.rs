@@ -64,19 +64,14 @@ impl<'a> Coerce<'a> for Ty {
                 TyKind::Ref(a, Mutability::Mut),
                 TyKind::Ref(b, Mutability::Imm),
             ) => {
-                if a.can_unify(*b, cx, UnifyOptions { unify_param_tys: false })
-                    .is_ok()
-                {
+                if a.can_unify(*b, cx, UnifyOptions::default()).is_ok() {
                     Some(CoercionKind::MutRefToImm)
                 } else {
                     None
                 }
             }
             (_, TyKind::Ref(b, _)) => {
-                if self
-                    .can_unify(*b, cx, UnifyOptions { unify_param_tys: false })
-                    .is_ok()
-                {
+                if self.can_unify(*b, cx, UnifyOptions::default()).is_ok() {
                     Some(CoercionKind::OwnedToRef)
                 } else {
                     None
