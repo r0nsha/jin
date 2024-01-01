@@ -144,7 +144,10 @@ impl Ty {
     }
 
     pub fn create_ref(self, mutability: Mutability) -> Ty {
-        Ty::new(TyKind::Ref(self, mutability))
+        match self.kind() {
+            TyKind::Ref(ty, _) => Ty::new(TyKind::Ref(*ty, mutability)),
+            _ => Ty::new(TyKind::Ref(self, mutability)),
+        }
     }
 
     pub(crate) fn auto_deref(self) -> Ty {
