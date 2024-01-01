@@ -544,10 +544,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             self.check_ref_mutability(inner, expr.span);
                         }
 
-                        let value = self.create_value(
-                            expr.ty,
-                            self.body.value(inner).kind.clone(),
-                        );
+                        let value =
+                            self.push_inst_with_register(expr.ty, |value| {
+                                Inst::StackAlloc { value, init: Some(inner) }
+                            });
                         self.push_inst(Inst::IncRef { value });
                         value
                     }
