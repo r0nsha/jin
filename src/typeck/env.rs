@@ -6,9 +6,7 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     ast,
-    db::{
-        Db, DefId, Def, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel,
-    },
+    db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     macros::create_bool_enum,

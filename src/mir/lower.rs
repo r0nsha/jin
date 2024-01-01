@@ -1407,9 +1407,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 format!("{}.{}", self.value_name_aux(*parent), field)
             }
             ValueKind::Name(name) => name.to_string(),
-            ValueKind::Register(_) | ValueKind::Const(_) => {
-                "_".to_string()
-            }
+            ValueKind::Register(_) | ValueKind::Const(_) => "_".to_string(),
         }
     }
 

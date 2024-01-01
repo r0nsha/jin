@@ -19,9 +19,7 @@ pub fn field_not_found(
             field,
             expr_ty.display(db)
         ))
-        .with_label(
-            Label::primary(field.span()).with_message("unknown field"),
-        )
+        .with_label(Label::primary(field.span()).with_message("unknown field"))
         .with_label(Label::secondary(expr_span).with_message(format!(
             "expression has type `{}`",
             expr_ty.display(db)
