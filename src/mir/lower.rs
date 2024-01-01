@@ -545,7 +545,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             self.check_ref_mutability(inner, expr.span);
                         }
 
-                        self.clone_ref(inner, expr.ty)
+                        self.create_ref(inner, expr.ty)
                     }
                 }
             }
@@ -752,7 +752,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
-    pub fn clone_ref(&mut self, to_clone: ValueId, ty: Ty) -> ValueId {
+    pub fn create_ref(&mut self, to_clone: ValueId, ty: Ty) -> ValueId {
         let value = self.push_inst_with_register(ty, |value| {
             Inst::StackAlloc { value, init: Some(to_clone) }
         });
@@ -877,7 +877,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
             // When a reference is moved, its refcount is incremented.
             if self.value_is_ref(value) {
-                self.clone_ref(value, self.body.value(value).ty);
+                self.create_ref(value, self.body.value(value).ty);
             }
 
             self.set_moved(value, moved_to);
@@ -1216,6 +1216,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             span,
                         }
                     })
+                }
+                CoercionKind::OwnedToRef => {
+                    self.create_ref(coerced_value, coercion.target)
                 }
             };
 

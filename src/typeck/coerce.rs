@@ -72,6 +72,16 @@ impl<'a> Coerce<'a> for Ty {
                     None
                 }
             }
+            (_, TyKind::Ref(b, _)) => {
+                if self
+                    .can_unify(*b, cx, UnifyOptions { unify_param_tys: false })
+                    .is_ok()
+                {
+                    Some(CoercionKind::OwnedToRef)
+                } else {
+                    None
+                }
+            }
             _ => None,
         }
     }
