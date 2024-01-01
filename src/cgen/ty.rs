@@ -104,10 +104,9 @@ impl<'db> CTy<'db> for FloatTy {
 impl<'db> CTy<'db> for AdtId {
     fn cty(&self, cx: &Generator<'db>) -> D<'db> {
         let name = D::text(cx.adt_names[self].as_str());
+        let name = D::text("struct").append(D::space()).append(name);
 
-        // TODO: is this needed for recursive types?
-        // we'll know when we implement linked lists...
-        // let name = D::text("struct").append(D::space()).append(name);
+        // TODO: Is this needed for recursive types? We'll know when we implement linked lists...
         // let name = if cx.defining_types {
         //     D::text("struct").append(D::space()).append(name);
         // } else {
