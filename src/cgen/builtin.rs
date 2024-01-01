@@ -58,7 +58,8 @@ impl<'db> Generator<'db> {
                         self.panic_if(
                             cond,
                             &format!(
-                                "value is out of range of type `{}`: {min}..{max}",
+                                "value is out of range of type `{}`: \
+                                 {min}..{max}",
                                 target.display(self.db)
                             ),
                             span,

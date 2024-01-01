@@ -87,8 +87,8 @@ impl TargetPlatform {
                 word_size: 8,
                 max_align: 16,
                 target_triplet: "aarch64-linux-elf",
-                target_data_layout:
-                    "e-m:e-i8:8:32-i16:32-i64:64-i128:128-n32:64-S128",
+                target_data_layout: "e-m:e-i8:8:32-i16:32-i64:64-i128:128-n32:\
+                                     64-S128",
             },
             Self::DarwinAmd64 => TargetMetrics {
                 os: Os::Darwin,

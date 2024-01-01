@@ -866,7 +866,10 @@ impl<'a> Parser<'a> {
             match &arg {
                 CallArg::Positional(expr) if passed_named_arg => {
                     return Err(Diagnostic::error()
-                        .with_message("positional arguments are not allowed after named arguments")
+                        .with_message(
+                            "positional arguments are not allowed after named \
+                             arguments",
+                        )
                         .with_label(
                             Label::primary(expr.span())
                                 .with_message("unexpected positional argument"),

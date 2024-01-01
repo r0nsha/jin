@@ -45,7 +45,8 @@ impl Instantiate {
                     // NOTE: It currently makes sense to not instantiate params that are part of
                     // the currently typechecked function.
                     panic!(
-                        "type param `{:?}` ({:?}/{:?}) not part of instantation, args={:?}",
+                        "type param `{:?}` ({:?}/{:?}) not part of \
+                         instantation, args={:?}",
                         p, self.ty, p.var, self.instantiation
                     )
                 }

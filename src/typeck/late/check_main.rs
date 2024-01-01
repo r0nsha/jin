@@ -76,8 +76,14 @@ impl<'db> CheckMain<'db> {
 
                         self.db.diagnostics.emit(
                             Diagnostic::error()
-                                .with_message("type parameters in `main` function are not allowed")
-                                .with_label(Label::primary(tp_span).with_message("not allowed")),
+                                .with_message(
+                                    "type parameters in `main` function are \
+                                     not allowed",
+                                )
+                                .with_label(
+                                    Label::primary(tp_span)
+                                        .with_message("not allowed"),
+                                ),
                         );
                     }
 

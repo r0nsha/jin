@@ -1058,8 +1058,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         .with_message(format!("use of moved {name}"))
                         .with_label(Label::primary(moved_to).with_message(
                             format!(
-                            "{name} moved here, in the previous loop iteration"
-                        ),
+                                "{name} moved here, in the previous loop \
+                                 iteration"
+                            ),
                         ))
                         .with_label(
                             Label::secondary(self.scope().span)

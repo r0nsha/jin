@@ -377,17 +377,18 @@ impl<'db> Typeck<'db> {
                         let dup_span = name.span();
 
                         return Err(Diagnostic::error()
-                                    .with_message(format!(
-                                "the name `{name}` is already used as a parameter name"
+                            .with_message(format!(
+                                "the name `{name}` is already used as a \
+                                 parameter name"
                             ))
-                                    .with_label(Label::primary(dup_span).with_message(
-                                        format!("`{name}` used again here"),
-                                    ))
-                                    .with_label(
-                                        Label::secondary(prev_span).with_message(
-                                            format!("first use of `{name}`"),
-                                        ),
-                                    ));
+                            .with_label(Label::primary(dup_span).with_message(
+                                format!("`{name}` used again here"),
+                            ))
+                            .with_label(
+                                Label::secondary(prev_span).with_message(
+                                    format!("first use of `{name}`"),
+                                ),
+                            ));
                     }
                 }
                 Pat::Discard(_) => (),
@@ -478,100 +479,107 @@ impl<'db> Typeck<'db> {
             AttrsPlacement::ExternLet,
         )?;
 
-        match &tydef.kind {
-            ast::TyDefKind::Struct(struct_def) => {
-                let mut fields = vec![];
-                let mut defined_fields = UstrMap::<Span>::default();
+        env.with_anon_scope(ScopeKind::Ty, |env| {
+            let ty_params = self.check_ty_params(env, &tydef.ty_params)?;
 
-                for field in &struct_def.fields {
-                    if let Some(prev_span) = defined_fields
-                        .insert(field.name.name(), field.name.span())
-                    {
-                        let name = field.name.name();
-                        let dup_span = field.name.span();
+            match &tydef.kind {
+                ast::TyDefKind::Struct(struct_def) => {
+                    let mut fields = vec![];
+                    let mut defined_fields = UstrMap::<Span>::default();
 
-                        return Err(Diagnostic::error()
-                            .with_message(format!(
-                                "the name `{name}` is already used as a field name"
-                            ))
-                            .with_label(
-                                Label::primary(dup_span)
-                                    .with_message(format!("`{name}` used again here")),
-                            )
-                            .with_label(
-                                Label::secondary(prev_span)
-                                    .with_message(format!("first use of `{name}`")),
-                            ));
+                    for field in &struct_def.fields {
+                        if let Some(prev_span) = defined_fields
+                            .insert(field.name.name(), field.name.span())
+                        {
+                            let name = field.name.name();
+                            let dup_span = field.name.span();
+
+                            return Err(Diagnostic::error()
+                                .with_message(format!(
+                                    "the name `{name}` is already used as a \
+                                     field name"
+                                ))
+                                .with_label(
+                                    Label::primary(dup_span).with_message(
+                                        format!("`{name}` used again here"),
+                                    ),
+                                )
+                                .with_label(
+                                    Label::secondary(prev_span).with_message(
+                                        format!("first use of `{name}`"),
+                                    ),
+                                ));
+                        }
+
+                        fields.push(StructField {
+                            name: field.name,
+                            vis: field.vis,
+                            ty: self.db.types.unknown,
+                        });
                     }
 
-                    fields.push(StructField {
-                        name: field.name,
-                        vis: field.vis,
-                        ty: self.db.types.unknown,
-                    });
-                }
-
-                let adt_id = {
-                    let adt_id = self.db.adts.push_with_key(|id| Adt {
-                        id,
-                        def_id: DefId::INVALID,
-                        name: tydef.word,
-                        kind: AdtKind::Struct(StructDef::new(
+                    let adt_id = {
+                        let adt_id = self.db.adts.push_with_key(|id| Adt {
                             id,
-                            fields,
-                            struct_def.kind,
-                            self.db.types.unknown,
-                        )),
-                    });
+                            def_id: DefId::INVALID,
+                            name: tydef.word,
+                            kind: AdtKind::Struct(StructDef::new(
+                                id,
+                                fields,
+                                struct_def.kind,
+                                self.db.types.unknown,
+                            )),
+                        });
 
-                    self.db[adt_id].def_id = self.define_def(
-                        env,
-                        tydef.vis,
-                        DefKind::Adt(adt_id),
-                        tydef.word,
-                        Mutability::Imm,
-                        TyKind::Type(TyKind::Adt(adt_id).into()).into(),
-                    )?;
+                        self.db[adt_id].def_id = self.define_def(
+                            env,
+                            tydef.vis,
+                            DefKind::Adt(adt_id),
+                            tydef.word,
+                            Mutability::Imm,
+                            TyKind::Type(TyKind::Adt(adt_id).into()).into(),
+                        )?;
 
-                    adt_id
-                };
+                        adt_id
+                    };
 
-                for (idx, field) in struct_def.fields.iter().enumerate() {
-                    let ty = self.check_ty_expr(
-                        env,
-                        &field.ty_expr,
-                        AllowTyHole::No,
-                    )?;
-                    self.db[adt_id].as_struct_mut().unwrap().fields[idx].ty =
-                        ty;
-                }
+                    for (idx, field) in struct_def.fields.iter().enumerate() {
+                        let ty = self.check_ty_expr(
+                            env,
+                            &field.ty_expr,
+                            AllowTyHole::No,
+                        )?;
+                        self.db[adt_id].as_struct_mut().unwrap().fields[idx]
+                            .ty = ty;
+                    }
 
-                self.db[adt_id].as_struct_mut().unwrap().fill_ctor_ty();
+                    self.db[adt_id].as_struct_mut().unwrap().fill_ctor_ty();
 
-                let adt = &self.db[adt_id];
-                if let Some(field) = adt.is_infinitely_sized() {
-                    return Err(Diagnostic::error()
-                        .with_message(format!(
-                            "type `{}` is infinitely sized",
-                            adt.name
-                        ))
-                        .with_label(
-                            Label::primary(adt.name.span())
-                                .with_message("defined here"),
-                        )
-                        .with_label(
-                            Label::secondary(field.name.span()).with_message(
-                                format!(
-                                    "field has type `{}` without indirection",
-                                    adt.name
-                                ),
-                            ),
-                        ));
+                    let adt = &self.db[adt_id];
+                    if let Some(field) = adt.is_infinitely_sized() {
+                        return Err(Diagnostic::error()
+                            .with_message(format!(
+                                "type `{}` is infinitely sized",
+                                adt.name
+                            ))
+                            .with_label(
+                                Label::primary(adt.name.span())
+                                    .with_message("defined here"),
+                            )
+                            .with_label(
+                                Label::secondary(field.name.span())
+                                    .with_message(format!(
+                                        "field has type `{}` without \
+                                         indirection",
+                                        adt.name
+                                    )),
+                            ));
+                    }
                 }
             }
-        }
 
-        Ok(())
+            Ok(())
+        })
     }
 
     fn check_import(
@@ -1159,17 +1167,22 @@ impl<'db> Typeck<'db> {
                             .expect("to have at least one private field");
 
                         return Err(Diagnostic::error()
-                    .with_message(format!(
-                        "constructor of type `{}` is private because `{}` is private",
-                        adt.name, private_field.name
-                    ))
-                    .with_label(
-                        Label::primary(span)
-                            .with_message("private type constructor"),
-                    ).with_label(
-                        Label::secondary(private_field.name.span())
-                            .with_message(format!("`{}` is private", private_field.name)),
-                    ));
+                            .with_message(format!(
+                                "constructor of type `{}` is private because \
+                                 `{}` is private",
+                                adt.name, private_field.name
+                            ))
+                            .with_label(
+                                Label::primary(span)
+                                    .with_message("private type constructor"),
+                            )
+                            .with_label(
+                                Label::secondary(private_field.name.span())
+                                    .with_message(format!(
+                                        "`{}` is private",
+                                        private_field.name
+                                    )),
+                            ));
                     }
 
                     // TODO: apply type arguments
@@ -1214,11 +1227,15 @@ impl<'db> Typeck<'db> {
 
                     return Err(Diagnostic::error()
                         .with_message(format!(
-                            "expected {expected} type argument(s), but {found} were supplied"
+                            "expected {expected} type argument(s), but \
+                             {found} were supplied"
                         ))
-                        .with_label(Label::primary(span).with_message(format!(
-                            "expected {expected} type arguments, found {found}"
-                        ))));
+                        .with_label(Label::primary(span).with_message(
+                            format!(
+                                "expected {expected} type arguments, found \
+                                 {found}"
+                            ),
+                        )));
                 }
                 _ => {
                     let env_fn_ty_params = env
@@ -1446,17 +1463,25 @@ impl<'db> Typeck<'db> {
 
                             return Err(Diagnostic::error()
                                 .with_message(if is_named {
-                                    format!("argument `{name}` is passed multiple times")
+                                    format!(
+                                        "argument `{name}` is passed multiple \
+                                         times"
+                                    )
                                 } else {
-                                    format!("argument `{name}` is already passed positionally")
+                                    format!(
+                                        "argument `{name}` is already passed \
+                                         positionally"
+                                    )
                                 })
+                                .with_label(Label::primary(dup).with_message(
+                                    format!("`{name}` is passed again here"),
+                                ))
                                 .with_label(
-                                    Label::primary(dup)
-                                        .with_message(format!("`{name}` is passed again here")),
-                                )
-                                .with_label(
-                                    Label::secondary(prev)
-                                        .with_message(format!("`{name}` is already passed here")),
+                                    Label::secondary(prev).with_message(
+                                        format!(
+                                            "`{name}` is already passed here"
+                                        ),
+                                    ),
                                 ));
                         }
 
@@ -1602,13 +1627,16 @@ impl<'db> Typeck<'db> {
 
                 return Err(Diagnostic::error()
                     .with_message(format!(
-                        "the name `{name}` is already used as a type parameter name"
+                        "the name `{name}` is already used as a type \
+                         parameter name"
                     ))
                     .with_label(
-                        Label::primary(dup_span).with_message(format!("`{name}` used again here")),
+                        Label::primary(dup_span)
+                            .with_message(format!("`{name}` used again here")),
                     )
                     .with_label(
-                        Label::secondary(prev_span).with_message(format!("first use of `{name}`")),
+                        Label::secondary(prev_span)
+                            .with_message(format!("first use of `{name}`")),
                     ));
             }
 
