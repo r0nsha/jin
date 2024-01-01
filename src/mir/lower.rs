@@ -540,7 +540,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         })
                     }
                     UnOp::Ref(_) => {
-                        self.check_ref_mutability(inner, span);
+                        self.check_ref_mutability(inner, expr.span);
                         let value = self.create_value(
                             expr.ty,
                             self.body.value(inner).kind.clone(),
@@ -1422,89 +1422,68 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn check_assign_mutability(&mut self, lhs: ValueId, span: Span) {
         if let Err(root) = self.value_imm_root(lhs) {
-            let diagnostic = match root {
-                ImmutableRoot::Def(root) => {
-                    let root_name = self.value_name(root);
-
-                    let message = if root == lhs {
-                        format!(
-                             "cannot assign twice to immutable value {root_name}"
-                        )
-                    } else {
-                        format!(
-                            "cannot assign to {}, as {} is not declared as mutable",
-                            self.value_name(lhs),
-                            root_name
-                        )
-                    };
-
-                    Diagnostic::error().with_message(message).with_label(
-                        Label::primary(span)
-                            .with_message(format!("{root_name} is immutable")),
-                    )
-                }
-                ImmutableRoot::Ref(root) => {
-                    let message = format!(
-                        "cannot assign to {}, as {} is an immutable `{}`",
-                        self.value_name(lhs),
-                        self.value_name(root),
-                        self.body.value(root).ty.display(self.cx.db)
-                    );
-
-                    Diagnostic::error().with_message(message).with_label(
-                        Label::primary(span).with_message(
-                            "cannot assign to immutable reference",
-                        ),
-                    )
-                }
-            };
-
-            self.cx.db.diagnostics.emit(diagnostic);
+            self.cx.db.diagnostics.emit(self.imm_root_err(
+                "cannot assign",
+                lhs,
+                root,
+                span,
+            ));
         }
     }
 
     fn check_ref_mutability(&mut self, value: ValueId, span: Span) {
         if let Err(root) = self.value_imm_root(value) {
-            let diagnostic = match root {
-                ImmutableRoot::Def(root) => {
-                    todo!("imm def")
-                    // let root_name = self.value_name(root);
-                    //
-                    // let message = if root == lhs {
-                    //     format!(
-                    //          "cannot assign twice to immutable value {root_name}"
-                    //     )
-                    // } else {
-                    //     format!(
-                    //         "cannot assign to {}, as {} is not declared as mutable",
-                    //         self.value_name(lhs),
-                    //         root_name
-                    //     )
-                    // };
-                    //
-                    // Diagnostic::error().with_message(message).with_label(
-                    //     Label::primary(span)
-                    //         .with_message(format!("{root_name} is immutable")),
-                    // )
-                }
-                ImmutableRoot::Ref(root) => {
-                    todo!("imm ref")
-                    // let message = format!(
-                    //     "cannot assign to {}, as {} is an immutable `{}`",
-                    //     self.value_name(lhs),
-                    //     self.value_name(root),
-                    //     self.body.value(root).ty.display(self.cx.db)
-                    // );
-                    //
-                    // Diagnostic::error().with_message(message).with_label(
-                    //     Label::primary(span).with_message(
-                    //         "cannot assign to immutable reference",
-                    //     ),
-                    // )
-                }
-            };
+            self.cx.db.diagnostics.emit(self.imm_root_err(
+                "cannot take &mut",
+                value,
+                root,
+                span,
+            ));
+        }
+    }
 
-            // self.cx.db.diagnostics.emit(diagnostic);
+    fn imm_root_err(
+        &self,
+        prefix: &str,
+        value: ValueId,
+        root: ImmutableRoot,
+        span: Span,
+    ) -> Diagnostic {
+        match root {
+            ImmutableRoot::Def(root) => {
+                let root_name = self.value_name(root);
+
+                let message = if root == value {
+                    format!("{prefix} to immutable value {root_name}")
+                } else {
+                    format!(
+                        "{} to {}, as {} is not declared as mutable",
+                        prefix,
+                        self.value_name(value),
+                        root_name
+                    )
+                };
+
+                Diagnostic::error().with_message(message).with_label(
+                    Label::primary(span)
+                        .with_message(format!("{prefix} to immutable value")),
+                )
+            }
+            ImmutableRoot::Ref(root) => {
+                let message = format!(
+                    "{} to {}, as {} is an immutable `{}`",
+                    prefix,
+                    self.value_name(value),
+                    self.value_name(root),
+                    self.body.value(root).ty.display(self.cx.db)
+                );
+
+                Diagnostic::error().with_message(message).with_label(
+                    Label::primary(span).with_message(format!(
+                        "{prefix} to immutable reference"
+                    )),
+                )
+            }
         }
     }
 
@@ -1696,7 +1675,7 @@ impl LoopScope {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum ImmutableRoot {
     Def(ValueId),
     Ref(ValueId),
