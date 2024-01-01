@@ -249,6 +249,7 @@ pub struct TyDef {
     pub attrs: Attrs,
     pub word: Word,
     pub vis: Vis,
+    pub ty_params: Vec<TyParam>,
     pub kind: TyDefKind,
     pub span: Span,
 }

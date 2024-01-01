@@ -287,16 +287,12 @@ impl<'a> Parser<'a> {
         let ident = self.eat_ident()?;
         let vis = self.parse_vis();
 
-        // let ty_params = if allow_ty_params == AllowTyParams::Yes {
-        //     self.parse_optional_ty_params()?
-        // } else {
-        //     vec![]
-        // };
+        let ty_params = self.parse_optional_ty_params()?;
 
         let kind = self.parse_ty_def_kind()?;
         let span = start.merge(self.last_span());
 
-        Ok(TyDef { attrs, word: ident.word(), vis, kind, span })
+        Ok(TyDef { attrs, word: ident.word(), vis, ty_params, kind, span })
     }
 
     fn parse_ty_def_kind(&mut self) -> DiagnosticResult<TyDefKind> {
