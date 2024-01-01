@@ -548,7 +548,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             self.push_inst_with_register(expr.ty, |value| {
                                 Inst::StackAlloc { value, init: Some(inner) }
                             });
-                        self.push_inst(Inst::IncRef { value });
+                        // self.push_inst(Inst::IncRef { value });
                         value
                     }
                 }
@@ -876,9 +876,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             })?;
 
             // When a reference is moved, its refcount is incremented.
-            if self.value_is_ref(value)
-                && !self.body.value(value).kind.is_register()
-            {
+            if self.value_is_ref(value) {
+                println!("{} -> {}", value, self.value_name(value));
                 self.push_inst(Inst::IncRef { value });
             }
 
