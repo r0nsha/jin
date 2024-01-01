@@ -1310,7 +1310,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn destroy_value(&mut self, value: ValueId, span: Span) {
-        if !self.value_is_move(value) && self.value_is_ref(value) {
+        if !self.value_is_move(value) && !self.value_is_ref(value) {
             return;
         }
 
