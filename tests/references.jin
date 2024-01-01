@@ -34,7 +34,7 @@ fn print(box: &Box) unit = {
 	printf("Box(%d)\n".ptr, box.value)
 }
 
-//fn set(self: &Box, value: int) unit =
-//	self.value = value
+fn set(self: &Box, value: int) unit =
+	self.value = value
 
 fn copy(bag: Bag) Bag = Bag(bag.a, bag.b)

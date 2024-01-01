@@ -1476,20 +1476,26 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         .with_message(format!("{prefix} to immutable value")),
                 )
             }
-            ImmutableRoot::Ty(root) => {
+            ImmutableRoot::Ref(root) => {
+                let root_name = self.value_name(root);
+
                 let message = format!(
-                    "{} to {}, as {} is an immutable `{}`",
+                    "{} to {}, as {} is behind a `&` reference",
                     prefix,
                     self.value_name(value),
-                    self.value_name(root),
-                    self.body.value(root).ty.display(self.cx.db)
+                    root_name,
                 );
 
-                Diagnostic::error().with_message(message).with_label(
-                    Label::primary(span).with_message(format!(
+                Diagnostic::error()
+                    .with_message(message)
+                    .with_label(Label::primary(span).with_message(format!(
                         "{prefix} to immutable reference"
-                    )),
-                )
+                    )))
+                    .with_note(format!(
+                        "{} is of type `{}`, which is immutable",
+                        root_name,
+                        self.body.value(root).ty.display(self.cx.db)
+                    ))
             }
         }
     }
@@ -1522,7 +1528,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn value_ty_imm_root(&self, value: ValueId) -> Result<(), ImmutableRoot> {
         if self.body.value(value).ty.is_imm_ref() {
-            Err(ImmutableRoot::Ty(value))
+            Err(ImmutableRoot::Ref(value))
         } else {
             Ok(())
         }
@@ -1688,5 +1694,5 @@ impl LoopScope {
 #[derive(Debug, Clone, Copy)]
 enum ImmutableRoot {
     Def(ValueId),
-    Ty(ValueId),
+    Ref(ValueId),
 }
