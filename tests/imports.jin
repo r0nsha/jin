@@ -7,8 +7,8 @@ fn main() unit = {
 	goodbye()
 
 	// Ufcs imports
-	//1.print_int()
-	print_int(1) // Error!
+	1.print_int()
+	//print_int(1) // Error!
 }
 
 fn get_hello_world*() str = {

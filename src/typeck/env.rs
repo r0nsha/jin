@@ -523,17 +523,15 @@ impl<'db> Typeck<'db> {
         in_module: ModuleId,
         is_ufcs: IsUfcs,
     ) -> impl Iterator<Item = ModuleId> + '_ {
+        // When `is_ufcs` is IsUfcs::No, we only include glob imports which are IsUfcs::No
         iter::once(in_module).chain(
             self.resolution_state
                 .module_state(in_module)
                 .globs
                 .iter()
-                .filter_map(move |(id, v)| {
-                    if is_ufcs == IsUfcs::Yes {
-                        (*v == IsUfcs::Yes).then_some(id)
-                    } else {
-                        Some(id)
-                    }
+                .filter_map(move |(id, v)| match (is_ufcs, v) {
+                    (IsUfcs::Yes, _) | (IsUfcs::No, IsUfcs::No) => Some(id),
+                    (IsUfcs::No, IsUfcs::Yes) => None,
                 })
                 .copied(),
         )
