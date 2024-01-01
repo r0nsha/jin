@@ -15,7 +15,7 @@ use crate::{
             stmt, str_value, unit_value, NEST,
         },
     },
-    db::{Adt, AdtId, AdtKind, Db, StructDef},
+    db::{Adt, AdtId, AdtKind, Db, StructDef, StructKind},
     middle::{Pat, UnOp},
     mir::{
         Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir,
@@ -211,63 +211,92 @@ impl<'db> Generator<'db> {
     fn codegen_struct_def(&self, struct_def: &StructDef) -> D<'db> {
         let adt_name = self.adt_names[&struct_def.id];
 
-        let data_name = D::text(format!("{adt_name}__data"));
+        match struct_def.kind {
+            StructKind::Ref => {
+                let data_name = D::text(format!("{adt_name}__data"));
 
-        let data_typedef = stmt(|| {
-            D::text("typedef")
-                .append(D::space())
-                .append(D::text("struct"))
-                .append(D::space())
-                .append(data_name.clone())
-                .append(D::space())
-                .append(block(|| {
-                    D::intersperse(
-                        struct_def.fields.iter().map(|f| {
-                            stmt(|| {
-                                f.ty.cdecl(
-                                    self,
-                                    D::text(f.name.name().as_str()),
-                                )
-                            })
-                        }),
-                        D::hardline(),
-                    )
-                }))
-                .append(D::space())
-                .append(data_name.clone())
-        });
+                let data_typedef = stmt(|| {
+                    D::text("typedef")
+                        .append(D::space())
+                        .append(D::text("struct"))
+                        .append(D::space())
+                        .append(data_name.clone())
+                        .append(D::space())
+                        .append(block(|| {
+                            D::intersperse(
+                                struct_def.fields.iter().map(|f| {
+                                    stmt(|| {
+                                        f.ty.cdecl(
+                                            self,
+                                            D::text(f.name.name().as_str()),
+                                        )
+                                    })
+                                }),
+                                D::hardline(),
+                            )
+                        }))
+                        .append(D::space())
+                        .append(data_name.clone())
+                });
 
-        let rc_name = D::text(adt_name.as_str());
+                let rc_name = D::text(adt_name.as_str());
 
-        let rc_typedef = stmt(|| {
-            D::text("typedef")
-                .append(D::space())
-                .append(D::text("struct"))
-                .append(D::space())
-                .append(rc_name.clone())
-                .append(D::space())
-                .append(block(|| {
-                    D::intersperse(
-                        [
-                            stmt(|| {
-                                data_name
-                                    .append(D::space())
-                                    .append(D::text(DATA_FIELD))
+                let rc_typedef = stmt(|| {
+                    D::text("typedef")
+                        .append(D::space())
+                        .append(D::text("struct"))
+                        .append(D::space())
+                        .append(rc_name.clone())
+                        .append(D::space())
+                        .append(block(|| {
+                            D::intersperse(
+                                [
+                                    stmt(|| {
+                                        data_name
+                                            .append(D::space())
+                                            .append(D::text(DATA_FIELD))
+                                    }),
+                                    stmt(|| {
+                                        D::text("usize")
+                                            .append(D::space())
+                                            .append(D::text(REFCNT_FIELD))
+                                    }),
+                                ],
+                                D::hardline(),
+                            )
+                        }))
+                        .append(D::space())
+                        .append(rc_name)
+                });
+
+                D::intersperse([data_typedef, rc_typedef], D::hardline())
+            }
+            StructKind::Extern => stmt(|| {
+                let adt_name = D::text(adt_name.as_str());
+
+                D::text("typedef")
+                    .append(D::space())
+                    .append(D::text("struct"))
+                    .append(D::space())
+                    .append(adt_name.clone())
+                    .append(D::space())
+                    .append(block(|| {
+                        D::intersperse(
+                            struct_def.fields.iter().map(|f| {
+                                stmt(|| {
+                                    f.ty.cdecl(
+                                        self,
+                                        D::text(f.name.name().as_str()),
+                                    )
+                                })
                             }),
-                            stmt(|| {
-                                D::text("usize")
-                                    .append(D::space())
-                                    .append(D::text(REFCNT_FIELD))
-                            }),
-                        ],
-                        D::hardline(),
-                    )
-                }))
-                .append(D::space())
-                .append(rc_name)
-        });
-
-        D::intersperse([data_typedef, rc_typedef], D::hardline())
+                            D::hardline(),
+                        )
+                    }))
+                    .append(D::space())
+                    .append(adt_name)
+            }),
+        }
     }
 
     fn codegen_fn_sig(&self, sig: &FnSig) -> D<'db> {
