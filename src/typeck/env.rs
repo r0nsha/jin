@@ -417,13 +417,11 @@ impl<'db> Typeck<'db> {
         {
             return Err(Diagnostic::error()
                 .with_message(format!(
-                    "all functions which apply to `{}` are private to their \
-                     module",
+                    "all functions which apply to `{}` are private to their module",
                     query.display(self.db)
                 ))
                 .with_label(
-                    Label::primary(query.word.span())
-                        .with_message("no accessible function found"),
+                    Label::primary(query.word.span()).with_message("no accessible function found"),
                 ));
         }
 
@@ -773,7 +771,7 @@ impl Env {
     pub fn fn_id(&self) -> Option<DefId> {
         self.scopes.iter().find_map(|s| match s.kind {
             ScopeKind::Fn(id) => Some(id),
-            ScopeKind::Loop | ScopeKind::Block | ScopeKind::Ty => None,
+            ScopeKind::Loop | ScopeKind::Block | ScopeKind::TyDef => None,
         })
     }
 
@@ -808,7 +806,7 @@ pub struct Scope {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum ScopeKind {
     Fn(DefId),
-    Ty,
+    TyDef,
     Loop,
     Block,
 }

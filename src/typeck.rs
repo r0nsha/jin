@@ -479,23 +479,17 @@ impl<'db> Typeck<'db> {
             AttrsPlacement::ExternLet,
         )?;
 
-        env.with_anon_scope(ScopeKind::Ty, |env| {
-            let ty_params = self.check_ty_params(env, &tydef.ty_params)?;
-
-            match &tydef.kind {
-                ast::TyDefKind::Struct(struct_def) => self.check_tydef_struct(
-                    env, tydef.word, tydef.vis, &ty_params, struct_def,
-                ),
+        match &tydef.kind {
+            ast::TyDefKind::Struct(struct_def) => {
+                self.check_tydef_struct(env, tydef, struct_def)
             }
-        })
+        }
     }
 
     fn check_tydef_struct(
         &mut self,
         env: &mut Env,
-        name: Word,
-        vis: Vis,
-        ty_params: &[hir::TyParam],
+        tydef: &ast::TyDef,
         struct_def: &ast::StructTyDef,
     ) -> Result<(), Diagnostic> {
         let mut fields = vec![];
@@ -533,7 +527,7 @@ impl<'db> Typeck<'db> {
             let adt_id = self.db.adts.push_with_key(|id| Adt {
                 id,
                 def_id: DefId::INVALID,
-                name,
+                name: tydef.word,
                 kind: AdtKind::Struct(StructDef::new(
                     id,
                     fields,
@@ -544,9 +538,9 @@ impl<'db> Typeck<'db> {
 
             self.db[adt_id].def_id = self.define_def(
                 env,
-                vis,
+                tydef.vis,
                 DefKind::Adt(adt_id),
-                name,
+                tydef.word,
                 Mutability::Imm,
                 TyKind::Type(TyKind::Adt(adt_id).into()).into(),
             )?;
@@ -554,11 +548,17 @@ impl<'db> Typeck<'db> {
             adt_id
         };
 
-        for (idx, field) in struct_def.fields.iter().enumerate() {
-            let ty =
-                self.check_ty_expr(env, &field.ty_expr, AllowTyHole::No)?;
-            self.db[adt_id].as_struct_mut().unwrap().fields[idx].ty = ty;
-        }
+        env.with_anon_scope(ScopeKind::TyDef, |env| -> TypeckResult<()> {
+            self.check_ty_params(env, &tydef.ty_params)?;
+
+            for (idx, field) in struct_def.fields.iter().enumerate() {
+                let ty =
+                    self.check_ty_expr(env, &field.ty_expr, AllowTyHole::No)?;
+                self.db[adt_id].as_struct_mut().unwrap().fields[idx].ty = ty;
+            }
+
+            Ok(())
+        })?;
 
         self.db[adt_id].as_struct_mut().unwrap().fill_ctor_ty();
         let adt = &self.db[adt_id];
