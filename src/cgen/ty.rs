@@ -104,12 +104,12 @@ impl<'db> CTy<'db> for FloatTy {
 impl<'db> CTy<'db> for AdtId {
     fn cty(&self, cx: &Generator<'db>) -> D<'db> {
         let name = D::text(cx.adt_names[self].as_str());
-
-        let name = if cx.defining_types {
-            D::text("struct").append(D::space()).append(name)
-        } else {
-            name
-        };
+        let name = D::text("struct").append(D::space()).append(name);
+        // let name = if cx.defining_types {
+        //     D::text("struct").append(D::space()).append(name);
+        // } else {
+        //     name
+        // };
 
         match &cx.db[*self].kind {
             AdtKind::Struct(s) => match s.kind {
