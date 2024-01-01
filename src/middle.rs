@@ -5,6 +5,7 @@ use ustr::Ustr;
 use crate::{
     ast::token::TokenKind,
     db::DefId,
+    macros::create_bool_enum,
     span::{Span, Spanned},
     word::Word,
 };
@@ -324,3 +325,5 @@ impl Spanned for NamePat {
         self.word.span()
     }
 }
+
+create_bool_enum!(IsUfcs);

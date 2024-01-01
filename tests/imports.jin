@@ -1,6 +1,5 @@
 import bar.{baz.yup, *}
-import ufcs.*
-//import ufcs.?
+import ufcs.?
 
 fn main() unit = {
 	hello()
@@ -8,7 +7,7 @@ fn main() unit = {
 	goodbye()
 
 	// Ufcs imports
-	1.print_int()
+	//1.print_int()
 	print_int(1) // Error!
 }
 

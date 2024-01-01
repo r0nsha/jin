@@ -10,7 +10,7 @@ use crate::{
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     macros::create_bool_enum,
-    middle::{Mutability, NamePat, Pat, Vis},
+    middle::{IsUfcs, Mutability, NamePat, Pat, Vis},
     qpath::QPath,
     span::{Span, Spanned},
     sym,
@@ -274,11 +274,15 @@ impl<'db> Typeck<'db> {
         let symbol = Symbol::new(in_module, word.name());
 
         if self.checking_items {
-            self.find_and_check_items(&symbol)?;
+            self.find_and_check_items(&symbol, IsUfcs::No)?;
         }
 
-        let results =
-            self.lookup_global_many(in_module, &symbol, ShouldLookupFns::Yes);
+        let results = self.lookup_global_many(
+            in_module,
+            &symbol,
+            ShouldLookupFns::Yes,
+            IsUfcs::No,
+        );
 
         if results.is_empty() {
             return Err(errors::name_not_found(
@@ -324,7 +328,7 @@ impl<'db> Typeck<'db> {
         let symbol = Symbol::new(in_module, name);
 
         if self.checking_items {
-            self.find_and_check_items(&symbol)?;
+            self.find_and_check_items(&symbol, query.is_ufcs())?;
         }
 
         let from_module = env.module_id();
@@ -337,10 +341,11 @@ impl<'db> Typeck<'db> {
             }
         }
 
-        let lookup_fns = ShouldLookupFns::from(!matches!(query, Query::Fn(_)));
+        let should_lookup_fns =
+            ShouldLookupFns::from(!matches!(query, Query::Fn(_)));
 
-        self.lookup_global_one(&symbol, query.span(), lookup_fns)?.ok_or_else(
-            || match query {
+        self.lookup_global_one(&symbol, query.span(), should_lookup_fns)?
+            .ok_or_else(|| match query {
                 Query::Name(word) => errors::name_not_found(
                     self.db,
                     from_module,
@@ -348,14 +353,18 @@ impl<'db> Typeck<'db> {
                     *word,
                 ),
                 Query::Fn(fn_query) => errors::fn_not_found(self.db, fn_query),
-            },
-        )
+            })
     }
 
     #[inline]
-    fn find_and_check_items(&mut self, symbol: &Symbol) -> TypeckResult<()> {
-        let lookup_modules =
-            self.get_lookup_modules(symbol.module_id).collect::<Vec<_>>();
+    fn find_and_check_items(
+        &mut self,
+        symbol: &Symbol,
+        is_ufcs: IsUfcs,
+    ) -> TypeckResult<()> {
+        let lookup_modules = self
+            .get_lookup_modules(symbol.module_id, is_ufcs)
+            .collect::<Vec<_>>();
 
         for module_id in lookup_modules {
             if let Some(item_ids) =
@@ -393,7 +402,7 @@ impl<'db> Typeck<'db> {
         query: &FnQuery,
     ) -> DiagnosticResult<Option<DefId>> {
         let mut candidates = self
-            .get_lookup_modules(in_module)
+            .get_lookup_modules(in_module, query.is_ufcs)
             .filter_map(|module_id| {
                 self.global_scope
                     .fns
@@ -447,10 +456,14 @@ impl<'db> Typeck<'db> {
         &mut self,
         symbol: &Symbol,
         span: Span,
-        lookup_fns: ShouldLookupFns,
+        should_lookup_fns: ShouldLookupFns,
     ) -> TypeckResult<Option<DefId>> {
-        let results =
-            self.lookup_global_many(symbol.module_id, symbol, lookup_fns);
+        let results = self.lookup_global_many(
+            symbol.module_id,
+            symbol,
+            should_lookup_fns,
+            IsUfcs::No,
+        );
 
         match results.len() {
             0 => Ok(None),
@@ -473,9 +486,10 @@ impl<'db> Typeck<'db> {
         &self,
         in_module: ModuleId,
         symbol: &Symbol,
-        lookup_fns: ShouldLookupFns,
+        should_lookup_fns: ShouldLookupFns,
+        is_ufcs: IsUfcs,
     ) -> Vec<LookupResult> {
-        let lookup_modules = self.get_lookup_modules(in_module);
+        let lookup_modules = self.get_lookup_modules(in_module, is_ufcs);
         let mut defs = vec![];
 
         for module_id in lookup_modules {
@@ -483,7 +497,7 @@ impl<'db> Typeck<'db> {
 
             if let Some(id) = self.global_scope.get_def(in_module, &symbol) {
                 defs.push(LookupResult::Def(id));
-            } else if lookup_fns == ShouldLookupFns::Yes {
+            } else if should_lookup_fns == ShouldLookupFns::Yes {
                 if let Some(candidates) = self.global_scope.fns.get(&symbol) {
                     defs.extend(
                         candidates.iter().cloned().map(LookupResult::Fn),
@@ -507,9 +521,21 @@ impl<'db> Typeck<'db> {
     fn get_lookup_modules(
         &self,
         in_module: ModuleId,
+        is_ufcs: IsUfcs,
     ) -> impl Iterator<Item = ModuleId> + '_ {
         iter::once(in_module).chain(
-            self.resolution_state.module_state(in_module).globs.iter().copied(),
+            self.resolution_state
+                .module_state(in_module)
+                .globs
+                .iter()
+                .filter_map(move |(id, v)| {
+                    if is_ufcs == IsUfcs::Yes {
+                        (*v == IsUfcs::Yes).then_some(id)
+                    } else {
+                        Some(id)
+                    }
+                })
+                .copied(),
         )
     }
 
@@ -999,6 +1025,13 @@ impl<'a> Query<'a> {
     pub fn span(&self) -> Span {
         self.word().span()
     }
+
+    pub fn is_ufcs(&self) -> IsUfcs {
+        match self {
+            Query::Name(_) => IsUfcs::No,
+            Query::Fn(FnQuery { is_ufcs, .. }) => *is_ufcs,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1006,6 +1039,7 @@ pub struct FnQuery<'a> {
     pub word: Word,
     pub ty_args: Option<&'a [Ty]>,
     pub args: &'a [FnTyParam],
+    pub is_ufcs: IsUfcs,
 }
 
 impl<'a> FnQuery<'a> {
@@ -1013,8 +1047,9 @@ impl<'a> FnQuery<'a> {
         word: Word,
         ty_args: Option<&'a [Ty]>,
         args: &'a [FnTyParam],
+        is_ufcs: IsUfcs,
     ) -> Self {
-        Self { word, ty_args, args }
+        Self { word, ty_args, args, is_ufcs }
     }
 
     pub fn display<'db>(&'db self, db: &'db Db) -> FnTyPrinter {

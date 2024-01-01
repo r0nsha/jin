@@ -25,7 +25,7 @@ use crate::{
     hir,
     hir::{ExprId, FnParam, Hir},
     macros::create_bool_enum,
-    middle::{BinOp, Mutability, Pat, TyExpr, UnOp, Vis},
+    middle::{BinOp, IsUfcs, Mutability, Pat, TyExpr, UnOp, Vis},
     span::{Span, Spanned},
     sym,
     ty::{
@@ -630,8 +630,8 @@ impl<'db> Typeck<'db> {
                     self.check_import_node(env, module_id, node)?;
                 }
             }
-            ast::ImportNode::Glob(_) => {
-                self.check_import_glob(env, module_id);
+            ast::ImportNode::Glob(is_ufcs, _) => {
+                self.check_import_glob(env, module_id, *is_ufcs);
             }
         }
 
@@ -689,11 +689,16 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    fn check_import_glob(&mut self, env: &Env, module_id: ModuleId) {
+    fn check_import_glob(
+        &mut self,
+        env: &Env,
+        module_id: ModuleId,
+        is_ufcs: IsUfcs,
+    ) {
         self.resolution_state
             .module_state_mut(env.module_id())
             .globs
-            .insert(module_id);
+            .insert(module_id, is_ufcs);
     }
 
     fn is_module_def(
@@ -968,6 +973,7 @@ impl<'db> Typeck<'db> {
                     *method,
                     ty_args.as_deref(),
                     &args,
+                    IsUfcs::Yes,
                 )?;
 
                 let callee = self.check_name(env, id, *method, *span, None)?;
@@ -987,6 +993,7 @@ impl<'db> Typeck<'db> {
                             *word,
                             ty_args.as_deref(),
                             &args,
+                            IsUfcs::No,
                         )?;
                         self.check_name(
                             env,
@@ -1340,6 +1347,7 @@ impl<'db> Typeck<'db> {
         word: Word,
         ty_args: Option<&[Ty]>,
         args: &[hir::CallArg],
+        is_ufcs: IsUfcs,
     ) -> TypeckResult<DefId> {
         let args = args
             .iter()
@@ -1348,7 +1356,7 @@ impl<'db> Typeck<'db> {
                 ty: self.normalize(a.expr.ty),
             })
             .collect::<Vec<_>>();
-        let query = FnQuery::new(word, ty_args, &args);
+        let query = FnQuery::new(word, ty_args, &args, is_ufcs);
         self.lookup(env, in_module, &Query::Fn(query))
     }
 

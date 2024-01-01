@@ -7,6 +7,7 @@ use camino::Utf8PathBuf;
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
+use crate::middle::IsUfcs;
 use crate::{
     data_structures::index_vec::{new_key_type, IndexVec},
     db::{ExternLib, ModuleId, StructKind},
@@ -303,7 +304,7 @@ impl Spanned for ImportName {
 pub enum ImportNode {
     Name(Box<ImportName>),
     Group(Vec<ImportNode>),
-    Glob(Span),
+    Glob(IsUfcs, Span),
 }
 
 #[derive(Debug, Clone)]

@@ -40,6 +40,7 @@ pub enum TokenKind {
     At,
     Hash,
     Arrow,
+    QuestionMark,
 
     // Delimiters
     OpenParen,
@@ -134,6 +135,7 @@ impl fmt::Display for TokenKind {
             Self::At => f.write_char('@'),
             Self::Hash => f.write_char('#'),
             Self::Arrow => f.write_str("->"),
+            Self::QuestionMark => f.write_char('?'),
             Self::Eq => f.write_char('='),
             Self::EqEq => f.write_str("=="),
             Self::Bang => f.write_str("!"),

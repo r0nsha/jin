@@ -6,6 +6,7 @@ use path_absolutize::Absolutize as _;
 use crate::{
     ast::{token::TokenKind, Attr, Import, ImportName, ImportNode},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
+    middle::IsUfcs,
     parse::parser::Parser,
     span::{Span, Spanned},
     word::Word,
@@ -52,7 +53,9 @@ impl<'a> Parser<'a> {
 
     fn parse_import_node(&mut self) -> DiagnosticResult<ImportNode> {
         if self.is(TokenKind::Star) {
-            Ok(ImportNode::Glob(self.last_span()))
+            Ok(ImportNode::Glob(IsUfcs::No, self.last_span()))
+        } else if self.is(TokenKind::QuestionMark) {
+            Ok(ImportNode::Glob(IsUfcs::Yes, self.last_span()))
         } else if self.peek_is(TokenKind::OpenCurly) {
             self.parse_import_group()
         } else {

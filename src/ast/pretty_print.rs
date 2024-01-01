@@ -7,7 +7,7 @@ use crate::{
         ImportNode, Let, TyDef, TyDefKind, TyExpr,
     },
     db::StructKind,
-    middle::BinOp,
+    middle::{BinOp, IsUfcs},
     word::Word,
 };
 
@@ -286,8 +286,10 @@ impl PrettyPrint for ImportNode {
                 }
                 cx.builder.end_child();
             }
-            ImportNode::Glob(_) => {
-                cx.builder.add_empty_child("*".to_string());
+            ImportNode::Glob(is_ufcs, _) => {
+                cx.builder.add_empty_child(
+                    if *is_ufcs == IsUfcs::Yes { "?" } else { "*" }.to_string(),
+                );
             }
         }
     }

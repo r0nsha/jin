@@ -1,10 +1,11 @@
 use enum_as_inner::EnumAsInner;
-use rustc_hash::{FxHashMap, FxHashSet};
+use rustc_hash::FxHashMap;
 
 use crate::{
     ast,
     db::{DefId, ModuleId},
     hir,
+    middle::IsUfcs,
 };
 
 pub struct ResolutionState {
@@ -88,12 +89,12 @@ impl ResolutionState {
 #[derive(Debug, Clone)]
 pub struct ModuleState {
     pub status: ModuleStatus,
-    pub globs: FxHashSet<ModuleId>,
+    pub globs: FxHashMap<ModuleId, IsUfcs>,
 }
 
 impl ModuleState {
     pub fn new() -> Self {
-        Self { status: ModuleStatus::Unresolved, globs: FxHashSet::default() }
+        Self { status: ModuleStatus::Unresolved, globs: FxHashMap::default() }
     }
 }
 

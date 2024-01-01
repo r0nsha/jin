@@ -69,7 +69,7 @@ impl<'db> Typeck<'db> {
                     self.collect_import_node(module_id, item_id, node);
                 }
             }
-            ast::ImportNode::Glob(_) => (),
+            ast::ImportNode::Glob(..) => (),
         }
     }
 
