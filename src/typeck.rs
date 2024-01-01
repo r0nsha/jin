@@ -1311,9 +1311,7 @@ impl<'db> Typeck<'db> {
             }
         };
 
-        let ty = instantiate(ty, instantiation.clone());
-
-        Ok((ty, instantiation))
+        Ok((instantiate(ty, &instantiation), instantiation))
     }
 
     fn check_field(

@@ -1,16 +1,16 @@
 use crate::ty::{FnTy, FnTyParam, Instantiation, Ty, TyKind};
 
-pub(super) fn instantiate(ty: Ty, instantiation: Instantiation) -> Ty {
+pub(super) fn instantiate(ty: Ty, instantiation: &Instantiation) -> Ty {
     Instantiate::new(ty, instantiation).instantiate()
 }
 
-struct Instantiate {
+struct Instantiate<'a> {
     ty: Ty,
-    instantiation: Instantiation,
+    instantiation: &'a Instantiation,
 }
 
-impl Instantiate {
-    fn new(ty: Ty, instantiation: Instantiation) -> Self {
+impl<'a> Instantiate<'a> {
+    fn new(ty: Ty, instantiation: &'a Instantiation) -> Self {
         Self { ty, instantiation }
     }
 
