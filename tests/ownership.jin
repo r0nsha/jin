@@ -11,6 +11,7 @@ fn main() unit = {
 	move_into_loop()
 	copy()
 	assign_not_moved()
+	destroy_discarded_values(Num(1))
 }
 
 fn use_after_move() unit = {
@@ -85,4 +86,8 @@ fn assign_not_moved() unit = {
 	} else {
 		n2
 	}
+}
+
+fn destroy_discarded_values(num: Num) unit = {
+	let _ = Num(2)
 }

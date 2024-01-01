@@ -104,7 +104,7 @@ impl<'db> Generator<'db> {
         let refcnt = self.refcnt_field(state, value);
         let fmt = str_lit(format!(
             "cannot destroy a value of type `{}` \
-                as it still has %d reference(s)",
+                as it still has %u reference(s)",
             state.body.value(value).ty.display(self.db)
         ));
         let loc = self.create_location_value(span);
