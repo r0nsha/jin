@@ -7,11 +7,10 @@ use camino::Utf8PathBuf;
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
-use crate::middle::IsUfcs;
 use crate::{
     data_structures::index_vec::{new_key_type, IndexVec},
     db::{ExternLib, ModuleId, StructKind},
-    middle::{BinOp, Mutability, Pat, TyExpr, UnOp, Vis},
+    middle::{BinOp, IsUfcs, Mutability, Pat, TyExpr, UnOp, Vis},
     qpath::QPath,
     span::{SourceId, Span, Spanned},
     word::Word,
