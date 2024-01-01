@@ -15,7 +15,7 @@ use crate::{
             stmt, str_value, unit_value, NEST,
         },
     },
-    db::{Adt, AdtId, AdtKind, Db, StructDef, StructKind},
+    db::{AdtId, AdtKind, Db, StructDef, StructKind},
     middle::{Pat, UnOp},
     mir::{
         Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir,
@@ -54,7 +54,6 @@ impl<'db> FnState<'db> {
 
 impl<'db> Generator<'db> {
     pub fn run(mut self) -> Utf8PathBuf {
-        self.define_types();
         self.predefine_fns();
         self.define_globals();
         self.define_fns();
@@ -125,17 +124,6 @@ impl<'db> Generator<'db> {
             .append(D::text("}"))
     }
 
-    pub fn define_types(&mut self) {
-        for struct_def in &self.db.adts {
-            let name = ustr(&self.db[struct_def.def_id].qpath.join_with("_"));
-            self.adt_names.insert(struct_def.id, name);
-        }
-
-        for adt in &self.db.adts {
-            self.types.push(self.codegen_adt(adt));
-        }
-    }
-
     pub fn predefine_fns(&mut self) {
         for sig in self.mir.fn_sigs.values() {
             let doc = self.codegen_fn_sig(sig);
@@ -197,15 +185,30 @@ impl<'db> Generator<'db> {
         }
     }
 
-    fn codegen_adt(&self, adt: &Adt) -> D<'db> {
-        match &adt.kind {
-            AdtKind::Struct(struct_def) => self.codegen_struct_def(struct_def),
+    pub fn get_or_create_adt(&mut self, adt_id: AdtId) -> Ustr {
+        if let Some(name) = self.adt_names.get(&adt_id) {
+            *name
+        } else {
+            self.codegen_adt(adt_id);
+            self.adt_names[&adt_id]
         }
     }
 
-    fn codegen_struct_def(&self, struct_def: &StructDef) -> D<'db> {
-        let adt_name = self.adt_names[&struct_def.id];
+    fn codegen_adt(&mut self, adt_id: AdtId) {
+        let adt = &self.db[adt_id];
 
+        let adt_name = ustr(&self.db[adt.def_id].qpath.join_with("_"));
+        self.adt_names.insert(adt_id, adt_name);
+
+        match &adt.kind {
+            AdtKind::Struct(struct_def) => {
+                // PERF: cloning `struct_def` here to avoid borrowck errors...
+                self.codegen_struct_def(adt_name, &struct_def.clone());
+            }
+        }
+    }
+
+    fn codegen_struct_def(&mut self, adt_name: Ustr, struct_def: &StructDef) {
         match struct_def.kind {
             StructKind::Ref => {
                 let data_name = D::text(format!("{adt_name}__data"));
@@ -264,37 +267,43 @@ impl<'db> Generator<'db> {
                         .append(rc_name)
                 });
 
-                D::intersperse([data_typedef, rc_typedef], D::hardline())
+                self.types.push(data_typedef);
+                self.types.push(rc_typedef);
+                // D::intersperse([data_typedef, rc_typedef], D::hardline())
             }
-            StructKind::Extern => stmt(|| {
+            StructKind::Extern => {
                 let adt_name = D::text(adt_name.as_str());
 
-                D::text("typedef")
-                    .append(D::space())
-                    .append(D::text("struct"))
-                    .append(D::space())
-                    .append(adt_name.clone())
-                    .append(D::space())
-                    .append(block(|| {
-                        D::intersperse(
-                            struct_def.fields.iter().map(|f| {
-                                stmt(|| {
-                                    f.ty.cdecl(
-                                        self,
-                                        D::text(f.name.name().as_str()),
-                                    )
-                                })
-                            }),
-                            D::hardline(),
-                        )
-                    }))
-                    .append(D::space())
-                    .append(adt_name)
-            }),
+                let typedef = stmt(|| {
+                    D::text("typedef")
+                        .append(D::space())
+                        .append(D::text("struct"))
+                        .append(D::space())
+                        .append(adt_name.clone())
+                        .append(D::space())
+                        .append(block(|| {
+                            D::intersperse(
+                                struct_def.fields.iter().map(|f| {
+                                    stmt(|| {
+                                        f.ty.cdecl(
+                                            self,
+                                            D::text(f.name.name().as_str()),
+                                        )
+                                    })
+                                }),
+                                D::hardline(),
+                            )
+                        }))
+                        .append(D::space())
+                        .append(adt_name)
+                });
+
+                self.types.push(typedef);
+            }
         }
     }
 
-    fn codegen_fn_sig(&self, sig: &FnSig) -> D<'db> {
+    fn codegen_fn_sig(&mut self, sig: &FnSig) -> D<'db> {
         let fn_ty = sig.ty.as_fn().expect("a function type");
 
         let initial = if sig.is_extern {
@@ -442,7 +451,7 @@ impl<'db> Generator<'db> {
                 };
 
                 let value_doc = self
-                    .value_assign(state, *value, || util::call_alloc(ty_doc));
+                    .value_assign(state, *value, |_| util::call_alloc(ty_doc));
 
                 let zero_refcnt =
                     stmt(|| self.refcnt_field(state, *value).append(" = 0"));
@@ -474,16 +483,16 @@ impl<'db> Generator<'db> {
                 otherwise.map(|o| goto_stmt(state.body.block(o))),
             ),
             Inst::If { value, cond, then, otherwise } => {
-                self.value_assign(state, *value, || {
-                    self.value(state, *cond)
+                self.value_assign(state, *value, |this| {
+                    this.value(state, *cond)
                         .append(D::space())
                         .append(D::text("?"))
                         .append(D::space())
-                        .append(self.value(state, *then))
+                        .append(this.value(state, *then))
                         .append(D::space())
                         .append(D::text(":"))
                         .append(D::space())
-                        .append(self.value(state, *otherwise))
+                        .append(this.value(state, *otherwise))
                 })
             }
             Inst::Return { value } => stmt(|| {
@@ -492,14 +501,14 @@ impl<'db> Generator<'db> {
                     .append(self.value(state, *value))
             }),
             Inst::Call { value, callee, args } => {
-                self.value_assign(state, *value, || {
-                    self.value(state, *callee)
+                self.value_assign(state, *value, |this| {
+                    this.value(state, *callee)
                         .append(D::text("("))
                         .append(
                             D::intersperse(
                                 args.iter()
                                     .copied()
-                                    .map(|a| self.value(state, a)),
+                                    .map(|a| this.value(state, a)),
                                 D::text(",").append(D::space()),
                             )
                             .nest(1)
@@ -533,30 +542,31 @@ impl<'db> Generator<'db> {
                     UnOp::Ref(_) => unreachable!(),
                 };
 
-                self.value_assign(state, *value, || {
-                    D::text(op_str).append(self.value(state, *inner))
+                self.value_assign(state, *value, |this| {
+                    D::text(op_str).append(this.value(state, *inner))
                 })
             }
             Inst::Cast { value, inner, target, span } => {
                 self.codegen_cast(state, *value, *inner, *target, *span)
             }
             Inst::StrLit { value, lit } => {
-                self.value_assign(state, *value, || str_value(lit))
+                self.value_assign(state, *value, |_| str_value(lit))
             }
         }
     }
 
     pub fn value_assign(
-        &self,
+        &mut self,
         state: &FnState<'db>,
         id: ValueId,
-        f: impl FnOnce() -> D<'db>,
+        f: impl FnOnce(&mut Self) -> D<'db>,
     ) -> D<'db> {
         let value = state.body.value(id);
-        VariableDoc::assign(self, value.ty, self.value(state, id), f())
+        let doc = f(self);
+        VariableDoc::assign(self, value.ty, self.value(state, id), doc)
     }
 
-    pub fn value_decl(&self, state: &FnState<'db>, id: ValueId) -> D<'db> {
+    pub fn value_decl(&mut self, state: &FnState<'db>, id: ValueId) -> D<'db> {
         let value = state.body.value(id);
         VariableDoc::decl(self, value.ty, self.value(state, value.id))
     }
@@ -601,12 +611,12 @@ pub struct VariableDoc<'a> {
 }
 
 impl<'a> VariableDoc<'a> {
-    pub fn decl(cx: &Generator<'a>, ty: Ty, name: D<'a>) -> D<'a> {
+    pub fn decl(cx: &mut Generator<'a>, ty: Ty, name: D<'a>) -> D<'a> {
         Self { ty, name, value: None }.into_doc(cx)
     }
 
     pub fn assign(
-        cx: &Generator<'a>,
+        cx: &mut Generator<'a>,
         ty: Ty,
         name: D<'a>,
         value: D<'a>,
@@ -614,7 +624,7 @@ impl<'a> VariableDoc<'a> {
         Self { ty, name, value: Some(value) }.into_doc(cx)
     }
 
-    fn into_doc(self, cx: &Generator<'a>) -> D<'a> {
+    fn into_doc(self, cx: &mut Generator<'a>) -> D<'a> {
         stmt(|| {
             let decl = self.ty.cdecl(cx, self.name);
 

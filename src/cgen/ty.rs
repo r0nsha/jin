@@ -13,9 +13,9 @@ pub trait CTy<'db>
 where
     Self: fmt::Debug,
 {
-    fn cty(&self, cx: &Generator<'db>) -> D<'db>;
+    fn cty(&self, cx: &mut Generator<'db>) -> D<'db>;
 
-    fn cdecl(&self, cx: &Generator<'db>, name: D<'db>) -> D<'db>
+    fn cdecl(&self, cx: &mut Generator<'db>, name: D<'db>) -> D<'db>
     where
         Self: Sized,
     {
@@ -28,7 +28,7 @@ where
 }
 
 impl<'db> CTy<'db> for TyKind {
-    fn cty(&self, cx: &Generator<'db>) -> D<'db> {
+    fn cty(&self, cx: &mut Generator<'db>) -> D<'db> {
         match self {
             Self::Fn(fty) => fty.cty(cx),
             Self::Adt(adt_id) => adt_id.cty(cx),
@@ -60,7 +60,7 @@ impl<'db> CTy<'db> for TyKind {
         }
     }
 
-    fn cdecl(&self, cx: &Generator<'db>, name: D<'db>) -> D<'db> {
+    fn cdecl(&self, cx: &mut Generator<'db>, name: D<'db>) -> D<'db> {
         match self {
             Self::Fn(fty) => fty.cdecl(cx, name),
             _ => ty_and_name(self, cx, name),
@@ -69,7 +69,7 @@ impl<'db> CTy<'db> for TyKind {
 }
 
 impl<'db> CTy<'db> for IntTy {
-    fn cty(&self, _: &Generator<'db>) -> D<'db> {
+    fn cty(&self, _: &mut Generator<'db>) -> D<'db> {
         D::text(match self {
             Self::I8 => sym::I8,
             Self::I16 => sym::I16,
@@ -81,7 +81,7 @@ impl<'db> CTy<'db> for IntTy {
 }
 
 impl<'db> CTy<'db> for UintTy {
-    fn cty(&self, _: &Generator<'db>) -> D<'db> {
+    fn cty(&self, _: &mut Generator<'db>) -> D<'db> {
         D::text(match self {
             Self::U8 => sym::U8,
             Self::U16 => sym::U16,
@@ -93,7 +93,7 @@ impl<'db> CTy<'db> for UintTy {
 }
 
 impl<'db> CTy<'db> for FloatTy {
-    fn cty(&self, _: &Generator<'db>) -> D<'db> {
+    fn cty(&self, _: &mut Generator<'db>) -> D<'db> {
         D::text(match self {
             Self::F32 => sym::F32,
             Self::F64 => sym::F64,
@@ -102,9 +102,9 @@ impl<'db> CTy<'db> for FloatTy {
 }
 
 impl<'db> CTy<'db> for AdtId {
-    fn cty(&self, cx: &Generator<'db>) -> D<'db> {
-        let name = D::text(cx.adt_names[self].as_str());
-        let name = D::text("struct").append(D::space()).append(name);
+    fn cty(&self, cx: &mut Generator<'db>) -> D<'db> {
+        let adt_name = cx.get_or_create_adt(*self);
+        let name = D::text(format!("struct {adt_name}"));
 
         match &cx.db[*self].kind {
             AdtKind::Struct(s) => match s.kind {
@@ -116,16 +116,20 @@ impl<'db> CTy<'db> for AdtId {
 }
 
 impl<'db> CTy<'db> for FnTy {
-    fn cty(&self, cx: &Generator<'db>) -> D<'db> {
+    fn cty(&self, cx: &mut Generator<'db>) -> D<'db> {
         fn_ty(self, cx, None)
     }
 
-    fn cdecl(&self, cx: &Generator<'db>, name: D<'db>) -> D<'db> {
+    fn cdecl(&self, cx: &mut Generator<'db>, name: D<'db>) -> D<'db> {
         fn_ty(self, cx, Some(name))
     }
 }
 
-fn fn_ty<'a>(fn_ty: &FnTy, cx: &Generator<'a>, name: Option<D<'a>>) -> D<'a> {
+fn fn_ty<'a>(
+    fn_ty: &FnTy,
+    cx: &mut Generator<'a>,
+    name: Option<D<'a>>,
+) -> D<'a> {
     fn_ty
         .ret
         .cty(cx)
@@ -155,7 +159,7 @@ fn fn_ty<'a>(fn_ty: &FnTy, cx: &Generator<'a>, name: Option<D<'a>>) -> D<'a> {
 
 fn ty_and_name<'a>(
     ty: &impl CTy<'a>,
-    cx: &Generator<'a>,
+    cx: &mut Generator<'a>,
     name: D<'a>,
 ) -> D<'a> {
     ty.cty(cx).append(D::space()).append(name)

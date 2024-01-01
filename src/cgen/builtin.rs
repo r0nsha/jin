@@ -24,15 +24,15 @@ pub struct BinOpData {
 
 impl<'db> Generator<'db> {
     pub fn codegen_cast(
-        &self,
+        &mut self,
         state: &FnState<'db>,
         value: ValueId,
         casted: ValueId,
         target: Ty,
         span: Span,
     ) -> D<'db> {
-        let cast = self.value_assign(state, value, || {
-            util::cast(target.cty(self), self.value(state, casted))
+        let cast = self.value_assign(state, value, |this| {
+            util::cast(target.cty(this), this.value(state, casted))
         });
 
         let casted_ty = state.body.value(casted).ty;
@@ -75,7 +75,7 @@ impl<'db> Generator<'db> {
     }
 
     pub fn codegen_bin_op(
-        &self,
+        &mut self,
         state: &FnState<'db>,
         data: &BinOpData,
     ) -> D<'db> {
@@ -105,11 +105,11 @@ impl<'db> Generator<'db> {
             _ => bin_op(lhs, data.op, rhs),
         };
 
-        self.value_assign(state, data.target, || init)
+        self.value_assign(state, data.target, |_| init)
     }
 
     fn codegen_bin_op_add(
-        &self,
+        &mut self,
         state: &FnState<'db>,
         data: &BinOpData,
     ) -> D<'db> {
@@ -117,7 +117,7 @@ impl<'db> Generator<'db> {
     }
 
     fn codegen_bin_op_sub(
-        &self,
+        &mut self,
         state: &FnState<'db>,
         data: &BinOpData,
     ) -> D<'db> {
@@ -125,7 +125,7 @@ impl<'db> Generator<'db> {
     }
 
     fn codegen_bin_op_mul(
-        &self,
+        &mut self,
         state: &FnState<'db>,
         data: &BinOpData,
     ) -> D<'db> {
@@ -133,7 +133,7 @@ impl<'db> Generator<'db> {
     }
 
     fn codegen_bin_op_div(
-        &self,
+        &mut self,
         state: &FnState<'db>,
         data: &BinOpData,
     ) -> D<'db> {
@@ -144,14 +144,14 @@ impl<'db> Generator<'db> {
         let safety_check =
             self.panic_if(cond, "attempt to divide by zero", data.span);
 
-        let op =
-            self.value_assign(state, data.target, || bin_op(lhs, data.op, rhs));
+        let op = self
+            .value_assign(state, data.target, |_| bin_op(lhs, data.op, rhs));
 
         D::intersperse([safety_check, op], D::hardline())
     }
 
     fn codegen_safe_bin_op(
-        &self,
+        &mut self,
         state: &FnState<'db>,
         fname: &str,
         action: &str,
