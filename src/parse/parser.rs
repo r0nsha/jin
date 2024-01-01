@@ -99,7 +99,7 @@ impl<'a> Parser<'a> {
         }
 
         if self.is(TokenKind::Type) {
-            return self.parse_ty_def(attrs).map(|t| Some(Item::Type(t)));
+            return self.parse_tydef(attrs).map(|t| Some(Item::Type(t)));
         }
 
         if self.is(TokenKind::Import) {
@@ -281,7 +281,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_ty_def(&mut self, attrs: Attrs) -> DiagnosticResult<TyDef> {
+    fn parse_tydef(&mut self, attrs: Attrs) -> DiagnosticResult<TyDef> {
         let start = self.last_span();
 
         let ident = self.eat_ident()?;
@@ -289,17 +289,17 @@ impl<'a> Parser<'a> {
 
         let ty_params = self.parse_optional_ty_params()?;
 
-        let kind = self.parse_ty_def_kind()?;
+        let kind = self.parse_tydef_kind()?;
         let span = start.merge(self.last_span());
 
         Ok(TyDef { attrs, word: ident.word(), vis, ty_params, kind, span })
     }
 
-    fn parse_ty_def_kind(&mut self) -> DiagnosticResult<TyDefKind> {
+    fn parse_tydef_kind(&mut self) -> DiagnosticResult<TyDefKind> {
         if self.is(TokenKind::Extern) {
-            self.parse_struct_ty_def(StructKind::Extern)
+            self.parse_tydef_struct(StructKind::Extern)
         } else if self.peek_is(TokenKind::OpenParen) {
-            self.parse_struct_ty_def(StructKind::Ref)
+            self.parse_tydef_struct(StructKind::Ref)
         } else {
             let tok = self.require()?;
             Err(errors::unexpected_token_err(
@@ -310,7 +310,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_struct_ty_def(
+    fn parse_tydef_struct(
         &mut self,
         kind: StructKind,
     ) -> DiagnosticResult<TyDefKind> {

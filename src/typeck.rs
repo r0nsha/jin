@@ -244,7 +244,7 @@ impl<'db> Typeck<'db> {
                 });
             }
             ast::Item::Type(tydef) => {
-                self.check_ty_def(env, tydef)?;
+                self.check_tydef(env, tydef)?;
             }
             ast::Item::Import(import) => {
                 self.check_import(env, import)?;
@@ -467,18 +467,18 @@ impl<'db> Typeck<'db> {
         })
     }
 
-    fn check_ty_def(
+    fn check_tydef(
         &mut self,
         env: &mut Env,
-        ty_def: &ast::TyDef,
+        tydef: &ast::TyDef,
     ) -> TypeckResult<()> {
         self.check_attrs(
             env.module_id(),
-            &ty_def.attrs,
+            &tydef.attrs,
             AttrsPlacement::ExternLet,
         )?;
 
-        match &ty_def.kind {
+        match &tydef.kind {
             ast::TyDefKind::Struct(struct_def) => {
                 let mut fields = vec![];
                 let mut defined_fields = UstrMap::<Span>::default();
@@ -515,7 +515,7 @@ impl<'db> Typeck<'db> {
                     let adt_id = self.db.adts.push_with_key(|id| Adt {
                         id,
                         def_id: DefId::INVALID,
-                        name: ty_def.word,
+                        name: tydef.word,
                         kind: AdtKind::Struct(StructDef::new(
                             id,
                             fields,
@@ -526,9 +526,9 @@ impl<'db> Typeck<'db> {
 
                     self.db[adt_id].def_id = self.define_def(
                         env,
-                        ty_def.vis,
+                        tydef.vis,
                         DefKind::Adt(adt_id),
-                        ty_def.word,
+                        tydef.word,
                         Mutability::Imm,
                         TyKind::Type(TyKind::Adt(adt_id).into()).into(),
                     )?;
