@@ -7,18 +7,21 @@ type Bag(a: Box, b: Box)
 fn main() unit = {
 	let box = Box(1)
 
-	let ref = Ref(&box)
-	print(ref.box)
+	//let ref = Ref(&box)
+	//print(ref.box)
 
 	let bag = get_bag().copy().copy()
 	let ref_a = &bag.a
 	let ref_b = &bag.b
+	let ref_a = ref_a
+	let ref_b = ref_b
 
 	let ref_bag = &bag
 	let a = &ref_bag.a
+	let b = &ref_bag.b
 
-	print(ref_a)
-	print(ref_b)
+	//print(ref_a)
+	//print(ref_b)
 }
 
 fn print(box: &Box) unit = {

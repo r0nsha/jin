@@ -759,7 +759,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     pub fn create_value_fields(&mut self, value: ValueId) {
         let value = self.body.value(value);
 
-        // if matches!(&value.kind, ValueKind::Register(_)) {
+        // if value.kind.is_register() {
         //     return;
         // }
 
@@ -876,7 +876,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             })?;
 
             // When a reference is moved, its refcount is incremented.
-            if self.value_is_ref(value) {
+            if self.value_is_ref(value)
+                && !self.body.value(value).kind.is_register()
+            {
                 self.push_inst(Inst::IncRef { value });
             }
 
