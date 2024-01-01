@@ -1055,36 +1055,9 @@ impl<'db> Typeck<'db> {
                                 ))
                         }
                     }
-                    UnOp::Ref(mutability) => match ty.kind() {
-                        TyKind::Adt(adt_id) if self.db[*adt_id].is_ref() => {
-                            Ok(self.expr(
-                                hir::ExprKind::Unary(hir::Unary {
-                                    expr: Box::new(expr),
-                                    op: *op,
-                                }),
-                                ty.create_ref(*mutability),
-                                *span,
-                            ))
-                        }
-                        TyKind::Param(_) => Ok(self.expr(
-                            hir::ExprKind::Unary(hir::Unary {
-                                expr: Box::new(expr),
-                                op: *op,
-                            }),
-                            ty.create_ref(*mutability),
-                            *span,
-                        )),
-                        TyKind::Ref(..) => Ok(expr),
-                        _ => Err(Diagnostic::error()
-                            .with_message(format!(
-                                "cannot take a reference to value of type `{}`",
-                                ty.display(self.db)
-                            ))
-                            .with_label(
-                                Label::primary(*span)
-                                    .with_message("cannot take reference"),
-                            )),
-                    },
+                    UnOp::Ref(mutability) => {
+                        self.check_ref(expr, ty, *op, *mutability, *span)
+                    }
                 }
             }
             ast::Expr::Binary { lhs, rhs, op, span } => {
@@ -1537,6 +1510,32 @@ impl<'db> Typeck<'db> {
                             .with_message("expected a function"),
                     ))
             }
+        }
+    }
+
+    fn check_ref(
+        &mut self,
+        expr: hir::Expr,
+        ty: Ty,
+        op: UnOp,
+        mutability: Mutability,
+        span: Span,
+    ) -> TypeckResult<hir::Expr> {
+        if ty.can_create_ref(self.db) {
+            Ok(self.expr(
+                hir::ExprKind::Unary(hir::Unary { expr: Box::new(expr), op }),
+                ty.create_ref(mutability),
+                span,
+            ))
+        } else {
+            Err(Diagnostic::error()
+                .with_message(format!(
+                    "cannot take a reference to value of type `{}`",
+                    ty.display(self.db)
+                ))
+                .with_label(
+                    Label::primary(span).with_message("cannot take reference"),
+                ))
         }
     }
 

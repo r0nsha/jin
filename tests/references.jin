@@ -5,9 +5,10 @@ type Ref(box: &mut Box)
 type Bag(a: Box, b: Box)
 
 fn main() unit = {
-	let box = Box(1)
-	let mut ref = Ref(&mut box)
-	ref.box.value = 2
+	let mut box = Box(1)
+	let mut ref = &Ref(&mut box)
+	//let m = &mut ref.box
+	//ref.box.value = 2
 }
 
 fn print(self: &Box) unit = {

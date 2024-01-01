@@ -324,6 +324,24 @@ impl TyKind {
     pub fn is_ref(&self) -> bool {
         matches!(self, Self::Ref(..))
     }
+
+    /// Returns `true` if the ty kind is an immutable [`Ref`].
+    ///
+    /// [`Ref`]: TyKind::Ref
+    #[must_use]
+    pub fn is_imm_ref(&self) -> bool {
+        matches!(self, Self::Ref(_, Mutability::Imm))
+    }
+
+    /// Returns `true` if a reference can be taken to this type
+    #[must_use]
+    pub fn can_create_ref(&self, db: &Db) -> bool {
+        match self {
+            Self::Adt(adt_id) if db[*adt_id].is_ref() => true,
+            Self::Param(_) | Self::Ref(..) => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]

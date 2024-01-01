@@ -539,8 +539,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             Inst::Unary { value, inner, op: un.op }
                         })
                     }
-                    UnOp::Ref(_) => {
-                        self.check_ref_mutability(inner, expr.span);
+                    UnOp::Ref(mutability) => {
+                        if mutability.is_mut() {
+                            self.check_ref_mutability(inner, expr.span);
+                        }
+
                         let value = self.create_value(
                             expr.ty,
                             self.body.value(inner).kind.clone(),
@@ -1432,7 +1435,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn check_ref_mutability(&mut self, value: ValueId, span: Span) {
-        if let Err(root) = self.value_imm_root(value) {
+        if let Err(root) = self
+            .value_ty_imm_root(value)
+            .and_then(|()| self.value_imm_root(value))
+        {
             self.cx.db.diagnostics.emit(self.imm_root_err(
                 "cannot take &mut",
                 value,
@@ -1469,7 +1475,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         .with_message(format!("{prefix} to immutable value")),
                 )
             }
-            ImmutableRoot::Ref(root) => {
+            ImmutableRoot::Ty(root) => {
                 let message = format!(
                     "{} to {}, as {} is an immutable `{}`",
                     prefix,
@@ -1490,27 +1496,22 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn value_imm_root(&self, value: ValueId) -> Result<(), ImmutableRoot> {
         match &self.body.value(value).kind {
             ValueKind::Local(id) => {
-                if self.def_is_immutable(*id) {
+                if self.def_is_imm(*id) {
                     Err(ImmutableRoot::Def(value))
                 } else {
                     Ok(())
                 }
             }
             ValueKind::Global(id) => {
-                if self.def_is_immutable(self.cx.mir.globals[*id].def_id) {
+                if self.def_is_imm(self.cx.mir.globals[*id].def_id) {
                     Err(ImmutableRoot::Def(value))
                 } else {
                     Ok(())
                 }
             }
-            ValueKind::Field(parent, _) => {
-                match self.body.value(*parent).ty.kind() {
-                    TyKind::Ref(_, Mutability::Imm) => {
-                        Err(ImmutableRoot::Ref(*parent))
-                    }
-                    _ => self.value_imm_root(*parent),
-                }
-            }
+            ValueKind::Field(parent, _) => self
+                .value_ty_imm_root(*parent)
+                .and_then(|()| self.value_imm_root(*parent)),
             ValueKind::Fn(_)
             | ValueKind::Const(_)
             | ValueKind::Register(_)
@@ -1518,7 +1519,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    fn def_is_immutable(&self, id: DefId) -> bool {
+    fn value_ty_imm_root(&self, value: ValueId) -> Result<(), ImmutableRoot> {
+        if self.body.value(value).ty.is_imm_ref() {
+            Err(ImmutableRoot::Ty(value))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn def_is_imm(&self, id: DefId) -> bool {
         self.cx.db[id].mutability.is_imm()
     }
 
@@ -1678,5 +1687,5 @@ impl LoopScope {
 #[derive(Debug, Clone, Copy)]
 enum ImmutableRoot {
     Def(ValueId),
-    Ref(ValueId),
+    Ty(ValueId),
 }
