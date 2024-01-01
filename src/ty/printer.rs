@@ -132,7 +132,7 @@ impl Display for FnTyPrinter<'_> {
         f.write_str(")")?;
 
         if let Some(ret) = &self.ret {
-            write!(f, " -> {}", ret.display(self.db))?;
+            write!(f, " {}", ret.display(self.db))?;
         }
 
         Ok(())

@@ -950,7 +950,7 @@ impl PartialEq for FnCandidate {
             .params
             .iter()
             .zip(other.ty.params.iter())
-            .any(|(p1, p2)| p1.ty != p2.ty)
+            .any(|(p1, p2)| !fn_candidate_tys_eq(p1.ty, p2.ty))
         {
             return false;
         }
@@ -960,6 +960,16 @@ impl PartialEq for FnCandidate {
 }
 
 impl Eq for FnCandidate {}
+
+fn fn_candidate_tys_eq(a: Ty, b: Ty) -> bool {
+    match (a.kind(), b.kind()) {
+        (TyKind::Ref(a, _), TyKind::Ref(b, _)) => {
+            // Consider two references as equal candidates, regardless of their mutability
+            a == b
+        }
+        _ => a == b,
+    }
+}
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u32)]
