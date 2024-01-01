@@ -759,9 +759,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     pub fn create_value_fields(&mut self, value: ValueId) {
         let value = self.body.value(value);
 
-        if matches!(&value.kind, ValueKind::Register(_)) {
-            return;
-        }
+        // if matches!(&value.kind, ValueKind::Register(_)) {
+        //     return;
+        // }
 
         if let TyKind::Adt(adt_id) = value.ty.kind() {
             match &self.cx.db[*adt_id].kind {
@@ -880,6 +880,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.push_inst(Inst::IncRef { value });
             }
 
+            self.set_moved(value, moved_to);
+
             return Ok(());
         }
 
@@ -920,6 +922,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value: ValueId,
         moved_to: Span,
     ) -> DiagnosticResult<()> {
+        if !self.value_is_move(value) {
+            return Ok(());
+        }
+
         match self.value_state(value) {
             ValueState::Owned => Ok(()),
             ValueState::Moved(already_moved_to)
@@ -1304,11 +1310,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn destroy_value(&mut self, value: ValueId, span: Span) {
-        if !self.value_is_move(value) {
-            if self.value_is_ref(value) {
-                self.push_inst(Inst::DecRef { value });
-            }
-
+        if !self.value_is_move(value) && self.value_is_ref(value) {
             return;
         }
 
