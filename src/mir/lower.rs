@@ -9,6 +9,7 @@ use crate::{
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     hir::{FnKind, Hir},
+    macros::create_bool_enum,
     middle::{Mutability, NamePat, Pat, Vis},
     mir::*,
     span::Spanned,
@@ -1407,7 +1408,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             ValueKind::Name(name) => name.to_string(),
             ValueKind::Register(_) | ValueKind::Const(_) => {
-                "temporary value".to_string()
+                "_".to_string()
             }
         }
     }
@@ -1425,7 +1426,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn check_assign_mutability(&mut self, lhs: ValueId, span: Span) {
-        if let Err(root) = self.value_imm_root(lhs) {
+        if let Err(root) = self.value_imm_root(lhs, BreakOnMutRef::Yes) {
             self.cx.db.diagnostics.emit(self.imm_root_err(
                 "cannot assign",
                 lhs,
@@ -1438,7 +1439,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn check_ref_mutability(&mut self, value: ValueId, span: Span) {
         if let Err(root) = self
             .value_ty_imm_root(value)
-            .and_then(|()| self.value_imm_root(value))
+            .and_then(|()| self.value_imm_root(value, BreakOnMutRef::No))
         {
             self.cx.db.diagnostics.emit(self.imm_root_err(
                 "cannot take &mut",
@@ -1500,7 +1501,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    fn value_imm_root(&self, value: ValueId) -> Result<(), ImmutableRoot> {
+    fn value_imm_root(
+        &self,
+        value: ValueId,
+        break_on_mut_ty: BreakOnMutRef,
+    ) -> Result<(), ImmutableRoot> {
         match &self.body.value(value).kind {
             ValueKind::Local(id) => {
                 if self.def_is_imm(*id) {
@@ -1516,9 +1521,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     Ok(())
                 }
             }
-            ValueKind::Field(parent, _) => self
-                .value_ty_imm_root(*parent)
-                .and_then(|()| self.value_imm_root(*parent)),
+            ValueKind::Field(parent, _) => {
+                match (self.value_ty_imm_root(*parent), break_on_mut_ty) {
+                    (Ok(()), BreakOnMutRef::Yes) => Ok(()),
+                    (Ok(()), BreakOnMutRef::No) => {
+                        self.value_imm_root(*parent, break_on_mut_ty)
+                    }
+                    (Err(err), _) => Err(err),
+                }
+            }
             ValueKind::Fn(_)
             | ValueKind::Const(_)
             | ValueKind::Register(_)
@@ -1696,3 +1707,5 @@ enum ImmutableRoot {
     Def(ValueId),
     Ref(ValueId),
 }
+
+create_bool_enum!(BreakOnMutRef);
