@@ -353,7 +353,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         match &expr.kind {
             hir::ExprKind::Let(let_) => {
                 let init = self.lower_expr(&let_.value);
-                self.try_move(init, let_.value.span);
 
                 match &let_.pat {
                     Pat::Name(name) => {
@@ -372,6 +371,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         self.destroy_value_and_fields(init, *span);
                     }
                 }
+
+                self.try_move(init, let_.value.span);
 
                 self.const_unit()
             }
