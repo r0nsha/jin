@@ -8,7 +8,7 @@ use crate::{
     hir::mangle,
     mir::*,
     subst::{ParamFolder, Subst},
-    ty::{fold::TyFolder, Instantiation, Ty, TyKind},
+    ty::{fold::TyFolder, Instantiation, Ty},
 };
 
 pub fn specialize(db: &mut Db, mir: &mut Mir) {
