@@ -106,13 +106,6 @@ impl<'db> CTy<'db> for AdtId {
         let name = D::text(cx.adt_names[self].as_str());
         let name = D::text("struct").append(D::space()).append(name);
 
-        // TODO: Is this needed for recursive types? We'll know when we implement linked lists...
-        // let name = if cx.defining_types {
-        //     D::text("struct").append(D::space()).append(name);
-        // } else {
-        //     name
-        // };
-
         match &cx.db[*self].kind {
             AdtKind::Struct(s) => match s.kind {
                 StructKind::Ref => name.append(D::text("*")),

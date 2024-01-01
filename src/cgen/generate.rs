@@ -38,7 +38,6 @@ pub struct Generator<'db> {
     pub fn_defs: Vec<D<'db>>,
     pub target_metrics: TargetMetrics,
     pub adt_names: FxHashMap<AdtId, Ustr>,
-    pub defining_types: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -127,8 +126,6 @@ impl<'db> Generator<'db> {
     }
 
     pub fn define_types(&mut self) {
-        self.defining_types = true;
-
         for struct_def in &self.db.adts {
             let name = ustr(&self.db[struct_def.def_id].qpath.join_with("_"));
             self.adt_names.insert(struct_def.id, name);
@@ -137,8 +134,6 @@ impl<'db> Generator<'db> {
         for adt in &self.db.adts {
             self.types.push(self.codegen_adt(adt));
         }
-
-        self.defining_types = false;
     }
 
     pub fn predefine_fns(&mut self) {

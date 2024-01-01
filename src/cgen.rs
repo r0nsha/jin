@@ -31,7 +31,6 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> Utf8PathBuf {
             globals: vec![],
             fn_defs: vec![],
             adt_names: FxHashMap::default(),
-            defining_types: false,
         }
         .run()
     });
