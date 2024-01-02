@@ -6,7 +6,7 @@ use crate::{
     cgen::generate::Generator,
     db::{AdtKind, StructKind},
     sym,
-    ty::{FloatTy, FnTy, IntTy, TyKind, UintTy},
+    ty::{FloatTy, FnTy, IntTy, Ty, TyKind, UintTy},
 };
 
 pub trait CTy<'db>
@@ -32,7 +32,8 @@ impl<'db> CTy<'db> for TyKind {
         match self {
             Self::Fn(fty) => fty.cty(cx),
             Self::Adt(adt_id, targs) => {
-                let adt_name = cx.get_or_create_adt(*adt_id, targs);
+                let adt_name =
+                    cx.get_or_create_adt(Ty::from_ref(self), *adt_id, targs);
                 let name = D::text(format!("struct {adt_name}"));
 
                 match &cx.db[*adt_id].kind {

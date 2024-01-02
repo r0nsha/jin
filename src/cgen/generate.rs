@@ -39,7 +39,7 @@ pub struct Generator<'db> {
     pub globals: Vec<D<'db>>,
     pub fn_defs: Vec<D<'db>>,
     pub target_metrics: TargetMetrics,
-    pub adt_names: FxHashMap<AdtId, Ustr>,
+    pub adt_names: FxHashMap<Ty, Ustr>,
 }
 
 #[derive(Debug, Clone)]
@@ -187,20 +187,25 @@ impl<'db> Generator<'db> {
         }
     }
 
-    pub fn get_or_create_adt(&mut self, adt_id: AdtId, targs: &[Ty]) -> Ustr {
-        if let Some(name) = self.adt_names.get(&adt_id) {
+    pub fn get_or_create_adt(
+        &mut self,
+        ty: Ty,
+        adt_id: AdtId,
+        targs: &[Ty],
+    ) -> Ustr {
+        if let Some(name) = self.adt_names.get(&ty) {
             *name
         } else {
-            self.codegen_adt(adt_id, targs);
-            self.adt_names[&adt_id]
+            self.codegen_adt(ty, adt_id, targs);
+            self.adt_names[&ty]
         }
     }
 
-    fn codegen_adt(&mut self, adt_id: AdtId, targs: &[Ty]) {
+    fn codegen_adt(&mut self, ty: Ty, adt_id: AdtId, targs: &[Ty]) {
         let adt = &self.db[adt_id];
 
         let adt_name = mangle::mangle_adt(self.db, adt, targs);
-        self.adt_names.insert(adt_id, adt_name);
+        self.adt_names.insert(ty, adt_name);
 
         let instantiation = adt.instantiation(targs);
 
@@ -452,10 +457,10 @@ impl<'db> Generator<'db> {
                 }
             }
             Inst::Alloc { value } => {
-                let ty_doc = match state.body.value(*value).ty.kind() {
-                    TyKind::Adt(adt_id, _) => {
-                        D::text(self.adt_names[adt_id].as_str())
-                    }
+                let ty = state.body.value(*value).ty;
+
+                let ty_doc = match ty.kind() {
+                    TyKind::Adt(..) => D::text(self.adt_names[&ty].as_str()),
                     kind => panic!("unexpected type {kind:?} in Inst::Alloc"),
                 };
 
