@@ -1003,23 +1003,25 @@ impl<'db> Typeck<'db> {
                 let args = self.check_call_args(env, args)?;
 
                 let callee = match callee.as_ref() {
-                    ast::Expr::Name { word, ty_args, span } => {
-                        let ty_args = self
-                            .check_optional_ty_args(env, ty_args.as_deref())?;
+                    ast::Expr::Name { word, ty_args: targs, span } => {
+                        let targs =
+                            self.check_optional_ty_args(env, targs.as_deref())?;
+
                         let id = self.lookup_fn_for_call(
                             env,
                             env.module_id(),
                             *word,
-                            ty_args.as_deref(),
+                            targs.as_deref(),
                             &args,
                             IsUfcs::No,
                         )?;
+
                         self.check_name(
                             env,
                             id,
                             *word,
                             *span,
-                            ty_args.as_deref(),
+                            targs.as_deref(),
                         )?
                     }
                     _ => self.check_expr(env, callee, None)?,
@@ -1127,9 +1129,9 @@ impl<'db> Typeck<'db> {
             ast::Expr::Name { word, ty_args, span } => {
                 let id =
                     self.lookup(env, env.module_id(), &Query::Name(*word))?;
-                let ty_args =
+                let targs =
                     self.check_optional_ty_args(env, ty_args.as_deref())?;
-                self.check_name(env, id, *word, *span, ty_args.as_deref())
+                self.check_name(env, id, *word, *span, targs.as_deref())
             }
             ast::Expr::Lit { kind, span } => {
                 let (kind, ty) = match kind {
