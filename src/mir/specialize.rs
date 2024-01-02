@@ -8,7 +8,7 @@ use crate::{
     mangle,
     mir::*,
     subst::{ParamFolder, Subst},
-    ty::{Instantiation, Ty},
+    ty::{Instantiation, Ty, TyKind},
 };
 
 pub fn specialize(db: &mut Db, mir: &mut Mir) {
@@ -370,19 +370,20 @@ impl<'db> ExpandDestroys<'db> {
                     used_destroy_flags.get(value).copied().unwrap_or(true)
                 }
                 Inst::Free { value, .. } => {
-                    if destroyed_values.contains(value) {
-                        if value_tys[&*value].is_ref() {
-                            // TODO: This may turn a conditional `Free` into an unconditional
-                            // `DecRef`. Do we need a `destroy_flag` for `DecRef` too?
-                            *inst = Inst::DecRef { value: *value };
-                        }
-                        true
-                    } else {
-                        false
+                    if !destroyed_values.contains(value) {
+                        return false;
                     }
+
+                    if value_tys[&*value].is_ref() {
+                        // TODO: This may turn a conditional `Free` into an unconditional
+                        // `DecRef`. Do we need a `destroy_flag` for `DecRef` too?
+                        *inst = Inst::DecRef { value: *value };
+                    }
+
+                    true
                 }
                 Inst::IncRef { value, .. } | Inst::DecRef { value, .. } => {
-                    value_tys[&*value].is_ref()
+                    self.should_refcount_ty(value_tys[&*value])
                 }
                 _ => true,
             });
@@ -390,6 +391,13 @@ impl<'db> ExpandDestroys<'db> {
     }
 
     fn should_destroy_ty(&self, ty: Ty) -> bool {
-        ty.is_move(self.db) || ty.is_ref()
+        ty.is_move(self.db) || self.should_refcount_ty(ty)
+    }
+
+    fn should_refcount_ty(&self, ty: Ty) -> bool {
+        match ty.kind() {
+            TyKind::Ref(ty, _) => ty.is_move(self.db),
+            _ => false,
+        }
     }
 }
