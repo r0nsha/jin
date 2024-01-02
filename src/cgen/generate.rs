@@ -185,19 +185,20 @@ impl<'db> Generator<'db> {
         }
     }
 
-    pub fn get_or_create_adt(&mut self, adt_id: AdtId) -> Ustr {
+    pub fn get_or_create_adt(&mut self, adt_id: AdtId, targs: &[Ty]) -> Ustr {
         if let Some(name) = self.adt_names.get(&adt_id) {
             *name
         } else {
-            self.codegen_adt(adt_id);
+            self.codegen_adt(adt_id, targs);
             self.adt_names[&adt_id]
         }
     }
 
-    fn codegen_adt(&mut self, adt_id: AdtId) {
+    fn codegen_adt(&mut self, adt_id: AdtId, targs: &[Ty]) {
         let adt = &self.db[adt_id];
 
         let adt_name = ustr(&self.db[adt.def_id].qpath.join_with("_"));
+        todo!("mangle {adt_name} with {targs:?}");
         self.adt_names.insert(adt_id, adt_name);
 
         match &adt.kind {

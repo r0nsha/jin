@@ -16,6 +16,7 @@ use crate::{
     subst::ParamFolder,
     ty::{
         coerce::{CoercionKind, Coercions},
+        fold::TyFolder,
         Instantiation, Ty, TyKind,
     },
 };
@@ -768,9 +769,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         if let TyKind::Adt(adt_id, targs) = value.ty.kind() {
             let adt = &self.cx.db[*adt_id];
-            // let instantiation = adt.instantiation(targs);
-            // let param_folder =
-            //     ParamFolder { db: self.cx.db, instantiation: &instantiation };
+            let instantiation = adt.instantiation(targs);
+            let mut folder = ParamFolder::from(&instantiation);
 
             match &adt.kind {
                 AdtKind::Struct(struct_def) => {
@@ -780,7 +780,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         .fields
                         .iter()
                         .filter(|f| f.ty.is_move(self.cx.db) || f.ty.is_ref())
-                        .map(|f| (f.name.name(), f.ty))
+                        .map(|f| (f.name.name(), folder.fold(f.ty)))
                         .collect();
 
                     let fields: FxHashMap<_, _> = fields_to_create

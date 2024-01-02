@@ -4,7 +4,7 @@ use pretty::RcDoc as D;
 
 use crate::{
     cgen::generate::Generator,
-    db::{AdtId, AdtKind, StructKind},
+    db::{AdtKind, StructKind},
     sym,
     ty::{FloatTy, FnTy, IntTy, TyKind, UintTy},
 };
@@ -31,7 +31,17 @@ impl<'db> CTy<'db> for TyKind {
     fn cty(&self, cx: &mut Generator<'db>) -> D<'db> {
         match self {
             Self::Fn(fty) => fty.cty(cx),
-            Self::Adt(adt_id, _) => adt_id.cty(cx),
+            Self::Adt(adt_id, targs) => {
+                let adt_name = cx.get_or_create_adt(*adt_id, targs);
+                let name = D::text(format!("struct {adt_name}"));
+
+                match &cx.db[*adt_id].kind {
+                    AdtKind::Struct(s) => match s.kind {
+                        StructKind::Ref => name.append(D::text("*")),
+                        StructKind::Extern => name,
+                    },
+                }
+            }
             Self::Ref(ty, _) => ty.cty(cx),
             Self::RawPtr(ty) => ty.cty(cx).append(D::text("*")),
             Self::Int(ity) => ity.cty(cx),
@@ -98,20 +108,6 @@ impl<'db> CTy<'db> for FloatTy {
             Self::F32 => sym::F32,
             Self::F64 => sym::F64,
         })
-    }
-}
-
-impl<'db> CTy<'db> for AdtId {
-    fn cty(&self, cx: &mut Generator<'db>) -> D<'db> {
-        let adt_name = cx.get_or_create_adt(*self);
-        let name = D::text(format!("struct {adt_name}"));
-
-        match &cx.db[*self].kind {
-            AdtKind::Struct(s) => match s.kind {
-                StructKind::Ref => name.append(D::text("*")),
-                StructKind::Extern => name,
-            },
-        }
     }
 }
 
