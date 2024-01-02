@@ -3,8 +3,8 @@ fn extern printf(fmt: *u8, ..) i32
 type Box[a](value: a)
 
 fn main() unit = {
-	let box = Box(1)
-	print(box.value)
+	print(Box(1).value)
+	print(Box(3.0).value)
 }
 
 //fn print(box: &Box) unit = {
@@ -13,4 +13,8 @@ fn main() unit = {
 
 fn print(value: int) unit = {
 	printf("%d\n".ptr, value)
+}
+
+fn print(value: f32) unit = {
+	printf("%f\n".ptr, value)
 }
