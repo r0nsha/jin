@@ -1196,7 +1196,7 @@ impl<'db> Typeck<'db> {
                             ));
                     }
 
-                    let (ty, _) = self.apply_ty_args_to_ty(
+                    let (ty, instantiation) = self.apply_ty_args_to_ty(
                         env,
                         struct_def.ctor_ty,
                         ty_args,
@@ -1207,7 +1207,7 @@ impl<'db> Typeck<'db> {
                         hir::ExprKind::Name(hir::Name {
                             id,
                             word,
-                            instantiation: Instantiation::default(),
+                            instantiation,
                         }),
                         ty,
                         span,
