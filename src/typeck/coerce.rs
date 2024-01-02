@@ -88,10 +88,6 @@ fn coerce_tys(
     let target_metrics = cx.db.target_metrics();
 
     match (source.kind(), target.kind()) {
-        (TyKind::Never, _) | (TyKind::Unit, TyKind::Never) => {
-            coercions.push(Coercion { kind: CoercionKind::NeverToAny, target });
-            true
-        }
         (TyKind::Int(a), TyKind::Int(b))
             if b.size(target_metrics) >= a.size(target_metrics) =>
         {
@@ -100,6 +96,7 @@ fn coerce_tys(
             true
         }
         (TyKind::Ref(a, Mutability::Mut), TyKind::Ref(b, Mutability::Imm)) => {
+            dbg!(can_unify_or_coerce(source, *b, cx, coercions, options));
             if can_unify_or_coerce(*a, *b, cx, coercions, options) {
                 coercions
                     .push(Coercion { kind: CoercionKind::MutRefToImm, target });
@@ -107,6 +104,9 @@ fn coerce_tys(
             } else {
                 false
             }
+        }
+        (TyKind::Ref(a, Mutability::Imm), TyKind::Ref(b, Mutability::Imm)) => {
+            coerce_tys(*a, *b, cx, coercions, options)
         }
         (_, TyKind::Ref(b, _)) => {
             if can_unify_or_coerce(source, *b, cx, coercions, options) {
@@ -117,7 +117,14 @@ fn coerce_tys(
                 false
             }
         }
-        _ => false,
+        (TyKind::Never, _) | (TyKind::Unit, TyKind::Never) => {
+            coercions.push(Coercion { kind: CoercionKind::NeverToAny, target });
+            true
+        }
+        _ => {
+            // println!("{} , {}", source.display(cx.db), target.display(cx.db));
+            source.can_unify(target, cx, options).is_ok()
+        }
     }
 }
 
