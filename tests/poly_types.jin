@@ -21,7 +21,7 @@ fn print(box: &Box[int]) unit = {
 	printf("Box(%d)\n".ptr, box.value)
 }
 
-fn print[b](box: Box[b]) unit = {
+fn print[a](box: Box[a]) unit = {
 	printf("Box(%f)\n".ptr, box.value)
 }
 

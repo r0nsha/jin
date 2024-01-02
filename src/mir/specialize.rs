@@ -159,9 +159,11 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
         for value in body.values() {
             if let Some(instantiation) = body.instantation(value.id) {
                 // This is a polymorphic value which requires specialization
-                let new_kind =
-                    self.specialize_value(mir, &value.kind, instantiation);
-                body_subst.insert_value(value.id, new_kind);
+                if let Some(new_kind) =
+                    self.specialize_value(mir, &value.kind, instantiation)
+                {
+                    body_subst.insert_value(value.id, new_kind);
+                }
             } else {
                 // This is a monomorphic value, we can enqueue it safely
                 match value.kind {
@@ -186,7 +188,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
         mir: &Mir,
         value_kind: &ValueKind,
         instantiation: &Instantiation,
-    ) -> ValueKind {
+    ) -> Option<ValueKind> {
         match value_kind {
             &ValueKind::Fn(id) => {
                 let ty = instantiation.fold(mir.fn_sigs[id].ty);
@@ -196,7 +198,11 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
                 let specialized_sig_id =
                     self.specialize_fn(mir, specialized_fn, instantiation);
 
-                ValueKind::Fn(specialized_sig_id)
+                Some(ValueKind::Fn(specialized_sig_id))
+            }
+            ValueKind::Local(_) => {
+                // This is a polymorphic type. Doesn't require specialization...
+                None
             }
             kind => unreachable!(
                 "unexpected value kind in specialization: {kind:?}"
