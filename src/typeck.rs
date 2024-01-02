@@ -1160,7 +1160,7 @@ impl<'db> Typeck<'db> {
         id: DefId,
         word: Word,
         span: Span,
-        ty_args: Option<&[Ty]>,
+        targs: Option<&[Ty]>,
     ) -> TypeckResult<hir::Expr> {
         if let DefKind::Adt(adt_id) = self.db[id].kind.as_ref() {
             // NOTE: if the named definition is a struct, we want to return its
@@ -1201,7 +1201,7 @@ impl<'db> Typeck<'db> {
                     let (ty, instantiation) = self.apply_ty_args_to_ty(
                         env,
                         struct_def.ctor_ty,
-                        ty_args,
+                        targs,
                         span,
                     )?;
 
@@ -1219,7 +1219,7 @@ impl<'db> Typeck<'db> {
         } else {
             let def_ty = self.normalize(self.db[id].ty);
             let (ty, instantiation) =
-                self.apply_ty_args_to_ty(env, def_ty, ty_args, span)?;
+                self.apply_ty_args_to_ty(env, def_ty, targs, span)?;
 
             Ok(self.expr(
                 hir::ExprKind::Name(hir::Name { id, word, instantiation }),

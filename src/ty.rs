@@ -77,23 +77,27 @@ impl Ty {
         params.into_iter().collect()
     }
 
-    fn collect_params_inner(self, params: &mut FxHashSet<ParamTy>) {
+    fn collect_params_inner(self, collect_into: &mut FxHashSet<ParamTy>) {
         match self.kind() {
             TyKind::Fn(fun) => {
                 for p in &fun.params {
-                    p.ty.collect_params_inner(params);
+                    p.ty.collect_params_inner(collect_into);
                 }
 
-                fun.ret.collect_params_inner(params);
+                fun.ret.collect_params_inner(collect_into);
             }
             TyKind::Ref(inner, _) | TyKind::RawPtr(inner) => {
-                inner.collect_params_inner(params);
+                inner.collect_params_inner(collect_into);
             }
             TyKind::Param(p) => {
-                params.insert(p.clone());
+                collect_into.insert(p.clone());
             }
-            TyKind::Adt(..)
-            | TyKind::Int(_)
+            TyKind::Adt(_, targs) => {
+                for ty in targs {
+                    ty.collect_params_inner(collect_into);
+                }
+            }
+            TyKind::Int(_)
             | TyKind::Uint(_)
             | TyKind::Float(_)
             | TyKind::Str
