@@ -169,7 +169,7 @@ pub enum Expr {
     },
     Name {
         word: Word,
-        ty_args: Option<Vec<TyExpr>>,
+        targs: Option<Vec<TyExpr>>,
         span: Span,
     },
     Lit {
