@@ -95,7 +95,7 @@ impl Ty {
         options: UnifyOptions,
     ) -> UnifyResult {
         let snapshot = cx.storage.borrow_mut().snapshot();
-        let result = UnifyCx { cx, options }.unify_ty_ty(self, other);
+        let result = self.unify(other, cx, options);
         cx.storage.borrow_mut().rollback_to(snapshot);
         result
     }
