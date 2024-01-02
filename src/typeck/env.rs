@@ -16,7 +16,10 @@ use crate::{
     sym,
     ty::{printer::FnTyPrinter, FnTy, FnTyParam, Ty, TyKind},
     typeck::{
-        coerce::Coerce, errors, unify::UnifyOptions, Typeck, TypeckResult,
+        coerce::{Coerce, CoerceOptions},
+        errors,
+        unify::UnifyOptions,
+        Typeck, TypeckResult,
     },
     word::Word,
 };
@@ -930,11 +933,25 @@ impl FnCandidate {
             return Some(FnCandidateScore::Eq);
         }
 
-        if arg.can_coerce(&param, cx, UnifyOptions::default()) {
+        if arg.can_coerce(
+            &param,
+            cx,
+            CoerceOptions {
+                unify_options: UnifyOptions::default(),
+                rollback_unifications: true,
+            },
+        ) {
             return Some(FnCandidateScore::Coerce);
         }
 
-        if arg.can_coerce(&param, cx, UnifyOptions { unify_param_tys: true }) {
+        if arg.can_coerce(
+            &param,
+            cx,
+            CoerceOptions {
+                unify_options: UnifyOptions { unify_param_tys: true },
+                rollback_unifications: true,
+            },
+        ) {
             return Some(FnCandidateScore::Polymorphic);
         }
 

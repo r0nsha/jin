@@ -44,18 +44,18 @@ pub trait Coerce<'a> {
         &self,
         target: &Self,
         cx: &Typeck<'a>,
-        options: UnifyOptions,
+        options: CoerceOptions,
     ) -> Option<Coercions>;
 
     fn coerce(&self, target: &Self, cx: &Typeck<'a>) -> Option<Coercions> {
-        self.coerce_ex(target, cx, UnifyOptions::default())
+        self.coerce_ex(target, cx, CoerceOptions::default())
     }
 
     fn can_coerce(
         &self,
         target: &Self,
         cx: &Typeck<'a>,
-        options: UnifyOptions,
+        options: CoerceOptions,
     ) -> bool {
         self.coerce_ex(target, cx, options).is_some()
     }
@@ -66,7 +66,7 @@ impl<'a> Coerce<'a> for Ty {
         &self,
         target: &Self,
         cx: &Typeck<'a>,
-        options: UnifyOptions,
+        options: CoerceOptions,
     ) -> Option<Coercions> {
         let mut coercions = Coercions::new();
 
@@ -83,7 +83,7 @@ fn coerce_tys(
     target: Ty,
     cx: &Typeck,
     coercions: &mut Coercions,
-    options: UnifyOptions,
+    options: CoerceOptions,
 ) -> bool {
     let target_metrics = cx.db.target_metrics();
 
@@ -121,10 +121,7 @@ fn coerce_tys(
             coercions.push(Coercion { kind: CoercionKind::NeverToAny, target });
             true
         }
-        _ => {
-            // println!("{} , {}", source.display(cx.db), target.display(cx.db));
-            source.can_unify(target, cx, options).is_ok()
-        }
+        _ => source.unify(target, cx, options.unify_options).is_ok(),
     }
 }
 
@@ -133,8 +130,34 @@ fn can_unify_or_coerce(
     target: Ty,
     cx: &Typeck,
     coercions: &mut Coercions,
-    options: UnifyOptions,
+    options: CoerceOptions,
 ) -> bool {
-    source.can_unify(target, cx, options).is_ok()
-        || coerce_tys(source, target, cx, coercions, options)
+    let unify_result = if options.rollback_unifications {
+        source.can_unify(target, cx, options.unify_options)
+    } else {
+        source.unify(target, cx, options.unify_options)
+    };
+
+    unify_result.is_ok() || coerce_tys(source, target, cx, coercions, options)
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct CoerceOptions {
+    pub unify_options: UnifyOptions,
+    pub rollback_unifications: bool,
+}
+
+impl Default for CoerceOptions {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl CoerceOptions {
+    pub fn new() -> Self {
+        Self {
+            unify_options: UnifyOptions::default(),
+            rollback_unifications: false,
+        }
+    }
 }

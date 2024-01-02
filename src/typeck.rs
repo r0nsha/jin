@@ -1521,19 +1521,9 @@ impl<'db> Typeck<'db> {
                     let idx = arg.index.expect("arg index to be resolved");
 
                     if let Some(param) = fun_ty.params.get(idx) {
-                        println!(
-                            "before: {} <=> {}",
-                            self.normalize(arg.expr.ty).display(self.db),
-                            self.normalize(param.ty).display(self.db)
-                        );
                         self.at(Obligation::obvious(arg.expr.span))
                             .eq(param.ty, arg.expr.ty)
                             .or_coerce(self, arg.expr.id)?;
-                        println!(
-                            "after: {} <=> {}",
-                            self.normalize(arg.expr.ty).display(self.db),
-                            self.normalize(param.ty).display(self.db)
-                        );
                     }
                 }
 
