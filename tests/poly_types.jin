@@ -5,6 +5,7 @@ type Box[a](value: a)
 fn main() unit = {
 	print(Box(1).value)
 	print(Box(3.0).value)
+	print(Box(42))
 }
 
 fn print(value: int) unit = {
