@@ -1285,33 +1285,41 @@ impl<'db> Typeck<'db> {
                         "expected {expected} type arguments, found {found}"
                     ))));
             }
-            _ => {
-                let env_fn_ty_params = env
-                    .fn_id()
-                    .map_or(vec![], |id| self.db[id].ty.collect_params());
-
-                ty_params
-                    .into_iter()
-                    .map(|param| {
-                        (
-                            param.var,
-                            // If the type param is one of the current function's type
-                            // params, we don't want to instantiate it
-                            if env_fn_ty_params
-                                .iter()
-                                .any(|p| p.var == param.var)
-                            {
-                                Ty::new(TyKind::Param(param))
-                            } else {
-                                self.fresh_ty_var()
-                            },
-                        )
-                    })
-                    .collect()
-            }
+            _ => self.fresh_instantiation(env, ty_params),
         };
 
         Ok((instantiate(ty, &instantiation), instantiation))
+    }
+
+    fn fresh_instantiation(
+        &mut self,
+        env: &Env,
+        ty_params: Vec<ParamTy>,
+    ) -> Instantiation {
+        let env_fn_ty_params =
+            env.fn_id().map_or(vec![], |id| self.db[id].ty.collect_params());
+
+        ty_params
+            .into_iter()
+            .map(|param| {
+                (
+                    param.var,
+                    // If the type param is one of the current function's type
+                    // params, we don't want to instantiate it
+                    if env_fn_ty_params.iter().any(|p| p.var == param.var) {
+                        Ty::new(TyKind::Param(param))
+                    } else {
+                        self.fresh_ty_var()
+                    },
+                )
+            })
+            .collect()
+    }
+
+    fn fresh_adt_instantiation(&self, adt: &Adt) -> Instantiation {
+        let targs: Vec<_> =
+            adt.ty_params.iter().map(|_| self.fresh_ty_var()).collect();
+        adt.instantiation(&targs)
     }
 
     fn check_field(
@@ -1349,8 +1357,10 @@ impl<'db> Typeck<'db> {
                                     ));
                             }
 
-                            // TODO: todo!("replace field ty w/ poly one");
-                            field.ty
+                            let instantiation =
+                                self.fresh_adt_instantiation(adt);
+
+                            instantiate(field.ty, &instantiation)
                         } else {
                             return Err(errors::field_not_found(
                                 self.db, ty, expr.span, field,
