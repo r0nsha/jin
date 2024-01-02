@@ -217,7 +217,7 @@ impl UnifyCx<'_, '_> {
             }
 
             (TyKind::Adt(id_a, targs_a), TyKind::Adt(id_b, targs_b)) => {
-                if id_a == id_b {
+                if id_a == id_b && targs_a.len() == targs_b.len() {
                     for (t1, t2) in targs_a.iter().zip(targs_b.iter()) {
                         self.unify_ty_ty(*t1, *t2)?;
                     }

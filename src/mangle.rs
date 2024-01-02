@@ -44,9 +44,11 @@ pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
             .chain(iter::once(mangle_ty_name(db, f.ret)))
             .collect::<Vec<String>>()
             .join("_"),
-        TyKind::Adt(adt_id, _) => {
-            // TODO: todo!("include ty args");
-            db.adt_def(*adt_id).unwrap().qpath.join_with("_")
+        TyKind::Adt(adt_id, targs) => {
+            iter::once(db.adt_def(*adt_id).unwrap().qpath.join_with("_"))
+                .chain(targs.iter().map(|ty| mangle_ty_name(db, *ty)))
+                .collect::<Vec<String>>()
+                .join("_")
         }
         TyKind::Ref(inner, mutability) => {
             format!("ref_{}_{}", mutability, mangle_ty_name(db, *inner))
