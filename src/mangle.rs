@@ -3,7 +3,7 @@ use std::iter;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    db::Db,
+    db::{Adt, Db},
     hir,
     ty::{Ty, TyKind},
 };
@@ -64,4 +64,22 @@ pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
         | TyKind::Never => ty.to_string(db),
         _ => unreachable!("unexpected ty {ty:?}"),
     }
+}
+
+pub fn mangle_adt(db: &Db, adt: &Adt, targs: &[Ty]) -> Ustr {
+    let adt_name = db[adt.def_id].qpath.join_with("_");
+
+    let targs_str = targs
+        .iter()
+        .map(|ty| mangle_ty_name(db, *ty))
+        .collect::<Vec<String>>()
+        .join("_");
+
+    let mangle_name = if targs_str.is_empty() {
+        adt_name
+    } else {
+        format!("{adt_name}_{targs_str}")
+    };
+
+    ustr(&mangle_name)
 }

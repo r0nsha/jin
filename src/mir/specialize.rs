@@ -5,7 +5,7 @@ use ustr::ustr;
 
 use crate::{
     db::Db,
-    hir::mangle,
+    mangle,
     mir::*,
     subst::{ParamFolder, Subst},
     ty::{Instantiation, Ty},

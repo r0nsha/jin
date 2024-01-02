@@ -16,13 +16,15 @@ use crate::{
         },
     },
     db::{AdtId, AdtKind, Db, StructDef, StructKind},
+    mangle,
     middle::{Pat, UnOp},
     mir::{
         Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir,
         StaticGlobal, ValueId, ValueKind,
     },
+    subst::ParamFolder,
     target::TargetMetrics,
-    ty::{Ty, TyKind},
+    ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };
 
 const PRELUDE: &str = include_str!("../../rt/jin.c");
@@ -197,46 +199,38 @@ impl<'db> Generator<'db> {
     fn codegen_adt(&mut self, adt_id: AdtId, targs: &[Ty]) {
         let adt = &self.db[adt_id];
 
-        let adt_name = ustr(&self.db[adt.def_id].qpath.join_with("_"));
-        todo!("mangle {adt_name} with {targs:?}");
+        let adt_name = mangle::mangle_adt(self.db, adt, targs);
         self.adt_names.insert(adt_id, adt_name);
+
+        let instantiation = adt.instantiation(targs);
 
         match &adt.kind {
             AdtKind::Struct(struct_def) => {
                 // PERF: cloning `struct_def` here to avoid borrowck errors...
-                self.codegen_struct_def(adt_name, &struct_def.clone());
+                self.codegen_struct_def(
+                    adt_name,
+                    &struct_def.clone(),
+                    &instantiation,
+                );
             }
         }
     }
 
-    fn codegen_struct_def(&mut self, adt_name: Ustr, struct_def: &StructDef) {
+    fn codegen_struct_def(
+        &mut self,
+        adt_name: Ustr,
+        struct_def: &StructDef,
+        instantiation: &Instantiation,
+    ) {
         match struct_def.kind {
             StructKind::Ref => {
                 let data_name = D::text(format!("{adt_name}__data"));
 
-                let data_typedef = stmt(|| {
-                    D::text("typedef")
-                        .append(D::space())
-                        .append(D::text("struct"))
-                        .append(D::space())
-                        .append(data_name.clone())
-                        .append(D::space())
-                        .append(block(|| {
-                            D::intersperse(
-                                struct_def.fields.iter().map(|f| {
-                                    stmt(|| {
-                                        f.ty.cdecl(
-                                            self,
-                                            D::text(f.name.name().as_str()),
-                                        )
-                                    })
-                                }),
-                                D::hardline(),
-                            )
-                        }))
-                        .append(D::space())
-                        .append(data_name.clone())
-                });
+                self.codegen_struct_typedef(
+                    struct_def,
+                    data_name.clone(),
+                    instantiation,
+                );
 
                 let rc_name = D::text(adt_name.as_str());
 
@@ -268,40 +262,52 @@ impl<'db> Generator<'db> {
                         .append(rc_name)
                 });
 
-                self.types.push(data_typedef);
                 self.types.push(rc_typedef);
                 // D::intersperse([data_typedef, rc_typedef], D::hardline())
             }
             StructKind::Extern => {
-                let adt_name = D::text(adt_name.as_str());
-
-                let typedef = stmt(|| {
-                    D::text("typedef")
-                        .append(D::space())
-                        .append(D::text("struct"))
-                        .append(D::space())
-                        .append(adt_name.clone())
-                        .append(D::space())
-                        .append(block(|| {
-                            D::intersperse(
-                                struct_def.fields.iter().map(|f| {
-                                    stmt(|| {
-                                        f.ty.cdecl(
-                                            self,
-                                            D::text(f.name.name().as_str()),
-                                        )
-                                    })
-                                }),
-                                D::hardline(),
-                            )
-                        }))
-                        .append(D::space())
-                        .append(adt_name)
-                });
-
-                self.types.push(typedef);
+                self.codegen_struct_typedef(
+                    struct_def,
+                    D::text(adt_name.as_str()),
+                    instantiation,
+                );
             }
         }
+    }
+
+    fn codegen_struct_typedef(
+        &mut self,
+        struct_def: &StructDef,
+        name: D<'db>,
+        instantiation: &Instantiation,
+    ) {
+        let mut folder = ParamFolder::from(instantiation);
+
+        let typedef = stmt(|| {
+            D::text("typedef")
+                .append(D::space())
+                .append(D::text("struct"))
+                .append(D::space())
+                .append(name.clone())
+                .append(D::space())
+                .append(block(|| {
+                    D::intersperse(
+                        struct_def.fields.iter().map(|f| {
+                            stmt(|| {
+                                folder.fold(f.ty).cdecl(
+                                    self,
+                                    D::text(f.name.name().as_str()),
+                                )
+                            })
+                        }),
+                        D::hardline(),
+                    )
+                }))
+                .append(D::space())
+                .append(name)
+        });
+
+        self.types.push(typedef);
     }
 
     fn codegen_fn_sig(&mut self, sig: &FnSig) -> D<'db> {

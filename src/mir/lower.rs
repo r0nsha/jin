@@ -10,6 +10,7 @@ use crate::{
     hir,
     hir::{FnKind, Hir},
     macros::create_bool_enum,
+    mangle,
     middle::{Mutability, NamePat, Pat, Vis},
     mir::*,
     span::Spanned,
@@ -53,7 +54,7 @@ impl<'db> Lower<'db> {
             let name = if is_extern {
                 def.name
             } else {
-                hir::mangle::mangle_fn_name(self.db, fun)
+                mangle::mangle_fn_name(self.db, fun)
             };
             let sig = self.lower_fn_sig(&fun.sig, &fun.kind, name);
             self.id_to_fn_sig.insert(fun.def_id, sig);
@@ -618,20 +619,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         id: DefId,
         instantiation: &Instantiation,
     ) -> ValueId {
-        match self.cx.db[id].kind.as_ref() {
+        let value = match self.cx.db[id].kind.as_ref() {
             DefKind::Fn(_) => {
                 let id = self.cx.id_to_fn_sig[&id];
 
-                let value = self.create_value(
-                    self.cx.mir.fn_sigs[id].ty,
-                    ValueKind::Fn(id),
-                );
-
-                if !instantiation.is_empty() {
-                    self.body.create_instantation(value, instantiation.clone());
-                }
-
-                value
+                self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
             }
             DefKind::ExternGlobal | DefKind::Global => {
                 let id = self.cx.lower_global(id);
@@ -646,7 +638,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
             }
             DefKind::Ty(_) => unreachable!("{:?}", &self.cx.db[id]),
+        };
+
+        if !instantiation.is_empty() {
+            self.body.create_instantation(value, instantiation.clone());
         }
+
+        value
     }
 
     pub fn lower_const(&mut self, value: &Const, ty: Ty) -> ValueId {

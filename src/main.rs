@@ -35,6 +35,7 @@ mod target;
 mod ty;
 mod typeck;
 mod word;
+mod mangle;
 
 use std::fs;
 
