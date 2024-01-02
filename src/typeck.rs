@@ -1349,7 +1349,7 @@ impl<'db> Typeck<'db> {
                                     ));
                             }
 
-                            todo!("replace field ty w/ poly one");
+                            // TODO: todo!("replace field ty w/ poly one");
                             field.ty
                         } else {
                             return Err(errors::field_not_found(
