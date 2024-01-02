@@ -319,6 +319,7 @@ pub struct NamePat {
     pub word: Word,
     pub vis: Vis,
     pub mutability: Mutability,
+    pub ty: Ty,
 }
 
 impl Spanned for NamePat {

@@ -21,6 +21,7 @@ use crate::{
     parse::errors,
     qpath::QPath,
     span::{Source, SourceId, Span, Spanned},
+    ty::TyKind,
     word::Word,
 };
 
@@ -346,6 +347,7 @@ impl<'a> Parser<'a> {
                     word: tok.word(),
                     vis,
                     mutability,
+                    ty: TyKind::Unknown.into(),
                 }))
             }
             TokenKind::Underscore => Ok(Pat::Discard(tok.span)),

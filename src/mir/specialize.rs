@@ -8,7 +8,7 @@ use crate::{
     hir::mangle,
     mir::*,
     subst::{ParamFolder, Subst},
-    ty::{fold::TyFolder, Instantiation, Ty},
+    ty::{Instantiation, Ty},
 };
 
 pub fn specialize(db: &mut Db, mir: &mut Mir) {
@@ -189,8 +189,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
     ) -> ValueKind {
         match value_kind {
             &ValueKind::Fn(id) => {
-                let ty = ParamFolder { db: self.cx.db, instantiation }
-                    .fold(mir.fn_sigs[id].ty);
+                let ty = instantiation.fold(mir.fn_sigs[id].ty);
 
                 let specialized_fn = SpecializedFn { id, ty };
 
@@ -227,7 +226,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
         let mut fun = mir.fns.get(&old_sig_id).expect("fn to exist").clone();
 
         fun.sig = new_sig_id;
-        fun.subst(&mut ParamFolder { db: self.cx.db, instantiation });
+        fun.subst(&mut ParamFolder::from(instantiation));
 
         self.specialized_mir.fns.insert(new_sig_id, fun);
         self.cx.work.push(Job { target: JobTarget::Fn(new_sig_id) });
@@ -243,7 +242,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
         instantiation: &Instantiation,
     ) -> FnSigId {
         let mut sig = mir.fn_sigs[specialized_fn.id].clone();
-        sig.subst(&mut ParamFolder { db: self.cx.db, instantiation });
+        sig.subst(&mut ParamFolder::from(instantiation));
 
         let instantation_str = instantiation
             .tys()

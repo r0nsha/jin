@@ -72,13 +72,6 @@ impl<S: SubstTy> Subst<S> for Fn {
             FnKind::Bare { body } => body.subst(s),
             FnKind::Extern { .. } => (),
         }
-
-        let ty = {
-            let ty = s.db()[self.def_id].ty;
-            s.subst_ty(ty, self.span)
-        };
-
-        s.db()[self.def_id].ty = ty;
     }
 }
 

@@ -12,8 +12,12 @@ use ustr::Ustr;
 use crate::{
     db::{AdtId, Db, ModuleId},
     middle::Mutability,
+    subst::ParamFolder,
     target::TargetMetrics,
-    ty::printer::{FnTyPrinter, TyPrinter},
+    ty::{
+        fold::TyFolder,
+        printer::{FnTyPrinter, TyPrinter},
+    },
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -615,6 +619,10 @@ impl Instantiation {
 
     pub fn tys_mut(&mut self) -> impl Iterator<Item = &mut Ty> + '_ {
         self.0.values_mut()
+    }
+
+    pub fn fold(&self, ty: Ty) -> Ty {
+        ParamFolder { instantiation: self }.fold(ty)
     }
 }
 

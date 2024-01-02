@@ -1,5 +1,4 @@
 use crate::{
-    db::Db,
     middle::Pat,
     span::{Span, Spanned},
     ty::{fold::TyFolder, Instantiation, Ty, TyKind},
@@ -7,7 +6,6 @@ use crate::{
 
 pub trait SubstTy {
     fn subst_ty(&mut self, ty: Ty, span: Span) -> Ty;
-    fn db(&mut self) -> &mut Db;
 }
 
 pub trait Subst<S: SubstTy> {
@@ -18,8 +16,7 @@ impl<S: SubstTy> Subst<S> for Pat {
     fn subst(&mut self, s: &mut S) {
         match self {
             Pat::Name(name) => {
-                let ty = s.db()[name.id].ty;
-                s.db()[name.id].ty = s.subst_ty(ty, name.span());
+                name.ty = s.subst_ty(name.ty, name.span());
             }
             Pat::Discard(_) => (),
         }
@@ -36,22 +33,29 @@ pub fn subst_instantation(
     }
 }
 
-pub struct ParamFolder<'db, 'a> {
-    pub db: &'db mut Db,
+pub struct ParamFolder<'a> {
     pub instantiation: &'a Instantiation,
 }
 
-impl SubstTy for ParamFolder<'_, '_> {
-    fn subst_ty(&mut self, ty: Ty, _: Span) -> Ty {
-        self.fold(ty)
-    }
-
-    fn db(&mut self) -> &mut Db {
-        self.db
+impl<'a> ParamFolder<'a> {
+    pub fn new(instantiation: &'a Instantiation) -> Self {
+        Self { instantiation }
     }
 }
 
-impl TyFolder for ParamFolder<'_, '_> {
+impl<'a> From<&'a Instantiation> for ParamFolder<'a> {
+    fn from(value: &'a Instantiation) -> Self {
+        Self::new(value)
+    }
+}
+
+impl SubstTy for ParamFolder<'_> {
+    fn subst_ty(&mut self, ty: Ty, _: Span) -> Ty {
+        self.fold(ty)
+    }
+}
+
+impl TyFolder for ParamFolder<'_> {
     fn fold(&mut self, ty: Ty) -> Ty {
         match ty.kind() {
             TyKind::Param(p) => self.instantiation[p.var],

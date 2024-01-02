@@ -64,10 +64,6 @@ impl SubstTy for SubstCx<'_> {
 
         ty
     }
-
-    fn db(&mut self) -> &mut Db {
-        self.db
-    }
 }
 
 struct VarFolder<'db, 'a> {

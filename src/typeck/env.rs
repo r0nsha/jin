@@ -227,7 +227,7 @@ impl<'db> Typeck<'db> {
                     ty,
                 )?;
 
-                Ok(Pat::Name(NamePat { id, ..name.clone() }))
+                Ok(Pat::Name(NamePat { id, ty, ..name.clone() }))
             }
             Pat::Discard(span) => Ok(Pat::Discard(*span)),
         }
@@ -417,11 +417,13 @@ impl<'db> Typeck<'db> {
         {
             return Err(Diagnostic::error()
                 .with_message(format!(
-                    "all functions which apply to `{}` are private to their module",
+                    "all functions which apply to `{}` are private to their \
+                     module",
                     query.display(self.db)
                 ))
                 .with_label(
-                    Label::primary(query.word.span()).with_message("no accessible function found"),
+                    Label::primary(query.word.span())
+                        .with_message("no accessible function found"),
                 ));
         }
 

@@ -54,7 +54,7 @@ impl<'db> Lower<'db> {
             } else {
                 hir::mangle::mangle_fn_name(self.db, fun)
             };
-            let sig = self.lower_fn_sig(&fun.sig, &fun.kind, name, def.ty);
+            let sig = self.lower_fn_sig(&fun.sig, &fun.kind, name);
             self.id_to_fn_sig.insert(fun.def_id, sig);
         }
 
@@ -141,6 +141,7 @@ impl<'db> Lower<'db> {
                     word: field.name,
                     vis: Vis::Private,
                     mutability: Mutability::Imm,
+                    ty: field.ty,
                 }),
                 ty: field.ty,
             })
@@ -201,7 +202,6 @@ impl<'db> Lower<'db> {
         sig: &hir::FnSig,
         kind: &hir::FnKind,
         name: Ustr,
-        ty: Ty,
     ) -> FnSigId {
         let (is_extern, is_c_variadic) = match kind {
             FnKind::Bare { .. } => (false, false),
@@ -216,7 +216,7 @@ impl<'db> Lower<'db> {
                 .iter()
                 .map(|p| FnParam { pat: p.pat.clone(), ty: p.ty })
                 .collect(),
-            ty,
+            ty: sig.ty,
             is_extern,
             is_c_variadic,
             span: sig.word.span(),
@@ -317,7 +317,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         match &let_.pat {
             Pat::Name(name) => {
                 let full_name = self.cx.db[name.id].qpath.join_with("_");
-                let ty = self.cx.db[name.id].ty;
+                let ty = name.ty;
 
                 self.enter_scope(ScopeKind::Block, let_.value.span);
                 let start_blk = self.body.create_block("start");

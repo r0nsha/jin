@@ -41,7 +41,7 @@ struct PrettyCx<'db> {
 
 impl PrettyCx<'_> {
     fn pp_fn(&mut self, f: &Fn) {
-        let fn_ty = self.db[f.def_id].ty.as_fn().expect("to be a function");
+        let fn_ty = f.sig.ty.as_fn().expect("to be a function");
 
         self.builder.begin_child(format!(
             "fn {} (returns: {}{})",
