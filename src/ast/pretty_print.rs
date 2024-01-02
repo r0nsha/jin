@@ -356,12 +356,12 @@ impl PrettyPrint for TyExpr {
                 pointee.pretty_print(cx);
                 cx.builder.end_child();
             }
-            TyExpr::Name(name) => {
-                cx.builder.add_empty_child(name.word.to_string());
+            TyExpr::Name(name, targs, _) => {
+                cx.builder.add_empty_child(name.to_string());
 
-                if !name.ty_args.is_empty() {
+                if let Some(targs) = targs {
                     cx.builder.begin_child("type args".to_string());
-                    for arg in &name.ty_args {
+                    for arg in targs {
                         arg.pretty_print(cx);
                     }
                     cx.builder.end_child();

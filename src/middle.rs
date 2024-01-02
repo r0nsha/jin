@@ -223,7 +223,7 @@ pub enum TyExpr {
     Fn(TyExprFn),
     Ref(Box<TyExpr>, Mutability, Span),
     RawPtr(Box<TyExpr>, Span),
-    Name(TyExprName),
+    Name(Word, Option<Vec<TyExpr>>, Span),
     Hole(Span),
 }
 
@@ -233,7 +233,7 @@ impl Spanned for TyExpr {
             Self::Fn(TyExprFn { span, .. })
             | Self::Ref(_, _, span)
             | Self::RawPtr(_, span)
-            | Self::Name(TyExprName { span, .. })
+            | Self::Name(_, _, span)
             | Self::Hole(span) => *span,
         }
     }
@@ -244,13 +244,6 @@ pub struct TyExprFn {
     pub params: Vec<TyExpr>,
     pub ret: Box<TyExpr>,
     pub is_c_variadic: bool,
-    pub span: Span,
-}
-
-#[derive(Debug, Clone)]
-pub struct TyExprName {
-    pub word: Word,
-    pub ty_args: Vec<TyExpr>,
     pub span: Span,
 }
 

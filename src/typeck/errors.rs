@@ -1,5 +1,5 @@
 use crate::{
-    db::{Db, DefId, ModuleId},
+    db::{AdtId, Db, DefId, ModuleId},
     diagnostics::{Diagnostic, Label},
     span::{Span, Spanned},
     ty::Ty,
@@ -157,4 +157,37 @@ pub fn multiple_fn_def_err(
         .with_note(
             "functions may be overloaded by their parameters' types and names",
         )
+}
+
+pub fn ty_arg_mismatch(
+    expected: usize,
+    found: usize,
+    span: Span,
+) -> Diagnostic {
+    Diagnostic::error()
+        .with_message(format!(
+            "expected {expected} type argument(s), but {found} were supplied"
+        ))
+        .with_label(Label::primary(span).with_message(format!(
+            "expected {expected} type arguments, found {found}"
+        )))
+}
+
+pub fn adt_ty_arg_mismatch(
+    db: &Db,
+    adt_id: AdtId,
+    targ_len: usize,
+    span: Span,
+) -> Diagnostic {
+    let adt = &db[adt_id];
+    let expected = adt.ty_params.len();
+
+    Diagnostic::error()
+        .with_message(format!(
+            "type `{}` expects {} type argument(s), but {} were supplied",
+            adt.name, expected, targ_len
+        ))
+        .with_label(Label::primary(span).with_message(format!(
+            "expected {expected} type arguments, found {targ_len}"
+        )))
 }

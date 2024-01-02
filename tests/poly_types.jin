@@ -7,14 +7,14 @@ fn main() unit = {
 	print(Box(3.0).value)
 }
 
-//fn print(box: &Box) unit = {
-//	printf("Box(%d)\n".ptr, box.value)
-//}
-
 fn print(value: int) unit = {
 	printf("%d\n".ptr, value)
 }
 
 fn print(value: f32) unit = {
 	printf("%f\n".ptr, value)
+}
+
+fn print(box: &Box[int]) unit = {
+	printf("Box(%d)\n".ptr, box.value)
 }

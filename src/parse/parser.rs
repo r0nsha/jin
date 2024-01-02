@@ -14,10 +14,7 @@ use crate::{
     db::{Db, DefId, ExternLib, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     macros::create_bool_enum,
-    middle::{
-        BinOp, Mutability, NamePat, Pat, TyExpr, TyExprFn, TyExprName, UnOp,
-        Vis,
-    },
+    middle::{BinOp, Mutability, NamePat, Pat, TyExpr, TyExprFn, UnOp, Vis},
     parse::errors,
     qpath::QPath,
     span::{Source, SourceId, Span, Spanned},
@@ -685,11 +682,11 @@ impl<'a> Parser<'a> {
                 let span = tok.span.merge(pointee.span());
                 TyExpr::RawPtr(Box::new(pointee), span)
             }
-            TokenKind::Ident(..) => TyExpr::Name(TyExprName {
-                word: tok.word(),
-                ty_args: vec![],
-                span: tok.span,
-            }),
+            TokenKind::Ident(..) => {
+                let word = tok.word();
+                let targs = self.parse_optional_ty_args()?;
+                TyExpr::Name(word, targs, tok.span.merge(self.last_span()))
+            }
             TokenKind::Underscore => TyExpr::Hole(tok.span),
             _ => {
                 return Err(errors::unexpected_token_err(

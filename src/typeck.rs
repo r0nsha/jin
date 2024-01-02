@@ -1230,11 +1230,11 @@ impl<'db> Typeck<'db> {
     fn check_optional_ty_args(
         &mut self,
         env: &Env,
-        ty_args: Option<&[TyExpr]>,
+        targs: Option<&[TyExpr]>,
     ) -> TypeckResult<Option<Vec<Ty>>> {
-        ty_args
-            .map(|ty_args| {
-                ty_args
+        targs
+            .map(|targs| {
+                targs
                     .iter()
                     .map(|arg| self.check_ty_expr(env, arg, AllowTyHole::Yes))
                     .try_collect()
@@ -1248,7 +1248,7 @@ impl<'db> Typeck<'db> {
         &mut self,
         env: &Env,
         ty: Ty,
-        ty_args: Option<&[Ty]>,
+        targs: Option<&[Ty]>,
         span: Span,
     ) -> TypeckResult<(Ty, Instantiation)> {
         let mut ty_params = ty.collect_params();
@@ -1266,24 +1266,18 @@ impl<'db> Typeck<'db> {
             }
         }
 
-        let instantiation: Instantiation = match &ty_args {
+        let instantiation: Instantiation = match &targs {
             Some(args) if args.len() == ty_params.len() => ty_params
                 .into_iter()
                 .zip(args.iter())
                 .map(|(param, arg)| (param.var, *arg))
                 .collect(),
             Some(args) => {
-                let expected = ty_params.len();
-                let found = args.len();
-
-                return Err(Diagnostic::error()
-                    .with_message(format!(
-                        "expected {expected} type argument(s), but {found} \
-                         were supplied"
-                    ))
-                    .with_label(Label::primary(span).with_message(format!(
-                        "expected {expected} type arguments, found {found}"
-                    ))));
+                return Err(errors::ty_arg_mismatch(
+                    ty_params.len(),
+                    args.len(),
+                    span,
+                ));
             }
             _ => self.fresh_instantiation(env, ty_params),
         };
@@ -1724,26 +1718,47 @@ impl<'db> Typeck<'db> {
                 let pointee = self.check_ty_expr(env, pointee, allow_hole)?;
                 Ok(Ty::new(TyKind::RawPtr(pointee)))
             }
-            TyExpr::Name(name) => {
+            TyExpr::Name(name, targs, span) => {
                 let id =
-                    self.lookup(env, env.module_id(), &Query::Name(name.word))?;
+                    self.lookup(env, env.module_id(), &Query::Name(*name))?;
 
                 let def = &self.db[id];
 
                 match def.kind.as_ref() {
                     DefKind::Ty(ty) => {
-                        // TODO: error: type args are invalid here
-                        Ok(*ty)
+                        if targs.is_some() {
+                            Err(Diagnostic::error()
+                                .with_message(format!(
+                                    "type `{}` doesn't expect any type \
+                                     arguments",
+                                    ty.display(self.db)
+                                ))
+                                .with_label(
+                                    Label::primary(*span).with_message(
+                                        "unexpected type arguments",
+                                    ),
+                                ))
+                        } else {
+                            Ok(*ty)
+                        }
                     }
-                    DefKind::Adt(adt_id) => {
-                        // TODO: apply type args to the adt's type params
-                        // let args: Vec<Ty> = name
-                        //     .args
-                        //     .iter()
-                        //     .map(|a| self.check_ty_expr(env, a, allow_hole))
-                        //     .try_collect()?;
+                    &DefKind::Adt(adt_id) => {
+                        let targs =
+                            self.check_optional_ty_args(env, targs.as_deref())?;
 
-                        Ok(Ty::new(TyKind::Adt(*adt_id, vec![])))
+                        let ty_params = &self.db[adt_id].ty_params;
+                        let targs_len = targs.as_ref().map_or(0, Vec::len);
+
+                        if targs_len == ty_params.len() {
+                            Ok(Ty::new(TyKind::Adt(
+                                adt_id,
+                                targs.unwrap_or_default(),
+                            )))
+                        } else {
+                            Err(errors::adt_ty_arg_mismatch(
+                                self.db, adt_id, targs_len, *span,
+                            ))
+                        }
                     }
                     _ => Err(Diagnostic::error()
                         .with_message(format!(
@@ -1751,7 +1766,7 @@ impl<'db> Typeck<'db> {
                             def.ty.display(self.db)
                         ))
                         .with_label(
-                            Label::primary(name.span)
+                            Label::primary(*span)
                                 .with_message("expected a type"),
                         )),
                 }
