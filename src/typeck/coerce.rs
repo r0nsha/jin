@@ -2,7 +2,7 @@ use crate::{
     hir::ExprId,
     middle::Mutability,
     ty::{
-        coerce::{Coercion, CoercionKind},
+        coerce::{Coercion, CoercionKind, Coercions},
         Ty, TyKind,
     },
     typeck::{
@@ -28,8 +28,8 @@ impl CoerceExt<'_> for EqResult {
                     (source, target)
                 };
 
-                if let Some(kind) = source.coerce(&target, cx) {
-                    cx.db.push_coercion(expr_id, Coercion { kind, target });
+                if let Some(coercions) = source.coerce(&target, cx) {
+                    cx.db.push_coercions(expr_id, coercions);
                     Ok(())
                 } else {
                     Err(err)
@@ -40,7 +40,7 @@ impl CoerceExt<'_> for EqResult {
 }
 
 pub trait Coerce<'a> {
-    fn coerce(&self, target: &Self, cx: &Typeck<'a>) -> Option<CoercionKind>;
+    fn coerce(&self, target: &Self, cx: &Typeck<'a>) -> Option<Coercions>;
 
     fn can_coerce(&self, target: &Self, cx: &Typeck<'a>) -> bool {
         self.coerce(target, cx).is_some()
@@ -48,36 +48,65 @@ pub trait Coerce<'a> {
 }
 
 impl<'a> Coerce<'a> for Ty {
-    fn coerce(&self, target: &Self, cx: &Typeck<'a>) -> Option<CoercionKind> {
-        let target_metrics = cx.db.target_metrics();
+    fn coerce(&self, target: &Self, cx: &Typeck<'a>) -> Option<Coercions> {
+        let mut coercions = Coercions::new();
 
-        match (self.kind(), target.kind()) {
-            (TyKind::Never, _) | (TyKind::Unit, TyKind::Never) => {
-                Some(CoercionKind::NeverToAny)
-            }
-            (TyKind::Int(a), TyKind::Int(b))
-                if b.size(target_metrics) >= a.size(target_metrics) =>
-            {
-                Some(CoercionKind::IntPromotion)
-            }
-            (
-                TyKind::Ref(a, Mutability::Mut),
-                TyKind::Ref(b, Mutability::Imm),
-            ) => {
-                if a.can_unify(*b, cx, UnifyOptions::default()).is_ok() {
-                    Some(CoercionKind::MutRefToImm)
-                } else {
-                    None
-                }
-            }
-            (_, TyKind::Ref(b, _)) => {
-                if self.can_unify(*b, cx, UnifyOptions::default()).is_ok() {
-                    Some(CoercionKind::OwnedToRef)
-                } else {
-                    None
-                }
-            }
-            _ => None,
+        if coerce_tys(*self, *target, cx, &mut coercions) {
+            Some(coercions)
+        } else {
+            None
         }
     }
+}
+
+fn coerce_tys(
+    source: Ty,
+    target: Ty,
+    cx: &Typeck,
+    coercions: &mut Coercions,
+) -> bool {
+    let target_metrics = cx.db.target_metrics();
+
+    match (source.kind(), target.kind()) {
+        (TyKind::Never, _) | (TyKind::Unit, TyKind::Never) => {
+            coercions.push(Coercion { kind: CoercionKind::NeverToAny, target });
+            true
+        }
+        (TyKind::Int(a), TyKind::Int(b))
+            if b.size(target_metrics) >= a.size(target_metrics) =>
+        {
+            coercions
+                .push(Coercion { kind: CoercionKind::IntPromotion, target });
+            true
+        }
+        (TyKind::Ref(a, Mutability::Mut), TyKind::Ref(b, Mutability::Imm)) => {
+            if can_unify_or_coerce(*a, *b, cx, coercions) {
+                coercions
+                    .push(Coercion { kind: CoercionKind::MutRefToImm, target });
+                true
+            } else {
+                false
+            }
+        }
+        (_, TyKind::Ref(b, _)) => {
+            if can_unify_or_coerce(source, *b, cx, coercions) {
+                coercions
+                    .push(Coercion { kind: CoercionKind::OwnedToRef, target });
+                true
+            } else {
+                false
+            }
+        }
+        _ => false,
+    }
+}
+
+fn can_unify_or_coerce(
+    source: Ty,
+    target: Ty,
+    cx: &Typeck,
+    coercions: &mut Coercions,
+) -> bool {
+    source.can_unify(target, cx, UnifyOptions::default()).is_ok()
+        || coerce_tys(source, target, cx, coercions)
 }

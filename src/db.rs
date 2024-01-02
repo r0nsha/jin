@@ -30,9 +30,8 @@ use crate::{
     span::{Source, SourceId, Sources, Span},
     target::{TargetMetrics, TargetPlatform},
     ty::{
-        coerce::{Coercion, Coercions},
-        FloatTy, FnTy, FnTyParam, Instantiation, IntTy, Ty, TyKind, Typed,
-        UintTy,
+        coerce::Coercions, FloatTy, FnTy, FnTyParam, Instantiation, IntTy, Ty,
+        TyKind, Typed, UintTy,
     },
     word::Word,
 };
@@ -204,13 +203,13 @@ impl Db {
         self.adts.get(adt_id).and_then(|s| self.defs.get(s.def_id))
     }
 
-    pub fn push_coercion(&mut self, expr_id: ExprId, c: Coercion) {
+    pub fn push_coercions(&mut self, expr_id: ExprId, c: Coercions) {
         match self.coercions.entry(expr_id) {
             Entry::Occupied(mut entry) => {
-                entry.get_mut().push(c);
+                entry.get_mut().extend(c);
             }
             Entry::Vacant(entry) => {
-                entry.insert(Coercions::one(c));
+                entry.insert(c);
             }
         }
     }

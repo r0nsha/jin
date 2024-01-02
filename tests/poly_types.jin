@@ -21,11 +21,7 @@ fn print(box: &Box[int]) unit = {
 	printf("Box(%d)\n".ptr, box.value)
 }
 
-fn print[a](box: Box[a]) unit = {
+// Bug: Multi-level coercions...
+fn print[a](box: &Box[a]) unit = {
 	printf("Box(%f)\n".ptr, box.value)
 }
-
-// Bug: Multi-level coercions...
-//fn print[a](box: Box[a]) unit = {
-//	printf("Box(%f)\n".ptr, box.value)
-//}

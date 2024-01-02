@@ -12,12 +12,24 @@ impl Coercions {
         Self(vec![c])
     }
 
-    pub fn push(&mut self, adj: Coercion) {
-        self.0.push(adj);
+    pub fn push(&mut self, c: Coercion) {
+        self.0.push(c);
+    }
+
+    pub fn extend(&mut self, c: Coercions) {
+        self.0.extend(c.0);
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Coercion> {
         self.0.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
     }
 }
 
