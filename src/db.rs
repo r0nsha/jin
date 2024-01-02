@@ -28,10 +28,13 @@ use crate::{
     middle::{Mutability, TyParam, Vis},
     qpath::QPath,
     span::{Source, SourceId, Sources, Span},
+    subst::ParamFolder,
     target::{TargetMetrics, TargetPlatform},
     ty::{
         coerce::{Coercion, Coercions},
-        FloatTy, FnTy, FnTyParam, IntTy, Ty, TyKind, Typed, UintTy,
+        fold::TyFolder,
+        FloatTy, FnTy, FnTyParam, Instantiation, IntTy, Ty, TyKind, Typed,
+        UintTy,
     },
     word::Word,
 };
@@ -496,6 +499,16 @@ impl Adt {
         TyKind::Adt(self.id, self.ty_params.iter().map(|tp| tp.ty).collect())
             .into()
     }
+
+    pub fn instantiation(&self, targs: &[Ty]) -> Instantiation {
+        debug_assert!(targs.len() == self.ty_params.len());
+
+        self.ty_params
+            .iter()
+            .zip(targs)
+            .map(|(tp, ty)| (tp.ty.as_param().unwrap().var, *ty))
+            .collect()
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -564,6 +577,16 @@ impl StructDef {
 
     pub fn field_by_name(&self, name: &str) -> Option<&StructField> {
         self.fields.iter().find(|f| f.name.name() == name)
+    }
+
+    pub fn field_ty(
+        &self,
+        db: &mut Db,
+        instantiation: &Instantiation,
+        field_idx: usize,
+    ) -> Ty {
+        let field_ty = self.fields[field_idx].ty;
+        ParamFolder { db, instantiation }.fold(field_ty)
     }
 
     pub fn fill_ctor_ty(&mut self, ret: Ty) {

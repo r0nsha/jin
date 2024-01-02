@@ -13,6 +13,7 @@ use crate::{
     middle::{Mutability, NamePat, Pat, Vis},
     mir::*,
     span::Spanned,
+    subst::ParamFolder,
     ty::{
         coerce::{CoercionKind, Coercions},
         Instantiation, Ty, TyKind,
@@ -766,37 +767,31 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let value = self.body.value(value);
 
         if let TyKind::Adt(adt_id, targs) = value.ty.kind() {
-            match &self.cx.db[*adt_id].kind {
+            let adt = &self.cx.db[*adt_id];
+            // let instantiation = adt.instantiation(targs);
+            // let param_folder =
+            //     ParamFolder { db: self.cx.db, instantiation: &instantiation };
+
+            match &adt.kind {
                 AdtKind::Struct(struct_def) => {
                     let value = value.id;
 
-                    todo!(
-                        "Adt::instantiate_field(field_idx: usize, targ_idx: \
-                         usize, targ: Ty)"
-                    );
-                    todo!(
-                        "Adt::instantiate_field - instantiates the given \
-                         field by building an instantiation w/ ParamFolder"
-                    );
-                    todo!("replace field ty w/ targs: {targs:?}");
-                    let fields: FxHashMap<_, _> = struct_def
+                    let fields_to_create: Vec<(Ustr, Ty)> = struct_def
                         .fields
-                        .clone()
-                        .into_iter()
-                        .filter_map(|field| {
-                            let name = field.name.name();
+                        .iter()
+                        .filter(|f| f.ty.is_move(self.cx.db) || f.ty.is_ref())
+                        .map(|f| (f.name.name(), f.ty))
+                        .collect();
 
-                            if field.ty.is_move(self.cx.db) || field.ty.is_ref()
-                            {
-                                let value = self.create_value(
-                                    field.ty,
-                                    ValueKind::Field(value, name),
-                                );
-                                self.create_destroy_flag(value);
-                                Some((name, value))
-                            } else {
-                                None
-                            }
+                    let fields: FxHashMap<_, _> = fields_to_create
+                        .into_iter()
+                        .map(|(name, ty)| {
+                            let value = self.create_value(
+                                ty,
+                                ValueKind::Field(value, name),
+                            );
+                            self.create_destroy_flag(value);
+                            (name, value)
                         })
                         .collect();
 

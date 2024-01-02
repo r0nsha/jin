@@ -357,6 +357,15 @@ impl TyKind {
             _ => false,
         }
     }
+
+    #[must_use]
+    pub fn as_param(&self) -> Option<&ParamTy> {
+        if let Self::Param(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]
