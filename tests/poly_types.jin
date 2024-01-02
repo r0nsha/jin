@@ -6,7 +6,7 @@ fn main() unit = {
 	//print(Box(1).value)
 	//print(Box(3.0).value)
 	//print(Box(42))
-	print(&Box(6.9)) // Should match fn print[a]
+	print(Box(6.9)) // Should match fn print[a]
 }
 
 //fn print(value: int) unit = {
@@ -22,5 +22,5 @@ fn main() unit = {
 //}
 
 fn print[a](box: &Box[a]) unit = {
-	printf("Box(%f)\n".ptr, &box.value)
+	//printf("Box(%f)\n".ptr, &box.value)
 }
