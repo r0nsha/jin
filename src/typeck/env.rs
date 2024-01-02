@@ -914,8 +914,8 @@ impl FnCandidate {
 
         let mut total_score = 0;
 
-        for (param, arg) in self.ty.params.iter().zip(query.args.iter()) {
-            let score = Self::distance(cx, param.ty, arg.ty)?;
+        for (arg, param) in query.args.iter().zip(self.ty.params.iter()) {
+            let score = Self::distance(cx, arg.ty, param.ty)?;
             total_score += score as u32;
         }
 
@@ -925,19 +925,16 @@ impl FnCandidate {
     // Calculates the distance between an argument and the parameter it is applied to.
     // The actual distance is calculated by the amount of "steps"
     // required to convert the argument to the parameter.
-    fn distance(cx: &Typeck, param: Ty, arg: Ty) -> Option<FnCandidateScore> {
-        if param.can_unify(arg, cx, UnifyOptions::default()).is_ok() {
+    fn distance(cx: &Typeck, arg: Ty, param: Ty) -> Option<FnCandidateScore> {
+        if arg.can_unify(param, cx, UnifyOptions::default()).is_ok() {
             return Some(FnCandidateScore::Eq);
         }
 
-        if arg.can_coerce(&param, cx) {
+        if arg.can_coerce(&param, cx, UnifyOptions::default()) {
             return Some(FnCandidateScore::Coerce);
         }
 
-        if param
-            .can_unify(arg, cx, UnifyOptions { unify_param_tys: true })
-            .is_ok()
-        {
+        if arg.can_coerce(&param, cx, UnifyOptions { unify_param_tys: true }) {
             return Some(FnCandidateScore::Polymorphic);
         }
 

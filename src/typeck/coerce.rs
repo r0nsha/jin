@@ -40,18 +40,37 @@ impl CoerceExt<'_> for EqResult {
 }
 
 pub trait Coerce<'a> {
-    fn coerce(&self, target: &Self, cx: &Typeck<'a>) -> Option<Coercions>;
+    fn coerce_ex(
+        &self,
+        target: &Self,
+        cx: &Typeck<'a>,
+        options: UnifyOptions,
+    ) -> Option<Coercions>;
 
-    fn can_coerce(&self, target: &Self, cx: &Typeck<'a>) -> bool {
-        self.coerce(target, cx).is_some()
+    fn coerce(&self, target: &Self, cx: &Typeck<'a>) -> Option<Coercions> {
+        self.coerce_ex(target, cx, UnifyOptions::default())
+    }
+
+    fn can_coerce(
+        &self,
+        target: &Self,
+        cx: &Typeck<'a>,
+        options: UnifyOptions,
+    ) -> bool {
+        self.coerce_ex(target, cx, options).is_some()
     }
 }
 
 impl<'a> Coerce<'a> for Ty {
-    fn coerce(&self, target: &Self, cx: &Typeck<'a>) -> Option<Coercions> {
+    fn coerce_ex(
+        &self,
+        target: &Self,
+        cx: &Typeck<'a>,
+        options: UnifyOptions,
+    ) -> Option<Coercions> {
         let mut coercions = Coercions::new();
 
-        if coerce_tys(*self, *target, cx, &mut coercions) {
+        if coerce_tys(*self, *target, cx, &mut coercions, options) {
             Some(coercions)
         } else {
             None
@@ -64,6 +83,7 @@ fn coerce_tys(
     target: Ty,
     cx: &Typeck,
     coercions: &mut Coercions,
+    options: UnifyOptions,
 ) -> bool {
     let target_metrics = cx.db.target_metrics();
 
@@ -80,7 +100,7 @@ fn coerce_tys(
             true
         }
         (TyKind::Ref(a, Mutability::Mut), TyKind::Ref(b, Mutability::Imm)) => {
-            if can_unify_or_coerce(*a, *b, cx, coercions) {
+            if can_unify_or_coerce(*a, *b, cx, coercions, options) {
                 coercions
                     .push(Coercion { kind: CoercionKind::MutRefToImm, target });
                 true
@@ -89,7 +109,7 @@ fn coerce_tys(
             }
         }
         (_, TyKind::Ref(b, _)) => {
-            if can_unify_or_coerce(source, *b, cx, coercions) {
+            if can_unify_or_coerce(source, *b, cx, coercions, options) {
                 coercions
                     .push(Coercion { kind: CoercionKind::OwnedToRef, target });
                 true
@@ -106,7 +126,8 @@ fn can_unify_or_coerce(
     target: Ty,
     cx: &Typeck,
     coercions: &mut Coercions,
+    options: UnifyOptions,
 ) -> bool {
-    source.can_unify(target, cx, UnifyOptions::default()).is_ok()
-        || coerce_tys(source, target, cx, coercions)
+    source.can_unify(target, cx, options).is_ok()
+        || coerce_tys(source, target, cx, coercions, options)
 }
