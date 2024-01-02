@@ -1316,12 +1316,6 @@ impl<'db> Typeck<'db> {
             .collect()
     }
 
-    fn fresh_adt_instantiation(&self, adt: &Adt) -> Instantiation {
-        let targs: Vec<_> =
-            adt.ty_params.iter().map(|_| self.fresh_ty_var()).collect();
-        adt.instantiation(&targs)
-    }
-
     fn check_field(
         &mut self,
         env: &Env,
@@ -1332,7 +1326,7 @@ impl<'db> Typeck<'db> {
         let ty = self.normalize(expr.ty).auto_deref();
 
         let res_ty = match ty.kind() {
-            TyKind::Adt(adt_id, _) => {
+            TyKind::Adt(adt_id, targs) => {
                 // TODO: ty_args are an error here
 
                 let adt = &self.db[*adt_id];
@@ -1357,8 +1351,7 @@ impl<'db> Typeck<'db> {
                                     ));
                             }
 
-                            let instantiation =
-                                self.fresh_adt_instantiation(adt);
+                            let instantiation = adt.instantiation(targs);
 
                             instantiate(field.ty, &instantiation)
                         } else {
