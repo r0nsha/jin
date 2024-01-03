@@ -1,7 +1,7 @@
 use crate::{
     middle::Pat,
     span::{Span, Spanned},
-    ty::{fold::TyFolder, Instantiation, Ty, TyKind},
+    ty::{Instantiation, Ty},
 };
 
 pub trait SubstTy {
@@ -30,46 +30,5 @@ pub fn subst_instantation(
 ) {
     for ty in instantiation.tys_mut() {
         *ty = s.subst_ty(*ty, span);
-    }
-}
-
-pub struct ParamFolder<'a> {
-    pub instantiation: &'a Instantiation,
-}
-
-impl<'a> ParamFolder<'a> {
-    pub fn new(instantiation: &'a Instantiation) -> Self {
-        Self { instantiation }
-    }
-}
-
-impl<'a> From<&'a Instantiation> for ParamFolder<'a> {
-    fn from(value: &'a Instantiation) -> Self {
-        Self::new(value)
-    }
-}
-
-impl SubstTy for ParamFolder<'_> {
-    fn subst_ty(&mut self, ty: Ty, _: Span) -> Ty {
-        self.fold(ty)
-    }
-}
-
-impl TyFolder for ParamFolder<'_> {
-    fn fold(&mut self, ty: Ty) -> Ty {
-        match ty.kind() {
-            TyKind::Param(p) => match self.instantiation.get(p.var) {
-                Some(ty) => ty,
-                None => {
-                    // NOTE: It currently makes sense to not instantiate params that are part of
-                    // the currently typechecked function.
-                    panic!(
-                        "type param `{:?}` not part of instantation: {:?}",
-                        p, self.instantiation
-                    )
-                }
-            },
-            _ => self.super_fold(ty),
-        }
     }
 }

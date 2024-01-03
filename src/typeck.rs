@@ -3,7 +3,6 @@ mod coerce;
 mod collect;
 mod env;
 mod errors;
-mod instantiate;
 mod late;
 mod normalize;
 mod resolution_state;
@@ -39,7 +38,6 @@ use crate::{
             BuiltinTys, Env, FnQuery, GlobalScope, LookupResult, Query,
             ScopeKind, Symbol,
         },
-        instantiate::instantiate,
         normalize::NormalizeTy,
         resolution_state::{ModuleStatus, ResolutionState, ResolvedFnSig},
         unify::Obligation,
@@ -1295,7 +1293,7 @@ impl<'db> Typeck<'db> {
             _ => self.fresh_instantiation(env, ty_params),
         };
 
-        Ok((instantiate(ty, &instantiation), instantiation))
+        Ok((instantiation.fold(ty), instantiation))
     }
 
     fn fresh_instantiation(
@@ -1358,9 +1356,7 @@ impl<'db> Typeck<'db> {
                                     ));
                             }
 
-                            let instantiation = adt.instantiation(targs);
-
-                            instantiate(field.ty, &instantiation)
+                            adt.instantiation(targs).fold(field.ty)
                         } else {
                             return Err(errors::field_not_found(
                                 self.db, ty, expr.span, field,

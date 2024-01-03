@@ -14,7 +14,6 @@ use crate::{
     middle::{Mutability, NamePat, Pat, Vis},
     mir::*,
     span::Spanned,
-    subst::ParamFolder,
     ty::{
         coerce::{CoercionKind, Coercions},
         fold::TyFolder,
@@ -768,7 +767,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         if let TyKind::Adt(adt_id, targs) = value.ty.kind() {
             let adt = &self.cx.db[*adt_id];
             let instantiation = adt.instantiation(targs);
-            let mut folder = ParamFolder::from(&instantiation);
+            let mut folder = instantiation.folder();
 
             match &adt.kind {
                 AdtKind::Struct(struct_def) => {

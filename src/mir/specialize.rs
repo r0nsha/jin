@@ -7,7 +7,7 @@ use crate::{
     db::Db,
     mangle,
     mir::*,
-    subst::{ParamFolder, Subst},
+    subst::Subst,
     ty::{Instantiation, Ty, TyKind},
 };
 
@@ -232,7 +232,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
         let mut fun = mir.fns.get(&old_sig_id).expect("fn to exist").clone();
 
         fun.sig = new_sig_id;
-        fun.subst(&mut ParamFolder::from(instantiation));
+        fun.subst(&mut instantiation.folder());
 
         self.specialized_mir.fns.insert(new_sig_id, fun);
         self.cx.work.push(Job { target: JobTarget::Fn(new_sig_id) });
@@ -248,7 +248,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
         instantiation: &Instantiation,
     ) -> FnSigId {
         let mut sig = mir.fn_sigs[specialized_fn.id].clone();
-        sig.subst(&mut ParamFolder::from(instantiation));
+        sig.subst(&mut instantiation.folder());
 
         let instantation_str = instantiation
             .tys()

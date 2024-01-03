@@ -22,7 +22,6 @@ use crate::{
         Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir,
         StaticGlobal, ValueId, ValueKind,
     },
-    subst::ParamFolder,
     target::TargetMetrics,
     ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };
@@ -286,7 +285,7 @@ impl<'db> Generator<'db> {
         name: D<'db>,
         instantiation: &Instantiation,
     ) {
-        let mut folder = ParamFolder::from(instantiation);
+        let mut folder = instantiation.folder();
 
         let typedef = stmt(|| {
             D::text("typedef")

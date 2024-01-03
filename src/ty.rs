@@ -12,7 +12,8 @@ use ustr::Ustr;
 use crate::{
     db::{AdtId, Db, ModuleId},
     middle::Mutability,
-    subst::ParamFolder,
+    span::Span,
+    subst::SubstTy,
     target::TargetMetrics,
     ty::{
         fold::TyFolder,
@@ -641,8 +642,12 @@ impl Instantiation {
         self.0.values_mut()
     }
 
+    pub fn folder(&self) -> ParamFolder {
+        ParamFolder { instantiation: self }
+    }
+
     pub fn fold(&self, ty: Ty) -> Ty {
-        ParamFolder { instantiation: self }.fold(ty)
+        self.folder().fold(ty)
     }
 }
 
@@ -666,5 +671,46 @@ impl ops::IndexMut<TyVar> for Instantiation {
 impl FromIterator<(TyVar, Ty)> for Instantiation {
     fn from_iter<T: IntoIterator<Item = (TyVar, Ty)>>(iter: T) -> Self {
         Self(iter.into_iter().collect())
+    }
+}
+
+pub struct ParamFolder<'a> {
+    pub instantiation: &'a Instantiation,
+}
+
+impl<'a> ParamFolder<'a> {
+    pub fn new(instantiation: &'a Instantiation) -> Self {
+        Self { instantiation }
+    }
+}
+
+impl<'a> From<&'a Instantiation> for ParamFolder<'a> {
+    fn from(value: &'a Instantiation) -> Self {
+        Self::new(value)
+    }
+}
+
+impl SubstTy for ParamFolder<'_> {
+    fn subst_ty(&mut self, ty: Ty, _: Span) -> Ty {
+        self.fold(ty)
+    }
+}
+
+impl TyFolder for ParamFolder<'_> {
+    fn fold(&mut self, ty: Ty) -> Ty {
+        match ty.kind() {
+            TyKind::Param(p) => match self.instantiation.get(p.var) {
+                Some(ty) => ty,
+                None => {
+                    // NOTE: It currently makes sense to not instantiate params that are part of
+                    // the currently typechecked function.
+                    panic!(
+                        "type param `{:?}` not part of instantation: {:?}",
+                        p, self.instantiation
+                    )
+                }
+            },
+            _ => self.super_fold(ty),
+        }
     }
 }
