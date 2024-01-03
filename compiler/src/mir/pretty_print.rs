@@ -178,16 +178,6 @@ impl<'db> PrettyCx<'db> {
                 } else {
                     D::nil()
                 }),
-            Inst::If { value, cond, then, otherwise } => self
-                .value_assign(body, *value)
-                .append(D::text("if"))
-                .append(D::text("("))
-                .append(self.value(body, *cond))
-                .append(D::text(")"))
-                .append(D::space())
-                .append(self.value(body, *then))
-                .append(D::text(", "))
-                .append(self.value(body, *otherwise)),
             Inst::Return { value } => D::text("ret")
                 .append(D::space())
                 .append(self.value(body, *value)),

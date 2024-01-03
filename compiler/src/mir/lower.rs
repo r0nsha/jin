@@ -412,6 +412,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let else_blk = self.body.create_block("if_else");
                 let merge_blk = self.body.create_block("if_merge");
 
+                let output = self.push_inst_with_register(expr.ty, |value| {
+                    Inst::StackAlloc { value, init: None }
+                });
+
                 let cond = self.lower_expr(&if_.cond);
                 self.try_move(cond, if_.cond.span);
                 self.push_br_if(cond, then_blk, Some(else_blk));
@@ -419,20 +423,24 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.position_at(then_blk);
                 let then_value = self.lower_expr(&if_.then);
                 self.try_move(then_value, if_.then.span);
+                self.push_inst(Inst::Store {
+                    value: then_value,
+                    target: output,
+                });
                 self.push_br(merge_blk);
 
                 self.position_at(else_blk);
                 let else_value = self.lower_expr(&if_.otherwise);
                 self.try_move(else_value, if_.otherwise.span);
+                self.push_inst(Inst::Store {
+                    value: else_value,
+                    target: output,
+                });
                 self.push_br(merge_blk);
 
                 self.position_at(merge_blk);
-                self.push_inst_with_register(expr.ty, |value| Inst::If {
-                    value,
-                    cond,
-                    then: then_value,
-                    otherwise: else_value,
-                })
+
+                output
             }
             hir::ExprKind::Loop(loop_) => {
                 let start_blk = self.body.create_block("loop_start");

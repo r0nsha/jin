@@ -460,15 +460,6 @@ impl<'db> Generator<'db> {
                 goto_stmt(state.body.block(*then)),
                 otherwise.map(|o| goto_stmt(state.body.block(o))),
             ),
-            Inst::If { value, cond, then, otherwise } => {
-                self.value_assign(state, *value, |this| {
-                    util::ternary(
-                        this.value(state, *cond),
-                        this.value(state, *then),
-                        this.value(state, *otherwise),
-                    )
-                })
-            }
             Inst::Return { value } => stmt(|| {
                 D::text("return")
                     .append(D::space())

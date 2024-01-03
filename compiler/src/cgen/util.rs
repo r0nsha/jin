@@ -214,6 +214,7 @@ pub fn if_stmt<'a>(
         }))
 }
 
+#[allow(unused)]
 pub fn ternary<'a>(cond: D<'a>, then: D<'a>, otherwise: D<'a>) -> D<'a> {
     cond.append(D::space())
         .append(D::text("?"))
