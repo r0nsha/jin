@@ -27,7 +27,7 @@ use crate::{
     ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };
 
-const PRELUDE: &str = include_str!("../../rt/jin.c");
+const PRELUDE: &str = include_str!(concat!(env!("PWD"), "/rt/jin.c"));
 pub const DATA_FIELD: &str = "data";
 pub const REFCNT_FIELD: &str = "refcnt";
 
