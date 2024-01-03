@@ -58,7 +58,17 @@ impl SubstTy for ParamFolder<'_> {
 impl TyFolder for ParamFolder<'_> {
     fn fold(&mut self, ty: Ty) -> Ty {
         match ty.kind() {
-            TyKind::Param(p) => self.instantiation[p.var],
+            TyKind::Param(p) => match self.instantiation.get(p.var) {
+                Some(ty) => ty,
+                None => {
+                    // NOTE: It currently makes sense to not instantiate params that are part of
+                    // the currently typechecked function.
+                    panic!(
+                        "type param `{:?}` not part of instantation: {:?}",
+                        p, self.instantiation
+                    )
+                }
+            },
             _ => self.super_fold(ty),
         }
     }

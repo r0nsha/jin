@@ -605,6 +605,22 @@ impl ParamTy {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum InferTy {
+    Ty(TyVar),
+    Int(IntVar),
+    Float(FloatVar),
+}
+
+pub trait Typed {
+    fn ty(&self) -> Ty;
+    fn ty_mut(&mut self) -> &mut Ty;
+
+    fn set_ty(&mut self, ty: Ty) {
+        *self.ty_mut() = ty;
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Instantiation(FxHashMap<TyVar, Ty>);
 
@@ -650,21 +666,5 @@ impl ops::IndexMut<TyVar> for Instantiation {
 impl FromIterator<(TyVar, Ty)> for Instantiation {
     fn from_iter<T: IntoIterator<Item = (TyVar, Ty)>>(iter: T) -> Self {
         Self(iter.into_iter().collect())
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum InferTy {
-    Ty(TyVar),
-    Int(IntVar),
-    Float(FloatVar),
-}
-
-pub trait Typed {
-    fn ty(&self) -> Ty;
-    fn ty_mut(&mut self) -> &mut Ty;
-
-    fn set_ty(&mut self, ty: Ty) {
-        *self.ty_mut() = ty;
     }
 }
