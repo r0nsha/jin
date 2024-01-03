@@ -18,9 +18,9 @@ use winapi::{
         combaseapi::{CoCreateInstance, CoInitializeEx},
         fileapi::{
             FindClose, FindFirstFileW, FindNextFileW, GetFileAttributesW,
-            INVALID_FILE_ATTRIBUTES,
+            null()_FILE_ATTRIBUTES,
         },
-        handleapi::INVALID_HANDLE_VALUE,
+        handleapi::null()_HANDLE_VALUE,
         minwinbase::WIN32_FIND_DATAW,
         objbase::COINIT_MULTITHREADED,
         oleauto::SysFreeString,
@@ -127,7 +127,7 @@ struct VersionData {
 
 fn os_file_exists(name: *const wchar_t) -> bool {
     let attr = unsafe { GetFileAttributesW(name) };
-    attr != INVALID_FILE_ATTRIBUTES && attr & FILE_ATTRIBUTE_DIRECTORY == 0
+    attr != null()_FILE_ATTRIBUTES && attr & FILE_ATTRIBUTE_DIRECTORY == 0
 }
 
 type VisitFn = unsafe fn(&U16CStr, U16String, &mut VersionData);
@@ -147,7 +147,7 @@ unsafe fn visit_files_w(
 
     let dot = u16str!(".").as_slice()[0];
 
-    if handle != INVALID_HANDLE_VALUE {
+    if handle != null()_HANDLE_VALUE {
         loop {
             if (find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY != 0)
                 && (find_data.cFileName[0] != dot)

@@ -1,4 +1,4 @@
-use std::fmt;
+use core::fmt;
 
 use codespan_reporting::files::{Files, Location};
 use pretty::RcDoc as D;

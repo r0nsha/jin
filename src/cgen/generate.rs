@@ -15,6 +15,7 @@ use crate::{
             stmt, str_value, unit_value, NEST,
         },
     },
+    data_structures::index_vec::Key as _,
     db::{AdtId, AdtKind, Db, StructDef, StructKind},
     mangle,
     middle::{Pat, UnOp},
@@ -378,9 +379,9 @@ impl<'db> Generator<'db> {
         for param in &sig.params {
             match &param.pat {
                 Pat::Name(name) => {
-                    // The parameter's name id could be INVALID when it's generated ad-hoc.
+                    // The parameter's name id could be null() when it's generated ad-hoc.
                     // For example, in type constructor parameters.
-                    if !name.id.is_invalid() {
+                    if !name.id.is_null() {
                         state
                             .local_names
                             .insert(name.id, self.db[name.id].name);

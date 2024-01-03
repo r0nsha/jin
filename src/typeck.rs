@@ -18,7 +18,7 @@ use ustr::UstrMap;
 use crate::{
     ast::{self, Ast},
     counter::Counter,
-    data_structures::index_vec::IndexVecExt,
+    data_structures::index_vec::{IndexVecExt, Key as _},
     db::{Adt, AdtKind, Db, DefId, DefKind, ModuleId, StructDef, StructField},
     diagnostics::{Diagnostic, Label},
     hir,
@@ -307,7 +307,7 @@ impl<'db> Typeck<'db> {
         )?;
 
         Ok(hir::Fn {
-            id: hir::FnId::INVALID,
+            id: hir::FnId::null(),
             module_id: env.module_id(),
             def_id: id,
             sig,
@@ -338,7 +338,7 @@ impl<'db> Typeck<'db> {
 
         let sig = env.with_scope(
             fun.sig.word.name(),
-            ScopeKind::Fn(DefId::INVALID),
+            ScopeKind::Fn(DefId::null()),
             |env| self.check_fn_sig(env, &fun.sig, is_c_variadic),
         )?;
 
@@ -456,7 +456,7 @@ impl<'db> Typeck<'db> {
         };
 
         Ok(hir::Let {
-            id: hir::LetId::INVALID,
+            id: hir::LetId::null(),
             module_id: env.module_id(),
             pat,
             value: Box::new(value),
@@ -523,7 +523,7 @@ impl<'db> Typeck<'db> {
         let adt_id = {
             let adt_id = self.db.adts.push_with_key(|id| Adt {
                 id,
-                def_id: DefId::INVALID,
+                def_id: DefId::null(),
                 name: tydef.word,
                 ty_params: vec![],
                 kind: AdtKind::Struct(StructDef::new(
@@ -725,7 +725,7 @@ impl<'db> Typeck<'db> {
         match self.normalize(self.db[def_id].ty).kind() {
             TyKind::Module(module_id) => Ok(*module_id),
             ty => Err(errors::ty_mismatch(
-                &TyKind::Module(ModuleId::INVALID).to_string(self.db),
+                &TyKind::Module(ModuleId::null()).to_string(self.db),
                 &ty.to_string(self.db),
                 span,
             )),

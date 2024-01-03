@@ -1,4 +1,4 @@
-use std::fmt;
+use core::fmt;
 
 use camino::Utf8Path;
 use ustr::{ustr, Ustr};

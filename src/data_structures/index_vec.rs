@@ -15,47 +15,28 @@ impl<K: From<usize> + Copy, V> IndexVecExt<K, V> for TiVec<K, V> {
     }
 }
 
-// macro_rules! new_key_type {
-//     ($name: ident) => {
-//         #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
-//         pub struct $name(usize);
-//
-//         impl From<usize> for $name {
-//             #[inline]
-//             fn from(value: usize) -> Self {
-//                 Self(value)
-//             }
-//         }
-//
-//         impl From<$name> for usize {
-//             #[inline]
-//             fn from(value: $name) -> Self {
-//                 value.0
-//             }
-//         }
-//
-//         impl $name {
-//             pub const INVALID: Self = Self(usize::MAX);
-//
-//             #[allow(unused)]
-//             #[inline]
-//             pub fn is_invalid(self) -> bool {
-//                 self == Self::INVALID
-//             }
-//         }
-//
-//         impl std::fmt::Display for $name {
-//             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//                 if self.is_invalid() {
-//                     f.write_str("INVALID")
-//                 } else {
-//                     f.write_str(&self.0.to_string())
-//                 }
-//             }
-//         }
-//     };
-// }
-//
+pub trait Key:
+    From<usize>
+    + Copy
+    + Clone
+    + Default
+    + Eq
+    + PartialEq
+    + Ord
+    + PartialOrd
+    + core::hash::Hash
+    + core::fmt::Debug
+{
+    fn data(self) -> usize;
+
+    fn null() -> Self {
+        usize::MAX.into()
+    }
+
+    fn is_null(self) -> bool {
+        self == Self::null()
+    }
+}
 
 macro_rules! new_key_type {
     ( $(#[$outer:meta])* $vis:vis struct $name:ident; $($rest:tt)* ) => {
@@ -78,18 +59,18 @@ macro_rules! new_key_type {
             }
         }
 
-        impl $name {
-            pub const INVALID: Self = Self(usize::MAX);
-
-            pub fn is_invalid(self) -> bool {
-                self == Self::INVALID
+        impl $crate::data_structures::index_vec::Key for $name {
+            fn data(self) -> usize {
+                self.0
             }
         }
 
-        impl std::fmt::Display for $name {
-            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                if self.is_invalid() {
-                    f.write_str("INVALID")
+        impl core::fmt::Display for $name {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> std::fmt::Result {
+                use $crate::data_structures::index_vec::Key as _;
+
+                if self.is_null() {
+                    f.write_str("NULL")
                 } else {
                     f.write_str(&self.0.to_string())
                 }

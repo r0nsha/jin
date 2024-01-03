@@ -1,4 +1,4 @@
-use std::fmt;
+use core::fmt;
 
 use pretty::RcDoc as D;
 

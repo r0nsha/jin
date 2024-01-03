@@ -5,6 +5,7 @@ use itertools::Itertools as _;
 use ustr::{ustr, Ustr};
 
 use crate::{
+    data_structures::index_vec::Key as _,
     db::{AdtKind, Db, DefId, DefKind, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
@@ -138,7 +139,7 @@ impl<'db> Lower<'db> {
             .iter()
             .map(|field| FnParam {
                 pat: Pat::Name(NamePat {
-                    id: DefId::INVALID,
+                    id: DefId::null(),
                     word: field.name,
                     vis: Vis::Private,
                     mutability: Mutability::Imm,

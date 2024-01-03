@@ -47,9 +47,9 @@ impl<S: SubstTy> Subst<S> for Body {
     fn subst(&mut self, s: &mut S) {
         self.blocks_mut().into_iter().for_each(|b| b.subst(s));
         self.values_mut().into_iter().for_each(|v| v.subst(s));
-        self.instantations_mut()
-            .iter_mut()
-            .for_each(|(_, i)| subst::subst_instantation(s, i, Span::UNKNOWN));
+        self.instantations_mut().iter_mut().for_each(|(_, i)| {
+            subst::subst_instantation(s, i, Span::unknown())
+        });
     }
 }
 
@@ -68,6 +68,6 @@ impl<S: SubstTy> Subst<S> for Inst {
 }
 impl<S: SubstTy> Subst<S> for Value {
     fn subst(&mut self, s: &mut S) {
-        self.ty = s.subst_ty(self.ty, Span::UNKNOWN);
+        self.ty = s.subst_ty(self.ty, Span::unknown());
     }
 }

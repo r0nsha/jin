@@ -686,7 +686,7 @@ impl BuiltinTys {
                 DefKind::Ty(ty),
                 Mutability::Imm,
                 TyKind::Type(ty).into(),
-                Span::UNKNOWN,
+                Span::unknown(),
             ),
         )
     }

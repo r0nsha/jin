@@ -11,6 +11,7 @@ use crate::{
         FnKind, FnParam, FnSig, Item, Let, LitKind, Module, StructTyDef,
         StructTyField, TyDef, TyDefKind, TyParam,
     },
+    data_structures::index_vec::Key as _,
     db::{Db, DefId, ExternLib, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     macros::create_bool_enum,
@@ -340,7 +341,7 @@ impl<'a> Parser<'a> {
                 let vis = self.parse_vis();
 
                 Ok(Pat::Name(NamePat {
-                    id: DefId::INVALID,
+                    id: DefId::null(),
                     word: tok.word(),
                     vis,
                     mutability,

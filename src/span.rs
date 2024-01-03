@@ -3,7 +3,9 @@ use std::{fs, io, ops};
 use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::files::{self, line_starts};
 
-use crate::data_structures::index_vec::{new_key_type, IndexVec, IndexVecExt};
+use crate::data_structures::index_vec::{
+    new_key_type, IndexVec, IndexVecExt, Key as _,
+};
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
@@ -13,8 +15,9 @@ pub struct Span {
 }
 
 impl Span {
-    pub const UNKNOWN: Self =
-        Self { source_id: SourceId::INVALID, start: 0, end: 0 };
+    pub fn unknown() -> Self {
+        Self { source_id: SourceId::null(), start: 0, end: 0 }
+    }
 
     pub fn new(source_id: SourceId, start: u32, end: u32) -> Self {
         Self { source_id, start, end }
@@ -171,7 +174,7 @@ impl TryFrom<Utf8PathBuf> for Source {
         let contents = fs::read_to_string(&value)?;
         let line_starts = line_starts(&contents).collect();
 
-        Ok(Self { id: SourceId::INVALID, path: value, contents, line_starts })
+        Ok(Self { id: SourceId::null(), path: value, contents, line_starts })
     }
 }
 

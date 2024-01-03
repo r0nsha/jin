@@ -1,4 +1,4 @@
-use std::fmt::{Display, Formatter, Result, Write};
+use core::fmt::{Display, Formatter, Result, Write};
 
 use ustr::Ustr;
 

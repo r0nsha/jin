@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
-    data_structures::index_vec::{new_key_type, IndexVec},
+    data_structures::index_vec::{new_key_type, IndexVec, Key as _},
     db::{ExternLib, ModuleId, StructKind},
     middle::{BinOp, IsUfcs, Mutability, Pat, TyExpr, UnOp, Vis},
     qpath::QPath,
@@ -51,7 +51,7 @@ pub struct Module {
 impl Module {
     pub fn new(source_id: SourceId, name: QPath, is_main: bool) -> Self {
         Self {
-            id: ModuleId::INVALID,
+            id: ModuleId::null(),
             source: source_id,
             name,
             is_main,

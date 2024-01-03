@@ -25,7 +25,7 @@ impl<'db> Typeck<'db> {
 
         for coercions in self.hir.coercions.values_mut() {
             for coercion in coercions.iter_mut() {
-                coercion.target = cx.subst_ty(coercion.target, Span::UNKNOWN);
+                coercion.target = cx.subst_ty(coercion.target, Span::unknown());
             }
         }
 
