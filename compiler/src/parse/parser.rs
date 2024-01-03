@@ -2,6 +2,7 @@ use std::ops::ControlFlow;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::files::Files;
+use data_structures::index_vec::Key as _;
 use rustc_hash::FxHashSet;
 
 use crate::{
@@ -11,7 +12,6 @@ use crate::{
         FnKind, FnParam, FnSig, Item, Let, LitKind, Module, StructTyDef,
         StructTyField, TyDef, TyDefKind, TyParam,
     },
-    data_structures::index_vec::Key as _,
     db::{Db, DefId, ExternLib, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     macros::create_bool_enum,

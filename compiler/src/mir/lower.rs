@@ -1,11 +1,11 @@
 use std::{fmt, mem};
 
+use data_structures::index_vec::Key as _;
 use indexmap::IndexSet;
 use itertools::Itertools as _;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    data_structures::index_vec::Key as _,
     db::{AdtKind, Db, DefId, DefKind, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,

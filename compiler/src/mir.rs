@@ -5,6 +5,11 @@ pub mod subst;
 
 use std::io;
 
+use data_structures::{
+    id_map::IdMap,
+    index_vec::{IndexSlice, IndexVec, IndexVecExt},
+    new_key_type,
+};
 use derive_more::From;
 use enum_as_inner::EnumAsInner;
 pub use lower::lower;
@@ -13,10 +18,6 @@ pub use specialize::specialize;
 use ustr::Ustr;
 
 use crate::{
-    data_structures::{
-        id_map::IdMap,
-        index_vec::{new_key_type, IndexSlice, IndexVec, IndexVecExt},
-    },
     db::{AdtId, Db, DefId},
     middle::{BinOp, Pat, UnOp},
     span::Span,

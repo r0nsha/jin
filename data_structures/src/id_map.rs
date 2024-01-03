@@ -77,13 +77,13 @@ impl<K: Eq + Hash, V> IdMap<K, V> {
 
 impl<K: From<usize> + Copy + Eq + Hash, V> IdMap<K, V> {
     pub fn insert(&mut self, value: V) -> K {
-        let key = self.counter.next();
+        let key = self.counter.increment();
         self.map.insert(key, value);
         key
     }
 
     pub fn insert_with_key(&mut self, f: impl FnOnce(K) -> V) -> K {
-        let key = self.counter.next();
+        let key = self.counter.increment();
         let value = f(key);
         self.map.insert(key, value);
         key

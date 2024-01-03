@@ -19,7 +19,6 @@
 mod ast;
 mod cgen;
 mod counter;
-mod data_structures;
 mod db;
 mod diagnostics;
 mod hir;

@@ -298,6 +298,10 @@ checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
 [[package]]
 name = "data_structures"
 version = "0.1.0"
+dependencies = [
+ "rustc-hash",
+ "typed-index-collections",
+]
 
 [[package]]
 name = "derive_more"
@@ -530,6 +534,7 @@ dependencies = [
  "clap",
  "codespan-reporting",
  "color-eyre",
+ "data_structures",
  "derive_more",
  "ena",
  "enum-as-inner",

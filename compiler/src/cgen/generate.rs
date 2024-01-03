@@ -1,6 +1,7 @@
 use std::{fs::File, io::Write, iter};
 
 use camino::Utf8PathBuf;
+use data_structures::index_vec::Key as _;
 use pretty::RcDoc as D;
 use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr};
@@ -15,7 +16,6 @@ use crate::{
             stmt, str_value, unit_value, NEST,
         },
     },
-    data_structures::index_vec::Key as _,
     db::{AdtId, AdtKind, Db, StructDef, StructKind},
     mangle,
     middle::{Pat, UnOp},

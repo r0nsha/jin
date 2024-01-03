@@ -11,12 +11,15 @@ use std::{
 
 use anyhow::{bail, Result};
 use camino::{Utf8Path, Utf8PathBuf};
+use data_structures::{
+    index_vec::{IndexVec, IndexVecExt},
+    new_key_type,
+};
 use path_absolutize::Absolutize;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::{ustr, Ustr};
 
 use crate::{
-    data_structures::index_vec::{new_key_type, IndexVec, IndexVecExt},
     db::{
         build_options::{BuildOptions, EmitOption},
         timing::Timings,

@@ -1,10 +1,6 @@
 use std::marker::PhantomData;
 
-use derive_more::{From, Into};
-
-#[derive(
-    Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, From, Into,
-)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Counter<T> {
     value: usize,
     marker: PhantomData<T>,
@@ -13,6 +9,12 @@ pub struct Counter<T> {
 impl<T> Default for Counter<T> {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl<T> From<usize> for Counter<T> {
+    fn from(value: usize) -> Self {
+        Self { value, marker: PhantomData }
     }
 }
 
@@ -27,7 +29,7 @@ impl<T: From<usize>> Counter<T> {
         self.value.into()
     }
 
-    pub fn next(&mut self) -> T {
+    pub fn increment(&mut self) -> T {
         self.value += 1;
         self.value()
     }

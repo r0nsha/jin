@@ -2,9 +2,9 @@ use std::{fs, io, ops};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::files::{self, line_starts};
-
-use crate::data_structures::index_vec::{
-    new_key_type, IndexVec, IndexVecExt, Key as _,
+use data_structures::{
+    index_vec::{IndexVec, IndexVecExt, Key as _},
+    new_key_type,
 };
 
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]

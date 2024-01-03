@@ -4,11 +4,14 @@ pub mod token;
 use std::{fmt, io};
 
 use camino::Utf8PathBuf;
+use data_structures::{
+    index_vec::{IndexVec, Key as _},
+    new_key_type,
+};
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
-    data_structures::index_vec::{new_key_type, IndexVec, Key as _},
     db::{ExternLib, ModuleId, StructKind},
     middle::{BinOp, IsUfcs, Mutability, Pat, TyExpr, UnOp, Vis},
     qpath::QPath,

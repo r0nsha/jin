@@ -11,6 +11,7 @@ mod unify;
 
 use std::cell::RefCell;
 
+use data_structures::index_vec::{IndexVecExt, Key as _};
 use ena::unify::{InPlace, InPlaceUnificationTable, Snapshot};
 use itertools::{Itertools, Position};
 use ustr::UstrMap;
@@ -18,7 +19,6 @@ use ustr::UstrMap;
 use crate::{
     ast::{self, Ast},
     counter::Counter,
-    data_structures::index_vec::{IndexVecExt, Key as _},
     db::{Adt, AdtKind, Db, DefId, DefKind, ModuleId, StructDef, StructField},
     diagnostics::{Diagnostic, Label},
     hir,
@@ -1813,7 +1813,7 @@ impl<'db> Typeck<'db> {
     }
 
     fn expr(&mut self, kind: hir::ExprKind, ty: Ty, span: Span) -> hir::Expr {
-        hir::Expr { id: self.expr_id.next(), kind, ty, span }
+        hir::Expr { id: self.expr_id.increment(), kind, ty, span }
     }
 
     fn expr_or_block(&mut self, expr: hir::Expr) -> hir::Expr {

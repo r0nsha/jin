@@ -27,7 +27,7 @@ impl<T: From<usize>> Counter<T> {
         self.value.into()
     }
 
-    pub fn next(&mut self) -> T {
+    pub fn increment(&mut self) -> T {
         self.value += 1;
         self.value()
     }
