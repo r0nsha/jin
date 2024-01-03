@@ -229,11 +229,7 @@ impl UnifyCx<'_, '_> {
 
             // Unify ?T1 ~ ?T2
             (TyKind::Infer(InferTy::Ty(a)), TyKind::Infer(InferTy::Ty(b))) => {
-                self.cx
-                    .storage
-                    .borrow_mut()
-                    .ty_unification_table
-                    .unify_var_var(*a, *b)?;
+                self.cx.storage.borrow_mut().ty.unify_var_var(*a, *b)?;
                 Ok(())
             }
 
@@ -242,11 +238,7 @@ impl UnifyCx<'_, '_> {
                 TyKind::Infer(InferTy::Int(a)),
                 TyKind::Infer(InferTy::Int(b)),
             ) => {
-                self.cx
-                    .storage
-                    .borrow_mut()
-                    .int_unification_table
-                    .unify_var_var(*a, *b)?;
+                self.cx.storage.borrow_mut().int.unify_var_var(*a, *b)?;
                 Ok(())
             }
 
@@ -256,7 +248,7 @@ impl UnifyCx<'_, '_> {
                 self.cx
                     .storage
                     .borrow_mut()
-                    .int_unification_table
+                    .int
                     .unify_var_value(*var, Some(IntVarValue::Int(*ity)))?;
                 Ok(())
             }
@@ -267,7 +259,7 @@ impl UnifyCx<'_, '_> {
                 self.cx
                     .storage
                     .borrow_mut()
-                    .int_unification_table
+                    .int
                     .unify_var_value(*var, Some(IntVarValue::Uint(*uty)))?;
                 Ok(())
             }
@@ -277,11 +269,7 @@ impl UnifyCx<'_, '_> {
                 TyKind::Infer(InferTy::Float(a)),
                 TyKind::Infer(InferTy::Float(b)),
             ) => {
-                self.cx
-                    .storage
-                    .borrow_mut()
-                    .float_unification_table
-                    .unify_var_var(*a, *b)?;
+                self.cx.storage.borrow_mut().float.unify_var_var(*a, *b)?;
                 Ok(())
             }
 
@@ -291,7 +279,7 @@ impl UnifyCx<'_, '_> {
                 self.cx
                     .storage
                     .borrow_mut()
-                    .float_unification_table
+                    .float
                     .unify_var_value(*var, Some(*fty))?;
                 Ok(())
             }
@@ -322,11 +310,7 @@ impl UnifyCx<'_, '_> {
 
     fn unify_ty_var(&mut self, ty: Ty, var: TyVar) -> UnifyResult {
         ty.occurs_check(var).map_err(|ty| UnifyError::InfiniteTy { ty })?;
-        self.cx
-            .storage
-            .borrow_mut()
-            .ty_unification_table
-            .unify_var_value(var, Some(ty))?;
+        self.cx.storage.borrow_mut().ty.unify_var_value(var, Some(ty))?;
         Ok(())
     }
 }

@@ -1,19 +1,3 @@
-#![warn(
-    clippy::correctness,
-    clippy::suspicious,
-    clippy::style,
-    clippy::complexity,
-    clippy::perf,
-    clippy::pedantic
-)]
-#![allow(
-    clippy::similar_names,
-    clippy::module_name_repetitions,
-    clippy::too_many_lines,
-    clippy::missing_const_for_fn,
-    clippy::cast_possible_truncation,
-    clippy::wildcard_imports
-)]
 #![feature(iterator_try_collect)]
 
 mod ast;

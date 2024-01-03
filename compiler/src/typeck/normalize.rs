@@ -25,19 +25,17 @@ impl<'db, 'a> From<&'a Typeck<'db>> for Normalize<'a> {
 impl TyFolder for Normalize<'_> {
     fn fold(&mut self, ty: Ty) -> Ty {
         match ty.kind() {
-            TyKind::Infer(InferTy::Ty(var)) => self
-                .storage
-                .ty_unification_table
-                .probe_value(*var)
-                .map_or(ty, |ty| self.fold(ty)),
+            TyKind::Infer(InferTy::Ty(var)) => {
+                self.storage.ty.probe_value(*var).map_or(ty, |ty| self.fold(ty))
+            }
             TyKind::Infer(InferTy::Int(var)) => self
                 .storage
-                .int_unification_table
+                .int
                 .probe_value(*var)
                 .map_or(ty, |ty| TyKind::from(ty).into()),
             TyKind::Infer(InferTy::Float(var)) => self
                 .storage
-                .float_unification_table
+                .float
                 .probe_value(*var)
                 .map_or(ty, |ty| TyKind::from(ty).into()),
             _ => self.super_fold(ty),

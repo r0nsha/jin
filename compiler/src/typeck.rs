@@ -64,39 +64,39 @@ pub struct Typeck<'db> {
 
 #[derive(Debug)]
 pub struct TyStorage {
-    pub ty_unification_table: InPlaceUnificationTable<TyVar>,
-    pub int_unification_table: InPlaceUnificationTable<IntVar>,
-    pub float_unification_table: InPlaceUnificationTable<FloatVar>,
+    pub ty: InPlaceUnificationTable<TyVar>,
+    pub int: InPlaceUnificationTable<IntVar>,
+    pub float: InPlaceUnificationTable<FloatVar>,
 }
 
 impl TyStorage {
     pub fn new() -> Self {
         Self {
-            ty_unification_table: InPlaceUnificationTable::new(),
-            int_unification_table: InPlaceUnificationTable::new(),
-            float_unification_table: InPlaceUnificationTable::new(),
+            ty: InPlaceUnificationTable::new(),
+            int: InPlaceUnificationTable::new(),
+            float: InPlaceUnificationTable::new(),
         }
     }
 
     pub fn snapshot(&mut self) -> TyStorageSnapshot {
         TyStorageSnapshot {
-            ty_snapshot: self.ty_unification_table.snapshot(),
-            int_snapshot: self.int_unification_table.snapshot(),
-            float_snapshot: self.float_unification_table.snapshot(),
+            ty: self.ty.snapshot(),
+            int: self.int.snapshot(),
+            float: self.float.snapshot(),
         }
     }
 
     pub fn rollback_to(&mut self, to: TyStorageSnapshot) {
-        self.ty_unification_table.rollback_to(to.ty_snapshot);
-        self.int_unification_table.rollback_to(to.int_snapshot);
-        self.float_unification_table.rollback_to(to.float_snapshot);
+        self.ty.rollback_to(to.ty);
+        self.int.rollback_to(to.int);
+        self.float.rollback_to(to.float);
     }
 }
 
 pub struct TyStorageSnapshot {
-    ty_snapshot: Snapshot<InPlace<TyVar>>,
-    int_snapshot: Snapshot<InPlace<IntVar>>,
-    float_snapshot: Snapshot<InPlace<FloatVar>>,
+    ty: Snapshot<InPlace<TyVar>>,
+    int: Snapshot<InPlace<IntVar>>,
+    float: Snapshot<InPlace<FloatVar>>,
 }
 
 impl<'db> Typeck<'db> {
@@ -1846,20 +1846,20 @@ impl<'db> Typeck<'db> {
 
     #[inline]
     pub fn fresh_var(&self) -> TyVar {
-        self.storage.borrow_mut().ty_unification_table.new_key(None)
+        self.storage.borrow_mut().ty.new_key(None)
     }
 
     #[inline]
     pub fn fresh_int_var(&self) -> Ty {
         Ty::new(TyKind::Infer(InferTy::Int(
-            self.storage.borrow_mut().int_unification_table.new_key(None),
+            self.storage.borrow_mut().int.new_key(None),
         )))
     }
 
     #[inline]
     pub fn fresh_float_var(&self) -> Ty {
         Ty::new(TyKind::Infer(InferTy::Float(
-            self.storage.borrow_mut().float_unification_table.new_key(None),
+            self.storage.borrow_mut().float.new_key(None),
         )))
     }
 

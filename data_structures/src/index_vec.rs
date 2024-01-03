@@ -29,6 +29,7 @@ pub trait Key:
 {
     fn data(self) -> usize;
 
+    #[must_use]
     fn null() -> Self {
         usize::MAX.into()
     }

@@ -81,10 +81,9 @@ struct VarFolder<'db, 'a> {
 
 impl VarFolder<'_, '_> {
     fn fold_tyvar(&mut self, var: TyVar) -> Ty {
-        let root = self.cx.storage.ty_unification_table.find(var);
+        let root = self.cx.storage.ty.find(var);
 
-        if let Some(ty) = self.cx.storage.ty_unification_table.probe_value(root)
-        {
+        if let Some(ty) = self.cx.storage.ty.probe_value(root) {
             self.fold(ty)
         } else {
             self.has_unbound_vars = true;
@@ -93,22 +92,22 @@ impl VarFolder<'_, '_> {
     }
 
     fn fold_intvar(&mut self, var: IntVar) -> Ty {
-        let root = self.cx.storage.int_unification_table.find(var);
+        let root = self.cx.storage.int.find(var);
 
         self.cx
             .storage
-            .int_unification_table
+            .int
             .probe_value(root)
             .map_or_else(|| TyKind::DEFAULT_INT, Into::into)
             .into()
     }
 
     fn fold_floatvar(&mut self, var: FloatVar) -> Ty {
-        let root = self.cx.storage.float_unification_table.find(var);
+        let root = self.cx.storage.float.find(var);
 
         self.cx
             .storage
-            .float_unification_table
+            .float
             .probe_value(root)
             .map_or_else(|| TyKind::DEFAULT_FLOAT, Into::into)
             .into()

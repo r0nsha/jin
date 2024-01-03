@@ -3,7 +3,13 @@ use std::io;
 use pretty::RcDoc as D;
 use ustr::ustr;
 
-use crate::{db::Db, mir::*};
+use crate::{
+    db::Db,
+    mir::{
+        Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, Pat,
+        StaticGlobal, ValueId, ValueKind,
+    },
+};
 
 pub(super) fn print(
     db: &Db,

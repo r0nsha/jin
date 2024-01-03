@@ -42,3 +42,6 @@ winapi = { version = "0.3.9", features = [
 
 [build-dependencies]
 fs_extra = "1.2.0"
+
+[lints]
+workspace = true
