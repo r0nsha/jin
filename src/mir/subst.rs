@@ -48,7 +48,7 @@ impl<S: SubstTy> Subst<S> for Body {
         self.blocks_mut().into_iter().for_each(|b| b.subst(s));
         self.values_mut().into_iter().for_each(|v| v.subst(s));
         self.instantations_mut().iter_mut().for_each(|(_, i)| {
-            subst::subst_instantation(s, i, Span::unknown())
+            subst::subst_instantation(s, i, Span::unknown());
         });
     }
 }

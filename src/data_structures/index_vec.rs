@@ -43,7 +43,7 @@ macro_rules! new_key_type {
         $(#[$outer])*
         #[derive(Copy, Clone, Default,
                  Eq, PartialEq, Ord, PartialOrd,
-                 Hash, Debug)]
+                 Hash)]
         #[repr(transparent)]
         $vis struct $name(usize);
 
@@ -66,7 +66,7 @@ macro_rules! new_key_type {
         }
 
         impl core::fmt::Display for $name {
-            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> std::fmt::Result {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 use $crate::data_structures::index_vec::Key as _;
 
                 if self.is_null() {
@@ -74,6 +74,12 @@ macro_rules! new_key_type {
                 } else {
                     f.write_str(&self.0.to_string())
                 }
+            }
+        }
+
+        impl core::fmt::Debug for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                write!(f, "{}({})", stringify!($name), self)
             }
         }
 
