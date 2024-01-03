@@ -77,6 +77,19 @@ impl PrettyPrint for Expr {
 
                 cx.builder.end_child();
             }
+            Self::Match { expr, cases: _, .. } => {
+                cx.builder.begin_child("match".to_string());
+
+                cx.builder.begin_child("expr".to_string());
+                expr.pretty_print(cx);
+                cx.builder.end_child();
+
+                cx.builder.begin_child("cases".to_string());
+                cx.builder.add_empty_child("TODO: write cases".to_string());
+                cx.builder.end_child();
+
+                cx.builder.end_child();
+            }
             Self::Loop { cond, expr, .. } => {
                 cx.builder.begin_child("loop".to_string());
 

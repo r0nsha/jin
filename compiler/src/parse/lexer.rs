@@ -201,6 +201,7 @@ impl<'s> Lexer<'s> {
                     "extern" => TokenKind::Extern,
                     "if" => TokenKind::If,
                     "else" => TokenKind::Else,
+                    "match" => TokenKind::Match,
                     "true" => TokenKind::True,
                     "false" => TokenKind::False,
                     "as" => TokenKind::As,

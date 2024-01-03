@@ -14,6 +14,7 @@ pub struct Token {
 }
 
 impl Token {
+    #[track_caller]
     pub fn str_value(&self) -> Ustr {
         match self.kind {
             TokenKind::Ident(v) | TokenKind::Str(v) => v,
@@ -92,6 +93,7 @@ pub enum TokenKind {
     Extern,
     If,
     Else,
+    Match,
     True,
     False,
     As,
@@ -171,6 +173,7 @@ impl fmt::Display for TokenKind {
             Self::Return => f.write_str("`return`"),
             Self::If => f.write_str("`if`"),
             Self::Else => f.write_str("`else`"),
+            Self::Match => f.write_str("`match`"),
             Self::Fn => f.write_str("`fn`"),
             Self::Let => f.write_str("`let`"),
             Self::Type => f.write_str("`type`"),

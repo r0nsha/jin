@@ -1,0 +1,10 @@
+fn extern printf(fmt: *u8, ..) i32
+
+fn main() unit = {
+	let foo = {}
+
+	match foo {}
+	//match foo {
+	//	foo -> printf("%d\n".ptr, foo)
+	//}
+}

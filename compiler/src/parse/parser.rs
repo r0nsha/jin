@@ -9,8 +9,8 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         Attr, AttrKind, Attrs, CallArg, Expr, ExternImport, ExternLet, Fn,
-        FnKind, FnParam, FnSig, Item, Let, LitKind, Module, StructTyDef,
-        StructTyField, TyDef, TyDefKind, TyParam,
+        FnKind, FnParam, FnSig, Item, Let, LitKind, MatchCase, MatchPat,
+        Module, StructTyDef, StructTyField, TyDef, TyDefKind, TyParam,
     },
     db::{Db, DefId, ExternLib, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -571,6 +571,7 @@ impl<'a> Parser<'a> {
         let expr = match tok.kind {
             TokenKind::Return => self.parse_return()?,
             TokenKind::If => self.parse_if()?,
+            TokenKind::Match => self.parse_match()?,
             TokenKind::Loop => self.parse_loop()?,
             TokenKind::Break => Expr::Break { span: tok.span },
             TokenKind::Minus => {
@@ -679,6 +680,38 @@ impl<'a> Parser<'a> {
             otherwise,
             span,
         })
+    }
+
+    fn parse_match(&mut self) -> DiagnosticResult<Expr> {
+        let start = self.last_span();
+        let expr = self.parse_expr()?;
+
+        let (cases, _) = self.parse_list(
+            TokenKind::OpenCurly,
+            TokenKind::CloseCurly,
+            |this| {
+                let case = this.parse_match_case()?;
+                Ok(ControlFlow::Continue(case))
+            },
+        )?;
+
+        let span = start.merge(self.last_span());
+
+        Ok(Expr::Match { expr: Box::new(expr), cases, span })
+    }
+
+    fn parse_match_case(&mut self) -> DiagnosticResult<MatchCase> {
+        let pat = self.parse_match_pat()?;
+        todo!("{pat:?}")
+    }
+
+    fn parse_match_pat(&mut self) -> DiagnosticResult<MatchPat> {
+        if self.is_ident() {
+            Ok(MatchPat::Name(self.last_token().word()))
+        } else {
+            let tok = self.require()?;
+            Err(errors::unexpected_token_err("a pattern", tok.kind, tok.span))
+        }
     }
 
     fn parse_loop(&mut self) -> DiagnosticResult<Expr> {

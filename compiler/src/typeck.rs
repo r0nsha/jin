@@ -830,44 +830,16 @@ impl<'db> Typeck<'db> {
                         .with_label(Label::primary(*span)))
                 }
             }
-            ast::Expr::If { cond, then, otherwise, span } => {
-                let cond =
-                    self.check_expr(env, cond, Some(self.db.types.bool))?;
-
-                self.at(Obligation::obvious(cond.span))
-                    .eq(self.db.types.bool, cond.ty)
-                    .or_coerce(self, cond.id)?;
-
-                let then = self.check_expr(env, then, expected_ty)?;
-
-                let otherwise = if let Some(otherwise) = otherwise.as_ref() {
-                    let otherwise =
-                        self.check_expr(env, otherwise, Some(then.ty))?;
-
-                    self.at(Obligation::exprs(
-                        *span,
-                        then.span,
-                        otherwise.span,
-                    ))
-                    .eq(then.ty, otherwise.ty)
-                    .or_coerce(self, otherwise.id)?;
-
-                    otherwise
-                } else {
-                    self.unit_expr(*span)
-                };
-
-                let ty = then.ty;
-
-                Ok(self.expr(
-                    hir::ExprKind::If(hir::If {
-                        cond: Box::new(cond),
-                        then: Box::new(then),
-                        otherwise: Box::new(otherwise),
-                    }),
-                    ty,
-                    *span,
-                ))
+            ast::Expr::If { cond, then, otherwise, span } => self.check_if(
+                env,
+                cond.as_ref(),
+                then.as_ref(),
+                otherwise.as_deref(),
+                *span,
+                expected_ty,
+            ),
+            ast::Expr::Match { expr, cases, span } => {
+                self.check_match(env, expr, cases, *span, expected_ty)
             }
             ast::Expr::Loop { cond, expr, span } => {
                 let cond = if let Some(cond) = cond.as_ref() {
@@ -1160,6 +1132,60 @@ impl<'db> Typeck<'db> {
                 Ok(self.expr(hir::ExprKind::Lit(kind), ty, *span))
             }
         }
+    }
+
+    fn check_if(
+        &mut self,
+        env: &mut Env,
+        cond: &ast::Expr,
+        then: &ast::Expr,
+        otherwise: Option<&ast::Expr>,
+        span: Span,
+        expected_ty: Option<Ty>,
+    ) -> TypeckResult<hir::Expr> {
+        let cond = self.check_expr(env, cond, Some(self.db.types.bool))?;
+
+        self.at(Obligation::obvious(cond.span))
+            .eq(self.db.types.bool, cond.ty)
+            .or_coerce(self, cond.id)?;
+
+        let then = self.check_expr(env, then, expected_ty)?;
+
+        let otherwise = if let Some(otherwise) = otherwise.as_ref() {
+            let otherwise = self.check_expr(env, otherwise, Some(then.ty))?;
+
+            self.at(Obligation::exprs(span, then.span, otherwise.span))
+                .eq(then.ty, otherwise.ty)
+                .or_coerce(self, otherwise.id)?;
+
+            otherwise
+        } else {
+            self.unit_expr(span)
+        };
+
+        let ty = then.ty;
+
+        Ok(self.expr(
+            hir::ExprKind::If(hir::If {
+                cond: Box::new(cond),
+                then: Box::new(then),
+                otherwise: Box::new(otherwise),
+            }),
+            ty,
+            span,
+        ))
+    }
+
+    fn check_match(
+        &mut self,
+        env: &mut Env,
+        expr: &ast::Expr,
+        cases: &[ast::MatchCase],
+        span: Span,
+        expected_ty: Option<Ty>,
+    ) -> TypeckResult<hir::Expr> {
+        let expr = self.check_expr(env, expr, None)?;
+        todo!("typeck match")
     }
 
     fn check_name(

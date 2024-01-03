@@ -127,6 +127,11 @@ pub enum Expr {
         otherwise: Option<Box<Self>>,
         span: Span,
     },
+    Match {
+        expr: Box<Self>,
+        cases: Vec<MatchCase>,
+        span: Span,
+    },
     Loop {
         cond: Option<Box<Self>>,
         expr: Box<Self>,
@@ -192,6 +197,7 @@ impl Spanned for Expr {
             | Self::Field { span, .. }
             | Self::Return { span, .. }
             | Self::If { span, .. }
+            | Self::Match { span, .. }
             | Self::Loop { span, .. }
             | Self::Break { span, .. }
             | Self::Block { span, .. }
@@ -291,6 +297,17 @@ pub struct ImportName {
     pub vis: Vis,
     pub alias: Option<Word>,
     pub node: Option<ImportNode>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MatchCase {
+    pub pat: MatchPat,
+    pub expr: Box<Expr>,
+}
+
+#[derive(Debug, Clone)]
+pub enum MatchPat {
+    Name(Word),
 }
 
 impl ImportName {
