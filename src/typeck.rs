@@ -1721,6 +1721,9 @@ impl<'db> Typeck<'db> {
                 let pointee = self.check_ty_expr(env, pointee, allow_hole)?;
                 Ok(Ty::new(TyKind::RawPtr(pointee)))
             }
+            TyExpr::Path(root, child, span) => {
+                todo!("tyexpr path")
+            }
             TyExpr::Name(name, targs, span) => {
                 let id =
                     self.lookup(env, env.module_id(), &Query::Name(*name))?;

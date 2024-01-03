@@ -367,6 +367,11 @@ impl PrettyPrint for TyExpr {
                     cx.builder.end_child();
                 }
             }
+            TyExpr::Path(name, child, _) => {
+                cx.builder.begin_child(format!("path: {name}"));
+                child.pretty_print(cx);
+                cx.builder.end_child();
+            }
             TyExpr::Hole(_) => {
                 cx.builder.add_empty_child("_".to_string());
             }

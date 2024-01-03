@@ -14,7 +14,7 @@ use crate::{
     db::{Db, DefId, ExternLib, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     macros::create_bool_enum,
-    middle::{BinOp, Mutability, NamePat, Pat, TyExpr, TyExprFn, UnOp, Vis},
+    middle::{BinOp, Mutability, NamePat, Pat, UnOp, Vis},
     parse::errors,
     qpath::QPath,
     span::{Source, SourceId, Span, Spanned},
@@ -356,7 +356,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_mutability(&mut self) -> Mutability {
+    pub(super) fn parse_mutability(&mut self) -> Mutability {
         self.parse_optional_mutability().unwrap_or_default()
     }
 
@@ -411,25 +411,6 @@ impl<'a> Parser<'a> {
             },
         )
         .map(|(t, _)| t)
-    }
-
-    fn parse_optional_ty_args(
-        &mut self,
-    ) -> DiagnosticResult<Option<Vec<TyExpr>>> {
-        if self.peek_is(TokenKind::OpenBracket) {
-            let args = self.parse_ty_args().map(|(t, _)| t)?;
-            Ok(Some(args))
-        } else {
-            Ok(None)
-        }
-    }
-
-    fn parse_ty_args(&mut self) -> DiagnosticResult<(Vec<TyExpr>, Span)> {
-        self.parse_list(
-            TokenKind::OpenBracket,
-            TokenKind::CloseBracket,
-            |this| this.parse_ty().map(ControlFlow::Continue),
-        )
     }
 
     fn parse_fn_params(&mut self) -> DiagnosticResult<(Vec<FnParam>, bool)> {
@@ -661,73 +642,6 @@ impl<'a> Parser<'a> {
         };
 
         Ok(expr)
-    }
-
-    fn parse_ty(&mut self) -> DiagnosticResult<TyExpr> {
-        let tok = self.eat_any()?;
-
-        let ty = match tok.kind {
-            TokenKind::Fn => {
-                let fty = self.parse_fn_ty()?;
-                TyExpr::Fn(fty)
-            }
-            TokenKind::Amp => {
-                let mutability = self.parse_mutability();
-                let inner = self.parse_ty()?;
-                let span = tok.span.merge(inner.span());
-                TyExpr::Ref(Box::new(inner), mutability, span)
-            }
-            TokenKind::Star => {
-                let pointee = self.parse_ty()?;
-                let span = tok.span.merge(pointee.span());
-                TyExpr::RawPtr(Box::new(pointee), span)
-            }
-            TokenKind::Ident(..) => {
-                let word = tok.word();
-                let targs = self.parse_optional_ty_args()?;
-                TyExpr::Name(word, targs, tok.span.merge(self.last_span()))
-            }
-            TokenKind::Underscore => TyExpr::Hole(tok.span),
-            _ => {
-                return Err(errors::unexpected_token_err(
-                    "a type", tok.kind, tok.span,
-                ))
-            }
-        };
-
-        Ok(ty)
-    }
-
-    fn parse_fn_ty(&mut self) -> DiagnosticResult<TyExprFn> {
-        let start = self.last_span();
-        let (params, is_c_variadic) = self.parse_fn_ty_params()?;
-        let ret = self.parse_ty()?;
-
-        Ok(TyExprFn {
-            params,
-            ret: Box::new(ret),
-            is_c_variadic,
-            span: start.merge(self.last_span()),
-        })
-    }
-
-    fn parse_fn_ty_params(&mut self) -> DiagnosticResult<(Vec<TyExpr>, bool)> {
-        let mut is_c_variadic = false;
-
-        let (params, _) = self.parse_list(
-            TokenKind::OpenParen,
-            TokenKind::CloseParen,
-            |this| {
-                if this.is(TokenKind::DotDot) {
-                    is_c_variadic = true;
-                    return Ok(ControlFlow::Break(()));
-                }
-
-                this.parse_ty().map(ControlFlow::Continue)
-            },
-        )?;
-
-        Ok((params, is_c_variadic))
     }
 
     fn parse_if(&mut self) -> DiagnosticResult<Expr> {
