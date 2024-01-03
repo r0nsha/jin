@@ -6,7 +6,7 @@ use crate::{
         Ty, TyKind,
     },
     typeck::{
-        unify::{EqResult, UnifyOptions},
+        unify::{EqResult, UnifyOptions, UnifyResult},
         Typeck,
     },
 };
@@ -115,7 +115,7 @@ fn coerce_tys(
             coercions.push(Coercion { kind: CoercionKind::NeverToAny, target });
             true
         }
-        _ => source.unify(target, cx, options.unify_options).is_ok(),
+        _ => unify_with_options(source, target, cx, options).is_ok(),
     }
 }
 
@@ -126,13 +126,21 @@ fn can_unify_or_coerce(
     coercions: &mut Coercions,
     options: CoerceOptions,
 ) -> bool {
-    let unify_result = if options.rollback_unifications {
+    let unify_result = unify_with_options(source, target, cx, options);
+    unify_result.is_ok() || coerce_tys(source, target, cx, coercions, options)
+}
+
+fn unify_with_options(
+    source: Ty,
+    target: Ty,
+    cx: &Typeck,
+    options: CoerceOptions,
+) -> UnifyResult {
+    if options.rollback_unifications {
         source.can_unify(target, cx, options.unify_options)
     } else {
         source.unify(target, cx, options.unify_options)
-    };
-
-    unify_result.is_ok() || coerce_tys(source, target, cx, coercions, options)
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
