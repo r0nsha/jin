@@ -20,7 +20,7 @@ pub struct Hir {
     pub fns: IndexVec<FnId, Fn>,
     pub lets: IndexVec<LetId, Let>,
     pub extern_lets: IndexVec<ExternLetId, ExternLet>,
-    pub coercions: HirMap<Coercions>,
+    pub coercions: FxHashMap<ExprId, Coercions>,
 }
 
 impl Hir {
@@ -29,7 +29,7 @@ impl Hir {
             fns: IndexVec::new(),
             lets: IndexVec::new(),
             extern_lets: IndexVec::new(),
-            coercions: HirMap::default(),
+            coercions: FxHashMap::default(),
         }
     }
 
@@ -57,8 +57,6 @@ new_key_type!(ExprId);
 new_key_type!(FnId);
 new_key_type!(ExternLetId);
 new_key_type!(LetId);
-
-pub type HirMap<T> = FxHashMap<ExprId, T>;
 
 #[derive(Debug, Clone)]
 pub struct Expr {
