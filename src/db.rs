@@ -237,7 +237,9 @@ impl Db {
 
 macro_rules! new_db_key {
     ($key: ident -> $collection: ident : $type: ident) => {
-        new_key_type!($key);
+        new_key_type! {
+            pub struct $key;
+        }
 
         #[allow(unused)]
         impl std::ops::Index<$key> for Db {

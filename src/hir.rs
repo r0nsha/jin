@@ -53,10 +53,12 @@ impl Hir {
     }
 }
 
-new_key_type!(ExprId);
-new_key_type!(FnId);
-new_key_type!(ExternLetId);
-new_key_type!(LetId);
+new_key_type! {
+    pub struct ExprId;
+    pub struct FnId;
+    pub struct ExternLetId;
+    pub struct LetId;
+}
 
 #[derive(Debug, Clone)]
 pub struct Expr {

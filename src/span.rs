@@ -77,7 +77,9 @@ where
 #[derive(Debug)]
 pub struct Sources(IndexVec<SourceId, Source>);
 
-new_key_type!(SourceId);
+new_key_type! {
+    pub struct SourceId;
+}
 
 impl Sources {
     pub fn new() -> Self {

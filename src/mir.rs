@@ -23,10 +23,12 @@ use crate::{
     ty::{Instantiation, Ty},
 };
 
-new_key_type!(FnSigId);
-new_key_type!(GlobalId);
-new_key_type!(BlockId);
-new_key_type!(ValueId);
+new_key_type! {
+    pub struct FnSigId;
+    pub struct GlobalId;
+    pub struct BlockId;
+    pub struct ValueId;
+}
 
 #[derive(Debug, Clone)]
 pub struct Mir {

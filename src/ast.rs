@@ -64,7 +64,9 @@ impl Module {
     }
 }
 
-new_key_type!(ItemId);
+new_key_type! {
+    pub struct ItemId;
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GlobalItemId {
