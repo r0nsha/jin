@@ -1185,16 +1185,59 @@ impl<'db> Typeck<'db> {
         expected_ty: Option<Ty>,
     ) -> TypeckResult<hir::Expr> {
         let expr = self.check_expr(env, expr, None)?;
+        let expr_ty = self.normalize(expr.ty);
 
-        // TODO: ty = union of all case expr's, or unit if there are no cases
+        self.is_ty_matchable(expr_ty)?;
+
+        let mut new_cases = Vec::<hir::MatchCase>::new();
+        let mut result_ty: Option<Ty> = expected_ty;
+
+        for case in cases {
+            let case =
+                self.check_match_case(env, case, expr_ty, expected_ty)?;
+
+            if let Some(result_ty) = result_ty {
+                todo!("unify case.expr.ty with result_ty")
+            } else {
+                result_ty = Some(case.expr.ty);
+            }
+
+            new_cases.push(case);
+        }
+
         Ok(self.expr(
             hir::ExprKind::Match(hir::Match {
                 expr: Box::new(expr),
-                cases: vec![],
+                cases: new_cases,
             }),
-            self.db.types.unit,
+            result_ty.unwrap_or(self.db.types.unit),
             span,
         ))
+    }
+
+    fn is_ty_matchable(&mut self, ty: Ty) -> TypeckResult<()> {
+        todo!("check ty can be matched")
+    }
+
+    fn check_match_case(
+        &mut self,
+        env: &mut Env,
+        case: &ast::MatchCase,
+        expr_ty: Ty,
+        expected_ty: Option<Ty>,
+    ) -> TypeckResult<hir::MatchCase> {
+        let pat = self.check_match_pat(env, &case.pat, expr_ty)?;
+        let expr = self.check_expr(env, &case.expr, expected_ty)?;
+        Ok(hir::MatchCase { pat, expr: Box::new(expr) })
+    }
+
+    fn check_match_pat(
+        &mut self,
+        env: &mut Env,
+        pat: &ast::MatchPat,
+        ty: Ty,
+    ) -> TypeckResult<hir::MatchPat> {
+        todo!("check pat is compatible with ty")
     }
 
     fn check_name(
