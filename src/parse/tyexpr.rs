@@ -6,6 +6,7 @@ use crate::{
     middle::{TyExpr, TyExprFn},
     parse::{errors, parser::Parser},
     span::{Span, Spanned},
+    word::Word,
 };
 
 impl<'a> Parser<'a> {
@@ -28,11 +29,7 @@ impl<'a> Parser<'a> {
                 let span = tok.span.merge(pointee.span());
                 TyExpr::RawPtr(Box::new(pointee), span)
             }
-            TokenKind::Ident(..) => {
-                let word = tok.word();
-                let targs = self.parse_optional_ty_args()?;
-                TyExpr::Name(word, targs, tok.span.merge(self.last_span()))
-            }
+            TokenKind::Ident(..) => self.parse_ty_path(tok.word())?,
             TokenKind::Underscore => TyExpr::Hole(tok.span),
             _ => {
                 return Err(errors::unexpected_token_err(
@@ -42,6 +39,19 @@ impl<'a> Parser<'a> {
         };
 
         Ok(ty)
+    }
+
+    fn parse_ty_path(&mut self, word: Word) -> DiagnosticResult<TyExpr> {
+        if self.is(TokenKind::Dot) {
+            let word = self.eat_ident()?.word();
+            let child = self.parse_ty_path(word)?;
+            let span = word.span().merge(self.last_span());
+            Ok(TyExpr::Path(word, Box::new(child), span))
+        } else {
+            let targs = self.parse_optional_ty_args()?;
+            let span = word.span().merge(self.last_span());
+            Ok(TyExpr::Name(word, targs, span))
+        }
     }
 
     fn parse_fn_ty(&mut self) -> DiagnosticResult<TyExprFn> {
