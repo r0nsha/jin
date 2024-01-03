@@ -36,7 +36,7 @@ pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
             .chain(f.params.iter().map(|p| {
                 let ty_name = mangle_ty_name(db, p.ty);
                 if let Some(name) = p.name {
-                    format!("{name}_{}", ty_name)
+                    format!("{name}_{ty_name}")
                 } else {
                     ty_name
                 }
