@@ -22,10 +22,22 @@ pub struct Column {
     pub pat: hir::MatchPat,
 }
 
+impl Column {
+    pub fn new(value: ValueId, pat: hir::MatchPat) -> Self {
+        Self { value, pat }
+    }
+}
+
 #[derive(Debug)]
 pub struct Row {
     pub columns: Vec<Column>,
     pub body: Body,
+}
+
+impl Row {
+    pub fn new(columns: Vec<Column>, body: Body) -> Self {
+        Self { columns, body }
+    }
 }
 
 #[derive(Debug)]
@@ -116,9 +128,15 @@ pub enum Decision {
 }
 
 #[derive(Debug)]
-struct Body {
+pub struct Body {
     pub bindings: Vec<(DefId, ValueId)>,
     pub block_id: BlockId,
+}
+
+impl Body {
+    pub fn new(block_id: BlockId) -> Self {
+        Self { bindings: vec![], block_id }
+    }
 }
 
 #[derive(Debug)]

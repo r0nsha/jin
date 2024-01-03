@@ -14,9 +14,9 @@ use crate::{
     mangle,
     middle::{Mutability, NamePat, Pat, Vis},
     mir::{
-        pmatch, AdtId, Block, BlockId, Body, Const, Fn, FnParam, FnSig,
-        FnSigId, FxHashMap, FxHashSet, Global, GlobalId, GlobalKind, Inst, Mir,
-        Span, StaticGlobal, UnOp, ValueId, ValueKind,
+        pmatch, pmatch::Row, AdtId, Block, BlockId, Body, Const, Fn, FnParam,
+        FnSig, FnSigId, FxHashMap, FxHashSet, Global, GlobalId, GlobalKind,
+        Inst, Mir, Span, StaticGlobal, UnOp, ValueId, ValueKind,
     },
     span::Spanned,
     ty::{
@@ -453,7 +453,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 let mut rows = vec![];
 
-                for case in &match_.cases {}
+                for case in &match_.cases {
+                    let block_id = self.body.create_block("case");
+                    let col = pmatch::Column::new(value, case.pat.clone());
+                    let body = pmatch::Body::new(block_id);
+                    rows.push(pmatch::Row::new(vec![col], body));
+                }
 
                 let (decision, diagnostics) = pmatch::compile(self.cx.db, rows);
 
