@@ -463,7 +463,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let (decision, diagnostics) = pmatch::compile(self.cx.db, rows);
                 self.cx.db.diagnostics.emit_many(diagnostics);
 
-                println!("{decision:?}");
+                self.lower_decision(decision, output, merge_blk);
 
                 output
             }
@@ -655,12 +655,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn lower_decision(
         &mut self,
         decision: pmatch::Decision,
-        merge_blk: BlockId,
         output: ValueId,
+        merge_blk: BlockId,
     ) -> BlockId {
-        todo!("compile decision to instructions");
-        todo!("write match result to `output`");
-        todo!("in all blocks: br to merge_blk");
+        println!("{decision:?}");
+
+        match decision {
+            pmatch::Decision::Ok(body) => {
+                todo!("compile decision to instructions");
+                todo!("write match result to `output`");
+                todo!("br to merge_blk");
+            }
+            pmatch::Decision::Err => unreachable!(),
+        }
     }
 
     fn lower_name(

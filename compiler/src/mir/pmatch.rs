@@ -123,8 +123,8 @@ pub enum Decision {
     /// A pattern is missing
     Err,
 
-    /// Check if a value matches any of the given patterns
-    Switch { cond: ValueId, cases: Vec<Case>, fallback: Option<Box<Decision>> },
+    // /// Check if a value matches any of the given patterns
+    // Switch { cond: ValueId, cases: Vec<Case>, fallback: Option<Box<Decision>> },
 }
 
 #[derive(Debug)]
