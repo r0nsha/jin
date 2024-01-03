@@ -8,6 +8,7 @@ fn main() unit = {
 	print(Box(42)) // matches print(&Box[int])
 	print(Box(6.9)) // matches print(&Box[a])
 	print(Box[int](5)) // matches print(&Box[int]) 
+	//print(inner.Inner[int](30)) // matches print(&inner.Inner[int])
 }
 
 fn print(value: int) unit = {
@@ -24,4 +25,8 @@ fn print(box: &Box[int]) unit = {
 
 fn print[a](box: &Box[a]) unit = {
 	printf("Box(%f)\n".ptr, &box.value)
+}
+
+fn print(inner: &inner.Inner[int]) unit = {
+	//printf("Inner(%d)\n".ptr, inner.value)
 }

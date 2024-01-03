@@ -1,0 +1,1 @@
+type Inner[a](value: a)
