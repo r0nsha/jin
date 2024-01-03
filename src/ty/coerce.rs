@@ -24,6 +24,10 @@ impl Coercions {
         self.0.iter()
     }
 
+    pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Coercion> {
+        self.0.iter_mut()
+    }
+
     pub fn len(&self) -> usize {
         self.0.len()
     }

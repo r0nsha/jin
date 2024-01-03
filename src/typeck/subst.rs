@@ -1,20 +1,18 @@
 use rustc_hash::FxHashMap;
 
 use crate::{
-    db::Db,
     diagnostics::{Diagnostic, Label},
     span::Span,
     subst::{Subst, SubstTy},
     ty::{fold::TyFolder, FloatVar, InferTy, IntVar, Ty, TyKind, TyVar},
-    typeck::{normalize::NormalizeTy, TyStorage, Typeck},
+    typeck::{TyStorage, Typeck},
 };
 
 impl<'db> Typeck<'db> {
     pub fn subst(&mut self) {
         let mut cx = SubstCx {
-            db: self.db,
             storage: &mut self.storage.borrow_mut(),
-            errors: FxHashMap::default(),
+            unbound_tys: FxHashMap::default(),
         };
 
         for f in &mut self.hir.fns {
@@ -25,7 +23,22 @@ impl<'db> Typeck<'db> {
             let_.subst(&mut cx);
         }
 
-        let diagnostics: Vec<_> = cx.errors.into_values().collect();
+        let diagnostics: Vec<_> = cx
+            .unbound_tys
+            .into_iter()
+            .map(|(span, ty)| {
+                self.normalize(ty);
+
+                Diagnostic::error()
+                    .with_message(format!(
+                        "type annotations needed for `{}`",
+                        ty.display(self.db)
+                    ))
+                    .with_label(
+                        Label::primary(span).with_message("cannot infer type"),
+                    )
+            })
+            .collect();
 
         self.db.diagnostics.emit_many(diagnostics);
 
@@ -38,9 +51,8 @@ impl<'db> Typeck<'db> {
 }
 
 struct SubstCx<'db> {
-    db: &'db mut Db,
     storage: &'db mut TyStorage,
-    errors: FxHashMap<Span, Diagnostic>,
+    unbound_tys: FxHashMap<Span, Ty>,
 }
 
 impl SubstTy for SubstCx<'_> {
@@ -48,18 +60,8 @@ impl SubstTy for SubstCx<'_> {
         let mut folder = VarFolder { cx: self, has_unbound_vars: false };
         let ty = folder.fold(ty);
 
-        if folder.has_unbound_vars {
-            self.errors.entry(span).or_insert_with(|| {
-                let ty = ty.normalize(self.storage);
-                Diagnostic::error()
-                    .with_message(format!(
-                        "type annotations needed for `{}`",
-                        ty.display(self.db)
-                    ))
-                    .with_label(
-                        Label::primary(span).with_message("cannot infer type"),
-                    )
-            });
+        if folder.has_unbound_vars && !self.unbound_tys.contains_key(&span) {
+            self.unbound_tys.insert(span, ty);
         }
 
         ty
