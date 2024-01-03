@@ -461,16 +461,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
 
                 let (decision, diagnostics) = pmatch::compile(self.cx.db, rows);
+                self.cx.db.diagnostics.emit_many(diagnostics);
 
-                println!(
-                    "Decision: {decision:?}\nDiagnostics: {diagnostics:?}"
-                );
+                println!("{decision:?}");
 
-                todo!("compile decision to instructions");
-                todo!("write match result to `output`");
-                todo!("in all blocks: br to merge_blk");
-                todo!("return `output`");
-                // self.cx.db.diagnostics.emit_many(diagnostics);
+                output
             }
             hir::ExprKind::Loop(loop_) => {
                 let start_blk = self.body.create_block("loop_start");
@@ -655,6 +650,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.lower_const(&value, expr.ty)
             }
         }
+    }
+
+    fn lower_decision(
+        &mut self,
+        decision: pmatch::Decision,
+        merge_blk: BlockId,
+        output: ValueId,
+    ) -> BlockId {
+        todo!("compile decision to instructions");
+        todo!("write match result to `output`");
+        todo!("in all blocks: br to merge_blk");
     }
 
     fn lower_name(
