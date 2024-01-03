@@ -6,7 +6,6 @@ use crate::{
         Ty, TyKind,
     },
     typeck::{
-        normalize::NormalizeTy,
         unify::{EqResult, UnifyOptions},
         Typeck,
     },
@@ -21,12 +20,8 @@ impl CoerceExt<'_> for EqResult {
         match self {
             Ok(res) => Ok(res),
             Err(err) => {
-                let (source, target) = {
-                    let storage = &mut cx.storage.borrow_mut();
-                    let source = err.found.normalize(storage);
-                    let target = err.expected.normalize(storage);
-                    (source, target)
-                };
+                let (source, target) =
+                    (cx.normalize(err.found), cx.normalize(err.expected));
 
                 if let Some(coercions) = source.coerce(&target, cx) {
                     cx.hir.push_coercions(expr_id, coercions);

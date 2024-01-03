@@ -38,7 +38,6 @@ use crate::{
             BuiltinTys, Env, FnQuery, GlobalScope, LookupResult, Query,
             ScopeKind, Symbol,
         },
-        normalize::NormalizeTy,
         resolution_state::{ModuleStatus, ResolutionState, ResolvedFnSig},
         unify::Obligation,
     },
@@ -1862,11 +1861,6 @@ impl<'db> Typeck<'db> {
         Ty::new(TyKind::Infer(InferTy::Float(
             self.storage.borrow_mut().float_unification_table.new_key(None),
         )))
-    }
-
-    #[inline]
-    pub fn normalize(&self, ty: Ty) -> Ty {
-        ty.normalize(&mut self.storage.borrow_mut())
     }
 
     fn check_bin_op(

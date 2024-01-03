@@ -4,7 +4,7 @@ use crate::{
     diagnostics::{Diagnostic, Label},
     span::Span,
     ty::{FloatTy, FloatVar, InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
-    typeck::{errors, normalize::NormalizeTy, Typeck},
+    typeck::{errors, Typeck},
 };
 
 impl<'db> Typeck<'db> {
@@ -23,12 +23,10 @@ pub struct At<'db, 'a> {
 impl At<'_, '_> {
     pub fn eq(&self, expected: Ty, found: Ty) -> EqResult {
         expected.unify(found, self.cx, UnifyOptions::default()).map_err(|err| {
-            let mut storage = self.cx.storage.borrow_mut();
-
             let diagnostic = match err {
                 UnifyError::TyMismatch { .. } => {
-                    let expected = expected.normalize(&mut storage);
-                    let found = found.normalize(&mut storage);
+                    let expected = self.cx.normalize(expected);
+                    let found = self.cx.normalize(found);
 
                     let expected_ty = expected.display(self.cx.db).to_string();
                     let found_ty = found.display(self.cx.db).to_string();
@@ -60,7 +58,7 @@ impl At<'_, '_> {
                     diag
                 }
                 UnifyError::InfiniteTy { ty } => {
-                    let ty = ty.normalize(&mut storage);
+                    let ty = self.cx.normalize(ty);
                     let obligation =
                         Obligation::obvious(self.obligation.span());
 
@@ -182,12 +180,7 @@ struct UnifyCx<'db, 'a> {
 
 impl UnifyCx<'_, '_> {
     fn unify_ty_ty(&mut self, a: Ty, b: Ty) -> UnifyResult {
-        let (a, b) = {
-            let mut storage = self.cx.storage.borrow_mut();
-            let a = a.normalize(&mut storage);
-            let b = b.normalize(&mut storage);
-            (a, b)
-        };
+        let (a, b) = (self.cx.normalize(a), self.cx.normalize(b));
 
         match (a.kind(), b.kind()) {
             (TyKind::Bool, TyKind::Bool)

@@ -1,62 +1,46 @@
+use std::cell::RefMut;
+
 use crate::{
-    ty::{FnTy, FnTyParam, InferTy, Ty, TyKind},
-    typeck::TyStorage,
+    ty::{fold::TyFolder, InferTy, Ty, TyKind},
+    typeck::{TyStorage, Typeck},
 };
 
-pub trait NormalizeTy {
-    fn normalize(self, storage: &mut TyStorage) -> Self;
+impl Typeck<'_> {
+    #[inline]
+    pub(super) fn normalize(&self, ty: Ty) -> Ty {
+        Normalize::from(self).fold(ty)
+    }
 }
 
-impl NormalizeTy for Ty {
-    fn normalize(self, storage: &mut TyStorage) -> Self {
-        match self.kind() {
-            TyKind::Fn(fun) => TyKind::Fn(FnTy {
-                params: fun
-                    .params
-                    .iter()
-                    .map(|param| FnTyParam {
-                        name: param.name,
-                        ty: param.ty.normalize(storage),
-                    })
-                    .collect(),
-                ret: fun.ret.normalize(storage),
-                is_c_variadic: fun.is_c_variadic,
-            })
-            .into(),
-            TyKind::Ref(inner, mutability) => {
-                TyKind::Ref(inner.normalize(storage), *mutability).into()
-            }
-            TyKind::RawPtr(pointee) => {
-                TyKind::RawPtr(pointee.normalize(storage)).into()
-            }
-            TyKind::Infer(InferTy::Ty(var)) => storage
+pub struct Normalize<'a> {
+    storage: RefMut<'a, TyStorage>,
+}
+
+impl<'db, 'a> From<&'a Typeck<'db>> for Normalize<'a> {
+    fn from(value: &'a Typeck<'db>) -> Self {
+        Self { storage: value.storage.borrow_mut() }
+    }
+}
+
+impl TyFolder for Normalize<'_> {
+    fn fold(&mut self, ty: Ty) -> Ty {
+        match ty.kind() {
+            TyKind::Infer(InferTy::Ty(var)) => self
+                .storage
                 .ty_unification_table
                 .probe_value(*var)
-                .map_or(self, |ty| ty.normalize(storage)),
-            TyKind::Infer(InferTy::Int(var)) => storage
+                .map_or(ty, |ty| self.fold(ty)),
+            TyKind::Infer(InferTy::Int(var)) => self
+                .storage
                 .int_unification_table
                 .probe_value(*var)
-                .map_or(self, |ty| TyKind::from(ty).into()),
-            TyKind::Infer(InferTy::Float(var)) => storage
+                .map_or(ty, |ty| TyKind::from(ty).into()),
+            TyKind::Infer(InferTy::Float(var)) => self
+                .storage
                 .float_unification_table
                 .probe_value(*var)
-                .map_or(self, |ty| TyKind::from(ty).into()),
-            TyKind::Adt(id, targs) => TyKind::Adt(
-                *id,
-                targs.iter().map(|ty| ty.normalize(storage)).collect(),
-            )
-            .into(),
-            TyKind::Int(_)
-            | TyKind::Uint(_)
-            | TyKind::Float(_)
-            | TyKind::Str
-            | TyKind::Bool
-            | TyKind::Unit
-            | TyKind::Never
-            | TyKind::Param(_)
-            | TyKind::Type(_)
-            | TyKind::Module(_)
-            | TyKind::Unknown => self,
+                .map_or(ty, |ty| TyKind::from(ty).into()),
+            _ => self.super_fold(ty),
         }
     }
 }
