@@ -8,10 +8,6 @@ impl Coercions {
         Self(vec![])
     }
 
-    pub fn one(c: Coercion) -> Self {
-        Self(vec![c])
-    }
-
     pub fn push(&mut self, c: Coercion) {
         self.0.push(c);
     }
@@ -28,6 +24,7 @@ impl Coercions {
         self.0.iter_mut()
     }
 
+    #[allow(unused)]
     pub fn len(&self) -> usize {
         self.0.len()
     }

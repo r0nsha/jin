@@ -4,9 +4,7 @@ mod timing;
 use core::fmt;
 use std::{
     cell::{Ref, RefCell},
-    cmp,
-    collections::hash_map::Entry,
-    fs, io,
+    cmp, fs, io,
     path::Path,
     rc::Rc,
 };
@@ -24,14 +22,13 @@ use crate::{
         timing::Timings,
     },
     diagnostics::Diagnostics,
-    hir::{ExprId, HirMap},
     middle::{Mutability, TyParam, Vis},
     qpath::QPath,
     span::{Source, SourceId, Sources, Span},
     target::{TargetMetrics, TargetPlatform},
     ty::{
-        coerce::Coercions, FloatTy, FnTy, FnTyParam, Instantiation, IntTy, Ty,
-        TyKind, Typed, UintTy,
+        FloatTy, FnTy, FnTyParam, Instantiation, IntTy, Ty, TyKind, Typed,
+        UintTy,
     },
     word::Word,
 };
@@ -44,7 +41,6 @@ pub struct Db {
     pub defs: IndexVec<DefId, Def>,
     pub adts: IndexVec<AdtId, Adt>,
     pub types: CommonTypes,
-    pub coercions: HirMap<Coercions>,
     pub extern_libs: FxHashSet<ExternLib>,
     pub diagnostics: Diagnostics,
     timings: Timings,
@@ -103,7 +99,6 @@ impl Db {
             defs: IndexVec::new(),
             adts: IndexVec::new(),
             types: CommonTypes::new(),
-            coercions: HirMap::default(),
             extern_libs: FxHashSet::default(),
             main_package_name,
             main_source,
@@ -201,17 +196,6 @@ impl Db {
 
     pub fn adt_def(&self, adt_id: AdtId) -> Option<&Def> {
         self.adts.get(adt_id).and_then(|s| self.defs.get(s.def_id))
-    }
-
-    pub fn push_coercions(&mut self, expr_id: ExprId, c: Coercions) {
-        match self.coercions.entry(expr_id) {
-            Entry::Occupied(mut entry) => {
-                entry.get_mut().extend(c);
-            }
-            Entry::Vacant(entry) => {
-                entry.insert(c);
-            }
-        }
     }
 
     pub fn emit_file(

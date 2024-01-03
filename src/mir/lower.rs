@@ -1188,7 +1188,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         expr: &hir::Expr,
         value: ValueId,
     ) -> ValueId {
-        if let Some(coercions) = self.cx.db.coercions.get(&expr.id) {
+        if let Some(coercions) = self.cx.hir.coercions.get(&expr.id) {
             self.apply_coercions(&coercions.clone(), value, expr.span)
         } else {
             value

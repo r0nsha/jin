@@ -1,7 +1,7 @@
 mod pretty_print;
 pub mod subst;
 
-use std::io;
+use std::{collections::hash_map::Entry, io};
 
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
@@ -11,7 +11,7 @@ use crate::{
     db::{Db, DefId, ModuleId},
     middle::{BinOp, Pat, TyParam, UnOp},
     span::Span,
-    ty::{Instantiation, Ty, Typed},
+    ty::{coerce::Coercions, Instantiation, Ty, Typed},
     word::Word,
 };
 
@@ -20,6 +20,7 @@ pub struct Hir {
     pub fns: IndexVec<FnId, Fn>,
     pub lets: IndexVec<LetId, Let>,
     pub extern_lets: IndexVec<ExternLetId, ExternLet>,
+    pub coercions: HirMap<Coercions>,
 }
 
 impl Hir {
@@ -28,6 +29,18 @@ impl Hir {
             fns: IndexVec::new(),
             lets: IndexVec::new(),
             extern_lets: IndexVec::new(),
+            coercions: HirMap::default(),
+        }
+    }
+
+    pub fn push_coercions(&mut self, expr_id: ExprId, c: Coercions) {
+        match self.coercions.entry(expr_id) {
+            Entry::Occupied(mut entry) => {
+                entry.get_mut().extend(c);
+            }
+            Entry::Vacant(entry) => {
+                entry.insert(c);
+            }
         }
     }
 

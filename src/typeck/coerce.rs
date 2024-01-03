@@ -29,7 +29,7 @@ impl CoerceExt<'_> for EqResult {
                 };
 
                 if let Some(coercions) = source.coerce(&target, cx) {
-                    cx.db.push_coercions(expr_id, coercions);
+                    cx.hir.push_coercions(expr_id, coercions);
                     Ok(())
                 } else {
                     Err(err)
