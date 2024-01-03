@@ -12,7 +12,7 @@ pub struct BuildOptions {
 }
 
 impl BuildOptions {
-    const DEFAULT_OUTPUT_DIR: &str = "build";
+    const DEFAULT_OUTPUT_DIR: &'static str = "build";
 
     pub fn new(
         timings: bool,

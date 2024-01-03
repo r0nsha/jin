@@ -703,7 +703,7 @@ pub struct Env {
 }
 
 impl Env {
-    const ANON_SCOPE: &str = "_";
+    const ANON_SCOPE: &'static str = "_";
 
     pub fn new(module_id: ModuleId) -> Self {
         Self { module_id, scopes: vec![] }

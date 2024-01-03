@@ -23,15 +23,6 @@ impl Coercions {
     pub fn iter_mut(&mut self) -> impl Iterator<Item = &mut Coercion> {
         self.0.iter_mut()
     }
-
-    #[allow(unused)]
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
 }
 
 impl Default for Coercions {
