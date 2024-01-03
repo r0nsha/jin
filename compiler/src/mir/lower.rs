@@ -443,15 +443,28 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 output
             }
             hir::ExprKind::Match(match_) => {
+                let merge_blk = self.body.create_block("match_merge");
+
+                let output = self.push_inst_with_register(expr.ty, |value| {
+                    Inst::StackAlloc { value, init: None }
+                });
+
                 let value = self.lower_expr(&match_.expr);
 
                 let mut rows = vec![];
 
+                for case in &match_.cases {}
+
                 let (decision, diagnostics) = pmatch::compile(self.cx.db, rows);
+
                 println!(
                     "Decision: {decision:?}\nDiagnostics: {diagnostics:?}"
                 );
-                todo!()
+
+                todo!("compile decision to instructions");
+                todo!("write match result to `output`");
+                todo!("in all blocks: br to merge_blk");
+                todo!("return `output`");
                 // self.cx.db.diagnostics.emit_many(diagnostics);
             }
             hir::ExprKind::Loop(loop_) => {
