@@ -442,6 +442,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 output
             }
+            hir::ExprKind::Match(match_) => self.const_unit(),
             hir::ExprKind::Loop(loop_) => {
                 let start_blk = self.body.create_block("loop_start");
                 let end_blk = self.body.create_block("loop_end");

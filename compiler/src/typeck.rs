@@ -1185,7 +1185,16 @@ impl<'db> Typeck<'db> {
         expected_ty: Option<Ty>,
     ) -> TypeckResult<hir::Expr> {
         let expr = self.check_expr(env, expr, None)?;
-        todo!("typeck match")
+
+        // TODO: ty = union of all case expr's, or unit if there are no cases
+        Ok(self.expr(
+            hir::ExprKind::Match(hir::Match {
+                expr: Box::new(expr),
+                cases: vec![],
+            }),
+            self.db.types.unit,
+            span,
+        ))
     }
 
     fn check_name(

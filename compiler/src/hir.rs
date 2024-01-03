@@ -85,6 +85,13 @@ impl Expr {
                 if_.then.walk_(f);
                 if_.otherwise.walk_(f);
             }
+            ExprKind::Match(match_) => {
+                match_.expr.walk_(f);
+
+                for case in &match_.cases {
+                    case.expr.walk_(f);
+                }
+            }
             ExprKind::Loop(loop_) => {
                 loop_.expr.walk_(f);
             }
@@ -120,6 +127,7 @@ pub enum ExprKind {
     Let(Let),
     Assign(Assign),
     If(If),
+    Match(Match),
     Loop(Loop),
     Break,
     Block(Block),
@@ -204,6 +212,23 @@ pub struct If {
     pub cond: Box<Expr>,
     pub then: Box<Expr>,
     pub otherwise: Box<Expr>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Match {
+    pub expr: Box<Expr>,
+    pub cases: Vec<MatchCase>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MatchCase {
+    pub pat: MatchPat,
+    pub expr: Box<Expr>,
+}
+
+#[derive(Debug, Clone)]
+pub enum MatchPat {
+    Name(DefId),
 }
 
 #[derive(Debug, Clone)]

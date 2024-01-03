@@ -18,6 +18,13 @@ impl<S: SubstTy> Subst<S> for Expr {
                 if_.then.subst(s);
                 if_.otherwise.subst(s);
             }
+            ExprKind::Match(match_) => {
+                match_.expr.subst(s);
+
+                for case in &mut match_.cases {
+                    case.expr.subst(s);
+                }
+            }
             ExprKind::Loop(loop_) => {
                 loop_.expr.subst(s);
             }

@@ -121,6 +121,19 @@ impl PrettyCx<'_> {
 
                 self.builder.end_child();
             }
+            ExprKind::Match(match_) => {
+                self.builder.begin_child("match".to_string());
+
+                self.builder.begin_child("expr".to_string());
+                self.pp_expr(&match_.expr);
+                self.builder.end_child();
+
+                self.builder.begin_child("cases".to_string());
+                self.builder.add_empty_child("TODO: write cases".to_string());
+                self.builder.end_child();
+
+                self.builder.end_child();
+            }
             ExprKind::Loop(loop_) => {
                 self.builder.begin_child("loop".to_string());
 

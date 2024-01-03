@@ -5,6 +5,6 @@ fn main() unit = {
 
 	match foo {}
 	//match foo {
-	//	foo -> printf("%d\n".ptr, foo)
+	//	foo -> printf("foo's int repr is %d\n".ptr, foo)
 	//}
 }

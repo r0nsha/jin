@@ -702,7 +702,9 @@ impl<'a> Parser<'a> {
 
     fn parse_match_case(&mut self) -> DiagnosticResult<MatchCase> {
         let pat = self.parse_match_pat()?;
-        todo!("{pat:?}")
+        self.eat(TokenKind::Arrow)?;
+        let expr = self.parse_expr()?;
+        Ok(MatchCase { pat, expr: Box::new(expr) })
     }
 
     fn parse_match_pat(&mut self) -> DiagnosticResult<MatchPat> {
