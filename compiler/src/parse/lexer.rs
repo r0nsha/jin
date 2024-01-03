@@ -37,6 +37,7 @@ impl<'s> Lexer<'s> {
         Ok(tokens)
     }
 
+    #[allow(clippy::too_many_lines)]
     fn eat_token(&mut self) -> DiagnosticResult<Option<Token>> {
         let start = self.pos;
 

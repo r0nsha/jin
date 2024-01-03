@@ -6,7 +6,10 @@ use ustr::ustr;
 use crate::{
     db::Db,
     mangle,
-    mir::*,
+    mir::{
+        Body, Fn, FnSig, FnSigId, FxHashMap, GlobalId, GlobalKind, IdMap, Inst,
+        Mir, StaticGlobal, ValueId, ValueKind,
+    },
     subst::Subst,
     ty::{Instantiation, Ty, TyKind},
 };

@@ -35,6 +35,7 @@ trait PrettyPrint {
 }
 
 impl PrettyPrint for Expr {
+    #[allow(clippy::too_many_lines)]
     fn pretty_print(&self, cx: &mut PrettyCx) {
         match self {
             Self::Let(let_) => let_.pretty_print(cx),

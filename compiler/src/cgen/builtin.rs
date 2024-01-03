@@ -96,12 +96,13 @@ impl<'db> Generator<'db> {
             (self.value(state, data.lhs), self.value(state, data.rhs));
 
         let init = match (data.op, data.ty.kind()) {
-            (BinOp::Rem, TyKind::Float(FloatTy::F32)) => {
-                util::call("fmodf", lhs.append(D::text(", ").append(rhs)))
-            }
-            (BinOp::Rem, TyKind::Float(FloatTy::F64)) => {
-                util::call("fmod", lhs.append(D::text(", ").append(rhs)))
-            }
+            (BinOp::Rem, TyKind::Float(fty)) => util::call(
+                D::text(match fty {
+                    FloatTy::F32 => "fmodf",
+                    FloatTy::F64 => "fmod",
+                }),
+                [lhs, rhs],
+            ),
             _ => bin_op(lhs, data.op, rhs),
         };
 

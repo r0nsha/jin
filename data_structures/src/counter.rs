@@ -19,12 +19,14 @@ impl<T> From<usize> for Counter<T> {
 }
 
 impl<T> Counter<T> {
+    #[must_use]
     pub fn new() -> Self {
         Self { value: 0, marker: PhantomData }
     }
 }
 
 impl<T: From<usize>> Counter<T> {
+    #[must_use]
     pub fn value(&self) -> T {
         self.value.into()
     }

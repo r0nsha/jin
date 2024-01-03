@@ -85,6 +85,7 @@ fn main() -> Result<()> {
     }
 }
 
+#[allow(clippy::similar_names)]
 fn build(db: &mut Db) {
     // Create the output directory
     fs::create_dir_all(db.output_dir())

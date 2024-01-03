@@ -47,6 +47,7 @@ impl TargetPlatform {
         )
     }
 
+    #[allow(clippy::too_many_lines)]
     pub fn metrics(&self) -> TargetMetrics {
         match self {
             Self::Windows386 => TargetMetrics {

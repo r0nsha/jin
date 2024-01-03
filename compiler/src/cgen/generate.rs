@@ -433,45 +433,9 @@ impl<'db> Generator<'db> {
     ) -> D<'db> {
         match inst {
             Inst::StackAlloc { value, init } => {
-                let value = state.body.value(*value);
-
-                let name = match value.kind {
-                    ValueKind::Register(name) => {
-                        Self::register_name(value.id, name)
-                    }
-                    ValueKind::Local(id) => state
-                        .local_names
-                        .insert_unique(id, self.db[id].name)
-                        .to_string(),
-                    _ => unreachable!(),
-                };
-
-                match *init {
-                    Some(init) => VariableDoc::assign(
-                        self,
-                        value.ty,
-                        D::text(name),
-                        self.value(state, init),
-                    ),
-                    None => VariableDoc::decl(self, value.ty, D::text(name)),
-                }
+                self.codegen_inst_stackalloc(state, *value, *init)
             }
-            Inst::Alloc { value } => {
-                let ty = state.body.value(*value).ty;
-
-                let ty_doc = match ty.kind() {
-                    TyKind::Adt(..) => D::text(self.adt_names[&ty].as_str()),
-                    kind => panic!("unexpected type {kind:?} in Inst::Alloc"),
-                };
-
-                let value_doc = self
-                    .value_assign(state, *value, |_| util::call_alloc(ty_doc));
-
-                let zero_refcnt =
-                    stmt(|| self.refcnt_field(state, *value).append(" = 0"));
-
-                D::intersperse([value_doc, zero_refcnt], D::hardline())
-            }
+            Inst::Alloc { value } => self.codegen_inst_alloc(state, *value),
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
@@ -498,15 +462,11 @@ impl<'db> Generator<'db> {
             ),
             Inst::If { value, cond, then, otherwise } => {
                 self.value_assign(state, *value, |this| {
-                    this.value(state, *cond)
-                        .append(D::space())
-                        .append(D::text("?"))
-                        .append(D::space())
-                        .append(this.value(state, *then))
-                        .append(D::space())
-                        .append(D::text(":"))
-                        .append(D::space())
-                        .append(this.value(state, *otherwise))
+                    util::ternary(
+                        this.value(state, *cond),
+                        this.value(state, *then),
+                        this.value(state, *otherwise),
+                    )
                 })
             }
             Inst::Return { value } => stmt(|| {
@@ -516,19 +476,10 @@ impl<'db> Generator<'db> {
             }),
             Inst::Call { value, callee, args } => {
                 self.value_assign(state, *value, |this| {
-                    this.value(state, *callee)
-                        .append(D::text("("))
-                        .append(
-                            D::intersperse(
-                                args.iter()
-                                    .copied()
-                                    .map(|a| this.value(state, a)),
-                                D::text(",").append(D::space()),
-                            )
-                            .nest(1)
-                            .group(),
-                        )
-                        .append(D::text(")"))
+                    util::call(
+                        this.value(state, *callee),
+                        args.iter().copied().map(|a| this.value(state, a)),
+                    )
                 })
             }
             Inst::Binary { value, lhs, rhs, op, span } => self.codegen_bin_op(
@@ -567,6 +518,55 @@ impl<'db> Generator<'db> {
                 self.value_assign(state, *value, |_| str_value(lit))
             }
         }
+    }
+
+    fn codegen_inst_stackalloc(
+        &mut self,
+        state: &mut FnState<'db>,
+        value: ValueId,
+        init: Option<ValueId>,
+    ) -> D<'db> {
+        let value = state.body.value(value);
+
+        let name = match value.kind {
+            ValueKind::Register(name) => Self::register_name(value.id, name),
+            ValueKind::Local(id) => state
+                .local_names
+                .insert_unique(id, self.db[id].name)
+                .to_string(),
+            _ => unreachable!(),
+        };
+
+        match init {
+            Some(init_value) => VariableDoc::assign(
+                self,
+                value.ty,
+                D::text(name),
+                self.value(state, init_value),
+            ),
+            None => VariableDoc::decl(self, value.ty, D::text(name)),
+        }
+    }
+
+    fn codegen_inst_alloc(
+        &mut self,
+        state: &mut FnState<'db>,
+        value: ValueId,
+    ) -> D<'db> {
+        let ty = state.body.value(value).ty;
+
+        let ty_doc = match ty.kind() {
+            TyKind::Adt(..) => D::text(self.adt_names[&ty].as_str()),
+            kind => panic!("unexpected type {kind:?} in Inst::Alloc"),
+        };
+
+        let value_doc =
+            self.value_assign(state, value, |_| util::call_alloc(ty_doc));
+
+        let zero_refcnt =
+            stmt(|| self.refcnt_field(state, value).append(" = 0"));
+
+        D::intersperse([value_doc, zero_refcnt], D::hardline())
     }
 
     pub fn value_assign(

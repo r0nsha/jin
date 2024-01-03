@@ -125,6 +125,7 @@ impl<'db> PrettyCx<'db> {
         }
     }
 
+    #[allow(clippy::too_many_lines)]
     fn pp_inst(&mut self, body: &'db Body, inst: &'db Inst) -> D<'db> {
         match inst {
             Inst::StackAlloc { value, init } => self

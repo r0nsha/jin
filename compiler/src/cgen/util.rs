@@ -1,4 +1,5 @@
 use core::fmt;
+use std::iter;
 
 use codespan_reporting::files::{Files, Location};
 use pretty::RcDoc as D;
@@ -44,11 +45,8 @@ impl<'db> Generator<'db> {
 
     pub fn call_panic(&self, msg: &str, span: Span) -> D<'db> {
         call(
-            "jin_rt_panic_at",
-            D::intersperse(
-                [str_lit(msg), self.create_location_value(span)],
-                ", ",
-            ),
+            D::text("jin_rt_panic_at"),
+            [str_lit(msg), self.create_location_value(span)],
         )
     }
 
@@ -108,7 +106,7 @@ impl<'db> Generator<'db> {
             state.body.value(value).ty.display(self.db)
         ));
         let loc = self.create_location_value(span);
-        call("jin_rt_refcheck", D::intersperse([refcnt, fmt, loc], ", "))
+        call(D::text("jin_rt_refcheck"), [refcnt, fmt, loc])
     }
 }
 
@@ -117,16 +115,27 @@ pub const NEST: isize = 2;
 pub fn call_alloc(ty: D<'_>) -> D<'_> {
     cast(
         ty.clone().append(D::text("*")),
-        call("jin_rt_alloc", call("sizeof", ty)),
+        call(D::text("jin_rt_alloc"), iter::once(sizeof(ty))),
     )
 }
 
-pub fn call_free(value: D<'_>) -> D<'_> {
-    call("jin_rt_free", value)
+pub fn sizeof(ty: D<'_>) -> D<'_> {
+    call(D::text("sizeof"), iter::once(ty))
 }
 
-pub fn call<'a>(name: &'a str, params: D<'a>) -> D<'a> {
-    D::text(name).append("(").append(params).append(")")
+pub fn call_free(value: D<'_>) -> D<'_> {
+    call(D::text("jin_rt_free"), iter::once(value))
+}
+
+pub fn call<'a>(callee: D<'a>, args: impl IntoIterator<Item = D<'a>>) -> D<'a> {
+    callee
+        .append(D::text("("))
+        .append(
+            D::intersperse(args, D::text(",").append(D::space()))
+                .nest(1)
+                .group(),
+        )
+        .append(D::text(")"))
 }
 
 pub fn str_value(value: &str) -> D {
@@ -203,6 +212,17 @@ pub fn if_stmt<'a>(
                 .append(D::space())
                 .append(block(|| o))
         }))
+}
+
+pub fn ternary<'a>(cond: D<'a>, then: D<'a>, otherwise: D<'a>) -> D<'a> {
+    cond.append(D::space())
+        .append(D::text("?"))
+        .append(D::space())
+        .append(then)
+        .append(D::space())
+        .append(D::text(":"))
+        .append(D::space())
+        .append(otherwise)
 }
 
 pub fn block<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {

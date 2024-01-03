@@ -761,6 +761,7 @@ impl<'db> Typeck<'db> {
         })
     }
 
+    #[allow(clippy::too_many_lines)]
     fn check_expr(
         &mut self,
         env: &mut Env,

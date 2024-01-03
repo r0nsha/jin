@@ -88,6 +88,7 @@ impl PrettyCx<'_> {
         self.builder.end_child();
     }
 
+    #[allow(clippy::too_many_lines)]
     fn pp_expr(&mut self, expr: &Expr) {
         match &expr.kind {
             ExprKind::Let(let_) => {

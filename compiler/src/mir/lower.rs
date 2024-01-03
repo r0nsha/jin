@@ -13,7 +13,11 @@ use crate::{
     macros::create_bool_enum,
     mangle,
     middle::{Mutability, NamePat, Pat, Vis},
-    mir::*,
+    mir::{
+        AdtId, Block, BlockId, Body, Const, Fn, FnParam, FnSig, FnSigId,
+        FxHashMap, FxHashSet, Global, GlobalId, GlobalKind, Inst, Mir, Span,
+        StaticGlobal, UnOp, ValueId, ValueKind,
+    },
     span::Spanned,
     ty::{
         coerce::{CoercionKind, Coercions},
@@ -353,6 +357,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.apply_coercions_to_expr(expr, value)
     }
 
+    #[allow(clippy::too_many_lines)]
     fn lower_expr_inner(&mut self, expr: &hir::Expr) -> ValueId {
         match &expr.kind {
             hir::ExprKind::Let(let_) => {
