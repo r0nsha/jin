@@ -96,7 +96,6 @@ fn coerce_tys(
             true
         }
         (TyKind::Ref(a, Mutability::Mut), TyKind::Ref(b, Mutability::Imm)) => {
-            dbg!(can_unify_or_coerce(source, *b, cx, coercions, options));
             if can_unify_or_coerce(*a, *b, cx, coercions, options) {
                 coercions
                     .push(Coercion { kind: CoercionKind::MutRefToImm, target });

@@ -23,6 +23,12 @@ impl<'db> Typeck<'db> {
             let_.subst(&mut cx);
         }
 
+        for coercions in self.db.coercions.values_mut() {
+            for coercion in coercions.iter_mut() {
+                coercion.target = cx.subst_ty(coercion.target, Span::UNKNOWN);
+            }
+        }
+
         let diagnostics: Vec<_> = cx
             .unbound_tys
             .into_iter()

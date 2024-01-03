@@ -24,6 +24,7 @@ mod db;
 mod diagnostics;
 mod hir;
 mod macros;
+mod mangle;
 mod middle;
 mod mir;
 mod parse;
@@ -35,7 +36,6 @@ mod target;
 mod ty;
 mod typeck;
 mod word;
-mod mangle;
 
 use std::fs;
 
