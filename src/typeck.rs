@@ -1739,62 +1739,6 @@ impl<'db> Typeck<'db> {
                 *span,
                 allow_hole,
             ),
-            TyExpr::Name(name, targs, span) => {
-                let id =
-                    self.lookup(env, env.module_id(), &Query::Name(*name))?;
-
-                let def = &self.db[id];
-
-                match def.kind.as_ref() {
-                    DefKind::Ty(ty) => {
-                        if targs.is_some() {
-                            Err(Diagnostic::error()
-                                .with_message(format!(
-                                    "type `{}` doesn't expect any type \
-                                     arguments",
-                                    ty.display(self.db)
-                                ))
-                                .with_label(
-                                    Label::primary(*span).with_message(
-                                        "unexpected type arguments",
-                                    ),
-                                ))
-                        } else {
-                            Ok(*ty)
-                        }
-                    }
-                    &DefKind::Adt(adt_id) => {
-                        let targs = self.check_optional_ty_args(
-                            env,
-                            targs.as_deref(),
-                            allow_hole,
-                        )?;
-
-                        let ty_params = &self.db[adt_id].ty_params;
-                        let targs_len = targs.as_ref().map_or(0, Vec::len);
-
-                        if targs_len == ty_params.len() {
-                            Ok(Ty::new(TyKind::Adt(
-                                adt_id,
-                                targs.unwrap_or_default(),
-                            )))
-                        } else {
-                            Err(errors::adt_ty_arg_mismatch(
-                                self.db, adt_id, targs_len, *span,
-                            ))
-                        }
-                    }
-                    _ => Err(Diagnostic::error()
-                        .with_message(format!(
-                            "expected a type, found value of type `{}`",
-                            def.ty.display(self.db)
-                        ))
-                        .with_label(
-                            Label::primary(*span)
-                                .with_message("expected a type"),
-                        )),
-                }
-            }
             TyExpr::Hole(span) => {
                 if allow_hole == AllowTyHole::Yes {
                     Ok(self.fresh_ty_var())
