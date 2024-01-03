@@ -966,7 +966,7 @@ impl<'db> Typeck<'db> {
                 },
             ),
             ast::Expr::MethodCall { expr, method, ty_args, args, span } => {
-                let ty_args = self.check_optional_ty_args(
+                let targs = self.check_optional_ty_args(
                     env,
                     ty_args.as_deref(),
                     AllowTyHole::Yes,
@@ -993,12 +993,13 @@ impl<'db> Typeck<'db> {
                     env,
                     lookup_in_module,
                     *method,
-                    ty_args.as_deref(),
+                    targs.as_deref(),
                     &args,
                     IsUfcs::Yes,
                 )?;
 
-                let callee = self.check_name(env, id, *method, *span, None)?;
+                let callee =
+                    self.check_name(env, id, *method, *span, targs.as_deref())?;
 
                 self.check_call(callee, args, *span)
             }
