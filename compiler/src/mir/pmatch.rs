@@ -1,4 +1,6 @@
-use rustc_hash::FxHashSet;
+use ena::snapshot_vec::VecLike;
+/// This implementation is inspired by [yorickpeterse's implementation](https://github.com/yorickpeterse/pattern-matching-in-rust)
+use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     db::{Db, DefId},
@@ -48,20 +50,57 @@ impl<'db> Compiler<'db> {
         }
     }
 
-    fn compile_rows(&mut self, rows: Vec<Row>) -> Decision {
+    fn compile_rows(&mut self, mut rows: Vec<Row>) -> Decision {
         if rows.is_empty() {
             self.missing = true;
             return Decision::Err;
         }
 
+        for row in &mut rows {
+            Self::move_name_pats(row);
+        }
+
+        // If the first row has no columns, we don't need to continue,
+        // since they'll never be reachable anyways
+        if rows.first().map_or(false, |c| c.columns.is_empty()) {
+            let row = rows.swap_remove(0);
+            self.reachable.insert(row.body.block_id);
+            return Decision::Ok(row.body);
+        }
+
+        let branch_value = Self::branch_value(&rows);
+
+        dbg!(branch_value);
+
         todo!()
     }
-}
 
-#[derive(Debug)]
-struct Diagnostics {
-    missing: bool,
-    // reachable: Vec<usize>
+    fn move_name_pats(row: &mut Row) {
+        row.columns.retain(|col| match &col.pat {
+            hir::MatchPat::Name(id) => {
+                row.body.bindings.push((*id, col.value));
+                false
+            }
+            _ => true,
+        })
+    }
+
+    fn branch_value(rows: &[Row]) -> ValueId {
+        let mut counts = FxHashMap::default();
+
+        for row in rows {
+            for col in &row.columns {
+                *counts.entry(&col.value).or_insert(0_usize) += 1;
+            }
+        }
+
+        rows[0]
+            .columns
+            .iter()
+            .map(|col| col.value)
+            .max_by_key(|var| counts[var])
+            .unwrap()
+    }
 }
 
 #[derive(Debug)]
@@ -73,12 +112,12 @@ pub enum Decision {
     Err,
 
     /// Check if a value matches any of the given patterns
-    Switch { cond: DefId, cases: Vec<Case>, fallback: Option<Box<Decision>> },
+    Switch { cond: ValueId, cases: Vec<Case>, fallback: Option<Box<Decision>> },
 }
 
 #[derive(Debug)]
 struct Body {
-    pub bindings: Vec<DefId>,
+    pub bindings: Vec<(DefId, ValueId)>,
     pub block_id: BlockId,
 }
 
