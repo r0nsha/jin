@@ -1229,18 +1229,33 @@ impl<'db> Typeck<'db> {
         expr_ty: Ty,
         expected_ty: Option<Ty>,
     ) -> TypeckResult<hir::MatchCase> {
-        let pat = self.check_match_pat(env, &case.pat, expr_ty)?;
-        let expr = self.check_expr(env, &case.expr, expected_ty)?;
-        Ok(hir::MatchCase { pat, expr: Box::new(expr) })
+        env.with_anon_scope(ScopeKind::Block, |env| {
+            let pat = self.check_match_pat(env, &case.pat, expr_ty)?;
+            let expr = self.check_expr(env, &case.expr, expected_ty)?;
+            Ok(hir::MatchCase { pat, expr: Box::new(expr) })
+        })
     }
 
     fn check_match_pat(
         &mut self,
         env: &mut Env,
         pat: &ast::MatchPat,
-        ty: Ty,
+        expected_ty: Ty,
     ) -> TypeckResult<hir::MatchPat> {
-        todo!("check pat is compatible with ty")
+        match pat {
+            ast::MatchPat::Name(word) => {
+                let id = self.define_def(
+                    env,
+                    Vis::Private,
+                    DefKind::Variable,
+                    *word,
+                    Mutability::Imm,
+                    expected_ty,
+                )?;
+
+                Ok(hir::MatchPat::Name(id))
+            }
+        }
     }
 
     fn check_name(

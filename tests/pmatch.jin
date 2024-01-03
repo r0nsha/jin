@@ -3,8 +3,13 @@ fn extern printf(fmt: *u8, ..) i32
 fn main() unit = {
 	let foo = true
 
-	match foo {}
-	//match foo {
-	//	foo -> printf("foo's int repr is %d\n".ptr, foo)
+	match foo {
+		foo -> { printf("foo is %d\n".ptr, foo) }
+	}
+
+	//let foo_str = match foo {
+	//	true -> "true",
+	//	false -> "false"
 	//}
+	//printf("foo = %s\n".ptr, foo_str)
 }
