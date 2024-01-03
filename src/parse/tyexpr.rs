@@ -42,16 +42,17 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_ty_path(&mut self, word: Word) -> DiagnosticResult<TyExpr> {
-        if self.is(TokenKind::Dot) {
-            let word = self.eat_ident()?.word();
-            let child = self.parse_ty_path(word)?;
-            let span = word.span().merge(self.last_span());
-            Ok(TyExpr::Path(word, Box::new(child), span))
-        } else {
-            let targs = self.parse_optional_ty_args()?;
-            let span = word.span().merge(self.last_span());
-            Ok(TyExpr::Name(word, targs, span))
+        let start_span = word.span();
+        let mut path = vec![word];
+
+        while self.is(TokenKind::Dot) {
+            path.push(self.eat_ident()?.word());
         }
+
+        let targs = self.parse_optional_ty_args()?;
+        let span = start_span.merge(self.last_span());
+
+        Ok(TyExpr::Path(path, targs, span))
     }
 
     fn parse_fn_ty(&mut self) -> DiagnosticResult<TyExprFn> {

@@ -966,8 +966,11 @@ impl<'db> Typeck<'db> {
                 },
             ),
             ast::Expr::MethodCall { expr, method, ty_args, args, span } => {
-                let ty_args =
-                    self.check_optional_ty_args(env, ty_args.as_deref())?;
+                let ty_args = self.check_optional_ty_args(
+                    env,
+                    ty_args.as_deref(),
+                    AllowTyHole::Yes,
+                )?;
                 let mut args = self.check_call_args(env, args)?;
 
                 let expr = self.check_expr(env, expr, None)?;
@@ -1004,8 +1007,11 @@ impl<'db> Typeck<'db> {
 
                 let callee = match callee.as_ref() {
                     ast::Expr::Name { word, targs, span } => {
-                        let targs =
-                            self.check_optional_ty_args(env, targs.as_deref())?;
+                        let targs = self.check_optional_ty_args(
+                            env,
+                            targs.as_deref(),
+                            AllowTyHole::Yes,
+                        )?;
 
                         let id = self.lookup_fn_for_call(
                             env,
@@ -1129,8 +1135,11 @@ impl<'db> Typeck<'db> {
             ast::Expr::Name { word, targs, span } => {
                 let id =
                     self.lookup(env, env.module_id(), &Query::Name(*word))?;
-                let targs =
-                    self.check_optional_ty_args(env, targs.as_deref())?;
+                let targs = self.check_optional_ty_args(
+                    env,
+                    targs.as_deref(),
+                    AllowTyHole::Yes,
+                )?;
                 self.check_name(env, id, *word, *span, targs.as_deref())
             }
             ast::Expr::Lit { kind, span } => {
@@ -1233,12 +1242,13 @@ impl<'db> Typeck<'db> {
         &mut self,
         env: &Env,
         targs: Option<&[TyExpr]>,
+        allow_hole: AllowTyHole,
     ) -> TypeckResult<Option<Vec<Ty>>> {
         targs
             .map(|targs| {
                 targs
                     .iter()
-                    .map(|arg| self.check_ty_expr(env, arg, AllowTyHole::Yes))
+                    .map(|arg| self.check_ty_expr(env, arg, allow_hole))
                     .try_collect()
             })
             .transpose()
@@ -1721,9 +1731,13 @@ impl<'db> Typeck<'db> {
                 let pointee = self.check_ty_expr(env, pointee, allow_hole)?;
                 Ok(Ty::new(TyKind::RawPtr(pointee)))
             }
-            TyExpr::Path(root, child, span) => {
-                todo!("tyexpr path")
-            }
+            TyExpr::Path(path, targs, span) => self.check_ty_expr_path(
+                env,
+                path,
+                targs.as_deref(),
+                *span,
+                allow_hole,
+            ),
             TyExpr::Name(name, targs, span) => {
                 let id =
                     self.lookup(env, env.module_id(), &Query::Name(*name))?;
@@ -1749,8 +1763,11 @@ impl<'db> Typeck<'db> {
                         }
                     }
                     &DefKind::Adt(adt_id) => {
-                        let targs =
-                            self.check_optional_ty_args(env, targs.as_deref())?;
+                        let targs = self.check_optional_ty_args(
+                            env,
+                            targs.as_deref(),
+                            allow_hole,
+                        )?;
 
                         let ty_params = &self.db[adt_id].ty_params;
                         let targs_len = targs.as_ref().map_or(0, Vec::len);
@@ -1788,6 +1805,70 @@ impl<'db> Typeck<'db> {
                         .with_label(Label::primary(*span)))
                 }
             }
+        }
+    }
+
+    fn check_ty_expr_path(
+        &mut self,
+        env: &Env,
+        path: &[Word],
+        targs: Option<&[TyExpr]>,
+        span: Span,
+        allow_hole: AllowTyHole,
+    ) -> TypeckResult<Ty> {
+        let (last, path) =
+            path.split_last().expect("to have at least one element");
+
+        let mut target_module = env.module_id();
+
+        for part in path {
+            let part_id =
+                self.lookup(env, target_module, &Query::Name(*part))?;
+            target_module = self.is_module_def(part_id, part.span())?;
+        }
+
+        let id = self.lookup(env, target_module, &Query::Name(*last))?;
+        let def = &self.db[id];
+
+        match def.kind.as_ref() {
+            DefKind::Ty(ty) => {
+                if targs.is_some() {
+                    Err(Diagnostic::error()
+                        .with_message(format!(
+                            "type `{}` doesn't expect any type arguments",
+                            ty.display(self.db)
+                        ))
+                        .with_label(
+                            Label::primary(span)
+                                .with_message("unexpected type arguments"),
+                        ))
+                } else {
+                    Ok(*ty)
+                }
+            }
+            &DefKind::Adt(adt_id) => {
+                let targs =
+                    self.check_optional_ty_args(env, targs, allow_hole)?;
+
+                let ty_params = &self.db[adt_id].ty_params;
+                let targs_len = targs.as_ref().map_or(0, Vec::len);
+
+                if targs_len == ty_params.len() {
+                    Ok(Ty::new(TyKind::Adt(adt_id, targs.unwrap_or_default())))
+                } else {
+                    Err(errors::adt_ty_arg_mismatch(
+                        self.db, adt_id, targs_len, span,
+                    ))
+                }
+            }
+            _ => Err(Diagnostic::error()
+                .with_message(format!(
+                    "expected a type, found value of type `{}`",
+                    def.ty.display(self.db)
+                ))
+                .with_label(
+                    Label::primary(span).with_message("expected a type"),
+                )),
         }
     }
 

@@ -367,9 +367,23 @@ impl PrettyPrint for TyExpr {
                     cx.builder.end_child();
                 }
             }
-            TyExpr::Path(name, child, _) => {
-                cx.builder.begin_child(format!("path: {name}"));
-                child.pretty_print(cx);
+            TyExpr::Path(path, targs, _) => {
+                cx.builder.begin_child(format!(
+                    "path: {}",
+                    path.iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join(".")
+                ));
+
+                if let Some(targs) = targs {
+                    cx.builder.begin_child("type args".to_string());
+                    for arg in targs {
+                        arg.pretty_print(cx);
+                    }
+                    cx.builder.end_child();
+                }
+
                 cx.builder.end_child();
             }
             TyExpr::Hole(_) => {

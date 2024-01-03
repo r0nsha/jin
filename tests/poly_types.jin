@@ -1,3 +1,5 @@
+import inner
+
 fn extern printf(fmt: *u8, ..) i32
 
 type Box[a](value: a)
@@ -28,5 +30,5 @@ fn print[a](box: &Box[a]) unit = {
 }
 
 fn print(inner: &inner.Inner[int]) unit = {
-	//printf("Inner(%d)\n".ptr, inner.value)
+	printf("Inner(%d)\n".ptr, inner.value)
 }
