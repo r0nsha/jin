@@ -1,4 +1,68 @@
-use crate::{db::DefId, hir};
+use rustc_hash::FxHashSet;
+
+use crate::{
+    db::{Db, DefId},
+    diagnostics::Diagnostic,
+    hir,
+    mir::{BlockId, ValueId},
+};
+
+pub fn compile(db: &Db, rows: Vec<Row>) -> (Decision, Vec<Diagnostic>) {
+    Compiler::new(db).compile(rows)
+}
+
+#[derive(Debug)]
+pub struct Column {
+    /// The value in question
+    pub value: ValueId,
+
+    /// The pattern that `value` is being matched against
+    pub pat: hir::MatchPat,
+}
+
+#[derive(Debug)]
+pub struct Row {
+    pub columns: Vec<Column>,
+    pub body: Body,
+}
+
+#[derive(Debug)]
+struct Compiler<'db> {
+    db: &'db Db,
+    missing: bool,
+    reachable: FxHashSet<BlockId>,
+}
+
+impl<'db> Compiler<'db> {
+    fn new(db: &'db Db) -> Self {
+        Self { db, missing: false, reachable: FxHashSet::default() }
+    }
+
+    fn compile(mut self, rows: Vec<Row>) -> (Decision, Vec<Diagnostic>) {
+        match self.compile_rows(rows) {
+            Decision::Err => {
+                // TODO: create diagnostics here
+                (Decision::Err, vec![])
+            }
+            decision => (decision, vec![]),
+        }
+    }
+
+    fn compile_rows(&mut self, rows: Vec<Row>) -> Decision {
+        if rows.is_empty() {
+            self.missing = true;
+            return Decision::Err;
+        }
+
+        todo!()
+    }
+}
+
+#[derive(Debug)]
+struct Diagnostics {
+    missing: bool,
+    // reachable: Vec<usize>
+}
 
 #[derive(Debug)]
 pub enum Decision {
@@ -13,26 +77,27 @@ pub enum Decision {
 }
 
 #[derive(Debug)]
-pub struct Body {
+struct Body {
     pub bindings: Vec<DefId>,
-    pub expr: hir::Expr,
+    pub block_id: BlockId,
 }
 
 #[derive(Debug)]
-pub struct Case {
+struct Case {
     /// The constructor to test the given value against
-    pub ctor: Constructor,
+    ctor: Constructor,
 
     /// Bindings to introduce to the body of this case.
-    pub args: Vec<DefId>,
+    args: Vec<DefId>,
 
     /// The subtree of this case
-    pub body: Decision,
+    body: Decision,
 }
 
+// TODO: this should be in hir?
 /// A type constructor.
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub enum Constructor {
+enum Constructor {
     // True,
     // False,
     // Int(i64),

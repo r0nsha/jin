@@ -14,9 +14,9 @@ use crate::{
     mangle,
     middle::{Mutability, NamePat, Pat, Vis},
     mir::{
-        AdtId, Block, BlockId, Body, Const, Fn, FnParam, FnSig, FnSigId,
-        FxHashMap, FxHashSet, Global, GlobalId, GlobalKind, Inst, Mir, Span,
-        StaticGlobal, UnOp, ValueId, ValueKind,
+        pmatch, AdtId, Block, BlockId, Body, Const, Fn, FnParam, FnSig,
+        FnSigId, FxHashMap, FxHashSet, Global, GlobalId, GlobalKind, Inst, Mir,
+        Span, StaticGlobal, UnOp, ValueId, ValueKind,
     },
     span::Spanned,
     ty::{
@@ -442,7 +442,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 output
             }
-            hir::ExprKind::Match(match_) => self.const_unit(),
+            hir::ExprKind::Match(match_) => {
+                let value = self.lower_expr(&match_.expr);
+
+                let mut rows = vec![];
+
+                let (decision, diagnostics) = pmatch::compile(self.cx.db, rows);
+                println!(
+                    "Decision: {decision:?}\nDiagnostics: {diagnostics:?}"
+                );
+                todo!()
+                // self.cx.db.diagnostics.emit_many(diagnostics);
+            }
             hir::ExprKind::Loop(loop_) => {
                 let start_blk = self.body.create_block("loop_start");
                 let end_blk = self.body.create_block("loop_end");
