@@ -1,7 +1,7 @@
 fn extern printf(fmt: *u8, ..) i32
 
 fn main() unit = {
-	let foo = {}
+	let foo = true
 
 	match foo {}
 	//match foo {

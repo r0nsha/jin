@@ -1187,20 +1187,27 @@ impl<'db> Typeck<'db> {
         let expr = self.check_expr(env, expr, None)?;
         let expr_ty = self.normalize(expr.ty);
 
-        self.is_ty_matchable(expr_ty)?;
-
         let mut new_cases = Vec::<hir::MatchCase>::new();
         let mut result_ty: Option<Ty> = expected_ty;
+        let mut last_case_span: Option<Span> = None;
 
         for case in cases {
             let case =
                 self.check_match_case(env, case, expr_ty, expected_ty)?;
 
             if let Some(result_ty) = result_ty {
-                todo!("unify case.expr.ty with result_ty")
+                self.at(if let Some(last_case_span) = last_case_span {
+                    Obligation::exprs(span, last_case_span, case.expr.span)
+                } else {
+                    Obligation::obvious(case.expr.span)
+                })
+                .eq(result_ty, case.expr.ty)
+                .or_coerce(self, case.expr.id)?;
             } else {
                 result_ty = Some(case.expr.ty);
             }
+
+            last_case_span = Some(case.expr.span);
 
             new_cases.push(case);
         }
@@ -1213,10 +1220,6 @@ impl<'db> Typeck<'db> {
             result_ty.unwrap_or(self.db.types.unit),
             span,
         ))
-    }
-
-    fn is_ty_matchable(&mut self, ty: Ty) -> TypeckResult<()> {
-        todo!("check ty can be matched")
     }
 
     fn check_match_case(
