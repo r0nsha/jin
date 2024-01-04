@@ -480,7 +480,7 @@ impl<'db> Generator<'db> {
                     lhs: *lhs,
                     rhs: *rhs,
                     op: *op,
-                    ty: state.body.value(*value).ty,
+                    ty: state.body.value(*lhs).ty,
                     span: *span,
                 },
             ),

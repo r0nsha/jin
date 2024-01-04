@@ -14,11 +14,7 @@ fn main() unit = {
 	match_uint(3)
 	match_uint(69)
 
-	if "asd" == "foo" {
-		printf("eq\n".ptr)
-	} else {
-		printf("not eq\n".ptr)
-	}
+	match_str("foo")
 }
 
 fn match_vars() unit = {
@@ -63,5 +59,13 @@ fn match_uint(value: uint) unit = {
 		42 -> printf("i'm still the answer\n".ptr),
 		3 -> printf("i'm still 3\n".ptr),
 		x -> printf("and value is %d\n".ptr, x),
+	}
+}
+
+fn match_str(value: str) unit = {
+	match value {
+		"foo" -> printf("i'm 'foo'\n".ptr),
+		"bar" -> printf("i'm 'bar'\n".ptr),
+		x -> printf("str is '%s'\n".ptr, x.ptr),
 	}
 }

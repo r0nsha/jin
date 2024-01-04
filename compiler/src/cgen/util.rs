@@ -138,6 +138,10 @@ pub fn call<'a>(callee: D<'a>, args: impl IntoIterator<Item = D<'a>>) -> D<'a> {
         .append(D::text(")"))
 }
 
+pub fn cmp_strs<'a>(a: D<'a>, b: D<'a>) -> D<'a> {
+    util::call(D::text("jin_rt_strcmp"), [a, b])
+}
+
 pub fn str_value(value: &str) -> D {
     struct_lit(vec![
         ("ptr", str_lit(value)),

@@ -5,8 +5,9 @@ use crate::{
         generate::{FnState, Generator},
         ty::CTy,
         util,
+        util::cmp_strs,
     },
-    middle::BinOp,
+    middle::{BinOp, CmpOp},
     mir::ValueId,
     span::Span,
     ty::{FloatTy, Ty, TyKind},
@@ -103,6 +104,10 @@ impl<'db> Generator<'db> {
                 }),
                 [lhs, rhs],
             ),
+            (BinOp::Cmp(CmpOp::Eq), TyKind::Str) => cmp_strs(lhs, rhs),
+            (BinOp::Cmp(CmpOp::Ne), TyKind::Str) => {
+                D::text("!").append(cmp_strs(lhs, rhs))
+            }
             _ => bin_op(lhs, data.op, rhs),
         };
 

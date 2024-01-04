@@ -47,6 +47,7 @@ void jin_rt_free(void *ptr);
 void jin_rt_panic(u8 *msg);
 void jin_rt_panic_at(u8 *msg, jin_rt_location loc);
 void jin_rt_refcheck(usize refcnt, u8 *fmt, jin_rt_location loc);
+bool jin_rt_strcmp(str a, str b);
 
 FORCE_INLINE void *jin_rt_alloc(size_t size) {
   void *ptr = malloc(size);
@@ -78,4 +79,8 @@ void jin_rt_refcheck(usize refcnt, u8 *fmt, jin_rt_location loc) {
     sprintf(msg, fmt, refcnt);
     jin_rt_panic_at(msg, loc);
   }
+}
+
+FORCE_INLINE bool jin_rt_strcmp(str a, str b) {
+  return strcmp(a.ptr, b.ptr) == 0;
 }
