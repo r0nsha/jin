@@ -674,6 +674,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.lower_decision_body(state, body.block_id)
             }
             pmatch::Decision::Err => unreachable!(),
+            pmatch::Decision::Switch { cond, cases, fallback } => todo!(),
         }
     }
 

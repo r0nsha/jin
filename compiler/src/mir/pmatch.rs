@@ -143,7 +143,11 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         let ty = Type::from_ty(self.cx.ty_of(branch_value));
 
         match ty {
-            Type::Finite(_) => todo!(),
+            Type::Finite(cases) => Decision::Switch {
+                cond: branch_value,
+                cases: self.compile_ctor_cases(rows, branch_value, cases),
+                fallback: None,
+            },
         }
     }
 
@@ -177,17 +181,27 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             .max_by_key(|var| counts[var])
             .unwrap()
     }
+
+    fn compile_ctor_cases(
+        &self,
+        rows: Vec<Row>,
+        branch_value: ValueId,
+        cases: Vec<CaseType>,
+    ) -> Vec<Case> {
+        todo!()
+    }
 }
 
 #[derive(Debug)]
-pub enum Decision {
+pub(super) enum Decision {
     /// A successful pattern match
     Ok(DecisionBody),
 
     /// A pattern is missing
     Err,
-    // /// Check if a value matches any of the given patterns
-    // Switch { cond: ValueId, cases: Vec<Case>, fallback: Option<Box<Decision>> },
+
+    /// Check if a value matches any of the given patterns
+    Switch { cond: ValueId, cases: Vec<Case>, fallback: Option<Box<Decision>> },
 }
 
 #[derive(Debug)]
@@ -212,15 +226,15 @@ impl DecisionBody {
 }
 
 #[derive(Debug)]
-struct Case {
+pub(super) struct Case {
     // /// The constructor to test the given value against
-    // ctor: Constructor,
+    // ctor: Ctor,
 
     // /// Bindings to introduce to the body of this case.
     // args: Vec<DefId>,
 
     // /// The subtree of this case
-    // body: Decision,
+    // decision: Decision,
 }
 
 /// A simplified version of `Ty`, makes it easier to work with.
@@ -228,12 +242,12 @@ struct Case {
 enum Type {
     // Int,
     // Str,
-    Finite(Vec<FiniteType>),
+    Finite(Vec<CaseType>),
 }
 
 /// A type which represents a set of constructors
 #[derive(Debug)]
-struct FiniteType {
+struct CaseType {
     /// The matched constructor
     ctor: Ctor,
 
@@ -244,7 +258,7 @@ struct FiniteType {
     rows: Vec<Row>,
 }
 
-impl FiniteType {
+impl CaseType {
     fn new(ctor: Ctor, values: Vec<ValueId>) -> Self {
         Self { ctor, values, rows: vec![] }
     }
@@ -254,8 +268,8 @@ impl Type {
     fn from_ty(ty: Ty) -> Self {
         match ty.kind() {
             TyKind::Bool => Self::Finite(vec![
-                FiniteType::new(Ctor::True, vec![]),
-                FiniteType::new(Ctor::False, vec![]),
+                CaseType::new(Ctor::True, vec![]),
+                CaseType::new(Ctor::False, vec![]),
             ]),
             TyKind::Fn(_)
             | TyKind::Adt(_, _)
