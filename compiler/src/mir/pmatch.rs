@@ -98,15 +98,18 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         let decision = self.compile_rows(rows);
 
         if self.reachable.len() != all_blocks.len() {
-            self.reachability_diagnostics(&all_blocks, &mut diagnostics);
+            self.report_unreachable_pats(&all_blocks, &mut diagnostics);
         }
 
-        // TODO: report missing cases
+        if self.missing {
+            let missing_pats = self.collect_missing_pats(&decision);
+            todo!("{missing_pats:?}");
+        }
 
         (decision, diagnostics)
     }
 
-    fn reachability_diagnostics(
+    fn report_unreachable_pats(
         &self,
         all_blocks: &[BlockId],
         diagnostics: &mut Vec<Diagnostic>,
@@ -125,6 +128,13 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
                 },
             ),
         );
+    }
+
+    fn collect_missing_pats(&self, decision: &Decision) -> FxHashSet<String> {
+        let mut terms = vec![];
+        let mut missing = FxHashSet::default();
+        collect_missing_pats(self.cx, decision, &mut terms, &mut missing);
+        missing
     }
 
     fn compile_rows(&mut self, mut rows: Vec<Row>) -> Decision {
@@ -396,6 +406,54 @@ impl Spanned for Pat {
             Self::Ctor(_, _, span)
             | Self::Name(_, span)
             | Self::Wildcard(span) => *span,
+        }
+    }
+}
+
+fn collect_missing_pats(
+    cx: &LowerBody<'_, '_>,
+    decision: &Decision,
+    terms: &mut Vec<Term>,
+    missing: &mut FxHashSet<String>,
+) {
+    todo!()
+}
+
+#[derive(Debug)]
+struct Term {
+    value: ValueId,
+    name: String,
+    args: Vec<ValueId>,
+}
+
+impl Term {
+    fn new(value: ValueId, name: String, args: Vec<ValueId>) -> Self {
+        Self { value, name, args }
+    }
+
+    fn pattern_name(
+        &self,
+        terms: &[Term],
+        value_to_idx: &FxHashMap<ValueId, usize>,
+    ) -> String {
+        if self.args.is_empty() {
+            self.name.to_string()
+        } else {
+            let args = self
+                .args
+                .iter()
+                .map(|arg| {
+                    value_to_idx
+                        .get(&arg)
+                        .map(|&idx| {
+                            terms[idx].pattern_name(terms, value_to_idx)
+                        })
+                        .unwrap_or_else(|| "_".to_string())
+                })
+                .collect::<Vec<_>>()
+                .join(", ");
+
+            format!("{}({})", self.name, args)
         }
     }
 }

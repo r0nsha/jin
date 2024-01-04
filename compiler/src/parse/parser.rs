@@ -9,8 +9,8 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         Attr, AttrKind, Attrs, CallArg, Expr, ExternImport, ExternLet, Fn,
-        FnKind, FnParam, FnSig, Item, Let, LitKind, MatchCase, MatchPat,
-        Module, StructTyDef, StructTyField, TyDef, TyDefKind, TyParam,
+        FnKind, FnParam, FnSig, Item, Let, LitKind, MatchArm, MatchPat, Module,
+        StructTyDef, StructTyField, TyDef, TyDefKind, TyParam,
     },
     db::{Db, DefId, ExternLib, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -690,7 +690,7 @@ impl<'a> Parser<'a> {
             TokenKind::OpenCurly,
             TokenKind::CloseCurly,
             |this| {
-                let case = this.parse_match_case()?;
+                let case = this.parse_match_arm()?;
                 Ok(ControlFlow::Continue(case))
             },
         )?;
@@ -700,11 +700,11 @@ impl<'a> Parser<'a> {
         Ok(Expr::Match { expr: Box::new(expr), cases, span })
     }
 
-    fn parse_match_case(&mut self) -> DiagnosticResult<MatchCase> {
+    fn parse_match_arm(&mut self) -> DiagnosticResult<MatchArm> {
         let pat = self.parse_match_pat()?;
         self.eat(TokenKind::Arrow)?;
         let expr = self.parse_expr()?;
-        Ok(MatchCase { pat, expr: Box::new(expr) })
+        Ok(MatchArm { pat, expr: Box::new(expr) })
     }
 
     fn parse_match_pat(&mut self) -> DiagnosticResult<MatchPat> {

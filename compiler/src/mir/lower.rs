@@ -454,15 +454,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let mut rows = vec![];
                 let mut state = DecisionState::new(output, expr.span);
 
-                for case in &match_.cases {
+                for arm in &match_.arms {
                     let block_id = self.body.create_block("case");
 
-                    let pat = pmatch::Pat::from_hir(&case.pat);
+                    let pat = pmatch::Pat::from_hir(&arm.pat);
                     let col = pmatch::Col::new(value, pat);
                     let body =
-                        pmatch::DecisionBody::new(block_id, case.pat.span());
+                        pmatch::DecisionBody::new(block_id, arm.pat.span());
 
-                    state.bodies.insert(block_id, &case.expr);
+                    state.bodies.insert(block_id, &arm.expr);
                     rows.push(pmatch::Row::new(vec![col], body));
                 }
 

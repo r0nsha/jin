@@ -21,8 +21,8 @@ impl<S: SubstTy> Subst<S> for Expr {
             ExprKind::Match(match_) => {
                 match_.expr.subst(s);
 
-                for case in &mut match_.cases {
-                    case.expr.subst(s);
+                for arm in &mut match_.arms {
+                    arm.expr.subst(s);
                 }
             }
             ExprKind::Loop(loop_) => {

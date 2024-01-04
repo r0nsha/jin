@@ -1180,14 +1180,14 @@ impl<'db> Typeck<'db> {
         &mut self,
         env: &mut Env,
         expr: &ast::Expr,
-        cases: &[ast::MatchCase],
+        cases: &[ast::MatchArm],
         span: Span,
         expected_ty: Option<Ty>,
     ) -> TypeckResult<hir::Expr> {
         let expr = self.check_expr(env, expr, None)?;
         let expr_ty = self.normalize(expr.ty);
 
-        let mut new_cases = Vec::<hir::MatchCase>::new();
+        let mut new_arms = Vec::<hir::MatchArm>::new();
         let mut result_ty: Option<Ty> = expected_ty;
         let mut last_case_span: Option<Span> = None;
 
@@ -1209,13 +1209,13 @@ impl<'db> Typeck<'db> {
 
             last_case_span = Some(case.expr.span);
 
-            new_cases.push(case);
+            new_arms.push(case);
         }
 
         Ok(self.expr(
             hir::ExprKind::Match(hir::Match {
                 expr: Box::new(expr),
-                cases: new_cases,
+                arms: new_arms,
             }),
             result_ty.unwrap_or(self.db.types.unit),
             span,
@@ -1225,14 +1225,14 @@ impl<'db> Typeck<'db> {
     fn check_match_case(
         &mut self,
         env: &mut Env,
-        case: &ast::MatchCase,
+        case: &ast::MatchArm,
         expr_ty: Ty,
         expected_ty: Option<Ty>,
-    ) -> TypeckResult<hir::MatchCase> {
+    ) -> TypeckResult<hir::MatchArm> {
         env.with_anon_scope(ScopeKind::Block, |env| {
             let pat = self.check_match_pat(env, &case.pat, expr_ty)?;
             let expr = self.check_expr(env, &case.expr, expected_ty)?;
-            Ok(hir::MatchCase { pat, expr: Box::new(expr) })
+            Ok(hir::MatchArm { pat, expr: Box::new(expr) })
         })
     }
 

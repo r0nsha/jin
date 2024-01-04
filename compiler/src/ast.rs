@@ -129,7 +129,7 @@ pub enum Expr {
     },
     Match {
         expr: Box<Self>,
-        cases: Vec<MatchCase>,
+        cases: Vec<MatchArm>,
         span: Span,
     },
     Loop {
@@ -300,7 +300,7 @@ pub struct ImportName {
 }
 
 #[derive(Debug, Clone)]
-pub struct MatchCase {
+pub struct MatchArm {
     pub pat: MatchPat,
     pub expr: Box<Expr>,
 }

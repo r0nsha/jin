@@ -88,8 +88,8 @@ impl Expr {
             ExprKind::Match(match_) => {
                 match_.expr.walk_(f);
 
-                for case in &match_.cases {
-                    case.expr.walk_(f);
+                for arm in &match_.arms {
+                    arm.expr.walk_(f);
                 }
             }
             ExprKind::Loop(loop_) => {
@@ -217,11 +217,11 @@ pub struct If {
 #[derive(Debug, Clone)]
 pub struct Match {
     pub expr: Box<Expr>,
-    pub cases: Vec<MatchCase>,
+    pub arms: Vec<MatchArm>,
 }
 
 #[derive(Debug, Clone)]
-pub struct MatchCase {
+pub struct MatchArm {
     pub pat: MatchPat,
     pub expr: Box<Expr>,
 }
