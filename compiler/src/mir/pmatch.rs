@@ -56,7 +56,7 @@ impl Row {
         Self { cols, body }
     }
 
-    fn remove_col(&self, value: ValueId) -> Option<Col> {
+    fn remove_col(&mut self, value: ValueId) -> Option<Col> {
         self.cols
             .iter()
             .position(|c| c.value == value)
@@ -189,7 +189,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
     }
 
     fn compile_ctor_cases(
-        &self,
+        &mut self,
         rows: Vec<Row>,
         cond: ValueId,
         mut cases: Vec<TypeCase>,
@@ -197,7 +197,22 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         for mut row in rows {
             if let Some(col) = row.remove_col(cond) {
                 for (pat, row) in col.pat.flatten_or(row) {
-                    // if let Pat::
+                    if let Pat::Ctor(ctor, args, _) = pat {
+                        let idx = ctor.index();
+                        let mut cols = row.cols;
+                        let case = &mut cases[idx];
+
+                        // TODO: if args != case.values : missing fields in pattern
+
+                        cols.extend(
+                            case.values
+                                .iter()
+                                .zip(args.into_iter())
+                                .map(|(value, pat)| Col::new(*value, pat)),
+                        );
+
+                        case.rows.push(Row::new(cols, row.body));
+                    }
                 }
             } else {
                 for case in &mut cases {
@@ -205,6 +220,13 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
                 }
             }
         }
+
+        cases
+            .into_iter()
+            .map(|case| {
+                Case::new(case.ctor, case.values, self.compile_rows(case.rows))
+            })
+            .collect()
     }
 }
 
@@ -251,6 +273,16 @@ pub(super) struct Case {
 
     /// The subtree of this case
     body: Decision,
+}
+
+impl Case {
+    pub(super) fn new(
+        ctor: Ctor,
+        values: Vec<ValueId>,
+        body: Decision,
+    ) -> Self {
+        Self { ctor, values, body }
+    }
 }
 
 /// A simplified version of `Ty`, makes it easier to work with.
