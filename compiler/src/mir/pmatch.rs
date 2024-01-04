@@ -266,13 +266,13 @@ impl DecisionBody {
 #[derive(Debug)]
 pub(super) struct Case {
     /// The constructor to test the given value against
-    ctor: Ctor,
+    pub(super) ctor: Ctor,
 
     /// Values to introduce to the body of this case.
-    values: Vec<ValueId>,
+    pub(super) values: Vec<ValueId>,
 
     /// The subtree of this case
-    body: Decision,
+    pub(super) decision: Decision,
 }
 
 impl Case {
@@ -281,7 +281,7 @@ impl Case {
         values: Vec<ValueId>,
         body: Decision,
     ) -> Self {
-        Self { ctor, values, body }
+        Self { ctor, values, decision: body }
     }
 }
 
@@ -340,7 +340,7 @@ impl Type {
 
 // A constructor for a given `Type`
 #[derive(Debug, Clone, Eq, PartialEq)]
-enum Ctor {
+pub(super) enum Ctor {
     True,
     False,
     // Int(i64),

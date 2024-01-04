@@ -12,7 +12,7 @@ fn main() unit = {
 	//}
 
 	let foo = true
-	//printf("foo = %s\n".ptr, foo.to_str())
+	printf("foo = %s\n".ptr, foo.to_str())
 }
 
 fn to_str(value: bool) str =

@@ -420,7 +420,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 let cond = self.lower_expr(&if_.cond);
                 self.try_move(cond, if_.cond.span);
-                self.push_br_if(cond, then_blk, Some(else_blk));
+                self.push_brif(cond, then_blk, Some(else_blk));
 
                 self.position_at(then_blk);
                 let then_value = self.lower_expr(&if_.then);
@@ -471,7 +471,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let (decision, diagnostics) = pmatch::compile(self, rows);
                 self.cx.db.diagnostics.emit_many(diagnostics);
 
-                self.lower_decision(&mut state, decision);
+                self.lower_decision(&mut state, decision, self.current_block);
                 self.position_at(state.merge_blk);
 
                 output
@@ -501,7 +501,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         },
                     );
 
-                    self.push_br_if(not_cond, end_blk, None);
+                    self.push_brif(not_cond, end_blk, None);
                 }
 
                 self.lower_expr(&loop_.expr);
@@ -665,6 +665,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         &mut self,
         state: &mut DecisionState,
         decision: pmatch::Decision,
+        parent_blk: BlockId,
     ) -> BlockId {
         match decision {
             pmatch::Decision::Ok(body) => {
@@ -674,11 +675,45 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     body.bindings,
                 );
                 // TODO: self.destroy_match_values()
-                self.lower_decision_body(state, body.block_id)
+                self.lower_decision_body(
+                    state,
+                    self.current_block,
+                    body.block_id,
+                );
+
+                body.block_id
             }
             pmatch::Decision::Err => unreachable!(),
-            pmatch::Decision::Switch { cond, cases, fallback } => todo!(),
+            pmatch::Decision::Switch { cond, cases, fallback: _ } => {
+                match cases[0].ctor {
+                    pmatch::Ctor::True | pmatch::Ctor::False => self
+                        .lower_decision_bool_pats(
+                            state, cond, cases, parent_blk,
+                        ),
+                }
+            }
         }
+    }
+
+    fn lower_decision_bool_pats(
+        &mut self,
+        state: &mut DecisionState,
+        cond: ValueId,
+        cases: Vec<pmatch::Case>,
+        parent_blk: BlockId,
+    ) -> BlockId {
+        let blk = self.body.create_block("case");
+
+        self.body.create_edge(parent_blk, blk);
+
+        let blocks: Vec<_> = cases
+            .into_iter()
+            .map(|case| self.lower_decision(state, case.decision, blk))
+            .collect();
+
+        self.push_brif(cond, blocks[1], Some(blocks[0]));
+
+        blk
     }
 
     fn lower_decision_bindings(
@@ -713,16 +748,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn lower_decision_body(
         &mut self,
         state: &mut DecisionState,
-        block_id: BlockId,
+        parent_blk: BlockId,
+        start_blk: BlockId,
     ) -> BlockId {
+        self.body.create_edge(parent_blk, start_blk);
+
         // Removing the expression makes sure that the code for a given block is only compiled
         // once.
-        let Some(expr) = state.bodies.remove(&block_id) else {
+        let Some(expr) = state.bodies.remove(&start_blk) else {
             self.exit_scope();
-            return block_id;
+            return start_blk;
         };
 
-        self.position_at(block_id);
+        self.position_at(start_blk);
         let value = self.lower_expr(expr);
         self.try_move(value, expr.span);
         self.exit_scope();
@@ -732,7 +770,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.push_br(state.merge_blk);
         }
 
-        block_id
+        start_blk
     }
 
     fn lower_name(
@@ -834,7 +872,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.push_inst(Inst::Br { target });
     }
 
-    pub fn push_br_if(
+    pub fn push_brif(
         &mut self,
         cond: ValueId,
         then: BlockId,
