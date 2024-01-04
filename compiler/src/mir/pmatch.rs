@@ -108,46 +108,8 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         }
 
         if self.missing {
-            const LIMIT: usize = 3;
-
             let pats = self.collect_missing_pats(&decision);
-            let pat_len = pats.len();
-
-            let (missing, verb) = if pat_len > 1 {
-                let mut missing = String::new();
-
-                let overflow = pat_len.checked_sub(LIMIT).unwrap_or_default();
-                let last_idx = (pat_len - 1).min(LIMIT - 1);
-
-                for (idx, pat) in pats.into_iter().enumerate().take(LIMIT) {
-                    missing.push_str(&format!("`{pat}`"));
-
-                    if overflow == 0 && idx == last_idx - 1 {
-                        missing.push_str(" and ");
-                    } else if idx < last_idx {
-                        missing.push_str(", ");
-                    }
-                }
-
-                if overflow > 0 {
-                    missing.push_str(&format!(" and {overflow} more"));
-                }
-
-                (missing, "are")
-            } else {
-                (format!("`{}`", pats[0]), "is")
-            };
-
-            diagnostics.push(
-                Diagnostic::error()
-                    .with_message(format!(
-                        "missing match arms: {missing} {verb} not covered"
-                    ))
-                    .with_label(
-                        Label::primary(span)
-                            .with_message("match is not exhaustive"),
-                    ),
-            );
+            diagnostics.push(Self::missing_pats_diagnostic(pats, span));
         }
 
         (decision, diagnostics)
@@ -172,6 +134,48 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
                 },
             ),
         );
+    }
+
+    fn missing_pats_diagnostic(
+        pats: IndexSet<String>,
+        span: Span,
+    ) -> Diagnostic {
+        const LIMIT: usize = 3;
+
+        let pat_len = pats.len();
+
+        let (missing, verb) = if pat_len > 1 {
+            let mut missing = String::new();
+
+            let overflow = pat_len.checked_sub(LIMIT).unwrap_or_default();
+            let last_idx = (pat_len - 1).min(LIMIT - 1);
+
+            for (idx, pat) in pats.into_iter().enumerate().take(LIMIT) {
+                missing.push_str(&format!("`{pat}`"));
+
+                if overflow == 0 && idx == last_idx - 1 {
+                    missing.push_str(" and ");
+                } else if idx < last_idx {
+                    missing.push_str(", ");
+                }
+            }
+
+            if overflow > 0 {
+                missing.push_str(&format!(" and {overflow} more"));
+            }
+
+            (missing, "are")
+        } else {
+            (format!("`{}`", pats[0]), "is")
+        };
+
+        Diagnostic::error()
+            .with_message(format!(
+                "missing match arms: {missing} {verb} not covered"
+            ))
+            .with_label(
+                Label::primary(span).with_message("match is not exhaustive"),
+            )
     }
 
     fn collect_missing_pats(&self, decision: &Decision) -> IndexSet<String> {
