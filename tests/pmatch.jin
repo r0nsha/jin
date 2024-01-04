@@ -4,7 +4,7 @@ fn main() unit = {
 	let foo = true
 
 	match foo {
-		foo -> { printf("foo is %d\n".ptr, foo) }
+		bar -> { printf("foo (bar) is %d\n".ptr, bar) }
 	}
 
 	//let foo_str = match foo {

@@ -90,7 +90,7 @@ impl<'db> Compiler<'db> {
     fn move_name_pats(row: &mut Row) {
         row.columns.retain(|col| match &col.pat {
             hir::MatchPat::Name(id) => {
-                row.body.bindings.push((*id, col.value));
+                row.body.bindings.push(Binding::Name(*id, col.value));
                 false
             }
             _ => true,
@@ -122,7 +122,6 @@ pub enum Decision {
 
     /// A pattern is missing
     Err,
-
     // /// Check if a value matches any of the given patterns
     // Switch { cond: ValueId, cases: Vec<Case>, fallback: Option<Box<Decision>> },
 }
@@ -133,7 +132,13 @@ pub struct Body {
     pub block_id: BlockId,
 }
 
-pub type Bindings = Vec<(DefId, ValueId)>;
+pub type Bindings = Vec<Binding>;
+
+#[derive(Debug)]
+pub enum Binding {
+    Name(DefId, ValueId),
+    Discard(ValueId),
+}
 
 impl Body {
     pub fn new(block_id: BlockId) -> Self {

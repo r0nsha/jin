@@ -1,6 +1,6 @@
 use std::{fmt, mem};
 
-use data_structures::index_vec::Key as _;
+use data_structures::index_vec::Key;
 use indexmap::IndexSet;
 use itertools::Itertools as _;
 use ustr::{ustr, Ustr};
@@ -443,8 +443,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 output
             }
             hir::ExprKind::Match(match_) => {
-                let merge_blk = self.body.create_block("match_merge");
-
                 let output = self.push_inst_with_register(expr.ty, |value| {
                     Inst::StackAlloc { value, init: None }
                 });
@@ -452,7 +450,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let value = self.lower_expr(&match_.expr);
 
                 let mut rows = vec![];
-                let mut state = DecisionState::new(output, merge_blk);
+                let mut state = DecisionState::new(output, expr.span);
 
                 for case in &match_.cases {
                     let block_id = self.body.create_block("case");
@@ -462,10 +460,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     rows.push(pmatch::Row::new(vec![col], body));
                 }
 
+                state.merge_blk = self.body.create_block("match_merge");
+
                 let (decision, diagnostics) = pmatch::compile(self.cx.db, rows);
                 self.cx.db.diagnostics.emit_many(diagnostics);
 
                 self.lower_decision(&mut state, decision);
+                self.position_at(state.merge_blk);
 
                 output
             }
@@ -659,35 +660,74 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         state: &mut DecisionState,
         decision: pmatch::Decision,
     ) -> BlockId {
-        println!("{decision:?}");
+        dbg!(&decision);
 
         match decision {
             pmatch::Decision::Ok(body) => {
-                self.lower_decision_bindings(body.block_id, body.bindings);
+                self.lower_decision_bindings(
+                    state,
+                    body.block_id,
+                    body.bindings,
+                );
                 // TODO: self.destroy_match_values()
-                self.lower_decision_body(state, body.block_id);
-                todo!("compile decision to instructions");
-                todo!("write match result to `output`");
-                todo!("br to merge_blk");
+                self.lower_decision_body(state, body.block_id)
             }
             pmatch::Decision::Err => unreachable!(),
         }
     }
 
     fn lower_decision_bindings(
-        &self,
-        vars_blk: BlockId,
+        &mut self,
+        state: &DecisionState,
+        blk: BlockId,
         bindings: pmatch::Bindings,
     ) {
-        // todo!()
+        self.position_at(blk);
+
+        self.enter_scope(ScopeKind::Block, state.span);
+
+        for binding in bindings {
+            match binding {
+                pmatch::Binding::Name(id, source) => {
+                    let binding_value = self.push_inst_with(
+                        self.body.value(source).ty,
+                        ValueKind::Local(id),
+                        |value| Inst::StackAlloc { value, init: Some(source) },
+                    );
+                    self.try_move(source, self.cx.db[id].span);
+                    self.locals.insert(id, binding_value);
+                    self.create_destroy_flag(binding_value);
+                }
+                pmatch::Binding::Discard(value) => {
+                    todo!("destroy value")
+                }
+            }
+        }
     }
 
     fn lower_decision_body(
         &mut self,
         state: &mut DecisionState,
         block_id: BlockId,
-    ) {
-        // todo!()
+    ) -> BlockId {
+        // Removing the expression makes sure that the code for a given block is only compiled
+        // once.
+        let Some(expr) = state.bodies.remove(&block_id) else {
+            self.exit_scope();
+            return block_id;
+        };
+
+        self.position_at(block_id);
+        let value = self.lower_expr(expr);
+        self.try_move(value, expr.span);
+        self.exit_scope();
+
+        if self.in_connected_block() {
+            self.push_inst(Inst::Store { value, target: state.output });
+            self.push_br(state.merge_blk);
+        }
+
+        block_id
     }
 
     fn lower_name(
@@ -1798,10 +1838,18 @@ struct DecisionState<'a> {
 
     /// A mapping of every case body, and its associated concrete expression
     bodies: FxHashMap<BlockId, &'a hir::Expr>,
+
+    /// The match expression's span
+    span: Span,
 }
 
 impl<'a> DecisionState<'a> {
-    fn new(output: ValueId, merge_blk: BlockId) -> Self {
-        Self { output, merge_blk, bodies: FxHashMap::default() }
+    fn new(output: ValueId, span: Span) -> Self {
+        Self {
+            output,
+            merge_blk: BlockId::null(),
+            bodies: FxHashMap::default(),
+            span,
+        }
     }
 }
