@@ -452,18 +452,20 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let value = self.lower_expr(&match_.expr);
 
                 let mut rows = vec![];
+                let mut state = DecisionState::new(output, merge_blk);
 
                 for case in &match_.cases {
                     let block_id = self.body.create_block("case");
                     let col = pmatch::Column::new(value, case.pat.clone());
                     let body = pmatch::Body::new(block_id);
+                    state.bodies.insert(block_id, &case.expr);
                     rows.push(pmatch::Row::new(vec![col], body));
                 }
 
                 let (decision, diagnostics) = pmatch::compile(self.cx.db, rows);
                 self.cx.db.diagnostics.emit_many(diagnostics);
 
-                self.lower_decision(decision, output, merge_blk);
+                self.lower_decision(&mut state, decision);
 
                 output
             }
@@ -654,20 +656,38 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn lower_decision(
         &mut self,
+        state: &mut DecisionState,
         decision: pmatch::Decision,
-        output: ValueId,
-        merge_blk: BlockId,
     ) -> BlockId {
         println!("{decision:?}");
 
         match decision {
             pmatch::Decision::Ok(body) => {
+                self.lower_decision_bindings(body.block_id, body.bindings);
+                // TODO: self.destroy_match_values()
+                self.lower_decision_body(state, body.block_id);
                 todo!("compile decision to instructions");
                 todo!("write match result to `output`");
                 todo!("br to merge_blk");
             }
             pmatch::Decision::Err => unreachable!(),
         }
+    }
+
+    fn lower_decision_bindings(
+        &self,
+        vars_blk: BlockId,
+        bindings: pmatch::Bindings,
+    ) {
+        // todo!()
+    }
+
+    fn lower_decision_body(
+        &mut self,
+        state: &mut DecisionState,
+        block_id: BlockId,
+    ) {
+        // todo!()
     }
 
     fn lower_name(
@@ -1767,3 +1787,21 @@ enum ImmutableRoot {
 }
 
 create_bool_enum!(BreakOnMutRef);
+
+#[derive(Debug)]
+struct DecisionState<'a> {
+    /// The value the pmatch result is written to
+    output: ValueId,
+
+    /// The block to to merge into at the end of each decision body
+    merge_blk: BlockId,
+
+    /// A mapping of every case body, and its associated concrete expression
+    bodies: FxHashMap<BlockId, &'a hir::Expr>,
+}
+
+impl<'a> DecisionState<'a> {
+    fn new(output: ValueId, merge_blk: BlockId) -> Self {
+        Self { output, merge_blk, bodies: FxHashMap::default() }
+    }
+}

@@ -129,9 +129,11 @@ pub enum Decision {
 
 #[derive(Debug)]
 pub struct Body {
-    pub bindings: Vec<(DefId, ValueId)>,
+    pub bindings: Bindings,
     pub block_id: BlockId,
 }
+
+pub type Bindings = Vec<(DefId, ValueId)>;
 
 impl Body {
     pub fn new(block_id: BlockId) -> Self {
