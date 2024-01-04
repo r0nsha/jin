@@ -2,14 +2,18 @@
 use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
-    db::{Db, DefId},
+    db::DefId,
     diagnostics::{Diagnostic, Label},
     hir,
-    mir::{BlockId, ValueId},
+    mir::{lower::LowerBody, BlockId, ValueId},
     span::{Span, Spanned},
+    ty::{Ty, TyKind},
 };
 
-pub fn compile(db: &Db, rows: Vec<Row>) -> (Decision, Vec<Diagnostic>) {
+pub fn compile(
+    cx: &mut LowerBody<'_, '_>,
+    rows: Vec<Row>,
+) -> (Decision, Vec<Diagnostic>) {
     let mut body_pat_spans = FxHashMap::default();
 
     for row in &rows {
@@ -23,7 +27,7 @@ pub fn compile(db: &Db, rows: Vec<Row>) -> (Decision, Vec<Diagnostic>) {
         body_pat_spans.insert(row.body.block_id, pat_span);
     }
 
-    Compiler::new(db, body_pat_spans).compile(rows)
+    Compiler::new(cx, body_pat_spans).compile(rows)
 }
 
 #[derive(Debug)]
@@ -44,18 +48,18 @@ impl Column {
 #[derive(Debug)]
 pub struct Row {
     pub columns: Vec<Column>,
-    pub body: Body,
+    pub body: DecisionBody,
 }
 
 impl Row {
-    pub fn new(columns: Vec<Column>, body: Body) -> Self {
+    pub fn new(columns: Vec<Column>, body: DecisionBody) -> Self {
         Self { columns, body }
     }
 }
 
 #[derive(Debug)]
-struct Compiler<'db> {
-    _db: &'db Db,
+struct Compiler<'a, 'cx, 'db> {
+    cx: &'a mut LowerBody<'cx, 'db>,
 
     /// Whether there's a pattern the user is missing
     missing: bool,
@@ -67,10 +71,13 @@ struct Compiler<'db> {
     body_pat_spans: FxHashMap<BlockId, Span>,
 }
 
-impl<'db> Compiler<'db> {
-    fn new(db: &'db Db, body_pat_spans: FxHashMap<BlockId, Span>) -> Self {
+impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
+    fn new(
+        cx: &'a mut LowerBody<'cx, 'db>,
+        body_pat_spans: FxHashMap<BlockId, Span>,
+    ) -> Self {
         Self {
-            _db: db,
+            cx,
             missing: false,
             reachable: FxHashSet::default(),
             body_pat_spans,
@@ -133,7 +140,11 @@ impl<'db> Compiler<'db> {
 
         let branch_value = Self::branch_value(&rows);
 
-        todo!("{branch_value:?}")
+        let ty = Type::from_ty(self.cx.ty_of(branch_value));
+
+        match ty {
+            Type::Finite(_) => todo!(),
+        }
     }
 
     fn move_binding_pats(row: &mut Row) {
@@ -171,7 +182,7 @@ impl<'db> Compiler<'db> {
 #[derive(Debug)]
 pub enum Decision {
     /// A successful pattern match
-    Ok(Body),
+    Ok(DecisionBody),
 
     /// A pattern is missing
     Err,
@@ -180,7 +191,7 @@ pub enum Decision {
 }
 
 #[derive(Debug)]
-pub struct Body {
+pub struct DecisionBody {
     pub bindings: Bindings,
     pub block_id: BlockId,
     pub span: Span,
@@ -194,7 +205,7 @@ pub enum Binding {
     Discard(ValueId, Span),
 }
 
-impl Body {
+impl DecisionBody {
     pub fn new(block_id: BlockId, span: Span) -> Self {
         Self { bindings: vec![], block_id, span }
     }
@@ -212,27 +223,76 @@ struct Case {
     // body: Decision,
 }
 
-// TODO: this should be in hir?
-/// A type constructor.
+/// A simplified version of `Ty`, makes it easier to work with.
+#[derive(Debug)]
+enum Type {
+    // Int,
+    // Str,
+    Finite(Vec<FiniteType>),
+}
+
+/// A type which represents a set of constructors
+#[derive(Debug)]
+struct FiniteType {
+    /// The matched constructor
+    ctor: Ctor,
+
+    /// The values which are exposed to the constructor's sub tree
+    values: Vec<ValueId>,
+
+    /// Rows used for building the sub tree
+    rows: Vec<Row>,
+}
+
+impl FiniteType {
+    fn new(ctor: Ctor, values: Vec<ValueId>) -> Self {
+        Self { ctor, values, rows: vec![] }
+    }
+}
+
+impl Type {
+    fn from_ty(ty: Ty) -> Self {
+        match ty.kind() {
+            TyKind::Bool => Self::Finite(vec![
+                FiniteType::new(Ctor::True, vec![]),
+                FiniteType::new(Ctor::False, vec![]),
+            ]),
+            TyKind::Fn(_)
+            | TyKind::Adt(_, _)
+            | TyKind::Ref(_, _)
+            | TyKind::RawPtr(_)
+            | TyKind::Int(_)
+            | TyKind::Uint(_)
+            | TyKind::Float(_)
+            | TyKind::Str
+            | TyKind::Unit
+            | TyKind::Never
+            | TyKind::Param(_)
+            | TyKind::Infer(_)
+            | TyKind::Type(_)
+            | TyKind::Module(_)
+            | TyKind::Unknown => unreachable!(),
+        }
+    }
+}
+
+// A constructor for a given `Type`
 #[derive(Debug, Clone, Eq, PartialEq)]
-enum Constructor {
-    // True,
-    // False,
+enum Ctor {
+    True,
+    False,
     // Int(i64),
     // Pair(TypeId, TypeId),
     // Variant(TypeId, usize),
 }
 
-impl Constructor {
+impl Ctor {
     // /// Returns the index of this constructor relative to its type.
-    // fn index(&self) -> usize {
-    //     match self {
-    //         Self::False
-    //         | Self::Int(_)
-    //         | Self::Pair(_, _)
-    //         | Self::Range(_, _) => 0,
-    //         Self::True => 1,
-    //         Self::Variant(_, index) => *index,
-    //     }
-    // }
+    fn index(&self) -> usize {
+        match self {
+            Self::False => 0,
+            Self::True => 1,
+            // Self::Variant(_, index) => *index,
+        }
+    }
 }

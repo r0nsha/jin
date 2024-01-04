@@ -30,13 +30,14 @@ pub fn lower(db: &mut Db, hir: &Hir) -> Mir {
     Lower::new(db, hir).lower_all()
 }
 
-struct Lower<'db> {
-    db: &'db mut Db,
-    hir: &'db Hir,
-    mir: Mir,
-    id_to_fn_sig: FxHashMap<DefId, FnSigId>,
-    id_to_global: FxHashMap<DefId, GlobalId>,
-    struct_ctors: FxHashMap<AdtId, FnSigId>,
+#[derive(Debug)]
+pub(super) struct Lower<'db> {
+    pub(super) db: &'db mut Db,
+    pub(super) hir: &'db Hir,
+    pub(super) mir: Mir,
+    pub(super) id_to_fn_sig: FxHashMap<DefId, FnSigId>,
+    pub(super) id_to_global: FxHashMap<DefId, GlobalId>,
+    pub(super) struct_ctors: FxHashMap<AdtId, FnSigId>,
 }
 
 impl<'db> Lower<'db> {
@@ -234,14 +235,15 @@ impl<'db> Lower<'db> {
     }
 }
 
-struct LowerBody<'cx, 'db> {
-    cx: &'cx mut Lower<'db>,
-    body: Body,
-    value_states: ValueStates,
-    scopes: Vec<Scope>,
-    current_block: BlockId,
-    locals: FxHashMap<DefId, ValueId>,
-    fields: FxHashMap<ValueId, FxHashMap<Ustr, ValueId>>,
+#[derive(Debug)]
+pub(super) struct LowerBody<'cx, 'db> {
+    pub(super) cx: &'cx mut Lower<'db>,
+    pub(super) body: Body,
+    pub(super) value_states: ValueStates,
+    pub(super) scopes: Vec<Scope>,
+    pub(super) current_block: BlockId,
+    pub(super) locals: FxHashMap<DefId, ValueId>,
+    pub(super) fields: FxHashMap<ValueId, FxHashMap<Ustr, ValueId>>,
 }
 
 impl<'cx, 'db> LowerBody<'cx, 'db> {
@@ -295,7 +297,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     let fn_ty = self.cx.mir.fn_sigs[sig].ty.as_fn().unwrap();
 
                     let ret_value = if fn_ty.ret.is_unit()
-                        && !self.body.value(last_value).ty.is_unit()
+                        && !self.ty_of(last_value).is_unit()
                     {
                         // If the value of this function's block has been coerced to unit, we must
                         // return a unit value
@@ -455,14 +457,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 for case in &match_.cases {
                     let block_id = self.body.create_block("case");
                     let col = pmatch::Column::new(value, case.pat.clone());
-                    let body = pmatch::Body::new(block_id, case.pat.span());
+                    let body =
+                        pmatch::DecisionBody::new(block_id, case.pat.span());
                     state.bodies.insert(block_id, &case.expr);
                     rows.push(pmatch::Row::new(vec![col], body));
                 }
 
                 state.merge_blk = self.body.create_block("match_merge");
 
-                let (decision, diagnostics) = pmatch::compile(self.cx.db, rows);
+                let (decision, diagnostics) = pmatch::compile(self, rows);
                 self.cx.db.diagnostics.emit_many(diagnostics);
 
                 self.lower_decision(&mut state, decision);
@@ -688,7 +691,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             match binding {
                 pmatch::Binding::Name(id, source, span) => {
                     let binding_value = self.push_inst_with(
-                        self.body.value(source).ty,
+                        self.ty_of(source),
                         ValueKind::Local(id),
                         |value| Inst::StackAlloc { value, init: Some(source) },
                     );
@@ -997,7 +1000,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
             // When a reference is moved, its refcount is incremented.
             if self.value_is_ref(value) {
-                self.create_ref(value, self.body.value(value).ty);
+                self.create_ref(value, self.ty_of(value));
             }
 
             self.set_moved(value, moved_to);
@@ -1121,7 +1124,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         field: ValueId,
         moved_to: Span,
     ) -> DiagnosticResult<()> {
-        let parent_ty = self.body.value(parent).ty;
+        let parent_ty = self.ty_of(parent);
 
         if parent_ty.is_ref() {
             Err(Diagnostic::error()
@@ -1188,7 +1191,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    pub fn value_state(&mut self, value: ValueId) -> ValueState {
+    pub(super) fn value_state(&mut self, value: ValueId) -> ValueState {
         if let Some(state) =
             self.value_states.get(self.current_block, value).cloned()
         {
@@ -1200,7 +1203,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         state
     }
 
-    pub fn solve_value_state(&self, value: ValueId) -> ValueState {
+    pub(super) fn solve_value_state(&self, value: ValueId) -> ValueState {
         let mut work: Vec<BlockId> = self
             .body
             .block(self.current_block)
@@ -1265,11 +1268,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn value_is_move(&self, value: ValueId) -> bool {
-        self.body.value(value).ty.is_move(self.cx.db)
+        self.ty_of(value).is_move(self.cx.db)
     }
 
     fn value_is_ref(&self, value: ValueId) -> bool {
-        self.body.value(value).ty.is_ref()
+        self.ty_of(value).is_ref()
     }
 
     pub fn set_owned(&mut self, value: ValueId) {
@@ -1611,7 +1614,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     .with_note(format!(
                         "{} is of type `{}`, which is immutable",
                         root_name,
-                        self.body.value(root).ty.display(self.cx.db)
+                        self.ty_of(root).display(self.cx.db)
                     ))
             }
         }
@@ -1654,7 +1657,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn value_ty_imm_root(&self, value: ValueId) -> Result<(), ImmutableRoot> {
-        if self.body.value(value).ty.is_imm_ref() {
+        if self.ty_of(value).is_imm_ref() {
             Err(ImmutableRoot::Ref(value))
         } else {
             Ok(())
@@ -1670,10 +1673,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.cx.db.diagnostics.emit(diagnostic);
         }
     }
+
+    pub fn ty_of(&self, value: ValueId) -> Ty {
+        self.body.value(value).ty
+    }
 }
 
 #[derive(Debug)]
-struct ValueStates(FxHashMap<BlockId, BlockState>);
+pub(super) struct ValueStates(FxHashMap<BlockId, BlockState>);
 
 impl ValueStates {
     fn new() -> Self {
@@ -1752,7 +1759,7 @@ impl fmt::Display for BlockState {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-enum ValueState {
+pub(super) enum ValueState {
     /// The value is owned, and should be dropped at the end of its scope
     Owned,
 
@@ -1769,7 +1776,7 @@ enum ValueState {
 }
 
 #[derive(Debug, Clone)]
-struct Scope {
+pub(super) struct Scope {
     kind: ScopeKind,
     depth: usize,
     loop_depth: usize,
