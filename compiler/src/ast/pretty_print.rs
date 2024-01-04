@@ -77,7 +77,7 @@ impl PrettyPrint for Expr {
 
                 cx.builder.end_child();
             }
-            Self::Match { expr, cases: _, .. } => {
+            Self::Match { expr, arms: _, .. } => {
                 cx.builder.begin_child("match".to_string());
 
                 cx.builder.begin_child("expr".to_string());

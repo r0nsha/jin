@@ -1,9 +1,10 @@
-use std::ops::ControlFlow;
+use std::{ops::ControlFlow, str::FromStr};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::files::Files;
 use data_structures::index_vec::Key as _;
 use rustc_hash::FxHashSet;
+use ustr::ustr;
 
 use crate::{
     ast::{
@@ -614,12 +615,7 @@ impl<'a> Parser<'a> {
                 Expr::Name { word: tok.word(), targs, span: tok.span }
             }
             TokenKind::Int(value) => Expr::Lit {
-                kind: LitKind::Int(
-                    value
-                        .replace('_', "")
-                        .parse()
-                        .expect("to be a valid integer"),
-                ),
+                kind: LitKind::Int(Self::int_lit(value.as_str())),
                 span: tok.span,
             },
             TokenKind::Float(value) => Expr::Lit {
@@ -686,7 +682,7 @@ impl<'a> Parser<'a> {
         let start = self.last_span();
         let expr = self.parse_expr()?;
 
-        let (cases, _) = self.parse_list(
+        let (arms, _) = self.parse_list(
             TokenKind::OpenCurly,
             TokenKind::CloseCurly,
             |this| {
@@ -697,7 +693,7 @@ impl<'a> Parser<'a> {
 
         let span = start.merge(self.last_span());
 
-        Ok(Expr::Match { expr: Box::new(expr), cases, span })
+        Ok(Expr::Match { expr: Box::new(expr), arms, span })
     }
 
     fn parse_match_arm(&mut self) -> DiagnosticResult<MatchArm> {
@@ -719,6 +715,15 @@ impl<'a> Parser<'a> {
             let start_span = self.last_span();
             let last_span = self.eat(TokenKind::CloseCurly)?.span;
             Ok(MatchPat::Unit(start_span.merge(last_span)))
+        } else if self.is(TokenKind::Minus) {
+            let start_span = self.last_span();
+            let int_tok = self.eat(TokenKind::Int(ustr("")))?;
+            let int_value: i128 = Self::int_lit(&int_tok.str_value());
+            Ok(MatchPat::Int(-int_value, start_span.merge(int_tok.span)))
+        } else if self.is(TokenKind::Int(ustr(""))) {
+            let int_tok = self.last_token();
+            let int_value = Self::int_lit(&int_tok.str_value());
+            Ok(MatchPat::Int(int_value, int_tok.span))
         } else if self.is(TokenKind::True) {
             Ok(MatchPat::Bool(true, self.last_span()))
         } else if self.is(TokenKind::False) {
@@ -916,6 +921,19 @@ impl<'a> Parser<'a> {
     #[inline]
     pub(super) fn eat_ident(&mut self) -> DiagnosticResult<Token> {
         self.eat(TokenKind::empty_ident())
+    }
+
+    #[inline]
+    pub(super) fn eat_int(&mut self) -> DiagnosticResult<Token> {
+        self.eat(TokenKind::Int(ustr("")))
+    }
+
+    pub(super) fn int_lit<F>(value: &str) -> F
+    where
+        F: FromStr,
+        <F as FromStr>::Err: core::fmt::Debug,
+    {
+        value.replace('_', "").parse().expect("to be a valid integer")
     }
 
     #[inline]

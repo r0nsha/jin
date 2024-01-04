@@ -232,6 +232,7 @@ pub enum MatchPat {
     Wildcard(Span),
     Unit(Span),
     Bool(bool, Span),
+    Int(i128, Span),
 }
 
 impl Spanned for MatchPat {
@@ -240,7 +241,8 @@ impl Spanned for MatchPat {
             Self::Name(_, span)
             | Self::Wildcard(span)
             | Self::Unit(span)
-            | Self::Bool(_, span) => *span,
+            | Self::Bool(_, span)
+            | Self::Int(_, span) => *span,
         }
     }
 }

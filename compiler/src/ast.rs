@@ -129,7 +129,7 @@ pub enum Expr {
     },
     Match {
         expr: Box<Self>,
-        cases: Vec<MatchArm>,
+        arms: Vec<MatchArm>,
         span: Span,
     },
     Loop {
@@ -311,6 +311,7 @@ pub enum MatchPat {
     Wildcard(Span),
     Unit(Span),
     Bool(bool, Span),
+    Int(i128, Span),
 }
 
 impl ImportName {

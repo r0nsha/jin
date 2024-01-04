@@ -838,8 +838,8 @@ impl<'db> Typeck<'db> {
                 *span,
                 expected_ty,
             ),
-            ast::Expr::Match { expr, cases, span } => {
-                self.check_match(env, expr, cases, *span, expected_ty)
+            ast::Expr::Match { expr, arms, span } => {
+                self.check_match(env, expr, arms, *span, expected_ty)
             }
             ast::Expr::Loop { cond, expr, span } => {
                 let cond = if let Some(cond) = cond.as_ref() {
@@ -1180,7 +1180,7 @@ impl<'db> Typeck<'db> {
         &mut self,
         env: &mut Env,
         expr: &ast::Expr,
-        cases: &[ast::MatchArm],
+        arms: &[ast::MatchArm],
         span: Span,
         expected_ty: Option<Ty>,
     ) -> TypeckResult<hir::Expr> {
@@ -1191,25 +1191,30 @@ impl<'db> Typeck<'db> {
         let mut result_ty: Option<Ty> = expected_ty;
         let mut last_case_span: Option<Span> = None;
 
-        for case in cases {
-            let case =
-                self.check_match_case(env, case, expr_ty, expected_ty)?;
+        for arm in arms {
+            let new_arm = self.check_match_arm(
+                env,
+                arm,
+                expr_ty,
+                expr.span,
+                expected_ty,
+            )?;
 
             if let Some(result_ty) = result_ty {
                 self.at(if let Some(last_case_span) = last_case_span {
-                    Obligation::exprs(span, last_case_span, case.expr.span)
+                    Obligation::exprs(span, last_case_span, new_arm.expr.span)
                 } else {
-                    Obligation::obvious(case.expr.span)
+                    Obligation::obvious(new_arm.expr.span)
                 })
-                .eq(result_ty, case.expr.ty)
-                .or_coerce(self, case.expr.id)?;
+                .eq(result_ty, new_arm.expr.ty)
+                .or_coerce(self, new_arm.expr.id)?;
             } else {
-                result_ty = Some(case.expr.ty);
+                result_ty = Some(new_arm.expr.ty);
             }
 
-            last_case_span = Some(case.expr.span);
+            last_case_span = Some(new_arm.expr.span);
 
-            new_arms.push(case);
+            new_arms.push(new_arm);
         }
 
         Ok(self.expr(
@@ -1222,15 +1227,17 @@ impl<'db> Typeck<'db> {
         ))
     }
 
-    fn check_match_case(
+    fn check_match_arm(
         &mut self,
         env: &mut Env,
         case: &ast::MatchArm,
         expr_ty: Ty,
+        expr_span: Span,
         expected_ty: Option<Ty>,
     ) -> TypeckResult<hir::MatchArm> {
         env.with_anon_scope(ScopeKind::Block, |env| {
-            let pat = self.check_match_pat(env, &case.pat, expr_ty)?;
+            let pat =
+                self.check_match_pat(env, &case.pat, expr_ty, expr_span)?;
             let expr = self.check_expr(env, &case.expr, expected_ty)?;
             Ok(hir::MatchArm { pat, expr: Box::new(expr) })
         })
@@ -1240,7 +1247,8 @@ impl<'db> Typeck<'db> {
         &mut self,
         env: &mut Env,
         pat: &ast::MatchPat,
-        ty: Ty,
+        expr_ty: Ty,
+        expr_span: Span,
     ) -> TypeckResult<hir::MatchPat> {
         match pat {
             ast::MatchPat::Name(word, mutability) => {
@@ -1250,21 +1258,40 @@ impl<'db> Typeck<'db> {
                     DefKind::Variable,
                     *word,
                     *mutability,
-                    ty,
+                    expr_ty,
                 )?;
 
                 Ok(hir::MatchPat::Name(id, word.span()))
             }
             ast::MatchPat::Wildcard(span) => Ok(hir::MatchPat::Wildcard(*span)),
+            ast::MatchPat::Unit(span) => {
+                self.at(Obligation::exprs(*span, *span, expr_span))
+                    .eq(self.db.types.unit, expr_ty)?;
+                Ok(hir::MatchPat::Unit(*span))
+            }
             ast::MatchPat::Bool(value, span) => {
-                self.at(Obligation::obvious(*span))
-                    .eq(self.db.types.bool, ty)?;
+                self.at(Obligation::exprs(*span, *span, expr_span))
+                    .eq(self.db.types.bool, expr_ty)?;
                 Ok(hir::MatchPat::Bool(*value, *span))
             }
-            ast::MatchPat::Unit(span) => {
-                self.at(Obligation::obvious(*span))
-                    .eq(self.db.types.unit, ty)?;
-                Ok(hir::MatchPat::Unit(*span))
+            ast::MatchPat::Int(value, span) => {
+                if *value < 0 {
+                    match expr_ty.kind() {
+                        TyKind::Int(_) | TyKind::Infer(InferTy::Int(_)) => (),
+                        _ => {
+                            return Err(errors::ty_mismatch(
+                                "int",
+                                &expr_ty.to_string(self.db),
+                                *span,
+                            ))
+                        }
+                    }
+                } else {
+                    self.at(Obligation::exprs(*span, *span, expr_span))
+                        .eq(self.fresh_int_var(), expr_ty)?;
+                }
+
+                Ok(hir::MatchPat::Int(*value, *span))
             }
         }
     }

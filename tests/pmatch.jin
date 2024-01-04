@@ -6,6 +6,13 @@ fn main() unit = {
 	match_bool(true)
 	match_bool(false)
 
+	match_int(42)
+	match_int(-3)
+	match_int(69)
+
+	match_uint(42)
+	match_uint(3)
+	match_uint(69)
 }
 
 fn match_vars() unit = {
@@ -35,4 +42,20 @@ fn match_bool(value: bool) unit = {
 		false -> "false",
 		x -> "unreachable..."
 	})
+}
+
+fn match_int(value: int) unit = {
+	match value {
+		42 -> printf("i'm the answer".ptr),
+		-3 -> printf("i'm -3".ptr),
+		x -> printf("value is %d".ptr, x),
+	}
+}
+
+fn match_uint(value: uint) unit = {
+	match value {
+		42 -> printf("i'm still the answer".ptr),
+		3 -> printf("i'm still 3".ptr),
+		x -> printf("and value is %d".ptr, x),
+	}
 }

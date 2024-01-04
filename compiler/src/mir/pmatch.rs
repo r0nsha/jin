@@ -453,6 +453,9 @@ impl Pat {
             hir::MatchPat::Bool(false, span) => {
                 Self::Ctor(Ctor::False, vec![], *span)
             }
+            hir::MatchPat::Int(value, span) => {
+                todo!()
+            }
         }
     }
 }
