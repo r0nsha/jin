@@ -2022,9 +2022,7 @@ impl<'db> Typeck<'db> {
                 let ty = self.normalize(lhs.ty);
 
                 if !can_use_eq(ty) {
-                    return Err(errors::invalid_bin_op(
-                        self.db, op, ty, lhs.span,
-                    ));
+                    return Err(errors::invalid_bin_op(self.db, op, ty, span));
                 }
             }
             BinOp::Add
@@ -2036,9 +2034,7 @@ impl<'db> Typeck<'db> {
                 let ty = self.normalize(lhs.ty);
 
                 if !ty.is_any_int() && !ty.is_any_float() {
-                    return Err(errors::invalid_bin_op(
-                        self.db, op, ty, lhs.span,
-                    ));
+                    return Err(errors::invalid_bin_op(self.db, op, ty, span));
                 }
             }
             BinOp::Shl
@@ -2049,9 +2045,7 @@ impl<'db> Typeck<'db> {
                 let ty = self.normalize(lhs.ty);
 
                 if !ty.is_any_int() {
-                    return Err(errors::invalid_bin_op(
-                        self.db, op, ty, lhs.span,
-                    ));
+                    return Err(errors::invalid_bin_op(self.db, op, ty, span));
                 }
             }
         }
