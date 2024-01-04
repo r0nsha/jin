@@ -204,9 +204,8 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         }
 
         let cond = Self::cond(&rows);
-        let ty = Type::from_ty(self.cx.ty_of(cond));
 
-        match ty {
+        match Type::from_ty(self.cx.ty_of(cond)) {
             Type::Finite(cases) => Decision::Switch {
                 cond,
                 cases: self.compile_ctor_cases(rows, cond, cases),
