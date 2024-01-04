@@ -531,12 +531,10 @@ impl CaseInfo {
             .args
             .iter()
             .map(|arg| {
-                value_to_idx
-                    .get(&arg)
-                    .map(|&idx| {
-                        case_infos[idx].pat_name(case_infos, value_to_idx)
-                    })
-                    .unwrap_or_else(|| "_".to_string())
+                value_to_idx.get(arg).map_or_else(
+                    || "_".to_string(),
+                    |&idx| case_infos[idx].pat_name(case_infos, value_to_idx),
+                )
             })
             .collect::<Vec<_>>()
             .join(", ");
