@@ -1,3 +1,4 @@
+use indexmap::IndexSet;
 /// This implementation is inspired by [yorickpeterse's implementation](https://github.com/yorickpeterse/pattern-matching-in-rust)
 use rustc_hash::{FxHashMap, FxHashSet};
 
@@ -13,6 +14,7 @@ use crate::{
 pub fn compile(
     cx: &mut LowerBody<'_, '_>,
     rows: Vec<Row>,
+    span: Span,
 ) -> (Decision, Vec<Diagnostic>) {
     let mut body_pat_spans = FxHashMap::default();
 
@@ -27,7 +29,7 @@ pub fn compile(
         body_pat_spans.insert(row.body.block_id, pat_span);
     }
 
-    Compiler::new(cx, body_pat_spans).compile(rows)
+    Compiler::new(cx, body_pat_spans).compile(rows, span)
 }
 
 #[derive(Debug, Clone)]
@@ -91,7 +93,11 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         }
     }
 
-    fn compile(mut self, rows: Vec<Row>) -> (Decision, Vec<Diagnostic>) {
+    fn compile(
+        mut self,
+        rows: Vec<Row>,
+        span: Span,
+    ) -> (Decision, Vec<Diagnostic>) {
         let mut diagnostics = vec![];
         let all_blocks: Vec<_> = rows.iter().map(|r| r.body.block_id).collect();
 
@@ -102,8 +108,46 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         }
 
         if self.missing {
-            let missing_pats = self.collect_missing_pats(&decision);
-            todo!("{missing_pats:?}");
+            const LIMIT: usize = 3;
+
+            let pats = self.collect_missing_pats(&decision);
+            let pat_len = pats.len();
+
+            let (missing, verb) = if pat_len > 1 {
+                let mut missing = String::new();
+
+                let overflow = pat_len.checked_sub(LIMIT).unwrap_or_default();
+                let last_idx = (pat_len - 1).min(LIMIT - 1);
+
+                for (idx, pat) in pats.into_iter().enumerate().take(LIMIT) {
+                    missing.push_str(&format!("`{pat}`"));
+
+                    if overflow == 0 && idx == last_idx - 1 {
+                        missing.push_str(" and ");
+                    } else if idx < last_idx {
+                        missing.push_str(", ");
+                    }
+                }
+
+                if overflow > 0 {
+                    missing.push_str(&format!(" and {overflow} more"));
+                }
+
+                (missing, "are")
+            } else {
+                (format!("`{}`", pats[0]), "is")
+            };
+
+            diagnostics.push(
+                Diagnostic::error()
+                    .with_message(format!(
+                        "missing match arms: {missing} {verb} not covered"
+                    ))
+                    .with_label(
+                        Label::primary(span)
+                            .with_message("match is not exhaustive"),
+                    ),
+            );
         }
 
         (decision, diagnostics)
@@ -130,10 +174,10 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         );
     }
 
-    fn collect_missing_pats(&self, decision: &Decision) -> FxHashSet<String> {
-        let mut terms = vec![];
-        let mut missing = FxHashSet::default();
-        collect_missing_pats(self.cx, decision, &mut terms, &mut missing);
+    fn collect_missing_pats(&self, decision: &Decision) -> IndexSet<String> {
+        let mut case_infos = vec![];
+        let mut missing = IndexSet::default();
+        collect_missing_pats(self.cx, decision, &mut case_infos, &mut missing);
         missing
     }
 
@@ -413,47 +457,86 @@ impl Spanned for Pat {
 fn collect_missing_pats(
     cx: &LowerBody<'_, '_>,
     decision: &Decision,
-    terms: &mut Vec<Term>,
-    missing: &mut FxHashSet<String>,
+    case_infos: &mut Vec<CaseInfo>,
+    missing: &mut IndexSet<String>,
 ) {
-    todo!()
+    match decision {
+        Decision::Ok(_) => (),
+        Decision::Err => {
+            let value_to_idx: FxHashMap<_, _> = case_infos
+                .iter()
+                .enumerate()
+                .map(|(idx, case_info)| (case_info.value, idx))
+                .collect();
+
+            let full_name = case_infos.first().map_or_else(
+                || "_".to_string(),
+                |case_info| case_info.pat_name(case_infos, &value_to_idx),
+            );
+
+            missing.insert(full_name);
+        }
+        Decision::Switch { cond, cases, fallback } => {
+            for case in cases {
+                match &case.ctor {
+                    Ctor::True => case_infos.push(CaseInfo::new(
+                        *cond,
+                        "true".to_string(),
+                        vec![],
+                    )),
+                    Ctor::False => case_infos.push(CaseInfo::new(
+                        *cond,
+                        "false".to_string(),
+                        vec![],
+                    )),
+                }
+
+                collect_missing_pats(cx, &case.decision, case_infos, missing);
+                case_infos.pop();
+            }
+
+            if let Some(fallback) = fallback {
+                collect_missing_pats(cx, fallback, case_infos, missing);
+            }
+        }
+    }
 }
 
 #[derive(Debug)]
-struct Term {
+struct CaseInfo {
     value: ValueId,
     name: String,
     args: Vec<ValueId>,
 }
 
-impl Term {
+impl CaseInfo {
     fn new(value: ValueId, name: String, args: Vec<ValueId>) -> Self {
         Self { value, name, args }
     }
 
-    fn pattern_name(
+    fn pat_name(
         &self,
-        terms: &[Term],
+        case_infos: &[CaseInfo],
         value_to_idx: &FxHashMap<ValueId, usize>,
     ) -> String {
         if self.args.is_empty() {
-            self.name.to_string()
-        } else {
-            let args = self
-                .args
-                .iter()
-                .map(|arg| {
-                    value_to_idx
-                        .get(&arg)
-                        .map(|&idx| {
-                            terms[idx].pattern_name(terms, value_to_idx)
-                        })
-                        .unwrap_or_else(|| "_".to_string())
-                })
-                .collect::<Vec<_>>()
-                .join(", ");
-
-            format!("{}({})", self.name, args)
+            return self.name.to_string();
         }
+
+        let args = self
+            .args
+            .iter()
+            .map(|arg| {
+                value_to_idx
+                    .get(&arg)
+                    .map(|&idx| {
+                        case_infos[idx].pat_name(case_infos, value_to_idx)
+                    })
+                    .unwrap_or_else(|| "_".to_string())
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        format!("{}({})", self.name, args)
     }
 }

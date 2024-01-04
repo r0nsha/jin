@@ -468,7 +468,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 state.merge_blk = self.body.create_block("match_merge");
 
-                let (decision, diagnostics) = pmatch::compile(self, rows);
+                let (decision, diagnostics) =
+                    pmatch::compile(self, rows, expr.span);
                 self.cx.db.diagnostics.emit_many(diagnostics);
 
                 self.lower_decision(&mut state, decision, self.current_block);
