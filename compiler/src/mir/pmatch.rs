@@ -261,9 +261,8 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             if let Some(col) = row.remove_col(cond) {
                 for (pat, row) in col.pat.flatten_or(row) {
                     if let Pat::Ctor(ctor, args, _) = pat {
-                        let idx = ctor.index();
                         let mut cols = row.cols;
-                        let case = &mut cases[idx];
+                        let case = &mut cases[ctor.index()];
 
                         // TODO: if args != case.values : missing fields in pattern
 
