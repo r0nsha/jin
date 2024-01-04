@@ -795,7 +795,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 ValueKind::Register(None),
             );
 
-            let test_end_block = match case.ctor {
+            match case.ctor {
                 pmatch::Ctor::Int(lit) => {
                     self.position_at(test_block);
 
@@ -811,20 +811,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         op: BinOp::Cmp(CmpOp::Eq),
                         span: state.span,
                     });
-
-                    test_block
                 }
                 _ => unreachable!(),
-            };
+            }
 
             let then_block = self.lower_decision(
                 state,
                 case.decision,
-                test_end_block,
+                test_block,
                 values.clone(),
             );
 
-            self.position_at(test_end_block);
+            self.position_at(test_block);
             self.push_brif(result_value, then_block, Some(else_block));
         }
 
