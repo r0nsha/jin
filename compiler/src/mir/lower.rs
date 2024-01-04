@@ -14,9 +14,9 @@ use crate::{
     mangle,
     middle::{Mutability, NamePat, Pat, Vis},
     mir::{
-        pmatch, pmatch::Row, AdtId, Block, BlockId, Body, Const, Fn, FnParam,
-        FnSig, FnSigId, FxHashMap, FxHashSet, Global, GlobalId, GlobalKind,
-        Inst, Mir, Span, StaticGlobal, UnOp, ValueId, ValueKind,
+        pmatch, AdtId, Block, BlockId, Body, Const, Fn, FnParam, FnSig,
+        FnSigId, FxHashMap, FxHashSet, Global, GlobalId, GlobalKind, Inst, Mir,
+        Span, StaticGlobal, UnOp, ValueId, ValueKind,
     },
     span::Spanned,
     ty::{
@@ -455,7 +455,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 for case in &match_.cases {
                     let block_id = self.body.create_block("case");
                     let col = pmatch::Column::new(value, case.pat.clone());
-                    let body = pmatch::Body::new(block_id);
+                    let body = pmatch::Body::new(block_id, case.pat.span());
                     state.bodies.insert(block_id, &case.expr);
                     rows.push(pmatch::Row::new(vec![col], body));
                 }

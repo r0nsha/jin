@@ -1253,7 +1253,7 @@ impl<'db> Typeck<'db> {
                     expected_ty,
                 )?;
 
-                Ok(hir::MatchPat::Name(id))
+                Ok(hir::MatchPat::Name(id, word.span()))
             }
         }
     }

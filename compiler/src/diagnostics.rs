@@ -20,12 +20,15 @@ pub struct Diagnostic {
 
 impl Diagnostic {
     pub fn error() -> Self {
-        Self {
-            severity: Severity::Error,
-            message: None,
-            labels: vec![],
-            notes: vec![],
-        }
+        Self::new(Severity::Error)
+    }
+
+    pub fn warning() -> Self {
+        Self::new(Severity::Warning)
+    }
+
+    fn new(severity: Severity) -> Self {
+        Self { severity, message: None, labels: vec![], notes: vec![] }
     }
 
     pub fn set_message(&mut self, message: impl Into<String>) {
@@ -79,6 +82,7 @@ impl Diagnostic {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Severity {
     Error,
+    Warning,
 }
 
 #[derive(Debug, Clone)]
@@ -141,6 +145,7 @@ impl From<Severity> for codespan_diagnostic::Severity {
     fn from(val: Severity) -> Self {
         match val {
             Severity::Error => Self::Error,
+            Severity::Warning => Self::Warning,
         }
     }
 }
@@ -183,9 +188,9 @@ impl Diagnostics {
     }
 
     fn emit_(&mut self, w: &mut StandardStreamLock, diagnostic: Diagnostic) {
-        // if let Severity::Error = diagnostic.severity() {
-        self.had_errors = true;
-        // }
+        if let Severity::Error = diagnostic.severity() {
+            self.had_errors = true;
+        }
 
         let sources: &Sources = &self.sources.borrow();
 

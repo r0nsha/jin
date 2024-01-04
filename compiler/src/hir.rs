@@ -10,7 +10,7 @@ use ustr::Ustr;
 use crate::{
     db::{Db, DefId, ModuleId},
     middle::{BinOp, Pat, TyParam, UnOp},
-    span::Span,
+    span::{Span, Spanned},
     ty::{coerce::Coercions, Instantiation, Ty, Typed},
     word::Word,
 };
@@ -228,7 +228,15 @@ pub struct MatchCase {
 
 #[derive(Debug, Clone)]
 pub enum MatchPat {
-    Name(DefId),
+    Name(DefId, Span),
+}
+
+impl Spanned for MatchPat {
+    fn span(&self) -> Span {
+        match self {
+            Self::Name(_, span) => *span,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
