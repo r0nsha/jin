@@ -146,6 +146,7 @@ impl<'db> Compiler<'db> {
                 row.body.bindings.push(Binding::Discard(col.value, *span));
                 false
             }
+            hir::MatchPat::Bool(..) => true,
         });
     }
 

@@ -715,6 +715,10 @@ impl<'a> Parser<'a> {
             Ok(MatchPat::Name(self.last_token().word(), Mutability::Imm))
         } else if self.is(TokenKind::Underscore) {
             Ok(MatchPat::Wildcard(self.last_span()))
+        } else if self.is(TokenKind::True) {
+            Ok(MatchPat::Bool(true, self.last_span()))
+        } else if self.is(TokenKind::False) {
+            Ok(MatchPat::Bool(false, self.last_span()))
         } else {
             let tok = self.require()?;
             Err(errors::unexpected_token_err("a pattern", tok.kind, tok.span))

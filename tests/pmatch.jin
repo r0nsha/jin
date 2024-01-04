@@ -15,8 +15,8 @@ fn main() unit = {
 	//printf("foo = %s\n".ptr, foo.to_str())
 }
 
-//fn to_str(value: bool) str =
-//	match value {
-//		true -> "true",
-//		false -> "false"
-//	}
+fn to_str(value: bool) str =
+	match value {
+		true -> "true",
+		false -> "false"
+	}

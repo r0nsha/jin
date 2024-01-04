@@ -1240,7 +1240,7 @@ impl<'db> Typeck<'db> {
         &mut self,
         env: &mut Env,
         pat: &ast::MatchPat,
-        expected_ty: Ty,
+        ty: Ty,
     ) -> TypeckResult<hir::MatchPat> {
         match pat {
             ast::MatchPat::Name(word, mutability) => {
@@ -1250,12 +1250,17 @@ impl<'db> Typeck<'db> {
                     DefKind::Variable,
                     *word,
                     *mutability,
-                    expected_ty,
+                    ty,
                 )?;
 
                 Ok(hir::MatchPat::Name(id, word.span()))
             }
             ast::MatchPat::Wildcard(span) => Ok(hir::MatchPat::Wildcard(*span)),
+            ast::MatchPat::Bool(value, span) => {
+                self.at(Obligation::obvious(*span))
+                    .eq(self.db.types.bool, ty)?;
+                Ok(hir::MatchPat::Bool(*value, *span))
+            }
         }
     }
 

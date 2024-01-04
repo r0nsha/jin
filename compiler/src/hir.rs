@@ -230,12 +230,15 @@ pub struct MatchCase {
 pub enum MatchPat {
     Name(DefId, Span),
     Wildcard(Span),
+    Bool(bool, Span),
 }
 
 impl Spanned for MatchPat {
     fn span(&self) -> Span {
         match self {
-            Self::Name(_, span) | Self::Wildcard(span) => *span,
+            Self::Name(_, span)
+            | Self::Wildcard(span)
+            | Self::Bool(_, span) => *span,
         }
     }
 }
