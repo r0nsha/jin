@@ -4,7 +4,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use crate::{
     db::DefId,
-    diagnostics::{Diagnostic, DiagnosticResult, Label},
+    diagnostics::{Diagnostic, Label, Severity},
     hir,
     mir::{lower::LowerBody, BlockId, ValueId},
     span::{Span, Spanned},
@@ -15,7 +15,7 @@ pub fn compile(
     cx: &mut LowerBody<'_, '_>,
     rows: Vec<Row>,
     span: Span,
-) -> DiagnosticResult<Decision> {
+) -> Result<Decision, ()> {
     let mut body_pat_spans = FxHashMap::default();
 
     for row in &rows {
@@ -29,7 +29,16 @@ pub fn compile(
         body_pat_spans.insert(row.body.block_id, pat_span);
     }
 
-    Compiler::new(cx, body_pat_spans).compile(rows, span)
+    let (decision, diagnostics) =
+        Compiler::new(cx, body_pat_spans).compile(rows, span);
+
+    if diagnostics.iter().any(|d| d.severity() == Severity::Error) {
+        cx.cx.db.diagnostics.emit_many(diagnostics);
+        Err(())
+    } else {
+        cx.cx.db.diagnostics.emit_many(diagnostics);
+        Ok(decision)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -78,6 +87,8 @@ struct Compiler<'a, 'cx, 'db> {
 
     /// Associated body blocks with their span, used for reachability diagnostics
     body_pat_spans: FxHashMap<BlockId, Span>,
+
+    diagnostics: Vec<Diagnostic>,
 }
 
 impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
@@ -90,6 +101,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             missing: false,
             reachable: FxHashSet::default(),
             body_pat_spans,
+            diagnostics: vec![],
         }
     }
 
@@ -97,7 +109,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         mut self,
         rows: Vec<Row>,
         span: Span,
-    ) -> DiagnosticResult<Decision> {
+    ) -> (Decision, Vec<Diagnostic>) {
         let all_blocks: Vec<_> = rows.iter().map(|r| r.body.block_id).collect();
         let decision = self.compile_rows(rows);
 
@@ -107,14 +119,14 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
 
         if self.missing {
             let pats = self.collect_missing_pats(&decision);
-            Err(Self::missing_pats_diagnostic(pats, span))
-        } else {
-            Ok(decision)
+            self.diagnostics.push(Self::missing_pats_diagnostic(pats, span));
         }
+
+        (decision, self.diagnostics)
     }
 
     fn report_unreachable_pats(&mut self, all_blocks: &[BlockId]) {
-        self.cx.cx.db.diagnostics.emit_many(
+        self.diagnostics.extend(
             all_blocks.iter().filter(|b| !self.reachable.contains(b)).map(
                 |blk| {
                     let span = self.body_pat_spans[blk];

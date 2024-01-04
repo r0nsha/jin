@@ -468,21 +468,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 state.merge_blk = self.body.create_block("match_merge");
 
-                match pmatch::compile(self, rows, expr.span) {
-                    Ok(decision) => {
-                        self.lower_decision(
-                            &mut state,
-                            decision,
-                            self.current_block,
-                        );
-                        self.position_at(state.merge_blk);
-                        output
-                    }
-                    Err(diagnostic) => {
-                        self.cx.db.diagnostics.emit(diagnostic);
-                        output
-                    }
+                if let Ok(decision) = pmatch::compile(self, rows, expr.span) {
+                    self.lower_decision(
+                        &mut state,
+                        decision,
+                        self.current_block,
+                    );
                 }
+
+                self.position_at(state.merge_blk);
+
+                output
             }
             hir::ExprKind::Loop(loop_) => {
                 let start_blk = self.body.create_block("loop_start");
