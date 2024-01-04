@@ -11,17 +11,23 @@ fn main() unit = {
 	//	},
 	//}
 
-	printf("foo = %s\n".ptr, true.to_str().ptr)
+	match_unit()
+	match_bool(true)
+	match_bool(false)
 
-	let _ = match {} {
+}
+
+fn match_unit() unit = {
+	match {} {
 		{} -> printf("matched unit!\n".ptr),
 		_ -> 1, // This branch is unreachable
 	}
 }
 
-fn to_str(value: bool) str =
-	match value {
+fn match_bool(value: bool) unit = {
+	printf("value = %s\n".ptr, match value {
 		true -> "true",
 		false -> "false",
-		_ -> "unreachable..."
-	}
+		x -> "unreachable..."
+	})
+}
