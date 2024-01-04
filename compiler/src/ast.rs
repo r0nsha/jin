@@ -312,6 +312,7 @@ pub enum MatchPat {
     Unit(Span),
     Bool(bool, Span),
     Int(i128, Span),
+    Str(Ustr, Span),
 }
 
 impl ImportName {

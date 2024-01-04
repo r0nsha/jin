@@ -717,13 +717,16 @@ impl<'a> Parser<'a> {
             Ok(MatchPat::Unit(start_span.merge(last_span)))
         } else if self.is(TokenKind::Minus) {
             let start_span = self.last_span();
-            let int_tok = self.eat(TokenKind::Int(ustr("")))?;
-            let int_value: i128 = Self::int_lit(&int_tok.str_value());
-            Ok(MatchPat::Int(-int_value, start_span.merge(int_tok.span)))
+            let tok = self.eat(TokenKind::Int(ustr("")))?;
+            let value: i128 = Self::int_lit(&tok.str_value());
+            Ok(MatchPat::Int(-value, start_span.merge(tok.span)))
         } else if self.is(TokenKind::Int(ustr(""))) {
-            let int_tok = self.last_token();
-            let int_value = Self::int_lit(&int_tok.str_value());
-            Ok(MatchPat::Int(int_value, int_tok.span))
+            let tok = self.last_token();
+            let value = Self::int_lit(&tok.str_value());
+            Ok(MatchPat::Int(value, tok.span))
+        } else if self.is(TokenKind::empty_str()) {
+            let tok = self.last_token();
+            Ok(MatchPat::Str(tok.str_value(), tok.span))
         } else if self.is(TokenKind::True) {
             Ok(MatchPat::Bool(true, self.last_span()))
         } else if self.is(TokenKind::False) {
