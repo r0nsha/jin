@@ -60,9 +60,9 @@ impl<'db> PrettyCx<'db> {
                         .append(D::hardline())
                         .append(
                             D::intersperse(
-                                body.blocks.iter().map(|blk| {
-                                    self.pp_blk(body, blk).into_doc()
-                                }),
+                                body.blocks
+                                    .iter()
+                                    .map(|b| self.pp_block(body, b).into_doc()),
                                 D::hardline().append(D::hardline()),
                             )
                             .group(),
@@ -90,7 +90,7 @@ impl<'db> PrettyCx<'db> {
                 .body
                 .blocks
                 .iter()
-                .map(|b| self.pp_blk(&f.body, b))
+                .map(|b| self.pp_block(&f.body, b))
                 .collect(),
         }
         .into_doc()
@@ -118,10 +118,14 @@ impl<'db> PrettyCx<'db> {
         }
     }
 
-    fn pp_blk(&mut self, body: &'db Body, blk: &'db Block) -> PrintBlock<'db> {
+    fn pp_block(
+        &mut self,
+        body: &'db Body,
+        block: &'db Block,
+    ) -> PrintBlock<'db> {
         PrintBlock {
-            name: D::text(blk.display_name()),
-            insts: blk.insts.iter().map(|i| self.pp_inst(body, i)).collect(),
+            name: D::text(block.display_name()),
+            insts: block.insts.iter().map(|i| self.pp_inst(body, i)).collect(),
         }
     }
 

@@ -165,6 +165,17 @@ impl Body {
         self.blocks.push_with_key(|id| Block::new(id, name.into()))
     }
 
+    pub fn create_blocks(
+        &mut self,
+        base: impl core::fmt::Display,
+        len: usize,
+    ) -> Vec<BlockId> {
+        (0..len)
+            .into_iter()
+            .map(|i| self.create_block(format!("{base}{i}")))
+            .collect()
+    }
+
     pub fn create_edge(&mut self, source: BlockId, target: BlockId) {
         self.block_mut(source).successors.insert(target);
         self.block_mut(target).predecessors.insert(source);
@@ -220,7 +231,7 @@ impl Body {
     pub fn last_inst_is_return(&self) -> bool {
         self.blocks()
             .last()
-            .map(|blk| matches!(blk.insts.last(), Some(Inst::Return { .. })))
+            .map(|b| matches!(b.insts.last(), Some(Inst::Return { .. })))
             .unwrap_or_default()
     }
 }

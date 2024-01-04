@@ -128,8 +128,8 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
     fn report_unreachable_pats(&mut self, all_blocks: &[BlockId]) {
         self.diagnostics.extend(
             all_blocks.iter().filter(|b| !self.reachable.contains(b)).map(
-                |blk| {
-                    let span = self.body_pat_spans[blk];
+                |block| {
+                    let span = self.body_pat_spans[block];
 
                     Diagnostic::warning()
                         .with_message("unreachable pattern")
@@ -212,6 +212,14 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         let cond = Self::cond(&rows);
 
         match Type::from_ty(self.cx.ty_of(cond)) {
+            Type::Int => {
+                let (cases, fallback) = self.compile_int_cases(rows, cond);
+                Decision::Switch {
+                    cond,
+                    cases,
+                    fallback: Some(Box::new(fallback)),
+                }
+            }
             Type::Finite(cases) => Decision::Switch {
                 cond,
                 cases: self.compile_ctor_cases(rows, cond, cases),
@@ -230,7 +238,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
                 row.body.bindings.push(Binding::Discard(col.value, *span));
                 false
             }
-            Pat::Ctor(..) => true,
+            _ => true,
         });
     }
 
@@ -249,6 +257,56 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             .map(|col| col.value)
             .max_by_key(|var| counts[var])
             .unwrap()
+    }
+
+    fn compile_int_cases(
+        &mut self,
+        rows: Vec<Row>,
+        cond: ValueId,
+    ) -> (Vec<Case>, Decision) {
+        let mut raw_cases = Vec::<TypeCase>::new();
+        let mut fallback_rows = Vec::<Row>::new();
+        let mut tested = FxHashMap::<i128, usize>::default();
+
+        for mut row in rows {
+            if let Some(col) = row.remove_col(cond) {
+                for (pat, row) in col.pat.flatten_or(row) {
+                    let (key, ctor) = match pat {
+                        Pat::Int(x, _) => (x, Ctor::Int(x)),
+                        _ => unreachable!(),
+                    };
+
+                    if let Some(idx) = tested.get(&key) {
+                        raw_cases[*idx].rows.push(row);
+                        continue;
+                    }
+
+                    tested.insert(key, raw_cases.len());
+
+                    let mut case = TypeCase::new(ctor, vec![]);
+                    case.rows.push(row);
+
+                    raw_cases.push(case);
+                }
+            } else {
+                fallback_rows.push(row);
+            }
+        }
+
+        for case in &mut raw_cases {
+            case.rows.extend(fallback_rows.clone());
+        }
+
+        let cases = raw_cases
+            .into_iter()
+            .map(|case| {
+                Case::new(case.ctor, case.values, self.compile_rows(case.rows))
+            })
+            .collect();
+
+        let fallback = self.compile_rows(fallback_rows);
+
+        (cases, fallback)
     }
 
     fn compile_ctor_cases(
@@ -350,7 +408,7 @@ impl Case {
 /// A simplified version of `Ty`, makes it easier to work with.
 #[derive(Debug)]
 enum Type {
-    // Int,
+    Int,
     // Str,
     Finite(Vec<TypeCase>),
 }
@@ -384,6 +442,7 @@ impl Type {
                 TypeCase::new(Ctor::False, vec![]),
                 TypeCase::new(Ctor::True, vec![]),
             ]),
+            TyKind::Int(_) | TyKind::Uint(_) => Self::Int,
             TyKind::Fn(_)
             | TyKind::Adt(_, _)
             | TyKind::Ref(_, _)
@@ -408,9 +467,7 @@ pub(super) enum Ctor {
     Unit,
     True,
     False,
-    // Int(i64),
-    // Pair(TypeId, TypeId),
-    // Variant(TypeId, usize),
+    Int(i128),
 }
 
 impl Ctor {
@@ -418,9 +475,8 @@ impl Ctor {
     /// The index must match the order which constructor are defined in `Type::from_ty`
     fn index(&self) -> usize {
         match self {
-            Self::Unit | Self::False => 0,
+            Self::Unit | Self::False | Self::Int(_) => 0,
             Self::True => 1,
-            // Self::Variant(_, index) => *index,
         }
     }
 }
@@ -428,9 +484,21 @@ impl Ctor {
 // A constructor for a given `Type`
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) enum Pat {
+    Int(i128, Span),
     Ctor(Ctor, Vec<Pat>, Span),
     Name(DefId, Span),
     Wildcard(Span),
+}
+
+impl Spanned for Pat {
+    fn span(&self) -> Span {
+        match self {
+            Self::Int(_, span)
+            | Self::Ctor(_, _, span)
+            | Self::Name(_, span)
+            | Self::Wildcard(span) => *span,
+        }
+    }
 }
 
 impl Pat {
@@ -453,19 +521,7 @@ impl Pat {
             hir::MatchPat::Bool(false, span) => {
                 Self::Ctor(Ctor::False, vec![], *span)
             }
-            hir::MatchPat::Int(value, span) => {
-                todo!()
-            }
-        }
-    }
-}
-
-impl Spanned for Pat {
-    fn span(&self) -> Span {
-        match self {
-            Self::Ctor(_, _, span)
-            | Self::Name(_, span)
-            | Self::Wildcard(span) => *span,
+            hir::MatchPat::Int(value, span) => Self::Int(*value, *span),
         }
     }
 }
@@ -508,6 +564,11 @@ fn collect_missing_pats(
                     Ctor::False => case_infos.push(CaseInfo::new(
                         *cond,
                         "false".to_string(),
+                        vec![],
+                    )),
+                    Ctor::Int(_) => case_infos.push(CaseInfo::new(
+                        *cond,
+                        "_".to_string(),
                         vec![],
                     )),
                 }

@@ -163,7 +163,7 @@ impl<'db> Generator<'db> {
             let block_docs: Vec<D> = body
                 .blocks()
                 .iter()
-                .map(|blk| self.codegen_block(&mut state, blk))
+                .map(|b| self.codegen_block(&mut state, b))
                 .chain(iter::once(return_stmt))
                 .collect();
 
@@ -395,7 +395,7 @@ impl<'db> Generator<'db> {
             .body
             .blocks()
             .iter()
-            .map(|blk| self.codegen_block(&mut state, blk))
+            .map(|b| self.codegen_block(&mut state, b))
             .collect();
 
         self.codegen_fn_sig(sig).append(D::space()).append(block_(
@@ -410,14 +410,14 @@ impl<'db> Generator<'db> {
     fn codegen_block(
         &mut self,
         state: &mut FnState<'db>,
-        blk: &'db Block,
+        block: &'db Block,
     ) -> D<'db> {
-        D::text(blk.display_name())
+        D::text(block.display_name())
             .append(D::text(":;"))
             .append(D::hardline())
             .append(
                 D::intersperse(
-                    blk.insts.iter().map(|i| self.codegen_inst(state, i)),
+                    block.insts.iter().map(|i| self.codegen_inst(state, i)),
                     D::hardline(),
                 )
                 .group(),

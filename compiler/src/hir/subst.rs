@@ -28,8 +28,8 @@ impl<S: SubstTy> Subst<S> for Expr {
             ExprKind::Loop(loop_) => {
                 loop_.expr.subst(s);
             }
-            ExprKind::Block(blk) => {
-                for stmt in &mut blk.exprs {
+            ExprKind::Block(block) => {
+                for stmt in &mut block.exprs {
                     stmt.subst(s);
                 }
             }

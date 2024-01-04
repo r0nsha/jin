@@ -165,20 +165,20 @@ impl<'db> Lower<'db> {
         });
 
         let mut body = Body::new();
-        let start_blk = body.create_block("start");
+        let start_block = body.create_block("start");
 
         // Initialize the `this` value based on the struct kind
         let this = match struct_def.kind {
             StructKind::Ref => {
                 let value =
                     body.create_value(adt.ty(), ValueKind::Register(None));
-                body.block_mut(start_blk).push_inst(Inst::Alloc { value });
+                body.block_mut(start_block).push_inst(Inst::Alloc { value });
                 value
             }
             StructKind::Extern => {
                 let value =
                     body.create_value(adt.ty(), ValueKind::Register(None));
-                body.block_mut(start_blk)
+                body.block_mut(start_block)
                     .push_inst(Inst::StackAlloc { value, init: None });
                 value
             }
@@ -192,12 +192,12 @@ impl<'db> Lower<'db> {
             let field_value =
                 body.create_value(ty, ValueKind::Field(this, name));
             let param = body.create_value(ty, ValueKind::UniqueName(name));
-            body.block_mut(start_blk)
+            body.block_mut(start_block)
                 .push_inst(Inst::Store { value: param, target: field_value });
         }
 
         // Return the struct
-        body.block_mut(start_blk).push_inst(Inst::Return { value: this });
+        body.block_mut(start_block).push_inst(Inst::Return { value: this });
 
         self.mir.fns.insert(sig, Fn { sig, body });
 
@@ -267,8 +267,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
 
                 self.enter_scope(ScopeKind::Block, body.span);
-                let start_blk = self.body.create_block("start");
-                self.position_at(start_blk);
+                let start_block = self.body.create_block("start");
+                self.position_at(start_block);
 
                 for (idx, param) in fun.sig.params.iter().enumerate() {
                     match &param.pat {
@@ -328,8 +328,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let ty = name.ty;
 
                 self.enter_scope(ScopeKind::Block, let_.value.span);
-                let start_blk = self.body.create_block("start");
-                self.position_at(start_blk);
+                let start_block = self.body.create_block("start");
+                self.position_at(start_block);
 
                 let value = self.lower_expr(&let_.value);
                 self.try_move(value, let_.value.span);
@@ -410,9 +410,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::If(if_) => {
-                let then_blk = self.body.create_block("if_then");
-                let else_blk = self.body.create_block("if_else");
-                let merge_blk = self.body.create_block("if_merge");
+                let then_block = self.body.create_block("if_then");
+                let else_block = self.body.create_block("if_else");
+                let merge_block = self.body.create_block("if_merge");
 
                 let output = self.push_inst_with_register(expr.ty, |value| {
                     Inst::StackAlloc { value, init: None }
@@ -420,27 +420,27 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 let cond = self.lower_expr(&if_.cond);
                 self.try_move(cond, if_.cond.span);
-                self.push_brif(cond, then_blk, Some(else_blk));
+                self.push_brif(cond, then_block, Some(else_block));
 
-                self.position_at(then_blk);
+                self.position_at(then_block);
                 let then_value = self.lower_expr(&if_.then);
                 self.try_move(then_value, if_.then.span);
                 self.push_inst(Inst::Store {
                     value: then_value,
                     target: output,
                 });
-                self.push_br(merge_blk);
+                self.push_br(merge_block);
 
-                self.position_at(else_blk);
+                self.position_at(else_block);
                 let else_value = self.lower_expr(&if_.otherwise);
                 self.try_move(else_value, if_.otherwise.span);
                 self.push_inst(Inst::Store {
                     value: else_value,
                     target: output,
                 });
-                self.push_br(merge_blk);
+                self.push_br(merge_block);
 
-                self.position_at(merge_blk);
+                self.position_at(merge_block);
 
                 output
             }
@@ -466,7 +466,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     rows.push(pmatch::Row::new(vec![col], body));
                 }
 
-                state.merge_blk = self.body.create_block("match_merge");
+                state.merge_block = self.body.create_block("match_merge");
 
                 if let Ok(decision) = pmatch::compile(self, rows, expr.span) {
                     self.lower_decision(
@@ -476,21 +476,21 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     );
                 }
 
-                self.position_at(state.merge_blk);
+                self.position_at(state.merge_block);
 
                 output
             }
             hir::ExprKind::Loop(loop_) => {
-                let start_blk = self.body.create_block("loop_start");
-                let end_blk = self.body.create_block("loop_end");
+                let start_block = self.body.create_block("loop_start");
+                let end_block = self.body.create_block("loop_end");
 
                 self.enter_scope(
-                    ScopeKind::Loop(LoopScope::new(end_blk)),
+                    ScopeKind::Loop(LoopScope::new(end_block)),
                     expr.span,
                 );
 
-                self.push_br(start_blk);
-                self.position_at(start_blk);
+                self.push_br(start_block);
+                self.position_at(start_block);
 
                 if let Some(cond_expr) = &loop_.cond {
                     let cond = self.lower_expr(cond_expr);
@@ -505,11 +505,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         },
                     );
 
-                    self.push_brif(not_cond, end_blk, None);
+                    self.push_brif(not_cond, end_block, None);
                 }
 
                 self.lower_expr(&loop_.expr);
-                self.push_br(start_blk);
+                self.push_br(start_block);
 
                 if self.in_connected_block() {
                     self.check_loop_moves();
@@ -517,7 +517,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 self.exit_scope();
 
-                self.position_at(end_blk);
+                self.position_at(end_block);
                 self.const_unit()
             }
             hir::ExprKind::Break => {
@@ -531,12 +531,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 self.const_unit()
             }
-            hir::ExprKind::Block(blk) => {
+            hir::ExprKind::Block(block) => {
                 let mut result: Option<ValueId> = None;
 
                 self.enter_scope(ScopeKind::Block, expr.span);
 
-                for expr in &blk.exprs {
+                for expr in &block.exprs {
                     result = Some(self.lower_expr(expr));
                 }
 
@@ -552,7 +552,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 self.move_out(
                     result,
-                    blk.exprs.last().map_or(expr.span, |e| e.span),
+                    block.exprs.last().map_or(expr.span, |e| e.span),
                 );
                 self.exit_scope();
 
@@ -669,7 +669,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         &mut self,
         state: &mut DecisionState,
         decision: pmatch::Decision,
-        parent_blk: BlockId,
+        parent_block: BlockId,
     ) -> BlockId {
         match decision {
             pmatch::Decision::Ok(body) => {
@@ -688,14 +688,20 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 body.block_id
             }
             pmatch::Decision::Err => unreachable!(),
-            pmatch::Decision::Switch { cond, cases, fallback: _ } => {
+            pmatch::Decision::Switch { cond, cases, fallback } => {
                 match cases[0].ctor {
                     pmatch::Ctor::Unit => {
-                        self.lower_decision_unit(state, cases, parent_blk)
+                        self.lower_decision_unit(state, cases, parent_block)
                     }
-                    pmatch::Ctor::True | pmatch::Ctor::False => {
-                        self.lower_decision_bool(state, cond, cases, parent_blk)
-                    }
+                    pmatch::Ctor::True | pmatch::Ctor::False => self
+                        .lower_decision_bool(state, cond, cases, parent_block),
+                    pmatch::Ctor::Int(_) => self.lower_decision_int(
+                        state,
+                        cond,
+                        cases,
+                        *fallback.unwrap(),
+                        parent_block,
+                    ),
                 }
             }
         }
@@ -705,11 +711,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         &mut self,
         state: &mut DecisionState,
         mut cases: Vec<pmatch::Case>,
-        parent_blk: BlockId,
+        parent_block: BlockId,
     ) -> BlockId {
         assert!(cases.len() == 1, "unit can only have a single case");
         let case = cases.swap_remove(0);
-        self.lower_decision(state, case.decision, parent_blk)
+        self.lower_decision(state, case.decision, parent_block)
     }
 
     fn lower_decision_bool(
@@ -717,31 +723,57 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         state: &mut DecisionState,
         cond: ValueId,
         cases: Vec<pmatch::Case>,
-        parent_blk: BlockId,
+        parent_block: BlockId,
     ) -> BlockId {
-        let blk = self.body.create_block("case");
+        let block = self.body.create_block("case");
 
-        self.position_at(parent_blk);
-        self.push_br(blk);
+        self.position_at(parent_block);
+        self.push_br(block);
 
         let blocks: Vec<_> = cases
             .into_iter()
-            .map(|case| self.lower_decision(state, case.decision, blk))
+            .map(|case| self.lower_decision(state, case.decision, block))
             .collect();
 
-        self.position_at(blk);
+        self.position_at(block);
         self.push_brif(cond, blocks[1], Some(blocks[0]));
 
-        blk
+        block
+    }
+
+    fn lower_decision_int(
+        &mut self,
+        state: &mut DecisionState,
+        cond: ValueId,
+        cases: Vec<pmatch::Case>,
+        fallback: pmatch::Decision,
+        parent_block: BlockId,
+    ) -> BlockId {
+        let blocks = self.body.create_blocks("case", cases.len());
+
+        self.body.create_edge(parent_block, blocks[0]);
+
+        self.position_at(parent_block);
+        self.push_br(block);
+
+        let blocks: Vec<_> = cases
+            .into_iter()
+            .map(|case| self.lower_decision(state, case.decision, block))
+            .collect();
+
+        self.position_at(block);
+        self.push_brif(cond, blocks[1], Some(blocks[0]));
+
+        block
     }
 
     fn lower_decision_bindings(
         &mut self,
         state: &DecisionState,
-        blk: BlockId,
+        block: BlockId,
         bindings: pmatch::Bindings,
     ) {
-        self.position_at(blk);
+        self.position_at(block);
 
         self.enter_scope(ScopeKind::Block, state.span);
 
@@ -767,29 +799,29 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn lower_decision_body(
         &mut self,
         state: &mut DecisionState,
-        parent_blk: BlockId,
-        start_blk: BlockId,
+        parent_block: BlockId,
+        start_block: BlockId,
     ) -> BlockId {
-        self.body.create_edge(parent_blk, start_blk);
+        self.body.create_edge(parent_block, start_block);
 
         // Removing the expression makes sure that the code for a given block is only compiled
         // once.
-        let Some(expr) = state.bodies.remove(&start_blk) else {
+        let Some(expr) = state.bodies.remove(&start_block) else {
             self.exit_scope();
-            return start_blk;
+            return start_block;
         };
 
-        self.position_at(start_blk);
+        self.position_at(start_block);
         let value = self.lower_expr(expr);
         self.try_move(value, expr.span);
         self.exit_scope();
 
         if self.in_connected_block() {
             self.push_inst(Inst::Store { value, target: state.output });
-            self.push_br(state.merge_blk);
+            self.push_br(state.merge_block);
         }
 
-        start_blk
+        start_block
     }
 
     fn lower_name(
@@ -1501,18 +1533,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // Value has been moved, don't destroy
             }
             ValueState::MaybeMoved(_) => {
-                // let destroy_blk = self.body.create_block("destroy");
-                // let no_destroy_blk = self.body.create_block("no_destroy");
+                // let destroy_block = self.body.create_block("destroy");
+                // let no_destroy_block = self.body.create_block("no_destroy");
                 //
-                // self.push_brif(destroy_flag, destroy_blk, Some(no_destroy_blk));
+                // self.push_brif(destroy_flag, destroy_block, Some(no_destroy_block));
                 //
-                // self.position_at(destroy_blk);
+                // self.position_at(destroy_block);
                 // self.push_inst(Inst::Destroy { value });
                 //
                 // // Now that the value is destroyed, it has definitely been moved...
                 // self.set_value_as_moved(value, moved_to);
                 //
-                // self.position_at(no_destroy_blk);
+                // self.position_at(no_destroy_block);
 
                 // Conditional destroy
                 self.push_inst(Inst::Free {
@@ -1900,7 +1932,7 @@ struct DecisionState<'a> {
     output: ValueId,
 
     /// The block to to merge into at the end of each decision body
-    merge_blk: BlockId,
+    merge_block: BlockId,
 
     /// A mapping of every case body, and its associated concrete expression
     bodies: FxHashMap<BlockId, &'a hir::Expr>,
@@ -1913,7 +1945,7 @@ impl<'a> DecisionState<'a> {
     fn new(output: ValueId, span: Span) -> Self {
         Self {
             output,
-            merge_blk: BlockId::null(),
+            merge_block: BlockId::null(),
             bodies: FxHashMap::default(),
             span,
         }

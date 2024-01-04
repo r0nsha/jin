@@ -152,10 +152,10 @@ impl PrettyCx<'_> {
             ExprKind::Break => {
                 self.builder.add_empty_child("break".to_string());
             }
-            ExprKind::Block(blk) => {
+            ExprKind::Block(block) => {
                 self.builder.begin_child("block".to_string());
 
-                for expr in &blk.exprs {
+                for expr in &block.exprs {
                     self.pp_expr(expr);
                 }
 

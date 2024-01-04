@@ -184,9 +184,9 @@ pub fn field<'a>(value: D<'a>, field: &str, is_ptr: bool) -> D<'a> {
     )))
 }
 
-pub fn goto_stmt(blk: &Block) -> D<'_> {
+pub fn goto_stmt(block: &Block) -> D<'_> {
     stmt(|| {
-        D::text("goto").append(D::space()).append(D::text(blk.display_name()))
+        D::text("goto").append(D::space()).append(D::text(block.display_name()))
     })
 }
 

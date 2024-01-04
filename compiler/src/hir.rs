@@ -95,8 +95,8 @@ impl Expr {
             ExprKind::Loop(loop_) => {
                 loop_.expr.walk_(f);
             }
-            ExprKind::Block(blk) => {
-                for expr in &blk.exprs {
+            ExprKind::Block(block) => {
+                for expr in &block.exprs {
                     expr.walk_(f);
                 }
             }
