@@ -456,9 +456,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 for case in &match_.cases {
                     let block_id = self.body.create_block("case");
-                    let col = pmatch::Column::new(value, case.pat.clone());
+
+                    let pat = pmatch::Pat::from_hir(&case.pat);
+                    let col = pmatch::Col::new(value, pat);
                     let body =
                         pmatch::DecisionBody::new(block_id, case.pat.span());
+
                     state.bodies.insert(block_id, &case.expr);
                     rows.push(pmatch::Row::new(vec![col], body));
                 }

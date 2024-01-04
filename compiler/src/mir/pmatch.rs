@@ -17,9 +17,9 @@ pub fn compile(
     let mut body_pat_spans = FxHashMap::default();
 
     for row in &rows {
-        let first_span = row.columns[0].pat.span();
-        let pat_span = if row.columns.len() > 1 {
-            first_span.merge(row.columns.last().unwrap().pat.span())
+        let first_span = row.cols[0].pat.span();
+        let pat_span = if row.cols.len() > 1 {
+            first_span.merge(row.cols.last().unwrap().pat.span())
         } else {
             first_span
         };
@@ -30,30 +30,37 @@ pub fn compile(
     Compiler::new(cx, body_pat_spans).compile(rows)
 }
 
-#[derive(Debug)]
-pub struct Column {
-    /// The value in question
+#[derive(Debug, Clone)]
+pub struct Col {
+    /// The value to branch on
     pub value: ValueId,
 
     /// The pattern that `value` is being matched against
-    pub pat: hir::MatchPat,
+    pub pat: Pat,
 }
 
-impl Column {
-    pub fn new(value: ValueId, pat: hir::MatchPat) -> Self {
+impl Col {
+    pub fn new(value: ValueId, pat: Pat) -> Self {
         Self { value, pat }
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Row {
-    pub columns: Vec<Column>,
+    pub cols: Vec<Col>,
     pub body: DecisionBody,
 }
 
 impl Row {
-    pub fn new(columns: Vec<Column>, body: DecisionBody) -> Self {
-        Self { columns, body }
+    pub fn new(cols: Vec<Col>, body: DecisionBody) -> Self {
+        Self { cols, body }
+    }
+
+    fn remove_col(&self, value: ValueId) -> Option<Col> {
+        self.cols
+            .iter()
+            .position(|c| c.value == value)
+            .map(|idx| self.cols.remove(idx))
     }
 }
 
@@ -132,50 +139,49 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
 
         // If the first row has no columns, we don't need to continue,
         // since they'll never be reachable anyways
-        if rows.first().map_or(false, |c| c.columns.is_empty()) {
+        if rows.first().map_or(false, |c| c.cols.is_empty()) {
             let row = rows.swap_remove(0);
             self.reachable.insert(row.body.block_id);
             return Decision::Ok(row.body);
         }
 
-        let branch_value = Self::branch_value(&rows);
-
-        let ty = Type::from_ty(self.cx.ty_of(branch_value));
+        let cond = Self::cond(&rows);
+        let ty = Type::from_ty(self.cx.ty_of(cond));
 
         match ty {
             Type::Finite(cases) => Decision::Switch {
-                cond: branch_value,
-                cases: self.compile_ctor_cases(rows, branch_value, cases),
+                cond,
+                cases: self.compile_ctor_cases(rows, cond, cases),
                 fallback: None,
             },
         }
     }
 
     fn move_binding_pats(row: &mut Row) {
-        row.columns.retain(|col| match &col.pat {
-            hir::MatchPat::Name(id, span) => {
+        row.cols.retain(|col| match &col.pat {
+            Pat::Name(id, span) => {
                 row.body.bindings.push(Binding::Name(*id, col.value, *span));
                 false
             }
-            hir::MatchPat::Wildcard(span) => {
+            Pat::Wildcard(span) => {
                 row.body.bindings.push(Binding::Discard(col.value, *span));
                 false
             }
-            hir::MatchPat::Bool(..) => true,
+            Pat::Ctor(..) => true,
         });
     }
 
-    fn branch_value(rows: &[Row]) -> ValueId {
+    fn cond(rows: &[Row]) -> ValueId {
         let mut counts = FxHashMap::default();
 
         for row in rows {
-            for col in &row.columns {
+            for col in &row.cols {
                 *counts.entry(&col.value).or_insert(0_usize) += 1;
             }
         }
 
         rows[0]
-            .columns
+            .cols
             .iter()
             .map(|col| col.value)
             .max_by_key(|var| counts[var])
@@ -185,10 +191,20 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
     fn compile_ctor_cases(
         &self,
         rows: Vec<Row>,
-        branch_value: ValueId,
-        cases: Vec<CaseType>,
+        cond: ValueId,
+        mut cases: Vec<TypeCase>,
     ) -> Vec<Case> {
-        todo!()
+        for mut row in rows {
+            if let Some(col) = row.remove_col(cond) {
+                for (pat, row) in col.pat.flatten_or(row) {
+                    // if let Pat::
+                }
+            } else {
+                for case in &mut cases {
+                    case.rows.push(row.clone());
+                }
+            }
+        }
     }
 }
 
@@ -204,7 +220,7 @@ pub(super) enum Decision {
     Switch { cond: ValueId, cases: Vec<Case>, fallback: Option<Box<Decision>> },
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DecisionBody {
     pub bindings: Bindings,
     pub block_id: BlockId,
@@ -213,7 +229,7 @@ pub struct DecisionBody {
 
 pub type Bindings = Vec<Binding>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum Binding {
     Name(DefId, ValueId, Span),
     Discard(ValueId, Span),
@@ -227,14 +243,14 @@ impl DecisionBody {
 
 #[derive(Debug)]
 pub(super) struct Case {
-    // /// The constructor to test the given value against
-    // ctor: Ctor,
+    /// The constructor to test the given value against
+    ctor: Ctor,
 
-    // /// Bindings to introduce to the body of this case.
-    // args: Vec<DefId>,
+    /// Values to introduce to the body of this case.
+    values: Vec<ValueId>,
 
-    // /// The subtree of this case
-    // decision: Decision,
+    /// The subtree of this case
+    body: Decision,
 }
 
 /// A simplified version of `Ty`, makes it easier to work with.
@@ -242,12 +258,12 @@ pub(super) struct Case {
 enum Type {
     // Int,
     // Str,
-    Finite(Vec<CaseType>),
+    Finite(Vec<TypeCase>),
 }
 
 /// A type which represents a set of constructors
 #[derive(Debug)]
-struct CaseType {
+struct TypeCase {
     /// The matched constructor
     ctor: Ctor,
 
@@ -258,7 +274,7 @@ struct CaseType {
     rows: Vec<Row>,
 }
 
-impl CaseType {
+impl TypeCase {
     fn new(ctor: Ctor, values: Vec<ValueId>) -> Self {
         Self { ctor, values, rows: vec![] }
     }
@@ -268,8 +284,8 @@ impl Type {
     fn from_ty(ty: Ty) -> Self {
         match ty.kind() {
             TyKind::Bool => Self::Finite(vec![
-                CaseType::new(Ctor::True, vec![]),
-                CaseType::new(Ctor::False, vec![]),
+                TypeCase::new(Ctor::True, vec![]),
+                TypeCase::new(Ctor::False, vec![]),
             ]),
             TyKind::Fn(_)
             | TyKind::Adt(_, _)
@@ -307,6 +323,47 @@ impl Ctor {
             Self::False => 0,
             Self::True => 1,
             // Self::Variant(_, index) => *index,
+        }
+    }
+}
+
+// A constructor for a given `Type`
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub(super) enum Pat {
+    Ctor(Ctor, Vec<Pat>, Span),
+    Name(DefId, Span),
+    Wildcard(Span),
+}
+
+impl Pat {
+    pub(super) fn flatten_or(self, row: Row) -> Vec<(Self, Row)> {
+        // if let Self::Or(pats, _) = self {
+        //     pats.into_iter().map(|p| (p, row.clone())).collect()
+        // } else {
+        vec![(self, row)]
+        // }
+    }
+
+    pub(super) fn from_hir(pat: &hir::MatchPat) -> Self {
+        match pat {
+            hir::MatchPat::Name(id, span) => Self::Name(*id, *span),
+            hir::MatchPat::Wildcard(span) => Self::Wildcard(*span),
+            hir::MatchPat::Bool(true, span) => {
+                Self::Ctor(Ctor::True, vec![], *span)
+            }
+            hir::MatchPat::Bool(false, span) => {
+                Self::Ctor(Ctor::False, vec![], *span)
+            }
+        }
+    }
+}
+
+impl Spanned for Pat {
+    fn span(&self) -> Span {
+        match self {
+            Self::Ctor(_, _, span)
+            | Self::Name(_, span)
+            | Self::Wildcard(span) => *span,
         }
     }
 }
