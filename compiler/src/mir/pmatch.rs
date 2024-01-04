@@ -55,7 +55,7 @@ impl Row {
 
 #[derive(Debug)]
 struct Compiler<'db> {
-    db: &'db Db,
+    _db: &'db Db,
 
     /// Whether there's a pattern the user is missing
     missing: bool,
@@ -70,7 +70,7 @@ struct Compiler<'db> {
 impl<'db> Compiler<'db> {
     fn new(db: &'db Db, body_pat_spans: FxHashMap<BlockId, Span>) -> Self {
         Self {
-            db,
+            _db: db,
             missing: false,
             reachable: FxHashSet::default(),
             body_pat_spans,
@@ -133,19 +133,17 @@ impl<'db> Compiler<'db> {
 
         let branch_value = Self::branch_value(&rows);
 
-        dbg!(branch_value);
-
-        todo!()
+        todo!("{branch_value:?}")
     }
 
     fn move_binding_pats(row: &mut Row) {
         row.columns.retain(|col| match &col.pat {
-            hir::MatchPat::Name(id, _) => {
-                row.body.bindings.push(Binding::Name(*id, col.value));
+            hir::MatchPat::Name(id, span) => {
+                row.body.bindings.push(Binding::Name(*id, col.value, *span));
                 false
             }
-            hir::MatchPat::Wildcard(_) => {
-                row.body.bindings.push(Binding::Discard(col.value));
+            hir::MatchPat::Wildcard(span) => {
+                row.body.bindings.push(Binding::Discard(col.value, *span));
                 false
             }
         });
@@ -191,8 +189,8 @@ pub type Bindings = Vec<Binding>;
 
 #[derive(Debug)]
 pub enum Binding {
-    Name(DefId, ValueId),
-    Discard(ValueId),
+    Name(DefId, ValueId, Span),
+    Discard(ValueId, Span),
 }
 
 impl Body {
@@ -203,14 +201,14 @@ impl Body {
 
 #[derive(Debug)]
 struct Case {
-    /// The constructor to test the given value against
-    ctor: Constructor,
+    // /// The constructor to test the given value against
+    // ctor: Constructor,
 
-    /// Bindings to introduce to the body of this case.
-    args: Vec<DefId>,
+    // /// Bindings to introduce to the body of this case.
+    // args: Vec<DefId>,
 
-    /// The subtree of this case
-    body: Decision,
+    // /// The subtree of this case
+    // body: Decision,
 }
 
 // TODO: this should be in hir?

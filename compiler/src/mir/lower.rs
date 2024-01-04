@@ -282,7 +282,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                                 param.ty,
                                 ValueKind::UniqueName(ustr(&format!("_{idx}"))),
                             );
-                            self.destroy_value_and_fields(value, *span);
+                            self.destroy_value_entirely(value, *span);
                         }
                     }
                 }
@@ -377,7 +377,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         self.create_destroy_flag(value);
                     }
                     Pat::Discard(span) => {
-                        self.destroy_value_and_fields(init, *span);
+                        self.destroy_value_entirely(init, *span);
                     }
                 }
 
@@ -402,7 +402,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 };
 
                 // NOTE: The lhs needs to be destroyed before it's assigned to
-                self.destroy_value_and_fields(lhs, assign.lhs.span);
+                self.destroy_value_entirely(lhs, assign.lhs.span);
                 self.push_inst(Inst::Store { value: rhs, target: lhs });
 
                 self.const_unit()
@@ -660,8 +660,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         state: &mut DecisionState,
         decision: pmatch::Decision,
     ) -> BlockId {
-        dbg!(&decision);
-
         match decision {
             pmatch::Decision::Ok(body) => {
                 self.lower_decision_bindings(
@@ -688,18 +686,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         for binding in bindings {
             match binding {
-                pmatch::Binding::Name(id, source) => {
+                pmatch::Binding::Name(id, source, span) => {
                     let binding_value = self.push_inst_with(
                         self.body.value(source).ty,
                         ValueKind::Local(id),
                         |value| Inst::StackAlloc { value, init: Some(source) },
                     );
-                    self.try_move(source, self.cx.db[id].span);
+                    self.try_move(source, span);
                     self.locals.insert(id, binding_value);
                     self.create_destroy_flag(binding_value);
                 }
-                pmatch::Binding::Discard(value) => {
-                    todo!("destroy value")
+                pmatch::Binding::Discard(value, span) => {
+                    self.destroy_value_entirely(value, span);
                 }
             }
         }
@@ -1474,7 +1472,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         .unwrap();
     }
 
-    fn destroy_value_and_fields(&mut self, value: ValueId, span: Span) {
+    fn destroy_value_entirely(&mut self, value: ValueId, span: Span) {
         self.destroy_fields(value, span);
         self.destroy_value(value, span);
     }

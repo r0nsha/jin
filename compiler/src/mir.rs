@@ -1,8 +1,8 @@
 mod lower;
+mod pmatch;
 mod pretty_print;
 mod specialize;
 pub mod subst;
-mod pmatch;
 
 use std::io;
 
