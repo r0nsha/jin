@@ -704,13 +704,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> BlockId {
         let blk = self.body.create_block("case");
 
-        self.body.create_edge(parent_blk, blk);
+        self.position_at(parent_blk);
+        self.push_br(blk);
 
         let blocks: Vec<_> = cases
             .into_iter()
             .map(|case| self.lower_decision(state, case.decision, blk))
             .collect();
 
+        self.position_at(blk);
         self.push_brif(cond, blocks[1], Some(blocks[0]));
 
         blk
@@ -1485,7 +1487,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // let destroy_blk = self.body.create_block("destroy");
                 // let no_destroy_blk = self.body.create_block("no_destroy");
                 //
-                // self.push_br_if(destroy_flag, destroy_blk, Some(no_destroy_blk));
+                // self.push_brif(destroy_flag, destroy_blk, Some(no_destroy_blk));
                 //
                 // self.position_at(destroy_blk);
                 // self.push_inst(Inst::Destroy { value });
