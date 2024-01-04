@@ -1,21 +1,26 @@
 fn extern printf(fmt: *u8, ..) i32
 
 fn main() unit = {
-	//match true {
-	//	mut x -> {
-	//		x = false
-	//		printf("x = %d\n".ptr, x)
-	//	},
-	//	_ -> {
-	//		// ignored...
-	//	},
-	//}
-
+	match_vars()
 	match_unit()
 	match_bool(true)
 	match_bool(false)
 
 }
+
+fn match_vars() unit = {
+	match true {
+		mut x -> {
+			x = false
+			printf("x = %d\n".ptr, x)
+			{}
+		},
+		_ -> {
+			// ignored...
+		},
+	}
+}
+
 
 fn match_unit() unit = {
 	match {} {
