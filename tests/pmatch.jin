@@ -1,21 +1,22 @@
 fn extern printf(fmt: *u8, ..) i32
 
 fn main() unit = {
-	match true {
-		mut foo -> {
-			foo = false
-			printf("foo=%d\n".ptr, foo)
-		},
-		_ -> {
-			// ignored...
-		},
-	}
+	//match true {
+	//	mut x -> {
+	//		x = false
+	//		printf("x = %d\n".ptr, x)
+	//	},
+	//	_ -> {
+	//		// ignored...
+	//	},
+	//}
 
 	let foo = true
-
-	//let foo_str = match foo {
-	//	true -> "true",
-	//	false -> "false"
-	//}
-	//printf("foo = %s\n".ptr, foo_str)
+	//printf("foo = %s\n".ptr, foo.to_str())
 }
+
+//fn to_str(value: bool) str =
+//	match value {
+//		true -> "true",
+//		false -> "false"
+//	}
