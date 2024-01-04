@@ -13,6 +13,12 @@ fn main() unit = {
 	match_uint(42)
 	match_uint(3)
 	match_uint(69)
+
+	if "asd" == "foo" {
+		printf("eq\n".ptr)
+	} else {
+		printf("not eq\n".ptr)
+	}
 }
 
 fn match_vars() unit = {

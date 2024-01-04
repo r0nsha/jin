@@ -447,8 +447,6 @@ impl Type {
             | TyKind::Adt(_, _)
             | TyKind::Ref(_, _)
             | TyKind::RawPtr(_)
-            | TyKind::Int(_)
-            | TyKind::Uint(_)
             | TyKind::Float(_)
             | TyKind::Str
             | TyKind::Never

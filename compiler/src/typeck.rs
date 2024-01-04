@@ -24,7 +24,9 @@ use crate::{
     hir,
     hir::{ExprId, FnParam, Hir},
     macros::create_bool_enum,
-    middle::{BinOp, IsUfcs, Mutability, Pat, TyExpr, TyParam, UnOp, Vis},
+    middle::{
+        BinOp, CmpOp, IsUfcs, Mutability, Pat, TyExpr, TyParam, UnOp, Vis,
+    },
     span::{Span, Spanned},
     sym,
     ty::{
@@ -2016,20 +2018,27 @@ impl<'db> Typeck<'db> {
                     .eq(self.db.types.bool, rhs.ty)
                     .or_coerce(self, rhs.id)?;
             }
-            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem => {
+            BinOp::Cmp(CmpOp::Eq | CmpOp::Ne) => {
+                let ty = self.normalize(lhs.ty);
+
+                if !can_use_eq(ty) {
+                    return Err(errors::invalid_bin_op(
+                        self.db, op, ty, lhs.span,
+                    ));
+                }
+            }
+            BinOp::Add
+            | BinOp::Sub
+            | BinOp::Mul
+            | BinOp::Div
+            | BinOp::Rem
+            | BinOp::Cmp(_) => {
                 let ty = self.normalize(lhs.ty);
 
                 if !ty.is_any_int() && !ty.is_any_float() {
-                    return Err(Diagnostic::error()
-                        .with_message(format!(
-                            "cannot use `{}` on `{}`",
-                            op,
-                            ty.display(self.db)
-                        ))
-                        .with_label(
-                            Label::primary(lhs.span)
-                                .with_message(format!("invalid use of `{op}`")),
-                        ));
+                    return Err(errors::invalid_bin_op(
+                        self.db, op, ty, lhs.span,
+                    ));
                 }
             }
             BinOp::Shl
@@ -2040,22 +2049,28 @@ impl<'db> Typeck<'db> {
                 let ty = self.normalize(lhs.ty);
 
                 if !ty.is_any_int() {
-                    return Err(Diagnostic::error()
-                        .with_message(format!(
-                            "cannot use `{}` on `{}`",
-                            op,
-                            ty.display(self.db)
-                        ))
-                        .with_label(
-                            Label::primary(lhs.span)
-                                .with_message(format!("invalid use of `{op}`")),
-                        ));
+                    return Err(errors::invalid_bin_op(
+                        self.db, op, ty, lhs.span,
+                    ));
                 }
             }
-            BinOp::Cmp(_) => (),
         }
 
         Ok(())
+    }
+}
+
+fn can_use_eq(ty: Ty) -> bool {
+    match ty.kind() {
+        TyKind::Ref(ty, _) => can_use_eq(*ty),
+        TyKind::RawPtr(_)
+        | TyKind::Int(_)
+        | TyKind::Uint(_)
+        | TyKind::Float(_)
+        | TyKind::Str
+        | TyKind::Bool
+        | TyKind::Infer(InferTy::Int(_) | InferTy::Float(_)) => true,
+        _ => false,
     }
 }
 

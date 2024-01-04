@@ -170,10 +170,7 @@ impl Body {
         base: impl core::fmt::Display,
         len: usize,
     ) -> Vec<BlockId> {
-        (0..len)
-            .into_iter()
-            .map(|i| self.create_block(format!("{base}{i}")))
-            .collect()
+        (0..len).map(|i| self.create_block(format!("{base}{i}"))).collect()
     }
 
     pub fn create_edge(&mut self, source: BlockId, target: BlockId) {

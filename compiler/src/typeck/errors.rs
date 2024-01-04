@@ -1,6 +1,7 @@
 use crate::{
     db::{AdtId, Db, DefId, ModuleId},
     diagnostics::{Diagnostic, Label},
+    middle::BinOp,
     span::{Span, Spanned},
     ty::Ty,
     typeck::env::{FnCandidate, FnQuery},
@@ -190,4 +191,12 @@ pub fn adt_ty_arg_mismatch(
         .with_label(Label::primary(span).with_message(format!(
             "expected {expected} type arguments, found {targ_len}"
         )))
+}
+
+pub fn invalid_bin_op(db: &Db, op: BinOp, ty: Ty, span: Span) -> Diagnostic {
+    Diagnostic::error()
+        .with_message(format!("cannot use `{}` on `{}`", op, ty.display(db)))
+        .with_label(
+            Label::primary(span).with_message(format!("invalid use of `{op}`")),
+        )
 }
