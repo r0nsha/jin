@@ -53,13 +53,28 @@ impl<'db> Compiler<'db> {
     }
 
     fn compile(mut self, rows: Vec<Row>) -> (Decision, Vec<Diagnostic>) {
+        let mut diagnostics = vec![];
+
         match self.compile_rows(rows) {
-            Decision::Err => {
-                // TODO: create diagnostics here
-                (Decision::Err, vec![])
+            decision @ Decision::Err => {
+                self.reachability_diagnostics(&mut diagnostics);
+                (decision, diagnostics)
             }
-            decision => (decision, vec![]),
+            _ => {
+                self.reachability_diagnostics(&mut diagnostics);
+                // TODO: report missing cases
+                (Decision::Err, diagnostics)
+            }
         }
+    }
+
+    fn reachability_diagnostics(
+        &self,
+        diagnostics: &mut Vec<Diagnostic>,
+    ) -> Vec<Diagnostic> {
+        dbg!(&self.reachable);
+        //diagnostics.extend(iter)
+        todo!()
     }
 
     fn compile_rows(&mut self, mut rows: Vec<Row>) -> Decision {
