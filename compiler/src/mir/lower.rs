@@ -690,16 +690,29 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             pmatch::Decision::Err => unreachable!(),
             pmatch::Decision::Switch { cond, cases, fallback: _ } => {
                 match cases[0].ctor {
-                    pmatch::Ctor::True | pmatch::Ctor::False => self
-                        .lower_decision_bool_pats(
-                            state, cond, cases, parent_blk,
-                        ),
+                    pmatch::Ctor::Unit => {
+                        self.lower_decision_unit(state, cases, parent_blk)
+                    }
+                    pmatch::Ctor::True | pmatch::Ctor::False => {
+                        self.lower_decision_bool(state, cond, cases, parent_blk)
+                    }
                 }
             }
         }
     }
 
-    fn lower_decision_bool_pats(
+    fn lower_decision_unit(
+        &mut self,
+        state: &mut DecisionState,
+        mut cases: Vec<pmatch::Case>,
+        parent_blk: BlockId,
+    ) -> BlockId {
+        assert!(cases.len() == 1, "unit can only have a single case");
+        let case = cases.swap_remove(0);
+        self.lower_decision(state, case.decision, parent_blk)
+    }
+
+    fn lower_decision_bool(
         &mut self,
         state: &mut DecisionState,
         cond: ValueId,

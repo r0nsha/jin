@@ -377,6 +377,9 @@ impl TypeCase {
 impl Type {
     fn from_ty(ty: Ty) -> Self {
         match ty.kind() {
+            TyKind::Unit => {
+                Self::Finite(vec![TypeCase::new(Ctor::Unit, vec![])])
+            }
             TyKind::Bool => Self::Finite(vec![
                 TypeCase::new(Ctor::False, vec![]),
                 TypeCase::new(Ctor::True, vec![]),
@@ -389,7 +392,6 @@ impl Type {
             | TyKind::Uint(_)
             | TyKind::Float(_)
             | TyKind::Str
-            | TyKind::Unit
             | TyKind::Never
             | TyKind::Param(_)
             | TyKind::Infer(_)
@@ -403,6 +405,7 @@ impl Type {
 // A constructor for a given `Type`
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) enum Ctor {
+    Unit,
     True,
     False,
     // Int(i64),
@@ -415,7 +418,7 @@ impl Ctor {
     /// The index must match the order which constructor are defined in `Type::from_ty`
     fn index(&self) -> usize {
         match self {
-            Self::False => 0,
+            Self::Unit | Self::False => 0,
             Self::True => 1,
             // Self::Variant(_, index) => *index,
         }
@@ -443,6 +446,7 @@ impl Pat {
         match pat {
             hir::MatchPat::Name(id, span) => Self::Name(*id, *span),
             hir::MatchPat::Wildcard(span) => Self::Wildcard(*span),
+            hir::MatchPat::Unit(span) => Self::Ctor(Ctor::Unit, vec![], *span),
             hir::MatchPat::Bool(true, span) => {
                 Self::Ctor(Ctor::True, vec![], *span)
             }
@@ -488,6 +492,11 @@ fn collect_missing_pats(
         Decision::Switch { cond, cases, fallback } => {
             for case in cases {
                 match &case.ctor {
+                    Ctor::Unit => case_infos.push(CaseInfo::new(
+                        *cond,
+                        "{}".to_string(),
+                        vec![],
+                    )),
                     Ctor::True => case_infos.push(CaseInfo::new(
                         *cond,
                         "true".to_string(),

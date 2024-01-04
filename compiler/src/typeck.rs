@@ -901,7 +901,7 @@ impl<'db> Typeck<'db> {
                         for (pos, expr) in exprs.iter().with_position() {
                             let expected_ty = match pos {
                                 Position::Last => expected_ty,
-                                _ => Some(self.db.types.unit),
+                                _ => None, //Some(self.db.types.unit),
                             };
 
                             new_exprs.push(self.check_expr(
@@ -1260,6 +1260,11 @@ impl<'db> Typeck<'db> {
                 self.at(Obligation::obvious(*span))
                     .eq(self.db.types.bool, ty)?;
                 Ok(hir::MatchPat::Bool(*value, *span))
+            }
+            ast::MatchPat::Unit(span) => {
+                self.at(Obligation::obvious(*span))
+                    .eq(self.db.types.unit, ty)?;
+                Ok(hir::MatchPat::Unit(*span))
             }
         }
     }

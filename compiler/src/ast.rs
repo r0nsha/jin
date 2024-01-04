@@ -309,6 +309,7 @@ pub struct MatchArm {
 pub enum MatchPat {
     Name(Word, Mutability),
     Wildcard(Span),
+    Unit(Span),
     Bool(bool, Span),
 }
 

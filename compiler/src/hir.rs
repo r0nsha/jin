@@ -230,6 +230,7 @@ pub struct MatchArm {
 pub enum MatchPat {
     Name(DefId, Span),
     Wildcard(Span),
+    Unit(Span),
     Bool(bool, Span),
 }
 
@@ -238,6 +239,7 @@ impl Spanned for MatchPat {
         match self {
             Self::Name(_, span)
             | Self::Wildcard(span)
+            | Self::Unit(span)
             | Self::Bool(_, span) => *span,
         }
     }

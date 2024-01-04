@@ -715,6 +715,10 @@ impl<'a> Parser<'a> {
             Ok(MatchPat::Name(self.last_token().word(), Mutability::Imm))
         } else if self.is(TokenKind::Underscore) {
             Ok(MatchPat::Wildcard(self.last_span()))
+        } else if self.is(TokenKind::OpenCurly) {
+            let start_span = self.last_span();
+            let last_span = self.eat(TokenKind::CloseCurly)?.span;
+            Ok(MatchPat::Unit(start_span.merge(last_span)))
         } else if self.is(TokenKind::True) {
             Ok(MatchPat::Bool(true, self.last_span()))
         } else if self.is(TokenKind::False) {
