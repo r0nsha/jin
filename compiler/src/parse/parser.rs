@@ -710,6 +710,8 @@ impl<'a> Parser<'a> {
     fn parse_match_pat(&mut self) -> DiagnosticResult<MatchPat> {
         if self.is_ident() {
             Ok(MatchPat::Name(self.last_token().word()))
+        } else if self.is(TokenKind::Underscore) {
+            Ok(MatchPat::Wildcard(self.last_span()))
         } else {
             let tok = self.require()?;
             Err(errors::unexpected_token_err("a pattern", tok.kind, tok.span))

@@ -1,12 +1,14 @@
 fn extern printf(fmt: *u8, ..) i32
 
 fn main() unit = {
-	let foo = true
-
-	match foo {
-		bar -> { printf("bar=%d\n".ptr, bar) },
-		//_ -> { printf("bar=%d\n".ptr, bar) },
+	match true {
+		foo -> { printf("foo=%d\n".ptr, foo) },
+		_ -> {
+			// ignored...
+		}
 	}
+
+	let foo = true
 
 	//let foo_str = match foo {
 	//	true -> "true",

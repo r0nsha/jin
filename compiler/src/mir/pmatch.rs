@@ -120,7 +120,7 @@ impl<'db> Compiler<'db> {
         }
 
         for row in &mut rows {
-            Self::move_name_pats(row);
+            Self::move_binding_pats(row);
         }
 
         // If the first row has no columns, we don't need to continue,
@@ -138,13 +138,16 @@ impl<'db> Compiler<'db> {
         todo!()
     }
 
-    fn move_name_pats(row: &mut Row) {
+    fn move_binding_pats(row: &mut Row) {
         row.columns.retain(|col| match &col.pat {
             hir::MatchPat::Name(id, _) => {
                 row.body.bindings.push(Binding::Name(*id, col.value));
                 false
             }
-            _ => true,
+            hir::MatchPat::Wildcard(_) => {
+                row.body.bindings.push(Binding::Discard(col.value));
+                false
+            }
         });
     }
 

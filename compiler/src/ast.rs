@@ -308,6 +308,7 @@ pub struct MatchCase {
 #[derive(Debug, Clone)]
 pub enum MatchPat {
     Name(Word),
+    Wildcard(Span),
 }
 
 impl ImportName {

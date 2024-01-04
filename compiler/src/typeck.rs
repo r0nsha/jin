@@ -1255,6 +1255,7 @@ impl<'db> Typeck<'db> {
 
                 Ok(hir::MatchPat::Name(id, word.span()))
             }
+            ast::MatchPat::Wildcard(span) => Ok(hir::MatchPat::Wildcard(*span)),
         }
     }
 
