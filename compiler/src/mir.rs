@@ -181,6 +181,12 @@ impl Body {
         self.block_mut(target).predecessors.insert(source);
     }
 
+    pub fn connect_blocks(&mut self, blocks: &[BlockId]) {
+        for (&curr, &next) in blocks.iter().zip(blocks[1..].iter()) {
+            self.create_edge(curr, next);
+        }
+    }
+
     #[inline]
     pub fn value(&self, value: ValueId) -> &Value {
         &self.values[value]

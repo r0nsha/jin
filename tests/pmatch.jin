@@ -46,16 +46,16 @@ fn match_bool(value: bool) unit = {
 
 fn match_int(value: int) unit = {
 	match value {
-		42 -> printf("i'm the answer".ptr),
-		-3 -> printf("i'm -3".ptr),
-		x -> printf("value is %d".ptr, x),
+		42 -> printf("i'm the answer\n".ptr),
+		-3 -> printf("i'm -3\n".ptr),
+		x -> printf("value is %d\n".ptr, x),
 	}
 }
 
 fn match_uint(value: uint) unit = {
 	match value {
-		42 -> printf("i'm still the answer".ptr),
-		3 -> printf("i'm still 3".ptr),
-		x -> printf("and value is %d".ptr, x),
+		42 -> printf("i'm still the answer\n".ptr),
+		3 -> printf("i'm still 3\n".ptr),
+		x -> printf("and value is %d\n".ptr, x),
 	}
 }

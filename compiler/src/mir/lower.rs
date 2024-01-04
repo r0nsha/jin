@@ -12,7 +12,7 @@ use crate::{
     hir::{FnKind, Hir},
     macros::create_bool_enum,
     mangle,
-    middle::{Mutability, NamePat, Pat, Vis},
+    middle::{BinOp, CmpOp, Mutability, NamePat, Pat, Vis},
     mir::{
         pmatch, AdtId, Block, BlockId, Body, Const, Fn, FnParam, FnSig,
         FnSigId, FxHashMap, FxHashSet, Global, GlobalId, GlobalKind, Inst, Mir,
@@ -473,6 +473,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         &mut state,
                         decision,
                         self.current_block,
+                        vec![],
                     );
                 }
 
@@ -670,6 +671,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         state: &mut DecisionState,
         decision: pmatch::Decision,
         parent_block: BlockId,
+        values: Vec<ValueId>,
     ) -> BlockId {
         match decision {
             pmatch::Decision::Ok(body) => {
@@ -678,7 +680,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     body.block_id,
                     body.bindings,
                 );
-                // TODO: self.destroy_match_values()
+                // TODO: self.destroy_match_values(state, values)
                 self.lower_decision_body(
                     state,
                     self.current_block,
@@ -690,17 +692,27 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             pmatch::Decision::Err => unreachable!(),
             pmatch::Decision::Switch { cond, cases, fallback } => {
                 match cases[0].ctor {
-                    pmatch::Ctor::Unit => {
-                        self.lower_decision_unit(state, cases, parent_block)
-                    }
+                    pmatch::Ctor::Unit => self.lower_decision_unit(
+                        state,
+                        cases,
+                        parent_block,
+                        values,
+                    ),
                     pmatch::Ctor::True | pmatch::Ctor::False => self
-                        .lower_decision_bool(state, cond, cases, parent_block),
+                        .lower_decision_bool(
+                            state,
+                            cond,
+                            cases,
+                            parent_block,
+                            values,
+                        ),
                     pmatch::Ctor::Int(_) => self.lower_decision_int(
                         state,
                         cond,
                         cases,
                         *fallback.unwrap(),
                         parent_block,
+                        values,
                     ),
                 }
             }
@@ -712,18 +724,21 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         state: &mut DecisionState,
         mut cases: Vec<pmatch::Case>,
         parent_block: BlockId,
+        values: Vec<ValueId>,
     ) -> BlockId {
         assert!(cases.len() == 1, "unit can only have a single case");
         let case = cases.swap_remove(0);
-        self.lower_decision(state, case.decision, parent_block)
+        self.lower_decision(state, case.decision, parent_block, values)
     }
 
+    #[allow(clippy::needless_pass_by_value)]
     fn lower_decision_bool(
         &mut self,
         state: &mut DecisionState,
         cond: ValueId,
         cases: Vec<pmatch::Case>,
         parent_block: BlockId,
+        values: Vec<ValueId>,
     ) -> BlockId {
         let block = self.body.create_block("case");
 
@@ -732,7 +747,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         let blocks: Vec<_> = cases
             .into_iter()
-            .map(|case| self.lower_decision(state, case.decision, block))
+            .map(|case| {
+                self.lower_decision(state, case.decision, block, values.clone())
+            })
             .collect();
 
         self.position_at(block);
@@ -748,23 +765,70 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         cases: Vec<pmatch::Case>,
         fallback: pmatch::Decision,
         parent_block: BlockId,
+        mut values: Vec<ValueId>,
     ) -> BlockId {
         let blocks = self.body.create_blocks("case", cases.len());
 
         self.body.create_edge(parent_block, blocks[0]);
+        self.body.connect_blocks(&blocks);
+        values.push(cond);
 
-        self.position_at(parent_block);
-        self.push_br(block);
+        let fallback_block = self.lower_decision(
+            state,
+            fallback,
+            *blocks.last().unwrap(),
+            values.clone(),
+        );
 
-        let blocks: Vec<_> = cases
-            .into_iter()
-            .map(|case| self.lower_decision(state, case.decision, block))
-            .collect();
+        for (idx, case) in cases.into_iter().enumerate() {
+            let test_block = blocks[idx];
 
-        self.position_at(block);
-        self.push_brif(cond, blocks[1], Some(blocks[0]));
+            let else_block = if let Some(&block) = blocks.get(idx + 1) {
+                self.body.create_edge(test_block, block);
+                block
+            } else {
+                fallback_block
+            };
 
-        block
+            let result_value = self.create_untracked_value(
+                self.cx.db.types.bool,
+                ValueKind::Register(None),
+            );
+
+            let test_end_block = match case.ctor {
+                pmatch::Ctor::Int(lit) => {
+                    self.position_at(test_block);
+
+                    let lit_value = self.create_untracked_value(
+                        self.ty_of(cond),
+                        ValueKind::Const(Const::from(lit)),
+                    );
+
+                    self.push_inst(Inst::Binary {
+                        value: result_value,
+                        lhs: cond,
+                        rhs: lit_value,
+                        op: BinOp::Cmp(CmpOp::Eq),
+                        span: state.span,
+                    });
+
+                    test_block
+                }
+                _ => unreachable!(),
+            };
+
+            let then_block = self.lower_decision(
+                state,
+                case.decision,
+                test_end_block,
+                values.clone(),
+            );
+
+            self.position_at(test_end_block);
+            self.push_brif(result_value, then_block, Some(else_block));
+        }
+
+        blocks[0]
     }
 
     fn lower_decision_bindings(

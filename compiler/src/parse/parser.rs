@@ -923,11 +923,6 @@ impl<'a> Parser<'a> {
         self.eat(TokenKind::empty_ident())
     }
 
-    #[inline]
-    pub(super) fn eat_int(&mut self) -> DiagnosticResult<Token> {
-        self.eat(TokenKind::Int(ustr("")))
-    }
-
     pub(super) fn int_lit<F>(value: &str) -> F
     where
         F: FromStr,
