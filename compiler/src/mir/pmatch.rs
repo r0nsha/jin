@@ -379,8 +379,8 @@ impl Type {
     fn from_ty(ty: Ty) -> Self {
         match ty.kind() {
             TyKind::Bool => Self::Finite(vec![
-                TypeCase::new(Ctor::True, vec![]),
                 TypeCase::new(Ctor::False, vec![]),
+                TypeCase::new(Ctor::True, vec![]),
             ]),
             TyKind::Fn(_)
             | TyKind::Adt(_, _)
@@ -412,7 +412,8 @@ pub(super) enum Ctor {
 }
 
 impl Ctor {
-    // /// Returns the index of this constructor relative to its type.
+    /// Returns the index of this constructor relative to its type.
+    /// The index must match the order which constructor are defined in `Type::from_ty`
     fn index(&self) -> usize {
         match self {
             Self::False => 0,

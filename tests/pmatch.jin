@@ -17,6 +17,6 @@ fn main() unit = {
 
 fn to_str(value: bool) str =
 	match value {
-		true -> "true",
+		//true -> "true",
 		//false -> "false"
 	}
