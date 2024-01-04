@@ -1243,13 +1243,13 @@ impl<'db> Typeck<'db> {
         expected_ty: Ty,
     ) -> TypeckResult<hir::MatchPat> {
         match pat {
-            ast::MatchPat::Name(word) => {
+            ast::MatchPat::Name(word, mutability) => {
                 let id = self.define_def(
                     env,
                     Vis::Private,
                     DefKind::Variable,
                     *word,
-                    Mutability::Imm,
+                    *mutability,
                     expected_ty,
                 )?;
 

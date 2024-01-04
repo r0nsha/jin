@@ -307,7 +307,7 @@ pub struct MatchCase {
 
 #[derive(Debug, Clone)]
 pub enum MatchPat {
-    Name(Word),
+    Name(Word, Mutability),
     Wildcard(Span),
 }
 

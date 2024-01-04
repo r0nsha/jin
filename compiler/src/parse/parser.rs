@@ -708,8 +708,11 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_match_pat(&mut self) -> DiagnosticResult<MatchPat> {
-        if self.is_ident() {
-            Ok(MatchPat::Name(self.last_token().word()))
+        if let Some(mutability) = self.parse_optional_mutability() {
+            let word = self.eat_ident()?.word();
+            Ok(MatchPat::Name(word, mutability))
+        } else if self.is_ident() {
+            Ok(MatchPat::Name(self.last_token().word(), Mutability::Imm))
         } else if self.is(TokenKind::Underscore) {
             Ok(MatchPat::Wildcard(self.last_span()))
         } else {
