@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
-    db::{Db, DefId, ModuleId},
+    db::{AdtId, Db, DefId, ModuleId},
     middle::{BinOp, Pat, TyParam, UnOp},
     span::{Span, Spanned},
     ty::{coerce::Coercions, Instantiation, Ty, Typed},
@@ -234,6 +234,7 @@ pub enum MatchPat {
     Bool(bool, Span),
     Int(i128, Span),
     Str(Ustr, Span),
+    Adt(AdtId, Vec<MatchPat>, Span),
 }
 
 impl Spanned for MatchPat {
@@ -244,7 +245,8 @@ impl Spanned for MatchPat {
             | Self::Unit(span)
             | Self::Bool(_, span)
             | Self::Int(_, span)
-            | Self::Str(_, span) => *span,
+            | Self::Str(_, span)
+            | Self::Adt(_, _, span) => *span,
         }
     }
 }

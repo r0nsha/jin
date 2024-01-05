@@ -584,6 +584,7 @@ impl Pat {
             }
             hir::MatchPat::Int(value, span) => Self::Int(*value, *span),
             hir::MatchPat::Str(value, span) => Self::Str(*value, *span),
+            hir::MatchPat::Adt(adt_id, pats, span) => todo!(),
         }
     }
 }

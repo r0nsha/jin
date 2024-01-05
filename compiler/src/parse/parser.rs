@@ -708,7 +708,27 @@ impl<'a> Parser<'a> {
             let word = self.eat_ident()?.word();
             Ok(MatchPat::Name(word, mutability))
         } else if self.is_ident() {
-            Ok(MatchPat::Name(self.last_token().word(), Mutability::Imm))
+            let start_tok = self.last_token();
+            let start_word = start_tok.word();
+
+            if self.is(TokenKind::Dot) {
+                let mut path = vec![start_word];
+
+                path.push(self.eat_ident()?.word());
+                while self.is(TokenKind::Dot) {
+                    path.push(self.eat_ident()?.word());
+                }
+
+                let subpats = self.parse_match_adt_subpats()?;
+
+                Ok(MatchPat::Adt(path, subpats))
+            } else if self.peek_is(TokenKind::OpenParen) {
+                let path = vec![start_word];
+                let subpats = self.parse_match_adt_subpats()?;
+                Ok(MatchPat::Adt(path, subpats))
+            } else {
+                Ok(MatchPat::Name(start_word, Mutability::Imm))
+            }
         } else if self.is(TokenKind::Underscore) {
             Ok(MatchPat::Wildcard(self.last_span()))
         } else if self.is(TokenKind::OpenCurly) {
@@ -735,6 +755,14 @@ impl<'a> Parser<'a> {
             let tok = self.require()?;
             Err(errors::unexpected_token_err("a pattern", tok.kind, tok.span))
         }
+    }
+
+    fn parse_match_adt_subpats(&mut self) -> DiagnosticResult<Vec<MatchPat>> {
+        self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
+            let pat = this.parse_match_pat()?;
+            Ok(ControlFlow::Continue(pat))
+        })
+        .map(|(l, _)| l)
     }
 
     fn parse_loop(&mut self) -> DiagnosticResult<Expr> {

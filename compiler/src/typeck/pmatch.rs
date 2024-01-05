@@ -137,6 +137,9 @@ impl<'db> Typeck<'db> {
                     .eq(self.db.types.str, expr_ty)?;
                 Ok(hir::MatchPat::Str(*value, *span))
             }
+            ast::MatchPat::Adt(path, pats) => {
+                todo!()
+            }
         }
     }
 }

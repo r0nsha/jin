@@ -83,8 +83,8 @@ fn match_types() unit = {
 	match box {
 		Box(1) -> { printf("it's 1!\n") },
 		Box(v) -> print(v),
-		Box(_) -> {} // unreachable
-		_ -> {} // unreachable
+		Box(_) -> {}, // unreachable
+		_ -> {}, // unreachable
 	}
 
 }
