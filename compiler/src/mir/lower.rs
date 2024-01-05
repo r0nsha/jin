@@ -714,6 +714,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         parent_block,
                         values,
                     ),
+                    pmatch::Ctor::Str(_) => todo!(),
                 }
             }
         }

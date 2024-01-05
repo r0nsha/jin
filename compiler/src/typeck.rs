@@ -1295,6 +1295,11 @@ impl<'db> Typeck<'db> {
 
                 Ok(hir::MatchPat::Int(*value, *span))
             }
+            ast::MatchPat::Str(value, span) => {
+                self.at(Obligation::exprs(*span, *span, expr_span))
+                    .eq(self.db.types.str, expr_ty)?;
+                Ok(hir::MatchPat::Str(*value, *span))
+            }
         }
     }
 

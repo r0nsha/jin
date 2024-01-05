@@ -1,6 +1,7 @@
 use indexmap::IndexSet;
 /// This implementation is inspired by [yorickpeterse's implementation](https://github.com/yorickpeterse/pattern-matching-in-rust)
 use rustc_hash::{FxHashMap, FxHashSet};
+use ustr::Ustr;
 
 use crate::{
     db::DefId,
@@ -209,22 +210,14 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             return Decision::Ok(row.body);
         }
 
-        let cond = Self::cond(&rows);
+        let cond = Self::cond_value(&rows);
 
         match Type::from_ty(self.cx.ty_of(cond)) {
-            Type::Int => {
-                let (cases, fallback) = self.compile_int_cases(rows, cond);
-                Decision::Switch {
-                    cond,
-                    cases,
-                    fallback: Some(Box::new(fallback)),
-                }
+            Type::Int => self.compile_int_decision(rows, cond),
+            Type::Str => self.compile_str_decision(rows, cond),
+            Type::Finite(cases) => {
+                self.compile_finite_decision(rows, cond, cases)
             }
-            Type::Finite(cases) => Decision::Switch {
-                cond,
-                cases: self.compile_ctor_cases(rows, cond, cases),
-                fallback: None,
-            },
         }
     }
 
@@ -242,7 +235,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         });
     }
 
-    fn cond(rows: &[Row]) -> ValueId {
+    fn cond_value(rows: &[Row]) -> ValueId {
         let mut counts = FxHashMap::default();
 
         for row in rows {
@@ -259,45 +252,85 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             .unwrap()
     }
 
-    fn compile_int_cases(
+    fn compile_int_decision(
         &mut self,
         rows: Vec<Row>,
         cond: ValueId,
-    ) -> (Vec<Case>, Decision) {
-        let mut raw_cases = Vec::<TypeCase>::new();
+    ) -> Decision {
+        let mut type_cases = Vec::<TypeCase>::new();
         let mut fallback_rows = Vec::<Row>::new();
-        let mut tested = FxHashMap::<i128, usize>::default();
+        let mut indices = FxHashMap::<i128, usize>::default();
 
         for mut row in rows {
             if let Some(col) = row.remove_col(cond) {
                 for (pat, row) in col.pat.flatten_or(row) {
-                    let (key, ctor) = match pat {
-                        Pat::Int(x, _) => (x, Ctor::Int(x)),
-                        _ => unreachable!(),
-                    };
+                    let Pat::Int(key, _) = pat else { unreachable!() };
 
-                    if let Some(idx) = tested.get(&key) {
-                        raw_cases[*idx].rows.push(row);
+                    if let Some(idx) = indices.get(&key) {
+                        type_cases[*idx].rows.push(row);
                         continue;
                     }
 
-                    tested.insert(key, raw_cases.len());
-
-                    let mut case = TypeCase::new(ctor, vec![]);
-                    case.rows.push(row);
-
-                    raw_cases.push(case);
+                    indices.insert(key, type_cases.len());
+                    type_cases.push(TypeCase::new_with_rows(
+                        Ctor::Int(key),
+                        vec![],
+                        vec![row],
+                    ));
                 }
             } else {
                 fallback_rows.push(row);
             }
         }
 
-        for case in &mut raw_cases {
+        self.compile_lit_decision(cond, type_cases, fallback_rows)
+    }
+
+    fn compile_str_decision(
+        &mut self,
+        rows: Vec<Row>,
+        cond: ValueId,
+    ) -> Decision {
+        let mut type_cases = Vec::<TypeCase>::new();
+        let mut fallback_rows = Vec::<Row>::new();
+        let mut indices = FxHashMap::<Ustr, usize>::default();
+
+        for mut row in rows {
+            if let Some(col) = row.remove_col(cond) {
+                for (pat, row) in col.pat.flatten_or(row) {
+                    let Pat::Str(key, _) = pat else { unreachable!() };
+
+                    if let Some(idx) = indices.get(&key) {
+                        type_cases[*idx].rows.push(row);
+                        continue;
+                    }
+
+                    indices.insert(key, type_cases.len());
+                    type_cases.push(TypeCase::new_with_rows(
+                        Ctor::Str(key),
+                        vec![],
+                        vec![row],
+                    ));
+                }
+            } else {
+                fallback_rows.push(row);
+            }
+        }
+
+        self.compile_lit_decision(cond, type_cases, fallback_rows)
+    }
+
+    fn compile_lit_decision(
+        &mut self,
+        cond: ValueId,
+        mut type_cases: Vec<TypeCase>,
+        fallback_rows: Vec<Row>,
+    ) -> Decision {
+        for case in &mut type_cases {
             case.rows.extend(fallback_rows.clone());
         }
 
-        let cases = raw_cases
+        let cases = type_cases
             .into_iter()
             .map(|case| {
                 Case::new(case.ctor, case.values, self.compile_rows(case.rows))
@@ -306,15 +339,15 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
 
         let fallback = self.compile_rows(fallback_rows);
 
-        (cases, fallback)
+        Decision::Switch { cond, cases, fallback: Some(Box::new(fallback)) }
     }
 
-    fn compile_ctor_cases(
+    fn compile_finite_decision(
         &mut self,
         rows: Vec<Row>,
         cond: ValueId,
         mut cases: Vec<TypeCase>,
-    ) -> Vec<Case> {
+    ) -> Decision {
         for mut row in rows {
             if let Some(col) = row.remove_col(cond) {
                 for (pat, row) in col.pat.flatten_or(row) {
@@ -341,12 +374,14 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             }
         }
 
-        cases
+        let cases = cases
             .into_iter()
             .map(|case| {
                 Case::new(case.ctor, case.values, self.compile_rows(case.rows))
             })
-            .collect()
+            .collect();
+
+        Decision::Switch { cond, cases, fallback: None }
     }
 }
 
@@ -409,7 +444,7 @@ impl Case {
 #[derive(Debug)]
 enum Type {
     Int,
-    // Str,
+    Str,
     Finite(Vec<TypeCase>),
 }
 
@@ -428,7 +463,11 @@ struct TypeCase {
 
 impl TypeCase {
     fn new(ctor: Ctor, values: Vec<ValueId>) -> Self {
-        Self { ctor, values, rows: vec![] }
+        Self::new_with_rows(ctor, values, vec![])
+    }
+
+    fn new_with_rows(ctor: Ctor, values: Vec<ValueId>, rows: Vec<Row>) -> Self {
+        Self { ctor, values, rows }
     }
 }
 
@@ -443,12 +482,12 @@ impl Type {
                 TypeCase::new(Ctor::True, vec![]),
             ]),
             TyKind::Int(_) | TyKind::Uint(_) => Self::Int,
+            TyKind::Str => Self::Str,
             TyKind::Fn(_)
             | TyKind::Adt(_, _)
             | TyKind::Ref(_, _)
             | TyKind::RawPtr(_)
             | TyKind::Float(_)
-            | TyKind::Str
             | TyKind::Never
             | TyKind::Param(_)
             | TyKind::Infer(_)
@@ -466,6 +505,7 @@ pub(super) enum Ctor {
     True,
     False,
     Int(i128),
+    Str(Ustr),
 }
 
 impl Ctor {
@@ -473,7 +513,7 @@ impl Ctor {
     /// The index must match the order which constructor are defined in `Type::from_ty`
     fn index(&self) -> usize {
         match self {
-            Self::Unit | Self::False | Self::Int(_) => 0,
+            Self::Unit | Self::False | Self::Int(_) | Self::Str(_) => 0,
             Self::True => 1,
         }
     }
@@ -483,6 +523,7 @@ impl Ctor {
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub(super) enum Pat {
     Int(i128, Span),
+    Str(Ustr, Span),
     Ctor(Ctor, Vec<Pat>, Span),
     Name(DefId, Span),
     Wildcard(Span),
@@ -492,6 +533,7 @@ impl Spanned for Pat {
     fn span(&self) -> Span {
         match self {
             Self::Int(_, span)
+            | Self::Str(_, span)
             | Self::Ctor(_, _, span)
             | Self::Name(_, span)
             | Self::Wildcard(span) => *span,
@@ -520,6 +562,7 @@ impl Pat {
                 Self::Ctor(Ctor::False, vec![], *span)
             }
             hir::MatchPat::Int(value, span) => Self::Int(*value, *span),
+            hir::MatchPat::Str(value, span) => Self::Str(*value, *span),
         }
     }
 }
@@ -564,11 +607,8 @@ fn collect_missing_pats(
                         "false".to_string(),
                         vec![],
                     )),
-                    Ctor::Int(_) => case_infos.push(CaseInfo::new(
-                        *cond,
-                        "_".to_string(),
-                        vec![],
-                    )),
+                    Ctor::Int(_) | Ctor::Str(_) => case_infos
+                        .push(CaseInfo::new(*cond, "_".to_string(), vec![])),
                 }
 
                 collect_missing_pats(cx, &case.decision, case_infos, missing);
