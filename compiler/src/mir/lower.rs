@@ -450,6 +450,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 });
 
                 let value = self.lower_expr(&match_.expr);
+                self.try_use(value, match_.expr.span);
 
                 let mut rows = vec![];
                 let mut state = DecisionState::new(output, expr.span);
@@ -1364,6 +1365,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let mut last_move_span: Option<Span> = None;
         let mut is_initial_state = true;
 
+        visited.insert(self.current_block);
+
         while let Some(block) = work.pop() {
             visited.insert(block);
 
@@ -1394,7 +1397,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
             } else {
                 // Add this block's predecessors, since we need to
-                // calculate this value's state for this block too
+                // calculate the value's state for those blocks too
                 work.extend(
                     self.body
                         .block(block)

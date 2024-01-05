@@ -13,6 +13,7 @@ use data_structures::{
 };
 use derive_more::From;
 use enum_as_inner::EnumAsInner;
+use indexmap::IndexSet;
 pub use lower::lower;
 use rustc_hash::{FxHashMap, FxHashSet};
 pub use specialize::specialize;
@@ -244,8 +245,8 @@ pub struct Block {
     pub id: BlockId,
     pub name: String,
     pub insts: Vec<Inst>,
-    pub predecessors: FxHashSet<BlockId>,
-    pub successors: FxHashSet<BlockId>,
+    pub predecessors: IndexSet<BlockId>,
+    pub successors: IndexSet<BlockId>,
 }
 
 impl Block {
@@ -254,8 +255,8 @@ impl Block {
             id,
             name,
             insts: vec![],
-            predecessors: FxHashSet::default(),
-            successors: FxHashSet::default(),
+            predecessors: IndexSet::default(),
+            successors: IndexSet::default(),
         }
     }
 
