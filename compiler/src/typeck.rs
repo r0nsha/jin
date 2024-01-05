@@ -1771,18 +1771,7 @@ impl<'db> Typeck<'db> {
         span: Span,
         allow_hole: AllowTyHole,
     ) -> TypeckResult<Ty> {
-        let (last, path) =
-            path.split_last().expect("to have at least one element");
-
-        let mut target_module = env.module_id();
-
-        for part in path {
-            let part_id =
-                self.lookup(env, target_module, &Query::Name(*part))?;
-            target_module = self.is_module_def(part_id, part.span())?;
-        }
-
-        let id = self.lookup(env, target_module, &Query::Name(*last))?;
+        let id = self.path_lookup(env, path)?;
         let def = &self.db[id];
 
         match def.kind.as_ref() {

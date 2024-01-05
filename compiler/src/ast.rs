@@ -313,7 +313,7 @@ pub enum MatchPat {
     Bool(bool, Span),
     Int(i128, Span),
     Str(Ustr, Span),
-    Adt(Vec<Word>, Vec<MatchPat>),
+    Adt(Vec<Word>, Vec<MatchPat>, Span),
 }
 
 impl ImportName {

@@ -1,6 +1,7 @@
 use crate::{
     ast,
     db::DefKind,
+    diagnostics::{Diagnostic, Label},
     hir,
     middle::Vis,
     span::{Span, Spanned as _},
@@ -86,8 +87,8 @@ impl<'db> Typeck<'db> {
         &mut self,
         env: &mut Env,
         pat: &ast::MatchPat,
-        expr_ty: Ty,
-        expr_span: Span,
+        pat_ty: Ty,
+        parent_span: Span,
     ) -> TypeckResult<hir::MatchPat> {
         match pat {
             ast::MatchPat::Name(word, mutability) => {
@@ -97,48 +98,78 @@ impl<'db> Typeck<'db> {
                     DefKind::Variable,
                     *word,
                     *mutability,
-                    expr_ty,
+                    pat_ty,
                 )?;
 
                 Ok(hir::MatchPat::Name(id, word.span()))
             }
             ast::MatchPat::Wildcard(span) => Ok(hir::MatchPat::Wildcard(*span)),
             ast::MatchPat::Unit(span) => {
-                self.at(Obligation::exprs(*span, *span, expr_span))
-                    .eq(self.db.types.unit, expr_ty)?;
+                self.at(Obligation::exprs(*span, *span, parent_span))
+                    .eq(self.db.types.unit, pat_ty)?;
                 Ok(hir::MatchPat::Unit(*span))
             }
             ast::MatchPat::Bool(value, span) => {
-                self.at(Obligation::exprs(*span, *span, expr_span))
-                    .eq(self.db.types.bool, expr_ty)?;
+                self.at(Obligation::exprs(*span, *span, parent_span))
+                    .eq(self.db.types.bool, pat_ty)?;
                 Ok(hir::MatchPat::Bool(*value, *span))
             }
             ast::MatchPat::Int(value, span) => {
                 if *value < 0 {
-                    match expr_ty.kind() {
+                    match pat_ty.kind() {
                         TyKind::Int(_) | TyKind::Infer(InferTy::Int(_)) => (),
                         _ => {
                             return Err(errors::ty_mismatch(
                                 "int",
-                                &expr_ty.to_string(self.db),
+                                &pat_ty.to_string(self.db),
                                 *span,
                             ))
                         }
                     }
                 } else {
-                    self.at(Obligation::exprs(*span, *span, expr_span))
-                        .eq(self.fresh_int_var(), expr_ty)?;
+                    self.at(Obligation::exprs(*span, *span, parent_span))
+                        .eq(self.fresh_int_var(), pat_ty)?;
                 }
 
                 Ok(hir::MatchPat::Int(*value, *span))
             }
             ast::MatchPat::Str(value, span) => {
-                self.at(Obligation::exprs(*span, *span, expr_span))
-                    .eq(self.db.types.str, expr_ty)?;
+                self.at(Obligation::exprs(*span, *span, parent_span))
+                    .eq(self.db.types.str, pat_ty)?;
                 Ok(hir::MatchPat::Str(*value, *span))
             }
-            ast::MatchPat::Adt(path, pats) => {
-                todo!()
+            ast::MatchPat::Adt(path, subpats, span) => {
+                let id = self.path_lookup(env, path)?;
+                let def = &self.db[id];
+
+                match def.kind.as_ref() {
+                    &DefKind::Adt(adt_id) => {
+                        // TODO: missing fields...
+
+                        let new_subpats = subpats
+                            .iter()
+                            .map(|pat| {
+                                self.check_match_pat(
+                                    env,
+                                    pat,
+                                    pat_ty,
+                                    parent_span,
+                                )
+                            })
+                            .try_collect()?;
+
+                        Ok(hir::MatchPat::Adt(adt_id, new_subpats, *span))
+                    }
+                    _ => Err(Diagnostic::error()
+                        .with_message(format!(
+                            "expected a named type, found value of type `{}`",
+                            def.ty.display(self.db)
+                        ))
+                        .with_label(
+                            Label::primary(*span)
+                                .with_message("expected a named type"),
+                        )),
+                }
             }
         }
     }

@@ -268,6 +268,25 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
+    pub fn path_lookup(
+        &mut self,
+        env: &Env,
+        path: &[Word],
+    ) -> TypeckResult<DefId> {
+        let (&last, path) =
+            path.split_last().expect("to have at least one element");
+
+        let mut target_module = env.module_id();
+
+        for &part in path {
+            let part_id =
+                self.lookup(env, target_module, &Query::Name(part))?;
+            target_module = self.is_module_def(part_id, part.span())?;
+        }
+
+        self.lookup(env, target_module, &Query::Name(last))
+    }
+
     pub fn import_lookup(
         &mut self,
         from_module: ModuleId,
