@@ -240,11 +240,11 @@ impl Body {
     }
 
     pub fn cleanup(&mut self) {
-        self.remove_blocks();
+        self.remove_unused_blocks();
         self.connect_implicit_successors();
     }
 
-    fn remove_blocks(&mut self) {
+    fn remove_unused_blocks(&mut self) {
         let blocks = &self.blocks;
         let mut new_blocks = IndexVec::<BlockId, Block>::new();
         let mut id_map: IndexVec<_, _> =
