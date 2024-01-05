@@ -726,7 +726,8 @@ impl<'a> Parser<'a> {
             } else if self.peek_is(TokenKind::OpenParen) {
                 let path = vec![start_word];
                 let subpats = self.parse_match_adt_subpats()?;
-                Ok(MatchPat::Adt(path, subpats, start_word.span()))
+                let span = start_word.span().merge(self.last_span());
+                Ok(MatchPat::Adt(path, subpats, span))
             } else {
                 Ok(MatchPat::Name(start_word, Mutability::Imm))
             }
