@@ -773,66 +773,23 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         cases: Vec<pmatch::Case>,
         fallback: pmatch::Decision,
         parent_block: BlockId,
-        mut values: Vec<ValueId>,
+        values: Vec<ValueId>,
     ) -> BlockId {
-        let blocks = self.body.create_blocks("case", cases.len());
-
-        self.body.connect_blocks(&blocks);
-        values.push(cond);
-
-        let fallback_block = self.lower_decision(
+        self.lower_decision_lit(
             state,
+            cond,
+            cases,
             fallback,
-            *blocks.last().unwrap(),
-            values.clone(),
-        );
-
-        self.position_at(parent_block);
-        self.push_br(blocks[0]);
-
-        for (idx, case) in cases.into_iter().enumerate() {
-            let test_block = blocks[idx];
-
-            let result_value = self.create_untracked_value(
-                self.cx.db.types.bool,
-                ValueKind::Register(None),
-            );
-
-            match case.ctor {
-                pmatch::Ctor::Int(lit) => {
-                    self.position_at(test_block);
-
-                    let lit_value = self.create_untracked_value(
-                        self.ty_of(cond),
-                        ValueKind::Const(Const::from(lit)),
-                    );
-
-                    self.push_inst(Inst::Binary {
-                        value: result_value,
-                        lhs: cond,
-                        rhs: lit_value,
-                        op: BinOp::Cmp(CmpOp::Eq),
-                        span: state.span,
-                    });
+            parent_block,
+            values,
+            |ctor| {
+                if let pmatch::Ctor::Int(lit) = ctor {
+                    ValueKind::Const(Const::from(lit))
+                } else {
+                    unreachable!()
                 }
-                _ => unreachable!(),
-            }
-
-            let then_block = self.lower_decision(
-                state,
-                case.decision,
-                test_block,
-                values.clone(),
-            );
-
-            self.position_at(test_block);
-
-            let else_block =
-                blocks.get(idx + 1).copied().unwrap_or(fallback_block);
-            self.push_brif(result_value, then_block, Some(else_block));
-        }
-
-        blocks[0]
+            },
+        )
     }
 
     fn lower_decision_str(
@@ -842,7 +799,34 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         cases: Vec<pmatch::Case>,
         fallback: pmatch::Decision,
         parent_block: BlockId,
+        values: Vec<ValueId>,
+    ) -> BlockId {
+        self.lower_decision_lit(
+            state,
+            cond,
+            cases,
+            fallback,
+            parent_block,
+            values,
+            |ctor| {
+                if let pmatch::Ctor::Str(lit) = ctor {
+                    ValueKind::Const(Const::from(lit))
+                } else {
+                    unreachable!()
+                }
+            },
+        )
+    }
+
+    fn lower_decision_lit(
+        &mut self,
+        state: &mut DecisionState,
+        cond: ValueId,
+        cases: Vec<pmatch::Case>,
+        fallback: pmatch::Decision,
+        parent_block: BlockId,
         mut values: Vec<ValueId>,
+        get_value_kind: impl FnOnce(pmatch::Ctor) -> ValueKind + Copy,
     ) -> BlockId {
         let blocks = self.body.create_blocks("case", cases.len());
 
@@ -867,25 +851,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 ValueKind::Register(None),
             );
 
-            match case.ctor {
-                pmatch::Ctor::Str(lit) => {
-                    self.position_at(test_block);
+            let value_kind = get_value_kind(case.ctor);
+            self.position_at(test_block);
 
-                    let lit_value = self.create_untracked_value(
-                        self.ty_of(cond),
-                        ValueKind::Const(Const::from(lit)),
-                    );
+            let lit_value =
+                self.create_untracked_value(self.ty_of(cond), value_kind);
 
-                    self.push_inst(Inst::Binary {
-                        value: result_value,
-                        lhs: cond,
-                        rhs: lit_value,
-                        op: BinOp::Cmp(CmpOp::Eq),
-                        span: state.span,
-                    });
-                }
-                _ => unreachable!(),
-            }
+            self.push_inst(Inst::Binary {
+                value: result_value,
+                lhs: cond,
+                rhs: lit_value,
+                op: BinOp::Cmp(CmpOp::Eq),
+                span: state.span,
+            });
 
             let then_block = self.lower_decision(
                 state,
