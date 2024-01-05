@@ -706,22 +706,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             parent_block,
                             values,
                         ),
-                    pmatch::Ctor::Int(_) => self.lower_decision_int(
-                        state,
-                        cond,
-                        cases,
-                        *fallback.unwrap(),
-                        parent_block,
-                        values,
-                    ),
-                    pmatch::Ctor::Str(_) => self.lower_decision_str(
-                        state,
-                        cond,
-                        cases,
-                        *fallback.unwrap(),
-                        parent_block,
-                        values,
-                    ),
+                    pmatch::Ctor::Int(_) | pmatch::Ctor::Str(_) => self
+                        .lower_decision_lit(
+                            state,
+                            cond,
+                            cases,
+                            *fallback.unwrap(),
+                            parent_block,
+                            values,
+                        ),
                 }
             }
         }
@@ -766,58 +759,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         block
     }
 
-    fn lower_decision_int(
-        &mut self,
-        state: &mut DecisionState,
-        cond: ValueId,
-        cases: Vec<pmatch::Case>,
-        fallback: pmatch::Decision,
-        parent_block: BlockId,
-        values: Vec<ValueId>,
-    ) -> BlockId {
-        self.lower_decision_lit(
-            state,
-            cond,
-            cases,
-            fallback,
-            parent_block,
-            values,
-            |ctor| {
-                if let pmatch::Ctor::Int(lit) = ctor {
-                    ValueKind::Const(Const::from(lit))
-                } else {
-                    unreachable!()
-                }
-            },
-        )
-    }
-
-    fn lower_decision_str(
-        &mut self,
-        state: &mut DecisionState,
-        cond: ValueId,
-        cases: Vec<pmatch::Case>,
-        fallback: pmatch::Decision,
-        parent_block: BlockId,
-        values: Vec<ValueId>,
-    ) -> BlockId {
-        self.lower_decision_lit(
-            state,
-            cond,
-            cases,
-            fallback,
-            parent_block,
-            values,
-            |ctor| {
-                if let pmatch::Ctor::Str(lit) = ctor {
-                    ValueKind::Const(Const::from(lit))
-                } else {
-                    unreachable!()
-                }
-            },
-        )
-    }
-
     fn lower_decision_lit(
         &mut self,
         state: &mut DecisionState,
@@ -826,7 +767,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         fallback: pmatch::Decision,
         parent_block: BlockId,
         mut values: Vec<ValueId>,
-        get_value_kind: impl FnOnce(pmatch::Ctor) -> ValueKind + Copy,
     ) -> BlockId {
         let blocks = self.body.create_blocks("case", cases.len());
 
@@ -851,11 +791,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 ValueKind::Register(None),
             );
 
-            let value_kind = get_value_kind(case.ctor);
             self.position_at(test_block);
-
-            let lit_value =
-                self.create_untracked_value(self.ty_of(cond), value_kind);
+            let lit_value = self.create_untracked_value(
+                self.ty_of(cond),
+                ValueKind::Const(case.ctor.into()),
+            );
 
             self.push_inst(Inst::Binary {
                 value: result_value,

@@ -1,3 +1,5 @@
+use core::panic;
+
 use indexmap::IndexSet;
 /// This implementation is inspired by [yorickpeterse's implementation](https://github.com/yorickpeterse/pattern-matching-in-rust)
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -7,7 +9,7 @@ use crate::{
     db::DefId,
     diagnostics::{Diagnostic, Label, Severity},
     hir,
-    mir::{lower::LowerBody, BlockId, ValueId},
+    mir::{lower::LowerBody, BlockId, Const, ValueId},
     span::{Span, Spanned},
     ty::{Ty, TyKind},
 };
@@ -509,6 +511,31 @@ impl Ctor {
         match self {
             Self::Unit | Self::False | Self::Int(_) | Self::Str(_) => 0,
             Self::True => 1,
+        }
+    }
+}
+
+impl From<Const> for Ctor {
+    fn from(value: Const) -> Self {
+        match value {
+            Const::Unit => Self::Unit,
+            Const::Bool(true) => Self::True,
+            Const::Bool(false) => Self::False,
+            Const::Int(v) => Self::Int(v),
+            Const::Str(v) => Self::Str(v),
+            Const::Float(_) => panic!("unexpected const value {value:?}"),
+        }
+    }
+}
+
+impl From<Ctor> for Const {
+    fn from(value: Ctor) -> Self {
+        match value {
+            Ctor::Unit => Const::Unit,
+            Ctor::True => Const::Bool(true),
+            Ctor::False => Const::Bool(false),
+            Ctor::Int(v) => Const::Int(v),
+            Ctor::Str(v) => Const::Str(v),
         }
     }
 }
