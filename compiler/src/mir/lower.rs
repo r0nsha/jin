@@ -362,14 +362,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    fn connect_implicit_successors(&mut self) {
-        for block in self.body.blocks_mut() {
-            if block.successors.len() == 1 {
-                block.push_inst(Inst::Br { target: block.successors[0] });
-            }
-        }
-    }
-
     fn lower_expr(&mut self, expr: &hir::Expr) -> ValueId {
         let value = self.lower_expr_inner(expr);
         self.apply_coercions_to_expr(expr, value)
@@ -1872,6 +1864,20 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub fn field(&self, of: ValueId, name: Ustr) -> Option<ValueId> {
         self.fields.get(&of).and_then(|fields| fields.get(&name)).copied()
+    }
+
+    fn connect_implicit_successors(&mut self) {
+        for block in self.body.blocks_mut() {
+            match block.insts.last() {
+                Some(
+                    Inst::Br { .. } | Inst::BrIf { .. } | Inst::Return { .. },
+                ) => (),
+                _ if block.successors.len() == 1 => {
+                    block.push_inst(Inst::Br { target: block.successors[0] });
+                }
+                _ => (),
+            }
+        }
     }
 }
 
