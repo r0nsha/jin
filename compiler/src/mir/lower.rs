@@ -1360,14 +1360,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             .copied()
             .collect();
 
-        let mut visited = FxHashSet::<BlockId>::default();
+        let mut visited = FxHashSet::from_iter([self.current_block]);
         let mut result_state = ValueState::Owned;
         let mut last_move_span: Option<Span> = None;
         let mut is_initial_state = true;
 
-        visited.insert(self.current_block);
-
         while let Some(block) = work.pop() {
+            dbg!(block);
             visited.insert(block);
 
             if let Some(state) = self.value_states.get(block, value).cloned() {
