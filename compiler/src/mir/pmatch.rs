@@ -4,7 +4,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
 use crate::{
-    db::{AdtId, AdtKind, Db, DefId},
+    db::{AdtId, AdtKind, DefId},
     diagnostics::{Diagnostic, Label, Severity},
     hir,
     mir::{lower::LowerBody, BlockId, Const, ValueId},
@@ -601,7 +601,7 @@ impl Pat {
         // }
     }
 
-    pub(super) fn from_hir(db: &Db, pat: &hir::MatchPat) -> Self {
+    pub(super) fn from_hir(pat: &hir::MatchPat) -> Self {
         match pat {
             hir::MatchPat::Name(id, span) => Self::Name(*id, *span),
             hir::MatchPat::Wildcard(span) => Self::Wildcard(*span),
@@ -615,8 +615,7 @@ impl Pat {
             hir::MatchPat::Int(value, span) => Self::Int(*value, *span),
             hir::MatchPat::Str(value, span) => Self::Str(*value, *span),
             hir::MatchPat::Adt(adt_id, pats, span) => {
-                let args: Vec<_> =
-                    pats.iter().map(|pat| Pat::from_hir(db, pat)).collect();
+                let args: Vec<_> = pats.iter().map(Pat::from_hir).collect();
                 Pat::Ctor(Ctor::Struct(*adt_id), args, *span)
             }
         }

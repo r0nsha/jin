@@ -238,6 +238,20 @@ impl Body {
             .map(|b| matches!(b.insts.last(), Some(Inst::Return { .. })))
             .unwrap_or_default()
     }
+
+    fn connect_implicit_successors(&mut self) {
+        for block in self.blocks_mut() {
+            match block.insts.last() {
+                Some(
+                    Inst::Br { .. } | Inst::BrIf { .. } | Inst::Return { .. },
+                ) => (),
+                _ if block.successors.len() == 1 => {
+                    block.push_inst(Inst::Br { target: block.successors[0] });
+                }
+                _ => (),
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

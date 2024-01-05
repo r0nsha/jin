@@ -321,7 +321,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 self.exit_scope();
 
-                self.connect_implicit_successors();
+                self.body.connect_implicit_successors();
                 self.cx.mir.fns.insert(sig, Fn { sig, body: self.body });
             }
             FnKind::Extern { .. } => unreachable!(),
@@ -342,7 +342,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.try_move(value, let_.value.span);
                 self.exit_scope();
 
-                self.connect_implicit_successors();
+                self.body.connect_implicit_successors();
 
                 let id = self.cx.mir.globals.insert_with_key(|id| Global {
                     id,
@@ -466,7 +466,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 for arm in &match_.arms {
                     let block_id = self.body.create_block("case");
 
-                    let pat = pmatch::Pat::from_hir(self.cx.db, &arm.pat);
+                    let pat = pmatch::Pat::from_hir(&arm.pat);
                     let col = pmatch::Col::new(value, pat);
                     let body =
                         pmatch::DecisionBody::new(block_id, arm.pat.span());
@@ -1864,20 +1864,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub fn field(&self, of: ValueId, name: Ustr) -> Option<ValueId> {
         self.fields.get(&of).and_then(|fields| fields.get(&name)).copied()
-    }
-
-    fn connect_implicit_successors(&mut self) {
-        for block in self.body.blocks_mut() {
-            match block.insts.last() {
-                Some(
-                    Inst::Br { .. } | Inst::BrIf { .. } | Inst::Return { .. },
-                ) => (),
-                _ if block.successors.len() == 1 => {
-                    block.push_inst(Inst::Br { target: block.successors[0] });
-                }
-                _ => (),
-            }
-        }
     }
 }
 
