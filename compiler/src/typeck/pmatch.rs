@@ -1,3 +1,5 @@
+use ustr::UstrSet;
+
 use crate::{
     ast,
     db::DefKind,
@@ -144,19 +146,33 @@ impl<'db> Typeck<'db> {
 
                 match def.kind.as_ref() {
                     &DefKind::Adt(adt_id) => {
-                        // TODO: missing fields...
+                        let adt = &self.db[adt_id];
+                        let struct_def = adt.as_struct().unwrap();
 
-                        let new_subpats = subpats
+                        let mut new_subpats = vec![];
+                        let mut missing_fields = struct_def
+                            .fields
                             .iter()
-                            .map(|pat| {
-                                self.check_match_pat(
-                                    env,
-                                    pat,
-                                    pat_ty,
-                                    parent_span,
-                                )
-                            })
-                            .try_collect()?;
+                            .map(|f| f.name.name())
+                            .collect::<UstrSet<_, _>>();
+
+                        for subpat in subpats {
+                            // TODO: for each pattern
+                            // TODO:    check name is a given field
+                            // TODO:    check pat w/ field's ty as expected_ty
+                            // TODO:    parent_span = span
+
+                            let new_subpat = self.check_match_pat(
+                                env,
+                                subpat,
+                                pat_ty,
+                                parent_span,
+                            )?;
+
+                            new_subpats.push(new_subpat);
+                        }
+
+                        // TODO: report missing fields
 
                         Ok(hir::MatchPat::Adt(adt_id, new_subpats, *span))
                     }
