@@ -497,12 +497,10 @@ impl Type {
                             fields_to_create
                                 .into_iter()
                                 .map(|(name, ty)| {
-                                    let value = cx.create_value(
+                                    cx.create_untracked_value(
                                         ty,
                                         ValueKind::Field(cond, name),
-                                    );
-                                    cx.create_destroy_flag(value);
-                                    value
+                                    )
                                 })
                                 .collect(),
                         )])

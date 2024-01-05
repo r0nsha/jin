@@ -879,10 +879,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         state: &DecisionState,
         mut values: Vec<ValueId>,
     ) {
-        while let Some(value) = values.pop() {
-            // self.destroy_value(value, state.span);
-            // self.set_moved(value, state.span);
-        }
+        // while let Some(value) = values.pop() {
+        //     self.destroy_value(value, state.span);
+        //     self.set_moved(value, state.span);
+        // }
     }
 
     fn lower_decision_body(
