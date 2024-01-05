@@ -234,7 +234,7 @@ pub enum MatchPat {
     Bool(bool, Span),
     Int(i128, Span),
     Str(Ustr, Span),
-    Adt(AdtId, Vec<MatchPat>, Span),
+    Adt(AdtId, FxHashMap<Ustr, MatchPat>, Span),
 }
 
 impl Spanned for MatchPat {

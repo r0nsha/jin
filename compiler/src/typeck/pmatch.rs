@@ -1,4 +1,4 @@
-use ustr::UstrSet;
+use rustc_hash::FxHashMap;
 
 use crate::{
     ast,
@@ -146,35 +146,35 @@ impl<'db> Typeck<'db> {
 
                 match def.kind.as_ref() {
                     &DefKind::Adt(adt_id) => {
-                        let adt = &self.db[adt_id];
-                        let struct_def = adt.as_struct().unwrap();
+                        let fields =
+                            self.db[adt_id].as_struct().unwrap().fields.clone();
 
-                        let mut new_subpats = vec![];
-                        let mut missing_fields = struct_def
-                            .fields
-                            .iter()
-                            .map(|f| f.name.name())
-                            .collect::<UstrSet<_, _>>();
+                        let mut new_subpats = FxHashMap::default();
 
-                        for subpat in subpats {
-                            if let Some(field) =
-                                struct_def.field_by_name(subpat)
-                            {
-                                todo!()
+                        for (idx, subpat) in subpats.iter().enumerate() {
+                            if let Some(field) = fields.get(idx) {
+                                let new_subpat = self.check_match_pat(
+                                    env, subpat, field.ty, *span,
+                                )?;
+
+                                new_subpats
+                                    .insert(field.name.name(), new_subpat);
+                            } else {
+                                return Err(Diagnostic::error()
+                                    .with_message(format!(
+                                        "expected at most {} patterns for \
+                                         type `{}`",
+                                        fields.len(),
+                                        self.db[adt_id].name
+                                    ))
+                                    .with_label(
+                                        Label::primary(subpat.span())
+                                            .with_message(
+                                                "pattern doesn't map to any \
+                                                 field",
+                                            ),
+                                    ));
                             }
-                            // TODO: for each pattern
-                            // TODO:    check name is a given field
-                            // TODO:    check pat w/ field's ty as expected_ty
-                            // TODO:    parent_span = span
-
-                            let new_subpat = self.check_match_pat(
-                                env,
-                                subpat,
-                                pat_ty,
-                                parent_span,
-                            )?;
-
-                            new_subpats.push(new_subpat);
                         }
 
                         // TODO: report missing fields

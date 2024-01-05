@@ -316,6 +316,20 @@ pub enum MatchPat {
     Adt(Vec<Word>, Vec<MatchPat>, Span),
 }
 
+impl Spanned for MatchPat {
+    fn span(&self) -> Span {
+        match self {
+            Self::Name(w, _) => w.span(),
+            Self::Wildcard(span)
+            | Self::Unit(span)
+            | Self::Bool(_, span)
+            | Self::Int(_, span)
+            | Self::Str(_, span)
+            | Self::Adt(_, _, span) => *span,
+        }
+    }
+}
+
 impl ImportName {
     pub fn name(&self) -> Word {
         self.alias.unwrap_or(self.word)
