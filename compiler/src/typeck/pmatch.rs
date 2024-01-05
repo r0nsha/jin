@@ -157,6 +157,11 @@ impl<'db> Typeck<'db> {
                             .collect::<UstrSet<_, _>>();
 
                         for subpat in subpats {
+                            if let Some(field) =
+                                struct_def.field_by_name(subpat)
+                            {
+                                todo!()
+                            }
                             // TODO: for each pattern
                             // TODO:    check name is a given field
                             // TODO:    check pat w/ field's ty as expected_ty
