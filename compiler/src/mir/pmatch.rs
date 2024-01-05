@@ -257,33 +257,12 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         rows: Vec<Row>,
         cond: ValueId,
     ) -> Decision {
-        let mut type_cases = Vec::<TypeCase>::new();
-        let mut fallback_rows = Vec::<Row>::new();
-        let mut indices = FxHashMap::<i128, usize>::default();
-
-        for mut row in rows {
-            if let Some(col) = row.remove_col(cond) {
-                for (pat, row) in col.pat.flatten_or(row) {
-                    let Pat::Int(key, _) = pat else { unreachable!() };
-
-                    if let Some(idx) = indices.get(&key) {
-                        type_cases[*idx].rows.push(row);
-                        continue;
-                    }
-
-                    indices.insert(key, type_cases.len());
-                    type_cases.push(TypeCase::new_with_rows(
-                        Ctor::Int(key),
-                        vec![],
-                        vec![row],
-                    ));
-                }
-            } else {
-                fallback_rows.push(row);
-            }
-        }
-
-        self.compile_lit_decision(cond, type_cases, fallback_rows)
+        self.compile_lit_decision(
+            rows,
+            cond,
+            |p| if let Pat::Int(k, _) = p { k } else { unreachable!() },
+            Ctor::Int,
+        )
     }
 
     fn compile_str_decision(
@@ -291,14 +270,29 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         rows: Vec<Row>,
         cond: ValueId,
     ) -> Decision {
+        self.compile_lit_decision(
+            rows,
+            cond,
+            |p| if let Pat::Str(k, _) = p { k } else { unreachable!() },
+            Ctor::Str,
+        )
+    }
+
+    fn compile_lit_decision<K: Eq + core::hash::Hash + Copy>(
+        &mut self,
+        rows: Vec<Row>,
+        cond: ValueId,
+        get_key: impl FnOnce(Pat) -> K + Copy,
+        get_ctor: impl FnOnce(K) -> Ctor + Copy,
+    ) -> Decision {
         let mut type_cases = Vec::<TypeCase>::new();
         let mut fallback_rows = Vec::<Row>::new();
-        let mut indices = FxHashMap::<Ustr, usize>::default();
+        let mut indices = FxHashMap::<K, usize>::default();
 
         for mut row in rows {
             if let Some(col) = row.remove_col(cond) {
                 for (pat, row) in col.pat.flatten_or(row) {
-                    let Pat::Str(key, _) = pat else { unreachable!() };
+                    let key = get_key(pat);
 
                     if let Some(idx) = indices.get(&key) {
                         type_cases[*idx].rows.push(row);
@@ -307,7 +301,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
 
                     indices.insert(key, type_cases.len());
                     type_cases.push(TypeCase::new_with_rows(
-                        Ctor::Str(key),
+                        get_ctor(key),
                         vec![],
                         vec![row],
                     ));
@@ -317,10 +311,10 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             }
         }
 
-        self.compile_lit_decision(cond, type_cases, fallback_rows)
+        self.compile_lit_cases(cond, type_cases, fallback_rows)
     }
 
-    fn compile_lit_decision(
+    fn compile_lit_cases(
         &mut self,
         cond: ValueId,
         mut type_cases: Vec<TypeCase>,
