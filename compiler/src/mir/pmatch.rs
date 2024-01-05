@@ -497,10 +497,12 @@ impl Type {
                             fields_to_create
                                 .into_iter()
                                 .map(|(name, ty)| {
-                                    cx.create_value(
+                                    let value = cx.create_value(
                                         ty,
                                         ValueKind::Field(cond, name),
-                                    )
+                                    );
+                                    cx.create_destroy_flag(value);
+                                    value
                                 })
                                 .collect(),
                         )])

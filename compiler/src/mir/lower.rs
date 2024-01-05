@@ -880,8 +880,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         mut values: Vec<ValueId>,
     ) {
         while let Some(value) = values.pop() {
-            self.destroy_value(value, state.span);
-            self.try_move(value, state.span);
+            // self.destroy_value(value, state.span);
+            // self.set_moved(value, state.span);
         }
     }
 
@@ -1669,7 +1669,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.destroy_value(value, span);
     }
 
-    fn create_destroy_flag(&mut self, value: ValueId) {
+    pub(super) fn create_destroy_flag(&mut self, value: ValueId) {
         if !self.value_is_move(value) {
             return;
         }
