@@ -15,6 +15,8 @@ fn main() unit = {
 	match_uint(69)
 
 	match_str("foo")
+	match_str("bar")
+	match_str("hadas")
 }
 
 fn match_vars() unit = {

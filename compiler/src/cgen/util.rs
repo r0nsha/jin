@@ -12,6 +12,7 @@ use crate::{
     },
     mir::{Block, ValueId},
     span::Span,
+    sym,
     ty::TyKind,
 };
 
@@ -143,10 +144,10 @@ pub fn cmp_strs<'a>(a: D<'a>, b: D<'a>) -> D<'a> {
 }
 
 pub fn str_value(value: &str) -> D {
-    struct_lit(vec![
-        ("ptr", str_lit(value)),
-        ("len", D::text(value.len().to_string())),
-    ])
+    D::text("(str)").append(struct_lit(vec![
+        (sym::PTR, str_lit(value)),
+        (sym::LEN, D::text(value.len().to_string())),
+    ]))
 }
 
 pub fn str_lit<'a>(value: impl fmt::Display) -> D<'a> {

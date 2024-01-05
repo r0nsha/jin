@@ -714,7 +714,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         parent_block,
                         values,
                     ),
-                    pmatch::Ctor::Str(_) => todo!(),
+                    pmatch::Ctor::Str(_) => self.lower_decision_str(
+                        state,
+                        cond,
+                        cases,
+                        *fallback.unwrap(),
+                        parent_block,
+                        values,
+                    ),
                 }
             }
         }
@@ -793,6 +800,75 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
             match case.ctor {
                 pmatch::Ctor::Int(lit) => {
+                    self.position_at(test_block);
+
+                    let lit_value = self.create_untracked_value(
+                        self.ty_of(cond),
+                        ValueKind::Const(Const::from(lit)),
+                    );
+
+                    self.push_inst(Inst::Binary {
+                        value: result_value,
+                        lhs: cond,
+                        rhs: lit_value,
+                        op: BinOp::Cmp(CmpOp::Eq),
+                        span: state.span,
+                    });
+                }
+                _ => unreachable!(),
+            }
+
+            let then_block = self.lower_decision(
+                state,
+                case.decision,
+                test_block,
+                values.clone(),
+            );
+
+            self.position_at(test_block);
+
+            let else_block =
+                blocks.get(idx + 1).copied().unwrap_or(fallback_block);
+            self.push_brif(result_value, then_block, Some(else_block));
+        }
+
+        blocks[0]
+    }
+
+    fn lower_decision_str(
+        &mut self,
+        state: &mut DecisionState,
+        cond: ValueId,
+        cases: Vec<pmatch::Case>,
+        fallback: pmatch::Decision,
+        parent_block: BlockId,
+        mut values: Vec<ValueId>,
+    ) -> BlockId {
+        let blocks = self.body.create_blocks("case", cases.len());
+
+        self.body.connect_blocks(&blocks);
+        values.push(cond);
+
+        let fallback_block = self.lower_decision(
+            state,
+            fallback,
+            *blocks.last().unwrap(),
+            values.clone(),
+        );
+
+        self.position_at(parent_block);
+        self.push_br(blocks[0]);
+
+        for (idx, case) in cases.into_iter().enumerate() {
+            let test_block = blocks[idx];
+
+            let result_value = self.create_untracked_value(
+                self.cx.db.types.bool,
+                ValueKind::Register(None),
+            );
+
+            match case.ctor {
+                pmatch::Ctor::Str(lit) => {
                     self.position_at(test_block);
 
                     let lit_value = self.create_untracked_value(
