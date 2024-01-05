@@ -780,6 +780,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> BlockId {
         let blocks = self.body.create_blocks("case", cases.len());
 
+        self.body.create_edge(parent_block, blocks[0]);
         self.body.connect_blocks(&blocks);
         values.push(cond);
 
@@ -795,6 +796,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         for (idx, case) in cases.into_iter().enumerate() {
             let test_block = blocks[idx];
+
+            let else_block =
+                blocks.get(idx + 1).copied().unwrap_or(fallback_block);
+            self.body.create_edge(test_block, else_block);
 
             let result_value = self.create_untracked_value(
                 self.cx.db.types.bool,
@@ -824,8 +829,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
             self.position_at(test_block);
 
-            let else_block =
-                blocks.get(idx + 1).copied().unwrap_or(fallback_block);
             self.push_brif(result_value, then_block, Some(else_block));
         }
 
@@ -840,16 +843,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         parent_block: BlockId,
         mut values: Vec<ValueId>,
     ) -> BlockId {
-        // let block = self.body.create_block("case");
-
         let case = cases.pop().unwrap();
         values.push(cond);
-
-        // for value in case.values {
-        // TODO: try_move?
-
-        // }
-
         self.lower_decision(state, case.decision, parent_block, values)
     }
 
