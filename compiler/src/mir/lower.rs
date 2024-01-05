@@ -829,7 +829,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         bindings: pmatch::Bindings,
     ) {
         self.position_at(block);
-
         self.enter_scope(ScopeKind::Block, state.span);
 
         for binding in bindings {
@@ -1408,8 +1407,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         debug_assert!(
             !is_initial_state,
-            "value v{} is missing a state in block b{}",
-            value.0, self.current_block.0,
+            "value v{} aka {} (type: {}) is missing a state in block {:?}. \
+             value states:\n{}",
+            value.0,
+            self.value_name(value),
+            self.ty_of(value).display(self.cx.db),
+            self.current_block,
+            self.value_states
         );
 
         result_state
