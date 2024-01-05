@@ -671,7 +671,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     body.block_id,
                     body.bindings,
                 );
-                self.destroy_match_values(state, values);
                 self.lower_decision_body(
                     state,
                     self.current_block,
@@ -860,17 +859,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 pmatch::Binding::Discard(..) => {}
             }
         }
-    }
-
-    fn destroy_match_values(
-        &mut self,
-        state: &DecisionState,
-        mut values: Vec<ValueId>,
-    ) {
-        // while let Some(value) = values.pop() {
-        //     self.destroy_value(value, state.span);
-        //     self.set_moved(value, state.span);
-        // }
     }
 
     fn lower_decision_body(
