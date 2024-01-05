@@ -90,9 +90,9 @@ fn match_types() unit = {
 	let bag = Bag(Box(1), Box(1))
 
 	match bag {
+		Bag(a, _) -> move(a),
 		Bag(Box(1), _) -> { printf("a: 1, b: _\n".ptr) },
 		Bag(Bag(a), Box(3)) -> { printf("a: %d, b: 3\n".ptr, a) },
-		Bag(a, _) -> move(a),
 		_ -> {}, // unreachable
 	}
 }
