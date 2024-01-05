@@ -321,7 +321,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 self.exit_scope();
 
-                self.body.connect_implicit_successors();
+                self.body.cleanup();
                 self.cx.mir.fns.insert(sig, Fn { sig, body: self.body });
             }
             FnKind::Extern { .. } => unreachable!(),
@@ -342,7 +342,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.try_move(value, let_.value.span);
                 self.exit_scope();
 
-                self.body.connect_implicit_successors();
+                self.body.cleanup();
 
                 let id = self.cx.mir.globals.insert_with_key(|id| Global {
                     id,

@@ -239,6 +239,10 @@ impl Body {
             .unwrap_or_default()
     }
 
+    pub fn cleanup(&mut self) {
+        self.connect_implicit_successors();
+    }
+
     fn connect_implicit_successors(&mut self) {
         for block in self.blocks_mut() {
             match block.insts.last() {
