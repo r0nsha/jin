@@ -144,6 +144,9 @@ impl<'db> Typeck<'db> {
 
                 match def.kind.as_ref() {
                     &DefKind::Adt(adt_id) => {
+                        self.at(Obligation::exprs(*span, parent_span, *span))
+                            .eq(pat_ty, self.db[adt_id].ty())?;
+
                         let fields =
                             self.db[adt_id].as_struct().unwrap().fields.clone();
 
@@ -155,7 +158,10 @@ impl<'db> Typeck<'db> {
                                 ast::Subpat::Positional(subpat) => {
                                     if let Some(field) = fields.get(idx) {
                                         let new_subpat = self.check_match_pat(
-                                            env, subpat, field.ty, *span,
+                                            env,
+                                            subpat,
+                                            field.ty,
+                                            field.span(),
                                         )?;
 
                                         new_subpats[idx] = new_subpat;

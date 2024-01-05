@@ -27,7 +27,7 @@ use crate::{
     diagnostics::Diagnostics,
     middle::{Mutability, TyParam, Vis},
     qpath::QPath,
-    span::{Source, SourceId, Sources, Span},
+    span::{Source, SourceId, Sources, Span, Spanned},
     target::{TargetMetrics, TargetPlatform},
     ty::{
         FloatTy, FnTy, FnTyParam, Instantiation, IntTy, Ty, TyKind, Typed,
@@ -606,6 +606,12 @@ pub struct StructField {
     pub name: Word,
     pub vis: Vis,
     pub ty: Ty,
+}
+
+impl Spanned for StructField {
+    fn span(&self) -> Span {
+        self.name.span()
+    }
 }
 
 #[derive(Debug)]

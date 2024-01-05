@@ -41,10 +41,11 @@ impl At<'_, '_> {
                         ObligationKind::Obvious => (),
                         ObligationKind::Exprs(expected_span, found_span) => {
                             diag.push_labels([
-                                Label::secondary(expected_span)
-                                    .with_message(expected_ty.to_string()),
+                                Label::secondary(expected_span).with_message(
+                                    format!("expected `{expected_ty}`"),
+                                ),
                                 Label::secondary(found_span)
-                                    .with_message(found_ty.to_string()),
+                                    .with_message(format!("found `{found_ty}`")),
                             ]);
                         }
                         ObligationKind::ReturnTy(return_ty_span) => {
