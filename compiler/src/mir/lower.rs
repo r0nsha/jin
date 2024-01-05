@@ -321,6 +321,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 self.exit_scope();
 
+                self.connect_implicit_successors();
                 self.cx.mir.fns.insert(sig, Fn { sig, body: self.body });
             }
             FnKind::Extern { .. } => unreachable!(),
@@ -341,6 +342,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.try_move(value, let_.value.span);
                 self.exit_scope();
 
+                self.connect_implicit_successors();
+
                 let id = self.cx.mir.globals.insert_with_key(|id| Global {
                     id,
                     def_id: name.id,
@@ -351,12 +354,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         result: value,
                     }),
                 });
-
                 self.cx.id_to_global.insert(name.id, id);
 
                 Some(id)
             }
             Pat::Discard(_) => None,
+        }
+    }
+
+    fn connect_implicit_successors(&mut self) {
+        for block in self.body.blocks_mut() {
+            if block.successors.len() == 1 {
+                block.push_inst(Inst::Br { target: block.successors[0] });
+            }
         }
     }
 

@@ -81,20 +81,18 @@ fn match_types() unit = {
 	let box = Box(1)
 
 	let _: unit = match box {
-		Box(1) -> { 
-			//printf("it's 1!\n".ptr) 
-			},
+		Box(1) -> { printf("it's 1!\n".ptr) },
 		Box(v) -> print(v),
 		Box(_) -> {}, // unreachable
 		_ -> {}, // unreachable
 	}
 
-	let bag = Bag(Box(1), Box(1))
+	let bag = Bag(Box(1), Box(3))
 
 	match bag {
-		Bag(a, _) -> move(a),
 		Bag(Box(1), _) -> { printf("a: 1, b: _\n".ptr) },
 		Bag(Bag(a), Box(3)) -> { printf("a: %d, b: 3\n".ptr, a) },
+		Bag(a, _) -> move(a),
 		_ -> {}, // unreachable
 	}
 }
