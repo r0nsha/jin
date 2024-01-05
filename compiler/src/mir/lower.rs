@@ -311,6 +311,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 // println!("fn `{}`", fun.sig.word);
                 // println!("{}", self.value_states);
+                // for block in self.body.blocks() {
+                //     println!(
+                //         "{} {}: {:?}",
+                //         block.id, block.name, block.successors
+                //     );
+                // }
                 // println!("---------------------");
 
                 self.exit_scope();

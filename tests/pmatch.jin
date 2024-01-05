@@ -81,7 +81,9 @@ fn match_types() unit = {
 	let box = Box(1)
 
 	let _: unit = match box {
-		Box(1) -> { printf("it's 1!\n".ptr) },
+		Box(1) -> { 
+			//printf("it's 1!\n".ptr) 
+			},
 		Box(v) -> print(v),
 		Box(_) -> {}, // unreachable
 		_ -> {}, // unreachable
