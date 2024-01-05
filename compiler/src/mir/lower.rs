@@ -683,7 +683,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     body.block_id,
                     body.bindings,
                 );
-                // TODO: self.destroy_match_values(state, values)
+                self.destroy_match_values(state, values);
                 self.lower_decision_body(
                     state,
                     self.current_block,
@@ -846,10 +846,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.locals.insert(id, binding_value);
                     self.create_destroy_flag(binding_value);
                 }
-                pmatch::Binding::Discard(value, span) => {
-                    self.destroy_value_entirely(value, span);
-                }
+                pmatch::Binding::Discard(..) => {}
             }
+        }
+    }
+
+    fn destroy_match_values(
+        &mut self,
+        state: &DecisionState,
+        mut values: Vec<ValueId>,
+    ) {
+        while let Some(value) = values.pop() {
+            self.destroy_value(value, state.span);
+            self.try_move(value, state.span);
         }
     }
 
@@ -1019,6 +1028,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.scope_mut().created_values.insert(value);
         self.create_value_fields(value);
         value
+    }
+
+    #[allow(unused)]
+    pub fn clone_value(&mut self, value: ValueId) -> ValueId {
+        let value = self.body.value(value);
+        self.create_value(value.ty, value.kind.clone())
     }
 
     pub fn create_ref(&mut self, to_clone: ValueId, ty: Ty) -> ValueId {
