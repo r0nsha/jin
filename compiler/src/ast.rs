@@ -313,7 +313,7 @@ pub enum MatchPat {
     Bool(bool, Span),
     Int(i128, Span),
     Str(Ustr, Span),
-    Adt(Vec<Word>, Vec<MatchPat>, Span),
+    Adt(Vec<Word>, Vec<Subpat>, Span),
 }
 
 impl Spanned for MatchPat {
@@ -328,6 +328,11 @@ impl Spanned for MatchPat {
             | Self::Adt(_, _, span) => *span,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum Subpat {
+    Positional(MatchPat),
 }
 
 impl ImportName {

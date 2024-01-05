@@ -11,7 +11,7 @@ use crate::{
         token::{Token, TokenKind},
         Attr, AttrKind, Attrs, CallArg, Expr, ExternImport, ExternLet, Fn,
         FnKind, FnParam, FnSig, Item, Let, LitKind, MatchArm, MatchPat, Module,
-        StructTyDef, StructTyField, TyDef, TyDefKind, TyParam,
+        StructTyDef, StructTyField, Subpat, TyDef, TyDefKind, TyParam,
     },
     db::{Db, DefId, ExternLib, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -758,10 +758,10 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_match_adt_subpats(&mut self) -> DiagnosticResult<Vec<MatchPat>> {
+    fn parse_match_adt_subpats(&mut self) -> DiagnosticResult<Vec<Subpat>> {
         self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             let pat = this.parse_match_pat()?;
-            Ok(ControlFlow::Continue(pat))
+            Ok(ControlFlow::Continue(Subpat::Positional(pat)))
         })
         .map(|(l, _)| l)
     }

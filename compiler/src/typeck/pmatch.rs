@@ -152,28 +152,34 @@ impl<'db> Typeck<'db> {
                         let mut new_subpats = FxHashMap::default();
 
                         for (idx, subpat) in subpats.iter().enumerate() {
-                            if let Some(field) = fields.get(idx) {
-                                let new_subpat = self.check_match_pat(
-                                    env, subpat, field.ty, *span,
-                                )?;
+                            match subpat {
+                                ast::Subpat::Positional(subpat) => {
+                                    if let Some(field) = fields.get(idx) {
+                                        let new_subpat = self.check_match_pat(
+                                            env, subpat, field.ty, *span,
+                                        )?;
 
-                                new_subpats
-                                    .insert(field.name.name(), new_subpat);
-                            } else {
-                                return Err(Diagnostic::error()
-                                    .with_message(format!(
-                                        "expected at most {} patterns for \
-                                         type `{}`",
-                                        fields.len(),
-                                        self.db[adt_id].name
-                                    ))
-                                    .with_label(
-                                        Label::primary(subpat.span())
-                                            .with_message(
-                                                "pattern doesn't map to any \
-                                                 field",
-                                            ),
-                                    ));
+                                        new_subpats.insert(
+                                            field.name.name(),
+                                            new_subpat,
+                                        );
+                                    } else {
+                                        return Err(Diagnostic::error()
+                                            .with_message(format!(
+                                                "expected at most {} patterns \
+                                                 for type `{}`",
+                                                fields.len(),
+                                                self.db[adt_id].name
+                                            ))
+                                            .with_label(
+                                                Label::primary(subpat.span())
+                                                    .with_message(
+                                                        "pattern doesn't map \
+                                                         to any field",
+                                                    ),
+                                            ));
+                                    }
+                                }
                             }
                         }
 
