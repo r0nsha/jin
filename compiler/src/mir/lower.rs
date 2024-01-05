@@ -458,7 +458,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 for arm in &match_.arms {
                     let block_id = self.body.create_block("case");
 
-                    let pat = pmatch::Pat::from_hir(&arm.pat);
+                    let pat = pmatch::Pat::from_hir(self.cx.db, &arm.pat);
                     let col = pmatch::Col::new(value, pat);
                     let body =
                         pmatch::DecisionBody::new(block_id, arm.pat.span());
@@ -718,6 +718,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             parent_block,
                             values,
                         ),
+                    pmatch::Ctor::Struct(_) => self.lower_decision_struct(
+                        state,
+                        cond,
+                        cases,
+                        parent_block,
+                        values,
+                    ),
                 }
             }
         }
@@ -823,6 +830,27 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         blocks[0]
+    }
+
+    fn lower_decision_struct(
+        &mut self,
+        state: &mut DecisionState,
+        cond: ValueId,
+        mut cases: Vec<pmatch::Case>,
+        parent_block: BlockId,
+        mut values: Vec<ValueId>,
+    ) -> BlockId {
+        // let block = self.body.create_block("case");
+
+        let case = cases.pop().unwrap();
+        values.push(cond);
+
+        // for value in case.values {
+        // TODO: try_move?
+
+        // }
+
+        self.lower_decision(state, case.decision, parent_block, values)
     }
 
     fn lower_decision_bindings(

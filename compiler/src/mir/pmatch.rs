@@ -1,17 +1,15 @@
-use core::panic;
-
-use indexmap::IndexSet;
 /// This implementation is inspired by [yorickpeterse's implementation](https://github.com/yorickpeterse/pattern-matching-in-rust)
+use indexmap::IndexSet;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
 use crate::{
-    db::DefId,
+    db::{AdtId, AdtKind, Db, DefId},
     diagnostics::{Diagnostic, Label, Severity},
     hir,
-    mir::{lower::LowerBody, BlockId, Const, ValueId},
+    mir::{lower::LowerBody, BlockId, Const, ValueId, ValueKind},
     span::{Span, Spanned},
-    ty::{Ty, TyKind},
+    ty::{fold::TyFolder as _, Ty, TyKind},
 };
 
 pub fn compile(
@@ -214,7 +212,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
 
         let cond = Self::cond_value(&rows);
 
-        match Type::from_ty(self.cx.ty_of(cond)) {
+        match Type::from_cond(self.cx, cond) {
             Type::Int => self.compile_int_decision(rows, cond),
             Type::Str => self.compile_str_decision(rows, cond),
             Type::Finite(cases) => {
@@ -468,7 +466,9 @@ impl TypeCase {
 }
 
 impl Type {
-    fn from_ty(ty: Ty) -> Self {
+    fn from_cond(cx: &mut LowerBody<'_, '_>, cond: ValueId) -> Self {
+        let ty = cx.ty_of(cond);
+
         match ty.kind() {
             TyKind::Unit => {
                 Self::Finite(vec![TypeCase::new(Ctor::Unit, vec![])])
@@ -479,8 +479,35 @@ impl Type {
             ]),
             TyKind::Int(_) | TyKind::Uint(_) => Self::Int,
             TyKind::Str => Self::Str,
+            TyKind::Adt(adt_id, targs) => {
+                let adt = &cx.cx.db[*adt_id];
+                let instantiation = adt.instantiation(targs);
+                let mut folder = instantiation.folder();
+
+                match &adt.kind {
+                    AdtKind::Struct(struct_def) => {
+                        let fields_to_create: Vec<(Ustr, Ty)> = struct_def
+                            .fields
+                            .iter()
+                            .map(|f| (f.name.name(), folder.fold(f.ty)))
+                            .collect();
+
+                        Self::Finite(vec![TypeCase::new(
+                            Ctor::Struct(*adt_id),
+                            fields_to_create
+                                .into_iter()
+                                .map(|(name, ty)| {
+                                    cx.create_value(
+                                        ty,
+                                        ValueKind::Field(cond, name),
+                                    )
+                                })
+                                .collect(),
+                        )])
+                    }
+                }
+            }
             TyKind::Fn(_)
-            | TyKind::Adt(_, _)
             | TyKind::Ref(_, _)
             | TyKind::RawPtr(_)
             | TyKind::Float(_)
@@ -502,6 +529,7 @@ pub(super) enum Ctor {
     False,
     Int(i128),
     Str(Ustr),
+    Struct(AdtId),
 }
 
 impl Ctor {
@@ -509,7 +537,11 @@ impl Ctor {
     /// The index must match the order which constructor are defined in `Type::from_ty`
     fn index(&self) -> usize {
         match self {
-            Self::Unit | Self::False | Self::Int(_) | Self::Str(_) => 0,
+            Self::Unit
+            | Self::False
+            | Self::Int(_)
+            | Self::Str(_)
+            | Self::Struct(_) => 0,
             Self::True => 1,
         }
     }
@@ -536,6 +568,7 @@ impl From<Ctor> for Const {
             Ctor::False => Const::Bool(false),
             Ctor::Int(v) => Const::Int(v),
             Ctor::Str(v) => Const::Str(v),
+            Ctor::Struct(_) => panic!("unexpected ctor value {value:?}"),
         }
     }
 }
@@ -571,7 +604,7 @@ impl Pat {
         // }
     }
 
-    pub(super) fn from_hir(pat: &hir::MatchPat) -> Self {
+    pub(super) fn from_hir(db: &Db, pat: &hir::MatchPat) -> Self {
         match pat {
             hir::MatchPat::Name(id, span) => Self::Name(*id, *span),
             hir::MatchPat::Wildcard(span) => Self::Wildcard(*span),
@@ -584,7 +617,11 @@ impl Pat {
             }
             hir::MatchPat::Int(value, span) => Self::Int(*value, *span),
             hir::MatchPat::Str(value, span) => Self::Str(*value, *span),
-            hir::MatchPat::Adt(adt_id, pats, span) => todo!(),
+            hir::MatchPat::Adt(adt_id, pats, span) => {
+                let args: Vec<_> =
+                    pats.iter().map(|pat| Pat::from_hir(db, pat)).collect();
+                Pat::Ctor(Ctor::Struct(*adt_id), args, *span)
+            }
         }
     }
 }
@@ -631,6 +668,11 @@ fn collect_missing_pats(
                     )),
                     Ctor::Int(_) | Ctor::Str(_) => case_infos
                         .push(CaseInfo::new(*cond, "_".to_string(), vec![])),
+                    Ctor::Struct(adt_id) => case_infos.push(CaseInfo::new(
+                        *cond,
+                        cx.cx.db[*adt_id].name.to_string(),
+                        case.values.clone(),
+                    )),
                 }
 
                 collect_missing_pats(cx, &case.decision, case_infos, missing);

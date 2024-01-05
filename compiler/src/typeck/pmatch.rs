@@ -1,5 +1,3 @@
-use rustc_hash::FxHashMap;
-
 use crate::{
     ast,
     db::DefKind,
@@ -149,7 +147,8 @@ impl<'db> Typeck<'db> {
                         let fields =
                             self.db[adt_id].as_struct().unwrap().fields.clone();
 
-                        let mut new_subpats = FxHashMap::default();
+                        let mut new_subpats =
+                            vec![hir::MatchPat::Wildcard(*span); fields.len()];
 
                         for (idx, subpat) in subpats.iter().enumerate() {
                             match subpat {
@@ -159,10 +158,7 @@ impl<'db> Typeck<'db> {
                                             env, subpat, field.ty, *span,
                                         )?;
 
-                                        new_subpats.insert(
-                                            field.name.name(),
-                                            new_subpat,
-                                        );
+                                        new_subpats[idx] = new_subpat;
                                     } else {
                                         return Err(Diagnostic::error()
                                             .with_message(format!(
