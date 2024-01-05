@@ -88,7 +88,7 @@ impl<'db> TyPrinter<'db> {
             #[cfg(debug_assertions)]
             TyKind::Infer(InferTy::Ty(v)) => write!(f, "(ty:{})", v.0),
             #[cfg(not(debug_assertions))]
-            TyKind::Infer(InferTy::Ty(_)) => f.write_str("(unknown)"),
+            TyKind::Infer(InferTy::Ty(_)) => f.write_str("_"),
 
             #[cfg(debug_assertions)]
             TyKind::Infer(InferTy::Int(v)) => write!(f, "(int:{})", v.0),
