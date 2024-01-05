@@ -4,7 +4,7 @@ mod pretty_print;
 mod specialize;
 pub mod subst;
 
-use std::io;
+use std::{io, iter};
 
 use data_structures::{
     id_map::IdMap,
@@ -13,7 +13,7 @@ use data_structures::{
 };
 use derive_more::From;
 use enum_as_inner::EnumAsInner;
-use indexmap::IndexSet;
+use indexmap::{indexset, IndexSet};
 pub use lower::lower;
 use rustc_hash::{FxHashMap, FxHashSet};
 pub use specialize::specialize;
@@ -240,7 +240,63 @@ impl Body {
     }
 
     pub fn cleanup(&mut self) {
+        self.remove_blocks();
         self.connect_implicit_successors();
+    }
+
+    fn remove_blocks(&mut self) {
+        let blocks = &self.blocks;
+        let mut new_blocks = IndexVec::<BlockId, Block>::new();
+        let mut id_map: IndexVec<_, _> =
+            iter::repeat(BlockId::start()).take(blocks.len()).collect();
+        let mut valid = Vec::with_capacity(blocks.len());
+
+        for (id, block) in blocks.iter_enumerated() {
+            if block.insts.is_empty() || !block.is_connected() {
+                continue;
+            }
+
+            id_map[id] = BlockId(new_blocks.len());
+            valid.push((id, block));
+            new_blocks.push_with_key(|id| Block::new(id, block.name.clone()));
+        }
+
+        for (id, block) in valid {
+            let block_id = id_map[id];
+
+            new_blocks[block_id].insts = block.insts.clone();
+
+            let (last_inst, insts) =
+                new_blocks[block_id].insts.split_last_mut().unwrap();
+
+            for inst in insts {
+                update_block_ids(blocks, &id_map, inst);
+            }
+
+            update_block_ids(blocks, &id_map, last_inst);
+
+            let successors = match last_inst {
+                Inst::Br { target } => {
+                    indexset! { *target }
+                }
+                Inst::BrIf { cond: _, then, otherwise } => {
+                    if let Some(otherwise) = otherwise {
+                        indexset! { *then, *otherwise }
+                    } else {
+                        indexset! { *then }
+                    }
+                }
+                _ => continue,
+            };
+
+            for &succ in &successors {
+                new_blocks[succ].predecessors.insert(block_id);
+            }
+
+            new_blocks[block_id].successors = successors;
+        }
+
+        self.blocks = new_blocks;
     }
 
     fn connect_implicit_successors(&mut self) {
@@ -256,6 +312,45 @@ impl Body {
             }
         }
     }
+}
+
+fn update_block_ids(
+    blocks: &IndexSlice<BlockId, Block>,
+    id_map: &IndexSlice<BlockId, BlockId>,
+    inst: &mut Inst,
+) {
+    match inst {
+        Inst::Br { target } => {
+            *target = id_map[find_successor(blocks, *target)];
+        }
+        Inst::BrIf { cond: _, then, otherwise } => {
+            *then = id_map[find_successor(blocks, *then)];
+
+            if let Some(otherwise) = otherwise {
+                *otherwise = id_map[find_successor(blocks, *otherwise)];
+            }
+        }
+        _ => (),
+    }
+}
+
+fn find_successor(
+    blocks: &IndexSlice<BlockId, Block>,
+    old_id: BlockId,
+) -> BlockId {
+    let mut id = old_id;
+
+    loop {
+        let block = &blocks[id];
+
+        if !block.insts.is_empty() {
+            break;
+        }
+
+        id = block.successors[0];
+    }
+
+    id
 }
 
 #[derive(Debug, Clone)]
