@@ -78,14 +78,14 @@ type Box(value: int)
 type Bag(a: Box, b: Box)
 
 fn match_types() unit = {
-	//let box = Box(1)
+	let box = Box(1)
 
-	//let _: unit = match box {
-	//	Box(1) -> { printf("it's 1!\n".ptr) },
-	//	Box(v) -> print(v),
-	//	Box(_) -> {}, // unreachable
-	//	_ -> {}, // unreachable
-	//}
+	let _: unit = match box {
+		Box(1) -> { printf("it's 1!\n".ptr) },
+		Box(v) -> print(v),
+		Box(_) -> {}, // unreachable
+		_ -> {}, // unreachable
+	}
 
 	let bag = Bag(Box(1), Box(2))
 

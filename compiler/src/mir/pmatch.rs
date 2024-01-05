@@ -497,10 +497,7 @@ impl Type {
                             fields_to_create
                                 .into_iter()
                                 .map(|(name, ty)| {
-                                    cx.create_untracked_value(
-                                        ty,
-                                        ValueKind::Field(cond, name),
-                                    )
+                                    cx.field_or_create_untracked(cond, name, ty)
                                 })
                                 .collect(),
                         )])
