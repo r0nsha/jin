@@ -676,6 +676,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> BlockId {
         match decision {
             pmatch::Decision::Ok(body) => {
+                self.body.create_edge(parent_block, body.block_id);
+
                 self.lower_decision_bindings(
                     state,
                     body.block_id,
@@ -1352,21 +1354,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub(super) fn solve_value_state(&self, value: ValueId) -> ValueState {
-        let mut work: Vec<BlockId> = self
-            .body
-            .block(self.current_block)
-            .predecessors
-            .iter()
-            .copied()
-            .collect();
+        let block = self.current_block;
 
-        let mut visited = FxHashSet::from_iter([self.current_block]);
+        let mut work: Vec<BlockId> =
+            self.body.block(block).predecessors.iter().copied().collect();
+        let mut visited = FxHashSet::from_iter([block]);
         let mut result_state = ValueState::Owned;
         let mut last_move_span: Option<Span> = None;
         let mut is_initial_state = true;
 
         while let Some(block) = work.pop() {
-            dbg!(block);
             visited.insert(block);
 
             if let Some(state) = self.value_states.get(block, value).cloned() {
@@ -1414,7 +1411,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             value.0,
             self.value_name(value),
             self.ty_of(value).display(self.cx.db),
-            self.current_block,
+            block,
             self.value_states
         );
 

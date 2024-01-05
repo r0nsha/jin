@@ -81,7 +81,7 @@ fn match_types() unit = {
 	let box = Box(1)
 
 	match box {
-		box -> print(box)
+		_ -> print(box)
 	}
 
 	//let x = box // Error!
