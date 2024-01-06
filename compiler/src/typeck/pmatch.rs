@@ -1,3 +1,6 @@
+use itertools::Itertools;
+use ustr::UstrMap;
+
 use crate::{
     ast,
     db::DefKind,
@@ -149,6 +152,7 @@ impl<'db> Typeck<'db> {
 
                         let fields =
                             self.db[adt_id].as_struct().unwrap().fields.clone();
+                        let mut used_fields = UstrMap::default();
 
                         let mut new_subpats =
                             vec![hir::MatchPat::Wildcard(*span); fields.len()];
@@ -165,6 +169,36 @@ impl<'db> Typeck<'db> {
                                         )?;
 
                                         new_subpats[idx] = new_subpat;
+
+                                        if let Some(prev_span) = used_fields
+                                            .insert(
+                                                field.name.name(),
+                                                field.name.span(),
+                                            )
+                                        {
+                                            let name = field.name;
+                                            let dup_span = name.span();
+
+                                            return Err(Diagnostic::error()
+                                                .with_message(format!(
+                                                    "field `{name}` has \
+                                                     already been matched"
+                                                ))
+                                                .with_label(
+                                                    Label::primary(dup_span)
+                                                        .with_message(format!(
+                                                            "`{name}` matched \
+                                                             again here"
+                                                        )),
+                                                )
+                                                .with_label(
+                                                    Label::secondary(prev_span)
+                                                        .with_message(format!(
+                                                            "first match of \
+                                                             `{name}`"
+                                                        )),
+                                                ));
+                                        }
                                     } else {
                                         return Err(Diagnostic::error()
                                             .with_message(format!(
@@ -185,7 +219,34 @@ impl<'db> Typeck<'db> {
                             }
                         }
 
-                        // TODO: report missing fields
+                        let missing_fields: Vec<_> = fields
+                            .iter()
+                            .filter(|f| {
+                                !used_fields.contains_key(&f.name.name())
+                            })
+                            .collect();
+
+                        if !missing_fields.is_empty() {
+                            return Err(Diagnostic::error()
+                                .with_message(format!(
+                                    "missing {} field(s) in `{}` pattern: {}",
+                                    missing_fields.len(),
+                                    self.db[adt_id].name,
+                                    missing_fields
+                                        .into_iter()
+                                        .map(|f| format!("`{}`", f.name))
+                                        .join(", ")
+                                ))
+                                .with_label(
+                                    Label::primary(*span).with_message(
+                                        "pattern is not exhaustive",
+                                    ),
+                                )
+                                .with_note(
+                                    "if this is intentional, use `..` at the \
+                                     end of the pattern",
+                                ));
+                        }
 
                         Ok(hir::MatchPat::Adt(adt_id, new_subpats, *span))
                     }
