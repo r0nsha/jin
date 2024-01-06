@@ -189,19 +189,10 @@ impl<'db> Typeck<'db> {
                             vec![hir::MatchPat::Wildcard(*span); fields.len()];
 
                         for (idx, subpat) in subpats.iter().enumerate() {
-                            match subpat {
+                            let (field_idx, field, subpat) = match subpat {
                                 ast::Subpat::Positional(subpat) => {
                                     if let Some(field) = fields.get(idx) {
-                                        let new_subpat = self.check_match_pat(
-                                            env,
-                                            subpat,
-                                            field.ty,
-                                            field.span(),
-                                        )?;
-
-                                        new_subpats[idx] = new_subpat;
-
-                                        use_field(field.name)?;
+                                        (idx, field, subpat)
                                     } else {
                                         return Err(Diagnostic::error()
                                             .with_message(format!(
@@ -220,17 +211,14 @@ impl<'db> Typeck<'db> {
                                     }
                                 }
                                 ast::Subpat::Named(name, subpat) => {
-                                    if let Some(field) = fields.get(idx) {
-                                        // let new_subpat = self.check_match_pat(
-                                        //     env,
-                                        //     subpat,
-                                        //     field.ty,
-                                        //     field.span(),
-                                        // )?;
-                                        //
-                                        // new_subpats[idx] = new_subpat;
-                                        //
-                                        use_field(field.name)?;
+                                    if let Some((field_idx, field)) = fields
+                                        .iter()
+                                        .enumerate()
+                                        .find(|(_, f)| {
+                                            f.name.name() == name.name()
+                                        })
+                                    {
+                                        (field_idx, field, subpat)
                                     } else {
                                         return Err(field_not_found(
                                             self.db,
@@ -240,7 +228,17 @@ impl<'db> Typeck<'db> {
                                         ));
                                     }
                                 }
-                            }
+                            };
+
+                            let new_subpat = self.check_match_pat(
+                                env,
+                                subpat,
+                                field.ty,
+                                field.span(),
+                            )?;
+
+                            new_subpats[field_idx] = new_subpat;
+                            use_field(field.name)?;
                         }
 
                         if *is_exhaustive {
