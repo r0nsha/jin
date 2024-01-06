@@ -720,14 +720,16 @@ impl<'a> Parser<'a> {
                 }
 
                 let span = start_word.span().merge(self.last_span());
-                let subpats = self.parse_match_adt_subpats()?;
+                let (subpats, is_exhaustive) =
+                    self.parse_match_adt_subpats()?;
 
-                Ok(MatchPat::Adt(path, subpats, span))
+                Ok(MatchPat::Adt(path, subpats, is_exhaustive, span))
             } else if self.peek_is(TokenKind::OpenParen) {
                 let path = vec![start_word];
-                let subpats = self.parse_match_adt_subpats()?;
+                let (subpats, is_exhaustive) =
+                    self.parse_match_adt_subpats()?;
                 let span = start_word.span().merge(self.last_span());
-                Ok(MatchPat::Adt(path, subpats, span))
+                Ok(MatchPat::Adt(path, subpats, is_exhaustive, span))
             } else {
                 Ok(MatchPat::Name(start_word, Mutability::Imm))
             }
@@ -759,12 +761,26 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_match_adt_subpats(&mut self) -> DiagnosticResult<Vec<Subpat>> {
-        self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
-            let pat = this.parse_match_pat()?;
-            Ok(ControlFlow::Continue(Subpat::Positional(pat)))
-        })
-        .map(|(l, _)| l)
+    fn parse_match_adt_subpats(
+        &mut self,
+    ) -> DiagnosticResult<(Vec<Subpat>, bool)> {
+        let mut is_exhaustive = true;
+
+        let (subpats, _) = self.parse_list(
+            TokenKind::OpenParen,
+            TokenKind::CloseParen,
+            |this| {
+                if this.is(TokenKind::DotDot) {
+                    is_exhaustive = false;
+                    Ok(ControlFlow::Break(()))
+                } else {
+                    let pat = this.parse_match_pat()?;
+                    Ok(ControlFlow::Continue(Subpat::Positional(pat)))
+                }
+            },
+        )?;
+
+        Ok((subpats, is_exhaustive))
     }
 
     fn parse_loop(&mut self) -> DiagnosticResult<Expr> {

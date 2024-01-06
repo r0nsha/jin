@@ -313,7 +313,7 @@ pub enum MatchPat {
     Bool(bool, Span),
     Int(i128, Span),
     Str(Ustr, Span),
-    Adt(Vec<Word>, Vec<Subpat>, Span),
+    Adt(Vec<Word>, Vec<Subpat>, bool, Span),
 }
 
 impl Spanned for MatchPat {
@@ -325,7 +325,7 @@ impl Spanned for MatchPat {
             | Self::Bool(_, span)
             | Self::Int(_, span)
             | Self::Str(_, span)
-            | Self::Adt(_, _, span) => *span,
+            | Self::Adt(_, _, _, span) => *span,
         }
     }
 }

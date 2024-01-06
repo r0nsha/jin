@@ -141,7 +141,7 @@ impl<'db> Typeck<'db> {
                     .eq(self.db.types.str, pat_ty)?;
                 Ok(hir::MatchPat::Str(*value, *span))
             }
-            ast::MatchPat::Adt(path, subpats, span) => {
+            ast::MatchPat::Adt(path, subpats, is_exhaustive, span) => {
                 let id = self.path_lookup(env, path)?;
                 let def = &self.db[id];
 
@@ -219,33 +219,36 @@ impl<'db> Typeck<'db> {
                             }
                         }
 
-                        let missing_fields: Vec<_> = fields
-                            .iter()
-                            .filter(|f| {
-                                !used_fields.contains_key(&f.name.name())
-                            })
-                            .collect();
+                        if *is_exhaustive {
+                            let missing_fields: Vec<_> = fields
+                                .iter()
+                                .filter(|f| {
+                                    !used_fields.contains_key(&f.name.name())
+                                })
+                                .collect();
 
-                        if !missing_fields.is_empty() {
-                            return Err(Diagnostic::error()
-                                .with_message(format!(
-                                    "missing {} field(s) in `{}` pattern: {}",
-                                    missing_fields.len(),
-                                    self.db[adt_id].name,
-                                    missing_fields
-                                        .into_iter()
-                                        .map(|f| format!("`{}`", f.name))
-                                        .join(", ")
-                                ))
-                                .with_label(
-                                    Label::primary(*span).with_message(
-                                        "pattern is not exhaustive",
-                                    ),
-                                )
-                                .with_note(
-                                    "if this is intentional, use `..` at the \
-                                     end of the pattern",
-                                ));
+                            if !missing_fields.is_empty() {
+                                return Err(Diagnostic::error()
+                                    .with_message(format!(
+                                        "missing {} field(s) in `{}` pattern: \
+                                         {}",
+                                        missing_fields.len(),
+                                        self.db[adt_id].name,
+                                        missing_fields
+                                            .into_iter()
+                                            .map(|f| format!("`{}`", f.name))
+                                            .join(", ")
+                                    ))
+                                    .with_label(
+                                        Label::primary(*span).with_message(
+                                            "pattern is not exhaustive",
+                                        ),
+                                    )
+                                    .with_note(
+                                        "if this is intentional, use `..` at \
+                                         the end of the pattern",
+                                    ));
+                            }
                         }
 
                         Ok(hir::MatchPat::Adt(adt_id, new_subpats, *span))
