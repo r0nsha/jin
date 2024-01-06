@@ -420,7 +420,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::If(if_) => {
                 let then_block = self.body.create_block("if_then");
                 let else_block = self.body.create_block("if_else");
-                let merge_block = self.body.create_block("if_merge");
+                let join_block = self.body.create_block("if_join");
 
                 let output = self.push_inst_with_register(expr.ty, |value| {
                     Inst::StackAlloc { value, init: None }
@@ -437,7 +437,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     value: then_value,
                     target: output,
                 });
-                self.push_br(merge_block);
+                self.push_br(join_block);
 
                 self.position_at(else_block);
                 let else_value = self.lower_expr(&if_.otherwise);
@@ -446,9 +446,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     value: else_value,
                     target: output,
                 });
-                self.push_br(merge_block);
+                self.push_br(join_block);
 
-                self.position_at(merge_block);
+                self.position_at(join_block);
 
                 output
             }
@@ -475,7 +475,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     rows.push(pmatch::Row::new(vec![col], body));
                 }
 
-                state.merge_block = self.body.create_block("match_merge");
+                state.join_block = self.body.create_block("match_join");
 
                 if let Ok(decision) = pmatch::compile(self, rows, expr.span) {
                     self.lower_decision(
@@ -486,7 +486,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     );
                 }
 
-                self.position_at(state.merge_block);
+                self.position_at(state.join_block);
 
                 output
             }
@@ -891,7 +891,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         if self.in_connected_block() {
             self.push_inst(Inst::Store { value, target: state.output });
-            self.push_br(state.merge_block);
+            self.push_br(state.join_block);
         }
 
         start_block
@@ -2026,8 +2026,8 @@ struct DecisionState<'a> {
     /// The value the pmatch result is written to
     output: ValueId,
 
-    /// The block to to merge into at the end of each decision body
-    merge_block: BlockId,
+    /// The block to join into at the end of each decision body
+    join_block: BlockId,
 
     /// A mapping of every case body, and its associated concrete expression
     bodies: FxHashMap<BlockId, &'a hir::Expr>,
@@ -2040,7 +2040,7 @@ impl<'a> DecisionState<'a> {
     fn new(output: ValueId, span: Span) -> Self {
         Self {
             output,
-            merge_block: BlockId::null(),
+            join_block: BlockId::null(),
             bodies: FxHashMap::default(),
             span,
         }
