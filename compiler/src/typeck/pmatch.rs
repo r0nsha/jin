@@ -85,6 +85,7 @@ impl<'db> Typeck<'db> {
             let pat = self.check_match_pat(
                 env, &case.pat, expr_ty, expr_span, &mut names,
             )?;
+            self.check_match_pat_name_bound_once(&pat)?;
             let expr = self.check_expr(env, &case.expr, expected_ty)?;
             Ok(hir::MatchArm { pat, expr: Box::new(expr) })
         })
@@ -349,8 +350,6 @@ impl<'db> Typeck<'db> {
                     )?;
                 }
 
-                self.check_match_pat_adt_bound_once(&new_subpats)?;
-
                 Ok(hir::MatchPat::Adt(adt_id, new_subpats, span))
             }
             _ => Err(Diagnostic::error()
@@ -425,15 +424,12 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    fn check_match_pat_adt_bound_once(
+    fn check_match_pat_name_bound_once(
         &self,
-        subpats: &[hir::MatchPat],
+        pat: &hir::MatchPat,
     ) -> TypeckResult<()> {
         let mut bound = UstrMap::default();
-
-        for pat in subpats {
-            self.collect_bound_names_in_pat(pat, &mut bound);
-        }
+        self.collect_bound_names_in_pat(pat, &mut bound);
 
         for (name, spans) in bound {
             if spans.len() > 1 {
