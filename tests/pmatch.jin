@@ -113,6 +113,7 @@ fn print(box: &Box) unit = {
 
 fn print(bag: &Bag) unit = {
 	match bag {
+		Bag(..) -> {},
 		Bag(a, b) -> {
 			printf("Bag(a: Box(%d), b: Box(%d))\n".ptr, a.value, b.value)
 		}

@@ -906,7 +906,7 @@ impl<'db> Typeck<'db> {
                         for (pos, expr) in exprs.iter().with_position() {
                             let expected_ty = match pos {
                                 Position::Last => expected_ty,
-                                _ => None, //Some(self.db.types.unit),
+                                _ => Some(self.db.types.unit),
                             };
 
                             new_exprs.push(self.check_expr(
@@ -921,6 +921,7 @@ impl<'db> Typeck<'db> {
                         // If the expected type is `Unit` and the actual result type isn't,
                         // we add a `unit` literal at the end of the block to accommodate.
                         // This is useful for functions which return `Unit`, and if chains.
+                        // TODO: this can just be generalized coercion...
                         if let Some(expected_ty) = expected_ty {
                             if self.normalize(expected_ty).is_unit()
                                 && !self.normalize(ty).is_unit()

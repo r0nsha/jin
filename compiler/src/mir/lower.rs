@@ -296,6 +296,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     // for the function's last value.
                     let fn_ty = self.cx.mir.fn_sigs[sig].ty.as_fn().unwrap();
 
+                    // TODO: this can just be generalized coercion...
                     let ret_value = if fn_ty.ret.is_unit()
                         && !self.ty_of(last_value).is_unit()
                     {
