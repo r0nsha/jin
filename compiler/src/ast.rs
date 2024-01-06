@@ -336,6 +336,15 @@ pub enum Subpat {
     Named(Word, MatchPat),
 }
 
+impl Spanned for Subpat {
+    fn span(&self) -> Span {
+        match self {
+            Subpat::Positional(p) => p.span(),
+            Subpat::Named(n, p) => n.span().merge(p.span()),
+        }
+    }
+}
+
 impl ImportName {
     pub fn name(&self) -> Word {
         self.alias.unwrap_or(self.word)

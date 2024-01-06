@@ -765,6 +765,7 @@ impl<'a> Parser<'a> {
         &mut self,
     ) -> DiagnosticResult<(Vec<Subpat>, bool)> {
         let mut is_exhaustive = true;
+        let mut passed_named_pat = false;
 
         let (subpats, _) = self.parse_list(
             TokenKind::OpenParen,
@@ -772,15 +773,49 @@ impl<'a> Parser<'a> {
             |this| {
                 if this.is(TokenKind::DotDot) {
                     is_exhaustive = false;
-                    Ok(ControlFlow::Break(()))
-                } else {
-                    let pat = this.parse_match_pat()?;
-                    Ok(ControlFlow::Continue(Subpat::Positional(pat)))
+                    return Ok(ControlFlow::Break(()));
                 }
+
+                let subpat = this.parse_match_adt_subpat()?;
+
+                match subpat {
+                    Subpat::Positional(_) if passed_named_pat => {
+                        return Err(Diagnostic::error()
+                            .with_message(
+                                "positional patterns are not allowed after \
+                                 named patterns",
+                            )
+                            .with_label(
+                                Label::primary(subpat.span()).with_message(
+                                    "unexpected positional pattern",
+                                ),
+                            ));
+                    }
+                    Subpat::Positional(_) => (),
+                    Subpat::Named(_, _) => passed_named_pat = true,
+                }
+
+                Ok(ControlFlow::Continue(subpat))
             },
         )?;
 
         Ok((subpats, is_exhaustive))
+    }
+
+    fn parse_match_adt_subpat(&mut self) -> DiagnosticResult<Subpat> {
+        if self.is_ident() {
+            let name = self.last_token().word();
+
+            if self.is(TokenKind::Colon) {
+                let pat = self.parse_match_pat()?;
+                return Ok(Subpat::Named(name, pat));
+            }
+
+            self.back();
+        }
+
+        let pat = self.parse_match_pat()?;
+        Ok(Subpat::Positional(pat))
     }
 
     fn parse_loop(&mut self) -> DiagnosticResult<Expr> {
@@ -908,7 +943,7 @@ impl<'a> Parser<'a> {
                 return Ok(CallArg::Named(ident_tok.word(), expr));
             }
 
-            self.prev();
+            self.back();
         }
 
         let expr = self.parse_expr()?;
@@ -1077,7 +1112,7 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
-    pub(super) fn prev(&mut self) {
+    pub(super) fn back(&mut self) {
         self.pos -= 1;
     }
 
