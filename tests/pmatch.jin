@@ -109,6 +109,14 @@ fn print(box: &Box) unit = {
 	printf("Box(%d)\n".ptr, box.value)
 }
 
+fn print(bag: &Bag) unit = {
+	match bag {
+		Bag(a, b) -> {
+			printf("Bag(a: Box(%d), b: Box(%d))\n".ptr, a.value, b.value)
+		}
+	}
+}
+
 fn print(value: int) unit = {
 	printf("%d\n".ptr, value)
 }

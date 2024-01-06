@@ -212,7 +212,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
 
         let cond = Self::cond_value(&rows);
 
-        match Type::from_cond(self.cx, cond) {
+        match Type::from_cond(self.cx, cond, self.cx.ty_of(cond)) {
             Type::Int => self.compile_int_decision(rows, cond),
             Type::Str => self.compile_str_decision(rows, cond),
             Type::Finite(cases) => {
@@ -466,9 +466,7 @@ impl TypeCase {
 }
 
 impl Type {
-    fn from_cond(cx: &mut LowerBody<'_, '_>, cond: ValueId) -> Self {
-        let ty = cx.ty_of(cond);
-
+    fn from_cond(cx: &mut LowerBody<'_, '_>, cond: ValueId, ty: Ty) -> Self {
         match ty.kind() {
             TyKind::Unit => {
                 Self::Finite(vec![TypeCase::new(Ctor::Unit, vec![])])
@@ -504,8 +502,8 @@ impl Type {
                     }
                 }
             }
+            TyKind::Ref(ty, _) => Self::from_cond(cx, cond, *ty),
             TyKind::Fn(_)
-            | TyKind::Ref(_, _)
             | TyKind::RawPtr(_)
             | TyKind::Float(_)
             | TyKind::Never

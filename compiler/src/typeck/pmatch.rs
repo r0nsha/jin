@@ -95,6 +95,8 @@ impl<'db> Typeck<'db> {
         pat_ty: Ty,
         parent_span: Span,
     ) -> TypeckResult<hir::MatchPat> {
+        let pat_ty = pat_ty.auto_deref();
+
         match pat {
             ast::MatchPat::Name(word, mutability) => {
                 let id = self.define_def(
@@ -157,6 +159,7 @@ impl<'db> Typeck<'db> {
     }
 
     #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_lines)]
     fn check_match_pat_adt(
         &mut self,
         env: &mut Env,
