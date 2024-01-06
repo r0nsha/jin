@@ -3,7 +3,7 @@ use ustr::{Ustr, UstrMap};
 
 use crate::{
     ast,
-    db::{AdtField, Def, DefKind},
+    db::{AdtField, Def, DefId, DefKind},
     diagnostics::{Diagnostic, Label},
     hir,
     middle::Vis,
@@ -81,32 +81,44 @@ impl<'db> Typeck<'db> {
         expected_ty: Option<Ty>,
     ) -> TypeckResult<hir::MatchArm> {
         env.with_anon_scope(ScopeKind::Block, |env| {
-            let pat =
-                self.check_match_pat(env, &case.pat, expr_ty, expr_span)?;
+            let mut names = UstrMap::default();
+            let pat = self.check_match_pat(
+                env, &case.pat, expr_ty, expr_span, &mut names,
+            )?;
             let expr = self.check_expr(env, &case.expr, expected_ty)?;
             Ok(hir::MatchArm { pat, expr: Box::new(expr) })
         })
     }
 
+    #[allow(clippy::too_many_lines)]
     fn check_match_pat(
         &mut self,
         env: &mut Env,
         pat: &ast::MatchPat,
         pat_ty: Ty,
         parent_span: Span,
+        pat_names: &mut UstrMap<DefId>,
     ) -> TypeckResult<hir::MatchPat> {
         let derefed_ty = pat_ty.auto_deref();
 
         match pat {
             ast::MatchPat::Name(word, mutability) => {
-                let id = self.define_def(
-                    env,
-                    Vis::Private,
-                    DefKind::Variable,
-                    *word,
-                    *mutability,
-                    pat_ty,
-                )?;
+                let id = if let Some(id) = pat_names.get(&word.name()) {
+                    *id
+                } else {
+                    let id = self.define_def(
+                        env,
+                        Vis::Private,
+                        DefKind::Variable,
+                        *word,
+                        *mutability,
+                        pat_ty,
+                    )?;
+
+                    pat_names.insert(word.name(), id);
+
+                    id
+                };
 
                 Ok(hir::MatchPat::Name(id, word.span()))
             }
@@ -154,11 +166,14 @@ impl<'db> Typeck<'db> {
                     *span,
                     pat_ty,
                     parent_span,
+                    pat_names,
                 ),
             ast::MatchPat::Or(pats, span) => {
                 let pats: Vec<_> = pats
                     .iter()
-                    .map(|pat| self.check_match_pat(env, pat, pat_ty, *span))
+                    .map(|pat| {
+                        self.check_match_pat(env, pat, pat_ty, *span, pat_names)
+                    })
                     .try_collect()?;
 
                 let all_bound: Vec<_> = pats
@@ -211,6 +226,7 @@ impl<'db> Typeck<'db> {
         span: Span,
         pat_ty: Ty,
         parent_span: Span,
+        names: &mut UstrMap<DefId>,
     ) -> TypeckResult<hir::MatchPat> {
         let id = self.path_lookup(env, path)?;
         let def = &self.db[id];
@@ -318,6 +334,7 @@ impl<'db> Typeck<'db> {
                         subpat,
                         field_ty,
                         field.span(),
+                        names,
                     )?;
 
                     new_subpats[field_idx] = new_subpat;
