@@ -240,8 +240,8 @@ impl Body {
     }
 
     pub fn cleanup(&mut self) {
-        self.remove_unused_blocks();
         self.connect_implicit_successors();
+        self.remove_unused_blocks();
     }
 
     fn remove_unused_blocks(&mut self) {
