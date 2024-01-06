@@ -710,7 +710,7 @@ impl<'a> Parser<'a> {
 
         if self.peek_is(TokenKind::Pipe) {
             let start_span = pat.span();
-            let mut pats = vec![];
+            let mut pats = vec![pat];
 
             while self.is(TokenKind::Pipe) {
                 pats.push(self.parse_match_pat_atom()?);

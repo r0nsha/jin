@@ -156,10 +156,44 @@ impl<'db> Typeck<'db> {
                     parent_span,
                 ),
             ast::MatchPat::Or(pats, span) => {
-                let pats = pats
+                let pats: Vec<_> = pats
                     .iter()
                     .map(|pat| self.check_match_pat(env, pat, pat_ty, *span))
                     .try_collect()?;
+
+                let all_bound: Vec<_> = pats
+                    .iter()
+                    .map(|pat| {
+                        let mut bound = UstrMap::default();
+                        self.collect_bound_names_in_pat(pat, &mut bound);
+                        bound
+                    })
+                    .collect();
+
+                let mut name_counts: UstrMap<usize> = all_bound
+                    .iter()
+                    .flat_map(|b| b.keys().map(|name| (*name, 0)))
+                    .collect();
+
+                for bound in all_bound {
+                    for name in bound.into_keys() {
+                        *name_counts.get_mut(&name).unwrap() += 1;
+                    }
+                }
+
+                for (name, count) in name_counts {
+                    if count < pats.len() {
+                        return Err(Diagnostic::error()
+                            .with_message(format!(
+                                "identifier `{name}` is not bound in all \
+                                 alternatives"
+                            ))
+                            .with_label(
+                                Label::primary(*span)
+                                    .with_message("in these patterns"),
+                            ));
+                    }
+                }
 
                 Ok(hir::MatchPat::Or(pats, *span))
             }
@@ -362,6 +396,11 @@ impl<'db> Typeck<'db> {
             }
             hir::MatchPat::Adt(_, subpats, _) => {
                 for pat in subpats {
+                    self.collect_bound_names_in_pat(pat, bound);
+                }
+            }
+            hir::MatchPat::Or(pats, _) => {
+                for pat in pats {
                     self.collect_bound_names_in_pat(pat, bound);
                 }
             }
