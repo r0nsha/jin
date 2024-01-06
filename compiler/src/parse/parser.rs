@@ -706,15 +706,20 @@ impl<'a> Parser<'a> {
     fn parse_match_pat(&mut self) -> DiagnosticResult<MatchPat> {
         self.skip(TokenKind::Pipe);
 
-        let mut pat = self.parse_match_pat_atom()?;
+        let pat = self.parse_match_pat_atom()?;
 
-        while self.is(TokenKind::Pipe) {
-            let or_pat = self.parse_match_pat_atom()?;
-            let span = pat.span().merge(or_pat.span());
-            pat = MatchPat::Or(Box::new(pat), Box::new(or_pat), span);
+        if self.peek_is(TokenKind::Pipe) {
+            let start_span = pat.span();
+            let mut pats = vec![];
+
+            while self.is(TokenKind::Pipe) {
+                pats.push(self.parse_match_pat_atom()?);
+            }
+
+            Ok(MatchPat::Or(pats, start_span.merge(self.last_span())))
+        } else {
+            Ok(pat)
         }
-
-        Ok(pat)
     }
 
     fn parse_match_pat_atom(&mut self) -> DiagnosticResult<MatchPat> {

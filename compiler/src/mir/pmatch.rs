@@ -580,6 +580,7 @@ pub(super) enum Pat {
     Ctor(Ctor, Vec<Pat>, Span),
     Name(DefId, Span),
     Wildcard(Span),
+    Or(Vec<Pat>, Span),
 }
 
 impl Spanned for Pat {
@@ -589,18 +590,19 @@ impl Spanned for Pat {
             | Self::Str(_, span)
             | Self::Ctor(_, _, span)
             | Self::Name(_, span)
-            | Self::Wildcard(span) => *span,
+            | Self::Wildcard(span)
+            | Self::Or(_, span) => *span,
         }
     }
 }
 
 impl Pat {
     pub(super) fn flatten_or(self, row: Row) -> Vec<(Self, Row)> {
-        // if let Self::Or(pats, _) = self {
-        //     pats.into_iter().map(|p| (p, row.clone())).collect()
-        // } else {
-        vec![(self, row)]
-        // }
+        if let Self::Or(pats, _) = self {
+            pats.into_iter().map(|p| (p, row.clone())).collect()
+        } else {
+            vec![(self, row)]
+        }
     }
 
     pub(super) fn from_hir(pat: &hir::MatchPat) -> Self {
@@ -617,11 +619,11 @@ impl Pat {
             hir::MatchPat::Int(value, span) => Self::Int(*value, *span),
             hir::MatchPat::Str(value, span) => Self::Str(*value, *span),
             hir::MatchPat::Adt(adt_id, pats, span) => {
-                let args: Vec<_> = pats.iter().map(Pat::from_hir).collect();
-                Pat::Ctor(Ctor::Struct(*adt_id), args, *span)
+                let args: Vec<_> = pats.iter().map(Self::from_hir).collect();
+                Self::Ctor(Ctor::Struct(*adt_id), args, *span)
             }
-            hir::MatchPat::Or(left, right, span) => {
-                todo!()
+            hir::MatchPat::Or(pats, span) => {
+                Self::Or(pats.iter().map(Self::from_hir).collect(), *span)
             }
         }
     }

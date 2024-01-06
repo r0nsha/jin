@@ -70,10 +70,9 @@ fn match_uint(value: uint) unit = {
 
 fn match_str(value: str) unit = {
 	match value {
-		| "foo" | "bar" -> printf("(prefixed) i'm 'foo' or 'bar\n".ptr),
-		"foo" | "bar" -> printf("i'm 'foo' or 'bar\n".ptr),
 		"foo" -> printf("i'm 'foo'\n".ptr),
 		"bar" -> printf("i'm 'bar'\n".ptr),
+		"foo" | "bar" -> printf("i'm 'foo' or 'bar\n".ptr),
 		x -> printf("str is '%s'\n".ptr, x.ptr),
 	}
 }
