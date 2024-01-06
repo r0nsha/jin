@@ -704,6 +704,20 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_match_pat(&mut self) -> DiagnosticResult<MatchPat> {
+        self.skip(TokenKind::Pipe);
+
+        let mut pat = self.parse_match_pat_atom()?;
+
+        while self.is(TokenKind::Pipe) {
+            let or_pat = self.parse_match_pat_atom()?;
+            let span = pat.span().merge(or_pat.span());
+            pat = MatchPat::Or(Box::new(pat), Box::new(or_pat), span);
+        }
+
+        Ok(pat)
+    }
+
+    fn parse_match_pat_atom(&mut self) -> DiagnosticResult<MatchPat> {
         if let Some(mutability) = self.parse_optional_mutability() {
             let word = self.eat_ident()?.word();
             Ok(MatchPat::Name(word, mutability))
@@ -1046,6 +1060,11 @@ impl<'a> Parser<'a> {
             }
             _ => None,
         }
+    }
+
+    #[inline]
+    pub(super) fn skip(&mut self, expected: TokenKind) -> bool {
+        self.is(expected)
     }
 
     #[inline]

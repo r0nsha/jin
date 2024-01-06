@@ -155,6 +155,11 @@ impl<'db> Typeck<'db> {
                     pat_ty,
                     parent_span,
                 ),
+            ast::MatchPat::Or(left, right, span) => {
+                let left = self.check_match_pat(env, left, pat_ty, *span)?;
+                let right = self.check_match_pat(env, right, pat_ty, *span)?;
+                Ok(hir::MatchPat::Or(Box::new(left), Box::new(right), *span))
+            }
         }
     }
 

@@ -620,6 +620,9 @@ impl Pat {
                 let args: Vec<_> = pats.iter().map(Pat::from_hir).collect();
                 Pat::Ctor(Ctor::Struct(*adt_id), args, *span)
             }
+            hir::MatchPat::Or(left, right, span) => {
+                todo!()
+            }
         }
     }
 }
