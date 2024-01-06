@@ -20,7 +20,7 @@ use ustr::UstrMap;
 use crate::{
     ast::{self, Ast},
     counter::Counter,
-    db::{Adt, AdtKind, Db, DefId, DefKind, ModuleId, StructDef, StructField},
+    db::{Adt, AdtField, AdtKind, Db, DefId, DefKind, ModuleId, StructDef},
     diagnostics::{Diagnostic, Label},
     hir,
     hir::{ExprId, FnParam, Hir},
@@ -518,7 +518,7 @@ impl<'db> Typeck<'db> {
                     ));
             }
 
-            fields.push(StructField {
+            fields.push(AdtField {
                 name: field.name,
                 vis: field.vis,
                 ty: self.db.types.unknown,
@@ -1360,21 +1360,7 @@ impl<'db> Typeck<'db> {
                         if let Some(field) =
                             struct_def.field_by_name(field.name().as_str())
                         {
-                            if field.vis == Vis::Private
-                                && self.db[adt.def_id].scope.module_id
-                                    != env.module_id()
-                            {
-                                return Err(Diagnostic::error()
-                                    .with_message(format!(
-                                        "field `{}` of type `{}` is private",
-                                        field.name, adt.name
-                                    ))
-                                    .with_label(
-                                        Label::primary(span)
-                                            .with_message("private field"),
-                                    ));
-                            }
-
+                            self.check_field_access(env, adt, field, span)?;
                             adt.instantiation(targs).fold(field.ty)
                         } else {
                             return Err(errors::field_not_found(
@@ -1407,6 +1393,29 @@ impl<'db> Typeck<'db> {
             res_ty,
             span,
         ))
+    }
+
+    fn check_field_access(
+        &self,
+        env: &Env,
+        adt: &Adt,
+        field: &AdtField,
+        span: Span,
+    ) -> TypeckResult<()> {
+        if field.vis == Vis::Private
+            && self.db[adt.def_id].scope.module_id != env.module_id()
+        {
+            return Err(Diagnostic::error()
+                .with_message(format!(
+                    "field `{}` of type `{}` is private",
+                    field.name, adt.name
+                ))
+                .with_label(
+                    Label::primary(span).with_message("private field"),
+                ));
+        }
+
+        Ok(())
     }
 
     fn lookup_fn_for_call(

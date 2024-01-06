@@ -475,7 +475,7 @@ impl Adt {
     }
 
     #[must_use]
-    pub fn is_infinitely_sized(&self) -> Option<&StructField> {
+    pub fn is_infinitely_sized(&self) -> Option<&AdtField> {
         match &self.kind {
             AdtKind::Struct(s) => s.is_infinitely_sized(),
         }
@@ -523,7 +523,7 @@ impl AdtKind {
 #[derive(Debug, Clone)]
 pub struct StructDef {
     pub id: AdtId,
-    pub fields: Vec<StructField>,
+    pub fields: Vec<AdtField>,
     pub kind: StructKind,
     pub ctor_ty: Ty,
     pub ctor_vis: Vis,
@@ -548,7 +548,7 @@ impl StructKind {
 impl StructDef {
     pub fn new(
         id: AdtId,
-        fields: Vec<StructField>,
+        fields: Vec<AdtField>,
         kind: StructKind,
         ctor_ty: Ty,
     ) -> Self {
@@ -561,7 +561,7 @@ impl StructDef {
         Self { id, fields, kind, ctor_ty, ctor_vis }
     }
 
-    pub fn field_by_name(&self, name: &str) -> Option<&StructField> {
+    pub fn field_by_name(&self, name: &str) -> Option<&AdtField> {
         self.fields.iter().find(|f| f.name.name() == name)
     }
 
@@ -577,7 +577,7 @@ impl StructDef {
         }));
     }
 
-    pub fn is_infinitely_sized(&self) -> Option<&StructField> {
+    pub fn is_infinitely_sized(&self) -> Option<&AdtField> {
         fn contains_struct(ty: Ty, adt_id: AdtId) -> bool {
             match ty.kind() {
                 TyKind::Fn(fun) => {
@@ -602,13 +602,13 @@ impl StructDef {
 }
 
 #[derive(Debug, Clone)]
-pub struct StructField {
+pub struct AdtField {
     pub name: Word,
     pub vis: Vis,
     pub ty: Ty,
 }
 
-impl Spanned for StructField {
+impl Spanned for AdtField {
     fn span(&self) -> Span {
         self.name.span()
     }

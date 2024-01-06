@@ -3,8 +3,8 @@ use ustr::{Ustr, UstrMap};
 
 use crate::{
     ast,
-    db::{Def, DefKind, StructField},
-    diagnostics::{Diagnostic, DiagnosticResult, Label},
+    db::{AdtField, Def, DefKind},
+    diagnostics::{Diagnostic, Label},
     hir,
     middle::Vis,
     span::{Span, Spanned as _},
@@ -206,46 +206,54 @@ impl<'db> Typeck<'db> {
                     vec![hir::MatchPat::Wildcard(span); fields.len()];
 
                 for (idx, subpat) in subpats.iter().enumerate() {
-                    let (field_idx, field, subpat) = match subpat {
-                        ast::Subpat::Positional(subpat) => {
-                            if let Some(field) = fields.get(idx) {
-                                use_field(field.name.name(), subpat.span())?;
-                                (idx, field, subpat)
-                            } else {
-                                return Err(Diagnostic::error()
-                                    .with_message(format!(
-                                        "expected at most {} patterns for \
-                                         type `{}`",
-                                        fields.len(),
-                                        adt_name
-                                    ))
-                                    .with_label(
-                                        Label::primary(subpat.span())
-                                            .with_message(
-                                                "pattern doesn't map to any \
-                                                 field",
-                                            ),
+                    let (field_idx, field, subpat, field_use_span) =
+                        match subpat {
+                            ast::Subpat::Positional(subpat) => {
+                                if let Some(field) = fields.get(idx) {
+                                    (idx, field, subpat, subpat.span())
+                                } else {
+                                    return Err(Diagnostic::error()
+                                        .with_message(format!(
+                                            "expected at most {} patterns for \
+                                             type `{}`",
+                                            fields.len(),
+                                            adt_name
+                                        ))
+                                        .with_label(
+                                            Label::primary(subpat.span())
+                                                .with_message(
+                                                    "pattern doesn't map to \
+                                                     any field",
+                                                ),
+                                        ));
+                                }
+                            }
+                            ast::Subpat::Named(name, subpat) => {
+                                if let Some((field_idx, field)) = fields
+                                    .iter()
+                                    .enumerate()
+                                    .find(|(_, f)| f.name.name() == name.name())
+                                {
+                                    (field_idx, field, subpat, name.span())
+                                } else {
+                                    return Err(field_not_found(
+                                        self.db,
+                                        self.db[adt_id].ty(),
+                                        span,
+                                        *name,
                                     ));
+                                }
                             }
-                        }
-                        ast::Subpat::Named(name, subpat) => {
-                            if let Some((field_idx, field)) = fields
-                                .iter()
-                                .enumerate()
-                                .find(|(_, f)| f.name.name() == name.name())
-                            {
-                                use_field(name.name(), name.span())?;
-                                (field_idx, field, subpat)
-                            } else {
-                                return Err(field_not_found(
-                                    self.db,
-                                    self.db[adt_id].ty(),
-                                    span,
-                                    *name,
-                                ));
-                            }
-                        }
-                    };
+                        };
+
+                    use_field(field.name.name(), field_use_span)?;
+
+                    self.check_field_access(
+                        env,
+                        &self.db[adt_id],
+                        field,
+                        field_use_span,
+                    )?;
 
                     let new_subpat = self.check_match_pat(
                         env,
@@ -284,10 +292,10 @@ impl<'db> Typeck<'db> {
     // TODO: WordMap
     fn check_match_pat_adt_missing_fields(
         adt_name: Ustr,
-        fields: &[StructField],
+        fields: &[AdtField],
         used_fields: &UstrMap<Span>,
         span: Span,
-    ) -> DiagnosticResult<()> {
+    ) -> TypeckResult<()> {
         let missing_fields: Vec<_> = fields
             .iter()
             .filter(|f| !used_fields.contains_key(&f.name.name()))
@@ -340,7 +348,7 @@ impl<'db> Typeck<'db> {
     fn check_match_pat_adt_bound_once(
         &self,
         subpats: &[hir::MatchPat],
-    ) -> DiagnosticResult<()> {
+    ) -> TypeckResult<()> {
         let mut bound = UstrMap::default();
 
         for pat in subpats {
