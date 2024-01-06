@@ -7,7 +7,7 @@ use crate::{
     db::{AdtId, AdtKind, DefId},
     diagnostics::{Diagnostic, Label, Severity},
     hir,
-    mir::{lower::LowerBody, BlockId, Const, ValueId},
+    mir::{lower::LowerBody, BlockId, Const, ValueId, ValueKind},
     span::{Span, Spanned},
     ty::{fold::TyFolder as _, Ty, TyKind},
 };

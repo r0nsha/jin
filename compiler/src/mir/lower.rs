@@ -1859,12 +1859,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         ty: Ty,
     ) -> ValueId {
         self.field(of, name).unwrap_or_else(|| {
-            let kind = ValueKind::Field(of, name);
-            if ty.is_ref() {
-                self.create_value(ty, kind)
-            } else {
-                self.create_untracked_value(ty, kind)
-            }
+            self.create_untracked_value(ty, ValueKind::Field(of, name))
         })
     }
 
