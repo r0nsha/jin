@@ -116,6 +116,7 @@ fn print(bag: &Bag) unit = {
 		Bag(..) -> {},
 		Bag(a, b) -> {
 			printf("Bag(a: Box(%d), b: Box(%d))\n".ptr, a.value, b.value)
+			{}
 		}
 	}
 }

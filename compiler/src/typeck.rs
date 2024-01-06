@@ -921,7 +921,7 @@ impl<'db> Typeck<'db> {
                         // If the expected type is `Unit` and the actual result type isn't,
                         // we add a `unit` literal at the end of the block to accommodate.
                         // This is useful for functions which return `Unit`, and if chains.
-                        // TODO: this can just be generalized coercion...
+                        // TODO: this can just be generalized coercion... CoercionKind::AnyToUnit
                         if let Some(expected_ty) = expected_ty {
                             if self.normalize(expected_ty).is_unit()
                                 && !self.normalize(ty).is_unit()
