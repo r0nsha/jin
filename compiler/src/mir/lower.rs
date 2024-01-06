@@ -644,7 +644,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Field(access) => {
                 let name = access.field.name();
                 let value = self.lower_expr(&access.expr);
-                self.field_or_create_untracked(value, name, expr.ty)
+                self.field_or_create(value, name, expr.ty)
             }
             hir::ExprKind::Name(name) => {
                 self.lower_name(name.id, &name.instantiation)
@@ -1851,14 +1851,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.body.value(value).ty
     }
 
-    pub fn field_or_create_untracked(
+    pub fn field_or_create(
         &mut self,
         of: ValueId,
         name: Ustr,
         ty: Ty,
     ) -> ValueId {
         self.field(of, name).unwrap_or_else(|| {
-            self.create_untracked_value(ty, ValueKind::Field(of, name))
+            let kind = ValueKind::Field(of, name);
+            if ty.is_ref() {
+                self.create_value(ty, kind)
+            } else {
+                self.create_untracked_value(ty, kind)
+            }
         })
     }
 

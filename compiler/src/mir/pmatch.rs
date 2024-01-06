@@ -466,8 +466,12 @@ impl TypeCase {
 }
 
 impl Type {
-    fn from_cond(cx: &mut LowerBody<'_, '_>, cond: ValueId, ty: Ty) -> Self {
-        match ty.kind() {
+    fn from_cond(
+        cx: &mut LowerBody<'_, '_>,
+        cond: ValueId,
+        matched_ty: Ty,
+    ) -> Self {
+        match matched_ty.kind() {
             TyKind::Unit => {
                 Self::Finite(vec![TypeCase::new(Ctor::Unit, vec![])])
             }
@@ -478,6 +482,10 @@ impl Type {
             TyKind::Int(_) | TyKind::Uint(_) => Self::Int,
             TyKind::Str => Self::Str,
             TyKind::Adt(adt_id, targs) => {
+                let ref_mutability = match cx.ty_of(cond).kind() {
+                    TyKind::Ref(_, mutability) => Some(*mutability),
+                    _ => None,
+                };
                 let adt = &cx.cx.db[*adt_id];
                 let instantiation = adt.instantiation(targs);
                 let mut folder = instantiation.folder();
@@ -487,7 +495,17 @@ impl Type {
                         let fields_to_create: Vec<(Ustr, Ty)> = struct_def
                             .fields
                             .iter()
-                            .map(|f| (f.name.name(), folder.fold(f.ty)))
+                            .map(|f| {
+                                let field_ty = folder.fold(f.ty);
+                                let field_ty =
+                                    if let Some(mutability) = ref_mutability {
+                                        field_ty.create_ref(mutability)
+                                    } else {
+                                        field_ty
+                                    };
+
+                                (f.name.name(), field_ty)
+                            })
                             .collect();
 
                         Self::Finite(vec![TypeCase::new(
@@ -495,7 +513,7 @@ impl Type {
                             fields_to_create
                                 .into_iter()
                                 .map(|(name, ty)| {
-                                    cx.field_or_create_untracked(cond, name, ty)
+                                    cx.field_or_create(cond, name, ty)
                                 })
                                 .collect(),
                         )])
