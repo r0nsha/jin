@@ -3,7 +3,7 @@ use ustr::{Ustr, UstrMap};
 
 use crate::{
     ast,
-    db::{DefKind, StructField},
+    db::{Def, DefKind, StructField},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     middle::Vis,
@@ -266,6 +266,8 @@ impl<'db> Typeck<'db> {
                     )?;
                 }
 
+                self.check_match_pat_adt_bound_once(&new_subpats)?;
+
                 Ok(hir::MatchPat::Adt(adt_id, new_subpats, span))
             }
             _ => Err(Diagnostic::error()
@@ -279,6 +281,7 @@ impl<'db> Typeck<'db> {
         }
     }
 
+    // TODO: WordMap
     fn check_match_pat_adt_missing_fields(
         adt_name: Ustr,
         fields: &[StructField],
@@ -312,5 +315,53 @@ impl<'db> Typeck<'db> {
                      pattern",
                 ))
         }
+    }
+
+    // TODO: WordMap
+    fn collect_bound_names_in_pat(
+        &self,
+        pat: &hir::MatchPat,
+        bound: &mut UstrMap<Vec<Span>>,
+    ) {
+        match pat {
+            hir::MatchPat::Name(id, _) => {
+                let Def { name, span, .. } = self.db[*id];
+                bound.entry(name).or_default().push(span);
+            }
+            hir::MatchPat::Adt(_, subpats, _) => {
+                for pat in subpats {
+                    self.collect_bound_names_in_pat(pat, bound);
+                }
+            }
+            _ => (),
+        }
+    }
+
+    fn check_match_pat_adt_bound_once(
+        &self,
+        subpats: &[hir::MatchPat],
+    ) -> DiagnosticResult<()> {
+        let mut bound = UstrMap::default();
+
+        for pat in subpats {
+            self.collect_bound_names_in_pat(pat, &mut bound);
+        }
+
+        for (name, spans) in bound {
+            if spans.len() > 1 {
+                return Err(Diagnostic::error()
+                    .with_message(format!(
+                        "identifier `{name}` is bound more than once in the \
+                         same pattern"
+                    ))
+                    .with_labels(
+                        spans
+                            .into_iter()
+                            .map(|s| Label::primary(s).with_message("here")),
+                    ));
+            }
+        }
+
+        Ok(())
     }
 }

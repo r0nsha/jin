@@ -362,6 +362,7 @@ impl<'db> Typeck<'db> {
         let ty_params = self.check_ty_params(env, &sig.ty_params)?;
 
         let mut params = vec![];
+        // TODO: WordMap
         let mut defined_params = UstrMap::<Span>::default();
 
         for p in &sig.params {
@@ -493,6 +494,7 @@ impl<'db> Typeck<'db> {
         struct_def: &ast::StructTyDef,
     ) -> Result<(), Diagnostic> {
         let mut fields = vec![];
+        // TODO: WordMap
         let mut defined_fields = UstrMap::<Span>::default();
 
         for field in &struct_def.fields {
@@ -1651,6 +1653,7 @@ impl<'db> Typeck<'db> {
         ty_params: &[ast::TyParam],
     ) -> TypeckResult<Vec<TyParam>> {
         let mut new_ty_params = vec![];
+        // TODO: WordMap
         let mut defined_ty_params = UstrMap::<Span>::default();
 
         for tp in ty_params {
