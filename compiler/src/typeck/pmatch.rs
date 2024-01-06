@@ -3,7 +3,7 @@ use ustr::{Ustr, UstrMap};
 
 use crate::{
     ast,
-    db::{AdtField, Def, DefId, DefKind},
+    db::{AdtField, DefId, DefKind},
     diagnostics::{Diagnostic, Label},
     hir,
     middle::Vis,
@@ -406,9 +406,8 @@ impl<'db> Typeck<'db> {
         bound: &mut UstrMap<Vec<Span>>,
     ) {
         match pat {
-            hir::MatchPat::Name(id, _) => {
-                let Def { name, span, .. } = self.db[*id];
-                bound.entry(name).or_default().push(span);
+            hir::MatchPat::Name(id, span) => {
+                bound.entry(self.db[*id].name).or_default().push(*span);
             }
             hir::MatchPat::Adt(_, subpats, _) => {
                 for pat in subpats {
