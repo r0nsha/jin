@@ -105,6 +105,39 @@ impl<'db> Typeck<'db> {
         match pat {
             ast::MatchPat::Name(word, mutability) => {
                 let id = if let Some(id) = pat_names.get(&word.name()) {
+                    // We make sure that names in all alternatives are bound to the same type
+                    let expected_ty = self.db[*id].ty;
+
+                    if let Err(err) = self
+                        .at(Obligation::exprs(
+                            word.span(),
+                            self.db[*id].span,
+                            word.span(),
+                        ))
+                        .eq(expected_ty, pat_ty)
+                    {
+                        return Err(Diagnostic::error()
+                            .with_message(format!(
+                                "in the same arm, the identifier `{word}` \
+                                 must have the same type in all alternatives",
+                            ))
+                            .with_label(
+                                Label::primary(word.span()).with_message(
+                                    format!(
+                                        "has type `{}` here",
+                                        err.found.display(self.db)
+                                    ),
+                                ),
+                            )
+                            .with_label(
+                                Label::secondary(self.db[*id].span)
+                                    .with_message(format!(
+                                        "previously introduce with type `{}`",
+                                        err.expected.display(self.db)
+                                    )),
+                            ));
+                    }
+
                     *id
                 } else {
                     let id = self.define_def(
