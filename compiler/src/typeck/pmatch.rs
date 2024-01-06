@@ -1,5 +1,5 @@
 use itertools::Itertools;
-use ustr::UstrMap;
+use ustr::{Ustr, UstrMap};
 
 use crate::{
     ast,
@@ -17,7 +17,6 @@ use crate::{
         unify::Obligation,
         Typeck, TypeckResult,
     },
-    word::Word,
 };
 
 impl<'db> Typeck<'db> {
@@ -156,11 +155,11 @@ impl<'db> Typeck<'db> {
                             self.db[adt_id].as_struct().unwrap().fields.clone();
 
                         let mut used_fields = UstrMap::default();
-                        let mut use_field = |name: Word| {
+                        let mut use_field = |name: Ustr, span: Span| {
                             if let Some(prev_span) =
-                                used_fields.insert(name.name(), name.span())
+                                used_fields.insert(name, span)
                             {
-                                let dup_span = name.span();
+                                let dup_span = span;
 
                                 Err(Diagnostic::error()
                                     .with_message(format!(
@@ -192,6 +191,10 @@ impl<'db> Typeck<'db> {
                             let (field_idx, field, subpat) = match subpat {
                                 ast::Subpat::Positional(subpat) => {
                                     if let Some(field) = fields.get(idx) {
+                                        use_field(
+                                            field.name.name(),
+                                            subpat.span(),
+                                        )?;
                                         (idx, field, subpat)
                                     } else {
                                         return Err(Diagnostic::error()
@@ -218,12 +221,13 @@ impl<'db> Typeck<'db> {
                                             f.name.name() == name.name()
                                         })
                                     {
+                                        use_field(name.name(), name.span())?;
                                         (field_idx, field, subpat)
                                     } else {
                                         return Err(field_not_found(
                                             self.db,
                                             self.db[adt_id].ty(),
-                                            subpat.span(),
+                                            *span,
                                             *name,
                                         ));
                                     }
@@ -238,7 +242,6 @@ impl<'db> Typeck<'db> {
                             )?;
 
                             new_subpats[field_idx] = new_subpat;
-                            use_field(field.name)?;
                         }
 
                         if *is_exhaustive {

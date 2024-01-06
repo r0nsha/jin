@@ -8,23 +8,21 @@ use crate::{
     word::Word,
 };
 
-pub fn field_not_found(
-    db: &Db,
-    expr_ty: Ty,
-    expr_span: Span,
-    field: Word,
-) -> Diagnostic {
+pub fn field_not_found(db: &Db, ty: Ty, span: Span, field: Word) -> Diagnostic {
     Diagnostic::error()
         .with_message(format!(
             "no field `{}` on type `{}`",
             field,
-            expr_ty.display(db)
+            ty.display(db)
         ))
-        .with_label(Label::primary(field.span()).with_message("unknown field"))
-        .with_label(Label::secondary(expr_span).with_message(format!(
-            "expression has type `{}`",
-            expr_ty.display(db)
-        )))
+        .with_label(
+            Label::primary(field.span())
+                .with_message(format!("unknown field `{field}`")),
+        )
+        .with_label(
+            Label::secondary(span)
+                .with_message(format!("has type `{}`", ty.display(db))),
+        )
 }
 
 pub fn name_not_found(
