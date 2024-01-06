@@ -856,12 +856,22 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         for binding in bindings {
             match binding {
                 pmatch::Binding::Name(id, source, span) => {
-                    let binding_value = self.push_inst_with(
-                        self.ty_of(source),
-                        ValueKind::Local(id),
-                        |value| Inst::StackAlloc { value, init: Some(source) },
-                    );
-                    self.try_move(source, span);
+                    let binding_ty = self.cx.db[id].ty;
+
+                    let binding_value = if binding_ty.is_ref() {
+                        self.create_ref(source, binding_ty)
+                    } else {
+                        self.try_move(source, span);
+                        self.push_inst_with(
+                            binding_ty,
+                            ValueKind::Local(id),
+                            |value| Inst::StackAlloc {
+                                value,
+                                init: Some(source),
+                            },
+                        )
+                    };
+
                     self.locals.insert(id, binding_value);
                     self.create_destroy_flag(binding_value);
                 }

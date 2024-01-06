@@ -7,7 +7,7 @@ use crate::{
     db::{AdtId, AdtKind, DefId},
     diagnostics::{Diagnostic, Label, Severity},
     hir,
-    mir::{lower::LowerBody, BlockId, Const, ValueId, ValueKind},
+    mir::{lower::LowerBody, BlockId, Const, ValueId},
     span::{Span, Spanned},
     ty::{fold::TyFolder as _, Ty, TyKind},
 };
@@ -482,10 +482,6 @@ impl Type {
             TyKind::Int(_) | TyKind::Uint(_) => Self::Int,
             TyKind::Str => Self::Str,
             TyKind::Adt(adt_id, targs) => {
-                let ref_mutability = match cx.ty_of(cond).kind() {
-                    TyKind::Ref(_, mutability) => Some(*mutability),
-                    _ => None,
-                };
                 let adt = &cx.cx.db[*adt_id];
                 let instantiation = adt.instantiation(targs);
                 let mut folder = instantiation.folder();
@@ -495,17 +491,7 @@ impl Type {
                         let fields_to_create: Vec<(Ustr, Ty)> = struct_def
                             .fields
                             .iter()
-                            .map(|f| {
-                                let field_ty = folder.fold(f.ty);
-                                let field_ty =
-                                    if let Some(mutability) = ref_mutability {
-                                        field_ty.create_ref(mutability)
-                                    } else {
-                                        field_ty
-                                    };
-
-                                (f.name.name(), field_ty)
-                            })
+                            .map(|f| (f.name.name(), folder.fold(f.ty)))
                             .collect();
 
                         Self::Finite(vec![TypeCase::new(
