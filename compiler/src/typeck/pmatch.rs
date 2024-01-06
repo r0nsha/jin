@@ -95,7 +95,7 @@ impl<'db> Typeck<'db> {
         pat_ty: Ty,
         parent_span: Span,
     ) -> TypeckResult<hir::MatchPat> {
-        let pat_ty = pat_ty.auto_deref();
+        let derefed_ty = pat_ty.auto_deref();
 
         match pat {
             ast::MatchPat::Name(word, mutability) => {
@@ -113,36 +113,36 @@ impl<'db> Typeck<'db> {
             ast::MatchPat::Wildcard(span) => Ok(hir::MatchPat::Wildcard(*span)),
             ast::MatchPat::Unit(span) => {
                 self.at(Obligation::exprs(*span, *span, parent_span))
-                    .eq(self.db.types.unit, pat_ty)?;
+                    .eq(self.db.types.unit, derefed_ty)?;
                 Ok(hir::MatchPat::Unit(*span))
             }
             ast::MatchPat::Bool(value, span) => {
                 self.at(Obligation::exprs(*span, *span, parent_span))
-                    .eq(self.db.types.bool, pat_ty)?;
+                    .eq(self.db.types.bool, derefed_ty)?;
                 Ok(hir::MatchPat::Bool(*value, *span))
             }
             ast::MatchPat::Int(value, span) => {
                 if *value < 0 {
-                    match pat_ty.kind() {
+                    match derefed_ty.kind() {
                         TyKind::Int(_) | TyKind::Infer(InferTy::Int(_)) => (),
                         _ => {
                             return Err(errors::ty_mismatch(
                                 "int",
-                                &pat_ty.to_string(self.db),
+                                &derefed_ty.to_string(self.db),
                                 *span,
                             ))
                         }
                     }
                 } else {
                     self.at(Obligation::exprs(*span, *span, parent_span))
-                        .eq(self.fresh_int_var(), pat_ty)?;
+                        .eq(self.fresh_int_var(), derefed_ty)?;
                 }
 
                 Ok(hir::MatchPat::Int(*value, *span))
             }
             ast::MatchPat::Str(value, span) => {
                 self.at(Obligation::exprs(*span, *span, parent_span))
-                    .eq(self.db.types.str, pat_ty)?;
+                    .eq(self.db.types.str, derefed_ty)?;
                 Ok(hir::MatchPat::Str(*value, *span))
             }
             ast::MatchPat::Adt(path, subpats, is_exhaustive, span) => self
@@ -176,9 +176,12 @@ impl<'db> Typeck<'db> {
         match def.kind.as_ref() {
             &DefKind::Adt(adt_id) => {
                 let adt_name = self.db[adt_id].name.name();
+                let adt_ty = self.db[adt_id].ty();
+                let instantiation =
+                    self.fresh_instantiation(env, adt_ty.collect_params());
 
                 self.at(Obligation::exprs(span, parent_span, span))
-                    .eq(pat_ty, self.db[adt_id].ty())?;
+                    .eq(pat_ty.auto_deref(), instantiation.fold(adt_ty))?;
 
                 let fields =
                     self.db[adt_id].as_struct().unwrap().fields.clone();
@@ -258,10 +261,20 @@ impl<'db> Typeck<'db> {
                         field_use_span,
                     )?;
 
+                    let field_ty = instantiation.fold(field.ty);
+                    let field_ty = match pat_ty.kind() {
+                        TyKind::Ref(_, mutability) => {
+                            // If the parent pattern's type is a reference, the field's type is
+                            // implicitly a reference too.
+                            field_ty.create_ref(*mutability)
+                        }
+                        _ => field_ty,
+                    };
+
                     let new_subpat = self.check_match_pat(
                         env,
                         subpat,
-                        field.ty,
+                        field_ty,
                         field.span(),
                     )?;
 
