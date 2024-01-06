@@ -333,6 +333,7 @@ impl Spanned for MatchPat {
 #[derive(Debug, Clone)]
 pub enum Subpat {
     Positional(MatchPat),
+    Named(Word, MatchPat),
 }
 
 impl ImportName {

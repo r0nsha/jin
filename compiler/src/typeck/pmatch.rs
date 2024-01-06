@@ -13,9 +13,11 @@ use crate::{
         coerce::CoerceExt as _,
         env::{Env, ScopeKind},
         errors,
+        errors::field_not_found,
         unify::Obligation,
         Typeck, TypeckResult,
     },
+    word::Word,
 };
 
 impl<'db> Typeck<'db> {
@@ -152,7 +154,36 @@ impl<'db> Typeck<'db> {
 
                         let fields =
                             self.db[adt_id].as_struct().unwrap().fields.clone();
+
                         let mut used_fields = UstrMap::default();
+                        let mut use_field = |name: Word| {
+                            if let Some(prev_span) =
+                                used_fields.insert(name.name(), name.span())
+                            {
+                                let dup_span = name.span();
+
+                                Err(Diagnostic::error()
+                                    .with_message(format!(
+                                        "field `{name}` has already been \
+                                         matched"
+                                    ))
+                                    .with_label(
+                                        Label::primary(dup_span).with_message(
+                                            format!(
+                                                "`{name}` matched again here"
+                                            ),
+                                        ),
+                                    )
+                                    .with_label(
+                                        Label::secondary(prev_span)
+                                            .with_message(format!(
+                                                "first match of `{name}`"
+                                            )),
+                                    ))
+                            } else {
+                                Ok(())
+                            }
+                        };
 
                         let mut new_subpats =
                             vec![hir::MatchPat::Wildcard(*span); fields.len()];
@@ -170,35 +201,7 @@ impl<'db> Typeck<'db> {
 
                                         new_subpats[idx] = new_subpat;
 
-                                        if let Some(prev_span) = used_fields
-                                            .insert(
-                                                field.name.name(),
-                                                field.name.span(),
-                                            )
-                                        {
-                                            let name = field.name;
-                                            let dup_span = name.span();
-
-                                            return Err(Diagnostic::error()
-                                                .with_message(format!(
-                                                    "field `{name}` has \
-                                                     already been matched"
-                                                ))
-                                                .with_label(
-                                                    Label::primary(dup_span)
-                                                        .with_message(format!(
-                                                            "`{name}` matched \
-                                                             again here"
-                                                        )),
-                                                )
-                                                .with_label(
-                                                    Label::secondary(prev_span)
-                                                        .with_message(format!(
-                                                            "first match of \
-                                                             `{name}`"
-                                                        )),
-                                                ));
-                                        }
+                                        use_field(field.name)?;
                                     } else {
                                         return Err(Diagnostic::error()
                                             .with_message(format!(
@@ -214,6 +217,27 @@ impl<'db> Typeck<'db> {
                                                          to any field",
                                                     ),
                                             ));
+                                    }
+                                }
+                                ast::Subpat::Named(name, subpat) => {
+                                    if let Some(field) = fields.get(idx) {
+                                        // let new_subpat = self.check_match_pat(
+                                        //     env,
+                                        //     subpat,
+                                        //     field.ty,
+                                        //     field.span(),
+                                        // )?;
+                                        //
+                                        // new_subpats[idx] = new_subpat;
+                                        //
+                                        use_field(field.name)?;
+                                    } else {
+                                        return Err(field_not_found(
+                                            self.db,
+                                            self.db[adt_id].ty(),
+                                            subpat.span(),
+                                            *name,
+                                        ));
                                     }
                                 }
                             }
