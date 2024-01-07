@@ -1071,7 +1071,7 @@ impl<'db> Typeck<'db> {
                     TyKind::Module(in_module) => *in_module,
                     TyKind::Type(ty) => {
                         let (callee, _) = self.lookup_name_in_ty(
-                            env, *ty, *method, *span, expr.span,
+                            *ty, *method, *span, expr.span,
                         )?;
                         return self.check_call(callee, args, *span);
                     }
@@ -1511,7 +1511,7 @@ impl<'db> Typeck<'db> {
             }
             TyKind::Type(ty) => {
                 let (expr, can_implicitly_call) =
-                    self.lookup_name_in_ty(env, *ty, field, span, expr.span)?;
+                    self.lookup_name_in_ty(*ty, field, span, expr.span)?;
 
                 return if can_implicitly_call {
                     self.check_call(expr, vec![], span)
@@ -1567,7 +1567,6 @@ impl<'db> Typeck<'db> {
     /// Returns the evaluated expression, and whether it can be implicitly called.
     fn lookup_name_in_ty(
         &mut self,
-        env: &Env,
         ty: Ty,
         name: Word,
         span: Span,

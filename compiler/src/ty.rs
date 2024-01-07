@@ -42,9 +42,10 @@ impl Ty {
 
     #[inline]
     pub fn as_tyvar(self) -> Option<TyVar> {
-        match self.kind() {
-            TyKind::Infer(InferTy::Ty(tv)) => Some(*tv),
-            _ => None,
+        if let TyKind::Infer(InferTy::Ty(tv)) = self.kind() {
+            Some(*tv)
+        } else {
+            None
         }
     }
 
@@ -136,7 +137,9 @@ impl Ty {
                 fun.params.iter().for_each(|p| p.ty.walk_(f));
                 fun.ret.walk_(f);
             }
-            TyKind::RawPtr(inner) | TyKind::Ref(inner, _) => inner.walk_(f),
+            TyKind::RawPtr(inner)
+            | TyKind::Ref(inner, _)
+            | TyKind::Type(inner) => inner.walk_(f),
             TyKind::Adt(_, targs) => targs.iter().for_each(|ty| ty.walk_(f)),
             TyKind::Int(_)
             | TyKind::Uint(_)
@@ -147,7 +150,6 @@ impl Ty {
             | TyKind::Never
             | TyKind::Param(_)
             | TyKind::Infer(_)
-            | TyKind::Type(_)
             | TyKind::Module(_)
             | TyKind::Unknown => (),
         }

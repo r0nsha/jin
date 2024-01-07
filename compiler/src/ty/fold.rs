@@ -21,9 +21,8 @@ pub trait TyFolder {
             TyKind::Ref(inner, mutability) => {
                 TyKind::Ref(self.fold(*inner), *mutability).into()
             }
-            TyKind::RawPtr(pointee) => {
-                TyKind::RawPtr(self.fold(*pointee)).into()
-            }
+            TyKind::RawPtr(inner) => TyKind::RawPtr(self.fold(*inner)).into(),
+            TyKind::Type(inner) => TyKind::Type(self.fold(*inner)).into(),
             TyKind::Adt(id, targs) => TyKind::Adt(
                 *id,
                 targs.iter().map(|ty| self.fold(*ty)).collect(),
@@ -38,7 +37,6 @@ pub trait TyFolder {
             | TyKind::Never
             | TyKind::Param(_)
             | TyKind::Infer(_)
-            | TyKind::Type(_)
             | TyKind::Module(_)
             | TyKind::Unknown => ty,
         }
