@@ -6,8 +6,8 @@ type Option[a] {
 }
 
 fn main() unit = {
-	let x = Option.some
-	//let x = Option.some(1)
+	//let x = Option.some
+	let x = Option.some(1)
 	//let x = Option.some(value: 2)
 	//let y = Option.none
 }
