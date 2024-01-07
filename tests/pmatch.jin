@@ -132,7 +132,7 @@ fn match_guard() unit = {
 	let foo = true
 	match foo {
 		_ if foo -> { printf("foo=true\n".ptr) }, 
-		// false -> { printf("foo=false\n".ptr) },
-		// foo -> { printf("foo=%d\n".ptr, foo) },
+		false -> { printf("foo=false\n".ptr) },
+		foo -> { printf("foo=%d\n".ptr, foo) },
 	}
 }

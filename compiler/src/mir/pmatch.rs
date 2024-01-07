@@ -212,14 +212,15 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         if rows.first().map_or(false, |c| c.cols.is_empty()) {
             let row = rows.swap_remove(0);
             self.reachable.insert(row.body.block_id);
-            return row
-                .guard
-                .map(|guard| Decision::Guard {
+            return if let Some(guard) = row.guard {
+                Decision::Guard {
                     guard,
                     body: row.body,
                     fallback: Box::new(self.compile_rows(rows)),
-                })
-                .unwrap_or(Decision::Ok(row.body));
+                }
+            } else {
+                Decision::Ok(row.body)
+            };
         }
 
         let cond = Self::cond_value(&rows);

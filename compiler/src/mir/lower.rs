@@ -465,7 +465,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let mut state = DecisionState::new(output, expr.span);
 
                 for arm in &match_.arms {
-                    let block_id = self.body.create_block("case");
+                    let block_id = self.body.create_block("arm");
+
+                    let guard = arm.guard.as_ref().map(|guard| {
+                        let block = self.body.create_block("guard");
+                        state.guards.insert(block, guard);
+                        block
+                    });
 
                     let pat = pmatch::Pat::from_hir(&arm.pat);
                     let col = pmatch::Col::new(value, pat);
@@ -473,7 +479,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         pmatch::DecisionBody::new(block_id, arm.pat.span());
 
                     state.bodies.insert(block_id, &arm.expr);
-                    rows.push(pmatch::Row::new(vec![col], body));
+                    rows.push(pmatch::Row::new(vec![col], guard, body));
                 }
 
                 state.join_block = self.body.create_block("match_join");
@@ -689,6 +695,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 body.block_id
             }
             pmatch::Decision::Err => unreachable!(),
+            pmatch::Decision::Guard { guard, body, fallback } => todo!(),
             pmatch::Decision::Switch { cond, cases, fallback } => {
                 match cases[0].ctor {
                     pmatch::Ctor::Unit => self.lower_decision_unit(
@@ -2040,8 +2047,11 @@ struct DecisionState<'a> {
     /// The block to join into at the end of each decision body
     join_block: BlockId,
 
-    /// A mapping of every case body, and its associated concrete expression
+    /// A mapping of arm bodies, and their associated concrete expression
     bodies: FxHashMap<BlockId, &'a hir::Expr>,
+
+    /// A mapping of arm guards, and their associated concrete guard expression
+    guards: FxHashMap<BlockId, &'a hir::Expr>,
 
     /// The match expression's span
     span: Span,
@@ -2053,6 +2063,7 @@ impl<'a> DecisionState<'a> {
             output,
             join_block: BlockId::null(),
             bodies: FxHashMap::default(),
+            guards: FxHashMap::default(),
             span,
         }
     }
