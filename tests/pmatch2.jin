@@ -8,11 +8,11 @@ fn main() unit = {
 		_ -> { printf("other\n".ptr) },
 	}
 
-	//let _: unit = match true {
-	//	true if false -> { printf("guard\n".ptr) }, 
-	//	//true | false if false -> { printf("guard\n".ptr) }, 
-	//	true -> { printf("true\n".ptr) },
-	//	false -> { printf("false\n".ptr) },
-	//	_ -> { printf("other\n".ptr) },
-	//}
+	let _: unit = match true {
+		//x if x -> { printf("guard\n".ptr) }, 
+		true | false if false -> { printf("guard\n".ptr) }, 
+		true -> { printf("true\n".ptr) },
+		false -> { printf("false\n".ptr) },
+		_ -> { printf("other\n".ptr) },
+	}
 }
