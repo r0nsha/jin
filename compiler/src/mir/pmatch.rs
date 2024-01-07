@@ -1,4 +1,4 @@
-/// This implementation is inspired by [yorickpeterse's implementation](https://github.com/yorickpeterse/pattern-matching-in-rust)
+/// This implementation is heavily inspired by [yorickpeterse's implementation](https://github.com/yorickpeterse/pattern-matching-in-rust)
 use indexmap::IndexSet;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
@@ -225,6 +225,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             let row = rows.swap_remove(0);
             self.reachable.insert(row.body.block);
             return if let Some(guard) = row.guard {
+                // dbg!(&row, &rows);
                 Decision::Guard {
                     guard,
                     body: row.body,
@@ -346,19 +347,11 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             }
         }
 
-        self.compile_lit_cases(cond, type_cases, fallback_rows)
-    }
-
-    fn compile_lit_cases(
-        &mut self,
-        cond: ValueId,
-        mut type_cases: Vec<TypeCase>,
-        fallback_rows: Vec<Row>,
-    ) -> Decision {
-        for case in &mut type_cases {
-            case.rows.extend(fallback_rows.clone());
+        for tcase in &mut type_cases {
+            tcase.rows.extend(fallback_rows.iter().cloned());
         }
 
+        // dbg!(&type_cases);
         let cases = type_cases
             .into_iter()
             .map(|case| {
