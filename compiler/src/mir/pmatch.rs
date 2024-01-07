@@ -17,18 +17,7 @@ pub fn compile(
     rows: Vec<Row>,
     span: Span,
 ) -> Result<Decision, ()> {
-    let mut body_pat_spans = FxHashMap::default();
-
-    for row in &rows {
-        let first_span = row.cols[0].pat.span();
-        let pat_span = if row.cols.len() > 1 {
-            first_span.merge(row.cols.last().unwrap().pat.span())
-        } else {
-            first_span
-        };
-
-        body_pat_spans.insert(row.body.block, pat_span);
-    }
+    let body_pat_spans = collect_body_pat_spans(&rows);
 
     let (decision, diagnostics) =
         Compiler::new(cx, body_pat_spans).compile(rows, span);
@@ -40,6 +29,23 @@ pub fn compile(
         cx.cx.db.diagnostics.emit_many(diagnostics);
         Ok(decision)
     }
+}
+
+fn collect_body_pat_spans(rows: &[Row]) -> FxHashMap<BlockId, Span> {
+    let mut map = FxHashMap::default();
+
+    for row in rows {
+        let first_span = row.cols[0].pat.span();
+        let pat_span = if row.cols.len() > 1 {
+            first_span.merge(row.cols.last().unwrap().pat.span())
+        } else {
+            first_span
+        };
+
+        map.insert(row.body.block, pat_span);
+    }
+
+    map
 }
 
 #[derive(Debug, Clone)]
