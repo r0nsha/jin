@@ -5,12 +5,9 @@ type Option[a] {
 	none
 }
 
-type Box[a](v: a)
-
 fn main() unit = {
-	//let x = Option.some
-	let x = Option.some(1)
-	let y = Box(1)
-	//let x = Option.some(value: 2)
-	//let y = Option.none
+	let a = Option.some(1)
+	let b = Option[int].some(1)
+	let c = Option.some(value: 2)
+	let d = Option[int].none
 }
