@@ -127,6 +127,7 @@ impl<'db> Typeck<'db> {
         self.subst();
 
         late::check_bodies(self.db, &self.hir);
+        late::leaky_items(self.db, &self.hir);
         late::check_main(self.db, &self.hir);
 
         Ok(self.hir)
@@ -395,10 +396,10 @@ impl<'db> Typeck<'db> {
             params.push(hir::FnParam { pat, ty });
         }
 
-        let ret = if let Some(ret) = &sig.ret {
-            self.check_ty_expr(env, ret, AllowTyHole::No)?
+        let (ret, ret_span) = if let Some(ret) = &sig.ret {
+            (self.check_ty_expr(env, ret, AllowTyHole::No)?, ret.span())
         } else {
-            self.fresh_ty_var()
+            (self.fresh_ty_var(), sig.word.span())
         };
 
         let ty = Ty::new(TyKind::Fn(FnTy {
@@ -410,7 +411,7 @@ impl<'db> Typeck<'db> {
             is_c_variadic,
         }));
 
-        Ok(hir::FnSig { word: sig.word, ty_params, params, ret, ty })
+        Ok(hir::FnSig { word: sig.word, ty_params, params, ret, ret_span, ty })
     }
 
     fn check_let(

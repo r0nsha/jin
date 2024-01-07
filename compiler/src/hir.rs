@@ -171,6 +171,7 @@ pub struct FnSig {
     pub ty_params: Vec<TyParam>,
     pub params: Vec<FnParam>,
     pub ret: Ty,
+    pub ret_span: Span,
     pub ty: Ty,
 }
 
