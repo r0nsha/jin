@@ -5,6 +5,6 @@ import bindings*
 
 fn main() unit = {
 	//basic_window.run()
-	input_keys.run()
+	//input_keys.run()
 	//following_eyes.run()
 }

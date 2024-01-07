@@ -294,20 +294,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 if !self.body.last_inst_is_return() {
                     // If the body isn't terminating, we must push a return instruction at the
                     // for the function's last value.
-                    let fn_ty = self.cx.mir.fn_sigs[sig].ty.as_fn().unwrap();
-
-                    // TODO: this can just be generalized coercion... CoercionKind::AnyToUnit
-                    let ret_value = if fn_ty.ret.is_unit()
-                        && !self.ty_of(last_value).is_unit()
-                    {
-                        // If the value of this function's block has been coerced to unit, we must
-                        // return a unit value
-                        self.const_unit()
-                    } else {
-                        last_value
-                    };
-
-                    self.push_return(ret_value, body.span.tail());
+                    self.push_return(last_value, body.span.tail());
                 }
 
                 // println!("fn `{}`", fun.sig.word);
