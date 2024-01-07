@@ -582,8 +582,8 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<()> {
         let mut variants: Vec<VariantId> = vec![];
 
-        for variant in &union_def.variants {
-            variants.push(self.check_tydef_union_variant(variant)?);
+        for (idx, variant) in union_def.variants.iter().enumerate() {
+            variants.push(self.check_tydef_union_variant(variant, idx)?);
         }
 
         let (adt_id, def_id) = self.define_adt(env, tydef, |id| {
@@ -640,6 +640,7 @@ impl<'db> Typeck<'db> {
     fn check_tydef_union_variant(
         &mut self,
         variant: &ast::UnionVariant,
+        index: usize,
     ) -> TypeckResult<VariantId> {
         let mut fields = vec![];
         let mut defined_fields = WordMap::default();
@@ -674,6 +675,7 @@ impl<'db> Typeck<'db> {
         let id = self.db.variants.push_with_key(|id| Variant {
             id,
             adt_id: AdtId::null(),
+            index,
             name: variant.name,
             fields,
             ctor_ty: unknown,

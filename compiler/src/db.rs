@@ -653,6 +653,7 @@ impl UnionDef {
 pub struct Variant {
     pub id: VariantId,
     pub adt_id: AdtId,
+    pub index: usize,
     pub name: Word,
     pub fields: Vec<AdtField>,
     pub ctor_ty: Ty,

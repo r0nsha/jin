@@ -226,6 +226,15 @@ impl<'db> Lower<'db> {
             value
         };
 
+        // Set the tag to this variant
+        let uint = self.db.types.uint;
+        let tag_field =
+            body.create_value(uint, ValueKind::Field(this, ustr("tag")));
+        let tag_value = body
+            .create_value(uint, ValueKind::Const(Const::from(variant.index as i128)));
+        body.block_mut(start_block)
+            .push_inst(Inst::Store { value: tag_value, target: tag_field });
+
         let this_variant = body.create_value(
             adt.ty(),
             ValueKind::Variant(this, variant.name.name()),
