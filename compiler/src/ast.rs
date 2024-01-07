@@ -302,6 +302,7 @@ pub struct ImportName {
 #[derive(Debug, Clone)]
 pub struct MatchArm {
     pub pat: MatchPat,
+    pub guard: Option<Box<Expr>>,
     pub expr: Box<Expr>,
 }
 

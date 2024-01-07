@@ -86,8 +86,21 @@ impl<'db> Typeck<'db> {
                 env, &case.pat, expr_ty, expr_span, &mut names,
             )?;
             self.check_match_pat_name_bound_once(&pat)?;
+
+            let guard = if let Some(guard) = &case.guard {
+                let bool_ty = self.db.types.bool;
+                let guard = self.check_expr(env, guard, Some(bool_ty))?;
+                self.at(Obligation::obvious(guard.span))
+                    .eq(bool_ty, guard.ty)
+                    .or_coerce(self, guard.id)?;
+                Some(Box::new(guard))
+            } else {
+                None
+            };
+
             let expr = self.check_expr(env, &case.expr, expected_ty)?;
-            Ok(hir::MatchArm { pat, expr: Box::new(expr) })
+
+            Ok(hir::MatchArm { pat, guard, expr: Box::new(expr) })
         })
     }
 

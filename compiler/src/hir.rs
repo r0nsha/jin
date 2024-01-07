@@ -223,6 +223,7 @@ pub struct Match {
 #[derive(Debug, Clone)]
 pub struct MatchArm {
     pub pat: MatchPat,
+    pub guard: Option<Box<Expr>>,
     pub expr: Box<Expr>,
 }
 

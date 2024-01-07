@@ -698,9 +698,16 @@ impl<'a> Parser<'a> {
 
     fn parse_match_arm(&mut self) -> DiagnosticResult<MatchArm> {
         let pat = self.parse_match_pat()?;
+
+        let guard = self
+            .is_and(TokenKind::If, |this, _| this.parse_expr())
+            .transpose()?
+            .map(Box::new);
+
         self.eat(TokenKind::Arrow)?;
         let expr = self.parse_expr()?;
-        Ok(MatchArm { pat, expr: Box::new(expr) })
+
+        Ok(MatchArm { pat, guard, expr: Box::new(expr) })
     }
 
     fn parse_match_pat(&mut self) -> DiagnosticResult<MatchPat> {
