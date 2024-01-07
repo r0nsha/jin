@@ -33,8 +33,6 @@ impl<'db> Typeck<'db> {
             .unbound_tys
             .into_iter()
             .map(|(span, ty)| {
-                self.normalize(ty);
-
                 Diagnostic::error()
                     .with_message(format!(
                         "type annotations needed for `{}`",
