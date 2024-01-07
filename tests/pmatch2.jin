@@ -2,8 +2,7 @@ fn extern printf(fmt: *u8, ..) i32
 
 fn main() unit = {
 	let _: unit = match 20 {
-		20 if false -> { printf("guard\n".ptr) }, 
-		//10 | 20 if false -> { printf("guard\n".ptr) }, 
+		10 | 20 if false -> { printf("guard\n".ptr) }, 
 		10 -> { printf("10\n".ptr) },
 		20 -> { printf("20\n".ptr) },
 		_ -> { printf("other\n".ptr) },

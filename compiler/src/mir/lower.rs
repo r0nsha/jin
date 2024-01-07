@@ -483,7 +483,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 state.join_block = self.body.create_block("match_join");
 
                 if let Ok(decision) = pmatch::compile(self, rows, expr.span) {
-                    dbg!(&decision);
                     self.lower_decision(
                         &mut state,
                         decision,
@@ -790,9 +789,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             *blocks.last().unwrap(),
             values.clone(),
         );
-
-        self.position_at(parent_block);
-        self.push_br(blocks[0]);
 
         for (idx, case) in cases.into_iter().enumerate() {
             let test_block = blocks[idx];

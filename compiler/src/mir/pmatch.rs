@@ -225,7 +225,6 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             let row = rows.remove(0);
             self.reachable.insert(row.body.block);
             return if let Some(guard) = row.guard {
-                // dbg!(&row, &rows);
                 Decision::Guard {
                     guard,
                     body: row.body,
@@ -318,12 +317,21 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         let mut type_cases = Vec::<TypeCase>::new();
         let mut fallback_rows = Vec::<Row>::new();
         let mut indices = FxHashMap::<K, usize>::default();
+        let mut had_guarded_row = false;
 
         for mut row in rows {
+            if had_guarded_row {
+                fallback_rows.push(row.clone());
+                continue;
+            }
+
             let Some(col) = row.remove_col(cond) else {
+                had_guarded_row = had_guarded_row || row.guard.is_some();
                 fallback_rows.push(row);
                 continue;
             };
+
+            had_guarded_row = had_guarded_row || row.guard.is_some();
 
             for (pat, row) in col.pat.flatten_or(row) {
                 let key = get_key(pat);
@@ -351,7 +359,6 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             tcase.rows.extend(fallback_rows.iter().cloned());
         }
 
-        // dbg!(&type_cases);
         let cases = type_cases
             .into_iter()
             .map(|case| {
