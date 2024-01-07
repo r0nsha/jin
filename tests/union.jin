@@ -2,7 +2,7 @@ fn extern printf(fmt: *u8, ..) i32
 
 type Option {
 	some(value: int),
-	none()
+	none
 }
 
 fn main() unit = {
