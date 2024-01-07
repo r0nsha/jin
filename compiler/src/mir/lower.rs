@@ -483,6 +483,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 state.join_block = self.body.create_block("match_join");
 
                 if let Ok(decision) = pmatch::compile(self, rows, expr.span) {
+                    dbg!(&decision);
                     self.lower_decision(
                         &mut state,
                         decision,
@@ -737,7 +738,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         values: Vec<ValueId>,
     ) -> BlockId {
         assert!(cases.len() == 1, "unit can only have a single case");
-        let case = cases.swap_remove(0);
+        let case = cases.remove(0);
         self.lower_decision(state, case.decision, parent_block, values)
     }
 

@@ -222,7 +222,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         // If the first row has no columns, we don't need to continue,
         // since they'll never be reachable anyways
         if rows[0].cols.is_empty() {
-            let row = rows.swap_remove(0);
+            let row = rows.remove(0);
             self.reachable.insert(row.body.block);
             return if let Some(guard) = row.guard {
                 // dbg!(&row, &rows);
