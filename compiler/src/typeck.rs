@@ -1067,18 +1067,23 @@ impl<'db> Typeck<'db> {
 
                 let expr = self.check_expr(env, expr, None)?;
 
-                let lookup_in_module = if let TyKind::Module(in_module) =
-                    self.normalize(expr.ty).kind()
-                {
-                    *in_module
-                } else {
-                    // This is a UFCS call: add `expr` as the first argument of the call
-                    args.insert(
-                        0,
-                        hir::CallArg { name: None, expr, index: None },
-                    );
+                let lookup_in_module = match self.normalize(expr.ty).kind() {
+                    TyKind::Module(in_module) => *in_module,
+                    TyKind::Type(ty) => {
+                        let callee = self.lookup_name_in_ty(
+                            *ty, *method, *span, expr.span,
+                        )?;
+                        return self.check_call(callee, args, *span);
+                    }
+                    _ => {
+                        // This is a UFCS call: add `expr` as the first argument of the call
+                        args.insert(
+                            0,
+                            hir::CallArg { name: None, expr, index: None },
+                        );
 
-                    env.module_id()
+                        env.module_id()
+                    }
                 };
 
                 let id = self.lookup_fn_for_call(
@@ -1504,41 +1509,9 @@ impl<'db> Typeck<'db> {
                     AdtKind::Union(_) => None,
                 }
             }
-            TyKind::Type(ty) => match ty.kind() {
-                TyKind::Adt(adt_id, targs) => {
-                    let adt = &self.db[*adt_id];
-
-                    match &adt.kind {
-                        AdtKind::Union(union_def) => {
-                            let variant = union_def
-                                .variants
-                                .iter()
-                                .map(|&id| &self.db[id])
-                                .find(|v| v.name.name() == field.name());
-
-                            if let Some(variant) = variant {
-                                let instantiation = adt.instantiation(targs);
-                                let ctor_ty =
-                                    instantiation.fold(variant.ctor_ty);
-                                return Ok(self.expr(
-                                    hir::ExprKind::Variant(hir::Variant {
-                                        id: variant.id,
-                                        instantiation,
-                                    }),
-                                    ctor_ty,
-                                    span,
-                                ));
-                            }
-
-                            return Err(errors::variant_not_found(
-                                self.db, *ty, expr.span, field,
-                            ));
-                        }
-                        AdtKind::Struct(_) => None,
-                    }
-                }
-                _ => None,
-            },
+            TyKind::Type(ty) => {
+                return self.lookup_name_in_ty(*ty, field, span, expr.span);
+            }
             TyKind::Str if field.name() == sym::PTR => {
                 Some(self.db.types.u8.raw_ptr())
             }
@@ -1581,6 +1554,48 @@ impl<'db> Typeck<'db> {
         }
 
         Ok(())
+    }
+
+    fn lookup_name_in_ty(
+        &mut self,
+        ty: Ty,
+        name: Word,
+        span: Span,
+        ty_span: Span,
+    ) -> TypeckResult<hir::Expr> {
+        if let TyKind::Adt(adt_id, targs) = ty.kind() {
+            let adt = &self.db[*adt_id];
+
+            match &adt.kind {
+                AdtKind::Union(union_def) => {
+                    let variant = union_def
+                        .variants
+                        .iter()
+                        .map(|&id| &self.db[id])
+                        .find(|v| v.name.name() == name.name());
+
+                    if let Some(variant) = variant {
+                        let instantiation = adt.instantiation(targs);
+                        let ctor_ty = instantiation.fold(variant.ctor_ty);
+                        return Ok(self.expr(
+                            hir::ExprKind::Variant(hir::Variant {
+                                id: variant.id,
+                                instantiation,
+                            }),
+                            ctor_ty,
+                            span,
+                        ));
+                    }
+
+                    return Err(errors::variant_not_found(
+                        self.db, ty, ty_span, name,
+                    ));
+                }
+                AdtKind::Struct(_) => (),
+            }
+        }
+
+        Err(errors::field_not_found(self.db, ty, ty_span, name))
     }
 
     fn lookup_fn_for_call(
