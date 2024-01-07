@@ -387,7 +387,6 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
     ) -> Decision {
         for mut row in rows {
             let Some(col) = row.remove_col(cond) else {
-                // had_guarded_row = had_guarded_row || row.guard.is_some();
                 for case in &mut type_cases {
                     case.rows.push(row.clone());
                 }
