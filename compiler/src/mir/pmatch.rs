@@ -362,8 +362,6 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
                         let mut cols = row.cols;
                         let case = &mut cases[ctor.index()];
 
-                        // TODO: if args != case.values : missing fields in pattern
-
                         cols.extend(
                             case.values
                                 .iter()
