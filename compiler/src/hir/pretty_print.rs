@@ -104,23 +104,6 @@ impl PrettyCx<'_> {
                 self.pp_expr(&assign.rhs);
                 self.builder.end_child();
             }
-            ExprKind::If(if_) => {
-                self.builder.begin_child("if".to_string());
-
-                self.builder.begin_child("cond".to_string());
-                self.pp_expr(&if_.cond);
-                self.builder.end_child();
-
-                self.builder.begin_child("then".to_string());
-                self.pp_expr(&if_.then);
-                self.builder.end_child();
-
-                self.builder.begin_child("else".to_string());
-                self.pp_expr(&if_.otherwise);
-                self.builder.end_child();
-
-                self.builder.end_child();
-            }
             ExprKind::Match(match_) => {
                 self.builder.begin_child("match".to_string());
 

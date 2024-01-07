@@ -13,11 +13,6 @@ impl<S: SubstTy> Subst<S> for Expr {
                 assign.lhs.subst(s);
                 assign.rhs.subst(s);
             }
-            ExprKind::If(if_) => {
-                if_.cond.subst(s);
-                if_.then.subst(s);
-                if_.otherwise.subst(s);
-            }
             ExprKind::Match(match_) => {
                 match_.expr.subst(s);
 

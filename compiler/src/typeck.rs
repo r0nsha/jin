@@ -1171,12 +1171,23 @@ impl<'db> Typeck<'db> {
         };
 
         let ty = then.ty;
+        let cond_span = cond.span;
 
         Ok(self.expr(
-            hir::ExprKind::If(hir::If {
-                cond: Box::new(cond),
-                then: Box::new(then),
-                otherwise: Box::new(otherwise),
+            hir::ExprKind::Match(hir::Match {
+                expr: Box::new(cond),
+                arms: vec![
+                    hir::MatchArm {
+                        pat: hir::MatchPat::Bool(true, cond_span),
+                        guard: None,
+                        expr: Box::new(then),
+                    },
+                    hir::MatchArm {
+                        pat: hir::MatchPat::Bool(false, cond_span),
+                        guard: None,
+                        expr: Box::new(otherwise),
+                    },
+                ],
             }),
             ty,
             span,

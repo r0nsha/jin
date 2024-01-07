@@ -80,15 +80,14 @@ impl Expr {
                 assign.lhs.walk_(f);
                 assign.rhs.walk_(f);
             }
-            ExprKind::If(if_) => {
-                if_.cond.walk_(f);
-                if_.then.walk_(f);
-                if_.otherwise.walk_(f);
-            }
             ExprKind::Match(match_) => {
                 match_.expr.walk_(f);
 
                 for arm in &match_.arms {
+                    if let Some(guard) = &arm.guard {
+                        guard.walk_(f);
+                    }
+
                     arm.expr.walk_(f);
                 }
             }
@@ -126,7 +125,6 @@ impl Expr {
 pub enum ExprKind {
     Let(Let),
     Assign(Assign),
-    If(If),
     Match(Match),
     Loop(Loop),
     Break,
