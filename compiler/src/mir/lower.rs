@@ -6,7 +6,7 @@ use itertools::Itertools as _;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    db::{AdtKind, Db, DefId, DefKind, StructKind},
+    db::{AdtField, AdtKind, Db, DefId, DefKind, StructKind, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     hir::{FnKind, Hir},
@@ -18,6 +18,7 @@ use crate::{
         FnSigId, FxHashMap, FxHashSet, Global, GlobalId, GlobalKind, Inst, Mir,
         Span, StaticGlobal, UnOp, ValueId, ValueKind,
     },
+    qpath::QPath,
     span::Spanned,
     ty::{
         coerce::{CoercionKind, Coercions},
@@ -38,6 +39,7 @@ pub(super) struct Lower<'db> {
     pub(super) id_to_fn_sig: FxHashMap<DefId, FnSigId>,
     pub(super) id_to_global: FxHashMap<DefId, GlobalId>,
     pub(super) struct_ctors: FxHashMap<AdtId, FnSigId>,
+    pub(super) variant_ctors: FxHashMap<VariantId, FnSigId>,
 }
 
 impl<'db> Lower<'db> {
@@ -49,6 +51,7 @@ impl<'db> Lower<'db> {
             id_to_fn_sig: FxHashMap::default(),
             id_to_global: FxHashMap::default(),
             struct_ctors: FxHashMap::default(),
+            variant_ctors: FxHashMap::default(),
         }
     }
 
@@ -125,7 +128,6 @@ impl<'db> Lower<'db> {
             return *sig_id;
         }
 
-        // TODO: doesn't work for polymorphic structs...
         let sig_id = self.create_struct_ctor(adt_id);
         self.struct_ctors.insert(adt_id, sig_id);
 
@@ -137,23 +139,9 @@ impl<'db> Lower<'db> {
         let def = &self.db[adt.def_id];
         let struct_def = adt.as_struct().unwrap();
 
-        let name = ustr(&def.qpath.clone().child(ustr("ctor")).join_with("_"));
+        let name = Self::ctor_name(def.qpath.clone());
 
-        let params: Vec<_> = struct_def
-            .fields
-            .iter()
-            .map(|field| FnParam {
-                pat: Pat::Name(NamePat {
-                    id: DefId::null(),
-                    word: field.name,
-                    vis: Vis::Private,
-                    mutability: Mutability::Imm,
-                    ty: field.ty,
-                }),
-                ty: field.ty,
-            })
-            .collect();
-
+        let params = Self::adt_fields_to_fn_params(&struct_def.fields);
         let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
             name,
@@ -184,17 +172,12 @@ impl<'db> Lower<'db> {
             }
         };
 
-        // Initialize all of the struct's fields
-        for field in &struct_def.fields {
-            let name = field.name.name();
-            let ty = field.ty;
-
-            let field_value =
-                body.create_value(ty, ValueKind::Field(this, name));
-            let param = body.create_value(ty, ValueKind::UniqueName(name));
-            body.block_mut(start_block)
-                .push_inst(Inst::Store { value: param, target: field_value });
-        }
+        Self::ctor_init_adt_fields(
+            &mut body,
+            start_block,
+            this,
+            &struct_def.fields,
+        );
 
         // Return the struct
         body.block_mut(start_block).push_inst(Inst::Return { value: this });
@@ -202,6 +185,97 @@ impl<'db> Lower<'db> {
         self.mir.fns.insert(sig, Fn { sig, body });
 
         sig
+    }
+
+    fn get_or_create_variant_ctor(&mut self, variant_id: VariantId) -> FnSigId {
+        if let Some(sig_id) = self.variant_ctors.get(&variant_id) {
+            return *sig_id;
+        }
+
+        let sig_id = self.create_variant_ctor(variant_id);
+        self.variant_ctors.insert(variant_id, sig_id);
+
+        sig_id
+    }
+
+    fn create_variant_ctor(&mut self, variant_id: VariantId) -> FnSigId {
+        let variant = &self.db[variant_id];
+        let adt = &self.db[variant.adt_id];
+        let def = &self.db[adt.def_id];
+
+        let name = Self::ctor_name(def.qpath.clone());
+
+        let params = Self::adt_fields_to_fn_params(&variant.fields);
+        let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
+            id,
+            name,
+            params,
+            ty: variant.ctor_ty,
+            is_extern: false,
+            is_c_variadic: false,
+            span: variant.name.span(),
+        });
+
+        let mut body = Body::new();
+        let start_block = body.create_block("start");
+
+        // Initialize the `this` value based on the struct kind
+        let this = {
+            let value = body.create_value(adt.ty(), ValueKind::Register(None));
+            body.block_mut(start_block).push_inst(Inst::Alloc { value });
+            value
+        };
+
+        Self::ctor_init_adt_fields(
+            &mut body,
+            start_block,
+            this,
+            &variant.fields,
+        );
+
+        // Return the struct
+        body.block_mut(start_block).push_inst(Inst::Return { value: this });
+
+        self.mir.fns.insert(sig, Fn { sig, body });
+
+        sig
+    }
+
+    fn ctor_name(qpath: QPath) -> Ustr {
+        ustr(&qpath.child(ustr("ctor")).join_with("_"))
+    }
+
+    fn adt_fields_to_fn_params(fields: &[AdtField]) -> Vec<FnParam> {
+        fields
+            .iter()
+            .map(|field| FnParam {
+                pat: Pat::Name(NamePat {
+                    id: DefId::null(),
+                    word: field.name,
+                    vis: Vis::Private,
+                    mutability: Mutability::Imm,
+                    ty: field.ty,
+                }),
+                ty: field.ty,
+            })
+            .collect()
+    }
+
+    fn ctor_init_adt_fields(
+        body: &mut Body,
+        block: BlockId,
+        this: ValueId,
+        fields: &[AdtField],
+    ) {
+        for field in fields {
+            let name = field.name.name();
+            let ty = field.ty;
+            let field_value =
+                body.create_value(ty, ValueKind::Field(this, name));
+            let param = body.create_value(ty, ValueKind::UniqueName(name));
+            body.block_mut(block)
+                .push_inst(Inst::Store { value: param, target: field_value });
+        }
     }
 
     fn lower_fn_sig(
@@ -614,6 +688,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Name(name) => {
                 self.lower_name(name.id, &name.instantiation)
             }
+            hir::ExprKind::Variant(variant) => {
+                let id = self.cx.get_or_create_variant_ctor(variant.id);
+                self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
+            }
             hir::ExprKind::Lit(lit) => {
                 let value = match lit {
                     hir::Lit::Str(lit) => Const::from(*lit),
@@ -875,7 +953,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let value = match self.cx.db[id].kind.as_ref() {
             DefKind::Fn(_) => {
                 let id = self.cx.id_to_fn_sig[&id];
-
                 self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
             }
             DefKind::ExternGlobal | DefKind::Global => {

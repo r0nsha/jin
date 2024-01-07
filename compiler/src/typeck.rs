@@ -12,7 +12,7 @@ mod unify;
 
 use std::cell::RefCell;
 
-use data_structures::index_vec::{IndexVecExt, Key as _};
+use data_structures::index_vec::{IndexVecExt, Key};
 use ena::unify::{InPlace, InPlaceUnificationTable, Snapshot};
 use itertools::{Itertools, Position};
 use ustr::UstrMap;
@@ -608,6 +608,7 @@ impl<'db> Typeck<'db> {
                 }
 
                 self.db[variant_id].fill_ctor_ty(adt_ty);
+                self.db[variant_id].adt_id = adt_id;
             }
 
             Ok(())
@@ -672,6 +673,7 @@ impl<'db> Typeck<'db> {
         let unknown = self.db.types.unknown;
         let id = self.db.variants.push_with_key(|id| Variant {
             id,
+            adt_id: AdtId::null(),
             name: variant.name,
             fields,
             ctor_ty: unknown,
@@ -1513,15 +1515,22 @@ impl<'db> Typeck<'db> {
                                 .find(|v| v.name.name() == field.name());
 
                             if let Some(variant) = variant {
-                                Some(
-                                    adt.instantiation(targs)
-                                        .fold(variant.ctor_ty),
-                                )
-                            } else {
-                                return Err(errors::variant_not_found(
-                                    self.db, *ty, expr.span, field,
+                                let instantiation = adt.instantiation(targs);
+                                let ctor_ty =
+                                    instantiation.fold(variant.ctor_ty);
+                                return Ok(self.expr(
+                                    hir::ExprKind::Variant(hir::Variant {
+                                        id: variant.id,
+                                        instantiation,
+                                    }),
+                                    ctor_ty,
+                                    span,
                                 ));
                             }
+
+                            return Err(errors::variant_not_found(
+                                self.db, *ty, expr.span, field,
+                            ));
                         }
                         AdtKind::Struct(_) => None,
                     }

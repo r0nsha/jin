@@ -217,6 +217,16 @@ impl PrettyCx<'_> {
                     expr.ty.display(self.db)
                 ));
             }
+            ExprKind::Variant(variant) => {
+                let variant = &self.db[variant.id];
+
+                self.builder.add_empty_child(format!(
+                    "variant `{}.{}` (type: {})",
+                    self.db[variant.adt_id].name,
+                    variant.name,
+                    expr.ty.display(self.db)
+                ));
+            }
             ExprKind::Lit(value) => {
                 let value_str = match value {
                     Lit::Str(v) => format!("\"{v}\""),

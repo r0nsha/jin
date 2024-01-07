@@ -652,6 +652,7 @@ impl UnionDef {
 #[derive(Debug, Clone)]
 pub struct Variant {
     pub id: VariantId,
+    pub adt_id: AdtId,
     pub name: Word,
     pub fields: Vec<AdtField>,
     pub ctor_ty: Ty,

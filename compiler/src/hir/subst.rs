@@ -1,5 +1,8 @@
 use crate::{
-    hir::{Expr, ExprKind, Fn, FnKind, FnSig, Let, MatchArm, MatchPat},
+    hir::{
+        Expr, ExprKind, Fn, FnKind, FnSig, Let, MatchArm, MatchPat, Name,
+        Variant,
+    },
     span::Spanned,
     subst,
     subst::{Subst, SubstTy},
@@ -52,12 +55,9 @@ impl<S: SubstTy> Subst<S> for Expr {
             ExprKind::Field(access) => {
                 access.expr.subst(s);
             }
-            ExprKind::Name(name) => {
-                subst::subst_instantation(
-                    s,
-                    &mut name.instantiation,
-                    self.span,
-                );
+            ExprKind::Name(Name { instantiation, .. })
+            | ExprKind::Variant(Variant { instantiation, .. }) => {
+                subst::subst_instantation(s, instantiation, self.span);
             }
             ExprKind::Break | ExprKind::Lit(_) => (),
         }

@@ -8,7 +8,7 @@ use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
-    db::{AdtId, Db, DefId, ModuleId},
+    db::{AdtId, Db, DefId, ModuleId, VariantId},
     middle::{BinOp, Pat, TyParam, UnOp},
     span::{Span, Spanned},
     ty::{coerce::Coercions, Instantiation, Ty, Typed},
@@ -114,7 +114,10 @@ impl Expr {
             }
             ExprKind::Cast(cast) => cast.expr.walk_(f),
             ExprKind::Field(access) => access.expr.walk_(f),
-            ExprKind::Break | ExprKind::Name(_) | ExprKind::Lit(_) => (),
+            ExprKind::Break
+            | ExprKind::Name(_)
+            | ExprKind::Variant(_)
+            | ExprKind::Lit(_) => (),
         }
 
         f(self);
@@ -136,6 +139,7 @@ pub enum ExprKind {
     Cast(Cast),
     Field(Field),
     Name(Name),
+    Variant(Variant),
     Lit(Lit),
 }
 
@@ -321,6 +325,12 @@ pub struct Field {
 pub struct Name {
     pub id: DefId,
     pub word: Word,
+    pub instantiation: Instantiation,
+}
+
+#[derive(Debug, Clone)]
+pub struct Variant {
+    pub id: VariantId,
     pub instantiation: Instantiation,
 }
 
