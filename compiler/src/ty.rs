@@ -11,7 +11,7 @@ use ustr::Ustr;
 
 use crate::{
     db::{AdtId, Db, ModuleId},
-    middle::Mutability,
+    middle::{Mutability, Vis},
     span::Span,
     subst::SubstTy,
     target::TargetMetrics,
@@ -74,42 +74,16 @@ impl Ty {
 
     pub fn collect_params(self) -> Vec<ParamTy> {
         let mut params = FxHashSet::default();
-        self.collect_params_inner(&mut params);
+        self.collect_params_into(&mut params);
         params.into_iter().collect()
     }
 
-    fn collect_params_inner(self, collect_into: &mut FxHashSet<ParamTy>) {
-        match self.kind() {
-            TyKind::Fn(fun) => {
-                for p in &fun.params {
-                    p.ty.collect_params_inner(collect_into);
-                }
-
-                fun.ret.collect_params_inner(collect_into);
-            }
-            TyKind::Ref(inner, _) | TyKind::RawPtr(inner) => {
-                inner.collect_params_inner(collect_into);
-            }
-            TyKind::Param(p) => {
+    fn collect_params_into(self, collect_into: &mut FxHashSet<ParamTy>) {
+        self.walk(|ty| {
+            if let TyKind::Param(p) = ty.kind() {
                 collect_into.insert(p.clone());
             }
-            TyKind::Adt(_, targs) => {
-                for ty in targs {
-                    ty.collect_params_inner(collect_into);
-                }
-            }
-            TyKind::Int(_)
-            | TyKind::Uint(_)
-            | TyKind::Float(_)
-            | TyKind::Str
-            | TyKind::Bool
-            | TyKind::Unit
-            | TyKind::Never
-            | TyKind::Infer(_)
-            | TyKind::Type(_)
-            | TyKind::Module(_)
-            | TyKind::Unknown => (),
-        }
+        });
     }
 
     pub fn is_polymorphic(self) -> bool {
@@ -120,47 +94,51 @@ impl Ty {
         self.walk_short(|ty| matches!(ty.kind(), TyKind::Never))
     }
 
-    pub fn walk_short(self, mut f: impl Fn(Ty) -> bool) -> bool {
+    pub fn walk_short(self, mut f: impl FnMut(Ty) -> bool) -> bool {
         self.walk_short_(&mut f)
     }
 
-    fn walk_short_(self, f: &mut impl Fn(Ty) -> bool) -> bool {
-        match self.kind() {
-            TyKind::Fn(fun) => {
-                fun.params.iter().any(|p| p.ty.walk_short_(f))
-                    || fun.ret.walk_short_(f)
+    fn walk_short_(self, f: &mut impl FnMut(Ty) -> bool) -> bool {
+        f(self)
+            || match self.kind() {
+                TyKind::Fn(fun) => {
+                    fun.params.iter().any(|p| p.ty.walk_short_(f))
+                        || fun.ret.walk_short_(f)
+                }
+                TyKind::RawPtr(inner) | TyKind::Ref(inner, _) => {
+                    inner.walk_short_(f)
+                }
+                TyKind::Adt(_, tys) => tys.iter().any(|ty| ty.walk_short_(f)),
+                TyKind::Int(_)
+                | TyKind::Uint(_)
+                | TyKind::Float(_)
+                | TyKind::Str
+                | TyKind::Bool
+                | TyKind::Unit
+                | TyKind::Never
+                | TyKind::Param(_)
+                | TyKind::Infer(_)
+                | TyKind::Type(_)
+                | TyKind::Module(_)
+                | TyKind::Unknown => false,
             }
-            TyKind::RawPtr(inner) | TyKind::Ref(inner, _) => {
-                inner.walk_short_(f)
-            }
-            TyKind::Adt(_, _)
-            | TyKind::Int(_)
-            | TyKind::Uint(_)
-            | TyKind::Float(_)
-            | TyKind::Str
-            | TyKind::Bool
-            | TyKind::Unit
-            | TyKind::Never
-            | TyKind::Param(_)
-            | TyKind::Infer(_)
-            | TyKind::Type(_)
-            | TyKind::Module(_)
-            | TyKind::Unknown => f(self),
-        }
     }
 
-    pub fn walk(self, mut f: impl Fn(Ty) -> bool) -> bool {
-        self.walk_(&mut f)
+    pub fn walk(self, mut f: impl FnMut(Ty)) {
+        self.walk_(&mut f);
     }
 
-    pub fn walk_(self, f: &mut impl Fn(Ty) -> bool) -> bool {
+    pub fn walk_(self, f: &mut impl FnMut(Ty)) {
+        f(self);
+
         match self.kind() {
             TyKind::Fn(fun) => {
-                fun.params.iter().all(|p| p.ty.walk_(f)) && fun.ret.walk_(f)
+                fun.params.iter().for_each(|p| p.ty.walk_(f));
+                fun.ret.walk_(f);
             }
             TyKind::RawPtr(inner) | TyKind::Ref(inner, _) => inner.walk_(f),
-            TyKind::Adt(_, _)
-            | TyKind::Int(_)
+            TyKind::Adt(_, targs) => targs.iter().for_each(|ty| ty.walk_(f)),
+            TyKind::Int(_)
             | TyKind::Uint(_)
             | TyKind::Float(_)
             | TyKind::Str
@@ -171,8 +149,26 @@ impl Ty {
             | TyKind::Infer(_)
             | TyKind::Type(_)
             | TyKind::Module(_)
-            | TyKind::Unknown => f(self),
+            | TyKind::Unknown => (),
         }
+    }
+
+    pub fn has_private_ty(self, db: &Db) -> Option<Ty> {
+        let mut result = None;
+
+        self.walk_short(|ty| match ty.kind() {
+            TyKind::Adt(adt_id, _) => {
+                if db[db[*adt_id].def_id].scope.vis == Vis::Private {
+                    result = Some(ty);
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        });
+
+        result
     }
 
     pub fn raw_ptr(self) -> Ty {
@@ -590,16 +586,16 @@ pub struct FnTy {
 impl FnTy {
     pub fn collect_params(&self) -> Vec<ParamTy> {
         let mut params = FxHashSet::default();
-        self.collect_params_inner(&mut params);
+        self.collect_params_into(&mut params);
         params.into_iter().collect()
     }
 
-    fn collect_params_inner(&self, params: &mut FxHashSet<ParamTy>) {
+    fn collect_params_into(&self, params: &mut FxHashSet<ParamTy>) {
         for p in &self.params {
-            p.ty.collect_params_inner(params);
+            p.ty.collect_params_into(params);
         }
 
-        self.ret.collect_params_inner(params);
+        self.ret.collect_params_into(params);
     }
 
     pub fn display<'db>(
