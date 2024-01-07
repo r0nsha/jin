@@ -1,11 +1,11 @@
 fn extern printf(fmt: *u8, ..) i32
 
 fn main() unit = {
-	let foo = true
-	match foo {
-		true if foo -> { printf("foo=true(guard)\n".ptr) }, 
-		true -> { printf("foo=true\n".ptr) },
-		//false -> { printf("foo=false\n".ptr) },
-		foo -> { printf("foo=%d\n".ptr, foo) },
+	match 20 {
+		10 | 20 if false -> { printf("guard\n".ptr) }, 
+		10 -> { printf("10\n".ptr) },
+		20 -> { printf("20\n".ptr) },
+		x -> { printf("%d\n".ptr, x) },
+		//_ -> { printf("other\n".ptr) },
 	}
 }

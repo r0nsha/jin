@@ -858,8 +858,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         for binding in bindings {
             match binding {
-                pmatch::Binding::Name(id, source, span) => {
-                    let binding_ty = self.cx.db[id].ty;
+                pmatch::Binding::Name(id, source, binding_ty, span) => {
+                    // let binding_ty = self.cx.db[id].ty;
 
                     let binding_value = if binding_ty.is_ref() {
                         self.create_ref(source, binding_ty)
@@ -965,7 +965,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let mut restore_bindings = vec![];
 
         for bind in &body.bindings {
-            if let pmatch::Binding::Name(id, new_value, _) = bind {
+            if let pmatch::Binding::Name(id, new_value, _, _) = bind {
                 if let Some(old_value) = self.locals.insert(*id, *new_value) {
                     restore_bindings.push((*id, old_value, *new_value));
                 }

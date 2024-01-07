@@ -167,7 +167,7 @@ impl<'db> Typeck<'db> {
                     id
                 };
 
-                Ok(hir::MatchPat::Name(id, word.span()))
+                Ok(hir::MatchPat::Name(id, self.db[id].ty, word.span()))
             }
             ast::MatchPat::Wildcard(span) => Ok(hir::MatchPat::Wildcard(*span)),
             ast::MatchPat::Unit(span) => {
@@ -452,7 +452,7 @@ impl<'db> Typeck<'db> {
         bound: &mut UstrMap<Vec<Span>>,
     ) {
         match pat {
-            hir::MatchPat::Name(id, span) => {
+            hir::MatchPat::Name(id, _, span) => {
                 bound.entry(self.db[*id].name).or_default().push(*span);
             }
             hir::MatchPat::Adt(_, subpats, _) => {

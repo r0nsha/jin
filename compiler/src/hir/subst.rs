@@ -1,5 +1,5 @@
 use crate::{
-    hir::{Expr, ExprKind, Fn, FnKind, FnSig, Let},
+    hir::{Expr, ExprKind, Fn, FnKind, FnSig, Let, MatchArm, MatchPat},
     span::Spanned,
     subst,
     subst::{Subst, SubstTy},
@@ -22,7 +22,7 @@ impl<S: SubstTy> Subst<S> for Expr {
                 match_.expr.subst(s);
 
                 for arm in &mut match_.arms {
-                    arm.expr.subst(s);
+                    arm.subst(s);
                 }
             }
             ExprKind::Loop(loop_) => {
@@ -86,7 +86,6 @@ impl<S: SubstTy> Subst<S> for FnSig {
     fn subst(&mut self, s: &mut S) {
         for param in &mut self.params {
             param.ty = s.subst_ty(param.ty, param.pat.span());
-            // TODO: remove?
             param.pat.subst(s);
         }
     }
@@ -96,7 +95,38 @@ impl<S: SubstTy> Subst<S> for Let {
     fn subst(&mut self, s: &mut S) {
         self.value.subst(s);
         self.ty = self.value.ty;
-        // TODO: remove?
         self.pat.subst(s);
+    }
+}
+
+impl<S: SubstTy> Subst<S> for MatchArm {
+    fn subst(&mut self, s: &mut S) {
+        self.pat.subst(s);
+
+        if let Some(guard) = &mut self.guard {
+            guard.subst(s);
+        }
+
+        self.expr.subst(s);
+    }
+}
+
+impl<S: SubstTy> Subst<S> for MatchPat {
+    fn subst(&mut self, s: &mut S) {
+        match self {
+            MatchPat::Name(_, ty, span) => {
+                *ty = s.subst_ty(*ty, *span);
+            }
+            MatchPat::Adt(_, pats, _) | MatchPat::Or(pats, _) => {
+                for pat in pats {
+                    pat.subst(s);
+                }
+            }
+            MatchPat::Wildcard(_)
+            | MatchPat::Unit(_)
+            | MatchPat::Bool(_, _)
+            | MatchPat::Int(_, _)
+            | MatchPat::Str(_, _) => (),
+        }
     }
 }

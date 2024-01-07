@@ -249,8 +249,10 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
 
     fn move_binding_pats(row: &mut Row) {
         row.cols.retain(|col| match &col.pat {
-            Pat::Name(id, span) => {
-                row.body.bindings.push(Binding::Name(*id, col.value, *span));
+            Pat::Name(id, ty, span) => {
+                row.body
+                    .bindings
+                    .push(Binding::Name(*id, col.value, *ty, *span));
                 false
             }
             Pat::Wildcard(span) => {
@@ -430,14 +432,14 @@ pub type Bindings = Vec<Binding>;
 
 #[derive(Clone)]
 pub enum Binding {
-    Name(DefId, ValueId, Span),
+    Name(DefId, ValueId, Ty, Span),
     Discard(ValueId, Span),
 }
 
 impl core::fmt::Debug for Binding {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Name(id, v, _) => write!(f, "Name({id}, {v})"),
+            Self::Name(id, v, _, _) => write!(f, "Name({id}, {v})"),
             Self::Discard(v, _) => write!(f, "Discard({v})"),
         }
     }
@@ -625,7 +627,7 @@ pub(super) enum Pat {
     Int(i128, Span),
     Str(Ustr, Span),
     Ctor(Ctor, Vec<Pat>, Span),
-    Name(DefId, Span),
+    Name(DefId, Ty, Span),
     Wildcard(Span),
     Or(Vec<Pat>, Span),
 }
@@ -636,7 +638,7 @@ impl Spanned for Pat {
             Self::Int(_, span)
             | Self::Str(_, span)
             | Self::Ctor(_, _, span)
-            | Self::Name(_, span)
+            | Self::Name(_, _, span)
             | Self::Wildcard(span)
             | Self::Or(_, span) => *span,
         }
@@ -659,7 +661,7 @@ impl core::fmt::Debug for Pat {
                     write!(f, "{ctor:?}({args:?})")
                 }
             }
-            Self::Name(v, _) => {
+            Self::Name(v, _, _) => {
                 write!(f, "{v:?}")
             }
             Self::Wildcard(_) => {
@@ -683,7 +685,7 @@ impl Pat {
 
     pub(super) fn from_hir(pat: &hir::MatchPat) -> Self {
         match pat {
-            hir::MatchPat::Name(id, span) => Self::Name(*id, *span),
+            hir::MatchPat::Name(id, ty, span) => Self::Name(*id, *ty, *span),
             hir::MatchPat::Wildcard(span) => Self::Wildcard(*span),
             hir::MatchPat::Unit(span) => Self::Ctor(Ctor::Unit, vec![], *span),
             hir::MatchPat::Bool(true, span) => {
