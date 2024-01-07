@@ -48,7 +48,7 @@ fn collect_body_pat_spans(rows: &[Row]) -> FxHashMap<BlockId, Span> {
     map
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct Col {
     /// The value to branch on
     pub value: ValueId,
@@ -60,6 +60,12 @@ pub struct Col {
 impl Col {
     pub fn new(value: ValueId, pat: Pat) -> Self {
         Self { value, pat }
+    }
+}
+
+impl core::fmt::Debug for Col {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Col({:?}, {:?})", self.value, self.pat)
     }
 }
 
@@ -204,6 +210,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
     }
 
     fn compile_rows(&mut self, mut rows: Vec<Row>) -> Decision {
+        dbg!(&rows);
         if rows.is_empty() {
             self.missing = true;
             return Decision::Err;
@@ -412,7 +419,7 @@ pub(super) enum Decision {
     Switch { cond: ValueId, cases: Vec<Case>, fallback: Option<Box<Decision>> },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct DecisionBody {
     pub bindings: Bindings,
     pub block: BlockId,
@@ -421,10 +428,29 @@ pub struct DecisionBody {
 
 pub type Bindings = Vec<Binding>;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum Binding {
     Name(DefId, ValueId, Span),
     Discard(ValueId, Span),
+}
+
+impl core::fmt::Debug for Binding {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Name(id, v, _) => write!(f, "Name({id}, {v})"),
+            Self::Discard(v, _) => write!(f, "Discard({v})"),
+        }
+    }
+}
+
+impl core::fmt::Debug for DecisionBody {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.bindings.is_empty() {
+            write!(f, "DecisionBody({:?})", self.block)
+        } else {
+            write!(f, "DecisionBody({:?}, {:?})", self.block, self.bindings)
+        }
+    }
 }
 
 impl DecisionBody {
@@ -594,7 +620,7 @@ impl From<Ctor> for Const {
 }
 
 // A constructor for a given `Type`
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub(super) enum Pat {
     Int(i128, Span),
     Str(Ustr, Span),
@@ -613,6 +639,35 @@ impl Spanned for Pat {
             | Self::Name(_, span)
             | Self::Wildcard(span)
             | Self::Or(_, span) => *span,
+        }
+    }
+}
+
+impl core::fmt::Debug for Pat {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Int(v, _) => {
+                write!(f, "int {v}")
+            }
+            Self::Str(v, _) => {
+                write!(f, "\"{v}\"")
+            }
+            Self::Ctor(ctor, args, _) => {
+                if args.is_empty() {
+                    write!(f, "{ctor:?}")
+                } else {
+                    write!(f, "{ctor:?}({args:?})")
+                }
+            }
+            Self::Name(v, _) => {
+                write!(f, "{v:?}")
+            }
+            Self::Wildcard(_) => {
+                write!(f, "_")
+            }
+            Self::Or(pats, _) => {
+                write!(f, "or {pats:?}")
+            }
         }
     }
 }

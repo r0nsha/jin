@@ -5,7 +5,7 @@ fn main() unit = {
 	match foo {
 		true if foo -> { printf("foo=true(guard)\n".ptr) }, 
 		true -> { printf("foo=true\n".ptr) },
-		false -> { printf("foo=false\n".ptr) },
+		//false -> { printf("foo=false\n".ptr) },
 		foo -> { printf("foo=%d\n".ptr, foo) },
 	}
 }

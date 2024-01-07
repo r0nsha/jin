@@ -7,7 +7,7 @@ use data_structures::{
     new_key_type,
 };
 
-#[derive(Debug, Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Span {
     source_id: SourceId,
     start: u32,
@@ -67,6 +67,12 @@ impl Span {
             start: self.start.min(other.start),
             end: self.end.max(other.end),
         }
+    }
+}
+
+impl core::fmt::Debug for Span {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Span({}, {}..{})", self.source_id, self.start, self.end)
     }
 }
 
