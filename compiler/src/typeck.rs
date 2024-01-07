@@ -537,11 +537,7 @@ impl<'db> Typeck<'db> {
         })?;
 
         env.with_anon_scope(ScopeKind::TyDef, |env| -> TypeckResult<()> {
-            {
-                let ty_params = self.check_ty_params(env, &tydef.ty_params)?;
-                self.db[adt_id].ty_params = ty_params;
-                self.db[def_id].ty = TyKind::Type(self.db[adt_id].ty()).into();
-            }
+            self.check_adt_ty_params(env, tydef, adt_id, def_id)?;
 
             for (idx, field) in struct_def.fields.iter().enumerate() {
                 let ty =
@@ -591,28 +587,31 @@ impl<'db> Typeck<'db> {
         }
 
         let (adt_id, def_id) = self.define_adt(env, tydef, |id| {
-            AdtKind::Union(UnionDef::new(id, variants))
+            AdtKind::Union(UnionDef::new(id, variants.clone()))
         })?;
 
         env.with_anon_scope(ScopeKind::TyDef, |env| -> TypeckResult<()> {
-            {
-                let ty_params = self.check_ty_params(env, &tydef.ty_params)?;
-                self.db[adt_id].ty_params = ty_params;
-                self.db[def_id].ty = TyKind::Type(self.db[adt_id].ty()).into();
-            }
+            self.check_adt_ty_params(env, tydef, adt_id, def_id)?;
 
-            todo!();
-            // for (idx, field) in union_def.fields.iter().enumerate() {
-            //     let ty =
-            //         self.check_ty_expr(env, &field.ty_expr, AllowTyHole::No)?;
-            //     self.db[adt_id].as_struct_mut().unwrap().fields[idx].ty = ty;
-            // }
+            let adt_ty = self.db[adt_id].ty();
+
+            for (&variant_id, variant) in
+                variants.iter().zip(&union_def.variants)
+            {
+                for (field_idx, field) in variant.fields.iter().enumerate() {
+                    let ty = self.check_ty_expr(
+                        env,
+                        &field.ty_expr,
+                        AllowTyHole::No,
+                    )?;
+                    self.db[variant_id].fields[field_idx].ty = ty;
+                }
+
+                self.db[variant_id].fill_ctor_ty(adt_ty);
+            }
 
             Ok(())
         })?;
-
-        let adt_ty = self.db[adt_id].ty();
-        self.db[adt_id].as_struct_mut().unwrap().fill_ctor_ty(adt_ty);
 
         let adt = &self.db[adt_id];
 
@@ -670,10 +669,12 @@ impl<'db> Typeck<'db> {
             });
         }
 
+        let unknown = self.db.types.unknown;
         let id = self.db.variants.push_with_key(|id| Variant {
             id,
             name: variant.name,
             fields,
+            ctor_ty: unknown,
         });
 
         Ok(id)
@@ -704,6 +705,19 @@ impl<'db> Typeck<'db> {
         self.db[adt_id].def_id = def_id;
 
         Ok((adt_id, def_id))
+    }
+
+    fn check_adt_ty_params(
+        &mut self,
+        env: &mut Env,
+        tydef: &ast::TyDef,
+        adt_id: AdtId,
+        def_id: DefId,
+    ) -> TypeckResult<()> {
+        let ty_params = self.check_ty_params(env, &tydef.ty_params)?;
+        self.db[adt_id].ty_params = ty_params;
+        self.db[def_id].ty = TyKind::Type(self.db[adt_id].ty()).into();
+        Ok(())
     }
 
     fn check_import(

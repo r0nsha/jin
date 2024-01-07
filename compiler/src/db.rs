@@ -479,6 +479,16 @@ impl Adt {
     }
 
     #[must_use]
+    pub fn as_union(&self) -> Option<&UnionDef> {
+        self.kind.as_union()
+    }
+
+    #[must_use]
+    pub fn as_union_mut(&mut self) -> Option<&mut UnionDef> {
+        self.kind.as_union_mut()
+    }
+
+    #[must_use]
     pub fn is_infinitely_sized(&self) -> Option<&AdtField> {
         match &self.kind {
             AdtKind::Struct(s) => s.is_infinitely_sized(),
@@ -511,17 +521,37 @@ pub enum AdtKind {
 impl AdtKind {
     #[must_use]
     pub fn as_struct(&self) -> Option<&StructDef> {
-        match self {
-            Self::Struct(v) => Some(v),
-            _ => None,
+        if let Self::Struct(v) = self {
+            Some(v)
+        } else {
+            None
         }
     }
 
     #[must_use]
     pub fn as_struct_mut(&mut self) -> Option<&mut StructDef> {
-        match self {
-            Self::Struct(v) => Some(v),
-            _ => None,
+        if let Self::Struct(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    pub fn as_union(&self) -> Option<&UnionDef> {
+        if let Self::Union(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
+
+    #[must_use]
+    pub fn as_union_mut(&mut self) -> Option<&mut UnionDef> {
+        if let Self::Union(v) = self {
+            Some(v)
+        } else {
+            None
         }
     }
 }
@@ -624,6 +654,25 @@ pub struct Variant {
     pub id: VariantId,
     pub name: Word,
     pub fields: Vec<AdtField>,
+    pub ctor_ty: Ty,
+}
+
+impl Variant {
+    pub fn field_by_name(&self, name: &str) -> Option<&AdtField> {
+        self.fields.iter().find(|f| f.name.name() == name)
+    }
+
+    pub fn fill_ctor_ty(&mut self, ret: Ty) {
+        self.ctor_ty = Ty::new(TyKind::Fn(FnTy {
+            params: self
+                .fields
+                .iter()
+                .map(|f| FnTyParam { name: Some(f.name.name()), ty: f.ty })
+                .collect(),
+            ret,
+            is_c_variadic: false,
+        }));
+    }
 }
 
 #[derive(Debug, Clone)]
