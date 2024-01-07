@@ -262,6 +262,21 @@ impl PrettyPrint for TyDef {
 
                 cx.builder.end_child();
             }
+            TyDefKind::Union(udef) => {
+                cx.builder.add_empty_child("union".to_string());
+
+                for variant in &udef.variants {
+                    cx.builder.begin_child(variant.name.to_string());
+
+                    for field in &variant.fields {
+                        cx.builder.begin_child(field.name.to_string());
+                        field.ty_expr.pretty_print(cx);
+                        cx.builder.end_child();
+                    }
+
+                    cx.builder.end_child();
+                }
+            }
         }
 
         cx.builder.end_child();

@@ -482,6 +482,10 @@ impl<'db> Typeck<'db> {
             ast::TyDefKind::Struct(struct_def) => {
                 self.check_tydef_struct(env, tydef, struct_def)
             }
+            ast::TyDefKind::Union(union_def) => {
+                dbg!(union_def);
+                todo!()
+            },
         }
     }
 

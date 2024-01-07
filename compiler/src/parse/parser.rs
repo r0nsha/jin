@@ -12,6 +12,7 @@ use crate::{
         Attr, AttrKind, Attrs, CallArg, Expr, ExternImport, ExternLet, Fn,
         FnKind, FnParam, FnSig, Item, Let, LitKind, MatchArm, MatchPat, Module,
         StructTyDef, StructTyField, Subpat, TyDef, TyDefKind, TyParam,
+        UnionTyDef, UnionVariant, UnionVariantField,
     },
     db::{Db, DefId, ExternLib, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -300,6 +301,8 @@ impl<'a> Parser<'a> {
             self.parse_tydef_struct(StructKind::Extern)
         } else if self.peek_is(TokenKind::OpenParen) {
             self.parse_tydef_struct(StructKind::Ref)
+        } else if self.peek_is(TokenKind::OpenCurly) {
+            self.parse_tydef_union()
         } else {
             let tok = self.require()?;
             Err(errors::unexpected_token_err(
@@ -331,6 +334,43 @@ impl<'a> Parser<'a> {
         )?;
 
         Ok(TyDefKind::Struct(StructTyDef { kind, fields }))
+    }
+
+    fn parse_tydef_union(&mut self) -> DiagnosticResult<TyDefKind> {
+        let (variants, _) = self.parse_list(
+            TokenKind::OpenCurly,
+            TokenKind::CloseCurly,
+            |this| {
+                let ident = this.eat_ident()?;
+
+                let fields = if this.peek_is(TokenKind::OpenParen) {
+                    let (fields, _) = this.parse_list(
+                        TokenKind::OpenParen,
+                        TokenKind::CloseParen,
+                        |this| {
+                            let ident = this.eat_ident()?;
+                            this.eat(TokenKind::Colon)?;
+                            let ty_expr = this.parse_ty()?;
+                            Ok(ControlFlow::Continue(UnionVariantField {
+                                name: ident.word(),
+                                ty_expr,
+                            }))
+                        },
+                    )?;
+
+                    fields
+                } else {
+                    vec![]
+                };
+
+                Ok(ControlFlow::Continue(UnionVariant {
+                    name: ident.word(),
+                    fields,
+                }))
+            },
+        )?;
+
+        Ok(TyDefKind::Union(UnionTyDef { variants }))
     }
 
     fn parse_pat(&mut self) -> DiagnosticResult<Pat> {
