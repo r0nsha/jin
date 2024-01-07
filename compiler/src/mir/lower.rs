@@ -465,9 +465,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let mut state = DecisionState::new(output, expr.span);
 
                 for arm in &match_.arms {
-                    let guard = arm.guard.as_ref().map(|guard| {
+                    let guard = arm.guard.as_ref().map(|expr| {
                         let block = self.body.create_block("guard");
-                        state.guards.insert(block, guard);
+                        state.guards.insert(block, expr);
                         block
                     });
 
