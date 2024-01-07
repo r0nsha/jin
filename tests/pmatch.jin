@@ -129,9 +129,9 @@ fn print(value: int) unit = {
 fn move(box: Box) unit = {}
 
 fn match_guard() unit = {
-	let foo = true
-	match false {
-		_ if foo -> { printf("foo=true\n".ptr) }, 
+	let foo = false
+	match foo {
+		_ if foo && false -> { printf("foo=true\n".ptr) }, 
 		false -> { printf("foo=false\n".ptr) },
 		foo -> { printf("foo=%d\n".ptr, foo) },
 	}

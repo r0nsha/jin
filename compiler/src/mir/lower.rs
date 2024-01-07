@@ -975,7 +975,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         self.position_at(guard);
-
         let cond = self.lower_expr(guard_expr);
         self.exit_scope();
 
