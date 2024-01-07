@@ -639,6 +639,9 @@ impl<'db> Generator<'db> {
             ValueKind::Fn(id) => D::text(self.mir.fn_sigs[*id].name.as_str()),
             ValueKind::Const(value) => codegen_const_value(value),
             ValueKind::Field(value, field) => self.field(state, *value, field),
+            ValueKind::Variant(value, variant) => {
+                self.variant(state, *value, variant)
+            }
         }
     }
 

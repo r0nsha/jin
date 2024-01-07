@@ -10,7 +10,7 @@ use crate::{
         ty::CTy,
         util,
     },
-    mir::{Block, ValueId},
+    mir::{Block, ValueId, ValueKind},
     span::Span,
     sym,
     ty::TyKind,
@@ -57,15 +57,33 @@ impl<'db> Generator<'db> {
         value: ValueId,
         field: &str,
     ) -> D<'db> {
-        let ty = state.body.value(value).ty;
+        let value = state.body.value(value);
 
-        match ty.kind() {
-            TyKind::Adt(adt, _) if self.db[*adt].is_ref() => {
-                self.adt_field(state, value, field)
+        match &value.kind {
+            ValueKind::Variant(_, _) => {
+                util::field(self.value(state, value.id), field, false)
             }
-            TyKind::Ref(_, _) => self.adt_field(state, value, field),
-            _ => util::field(self.value(state, value), field, ty.is_ptr(self)),
+            _ => match value.ty.kind() {
+                TyKind::Adt(adt, _) if self.db[*adt].is_ref() => {
+                    self.adt_field(state, value.id, field)
+                }
+                TyKind::Ref(_, _) => self.adt_field(state, value.id, field),
+                _ => util::field(
+                    self.value(state, value.id),
+                    field,
+                    value.ty.is_ptr(self),
+                ),
+            },
         }
+    }
+
+    pub fn variant(
+        &self,
+        state: &FnState<'db>,
+        value: ValueId,
+        variant: &str,
+    ) -> D<'db> {
+        self.adt_field(state, value, variant)
     }
 
     pub fn adt_field(

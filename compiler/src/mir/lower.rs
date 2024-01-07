@@ -18,7 +18,6 @@ use crate::{
         FnSigId, FxHashMap, FxHashSet, Global, GlobalId, GlobalKind, Inst, Mir,
         Span, StaticGlobal, UnOp, ValueId, ValueKind,
     },
-    qpath::QPath,
     span::Spanned,
     ty::{
         coerce::{CoercionKind, Coercions},
@@ -139,7 +138,7 @@ impl<'db> Lower<'db> {
         let def = &self.db[adt.def_id];
         let struct_def = adt.as_struct().unwrap();
 
-        let name = Self::ctor_name(def.qpath.clone());
+        let name = ustr(&def.qpath.clone().child(ustr("ctor")).join_with("_"));
 
         let params = Self::adt_fields_to_fn_params(&struct_def.fields);
         let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
@@ -203,7 +202,8 @@ impl<'db> Lower<'db> {
         let adt = &self.db[variant.adt_id];
         let def = &self.db[adt.def_id];
 
-        let name = Self::ctor_name(def.qpath.clone());
+        let name =
+            ustr(&def.qpath.clone().child(variant.name.name()).join_with("_"));
 
         let params = Self::adt_fields_to_fn_params(&variant.fields);
         let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
@@ -226,10 +226,15 @@ impl<'db> Lower<'db> {
             value
         };
 
+        let this_variant = body.create_value(
+            adt.ty(),
+            ValueKind::Variant(this, variant.name.name()),
+        );
+
         Self::ctor_init_adt_fields(
             &mut body,
             start_block,
-            this,
+            this_variant,
             &variant.fields,
         );
 
@@ -239,10 +244,6 @@ impl<'db> Lower<'db> {
         self.mir.fns.insert(sig, Fn { sig, body });
 
         sig
-    }
-
-    fn ctor_name(qpath: QPath) -> Ustr {
-        ustr(&qpath.child(ustr("ctor")).join_with("_"))
     }
 
     fn adt_fields_to_fn_params(fields: &[AdtField]) -> Vec<FnParam> {
@@ -1793,8 +1794,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             ValueKind::Local(id) => self.cx.db[*id].name.to_string(),
             ValueKind::Global(id) => self.cx.mir.globals[*id].name.to_string(),
             ValueKind::Fn(id) => self.cx.mir.fn_sigs[*id].name.to_string(),
-            ValueKind::Field(parent, field) => {
-                format!("{}.{}", self.value_name_aux(*parent), field)
+            ValueKind::Field(parent, child)
+            | ValueKind::Variant(parent, child) => {
+                format!("{}.{}", self.value_name_aux(*parent), child)
             }
             ValueKind::UniqueName(name) => name.to_string(),
             ValueKind::Register(_) | ValueKind::Const(_) => "_".to_string(),
@@ -1909,7 +1911,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     Ok(())
                 }
             }
-            ValueKind::Field(parent, _) => {
+            ValueKind::Field(parent, _) | ValueKind::Variant(parent, _) => {
                 match (self.value_ty_imm_root(*parent), break_on_mut_ty) {
                     (Ok(()), BreakOnMutRef::Yes) => Ok(()),
                     (Ok(()), BreakOnMutRef::No) => {

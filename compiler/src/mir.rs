@@ -438,6 +438,9 @@ pub enum ValueKind {
 
     // A field of a value
     Field(ValueId, Ustr),
+
+    // A variant of a type union
+    Variant(ValueId, Ustr),
 }
 
 impl ValueKind {
