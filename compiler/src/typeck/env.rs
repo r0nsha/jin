@@ -6,7 +6,10 @@ use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     ast,
-    db::{Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel},
+    db::{
+        Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel,
+        VariantId,
+    },
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     macros::create_bool_enum,
@@ -37,6 +40,12 @@ impl LookupResult {
             | LookupResult::Fn(FnCandidate { id, .. }) => *id,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub enum PathLookup {
+    Def(DefId),
+    Variant(VariantId),
 }
 
 impl<'db> Typeck<'db> {
@@ -272,7 +281,7 @@ impl<'db> Typeck<'db> {
         &mut self,
         env: &Env,
         path: &[Word],
-    ) -> TypeckResult<DefId> {
+    ) -> TypeckResult<PathLookup> {
         let (&last, path) =
             path.split_last().expect("to have at least one element");
 
@@ -281,10 +290,27 @@ impl<'db> Typeck<'db> {
         for &part in path {
             let part_id =
                 self.lookup(env, target_module, &Query::Name(part))?;
-            target_module = self.is_module_def(part_id, part.span())?;
+
+            match self.normalize(self.db[part_id].ty).kind() {
+                TyKind::Module(module_id) => {
+                    target_module = *module_id;
+                }
+                ty => {
+                    return Err(Diagnostic::error()
+                        .with_message(format!(
+                            "expected a module, found type `{}`",
+                            ty.display(self.db)
+                        ))
+                        .with_label(
+                            Label::primary(part.span())
+                                .with_message("not a module"),
+                        ))
+                }
+            }
         }
 
-        self.lookup(env, target_module, &Query::Name(last))
+        let id = self.lookup(env, target_module, &Query::Name(last))?;
+        Ok(PathLookup::Def(id))
     }
 
     pub fn import_lookup(

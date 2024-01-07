@@ -19,9 +19,9 @@ fn ctors() unit = {
 
 fn pmatch() unit = {
 	let value = Option.some(1)
-	//match value {
-	//	Option.some(1) -> printf("some(1)\n"),
-	//	Option.some(_) -> printf("some(other)\n"),
-	//	Option.none() -> printf("none\n"),
-	//}
+	match value {
+		Option.some(1) -> printf("some(1)\n"),
+		Option.some(_) -> printf("some(other)\n"),
+		Option.none() -> printf("none\n"),
+	}
 }

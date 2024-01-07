@@ -41,8 +41,8 @@ use crate::{
         attrs::AttrsPlacement,
         coerce::CoerceExt,
         env::{
-            BuiltinTys, Env, FnQuery, GlobalScope, LookupResult, Query,
-            ScopeKind, Symbol,
+            BuiltinTys, Env, FnQuery, GlobalScope, LookupResult, PathLookup,
+            Query, ScopeKind, Symbol,
         },
         resolution_state::{ModuleStatus, ResolutionState, ResolvedFnSig},
         unify::Obligation,
@@ -1973,48 +1973,70 @@ impl<'db> Typeck<'db> {
         span: Span,
         allow_hole: AllowTyHole,
     ) -> TypeckResult<Ty> {
-        let id = self.path_lookup(env, path)?;
-        let def = &self.db[id];
+        match self.path_lookup(env, path)? {
+            PathLookup::Def(id) => {
+                let def = &self.db[id];
 
-        match def.kind.as_ref() {
-            DefKind::Ty(ty) => {
-                if targs.is_some() {
-                    Err(Diagnostic::error()
+                match def.kind.as_ref() {
+                    DefKind::Ty(ty) => {
+                        if targs.is_some() {
+                            Err(Diagnostic::error()
+                                .with_message(format!(
+                                    "type `{}` doesn't expect any type \
+                                     arguments",
+                                    ty.display(self.db)
+                                ))
+                                .with_label(
+                                    Label::primary(span).with_message(
+                                        "unexpected type arguments",
+                                    ),
+                                ))
+                        } else {
+                            Ok(*ty)
+                        }
+                    }
+                    &DefKind::Adt(adt_id) => {
+                        let targs = self
+                            .check_optional_ty_args(env, targs, allow_hole)?;
+
+                        let ty_params = &self.db[adt_id].ty_params;
+                        let targs_len = targs.as_ref().map_or(0, Vec::len);
+
+                        if targs_len == ty_params.len() {
+                            Ok(Ty::new(TyKind::Adt(
+                                adt_id,
+                                targs.unwrap_or_default(),
+                            )))
+                        } else {
+                            Err(errors::adt_ty_arg_mismatch(
+                                self.db, adt_id, targs_len, span,
+                            ))
+                        }
+                    }
+                    _ => Err(Diagnostic::error()
                         .with_message(format!(
-                            "type `{}` doesn't expect any type arguments",
-                            ty.display(self.db)
+                            "expected a type, found value of type `{}`",
+                            def.ty.display(self.db)
                         ))
                         .with_label(
                             Label::primary(span)
-                                .with_message("unexpected type arguments"),
-                        ))
-                } else {
-                    Ok(*ty)
+                                .with_message("expected a type"),
+                        )),
                 }
             }
-            &DefKind::Adt(adt_id) => {
-                let targs =
-                    self.check_optional_ty_args(env, targs, allow_hole)?;
+            PathLookup::Variant(variant_id) => {
+                let variant = &self.db[variant_id];
 
-                let ty_params = &self.db[adt_id].ty_params;
-                let targs_len = targs.as_ref().map_or(0, Vec::len);
-
-                if targs_len == ty_params.len() {
-                    Ok(Ty::new(TyKind::Adt(adt_id, targs.unwrap_or_default())))
-                } else {
-                    Err(errors::adt_ty_arg_mismatch(
-                        self.db, adt_id, targs_len, span,
+                Err(Diagnostic::error()
+                    .with_message(format!(
+                        "expected a type, found variant `{}` of type `{}`",
+                        variant.name, self.db[variant.adt_id].name
                     ))
-                }
+                    .with_label(
+                        Label::primary(span)
+                            .with_message("expected type, found variant"),
+                    ))
             }
-            _ => Err(Diagnostic::error()
-                .with_message(format!(
-                    "expected a type, found value of type `{}`",
-                    def.ty.display(self.db)
-                ))
-                .with_label(
-                    Label::primary(span).with_message("expected a type"),
-                )),
         }
     }
 
