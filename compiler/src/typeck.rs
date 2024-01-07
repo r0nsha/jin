@@ -20,7 +20,10 @@ use ustr::UstrMap;
 use crate::{
     ast::{self, Ast},
     counter::Counter,
-    db::{Adt, AdtField, AdtKind, Db, DefId, DefKind, ModuleId, StructDef},
+    db::{
+        Adt, AdtField, AdtId, AdtKind, Db, DefId, DefKind, ModuleId, StructDef,
+        UnionDef, Variant, VariantId,
+    },
     diagnostics::{Diagnostic, Label},
     hir,
     hir::{ExprId, FnParam, Hir},
@@ -483,9 +486,8 @@ impl<'db> Typeck<'db> {
                 self.check_tydef_struct(env, tydef, struct_def)
             }
             ast::TyDefKind::Union(union_def) => {
-                dbg!(union_def);
-                todo!()
-            },
+                self.check_tydef_union(env, tydef, union_def)
+            }
         }
     }
 
@@ -494,7 +496,7 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         tydef: &ast::TyDef,
         struct_def: &ast::StructTyDef,
-    ) -> Result<(), Diagnostic> {
+    ) -> TypeckResult<()> {
         let mut fields = vec![];
         let mut defined_fields = WordMap::default();
 
@@ -524,38 +526,20 @@ impl<'db> Typeck<'db> {
             });
         }
 
-        let adt_id = {
-            let adt_id = self.db.adts.push_with_key(|id| Adt {
+        let unknown = self.db.types.unknown;
+        let (adt_id, def_id) = self.define_adt(env, tydef, |id| {
+            AdtKind::Struct(StructDef::new(
                 id,
-                def_id: DefId::null(),
-                name: tydef.word,
-                ty_params: vec![],
-                kind: AdtKind::Struct(StructDef::new(
-                    id,
-                    fields,
-                    struct_def.kind,
-                    self.db.types.unknown, // Will be filled later
-                )),
-            });
-
-            self.db[adt_id].def_id = self.define_def(
-                env,
-                tydef.vis,
-                DefKind::Adt(adt_id),
-                tydef.word,
-                Mutability::Imm,
-                self.db.types.unknown, // Will be filled later
-            )?;
-
-            adt_id
-        };
+                fields,
+                struct_def.kind,
+                unknown, // Will be filled later
+            ))
+        })?;
 
         env.with_anon_scope(ScopeKind::TyDef, |env| -> TypeckResult<()> {
             {
                 let ty_params = self.check_ty_params(env, &tydef.ty_params)?;
                 self.db[adt_id].ty_params = ty_params;
-
-                let def_id = self.db[adt_id].def_id;
                 self.db[def_id].ty = TyKind::Type(self.db[adt_id].ty()).into();
             }
 
@@ -592,6 +576,134 @@ impl<'db> Typeck<'db> {
         }
 
         Ok(())
+    }
+
+    fn check_tydef_union(
+        &mut self,
+        env: &mut Env,
+        tydef: &ast::TyDef,
+        union_def: &ast::UnionTyDef,
+    ) -> TypeckResult<()> {
+        let mut variants: Vec<VariantId> = vec![];
+
+        for variant in &union_def.variants {
+            variants.push(self.check_tydef_union_variant(variant)?);
+        }
+
+        let (adt_id, def_id) = self.define_adt(env, tydef, |id| {
+            AdtKind::Union(UnionDef::new(id, variants))
+        })?;
+
+        env.with_anon_scope(ScopeKind::TyDef, |env| -> TypeckResult<()> {
+            {
+                let ty_params = self.check_ty_params(env, &tydef.ty_params)?;
+                self.db[adt_id].ty_params = ty_params;
+                self.db[def_id].ty = TyKind::Type(self.db[adt_id].ty()).into();
+            }
+
+            todo!();
+            // for (idx, field) in union_def.fields.iter().enumerate() {
+            //     let ty =
+            //         self.check_ty_expr(env, &field.ty_expr, AllowTyHole::No)?;
+            //     self.db[adt_id].as_struct_mut().unwrap().fields[idx].ty = ty;
+            // }
+
+            Ok(())
+        })?;
+
+        let adt_ty = self.db[adt_id].ty();
+        self.db[adt_id].as_struct_mut().unwrap().fill_ctor_ty(adt_ty);
+
+        let adt = &self.db[adt_id];
+
+        if let Some(field) = adt.is_infinitely_sized() {
+            return Err(Diagnostic::error()
+                .with_message(format!(
+                    "type `{}` is infinitely sized",
+                    adt.name
+                ))
+                .with_label(
+                    Label::primary(adt.name.span())
+                        .with_message("defined here"),
+                )
+                .with_label(
+                    Label::secondary(field.name.span()).with_message(format!(
+                        "field has type `{}` without indirection",
+                        adt.name
+                    )),
+                ));
+        }
+
+        Ok(())
+    }
+
+    fn check_tydef_union_variant(
+        &mut self,
+        variant: &ast::UnionVariant,
+    ) -> TypeckResult<VariantId> {
+        let mut fields = vec![];
+        let mut defined_fields = WordMap::default();
+
+        for field in &variant.fields {
+            if let Some(prev_span) = defined_fields.insert(field.name) {
+                let name = field.name.name();
+                let dup_span = field.name.span();
+
+                return Err(Diagnostic::error()
+                    .with_message(format!(
+                        "the name `{name}` is already used as a field name"
+                    ))
+                    .with_label(
+                        Label::primary(dup_span)
+                            .with_message(format!("`{name}` used again here")),
+                    )
+                    .with_label(
+                        Label::secondary(prev_span)
+                            .with_message(format!("first use of `{name}`")),
+                    ));
+            }
+
+            fields.push(AdtField {
+                name: field.name,
+                vis: Vis::Public,
+                ty: self.db.types.unknown,
+            });
+        }
+
+        let id = self.db.variants.push_with_key(|id| Variant {
+            id,
+            name: variant.name,
+            fields,
+        });
+
+        Ok(id)
+    }
+
+    fn define_adt(
+        &mut self,
+        env: &mut Env,
+        tydef: &ast::TyDef,
+        kind: impl FnOnce(AdtId) -> AdtKind,
+    ) -> TypeckResult<(AdtId, DefId)> {
+        let adt_id = self.db.adts.push_with_key(|id| Adt {
+            id,
+            def_id: DefId::null(),
+            name: tydef.word,
+            ty_params: vec![],
+            kind: kind(id),
+        });
+
+        let def_id = self.define_def(
+            env,
+            tydef.vis,
+            DefKind::Adt(adt_id),
+            tydef.word,
+            Mutability::Imm,
+            self.db.types.unknown, // Will be filled later
+        )?;
+        self.db[adt_id].def_id = def_id;
+
+        Ok((adt_id, def_id))
     }
 
     fn check_import(
@@ -1240,6 +1352,7 @@ impl<'db> Typeck<'db> {
                         span,
                     ))
                 }
+                AdtKind::Union(_) => todo!(),
             }
         } else {
             let def_ty = self.normalize(self.db[id].ty);
@@ -1366,6 +1479,7 @@ impl<'db> Typeck<'db> {
                             ));
                         }
                     }
+                    AdtKind::Union(_) => todo!(),
                 }
             }
             TyKind::Module(module_id) => {

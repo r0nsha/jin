@@ -1105,6 +1105,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                     self.fields.insert(value, fields);
                 }
+                AdtKind::Union(_) => todo!(),
             }
         }
     }

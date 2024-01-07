@@ -578,6 +578,7 @@ impl Type {
                                 .collect(),
                         )])
                     }
+                    AdtKind::Union(_) => todo!(),
                 }
             }
             TyKind::Ref(ty, _) => Self::from_cond(cx, cond, *ty),

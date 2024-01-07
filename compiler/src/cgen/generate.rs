@@ -211,13 +211,13 @@ impl<'db> Generator<'db> {
 
         match &adt.kind {
             AdtKind::Struct(struct_def) => {
-                // PERF: cloning `struct_def` here to avoid borrowck errors...
                 self.codegen_struct_def(
                     adt_name,
                     &struct_def.clone(),
                     &instantiation,
                 );
             }
+            AdtKind::Union(_) => todo!(),
         }
     }
 

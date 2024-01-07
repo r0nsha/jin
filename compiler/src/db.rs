@@ -43,6 +43,7 @@ pub struct Db {
     pub modules: IndexVec<ModuleId, ModuleInfo>,
     pub defs: IndexVec<DefId, Def>,
     pub adts: IndexVec<AdtId, Adt>,
+    pub variants: IndexVec<VariantId, Variant>,
     pub types: CommonTypes,
     pub extern_libs: FxHashSet<ExternLib>,
     pub diagnostics: Diagnostics,
@@ -101,6 +102,7 @@ impl Db {
             modules: IndexVec::new(),
             defs: IndexVec::new(),
             adts: IndexVec::new(),
+            variants: IndexVec::new(),
             types: CommonTypes::new(),
             extern_libs: FxHashSet::default(),
             main_package_name,
@@ -265,6 +267,7 @@ macro_rules! new_db_key {
 new_db_key!(ModuleId -> modules : ModuleInfo);
 new_db_key!(DefId -> defs : Def);
 new_db_key!(AdtId -> adts : Adt);
+new_db_key!(VariantId -> variants : Variant);
 
 #[derive(Debug, Clone)]
 pub struct Package {
@@ -461,6 +464,7 @@ impl Adt {
     pub fn is_ref(&self) -> bool {
         match &self.kind {
             AdtKind::Struct(s) => s.kind.is_ref(),
+            AdtKind::Union(_) => true,
         }
     }
 
@@ -478,6 +482,7 @@ impl Adt {
     pub fn is_infinitely_sized(&self) -> Option<&AdtField> {
         match &self.kind {
             AdtKind::Struct(s) => s.is_infinitely_sized(),
+            AdtKind::Union(_) => None,
         }
     }
 
@@ -500,22 +505,23 @@ impl Adt {
 #[derive(Debug, Clone)]
 pub enum AdtKind {
     Struct(StructDef),
+    Union(UnionDef),
 }
 
 impl AdtKind {
-    #[allow(clippy::unnecessary_wraps)]
     #[must_use]
     pub fn as_struct(&self) -> Option<&StructDef> {
         match self {
             Self::Struct(v) => Some(v),
+            _ => None,
         }
     }
 
-    #[allow(clippy::unnecessary_wraps)]
     #[must_use]
     pub fn as_struct_mut(&mut self) -> Option<&mut StructDef> {
         match self {
             Self::Struct(v) => Some(v),
+            _ => None,
         }
     }
 }
@@ -599,6 +605,25 @@ impl StructDef {
             None
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct UnionDef {
+    pub id: AdtId,
+    pub variants: Vec<VariantId>,
+}
+
+impl UnionDef {
+    pub fn new(id: AdtId, variants: Vec<VariantId>) -> Self {
+        Self { id, variants }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Variant {
+    pub id: VariantId,
+    pub name: Word,
+    pub fields: Vec<AdtField>,
 }
 
 #[derive(Debug, Clone)]
