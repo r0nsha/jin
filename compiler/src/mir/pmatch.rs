@@ -60,12 +60,17 @@ impl Col {
 #[derive(Debug, Clone)]
 pub struct Row {
     pub cols: Vec<Col>,
+    pub guard: Option<BlockId>,
     pub body: DecisionBody,
 }
 
 impl Row {
-    pub fn new(cols: Vec<Col>, body: DecisionBody) -> Self {
-        Self { cols, body }
+    pub fn new(
+        cols: Vec<Col>,
+        guard: Option<BlockId>,
+        body: DecisionBody,
+    ) -> Self {
+        Self { cols, guard, body }
     }
 
     fn remove_col(&mut self, value: ValueId) -> Option<Col> {
@@ -207,7 +212,14 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         if rows.first().map_or(false, |c| c.cols.is_empty()) {
             let row = rows.swap_remove(0);
             self.reachable.insert(row.body.block_id);
-            return Decision::Ok(row.body);
+            return row
+                .guard
+                .map(|guard| Decision::Guard {
+                    guard,
+                    body: row.body,
+                    fallback: Box::new(self.compile_rows(rows)),
+                })
+                .unwrap_or(Decision::Ok(row.body));
         }
 
         let cond = Self::cond_value(&rows);
@@ -358,7 +370,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
                                 .map(|(value, pat)| Col::new(*value, pat)),
                         );
 
-                        case.rows.push(Row::new(cols, row.body));
+                        case.rows.push(Row::new(cols, row.guard, row.body));
                     }
                 }
             } else {
@@ -386,6 +398,10 @@ pub(super) enum Decision {
 
     /// A pattern is missing
     Err,
+
+    /// Evaluates the given `guard` block. If it's evaluated to true, evaluates `body`, otherwise, evaluates
+    /// `fallback`.
+    Guard { guard: BlockId, body: DecisionBody, fallback: Box<Decision> },
 
     /// Check if a value matches any of the given patterns
     Switch { cond: ValueId, cases: Vec<Case>, fallback: Option<Box<Decision>> },
@@ -650,6 +666,9 @@ fn collect_missing_pats(
             );
 
             missing.insert(full_name);
+        }
+        Decision::Guard { fallback, .. } => {
+            collect_missing_pats(cx, fallback, case_infos, missing);
         }
         Decision::Switch { cond, cases, fallback } => {
             for case in cases {
