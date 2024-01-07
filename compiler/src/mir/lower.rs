@@ -230,8 +230,10 @@ impl<'db> Lower<'db> {
         let uint = self.db.types.uint;
         let tag_field =
             body.create_value(uint, ValueKind::Field(this, ustr("tag")));
-        let tag_value = body
-            .create_value(uint, ValueKind::Const(Const::from(variant.index as i128)));
+        let tag_value = body.create_value(
+            uint,
+            ValueKind::Const(Const::from(variant.index as i128)),
+        );
         body.block_mut(start_block)
             .push_inst(Inst::Store { value: tag_value, target: tag_field });
 
@@ -1167,32 +1169,27 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             let instantiation = adt.instantiation(targs);
             let mut folder = instantiation.folder();
 
-            match &adt.kind {
-                AdtKind::Struct(struct_def) => {
-                    let value = value.id;
+            if let AdtKind::Struct(struct_def) = &adt.kind {
+                let value = value.id;
 
-                    let fields_to_create: Vec<(Ustr, Ty)> = struct_def
-                        .fields
-                        .iter()
-                        .filter(|f| f.ty.is_move(self.cx.db) || f.ty.is_ref())
-                        .map(|f| (f.name.name(), folder.fold(f.ty)))
-                        .collect();
+                let fields_to_create: Vec<(Ustr, Ty)> = struct_def
+                    .fields
+                    .iter()
+                    .filter(|f| f.ty.is_move(self.cx.db) || f.ty.is_ref())
+                    .map(|f| (f.name.name(), folder.fold(f.ty)))
+                    .collect();
 
-                    let fields: FxHashMap<_, _> = fields_to_create
-                        .into_iter()
-                        .map(|(name, ty)| {
-                            let value = self.create_value(
-                                ty,
-                                ValueKind::Field(value, name),
-                            );
-                            self.create_destroy_flag(value);
-                            (name, value)
-                        })
-                        .collect();
+                let fields: FxHashMap<_, _> = fields_to_create
+                    .into_iter()
+                    .map(|(name, ty)| {
+                        let value = self
+                            .create_value(ty, ValueKind::Field(value, name));
+                        self.create_destroy_flag(value);
+                        (name, value)
+                    })
+                    .collect();
 
-                    self.fields.insert(value, fields);
-                }
-                AdtKind::Union(_) => todo!(),
+                self.fields.insert(value, fields);
             }
         }
     }

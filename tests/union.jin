@@ -8,9 +8,6 @@ type Option {
 fn main() unit = {
 	let x = Option.some
 	let x = Option.some(1)
-	//let x = Option.some(value: 1)
-	//let x = Option.some(x: 1)
-	//let x = Option.some(1, 2)
-	//let x = Option.some()
-	//let y = Option.none()
+	let x = Option.some(value: 2)
+	let y = Option.none()
 }
