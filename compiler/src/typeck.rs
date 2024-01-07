@@ -1070,7 +1070,7 @@ impl<'db> Typeck<'db> {
                 let lookup_in_module = match self.normalize(expr.ty).kind() {
                     TyKind::Module(in_module) => *in_module,
                     TyKind::Type(ty) => {
-                        let callee = self.lookup_name_in_ty(
+                        let (callee, _) = self.lookup_name_in_ty(
                             *ty, *method, *span, expr.span,
                         )?;
                         return self.check_call(callee, args, *span);
@@ -1510,7 +1510,14 @@ impl<'db> Typeck<'db> {
                 }
             }
             TyKind::Type(ty) => {
-                return self.lookup_name_in_ty(*ty, field, span, expr.span);
+                let (expr, can_implicitly_call) =
+                    self.lookup_name_in_ty(*ty, field, span, expr.span)?;
+
+                return if can_implicitly_call {
+                    self.check_call(expr, vec![], span)
+                } else {
+                    Ok(expr)
+                };
             }
             TyKind::Str if field.name() == sym::PTR => {
                 Some(self.db.types.u8.raw_ptr())
@@ -1556,13 +1563,15 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
+    /// Tries to look up `name` in the namespace of `ty`.
+    /// Returns the evaluated expression, and whether it can be implicitly called.
     fn lookup_name_in_ty(
         &mut self,
         ty: Ty,
         name: Word,
         span: Span,
         ty_span: Span,
-    ) -> TypeckResult<hir::Expr> {
+    ) -> TypeckResult<(hir::Expr, bool)> {
         if let TyKind::Adt(adt_id, targs) = ty.kind() {
             let adt = &self.db[*adt_id];
 
@@ -1577,14 +1586,18 @@ impl<'db> Typeck<'db> {
                     if let Some(variant) = variant {
                         let instantiation = adt.instantiation(targs);
                         let ctor_ty = instantiation.fold(variant.ctor_ty);
-                        return Ok(self.expr(
+
+                        let can_implicitly_call = variant.fields.is_empty();
+                        let expr = self.expr(
                             hir::ExprKind::Variant(hir::Variant {
                                 id: variant.id,
                                 instantiation,
                             }),
                             ctor_ty,
                             span,
-                        ));
+                        );
+
+                        return Ok((expr, can_implicitly_call));
                     }
 
                     return Err(errors::variant_not_found(
