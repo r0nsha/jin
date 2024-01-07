@@ -22,6 +22,9 @@ fn main() unit = {
 
 	match_types()
 	match_guard()
+
+	print_fac(10)
+	print_fib(20)
 }
 
 fn match_vars() unit = {
@@ -137,3 +140,23 @@ fn match_guard() unit = {
 		foo -> { printf("foo=%d\n".ptr, foo) },
 	}
 }
+
+fn print_fac(n: int) unit = {
+	printf("fac(%d) = %d\n".ptr, n, fac(n))
+}	
+
+fn fac(n: int) int =
+	match n {
+		0 | 1 -> 1,
+		n -> n * fac(n - 1)
+	}
+
+fn print_fib(n: int) unit = {
+	printf("fib(%d) = %d\n".ptr, n, fib(n))
+}
+
+fn fib(n: int) int =
+	match n {
+		0 | 1 -> n,
+		n -> fib(n - 1) + fib(n - 2)
+	}
