@@ -1,6 +1,6 @@
 use std::{cmp, fmt};
 
-use ustr::Ustr;
+use ustr::{Ustr, UstrMap};
 
 use crate::span::{Span, Spanned};
 
@@ -70,5 +70,18 @@ impl cmp::Eq for Word {}
 impl fmt::Display for Word {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct WordMap(UstrMap<Span>);
+
+impl WordMap {
+    pub fn insert(&mut self, word: Word) -> Option<Span> {
+        self.insert_split(word.name(), word.span())
+    }
+
+    pub fn insert_split(&mut self, name: Ustr, span: Span) -> Option<Span> {
+        self.0.insert(name, span)
     }
 }

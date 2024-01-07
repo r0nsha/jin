@@ -44,7 +44,7 @@ use crate::{
         resolution_state::{ModuleStatus, ResolutionState, ResolvedFnSig},
         unify::Obligation,
     },
-    word::Word,
+    word::{Word, WordMap},
 };
 
 pub type TypeckResult<T> = Result<T, Diagnostic>;
@@ -494,13 +494,10 @@ impl<'db> Typeck<'db> {
         struct_def: &ast::StructTyDef,
     ) -> Result<(), Diagnostic> {
         let mut fields = vec![];
-        // TODO: WordMap
-        let mut defined_fields = UstrMap::<Span>::default();
+        let mut defined_fields = WordMap::default();
 
         for field in &struct_def.fields {
-            if let Some(prev_span) =
-                defined_fields.insert(field.name.name(), field.name.span())
-            {
+            if let Some(prev_span) = defined_fields.insert(field.name) {
                 let name = field.name.name();
                 let dup_span = field.name.span();
 
