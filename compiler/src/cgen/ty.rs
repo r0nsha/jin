@@ -41,7 +41,7 @@ impl<'db> CTy<'db> for TyKind {
                         StructKind::Ref => name.append(D::text("*")),
                         StructKind::Extern => name,
                     },
-                    AdtKind::Union(_) => todo!(),
+                    AdtKind::Union(_) => name.append(D::text("*")),
                 }
             }
             Self::Ref(ty, _) => ty.cty(cx),

@@ -16,7 +16,7 @@ use crate::{
             stmt, str_value, unit_value, NEST,
         },
     },
-    db::{AdtId, AdtKind, Db, StructDef, StructKind},
+    db::{AdtField, AdtId, AdtKind, Db, StructDef, StructKind, UnionDef},
     mangle,
     middle::{Pat, UnOp},
     mir::{
@@ -217,64 +217,11 @@ impl<'db> Generator<'db> {
                     &instantiation,
                 );
             }
-            AdtKind::Union(_) => todo!(),
-        }
-    }
-
-    fn codegen_struct_def(
-        &mut self,
-        adt_name: Ustr,
-        struct_def: &StructDef,
-        instantiation: &Instantiation,
-    ) {
-        match struct_def.kind {
-            StructKind::Ref => {
-                let data_name = D::text(format!("{adt_name}__data"));
-
-                self.codegen_struct_typedef(
-                    struct_def,
-                    data_name.clone(),
-                    instantiation,
-                );
-
-                let rc_name = D::text(adt_name.as_str());
-
-                let rc_typedef = stmt(|| {
-                    D::text("typedef")
-                        .append(D::space())
-                        .append(D::text("struct"))
-                        .append(D::space())
-                        .append(rc_name.clone())
-                        .append(D::space())
-                        .append(block(|| {
-                            D::intersperse(
-                                [
-                                    stmt(|| {
-                                        data_name
-                                            .append(D::space())
-                                            .append(D::text(DATA_FIELD))
-                                    }),
-                                    stmt(|| {
-                                        D::text("usize")
-                                            .append(D::space())
-                                            .append(D::text(REFCNT_FIELD))
-                                    }),
-                                ],
-                                D::hardline(),
-                            )
-                        }))
-                        .append(D::space())
-                        .append(rc_name)
-                });
-
-                self.types.push(rc_typedef);
-                // D::intersperse([data_typedef, rc_typedef], D::hardline())
-            }
-            StructKind::Extern => {
-                self.codegen_struct_typedef(
-                    struct_def,
-                    D::text(adt_name.as_str()),
-                    instantiation,
+            AdtKind::Union(union_def) => {
+                self.codegen_union_def(
+                    adt_name,
+                    &union_def.clone(),
+                    &instantiation,
                 );
             }
         }
@@ -282,22 +229,20 @@ impl<'db> Generator<'db> {
 
     fn codegen_struct_typedef(
         &mut self,
-        struct_def: &StructDef,
         name: D<'db>,
+        fields: &[AdtField],
         instantiation: &Instantiation,
     ) {
         let mut folder = instantiation.folder();
 
         let typedef = stmt(|| {
-            D::text("typedef")
-                .append(D::space())
-                .append(D::text("struct"))
+            D::text("typedef struct")
                 .append(D::space())
                 .append(name.clone())
                 .append(D::space())
                 .append(block(|| {
                     D::intersperse(
-                        struct_def.fields.iter().map(|f| {
+                        fields.iter().map(|f| {
                             stmt(|| {
                                 folder.fold(f.ty).cdecl(
                                     self,
@@ -313,6 +258,85 @@ impl<'db> Generator<'db> {
         });
 
         self.types.push(typedef);
+    }
+
+    fn codegen_struct_def(
+        &mut self,
+        adt_name: Ustr,
+        struct_def: &StructDef,
+        instantiation: &Instantiation,
+    ) {
+        match struct_def.kind {
+            StructKind::Ref => {
+                let data_name = D::text(format!("{adt_name}__data"));
+
+                self.codegen_struct_typedef(
+                    data_name.clone(),
+                    &struct_def.fields,
+                    instantiation,
+                );
+
+                self.codegen_rc_wrapper_tydef(
+                    D::text(adt_name.as_str()),
+                    data_name,
+                );
+            }
+            StructKind::Extern => {
+                self.codegen_struct_typedef(
+                    D::text(adt_name.as_str()),
+                    &struct_def.fields,
+                    instantiation,
+                );
+            }
+        }
+    }
+
+    fn codegen_union_def(
+        &mut self,
+        adt_name: Ustr,
+        union_def: &UnionDef,
+        instantiation: &Instantiation,
+    ) {
+        let data_name = D::text(format!("{adt_name}__data"));
+
+        //TODO:
+        // self.codegen_struct_typedef(
+        //     union_def,
+        //     data_name.clone(),
+        //     instantiation,
+        // );
+
+        self.codegen_rc_wrapper_tydef(D::text(adt_name.as_str()), data_name);
+    }
+
+    fn codegen_rc_wrapper_tydef(&mut self, name: D<'db>, data_name: D<'db>) {
+        let tydef = D::text("typedef")
+            .append(D::space())
+            .append(D::text("struct"))
+            .append(D::space())
+            .append(name.clone())
+            .append(D::space())
+            .append(block(|| {
+                D::intersperse(
+                    [
+                        stmt(|| {
+                            data_name
+                                .append(D::space())
+                                .append(D::text(DATA_FIELD))
+                        }),
+                        stmt(|| {
+                            D::text("usize")
+                                .append(D::space())
+                                .append(D::text(REFCNT_FIELD))
+                        }),
+                    ],
+                    D::hardline(),
+                )
+            }))
+            .append(D::space())
+            .append(name);
+
+        self.types.push(stmt(|| tydef));
     }
 
     fn codegen_fn_sig(&mut self, sig: &FnSig) -> D<'db> {
