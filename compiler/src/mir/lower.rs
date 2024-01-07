@@ -760,8 +760,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> BlockId {
         let block = self.body.create_block("case");
 
-        self.position_at(parent_block);
-        self.push_br(block);
+        self.body.create_edge(parent_block, block);
 
         let blocks: Vec<_> = cases
             .into_iter()
