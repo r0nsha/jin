@@ -318,24 +318,25 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         let mut indices = FxHashMap::<K, usize>::default();
 
         for mut row in rows {
-            if let Some(col) = row.remove_col(cond) {
-                for (pat, row) in col.pat.flatten_or(row) {
-                    let key = get_key(pat);
-
-                    if let Some(idx) = indices.get(&key) {
-                        type_cases[*idx].rows.push(row);
-                        continue;
-                    }
-
-                    indices.insert(key, type_cases.len());
-                    type_cases.push(TypeCase::new_with_rows(
-                        get_ctor(key),
-                        vec![],
-                        vec![row],
-                    ));
-                }
-            } else {
+            let Some(col) = row.remove_col(cond) else {
                 fallback_rows.push(row);
+                continue;
+            };
+
+            for (pat, row) in col.pat.flatten_or(row) {
+                let key = get_key(pat);
+
+                if let Some(idx) = indices.get(&key) {
+                    type_cases[*idx].rows.push(row);
+                    continue;
+                }
+
+                indices.insert(key, type_cases.len());
+                type_cases.push(TypeCase::new_with_rows(
+                    get_ctor(key),
+                    vec![],
+                    vec![row],
+                ));
             }
         }
 
@@ -371,25 +372,27 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         mut cases: Vec<TypeCase>,
     ) -> Decision {
         for mut row in rows {
-            if let Some(col) = row.remove_col(cond) {
-                for (pat, row) in col.pat.flatten_or(row) {
-                    if let Pat::Ctor(ctor, args, _) = pat {
-                        let mut cols = row.cols;
-                        let case = &mut cases[ctor.index()];
-
-                        cols.extend(
-                            case.values
-                                .iter()
-                                .zip(args.into_iter())
-                                .map(|(value, pat)| Col::new(*value, pat)),
-                        );
-
-                        case.rows.push(Row::new(cols, row.guard, row.body));
-                    }
-                }
-            } else {
+            let Some(col) = row.remove_col(cond) else {
                 for case in &mut cases {
                     case.rows.push(row.clone());
+                }
+
+                continue;
+            };
+
+            for (pat, row) in col.pat.flatten_or(row) {
+                if let Pat::Ctor(ctor, args, _) = pat {
+                    let mut cols = row.cols;
+                    let case = &mut cases[ctor.index()];
+
+                    cols.extend(
+                        case.values
+                            .iter()
+                            .zip(args.into_iter())
+                            .map(|(value, pat)| Col::new(*value, pat)),
+                    );
+
+                    case.rows.push(Row::new(cols, row.guard, row.body));
                 }
             }
         }
