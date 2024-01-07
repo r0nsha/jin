@@ -702,7 +702,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Variant(variant) => {
                 let id = self.cx.get_or_create_variant_ctor(variant.id);
-                self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
+                let value = self.create_value(
+                    self.cx.mir.fn_sigs[id].ty,
+                    ValueKind::Fn(id),
+                );
+
+                if !variant.instantiation.is_empty() {
+                    self.body.create_instantation(
+                        value,
+                        variant.instantiation.clone(),
+                    );
+                }
+
+                value
             }
             hir::ExprKind::Lit(lit) => {
                 let value = match lit {
