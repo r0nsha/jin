@@ -84,4 +84,12 @@ impl WordMap {
     pub fn insert_split(&mut self, name: Ustr, span: Span) -> Option<Span> {
         self.0.insert(name, span)
     }
+
+    pub fn contains(&self, word: Word) -> bool {
+        self.contains_name(&word.name())
+    }
+
+    pub fn contains_name(&self, name: &Ustr) -> bool {
+        self.0.contains_key(&name)
+    }
 }

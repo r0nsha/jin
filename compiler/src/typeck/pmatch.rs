@@ -17,7 +17,7 @@ use crate::{
         unify::Obligation,
         Typeck, TypeckResult,
     },
-    word::Word,
+    word::{Word, WordMap},
 };
 
 impl<'db> Typeck<'db> {
@@ -291,9 +291,11 @@ impl<'db> Typeck<'db> {
                 let fields =
                     self.db[adt_id].as_struct().unwrap().fields.clone();
 
-                let mut used_fields = UstrMap::default();
+                let mut used_fields = WordMap::default();
                 let mut use_field = |name: Ustr, span: Span| {
-                    if let Some(prev_span) = used_fields.insert(name, span) {
+                    if let Some(prev_span) =
+                        used_fields.insert_split(name, span)
+                    {
                         let dup_span = span;
 
                         Err(Diagnostic::error()
@@ -409,17 +411,14 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    // TODO: WordMap
     fn check_match_pat_adt_missing_fields(
         adt_name: Ustr,
         fields: &[AdtField],
-        used_fields: &UstrMap<Span>,
+        used_fields: &WordMap,
         span: Span,
     ) -> TypeckResult<()> {
-        let missing_fields: Vec<_> = fields
-            .iter()
-            .filter(|f| !used_fields.contains_key(&f.name.name()))
-            .collect();
+        let missing_fields: Vec<_> =
+            fields.iter().filter(|f| !used_fields.contains(f.name)).collect();
 
         if missing_fields.is_empty() {
             Ok(())
