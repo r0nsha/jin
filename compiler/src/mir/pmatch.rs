@@ -375,21 +375,32 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         &mut self,
         rows: Vec<Row>,
         cond: ValueId,
-        mut cases: Vec<TypeCase>,
+        mut type_cases: Vec<TypeCase>,
     ) -> Decision {
+        let mut fallback_rows = Vec::<Row>::new();
+        let mut had_guarded_row = false;
+
         for mut row in rows {
+            if had_guarded_row {
+                fallback_rows.push(row.clone());
+                continue;
+            }
+
             let Some(col) = row.remove_col(cond) else {
-                for case in &mut cases {
+                had_guarded_row = had_guarded_row || row.guard.is_some();
+                for case in &mut type_cases {
                     case.rows.push(row.clone());
                 }
 
                 continue;
             };
 
+            had_guarded_row = had_guarded_row || row.guard.is_some();
+
             for (pat, row) in col.pat.flatten_or(row) {
                 if let Pat::Ctor(ctor, args, _) = pat {
                     let mut cols = row.cols;
-                    let case = &mut cases[ctor.index()];
+                    let case = &mut type_cases[ctor.index()];
 
                     cols.extend(
                         case.values
@@ -403,14 +414,24 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             }
         }
 
-        let cases = cases
+        for tcase in &mut type_cases {
+            tcase.rows.extend(fallback_rows.iter().cloned());
+        }
+
+        let cases = type_cases
             .into_iter()
             .map(|case| {
                 Case::new(case.ctor, case.values, self.compile_rows(case.rows))
             })
             .collect();
 
-        Decision::Switch { cond, cases, fallback: None }
+        let fallback = if fallback_rows.is_empty() {
+            None
+        } else {
+            Some(Box::new(self.compile_rows(fallback_rows)))
+        };
+
+        Decision::Switch { cond, cases, fallback }
     }
 }
 
