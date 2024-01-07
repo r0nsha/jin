@@ -6,8 +6,22 @@ type Option[a] {
 }
 
 fn main() unit = {
+	ctors()
+	pmatch()
+}
+
+fn ctors() unit = {
 	let a = Option.some(1)
 	let b = Option[int].some(1)
 	let c = Option.some(value: 2)
 	let d: Option[int] = Option.none
+}
+
+fn pmatch() unit = {
+	let mut value = Option.some(1)
+	//match value {
+	//	Option.some(1) -> printf("some(1)\n"),
+	//	Option.some(_) -> printf("some(other)\n"),
+	//	Option.none() -> printf("none\n"),
+	//}
 }
