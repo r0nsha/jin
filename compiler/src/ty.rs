@@ -130,8 +130,22 @@ impl Ty {
                 fun.params.iter().any(|p| p.ty.walk_short_(f))
                     || fun.ret.walk_short_(f)
             }
-            TyKind::RawPtr(pointee) => pointee.walk_short_(f),
-            _ => f(self),
+            TyKind::RawPtr(inner) | TyKind::Ref(inner, _) => {
+                inner.walk_short_(f)
+            }
+            TyKind::Adt(_, _)
+            | TyKind::Int(_)
+            | TyKind::Uint(_)
+            | TyKind::Float(_)
+            | TyKind::Str
+            | TyKind::Bool
+            | TyKind::Unit
+            | TyKind::Never
+            | TyKind::Param(_)
+            | TyKind::Infer(_)
+            | TyKind::Type(_)
+            | TyKind::Module(_)
+            | TyKind::Unknown => f(self),
         }
     }
 
@@ -144,7 +158,20 @@ impl Ty {
             TyKind::Fn(fun) => {
                 fun.params.iter().all(|p| p.ty.walk_(f)) && fun.ret.walk_(f)
             }
-            _ => f(self),
+            TyKind::RawPtr(inner) | TyKind::Ref(inner, _) => inner.walk_(f),
+            TyKind::Adt(_, _)
+            | TyKind::Int(_)
+            | TyKind::Uint(_)
+            | TyKind::Float(_)
+            | TyKind::Str
+            | TyKind::Bool
+            | TyKind::Unit
+            | TyKind::Never
+            | TyKind::Param(_)
+            | TyKind::Infer(_)
+            | TyKind::Type(_)
+            | TyKind::Module(_)
+            | TyKind::Unknown => f(self),
         }
     }
 
