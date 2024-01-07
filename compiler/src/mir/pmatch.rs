@@ -210,7 +210,6 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
     }
 
     fn compile_rows(&mut self, mut rows: Vec<Row>) -> Decision {
-        dbg!(&rows);
         if rows.is_empty() {
             self.missing = true;
             return Decision::Err;
@@ -306,7 +305,9 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         )
     }
 
-    fn compile_lit_decision<K: Eq + core::hash::Hash + Copy>(
+    fn compile_lit_decision<
+        K: Eq + core::hash::Hash + Copy + core::fmt::Debug,
+    >(
         &mut self,
         rows: Vec<Row>,
         cond: ValueId,
@@ -331,7 +332,12 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
                     continue;
                 }
 
-                indices.insert(key, type_cases.len());
+                // If this row has a guard, we don't want to keep its value as a key, since we do
+                // want to evaluate upcoming cases that could have same value.
+                if row.guard.is_none() {
+                    indices.insert(key, type_cases.len());
+                }
+
                 type_cases.push(TypeCase::new_with_rows(
                     get_ctor(key),
                     vec![],
