@@ -9,5 +9,5 @@ fn main() unit = {
 	let a = Option.some(1)
 	let b = Option[int].some(1)
 	let c = Option.some(value: 2)
-	let d = Option[int].none
+	let d: Option[int] = Option.none
 }
