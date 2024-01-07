@@ -1065,7 +1065,7 @@ impl<'db> Typeck<'db> {
                 )?;
                 let mut args = self.check_call_args(env, args)?;
 
-                let expr = self.check_expr(env, expr, None)?;
+                let expr = self.check_expr(env, expr, expected_ty)?;
 
                 let lookup_in_module = match self.normalize(expr.ty).kind() {
                     TyKind::Module(in_module) => *in_module,
@@ -1227,7 +1227,7 @@ impl<'db> Typeck<'db> {
                 ))
             }
             ast::Expr::Field { expr, field, span } => {
-                let expr = self.check_expr(env, expr, None)?;
+                let expr = self.check_expr(env, expr, expected_ty)?;
                 self.check_field(env, expr, *field, *span)
             }
             ast::Expr::Name { word, targs, span } => {
