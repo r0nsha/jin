@@ -465,20 +465,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let mut state = DecisionState::new(output, expr.span);
 
                 for arm in &match_.arms {
-                    let block_id = self.body.create_block("arm");
-
                     let guard = arm.guard.as_ref().map(|guard| {
                         let block = self.body.create_block("guard");
                         state.guards.insert(block, guard);
                         block
                     });
 
+                    let block = self.body.create_block("arm");
                     let pat = pmatch::Pat::from_hir(&arm.pat);
                     let col = pmatch::Col::new(value, pat);
-                    let body =
-                        pmatch::DecisionBody::new(block_id, arm.pat.span());
+                    let body = pmatch::DecisionBody::new(block, arm.pat.span());
 
-                    state.bodies.insert(block_id, &arm.expr);
+                    state.bodies.insert(block, &arm.expr);
                     rows.push(pmatch::Row::new(vec![col], guard, body));
                 }
 
