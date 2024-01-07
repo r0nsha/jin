@@ -173,6 +173,10 @@ pub fn struct_lit<'a>(fields: Vec<(&'a str, D<'a>)>) -> D<'a> {
     })
 }
 
+pub fn stmts<'a>(docs: impl IntoIterator<Item = D<'a>>) -> D<'a> {
+    D::intersperse(docs.into_iter().map(|d| stmt(|| d)), D::hardline())
+}
+
 pub fn stmt<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
     f().append(D::text(";"))
 }

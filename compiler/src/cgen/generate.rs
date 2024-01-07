@@ -28,8 +28,10 @@ use crate::{
 };
 
 const PRELUDE: &str = include_str!(concat!(env!("PWD"), "/rt/jin.c"));
+
 pub const DATA_FIELD: &str = "data";
 pub const REFCNT_FIELD: &str = "refcnt";
+pub const TAG_FIELD: &str = "tag";
 
 pub struct Generator<'db> {
     pub db: &'db mut Db,
@@ -241,17 +243,11 @@ impl<'db> Generator<'db> {
                 .append(name.clone())
                 .append(D::space())
                 .append(block(|| {
-                    D::intersperse(
-                        fields.iter().map(|f| {
-                            stmt(|| {
-                                folder.fold(f.ty).cdecl(
-                                    self,
-                                    D::text(f.name.name().as_str()),
-                                )
-                            })
-                        }),
-                        D::hardline(),
-                    )
+                    util::stmts(fields.iter().map(|f| {
+                        folder
+                            .fold(f.ty)
+                            .cdecl(self, D::text(f.name.name().as_str()))
+                    }))
                 }))
                 .append(D::space())
                 .append(name)
@@ -297,16 +293,53 @@ impl<'db> Generator<'db> {
         union_def: &UnionDef,
         instantiation: &Instantiation,
     ) {
-        let data_name = D::text(format!("{adt_name}__data"));
+        let variants_union = stmt(|| {
+            D::text("union").append(block(|| {
+                util::stmts(union_def.variants.iter().map(|variant_id| {
+                    let variant = &self.db[*variant_id];
+                    let name = variant.name.name();
+                    let fields = variant.fields.clone();
 
-        //TODO:
-        // self.codegen_struct_typedef(
-        //     union_def,
-        //     data_name.clone(),
-        //     instantiation,
-        // );
+                    D::text("struct")
+                        .append(D::space())
+                        .append(block(|| {
+                            util::stmts(fields.iter().map(|f| {
+                                instantiation.fold(f.ty).cdecl(
+                                    self,
+                                    D::text(f.name.name().as_str()),
+                                )
+                            }))
+                        }))
+                        .append(D::space())
+                        .append(D::text(name.as_str()))
+                }))
+            }))
+        });
 
-        self.codegen_rc_wrapper_tydef(D::text(adt_name.as_str()), data_name);
+        let data_name = format!("{adt_name}__data");
+
+        let data_typedef = stmt(|| {
+            D::text(format!("typedef struct {data_name}"))
+                .append(D::space())
+                .append(block(|| {
+                    let tag = stmt(|| {
+                        D::text("usize")
+                            .append(D::space())
+                            .append(D::text(TAG_FIELD))
+                    });
+
+                    D::intersperse([tag, variants_union], D::hardline())
+                }))
+                .append(D::space())
+                .append(D::text(data_name.clone()))
+        });
+
+        self.types.push(data_typedef);
+
+        self.codegen_rc_wrapper_tydef(
+            D::text(adt_name.as_str()),
+            D::text(data_name),
+        );
     }
 
     fn codegen_rc_wrapper_tydef(&mut self, name: D<'db>, data_name: D<'db>) {
@@ -317,21 +350,12 @@ impl<'db> Generator<'db> {
             .append(name.clone())
             .append(D::space())
             .append(block(|| {
-                D::intersperse(
-                    [
-                        stmt(|| {
-                            data_name
-                                .append(D::space())
-                                .append(D::text(DATA_FIELD))
-                        }),
-                        stmt(|| {
-                            D::text("usize")
-                                .append(D::space())
-                                .append(D::text(REFCNT_FIELD))
-                        }),
-                    ],
-                    D::hardline(),
-                )
+                util::stmts([
+                    data_name.append(D::space()).append(D::text(DATA_FIELD)),
+                    D::text("usize")
+                        .append(D::space())
+                        .append(D::text(REFCNT_FIELD)),
+                ])
             }))
             .append(D::space())
             .append(name);
