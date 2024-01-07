@@ -86,10 +86,10 @@ impl WordMap {
     }
 
     pub fn contains(&self, word: Word) -> bool {
-        self.contains_name(&word.name())
+        self.contains_name(word.name())
     }
 
-    pub fn contains_name(&self, name: &Ustr) -> bool {
+    pub fn contains_name(&self, name: Ustr) -> bool {
         self.0.contains_key(&name)
     }
 }

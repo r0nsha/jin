@@ -444,7 +444,6 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    // TODO: WordMap
     fn collect_bound_names_in_pat(
         &self,
         pat: &hir::MatchPat,

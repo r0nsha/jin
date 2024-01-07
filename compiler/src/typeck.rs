@@ -362,8 +362,7 @@ impl<'db> Typeck<'db> {
         let ty_params = self.check_ty_params(env, &sig.ty_params)?;
 
         let mut params = vec![];
-        // TODO: WordMap
-        let mut defined_params = UstrMap::<Span>::default();
+        let mut defined_params = WordMap::default();
 
         for p in &sig.params {
             let ty = self.check_ty_expr(env, &p.ty_expr, AllowTyHole::No)?;
@@ -371,9 +370,7 @@ impl<'db> Typeck<'db> {
 
             match &pat {
                 Pat::Name(name) => {
-                    if let Some(prev_span) = defined_params
-                        .insert(name.word.name(), name.word.span())
-                    {
+                    if let Some(prev_span) = defined_params.insert(name.word) {
                         let name = name.word;
                         let dup_span = name.span();
 
@@ -1672,8 +1669,7 @@ impl<'db> Typeck<'db> {
         ty_params: &[ast::TyParam],
     ) -> TypeckResult<Vec<TyParam>> {
         let mut new_ty_params = vec![];
-        // TODO: WordMap
-        let mut defined_ty_params = UstrMap::<Span>::default();
+        let mut defined_ty_params = WordMap::default();
 
         for tp in ty_params {
             let ty = Ty::new(TyKind::Param(ParamTy {
@@ -1689,9 +1685,7 @@ impl<'db> Typeck<'db> {
                 TyKind::Type(ty).into(),
             );
 
-            if let Some(prev_span) =
-                defined_ty_params.insert(tp.word.name(), tp.word.span())
-            {
+            if let Some(prev_span) = defined_ty_params.insert(tp.word) {
                 let name = tp.word.name();
                 let dup_span = tp.word.span();
 
