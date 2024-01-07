@@ -482,7 +482,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 state.join_block = self.body.create_block("match_join");
 
-                if let Ok(decision) = pmatch::compile(self, rows, expr.span) {
+                if let Ok((decision, new_guards)) =
+                    pmatch::compile(self, rows, expr.span)
+                {
+                    for (new_guard, old_guard) in new_guards {
+                        state
+                            .guards
+                            .insert(new_guard, state.guards[&old_guard]);
+                    }
+
                     self.lower_decision(
                         &mut state,
                         decision,

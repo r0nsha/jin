@@ -166,6 +166,11 @@ impl Body {
         self.blocks.push_with_key(|id| Block::new(id, name.into()))
     }
 
+    pub fn clone_block(&mut self, block: BlockId) -> BlockId {
+        let name = self.block(block).name.clone();
+        self.blocks.push_with_key(|id| Block::new(id, name))
+    }
+
     pub fn create_blocks(
         &mut self,
         base: impl core::fmt::Display,

@@ -16,10 +16,10 @@ pub fn compile(
     cx: &mut LowerBody<'_, '_>,
     rows: Vec<Row>,
     span: Span,
-) -> Result<Decision, ()> {
+) -> Result<(Decision, FxHashMap<BlockId, BlockId>), ()> {
     let body_pat_spans = collect_body_pat_spans(&rows);
 
-    let (decision, diagnostics) =
+    let (decision, new_guards, diagnostics) =
         Compiler::new(cx, body_pat_spans).compile(rows, span);
 
     if diagnostics.iter().any(|d| d.severity() == Severity::Error) {
@@ -27,7 +27,7 @@ pub fn compile(
         Err(())
     } else {
         cx.cx.db.diagnostics.emit_many(diagnostics);
-        Ok(decision)
+        Ok((decision, new_guards))
     }
 }
 
@@ -93,6 +93,8 @@ impl Row {
     }
 }
 
+pub type NewGuards = FxHashMap<BlockId, BlockId>;
+
 #[derive(Debug)]
 struct Compiler<'a, 'cx, 'db> {
     cx: &'a mut LowerBody<'cx, 'db>,
@@ -102,6 +104,11 @@ struct Compiler<'a, 'cx, 'db> {
 
     /// The set of reachable body blocks
     reachable: FxHashSet<BlockId>,
+
+    /// A mapping of guard blocks introduced during compilation, to their original block.
+    /// This is done for guards which have the same code as the original one, but have different
+    /// branches.
+    new_guards: NewGuards,
 
     /// Associated body blocks with their span, used for reachability diagnostics
     body_pat_spans: FxHashMap<BlockId, Span>,
@@ -118,6 +125,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             cx,
             missing: false,
             reachable: FxHashSet::default(),
+            new_guards: NewGuards::default(),
             body_pat_spans,
             diagnostics: vec![],
         }
@@ -127,7 +135,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         mut self,
         rows: Vec<Row>,
         span: Span,
-    ) -> (Decision, Vec<Diagnostic>) {
+    ) -> (Decision, NewGuards, Vec<Diagnostic>) {
         let all_blocks: Vec<_> = rows.iter().map(|r| r.body.block).collect();
         let decision = self.compile_rows(rows);
 
@@ -140,7 +148,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             self.diagnostics.push(Self::missing_pats_diagnostic(pats, span));
         }
 
-        (decision, self.diagnostics)
+        (decision, self.new_guards, self.diagnostics)
     }
 
     fn report_unreachable_pats(&mut self, all_blocks: &[BlockId]) {
@@ -388,6 +396,8 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             };
 
             for (pat, row) in col.pat.flatten_or(row) {
+                let cloned_guard = row.guard.map(|g| self.clone_guard(g));
+
                 if let Pat::Ctor(ctor, args, _) = pat {
                     let mut cols = row.cols;
                     let case = &mut type_cases[ctor.index()];
@@ -399,7 +409,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
                             .map(|(value, pat)| Col::new(*value, pat)),
                     );
 
-                    case.rows.push(Row::new(cols, row.guard, row.body));
+                    case.rows.push(Row::new(cols, cloned_guard, row.body));
                 }
             }
         }
@@ -412,6 +422,12 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             .collect();
 
         Decision::Switch { cond, cases, fallback: None }
+    }
+
+    fn clone_guard(&mut self, guard: BlockId) -> BlockId {
+        let new_guard = self.cx.body.clone_block(guard);
+        self.new_guards.insert(new_guard, guard);
+        new_guard
     }
 }
 
