@@ -1314,71 +1314,75 @@ impl<'db> Typeck<'db> {
         targs: Option<&[Ty]>,
     ) -> TypeckResult<hir::Expr> {
         if let DefKind::Adt(adt_id) = self.db[id].kind.as_ref() {
-            // NOTE: if the named definition is a struct, we want to return its
-            // constructor function's type
-            let adt = &self.db[*adt_id];
-
-            match &adt.kind {
-                AdtKind::Struct(struct_def) => {
-                    if struct_def.ctor_vis == Vis::Private
-                        && self.db[adt.def_id].scope.module_id
-                            != env.module_id()
-                    {
-                        let private_field = struct_def
-                            .fields
-                            .iter()
-                            .find(|f| f.vis == Vis::Private)
-                            .expect("to have at least one private field");
-
-                        return Err(Diagnostic::error()
-                            .with_message(format!(
-                                "constructor of type `{}` is private because \
-                                 `{}` is private",
-                                adt.name, private_field.name
-                            ))
-                            .with_label(
-                                Label::primary(span)
-                                    .with_message("private type constructor"),
-                            )
-                            .with_label(
-                                Label::secondary(private_field.name.span())
-                                    .with_message(format!(
-                                        "`{}` is private",
-                                        private_field.name
-                                    )),
-                            ));
-                    }
-
-                    let (ty, instantiation) = self.apply_ty_args_to_ty(
-                        env,
-                        struct_def.ctor_ty,
-                        targs,
-                        span,
-                    )?;
-
-                    Ok(self.expr(
-                        hir::ExprKind::Name(hir::Name {
-                            id,
-                            word,
-                            instantiation,
-                        }),
-                        ty,
-                        span,
-                    ))
+            match &self.db[*adt_id].kind {
+                AdtKind::Struct(_) => {
+                    return self.check_name_struct(
+                        env, id, word, span, targs, *adt_id,
+                    );
                 }
-                AdtKind::Union(_) => todo!(),
+                AdtKind::Union(_) => (),
             }
-        } else {
-            let def_ty = self.normalize(self.db[id].ty);
-            let (ty, instantiation) =
-                self.apply_ty_args_to_ty(env, def_ty, targs, span)?;
-
-            Ok(self.expr(
-                hir::ExprKind::Name(hir::Name { id, word, instantiation }),
-                ty,
-                span,
-            ))
         }
+
+        let def_ty = self.normalize(self.db[id].ty);
+        let (ty, instantiation) =
+            self.apply_ty_args_to_ty(env, def_ty, targs, span)?;
+
+        Ok(self.expr(
+            hir::ExprKind::Name(hir::Name { id, word, instantiation }),
+            ty,
+            span,
+        ))
+    }
+
+    fn check_name_struct(
+        &mut self,
+        env: &Env,
+        id: DefId,
+        word: Word,
+        span: Span,
+        targs: Option<&[Ty]>,
+        adt_id: AdtId,
+    ) -> TypeckResult<hir::Expr> {
+        let adt = &self.db[adt_id];
+        let struct_def = adt.as_struct().unwrap();
+
+        // NOTE: if the named definition is a struct, we want to return its
+        // constructor function's type
+        if struct_def.ctor_vis == Vis::Private
+            && self.db[adt.def_id].scope.module_id != env.module_id()
+        {
+            let private_field = struct_def
+                .fields
+                .iter()
+                .find(|f| f.vis == Vis::Private)
+                .expect("to have at least one private field");
+
+            return Err(Diagnostic::error()
+                .with_message(format!(
+                    "constructor of type `{}` is private because `{}` is \
+                     private",
+                    adt.name, private_field.name
+                ))
+                .with_label(
+                    Label::primary(span)
+                        .with_message("private type constructor"),
+                )
+                .with_label(
+                    Label::secondary(private_field.name.span()).with_message(
+                        format!("`{}` is private", private_field.name),
+                    ),
+                ));
+        }
+
+        let (ty, instantiation) =
+            self.apply_ty_args_to_ty(env, struct_def.ctor_ty, targs, span)?;
+
+        Ok(self.expr(
+            hir::ExprKind::Name(hir::Name { id, word, instantiation }),
+            ty,
+            span,
+        ))
     }
 
     fn check_optional_ty_args(
@@ -1475,9 +1479,11 @@ impl<'db> Typeck<'db> {
         let ty = self.normalize(expr.ty).auto_deref();
 
         let res_ty = match ty.kind() {
+            TyKind::Module(module_id) => {
+                let id = self.lookup(env, *module_id, &Query::Name(field))?;
+                return self.check_name(env, id, field, span, None);
+            }
             TyKind::Adt(adt_id, targs) => {
-                // TODO: ty_args are an error here
-
                 let adt = &self.db[*adt_id];
 
                 match &adt.kind {
@@ -1486,39 +1492,61 @@ impl<'db> Typeck<'db> {
                             struct_def.field_by_name(field.name().as_str())
                         {
                             self.check_field_access(env, adt, field, span)?;
-                            adt.instantiation(targs).fold(field.ty)
+                            Some(adt.instantiation(targs).fold(field.ty))
                         } else {
-                            return Err(errors::field_not_found(
-                                self.db, ty, expr.span, field,
-                            ));
+                            None
                         }
                     }
-                    AdtKind::Union(_) => todo!(),
+                    AdtKind::Union(_) => None,
                 }
             }
-            TyKind::Module(module_id) => {
-                // TODO: apply ty_args here
-                let id = self.lookup(env, *module_id, &Query::Name(field))?;
-                return self.check_name(env, id, field, span, None);
-            }
-            // TODO: ty_args are an error here
+            TyKind::Type(ty) => match ty.kind() {
+                TyKind::Adt(adt_id, targs) => {
+                    let adt = &self.db[*adt_id];
+
+                    match &adt.kind {
+                        AdtKind::Union(union_def) => {
+                            let variant = union_def
+                                .variants
+                                .iter()
+                                .map(|&id| &self.db[id])
+                                .find(|v| v.name.name() == field.name());
+
+                            if let Some(variant) = variant {
+                                Some(
+                                    adt.instantiation(targs)
+                                        .fold(variant.ctor_ty),
+                                )
+                            } else {
+                                return Err(errors::variant_not_found(
+                                    self.db, *ty, expr.span, field,
+                                ));
+                            }
+                        }
+                        AdtKind::Struct(_) => None,
+                    }
+                }
+                _ => None,
+            },
             TyKind::Str if field.name() == sym::PTR => {
-                Ty::new(TyKind::RawPtr(self.db.types.u8))
+                Some(self.db.types.u8.raw_ptr())
             }
-            // TODO: ty_args are an error here
-            TyKind::Str if field.name() == sym::LEN => self.db.types.uint,
-            _ => {
-                return Err(errors::field_not_found(
-                    self.db, ty, expr.span, field,
-                ))
-            }
+            TyKind::Str if field.name() == sym::LEN => Some(self.db.types.uint),
+            _ => None,
         };
 
-        Ok(self.expr(
-            hir::ExprKind::Field(hir::Field { expr: Box::new(expr), field }),
-            res_ty,
-            span,
-        ))
+        if let Some(res_ty) = res_ty {
+            Ok(self.expr(
+                hir::ExprKind::Field(hir::Field {
+                    expr: Box::new(expr),
+                    field,
+                }),
+                res_ty,
+                span,
+            ))
+        } else {
+            Err(errors::field_not_found(self.db, ty, expr.span, field))
+        }
     }
 
     fn check_field_access(

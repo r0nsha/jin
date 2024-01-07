@@ -11,13 +11,35 @@ use crate::{
 pub fn field_not_found(db: &Db, ty: Ty, span: Span, field: Word) -> Diagnostic {
     Diagnostic::error()
         .with_message(format!(
-            "no field `{}` on type `{}`",
+            "no field `{}` in type `{}`",
             field,
             ty.display(db)
         ))
         .with_label(
             Label::primary(field.span())
                 .with_message(format!("unknown field `{field}`")),
+        )
+        .with_label(
+            Label::secondary(span)
+                .with_message(format!("has type `{}`", ty.display(db))),
+        )
+}
+
+pub fn variant_not_found(
+    db: &Db,
+    ty: Ty,
+    span: Span,
+    variant: Word,
+) -> Diagnostic {
+    Diagnostic::error()
+        .with_message(format!(
+            "no variant `{}` in type `{}`",
+            variant,
+            ty.display(db)
+        ))
+        .with_label(
+            Label::primary(variant.span())
+                .with_message(format!("unknown variant `{variant}`")),
         )
         .with_label(
             Label::secondary(span)
