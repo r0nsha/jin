@@ -1,13 +1,13 @@
 fn extern printf(fmt: *u8, ..) i32
 
-type Option {
-	some(value: int),
+type Option[a] {
+	some(value: a),
 	none
 }
 
 fn main() unit = {
 	let x = Option.some
-	let x = Option.some(1)
-	let x = Option.some(value: 2)
-	let y = Option.none
+	//let x = Option.some(1)
+	//let x = Option.some(value: 2)
+	//let y = Option.none
 }
