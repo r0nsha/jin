@@ -115,6 +115,10 @@ fn coerce_tys(
             coercions.push(Coercion { kind: CoercionKind::NeverToAny, target });
             true
         }
+        (_, TyKind::Unit) => {
+            coercions.push(Coercion { kind: CoercionKind::AnyToUnit, target });
+            true
+        }
         _ => unify_with_options(source, target, cx, options).is_ok(),
     }
 }

@@ -1526,6 +1526,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 CoercionKind::NeverToAny | CoercionKind::MutRefToImm => {
                     coerced_value
                 }
+                CoercionKind::AnyToUnit => self.const_unit(),
                 CoercionKind::IntPromotion => {
                     self.push_inst_with_register(coercion.target, |value| {
                         Inst::Cast {

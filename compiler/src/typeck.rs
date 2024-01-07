@@ -900,8 +900,7 @@ impl<'db> Typeck<'db> {
                         for (pos, expr) in exprs.iter().with_position() {
                             let expected_ty = match pos {
                                 Position::Last => expected_ty,
-                                // TODO: CoercionKind::AnyToUnit
-                                _ => None, // Some(self.db.types.unit),
+                                _ => Some(self.db.types.unit),
                             };
 
                             new_exprs.push(self.check_expr(
