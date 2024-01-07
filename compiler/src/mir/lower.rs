@@ -966,9 +966,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         for bind in &body.bindings {
             if let pmatch::Binding::Name(id, new_value, _) = bind {
-                let old_value =
-                    self.locals.insert(*id, *new_value).expect("to be bound");
-                restore_bindings.push((*id, old_value, *new_value));
+                if let Some(old_value) = self.locals.insert(*id, *new_value) {
+                    restore_bindings.push((*id, old_value, *new_value));
+                }
             }
         }
 
