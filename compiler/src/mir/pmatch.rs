@@ -27,7 +27,7 @@ pub fn compile(
             first_span
         };
 
-        body_pat_spans.insert(row.body.block_id, pat_span);
+        body_pat_spans.insert(row.body.block, pat_span);
     }
 
     let (decision, diagnostics) =
@@ -116,7 +116,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         rows: Vec<Row>,
         span: Span,
     ) -> (Decision, Vec<Diagnostic>) {
-        let all_blocks: Vec<_> = rows.iter().map(|r| r.body.block_id).collect();
+        let all_blocks: Vec<_> = rows.iter().map(|r| r.body.block).collect();
         let decision = self.compile_rows(rows);
 
         if self.reachable.len() != all_blocks.len() {
@@ -211,7 +211,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         // since they'll never be reachable anyways
         if rows.first().map_or(false, |c| c.cols.is_empty()) {
             let row = rows.swap_remove(0);
-            self.reachable.insert(row.body.block_id);
+            self.reachable.insert(row.body.block);
             return if let Some(guard) = row.guard {
                 Decision::Guard {
                     guard,
@@ -411,7 +411,7 @@ pub(super) enum Decision {
 #[derive(Debug, Clone)]
 pub struct DecisionBody {
     pub bindings: Bindings,
-    pub block_id: BlockId,
+    pub block: BlockId,
     pub span: Span,
 }
 
@@ -424,8 +424,8 @@ pub enum Binding {
 }
 
 impl DecisionBody {
-    pub fn new(block_id: BlockId, span: Span) -> Self {
-        Self { bindings: vec![], block_id, span }
+    pub fn new(block: BlockId, span: Span) -> Self {
+        Self { bindings: vec![], block, span }
     }
 }
 

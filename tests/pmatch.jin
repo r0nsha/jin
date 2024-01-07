@@ -130,7 +130,7 @@ fn move(box: Box) unit = {}
 
 fn match_guard() unit = {
 	let foo = true
-	match foo {
+	match false {
 		_ if foo -> { printf("foo=true\n".ptr) }, 
 		false -> { printf("foo=false\n".ptr) },
 		foo -> { printf("foo=%d\n".ptr, foo) },

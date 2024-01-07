@@ -679,23 +679,21 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> BlockId {
         match decision {
             pmatch::Decision::Ok(body) => {
-                self.body.create_edge(parent_block, body.block_id);
-
-                self.lower_decision_bindings(
-                    state,
-                    body.block_id,
-                    body.bindings,
-                );
-                self.lower_decision_body(
-                    state,
-                    self.current_block,
-                    body.block_id,
-                );
-
-                body.block_id
+                self.body.create_edge(parent_block, body.block);
+                self.lower_decision_bindings(state, body.block, body.bindings);
+                self.lower_decision_body(state, self.current_block, body.block);
+                body.block
             }
             pmatch::Decision::Err => unreachable!(),
-            pmatch::Decision::Guard { guard, body, fallback } => todo!(),
+            pmatch::Decision::Guard { guard, body, fallback } => self
+                .lower_decision_guard(
+                    state,
+                    guard,
+                    body,
+                    *fallback,
+                    parent_block,
+                    values,
+                ),
             pmatch::Decision::Switch { cond, cases, fallback } => {
                 match cases[0].ctor {
                     pmatch::Ctor::Unit => self.lower_decision_unit(
@@ -946,6 +944,58 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         value
+    }
+
+    fn lower_decision_guard(
+        &mut self,
+        state: &mut DecisionState,
+        guard: BlockId,
+        body: pmatch::DecisionBody,
+        fallback: pmatch::Decision,
+        parent_block: BlockId,
+        values: Vec<ValueId>,
+    ) -> BlockId {
+        self.body.create_edge(parent_block, guard);
+
+        // This makes sure we don't compile the same guard expression twice
+        let Some(guard_expr) = state.guards.remove(&guard) else {
+            return guard;
+        };
+
+        self.enter_scope(ScopeKind::Block, guard_expr.span);
+
+        let mut restore_bindings = vec![];
+
+        for bind in &body.bindings {
+            if let pmatch::Binding::Name(id, new_value, _) = bind {
+                let old_value =
+                    self.locals.insert(*id, *new_value).expect("to be bound");
+                restore_bindings.push((*id, old_value, *new_value));
+            }
+        }
+
+        self.position_at(guard);
+
+        let cond = self.lower_expr(guard_expr);
+        self.exit_scope();
+
+        for (id, old_value, new_value) in restore_bindings {
+            let new_state = self.value_state(new_value);
+            self.set_value_state(old_value, new_state);
+            self.locals.insert(id, old_value);
+        }
+
+        let guard_join = self.current_block;
+        let fallback_block =
+            self.lower_decision(state, fallback, guard_join, values);
+
+        self.position_at(guard_join);
+        self.push_brif(cond, body.block, Some(fallback_block));
+
+        self.lower_decision_bindings(state, body.block, body.bindings);
+        self.lower_decision_body(state, self.current_block, body.block);
+
+        guard
     }
 
     pub fn lower_const(&mut self, value: &Const, ty: Ty) -> ValueId {
@@ -1467,23 +1517,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub fn set_owned(&mut self, value: ValueId) {
-        self.value_states.insert(self.current_block, value, ValueState::Owned);
+        self.set_value_state(value, ValueState::Owned);
     }
 
     pub fn set_moved(&mut self, value: ValueId, moved_to: Span) {
-        self.value_states.insert(
-            self.current_block,
-            value,
-            ValueState::Moved(moved_to),
-        );
+        self.set_value_state(value, ValueState::Moved(moved_to));
     }
 
     pub fn set_partially_moved(&mut self, value: ValueId, moved_to: Span) {
-        self.value_states.insert(
-            self.current_block,
-            value,
-            ValueState::PartiallyMoved(moved_to),
-        );
+        self.set_value_state(value, ValueState::PartiallyMoved(moved_to));
+    }
+
+    pub fn set_value_state(&mut self, value: ValueId, state: ValueState) {
+        self.value_states.insert(self.current_block, value, state);
     }
 
     #[inline]
