@@ -5,7 +5,7 @@ fn extern printf(fmt: *u8, ..) i32
 type LinkedList[a](head: Option[Node[a]])
 type Node[a](data: a, next: Option[Node[a]])
 
-fn new_linked_list[a]() LinkedList[a] = LinkedList(head: Option[a].none)
+fn new_linked_list[a]() LinkedList[a] = LinkedList(head: Option.none)
 
 fn push[a](mut self: LinkedList[a], data: a) unit = {
   //let mut curr = &mut self.head
@@ -43,8 +43,8 @@ fn push[a](mut self: LinkedList[a], data: a) unit = {
 //}
 
 fn main() unit = {
-  let list = LinkedList[int](Option.none)
-  //let list = new_linked_list[int]()  
+  //let list = LinkedList[int](Option.none)
+  let list = new_linked_list[int]()  
   //list.print()
   //list.print()
 }
