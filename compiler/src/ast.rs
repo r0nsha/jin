@@ -8,7 +8,6 @@ use data_structures::{
     index_vec::{IndexVec, Key as _},
     new_key_type,
 };
-use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
 use crate::{
