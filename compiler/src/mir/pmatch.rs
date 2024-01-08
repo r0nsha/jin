@@ -7,7 +7,7 @@ use crate::{
     db::{AdtId, AdtKind, Db, DefId, VariantId},
     diagnostics::{Diagnostic, Label, Severity},
     hir,
-    mir::{lower::LowerBody, BlockId, Const, ValueId},
+    mir::{lower::LowerBody, BlockId, Const, ValueId, ValueKind},
     span::{Span, Spanned},
     ty::{fold::TyFolder as _, Ty, TyKind},
 };
@@ -579,8 +579,42 @@ impl Type {
                         )])
                     }
                     AdtKind::Union(union_def) => {
-                        todo!()
-                        // let ctor=
+                        let adt_ty = folder.fold(adt.ty());
+
+                        let variants: Vec<_> =
+                            union_def.variants(cx.cx.db).cloned().collect();
+
+                        let cases = variants
+                            .into_iter()
+                            .map(|variant| {
+                                let variant_value = cx.create_untracked_value(
+                                    adt_ty,
+                                    ValueKind::Variant(
+                                        cond,
+                                        variant.name.name(),
+                                    ),
+                                );
+
+                                TypeCase::new(
+                                    Ctor::Variant(variant.id),
+                                    variant
+                                        .fields
+                                        .iter()
+                                        .map(|f| {
+                                            cx.create_untracked_value(
+                                                folder.fold(f.ty),
+                                                ValueKind::Field(
+                                                    variant_value,
+                                                    f.name.name(),
+                                                ),
+                                            )
+                                        })
+                                        .collect(),
+                                )
+                            })
+                            .collect();
+
+                        Type::Finite(cases)
                     }
                 }
             }
