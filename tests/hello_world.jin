@@ -1,4 +1,4 @@
-fn extern printf(fmt: *u8, ..) i32
+import std
 
 fn main() unit =
-	printf("Hello, World\n".ptr)
+	std.io.println("Hello, World!")
