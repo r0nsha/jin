@@ -301,7 +301,7 @@ struct SpecializedMir {
 impl SpecializedMir {
     fn new(mir: &Mir) -> Self {
         Self {
-            fn_sigs: IdMap::new_with_counter(*mir.fn_sigs.counter()),
+            fn_sigs: Self::fn_sigs_from_mir(mir),
             fns: FxHashMap::default(),
             specialized_fns: FxHashMap::default(),
         }
@@ -310,6 +310,11 @@ impl SpecializedMir {
     fn merge_into(&mut self, mir: &mut Mir) {
         mir.fn_sigs.extend(mem::take(&mut self.fn_sigs));
         mir.fns.extend(mem::take(&mut self.fns));
+        self.fn_sigs = Self::fn_sigs_from_mir(mir);
+    }
+
+    fn fn_sigs_from_mir(mir: &Mir) -> IdMap<FnSigId, FnSig> {
+        IdMap::new_with_counter(*mir.fn_sigs.counter())
     }
 }
 

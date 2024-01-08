@@ -1,6 +1,6 @@
 use std::marker::PhantomData;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Counter<T> {
     value: usize,
     marker: PhantomData<T>,
@@ -34,5 +34,11 @@ impl<T: From<usize>> Counter<T> {
     pub fn increment(&mut self) -> T {
         self.value += 1;
         self.value()
+    }
+}
+
+impl<T: core::fmt::Debug> core::fmt::Debug for Counter<T> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Counter({})", self.value)
     }
 }
