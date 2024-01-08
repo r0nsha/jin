@@ -26,14 +26,20 @@ fn pmatch() unit = {
 	}
 
 	let o = Option.some(Box(4))
+
+	let mut b = Box(1)
+	printf("before match: Box(%d)\n".ptr, b.value)
+
 	match o {
 		Option.some(Box(value: 5)) -> printf("some(Box(5))\n".ptr),
 		Option.some(x) -> {
 			printf("some(%d)\n".ptr, x.value)
+			b = x
 		},
 		Option.none() -> printf("none\n".ptr),
 	}
-	//let x = o
+
+	printf("after match: Box(%d)\n".ptr, b.value)
 }
 
 type Box(value: int)
