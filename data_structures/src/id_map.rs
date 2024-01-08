@@ -96,7 +96,9 @@ impl<K: From<usize> + Copy + Eq + Hash, V> IdMap<K, V> {
     }
 
     pub fn extend(&mut self, iter: impl IntoIterator<Item = (K, V)>) {
+        let prev_len = self.map.len();
         self.map.extend(iter);
+        self.counter.increment_by(self.map.len() - prev_len);
     }
 }
 

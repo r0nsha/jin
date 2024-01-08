@@ -24,6 +24,9 @@ struct Specialize<'db> {
     work: Work,
     used_fns: FxHashSet<FnSigId>,
     used_globals: FxHashSet<GlobalId>,
+
+    // Functions that have already been specialized and should be re-used
+    specialized_fns: FxHashMap<SpecializedFn, FnSigId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -39,6 +42,7 @@ impl<'db> Specialize<'db> {
             work: Work::new(),
             used_fns: FxHashSet::default(),
             used_globals: FxHashSet::default(),
+            specialized_fns: FxHashMap::default(),
         }
     }
 
@@ -221,7 +225,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
         instantiation: &Instantiation,
     ) -> FnSigId {
         if let Some(sig_id) =
-            self.specialized_mir.specialized_fns.get(&specialized_fn).copied()
+            self.cx.specialized_fns.get(&specialized_fn).copied()
         {
             return sig_id;
         }
@@ -230,7 +234,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
         let new_sig_id =
             self.specialize_fn_sig(mir, &specialized_fn, instantiation);
 
-        self.specialized_mir.specialized_fns.insert(specialized_fn, new_sig_id);
+        self.cx.specialized_fns.insert(specialized_fn, new_sig_id);
 
         let mut fun = mir.fns.get(&old_sig_id).expect("fn to exist").clone();
 
@@ -293,24 +297,16 @@ impl BodySubst {
 struct SpecializedMir {
     fn_sigs: IdMap<FnSigId, FnSig>,
     fns: FxHashMap<FnSigId, Fn>,
-
-    // Functions that have already been specialized and should be re-used
-    specialized_fns: FxHashMap<SpecializedFn, FnSigId>,
 }
 
 impl SpecializedMir {
     fn new(mir: &Mir) -> Self {
-        Self {
-            fn_sigs: Self::fn_sigs_from_mir(mir),
-            fns: FxHashMap::default(),
-            specialized_fns: FxHashMap::default(),
-        }
+        Self { fn_sigs: Self::fn_sigs_from_mir(mir), fns: FxHashMap::default() }
     }
 
     fn merge_into(&mut self, mir: &mut Mir) {
         mir.fn_sigs.extend(mem::take(&mut self.fn_sigs));
         mir.fns.extend(mem::take(&mut self.fns));
-        self.fn_sigs = Self::fn_sigs_from_mir(mir);
     }
 
     fn fn_sigs_from_mir(mir: &Mir) -> IdMap<FnSigId, FnSig> {

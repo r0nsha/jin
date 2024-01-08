@@ -32,7 +32,11 @@ impl<T: From<usize>> Counter<T> {
     }
 
     pub fn increment(&mut self) -> T {
-        self.value += 1;
+        self.increment_by(1)
+    }
+
+    pub fn increment_by(&mut self, by: usize) -> T {
+        self.value += by;
         self.value()
     }
 }
