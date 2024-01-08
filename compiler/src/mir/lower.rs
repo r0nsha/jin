@@ -1286,11 +1286,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value: ValueId,
         f: &mut impl FnMut(&mut Self, ValueId, ValueId) -> Result<(), E>,
     ) -> Result<(), E> {
-        if let &ValueKind::Field(parent, _) = &self.body.value(value).kind {
-            f(self, parent, value)?;
-            self.walk_parents_aux(parent, f)
-        } else {
-            Ok(())
+        match self.body.value(value).kind {
+            ValueKind::Field(parent, _) => {
+                f(self, parent, value)?;
+                self.walk_parents_aux(parent, f)
+            }
+            ValueKind::Variant(parent, _) => f(self, parent, value),
+            _ => Ok(()),
         }
     }
 

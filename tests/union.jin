@@ -25,7 +25,15 @@ fn pmatch() unit = {
 		Option.none() -> printf("none\n".ptr),
 	}
 
-	let box = Option.some(Box())
+	let o = Option.some(Box(4))
+	match o {
+		Option.some(Box(value: 5)) -> printf("some(Box(5))\n".ptr),
+		Option.some(x) -> {
+			printf("some(&d)\n".ptr, x.value)
+		},
+		Option.none() -> printf("none\n".ptr),
+	}
+	//let x = o
 }
 
-type Box()
+type Box(value: int)

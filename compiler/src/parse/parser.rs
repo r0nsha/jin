@@ -785,9 +785,9 @@ impl<'a> Parser<'a> {
                     path.push(self.eat_ident()?.word());
                 }
 
-                let span = start_word.span().merge(self.last_span());
                 let (subpats, is_exhaustive) =
                     self.parse_match_adt_subpats()?;
+                let span = start_word.span().merge(self.last_span());
 
                 Ok(MatchPat::Adt(MatchPatAdt {
                     path,
