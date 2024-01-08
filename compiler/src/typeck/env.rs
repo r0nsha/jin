@@ -347,10 +347,9 @@ impl<'db> Typeck<'db> {
             match &adt.kind {
                 AdtKind::Union(union_def) => {
                     return union_def
-                        .variants
-                        .iter()
-                        .find(|id| self.db[**id].name.name() == name.name())
-                        .map(|id| TyLookup::Variant(*id))
+                        .variants(self.db)
+                        .find(|v| v.name.name() == name.name())
+                        .map(|v| TyLookup::Variant(v.id))
                         .ok_or_else(|| {
                             errors::variant_not_found(
                                 self.db, ty, ty_span, name,

@@ -647,6 +647,13 @@ impl UnionDef {
     pub fn new(id: AdtId, variants: Vec<VariantId>) -> Self {
         Self { id, variants }
     }
+
+    pub fn variants<'a>(
+        &'a self,
+        db: &'a Db,
+    ) -> impl Iterator<Item = &Variant> {
+        self.variants.iter().map(|&id| &db[id])
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -674,6 +681,10 @@ impl Variant {
             ret,
             is_c_variadic: false,
         }));
+    }
+
+    pub fn full_name(&self, db: &Db) -> String {
+        format!("{}.{}", db[self.adt_id].name, self.name)
     }
 }
 

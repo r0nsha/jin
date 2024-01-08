@@ -4,7 +4,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
 use crate::{
-    db::{AdtId, AdtKind, DefId},
+    db::{AdtId, AdtKind, Db, DefId, VariantId},
     diagnostics::{Diagnostic, Label, Severity},
     hir,
     mir::{lower::LowerBody, BlockId, Const, ValueId},
@@ -399,7 +399,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
 
                 if let Pat::Ctor(ctor, args, _) = pat {
                     let mut cols = row.cols;
-                    let case = &mut type_cases[ctor.index()];
+                    let case = &mut type_cases[ctor.index(self.cx.cx.db)];
 
                     cols.extend(
                         case.values
@@ -578,7 +578,10 @@ impl Type {
                                 .collect(),
                         )])
                     }
-                    AdtKind::Union(_) => todo!(),
+                    AdtKind::Union(union_def) => {
+                        todo!()
+                        // let ctor=
+                    }
                 }
             }
             TyKind::Ref(ty, _) => Self::from_cond(cx, cond, *ty),
@@ -604,12 +607,13 @@ pub(super) enum Ctor {
     Int(i128),
     Str(Ustr),
     Struct(AdtId),
+    Variant(VariantId),
 }
 
 impl Ctor {
     /// Returns the index of this constructor relative to its type.
     /// The index must match the order which constructor are defined in `Type::from_ty`
-    fn index(&self) -> usize {
+    fn index(&self, db: &Db) -> usize {
         match self {
             Self::Unit
             | Self::False
@@ -617,6 +621,7 @@ impl Ctor {
             | Self::Str(_)
             | Self::Struct(_) => 0,
             Self::True => 1,
+            Self::Variant(id) => db[*id].index,
         }
     }
 }
@@ -642,7 +647,9 @@ impl From<Ctor> for Const {
             Ctor::False => Const::Bool(false),
             Ctor::Int(v) => Const::Int(v),
             Ctor::Str(v) => Const::Str(v),
-            Ctor::Struct(_) => panic!("unexpected ctor value {value:?}"),
+            Ctor::Struct(_) | Ctor::Variant(_) => {
+                panic!("unexpected ctor value {value:?}")
+            }
         }
     }
 }
@@ -728,8 +735,7 @@ impl Pat {
             }
             hir::MatchPat::Variant(variant_id, pats, span) => {
                 let args: Vec<_> = pats.iter().map(Self::from_hir).collect();
-                todo!()
-                // Self::Ctor(Ctor::Struct(*adt_id), args, *span)
+                Self::Ctor(Ctor::Variant(*variant_id), args, *span)
             }
             hir::MatchPat::Or(pats, span) => {
                 Self::Or(pats.iter().map(Self::from_hir).collect(), *span)
@@ -788,6 +794,13 @@ fn collect_missing_pats(
                         cx.cx.db[*adt_id].name.to_string(),
                         case.values.clone(),
                     )),
+                    Ctor::Variant(variant_id) => {
+                        case_infos.push(CaseInfo::new(
+                            *cond,
+                            cx.cx.db[*variant_id].full_name(cx.cx.db),
+                            case.values.clone(),
+                        ));
+                    }
                 }
 
                 collect_missing_pats(cx, &case.decision, case_infos, missing);
