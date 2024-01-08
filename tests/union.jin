@@ -5,6 +5,8 @@ type Option[a] {
 	none
 }
 
+type Box(value: int)
+
 fn main() unit = {
 	ctors()
 	pmatch()
@@ -14,7 +16,7 @@ fn ctors() unit = {
 	let a = Option.some(1)
 	let b = Option[int].some(1)
 	let c = Option.some(value: 2)
-	//let d: Option[int] = Option.none
+	let d: Option[int] = Option.none
 }
 
 fn pmatch() unit = {
@@ -41,5 +43,3 @@ fn pmatch() unit = {
 
 	printf("after match: Box(%d)\n".ptr, b.value)
 }
-
-type Box(value: int)
