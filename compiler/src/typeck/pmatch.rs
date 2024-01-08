@@ -112,13 +112,13 @@ impl<'db> Typeck<'db> {
         pat: &ast::MatchPat,
         pat_ty: Ty,
         parent_span: Span,
-        pat_names: &mut UstrMap<DefId>,
+        names: &mut UstrMap<DefId>,
     ) -> TypeckResult<hir::MatchPat> {
         let derefed_ty = pat_ty.auto_deref();
 
         match pat {
             ast::MatchPat::Name(word, mutability) => {
-                let id = if let Some(id) = pat_names.get(&word.name()) {
+                let id = if let Some(id) = names.get(&word.name()) {
                     // We make sure that names in all alternatives are bound to the same type
                     let expected_ty = self.db[*id].ty;
 
@@ -163,7 +163,7 @@ impl<'db> Typeck<'db> {
                         pat_ty,
                     )?;
 
-                    pat_names.insert(word.name(), id);
+                    names.insert(word.name(), id);
 
                     id
                 };
@@ -214,13 +214,13 @@ impl<'db> Typeck<'db> {
                     *span,
                     pat_ty,
                     parent_span,
-                    pat_names,
+                    names,
                 ),
             ast::MatchPat::Or(pats, span) => {
                 let pats: Vec<_> = pats
                     .iter()
                     .map(|pat| {
-                        self.check_match_pat(env, pat, pat_ty, *span, pat_names)
+                        self.check_match_pat(env, pat, pat_ty, *span, names)
                     })
                     .try_collect()?;
 
