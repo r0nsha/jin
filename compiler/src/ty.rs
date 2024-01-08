@@ -666,7 +666,7 @@ impl Instantiation {
     }
 
     pub fn folder(&self) -> ParamFolder {
-        ParamFolder { instantiation: self }
+        ParamFolder::new(self)
     }
 
     pub fn fold(&self, ty: Ty) -> Ty {
@@ -704,12 +704,6 @@ pub struct ParamFolder<'a> {
 impl<'a> ParamFolder<'a> {
     pub fn new(instantiation: &'a Instantiation) -> Self {
         Self { instantiation }
-    }
-}
-
-impl<'a> From<&'a Instantiation> for ParamFolder<'a> {
-    fn from(value: &'a Instantiation) -> Self {
-        Self::new(value)
     }
 }
 
