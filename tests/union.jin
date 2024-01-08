@@ -1,9 +1,6 @@
-fn extern printf(fmt: *u8, ..) i32
+import std.option.Option
 
-type Option[a] {
-	some(value: a),
-	none
-}
+fn extern printf(fmt: *u8, ..) i32
 
 type Box(value: int)
 

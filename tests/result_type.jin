@@ -1,9 +1,6 @@
-fn extern printf(fmt: *u8, ..) i32
+import std.result.Result
 
-type Result[t, e] {
-	ok(value: t),
-	err(error: e)
-}
+fn extern printf(fmt: *u8, ..) i32
 
 fn main() unit = {
 	match try_add(1, 2) {

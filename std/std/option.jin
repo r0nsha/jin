@@ -1,0 +1,4 @@
+type Option*[a] {
+	some(value: a),
+	none
+}
