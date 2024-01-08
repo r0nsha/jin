@@ -3,12 +3,12 @@ use ustr::{Ustr, UstrMap};
 
 use crate::{
     ast,
-    db::{AdtField, DefId, DefKind},
+    db::{AdtField, AdtId, DefId, DefKind},
     diagnostics::{Diagnostic, Label},
     hir,
     middle::Vis,
     span::{Span, Spanned as _},
-    ty::{InferTy, Ty, TyKind},
+    ty::{InferTy, Instantiation, Ty, TyKind},
     typeck::{
         coerce::CoerceExt as _,
         env::{Env, PathLookup, ScopeKind},
@@ -280,145 +280,16 @@ impl<'db> Typeck<'db> {
                 let def = &self.db[id];
 
                 match def.kind.as_ref() {
-                    &DefKind::Adt(adt_id) => {
-                        let adt_name = self.db[adt_id].name.name();
-                        let adt_ty = self.db[adt_id].ty();
-                        let instantiation = self
-                            .fresh_instantiation(env, adt_ty.collect_params());
-
-                        self.at(Obligation::exprs(span, parent_span, span))
-                            .eq(
-                                pat_ty.auto_deref(),
-                                instantiation.fold(adt_ty),
-                            )?;
-
-                        let fields =
-                            self.db[adt_id].as_struct().unwrap().fields.clone();
-
-                        let mut used_fields = WordMap::default();
-                        let mut use_field = |name: Ustr, span: Span| {
-                            if let Some(prev_span) =
-                                used_fields.insert_split(name, span)
-                            {
-                                let dup_span = span;
-
-                                Err(Diagnostic::error()
-                                    .with_message(format!(
-                                        "field `{name}` has already been \
-                                         matched"
-                                    ))
-                                    .with_label(
-                                        Label::primary(dup_span).with_message(
-                                            format!(
-                                                "`{name}` matched again here"
-                                            ),
-                                        ),
-                                    )
-                                    .with_label(
-                                        Label::secondary(prev_span)
-                                            .with_message(format!(
-                                                "first match of `{name}`"
-                                            )),
-                                    ))
-                            } else {
-                                Ok(())
-                            }
-                        };
-
-                        let mut new_subpats =
-                            vec![hir::MatchPat::Wildcard(span); fields.len()];
-
-                        for (idx, subpat) in subpats.iter().enumerate() {
-                            let (field_idx, field, subpat, field_use_span) =
-                                match subpat {
-                                    ast::Subpat::Positional(subpat) => {
-                                        if let Some(field) = fields.get(idx) {
-                                            (idx, field, subpat, subpat.span())
-                                        } else {
-                                            return Err(Diagnostic::error()
-                                                .with_message(format!(
-                                                    "expected at most {} \
-                                                     patterns for type `{}`",
-                                                    fields.len(),
-                                                    adt_name
-                                                ))
-                                                .with_label(
-                                                    Label::primary(
-                                                        subpat.span(),
-                                                    )
-                                                    .with_message(
-                                                        "pattern doesn't map \
-                                                         to any field",
-                                                    ),
-                                                ));
-                                        }
-                                    }
-                                    ast::Subpat::Named(name, subpat) => {
-                                        if let Some((field_idx, field)) = fields
-                                            .iter()
-                                            .enumerate()
-                                            .find(|(_, f)| {
-                                                f.name.name() == name.name()
-                                            })
-                                        {
-                                            (
-                                                field_idx,
-                                                field,
-                                                subpat,
-                                                name.span(),
-                                            )
-                                        } else {
-                                            return Err(field_not_found(
-                                                self.db,
-                                                self.db[adt_id].ty(),
-                                                span,
-                                                *name,
-                                            ));
-                                        }
-                                    }
-                                };
-
-                            use_field(field.name.name(), field_use_span)?;
-
-                            self.check_field_access(
-                                env,
-                                &self.db[adt_id],
-                                field,
-                                field_use_span,
-                            )?;
-
-                            let field_ty = instantiation.fold(field.ty);
-                            let field_ty = match pat_ty.kind() {
-                                TyKind::Ref(_, mutability) => {
-                                    // If the parent pattern's type is a reference, the field's type is
-                                    // implicitly a reference too.
-                                    field_ty.create_ref(*mutability)
-                                }
-                                _ => field_ty,
-                            };
-
-                            let new_subpat = self.check_match_pat(
-                                env,
-                                subpat,
-                                field_ty,
-                                field.span(),
-                                names,
-                            )?;
-
-                            new_subpats[field_idx] = new_subpat;
-                        }
-
-                        if is_exhaustive {
-                            Self::check_match_pat_adt_missing_fields(
-                                adt_name,
-                                &fields,
-                                &used_fields,
-                                span,
-                            )?;
-                        }
-
-                        Ok(hir::MatchPat::Adt(adt_id, new_subpats, span))
-                    }
+                    &DefKind::Adt(adt_id) => self.check_match_pat_struct(
+                        env,
+                        subpats,
+                        is_exhaustive,
+                        span,
+                        pat_ty,
+                        parent_span,
+                        names,
+                        adt_id,
+                    ),
                     _ => Err(errors::expected_named_ty(
                         def.ty.display(self.db),
                         span,
@@ -429,6 +300,180 @@ impl<'db> Typeck<'db> {
                 todo!("{variant_id}")
             }
         }
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn check_match_pat_struct(
+        &mut self,
+        env: &mut Env,
+        subpats: &[ast::Subpat],
+        is_exhaustive: bool,
+        span: Span,
+        pat_ty: Ty,
+        parent_span: Span,
+        names: &mut UstrMap<DefId>,
+        adt_id: AdtId,
+    ) -> TypeckResult<hir::MatchPat> {
+        let instantiation = self.check_match_pat_adt_ty(
+            env,
+            span,
+            pat_ty,
+            parent_span,
+            adt_id,
+        )?;
+
+        let fields = self.db[adt_id].as_struct().unwrap().fields.clone();
+
+        self.check_match_pat_subpats(
+            env,
+            subpats,
+            is_exhaustive,
+            span,
+            pat_ty,
+            names,
+            adt_id,
+            &fields,
+            &instantiation,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn check_match_pat_adt_ty(
+        &mut self,
+        env: &mut Env,
+        span: Span,
+        pat_ty: Ty,
+        parent_span: Span,
+        adt_id: AdtId,
+    ) -> TypeckResult<Instantiation> {
+        let adt_ty = self.db[adt_id].ty();
+        let instantiation =
+            self.fresh_instantiation(env, adt_ty.collect_params());
+
+        self.at(Obligation::exprs(span, parent_span, span))
+            .eq(pat_ty.auto_deref(), instantiation.fold(adt_ty))?;
+
+        Ok(instantiation)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    #[allow(clippy::too_many_lines)]
+    fn check_match_pat_subpats(
+        &mut self,
+        env: &mut Env,
+        subpats: &[ast::Subpat],
+        is_exhaustive: bool,
+        span: Span,
+        pat_ty: Ty,
+        names: &mut UstrMap<DefId>,
+        adt_id: AdtId,
+        fields: &[AdtField],
+        instantiation: &Instantiation,
+    ) -> TypeckResult<hir::MatchPat> {
+        let adt_name = self.db[adt_id].name.name();
+
+        let mut used_fields = WordMap::default();
+        let mut use_field = |name: Ustr, span: Span| {
+            if let Some(prev_span) = used_fields.insert_split(name, span) {
+                let dup_span = span;
+
+                Err(Diagnostic::error()
+                    .with_message(format!(
+                        "field `{name}` has already been matched"
+                    ))
+                    .with_label(
+                        Label::primary(dup_span).with_message(format!(
+                            "`{name}` matched again here"
+                        )),
+                    )
+                    .with_label(
+                        Label::secondary(prev_span)
+                            .with_message(format!("first match of `{name}`")),
+                    ))
+            } else {
+                Ok(())
+            }
+        };
+
+        let mut new_subpats = vec![hir::MatchPat::Wildcard(span); fields.len()];
+
+        for (idx, subpat) in subpats.iter().enumerate() {
+            let (field_idx, field, subpat, field_use_span) = match subpat {
+                ast::Subpat::Positional(subpat) => {
+                    if let Some(field) = fields.get(idx) {
+                        (idx, field, subpat, subpat.span())
+                    } else {
+                        return Err(Diagnostic::error()
+                            .with_message(format!(
+                                "expected at most {} patterns for type `{}`",
+                                fields.len(),
+                                adt_name
+                            ))
+                            .with_label(
+                                Label::primary(subpat.span()).with_message(
+                                    "pattern doesn't map to any field",
+                                ),
+                            ));
+                    }
+                }
+                ast::Subpat::Named(name, subpat) => {
+                    if let Some((field_idx, field)) = fields
+                        .iter()
+                        .enumerate()
+                        .find(|(_, f)| f.name.name() == name.name())
+                    {
+                        (field_idx, field, subpat, name.span())
+                    } else {
+                        return Err(field_not_found(
+                            self.db,
+                            self.db[adt_id].ty(),
+                            span,
+                            *name,
+                        ));
+                    }
+                }
+            };
+
+            use_field(field.name.name(), field_use_span)?;
+
+            self.check_field_access(
+                env,
+                &self.db[adt_id],
+                field,
+                field_use_span,
+            )?;
+
+            let field_ty = instantiation.fold(field.ty);
+            let field_ty = match pat_ty.kind() {
+                TyKind::Ref(_, mutability) => {
+                    // If the parent pattern's type is a reference, the field's type is
+                    // implicitly a reference too.
+                    field_ty.create_ref(*mutability)
+                }
+                _ => field_ty,
+            };
+
+            let new_subpat = self.check_match_pat(
+                env,
+                subpat,
+                field_ty,
+                field.span(),
+                names,
+            )?;
+
+            new_subpats[field_idx] = new_subpat;
+        }
+
+        if is_exhaustive {
+            Self::check_match_pat_adt_missing_fields(
+                adt_name,
+                fields,
+                &used_fields,
+                span,
+            )?;
+        }
+
+        Ok(hir::MatchPat::Adt(adt_id, new_subpats, span))
     }
 
     fn check_match_pat_adt_missing_fields(
