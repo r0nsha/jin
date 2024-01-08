@@ -8,18 +8,13 @@ type Option[a] {
 type Box(value: int)
 
 fn main() unit = {
-	ctors()
-	pmatch()
-}
-
-fn ctors() unit = {
+	// Value constructors
 	let a = Option.some(1)
 	let b = Option[int].some(1)
 	let c = Option.some(value: 2)
 	let d: Option[int] = Option.none
-}
 
-fn pmatch() unit = {
+	// Pattern matching
 	let value = Option.some(1)
 	match &value {
 		Option.some(1) -> printf("some(1)\n".ptr),
