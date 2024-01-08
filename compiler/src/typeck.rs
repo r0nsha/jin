@@ -42,7 +42,7 @@ use crate::{
         coerce::CoerceExt,
         env::{
             BuiltinTys, Env, FnQuery, GlobalScope, LookupResult, PathLookup,
-            Query, ScopeKind, Symbol,
+            Query, ScopeKind, Symbol, TyLookup,
         },
         resolution_state::{ModuleStatus, ResolutionState, ResolvedFnSig},
         unify::Obligation,
@@ -1070,9 +1070,8 @@ impl<'db> Typeck<'db> {
                 let lookup_in_module = match self.normalize(expr.ty).kind() {
                     TyKind::Module(in_module) => *in_module,
                     TyKind::Type(ty) => {
-                        let (callee, _) = self.lookup_name_in_ty(
-                            *ty, *method, *span, expr.span,
-                        )?;
+                        let (callee, _) = self
+                            .check_name_in_ty(*ty, *method, *span, expr.span)?;
                         return self.check_call(callee, args, *span);
                     }
                     _ => {
@@ -1511,7 +1510,7 @@ impl<'db> Typeck<'db> {
             }
             TyKind::Type(ty) => {
                 let (expr, can_implicitly_call) =
-                    self.lookup_name_in_ty(*ty, field, span, expr.span)?;
+                    self.check_name_in_ty(*ty, field, span, expr.span)?;
 
                 return if can_implicitly_call {
                     self.check_call(expr, vec![], span)
@@ -1565,50 +1564,38 @@ impl<'db> Typeck<'db> {
 
     /// Tries to look up `name` in the namespace of `ty`.
     /// Returns the evaluated expression, and whether it can be implicitly called.
-    fn lookup_name_in_ty(
+    fn check_name_in_ty(
         &mut self,
         ty: Ty,
         name: Word,
         span: Span,
         ty_span: Span,
     ) -> TypeckResult<(hir::Expr, bool)> {
-        if let TyKind::Adt(adt_id, targs) = ty.kind() {
-            let adt = &self.db[*adt_id];
+        match self.lookup_name_in_ty(ty, name, ty_span)? {
+            TyLookup::Variant(variant_id) => {
+                let TyKind::Adt(adt_id, targs) = ty.kind() else {
+                    unreachable!()
+                };
 
-            match &adt.kind {
-                AdtKind::Union(union_def) => {
-                    let variant = union_def
-                        .variants
-                        .iter()
-                        .map(|&id| &self.db[id])
-                        .find(|v| v.name.name() == name.name());
+                let variant = &self.db[variant_id];
+                let adt = &self.db[*adt_id];
 
-                    if let Some(variant) = variant {
-                        let instantiation = adt.instantiation(targs);
-                        let ctor_ty = instantiation.fold(variant.ctor_ty);
+                let instantiation = adt.instantiation(targs);
+                let ctor_ty = instantiation.fold(variant.ctor_ty);
 
-                        let can_implicitly_call = variant.fields.is_empty();
-                        let expr = self.expr(
-                            hir::ExprKind::Variant(hir::Variant {
-                                id: variant.id,
-                                instantiation,
-                            }),
-                            ctor_ty,
-                            span,
-                        );
+                let can_implicitly_call = variant.fields.is_empty();
+                let expr = self.expr(
+                    hir::ExprKind::Variant(hir::Variant {
+                        id: variant.id,
+                        instantiation,
+                    }),
+                    ctor_ty,
+                    span,
+                );
 
-                        return Ok((expr, can_implicitly_call));
-                    }
-
-                    return Err(errors::variant_not_found(
-                        self.db, ty, ty_span, name,
-                    ));
-                }
-                AdtKind::Struct(_) => (),
+                Ok((expr, can_implicitly_call))
             }
         }
-
-        Err(errors::field_not_found(self.db, ty, ty_span, name))
     }
 
     fn lookup_fn_for_call(

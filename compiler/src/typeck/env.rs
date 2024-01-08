@@ -7,8 +7,8 @@ use ustr::{ustr, Ustr, UstrMap};
 use crate::{
     ast,
     db::{
-        Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel,
-        VariantId,
+        AdtKind, Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo,
+        ScopeLevel, VariantId,
     },
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
@@ -45,6 +45,11 @@ impl LookupResult {
 #[derive(Debug, Clone)]
 pub enum PathLookup {
     Def(DefId),
+    Variant(VariantId),
+}
+
+#[derive(Debug, Clone)]
+pub enum TyLookup {
     Variant(VariantId),
 }
 
@@ -287,7 +292,7 @@ impl<'db> Typeck<'db> {
 
         let mut target_module = env.module_id();
 
-        for &part in path {
+        for (idx, &part) in path.iter().enumerate() {
             let part_id =
                 self.lookup(env, target_module, &Query::Name(part))?;
 
@@ -295,22 +300,68 @@ impl<'db> Typeck<'db> {
                 TyKind::Module(module_id) => {
                     target_module = *module_id;
                 }
+                TyKind::Type(ty) => {
+                    let next_part = path.get(idx + 1).copied().unwrap_or(last);
+
+                    match self.lookup_name_in_ty(*ty, next_part, part.span())? {
+                        TyLookup::Variant(variant_id) => {
+                            if path.get(idx + 2).is_some() {
+                                return Err(Diagnostic::error()
+                                    .with_message(format!(
+                                        "`{}` is a variant, not a module",
+                                        self.db[variant_id].name,
+                                    ))
+                                    .with_label(
+                                        Label::primary(next_part.span())
+                                            .with_message("not a module"),
+                                    ));
+                            }
+
+                            return Ok(PathLookup::Variant(variant_id));
+                        }
+                    }
+                }
                 ty => {
-                    return Err(Diagnostic::error()
-                        .with_message(format!(
-                            "expected a module, found type `{}`",
-                            ty.display(self.db)
-                        ))
-                        .with_label(
-                            Label::primary(part.span())
-                                .with_message("not a module"),
-                        ))
+                    return Err(errors::expected_module(
+                        ty.display(self.db),
+                        part.span(),
+                    ))
                 }
             }
         }
 
         let id = self.lookup(env, target_module, &Query::Name(last))?;
         Ok(PathLookup::Def(id))
+    }
+
+    /// Tries to look up `name` in the namespace of `ty`.
+    pub(super) fn lookup_name_in_ty(
+        &mut self,
+        ty: Ty,
+        name: Word,
+        ty_span: Span,
+    ) -> TypeckResult<TyLookup> {
+        if let TyKind::Adt(adt_id, _) = ty.kind() {
+            let adt = &self.db[*adt_id];
+
+            match &adt.kind {
+                AdtKind::Union(union_def) => {
+                    return union_def
+                        .variants
+                        .iter()
+                        .find(|id| self.db[**id].name.name() == name.name())
+                        .map(|id| TyLookup::Variant(*id))
+                        .ok_or_else(|| {
+                            errors::variant_not_found(
+                                self.db, ty, ty_span, name,
+                            )
+                        });
+                }
+                AdtKind::Struct(_) => (),
+            }
+        }
+
+        Err(errors::field_not_found(self.db, ty, ty_span, name))
     }
 
     pub fn import_lookup(

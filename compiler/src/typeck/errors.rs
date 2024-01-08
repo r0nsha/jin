@@ -126,6 +126,21 @@ pub fn ty_mismatch(expected: &str, found: &str, span: Span) -> Diagnostic {
     )
 }
 
+pub fn expected_module(ty: impl core::fmt::Display, span: Span) -> Diagnostic {
+    Diagnostic::error()
+        .with_message(format!("expected a module, found type `{ty}`"))
+        .with_label(Label::primary(span).with_message("not a module"))
+}
+
+pub fn expected_named_ty(
+    ty: impl core::fmt::Display,
+    span: Span,
+) -> Diagnostic {
+    Diagnostic::error()
+        .with_message(format!("expected a named type, found type `{ty}`"))
+        .with_label(Label::primary(span).with_message("expected a named type"))
+}
+
 pub fn generic_expected_found(
     expected: &str,
     found: &str,

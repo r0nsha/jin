@@ -419,18 +419,15 @@ impl<'db> Typeck<'db> {
 
                         Ok(hir::MatchPat::Adt(adt_id, new_subpats, span))
                     }
-                    _ => Err(Diagnostic::error()
-                        .with_message(format!(
-                            "expected a named type, found value of type `{}`",
-                            def.ty.display(self.db)
-                        ))
-                        .with_label(
-                            Label::primary(span)
-                                .with_message("expected a named type"),
-                        )),
+                    _ => Err(errors::expected_named_ty(
+                        def.ty.display(self.db),
+                        span,
+                    )),
                 }
             }
-            PathLookup::Variant(_) => todo!(),
+            PathLookup::Variant(variant_id) => {
+                todo!("{variant_id}")
+            }
         }
     }
 
