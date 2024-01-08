@@ -9,6 +9,7 @@ else
     cargo run -- build $src --timings --emit ast --emit hir --emit mir --emit c
 
     if test $status -eq 0 && test -f $out
+        cp -r std target/std
         $out
     end
 end

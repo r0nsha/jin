@@ -44,8 +44,9 @@ impl At<'_, '_> {
                                 Label::secondary(expected_span).with_message(
                                     format!("expected `{expected_ty}`"),
                                 ),
-                                Label::secondary(found_span)
-                                    .with_message(format!("found `{found_ty}`")),
+                                Label::secondary(found_span).with_message(
+                                    format!("found `{found_ty}`"),
+                                ),
                             ]);
                         }
                         ObligationKind::ReturnTy(return_ty_span) => {

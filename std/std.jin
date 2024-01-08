@@ -1,0 +1,5 @@
+fn extern printf(fmt: *u8) unit
+
+fn hello*() = {
+  printf("hello from std\n".ptr)
+}

@@ -24,9 +24,9 @@ pub fn parse_module_tree(
     let mut ast = Ast::new();
 
     // Std
-    // let main_package_name =
-    //     ustr(&sources.get(main_source).unwrap().file_name());
-    // parse_package(db, db.main_package().name, &mut ast, db.main_source_id());
+    // let (std_package, _) =
+    //     db.create_package(ustr("std"), root_std_file)?;
+    // parse_package(db, &mut ast, std_package);
 
     // Main package
     let (main_package, _) =
