@@ -112,7 +112,9 @@ impl<S: SubstTy> Subst<S> for MatchPat {
             MatchPat::Name(_, ty, span) => {
                 *ty = s.subst_ty(*ty, *span);
             }
-            MatchPat::Adt(_, pats, _) | MatchPat::Or(pats, _) => {
+            MatchPat::Adt(_, pats, _)
+            | MatchPat::Variant(_, pats, _)
+            | MatchPat::Or(pats, _) => {
                 for pat in pats {
                     pat.subst(s);
                 }

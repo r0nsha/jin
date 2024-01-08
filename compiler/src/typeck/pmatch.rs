@@ -3,7 +3,7 @@ use ustr::{Ustr, UstrMap};
 
 use crate::{
     ast,
-    db::{AdtField, AdtId, DefId, DefKind},
+    db::{AdtField, AdtId, DefId, DefKind, VariantId},
     diagnostics::{Diagnostic, Label},
     hir,
     middle::Vis,
@@ -282,9 +282,14 @@ impl<'db> Typeck<'db> {
                     )),
                 }
             }
-            PathLookup::Variant(variant_id) => {
-                todo!("{variant_id}")
-            }
+            PathLookup::Variant(variant_id) => self.check_match_pat_variant(
+                env,
+                pat,
+                pat_ty,
+                parent_span,
+                names,
+                variant_id,
+            ),
         }
     }
 
@@ -307,7 +312,7 @@ impl<'db> Typeck<'db> {
 
         let fields = self.db[adt_id].as_struct().unwrap().fields.clone();
 
-        self.check_match_pat_subpats(
+        let new_subpats = self.check_match_pat_subpats(
             env,
             pat,
             pat_ty,
@@ -315,7 +320,9 @@ impl<'db> Typeck<'db> {
             adt_id,
             &fields,
             &instantiation,
-        )
+        )?;
+
+        Ok(hir::MatchPat::Adt(adt_id, new_subpats, pat.span))
     }
 
     fn check_match_pat_variant(
@@ -325,8 +332,10 @@ impl<'db> Typeck<'db> {
         pat_ty: Ty,
         parent_span: Span,
         names: &mut UstrMap<DefId>,
-        adt_id: AdtId,
+        variant_id: VariantId,
     ) -> TypeckResult<hir::MatchPat> {
+        let adt_id = self.db[variant_id].adt_id;
+
         let instantiation = self.check_match_pat_adt_ty(
             env,
             pat.span,
@@ -335,17 +344,17 @@ impl<'db> Typeck<'db> {
             adt_id,
         )?;
 
-        let fields = self.db[adt_id].as_struct().unwrap().fields.clone();
-
-        self.check_match_pat_subpats(
+        let new_subpats = self.check_match_pat_subpats(
             env,
             pat,
             pat_ty,
             names,
             adt_id,
-            &fields,
+            &self.db[variant_id].fields.clone(),
             &instantiation,
-        )
+        )?;
+
+        Ok(hir::MatchPat::Variant(variant_id, new_subpats, pat.span))
     }
 
     fn check_match_pat_adt_ty(
@@ -377,7 +386,7 @@ impl<'db> Typeck<'db> {
         adt_id: AdtId,
         fields: &[AdtField],
         instantiation: &Instantiation,
-    ) -> TypeckResult<hir::MatchPat> {
+    ) -> TypeckResult<Vec<hir::MatchPat>> {
         let adt_name = self.db[adt_id].name.name();
 
         let mut used_fields = WordMap::default();
@@ -482,7 +491,7 @@ impl<'db> Typeck<'db> {
             )?;
         }
 
-        Ok(hir::MatchPat::Adt(adt_id, new_subpats, pat.span))
+        Ok(new_subpats)
     }
 
     fn check_match_pat_adt_missing_fields(

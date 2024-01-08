@@ -239,6 +239,7 @@ pub enum MatchPat {
     Int(i128, Span),
     Str(Ustr, Span),
     Adt(AdtId, Vec<Self>, Span),
+    Variant(VariantId, Vec<Self>, Span),
     Or(Vec<Self>, Span),
 }
 
@@ -252,6 +253,7 @@ impl Spanned for MatchPat {
             | Self::Int(_, span)
             | Self::Str(_, span)
             | Self::Adt(_, _, span)
+            | Self::Variant(_, _, span)
             | Self::Or(_, span) => *span,
         }
     }

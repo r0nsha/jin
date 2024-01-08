@@ -726,6 +726,11 @@ impl Pat {
                 let args: Vec<_> = pats.iter().map(Self::from_hir).collect();
                 Self::Ctor(Ctor::Struct(*adt_id), args, *span)
             }
+            hir::MatchPat::Variant(variant_id, pats, span) => {
+                let args: Vec<_> = pats.iter().map(Self::from_hir).collect();
+                todo!()
+                // Self::Ctor(Ctor::Struct(*adt_id), args, *span)
+            }
             hir::MatchPat::Or(pats, span) => {
                 Self::Or(pats.iter().map(Self::from_hir).collect(), *span)
             }
