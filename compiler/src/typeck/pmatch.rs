@@ -337,7 +337,6 @@ impl<'db> Typeck<'db> {
         )
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn check_match_pat_adt_ty(
         &mut self,
         env: &mut Env,
@@ -555,5 +554,17 @@ impl<'db> Typeck<'db> {
         }
 
         Ok(())
+    }
+}
+
+struct MatchState {
+    pat_ty: Ty,
+    parent_span: Span,
+    names: UstrMap<DefId>,
+}
+
+impl MatchState {
+    fn new(pat_ty: Ty, parent_span: Span) -> Self {
+        Self { pat_ty, parent_span, names: UstrMap::default() }
     }
 }
