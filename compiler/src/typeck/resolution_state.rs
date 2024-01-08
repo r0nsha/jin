@@ -11,7 +11,7 @@ use crate::{
 pub struct ResolutionState {
     module_states: FxHashMap<ModuleId, ModuleState>,
     item_statuses: FxHashMap<ast::GlobalItemId, ItemStatus>,
-    resolved_fn_sigs: ast::ItemMap<ResolvedFnSig>,
+    resolved_fn_sigs: FxHashMap<ast::GlobalItemId, ResolvedFnSig>,
     check_stack: Vec<ast::GlobalItemId>,
 }
 

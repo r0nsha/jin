@@ -83,8 +83,6 @@ impl GlobalItemId {
     }
 }
 
-pub type ItemMap<T> = FxHashMap<GlobalItemId, T>;
-
 #[derive(Debug, Clone)]
 pub enum Item {
     Fn(Fn),
