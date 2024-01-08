@@ -401,6 +401,7 @@ pub enum Inst {
     DecRef { value: ValueId },
     Br { target: BlockId },
     BrIf { cond: ValueId, then: BlockId, otherwise: Option<BlockId> },
+    Switch { cond: ValueId, blocks: Vec<BlockId> },
     Return { value: ValueId },
     Call { value: ValueId, callee: ValueId, args: Vec<ValueId> },
     Binary { value: ValueId, lhs: ValueId, rhs: ValueId, op: BinOp, span: Span },

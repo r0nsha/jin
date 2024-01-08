@@ -786,7 +786,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         parent_block,
                         values,
                     ),
-                    pmatch::Ctor::Variant(_) => todo!(),
+                    pmatch::Ctor::Variant(_) => self.lower_decision_variant(
+                        state,
+                        cond,
+                        cases,
+                        parent_block,
+                        values,
+                    ),
                 }
             }
         }
@@ -813,7 +819,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         parent_block: BlockId,
         values: Vec<ValueId>,
     ) -> BlockId {
-        let block = self.body.create_block("case");
+        let block = self.body.create_block("match_test");
 
         self.body.create_edge(parent_block, block);
 
@@ -839,7 +845,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         parent_block: BlockId,
         mut values: Vec<ValueId>,
     ) -> BlockId {
-        let blocks = self.body.create_blocks("case", cases.len());
+        let blocks = self.body.create_blocks("match_test", cases.len());
 
         self.body.create_edge(parent_block, blocks[0]);
         self.body.connect_blocks(&blocks);
@@ -904,6 +910,36 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let case = cases.pop().unwrap();
         values.push(cond);
         self.lower_decision(state, case.decision, parent_block, values)
+    }
+
+    fn lower_decision_variant(
+        &mut self,
+        state: &mut DecisionState,
+        cond: ValueId,
+        mut cases: Vec<pmatch::Case>,
+        parent_block: BlockId,
+        mut values: Vec<ValueId>,
+    ) -> BlockId {
+        let test_block = self.body.create_block("match_test");
+        let mut blocks = vec![];
+
+        self.body.create_edge(parent_block, test_block);
+        values.push(cond);
+
+        for case in cases {
+            let block = self.body.create_block("match_variant_case");
+            self.body.create_edge(test_block, block);
+            blocks.push(block);
+            self.lower_decision(state, case.decision, block, values.clone());
+        }
+
+        self.position_at(test_block);
+        let uint = self.cx.db.types.uint;
+        let tag_field = self
+            .create_untracked_value(uint, ValueKind::Field(cond, ustr("tag")));
+        self.push_switch(tag_field, blocks);
+
+        test_block
     }
 
     fn lower_decision_bindings(
@@ -1132,6 +1168,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         self.push_inst(Inst::BrIf { cond, then, otherwise });
+    }
+
+    pub fn push_switch(&mut self, cond: ValueId, blocks: Vec<BlockId>) {
+        for &target in &blocks {
+            self.create_edge(target);
+        }
+
+        self.push_inst(Inst::Switch { cond, blocks });
     }
 
     pub fn create_edge(&mut self, target: BlockId) {
