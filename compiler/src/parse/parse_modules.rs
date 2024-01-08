@@ -1,8 +1,8 @@
 use std::cell::Ref;
 
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 use rustc_hash::FxHashSet;
-use ustr::Ustr;
+use ustr::{ustr, Ustr};
 
 use super::{lexer, parser};
 use crate::{
@@ -12,10 +12,28 @@ use crate::{
     span::SourceId,
 };
 
-pub fn parse_module_tree(db: &mut Db) -> Ast {
+pub fn parse_module_tree(
+    db: &mut Db,
+    root_file: &Utf8Path,
+) -> anyhow::Result<Ast> {
     let mut ast = Ast::new();
-    parse_module(db, db.main_package().name, &mut ast, db.main_source_id());
-    ast
+
+    // Std
+    // let main_package_name =
+    //     ustr(&sources.get(main_source).unwrap().file_name());
+    // parse_package(db, db.main_package().name, &mut ast, db.main_source_id());
+
+    // Main package
+    let (main_package, _) =
+        db.create_package(ustr(root_file.file_name().unwrap()), root_file)?;
+    db.set_main_package(main_package);
+    parse_package(db, &mut ast, main_package);
+
+    Ok(ast)
+}
+
+fn parse_package(db: &mut Db, ast: &mut Ast, package: Ustr) {
+    parse_module(db, package, ast, db.package(package).main_source_id);
 }
 
 fn parse_module(

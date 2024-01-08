@@ -9,7 +9,6 @@ use std::{
     rc::Rc,
 };
 
-use anyhow::{bail, Result};
 use camino::{Utf8Path, Utf8PathBuf};
 use data_structures::{
     index_vec::{IndexVec, IndexVecExt},
@@ -17,7 +16,7 @@ use data_structures::{
 };
 use path_absolutize::Absolutize;
 use rustc_hash::{FxHashMap, FxHashSet};
-use ustr::{ustr, Ustr};
+use ustr::Ustr;
 
 use crate::{
     db::{
@@ -47,69 +46,37 @@ pub struct Db {
     pub types: CommonTypes,
     pub extern_libs: FxHashSet<ExternLib>,
     pub diagnostics: Diagnostics,
+
     timings: Timings,
     build_options: BuildOptions,
-    main_package_name: Ustr,
-    main_source: SourceId,
+
+    main_package_name: Option<Ustr>,
+    main_source: Option<SourceId>,
     main_module: Option<ModuleId>,
     main_fun: Option<DefId>,
 }
 
 impl Db {
-    pub fn new(
-        build_options: BuildOptions,
-        root_file: &Utf8Path,
-    ) -> Result<Self> {
-        let absolute_path: Utf8PathBuf =
-            root_file.as_std_path().absolutize()?.into_owned().try_into()?;
+    pub fn new(build_options: BuildOptions) -> Self {
+        let sources = Rc::new(RefCell::new(Sources::new()));
 
-        if !absolute_path.is_file() {
-            bail!("provided path `{}` in not a file", absolute_path);
-        }
-
-        let mut sources = Sources::new();
-        let main_source = sources.load_file(absolute_path.to_path_buf())?;
-
-        let main_package_name =
-            ustr(&sources.get(main_source).unwrap().file_name());
-
-        let packages: FxHashMap<_, _> = {
-            let main_package_root_path = absolute_path
-                .parent()
-                .expect("to have a parent directory")
-                .to_path_buf();
-
-            [(
-                main_package_name,
-                Package::new(
-                    main_package_name,
-                    main_package_root_path.clone(),
-                    main_source,
-                ),
-            )]
-            .into_iter()
-            .collect()
-        };
-
-        let sources = Rc::new(RefCell::new(sources));
-
-        Ok(Self {
+        Self {
             timings: Timings::new(),
             build_options,
             diagnostics: Diagnostics::new(sources.clone()),
             sources,
-            packages,
+            packages: FxHashMap::default(),
             modules: IndexVec::new(),
             defs: IndexVec::new(),
             adts: IndexVec::new(),
             variants: IndexVec::new(),
             types: CommonTypes::new(),
             extern_libs: FxHashSet::default(),
-            main_package_name,
-            main_source,
+            main_package_name: None,
+            main_source: None,
             main_module: None,
             main_fun: None,
-        })
+        }
     }
 
     pub fn build_options(&self) -> &BuildOptions {
@@ -141,16 +108,28 @@ impl Db {
     }
 
     pub fn main_package(&self) -> &Package {
-        &self.packages[&self.main_package_name]
+        &self.packages[&self.main_package_name.unwrap()]
+    }
+
+    pub fn set_main_package(&mut self, name: Ustr) {
+        assert!(
+            self.main_package_name.is_none(),
+            "main package is already set"
+        );
+        assert!(self.main_source.is_none(), "main source is already set");
+
+        self.main_package_name = Some(name);
+        self.main_source = Some(self.packages[&name].main_source_id);
     }
 
     pub fn main_source_id(&self) -> SourceId {
-        self.main_source
+        self.main_source.unwrap()
     }
 
     pub fn main_source(&self) -> Ref<'_, Source> {
         Ref::map(self.sources.borrow(), |s| {
-            s.get(self.main_source).expect("to always have a main source")
+            s.get(self.main_source.unwrap())
+                .expect("to always have a main source")
         })
     }
 
@@ -201,6 +180,31 @@ impl Db {
     pub fn find_package_by_source_id(&self, id: SourceId) -> Option<&Package> {
         self.find_module_by_source_id(id)
             .and_then(|m| self.packages.get(&m.package))
+    }
+
+    pub fn create_package(
+        &mut self,
+        name: Ustr,
+        root_file: &Utf8Path,
+    ) -> anyhow::Result<(Ustr, SourceId)> {
+        let absolute_path: Utf8PathBuf =
+            root_file.as_std_path().absolutize()?.into_owned().try_into()?;
+
+        if !absolute_path.is_file() {
+            anyhow::bail!("provided path `{}` in not a file", absolute_path);
+        }
+
+        let mut sources = Sources::new();
+        let source_id = sources.load_file(absolute_path.to_path_buf())?;
+
+        let root_path = absolute_path
+            .parent()
+            .expect("to have a parent directory")
+            .to_path_buf();
+
+        self.packages.insert(name, Package::new(name, root_path, source_id));
+
+        Ok((name, source_id))
     }
 
     pub fn adt_def(&self, adt_id: AdtId) -> Option<&Def> {

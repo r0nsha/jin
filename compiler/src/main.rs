@@ -22,8 +22,7 @@ mod word;
 
 use std::fs;
 
-use anyhow::Result;
-use camino::Utf8PathBuf;
+use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, Subcommand};
 
 use crate::{
@@ -64,7 +63,7 @@ macro_rules! expect {
     };
 }
 
-fn main() -> Result<()> {
+fn main() {
     color_eyre::install().expect("color_eyre::install to work");
 
     let cli = Cli::parse();
@@ -78,22 +77,23 @@ fn main() -> Result<()> {
 
     match cli.cmd {
         Commands::Build { file } => {
-            let mut db = Db::new(build_options, &file)?;
-            build(&mut db);
-            Ok(())
+            let mut db = Db::new(build_options);
+            build(&mut db, &file);
         }
     }
 }
 
 #[allow(clippy::similar_names)]
-fn build(db: &mut Db) {
+fn build(db: &mut Db, root_file: &Utf8Path) {
+    // Parse the entire module tree into an Ast
+    let ast = db
+        .time("Parse", |db| parse::parse_module_tree(db, root_file))
+        .expect("parsing to work");
+    expect!(db);
+
     // Create the output directory
     fs::create_dir_all(db.output_dir())
         .expect("failed creating build directory");
-
-    // Parse the entire module tree into an Ast
-    let ast = db.time("Parse", parse::parse_module_tree);
-    expect!(db);
 
     db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file))
         .expect("emitting ast failed");
