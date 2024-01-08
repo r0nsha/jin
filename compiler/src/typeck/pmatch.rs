@@ -82,6 +82,7 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<hir::MatchArm> {
         env.with_anon_scope(ScopeKind::Block, |env| {
             let mut names = UstrMap::default();
+
             let pat = self.check_match_pat(
                 env, &case.pat, expr_ty, expr_span, &mut names,
             )?;
@@ -554,17 +555,5 @@ impl<'db> Typeck<'db> {
         }
 
         Ok(())
-    }
-}
-
-struct MatchState {
-    pat_ty: Ty,
-    parent_span: Span,
-    names: UstrMap<DefId>,
-}
-
-impl MatchState {
-    fn new(pat_ty: Ty, parent_span: Span) -> Self {
-        Self { pat_ty, parent_span, names: UstrMap::default() }
     }
 }
