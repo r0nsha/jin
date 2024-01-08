@@ -308,9 +308,7 @@ impl SpecializedMir {
     }
 
     fn merge_into(&mut self, mir: &mut Mir) {
-        let fn_sigs_counter = *self.fn_sigs.counter();
         mir.fn_sigs.extend(mem::take(&mut self.fn_sigs));
-        self.fn_sigs.set_counter(fn_sigs_counter);
         mir.fns.extend(mem::take(&mut self.fns));
     }
 }

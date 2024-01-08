@@ -14,16 +14,16 @@ fn ctors() unit = {
 	let a = Option.some(1)
 	let b = Option[int].some(1)
 	let c = Option.some(value: 2)
-	let d: Option[int] = Option.none
+	//let d: Option[int] = Option.none
 }
 
 fn pmatch() unit = {
-	//let value = Option.some(1)
-	//match &value {
-	//	Option.some(1) -> printf("some(1)\n".ptr),
-	//	Option.some(_) -> printf("some(other)\n".ptr),
-	//	Option.none() -> printf("none\n".ptr),
-	//}
+	let value = Option.some(1)
+	match &value {
+		Option.some(1) -> printf("some(1)\n".ptr),
+		Option.some(_) -> printf("some(other)\n".ptr),
+		Option.none() -> printf("none\n".ptr),
+	}
 
 	let box = Option.some(Box())
 }
