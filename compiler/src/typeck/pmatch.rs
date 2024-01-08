@@ -17,7 +17,7 @@ use crate::{
         unify::Obligation,
         Typeck, TypeckResult,
     },
-    word::{Word, WordMap},
+    word::WordMap,
 };
 
 impl<'db> Typeck<'db> {
@@ -205,17 +205,9 @@ impl<'db> Typeck<'db> {
                     .eq(self.db.types.str, derefed_ty)?;
                 Ok(hir::MatchPat::Str(*value, *span))
             }
-            ast::MatchPat::Adt(path, subpats, is_exhaustive, span) => self
-                .check_match_pat_adt(
-                    env,
-                    path,
-                    subpats,
-                    *is_exhaustive,
-                    *span,
-                    pat_ty,
-                    parent_span,
-                    names,
-                ),
+            ast::MatchPat::Adt(pat) => {
+                self.check_match_pat_adt(env, pat, pat_ty, parent_span, names)
+            }
             ast::MatchPat::Or(pats, span) => {
                 let pats: Vec<_> = pats
                     .iter()
@@ -263,29 +255,22 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
-    #[allow(clippy::too_many_lines)]
     fn check_match_pat_adt(
         &mut self,
         env: &mut Env,
-        path: &[Word],
-        subpats: &[ast::Subpat],
-        is_exhaustive: bool,
-        span: Span,
+        pat: &ast::MatchPatAdt,
         pat_ty: Ty,
         parent_span: Span,
         names: &mut UstrMap<DefId>,
     ) -> TypeckResult<hir::MatchPat> {
-        match self.path_lookup(env, path)? {
+        match self.path_lookup(env, &pat.path)? {
             PathLookup::Def(id) => {
                 let def = &self.db[id];
 
                 match def.kind.as_ref() {
                     &DefKind::Adt(adt_id) => self.check_match_pat_struct(
                         env,
-                        subpats,
-                        is_exhaustive,
-                        span,
+                        pat,
                         pat_ty,
                         parent_span,
                         names,
@@ -293,7 +278,7 @@ impl<'db> Typeck<'db> {
                     ),
                     _ => Err(errors::expected_named_ty(
                         def.ty.display(self.db),
-                        span,
+                        pat.span,
                     )),
                 }
             }
@@ -303,13 +288,10 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    #[allow(clippy::too_many_arguments)]
     fn check_match_pat_struct(
         &mut self,
         env: &mut Env,
-        subpats: &[ast::Subpat],
-        is_exhaustive: bool,
-        span: Span,
+        pat: &ast::MatchPatAdt,
         pat_ty: Ty,
         parent_span: Span,
         names: &mut UstrMap<DefId>,
@@ -317,7 +299,7 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<hir::MatchPat> {
         let instantiation = self.check_match_pat_adt_ty(
             env,
-            span,
+            pat.span,
             pat_ty,
             parent_span,
             adt_id,
@@ -327,9 +309,37 @@ impl<'db> Typeck<'db> {
 
         self.check_match_pat_subpats(
             env,
-            subpats,
-            is_exhaustive,
-            span,
+            pat,
+            pat_ty,
+            names,
+            adt_id,
+            &fields,
+            &instantiation,
+        )
+    }
+
+    fn check_match_pat_variant(
+        &mut self,
+        env: &mut Env,
+        pat: &ast::MatchPatAdt,
+        pat_ty: Ty,
+        parent_span: Span,
+        names: &mut UstrMap<DefId>,
+        adt_id: AdtId,
+    ) -> TypeckResult<hir::MatchPat> {
+        let instantiation = self.check_match_pat_adt_ty(
+            env,
+            pat.span,
+            pat_ty,
+            parent_span,
+            adt_id,
+        )?;
+
+        let fields = self.db[adt_id].as_struct().unwrap().fields.clone();
+
+        self.check_match_pat_subpats(
+            env,
+            pat,
             pat_ty,
             names,
             adt_id,
@@ -356,14 +366,12 @@ impl<'db> Typeck<'db> {
         Ok(instantiation)
     }
 
-    #[allow(clippy::too_many_arguments)]
     #[allow(clippy::too_many_lines)]
+    #[allow(clippy::too_many_arguments)]
     fn check_match_pat_subpats(
         &mut self,
         env: &mut Env,
-        subpats: &[ast::Subpat],
-        is_exhaustive: bool,
-        span: Span,
+        pat: &ast::MatchPatAdt,
         pat_ty: Ty,
         names: &mut UstrMap<DefId>,
         adt_id: AdtId,
@@ -395,9 +403,10 @@ impl<'db> Typeck<'db> {
             }
         };
 
-        let mut new_subpats = vec![hir::MatchPat::Wildcard(span); fields.len()];
+        let mut new_subpats =
+            vec![hir::MatchPat::Wildcard(pat.span); fields.len()];
 
-        for (idx, subpat) in subpats.iter().enumerate() {
+        for (idx, subpat) in pat.subpats.iter().enumerate() {
             let (field_idx, field, subpat, field_use_span) = match subpat {
                 ast::Subpat::Positional(subpat) => {
                     if let Some(field) = fields.get(idx) {
@@ -427,7 +436,7 @@ impl<'db> Typeck<'db> {
                         return Err(field_not_found(
                             self.db,
                             self.db[adt_id].ty(),
-                            span,
+                            pat.span,
                             *name,
                         ));
                     }
@@ -464,16 +473,16 @@ impl<'db> Typeck<'db> {
             new_subpats[field_idx] = new_subpat;
         }
 
-        if is_exhaustive {
+        if pat.is_exhaustive {
             Self::check_match_pat_adt_missing_fields(
                 adt_name,
                 fields,
                 &used_fields,
-                span,
+                pat.span,
             )?;
         }
 
-        Ok(hir::MatchPat::Adt(adt_id, new_subpats, span))
+        Ok(hir::MatchPat::Adt(adt_id, new_subpats, pat.span))
     }
 
     fn check_match_pat_adt_missing_fields(

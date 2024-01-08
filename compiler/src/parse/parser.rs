@@ -10,9 +10,9 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         Attr, AttrKind, Attrs, CallArg, Expr, ExternImport, ExternLet, Fn,
-        FnKind, FnParam, FnSig, Item, Let, LitKind, MatchArm, MatchPat, Module,
-        StructTyDef, StructTyField, Subpat, TyDef, TyDefKind, TyParam,
-        UnionTyDef, UnionVariant, UnionVariantField,
+        FnKind, FnParam, FnSig, Item, Let, LitKind, MatchArm, MatchPat,
+        MatchPatAdt, Module, StructTyDef, StructTyField, Subpat, TyDef,
+        TyDefKind, TyParam, UnionTyDef, UnionVariant, UnionVariantField,
     },
     db::{Db, DefId, ExternLib, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -789,13 +789,23 @@ impl<'a> Parser<'a> {
                 let (subpats, is_exhaustive) =
                     self.parse_match_adt_subpats()?;
 
-                Ok(MatchPat::Adt(path, subpats, is_exhaustive, span))
+                Ok(MatchPat::Adt(MatchPatAdt {
+                    path,
+                    subpats,
+                    is_exhaustive,
+                    span,
+                }))
             } else if self.peek_is(TokenKind::OpenParen) {
                 let path = vec![start_word];
                 let (subpats, is_exhaustive) =
                     self.parse_match_adt_subpats()?;
                 let span = start_word.span().merge(self.last_span());
-                Ok(MatchPat::Adt(path, subpats, is_exhaustive, span))
+                Ok(MatchPat::Adt(MatchPatAdt {
+                    path,
+                    subpats,
+                    is_exhaustive,
+                    span,
+                }))
             } else {
                 Ok(MatchPat::Name(start_word, Mutability::Imm))
             }

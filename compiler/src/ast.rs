@@ -332,7 +332,7 @@ pub enum MatchPat {
     Bool(bool, Span),
     Int(i128, Span),
     Str(Ustr, Span),
-    Adt(Vec<Word>, Vec<Subpat>, bool, Span),
+    Adt(MatchPatAdt),
     Or(Vec<Self>, Span),
 }
 
@@ -345,10 +345,18 @@ impl Spanned for MatchPat {
             | Self::Bool(_, span)
             | Self::Int(_, span)
             | Self::Str(_, span)
-            | Self::Adt(_, _, _, span)
+            | Self::Adt(MatchPatAdt { span, .. })
             | Self::Or(_, span) => *span,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct MatchPatAdt {
+    pub path: Vec<Word>,
+    pub subpats: Vec<Subpat>,
+    pub is_exhaustive: bool,
+    pub span: Span,
 }
 
 #[derive(Debug, Clone)]
