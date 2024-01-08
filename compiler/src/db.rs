@@ -194,8 +194,8 @@ impl Db {
             anyhow::bail!("provided path `{}` in not a file", absolute_path);
         }
 
-        let mut sources = Sources::new();
-        let source_id = sources.load_file(absolute_path.to_path_buf())?;
+        let source_id =
+            self.sources.borrow_mut().load_file(absolute_path.to_path_buf())?;
 
         let root_path = absolute_path
             .parent()
