@@ -7,7 +7,7 @@ type Node[a](data: a, next: Option[Node[a]])
 
 fn new_linked_list[a]() LinkedList[a] = LinkedList(head: Option.none)
 
-fn push[a](self: &mut LinkedList[a], data: a) unit = {
+fn insert[a](self: &mut LinkedList[a], data: a) unit = {
   let mut new_node = Node(data, Option.none)
   let m = &mut new_node
   let old_head = self.head
@@ -35,7 +35,7 @@ fn print(self: &LinkedList[int]) unit = {
 
 fn main() unit = {
   let list = new_linked_list()  
-  list.push(1)
+  list.insert(1)
   list.print()
   //list.print()
 }
