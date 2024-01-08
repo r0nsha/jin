@@ -220,10 +220,10 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
         specialized_fn: SpecializedFn,
         instantiation: &Instantiation,
     ) -> FnSigId {
-        if let Some(target_value) =
+        if let Some(sig_id) =
             self.specialized_mir.specialized_fns.get(&specialized_fn).copied()
         {
-            return target_value;
+            return sig_id;
         }
 
         let old_sig_id = specialized_fn.id;
