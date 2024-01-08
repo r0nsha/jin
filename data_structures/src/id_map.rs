@@ -55,6 +55,16 @@ impl<K, V> IdMap<K, V> {
     pub fn values_mut(&mut self) -> impl Iterator<Item = &mut V> {
         self.map.values_mut()
     }
+
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.map.len()
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.map.is_empty()
+    }
 }
 
 impl<K: Eq + Hash, V> IdMap<K, V> {
