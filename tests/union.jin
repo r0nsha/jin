@@ -36,7 +36,7 @@ fn pmatch() unit = {
 			printf("some(%d)\n".ptr, x.value)
 			b = x
 		},
-		Option.none() -> printf("none\n".ptr),
+		Option.none -> printf("none\n".ptr),
 	}
 
 	printf("after match: Box(%d)\n".ptr, b.value)

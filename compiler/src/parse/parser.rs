@@ -786,7 +786,12 @@ impl<'a> Parser<'a> {
                 }
 
                 let (subpats, is_exhaustive) =
-                    self.parse_match_adt_subpats()?;
+                    if self.peek_is(TokenKind::OpenParen) {
+                        self.parse_match_adt_subpats()?
+                    } else {
+                        (vec![], true)
+                    };
+
                 let span = start_word.span().merge(self.last_span());
 
                 Ok(MatchPat::Adt(MatchPatAdt {
