@@ -4,7 +4,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::files::Files;
 use data_structures::index_vec::Key as _;
 use rustc_hash::FxHashSet;
-use ustr::ustr;
+use ustr::{ustr, Ustr};
 
 use crate::{
     ast::{
@@ -27,11 +27,12 @@ use crate::{
 
 pub fn parse(
     db: &Db,
+    package: Ustr,
     source: &Source,
     tokens: Vec<Token>,
 ) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
-    let name =
-        QPath::from_path(&db.main_package().root_path, source.path()).unwrap();
+    let name = QPath::from_path(&db.package(package).root_path, source.path())
+        .unwrap();
     let is_main = source.id() == db.main_source().id();
 
     let mut parser = Parser::new(db, source, tokens);
