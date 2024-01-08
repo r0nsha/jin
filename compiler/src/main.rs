@@ -86,9 +86,15 @@ fn main() {
 #[allow(clippy::similar_names)]
 fn build(db: &mut Db, root_file: &Utf8Path) {
     // Parse the entire module tree into an Ast
-    let ast = db
-        .time("Parse", |db| parse::parse_module_tree(db, root_file))
-        .expect("parsing to work");
+    let ast =
+        match db.time("Parse", |db| parse::parse_module_tree(db, root_file)) {
+            Ok(ast) => ast,
+            Err(err) => {
+                eprintln!("{err}");
+                return;
+            }
+        };
+
     expect!(db);
 
     // Create the output directory

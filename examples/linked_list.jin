@@ -1,0 +1,9 @@
+import std.option.Option
+
+type LinkedList[a](head: Node[a])
+
+type Node[a](data: a, next: Option[a])
+
+fn main() unit = {
+
+}
