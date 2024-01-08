@@ -177,6 +177,10 @@ impl Db {
         &self.packages[&package]
     }
 
+    pub fn find_package_by_path(&self, path: &Utf8Path) -> Option<&Package> {
+        self.packages.values().find(|p| path.starts_with(&p.root_path))
+    }
+
     pub fn find_package_by_source_id(&self, id: SourceId) -> Option<&Package> {
         self.find_module_by_source_id(id)
             .and_then(|m| self.packages.get(&m.package))

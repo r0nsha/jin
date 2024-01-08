@@ -1,9 +1,11 @@
 fn extern write(fd: i32, buf: *u8, count: uint) i32
 
-fn print(fmt: str) unit =
+let stdout: i32 = 1
+
+fn print*(fmt: str) unit =
 	write(stdout, fmt.ptr, fmt.len)
 
-fn println(fmt: str) unit = {
+fn println*(fmt: str) unit = {
 	print(fmt)
 	print("\n")
 }

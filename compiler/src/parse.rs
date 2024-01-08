@@ -87,15 +87,14 @@ fn parse_module_inner(
 
 fn parse_module_from_path(db: &mut Db, path: Utf8PathBuf, ast: &mut Ast) {
     if db.sources.borrow().find_by_path(&path).is_none() {
+        let package =
+            db.find_package_by_path(&path).expect("to be part of a package");
+
         let source_id = db
             .sources
             .borrow_mut()
             .load_file(path)
             .expect("import path to exist");
-
-        let package = db
-            .find_package_by_source_id(source_id)
-            .expect("to be part of a package");
 
         parse_module(db, package.name, ast, source_id);
     }
