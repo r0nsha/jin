@@ -29,7 +29,7 @@ fn pmatch() unit = {
 	match o {
 		Option.some(Box(value: 5)) -> printf("some(Box(5))\n".ptr),
 		Option.some(x) -> {
-			printf("some(&d)\n".ptr, x.value)
+			printf("some(%d)\n".ptr, x.value)
 		},
 		Option.none() -> printf("none\n".ptr),
 	}

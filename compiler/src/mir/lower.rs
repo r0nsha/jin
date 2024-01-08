@@ -953,11 +953,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         for binding in bindings {
             match binding {
                 pmatch::Binding::Name(id, source, binding_ty, span) => {
-                    // let binding_ty = self.cx.db[id].ty;
-
                     let binding_value = if binding_ty.is_ref() {
                         self.create_ref(source, binding_ty)
                     } else {
+                        dbg!(source);
                         self.try_move(source, span);
                         self.push_inst_with(
                             binding_ty,
@@ -1553,6 +1552,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             visited.insert(block);
 
             if let Some(state) = self.value_states.get(block, value).cloned() {
+                dbg!(&state);
                 match &state {
                     ValueState::Owned => (),
                     ValueState::Moved(moved_to)
@@ -1592,13 +1592,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         debug_assert!(
             !is_initial_state,
-            "value v{} aka {} (type: {}) is missing a state in block {:?}. \
-             value states:\n{}",
+            "value v{} aka {} (type: {}) is missing a state in block {:?}.",
             value.0,
             self.value_name(value),
             self.ty_of(value).display(self.cx.db),
             block,
-            self.value_states
         );
 
         result_state
