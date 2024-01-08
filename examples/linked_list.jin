@@ -1,9 +1,50 @@
 import std.option.Option
 
-type LinkedList[a](head: Node[a])
+fn extern printf(fmt: *u8, ..) i32
 
-type Node[a](data: a, next: Option[a])
+type LinkedList[a](head: Option[Node[a]])
+type Node[a](data: a, next: Option[Node[a]])
+
+fn new_linked_list[a]() LinkedList[a] = LinkedList(head: Option[a].none)
+
+fn push[a](mut self: LinkedList[a], data: a) unit = {
+  //let mut curr = &mut self.head
+
+  //loop {
+  //  match curr {
+  //    Option.some(Node(_, next)) -> curr = next,
+  //    Option.none -> break
+  //  }
+  //}
+
+  //match curr {
+  //  Option.some(curr) -> {
+  //    let new_node = Node(data, next: Option.none)
+  //    curr.next = Option.some(new_node)
+  //  },
+  //  _ -> {}
+  //}
+}
+
+//fn print(self: LinkedList[int]) unit = {
+//  let mut curr = &self.head
+//
+//  printf("[".ptr)
+//  loop {
+//    match curr {
+//      Option.some(v) -> {
+//        printf("%d, ".ptr, v.data)
+//        curr = v.next
+//      },
+//      Option.none -> break
+//    }
+//  }
+//  printf("]\n".ptr)
+//}
 
 fn main() unit = {
-
+  let list = LinkedList[int](Option.none)
+  //let list = new_linked_list[int]()  
+  //list.print()
+  //list.print()
 }
