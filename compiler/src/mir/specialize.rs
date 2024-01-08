@@ -10,8 +10,9 @@ use crate::{
         Body, Fn, FnSig, FnSigId, FxHashMap, GlobalId, GlobalKind, IdMap, Inst,
         Mir, StaticGlobal, ValueId, ValueKind,
     },
-    subst::Subst,
-    ty::{Instantiation, Ty, TyKind},
+    span::Span,
+    subst::{Subst, SubstTy},
+    ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };
 
 pub fn specialize(db: &mut Db, mir: &mut Mir) {
@@ -239,7 +240,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
         let mut fun = mir.fns.get(&old_sig_id).expect("fn to exist").clone();
 
         fun.sig = new_sig_id;
-        fun.subst(&mut instantiation.folder());
+        fun.subst(&mut SpecializeParamFolder { instantiation });
 
         self.specialized_mir.fns.insert(new_sig_id, fun);
         self.cx.work.push(Job { target: JobTarget::Fn(new_sig_id) });
@@ -255,7 +256,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
         instantiation: &Instantiation,
     ) -> FnSigId {
         let mut sig = mir.fn_sigs[specialized_fn.id].clone();
-        sig.subst(&mut instantiation.folder());
+        sig.subst(&mut SpecializeParamFolder { instantiation });
 
         let instantation_str = instantiation
             .tys()
@@ -400,6 +401,28 @@ impl<'db> ExpandDestroys<'db> {
         match ty.kind() {
             TyKind::Ref(ty, _) => ty.is_move(self.db),
             _ => false,
+        }
+    }
+}
+
+struct SpecializeParamFolder<'a> {
+    pub instantiation: &'a Instantiation,
+}
+
+impl SubstTy for SpecializeParamFolder<'_> {
+    fn subst_ty(&mut self, ty: Ty, _: Span) -> Ty {
+        self.fold(ty)
+    }
+}
+
+impl TyFolder for SpecializeParamFolder<'_> {
+    fn fold(&mut self, ty: Ty) -> Ty {
+        match ty.kind() {
+            TyKind::Param(p) => match self.instantiation.get(p.var) {
+                Some(ty) => ty,
+                None => ty,
+            },
+            _ => self.super_fold(ty),
         }
     }
 }
