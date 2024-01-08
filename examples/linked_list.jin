@@ -8,22 +8,11 @@ type Node[a](data: a, next: Option[Node[a]])
 fn new_linked_list[a]() LinkedList[a] = LinkedList(head: Option.none)
 
 fn push[a](self: &mut LinkedList[a], data: a) unit = {
-  let mut curr = &mut self.head
-
-  loop {
-    match curr {
-      Option.some(Node(_, next)) -> curr = next,
-      Option.none -> break
-    }
-  }
-
-  match curr {
-    Option.some(curr) -> {
-      let new_node = Node(data, next: Option.none)
-      curr.next = Option.some(new_node)
-    },
-    _ -> {}
-  }
+  let mut new_node = Node(data, Option.none)
+  let m = &mut new_node
+  let old_head = self.head
+  self.head = Option.some(new_node)
+  m.next = old_head
 }
 
 fn print(self: &LinkedList[int]) unit = {
