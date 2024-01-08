@@ -928,6 +928,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         for case in cases {
             let block = self.body.create_block("match_variant_case");
+            self.body.create_edge(test_block, block);
             blocks.push(block);
             self.lower_decision(state, case.decision, block, values.clone());
         }
@@ -956,7 +957,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     let binding_value = if binding_ty.is_ref() {
                         self.create_ref(source, binding_ty)
                     } else {
-                        dbg!(source);
                         self.try_move(source, span);
                         self.push_inst_with(
                             binding_ty,
@@ -1552,7 +1552,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             visited.insert(block);
 
             if let Some(state) = self.value_states.get(block, value).cloned() {
-                dbg!(&state);
                 match &state {
                     ValueState::Owned => (),
                     ValueState::Moved(moved_to)

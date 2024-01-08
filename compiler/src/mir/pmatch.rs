@@ -601,7 +601,7 @@ impl Type {
                                         .fields
                                         .iter()
                                         .map(|f| {
-                                            cx.create_value(
+                                            cx.create_untracked_value(
                                                 folder.fold(f.ty),
                                                 ValueKind::Field(
                                                     variant_value,
