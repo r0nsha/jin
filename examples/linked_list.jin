@@ -6,9 +6,10 @@ type LinkedList[a](head: Option[Node[a]])
 type Node[a](data: a, next: Option[Node[a]])
 
 fn new_linked_list[a]() LinkedList[a] = LinkedList(head: Option.none)
+fn new_node[a](data: a) Node[a] = Node(data, next: Option.none)
 
 fn insert[a](self: &mut LinkedList[a], data: a) unit = {
-  let mut new_node = Node(data, Option.none)
+  let mut new_node = new_node(data)
   let m = &mut new_node
   let old_head = self.head
   self.head = Option.some(new_node)
