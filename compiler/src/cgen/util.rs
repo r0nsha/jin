@@ -253,6 +253,35 @@ pub fn ternary<'a>(cond: D<'a>, then: D<'a>, otherwise: D<'a>) -> D<'a> {
         .append(otherwise)
 }
 
+pub fn switch_stmt<'a>(
+    cond: D<'a>,
+    cases: impl Iterator<Item = (D<'a>, D<'a>)>,
+) -> D<'a> {
+    D::text("switch")
+        .append(D::space())
+        .append(D::text("("))
+        .append(cond)
+        .append(D::text(")"))
+        .append(D::space())
+        .append(block(|| {
+            D::intersperse(
+                cases.into_iter().map(|(case, body)| {
+                    D::text("case")
+                        .append(D::space())
+                        .append(case)
+                        .append(D::text(":"))
+                        .append(D::hardline())
+                        .append(D::intersperse(
+                            [body, stmt(|| D::text("break"))],
+                            D::hardline(),
+                        ))
+                        .nest(NEST)
+                }),
+                D::hardline(),
+            )
+        }))
+}
+
 pub fn block<'a>(f: impl FnOnce() -> D<'a>) -> D<'a> {
     block_(f, NEST)
 }

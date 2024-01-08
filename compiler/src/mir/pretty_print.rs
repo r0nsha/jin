@@ -182,6 +182,19 @@ impl<'db> PrettyCx<'db> {
                 } else {
                     D::nil()
                 }),
+            Inst::Switch { cond, blocks } => D::text("switch")
+                .append(D::text("("))
+                .append(self.value(body, *cond))
+                .append(D::text(")"))
+                .append(D::space())
+                .append(D::text("["))
+                .append(D::intersperse(
+                    blocks
+                        .iter()
+                        .map(|&b| D::text(body.block(b).display_name())),
+                    D::text(", "),
+                ))
+                .append(D::text("]")),
             Inst::Return { value } => D::text("ret")
                 .append(D::space())
                 .append(self.value(body, *value)),

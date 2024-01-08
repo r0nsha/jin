@@ -12,8 +12,8 @@ use crate::{
         name_gen::LocalNames,
         ty::CTy,
         util::{
-            self, assign, attr, block, block_, bool_value, goto_stmt, if_stmt,
-            stmt, str_value, unit_value, NEST,
+            self, assign, attr, block, block_, bool_value, goto_stmt, stmt,
+            str_value, unit_value, NEST,
         },
     },
     db::{AdtField, AdtId, AdtKind, Db, StructDef, StructKind, UnionDef},
@@ -503,10 +503,16 @@ impl<'db> Generator<'db> {
                 stmt(|| self.refcnt_field(state, *value).append(" -= 1"))
             }
             Inst::Br { target } => goto_stmt(state.body.block(*target)),
-            Inst::BrIf { cond, then, otherwise } => if_stmt(
+            Inst::BrIf { cond, then, otherwise } => util::if_stmt(
                 self.value(state, *cond),
                 goto_stmt(state.body.block(*then)),
                 otherwise.map(|o| goto_stmt(state.body.block(o))),
+            ),
+            Inst::Switch { cond, blocks } => util::switch_stmt(
+                self.value(state, *cond),
+                blocks.iter().enumerate().map(|(idx, &b)| {
+                    (D::text(idx.to_string()), goto_stmt(state.body.block(b)))
+                }),
             ),
             Inst::Return { value } => stmt(|| {
                 D::text("return")

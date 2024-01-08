@@ -916,7 +916,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         &mut self,
         state: &mut DecisionState,
         cond: ValueId,
-        mut cases: Vec<pmatch::Case>,
+        cases: Vec<pmatch::Case>,
         parent_block: BlockId,
         mut values: Vec<ValueId>,
     ) -> BlockId {
@@ -928,7 +928,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         for case in cases {
             let block = self.body.create_block("match_variant_case");
-            self.body.create_edge(test_block, block);
             blocks.push(block);
             self.lower_decision(state, case.decision, block, values.clone());
         }

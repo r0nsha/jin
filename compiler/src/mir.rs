@@ -291,6 +291,9 @@ impl Body {
                         indexset! { *then }
                     }
                 }
+                Inst::Switch { cond: _, blocks } => {
+                    blocks.iter().copied().collect::<IndexSet<_>>()
+                }
                 _ => continue,
             };
 
@@ -308,7 +311,10 @@ impl Body {
         for block in self.blocks_mut() {
             match block.insts.last() {
                 Some(
-                    Inst::Br { .. } | Inst::BrIf { .. } | Inst::Return { .. },
+                    Inst::Br { .. }
+                    | Inst::BrIf { .. }
+                    | Inst::Switch { .. }
+                    | Inst::Return { .. },
                 ) => (),
                 _ if block.successors.len() == 1 => {
                     block.push_inst(Inst::Br { target: block.successors[0] });
@@ -333,6 +339,11 @@ fn update_block_ids(
 
             if let Some(otherwise) = otherwise {
                 *otherwise = id_map[find_successor(blocks, *otherwise)];
+            }
+        }
+        Inst::Switch { cond: _, blocks: targets } => {
+            for target in targets {
+                *target = id_map[find_successor(blocks, *target)];
             }
         }
         _ => (),
