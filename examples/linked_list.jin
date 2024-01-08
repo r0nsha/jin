@@ -37,5 +37,4 @@ fn main() unit = {
   let list = new_linked_list()  
   list.insert(1)
   list.print()
-  //list.print()
 }
