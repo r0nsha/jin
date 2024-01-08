@@ -208,13 +208,10 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
 
                 Some(ValueKind::Fn(specialized_sig_id))
             }
-            ValueKind::Local(_) => {
+            _ => {
                 // This is a polymorphic type. Doesn't require specialization...
                 None
             }
-            kind => unreachable!(
-                "unexpected value kind in specialization: {kind:?}"
-            ),
         }
     }
 

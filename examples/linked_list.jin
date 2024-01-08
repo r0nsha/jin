@@ -7,44 +7,46 @@ type Node[a](data: a, next: Option[Node[a]])
 
 fn new_linked_list[a]() LinkedList[a] = LinkedList(head: Option.none)
 
-fn push[a](mut self: LinkedList[a], data: a) unit = {
-  //let mut curr = &mut self.head
+fn push[a](self: &mut LinkedList[a], data: a) unit = {
+  let mut curr = &mut self.head
 
-  //loop {
-  //  match curr {
-  //    Option.some(Node(_, next)) -> curr = next,
-  //    Option.none -> break
-  //  }
-  //}
+  loop {
+    match curr {
+      Option.some(Node(_, next)) -> curr = next,
+      Option.none -> break
+    }
+  }
 
-  //match curr {
-  //  Option.some(curr) -> {
-  //    let new_node = Node(data, next: Option.none)
-  //    curr.next = Option.some(new_node)
-  //  },
-  //  _ -> {}
-  //}
+  match curr {
+    Option.some(curr) -> {
+      let new_node = Node(data, next: Option.none)
+      curr.next = Option.some(new_node)
+    },
+    _ -> {}
+  }
 }
 
-//fn print(self: LinkedList[int]) unit = {
-//  let mut curr = &self.head
-//
-//  printf("[".ptr)
-//  loop {
-//    match curr {
-//      Option.some(v) -> {
-//        printf("%d, ".ptr, v.data)
-//        curr = v.next
-//      },
-//      Option.none -> break
-//    }
-//  }
-//  printf("]\n".ptr)
-//}
+fn print(self: &LinkedList[int]) unit = {
+  let mut curr = &self.head
+
+  printf("[".ptr)
+
+  loop {
+    match curr {
+      Option.some(v) -> {
+        printf("%d, ".ptr, v.data)
+        curr = v.next
+      },
+      Option.none -> break
+    }
+  }
+
+  printf("]\n".ptr)
+}
 
 fn main() unit = {
-  //let list = LinkedList[int](Option.none)
-  let list = new_linked_list[int]()  
-  //list.print()
+  let list = new_linked_list()  
+  list.push(1)
+  list.print()
   //list.print()
 }

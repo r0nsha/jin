@@ -1959,14 +1959,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> Result<(), ImmutableRoot> {
         match &self.body.value(value).kind {
             ValueKind::Local(id) => {
-                if self.def_is_imm(*id) {
+                if self.def_is_imm(*id, self.ty_of(value)) {
                     Err(ImmutableRoot::Def(value))
                 } else {
                     Ok(())
                 }
             }
             ValueKind::Global(id) => {
-                if self.def_is_imm(self.cx.mir.globals[*id].def_id) {
+                if self.def_is_imm(
+                    self.cx.mir.globals[*id].def_id,
+                    self.ty_of(value),
+                ) {
                     Err(ImmutableRoot::Def(value))
                 } else {
                     Ok(())
@@ -1996,8 +1999,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    fn def_is_imm(&self, id: DefId) -> bool {
-        self.cx.db[id].mutability.is_imm()
+    fn def_is_imm(&self, id: DefId, ty: Ty) -> bool {
+        self.cx.db[id].mutability.is_imm() && !ty.is_mut_ref()
     }
 
     pub fn emit_result(&mut self, result: DiagnosticResult<()>) {

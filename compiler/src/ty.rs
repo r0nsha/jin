@@ -370,6 +370,14 @@ impl TyKind {
         matches!(self, Self::Ref(_, Mutability::Imm))
     }
 
+    /// Returns `true` if the ty kind is a mutable [`Ref`].
+    ///
+    /// [`Ref`]: TyKind::Ref
+    #[must_use]
+    pub fn is_mut_ref(&self) -> bool {
+        matches!(self, Self::Ref(_, Mutability::Mut))
+    }
+
     /// Returns `true` if a reference can be taken to this type
     #[must_use]
     pub fn can_create_ref(&self, db: &Db) -> bool {
