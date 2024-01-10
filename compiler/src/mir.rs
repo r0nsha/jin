@@ -369,6 +369,42 @@ fn find_successor(
     id
 }
 
+impl Body {
+    pub fn br(&mut self, source: BlockId, target: BlockId) {
+        self.create_edge(source, target);
+        self.block_mut(source).push_inst(Inst::Br { target });
+    }
+
+    pub fn brif(
+        &mut self,
+        source: BlockId,
+        cond: ValueId,
+        then: BlockId,
+        otherwise: Option<BlockId>,
+    ) {
+        self.create_edge(source, then);
+
+        if let Some(otherwise) = otherwise {
+            self.create_edge(source, otherwise);
+        }
+
+        self.block_mut(source).push_inst(Inst::BrIf { cond, then, otherwise });
+    }
+
+    pub fn switch(
+        &mut self,
+        source: BlockId,
+        cond: ValueId,
+        blocks: Vec<BlockId>,
+    ) {
+        for &target in &blocks {
+            self.create_edge(source, target);
+        }
+
+        self.block_mut(source).push_inst(Inst::Switch { cond, blocks });
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct Block {
     pub id: BlockId,

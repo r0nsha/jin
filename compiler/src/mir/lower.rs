@@ -581,7 +581,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     expr.span,
                 );
 
-                self.push_br(start_block);
+                self.body.br(self.current_block, start_block);
                 self.position_at(start_block);
 
                 if let Some(cond_expr) = &loop_.cond {
@@ -597,11 +597,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         },
                     );
 
-                    self.push_brif(not_cond, end_block, None);
+                    self.body.brif(start_block, not_cond, end_block, None);
                 }
 
                 self.lower_expr(&loop_.expr);
-                self.push_br(start_block);
+                self.body.br(self.current_block, start_block);
 
                 if self.in_connected_block() {
                     self.check_loop_moves();
@@ -619,7 +619,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     .closest_loop_scope()
                     .expect("to be inside a loop block")
                     .end_block;
-                self.push_br(end_block);
+                self.body.br(self.current_block, end_block);
 
                 self.const_unit()
             }
@@ -892,7 +892,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             .collect();
 
         self.position_at(block);
-        self.push_brif(cond, blocks[1], Some(blocks[0]));
+        self.body.brif(block, cond, blocks[1], Some(blocks[0]));
 
         block
     }
@@ -954,7 +954,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
             self.position_at(test_block);
 
-            self.push_brif(result_value, then_block, Some(else_block));
+            self.body.brif(
+                test_block,
+                result_value,
+                then_block,
+                Some(else_block),
+            );
         }
 
         blocks[0]
@@ -998,7 +1003,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let uint = self.cx.db.types.uint;
         let tag_field = self
             .create_untracked_value(uint, ValueKind::Field(cond, ustr("tag")));
-        self.push_switch(tag_field, blocks);
+        self.body.switch(test_block, tag_field, blocks);
 
         test_block
     }
@@ -1063,7 +1068,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         if self.in_connected_block() {
             self.push_inst(Inst::Store { value, target: state.output });
-            self.push_br(state.join_block);
+            self.body.br(self.current_block, state.join_block);
         }
 
         start_block
@@ -1144,7 +1149,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.lower_decision(state, fallback, guard_join, values);
 
         self.position_at(guard_join);
-        self.push_brif(cond, body.block, Some(fallback_block));
+        self.body.brif(guard_join, cond, body.block, Some(fallback_block));
 
         self.lower_decision_bindings(state, body.block, body.bindings);
         self.lower_decision_body(state, self.current_block, body.block);
@@ -1211,26 +1216,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.try_move(value, span);
         self.destroy_all_values(span);
         self.push_inst(Inst::Return { value });
-    }
-
-    pub fn push_br(&mut self, target: BlockId) {
-        self.create_edge(target);
-        self.push_inst(Inst::Br { target });
-    }
-
-    pub fn push_brif(
-        &mut self,
-        cond: ValueId,
-        then: BlockId,
-        otherwise: Option<BlockId>,
-    ) {
-        self.create_edge(then);
-
-        if let Some(otherwise) = otherwise {
-            self.create_edge(otherwise);
-        }
-
-        self.push_inst(Inst::BrIf { cond, then, otherwise });
     }
 
     pub fn push_switch(&mut self, cond: ValueId, blocks: Vec<BlockId>) {
@@ -1846,7 +1831,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let destroy_block = self.body.create_block("destroy");
                 let no_destroy_block = self.body.create_block("no_destroy");
 
-                self.push_brif(
+                self.body.brif(
+                    self.current_block,
                     destroy_flag,
                     destroy_block,
                     Some(no_destroy_block),
@@ -1855,7 +1841,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.position_at(destroy_block);
                 self.call_free_fn(value);
                 self.push_inst(Inst::Free { value, span });
-                self.push_br(no_destroy_block);
+                self.body.br(self.current_block, no_destroy_block);
 
                 // Now that the value is destroyed, it has definitely been moved...
                 self.set_moved(value, span);
@@ -2403,7 +2389,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
                 // let uint = self.cx.db.types.uint;
                 // let tag_field = self
                 //     .create_untracked_value(uint, ValueKind::Field(cond, ustr("tag")));
-                // self.push_switch(tag_field, blocks);
+                // self.body.switch(test_block,tag_field, blocks);
             }
             AdtKind::Struct(struct_def) => {
                 unreachable!()
@@ -2508,5 +2494,14 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         //         });
         //     }
         // }
+    }
+
+    #[inline]
+    fn position_at(&mut self, id: BlockId) {
+        self.current_block = id;
+    }
+
+    pub fn push_inst(&mut self, inst: Inst) {
+        self.body.block_mut(self.current_block).push_inst(inst);
     }
 }
