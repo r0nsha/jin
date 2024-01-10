@@ -44,6 +44,11 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
+    pub fn store(&mut self, value: ValueId, target: ValueId) -> &mut Self {
+        self.inst(Inst::Store { value, target });
+        self
+    }
+
     pub fn free(&mut self, value: ValueId, span: Span) -> &mut Self {
         self.inst(Inst::Free { value, span });
         self

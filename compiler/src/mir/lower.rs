@@ -236,8 +236,7 @@ impl<'db> Lower<'db> {
             uint,
             ValueKind::Const(Const::from(variant.index as i128)),
         );
-        body.block_mut(start_block)
-            .push_inst(Inst::Store { value: tag_value, target: tag_field });
+        body.ins(start_block).store(tag_value, tag_field);
 
         let this_variant = body.create_value(
             adt.ty(),
@@ -308,8 +307,7 @@ impl<'db> Lower<'db> {
             let field_value =
                 body.create_value(ty, ValueKind::Field(this, name));
             let param = body.create_value(ty, ValueKind::UniqueName(name));
-            body.block_mut(block)
-                .push_inst(Inst::Store { value: param, target: field_value });
+            body.ins(block).store(param, field_value);
         }
     }
 
@@ -775,7 +773,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             AssignKind::Assign => {
                 // NOTE: The lhs needs to be destroyed before it's assigned to
                 self.destroy_value_entirely(lhs, lhs_span);
-                self.push_inst(Inst::Store { value: rhs, target: lhs });
+                self.ins(self.current_block).store(rhs, lhs);
                 self.const_unit()
             }
             AssignKind::Swap => {
@@ -784,7 +782,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         Inst::StackAlloc { value, init: Some(lhs) }
                     });
                 self.create_destroy_flag(old_lhs);
-                self.push_inst(Inst::Store { value: rhs, target: lhs });
+                self.ins(self.current_block).store(rhs, lhs);
                 old_lhs
             }
         }
@@ -1065,7 +1063,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.exit_scope();
 
         if self.in_connected_block() {
-            self.push_inst(Inst::Store { value, target: state.output });
+            self.ins(self.current_block).store(value, state.output);
             self.ins(self.current_block).br(state.join_block);
         }
 
@@ -1879,10 +1877,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         if let Some(destroy_flag) = self.body.destroy_flags.get(&value).copied()
         {
             let const_false = self.const_bool(false);
-            self.push_inst(Inst::Store {
-                value: const_false,
-                target: destroy_flag,
-            });
+            self.ins(self.current_block).store(const_false, destroy_flag);
             self.walk_fields(value, |this, field| {
                 this.set_destroy_flag(field);
                 Ok(())
