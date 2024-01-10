@@ -584,11 +584,8 @@ impl Type {
                     AdtKind::Union(union_def) => {
                         let adt_ty = folder.fold(adt.ty());
 
-                        let variants: Vec<_> =
-                            union_def.variants(cx.cx.db).cloned().collect();
-
-                        let cases = variants
-                            .into_iter()
+                        let cases = union_def
+                            .variants(cx.cx.db)
                             .map(|variant| {
                                 let variant_value = cx.create_untracked_value(
                                     adt_ty,
