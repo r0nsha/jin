@@ -756,8 +756,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.const_unit()
             }
             AssignKind::Swap => {
+                let old_lhs = self
+                    .push_inst_with_register(self.ty_of(lhs), |value| {
+                        Inst::StackAlloc { value, init: Some(lhs) }
+                    });
                 self.push_inst(Inst::Store { value: rhs, target: lhs });
-                lhs
+                old_lhs
             }
         }
     }
