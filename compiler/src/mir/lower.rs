@@ -260,6 +260,15 @@ impl<'db> Lower<'db> {
         sig
     }
 
+    fn get_or_create_free_fn(&mut self, ty: Ty) -> Option<FnSigId> {
+        match ty.kind() {
+            TyKind::Adt(adt_id, _) => {
+                Some(self.get_or_create_adt_free(*adt_id))
+            }
+            _ => None,
+        }
+    }
+
     fn get_or_create_adt_free(&mut self, adt_id: AdtId) -> FnSigId {
         if let Some(sig_id) = self.adt_frees.get(&adt_id) {
             return *sig_id;
@@ -273,17 +282,22 @@ impl<'db> Lower<'db> {
 
     fn create_adt_free(&mut self, adt_id: AdtId) -> FnSigId {
         let adt = &self.db[adt_id];
-        let def = &self.db[adt.def_id];
-        let union_def = adt.as_union().unwrap();
         let adt_ty = adt.ty();
 
-        let name = ustr(&def.qpath.clone().child(ustr("free")).join_with("_"));
+        let name = ustr(
+            &self.db[adt.def_id]
+                .qpath
+                .clone()
+                .child(ustr("free"))
+                .join_with("_"),
+        );
+        let def_span = self.db[adt.def_id].span;
+        let self_name = ustr("self");
 
-        let param_name = ustr("self");
         let params = vec![FnParam {
             pat: Pat::Name(NamePat {
                 id: DefId::null(),
-                word: Word::new(param_name, Span::unknown()),
+                word: Word::new(self_name, Span::unknown()),
                 vis: Vis::Private,
                 mutability: Mutability::Imm,
                 ty: adt_ty,
@@ -316,25 +330,74 @@ impl<'db> Lower<'db> {
         let mut body = Body::new();
         let start_block = body.create_block("start");
 
-        // let mut blocks=vec![];
+        let self_value =
+            body.create_value(adt_ty, ValueKind::UniqueName(self_name));
 
-        // for case in cases {
-        //     let block = self.body.create_block("match_variant_case");
-        //     self.body.create_edge(test_block, block);
-        //     blocks.push(block);
-        //     self.lower_decision(state, case.decision, block, values.clone());
-        // }
+        match &adt.kind {
+            AdtKind::Struct(struct_def) => {
+                for field in struct_def.fields.clone() {
+                    let field_name = field.name.name();
 
-        // self.position_at(test_block);
-        // let uint = self.cx.db.types.uint;
-        // let tag_field = self
-        //     .create_untracked_value(uint, ValueKind::Field(cond, ustr("tag")));
-        // self.push_switch(tag_field, blocks);
+                    if let Some(free_fn) = self.get_or_create_free_fn(field.ty)
+                    {
+                        let callee = body.create_value(
+                            self.mir.fn_sigs[free_fn].ty,
+                            ValueKind::Fn(free_fn),
+                        );
 
-        dbg!(&body);
+                        let field_value = body.create_value(
+                            field.ty,
+                            ValueKind::Field(self_value, field_name),
+                        );
+
+                        let call_result = body.create_value(
+                            self.db.types.unit,
+                            ValueKind::Register(None),
+                        );
+
+                        body.block_mut(start_block).push_inst(Inst::Call {
+                            value: call_result,
+                            callee,
+                            args: vec![field_value], // TODO: location param
+                        });
+                    } else if field.ty.is_ref() {
+                        let field_value = body.create_value(
+                            field.ty,
+                            ValueKind::Field(self_value, field_name),
+                        );
+
+                        body.block_mut(start_block).push_inst(Inst::Free {
+                            value: field_value,
+                            span: field.span(), // TODO: location param
+                        });
+                    }
+                }
+
+                body.block_mut(start_block).push_inst(Inst::Free {
+                    value: self_value,
+                    span: def_span, // TODO: location param
+                });
+            }
+            AdtKind::Union(union_def) => {
+                todo!()
+                // let mut blocks=vec![];
+
+                // for case in cases {
+                //     let block = self.body.create_block("match_variant_case");
+                //     self.body.create_edge(test_block, block);
+                //     blocks.push(block);
+                //     self.lower_decision(state, case.decision, block, values.clone());
+                // }
+
+                // self.position_at(test_block);
+                // let uint = self.cx.db.types.uint;
+                // let tag_field = self
+                //     .create_untracked_value(uint, ValueKind::Field(cond, ustr("tag")));
+                // self.push_switch(tag_field, blocks);
+            }
+        }
 
         self.mir.fns.insert(sig, Fn { sig, body });
-
         sig
     }
 
@@ -1965,7 +2028,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 self.position_at(destroy_block);
                 self.call_free_fn(value);
-                self.push_inst(Inst::Free { value, span });
+                // self.push_inst(Inst::Free { value, span });
                 self.push_br(no_destroy_block);
 
                 // Now that the value is destroyed, it has definitely been moved...
@@ -1978,7 +2041,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             ValueState::Owned => {
                 // Unconditional destroy
                 self.call_free_fn(value);
-                self.push_inst(Inst::Free { value, span });
+                // self.push_inst(Inst::Free { value, span });
             }
         }
     }
@@ -2027,29 +2090,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn call_free_fn(&mut self, freed: ValueId) {
-        if let Some(sig) = self.get_or_create_free_fn(freed) {
+        if let Some(free_fn) = self.cx.get_or_create_free_fn(self.ty_of(freed))
+        {
             let callee = self.create_untracked_value(
-                self.cx.mir.fn_sigs[sig].ty,
-                ValueKind::Fn(sig),
+                self.cx.mir.fn_sigs[free_fn].ty,
+                ValueKind::Fn(free_fn),
             );
 
-            todo!("create instantiation");
+            // self.body.create_instantation(value, instantation)
+            // todo!("create instantiation");
 
             self.push_inst_with_register(self.cx.db.types.unit, |value| {
                 Inst::Call { value, callee, args: vec![freed] }
             });
-        }
-    }
-
-    fn get_or_create_free_fn(&mut self, value: ValueId) -> Option<FnSigId> {
-        match self.ty_of(value).kind() {
-            TyKind::Adt(adt_id, _) => match &self.cx.db[*adt_id].kind {
-                AdtKind::Struct(_) => None,
-                AdtKind::Union(_) => {
-                    Some(self.cx.get_or_create_adt_free(*adt_id))
-                }
-            },
-            _ => None,
         }
     }
 
