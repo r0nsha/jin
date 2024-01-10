@@ -32,8 +32,9 @@ pub fn parse_module_tree(
     parse_package(db, &mut ast, std_package);
 
     // Main package
+    let root_file_stem = root_file.file_stem().unwrap();
     let (main_package, _) =
-        db.create_package(ustr(root_file.file_name().unwrap()), root_file)?;
+        db.create_package(ustr(root_file_stem), root_file)?;
     db.set_main_package(main_package);
     parse_package(db, &mut ast, main_package);
 

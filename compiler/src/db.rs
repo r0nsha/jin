@@ -190,6 +190,10 @@ impl Db {
         self.main_package_name.map_or(false, |n| n == package)
     }
 
+    pub fn is_main_source(&self, package: Ustr) -> bool {
+        self.main_package_name.map_or(false, |n| n == package)
+    }
+
     pub fn create_package(
         &mut self,
         name: Ustr,

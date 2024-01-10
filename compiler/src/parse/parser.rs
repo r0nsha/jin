@@ -33,9 +33,10 @@ pub fn parse(
 ) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
     let name = QPath::from_path(&db.package(package).root_path, source.path())
         .unwrap();
-    let is_main = db.is_main_package(package);
 
     let mut parser = Parser::new(db, source, tokens);
+    let is_main = db.is_main_package(package)
+        && source.id() == db.package(package).main_source_id;
     let module = parser.parse(source.id(), name, is_main)?;
 
     Ok((module, parser.imported_module_paths))
