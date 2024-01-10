@@ -471,13 +471,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Assign(assign) => {
                 let lhs = self.lower_expr(&assign.lhs);
-                self.try_use(lhs, assign.lhs.span);
-                self.check_assign_mutability(
-                    AssignKind::Assign,
-                    lhs,
-                    expr.span,
-                );
-
                 let rhs = self.lower_expr(&assign.rhs);
                 let rhs = if let Some(op) = assign.op {
                     self.push_inst_with_register(assign.lhs.ty, |value| {
@@ -487,25 +480,23 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     rhs
                 };
 
-                self.try_move(rhs, assign.rhs.span);
-
-                // NOTE: The lhs needs to be destroyed before it's assigned to
-                self.destroy_value_entirely(lhs, assign.lhs.span);
-                self.push_inst(Inst::Store { value: rhs, target: lhs });
-
-                self.const_unit()
+                self.lower_assign(
+                    AssignKind::Assign,
+                    (lhs, assign.lhs.span),
+                    (rhs, assign.rhs.span),
+                    expr.span,
+                )
             }
             hir::ExprKind::Swap(swap) => {
                 let lhs = self.lower_expr(&swap.lhs);
-                self.try_use(lhs, swap.lhs.span);
-                self.check_assign_mutability(AssignKind::Swap, lhs, expr.span);
-
                 let rhs = self.lower_expr(&swap.rhs);
-                self.try_move(rhs, swap.rhs.span);
 
-                self.push_inst(Inst::Store { value: rhs, target: lhs });
-
-                lhs
+                self.lower_assign(
+                    AssignKind::Swap,
+                    (lhs, swap.lhs.span),
+                    (rhs, swap.rhs.span),
+                    expr.span,
+                )
             }
             hir::ExprKind::Match(match_) => {
                 let output = self.push_inst_with_register(expr.ty, |value| {
@@ -742,6 +733,31 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 };
 
                 self.lower_const(&value, expr.ty)
+            }
+        }
+    }
+
+    fn lower_assign(
+        &mut self,
+        kind: AssignKind,
+        (lhs, lhs_span): (ValueId, Span),
+        (rhs, rhs_span): (ValueId, Span),
+        span: Span,
+    ) -> ValueId {
+        self.try_use(lhs, lhs_span);
+        self.check_assign_mutability(kind, lhs, span);
+        self.try_move(rhs, rhs_span);
+
+        match kind {
+            AssignKind::Assign => {
+                // NOTE: The lhs needs to be destroyed before it's assigned to
+                self.destroy_value_entirely(lhs, lhs_span);
+                self.push_inst(Inst::Store { value: rhs, target: lhs });
+                self.const_unit()
+            }
+            AssignKind::Swap => {
+                self.push_inst(Inst::Store { value: rhs, target: lhs });
+                lhs
             }
         }
     }
@@ -2237,7 +2253,7 @@ impl<'a> DecisionState<'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum AssignKind {
     Assign,
     Swap,
