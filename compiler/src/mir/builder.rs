@@ -1,4 +1,5 @@
 use crate::{
+    middle::BinOp,
     mir::{BlockId, Body, Inst, ValueId},
     span::Span,
 };
@@ -44,6 +45,18 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
+    pub fn binary(
+        &mut self,
+        value: ValueId,
+        lhs: ValueId,
+        rhs: ValueId,
+        op: BinOp,
+        span: Span,
+    ) -> &mut Self {
+        self.inst(Inst::Binary { value, lhs, rhs, op, span });
+        self
+    }
+
     pub fn ret(&mut self, value: ValueId) -> &mut Self {
         self.inst(Inst::Return { value });
         self
@@ -51,6 +64,11 @@ impl<'a> InstBuilder<'a> {
 
     pub fn store(&mut self, value: ValueId, target: ValueId) -> &mut Self {
         self.inst(Inst::Store { value, target });
+        self
+    }
+
+    pub fn incref(&mut self, value: ValueId) -> &mut Self {
+        self.inst(Inst::IncRef { value });
         self
     }
 

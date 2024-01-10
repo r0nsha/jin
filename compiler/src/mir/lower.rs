@@ -934,13 +934,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 ValueKind::Const(case.ctor.into()),
             );
 
-            self.push_inst(Inst::Binary {
-                value: result_value,
-                lhs: cond,
-                rhs: lit_value,
-                op: BinOp::Cmp(CmpOp::Eq),
-                span: state.span,
-            });
+            self.ins(test_block).binary(
+                result_value,
+                cond,
+                lit_value,
+                BinOp::Cmp(CmpOp::Eq),
+                state.span,
+            );
 
             let then_block = self.lower_decision(
                 state,
@@ -1204,7 +1204,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         f: impl FnOnce(ValueId) -> Inst,
     ) -> ValueId {
         let value = self.create_value(value_ty, kind);
-        self.push_inst(f(value));
+        self.current_block_mut().push_inst(f(value));
         value
     }
 
@@ -1212,10 +1212,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.try_move(value, span);
         self.destroy_all_values(span);
         self.ins(self.current_block).ret(value);
-    }
-
-    pub fn push_inst(&mut self, inst: Inst) {
-        self.current_block_mut().push_inst(inst);
     }
 
     pub fn create_untracked_value(
@@ -1246,7 +1242,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let value = self.push_inst_with_register(ty, |value| {
             Inst::StackAlloc { value, init: Some(to_clone) }
         });
-        self.push_inst(Inst::IncRef { value });
+        self.ins(self.current_block).incref(value);
         value
     }
 
@@ -1836,12 +1832,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.position_at(no_destroy_block);
             }
             ValueState::PartiallyMoved { .. } => {
-                self.push_inst(Inst::Free { value, span });
+                self.ins(self.current_block).free(value, span);
             }
             ValueState::Owned => {
                 // Unconditional destroy
                 // self.call_free_fn(value);
-                self.push_inst(Inst::Free { value, span });
+                self.ins(self.current_block).free(value, span);
             }
         }
     }
