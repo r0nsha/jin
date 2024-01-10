@@ -407,7 +407,7 @@ pub enum Inst {
     StackAlloc { value: ValueId, init: Option<ValueId> },
     Store { value: ValueId, target: ValueId },
     Alloc { value: ValueId },
-    Free { value: ValueId, destroy_flag: Option<ValueId>, span: Span },
+    Free { value: ValueId, span: Span },
     IncRef { value: ValueId },
     DecRef { value: ValueId },
     Br { target: BlockId },

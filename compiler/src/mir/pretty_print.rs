@@ -150,17 +150,9 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text("alloc"))
                 .append(D::space())
                 .append(body.value(*value).ty.to_string(self.db)),
-            Inst::Free { value, destroy_flag, .. } => D::text("free")
+            Inst::Free { value, .. } => D::text("free")
                 .append(D::space())
-                .append(self.value(body, *value))
-                .append(if let Some(destroy_flag) = destroy_flag {
-                    D::space()
-                        .append(D::text("if"))
-                        .append(D::space())
-                        .append(self.value(body, *destroy_flag))
-                } else {
-                    D::nil()
-                }),
+                .append(self.value(body, *value)),
             Inst::IncRef { value } => D::text("incref")
                 .append(D::space())
                 .append(self.value(body, *value)),

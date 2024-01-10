@@ -1887,31 +1887,31 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // Value has been moved, don't destroy
             }
             ValueState::MaybeMoved(_) => {
-                // let destroy_block = self.body.create_block("destroy");
-                // let no_destroy_block = self.body.create_block("no_destroy");
-                //
-                // self.push_brif(destroy_flag, destroy_block, Some(no_destroy_block));
-                //
-                // self.position_at(destroy_block);
-                // self.push_inst(Inst::Destroy { value });
-                //
-                // // Now that the value is destroyed, it has definitely been moved...
-                // self.set_value_as_moved(value, moved_to);
-                //
-                // self.position_at(no_destroy_block);
-
                 // Conditional destroy
+                let destroy_flag = self.body.destroy_flags[&value];
+
+                let destroy_block = self.body.create_block("destroy");
+                let no_destroy_block = self.body.create_block("no_destroy");
+
+                self.push_brif(
+                    destroy_flag,
+                    destroy_block,
+                    Some(no_destroy_block),
+                );
+
+                self.position_at(destroy_block);
+
                 // self.call_free_fn(value);
-                self.push_inst(Inst::Free {
-                    value,
-                    destroy_flag: Some(self.body.destroy_flags[&value]),
-                    span,
-                });
+                self.push_inst(Inst::Free { value, span });
+
+                // Now that the value is destroyed, it has definitely been moved...
+                self.set_moved(value, span);
+                self.position_at(no_destroy_block);
             }
             ValueState::PartiallyMoved { .. } | ValueState::Owned => {
                 // Unconditional destroy
                 // self.call_free_fn(value);
-                self.push_inst(Inst::Free { value, destroy_flag: None, span });
+                self.push_inst(Inst::Free { value, span });
             }
         }
     }

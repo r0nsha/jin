@@ -345,38 +345,14 @@ impl<'db> ExpandDestroys<'db> {
         let value_tys: FxHashMap<ValueId, Ty> =
             body.values().iter().map(|v| (v.id, v.ty)).collect();
 
-        let mut used_destroy_flags: FxHashMap<ValueId, bool> =
-            body.destroy_flags.values().map(|flag| (*flag, false)).collect();
-
-        for block_id in body.blocks().keys() {
-            for inst in &body.block(block_id).insts {
-                match inst {
-                    Inst::Free {
-                        value,
-                        destroy_flag: Some(destroy_flag),
-                        ..
-                    } if destroyed_values.contains(value) => {
-                        used_destroy_flags.insert(*destroy_flag, true);
-                    }
-                    _ => (),
-                }
-            }
-        }
-
         for block in body.blocks_mut() {
             block.insts.retain_mut(|inst| match inst {
-                Inst::StackAlloc { value, .. }
-                | Inst::Store { target: value, .. } => {
-                    used_destroy_flags.get(value).copied().unwrap_or(true)
-                }
                 Inst::Free { value, .. } => {
                     if !destroyed_values.contains(value) {
                         return false;
                     }
 
                     if value_tys[&*value].is_ref() {
-                        // TODO: This may turn a conditional `Free` into an unconditional
-                        // `DecRef`. Do we need a `destroy_flag` for `DecRef` too?
                         *inst = Inst::DecRef { value: *value };
                     }
 

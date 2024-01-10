@@ -487,14 +487,8 @@ impl<'db> Generator<'db> {
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
-            Inst::Free { value, destroy_flag, span } => {
-                let stmts = self.refcheck_and_free(state, *value, *span);
-
-                if let &Some(destroy_flag) = destroy_flag {
-                    util::if_stmt(self.value(state, destroy_flag), stmts, None)
-                } else {
-                    stmts
-                }
+            Inst::Free { value, span } => {
+                self.refcheck_and_free(state, *value, *span)
             }
             Inst::IncRef { value } => {
                 stmt(|| self.refcnt_field(state, *value).append(" += 1"))
