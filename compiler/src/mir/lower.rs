@@ -492,27 +492,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::Swap(swap) => {
-                todo!()
-                // let lhs = self.lower_expr(&assign.lhs);
-                // self.try_use(lhs, assign.lhs.span);
-                // self.check_assign_mutability(lhs, expr.span);
-                //
-                // let rhs = self.lower_expr(&assign.rhs);
-                // self.try_move(rhs, assign.rhs.span);
-                //
-                // let rhs = if let Some(op) = assign.op {
-                //     self.push_inst_with_register(assign.lhs.ty, |value| {
-                //         Inst::Binary { value, lhs, rhs, op, span: expr.span }
-                //     })
-                // } else {
-                //     rhs
-                // };
-                //
-                // // NOTE: The lhs needs to be destroyed before it's assigned to
-                // self.destroy_value_entirely(lhs, assign.lhs.span);
-                // self.push_inst(Inst::Store { value: rhs, target: lhs });
-                //
-                // self.const_unit()
+                let lhs = self.lower_expr(&swap.lhs);
+                self.try_use(lhs, swap.lhs.span);
+                self.check_swap_mutability(lhs, expr.span);
+
+                let rhs = self.lower_expr(&swap.rhs);
+                self.try_move(rhs, swap.rhs.span);
+
+                self.push_inst(Inst::Store { value: rhs, target: lhs });
+
+                lhs
             }
             hir::ExprKind::Match(match_) => {
                 let output = self.push_inst_with_register(expr.ty, |value| {
@@ -1903,6 +1892,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         if let Err(root) = self.value_imm_root(lhs, BreakOnMutRef::Yes) {
             self.cx.db.diagnostics.emit(self.imm_root_err(
                 "cannot assign",
+                lhs,
+                root,
+                span,
+            ));
+        }
+    }
+
+    fn check_swap_mutability(&mut self, lhs: ValueId, span: Span) {
+        if let Err(root) = self.value_imm_root(lhs, BreakOnMutRef::Yes) {
+            self.cx.db.diagnostics.emit(self.imm_root_err(
+                "cannot swap",
                 lhs,
                 root,
                 span,

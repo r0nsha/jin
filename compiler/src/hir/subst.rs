@@ -1,7 +1,7 @@
 use crate::{
     hir::{
-        Expr, ExprKind, Fn, FnKind, FnSig, Let, MatchArm, MatchPat, Name,
-        Variant,
+        Assign, Expr, ExprKind, Fn, FnKind, FnSig, Let, MatchArm, MatchPat,
+        Name, Swap, Variant,
     },
     span::Spanned,
     subst,
@@ -12,9 +12,10 @@ impl<S: SubstTy> Subst<S> for Expr {
     fn subst(&mut self, s: &mut S) {
         match &mut self.kind {
             ExprKind::Let(let_) => let_.subst(s),
-            ExprKind::Assign(assign) => {
-                assign.lhs.subst(s);
-                assign.rhs.subst(s);
+            ExprKind::Assign(Assign { lhs, rhs, .. })
+            | ExprKind::Swap(Swap { lhs, rhs }) => {
+                lhs.subst(s);
+                rhs.subst(s);
             }
             ExprKind::Match(match_) => {
                 match_.expr.subst(s);
