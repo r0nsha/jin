@@ -9,6 +9,7 @@ pub struct InstBuilder<'a> {
     block: BlockId,
 }
 
+#[allow(unused)]
 impl<'a> InstBuilder<'a> {
     pub fn new(body: &'a mut Body, block: BlockId) -> Self {
         Self { body, block }
