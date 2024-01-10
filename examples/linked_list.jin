@@ -26,10 +26,10 @@ fn print(self: &LinkedList[int]) unit = {
         curr = v.next
         printf("%d".ptr, v.data)
 
-        match curr {
-          Option.some(_) -> printf(", ".ptr),
-          Option.none -> {}
-        }
+        //match curr {
+        //  Option.some(_) -> printf(", ".ptr),
+        //  Option.none -> {}
+        //}
         //if curr.is_some() {
         //  printf(", ".ptr)
         //}
@@ -42,8 +42,8 @@ fn print(self: &LinkedList[int]) unit = {
 }
 
 fn main() unit = {
-  let mut list = new_linked_list()  
+  let mut list = new_linked_list[int]()  
   list.insert(2)
-  list.insert(1)
-  list.print()
+  //list.insert(1)
+  //list.print()
 }

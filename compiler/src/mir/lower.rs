@@ -760,6 +760,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     .push_inst_with_register(self.ty_of(lhs), |value| {
                         Inst::StackAlloc { value, init: Some(lhs) }
                     });
+                self.create_destroy_flag(old_lhs);
                 self.push_inst(Inst::Store { value: rhs, target: lhs });
                 old_lhs
             }
