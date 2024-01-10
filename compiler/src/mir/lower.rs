@@ -1901,6 +1901,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 self.position_at(destroy_block);
                 self.free_value(value, span);
+                self.push_br(no_destroy_block);
 
                 // Now that the value is destroyed, it has definitely been moved...
                 self.set_moved(value, span);
