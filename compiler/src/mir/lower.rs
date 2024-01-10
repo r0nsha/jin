@@ -6,7 +6,9 @@ use itertools::Itertools as _;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    db::{AdtField, AdtKind, Db, DefId, DefKind, StructKind, VariantId},
+    db::{
+        AdtField, AdtKind, Db, DefId, DefKind, StructKind, Variant, VariantId,
+    },
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     hir::{FnKind, Hir},
@@ -1913,7 +1915,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             let TyKind::Adt(adt_id, targs) = ty.kind() else { unreachable!() };
             if !targs.is_empty() {
                 let instantiation = self.cx.db[*adt_id].instantiation(targs);
-                self.body.create_instantation(freed, instantiation);
+                self.body.create_instantation(callee, instantiation);
             }
 
             self.push_inst_with_register(self.cx.db.types.unit, |value| {
@@ -2369,27 +2371,32 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
 
         let mut body = Body::new();
         let start_block = body.create_block("start");
+        self.current_block = start_block;
 
         let self_value =
             body.create_value(adt_ty, ValueKind::UniqueName(self_name));
 
         match &adt.kind {
             AdtKind::Union(union_def) => {
-                todo!()
-                // let mut blocks=vec![];
+                let mut blocks = vec![];
 
-                // for case in cases {
-                //     let block = self.body.create_block("match_variant_case");
-                //     self.body.create_edge(test_block, block);
-                //     blocks.push(block);
-                //     self.lower_decision(state, case.decision, block, values.clone());
-                // }
+                for variant_id in union_def.variants.clone() {
+                    let variant = self.cx.db[variant_id].clone();
+                    let variant_value = self.body.create_value(
+                        adt_ty,
+                        ValueKind::Variant(self_value, variant.name.name()),
+                    );
+                    let block =
+                        self.lower_variant_free(&variant, variant_value);
+                    blocks.push(block);
+                }
 
-                // self.position_at(test_block);
-                // let uint = self.cx.db.types.uint;
-                // let tag_field = self
-                //     .create_untracked_value(uint, ValueKind::Field(cond, ustr("tag")));
-                // self.body.switch(test_block,tag_field, blocks);
+                let uint = self.cx.db.types.uint;
+                let tag_field = self.body.create_value(
+                    uint,
+                    ValueKind::Field(self_value, ustr("tag")),
+                );
+                self.body.switch(start_block, tag_field, blocks);
             }
             AdtKind::Struct(struct_def) => {
                 unreachable!()
@@ -2401,104 +2408,16 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         sig
     }
 
-    fn lower_variant_free(&mut self) -> BlockId {
-        todo!()
-        //     let adt = &self.db[adt_id];
-        //     let def = &self.db[adt.def_id];
-        //     let struct_def = adt.as_struct().unwrap();
-        //
-        //     let name = ustr(&def.qpath.clone().child(ustr("ctor")).join_with("_"));
-        //
-        //     let params = Self::adt_fields_to_fn_params(&struct_def.fields);
-        //     let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
-        //         id,
-        //         name,
-        //         params,
-        //         ty: struct_def.ctor_ty,
-        //         is_extern: false,
-        //         is_c_variadic: false,
-        //         span: adt.name.span(),
-        //     });
-        //
-        //     let mut body = Body::new();
-        //     let start_block = body.create_block("start");
-        //
-        //     // Initialize the `this` value based on the struct kind
-        //     let this = match struct_def.kind {
-        //         StructKind::Ref => {
-        //             let value =
-        //                 body.create_value(adt.ty(), ValueKind::Register(None));
-        //             body.block_mut(start_block).push_inst(Inst::Alloc { value });
-        //             value
-        //         }
-        //         StructKind::Extern => {
-        //             let value =
-        //                 body.create_value(adt.ty(), ValueKind::Register(None));
-        //             body.block_mut(start_block)
-        //                 .push_inst(Inst::StackAlloc { value, init: None });
-        //             value
-        //         }
-        //     };
-        //
-        //     Self::ctor_init_adt_fields(
-        //         &mut body,
-        //         start_block,
-        //         this,
-        //         &struct_def.fields,
-        //     );
-        //
-        //     // Return the struct
-        //     body.block_mut(start_block).push_inst(Inst::Return { value: this });
-        //
-        //     self.mir.fns.insert(sig, Fn { sig, body });
-        //
-        //     sig
-    }
+    fn lower_variant_free(
+        &mut self,
+        variant: &Variant,
+        variant_value: ValueId,
+    ) -> BlockId {
+        let block = self.body.create_block(format!("case_{}", variant.name));
 
-    fn lower_struct_free(&mut self) {
-        todo!()
-        // for field in struct_def.fields.clone() {
-        //     let field_name = field.name.name();
-        //
-        //     if let Some(free_fn) = self.get_or_create_free_fn(field.ty)
-        //     {
-        //         let callee = body.create_value(
-        //             self.mir.fn_sigs[free_fn].ty,
-        //             ValueKind::Fn(free_fn),
-        //         );
-        //
-        //         let field_value = body.create_value(
-        //             field.ty,
-        //             ValueKind::Field(self_value, field_name),
-        //         );
-        //
-        //         let call_result = body.create_value(
-        //             self.db.types.unit,
-        //             ValueKind::Register(None),
-        //         );
-        //
-        //         body.block_mut(start_block).push_inst(Inst::Call {
-        //             value: call_result,
-        //             callee,
-        //             args: vec![field_value], // TODO: location param
-        //         });
-        //     } else if field.ty.is_ref() {
-        //         let field_value = body.create_value(
-        //             field.ty,
-        //             ValueKind::Field(self_value, field_name),
-        //         );
-        //
-        //         body.block_mut(start_block).push_inst(Inst::Free {
-        //             value: field_value,
-        //             span: field.span(), // TODO: location param
-        //         });
-        //     }
-        // }
-    }
+        for field in &variant.fields {}
 
-    #[inline]
-    fn position_at(&mut self, id: BlockId) {
-        self.current_block = id;
+        block
     }
 
     pub fn push_inst(&mut self, inst: Inst) {
