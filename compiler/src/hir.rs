@@ -76,9 +76,11 @@ impl Expr {
     fn walk_(&self, f: &mut impl FnMut(&Expr)) {
         match &self.kind {
             ExprKind::Let(let_) => let_.value.walk_(f),
-            ExprKind::Assign(assign) => {
-                assign.lhs.walk_(f);
-                assign.rhs.walk_(f);
+            ExprKind::Assign(Assign { lhs, rhs, .. })
+            | ExprKind::Swap(Swap { lhs, rhs })
+            | ExprKind::Binary(Binary { lhs, rhs, .. }) => {
+                lhs.walk_(f);
+                rhs.walk_(f);
             }
             ExprKind::Match(match_) => {
                 match_.expr.walk_(f);
@@ -92,6 +94,10 @@ impl Expr {
                 }
             }
             ExprKind::Loop(loop_) => {
+                if let Some(cond) = &loop_.cond {
+                    cond.walk_(f);
+                }
+
                 loop_.expr.walk_(f);
             }
             ExprKind::Block(block) => {
@@ -107,13 +113,9 @@ impl Expr {
                     arg.expr.walk_(f);
                 }
             }
-            ExprKind::Unary(un) => un.expr.walk_(f),
-            ExprKind::Binary(bin) => {
-                bin.lhs.walk_(f);
-                bin.rhs.walk_(f);
-            }
-            ExprKind::Cast(cast) => cast.expr.walk_(f),
-            ExprKind::Field(access) => access.expr.walk_(f),
+            ExprKind::Unary(Unary { expr, .. })
+            | ExprKind::Cast(Cast { expr, .. })
+            | ExprKind::Field(Field { expr, .. }) => expr.walk_(f),
             ExprKind::Break
             | ExprKind::Name(_)
             | ExprKind::Variant(_)
