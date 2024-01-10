@@ -22,8 +22,9 @@ use crate::{
     ty::{
         coerce::{CoercionKind, Coercions},
         fold::TyFolder,
-        Instantiation, Ty, TyKind,
+        FnTy, FnTyParam, Instantiation, Ty, TyKind,
     },
+    word::Word,
 };
 
 pub fn lower(db: &mut Db, hir: &Hir) -> Mir {
@@ -271,7 +272,70 @@ impl<'db> Lower<'db> {
     }
 
     fn create_union_free(&mut self, adt_id: AdtId) -> FnSigId {
-        todo!()
+        let adt = &self.db[adt_id];
+        let def = &self.db[adt.def_id];
+        let union_def = adt.as_union().unwrap();
+        let adt_ty = adt.ty();
+
+        let name = ustr(&def.qpath.clone().child(ustr("free")).join_with("_"));
+
+        let param_name = ustr("self");
+        let params = vec![FnParam {
+            pat: Pat::Name(NamePat {
+                id: DefId::null(),
+                word: Word::new(param_name, Span::unknown()),
+                vis: Vis::Private,
+                mutability: Mutability::Imm,
+                ty: adt_ty,
+            }),
+            ty: adt_ty,
+        }];
+
+        let fn_ty = Ty::new(TyKind::Fn(FnTy {
+            params: params
+                .iter()
+                .map(|p| FnTyParam {
+                    name: Some(p.pat.name().unwrap()),
+                    ty: p.ty,
+                })
+                .collect(),
+            ret: self.db.types.unit,
+            is_c_variadic: false,
+        }));
+
+        let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
+            id,
+            name,
+            params,
+            ty: fn_ty,
+            is_extern: false,
+            is_c_variadic: false,
+            span: adt.name.span(),
+        });
+
+        let mut body = Body::new();
+        let start_block = body.create_block("start");
+
+        // let mut blocks=vec![];
+
+        // for case in cases {
+        //     let block = self.body.create_block("match_variant_case");
+        //     self.body.create_edge(test_block, block);
+        //     blocks.push(block);
+        //     self.lower_decision(state, case.decision, block, values.clone());
+        // }
+
+        // self.position_at(test_block);
+        // let uint = self.cx.db.types.uint;
+        // let tag_field = self
+        //     .create_untracked_value(uint, ValueKind::Field(cond, ustr("tag")));
+        // self.push_switch(tag_field, blocks);
+
+        dbg!(&body);
+
+        self.mir.fns.insert(sig, Fn { sig, body });
+
+        sig
     }
 
     fn create_variant_free(&mut self) -> BlockId {
@@ -1968,6 +2032,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.cx.mir.fn_sigs[sig].ty,
                 ValueKind::Fn(sig),
             );
+
+            todo!("create instantiation");
 
             self.push_inst_with_register(self.cx.db.types.unit, |value| {
                 Inst::Call { value, callee, args: vec![freed] }
