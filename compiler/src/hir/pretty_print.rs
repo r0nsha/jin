@@ -104,6 +104,13 @@ impl PrettyCx<'_> {
                 self.pp_expr(&assign.rhs);
                 self.builder.end_child();
             }
+            ExprKind::Swap(swap) => {
+                self.builder.begin_child(":=".to_string());
+                self.pp_expr(&swap.lhs);
+                self.builder.add_empty_child("and".to_string());
+                self.pp_expr(&swap.rhs);
+                self.builder.end_child();
+            }
             ExprKind::Match(match_) => {
                 self.builder.begin_child("match".to_string());
 

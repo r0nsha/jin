@@ -942,12 +942,14 @@ impl<'db> Typeck<'db> {
                     .eq(lhs.ty, rhs.ty)
                     .or_coerce(self, rhs.id)?;
 
+                let ty = lhs.ty;
+
                 Ok(self.expr(
                     hir::ExprKind::Swap(hir::Swap {
                         lhs: Box::new(lhs),
                         rhs: Box::new(rhs),
                     }),
-                    lhs.ty,
+                    ty,
                     *span,
                 ))
             }
