@@ -275,182 +275,10 @@ impl<'db> Lower<'db> {
             return *sig_id;
         }
 
-        let sig_id = self.create_adt_free(adt_id);
+        let sig_id = CreateAdtFree::new(self, adt_id).create();
         self.adt_frees.insert(adt_id, sig_id);
 
         sig_id
-    }
-
-    fn create_adt_free(&mut self, adt_id: AdtId) -> FnSigId {
-        let adt = &self.db[adt_id];
-        let adt_ty = adt.ty();
-
-        let name = ustr(
-            &self.db[adt.def_id]
-                .qpath
-                .clone()
-                .child(ustr("free"))
-                .join_with("_"),
-        );
-        let self_name = ustr("self");
-
-        let params = vec![FnParam {
-            pat: Pat::Name(NamePat {
-                id: DefId::null(),
-                word: Word::new(self_name, Span::unknown()),
-                vis: Vis::Private,
-                mutability: Mutability::Imm,
-                ty: adt_ty,
-            }),
-            ty: adt_ty,
-        }];
-
-        let fn_ty = Ty::new(TyKind::Fn(FnTy {
-            params: params
-                .iter()
-                .map(|p| FnTyParam {
-                    name: Some(p.pat.name().unwrap()),
-                    ty: p.ty,
-                })
-                .collect(),
-            ret: self.db.types.unit,
-            is_c_variadic: false,
-        }));
-
-        let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
-            id,
-            name,
-            params,
-            ty: fn_ty,
-            is_extern: false,
-            is_c_variadic: false,
-            span: adt.name.span(),
-        });
-
-        let mut body = Body::new();
-        let start_block = body.create_block("start");
-
-        let self_value =
-            body.create_value(adt_ty, ValueKind::UniqueName(self_name));
-
-        match &adt.kind {
-            AdtKind::Union(union_def) => {
-                todo!()
-                // let mut blocks=vec![];
-
-                // for case in cases {
-                //     let block = self.body.create_block("match_variant_case");
-                //     self.body.create_edge(test_block, block);
-                //     blocks.push(block);
-                //     self.lower_decision(state, case.decision, block, values.clone());
-                // }
-
-                // self.position_at(test_block);
-                // let uint = self.cx.db.types.uint;
-                // let tag_field = self
-                //     .create_untracked_value(uint, ValueKind::Field(cond, ustr("tag")));
-                // self.push_switch(tag_field, blocks);
-            }
-            AdtKind::Struct(struct_def) => {}
-        }
-
-        self.mir.fns.insert(sig, Fn { sig, body });
-        sig
-    }
-
-    fn lower_variant_free(&mut self) -> BlockId {
-        todo!()
-        //     let adt = &self.db[adt_id];
-        //     let def = &self.db[adt.def_id];
-        //     let struct_def = adt.as_struct().unwrap();
-        //
-        //     let name = ustr(&def.qpath.clone().child(ustr("ctor")).join_with("_"));
-        //
-        //     let params = Self::adt_fields_to_fn_params(&struct_def.fields);
-        //     let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
-        //         id,
-        //         name,
-        //         params,
-        //         ty: struct_def.ctor_ty,
-        //         is_extern: false,
-        //         is_c_variadic: false,
-        //         span: adt.name.span(),
-        //     });
-        //
-        //     let mut body = Body::new();
-        //     let start_block = body.create_block("start");
-        //
-        //     // Initialize the `this` value based on the struct kind
-        //     let this = match struct_def.kind {
-        //         StructKind::Ref => {
-        //             let value =
-        //                 body.create_value(adt.ty(), ValueKind::Register(None));
-        //             body.block_mut(start_block).push_inst(Inst::Alloc { value });
-        //             value
-        //         }
-        //         StructKind::Extern => {
-        //             let value =
-        //                 body.create_value(adt.ty(), ValueKind::Register(None));
-        //             body.block_mut(start_block)
-        //                 .push_inst(Inst::StackAlloc { value, init: None });
-        //             value
-        //         }
-        //     };
-        //
-        //     Self::ctor_init_adt_fields(
-        //         &mut body,
-        //         start_block,
-        //         this,
-        //         &struct_def.fields,
-        //     );
-        //
-        //     // Return the struct
-        //     body.block_mut(start_block).push_inst(Inst::Return { value: this });
-        //
-        //     self.mir.fns.insert(sig, Fn { sig, body });
-        //
-        //     sig
-    }
-
-    fn lower_struct_free(&mut self) {
-        todo!()
-        // for field in struct_def.fields.clone() {
-        //     let field_name = field.name.name();
-        //
-        //     if let Some(free_fn) = self.get_or_create_free_fn(field.ty)
-        //     {
-        //         let callee = body.create_value(
-        //             self.mir.fn_sigs[free_fn].ty,
-        //             ValueKind::Fn(free_fn),
-        //         );
-        //
-        //         let field_value = body.create_value(
-        //             field.ty,
-        //             ValueKind::Field(self_value, field_name),
-        //         );
-        //
-        //         let call_result = body.create_value(
-        //             self.db.types.unit,
-        //             ValueKind::Register(None),
-        //         );
-        //
-        //         body.block_mut(start_block).push_inst(Inst::Call {
-        //             value: call_result,
-        //             callee,
-        //             args: vec![field_value], // TODO: location param
-        //         });
-        //     } else if field.ty.is_ref() {
-        //         let field_value = body.create_value(
-        //             field.ty,
-        //             ValueKind::Field(self_value, field_name),
-        //         );
-        //
-        //         body.block_mut(start_block).push_inst(Inst::Free {
-        //             value: field_value,
-        //             span: field.span(), // TODO: location param
-        //         });
-        //     }
-        // }
     }
 
     fn adt_fields_to_fn_params(fields: &[AdtField]) -> Vec<FnParam> {
@@ -2492,4 +2320,193 @@ impl<'a> DecisionState<'a> {
 enum AssignKind {
     Assign,
     Swap,
+}
+
+#[derive(Debug)]
+pub(super) struct CreateAdtFree<'cx, 'db> {
+    pub(super) cx: &'cx mut Lower<'db>,
+    pub(super) adt_id: AdtId,
+    pub(super) body: Body,
+    pub(super) current_block: BlockId,
+}
+
+impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
+    pub(super) fn new(cx: &'cx mut Lower<'db>, adt_id: AdtId) -> Self {
+        Self { cx, adt_id, body: Body::new(), current_block: BlockId::start() }
+    }
+
+    fn create(mut self) -> FnSigId {
+        let adt = &self.cx.db[self.adt_id];
+        let adt_ty = adt.ty();
+
+        let name = ustr(
+            &self.cx.db[adt.def_id]
+                .qpath
+                .clone()
+                .child(ustr("free"))
+                .join_with("_"),
+        );
+        let self_name = ustr("self");
+
+        let params = vec![FnParam {
+            pat: Pat::Name(NamePat {
+                id: DefId::null(),
+                word: Word::new(self_name, Span::unknown()),
+                vis: Vis::Private,
+                mutability: Mutability::Imm,
+                ty: adt_ty,
+            }),
+            ty: adt_ty,
+        }];
+
+        let fn_ty = Ty::new(TyKind::Fn(FnTy {
+            params: params
+                .iter()
+                .map(|p| FnTyParam {
+                    name: Some(p.pat.name().unwrap()),
+                    ty: p.ty,
+                })
+                .collect(),
+            ret: self.cx.db.types.unit,
+            is_c_variadic: false,
+        }));
+
+        let sig = self.cx.mir.fn_sigs.insert_with_key(|id| FnSig {
+            id,
+            name,
+            params,
+            ty: fn_ty,
+            is_extern: false,
+            is_c_variadic: false,
+            span: adt.name.span(),
+        });
+
+        let mut body = Body::new();
+        let start_block = body.create_block("start");
+
+        let self_value =
+            body.create_value(adt_ty, ValueKind::UniqueName(self_name));
+
+        match &adt.kind {
+            AdtKind::Union(union_def) => {
+                todo!()
+                // let mut blocks=vec![];
+
+                // for case in cases {
+                //     let block = self.body.create_block("match_variant_case");
+                //     self.body.create_edge(test_block, block);
+                //     blocks.push(block);
+                //     self.lower_decision(state, case.decision, block, values.clone());
+                // }
+
+                // self.position_at(test_block);
+                // let uint = self.cx.db.types.uint;
+                // let tag_field = self
+                //     .create_untracked_value(uint, ValueKind::Field(cond, ustr("tag")));
+                // self.push_switch(tag_field, blocks);
+            }
+            AdtKind::Struct(struct_def) => {
+                unreachable!()
+            }
+        }
+
+        self.cx.mir.fns.insert(sig, Fn { sig, body });
+
+        sig
+    }
+
+    fn lower_variant_free(&mut self) -> BlockId {
+        todo!()
+        //     let adt = &self.db[adt_id];
+        //     let def = &self.db[adt.def_id];
+        //     let struct_def = adt.as_struct().unwrap();
+        //
+        //     let name = ustr(&def.qpath.clone().child(ustr("ctor")).join_with("_"));
+        //
+        //     let params = Self::adt_fields_to_fn_params(&struct_def.fields);
+        //     let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
+        //         id,
+        //         name,
+        //         params,
+        //         ty: struct_def.ctor_ty,
+        //         is_extern: false,
+        //         is_c_variadic: false,
+        //         span: adt.name.span(),
+        //     });
+        //
+        //     let mut body = Body::new();
+        //     let start_block = body.create_block("start");
+        //
+        //     // Initialize the `this` value based on the struct kind
+        //     let this = match struct_def.kind {
+        //         StructKind::Ref => {
+        //             let value =
+        //                 body.create_value(adt.ty(), ValueKind::Register(None));
+        //             body.block_mut(start_block).push_inst(Inst::Alloc { value });
+        //             value
+        //         }
+        //         StructKind::Extern => {
+        //             let value =
+        //                 body.create_value(adt.ty(), ValueKind::Register(None));
+        //             body.block_mut(start_block)
+        //                 .push_inst(Inst::StackAlloc { value, init: None });
+        //             value
+        //         }
+        //     };
+        //
+        //     Self::ctor_init_adt_fields(
+        //         &mut body,
+        //         start_block,
+        //         this,
+        //         &struct_def.fields,
+        //     );
+        //
+        //     // Return the struct
+        //     body.block_mut(start_block).push_inst(Inst::Return { value: this });
+        //
+        //     self.mir.fns.insert(sig, Fn { sig, body });
+        //
+        //     sig
+    }
+
+    fn lower_struct_free(&mut self) {
+        todo!()
+        // for field in struct_def.fields.clone() {
+        //     let field_name = field.name.name();
+        //
+        //     if let Some(free_fn) = self.get_or_create_free_fn(field.ty)
+        //     {
+        //         let callee = body.create_value(
+        //             self.mir.fn_sigs[free_fn].ty,
+        //             ValueKind::Fn(free_fn),
+        //         );
+        //
+        //         let field_value = body.create_value(
+        //             field.ty,
+        //             ValueKind::Field(self_value, field_name),
+        //         );
+        //
+        //         let call_result = body.create_value(
+        //             self.db.types.unit,
+        //             ValueKind::Register(None),
+        //         );
+        //
+        //         body.block_mut(start_block).push_inst(Inst::Call {
+        //             value: call_result,
+        //             callee,
+        //             args: vec![field_value], // TODO: location param
+        //         });
+        //     } else if field.ty.is_ref() {
+        //         let field_value = body.create_value(
+        //             field.ty,
+        //             ValueKind::Field(self_value, field_name),
+        //         );
+        //
+        //         body.block_mut(start_block).push_inst(Inst::Free {
+        //             value: field_value,
+        //             span: field.span(), // TODO: location param
+        //         });
+        //     }
+        // }
+    }
 }
