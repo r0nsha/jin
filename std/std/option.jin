@@ -14,3 +14,6 @@ fn is_some*[a](self: &Option[a]) bool =
 		Option.some(_) -> true,
 		Option.none -> false
   }
+
+fn is_none*[a](self: &Option[a]) bool =
+	!self.is_some()

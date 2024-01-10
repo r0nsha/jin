@@ -1,4 +1,4 @@
-import std.option.Option
+import std.option.{Option, ?}
 
 fn extern printf(fmt: *u8, ..) i32
 
@@ -23,8 +23,12 @@ fn print(self: &LinkedList[int]) unit = {
   loop {
     match curr {
       Option.some(v) -> {
-        printf("%d, ".ptr, v.data)
         curr = v.next
+        printf("%d".ptr, v.data)
+
+        if curr.is_some() {
+          printf(", ".ptr)
+        }
       },
       Option.none -> break
     }
@@ -35,7 +39,7 @@ fn print(self: &LinkedList[int]) unit = {
 
 fn main() unit = {
   let mut list = new_linked_list()  
-  list.insert(1)
   list.insert(2)
+  list.insert(1)
   list.print()
 }
