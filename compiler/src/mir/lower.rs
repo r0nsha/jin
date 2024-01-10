@@ -1673,7 +1673,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value: ValueId,
     ) -> ValueId {
         if let Some(coercions) = self.cx.hir.coercions.get(&expr.id) {
-            self.apply_coercions(&coercions.clone(), value, expr.span)
+            self.apply_coercions(coercions, value, expr.span)
         } else {
             value
         }
@@ -2358,8 +2358,8 @@ enum AssignKind {
 //             AdtKind::Union(union_def) => {
 //                 let mut blocks = vec![];
 //
-//                 for variant_id in union_def.variants.clone() {
-//                     let variant = self.cx.db[variant_id].clone();
+//                 for &variant_id in &union_def.variants {
+//                     let variant = &self.cx.db[variant_id];
 //                     let variant_value = self.body.create_value(
 //                         adt_ty,
 //                         ValueKind::Variant(self_value, variant.name.name()),
