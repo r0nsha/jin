@@ -2369,12 +2369,11 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             span: adt.name.span(),
         });
 
-        let mut body = Body::new();
-        let start_block = body.create_block("start");
+        let start_block = self.body.create_block("start");
         self.current_block = start_block;
 
         let self_value =
-            body.create_value(adt_ty, ValueKind::UniqueName(self_name));
+            self.body.create_value(adt_ty, ValueKind::UniqueName(self_name));
 
         match &adt.kind {
             AdtKind::Union(union_def) => {
@@ -2391,6 +2390,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
                     blocks.push(block);
                 }
 
+                self.current_block = start_block;
                 let uint = self.cx.db.types.uint;
                 let tag_field = self.body.create_value(
                     uint,
@@ -2403,7 +2403,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             }
         }
 
-        self.cx.mir.fns.insert(sig, Fn { sig, body });
+        self.cx.mir.fns.insert(sig, Fn { sig, body: self.body });
 
         sig
     }
@@ -2414,8 +2414,26 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         variant_value: ValueId,
     ) -> BlockId {
         let block = self.body.create_block(format!("case_{}", variant.name));
+        self.current_block = block;
 
-        for field in &variant.fields {}
+        for field in &variant.fields {
+            let value = self.body.create_value(
+                field.ty,
+                ValueKind::Field(variant_value, field.name.name()),
+            );
+
+            match field.ty.kind() {
+                TyKind::Adt(adt_id, _) => match &self.cx.db[*adt_id].kind {
+                    AdtKind::Struct(struct_def) => todo!(),
+                    AdtKind::Union(union_def) => todo!(),
+                },
+                TyKind::Ref(..) | TyKind::Param(_) => {
+                    // TODO: location param
+                    self.push_inst(Inst::Free { value, span: field.span() });
+                }
+                _ => (),
+            }
+        }
 
         block
     }
