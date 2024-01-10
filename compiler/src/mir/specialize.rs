@@ -15,13 +15,13 @@ use crate::{
     ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };
 
-pub fn specialize(db: &mut Db, mir: &mut Mir) {
+pub fn specialize(db: &Db, mir: &mut Mir) {
     Specialize::new(db).run(mir);
     ExpandDestroys::new(db).run(mir);
 }
 
 struct Specialize<'db> {
-    db: &'db mut Db,
+    db: &'db Db,
     work: Work,
     used_fns: FxHashSet<FnSigId>,
     used_globals: FxHashSet<GlobalId>,
@@ -37,7 +37,7 @@ pub struct SpecializedFn {
 }
 
 impl<'db> Specialize<'db> {
-    fn new(db: &'db mut Db) -> Self {
+    fn new(db: &'db Db) -> Self {
         Self {
             db,
             work: Work::new(),
