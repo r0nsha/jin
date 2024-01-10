@@ -85,6 +85,7 @@ pub enum TokenKind {
     Pipe,
     PipeEq,
     PipePipe,
+    Walrus,
 
     // Ident & Keywords
     Ident(Ustr),
@@ -171,6 +172,7 @@ impl fmt::Display for TokenKind {
             Self::Pipe => f.write_str("|"),
             Self::PipeEq => f.write_str("|="),
             Self::PipePipe => f.write_str("||"),
+            Self::Walrus => f.write_str(":="),
             Self::Ident(..) => f.write_str("identifier"),
             Self::Underscore => f.write_str("_"),
             Self::Return => f.write_str("`return`"),

@@ -65,7 +65,13 @@ impl<'s> Lexer<'s> {
                             TokenKind::Dot
                         }
                     }
-                    ':' => TokenKind::Colon,
+                    ':' => {
+                        if self.eat('=') {
+                            TokenKind::Walrus
+                        } else {
+                            TokenKind::Colon
+                        }
+                    }
                     '@' => TokenKind::At,
                     '?' => TokenKind::QuestionMark,
                     '=' => {
