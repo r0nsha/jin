@@ -1,9 +1,11 @@
 fn extern printf(fmt: *u8, ..) i32
 
 fn main() unit = {
-	let a = 1
-	a = 2
+	let mut a = 1
 	print(a)
+	let old = a := 2
+	print(a)
+	print(old)
 }
 
 fn print(v: int) unit =
