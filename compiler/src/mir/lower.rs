@@ -159,14 +159,12 @@ impl<'db> Lower<'db> {
         // Initialize the `this` value based on the struct kind
         let this = match struct_def.kind {
             StructKind::Ref => {
-                let value =
-                    body.create_value(adt.ty(), ValueKind::Register(None));
+                let value = body.create_register(adt.ty());
                 body.ins(start_block).alloc(value);
                 value
             }
             StructKind::Extern => {
-                let value =
-                    body.create_value(adt.ty(), ValueKind::Register(None));
+                let value = body.create_register(adt.ty());
                 body.ins(start_block).stackalloc_uninit(value);
                 value
             }
@@ -222,7 +220,7 @@ impl<'db> Lower<'db> {
 
         // Initialize the `this` value based on the struct kind
         let this = {
-            let value = body.create_value(adt.ty(), ValueKind::Register(None));
+            let value = body.create_register(adt.ty());
             body.block_mut(start_block).push_inst(Inst::Alloc { value });
             value
         };
@@ -1229,10 +1227,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.scope_mut().created_values.insert(value);
         self.create_value_fields(value);
         value
-    }
-
-    pub fn create_register(&mut self, ty: Ty) -> ValueId {
-        self.create_value(ty, ValueKind::Register(None))
     }
 
     #[allow(unused)]

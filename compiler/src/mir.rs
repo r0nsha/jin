@@ -216,6 +216,10 @@ impl Body {
         self.values.push_with_key(|id| Value { id, ty, kind })
     }
 
+    pub fn create_register(&mut self, ty: Ty) -> ValueId {
+        self.create_value(ty, ValueKind::Register(None))
+    }
+
     pub fn instantation(&self, value: ValueId) -> Option<&Instantiation> {
         self.instantations.get(&value)
     }
