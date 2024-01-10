@@ -39,6 +39,7 @@ pub(super) struct Lower<'db> {
     pub(super) id_to_global: FxHashMap<DefId, GlobalId>,
     pub(super) struct_ctors: FxHashMap<AdtId, FnSigId>,
     pub(super) variant_ctors: FxHashMap<VariantId, FnSigId>,
+    pub(super) union_frees: FxHashMap<AdtId, FnSigId>,
 }
 
 impl<'db> Lower<'db> {
@@ -51,6 +52,7 @@ impl<'db> Lower<'db> {
             id_to_global: FxHashMap::default(),
             struct_ctors: FxHashMap::default(),
             variant_ctors: FxHashMap::default(),
+            union_frees: FxHashMap::default(),
         }
     }
 
@@ -255,6 +257,75 @@ impl<'db> Lower<'db> {
         self.mir.fns.insert(sig, Fn { sig, body });
 
         sig
+    }
+
+    fn get_or_create_union_free(&mut self, adt_id: AdtId) -> FnSigId {
+        if let Some(sig_id) = self.union_frees.get(&adt_id) {
+            return *sig_id;
+        }
+
+        let sig_id = self.create_union_free(adt_id);
+        self.union_frees.insert(adt_id, sig_id);
+
+        sig_id
+    }
+
+    fn create_union_free(&mut self, adt_id: AdtId) -> FnSigId {
+        todo!()
+    }
+
+    fn create_variant_free(&mut self) -> BlockId {
+        todo!()
+        //     let adt = &self.db[adt_id];
+        //     let def = &self.db[adt.def_id];
+        //     let struct_def = adt.as_struct().unwrap();
+        //
+        //     let name = ustr(&def.qpath.clone().child(ustr("ctor")).join_with("_"));
+        //
+        //     let params = Self::adt_fields_to_fn_params(&struct_def.fields);
+        //     let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
+        //         id,
+        //         name,
+        //         params,
+        //         ty: struct_def.ctor_ty,
+        //         is_extern: false,
+        //         is_c_variadic: false,
+        //         span: adt.name.span(),
+        //     });
+        //
+        //     let mut body = Body::new();
+        //     let start_block = body.create_block("start");
+        //
+        //     // Initialize the `this` value based on the struct kind
+        //     let this = match struct_def.kind {
+        //         StructKind::Ref => {
+        //             let value =
+        //                 body.create_value(adt.ty(), ValueKind::Register(None));
+        //             body.block_mut(start_block).push_inst(Inst::Alloc { value });
+        //             value
+        //         }
+        //         StructKind::Extern => {
+        //             let value =
+        //                 body.create_value(adt.ty(), ValueKind::Register(None));
+        //             body.block_mut(start_block)
+        //                 .push_inst(Inst::StackAlloc { value, init: None });
+        //             value
+        //         }
+        //     };
+        //
+        //     Self::ctor_init_adt_fields(
+        //         &mut body,
+        //         start_block,
+        //         this,
+        //         &struct_def.fields,
+        //     );
+        //
+        //     // Return the struct
+        //     body.block_mut(start_block).push_inst(Inst::Return { value: this });
+        //
+        //     self.mir.fns.insert(sig, Fn { sig, body });
+        //
+        //     sig
     }
 
     fn adt_fields_to_fn_params(fields: &[AdtField]) -> Vec<FnParam> {
@@ -1830,6 +1901,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // self.position_at(no_destroy_block);
 
                 // Conditional destroy
+                // self.call_free_fn(value);
                 self.push_inst(Inst::Free {
                     value,
                     destroy_flag: Some(self.body.destroy_flags[&value]),
@@ -1838,6 +1910,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             ValueState::PartiallyMoved { .. } | ValueState::Owned => {
                 // Unconditional destroy
+                // self.call_free_fn(value);
                 self.push_inst(Inst::Free { value, destroy_flag: None, span });
             }
         }
@@ -1883,6 +1956,31 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 Ok(())
             })
             .unwrap();
+        }
+    }
+
+    fn call_free_fn(&mut self, freed: ValueId) {
+        if let Some(sig) = self.get_or_create_free_fn(freed) {
+            let callee = self.create_untracked_value(
+                self.cx.mir.fn_sigs[sig].ty,
+                ValueKind::Fn(sig),
+            );
+
+            self.push_inst_with_register(self.cx.db.types.unit, |value| {
+                Inst::Call { value, callee, args: vec![freed] }
+            });
+        }
+    }
+
+    fn get_or_create_free_fn(&mut self, value: ValueId) -> Option<FnSigId> {
+        match self.ty_of(value).kind() {
+            TyKind::Adt(adt_id, _) => match &self.cx.db[*adt_id].kind {
+                AdtKind::Struct(_) => None,
+                AdtKind::Union(_) => {
+                    Some(self.cx.get_or_create_union_free(*adt_id))
+                }
+            },
+            _ => None,
         }
     }
 
