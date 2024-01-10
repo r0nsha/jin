@@ -26,15 +26,21 @@ use crate::{
     },
 };
 
+#[allow(clippy::similar_names)]
 pub fn lower(db: &mut Db, hir: &Hir) -> Mir {
-    Lower::new(db, hir).lower_all()
+    let mut cx = Lower::new(db, hir);
+    cx.run();
+    let mir = cx.mir;
+    db.diagnostics.emit_many(cx.diagnostics);
+    mir
 }
 
 #[derive(Debug)]
 pub(super) struct Lower<'db> {
-    pub(super) db: &'db mut Db,
+    pub(super) db: &'db Db,
     pub(super) hir: &'db Hir,
     pub(super) mir: Mir,
+    pub(super) diagnostics: Vec<Diagnostic>,
     pub(super) id_to_fn_sig: FxHashMap<DefId, FnSigId>,
     pub(super) id_to_global: FxHashMap<DefId, GlobalId>,
     pub(super) struct_ctors: FxHashMap<AdtId, FnSigId>,
@@ -43,11 +49,12 @@ pub(super) struct Lower<'db> {
 }
 
 impl<'db> Lower<'db> {
-    fn new(db: &'db mut Db, hir: &'db Hir) -> Self {
+    fn new(db: &'db Db, hir: &'db Hir) -> Self {
         Self {
             db,
             hir,
             mir: Mir::new(),
+            diagnostics: vec![],
             id_to_fn_sig: FxHashMap::default(),
             id_to_global: FxHashMap::default(),
             struct_ctors: FxHashMap::default(),
@@ -56,7 +63,7 @@ impl<'db> Lower<'db> {
         }
     }
 
-    fn lower_all(mut self) -> Mir {
+    fn run(&mut self) {
         for fun in &self.hir.fns {
             let def = &self.db[fun.def_id];
             let is_extern = fun.kind.is_extern();
@@ -96,8 +103,6 @@ impl<'db> Lower<'db> {
             let sig = self.id_to_fn_sig[&f.def_id];
             self.lower_fn_body(sig, f);
         }
-
-        self.mir
     }
 
     fn lower_global(&mut self, def_id: DefId) -> GlobalId {
@@ -1535,7 +1540,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             if !matches!(self.value_state(value), ValueState::Owned) {
                 let name = self.value_name(value);
 
-                self.cx.db.diagnostics.emit(
+                self.cx.diagnostics.push(
                     Diagnostic::error()
                         .with_message(format!("use of moved {name}"))
                         .with_label(Label::primary(moved_to).with_message(
@@ -1820,9 +1825,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 );
 
                 // self.call_free_fn(value);
-                self.ins(destroy_block)
-                    .free(value, span)
-                    .br(no_destroy_block);
+                self.ins(destroy_block).free(value, span).br(no_destroy_block);
 
                 // Now that the value is destroyed, it has definitely been moved...
                 self.set_moved(value, span);
@@ -1942,7 +1945,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         span: Span,
     ) {
         if let Err(root) = self.value_imm_root(lhs, BreakOnMutRef::Yes) {
-            self.cx.db.diagnostics.emit(self.imm_root_err(
+            self.cx.diagnostics.push(self.imm_root_err(
                 match kind {
                     AssignKind::Assign => "cannot assign",
                     AssignKind::Swap => "cannot swap",
@@ -1959,7 +1962,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             .value_ty_imm_root(value)
             .and_then(|()| self.value_imm_root(value, BreakOnMutRef::No))
         {
-            self.cx.db.diagnostics.emit(self.imm_root_err(
+            self.cx.diagnostics.push(self.imm_root_err(
                 "cannot take &mut reference",
                 value,
                 root,
@@ -2072,7 +2075,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub fn emit_result(&mut self, result: DiagnosticResult<()>) {
         if let Err(diagnostic) = result {
-            self.cx.db.diagnostics.emit(diagnostic);
+            self.cx.diagnostics.push(diagnostic);
         }
     }
 

@@ -22,11 +22,14 @@ pub fn compile(
     let (decision, new_guards, diagnostics) =
         Compiler::new(cx, body_pat_spans).compile(rows, span);
 
-    if diagnostics.iter().any(|d| d.severity() == Severity::Error) {
-        cx.cx.db.diagnostics.emit_many(diagnostics);
+    let had_errors =
+        diagnostics.iter().any(|d| d.severity() == Severity::Error);
+
+    cx.cx.diagnostics.extend(diagnostics);
+
+    if had_errors {
         Err(())
     } else {
-        cx.cx.db.diagnostics.emit_many(diagnostics);
         Ok((decision, new_guards))
     }
 }
