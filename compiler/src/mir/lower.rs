@@ -181,7 +181,7 @@ impl<'db> Lower<'db> {
         );
 
         // Return the struct
-        body.block_mut(start_block).push_inst(Inst::Return { value: this });
+        body.ins(start_block).ret(this);
 
         self.mir.fns.insert(sig, Fn { sig, body });
 
@@ -251,7 +251,7 @@ impl<'db> Lower<'db> {
         );
 
         // Return the struct
-        body.block_mut(start_block).push_inst(Inst::Return { value: this });
+        body.ins(start_block).ret(this);
 
         self.mir.fns.insert(sig, Fn { sig, body });
 
@@ -1211,7 +1211,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn push_return(&mut self, value: ValueId, span: Span) {
         self.try_move(value, span);
         self.destroy_all_values(span);
-        self.push_inst(Inst::Return { value });
+        self.ins(self.current_block).ret(value);
     }
 
     pub fn push_inst(&mut self, inst: Inst) {

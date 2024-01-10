@@ -44,6 +44,11 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
+    pub fn ret(&mut self, value: ValueId) -> &mut Self {
+        self.inst(Inst::Return { value });
+        self
+    }
+
     pub fn store(&mut self, value: ValueId, target: ValueId) -> &mut Self {
         self.inst(Inst::Store { value, target });
         self
