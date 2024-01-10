@@ -72,6 +72,21 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
+    pub fn stackalloc(&mut self, value: ValueId, init: ValueId) -> &mut Self {
+        self.inst(Inst::StackAlloc { value, init: Some(init) });
+        self
+    }
+
+    pub fn stackalloc_uninit(&mut self, value: ValueId) -> &mut Self {
+        self.inst(Inst::StackAlloc { value, init: None });
+        self
+    }
+
+    pub fn alloc(&mut self, value: ValueId) -> &mut Self {
+        self.inst(Inst::Alloc { value });
+        self
+    }
+
     pub fn free(&mut self, value: ValueId, span: Span) -> &mut Self {
         self.inst(Inst::Free { value, span });
         self
