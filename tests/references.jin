@@ -6,7 +6,7 @@ type Mut(box: &mut Box)
 type Bag(a: Box, b: Box)
 
 fn main() unit = {
-	let box = Box(1)
+	let mut box = Box(1)
 	box.print() // Coerced to &Box
 	box.set(42) // Coerced to &mut Box
 	box.print() // box.value == 42

@@ -6,9 +6,7 @@ use itertools::Itertools as _;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    db::{
-        AdtField, AdtKind, Db, DefId, DefKind, StructKind, Variant, VariantId,
-    },
+    db::{AdtField, AdtKind, Db, DefId, DefKind, StructKind, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     hir::{FnKind, Hir},
@@ -16,17 +14,16 @@ use crate::{
     mangle,
     middle::{BinOp, CmpOp, Mutability, NamePat, Pat, Vis},
     mir::{
-        pmatch, AdtId, Block, BlockId, Body, Const, Fn, FnParam, FnSig,
-        FnSigId, FxHashMap, FxHashSet, Global, GlobalId, GlobalKind, Inst, Mir,
-        Span, StaticGlobal, UnOp, ValueId, ValueKind,
+        builder::InstBuilder, pmatch, AdtId, Block, BlockId, Body, Const, Fn,
+        FnParam, FnSig, FnSigId, FxHashMap, FxHashSet, Global, GlobalId,
+        GlobalKind, Inst, Mir, Span, StaticGlobal, UnOp, ValueId, ValueKind,
     },
     span::Spanned,
     ty::{
         coerce::{CoercionKind, Coercions},
         fold::TyFolder,
-        FnTy, FnTyParam, Instantiation, Ty, TyKind,
+        Instantiation, Ty, TyKind,
     },
-    word::Word,
 };
 
 pub fn lower(db: &mut Db, hir: &Hir) -> Mir {
@@ -583,7 +580,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     expr.span,
                 );
 
-                self.body.br(self.current_block, start_block);
+                self.ins(self.current_block).br(start_block);
                 self.position_at(start_block);
 
                 if let Some(cond_expr) = &loop_.cond {
@@ -599,11 +596,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         },
                     );
 
-                    self.body.brif(start_block, not_cond, end_block, None);
+                    self.ins(start_block).brif(not_cond, end_block, None);
                 }
 
                 self.lower_expr(&loop_.expr);
-                self.body.br(self.current_block, start_block);
+                self.ins(self.current_block).br(start_block);
 
                 if self.in_connected_block() {
                     self.check_loop_moves();
@@ -621,7 +618,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     .closest_loop_scope()
                     .expect("to be inside a loop block")
                     .end_block;
-                self.body.br(self.current_block, end_block);
+                self.ins(self.current_block).br(end_block);
 
                 self.const_unit()
             }
@@ -894,7 +891,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             .collect();
 
         self.position_at(block);
-        self.body.brif(block, cond, blocks[1], Some(blocks[0]));
+        self.ins(block).brif(cond, blocks[1], Some(blocks[0]));
 
         block
     }
@@ -956,8 +953,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
             self.position_at(test_block);
 
-            self.body.brif(
-                test_block,
+            self.ins(test_block).brif(
                 result_value,
                 then_block,
                 Some(else_block),
@@ -1005,7 +1001,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let uint = self.cx.db.types.uint;
         let tag_field = self
             .create_untracked_value(uint, ValueKind::Field(cond, ustr("tag")));
-        self.body.switch(test_block, tag_field, blocks);
+        self.ins(test_block).switch(tag_field, blocks);
 
         test_block
     }
@@ -1070,7 +1066,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         if self.in_connected_block() {
             self.push_inst(Inst::Store { value, target: state.output });
-            self.body.br(self.current_block, state.join_block);
+            self.ins(self.current_block).br(state.join_block);
         }
 
         start_block
@@ -1151,7 +1147,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.lower_decision(state, fallback, guard_join, values);
 
         self.position_at(guard_join);
-        self.body.brif(guard_join, cond, body.block, Some(fallback_block));
+        self.ins(guard_join).brif(cond, body.block, Some(fallback_block));
 
         self.lower_decision_bindings(state, body.block, body.bindings);
         self.lower_decision_body(state, self.current_block, body.block);
@@ -1218,18 +1214,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.try_move(value, span);
         self.destroy_all_values(span);
         self.push_inst(Inst::Return { value });
-    }
-
-    pub fn push_switch(&mut self, cond: ValueId, blocks: Vec<BlockId>) {
-        for &target in &blocks {
-            self.create_edge(target);
-        }
-
-        self.push_inst(Inst::Switch { cond, blocks });
-    }
-
-    pub fn create_edge(&mut self, target: BlockId) {
-        self.body.create_edge(self.current_block, target);
     }
 
     pub fn push_inst(&mut self, inst: Inst) {
@@ -1682,6 +1666,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.current_block = id;
     }
 
+    #[inline]
+    pub fn ins(&mut self, block: BlockId) -> InstBuilder {
+        self.body.ins(block)
+    }
+
     pub fn apply_coercions_to_expr(
         &mut self,
         expr: &hir::Expr,
@@ -1833,17 +1822,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let destroy_block = self.body.create_block("destroy");
                 let no_destroy_block = self.body.create_block("no_destroy");
 
-                self.body.brif(
-                    self.current_block,
+                self.ins(self.current_block).brif(
                     destroy_flag,
                     destroy_block,
                     Some(no_destroy_block),
                 );
 
-                self.position_at(destroy_block);
                 // self.call_free_fn(value);
-                self.push_inst(Inst::Free { value, span });
-                self.body.br(self.current_block, no_destroy_block);
+                self.ins(self.current_block)
+                    .free(value, span)
+                    .br(no_destroy_block);
 
                 // Now that the value is destroyed, it has definitely been moved...
                 self.set_moved(value, span);
