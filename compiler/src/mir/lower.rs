@@ -1701,6 +1701,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     })
                 }
                 CoercionKind::OwnedToRef => {
+                    if coercion.target.is_mut_ref() {
+                        self.check_ref_mutability(coerced_value, span);
+                    }
+
                     self.create_ref(coerced_value, coercion.target)
                 }
             };
@@ -1937,7 +1941,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             .and_then(|()| self.value_imm_root(value, BreakOnMutRef::No))
         {
             self.cx.db.diagnostics.emit(self.imm_root_err(
-                "cannot take &mut",
+                "cannot take &mut reference",
                 value,
                 root,
                 span,

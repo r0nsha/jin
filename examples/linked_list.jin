@@ -11,9 +11,7 @@ fn new_node[a](data: a) Node[a] = Node(data, next: Option.none)
 fn insert[a](self: &mut LinkedList[a], data: a) unit = {
   let mut new_node = new_node(data)
   let m = &mut new_node
-  //let old_head = self.head := Option.some(new_node)
-  let old_head = self.head
-  self.head = Option.some(new_node)
+  let old_head = self.head := Option.some(new_node)
   m.next = old_head
 }
 
@@ -36,7 +34,8 @@ fn print(self: &LinkedList[int]) unit = {
 }
 
 fn main() unit = {
-  let list = new_linked_list()  
+  let mut list = new_linked_list()  
   list.insert(1)
+  list.insert(2)
   list.print()
 }
