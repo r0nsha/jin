@@ -961,6 +961,12 @@ impl<'a> Parser<'a> {
                         span,
                     }
                 }
+                TokenKind::Walrus => {
+                    self.next();
+                    let rhs = self.parse_expr()?;
+                    let span = expr.span().merge(rhs.span());
+                    Expr::Swap { lhs: Box::new(expr), rhs: Box::new(rhs), span }
+                }
                 _ => {
                     if let Some(op) = BinOp::from_assign_op(tok.kind) {
                         // OpAssign (x += 1)

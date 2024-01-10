@@ -128,6 +128,7 @@ impl Expr {
 pub enum ExprKind {
     Let(Let),
     Assign(Assign),
+    Swap(Swap),
     Match(Match),
     Loop(Loop),
     Break,
@@ -211,10 +212,9 @@ pub struct Assign {
 }
 
 #[derive(Debug, Clone)]
-pub struct If {
-    pub cond: Box<Expr>,
-    pub then: Box<Expr>,
-    pub otherwise: Box<Expr>,
+pub struct Swap {
+    pub lhs: Box<Expr>,
+    pub rhs: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]

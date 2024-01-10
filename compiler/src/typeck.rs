@@ -934,6 +934,23 @@ impl<'db> Typeck<'db> {
                     *span,
                 ))
             }
+            ast::Expr::Swap { lhs, rhs, span } => {
+                let lhs = self.check_expr(env, lhs, None)?;
+                let rhs = self.check_expr(env, rhs, Some(lhs.ty))?;
+
+                self.at(Obligation::exprs(*span, lhs.span, rhs.span))
+                    .eq(lhs.ty, rhs.ty)
+                    .or_coerce(self, rhs.id)?;
+
+                Ok(self.expr(
+                    hir::ExprKind::Swap(hir::Swap {
+                        lhs: Box::new(lhs),
+                        rhs: Box::new(rhs),
+                    }),
+                    lhs.ty,
+                    *span,
+                ))
+            }
             ast::Expr::Return { expr, span } => {
                 if let Some(fn_id) = env.fn_id() {
                     let ret_ty = self.db[fn_id].ty.as_fn().unwrap().ret;

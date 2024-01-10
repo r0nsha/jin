@@ -114,6 +114,11 @@ pub enum Expr {
         op: Option<BinOp>,
         span: Span,
     },
+    Swap {
+        lhs: Box<Self>,
+        rhs: Box<Self>,
+        span: Span,
+    },
     Return {
         expr: Option<Box<Self>>,
         span: Span,
@@ -190,6 +195,7 @@ impl Spanned for Expr {
         match self {
             Self::Let(Let { span, .. })
             | Self::Assign { span, .. }
+            | Self::Swap { span, .. }
             | Self::Name { span, .. }
             | Self::Field { span, .. }
             | Self::Return { span, .. }

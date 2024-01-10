@@ -49,6 +49,13 @@ impl PrettyPrint for Expr {
                 rhs.pretty_print(cx);
                 cx.builder.end_child();
             }
+            Self::Swap { lhs, rhs, .. } => {
+                cx.builder.begin_child(":=".to_string());
+                lhs.pretty_print(cx);
+                cx.builder.add_empty_child("and".to_string());
+                rhs.pretty_print(cx);
+                cx.builder.end_child();
+            }
             Self::Return { expr, .. } => {
                 cx.builder.begin_child("return".to_string());
 
