@@ -472,11 +472,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Assign(assign) => {
                 let lhs = self.lower_expr(&assign.lhs);
                 self.try_use(lhs, assign.lhs.span);
-                self.check_assign_mutability(lhs, expr.span);
+                self.check_assign_mutability(
+                    AssignKind::Assign,
+                    lhs,
+                    expr.span,
+                );
 
                 let rhs = self.lower_expr(&assign.rhs);
-                self.try_move(rhs, assign.rhs.span);
-
                 let rhs = if let Some(op) = assign.op {
                     self.push_inst_with_register(assign.lhs.ty, |value| {
                         Inst::Binary { value, lhs, rhs, op, span: expr.span }
@@ -484,6 +486,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 } else {
                     rhs
                 };
+
+                self.try_move(rhs, assign.rhs.span);
 
                 // NOTE: The lhs needs to be destroyed before it's assigned to
                 self.destroy_value_entirely(lhs, assign.lhs.span);
@@ -494,7 +498,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Swap(swap) => {
                 let lhs = self.lower_expr(&swap.lhs);
                 self.try_use(lhs, swap.lhs.span);
-                self.check_swap_mutability(lhs, expr.span);
+                self.check_assign_mutability(AssignKind::Swap, lhs, expr.span);
 
                 let rhs = self.lower_expr(&swap.rhs);
                 self.try_move(rhs, swap.rhs.span);
@@ -1888,21 +1892,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.current_block().is_connected()
     }
 
-    fn check_assign_mutability(&mut self, lhs: ValueId, span: Span) {
+    fn check_assign_mutability(
+        &mut self,
+        kind: AssignKind,
+        lhs: ValueId,
+        span: Span,
+    ) {
         if let Err(root) = self.value_imm_root(lhs, BreakOnMutRef::Yes) {
             self.cx.db.diagnostics.emit(self.imm_root_err(
-                "cannot assign",
-                lhs,
-                root,
-                span,
-            ));
-        }
-    }
-
-    fn check_swap_mutability(&mut self, lhs: ValueId, span: Span) {
-        if let Err(root) = self.value_imm_root(lhs, BreakOnMutRef::Yes) {
-            self.cx.db.diagnostics.emit(self.imm_root_err(
-                "cannot swap",
+                match kind {
+                    AssignKind::Assign => "cannot assign",
+                    AssignKind::Swap => "cannot swap",
+                },
                 lhs,
                 root,
                 span,
@@ -2234,4 +2235,10 @@ impl<'a> DecisionState<'a> {
             span,
         }
     }
+}
+
+#[derive(Debug)]
+enum AssignKind {
+    Assign,
+    Swap,
 }
