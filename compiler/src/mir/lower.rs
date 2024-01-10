@@ -1964,23 +1964,23 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 );
 
                 self.position_at(destroy_block);
-                self.free_value(value, span);
+                self.call_free_fn(value);
+                self.push_inst(Inst::Free { value, span });
                 self.push_br(no_destroy_block);
 
                 // Now that the value is destroyed, it has definitely been moved...
                 self.set_moved(value, span);
                 self.position_at(no_destroy_block);
             }
-            ValueState::PartiallyMoved { .. } | ValueState::Owned => {
+            ValueState::PartiallyMoved { .. } => {
+                self.push_inst(Inst::Free { value, span });
+            }
+            ValueState::Owned => {
                 // Unconditional destroy
-                self.free_value(value, span);
+                self.call_free_fn(value);
+                self.push_inst(Inst::Free { value, span });
             }
         }
-    }
-
-    fn free_value(&mut self, value: ValueId, span: Span) {
-        self.call_free_fn(value);
-        self.push_inst(Inst::Free { value, span });
     }
 
     fn destroy_fields(&mut self, value: ValueId, span: Span) {
