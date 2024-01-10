@@ -40,7 +40,7 @@ pub(super) struct Lower<'db> {
     pub(super) id_to_global: FxHashMap<DefId, GlobalId>,
     pub(super) struct_ctors: FxHashMap<AdtId, FnSigId>,
     pub(super) variant_ctors: FxHashMap<VariantId, FnSigId>,
-    pub(super) union_frees: FxHashMap<AdtId, FnSigId>,
+    pub(super) adt_frees: FxHashMap<AdtId, FnSigId>,
 }
 
 impl<'db> Lower<'db> {
@@ -53,7 +53,7 @@ impl<'db> Lower<'db> {
             id_to_global: FxHashMap::default(),
             struct_ctors: FxHashMap::default(),
             variant_ctors: FxHashMap::default(),
-            union_frees: FxHashMap::default(),
+            adt_frees: FxHashMap::default(),
         }
     }
 
@@ -260,18 +260,18 @@ impl<'db> Lower<'db> {
         sig
     }
 
-    fn get_or_create_union_free(&mut self, adt_id: AdtId) -> FnSigId {
-        if let Some(sig_id) = self.union_frees.get(&adt_id) {
+    fn get_or_create_adt_free(&mut self, adt_id: AdtId) -> FnSigId {
+        if let Some(sig_id) = self.adt_frees.get(&adt_id) {
             return *sig_id;
         }
 
-        let sig_id = self.create_union_free(adt_id);
-        self.union_frees.insert(adt_id, sig_id);
+        let sig_id = self.create_adt_free(adt_id);
+        self.adt_frees.insert(adt_id, sig_id);
 
         sig_id
     }
 
-    fn create_union_free(&mut self, adt_id: AdtId) -> FnSigId {
+    fn create_adt_free(&mut self, adt_id: AdtId) -> FnSigId {
         let adt = &self.db[adt_id];
         let def = &self.db[adt.def_id];
         let union_def = adt.as_union().unwrap();
@@ -2046,7 +2046,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             TyKind::Adt(adt_id, _) => match &self.cx.db[*adt_id].kind {
                 AdtKind::Struct(_) => None,
                 AdtKind::Union(_) => {
-                    Some(self.cx.get_or_create_union_free(*adt_id))
+                    Some(self.cx.get_or_create_adt_free(*adt_id))
                 }
             },
             _ => None,
