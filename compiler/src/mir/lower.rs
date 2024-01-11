@@ -1784,6 +1784,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return;
         }
 
+        let destroy_glue = self.needs_destroy_glue(value);
+
         match self.value_state(value) {
             ValueState::Moved(_) => {
                 // Value has been moved, don't destroy
@@ -1802,20 +1804,32 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 );
 
                 // self.call_free_fn(value);
-                self.ins(destroy_block).free(value, span).br(no_destroy_block);
+                self.ins(destroy_block)
+                    .free(value, destroy_glue, span)
+                    .br(no_destroy_block);
 
                 // Now that the value is destroyed, it has definitely been moved...
                 self.set_moved(value, span);
                 self.position_at(no_destroy_block);
             }
             ValueState::PartiallyMoved { .. } => {
-                self.ins(self.current_block).free(value, span);
+                self.ins(self.current_block).free(value, destroy_glue, span);
             }
             ValueState::Owned => {
                 // Unconditional destroy
                 // self.call_free_fn(value);
-                self.ins(self.current_block).free(value, span);
+                self.ins(self.current_block).free(value, destroy_glue, span);
             }
+        }
+    }
+
+    fn needs_destroy_glue(&self, value: ValueId) -> bool {
+        match self.ty_of(value).kind() {
+            TyKind::Adt(adt_id, _) => {
+                matches!(self.cx.db[*adt_id].kind, AdtKind::Union(_))
+            }
+            TyKind::Param(_) => true,
+            _ => false,
         }
     }
 

@@ -487,7 +487,7 @@ impl<'db> Generator<'db> {
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
-            Inst::Free { value, span } => {
+            Inst::Free { value, destroy_glue: _, span } => {
                 self.refcheck_and_free(state, *value, *span)
             }
             Inst::IncRef { value } => {
