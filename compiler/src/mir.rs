@@ -182,6 +182,11 @@ impl Body {
     }
 
     pub fn create_edge(&mut self, source: BlockId, target: BlockId) {
+        if source == target {
+            // Prevent cycles between a block and itself
+            return;
+        }
+
         self.block_mut(source).successors.insert(target);
         self.block_mut(target).predecessors.insert(source);
     }
@@ -417,7 +422,7 @@ pub enum Inst {
     StackAlloc { value: ValueId, init: Option<ValueId> },
     Store { value: ValueId, target: ValueId },
     Alloc { value: ValueId },
-    Free { value: ValueId, destroy_glue:bool, span: Span },
+    Free { value: ValueId, destroy_glue: bool, span: Span },
     IncRef { value: ValueId },
     DecRef { value: ValueId },
     Br { target: BlockId },
