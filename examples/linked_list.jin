@@ -2,30 +2,32 @@ import std.option.{Option, ?}
 
 fn extern printf(fmt: *u8, ..) i32
 
-type LinkedList[a](head: Option[Node[a]])
-type Node[a](data: a, next: Option[Node[a]])
+type LinkedList[a](
+  tail: Option[&mut Node[a]],
+  head: Option[Node[a]],
+)
 
-fn new_linked_list[a]() LinkedList[a] = LinkedList(head: Option.none)
-fn new_node[a](data: a) Node[a] = Node(data, next: Option.none)
+type Node[a](
+  prev: Option[&mut Node[a]],
+  data: a,
+  next: Option[Node[a]],
+)
 
-fn insert[a](self: &mut LinkedList[a], data: a) unit = {
-  let mut new_node = new_node(data)
-  let m = &mut new_node
-  let old_head = self.head := Option.some(new_node)
-  m.next = old_head
-}
+fn new_linked_list[a]() LinkedList[a] = LinkedList(tail: Option.none, head: Option.none)
+fn new_node[a](data: a) Node[a] = Node(prev: Option.none, data: data, next: Option.none)
 
-fn each[a](self: &LinkedList[a], f: fn(&a) unit) unit = {
-  let mut curr = &self.head
+fn push_front[a](self: &mut LinkedList[a], data: a) unit = {
+  let mut node = new_node(data)
+  let node_mut = &mut node
 
-  loop {
-    match curr {
-      Option.some(v) -> {
-        curr = &v.next
-        f(&v.data)
-      },
-      Option.none -> break
-    }
+  match self.head := Option.some(node) {
+    Option.some(old_head) -> {
+      old_head.prev = Option.some(node_mut)
+      node_mut.next = Option.some(old_head)
+    },
+    Option.none -> {
+      self.tail = Option.some(node_mut)
+    },
   }
 }
 
@@ -52,8 +54,8 @@ fn print(self: &LinkedList[int]) unit = {
 
 fn main() unit = {
   let mut list = new_linked_list[int]()  
-  list.insert(3)
-  list.insert(2)
-  list.insert(1)
+  //list.push_front(3)
+  //list.push_front(2)
+  list.push_front(1)
   list.print()
 }
