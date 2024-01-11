@@ -1807,7 +1807,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     Some(no_destroy_block),
                 );
 
-                // self.call_free_fn(value);
                 self.ins(destroy_block)
                     .free(value, destroy_glue, span)
                     .br(no_destroy_block);
