@@ -29,29 +29,23 @@ fn each[a](self: &LinkedList[a], f: fn(&a) unit) unit = {
   }
 }
 
-fn print_int(self: &int) unit = {
-  printf("%d".ptr, self)
-}
-
 fn print(self: &LinkedList[int]) unit = {
   let mut curr = &self.head
 
   printf("[".ptr)
 
-  self.each(print_int)
-
-  //loop {
-  //  match curr {
-  //    Option.some(v) -> {
-  //      curr = &v.next
-  //      printf("%d".ptr, v.data)
-  //      if curr.is_some() {
-  //        printf(", ".ptr)
-  //      }
-  //    },
-  //    Option.none -> break
-  //  }
-  //}
+  loop {
+    match curr {
+      Option.some(v) -> {
+        curr = &v.next
+        printf("%d".ptr, v.data)
+        if curr.is_some() {
+          printf(", ".ptr)
+        }
+      },
+      Option.none -> break
+    }
+  }
 
   printf("]\n".ptr)
 }
