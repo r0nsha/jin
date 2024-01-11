@@ -28,9 +28,6 @@ struct Specialize<'db> {
 
     // Functions that have already been specialized and should be re-used
     specialized_fns: FxHashMap<SpecializedFn, FnSigId>,
-
-    // Generated free functions for adt types
-    adt_frees: FxHashMap<(AdtId, Vec<Ty>), FnSigId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -47,7 +44,6 @@ impl<'db> Specialize<'db> {
             used_fns: FxHashSet::default(),
             used_globals: FxHashSet::default(),
             specialized_fns: FxHashMap::default(),
-            adt_frees: FxHashMap::default(),
         }
     }
 
@@ -318,11 +314,14 @@ impl SpecializedMir {
 
 struct ExpandDestroys<'db> {
     db: &'db Db,
+
+    // Generated free functions for adt types
+    adt_frees: FxHashMap<(AdtId, Vec<Ty>), FnSigId>,
 }
 
 impl<'db> ExpandDestroys<'db> {
     fn new(db: &'db Db) -> Self {
-        Self { db }
+        Self { db, adt_frees: FxHashMap::default() }
     }
 
     fn run(self, mir: &mut Mir) {
@@ -351,11 +350,12 @@ impl<'db> ExpandDestroys<'db> {
 
         for block in body.blocks_mut() {
             block.insts.retain_mut(|inst| match inst {
+                Inst::Free { value, .. }
+                    if !destroyed_values.contains(value) =>
+                {
+                    false
+                }
                 Inst::Free { value, .. } => {
-                    if !destroyed_values.contains(value) {
-                        return false;
-                    }
-
                     if value_tys[&*value].is_ref() {
                         *inst = Inst::DecRef { value: *value };
                     }
