@@ -7,13 +7,13 @@ type Option*[a] {
 //	match self {
 //		Option.some(v) -> v,
 //		Option.none -> panic("called `Option.get` on a `none` value")
-//  }
+//	}
 
 fn is_some*[a](self: &Option[a]) bool =
 	match self {
 		Option.some(_) -> true,
 		Option.none -> false
-  }
+	}
 
 fn is_none*[a](self: &Option[a]) bool =
 	!self.is_some()
