@@ -26,13 +26,13 @@ fn print(self: &LinkedList[int]) unit = {
         curr = v.next
         printf("%d".ptr, v.data)
 
-        match curr {
-          Option.some(_) -> printf(", ".ptr),
-          Option.none -> {}
-        }
-        //if curr.is_some() {
-        //  printf(", ".ptr)
+        //match curr {
+        //  Option.some(_) -> printf(", ".ptr),
+        //  Option.none -> {}
         //}
+        if curr.is_some() {
+          printf(", ".ptr)
+        }
       },
       Option.none -> break
     }

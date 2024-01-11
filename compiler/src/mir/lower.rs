@@ -457,8 +457,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                                 init: Some(init),
                             },
                         );
-                        self.locals.insert(name.id, value);
                         self.create_destroy_flag(value);
+                        self.locals.insert(name.id, value);
                     }
                     Pat::Discard(span) => {
                         self.destroy_value_entirely(init, *span);
@@ -1012,8 +1012,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         )
                     };
 
-                    self.locals.insert(id, binding_value);
                     self.create_destroy_flag(binding_value);
+                    self.locals.insert(id, binding_value);
                 }
                 pmatch::Binding::Discard(..) => {}
             }
@@ -1617,6 +1617,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.ty_of(value).is_ref()
     }
 
+    fn needs_destroy(&self, value: ValueId) -> bool {
+        let ty = self.ty_of(value);
+        ty.is_ref() || ty.is_move(self.cx.db)
+    }
+
     pub fn set_owned(&mut self, value: ValueId) {
         self.set_value_state(value, ValueState::Owned);
     }
@@ -1779,7 +1784,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn destroy_value(&mut self, value: ValueId, span: Span) {
-        if !self.value_is_move(value) && !self.value_is_ref(value) {
+        if !self.needs_destroy(value) {
             return;
         }
 
@@ -1842,7 +1847,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub(super) fn create_destroy_flag(&mut self, value: ValueId) {
-        if !self.value_is_move(value) {
+        if !self.needs_destroy(value) {
             return;
         }
 
