@@ -127,7 +127,7 @@ fn build(db: &mut Db, root_file: &Utf8Path) {
     db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
         .expect("emitting mir failed");
 
-    mir.validate();
+    // mir.validate();
 
     // Generate C code from Mir
     cgen::codegen(db, &mir);

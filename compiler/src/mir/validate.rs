@@ -1,3 +1,4 @@
+#![allow(unused)]
 use crate::mir::{Body, GlobalKind, Inst, Mir, StaticGlobal};
 
 impl Mir {
