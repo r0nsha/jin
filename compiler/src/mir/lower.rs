@@ -964,7 +964,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let test_block = self.body.create_block("match_test");
         let mut blocks = vec![];
 
-        self.body.create_edge(parent_block, test_block);
+        self.ins(parent_block).br(test_block);
         values.push(cond);
 
         for case in cases {
@@ -974,7 +974,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.lower_decision(state, case.decision, block, values.clone());
         }
 
-        self.position_at(test_block);
         let uint = self.cx.db.types.uint;
         let tag_field = self
             .create_untracked_value(uint, ValueKind::Field(cond, ustr("tag")));

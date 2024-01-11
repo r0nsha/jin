@@ -26,10 +26,10 @@ fn print(self: &LinkedList[int]) unit = {
         curr = v.next
         printf("%d".ptr, v.data)
 
-        //match curr {
-        //  Option.some(_) -> printf(", ".ptr),
-        //  Option.none -> {}
-        //}
+        match curr {
+          Option.some(_) -> printf(", ".ptr),
+          Option.none -> {}
+        }
         //if curr.is_some() {
         //  printf(", ".ptr)
         //}
@@ -46,5 +46,5 @@ fn main() unit = {
   list.insert(3)
   list.insert(2)
   list.insert(1)
-  //list.print()
+  list.print()
 }
