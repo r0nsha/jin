@@ -20,19 +20,23 @@ fn validate_body(name: &str, body: &Body) {
 }
 
 fn validate_refcnt_balance(name: &str, body: &Body) {
-    let mut balance = 0;
+    let mut increfs = 0;
+    let mut decrefs = 0;
 
     for block in body.blocks() {
         for inst in &block.insts {
             match inst {
-                Inst::IncRef { .. } => balance += 1,
-                Inst::DecRef { .. } => balance -= 1,
+                Inst::IncRef { .. } => increfs += 1,
+                Inst::DecRef { .. } => decrefs += 1,
                 _ => (),
             }
         }
     }
 
+    let balance = increfs - decrefs;
     if balance != 0 {
-        eprintln!("{name}: unbalanced refcounts - {balance}");
+        eprintln!(
+            "{name}: unbalanced refcounts - {increfs}/{decrefs} ({balance})"
+        );
     }
 }
