@@ -326,32 +326,31 @@ impl<'db> ExpandDestroys<'db> {
 
     fn run(self, mir: &mut Mir) {
         for fun in mir.fns.values_mut() {
-            self.remove_unused_destroys(&mut fun.body);
+            self.body(&mut fun.body);
         }
 
         for global in mir.globals.values_mut() {
             if let GlobalKind::Static(StaticGlobal { body, .. }) =
                 &mut global.kind
             {
-                self.remove_unused_destroys(body);
+                self.body(body);
             }
         }
     }
 
-    fn remove_unused_destroys(&self, body: &mut Body) {
-        let destroyed_values: FxHashSet<ValueId> = body
-            .values()
-            .iter()
-            .filter_map(|v| self.should_destroy_ty(v.ty).then_some(v.id))
-            .collect();
+    fn body(&self, body: &mut Body) {
+        self.remove_unused_destroys(body);
+        self.expand_destroy_glue(body);
+    }
 
+    fn remove_unused_destroys(&self, body: &mut Body) {
         let value_tys: FxHashMap<ValueId, Ty> =
             body.values().iter().map(|v| (v.id, v.ty)).collect();
 
         for block in body.blocks_mut() {
             block.insts.retain_mut(|inst| match inst {
                 Inst::Free { value, .. }
-                    if !destroyed_values.contains(value) =>
+                    if !self.should_destroy_ty(value_tys[&*value]) =>
                 {
                     false
                 }
@@ -379,6 +378,10 @@ impl<'db> ExpandDestroys<'db> {
             TyKind::Ref(ty, _) => ty.is_move(self.db),
             _ => false,
         }
+    }
+
+    fn expand_destroy_glue(&self, body: &mut Body) {
+        for block in body.blocks_mut() {}
     }
 }
 
