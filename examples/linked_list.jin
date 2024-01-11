@@ -42,10 +42,24 @@ fn print(self: &LinkedList[int]) unit = {
   //printf("]\n".ptr)
 }
 
+
+fn repro(self: &LinkedList[int]) unit = {
+  let mut curr = &self.head
+
+  match curr {
+    Option.some(v) -> {
+      curr = &v.next
+      curr.is_some()
+    },
+    Option.none -> {}
+  }
+}
+
 fn main() unit = {
   let mut list = new_linked_list[int]()  
   //list.insert(3)
   //list.insert(2)
   list.insert(1)
-  list.print()
+  //list.print()
+  list.repro()
 }
