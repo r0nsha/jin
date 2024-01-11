@@ -15,32 +15,32 @@ fn insert[a](self: &mut LinkedList[a], data: a) unit = {
   m.next = old_head
 }
 
-fn print(self: &LinkedList[int]) unit = {
-  let mut curr = &self.head
-
-  //printf("[".ptr)
-
-  loop {
-    match curr {
-      Option.some(v) -> {
-        curr = &v.next
-        //printf("%d".ptr, v.data)
-
-        //match curr {
-        //  Option.some(_) -> printf(", ".ptr),
-        //  Option.none -> {}
-        //}
-        let x = curr.is_some()
-        //if curr.is_some() {
-        //  printf(", ".ptr)
-        //}
-      },
-      Option.none -> break
-    }
-  }
-
-  //printf("]\n".ptr)
-}
+//fn print(self: &LinkedList[int]) unit = {
+//  let mut curr = &self.head
+//
+//  //printf("[".ptr)
+//
+//  loop {
+//    match curr {
+//      Option.some(v) -> {
+//        curr = &v.next
+//        //printf("%d".ptr, v.data)
+//
+//        //match curr {
+//        //  Option.some(_) -> printf(", ".ptr),
+//        //  Option.none -> {}
+//        //}
+//        let x = curr.is_some()
+//        //if curr.is_some() {
+//        //  printf(", ".ptr)
+//        //}
+//      },
+//      Option.none -> break
+//    }
+//  }
+//
+//  //printf("]\n".ptr)
+//}
 
 
 fn repro(self: &LinkedList[int]) unit = {
