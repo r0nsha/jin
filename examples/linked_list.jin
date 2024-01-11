@@ -18,7 +18,7 @@ fn insert[a](self: &mut LinkedList[a], data: a) unit = {
 fn print(self: &LinkedList[int]) unit = {
   let mut curr = &self.head
 
-  printf("[".ptr)
+  //printf("[".ptr)
 
   loop {
     match curr {
@@ -39,7 +39,7 @@ fn print(self: &LinkedList[int]) unit = {
     }
   }
 
-  printf("]\n".ptr)
+  //printf("]\n".ptr)
 }
 
 fn main() unit = {

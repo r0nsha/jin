@@ -1205,12 +1205,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
-    #[allow(unused)]
-    pub fn clone_value(&mut self, value: ValueId) -> ValueId {
-        let value = self.body.value(value);
-        self.create_value(value.ty, value.kind.clone())
-    }
-
     pub fn create_ref(&mut self, to_clone: ValueId, ty: Ty) -> ValueId {
         let value = self.push_inst_with_register(ty, |value| {
             Inst::StackAlloc { value, init: Some(to_clone) }
