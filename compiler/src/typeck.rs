@@ -1305,10 +1305,14 @@ impl<'db> Typeck<'db> {
 
             otherwise
         } else {
+            self.at(Obligation::obvious(then.span))
+                .eq(self.db.types.unit, then.ty)
+                .or_coerce(self, then.id)?;
+
             self.unit_expr(span)
         };
 
-        let ty = then.ty;
+        let ty = otherwise.ty;
         let cond_span = cond.span;
 
         Ok(self.expr(
