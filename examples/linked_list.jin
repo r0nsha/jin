@@ -30,9 +30,10 @@ fn print(self: &LinkedList[int]) unit = {
         //  Option.some(_) -> printf(", ".ptr),
         //  Option.none -> {}
         //}
-        if curr.is_some() {
-          printf(", ".ptr)
-        }
+        let x = curr.is_some()
+        //if curr.is_some() {
+        //  printf(", ".ptr)
+        //}
       },
       Option.none -> break
     }

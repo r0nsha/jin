@@ -121,6 +121,8 @@ fn build(db: &mut Db, root_file: &Utf8Path) {
     let mut mir = db.time("Hir -> Mir", |db| mir::lower(db, &hir));
     expect!(db);
 
+    mir.dbg();
+
     // Specialize polymorphic MIR
     db.time("Mir Specialization", |db| mir::specialize(db, &mut mir));
 
