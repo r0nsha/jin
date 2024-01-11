@@ -5,14 +5,14 @@ use rustc_hash::FxHashSet;
 use ustr::ustr;
 
 use crate::{
-    db::{AdtId, Db, DefId, Variant},
+    db::{AdtField, AdtId, AdtKind, Db, DefId, StructDef, Variant},
     mangle,
     middle::{Mutability, NamePat, Pat, Vis},
     mir::{
         BlockId, Body, Fn, FnParam, FnSig, FnSigId, FxHashMap, GlobalId,
         GlobalKind, IdMap, Inst, Mir, StaticGlobal, ValueId, ValueKind,
     },
-    span::Span,
+    span::{Span, Spanned as _},
     subst::{Subst, SubstTy},
     ty::{fold::TyFolder, FnTy, FnTyParam, Instantiation, Ty, TyKind},
     word::Word,
@@ -20,7 +20,7 @@ use crate::{
 
 pub fn specialize(db: &Db, mir: &mut Mir) {
     Specialize::new(db).run(mir);
-    ExpandDestroys::new(db).run(mir);
+    ExpandDestroys::new(db, mir).run(mir);
 }
 
 struct Specialize<'db> {
@@ -121,18 +121,18 @@ enum JobTarget {
 
 struct SpecializeBody<'db, 'cx> {
     cx: &'cx mut Specialize<'db>,
-    specialized_mir: SpecializedMir,
+    smir: SpecializedMir,
 }
 
 impl<'db, 'cx> SpecializeBody<'db, 'cx> {
     fn new(cx: &'cx mut Specialize<'db>, mir: &Mir) -> Self {
-        Self { cx, specialized_mir: SpecializedMir::new(mir) }
+        Self { cx, smir: SpecializedMir::new(mir) }
     }
 
     fn run(mut self, mir: &mut Mir, job: &Job) {
         self.cx.mark_used(job.target);
         self.specialize(mir, job.target);
-        self.specialized_mir.merge_into(mir);
+        self.smir.merge_into(mir);
         self.cx.work.mark_done(job.target);
     }
 
@@ -242,7 +242,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
         fun.sig = new_sig_id;
         fun.subst(&mut SpecializeParamFolder { instantiation });
 
-        self.specialized_mir.fns.insert(new_sig_id, fun);
+        self.smir.fns.insert(new_sig_id, fun);
         self.cx.work.push(Job { target: JobTarget::Fn(new_sig_id) });
 
         new_sig_id
@@ -266,7 +266,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
 
         sig.name = ustr(&format!("{}__{}", sig.name, instantation_str));
 
-        self.specialized_mir.fn_sigs.insert_with_key(|id| {
+        self.smir.fn_sigs.insert_with_key(|id| {
             sig.id = id;
             sig
         })
@@ -318,17 +318,22 @@ impl SpecializedMir {
 #[derive(Debug)]
 struct ExpandDestroys<'db> {
     db: &'db Db,
+    smir: SpecializedMir,
 
     // Generated free functions for adt types
     adt_frees: FxHashMap<Ty, FnSigId>,
 }
 
 impl<'db> ExpandDestroys<'db> {
-    fn new(db: &'db Db) -> Self {
-        Self { db, adt_frees: FxHashMap::default() }
+    fn new(db: &'db Db, mir: &Mir) -> Self {
+        Self {
+            db,
+            smir: SpecializedMir::new(mir),
+            adt_frees: FxHashMap::default(),
+        }
     }
 
-    fn run(self, mir: &mut Mir) {
+    fn run(mut self, mir: &mut Mir) {
         for fun in mir.fns.values_mut() {
             self.body(&mut fun.body);
         }
@@ -340,9 +345,11 @@ impl<'db> ExpandDestroys<'db> {
                 self.body(body);
             }
         }
+
+        self.smir.merge_into(mir);
     }
 
-    fn body(&self, body: &mut Body) {
+    fn body(&mut self, body: &mut Body) {
         self.remove_unused_destroys(body);
         self.expand_destroy_glue(body);
     }
@@ -385,24 +392,50 @@ impl<'db> ExpandDestroys<'db> {
         }
     }
 
-    fn expand_destroy_glue(&self, body: &mut Body) {
-        let mut expanded: Vec<(usize, Inst)> = vec![];
+    fn expand_destroy_glue(&mut self, body: &mut Body) {
+        let mut expanded: Vec<(BlockId, usize, FnSigId)> = vec![];
 
         for block in body.blocks() {
-            for inst in &block.insts {
+            for (idx, inst) in block.insts.iter().enumerate() {
                 match inst {
                     Inst::Free { value, destroy_glue, .. } if *destroy_glue => {
                         let ty = body.value(*value).ty;
-                        dbg!(self.get_or_create_free_fn(ty));
-                        todo!();
+                        let free_fn = self.get_or_create_free_fn(ty);
+                        expanded.push((block.id, idx, free_fn));
                     }
                     _ => (),
                 }
             }
         }
 
-        dbg!(expanded);
-        todo!()
+        for (block, inst_idx, free_fn) in expanded {
+            let free_fn_ty = self.smir.fn_sigs[free_fn].ty;
+            let result = body.create_register(self.db.types.unit);
+            let callee = body.create_value(free_fn_ty, ValueKind::Fn(free_fn));
+
+            let Inst::Free { value, .. } = body.block(block).insts[inst_idx]
+            else {
+                unreachable!()
+            };
+
+            // TODO: location param
+            body.block_mut(block).insts[inst_idx] =
+                Inst::Call { value: result, callee, args: vec![value] };
+        }
+    }
+
+    fn get_free_call_values(
+        &mut self,
+        body: &mut Body,
+        ty: Ty,
+    ) -> (ValueId, ValueId) {
+        let free_fn = self.get_or_create_free_fn(ty);
+
+        let free_fn_ty = self.smir.fn_sigs[free_fn].ty;
+        let result = body.create_register(self.db.types.unit);
+        let callee = body.create_value(free_fn_ty, ValueKind::Fn(free_fn));
+
+        (result, callee)
     }
 
     fn get_or_create_free_fn(&mut self, ty: Ty) -> FnSigId {
@@ -448,20 +481,21 @@ impl TyFolder for SpecializeParamFolder<'_> {
 }
 
 #[derive(Debug)]
-pub(super) struct CreateAdtFree<'cx, 'db> {
-    pub(super) cx: &'cx mut ExpandDestroys<'db>,
-    pub(super) body: Body,
-    pub(super) current_block: BlockId,
+struct CreateAdtFree<'cx, 'db> {
+    cx: &'cx mut ExpandDestroys<'db>,
+    body: Body,
+    current_block: BlockId,
 }
 
 impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
-    pub(super) fn new(cx: &'cx mut ExpandDestroys<'db>) -> Self {
+    fn new(cx: &'cx mut ExpandDestroys<'db>) -> Self {
         Self { cx, body: Body::new(), current_block: BlockId::start() }
     }
 
     fn create(mut self, adt_id: AdtId, targs: &[Ty]) -> FnSigId {
         let adt = &self.cx.db[adt_id];
-        let adt_ty = adt.ty();
+        let instantiation = adt.instantiation(targs);
+        let adt_ty = instantiation.fold(adt.ty());
 
         let name = ustr(
             &self.cx.db[adt.def_id]
@@ -495,54 +529,73 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             is_c_variadic: false,
         }));
 
-        todo!()
-        // let sig = self.cx.mir.fn_sigs.insert_with_key(|id| FnSig {
-        //     id,
-        //     name,
-        //     params,
-        //     ty: fn_ty,
-        //     is_extern: false,
-        //     is_c_variadic: false,
-        //     span: adt.name.span(),
-        // });
-        //
-        // let start_block = self.body.create_block("start");
-        // self.current_block = start_block;
-        //
-        // let self_value =
-        //     self.body.create_value(adt_ty, ValueKind::UniqueName(self_name));
-        //
-        // match &adt.kind {
-        //     AdtKind::Union(union_def) => {
-        //         let mut blocks = vec![];
-        //
-        //         for &variant_id in &union_def.variants {
-        //             let variant = &self.cx.db[variant_id];
-        //             let variant_value = self.body.create_value(
-        //                 adt_ty,
-        //                 ValueKind::Variant(self_value, variant.name.name()),
-        //             );
-        //             let block =
-        //                 self.lower_variant_free(&variant, variant_value);
-        //             blocks.push(block);
-        //         }
-        //
-        //         self.current_block = start_block;
-        //         let uint = self.cx.db.types.uint;
-        //         let tag_field = self.body.create_value(
-        //             uint,
-        //             ValueKind::Field(self_value, ustr("tag")),
-        //         );
-        //         self.body.switch(start_block, tag_field, blocks);
-        //     }
-        //     AdtKind::Struct(struct_def) => {
-        //         unreachable!()
-        //     }
-        // }
-        //
-        // self.cx.mir.fns.insert(sig, Fn { sig, body: self.body });
-        //
-        // sig
+        let sig = self.cx.smir.fn_sigs.insert_with_key(|id| FnSig {
+            id,
+            name,
+            params,
+            ty: fn_ty,
+            is_extern: false,
+            is_c_variadic: false,
+            span: adt.name.span(),
+        });
+
+        let self_value =
+            self.body.create_value(adt_ty, ValueKind::UniqueName(self_name));
+
+        match &adt.kind {
+            AdtKind::Union(union_def) => {
+                todo!("lower_union_free")
+                // let mut blocks = vec![];
+                //
+                // for &variant_id in &union_def.variants {
+                //     let variant = &self.cx.db[variant_id];
+                //     let variant_value = self.body.create_value(
+                //         adt_ty,
+                //         ValueKind::Variant(self_value, variant.name.name()),
+                //     );
+                //     let block =
+                //         self.lower_variant_free(&variant, variant_value);
+                //     blocks.push(block);
+                // }
+                //
+                // let uint = self.cx.db.types.uint;
+                // let tag_field = self.body.create_value(
+                //     uint,
+                //     ValueKind::Field(self_value, ustr("tag")),
+                // );
+                // self.body.switch(start_block, tag_field, blocks);
+            }
+            AdtKind::Struct(struct_def) => {
+                self.lower_struct_free(struct_def, self_value, &instantiation);
+            }
+        }
+
+        self.cx.smir.fns.insert(sig, Fn { sig, body: self.body });
+
+        sig
+    }
+
+    fn lower_struct_free(
+        &mut self,
+        struct_def: &StructDef,
+        self_value: ValueId,
+        instantiation: &Instantiation,
+    ) {
+        let block = self.body.create_block("start");
+
+        self.free_adt_fields(
+            block,
+            self_value,
+            &struct_def.fields,
+            instantiation,
+        );
+
+        // TODO: location param
+        self.body.ins(block).free(
+            self_value,
+            false,
+            self.cx.db[self.cx.db[struct_def.id].def_id].span,
+        );
     }
 
     fn lower_variant_free(
@@ -574,5 +627,38 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         // }
         //
         // block
+    }
+
+    fn free_adt_fields(
+        &mut self,
+        block: BlockId,
+        self_value: ValueId,
+        fields: &[AdtField],
+        instantiation: &Instantiation,
+    ) {
+        for field in fields {
+            let ty = instantiation.fold(field.ty);
+            let field_value = self.body.create_value(
+                field.ty,
+                ValueKind::Field(self_value, field.name.name()),
+            );
+
+            match ty.kind() {
+                TyKind::Adt(..) => {
+                    let (result, callee) =
+                        self.cx.get_free_call_values(&mut self.body, ty);
+                    // TODO: location param
+                    self.body.ins(block).call(
+                        result,
+                        callee,
+                        vec![field_value],
+                    );
+                }
+                TyKind::Ref(..) if self.cx.should_refcount_ty(ty) => {
+                    self.body.ins(block).decref(field_value);
+                }
+                _ => (),
+            }
+        }
     }
 }

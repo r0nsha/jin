@@ -58,6 +58,16 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
+    pub fn call(
+        &mut self,
+        value: ValueId,
+        callee: ValueId,
+        args: Vec<ValueId>,
+    ) -> &mut Self {
+        self.inst(Inst::Call { value, callee, args });
+        self
+    }
+
     pub fn ret(&mut self, value: ValueId) -> &mut Self {
         self.inst(Inst::Return { value });
         self
@@ -70,6 +80,11 @@ impl<'a> InstBuilder<'a> {
 
     pub fn incref(&mut self, value: ValueId) -> &mut Self {
         self.inst(Inst::IncRef { value });
+        self
+    }
+
+    pub fn decref(&mut self, value: ValueId) -> &mut Self {
+        self.inst(Inst::DecRef { value });
         self
     }
 
@@ -98,7 +113,7 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
-    fn inst(&mut self, inst: Inst) {
+    pub fn inst(&mut self, inst: Inst) {
         self.body.block_mut(self.block).push_inst(inst);
     }
 }
