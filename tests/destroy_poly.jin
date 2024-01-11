@@ -1,0 +1,9 @@
+fn main() unit = {
+	let box = Box(Bag(Box(1), Box(Box(2))))
+	destroy(box)
+}
+
+type Box[a](v: a)
+type Bag(a: Box[int], b: Box[Box[int]])
+
+fn destroy[a](value: a) unit = {}

@@ -4,7 +4,6 @@ type Num(field: int)
 type Wrapper(num: Num)
 
 fn main() unit = {
-	// Ownership checks
 	use_after_move()	
 	use_after_move_scoped()	
 	move_out_of_global()
