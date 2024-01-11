@@ -5,7 +5,7 @@ use rustc_hash::FxHashSet;
 use ustr::ustr;
 
 use crate::{
-    db::{AdtField, AdtId, AdtKind, Db, DefId, StructDef, Variant},
+    db::{AdtField, AdtId, AdtKind, Db, DefId, StructDef, UnionDef},
     mangle,
     middle::{Mutability, NamePat, Pat, Vis},
     mir::{
@@ -538,26 +538,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
 
         match &adt.kind {
             AdtKind::Union(union_def) => {
-                todo!("lower_union_free")
-                // let mut blocks = vec![];
-                //
-                // for &variant_id in &union_def.variants {
-                //     let variant = &self.cx.db[variant_id];
-                //     let variant_value = self.body.create_value(
-                //         adt_ty,
-                //         ValueKind::Variant(self_value, variant.name.name()),
-                //     );
-                //     let block =
-                //         self.lower_variant_free(&variant, variant_value);
-                //     blocks.push(block);
-                // }
-                //
-                // let uint = self.cx.db.types.uint;
-                // let tag_field = self.body.create_value(
-                //     uint,
-                //     ValueKind::Field(self_value, ustr("tag")),
-                // );
-                // self.body.switch(start_block, tag_field, blocks);
+                self.lower_union_free(union_def, self_value, &instantiation);
             }
             AdtKind::Struct(struct_def) => {
                 self.lower_struct_free(struct_def, self_value, &instantiation);
@@ -575,52 +556,68 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         self_value: ValueId,
         instantiation: &Instantiation,
     ) {
-        let block = self.body.create_block("start");
+        let start_block = self.body.create_block("start");
 
         self.free_adt_fields(
-            block,
+            start_block,
             self_value,
             &struct_def.fields,
             instantiation,
         );
 
         // TODO: location param
-        self.body.ins(block).free(
+        self.body.ins(start_block).free(
             self_value,
             false,
             self.cx.db[self.cx.db[struct_def.id].def_id].span,
         );
     }
 
-    fn lower_variant_free(
+    fn lower_union_free(
         &mut self,
-        variant: &Variant,
-        variant_value: ValueId,
-    ) -> BlockId {
-        todo!()
-        // let block = self.body.create_block(format!("case_{}", variant.name));
-        // self.current_block = block;
-        //
-        // for field in &variant.fields {
-        //     let value = self.body.create_value(
-        //         field.ty,
-        //         ValueKind::Field(variant_value, field.name.name()),
-        //     );
-        //
-        //     match field.ty.kind() {
-        //         TyKind::Adt(adt_id, _) => match &self.cx.db[*adt_id].kind {
-        //             AdtKind::Struct(struct_def) => todo!(),
-        //             AdtKind::Union(union_def) => todo!(),
-        //         },
-        //         TyKind::Ref(..) | TyKind::Param(_) => {
-        //             // TODO: location param
-        //             self.push_inst(Inst::Free { value, span: field.span() });
-        //         }
-        //         _ => (),
-        //     }
-        // }
-        //
-        // block
+        union_def: &UnionDef,
+        self_value: ValueId,
+        instantiation: &Instantiation,
+    ) {
+        let start_block = self.body.create_block("start");
+        let join_block = self.body.create_block("join");
+        let self_ty = self.body.value(self_value).ty;
+
+        let mut blocks = vec![];
+
+        for &variant_id in &union_def.variants {
+            let variant = &self.cx.db[variant_id];
+            let name = variant.name.name();
+
+            let variant_value = self
+                .body
+                .create_value(self_ty, ValueKind::Variant(self_value, name));
+
+            let block = self.body.create_block(format!("case_{name}"));
+
+            // self.free_adt_fields(
+            //     block,
+            //     variant_value,
+            //     &variant.fields,
+            //     instantiation,
+            // );
+
+            self.body.ins(block).br(join_block);
+            blocks.push(block);
+        }
+
+        let uint = self.cx.db.types.uint;
+        let tag_field = self
+            .body
+            .create_value(uint, ValueKind::Field(self_value, ustr("tag")));
+        self.body.ins(start_block).switch(tag_field, blocks);
+
+        // TODO: location param
+        self.body.ins(join_block).free(
+            self_value,
+            false,
+            self.cx.db[self.cx.db[union_def.id].def_id].span,
+        );
     }
 
     fn free_adt_fields(
