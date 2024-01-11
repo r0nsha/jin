@@ -5,7 +5,7 @@ use rustc_hash::FxHashSet;
 use ustr::ustr;
 
 use crate::{
-    db::{AdtField, AdtId, AdtKind, Db, DefId, StructDef, UnionDef},
+    db::{AdtField, AdtKind, Db, DefId, StructDef, UnionDef},
     mangle,
     middle::{Mutability, NamePat, Pat, Vis},
     mir::{
@@ -450,10 +450,7 @@ impl<'db> ExpandDestroys<'db> {
             return *sig_id;
         }
 
-        let TyKind::Adt(adt_id, targs) = ty.kind() else { unreachable!() };
-        let sig_id = CreateAdtFree::new(self).create(*adt_id, targs);
-        self.adt_frees.insert(ty, sig_id);
-
+        let sig_id = CreateAdtFree::new(self).create(ty);
         sig_id
     }
 }
@@ -491,8 +488,10 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         Self { cx, body: Body::new() }
     }
 
-    fn create(mut self, adt_id: AdtId, targs: &[Ty]) -> FnSigId {
-        let adt = &self.cx.db[adt_id];
+    fn create(mut self, ty: Ty) -> FnSigId {
+        let TyKind::Adt(adt_id, targs) = ty.kind() else { unreachable!() };
+
+        let adt = &self.cx.db[*adt_id];
         let instantiation = adt.instantiation(targs);
         let adt_ty = instantiation.fold(adt.ty());
 
@@ -532,6 +531,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             is_c_variadic: false,
             span: adt.name.span(),
         });
+        self.cx.adt_frees.insert(ty, sig);
 
         let self_value =
             self.body.create_value(adt_ty, ValueKind::UniqueName(self_name));
@@ -595,12 +595,12 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
 
             let block = self.body.create_block(format!("case_{name}"));
 
-            // self.free_adt_fields(
-            //     block,
-            //     variant_value,
-            //     &variant.fields,
-            //     instantiation,
-            // );
+            self.free_adt_fields(
+                block,
+                variant_value,
+                &variant.fields,
+                instantiation,
+            );
 
             self.body.ins(block).br(join_block);
             blocks.push(block);
