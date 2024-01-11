@@ -776,7 +776,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> BlockId {
         match decision {
             pmatch::Decision::Ok(body) => {
-                self.ins(parent_block).br(body.block);
                 self.body.create_edge(parent_block, body.block);
                 self.lower_decision_bindings(state, body.block, body.bindings);
                 self.lower_decision_body(state, self.current_block, body.block);
@@ -964,7 +963,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let test_block = self.body.create_block("match_test");
         let mut blocks = vec![];
 
-        self.ins(parent_block).br(test_block);
+        self.body.create_edge(parent_block, test_block);
         values.push(cond);
 
         for case in cases {
