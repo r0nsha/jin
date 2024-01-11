@@ -746,7 +746,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             AssignKind::Assign => {
                 // NOTE: The lhs needs to be destroyed before it's assigned to
                 self.destroy_value_entirely(lhs, lhs_span);
-                self.set_owned(lhs);
                 self.ins(self.current_block).store(rhs, lhs);
                 self.const_unit()
             }
