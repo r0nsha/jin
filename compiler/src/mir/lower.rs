@@ -776,6 +776,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> BlockId {
         match decision {
             pmatch::Decision::Ok(body) => {
+                self.ins(parent_block).br(body.block);
                 self.body.create_edge(parent_block, body.block);
                 self.lower_decision_bindings(state, body.block, body.bindings);
                 self.lower_decision_body(state, self.current_block, body.block);
@@ -867,7 +868,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             })
             .collect();
 
-        self.position_at(block);
         self.ins(block).brif(cond, blocks[1], Some(blocks[0]));
 
         block
@@ -1041,8 +1041,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.exit_scope();
 
         if self.in_connected_block() {
-            self.ins(self.current_block).store(value, state.output);
-            self.ins(self.current_block).br(state.join_block);
+            self.ins(self.current_block)
+                .store(value, state.output)
+                .br(state.join_block);
         }
 
         start_block
