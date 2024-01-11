@@ -1813,7 +1813,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     .br(no_destroy_block);
 
                 // Now that the value is destroyed, it has definitely been moved...
-                self.set_moved(value, span);
                 self.position_at(no_destroy_block);
             }
             ValueState::PartiallyMoved { .. } | ValueState::Owned => {
@@ -1821,6 +1820,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.ins(self.current_block).free(value, destroy_glue, span);
             }
         }
+
+        self.set_moved(value, span);
     }
 
     fn needs_destroy_glue(&self, value: ValueId) -> bool {
