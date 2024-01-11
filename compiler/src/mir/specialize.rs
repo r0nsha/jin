@@ -349,13 +349,14 @@ impl<'db> ExpandDestroys<'db> {
 
         for block in body.blocks_mut() {
             block.insts.retain_mut(|inst| match inst {
-                Inst::Free { value, .. }
-                    if !self.should_destroy_ty(value_tys[&*value]) =>
-                {
-                    false
-                }
                 Inst::Free { value, .. } => {
-                    if value_tys[&*value].is_ref() {
+                    let ty = value_tys[&*value];
+
+                    if !self.should_destroy_ty(ty) {
+                        return false;
+                    }
+
+                    if ty.is_ref() {
                         *inst = Inst::DecRef { value: *value };
                     }
 
