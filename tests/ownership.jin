@@ -12,6 +12,7 @@ fn main() unit = {
 	copy()
 	assign_not_moved()
 	destroy_discarded_values(Num(1))
+	destroy_poly_field()
 }
 
 fn use_after_move() unit = {
@@ -91,3 +92,13 @@ fn assign_not_moved() unit = {
 fn destroy_discarded_values(_: Num) unit = {
 	let _ = Num(2)
 }
+
+type Box[a](v: a)
+type Bag(a: Box[int], b: Box[Box[int]])
+
+fn destroy_poly_field() unit = {
+	let box = Box(Bag(Box(1), Box(Box(2))))
+	destroy(box)
+}
+
+fn destroy[a](value: a) unit = {}
