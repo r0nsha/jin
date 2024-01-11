@@ -1331,6 +1331,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
             // When a reference is moved, its refcount is incremented.
             if self.value_is_ref(value) {
+                // self.ins(self.current_block).incref(value);
                 self.create_ref(value, self.ty_of(value));
             }
 
@@ -1807,8 +1808,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.ins(self.current_block).free(value, destroy_glue, span);
             }
         }
-
-        self.set_moved(value, span);
     }
 
     fn needs_destroy_glue(&self, value: ValueId) -> bool {
