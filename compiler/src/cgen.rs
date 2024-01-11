@@ -144,7 +144,10 @@ fn compile_with_clang(
     //     }
 
     //     #[cfg(not(windows))]
-    Command::new("clang")
+
+    let mut cmd = Command::new("clang");
+
+    cmd
         .arg(c_file_path)
         .arg(format!("-o{exe_file_path}"))
         .arg("-std=c99")
@@ -157,7 +160,9 @@ fn compile_with_clang(
         .arg("-no-pie")
         // .arg("-O1")
         .arg("-g")
-        .args(link_flags)
-        .execute_output()
-        .expect("linking to work");
+        .args(link_flags);
+
+    //println!("{:?}", cmd);
+
+    cmd.execute_output().expect("linking to work");
 }

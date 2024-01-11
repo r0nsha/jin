@@ -9,7 +9,7 @@ use crate::{
     mangle,
     middle::{Mutability, NamePat, Pat, Vis},
     mir::{
-        BlockId, Body, Fn, FnParam, FnSig, FnSigId, FxHashMap, GlobalId,
+        BlockId, Body, Const, Fn, FnParam, FnSig, FnSigId, FxHashMap, GlobalId,
         GlobalKind, IdMap, Inst, Mir, StaticGlobal, ValueId, ValueKind,
     },
     span::{Span, Spanned as _},
@@ -536,14 +536,23 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         let self_value =
             self.body.create_value(adt_ty, ValueKind::UniqueName(self_name));
 
-        match &adt.kind {
+        let join_block = match &adt.kind {
             AdtKind::Union(union_def) => {
-                self.lower_union_free(union_def, self_value, &instantiation);
+                self.lower_union_free(union_def, self_value, &instantiation)
             }
             AdtKind::Struct(struct_def) => {
-                self.lower_struct_free(struct_def, self_value, &instantiation);
+                self.lower_struct_free(struct_def, self_value, &instantiation)
             }
-        }
+        };
+
+        let unit_value = self
+            .body
+            .create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
+        // TODO: location param
+        self.body
+            .ins(join_block)
+            .free(self_value, false, adt.name.span())
+            .ret(unit_value);
 
         self.cx.smir.fns.insert(sig, Fn { sig, body: self.body });
 
@@ -555,7 +564,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         struct_def: &StructDef,
         self_value: ValueId,
         instantiation: &Instantiation,
-    ) {
+    ) -> BlockId {
         let start_block = self.body.create_block("start");
 
         self.free_adt_fields(
@@ -565,12 +574,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             instantiation,
         );
 
-        // TODO: location param
-        self.body.ins(start_block).free(
-            self_value,
-            false,
-            self.cx.db[self.cx.db[struct_def.id].def_id].span,
-        );
+        start_block
     }
 
     fn lower_union_free(
@@ -578,7 +582,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         union_def: &UnionDef,
         self_value: ValueId,
         instantiation: &Instantiation,
-    ) {
+    ) -> BlockId {
         let start_block = self.body.create_block("start");
         let join_block = self.body.create_block("join");
         let self_ty = self.body.value(self_value).ty;
@@ -612,12 +616,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             .create_value(uint, ValueKind::Field(self_value, ustr("tag")));
         self.body.ins(start_block).switch(tag_field, blocks);
 
-        // TODO: location param
-        self.body.ins(join_block).free(
-            self_value,
-            false,
-            self.cx.db[self.cx.db[union_def.id].def_id].span,
-        );
+        join_block
     }
 
     fn free_adt_fields(
