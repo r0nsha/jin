@@ -1812,12 +1812,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.set_moved(value, span);
                 self.position_at(no_destroy_block);
             }
-            ValueState::PartiallyMoved { .. } => {
-                self.ins(self.current_block).free(value, destroy_glue, span);
-            }
-            ValueState::Owned => {
+            ValueState::PartiallyMoved { .. } | ValueState::Owned => {
                 // Unconditional destroy
-                // self.call_free_fn(value);
                 self.ins(self.current_block).free(value, destroy_glue, span);
             }
         }

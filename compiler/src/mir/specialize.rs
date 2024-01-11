@@ -484,12 +484,11 @@ impl TyFolder for SpecializeParamFolder<'_> {
 struct CreateAdtFree<'cx, 'db> {
     cx: &'cx mut ExpandDestroys<'db>,
     body: Body,
-    current_block: BlockId,
 }
 
 impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
     fn new(cx: &'cx mut ExpandDestroys<'db>) -> Self {
-        Self { cx, body: Body::new(), current_block: BlockId::start() }
+        Self { cx, body: Body::new() }
     }
 
     fn create(mut self, adt_id: AdtId, targs: &[Ty]) -> FnSigId {
@@ -497,13 +496,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         let instantiation = adt.instantiation(targs);
         let adt_ty = instantiation.fold(adt.ty());
 
-        let name = ustr(
-            &self.cx.db[adt.def_id]
-                .qpath
-                .clone()
-                .child(ustr("free"))
-                .join_with("_"),
-        );
+        let adt_name = mangle::mangle_adt(self.cx.db, adt, targs);
         let self_name = ustr("self");
 
         let params = vec![FnParam {
@@ -529,6 +522,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             is_c_variadic: false,
         }));
 
+        let name = ustr(&format!("{adt_name}_free"));
         let sig = self.cx.smir.fn_sigs.insert_with_key(|id| FnSig {
             id,
             name,
@@ -647,6 +641,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
                 TyKind::Adt(..) => {
                     let (result, callee) =
                         self.cx.get_free_call_values(&mut self.body, ty);
+
                     // TODO: location param
                     self.body.ins(block).call(
                         result,
