@@ -567,13 +567,13 @@ impl<'db> Generator<'db> {
     ) -> D<'db> {
         let value = state.body.value(value);
 
-        let name = match value.kind {
-            ValueKind::Register(name) => Self::register_name(value.id, name),
+        let name = match &value.kind {
+            ValueKind::Register(name) => Self::register_name(value.id, *name),
             ValueKind::Local(id) => state
                 .local_names
-                .insert_unique(id, self.db[id].name)
+                .insert_unique(*id, self.db[*id].name)
                 .to_string(),
-            _ => unreachable!(),
+            kind => unreachable!("{kind:?}"),
         };
 
         match init {
