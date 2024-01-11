@@ -111,6 +111,18 @@ fn coerce_tys(
                 false
             }
         }
+        (TyKind::Ref(a, _), _) => {
+            if !target.is_ref()
+                && !target.is_move(cx.db)
+                && unify_with_options(*a, target, cx, options).is_ok()
+            {
+                coercions
+                    .push(Coercion { kind: CoercionKind::RefToOwned, target });
+                true
+            } else {
+                false
+            }
+        }
         (TyKind::Never, _) | (TyKind::Unit, TyKind::Never) => {
             coercions.push(Coercion { kind: CoercionKind::NeverToAny, target });
             true

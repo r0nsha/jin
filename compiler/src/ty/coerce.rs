@@ -44,4 +44,5 @@ pub enum CoercionKind {
     IntPromotion,
     MutRefToImm,
     OwnedToRef,
+    RefToOwned,
 }

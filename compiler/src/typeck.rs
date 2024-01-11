@@ -1938,8 +1938,22 @@ impl<'db> Typeck<'db> {
                     TyKind::Adt(adt_id, _) if self.db[*adt_id].is_ref() => {
                         Ok(inner_ty.create_ref(*mutability))
                     }
-                    TyKind::Param(_) => Ok(inner_ty.create_ref(*mutability)),
-                    _ => Err(Diagnostic::error()
+                    TyKind::Param(_)
+                    | TyKind::Fn(_)
+                    | TyKind::RawPtr(_)
+                    | TyKind::Int(_)
+                    | TyKind::Uint(_)
+                    | TyKind::Float(_)
+                    | TyKind::Str
+                    | TyKind::Bool
+                    | TyKind::Unit => Ok(inner_ty.create_ref(*mutability)),
+                    TyKind::Adt(..)
+                    | TyKind::Ref(..)
+                    | TyKind::Never
+                    | TyKind::Infer(_)
+                    | TyKind::Type(_)
+                    | TyKind::Module(_)
+                    | TyKind::Unknown => Err(Diagnostic::error()
                         .with_message(format!(
                             "type `{}` cannot be referenced",
                             inner_ty.display(self.db)
