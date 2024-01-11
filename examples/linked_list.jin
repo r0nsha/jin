@@ -23,8 +23,8 @@ fn print(self: &LinkedList[int]) unit = {
   loop {
     match curr {
       Option.some(v) -> {
-        curr = v.next
-        printf("%d".ptr, v.data)
+        curr = &v.next
+        //printf("%d".ptr, v.data)
 
         //match curr {
         //  Option.some(_) -> printf(", ".ptr),

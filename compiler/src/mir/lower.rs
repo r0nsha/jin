@@ -1874,27 +1874,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    // fn call_free_fn(&mut self, freed: ValueId) {
-    //     let ty = self.ty_of(freed);
-    //
-    //     if let Some(free_fn) = self.cx.get_or_create_free_fn(ty) {
-    //         let callee = self.create_untracked_value(
-    //             self.cx.mir.fn_sigs[free_fn].ty,
-    //             ValueKind::Fn(free_fn),
-    //         );
-    //
-    //         let TyKind::Adt(adt_id, targs) = ty.kind() else { unreachable!() };
-    //         if !targs.is_empty() {
-    //             let instantiation = self.cx.db[*adt_id].instantiation(targs);
-    //             self.body.create_instantation(callee, instantiation);
-    //         }
-    //
-    //         self.push_inst_with_register(self.cx.db.types.unit, |value| {
-    //             Inst::Call { value, callee, args: vec![freed] }
-    //         });
-    //     }
-    // }
-
     fn value_name(&self, value: ValueId) -> String {
         match &self.body.value(value).kind {
             ValueKind::Register(_) | ValueKind::Const(_) => {
