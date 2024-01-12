@@ -737,7 +737,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         self.set_moved(value, expr.span);
-
         value
     }
 
