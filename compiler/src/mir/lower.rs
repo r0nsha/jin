@@ -1015,7 +1015,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.walk_parents(
                         source,
                         |this, parent, _| -> Result<(), ()> {
-                            println!("{}", this.value_name(parent));
                             this.set_partially_moved(parent, span);
                             Ok(())
                         },
