@@ -735,7 +735,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         if ty.is_ref() && !self.body.value(value).kind.is_register() {
             self.ins(self.current_block).incref(value);
             return value;
-            // return self.create_once_ref(value, ty, expr.span);
         }
 
         self.set_moved(value, expr.span);
