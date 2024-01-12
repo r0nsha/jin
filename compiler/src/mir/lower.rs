@@ -653,12 +653,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             Inst::Unary { value, inner, op: un.op }
                         })
                     }
-                    UnOp::Ref(mutability) => {
-                        if mutability.is_mut() {
-                            self.check_ref_mutability(inner, expr.span);
-                        }
-
-                        self.create_ref(inner, expr.ty)
+                    UnOp::Ref(_) => {
+                        self.create_ref(inner, expr.ty, expr.span)
                     }
                 }
             }
@@ -985,11 +981,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             match binding {
                 pmatch::Binding::Name(id, source, binding_ty, span) => {
                     let binding_value = if binding_ty.is_ref() {
-                        if binding_ty.is_mut_ref() {
-                            self.check_ref_mutability(source, span);
-                        }
-
-                        self.create_ref(source, binding_ty)
+                        self.create_ref(source, binding_ty, span)
                     } else {
                         let source = self.try_move(source, span);
                         self.push_inst_with(
@@ -1200,7 +1192,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
-    pub fn create_ref(&mut self, to_clone: ValueId, ty: Ty) -> ValueId {
+    pub fn create_ref(
+        &mut self,
+        to_clone: ValueId,
+        ty: Ty,
+        span: Span,
+    ) -> ValueId {
+        if ty.is_mut_ref() {
+            self.check_ref_mutability(to_clone, span);
+        }
+
         let value = self.push_inst_with_register(ty, |value| {
             Inst::StackAlloc { value, init: Some(to_clone) }
         });
@@ -1335,7 +1336,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
             // When a reference is moved, its refcount is incremented.
             if self.value_is_ref(value) {
-                let ref_value = self.create_ref(value, self.ty_of(value));
+                let ref_value =
+                    self.create_ref(value, self.ty_of(value), moved_to);
                 return Ok(ref_value);
             }
 
@@ -1659,9 +1661,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> ValueId {
         for coercion in coercions.iter() {
             coerced_value = match coercion.kind {
-                CoercionKind::NeverToAny
-                | CoercionKind::MutRefToImm
-                | CoercionKind::RefToOwned => coerced_value,
+                CoercionKind::NeverToAny | CoercionKind::RefToOwned => {
+                    coerced_value
+                }
                 CoercionKind::AnyToUnit => self.const_unit(),
                 CoercionKind::IntPromotion => {
                     self.push_inst_with_register(coercion.target, |value| {
@@ -1673,12 +1675,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         }
                     })
                 }
+                CoercionKind::MutRefToImm => {
+                    self.set_moved(coerced_value, span);
+                    self.push_inst_with_register(coercion.target, |value| {
+                        Inst::StackAlloc { value, init: Some(coerced_value) }
+                    })
+                }
                 CoercionKind::OwnedToRef => {
                     if coercion.target.is_mut_ref() {
                         self.check_ref_mutability(coerced_value, span);
                     }
 
-                    self.create_ref(coerced_value, coercion.target)
+                    self.create_ref(coerced_value, coercion.target, span)
                 }
             };
 
