@@ -1099,7 +1099,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         self.position_at(guard);
-        let cond = self.lower_expr(guard_expr);
+        let cond = self.lower_in_expr(guard_expr);
         self.exit_scope();
 
         for (id, old_value, new_value) in restore_bindings {
