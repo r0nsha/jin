@@ -1810,12 +1810,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     Some(no_destroy_block),
                 );
 
+                let const_false = self.const_bool(false);
+
                 self.ins(destroy_block)
+                    .store(const_false, destroy_flag)
                     .free(value, destroy_glue, span)
                     .br(no_destroy_block);
 
                 // Now that the value is destroyed, it has definitely been moved...
                 self.position_at(no_destroy_block);
+                self.set_moved(value, span);
             }
             ValueState::PartiallyMoved { .. } | ValueState::Owned => {
                 // Unconditional destroy
