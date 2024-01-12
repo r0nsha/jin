@@ -733,12 +733,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         // When a reference is moved, its refcount is incremented.
         if ty.is_ref() && !self.body.value(value).kind.is_register() {
-            self.ins(self.current_block).incref(value);
-            return value;
-            // return self.create_once_ref(value, ty, expr.span);
+            return self.create_once_ref(value, ty, expr.span);
         }
 
-        // self.set_moved(value, expr.span);
+        self.set_moved(value, expr.span);
         value
     }
 

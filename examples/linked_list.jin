@@ -22,8 +22,8 @@ fn push_front[a](self: &mut LinkedList[a], data: a) unit = {
 
   match self.head := Option.some(node) {
     Option.some(old_head) -> {
-      // old_head.prev = Option.some(node_mut)
-      // node_mut.next = Option.some(old_head)
+      old_head.prev = Option.some(node_mut)
+      node_mut.next = Option.some(old_head)
     },
     Option.none -> {
       self.tail = Option.some(node_mut)
@@ -34,22 +34,22 @@ fn push_front[a](self: &mut LinkedList[a], data: a) unit = {
 fn print(self: &LinkedList[int]) unit = {
   let mut curr = &self.head
 
-  // printf("[".ptr)
+  printf("[".ptr)
 
   loop {
     match curr {
       Option.some(v) -> {
         curr = &v.next
-        // printf("%d".ptr, v.data)
-        // if curr.is_some() {
-        //   printf(", ".ptr)
-        // }
+        printf("%d".ptr, v.data)
+        if curr.is_some() {
+          printf(", ".ptr)
+        }
       },
       Option.none -> break
     }
   }
 
-  // printf("]\n".ptr)
+  printf("]\n".ptr)
 }
 
 fn main() unit = {
