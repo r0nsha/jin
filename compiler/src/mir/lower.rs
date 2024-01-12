@@ -375,7 +375,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     }
                 }
 
-                let last_value = self.lower_expr(body);
+                let last_value = self.lower_in_expr(body);
 
                 if !self.body.last_inst_is_return() {
                     // If the body isn't terminating, we must push a return instruction at the
@@ -463,7 +463,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Assign(assign) => {
                 let lhs = self.lower_expr(&assign.lhs);
-                let rhs = self.lower_expr(&assign.rhs);
+                self.try_use(lhs, assign.lhs.span);
+
+                let rhs = self.lower_in_expr(&assign.rhs);
                 let rhs = if let Some(op) = assign.op {
                     self.push_inst_with_register(assign.lhs.ty, |value| {
                         Inst::Binary { value, lhs, rhs, op, span: expr.span }
@@ -475,18 +477,20 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.lower_assign(
                     AssignKind::Assign,
                     (lhs, assign.lhs.span),
-                    (rhs, assign.rhs.span),
+                    rhs,
                     expr.span,
                 )
             }
             hir::ExprKind::Swap(swap) => {
                 let lhs = self.lower_expr(&swap.lhs);
-                let rhs = self.lower_expr(&swap.rhs);
+                self.try_use(lhs, swap.lhs.span);
+
+                let rhs = self.lower_in_expr(&swap.rhs);
 
                 self.lower_assign(
                     AssignKind::Swap,
                     (lhs, swap.lhs.span),
-                    (rhs, swap.rhs.span),
+                    rhs,
                     expr.span,
                 )
             }
@@ -618,7 +622,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 result
             }
             hir::ExprKind::Return(ret) => {
-                let value = self.lower_expr(&ret.expr);
+                let value = self.lower_in_expr(&ret.expr);
                 self.push_return(value, expr.span);
                 self.const_unit()
             }
@@ -644,16 +648,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 })
             }
             hir::ExprKind::Unary(un) => {
-                let inner = self.lower_expr(&un.expr);
-
                 match un.op {
                     UnOp::Neg | UnOp::Not => {
-                        self.try_move(inner, un.expr.span);
+                        let inner = self.lower_in_expr(&un.expr);
                         self.push_inst_with_register(expr.ty, |value| {
                             Inst::Unary { value, inner, op: un.op }
                         })
                     }
-                    UnOp::Ref(_) => self.create_ref(inner, expr.ty, expr.span),
+                    UnOp::Ref(_) => {
+                        let inner = self.lower_expr(&un.expr);
+                        self.create_ref(inner, expr.ty, expr.span)
+                    }
                 }
             }
             hir::ExprKind::Binary(bin) => {
@@ -726,12 +731,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         &mut self,
         kind: AssignKind,
         (lhs, lhs_span): (ValueId, Span),
-        (rhs, rhs_span): (ValueId, Span),
+        rhs: ValueId,
         span: Span,
     ) -> ValueId {
-        self.try_use(lhs, lhs_span);
         self.check_assign_mutability(kind, lhs, span);
-        self.try_move(rhs, rhs_span);
 
         match kind {
             AssignKind::Assign => {
@@ -1168,7 +1171,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn push_return(&mut self, value: ValueId, span: Span) {
-        self.try_move(value, span);
         self.destroy_all_values(span);
         self.ins(self.current_block).ret(value);
     }
