@@ -733,7 +733,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         // When a reference is moved, its refcount is incremented.
         if ty.is_ref() && !self.body.value(value).kind.is_register() {
-            return self.create_once_ref(value, ty, expr.span);
+            self.ins(self.current_block).incref(value);
+            return value;
+            // return self.create_once_ref(value, ty, expr.span);
         }
 
         self.set_moved(value, expr.span);
@@ -1852,7 +1854,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub(super) fn create_destroy_flag(&mut self, value: ValueId) {
-        if !self.needs_destroy(value) {
+        if !self.value_is_move(value) {
             return;
         }
 
