@@ -997,25 +997,20 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         for binding in bindings {
             match binding {
                 pmatch::Binding::Name(id, source, binding_ty, span) => {
-                    let binding_value = if binding_ty.is_ref() {
-                        self.set_moved(source, span);
-                        self.ins(self.current_block).incref(source);
-                        // self.create_ref(source, binding_ty, span)
-                        source
-                    } else {
-                        self.try_move(source, span);
-                        self.push_inst_with(
-                            binding_ty,
-                            ValueKind::Local(id),
-                            |value| Inst::StackAlloc {
-                                value,
-                                init: Some(source),
-                            },
-                        )
-                    };
-
+                    let binding_value = self.push_inst_with(
+                        binding_ty,
+                        ValueKind::Local(id),
+                        |value| Inst::StackAlloc { value, init: Some(source) },
+                    );
                     self.create_destroy_flag(binding_value);
                     self.locals.insert(id, binding_value);
+
+                    if binding_ty.is_ref() {
+                        self.set_moved(source, span);
+                        self.ins(self.current_block).incref(source);
+                    } else {
+                        self.try_move(source, span);
+                    }
                 }
                 pmatch::Binding::Discard(..) => {}
             }
