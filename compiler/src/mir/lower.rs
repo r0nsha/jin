@@ -1326,9 +1326,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             })?;
 
             // When a reference is moved, its refcount is incremented.
-            if self.value_is_ref(value) {
+            if self.value_is_ref(value)
+                && !self.body.value(value).kind.is_register()
+            {
                 self.ins(self.current_block).incref(value);
             }
+
+            self.set_moved(value, moved_to);
 
             return Ok(());
         }
