@@ -998,7 +998,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             match binding {
                 pmatch::Binding::Name(id, source, binding_ty, span) => {
                     let binding_value = if binding_ty.is_ref() {
-                        self.create_ref(source, binding_ty, span)
+                        self.set_moved(source, span);
+                        self.ins(self.current_block).incref(source);
+                        // self.create_ref(source, binding_ty, span)
+                        source
                     } else {
                         self.try_move(source, span);
                         self.push_inst_with(
