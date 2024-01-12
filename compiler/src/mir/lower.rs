@@ -1332,8 +1332,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.ins(self.current_block).incref(value);
             }
 
-            self.set_moved(value, moved_to);
-
             return Ok(());
         }
 
