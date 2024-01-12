@@ -1677,7 +1677,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         self.check_ref_mutability(coerced_value, span);
                     }
 
-                    self.create_ref(coerced_value, coercion.target, span)
+                    let ref_value =
+                        self.create_ref(coerced_value, coercion.target, span);
+                    self.set_moved(ref_value, span);
+                    ref_value
                 }
             };
 

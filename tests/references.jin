@@ -11,7 +11,7 @@ fn main() unit = {
 	box.set(42) // Coerced to &mut Box
 	box.print() // box.value == 42
 
-	//let ref = Ref(&box)
+	let ref = Ref(&box)
 	//print(ref.box)
 
 	//let mut bag = Bag(Box(2), Box(3)).copy().copy()
