@@ -781,6 +781,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             pmatch::Decision::Ok(body) => {
                 self.body.create_edge(parent_block, body.block);
                 self.lower_decision_bindings(state, body.block, body.bindings);
+                self.destroy_match_values(state, values);
                 self.lower_decision_body(state, self.current_block, body.block);
                 body.block
             }
@@ -1027,6 +1028,21 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
+    fn destroy_match_values(
+        &mut self,
+        state: &DecisionState,
+        mut values: Vec<ValueId>,
+    ) {
+        while let Some(value) = values.pop() {
+            if matches!(self.value_state(value), ValueState::Moved(..)) {
+                continue;
+            }
+
+            self.set_moved(value, state.span);
+            self.ins(self.current_block).free(value, false, state.span);
+        }
+    }
+
     fn lower_decision_body(
         &mut self,
         state: &mut DecisionState,
@@ -1127,12 +1143,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         let guard_join = self.current_block;
         let fallback_block =
-            self.lower_decision(state, fallback, guard_join, values);
+            self.lower_decision(state, fallback, guard_join, values.clone());
 
         self.position_at(guard_join);
         self.ins(guard_join).brif(cond, body.block, Some(fallback_block));
 
         self.lower_decision_bindings(state, body.block, body.bindings);
+        self.destroy_match_values(state, values);
         self.lower_decision_body(state, self.current_block, body.block);
 
         guard
@@ -1833,6 +1850,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.position_at(no_destroy_block);
             }
             ValueState::PartiallyMoved { .. } => {
+                // TODO: walk fields and drop?
                 self.ins(self.current_block).free(value, false, span);
             }
             ValueState::Owned => {
