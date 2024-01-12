@@ -1243,6 +1243,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             if let AdtKind::Struct(struct_def) = &adt.kind {
                 let value = value.id;
 
+                // In order for fields to be destroyed in field-order,
+                // we must introduce them in reverse order (since values are destroyed in reverse).
                 let fields: FxHashMap<_, _> = struct_def
                     .fields
                     .iter()
@@ -1255,6 +1257,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         self.create_destroy_flag(value);
                         (name, value)
                     })
+                    .rev()
                     .collect();
 
                 self.fields.insert(value, fields);

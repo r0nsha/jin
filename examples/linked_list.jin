@@ -58,6 +58,7 @@ fn main() unit = {
   // list.push_front(2)
   list.push_front(1)
   //list.print()
+  destroy(list)
 }
 
-//fn destroy[a](_: a) unit = {}
+fn destroy[a](_: a) unit = {}
