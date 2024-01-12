@@ -348,6 +348,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn lower_fn(mut self, sig: FnSigId, fun: &hir::Fn) {
         match &fun.kind {
             FnKind::Bare { body } => {
+                // println!("fn `{}`", fun.sig.word);
+
                 if self.cx.db.main_function_id() == Some(fun.def_id) {
                     self.cx.mir.main_fn = Some(sig);
                 }
@@ -377,17 +379,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 let last_value = self.lower_in_expr(body);
 
+                self.exit_scope();
+
                 if !self.body.last_inst_is_return() {
                     // If the body isn't terminating, we must push a return instruction at the
                     // for the function's last value.
                     self.push_return(last_value, body.span.tail());
                 }
 
-                // println!("fn `{}`", fun.sig.word);
                 // println!("{}", self.value_states);
                 // println!("---------------------");
-
-                self.exit_scope();
 
                 self.body.cleanup();
                 self.cx.mir.fns.insert(sig, Fn { sig, body: self.body });
@@ -1010,7 +1011,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         self.try_move(source, span);
                     }
                 }
-                pmatch::Binding::Discard(..) => {}
+                pmatch::Binding::Discard(source, span) => {
+                    self.walk_parents(
+                        source,
+                        |this, parent, _| -> Result<(), ()> {
+                            this.set_partially_moved(parent, span);
+                            Ok(())
+                        },
+                    )
+                    .unwrap();
+                    self.destroy_value_entirely(source, span);
+                    self.set_moved(source, span);
+                }
             }
         }
     }
@@ -1723,28 +1735,29 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         });
     }
 
-    fn exit_scope(&mut self) -> Scope {
+    fn exit_scope(&mut self) {
+        self.destroy_scope_values();
         let scope = self.scopes.pop().expect("cannot exit the root scope");
-
-        self.destroy_scope_values(&scope);
 
         if let Some(curr_scope) = self.scopes.last_mut() {
             curr_scope.created_values.extend(&scope.moved_out);
         }
-
-        scope
     }
 
-    fn destroy_scope_values(&mut self, scope: &Scope) {
+    fn destroy_scope_values(&mut self) {
         if !self.in_connected_block() {
             return;
         }
 
-        let span = scope.span.tail();
+        let span = self.scope().span.tail();
 
-        for &value in scope.created_values.iter().rev() {
+        for idx in (0..self.scope().created_values.len()).rev() {
+            let value = self.scope().created_values[idx];
             self.destroy_value(value, span);
         }
+        // for &value in scope.created_values.iter().rev() {
+        //     self.destroy_value(value, span);
+        // }
     }
 
     fn destroy_loop_values(&mut self, span: Span) {
@@ -1789,8 +1802,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return;
         }
 
-        let destroy_glue = self.needs_destroy_glue(value);
-
         match self.value_state(value) {
             ValueState::Moved(_) => {
                 // Value has been moved, don't destroy
@@ -1809,6 +1820,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 );
 
                 let const_false = self.const_bool(false);
+                let destroy_glue = self.needs_destroy_glue(value);
 
                 self.ins(destroy_block)
                     .store(const_false, destroy_flag)
@@ -1818,10 +1830,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // Now that the value is destroyed, it has definitely been moved...
                 self.position_at(no_destroy_block);
             }
-            ValueState::PartiallyMoved { .. } | ValueState::Owned => {
+            ValueState::PartiallyMoved { .. } => {
+                self.ins(self.current_block).free(value, false, span);
+            }
+            ValueState::Owned => {
                 // Unconditional destroy
+                let destroy_glue = self.needs_destroy_glue(value);
                 self.ins(self.current_block).free(value, destroy_glue, span);
-                // TODO: this could be a bug if value is partially moved!
             }
         }
     }
@@ -1850,7 +1865,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub(super) fn create_destroy_flag(&mut self, value: ValueId) {
-        if !self.value_is_move(value) {
+        if !self.needs_destroy(value) {
             return;
         }
 
