@@ -723,14 +723,20 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn lower_in_expr(&mut self, expr: &hir::Expr) -> ValueId {
         let value = self.lower_expr(expr);
-        self.try_move(value, expr.span);
+
+        if self.value_is_move(value) {
+            self.try_move(value, expr.span);
+            return value;
+        }
 
         let ty = self.ty_of(value);
 
         // When a reference is moved, its refcount is incremented.
         if ty.is_ref() && !self.body.value(value).kind.is_register() {
-            return self.create_ref(value, ty, expr.span);
+            return self.create_once_ref(value, ty, expr.span);
         }
+
+        self.set_moved(value, expr.span);
 
         value
     }
@@ -1345,8 +1351,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.walk_parents(value, |this, parent, _| {
                 this.check_if_moved(parent, moved_to)
             })?;
-
-            self.set_moved(value, moved_to);
 
             return Ok(());
         }
