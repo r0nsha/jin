@@ -1015,6 +1015,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.walk_parents(
                         source,
                         |this, parent, _| -> Result<(), ()> {
+                            println!("{}", this.value_name(parent));
                             this.set_partially_moved(parent, span);
                             Ok(())
                         },
@@ -1580,13 +1581,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     }
                 };
 
-                match (&result_state, &state) {
-                    (ValueState::Owned, _) if is_initial_state => {
+                match &result_state {
+                    ValueState::Owned if is_initial_state => {
                         result_state = state;
                         is_initial_state = false;
                     }
-                    (ValueState::MaybeMoved(_), _) => break,
-                    _ => {
+                    ValueState::MaybeMoved(_) => break,
+                    ValueState::Owned
+                    | ValueState::Moved(_)
+                    | ValueState::PartiallyMoved(_) => {
                         if result_state != state {
                             result_state = ValueState::MaybeMoved(
                                 last_move_span
