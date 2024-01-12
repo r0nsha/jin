@@ -1243,16 +1243,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             if let AdtKind::Struct(struct_def) = &adt.kind {
                 let value = value.id;
 
-                let fields_to_create: Vec<(Ustr, Ty)> = struct_def
+                let fields: FxHashMap<_, _> = struct_def
                     .fields
                     .iter()
                     .filter(|f| f.ty.is_move(self.cx.db) || f.ty.is_ref())
-                    .map(|f| (f.name.name(), folder.fold(f.ty)))
-                    .collect();
-
-                let fields: FxHashMap<_, _> = fields_to_create
-                    .into_iter()
-                    .map(|(name, ty)| {
+                    .map(|f| {
+                        let name = f.name.name();
+                        let ty = folder.fold(f.ty);
                         let value = self
                             .create_value(ty, ValueKind::Field(value, name));
                         self.create_destroy_flag(value);
