@@ -1005,7 +1005,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                     if binding_ty.is_ref() {
                         self.set_moved(source, span);
-                        self.ins(self.current_block).incref(source);
+                        self.ins(self.current_block).incref(binding_value);
                     } else {
                         self.try_move(source, span);
                     }
