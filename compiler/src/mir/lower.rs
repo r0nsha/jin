@@ -723,7 +723,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn lower_in_expr(&mut self, expr: &hir::Expr) -> ValueId {
         let value = self.lower_expr(expr);
-
         let ty = self.ty_of(value);
 
         if ty.is_move(self.cx.db) {
