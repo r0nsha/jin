@@ -730,7 +730,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             && !self.body.value(value).kind.is_register()
         {
             self.create_ref(value, self.ty_of(value), expr.span);
-            // self.ins(self.current_block).incref(value);
         }
 
         value
