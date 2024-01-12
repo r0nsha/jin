@@ -1331,6 +1331,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 this.check_if_moved(parent, moved_to)
             })?;
 
+            self.set_moved(value, moved_to);
+
             // When a reference is moved, its refcount is incremented.
             if self.value_is_ref(value) {
                 let ref_value = self.create_ref(value, self.ty_of(value));
