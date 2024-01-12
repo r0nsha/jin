@@ -1208,6 +1208,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
+    pub fn create_once_ref(
+        &mut self,
+        to_clone: ValueId,
+        ty: Ty,
+        span: Span,
+    ) -> ValueId {
+        let value = self.create_ref(to_clone, ty, span);
+        self.set_moved(value, span);
+        value
+    }
+
     pub fn create_value_fields(&mut self, value: ValueId) {
         let value = self.body.value(value);
 
@@ -1677,10 +1688,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         self.check_ref_mutability(coerced_value, span);
                     }
 
-                    let ref_value =
-                        self.create_ref(coerced_value, coercion.target, span);
-                    self.set_moved(ref_value, span);
-                    ref_value
+                    self.create_once_ref(coerced_value, coercion.target, span)
                 }
             };
 
