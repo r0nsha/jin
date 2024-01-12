@@ -1340,7 +1340,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             if self.value_is_ref(value)
                 && !self.body.value(value).kind.is_register()
             {
-                self.create_ref(value, self.ty_of(value), moved_to);
+                self.create_once_ref(value, self.ty_of(value), moved_to);
                 // self.ins(self.current_block).incref(value);
             }
 
