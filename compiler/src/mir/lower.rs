@@ -725,11 +725,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let value = self.lower_expr(expr);
         self.try_move(value, expr.span);
 
+        let ty = self.ty_of(value);
+
         // When a reference is moved, its refcount is incremented.
-        if self.value_is_ref(value)
-            && !self.body.value(value).kind.is_register()
-        {
-            self.create_ref(value, self.ty_of(value), expr.span);
+        if ty.is_ref() && !self.body.value(value).kind.is_register() {
+            return self.create_ref(value, ty, expr.span);
         }
 
         value
@@ -1611,10 +1611,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn value_is_move(&self, value: ValueId) -> bool {
         self.ty_of(value).is_move(self.cx.db)
-    }
-
-    fn value_is_ref(&self, value: ValueId) -> bool {
-        self.ty_of(value).is_ref()
     }
 
     fn needs_destroy(&self, value: ValueId) -> bool {
