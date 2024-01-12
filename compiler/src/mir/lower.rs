@@ -406,8 +406,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let start_block = self.body.create_block("start");
                 self.position_at(start_block);
 
-                let value = self.lower_expr(&let_.value);
-                self.try_move(value, let_.value.span);
+                let value = self.lower_in_expr(&let_.value);
                 self.exit_scope();
 
                 self.body.cleanup();
@@ -439,10 +438,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn lower_expr_inner(&mut self, expr: &hir::Expr) -> ValueId {
         match &expr.kind {
             hir::ExprKind::Let(let_) => {
-                let init = self.lower_expr(&let_.value);
-
                 match &let_.pat {
                     Pat::Name(name) => {
+                        let init = self.lower_in_expr(&let_.value);
                         let value = self.push_inst_with(
                             let_.ty,
                             ValueKind::Local(name.id),
@@ -455,11 +453,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         self.locals.insert(name.id, value);
                     }
                     Pat::Discard(span) => {
+                        let init = self.lower_expr(&let_.value);
                         self.destroy_value_entirely(init, *span);
+                        self.try_move(init, let_.value.span);
                     }
                 }
-
-                self.try_move(init, let_.value.span);
 
                 self.const_unit()
             }
@@ -555,8 +553,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.position_at(start_block);
 
                 if let Some(cond_expr) = &loop_.cond {
-                    let cond = self.lower_expr(cond_expr);
-                    self.try_move(cond, cond_expr.span);
+                    let cond = self.lower_in_expr(cond_expr);
 
                     let not_cond = self.push_inst_with_register(
                         self.cx.db.types.bool,
@@ -632,15 +629,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 for arg in &call.args {
                     let idx = arg.index.expect("arg index to be resolved");
-                    let value = self.lower_expr(&arg.expr);
-                    self.try_move(value, arg.expr.span);
+                    let value = self.lower_in_expr(&arg.expr);
                     args.push((idx, value));
                 }
 
                 args.sort_by_key(|(idx, _)| *idx);
 
-                let callee = self.lower_expr(&call.callee);
-                self.try_move(callee, call.callee.span);
+                let callee = self.lower_in_expr(&call.callee);
 
                 self.push_inst_with_register(expr.ty, |value| Inst::Call {
                     value,
@@ -668,11 +663,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
             }
             hir::ExprKind::Binary(bin) => {
-                let lhs = self.lower_expr(&bin.lhs);
-                self.try_move(lhs, bin.lhs.span);
-
-                let rhs = self.lower_expr(&bin.rhs);
-                self.try_move(rhs, bin.rhs.span);
+                let lhs = self.lower_in_expr(&bin.lhs);
+                let rhs = self.lower_in_expr(&bin.rhs);
 
                 self.push_inst_with_register(expr.ty, |value| Inst::Binary {
                     value,
@@ -683,8 +675,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 })
             }
             hir::ExprKind::Cast(cast) => {
-                let inner = self.lower_expr(&cast.expr);
-                self.try_move(inner, cast.expr.span);
+                let inner = self.lower_in_expr(&cast.expr);
 
                 self.push_inst_with_register(cast.target, |value| Inst::Cast {
                     value,
@@ -729,6 +720,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.lower_const(&value, expr.ty)
             }
         }
+    }
+
+    fn lower_in_expr(&mut self, expr: &hir::Expr) -> ValueId {
+        let value = self.lower_expr(expr);
+        self.try_move(value, expr.span)
     }
 
     fn lower_assign(
@@ -1030,8 +1026,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         };
 
         self.position_at(start_block);
-        let value = self.lower_expr(expr);
-        self.try_move(value, expr.span);
+        let value = self.lower_in_expr(expr);
         self.exit_scope();
 
         if self.in_connected_block() {
