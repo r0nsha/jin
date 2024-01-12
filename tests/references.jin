@@ -6,16 +6,16 @@ type Mut(box: &mut Box)
 type Bag(a: Box, b: Box)
 
 fn main() unit = {
-	// let mut box = Box(1)
-	// box.print() // Coerced to &Box
-	// box.set(42) // Coerced to &mut Box
-	// box.print() // box.value == 42
+	let mut box = Box(1)
+	box.print() // Coerced to &Box
+	box.set(42) // Coerced to &mut Box
+	box.print() // box.value == 42
 
-	// let ref = Ref(&box)
+	let ref = Ref(&box)
 	// print(ref.box)
 
-	let mut bag = Bag(Box(2), Box(3)).copy().copy()
-	let ref_a = &mut bag.a
+	// let mut bag = Bag(Box(2), Box(3)).copy().copy()
+	// let ref_a = &mut bag.a
 	// let ref_b = &bag.b
 	// let ref_a = ref_a
 	// let ref_b = ref_b
@@ -24,13 +24,13 @@ fn main() unit = {
 	// let a = &ref_bag.a
 	// let b = &ref_bag.b
 
-	print(ref_a)
-	//print(ref_b)
+	// print(ref_a)
+	// print(ref_b)
 
-	//let mut box = Box(1)
-	//let mut rmut = Mut(&mut box)
-	//let m = &mut rmut.box
-	//rmut.box.value = 2
+	// let mut box = Box(1)
+	// let mut rmut = Mut(&mut box)
+	// let m = &mut rmut.box
+	// rmut.box.value = 2
 }
 
 fn print(box: &Box) unit = {

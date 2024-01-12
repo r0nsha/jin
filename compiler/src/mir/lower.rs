@@ -653,9 +653,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                             Inst::Unary { value, inner, op: un.op }
                         })
                     }
-                    UnOp::Ref(_) => {
-                        self.create_once_ref(inner, expr.ty, expr.span)
-                    }
+                    UnOp::Ref(_) => self.create_ref(inner, expr.ty, expr.span),
                 }
             }
             hir::ExprKind::Binary(bin) => {
@@ -1344,6 +1342,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             {
                 self.ins(self.current_block).incref(value);
             }
+
+            self.set_moved(value, moved_to);
 
             return Ok(());
         }
