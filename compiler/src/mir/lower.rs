@@ -724,7 +724,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn lower_in_expr(&mut self, expr: &hir::Expr) -> ValueId {
         let value = self.lower_expr(expr);
-        self.try_move(value, expr.span)
+        self.try_move(value, expr.span);
+        value
     }
 
     fn lower_assign(
@@ -1325,13 +1326,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 this.check_if_moved(parent, moved_to)
             })?;
 
+            self.set_moved(value, moved_to);
+
             // When a reference is moved, its refcount is incremented.
             if self.value_is_ref(value) {
-                // self.ins(self.current_block).incref(value);
                 self.create_ref(value, self.ty_of(value));
             }
-
-            self.set_moved(value, moved_to);
 
             return Ok(());
         }
