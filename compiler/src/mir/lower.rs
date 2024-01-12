@@ -1013,15 +1013,24 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     }
                 }
                 pmatch::Binding::Discard(source, span) => {
-                    self.walk_parents(
-                        source,
-                        |this, parent, _| -> Result<(), ()> {
-                            this.set_partially_moved(parent, span);
-                            Ok(())
-                        },
-                    )
-                    .unwrap();
-                    self.destroy_value_entirely(source, span);
+                    let has_parent_ref = self
+                        .walk_parents(
+                            source,
+                            |this, parent, _| -> Result<(), ()> {
+                                if this.ty_of(parent).is_ref() {
+                                    Err(())
+                                } else {
+                                    this.set_partially_moved(parent, span);
+                                    Ok(())
+                                }
+                            },
+                        )
+                        .is_err();
+
+                    if !has_parent_ref {
+                        self.destroy_value_entirely(source, span);
+                    }
+
                     self.set_moved(source, span);
                 }
             }
