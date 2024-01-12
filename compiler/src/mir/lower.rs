@@ -648,7 +648,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 match un.op {
                     UnOp::Neg | UnOp::Not => {
-                        self.try_move(inner, un.expr.span);
+                        let inner = self.try_move(inner, un.expr.span);
                         self.push_inst_with_register(expr.ty, |value| {
                             Inst::Unary { value, inner, op: un.op }
                         })
@@ -724,8 +724,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn lower_in_expr(&mut self, expr: &hir::Expr) -> ValueId {
         let value = self.lower_expr(expr);
-        self.try_move(value, expr.span);
-        value
+        self.try_move(value, expr.span)
     }
 
     fn lower_assign(
@@ -737,7 +736,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> ValueId {
         self.try_use(lhs, lhs_span);
         self.check_assign_mutability(kind, lhs, span);
-        self.try_move(rhs, rhs_span);
+        let rhs = self.try_move(rhs, rhs_span);
 
         match kind {
             AssignKind::Assign => {
@@ -992,7 +991,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                         self.create_ref(source, binding_ty)
                     } else {
-                        self.try_move(source, span);
+                        let source = self.try_move(source, span);
                         self.push_inst_with(
                             binding_ty,
                             ValueKind::Local(id),
@@ -1178,7 +1177,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn push_return(&mut self, value: ValueId, span: Span) {
-        self.try_move(value, span);
+        let value = self.try_move(value, span);
         self.destroy_all_values(span);
         self.ins(self.current_block).ret(value);
     }
@@ -1309,16 +1308,22 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         })
     }
 
-    pub fn try_move(&mut self, value: ValueId, moved_to: Span) {
+    pub fn try_move(&mut self, value: ValueId, moved_to: Span) -> ValueId {
         let result = self.try_move_inner(value, moved_to);
-        self.emit_result(result);
+        match result {
+            Ok(v) => v,
+            Err(d) => {
+                self.cx.diagnostics.push(d);
+                value
+            }
+        }
     }
 
     pub fn try_move_inner(
         &mut self,
         value: ValueId,
         moved_to: Span,
-    ) -> DiagnosticResult<()> {
+    ) -> DiagnosticResult<ValueId> {
         // If the value is copy, we don't need to move it.
         // Just check that its parents can be used.
         if !self.value_is_move(value) {
@@ -1326,14 +1331,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 this.check_if_moved(parent, moved_to)
             })?;
 
-            self.set_moved(value, moved_to);
-
             // When a reference is moved, its refcount is incremented.
             if self.value_is_ref(value) {
-                self.create_ref(value, self.ty_of(value));
+                let ref_value = self.create_ref(value, self.ty_of(value));
+                return Ok(ref_value);
             }
 
-            return Ok(());
+            return Ok(value);
         }
 
         self.check_if_moved(value, moved_to)?;
@@ -1360,7 +1364,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         self.set_destroy_flag(value);
 
-        Ok(())
+        Ok(value)
     }
 
     pub fn try_use(&mut self, value: ValueId, moved_to: Span) {
