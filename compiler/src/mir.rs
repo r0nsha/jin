@@ -198,6 +198,15 @@ impl Body {
         }
     }
 
+    pub fn parent(&self, value: ValueId) -> Option<ValueId> {
+        match self.value(value).kind {
+            ValueKind::Field(parent, _) | ValueKind::Variant(parent, _) => {
+                Some(parent)
+            }
+            _ => None,
+        }
+    }
+
     #[inline]
     pub fn value(&self, value: ValueId) -> &Value {
         &self.values[value]

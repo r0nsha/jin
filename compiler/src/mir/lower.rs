@@ -1301,13 +1301,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value: ValueId,
         f: &mut impl FnMut(&mut Self, ValueId, ValueId) -> Result<(), E>,
     ) -> Result<(), E> {
-        match self.body.value(value).kind {
-            ValueKind::Field(parent, _) => {
-                f(self, parent, value)?;
-                self.walk_parents_aux(parent, f)
-            }
-            ValueKind::Variant(parent, _) => f(self, parent, value),
-            _ => Ok(()),
+        if let Some(parent) = self.body.parent(value) {
+            f(self, parent, value)?;
+            self.walk_parents_aux(parent, f)
+        } else {
+            Ok(())
         }
     }
 
@@ -1823,6 +1821,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             ValueState::PartiallyMoved { .. } | ValueState::Owned => {
                 // Unconditional destroy
                 self.ins(self.current_block).free(value, destroy_glue, span);
+                // TODO: this could be a bug if value is partially moved!
             }
         }
     }

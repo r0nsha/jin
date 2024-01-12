@@ -21,9 +21,9 @@ fn push_front[a](self: &mut LinkedList[a], data: a) unit = {
   let node_mut = &mut node
 
   match self.head := Option.some(node) {
-    Option.some(old_head) -> {
-      old_head.prev = Option.some(node_mut)
-      node_mut.next = Option.some(old_head)
+    Option.some(_) -> {
+      // old_head.prev = Option.some(node_mut)
+      // node_mut.next = Option.some(old_head)
     },
     Option.none -> {
       self.tail = Option.some(node_mut)
