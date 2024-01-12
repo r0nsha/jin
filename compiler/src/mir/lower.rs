@@ -1819,7 +1819,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 // Now that the value is destroyed, it has definitely been moved...
                 self.position_at(no_destroy_block);
-                self.set_moved(value, span);
             }
             ValueState::PartiallyMoved { .. } | ValueState::Owned => {
                 // Unconditional destroy
