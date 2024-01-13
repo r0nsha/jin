@@ -27,8 +27,6 @@ use crate::{
     ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };
 
-const PRELUDE: &str = include_str!(concat!(env!("PWD"), "/rt/jin.c"));
-
 pub const DATA_FIELD: &str = "data";
 pub const REFCNT_FIELD: &str = "refcnt";
 pub const TAG_FIELD: &str = "tag";
@@ -73,8 +71,7 @@ impl<'db> Generator<'db> {
         let mut file =
             File::create(self.db.output_path().with_extension("c")).unwrap();
 
-        file.write_all(PRELUDE.as_bytes()).unwrap();
-        file.write_all(b"\n").unwrap();
+        file.write_all(b"#include \"jinrt.h\"\n").unwrap();
 
         let types = D::intersperse(self.types, D::hardline());
         let fn_decls = D::intersperse(self.fn_decls, D::hardline());

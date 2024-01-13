@@ -188,6 +188,15 @@ impl Libraries {
             libs: FxHashSet::default(),
         };
 
+        // Add runtime library
+        let rt_path = Utf8PathBuf::from_path_buf(
+            std::env::current_dir().unwrap().join("rt"),
+        )
+        .unwrap();
+        this.paths.insert(rt_path.to_string());
+        this.paths.insert("jinrt".to_string());
+
+        // Add libraries included by the user
         for lib in &db.extern_libs {
             match lib {
                 ExternLib::Sys(lib_name) => {

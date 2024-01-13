@@ -84,3 +84,4 @@ void jin_rt_refcheck(usize refcnt, u8 *fmt, jin_rt_location loc) {
 FORCE_INLINE bool jin_rt_strcmp(str a, str b) {
   return strcmp(a.ptr, b.ptr) == 0;
 }
+

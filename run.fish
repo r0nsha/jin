@@ -7,10 +7,16 @@ else
     set -l output_name (basename $source .jin)
     set -l output $source_dir/build/$output_name
 
+    # Copy std package
+    cp -r std target/std
+
+    # Copy runtime
+    mkdir target/rt
+    cp rt/jinrt.h target/rt/jinrt.h
+
     cargo run -- build $source --timings --emit ast --emit hir --emit mir --emit c
 
     if test $status -eq 0 && test -f $output
-        cp -r std target/std
         $output
     end
 end
