@@ -83,9 +83,9 @@ impl<'db> Generator<'db> {
         if data.ty.is_any_int() {
             // Perform safety checked ops
             match data.op {
-                BinOp::Add => return self.codegen_bin_op_add(state, data),
-                BinOp::Sub => return self.codegen_bin_op_sub(state, data),
-                BinOp::Mul => return self.codegen_bin_op_mul(state, data),
+                // BinOp::Add => return self.codegen_bin_op_add(state, data),
+                // BinOp::Sub => return self.codegen_bin_op_sub(state, data),
+                // BinOp::Mul => return self.codegen_bin_op_mul(state, data),
                 BinOp::Div | BinOp::Rem => {
                     return self.codegen_bin_op_div(state, data)
                 }

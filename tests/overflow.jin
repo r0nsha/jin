@@ -5,13 +5,14 @@ import std.{
 
 fn main() unit = {
     i()
-    //u()
+    println()
+    u()
 }
 
 fn i() unit = {
     println("signed:")
 
-    let a: i8 = 1
+    let a: i8 = 2
     let b: i8 = I8_MAX
 
     if {b > 0 && a > I8_MAX - b} || {b < 0 && a < I8_MIN - b} {
@@ -23,6 +24,25 @@ fn i() unit = {
     }
 
     if {b != 0 && a > I8_MAX / b} || {b != 0 && a < I8_MIN / b} {
+	println("overflow mul")
+    }
+}
+
+fn u() unit = {
+    println("unsigned:")
+
+    let a: u8 = 1
+    let b: u8 = U8_MAX
+
+    if b > 0 && a > U8_MAX - b {
+	println("overflow add")
+    }
+
+    if b > a {
+	println("overflow sub")
+    }
+
+    if b != 0 && a > U8_MAX / b {
 	println("overflow mul")
     }
 }
