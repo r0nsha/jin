@@ -10,7 +10,7 @@ use crate::{
     middle::{BinOp, CmpOp},
     mir::ValueId,
     span::Span,
-    ty::{FloatTy, Ty, TyKind},
+    ty::{FloatTy, IntTy, Ty, TyKind, UintTy},
 };
 
 #[derive(Debug)]
@@ -83,11 +83,11 @@ impl<'db> Generator<'db> {
         if data.ty.is_any_int() {
             // Perform safety checked ops
             match data.op {
-                // BinOp::Add => return self.codegen_bin_op_add(state, data),
-                // BinOp::Sub => return self.codegen_bin_op_sub(state, data),
-                // BinOp::Mul => return self.codegen_bin_op_mul(state, data),
+                BinOp::Add | BinOp::Sub | BinOp::Mul => {
+                    return self.codegen_safe_bin_op2(state, data)
+                }
                 BinOp::Div | BinOp::Rem => {
-                    return self.codegen_bin_op_div(state, data)
+                    return self.codegen_safe_bin_op_div(state, data)
                 }
                 _ => (),
             }
@@ -114,31 +114,7 @@ impl<'db> Generator<'db> {
         self.value_assign(state, data.target, |_| init)
     }
 
-    fn codegen_bin_op_add(
-        &mut self,
-        state: &FnState<'db>,
-        data: &BinOpData,
-    ) -> D<'db> {
-        self.codegen_safe_bin_op(state, "add", "add", data)
-    }
-
-    fn codegen_bin_op_sub(
-        &mut self,
-        state: &FnState<'db>,
-        data: &BinOpData,
-    ) -> D<'db> {
-        self.codegen_safe_bin_op(state, "sub", "subtract", data)
-    }
-
-    fn codegen_bin_op_mul(
-        &mut self,
-        state: &FnState<'db>,
-        data: &BinOpData,
-    ) -> D<'db> {
-        self.codegen_safe_bin_op(state, "mul", "multiply", data)
-    }
-
-    fn codegen_bin_op_div(
+    fn codegen_safe_bin_op_div(
         &mut self,
         state: &FnState<'db>,
         data: &BinOpData,
@@ -156,49 +132,156 @@ impl<'db> Generator<'db> {
         D::intersperse([safety_check, op], D::hardline())
     }
 
-    fn codegen_safe_bin_op(
+    fn codegen_safe_bin_op2(
         &mut self,
         state: &FnState<'db>,
-        fname: &str,
-        action: &str,
         data: &BinOpData,
     ) -> D<'db> {
-        let decl = self.value_decl(state, data.target);
+        let (lhs, rhs) =
+            (self.value(state, data.lhs), self.value(state, data.rhs));
 
-        let builtin_name = format!(
-            "__builtin_{}{}{}_overflow",
-            if data.ty.is_int() { "s" } else { "u" },
-            fname,
-            match data.ty.size(&self.target_metrics) {
-                8..=16 => "",
-                32 => "l",
-                64 => "ll",
-                _ => unreachable!(),
-            }
-        );
+        let cond = self.codegen_bin_op_overflow_check_cond(data, &lhs, &rhs);
 
-        let (target, lhs, rhs) = (
-            self.value(state, data.target),
-            self.value(state, data.lhs),
-            self.value(state, data.rhs),
-        );
-
-        let builtin_call = D::text(builtin_name)
-            .append("(")
-            .append(lhs)
-            .append(", ")
-            .append(rhs)
-            .append(", &")
-            .append(target)
-            .append(")");
+        let action = match data.op {
+            BinOp::Add => "add",
+            BinOp::Sub => "subtract",
+            BinOp::Mul => "multiply",
+            BinOp::Div => "divide",
+            op => unreachable!("{op}"),
+        };
 
         D::intersperse(
             [
-                decl,
-                self.panic_if(builtin_call, &overflow_msg(action), data.span),
+                self.panic_if(cond, &overflow_msg(action), data.span),
+                self.value_assign(state, data.target, |_| {
+                    bin_op(lhs, data.op, rhs)
+                }),
             ],
             D::hardline(),
         )
+    }
+
+    fn codegen_bin_op_overflow_check_cond(
+        &self,
+        data: &BinOpData,
+        lhs: &D<'db>,
+        rhs: &D<'db>,
+    ) -> D<'db> {
+        let target_metrics = &self.target_metrics;
+
+        let (min, max) = match data.ty.kind() {
+            TyKind::Int(IntTy::Int) => {
+                (D::text("INTPTR_MIN"), D::text("INTPTR_MAX"))
+            }
+            TyKind::Int(ity) => {
+                let size = ity.size(target_metrics);
+                (
+                    D::text(format!("INT{size}_MIN")),
+                    D::text(format!("INT{size}_MAX")),
+                )
+            }
+            TyKind::Uint(UintTy::Uint) => {
+                (D::text("UINTPTR_MIN"), D::text("UINTPTR_MAX"))
+            }
+            TyKind::Uint(uty) => {
+                let size = uty.size(target_metrics);
+                (
+                    D::text(format!("UINT{size}_MIN")),
+                    D::text(format!("UINT{size}_MAX")),
+                )
+            }
+            ty => unreachable!("{ty:?}"),
+        };
+
+        match (data.op, data.ty.kind()) {
+            // (rhs > 0 && lhs > max - rhs) || (rhs < 0 && lhs < min - rhs)
+            (BinOp::Add, TyKind::Int(_)) => D::text("(")
+                .append(rhs.clone())
+                .append(D::text(" > 0 && "))
+                .append(lhs.clone())
+                .append(D::text(" > "))
+                .append(max)
+                .append(D::text(" - "))
+                .append(rhs.clone())
+                .append(D::text(") || ("))
+                .append(rhs.clone())
+                .append(D::text(" < 0 && "))
+                .append(lhs.clone())
+                .append(D::text(" < "))
+                .append(min)
+                .append(D::text(" - "))
+                .append(rhs.clone())
+                .append(D::text(")")),
+
+            // (rhs < 0 && lhs > max + rhs) || (rhs > 0 && lhs < min + rhs)
+            (BinOp::Sub, TyKind::Int(_)) => D::text("(")
+                .append(rhs.clone())
+                .append(D::text(" < 0 && "))
+                .append(lhs.clone())
+                .append(D::text(" > "))
+                .append(max)
+                .append(D::text(" + "))
+                .append(rhs.clone())
+                .append(D::text(") || ("))
+                .append(rhs.clone())
+                .append(D::text(" > 0 && "))
+                .append(lhs.clone())
+                .append(D::text(" < "))
+                .append(min)
+                .append(D::text(" + "))
+                .append(rhs.clone())
+                .append(D::text(")")),
+
+            // (rhs != 0 && lhs > max / rhs) || (rhs != 0 && lhs < min / rhs)
+            (BinOp::Mul, TyKind::Int(_)) => D::text("(")
+                .append(rhs.clone())
+                .append(D::text(" != 0 && "))
+                .append(lhs.clone())
+                .append(D::text(" > "))
+                .append(max)
+                .append(D::text(" / "))
+                .append(rhs.clone())
+                .append(D::text(") || ("))
+                .append(rhs.clone())
+                .append(D::text(" != 0 && "))
+                .append(lhs.clone())
+                .append(D::text(" < "))
+                .append(min)
+                .append(D::text(" / "))
+                .append(rhs.clone())
+                .append(D::text(")")),
+
+            // (rhs > 0 && lhs > max - rhs)
+            (BinOp::Add, TyKind::Uint(_)) => D::text("(")
+                .append(rhs.clone())
+                .append(D::text(" > 0 && "))
+                .append(lhs.clone())
+                .append(D::text(" > "))
+                .append(max)
+                .append(D::text(" - "))
+                .append(rhs.clone())
+                .append(D::text(")")),
+
+            // (rhs > lhs)
+            (BinOp::Sub, TyKind::Uint(_)) => D::text("(")
+                .append(rhs.clone())
+                .append(D::text(" > "))
+                .append(lhs.clone())
+                .append(D::text(")")),
+
+            // (rhs != 0 && lhs > max / rhs)
+            (BinOp::Mul, TyKind::Uint(_)) => D::text("(")
+                .append(rhs.clone())
+                .append(D::text(" != 0 && "))
+                .append(lhs.clone())
+                .append(D::text(" > "))
+                .append(max)
+                .append(D::text(" / "))
+                .append(rhs.clone())
+                .append(D::text(")")),
+
+            (op, ty) => unreachable!("{op} {ty:?}"),
+        }
     }
 }
 

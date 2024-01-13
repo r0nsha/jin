@@ -12,39 +12,23 @@ fn main() unit = {
 fn i() unit = {
     println("signed:")
 
-    let a: i8 = 2
-    let b: i8 = I8_MAX
+    let a: i64 = 1
+    let b: i64 = I64_MAX
 
-    if {b > 0 && a > I8_MAX - b} || {b < 0 && a < I8_MIN - b} {
-	println("overflow add")
-    }
-
-    if {b < 0 && a > I8_MAX + b} || {b > 0 && a < I8_MIN + b} {
-	println("overflow sub")
-    }
-
-    if {b != 0 && a > I8_MAX / b} || {b != 0 && a < I8_MIN / b} {
-	println("overflow mul")
-    }
+    // a + b
+    // a - b
+    // a * b
 }
 
 fn u() unit = {
     println("unsigned:")
 
-    let a: u8 = 1
-    let b: u8 = U8_MAX
+    let a: u8 = 2
+    let b: u8 = -U8_MAX
 
-    if b > 0 && a > U8_MAX - b {
-	println("overflow add")
-    }
-
-    if b > a {
-	println("overflow sub")
-    }
-
-    if b != 0 && a > U8_MAX / b {
-	println("overflow mul")
-    }
+    // a + b
+    // a - b
+    a * b
 }
 
 // void u() {
