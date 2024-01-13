@@ -380,6 +380,7 @@ impl<'db> Typeck<'db> {
             &symbol,
             ShouldLookupFns::Yes,
             IsUfcs::No,
+            AllowBuiltinTys::No,
         );
 
         if results.is_empty() {
@@ -442,16 +443,23 @@ impl<'db> Typeck<'db> {
         let should_lookup_fns =
             ShouldLookupFns::from(!matches!(query, Query::Fn(_)));
 
-        self.lookup_global_one(&symbol, query.span(), should_lookup_fns)?
-            .ok_or_else(|| match query {
-                Query::Name(word) => errors::name_not_found(
-                    self.db,
-                    from_module,
-                    in_module,
-                    *word,
-                ),
-                Query::Fn(fn_query) => errors::fn_not_found(self.db, fn_query),
-            })
+        // Allow looking up builtin types only when looking up a symbol in the same module as its
+        // environment's module.
+        let allow_builtin_tys =
+            AllowBuiltinTys::from(env.module_id() == in_module);
+
+        self.lookup_global_one(
+            &symbol,
+            query.span(),
+            should_lookup_fns,
+            allow_builtin_tys,
+        )?
+        .ok_or_else(|| match query {
+            Query::Name(word) => {
+                errors::name_not_found(self.db, from_module, in_module, *word)
+            }
+            Query::Fn(fn_query) => errors::fn_not_found(self.db, fn_query),
+        })
     }
 
     #[inline]
@@ -557,12 +565,14 @@ impl<'db> Typeck<'db> {
         symbol: &Symbol,
         span: Span,
         should_lookup_fns: ShouldLookupFns,
+        allow_builtin_tys: AllowBuiltinTys,
     ) -> TypeckResult<Option<DefId>> {
         let results = self.lookup_global_many(
             symbol.module_id,
             symbol,
             should_lookup_fns,
             IsUfcs::No,
+            allow_builtin_tys,
         );
 
         match results.len() {
@@ -588,6 +598,7 @@ impl<'db> Typeck<'db> {
         symbol: &Symbol,
         should_lookup_fns: ShouldLookupFns,
         is_ufcs: IsUfcs,
+        allow_builtin_tys: AllowBuiltinTys,
     ) -> Vec<LookupResult> {
         let lookup_modules = self.get_lookup_modules(in_module, is_ufcs);
         let mut defs = vec![];
@@ -606,7 +617,7 @@ impl<'db> Typeck<'db> {
             }
         }
 
-        if defs.is_empty() {
+        if defs.is_empty() && allow_builtin_tys == AllowBuiltinTys::Yes {
             return self
                 .builtin_tys
                 .get(symbol.name)
@@ -1173,3 +1184,4 @@ impl<'a> FnQuery<'a> {
 }
 
 create_bool_enum!(ShouldLookupFns);
+create_bool_enum!(AllowBuiltinTys);
