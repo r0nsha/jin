@@ -305,6 +305,14 @@ impl TyKind {
         matches!(self, Self::Int(..))
     }
 
+    /// Returns `true` if the ty kind is [`Uint`].
+    ///
+    /// [`Uint`]: TyKind::Uint
+    #[must_use]
+    pub fn is_uint(&self) -> bool {
+        matches!(self, Self::Uint(..))
+    }
+
     /// Returns `true` if the ty kind is [`Bool`].
     ///
     /// [`Bool`]: TyKind::Bool

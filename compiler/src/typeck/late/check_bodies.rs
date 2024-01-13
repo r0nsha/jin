@@ -28,8 +28,8 @@ impl CheckBodies<'_> {
     }
 
     fn expr(&mut self, expr: &Expr) {
-        expr.walk(|expr| {
-            if let ExprKind::Cast(cast) = &expr.kind {
+        expr.walk(|expr| match &expr.kind {
+            ExprKind::Cast(cast) => {
                 let source = cast.expr.ty;
                 let target = expr.ty;
 
@@ -49,6 +49,24 @@ impl CheckBodies<'_> {
                     );
                 }
             }
+            ExprKind::Unary(un) => {
+                if un.expr.ty.is_uint() {
+                    self.db.diagnostics.emit(
+                        Diagnostic::error()
+                            .with_message(format!(
+                                "cannot use `{}` on type `{}`",
+                                un.op,
+                                un.expr.ty.display(self.db)
+                            ))
+                            .with_label(
+                                Label::primary(expr.span).with_message(
+                                    format!("invalid use of `{}`", un.op),
+                                ),
+                            ),
+                    );
+                }
+            }
+            _ => (),
         });
     }
 }
