@@ -90,6 +90,13 @@ fn coerce_tys(
                 .push(Coercion { kind: CoercionKind::IntPromotion, target });
             true
         }
+        (TyKind::Uint(a), TyKind::Uint(b))
+            if b.size(target_metrics) >= a.size(target_metrics) =>
+        {
+            coercions
+                .push(Coercion { kind: CoercionKind::IntPromotion, target });
+            true
+        }
         (TyKind::Ref(a, Mutability::Mut), TyKind::Ref(b, Mutability::Imm)) => {
             if can_unify_or_coerce(*a, *b, cx, coercions, options) {
                 coercions
