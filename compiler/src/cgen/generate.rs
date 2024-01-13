@@ -137,19 +137,28 @@ impl<'db> Generator<'db> {
 
     pub fn define_globals(&mut self) {
         for glob in self.mir.globals.values() {
-            let decl = glob.ty.cdecl(self, D::text(glob.name.as_str()));
+            let name_doc = D::text(glob.name.as_str());
 
             let glob_doc = match &glob.kind {
-                GlobalKind::Static { .. } => decl,
-                GlobalKind::Extern => {
-                    D::text("extern").append(D::space()).append(decl)
+                GlobalKind::Const(value) => VariableDoc::assign(
+                    self,
+                    glob.ty,
+                    name_doc,
+                    codegen_const_value(value),
+                ),
+                GlobalKind::Static { .. } => {
+                    stmt(|| glob.ty.cdecl(self, name_doc))
                 }
+                GlobalKind::Extern => stmt(|| {
+                    D::text("extern")
+                        .append(D::space())
+                        .append(glob.ty.cdecl(self, name_doc))
+                }),
             };
 
-            self.globals.push(stmt(|| glob_doc));
+            self.globals.push(glob_doc);
 
-            let GlobalKind::Static(StaticGlobal { body, result: value }) =
-                &glob.kind
+            let GlobalKind::Static(StaticGlobal { body, result }) = &glob.kind
             else {
                 return;
             };
@@ -159,7 +168,7 @@ impl<'db> Generator<'db> {
             let return_stmt = stmt(|| {
                 D::text("return")
                     .append(D::space())
-                    .append(self.value(&state, *value))
+                    .append(self.value(&state, *result))
             });
 
             let block_docs: Vec<D> = body
