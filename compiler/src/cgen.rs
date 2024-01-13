@@ -163,7 +163,7 @@ fn compile_with_tcc(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
         .arg(format!("-o{exe_file_path}"))
         .arg("-std=c99")
         .arg("-w")
-        .args(libs.paths.into_iter().map(|path| format!("-L{path}")))
+        .args(libs.paths.into_iter().map(|path| format!("-I{path}")))
         .args(libs.libs.into_iter().map(|path| format!("-l{path}")))
         .arg("-fuse-ld=mold")
         .arg("-lc")
