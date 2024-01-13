@@ -38,6 +38,7 @@ pub struct Generator<'db> {
     pub mir: &'db Mir,
     pub types: Vec<D<'db>>,
     pub fn_decls: Vec<D<'db>>,
+    pub consts: Vec<D<'db>>,
     pub globals: Vec<D<'db>>,
     pub fn_defs: Vec<D<'db>>,
     pub target_metrics: TargetMetrics,
@@ -77,12 +78,13 @@ impl<'db> Generator<'db> {
 
         let types = D::intersperse(self.types, D::hardline());
         let fn_decls = D::intersperse(self.fn_decls, D::hardline());
+        let consts = D::intersperse(self.consts, D::hardline());
         let globals = D::intersperse(self.globals, D::hardline());
         let fn_defs =
             D::intersperse(self.fn_defs, D::hardline().append(D::hardline()));
 
         let final_doc = D::intersperse(
-            [types, fn_decls, globals, fn_defs, main_fn],
+            [types, fn_decls, consts, globals, fn_defs, main_fn],
             D::hardline().append(D::hardline()),
         );
 
@@ -139,62 +141,66 @@ impl<'db> Generator<'db> {
         for glob in self.mir.globals.values() {
             let name_doc = D::text(glob.name.as_str());
 
-            let glob_doc = match &glob.kind {
-                GlobalKind::Const(value) => VariableDoc::assign(
-                    self,
-                    glob.ty,
-                    name_doc,
-                    codegen_const_value(value),
-                ),
-                GlobalKind::Static { .. } => {
-                    stmt(|| glob.ty.cdecl(self, name_doc))
+            match &glob.kind {
+                GlobalKind::Const(value) => {
+                    let doc = VariableDoc::assign(
+                        self,
+                        glob.ty,
+                        name_doc,
+                        codegen_const_value(value),
+                    );
+                    self.consts.push(doc);
                 }
-                GlobalKind::Extern => stmt(|| {
-                    D::text("extern")
-                        .append(D::space())
-                        .append(glob.ty.cdecl(self, name_doc))
-                }),
+                GlobalKind::Extern => {
+                    let doc = stmt(|| {
+                        D::text("extern")
+                            .append(D::space())
+                            .append(glob.ty.cdecl(self, name_doc))
+                    });
+                    self.globals.push(doc);
+                }
+                GlobalKind::Static(StaticGlobal { body, result }) => {
+                    let decl_doc = stmt(|| glob.ty.cdecl(self, name_doc));
+                    self.globals.push(decl_doc);
+
+                    let mut state = FnState::new(body);
+
+                    let return_stmt = stmt(|| {
+                        D::text("return")
+                            .append(D::space())
+                            .append(self.value(&state, *result))
+                    });
+
+                    let block_docs: Vec<D> = body
+                        .blocks()
+                        .iter()
+                        .map(|b| self.codegen_block(&mut state, b))
+                        .chain(iter::once(return_stmt))
+                        .collect();
+
+                    let init_fn_doc =
+                        D::text("FORCE_INLINE")
+                            .append(D::space())
+                            .append(glob.ty.cdecl(
+                                self,
+                                D::text(global_init_fn_name(glob)),
+                            ))
+                            .append(D::text("()"))
+                            .append(D::space())
+                            .append(block_(
+                                || {
+                                    D::intersperse(
+                                        block_docs,
+                                        D::hardline().append(D::hardline()),
+                                    )
+                                    .group()
+                                },
+                                0,
+                            ));
+
+                    self.globals.push(stmt(|| init_fn_doc));
+                }
             };
-
-            self.globals.push(glob_doc);
-
-            let GlobalKind::Static(StaticGlobal { body, result }) = &glob.kind
-            else {
-                return;
-            };
-
-            let mut state = FnState::new(body);
-
-            let return_stmt = stmt(|| {
-                D::text("return")
-                    .append(D::space())
-                    .append(self.value(&state, *result))
-            });
-
-            let block_docs: Vec<D> = body
-                .blocks()
-                .iter()
-                .map(|b| self.codegen_block(&mut state, b))
-                .chain(iter::once(return_stmt))
-                .collect();
-
-            let init_fn_doc = D::text("FORCE_INLINE")
-                .append(D::space())
-                .append(glob.ty.cdecl(self, D::text(global_init_fn_name(glob))))
-                .append(D::text("()"))
-                .append(D::space())
-                .append(block_(
-                    || {
-                        D::intersperse(
-                            block_docs,
-                            D::hardline().append(D::hardline()),
-                        )
-                        .group()
-                    },
-                    0,
-                ));
-
-            self.globals.push(stmt(|| init_fn_doc));
         }
     }
 

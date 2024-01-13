@@ -412,16 +412,29 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 self.body.cleanup();
 
+                let kind = if self.body.blocks.is_empty()
+                    && self.body.values().len() == 1
+                {
+                    let value = self.body.values.swap_remove(ValueId(0));
+                    let ValueKind::Const(value) = value.kind else {
+                        unreachable!()
+                    };
+                    GlobalKind::Const(value)
+                } else {
+                    GlobalKind::Static(StaticGlobal {
+                        body: self.body,
+                        result: value,
+                    })
+                };
+
                 let id = self.cx.mir.globals.insert_with_key(|id| Global {
                     id,
                     def_id: name.id,
                     name: full_name.into(),
                     ty,
-                    kind: GlobalKind::Static(StaticGlobal {
-                        body: self.body,
-                        result: value,
-                    }),
+                    kind,
                 });
+
                 self.cx.id_to_global.insert(name.id, id);
 
                 Some(id)

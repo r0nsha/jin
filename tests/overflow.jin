@@ -1,0 +1,44 @@
+import std.{
+    io.println,
+    int.*
+}
+
+fn main() unit = {
+    i()
+    //u()
+}
+
+fn i() unit = {
+    println("signed:")
+
+    let a: i8 = 1
+    let b: i8 = I8_MAX
+
+    if {b > 0 && a > I8_MAX - b} || {b < 0 && a < I8_MIN - b} {
+	println("overflow add")
+    }
+
+    if {b < 0 && a > I8_MAX + b} || {b > 0 && a < I8_MIN + b} {
+	println("overflow sub")
+    }
+
+    if {b != 0 && a > I8_MAX / b} || {b != 0 && a < I8_MIN / b} {
+	println("overflow mul")
+    }
+}
+
+// void u() {
+//   printf("unsigned:\n".ptr)
+//
+//   uint8_t a = 2
+//   uint8_t b = UINT8_MAX
+//
+//   if ((b > 0 && a > UINT8_MAX - b))
+//     printf("overflow add\n".ptr)
+//
+//   if (b > a)
+//     printf("overflow sub\n".ptr)
+//
+//   if ((b != 0 && a > UINT8_MAX / b))
+//     printf("overflow mul\n".ptr)
+// }
