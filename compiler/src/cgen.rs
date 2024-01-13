@@ -163,8 +163,9 @@ fn compile_with_tcc(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
         .arg(format!("-o{exe_file_path}"))
         .arg("-std=c99")
         .arg("-w")
-        .args(libs.paths.into_iter().map(|path| format!("-I{path}")))
+        .args(libs.paths.into_iter().map(|path| format!("-L{path}")))
         .args(libs.libs.into_iter().map(|path| format!("-l{path}")))
+        .args(libs.includes.into_iter().map(|path| format!("-I{path}")))
         .arg("-fuse-ld=mold")
         .arg("-lc")
         .arg("-lm")
@@ -179,6 +180,7 @@ fn compile_with_tcc(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
 struct Libraries {
     paths: FxHashSet<String>,
     libs: FxHashSet<String>,
+    includes: FxHashSet<String>,
 }
 
 impl Libraries {
@@ -186,6 +188,7 @@ impl Libraries {
         let mut this = Libraries {
             paths: FxHashSet::default(),
             libs: FxHashSet::default(),
+            includes: FxHashSet::default(),
         };
 
         // Add runtime library
@@ -194,6 +197,7 @@ impl Libraries {
         )
         .unwrap();
         this.paths.insert(rt_path.to_string());
+        this.includes.insert(rt_path.to_string());
         this.libs.insert("jinrt".to_string());
 
         // Add libraries included by the user

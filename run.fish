@@ -13,6 +13,7 @@ else
     # Copy runtime
     mkdir target/rt
     cp rt/jinrt.h target/rt/jinrt.h
+    cp rt/libjinrt.a target/rt/libjinrt.a
 
     cargo run -- build $source --timings --emit ast --emit hir --emit mir --emit c
 
