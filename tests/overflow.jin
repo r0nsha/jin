@@ -24,7 +24,7 @@ fn u() unit = {
     println("unsigned:")
 
     let a: u8 = 2
-    let b: u8 = -U8_MAX
+    let b: u8 = U8_MAX
 
     // a + b
     // a - b
