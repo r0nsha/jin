@@ -161,6 +161,7 @@ impl<'db> Generator<'db> {
         )
     }
 
+    #[allow(clippy::too_many_lines)]
     fn codegen_bin_op_overflow_check_cond(
         &self,
         data: &BinOpData,

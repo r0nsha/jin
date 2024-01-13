@@ -634,6 +634,7 @@ impl<'db> Generator<'db> {
         VariableDoc::assign(self, value.ty, self.value(state, id), doc)
     }
 
+    #[allow(unused)]
     pub fn value_decl(&mut self, state: &FnState<'db>, id: ValueId) -> D<'db> {
         let value = state.body.value(id);
         VariableDoc::decl(self, value.ty, self.value(state, value.id))
