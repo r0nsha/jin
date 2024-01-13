@@ -170,7 +170,7 @@ fn compile_with_tcc(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
         .arg("-lm")
         .arg("-g");
 
-    //println!("{:?}", cmd);
+    // println!("{:?}", cmd);
 
     cmd.execute_output().expect("linking to work");
 }
@@ -194,7 +194,7 @@ impl Libraries {
         )
         .unwrap();
         this.paths.insert(rt_path.to_string());
-        this.paths.insert("jinrt".to_string());
+        this.libs.insert("jinrt".to_string());
 
         // Add libraries included by the user
         for lib in &db.extern_libs {
