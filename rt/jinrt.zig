@@ -15,6 +15,14 @@ const Location = extern struct {
     column: u32,
 };
 
+const Backtrace = std.ArrayList(StackFrame);
+
+const StackFrame = extern struct {
+    file: cstr,
+    function: cstr,
+    line: u32,
+};
+
 export fn jinrt_init() void {}
 
 const panic_fmt = "panic at '{s}'";

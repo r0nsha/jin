@@ -36,6 +36,14 @@ typedef struct jinrt_location {
   u32 column;
 } jinrt_location;
 
+typedef void *jinrt_backtrace;
+
+typedef struct jinrt_stackframe {
+  const char *file;
+  const char *function;
+  u32 line;
+} jinrt_stackframe;
+
 void jinrt_init();
 void *jinrt_alloc(size_t size);
 void jinrt_free(void *ptr, u8 *tyname, jinrt_location loc);
