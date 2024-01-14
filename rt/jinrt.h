@@ -48,11 +48,9 @@ void jinrt_init();
 void *jinrt_alloc(size_t size);
 void jinrt_free(jinrt_backtrace *backtrace, void *ptr, u8 *tyname,
                 jinrt_location loc);
-void jinrt_panic(jinrt_backtrace *backtrace, u8 *msg);
 void jinrt_panic_at(jinrt_backtrace *backtrace, u8 *msg, jinrt_location loc);
 bool jinrt_strcmp(str a, str b);
 jinrt_backtrace *jinrt_backtrace_new();
-void jinrt_backtrace_push(jinrt_backtrace *backtrace, const char *file,
-                          u32 line, const char *in);
+void jinrt_backtrace_push(jinrt_backtrace *backtrace, jinrt_stackframe frame);
 void jinrt_backtrace_pop(jinrt_backtrace *backtrace);
 #endif

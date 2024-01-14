@@ -3,7 +3,6 @@ use std::iter;
 
 use codespan_reporting::files::{Files, Location};
 use pretty::RcDoc as D;
-use ustr::Ustr;
 
 use crate::{
     cgen::{
@@ -19,8 +18,7 @@ use crate::{
 
 impl<'db> Generator<'db> {
     pub fn panic_if(&self, cond: D<'db>, msg: &str, span: Span) -> D<'db> {
-        let then = stmt(|| self.call_panic(msg, span));
-        if_stmt(cond, then, None)
+        if_stmt(cond, stmt(|| self.call_panic(msg, span)), None)
     }
 
     fn create_location_value(&self, span: Span) -> D<'db> {
@@ -144,7 +142,7 @@ impl<'db> Generator<'db> {
         });
 
         if traced {
-            self.with_stack_frame(free_call, state.name, span)
+            self.with_stack_frame(state, free_call, span)
         } else {
             free_call
         }
@@ -152,21 +150,27 @@ impl<'db> Generator<'db> {
 
     pub fn with_stack_frame(
         &self,
+        state: &GenState<'db>,
         stmt: D<'db>,
-        callee: Ustr,
         span: Span,
     ) -> D<'db> {
-        let push_frame = self.push_stack_frame(callee, span);
+        let push_frame = self.push_stack_frame(state, span);
         let pop_frame = Self::pop_stack_frame();
         D::intersperse([push_frame, stmt, pop_frame], D::hardline())
     }
 
-    pub fn push_stack_frame(&self, callee: Ustr, span: Span) -> D<'db> {
-        let (file, line) = self.get_span_stack_frame_info(span);
+    pub fn push_stack_frame(
+        &self,
+        state: &GenState<'db>,
+        span: Span,
+    ) -> D<'db> {
         stmt(|| {
             call(
                 D::text("jinrt_backtrace_push"),
-                [D::text("backtrace"), file, line, str_lit(callee.as_str())],
+                [
+                    D::text("backtrace"),
+                    self.create_stackframe_value(state, span),
+                ],
             )
         })
     }
@@ -175,7 +179,11 @@ impl<'db> Generator<'db> {
         stmt(|| call(D::text("jinrt_backtrace_pop"), [D::text("backtrace")]))
     }
 
-    fn get_span_stack_frame_info(&self, span: Span) -> (D<'db>, D<'db>) {
+    fn create_stackframe_value(
+        &self,
+        state: &GenState<'db>,
+        span: Span,
+    ) -> D<'db> {
         let sources = self.db.sources.borrow();
         let source = sources.get(span.source_id()).unwrap();
 
@@ -183,12 +191,18 @@ impl<'db> Generator<'db> {
             &self.db.find_package_by_source_id(source.id()).unwrap().root_path;
         let root_parent = root_path.parent().unwrap_or(root_path);
         let path = source.path();
-        let path = path.strip_prefix(root_parent).unwrap_or(path);
+        let file = path.strip_prefix(root_parent).unwrap_or(path);
 
         let loc =
             source.location(span.source_id(), span.start() as usize).unwrap();
 
-        (str_lit(path), D::text(loc.line_number.to_string()))
+        D::text("(struct jinrt_stackframe)").append(D::space()).append(
+            util::struct_lit(vec![
+                ("file", str_lit(file)),
+                ("line", D::text(loc.line_number.to_string())),
+                ("in", str_lit(state.name)),
+            ]),
+        )
     }
 }
 

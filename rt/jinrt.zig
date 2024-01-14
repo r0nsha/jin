@@ -42,7 +42,7 @@ const Backtrace = struct {
     }
 };
 
-const StackFrame = struct {
+const StackFrame = extern struct {
     file: cstr,
     line: u32,
     in: cstr,
@@ -56,20 +56,10 @@ const StackFrame = struct {
 
 export fn jinrt_init() void {}
 
-const panic_fmt = "panic at '{s}'";
-
-export fn jinrt_panic(backtrace: *Backtrace, msg: cstr) noreturn {
-    _ = msg;
-    backtrace.print();
-    // std.debug.print(panic_fmt ++ "\n", .{msg});
-    std.process.exit(1);
-}
-
 export fn jinrt_panic_at(backtrace: *Backtrace, msg: cstr, loc: Location) noreturn {
-    _ = loc;
     _ = msg;
+    backtrace.push(StackFrame{ .file = loc.path, .line = loc.line, .in = "foobar" }) catch unreachable;
     backtrace.print();
-    // std.debug.print(panic_fmt ++ ", {}\n", .{ msg, loc });
     std.process.exit(1);
 }
 
@@ -106,8 +96,8 @@ export fn jinrt_backtrace_new() *Backtrace {
     return backtrace;
 }
 
-export fn jinrt_backtrace_push(backtrace: *Backtrace, file: cstr, line: u32, in: cstr) void {
-    backtrace.push(StackFrame{ .file = file, .line = line, .in = in }) catch unreachable;
+export fn jinrt_backtrace_push(backtrace: *Backtrace, frame: StackFrame) void {
+    backtrace.push(frame) catch unreachable;
 }
 
 export fn jinrt_backtrace_pop(backtrace: *Backtrace) void {

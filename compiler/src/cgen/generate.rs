@@ -559,7 +559,7 @@ impl<'db> Generator<'db> {
                     util::call(this.value(state, *callee), arg_docs)
                 });
 
-                self.with_stack_frame(call, state.name, *span)
+                self.with_stack_frame(state, call, *span)
             }
             Inst::Binary { value, lhs, rhs, op, span } => self.codegen_bin_op(
                 state,
