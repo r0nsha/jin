@@ -24,10 +24,7 @@ pub fn parse_module_tree(
     let mut ast = Ast::new();
 
     // Std
-    let root_std_file = Utf8PathBuf::try_from(
-        std::env::current_exe().unwrap().parent().unwrap().join("std/std.jin"),
-    )
-    .unwrap();
+    let root_std_file = crate::util::current_exe_dir().join("std/std.jin");
     let (std_package, _) = db.create_package(ustr("std"), &root_std_file)?;
     parse_package(db, &mut ast, std_package);
 

@@ -389,7 +389,6 @@ fn find_successor(
             break;
         }
 
-        dbg!(id);
         id = block.successors[0];
     }
 

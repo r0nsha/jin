@@ -18,6 +18,7 @@ mod sym;
 mod target;
 mod ty;
 mod typeck;
+mod util;
 mod word;
 
 use std::fs;

@@ -171,7 +171,7 @@ fn compile_with_tcc(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
         .arg("-lm")
         .arg("-g");
 
-    println!("{:?}", cmd);
+    // println!("{:?}", cmd);
 
     cmd.execute_output().expect("linking to work");
 }
@@ -192,10 +192,7 @@ impl Libraries {
         };
 
         // Add runtime library
-        let rt_path = Utf8PathBuf::from_path_buf(
-            std::env::current_exe().unwrap().parent().unwrap().join("rt"),
-        )
-        .unwrap();
+        let rt_path = crate::util::current_exe_dir().join("rt");
         this.paths.insert(rt_path.to_string());
         this.includes.insert(rt_path.to_string());
         this.libs.insert("jinrt".to_string());
