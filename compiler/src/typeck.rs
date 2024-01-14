@@ -261,12 +261,11 @@ impl<'db> Typeck<'db> {
                 self.db.extern_libs.insert(import.lib.clone());
             }
             ast::Item::Associated(ty, item) => {
-                todo!("resolve ty");
+                let ty = self.check_associated_item_ty(env, ty)?;
 
                 match item.as_ref() {
                     ast::Item::Fn(fun) => {
-                        todo!("define fn")
-                        // self.check_associated_fn(env, import)?;
+                        self.check_associated_fn_item(env, ty, fun, item_id)?;
                     }
                     ast::Item::Let(_)
                     | ast::Item::Type(_)
@@ -281,6 +280,26 @@ impl<'db> Typeck<'db> {
         self.resolution_state.mark_resolved_item(item_id);
 
         Ok(())
+    }
+
+    fn check_associated_item_ty(
+        &mut self,
+        env: &Env,
+        ty: &TyExpr,
+    ) -> TypeckResult<Ty> {
+        match ty {
+            TyExpr::Path(path, targs, span) => self.check_ty_expr_path(
+                env,
+                path,
+                targs.as_deref(),
+                *span,
+                AllowTyHole::No,
+            ),
+            TyExpr::Fn(_)
+            | TyExpr::Ref(_, _, _)
+            | TyExpr::RawPtr(_, _)
+            | TyExpr::Hole(_) => unreachable!(),
+        }
     }
 
     fn check_fn_body(
@@ -339,12 +358,38 @@ impl<'db> Typeck<'db> {
         })
     }
 
+    fn check_associated_fn_item(
+        &mut self,
+        env: &mut Env,
+        ty: Ty,
+        fun: &ast::Fn,
+        item_id: ast::GlobalItemId,
+    ) -> TypeckResult<()> {
+        let sig = self.check_fn_item_helper(env, fun)?;
+        let id = self.define_fn(env.module_id(), fun, &sig)?;
+        self.resolution_state
+            .insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig });
+        Ok(())
+    }
+
     fn check_fn_item(
         &mut self,
         env: &mut Env,
         fun: &ast::Fn,
         item_id: ast::GlobalItemId,
     ) -> TypeckResult<()> {
+        let sig = self.check_fn_item_helper(env, fun)?;
+        let id = self.define_fn(env.module_id(), fun, &sig)?;
+        self.resolution_state
+            .insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig });
+        Ok(())
+    }
+
+    fn check_fn_item_helper(
+        &mut self,
+        env: &mut Env,
+        fun: &ast::Fn,
+    ) -> TypeckResult<hir::FnSig> {
         self.check_attrs(
             env.module_id(),
             &fun.attrs,
@@ -359,18 +404,11 @@ impl<'db> Typeck<'db> {
             ast::FnKind::Extern { is_c_variadic } => *is_c_variadic,
         };
 
-        let sig = env.with_scope(
+        env.with_scope(
             fun.sig.word.name(),
             ScopeKind::Fn(DefId::null()),
             |env| self.check_fn_sig(env, &fun.sig, is_c_variadic),
-        )?;
-
-        let id = self.define_fn(env.module_id(), fun, &sig)?;
-
-        self.resolution_state
-            .insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig });
-
-        Ok(())
+        )
     }
 
     fn check_fn_sig(
@@ -1092,7 +1130,13 @@ impl<'db> Typeck<'db> {
                     ))
                 },
             ),
-            ast::Expr::MethodCall { expr, method, targs: ty_args, args, span } => {
+            ast::Expr::MethodCall {
+                expr,
+                method,
+                targs: ty_args,
+                args,
+                span,
+            } => {
                 let targs = self.check_optional_ty_args(
                     env,
                     ty_args.as_deref(),

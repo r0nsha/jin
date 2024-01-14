@@ -158,18 +158,21 @@ impl<'db> Typeck<'db> {
         fun: &ast::Fn,
         sig: &hir::FnSig,
     ) -> TypeckResult<DefId> {
-        let vis = fun.vis;
-        let word = fun.sig.word;
-        let symbol = Symbol::new(module_id, word.name());
-
         match fun.kind {
             ast::FnKind::Bare { .. } => {
-                let qpath = self.db[module_id].qpath.clone().child(word.name());
-                let scope =
-                    ScopeInfo { module_id, level: ScopeLevel::Global, vis };
+                let symbol = Symbol::new(module_id, sig.word.name());
+                let qpath =
+                    self.db[module_id].qpath.clone().child(sig.word.name());
+                let scope = ScopeInfo {
+                    module_id,
+                    level: ScopeLevel::Global,
+                    vis: fun.vis,
+                };
 
                 if let Some(def) = self.global_scope.defs.get(&symbol) {
-                    return Err(errors::multiple_item_def_err(def.span, word));
+                    return Err(errors::multiple_item_def_err(
+                        def.span, sig.word,
+                    ));
                 }
 
                 let id = {
@@ -180,22 +183,23 @@ impl<'db> Typeck<'db> {
                         DefKind::Fn(FnInfo::Bare),
                         Mutability::Imm,
                         sig.ty,
-                        word.span(),
+                        sig.word.span(),
                     )
                 };
 
                 let candidate = FnCandidate {
                     id,
-                    word,
+                    word: sig.word,
                     ty: sig.ty.as_fn().cloned().unwrap(),
                 };
+
                 self.insert_fn_candidate(symbol, candidate)?;
 
                 Ok(id)
             }
             ast::FnKind::Extern { .. } => self.define_global_def(
                 module_id,
-                vis,
+                fun.vis,
                 DefKind::Fn(FnInfo::Extern),
                 sig.word,
                 Mutability::Imm,
@@ -204,26 +208,41 @@ impl<'db> Typeck<'db> {
         }
     }
 
+    pub fn insert_fn_candidate_in_ty(
+        &mut self,
+        symbol: Symbol,
+        candidate: FnCandidate,
+    ) -> TypeckResult<()> {
+        todo!()
+        // let set = self.global_scope.fns.entry(symbol).or_default();
+        // Self::insert_fn_candidate_in(self.db, set, symbol, candidate)
+    }
+
     pub fn insert_fn_candidate(
         &mut self,
         symbol: Symbol,
         candidate: FnCandidate,
     ) -> TypeckResult<()> {
-        self.global_scope
-            .fns
-            .entry(symbol)
-            .or_default()
-            .try_insert(candidate)
-            .map_err(|err| match err {
-                FnCandidateInsertError::AlreadyExists { prev, curr } => {
-                    errors::multiple_fn_def_err(
-                        self.db,
-                        symbol.module_id,
-                        prev.word.span(),
-                        &curr,
-                    )
-                }
-            })
+        let set = self.global_scope.fns.entry(symbol).or_default();
+        Self::insert_fn_candidate_in(self.db, set, symbol, candidate)
+    }
+
+    pub fn insert_fn_candidate_in(
+        db: &Db,
+        set: &mut FnCandidateSet,
+        symbol: Symbol,
+        candidate: FnCandidate,
+    ) -> TypeckResult<()> {
+        set.try_insert(candidate).map_err(|err| match err {
+            FnCandidateInsertError::AlreadyExists { prev, curr } => {
+                errors::multiple_fn_def_err(
+                    db,
+                    symbol.module_id,
+                    prev.word.span(),
+                    &curr,
+                )
+            }
+        })
     }
 
     pub fn define_pat(
