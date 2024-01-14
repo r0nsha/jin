@@ -17,5 +17,7 @@ pub fn build(b: *std.Build) void {
     }
     lib.force_pic = true;
 
+    lib.linkLibC();
+
     b.installArtifact(lib);
 }

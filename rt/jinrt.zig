@@ -29,7 +29,21 @@ export fn jinrt_panic_at(msg: cstr, loc: Location) noreturn {
 }
 
 export fn jinrt_alloc(size: usize) *anyopaque {
-    const p = alloc.alloc(u8, size);
-    const x = p catch jinrt_panic(@as(cstr, "out of memory"));
-    return x.ptr;
+    const memory = std.c.malloc(size);
+    // const p = alloc.alloc(u8, size);
+    // const x = p catch jinrt_panic(@as(cstr, "out of memory"));
+    // return x.ptr;
+    const p = memory orelse jinrt_panic(@as(cstr, "out of memory"));
+    return p;
+}
+
+export fn jinrt_free(memory: ?*anyopaque) void {
+    std.c.free(memory);
+    // alloc.free(memory);
+}
+
+export fn jinrt_refcheck(refcnt: usize, fmt: cstr, loc: Location) void {
+    if (refcnt != 0) {
+        jinrt_panic_at(fmt, loc);
+    }
 }
