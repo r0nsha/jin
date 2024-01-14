@@ -9,6 +9,15 @@ const Location = extern struct {
     column: u32,
 };
 
+var alloc: std.mem.Allocator = undefined;
+
+export fn jinrt_init() void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{
+        .thread_safe = true,
+    }){};
+    alloc = gpa.allocator();
+}
+
 export fn jinrt_panic(msg: cstr) noreturn {
     std.debug.panic("panic at '{s}'\n", .{msg});
 }
@@ -18,7 +27,7 @@ export fn jinrt_panic_at(msg: cstr, loc: Location) noreturn {
 }
 
 export fn jinrt_alloc(size: usize) *anyopaque {
-    const p = std.c.malloc(size);
-    const x = p orelse jinrt_panic(@as(cstr, "out of memory"));
-    return x;
+    const p = alloc.alloc(u8, size);
+    const x = p catch jinrt_panic(@as(cstr, "out of memory"));
+    return x.ptr;
 }

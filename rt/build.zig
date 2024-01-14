@@ -16,7 +16,6 @@ pub fn build(b: *std.Build) void {
         .ReleaseFast, .ReleaseSmall => lib.disable_stack_probing = true,
     }
     lib.force_pic = true;
-    lib.linkLibC();
 
     b.installArtifact(lib);
 }
