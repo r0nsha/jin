@@ -44,14 +44,15 @@ pub struct Generator<'db> {
 }
 
 #[derive(Debug, Clone)]
-pub struct FnState<'db> {
+pub struct GenState<'db> {
+    pub name: Ustr,
     pub body: &'db Body,
     pub local_names: LocalNames,
 }
 
-impl<'db> FnState<'db> {
-    pub fn new(body: &'db Body) -> Self {
-        Self { body, local_names: LocalNames::new() }
+impl<'db> GenState<'db> {
+    pub fn new(name: Ustr, body: &'db Body) -> Self {
+        Self { name, body, local_names: LocalNames::new() }
     }
 }
 
@@ -168,7 +169,7 @@ impl<'db> Generator<'db> {
                     let decl_doc = stmt(|| glob.ty.cdecl(self, name_doc));
                     self.globals.push(decl_doc);
 
-                    let mut state = FnState::new(body);
+                    let mut state = GenState::new(glob.name, body);
 
                     let return_stmt = stmt(|| {
                         D::text("return")
@@ -448,7 +449,7 @@ impl<'db> Generator<'db> {
     fn codegen_fn_def(&mut self, fun: &'db Fn) -> D<'db> {
         let sig = &self.mir.fn_sigs[fun.sig];
 
-        let mut state = FnState::new(&fun.body);
+        let mut state = GenState::new(sig.display_name, &fun.body);
 
         for param in &sig.params {
             match &param.pat {
@@ -483,7 +484,7 @@ impl<'db> Generator<'db> {
 
     fn codegen_block(
         &mut self,
-        state: &mut FnState<'db>,
+        state: &mut GenState<'db>,
         block: &'db Block,
     ) -> D<'db> {
         D::text(block.display_name())
@@ -502,7 +503,7 @@ impl<'db> Generator<'db> {
 
     fn codegen_inst(
         &mut self,
-        state: &mut FnState<'db>,
+        state: &mut GenState<'db>,
         inst: &'db Inst,
     ) -> D<'db> {
         match inst {
@@ -542,14 +543,10 @@ impl<'db> Generator<'db> {
             Inst::Call { value, callee, args, span } => {
                 let mut arg_docs = vec![];
 
-                let (display_name, traced) =
-                    match &state.body.value(*callee).kind {
-                        &ValueKind::Fn(sig) => {
-                            let sig = &self.mir.fn_sigs[sig];
-                            (sig.display_name, sig.traced)
-                        }
-                        _ => (ustr("(anonymous fn)"), false),
-                    };
+                let traced = match &state.body.value(*callee).kind {
+                    &ValueKind::Fn(sig) => self.mir.fn_sigs[sig].traced,
+                    _ => false,
+                };
 
                 if traced {
                     arg_docs.push(D::text("backtrace"));
@@ -558,7 +555,7 @@ impl<'db> Generator<'db> {
                 arg_docs
                     .extend(args.iter().copied().map(|a| self.value(state, a)));
 
-                let push_frame = self.push_stack_frame(display_name, *span);
+                let push_frame = self.push_stack_frame(state.name, *span);
 
                 let call = self.value_assign(state, *value, |this| {
                     util::call(this.value(state, *callee), arg_docs)
@@ -608,7 +605,7 @@ impl<'db> Generator<'db> {
 
     fn codegen_inst_stackalloc(
         &mut self,
-        state: &mut FnState<'db>,
+        state: &mut GenState<'db>,
         value: ValueId,
         init: Option<ValueId>,
     ) -> D<'db> {
@@ -636,7 +633,7 @@ impl<'db> Generator<'db> {
 
     fn codegen_inst_alloc(
         &mut self,
-        state: &mut FnState<'db>,
+        state: &mut GenState<'db>,
         value: ValueId,
     ) -> D<'db> {
         let value_doc = self.alloc_value(state, value);
@@ -649,7 +646,7 @@ impl<'db> Generator<'db> {
 
     pub fn value_assign(
         &mut self,
-        state: &FnState<'db>,
+        state: &GenState<'db>,
         id: ValueId,
         f: impl FnOnce(&mut Self) -> D<'db>,
     ) -> D<'db> {
@@ -659,12 +656,12 @@ impl<'db> Generator<'db> {
     }
 
     #[allow(unused)]
-    pub fn value_decl(&mut self, state: &FnState<'db>, id: ValueId) -> D<'db> {
+    pub fn value_decl(&mut self, state: &GenState<'db>, id: ValueId) -> D<'db> {
         let value = state.body.value(id);
         VariableDoc::decl(self, value.ty, self.value(state, value.id))
     }
 
-    pub fn value(&self, state: &FnState<'db>, id: ValueId) -> D<'db> {
+    pub fn value(&self, state: &GenState<'db>, id: ValueId) -> D<'db> {
         match &state.body.value(id).kind {
             ValueKind::Register(name) => {
                 D::text(Self::register_name(id, *name))

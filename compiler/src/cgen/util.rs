@@ -7,7 +7,7 @@ use ustr::Ustr;
 
 use crate::{
     cgen::{
-        generate::{FnState, Generator, DATA_FIELD, REFCNT_FIELD},
+        generate::{GenState, Generator, DATA_FIELD, REFCNT_FIELD},
         ty::CTy,
         util,
     },
@@ -54,7 +54,7 @@ impl<'db> Generator<'db> {
 
     pub fn field(
         &self,
-        state: &FnState<'db>,
+        state: &GenState<'db>,
         value: ValueId,
         field: &str,
     ) -> D<'db> {
@@ -80,7 +80,7 @@ impl<'db> Generator<'db> {
 
     pub fn variant(
         &self,
-        state: &FnState<'db>,
+        state: &GenState<'db>,
         value: ValueId,
         variant: &str,
     ) -> D<'db> {
@@ -89,7 +89,7 @@ impl<'db> Generator<'db> {
 
     pub fn adt_field(
         &self,
-        state: &FnState<'db>,
+        state: &GenState<'db>,
         value: ValueId,
         field: &str,
     ) -> D<'db> {
@@ -98,13 +98,13 @@ impl<'db> Generator<'db> {
         util::field(data_field, field, false)
     }
 
-    pub fn refcnt_field(&self, state: &FnState<'db>, value: ValueId) -> D<'db> {
+    pub fn refcnt_field(&self, state: &GenState<'db>, value: ValueId) -> D<'db> {
         util::field(self.value(state, value), REFCNT_FIELD, true)
     }
 
     pub fn alloc_value(
         &mut self,
-        state: &FnState<'db>,
+        state: &GenState<'db>,
         value: ValueId,
     ) -> D<'db> {
         let ty = state.body.value(value).ty;
@@ -125,7 +125,7 @@ impl<'db> Generator<'db> {
 
     pub fn free(
         &self,
-        state: &FnState<'db>,
+        state: &GenState<'db>,
         value: ValueId,
         span: Span,
     ) -> D<'db> {

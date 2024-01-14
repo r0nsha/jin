@@ -2,7 +2,7 @@ use pretty::RcDoc as D;
 
 use crate::{
     cgen::{
-        generate::{FnState, Generator},
+        generate::{GenState, Generator},
         ty::CTy,
         util,
         util::cmp_strs,
@@ -26,7 +26,7 @@ pub struct BinOpData {
 impl<'db> Generator<'db> {
     pub fn codegen_cast(
         &mut self,
-        state: &FnState<'db>,
+        state: &GenState<'db>,
         value: ValueId,
         casted: ValueId,
         target: Ty,
@@ -77,7 +77,7 @@ impl<'db> Generator<'db> {
 
     pub fn codegen_bin_op(
         &mut self,
-        state: &FnState<'db>,
+        state: &GenState<'db>,
         data: &BinOpData,
     ) -> D<'db> {
         if data.ty.is_any_int() {
@@ -116,7 +116,7 @@ impl<'db> Generator<'db> {
 
     fn codegen_safe_bin_op_div(
         &mut self,
-        state: &FnState<'db>,
+        state: &GenState<'db>,
         data: &BinOpData,
     ) -> D<'db> {
         let (lhs, rhs) =
@@ -134,7 +134,7 @@ impl<'db> Generator<'db> {
 
     fn codegen_safe_bin_op2(
         &mut self,
-        state: &FnState<'db>,
+        state: &GenState<'db>,
         data: &BinOpData,
     ) -> D<'db> {
         let (lhs, rhs) =
