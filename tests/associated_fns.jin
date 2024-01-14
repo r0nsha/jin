@@ -1,6 +1,7 @@
 fn extern printf(fmt: *u8, ..) i32
 
-let g = Box.default()
+let GLOBAL = Box.default()
+
 fn main() unit = {
     let box = Box.default()
     box.print()
