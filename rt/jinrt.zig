@@ -20,19 +20,13 @@ const Backtrace = struct {
 
     const Self = @This();
 
-    fn init() Self {
-        return Self{
-            .frames = std.ArrayList(StackFrame).init(std.heap.c_allocator),
-        };
-    }
-
     fn print(self: *Self) void {
         _ = self;
         std.debug.print("Stack trace (most recent call comes last):", .{});
     }
 };
 
-const StackFrame = extern struct {
+const StackFrame = struct {
     file: cstr,
     line: u32,
     in: cstr,
@@ -72,7 +66,8 @@ export fn jinrt_free(obj: *anyrc, tyname: cstr, loc: Location) void {
             .{ tyname, obj.refcnt },
         ) catch oom();
         // zig fmt: off
-        jinrt_panic_at(@ptrCast(cstr, msg.ptr), loc);
+        jinrt_panic_at( @ptrCast(cstr,msg.ptr), loc);
+        // zig fmt: on
     }
 
     std.c.free(obj);
@@ -80,6 +75,14 @@ export fn jinrt_free(obj: *anyrc, tyname: cstr, loc: Location) void {
 
 export fn jinrt_strcmp(a: str, b: str) bool {
     return std.mem.eql(u8, str_slice(a), str_slice(b));
+}
+
+export fn jinrt_backtrace_new() *Backtrace {
+    const backtrace = std.heap.c_allocator.create(Backtrace) catch oom();
+    backtrace.* = Backtrace{
+        .frames = std.ArrayList(StackFrame).init(std.heap.c_allocator),
+    };
+    return backtrace;
 }
 
 export fn jinrt_backtrace_push(backtrace: *Backtrace, file: cstr, line: u32, in: cstr) void {

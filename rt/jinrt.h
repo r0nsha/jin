@@ -50,6 +50,7 @@ void jinrt_free(void *ptr, u8 *tyname, jinrt_location loc);
 void jinrt_panic(u8 *msg);
 void jinrt_panic_at(u8 *msg, jinrt_location loc);
 bool jinrt_strcmp(str a, str b);
+jinrt_backtrace jinrt_backtrace_new();
 void jinrt_backtrace_push(jinrt_backtrace *backtrace, const char *file,
                           u32 line, const char *in);
 void jinrt_backtrace_pop(jinrt_backtrace *backtrace);

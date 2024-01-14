@@ -111,9 +111,14 @@ impl<'db> Generator<'db> {
             })
         }));
 
+        // Create new backtrace
+        statements.push(stmt(|| {
+            D::text("jinrt_backtrace backtrace = jinrt_backtrace_new()")
+        }));
+
         // Call entry point
         statements.push(stmt(|| {
-            D::text(main_fn_name.as_str()).append(D::text("()"))
+            util::call(D::text(main_fn_name.as_str()), [D::text("&backtrace")])
         }));
 
         // return 0
@@ -387,27 +392,28 @@ impl<'db> Generator<'db> {
             D::nil()
         };
 
+        let mut params = vec![];
+
+        if sig.traced {
+            params.push(D::text("jinrt_backtrace *backtrace"));
+        }
+
+        params.extend(sig.params.iter().enumerate().map(|(idx, param)| {
+            let name = match &param.pat {
+                Pat::Name(name) => name.word.name(),
+                Pat::Discard(_) => ustr(&format!("_{idx}")),
+            };
+
+            param.ty.cdecl(self, D::text(name.as_str()))
+        }));
+
         let sig_doc =
             fn_ty.ret.cdecl(self, D::text(sig.mangled_name.as_str())).append(
                 D::text("(")
                     .append(
-                        D::intersperse(
-                            sig.params.iter().enumerate().map(
-                                |(idx, param)| {
-                                    let name = match &param.pat {
-                                        Pat::Name(name) => name.word.name(),
-                                        Pat::Discard(_) => {
-                                            ustr(&format!("_{idx}"))
-                                        }
-                                    };
-
-                                    param.ty.cdecl(self, D::text(name.as_str()))
-                                },
-                            ),
-                            D::text(",").append(D::space()),
-                        )
-                        .nest(2)
-                        .group(),
+                        D::intersperse(params, D::text(",").append(D::space()))
+                            .nest(2)
+                            .group(),
                     )
                     .append(if sig.is_c_variadic {
                         D::text(", ...")
@@ -534,11 +540,22 @@ impl<'db> Generator<'db> {
                     .append(self.value(state, *value))
             }),
             Inst::Call { value, callee, args } => {
+                let mut arg_docs = vec![];
+
+                let traced = match &state.body.value(*callee).kind {
+                    &ValueKind::Fn(sig) => self.mir.fn_sigs[sig].traced,
+                    _ => false,
+                };
+
+                if traced {
+                    arg_docs.push(D::text("backtrace"));
+                }
+
+                arg_docs
+                    .extend(args.iter().copied().map(|a| self.value(state, a)));
+
                 self.value_assign(state, *value, |this| {
-                    util::call(
-                        this.value(state, *callee),
-                        args.iter().copied().map(|a| this.value(state, a)),
-                    )
+                    util::call(this.value(state, *callee), arg_docs)
                 })
             }
             Inst::Binary { value, lhs, rhs, op, span } => self.codegen_bin_op(

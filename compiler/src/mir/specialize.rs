@@ -538,6 +538,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             ty: fn_ty,
             is_extern: false,
             is_c_variadic: false,
+            traced: true,
             span: adt.name.span(),
         });
         self.cx.adt_frees.insert(ty, sig);
