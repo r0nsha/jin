@@ -84,6 +84,18 @@ export fn jinrt_strcmp(a: str, b: str) bool {
     return std.mem.eql(u8, str_slice(a), str_slice(b));
 }
 
+export fn jinrt_backtrace_push(backtrace: *Backtrace, file: cstr, line: u32, in: cstr) void {
+    backtrace.frames.append(StackFrame{ .file = file, .line = line, .in = in }) catch {
+        std.debug.panic("jinrt_backtrace_pop: backtrace is empty", .{});
+    };
+}
+
+export fn jinrt_backtrace_pop(backtrace: *Backtrace) void {
+    _ = backtrace.frames.popOrNull() orelse {
+        std.debug.panic("jinrt_backtrace_pop: backtrace is empty", .{});
+    };
+}
+
 inline fn str_slice(s: str) []const u8 {
     return s.ptr[0..s.len];
 }
