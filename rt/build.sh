@@ -1,2 +1,4 @@
 #!/bin/sh
-tcc -shared jinrt.c -olibjinrt.a
+tcc -c jinrt.c -ojinrt.o
+tcc -ar libjinrt.a jinrt.o
+rm jinrt.o

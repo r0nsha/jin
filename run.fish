@@ -11,7 +11,7 @@ else
     cp -r std target/std
 
     # Copy runtime
-    mkdir target/rt
+    mkdir target/rt &> /dev/null
     cp rt/jinrt.h target/rt/jinrt.h
     cp rt/libjinrt.a target/rt/libjinrt.a
 
