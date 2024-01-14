@@ -1105,7 +1105,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
                 _ => {
                     self.set_moved(value, state.span);
-                    self.free_and_set_destroy_flag(value, false, state.span);
+                    self.destroy_and_set_flag(value, false, state.span);
                 }
             }
         }
@@ -1911,19 +1911,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let destroy_glue = self.needs_destroy_glue(value);
 
                 self.position_at(destroy_block);
-                self.free_and_set_destroy_flag(value, destroy_glue, span);
+                self.destroy_and_set_flag(value, destroy_glue, span);
                 self.ins(destroy_block).br(no_destroy_block);
 
                 // Now that the value is destroyed, it has definitely been moved...
                 self.position_at(no_destroy_block);
             }
             ValueState::PartiallyMoved { .. } => {
-                self.free_and_set_destroy_flag(value, false, span);
+                self.destroy_and_set_flag(value, false, span);
             }
             ValueState::Owned => {
                 // Unconditional destroy
                 let destroy_glue = self.needs_destroy_glue(value);
-                self.free_and_set_destroy_flag(value, destroy_glue, span);
+                self.destroy_and_set_flag(value, destroy_glue, span);
             }
         }
     }
@@ -1965,13 +1965,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.body.destroy_flags.insert(value, flag);
     }
 
-    fn free_and_set_destroy_flag(
+    fn destroy_and_set_flag(
         &mut self,
         value: ValueId,
         destroy_glue: bool,
         span: Span,
     ) {
-        self.ins(self.current_block).free(value, destroy_glue, span);
+        self.ins(self.current_block).destroy(value, destroy_glue, span);
         self.set_destroy_flag(value);
     }
 

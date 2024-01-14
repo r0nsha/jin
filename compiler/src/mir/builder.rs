@@ -104,13 +104,18 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
-    pub fn free(
+    pub fn destroy(
         &mut self,
         value: ValueId,
         destroy_glue: bool,
         span: Span,
     ) -> &mut Self {
-        self.inst(Inst::Free { value, destroy_glue, span });
+        self.inst(Inst::Destroy { value, destroy_glue, span });
+        self
+    }
+
+    pub fn free(&mut self, value: ValueId, span: Span) -> &mut Self {
+        self.inst(Inst::Free { value, span });
         self
     }
 

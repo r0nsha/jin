@@ -361,7 +361,7 @@ impl<'db> ExpandDestroys<'db> {
 
         for block in body.blocks_mut() {
             block.insts.retain_mut(|inst| match inst {
-                Inst::Free { value, .. } => {
+                Inst::Destroy { value, .. } => {
                     let ty = value_tys[&*value];
 
                     if !self.should_destroy_ty(ty) {
@@ -394,34 +394,45 @@ impl<'db> ExpandDestroys<'db> {
     }
 
     fn expand_destroy_glue(&mut self, body: &mut Body) {
-        let mut expanded: Vec<(BlockId, usize, FnSigId)> = vec![];
+        let mut expanded: Vec<(BlockId, usize, Option<FnSigId>)> = vec![];
 
         for block in body.blocks() {
             for (idx, inst) in block.insts.iter().enumerate() {
-                match inst {
-                    Inst::Free { value, destroy_glue, .. } if *destroy_glue => {
+                if let Inst::Destroy { value, destroy_glue, .. } = inst {
+                    let free_fn = if *destroy_glue {
                         let ty = body.value(*value).ty;
-                        let free_fn = self.get_or_create_free_fn(ty);
-                        expanded.push((block.id, idx, free_fn));
-                    }
-                    _ => (),
+                        Some(self.get_or_create_free_fn(ty))
+                    } else {
+                        None
+                    };
+                    expanded.push((block.id, idx, free_fn));
                 }
             }
         }
 
         for (block, inst_idx, free_fn) in expanded {
-            let free_fn_ty = self.smir.fn_sigs[free_fn].ty;
-            let result = body.create_register(self.db.types.unit);
-            let callee = body.create_value(free_fn_ty, ValueKind::Fn(free_fn));
-
-            let Inst::Free { value, span, .. } =
+            let Inst::Destroy { value, span, .. } =
                 body.block(block).insts[inst_idx]
             else {
                 unreachable!()
             };
 
-            body.block_mut(block).insts[inst_idx] =
-                Inst::Call { value: result, callee, args: vec![value], span };
+            if let Some(free_fn) = free_fn {
+                let free_fn_ty = self.smir.fn_sigs[free_fn].ty;
+                let result = body.create_register(self.db.types.unit);
+                let callee =
+                    body.create_value(free_fn_ty, ValueKind::Fn(free_fn));
+
+                body.block_mut(block).insts[inst_idx] = Inst::Call {
+                    value: result,
+                    callee,
+                    args: vec![value],
+                    span,
+                };
+            } else {
+                body.block_mut(block).insts[inst_idx] =
+                    Inst::Free { value, span };
+            }
         }
     }
 
@@ -566,10 +577,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             .body
             .create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
 
-        self.body
-            .ins(join_block)
-            .free(self_value, false, adt_span)
-            .ret(unit_value);
+        self.body.ins(join_block).free(self_value, adt_span).ret(unit_value);
 
         self.cx.smir.fns.insert(sig, Fn { sig, body: self.body });
 

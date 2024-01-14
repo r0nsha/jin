@@ -514,9 +514,7 @@ impl<'db> Generator<'db> {
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
-            Inst::Free { value, destroy_glue: _, span } => {
-                self.free(state, *value, *span)
-            }
+            Inst::Free { value, span } => self.free(state, *value, *span),
             Inst::IncRef { value } => {
                 stmt(|| self.refcnt_field(state, *value).append(" += 1"))
             }
@@ -596,6 +594,7 @@ impl<'db> Generator<'db> {
             Inst::StrLit { value, lit } => {
                 self.value_assign(state, *value, |_| str_value(lit))
             }
+            Inst::Destroy { .. } => unreachable!(),
         }
     }
 
