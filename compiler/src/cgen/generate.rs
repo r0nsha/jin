@@ -97,7 +97,10 @@ impl<'db> Generator<'db> {
 
         let mut statements: Vec<D> = vec![];
 
-        // Global variable initialization
+        // Initialize runtime
+        statements.push(stmt(|| util::call(D::text("jinrt_init"), [])));
+
+        // Initialize global variables
         statements.extend(self.get_global_init_order().into_iter().map(|id| {
             let glob = &self.mir.globals[id];
             stmt(|| {

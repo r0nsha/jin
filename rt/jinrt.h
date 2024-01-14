@@ -42,7 +42,7 @@ typedef struct jinrt_location {
   u32 column;
 } jinrt_location;
 
-// Built-in functions
+void jinrt_init();
 void *jinrt_alloc(size_t size);
 void jinrt_free(void *ptr, u8 *tyname, jinrt_location loc);
 void jinrt_panic(u8 *msg);

@@ -15,14 +15,7 @@ const Location = extern struct {
     column: u32,
 };
 
-var alloc: std.mem.Allocator = undefined;
-
-export fn jinrt_init() void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{
-        .thread_safe = true,
-    }){};
-    alloc = gpa.allocator();
-}
+export fn jinrt_init() void {}
 
 const panic_fmt = "panic at '{s}'";
 
@@ -37,31 +30,25 @@ export fn jinrt_panic_at(msg: cstr, loc: Location) noreturn {
 }
 
 export fn jinrt_alloc(size: usize) *anyopaque {
-    // TODO: remove libc
     const memory = std.c.malloc(size);
-    // const p = alloc.alloc(u8, size);
-    // const x = p catch jinrt_panic(@as(cstr, "out of memory"));
-    // return x.ptr;
     const p = memory orelse oom();
     return p;
 }
 
 export fn jinrt_free(obj: *anyrc, tyname: cstr, loc: Location) void {
     if (obj.refcnt != 0) {
-        // TODO: remove libc
+        var gpa = std.heap.GeneralPurposeAllocator(.{}){};
         const msg = std.fmt.allocPrint(
-            std.heap.c_allocator,
+            gpa.allocator(),
             "cannot destroy a value of type `{s}` as it still has {} reference(s)",
             .{ tyname, obj.refcnt },
         ) catch oom();
-        defer std.heap.c_allocator.free(msg);
+        defer gpa.allocator().free(msg);
         // zig fmt: off
         jinrt_panic_at(@ptrCast(cstr, msg.ptr), loc);
     }
 
-    // TODO: remove libc
     std.c.free(obj);
-    // alloc.free(memory);
 }
 
 export fn jinrt_strcmp(a: str, b: str) bool {
