@@ -1060,7 +1060,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 continue;
             }
 
-            self.set_moved(value, state.span);
+            self.force_move(value, state.span);
             self.ins(self.current_block).free(value, false, state.span);
         }
     }
@@ -1426,6 +1426,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.set_destroy_flag(value);
 
         Ok(())
+    }
+
+    pub fn force_move(&mut self, value: ValueId, moved_to: Span) {
+        self.set_moved(value, moved_to);
+        self.walk_fields(value, |this, field| {
+            this.set_moved(field, moved_to);
+            Ok(())
+        })
+        .unwrap();
+
+        self.set_destroy_flag(value);
     }
 
     pub fn try_use(&mut self, value: ValueId, moved_to: Span) {
