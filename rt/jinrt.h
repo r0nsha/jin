@@ -40,8 +40,8 @@ typedef void *jinrt_backtrace;
 
 typedef struct jinrt_stackframe {
   const char *file;
-  const char *function;
   u32 line;
+  const char *in;
 } jinrt_stackframe;
 
 void jinrt_init();

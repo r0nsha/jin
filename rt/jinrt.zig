@@ -15,12 +15,33 @@ const Location = extern struct {
     column: u32,
 };
 
-const Backtrace = std.ArrayList(StackFrame);
+const Backtrace = struct {
+    frames: std.ArrayList(StackFrame),
+
+    const Self = @This();
+
+    fn init() Self {
+        return Self{
+            .frames = std.ArrayList(StackFrame).init(std.heap.c_allocator),
+        };
+    }
+
+    fn print(self: *Self) void {
+        _ = self;
+        std.debug.print("Stack trace (most recent call comes last):", .{});
+    }
+};
 
 const StackFrame = extern struct {
     file: cstr,
-    function: cstr,
     line: u32,
+    in: cstr,
+
+    const Self = @This();
+
+    fn print(self: *Self) void {
+        std.debug.print("{s}:{} in {s}", .{ self.file, self.line, self.in });
+    }
 };
 
 export fn jinrt_init() void {}
