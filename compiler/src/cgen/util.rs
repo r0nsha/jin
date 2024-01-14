@@ -98,7 +98,11 @@ impl<'db> Generator<'db> {
         util::field(data_field, field, false)
     }
 
-    pub fn refcnt_field(&self, state: &GenState<'db>, value: ValueId) -> D<'db> {
+    pub fn refcnt_field(
+        &self,
+        state: &GenState<'db>,
+        value: ValueId,
+    ) -> D<'db> {
         util::field(self.value(state, value), REFCNT_FIELD, true)
     }
 
@@ -137,7 +141,20 @@ impl<'db> Generator<'db> {
                 [D::text("backtrace"), self.value(state, value), tyname, loc],
             )
         });
+
         free_call
+        // self.with_stack_frame(free_call, state.name, span)
+    }
+
+    pub fn with_stack_frame(
+        &self,
+        stmt: D<'db>,
+        callee: Ustr,
+        span: Span,
+    ) -> D<'db> {
+        let push_frame = self.push_stack_frame(callee, span);
+        let pop_frame = Self::pop_stack_frame();
+        D::intersperse([push_frame, stmt, pop_frame], D::hardline())
     }
 
     pub fn push_stack_frame(&self, callee: Ustr, span: Span) -> D<'db> {
