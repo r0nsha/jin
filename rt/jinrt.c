@@ -1,3 +1,5 @@
+#include <stdio.h>
+#include <string.h>
 #include "jinrt.h"
 
 FORCE_INLINE void *jin_rt_alloc(size_t size) {
