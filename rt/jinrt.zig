@@ -36,6 +36,7 @@ const Backtrace = struct {
 
     fn print(self: *Self) void {
         std.debug.print("Stack trace (most recent call comes last):\n", .{});
+        std.debug.print("frames: {}\n", .{self.frames.items.len});
         for (self.frames.items) |frame| {
             std.debug.print("{}", .{frame});
         }

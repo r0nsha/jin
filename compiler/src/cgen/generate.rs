@@ -539,13 +539,17 @@ impl<'db> Generator<'db> {
                     .append(D::space())
                     .append(self.value(state, *value))
             }),
-            Inst::Call { value, callee, args } => {
+            Inst::Call { value, callee, args, span } => {
                 let mut arg_docs = vec![];
 
-                let traced = match &state.body.value(*callee).kind {
-                    &ValueKind::Fn(sig) => self.mir.fn_sigs[sig].traced,
-                    _ => false,
-                };
+                let (display_name, traced) =
+                    match &state.body.value(*callee).kind {
+                        &ValueKind::Fn(sig) => {
+                            let sig = &self.mir.fn_sigs[sig];
+                            (sig.display_name, sig.traced)
+                        }
+                        _ => (ustr("(anonymous fn)"), false),
+                    };
 
                 if traced {
                     arg_docs.push(D::text("backtrace"));
@@ -553,6 +557,8 @@ impl<'db> Generator<'db> {
 
                 arg_docs
                     .extend(args.iter().copied().map(|a| self.value(state, a)));
+
+                self.push_stack_frame(display_name, *span);
 
                 self.value_assign(state, *value, |this| {
                     util::call(this.value(state, *callee), arg_docs)

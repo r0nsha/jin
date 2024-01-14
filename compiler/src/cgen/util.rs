@@ -3,6 +3,7 @@ use std::iter;
 
 use codespan_reporting::files::{Files, Location};
 use pretty::RcDoc as D;
+use ustr::Ustr;
 
 use crate::{
     cgen::{
@@ -137,6 +138,30 @@ impl<'db> Generator<'db> {
             )
         });
         free_call
+    }
+
+    pub fn push_stack_frame(&self, callee: Ustr, span: Span) -> D<'db> {
+        let (file, line) = self.get_span_stack_frame_info(span);
+        call(
+            D::text("jinrt_backtrace_push"),
+            [D::text("backtrace"), str_lit(callee.as_str()), line, file],
+        )
+    }
+
+    fn get_span_stack_frame_info(&self, span: Span) -> (D<'db>, D<'db>) {
+        let sources = self.db.sources.borrow();
+        let source = sources.get(span.source_id()).unwrap();
+
+        let root_path =
+            &self.db.find_package_by_source_id(source.id()).unwrap().root_path;
+        let root_parent = root_path.parent().unwrap_or(root_path);
+        let path = source.path();
+        let path = path.strip_prefix(root_parent).unwrap_or(path);
+
+        let loc =
+            source.location(span.source_id(), span.start() as usize).unwrap();
+
+        (str_lit(path), D::text(loc.line_number.to_string()))
     }
 }
 

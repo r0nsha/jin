@@ -414,14 +414,14 @@ impl<'db> ExpandDestroys<'db> {
             let result = body.create_register(self.db.types.unit);
             let callee = body.create_value(free_fn_ty, ValueKind::Fn(free_fn));
 
-            let Inst::Free { value, .. } = body.block(block).insts[inst_idx]
+            let Inst::Free { value, span, .. } =
+                body.block(block).insts[inst_idx]
             else {
                 unreachable!()
             };
 
-            // TODO: location param
             body.block_mut(block).insts[inst_idx] =
-                Inst::Call { value: result, callee, args: vec![value] };
+                Inst::Call { value: result, callee, args: vec![value], span };
         }
     }
 
@@ -497,6 +497,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         let adt_ty = instantiation.fold(adt.ty());
 
         let adt_name = mangle::mangle_adt(self.cx.db, adt, targs);
+        let adt_span = adt.name.span();
         let self_name = ustr("self");
 
         let params = vec![FnParam {
@@ -539,7 +540,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             is_extern: false,
             is_c_variadic: false,
             traced: true,
-            span: adt.name.span(),
+            span: adt_span,
         });
         self.cx.adt_frees.insert(ty, sig);
 
@@ -547,21 +548,27 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             self.body.create_value(adt_ty, ValueKind::UniqueName(self_name));
 
         let join_block = match &adt.kind {
-            AdtKind::Union(union_def) => {
-                self.lower_union_free(union_def, self_value, &instantiation)
-            }
-            AdtKind::Struct(struct_def) => {
-                self.lower_struct_free(struct_def, self_value, &instantiation)
-            }
+            AdtKind::Union(union_def) => self.lower_union_free(
+                union_def,
+                self_value,
+                &instantiation,
+                adt_span,
+            ),
+            AdtKind::Struct(struct_def) => self.lower_struct_free(
+                struct_def,
+                self_value,
+                &instantiation,
+                adt_span,
+            ),
         };
 
         let unit_value = self
             .body
             .create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
-        // TODO: location param
+
         self.body
             .ins(join_block)
-            .free(self_value, false, adt.name.span())
+            .free(self_value, false, adt_span)
             .ret(unit_value);
 
         self.cx.smir.fns.insert(sig, Fn { sig, body: self.body });
@@ -574,6 +581,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         struct_def: &StructDef,
         self_value: ValueId,
         instantiation: &Instantiation,
+        span: Span,
     ) -> BlockId {
         let start_block = self.body.create_block("start");
 
@@ -582,6 +590,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             self_value,
             &struct_def.fields,
             instantiation,
+            span,
         );
 
         start_block
@@ -592,6 +601,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         union_def: &UnionDef,
         self_value: ValueId,
         instantiation: &Instantiation,
+        span: Span,
     ) -> BlockId {
         let start_block = self.body.create_block("start");
         let join_block = self.body.create_block("join");
@@ -614,6 +624,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
                 variant_value,
                 &variant.fields,
                 instantiation,
+                span,
             );
 
             self.body.ins(block).br(join_block);
@@ -635,6 +646,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         self_value: ValueId,
         fields: &[AdtField],
         instantiation: &Instantiation,
+        span: Span,
     ) {
         for field in fields {
             let ty = instantiation.fold(field.ty);
@@ -648,11 +660,11 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
                     let (result, callee) =
                         self.cx.get_free_call_values(&mut self.body, ty);
 
-                    // TODO: location param
                     self.body.ins(block).call(
                         result,
                         callee,
                         vec![field_value],
+                        span,
                     );
                 }
                 TyKind::Ref(..) if self.cx.should_refcount_ty(ty) => {

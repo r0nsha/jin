@@ -666,6 +666,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     value,
                     callee,
                     args: args.into_iter().map(|(_, arg)| arg).collect(),
+                    span: expr.span,
                 })
             }
             hir::ExprKind::Unary(un) => {

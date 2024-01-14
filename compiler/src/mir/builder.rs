@@ -63,8 +63,9 @@ impl<'a> InstBuilder<'a> {
         value: ValueId,
         callee: ValueId,
         args: Vec<ValueId>,
+        span: Span,
     ) -> &mut Self {
-        self.inst(Inst::Call { value, callee, args });
+        self.inst(Inst::Call { value, callee, args, span });
         self
     }
 

@@ -200,7 +200,7 @@ impl<'db> PrettyCx<'db> {
             Inst::Return { value } => D::text("ret")
                 .append(D::space())
                 .append(self.value(body, *value)),
-            Inst::Call { value, callee, args } => self
+            Inst::Call { value, callee, args, .. } => self
                 .value_assign(body, *value)
                 .append(D::text("call"))
                 .append(D::space())
