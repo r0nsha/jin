@@ -123,8 +123,13 @@ impl<'db> Typeck<'db> {
     fn run(mut self) -> TypeckResult<Hir> {
         self.create_module_states();
         self.collect_items();
-        self.check_items()?;
+
+        self.checking_items = true;
+        for module in &self.ast.modules {
+            self.check_module(module)?;
+        }
         self.checking_items = false;
+
         self.check_fn_bodies()?;
 
         self.subst();
@@ -140,14 +145,6 @@ impl<'db> Typeck<'db> {
         for module in &self.ast.modules {
             self.resolution_state.create_module_state(module.id);
         }
-    }
-
-    fn check_items(&mut self) -> TypeckResult<()> {
-        for module in &self.ast.modules {
-            self.check_module(module)?;
-        }
-
-        Ok(())
     }
 
     fn check_module(&mut self, module: &ast::Module) -> TypeckResult<()> {

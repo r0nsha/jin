@@ -516,7 +516,10 @@ impl<'db> Typeck<'db> {
             Query::Name(word) => {
                 errors::name_not_found(self.db, from_module, in_module, *word)
             }
-            Query::Fn(fn_query) => errors::fn_not_found(self.db, fn_query),
+            Query::Fn(fn_query) => {
+                dbg!(&self.global_scope.assoc_fns);
+                errors::fn_not_found(self.db, fn_query)
+            }
         })
     }
 
