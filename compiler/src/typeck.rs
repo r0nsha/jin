@@ -366,7 +366,7 @@ impl<'db> Typeck<'db> {
         item_id: ast::GlobalItemId,
     ) -> TypeckResult<()> {
         let sig = self.check_fn_item_helper(env, fun)?;
-        let id = self.define_fn(env.module_id(), fun, &sig)?;
+        let id = self.define_fn(env.module_id(), fun, &sig, Some(ty))?;
         self.resolution_state
             .insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig });
         Ok(())
@@ -379,7 +379,7 @@ impl<'db> Typeck<'db> {
         item_id: ast::GlobalItemId,
     ) -> TypeckResult<()> {
         let sig = self.check_fn_item_helper(env, fun)?;
-        let id = self.define_fn(env.module_id(), fun, &sig)?;
+        let id = self.define_fn(env.module_id(), fun, &sig, None)?;
         self.resolution_state
             .insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig });
         Ok(())

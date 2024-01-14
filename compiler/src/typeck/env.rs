@@ -157,6 +157,7 @@ impl<'db> Typeck<'db> {
         module_id: ModuleId,
         fun: &ast::Fn,
         sig: &hir::FnSig,
+        assoc_ty: Option<Ty>,
     ) -> TypeckResult<DefId> {
         match fun.kind {
             ast::FnKind::Bare { .. } => {
@@ -193,7 +194,16 @@ impl<'db> Typeck<'db> {
                     ty: sig.ty.as_fn().cloned().unwrap(),
                 };
 
-                self.insert_fn_candidate(symbol, candidate)?;
+                if let Some(ty) = assoc_ty {
+                    self.insert_fn_candidate_in_ty(
+                        ty,
+                        sig.word.name(),
+                        symbol.module_id,
+                        candidate,
+                    )?;
+                } else {
+                    self.insert_fn_candidate(symbol, candidate)?;
+                }
 
                 Ok(id)
             }
@@ -210,12 +220,19 @@ impl<'db> Typeck<'db> {
 
     pub fn insert_fn_candidate_in_ty(
         &mut self,
-        symbol: Symbol,
+        ty: Ty,
+        name: Ustr,
+        module_id: ModuleId,
         candidate: FnCandidate,
     ) -> TypeckResult<()> {
-        todo!()
-        // let set = self.global_scope.fns.entry(symbol).or_default();
-        // Self::insert_fn_candidate_in(self.db, set, symbol, candidate)
+        let set = self
+            .global_scope
+            .assoc_fns
+            .entry(ty)
+            .or_default()
+            .entry(name)
+            .or_default();
+        Self::insert_fn_candidate_in(self.db, set, module_id, candidate)
     }
 
     pub fn insert_fn_candidate(
@@ -224,20 +241,20 @@ impl<'db> Typeck<'db> {
         candidate: FnCandidate,
     ) -> TypeckResult<()> {
         let set = self.global_scope.fns.entry(symbol).or_default();
-        Self::insert_fn_candidate_in(self.db, set, symbol, candidate)
+        Self::insert_fn_candidate_in(self.db, set, symbol.module_id, candidate)
     }
 
     pub fn insert_fn_candidate_in(
         db: &Db,
         set: &mut FnCandidateSet,
-        symbol: Symbol,
+        module_id: ModuleId,
         candidate: FnCandidate,
     ) -> TypeckResult<()> {
         set.try_insert(candidate).map_err(|err| match err {
             FnCandidateInsertError::AlreadyExists { prev, curr } => {
                 errors::multiple_fn_def_err(
                     db,
-                    symbol.module_id,
+                    module_id,
                     prev.word.span(),
                     &curr,
                 )
@@ -706,6 +723,7 @@ impl Symbol {
 pub struct GlobalScope {
     pub defs: FxHashMap<Symbol, GlobalScopeDef>,
     pub fns: FxHashMap<Symbol, FnCandidateSet>,
+    pub assoc_fns: FxHashMap<Ty, FxHashMap<Ustr, FnCandidateSet>>,
     pub symbol_to_item: FxHashMap<Symbol, Vec<ast::ItemId>>,
 }
 
@@ -714,6 +732,7 @@ impl GlobalScope {
         Self {
             defs: FxHashMap::default(),
             fns: FxHashMap::default(),
+            assoc_fns: FxHashMap::default(),
             symbol_to_item: FxHashMap::default(),
         }
     }

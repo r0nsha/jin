@@ -38,8 +38,7 @@ impl<'db> Typeck<'db> {
             ast::Item::ExternLet(let_) => {
                 self.insert_item(module_id, let_.word, item_id);
             }
-            ast::Item::ExternImport(_) => (),
-            ast::Item::Associated(_, _) => (),
+            ast::Item::ExternImport(_) | ast::Item::Associated(_, _) => (),
         }
     }
 
