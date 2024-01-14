@@ -35,7 +35,7 @@ impl<'db> Generator<'db> {
         let Location { line_number, column_number } =
             source.location(span.source_id(), span.start() as usize).unwrap();
 
-        D::text("(struct jin_rt_location)").append(D::space()).append(
+        D::text("(struct jinrt_location)").append(D::space()).append(
             util::struct_lit(vec![
                 ("path", str_lit(path)),
                 ("line", D::text(line_number.to_string())),
@@ -46,7 +46,7 @@ impl<'db> Generator<'db> {
 
     pub fn call_panic(&self, msg: &str, span: Span) -> D<'db> {
         call(
-            D::text("jin_rt_panic_at"),
+            D::text("jinrt_panic_at"),
             [str_lit(msg), self.create_location_value(span)],
         )
     }
@@ -125,7 +125,7 @@ impl<'db> Generator<'db> {
             state.body.value(value).ty.display(self.db)
         ));
         let loc = self.create_location_value(span);
-        call(D::text("jin_rt_refcheck"), [refcnt, fmt, loc])
+        call(D::text("jinrt_refcheck"), [refcnt, fmt, loc])
     }
 }
 
@@ -134,7 +134,7 @@ pub const NEST: isize = 2;
 pub fn call_alloc(ty: D<'_>) -> D<'_> {
     cast(
         ty.clone().append(D::text("*")),
-        call(D::text("jin_rt_alloc"), iter::once(sizeof(ty))),
+        call(D::text("jinrt_alloc"), iter::once(sizeof(ty))),
     )
 }
 
@@ -143,7 +143,7 @@ pub fn sizeof(ty: D<'_>) -> D<'_> {
 }
 
 pub fn call_free(value: D<'_>) -> D<'_> {
-    call(D::text("jin_rt_free"), iter::once(value))
+    call(D::text("jinrt_free"), iter::once(value))
 }
 
 pub fn call<'a>(callee: D<'a>, args: impl IntoIterator<Item = D<'a>>) -> D<'a> {
@@ -158,7 +158,7 @@ pub fn call<'a>(callee: D<'a>, args: impl IntoIterator<Item = D<'a>>) -> D<'a> {
 }
 
 pub fn cmp_strs<'a>(a: D<'a>, b: D<'a>) -> D<'a> {
-    util::call(D::text("jin_rt_strcmp"), [a, b])
+    util::call(D::text("jinrt_strcmp"), [a, b])
 }
 
 pub fn str_value(value: &str) -> D {

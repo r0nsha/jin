@@ -36,17 +36,17 @@ typedef struct str {
   usize len;
 } str;
 
-typedef struct jin_rt_location {
+typedef struct jinrt_location {
   const char *path;
   u32 line;
   u32 column;
-} jin_rt_location;
+} jinrt_location;
 
 // Built-in functions
-void *jin_rt_alloc(size_t size);
-void jin_rt_free(void *ptr);
-void jin_rt_panic(u8 *msg);
-void jin_rt_panic_at(u8 *msg, jin_rt_location loc);
-void jin_rt_refcheck(usize refcnt, u8 *fmt, jin_rt_location loc);
-bool jin_rt_strcmp(str a, str b);
+void *jinrt_alloc(size_t size);
+void jinrt_free(void *ptr);
+void jinrt_panic(u8 *msg);
+void jinrt_panic_at(u8 *msg, jinrt_location loc);
+void jinrt_refcheck(usize refcnt, u8 *fmt, jinrt_location loc);
+bool jinrt_strcmp(str a, str b);
 #endif
