@@ -565,20 +565,21 @@ impl Type {
 
                 match &adt.kind {
                     AdtKind::Struct(struct_def) => {
-                        let fields_to_create: Vec<(Ustr, Ty)> = struct_def
+                        let values: Vec<_> = struct_def
                             .fields
                             .iter()
-                            .map(|f| (f.name.name(), folder.fold(f.ty)))
+                            .map(|f| {
+                                cx.field_or_create(
+                                    cond,
+                                    f.name.name(),
+                                    folder.fold(f.ty),
+                                )
+                            })
                             .collect();
 
                         Self::Finite(vec![TypeCase::new(
                             Ctor::Struct(*adt_id),
-                            fields_to_create
-                                .into_iter()
-                                .map(|(name, ty)| {
-                                    cx.field_or_create(cond, name, ty)
-                                })
-                                .collect(),
+                            values,
                         )])
                     }
                     AdtKind::Union(union_def) => {
@@ -595,22 +596,21 @@ impl Type {
                                     ),
                                 );
 
-                                TypeCase::new(
-                                    Ctor::Variant(variant.id),
-                                    variant
-                                        .fields
-                                        .iter()
-                                        .map(|f| {
-                                            cx.create_untracked_value(
-                                                folder.fold(f.ty),
-                                                ValueKind::Field(
-                                                    variant_value,
-                                                    f.name.name(),
-                                                ),
-                                            )
-                                        })
-                                        .collect(),
-                                )
+                                let values: Vec<_> = variant
+                                    .fields
+                                    .iter()
+                                    .map(|f| {
+                                        cx.create_untracked_value(
+                                            folder.fold(f.ty),
+                                            ValueKind::Field(
+                                                variant_value,
+                                                f.name.name(),
+                                            ),
+                                        )
+                                    })
+                                    .collect();
+
+                                TypeCase::new(Ctor::Variant(variant.id), values)
                             })
                             .collect();
 
