@@ -9,18 +9,6 @@ const anyrc = extern struct {
     data: unit,
 };
 
-const Location = extern struct {
-    path: cstr,
-    line: u32,
-    column: u32,
-
-    const Self = @This();
-
-    pub fn format(self: Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) std.os.WriteError!void {
-        return writer.print("{s}:{}:{}", .{ self.path, self.line, self.column });
-    }
-};
-
 const Backtrace = struct {
     frames: std.ArrayList(StackFrame),
 
@@ -56,9 +44,9 @@ const StackFrame = extern struct {
 
 export fn jinrt_init() void {}
 
-export fn jinrt_panic_at(backtrace: *Backtrace, msg: cstr, loc: Location) noreturn {
+export fn jinrt_panic_at(backtrace: *Backtrace, msg: cstr, frame: StackFrame) noreturn {
     _ = msg;
-    backtrace.push(StackFrame{ .file = loc.path, .line = loc.line, .in = "foobar" }) catch unreachable;
+    backtrace.push(frame) catch unreachable;
     backtrace.print();
     std.process.exit(1);
 }
@@ -69,7 +57,7 @@ export fn jinrt_alloc(size: usize) *anyopaque {
     return p;
 }
 
-export fn jinrt_free(backtrace: *Backtrace, obj: *anyrc, tyname: cstr, loc: Location) void {
+export fn jinrt_free(backtrace: *Backtrace, obj: *anyrc, tyname: cstr, frame: StackFrame) void {
     if (obj.refcnt != 0) {
         const msg = std.fmt.allocPrint(
             std.heap.c_allocator,
@@ -77,7 +65,7 @@ export fn jinrt_free(backtrace: *Backtrace, obj: *anyrc, tyname: cstr, loc: Loca
             .{ tyname, obj.refcnt },
         ) catch unreachable;
         // zig fmt: off
-        jinrt_panic_at(backtrace, @ptrCast(cstr,msg.ptr), loc);
+        jinrt_panic_at(backtrace, @ptrCast(cstr, msg.ptr), frame);
         // zig fmt: on
     }
 

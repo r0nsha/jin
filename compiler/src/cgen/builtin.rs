@@ -57,6 +57,7 @@ impl<'db> Generator<'db> {
                 return D::intersperse(
                     [
                         self.panic_if(
+                            state,
                             cond,
                             &format!(
                                 "value is out of range of type `{}`: \
@@ -124,7 +125,7 @@ impl<'db> Generator<'db> {
 
         let cond = rhs.clone().append(D::text(" == 0"));
         let safety_check =
-            self.panic_if(cond, "attempt to divide by zero", data.span);
+            self.panic_if(state, cond, "attempt to divide by zero", data.span);
 
         let op = self
             .value_assign(state, data.target, |_| bin_op(lhs, data.op, rhs));
@@ -152,7 +153,7 @@ impl<'db> Generator<'db> {
 
         D::intersperse(
             [
-                self.panic_if(cond, &overflow_msg(action), data.span),
+                self.panic_if(state, cond, &overflow_msg(action), data.span),
                 self.value_assign(state, data.target, |_| {
                     bin_op(lhs, data.op, rhs)
                 }),

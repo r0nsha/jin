@@ -1,7 +1,7 @@
 use core::fmt;
 use std::iter;
 
-use codespan_reporting::files::{Files, Location};
+use codespan_reporting::files::Files;
 use pretty::RcDoc as D;
 
 use crate::{
@@ -17,36 +17,25 @@ use crate::{
 };
 
 impl<'db> Generator<'db> {
-    pub fn panic_if(&self, cond: D<'db>, msg: &str, span: Span) -> D<'db> {
-        if_stmt(cond, stmt(|| self.call_panic(msg, span)), None)
+    pub fn panic_if(
+        &self,
+        state: &GenState<'db>,
+        cond: D<'db>,
+        msg: &str,
+        span: Span,
+    ) -> D<'db> {
+        if_stmt(cond, stmt(|| self.call_panic(state, msg, span)), None)
     }
 
-    fn create_location_value(&self, span: Span) -> D<'db> {
-        let sources = self.db.sources.borrow();
-        let source = sources.get(span.source_id()).unwrap();
-
-        let root_path =
-            &self.db.find_package_by_source_id(source.id()).unwrap().root_path;
-        let root_parent = root_path.parent().unwrap_or(root_path);
-        let path = source.path();
-        let path = path.strip_prefix(root_parent).unwrap_or(path);
-
-        let Location { line_number, column_number } =
-            source.location(span.source_id(), span.start() as usize).unwrap();
-
-        D::text("(struct jinrt_location)").append(D::space()).append(
-            util::struct_lit(vec![
-                ("path", str_lit(path)),
-                ("line", D::text(line_number.to_string())),
-                ("column", D::text(column_number.to_string())),
-            ]),
-        )
-    }
-
-    pub fn call_panic(&self, msg: &str, span: Span) -> D<'db> {
+    pub fn call_panic(
+        &self,
+        state: &GenState<'db>,
+        msg: &str,
+        span: Span,
+    ) -> D<'db> {
         call(
             D::text("jinrt_panic_at"),
-            [str_lit(msg), self.create_location_value(span)],
+            [str_lit(msg), self.create_stackframe_value(state, span)],
         )
     }
 
@@ -133,11 +122,11 @@ impl<'db> Generator<'db> {
         span: Span,
     ) -> D<'db> {
         let tyname = str_lit(state.body.value(value).ty.display(self.db));
-        let loc = self.create_location_value(span);
+        let frame = self.create_stackframe_value(state, span);
         let free_call = stmt(|| {
             call(
                 D::text("jinrt_free"),
-                [D::text("backtrace"), self.value(state, value), tyname, loc],
+                [D::text("backtrace"), self.value(state, value), tyname, frame],
             )
         });
 

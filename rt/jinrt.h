@@ -30,12 +30,6 @@ typedef struct str {
   usize len;
 } str;
 
-typedef struct jinrt_location {
-  const char *path;
-  u32 line;
-  u32 column;
-} jinrt_location;
-
 typedef void *jinrt_backtrace;
 
 typedef struct jinrt_stackframe {
@@ -47,8 +41,9 @@ typedef struct jinrt_stackframe {
 void jinrt_init();
 void *jinrt_alloc(size_t size);
 void jinrt_free(jinrt_backtrace *backtrace, void *ptr, u8 *tyname,
-                jinrt_location loc);
-void jinrt_panic_at(jinrt_backtrace *backtrace, u8 *msg, jinrt_location loc);
+                jinrt_stackframe frame);
+void jinrt_panic_at(jinrt_backtrace *backtrace, u8 *msg,
+                    jinrt_stackframe frame);
 bool jinrt_strcmp(str a, str b);
 jinrt_backtrace *jinrt_backtrace_new();
 void jinrt_backtrace_push(jinrt_backtrace *backtrace, jinrt_stackframe frame);
