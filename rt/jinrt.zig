@@ -13,6 +13,12 @@ const Location = extern struct {
     path: cstr,
     line: u32,
     column: u32,
+
+    const Self = @This();
+
+    fn format(self: Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) std.os.WriteError!void {
+        return writer.print("{s}:{}:{}", .{ self.path, self.line, self.column });
+    }
 };
 
 const Backtrace = struct {
@@ -22,7 +28,7 @@ const Backtrace = struct {
 
     fn print(self: *Self) void {
         _ = self;
-        std.debug.print("Stack trace (most recent call comes last):", .{});
+        std.debug.print("Stack trace (most recent call comes last):\n", .{});
     }
 };
 
@@ -42,31 +48,33 @@ export fn jinrt_init() void {}
 
 const panic_fmt = "panic at '{s}'";
 
-export fn jinrt_panic(msg: cstr) noreturn {
+export fn jinrt_panic(backtrace: *Backtrace, msg: cstr) noreturn {
+    backtrace.print();
     std.debug.print(panic_fmt ++ "\n", .{msg});
     std.process.exit(1);
 }
 
-export fn jinrt_panic_at(msg: cstr, loc: Location) noreturn {
-    std.debug.print(panic_fmt ++ ", {s}:{}:{}\n", .{ msg, loc.path, loc.line, loc.column });
+export fn jinrt_panic_at(backtrace: *Backtrace, msg: cstr, loc: Location) noreturn {
+    backtrace.print();
+    std.debug.print(panic_fmt ++ ", {any}\n", .{ msg, loc });
     std.process.exit(1);
 }
 
-export fn jinrt_alloc(size: usize) *anyopaque {
+export fn jinrt_alloc(backtrace: *Backtrace, size: usize) *anyopaque {
     const memory = std.c.malloc(size);
-    const p = memory orelse oom();
+    const p = memory orelse oom(backtrace);
     return p;
 }
 
-export fn jinrt_free(obj: *anyrc, tyname: cstr, loc: Location) void {
+export fn jinrt_free(backtrace: *Backtrace, obj: *anyrc, tyname: cstr, loc: Location) void {
     if (obj.refcnt != 0) {
         const msg = std.fmt.allocPrint(
             std.heap.c_allocator,
             "cannot destroy a value of type `{s}` as it still has {} reference(s)",
             .{ tyname, obj.refcnt },
-        ) catch oom();
+        ) catch oom(backtrace);
         // zig fmt: off
-        jinrt_panic_at( @ptrCast(cstr,msg.ptr), loc);
+        jinrt_panic_at(backtrace, @ptrCast(cstr,msg.ptr), loc);
         // zig fmt: on
     }
 
@@ -78,7 +86,7 @@ export fn jinrt_strcmp(a: str, b: str) bool {
 }
 
 export fn jinrt_backtrace_new() *Backtrace {
-    const backtrace = std.heap.c_allocator.create(Backtrace) catch oom();
+    const backtrace = std.heap.c_allocator.create(Backtrace) catch unreachable;
     backtrace.* = Backtrace{
         .frames = std.ArrayList(StackFrame).init(std.heap.c_allocator),
     };
@@ -101,6 +109,6 @@ inline fn str_slice(s: str) []const u8 {
     return s.ptr[0..s.len];
 }
 
-inline fn oom() noreturn {
-    jinrt_panic(@as(cstr, "out of memory"));
+inline fn oom(backtrace: *Backtrace) noreturn {
+    jinrt_panic(backtrace, @as(cstr, "out of memory"));
 }

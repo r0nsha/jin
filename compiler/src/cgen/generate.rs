@@ -113,12 +113,12 @@ impl<'db> Generator<'db> {
 
         // Create new backtrace
         statements.push(stmt(|| {
-            D::text("jinrt_backtrace backtrace = jinrt_backtrace_new()")
+            D::text("jinrt_backtrace *backtrace = jinrt_backtrace_new()")
         }));
 
         // Call entry point
         statements.push(stmt(|| {
-            util::call(D::text(main_fn_name.as_str()), [D::text("&backtrace")])
+            util::call(D::text(main_fn_name.as_str()), [D::text("backtrace")])
         }));
 
         // return 0
