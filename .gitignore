@@ -8,3 +8,6 @@
 /examples/build
 /examples/*.a
 /examples/*.so
+
+/rt/*.a
+/rt/*.o
