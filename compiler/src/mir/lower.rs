@@ -1430,12 +1430,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub fn force_move(&mut self, value: ValueId, moved_to: Span) {
         self.set_moved(value, moved_to);
-        self.walk_fields(value, |this, field| {
-            this.set_moved(field, moved_to);
-            Ok(())
-        })
-        .unwrap();
-
+        // self.walk_fields(value, |this, field| {
+        //     this.set_moved(field, moved_to);
+        //     Ok(())
+        // })
+        // .unwrap();
         self.set_destroy_flag(value);
     }
 
