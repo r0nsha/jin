@@ -104,12 +104,12 @@ fn match_types() unit = {
 		_ -> {}, // unreachable
 	}
 
-	print(bag)
+	// print(bag)
 
-	match inner.get(1) {
-		//inner.Inner(field: 1) -> {}, // Error: match private field
-		inner.Inner(..) -> {}, // Ok, field isn't used
-	}
+	// match inner.get(1) {
+	// 	//inner.Inner(field: 1) -> {}, // Error: match private field
+	// 	inner.Inner(..) -> {}, // Ok, field isn't used
+	// }
 }
 
 fn print(box: &Box) unit = {

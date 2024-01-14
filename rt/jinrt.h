@@ -44,9 +44,8 @@ typedef struct jinrt_location {
 
 // Built-in functions
 void *jinrt_alloc(size_t size);
-void jinrt_free(void *ptr);
+void jinrt_free(void *ptr, u8 *fmt, jinrt_location loc);
 void jinrt_panic(u8 *msg);
 void jinrt_panic_at(u8 *msg, jinrt_location loc);
-void jinrt_refcheck(usize refcnt, u8 *fmt, jinrt_location loc);
 bool jinrt_strcmp(str a, str b);
 #endif

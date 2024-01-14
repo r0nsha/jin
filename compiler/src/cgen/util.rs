@@ -101,7 +101,11 @@ impl<'db> Generator<'db> {
         util::field(self.value(state, value), REFCNT_FIELD, true)
     }
 
-    pub fn alloc_value(&mut self, state: &FnState<'db>, value: ValueId) -> D<'db> {
+    pub fn alloc_value(
+        &mut self,
+        state: &FnState<'db>,
+        value: ValueId,
+    ) -> D<'db> {
         let ty = state.body.value(value).ty;
         self.value_assign(state, value, |this| this.alloc_ty(ty))
     }
@@ -121,25 +125,16 @@ impl<'db> Generator<'db> {
         value: ValueId,
         span: Span,
     ) -> D<'db> {
-        let refcheck = stmt(|| self.refcheck(state, value, span));
-        let free_call = stmt(|| util::call_free(self.value(state, value)));
-        D::intersperse([refcheck, free_call], D::hardline())
-    }
-
-    pub fn refcheck(
-        &self,
-        state: &FnState<'db>,
-        value: ValueId,
-        span: Span,
-    ) -> D<'db> {
-        let refcnt = self.refcnt_field(state, value);
         let fmt = str_lit(format!(
             "cannot destroy a value of type `{}` as it still has %u \
              reference(s)",
             state.body.value(value).ty.display(self.db)
         ));
         let loc = self.create_location_value(span);
-        call(D::text("jinrt_refcheck"), [refcnt, fmt, loc])
+        let free_call = stmt(|| {
+            call(D::text("jinrt_free"), [self.value(state, value), fmt, loc])
+        });
+        free_call
     }
 }
 
@@ -154,10 +149,6 @@ pub fn call_alloc(ty: D<'_>) -> D<'_> {
 
 pub fn sizeof(ty: D<'_>) -> D<'_> {
     call(D::text("sizeof"), iter::once(ty))
-}
-
-pub fn call_free(value: D<'_>) -> D<'_> {
-    call(D::text("jinrt_free"), iter::once(value))
 }
 
 pub fn call<'a>(callee: D<'a>, args: impl IntoIterator<Item = D<'a>>) -> D<'a> {
