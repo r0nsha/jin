@@ -186,6 +186,12 @@ impl PrettyPrint for Item {
             Self::Import(x) => x.pretty_print(cx),
             Self::ExternLet(x) => x.pretty_print(cx),
             Self::ExternImport(x) => x.pretty_print(cx),
+            Self::Associated(ty, item) => {
+                cx.builder.begin_child("associated item".to_string());
+                ty.pretty_print(cx);
+                item.pretty_print(cx);
+                cx.builder.end_child();
+            }
         }
     }
 }

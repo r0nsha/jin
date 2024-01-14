@@ -39,6 +39,7 @@ impl<'db> Typeck<'db> {
                 self.insert_item(module_id, let_.word, item_id);
             }
             ast::Item::ExternImport(_) => (),
+            ast::Item::Associated(_, _) => (),
         }
     }
 

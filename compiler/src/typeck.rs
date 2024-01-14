@@ -260,6 +260,7 @@ impl<'db> Typeck<'db> {
             ast::Item::ExternImport(import) => {
                 self.db.extern_libs.insert(import.lib.clone());
             }
+            ast::Item::Associated(ty, item) => {}
         }
 
         self.resolution_state.mark_resolved_item(item_id);
