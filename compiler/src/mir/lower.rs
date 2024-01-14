@@ -1796,9 +1796,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             let value = self.scope().created_values[idx];
             self.destroy_value(value, span);
         }
-        // for &value in scope.created_values.iter().rev() {
-        //     self.destroy_value(value, span);
-        // }
     }
 
     fn destroy_loop_values(&mut self, span: Span) {

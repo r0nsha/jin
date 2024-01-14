@@ -1,0 +1,14 @@
+fn main() unit = {
+    let bag = Bag(Box(1), Box(3))
+
+    match bag {
+	Bag(Box(1), _) -> {},
+	// Bag(b: Box(3), a: Box(a)) -> { printf("a: %d, b: 3 (named)\n".ptr, a) },
+	// Bag(Box(a), Box(3)) -> { printf("a: %d, b: 3\n".ptr, a) },
+	// Bag(a, ..) -> move(a),
+	_ -> {}, // unreachable
+    }
+}
+
+type Box(value: int)
+type Bag(a: Box, b: Box)
