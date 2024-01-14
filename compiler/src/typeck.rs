@@ -261,11 +261,11 @@ impl<'db> Typeck<'db> {
                 self.db.extern_libs.insert(import.lib.clone());
             }
             ast::Item::Associated(ty, item) => {
-                let ty = self.check_associated_item_ty(env, ty)?;
+                let ty = self.check_assoc_item_ty(env, ty)?;
 
                 match item.as_ref() {
                     ast::Item::Fn(fun) => {
-                        self.check_associated_fn_item(env, ty, fun, item_id)?;
+                        self.check_assoc_fn_item(env, ty, fun, item_id)?;
                     }
                     ast::Item::Let(_)
                     | ast::Item::Type(_)
@@ -282,7 +282,7 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
-    fn check_associated_item_ty(
+    fn check_assoc_item_ty(
         &mut self,
         env: &Env,
         ty: &TyExpr,
@@ -358,7 +358,7 @@ impl<'db> Typeck<'db> {
         })
     }
 
-    fn check_associated_fn_item(
+    fn check_assoc_fn_item(
         &mut self,
         env: &mut Env,
         ty: Ty,

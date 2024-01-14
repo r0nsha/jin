@@ -162,8 +162,29 @@ impl<'db> Typeck<'db> {
         match fun.kind {
             ast::FnKind::Bare { .. } => {
                 let symbol = Symbol::new(module_id, sig.word.name());
-                let qpath =
-                    self.db[module_id].qpath.clone().child(sig.word.name());
+
+                let base_qpath = if let Some(ty) = assoc_ty {
+                    match ty.kind() {
+                        TyKind::Adt(adt_id, _) => {
+                            self.db[self.db[*adt_id].def_id].qpath.clone()
+                        }
+                        TyKind::Int(_)
+                        | TyKind::Uint(_)
+                        | TyKind::Float(_)
+                        | TyKind::Str
+                        | TyKind::Bool
+                        | TyKind::Unit
+                        | TyKind::Never => {
+                            QPath::from(ustr(&ty.display(self.db).to_string()))
+                        }
+                        _ => unreachable!(),
+                    }
+                } else {
+                    self.db[module_id].qpath.clone()
+                };
+
+                let qpath = base_qpath.child(sig.word.name());
+
                 let scope = ScopeInfo {
                     module_id,
                     level: ScopeLevel::Global,
