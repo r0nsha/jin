@@ -35,7 +35,11 @@ impl<'db> Generator<'db> {
     ) -> D<'db> {
         call(
             D::text("jinrt_panic_at"),
-            [str_lit(msg), self.create_stackframe_value(state, span)],
+            [
+                D::text("backtrace"),
+                str_lit(msg),
+                self.create_stackframe_value(state, span),
+            ],
         )
     }
 
