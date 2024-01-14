@@ -116,7 +116,10 @@ impl<'db> Generator<'db> {
             kind => panic!("unexpected type {kind:?} in Inst::Alloc"),
         };
 
-        util::call_alloc(ty_doc)
+        cast(
+            ty_doc.clone().append(D::text("*")),
+            call(D::text("jinrt_alloc"), [sizeof(ty_doc)]),
+        )
     }
 
     pub fn free(
@@ -128,20 +131,16 @@ impl<'db> Generator<'db> {
         let tyname = str_lit(state.body.value(value).ty.display(self.db));
         let loc = self.create_location_value(span);
         let free_call = stmt(|| {
-            call(D::text("jinrt_free"), [self.value(state, value), tyname, loc])
+            call(
+                D::text("jinrt_free"),
+                [D::text("backtrace"), self.value(state, value), tyname, loc],
+            )
         });
         free_call
     }
 }
 
 pub const NEST: isize = 2;
-
-pub fn call_alloc(ty: D<'_>) -> D<'_> {
-    cast(
-        ty.clone().append(D::text("*")),
-        call(D::text("jinrt_alloc"), iter::once(sizeof(ty))),
-    )
-}
 
 pub fn sizeof(ty: D<'_>) -> D<'_> {
     call(D::text("sizeof"), iter::once(ty))

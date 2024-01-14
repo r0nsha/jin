@@ -16,7 +16,7 @@ const Location = extern struct {
 
     const Self = @This();
 
-    fn format(self: Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) std.os.WriteError!void {
+    pub fn format(self: Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) std.os.WriteError!void {
         return writer.print("{s}:{}:{}", .{ self.path, self.line, self.column });
     }
 };
@@ -56,13 +56,13 @@ export fn jinrt_panic(backtrace: *Backtrace, msg: cstr) noreturn {
 
 export fn jinrt_panic_at(backtrace: *Backtrace, msg: cstr, loc: Location) noreturn {
     backtrace.print();
-    std.debug.print(panic_fmt ++ ", {any}\n", .{ msg, loc });
+    std.debug.print(panic_fmt ++ ", {}\n", .{ msg, loc });
     std.process.exit(1);
 }
 
-export fn jinrt_alloc(backtrace: *Backtrace, size: usize) *anyopaque {
+export fn jinrt_alloc(size: usize) *anyopaque {
     const memory = std.c.malloc(size);
-    const p = memory orelse oom(backtrace);
+    const p = memory orelse std.debug.panic("out of memory", .{});
     return p;
 }
 
@@ -72,7 +72,7 @@ export fn jinrt_free(backtrace: *Backtrace, obj: *anyrc, tyname: cstr, loc: Loca
             std.heap.c_allocator,
             "cannot destroy a value of type `{s}` as it still has {} reference(s)",
             .{ tyname, obj.refcnt },
-        ) catch oom(backtrace);
+        ) catch unreachable;
         // zig fmt: off
         jinrt_panic_at(backtrace, @ptrCast(cstr,msg.ptr), loc);
         // zig fmt: on
@@ -107,8 +107,4 @@ export fn jinrt_backtrace_pop(backtrace: *Backtrace) void {
 
 inline fn str_slice(s: str) []const u8 {
     return s.ptr[0..s.len];
-}
-
-inline fn oom(backtrace: *Backtrace) noreturn {
-    jinrt_panic(backtrace, @as(cstr, "out of memory"));
 }
