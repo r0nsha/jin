@@ -25,7 +25,7 @@ const Backtrace = struct {
     fn print(self: *Self) void {
         std.debug.print("Stack trace (most recent call comes last):\n", .{});
         for (self.frames.items, 0..) |frame, idx| {
-            std.debug.print("  {}: {}\n", .{ idx, frame });
+            std.debug.print("    {}: {}\n", .{ idx, frame });
         }
     }
 };
@@ -45,9 +45,10 @@ const StackFrame = extern struct {
 export fn jinrt_init() void {}
 
 export fn jinrt_panic_at(backtrace: *Backtrace, msg: cstr, frame: StackFrame) noreturn {
-    _ = msg;
     backtrace.push(frame) catch unreachable;
     backtrace.print();
+    const tid = std.Thread.getCurrentId();
+    std.debug.print("Thread {} panicked: {s}\n", .{ tid, msg });
     std.process.exit(1);
 }
 
