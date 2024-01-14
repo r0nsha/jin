@@ -10,10 +10,15 @@ else
     # Copy std package
     cp -r std target/std
 
-    # Copy runtime
-    mkdir target/rt &> /dev/null
+    # Build runtime
+    cd rt
+    zig build
+    cd ..
+
+    # Copy runtime library & header
+    mkdir target/rt &>/dev/null
     cp rt/jinrt.h target/rt/jinrt.h
-    cp rt/libjinrt.a target/rt/libjinrt.a
+    cp rt/zig-out/lib/libjinrt.a target/rt/libjinrt.a
 
     cargo run -- build $source --timings --emit ast --emit hir --emit mir --emit c
 

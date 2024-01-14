@@ -9,5 +9,5 @@
 /examples/*.a
 /examples/*.so
 
-/rt/*.a
-/rt/*.o
+/rt/zig-cache
+/rt/zig-out
