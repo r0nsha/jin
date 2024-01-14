@@ -497,6 +497,7 @@ impl<'db> Typeck<'db> {
             }
         }
 
+        // We should only lookup functions if we didn't already query for a function
         let should_lookup_fns =
             ShouldLookupFns::from(!matches!(query, Query::Fn(_)));
 
