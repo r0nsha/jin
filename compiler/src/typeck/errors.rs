@@ -1,10 +1,14 @@
 use crate::{
+    ast::Ast,
     db::{AdtId, Db, DefId, ModuleId},
     diagnostics::{Diagnostic, Label},
     middle::BinOp,
     span::{Span, Spanned},
     ty::Ty,
-    typeck::env::{FnCandidate, FnQuery},
+    typeck::{
+        env::{FnCandidate, FnQuery},
+        resolution_state::CyclicItemErr,
+    },
     word::Word,
 };
 
@@ -233,5 +237,22 @@ pub fn invalid_bin_op(db: &Db, op: BinOp, ty: Ty, span: Span) -> Diagnostic {
         .with_message(format!("cannot use `{}` on `{}`", op, ty.display(db)))
         .with_label(
             Label::primary(span).with_message(format!("invalid use of `{op}`")),
+        )
+}
+
+pub fn cyclic_def(
+    ast: &Ast,
+    origin_span: Span,
+    err: CyclicItemErr,
+) -> Diagnostic {
+    let reference_span =
+        ast.find_item(err.causee).expect("item to exist").span();
+
+    Diagnostic::error()
+        .with_message("cycle detected while checking definition")
+        .with_label(Label::primary(origin_span).with_message("definition here"))
+        .with_label(
+            Label::secondary(reference_span)
+                .with_message("cyclic reference here"),
         )
 }

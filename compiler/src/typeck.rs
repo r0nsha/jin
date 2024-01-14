@@ -210,27 +210,9 @@ impl<'db> Typeck<'db> {
             return Ok(());
         }
 
-        self.resolution_state.mark_in_progress_item(item_id).map_err(
-            |err| {
-                let origin_span = item.span();
-                let reference_span = self
-                    .ast
-                    .find_item(err.causee)
-                    .expect("item to exist")
-                    .span();
-
-                Diagnostic::error()
-                    .with_message("cycle detected while checking definition")
-                    .with_label(
-                        Label::primary(origin_span)
-                            .with_message("definition here"),
-                    )
-                    .with_label(
-                        Label::secondary(reference_span)
-                            .with_message("cyclic reference here"),
-                    )
-            },
-        )?;
+        self.resolution_state
+            .mark_in_progress_item(item_id)
+            .map_err(|err| errors::cyclic_def(self.ast, item.span(), err))?;
 
         match item {
             ast::Item::Fn(fun) => {
