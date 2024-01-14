@@ -966,6 +966,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> BlockId {
         let case = cases.pop().unwrap();
         values.push(cond);
+
+        if let Some(action) = self.get_value_action(cond) {
+            for value in case.values {
+                state.actions.insert(value, action);
+            }
+        }
+
         self.lower_decision(state, case.decision, parent_block, values)
     }
 
@@ -983,10 +990,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.body.create_edge(parent_block, test_block);
         values.push(cond);
 
+        let action = self.get_value_action(cond);
+
         for case in cases {
             let block = self.body.create_block("match_variant_case");
             self.body.create_edge(test_block, block);
             blocks.push(block);
+
+            if let Some(action) = action {
+                for value in case.values {
+                    state.actions.insert(value, action);
+                }
+            }
+
             self.lower_decision(state, case.decision, block, values.clone());
         }
 
@@ -996,6 +1012,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.ins(test_block).switch(tag_field, blocks);
 
         test_block
+    }
+
+    fn get_value_action(&self, cond: ValueId) -> Option<ValueAction> {
+        let cond_ty = self.ty_of(cond);
+
+        if cond_ty.is_move(self.cx.db) {
+            Some(ValueAction::Move(cond))
+        } else if cond_ty.is_ref() {
+            Some(ValueAction::IncRef(cond))
+        } else {
+            None
+        }
     }
 
     fn lower_decision_bindings(
@@ -1018,33 +1046,33 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.create_destroy_flag(binding_value);
                     self.locals.insert(id, binding_value);
 
-                    if binding_ty.is_ref() {
-                        self.set_moved(source, span);
-                        self.ins(self.current_block).incref(binding_value);
-                    } else {
-                        self.try_move(source, span);
+                    match state.actions.get(&source) {
+                        Some(&ValueAction::Move(_)) => {
+                            self.try_move(source, span);
+                        }
+                        Some(&ValueAction::IncRef(_)) => {
+                            self.set_moved(source, span);
+                            self.ins(self.current_block).incref(binding_value);
+                        }
+                        None => {
+                            self.set_moved(source, span);
+                        }
                     }
                 }
                 pmatch::Binding::Discard(source, span) => {
-                    let has_parent_ref = self
-                        .walk_parents(
-                            source,
-                            |this, parent, _| -> Result<(), ()> {
-                                if this.ty_of(parent).is_ref() {
-                                    Err(())
-                                } else {
-                                    this.set_partially_moved(parent, span);
-                                    Ok(())
-                                }
-                            },
-                        )
-                        .is_err();
-
-                    if !has_parent_ref {
-                        self.destroy_value_entirely(source, span);
+                    match state.actions.get(&source) {
+                        Some(&ValueAction::Move(_)) => {
+                            self.destroy_value_entirely(source, span);
+                            self.try_move(source, span);
+                        }
+                        Some(&ValueAction::IncRef(_)) => {
+                            self.set_moved(source, span);
+                        }
+                        None => {
+                            self.destroy_value_entirely(source, span);
+                            self.set_moved(source, span);
+                        }
                     }
-
-                    self.set_moved(source, span);
                 }
             }
         }
@@ -1060,8 +1088,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 continue;
             }
 
-            self.force_move(value, state.span);
-            self.ins(self.current_block).free(value, false, state.span);
+            match state.actions.get(&value) {
+                Some(
+                    &ValueAction::Move(parent) | &ValueAction::IncRef(parent),
+                ) if self.value_is_moved(parent) => {}
+                Some(&ValueAction::IncRef(_)) => {
+                    self.set_moved(value, state.span);
+                }
+                _ => {
+                    self.set_moved(value, state.span);
+                    self.set_destroy_flag(value);
+                    self.ins(self.current_block).free(value, false, state.span);
+                }
+            }
         }
     }
 
@@ -1428,16 +1467,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         Ok(())
     }
 
-    pub fn force_move(&mut self, value: ValueId, moved_to: Span) {
-        self.set_moved(value, moved_to);
-        // self.walk_fields(value, |this, field| {
-        //     this.set_moved(field, moved_to);
-        //     Ok(())
-        // })
-        // .unwrap();
-        self.set_destroy_flag(value);
-    }
-
     pub fn try_use(&mut self, value: ValueId, moved_to: Span) {
         let result = self.check_if_moved(value, moved_to);
         self.emit_result(result);
@@ -1694,6 +1723,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub fn set_value_state(&mut self, value: ValueId, state: ValueState) {
         self.value_states.insert(self.current_block, value, state);
+    }
+
+    pub fn value_is_moved(&mut self, value: ValueId) -> bool {
+        matches!(self.value_state(value), ValueState::Moved(..))
     }
 
     #[inline]
@@ -2303,6 +2336,9 @@ struct DecisionState<'a> {
     /// A mapping of arm guards, and their associated concrete guard expression
     guards: FxHashMap<BlockId, &'a hir::Expr>,
 
+    /// Actions to take for values in the decision tree
+    actions: FxHashMap<ValueId, ValueAction>,
+
     /// The match expression's span
     span: Span,
 }
@@ -2314,9 +2350,16 @@ impl<'a> DecisionState<'a> {
             join_block: BlockId::null(),
             bodies: FxHashMap::default(),
             guards: FxHashMap::default(),
+            actions: FxHashMap::default(),
             span,
         }
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+enum ValueAction {
+    Move(ValueId),
+    IncRef(ValueId),
 }
 
 #[derive(Debug, Clone, Copy)]
