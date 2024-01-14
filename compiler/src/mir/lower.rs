@@ -1879,7 +1879,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.position_at(no_destroy_block);
             }
             ValueState::PartiallyMoved { .. } => {
-                // TODO: walk fields and drop?
                 self.ins(self.current_block).free(value, false, span);
             }
             ValueState::Owned => {
