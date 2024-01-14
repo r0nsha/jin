@@ -19,11 +19,13 @@ export fn jinrt_init() void {
 }
 
 export fn jinrt_panic(msg: cstr) noreturn {
-    std.debug.panic("panic at '{s}'\n", .{msg});
+    std.debug.print("panic at '{s}'\n", .{msg});
+    std.process.exit(1);
 }
 
 export fn jinrt_panic_at(msg: cstr, loc: Location) noreturn {
-    std.debug.panic("panic at '{s}', {s}:{}:{}\n", .{ msg, loc.path, loc.line, loc.column });
+    std.debug.print("panic at '{s}', {s}:{}:{}\n", .{ msg, loc.path, loc.line, loc.column });
+    std.process.exit(1);
 }
 
 export fn jinrt_alloc(size: usize) *anyopaque {
