@@ -500,7 +500,7 @@ impl<'db> Generator<'db> {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
             Inst::Free { value, destroy_glue: _, span } => {
-                self.refcheck_and_free(state, *value, *span)
+                self.free(state, *value, *span)
             }
             Inst::IncRef { value } => {
                 stmt(|| self.refcnt_field(state, *value).append(" += 1"))

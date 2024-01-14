@@ -119,7 +119,7 @@ impl<'db> Generator<'db> {
         util::call_alloc(ty_doc)
     }
 
-    pub fn refcheck_and_free(
+    pub fn free(
         &self,
         state: &FnState<'db>,
         value: ValueId,
