@@ -3,8 +3,8 @@ import std.option.{Option, ?}
 fn extern printf(fmt: *u8, ..) i32
 
 type LinkedList[a](
-  head: Option[Node[a]],
   tail: Option[&mut Node[a]],
+  head: Option[Node[a]],
 )
 
 type Node[a](
