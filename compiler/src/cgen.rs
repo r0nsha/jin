@@ -171,7 +171,7 @@ fn compile_with_tcc(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
         .arg("-lm")
         .arg("-g");
 
-    // println!("{:?}", cmd);
+    println!("{:?}", cmd);
 
     cmd.execute_output().expect("linking to work");
 }
@@ -193,7 +193,7 @@ impl Libraries {
 
         // Add runtime library
         let rt_path = Utf8PathBuf::from_path_buf(
-            std::env::current_dir().unwrap().join("rt"),
+            std::env::current_exe().unwrap().parent().unwrap().join("rt"),
         )
         .unwrap();
         this.paths.insert(rt_path.to_string());

@@ -25,7 +25,7 @@ pub fn parse_module_tree(
 
     // Std
     let root_std_file = Utf8PathBuf::try_from(
-        std::env::current_dir().unwrap().join("std/std.jin"),
+        std::env::current_exe().unwrap().parent().unwrap().join("std/std.jin"),
     )
     .unwrap();
     let (std_package, _) = db.create_package(ustr("std"), &root_std_file)?;
