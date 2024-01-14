@@ -1097,8 +1097,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
                 _ => {
                     self.set_moved(value, state.span);
-                    self.set_destroy_flag(value);
-                    self.ins(self.current_block).free(value, false, state.span);
+                    self.free_and_set_destroy_flag(value, false, state.span);
                 }
             }
         }
@@ -1307,6 +1306,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let value = self.push_inst_with_register(ty, |value| {
             Inst::StackAlloc { value, init: Some(to_clone) }
         });
+        self.create_destroy_flag(value);
         self.ins(self.current_block).incref(value);
         value
     }
@@ -1903,21 +1903,21 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let const_false = self.const_bool(false);
                 let destroy_glue = self.needs_destroy_glue(value);
 
-                self.ins(destroy_block)
-                    .store(const_false, destroy_flag)
-                    .free(value, destroy_glue, span)
-                    .br(no_destroy_block);
+                self.position_at(destroy_block);
+                self.ins(destroy_block).store(const_false, destroy_flag);
+                self.free_and_set_destroy_flag(value, destroy_glue, span);
+                self.ins(destroy_block).br(no_destroy_block);
 
                 // Now that the value is destroyed, it has definitely been moved...
                 self.position_at(no_destroy_block);
             }
             ValueState::PartiallyMoved { .. } => {
-                self.ins(self.current_block).free(value, false, span);
+                self.free_and_set_destroy_flag(value, false, span);
             }
             ValueState::Owned => {
                 // Unconditional destroy
                 let destroy_glue = self.needs_destroy_glue(value);
-                self.ins(self.current_block).free(value, destroy_glue, span);
+                self.free_and_set_destroy_flag(value, destroy_glue, span);
             }
         }
     }
@@ -1957,6 +1957,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             |value| Inst::StackAlloc { value, init: Some(init) },
         );
         self.body.destroy_flags.insert(value, flag);
+    }
+
+    fn free_and_set_destroy_flag(
+        &mut self,
+        value: ValueId,
+        destroy_glue: bool,
+        span: Span,
+    ) {
+        self.ins(self.current_block).free(value, destroy_glue, span);
+        self.set_destroy_flag(value);
     }
 
     fn set_destroy_flag(&mut self, value: ValueId) {
