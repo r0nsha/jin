@@ -26,9 +26,19 @@ const Backtrace = struct {
 
     const Self = @This();
 
+    fn push(self: *Self, frame: StackFrame) !void {
+        try self.frames.append(frame);
+    }
+
+    fn pop(self: *Self) ?StackFrame {
+        return self.frames.popOrNull();
+    }
+
     fn print(self: *Self) void {
-        _ = self;
         std.debug.print("Stack trace (most recent call comes last):\n", .{});
+        for (self.frames.items) |frame| {
+            std.debug.print("{}", .{frame});
+        }
     }
 };
 
@@ -49,14 +59,17 @@ export fn jinrt_init() void {}
 const panic_fmt = "panic at '{s}'";
 
 export fn jinrt_panic(backtrace: *Backtrace, msg: cstr) noreturn {
+    _ = msg;
     backtrace.print();
-    std.debug.print(panic_fmt ++ "\n", .{msg});
+    // std.debug.print(panic_fmt ++ "\n", .{msg});
     std.process.exit(1);
 }
 
 export fn jinrt_panic_at(backtrace: *Backtrace, msg: cstr, loc: Location) noreturn {
+    _ = loc;
+    _ = msg;
     backtrace.print();
-    std.debug.print(panic_fmt ++ ", {}\n", .{ msg, loc });
+    // std.debug.print(panic_fmt ++ ", {}\n", .{ msg, loc });
     std.process.exit(1);
 }
 
@@ -94,13 +107,11 @@ export fn jinrt_backtrace_new() *Backtrace {
 }
 
 export fn jinrt_backtrace_push(backtrace: *Backtrace, file: cstr, line: u32, in: cstr) void {
-    backtrace.frames.append(StackFrame{ .file = file, .line = line, .in = in }) catch {
-        std.debug.panic("jinrt_backtrace_pop: backtrace is empty", .{});
-    };
+    backtrace.push(StackFrame{ .file = file, .line = line, .in = in }) catch unreachable;
 }
 
 export fn jinrt_backtrace_pop(backtrace: *Backtrace) void {
-    _ = backtrace.frames.popOrNull() orelse {
+    _ = backtrace.pop() orelse {
         std.debug.panic("jinrt_backtrace_pop: backtrace is empty", .{});
     };
 }
