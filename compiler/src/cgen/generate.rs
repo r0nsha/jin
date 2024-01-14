@@ -514,7 +514,9 @@ impl<'db> Generator<'db> {
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),
-            Inst::Free { value, span } => self.free(state, *value, *span),
+            Inst::Free { value, traced, span } => {
+                self.free(state, *value, *traced, *span)
+            }
             Inst::IncRef { value } => {
                 stmt(|| self.refcnt_field(state, *value).append(" += 1"))
             }

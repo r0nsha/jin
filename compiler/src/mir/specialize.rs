@@ -431,7 +431,7 @@ impl<'db> ExpandDestroys<'db> {
                 };
             } else {
                 body.block_mut(block).insts[inst_idx] =
-                    Inst::Free { value, span };
+                    Inst::Free { value, traced: true, span };
             }
         }
     }
@@ -577,7 +577,10 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             .body
             .create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
 
-        self.body.ins(join_block).free(self_value, adt_span).ret(unit_value);
+        self.body
+            .ins(join_block)
+            .free(self_value, false, adt_span)
+            .ret(unit_value);
 
         self.cx.smir.fns.insert(sig, Fn { sig, body: self.body });
 

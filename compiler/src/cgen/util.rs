@@ -131,6 +131,7 @@ impl<'db> Generator<'db> {
         &self,
         state: &GenState<'db>,
         value: ValueId,
+        traced: bool,
         span: Span,
     ) -> D<'db> {
         let tyname = str_lit(state.body.value(value).ty.display(self.db));
@@ -142,8 +143,11 @@ impl<'db> Generator<'db> {
             )
         });
 
-        free_call
-        // self.with_stack_frame(free_call, state.name, span)
+        if traced {
+            self.with_stack_frame(free_call, state.name, span)
+        } else {
+            free_call
+        }
     }
 
     pub fn with_stack_frame(

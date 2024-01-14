@@ -437,7 +437,7 @@ pub enum Inst {
     Store { value: ValueId, target: ValueId },
     Alloc { value: ValueId },
     Destroy { value: ValueId, destroy_glue: bool, span: Span },
-    Free { value: ValueId, span: Span },
+    Free { value: ValueId, traced: bool, span: Span },
     IncRef { value: ValueId },
     DecRef { value: ValueId },
     Br { target: BlockId },

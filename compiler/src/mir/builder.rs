@@ -114,8 +114,13 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
-    pub fn free(&mut self, value: ValueId, span: Span) -> &mut Self {
-        self.inst(Inst::Free { value, span });
+    pub fn free(
+        &mut self,
+        value: ValueId,
+        traced: bool,
+        span: Span,
+    ) -> &mut Self {
+        self.inst(Inst::Free { value, traced, span });
         self
     }
 
