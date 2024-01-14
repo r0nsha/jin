@@ -125,14 +125,10 @@ impl<'db> Generator<'db> {
         value: ValueId,
         span: Span,
     ) -> D<'db> {
-        let fmt = str_lit(format!(
-            "cannot destroy a value of type `{}` as it still has %u \
-             reference(s)",
-            state.body.value(value).ty.display(self.db)
-        ));
+        let tyname = str_lit(state.body.value(value).ty.display(self.db));
         let loc = self.create_location_value(span);
         let free_call = stmt(|| {
-            call(D::text("jinrt_free"), [self.value(state, value), fmt, loc])
+            call(D::text("jinrt_free"), [self.value(state, value), tyname, loc])
         });
         free_call
     }
