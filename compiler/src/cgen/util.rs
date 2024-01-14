@@ -142,10 +142,16 @@ impl<'db> Generator<'db> {
 
     pub fn push_stack_frame(&self, callee: Ustr, span: Span) -> D<'db> {
         let (file, line) = self.get_span_stack_frame_info(span);
-        call(
-            D::text("jinrt_backtrace_push"),
-            [D::text("backtrace"), str_lit(callee.as_str()), line, file],
-        )
+        stmt(|| {
+            call(
+                D::text("jinrt_backtrace_push"),
+                [D::text("backtrace"), file, line, str_lit(callee.as_str())],
+            )
+        })
+    }
+
+    pub fn pop_stack_frame() -> D<'db> {
+        stmt(|| call(D::text("jinrt_backtrace_pop"), [D::text("backtrace")]))
     }
 
     fn get_span_stack_frame_info(&self, span: Span) -> (D<'db>, D<'db>) {

@@ -36,9 +36,8 @@ const Backtrace = struct {
 
     fn print(self: *Self) void {
         std.debug.print("Stack trace (most recent call comes last):\n", .{});
-        std.debug.print("frames: {}\n", .{self.frames.items.len});
         for (self.frames.items) |frame| {
-            std.debug.print("{}", .{frame});
+            std.debug.print("  {}\n", .{frame});
         }
     }
 };
@@ -50,8 +49,8 @@ const StackFrame = struct {
 
     const Self = @This();
 
-    fn print(self: *Self) void {
-        std.debug.print("{s}:{} in {s}", .{ self.file, self.line, self.in });
+    pub fn format(self: Self, comptime _: []const u8, _: std.fmt.FormatOptions, writer: anytype) std.os.WriteError!void {
+        return writer.print("{s}:{} in {s}", .{ self.file, self.line, self.in });
     }
 };
 

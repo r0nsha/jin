@@ -558,11 +558,15 @@ impl<'db> Generator<'db> {
                 arg_docs
                     .extend(args.iter().copied().map(|a| self.value(state, a)));
 
-                self.push_stack_frame(display_name, *span);
+                let push_frame = self.push_stack_frame(display_name, *span);
 
-                self.value_assign(state, *value, |this| {
+                let call = self.value_assign(state, *value, |this| {
                     util::call(this.value(state, *callee), arg_docs)
-                })
+                });
+
+                let pop_frame = Self::pop_stack_frame();
+
+                D::intersperse([push_frame, call, pop_frame], D::hardline())
             }
             Inst::Binary { value, lhs, rhs, op, span } => self.codegen_bin_op(
                 state,
