@@ -2,6 +2,7 @@ const std = @import("std");
 const testing = std.testing;
 
 const cstr = [*:0]const u8;
+const str = extern struct { ptr: cstr, len: usize };
 
 const Location = extern struct {
     path: cstr,
@@ -46,4 +47,12 @@ export fn jinrt_refcheck(refcnt: usize, fmt: cstr, loc: Location) void {
     if (refcnt != 0) {
         jinrt_panic_at(fmt, loc);
     }
+}
+
+export fn jinrt_strcmp(a: str, b: str) bool {
+    return std.mem.eql(u8, str_slice(a), str_slice(b));
+}
+
+inline fn str_slice(s: str) []const u8 {
+    return s.ptr[0..s.len];
 }

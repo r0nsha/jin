@@ -13,7 +13,7 @@ use crate::{
     mir::{Block, ValueId, ValueKind},
     span::Span,
     sym,
-    ty::TyKind,
+    ty::{Ty, TyKind},
 };
 
 impl<'db> Generator<'db> {
@@ -99,6 +99,20 @@ impl<'db> Generator<'db> {
 
     pub fn refcnt_field(&self, state: &FnState<'db>, value: ValueId) -> D<'db> {
         util::field(self.value(state, value), REFCNT_FIELD, true)
+    }
+
+    pub fn alloc_value(&mut self, state: &FnState<'db>, value: ValueId) -> D<'db> {
+        let ty = state.body.value(value).ty;
+        self.value_assign(state, value, |this| this.alloc_ty(ty))
+    }
+
+    pub fn alloc_ty(&self, ty: Ty) -> D<'db> {
+        let ty_doc = match ty.kind() {
+            TyKind::Adt(..) => D::text(self.adt_names[&ty].as_str()),
+            kind => panic!("unexpected type {kind:?} in Inst::Alloc"),
+        };
+
+        util::call_alloc(ty_doc)
     }
 
     pub fn refcheck_and_free(

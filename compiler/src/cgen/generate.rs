@@ -24,7 +24,7 @@ use crate::{
         StaticGlobal, ValueId, ValueKind,
     },
     target::TargetMetrics,
-    ty::{fold::TyFolder, Instantiation, Ty, TyKind},
+    ty::{fold::TyFolder, Instantiation, Ty},
 };
 
 pub const DATA_FIELD: &str = "data";
@@ -604,15 +604,7 @@ impl<'db> Generator<'db> {
         state: &mut FnState<'db>,
         value: ValueId,
     ) -> D<'db> {
-        let ty = state.body.value(value).ty;
-
-        let ty_doc = match ty.kind() {
-            TyKind::Adt(..) => D::text(self.adt_names[&ty].as_str()),
-            kind => panic!("unexpected type {kind:?} in Inst::Alloc"),
-        };
-
-        let value_doc =
-            self.value_assign(state, value, |_| util::call_alloc(ty_doc));
+        let value_doc = self.alloc_value(state, value);
 
         let zero_refcnt =
             stmt(|| self.refcnt_field(state, value).append(" = 0"));
