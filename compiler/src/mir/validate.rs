@@ -4,7 +4,7 @@ use crate::mir::{Body, GlobalKind, Inst, Mir, StaticGlobal};
 impl Mir {
     pub fn validate(&self) {
         for fun in self.fns.values() {
-            validate_body(&self.fn_sigs[fun.sig].name, &fun.body);
+            validate_body(&self.fn_sigs[fun.sig].mangled_name, &fun.body);
         }
 
         for global in self.globals.values() {

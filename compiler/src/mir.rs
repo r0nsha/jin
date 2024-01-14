@@ -84,7 +84,7 @@ pub struct FnParam {
 #[derive(Debug, Clone)]
 pub struct FnSig {
     pub id: FnSigId,
-    pub name: Ustr,
+    pub mangled_name: Ustr,
     pub params: Vec<FnParam>,
     pub ty: Ty,
     pub is_extern: bool,

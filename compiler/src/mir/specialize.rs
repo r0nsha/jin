@@ -264,7 +264,8 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
             .collect::<Vec<_>>()
             .join("_");
 
-        sig.name = ustr(&format!("{}__{}", sig.name, instantation_str));
+        sig.mangled_name =
+            ustr(&format!("{}__{}", sig.mangled_name, instantation_str));
 
         self.smir.fn_sigs.insert_with_key(|id| {
             sig.id = id;
@@ -521,10 +522,10 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             is_c_variadic: false,
         }));
 
-        let name = ustr(&format!("{adt_name}_free"));
+        let mangled_name = ustr(&format!("{adt_name}_free"));
         let sig = self.cx.smir.fn_sigs.insert_with_key(|id| FnSig {
             id,
-            name,
+            mangled_name,
             params,
             ty: fn_ty,
             is_extern: false,

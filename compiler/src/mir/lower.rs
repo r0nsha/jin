@@ -143,12 +143,13 @@ impl<'db> Lower<'db> {
         let def = &self.db[adt.def_id];
         let struct_def = adt.as_struct().unwrap();
 
-        let name = ustr(&def.qpath.clone().child(ustr("ctor")).join_with("_"));
+        let mangled_name =
+            ustr(&def.qpath.clone().child(ustr("ctor")).join_with("_"));
 
         let params = Self::adt_fields_to_fn_params(&struct_def.fields);
         let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
-            name,
+            mangled_name,
             params,
             ty: struct_def.ctor_ty,
             is_extern: false,
@@ -204,13 +205,13 @@ impl<'db> Lower<'db> {
         let adt = &self.db[variant.adt_id];
         let def = &self.db[adt.def_id];
 
-        let name =
+        let mangled_name =
             ustr(&def.qpath.clone().child(variant.name.name()).join_with("_"));
 
         let params = Self::adt_fields_to_fn_params(&variant.fields);
         let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
-            name,
+            mangled_name,
             params,
             ty: variant.ctor_ty,
             is_extern: false,
@@ -294,7 +295,7 @@ impl<'db> Lower<'db> {
         &mut self,
         sig: &hir::FnSig,
         kind: &hir::FnKind,
-        name: Ustr,
+        mangled_name: Ustr,
     ) -> FnSigId {
         let (is_extern, is_c_variadic) = match kind {
             FnKind::Bare { .. } => (false, false),
@@ -303,7 +304,7 @@ impl<'db> Lower<'db> {
 
         self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
-            name,
+            mangled_name,
             params: sig
                 .params
                 .iter()
@@ -1993,7 +1994,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         match &self.body.value(value).kind {
             ValueKind::Local(id) => self.cx.db[*id].name.to_string(),
             ValueKind::Global(id) => self.cx.mir.globals[*id].name.to_string(),
-            ValueKind::Fn(id) => self.cx.mir.fn_sigs[*id].name.to_string(),
+            ValueKind::Fn(id) => {
+                self.cx.mir.fn_sigs[*id].mangled_name.to_string()
+            }
             ValueKind::Field(parent, child)
             | ValueKind::Variant(parent, child) => {
                 format!("{}.{}", self.value_name_aux(*parent), child)

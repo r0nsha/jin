@@ -93,7 +93,7 @@ impl<'db> Generator<'db> {
     pub fn codegen_main_fn(&self) -> D<'db> {
         let main_fn_name = &self.mir.fn_sigs
             [self.mir.main_fn.expect("to have a main fn")]
-        .name;
+        .mangled_name;
 
         let mut statements: Vec<D> = vec![];
 
@@ -387,7 +387,7 @@ impl<'db> Generator<'db> {
             D::nil()
         };
 
-        let sig_doc = fn_ty.ret.cdecl(self, D::text(sig.name.as_str())).append(
+        let sig_doc = fn_ty.ret.cdecl(self, D::text(sig.mangled_name.as_str())).append(
             D::text("(")
                 .append(
                     D::intersperse(
@@ -644,7 +644,7 @@ impl<'db> Generator<'db> {
             ValueKind::Global(id) => {
                 D::text(self.mir.globals[*id].name.as_str())
             }
-            ValueKind::Fn(id) => D::text(self.mir.fn_sigs[*id].name.as_str()),
+            ValueKind::Fn(id) => D::text(self.mir.fn_sigs[*id].mangled_name.as_str()),
             ValueKind::Const(value) => codegen_const_value(value),
             ValueKind::Field(value, field) => self.field(state, *value, field),
             ValueKind::Variant(value, variant) => {
