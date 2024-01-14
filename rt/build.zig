@@ -4,8 +4,19 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const libjinrt = b.addStaticLibrary(.{ .name = "jinrt", .root_source_file = .{ .path = "jinrt.zig" }, .target = target, .optimize = optimize });
-    libjinrt.linkLibC();
+    const lib = b.addStaticLibrary(.{
+        .name = "jinrt",
+        .root_source_file = .{ .path = "jinrt.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
 
-    b.installArtifact(libjinrt);
+    switch (optimize) {
+        .Debug, .ReleaseSafe => lib.bundle_compiler_rt = true,
+        .ReleaseFast, .ReleaseSmall => lib.disable_stack_probing = true,
+    }
+    lib.force_pic = true;
+    lib.linkLibC();
+
+    b.installArtifact(lib);
 }
