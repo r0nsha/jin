@@ -66,13 +66,11 @@ export fn jinrt_alloc(size: usize) *anyopaque {
 
 export fn jinrt_free(obj: *anyrc, tyname: cstr, loc: Location) void {
     if (obj.refcnt != 0) {
-        var gpa = std.heap.GeneralPurposeAllocator(.{}){};
         const msg = std.fmt.allocPrint(
-            gpa.allocator(),
+            std.heap.c_allocator,
             "cannot destroy a value of type `{s}` as it still has {} reference(s)",
             .{ tyname, obj.refcnt },
         ) catch oom();
-        defer gpa.allocator().free(msg);
         // zig fmt: off
         jinrt_panic_at(@ptrCast(cstr, msg.ptr), loc);
     }
