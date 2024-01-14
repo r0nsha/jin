@@ -260,7 +260,22 @@ impl<'db> Typeck<'db> {
             ast::Item::ExternImport(import) => {
                 self.db.extern_libs.insert(import.lib.clone());
             }
-            ast::Item::Associated(ty, item) => {}
+            ast::Item::Associated(ty, item) => {
+                todo!("resolve ty");
+
+                match item.as_ref() {
+                    ast::Item::Fn(fun) => {
+                        todo!("define fn")
+                        // self.check_associated_fn(env, import)?;
+                    }
+                    ast::Item::Let(_)
+                    | ast::Item::Type(_)
+                    | ast::Item::Import(_)
+                    | ast::Item::ExternLet(_)
+                    | ast::Item::ExternImport(_)
+                    | ast::Item::Associated(_, _) => unreachable!(),
+                }
+            }
         }
 
         self.resolution_state.mark_resolved_item(item_id);
@@ -1077,7 +1092,7 @@ impl<'db> Typeck<'db> {
                     ))
                 },
             ),
-            ast::Expr::MethodCall { expr, method, ty_args, args, span } => {
+            ast::Expr::MethodCall { expr, method, targs: ty_args, args, span } => {
                 let targs = self.check_optional_ty_args(
                     env,
                     ty_args.as_deref(),

@@ -156,7 +156,7 @@ pub enum Expr {
     MethodCall {
         expr: Box<Self>,
         method: Word,
-        ty_args: Option<Vec<TyExpr>>,
+        targs: Option<Vec<TyExpr>>,
         args: Vec<CallArg>,
         span: Span,
     },

@@ -19,3 +19,9 @@ pub fn unexpected_token_err(
         .with_message(format!("expected {expected}, found {found}"))
         .with_label(Label::primary(span).with_message("found here"))
 }
+
+pub fn invalid_c_variadic(span: Span) -> Diagnostic {
+    Diagnostic::error()
+        .with_message("non extern function cannot use c varargs")
+        .with_label(Label::primary(span).with_message("here"))
+}

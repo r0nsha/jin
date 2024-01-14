@@ -127,7 +127,7 @@ impl PrettyPrint for Expr {
             Self::Call { callee, args, .. } => {
                 print_call(cx, callee, args, None, None);
             }
-            Self::MethodCall { expr, method, ty_args, args, .. } => {
+            Self::MethodCall { expr, method, targs: ty_args, args, .. } => {
                 print_call(cx, expr, args, ty_args.as_deref(), Some(*method));
             }
             Self::Unary { expr, op, .. } => {
