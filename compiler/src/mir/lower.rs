@@ -1900,11 +1900,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     Some(no_destroy_block),
                 );
 
-                let const_false = self.const_bool(false);
                 let destroy_glue = self.needs_destroy_glue(value);
 
                 self.position_at(destroy_block);
-                self.ins(destroy_block).store(const_false, destroy_flag);
                 self.free_and_set_destroy_flag(value, destroy_glue, span);
                 self.ins(destroy_block).br(no_destroy_block);
 
