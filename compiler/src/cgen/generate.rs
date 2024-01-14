@@ -387,30 +387,35 @@ impl<'db> Generator<'db> {
             D::nil()
         };
 
-        let sig_doc = fn_ty.ret.cdecl(self, D::text(sig.mangled_name.as_str())).append(
-            D::text("(")
-                .append(
-                    D::intersperse(
-                        sig.params.iter().enumerate().map(|(idx, param)| {
-                            let name = match &param.pat {
-                                Pat::Name(name) => name.word.name(),
-                                Pat::Discard(_) => ustr(&format!("_{idx}")),
-                            };
+        let sig_doc =
+            fn_ty.ret.cdecl(self, D::text(sig.mangled_name.as_str())).append(
+                D::text("(")
+                    .append(
+                        D::intersperse(
+                            sig.params.iter().enumerate().map(
+                                |(idx, param)| {
+                                    let name = match &param.pat {
+                                        Pat::Name(name) => name.word.name(),
+                                        Pat::Discard(_) => {
+                                            ustr(&format!("_{idx}"))
+                                        }
+                                    };
 
-                            param.ty.cdecl(self, D::text(name.as_str()))
-                        }),
-                        D::text(",").append(D::space()),
+                                    param.ty.cdecl(self, D::text(name.as_str()))
+                                },
+                            ),
+                            D::text(",").append(D::space()),
+                        )
+                        .nest(2)
+                        .group(),
                     )
-                    .nest(2)
-                    .group(),
-                )
-                .append(if sig.is_c_variadic {
-                    D::text(", ...")
-                } else {
-                    D::nil()
-                })
-                .append(D::text(")")),
-        );
+                    .append(if sig.is_c_variadic {
+                        D::text(", ...")
+                    } else {
+                        D::nil()
+                    })
+                    .append(D::text(")")),
+            );
 
         let mut attr_docs = vec![];
 
@@ -644,7 +649,9 @@ impl<'db> Generator<'db> {
             ValueKind::Global(id) => {
                 D::text(self.mir.globals[*id].name.as_str())
             }
-            ValueKind::Fn(id) => D::text(self.mir.fn_sigs[*id].mangled_name.as_str()),
+            ValueKind::Fn(id) => {
+                D::text(self.mir.fn_sigs[*id].mangled_name.as_str())
+            }
             ValueKind::Const(value) => codegen_const_value(value),
             ValueKind::Field(value, field) => self.field(state, *value, field),
             ValueKind::Variant(value, variant) => {

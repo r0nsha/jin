@@ -522,10 +522,18 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             is_c_variadic: false,
         }));
 
-        let mangled_name = ustr(&format!("{adt_name}_free"));
+        let mangled_name = ustr(&format!("{adt_name}_destroy"));
+        let display_name = ustr(
+            &self.cx.db[adt.def_id]
+                .qpath
+                .clone()
+                .child(ustr("$destroy"))
+                .join(),
+        );
         let sig = self.cx.smir.fn_sigs.insert_with_key(|id| FnSig {
             id,
             mangled_name,
+            display_name,
             params,
             ty: fn_ty,
             is_extern: false,

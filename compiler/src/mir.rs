@@ -85,6 +85,7 @@ pub struct FnParam {
 pub struct FnSig {
     pub id: FnSigId,
     pub mangled_name: Ustr,
+    pub display_name: Ustr,
     pub params: Vec<FnParam>,
     pub ty: Ty,
     pub is_extern: bool,

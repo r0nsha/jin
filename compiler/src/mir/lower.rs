@@ -63,14 +63,7 @@ impl<'db> Lower<'db> {
 
     fn run(&mut self) {
         for fun in &self.hir.fns {
-            let def = &self.db[fun.def_id];
-            let is_extern = fun.kind.is_extern();
-            let name = if is_extern {
-                def.name
-            } else {
-                mangle::mangle_fn_name(self.db, fun)
-            };
-            let sig = self.lower_fn_sig(&fun.sig, &fun.kind, name);
+            let sig = self.lower_fn_sig(fun);
             self.id_to_fn_sig.insert(fun.def_id, sig);
         }
 
@@ -145,11 +138,13 @@ impl<'db> Lower<'db> {
 
         let mangled_name =
             ustr(&def.qpath.clone().child(ustr("ctor")).join_with("_"));
+        let display_name = ustr(&def.qpath.join());
 
         let params = Self::adt_fields_to_fn_params(&struct_def.fields);
         let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
             mangled_name,
+            display_name,
             params,
             ty: struct_def.ctor_ty,
             is_extern: false,
@@ -207,11 +202,14 @@ impl<'db> Lower<'db> {
 
         let mangled_name =
             ustr(&def.qpath.clone().child(variant.name.name()).join_with("_"));
+        let display_name =
+            ustr(&def.qpath.clone().child(variant.name.name()).join());
 
         let params = Self::adt_fields_to_fn_params(&variant.fields);
         let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
             mangled_name,
+            display_name,
             params,
             ty: variant.ctor_ty,
             is_extern: false,
@@ -291,13 +289,16 @@ impl<'db> Lower<'db> {
         }
     }
 
-    fn lower_fn_sig(
-        &mut self,
-        sig: &hir::FnSig,
-        kind: &hir::FnKind,
-        mangled_name: Ustr,
-    ) -> FnSigId {
-        let (is_extern, is_c_variadic) = match kind {
+    fn lower_fn_sig(&mut self, fun: &hir::Fn) -> FnSigId {
+        let mangled_name = if fun.kind.is_extern() {
+            fun.sig.word.name()
+        } else {
+            mangle::mangle_fn_name(self.db, fun)
+        };
+
+        let display_name = ustr(&self.db[fun.def_id].qpath.join());
+
+        let (is_extern, is_c_variadic) = match &fun.kind {
             FnKind::Bare { .. } => (false, false),
             FnKind::Extern { is_c_variadic } => (true, *is_c_variadic),
         };
@@ -305,15 +306,17 @@ impl<'db> Lower<'db> {
         self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
             mangled_name,
-            params: sig
+            display_name,
+            params: fun
+                .sig
                 .params
                 .iter()
                 .map(|p| FnParam { pat: p.pat.clone(), ty: p.ty })
                 .collect(),
-            ty: sig.ty,
+            ty: fun.sig.ty,
             is_extern,
             is_c_variadic,
-            span: sig.word.span(),
+            span: fun.sig.word.span(),
         })
     }
 
