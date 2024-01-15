@@ -4,8 +4,9 @@ import std.io.println
 fn extern printf(fmt: *u8, ..) i32
 
 fn main() unit = {
-	if Option.some(1).map_or(false, fn(x) { x == 1 }) {
+	if Option.some(1).map_or(false) fn(x) { x == 1 } {
 		call(fn { println("hello") })
+		call fn { println("hello") }
 	}
 }
 

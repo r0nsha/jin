@@ -1036,6 +1036,28 @@ impl<'a> Parser<'a> {
                     let span = expr.span().merge(rhs.span());
                     Expr::Swap { lhs: Box::new(expr), rhs: Box::new(rhs), span }
                 }
+                TokenKind::Fn
+                    if self.spans_are_on_same_line(expr.span(), tok.span) =>
+                {
+                    self.next();
+
+                    let fn_expr = self.parse_fn_expr()?;
+                    let span = expr.span().merge(fn_expr.span());
+                    let fn_arg = CallArg::Positional(fn_expr);
+
+                    match &mut expr {
+                        Expr::Call { args, .. }
+                        | Expr::MethodCall { args, .. } => {
+                            args.push(fn_arg);
+                            expr
+                        }
+                        _ => Expr::Call {
+                            callee: Box::new(expr),
+                            args: vec![fn_arg],
+                            span,
+                        },
+                    }
+                }
                 _ => {
                     if let Some(op) = BinOp::from_assign_op(tok.kind) {
                         // OpAssign (x += 1)
