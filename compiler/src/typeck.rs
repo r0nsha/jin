@@ -269,16 +269,8 @@ impl<'db> Typeck<'db> {
         let id = self.lookup(env, env.module_id(), &Query::Name(tyname))?;
         let def = &self.db[id];
 
-        match def.kind.as_ref() {
-            DefKind::Adt(adt_id) => {
-                // TODO: check adt is defined in this package
-                Ok(AssocTy::Adt(*adt_id))
-            }
-            DefKind::Ty(ty) => {
-                // TODO: check that we're in the std package
-                Ok(AssocTy::BuiltinTy(*ty))
-            }
-            _ => Err(Diagnostic::error()
+        let Some(assoc_ty) = self.try_extract_assoc_ty(id) else {
+            return Err(Diagnostic::error()
                 .with_message(format!(
                     "expected a type, found value of type `{}`",
                     def.ty.display(self.db)
@@ -286,7 +278,28 @@ impl<'db> Typeck<'db> {
                 .with_label(
                     Label::primary(tyname.span())
                         .with_message("expected a type"),
-                )),
+                ));
+        };
+
+        match assoc_ty {
+            AssocTy::Adt(adt_id) => {
+                // TODO: check adt is defined in this package
+            }
+            AssocTy::BuiltinTy(_) => {
+                // TODO: check that we're in the std package
+            }
+        }
+
+        Ok(assoc_ty)
+    }
+
+    fn try_extract_assoc_ty(&self, id: DefId) -> Option<AssocTy> {
+        let def = &self.db[id];
+
+        match def.kind.as_ref() {
+            DefKind::Adt(adt_id) => Some(AssocTy::Adt(*adt_id)),
+            DefKind::Ty(ty) => Some(AssocTy::BuiltinTy(*ty)),
+            _ => None,
         }
     }
 
@@ -1118,21 +1131,36 @@ impl<'db> Typeck<'db> {
                     ))
                 },
             ),
-            ast::Expr::MethodCall {
-                expr,
-                method,
-                targs: ty_args,
-                args,
-                span,
-            } => {
+            ast::Expr::MethodCall { expr, method, targs, args, span } => {
                 let targs = self.check_optional_ty_args(
                     env,
-                    ty_args.as_deref(),
+                    targs.as_deref(),
                     AllowTyHole::Yes,
                 )?;
                 let mut args = self.check_call_args(env, args)?;
 
-                let expr = self.check_expr(env, expr, expected_ty)?;
+                let expr = match expr.as_ref() {
+                    ast::Expr::Name { word, targs: None, span } => {
+                        let id = self.lookup(
+                            env,
+                            env.module_id(),
+                            &Query::Name(*word),
+                        )?;
+
+                        if let Some(assoc_ty) = self.try_extract_assoc_ty(id) {
+                            todo!("{assoc_ty:?}")
+                        } else {
+                            self.check_name(
+                                env,
+                                id,
+                                *word,
+                                *span,
+                                targs.as_deref(),
+                            )?
+                        }
+                    }
+                    _ => self.check_expr(env, expr, expected_ty)?,
+                };
 
                 let lookup_in_module = match self.normalize(expr.ty).kind() {
                     TyKind::Module(in_module) => *in_module,
