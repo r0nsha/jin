@@ -500,11 +500,30 @@ impl<'db> Typeck<'db> {
         is_c_variadic: bool,
     ) -> TypeckResult<hir::FnSig> {
         let ty_params = self.check_ty_params(env, &sig.ty_params)?;
+        let (params, fnty_params) =
+            self.check_fn_sig_params(env, &sig.params)?;
+        let ret = self.check_fn_sig_ret(env, sig.ret.as_ref())?;
+        let ret_span = sig.ret.as_ref().map_or(sig.word.span(), Spanned::span);
 
-        let mut params = vec![];
+        let ty = Ty::new(TyKind::Fn(FnTy {
+            params: fnty_params,
+            ret,
+            is_extern,
+            is_c_variadic,
+        }));
+
+        Ok(hir::FnSig { word: sig.word, ty_params, params, ret, ret_span, ty })
+    }
+
+    fn check_fn_sig_params(
+        &mut self,
+        env: &mut Env,
+        params: &[ast::FnParam],
+    ) -> TypeckResult<(Vec<hir::FnParam>, Vec<FnTyParam>)> {
+        let mut new_params = vec![];
         let mut defined_params = WordMap::default();
 
-        for p in &sig.params {
+        for p in params {
             let ty = p
                 .ty_expr
                 .as_ref()
@@ -527,26 +546,27 @@ impl<'db> Typeck<'db> {
                 Pat::Discard(_) => (),
             }
 
-            params.push(hir::FnParam { pat, ty });
+            new_params.push(hir::FnParam { pat, ty });
         }
 
-        let (ret, ret_span) = if let Some(ret) = &sig.ret {
-            (self.check_ty_expr(env, ret, AllowTyHole::No)?, ret.span())
+        let fnty_params = new_params
+            .iter()
+            .map(|p: &FnParam| FnTyParam { name: p.pat.name(), ty: p.ty })
+            .collect();
+
+        Ok((new_params, fnty_params))
+    }
+
+    fn check_fn_sig_ret(
+        &mut self,
+        env: &mut Env,
+        ret: Option<&TyExpr>,
+    ) -> TypeckResult<Ty> {
+        if let Some(ret) = ret {
+            self.check_ty_expr(env, ret, AllowTyHole::No)
         } else {
-            (self.fresh_ty_var(), sig.word.span())
-        };
-
-        let ty = Ty::new(TyKind::Fn(FnTy {
-            params: params
-                .iter()
-                .map(|p: &FnParam| FnTyParam { name: p.pat.name(), ty: p.ty })
-                .collect(),
-            ret,
-            is_extern,
-            is_c_variadic,
-        }));
-
-        Ok(hir::FnSig { word: sig.word, ty_params, params, ret, ret_span, ty })
+            Ok(self.fresh_ty_var())
+        }
     }
 
     fn check_let(
@@ -1036,6 +1056,7 @@ impl<'db> Typeck<'db> {
                 ))
             }
             ast::Expr::Fn { params, ret, body, span } => {
+                dbg!(params, ret, body, span);
                 todo!()
             }
             ast::Expr::Assign { lhs, rhs, op, span } => {
