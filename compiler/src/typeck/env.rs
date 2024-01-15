@@ -415,6 +415,11 @@ impl<'db> Typeck<'db> {
         ty_span: Span,
         query: &Query,
     ) -> TypeckResult<TyLookup> {
+        if self.checking_items {
+            let symbol = Symbol::new(from_module, query.name());
+            self.find_and_check_items(&symbol, IsUfcs::No)?;
+        }
+
         if let Query::Fn(fn_query) = query {
             if let Some(id) =
                 self.lookup_assoc_fn(from_module, AssocTy::from(ty), fn_query)?
