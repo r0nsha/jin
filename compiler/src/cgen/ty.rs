@@ -128,31 +128,34 @@ fn fn_ty<'a>(
     cx: &mut Generator<'a>,
     name: Option<D<'a>>,
 ) -> D<'a> {
-    fn_ty
-        .ret
-        .cty(cx)
-        .append(D::space())
-        .append(D::text("("))
+    let ret = fn_ty.ret.cty(cx);
+    let name_doc = D::text("(")
         .append(D::text("*"))
         .append(name.unwrap_or(D::nil()))
-        .append(D::text(")"))
-        .append(
-            D::text("(")
-                .append(
-                    D::intersperse(
-                        fn_ty.params.iter().map(|p| p.ty.cty(cx)),
-                        D::text(",").append(D::space()),
-                    )
-                    .nest(1)
-                    .group(),
-                )
-                .append(if fn_ty.is_c_variadic {
-                    D::text(", ...")
-                } else {
-                    D::nil()
-                })
-                .append(D::text(")")),
-        )
+        .append(D::text(")"));
+
+    let mut param_docs = vec![];
+
+    if !fn_ty.is_extern {
+        param_docs.push(D::text("jinrt_backtrace *backtrace"));
+    }
+
+    param_docs.extend(fn_ty.params.iter().map(|p| p.ty.cty(cx)));
+
+    let params = D::intersperse(param_docs, D::text(",").append(D::space()))
+        .nest(1)
+        .group();
+
+    ret.append(D::space()).append(name_doc).append(
+        D::text("(")
+            .append(params)
+            .append(if fn_ty.is_c_variadic {
+                D::text(", ...")
+            } else {
+                D::nil()
+            })
+            .append(D::text(")")),
+    )
 }
 
 fn ty_and_name<'a>(

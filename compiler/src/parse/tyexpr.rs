@@ -57,12 +57,14 @@ impl<'a> Parser<'a> {
 
     fn parse_fn_ty(&mut self) -> DiagnosticResult<TyExprFn> {
         let start = self.last_span();
+        let is_extern = self.is(TokenKind::Extern);
         let (params, is_c_variadic) = self.parse_fn_ty_params()?;
         let ret = self.parse_ty()?;
 
         Ok(TyExprFn {
             params,
             ret: Box::new(ret),
+            is_extern,
             is_c_variadic,
             span: start.merge(self.last_span()),
         })

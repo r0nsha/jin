@@ -596,6 +596,8 @@ impl FloatTy {
 pub struct FnTy {
     pub params: Vec<FnTyParam>,
     pub ret: Ty,
+    // TODO: use bitflags
+    pub is_extern: bool,
     pub is_c_variadic: bool,
 }
 

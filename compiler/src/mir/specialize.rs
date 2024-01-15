@@ -532,6 +532,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
                 })
                 .collect(),
             ret: self.cx.db.types.unit,
+            is_extern: false,
             is_c_variadic: false,
         }));
 

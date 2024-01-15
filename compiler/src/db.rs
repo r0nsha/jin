@@ -623,6 +623,7 @@ impl StructDef {
                 .map(|f| FnTyParam { name: Some(f.name.name()), ty: f.ty })
                 .collect(),
             ret,
+            is_extern: false,
             is_c_variadic: false,
         }));
     }
@@ -693,6 +694,7 @@ impl Variant {
                 .map(|f| FnTyParam { name: Some(f.name.name()), ty: f.ty })
                 .collect(),
             ret,
+            is_extern: false,
             is_c_variadic: false,
         }));
     }

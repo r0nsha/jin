@@ -243,6 +243,7 @@ impl Spanned for TyExpr {
 pub struct TyExprFn {
     pub params: Vec<TyExpr>,
     pub ret: Box<TyExpr>,
+    pub is_extern: bool,
     pub is_c_variadic: bool,
     pub span: Span,
 }

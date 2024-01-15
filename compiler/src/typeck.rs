@@ -480,15 +480,15 @@ impl<'db> Typeck<'db> {
             },
         )?;
 
-        let is_c_variadic = match &fun.kind {
-            ast::FnKind::Bare { .. } => false,
-            ast::FnKind::Extern { is_c_variadic } => *is_c_variadic,
+        let (is_extern, is_c_variadic) = match &fun.kind {
+            ast::FnKind::Bare { .. } => (false, false),
+            ast::FnKind::Extern { is_c_variadic } => (true, *is_c_variadic),
         };
 
         env.with_scope(
             fun.sig.word.name(),
             ScopeKind::Fn(DefId::null()),
-            |env| self.check_fn_sig(env, &fun.sig, is_c_variadic),
+            |env| self.check_fn_sig(env, &fun.sig, is_extern, is_c_variadic),
         )
     }
 
@@ -496,6 +496,7 @@ impl<'db> Typeck<'db> {
         &mut self,
         env: &mut Env,
         sig: &ast::FnSig,
+        is_extern: bool,
         is_c_variadic: bool,
     ) -> TypeckResult<hir::FnSig> {
         let ty_params = self.check_ty_params(env, &sig.ty_params)?;
@@ -535,6 +536,7 @@ impl<'db> Typeck<'db> {
                 .map(|p: &FnParam| FnTyParam { name: p.pat.name(), ty: p.ty })
                 .collect(),
             ret,
+            is_extern,
             is_c_variadic,
         }));
 
@@ -2088,6 +2090,7 @@ impl<'db> Typeck<'db> {
                 Ok(Ty::new(TyKind::Fn(FnTy {
                     params,
                     ret,
+                    is_extern: fn_ty.is_extern,
                     is_c_variadic: fn_ty.is_c_variadic,
                 })))
             }

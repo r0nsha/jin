@@ -542,7 +542,9 @@ impl<'db> Generator<'db> {
 
                 let traced = match &state.body.value(*callee).kind {
                     &ValueKind::Fn(sig) => self.mir.fn_sigs[sig].traced,
-                    _ => false,
+                    _ => {
+                        !state.body.value(*callee).ty.as_fn().unwrap().is_extern
+                    }
                 };
 
                 if traced {
@@ -556,7 +558,11 @@ impl<'db> Generator<'db> {
                     util::call(this.value(state, *callee), arg_docs)
                 });
 
-                self.with_stack_frame(state, call, *span)
+                if traced {
+                    self.with_stack_frame(state, call, *span)
+                } else {
+                    call
+                }
             }
             Inst::Binary { value, lhs, rhs, op, span } => self.codegen_bin_op(
                 state,

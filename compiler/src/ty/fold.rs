@@ -15,6 +15,7 @@ pub trait TyFolder {
                     })
                     .collect(),
                 ret: self.fold(fun.ret),
+                is_extern: fun.is_extern,
                 is_c_variadic: fun.is_c_variadic,
             })
             .into(),
