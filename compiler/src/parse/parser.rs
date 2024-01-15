@@ -452,16 +452,24 @@ impl<'a> Parser<'a> {
         };
 
         let (params, ret, is_c_variadic) =
-            self.parse_fn_sig_helper(require_sig_ty)?;
+            self.parse_fn_sig_helper(AllowOmitParens::No, require_sig_ty)?;
 
         Ok((FnSig { word, ty_params, params, ret }, is_c_variadic))
     }
 
     fn parse_fn_sig_helper(
         &mut self,
+        allow_omit_parens: AllowOmitParens,
         require_sig_ty: RequireSigTy,
     ) -> DiagnosticResult<(Vec<FnParam>, Option<TyExpr>, bool)> {
-        let (params, is_c_variadic) = self.parse_fn_params(require_sig_ty)?;
+        let (params, is_c_variadic) = if allow_omit_parens.into()
+            && !self.peek_is(TokenKind::OpenParen)
+        {
+            (vec![], false)
+        } else {
+            self.parse_fn_params(require_sig_ty)?
+        };
+
         let ret = match require_sig_ty {
             RequireSigTy::Yes => Some(self.parse_ty()?),
             RequireSigTy::No(delimeter) => {
@@ -565,8 +573,10 @@ impl<'a> Parser<'a> {
 
     fn parse_fn_expr(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
-        let (params, ret, is_c_variadic) =
-            self.parse_fn_sig_helper(RequireSigTy::No(TokenKind::OpenCurly))?;
+        let (params, ret, is_c_variadic) = self.parse_fn_sig_helper(
+            AllowOmitParens::Yes,
+            RequireSigTy::No(TokenKind::OpenCurly),
+        )?;
 
         if is_c_variadic {
             return Err(errors::invalid_c_variadic(start));
@@ -1297,6 +1307,7 @@ impl<'a> Parser<'a> {
 }
 
 create_bool_enum!(AllowTyParams);
+create_bool_enum!(AllowOmitParens);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 enum RequireSigTy {
