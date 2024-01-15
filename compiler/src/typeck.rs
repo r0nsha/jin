@@ -1148,7 +1148,23 @@ impl<'db> Typeck<'db> {
                         )?;
 
                         if let Some(assoc_ty) = self.try_extract_assoc_ty(id) {
-                            todo!("{assoc_ty:?}")
+                            let id = self.lookup_assoc_fn_for_call(
+                                env,
+                                env.module_id(),
+                                assoc_ty,
+                                *word,
+                                targs.as_deref(),
+                                &args,
+                                IsUfcs::No,
+                            )?;
+                            todo!("{assoc_ty:?}, {id:?}")
+                            // self.check_name(
+                            //     env,
+                            //     id,
+                            //     *word,
+                            //     *span,
+                            //     targs.as_deref(),
+                            // )?
                         } else {
                             self.check_name(
                                 env,
@@ -1697,6 +1713,18 @@ impl<'db> Typeck<'db> {
         }
     }
 
+    fn map_call_args_for_query(
+        &mut self,
+        args: &[hir::CallArg],
+    ) -> Vec<FnTyParam> {
+        args.iter()
+            .map(|a| FnTyParam {
+                name: a.name.map(|w| w.name()),
+                ty: self.normalize(a.expr.ty),
+            })
+            .collect::<Vec<_>>()
+    }
+
     fn lookup_fn_for_call(
         &mut self,
         env: &Env,
@@ -1706,15 +1734,37 @@ impl<'db> Typeck<'db> {
         args: &[hir::CallArg],
         is_ufcs: IsUfcs,
     ) -> TypeckResult<DefId> {
-        let args = args
-            .iter()
-            .map(|a| FnTyParam {
-                name: a.name.map(|w| w.name()),
-                ty: self.normalize(a.expr.ty),
-            })
-            .collect::<Vec<_>>();
+        let args = self.map_call_args_for_query(args);
         let query = FnQuery::new(word, ty_args, &args, is_ufcs);
         self.lookup(env, in_module, &Query::Fn(query))
+    }
+
+    fn lookup_assoc_fn_for_call(
+        &mut self,
+        env: &Env,
+        in_module: ModuleId,
+        assoc_ty: AssocTy,
+        word: Word,
+        ty_args: Option<&[Ty]>,
+        args: &[hir::CallArg],
+        is_ufcs: IsUfcs,
+    ) -> TypeckResult<DefId> {
+        let args = self.map_call_args_for_query(args);
+        let query = FnQuery::new(word, ty_args, &args, is_ufcs);
+
+        let Some(assoc_scope) = self.global_scope.assoc_scopes.get(&assoc_ty)
+        else {
+            return Err(errors::assoc_name_not_found(self.db, assoc_ty, word));
+        };
+
+        todo!("{assoc_scope:?}")
+        // if let Some(id) =
+        //     self.lookup_fn_candidate(from_module, in_module, fn_query)?
+        // {
+        //     return Ok(id);
+        // }
+        // self.lookup(env, in_module, &Query::Fn(query))
+        // self.check_def_access(env.module_id(), id, query.span())?;
     }
 
     fn check_call(

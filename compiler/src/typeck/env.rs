@@ -241,7 +241,7 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<()> {
         let set = self
             .global_scope
-            .assoc_fns
+            .assoc_scopes
             .entry(assoc_ty)
             .or_default()
             .fns
@@ -511,7 +511,7 @@ impl<'db> Typeck<'db> {
                 errors::name_not_found(self.db, from_module, in_module, *word)
             }
             Query::Fn(fn_query) => {
-                dbg!(&self.global_scope.assoc_fns);
+                dbg!(&self.global_scope.assoc_scopes);
                 errors::fn_not_found(self.db, fn_query)
             }
         })
@@ -742,7 +742,7 @@ impl Symbol {
 pub struct GlobalScope {
     pub defs: FxHashMap<Symbol, GlobalScopeDef>,
     pub fns: FxHashMap<Symbol, FnCandidateSet>,
-    pub assoc_fns: FxHashMap<AssocTy, AssocScope>,
+    pub assoc_scopes: FxHashMap<AssocTy, AssocScope>,
     pub symbol_to_item: FxHashMap<Symbol, Vec<ast::ItemId>>,
 }
 
@@ -751,7 +751,7 @@ impl GlobalScope {
         Self {
             defs: FxHashMap::default(),
             fns: FxHashMap::default(),
-            assoc_fns: FxHashMap::default(),
+            assoc_scopes: FxHashMap::default(),
             symbol_to_item: FxHashMap::default(),
         }
     }
