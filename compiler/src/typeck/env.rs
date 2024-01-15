@@ -10,7 +10,7 @@ use crate::{
         AdtId, AdtKind, Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo,
         ScopeLevel, VariantId,
     },
-    diagnostics::{Diagnostic, DiagnosticResult, Label},
+    diagnostics::{Diagnostic, Label},
     hir,
     macros::create_bool_enum,
     middle::{IsUfcs, Mutability, NamePat, Pat, Vis},
@@ -510,10 +510,7 @@ impl<'db> Typeck<'db> {
             Query::Name(word) => {
                 errors::name_not_found(self.db, from_module, in_module, *word)
             }
-            Query::Fn(fn_query) => {
-                dbg!(&self.global_scope.assoc_scopes);
-                errors::fn_not_found(self.db, fn_query)
-            }
+            Query::Fn(fn_query) => errors::fn_not_found(self.db, fn_query),
         })
     }
 
@@ -561,8 +558,8 @@ impl<'db> Typeck<'db> {
         from_module: ModuleId,
         in_module: ModuleId,
         query: &FnQuery,
-    ) -> DiagnosticResult<Option<DefId>> {
-        let mut candidates = self
+    ) -> TypeckResult<Option<DefId>> {
+        let candidates = self
             .get_lookup_modules(in_module, query.is_ufcs)
             .filter_map(|module_id| {
                 self.global_scope
@@ -573,6 +570,15 @@ impl<'db> Typeck<'db> {
             .unique_by(|candidate| candidate.id)
             .collect::<Vec<_>>();
 
+        self.check_and_filter_fn_candidates(query, candidates, from_module)
+    }
+
+    pub(super) fn check_and_filter_fn_candidates(
+        &self,
+        query: &FnQuery,
+        mut candidates: Vec<&FnCandidate>,
+        from_module: ModuleId,
+    ) -> TypeckResult<Option<DefId>> {
         if !candidates.is_empty()
             && candidates.iter().all(|c| !self.can_access(from_module, c.id))
         {

@@ -4,7 +4,7 @@ fn extern printf(fmt: *u8, ..) i32
 
 fn main() unit = {
     let box = Box.default()
-    box.print()
+    // box.print()
 }
 
 type Box(value: int)

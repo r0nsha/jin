@@ -77,10 +77,10 @@ pub fn assoc_name_not_found(
     Diagnostic::error()
         .with_message(match assoc_ty {
             AssocTy::Adt(adt_id) => {
-                format!("cannot find `{}` in type `{}`", word, db[adt_id].name)
+                format!("cannot find associated function `{}` in type `{}`", word, db[adt_id].name)
             }
             AssocTy::BuiltinTy(ty) => {
-                format!("cannot find `{}` in type `{}`", word, ty.display(db))
+                format!("cannot find associated function `{}` in type `{}`", word, ty.display(db))
             }
         })
         .with_label(Label::primary(word.span()).with_message("not found"))
