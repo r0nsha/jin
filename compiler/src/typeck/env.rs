@@ -50,6 +50,7 @@ pub enum PathLookup {
 
 #[derive(Debug, Clone)]
 pub enum TyLookup {
+    AssocFn(DefId),
     Variant(VariantId),
 }
 
@@ -346,16 +347,25 @@ impl<'db> Typeck<'db> {
         for (idx, &part) in path.iter().enumerate() {
             let part_id =
                 self.lookup(env, target_module, &Query::Name(part))?;
+            let part_ty = self.normalize(self.db[part_id].ty);
 
-            match self.normalize(self.db[part_id].ty).kind() {
+            match part_ty.kind() {
                 TyKind::Module(module_id) => {
                     target_module = *module_id;
                 }
                 TyKind::Type(ty) => {
+                    // The type could be a union, and the next part could be a variant, so we explicitly look it up
                     let next_part = path.get(idx + 1).copied().unwrap_or(last);
 
-                    match self.lookup_name_in_ty(*ty, next_part, part.span())? {
+                    match self.lookup_in_ty(
+                        env.module_id(),
+                        *ty,
+                        part.span(),
+                        &Query::Name(next_part),
+                    )? {
                         TyLookup::Variant(variant_id) => {
+                            // If there are more parts after this variant, it's an error, since we there
+                            // are no symbols under variants
                             if path.get(idx + 2).is_some() {
                                 return Err(Diagnostic::error()
                                     .with_message(format!(
@@ -369,6 +379,18 @@ impl<'db> Typeck<'db> {
                             }
 
                             return Ok(PathLookup::Variant(variant_id));
+                        }
+                        TyLookup::AssocFn(id) => {
+                            return Err(Diagnostic::error()
+                                .with_message(format!(
+                                    "`{}` is an associated function, not a \
+                                     module",
+                                    self.db[id].name,
+                                ))
+                                .with_label(
+                                    Label::primary(next_part.span())
+                                        .with_message("not a module"),
+                                ));
                         }
                     }
                 }
@@ -385,33 +407,71 @@ impl<'db> Typeck<'db> {
         Ok(PathLookup::Def(id))
     }
 
+    /// Tries to look up a given query in the namespace of `ty`.
+    pub(super) fn lookup_in_ty(
+        &mut self,
+        from_module: ModuleId,
+        ty: Ty,
+        ty_span: Span,
+        query: &Query,
+    ) -> TypeckResult<TyLookup> {
+        if let Query::Fn(fn_query) = query {
+            if let Some(id) =
+                self.lookup_assoc_fn(from_module, AssocTy::from(ty), fn_query)?
+            {
+                return Ok(TyLookup::AssocFn(id));
+            }
+        }
+
+        let name = query.word();
+        if let TyKind::Adt(adt_id, _) = ty.kind() {
+            self.lookup_name_in_adt(*adt_id, name, ty_span)
+        } else {
+            Err(errors::field_not_found(self.db, ty, ty_span, name))
+        }
+    }
+
     /// Tries to look up `name` in the namespace of `ty`.
-    pub(super) fn lookup_name_in_ty(
+    fn lookup_name_in_ty(
         &mut self,
         ty: Ty,
         name: Word,
         ty_span: Span,
     ) -> TypeckResult<TyLookup> {
         if let TyKind::Adt(adt_id, _) = ty.kind() {
-            let adt = &self.db[*adt_id];
+            self.lookup_name_in_adt(*adt_id, name, ty_span)
+        } else {
+            Err(errors::field_not_found(self.db, ty, ty_span, name))
+        }
+    }
 
-            match &adt.kind {
-                AdtKind::Union(union_def) => {
-                    return union_def
-                        .variants(self.db)
-                        .find(|v| v.name.name() == name.name())
-                        .map(|v| TyLookup::Variant(v.id))
-                        .ok_or_else(|| {
-                            errors::variant_not_found(
-                                self.db, ty, ty_span, name,
-                            )
-                        });
-                }
-                AdtKind::Struct(_) => (),
+    pub(super) fn lookup_name_in_adt(
+        &mut self,
+        adt_id: AdtId,
+        name: Word,
+        ty_span: Span,
+    ) -> TypeckResult<TyLookup> {
+        let adt = &self.db[adt_id];
+
+        match &adt.kind {
+            AdtKind::Union(union_def) => {
+                return union_def
+                    .variants(self.db)
+                    .find(|v| v.name.name() == name.name())
+                    .map(|v| TyLookup::Variant(v.id))
+                    .ok_or_else(|| {
+                        errors::variant_not_found(
+                            self.db,
+                            adt.ty(),
+                            ty_span,
+                            name,
+                        )
+                    });
+            }
+            AdtKind::Struct(_) => {
+                Err(errors::field_not_found(self.db, adt.ty(), ty_span, name))
             }
         }
-
-        Err(errors::field_not_found(self.db, ty, ty_span, name))
     }
 
     pub fn import_lookup(
@@ -869,6 +929,24 @@ impl BuiltinTys {
 pub(super) enum AssocTy {
     Adt(AdtId),
     BuiltinTy(Ty),
+}
+
+impl AssocTy {
+    pub(super) fn ty(self, db: &Db) -> Ty {
+        match self {
+            Self::Adt(adt_id) => db[adt_id].ty(),
+            Self::BuiltinTy(ty) => ty,
+        }
+    }
+}
+
+impl From<Ty> for AssocTy {
+    fn from(value: Ty) -> Self {
+        match value.kind() {
+            &TyKind::Adt(adt_id, _) => Self::Adt(adt_id),
+            _ => Self::BuiltinTy(value),
+        }
+    }
 }
 
 #[derive(Debug, Default)]

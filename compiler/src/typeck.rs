@@ -1146,28 +1146,26 @@ impl<'db> Typeck<'db> {
                 )?;
                 let mut args = self.check_call_args(env, args)?;
 
-                // Try looking up an associated function first
-                if let ast::Expr::Name { word, targs: None, span } =
-                    expr.as_ref()
+                // Try looking up an associated function call first
+                if let ast::Expr::Name { word, targs: None, .. } = expr.as_ref()
                 {
                     let id =
                         self.lookup(env, env.module_id(), &Query::Name(*word))?;
 
                     if let Some(assoc_ty) = self.try_extract_assoc_ty(id) {
-                        let id = self.lookup_assoc_fn_for_call(
-                            env.module_id(),
-                            assoc_ty,
+                        let query_args = self.map_call_args_for_query(&args);
+                        let query = FnQuery::new(
                             *method,
                             targs.as_deref(),
-                            &args,
-                        )?;
-
-                        let callee = self.check_name(
+                            &query_args,
+                            IsUfcs::No,
+                        );
+                        let (callee, _) = self.check_query_in_ty(
                             env,
-                            id,
-                            *method,
+                            assoc_ty.ty(self.db),
+                            word.span(),
+                            &Query::Fn(query),
                             *span,
-                            targs.as_deref(),
                         )?;
 
                         return self.check_call(callee, args, *span);
@@ -1179,8 +1177,13 @@ impl<'db> Typeck<'db> {
                 let lookup_in_module = match self.normalize(expr.ty).kind() {
                     TyKind::Module(in_module) => *in_module,
                     TyKind::Type(ty) => {
-                        let (callee, _) = self
-                            .check_name_in_ty(*ty, *method, *span, expr.span)?;
+                        let (callee, _) = self.check_query_in_ty(
+                            env,
+                            *ty,
+                            *span,
+                            &Query::Name(*method),
+                            expr.span,
+                        )?;
                         return self.check_call(callee, args, *span);
                     }
                     _ => {
@@ -1622,8 +1625,13 @@ impl<'db> Typeck<'db> {
                 }
             }
             TyKind::Type(ty) => {
-                let (expr, can_implicitly_call) =
-                    self.check_name_in_ty(*ty, field, span, expr.span)?;
+                let (expr, can_implicitly_call) = self.check_query_in_ty(
+                    env,
+                    *ty,
+                    span,
+                    &Query::Name(field),
+                    expr.span,
+                )?;
 
                 return if can_implicitly_call {
                     self.check_call(expr, vec![], span)
@@ -1677,14 +1685,15 @@ impl<'db> Typeck<'db> {
 
     /// Tries to look up `name` in the namespace of `ty`.
     /// Returns the evaluated expression, and whether it can be implicitly called.
-    fn check_name_in_ty(
+    fn check_query_in_ty(
         &mut self,
+        env: &Env,
         ty: Ty,
-        name: Word,
-        span: Span,
         ty_span: Span,
+        query: &Query,
+        span: Span,
     ) -> TypeckResult<(hir::Expr, bool)> {
-        match self.lookup_name_in_ty(ty, name, ty_span)? {
+        match self.lookup_in_ty(env.module_id(), ty, ty_span, query)? {
             TyLookup::Variant(variant_id) => {
                 let TyKind::Adt(adt_id, targs) = ty.kind() else {
                     unreachable!()
@@ -1707,6 +1716,11 @@ impl<'db> Typeck<'db> {
                 );
 
                 Ok((expr, can_implicitly_call))
+            }
+            TyLookup::AssocFn(id) => {
+                let expr =
+                    self.check_name(env, id, query.word(), span, None)?;
+                Ok((expr, false))
             }
         }
     }
@@ -1737,32 +1751,23 @@ impl<'db> Typeck<'db> {
         self.lookup(env, in_module, &Query::Fn(query))
     }
 
-    fn lookup_assoc_fn_for_call(
+    fn lookup_assoc_fn(
         &mut self,
         from_module: ModuleId,
         assoc_ty: AssocTy,
-        word: Word,
-        ty_args: Option<&[Ty]>,
-        args: &[hir::CallArg],
-    ) -> TypeckResult<DefId> {
-        let args = self.map_call_args_for_query(args);
-
+        query: &FnQuery,
+    ) -> TypeckResult<Option<DefId>> {
         let Some(set) = self
             .global_scope
             .assoc_scopes
             .get(&assoc_ty)
-            .and_then(|scope| scope.fns.get(&word.name()))
+            .and_then(|scope| scope.fns.get(&query.word.name()))
         else {
-            return Err(errors::assoc_name_not_found(self.db, assoc_ty, word));
+            return Ok(None);
         };
 
-        let query = FnQuery::new(word, ty_args, &args, IsUfcs::No);
         let candidates = set.find(self, &query);
-
-        self.check_and_filter_fn_candidates(&query, candidates, from_module)?
-            .ok_or_else(|| {
-                errors::assoc_name_not_found(self.db, assoc_ty, word)
-            })
+        self.check_and_filter_fn_candidates(&query, candidates, from_module)
     }
 
     fn check_call(
