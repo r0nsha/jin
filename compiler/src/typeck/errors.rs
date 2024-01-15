@@ -277,3 +277,22 @@ pub fn cyclic_def(
                 .with_message("cyclic reference here"),
         )
 }
+
+pub fn name_defined_twice(
+    kind: &str,
+    name: Word,
+    prev_span: Span,
+) -> Diagnostic {
+    Diagnostic::error()
+        .with_message(format!(
+            "the name `{name}` is already used as a {kind} name"
+        ))
+        .with_label(
+            Label::primary(name.span())
+                .with_message(format!("`{name}` used again here")),
+        )
+        .with_label(
+            Label::secondary(prev_span)
+                .with_message(format!("first use of `{name}`")),
+        )
+}

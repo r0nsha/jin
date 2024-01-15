@@ -374,10 +374,51 @@ impl<'db> Typeck<'db> {
         item_id: ast::GlobalItemId,
     ) -> TypeckResult<()> {
         let sig = self.check_fn_item_helper(env, fun)?;
+        self.check_assoc_name_overlap(assoc_ty, sig.word)?;
         let id = self.define_fn(env.module_id(), fun, &sig, Some(assoc_ty))?;
         self.resolution_state
             .insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig });
         Ok(())
+    }
+
+    // Checks that a to-be-defined associated name doesn't overlap
+    // with an existing name/definition
+    fn check_assoc_name_overlap(
+        &self,
+        assoc_ty: AssocTy,
+        name: Word,
+    ) -> TypeckResult<()> {
+        match assoc_ty {
+            AssocTy::Adt(adt_id) => {
+                let adt = &self.db[adt_id];
+                if let AdtKind::Union(union_def) = &adt.kind {
+                    if let Some(variant) = union_def
+                        .variants(self.db)
+                        .find(|v| v.name.name() == name.name())
+                    {
+                        return Err(Diagnostic::error()
+                            .with_message(format!(
+                                "cannot define associated name `{}` on type \
+                                 `{}`",
+                                name, adt.name
+                            ))
+                            .with_label(
+                                Label::primary(name.span())
+                                    .with_message("defined again here"),
+                            )
+                            .with_label(
+                                Label::secondary(variant.name.span())
+                                    .with_message(
+                                        "variant already defined here",
+                                    ),
+                            ));
+                    }
+                }
+
+                Ok(())
+            }
+            AssocTy::BuiltinTy(_) => Ok(()),
+        }
     }
 
     fn check_fn_item(
@@ -437,22 +478,11 @@ impl<'db> Typeck<'db> {
             match &pat {
                 Pat::Name(name) => {
                     if let Some(prev_span) = defined_params.insert(name.word) {
-                        let name = name.word;
-                        let dup_span = name.span();
-
-                        return Err(Diagnostic::error()
-                            .with_message(format!(
-                                "the name `{name}` is already used as a \
-                                 parameter name"
-                            ))
-                            .with_label(Label::primary(dup_span).with_message(
-                                format!("`{name}` used again here"),
-                            ))
-                            .with_label(
-                                Label::secondary(prev_span).with_message(
-                                    format!("first use of `{name}`"),
-                                ),
-                            ));
+                        return Err(errors::name_defined_twice(
+                            "parameter",
+                            name.word,
+                            prev_span,
+                        ));
                     }
                 }
                 Pat::Discard(_) => (),
@@ -564,21 +594,9 @@ impl<'db> Typeck<'db> {
 
         for field in &struct_def.fields {
             if let Some(prev_span) = defined_fields.insert(field.name) {
-                let name = field.name.name();
-                let dup_span = field.name.span();
-
-                return Err(Diagnostic::error()
-                    .with_message(format!(
-                        "the name `{name}` is already used as a field name"
-                    ))
-                    .with_label(
-                        Label::primary(dup_span)
-                            .with_message(format!("`{name}` used again here")),
-                    )
-                    .with_label(
-                        Label::secondary(prev_span)
-                            .with_message(format!("first use of `{name}`")),
-                    ));
+                return Err(errors::name_defined_twice(
+                    "field", field.name, prev_span,
+                ));
             }
 
             fields.push(AdtField {
@@ -644,8 +662,14 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<()> {
         let mut variants: Vec<VariantId> = vec![];
 
+        let mut defined_variants = WordMap::default();
+
         for (idx, variant) in union_def.variants.iter().enumerate() {
-            variants.push(self.check_tydef_union_variant(variant, idx)?);
+            variants.push(self.check_tydef_union_variant(
+                variant,
+                idx,
+                &mut defined_variants,
+            )?);
         }
 
         let (adt_id, def_id) = self.define_adt(env, tydef, |id| {
@@ -703,27 +727,16 @@ impl<'db> Typeck<'db> {
         &mut self,
         variant: &ast::UnionVariant,
         index: usize,
+        defined_variants: &mut WordMap,
     ) -> TypeckResult<VariantId> {
         let mut fields = vec![];
         let mut defined_fields = WordMap::default();
 
         for field in &variant.fields {
             if let Some(prev_span) = defined_fields.insert(field.name) {
-                let name = field.name.name();
-                let dup_span = field.name.span();
-
-                return Err(Diagnostic::error()
-                    .with_message(format!(
-                        "the name `{name}` is already used as a field name"
-                    ))
-                    .with_label(
-                        Label::primary(dup_span)
-                            .with_message(format!("`{name}` used again here")),
-                    )
-                    .with_label(
-                        Label::secondary(prev_span)
-                            .with_message(format!("first use of `{name}`")),
-                    ));
+                return Err(errors::name_defined_twice(
+                    "field", field.name, prev_span,
+                ));
             }
 
             fields.push(AdtField {
@@ -731,6 +744,14 @@ impl<'db> Typeck<'db> {
                 vis: Vis::Public,
                 ty: self.db.types.unknown,
             });
+        }
+
+        if let Some(prev_span) = defined_variants.insert(variant.name) {
+            return Err(errors::name_defined_twice(
+                "variant",
+                variant.name,
+                prev_span,
+            ));
         }
 
         let unknown = self.db.types.unknown;
@@ -2000,22 +2021,11 @@ impl<'db> Typeck<'db> {
             );
 
             if let Some(prev_span) = defined_ty_params.insert(tp.word) {
-                let name = tp.word.name();
-                let dup_span = tp.word.span();
-
-                return Err(Diagnostic::error()
-                    .with_message(format!(
-                        "the name `{name}` is already used as a type \
-                         parameter name"
-                    ))
-                    .with_label(
-                        Label::primary(dup_span)
-                            .with_message(format!("`{name}` used again here")),
-                    )
-                    .with_label(
-                        Label::secondary(prev_span)
-                            .with_message(format!("first use of `{name}`")),
-                    ));
+                return Err(errors::name_defined_twice(
+                    "type parameter",
+                    tp.word,
+                    prev_span,
+                ));
             }
 
             new_ty_params.push(TyParam { id, word: tp.word, ty });
