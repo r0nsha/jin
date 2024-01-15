@@ -7,17 +7,18 @@ type LinkedList[a](
   head: Option[Node[a]],
 )
 
+fn LinkedList.new[a]() LinkedList[a] = LinkedList(tail: Option.none, head: Option.none)
+
 type Node[a](
   prev: Option[&mut Node[a]],
   data: a,
   next: Option[Node[a]],
 )
 
-fn new_linked_list[a]() LinkedList[a] = LinkedList(tail: Option.none, head: Option.none)
-fn new_node[a](data: a) Node[a] = Node(prev: Option.none, data: data, next: Option.none)
+fn Node.new[a](data: a) Node[a] = Node(prev: Option.none, data: data, next: Option.none)
 
 fn push_front[a](self: &mut LinkedList[a], data: a) unit = {
-  let mut node = new_node(data)
+  let mut node = Node.new(data)
   let node_mut = &mut node
 
   match self.head := Option.some(node) {
@@ -53,7 +54,7 @@ fn print(self: &LinkedList[int]) unit = {
 }
 
 fn main() unit = {
-  let mut list = new_linked_list[int]()  
+  let mut list = LinkedList.new()  
   list.push_front(3)
   list.push_front(2)
   list.push_front(1)
