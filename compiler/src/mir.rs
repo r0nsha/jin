@@ -91,7 +91,6 @@ pub struct FnSig {
     // PERF: use bitflags instead separate of boolean
     pub is_extern: bool,
     pub is_c_variadic: bool,
-    pub traced: bool,
     pub span: Span,
 }
 

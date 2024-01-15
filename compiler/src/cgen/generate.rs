@@ -395,7 +395,7 @@ impl<'db> Generator<'db> {
 
         let mut params = vec![];
 
-        if sig.traced {
+        if !fn_ty.is_extern {
             params.push(D::text("jinrt_backtrace *backtrace"));
         }
 
@@ -540,12 +540,8 @@ impl<'db> Generator<'db> {
             Inst::Call { value, callee, args, span } => {
                 let mut arg_docs = vec![];
 
-                let traced = match &state.body.value(*callee).kind {
-                    &ValueKind::Fn(sig) => self.mir.fn_sigs[sig].traced,
-                    _ => {
-                        !state.body.value(*callee).ty.as_fn().unwrap().is_extern
-                    }
-                };
+                let traced =
+                    !state.body.value(*callee).ty.as_fn().unwrap().is_extern;
 
                 if traced {
                     arg_docs.push(D::text("backtrace"));

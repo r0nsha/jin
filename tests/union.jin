@@ -35,14 +35,11 @@ fn main() unit = {
 
 	printf("after match: Box(%d)\n".ptr, b.value)
 
-	if Option.some(1).map_or(false, is_negative) {
+	if Option.some(-1).map_or(false, is_negative) {
 		printf("o is negative\n".ptr)
 	} else {
 		printf("o is not negative\n".ptr)
 	}
 }
 
-fn is_negative(x: int) bool = {
-	printf("x=%d\n".ptr, x)
-	x < 0
-}
+fn is_negative(x: int) bool = x < 0

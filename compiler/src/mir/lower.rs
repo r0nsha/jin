@@ -149,7 +149,6 @@ impl<'db> Lower<'db> {
             ty: struct_def.ctor_ty,
             is_extern: false,
             is_c_variadic: false,
-            traced: false,
             span: adt.name.span(),
         });
 
@@ -215,7 +214,6 @@ impl<'db> Lower<'db> {
             ty: variant.ctor_ty,
             is_extern: false,
             is_c_variadic: false,
-            traced: false,
             span: variant.name.span(),
         });
 
@@ -319,7 +317,6 @@ impl<'db> Lower<'db> {
             ty: fun.sig.ty,
             is_extern,
             is_c_variadic,
-            traced: !is_extern,
             span: fun.sig.word.span(),
         })
     }
