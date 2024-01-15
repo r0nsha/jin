@@ -41,8 +41,8 @@ use crate::{
         attrs::AttrsPlacement,
         coerce::CoerceExt,
         env::{
-            BuiltinTys, Env, FnQuery, GlobalScope, LookupResult, PathLookup,
-            Query, ScopeKind, Symbol, TyLookup,
+            AssocTy, BuiltinTys, Env, FnQuery, GlobalScope, LookupResult,
+            PathLookup, Query, ScopeKind, Symbol, TyLookup,
         },
         resolution_state::{ModuleStatus, ResolutionState, ResolvedFnSig},
         unify::Obligation,
@@ -239,19 +239,19 @@ impl<'db> Typeck<'db> {
             ast::Item::ExternImport(import) => {
                 self.db.extern_libs.insert(import.lib.clone());
             }
-            ast::Item::Associated(ty, item) => {
-                let ty = self.check_assoc_item_ty(env, ty)?;
+            ast::Item::Assoc(tyname, item) => {
+                let assoc_ty = self.check_assoc_item_ty(env, *tyname)?;
 
                 match item.as_ref() {
                     ast::Item::Fn(fun) => {
-                        self.check_assoc_fn_item(env, ty, fun, item_id)?;
+                        self.check_assoc_fn_item(env, assoc_ty, fun, item_id)?;
                     }
                     ast::Item::Let(_)
                     | ast::Item::Type(_)
                     | ast::Item::Import(_)
                     | ast::Item::ExternLet(_)
                     | ast::Item::ExternImport(_)
-                    | ast::Item::Associated(_, _) => unreachable!(),
+                    | ast::Item::Assoc(_, _) => unreachable!(),
                 }
             }
         }
@@ -264,20 +264,29 @@ impl<'db> Typeck<'db> {
     fn check_assoc_item_ty(
         &mut self,
         env: &Env,
-        ty: &TyExpr,
-    ) -> TypeckResult<Ty> {
-        match ty {
-            TyExpr::Path(path, targs, span) => self.check_ty_expr_path(
-                env,
-                path,
-                targs.as_deref(),
-                *span,
-                AllowTyHole::No,
-            ),
-            TyExpr::Fn(_)
-            | TyExpr::Ref(_, _, _)
-            | TyExpr::RawPtr(_, _)
-            | TyExpr::Hole(_) => unreachable!(),
+        tyname: Word,
+    ) -> TypeckResult<AssocTy> {
+        let id = self.lookup(env, env.module_id(), &Query::Name(tyname))?;
+        let def = &self.db[id];
+
+        match def.kind.as_ref() {
+            DefKind::Adt(adt_id) => {
+                // TODO: check adt is defined in this package
+                Ok(AssocTy::Adt(*adt_id))
+            }
+            DefKind::Ty(ty) => {
+                // TODO: check that we're in the std package
+                Ok(AssocTy::BuiltinTy(*ty))
+            }
+            _ => Err(Diagnostic::error()
+                .with_message(format!(
+                    "expected a type, found value of type `{}`",
+                    def.ty.display(self.db)
+                ))
+                .with_label(
+                    Label::primary(tyname.span())
+                        .with_message("expected a type"),
+                )),
         }
     }
 
@@ -340,12 +349,12 @@ impl<'db> Typeck<'db> {
     fn check_assoc_fn_item(
         &mut self,
         env: &mut Env,
-        ty: Ty,
+        assoc_ty: AssocTy,
         fun: &ast::Fn,
         item_id: ast::GlobalItemId,
     ) -> TypeckResult<()> {
         let sig = self.check_fn_item_helper(env, fun)?;
-        let id = self.define_fn(env.module_id(), fun, &sig, Some(ty))?;
+        let id = self.define_fn(env.module_id(), fun, &sig, Some(assoc_ty))?;
         self.resolution_state
             .insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig });
         Ok(())

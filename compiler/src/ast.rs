@@ -90,7 +90,7 @@ pub enum Item {
     Import(Import),
     ExternLet(ExternLet),
     ExternImport(ExternImport),
-    Associated(TyExpr, Box<Self>),
+    Assoc(Word, Box<Self>),
 }
 
 impl Spanned for Item {
@@ -102,7 +102,7 @@ impl Spanned for Item {
             | Self::Import(Import { span, .. })
             | Self::ExternLet(ExternLet { span, .. })
             | Self::ExternImport(ExternImport { span, .. }) => *span,
-            Self::Associated(_, item) => item.span(),
+            Self::Assoc(name, item) => name.span().merge(item.span()),
         }
     }
 }

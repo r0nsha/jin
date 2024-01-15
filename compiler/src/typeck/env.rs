@@ -7,7 +7,7 @@ use ustr::{ustr, Ustr, UstrMap};
 use crate::{
     ast,
     db::{
-        AdtKind, Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo,
+        AdtId, AdtKind, Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo,
         ScopeLevel, VariantId,
     },
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -152,32 +152,25 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    pub fn define_fn(
+    pub(super) fn define_fn(
         &mut self,
         module_id: ModuleId,
         fun: &ast::Fn,
         sig: &hir::FnSig,
-        assoc_ty: Option<Ty>,
+        assoc_ty: Option<AssocTy>,
     ) -> TypeckResult<DefId> {
         match fun.kind {
             ast::FnKind::Bare { .. } => {
                 let symbol = Symbol::new(module_id, sig.word.name());
 
-                let base_qpath = if let Some(ty) = assoc_ty {
-                    match ty.kind() {
-                        TyKind::Adt(adt_id, _) => {
-                            self.db[self.db[*adt_id].def_id].qpath.clone()
+                let base_qpath = if let Some(assoc_ty) = assoc_ty {
+                    match assoc_ty {
+                        AssocTy::Adt(adt_id) => {
+                            self.db[self.db[adt_id].def_id].qpath.clone()
                         }
-                        TyKind::Int(_)
-                        | TyKind::Uint(_)
-                        | TyKind::Float(_)
-                        | TyKind::Str
-                        | TyKind::Bool
-                        | TyKind::Unit
-                        | TyKind::Never => {
+                        AssocTy::BuiltinTy(ty) => {
                             QPath::from(ustr(&ty.display(self.db).to_string()))
                         }
-                        _ => unreachable!(),
                     }
                 } else {
                     self.db[module_id].qpath.clone()
@@ -239,9 +232,9 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    pub fn insert_fn_candidate_in_ty(
+    pub(super) fn insert_fn_candidate_in_ty(
         &mut self,
-        ty: Ty,
+        assoc_ty: AssocTy,
         name: Ustr,
         module_id: ModuleId,
         candidate: FnCandidate,
@@ -249,8 +242,9 @@ impl<'db> Typeck<'db> {
         let set = self
             .global_scope
             .assoc_fns
-            .entry(ty)
+            .entry(assoc_ty)
             .or_default()
+            .fns
             .entry(name)
             .or_default();
         Self::insert_fn_candidate_in(self.db, set, module_id, candidate)
@@ -748,7 +742,7 @@ impl Symbol {
 pub struct GlobalScope {
     pub defs: FxHashMap<Symbol, GlobalScopeDef>,
     pub fns: FxHashMap<Symbol, FnCandidateSet>,
-    pub assoc_fns: FxHashMap<Ty, FxHashMap<Ustr, FnCandidateSet>>,
+    pub assoc_fns: FxHashMap<AssocTy, AssocScope>,
     pub symbol_to_item: FxHashMap<Symbol, Vec<ast::ItemId>>,
 }
 
@@ -863,6 +857,17 @@ impl BuiltinTys {
     pub fn get(&self, name: Ustr) -> Option<DefId> {
         self.inner.get(&name).copied()
     }
+}
+
+#[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]
+pub(super) enum AssocTy {
+    Adt(AdtId),
+    BuiltinTy(Ty),
+}
+
+#[derive(Debug, Default)]
+pub(super) struct AssocScope {
+    pub(super) fns: FxHashMap<Ustr, FnCandidateSet>,
 }
 
 #[derive(Debug)]

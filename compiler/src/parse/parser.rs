@@ -17,7 +17,7 @@ use crate::{
     db::{Db, DefId, ExternLib, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     macros::create_bool_enum,
-    middle::{BinOp, Mutability, NamePat, Pat, TyExpr, UnOp, Vis},
+    middle::{BinOp, Mutability, NamePat, Pat, UnOp, Vis},
     parse::errors,
     qpath::QPath,
     span::{Source, SourceId, Span, Spanned},
@@ -201,11 +201,9 @@ impl<'a> Parser<'a> {
         let name = self.eat_ident()?;
 
         if self.is(TokenKind::Dot) {
-            self.parse_associated_fn(attrs, name, None)
-        } else if self.peek_is(TokenKind::OpenBracket) {
-            let targs = self.parse_optional_ty_args()?;
-            self.eat(TokenKind::Dot)?;
-            self.parse_associated_fn(attrs, name, targs)
+            let fnname = self.eat_ident()?;
+            let fun = self.parse_bare_fn(attrs, fnname)?;
+            Ok(Item::Assoc(name.word(), Box::new(Item::Fn(fun))))
         } else {
             let fun = self.parse_bare_fn(attrs, name)?;
             Ok(Item::Fn(fun))
@@ -256,25 +254,6 @@ impl<'a> Parser<'a> {
             kind: FnKind::Bare { body: Box::new(body) },
             span: name.span,
         })
-    }
-
-    fn parse_associated_fn(
-        &mut self,
-        attrs: Attrs,
-        tyname: Token,
-        targs: Option<Vec<TyExpr>>,
-    ) -> DiagnosticResult<Item> {
-        let tyspan = targs
-            .as_ref()
-            .and_then(|targs| targs.last())
-            .map_or(tyname.span, |t| tyname.span.merge(t.span()));
-
-        let ty = TyExpr::Path(vec![tyname.word()], targs, tyspan);
-
-        let name = self.eat_ident()?;
-        let fun = self.parse_bare_fn(attrs, name)?;
-
-        Ok(Item::Associated(ty, Box::new(Item::Fn(fun))))
     }
 
     fn parse_let(&mut self, attrs: Attrs) -> DiagnosticResult<Let> {
