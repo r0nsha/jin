@@ -290,7 +290,27 @@ impl<'db> Typeck<'db> {
 
         match assoc_ty {
             AssocTy::Adt(adt_id) => {
-                // TODO: check adt is defined in this package
+                let curr_package = self.db[env.module_id()].package;
+                let ty_def = &self.db[self.db[adt_id].def_id];
+                let ty_package = self.db[ty_def.scope.module_id].package;
+
+                if curr_package != ty_package {
+                    return Err(Diagnostic::error()
+                        .with_message(format!(
+                            "cannot define associated name for foreign type \
+                             `{}`",
+                            self.db[adt_id].name
+                        ))
+                        .with_label(Label::primary(tyname.span()).with_message(
+                            format!(
+                                "type is defined in package `{ty_package}`"
+                            ),
+                        ))
+                        .with_label(
+                            Label::secondary(ty_def.span)
+                                .with_message("defined here"),
+                        ));
+                }
             }
             AssocTy::BuiltinTy(_) => {
                 // TODO: check that we're in the std package
