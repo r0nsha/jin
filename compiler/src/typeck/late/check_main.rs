@@ -22,7 +22,7 @@ impl<'db> CheckMain<'db> {
     }
 
     fn exists(&mut self) -> bool {
-        let main_module_id = self.db.main_module_id().unwrap();
+        let main_module_id = self.db.main_module.unwrap();
 
         let main_id = self.db.defs.iter().find_map(|def| {
             (def.scope.module_id == main_module_id

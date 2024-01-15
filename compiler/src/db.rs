@@ -13,6 +13,7 @@ use camino::{Utf8Path, Utf8PathBuf};
 use data_structures::{
     index_vec::{IndexVec, IndexVecExt},
     new_key_type,
+    once::Once,
 };
 use path_absolutize::Absolutize;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -50,9 +51,10 @@ pub struct Db {
     timings: Timings,
     build_options: BuildOptions,
 
-    main_package_name: Option<Ustr>,
-    main_source: Option<SourceId>,
-    main_module: Option<ModuleId>,
+    pub std_package_name: Once<Ustr>,
+    pub main_package_name: Once<Ustr>,
+    pub main_source: Once<SourceId>,
+    pub main_module: Once<ModuleId>,
     main_fun: Option<DefId>,
 }
 
@@ -72,9 +74,10 @@ impl Db {
             variants: IndexVec::new(),
             types: CommonTypes::new(),
             extern_libs: FxHashSet::default(),
-            main_package_name: None,
-            main_source: None,
-            main_module: None,
+            std_package_name: Once::new(),
+            main_package_name: Once::new(),
+            main_source: Once::new(),
+            main_module: Once::new(),
             main_fun: None,
         }
     }
@@ -112,14 +115,8 @@ impl Db {
     }
 
     pub fn set_main_package(&mut self, name: Ustr) {
-        assert!(
-            self.main_package_name.is_none(),
-            "main package is already set"
-        );
-        assert!(self.main_source.is_none(), "main source is already set");
-
-        self.main_package_name = Some(name);
-        self.main_source = Some(self.packages[&name].main_source_id);
+        self.main_package_name.set(name);
+        self.main_source.set(self.packages[&name].main_source_id);
     }
 
     pub fn main_source_id(&self) -> SourceId {
@@ -133,12 +130,10 @@ impl Db {
         })
     }
 
-    pub fn main_module_id(&self) -> Option<ModuleId> {
-        self.main_module
-    }
-
-    pub fn main_module(&self) -> Option<&ModuleInfo> {
-        self.main_module.and_then(|id| self.modules.get(id))
+    #[inline]
+    #[track_caller]
+    pub fn main_module(&self) -> &ModuleInfo {
+        &self.modules[self.main_module.unwrap()]
     }
 
     #[allow(unused)]
@@ -187,11 +182,7 @@ impl Db {
     }
 
     pub fn is_main_package(&self, package: Ustr) -> bool {
-        self.main_package_name.map_or(false, |n| n == package)
-    }
-
-    pub fn is_main_source(&self, package: Ustr) -> bool {
-        self.main_package_name.map_or(false, |n| n == package)
+        self.main_package_name.get().map_or(false, |n| n == package)
     }
 
     pub fn create_package(
@@ -304,6 +295,10 @@ impl Package {
     ) -> Self {
         Self { name, root_path, main_source_id }
     }
+
+    pub fn is_std(&self, db: &Db) -> bool {
+        db.std_package_name == self.name
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -333,8 +328,7 @@ impl ModuleInfo {
         });
 
         if is_main {
-            assert!(db.main_module.is_none());
-            db.main_module = Some(id);
+            db.main_module.set(id);
         }
 
         id

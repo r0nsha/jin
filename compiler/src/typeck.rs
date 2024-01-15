@@ -288,13 +288,14 @@ impl<'db> Typeck<'db> {
                 ));
         };
 
+        let env_package = self.db[env.module_id()].package;
+
         match assoc_ty {
             AssocTy::Adt(adt_id) => {
-                let curr_package = self.db[env.module_id()].package;
                 let ty_def = &self.db[self.db[adt_id].def_id];
                 let ty_package = self.db[ty_def.scope.module_id].package;
 
-                if curr_package != ty_package {
+                if env_package != ty_package {
                     return Err(Diagnostic::error()
                         .with_message(format!(
                             "cannot define associated name for foreign type \
@@ -312,8 +313,19 @@ impl<'db> Typeck<'db> {
                         ));
                 }
             }
-            AssocTy::BuiltinTy(_) => {
-                // TODO: check that we're in the std package
+            AssocTy::BuiltinTy(ty) => {
+                if !self.db.package(env_package).is_std(self.db) {
+                    return Err(Diagnostic::error()
+                        .with_message(format!(
+                            "cannot define associated name for builtin type \
+                             `{}`",
+                            ty.display(self.db)
+                        ))
+                        .with_label(
+                            Label::primary(tyname.span())
+                                .with_message("builtin type"),
+                        ));
+                }
             }
         }
 

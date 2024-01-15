@@ -1,5 +1,8 @@
 import std.option.Option
 
+// TODO: error
+fn int.new() unit = {}
+
 fn extern printf(fmt: *u8, ..) i32
 
 type Box(value: int)

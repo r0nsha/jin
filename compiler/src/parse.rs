@@ -26,6 +26,7 @@ pub fn parse_module_tree(
     // Std
     let root_std_file = crate::util::current_exe_dir().join("std/std.jin");
     let (std_package, _) = db.create_package(ustr("std"), &root_std_file)?;
+    db.std_package_name.set(std_package);
     parse_package(db, &mut ast, std_package);
 
     // Main package

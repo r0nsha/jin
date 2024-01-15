@@ -906,7 +906,7 @@ impl BuiltinTys {
     fn define(&mut self, db: &mut Db, name: &str, ty: Ty) -> Option<DefId> {
         let name = ustr(name);
         let scope_info = ScopeInfo {
-            module_id: db.main_module_id().expect("to be resolved"),
+            module_id: db.main_module.unwrap(),
             level: ScopeLevel::Global,
             vis: Vis::Public,
         };
