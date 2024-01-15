@@ -1751,25 +1751,6 @@ impl<'db> Typeck<'db> {
         self.lookup(env, in_module, &Query::Fn(query))
     }
 
-    fn lookup_assoc_fn(
-        &mut self,
-        from_module: ModuleId,
-        assoc_ty: AssocTy,
-        query: &FnQuery,
-    ) -> TypeckResult<Option<DefId>> {
-        let Some(set) = self
-            .global_scope
-            .assoc_scopes
-            .get(&assoc_ty)
-            .and_then(|scope| scope.fns.get(&query.word.name()))
-        else {
-            return Ok(None);
-        };
-
-        let candidates = set.find(self, &query);
-        self.check_and_filter_fn_candidates(&query, candidates, from_module)
-    }
-
     fn check_call(
         &mut self,
         callee: hir::Expr,

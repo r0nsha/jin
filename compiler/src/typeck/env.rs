@@ -407,7 +407,7 @@ impl<'db> Typeck<'db> {
         Ok(PathLookup::Def(id))
     }
 
-    /// Tries to look up a given query in the namespace of `ty`.
+    /// Looks up a `query` in the associated namespace of `ty`.
     pub(super) fn lookup_in_ty(
         &mut self,
         from_module: ModuleId,
@@ -427,22 +427,27 @@ impl<'db> Typeck<'db> {
         if let TyKind::Adt(adt_id, _) = ty.kind() {
             self.lookup_name_in_adt(*adt_id, name, ty_span)
         } else {
-            Err(errors::field_not_found(self.db, ty, ty_span, name))
+            Err(errors::assoc_name_not_found(self.db, ty, query))
         }
     }
 
-    /// Tries to look up `name` in the namespace of `ty`.
-    fn lookup_name_in_ty(
+    fn lookup_assoc_fn(
         &mut self,
-        ty: Ty,
-        name: Word,
-        ty_span: Span,
-    ) -> TypeckResult<TyLookup> {
-        if let TyKind::Adt(adt_id, _) = ty.kind() {
-            self.lookup_name_in_adt(*adt_id, name, ty_span)
-        } else {
-            Err(errors::field_not_found(self.db, ty, ty_span, name))
-        }
+        from_module: ModuleId,
+        assoc_ty: AssocTy,
+        query: &FnQuery,
+    ) -> TypeckResult<Option<DefId>> {
+        let Some(set) = self
+            .global_scope
+            .assoc_scopes
+            .get(&assoc_ty)
+            .and_then(|scope| scope.fns.get(&query.word.name()))
+        else {
+            return Ok(None);
+        };
+
+        let candidates = set.find(self, query);
+        self.check_and_filter_fn_candidates(query, candidates, from_module)
     }
 
     pub(super) fn lookup_name_in_adt(

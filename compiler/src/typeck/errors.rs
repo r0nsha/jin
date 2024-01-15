@@ -6,7 +6,7 @@ use crate::{
     span::{Span, Spanned},
     ty::Ty,
     typeck::{
-        env::{AssocTy, FnCandidate, FnQuery},
+        env::{FnCandidate, FnQuery, Query},
         resolution_state::CyclicItemErr,
     },
     word::Word,
@@ -69,21 +69,25 @@ pub fn name_not_found(
         .with_label(Label::primary(word.span()).with_message("not found"))
 }
 
-pub fn assoc_name_not_found(
-    db: &Db,
-    assoc_ty: AssocTy,
-    word: Word,
-) -> Diagnostic {
+pub fn assoc_name_not_found(db: &Db, ty: Ty, query: &Query) -> Diagnostic {
+    let msg = match query {
+        Query::Name(word) => format!(
+            "cannot find associated name `{}` in type `{}`",
+            word,
+            ty.display(db)
+        ),
+        Query::Fn(fn_query) => {
+            format!(
+                "cannot find a matching associated function `{}` in type `{}`",
+                fn_query.display(db),
+                ty.display(db)
+            )
+        }
+    };
+
     Diagnostic::error()
-        .with_message(match assoc_ty {
-            AssocTy::Adt(adt_id) => {
-                format!("cannot find associated function `{}` in type `{}`", word, db[adt_id].name)
-            }
-            AssocTy::BuiltinTy(ty) => {
-                format!("cannot find associated function `{}` in type `{}`", word, ty.display(db))
-            }
-        })
-        .with_label(Label::primary(word.span()).with_message("not found"))
+        .with_message(msg)
+        .with_label(Label::primary(query.span()).with_message("not found"))
 }
 
 pub fn fn_not_found(db: &Db, query: &FnQuery) -> Diagnostic {
