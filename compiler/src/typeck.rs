@@ -175,25 +175,32 @@ impl<'db> Typeck<'db> {
             let mut env = Env::new(module.id);
 
             for (item_id, item) in module.items.iter_enumerated() {
-                if let ast::Item::Fn(fun) = item {
-                    let ResolvedFnSig { id, sig } = self
-                        .resolution_state
-                        .take_resolved_fn_sig(ast::GlobalItemId::new(
-                            module.id, item_id,
-                        ))
-                        .unwrap_or_else(|| {
-                            panic!(
-                                "fn `{}` in module `{}` to be resolved",
-                                fun.sig.word, self.db[module.id].qpath
-                            )
-                        });
+                let fun = match item {
+                    ast::Item::Fn(f) => f,
+                    ast::Item::Assoc(_, i) => match i.as_ref() {
+                        ast::Item::Fn(f) => f,
+                        _ => continue,
+                    },
+                    _ => continue,
+                };
 
-                    let mut f = self.check_fn_body(&mut env, fun, sig, id)?;
-                    self.hir.fns.push_with_key(|id| {
-                        f.id = id;
-                        f
+                let ResolvedFnSig { id, sig } = self
+                    .resolution_state
+                    .take_resolved_fn_sig(ast::GlobalItemId::new(
+                        module.id, item_id,
+                    ))
+                    .unwrap_or_else(|| {
+                        panic!(
+                            "fn `{}` in module `{}` to be resolved",
+                            fun.sig.word, self.db[module.id].qpath
+                        )
                     });
-                }
+
+                let mut f = self.check_fn_body(&mut env, fun, sig, id)?;
+                self.hir.fns.push_with_key(|id| {
+                    f.id = id;
+                    f
+                });
             }
         }
 
