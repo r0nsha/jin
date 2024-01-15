@@ -3,9 +3,7 @@ import std.io.println
 fn extern printf(fmt: *u8, ..) i32
 
 fn main() unit = {
-	call(hello)
 	call(fn() { println("hello") })
 }
 
 fn call(f: fn() unit) unit = f()
-fn hello() unit = println("hello")
