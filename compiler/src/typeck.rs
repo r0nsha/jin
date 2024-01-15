@@ -505,7 +505,13 @@ impl<'db> Typeck<'db> {
         let mut defined_params = WordMap::default();
 
         for p in &sig.params {
-            let ty = self.check_ty_expr(env, &p.ty_expr, AllowTyHole::No)?;
+            let ty = p
+                .ty_expr
+                .as_ref()
+                .map(|tex| self.check_ty_expr(env, tex, AllowTyHole::No))
+                .transpose()?
+                .unwrap_or_else(|| self.fresh_ty_var());
+
             let pat = self.define_pat(env, DefKind::Variable, &p.pat, ty)?;
 
             match &pat {
@@ -1028,6 +1034,9 @@ impl<'db> Typeck<'db> {
                     self.db.types.unit,
                     span,
                 ))
+            }
+            ast::Expr::Fn { params, ret, body, span } => {
+                todo!()
             }
             ast::Expr::Assign { lhs, rhs, op, span } => {
                 let lhs = self.check_expr(env, lhs, None)?;

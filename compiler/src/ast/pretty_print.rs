@@ -3,8 +3,8 @@ use std::io;
 use super::{Expr, Fn, Item, LitKind, Module};
 use crate::{
     ast::{
-        CallArg, ExternImport, ExternLet, FnKind, FnSig, Import, ImportName,
-        ImportNode, Let, TyDef, TyDefKind, TyExpr,
+        CallArg, ExternImport, ExternLet, FnKind, FnParam, FnSig, Import,
+        ImportName, ImportNode, Let, TyDef, TyDefKind, TyExpr,
     },
     db::StructKind,
     middle::{BinOp, IsUfcs},
@@ -39,6 +39,15 @@ impl PrettyPrint for Expr {
     fn pretty_print(&self, cx: &mut PrettyCx) {
         match self {
             Self::Let(let_) => let_.pretty_print(cx),
+            Self::Fn { params, ret, body, .. } => {
+                cx.builder.begin_child("fn expr".to_string());
+
+                print_fn_params(cx, params);
+                print_fn_ret(cx, ret.as_ref());
+
+                body.pretty_print(cx);
+                cx.builder.end_child();
+            }
             Self::Assign { lhs, rhs, op, .. } => {
                 cx.builder.begin_child(format!(
                     "{}=",
@@ -217,22 +226,8 @@ impl PrettyPrint for Fn {
 
 impl PrettyPrint for FnSig {
     fn pretty_print(&self, cx: &mut PrettyCx) {
-        if !self.params.is_empty() {
-            cx.builder.begin_child("params".to_string());
-
-            for param in &self.params {
-                cx.builder.add_empty_child(format!("{}", param.pat));
-                param.ty_expr.pretty_print(cx);
-            }
-
-            cx.builder.end_child();
-        }
-
-        if let Some(ret) = &self.ret {
-            cx.builder.begin_child("ret".to_string());
-            ret.pretty_print(cx);
-            cx.builder.end_child();
-        }
+        print_fn_params(cx, &self.params);
+        print_fn_ret(cx, self.ret.as_ref());
     }
 }
 
@@ -462,4 +457,27 @@ fn print_call(
     }
 
     cx.builder.end_child();
+}
+
+fn print_fn_params(cx: &mut PrettyCx, params: &[FnParam]) {
+    if !params.is_empty() {
+        cx.builder.begin_child("params".to_string());
+
+        for param in params {
+            cx.builder.add_empty_child(format!("{}", param.pat));
+            if let Some(ty) = &param.ty_expr {
+                ty.pretty_print(cx);
+            }
+        }
+
+        cx.builder.end_child();
+    }
+}
+
+fn print_fn_ret(cx: &mut PrettyCx, ret: Option<&TyExpr>) {
+    if let Some(ret) = ret {
+        cx.builder.begin_child("ret".to_string());
+        ret.pretty_print(cx);
+        cx.builder.end_child();
+    }
 }

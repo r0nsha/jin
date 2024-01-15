@@ -17,7 +17,7 @@ use crate::{
     db::{Db, DefId, ExternLib, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     macros::create_bool_enum,
-    middle::{BinOp, Mutability, NamePat, Pat, UnOp, Vis},
+    middle::{BinOp, Mutability, NamePat, Pat, TyExpr, UnOp, Vis},
     parse::errors,
     qpath::QPath,
     span::{Source, SourceId, Span, Spanned},
@@ -216,7 +216,7 @@ impl<'a> Parser<'a> {
         let (sig, is_c_variadic) = self.parse_fn_sig(
             name.word(),
             AllowTyParams::No,
-            RequireRetTy::Yes,
+            RequireSigTy::Yes,
         )?;
 
         Ok(Fn {
@@ -237,7 +237,7 @@ impl<'a> Parser<'a> {
         let (sig, is_c_variadic) = self.parse_fn_sig(
             name.word(),
             AllowTyParams::Yes,
-            RequireRetTy::Yes,
+            RequireSigTy::Yes,
         )?;
 
         if is_c_variadic {
@@ -441,9 +441,9 @@ impl<'a> Parser<'a> {
 
     fn parse_fn_sig(
         &mut self,
-        name: Word,
+        word: Word,
         allow_ty_params: AllowTyParams,
-        require_ret_ty: RequireRetTy,
+        require_sig_ty: RequireSigTy,
     ) -> DiagnosticResult<(FnSig, bool)> {
         let ty_params = if allow_ty_params == AllowTyParams::Yes {
             self.parse_optional_ty_params()?
@@ -451,15 +451,29 @@ impl<'a> Parser<'a> {
             vec![]
         };
 
-        let (params, is_c_variadic) = self.parse_fn_params()?;
-        let ret = match require_ret_ty {
-            RequireRetTy::Yes => Some(self.parse_ty()?),
-            RequireRetTy::No(delimeter) => {
-                self.is_and(delimeter, |this, _| this.parse_ty()).transpose()?
+        let (params, ret, is_c_variadic) =
+            self.parse_fn_sig_helper(require_sig_ty)?;
+
+        Ok((FnSig { word, ty_params, params, ret }, is_c_variadic))
+    }
+
+    fn parse_fn_sig_helper(
+        &mut self,
+        require_sig_ty: RequireSigTy,
+    ) -> DiagnosticResult<(Vec<FnParam>, Option<TyExpr>, bool)> {
+        let (params, is_c_variadic) = self.parse_fn_params(require_sig_ty)?;
+        let ret = match require_sig_ty {
+            RequireSigTy::Yes => Some(self.parse_ty()?),
+            RequireSigTy::No(delimeter) => {
+                if self.peek_is(delimeter) {
+                    None
+                } else {
+                    Some(self.parse_ty()?)
+                }
             }
         };
 
-        Ok((FnSig { word: name, ty_params, params, ret }, is_c_variadic))
+        Ok((params, ret, is_c_variadic))
     }
 
     fn parse_optional_ty_params(&mut self) -> DiagnosticResult<Vec<TyParam>> {
@@ -474,7 +488,10 @@ impl<'a> Parser<'a> {
         .map(|(t, _)| t)
     }
 
-    fn parse_fn_params(&mut self) -> DiagnosticResult<(Vec<FnParam>, bool)> {
+    fn parse_fn_params(
+        &mut self,
+        require_sig_ty: RequireSigTy,
+    ) -> DiagnosticResult<(Vec<FnParam>, bool)> {
         let mut is_c_variadic = false;
 
         let (params, _) = self.parse_list(
@@ -487,8 +504,15 @@ impl<'a> Parser<'a> {
                 }
 
                 let pat = this.parse_pat()?;
-                this.eat(TokenKind::Colon)?;
-                let ty_expr = this.parse_ty()?;
+
+                let ty_expr = if require_sig_ty == RequireSigTy::Yes {
+                    this.eat(TokenKind::Colon)?;
+                    Some(this.parse_ty()?)
+                } else if this.is(TokenKind::Colon) {
+                    Some(this.parse_ty()?)
+                } else {
+                    None
+                };
 
                 Ok(ControlFlow::Continue(FnParam {
                     span: pat.span(),
@@ -537,6 +561,23 @@ impl<'a> Parser<'a> {
         let span = expr.as_ref().map_or(start, |e| start.merge(e.span()));
 
         Ok(Expr::Return { expr, span })
+    }
+
+    fn parse_fn_expr(&mut self) -> DiagnosticResult<Expr> {
+        let start = self.last_span();
+        let (params, ret, is_c_variadic) =
+            self.parse_fn_sig_helper(RequireSigTy::No(TokenKind::OpenCurly))?;
+
+        if is_c_variadic {
+            return Err(errors::invalid_c_variadic(start));
+        }
+
+        self.eat(TokenKind::OpenCurly)?;
+        let body = self.parse_block()?;
+
+        let span = start.merge(body.span());
+
+        Ok(Expr::Fn { params, ret, body: Box::new(body), span })
     }
 
     fn parse_expr(&mut self) -> DiagnosticResult<Expr> {
@@ -629,6 +670,7 @@ impl<'a> Parser<'a> {
         let tok = self.eat_any()?;
 
         let expr = match tok.kind {
+            TokenKind::Fn => self.parse_fn_expr()?,
             TokenKind::Return => self.parse_return()?,
             TokenKind::If => self.parse_if()?,
             TokenKind::Match => self.parse_match()?,
@@ -1257,8 +1299,7 @@ impl<'a> Parser<'a> {
 create_bool_enum!(AllowTyParams);
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-enum RequireRetTy {
+enum RequireSigTy {
     Yes,
-    #[allow(dead_code)]
     No(TokenKind),
 }

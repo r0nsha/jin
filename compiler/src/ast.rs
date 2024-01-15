@@ -110,6 +110,12 @@ impl Spanned for Item {
 #[derive(Debug, Clone)]
 pub enum Expr {
     Let(Let),
+    Fn {
+        params: Vec<FnParam>,
+        ret: Option<TyExpr>,
+        body: Box<Self>,
+        span: Span,
+    },
     Assign {
         lhs: Box<Self>,
         rhs: Box<Self>,
@@ -196,6 +202,7 @@ impl Spanned for Expr {
     fn span(&self) -> Span {
         match self {
             Self::Let(Let { span, .. })
+            | Self::Fn { span, .. }
             | Self::Assign { span, .. }
             | Self::Swap { span, .. }
             | Self::Name { span, .. }
@@ -247,7 +254,7 @@ pub struct TyParam {
 #[derive(Debug, Clone)]
 pub struct FnParam {
     pub pat: Pat,
-    pub ty_expr: TyExpr,
+    pub ty_expr: Option<TyExpr>,
     pub span: Span,
 }
 
