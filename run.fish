@@ -1,32 +1,42 @@
 #!/bin/fish
-if set -q $argv[1]
-    echo Usage: run.fish [FILE_NAME]
+argparse --name=run --min-args=1 r/release -- $argv
+or exit 1
+
+set -l source $argv[1]
+
+set -l cargo_flags
+set -l exedir
+if set -q _flag_r
+    set cargo_flags -r
+    set exedir target/release
 else
-    set -l exedir target/debug
-    set -l source $argv[1]
-    set -l source_dir (dirname $source)
-    set -l output_name (basename $source .jin)
-    set -l output $source_dir/build/$output_name
+    set release false
+    set exedir target/debug
+end
 
-    # Copy std package
-    rm -r $exedir/std
-    cp -r std $exedir/std
+set -l source $argv[1]
+set -l source_dir (dirname $source)
+set -l output_name (basename $source .jin)
+set -l output $source_dir/build/$output_name
 
-    # Build runtime
-    cd rt
-    zig build
-    cd ..
+# Copy std package
+rm -r $exedir/std
+cp -r std $exedir/std
 
-    # Copy runtime library & header
-    set -l rtdir $exedir/rt
-    rm -r $rtdir
-    mkdir $rtdir &>/dev/null
-    cp rt/jinrt.h $rtdir/jinrt.h
-    cp rt/zig-out/lib/libjinrt.a $rtdir/libjinrt.a
+# Build runtime
+cd rt
+zig build
+cd ..
 
-    cargo run -- build $source --timings --emit ast --emit hir --emit mir --emit c
+# Copy runtime library & header
+set -l rtdir $exedir/rt
+rm -r $rtdir
+mkdir $rtdir &>/dev/null
+cp rt/jinrt.h $rtdir/jinrt.h
+cp rt/zig-out/lib/libjinrt.a $rtdir/libjinrt.a
 
-    if test $status -eq 0 && test -f $output
-        $output
-    end
+cargo run $cargo_flags -- build $source --timings --emit ast --emit hir --emit mir --emit c
+
+if test $status -eq 0 && test -f $output
+    $output
 end
