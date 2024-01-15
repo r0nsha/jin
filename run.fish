@@ -9,6 +9,7 @@ else
     set -l output $source_dir/build/$output_name
 
     # Copy std package
+    rm -r $exedir/std
     cp -r std $exedir/std
 
     # Build runtime
@@ -18,6 +19,7 @@ else
 
     # Copy runtime library & header
     set -l rtdir $exedir/rt
+    rm -r $rtdir
     mkdir $rtdir &>/dev/null
     cp rt/jinrt.h $rtdir/jinrt.h
     cp rt/zig-out/lib/libjinrt.a $rtdir/libjinrt.a
