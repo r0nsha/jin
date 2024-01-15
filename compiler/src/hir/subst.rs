@@ -81,6 +81,8 @@ impl<S: SubstTy> Subst<S> for FnSig {
             param.ty = s.subst_ty(param.ty, param.pat.span());
             param.pat.subst(s);
         }
+
+        self.ret = s.subst_ty(self.ret, self.ret_span);
     }
 }
 

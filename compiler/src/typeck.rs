@@ -15,14 +15,14 @@ use std::cell::RefCell;
 use data_structures::index_vec::{IndexVecExt, Key};
 use ena::unify::{InPlace, InPlaceUnificationTable, Snapshot};
 use itertools::{Itertools, Position};
-use ustr::UstrMap;
+use ustr::{ustr, UstrMap};
 
 use crate::{
     ast::{self, Ast},
     counter::Counter,
     db::{
-        Adt, AdtField, AdtId, AdtKind, Db, DefId, DefKind, ModuleId, StructDef,
-        UnionDef, Variant, VariantId,
+        Adt, AdtField, AdtId, AdtKind, Db, DefId, DefKind, FnInfo, ModuleId,
+        StructDef, UnionDef, Variant, VariantId,
     },
     diagnostics::{Diagnostic, Label},
     hir,
@@ -196,10 +196,10 @@ impl<'db> Typeck<'db> {
                         )
                     });
 
-                let mut f = self.check_fn_body(&mut env, fun, sig, id)?;
+                let mut fun = self.check_fn_body(&mut env, fun, sig, id)?;
                 self.hir.fns.push_with_key(|id| {
-                    f.id = id;
-                    f
+                    fun.id = id;
+                    fun
                 });
             }
         }
@@ -347,11 +347,11 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         fun: &ast::Fn,
         mut sig: hir::FnSig,
-        id: DefId,
+        def_id: DefId,
     ) -> TypeckResult<hir::Fn> {
         let kind = env.with_scope(
-            fun.sig.word.name(),
-            ScopeKind::Fn(id),
+            sig.word.name(),
+            ScopeKind::Fn(def_id),
             |env| -> TypeckResult<_> {
                 for tp in &sig.ty_params {
                     env.insert(tp.word.name(), tp.id);
@@ -363,21 +363,9 @@ impl<'db> Typeck<'db> {
 
                 match &fun.kind {
                     ast::FnKind::Bare { body } => {
-                        let ret_ty = sig.ty.as_fn().unwrap().ret;
-
-                        let body = self.check_expr(env, body, Some(ret_ty))?;
-
-                        self.at(Obligation::return_ty(
-                            body.span,
-                            fun.sig
-                                .ret
-                                .as_ref()
-                                .map_or(self.db[id].span, Spanned::span),
-                        ))
-                        .eq(ret_ty, body.ty)
-                        .or_coerce(self, body.id)?;
-
-                        Ok(hir::FnKind::Bare { body: self.expr_or_block(body) })
+                        let body =
+                            self.check_fn_body_helper(env, body, &sig)?;
+                        Ok(hir::FnKind::Bare { body })
                     }
                     ast::FnKind::Extern { is_c_variadic } => {
                         Ok(hir::FnKind::Extern {
@@ -391,11 +379,54 @@ impl<'db> Typeck<'db> {
         Ok(hir::Fn {
             id: hir::FnId::null(),
             module_id: env.module_id(),
-            def_id: id,
+            def_id,
             sig,
             kind,
             span: fun.span,
         })
+    }
+
+    fn check_fn_expr_body(
+        &mut self,
+        env: &mut Env,
+        sig: hir::FnSig,
+        def_id: DefId,
+        body: &ast::Expr,
+        span: Span,
+    ) -> TypeckResult<hir::Fn> {
+        let body = env.with_scope(
+            sig.word.name(),
+            ScopeKind::Fn(def_id),
+            |env| -> TypeckResult<_> {
+                self.check_fn_body_helper(env, body, &sig)
+            },
+        )?;
+
+        Ok(hir::Fn {
+            id: hir::FnId::null(),
+            module_id: env.module_id(),
+            def_id,
+            sig,
+            kind: hir::FnKind::Bare { body },
+            span,
+        })
+    }
+
+    fn check_fn_body_helper(
+        &mut self,
+        env: &mut Env,
+        body: &ast::Expr,
+        sig: &hir::FnSig,
+    ) -> TypeckResult<hir::Expr> {
+        let ret_ty = sig.ty.as_fn().unwrap().ret;
+
+        let body = self.check_expr(env, body, Some(ret_ty))?;
+
+        self.at(Obligation::return_ty(body.span, sig.ret_span))
+            .eq(ret_ty, body.ty)
+            .or_coerce(self, body.id)?;
+
+        Ok(self.expr_or_block(body))
     }
 
     fn check_assoc_fn_item(
@@ -513,6 +544,31 @@ impl<'db> Typeck<'db> {
         }));
 
         Ok(hir::FnSig { word: sig.word, ty_params, params, ret, ret_span, ty })
+    }
+
+    fn check_fn_expr_sig(
+        &mut self,
+        env: &mut Env,
+        params: &[ast::FnParam],
+        ret: Option<&TyExpr>,
+        span: Span,
+    ) -> TypeckResult<hir::FnSig> {
+        let (params, fnty_params) = self.check_fn_sig_params(env, params)?;
+        let ret_span = ret.as_ref().map_or(span, |t| t.span());
+        let ret = self.check_fn_sig_ret(env, ret)?;
+
+        let ty = Ty::new(TyKind::Fn(FnTy {
+            params: fnty_params,
+            ret,
+            is_extern: false,
+            is_c_variadic: false,
+        }));
+
+        let module_name = self.db[env.module_id()].qpath.join_with("_");
+        let name = ustr(&format!("closure_{}_{}", module_name, span.start()));
+        let word = Word::new(name, span);
+
+        Ok(hir::FnSig { word, ty_params: vec![], params, ret, ret_span, ty })
     }
 
     fn check_fn_sig_params(
@@ -1056,8 +1112,38 @@ impl<'db> Typeck<'db> {
                 ))
             }
             ast::Expr::Fn { params, ret, body, span } => {
-                dbg!(params, ret, body, span);
-                todo!()
+                let sig =
+                    self.check_fn_expr_sig(env, params, ret.as_ref(), *span)?;
+
+                let word = sig.word;
+                let ty = sig.ty;
+
+                let id = self.define_def(
+                    env,
+                    Vis::Private,
+                    DefKind::Fn(FnInfo::Bare),
+                    sig.word,
+                    Mutability::Imm,
+                    ty,
+                )?;
+
+                let mut fun =
+                    self.check_fn_expr_body(env, sig, id, body, *span)?;
+
+                self.hir.fns.push_with_key(|id| {
+                    fun.id = id;
+                    fun
+                });
+
+                Ok(self.expr(
+                    hir::ExprKind::Name(hir::Name {
+                        id,
+                        word,
+                        instantiation: Instantiation::default(),
+                    }),
+                    ty,
+                    *span,
+                ))
             }
             ast::Expr::Assign { lhs, rhs, op, span } => {
                 let lhs = self.check_expr(env, lhs, None)?;
