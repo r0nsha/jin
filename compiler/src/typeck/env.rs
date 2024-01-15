@@ -423,9 +423,8 @@ impl<'db> Typeck<'db> {
             }
         }
 
-        let name = query.word();
         if let TyKind::Adt(adt_id, _) = ty.kind() {
-            self.lookup_name_in_adt(*adt_id, name, ty_span)
+            self.lookup_name_in_adt(*adt_id, query, ty_span)
         } else {
             Err(errors::assoc_name_not_found(self.db, ty, query))
         }
@@ -453,9 +452,10 @@ impl<'db> Typeck<'db> {
     pub(super) fn lookup_name_in_adt(
         &mut self,
         adt_id: AdtId,
-        name: Word,
+        query: &Query,
         ty_span: Span,
     ) -> TypeckResult<TyLookup> {
+        let name = query.word();
         let adt = &self.db[adt_id];
 
         match &adt.kind {
@@ -474,7 +474,7 @@ impl<'db> Typeck<'db> {
                     });
             }
             AdtKind::Struct(_) => {
-                Err(errors::field_not_found(self.db, adt.ty(), ty_span, name))
+                Err(errors::assoc_name_not_found(self.db, adt.ty(), query))
             }
         }
     }
