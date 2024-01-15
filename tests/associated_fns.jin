@@ -7,8 +7,7 @@ fn main() unit = {
 
 type Box(value: int)
 
-fn Box.default() Box = Box(int.zero())
-fn int.zero() int = 0
+fn Box.default() Box = Box(0)
 
 fn print(self: &Box) unit = {
     printf("Box(%d)\n".ptr, self.value)
