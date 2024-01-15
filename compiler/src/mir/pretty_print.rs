@@ -1,5 +1,6 @@
 use std::io;
 
+use data_structures::index_vec::Key;
 use pretty::RcDoc as D;
 use ustr::ustr;
 
@@ -262,7 +263,13 @@ impl<'db> PrettyCx<'db> {
             ValueKind::Register(name) => {
                 D::text(format!("{}{}", name.unwrap_or(ustr("v")), value_id))
             }
-            ValueKind::UniqueName(name) => D::text(name.as_str()),
+            ValueKind::Param(id, idx) => {
+                if id.is_null() {
+                    D::text(format!("param{idx}"))
+                } else {
+                    D::text(self.db[*id].name.as_str())
+                }
+            }
             ValueKind::Local(id) => D::text(self.db[*id].name.as_str()),
             ValueKind::Global(id) => Self::global(&self.mir.globals[*id].name),
             ValueKind::Fn(id) => {

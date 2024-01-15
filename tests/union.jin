@@ -1,4 +1,4 @@
-import std.option.Option
+import std.option.{Option, ?}
 
 fn extern printf(fmt: *u8, ..) i32
 
@@ -34,4 +34,13 @@ fn main() unit = {
 	}
 
 	printf("after match: Box(%d)\n".ptr, b.value)
+
+	let o = Option.some(1)
+	if o.map_or(false, is_negative) {
+		printf("o is negative\n".ptr)
+	} else {
+		printf("o is not negative\n".ptr)
+	}
 }
+
+fn is_negative(x: int) bool = x < 0

@@ -1,7 +1,6 @@
 use std::{fs::File, io::Write, iter};
 
 use camino::Utf8PathBuf;
-use data_structures::index_vec::Key as _;
 use pretty::RcDoc as D;
 use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr};
@@ -48,11 +47,12 @@ pub struct GenState<'db> {
     pub name: Ustr,
     pub body: &'db Body,
     pub local_names: LocalNames,
+    pub param_names: Vec<Ustr>,
 }
 
 impl<'db> GenState<'db> {
     pub fn new(name: Ustr, body: &'db Body) -> Self {
-        Self { name, body, local_names: LocalNames::new() }
+        Self { name, body, local_names: LocalNames::new(), param_names: vec![] }
     }
 }
 
@@ -401,7 +401,7 @@ impl<'db> Generator<'db> {
 
         params.extend(sig.params.iter().enumerate().map(|(idx, param)| {
             let name = match &param.pat {
-                Pat::Name(name) => name.word.name(),
+                Pat::Name(name) => ustr(&format!("{}{}", name.word, idx)),
                 Pat::Discard(_) => ustr(&format!("_{idx}")),
             };
 
@@ -451,16 +451,13 @@ impl<'db> Generator<'db> {
 
         let mut state = GenState::new(sig.display_name, &fun.body);
 
-        for param in &sig.params {
+        for (idx, param) in sig.params.iter().enumerate() {
             match &param.pat {
                 Pat::Name(name) => {
                     // The parameter's name id could be null() when it's generated ad-hoc.
                     // For example, in type constructor parameters.
-                    if !name.id.is_null() {
-                        state
-                            .local_names
-                            .insert(name.id, self.db[name.id].name);
-                    }
+                    let param_name = ustr(&format!("{}{}", name.word, idx));
+                    state.param_names.push(param_name);
                 }
                 Pat::Discard(_) => (),
             }
@@ -663,7 +660,9 @@ impl<'db> Generator<'db> {
             ValueKind::Register(name) => {
                 D::text(Self::register_name(id, *name))
             }
-            ValueKind::UniqueName(name) => D::text(name.as_str()),
+            ValueKind::Param(_, idx) => {
+                D::text(state.param_names[*idx].as_str())
+            }
             ValueKind::Local(id) => {
                 D::text(state.local_names.get(*id).unwrap().as_str())
             }

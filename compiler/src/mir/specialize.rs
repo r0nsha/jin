@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, mem};
 
-use data_structures::index_vec::Key as _;
+use data_structures::index_vec::Key;
 use rustc_hash::FxHashSet;
 use ustr::ustr;
 
@@ -510,6 +510,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         let adt_name = mangle::mangle_adt(self.cx.db, adt, targs);
         let adt_span = adt.name.span();
         let self_name = ustr("self");
+        let self_value = ValueKind::Param(DefId::null(), 0);
 
         let params = vec![FnParam {
             pat: Pat::Name(NamePat {
@@ -555,8 +556,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         });
         self.cx.adt_frees.insert(ty, sig);
 
-        let self_value =
-            self.body.create_value(adt_ty, ValueKind::UniqueName(self_name));
+        let self_value = self.body.create_value(adt_ty, self_value);
 
         let join_block = match &adt.kind {
             AdtKind::Union(union_def) => self.lower_union_free(

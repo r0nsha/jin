@@ -281,12 +281,13 @@ impl<'db> Lower<'db> {
         this: ValueId,
         fields: &[AdtField],
     ) {
-        for field in fields {
+        for (idx, field) in fields.iter().enumerate() {
             let name = field.name.name();
             let ty = field.ty;
             let field_value =
                 body.create_value(ty, ValueKind::Field(this, name));
-            let param = body.create_value(ty, ValueKind::UniqueName(name));
+            let param =
+                body.create_value(ty, ValueKind::Param(DefId::null(), idx));
             body.ins(block).store(param, field_value);
         }
     }
@@ -369,15 +370,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     match &param.pat {
                         Pat::Name(name) => {
                             let id = name.id;
-                            let value = self
-                                .create_value(param.ty, ValueKind::Local(id));
+                            let value = self.create_value(
+                                param.ty,
+                                ValueKind::Param(id, idx),
+                            );
                             self.create_destroy_flag(value);
                             self.locals.insert(id, value);
                         }
                         Pat::Discard(span) => {
                             let value = self.create_untracked_value(
                                 param.ty,
-                                ValueKind::UniqueName(ustr(&format!("_{idx}"))),
+                                ValueKind::Param(DefId::null(), idx),
                             );
                             self.destroy_value_entirely(value, *span);
                         }
@@ -1999,7 +2002,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn value_name_aux(&self, value: ValueId) -> String {
         match &self.body.value(value).kind {
-            ValueKind::Local(id) => self.cx.db[*id].name.to_string(),
+            ValueKind::Param(id, _) | ValueKind::Local(id) => {
+                self.cx.db[*id].name.to_string()
+            }
             ValueKind::Global(id) => self.cx.mir.globals[*id].name.to_string(),
             ValueKind::Fn(id) => {
                 self.cx.mir.fn_sigs[*id].mangled_name.to_string()
@@ -2008,7 +2013,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             | ValueKind::Variant(parent, child) => {
                 format!("{}.{}", self.value_name_aux(*parent), child)
             }
-            ValueKind::UniqueName(name) => name.to_string(),
             ValueKind::Register(_) | ValueKind::Const(_) => "_".to_string(),
         }
     }
@@ -2115,7 +2119,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         break_on_mut_ty: BreakOnMutRef,
     ) -> Result<(), ImmutableRoot> {
         match &self.body.value(value).kind {
-            ValueKind::Local(id) => {
+            ValueKind::Param(id, _) | ValueKind::Local(id) => {
                 if self.def_is_imm(*id, self.ty_of(value)) {
                     Err(ImmutableRoot::Def(value))
                 } else {
@@ -2141,10 +2145,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     (Err(err), _) => Err(err),
                 }
             }
-            ValueKind::Fn(_)
-            | ValueKind::Const(_)
-            | ValueKind::Register(_)
-            | ValueKind::UniqueName(_) => Ok(()),
+            ValueKind::Fn(_) | ValueKind::Const(_) | ValueKind::Register(_) => {
+                Ok(())
+            }
         }
     }
 

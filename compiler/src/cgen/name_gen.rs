@@ -14,11 +14,6 @@ impl LocalNames {
         Self { names: FxHashMap::default(), gen: UniqueNameGenerator::new() }
     }
 
-    pub fn insert(&mut self, id: DefId, name: Ustr) -> Ustr {
-        self.names.insert(id, name);
-        name
-    }
-
     pub fn insert_unique(&mut self, id: DefId, name: Ustr) -> Ustr {
         let unique_name = self.gen.generate(name);
         self.names.insert(id, unique_name);

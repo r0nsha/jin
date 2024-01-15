@@ -17,3 +17,16 @@ fn is_some*[a](self: &Option[a]) bool =
 
 fn is_none*[a](self: &Option[a]) bool =
 	!self.is_some()
+
+fn map*[a, b](self: Option[a], f: fn(a) b) Option[b] =
+	match self {
+		Option.some(v) -> Option.some(f(v)),
+		Option.none -> Option.none 
+	}
+
+fn map_or*[a, b](self: Option[a], default: b, f: fn(a) b) b =
+	match self {
+		Option.some(v) -> f(v),
+		Option.none -> default
+	}
+
