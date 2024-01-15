@@ -12,19 +12,11 @@ fn main() unit = {
 
 ## Goals
 
-- Fast enough for most use-cases
+- Fast enough for use-cases such as servers and cli applications
 - Simple (small surface area)
 - Fast compile times
 
 ## Usage
-
-Run:
-
-```sh
-jin run main.jin
-```
-
-Build:
 
 ```sh
 jin build main.jin
