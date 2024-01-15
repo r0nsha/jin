@@ -1160,9 +1160,17 @@ impl<'db> Typeck<'db> {
                             &query_args,
                             IsUfcs::No,
                         );
-                        let (callee, _) = self.check_query_in_ty(
+
+                        let (ty, _) = self.apply_ty_args_to_ty(
                             env,
                             assoc_ty.ty(self.db),
+                            targs.as_deref(),
+                            *span,
+                        )?;
+
+                        let (callee, _) = self.check_query_in_ty(
+                            env,
+                            ty,
                             word.span(),
                             &Query::Fn(query),
                             *span,
