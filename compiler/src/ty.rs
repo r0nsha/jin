@@ -57,8 +57,10 @@ impl Ty {
 
                 fun.ret.occurs_check(var).map_err(|_| self)
             }
-            TyKind::RawPtr(pointee) => {
-                pointee.occurs_check(var).map_err(|_| self)
+            TyKind::Slice(inner)
+            | TyKind::Ref(inner, _)
+            | TyKind::RawPtr(inner) => {
+                inner.occurs_check(var).map_err(|_| self)
             }
             TyKind::Param(ParamTy { var: v, .. })
             | TyKind::Infer(InferTy::Ty(v)) => {
@@ -105,8 +107,9 @@ impl Ty {
                     fun.params.iter().any(|p| p.ty.walk_short_(f))
                         || fun.ret.walk_short_(f)
                 }
-                TyKind::RawPtr(inner)
+                TyKind::Slice(inner)
                 | TyKind::Ref(inner, _)
+                | TyKind::RawPtr(inner)
                 | TyKind::Type(inner) => inner.walk_short_(f),
                 TyKind::Adt(_, tys) => tys.iter().any(|ty| ty.walk_short_(f)),
                 TyKind::Int(_)
@@ -135,8 +138,9 @@ impl Ty {
                 fun.params.iter().for_each(|p| p.ty.walk_(f));
                 fun.ret.walk_(f);
             }
-            TyKind::RawPtr(inner)
+            TyKind::Slice(inner)
             | TyKind::Ref(inner, _)
+            | TyKind::RawPtr(inner)
             | TyKind::Type(inner) => inner.walk_(f),
             TyKind::Adt(_, targs) => targs.iter().for_each(|ty| ty.walk_(f)),
             TyKind::Int(_)
@@ -173,6 +177,14 @@ impl Ty {
 
     pub fn raw_ptr(self) -> Ty {
         Ty::new(TyKind::RawPtr(self))
+    }
+
+    pub fn slice_elem(self) -> Option<Ty> {
+        if let TyKind::Slice(elem) = self.kind() {
+            Some(*elem)
+        } else {
+            None
+        }
     }
 
     pub fn create_ref(self, mutability: Mutability) -> Ty {
@@ -227,6 +239,7 @@ pub enum TyKind {
     // Composite types
     Fn(FnTy),
     Adt(AdtId, PolyTyArgs),
+    Slice(Ty),
     Ref(Ty, Mutability),
     RawPtr(Ty),
 

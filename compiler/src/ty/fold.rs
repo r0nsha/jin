@@ -19,6 +19,7 @@ pub trait TyFolder {
                 is_c_variadic: fun.is_c_variadic,
             })
             .into(),
+            TyKind::Slice(inner) => TyKind::Slice(self.fold(*inner)).into(),
             TyKind::Ref(inner, mutability) => {
                 TyKind::Ref(self.fold(*inner), *mutability).into()
             }

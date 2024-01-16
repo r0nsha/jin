@@ -57,6 +57,15 @@ impl<S: SubstTy> Subst<S> for Expr {
             | ExprKind::Variant(Variant { instantiation, .. }) => {
                 subst::subst_instantation(s, instantiation, self.span);
             }
+            ExprKind::SliceLit(lit) => {
+                for expr in &mut lit.exprs {
+                    expr.subst(s);
+                }
+
+                if let Some(cap) = &mut lit.cap {
+                    cap.subst(s);
+                }
+            }
             ExprKind::Break | ExprKind::Lit(_) => (),
         }
 

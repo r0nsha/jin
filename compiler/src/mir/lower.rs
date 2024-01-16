@@ -729,6 +729,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 value
             }
+            hir::ExprKind::SliceLit(lit) => {
+                todo!()
+            }
             hir::ExprKind::Lit(lit) => {
                 let value = match lit {
                     hir::Lit::Str(lit) => Const::from(*lit),

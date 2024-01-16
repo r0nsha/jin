@@ -234,6 +234,21 @@ impl PrettyCx<'_> {
                     expr.ty.display(self.db)
                 ));
             }
+            ExprKind::SliceLit(lit) => {
+                self.builder.begin_child("slice lit".to_string());
+
+                for expr in &lit.exprs {
+                    self.pp_expr(expr);
+                }
+
+                if let Some(cap) = &lit.cap {
+                    self.builder.begin_child("cap".to_string());
+                    self.pp_expr(cap);
+                    self.builder.end_child();
+                }
+
+                self.builder.end_child();
+            }
             ExprKind::Lit(value) => {
                 let value_str = match value {
                     Lit::Str(v) => format!("\"{v}\""),

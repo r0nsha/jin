@@ -1531,7 +1531,43 @@ impl<'db> Typeck<'db> {
                 self.check_name(env, id, *word, *span, targs.as_deref())
             }
             ast::Expr::SliceLit { exprs, cap, span } => {
-                todo!();
+                let elem_ty = expected_ty
+                    .and_then(|t| self.normalize(t).slice_elem())
+                    .unwrap_or_else(|| self.fresh_ty_var());
+
+                let mut new_exprs = vec![];
+
+                for expr in exprs {
+                    let new_expr = self.check_expr(env, expr, Some(elem_ty))?;
+
+                    self.at(Obligation::obvious(new_expr.span))
+                        .eq(elem_ty, new_expr.ty)
+                        .or_coerce(self, new_expr.id)?;
+
+                    new_exprs.push(new_expr);
+                }
+
+                let new_cap = if let Some(cap) = cap {
+                    let uint = self.db.types.uint;
+                    let new_cap = self.check_expr(env, cap, Some(uint))?;
+
+                    self.at(Obligation::obvious(new_cap.span))
+                        .eq(uint, new_cap.ty)
+                        .or_coerce(self, new_cap.id)?;
+
+                    Some(Box::new(new_cap))
+                } else {
+                    None
+                };
+
+                Ok(self.expr(
+                    hir::ExprKind::SliceLit(hir::SliceLit {
+                        exprs: new_exprs,
+                        cap: new_cap,
+                    }),
+                    Ty::new(TyKind::Slice(elem_ty)),
+                    *span,
+                ))
             }
             ast::Expr::Lit { kind, span } => {
                 let (kind, ty) = match kind {
@@ -2222,6 +2258,7 @@ impl<'db> Typeck<'db> {
                     }
                     TyKind::Param(_)
                     | TyKind::Fn(_)
+                    | TyKind::Slice(_)
                     | TyKind::RawPtr(_)
                     | TyKind::Int(_)
                     | TyKind::Uint(_)

@@ -619,15 +619,7 @@ impl Type {
                 }
             }
             TyKind::Ref(ty, _) => Self::from_cond(cx, cond, *ty),
-            TyKind::Fn(_)
-            | TyKind::RawPtr(_)
-            | TyKind::Float(_)
-            | TyKind::Never
-            | TyKind::Param(_)
-            | TyKind::Infer(_)
-            | TyKind::Type(_)
-            | TyKind::Module(_)
-            | TyKind::Unknown => unreachable!(),
+            _ => unreachable!(),
         }
     }
 }

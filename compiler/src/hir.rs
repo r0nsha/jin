@@ -105,6 +105,15 @@ impl Expr {
                     expr.walk_(f);
                 }
             }
+            ExprKind::SliceLit(lit) => {
+                for expr in &lit.exprs {
+                    expr.walk_(f);
+                }
+
+                if let Some(cap) = &lit.cap {
+                    cap.walk_(f);
+                }
+            }
             ExprKind::Return(ret) => ret.expr.walk_(f),
             ExprKind::Call(call) => {
                 call.callee.walk_(f);
@@ -143,6 +152,7 @@ pub enum ExprKind {
     Field(Field),
     Name(Name),
     Variant(Variant),
+    SliceLit(SliceLit),
     Lit(Lit),
 }
 
@@ -336,6 +346,12 @@ pub struct Name {
 pub struct Variant {
     pub id: VariantId,
     pub instantiation: Instantiation,
+}
+
+#[derive(Debug, Clone)]
+pub struct SliceLit {
+    pub exprs: Vec<Expr>,
+    pub cap: Option<Box<Expr>>,
 }
 
 #[derive(Debug, Clone)]
