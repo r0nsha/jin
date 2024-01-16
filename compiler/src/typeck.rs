@@ -1569,24 +1569,26 @@ impl<'db> Typeck<'db> {
                     *span,
                 ))
             }
-            ast::Expr::Lit { kind, span } => {
-                let (kind, ty) = match kind {
-                    ast::LitKind::Str(v) => {
-                        (hir::Lit::Str(*v), self.db.types.str)
-                    }
-                    ast::LitKind::Int(v) => {
-                        (hir::Lit::Int(*v), self.fresh_int_var())
-                    }
-                    ast::LitKind::Float(v) => {
-                        (hir::Lit::Float(*v), self.fresh_float_var())
-                    }
-                    ast::LitKind::Bool(v) => {
-                        (hir::Lit::Bool(*v), self.db.types.bool)
-                    }
-                };
-
-                Ok(self.expr(hir::ExprKind::Lit(kind), ty, *span))
-            }
+            ast::Expr::BoolLit { value, span } => Ok(self.expr(
+                hir::ExprKind::Lit(hir::Lit::Bool(*value)),
+                self.db.types.bool,
+                *span,
+            )),
+            ast::Expr::IntLit { value, span } => Ok(self.expr(
+                hir::ExprKind::Lit(hir::Lit::Int(*value)),
+                self.fresh_int_var(),
+                *span,
+            )),
+            ast::Expr::FloatLit { value, span } => Ok(self.expr(
+                hir::ExprKind::Lit(hir::Lit::Float(*value)),
+                self.fresh_float_var(),
+                *span,
+            )),
+            ast::Expr::StrLit { value, span } => Ok(self.expr(
+                hir::ExprKind::Lit(hir::Lit::Str(*value)),
+                self.db.types.str,
+                *span,
+            )),
         }
     }
 

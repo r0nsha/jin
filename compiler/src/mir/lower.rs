@@ -729,7 +729,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 value
             }
-            hir::ExprKind::SliceLit(lit) => {
+            hir::ExprKind::SliceLit(_) => {
                 todo!()
             }
             hir::ExprKind::Lit(lit) => {

@@ -197,8 +197,20 @@ pub enum Expr {
         cap: Option<Box<Self>>,
         span: Span,
     },
-    Lit {
-        kind: LitKind,
+    BoolLit {
+        value: bool,
+        span: Span,
+    },
+    IntLit {
+        value: u128,
+        span: Span,
+    },
+    FloatLit {
+        value: f64,
+        span: Span,
+    },
+    StrLit {
+        value: Ustr,
         span: Span,
     },
 }
@@ -224,7 +236,10 @@ impl Spanned for Expr {
             | Self::Binary { span, .. }
             | Self::Cast { span, .. }
             | Self::SliceLit { span, .. }
-            | Self::Lit { span, .. } => *span,
+            | Self::BoolLit { span, .. }
+            | Self::IntLit { span, .. }
+            | Self::FloatLit { span, .. }
+            | Self::StrLit { span, .. } => *span,
         }
     }
 }
@@ -432,14 +447,6 @@ pub struct ExternImport {
 pub enum CallArg {
     Positional(Expr),
     Named(Word, Expr),
-}
-
-#[derive(Debug, Clone, PartialEq)]
-pub enum LitKind {
-    Bool(bool),
-    Int(u128),
-    Float(f64),
-    Str(Ustr),
 }
 
 pub type Attrs = Vec<Attr>;

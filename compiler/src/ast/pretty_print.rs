@@ -1,6 +1,6 @@
 use std::io;
 
-use super::{Expr, Fn, Item, LitKind, Module};
+use super::{Expr, Fn, Item, Module};
 use crate::{
     ast::{
         CallArg, ExternImport, ExternLet, FnKind, FnParam, FnSig, Import,
@@ -181,21 +181,17 @@ impl PrettyPrint for Expr {
 
                 cx.builder.end_child();
             }
-            Self::Lit { kind, .. } => {
-                match kind {
-                    LitKind::Bool(value) => {
-                        cx.builder.add_empty_child(format!("bool: {value}"))
-                    }
-                    LitKind::Int(value) => {
-                        cx.builder.add_empty_child(format!("int: {value}"))
-                    }
-                    LitKind::Float(value) => {
-                        cx.builder.add_empty_child(format!("float: {value}"))
-                    }
-                    LitKind::Str(value) => {
-                        cx.builder.add_empty_child(format!("str: {value}"))
-                    }
-                };
+            Self::BoolLit { value, .. } => {
+                cx.builder.add_empty_child(format!("bool: {value}"));
+            }
+            Self::IntLit { value, .. } => {
+                cx.builder.add_empty_child(format!("int: {value}"));
+            }
+            Self::FloatLit { value, .. } => {
+                cx.builder.add_empty_child(format!("float: {value}"));
+            }
+            Self::StrLit { value, .. } => {
+                cx.builder.add_empty_child(format!("str: {value}"));
             }
         }
     }

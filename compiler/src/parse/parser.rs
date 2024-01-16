@@ -10,9 +10,9 @@ use crate::{
     ast::{
         token::{Token, TokenKind},
         Attr, AttrKind, Attrs, CallArg, Expr, ExternImport, ExternLet, Fn,
-        FnKind, FnParam, FnSig, Item, Let, LitKind, MatchArm, MatchPat,
-        MatchPatAdt, Module, StructTyDef, StructTyField, Subpat, TyDef,
-        TyDefKind, TyParam, UnionTyDef, UnionVariant, UnionVariantField,
+        FnKind, FnParam, FnSig, Item, Let, MatchArm, MatchPat, MatchPatAdt,
+        Module, StructTyDef, StructTyField, Subpat, TyDef, TyDefKind, TyParam,
+        UnionTyDef, UnionVariant, UnionVariantField,
     },
     db::{Db, DefId, ExternLib, StructKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -739,32 +739,24 @@ impl<'a> Parser<'a> {
                 self.back();
                 self.parse_slice_lit()?
             }
-            TokenKind::True => {
-                Expr::Lit { kind: LitKind::Bool(true), span: tok.span }
-            }
-            TokenKind::False => {
-                Expr::Lit { kind: LitKind::Bool(false), span: tok.span }
-            }
+            TokenKind::True => Expr::BoolLit { value: true, span: tok.span },
+            TokenKind::False => Expr::BoolLit { value: false, span: tok.span },
             TokenKind::Ident(..) => {
                 let targs = self.parse_optional_ty_args()?;
                 Expr::Name { word: tok.word(), targs, span: tok.span }
             }
-            TokenKind::Int(value) => Expr::Lit {
-                kind: LitKind::Int(Self::int_lit(value.as_str())),
+            TokenKind::Int(value) => Expr::IntLit {
+                value: Self::int_lit(value.as_str()),
                 span: tok.span,
             },
-            TokenKind::Float(value) => Expr::Lit {
-                kind: LitKind::Float(
-                    value
-                        .replace('_', "")
-                        .parse()
-                        .expect("to be a valid float"),
-                ),
+            TokenKind::Float(value) => Expr::FloatLit {
+                value: value
+                    .replace('_', "")
+                    .parse()
+                    .expect("to be a valid float"),
                 span: tok.span,
             },
-            TokenKind::Str(value) => {
-                Expr::Lit { kind: LitKind::Str(value), span: tok.span }
-            }
+            TokenKind::Str(value) => Expr::StrLit { value, span: tok.span },
             _ => {
                 return Err(errors::unexpected_token_err(
                     "an expression",
