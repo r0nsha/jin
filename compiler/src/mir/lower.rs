@@ -1,22 +1,20 @@
-use std::{fmt, mem};
-
 use data_structures::index_vec::Key;
 use indexmap::IndexSet;
-use itertools::Itertools as _;
 use ustr::{ustr, Ustr};
 
 use crate::{
     db::{AdtField, AdtKind, Db, DefId, DefKind, StructKind, VariantId},
-    diagnostics::{Diagnostic, DiagnosticResult, Label},
+    diagnostics::{Diagnostic, DiagnosticResult},
     hir,
     hir::{FnKind, Hir},
-    macros::create_bool_enum,
     mangle,
     middle::{BinOp, CmpOp, Mutability, NamePat, Pat, Vis},
     mir::{
-        builder::InstBuilder, pmatch, AdtId, Block, BlockId, Body, Const, Fn,
-        FnParam, FnSig, FnSigId, FxHashMap, FxHashSet, Global, GlobalId,
-        GlobalKind, Inst, Mir, Span, StaticGlobal, UnOp, ValueId, ValueKind,
+        builder::InstBuilder,
+        ownck::{ValueState, ValueStates},
+        pmatch, AdtId, Block, BlockId, Body, Const, Fn, FnParam, FnSig,
+        FnSigId, FxHashMap, Global, GlobalId, GlobalKind, Inst, Mir, Span,
+        StaticGlobal, UnOp, ValueId, ValueKind,
     },
     span::Spanned,
     ty::{
@@ -1368,7 +1366,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    fn walk_fields(
+    pub(super) fn walk_fields(
         &mut self,
         value: ValueId,
         mut f: impl FnMut(&mut Self, ValueId) -> DiagnosticResult<()>,
@@ -1391,7 +1389,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         Ok(())
     }
 
-    fn walk_parents<E>(
+    pub(super) fn walk_parents<E>(
         &mut self,
         value: ValueId,
         mut f: impl FnMut(&mut Self, ValueId, ValueId) -> Result<(), E>,
@@ -1412,334 +1410,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    pub fn move_out(&mut self, value: ValueId, moved_to: Span) {
-        let result = self.move_out_aux(value, moved_to);
-        self.emit_result(result);
-    }
-
-    pub fn move_out_aux(
-        &mut self,
-        value: ValueId,
-        moved_to: Span,
-    ) -> DiagnosticResult<()> {
-        self.check_if_moved(value, moved_to)?;
-
-        let scope = self.scope_mut();
-        scope.created_values.remove(&value);
-        scope.moved_out.insert(value);
-
-        self.walk_fields(value, |this, field| {
-            this.move_out_aux(field, moved_to)
-        })
-    }
-
-    pub fn try_move(&mut self, value: ValueId, moved_to: Span) {
-        let result = self.try_move_inner(value, moved_to);
-        self.emit_result(result);
-    }
-
-    pub fn try_move_inner(
-        &mut self,
-        value: ValueId,
-        moved_to: Span,
-    ) -> DiagnosticResult<()> {
-        // If the value is copy, we don't need to move it.
-        // Just check that its parents can be used.
-        if !self.value_is_move(value) {
-            self.walk_parents(value, |this, parent, _| {
-                this.check_if_moved(parent, moved_to)
-            })?;
-
-            return Ok(());
-        }
-
-        self.check_if_moved(value, moved_to)?;
-
-        // Mark the value and its fields as moved.
-        // Mark its parents (if any) as partially moved
-        self.set_moved(value, moved_to);
-        self.walk_fields(value, |this, field| {
-            this.set_moved(field, moved_to);
-            Ok(())
-        })
-        .unwrap();
-        self.walk_parents(
-            value,
-            |this, parent, child| -> DiagnosticResult<()> {
-                this.check_move_out_of_ref(parent, child, moved_to)?;
-                this.set_partially_moved(parent, moved_to);
-                Ok(())
-            },
-        )?;
-
-        self.insert_loop_move(value, moved_to);
-        self.check_move_out_of_global(value, moved_to)?;
-
-        self.set_destroy_flag(value);
-
-        Ok(())
-    }
-
-    pub fn try_use(&mut self, value: ValueId, moved_to: Span) {
-        let result = self.check_if_moved(value, moved_to);
-        self.emit_result(result);
-    }
-
-    pub fn check_if_moved(
-        &mut self,
-        value: ValueId,
-        moved_to: Span,
-    ) -> DiagnosticResult<()> {
-        if !self.value_is_move(value) {
-            return Ok(());
-        }
-
-        match self.value_state(value) {
-            ValueState::Owned => Ok(()),
-            ValueState::Moved(already_moved_to)
-            | ValueState::MaybeMoved(already_moved_to) => Err(self
-                .use_after_move_err(
-                    value,
-                    moved_to,
-                    already_moved_to,
-                    "move",
-                    "moved",
-                )),
-            ValueState::PartiallyMoved(already_moved_to) => Err(self
-                .use_after_move_err(
-                    value,
-                    moved_to,
-                    already_moved_to,
-                    "partial move",
-                    "partially moved",
-                )),
-        }
-    }
-
-    fn use_after_move_err(
-        &self,
-        value: ValueId,
-        moved_to: Span,
-        already_moved_to: Span,
-        move_kind: &str,
-        past_move_kind: &str,
-    ) -> Diagnostic {
-        let name = self.value_name(value);
-
-        Diagnostic::error()
-            .with_message(format!("use of {past_move_kind} {name}"))
-            .with_label(
-                Label::primary(moved_to).with_message(format!(
-                    "{name} used here after {move_kind}"
-                )),
-            )
-            .with_label(
-                Label::secondary(already_moved_to).with_message(format!(
-                    "{name} already {past_move_kind} here"
-                )),
-            )
-    }
-
-    pub fn check_move_out_of_global(
-        &self,
-        value: ValueId,
-        moved_to: Span,
-    ) -> DiagnosticResult<()> {
-        if let ValueKind::Global(id) = self.body.value(value).kind {
-            let global = &self.cx.mir.globals[id];
-            let def = &self.cx.db[global.def_id];
-
-            Err(Diagnostic::error()
-                .with_message(format!(
-                    "cannot move out of global item `{}`",
-                    def.qpath
-                ))
-                .with_label(
-                    Label::primary(moved_to)
-                        .with_message("global item moved here"),
-                ))
-        } else {
-            Ok(())
-        }
-    }
-
-    pub fn check_move_out_of_ref(
-        &self,
-        parent: ValueId,
-        field: ValueId,
-        moved_to: Span,
-    ) -> DiagnosticResult<()> {
-        let parent_ty = self.ty_of(parent);
-
-        if parent_ty.is_ref() {
-            Err(Diagnostic::error()
-                .with_message(format!(
-                    "cannot move {} out of reference `{}`",
-                    self.value_name(field),
-                    parent_ty.display(self.cx.db)
-                ))
-                .with_label(Label::primary(moved_to).with_message(format!(
-                    "cannot move out of {}",
-                    self.value_name(parent)
-                ))))
-        } else {
-            Ok(())
-        }
-    }
-
-    pub fn insert_loop_move(&mut self, value: ValueId, span: Span) {
-        let scope = self.scope();
-
-        if scope.loop_depth == 0 || self.value_depth(value) >= scope.loop_depth
-        {
-            return;
-        }
-
-        if let Some(loop_scope) = self.closest_loop_scope_mut() {
-            loop_scope.moved_in.insert(value, span);
-        }
-    }
-
-    fn value_depth(&self, value: ValueId) -> usize {
+    pub(super) fn value_depth(&self, value: ValueId) -> usize {
         self.scopes
             .iter()
             .find(|s| s.created_values.contains(&value))
             .map_or(0, |s| s.depth)
-    }
-
-    pub fn check_loop_moves(&mut self) {
-        let Some(loop_scope) = self.scope_mut().kind.as_loop_mut() else {
-            return;
-        };
-
-        let moved_in_loop = mem::take(&mut loop_scope.moved_in);
-
-        for (value, moved_to) in moved_in_loop {
-            if !matches!(self.value_state(value), ValueState::Owned) {
-                let name = self.value_name(value);
-
-                self.cx.diagnostics.push(
-                    Diagnostic::error()
-                        .with_message(format!("use of moved {name}"))
-                        .with_label(Label::primary(moved_to).with_message(
-                            format!(
-                                "{name} moved here, in the previous loop \
-                                 iteration"
-                            ),
-                        ))
-                        .with_label(
-                            Label::secondary(self.scope().span)
-                                .with_message("inside this loop"),
-                        ),
-                );
-            }
-        }
-    }
-
-    pub(super) fn value_state(&mut self, value: ValueId) -> ValueState {
-        if let Some(state) =
-            self.value_states.get(self.current_block, value).cloned()
-        {
-            return state;
-        }
-
-        let state = self.solve_value_state(value);
-        self.value_states.insert(self.current_block, value, state.clone());
-        state
-    }
-
-    pub(super) fn solve_value_state(&self, value: ValueId) -> ValueState {
-        let block = self.current_block;
-
-        let mut work: Vec<BlockId> =
-            self.body.block(block).predecessors.iter().copied().collect();
-        let mut visited = FxHashSet::from_iter([block]);
-        let mut result_state = ValueState::Owned;
-        let mut last_move_span: Option<Span> = None;
-        let mut is_initial_state = true;
-
-        while let Some(block) = work.pop() {
-            visited.insert(block);
-
-            if let Some(state) = self.value_states.get(block, value).cloned() {
-                match &state {
-                    ValueState::Owned => (),
-                    ValueState::Moved(moved_to)
-                    | ValueState::MaybeMoved(moved_to)
-                    | ValueState::PartiallyMoved(moved_to) => {
-                        last_move_span = Some(*moved_to);
-                    }
-                };
-
-                match &result_state {
-                    ValueState::Owned if is_initial_state => {
-                        result_state = state;
-                        is_initial_state = false;
-                    }
-                    ValueState::MaybeMoved(_) => break,
-                    ValueState::Owned
-                    | ValueState::Moved(_)
-                    | ValueState::PartiallyMoved(_) => {
-                        if result_state != state {
-                            result_state = ValueState::MaybeMoved(
-                                last_move_span
-                                    .expect("to have been moved somewhere"),
-                            );
-                        }
-                    }
-                }
-            } else {
-                // Add this block's predecessors, since we need to
-                // calculate the value's state for those blocks too
-                work.extend(
-                    self.body
-                        .block(block)
-                        .predecessors
-                        .iter()
-                        .filter(|b| !visited.contains(b)),
-                );
-            }
-        }
-
-        debug_assert!(
-            !is_initial_state,
-            "value v{} aka {} (type: {}) is missing a state in block {:?}.",
-            value.0,
-            self.value_name(value),
-            self.ty_of(value).display(self.cx.db),
-            block,
-        );
-
-        result_state
-    }
-
-    fn value_is_move(&self, value: ValueId) -> bool {
-        self.ty_of(value).is_move(self.cx.db)
-    }
-
-    fn needs_destroy(&self, value: ValueId) -> bool {
-        let ty = self.ty_of(value);
-        ty.is_ref() || ty.is_move(self.cx.db)
-    }
-
-    pub fn set_owned(&mut self, value: ValueId) {
-        self.set_value_state(value, ValueState::Owned);
-    }
-
-    pub fn set_moved(&mut self, value: ValueId, moved_to: Span) {
-        self.set_value_state(value, ValueState::Moved(moved_to));
-    }
-
-    pub fn set_partially_moved(&mut self, value: ValueId, moved_to: Span) {
-        self.set_value_state(value, ValueState::PartiallyMoved(moved_to));
-    }
-
-    pub fn set_value_state(&mut self, value: ValueId, state: ValueState) {
-        self.value_states.insert(self.current_block, value, state);
-    }
-
-    pub fn value_is_moved(&mut self, value: ValueId) -> bool {
-        matches!(self.value_state(value), ValueState::Moved(..))
     }
 
     #[inline]
@@ -1808,12 +1483,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     #[track_caller]
-    fn scope(&self) -> &Scope {
+    pub(super) fn scope(&self) -> &Scope {
         self.scopes.last().unwrap()
     }
 
     #[track_caller]
-    fn scope_mut(&mut self) -> &mut Scope {
+    pub(super) fn scope_mut(&mut self) -> &mut Scope {
         self.scopes.last_mut().unwrap()
     }
 
@@ -1841,159 +1516,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    fn destroy_scope_values(&mut self) {
-        if !self.in_connected_block() {
-            return;
-        }
-
-        let span = self.scope().span.tail();
-
-        for idx in (0..self.scope().created_values.len()).rev() {
-            let value = self.scope().created_values[idx];
-            self.destroy_value(value, span);
-        }
-    }
-
-    fn destroy_loop_values(&mut self, span: Span) {
-        let values_to_destroy = self
-            .scopes
-            .iter()
-            .rev()
-            .take_while_inclusive(|s| !matches!(s.kind, ScopeKind::Loop(_)))
-            .flat_map(|s| s.created_values.iter().rev())
-            .copied()
-            .collect::<Vec<_>>();
-
-        for value in values_to_destroy {
-            self.destroy_value(value, span);
-        }
-    }
-
-    fn destroy_all_values(&mut self, span: Span) {
-        let values_to_destroy = self
-            .scopes
-            .iter()
-            .rev()
-            .flat_map(|s| s.created_values.iter().rev())
-            .copied()
-            .collect::<Vec<_>>();
-
-        for value in values_to_destroy {
-            self.destroy_value(value, span);
-        }
-    }
-
     fn closest_loop_scope(&self) -> Option<&LoopScope> {
         self.scopes.iter().rev().find_map(|s| s.kind.as_loop())
     }
 
-    fn closest_loop_scope_mut(&mut self) -> Option<&mut LoopScope> {
+    pub(super) fn closest_loop_scope_mut(&mut self) -> Option<&mut LoopScope> {
         self.scopes.iter_mut().rev().find_map(|s| s.kind.as_loop_mut())
     }
 
-    fn destroy_value(&mut self, value: ValueId, span: Span) {
-        if !self.needs_destroy(value) {
-            return;
-        }
-
-        match self.value_state(value) {
-            ValueState::Moved(_) => {
-                // Value has been moved, don't destroy
-            }
-            ValueState::MaybeMoved(_) => {
-                // Conditional destroy
-                let destroy_flag = self.body.destroy_flags[&value];
-
-                let destroy_block = self.body.create_block("destroy");
-                let no_destroy_block = self.body.create_block("no_destroy");
-
-                self.ins(self.current_block).brif(
-                    destroy_flag,
-                    destroy_block,
-                    Some(no_destroy_block),
-                );
-
-                let destroy_glue = self.needs_destroy_glue(value);
-
-                self.position_at(destroy_block);
-                self.destroy_and_set_flag(value, destroy_glue, span);
-                self.ins(destroy_block).br(no_destroy_block);
-
-                // Now that the value is destroyed, it has definitely been moved...
-                self.position_at(no_destroy_block);
-            }
-            ValueState::PartiallyMoved { .. } => {
-                self.destroy_and_set_flag(value, false, span);
-            }
-            ValueState::Owned => {
-                // Unconditional destroy
-                let destroy_glue = self.needs_destroy_glue(value);
-                self.destroy_and_set_flag(value, destroy_glue, span);
-            }
-        }
-    }
-
-    fn needs_destroy_glue(&self, value: ValueId) -> bool {
-        match self.ty_of(value).kind() {
-            TyKind::Adt(adt_id, _) => {
-                matches!(self.cx.db[*adt_id].kind, AdtKind::Union(_))
-            }
-            TyKind::Param(_) => true,
-            _ => false,
-        }
-    }
-
-    fn destroy_fields(&mut self, value: ValueId, span: Span) {
-        self.walk_fields(value, |this, field| {
-            this.destroy_value(field, span);
-            Ok(())
-        })
-        .unwrap();
-    }
-
-    fn destroy_value_entirely(&mut self, value: ValueId, span: Span) {
-        self.destroy_fields(value, span);
-        self.destroy_value(value, span);
-    }
-
-    pub(super) fn create_destroy_flag(&mut self, value: ValueId) {
-        if !self.needs_destroy(value) {
-            return;
-        }
-
-        let init = self.const_bool(true);
-        let flag = self.push_inst_with_named_register(
-            self.cx.db.types.bool,
-            ustr("destroy_flag"),
-            |value| Inst::StackAlloc { value, init: Some(init) },
-        );
-        self.body.destroy_flags.insert(value, flag);
-    }
-
-    fn destroy_and_set_flag(
-        &mut self,
-        value: ValueId,
-        destroy_glue: bool,
-        span: Span,
-    ) {
-        self.ins(self.current_block).destroy(value, destroy_glue, span);
-        self.set_destroy_flag(value);
-    }
-
-    fn set_destroy_flag(&mut self, value: ValueId) {
-        if let Some(destroy_flag) = self.body.destroy_flags.get(&value).copied()
-        {
-            let const_false = self.const_bool(false);
-            self.ins(self.current_block).store(const_false, destroy_flag);
-            self.walk_fields(value, |this, field| {
-                this.set_destroy_flag(field);
-                Ok(())
-            })
-            .unwrap();
-        }
-    }
-
-    fn value_name(&self, value: ValueId) -> String {
+    pub(super) fn value_name(&self, value: ValueId) -> String {
         match &self.body.value(value).kind {
             ValueKind::Register(_) | ValueKind::Const(_) => {
                 "temporary value".to_string()
@@ -2031,140 +1562,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.current_block().is_connected()
     }
 
-    fn check_assign_mutability(
-        &mut self,
-        kind: AssignKind,
-        lhs: ValueId,
-        span: Span,
-    ) {
-        if let Err(root) = self.value_imm_root(lhs, BreakOnMutRef::Yes) {
-            self.cx.diagnostics.push(self.imm_root_err(
-                match kind {
-                    AssignKind::Assign => "cannot assign",
-                    AssignKind::Swap => "cannot swap",
-                },
-                lhs,
-                root,
-                span,
-            ));
-        }
-    }
-
-    fn check_ref_mutability(&mut self, value: ValueId, span: Span) {
-        if let Err(root) = self
-            .value_ty_imm_root(value)
-            .and_then(|()| self.value_imm_root(value, BreakOnMutRef::No))
-        {
-            self.cx.diagnostics.push(self.imm_root_err(
-                "cannot take &mut reference",
-                value,
-                root,
-                span,
-            ));
-        }
-    }
-
-    fn imm_root_err(
-        &self,
-        prefix: &str,
-        value: ValueId,
-        root: ImmutableRoot,
-        span: Span,
-    ) -> Diagnostic {
-        match root {
-            ImmutableRoot::Def(root) => {
-                let root_name = self.value_name(root);
-
-                let message = if root == value {
-                    format!("{prefix} to immutable value {root_name}")
-                } else {
-                    format!(
-                        "{} to {}, as {} is not declared as mutable",
-                        prefix,
-                        self.value_name(value),
-                        root_name
-                    )
-                };
-
-                Diagnostic::error().with_message(message).with_label(
-                    Label::primary(span)
-                        .with_message(format!("{prefix} to immutable value")),
-                )
-            }
-            ImmutableRoot::Ref(root) => {
-                let root_name = self.value_name(root);
-
-                let message = format!(
-                    "{} to {}, as {} is behind a `&` reference",
-                    prefix,
-                    self.value_name(value),
-                    root_name,
-                );
-
-                Diagnostic::error()
-                    .with_message(message)
-                    .with_label(Label::primary(span).with_message(format!(
-                        "{prefix} to immutable reference"
-                    )))
-                    .with_note(format!(
-                        "{} is of type `{}`, which is immutable",
-                        root_name,
-                        self.ty_of(root).display(self.cx.db)
-                    ))
-            }
-        }
-    }
-
-    fn value_imm_root(
-        &self,
-        value: ValueId,
-        break_on_mut_ty: BreakOnMutRef,
-    ) -> Result<(), ImmutableRoot> {
-        match &self.body.value(value).kind {
-            ValueKind::Param(id, _) | ValueKind::Local(id) => {
-                if self.def_is_imm(*id, self.ty_of(value)) {
-                    Err(ImmutableRoot::Def(value))
-                } else {
-                    Ok(())
-                }
-            }
-            ValueKind::Global(id) => {
-                if self.def_is_imm(
-                    self.cx.mir.globals[*id].def_id,
-                    self.ty_of(value),
-                ) {
-                    Err(ImmutableRoot::Def(value))
-                } else {
-                    Ok(())
-                }
-            }
-            ValueKind::Field(parent, _) | ValueKind::Variant(parent, _) => {
-                match (self.value_ty_imm_root(*parent), break_on_mut_ty) {
-                    (Ok(()), BreakOnMutRef::Yes) => Ok(()),
-                    (Ok(()), BreakOnMutRef::No) => {
-                        self.value_imm_root(*parent, break_on_mut_ty)
-                    }
-                    (Err(err), _) => Err(err),
-                }
-            }
-            ValueKind::Fn(_) | ValueKind::Const(_) | ValueKind::Register(_) => {
-                Ok(())
-            }
-        }
-    }
-
-    fn value_ty_imm_root(&self, value: ValueId) -> Result<(), ImmutableRoot> {
-        if self.ty_of(value).is_imm_ref() {
-            Err(ImmutableRoot::Ref(value))
-        } else {
-            Ok(())
-        }
-    }
-
-    fn def_is_imm(&self, id: DefId, ty: Ty) -> bool {
-        self.cx.db[id].mutability.is_imm() && !ty.is_mut_ref()
-    }
-
     pub fn emit_result(&mut self, result: DiagnosticResult<()>) {
         if let Err(diagnostic) = result {
             self.cx.diagnostics.push(diagnostic);
@@ -2191,123 +1588,27 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 }
 
-#[derive(Debug)]
-pub(super) struct ValueStates(FxHashMap<BlockId, BlockState>);
-
-impl ValueStates {
-    fn new() -> Self {
-        Self(FxHashMap::default())
-    }
-
-    fn get(&self, block: BlockId, value: ValueId) -> Option<&ValueState> {
-        self.0.get(&block).and_then(|b| b.states.get(&value))
-    }
-
-    #[allow(unused)]
-    fn get_mut(
-        &mut self,
-        block: BlockId,
-        value: ValueId,
-    ) -> Option<&mut ValueState> {
-        self.0.get_mut(&block).and_then(|b| b.states.get_mut(&value))
-    }
-
-    fn insert(&mut self, block: BlockId, value: ValueId, state: ValueState) {
-        self.0.entry(block).or_default().states.insert(value, state);
-    }
-}
-
-impl Default for ValueStates {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[derive(Debug)]
-struct BlockState {
-    states: FxHashMap<ValueId, ValueState>,
-}
-
-impl BlockState {
-    fn new() -> Self {
-        Self { states: FxHashMap::default() }
-    }
-}
-
-impl Default for BlockState {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl fmt::Display for ValueStates {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (block, block_state) in &self.0 {
-            writeln!(f, "b{}:\n{}", block.0, block_state)?;
-        }
-
-        Ok(())
-    }
-}
-
-impl fmt::Display for BlockState {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (value, state) in &self.states {
-            writeln!(
-                f,
-                "- v{} : {}",
-                value.0,
-                match state {
-                    ValueState::Owned => "owned",
-                    ValueState::Moved(_) => "moved",
-                    ValueState::MaybeMoved(_) => "maybe moved",
-                    ValueState::PartiallyMoved(_) => "partially moved",
-                }
-            )?;
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Debug, PartialEq, Eq, Clone)]
-pub(super) enum ValueState {
-    /// The value is owned, and should be dropped at the end of its scope
-    Owned,
-
-    /// The value has been moved. It shouldn't be dropped in its scope.
-    Moved(Span),
-
-    /// The value has been moved in one branch, but is still
-    /// owned in another branch. This value should be dropped conditionally at the end of its scope
-    MaybeMoved(Span),
-
-    // Some of this value's fields have been moved, and the parent value is considered as moved.
-    // The parent value should be destroyed in its scope.
-    PartiallyMoved(Span),
-}
-
 #[derive(Debug, Clone)]
 pub(super) struct Scope {
-    kind: ScopeKind,
-    depth: usize,
-    loop_depth: usize,
-    span: Span,
+    pub(super) kind: ScopeKind,
+    pub(super) depth: usize,
+    pub(super) loop_depth: usize,
+    pub(super) span: Span,
 
     // Values that were created in this scope
-    created_values: IndexSet<ValueId>,
-    moved_out: IndexSet<ValueId>,
+    pub(super) created_values: IndexSet<ValueId>,
+    pub(super) moved_out: IndexSet<ValueId>,
 }
 
 #[derive(Debug, Clone)]
-enum ScopeKind {
+pub(super) enum ScopeKind {
     Block,
     Loop(LoopScope),
 }
 
 impl ScopeKind {
     #[must_use]
-    fn as_loop(&self) -> Option<&LoopScope> {
+    pub(super) fn as_loop(&self) -> Option<&LoopScope> {
         if let Self::Loop(v) = self {
             Some(v)
         } else {
@@ -2316,7 +1617,7 @@ impl ScopeKind {
     }
 
     #[must_use]
-    fn as_loop_mut(&mut self) -> Option<&mut LoopScope> {
+    pub(super) fn as_loop_mut(&mut self) -> Option<&mut LoopScope> {
         if let Self::Loop(v) = self {
             Some(v)
         } else {
@@ -2326,9 +1627,9 @@ impl ScopeKind {
 }
 
 #[derive(Debug, Clone)]
-struct LoopScope {
-    end_block: BlockId,
-    moved_in: FxHashMap<ValueId, Span>,
+pub(super) struct LoopScope {
+    pub(super) end_block: BlockId,
+    pub(super) moved_in: FxHashMap<ValueId, Span>,
 }
 
 impl LoopScope {
@@ -2336,14 +1637,6 @@ impl LoopScope {
         Self { end_block, moved_in: FxHashMap::default() }
     }
 }
-
-#[derive(Debug, Clone, Copy)]
-enum ImmutableRoot {
-    Def(ValueId),
-    Ref(ValueId),
-}
-
-create_bool_enum!(BreakOnMutRef);
 
 #[derive(Debug)]
 struct DecisionState<'a> {
@@ -2386,7 +1679,7 @@ enum ValueAction {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum AssignKind {
+pub(super) enum AssignKind {
     Assign,
     Swap,
 }

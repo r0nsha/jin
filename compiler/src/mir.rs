@@ -5,6 +5,7 @@ mod pretty_print;
 mod specialize;
 pub mod subst;
 mod validate;
+mod ownck;
 
 use std::{io, iter};
 
