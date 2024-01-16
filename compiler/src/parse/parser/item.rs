@@ -1,14 +1,17 @@
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Attr, AttrKind, Attrs, ExternLet, Fn, FnKind, Item, Let,
+        Attr, AttrKind, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig, Item,
+        Let,
     },
     diagnostics::{Diagnostic, DiagnosticResult, Label},
+    middle::TyExpr,
     parse::{
         errors,
-        parser::{AllowTyParams, Parser, RequireSigTy},
+        parser::{AllowOmitParens, AllowTyParams, Parser, RequireSigTy},
     },
     span::{Span, Spanned},
+    word::Word,
 };
 
 impl<'a> Parser<'a> {
@@ -121,6 +124,51 @@ impl<'a> Parser<'a> {
             kind: FnKind::Bare { body: Box::new(body) },
             span: name.span,
         })
+    }
+
+    pub(super) fn parse_fn_sig(
+        &mut self,
+        word: Word,
+        allow_ty_params: AllowTyParams,
+        require_sig_ty: RequireSigTy,
+    ) -> DiagnosticResult<(FnSig, bool)> {
+        let ty_params = if allow_ty_params == AllowTyParams::Yes {
+            self.parse_optional_ty_params()?
+        } else {
+            vec![]
+        };
+
+        let (params, ret, is_c_variadic) =
+            self.parse_fn_sig_helper(AllowOmitParens::No, require_sig_ty)?;
+
+        Ok((FnSig { word, ty_params, params, ret }, is_c_variadic))
+    }
+
+    pub(super) fn parse_fn_sig_helper(
+        &mut self,
+        allow_omit_parens: AllowOmitParens,
+        require_sig_ty: RequireSigTy,
+    ) -> DiagnosticResult<(Vec<FnParam>, Option<TyExpr>, bool)> {
+        let (params, is_c_variadic) = if allow_omit_parens.into()
+            && !self.peek_is(TokenKind::OpenParen)
+        {
+            (vec![], false)
+        } else {
+            self.parse_fn_params(require_sig_ty)?
+        };
+
+        let ret = match require_sig_ty {
+            RequireSigTy::Yes => Some(self.parse_ty()?),
+            RequireSigTy::No(delimeter) => {
+                if self.peek_is(delimeter) {
+                    None
+                } else {
+                    Some(self.parse_ty()?)
+                }
+            }
+        };
+
+        Ok((params, ret, is_c_variadic))
     }
 
     fn parse_attrs(&mut self) -> DiagnosticResult<Vec<Attr>> {

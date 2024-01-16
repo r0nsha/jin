@@ -14,16 +14,15 @@ use ustr::Ustr;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Attrs, Expr, FnParam, FnSig, Item, Module, TyParam,
+        Attrs, Expr, FnParam, Item, Module, TyParam,
     },
     db::Db,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     macros::create_bool_enum,
-    middle::{Mutability, TyExpr, Vis},
+    middle::{Mutability, Vis},
     parse::errors,
     qpath::QPath,
     span::{Source, SourceId, Span, Spanned},
-    word::Word,
 };
 
 pub fn parse(
@@ -108,51 +107,6 @@ impl<'a> Parser<'a> {
         } else {
             Vis::Private
         }
-    }
-
-    fn parse_fn_sig(
-        &mut self,
-        word: Word,
-        allow_ty_params: AllowTyParams,
-        require_sig_ty: RequireSigTy,
-    ) -> DiagnosticResult<(FnSig, bool)> {
-        let ty_params = if allow_ty_params == AllowTyParams::Yes {
-            self.parse_optional_ty_params()?
-        } else {
-            vec![]
-        };
-
-        let (params, ret, is_c_variadic) =
-            self.parse_fn_sig_helper(AllowOmitParens::No, require_sig_ty)?;
-
-        Ok((FnSig { word, ty_params, params, ret }, is_c_variadic))
-    }
-
-    fn parse_fn_sig_helper(
-        &mut self,
-        allow_omit_parens: AllowOmitParens,
-        require_sig_ty: RequireSigTy,
-    ) -> DiagnosticResult<(Vec<FnParam>, Option<TyExpr>, bool)> {
-        let (params, is_c_variadic) = if allow_omit_parens.into()
-            && !self.peek_is(TokenKind::OpenParen)
-        {
-            (vec![], false)
-        } else {
-            self.parse_fn_params(require_sig_ty)?
-        };
-
-        let ret = match require_sig_ty {
-            RequireSigTy::Yes => Some(self.parse_ty()?),
-            RequireSigTy::No(delimeter) => {
-                if self.peek_is(delimeter) {
-                    None
-                } else {
-                    Some(self.parse_ty()?)
-                }
-            }
-        };
-
-        Ok((params, ret, is_c_variadic))
     }
 
     fn parse_optional_ty_params(&mut self) -> DiagnosticResult<Vec<TyParam>> {
