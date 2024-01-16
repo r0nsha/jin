@@ -1,0 +1,210 @@
+use crate::{
+    ast::{
+        token::{Token, TokenKind},
+        Attr, AttrKind, Attrs, ExternLet, Fn, FnKind, Item, Let,
+    },
+    diagnostics::{Diagnostic, DiagnosticResult, Label},
+    parse::{
+        errors,
+        parser::{AllowTyParams, Parser, RequireSigTy},
+    },
+    span::{Span, Spanned},
+};
+
+impl<'a> Parser<'a> {
+    pub(super) fn maybe_parse_item(
+        &mut self,
+    ) -> DiagnosticResult<Option<Item>> {
+        let attrs = self.parse_attrs()?;
+
+        if self.is(TokenKind::Fn) {
+            return self.parse_fn_item(attrs).map(Some);
+        }
+
+        if self.is(TokenKind::Let) {
+            return if self.is(TokenKind::Extern) {
+                self.parse_extern_let(attrs).map(|l| Some(Item::ExternLet(l)))
+            } else {
+                self.parse_let(attrs).map(|l| Some(Item::Let(l)))
+            };
+        }
+
+        if self.is(TokenKind::Type) {
+            return self.parse_tydef(attrs).map(|t| Some(Item::Type(t)));
+        }
+
+        if self.is(TokenKind::Import) {
+            let start = self.last_span();
+
+            if self.is(TokenKind::Extern) {
+                return self
+                    .parse_extern_import(&attrs, start)
+                    .map(|i| Some(Item::ExternImport(i)));
+            }
+
+            return self
+                .parse_import(&attrs, start)
+                .map(|i| Some(Item::Import(i)));
+        }
+
+        if !attrs.is_empty() {
+            let token = self.require()?;
+            return Err(errors::unexpected_token_err(
+                "an item after attribute",
+                token.kind,
+                token.span,
+            ));
+        }
+
+        Ok(None)
+    }
+
+    fn parse_fn_item(&mut self, attrs: Attrs) -> DiagnosticResult<Item> {
+        if self.is(TokenKind::Extern) {
+            let fun = self.parse_extern_fn(attrs)?;
+            return Ok(Item::Fn(fun));
+        }
+
+        let name = self.eat_ident()?;
+
+        if self.is(TokenKind::Dot) {
+            let fnname = self.eat_ident()?;
+            let fun = self.parse_bare_fn(attrs, fnname)?;
+            Ok(Item::Assoc(name.word(), Box::new(Item::Fn(fun))))
+        } else {
+            let fun = self.parse_bare_fn(attrs, name)?;
+            Ok(Item::Fn(fun))
+        }
+    }
+
+    fn parse_extern_fn(&mut self, attrs: Attrs) -> DiagnosticResult<Fn> {
+        let name = self.eat_ident()?;
+        let vis = self.parse_vis();
+        let (sig, is_c_variadic) = self.parse_fn_sig(
+            name.word(),
+            AllowTyParams::No,
+            RequireSigTy::Yes,
+        )?;
+
+        Ok(Fn {
+            attrs,
+            vis,
+            sig,
+            kind: FnKind::Extern { is_c_variadic },
+            span: name.span,
+        })
+    }
+
+    fn parse_bare_fn(
+        &mut self,
+        attrs: Attrs,
+        name: Token,
+    ) -> DiagnosticResult<Fn> {
+        let vis = self.parse_vis();
+        let (sig, is_c_variadic) = self.parse_fn_sig(
+            name.word(),
+            AllowTyParams::Yes,
+            RequireSigTy::Yes,
+        )?;
+
+        if is_c_variadic {
+            return Err(errors::invalid_c_variadic(name.span));
+        }
+
+        self.eat(TokenKind::Eq)?;
+        let body = self.parse_expr()?;
+
+        Ok(Fn {
+            attrs,
+            vis,
+            sig,
+            kind: FnKind::Bare { body: Box::new(body) },
+            span: name.span,
+        })
+    }
+
+    fn parse_attrs(&mut self) -> DiagnosticResult<Vec<Attr>> {
+        let mut attrs = vec![];
+
+        while self.is(TokenKind::At) {
+            attrs.push(self.parse_attr()?);
+        }
+
+        Ok(attrs)
+    }
+
+    fn parse_attr(&mut self) -> DiagnosticResult<Attr> {
+        let (kind, span) = self.parse_attr_kind()?;
+
+        let value = if self.is(TokenKind::OpenParen) {
+            let value = self.parse_expr()?;
+            self.eat(TokenKind::CloseParen)?;
+            Some(value)
+        } else {
+            None
+        };
+
+        Ok(Attr { kind, value, span })
+    }
+
+    fn parse_attr_kind(&mut self) -> DiagnosticResult<(AttrKind, Span)> {
+        let ident = self.eat_ident()?;
+        let attr_name = ident.str_value().as_str();
+
+        let kind = AttrKind::try_from(attr_name).map_err(|()| {
+            Diagnostic::error()
+                .with_message("unknown attribute {attr_name}")
+                .with_label(
+                    Label::primary(ident.span)
+                        .with_message("unknown attribute"),
+                )
+        })?;
+
+        Ok((kind, ident.span))
+    }
+
+    pub(super) fn parse_let(&mut self, attrs: Attrs) -> DiagnosticResult<Let> {
+        let start = self.last_span();
+        let pat = self.parse_pat()?;
+
+        let ty_expr = self
+            .is_and(TokenKind::Colon, |this, _| this.parse_ty())
+            .transpose()?;
+        self.eat(TokenKind::Eq)?;
+
+        let value = self.parse_expr()?;
+
+        Ok(Let {
+            attrs,
+            pat,
+            ty_expr,
+            span: start.merge(value.span()),
+            value: Box::new(value),
+        })
+    }
+
+    fn parse_extern_let(
+        &mut self,
+        attrs: Attrs,
+    ) -> DiagnosticResult<ExternLet> {
+        let start = self.last_span();
+
+        let mutability = self.parse_mutability();
+        let ident = self.eat_ident()?;
+        let vis = self.parse_vis();
+
+        self.eat(TokenKind::Colon)?;
+        let ty_expr = self.parse_ty()?;
+
+        let span = start.merge(ty_expr.span());
+
+        Ok(ExternLet {
+            attrs,
+            mutability,
+            vis,
+            word: ident.word(),
+            ty_expr,
+            span,
+        })
+    }
+}

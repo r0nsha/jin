@@ -4,16 +4,19 @@ use camino::{Utf8Path, Utf8PathBuf};
 use path_absolutize::Absolutize as _;
 
 use crate::{
-    ast::{token::TokenKind, Attr, Import, ImportName, ImportNode},
+    ast::{
+        token::TokenKind, Attr, ExternImport, Import, ImportName, ImportNode,
+    },
+    db::ExternLib,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::IsUfcs,
-    parse::parser::Parser,
+    parse::{errors, parser::Parser},
     span::{Span, Spanned},
     word::Word,
 };
 
 impl<'a> Parser<'a> {
-    pub fn parse_import(
+    pub(super) fn parse_import(
         &mut self,
         attrs: &[Attr],
         start: Span,
@@ -122,5 +125,26 @@ impl<'a> Parser<'a> {
             search_notes.push(format!("searched package: {name}"));
             None
         }
+    }
+
+    pub(super) fn parse_extern_import(
+        &mut self,
+        attrs: &[Attr],
+        start: Span,
+    ) -> DiagnosticResult<ExternImport> {
+        let path_tok = self.eat(TokenKind::empty_str())?;
+        let path = path_tok.str_value();
+        let relative_to = self.parent_path().unwrap();
+
+        let lib =
+            ExternLib::try_from_str(&path, relative_to).ok_or_else(|| {
+                errors::path_not_found(path.as_str(), path_tok.span)
+            })?;
+
+        Ok(ExternImport {
+            attrs: attrs.to_owned(),
+            lib,
+            span: start.merge(path_tok.span),
+        })
     }
 }
