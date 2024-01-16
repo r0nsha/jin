@@ -2,7 +2,7 @@ use std::io;
 
 use crate::{
     db::Db,
-    hir::{Expr, ExprKind, Fn, FnKind, Hir, Let, Lit, Pat},
+    hir::{Expr, ExprKind, Fn, FnKind, Hir, Let, Pat},
     middle::BinOp,
 };
 
@@ -249,18 +249,25 @@ impl PrettyCx<'_> {
 
                 self.builder.end_child();
             }
-            ExprKind::Lit(value) => {
-                let value_str = match value {
-                    Lit::Str(v) => format!("\"{v}\""),
-                    Lit::Int(v) => v.to_string(),
-                    Lit::Float(v) => v.to_string(),
-                    Lit::Bool(v) => v.to_string(),
-                };
-
+            ExprKind::StrLit(v) => {
+                self.builder.add_empty_child(v.to_string());
+            }
+            ExprKind::IntLit(v) => {
                 self.builder.add_empty_child(format!(
-                    "{value_str} (type: {})",
-                    expr.ty.display(self.db)
+                    "{} (type: {})",
+                    v,
+                    expr.ty.display(self.db),
                 ));
+            }
+            ExprKind::FloatLit(v) => {
+                self.builder.add_empty_child(format!(
+                    "{} (type: {})",
+                    v,
+                    expr.ty.display(self.db),
+                ));
+            }
+            ExprKind::BoolLit(v) => {
+                self.builder.add_empty_child(v.to_string());
             }
         }
     }

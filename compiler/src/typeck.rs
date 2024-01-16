@@ -1570,22 +1570,22 @@ impl<'db> Typeck<'db> {
                 ))
             }
             ast::Expr::BoolLit { value, span } => Ok(self.expr(
-                hir::ExprKind::Lit(hir::Lit::Bool(*value)),
+                hir::ExprKind::BoolLit(*value),
                 self.db.types.bool,
                 *span,
             )),
             ast::Expr::IntLit { value, span } => Ok(self.expr(
-                hir::ExprKind::Lit(hir::Lit::Int(*value)),
+                hir::ExprKind::IntLit(*value),
                 self.fresh_int_var(),
                 *span,
             )),
             ast::Expr::FloatLit { value, span } => Ok(self.expr(
-                hir::ExprKind::Lit(hir::Lit::Float(*value)),
+                hir::ExprKind::FloatLit(*value),
                 self.fresh_float_var(),
                 *span,
             )),
             ast::Expr::StrLit { value, span } => Ok(self.expr(
-                hir::ExprKind::Lit(hir::Lit::Str(*value)),
+                hir::ExprKind::StrLit(*value),
                 self.db.types.str,
                 *span,
             )),

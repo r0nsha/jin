@@ -66,7 +66,11 @@ impl<S: SubstTy> Subst<S> for Expr {
                     cap.subst(s);
                 }
             }
-            ExprKind::Break | ExprKind::Lit(_) => (),
+            ExprKind::Break
+            | ExprKind::BoolLit(_)
+            | ExprKind::IntLit(_)
+            | ExprKind::FloatLit(_)
+            | ExprKind::StrLit(_) => (),
         }
 
         self.ty = s.subst_ty(self.ty, self.span);

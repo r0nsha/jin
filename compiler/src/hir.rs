@@ -128,7 +128,10 @@ impl Expr {
             ExprKind::Break
             | ExprKind::Name(_)
             | ExprKind::Variant(_)
-            | ExprKind::Lit(_) => (),
+            | ExprKind::BoolLit(_)
+            | ExprKind::IntLit(_)
+            | ExprKind::FloatLit(_)
+            | ExprKind::StrLit(_) => (),
         }
 
         f(self);
@@ -153,7 +156,10 @@ pub enum ExprKind {
     Name(Name),
     Variant(Variant),
     SliceLit(SliceLit),
-    Lit(Lit),
+    BoolLit(bool),
+    IntLit(u128),
+    FloatLit(f64),
+    StrLit(Ustr),
 }
 
 #[derive(Debug, Clone)]
@@ -352,12 +358,4 @@ pub struct Variant {
 pub struct SliceLit {
     pub exprs: Vec<Expr>,
     pub cap: Option<Box<Expr>>,
-}
-
-#[derive(Debug, Clone)]
-pub enum Lit {
-    Bool(bool),
-    Int(u128),
-    Float(f64),
-    Str(Ustr),
 }

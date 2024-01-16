@@ -732,16 +732,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::SliceLit(_) => {
                 todo!()
             }
-            hir::ExprKind::Lit(lit) => {
-                let value = match lit {
-                    hir::Lit::Str(lit) => Const::from(*lit),
-                    #[allow(clippy::cast_possible_wrap)]
-                    hir::Lit::Int(lit) => Const::from(*lit as i128),
-                    hir::Lit::Float(lit) => Const::from(*lit),
-                    hir::Lit::Bool(lit) => Const::from(*lit),
-                };
-
-                self.lower_const(&value, expr.ty)
+            hir::ExprKind::StrLit(lit) => {
+                self.lower_const(&Const::from(*lit), expr.ty)
+            }
+            #[allow(clippy::cast_possible_wrap)]
+            hir::ExprKind::IntLit(lit) => {
+                self.lower_const(&Const::from(*lit as i128), expr.ty)
+            }
+            hir::ExprKind::FloatLit(lit) => {
+                self.lower_const(&Const::from(*lit), expr.ty)
+            }
+            hir::ExprKind::BoolLit(lit) => {
+                self.lower_const(&Const::from(*lit), expr.ty)
             }
         }
     }
