@@ -639,10 +639,7 @@ impl<'db> Typeck<'db> {
         };
 
         let value = self.check_expr(env, &let_.value, Some(ty))?;
-
-        self.at(Obligation::obvious(value.span))
-            .eq(ty, value.ty)
-            .or_coerce(self, value.id)?;
+        self.eq_obvious_expr(ty, &value)?;
 
         if self.normalize(ty).is_module() {
             return Err(Diagnostic::error()
@@ -1231,11 +1228,7 @@ impl<'db> Typeck<'db> {
                 let cond = if let Some(cond) = cond.as_ref() {
                     let cond =
                         self.check_expr(env, cond, Some(self.db.types.bool))?;
-
-                    self.at(Obligation::obvious(cond.span))
-                        .eq(self.db.types.bool, cond.ty)
-                        .or_coerce(self, cond.id)?;
-
+                    self.eq_obvious_expr(self.db.types.bool, &cond)?;
                     Some(Box::new(cond))
                 } else {
                     None
@@ -1539,22 +1532,14 @@ impl<'db> Typeck<'db> {
 
                 for expr in exprs {
                     let new_expr = self.check_expr(env, expr, Some(elem_ty))?;
-
-                    self.at(Obligation::obvious(new_expr.span))
-                        .eq(elem_ty, new_expr.ty)
-                        .or_coerce(self, new_expr.id)?;
-
+                    self.eq_obvious_expr(elem_ty, &new_expr)?;
                     new_exprs.push(new_expr);
                 }
 
                 let new_cap = if let Some(cap) = cap {
                     let uint = self.db.types.uint;
                     let new_cap = self.check_expr(env, cap, Some(uint))?;
-
-                    self.at(Obligation::obvious(new_cap.span))
-                        .eq(uint, new_cap.ty)
-                        .or_coerce(self, new_cap.id)?;
-
+                    self.eq_obvious_expr(uint, &new_cap)?;
                     Some(Box::new(new_cap))
                 } else {
                     None
@@ -1602,10 +1587,7 @@ impl<'db> Typeck<'db> {
         expected_ty: Option<Ty>,
     ) -> TypeckResult<hir::Expr> {
         let cond = self.check_expr(env, cond, Some(self.db.types.bool))?;
-
-        self.at(Obligation::obvious(cond.span))
-            .eq(self.db.types.bool, cond.ty)
-            .or_coerce(self, cond.id)?;
+        self.eq_obvious_expr(self.db.types.bool, &cond)?;
 
         let then = self.check_expr(env, then, expected_ty)?;
 
@@ -1618,10 +1600,7 @@ impl<'db> Typeck<'db> {
 
             otherwise
         } else {
-            self.at(Obligation::obvious(then.span))
-                .eq(self.db.types.unit, then.ty)
-                .or_coerce(self, then.id)?;
-
+            self.eq_obvious_expr(self.db.types.unit, &then)?;
             self.unit_expr(span)
         };
 
@@ -2125,9 +2104,7 @@ impl<'db> Typeck<'db> {
             let idx = arg.index.expect("arg index to be resolved");
 
             if let Some(param) = fn_ty.params.get(idx) {
-                self.at(Obligation::obvious(arg.expr.span))
-                    .eq(param.ty, arg.expr.ty)
-                    .or_coerce(self, arg.expr.id)?;
+                self.eq_obvious_expr(param.ty, &arg.expr)?;
             }
         }
 
@@ -2449,13 +2426,8 @@ impl<'db> Typeck<'db> {
 
         match op {
             BinOp::And | BinOp::Or => {
-                self.at(Obligation::obvious(lhs.span))
-                    .eq(self.db.types.bool, lhs.ty)
-                    .or_coerce(self, lhs.id)?;
-
-                self.at(Obligation::obvious(rhs.span))
-                    .eq(self.db.types.bool, rhs.ty)
-                    .or_coerce(self, rhs.id)?;
+                self.eq_obvious_expr(self.db.types.bool, lhs)?;
+                self.eq_obvious_expr(self.db.types.bool, rhs)?;
             }
             BinOp::Cmp(CmpOp::Eq | CmpOp::Ne) => {
                 let ty = self.normalize(lhs.ty);

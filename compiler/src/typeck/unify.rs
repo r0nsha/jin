@@ -2,9 +2,10 @@ use ena::unify::{EqUnifyValue, UnifyKey};
 
 use crate::{
     diagnostics::{Diagnostic, Label},
+    hir,
     span::Span,
     ty::{FloatTy, FloatVar, InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
-    typeck::{errors, Typeck},
+    typeck::{coerce::CoerceExt as _, errors, Typeck},
 };
 
 impl<'db> Typeck<'db> {
@@ -12,6 +13,17 @@ impl<'db> Typeck<'db> {
     #[must_use]
     pub fn at(&self, obligation: Obligation) -> At<'_, '_> {
         At { cx: self, obligation }
+    }
+
+    #[inline]
+    pub fn eq_obvious_expr(
+        &mut self,
+        expected: Ty,
+        found_expr: &hir::Expr,
+    ) -> EqResult {
+        self.at(Obligation::obvious(found_expr.span))
+            .eq(expected, found_expr.ty)
+            .or_coerce(self, found_expr.id)
     }
 }
 
