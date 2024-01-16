@@ -1,3 +1,5 @@
+use std::ops::ControlFlow;
+
 use crate::{
     ast::{
         token::{Token, TokenKind},
@@ -169,6 +171,43 @@ impl<'a> Parser<'a> {
         };
 
         Ok((params, ret, is_c_variadic))
+    }
+
+    fn parse_fn_params(
+        &mut self,
+        require_sig_ty: RequireSigTy,
+    ) -> DiagnosticResult<(Vec<FnParam>, bool)> {
+        let mut is_c_variadic = false;
+
+        let (params, _) = self.parse_list(
+            TokenKind::OpenParen,
+            TokenKind::CloseParen,
+            |this| {
+                if this.is(TokenKind::DotDot) {
+                    is_c_variadic = true;
+                    return Ok(ControlFlow::Break(()));
+                }
+
+                let pat = this.parse_pat()?;
+
+                let ty_expr = if require_sig_ty == RequireSigTy::Yes {
+                    this.eat(TokenKind::Colon)?;
+                    Some(this.parse_ty()?)
+                } else if this.is(TokenKind::Colon) {
+                    Some(this.parse_ty()?)
+                } else {
+                    None
+                };
+
+                Ok(ControlFlow::Continue(FnParam {
+                    span: pat.span(),
+                    pat,
+                    ty_expr,
+                }))
+            },
+        )?;
+
+        Ok((params, is_c_variadic))
     }
 
     fn parse_attrs(&mut self) -> DiagnosticResult<Vec<Attr>> {

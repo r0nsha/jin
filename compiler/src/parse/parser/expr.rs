@@ -5,13 +5,16 @@ use ustr::ustr;
 
 use crate::{
     ast::{
-        token::TokenKind, CallArg, Expr, MatchArm, MatchPat, MatchPatAdt,
-        Subpat,
+        token::TokenKind, Attrs, CallArg, Expr, MatchArm, MatchPat,
+        MatchPatAdt, Subpat,
     },
     db::DefId,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{BinOp, Mutability, NamePat, Pat, UnOp},
-    parse::{errors, parser::Parser},
+    parse::{
+        errors,
+        parser::{AllowOmitParens, Parser, RequireSigTy},
+    },
     span::{Span, Spanned},
     ty::TyKind,
 };
@@ -576,5 +579,82 @@ impl<'a> Parser<'a> {
                 tok.span,
             )),
         }
+    }
+
+    fn parse_block(&mut self) -> DiagnosticResult<Expr> {
+        let start = self.last_span();
+        let mut stmts = vec![];
+
+        loop {
+            if self.is(TokenKind::CloseCurly) {
+                let span = start.merge(self.last_span());
+                return Ok(Expr::Block { exprs: stmts, span });
+            }
+
+            stmts.push(self.parse_stmt()?);
+        }
+    }
+
+    fn parse_slice_lit(&mut self) -> DiagnosticResult<Expr> {
+        let mut cap = None;
+
+        let (exprs, span) = self.parse_list(
+            TokenKind::OpenBracket,
+            TokenKind::CloseBracket,
+            |this| {
+                if this.is(TokenKind::Colon) {
+                    let expr = this.parse_expr()?;
+                    cap = Some(Box::new(expr));
+                    return Ok(ControlFlow::Break(()));
+                }
+
+                this.parse_expr().map(ControlFlow::Continue)
+            },
+        )?;
+
+        Ok(Expr::SliceLit { exprs, cap, span })
+    }
+
+    fn parse_stmt(&mut self) -> DiagnosticResult<Expr> {
+        if self.is(TokenKind::Let) {
+            let let_ = self.parse_let(Attrs::new())?;
+            Ok(Expr::Let(let_))
+        } else {
+            self.parse_expr()
+        }
+    }
+
+    fn parse_return(&mut self) -> DiagnosticResult<Expr> {
+        let start = self.last_span();
+
+        let expr = match self.token() {
+            Some(tok) if self.spans_are_on_same_line(start, tok.span) => {
+                Some(Box::new(self.parse_expr()?))
+            }
+            _ => None,
+        };
+
+        let span = expr.as_ref().map_or(start, |e| start.merge(e.span()));
+
+        Ok(Expr::Return { expr, span })
+    }
+
+    fn parse_fn_expr(&mut self) -> DiagnosticResult<Expr> {
+        let start = self.last_span();
+        let (params, ret, is_c_variadic) = self.parse_fn_sig_helper(
+            AllowOmitParens::Yes,
+            RequireSigTy::No(TokenKind::OpenCurly),
+        )?;
+
+        if is_c_variadic {
+            return Err(errors::invalid_c_variadic(start));
+        }
+
+        self.eat(TokenKind::OpenCurly)?;
+        let body = self.parse_block()?;
+
+        let span = start.merge(body.span());
+
+        Ok(Expr::Fn { params, ret, body: Box::new(body), span })
     }
 }
