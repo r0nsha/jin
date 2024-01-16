@@ -166,6 +166,21 @@ impl PrettyPrint for Expr {
             Self::Name { word, .. } => {
                 cx.builder.add_empty_child(format!("`{word}`"));
             }
+            Self::SliceLit { exprs, cap, .. } => {
+                cx.builder.begin_child("slice lit".to_string());
+
+                for expr in exprs {
+                    expr.pretty_print(cx);
+                }
+
+                if let Some(cap) = cap {
+                    cx.builder.begin_child("cap".to_string());
+                    cap.pretty_print(cx);
+                    cx.builder.end_child();
+                }
+
+                cx.builder.end_child();
+            }
             Self::Lit { kind, .. } => {
                 match kind {
                     LitKind::Bool(value) => {

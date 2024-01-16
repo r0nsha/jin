@@ -192,6 +192,11 @@ pub enum Expr {
         targs: Option<Vec<TyExpr>>,
         span: Span,
     },
+    SliceLit {
+        exprs: Vec<Self>,
+        cap: Option<Box<Self>>,
+        span: Span,
+    },
     Lit {
         kind: LitKind,
         span: Span,
@@ -218,6 +223,7 @@ impl Spanned for Expr {
             | Self::Unary { span, .. }
             | Self::Binary { span, .. }
             | Self::Cast { span, .. }
+            | Self::SliceLit { span, .. }
             | Self::Lit { span, .. } => *span,
         }
     }

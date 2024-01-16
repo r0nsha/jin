@@ -5,7 +5,7 @@ use crate::{
     diagnostics::DiagnosticResult,
     middle::{TyExpr, TyExprFn},
     parse::{errors, parser::Parser},
-    span::{Span, Spanned},
+    span::Spanned,
     word::Word,
 };
 
@@ -92,21 +92,21 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_optional_ty_args(
         &mut self,
     ) -> DiagnosticResult<Option<Vec<TyExpr>>> {
-        if self.peek_is(TokenKind::OpenBracket) {
-            let args = self.parse_ty_args().map(|(t, _)| t)?;
-            Ok(Some(args))
-        } else {
-            Ok(None)
+        if !self.peek(|t| {
+            t.kind_is(TokenKind::OpenBracket)
+                && self.spans_are_on_same_line(self.last_span(), t.span)
+        }) {
+            return Ok(None);
         }
-    }
 
-    pub(super) fn parse_ty_args(
-        &mut self,
-    ) -> DiagnosticResult<(Vec<TyExpr>, Span)> {
-        self.parse_list(
-            TokenKind::OpenBracket,
-            TokenKind::CloseBracket,
-            |this| this.parse_ty().map(ControlFlow::Continue),
-        )
+        let args = self
+            .parse_list(
+                TokenKind::OpenBracket,
+                TokenKind::CloseBracket,
+                |this| this.parse_ty().map(ControlFlow::Continue),
+            )
+            .map(|(t, _)| t)?;
+
+        Ok(Some(args))
     }
 }

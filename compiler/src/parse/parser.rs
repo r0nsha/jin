@@ -547,6 +547,26 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn parse_slice_lit(&mut self) -> DiagnosticResult<Expr> {
+        let mut cap = None;
+
+        let (exprs, span) = self.parse_list(
+            TokenKind::OpenBracket,
+            TokenKind::CloseBracket,
+            |this| {
+                if this.is(TokenKind::Colon) {
+                    let expr = this.parse_expr()?;
+                    cap = Some(Box::new(expr));
+                    return Ok(ControlFlow::Break(()));
+                }
+
+                this.parse_expr().map(ControlFlow::Continue)
+            },
+        )?;
+
+        Ok(Expr::SliceLit { exprs, cap, span })
+    }
+
     fn parse_stmt(&mut self) -> DiagnosticResult<Expr> {
         if self.is(TokenKind::Let) {
             let let_ = self.parse_let(Attrs::new())?;
@@ -715,6 +735,10 @@ impl<'a> Parser<'a> {
                 }
             }
             TokenKind::OpenCurly => self.parse_block()?,
+            TokenKind::OpenBracket => {
+                self.back();
+                self.parse_slice_lit()?
+            }
             TokenKind::True => {
                 Expr::Lit { kind: LitKind::Bool(true), span: tok.span }
             }

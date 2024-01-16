@@ -29,6 +29,7 @@ impl Token {
         Word::new(self.str_value(), self.span)
     }
 
+    #[inline]
     pub fn kind_is(&self, other: TokenKind) -> bool {
         mem::discriminant(&self.kind) == mem::discriminant(&other)
     }

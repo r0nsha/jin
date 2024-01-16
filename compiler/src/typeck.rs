@@ -1530,6 +1530,9 @@ impl<'db> Typeck<'db> {
                 )?;
                 self.check_name(env, id, *word, *span, targs.as_deref())
             }
+            ast::Expr::SliceLit { exprs, cap, span } => {
+                todo!();
+            }
             ast::Expr::Lit { kind, span } => {
                 let (kind, ty) = match kind {
                     ast::LitKind::Str(v) => {
