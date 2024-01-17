@@ -315,7 +315,6 @@ impl<'a> Parser<'a> {
     pub(super) fn parent_path(&self) -> Option<&Utf8Path> {
         self.source.path().parent()
     }
-
 }
 
 create_bool_enum!(AllowTyParams);
