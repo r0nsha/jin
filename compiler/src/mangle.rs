@@ -50,6 +50,9 @@ pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
                 .collect::<Vec<String>>()
                 .join("_")
         }
+        TyKind::Slice(inner) => {
+            format!("slice_{}", mangle_ty_name(db, *inner))
+        }
         TyKind::Ref(inner, mutability) => {
             format!("ref_{}_{}", mutability, mangle_ty_name(db, *inner))
         }

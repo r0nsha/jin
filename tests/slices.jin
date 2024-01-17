@@ -4,7 +4,16 @@ fn main() unit = {
 	let a: [int] = []
 	let b: [int] = [:3]
 	let c = [1, 2, 3, 4, 5]
-	printf("ptrs: %p, %p, %p\n".ptr, a.ptr, b.ptr, c.ptr)
-	printf("caps: %d, %d, %d\n".ptr, a.cap, b.cap, c.cap)
-	printf("lens: %d, %d, %d\n".ptr, a.len, b.len, c.len)
+	print(a)
+	print(b)
+	print(c)
+}
+
+fn print(s: [int]) unit = {
+	printf("ptr: %p, cap: %d, len: %d\n".ptr, s.ptr, s.cap, s.len)
+
+	let mut i = 0
+	loop if i < s.len {
+		printf("yeet".ptr)
+	}
 }
