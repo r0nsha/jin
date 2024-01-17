@@ -926,6 +926,13 @@ impl<'db> Typeck<'db> {
         import: &ast::Import,
     ) -> TypeckResult<()> {
         let target_module_id = self.resolve_import_path(env, import)?;
+
+        // Insert imported modules as UFCS targets implicitly.
+        // This is done because always adding `?` whenever we import any type is really annoying...
+        // I couldn't find any issues with this yet, but if some do pop up, we'll need to find
+        // a more clever solution for this redundancy.
+        self.insert_glob_target(env, target_module_id, IsUfcs::Yes);
+
         self.check_import_kind(env, target_module_id, import)?;
         Ok(())
     }
@@ -1006,14 +1013,14 @@ impl<'db> Typeck<'db> {
                 }
             }
             ast::UnqualifiedImport::Glob(is_ufcs, _) => {
-                self.check_import_glob(env, module_id, *is_ufcs);
+                self.insert_glob_target(env, module_id, *is_ufcs);
             }
         }
 
         Ok(())
     }
 
-    fn check_import_glob(
+    fn insert_glob_target(
         &mut self,
         env: &Env,
         module_id: ModuleId,
