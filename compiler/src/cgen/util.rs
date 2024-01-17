@@ -103,19 +103,18 @@ impl<'db> Generator<'db> {
         value: ValueId,
     ) -> D<'db> {
         let ty = state.body.value(value).ty;
-        self.value_assign(state, value, |this| this.alloc_ty(ty))
-    }
 
-    pub fn alloc_ty(&self, ty: Ty) -> D<'db> {
         let ty_doc = match ty.kind() {
             TyKind::Adt(..) => D::text(self.adt_names[&ty].as_str()),
             kind => panic!("unexpected type {kind:?} in Inst::Alloc"),
         };
 
-        cast(
-            ty_doc.clone().append(D::text("*")),
-            call(D::text("jinrt_alloc"), [sizeof(ty_doc)]),
-        )
+        self.value_assign(state, value, |_| {
+            cast(
+                ty_doc.clone().append(D::text("*")),
+                call(D::text("jinrt_alloc"), [sizeof(ty_doc)]),
+            )
+        })
     }
 
     pub fn free(

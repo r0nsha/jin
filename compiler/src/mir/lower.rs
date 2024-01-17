@@ -727,8 +727,24 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 value
             }
-            hir::ExprKind::SliceLit(_) => {
-                todo!()
+            hir::ExprKind::SliceLit(lit) => {
+                let cap = if let Some(cap) = &lit.cap {
+                    self.lower_expr(cap)
+                } else {
+                    self.const_int_zero(self.cx.db.types.uint)
+                };
+
+                let slice = self.push_inst_with_register(expr.ty, |value| {
+                    Inst::AllocSlice { value, cap }
+                });
+
+                for expr in &lit.exprs {
+                    let value = self.lower_expr(expr);
+                    // TODO: set slice index to value
+                    self.try_move(value, expr.span);
+                }
+
+                slice
             }
             hir::ExprKind::StrLit(lit) => {
                 self.lower_const(&Const::Str(*lit), expr.ty)
@@ -1231,9 +1247,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             Const::Str(lit) => self.push_inst_with_register(ty, |value| {
                 Inst::StrLit { value, lit: *lit }
             }),
-            Const::Int(value) => {
-                self.create_value(ty, ValueKind::Const(Const::Int(*value)))
-            }
+            Const::Int(value) => self.const_int(ty, *value),
             Const::Float(value) => {
                 self.create_value(ty, ValueKind::Const(Const::Float(*value)))
             }
@@ -1251,6 +1265,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.cx.db.types.bool,
             ValueKind::Const(Const::Bool(value)),
         )
+    }
+
+    pub fn const_int(&mut self, ty: Ty, value: i128) -> ValueId {
+        self.create_value(ty, ValueKind::Const(Const::Int(value)))
+    }
+
+    pub fn const_int_zero(&mut self, ty: Ty) -> ValueId {
+        self.const_int(ty, 0)
     }
 
     pub fn push_inst_with_register(

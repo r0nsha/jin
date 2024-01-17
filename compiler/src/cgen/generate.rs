@@ -497,6 +497,9 @@ impl<'db> Generator<'db> {
                 self.codegen_inst_stackalloc(state, *value, *init)
             }
             Inst::Alloc { value } => self.codegen_inst_alloc(state, *value),
+            Inst::AllocSlice { value, cap } => {
+                todo!();
+            }
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),

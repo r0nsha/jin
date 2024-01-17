@@ -161,6 +161,10 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text("alloc"))
                 .append(D::space())
                 .append(body.value(*value).ty.to_string(self.db)),
+            Inst::AllocSlice { value, cap } => self
+                .value_assign(body, *value)
+                .append(D::text("alloc_slice, cap "))
+                .append(self.value(body, *cap)),
             Inst::Destroy { value, .. } => D::text("destroy")
                 .append(D::space())
                 .append(self.value(body, *value)),

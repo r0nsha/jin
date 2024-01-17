@@ -99,6 +99,11 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
+    pub fn alloc_slice(&mut self, value: ValueId, cap: ValueId) -> &mut Self {
+        self.inst(Inst::AllocSlice { value, cap });
+        self
+    }
+
     pub fn alloc(&mut self, value: ValueId) -> &mut Self {
         self.inst(Inst::Alloc { value });
         self

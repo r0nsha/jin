@@ -445,6 +445,7 @@ pub enum Inst {
     StackAlloc { value: ValueId, init: Option<ValueId> },
     Store { value: ValueId, target: ValueId },
     Alloc { value: ValueId },
+    AllocSlice { value: ValueId, cap: ValueId },
     Destroy { value: ValueId, destroy_glue: bool, span: Span },
     Free { value: ValueId, traced: bool, span: Span },
     IncRef { value: ValueId },
