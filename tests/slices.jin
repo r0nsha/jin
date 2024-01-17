@@ -5,7 +5,7 @@ fn main() unit = {
 	let b: [int] = [:3]
 	let c = [1, 2, 3, 4, 5]
 	print(a)
-	print(a)
+	// print(a)
 	print(b)
 	print(c)
 }
