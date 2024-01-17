@@ -160,20 +160,6 @@ pub fn expected_module(
         .with_label(Label::primary(span).with_message("not a module"))
 }
 
-pub fn unknown_module(part: Word, path: &[Word], span: Span) -> Diagnostic {
-    Diagnostic::error()
-        .with_message(format!(
-            "unknown module {}",
-            path.iter().map(ToString::to_string).collect::<Vec<_>>().join(".")
-        ))
-        .with_label(
-            Label::primary(span).with_message("could not resolve module"),
-        )
-        .with_note(format!(
-            "if you meant to import a symbol named `{part}`, wrap it with {{}}"
-        ))
-}
-
 pub fn expected_named_ty(
     ty: impl core::fmt::Display,
     span: Span,

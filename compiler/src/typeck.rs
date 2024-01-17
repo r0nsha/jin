@@ -925,13 +925,14 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         import: &ast::Import,
     ) -> TypeckResult<()> {
-        let target_module_id = self.resolve_import_path(import)?;
+        let target_module_id = self.resolve_import_path(env, import)?;
         self.check_import_kind(env, target_module_id, import)?;
         Ok(())
     }
 
     fn resolve_import_path(
         &mut self,
+        env: &mut Env,
         import: &ast::Import,
     ) -> TypeckResult<ModuleId> {
         let module_info =
@@ -940,23 +941,8 @@ impl<'db> Typeck<'db> {
         let mut target_module_id = module_info.id;
 
         // We skip the first part since it is the import root module name
-        for (idx, &part) in import.path.iter().enumerate().skip(1) {
-            let symbol = Symbol::new(target_module_id, part.name());
-            let id = self
-                .lookup_global_one(
-                    &symbol,
-                    part.span(),
-                    env::ShouldLookupFns::No,
-                    env::AllowBuiltinTys::No,
-                )?
-                .ok_or_else(|| {
-                    errors::unknown_module(
-                        part,
-                        &import.path[..=idx],
-                        import.path.first().unwrap().span().merge(part.span()),
-                    )
-                })?;
-
+        for &part in import.path.iter().skip(1) {
+            let id = self.lookup(env, target_module_id, &Query::Name(part))?;
             target_module_id = self.is_module_def(id, part.span())?;
         }
 
@@ -1046,9 +1032,8 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<ModuleId> {
         match self.normalize(self.db[def_id].ty).kind() {
             TyKind::Module(module_id) => Ok(*module_id),
-            ty => Err(errors::ty_mismatch(
-                &TyKind::Module(ModuleId::null()).to_string(self.db),
-                &ty.to_string(self.db),
+            ty => Err(errors::expected_module(
+                format!("type `{}`", &ty.to_string(self.db)),
                 span,
             )),
         }

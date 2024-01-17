@@ -1,4 +1,5 @@
-import bar.{baz.yup, *}
+import bar.baz.{yup}
+import bar.*
 import ufcs.?
 
 fn main() unit = {

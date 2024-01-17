@@ -1,7 +1,5 @@
-import std.{
-    io.println,
-    int.*
-}
+import std.io.{println}
+import std.int.*
 
 fn main() unit = {
     i()

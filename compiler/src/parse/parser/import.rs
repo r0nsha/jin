@@ -43,6 +43,12 @@ impl<'a> Parser<'a> {
     ) -> DiagnosticResult<(Vec<Word>, ImportKind)> {
         let mut path = vec![root];
 
+        if self.is(TokenKind::As) {
+            let alias = self.eat_ident()?.word();
+            let vis = self.parse_vis();
+            return Ok((path, ImportKind::Qualified(Some(alias), vis)));
+        }
+
         while self.is(TokenKind::Dot) {
             // let tok = self.token();
             //
@@ -51,16 +57,12 @@ impl<'a> Parser<'a> {
             //
             //     }
             // }
-            if self.peek_is(TokenKind::empty_ident()) {
-                let part = self.eat_ident()?.word();
-                path.push(part);
-
-                if self.is(TokenKind::As) {
-                    let alias = self.eat_ident()?.word();
-                    let vis = self.parse_vis();
-
-                    return Ok((path, ImportKind::Qualified(Some(alias), vis)));
-                }
+            if self.is_ident() {
+                path.push(self.last_token().word());
+            } else if self.is(TokenKind::As) {
+                let alias = self.eat_ident()?.word();
+                let vis = self.parse_vis();
+                return Ok((path, ImportKind::Qualified(Some(alias), vis)));
             } else if self.peek_is(TokenKind::OpenCurly) {
                 let imports = self.parse_unqualified_imports()?;
                 return Ok((path, ImportKind::Unqualified(imports)));
