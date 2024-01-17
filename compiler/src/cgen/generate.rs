@@ -510,6 +510,12 @@ impl<'db> Generator<'db> {
                     this.slice_index(state, *slice, *index)
                 })
             }
+            Inst::SliceStore { slice, index, value } => stmt(|| {
+                util::assign(
+                    self.slice_index(state, *slice, *index),
+                    self.value(state, *value),
+                )
+            }),
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),

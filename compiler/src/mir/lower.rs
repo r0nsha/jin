@@ -757,12 +757,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.try_move(value, expr.span);
 
                     let index = self.const_int(uint, index as _);
-                    let elem_ty = self.ty_of(slice).slice_elem().unwrap();
-                    let target = self
-                        .push_inst_with_register(elem_ty, |value| {
-                            Inst::SliceIndex { value, slice, index }
-                        });
-                    self.ins(self.current_block).store(value, target);
+                    self.ins(self.current_block)
+                        .slice_store(slice, index, value);
                 }
 
                 if !lit.exprs.is_empty() {

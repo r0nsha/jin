@@ -121,12 +121,10 @@ impl<'db> Generator<'db> {
             ))
         };
 
-        util::group(
-            casted_data
-                .append(D::text("["))
-                .append(self.value(state, index))
-                .append(D::text("]")),
-        )
+        casted_data
+            .append(D::text("["))
+            .append(self.value(state, index))
+            .append(D::text("]"))
     }
 
     pub fn alloc_value(
