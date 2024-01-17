@@ -6,7 +6,7 @@ use pretty::RcDoc as D;
 
 use crate::{
     cgen::{
-        generate::{GenState, Generator, DATA_FIELD, REFCNT_FIELD},
+        generate::{GenState, Generator, DATA_FIELD},
         ty::CTy,
         util,
     },
@@ -96,14 +96,6 @@ impl<'db> Generator<'db> {
         util::field(data_field, field, false)
     }
 
-    pub fn refcnt_field(
-        &mut self,
-        state: &GenState<'db>,
-        value: ValueId,
-    ) -> D<'db> {
-        util::field(self.value(state, value), REFCNT_FIELD, true)
-    }
-
     pub fn slice_array_field(
         &mut self,
         state: &GenState<'db>,
@@ -120,7 +112,7 @@ impl<'db> Generator<'db> {
     ) -> D<'db> {
         // ((elem_ty*)(slice.array->data))[index]
         let array_field = self.slice_array_field(state, slice);
-        let data_field = util::field(array_field, "data", true);
+        let data_field = util::field(array_field, DATA_FIELD, true);
 
         let casted_data = {
             let elem_ty = Self::slice_value_elem_ty(state, slice);
