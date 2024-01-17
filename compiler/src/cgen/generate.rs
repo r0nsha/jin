@@ -400,12 +400,8 @@ impl<'db> Generator<'db> {
         }
 
         params.extend(sig.params.iter().enumerate().map(|(idx, param)| {
-            let name = match &param.pat {
-                Pat::Name(name) => ustr(&param_name(name.word.as_str(), idx)),
-                Pat::Discard(_) => ustr(&format!("__{idx}")),
-            };
-
-            param.ty.cdecl(self, D::text(name.as_str()))
+            let name = param_name(&param.pat, idx);
+            param.ty.cdecl(self, D::text(name))
         }));
 
         let sig_doc =
@@ -452,15 +448,8 @@ impl<'db> Generator<'db> {
         let mut state = GenState::new(sig.display_name, &fun.body);
 
         for (idx, param) in sig.params.iter().enumerate() {
-            match &param.pat {
-                Pat::Name(name) => {
-                    // The parameter's name id could be null() when it's generated ad-hoc.
-                    // For example, in type constructor parameters.
-                    let param_name = ustr(&param_name(name.word.as_str(), idx));
-                    state.param_names.push(param_name);
-                }
-                Pat::Discard(_) => (),
-            }
+            let name = param_name(&param.pat, idx);
+            state.param_names.push(ustr(&name));
         }
 
         let block_docs: Vec<D> = fun
@@ -736,6 +725,9 @@ fn global_init_fn_name(glob: &Global) -> String {
     format!("{}_init", glob.name.as_str())
 }
 
-fn param_name(name: &str, index: usize) -> String {
-    format!("{name}__{index}")
+fn param_name(pat: &Pat, index: usize) -> String {
+    match pat {
+        Pat::Name(name) => format!("{}__{}", name.word, index),
+        Pat::Discard(_) => format!("__{index}"),
+    }
 }
