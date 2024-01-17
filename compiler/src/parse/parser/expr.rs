@@ -145,10 +145,7 @@ impl<'a> Parser<'a> {
                 }
             }
             TokenKind::OpenCurly => self.parse_block()?,
-            TokenKind::OpenBracket => {
-                self.back();
-                self.parse_slice_lit()?
-            }
+            TokenKind::OpenBracket => self.parse_slice_lit()?,
             TokenKind::True => Expr::BoolLit { value: true, span: tok.span },
             TokenKind::False => Expr::BoolLit { value: false, span: tok.span },
             TokenKind::Ident(..) => {
@@ -600,9 +597,14 @@ impl<'a> Parser<'a> {
 
         if self.is(TokenKind::Colon) {
             let cap = Box::new(self.parse_expr()?);
-            let span = start.merge(cap.span());
-            return Ok(Expr::SliceLitCap { cap, span });
+            self.eat(TokenKind::CloseBracket)?;
+            return Ok(Expr::SliceLitCap {
+                cap,
+                span: start.merge(self.last_span()),
+            });
         }
+
+        self.back();
 
         let (exprs, span) = self.parse_list(
             TokenKind::OpenBracket,
