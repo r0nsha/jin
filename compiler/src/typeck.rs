@@ -927,7 +927,7 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<()> {
         let module_info = self
             .db
-            .find_module_by_path(&import.path)
+            .find_module_by_path(&import.module_path)
             .expect("import to use an existing module");
 
         let module_id = module_info.id;

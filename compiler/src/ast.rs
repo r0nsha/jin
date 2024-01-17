@@ -337,7 +337,7 @@ pub struct UnionVariantField {
 #[derive(Debug, Clone)]
 pub struct Import {
     pub attrs: Attrs,
-    pub path: Utf8PathBuf,
+    pub module_path: Utf8PathBuf,
     pub root: ImportName,
     pub span: Span,
 }
@@ -348,6 +348,13 @@ pub struct ImportName {
     pub vis: Vis,
     pub alias: Option<Word>,
     pub node: Option<ImportNode>,
+}
+
+#[derive(Debug, Clone)]
+pub enum ImportNode {
+    Name(Box<ImportName>),
+    Group(Vec<ImportNode>),
+    Glob(IsUfcs, Span),
 }
 
 #[derive(Debug, Clone)]
@@ -417,13 +424,6 @@ impl Spanned for ImportName {
     fn span(&self) -> Span {
         self.name().span()
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum ImportNode {
-    Name(Box<ImportName>),
-    Group(Vec<ImportNode>),
-    Glob(IsUfcs, Span),
 }
 
 #[derive(Debug, Clone)]

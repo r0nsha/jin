@@ -28,7 +28,7 @@ impl<'a> Parser<'a> {
 
         Ok(Import {
             attrs: attrs.to_owned(),
-            path,
+            module_path: path,
             root,
             span: start.merge(self.last_span()),
         })
