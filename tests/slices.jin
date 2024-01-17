@@ -16,7 +16,7 @@ fn print(s: [int]) unit = {
 	let mut i = 0
 	loop if i < s.len {
 		printf("%d".ptr, s.[i])
-		if i < s.len-1 {
+		if i < s.len - 1 {
 			printf(", ".ptr)
 		}
 		i += 1

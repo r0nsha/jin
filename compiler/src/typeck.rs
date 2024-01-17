@@ -1483,7 +1483,19 @@ impl<'db> Typeck<'db> {
 
                 let expr =
                     self.check_expr(env, expr, Some(expected_slice_ty))?;
-                self.eq_obvious_expr(expected_slice_ty, &expr)?;
+
+                let expr_ty = self.normalize(expr.ty);
+
+                let elem_ty = match expr_ty.auto_deref().kind() {
+                    TyKind::Slice(inner) => *inner,
+                    _ => {
+                        return Err(errors::ty_mismatch(
+                            &expected_slice_ty.to_string(self.db),
+                            &expr_ty.to_string(self.db),
+                            expr.span,
+                        ))
+                    }
+                };
 
                 let uint = self.db.types.uint;
                 let index = self.check_expr(env, index, Some(uint))?;
@@ -1494,7 +1506,7 @@ impl<'db> Typeck<'db> {
                         expr: Box::new(expr),
                         index: Box::new(index),
                     }),
-                    expected_slice_ty.slice_elem().unwrap(),
+                    elem_ty,
                     *span,
                 ))
             }
