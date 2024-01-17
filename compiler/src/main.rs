@@ -122,8 +122,7 @@ fn build(db: &mut Db, root_file: &Utf8Path) {
     let mut mir = db.time("Hir -> Mir", |db| mir::lower(db, &hir));
     expect!(db);
 
-    // Specialize polymorphic MIR
-    db.time("Mir Specialization", |db| mir::specialize(db, &mut mir));
+    db.time("Mir Monomorphization", |db| mir::monomorphize(db, &mut mir));
 
     db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
         .expect("emitting mir failed");

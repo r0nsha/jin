@@ -18,49 +18,49 @@ use crate::{
     word::Word,
 };
 
-pub fn specialize(db: &Db, mir: &mut Mir) {
-    Specialize::new(db).run(mir);
+pub fn monomorphize(db: &Db, mir: &mut Mir) {
+    Monomorphize::new(db).run(mir);
     ExpandDestroys::new(db, mir).run(mir);
 }
 
-struct Specialize<'db> {
+struct Monomorphize<'db> {
     db: &'db Db,
     work: Work,
     used_fns: FxHashSet<FnSigId>,
     used_globals: FxHashSet<GlobalId>,
 
-    // Functions that have already been specialized and should be re-used
-    specialized_fns: FxHashMap<SpecializedFn, FnSigId>,
+    // Functions that have already been monomorphized and should be re-used
+    monomorphized_fns: FxHashMap<MonoFn, FnSigId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct SpecializedFn {
+pub struct MonoFn {
     pub id: FnSigId,
     pub ty: Ty,
 }
 
-impl<'db> Specialize<'db> {
+impl<'db> Monomorphize<'db> {
     fn new(db: &'db Db) -> Self {
         Self {
             db,
             work: Work::new(),
             used_fns: FxHashSet::default(),
             used_globals: FxHashSet::default(),
-            specialized_fns: FxHashMap::default(),
+            monomorphized_fns: FxHashMap::default(),
         }
     }
 
     fn run(mut self, mir: &mut Mir) {
-        self.specialize_bodies(mir);
+        self.monomorphize_bodies(mir);
         self.retain_used_mir(mir);
     }
 
-    fn specialize_bodies(&mut self, mir: &mut Mir) {
+    fn monomorphize_bodies(&mut self, mir: &mut Mir) {
         let main_fn = mir.main_fn.expect("to have a main fn");
         self.work.push(Job { target: JobTarget::Fn(main_fn) });
 
         while let Some(job) = self.work.pop() {
-            SpecializeBody::new(self, mir).run(mir, &job);
+            MonomorphizeBody::new(self, mir).run(mir, &job);
         }
     }
 
@@ -119,24 +119,24 @@ enum JobTarget {
     Global(GlobalId),
 }
 
-struct SpecializeBody<'db, 'cx> {
-    cx: &'cx mut Specialize<'db>,
-    smir: SpecializedMir,
+struct MonomorphizeBody<'db, 'cx> {
+    cx: &'cx mut Monomorphize<'db>,
+    mono_mir: MonoMir,
 }
 
-impl<'db, 'cx> SpecializeBody<'db, 'cx> {
-    fn new(cx: &'cx mut Specialize<'db>, mir: &Mir) -> Self {
-        Self { cx, smir: SpecializedMir::new(mir) }
+impl<'db, 'cx> MonomorphizeBody<'db, 'cx> {
+    fn new(cx: &'cx mut Monomorphize<'db>, mir: &Mir) -> Self {
+        Self { cx, mono_mir: MonoMir::new(mir) }
     }
 
     fn run(mut self, mir: &mut Mir, job: &Job) {
         self.cx.mark_used(job.target);
-        self.specialize(mir, job.target);
-        self.smir.merge_into(mir);
+        self.monomorphize(mir, job.target);
+        self.mono_mir.merge_into(mir);
         self.cx.work.mark_done(job.target);
     }
 
-    fn specialize(&mut self, mir: &mut Mir, target: JobTarget) {
+    fn monomorphize(&mut self, mir: &mut Mir, target: JobTarget) {
         match target {
             JobTarget::Fn(id) => {
                 let Some(fun) = mir.fns.get(&id) else {
@@ -147,7 +147,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
                     return;
                 };
 
-                let body_subst = self.specialize_body(mir, &fun.body);
+                let body_subst = self.monomorphize_body(mir, &fun.body);
                 body_subst.subst(&mut mir.fns.get_mut(&id).unwrap().body);
             }
             JobTarget::Global(id) => {
@@ -155,7 +155,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
                 if let GlobalKind::Static(StaticGlobal { body, .. }) =
                     &global.kind
                 {
-                    let body_subst = self.specialize_body(mir, body);
+                    let body_subst = self.monomorphize_body(mir, body);
                     let body_mut =
                         &mut mir.globals[id].kind.as_static_mut().unwrap().body;
                     body_subst.subst(body_mut);
@@ -164,14 +164,14 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
         }
     }
 
-    fn specialize_body(&mut self, mir: &Mir, body: &Body) -> BodySubst {
+    fn monomorphize_body(&mut self, mir: &Mir, body: &Body) -> BodySubst {
         let mut body_subst = BodySubst::new();
 
         for value in body.values() {
             if let Some(instantiation) = body.instantation(value.id) {
                 // This is a polymorphic value which requires specialization
                 if let Some(new_kind) =
-                    self.specialize_value(mir, &value.kind, instantiation)
+                    self.monomorphize_value(mir, &value.kind, instantiation)
                 {
                     body_subst.insert_value(value.id, new_kind);
                 }
@@ -194,7 +194,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
         body_subst
     }
 
-    fn specialize_value(
+    fn monomorphize_value(
         &mut self,
         mir: &Mir,
         value_kind: &ValueKind,
@@ -204,12 +204,12 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
             &ValueKind::Fn(id) => {
                 let ty = instantiation.fold(mir.fn_sigs[id].ty);
 
-                let specialized_fn = SpecializedFn { id, ty };
+                let monomorphized_fn = MonoFn { id, ty };
 
-                let specialized_sig_id =
-                    self.specialize_fn(mir, specialized_fn, instantiation);
+                let monomorphized_sig_id =
+                    self.monomorphize_fn(mir, monomorphized_fn, instantiation);
 
-                Some(ValueKind::Fn(specialized_sig_id))
+                Some(ValueKind::Fn(monomorphized_sig_id))
             }
             _ => {
                 // This is a polymorphic type. Doesn't require specialization...
@@ -219,44 +219,44 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
     }
 
     #[must_use]
-    fn specialize_fn(
+    fn monomorphize_fn(
         &mut self,
         mir: &Mir,
-        specialized_fn: SpecializedFn,
+        monomorphized_fn: MonoFn,
         instantiation: &Instantiation,
     ) -> FnSigId {
         if let Some(sig_id) =
-            self.cx.specialized_fns.get(&specialized_fn).copied()
+            self.cx.monomorphized_fns.get(&monomorphized_fn).copied()
         {
             return sig_id;
         }
 
-        let old_sig_id = specialized_fn.id;
+        let old_sig_id = monomorphized_fn.id;
         let new_sig_id =
-            self.specialize_fn_sig(mir, &specialized_fn, instantiation);
+            self.monomorphize_fn_sig(mir, &monomorphized_fn, instantiation);
 
-        self.cx.specialized_fns.insert(specialized_fn, new_sig_id);
+        self.cx.monomorphized_fns.insert(monomorphized_fn, new_sig_id);
 
         let mut fun = mir.fns.get(&old_sig_id).expect("fn to exist").clone();
 
         fun.sig = new_sig_id;
-        fun.subst(&mut SpecializeParamFolder { instantiation });
+        fun.subst(&mut MonoParamFolder { instantiation });
 
-        self.smir.fns.insert(new_sig_id, fun);
+        self.mono_mir.fns.insert(new_sig_id, fun);
         self.cx.work.push(Job { target: JobTarget::Fn(new_sig_id) });
 
         new_sig_id
     }
 
     #[must_use]
-    fn specialize_fn_sig(
+    fn monomorphize_fn_sig(
         &mut self,
         mir: &Mir,
-        specialized_fn: &SpecializedFn,
+        monomorphized_fn: &MonoFn,
         instantiation: &Instantiation,
     ) -> FnSigId {
-        let mut sig = mir.fn_sigs[specialized_fn.id].clone();
-        sig.subst(&mut SpecializeParamFolder { instantiation });
+        let mut sig = mir.fn_sigs[monomorphized_fn.id].clone();
+        sig.subst(&mut MonoParamFolder { instantiation });
 
         let instantation_str = instantiation
             .tys()
@@ -267,7 +267,7 @@ impl<'db, 'cx> SpecializeBody<'db, 'cx> {
         sig.mangled_name =
             ustr(&format!("{}__{}", sig.mangled_name, instantation_str));
 
-        self.smir.fn_sigs.insert_with_key(|id| {
+        self.mono_mir.fn_sigs.insert_with_key(|id| {
             sig.id = id;
             sig
         })
@@ -296,12 +296,12 @@ impl BodySubst {
 }
 
 #[derive(Debug)]
-struct SpecializedMir {
+struct MonoMir {
     fn_sigs: IdMap<FnSigId, FnSig>,
     fns: FxHashMap<FnSigId, Fn>,
 }
 
-impl SpecializedMir {
+impl MonoMir {
     fn new(mir: &Mir) -> Self {
         Self { fn_sigs: Self::fn_sigs_from_mir(mir), fns: FxHashMap::default() }
     }
@@ -319,7 +319,7 @@ impl SpecializedMir {
 #[derive(Debug)]
 struct ExpandDestroys<'db> {
     db: &'db Db,
-    smir: SpecializedMir,
+    mono_mir: MonoMir,
 
     // Generated free functions for adt types
     adt_frees: FxHashMap<Ty, FnSigId>,
@@ -329,7 +329,7 @@ impl<'db> ExpandDestroys<'db> {
     fn new(db: &'db Db, mir: &Mir) -> Self {
         Self {
             db,
-            smir: SpecializedMir::new(mir),
+            mono_mir: MonoMir::new(mir),
             adt_frees: FxHashMap::default(),
         }
     }
@@ -347,7 +347,7 @@ impl<'db> ExpandDestroys<'db> {
             }
         }
 
-        self.smir.merge_into(mir);
+        self.mono_mir.merge_into(mir);
     }
 
     fn body(&mut self, body: &mut Body) {
@@ -418,7 +418,7 @@ impl<'db> ExpandDestroys<'db> {
             };
 
             if let Some(free_fn) = free_fn {
-                let free_fn_ty = self.smir.fn_sigs[free_fn].ty;
+                let free_fn_ty = self.mono_mir.fn_sigs[free_fn].ty;
                 let result = body.create_register(self.db.types.unit);
                 let callee =
                     body.create_value(free_fn_ty, ValueKind::Fn(free_fn));
@@ -443,7 +443,7 @@ impl<'db> ExpandDestroys<'db> {
     ) -> (ValueId, ValueId) {
         let free_fn = self.get_or_create_free_fn(ty);
 
-        let free_fn_ty = self.smir.fn_sigs[free_fn].ty;
+        let free_fn_ty = self.mono_mir.fn_sigs[free_fn].ty;
         let result = body.create_register(self.db.types.unit);
         let callee = body.create_value(free_fn_ty, ValueKind::Fn(free_fn));
 
@@ -467,17 +467,17 @@ impl<'db> ExpandDestroys<'db> {
     }
 }
 
-struct SpecializeParamFolder<'a> {
+struct MonoParamFolder<'a> {
     pub instantiation: &'a Instantiation,
 }
 
-impl SubstTy for SpecializeParamFolder<'_> {
+impl SubstTy for MonoParamFolder<'_> {
     fn subst_ty(&mut self, ty: Ty, _: Span) -> Ty {
         self.fold(ty)
     }
 }
 
-impl TyFolder for SpecializeParamFolder<'_> {
+impl TyFolder for MonoParamFolder<'_> {
     fn fold(&mut self, ty: Ty) -> Ty {
         match ty.kind() {
             TyKind::Param(p) => match self.instantiation.get(p.var) {
@@ -544,7 +544,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
                 .child(ustr("$destroy"))
                 .join(),
         );
-        let sig = self.cx.smir.fn_sigs.insert_with_key(|id| FnSig {
+        let sig = self.cx.mono_mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
             mangled_name,
             display_name,
@@ -582,7 +582,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             .free(self_value, false, adt_span)
             .ret(unit_value);
 
-        self.cx.smir.fns.insert(sig, Fn { sig, body: self.body });
+        self.cx.mono_mir.fns.insert(sig, Fn { sig, body: self.body });
 
         sig
     }

@@ -1,11 +1,11 @@
 mod builder;
 mod lower;
+mod monomorphize;
+mod ownck;
 mod pmatch;
 mod pretty_print;
-mod specialize;
 pub mod subst;
 mod validate;
-mod ownck;
 
 use std::{io, iter};
 
@@ -18,8 +18,8 @@ use derive_more::From;
 use enum_as_inner::EnumAsInner;
 use indexmap::{indexset, IndexSet};
 pub use lower::lower;
+pub use monomorphize::monomorphize;
 use rustc_hash::{FxHashMap, FxHashSet};
-pub use specialize::specialize;
 use ustr::Ustr;
 
 use crate::{
