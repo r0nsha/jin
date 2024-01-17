@@ -4,7 +4,7 @@ use ustr::{ustr, Ustr};
 
 use crate::{
     db::{AdtField, AdtKind, Db, DefId, DefKind, StructKind, VariantId},
-    diagnostics::{Diagnostic, DiagnosticResult},
+    diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     hir::{FnKind, Hir},
     mangle,
@@ -718,6 +718,22 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 let elem_ty =
                     self.ty_of(slice).auto_deref().slice_elem().unwrap();
+
+                // TODO: need to somehow move this check to where the move itself occurs...
+                if elem_ty.is_move(self.cx.db) {
+                    // self.cx.diagnostics.push(
+                    //     Diagnostic::error()
+                    //         .with_message(format!(
+                    //             "cannot move element type `{}` out of slice",
+                    //             elem_ty.display(self.cx.db)
+                    //         ))
+                    //         .with_label(
+                    //             Label::primary(expr.span)
+                    //                 .with_message("cannot move element out"),
+                    //         ),
+                    // );
+                }
+
                 self.push_inst_with_register(elem_ty, |value| {
                     Inst::SliceIndex { value, slice, index }
                 })
