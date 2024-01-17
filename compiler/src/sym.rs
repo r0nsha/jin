@@ -18,5 +18,6 @@ pub const BOOL: &str = "bool";
 pub const UNIT: &str = "unit";
 pub const NEVER: &str = "never";
 
+pub const CAP: &str = "cap";
 pub const LEN: &str = "len";
 pub const PTR: &str = "ptr";

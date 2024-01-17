@@ -4,4 +4,6 @@ fn main() unit = {
 	let a: [int] = []
 	let b: [int] = [:3]
 	let c = [1, 2, 3]
+	printf("caps: %d, %d, %d".ptr, a.cap, b.cap, b.cap)
+	printf("lens: %d, %d, %d".ptr, a.len, b.len, b.len)
 }

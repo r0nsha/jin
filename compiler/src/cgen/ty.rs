@@ -65,6 +65,7 @@ impl<'db> CTy<'db> for TyKind {
             | Self::Int(_)
             | Self::Uint(_)
             | Self::Float(_)
+            | Self::Slice(_)
             | Self::Str
             | Self::Bool
             | Self::Never
