@@ -2,6 +2,7 @@ use crate::{
     db::Db,
     diagnostics::{Diagnostic, Label},
     hir::{Expr, ExprKind, FnKind, Hir},
+    middle::UnOp,
     ty::{Ty, TyKind},
 };
 
@@ -50,7 +51,7 @@ impl CheckBodies<'_> {
                 }
             }
             ExprKind::Unary(un) => {
-                if un.expr.ty.is_uint() {
+                if un.op == UnOp::Neg && un.expr.ty.is_uint() {
                     self.db.diagnostics.emit(
                         Diagnostic::error()
                             .with_message(format!(

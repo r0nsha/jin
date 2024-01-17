@@ -1459,7 +1459,7 @@ impl<'db> Typeck<'db> {
                         } else {
                             Err(Diagnostic::error()
                                 .with_message(format!(
-                                    "cannot use `{}` on `{}`",
+                                    "cannot use `{}` on type `{}`",
                                     op,
                                     ty.display(self.db)
                                 ))
