@@ -30,6 +30,18 @@ typedef struct str {
   usize len;
 } str;
 
+typedef struct array {
+  void *data;
+  usize cap;
+  usize refcnt;
+} array;
+
+typedef struct slice {
+  array *array;
+  usize start;
+  usize len;
+} slice;
+
 typedef void *jinrt_backtrace;
 
 typedef struct jinrt_stackframe {

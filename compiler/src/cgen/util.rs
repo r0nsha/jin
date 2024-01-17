@@ -117,6 +117,15 @@ impl<'db> Generator<'db> {
         })
     }
 
+    pub fn alloc_slice(
+        &mut self,
+        state: &GenState<'db>,
+        value: ValueId,
+        cap: ValueId,
+    ) -> D<'db> {
+        todo!()
+    }
+
     pub fn free(
         &self,
         state: &GenState<'db>,

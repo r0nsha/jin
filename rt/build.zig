@@ -13,9 +13,8 @@ pub fn build(b: *std.Build) void {
 
     switch (optimize) {
         .Debug, .ReleaseSafe => lib.bundle_compiler_rt = true,
-        .ReleaseFast, .ReleaseSmall => lib.disable_stack_probing = true,
+        .ReleaseFast, .ReleaseSmall => {},
     }
-    lib.force_pic = true;
 
     lib.linkLibC();
 

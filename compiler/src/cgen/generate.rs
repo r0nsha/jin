@@ -496,9 +496,9 @@ impl<'db> Generator<'db> {
             Inst::StackAlloc { value, init } => {
                 self.codegen_inst_stackalloc(state, *value, *init)
             }
-            Inst::Alloc { value } => self.codegen_inst_alloc(state, *value),
+            Inst::Alloc { value } => self.alloc_value(state, *value),
             Inst::AllocSlice { value, cap } => {
-                todo!();
+                self.alloc_slice(state, *value, *cap)
             }
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
@@ -617,19 +617,6 @@ impl<'db> Generator<'db> {
             ),
             None => VariableDoc::decl(self, value.ty, D::text(name)),
         }
-    }
-
-    fn codegen_inst_alloc(
-        &mut self,
-        state: &mut GenState<'db>,
-        value: ValueId,
-    ) -> D<'db> {
-        let value_doc = self.alloc_value(state, value);
-
-        let zero_refcnt =
-            stmt(|| self.refcnt_field(state, value).append(" = 0"));
-
-        D::intersperse([value_doc, zero_refcnt], D::hardline())
     }
 
     pub fn value_assign(

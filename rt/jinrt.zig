@@ -52,10 +52,12 @@ export fn jinrt_panic_at(backtrace: *Backtrace, msg: cstr, frame: StackFrame) no
     std.process.exit(1);
 }
 
-export fn jinrt_alloc(size: usize) *anyopaque {
+export fn jinrt_alloc(size: usize) *anyrc {
     const memory = std.c.malloc(size);
     const p = memory orelse std.debug.panic("out of memory", .{});
-    return p;
+    const prc: *anyrc = @alignCast(@ptrCast(p));
+    prc.refcnt = 0;
+    return prc;
 }
 
 export fn jinrt_free(backtrace: *Backtrace, obj: *anyrc, tyname: cstr, frame: StackFrame) void {
@@ -65,9 +67,7 @@ export fn jinrt_free(backtrace: *Backtrace, obj: *anyrc, tyname: cstr, frame: St
             "cannot destroy a value of type `{s}` as it still has {} reference(s)",
             .{ tyname, obj.refcnt },
         ) catch unreachable;
-        // zig fmt: off
-        jinrt_panic_at(backtrace, @ptrCast(cstr, msg.ptr), frame);
-        // zig fmt: on
+        jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
     }
 
     std.c.free(obj);
