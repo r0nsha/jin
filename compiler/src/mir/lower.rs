@@ -716,7 +716,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let index = self.lower_expr(&idx.index);
                 self.try_move(index, idx.index.span);
 
-                let elem_ty = self.ty_of(slice).slice_elem().unwrap();
+                let elem_ty =
+                    self.ty_of(slice).auto_deref().slice_elem().unwrap();
                 self.push_inst_with_register(elem_ty, |value| {
                     Inst::SliceIndex { value, slice, index }
                 })

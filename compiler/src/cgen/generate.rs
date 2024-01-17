@@ -23,7 +23,7 @@ use crate::{
         StaticGlobal, ValueId, ValueKind,
     },
     target::TargetMetrics,
-    ty::{fold::TyFolder, Instantiation, Ty},
+    ty::{fold::TyFolder, Instantiation, Ty, TyKind},
 };
 
 pub const DATA_FIELD: &str = "data";
@@ -523,10 +523,26 @@ impl<'db> Generator<'db> {
                 self.free(state, *value, *traced, *span)
             }
             Inst::IncRef { value } => {
-                stmt(|| self.refcnt_field(state, *value).append(" += 1"))
+                let value_doc = self.value(state, *value);
+
+                stmt(|| match state.body.value(*value).ty.auto_deref().kind() {
+                    TyKind::Slice(_) => {
+                        util::call(D::text("jinrt_slice_incref"), [value_doc])
+                    }
+                    _ => util::field(value_doc, REFCNT_FIELD, true)
+                        .append(" += 1"),
+                })
             }
             Inst::DecRef { value } => {
-                stmt(|| self.refcnt_field(state, *value).append(" -= 1"))
+                let value_doc = self.value(state, *value);
+
+                stmt(|| match state.body.value(*value).ty.auto_deref().kind() {
+                    TyKind::Slice(_) => {
+                        util::call(D::text("jinrt_slice_decref"), [value_doc])
+                    }
+                    _ => util::field(value_doc, REFCNT_FIELD, true)
+                        .append(" -= 1"),
+                })
             }
             Inst::Br { target } => goto_stmt(state.body.block(*target)),
             Inst::BrIf { cond, then, otherwise } => util::if_stmt(

@@ -5,12 +5,11 @@ fn main() unit = {
 	let b: [int] = [:3]
 	let c = [1, 2, 3, 4, 5]
 	print(a)
-	// print(a)
 	print(b)
 	print(c)
 }
 
-fn print(s: [int]) unit = {
+fn print(s: &[int]) unit = {
 	printf("ptr: %p, cap: %d, len: %d\n".ptr, s.ptr, s.cap, s.len)
 	printf("[".ptr)
 	let mut i = 0

@@ -180,10 +180,9 @@ impl Ty {
     }
 
     pub fn slice_elem(self) -> Option<Ty> {
-        if let TyKind::Slice(elem) = self.kind() {
-            Some(*elem)
-        } else {
-            None
+        match self.kind() {
+            TyKind::Slice(elem) => Some(*elem),
+            _ => None,
         }
     }
 

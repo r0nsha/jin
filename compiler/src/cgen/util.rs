@@ -51,10 +51,11 @@ impl<'db> Generator<'db> {
     ) -> D<'db> {
         let value = state.body.value(value);
         let value_doc = self.value(state, value.id);
+        let ty = value.ty.auto_deref();
 
         match &value.kind {
             ValueKind::Variant(_, _) => util::field(value_doc, field, false),
-            _ => match (value.ty.kind(), field) {
+            _ => match (ty.kind(), field) {
                 (TyKind::Adt(adt, _), _) if self.db[*adt].is_ref() => {
                     self.adt_field(state, value.id, field)
                 }
@@ -64,13 +65,13 @@ impl<'db> Generator<'db> {
                 (TyKind::Slice(_), sym::PTR) => {
                     let call =
                         util::call(D::text("jinrt_slice_ptr"), [value_doc]);
-                    let elem_ty = value.ty.slice_elem().unwrap();
+                    let elem_ty = Self::slice_value_elem_ty(state, value.id);
                     util::cast(elem_ty.cty(self).append(D::text("*")), call)
                 }
                 (TyKind::Slice(_), sym::CAP) => {
                     util::call(D::text("jinrt_slice_cap"), [value_doc])
                 }
-                _ => util::field(value_doc, field, value.ty.is_ptr(self)),
+                _ => util::field(value_doc, field, ty.is_ptr(self)),
             },
         }
     }
@@ -103,6 +104,14 @@ impl<'db> Generator<'db> {
         util::field(self.value(state, value), REFCNT_FIELD, true)
     }
 
+    pub fn slice_array_field(
+        &mut self,
+        state: &GenState<'db>,
+        slice: ValueId,
+    ) -> D<'db> {
+        util::field(self.value(state, slice), "array", false)
+    }
+
     pub fn slice_index(
         &mut self,
         state: &GenState<'db>,
@@ -110,7 +119,7 @@ impl<'db> Generator<'db> {
         index: ValueId,
     ) -> D<'db> {
         // ((elem_ty*)(slice.array->data))[index]
-        let array_field = util::field(self.value(state, slice), "array", false);
+        let array_field = self.slice_array_field(state, slice);
         let data_field = util::field(array_field, "data", true);
 
         let casted_data = {
@@ -193,7 +202,7 @@ impl<'db> Generator<'db> {
     }
 
     fn slice_value_elem_ty(state: &GenState<'db>, slice: ValueId) -> Ty {
-        state.body.value(slice).ty.slice_elem().unwrap()
+        state.body.value(slice).ty.auto_deref().slice_elem().unwrap()
     }
 
     pub fn with_stack_frame(
