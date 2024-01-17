@@ -18,6 +18,12 @@ impl<'a> Parser<'a> {
                 let fty = self.parse_fn_ty()?;
                 TyExpr::Fn(fty)
             }
+            TokenKind::OpenBracket => {
+                let inner = self.parse_ty()?;
+                self.eat(TokenKind::CloseBracket)?;
+                let span = tok.span.merge(inner.span());
+                TyExpr::Slice(Box::new(inner), span)
+            }
             TokenKind::Amp => {
                 let mutability = self.parse_mutability();
                 let inner = self.parse_ty()?;

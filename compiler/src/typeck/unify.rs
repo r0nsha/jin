@@ -193,6 +193,7 @@ struct UnifyCx<'db, 'a> {
 }
 
 impl UnifyCx<'_, '_> {
+    #[allow(clippy::too_many_lines)]
     fn unify_ty_ty(&mut self, a: Ty, b: Ty) -> UnifyResult {
         let (a, b) = (self.cx.normalize(a), self.cx.normalize(b));
 
@@ -241,7 +242,10 @@ impl UnifyCx<'_, '_> {
                 self.unify_ty_ty(*a, *b)
             }
 
-            (TyKind::RawPtr(a), TyKind::RawPtr(b)) => self.unify_ty_ty(*a, *b),
+            (TyKind::Slice(a), TyKind::Slice(b))
+            | (TyKind::RawPtr(a), TyKind::RawPtr(b)) => {
+                self.unify_ty_ty(*a, *b)
+            }
 
             // Unify ?T1 ~ ?T2
             (TyKind::Infer(InferTy::Ty(a)), TyKind::Infer(InferTy::Ty(b))) => {

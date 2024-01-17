@@ -194,7 +194,10 @@ pub enum Expr {
     },
     SliceLit {
         exprs: Vec<Self>,
-        cap: Option<Box<Self>>,
+        span: Span,
+    },
+    SliceLitCap {
+        cap: Box<Self>,
         span: Span,
     },
     BoolLit {
@@ -236,6 +239,7 @@ impl Spanned for Expr {
             | Self::Binary { span, .. }
             | Self::Cast { span, .. }
             | Self::SliceLit { span, .. }
+            | Self::SliceLitCap { span, .. }
             | Self::BoolLit { span, .. }
             | Self::IntLit { span, .. }
             | Self::FloatLit { span, .. }

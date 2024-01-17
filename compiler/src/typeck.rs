@@ -1487,7 +1487,7 @@ impl<'db> Typeck<'db> {
                 )?;
                 self.check_name(env, id, *word, *span, targs.as_deref())
             }
-            ast::Expr::SliceLit { exprs, cap, span } => {
+            ast::Expr::SliceLit { exprs, span } => {
                 let elem_ty = expected_ty
                     .and_then(|t| self.normalize(t).slice_elem())
                     .unwrap_or_else(|| self.fresh_ty_var());
@@ -1500,21 +1500,26 @@ impl<'db> Typeck<'db> {
                     new_exprs.push(new_expr);
                 }
 
-                let new_cap = if let Some(cap) = cap {
-                    let uint = self.db.types.uint;
-                    let new_cap = self.check_expr(env, cap, Some(uint))?;
-                    self.eq_obvious_expr(uint, &new_cap)?;
-                    Some(Box::new(new_cap))
-                } else {
-                    None
-                };
-
                 Ok(self.expr(
                     hir::ExprKind::SliceLit(hir::SliceLit {
                         exprs: new_exprs,
-                        cap: new_cap,
+                        cap: None,
                     }),
                     Ty::new(TyKind::Slice(elem_ty)),
+                    *span,
+                ))
+            }
+            ast::Expr::SliceLitCap { cap, span } => {
+                let uint = self.db.types.uint;
+                let cap = self.check_expr(env, cap, Some(uint))?;
+                self.eq_obvious_expr(uint, &cap)?;
+
+                Ok(self.expr(
+                    hir::ExprKind::SliceLit(hir::SliceLit {
+                        exprs: vec![],
+                        cap: Some(Box::new(cap)),
+                    }),
+                    Ty::new(TyKind::Slice(self.fresh_ty_var())),
                     *span,
                 ))
             }
@@ -2191,6 +2196,10 @@ impl<'db> Typeck<'db> {
                     is_extern: fn_ty.is_extern,
                     is_c_variadic: fn_ty.is_c_variadic,
                 })))
+            }
+            TyExpr::Slice(inner, _) => {
+                let inner = self.check_ty_expr(env, inner, allow_hole)?;
+                Ok(Ty::new(TyKind::Slice(inner)))
             }
             TyExpr::Ref(inner, mutability, _) => {
                 let inner_ty = self.check_ty_expr(env, inner, allow_hole)?;

@@ -596,23 +596,21 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_slice_lit(&mut self) -> DiagnosticResult<Expr> {
-        let mut cap = None;
+        let start = self.last_span();
+
+        if self.is(TokenKind::Colon) {
+            let cap = Box::new(self.parse_expr()?);
+            let span = start.merge(cap.span());
+            return Ok(Expr::SliceLitCap { cap, span });
+        }
 
         let (exprs, span) = self.parse_list(
             TokenKind::OpenBracket,
             TokenKind::CloseBracket,
-            |this| {
-                if this.is(TokenKind::Colon) {
-                    let expr = this.parse_expr()?;
-                    cap = Some(Box::new(expr));
-                    return Ok(ControlFlow::Break(()));
-                }
-
-                this.parse_expr().map(ControlFlow::Continue)
-            },
+            |this| this.parse_expr().map(ControlFlow::Continue),
         )?;
 
-        Ok(Expr::SliceLit { exprs, cap, span })
+        Ok(Expr::SliceLit { exprs, span })
     }
 
     fn parse_stmt(&mut self) -> DiagnosticResult<Expr> {

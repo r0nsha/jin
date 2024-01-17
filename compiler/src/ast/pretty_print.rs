@@ -166,19 +166,18 @@ impl PrettyPrint for Expr {
             Self::Name { word, .. } => {
                 cx.builder.add_empty_child(format!("`{word}`"));
             }
-            Self::SliceLit { exprs, cap, .. } => {
+            Self::SliceLit { exprs, .. } => {
                 cx.builder.begin_child("slice lit".to_string());
 
                 for expr in exprs {
                     expr.pretty_print(cx);
                 }
 
-                if let Some(cap) = cap {
-                    cx.builder.begin_child("cap".to_string());
-                    cap.pretty_print(cx);
-                    cx.builder.end_child();
-                }
-
+                cx.builder.end_child();
+            }
+            Self::SliceLitCap { cap, .. } => {
+                cx.builder.begin_child("slice lit w/ cap".to_string());
+                cap.pretty_print(cx);
                 cx.builder.end_child();
             }
             Self::BoolLit { value, .. } => {
@@ -406,6 +405,11 @@ impl PrettyPrint for TyExpr {
                 f.ret.pretty_print(cx);
                 cx.builder.end_child();
 
+                cx.builder.end_child();
+            }
+            TyExpr::Slice(inner, _) => {
+                cx.builder.begin_child("slice".to_string());
+                inner.pretty_print(cx);
                 cx.builder.end_child();
             }
             TyExpr::Ref(inner, mutability, _) => {
