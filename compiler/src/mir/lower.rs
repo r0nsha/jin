@@ -929,7 +929,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> BlockId {
         let block = self.body.create_block("match_test");
 
-        self.body.create_edge(parent_block, block);
+        self.ins(parent_block).br(block);
 
         let blocks: Vec<_> = cases
             .into_iter()
