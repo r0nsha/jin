@@ -1,6 +1,11 @@
 fn extern printf(fmt: *u8, ..) i32
 
 fn main() unit = {
+	ints()
+	boxes()
+}
+
+fn ints() unit = {
 	let a: [int] = []
 	let b: [int] = [:3]
 	let c = [1, 2, 3, 4, 5]
@@ -21,4 +26,12 @@ fn print(s: &[int]) unit = {
 		i += 1
 	}
 	printf("]\n".ptr)
+}
+
+type Box(value: int)
+
+fn boxes() unit = {
+	let a = [Box(1), Box(2), Box(3)]
+	let b = a.[0]
+	let b = a.[0]
 }
