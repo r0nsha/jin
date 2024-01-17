@@ -1,17 +1,22 @@
 #!/bin/fish
-argparse --name=run --min-args=1 r/release -- $argv
+argparse --name=run --min-args=1 r/release d/debug -- $argv
 or exit 1
 
 set -l source $argv[1]
 
 set -l cargo_flags
+set -l build_flags
 set -l exedir
+
 if set -q _flag_r
     set cargo_flags -r
     set exedir target/release
 else
-    set release false
     set exedir target/debug
+end
+
+if set -q _flag_d
+    set build_flags --timings --emit ast --emit hir --emit mir --emit c
 end
 
 set -l source $argv[1]
@@ -35,8 +40,10 @@ mkdir $rtdir &>/dev/null
 cp rt/jinrt.h $rtdir/jinrt.h
 cp rt/zig-out/lib/libjinrt.a $rtdir/libjinrt.a
 
-cargo run $cargo_flags -- build $source --timings --emit ast --emit hir --emit mir --emit c
+# Run compiler
+cargo run $cargo_flags -- build $source $build_flags
 
+# Run output file if exists
 if test $status -eq 0 && test -f $output
     $output
 end
