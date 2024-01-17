@@ -23,10 +23,10 @@ impl<'a> Parser<'a> {
         start: Span,
     ) -> DiagnosticResult<Import> {
         let root = self.eat_ident()?.word();
-        let (path, kind) = self.parse_import_path_and_kind(root)?;
-
         let module_path = self.search_import_path(root)?;
         self.imported_module_paths.insert(module_path.clone());
+
+        let (path, kind) = self.parse_import_path_and_kind(root)?;
 
         Ok(Import {
             attrs: attrs.to_owned(),
@@ -44,6 +44,13 @@ impl<'a> Parser<'a> {
         let mut path = vec![root];
 
         while self.is(TokenKind::Dot) {
+            // let tok = self.token();
+            //
+            // match tok{
+            //     _=>{
+            //
+            //     }
+            // }
             if self.peek_is(TokenKind::empty_ident()) {
                 let part = self.eat_ident()?.word();
                 path.push(part);
@@ -57,6 +64,22 @@ impl<'a> Parser<'a> {
             } else if self.peek_is(TokenKind::OpenCurly) {
                 let imports = self.parse_unqualified_imports()?;
                 return Ok((path, ImportKind::Unqualified(imports)));
+            } else if self.is(TokenKind::Star) {
+                return Ok((
+                    path,
+                    ImportKind::Unqualified(vec![UnqualifiedImport::Glob(
+                        IsUfcs::No,
+                        self.last_span(),
+                    )]),
+                ));
+            } else if self.is(TokenKind::QuestionMark) {
+                return Ok((
+                    path,
+                    ImportKind::Unqualified(vec![UnqualifiedImport::Glob(
+                        IsUfcs::Yes,
+                        self.last_span(),
+                    )]),
+                ));
             } else {
                 let tok = self.require()?;
                 return Err(errors::unexpected_token_err(

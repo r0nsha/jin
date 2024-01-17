@@ -925,115 +925,119 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         import: &ast::Import,
     ) -> TypeckResult<()> {
-        let module_info = self.db.find_module_by_path(&import.module_path).unwrap();
-        let module_id = module_info.id;
-        todo!()
-        // self.check_import_root(env, module_id, &import.root)
+        let target_module_id = self.resolve_import_path(import)?;
+        self.check_import_kind(env, target_module_id, import)?;
+        Ok(())
     }
 
-    // fn check_import_root(
-    //     &mut self,
-    //     env: &mut Env,
-    //     module_id: ModuleId,
-    //     root: &ast::ImportName,
-    // ) -> TypeckResult<()> {
-    //     match &root.node {
-    //         Some(node) => self.check_import_node(env, module_id, node),
-    //         None => {
-    //             self.define_def(
-    //                 env,
-    //                 root.vis,
-    //                 DefKind::Variable,
-    //                 root.name(),
-    //                 Mutability::Imm,
-    //                 Ty::new(TyKind::Module(module_id)),
-    //             )?;
-    //
-    //             Ok(())
-    //         }
-    //     }
-    // }
+    fn resolve_import_path(
+        &mut self,
+        import: &ast::Import,
+    ) -> TypeckResult<ModuleId> {
+        let module_info =
+            self.db.find_module_by_path(&import.module_path).unwrap();
 
-    // fn check_import_node(
-    //     &mut self,
-    //     env: &mut Env,
-    //     module_id: ModuleId,
-    //     node: &ast::ImportNode,
-    // ) -> TypeckResult<()> {
-    //     match node {
-    //         ast::ImportNode::Name(name) => {
-    //             self.check_import_name(env, module_id, name)?;
-    //         }
-    //         ast::ImportNode::Group(nodes) => {
-    //             for node in nodes {
-    //                 self.check_import_node(env, module_id, node)?;
-    //             }
-    //         }
-    //         ast::ImportNode::Glob(is_ufcs, _) => {
-    //             self.check_import_glob(env, module_id, *is_ufcs);
-    //         }
-    //     }
-    //
-    //     Ok(())
-    // }
+        let mut target_module_id = module_info.id;
 
-    // fn check_import_name(
-    //     &mut self,
-    //     env: &mut Env,
-    //     module_id: ModuleId,
-    //     name: &ast::ImportName,
-    // ) -> TypeckResult<()> {
-    //     let results =
-    //         self.import_lookup(env.module_id(), module_id, name.word)?;
-    //
-    //     match (&name.node, results.len()) {
-    //         (Some(node), 1) => {
-    //             // We are traversing a nested module definition
-    //             let id = results[0].id();
-    //             let module_id = self.is_module_def(id, name.word.span())?;
-    //             self.check_import_node(env, module_id, node)
-    //         }
-    //         (Some(_), _) => {
-    //             // We tried to traverse a nested import, but there are multiple results
-    //             Err(errors::expected_module(
-    //                 format!("but `{}` isn't one", name.word),
-    //                 name.word.span(),
-    //             ))
-    //         }
-    //         _ => {
-    //             for res in results {
-    //                 match res {
-    //                     LookupResult::Def(id) => {
-    //                         self.insert_def(env, name.name(), id, name.vis)?;
-    //                     }
-    //                     LookupResult::Fn(candidate) => {
-    //                         self.insert_fn_candidate(
-    //                             Symbol::new(
-    //                                 env.module_id(),
-    //                                 name.name().name(),
-    //                             ),
-    //                             candidate,
-    //                         )?;
-    //                     }
-    //                 }
-    //             }
-    //
-    //             Ok(())
-    //         }
-    //     }
-    // }
+        // We skip the first part since it is the import root module name
+        for (idx, &part) in import.path.iter().enumerate().skip(1) {
+            let symbol = Symbol::new(target_module_id, part.name());
+            let id = self
+                .lookup_global_one(
+                    &symbol,
+                    part.span(),
+                    env::ShouldLookupFns::No,
+                    env::AllowBuiltinTys::No,
+                )?
+                .ok_or_else(|| {
+                    errors::unknown_module(
+                        part,
+                        &import.path[..=idx],
+                        import.path.first().unwrap().span().merge(part.span()),
+                    )
+                })?;
 
-    // fn check_import_glob(
-    //     &mut self,
-    //     env: &Env,
-    //     module_id: ModuleId,
-    //     is_ufcs: IsUfcs,
-    // ) {
-    //     self.resolution_state
-    //         .module_state_mut(env.module_id())
-    //         .globs
-    //         .insert(module_id, is_ufcs);
-    // }
+            target_module_id = self.is_module_def(id, part.span())?;
+        }
+
+        Ok(target_module_id)
+    }
+
+    fn check_import_kind(
+        &mut self,
+        env: &mut Env,
+        module_id: ModuleId,
+        import: &ast::Import,
+    ) -> TypeckResult<()> {
+        match &import.kind {
+            ast::ImportKind::Qualified(alias, vis) => {
+                let name = alias.unwrap_or(*import.path.last().unwrap());
+
+                self.define_def(
+                    env,
+                    *vis,
+                    DefKind::Variable,
+                    name,
+                    Mutability::Imm,
+                    Ty::new(TyKind::Module(module_id)),
+                )?;
+            }
+            ast::ImportKind::Unqualified(imports) => {
+                for uim in imports {
+                    self.check_unqualified_import(env, module_id, uim)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    fn check_unqualified_import(
+        &mut self,
+        env: &mut Env,
+        module_id: ModuleId,
+        uim: &ast::UnqualifiedImport,
+    ) -> TypeckResult<()> {
+        match uim {
+            ast::UnqualifiedImport::Name(name, alias, vis) => {
+                let results =
+                    self.import_lookup(env.module_id(), module_id, *name)?;
+
+                let def_name = alias.unwrap_or(*name);
+
+                for res in results {
+                    match res {
+                        LookupResult::Def(id) => {
+                            self.insert_def(env, def_name, id, *vis)?;
+                        }
+                        LookupResult::Fn(candidate) => {
+                            self.insert_fn_candidate(
+                                Symbol::new(env.module_id(), def_name.name()),
+                                candidate,
+                            )?;
+                        }
+                    }
+                }
+            }
+            ast::UnqualifiedImport::Glob(is_ufcs, _) => {
+                self.check_import_glob(env, module_id, *is_ufcs);
+            }
+        }
+
+        Ok(())
+    }
+
+    fn check_import_glob(
+        &mut self,
+        env: &Env,
+        module_id: ModuleId,
+        is_ufcs: IsUfcs,
+    ) {
+        self.resolution_state
+            .module_state_mut(env.module_id())
+            .globs
+            .insert(module_id, is_ufcs);
+    }
 
     fn is_module_def(
         &self,
