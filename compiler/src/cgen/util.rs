@@ -141,7 +141,7 @@ impl<'db> Generator<'db> {
         state: &GenState<'db>,
         value: ValueId,
     ) -> D<'db> {
-        let ty = state.body.value(value).ty;
+        let ty = state.ty_of(value);
 
         let ty_doc = match ty.kind() {
             TyKind::Adt(..) => D::text(self.adt_names[&ty].as_str()),
@@ -179,15 +179,14 @@ impl<'db> Generator<'db> {
         traced: bool,
         span: Span,
     ) -> D<'db> {
-        let tyname = str_lit(state.body.value(value).ty.display(self.db));
+        let tyname = str_lit(state.ty_of(value).display(self.db));
         let frame = self.create_stackframe_value(state, span);
 
-        let free_fn =
-            if let TyKind::Slice(..) = state.body.value(value).ty.kind() {
-                "jinrt_slice_free"
-            } else {
-                "jinrt_free"
-            };
+        let free_fn = if state.value_is_slice(value) {
+            "jinrt_slice_free"
+        } else {
+            "jinrt_free"
+        };
 
         let value = self.value(state, value);
         let free_call = stmt(|| {
@@ -202,7 +201,7 @@ impl<'db> Generator<'db> {
     }
 
     fn slice_value_elem_ty(state: &GenState<'db>, slice: ValueId) -> Ty {
-        state.body.value(slice).ty.auto_deref().slice_elem().unwrap()
+        state.ty_of(slice).auto_deref().slice_elem().unwrap()
     }
 
     pub fn with_stack_frame(

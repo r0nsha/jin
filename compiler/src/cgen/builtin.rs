@@ -36,7 +36,7 @@ impl<'db> Generator<'db> {
             util::cast(target.cty(this), this.value(state, casted))
         });
 
-        let casted_ty = state.body.value(casted).ty;
+        let casted_ty = state.ty_of(casted);
 
         if casted_ty.is_any_int() && target.is_any_int() {
             let (value_bits, target_bits) = (

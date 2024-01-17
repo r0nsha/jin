@@ -54,6 +54,14 @@ impl<'db> GenState<'db> {
     pub fn new(name: Ustr, body: &'db Body) -> Self {
         Self { name, body, local_names: LocalNames::new(), param_names: vec![] }
     }
+
+    pub fn ty_of(&self, value: ValueId) -> Ty {
+        self.body.value(value).ty
+    }
+
+    pub fn value_is_slice(&self, value: ValueId) -> bool {
+        matches!(self.ty_of(value).auto_deref().kind(), TyKind::Slice(..))
+    }
 }
 
 impl<'db> Generator<'db> {
@@ -525,23 +533,25 @@ impl<'db> Generator<'db> {
             Inst::IncRef { value } => {
                 let value_doc = self.value(state, *value);
 
-                stmt(|| match state.body.value(*value).ty.auto_deref().kind() {
-                    TyKind::Slice(_) => {
+                stmt(|| {
+                    if state.value_is_slice(*value) {
                         util::call(D::text("jinrt_slice_incref"), [value_doc])
+                    } else {
+                        util::field(value_doc, REFCNT_FIELD, true)
+                            .append(" += 1")
                     }
-                    _ => util::field(value_doc, REFCNT_FIELD, true)
-                        .append(" += 1"),
                 })
             }
             Inst::DecRef { value } => {
                 let value_doc = self.value(state, *value);
 
-                stmt(|| match state.body.value(*value).ty.auto_deref().kind() {
-                    TyKind::Slice(_) => {
+                stmt(|| {
+                    if state.value_is_slice(*value) {
                         util::call(D::text("jinrt_slice_decref"), [value_doc])
+                    } else {
+                        util::field(value_doc, REFCNT_FIELD, true)
+                            .append(" -= 1")
                     }
-                    _ => util::field(value_doc, REFCNT_FIELD, true)
-                        .append(" -= 1"),
                 })
             }
             Inst::Br { target } => goto_stmt(state.body.block(*target)),
@@ -564,8 +574,7 @@ impl<'db> Generator<'db> {
             Inst::Call { value, callee, args, span } => {
                 let mut arg_docs = vec![];
 
-                let traced =
-                    !state.body.value(*callee).ty.as_fn().unwrap().is_extern;
+                let traced = !state.ty_of(*callee).as_fn().unwrap().is_extern;
 
                 if traced {
                     arg_docs.push(D::text("backtrace"));
@@ -591,12 +600,12 @@ impl<'db> Generator<'db> {
                     lhs: *lhs,
                     rhs: *rhs,
                     op: *op,
-                    ty: state.body.value(*lhs).ty,
+                    ty: state.ty_of(*lhs),
                     span: *span,
                 },
             ),
             Inst::Unary { value, inner, op } => {
-                let inner_ty = state.body.value(*inner).ty;
+                let inner_ty = state.ty_of(*inner);
                 let op_str = match op {
                     UnOp::Neg => op.as_str(),
                     UnOp::Not => {
@@ -655,17 +664,9 @@ impl<'db> Generator<'db> {
         id: ValueId,
         f: impl FnOnce(&mut Self) -> D<'db>,
     ) -> D<'db> {
-        let value = state.body.value(id);
         let assigned = self.value(state, id);
         let doc = f(self);
-        VariableDoc::assign(self, value.ty, assigned, doc)
-    }
-
-    #[allow(unused)]
-    pub fn value_decl(&mut self, state: &GenState<'db>, id: ValueId) -> D<'db> {
-        let value = state.body.value(id);
-        let doc = self.value(state, value.id);
-        VariableDoc::decl(self, value.ty, doc)
+        VariableDoc::assign(self, state.ty_of(id), assigned, doc)
     }
 
     pub fn value(&mut self, state: &GenState<'db>, id: ValueId) -> D<'db> {
