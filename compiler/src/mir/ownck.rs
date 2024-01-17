@@ -35,6 +35,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return Ok(());
         }
 
+        todo!("check `self.cannot_move`");
         self.check_if_moved(value, moved_to)?;
 
         // Mark the value and its fields as moved.

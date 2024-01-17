@@ -719,8 +719,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let elem_ty =
                     self.ty_of(slice).auto_deref().slice_elem().unwrap();
 
-                // TODO: need to somehow move this check to where the move itself occurs...
+                let value = self.push_inst_with_register(elem_ty, |value| {
+                    Inst::SliceIndex { value, slice, index }
+                });
+
                 if elem_ty.is_move(self.cx.db) {
+                    todo!("add `self.cannot_move: FxHashMap<ValueId, CannotMove>`");
+                    todo!("insert to `self.cannot_move`");
+                    // TODO: self.cannot_move.insert(value, CannotMove::SliceIndex);
                     // self.cx.diagnostics.push(
                     //     Diagnostic::error()
                     //         .with_message(format!(
@@ -734,9 +740,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     // );
                 }
 
-                self.push_inst_with_register(elem_ty, |value| {
-                    Inst::SliceIndex { value, slice, index }
-                })
+                value
             }
             hir::ExprKind::Name(name) => {
                 self.lower_name(name.id, &name.instantiation)
