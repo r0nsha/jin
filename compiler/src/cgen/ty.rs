@@ -3,7 +3,7 @@ use core::fmt;
 use pretty::RcDoc as D;
 
 use crate::{
-    cgen::generate::Generator,
+    cgen::{generate::Generator, util},
     db::{AdtKind, StructKind},
     sym,
     ty::{FloatTy, FnTy, IntTy, Ty, TyKind, UintTy},
@@ -130,10 +130,7 @@ fn fn_ty<'a>(
     name: Option<D<'a>>,
 ) -> D<'a> {
     let ret = fn_ty.ret.cty(cx);
-    let name_doc = D::text("(")
-        .append(D::text("*"))
-        .append(name.unwrap_or(D::nil()))
-        .append(D::text(")"));
+    let name_doc = util::group(D::text("*").append(name.unwrap_or(D::nil())));
 
     let mut param_docs = vec![];
 
@@ -147,16 +144,13 @@ fn fn_ty<'a>(
         .nest(1)
         .group();
 
-    ret.append(D::space()).append(name_doc).append(
-        D::text("(")
-            .append(params)
-            .append(if fn_ty.is_c_variadic {
-                D::text(", ...")
-            } else {
-                D::nil()
-            })
-            .append(D::text(")")),
-    )
+    ret.append(D::space()).append(name_doc).append(util::group(
+        params.append(if fn_ty.is_c_variadic {
+            D::text(", ...")
+        } else {
+            D::nil()
+        }),
+    ))
 }
 
 fn ty_and_name<'a>(

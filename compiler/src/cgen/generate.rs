@@ -411,21 +411,19 @@ impl<'db> Generator<'db> {
             param.ty.cdecl(self, D::text(name))
         }));
 
-        let sig_doc =
-            fn_ty.ret.cdecl(self, D::text(sig.mangled_name.as_str())).append(
-                D::text("(")
-                    .append(
-                        D::intersperse(params, D::text(",").append(D::space()))
-                            .nest(2)
-                            .group(),
-                    )
+        let sig_doc = fn_ty
+            .ret
+            .cdecl(self, D::text(sig.mangled_name.as_str()))
+            .append(util::group(
+                D::intersperse(params, D::text(",").append(D::space()))
+                    .nest(2)
+                    .group()
                     .append(if sig.is_c_variadic {
                         D::text(", ...")
                     } else {
                         D::nil()
-                    })
-                    .append(D::text(")")),
-            );
+                    }),
+            ));
 
         let mut attr_docs = vec![];
 

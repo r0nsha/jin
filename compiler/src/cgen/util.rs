@@ -379,9 +379,7 @@ pub fn switch_stmt<'a>(
 ) -> D<'a> {
     D::text("switch")
         .append(D::space())
-        .append(D::text("("))
-        .append(cond)
-        .append(D::text(")"))
+        .append(util::group(cond))
         .append(D::space())
         .append(block(|| {
             D::intersperse(

@@ -198,90 +198,94 @@ impl<'db> Generator<'db> {
 
         match (data.op, data.ty.kind()) {
             // (rhs > 0 && lhs > max - rhs) || (rhs < 0 && lhs < min - rhs)
-            (BinOp::Add, TyKind::Int(_)) => D::text("(")
-                .append(rhs.clone())
-                .append(D::text(" > 0 && "))
-                .append(lhs.clone())
-                .append(D::text(" > "))
-                .append(max)
-                .append(D::text(" - "))
-                .append(rhs.clone())
-                .append(D::text(") || ("))
-                .append(rhs.clone())
-                .append(D::text(" < 0 && "))
-                .append(lhs.clone())
-                .append(D::text(" < "))
-                .append(min)
-                .append(D::text(" - "))
-                .append(rhs.clone())
-                .append(D::text(")")),
+            (BinOp::Add, TyKind::Int(_)) => util::group(
+                rhs.clone()
+                    .append(D::text(" > 0 && "))
+                    .append(lhs.clone())
+                    .append(D::text(" > "))
+                    .append(max)
+                    .append(D::text(" - "))
+                    .append(rhs.clone()),
+            )
+            .append(D::text(" || "))
+            .append(util::group(
+                rhs.clone()
+                    .append(D::text(" < 0 && "))
+                    .append(lhs.clone())
+                    .append(D::text(" < "))
+                    .append(min)
+                    .append(D::text(" - "))
+                    .append(rhs.clone()),
+            )),
 
             // (rhs < 0 && lhs > max + rhs) || (rhs > 0 && lhs < min + rhs)
-            (BinOp::Sub, TyKind::Int(_)) => D::text("(")
-                .append(rhs.clone())
-                .append(D::text(" < 0 && "))
-                .append(lhs.clone())
-                .append(D::text(" > "))
-                .append(max)
-                .append(D::text(" + "))
-                .append(rhs.clone())
-                .append(D::text(") || ("))
-                .append(rhs.clone())
-                .append(D::text(" > 0 && "))
-                .append(lhs.clone())
-                .append(D::text(" < "))
-                .append(min)
-                .append(D::text(" + "))
-                .append(rhs.clone())
-                .append(D::text(")")),
+            (BinOp::Sub, TyKind::Int(_)) => util::group(
+                rhs.clone()
+                    .append(D::text(" < 0 && "))
+                    .append(lhs.clone())
+                    .append(D::text(" > "))
+                    .append(max)
+                    .append(D::text(" + "))
+                    .append(rhs.clone()),
+            )
+            .append(D::text(" || "))
+            .append(util::group(
+                rhs.clone()
+                    .append(D::text(" > 0 && "))
+                    .append(lhs.clone())
+                    .append(D::text(" < "))
+                    .append(min)
+                    .append(D::text(" + "))
+                    .append(rhs.clone()),
+            )),
 
             // (rhs != 0 && lhs > max / rhs) || (rhs != 0 && lhs < min / rhs)
-            (BinOp::Mul, TyKind::Int(_)) => D::text("(")
-                .append(rhs.clone())
-                .append(D::text(" != 0 && "))
-                .append(lhs.clone())
-                .append(D::text(" > "))
-                .append(max)
-                .append(D::text(" / "))
-                .append(rhs.clone())
-                .append(D::text(") || ("))
-                .append(rhs.clone())
-                .append(D::text(" != 0 && "))
-                .append(lhs.clone())
-                .append(D::text(" < "))
-                .append(min)
-                .append(D::text(" / "))
-                .append(rhs.clone())
-                .append(D::text(")")),
+            (BinOp::Mul, TyKind::Int(_)) => util::group(
+                rhs.clone()
+                    .append(D::text(" != 0 && "))
+                    .append(lhs.clone())
+                    .append(D::text(" > "))
+                    .append(max)
+                    .append(D::text(" / "))
+                    .append(rhs.clone()),
+            )
+            .append(D::text(" || "))
+            .append(util::group(
+                rhs.clone()
+                    .append(D::text(" != 0 && "))
+                    .append(lhs.clone())
+                    .append(D::text(" < "))
+                    .append(min)
+                    .append(D::text(" / "))
+                    .append(rhs.clone()),
+            )),
 
             // (rhs > 0 && lhs > max - rhs)
-            (BinOp::Add, TyKind::Uint(_)) => D::text("(")
-                .append(rhs.clone())
-                .append(D::text(" > 0 && "))
-                .append(lhs.clone())
-                .append(D::text(" > "))
-                .append(max)
-                .append(D::text(" - "))
-                .append(rhs.clone())
-                .append(D::text(")")),
+            (BinOp::Add, TyKind::Uint(_)) => util::group(
+                rhs.clone()
+                    .append(D::text(" > 0 && "))
+                    .append(lhs.clone())
+                    .append(D::text(" > "))
+                    .append(max)
+                    .append(D::text(" - "))
+                    .append(rhs.clone()),
+            ),
 
             // (rhs > lhs)
-            (BinOp::Sub, TyKind::Uint(_)) => D::text("(")
-                .append(rhs.clone())
-                .append(D::text(" > "))
-                .append(lhs.clone())
-                .append(D::text(")")),
+            (BinOp::Sub, TyKind::Uint(_)) => util::group(
+                rhs.clone().append(D::text(" > ")).append(lhs.clone()),
+            ),
 
             // (rhs != 0 && lhs > max / rhs)
-            (BinOp::Mul, TyKind::Uint(_)) => D::text("(")
-                .append(rhs.clone())
-                .append(D::text(" != 0 && "))
-                .append(lhs.clone())
-                .append(D::text(" > "))
-                .append(max)
-                .append(D::text(" / "))
-                .append(rhs.clone())
-                .append(D::text(")")),
+            (BinOp::Mul, TyKind::Uint(_)) => util::group(
+                rhs.clone()
+                    .append(D::text(" != 0 && "))
+                    .append(lhs.clone())
+                    .append(D::text(" > "))
+                    .append(max)
+                    .append(D::text(" / "))
+                    .append(rhs.clone()),
+            ),
 
             (op, ty) => unreachable!("{op} {ty:?}"),
         }
