@@ -110,8 +110,9 @@ export fn jinrt_slice_alloc(elem_size: usize, cap: usize) anyslice {
     }
 
     const data = alloc_raw(anyopaque, elem_size * cap);
-    const array = alloc_raw(anyarray, elem_size * cap);
+    const array = alloc_raw(anyarray, @sizeOf(anyarray));
     array.data = data;
+    array.cap = cap;
     array.refcnt = 0;
 
     return anyslice.init(array);
