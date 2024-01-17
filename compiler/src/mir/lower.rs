@@ -17,6 +17,7 @@ use crate::{
         StaticGlobal, UnOp, ValueId, ValueKind,
     },
     span::Spanned,
+    sym,
     ty::{
         coerce::{CoercionKind, Coercions},
         fold::TyFolder,
@@ -745,6 +746,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.ins(self.current_block)
                         .slice_store(slice, index, value);
                     self.try_move(value, expr.span);
+                }
+
+                if !lit.exprs.is_empty() {
+                    // slice.len = lit.exprs.len()
+                    let value = self.const_int(uint, lit.exprs.len() as i128);
+                    let len_field = self.create_untracked_value(
+                        uint,
+                        ValueKind::Field(slice, ustr(sym::LEN)),
+                    );
+                    self.ins(self.current_block).store(value, len_field);
                 }
 
                 slice
