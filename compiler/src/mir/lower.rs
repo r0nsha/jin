@@ -231,7 +231,7 @@ impl<'db> Lower<'db> {
             body.create_value(uint, ValueKind::Field(this, ustr("tag")));
         let tag_value = body.create_value(
             uint,
-            ValueKind::Const(Const::from(variant.index as i128)),
+            ValueKind::Const(Const::Int(variant.index as i128)),
         );
         body.ins(start_block).store(tag_value, tag_field);
 
@@ -731,17 +731,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 todo!()
             }
             hir::ExprKind::StrLit(lit) => {
-                self.lower_const(&Const::from(*lit), expr.ty)
+                self.lower_const(&Const::Str(*lit), expr.ty)
             }
             #[allow(clippy::cast_possible_wrap)]
             hir::ExprKind::IntLit(lit) => {
-                self.lower_const(&Const::from(*lit as i128), expr.ty)
+                self.lower_const(&Const::Int(*lit as i128), expr.ty)
             }
             hir::ExprKind::FloatLit(lit) => {
-                self.lower_const(&Const::from(*lit), expr.ty)
+                self.lower_const(&Const::Float(*lit), expr.ty)
             }
             hir::ExprKind::BoolLit(lit) => {
-                self.lower_const(&Const::from(*lit), expr.ty)
+                self.lower_const(&Const::Bool(*lit), expr.ty)
             }
         }
     }
@@ -1232,10 +1232,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 Inst::StrLit { value, lit: *lit }
             }),
             Const::Int(value) => {
-                self.create_value(ty, ValueKind::Const(Const::from(*value)))
+                self.create_value(ty, ValueKind::Const(Const::Int(*value)))
             }
             Const::Float(value) => {
-                self.create_value(ty, ValueKind::Const(Const::from(*value)))
+                self.create_value(ty, ValueKind::Const(Const::Float(*value)))
             }
             Const::Bool(value) => self.const_bool(*value),
             Const::Unit => self.const_unit(),

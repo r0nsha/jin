@@ -152,6 +152,7 @@ impl<'db, 'cx> MonomorphizeBody<'db, 'cx> {
             }
             JobTarget::Global(id) => {
                 let global = mir.globals.get(&id).expect("global to exist");
+
                 if let GlobalKind::Static(StaticGlobal { body, .. }) =
                     &global.kind
                 {

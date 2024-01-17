@@ -14,8 +14,6 @@ use data_structures::{
     index_vec::{IndexSlice, IndexVec, IndexVecExt},
     new_key_type,
 };
-use derive_more::From;
-use enum_as_inner::EnumAsInner;
 use indexmap::{indexset, IndexSet};
 pub use lower::lower;
 pub use monomorphize::monomorphize;
@@ -104,11 +102,22 @@ pub struct Global {
     pub kind: GlobalKind,
 }
 
-#[derive(Debug, Clone, EnumAsInner)]
+#[derive(Debug, Clone)]
 pub enum GlobalKind {
     Const(Const),
     Static(StaticGlobal),
     Extern,
+}
+
+impl GlobalKind {
+    #[must_use]
+    pub fn as_static_mut(&mut self) -> Option<&mut StaticGlobal> {
+        if let Self::Static(v) = self {
+            Some(v)
+        } else {
+            None
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -496,7 +505,7 @@ impl ValueKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, From)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Const {
     Str(Ustr),
     Int(i128),
