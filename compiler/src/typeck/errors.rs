@@ -2,7 +2,7 @@ use crate::{
     ast::Ast,
     db::{AdtId, Db, DefId, ModuleId},
     diagnostics::{Diagnostic, Label},
-    middle::BinOp,
+    middle::{BinOp, UnOp},
     span::{Span, Spanned},
     ty::Ty,
     typeck::{
@@ -259,6 +259,18 @@ pub fn adt_ty_arg_mismatch(
 pub fn invalid_bin_op(db: &Db, op: BinOp, ty: Ty, span: Span) -> Diagnostic {
     Diagnostic::error()
         .with_message(format!("cannot use `{}` on `{}`", op, ty.display(db)))
+        .with_label(
+            Label::primary(span).with_message(format!("invalid use of `{op}`")),
+        )
+}
+
+pub fn invalid_un_op(db: &Db, op: UnOp, ty: Ty, span: Span) -> Diagnostic {
+    Diagnostic::error()
+        .with_message(format!(
+            "cannot use `{}` on type `{}`",
+            op,
+            ty.display(db)
+        ))
         .with_label(
             Label::primary(span).with_message(format!("invalid use of `{op}`")),
         )

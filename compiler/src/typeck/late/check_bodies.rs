@@ -4,6 +4,7 @@ use crate::{
     hir::{Expr, ExprKind, FnKind, Hir},
     middle::UnOp,
     ty::{Ty, TyKind},
+    typeck::errors,
 };
 
 pub fn check_bodies(db: &mut Db, hir: &Hir) {
@@ -52,19 +53,9 @@ impl CheckBodies<'_> {
             }
             ExprKind::Unary(un) => {
                 if un.op == UnOp::Neg && un.expr.ty.is_uint() {
-                    self.db.diagnostics.emit(
-                        Diagnostic::error()
-                            .with_message(format!(
-                                "cannot use `{}` on type `{}`",
-                                un.op,
-                                un.expr.ty.display(self.db)
-                            ))
-                            .with_label(
-                                Label::primary(expr.span).with_message(
-                                    format!("invalid use of `{}`", un.op),
-                                ),
-                            ),
-                    );
+                    self.db.diagnostics.emit(errors::invalid_un_op(
+                        self.db, un.op, un.expr.ty, expr.span,
+                    ));
                 }
             }
             _ => (),

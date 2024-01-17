@@ -1420,17 +1420,7 @@ impl<'db> Typeck<'db> {
                                 *span,
                             ))
                         } else {
-                            Err(Diagnostic::error()
-                                .with_message(format!(
-                                    "cannot use `{}` on type `{}`",
-                                    op,
-                                    ty.display(self.db)
-                                ))
-                                .with_label(
-                                    Label::primary(*span).with_message(
-                                        format!("invalid use of `{op}`"),
-                                    ),
-                                ))
+                            Err(errors::invalid_un_op(self.db, *op, ty, *span))
                         }
                     }
                     UnOp::Not => {
@@ -1444,17 +1434,7 @@ impl<'db> Typeck<'db> {
                                 *span,
                             ))
                         } else {
-                            Err(Diagnostic::error()
-                                .with_message(format!(
-                                    "cannot use `{}` on type `{}`",
-                                    op,
-                                    ty.display(self.db)
-                                ))
-                                .with_label(
-                                    Label::primary(*span).with_message(
-                                        format!("invalid use of `{op}`"),
-                                    ),
-                                ))
+                            Err(errors::invalid_un_op(self.db, *op, ty, *span))
                         }
                     }
                     UnOp::Ref(mutability) => {
