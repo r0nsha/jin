@@ -104,7 +104,21 @@ impl<'db> Generator<'db> {
         index: ValueId,
         value: ValueId,
     ) -> D<'db> {
-        // ((elem_ty*)(slice.array->data))[index] = value
+        stmt(|| {
+            util::assign(
+                self.slice_index(state, slice, index),
+                self.value(state, value),
+            )
+        })
+    }
+
+    pub fn slice_index(
+        &mut self,
+        state: &GenState<'db>,
+        slice: ValueId,
+        index: ValueId,
+    ) -> D<'db> {
+        // ((elem_ty*)(slice.array->data))[index]
         let array_field = util::field(self.value(state, slice), "array", false);
         let data_field = util::field(array_field, "data", true);
 
@@ -116,12 +130,12 @@ impl<'db> Generator<'db> {
             ))
         };
 
-        let indexed_data = casted_data
-            .append(D::text("["))
-            .append(self.value(state, index))
-            .append(D::text("]"));
-
-        stmt(|| util::assign(indexed_data, self.value(state, value)))
+        util::group(
+            casted_data
+                .append(D::text("["))
+                .append(self.value(state, index))
+                .append(D::text("]")),
+        )
     }
 
     pub fn alloc_value(
