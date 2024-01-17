@@ -337,7 +337,7 @@ pub struct UnionVariantField {
 #[derive(Debug, Clone)]
 pub struct Import {
     pub attrs: Attrs,
-    pub module_path: Utf8PathBuf,
+    pub path: Utf8PathBuf,
     pub root: ImportName,
     pub span: Span,
 }
