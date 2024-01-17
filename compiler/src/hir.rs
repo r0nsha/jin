@@ -122,6 +122,10 @@ impl Expr {
                     arg.expr.walk_(f);
                 }
             }
+            ExprKind::Index(index) => {
+                index.expr.walk_(f);
+                index.index.walk_(f);
+            },
             ExprKind::Unary(Unary { expr, .. })
             | ExprKind::Cast(Cast { expr, .. })
             | ExprKind::Field(Field { expr, .. }) => expr.walk_(f),
@@ -153,6 +157,7 @@ pub enum ExprKind {
     Binary(Binary),
     Cast(Cast),
     Field(Field),
+    Index(Index),
     Name(Name),
     Variant(Variant),
     SliceLit(SliceLit),
@@ -339,6 +344,12 @@ pub struct Cast {
 pub struct Field {
     pub expr: Box<Expr>,
     pub field: Word,
+}
+
+#[derive(Debug, Clone)]
+pub struct Index {
+    pub expr: Box<Expr>,
+    pub index: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]

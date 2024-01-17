@@ -709,6 +709,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let value = self.lower_expr(&access.expr);
                 self.field_or_create(value, name, expr.ty)
             }
+            hir::ExprKind::Index(idx) => {
+                let slice = self.lower_expr(&idx.expr);
+                self.try_use(slice, idx.expr.span);
+
+                let index = self.lower_expr(&idx.index);
+                self.try_move(index, idx.index.span);
+
+                let elem_ty = self.ty_of(slice).slice_elem().unwrap();
+                self.push_inst_with_register(elem_ty, |value| {
+                    Inst::SliceIndex { value, slice, index }
+                })
+            }
             hir::ExprKind::Name(name) => {
                 self.lower_name(name.id, &name.instantiation)
             }
@@ -742,10 +754,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 for (index, expr) in lit.exprs.iter().enumerate() {
                     let value = self.lower_expr(expr);
-                    let index = self.const_int(uint, index as _);
-                    self.ins(self.current_block)
-                        .slice_store(slice, index, value);
                     self.try_move(value, expr.span);
+
+                    let index = self.const_int(uint, index as _);
+                    let elem_ty = expr.ty.slice_elem().unwrap();
+                    let target = self
+                        .push_inst_with_register(elem_ty, |value| {
+                            Inst::SliceIndex { value, slice, index }
+                        });
+                    self.ins(self.current_block).store(value, target);
                 }
 
                 if !lit.exprs.is_empty() {

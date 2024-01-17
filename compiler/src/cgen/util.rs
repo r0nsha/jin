@@ -103,21 +103,6 @@ impl<'db> Generator<'db> {
         util::field(self.value(state, value), REFCNT_FIELD, true)
     }
 
-    pub fn slice_store(
-        &mut self,
-        state: &GenState<'db>,
-        slice: ValueId,
-        index: ValueId,
-        value: ValueId,
-    ) -> D<'db> {
-        stmt(|| {
-            util::assign(
-                self.slice_index(state, slice, index),
-                self.value(state, value),
-            )
-        })
-    }
-
     pub fn slice_index(
         &mut self,
         state: &GenState<'db>,

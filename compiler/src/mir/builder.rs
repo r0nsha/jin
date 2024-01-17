@@ -79,13 +79,13 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
-    pub fn slice_store(
+    pub fn slice_index(
         &mut self,
+        value: ValueId,
         slice: ValueId,
         index: ValueId,
-        value: ValueId,
     ) -> &mut Self {
-        self.inst(Inst::SliceStore { slice, index, value });
+        self.inst(Inst::SliceIndex { value, slice, index });
         self
     }
 

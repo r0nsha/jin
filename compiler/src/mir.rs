@@ -446,7 +446,7 @@ pub enum Inst {
     Store { value: ValueId, target: ValueId },
     Alloc { value: ValueId },
     SliceAlloc { value: ValueId, cap: ValueId },
-    SliceStore { slice: ValueId, index: ValueId, value: ValueId },
+    SliceIndex { value: ValueId, slice: ValueId, index: ValueId },
     Destroy { value: ValueId, destroy_glue: bool, span: Span },
     Free { value: ValueId, traced: bool, span: Span },
     IncRef { value: ValueId },

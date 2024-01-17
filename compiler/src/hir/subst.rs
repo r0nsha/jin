@@ -53,6 +53,10 @@ impl<S: SubstTy> Subst<S> for Expr {
             ExprKind::Field(access) => {
                 access.expr.subst(s);
             }
+            ExprKind::Index(index) => {
+                index.expr.subst(s);
+                index.index.subst(s);
+            }
             ExprKind::Name(Name { instantiation, .. })
             | ExprKind::Variant(Variant { instantiation, .. }) => {
                 subst::subst_instantation(s, instantiation, self.span);

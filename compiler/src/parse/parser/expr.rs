@@ -422,23 +422,41 @@ impl<'a> Parser<'a> {
                 }
                 TokenKind::Dot => {
                     self.next();
-                    let name = self.eat_ident()?.word();
 
-                    let ty_args = self.parse_optional_ty_args()?;
-
-                    if ty_args.is_some() || self.peek_is(TokenKind::OpenParen) {
-                        let (args, args_span) = self.parse_call_args()?;
-                        let span = expr.span().merge(args_span);
-                        Expr::MethodCall {
+                    if self.is(TokenKind::OpenBracket) {
+                        let index = self.parse_expr()?;
+                        self.eat(TokenKind::CloseBracket)?;
+                        let span = expr.span().merge(self.last_span());
+                        Expr::Index {
                             expr: Box::new(expr),
-                            method: name,
-                            targs: ty_args,
-                            args,
+                            index: Box::new(index),
                             span,
                         }
                     } else {
-                        let span = expr.span().merge(name.span());
-                        Expr::Field { expr: Box::new(expr), field: name, span }
+                        let name = self.eat_ident()?.word();
+
+                        let ty_args = self.parse_optional_ty_args()?;
+
+                        if ty_args.is_some()
+                            || self.peek_is(TokenKind::OpenParen)
+                        {
+                            let (args, args_span) = self.parse_call_args()?;
+                            let span = expr.span().merge(args_span);
+                            Expr::MethodCall {
+                                expr: Box::new(expr),
+                                method: name,
+                                targs: ty_args,
+                                args,
+                                span,
+                            }
+                        } else {
+                            let span = expr.span().merge(name.span());
+                            Expr::Field {
+                                expr: Box::new(expr),
+                                field: name,
+                                span,
+                            }
+                        }
                     }
                 }
                 TokenKind::Eq => {

@@ -163,6 +163,12 @@ impl PrettyPrint for Expr {
                 expr.pretty_print(cx);
                 cx.builder.end_child();
             }
+            Self::Index { expr, index, .. } => {
+                cx.builder.begin_child("index".to_string());
+                expr.pretty_print(cx);
+                index.pretty_print(cx);
+                cx.builder.end_child();
+            }
             Self::Name { word, .. } => {
                 cx.builder.add_empty_child(format!("`{word}`"));
             }

@@ -1477,6 +1477,27 @@ impl<'db> Typeck<'db> {
                 let expr = self.check_expr(env, expr, expected_ty)?;
                 self.check_field(env, expr, *field, *span)
             }
+            ast::Expr::Index { expr, index, span } => {
+                let expected_slice_ty =
+                    Ty::new(TyKind::Slice(self.fresh_ty_var()));
+
+                let expr =
+                    self.check_expr(env, expr, Some(expected_slice_ty))?;
+                self.eq_obvious_expr(expected_slice_ty, &expr)?;
+
+                let uint = self.db.types.uint;
+                let index = self.check_expr(env, index, Some(uint))?;
+                self.eq_obvious_expr(uint, &index)?;
+
+                Ok(self.expr(
+                    hir::ExprKind::Index(hir::Index {
+                        expr: Box::new(expr),
+                        index: Box::new(index),
+                    }),
+                    expected_slice_ty.slice_elem().unwrap(),
+                    *span,
+                ))
+            }
             ast::Expr::Name { word, targs, span } => {
                 let id =
                     self.lookup(env, env.module_id(), &Query::Name(*word))?;

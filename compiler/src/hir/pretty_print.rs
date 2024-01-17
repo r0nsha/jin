@@ -217,6 +217,12 @@ impl PrettyCx<'_> {
                 self.pp_expr(&access.expr);
                 self.builder.end_child();
             }
+            ExprKind::Index(index) => {
+                self.builder.begin_child("index".to_string());
+                self.pp_expr(&index.expr);
+                self.pp_expr(&index.index);
+                self.builder.end_child();
+            }
             ExprKind::Name(name) => {
                 self.builder.add_empty_child(format!(
                     "`{}` (type: {})",
