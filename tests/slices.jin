@@ -3,4 +3,5 @@ fn extern printf(fmt: *u8, ..) i32
 fn main() unit = {
 	let a: [int] = []
 	let b: [int] = [:3]
+	let b = [1, 2, 3]
 }

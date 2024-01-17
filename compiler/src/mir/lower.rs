@@ -731,7 +731,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let cap = if let Some(cap) = &lit.cap {
                     self.lower_expr(cap)
                 } else {
-                    self.const_int_zero(self.cx.db.types.uint)
+                    self.const_int(
+                        self.cx.db.types.uint,
+                        lit.exprs.len() as i128,
+                    )
                 };
 
                 let slice = self.push_inst_with_register(expr.ty, |value| {
@@ -1269,10 +1272,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub fn const_int(&mut self, ty: Ty, value: i128) -> ValueId {
         self.create_value(ty, ValueKind::Const(Const::Int(value)))
-    }
-
-    pub fn const_int_zero(&mut self, ty: Ty) -> ValueId {
-        self.const_int(ty, 0)
     }
 
     pub fn push_inst_with_register(
