@@ -728,22 +728,22 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 value
             }
             hir::ExprKind::SliceLit(lit) => {
+                let uint = self.cx.db.types.uint;
                 let cap = if let Some(cap) = &lit.cap {
                     self.lower_expr(cap)
                 } else {
-                    self.const_int(
-                        self.cx.db.types.uint,
-                        lit.exprs.len() as i128,
-                    )
+                    self.const_int(uint, lit.exprs.len() as _)
                 };
 
                 let slice = self.push_inst_with_register(expr.ty, |value| {
-                    Inst::AllocSlice { value, cap }
+                    Inst::SliceAlloc { value, cap }
                 });
 
-                for expr in &lit.exprs {
+                for (index, expr) in lit.exprs.iter().enumerate() {
                     let value = self.lower_expr(expr);
-                    // TODO: set slice index to value
+                    let index = self.const_int(uint, index as _);
+                    self.ins(self.current_block)
+                        .slice_store(slice, index, value);
                     self.try_move(value, expr.span);
                 }
 

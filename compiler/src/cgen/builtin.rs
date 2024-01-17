@@ -48,11 +48,12 @@ impl<'db> Generator<'db> {
                 let casted_doc = self.value(state, casted);
                 let (min, max) = (target.min(), target.max());
 
-                let cond = D::text("(")
-                    .append(casted_doc.clone())
-                    .append(format!(" < {min}) || ("))
-                    .append(casted_doc)
-                    .append(format!(" > {max})"));
+                let cond =
+                    util::group(casted_doc.clone().append(format!(" < {min}")))
+                        .append(D::text(" || "))
+                        .append(util::group(
+                            casted_doc.append(format!(" > {max}")),
+                        ));
 
                 return D::intersperse(
                     [

@@ -13,7 +13,7 @@ use crate::{
     mir::{Block, ValueId, ValueKind},
     span::Span,
     sym,
-    ty::TyKind,
+    ty::{Ty, TyKind},
 };
 
 impl<'db> Generator<'db> {
@@ -97,6 +97,33 @@ impl<'db> Generator<'db> {
         util::field(self.value(state, value), REFCNT_FIELD, true)
     }
 
+    pub fn slice_store(
+        &mut self,
+        state: &GenState<'db>,
+        slice: ValueId,
+        index: ValueId,
+        value: ValueId,
+    ) -> D<'db> {
+        // ((elem_ty*)(slice.array->data))[index] = value
+        let array_field = util::field(self.value(state, slice), "array", false);
+        let data_field = util::field(array_field, "data", true);
+
+        let casted_data = {
+            let elem_ty = Self::slice_value_elem_ty(state, slice);
+            group(util::cast(
+                elem_ty.cty(self).append(D::text("*")),
+                data_field,
+            ))
+        };
+
+        let indexed_data = casted_data
+            .append(D::text("["))
+            .append(self.value(state, index))
+            .append(D::text("]"));
+
+        stmt(|| util::assign(indexed_data, self.value(state, value)))
+    }
+
     pub fn alloc_value(
         &mut self,
         state: &GenState<'db>,
@@ -123,7 +150,7 @@ impl<'db> Generator<'db> {
         value: ValueId,
         cap: ValueId,
     ) -> D<'db> {
-        let elem_ty = state.body.value(value).ty.slice_elem().unwrap();
+        let elem_ty = Self::slice_value_elem_ty(state, value);
 
         self.value_assign(state, value, |this| {
             call(
@@ -162,6 +189,10 @@ impl<'db> Generator<'db> {
         } else {
             free_call
         }
+    }
+
+    fn slice_value_elem_ty(state: &GenState<'db>, slice: ValueId) -> Ty {
+        state.body.value(slice).ty.slice_elem().unwrap()
     }
 
     pub fn with_stack_frame(
@@ -229,14 +260,9 @@ pub fn sizeof(ty: D<'_>) -> D<'_> {
 }
 
 pub fn call<'a>(callee: D<'a>, args: impl IntoIterator<Item = D<'a>>) -> D<'a> {
-    callee
-        .append(D::text("("))
-        .append(
-            D::intersperse(args, D::text(",").append(D::space()))
-                .nest(1)
-                .group(),
-        )
-        .append(D::text(")"))
+    callee.append(util::group(
+        D::intersperse(args, D::text(",").append(D::space())).nest(1).group(),
+    ))
 }
 
 pub fn cmp_strs<'a>(a: D<'a>, b: D<'a>) -> D<'a> {
@@ -300,7 +326,7 @@ pub fn goto_stmt(block: &Block) -> D<'_> {
 }
 
 pub fn cast<'a>(ty: D<'a>, value: D<'a>) -> D<'a> {
-    D::text("(").append(ty).append(D::text(")")).append(value)
+    util::group(ty).append(util::group(value))
 }
 
 pub fn if_stmt<'a>(
@@ -310,9 +336,7 @@ pub fn if_stmt<'a>(
 ) -> D<'a> {
     D::text("if")
         .append(D::space())
-        .append(D::text("("))
-        .append(cond)
-        .append(D::text(")"))
+        .append(util::group(cond))
         .append(D::space())
         .append(block(|| then))
         .append(otherwise.map_or(D::nil(), |o| {
@@ -390,6 +414,10 @@ pub fn soft_block_<'a>(f: impl FnOnce() -> D<'a>, nest: isize) -> D<'a> {
         .group()
         .append(D::softline())
         .append(D::text("}"))
+}
+
+pub fn group(d: D<'_>) -> D<'_> {
+    D::text("(").append(d).append(D::text(")"))
 }
 
 pub fn attr<'a>(name: &str) -> D<'a> {

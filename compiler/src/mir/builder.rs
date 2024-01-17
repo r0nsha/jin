@@ -79,6 +79,16 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
+    pub fn slice_store(
+        &mut self,
+        slice: ValueId,
+        index: ValueId,
+        value: ValueId,
+    ) -> &mut Self {
+        self.inst(Inst::SliceStore { slice, index, value });
+        self
+    }
+
     pub fn incref(&mut self, value: ValueId) -> &mut Self {
         self.inst(Inst::IncRef { value });
         self
@@ -100,7 +110,7 @@ impl<'a> InstBuilder<'a> {
     }
 
     pub fn alloc_slice(&mut self, value: ValueId, cap: ValueId) -> &mut Self {
-        self.inst(Inst::AllocSlice { value, cap });
+        self.inst(Inst::SliceAlloc { value, cap });
         self
     }
 

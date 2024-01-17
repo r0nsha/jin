@@ -504,8 +504,11 @@ impl<'db> Generator<'db> {
                 self.codegen_inst_stackalloc(state, *value, *init)
             }
             Inst::Alloc { value } => self.alloc_value(state, *value),
-            Inst::AllocSlice { value, cap } => {
+            Inst::SliceAlloc { value, cap } => {
                 self.alloc_slice(state, *value, *cap)
+            }
+            Inst::SliceStore { slice, index, value } => {
+                self.slice_store(state, *slice, *index, *value)
             }
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
