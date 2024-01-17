@@ -85,6 +85,10 @@ export fn jinrt_backtrace_new() *Backtrace {
     return backtrace;
 }
 
+export fn jinrt_backtrace_free(backtrace: *Backtrace) void {
+    std.c.free(backtrace);
+}
+
 export fn jinrt_backtrace_push(backtrace: *Backtrace, frame: StackFrame) void {
     backtrace.push(frame) catch unreachable;
 }

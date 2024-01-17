@@ -50,14 +50,24 @@ typedef struct jinrt_stackframe {
   const char *in;
 } jinrt_stackframe;
 
+// Initialization
 void jinrt_init();
+
+// Allocation
 void *jinrt_alloc(size_t size);
 void jinrt_free(jinrt_backtrace *backtrace, void *ptr, u8 *tyname,
                 jinrt_stackframe frame);
+
+// Panic
 void jinrt_panic_at(jinrt_backtrace *backtrace, u8 *msg,
                     jinrt_stackframe frame);
+
+// Utils
 bool jinrt_strcmp(str a, str b);
+
+// Stack traces
 jinrt_backtrace *jinrt_backtrace_new();
+void jinrt_backtrace_free(jinrt_backtrace *backtrace);
 void jinrt_backtrace_push(jinrt_backtrace *backtrace, jinrt_stackframe frame);
 void jinrt_backtrace_pop(jinrt_backtrace *backtrace);
 #endif

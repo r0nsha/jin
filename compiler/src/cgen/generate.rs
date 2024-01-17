@@ -122,6 +122,9 @@ impl<'db> Generator<'db> {
             util::call(D::text(main_fn_name.as_str()), [D::text("backtrace")])
         }));
 
+        // Free backtrace
+        statements.push(stmt(|| D::text("jinrt_backtrace_free(backtrace)")));
+
         // return 0
         statements.push(stmt(|| D::text("return 0")));
 

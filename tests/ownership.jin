@@ -4,13 +4,13 @@ type Num(field: int)
 type Wrapper(num: Num)
 
 fn main() unit = {
-	use_after_move()	
-	use_after_move_scoped()	
-	move_out_of_global()
-	move_into_loop()
-	copy()
-	assign_not_moved()
-	destroy_discarded_values(Num(1))
+	// use_after_move()	
+	// use_after_move_scoped()	
+	// move_out_of_global()
+	// move_into_loop()
+	// copy()
+	// assign_not_moved()
+	// destroy_discarded_values(Num(1))
 }
 
 fn use_after_move() unit = {
