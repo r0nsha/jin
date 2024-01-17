@@ -15,6 +15,13 @@ const anyarray = extern struct {
     data: *anyopaque,
     cap: usize,
     refcnt: usize,
+
+    const Self = @This();
+
+    fn init(elem_size: usize, cap: usize) Self {
+        const data = alloc_raw(anyopaque, elem_size * cap);
+        return Self{ .data = data, .cap = cap, .refcnt = 0 };
+    }
 };
 
 const anyslice = extern struct {
@@ -24,11 +31,18 @@ const anyslice = extern struct {
 
     const Self = @This();
 
-    fn empty() Self {
-        return anyslice{ .array = null, .start = 0, .len = 0 };
+    fn init(elem_size: usize, cap: usize) Self {
+        if (cap == 0) {
+            return anyslice.empty(null);
+        }
+
+        const array = alloc_raw(anyarray, @sizeOf(anyarray));
+        array.* = anyarray.init(elem_size, cap);
+
+        return Self.empty(array);
     }
 
-    fn init(array: *anyarray) Self {
+    fn empty(array: ?*anyarray) Self {
         return anyslice{ .array = array, .start = 0, .len = 0 };
     }
 };
@@ -105,17 +119,7 @@ export fn jinrt_free(
 }
 
 export fn jinrt_slice_alloc(elem_size: usize, cap: usize) anyslice {
-    if (cap == 0) {
-        return anyslice.empty();
-    }
-
-    const data = alloc_raw(anyopaque, elem_size * cap);
-    const array = alloc_raw(anyarray, @sizeOf(anyarray));
-    array.data = data;
-    array.cap = cap;
-    array.refcnt = 0;
-
-    return anyslice.init(array);
+    return anyslice.init(elem_size, cap);
 }
 
 export fn jinrt_slice_free(
