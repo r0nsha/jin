@@ -1,4 +1,5 @@
 const std = @import("std");
+const Allocator = std.mem.Allocator;
 const testing = std.testing;
 
 const unit = extern struct {};
@@ -13,6 +14,18 @@ const Backtrace = struct {
     frames: std.ArrayList(StackFrame),
 
     const Self = @This();
+
+    fn init(allocator: Allocator) !*Self {
+        const this = allocator.create(Self) catch unreachable;
+        this.* = Self{
+            .frames = std.ArrayList(StackFrame).init(allocator),
+        };
+        return this;
+    }
+
+    fn deinit(self: *Self) void {
+        self.frames.deinit();
+    }
 
     fn push(self: *Self, frame: StackFrame) !void {
         try self.frames.append(frame);
@@ -78,14 +91,11 @@ export fn jinrt_strcmp(a: str, b: str) bool {
 }
 
 export fn jinrt_backtrace_new() *Backtrace {
-    const backtrace = std.heap.c_allocator.create(Backtrace) catch unreachable;
-    backtrace.* = Backtrace{
-        .frames = std.ArrayList(StackFrame).init(std.heap.c_allocator),
-    };
-    return backtrace;
+    return Backtrace.init(std.heap.c_allocator) catch unreachable;
 }
 
 export fn jinrt_backtrace_free(backtrace: *Backtrace) void {
+    backtrace.deinit();
     std.c.free(backtrace);
 }
 
