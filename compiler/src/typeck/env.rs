@@ -727,23 +727,23 @@ impl<'db> Typeck<'db> {
         allow_builtin_tys: AllowBuiltinTys,
     ) -> Vec<LookupResult> {
         let lookup_modules = self.get_lookup_modules(in_module, is_ufcs);
-        let mut defs = vec![];
+        let mut results = vec![];
 
         for module_id in lookup_modules {
             let symbol = symbol.with_module_id(module_id);
 
             if let Some(id) = self.global_scope.get_def(in_module, &symbol) {
-                defs.push(LookupResult::Def(id));
+                results.push(LookupResult::Def(id));
             } else if should_lookup_fns == ShouldLookupFns::Yes {
                 if let Some(candidates) = self.global_scope.fns.get(&symbol) {
-                    defs.extend(
+                    results.extend(
                         candidates.iter().cloned().map(LookupResult::Fn),
                     );
                 }
             }
         }
 
-        if defs.is_empty() && allow_builtin_tys == AllowBuiltinTys::Yes {
+        if results.is_empty() && allow_builtin_tys == AllowBuiltinTys::Yes {
             return self
                 .builtin_tys
                 .get(symbol.name)
@@ -752,7 +752,7 @@ impl<'db> Typeck<'db> {
                 .collect();
         }
 
-        defs
+        results
     }
 
     fn get_lookup_modules(

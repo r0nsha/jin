@@ -925,15 +925,9 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         import: &ast::Import,
     ) -> TypeckResult<()> {
-        let module_info = self
-            .db
-            .find_module_by_path(&import.path)
-            .expect("import to use an existing module");
-
+        let module_info = self.db.find_module_by_path(&import.path).unwrap();
         let module_id = module_info.id;
-        self.check_import_root(env, module_id, &import.root)?;
-
-        Ok(())
+        self.check_import_root(env, module_id, &import.root)
     }
 
     fn check_import_root(
@@ -943,9 +937,7 @@ impl<'db> Typeck<'db> {
         root: &ast::ImportName,
     ) -> TypeckResult<()> {
         match &root.node {
-            Some(node) => {
-                self.check_import_node(env, module_id, node)?;
-            }
+            Some(node) => self.check_import_node(env, module_id, node),
             None => {
                 self.define_def(
                     env,
@@ -955,10 +947,10 @@ impl<'db> Typeck<'db> {
                     Mutability::Imm,
                     Ty::new(TyKind::Module(module_id)),
                 )?;
+
+                Ok(())
             }
         }
-
-        Ok(())
     }
 
     fn check_import_node(
