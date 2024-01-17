@@ -151,9 +151,12 @@ pub fn ty_mismatch(expected: &str, found: &str, span: Span) -> Diagnostic {
     )
 }
 
-pub fn expected_module(ty: impl core::fmt::Display, span: Span) -> Diagnostic {
+pub fn expected_module(
+    found: impl core::fmt::Display,
+    span: Span,
+) -> Diagnostic {
     Diagnostic::error()
-        .with_message(format!("expected a module, found type `{ty}`"))
+        .with_message(format!("expected a module, {found}"))
         .with_label(Label::primary(span).with_message("not a module"))
 }
 

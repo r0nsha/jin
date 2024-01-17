@@ -396,7 +396,7 @@ impl<'db> Typeck<'db> {
                 }
                 ty => {
                     return Err(errors::expected_module(
-                        ty.display(self.db),
+                        format!("found type `{}`", ty.display(self.db)),
                         part.span(),
                     ))
                 }

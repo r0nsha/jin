@@ -994,15 +994,10 @@ impl<'db> Typeck<'db> {
             }
             (Some(_), _) => {
                 // We tried to traverse a nested import, but there are multiple results
-                Err(Diagnostic::error()
-                    .with_message(format!(
-                        "expected a module, but `{}` isn't one",
-                        name.word
-                    ))
-                    .with_label(
-                        Label::primary(name.word.span())
-                            .with_message("not a module"),
-                    ))
+                Err(errors::expected_module(
+                    format!("but `{}` isn't one", name.word),
+                    name.word.span(),
+                ))
             }
             _ => {
                 for res in results {
