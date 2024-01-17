@@ -11,10 +11,14 @@ fn main() unit = {
 
 fn print(s: [int]) unit = {
 	printf("ptr: %p, cap: %d, len: %d\n".ptr, s.ptr, s.cap, s.len)
-
+	printf("[".ptr)
 	let mut i = 0
 	loop if i < s.len {
-		printf("yeet\n".ptr)
+		printf("%d".ptr, s.[i])
+		if i < s.len-1 {
+			printf(", ".ptr)
+		}
 		i += 1
 	}
+	printf("]\n".ptr)
 }
