@@ -925,7 +925,7 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         import: &ast::Import,
     ) -> TypeckResult<()> {
-        let module_info = self.db.find_module_by_path(&import.path).unwrap();
+        let module_info = self.db.find_module_by_path(&import.module_path).unwrap();
         let module_id = module_info.id;
         todo!()
         // self.check_import_root(env, module_id, &import.root)

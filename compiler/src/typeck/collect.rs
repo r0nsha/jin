@@ -32,9 +32,27 @@ impl<'db> Typeck<'db> {
             ast::Item::Type(tydef) => {
                 self.insert_item(module_id, tydef.word, item_id);
             }
-            ast::Item::Import(import) => {
-                self.collect_import_name(module_id, item_id, &import.root);
-            }
+            ast::Item::Import(import) => match &import.kind {
+                ast::ImportKind::Qualified(alias, _) => {
+                    self.collect_name_or_alias(
+                        module_id,
+                        item_id,
+                        *import.path.last().unwrap(),
+                        *alias,
+                    );
+                }
+                ast::ImportKind::Unqualified(imports) => {
+                    for import in imports {
+                        if let ast::UnqualifiedImport::Name(name, alias, _) =
+                            import
+                        {
+                            self.collect_name_or_alias(
+                                module_id, item_id, *name, *alias,
+                            );
+                        }
+                    }
+                }
+            },
             ast::Item::ExternLet(let_) => {
                 self.insert_item(module_id, let_.word, item_id);
             }
@@ -45,35 +63,15 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    fn collect_import_name(
+    fn collect_name_or_alias(
         &mut self,
         module_id: ModuleId,
         item_id: ast::ItemId,
-        name: &ast::ImportName,
+        name: Word,
+        alias: Option<Word>,
     ) {
-        match &name.node {
-            Some(node) => self.collect_import_node(module_id, item_id, node),
-            None => self.insert_item(module_id, name.name(), item_id),
-        }
-    }
-
-    fn collect_import_node(
-        &mut self,
-        module_id: ModuleId,
-        item_id: ast::ItemId,
-        node: &ast::ImportNode,
-    ) {
-        match node {
-            ast::ImportNode::Name(name) => {
-                self.collect_import_name(module_id, item_id, name);
-            }
-            ast::ImportNode::Group(nodes) => {
-                for node in nodes {
-                    self.collect_import_node(module_id, item_id, node);
-                }
-            }
-            ast::ImportNode::Glob(..) => (),
-        }
+        let name = alias.unwrap_or(name);
+        self.insert_item(module_id, name, item_id);
     }
 
     fn insert_item(

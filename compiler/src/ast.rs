@@ -337,23 +337,21 @@ pub struct UnionVariantField {
 #[derive(Debug, Clone)]
 pub struct Import {
     pub attrs: Attrs,
-    pub path: Utf8PathBuf,
-    pub root: ImportName,
+    pub module_path: Utf8PathBuf,
+    pub path: Vec<Word>,
+    pub kind: ImportKind,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub struct ImportName {
-    pub word: Word,
-    pub vis: Vis,
-    pub alias: Option<Word>,
-    pub node: Option<ImportNode>,
+pub enum ImportKind {
+    Qualified(Option<Word>, Vis),
+    Unqualified(Vec<UnqualifiedImport>),
 }
 
 #[derive(Debug, Clone)]
-pub enum ImportNode {
-    Name(Box<ImportName>),
-    Group(Vec<ImportNode>),
+pub enum UnqualifiedImport {
+    Name(Word, Option<Word>, Vis),
     Glob(IsUfcs, Span),
 }
 
@@ -411,18 +409,6 @@ impl Spanned for Subpat {
             Subpat::Positional(p) => p.span(),
             Subpat::Named(n, p) => n.span().merge(p.span()),
         }
-    }
-}
-
-impl ImportName {
-    pub fn name(&self) -> Word {
-        self.alias.unwrap_or(self.word)
-    }
-}
-
-impl Spanned for ImportName {
-    fn span(&self) -> Span {
-        self.name().span()
     }
 }
 

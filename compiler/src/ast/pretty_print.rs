@@ -4,7 +4,7 @@ use super::{Expr, Fn, Item, Module};
 use crate::{
     ast::{
         CallArg, ExternImport, ExternLet, FnKind, FnParam, FnSig, Import,
-        ImportName, ImportNode, Let, TyDef, TyDefKind, TyExpr,
+        ImportKind, Let, TyDef, TyDefKind, TyExpr, UnqualifiedImport,
     },
     db::StructKind,
     middle::{BinOp, IsUfcs},
@@ -304,37 +304,51 @@ impl PrettyPrint for TyDef {
 
 impl PrettyPrint for Import {
     fn pretty_print(&self, cx: &mut PrettyCx) {
-        cx.builder.begin_child(format!("import {}", self.root.name()));
-        if let Some(node) = &self.root.node {
-            node.pretty_print(cx);
-        }
+        cx.builder.begin_child(format!(
+            "import {}",
+            self.path
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join(".")
+        ));
+        self.kind.pretty_print(cx);
         cx.builder.end_child();
     }
 }
 
-impl PrettyPrint for ImportName {
+impl PrettyPrint for ImportKind {
     fn pretty_print(&self, cx: &mut PrettyCx) {
-        cx.builder.add_empty_child(self.name().to_string());
-        if let Some(node) = &self.node {
-            node.pretty_print(cx);
+        match self {
+            ImportKind::Qualified(alias, _) => {
+                if let Some(alias) = alias {
+                    cx.builder.add_empty_child(format!("as {alias}"));
+                }
+            }
+            ImportKind::Unqualified(imports) => {
+                for import in imports {
+                    import.pretty_print(cx);
+                }
+            }
         }
     }
 }
 
-impl PrettyPrint for ImportNode {
+impl PrettyPrint for UnqualifiedImport {
     fn pretty_print(&self, cx: &mut PrettyCx) {
         match self {
-            ImportNode::Name(node) => {
-                node.pretty_print(cx);
+            UnqualifiedImport::Name(name, alias, _) => {
+                cx.builder.add_empty_child(format!(
+                    "{}{}",
+                    name,
+                    if let Some(alias) = alias {
+                        format!(" as {alias}")
+                    } else {
+                        String::new()
+                    }
+                ));
             }
-            ImportNode::Group(nodes) => {
-                cx.builder.begin_child("group".to_string());
-                for n in nodes {
-                    n.pretty_print(cx);
-                }
-                cx.builder.end_child();
-            }
-            ImportNode::Glob(is_ufcs, _) => {
+            UnqualifiedImport::Glob(is_ufcs, _) => {
                 cx.builder.add_empty_child(
                     if *is_ufcs == IsUfcs::Yes { "?" } else { "*" }.to_string(),
                 );

@@ -5,7 +5,8 @@ use path_absolutize::Absolutize as _;
 
 use crate::{
     ast::{
-        token::TokenKind, Attr, ExternImport, Import, ImportName, ImportNode,
+        token::TokenKind, Attr, ExternImport, Import, ImportKind,
+        UnqualifiedImport,
     },
     db::ExternLib,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -21,57 +22,92 @@ impl<'a> Parser<'a> {
         attrs: &[Attr],
         start: Span,
     ) -> DiagnosticResult<Import> {
-        let root = self.parse_import_name()?;
+        let root = self.eat_ident()?.word();
+        let (path, kind) = self.parse_import_path_and_kind(root)?;
 
-        let path = self.search_import_path(root.word)?;
-        self.imported_module_paths.insert(path.clone());
+        let module_path = self.search_import_path(root)?;
+        self.imported_module_paths.insert(module_path.clone());
 
         Ok(Import {
             attrs: attrs.to_owned(),
+            module_path,
             path,
-            root,
+            kind,
             span: start.merge(self.last_span()),
         })
     }
 
-    fn parse_import_name(&mut self) -> DiagnosticResult<ImportName> {
-        let word = self.eat_ident()?.word();
+    fn parse_import_path_and_kind(
+        &mut self,
+        root: Word,
+    ) -> DiagnosticResult<(Vec<Word>, ImportKind)> {
+        let mut path = vec![root];
 
-        let (alias, vis, node) = if self.is(TokenKind::As) {
-            let alias = self.eat_ident()?.word();
-            let vis = self.parse_vis();
-            (Some(alias), vis, None)
-        } else {
-            let vis = self.parse_vis();
-            let node = if self.is(TokenKind::Dot) {
-                Some(self.parse_import_node()?)
+        while self.is(TokenKind::Dot) {
+            if self.peek_is(TokenKind::empty_ident()) {
+                let part = self.eat_ident()?.word();
+                path.push(part);
+
+                if self.is(TokenKind::As) {
+                    let alias = self.eat_ident()?.word();
+                    let vis = self.parse_vis();
+
+                    return Ok((path, ImportKind::Qualified(Some(alias), vis)));
+                }
+            } else if self.peek_is(TokenKind::OpenCurly) {
+                let imports = self.parse_unqualified_imports()?;
+                return Ok((path, ImportKind::Unqualified(imports)));
             } else {
-                None
-            };
-            (None, vis, node)
-        };
-
-        Ok(ImportName { word, vis, alias, node })
-    }
-
-    fn parse_import_node(&mut self) -> DiagnosticResult<ImportNode> {
-        if self.is(TokenKind::Star) {
-            Ok(ImportNode::Glob(IsUfcs::No, self.last_span()))
-        } else if self.is(TokenKind::QuestionMark) {
-            Ok(ImportNode::Glob(IsUfcs::Yes, self.last_span()))
-        } else if self.peek_is(TokenKind::OpenCurly) {
-            self.parse_import_group()
-        } else {
-            let name = self.parse_import_name()?;
-            Ok(ImportNode::Name(Box::new(name)))
+                let tok = self.require()?;
+                return Err(errors::unexpected_token_err(
+                    "identifier, {, * or ?",
+                    tok.kind,
+                    tok.span,
+                ));
+            }
         }
+
+        let vis = self.parse_vis();
+        Ok((path, ImportKind::Qualified(None, vis)))
     }
 
-    fn parse_import_group(&mut self) -> DiagnosticResult<ImportNode> {
+    fn parse_unqualified_imports(
+        &mut self,
+    ) -> DiagnosticResult<Vec<UnqualifiedImport>> {
         self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
-            this.parse_import_node().map(ControlFlow::Continue)
+            this.parse_unqualified_import().map(ControlFlow::Continue)
         })
-        .map(|(nodes, _)| ImportNode::Group(nodes))
+        .map(|(imports, _)| imports)
+    }
+
+    fn parse_unqualified_import(
+        &mut self,
+    ) -> DiagnosticResult<UnqualifiedImport> {
+        let tok = self.eat_any()?;
+
+        match tok.kind {
+            TokenKind::Ident(_) => {
+                let name = tok.word();
+                let alias = if self.is(TokenKind::As) {
+                    Some(self.eat_ident()?.word())
+                } else {
+                    None
+                };
+                let vis = self.parse_vis();
+                Ok(UnqualifiedImport::Name(name, alias, vis))
+            }
+            TokenKind::Star => {
+                Ok(UnqualifiedImport::Glob(IsUfcs::No, tok.span))
+            }
+            TokenKind::QuestionMark => {
+                Ok(UnqualifiedImport::Glob(IsUfcs::Yes, tok.span))
+            }
+            _ => Err(errors::unexpected_token_err(
+                "identifier, * or ?",
+                tok.kind,
+                tok.span,
+            )),
+        }
     }
 
     fn search_import_path(&self, name: Word) -> DiagnosticResult<Utf8PathBuf> {
