@@ -401,8 +401,8 @@ impl<'db> Generator<'db> {
 
         params.extend(sig.params.iter().enumerate().map(|(idx, param)| {
             let name = match &param.pat {
-                Pat::Name(name) => ustr(&format!("{}{}", name.word, idx)),
-                Pat::Discard(_) => ustr(&format!("_{idx}")),
+                Pat::Name(name) => ustr(&param_name(name.word.as_str(), idx)),
+                Pat::Discard(_) => ustr(&format!("__{idx}")),
             };
 
             param.ty.cdecl(self, D::text(name.as_str()))
@@ -456,7 +456,7 @@ impl<'db> Generator<'db> {
                 Pat::Name(name) => {
                     // The parameter's name id could be null() when it's generated ad-hoc.
                     // For example, in type constructor parameters.
-                    let param_name = ustr(&format!("{}{}", name.word, idx));
+                    let param_name = ustr(&param_name(name.word.as_str(), idx));
                     state.param_names.push(param_name);
                 }
                 Pat::Discard(_) => (),
@@ -734,4 +734,8 @@ impl<'a> VariableDoc<'a> {
 
 fn global_init_fn_name(glob: &Global) -> String {
     format!("{}_init", glob.name.as_str())
+}
+
+fn param_name(name: &str, index: usize) -> String {
+    format!("{name}__{index}")
 }
