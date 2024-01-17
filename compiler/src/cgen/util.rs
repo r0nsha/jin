@@ -13,7 +13,7 @@ use crate::{
     mir::{Block, ValueId, ValueKind},
     span::Span,
     sym,
-    ty::{Ty, TyKind},
+    ty::TyKind,
 };
 
 impl<'db> Generator<'db> {
@@ -123,7 +123,14 @@ impl<'db> Generator<'db> {
         value: ValueId,
         cap: ValueId,
     ) -> D<'db> {
-        todo!()
+        let elem_ty = state.body.value(value).ty.slice_elem().unwrap();
+
+        self.value_assign(state, value, |this| {
+            call(
+                D::text("jinrt_slice_alloc"),
+                [sizeof(elem_ty.cty(this)), this.value(state, cap)],
+            )
+        })
     }
 
     pub fn free(

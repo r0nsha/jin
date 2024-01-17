@@ -5,9 +5,32 @@ const testing = std.testing;
 const unit = extern struct {};
 const cstr = [*:0]const u8;
 const str = extern struct { ptr: cstr, len: usize };
+
 const anyrc = extern struct {
     refcnt: usize,
     data: unit,
+};
+
+const anyarray = extern struct {
+    data: *anyopaque,
+    cap: usize,
+    refcnt: usize,
+};
+
+const anyslice = extern struct {
+    array: ?*anyarray,
+    start: usize,
+    len: usize,
+
+    const Self = @This();
+
+    fn empty() Self {
+        return anyslice{ .array = null, .start = 0, .len = 0 };
+    }
+
+    fn init(array: *anyarray) Self {
+        return anyslice{ .array = array, .start = 0, .len = 0 };
+    }
 };
 
 const Backtrace = struct {
@@ -66,11 +89,9 @@ export fn jinrt_panic_at(backtrace: *Backtrace, msg: cstr, frame: StackFrame) no
 }
 
 export fn jinrt_alloc(size: usize) *anyrc {
-    const memory = std.c.malloc(size);
-    const p = memory orelse std.debug.panic("out of memory", .{});
-    const prc: *anyrc = @alignCast(@ptrCast(p));
-    prc.refcnt = 0;
-    return prc;
+    const p = alloc_raw(anyrc, size);
+    p.refcnt = 0;
+    return p;
 }
 
 export fn jinrt_free(backtrace: *Backtrace, obj: *anyrc, tyname: cstr, frame: StackFrame) void {
@@ -84,6 +105,30 @@ export fn jinrt_free(backtrace: *Backtrace, obj: *anyrc, tyname: cstr, frame: St
     }
 
     std.c.free(obj);
+}
+
+export fn jinrt_slice_alloc(elem_size: usize, cap: usize) anyslice {
+    if (cap == 0) {
+        return anyslice.empty();
+    }
+
+    const data = alloc_raw(anyopaque, elem_size * cap);
+    const array = alloc_raw(anyarray, elem_size * cap);
+    array.data = data;
+    array.refcnt = 0;
+
+    return anyslice.init(array);
+}
+
+export fn jinrt_slice_free(slice: anyslice) void {
+    if (slice.array) |array| {
+        if (array.cap == 0) {
+            return;
+        }
+
+        std.c.free(array.data);
+        std.c.free(array);
+    }
 }
 
 export fn jinrt_strcmp(a: str, b: str) bool {
@@ -111,4 +156,10 @@ export fn jinrt_backtrace_pop(backtrace: *Backtrace) void {
 
 inline fn str_slice(s: str) []const u8 {
     return s.ptr[0..s.len];
+}
+
+fn alloc_raw(comptime T: type, size: usize) *T {
+    const memory = std.c.malloc(size);
+    const p = memory orelse std.debug.panic("out of memory", .{});
+    return @alignCast(@ptrCast(p));
 }
