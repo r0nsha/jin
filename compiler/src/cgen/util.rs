@@ -142,9 +142,17 @@ impl<'db> Generator<'db> {
     ) -> D<'db> {
         let tyname = str_lit(state.body.value(value).ty.display(self.db));
         let frame = self.create_stackframe_value(state, span);
+
+        let free_fn =
+            if let TyKind::Slice(..) = state.body.value(value).ty.kind() {
+                "jinrt_slice_free"
+            } else {
+                "jinrt_free"
+            };
+
         let free_call = stmt(|| {
             call(
-                D::text("jinrt_free"),
+                D::text(free_fn),
                 [D::text("backtrace"), self.value(state, value), tyname, frame],
             )
         });

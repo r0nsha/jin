@@ -60,7 +60,8 @@ void jinrt_free(jinrt_backtrace *backtrace, void *ptr, u8 *tyname,
 
 // Slices
 slice jinrt_slice_alloc(size_t elem_size, usize cap);
-void jinrt_slice_free(slice s);
+void jinrt_slice_free(jinrt_backtrace *backtrace, slice s, u8 *tyname,
+                jinrt_stackframe frame);
 
 // Panic
 void jinrt_panic_at(jinrt_backtrace *backtrace, u8 *msg,

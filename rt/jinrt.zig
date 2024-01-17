@@ -94,16 +94,13 @@ export fn jinrt_alloc(size: usize) *anyrc {
     return p;
 }
 
-export fn jinrt_free(backtrace: *Backtrace, obj: *anyrc, tyname: cstr, frame: StackFrame) void {
-    if (obj.refcnt != 0) {
-        const msg = std.fmt.allocPrint(
-            std.heap.c_allocator,
-            "cannot destroy a value of type `{s}` as it still has {} reference(s)",
-            .{ tyname, obj.refcnt },
-        ) catch unreachable;
-        jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
-    }
-
+export fn jinrt_free(
+    backtrace: *Backtrace,
+    obj: *anyrc,
+    tyname: cstr,
+    frame: StackFrame,
+) void {
+    refcheck(backtrace, obj.refcnt, tyname, frame);
     std.c.free(obj);
 }
 
@@ -120,12 +117,18 @@ export fn jinrt_slice_alloc(elem_size: usize, cap: usize) anyslice {
     return anyslice.init(array);
 }
 
-export fn jinrt_slice_free(slice: anyslice) void {
+export fn jinrt_slice_free(
+    backtrace: *Backtrace,
+    slice: anyslice,
+    tyname: cstr,
+    frame: StackFrame,
+) void {
     if (slice.array) |array| {
         if (array.cap == 0) {
             return;
         }
 
+        refcheck(backtrace, array.refcnt, tyname, frame);
         std.c.free(array.data);
         std.c.free(array);
     }
@@ -162,4 +165,15 @@ fn alloc_raw(comptime T: type, size: usize) *T {
     const memory = std.c.malloc(size);
     const p = memory orelse std.debug.panic("out of memory", .{});
     return @alignCast(@ptrCast(p));
+}
+
+fn refcheck(backtrace: *Backtrace, refcnt: usize, tyname: cstr, frame: StackFrame) void {
+    if (refcnt != 0) {
+        const msg = std.fmt.allocPrint(
+            std.heap.c_allocator,
+            "cannot destroy a value of type `{s}` as it still has {} reference(s)",
+            .{ tyname, refcnt },
+        ) catch unreachable;
+        jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
+    }
 }

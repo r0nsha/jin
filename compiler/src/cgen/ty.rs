@@ -44,6 +44,7 @@ impl<'db> CTy<'db> for TyKind {
                     AdtKind::Union(_) => name.append(D::text("*")),
                 }
             }
+            Self::Slice(..) => D::text("slice"),
             Self::Ref(ty, _) => ty.cty(cx),
             Self::RawPtr(ty) => ty.cty(cx).append(D::text("*")),
             Self::Int(ity) => ity.cty(cx),
