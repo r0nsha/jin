@@ -72,17 +72,21 @@ impl<'db> Generator<'db> {
         let mut file =
             File::create(self.db.output_path().with_extension("c")).unwrap();
 
-        file.write_all(b"#include \"jinrt.h\"\n").unwrap();
+        file.write_all(b"#include \"jinrt.h\"\n\n").unwrap();
 
-        let types = D::intersperse(self.types, D::hardline());
-        let fn_decls = D::intersperse(self.fn_decls, D::hardline());
-        let consts = D::intersperse(self.consts, D::hardline());
-        let globals = D::intersperse(self.globals, D::hardline());
-        let fn_defs =
+        let decls = D::intersperse(
+            self.types
+                .into_iter()
+                .chain(self.fn_decls)
+                .chain(self.consts)
+                .chain(self.globals),
+            D::hardline(),
+        );
+        let fns =
             D::intersperse(self.fn_defs, D::hardline().append(D::hardline()));
 
         let final_doc = D::intersperse(
-            [types, fn_decls, consts, globals, fn_defs, main_fn],
+            [decls, fns, main_fn],
             D::hardline().append(D::hardline()),
         );
 
