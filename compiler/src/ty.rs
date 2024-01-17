@@ -414,7 +414,7 @@ impl TyKind {
     pub fn is_move(&self, db: &Db) -> bool {
         match self {
             Self::Adt(adt_id, _) => db[*adt_id].is_ref(),
-            Self::Param(_) => true,
+            Self::Slice(_) | Self::Param(_) => true,
             _ => false,
         }
     }
