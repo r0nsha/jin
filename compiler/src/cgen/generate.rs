@@ -617,12 +617,10 @@ impl<'db> Generator<'db> {
         };
 
         match init {
-            Some(init_value) => VariableDoc::assign(
-                self,
-                value.ty,
-                D::text(name),
-                self.value(state, init_value),
-            ),
+            Some(init_value) => {
+                let doc = self.value(state, init_value);
+                VariableDoc::assign(self, value.ty, D::text(name), doc)
+            }
             None => VariableDoc::decl(self, value.ty, D::text(name)),
         }
     }
@@ -634,17 +632,19 @@ impl<'db> Generator<'db> {
         f: impl FnOnce(&mut Self) -> D<'db>,
     ) -> D<'db> {
         let value = state.body.value(id);
+        let assigned = self.value(state, id);
         let doc = f(self);
-        VariableDoc::assign(self, value.ty, self.value(state, id), doc)
+        VariableDoc::assign(self, value.ty, assigned, doc)
     }
 
     #[allow(unused)]
     pub fn value_decl(&mut self, state: &GenState<'db>, id: ValueId) -> D<'db> {
         let value = state.body.value(id);
-        VariableDoc::decl(self, value.ty, self.value(state, value.id))
+        let doc = self.value(state, value.id);
+        VariableDoc::decl(self, value.ty, doc)
     }
 
-    pub fn value(&self, state: &GenState<'db>, id: ValueId) -> D<'db> {
+    pub fn value(&mut self, state: &GenState<'db>, id: ValueId) -> D<'db> {
         match &state.body.value(id).kind {
             ValueKind::Register(name) => {
                 D::text(Self::register_name(id, *name))

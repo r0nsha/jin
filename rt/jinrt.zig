@@ -122,6 +122,14 @@ export fn jinrt_slice_alloc(elem_size: usize, cap: usize) anyslice {
     return anyslice.init(elem_size, cap);
 }
 
+export fn jinrt_slice_ptr(s: anyslice) ?*anyopaque {
+    return if (s.array) |a| a.data else null;
+}
+
+export fn jinrt_slice_cap(s: anyslice) usize {
+    return if (s.array) |a| a.cap else 0;
+}
+
 export fn jinrt_slice_free(
     backtrace: *Backtrace,
     slice: anyslice,

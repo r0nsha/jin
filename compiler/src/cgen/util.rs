@@ -44,33 +44,39 @@ impl<'db> Generator<'db> {
     }
 
     pub fn field(
-        &self,
+        &mut self,
         state: &GenState<'db>,
         value: ValueId,
         field: &str,
     ) -> D<'db> {
         let value = state.body.value(value);
+        let value_doc = self.value(state, value.id);
 
         match &value.kind {
-            ValueKind::Variant(_, _) => {
-                util::field(self.value(state, value.id), field, false)
-            }
-            _ => match value.ty.kind() {
-                TyKind::Adt(adt, _) if self.db[*adt].is_ref() => {
+            ValueKind::Variant(_, _) => util::field(value_doc, field, false),
+            _ => match (value.ty.kind(), field) {
+                (TyKind::Adt(adt, _), _) if self.db[*adt].is_ref() => {
                     self.adt_field(state, value.id, field)
                 }
-                TyKind::Ref(_, _) => self.adt_field(state, value.id, field),
-                _ => util::field(
-                    self.value(state, value.id),
-                    field,
-                    value.ty.is_ptr(self),
-                ),
+                (TyKind::Ref(_, _), _) => {
+                    self.adt_field(state, value.id, field)
+                }
+                (TyKind::Slice(_), sym::PTR) => {
+                    let call =
+                        util::call(D::text("jinrt_slice_ptr"), [value_doc]);
+                    let elem_ty = value.ty.slice_elem().unwrap();
+                    util::cast(elem_ty.cty(self).append(D::text("*")), call)
+                }
+                (TyKind::Slice(_), sym::CAP) => {
+                    util::call(D::text("jinrt_slice_cap"), [value_doc])
+                }
+                _ => util::field(value_doc, field, value.ty.is_ptr(self)),
             },
         }
     }
 
     pub fn variant(
-        &self,
+        &mut self,
         state: &GenState<'db>,
         value: ValueId,
         variant: &str,
@@ -79,18 +85,18 @@ impl<'db> Generator<'db> {
     }
 
     pub fn adt_field(
-        &self,
+        &mut self,
         state: &GenState<'db>,
         value: ValueId,
         field: &str,
     ) -> D<'db> {
-        let data_field =
-            util::field(self.value(state, value), DATA_FIELD, true);
+        let value = self.value(state, value);
+        let data_field = util::field(value, DATA_FIELD, true);
         util::field(data_field, field, false)
     }
 
     pub fn refcnt_field(
-        &self,
+        &mut self,
         state: &GenState<'db>,
         value: ValueId,
     ) -> D<'db> {
@@ -175,7 +181,7 @@ impl<'db> Generator<'db> {
     }
 
     pub fn free(
-        &self,
+        &mut self,
         state: &GenState<'db>,
         value: ValueId,
         traced: bool,
@@ -191,11 +197,9 @@ impl<'db> Generator<'db> {
                 "jinrt_free"
             };
 
+        let value = self.value(state, value);
         let free_call = stmt(|| {
-            call(
-                D::text(free_fn),
-                [D::text("backtrace"), self.value(state, value), tyname, frame],
-            )
+            call(D::text(free_fn), [D::text("backtrace"), value, tyname, frame])
         });
 
         if traced {

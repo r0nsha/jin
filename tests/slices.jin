@@ -3,7 +3,8 @@ fn extern printf(fmt: *u8, ..) i32
 fn main() unit = {
 	let a: [int] = []
 	let b: [int] = [:3]
-	let c = [1, 2, 3]
-	printf("caps: %d, %d, %d".ptr, a.cap, b.cap, b.cap)
-	printf("lens: %d, %d, %d".ptr, a.len, b.len, b.len)
+	let c = [1, 2, 3, 4, 5]
+	printf("ptrs: %p, %p, %p\n".ptr, a.ptr, b.ptr, c.ptr)
+	printf("caps: %d, %d, %d\n".ptr, a.cap, b.cap, c.cap)
+	printf("lens: %d, %d, %d\n".ptr, a.len, b.len, c.len)
 }
