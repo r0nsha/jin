@@ -493,7 +493,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.check_assign_mutability(
                         AssignKind::Assign,
                         slice,
-                        idx.expr.span,
+                        expr.span,
                     );
 
                     self.destroy_value_entirely(elem, idx.expr.span);
@@ -504,32 +504,39 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         rhs,
                         assign.lhs.span,
                     );
-                    self.const_unit()
                 } else {
                     let lhs = self.lower_expr(&assign.lhs);
                     self.try_use(lhs, assign.lhs.span);
                     let rhs = self.lower_assign_rhs(assign, lhs, expr.span);
 
-                    self.lower_assign(
+                    self.check_assign_mutability(
                         AssignKind::Assign,
-                        (lhs, assign.lhs.span),
-                        rhs,
+                        lhs,
                         expr.span,
-                    )
+                    );
+
+                    self.destroy_value_entirely(lhs, assign.lhs.span);
+                    self.set_owned(lhs);
+                    self.ins(self.current_block).store(rhs, lhs);
                 }
+
+                self.const_unit()
             }
             hir::ExprKind::Swap(swap) => {
                 let lhs = self.lower_expr(&swap.lhs);
                 self.try_use(lhs, swap.lhs.span);
-
                 let rhs = self.lower_input_expr(&swap.rhs);
 
-                self.lower_assign(
-                    AssignKind::Swap,
-                    (lhs, swap.lhs.span),
-                    rhs,
-                    expr.span,
-                )
+                self.check_assign_mutability(AssignKind::Swap, lhs, expr.span);
+
+                let old_lhs = self
+                    .push_inst_with_register(self.ty_of(lhs), |value| {
+                        Inst::StackAlloc { value, init: Some(lhs) }
+                    });
+                self.create_destroy_flag(old_lhs);
+                self.ins(self.current_block).store(rhs, lhs);
+
+                old_lhs
             }
             hir::ExprKind::Match(match_) => {
                 let output = self.push_inst_with_register(expr.ty, |value| {
@@ -837,35 +844,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             result
         } else {
             rhs
-        }
-    }
-
-    fn lower_assign(
-        &mut self,
-        kind: AssignKind,
-        (lhs, lhs_span): (ValueId, Span),
-        rhs: ValueId,
-        span: Span,
-    ) -> ValueId {
-        self.check_assign_mutability(kind, lhs, span);
-
-        match kind {
-            AssignKind::Assign => {
-                // NOTE: The lhs needs to be destroyed before it's assigned to
-                self.destroy_value_entirely(lhs, lhs_span);
-                self.set_owned(lhs);
-                self.ins(self.current_block).store(rhs, lhs);
-                self.const_unit()
-            }
-            AssignKind::Swap => {
-                let old_lhs = self
-                    .push_inst_with_register(self.ty_of(lhs), |value| {
-                        Inst::StackAlloc { value, init: Some(lhs) }
-                    });
-                self.create_destroy_flag(old_lhs);
-                self.ins(self.current_block).store(rhs, lhs);
-                old_lhs
-            }
         }
     }
 
