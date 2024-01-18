@@ -4,6 +4,9 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+// Macros
+#define FORCE_INLINE __attribute__((always_inline)) inline
+
 // Builtin types
 typedef int8_t i8;
 typedef int16_t i16;
