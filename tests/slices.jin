@@ -13,6 +13,7 @@ fn ints() unit = {
 	print(&b)
 	print(&c)
 	c.[1] = 69
+	printf("old=%d\n".ptr, c.[2] := 42)
 	print(&c)
 }
 

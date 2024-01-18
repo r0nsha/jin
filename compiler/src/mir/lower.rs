@@ -494,20 +494,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::Swap(swap) => {
-                let lhs = self.lower_expr(&swap.lhs);
-                self.try_use(lhs, swap.lhs.span);
-                let rhs = self.lower_input_expr(&swap.rhs);
-
-                self.check_assign_mutability(AssignKind::Swap, lhs, expr.span);
-
-                let old_lhs = self
-                    .push_inst_with_register(self.ty_of(lhs), |value| {
-                        Inst::StackAlloc { value, init: Some(lhs) }
-                    });
-                self.create_destroy_flag(old_lhs);
-                self.ins(self.current_block).store(rhs, lhs);
-
-                old_lhs
+                if let hir::ExprKind::Index(idx) = &swap.lhs.kind {
+                    self.lower_slice_swap(swap, idx, expr.span)
+                } else {
+                    self.lower_swap(swap, expr.span)
+                }
             }
             hir::ExprKind::Match(match_) => {
                 let output = self.push_inst_with_register(expr.ty, |value| {
@@ -818,6 +809,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
+    fn lower_assign(&mut self, assign: &hir::Assign, span: Span) {
+        let lhs = self.lower_expr(&assign.lhs);
+        self.try_use(lhs, assign.lhs.span);
+        let rhs = self.lower_assign_rhs(assign, lhs, span);
+
+        self.check_assign_mutability(AssignKind::Assign, lhs, span);
+
+        self.destroy_value_entirely(lhs, assign.lhs.span);
+        self.set_owned(lhs);
+        self.ins(self.current_block).store(rhs, lhs);
+    }
+
     fn lower_slice_assign(
         &mut self,
         assign: &hir::Assign,
@@ -839,16 +842,47 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         );
     }
 
-    fn lower_assign(&mut self, assign: &hir::Assign, span: Span) {
-        let lhs = self.lower_expr(&assign.lhs);
-        self.try_use(lhs, assign.lhs.span);
-        let rhs = self.lower_assign_rhs(assign, lhs, span);
+    fn lower_swap(&mut self, swap: &hir::Swap, span: Span) -> ValueId {
+        let lhs = self.lower_expr(&swap.lhs);
+        self.try_use(lhs, swap.lhs.span);
+        let rhs = self.lower_input_expr(&swap.rhs);
 
-        self.check_assign_mutability(AssignKind::Assign, lhs, span);
+        self.check_assign_mutability(AssignKind::Swap, lhs, span);
 
-        self.destroy_value_entirely(lhs, assign.lhs.span);
-        self.set_owned(lhs);
+        let old_lhs = self.push_inst_with_register(self.ty_of(lhs), |value| {
+            Inst::StackAlloc { value, init: Some(lhs) }
+        });
+        self.create_destroy_flag(old_lhs);
         self.ins(self.current_block).store(rhs, lhs);
+
+        old_lhs
+    }
+
+    fn lower_slice_swap(
+        &mut self,
+        swap: &hir::Swap,
+        idx: &hir::Index,
+        span: Span,
+    ) -> ValueId {
+        let SliceIndexResult { slice, index, elem } =
+            self.lower_slice_index(idx, span);
+        let rhs = self.lower_input_expr(&swap.rhs);
+
+        self.check_assign_mutability(AssignKind::Swap, slice, span);
+
+        let old_elem = self
+            .push_inst_with_register(self.ty_of(elem), |value| {
+                Inst::StackAlloc { value, init: Some(elem) }
+            });
+        self.create_destroy_flag(old_elem);
+        self.ins(self.current_block).slice_store(
+            slice,
+            index,
+            rhs,
+            swap.lhs.span,
+        );
+
+        old_elem
     }
 
     fn lower_slice_index(
