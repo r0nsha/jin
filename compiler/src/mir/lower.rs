@@ -488,19 +488,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 if let hir::ExprKind::Index(idx) = &assign.lhs.kind {
                     let SliceIndexResult { slice, index, elem } =
                         self.lower_slice_index(idx, expr.span);
-
-                    let rhs = self.lower_input_expr(&assign.rhs);
-                    let rhs = if let Some(op) = assign.op {
-                        let value = self.create_value(
-                            assign.lhs.ty,
-                            ValueKind::Register(None),
-                        );
-                        self.ins(self.current_block)
-                            .binary(value, elem, rhs, op, expr.span);
-                        value
-                    } else {
-                        rhs
-                    };
+                    let rhs = self.lower_assign_rhs(assign, elem, expr.span);
 
                     self.check_assign_mutability(
                         AssignKind::Assign,
@@ -520,19 +508,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 } else {
                     let lhs = self.lower_expr(&assign.lhs);
                     self.try_use(lhs, assign.lhs.span);
-
-                    let rhs = self.lower_input_expr(&assign.rhs);
-                    let rhs = if let Some(op) = assign.op {
-                        let value = self.create_value(
-                            assign.lhs.ty,
-                            ValueKind::Register(None),
-                        );
-                        self.ins(self.current_block)
-                            .binary(value, lhs, rhs, op, expr.span);
-                        value
-                    } else {
-                        rhs
-                    };
+                    let rhs = self.lower_assign_rhs(assign, lhs, expr.span);
 
                     self.lower_assign(
                         AssignKind::Assign,
@@ -844,6 +820,24 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         self.set_moved(value, expr.span);
         value
+    }
+
+    fn lower_assign_rhs(
+        &mut self,
+        assign: &hir::Assign,
+        lhs: ValueId,
+        span: Span,
+    ) -> ValueId {
+        let rhs = self.lower_input_expr(&assign.rhs);
+
+        if let Some(op) = assign.op {
+            let result =
+                self.create_value(self.ty_of(rhs), ValueKind::Register(None));
+            self.ins(self.current_block).binary(result, lhs, rhs, op, span);
+            result
+        } else {
+            rhs
+        }
     }
 
     fn lower_assign(
