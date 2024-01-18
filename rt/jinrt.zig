@@ -122,6 +122,23 @@ export fn jinrt_slice_alloc(elem_size: usize, cap: usize) anyslice {
     return anyslice.init(elem_size, cap);
 }
 
+export fn jinrt_slice_free(
+    backtrace: *Backtrace,
+    slice: anyslice,
+    tyname: cstr,
+    frame: StackFrame,
+) void {
+    if (slice.array) |array| {
+        if (array.cap == 0) {
+            return;
+        }
+
+        refcheck(backtrace, array.refcnt, tyname, frame);
+        std.c.free(array.data);
+        std.c.free(array);
+    }
+}
+
 export fn jinrt_slice_incref(s: anyslice) void {
     if (s.array) |a| a.refcnt += 1;
 }
@@ -138,20 +155,19 @@ export fn jinrt_slice_cap(s: anyslice) usize {
     return if (s.array) |a| a.cap else 0;
 }
 
-export fn jinrt_slice_free(
+export fn jinrt_slice_index_boundscheck(
     backtrace: *Backtrace,
     slice: anyslice,
-    tyname: cstr,
+    index: usize,
     frame: StackFrame,
 ) void {
-    if (slice.array) |array| {
-        if (array.cap == 0) {
-            return;
-        }
-
-        refcheck(backtrace, array.refcnt, tyname, frame);
-        std.c.free(array.data);
-        std.c.free(array);
+    if (index >= slice.len) {
+        const msg = std.fmt.allocPrint(
+            std.heap.c_allocator,
+            "index out of bounds: len is {} but index is {}",
+            .{ slice.len, index },
+        ) catch unreachable;
+        jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
     }
 }
 

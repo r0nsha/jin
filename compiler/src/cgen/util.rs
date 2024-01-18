@@ -233,7 +233,7 @@ impl<'db> Generator<'db> {
         stmt(|| call(D::text("jinrt_backtrace_pop"), [D::text("backtrace")]))
     }
 
-    fn create_stackframe_value(
+    pub fn create_stackframe_value(
         &self,
         state: &GenState<'db>,
         span: Span,

@@ -63,12 +63,14 @@ void jinrt_free(jinrt_backtrace *backtrace, void *ptr, u8 *tyname,
 
 // Slices
 slice jinrt_slice_alloc(size_t elem_size, usize cap);
+void jinrt_slice_free(jinrt_backtrace *backtrace, slice s, u8 *tyname,
+                      jinrt_stackframe frame);
 void jinrt_slice_incref(slice s);
 void jinrt_slice_decref(slice s);
 void *jinrt_slice_ptr(slice s);
 usize jinrt_slice_cap(slice s);
-void jinrt_slice_free(jinrt_backtrace *backtrace, slice s, u8 *tyname,
-                      jinrt_stackframe frame);
+usize jinrt_slice_index_boundscheck(jinrt_backtrace *backtrace, slice s,
+                                    usize index, jinrt_stackframe frame);
 
 // Panic
 void jinrt_panic_at(jinrt_backtrace *backtrace, u8 *msg,

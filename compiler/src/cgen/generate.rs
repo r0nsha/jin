@@ -520,10 +520,29 @@ impl<'db> Generator<'db> {
             Inst::SliceAlloc { value, cap } => {
                 self.alloc_slice(state, *value, *cap)
             }
-            Inst::SliceIndex { value, slice, index, span } => self
-                .value_assign(state, *value, |this| {
+            Inst::SliceIndex { value, slice, index, span } => {
+                let slice_index = self.value_assign(state, *value, |this| {
                     this.slice_index(state, *slice, *index)
-                }),
+                });
+
+                if let Some(span) = span {
+                    let safety_check = stmt(|| {
+                        util::call(
+                            D::text("jinrt_slice_index_boundscheck"),
+                            [
+                                D::text("backtrace"),
+                                self.value(state, *slice),
+                                self.value(state, *index),
+                                self.create_stackframe_value(state, *span),
+                            ],
+                        )
+                    });
+
+                    D::intersperse([safety_check, slice_index], D::hardline())
+                } else {
+                    slice_index
+                }
+            }
             Inst::SliceStore { slice, index, value } => stmt(|| {
                 util::assign(
                     self.slice_index(state, *slice, *index),
