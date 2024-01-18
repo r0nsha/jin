@@ -2,7 +2,7 @@ use std::{collections::VecDeque, mem};
 
 use data_structures::index_vec::Key;
 use rustc_hash::FxHashSet;
-use ustr::ustr;
+use ustr::{ustr, Ustr};
 
 use crate::{
     db::{AdtField, AdtKind, Db, DefId, StructDef, UnionDef},
@@ -454,6 +454,7 @@ impl<'db> ExpandDestroys<'db> {
 
         match ty.kind() {
             TyKind::Adt(..) => CreateAdtFree::new(self).create(ty),
+            TyKind::Slice(..) => CreateSliceFree::new(self).create(ty),
             ty => unreachable!("unexpected ty {ty:?}"),
         }
     }
@@ -498,36 +499,9 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         let adt = &self.cx.db[*adt_id];
         let instantiation = adt.instantiation(targs);
         let adt_ty = instantiation.fold(adt.ty());
+        let adt_span = adt.name.span();
 
         let adt_name = mangle::mangle_adt(self.cx.db, adt, targs);
-        let adt_span = adt.name.span();
-        let self_name = ustr("self");
-        let self_value = ValueKind::Param(DefId::null(), 0);
-
-        let params = vec![FnParam {
-            pat: Pat::Name(NamePat {
-                id: DefId::null(),
-                word: Word::new(self_name, Span::unknown()),
-                vis: Vis::Private,
-                mutability: Mutability::Imm,
-                ty: adt_ty,
-            }),
-            ty: adt_ty,
-        }];
-
-        let fn_ty = Ty::new(TyKind::Fn(FnTy {
-            params: params
-                .iter()
-                .map(|p| FnTyParam {
-                    name: Some(p.pat.name().unwrap()),
-                    ty: p.ty,
-                })
-                .collect(),
-            ret: self.cx.db.types.unit,
-            is_extern: false,
-            is_c_variadic: false,
-        }));
-
         let mangled_name = ustr(&format!("{adt_name}_destroy"));
         let display_name = ustr(
             &self.cx.db[adt.def_id]
@@ -536,20 +510,16 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
                 .child(ustr("$destroy"))
                 .join(),
         );
-        let sig = self.cx.mono_mir.fn_sigs.insert_with_key(|id| FnSig {
-            id,
+        let sig = create_destroy_sig(
+            self.cx,
+            adt_ty,
             mangled_name,
             display_name,
-            params,
-            ty: fn_ty,
-            is_extern: false,
-            is_c_variadic: false,
-            is_inline: true,
-            span: adt_span,
-        });
-        self.cx.free_fns.insert(ty, sig);
+            adt_span,
+        );
 
-        let self_value = self.body.create_value(adt_ty, self_value);
+        let self_value =
+            self.body.create_value(adt_ty, ValueKind::Param(DefId::null(), 0));
 
         let join_block = match &adt.kind {
             AdtKind::Union(union_def) => self.lower_union_free(
@@ -678,4 +648,140 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             }
         }
     }
+}
+
+#[derive(Debug)]
+struct CreateSliceFree<'cx, 'db> {
+    cx: &'cx mut ExpandDestroys<'db>,
+    body: Body,
+}
+
+impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
+    fn new(cx: &'cx mut ExpandDestroys<'db>) -> Self {
+        Self { cx, body: Body::new() }
+    }
+
+    fn create(mut self, ty: Ty) -> FnSigId {
+        let TyKind::Slice(elem_ty) = ty.kind() else { unreachable!() };
+
+        let tyname = mangle::mangle_ty_name(self.cx.db, ty);
+        let mangled_name = ustr(&format!("{tyname}_destroy"));
+        let display_name = ustr(&format!("{}$destroy", ty.display(self.cx.db)));
+        let sig = create_destroy_sig(
+            self.cx,
+            ty,
+            mangled_name,
+            display_name,
+            Span::unknown(),
+        );
+
+        let slice =
+            self.body.create_value(ty, ValueKind::Param(DefId::null(), 0));
+
+        // let start_block = self.body.create_block("loop_start");
+        // let end_block = self.body.create_block("loop_end");
+        //
+        // self.enter_scope(ScopeKind::Loop(LoopScope::new(end_block)), expr.span);
+        //
+        // self.ins(self.current_block).br(start_block);
+        // self.position_at(start_block);
+        //
+        // todo!("cond = i < slice.len");
+        // let cond = self.lower_in_expr(cond_expr);
+        //
+        // let not_cond = self
+        //     .push_inst_with_register(self.cx.db.types.bool, |value| {
+        //         Inst::Unary { value, inner: cond, op: UnOp::Not }
+        //     });
+        // self.ins(start_block).brif(not_cond, end_block, None);
+        // todo!("destroy elem in index");
+        // self.ins(self.current_block).br(start_block);
+        // self.position_at(end_block);
+        //
+        // let unit_value = self
+        //     .body
+        //     .create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
+        //
+        // self.body.ins(join_block).free(slice, false, adt_span).ret(unit_value);
+
+        self.cx.mono_mir.fns.insert(sig, Fn { sig, body: self.body });
+
+        sig
+    }
+
+    fn free_elem(
+        &mut self,
+        block: BlockId,
+        slice: ValueId,
+        index: usize,
+        elem_ty: Ty,
+        span: Span,
+    ) {
+        let elem_value = self.body.create_register(elem_ty);
+
+        match elem_ty.kind() {
+            TyKind::Adt(..) => {
+                let (result, callee) =
+                    self.cx.get_free_call_values(&mut self.body, elem_ty);
+
+                self.body.ins(block).call(
+                    result,
+                    callee,
+                    vec![elem_value],
+                    span,
+                );
+            }
+            TyKind::Ref(..) if self.cx.should_refcount_ty(elem_ty) => {
+                self.body.ins(block).decref(elem_value);
+            }
+            _ => (),
+        }
+    }
+}
+
+fn create_destroy_sig(
+    cx: &mut ExpandDestroys,
+    ty: Ty,
+    mangled_name: Ustr,
+    display_name: Ustr,
+    span: Span,
+) -> FnSigId {
+    let params = vec![FnParam {
+        pat: Pat::Name(NamePat {
+            id: DefId::null(),
+            word: Word::new(ustr("self"), Span::unknown()),
+            vis: Vis::Private,
+            mutability: Mutability::Imm,
+            ty,
+        }),
+        ty,
+    }];
+
+    let fn_ty_params = params
+        .iter()
+        .map(|p| FnTyParam { name: Some(p.pat.name().unwrap()), ty: p.ty })
+        .collect();
+
+    let fn_ty = Ty::new(TyKind::Fn(FnTy {
+        params: fn_ty_params,
+        ret: cx.db.types.unit,
+        is_extern: false,
+        is_c_variadic: false,
+    }));
+
+    let sig = cx.mono_mir.fn_sigs.insert_with_key(|id| FnSig {
+        id,
+        mangled_name,
+        display_name,
+        params,
+        ty: fn_ty,
+        is_extern: false,
+        is_c_variadic: false,
+        is_inline: true,
+        span,
+    });
+
+    cx.free_fns.insert(ty, sig);
+
+    sig
 }
