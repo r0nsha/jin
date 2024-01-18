@@ -431,6 +431,10 @@ impl<'db> ExpandDestroys<'db> {
                     span,
                 };
             } else {
+                todo!(
+                    "if slice of values that need destroy, generate free for \
+                     its elements too"
+                );
                 body.block_mut(block).insts[inst_idx] =
                     Inst::Free { value, traced: true, span };
             }
