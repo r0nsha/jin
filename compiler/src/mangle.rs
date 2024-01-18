@@ -44,12 +44,7 @@ pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
             .chain(iter::once(mangle_ty_name(db, f.ret)))
             .collect::<Vec<String>>()
             .join("_"),
-        TyKind::Adt(adt_id, targs) => {
-            iter::once(db.adt_def(*adt_id).unwrap().qpath.join_with("_"))
-                .chain(targs.iter().map(|ty| mangle_ty_name(db, *ty)))
-                .collect::<Vec<String>>()
-                .join("_")
-        }
+        TyKind::Adt(adt_id, targs) => mangle_adt(db, &db[*adt_id], targs),
         TyKind::Slice(inner) => {
             format!("slice_{}", mangle_ty_name(db, *inner))
         }
@@ -71,7 +66,7 @@ pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
     }
 }
 
-pub fn mangle_adt(db: &Db, adt: &Adt, targs: &[Ty]) -> Ustr {
+pub fn mangle_adt(db: &Db, adt: &Adt, targs: &[Ty]) -> String {
     let adt_name = db[adt.def_id].qpath.join_with("_");
 
     let targs_str = targs
@@ -80,11 +75,9 @@ pub fn mangle_adt(db: &Db, adt: &Adt, targs: &[Ty]) -> Ustr {
         .collect::<Vec<String>>()
         .join("_");
 
-    let mangle_name = if targs_str.is_empty() {
+    if targs_str.is_empty() {
         adt_name
     } else {
         format!("{adt_name}_{targs_str}")
-    };
-
-    ustr(&mangle_name)
+    }
 }
