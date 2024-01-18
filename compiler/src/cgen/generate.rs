@@ -472,7 +472,13 @@ impl<'db> Generator<'db> {
             .map(|b| self.codegen_block(&mut state, b))
             .collect();
 
-        self.codegen_fn_sig(sig).append(D::space()).append(block_(
+        let sig_doc = {
+            let inline =
+                if sig.is_inline { D::text("FORCE_INLINE ") } else { D::nil() };
+            inline.append(self.codegen_fn_sig(sig))
+        };
+
+        sig_doc.append(D::space()).append(block_(
             || {
                 D::intersperse(block_docs, D::hardline().append(D::hardline()))
                     .group()
