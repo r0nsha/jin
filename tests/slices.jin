@@ -32,6 +32,6 @@ type Box(value: int)
 
 fn boxes() unit = {
 	let a = [Box(1), Box(2), Box(3)]
-	let b = a.[0]
-	let b = a.[0]
+	let b = &a.[0]
+	let c = &a.[0]
 }
