@@ -500,6 +500,7 @@ impl<'db> Generator<'db> {
             .group()
     }
 
+    #[allow(clippy::too_many_lines)]
     fn codegen_inst(
         &mut self,
         state: &mut GenState<'db>,

@@ -35,7 +35,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return Ok(());
         }
 
-        todo!("check `self.cannot_move`");
+        self.check_can_move(value, moved_to)?;
         self.check_if_moved(value, moved_to)?;
 
         // Mark the value and its fields as moved.
@@ -66,6 +66,24 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     pub(super) fn try_use(&mut self, value: ValueId, moved_to: Span) {
         let result = self.check_if_moved(value, moved_to);
         self.emit_result(result);
+    }
+
+    fn check_can_move(
+        &mut self,
+        value: ValueId,
+        moved_to: Span,
+    ) -> DiagnosticResult<()> {
+        match self.value_states.cannot_move(value) {
+            Some(CannotMove::SliceIndex) => Err(Diagnostic::error()
+                .with_message(format!(
+                    "cannot move element of type `{}` out of slice",
+                    self.ty_of(value).display(self.cx.db)
+                ))
+                .with_label(
+                    Label::primary(moved_to).with_message("cannot move out"),
+                )),
+            None => Ok(()),
+        }
     }
 
     fn check_if_moved(
@@ -631,28 +649,44 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 }
 
 #[derive(Debug)]
-pub(super) struct ValueStates(FxHashMap<BlockId, BlockState>);
+pub(super) struct ValueStates {
+    states: FxHashMap<BlockId, BlockState>,
+    #[allow(clippy::zero_sized_map_values)]
+    cannot_move: FxHashMap<ValueId, CannotMove>,
+}
 
 impl ValueStates {
     pub(super) fn new() -> Self {
-        Self(FxHashMap::default())
+        #[allow(clippy::zero_sized_map_values)]
+        Self { states: FxHashMap::default(), cannot_move: FxHashMap::default() }
     }
 
-    fn get(&self, block: BlockId, value: ValueId) -> Option<&ValueState> {
-        self.0.get(&block).and_then(|b| b.states.get(&value))
+    pub(super) fn get(
+        &self,
+        block: BlockId,
+        value: ValueId,
+    ) -> Option<&ValueState> {
+        self.states.get(&block).and_then(|b| b.states.get(&value))
     }
 
-    #[allow(unused)]
-    fn get_mut(
+    pub(super) fn insert(
         &mut self,
         block: BlockId,
         value: ValueId,
-    ) -> Option<&mut ValueState> {
-        self.0.get_mut(&block).and_then(|b| b.states.get_mut(&value))
+        state: ValueState,
+    ) {
+        self.states.entry(block).or_default().states.insert(value, state);
     }
 
-    fn insert(&mut self, block: BlockId, value: ValueId, state: ValueState) {
-        self.0.entry(block).or_default().states.insert(value, state);
+    pub(super) fn set_cannot_move(&mut self, value: ValueId, kind: CannotMove) {
+        self.cannot_move.insert(value, kind);
+    }
+
+    pub(super) fn cannot_move(
+        &mut self,
+        value: ValueId,
+    ) -> Option<&CannotMove> {
+        self.cannot_move.get(&value)
     }
 }
 
@@ -679,9 +713,14 @@ impl Default for BlockState {
     }
 }
 
+#[derive(Debug)]
+pub(super) enum CannotMove {
+    SliceIndex,
+}
+
 impl fmt::Display for ValueStates {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        for (block, block_state) in &self.0 {
+        for (block, block_state) in &self.states {
             writeln!(f, "b{}:\n{}", block.0, block_state)?;
         }
 

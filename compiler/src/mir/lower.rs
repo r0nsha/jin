@@ -4,14 +4,14 @@ use ustr::{ustr, Ustr};
 
 use crate::{
     db::{AdtField, AdtKind, Db, DefId, DefKind, StructKind, VariantId},
-    diagnostics::{Diagnostic, DiagnosticResult, Label},
+    diagnostics::{Diagnostic, DiagnosticResult},
     hir,
     hir::{FnKind, Hir},
     mangle,
     middle::{BinOp, CmpOp, Mutability, NamePat, Pat, Vis},
     mir::{
         builder::InstBuilder,
-        ownck::{ValueState, ValueStates},
+        ownck::{CannotMove, ValueState, ValueStates},
         pmatch, AdtId, Block, BlockId, Body, Const, Fn, FnParam, FnSig,
         FnSigId, FxHashMap, Global, GlobalId, GlobalKind, Inst, Mir, Span,
         StaticGlobal, UnOp, ValueId, ValueKind,
@@ -724,20 +724,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 });
 
                 if elem_ty.is_move(self.cx.db) {
-                    todo!("add `self.cannot_move: FxHashMap<ValueId, CannotMove>`");
-                    todo!("insert to `self.cannot_move`");
-                    // TODO: self.cannot_move.insert(value, CannotMove::SliceIndex);
-                    // self.cx.diagnostics.push(
-                    //     Diagnostic::error()
-                    //         .with_message(format!(
-                    //             "cannot move element type `{}` out of slice",
-                    //             elem_ty.display(self.cx.db)
-                    //         ))
-                    //         .with_label(
-                    //             Label::primary(expr.span)
-                    //                 .with_message("cannot move element out"),
-                    //         ),
-                    // );
+                    self.value_states
+                        .set_cannot_move(value, CannotMove::SliceIndex);
                 }
 
                 value
