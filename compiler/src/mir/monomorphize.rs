@@ -7,13 +7,14 @@ use ustr::{ustr, Ustr};
 use crate::{
     db::{AdtField, AdtKind, Db, DefId, StructDef, UnionDef},
     mangle,
-    middle::{Mutability, NamePat, Pat, Vis},
+    middle::{BinOp, CmpOp, Mutability, NamePat, Pat, Vis},
     mir::{
         BlockId, Body, Const, Fn, FnParam, FnSig, FnSigId, FxHashMap, GlobalId,
         GlobalKind, IdMap, Inst, Mir, StaticGlobal, ValueId, ValueKind,
     },
     span::{Span, Spanned as _},
     subst::{Subst, SubstTy},
+    sym,
     ty::{fold::TyFolder, FnTy, FnTyParam, Instantiation, Ty, TyKind},
     word::Word,
 };
@@ -662,7 +663,9 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
     }
 
     fn create(mut self, ty: Ty) -> FnSigId {
-        let TyKind::Slice(elem_ty) = ty.kind() else { unreachable!() };
+        let &TyKind::Slice(elem_ty) = ty.kind() else { unreachable!() };
+
+        let main_span = Span::uniform(self.cx.db.main_source_id(), 0);
 
         let tyname = mangle::mangle_ty_name(self.cx.db, ty);
         let mangled_name = ustr(&format!("{tyname}_destroy"));
@@ -672,67 +675,109 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
             ty,
             mangled_name,
             display_name,
-            Span::unknown(),
+            main_span,
         );
 
         let slice =
             self.body.create_value(ty, ValueKind::Param(DefId::null(), 0));
 
-        // let start_block = self.body.create_block("loop_start");
-        // let end_block = self.body.create_block("loop_end");
-        //
-        // self.enter_scope(ScopeKind::Loop(LoopScope::new(end_block)), expr.span);
-        //
-        // self.ins(self.current_block).br(start_block);
-        // self.position_at(start_block);
-        //
-        // todo!("cond = i < slice.len");
-        // let cond = self.lower_in_expr(cond_expr);
-        //
-        // let not_cond = self
-        //     .push_inst_with_register(self.cx.db.types.bool, |value| {
-        //         Inst::Unary { value, inner: cond, op: UnOp::Not }
-        //     });
-        // self.ins(start_block).brif(not_cond, end_block, None);
-        // todo!("destroy elem in index");
-        // self.ins(self.current_block).br(start_block);
-        // self.position_at(end_block);
-        //
-        // let unit_value = self
-        //     .body
-        //     .create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
-        //
-        // self.body.ins(join_block).free(slice, false, adt_span).ret(unit_value);
+        let start = self.body.create_block("start");
+
+        let end_block = if self.cx.should_destroy_ty(elem_ty) {
+            self.free_slice_elems(start, slice, elem_ty, main_span)
+        } else {
+            start
+        };
+
+        let unit_value = self
+            .body
+            .create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
+        self.body.ins(end_block).free(slice, false, main_span).ret(unit_value);
 
         self.cx.mono_mir.fns.insert(sig, Fn { sig, body: self.body });
 
         sig
     }
 
+    // Generates a loop which goes over all slice elements, destroying them.
+    // The generated code in psuedo-code:
+    //
+    // ```rust
+    // let i = 0
+    // loop {
+    //   if i == slice.len { break }
+    //   free(slice[i])
+    // }
+    // ```
+    fn free_slice_elems(
+        &mut self,
+        start: BlockId,
+        slice: ValueId,
+        elem_ty: Ty,
+        span: Span,
+    ) -> BlockId {
+        let uint = self.cx.db.types.uint;
+
+        let loop_start = self.body.create_block("loop_start");
+        let loop_end = self.body.create_block("loop_end");
+
+        // uint i = 0;
+        let index = self.body.create_register(uint);
+        let zero =
+            self.body.create_value(uint, ValueKind::Const(Const::Int(0)));
+        self.body.ins(start).stackalloc(index, zero).br(loop_start);
+
+        // slice.len
+        let slice_len = self
+            .body
+            .create_value(uint, ValueKind::Field(slice, ustr(sym::LEN)));
+
+        // i == slice.len
+        let cond = self.body.create_register(self.cx.db.types.bool);
+        self.body.ins(loop_start).binary(
+            cond,
+            index,
+            slice_len,
+            BinOp::Cmp(CmpOp::Eq),
+            span,
+        );
+
+        self.body.ins(loop_start).brif(cond, loop_end, None);
+        self.free_elem(loop_start, slice, index, elem_ty, span);
+
+        // i += 1
+        let next_index = self.body.create_register(uint);
+        let one = self.body.create_value(uint, ValueKind::Const(Const::Int(1)));
+        self.body
+            .ins(loop_start)
+            .binary(next_index, index, one, BinOp::Add, span)
+            .store(next_index, index);
+
+        self.body.ins(loop_start).br(loop_start);
+
+        loop_end
+    }
+
     fn free_elem(
         &mut self,
         block: BlockId,
         slice: ValueId,
-        index: usize,
+        index: ValueId,
         elem_ty: Ty,
         span: Span,
     ) {
-        let elem_value = self.body.create_register(elem_ty);
+        let elem = self.body.create_register(elem_ty);
+        self.body.ins(block).slice_index(elem, slice, index);
 
         match elem_ty.kind() {
             TyKind::Adt(..) => {
                 let (result, callee) =
                     self.cx.get_free_call_values(&mut self.body, elem_ty);
 
-                self.body.ins(block).call(
-                    result,
-                    callee,
-                    vec![elem_value],
-                    span,
-                );
+                self.body.ins(block).call(result, callee, vec![elem], span);
             }
             TyKind::Ref(..) if self.cx.should_refcount_ty(elem_ty) => {
-                self.body.ins(block).decref(elem_value);
+                self.body.ins(block).decref(elem);
             }
             _ => (),
         }
