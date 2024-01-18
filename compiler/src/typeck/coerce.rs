@@ -97,6 +97,10 @@ fn coerce_tys(
                 .push(Coercion { kind: CoercionKind::IntPromotion, target });
             true
         }
+        (TyKind::Never, _) | (TyKind::Unit, TyKind::Never) => {
+            coercions.push(Coercion { kind: CoercionKind::NeverToAny, target });
+            true
+        }
         (TyKind::Ref(a, Mutability::Mut), TyKind::Ref(b, Mutability::Imm)) => {
             if can_unify_or_coerce(*a, *b, cx, coercions, options) {
                 coercions
@@ -108,6 +112,10 @@ fn coerce_tys(
         }
         (TyKind::Ref(a, Mutability::Imm), TyKind::Ref(b, Mutability::Imm)) => {
             coerce_tys(*a, *b, cx, coercions, options)
+        }
+        (_, TyKind::Unit) => {
+            coercions.push(Coercion { kind: CoercionKind::AnyToUnit, target });
+            true
         }
         (_, TyKind::Ref(b, _)) => {
             if can_unify_or_coerce(source, *b, cx, coercions, options) {
@@ -129,14 +137,6 @@ fn coerce_tys(
             } else {
                 false
             }
-        }
-        (TyKind::Never, _) | (TyKind::Unit, TyKind::Never) => {
-            coercions.push(Coercion { kind: CoercionKind::NeverToAny, target });
-            true
-        }
-        (_, TyKind::Unit) => {
-            coercions.push(Coercion { kind: CoercionKind::AnyToUnit, target });
-            true
         }
         _ => unify_with_options(source, target, cx, options).is_ok(),
     }
