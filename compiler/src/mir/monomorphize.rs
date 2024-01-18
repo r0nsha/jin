@@ -323,16 +323,12 @@ struct ExpandDestroys<'db> {
     mono_mir: MonoMir,
 
     // Generated free functions for adt types
-    adt_frees: FxHashMap<Ty, FnSigId>,
+    free_fns: FxHashMap<Ty, FnSigId>,
 }
 
 impl<'db> ExpandDestroys<'db> {
     fn new(db: &'db Db, mir: &Mir) -> Self {
-        Self {
-            db,
-            mono_mir: MonoMir::new(mir),
-            adt_frees: FxHashMap::default(),
-        }
+        Self { db, mono_mir: MonoMir::new(mir), free_fns: FxHashMap::default() }
     }
 
     fn run(mut self, mir: &mut Mir) {
@@ -452,19 +448,14 @@ impl<'db> ExpandDestroys<'db> {
     }
 
     fn get_or_create_free_fn(&mut self, ty: Ty) -> FnSigId {
-        match ty.kind() {
-            TyKind::Adt(..) => self.get_or_create_adt_free(ty),
-            ty => unreachable!("unexpected ty {ty:?}"),
-        }
-    }
-
-    fn get_or_create_adt_free(&mut self, ty: Ty) -> FnSigId {
-        if let Some(sig_id) = self.adt_frees.get(&ty) {
+        if let Some(sig_id) = self.free_fns.get(&ty) {
             return *sig_id;
         }
 
-        let sig_id = CreateAdtFree::new(self).create(ty);
-        sig_id
+        match ty.kind() {
+            TyKind::Adt(..) => CreateAdtFree::new(self).create(ty),
+            ty => unreachable!("unexpected ty {ty:?}"),
+        }
     }
 }
 
@@ -556,7 +547,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             is_inline: true,
             span: adt_span,
         });
-        self.cx.adt_frees.insert(ty, sig);
+        self.cx.free_fns.insert(ty, sig);
 
         let self_value = self.body.create_value(adt_ty, self_value);
 

@@ -449,7 +449,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             TyKind::Adt(adt_id, _) => {
                 matches!(self.cx.db[*adt_id].kind, AdtKind::Union(_))
             }
-            TyKind::Param(_) => true,
+            TyKind::Slice(..) | TyKind::Param(_) => true,
             _ => false,
         }
     }
