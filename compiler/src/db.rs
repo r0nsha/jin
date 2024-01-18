@@ -30,8 +30,8 @@ use crate::{
     span::{Source, SourceId, Sources, Span, Spanned},
     target::{TargetMetrics, TargetPlatform},
     ty::{
-        FloatTy, FnTy, FnTyParam, Instantiation, IntTy, Ty, TyKind, Typed,
-        UintTy,
+        FloatTy, FnTy, FnTyFlags, FnTyParam, Instantiation, IntTy, Ty, TyKind,
+        Typed, UintTy,
     },
     word::Word,
 };
@@ -623,8 +623,7 @@ impl StructDef {
                 .map(|f| FnTyParam { name: Some(f.name.name()), ty: f.ty })
                 .collect(),
             ret,
-            is_extern: false,
-            is_c_variadic: false,
+            flags: FnTyFlags::empty(),
         }));
     }
 
@@ -694,8 +693,7 @@ impl Variant {
                 .map(|f| FnTyParam { name: Some(f.name.name()), ty: f.ty })
                 .collect(),
             ret,
-            is_extern: false,
-            is_c_variadic: false,
+            flags: FnTyFlags::empty(),
         }));
     }
 

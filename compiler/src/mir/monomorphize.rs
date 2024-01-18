@@ -15,7 +15,9 @@ use crate::{
     span::{Span, Spanned as _},
     subst::{Subst, SubstTy},
     sym,
-    ty::{fold::TyFolder, FnTy, FnTyParam, Instantiation, Ty, TyKind},
+    ty::{
+        fold::TyFolder, FnTy, FnTyFlags, FnTyParam, Instantiation, Ty, TyKind,
+    },
     word::Word,
 };
 
@@ -809,8 +811,7 @@ fn create_destroy_sig(
     let fn_ty = Ty::new(TyKind::Fn(FnTy {
         params: fn_ty_params,
         ret: cx.db.types.unit,
-        is_extern: false,
-        is_c_variadic: false,
+        flags: FnTyFlags::empty(),
     }));
 
     let sig = cx.mono_mir.fn_sigs.insert_with_key(|id| FnSig {

@@ -135,7 +135,7 @@ fn fn_ty<'a>(
 
     let mut param_docs = vec![];
 
-    if !fn_ty.is_extern {
+    if !fn_ty.is_extern() {
         param_docs.push(D::text("jinrt_backtrace *backtrace"));
     }
 
@@ -145,13 +145,9 @@ fn fn_ty<'a>(
         .nest(1)
         .group();
 
-    ret.append(D::space()).append(name_doc).append(util::group(
-        params.append(if fn_ty.is_c_variadic {
-            D::text(", ...")
-        } else {
-            D::nil()
-        }),
-    ))
+    ret.append(D::space()).append(name_doc).append(util::group(params.append(
+        if fn_ty.is_c_variadic() { D::text(", ...") } else { D::nil() },
+    )))
 }
 
 fn ty_and_name<'a>(

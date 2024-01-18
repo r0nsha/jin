@@ -4,6 +4,7 @@ use crate::{
     db::Db,
     hir::{Expr, ExprKind, Fn, FnKind, Hir, Let, Pat},
     middle::BinOp,
+    ty::FnTyFlags,
 };
 
 pub(super) fn print(
@@ -47,7 +48,11 @@ impl PrettyCx<'_> {
             "fn {} (returns: {}{})",
             self.db[f.def_id].qpath,
             fn_ty.ret.display(self.db),
-            if fn_ty.is_c_variadic { ", c variadic" } else { "" }
+            if fn_ty.flags.contains(FnTyFlags::C_VARIADIC) {
+                ", c variadic"
+            } else {
+                ""
+            }
         ));
 
         if !f.sig.params.is_empty() {

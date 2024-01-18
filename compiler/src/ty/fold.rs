@@ -15,8 +15,7 @@ pub trait TyFolder {
                     })
                     .collect(),
                 ret: self.fold(fun.ret),
-                is_extern: fun.is_extern,
-                is_c_variadic: fun.is_c_variadic,
+                flags: fun.flags,
             })
             .into(),
             TyKind::Slice(inner) => TyKind::Slice(self.fold(*inner)).into(),

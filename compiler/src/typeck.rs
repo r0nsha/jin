@@ -34,8 +34,8 @@ use crate::{
     span::{Span, Spanned},
     sym,
     ty::{
-        FloatVar, FnTy, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty,
-        TyKind, TyVar,
+        FloatVar, FnTy, FnTyFlags, FnTyParam, InferTy, Instantiation, IntVar,
+        ParamTy, Ty, TyKind, TyVar,
     },
     typeck::{
         attrs::AttrsPlacement,
@@ -536,12 +536,17 @@ impl<'db> Typeck<'db> {
         let ret = self.check_fn_sig_ret(env, sig.ret.as_ref())?;
         let ret_span = sig.ret.as_ref().map_or(sig.word.span(), Spanned::span);
 
-        let ty = Ty::new(TyKind::Fn(FnTy {
-            params: fnty_params,
-            ret,
-            is_extern,
-            is_c_variadic,
-        }));
+        let mut flags = FnTyFlags::empty();
+
+        if is_extern {
+            flags.insert(FnTyFlags::EXTERN);
+        }
+
+        if is_c_variadic {
+            flags.insert(FnTyFlags::C_VARIADIC);
+        }
+
+        let ty = Ty::new(TyKind::Fn(FnTy { params: fnty_params, ret, flags }));
 
         Ok(hir::FnSig { word: sig.word, ty_params, params, ret, ret_span, ty })
     }
@@ -560,8 +565,7 @@ impl<'db> Typeck<'db> {
         let ty = Ty::new(TyKind::Fn(FnTy {
             params: fnty_params,
             ret,
-            is_extern: false,
-            is_c_variadic: false,
+            flags: FnTyFlags::empty(),
         }));
 
         let module_name = self.db[env.module_id()].qpath.join_with("_");
@@ -2017,7 +2021,7 @@ impl<'db> Typeck<'db> {
             span: Span,
         }
 
-        if !fn_ty.is_c_variadic && args.len() != fn_ty.params.len() {
+        if !fn_ty.is_c_variadic() && args.len() != fn_ty.params.len() {
             return Err(errors::arg_mismatch(
                 fn_ty.params.len(),
                 args.len(),
@@ -2228,12 +2232,17 @@ impl<'db> Typeck<'db> {
 
                 let ret = self.check_ty_expr(env, &fn_ty.ret, allow_hole)?;
 
-                Ok(Ty::new(TyKind::Fn(FnTy {
-                    params,
-                    ret,
-                    is_extern: fn_ty.is_extern,
-                    is_c_variadic: fn_ty.is_c_variadic,
-                })))
+                let mut flags = FnTyFlags::empty();
+
+                if fn_ty.is_extern {
+                    flags.insert(FnTyFlags::EXTERN);
+                }
+
+                if fn_ty.is_c_variadic {
+                    flags.insert(FnTyFlags::C_VARIADIC);
+                }
+
+                Ok(Ty::new(TyKind::Fn(FnTy { params, ret, flags })))
             }
             TyExpr::Slice(inner, _) => {
                 let inner = self.check_ty_expr(env, inner, allow_hole)?;

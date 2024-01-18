@@ -4,6 +4,7 @@ pub mod printer;
 
 use std::ops::{self, Deref};
 
+use bitflags::bitflags;
 use derive_more::{From, Into};
 use internment::Intern;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -608,12 +609,26 @@ impl FloatTy {
 pub struct FnTy {
     pub params: Vec<FnTyParam>,
     pub ret: Ty,
-    // TODO: use bitflags
-    pub is_extern: bool,
-    pub is_c_variadic: bool,
+    pub flags: FnTyFlags,
+}
+
+bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+    pub struct FnTyFlags: u32 {
+        const EXTERN = 0b0000_0001;
+        const C_VARIADIC = 0b0000_0010;
+    }
 }
 
 impl FnTy {
+    pub fn is_extern(&self) -> bool {
+        self.flags.contains(FnTyFlags::EXTERN)
+    }
+
+    pub fn is_c_variadic(&self) -> bool {
+        self.flags.contains(FnTyFlags::C_VARIADIC)
+    }
+
     pub fn collect_params(&self) -> Vec<ParamTy> {
         let mut params = FxHashSet::default();
         self.collect_params_into(&mut params);
