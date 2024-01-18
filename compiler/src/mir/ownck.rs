@@ -513,6 +513,28 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         ty.is_ref() || ty.is_move(self.cx.db)
     }
 
+    pub(super) fn check_slice_assign_mutability(
+        &mut self,
+        kind: AssignKind,
+        slice: ValueId,
+        span: Span,
+    ) {
+        if let Err(root) = self
+            .value_imm_root(slice, BreakOnMutRef::Yes)
+            .and_then(|()| self.value_ty_imm_root(slice))
+        {
+            self.cx.diagnostics.push(self.imm_root_err(
+                match kind {
+                    AssignKind::Assign => "cannot assign",
+                    AssignKind::Swap => "cannot swap",
+                },
+                slice,
+                root,
+                span,
+            ));
+        }
+    }
+
     pub(super) fn check_assign_mutability(
         &mut self,
         kind: AssignKind,

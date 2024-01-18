@@ -821,27 +821,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.ins(self.current_block).store(rhs, lhs);
     }
 
-    fn lower_slice_assign(
-        &mut self,
-        assign: &hir::Assign,
-        idx: &hir::Index,
-        span: Span,
-    ) {
-        let SliceIndexResult { slice, index, elem } =
-            self.lower_slice_index(idx, span);
-        let rhs = self.lower_assign_rhs(assign, elem, span);
-
-        self.check_assign_mutability(AssignKind::Assign, slice, span);
-
-        self.destroy_value_entirely(elem, idx.expr.span);
-        self.ins(self.current_block).slice_store(
-            slice,
-            index,
-            rhs,
-            assign.lhs.span,
-        );
-    }
-
     fn lower_swap(&mut self, swap: &hir::Swap, span: Span) -> ValueId {
         let lhs = self.lower_expr(&swap.lhs);
         self.try_use(lhs, swap.lhs.span);
@@ -858,6 +837,27 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         old_lhs
     }
 
+    fn lower_slice_assign(
+        &mut self,
+        assign: &hir::Assign,
+        idx: &hir::Index,
+        span: Span,
+    ) {
+        let SliceIndexResult { slice, index, elem } =
+            self.lower_slice_index(idx, span);
+        let rhs = self.lower_assign_rhs(assign, elem, span);
+
+        self.check_slice_assign_mutability(AssignKind::Assign, slice, span);
+
+        self.destroy_value_entirely(elem, idx.expr.span);
+        self.ins(self.current_block).slice_store(
+            slice,
+            index,
+            rhs,
+            assign.lhs.span,
+        );
+    }
+
     fn lower_slice_swap(
         &mut self,
         swap: &hir::Swap,
@@ -868,7 +868,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.lower_slice_index(idx, span);
         let rhs = self.lower_input_expr(&swap.rhs);
 
-        self.check_assign_mutability(AssignKind::Swap, slice, span);
+        self.check_slice_assign_mutability(AssignKind::Swap, slice, span);
 
         let old_elem = self
             .push_inst_with_register(self.ty_of(elem), |value| {
