@@ -485,32 +485,62 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::Assign(assign) => {
-                // match &assign.lhs.kind{
-                //     hir::ExprKind::Index(_)=>{
-                //
-                //     }
-                //
-                // }
-                let lhs = self.lower_expr(&assign.lhs);
-                self.try_use(lhs, assign.lhs.span);
+                if let hir::ExprKind::Index(idx) = &assign.lhs.kind {
+                    let SliceIndexResult { slice, index, elem } =
+                        self.lower_slice_index(idx, expr.span);
 
-                let rhs = self.lower_input_expr(&assign.rhs);
-                let rhs = if let Some(op) = assign.op {
-                    let value = self
-                        .create_value(assign.lhs.ty, ValueKind::Register(None));
-                    self.ins(self.current_block)
-                        .binary(value, lhs, rhs, op, expr.span);
-                    value
+                    let rhs = self.lower_input_expr(&assign.rhs);
+                    let rhs = if let Some(op) = assign.op {
+                        let value = self.create_value(
+                            assign.lhs.ty,
+                            ValueKind::Register(None),
+                        );
+                        self.ins(self.current_block)
+                            .binary(value, elem, rhs, op, expr.span);
+                        value
+                    } else {
+                        rhs
+                    };
+
+                    self.check_assign_mutability(
+                        AssignKind::Assign,
+                        slice,
+                        idx.expr.span,
+                    );
+
+                    self.destroy_value_entirely(elem, idx.expr.span);
+                    self.set_owned(elem);
+                    self.ins(self.current_block).slice_store(
+                        slice,
+                        index,
+                        rhs,
+                        assign.lhs.span,
+                    );
+                    self.const_unit()
                 } else {
-                    rhs
-                };
+                    let lhs = self.lower_expr(&assign.lhs);
+                    self.try_use(lhs, assign.lhs.span);
 
-                self.lower_assign(
-                    AssignKind::Assign,
-                    (lhs, assign.lhs.span),
-                    rhs,
-                    expr.span,
-                )
+                    let rhs = self.lower_input_expr(&assign.rhs);
+                    let rhs = if let Some(op) = assign.op {
+                        let value = self.create_value(
+                            assign.lhs.ty,
+                            ValueKind::Register(None),
+                        );
+                        self.ins(self.current_block)
+                            .binary(value, lhs, rhs, op, expr.span);
+                        value
+                    } else {
+                        rhs
+                    };
+
+                    self.lower_assign(
+                        AssignKind::Assign,
+                        (lhs, assign.lhs.span),
+                        rhs,
+                        expr.span,
+                    )
+                }
             }
             hir::ExprKind::Swap(swap) => {
                 let lhs = self.lower_expr(&swap.lhs);
@@ -719,30 +749,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.field_or_create(value, name, expr.ty)
             }
             hir::ExprKind::Index(idx) => {
-                let slice = self.lower_expr(&idx.expr);
-                self.try_use(slice, idx.expr.span);
+                let SliceIndexResult { elem, .. } =
+                    self.lower_slice_index(idx, expr.span);
 
-                let index = self.lower_expr(&idx.index);
-                self.try_move(index, idx.index.span);
-
-                let elem_ty =
-                    self.ty_of(slice).auto_deref().slice_elem().unwrap();
-
-                let value =
-                    self.create_value(elem_ty, ValueKind::Register(None));
-                self.ins(self.current_block)
-                    .slice_index(value, slice, index, expr.span);
-
-                if elem_ty.is_move(self.cx.db) {
+                if self.ty_of(elem).is_move(self.cx.db) {
                     // An element can never be moved out of its slice
                     self.value_states
-                        .set_cannot_move(value, CannotMove::SliceIndex);
-
-                    // We must set the indexed value as moved, so that we don't destroy it
-                    self.set_moved(value, expr.span);
+                        .set_cannot_move(elem, CannotMove::SliceIndex);
                 }
 
-                value
+                elem
             }
             hir::ExprKind::Name(name) => {
                 self.lower_name(name.id, &name.instantiation)
@@ -776,8 +792,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 });
 
                 for (index, expr) in lit.exprs.iter().enumerate() {
-                    let value = self.lower_expr(expr);
-                    self.try_move(value, expr.span);
+                    let value = self.lower_input_expr(expr);
 
                     let index = self.const_int(uint, index as _);
                     self.ins(self.current_block)
@@ -858,6 +873,26 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 old_lhs
             }
         }
+    }
+
+    fn lower_slice_index(
+        &mut self,
+        idx: &hir::Index,
+        span: Span,
+    ) -> SliceIndexResult {
+        let slice = self.lower_expr(&idx.expr);
+        self.try_use(slice, idx.expr.span);
+        let index = self.lower_input_expr(&idx.index);
+
+        let elem_ty = self.ty_of(slice).auto_deref().slice_elem().unwrap();
+
+        let elem = self.create_value(elem_ty, ValueKind::Register(None));
+        self.ins(self.current_block).slice_index(elem, slice, index, span);
+
+        // We must set the slice element as moved, so that we don't destroy it
+        self.set_moved(elem, span);
+
+        SliceIndexResult { slice, index, elem }
     }
 
     fn lower_decision(
@@ -1750,4 +1785,11 @@ enum ValueAction {
 pub(super) enum AssignKind {
     Assign,
     Swap,
+}
+
+#[derive(Debug, Clone, Copy)]
+struct SliceIndexResult {
+    slice: ValueId,
+    index: ValueId,
+    elem: ValueId,
 }

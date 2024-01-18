@@ -8,10 +8,12 @@ fn main() unit = {
 fn ints() unit = {
 	let a: [int] = []
 	let b: [int] = [:3]
-	let c = [1, 2, 3, 4, 5]
-	print(a)
-	print(b)
-	print(c)
+	let mut c = [1, 2, 3, 4, 5]
+	print(&a)
+	print(&b)
+	print(&c)
+	c.[1] = 69
+	print(&c)
 }
 
 fn print(s: &[int]) unit = {
