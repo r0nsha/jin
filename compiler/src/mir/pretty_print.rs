@@ -165,7 +165,7 @@ impl<'db> PrettyCx<'db> {
                 .value_assign(body, *value)
                 .append(D::text("slice_alloc, cap: "))
                 .append(self.value(body, *cap)),
-            Inst::SliceIndex { value, slice, index } => {
+            Inst::SliceIndex { value, slice, index, .. } => {
                 self.value_assign(body, *value).append(
                     D::text("slice_index")
                         .append(D::space())

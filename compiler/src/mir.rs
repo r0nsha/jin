@@ -443,25 +443,91 @@ impl Block {
 
 #[derive(Debug, Clone)]
 pub enum Inst {
-    StackAlloc { value: ValueId, init: Option<ValueId> },
-    Store { value: ValueId, target: ValueId },
-    Alloc { value: ValueId },
-    SliceAlloc { value: ValueId, cap: ValueId },
-    SliceIndex { value: ValueId, slice: ValueId, index: ValueId },
-    SliceStore { slice: ValueId, index: ValueId, value: ValueId },
-    Destroy { value: ValueId, destroy_glue: bool, span: Span },
-    Free { value: ValueId, traced: bool, span: Span },
-    IncRef { value: ValueId },
-    DecRef { value: ValueId },
-    Br { target: BlockId },
-    BrIf { cond: ValueId, then: BlockId, otherwise: Option<BlockId> },
-    Switch { cond: ValueId, blocks: Vec<BlockId> },
-    Return { value: ValueId },
-    Call { value: ValueId, callee: ValueId, args: Vec<ValueId>, span: Span },
-    Binary { value: ValueId, lhs: ValueId, rhs: ValueId, op: BinOp, span: Span },
-    Unary { value: ValueId, inner: ValueId, op: UnOp },
-    Cast { value: ValueId, inner: ValueId, target: Ty, span: Span },
-    StrLit { value: ValueId, lit: Ustr },
+    StackAlloc {
+        value: ValueId,
+        init: Option<ValueId>,
+    },
+    Store {
+        value: ValueId,
+        target: ValueId,
+    },
+    Alloc {
+        value: ValueId,
+    },
+    SliceAlloc {
+        value: ValueId,
+        cap: ValueId,
+    },
+    SliceIndex {
+        value: ValueId,
+        slice: ValueId,
+        index: ValueId,
+        span: Option<Span>,
+    },
+    SliceStore {
+        slice: ValueId,
+        index: ValueId,
+        value: ValueId,
+    },
+    Destroy {
+        value: ValueId,
+        destroy_glue: bool,
+        span: Span,
+    },
+    Free {
+        value: ValueId,
+        traced: bool,
+        span: Span,
+    },
+    IncRef {
+        value: ValueId,
+    },
+    DecRef {
+        value: ValueId,
+    },
+    Br {
+        target: BlockId,
+    },
+    BrIf {
+        cond: ValueId,
+        then: BlockId,
+        otherwise: Option<BlockId>,
+    },
+    Switch {
+        cond: ValueId,
+        blocks: Vec<BlockId>,
+    },
+    Return {
+        value: ValueId,
+    },
+    Call {
+        value: ValueId,
+        callee: ValueId,
+        args: Vec<ValueId>,
+        span: Span,
+    },
+    Binary {
+        value: ValueId,
+        lhs: ValueId,
+        rhs: ValueId,
+        op: BinOp,
+        span: Option<Span>,
+    },
+    Unary {
+        value: ValueId,
+        inner: ValueId,
+        op: UnOp,
+    },
+    Cast {
+        value: ValueId,
+        inner: ValueId,
+        target: Ty,
+        span: Span,
+    },
+    StrLit {
+        value: ValueId,
+        lit: Ustr,
+    },
 }
 
 #[derive(Debug, Clone)]

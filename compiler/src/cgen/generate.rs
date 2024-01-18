@@ -520,11 +520,10 @@ impl<'db> Generator<'db> {
             Inst::SliceAlloc { value, cap } => {
                 self.alloc_slice(state, *value, *cap)
             }
-            Inst::SliceIndex { value, slice, index } => {
-                self.value_assign(state, *value, |this| {
+            Inst::SliceIndex { value, slice, index, span } => self
+                .value_assign(state, *value, |this| {
                     this.slice_index(state, *slice, *index)
-                })
-            }
+                }),
             Inst::SliceStore { slice, index, value } => stmt(|| {
                 util::assign(
                     self.slice_index(state, *slice, *index),

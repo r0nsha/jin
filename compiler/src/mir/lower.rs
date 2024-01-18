@@ -490,9 +490,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 let rhs = self.lower_in_expr(&assign.rhs);
                 let rhs = if let Some(op) = assign.op {
-                    self.push_inst_with_register(assign.lhs.ty, |value| {
-                        Inst::Binary { value, lhs, rhs, op, span: expr.span }
-                    })
+                    let value = self
+                        .create_value(assign.lhs.ty, ValueKind::Register(None));
+                    self.ins(self.current_block)
+                        .binary(value, lhs, rhs, op, expr.span);
+                    value
                 } else {
                     rhs
                 };
@@ -689,13 +691,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let lhs = self.lower_in_expr(&bin.lhs);
                 let rhs = self.lower_in_expr(&bin.rhs);
 
-                self.push_inst_with_register(expr.ty, |value| Inst::Binary {
-                    value,
-                    lhs,
-                    rhs,
-                    op: bin.op,
-                    span: expr.span,
-                })
+                let value =
+                    self.create_value(expr.ty, ValueKind::Register(None));
+                self.ins(self.current_block)
+                    .binary(value, lhs, rhs, bin.op, expr.span);
+                value
             }
             hir::ExprKind::Cast(cast) => {
                 let inner = self.lower_in_expr(&cast.expr);
@@ -722,9 +722,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let elem_ty =
                     self.ty_of(slice).auto_deref().slice_elem().unwrap();
 
-                let value = self.push_inst_with_register(elem_ty, |value| {
-                    Inst::SliceIndex { value, slice, index }
-                });
+                let value =
+                    self.create_value(elem_ty, ValueKind::Register(None));
+                self.ins(self.current_block)
+                    .slice_index(value, slice, index, expr.span);
 
                 if elem_ty.is_move(self.cx.db) {
                     // An element can never be moved out of its slice

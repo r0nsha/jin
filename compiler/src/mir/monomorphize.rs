@@ -734,12 +734,11 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
 
         // i == slice.len
         let cond = self.body.create_register(self.cx.db.types.bool);
-        self.body.ins(loop_start).binary(
+        self.body.ins(loop_start).binary_unchecked(
             cond,
             index,
             slice_len,
             BinOp::Cmp(CmpOp::Eq),
-            span,
         );
 
         self.body.ins(loop_start).brif(cond, loop_end, None);
@@ -750,7 +749,7 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
         let one = self.body.create_value(uint, ValueKind::Const(Const::Int(1)));
         self.body
             .ins(loop_start)
-            .binary(next_index, index, one, BinOp::Add, span)
+            .binary_unchecked(next_index, index, one, BinOp::Add)
             .store(next_index, index);
 
         self.body.ins(loop_start).br(loop_start);
@@ -767,7 +766,7 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
         span: Span,
     ) {
         let elem = self.body.create_register(elem_ty);
-        self.body.ins(block).slice_index(elem, slice, index);
+        self.body.ins(block).slice_index_unchecked(elem, slice, index);
 
         match elem_ty.kind() {
             TyKind::Adt(..) | TyKind::Slice(..) => {

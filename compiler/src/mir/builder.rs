@@ -54,7 +54,18 @@ impl<'a> InstBuilder<'a> {
         op: BinOp,
         span: Span,
     ) -> &mut Self {
-        self.inst(Inst::Binary { value, lhs, rhs, op, span });
+        self.inst(Inst::Binary { value, lhs, rhs, op, span: Some(span) });
+        self
+    }
+
+    pub fn binary_unchecked(
+        &mut self,
+        value: ValueId,
+        lhs: ValueId,
+        rhs: ValueId,
+        op: BinOp,
+    ) -> &mut Self {
+        self.inst(Inst::Binary { value, lhs, rhs, op, span: None });
         self
     }
 
@@ -84,8 +95,19 @@ impl<'a> InstBuilder<'a> {
         value: ValueId,
         slice: ValueId,
         index: ValueId,
+        span: Span,
     ) -> &mut Self {
-        self.inst(Inst::SliceIndex { value, slice, index });
+        self.inst(Inst::SliceIndex { value, slice, index, span: Some(span) });
+        self
+    }
+
+    pub fn slice_index_unchecked(
+        &mut self,
+        value: ValueId,
+        slice: ValueId,
+        index: ValueId,
+    ) -> &mut Self {
+        self.inst(Inst::SliceIndex { value, slice, index, span: None });
         self
     }
 

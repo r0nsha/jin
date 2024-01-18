@@ -20,7 +20,13 @@ pub struct BinOpData {
     pub rhs: ValueId,
     pub op: BinOp,
     pub ty: Ty,
-    pub span: Span,
+    pub span: Option<Span>,
+}
+
+impl BinOpData {
+    fn do_safety_checks(&self) -> bool {
+        self.span.is_some()
+    }
 }
 
 impl<'db> Generator<'db> {
@@ -82,11 +88,10 @@ impl<'db> Generator<'db> {
         state: &GenState<'db>,
         data: &BinOpData,
     ) -> D<'db> {
-        if data.ty.is_any_int() {
-            // Perform safety checked ops
+        if data.do_safety_checks() && data.ty.is_any_int() {
             match data.op {
                 BinOp::Add | BinOp::Sub | BinOp::Mul => {
-                    return self.codegen_safe_bin_op2(state, data)
+                    return self.codegen_safe_bin_op(state, data)
                 }
                 BinOp::Div | BinOp::Rem => {
                     return self.codegen_safe_bin_op_div(state, data)
@@ -95,6 +100,14 @@ impl<'db> Generator<'db> {
             }
         }
 
+        self.codegen_bin_op_unchecked(state, data)
+    }
+
+    pub fn codegen_bin_op_unchecked(
+        &mut self,
+        state: &GenState<'db>,
+        data: &BinOpData,
+    ) -> D<'db> {
         let (lhs, rhs) =
             (self.value(state, data.lhs), self.value(state, data.rhs));
 
@@ -125,8 +138,12 @@ impl<'db> Generator<'db> {
             (self.value(state, data.lhs), self.value(state, data.rhs));
 
         let cond = rhs.clone().append(D::text(" == 0"));
-        let safety_check =
-            self.panic_if(state, cond, "attempt to divide by zero", data.span);
+        let safety_check = self.panic_if(
+            state,
+            cond,
+            "attempt to divide by zero",
+            data.span.unwrap(),
+        );
 
         let op = self
             .value_assign(state, data.target, |_| bin_op(lhs, data.op, rhs));
@@ -134,7 +151,7 @@ impl<'db> Generator<'db> {
         D::intersperse([safety_check, op], D::hardline())
     }
 
-    fn codegen_safe_bin_op2(
+    fn codegen_safe_bin_op(
         &mut self,
         state: &GenState<'db>,
         data: &BinOpData,
@@ -154,7 +171,12 @@ impl<'db> Generator<'db> {
 
         D::intersperse(
             [
-                self.panic_if(state, cond, &overflow_msg(action), data.span),
+                self.panic_if(
+                    state,
+                    cond,
+                    &overflow_msg(action),
+                    data.span.unwrap(),
+                ),
                 self.value_assign(state, data.target, |_| {
                     bin_op(lhs, data.op, rhs)
                 }),
