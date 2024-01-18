@@ -1,32 +1,32 @@
 fn extern printf(fmt: *u8, ..) i32
 
 fn main() unit = {
-	// ints()
+	ints()
 	boxes()
 }
 
-// fn ints() unit = {
-// 	let a: [int] = []
-// 	let b: [int] = [:3]
-// 	let c = [1, 2, 3, 4, 5]
-// 	print(a)
-// 	print(b)
-// 	print(c)
-// }
+fn ints() unit = {
+	let a: [int] = []
+	let b: [int] = [:3]
+	let c = [1, 2, 3, 4, 5]
+	print(a)
+	print(b)
+	print(c)
+}
 
-// fn print(s: &[int]) unit = {
-// 	printf("ptr: %p, cap: %d, len: %d\n".ptr, s.ptr, s.cap, s.len)
-// 	printf("[".ptr)
-// 	let mut i = 0
-// 	loop if i < s.len {
-// 		printf("%d".ptr, s.[i])
-// 		if i < s.len - 1 {
-// 			printf(", ".ptr)
-// 		}
-// 		i += 1
-// 	}
-// 	printf("]\n".ptr)
-// }
+fn print(s: &[int]) unit = {
+	printf("ptr: %p, cap: %d, len: %d\n".ptr, s.ptr, s.cap, s.len)
+	printf("[".ptr)
+	let mut i = 0
+	loop if i < s.len {
+		printf("%d".ptr, s.[i])
+		if i < s.len - 1 {
+			printf(", ".ptr)
+		}
+		i += 1
+	}
+	printf("]\n".ptr)
+}
 
 type Box(value: int)
 
