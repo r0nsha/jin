@@ -724,8 +724,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 });
 
                 if elem_ty.is_move(self.cx.db) {
+                    // An element can never be moved out of its slice
                     self.value_states
                         .set_cannot_move(value, CannotMove::SliceIndex);
+
+                    // We must set the indexed value as moved, so that we don't destroy it
+                    self.set_moved(value, expr.span);
                 }
 
                 value
