@@ -775,7 +775,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                     let index = self.const_int(uint, index as _);
                     self.ins(self.current_block)
-                        .slice_store(slice, index, value);
+                        .slice_store_unchecked(slice, index, value);
                 }
 
                 if !lit.exprs.is_empty() {

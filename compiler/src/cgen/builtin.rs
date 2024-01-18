@@ -312,6 +312,43 @@ impl<'db> Generator<'db> {
             (op, ty) => unreachable!("{op} {ty:?}"),
         }
     }
+
+    pub fn maybe_slice_index_boundscheck(
+        &mut self,
+        state: &GenState<'db>,
+        slice: ValueId,
+        index: ValueId,
+        guarded_stmt: D<'db>,
+        span: Option<Span>,
+    ) -> D<'db> {
+        if let Some(span) = span {
+            let safety_check = util::stmt(|| {
+                self.slice_index_boundscheck(state, slice, index, span)
+            });
+
+            D::intersperse([safety_check, guarded_stmt], D::hardline())
+        } else {
+            guarded_stmt
+        }
+    }
+
+    pub fn slice_index_boundscheck(
+        &mut self,
+        state: &GenState<'db>,
+        slice: ValueId,
+        index: ValueId,
+        span: Span,
+    ) -> D<'db> {
+        util::call(
+            D::text("jinrt_slice_index_boundscheck"),
+            [
+                D::text("backtrace"),
+                self.value(state, slice),
+                self.value(state, index),
+                self.create_stackframe_value(state, span),
+            ],
+        )
+    }
 }
 
 fn overflow_msg(action: &str) -> String {

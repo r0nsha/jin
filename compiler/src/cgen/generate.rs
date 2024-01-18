@@ -525,30 +525,28 @@ impl<'db> Generator<'db> {
                     this.slice_index(state, *slice, *index)
                 });
 
-                if let Some(span) = span {
-                    let safety_check = stmt(|| {
-                        util::call(
-                            D::text("jinrt_slice_index_boundscheck"),
-                            [
-                                D::text("backtrace"),
-                                self.value(state, *slice),
-                                self.value(state, *index),
-                                self.create_stackframe_value(state, *span),
-                            ],
-                        )
-                    });
-
-                    D::intersperse([safety_check, slice_index], D::hardline())
-                } else {
-                    slice_index
-                }
-            }
-            Inst::SliceStore { slice, index, value } => stmt(|| {
-                util::assign(
-                    self.slice_index(state, *slice, *index),
-                    self.value(state, *value),
+                self.maybe_slice_index_boundscheck(
+                    state,
+                    *slice,
+                    *index,
+                    slice_index,
+                    *span,
                 )
-            }),
+            }
+            Inst::SliceStore { slice, index, value, span } => {
+                let slice_index = self.slice_index(state, *slice, *index);
+                let slice_store = stmt(|| {
+                    util::assign(slice_index, self.value(state, *value))
+                });
+
+                self.maybe_slice_index_boundscheck(
+                    state,
+                    *slice,
+                    *index,
+                    slice_store,
+                    *span,
+                )
+            }
             Inst::Store { value, target } => stmt(|| {
                 assign(self.value(state, *target), self.value(state, *value))
             }),

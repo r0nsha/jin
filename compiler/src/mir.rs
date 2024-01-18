@@ -468,6 +468,7 @@ pub enum Inst {
         slice: ValueId,
         index: ValueId,
         value: ValueId,
+        span: Option<Span>,
     },
     Destroy {
         value: ValueId,

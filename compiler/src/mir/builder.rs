@@ -116,8 +116,19 @@ impl<'a> InstBuilder<'a> {
         slice: ValueId,
         index: ValueId,
         value: ValueId,
+        span: Span,
     ) -> &mut Self {
-        self.inst(Inst::SliceStore { slice, index, value });
+        self.inst(Inst::SliceStore { slice, index, value, span: Some(span) });
+        self
+    }
+
+    pub fn slice_store_unchecked(
+        &mut self,
+        slice: ValueId,
+        index: ValueId,
+        value: ValueId,
+    ) -> &mut Self {
+        self.inst(Inst::SliceStore { slice, index, value, span: None });
         self
     }
 
