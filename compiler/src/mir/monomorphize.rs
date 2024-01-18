@@ -770,7 +770,7 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
         self.body.ins(block).slice_index(elem, slice, index);
 
         match elem_ty.kind() {
-            TyKind::Adt(..) => {
+            TyKind::Adt(..) | TyKind::Slice(..) => {
                 let (result, callee) =
                     self.cx.get_free_call_values(&mut self.body, elem_ty);
 
@@ -779,7 +779,7 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
             TyKind::Ref(..) if self.cx.should_refcount_ty(elem_ty) => {
                 self.body.ins(block).decref(elem);
             }
-            _ => (),
+            ty => unreachable!("{ty:?}"),
         }
     }
 }
