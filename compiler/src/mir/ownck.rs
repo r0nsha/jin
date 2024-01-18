@@ -523,15 +523,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             .value_imm_root(slice, BreakOnMutRef::Yes)
             .and_then(|()| self.value_ty_imm_root(slice))
         {
-            self.cx.diagnostics.push(self.imm_root_err(
-                match kind {
-                    AssignKind::Assign => "cannot assign",
-                    AssignKind::Swap => "cannot swap",
-                },
-                slice,
-                root,
-                span,
-            ));
+            self.emit_assign_mutability_err(kind, slice, span, root);
         }
     }
 
@@ -542,16 +534,26 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         span: Span,
     ) {
         if let Err(root) = self.value_imm_root(lhs, BreakOnMutRef::Yes) {
-            self.cx.diagnostics.push(self.imm_root_err(
-                match kind {
-                    AssignKind::Assign => "cannot assign",
-                    AssignKind::Swap => "cannot swap",
-                },
-                lhs,
-                root,
-                span,
-            ));
+            self.emit_assign_mutability_err(kind, lhs, span, root);
         }
+    }
+
+    fn emit_assign_mutability_err(
+        &mut self,
+        kind: AssignKind,
+        lhs: ValueId,
+        span: Span,
+        root: ImmutableRoot,
+    ) {
+        self.cx.diagnostics.push(self.imm_root_err(
+            match kind {
+                AssignKind::Assign => "cannot assign to",
+                AssignKind::Swap => "cannot swap",
+            },
+            lhs,
+            root,
+            span,
+        ));
     }
 
     pub(super) fn check_ref_mutability(&mut self, value: ValueId, span: Span) {
@@ -580,10 +582,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let root_name = self.value_name(root);
 
                 let message = if root == value {
-                    format!("{prefix} to immutable value {root_name}")
+                    format!("{prefix} immutable value {root_name}")
                 } else {
                     format!(
-                        "{} to {}, as {} is not declared as mutable",
+                        "{} {}, as {} is not declared as mutable",
                         prefix,
                         self.value_name(value),
                         root_name
