@@ -386,7 +386,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     }
                 }
 
-                let last_value = self.lower_in_expr(body);
+                let last_value = self.lower_input_expr(body);
 
                 self.exit_scope();
 
@@ -416,7 +416,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let start_block = self.body.create_block("start");
                 self.position_at(start_block);
 
-                let value = self.lower_in_expr(&let_.value);
+                let value = self.lower_input_expr(&let_.value);
                 self.exit_scope();
 
                 self.body.cleanup();
@@ -463,7 +463,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Let(let_) => {
                 match &let_.pat {
                     Pat::Name(name) => {
-                        let init = self.lower_in_expr(&let_.value);
+                        let init = self.lower_input_expr(&let_.value);
                         let value = self.push_inst_with(
                             let_.ty,
                             ValueKind::Local(name.id),
@@ -485,10 +485,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::Assign(assign) => {
+                // match &assign.lhs.kind{
+                //     hir::ExprKind::Index(_)=>{
+                //
+                //     }
+                //
+                // }
                 let lhs = self.lower_expr(&assign.lhs);
                 self.try_use(lhs, assign.lhs.span);
 
-                let rhs = self.lower_in_expr(&assign.rhs);
+                let rhs = self.lower_input_expr(&assign.rhs);
                 let rhs = if let Some(op) = assign.op {
                     let value = self
                         .create_value(assign.lhs.ty, ValueKind::Register(None));
@@ -510,7 +516,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let lhs = self.lower_expr(&swap.lhs);
                 self.try_use(lhs, swap.lhs.span);
 
-                let rhs = self.lower_in_expr(&swap.rhs);
+                let rhs = self.lower_input_expr(&swap.rhs);
 
                 self.lower_assign(
                     AssignKind::Swap,
@@ -582,7 +588,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.position_at(start_block);
 
                 if let Some(cond_expr) = &loop_.cond {
-                    let cond = self.lower_in_expr(cond_expr);
+                    let cond = self.lower_input_expr(cond_expr);
 
                     let not_cond = self.push_inst_with_register(
                         self.cx.db.types.bool,
@@ -647,7 +653,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 result
             }
             hir::ExprKind::Return(ret) => {
-                let value = self.lower_in_expr(&ret.expr);
+                let value = self.lower_input_expr(&ret.expr);
                 self.push_return(value, expr.span);
                 self.const_unit()
             }
@@ -658,13 +664,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 for arg in &call.args {
                     let idx = arg.index.expect("arg index to be resolved");
-                    let value = self.lower_in_expr(&arg.expr);
+                    let value = self.lower_input_expr(&arg.expr);
                     args.push((idx, value));
                 }
 
                 args.sort_by_key(|(idx, _)| *idx);
 
-                let callee = self.lower_in_expr(&call.callee);
+                let callee = self.lower_input_expr(&call.callee);
 
                 self.push_inst_with_register(expr.ty, |value| Inst::Call {
                     value,
@@ -676,7 +682,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Unary(un) => {
                 match un.op {
                     UnOp::Neg | UnOp::Not => {
-                        let inner = self.lower_in_expr(&un.expr);
+                        let inner = self.lower_input_expr(&un.expr);
                         self.push_inst_with_register(expr.ty, |value| {
                             Inst::Unary { value, inner, op: un.op }
                         })
@@ -688,8 +694,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
             }
             hir::ExprKind::Binary(bin) => {
-                let lhs = self.lower_in_expr(&bin.lhs);
-                let rhs = self.lower_in_expr(&bin.rhs);
+                let lhs = self.lower_input_expr(&bin.lhs);
+                let rhs = self.lower_input_expr(&bin.rhs);
 
                 let value =
                     self.create_value(expr.ty, ValueKind::Register(None));
@@ -698,7 +704,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 value
             }
             hir::ExprKind::Cast(cast) => {
-                let inner = self.lower_in_expr(&cast.expr);
+                let inner = self.lower_input_expr(&cast.expr);
 
                 self.push_inst_with_register(cast.target, |value| Inst::Cast {
                     value,
@@ -806,7 +812,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    fn lower_in_expr(&mut self, expr: &hir::Expr) -> ValueId {
+    fn lower_input_expr(&mut self, expr: &hir::Expr) -> ValueId {
         let value = self.lower_expr(expr);
         let ty = self.ty_of(value);
 
@@ -1190,7 +1196,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         };
 
         self.position_at(start_block);
-        let value = self.lower_in_expr(expr);
+        let value = self.lower_input_expr(expr);
         self.exit_scope();
 
         if self.in_connected_block() {
@@ -1263,7 +1269,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         self.position_at(guard);
-        let cond = self.lower_in_expr(guard_expr);
+        let cond = self.lower_input_expr(guard_expr);
         self.exit_scope();
 
         for (id, old_value, new_value) in restore_bindings {
