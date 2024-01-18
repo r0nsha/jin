@@ -171,25 +171,31 @@ impl<'db> Generator<'db> {
         traced: bool,
         span: Span,
     ) -> D<'db> {
-        let tyname = str_lit(state.ty_of(value).display(self.db));
-        let frame = self.create_stackframe_value(state, span);
-
-        let free_fn = if state.value_is_slice(value) {
-            "jinrt_slice_free"
-        } else {
-            "jinrt_free"
-        };
-
-        let value = self.value(state, value);
-        let free_call = stmt(|| {
-            call(D::text(free_fn), [D::text("backtrace"), value, tyname, frame])
-        });
+        let free_call = stmt(|| self.call_free(state, value, span));
 
         if traced {
             self.with_stack_frame(state, free_call, span)
         } else {
             free_call
         }
+    }
+
+    pub fn call_free(
+        &mut self,
+        state: &GenState<'db>,
+        value: ValueId,
+        span: Span,
+    ) -> D<'db> {
+        let free_fn = if state.value_is_slice(value) {
+            "jinrt_slice_free"
+        } else {
+            "jinrt_free"
+        };
+
+        let tyname = str_lit(state.ty_of(value).display(self.db));
+        let frame = self.create_stackframe_value(state, span);
+        let value = self.value(state, value);
+        call(D::text(free_fn), [D::text("backtrace"), value, tyname, frame])
     }
 
     fn slice_value_elem_ty(state: &GenState<'db>, slice: ValueId) -> Ty {
