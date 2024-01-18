@@ -403,7 +403,7 @@ impl TyKind {
     pub fn can_create_ref(&self, db: &Db) -> bool {
         match self {
             Self::Adt(adt_id, _) if db[*adt_id].is_ref() => true,
-            Self::Param(_) | Self::Ref(..) => true,
+            Self::Slice(..) | Self::Param(_) | Self::Ref(..) => true,
             _ => false,
         }
     }
