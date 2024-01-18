@@ -486,38 +486,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Assign(assign) => {
                 if let hir::ExprKind::Index(idx) = &assign.lhs.kind {
-                    let SliceIndexResult { slice, index, elem } =
-                        self.lower_slice_index(idx, expr.span);
-                    let rhs = self.lower_assign_rhs(assign, elem, expr.span);
-
-                    self.check_assign_mutability(
-                        AssignKind::Assign,
-                        slice,
-                        expr.span,
-                    );
-
-                    self.destroy_value_entirely(elem, idx.expr.span);
-                    self.set_owned(elem);
-                    self.ins(self.current_block).slice_store(
-                        slice,
-                        index,
-                        rhs,
-                        assign.lhs.span,
-                    );
+                    self.lower_slice_assign(assign, idx, expr.span);
                 } else {
-                    let lhs = self.lower_expr(&assign.lhs);
-                    self.try_use(lhs, assign.lhs.span);
-                    let rhs = self.lower_assign_rhs(assign, lhs, expr.span);
-
-                    self.check_assign_mutability(
-                        AssignKind::Assign,
-                        lhs,
-                        expr.span,
-                    );
-
-                    self.destroy_value_entirely(lhs, assign.lhs.span);
-                    self.set_owned(lhs);
-                    self.ins(self.current_block).store(rhs, lhs);
+                    self.lower_assign(assign, expr.span);
                 }
 
                 self.const_unit()
@@ -845,6 +816,39 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         } else {
             rhs
         }
+    }
+
+    fn lower_slice_assign(
+        &mut self,
+        assign: &hir::Assign,
+        idx: &hir::Index,
+        span: Span,
+    ) {
+        let SliceIndexResult { slice, index, elem } =
+            self.lower_slice_index(idx, span);
+        let rhs = self.lower_assign_rhs(assign, elem, span);
+
+        self.check_assign_mutability(AssignKind::Assign, slice, span);
+
+        self.destroy_value_entirely(elem, idx.expr.span);
+        self.ins(self.current_block).slice_store(
+            slice,
+            index,
+            rhs,
+            assign.lhs.span,
+        );
+    }
+
+    fn lower_assign(&mut self, assign: &hir::Assign, span: Span) {
+        let lhs = self.lower_expr(&assign.lhs);
+        self.try_use(lhs, assign.lhs.span);
+        let rhs = self.lower_assign_rhs(assign, lhs, span);
+
+        self.check_assign_mutability(AssignKind::Assign, lhs, span);
+
+        self.destroy_value_entirely(lhs, assign.lhs.span);
+        self.set_owned(lhs);
+        self.ins(self.current_block).store(rhs, lhs);
     }
 
     fn lower_slice_index(
