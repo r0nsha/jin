@@ -226,24 +226,11 @@ impl<'a> Parser<'a> {
         let mut attrs = vec![];
 
         while self.is(TokenKind::At) {
-            attrs.push(self.parse_attr()?);
+            let (kind, span) = self.parse_attr_kind()?;
+            attrs.push(Attr { kind, span });
         }
 
         Ok(attrs)
-    }
-
-    fn parse_attr(&mut self) -> DiagnosticResult<Attr> {
-        let (kind, span) = self.parse_attr_kind()?;
-
-        let value = if self.is(TokenKind::OpenParen) {
-            let value = self.parse_expr()?;
-            self.eat(TokenKind::CloseParen)?;
-            Some(value)
-        } else {
-            None
-        };
-
-        Ok(Attr { kind, value, span })
     }
 
     fn parse_attr_kind(&mut self) -> DiagnosticResult<(AttrKind, Span)> {

@@ -450,7 +450,6 @@ pub type Attrs = Vec<Attr>;
 #[derive(Debug, Clone)]
 pub struct Attr {
     pub kind: AttrKind,
-    pub value: Option<Expr>,
     pub span: Span,
 }
 
