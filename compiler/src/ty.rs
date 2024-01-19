@@ -622,10 +622,12 @@ bitflags! {
 }
 
 impl FnTy {
+    #[inline]
     pub fn is_extern(&self) -> bool {
         self.flags.contains(FnTyFlags::EXTERN)
     }
 
+    #[inline]
     pub fn is_c_variadic(&self) -> bool {
         self.flags.contains(FnTyFlags::C_VARIADIC)
     }

@@ -87,9 +87,6 @@ pub struct FnSig {
     pub display_name: Ustr,
     pub params: Vec<FnParam>,
     pub ty: Ty,
-    // PERF: use bitflags instead separate of boolean
-    pub is_extern: bool,
-    pub is_c_variadic: bool,
     pub is_inline: bool,
     pub span: Span,
 }

@@ -146,8 +146,6 @@ impl<'db> Lower<'db> {
             display_name,
             params,
             ty: struct_def.ctor_ty,
-            is_extern: false,
-            is_c_variadic: false,
             is_inline: false,
             span: adt.name.span(),
         });
@@ -212,8 +210,6 @@ impl<'db> Lower<'db> {
             display_name,
             params,
             ty: variant.ctor_ty,
-            is_extern: false,
-            is_c_variadic: false,
             is_inline: false,
             span: variant.name.span(),
         });
@@ -300,11 +296,6 @@ impl<'db> Lower<'db> {
 
         let display_name = ustr(&self.db[fun.def_id].qpath.join());
 
-        let (is_extern, is_c_variadic) = match &fun.kind {
-            FnKind::Bare { .. } => (false, false),
-            FnKind::Extern { is_c_variadic } => (true, *is_c_variadic),
-        };
-
         self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
             mangled_name,
@@ -316,8 +307,6 @@ impl<'db> Lower<'db> {
                 .map(|p| FnParam { pat: p.pat.clone(), ty: p.ty })
                 .collect(),
             ty: fun.sig.ty,
-            is_extern,
-            is_c_variadic,
             is_inline: false,
             span: fun.sig.word.span(),
         })

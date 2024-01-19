@@ -821,8 +821,6 @@ fn create_destroy_sig(
         display_name,
         params,
         ty: fn_ty,
-        is_extern: false,
-        is_c_variadic: false,
         is_inline: true,
         span,
     });

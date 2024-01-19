@@ -402,7 +402,7 @@ impl<'db> Generator<'db> {
     fn codegen_fn_sig(&mut self, sig: &FnSig) -> D<'db> {
         let fn_ty = sig.ty.as_fn().expect("a function type");
 
-        let initial = if sig.is_extern {
+        let initial = if fn_ty.is_extern() {
             D::text("extern").append(D::space())
         } else {
             D::nil()
@@ -426,7 +426,7 @@ impl<'db> Generator<'db> {
                 D::intersperse(params, D::text(",").append(D::space()))
                     .nest(2)
                     .group()
-                    .append(if sig.is_c_variadic {
+                    .append(if fn_ty.is_c_variadic() {
                         D::text(", ...")
                     } else {
                         D::nil()

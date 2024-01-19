@@ -29,7 +29,7 @@ pub(super) fn print(
     }
 
     for sig in mir.fn_sigs.values() {
-        if sig.is_extern {
+        if sig.ty.as_fn().unwrap().is_extern() {
             docs.push(cx.pp_fn_sig(sig).into_doc());
         }
     }
@@ -108,6 +108,8 @@ impl<'db> PrettyCx<'db> {
     }
 
     fn pp_fn_sig(&mut self, sig: &'db FnSig) -> PrintFnSig<'db> {
+        let ty = sig.ty.as_fn().unwrap();
+
         PrintFnSig {
             name: Self::global(&sig.mangled_name),
             params: sig
@@ -124,8 +126,8 @@ impl<'db> PrettyCx<'db> {
                 })
                 .collect(),
             ret: D::text(sig.ty.as_fn().unwrap().ret.to_string(self.db)),
-            is_extern: sig.is_extern,
-            is_c_variadic: sig.is_c_variadic,
+            is_extern: ty.is_extern(),
+            is_c_variadic: ty.is_c_variadic(),
         }
     }
 
