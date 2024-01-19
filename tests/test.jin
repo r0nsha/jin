@@ -1,10 +1,10 @@
 import extern "./foo"
 
-fn extern hello() unit
+fn extern "c" hello() unit
 let extern answer: int
 
-fn extern printf(fmt: *u8, ..) i32
-fn extern write(fd: i32, buf: *u8, count: uint) i32
+fn extern "c" printf(fmt: *u8, ..) i32
+fn extern "c" write(fd: i32, buf: *u8, count: uint) i32
 
 let stdout = 1
 
