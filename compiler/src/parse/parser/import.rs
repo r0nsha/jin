@@ -5,7 +5,7 @@ use path_absolutize::Absolutize as _;
 
 use crate::{
     ast::{
-        token::TokenKind, Attr, ExternImport, Import, ImportKind,
+        token::TokenKind, Attrs, ExternImport, Import, ImportKind,
         UnqualifiedImport,
     },
     db::ExternLib,
@@ -19,7 +19,7 @@ use crate::{
 impl<'a> Parser<'a> {
     pub(super) fn parse_import(
         &mut self,
-        attrs: &[Attr],
+        attrs: Attrs,
         start: Span,
     ) -> DiagnosticResult<Import> {
         let root = self.eat_ident()?.word();
@@ -190,7 +190,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_extern_import(
         &mut self,
-        attrs: &[Attr],
+        attrs: &Attrs,
         start: Span,
     ) -> DiagnosticResult<ExternImport> {
         let path_tok = self.eat(TokenKind::empty_str())?;

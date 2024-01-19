@@ -18,7 +18,7 @@ impl<'db> Typeck<'db> {
         attrs: &ast::Attrs,
         placement: AttrsPlacement,
     ) -> TypeckResult<()> {
-        for attr in attrs {
+        for attr in attrs.iter() {
             validate_attr_placement(attr, placement).map_err(|applies_to| {
                 invalid_attr_placement(attr, applies_to)
             })?;

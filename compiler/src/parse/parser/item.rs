@@ -48,7 +48,7 @@ impl<'a> Parser<'a> {
             }
 
             return self
-                .parse_import(&attrs, start)
+                .parse_import(attrs, start)
                 .map(|i| Some(Item::Import(i)));
         }
 
@@ -211,8 +211,8 @@ impl<'a> Parser<'a> {
         Ok((params, is_c_variadic))
     }
 
-    fn parse_attrs(&mut self) -> DiagnosticResult<Vec<Attr>> {
-        let mut attrs = vec![];
+    fn parse_attrs(&mut self) -> DiagnosticResult<Attrs> {
+        let mut attrs = Attrs::new();
 
         while self.is(TokenKind::At) {
             let (kind, span) = self.parse_attr_kind()?;

@@ -445,7 +445,34 @@ pub enum CallArg {
     Named(Word, Expr),
 }
 
-pub type Attrs = Vec<Attr>;
+#[derive(Debug, Clone)]
+pub struct Attrs(Vec<Attr>);
+
+impl Attrs {
+    pub fn new() -> Self {
+        Self(vec![])
+    }
+
+    pub fn push(&mut self, attr: Attr) {
+        self.0.push(attr);
+    }
+
+    pub fn find(&self, kind: AttrKind) -> Option<&Attr> {
+        self.iter().find(|a| a.kind == kind)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &Attr> {
+        self.0.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct Attr {
