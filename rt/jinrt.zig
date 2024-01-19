@@ -12,14 +12,14 @@ const anyrc = extern struct {
 };
 
 const anyarray = extern struct {
-    data: *anyopaque,
+    data: [*]void,
     cap: usize,
     refcnt: usize,
 
     const Self = @This();
 
     fn init(elem_size: usize, cap: usize) Self {
-        const data = alloc_raw(anyopaque, elem_size * cap);
+        const data: [*]void = @ptrCast(alloc_raw(void, elem_size * cap));
         return Self{ .data = data, .cap = cap, .refcnt = 0 };
     }
 };
@@ -147,7 +147,7 @@ export fn jinrt_slice_decref(s: anyslice) void {
     if (s.array) |a| a.refcnt -= 1;
 }
 
-export fn jinrt_slice_ptr(s: anyslice) ?*anyopaque {
+export fn jinrt_slice_ptr(s: anyslice) ?[*]void {
     return if (s.array) |a| a.data else null;
 }
 
