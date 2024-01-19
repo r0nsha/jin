@@ -7,7 +7,7 @@ use ustr::{ustr, Ustr};
 use crate::{
     db::{AdtField, AdtKind, Db, DefId, StructDef, UnionDef},
     mangle,
-    middle::{BinOp, CmpOp, Mutability, NamePat, Pat, Vis},
+    middle::{BinOp, CallConv, CmpOp, Mutability, NamePat, Pat, Vis},
     mir::{
         BlockId, Body, Const, Fn, FnParam, FnSig, FnSigId, FxHashMap, GlobalId,
         GlobalKind, IdMap, Inst, Mir, StaticGlobal, ValueId, ValueKind,
@@ -811,6 +811,7 @@ fn create_destroy_sig(
     let fn_ty = Ty::new(TyKind::Fn(FnTy {
         params: fn_ty_params,
         ret: cx.db.types.unit,
+        callconv: CallConv::default(),
         flags: FnTyFlags::empty(),
     }));
 

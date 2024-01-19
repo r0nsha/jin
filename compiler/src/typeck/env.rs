@@ -13,11 +13,11 @@ use crate::{
     diagnostics::{Diagnostic, Label},
     hir,
     macros::create_bool_enum,
-    middle::{IsUfcs, Mutability, NamePat, Pat, Vis},
+    middle::{CallConv, IsUfcs, Mutability, NamePat, Pat, Vis},
     qpath::QPath,
     span::{Span, Spanned},
     sym,
-    ty::{printer::FnTyPrinter, FnTy, FnTyParam, Ty, TyKind},
+    ty::{printer::FnTyPrinter, FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
     typeck::{
         coerce::{Coerce, CoerceOptions},
         errors,
@@ -1336,6 +1336,8 @@ impl<'a> FnQuery<'a> {
             name: Some(self.word.name()),
             params: self.args,
             ret: None,
+            callconv: CallConv::default(),
+            flags: FnTyFlags::empty(),
         }
     }
 }

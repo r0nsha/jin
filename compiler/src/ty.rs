@@ -12,7 +12,7 @@ use ustr::Ustr;
 
 use crate::{
     db::{AdtId, Db, ModuleId},
-    middle::{Mutability, Vis},
+    middle::{CallConv, Mutability, Vis},
     span::Span,
     subst::SubstTy,
     target::TargetMetrics,
@@ -609,6 +609,7 @@ impl FloatTy {
 pub struct FnTy {
     pub params: Vec<FnTyParam>,
     pub ret: Ty,
+    pub callconv: CallConv,
     pub flags: FnTyFlags,
 }
 
@@ -648,7 +649,14 @@ impl FnTy {
         db: &'db Db,
         name: Option<Ustr>,
     ) -> FnTyPrinter {
-        FnTyPrinter { db, name, params: &self.params, ret: Some(self.ret) }
+        FnTyPrinter {
+            db,
+            name,
+            params: &self.params,
+            ret: Some(self.ret),
+            callconv: self.callconv,
+            flags: self.flags,
+        }
     }
 
     pub fn to_string(&self, db: &Db, name: Option<Ustr>) -> String {

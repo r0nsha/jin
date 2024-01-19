@@ -209,19 +209,19 @@ impl UnifyCx<'_, '_> {
             (TyKind::Fn(ref fex), TyKind::Fn(ref fact)) => {
                 self.unify_ty_ty(fex.ret, fact.ret)?;
 
-                if fex.params.len() == fact.params.len() {
-                    for (p1, p2) in fex.params.iter().zip(fact.params.iter()) {
-                        self.unify_ty_ty(p1.ty, p2.ty)?;
-                    }
-
-                    if fex.flags == fact.flags {
-                        Ok(())
-                    } else {
-                        Err(UnifyError::TyMismatch { a, b })
-                    }
-                } else {
-                    Err(UnifyError::TyMismatch { a, b })
+                if fex.params.len() != fact.params.len() {
+                    return Err(UnifyError::TyMismatch { a, b });
                 }
+
+                for (p1, p2) in fex.params.iter().zip(fact.params.iter()) {
+                    self.unify_ty_ty(p1.ty, p2.ty)?;
+                }
+
+                if fex.callconv != fact.callconv || fex.flags != fact.flags {
+                    return Err(UnifyError::TyMismatch { a, b });
+                }
+
+                Ok(())
             }
 
             (TyKind::Adt(id_a, targs_a), TyKind::Adt(id_b, targs_b)) => {

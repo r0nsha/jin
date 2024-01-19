@@ -15,6 +15,7 @@ pub trait TyFolder {
                     })
                     .collect(),
                 ret: self.fold(fun.ret),
+                callconv: fun.callconv,
                 flags: fun.flags,
             })
             .into(),

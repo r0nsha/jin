@@ -25,7 +25,7 @@ use crate::{
         timing::Timings,
     },
     diagnostics::Diagnostics,
-    middle::{Mutability, TyParam, Vis},
+    middle::{CallConv, Mutability, TyParam, Vis},
     qpath::QPath,
     span::{Source, SourceId, Sources, Span, Spanned},
     target::{TargetMetrics, TargetPlatform},
@@ -623,6 +623,7 @@ impl StructDef {
                 .map(|f| FnTyParam { name: Some(f.name.name()), ty: f.ty })
                 .collect(),
             ret,
+            callconv: CallConv::default(),
             flags: FnTyFlags::empty(),
         }));
     }
@@ -693,6 +694,7 @@ impl Variant {
                 .map(|f| FnTyParam { name: Some(f.name.name()), ty: f.ty })
                 .collect(),
             ret,
+            callconv: CallConv::default(),
             flags: FnTyFlags::empty(),
         }));
     }

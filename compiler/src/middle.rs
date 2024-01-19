@@ -332,3 +332,19 @@ pub struct TyParam {
 }
 
 create_bool_enum!(IsUfcs);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum CallConv {
+    #[default]
+    Jin,
+    C,
+}
+
+impl fmt::Display for CallConv {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            CallConv::Jin => "jin",
+            CallConv::C => "c",
+        })
+    }
+}

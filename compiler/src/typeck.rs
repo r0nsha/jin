@@ -29,7 +29,8 @@ use crate::{
     hir::{ExprId, FnParam, Hir},
     macros::create_bool_enum,
     middle::{
-        BinOp, CmpOp, IsUfcs, Mutability, Pat, TyExpr, TyParam, UnOp, Vis,
+        BinOp, CallConv, CmpOp, IsUfcs, Mutability, Pat, TyExpr, TyParam, UnOp,
+        Vis,
     },
     span::{Span, Spanned},
     sym,
@@ -546,7 +547,12 @@ impl<'db> Typeck<'db> {
             flags.insert(FnTyFlags::C_VARIADIC);
         }
 
-        let ty = Ty::new(TyKind::Fn(FnTy { params: fnty_params, ret, flags }));
+        let ty = Ty::new(TyKind::Fn(FnTy {
+            params: fnty_params,
+            ret,
+            callconv: CallConv::default(),
+            flags,
+        }));
 
         Ok(hir::FnSig { word: sig.word, ty_params, params, ret, ret_span, ty })
     }
@@ -565,6 +571,7 @@ impl<'db> Typeck<'db> {
         let ty = Ty::new(TyKind::Fn(FnTy {
             params: fnty_params,
             ret,
+            callconv: CallConv::default(),
             flags: FnTyFlags::empty(),
         }));
 
@@ -2242,7 +2249,12 @@ impl<'db> Typeck<'db> {
                     flags.insert(FnTyFlags::C_VARIADIC);
                 }
 
-                Ok(Ty::new(TyKind::Fn(FnTy { params, ret, flags })))
+                Ok(Ty::new(TyKind::Fn(FnTy {
+                    params,
+                    ret,
+                    callconv: CallConv::default(),
+                    flags,
+                })))
             }
             TyExpr::Slice(inner, _) => {
                 let inner = self.check_ty_expr(env, inner, allow_hole)?;
