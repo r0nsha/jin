@@ -1,3 +1,4 @@
+fn extern "c" grow[a](slice: [a], new_cap: uint) [a]
 fn extern "c" printf(fmt: *u8, ..) i32
 
 fn main() unit = {
