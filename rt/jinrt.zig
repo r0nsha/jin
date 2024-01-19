@@ -198,13 +198,13 @@ inline fn str_slice(s: str) []const u8 {
     return s.ptr[0..s.len];
 }
 
-fn alloc_raw(comptime T: type, size: usize) *T {
+inline fn alloc_raw(comptime T: type, size: usize) *T {
     const memory = std.c.malloc(size);
     const p = memory orelse std.debug.panic("out of memory", .{});
     return @alignCast(@ptrCast(p));
 }
 
-fn refcheck(backtrace: *Backtrace, refcnt: usize, tyname: cstr, frame: StackFrame) void {
+inline fn refcheck(backtrace: *Backtrace, refcnt: usize, tyname: cstr, frame: StackFrame) void {
     if (refcnt != 0) {
         const msg = std.fmt.allocPrint(
             std.heap.c_allocator,
