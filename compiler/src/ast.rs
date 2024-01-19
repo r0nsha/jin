@@ -454,13 +454,18 @@ pub struct Attr {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AttrKind {}
+pub enum AttrKind {
+    Intrinsic,
+}
 
 impl TryFrom<&str> for AttrKind {
     type Error = ();
 
-    fn try_from(_value: &str) -> Result<Self, Self::Error> {
-        Err(())
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        match value {
+            "intrinsic" => Ok(Self::Intrinsic),
+            _ => Err(()),
+        }
     }
 }
 

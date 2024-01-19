@@ -224,11 +224,11 @@ impl<'a> Parser<'a> {
 
     fn parse_attr_kind(&mut self) -> DiagnosticResult<(AttrKind, Span)> {
         let ident = self.eat_ident()?;
-        let attr_name = ident.str_value().as_str();
+        let name = ident.str_value().as_str();
 
-        let kind = AttrKind::try_from(attr_name).map_err(|()| {
+        let kind = AttrKind::try_from(name).map_err(|()| {
             Diagnostic::error()
-                .with_message("unknown attribute {attr_name}")
+                .with_message(format!("unknown attribute `{name}`"))
                 .with_label(
                     Label::primary(ident.span)
                         .with_message("unknown attribute"),

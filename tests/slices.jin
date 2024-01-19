@@ -1,4 +1,3 @@
-fn extern "c" grow[a](slice: [a], new_cap: uint) [a]
 fn extern "c" printf(fmt: *u8, ..) i32
 
 fn main() unit = {
@@ -39,3 +38,6 @@ fn boxes() unit = {
 	let c = &a.[0]
 	let nested = [[Box(1), Box(2)], [Box(3)]]
 }
+
+@intrinsic
+fn extern "c" grow[a](slice: [a], new_cap: uint) [a]
