@@ -48,7 +48,7 @@ impl<'a> Parser<'a> {
             }
 
             return self
-                .parse_import(attrs, start)
+                .parse_import(&attrs, start)
                 .map(|i| Some(Item::Import(i)));
         }
 

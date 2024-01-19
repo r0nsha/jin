@@ -448,6 +448,12 @@ pub enum CallArg {
 #[derive(Debug, Clone)]
 pub struct Attrs(Vec<Attr>);
 
+impl Default for Attrs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Attrs {
     pub fn new() -> Self {
         Self(vec![])

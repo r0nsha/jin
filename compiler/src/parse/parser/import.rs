@@ -19,7 +19,7 @@ use crate::{
 impl<'a> Parser<'a> {
     pub(super) fn parse_import(
         &mut self,
-        attrs: Attrs,
+        attrs: &Attrs,
         start: Span,
     ) -> DiagnosticResult<Import> {
         let root = self.eat_ident()?.word();
@@ -29,7 +29,7 @@ impl<'a> Parser<'a> {
         let (path, kind) = self.parse_import_path_and_kind(root)?;
 
         Ok(Import {
-            attrs: attrs.to_owned(),
+            attrs: attrs.clone(),
             module_path,
             path,
             kind,

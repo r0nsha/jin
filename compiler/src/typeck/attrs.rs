@@ -9,6 +9,8 @@ pub enum AttrsPlacement {
     ExternFn,
     Let,
     ExternLet,
+    TyDef,
+    Import,
 }
 
 impl<'db> Typeck<'db> {

@@ -690,7 +690,7 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         tydef: &ast::TyDef,
     ) -> TypeckResult<()> {
-        self.check_attrs(&tydef.attrs, AttrsPlacement::ExternLet)?;
+        self.check_attrs(&tydef.attrs, AttrsPlacement::TyDef)?;
 
         match &tydef.kind {
             ast::TyDefKind::Struct(struct_def) => {
@@ -931,6 +931,8 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         import: &ast::Import,
     ) -> TypeckResult<()> {
+        self.check_attrs(&import.attrs, AttrsPlacement::Import)?;
+
         let target_module_id = self.resolve_import_path(env, import)?;
 
         // Insert imported modules as UFCS targets implicitly.
