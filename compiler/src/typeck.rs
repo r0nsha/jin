@@ -368,7 +368,7 @@ impl<'db> Typeck<'db> {
                             self.check_fn_body_helper(env, body, &sig)?;
                         Ok(hir::FnKind::Bare { body })
                     }
-                    ast::FnKind::Extern { is_c_variadic } => {
+                    ast::FnKind::Extern { callconv: _, is_c_variadic } => {
                         Ok(hir::FnKind::Extern {
                             is_c_variadic: *is_c_variadic,
                         })
@@ -512,15 +512,25 @@ impl<'db> Typeck<'db> {
             },
         )?;
 
-        let (is_extern, is_c_variadic) = match &fun.kind {
-            ast::FnKind::Bare { .. } => (false, false),
-            ast::FnKind::Extern { is_c_variadic } => (true, *is_c_variadic),
+        let mut flags = FnTyFlags::empty();
+
+        let callconv = match &fun.kind {
+            ast::FnKind::Bare { .. } => CallConv::default(),
+            ast::FnKind::Extern { callconv, is_c_variadic } => {
+                flags.insert(FnTyFlags::EXTERN);
+
+                if *is_c_variadic {
+                    flags.insert(FnTyFlags::C_VARIADIC);
+                }
+
+                *callconv
+            }
         };
 
         env.with_scope(
             fun.sig.word.name(),
             ScopeKind::Fn(DefId::null()),
-            |env| self.check_fn_sig(env, &fun.sig, is_extern, is_c_variadic),
+            |env| self.check_fn_sig(env, &fun.sig, callconv, flags),
         )
     }
 
@@ -528,8 +538,8 @@ impl<'db> Typeck<'db> {
         &mut self,
         env: &mut Env,
         sig: &ast::FnSig,
-        is_extern: bool,
-        is_c_variadic: bool,
+        callconv: CallConv,
+        flags: FnTyFlags,
     ) -> TypeckResult<hir::FnSig> {
         let ty_params = self.check_ty_params(env, &sig.ty_params)?;
         let (params, fnty_params) =
@@ -537,20 +547,10 @@ impl<'db> Typeck<'db> {
         let ret = self.check_fn_sig_ret(env, sig.ret.as_ref())?;
         let ret_span = sig.ret.as_ref().map_or(sig.word.span(), Spanned::span);
 
-        let mut flags = FnTyFlags::empty();
-
-        if is_extern {
-            flags.insert(FnTyFlags::EXTERN);
-        }
-
-        if is_c_variadic {
-            flags.insert(FnTyFlags::C_VARIADIC);
-        }
-
         let ty = Ty::new(TyKind::Fn(FnTy {
             params: fnty_params,
             ret,
-            callconv: CallConv::default(),
+            callconv,
             flags,
         }));
 

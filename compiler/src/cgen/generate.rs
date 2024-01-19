@@ -17,7 +17,7 @@ use crate::{
     },
     db::{AdtField, AdtId, AdtKind, Db, StructDef, StructKind, UnionDef},
     mangle,
-    middle::{Pat, UnOp},
+    middle::{CallConv, Pat, UnOp},
     mir::{
         Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir,
         StaticGlobal, ValueId, ValueKind,
@@ -410,7 +410,7 @@ impl<'db> Generator<'db> {
 
         let mut params = vec![];
 
-        if !fn_ty.is_extern() {
+        if fn_ty.callconv == CallConv::Jin {
             params.push(D::text("jinrt_backtrace *backtrace"));
         }
 
@@ -597,7 +597,8 @@ impl<'db> Generator<'db> {
             Inst::Call { value, callee, args, span } => {
                 let mut arg_docs = vec![];
 
-                let traced = !state.ty_of(*callee).as_fn().unwrap().is_extern();
+                let traced = state.ty_of(*callee).as_fn().unwrap().callconv
+                    == CallConv::Jin;
 
                 if traced {
                     arg_docs.push(D::text("backtrace"));

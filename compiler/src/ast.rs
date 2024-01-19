@@ -12,7 +12,7 @@ use ustr::Ustr;
 
 use crate::{
     db::{ExternLib, ModuleId, StructKind},
-    middle::{BinOp, IsUfcs, Mutability, Pat, TyExpr, UnOp, Vis},
+    middle::{BinOp, CallConv, IsUfcs, Mutability, Pat, TyExpr, UnOp, Vis},
     qpath::QPath,
     span::{SourceId, Span, Spanned},
     word::Word,
@@ -266,7 +266,7 @@ pub struct Fn {
 #[derive(Debug, Clone)]
 pub enum FnKind {
     Bare { body: Box<Expr> },
-    Extern { is_c_variadic: bool },
+    Extern { callconv: CallConv, is_c_variadic: bool },
 }
 
 #[derive(Debug, Clone)]

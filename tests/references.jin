@@ -1,4 +1,4 @@
-fn extern printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) i32
 
 type Box(value: int)
 type Ref(box: &Box)

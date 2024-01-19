@@ -1,4 +1,4 @@
-fn extern write(fd: i32, buf: *u8, count: uint) i32
+fn extern "c" write(fd: i32, buf: *u8, count: uint) i32
 
 let stdout: i32 = 1
 

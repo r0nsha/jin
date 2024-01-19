@@ -340,6 +340,18 @@ pub enum CallConv {
     C,
 }
 
+impl<'a> TryFrom<&'a str> for CallConv {
+    type Error = ();
+
+    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+        match value {
+            "jin" => Ok(CallConv::Jin),
+            "c" => Ok(CallConv::C),
+            _ => Err(()),
+        }
+    }
+}
+
 impl fmt::Display for CallConv {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {

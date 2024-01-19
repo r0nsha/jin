@@ -1,6 +1,6 @@
 import inner
 
-fn extern printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) i32
 
 type Box[a](value: a)
 

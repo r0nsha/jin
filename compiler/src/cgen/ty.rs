@@ -5,6 +5,7 @@ use pretty::RcDoc as D;
 use crate::{
     cgen::{generate::Generator, util},
     db::{AdtKind, StructKind},
+    middle::CallConv,
     sym,
     ty::{FloatTy, FnTy, IntTy, Ty, TyKind, UintTy},
 };
@@ -135,7 +136,7 @@ fn fn_ty<'a>(
 
     let mut param_docs = vec![];
 
-    if !fn_ty.is_extern() {
+    if fn_ty.callconv == CallConv::Jin {
         param_docs.push(D::text("jinrt_backtrace *backtrace"));
     }
 

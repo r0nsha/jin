@@ -1,6 +1,6 @@
 import std.result.{Result}
 
-fn extern printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) i32
 
 fn main() unit = {
 	match try_add(1, 2) {

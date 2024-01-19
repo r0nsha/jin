@@ -7,7 +7,7 @@ use crate::{
         Let,
     },
     diagnostics::{Diagnostic, DiagnosticResult, Label},
-    middle::TyExpr,
+    middle::{CallConv, TyExpr},
     parse::{
         errors,
         parser::{AllowOmitParens, AllowTyParams, Parser, RequireSigTy},
@@ -83,6 +83,18 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_extern_fn(&mut self, attrs: Attrs) -> DiagnosticResult<Fn> {
+        let callconv = self.eat(TokenKind::empty_str())?;
+        let callconv_str = callconv.str_value().as_str();
+        let callconv = CallConv::try_from(callconv_str).map_err(|()| {
+            Diagnostic::error()
+                .with_message(format!(
+                    "unknown calling convention `{callconv_str}`"
+                ))
+                .with_label(
+                    Label::primary(callconv.span)
+                        .with_message("unknown calling convention"),
+                )
+        })?;
         let name = self.eat_ident()?;
         let vis = self.parse_vis();
         let (sig, is_c_variadic) = self.parse_fn_sig(
@@ -95,7 +107,7 @@ impl<'a> Parser<'a> {
             attrs,
             vis,
             sig,
-            kind: FnKind::Extern { is_c_variadic },
+            kind: FnKind::Extern { callconv, is_c_variadic },
             span: name.span,
         })
     }

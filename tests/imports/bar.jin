@@ -1,7 +1,7 @@
 import imports as root
 import baz*
 
-fn extern printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) i32
 
 fn hello*() unit = {
 	printf(root.get_hello_world().ptr)
