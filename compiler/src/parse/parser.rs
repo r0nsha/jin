@@ -317,7 +317,6 @@ impl<'a> Parser<'a> {
     }
 }
 
-create_bool_enum!(AllowTyParams);
 create_bool_enum!(AllowOmitParens);
 
 #[derive(Debug, Clone, Copy, PartialEq)]

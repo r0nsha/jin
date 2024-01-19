@@ -10,7 +10,7 @@ use crate::{
     middle::{CallConv, TyExpr},
     parse::{
         errors,
-        parser::{AllowOmitParens, AllowTyParams, Parser, RequireSigTy},
+        parser::{AllowOmitParens, Parser, RequireSigTy},
     },
     span::{Span, Spanned},
     word::Word,
@@ -97,11 +97,8 @@ impl<'a> Parser<'a> {
         })?;
         let name = self.eat_ident()?;
         let vis = self.parse_vis();
-        let (sig, is_c_variadic) = self.parse_fn_sig(
-            name.word(),
-            AllowTyParams::No,
-            RequireSigTy::Yes,
-        )?;
+        let (sig, is_c_variadic) =
+            self.parse_fn_sig(name.word(), RequireSigTy::Yes)?;
 
         Ok(Fn {
             attrs,
@@ -118,11 +115,8 @@ impl<'a> Parser<'a> {
         name: Token,
     ) -> DiagnosticResult<Fn> {
         let vis = self.parse_vis();
-        let (sig, is_c_variadic) = self.parse_fn_sig(
-            name.word(),
-            AllowTyParams::Yes,
-            RequireSigTy::Yes,
-        )?;
+        let (sig, is_c_variadic) =
+            self.parse_fn_sig(name.word(), RequireSigTy::Yes)?;
 
         if is_c_variadic {
             return Err(errors::invalid_c_variadic(name.span));
@@ -143,14 +137,9 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_fn_sig(
         &mut self,
         word: Word,
-        allow_ty_params: AllowTyParams,
         require_sig_ty: RequireSigTy,
     ) -> DiagnosticResult<(FnSig, bool)> {
-        let ty_params = if allow_ty_params == AllowTyParams::Yes {
-            self.parse_optional_ty_params()?
-        } else {
-            vec![]
-        };
+        let ty_params = self.parse_optional_ty_params()?;
 
         let (params, ret, is_c_variadic) =
             self.parse_fn_sig_helper(AllowOmitParens::No, require_sig_ty)?;
