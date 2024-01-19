@@ -1,4 +1,5 @@
 use crate::{
+    ast,
     ast::Ast,
     db::{AdtId, Db, DefId, ModuleId},
     diagnostics::{Diagnostic, Label},
@@ -309,5 +310,20 @@ pub fn name_defined_twice(
         .with_label(
             Label::secondary(prev_span)
                 .with_message(format!("first use of `{name}`")),
+        )
+}
+
+pub fn invalid_attr_placement(
+    attr: &ast::Attr,
+    applies_to: &str,
+) -> Diagnostic {
+    Diagnostic::error()
+        .with_message(format!(
+            "attribute `{}` should be applied to {}",
+            attr.kind, applies_to
+        ))
+        .with_label(
+            Label::primary(attr.span)
+                .with_message("invalid attribute placement"),
         )
 }

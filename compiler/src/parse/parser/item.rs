@@ -223,19 +223,20 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_attr_kind(&mut self) -> DiagnosticResult<(AttrKind, Span)> {
+        let start = self.last_span();
         let ident = self.eat_ident()?;
+        let span = start.merge(ident.span);
         let name = ident.str_value().as_str();
 
         let kind = AttrKind::try_from(name).map_err(|()| {
             Diagnostic::error()
                 .with_message(format!("unknown attribute `{name}`"))
                 .with_label(
-                    Label::primary(ident.span)
-                        .with_message("unknown attribute"),
+                    Label::primary(span).with_message("unknown attribute"),
                 )
         })?;
 
-        Ok((kind, ident.span))
+        Ok((kind, span))
     }
 
     pub(super) fn parse_let(&mut self, attrs: Attrs) -> DiagnosticResult<Let> {

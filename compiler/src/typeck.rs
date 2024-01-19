@@ -504,7 +504,6 @@ impl<'db> Typeck<'db> {
         fun: &ast::Fn,
     ) -> TypeckResult<hir::FnSig> {
         self.check_attrs(
-            env.module_id(),
             &fun.attrs,
             match &fun.kind {
                 ast::FnKind::Bare { .. } => AttrsPlacement::Fn,
@@ -641,7 +640,7 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         let_: &ast::Let,
     ) -> TypeckResult<hir::Let> {
-        self.check_attrs(env.module_id(), &let_.attrs, AttrsPlacement::Let)?;
+        self.check_attrs(&let_.attrs, AttrsPlacement::Let)?;
 
         let ty = if let Some(ty_expr) = &let_.ty_expr {
             self.check_ty_expr(env, ty_expr, AllowTyHole::Yes)?
@@ -691,11 +690,7 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         tydef: &ast::TyDef,
     ) -> TypeckResult<()> {
-        self.check_attrs(
-            env.module_id(),
-            &tydef.attrs,
-            AttrsPlacement::ExternLet,
-        )?;
+        self.check_attrs(&tydef.attrs, AttrsPlacement::ExternLet)?;
 
         match &tydef.kind {
             ast::TyDefKind::Struct(struct_def) => {
@@ -1062,11 +1057,7 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         let_: &ast::ExternLet,
     ) -> TypeckResult<hir::ExternLet> {
-        self.check_attrs(
-            env.module_id(),
-            &let_.attrs,
-            AttrsPlacement::ExternLet,
-        )?;
+        self.check_attrs(&let_.attrs, AttrsPlacement::ExternLet)?;
 
         let ty = self.check_ty_expr(env, &let_.ty_expr, AllowTyHole::No)?;
         let id = self.define_def(
