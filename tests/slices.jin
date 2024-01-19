@@ -32,7 +32,6 @@ fn print(s: &[int]) unit = {
 
 type Box(value: int)
 
-@intrinsic
 fn boxes() unit = {
 	let a = [Box(1), Box(2), Box(3)]
 	let b = &a.[0]
