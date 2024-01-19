@@ -2,13 +2,12 @@ const std = @import("std");
 const Allocator = std.mem.Allocator;
 const testing = std.testing;
 
-const unit = extern struct {};
 const cstr = [*:0]const u8;
 const str = extern struct { ptr: cstr, len: usize };
 
 const anyrc = extern struct {
     refcnt: usize,
-    data: unit,
+    data: void,
 };
 
 const anyarray = extern struct {
