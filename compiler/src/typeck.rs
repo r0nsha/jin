@@ -526,11 +526,32 @@ impl<'db> Typeck<'db> {
             }
         };
 
+        self.check_intrinsic_fn(fun)?;
+
         env.with_scope(
             fun.sig.word.name(),
             ScopeKind::Fn(DefId::null()),
             |env| self.check_fn_sig(env, &fun.sig, callconv, flags),
         )
+    }
+
+    fn check_intrinsic_fn(&self, fun: &ast::Fn) -> TypeckResult<()> {
+        if let ast::FnKind::Extern { .. } = &fun.kind {
+            if let Some(attr) = fun.attrs.find(ast::AttrKind::Intrinsic) {
+                todo!("check")
+            } else if !fun.sig.ty_params.is_empty() {
+                return Err(Diagnostic::error()
+                    .with_message(
+                        "type parameters are not allowed on extern functions",
+                    )
+                    .with_label(
+                        Label::primary(fun.sig.word.span())
+                            .with_message("type parameters not allowed"),
+                    ));
+            }
+        }
+
+        Ok(())
     }
 
     fn check_fn_sig(
