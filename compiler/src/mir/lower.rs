@@ -918,7 +918,19 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         args: Vec<ValueId>,
     ) -> ValueId {
         match intrinsic {
-            Intrinsic::SlicePush => self.const_unit(),
+            Intrinsic::SlicePush => {
+                // if (slice.array) |array| {
+                //     if (len >= array.cap) {
+                //         jinrt_panic_at(backtrace, @ptrCast(set_len_err_msg(len, array.cap).ptr), frame);
+                //     }
+                //
+                //     slice.len = len;
+                // } else {
+                //     jinrt_panic_at(backtrace, @ptrCast(set_len_err_msg(len, 0).ptr), frame);
+                // }
+                // "set_len out of bounds: len is {} but cap is {}",
+                self.const_unit()
+            }
         }
     }
 

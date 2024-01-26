@@ -170,31 +170,6 @@ export fn jinrt_slice_index_boundscheck(
     }
 }
 
-export fn jinrt_slice_set_len(
-    backtrace: *Backtrace,
-    slice: *anyslice,
-    len: usize,
-    frame: StackFrame,
-) void {
-    if (slice.array) |array| {
-        if (len >= array.cap) {
-            jinrt_panic_at(backtrace, @ptrCast(set_len_err_msg(len, array.cap).ptr), frame);
-        }
-
-        slice.len = len;
-    } else {
-        jinrt_panic_at(backtrace, @ptrCast(set_len_err_msg(len, 0).ptr), frame);
-    }
-}
-
-inline fn set_len_err_msg(len: usize, cap: usize) []const u8 {
-    return std.fmt.allocPrint(
-        std.heap.c_allocator,
-        "set_len out of bounds: len is {} but cap is {}",
-        .{ len, cap },
-    ) catch unreachable;
-}
-
 export fn jinrt_strcmp(a: str, b: str) bool {
     return std.mem.eql(u8, str_slice(a), str_slice(b));
 }
