@@ -536,19 +536,10 @@ impl<'db> Typeck<'db> {
     }
 
     fn check_intrinsic_fn(&self, fun: &ast::Fn) -> TypeckResult<()> {
-        if let ast::FnKind::Extern { .. } = &fun.kind {
-            if let Some(attr) = fun.attrs.find(ast::AttrId::Intrinsic) {
-                todo!("check")
-            } else if !fun.sig.ty_params.is_empty() {
-                return Err(Diagnostic::error()
-                    .with_message(
-                        "type parameters are not allowed on extern functions",
-                    )
-                    .with_label(
-                        Label::primary(fun.sig.word.span())
-                            .with_message("type parameters not allowed"),
-                    ));
-            }
+        if let Some(attr) = fun.attrs.find(ast::AttrId::Intrinsic) {
+            let ast::AttrArgs::Intrinsic(name) = attr.args;
+
+            todo!("check: {name}")
         }
 
         Ok(())
@@ -562,6 +553,18 @@ impl<'db> Typeck<'db> {
         flags: FnTyFlags,
     ) -> TypeckResult<hir::FnSig> {
         let ty_params = self.check_ty_params(env, &sig.ty_params)?;
+
+        if flags.contains(FnTyFlags::EXTERN) && !ty_params.is_empty() {
+            return Err(Diagnostic::error()
+                .with_message(
+                    "type parameters are not allowed on extern functions",
+                )
+                .with_label(
+                    Label::primary(sig.word.span())
+                        .with_message("type parameters not allowed"),
+                ));
+        }
+
         let (params, fnty_params) =
             self.check_fn_sig_params(env, &sig.params)?;
         let ret = self.check_fn_sig_ret(env, sig.ret.as_ref())?;
