@@ -918,7 +918,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         args: Vec<ValueId>,
     ) -> ValueId {
         match intrinsic {
-            Intrinsic::SliceSetLen => self.const_unit(),
+            Intrinsic::SlicePush => self.const_unit(),
         }
     }
 

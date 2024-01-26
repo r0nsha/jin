@@ -1,4 +1,4 @@
-import std.intrinsics.*
+import std
 
 fn extern "c" printf(fmt: *u8, ..) i32
 
@@ -12,7 +12,7 @@ fn ints() unit = {
 	print(&a)
 
 	let mut b: [int] = [:3]
-	set_len(&mut b, 3)
+	std.intrinsics.push(&mut b, 3)
 	print(&b)
 
 	let mut c = [1, 2, 3, 4, 5]

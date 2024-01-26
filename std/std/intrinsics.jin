@@ -1,2 +1,2 @@
-@intrinsic("slice_set_len")
-fn extern "jin" set_len*[a](slice: &mut [a], len: uint) unit
+@intrinsic("slice_push")
+fn extern "jin" push*[a](slice: &mut [a], value: a) unit
