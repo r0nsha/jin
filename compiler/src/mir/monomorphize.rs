@@ -206,9 +206,8 @@ impl<'db, 'cx> MonomorphizeBody<'db, 'cx> {
     ) -> Option<ValueKind> {
         match value_kind {
             &ValueKind::Fn(id) => {
-                // We don't monomorphize intrinsics functions
+                // We ignore intrinsic functions, as they're expanded during mir::lower
                 if self.cx.db.intrinsics.contains_key(&mir.fn_sigs[id].def_id) {
-                    self.cx.used_fns.insert(id);
                     return None;
                 }
 

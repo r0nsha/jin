@@ -3,7 +3,9 @@ use indexmap::IndexSet;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    db::{AdtField, AdtKind, Db, DefId, DefKind, StructKind, VariantId},
+    db::{
+        AdtField, AdtKind, Db, DefId, DefKind, Intrinsic, StructKind, VariantId,
+    },
     diagnostics::{Diagnostic, DiagnosticResult},
     hir,
     hir::{FnKind, Hir},
@@ -636,13 +638,26 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
 
                 args.sort_by_key(|(idx, _)| *idx);
+                let args: Vec<_> =
+                    args.into_iter().map(|(_, arg)| arg).collect();
 
                 let callee = self.lower_input_expr(&call.callee);
+
+                if let ValueKind::Fn(id) = &self.body.value(callee).kind {
+                    if let Some(&intrinsic) = self
+                        .cx
+                        .db
+                        .intrinsics
+                        .get(&self.cx.mir.fn_sigs[*id].def_id)
+                    {
+                        return self.lower_intrinsic_call(intrinsic, args);
+                    }
+                }
 
                 self.push_inst_with_register(expr.ty, |value| Inst::Call {
                     value,
                     callee,
-                    args: args.into_iter().map(|(_, arg)| arg).collect(),
+                    args,
                     span: expr.span,
                 })
             }
@@ -895,6 +910,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.set_moved(elem, span);
 
         SliceIndexResult { slice, index, elem }
+    }
+
+    fn lower_intrinsic_call(
+        &mut self,
+        intrinsic: Intrinsic,
+        args: Vec<ValueId>,
+    ) -> ValueId {
+        match intrinsic {
+            Intrinsic::SliceSetLen => self.const_unit(),
+        }
     }
 
     fn lower_decision(
