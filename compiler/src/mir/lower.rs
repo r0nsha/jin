@@ -919,16 +919,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> ValueId {
         match intrinsic {
             Intrinsic::SlicePush => {
-                // if (slice.array) |array| {
-                //     if (len >= array.cap) {
-                //         jinrt_panic_at(backtrace, @ptrCast(set_len_err_msg(len, array.cap).ptr), frame);
-                //     }
+                // TODO: call jinrt panic check
+                // TODO: if slice.array is null || slice.array.cap == 0 {
+                // TODO:    panic("set_len out of bounds: len is {} but cap is {}")
+                //       }
                 //
-                //     slice.len = len;
-                // } else {
-                //     jinrt_panic_at(backtrace, @ptrCast(set_len_err_msg(len, 0).ptr), frame);
-                // }
-                // "set_len out of bounds: len is {} but cap is {}",
+                // TODO: slice.len = len;
                 self.const_unit()
             }
         }
