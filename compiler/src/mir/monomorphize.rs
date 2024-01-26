@@ -206,6 +206,12 @@ impl<'db, 'cx> MonomorphizeBody<'db, 'cx> {
     ) -> Option<ValueKind> {
         match value_kind {
             &ValueKind::Fn(id) => {
+                // We don't monomorphize intrinsics functions
+                if self.cx.db.intrinsics.contains_key(&mir.fn_sigs[id].def_id) {
+                    self.cx.used_fns.insert(id);
+                    return None;
+                }
+
                 let ty = instantiation.fold(mir.fn_sigs[id].ty);
 
                 let monomorphized_fn = MonoFn { id, ty };
@@ -817,6 +823,7 @@ fn create_destroy_sig(
 
     let sig = cx.mono_mir.fn_sigs.insert_with_key(|id| FnSig {
         id,
+        def_id: DefId::null(),
         mangled_name,
         display_name,
         params,

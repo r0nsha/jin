@@ -142,6 +142,7 @@ impl<'db> Lower<'db> {
         let params = Self::adt_fields_to_fn_params(&struct_def.fields);
         let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
+            def_id: adt.def_id,
             mangled_name,
             display_name,
             params,
@@ -206,6 +207,7 @@ impl<'db> Lower<'db> {
         let params = Self::adt_fields_to_fn_params(&variant.fields);
         let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
+            def_id: adt.def_id,
             mangled_name,
             display_name,
             params,
@@ -298,6 +300,7 @@ impl<'db> Lower<'db> {
 
         self.mir.fn_sigs.insert_with_key(|id| FnSig {
             id,
+            def_id: fun.def_id,
             mangled_name,
             display_name,
             params: fun

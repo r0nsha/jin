@@ -69,12 +69,6 @@ pub struct Fn {
 }
 
 #[derive(Debug, Clone)]
-pub struct ExternFn {
-    pub def_id: DefId,
-    pub sig: FnSigId,
-}
-
-#[derive(Debug, Clone)]
 pub struct FnParam {
     pub pat: Pat,
     pub ty: Ty,
@@ -83,6 +77,7 @@ pub struct FnParam {
 #[derive(Debug, Clone)]
 pub struct FnSig {
     pub id: FnSigId,
+    pub def_id: DefId,
     pub mangled_name: Ustr,
     pub display_name: Ustr,
     pub params: Vec<FnParam>,

@@ -170,6 +170,27 @@ export fn jinrt_slice_index_boundscheck(
     }
 }
 
+export fn jinrt_slice_set_len(
+    backtrace: *Backtrace,
+    slice: anyslice,
+    len: usize,
+    frame: StackFrame,
+) void {
+    _ = frame;
+    _ = len;
+    _ = slice;
+    _ = backtrace;
+    std.debug.panic("set_len!!", .{});
+    // if (index >= slice.len) {
+    //     const msg = std.fmt.allocPrint(
+    //         std.heap.c_allocator,
+    //         "index out of bounds: len is {} but index is {}",
+    //         .{ slice.len, index },
+    //     ) catch unreachable;
+    //     jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
+    // }
+}
+
 export fn jinrt_strcmp(a: str, b: str) bool {
     return std.mem.eql(u8, str_slice(a), str_slice(b));
 }

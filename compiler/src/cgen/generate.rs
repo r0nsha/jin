@@ -15,7 +15,10 @@ use crate::{
             str_value, unit_value, NEST,
         },
     },
-    db::{AdtField, AdtId, AdtKind, Db, StructDef, StructKind, UnionDef},
+    db::{
+        AdtField, AdtId, AdtKind, Db, Intrinsic, StructDef, StructKind,
+        UnionDef,
+    },
     mangle,
     middle::{CallConv, Pat, UnOp},
     mir::{
@@ -153,6 +156,11 @@ impl<'db> Generator<'db> {
 
     pub fn predefine_fns(&mut self) {
         for sig in self.mir.fn_sigs.values() {
+            // We don't need to codegen intrinsics, since they are defined in the runtime
+            if self.db.intrinsics.contains_key(&sig.def_id) {
+                continue;
+            }
+
             let doc = self.codegen_fn_sig(sig);
             self.fn_decls.push(stmt(|| doc));
         }
@@ -607,6 +615,10 @@ impl<'db> Generator<'db> {
                 arg_docs
                     .extend(args.iter().copied().map(|a| self.value(state, a)));
 
+                if self.is_intrinsic_fn(state, *callee) {
+                    arg_docs.push(self.create_stackframe_value(state, *span));
+                }
+
                 let call = self.value_assign(state, *value, |this| {
                     util::call(this.value(state, *callee), arg_docs)
                 });
@@ -708,13 +720,34 @@ impl<'db> Generator<'db> {
                 D::text(self.mir.globals[*id].name.as_str())
             }
             ValueKind::Fn(id) => {
-                D::text(self.mir.fn_sigs[*id].mangled_name.as_str())
+                let sig = &self.mir.fn_sigs[*id];
+
+                if let Some(&intrinsic) = self.db.intrinsics.get(&sig.def_id) {
+                    D::text(Self::intrinsic_name(intrinsic))
+                } else {
+                    D::text(sig.mangled_name.as_str())
+                }
             }
             ValueKind::Const(value) => codegen_const_value(value),
             ValueKind::Field(value, field) => self.field(state, *value, field),
             ValueKind::Variant(value, variant) => {
                 self.variant(state, *value, variant)
             }
+        }
+    }
+
+    fn is_intrinsic_fn(&self, state: &GenState<'db>, value: ValueId) -> bool {
+        match &state.body.value(value).kind {
+            ValueKind::Fn(id) => {
+                self.db.intrinsics.contains_key(&self.mir.fn_sigs[*id].def_id)
+            }
+            _ => false,
+        }
+    }
+
+    fn intrinsic_name(intrinsic: Intrinsic) -> &'static str {
+        match intrinsic {
+            Intrinsic::SliceSetLen => "jinrt_slice_set_len",
         }
     }
 

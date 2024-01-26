@@ -817,9 +817,9 @@ impl ExternLib {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Intrinsic {
-    SlicePush,
+    SliceSetLen,
 }
 
 impl<'a> TryFrom<&'a str> for Intrinsic {
@@ -827,7 +827,7 @@ impl<'a> TryFrom<&'a str> for Intrinsic {
 
     fn try_from(value: &'a str) -> Result<Self, Self::Error> {
         match value {
-            "slice_push" => Ok(Self::SlicePush),
+            "slice_set_len" => Ok(Self::SliceSetLen),
             _ => Err(()),
         }
     }

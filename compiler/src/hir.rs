@@ -125,7 +125,7 @@ impl Expr {
             ExprKind::Index(index) => {
                 index.expr.walk_(f);
                 index.index.walk_(f);
-            },
+            }
             ExprKind::Unary(Unary { expr, .. })
             | ExprKind::Cast(Cast { expr, .. })
             | ExprKind::Field(Field { expr, .. }) => expr.walk_(f),

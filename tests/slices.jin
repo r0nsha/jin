@@ -11,10 +11,8 @@ fn ints() unit = {
 	let a: [int] = []
 	print(&a)
 
-	let b: [int] = [:3]
-	push(b, 3)
-	push(b, 2)
-	push(b, 1)
+	let mut b: [int] = [:3]
+	set_len(&mut b, 3)
 	print(&b)
 
 	let mut c = [1, 2, 3, 4, 5]
