@@ -463,8 +463,8 @@ impl Attrs {
         self.0.push(attr);
     }
 
-    pub fn find(&self, kind: AttrKind) -> Option<&Attr> {
-        self.iter().find(|a| a.kind == kind)
+    pub fn find(&self, id: AttrId) -> Option<&Attr> {
+        self.iter().find(|a| a.id == id)
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &Attr> {
@@ -482,16 +482,22 @@ impl Attrs {
 
 #[derive(Debug, Clone)]
 pub struct Attr {
-    pub kind: AttrKind,
+    pub id: AttrId,
+    pub args: AttrArgs,
     pub span: Span,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum AttrKind {
+pub enum AttrId {
     Intrinsic,
 }
 
-impl TryFrom<&str> for AttrKind {
+#[derive(Debug, Clone)]
+pub enum AttrArgs {
+    Intrinsic(Word),
+}
+
+impl TryFrom<&str> for AttrId {
     type Error = ();
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
@@ -502,9 +508,10 @@ impl TryFrom<&str> for AttrKind {
     }
 }
 
-impl fmt::Display for AttrKind {
+impl fmt::Display for AttrId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // f.write_str(match self {})
-        f.write_str("")
+        f.write_str(match self {
+            AttrId::Intrinsic => "intrinsic",
+        })
     }
 }

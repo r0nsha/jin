@@ -30,12 +30,14 @@ impl<'db> Typeck<'db> {
     }
 }
 
+/// Validates that `attr` is valid in `placement`.
+/// Returns an error string with the valid placements.
 fn validate_attr_placement(
     attr: &ast::Attr,
     placement: AttrsPlacement,
 ) -> Result<(), &'static str> {
-    match attr.kind {
-        ast::AttrKind::Intrinsic => match placement {
+    match attr.id {
+        ast::AttrId::Intrinsic => match placement {
             AttrsPlacement::ExternFn => Ok(()),
             _ => Err("fn extern"),
         },

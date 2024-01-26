@@ -3,8 +3,8 @@ use std::ops::ControlFlow;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Attr, AttrKind, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig, Item,
-        Let,
+        Attr, AttrArgs, AttrId, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig,
+        Item, Let,
     },
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{CallConv, TyExpr},
@@ -215,20 +215,21 @@ impl<'a> Parser<'a> {
         let mut attrs = Attrs::new();
 
         while self.is(TokenKind::At) {
-            let (kind, span) = self.parse_attr_kind()?;
-            attrs.push(Attr { kind, span });
+            let (id, span) = self.parse_attr_id()?;
+            let args = self.parse_attr_args(id)?;
+            attrs.push(Attr { id, args, span });
         }
 
         Ok(attrs)
     }
 
-    fn parse_attr_kind(&mut self) -> DiagnosticResult<(AttrKind, Span)> {
+    fn parse_attr_id(&mut self) -> DiagnosticResult<(AttrId, Span)> {
         let start = self.last_span();
         let ident = self.eat_ident()?;
         let span = start.merge(ident.span);
         let name = ident.str_value().as_str();
 
-        let kind = AttrKind::try_from(name).map_err(|()| {
+        let id = AttrId::try_from(name).map_err(|()| {
             Diagnostic::error()
                 .with_message(format!("unknown attribute `{name}`"))
                 .with_label(
@@ -236,7 +237,18 @@ impl<'a> Parser<'a> {
                 )
         })?;
 
-        Ok((kind, span))
+        Ok((id, span))
+    }
+
+    fn parse_attr_args(&mut self, id: AttrId) -> DiagnosticResult<AttrArgs> {
+        match id {
+            AttrId::Intrinsic => {
+                self.eat(TokenKind::OpenParen)?;
+                let name = self.eat(TokenKind::empty_str())?.word();
+                self.eat(TokenKind::CloseParen)?;
+                Ok(AttrArgs::Intrinsic(name))
+            }
+        }
     }
 
     pub(super) fn parse_let(&mut self, attrs: Attrs) -> DiagnosticResult<Let> {

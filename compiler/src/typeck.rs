@@ -537,7 +537,7 @@ impl<'db> Typeck<'db> {
 
     fn check_intrinsic_fn(&self, fun: &ast::Fn) -> TypeckResult<()> {
         if let ast::FnKind::Extern { .. } = &fun.kind {
-            if let Some(attr) = fun.attrs.find(ast::AttrKind::Intrinsic) {
+            if let Some(attr) = fun.attrs.find(ast::AttrId::Intrinsic) {
                 todo!("check")
             } else if !fun.sig.ty_params.is_empty() {
                 return Err(Diagnostic::error()

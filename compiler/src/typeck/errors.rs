@@ -320,7 +320,7 @@ pub fn invalid_attr_placement(
     Diagnostic::error()
         .with_message(format!(
             "attribute `{}` should be applied to {}",
-            attr.kind, applies_to
+            attr.id, applies_to
         ))
         .with_label(
             Label::primary(attr.span)
