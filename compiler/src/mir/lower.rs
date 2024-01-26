@@ -1570,10 +1570,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     })
                 }
                 CoercionKind::OwnedToRef => {
-                    if coercion.target.is_mut_ref() {
-                        self.check_ref_mutability(coerced_value, span);
-                    }
-
                     self.create_once_ref(coerced_value, coercion.target, span)
                 }
             };
