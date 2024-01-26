@@ -73,7 +73,10 @@ impl CheckBodies<'_> {
             }
             ExprKind::Return(ret) => self.expr(&ret.expr),
             ExprKind::Call(call) => {
-                self.expr(&call.callee);
+                match &call.callee.kind {
+                    ExprKind::Name(_) => (),
+                    _ => self.expr(&call.callee),
+                }
 
                 for arg in &call.args {
                     self.expr(&arg.expr);
@@ -115,8 +118,22 @@ impl CheckBodies<'_> {
                 self.expr(&un.expr);
             }
             ExprKind::Field(field) => self.expr(&field.expr),
-            ExprKind::Name(_)
-            | ExprKind::Break
+            ExprKind::Name(name) => {
+                if self.db.intrinsics.contains_key(&name.id) {
+                    self.db.diagnostics.emit(
+                        Diagnostic::error()
+                            .with_message(format!(
+                                "intrinsic `{}` must be called",
+                                self.db[name.id].name
+                            ))
+                            .with_label(
+                                Label::primary(expr.span)
+                                    .with_message("must be called"),
+                            ),
+                    );
+                }
+            }
+            ExprKind::Break
             | ExprKind::Variant(_)
             | ExprKind::BoolLit(_)
             | ExprKind::IntLit(_)

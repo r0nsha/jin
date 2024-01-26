@@ -13,7 +13,6 @@ fn ints() unit = {
 
 	let mut b: [int] = [:3]
 	set_len(&mut b, 3)
-	x(set_len)
 	print(&b)
 
 	let mut c = [1, 2, 3, 4, 5]
@@ -22,8 +21,6 @@ fn ints() unit = {
 	printf("old=%d\n".ptr, c.[2] := 42)
 	print(&c)
 }
-
-fn x(f: fn extern "jin"(&mut [int], uint) unit) unit = {}
 
 fn print(s: &[int]) unit = {
 	printf("[".ptr)
