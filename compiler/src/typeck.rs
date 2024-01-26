@@ -21,8 +21,8 @@ use crate::{
     ast::{self, Ast},
     counter::Counter,
     db::{
-        Adt, AdtField, AdtId, AdtKind, Db, DefId, DefKind, FnInfo, ModuleId,
-        StructDef, UnionDef, Variant, VariantId,
+        Adt, AdtField, AdtId, AdtKind, Db, DefId, DefKind, FnInfo, Intrinsic,
+        ModuleId, StructDef, UnionDef, Variant, VariantId,
     },
     diagnostics::{Diagnostic, Label},
     hir,
@@ -315,7 +315,7 @@ impl<'db> Typeck<'db> {
                 }
             }
             AssocTy::BuiltinTy(ty) => {
-                if !self.db.package(env_package).is_std(self.db) {
+                if !env.in_std(self.db) {
                     return Err(Diagnostic::error()
                         .with_message(format!(
                             "cannot define associated name for builtin type \
@@ -526,7 +526,7 @@ impl<'db> Typeck<'db> {
             }
         };
 
-        self.check_intrinsic_fn(fun)?;
+        self.check_intrinsic_fn(env, fun, callconv)?;
 
         env.with_scope(
             fun.sig.word.name(),
@@ -535,9 +535,42 @@ impl<'db> Typeck<'db> {
         )
     }
 
-    fn check_intrinsic_fn(&self, fun: &ast::Fn) -> TypeckResult<()> {
+    fn check_intrinsic_fn(
+        &self,
+        env: &Env,
+        fun: &ast::Fn,
+        callconv: CallConv,
+    ) -> TypeckResult<()> {
         if let Some(attr) = fun.attrs.find(ast::AttrId::Intrinsic) {
             let ast::AttrArgs::Intrinsic(name) = attr.args;
+            let intrinsic =
+                Intrinsic::try_from(name.as_str()).map_err(|()| {
+                    Diagnostic::error()
+                        .with_message(format!("unknown intrinsic `{name}`"))
+                        .with_label(
+                            Label::primary(name.span())
+                                .with_message("unknown intrinsic"),
+                        )
+                })?;
+
+            if callconv != CallConv::Jin {
+                return Err(Diagnostic::error()
+                    .with_message(
+                        "intrinsic calling convention must be \"jin\"",
+                    )
+                    .with_label(
+                        Label::primary(fun.sig.word.span())
+                            .with_message("invalid calling convention"),
+                    ));
+            }
+
+            if !env.in_std(self.db) {
+                return Err(Diagnostic::error()
+                    .with_message(
+                        "intrinsic cannot be defined outside the `std` package",
+                    )
+                    .with_label(Label::primary(fun.sig.word.span())));
+            }
 
             todo!("check: {name}")
         }

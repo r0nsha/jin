@@ -1062,6 +1062,11 @@ impl Env {
     pub fn module_id(&self) -> ModuleId {
         self.module_id
     }
+
+    #[inline]
+    pub fn in_std(&self, db: &Db) -> bool {
+        db.package(db[self.module_id].package).is_std(db)
+    }
 }
 
 #[derive(Debug)]

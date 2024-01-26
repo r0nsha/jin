@@ -1,0 +1,2 @@
+@intrinsic("slice_push")
+fn extern "jin" push*[a](slice: &mut [a], value: a) unit

@@ -45,6 +45,7 @@ pub struct Db {
     pub adts: IndexVec<AdtId, Adt>,
     pub variants: IndexVec<VariantId, Variant>,
     pub types: CommonTypes,
+    pub intrinsics: FxHashMap<DefId, Intrinsic>,
     pub extern_libs: FxHashSet<ExternLib>,
     pub diagnostics: Diagnostics,
 
@@ -73,6 +74,7 @@ impl Db {
             adts: IndexVec::new(),
             variants: IndexVec::new(),
             types: CommonTypes::new(),
+            intrinsics: FxHashMap::default(),
             extern_libs: FxHashSet::default(),
             std_package_name: Once::new(),
             main_package_name: Once::new(),
@@ -811,6 +813,22 @@ impl ExternLib {
             )
         } else {
             Some(Self::Sys(name.to_string()))
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum Intrinsic {
+    SlicePush,
+}
+
+impl<'a> TryFrom<&'a str> for Intrinsic {
+    type Error = ();
+
+    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+        match value {
+            "slice_push" => Ok(Self::SlicePush),
+            _ => Err(()),
         }
     }
 }

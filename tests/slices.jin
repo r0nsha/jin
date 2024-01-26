@@ -1,3 +1,5 @@
+import std.intrinsics.*
+
 fn extern "c" printf(fmt: *u8, ..) i32
 
 fn main() unit = {
@@ -7,10 +9,15 @@ fn main() unit = {
 
 fn ints() unit = {
 	let a: [int] = []
-	let b: [int] = [:3]
-	let mut c = [1, 2, 3, 4, 5]
 	print(&a)
+
+	let b: [int] = [:3]
+	push(b, 3)
+	push(b, 2)
+	push(b, 1)
 	print(&b)
+
+	let mut c = [1, 2, 3, 4, 5]
 	print(&c)
 	c.[1] = 69
 	printf("old=%d\n".ptr, c.[2] := 42)
@@ -38,6 +45,3 @@ fn boxes() unit = {
 	let c = &a.[0]
 	let nested = [[Box(1), Box(2)], [Box(3)]]
 }
-
-@intrinsic("slice_push")
-fn extern "c" push[a](slice: &mut [a], value: a) unit
