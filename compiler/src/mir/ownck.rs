@@ -562,7 +562,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             .and_then(|()| self.value_imm_root(value, BreakOnMutRef::No))
         {
             self.cx.diagnostics.push(self.imm_root_err(
-                "cannot take &mut reference",
+                "cannot take &mut reference to",
                 value,
                 root,
                 span,
@@ -594,7 +594,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 Diagnostic::error().with_message(message).with_label(
                     Label::primary(span)
-                        .with_message(format!("{prefix} to immutable value")),
+                        .with_message(format!("{prefix} immutable value")),
                 )
             }
             ImmutableRoot::Ref(root) => {
