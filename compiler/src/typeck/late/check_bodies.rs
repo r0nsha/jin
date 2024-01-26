@@ -115,8 +115,8 @@ impl CheckBodies<'_> {
                 self.expr(&un.expr);
             }
             ExprKind::Field(field) => self.expr(&field.expr),
-            ExprKind::Break
-            | ExprKind::Name(_)
+            ExprKind::Name(_)
+            | ExprKind::Break
             | ExprKind::Variant(_)
             | ExprKind::BoolLit(_)
             | ExprKind::IntLit(_)
