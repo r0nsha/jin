@@ -1,6 +1,7 @@
 use crate::{
     db::Db,
     diagnostics::{Diagnostic, Label},
+    hir,
     hir::{Expr, ExprKind, FnKind, Hir},
     middle::UnOp,
     ty::{Ty, TyKind},
@@ -30,7 +31,58 @@ impl CheckBodies<'_> {
     }
 
     fn expr(&mut self, expr: &Expr) {
-        expr.walk(|expr| match &expr.kind {
+        match &expr.kind {
+            ExprKind::Let(let_) => self.expr(&let_.value),
+            ExprKind::Assign(hir::Assign { lhs, rhs, .. })
+            | ExprKind::Swap(hir::Swap { lhs, rhs })
+            | ExprKind::Binary(hir::Binary { lhs, rhs, .. }) => {
+                self.expr(lhs);
+                self.expr(rhs);
+            }
+            ExprKind::Match(match_) => {
+                self.expr(&match_.expr);
+
+                for arm in &match_.arms {
+                    if let Some(guard) = &arm.guard {
+                        self.expr(guard);
+                    }
+
+                    self.expr(&arm.expr);
+                }
+            }
+            ExprKind::Loop(loop_) => {
+                if let Some(cond) = &loop_.cond {
+                    self.expr(cond);
+                }
+
+                self.expr(&loop_.expr);
+            }
+            ExprKind::Block(block) => {
+                for expr in &block.exprs {
+                    self.expr(expr);
+                }
+            }
+            ExprKind::SliceLit(lit) => {
+                for expr in &lit.exprs {
+                    self.expr(expr);
+                }
+
+                if let Some(cap) = &lit.cap {
+                    self.expr(cap);
+                }
+            }
+            ExprKind::Return(ret) => self.expr(&ret.expr),
+            ExprKind::Call(call) => {
+                self.expr(&call.callee);
+
+                for arg in &call.args {
+                    self.expr(&arg.expr);
+                }
+            }
+            ExprKind::Index(index) => {
+                self.expr(&index.expr);
+                self.expr(&index.index);
+            }
             ExprKind::Cast(cast) => {
                 let source = cast.expr.ty;
                 let target = expr.ty;
@@ -50,6 +102,8 @@ impl CheckBodies<'_> {
                             ),
                     );
                 }
+
+                self.expr(&cast.expr);
             }
             ExprKind::Unary(un) => {
                 if un.op == UnOp::Neg && un.expr.ty.is_uint() {
@@ -57,9 +111,18 @@ impl CheckBodies<'_> {
                         self.db, un.op, un.expr.ty, expr.span,
                     ));
                 }
+
+                self.expr(&un.expr);
             }
-            _ => (),
-        });
+            ExprKind::Field(field) => self.expr(&field.expr),
+            ExprKind::Break
+            | ExprKind::Name(_)
+            | ExprKind::Variant(_)
+            | ExprKind::BoolLit(_)
+            | ExprKind::IntLit(_)
+            | ExprKind::FloatLit(_)
+            | ExprKind::StrLit(_) => (),
+        }
     }
 }
 
