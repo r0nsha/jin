@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use crate::{
     ast::token::TokenKind,
     diagnostics::DiagnosticResult,
-    middle::{TyExpr, TyExprFn},
+    middle::{CallConv, TyExpr, TyExprFn},
     parse::{errors, parser::Parser},
     span::Spanned,
     word::Word,
@@ -63,7 +63,12 @@ impl<'a> Parser<'a> {
 
     fn parse_fn_ty(&mut self) -> DiagnosticResult<TyExprFn> {
         let start = self.last_span();
-        let is_extern = self.is(TokenKind::Extern);
+        let (is_extern, callconv) = if self.is(TokenKind::Extern) {
+            let callconv = self.parse_callconv()?;
+            (true, callconv)
+        } else {
+            (false, CallConv::default())
+        };
         let (params, is_c_variadic) = self.parse_fn_ty_params()?;
         let ret = self.parse_ty()?;
 
@@ -72,6 +77,7 @@ impl<'a> Parser<'a> {
             ret: Box::new(ret),
             is_extern,
             is_c_variadic,
+            callconv,
             span: start.merge(self.last_span()),
         })
     }

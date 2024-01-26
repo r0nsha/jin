@@ -2303,7 +2303,7 @@ impl<'db> Typeck<'db> {
                 Ok(Ty::new(TyKind::Fn(FnTy {
                     params,
                     ret,
-                    callconv: CallConv::default(),
+                    callconv: fn_ty.callconv,
                     flags,
                 })))
             }

@@ -247,6 +247,7 @@ pub struct TyExprFn {
     pub ret: Box<TyExpr>,
     pub is_extern: bool,
     pub is_c_variadic: bool,
+    pub callconv: CallConv,
     pub span: Span,
 }
 

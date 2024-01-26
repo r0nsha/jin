@@ -83,18 +83,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_extern_fn(&mut self, attrs: Attrs) -> DiagnosticResult<Fn> {
-        let callconv = self.eat(TokenKind::empty_str())?;
-        let callconv_str = callconv.str_value().as_str();
-        let callconv = CallConv::try_from(callconv_str).map_err(|()| {
-            Diagnostic::error()
-                .with_message(format!(
-                    "unknown calling convention `{callconv_str}`"
-                ))
-                .with_label(
-                    Label::primary(callconv.span)
-                        .with_message("unknown calling convention"),
-                )
-        })?;
+        let callconv = self.parse_callconv()?;
         let name = self.eat_ident()?;
         let vis = self.parse_vis();
         let (sig, is_c_variadic) =
@@ -106,6 +95,21 @@ impl<'a> Parser<'a> {
             sig,
             kind: FnKind::Extern { callconv, is_c_variadic },
             span: name.span,
+        })
+    }
+
+    pub(super) fn parse_callconv(&mut self) -> DiagnosticResult<CallConv> {
+        let callconv = self.eat(TokenKind::empty_str())?;
+        let callconv_str = callconv.str_value().as_str();
+        CallConv::try_from(callconv_str).map_err(|()| {
+            Diagnostic::error()
+                .with_message(format!(
+                    "unknown calling convention `{callconv_str}`"
+                ))
+                .with_label(
+                    Label::primary(callconv.span)
+                        .with_message("unknown calling convention"),
+                )
         })
     }
 
