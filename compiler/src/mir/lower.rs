@@ -922,9 +922,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // TODO: call jinrt panic check
                 // TODO: if slice.array is null || slice.array.cap == 0 {
                 // TODO:    panic("set_len out of bounds: len is {} but cap is {}")
-                //       }
-                //
-                // TODO: slice.len = len;
+                // TODO: }
+                // TODO: slice = args[0]
+                // TODO: value = args[1]
+                // TODO: slice.[slice.len] = value;
+                // TODO: slice.len += 1;
                 self.const_unit()
             }
         }
