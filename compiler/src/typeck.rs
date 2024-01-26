@@ -493,6 +493,7 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<()> {
         let sig = self.check_fn_item_helper(env, fun)?;
         let id = self.define_fn(env.module_id(), fun, &sig, None)?;
+        self.check_intrinsic_fn(env, fun, &sig, id)?;
         self.resolution_state
             .insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig });
         Ok(())
@@ -526,8 +527,6 @@ impl<'db> Typeck<'db> {
             }
         };
 
-        self.check_intrinsic_fn(env, fun, callconv)?;
-
         env.with_scope(
             fun.sig.word.name(),
             ScopeKind::Fn(DefId::null()),
@@ -536,13 +535,17 @@ impl<'db> Typeck<'db> {
     }
 
     fn check_intrinsic_fn(
-        &self,
+        &mut self,
         env: &Env,
         fun: &ast::Fn,
-        callconv: CallConv,
+        sig: &hir::FnSig,
+        id: DefId,
     ) -> TypeckResult<()> {
+        let fnty = sig.ty.as_fn().unwrap();
+
         if let Some(attr) = fun.attrs.find(ast::AttrId::Intrinsic) {
             let ast::AttrArgs::Intrinsic(name) = attr.args;
+
             let intrinsic =
                 Intrinsic::try_from(name.as_str()).map_err(|()| {
                     Diagnostic::error()
@@ -553,7 +556,7 @@ impl<'db> Typeck<'db> {
                         )
                 })?;
 
-            if callconv != CallConv::Jin {
+            if fnty.callconv != CallConv::Jin {
                 return Err(Diagnostic::error()
                     .with_message(
                         "intrinsic calling convention must be \"jin\"",
@@ -572,7 +575,16 @@ impl<'db> Typeck<'db> {
                     .with_label(Label::primary(fun.sig.word.span())));
             }
 
-            todo!("check: {name}")
+            self.db.intrinsics.insert(id, intrinsic);
+        } else if fnty.is_extern() && !sig.ty_params.is_empty() {
+            return Err(Diagnostic::error()
+                .with_message(
+                    "type parameters are not allowed on extern functions",
+                )
+                .with_label(
+                    Label::primary(sig.word.span())
+                        .with_message("type parameters not allowed"),
+                ));
         }
 
         Ok(())
@@ -586,17 +598,6 @@ impl<'db> Typeck<'db> {
         flags: FnTyFlags,
     ) -> TypeckResult<hir::FnSig> {
         let ty_params = self.check_ty_params(env, &sig.ty_params)?;
-
-        if flags.contains(FnTyFlags::EXTERN) && !ty_params.is_empty() {
-            return Err(Diagnostic::error()
-                .with_message(
-                    "type parameters are not allowed on extern functions",
-                )
-                .with_label(
-                    Label::primary(sig.word.span())
-                        .with_message("type parameters not allowed"),
-                ));
-        }
 
         let (params, fnty_params) =
             self.check_fn_sig_params(env, &sig.params)?;
