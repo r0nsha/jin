@@ -192,6 +192,12 @@ pub enum Expr {
         index: Box<Self>,
         span: Span,
     },
+    Slice {
+        expr: Box<Self>,
+        low: Box<Self>,
+        high: Box<Self>,
+        span: Span,
+    },
     Name {
         word: Word,
         targs: Option<Vec<TyExpr>>,
@@ -233,6 +239,7 @@ impl Spanned for Expr {
             | Self::Name { span, .. }
             | Self::Field { span, .. }
             | Self::Index { span, .. }
+            | Self::Slice { span, .. }
             | Self::Return { span, .. }
             | Self::If { span, .. }
             | Self::Match { span, .. }

@@ -424,39 +424,9 @@ impl<'a> Parser<'a> {
                     self.next();
 
                     if self.is(TokenKind::OpenBracket) {
-                        let index = self.parse_expr()?;
-                        self.eat(TokenKind::CloseBracket)?;
-                        let span = expr.span().merge(self.last_span());
-                        Expr::Index {
-                            expr: Box::new(expr),
-                            index: Box::new(index),
-                            span,
-                        }
+                        self.parse_index(expr)?
                     } else {
-                        let name = self.eat_ident()?.word();
-
-                        let ty_args = self.parse_optional_ty_args()?;
-
-                        if ty_args.is_some()
-                            || self.peek_is(TokenKind::OpenParen)
-                        {
-                            let (args, args_span) = self.parse_call_args()?;
-                            let span = expr.span().merge(args_span);
-                            Expr::MethodCall {
-                                expr: Box::new(expr),
-                                method: name,
-                                targs: ty_args,
-                                args,
-                                span,
-                            }
-                        } else {
-                            let span = expr.span().merge(name.span());
-                            Expr::Field {
-                                expr: Box::new(expr),
-                                field: name,
-                                span,
-                            }
-                        }
+                        self.parse_field(expr)?
                     }
                 }
                 TokenKind::Eq => {
@@ -533,7 +503,7 @@ impl<'a> Parser<'a> {
         let mut passed_named_arg = false;
 
         self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
-            let arg = Parser::parse_arg(this)?;
+            let arg = Parser::parse_call_arg(this)?;
 
             match &arg {
                 CallArg::Positional(expr) if passed_named_arg => {
@@ -555,7 +525,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_arg(&mut self) -> DiagnosticResult<CallArg> {
+    fn parse_call_arg(&mut self) -> DiagnosticResult<CallArg> {
         if self.is_ident() {
             let ident_tok = self.last_token();
 
@@ -569,6 +539,52 @@ impl<'a> Parser<'a> {
 
         let expr = self.parse_expr()?;
         Ok(CallArg::Positional(expr))
+    }
+
+    fn parse_index(&mut self, expr: Expr) -> DiagnosticResult<Expr> {
+        let index = self.parse_expr()?;
+
+        if self.is(TokenKind::DotDot) {
+            let low = index;
+            let high = self.parse_expr()?;
+            self.eat(TokenKind::CloseBracket)?;
+            let span = expr.span().merge(self.last_span());
+            Ok(Expr::Slice {
+                expr: Box::new(expr),
+                low: Box::new(low),
+                high: Box::new(high),
+                span,
+            })
+        } else {
+            self.eat(TokenKind::CloseBracket)?;
+            let span = expr.span().merge(self.last_span());
+            Ok(Expr::Index {
+                expr: Box::new(expr),
+                index: Box::new(index),
+                span,
+            })
+        }
+    }
+
+    fn parse_field(&mut self, expr: Expr) -> DiagnosticResult<Expr> {
+        let name = self.eat_ident()?.word();
+
+        let ty_args = self.parse_optional_ty_args()?;
+
+        if ty_args.is_some() || self.peek_is(TokenKind::OpenParen) {
+            let (args, args_span) = self.parse_call_args()?;
+            let span = expr.span().merge(args_span);
+            Ok(Expr::MethodCall {
+                expr: Box::new(expr),
+                method: name,
+                targs: ty_args,
+                args,
+                span,
+            })
+        } else {
+            let span = expr.span().merge(name.span());
+            Ok(Expr::Field { expr: Box::new(expr), field: name, span })
+        }
     }
 
     pub(super) fn parse_pat(&mut self) -> DiagnosticResult<Pat> {

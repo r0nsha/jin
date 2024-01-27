@@ -1572,6 +1572,9 @@ impl<'db> Typeck<'db> {
                     *span,
                 ))
             }
+            ast::Expr::Slice { expr, low, high, span } => {
+                todo!()
+            }
             ast::Expr::Name { word, targs, span } => {
                 let id =
                     self.lookup(env, env.module_id(), &Query::Name(*word))?;
