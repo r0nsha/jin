@@ -172,8 +172,15 @@ impl PrettyPrint for Expr {
             Self::Slice { expr, low, high, .. } => {
                 cx.builder.begin_child("slice".to_string());
                 expr.pretty_print(cx);
-                low.pretty_print(cx);
-                high.pretty_print(cx);
+
+                if let Some(low) = low {
+                    low.pretty_print(cx);
+                }
+
+                if let Some(high) = high {
+                    high.pretty_print(cx);
+                }
+
                 cx.builder.end_child();
             }
             Self::Name { word, .. } => {

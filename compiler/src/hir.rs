@@ -282,8 +282,8 @@ pub struct Index {
 #[derive(Debug, Clone)]
 pub struct Slice {
     pub expr: Box<Expr>,
-    pub low: Box<Expr>,
-    pub high: Box<Expr>,
+    pub low: Option<Box<Expr>>,
+    pub high: Option<Box<Expr>>,
 }
 
 #[derive(Debug, Clone)]

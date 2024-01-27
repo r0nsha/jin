@@ -542,28 +542,35 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_index(&mut self, expr: Expr) -> DiagnosticResult<Expr> {
+        if self.is(TokenKind::DotDot) {
+            return self.parse_slice_high_helper(expr, None);
+        }
+
         let index = self.parse_expr()?;
 
         if self.is(TokenKind::DotDot) {
-            let low = index;
-            let high = self.parse_expr()?;
-            self.eat(TokenKind::CloseBracket)?;
-            let span = expr.span().merge(self.last_span());
-            Ok(Expr::Slice {
-                expr: Box::new(expr),
-                low: Box::new(low),
-                high: Box::new(high),
-                span,
-            })
-        } else {
-            self.eat(TokenKind::CloseBracket)?;
-            let span = expr.span().merge(self.last_span());
-            Ok(Expr::Index {
-                expr: Box::new(expr),
-                index: Box::new(index),
-                span,
-            })
+            return self.parse_slice_high_helper(expr, Some(Box::new(index)));
         }
+
+        self.eat(TokenKind::CloseBracket)?;
+        let span = expr.span().merge(self.last_span());
+        Ok(Expr::Index { expr: Box::new(expr), index: Box::new(index), span })
+    }
+
+    fn parse_slice_high_helper(
+        &mut self,
+        expr: Expr,
+        low: Option<Box<Expr>>,
+    ) -> DiagnosticResult<Expr> {
+        let high = if self.peek_is(TokenKind::CloseBracket) {
+            None
+        } else {
+            Some(Box::new(self.parse_expr()?))
+        };
+
+        self.eat(TokenKind::CloseBracket)?;
+        let span = expr.span().merge(self.last_span());
+        Ok(Expr::Slice { expr: Box::new(expr), low, high, span })
     }
 
     fn parse_field(&mut self, expr: Expr) -> DiagnosticResult<Expr> {

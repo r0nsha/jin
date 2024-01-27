@@ -194,8 +194,8 @@ pub enum Expr {
     },
     Slice {
         expr: Box<Self>,
-        low: Box<Self>,
-        high: Box<Self>,
+        low: Option<Box<Self>>,
+        high: Option<Box<Self>>,
         span: Span,
     },
     Name {

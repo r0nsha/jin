@@ -59,8 +59,14 @@ impl<S: SubstTy> Subst<S> for Expr {
             }
             ExprKind::Slice(slice) => {
                 slice.expr.subst(s);
-                slice.low.subst(s);
-                slice.high.subst(s);
+
+                if let Some(low) = &mut slice.low {
+                    low.subst(s);
+                }
+
+                if let Some(high) = &mut slice.high {
+                    high.subst(s);
+                }
             }
             ExprKind::Name(Name { instantiation, .. })
             | ExprKind::Variant(Variant { instantiation, .. }) => {

@@ -1584,18 +1584,27 @@ impl<'db> Typeck<'db> {
                     .or_coerce(self, expr.id)?;
 
                 let uint = self.db.types.uint;
-                let low = self.check_expr(env, low, Some(uint))?;
-                self.eq_obvious_expr(uint, &low)?;
+                let low = if let Some(low) = low {
+                    let low = self.check_expr(env, low, Some(uint))?;
+                    self.eq_obvious_expr(uint, &low)?;
+                    Some(Box::new(low))
+                } else {
+                    None
+                };
 
-                let uint = self.db.types.uint;
-                let high = self.check_expr(env, high, Some(uint))?;
-                self.eq_obvious_expr(uint, &high)?;
+                let high = if let Some(high) = high {
+                    let high = self.check_expr(env, high, Some(uint))?;
+                    self.eq_obvious_expr(uint, &high)?;
+                    Some(Box::new(high))
+                } else {
+                    None
+                };
 
                 Ok(self.expr(
                     hir::ExprKind::Slice(hir::Slice {
                         expr: Box::new(expr),
-                        low: Box::new(low),
-                        high: Box::new(high),
+                        low,
+                        high,
                     }),
                     expr_ty,
                     *span,

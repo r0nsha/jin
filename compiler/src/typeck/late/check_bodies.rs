@@ -88,8 +88,14 @@ impl CheckBodies<'_> {
             }
             ExprKind::Slice(slice) => {
                 self.expr(&slice.expr);
-                self.expr(&slice.low);
-                self.expr(&slice.high);
+
+                if let Some(low) = &slice.low {
+                    self.expr(low);
+                }
+
+                if let Some(high) = &slice.high {
+                    self.expr(high);
+                }
             }
             ExprKind::Cast(cast) => {
                 let source = cast.expr.ty;

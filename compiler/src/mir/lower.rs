@@ -951,11 +951,21 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let og_slice = self.lower_expr(&slice.expr);
         self.try_use(og_slice, slice.expr.span);
 
-        let low = self.lower_expr(&slice.low);
-        self.try_move(low, slice.low.span);
+        let low = if let Some(low) = &slice.low {
+            let value = self.lower_expr(low);
+            self.try_move(value, low.span);
+            value
+        } else {
+            todo!()
+        };
 
-        let high = self.lower_expr(&slice.high);
-        self.try_move(high, slice.high.span);
+        let high = if let Some(high) = &slice.high {
+            let value = self.lower_expr(high);
+            self.try_move(value, high.span);
+            value
+        } else {
+            todo!()
+        };
 
         let sliced = self.create_value(expr.ty, ValueKind::Register(None));
         self.ins(self.current_block)

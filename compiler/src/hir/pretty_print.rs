@@ -231,8 +231,15 @@ impl PrettyCx<'_> {
             ExprKind::Slice(slice) => {
                 self.builder.begin_child("slice".to_string());
                 self.pp_expr(&slice.expr);
-                self.pp_expr(&slice.low);
-                self.pp_expr(&slice.high);
+
+                if let Some(low) = &slice.low {
+                    self.pp_expr(low);
+                }
+
+                if let Some(high) = &slice.high {
+                    self.pp_expr(high);
+                }
+
                 self.builder.end_child();
             }
             ExprKind::Name(name) => {
