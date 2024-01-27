@@ -650,7 +650,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         .intrinsics
                         .get(&self.cx.mir.fn_sigs[*id].def_id)
                     {
-                        return self.lower_intrinsic_call(intrinsic, args);
+                        return self
+                            .lower_intrinsic_call(intrinsic, args, expr.span);
                     }
                 }
 
@@ -916,11 +917,26 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         &mut self,
         intrinsic: Intrinsic,
         args: Vec<ValueId>,
+        span: Span,
     ) -> ValueId {
         match intrinsic {
             Intrinsic::SlicePush => {
+                debug_assert_eq!(args.len(), 2);
+
+                let slice = args[0];
+                let value = args[1];
+
+                self.push_inst_with_register(self.cx.db.types.unit, |value| {
+                    Inst::RtCall {
+                        value,
+                        callee: ustr("jinrt_slice_push_boundscheck"),
+                        args: vec![slice],
+                        span,
+                    }
+                });
+
                 // TODO: call jinrt panic check
-                // TODO: if slice.array is null || slice.array.cap == 0 {
+                // TODO: if slice.array is null || len >= slice.array.cap {
                 // TODO:    panic("set_len out of bounds: len is {} but cap is {}")
                 // TODO: }
                 // TODO: slice = args[0]

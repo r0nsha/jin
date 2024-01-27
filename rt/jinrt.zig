@@ -170,6 +170,34 @@ export fn jinrt_slice_index_boundscheck(
     }
 }
 
+export fn jinrt_slice_push_boundscheck(
+    backtrace: *Backtrace,
+    slice: anyslice,
+    frame: StackFrame,
+) void {
+    if (slice.array) |array| {
+        if (slice.len >= array.cap) {
+            slice_push_panic(backtrace, array.cap, slice.len, frame);
+        }
+    } else {
+        slice_push_panic(backtrace, 0, slice.len, frame);
+    }
+}
+
+inline fn slice_push_panic(
+    backtrace: *Backtrace,
+    cap: usize,
+    len: usize,
+    frame: StackFrame,
+) void {
+    const msg = std.fmt.allocPrint(
+        std.heap.c_allocator,
+        "push out of bounds: cap is {} but len is {}",
+        .{ cap, len },
+    ) catch unreachable;
+    jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
+}
+
 export fn jinrt_strcmp(a: str, b: str) bool {
     return std.mem.eql(u8, str_slice(a), str_slice(b));
 }

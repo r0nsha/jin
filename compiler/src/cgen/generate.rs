@@ -617,6 +617,18 @@ impl<'db> Generator<'db> {
                     call
                 }
             }
+            Inst::RtCall { value, callee, args, span } => {
+                let stackframe = self.create_stackframe_value(state, *span);
+                let callee_doc = D::text(callee.as_str());
+                let arg_docs: Vec<_> = iter::once(D::text("backtrace"))
+                    .chain(args.iter().copied().map(|a| self.value(state, a)))
+                    .chain(iter::once(stackframe))
+                    .collect();
+
+                self.value_assign(state, *value, |_| {
+                    util::call(callee_doc, arg_docs)
+                })
+            }
             Inst::Binary { value, lhs, rhs, op, span } => self.codegen_bin_op(
                 state,
                 &BinOpData {

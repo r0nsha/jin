@@ -240,6 +240,17 @@ impl<'db> PrettyCx<'db> {
                     D::text(",").append(D::space()),
                 ))
                 .append(D::text(")")),
+            Inst::RtCall { value, callee, args, .. } => self
+                .value_assign(body, *value)
+                .append(D::text("rtcall"))
+                .append(D::space())
+                .append(D::text(callee.as_str()))
+                .append(D::text("("))
+                .append(D::intersperse(
+                    args.iter().map(|a| self.value(body, *a)),
+                    D::text(",").append(D::space()),
+                ))
+                .append(D::text(")")),
             Inst::Binary { value, lhs, rhs, op, .. } => self
                 .value_assign(body, *value)
                 .append(self.value(body, *lhs))

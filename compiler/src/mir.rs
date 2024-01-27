@@ -499,6 +499,12 @@ pub enum Inst {
         args: Vec<ValueId>,
         span: Span,
     },
+    RtCall {
+        value: ValueId,
+        callee: Ustr,
+        args: Vec<ValueId>,
+        span: Span,
+    },
     Binary {
         value: ValueId,
         lhs: ValueId,
