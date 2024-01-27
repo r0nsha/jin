@@ -627,40 +627,30 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::Call(call) => {
-                // NOTE: We evaluate args in passing order, and then sort them to the actual
-                // required parameter order
-                let mut args = vec![];
-
-                for arg in &call.args {
-                    let idx = arg.index.expect("arg index to be resolved");
-                    let value = self.lower_input_expr(&arg.expr);
-                    args.push((idx, value));
-                }
-
-                args.sort_by_key(|(idx, _)| *idx);
-                let args: Vec<_> =
-                    args.into_iter().map(|(_, arg)| arg).collect();
-
                 let callee = self.lower_input_expr(&call.callee);
+                let intrinsic =
+                    if let ValueKind::Fn(id) = &self.body.value(callee).kind {
+                        self.cx
+                            .db
+                            .intrinsics
+                            .get(&self.cx.mir.fn_sigs[*id].def_id)
+                            .copied()
+                    } else {
+                        None
+                    };
 
-                if let ValueKind::Fn(id) = &self.body.value(callee).kind {
-                    if let Some(&intrinsic) = self
-                        .cx
-                        .db
-                        .intrinsics
-                        .get(&self.cx.mir.fn_sigs[*id].def_id)
-                    {
-                        return self
-                            .lower_intrinsic_call(intrinsic, args, expr.span);
-                    }
+                if let Some(intrinsic) = intrinsic {
+                    let args = self.lower_intrinsic_call_args(&call.args);
+                    self.lower_intrinsic_call(intrinsic, args, expr.span)
+                } else {
+                    let args = self.lower_call_args(&call.args);
+                    self.push_inst_with_register(expr.ty, |value| Inst::Call {
+                        value,
+                        callee,
+                        args,
+                        span: expr.span,
+                    })
                 }
-
-                self.push_inst_with_register(expr.ty, |value| Inst::Call {
-                    value,
-                    callee,
-                    args,
-                    span: expr.span,
-                })
             }
             hir::ExprKind::Unary(un) => {
                 match un.op {
@@ -778,6 +768,38 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.lower_const(&Const::Bool(*lit), expr.ty)
             }
         }
+    }
+
+    fn lower_call_args(&mut self, args: &[hir::CallArg]) -> Vec<ValueId> {
+        let mut new_args = vec![];
+
+        for arg in args {
+            let idx = arg.index.expect("arg index to be resolved");
+            let value = self.lower_input_expr(&arg.expr);
+            new_args.push((idx, value));
+        }
+
+        new_args.sort_by_key(|(idx, _)| *idx);
+        new_args.into_iter().map(|(_, arg)| arg).collect()
+    }
+
+    // This is very similar to `lower_call_args`, the only difference is that ref args are not
+    // incremented.
+    fn lower_intrinsic_call_args(
+        &mut self,
+        args: &[hir::CallArg],
+    ) -> Vec<ValueId> {
+        let mut new_args = vec![];
+
+        for arg in args {
+            let idx = arg.index.expect("arg index to be resolved");
+            let value = self.lower_expr(&arg.expr);
+            self.try_move(value, arg.expr.span);
+            new_args.push((idx, value));
+        }
+
+        new_args.sort_by_key(|(idx, _)| *idx);
+        new_args.into_iter().map(|(_, arg)| arg).collect()
     }
 
     fn lower_input_expr(&mut self, expr: &hir::Expr) -> ValueId {
@@ -1473,6 +1495,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
+    pub fn clone_value(&mut self, value: ValueId, ty: Ty) -> ValueId {
+        self.create_value(ty, self.body.value(value).kind.clone())
+    }
+
     pub fn create_ref(
         &mut self,
         to_clone: ValueId,
@@ -1483,9 +1509,22 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.check_ref_mutability(to_clone, span);
         }
 
-        let value = self.push_inst_with_register(ty, |value| {
-            Inst::StackAlloc { value, init: Some(to_clone) }
-        });
+        let value = match &self.body.value(to_clone).kind {
+            ValueKind::Param(_, _)
+            | ValueKind::Local(_)
+            | ValueKind::Global(_)
+            | ValueKind::Field(_, _) => self.clone_value(to_clone, ty),
+            ValueKind::Register(_)
+            | ValueKind::Fn(_)
+            | ValueKind::Const(_)
+            | ValueKind::Variant(_, _) => {
+                self.push_inst_with_register(ty, |value| Inst::StackAlloc {
+                    value,
+                    init: Some(to_clone),
+                })
+            }
+        };
+
         self.create_destroy_flag(value);
         self.ins(self.current_block).incref(value);
         value

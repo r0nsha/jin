@@ -13,6 +13,8 @@ fn ints() unit = {
 
 	let mut b: [int] = [:3]
 	std.intrinsics.push(&mut b, 3)
+	std.intrinsics.push(&mut b, 2)
+	std.intrinsics.push(&mut b, 1)
 	print(&b)
 
 	let mut c = [1, 2, 3, 4, 5]
