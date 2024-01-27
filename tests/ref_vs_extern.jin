@@ -22,7 +22,6 @@ fn ref_type() unit = {
 	print(ref) // should be 3
 }
 
-// TODO: change to &mut Ref when references are implemented
 fn mutate(ref: &mut Ref) unit = {
 	ref.field = 3
 }

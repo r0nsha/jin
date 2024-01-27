@@ -1495,10 +1495,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
-    pub fn clone_value(&mut self, value: ValueId, ty: Ty) -> ValueId {
-        self.create_value(ty, self.body.value(value).kind.clone())
-    }
-
     pub fn create_ref(
         &mut self,
         to_clone: ValueId,
@@ -1509,21 +1505,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.check_ref_mutability(to_clone, span);
         }
 
-        let value = match &self.body.value(to_clone).kind {
-            ValueKind::Param(_, _)
-            | ValueKind::Local(_)
-            | ValueKind::Global(_)
-            | ValueKind::Field(_, _) => self.clone_value(to_clone, ty),
-            ValueKind::Register(_)
-            | ValueKind::Fn(_)
-            | ValueKind::Const(_)
-            | ValueKind::Variant(_, _) => {
-                self.push_inst_with_register(ty, |value| Inst::StackAlloc {
-                    value,
-                    init: Some(to_clone),
-                })
-            }
-        };
+        let value = self.push_inst_with_register(ty, |value| {
+            Inst::StackAlloc { value, init: Some(to_clone) }
+        });
 
         self.create_destroy_flag(value);
         self.ins(self.current_block).incref(value);
