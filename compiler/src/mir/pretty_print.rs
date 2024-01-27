@@ -156,7 +156,7 @@ impl<'db> PrettyCx<'db> {
             Inst::Store { value, target } => D::text("store")
                 .append(D::space())
                 .append(self.value(body, *value))
-                .append(D::space())
+                .append(D::text(" in "))
                 .append(self.value(body, *target)),
             Inst::Alloc { value } => self
                 .value_assign(body, *value)
@@ -172,8 +172,9 @@ impl<'db> PrettyCx<'db> {
                     D::text("slice_index")
                         .append(D::space())
                         .append(self.value(body, *slice))
-                        .append(D::text(", "))
-                        .append(self.value(body, *index)),
+                        .append(D::text("["))
+                        .append(self.value(body, *index))
+                        .append(D::text("]")),
                 )
             }
             Inst::SliceStore { slice, index, value, .. } => {
@@ -182,8 +183,9 @@ impl<'db> PrettyCx<'db> {
                     .append(self.value(body, *value))
                     .append(D::text(" in "))
                     .append(self.value(body, *slice))
-                    .append(D::text(", "))
+                    .append(D::text("["))
                     .append(self.value(body, *index))
+                    .append(D::text("]"))
             }
 
             Inst::Destroy { value, .. } => D::text("destroy")
