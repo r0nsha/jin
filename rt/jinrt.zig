@@ -147,10 +147,6 @@ export fn jinrt_slice_ptr(s: anyslice) ?[*]void {
     return if (s.array) |a| a.data else null;
 }
 
-export fn jinrt_slice_cap(s: anyslice) usize {
-    return s.cap;
-}
-
 export fn jinrt_slice_index_boundscheck(
     backtrace: *Backtrace,
     slice: anyslice,

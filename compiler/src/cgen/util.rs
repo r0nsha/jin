@@ -68,9 +68,6 @@ impl<'db> Generator<'db> {
                     let elem_ty = Self::slice_value_elem_ty(state, value.id);
                     util::cast(elem_ty.cty(self).append(D::text("*")), call)
                 }
-                (TyKind::Slice(_), sym::CAP) => {
-                    util::call(D::text("jinrt_slice_cap"), [value_doc])
-                }
                 _ => util::field(value_doc, field, ty.is_ptr(self)),
             },
         }
