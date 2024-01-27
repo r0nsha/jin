@@ -620,28 +620,28 @@ impl<'db> Generator<'db> {
             Inst::RtCall { value, kind, span } => {
                 let traced = kind.traced();
 
-                let mut arg_docs = vec![];
+                let mut args = vec![];
 
                 if traced {
-                    arg_docs.push(D::text("backtrace"));
+                    args.push(D::text("backtrace"));
                 }
 
                 match kind {
                     RtCallKind::SliceGrow { slice, new_cap } => {
-                        arg_docs.push(self.value(state, *slice));
-                        arg_docs.push(self.value(state, *new_cap));
+                        args.push(self.value(state, *slice));
+                        args.push(self.value(state, *new_cap));
                     }
                     RtCallKind::SlicePushBoundscheck { slice } => {
-                        arg_docs.push(self.value(state, *slice));
+                        args.push(self.value(state, *slice));
                     }
                 }
 
                 if traced {
-                    arg_docs.push(self.create_stackframe_value(state, *span));
+                    args.push(self.create_stackframe_value(state, *span));
                 }
 
                 self.value_assign(state, *value, |_| {
-                    util::call(D::text(kind.as_str()), arg_docs)
+                    util::call(D::text(kind.as_str()), args)
                 })
             }
             Inst::Binary { value, lhs, rhs, op, span } => self.codegen_bin_op(
