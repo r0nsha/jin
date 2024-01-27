@@ -73,6 +73,25 @@ const anyslice = extern struct {
             return Self.init(elem_size, new_cap);
         }
     }
+
+    fn slice(
+        self: Self,
+        elem_size: usize,
+        low: usize,
+        high: usize,
+    ) Self {
+        if (self.start) |start| {
+            const new_start = start[(low * elem_size)..(high * elem_size)];
+            return Self{
+                .array = self.array,
+                .start = new_start.ptr,
+                .len = high - low,
+                .cap = self.cap - low,
+            };
+        } else {
+            return self;
+        }
+    }
 };
 
 const Backtrace = struct {
@@ -186,6 +205,35 @@ export fn jinrt_slice_index_boundscheck(
         ) catch unreachable;
         jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
     }
+}
+
+export fn jinrt_slice_slice(
+    backtrace: *Backtrace,
+    slice: anyslice,
+    elem_size: usize,
+    low: usize,
+    high: usize,
+    frame: StackFrame,
+) anyslice {
+    if (low > high) {
+        const msg = std.fmt.allocPrint(
+            std.heap.c_allocator,
+            "low ({}) must be lower than high ({})",
+            .{ low, high },
+        ) catch unreachable;
+        jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
+    }
+
+    if (high > slice.cap) {
+        const msg = std.fmt.allocPrint(
+            std.heap.c_allocator,
+            "slice out of bounds: high is {} but cap is {}",
+            .{ high, slice.cap },
+        ) catch unreachable;
+        jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
+    }
+
+    return slice.slice(elem_size, low, high);
 }
 
 export fn jinrt_slice_grow(

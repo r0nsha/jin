@@ -541,6 +541,7 @@ impl<'db> Generator<'db> {
                         [
                             D::text("backtrace"),
                             this.value(state, *slice),
+                            this.sizeof_slice_elem(state, *slice),
                             this.value(state, *low),
                             this.value(state, *high),
                             this.create_stackframe_value(state, *span),
