@@ -661,7 +661,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
             }
             ValueKind::Fn(_) | ValueKind::Const(_) | ValueKind::Register(_) => {
-                Ok(())
+                let root = self.value_roots.root_of(value);
+                if root != value {
+                    self.value_imm_root(root, break_on_mut_ty)
+                } else {
+                    Ok(())
+                }
             }
         }
     }

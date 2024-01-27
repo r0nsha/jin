@@ -709,28 +709,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 elem
             }
-            hir::ExprKind::Slice(slice) => {
-                let og_slice = self.lower_expr(&slice.expr);
-                self.try_use(og_slice, slice.expr.span);
-
-                let low = self.lower_expr(&slice.low);
-                self.try_move(low, slice.low.span);
-
-                let high = self.lower_expr(&slice.high);
-                self.try_move(high, slice.high.span);
-
-                let sliced =
-                    self.create_value(expr.ty, ValueKind::Register(None));
-                self.ins(self.current_block)
-                    .slice_slice(sliced, og_slice, low, high, expr.span);
-
-                // A re-sliced slice can never move out of its original slice
-                self.set_moved(sliced, expr.span);
-                self.value_states
-                    .set_cannot_move(sliced, CannotMove::SliceSlice);
-
-                sliced
-            }
+            hir::ExprKind::Slice(slice) => self.lower_slice_slice(expr, slice),
             hir::ExprKind::Name(name) => {
                 self.lower_name(name.id, &name.instantiation)
             }
@@ -959,8 +938,36 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         // We must set the slice element as moved, so that we don't destroy it
         self.set_moved(elem, span);
+        self.value_roots.insert(slice, elem);
 
         SliceIndexResult { slice, index, elem }
+    }
+
+    fn lower_slice_slice(
+        &mut self,
+        expr: &hir::Expr,
+        slice: &hir::Slice,
+    ) -> ValueId {
+        let og_slice = self.lower_expr(&slice.expr);
+        self.try_use(og_slice, slice.expr.span);
+
+        let low = self.lower_expr(&slice.low);
+        self.try_move(low, slice.low.span);
+
+        let high = self.lower_expr(&slice.high);
+        self.try_move(high, slice.high.span);
+
+        let sliced = self.create_value(expr.ty, ValueKind::Register(None));
+        self.ins(self.current_block)
+            .slice_slice(sliced, og_slice, low, high, expr.span);
+
+        // A re-sliced slice can never move out of its original slice
+        self.set_moved(sliced, expr.span);
+        self.value_states.set_cannot_move(sliced, CannotMove::SliceSlice);
+
+        self.value_roots.insert(og_slice, sliced);
+
+        sliced
     }
 
     fn lower_intrinsic_call(
@@ -1954,12 +1961,12 @@ impl ValueRoots {
         Self(FxHashMap::default())
     }
 
-    fn insert(&mut self, root: ValueId, value: ValueId) {
+    pub(super) fn insert(&mut self, root: ValueId, value: ValueId) {
         let root_root = self.root_of(root);
         self.0.insert(value, root_root);
     }
 
-    fn root_of(&mut self, value: ValueId) -> ValueId {
+    pub(super) fn root_of(&self, value: ValueId) -> ValueId {
         self.0.get(&value).copied().unwrap_or(value)
     }
 }
