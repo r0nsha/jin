@@ -534,6 +534,19 @@ impl<'db> Generator<'db> {
                     *span,
                 )
             }
+            Inst::SliceSlice { value, slice, low, high, span } => self
+                .value_assign(state, *value, |this| {
+                    util::call(
+                        D::text("jinrt_slice_slice"),
+                        [
+                            D::text("backtrace"),
+                            this.value(state, *slice),
+                            this.value(state, *low),
+                            this.value(state, *high),
+                            this.create_stackframe_value(state, *span),
+                        ],
+                    )
+                }),
             Inst::SliceStore { slice, index, value, span } => {
                 let slice_index = self.slice_index(state, *slice, *index);
                 let slice_store = stmt(|| {

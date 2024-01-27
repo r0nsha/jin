@@ -86,6 +86,11 @@ impl CheckBodies<'_> {
                 self.expr(&index.expr);
                 self.expr(&index.index);
             }
+            ExprKind::Slice(slice) => {
+                self.expr(&slice.expr);
+                self.expr(&slice.low);
+                self.expr(&slice.high);
+            }
             ExprKind::Cast(cast) => {
                 let source = cast.expr.ty;
                 let target = expr.ty;

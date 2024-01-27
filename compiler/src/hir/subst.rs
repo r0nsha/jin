@@ -57,6 +57,11 @@ impl<S: SubstTy> Subst<S> for Expr {
                 index.expr.subst(s);
                 index.index.subst(s);
             }
+            ExprKind::Slice(slice) => {
+                slice.expr.subst(s);
+                slice.low.subst(s);
+                slice.high.subst(s);
+            }
             ExprKind::Name(Name { instantiation, .. })
             | ExprKind::Variant(Variant { instantiation, .. }) => {
                 subst::subst_instantation(s, instantiation, self.span);

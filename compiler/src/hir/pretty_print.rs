@@ -228,6 +228,13 @@ impl PrettyCx<'_> {
                 self.pp_expr(&index.index);
                 self.builder.end_child();
             }
+            ExprKind::Slice(slice) => {
+                self.builder.begin_child("slice".to_string());
+                self.pp_expr(&slice.expr);
+                self.pp_expr(&slice.low);
+                self.pp_expr(&slice.high);
+                self.builder.end_child();
+            }
             ExprKind::Name(name) => {
                 self.builder.add_empty_child(format!(
                     "`{}` (type: {})",

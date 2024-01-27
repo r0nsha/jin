@@ -29,8 +29,7 @@ fn ints() unit = {
 	c.[1] = 69
 	printf("old=%d\n".ptr, c.[2] := 42)
 	print(&c)
-	let mut c2 = c.[0..3]
-	// let mut c2 = &c.[0..3]
+	let mut c2 = &c.[0..3]
 	print(&c2)
 }
 

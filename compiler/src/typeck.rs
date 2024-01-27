@@ -1573,7 +1573,33 @@ impl<'db> Typeck<'db> {
                 ))
             }
             ast::Expr::Slice { expr, low, high, span } => {
-                todo!()
+                let expected_slice_ty =
+                    Ty::new(TyKind::Slice(self.fresh_ty_var()));
+
+                let expr =
+                    self.check_expr(env, expr, Some(expected_slice_ty))?;
+                let expr_ty = self.normalize(expr.ty).auto_deref();
+                self.at(Obligation::obvious(expr.span))
+                    .eq(expected_slice_ty, expr_ty)
+                    .or_coerce(self, expr.id)?;
+
+                let uint = self.db.types.uint;
+                let low = self.check_expr(env, low, Some(uint))?;
+                self.eq_obvious_expr(uint, &low)?;
+
+                let uint = self.db.types.uint;
+                let high = self.check_expr(env, high, Some(uint))?;
+                self.eq_obvious_expr(uint, &high)?;
+
+                Ok(self.expr(
+                    hir::ExprKind::Slice(hir::Slice {
+                        expr: Box::new(expr),
+                        low: Box::new(low),
+                        high: Box::new(high),
+                    }),
+                    expr_ty,
+                    *span,
+                ))
             }
             ast::Expr::Name { word, targs, span } => {
                 let id =

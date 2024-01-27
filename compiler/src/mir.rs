@@ -456,6 +456,13 @@ pub enum Inst {
         index: ValueId,
         span: Option<Span>,
     },
+    SliceSlice {
+        value: ValueId,
+        slice: ValueId,
+        low: ValueId,
+        high: ValueId,
+        span: Span,
+    },
     SliceStore {
         slice: ValueId,
         index: ValueId,

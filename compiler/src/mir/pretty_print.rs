@@ -177,6 +177,18 @@ impl<'db> PrettyCx<'db> {
                         .append(D::text("]")),
                 )
             }
+            Inst::SliceSlice { value, slice, low, high, .. } => {
+                self.value_assign(body, *value).append(
+                    D::text("slice_slice")
+                        .append(D::space())
+                        .append(self.value(body, *slice))
+                        .append(D::text("["))
+                        .append(self.value(body, *low))
+                        .append(D::text(".."))
+                        .append(self.value(body, *high))
+                        .append(D::text("]")),
+                )
+            }
             Inst::SliceStore { slice, index, value, .. } => {
                 D::text("slice_store")
                     .append(D::space())

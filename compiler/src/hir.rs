@@ -84,6 +84,7 @@ pub enum ExprKind {
     Cast(Cast),
     Field(Field),
     Index(Index),
+    Slice(Slice),
     Name(Name),
     Variant(Variant),
     SliceLit(SliceLit),
@@ -276,6 +277,13 @@ pub struct Field {
 pub struct Index {
     pub expr: Box<Expr>,
     pub index: Box<Expr>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Slice {
+    pub expr: Box<Expr>,
+    pub low: Box<Expr>,
+    pub high: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]

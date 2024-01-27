@@ -82,6 +82,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 .with_label(
                     Label::primary(moved_to).with_message("cannot move out"),
                 )),
+            Some(CannotMove::SliceSlice) => Err(Diagnostic::error()
+                .with_message("slice must be behind a `&` or `&mut` reference")
+                .with_label(
+                    Label::primary(moved_to).with_message("cannot move slice"),
+                )),
             None => Ok(()),
         }
     }
@@ -742,6 +747,7 @@ impl Default for BlockState {
 #[derive(Debug)]
 pub(super) enum CannotMove {
     SliceIndex,
+    SliceSlice,
 }
 
 impl fmt::Display for ValueStates {

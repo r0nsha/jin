@@ -709,6 +709,28 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 elem
             }
+            hir::ExprKind::Slice(slice) => {
+                let og_slice = self.lower_expr(&slice.expr);
+                self.try_use(og_slice, slice.expr.span);
+
+                let low = self.lower_expr(&slice.low);
+                self.try_move(low, slice.low.span);
+
+                let high = self.lower_expr(&slice.high);
+                self.try_move(high, slice.high.span);
+
+                let sliced =
+                    self.create_value(expr.ty, ValueKind::Register(None));
+                self.ins(self.current_block)
+                    .slice_slice(sliced, og_slice, low, high, expr.span);
+
+                // A re-sliced slice can never move out of its original slice
+                self.set_moved(sliced, expr.span);
+                self.value_states
+                    .set_cannot_move(sliced, CannotMove::SliceSlice);
+
+                sliced
+            }
             hir::ExprKind::Name(name) => {
                 self.lower_name(name.id, &name.instantiation)
             }

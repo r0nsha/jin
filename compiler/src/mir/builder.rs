@@ -121,6 +121,18 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
+    pub fn slice_slice(
+        &mut self,
+        value: ValueId,
+        slice: ValueId,
+        low: ValueId,
+        high: ValueId,
+        span: Span,
+    ) -> &mut Self {
+        self.inst(Inst::SliceSlice { value, slice, low, high, span });
+        self
+    }
+
     pub fn slice_store(
         &mut self,
         slice: ValueId,
