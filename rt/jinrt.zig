@@ -48,7 +48,12 @@ const anyslice = extern struct {
     fn grow(self: Self, elem_size: usize, new_cap: usize) Self {
         if (self.array) |array| {
             array.data = @ptrCast(realloc_raw(void, array.data, elem_size * new_cap));
-            return Self{ .array = array, .start = self.start, .len = self.len, .cap = new_cap };
+            return Self{
+                .array = array,
+                .start = self.start,
+                .len = self.len,
+                .cap = new_cap,
+            };
         } else {
             return Self.init(elem_size, new_cap);
         }

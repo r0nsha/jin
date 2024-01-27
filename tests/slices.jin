@@ -13,11 +13,16 @@ fn ints() unit = {
 
 	let mut b: [int] = [:3]
 	std.intrinsics.push(&mut b, 3)
-	// std.intrinsics.push(&mut b, 2)
-	// std.intrinsics.push(&mut b, 1)
+	std.intrinsics.push(&mut b, 2)
+	std.intrinsics.push(&mut b, 1)
+	print(&b)
 	let mut b2 = std.intrinsics.grow(b, 4)
-	// std.intrinsics.push(&mut b2, 0)
+	std.intrinsics.push(&mut b2, 0)
 	print(&b2)
+	let mut b3 = std.intrinsics.grow(b2, 8)
+	std.intrinsics.push(&mut b3, 6)
+	std.intrinsics.push(&mut b3, 7)
+	print(&b3)
 
 	let mut c = [1, 2, 3, 4, 5]
 	print(&c)
@@ -36,7 +41,7 @@ fn print(s: &[int]) unit = {
 		}
 		i += 1
 	}
-	printf("], ptr: %p, len: %d, cap: %d\n".ptr, s.ptr, s.cap, s.len)
+	printf("], ptr: %p, len: %d, cap: %d\n".ptr, s.ptr, s.len, s.cap)
 }
 
 type Box(value: int)
