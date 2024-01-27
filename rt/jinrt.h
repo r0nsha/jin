@@ -40,7 +40,7 @@ typedef struct array {
 
 typedef struct slice {
   array *array;
-  usize start;
+  void *start;
   usize len;
   usize cap;
 } slice;
