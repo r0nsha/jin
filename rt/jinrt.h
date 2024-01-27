@@ -67,7 +67,6 @@ void jinrt_slice_free(jinrt_backtrace *backtrace, slice s, u8 *tyname,
                       jinrt_stackframe frame);
 void jinrt_slice_incref(slice s);
 void jinrt_slice_decref(slice s);
-void *jinrt_slice_ptr(slice s);
 usize jinrt_slice_index_boundscheck(jinrt_backtrace *backtrace, slice s,
                                     usize index, jinrt_stackframe frame);
 

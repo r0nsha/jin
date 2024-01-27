@@ -27,6 +27,7 @@ use crate::{
 };
 
 pub const DATA_FIELD: &str = "data";
+pub const START_FIELD: &str = "start";
 pub const REFCNT_FIELD: &str = "refcnt";
 pub const TAG_FIELD: &str = "tag";
 

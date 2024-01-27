@@ -6,7 +6,7 @@ use pretty::RcDoc as D;
 
 use crate::{
     cgen::{
-        generate::{GenState, Generator, DATA_FIELD},
+        generate::{GenState, Generator, DATA_FIELD, START_FIELD},
         ty::CTy,
         util,
     },
@@ -63,10 +63,7 @@ impl<'db> Generator<'db> {
                     self.adt_field(state, value.id, field)
                 }
                 (TyKind::Slice(_), sym::PTR) => {
-                    let call =
-                        util::call(D::text("jinrt_slice_ptr"), [value_doc]);
-                    let elem_ty = Self::slice_value_elem_ty(state, value.id);
-                    util::cast(elem_ty.cty(self).append(D::text("*")), call)
+                    self.slice_data_field(state, value.id)
                 }
                 _ => util::field(value_doc, field, ty.is_ptr(self)),
             },
@@ -93,12 +90,16 @@ impl<'db> Generator<'db> {
         util::field(data_field, field, false)
     }
 
-    pub fn slice_array_field(
+    pub fn slice_data_field(
         &mut self,
         state: &GenState<'db>,
         slice: ValueId,
     ) -> D<'db> {
-        util::field(self.value(state, slice), "array", false)
+        // ((elem_ty*)(slice.start))
+        let elem_ty = Self::slice_value_elem_ty(state, slice);
+        let start_field =
+            util::field(self.value(state, slice), START_FIELD, false);
+        group(util::cast(elem_ty.cty(self).append(D::text("*")), start_field))
     }
 
     pub fn slice_index(
@@ -107,19 +108,8 @@ impl<'db> Generator<'db> {
         slice: ValueId,
         index: ValueId,
     ) -> D<'db> {
-        // ((elem_ty*)(slice.array->data))[index]
-        let array_field = self.slice_array_field(state, slice);
-        let data_field = util::field(array_field, DATA_FIELD, true);
-
-        let casted_data = {
-            let elem_ty = Self::slice_value_elem_ty(state, slice);
-            group(util::cast(
-                elem_ty.cty(self).append(D::text("*")),
-                data_field,
-            ))
-        };
-
-        casted_data
+        let data_field = self.slice_data_field(state, slice);
+        data_field
             .append(D::text("["))
             .append(self.value(state, index))
             .append(D::text("]"))

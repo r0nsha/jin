@@ -24,7 +24,7 @@ const anyarray = extern struct {
 
 const anyslice = extern struct {
     array: ?*anyarray,
-    start: usize,
+    start: ?[*]void,
     len: usize,
     cap: usize,
 
@@ -42,15 +42,25 @@ const anyslice = extern struct {
     }
 
     fn empty(array: ?*anyarray, cap: usize) Self {
-        return Self{ .array = array, .start = 0, .len = 0, .cap = cap };
+        return Self{
+            .array = array,
+            .start = if (array) |a| a.data else null,
+            .len = 0,
+            .cap = cap,
+        };
     }
 
     fn grow(self: Self, elem_size: usize, new_cap: usize) Self {
         if (self.array) |array| {
+            // TODO: new grow routine:
+            // TODO: 1. new_data alloc new_cap
+            // TODO: 2. memmove
+            // TODO: 3. free old_data
+            // TODO: * remove realloc_raw
             array.data = @ptrCast(realloc_raw(void, array.data, elem_size * new_cap));
             return Self{
                 .array = array,
-                .start = self.start,
+                .start = array.data,
                 .len = self.len,
                 .cap = new_cap,
             };
@@ -155,10 +165,6 @@ export fn jinrt_slice_incref(s: anyslice) void {
 
 export fn jinrt_slice_decref(s: anyslice) void {
     if (s.array) |a| a.refcnt -= 1;
-}
-
-export fn jinrt_slice_ptr(s: anyslice) ?[*]void {
-    return if (s.array) |a| a.data else null;
 }
 
 export fn jinrt_slice_index_boundscheck(
