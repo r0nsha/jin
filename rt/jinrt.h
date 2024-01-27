@@ -35,7 +35,6 @@ typedef struct str {
 
 typedef struct array {
   void *data;
-  usize cap;
   usize refcnt;
 } array;
 
@@ -43,6 +42,7 @@ typedef struct slice {
   array *array;
   usize start;
   usize len;
+  usize cap;
 } slice;
 
 typedef void *jinrt_backtrace;

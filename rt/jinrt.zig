@@ -12,14 +12,13 @@ const anyrc = extern struct {
 
 const anyarray = extern struct {
     data: [*]void,
-    cap: usize,
     refcnt: usize,
 
     const Self = @This();
 
     fn init(elem_size: usize, cap: usize) Self {
         const data: [*]void = @ptrCast(alloc_raw(void, elem_size * cap));
-        return Self{ .data = data, .cap = cap, .refcnt = 0 };
+        return Self{ .data = data, .refcnt = 0 };
     }
 };
 
@@ -27,22 +26,23 @@ const anyslice = extern struct {
     array: ?*anyarray,
     start: usize,
     len: usize,
+    cap: usize,
 
     const Self = @This();
 
     fn init(elem_size: usize, cap: usize) Self {
         if (cap == 0) {
-            return anyslice.empty(null);
+            return anyslice.empty(null, 0);
         }
 
         const array = alloc_raw(anyarray, @sizeOf(anyarray));
         array.* = anyarray.init(elem_size, cap);
 
-        return Self.empty(array);
+        return Self.empty(array, cap);
     }
 
-    fn empty(array: ?*anyarray) Self {
-        return anyslice{ .array = array, .start = 0, .len = 0 };
+    fn empty(array: ?*anyarray, cap: usize) Self {
+        return anyslice{ .array = array, .start = 0, .len = 0, .cap = cap };
     }
 };
 
@@ -127,11 +127,8 @@ export fn jinrt_slice_free(
     tyname: cstr,
     frame: StackFrame,
 ) void {
+    if (slice.cap == 0) return;
     if (slice.array) |array| {
-        if (array.cap == 0) {
-            return;
-        }
-
         refcheck(backtrace, array.refcnt, tyname, frame);
         std.c.free(array.data);
         std.c.free(array);
@@ -151,7 +148,7 @@ export fn jinrt_slice_ptr(s: anyslice) ?[*]void {
 }
 
 export fn jinrt_slice_cap(s: anyslice) usize {
-    return if (s.array) |a| a.cap else 0;
+    return s.cap;
 }
 
 export fn jinrt_slice_index_boundscheck(
@@ -175,25 +172,20 @@ export fn jinrt_slice_push_boundscheck(
     slice: anyslice,
     frame: StackFrame,
 ) void {
-    if (slice.array) |array| {
-        if (slice.len >= array.cap) {
-            slice_push_panic(backtrace, array.cap, slice.len, frame);
-        }
-    } else {
-        slice_push_panic(backtrace, 0, slice.len, frame);
+    if (slice.len >= slice.cap) {
+        slice_push_panic(backtrace, slice, frame);
     }
 }
 
 inline fn slice_push_panic(
     backtrace: *Backtrace,
-    cap: usize,
-    len: usize,
+    slice: anyslice,
     frame: StackFrame,
 ) void {
     const msg = std.fmt.allocPrint(
         std.heap.c_allocator,
         "push out of bounds: cap is {} but len is {}",
-        .{ cap, len },
+        .{ slice.cap, slice.len },
     ) catch unreachable;
     jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
 }
