@@ -11,20 +11,20 @@ const anyrc = extern struct {
 };
 
 const anyarray = extern struct {
-    data: [*]void,
+    data: [*]u8,
     refcnt: usize,
 
     const Self = @This();
 
     fn init(elem_size: usize, cap: usize) Self {
-        const data: [*]void = @ptrCast(alloc_raw(void, elem_size * cap));
+        const data: [*]u8 = @ptrCast(alloc_raw(void, elem_size * cap));
         return Self{ .data = data, .refcnt = 0 };
     }
 };
 
 const anyslice = extern struct {
     array: ?*anyarray,
-    start: ?[*]void,
+    start: ?[*]u8,
     len: usize,
     cap: usize,
 
@@ -52,12 +52,17 @@ const anyslice = extern struct {
 
     fn grow(self: Self, elem_size: usize, new_cap: usize) Self {
         if (self.array) |array| {
-            // TODO: new grow routine:
-            // TODO: 1. new_data alloc new_cap
-            // TODO: 2. memmove
-            // TODO: 3. free old_data
-            // TODO: * remove realloc_raw
-            array.data = @ptrCast(realloc_raw(void, array.data, elem_size * new_cap));
+            // Allocate a new backing buffer for the array
+            const new_data: [*]u8 = @ptrCast(alloc_raw(void, elem_size * new_cap));
+
+            // Memcpy the old slice to the new backing buffer
+            const new_data_slice = new_data[0..(elem_size * self.len)];
+            const start_slice = self.start.?[0..(elem_size * self.len)];
+            @memcpy(new_data_slice, start_slice);
+
+            std.c.free(array.data);
+            array.data = new_data;
+
             return Self{
                 .array = array,
                 .start = array.data,
@@ -255,12 +260,6 @@ inline fn alloc_raw(comptime T: type, size: usize) *T {
     const memory = std.c.malloc(size);
     const p = memory orelse std.debug.panic("out of memory", .{});
     return @alignCast(@ptrCast(p));
-}
-
-inline fn realloc_raw(comptime T: type, old: ?*anyopaque, size: usize) *T {
-    const memory = std.c.realloc(old, size);
-    const new = memory orelse std.debug.panic("out of memory", .{});
-    return @alignCast(@ptrCast(new));
 }
 
 inline fn refcheck(backtrace: *Backtrace, refcnt: usize, tyname: cstr, frame: StackFrame) void {
