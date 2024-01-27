@@ -11,8 +11,7 @@ fn ints() unit = {
 	let a: [int] = []
 	print(&a)
 
-	// let mut b: [int] = [:3]
-	let mut b: [int] = [:0]
+	let mut b: [int] = [:3]
 	std.intrinsics.push(&mut b, 3)
 	print(&b)
 

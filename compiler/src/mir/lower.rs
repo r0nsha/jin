@@ -935,14 +935,27 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     }
                 });
 
-                // TODO: call jinrt panic check
-                // TODO: if slice.array is null || len >= slice.array.cap {
-                // TODO:    panic("set_len out of bounds: len is {} but cap is {}")
-                // TODO: }
-                // TODO: slice = args[0]
-                // TODO: value = args[1]
-                // TODO: slice.[slice.len] = value;
-                // TODO: slice.len += 1;
+                // slice.[slice.len] = value
+                let uint = self.cx.db.types.uint;
+                let slice_len = self.create_untracked_value(
+                    uint,
+                    ValueKind::Field(slice, ustr(sym::LEN)),
+                );
+                self.ins(self.current_block)
+                    .slice_store_unchecked(slice, slice_len, value);
+
+                // slice.len += 1
+                let one = self.const_int(uint, 1);
+                let new_slice_len =
+                    self.push_inst_with_register(uint, |value| Inst::Binary {
+                        value,
+                        lhs: slice_len,
+                        rhs: one,
+                        op: BinOp::Add,
+                        span: None,
+                    });
+                self.ins(self.current_block).store(new_slice_len, slice_len);
+
                 self.const_unit()
             }
         }
