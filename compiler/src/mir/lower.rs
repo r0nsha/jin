@@ -331,7 +331,7 @@ pub(super) struct LowerBody<'cx, 'db> {
     pub(super) current_block: BlockId,
     pub(super) locals: FxHashMap<DefId, ValueId>,
     pub(super) fields: FxHashMap<ValueId, FxHashMap<Ustr, ValueId>>,
-    pub(super) ref_roots: RefRoots,
+    pub(super) value_roots: ValueRoots,
 }
 
 impl<'cx, 'db> LowerBody<'cx, 'db> {
@@ -344,7 +344,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             current_block: BlockId::start(),
             locals: FxHashMap::default(),
             fields: FxHashMap::default(),
-            ref_roots: RefRoots::new(),
+            value_roots: ValueRoots::new(),
         }
     }
 
@@ -974,7 +974,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 debug_assert_eq!(args.len(), 2);
 
                 // We must get the root value of this ref, so that it is assigned to
-                let slice = self.ref_roots.root_of(args[0]);
+                let slice = self.value_roots.root_of(args[0]);
                 let value = args[1];
 
                 self.push_inst_with_register(self.cx.db.types.unit, |value| {
@@ -1552,8 +1552,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.create_destroy_flag(ref_value);
         self.ins(self.current_block).incref(ref_value);
 
-        let root = self.ref_roots.root_of(to_clone);
-        self.ref_roots.insert(root, ref_value);
+        self.value_roots.insert(to_clone, ref_value);
 
         ref_value
     }
@@ -1947,17 +1946,17 @@ struct SliceIndexResult {
     elem: ValueId,
 }
 
-// Points references to their root values
 #[derive(Debug)]
-pub(super) struct RefRoots(FxHashMap<ValueId, ValueId>);
+pub(super) struct ValueRoots(FxHashMap<ValueId, ValueId>);
 
-impl RefRoots {
+impl ValueRoots {
     fn new() -> Self {
         Self(FxHashMap::default())
     }
 
-    fn insert(&mut self, root: ValueId, ref_: ValueId) {
-        self.0.insert(ref_, root);
+    fn insert(&mut self, root: ValueId, value: ValueId) {
+        let root_root = self.root_of(root);
+        self.0.insert(value, root_root);
     }
 
     fn root_of(&mut self, value: ValueId) -> ValueId {
