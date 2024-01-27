@@ -151,14 +151,21 @@ impl<'db> Generator<'db> {
         value: ValueId,
         cap: ValueId,
     ) -> D<'db> {
-        let elem_ty = Self::slice_value_elem_ty(state, value);
-
         self.value_assign(state, value, |this| {
             call(
                 D::text("jinrt_slice_alloc"),
-                [sizeof(elem_ty.cty(this)), this.value(state, cap)],
+                [this.sizeof_slice_elem(state, value), this.value(state, cap)],
             )
         })
+    }
+
+    pub fn sizeof_slice_elem(
+        &mut self,
+        state: &GenState<'db>,
+        slice: ValueId,
+    ) -> D<'db> {
+        let elem_ty = Self::slice_value_elem_ty(state, slice);
+        sizeof(elem_ty.cty(self))
     }
 
     pub fn free(

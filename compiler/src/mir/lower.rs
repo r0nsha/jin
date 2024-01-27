@@ -643,7 +643,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 if let Some(intrinsic) = intrinsic {
                     let args = self.lower_intrinsic_call_args(&call.args);
-                    self.lower_intrinsic_call(intrinsic, args, expr.span)
+                    self.lower_intrinsic_call(expr, intrinsic, args)
                 } else {
                     let args = self.lower_call_args(&call.args);
                     self.push_inst_with_register(expr.ty, |value| Inst::Call {
@@ -664,6 +664,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     }
                     UnOp::Ref(_) => {
                         let inner = self.lower_expr(&un.expr);
+                        self.try_use(inner, un.expr.span);
                         self.create_ref(inner, expr.ty, expr.span)
                     }
                 }
@@ -939,9 +940,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn lower_intrinsic_call(
         &mut self,
+        expr: &hir::Expr,
         intrinsic: Intrinsic,
         args: Vec<ValueId>,
-        span: Span,
     ) -> ValueId {
         match intrinsic {
             Intrinsic::SlicePush => {
@@ -955,7 +956,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     Inst::RtCall {
                         value,
                         kind: RtCallKind::SlicePushBoundscheck { slice },
-                        span,
+                        span: expr.span,
                     }
                 });
 
@@ -981,6 +982,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.ins(self.current_block).store(new_slice_len, slice_len);
 
                 self.const_unit()
+            }
+            Intrinsic::SliceGrow => {
+                debug_assert_eq!(args.len(), 2);
+
+                let slice = args[0];
+                let new_cap = args[1];
+
+                self.push_inst_with_register(expr.ty, |value| Inst::RtCall {
+                    value,
+                    kind: RtCallKind::SliceGrow { slice, new_cap },
+                    span: expr.span,
+                })
             }
         }
     }

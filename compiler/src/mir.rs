@@ -530,24 +530,24 @@ pub enum Inst {
 
 #[derive(Debug, Clone, Copy)]
 pub enum RtCallKind {
-    SliceGrow { slice: ValueId, new_cap: ValueId },
     SlicePushBoundscheck { slice: ValueId },
+    SliceGrow { slice: ValueId, new_cap: ValueId },
 }
 
 impl RtCallKind {
     pub fn traced(self) -> bool {
         match self {
-            RtCallKind::SliceGrow { .. } => false,
-            RtCallKind::SlicePushBoundscheck { .. } => true,
+            RtCallKind::SlicePushBoundscheck { .. }
+            | RtCallKind::SliceGrow { .. } => true,
         }
     }
 
     pub fn as_str(self) -> &'static str {
         match self {
-            RtCallKind::SliceGrow { .. } => "jinrt_slice_grow",
             RtCallKind::SlicePushBoundscheck { .. } => {
                 "jinrt_slice_push_boundscheck"
             }
+            RtCallKind::SliceGrow { .. } => "jinrt_slice_grow",
         }
     }
 }

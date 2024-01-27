@@ -20,14 +20,6 @@ const anyarray = extern struct {
         const data: [*]void = @ptrCast(alloc_raw(void, elem_size * cap));
         return Self{ .data = data, .refcnt = 0 };
     }
-
-    fn grow(self: *Self, new_cap: usize) void {
-        _ = new_cap;
-        _ = self;
-        std.debug.panic("yeet!", .{});
-        // const data: [*]void = @ptrCast(alloc_raw(void, elem_size * cap));
-        // return Self{ .data = data, .refcnt = 0 };
-    }
 };
 
 const anyslice = extern struct {
@@ -40,7 +32,7 @@ const anyslice = extern struct {
 
     fn init(elem_size: usize, cap: usize) Self {
         if (cap == 0) {
-            return anyslice.empty(null, 0);
+            return Self.empty(null, 0);
         }
 
         const array = alloc_raw(anyarray, @sizeOf(anyarray));
@@ -50,7 +42,16 @@ const anyslice = extern struct {
     }
 
     fn empty(array: ?*anyarray, cap: usize) Self {
-        return anyslice{ .array = array, .start = 0, .len = 0, .cap = cap };
+        return Self{ .array = array, .start = 0, .len = 0, .cap = cap };
+    }
+
+    fn grow(self: Self, elem_size: usize, new_cap: usize) Self {
+        if (self.array) |array| {
+            array.data = @ptrCast(realloc_raw(void, array.data, elem_size * new_cap));
+            return Self{ .array = array, .start = self.start, .len = self.len, .cap = new_cap };
+        } else {
+            return Self.init(elem_size, new_cap);
+        }
     }
 };
 
@@ -171,9 +172,22 @@ export fn jinrt_slice_index_boundscheck(
     }
 }
 
-export fn jinrt_slice_grow(slice: anyslice, new_cap: usize) void {
-    if (new_cap <= slice.cap) return;
-    if (slice.array) |a| a.grow(new_cap);
+export fn jinrt_slice_grow(
+    backtrace: *Backtrace,
+    slice: anyslice,
+    elem_size: usize,
+    new_cap: usize,
+    frame: StackFrame,
+) anyslice {
+    if (new_cap <= slice.cap) {
+        const msg = std.fmt.allocPrint(
+            std.heap.c_allocator,
+            "grow out of bounds: cap is {} but new cap is {}",
+            .{ slice.cap, new_cap },
+        ) catch unreachable;
+        jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
+    }
+    return slice.grow(elem_size, new_cap);
 }
 
 export fn jinrt_slice_push_boundscheck(
@@ -230,6 +244,12 @@ inline fn alloc_raw(comptime T: type, size: usize) *T {
     const memory = std.c.malloc(size);
     const p = memory orelse std.debug.panic("out of memory", .{});
     return @alignCast(@ptrCast(p));
+}
+
+inline fn realloc_raw(comptime T: type, old: ?*anyopaque, size: usize) *T {
+    const memory = std.c.realloc(old, size);
+    const new = memory orelse std.debug.panic("out of memory", .{});
+    return @alignCast(@ptrCast(new));
 }
 
 inline fn refcheck(backtrace: *Backtrace, refcnt: usize, tyname: cstr, frame: StackFrame) void {

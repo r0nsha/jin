@@ -91,7 +91,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value: ValueId,
         moved_to: Span,
     ) -> DiagnosticResult<()> {
-        if !self.value_is_move(value) {
+        if !self.value_is_move(value)
+            || self.value_states.cannot_move(value).is_some()
+        {
             return Ok(());
         }
 
