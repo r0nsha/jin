@@ -501,8 +501,7 @@ pub enum Inst {
     },
     RtCall {
         value: ValueId,
-        callee: Ustr,
-        args: Vec<ValueId>,
+        kind: RtCallKind,
         span: Span,
     },
     Binary {
@@ -527,6 +526,30 @@ pub enum Inst {
         value: ValueId,
         lit: Ustr,
     },
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum RtCallKind {
+    SliceGrow { slice: ValueId, new_cap: ValueId },
+    SlicePushBoundscheck { slice: ValueId },
+}
+
+impl RtCallKind {
+    pub fn traced(self) -> bool {
+        match self {
+            RtCallKind::SliceGrow { .. } => false,
+            RtCallKind::SlicePushBoundscheck { .. } => true,
+        }
+    }
+
+    pub fn as_str(self) -> &'static str {
+        match self {
+            RtCallKind::SliceGrow { .. } => "jinrt_slice_grow",
+            RtCallKind::SlicePushBoundscheck { .. } => {
+                "jinrt_slice_push_boundscheck"
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

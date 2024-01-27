@@ -15,8 +15,8 @@ use crate::{
         builder::InstBuilder,
         ownck::{CannotMove, ValueState, ValueStates},
         pmatch, AdtId, Block, BlockId, Body, Const, Fn, FnParam, FnSig,
-        FnSigId, FxHashMap, Global, GlobalId, GlobalKind, Inst, Mir, Span,
-        StaticGlobal, UnOp, ValueId, ValueKind,
+        FnSigId, FxHashMap, Global, GlobalId, GlobalKind, Inst, Mir,
+        RtCallKind, Span, StaticGlobal, UnOp, ValueId, ValueKind,
     },
     span::Spanned,
     sym,
@@ -954,8 +954,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.push_inst_with_register(self.cx.db.types.unit, |value| {
                     Inst::RtCall {
                         value,
-                        callee: ustr("jinrt_slice_push_boundscheck"),
-                        args: vec![slice],
+                        kind: RtCallKind::SlicePushBoundscheck { slice },
                         span,
                     }
                 });

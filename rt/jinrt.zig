@@ -20,6 +20,14 @@ const anyarray = extern struct {
         const data: [*]void = @ptrCast(alloc_raw(void, elem_size * cap));
         return Self{ .data = data, .refcnt = 0 };
     }
+
+    fn grow(self: *Self, new_cap: usize) void {
+        _ = new_cap;
+        _ = self;
+        std.debug.panic("yeet!", .{});
+        // const data: [*]void = @ptrCast(alloc_raw(void, elem_size * cap));
+        // return Self{ .data = data, .refcnt = 0 };
+    }
 };
 
 const anyslice = extern struct {
@@ -161,6 +169,11 @@ export fn jinrt_slice_index_boundscheck(
         ) catch unreachable;
         jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
     }
+}
+
+export fn jinrt_slice_grow(slice: anyslice, new_cap: usize) void {
+    if (new_cap <= slice.cap) return;
+    if (slice.array) |a| a.grow(new_cap);
 }
 
 export fn jinrt_slice_push_boundscheck(

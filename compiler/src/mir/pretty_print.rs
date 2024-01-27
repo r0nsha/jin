@@ -8,7 +8,7 @@ use crate::{
     db::Db,
     mir::{
         Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, Pat,
-        StaticGlobal, ValueId, ValueKind,
+        RtCallKind, StaticGlobal, ValueId, ValueKind,
     },
 };
 
@@ -187,7 +187,6 @@ impl<'db> PrettyCx<'db> {
                     .append(self.value(body, *index))
                     .append(D::text("]"))
             }
-
             Inst::Destroy { value, .. } => D::text("destroy")
                 .append(D::space())
                 .append(self.value(body, *value)),
@@ -242,14 +241,22 @@ impl<'db> PrettyCx<'db> {
                     D::text(",").append(D::space()),
                 ))
                 .append(D::text(")")),
-            Inst::RtCall { value, callee, args, .. } => self
+            Inst::RtCall { value, kind, .. } => self
                 .value_assign(body, *value)
                 .append(D::text("rtcall"))
                 .append(D::space())
-                .append(D::text(callee.as_str()))
+                .append(D::text(kind.as_str()))
                 .append(D::text("("))
                 .append(D::intersperse(
-                    args.iter().map(|a| self.value(body, *a)),
+                    match kind {
+                        RtCallKind::SliceGrow { slice, new_cap } => vec![
+                            self.value(body, *slice),
+                            self.value(body, *new_cap),
+                        ],
+                        RtCallKind::SlicePushBoundscheck { slice } => {
+                            vec![self.value(body, *slice)]
+                        }
+                    },
                     D::text(",").append(D::space()),
                 ))
                 .append(D::text(")")),

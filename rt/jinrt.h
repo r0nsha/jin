@@ -70,8 +70,11 @@ void jinrt_slice_decref(slice s);
 void *jinrt_slice_ptr(slice s);
 usize jinrt_slice_index_boundscheck(jinrt_backtrace *backtrace, slice s,
                                     usize index, jinrt_stackframe frame);
+
+// Slice intrinsics
+unit jinrt_slice_grow(slice s, usize new_cap);
 unit jinrt_slice_push_boundscheck(jinrt_backtrace *backtrace, slice s,
-                                   jinrt_stackframe frame);
+                                  jinrt_stackframe frame);
 
 // Panic
 void jinrt_panic_at(jinrt_backtrace *backtrace, u8 *msg,

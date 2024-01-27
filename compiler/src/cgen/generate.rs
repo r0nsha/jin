@@ -20,7 +20,7 @@ use crate::{
     middle::{CallConv, Pat, UnOp},
     mir::{
         Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir,
-        StaticGlobal, ValueId, ValueKind,
+        RtCallKind, StaticGlobal, ValueId, ValueKind,
     },
     target::TargetMetrics,
     ty::{fold::TyFolder, Instantiation, Ty, TyKind},
@@ -617,16 +617,31 @@ impl<'db> Generator<'db> {
                     call
                 }
             }
-            Inst::RtCall { value, callee, args, span } => {
-                let stackframe = self.create_stackframe_value(state, *span);
-                let callee_doc = D::text(callee.as_str());
-                let arg_docs: Vec<_> = iter::once(D::text("backtrace"))
-                    .chain(args.iter().copied().map(|a| self.value(state, a)))
-                    .chain(iter::once(stackframe))
-                    .collect();
+            Inst::RtCall { value, kind, span } => {
+                let traced = kind.traced();
+
+                let mut arg_docs = vec![];
+
+                if traced {
+                    arg_docs.push(D::text("backtrace"));
+                }
+
+                match kind {
+                    RtCallKind::SliceGrow { slice, new_cap } => {
+                        arg_docs.push(self.value(state, *slice));
+                        arg_docs.push(self.value(state, *new_cap));
+                    }
+                    RtCallKind::SlicePushBoundscheck { slice } => {
+                        arg_docs.push(self.value(state, *slice));
+                    }
+                }
+
+                if traced {
+                    arg_docs.push(self.create_stackframe_value(state, *span));
+                }
 
                 self.value_assign(state, *value, |_| {
-                    util::call(callee_doc, arg_docs)
+                    util::call(D::text(kind.as_str()), arg_docs)
                 })
             }
             Inst::Binary { value, lhs, rhs, op, span } => self.codegen_bin_op(

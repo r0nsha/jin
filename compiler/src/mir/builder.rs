@@ -1,8 +1,6 @@
-use ustr::Ustr;
-
 use crate::{
     middle::BinOp,
-    mir::{BlockId, Body, Inst, ValueId},
+    mir::{BlockId, Body, Inst, RtCallKind, ValueId},
     span::Span,
 };
 
@@ -85,11 +83,10 @@ impl<'a> InstBuilder<'a> {
     pub fn rtcall(
         &mut self,
         value: ValueId,
-        callee: Ustr,
-        args: Vec<ValueId>,
+        kind: RtCallKind,
         span: Span,
     ) -> &mut Self {
-        self.inst(Inst::RtCall { value, callee, args, span });
+        self.inst(Inst::RtCall { value, kind, span });
         self
     }
 
