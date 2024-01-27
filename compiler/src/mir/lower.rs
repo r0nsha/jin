@@ -629,6 +629,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::Call(call) => {
+                let entered = self.enter_call_scope(expr.span);
                 let callee = self.lower_input_expr(&call.callee);
                 let intrinsic =
                     if let ValueKind::Fn(id) = &self.body.value(callee).kind {
@@ -641,18 +642,20 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         None
                     };
 
-                if let Some(intrinsic) = intrinsic {
-                    let args = self.lower_intrinsic_call_args(&call.args);
-                    self.lower_intrinsic_call(expr, intrinsic, args)
-                } else {
-                    let args = self.lower_call_args(&call.args);
-                    self.push_inst_with_register(expr.ty, |value| Inst::Call {
-                        value,
-                        callee,
-                        args,
-                        span: expr.span,
-                    })
-                }
+                let call_result =
+                    if let Some(intrinsic) = intrinsic {
+                        let args = self.lower_intrinsic_call_args(&call.args);
+                        self.lower_intrinsic_call(expr, intrinsic, args)
+                    } else {
+                        let args = self.lower_call_args(&call.args);
+                        self.push_inst_with_register(expr.ty, |value| {
+                            Inst::Call { value, callee, args, span: expr.span }
+                        })
+                    };
+
+                self.exit_call_scope(call_result, entered);
+
+                call_result
             }
             hir::ExprKind::Unary(un) => {
                 match un.op {
@@ -1700,7 +1703,39 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn enter_scope(&mut self, kind: ScopeKind, span: Span) {
-        self.scopes.push(Scope {
+        self.scopes.push(self.new_scope(kind, span));
+    }
+
+    fn exit_scope(&mut self) {
+        self.destroy_scope_values();
+        let scope = self.scopes.pop().expect("cannot exit the root scope");
+
+        if let Some(curr_scope) = self.scopes.last_mut() {
+            curr_scope.created_values.extend(&scope.moved_out);
+        }
+    }
+
+    fn enter_call_scope(&mut self, span: Span) -> bool {
+        // We don't introduce additional call scopes for call chains
+        if matches!(self.scope().kind, ScopeKind::Call) {
+            return false;
+        }
+
+        self.enter_scope(ScopeKind::Call, span);
+        true
+    }
+
+    fn exit_call_scope(&mut self, call_result: ValueId, entered: bool) {
+        if !entered {
+            return;
+        }
+
+        self.move_out(call_result, self.scope().span);
+        self.exit_scope();
+    }
+
+    fn new_scope(&self, kind: ScopeKind, span: Span) -> Scope {
+        Scope {
             kind,
             depth: self.scopes.len(),
             loop_depth: self
@@ -1711,15 +1746,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             span,
             created_values: IndexSet::default(),
             moved_out: IndexSet::default(),
-        });
-    }
-
-    fn exit_scope(&mut self) {
-        self.destroy_scope_values();
-        let scope = self.scopes.pop().expect("cannot exit the root scope");
-
-        if let Some(curr_scope) = self.scopes.last_mut() {
-            curr_scope.created_values.extend(&scope.moved_out);
         }
     }
 
@@ -1810,6 +1836,7 @@ pub(super) struct Scope {
 #[derive(Debug, Clone)]
 pub(super) enum ScopeKind {
     Block,
+    Call,
     Loop(LoopScope),
 }
 
