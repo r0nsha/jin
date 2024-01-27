@@ -331,6 +331,7 @@ pub(super) struct LowerBody<'cx, 'db> {
     pub(super) current_block: BlockId,
     pub(super) locals: FxHashMap<DefId, ValueId>,
     pub(super) fields: FxHashMap<ValueId, FxHashMap<Ustr, ValueId>>,
+    pub(super) ref_roots: RefRoots,
 }
 
 impl<'cx, 'db> LowerBody<'cx, 'db> {
@@ -343,6 +344,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             current_block: BlockId::start(),
             locals: FxHashMap::default(),
             fields: FxHashMap::default(),
+            ref_roots: RefRoots::new(),
         }
     }
 
@@ -945,7 +947,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             Intrinsic::SlicePush => {
                 debug_assert_eq!(args.len(), 2);
 
-                let slice = args[0];
+                // We must get the root value of this ref, so that it is assigned to
+                let slice = self.ref_roots.root_of(args[0]);
                 let value = args[1];
 
                 self.push_inst_with_register(self.cx.db.types.unit, |value| {
@@ -1505,13 +1508,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.check_ref_mutability(to_clone, span);
         }
 
-        let value = self.push_inst_with_register(ty, |value| {
+        let ref_value = self.push_inst_with_register(ty, |value| {
             Inst::StackAlloc { value, init: Some(to_clone) }
         });
 
-        self.create_destroy_flag(value);
-        self.ins(self.current_block).incref(value);
-        value
+        self.create_destroy_flag(ref_value);
+        self.ins(self.current_block).incref(ref_value);
+
+        let root = self.ref_roots.root_of(to_clone);
+        self.ref_roots.insert(root, ref_value);
+
+        ref_value
     }
 
     pub fn create_once_ref(
@@ -1877,4 +1884,22 @@ struct SliceIndexResult {
     slice: ValueId,
     index: ValueId,
     elem: ValueId,
+}
+
+// Points references to their root values
+#[derive(Debug)]
+pub(super) struct RefRoots(FxHashMap<ValueId, ValueId>);
+
+impl RefRoots {
+    fn new() -> Self {
+        Self(FxHashMap::default())
+    }
+
+    fn insert(&mut self, root: ValueId, ref_: ValueId) {
+        self.0.insert(ref_, root);
+    }
+
+    fn root_of(&mut self, value: ValueId) -> ValueId {
+        self.0.get(&value).copied().unwrap_or(value)
+    }
 }
