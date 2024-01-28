@@ -79,7 +79,7 @@ impl<'db> Lower<'db> {
                 id,
                 def_id: let_.id,
                 name: let_.word.name(),
-                ty: self.db[let_.id].ty,
+                ty: let_.ty,
                 kind: GlobalKind::Extern,
             });
 
@@ -353,7 +353,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             FnKind::Bare { body } => {
                 // println!("fn `{}`", fun.sig.word);
 
-                if self.cx.db.main_function_id() == Some(fun.def_id) {
+                if self.cx.hir.main_fn.unwrap() == fun.id {
                     self.cx.mir.main_fn = Some(sig);
                 }
 

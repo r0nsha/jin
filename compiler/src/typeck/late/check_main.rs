@@ -6,7 +6,7 @@ use crate::{
     ty::TyKind,
 };
 
-pub fn check_main(db: &mut Db, hir: &Hir) {
+pub fn check_main(db: &mut Db, hir: &mut Hir) {
     CheckMain { db }.run(hir);
 }
 
@@ -15,24 +15,26 @@ struct CheckMain<'db> {
 }
 
 impl<'db> CheckMain<'db> {
-    fn run(&mut self, hir: &Hir) {
-        if self.exists() {
+    fn run(&mut self, hir: &mut Hir) {
+        if self.exists(hir) {
             self.check_ty(hir);
         }
     }
 
-    fn exists(&mut self) -> bool {
+    fn exists(&mut self, hir: &mut Hir) -> bool {
         let main_module_id = self.db.main_module.unwrap();
 
-        let main_id = self.db.defs.iter().find_map(|def| {
+        let main_def_id = self.db.defs.iter().find_map(|def| {
             (def.scope.module_id == main_module_id
                 && matches!(def.kind.as_ref(), DefKind::Fn(FnInfo::Bare))
                 && def.qpath.name() == "main")
                 .then_some(def.id)
         });
 
-        if let Some(main_id) = main_id {
-            self.db.set_main_fun(main_id);
+        if let Some(main_def_id) = main_def_id {
+            let main_fn =
+                hir.fns.iter().find(|f| f.def_id == main_def_id).unwrap();
+            hir.main_fn.set(main_fn.id);
             true
         } else {
             let main_source_end = self
@@ -60,44 +62,35 @@ impl<'db> CheckMain<'db> {
     }
 
     fn check_ty(&mut self, hir: &Hir) {
-        let main_fun = self.db.main_function().expect("to exist");
-        let fty = main_fun.ty.kind();
+        let main_fn = &hir.fns[hir.main_fn.unwrap()];
+        let fty = main_fn.sig.ty.kind();
 
         if is_main_ty(fty) {
-            for fun in &hir.fns {
-                if fun.def_id == main_fun.id {
-                    let tp = &fun.sig.ty_params;
+            let tp = &main_fn.sig.ty_params;
 
-                    if !tp.is_empty() {
-                        let tp_span = tp[0]
-                            .word
-                            .span()
-                            .merge(tp.last().unwrap().word.span());
+            if !tp.is_empty() {
+                let tp_span =
+                    tp[0].word.span().merge(tp.last().unwrap().word.span());
 
-                        self.db.diagnostics.emit(
-                            Diagnostic::error()
-                                .with_message(
-                                    "type parameters in `main` function are \
-                                     not allowed",
-                                )
-                                .with_label(
-                                    Label::primary(tp_span)
-                                        .with_message("not allowed"),
-                                ),
-                        );
-                    }
-
-                    break;
-                }
+                self.db.diagnostics.emit(
+                    Diagnostic::error()
+                        .with_message(
+                            "type parameters in `main` function are not \
+                             allowed",
+                        )
+                        .with_label(
+                            Label::primary(tp_span).with_message("not allowed"),
+                        ),
+                );
             }
         } else {
             self.db.diagnostics.emit(
                 Diagnostic::error()
                     .with_message("`main` function's type must be `fn() ()`")
-                    .with_label(Label::primary(main_fun.span).with_message(
+                    .with_label(Label::primary(main_fn.span).with_message(
                         format!(
                             "found type `{}`",
-                            main_fun.ty.display(self.db)
+                            fty.display(self.db)
                         ),
                     )),
             );

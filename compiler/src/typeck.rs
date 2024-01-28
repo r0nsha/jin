@@ -15,6 +15,7 @@ use std::cell::RefCell;
 use data_structures::index_vec::{IndexVecExt, Key};
 use ena::unify::{InPlace, InPlaceUnificationTable, Snapshot};
 use itertools::{Itertools, Position};
+use rustc_hash::FxHashMap;
 use ustr::{ustr, UstrMap};
 
 use crate::{
@@ -63,6 +64,7 @@ pub struct Typeck<'db> {
     hir: Hir,
     global_scope: GlobalScope,
     builtin_tys: BuiltinTys,
+    def_to_ty: FxHashMap<DefId, Ty>,
     resolution_state: ResolutionState,
     storage: RefCell<TyStorage>,
     expr_id: Counter<ExprId>,
@@ -108,12 +110,15 @@ pub struct TyStorageSnapshot {
 
 impl<'db> Typeck<'db> {
     fn new(db: &'db mut Db, ast: &'db Ast) -> Self {
+        let mut def_to_ty = FxHashMap::default();
+
         Self {
             ast,
             hir: Hir::new(),
             global_scope: GlobalScope::new(),
-            builtin_tys: BuiltinTys::new(db),
+            builtin_tys: BuiltinTys::new(db, &mut def_to_ty),
             db,
+            def_to_ty,
             resolution_state: ResolutionState::new(),
             storage: RefCell::new(TyStorage::new()),
             expr_id: Counter::new(),
@@ -137,7 +142,7 @@ impl<'db> Typeck<'db> {
 
         late::check_bodies(self.db, &self.hir);
         late::leaky_items(self.db, &self.hir);
-        late::check_main(self.db, &self.hir);
+        late::check_main(self.db, &mut self.hir);
 
         Ok(self.hir)
     }
@@ -275,13 +280,12 @@ impl<'db> Typeck<'db> {
         tyname: Word,
     ) -> TypeckResult<AssocTy> {
         let id = self.lookup(env, env.module_id(), &Query::Name(tyname))?;
-        let def = &self.db[id];
 
         let Some(assoc_ty) = self.try_extract_assoc_ty(id) else {
             return Err(Diagnostic::error()
                 .with_message(format!(
                     "expected a type, found value of type `{}`",
-                    def.ty.display(self.db)
+                    self.def_ty(id).display(self.db)
                 ))
                 .with_label(
                     Label::primary(tyname.span())
@@ -980,7 +984,8 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<()> {
         let ty_params = self.check_ty_params(env, &tydef.ty_params)?;
         self.db[adt_id].ty_params = ty_params;
-        self.db[def_id].ty = TyKind::Type(self.db[adt_id].ty()).into();
+        self.def_to_ty
+            .insert(def_id, TyKind::Type(self.db[adt_id].ty()).into());
         Ok(())
     }
 
@@ -1103,7 +1108,7 @@ impl<'db> Typeck<'db> {
         def_id: DefId,
         span: Span,
     ) -> TypeckResult<ModuleId> {
-        match self.normalize(self.db[def_id].ty).kind() {
+        match self.normalize(self.def_ty(def_id)).kind() {
             TyKind::Module(module_id) => Ok(*module_id),
             ty => Err(errors::expected_module(
                 format!("type `{}`", &ty.to_string(self.db)),
@@ -1133,6 +1138,7 @@ impl<'db> Typeck<'db> {
             module_id: env.module_id(),
             id,
             word: let_.word,
+            ty,
             span: let_.span,
         })
     }
@@ -1231,7 +1237,7 @@ impl<'db> Typeck<'db> {
             }
             ast::Expr::Return { expr, span } => {
                 if let Some(fn_id) = env.fn_id() {
-                    let ret_ty = self.db[fn_id].ty.as_fn().unwrap().ret;
+                    let ret_ty = self.def_ty(fn_id).as_fn().unwrap().ret;
 
                     let expr = if let Some(expr) = expr {
                         self.check_expr(env, expr, Some(ret_ty))?
@@ -1749,7 +1755,7 @@ impl<'db> Typeck<'db> {
             }
         }
 
-        let def_ty = self.normalize(self.db[id].ty);
+        let def_ty = self.normalize(self.def_ty(id));
         let (ty, instantiation) =
             self.apply_ty_args_to_ty(env, def_ty, targs, span)?;
 
@@ -1840,7 +1846,7 @@ impl<'db> Typeck<'db> {
         // NOTE: map type params that are part of the current polymorphic function to themselves, so
         // that we don't instantiate them. that's quite ugly though.
         if let Some(fn_id) = env.fn_id() {
-            let fn_ty_params = self.db[fn_id].ty.collect_params();
+            let fn_ty_params = self.def_ty(fn_id).collect_params();
             for ftp in fn_ty_params {
                 if let Some(tp) =
                     ty_params.iter_mut().find(|p| p.var == ftp.var)
@@ -1875,7 +1881,7 @@ impl<'db> Typeck<'db> {
         ty_params: Vec<ParamTy>,
     ) -> Instantiation {
         let env_fn_ty_params =
-            env.fn_id().map_or(vec![], |id| self.db[id].ty.collect_params());
+            env.fn_id().map_or(vec![], |id| self.def_ty(id).collect_params());
 
         ty_params
             .into_iter()
@@ -2459,7 +2465,7 @@ impl<'db> Typeck<'db> {
                     _ => Err(Diagnostic::error()
                         .with_message(format!(
                             "expected a type, found value of type `{}`",
-                            def.ty.display(self.db)
+                            self.def_ty(id).display(self.db)
                         ))
                         .with_label(
                             Label::primary(span)
@@ -2583,6 +2589,10 @@ impl<'db> Typeck<'db> {
         }
 
         Ok(())
+    }
+
+    fn def_ty(&self, id: DefId) -> Ty {
+        self.def_to_ty[&id]
     }
 }
 

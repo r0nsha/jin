@@ -31,7 +31,7 @@ impl LeakyItems<'_> {
         }
 
         for let_ in &hir.extern_lets {
-            self.def(let_.id, self.db[let_.id].ty);
+            self.def(let_.id, let_.ty);
         }
     }
 

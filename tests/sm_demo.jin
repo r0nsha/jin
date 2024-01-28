@@ -12,7 +12,7 @@ fn main() unit = {
 
 fn int_types() unit = {
 	let id: i8 = 126
-	let promoted: i64 = id + 5555
+	let promoted = id as i64 + 5555
 	let demoted_inferred: i32 = promoted as _
 	let demoted_explicit: i16 = { demoted_inferred - 4000 } as _
 	let int_to_uint: uint = { 663151 as int } as _

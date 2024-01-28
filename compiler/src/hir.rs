@@ -3,7 +3,7 @@ pub mod subst;
 
 use std::{collections::hash_map::Entry, io};
 
-use data_structures::{index_vec::IndexVec, new_key_type};
+use data_structures::{index_vec::IndexVec, new_key_type, once::Once};
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
@@ -21,6 +21,7 @@ pub struct Hir {
     pub lets: IndexVec<LetId, Let>,
     pub extern_lets: IndexVec<ExternLetId, ExternLet>,
     pub coercions: FxHashMap<ExprId, Coercions>,
+    pub main_fn: Once<FnId>,
 }
 
 impl Hir {
@@ -30,6 +31,7 @@ impl Hir {
             lets: IndexVec::new(),
             extern_lets: IndexVec::new(),
             coercions: FxHashMap::default(),
+            main_fn: Once::new(),
         }
     }
 
@@ -151,6 +153,7 @@ pub struct ExternLet {
     pub module_id: ModuleId,
     pub id: DefId,
     pub word: Word,
+    pub ty: Ty,
     pub span: Span,
 }
 

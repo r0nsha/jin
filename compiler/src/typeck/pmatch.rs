@@ -120,7 +120,7 @@ impl<'db> Typeck<'db> {
             ast::MatchPat::Name(word, mutability) => {
                 let id = if let Some(id) = names.get(&word.name()) {
                     // We make sure that names in all alternatives are bound to the same type
-                    let expected_ty = self.db[*id].ty;
+                    let expected_ty = self.def_ty(*id);
 
                     if let Err(err) = self
                         .at(Obligation::exprs(
@@ -168,7 +168,7 @@ impl<'db> Typeck<'db> {
                     id
                 };
 
-                Ok(hir::MatchPat::Name(id, self.db[id].ty, word.span()))
+                Ok(hir::MatchPat::Name(id, self.def_ty(id), word.span()))
             }
             ast::MatchPat::Wildcard(span) => Ok(hir::MatchPat::Wildcard(*span)),
             ast::MatchPat::Unit(span) => {
@@ -277,7 +277,7 @@ impl<'db> Typeck<'db> {
                         adt_id,
                     ),
                     _ => Err(errors::expected_named_ty(
-                        def.ty.display(self.db),
+                        self.def_ty(id).display(self.db),
                         pat.span,
                     )),
                 }

@@ -23,7 +23,7 @@ pub(super) fn print(
         cx.builder.add_empty_child(format!(
             "let extern `{}` (type: {})",
             let_.word,
-            cx.db[let_.id].ty.display(cx.db)
+            let_.ty.display(cx.db)
         ));
     }
 

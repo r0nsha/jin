@@ -31,7 +31,7 @@ use crate::{
     target::{TargetMetrics, TargetPlatform},
     ty::{
         FloatTy, FnTy, FnTyFlags, FnTyParam, Instantiation, IntTy, Ty, TyKind,
-        Typed, UintTy,
+        UintTy,
     },
     word::Word,
 };
@@ -56,7 +56,6 @@ pub struct Db {
     pub main_package_name: Once<Ustr>,
     pub main_source: Once<SourceId>,
     pub main_module: Once<ModuleId>,
-    main_fun: Option<DefId>,
 }
 
 impl Db {
@@ -80,7 +79,6 @@ impl Db {
             main_package_name: Once::new(),
             main_source: Once::new(),
             main_module: Once::new(),
-            main_fun: None,
         }
     }
 
@@ -136,19 +134,6 @@ impl Db {
     #[track_caller]
     pub fn main_module(&self) -> &ModuleInfo {
         &self.modules[self.main_module.unwrap()]
-    }
-
-    #[allow(unused)]
-    pub fn main_function_id(&self) -> Option<DefId> {
-        self.main_fun
-    }
-
-    pub fn main_function(&self) -> Option<&Def> {
-        self.main_fun.and_then(|id| self.defs.get(id))
-    }
-
-    pub fn set_main_fun(&mut self, id: DefId) {
-        self.main_fun = Some(id);
     }
 
     pub fn find_module_by_source_id(
@@ -345,7 +330,6 @@ pub struct Def {
     pub scope: ScopeInfo,
     pub kind: Box<DefKind>,
     pub mutability: Mutability,
-    pub ty: Ty,
     pub span: Span,
 }
 
@@ -389,7 +373,6 @@ impl Def {
         scope: ScopeInfo,
         kind: DefKind,
         mutability: Mutability,
-        ty: Ty,
         span: Span,
     ) -> DefId {
         db.defs.push_with_key(|id| Self {
@@ -399,23 +382,12 @@ impl Def {
             scope,
             kind: Box::new(kind),
             mutability,
-            ty,
             span,
         })
     }
 
     pub fn word(&self) -> Word {
         Word::new(self.name, self.span)
-    }
-}
-
-impl Typed for Def {
-    fn ty(&self) -> Ty {
-        self.ty
-    }
-
-    fn ty_mut(&mut self) -> &mut Ty {
-        &mut self.ty
     }
 }
 

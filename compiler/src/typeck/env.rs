@@ -66,15 +66,9 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<DefId> {
         let qpath = self.db[module_id].qpath.clone().child(name.name());
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
-        let id = Def::alloc(
-            self.db,
-            qpath,
-            scope,
-            kind,
-            mutability,
-            ty,
-            name.span(),
-        );
+        let id =
+            Def::alloc(self.db, qpath, scope, kind, mutability, name.span());
+        self.def_to_ty.insert(id, ty);
         self.insert_global_def(module_id, name, id, vis)
     }
 
@@ -112,20 +106,15 @@ impl<'db> Typeck<'db> {
         mutability: Mutability,
         ty: Ty,
     ) -> DefId {
-        let id = Def::alloc(
-            self.db,
-            env.scope_path(self.db).child(name.name()),
-            ScopeInfo {
-                module_id: env.module_id(),
-                level: env.scope_level(),
-                vis: Vis::Private,
-            },
-            kind,
-            mutability,
-            ty,
-            name.span(),
-        );
-
+        let qpath = env.scope_path(self.db).child(name.name());
+        let scope = ScopeInfo {
+            module_id: env.module_id(),
+            level: env.scope_level(),
+            vis: Vis::Private,
+        };
+        let id =
+            Def::alloc(self.db, qpath, scope, kind, mutability, name.span());
+        self.def_to_ty.insert(id, ty);
         env.insert(name.name(), id);
         id
     }
@@ -191,17 +180,15 @@ impl<'db> Typeck<'db> {
                     ));
                 }
 
-                let id = {
-                    Def::alloc(
-                        self.db,
-                        qpath,
-                        scope,
-                        DefKind::Fn(FnInfo::Bare),
-                        Mutability::Imm,
-                        sig.ty,
-                        sig.word.span(),
-                    )
-                };
+                let id = Def::alloc(
+                    self.db,
+                    qpath,
+                    scope,
+                    DefKind::Fn(FnInfo::Bare),
+                    Mutability::Imm,
+                    sig.word.span(),
+                );
+                self.def_to_ty.insert(id, sig.ty);
 
                 let candidate = FnCandidate {
                     id,
@@ -347,7 +334,7 @@ impl<'db> Typeck<'db> {
         for (idx, &part) in path.iter().enumerate() {
             let part_id =
                 self.lookup(env, target_module, &Query::Name(part))?;
-            let part_ty = self.normalize(self.db[part_id].ty);
+            let part_ty = self.normalize(self.def_ty(part_id));
 
             match part_ty.kind() {
                 TyKind::Module(module_id) => {
@@ -869,11 +856,12 @@ pub struct BuiltinTys {
 }
 
 impl BuiltinTys {
-    pub fn new(db: &mut Db) -> Self {
+    pub fn new(db: &mut Db, def_to_ty: &mut FxHashMap<DefId, Ty>) -> Self {
         let mut this = Self { inner: UstrMap::default() };
 
         this.define_all(
             db,
+            def_to_ty,
             &[
                 (sym::I8, db.types.i8),
                 (sym::I16, db.types.i16),
@@ -897,13 +885,24 @@ impl BuiltinTys {
         this
     }
 
-    fn define_all(&mut self, db: &mut Db, pairs: &[(&str, Ty)]) {
+    fn define_all(
+        &mut self,
+        db: &mut Db,
+        def_to_ty: &mut FxHashMap<DefId, Ty>,
+        pairs: &[(&str, Ty)],
+    ) {
         for (name, ty) in pairs {
-            self.define(db, name, *ty);
+            self.define(db, def_to_ty, name, *ty);
         }
     }
 
-    fn define(&mut self, db: &mut Db, name: &str, ty: Ty) -> Option<DefId> {
+    fn define(
+        &mut self,
+        db: &mut Db,
+        def_to_ty: &mut FxHashMap<DefId, Ty>,
+        name: &str,
+        ty: Ty,
+    ) -> Option<DefId> {
         let name = ustr(name);
         let scope_info = ScopeInfo {
             module_id: db.main_module.unwrap(),
@@ -911,18 +910,16 @@ impl BuiltinTys {
             vis: Vis::Public,
         };
 
-        self.inner.insert(
-            name,
-            Def::alloc(
-                db,
-                QPath::from(name),
-                scope_info,
-                DefKind::Ty(ty),
-                Mutability::Imm,
-                TyKind::Type(ty).into(),
-                Span::unknown(),
-            ),
-        )
+        let id = Def::alloc(
+            db,
+            QPath::from(name),
+            scope_info,
+            DefKind::Ty(ty),
+            Mutability::Imm,
+            Span::unknown(),
+        );
+        def_to_ty.insert(id, Ty::new(TyKind::Type(ty)));
+        self.inner.insert(name, id)
     }
 
     pub fn get(&self, name: Ustr) -> Option<DefId> {
