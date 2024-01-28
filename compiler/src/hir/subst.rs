@@ -1,7 +1,7 @@
 use crate::{
     hir::{
-        Assign, Binary, Expr, ExprKind, Fn, FnKind, FnSig, Let, MatchArm,
-        MatchPat, Name, Swap, Variant,
+        Assign, Binary, Expr, ExprKind, ExternLet, Fn, FnKind, FnSig, Let,
+        MatchArm, MatchPat, Name, Swap, Variant,
     },
     span::Spanned,
     subst,
@@ -120,6 +120,12 @@ impl<S: SubstTy> Subst<S> for Let {
         self.value.subst(s);
         self.ty = self.value.ty;
         self.pat.subst(s);
+    }
+}
+
+impl<S: SubstTy> Subst<S> for ExternLet {
+    fn subst(&mut self, s: &mut S) {
+        self.ty = s.subst_ty(self.ty, self.word.span());
     }
 }
 

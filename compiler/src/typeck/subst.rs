@@ -23,6 +23,10 @@ impl<'db> Typeck<'db> {
             let_.subst(&mut cx);
         }
 
+        for let_ in &mut self.hir.extern_lets {
+            let_.subst(&mut cx);
+        }
+
         for coercions in self.hir.coercions.values_mut() {
             for coercion in coercions.iter_mut() {
                 coercion.target = cx.subst_ty(coercion.target, Span::unknown());
