@@ -1,7 +1,8 @@
-max_width = 80
+max_width = 100
 use_try_shorthand = true
 reorder_imports = true
 imports_granularity = "Crate"
 group_imports = "StdExternalCrate"
 use_small_heuristics = "Max"
 format_strings = true
+wrap_comments = true

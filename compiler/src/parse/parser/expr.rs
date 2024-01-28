@@ -4,10 +4,7 @@ use data_structures::index_vec::Key as _;
 use ustr::ustr;
 
 use crate::{
-    ast::{
-        token::TokenKind, Attrs, CallArg, Expr, MatchArm, MatchPat,
-        MatchPatAdt, Subpat,
-    },
+    ast::{token::TokenKind, Attrs, CallArg, Expr, MatchArm, MatchPat, MatchPatAdt, Subpat},
     db::DefId,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{BinOp, Mutability, NamePat, Pat, UnOp},
@@ -39,8 +36,8 @@ impl<'a> Parser<'a> {
                         tok.span,
                     ) =>
                 {
-                    // For these specific operators, we check if they are on the same line as the last
-                    // expr, to avoid ambiguity with unary operators
+                    // For these specific operators, we check if they are on the same line as the
+                    // last expr, to avoid ambiguity with unary operators
                     break;
                 }
                 None => break,
@@ -69,12 +66,7 @@ impl<'a> Parser<'a> {
                 let lhs = expr_stack.pop().unwrap();
                 let span = lhs.span().merge(rhs.span());
 
-                expr_stack.push(Expr::Binary {
-                    lhs: Box::new(lhs),
-                    rhs: Box::new(rhs),
-                    op,
-                    span,
-                });
+                expr_stack.push(Expr::Binary { lhs: Box::new(lhs), rhs: Box::new(rhs), op, span });
             }
 
             op_stack.push(op);
@@ -90,12 +82,7 @@ impl<'a> Parser<'a> {
 
             let span = lhs.span().merge(rhs.span());
 
-            expr_stack.push(Expr::Binary {
-                lhs: Box::new(lhs),
-                op,
-                rhs: Box::new(rhs),
-                span,
-            });
+            expr_stack.push(Expr::Binary { lhs: Box::new(lhs), op, rhs: Box::new(rhs), span });
         }
 
         Ok(expr_stack.into_iter().next().unwrap())
@@ -152,25 +139,15 @@ impl<'a> Parser<'a> {
                 let targs = self.parse_optional_ty_args()?;
                 Expr::Name { word: tok.word(), targs, span: tok.span }
             }
-            TokenKind::Int(value) => Expr::IntLit {
-                value: Self::int_lit(value.as_str()),
-                span: tok.span,
-            },
+            TokenKind::Int(value) => {
+                Expr::IntLit { value: Self::int_lit(value.as_str()), span: tok.span }
+            }
             TokenKind::Float(value) => Expr::FloatLit {
-                value: value
-                    .replace('_', "")
-                    .parse()
-                    .expect("to be a valid float"),
+                value: value.replace('_', "").parse().expect("to be a valid float"),
                 span: tok.span,
             },
             TokenKind::Str(value) => Expr::StrLit { value, span: tok.span },
-            _ => {
-                return Err(errors::unexpected_token_err(
-                    "an expression",
-                    tok.kind,
-                    tok.span,
-                ))
-            }
+            _ => return Err(errors::unexpected_token_err("an expression", tok.kind, tok.span)),
         };
 
         Ok(expr)
@@ -191,39 +168,25 @@ impl<'a> Parser<'a> {
             } else {
                 let tok = self.require()?;
 
-                return Err(errors::unexpected_token_err(
-                    "{ or `if`",
-                    tok.kind,
-                    tok.span,
-                ));
+                return Err(errors::unexpected_token_err("{ or `if`", tok.kind, tok.span));
             }
         } else {
             None
         };
 
-        let span =
-            start.merge(otherwise.as_ref().map_or(then.span(), |o| o.span()));
+        let span = start.merge(otherwise.as_ref().map_or(then.span(), |o| o.span()));
 
-        Ok(Expr::If {
-            cond: Box::new(cond),
-            then: Box::new(then),
-            otherwise,
-            span,
-        })
+        Ok(Expr::If { cond: Box::new(cond), then: Box::new(then), otherwise, span })
     }
 
     fn parse_match(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
         let expr = self.parse_expr()?;
 
-        let (arms, _) = self.parse_list(
-            TokenKind::OpenCurly,
-            TokenKind::CloseCurly,
-            |this| {
-                let case = this.parse_match_arm()?;
-                Ok(ControlFlow::Continue(case))
-            },
-        )?;
+        let (arms, _) = self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
+            let case = this.parse_match_arm()?;
+            Ok(ControlFlow::Continue(case))
+        })?;
 
         let span = start.merge(self.last_span());
 
@@ -233,10 +196,8 @@ impl<'a> Parser<'a> {
     fn parse_match_arm(&mut self) -> DiagnosticResult<MatchArm> {
         let pat = self.parse_match_pat()?;
 
-        let guard = self
-            .is_and(TokenKind::If, |this, _| this.parse_expr())
-            .transpose()?
-            .map(Box::new);
+        let guard =
+            self.is_and(TokenKind::If, |this, _| this.parse_expr()).transpose()?.map(Box::new);
 
         self.eat(TokenKind::Arrow)?;
         let expr = self.parse_expr()?;
@@ -279,32 +240,20 @@ impl<'a> Parser<'a> {
                     path.push(self.eat_ident()?.word());
                 }
 
-                let (subpats, is_exhaustive) =
-                    if self.peek_is(TokenKind::OpenParen) {
-                        self.parse_match_adt_subpats()?
-                    } else {
-                        (vec![], true)
-                    };
+                let (subpats, is_exhaustive) = if self.peek_is(TokenKind::OpenParen) {
+                    self.parse_match_adt_subpats()?
+                } else {
+                    (vec![], true)
+                };
 
                 let span = start_word.span().merge(self.last_span());
 
-                Ok(MatchPat::Adt(MatchPatAdt {
-                    path,
-                    subpats,
-                    is_exhaustive,
-                    span,
-                }))
+                Ok(MatchPat::Adt(MatchPatAdt { path, subpats, is_exhaustive, span }))
             } else if self.peek_is(TokenKind::OpenParen) {
                 let path = vec![start_word];
-                let (subpats, is_exhaustive) =
-                    self.parse_match_adt_subpats()?;
+                let (subpats, is_exhaustive) = self.parse_match_adt_subpats()?;
                 let span = start_word.span().merge(self.last_span());
-                Ok(MatchPat::Adt(MatchPatAdt {
-                    path,
-                    subpats,
-                    is_exhaustive,
-                    span,
-                }))
+                Ok(MatchPat::Adt(MatchPatAdt { path, subpats, is_exhaustive, span }))
             } else {
                 Ok(MatchPat::Name(start_word, Mutability::Imm))
             }
@@ -336,16 +285,12 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_match_adt_subpats(
-        &mut self,
-    ) -> DiagnosticResult<(Vec<Subpat>, bool)> {
+    fn parse_match_adt_subpats(&mut self) -> DiagnosticResult<(Vec<Subpat>, bool)> {
         let mut is_exhaustive = true;
         let mut passed_named_pat = false;
 
-        let (subpats, _) = self.parse_list(
-            TokenKind::OpenParen,
-            TokenKind::CloseParen,
-            |this| {
+        let (subpats, _) =
+            self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
                 if this.is(TokenKind::DotDot) {
                     is_exhaustive = false;
                     return Ok(ControlFlow::Break(()));
@@ -357,13 +302,11 @@ impl<'a> Parser<'a> {
                     Subpat::Positional(_) if passed_named_pat => {
                         return Err(Diagnostic::error()
                             .with_message(
-                                "positional patterns are not allowed after \
-                                 named patterns",
+                                "positional patterns are not allowed after named patterns",
                             )
                             .with_label(
-                                Label::primary(subpat.span()).with_message(
-                                    "unexpected positional pattern",
-                                ),
+                                Label::primary(subpat.span())
+                                    .with_message("unexpected positional pattern"),
                             ));
                     }
                     Subpat::Positional(_) => (),
@@ -371,8 +314,7 @@ impl<'a> Parser<'a> {
                 }
 
                 Ok(ControlFlow::Continue(subpat))
-            },
-        )?;
+            })?;
 
         Ok((subpats, is_exhaustive))
     }
@@ -396,11 +338,7 @@ impl<'a> Parser<'a> {
     fn parse_loop(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
 
-        let cond = if self.is(TokenKind::If) {
-            Some(Box::new(self.parse_expr()?))
-        } else {
-            None
-        };
+        let cond = if self.is(TokenKind::If) { Some(Box::new(self.parse_expr()?)) } else { None };
 
         self.eat(TokenKind::OpenCurly)?;
         let expr = self.parse_block()?;
@@ -434,12 +372,7 @@ impl<'a> Parser<'a> {
                     let rhs = self.parse_expr()?;
                     let span = expr.span().merge(rhs.span());
 
-                    Expr::Assign {
-                        lhs: Box::new(expr),
-                        rhs: Box::new(rhs),
-                        op: None,
-                        span,
-                    }
+                    Expr::Assign { lhs: Box::new(expr), rhs: Box::new(rhs), op: None, span }
                 }
                 TokenKind::Walrus => {
                     self.next();
@@ -447,9 +380,7 @@ impl<'a> Parser<'a> {
                     let span = expr.span().merge(rhs.span());
                     Expr::Swap { lhs: Box::new(expr), rhs: Box::new(rhs), span }
                 }
-                TokenKind::Fn
-                    if self.spans_are_on_same_line(expr.span(), tok.span) =>
-                {
+                TokenKind::Fn if self.spans_are_on_same_line(expr.span(), tok.span) => {
                     self.next();
 
                     let fn_expr = self.parse_fn_expr()?;
@@ -457,16 +388,11 @@ impl<'a> Parser<'a> {
                     let fn_arg = CallArg::Positional(fn_expr);
 
                     match &mut expr {
-                        Expr::Call { args, .. }
-                        | Expr::MethodCall { args, .. } => {
+                        Expr::Call { args, .. } | Expr::MethodCall { args, .. } => {
                             args.push(fn_arg);
                             expr
                         }
-                        _ => Expr::Call {
-                            callee: Box::new(expr),
-                            args: vec![fn_arg],
-                            span,
-                        },
+                        _ => Expr::Call { callee: Box::new(expr), args: vec![fn_arg], span },
                     }
                 }
                 _ => {
@@ -477,12 +403,7 @@ impl<'a> Parser<'a> {
                         let rhs = self.parse_expr()?;
                         let span = expr.span().merge(rhs.span());
 
-                        Expr::Assign {
-                            lhs: Box::new(expr),
-                            rhs: Box::new(rhs),
-                            op: Some(op),
-                            span,
-                        }
+                        Expr::Assign { lhs: Box::new(expr), rhs: Box::new(rhs), op: Some(op), span }
                     } else {
                         break;
                     }
@@ -508,10 +429,7 @@ impl<'a> Parser<'a> {
             match &arg {
                 CallArg::Positional(expr) if passed_named_arg => {
                     return Err(Diagnostic::error()
-                        .with_message(
-                            "positional arguments are not allowed after named \
-                             arguments",
-                        )
+                        .with_message("positional arguments are not allowed after named arguments")
                         .with_label(
                             Label::primary(expr.span())
                                 .with_message("unexpected positional argument"),
@@ -581,13 +499,7 @@ impl<'a> Parser<'a> {
         if ty_args.is_some() || self.peek_is(TokenKind::OpenParen) {
             let (args, args_span) = self.parse_call_args()?;
             let span = expr.span().merge(args_span);
-            Ok(Expr::MethodCall {
-                expr: Box::new(expr),
-                method: name,
-                targs: ty_args,
-                args,
-                span,
-            })
+            Ok(Expr::MethodCall { expr: Box::new(expr), method: name, targs: ty_args, args, span })
         } else {
             let span = expr.span().merge(name.span());
             Ok(Expr::Field { expr: Box::new(expr), field: name, span })
@@ -611,11 +523,7 @@ impl<'a> Parser<'a> {
                 }))
             }
             TokenKind::Underscore => Ok(Pat::Discard(tok.span)),
-            _ => Err(errors::unexpected_token_err(
-                "a pattern",
-                tok.kind,
-                tok.span,
-            )),
+            _ => Err(errors::unexpected_token_err("a pattern", tok.kind, tok.span)),
         }
     }
 
@@ -639,19 +547,15 @@ impl<'a> Parser<'a> {
         if self.is(TokenKind::Colon) {
             let cap = Box::new(self.parse_expr()?);
             self.eat(TokenKind::CloseBracket)?;
-            return Ok(Expr::SliceLitCap {
-                cap,
-                span: start.merge(self.last_span()),
-            });
+            return Ok(Expr::SliceLitCap { cap, span: start.merge(self.last_span()) });
         }
 
         self.back();
 
-        let (exprs, span) = self.parse_list(
-            TokenKind::OpenBracket,
-            TokenKind::CloseBracket,
-            |this| this.parse_expr().map(ControlFlow::Continue),
-        )?;
+        let (exprs, span) =
+            self.parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
+                this.parse_expr().map(ControlFlow::Continue)
+            })?;
 
         Ok(Expr::SliceLit { exprs, span })
     }
@@ -682,10 +586,8 @@ impl<'a> Parser<'a> {
 
     fn parse_fn_expr(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
-        let (params, ret, is_c_variadic) = self.parse_fn_sig_helper(
-            AllowOmitParens::Yes,
-            RequireSigTy::No(TokenKind::OpenCurly),
-        )?;
+        let (params, ret, is_c_variadic) =
+            self.parse_fn_sig_helper(AllowOmitParens::Yes, RequireSigTy::No(TokenKind::OpenCurly))?;
 
         if is_c_variadic {
             return Err(errors::invalid_c_variadic(start));

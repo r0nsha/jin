@@ -59,11 +59,7 @@ fn build_exe(db: &mut Db, c_file_path: &Utf8Path) -> Utf8PathBuf {
 }
 
 #[allow(unused)]
-fn compile_with_clang(
-    db: &Db,
-    c_file_path: &Utf8Path,
-    exe_file_path: &Utf8Path,
-) {
+fn compile_with_clang(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
     let libs = Libraries::new(db);
     let target_metrics = db.target_metrics();
 
@@ -101,7 +97,8 @@ fn compile_with_clang(
 
     //     #[cfg(windows)]
     //     {
-    //         let find_result = unsafe { microsoft_craziness::find_visual_studio_and_windows_sdk() };
+    //         let find_result = unsafe {
+    // microsoft_craziness::find_visual_studio_and_windows_sdk() };
     //
     //         if let Some(path) = &find_result.windows_sdk_ucrt_library_path {
     //             lib_paths.push(path.to_string().unwrap());

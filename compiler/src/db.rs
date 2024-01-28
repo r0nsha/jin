@@ -29,10 +29,7 @@ use crate::{
     qpath::QPath,
     span::{Source, SourceId, Sources, Span, Spanned},
     target::{TargetMetrics, TargetPlatform},
-    ty::{
-        FloatTy, FnTy, FnTyFlags, FnTyParam, Instantiation, IntTy, Ty, TyKind,
-        UintTy,
-    },
+    ty::{FloatTy, FnTy, FnTyFlags, FnTyParam, Instantiation, IntTy, Ty, TyKind, UintTy},
     word::Word,
 };
 
@@ -97,8 +94,7 @@ impl Db {
     pub fn output_path(&self) -> Utf8PathBuf {
         let binding = self.main_source();
         let main_path = binding.path();
-        let file_name =
-            main_path.file_stem().expect("main source to be a file");
+        let file_name = main_path.file_stem().expect("main source to be a file");
         let src_dir = main_path.parent().expect("to have a parent directory");
         src_dir.join(self.build_options.output_dir.clone()).join(file_name)
     }
@@ -125,8 +121,7 @@ impl Db {
 
     pub fn main_source(&self) -> Ref<'_, Source> {
         Ref::map(self.sources.borrow(), |s| {
-            s.get(self.main_source.unwrap())
-                .expect("to always have a main source")
+            s.get(self.main_source.unwrap()).expect("to always have a main source")
         })
     }
 
@@ -136,19 +131,16 @@ impl Db {
         &self.modules[self.main_module.unwrap()]
     }
 
-    pub fn find_module_by_source_id(
-        &self,
-        id: SourceId,
-    ) -> Option<&ModuleInfo> {
+    pub fn find_module_by_source_id(&self, id: SourceId) -> Option<&ModuleInfo> {
         self.modules.iter().find(|m| m.source_id == id)
     }
 
     pub fn find_module_by_path(&self, path: &Utf8Path) -> Option<&ModuleInfo> {
         let sources = &self.sources.borrow();
 
-        self.modules.iter().find(
-            |m| matches!(sources.get(m.source_id), Some(s) if s.path() == path),
-        )
+        self.modules
+            .iter()
+            .find(|m| matches!(sources.get(m.source_id), Some(s) if s.path() == path))
     }
 
     pub fn find_module_by_qpath(&self, qpath: &QPath) -> Option<&ModuleInfo> {
@@ -164,8 +156,7 @@ impl Db {
     }
 
     pub fn find_package_by_source_id(&self, id: SourceId) -> Option<&Package> {
-        self.find_module_by_source_id(id)
-            .and_then(|m| self.packages.get(&m.package))
+        self.find_module_by_source_id(id).and_then(|m| self.packages.get(&m.package))
     }
 
     pub fn is_main_package(&self, package: Ustr) -> bool {
@@ -184,13 +175,9 @@ impl Db {
             anyhow::bail!("provided path `{}` in not a file", absolute_path);
         }
 
-        let source_id =
-            self.sources.borrow_mut().load_file(absolute_path.to_path_buf())?;
+        let source_id = self.sources.borrow_mut().load_file(absolute_path.to_path_buf())?;
 
-        let root_path = absolute_path
-            .parent()
-            .expect("to have a parent directory")
-            .to_path_buf();
+        let root_path = absolute_path.parent().expect("to have a parent directory").to_path_buf();
 
         self.packages.insert(name, Package::new(name, root_path, source_id));
 
@@ -207,20 +194,14 @@ impl Db {
         f: impl Fn(&Self, &mut fs::File) -> io::Result<()>,
     ) -> io::Result<()> {
         if self.build_options.should_emit(opt) {
-            let mut file = fs::File::create(
-                self.output_path().with_extension(opt.as_extension()),
-            )?;
+            let mut file = fs::File::create(self.output_path().with_extension(opt.as_extension()))?;
             f(self, &mut file)
         } else {
             Ok(())
         }
     }
 
-    pub fn time<R>(
-        &mut self,
-        name: impl Into<String>,
-        mut f: impl FnMut(&mut Self) -> R,
-    ) -> R {
+    pub fn time<R>(&mut self, name: impl Into<String>, mut f: impl FnMut(&mut Self) -> R) -> R {
         if self.build_options().timings {
             self.timings.start(name);
             let result = f(self);
@@ -275,11 +256,7 @@ pub struct Package {
 }
 
 impl Package {
-    pub fn new(
-        name: Ustr,
-        root_path: Utf8PathBuf,
-        main_source_id: SourceId,
-    ) -> Self {
+    pub fn new(name: Ustr, root_path: Utf8PathBuf, main_source_id: SourceId) -> Self {
         Self { name, root_path, main_source_id }
     }
 
@@ -306,13 +283,8 @@ impl ModuleInfo {
         name: QPath,
         is_main: bool,
     ) -> ModuleId {
-        let id = db.modules.push_with_key(|id| Self {
-            id,
-            package,
-            source_id,
-            qpath: name,
-            is_main,
-        });
+        let id =
+            db.modules.push_with_key(|id| Self { id, package, source_id, qpath: name, is_main });
 
         if is_main {
             db.main_module.set(id);
@@ -485,8 +457,7 @@ impl Adt {
     }
 
     pub fn ty(&self) -> Ty {
-        TyKind::Adt(self.id, self.ty_params.iter().map(|tp| tp.ty).collect())
-            .into()
+        TyKind::Adt(self.id, self.ty_params.iter().map(|tp| tp.ty).collect()).into()
     }
 
     pub fn instantiation(&self, targs: &[Ty]) -> Instantiation {
@@ -570,17 +541,9 @@ impl StructKind {
 }
 
 impl StructDef {
-    pub fn new(
-        id: AdtId,
-        fields: Vec<AdtField>,
-        kind: StructKind,
-        ctor_ty: Ty,
-    ) -> Self {
-        let ctor_vis = if fields.iter().any(|f| f.vis == Vis::Private) {
-            Vis::Private
-        } else {
-            Vis::Public
-        };
+    pub fn new(id: AdtId, fields: Vec<AdtField>, kind: StructKind, ctor_ty: Ty) -> Self {
+        let ctor_vis =
+            if fields.iter().any(|f| f.vis == Vis::Private) { Vis::Private } else { Vis::Public };
 
         Self { id, fields, kind, ctor_ty, ctor_vis }
     }
@@ -606,8 +569,7 @@ impl StructDef {
         fn contains_struct(ty: Ty, adt_id: AdtId) -> bool {
             match ty.kind() {
                 TyKind::Fn(fun) => {
-                    if fun.params.iter().any(|p| contains_struct(p.ty, adt_id))
-                    {
+                    if fun.params.iter().any(|p| contains_struct(p.ty, adt_id)) {
                         return false;
                     }
 
@@ -637,10 +599,7 @@ impl UnionDef {
         Self { id, variants }
     }
 
-    pub fn variants<'a>(
-        &'a self,
-        db: &'a Db,
-    ) -> impl Iterator<Item = &Variant> {
+    pub fn variants<'a>(&'a self, db: &'a Db) -> impl Iterator<Item = &Variant> {
         self.variants.iter().map(|&id| &db[id])
     }
 }
@@ -757,32 +716,22 @@ pub enum ExternLib {
 impl fmt::Display for ExternLib {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ExternLib::Sys(name) | ExternLib::Path { name, .. } => {
-                f.write_str(name)
-            }
+            ExternLib::Sys(name) | ExternLib::Path { name, .. } => f.write_str(name),
         }
     }
 }
 
 impl ExternLib {
-    pub fn try_from_str(
-        name: &str,
-        relative_to: impl AsRef<Utf8Path>,
-    ) -> Option<Self> {
+    pub fn try_from_str(name: &str, relative_to: impl AsRef<Utf8Path>) -> Option<Self> {
         let path = Path::new(name);
 
-        if name.starts_with(['.', '/', '\\'])
-            || path.has_root()
-            || path.extension().is_some()
-        {
-            path.absolutize_from(relative_to.as_ref().as_std_path()).ok().map(
-                |p| {
-                    let p: Utf8PathBuf = p.into_owned().try_into().unwrap();
-                    let search_path = p.parent().unwrap().to_path_buf();
-                    let name = p.file_name().unwrap().to_string();
-                    Self::Path { search_path, name }
-                },
-            )
+        if name.starts_with(['.', '/', '\\']) || path.has_root() || path.extension().is_some() {
+            path.absolutize_from(relative_to.as_ref().as_std_path()).ok().map(|p| {
+                let p: Utf8PathBuf = p.into_owned().try_into().unwrap();
+                let search_path = p.parent().unwrap().to_path_buf();
+                let name = p.file_name().unwrap().to_string();
+                Self::Path { search_path, name }
+            })
         } else {
             Some(Self::Sys(name.to_string()))
         }

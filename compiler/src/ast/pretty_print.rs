@@ -3,20 +3,16 @@ use std::io;
 use super::{Expr, Fn, Item, Module};
 use crate::{
     ast::{
-        CallArg, ExternImport, ExternLet, FnKind, FnParam, FnSig, Import,
-        ImportKind, Let, TyDef, TyDefKind, TyExpr, UnqualifiedImport,
+        CallArg, ExternImport, ExternLet, FnKind, FnParam, FnSig, Import, ImportKind, Let, TyDef,
+        TyDefKind, TyExpr, UnqualifiedImport,
     },
     db::StructKind,
     middle::{BinOp, IsUfcs},
     word::Word,
 };
 
-pub(super) fn print_module(
-    module: &Module,
-    w: &mut impl io::Write,
-) -> io::Result<()> {
-    let mut cx =
-        PrettyCx { builder: ptree::TreeBuilder::new(module.name.join()) };
+pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Result<()> {
+    let mut cx = PrettyCx { builder: ptree::TreeBuilder::new(module.name.join()) };
 
     for item in &module.items {
         item.pretty_print(&mut cx);
@@ -49,10 +45,7 @@ impl PrettyPrint for Expr {
                 cx.builder.end_child();
             }
             Self::Assign { lhs, rhs, op, .. } => {
-                cx.builder.begin_child(format!(
-                    "{}=",
-                    op.map(BinOp::as_str).unwrap_or_default()
-                ));
+                cx.builder.begin_child(format!("{}=", op.map(BinOp::as_str).unwrap_or_default()));
                 lhs.pretty_print(cx);
                 cx.builder.add_empty_child("to".to_string());
                 rhs.pretty_print(cx);
@@ -226,8 +219,7 @@ impl PrettyPrint for Item {
             Self::ExternLet(x) => x.pretty_print(cx),
             Self::ExternImport(x) => x.pretty_print(cx),
             Self::Assoc(tyname, item) => {
-                cx.builder
-                    .begin_child(format!("associated item to `{tyname}`"));
+                cx.builder.begin_child(format!("associated item to `{tyname}`"));
                 item.pretty_print(cx);
                 cx.builder.end_child();
             }
@@ -326,11 +318,7 @@ impl PrettyPrint for Import {
     fn pretty_print(&self, cx: &mut PrettyCx) {
         cx.builder.begin_child(format!(
             "import {}",
-            self.path
-                .iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join(".")
+            self.path.iter().map(ToString::to_string).collect::<Vec<_>>().join(".")
         ));
         self.kind.pretty_print(cx);
         cx.builder.end_child();
@@ -361,17 +349,12 @@ impl PrettyPrint for UnqualifiedImport {
                 cx.builder.add_empty_child(format!(
                     "{}{}",
                     name,
-                    if let Some(alias) = alias {
-                        format!(" as {alias}")
-                    } else {
-                        String::new()
-                    }
+                    if let Some(alias) = alias { format!(" as {alias}") } else { String::new() }
                 ));
             }
             UnqualifiedImport::Glob(is_ufcs, _) => {
-                cx.builder.add_empty_child(
-                    if *is_ufcs == IsUfcs::Yes { "?" } else { "*" }.to_string(),
-                );
+                cx.builder
+                    .add_empty_child(if *is_ufcs == IsUfcs::Yes { "?" } else { "*" }.to_string());
             }
         }
     }
@@ -446,10 +429,7 @@ impl PrettyPrint for TyExpr {
             TyExpr::Path(path, targs, _) => {
                 cx.builder.begin_child(format!(
                     "path: {}",
-                    path.iter()
-                        .map(ToString::to_string)
-                        .collect::<Vec<_>>()
-                        .join(".")
+                    path.iter().map(ToString::to_string).collect::<Vec<_>>().join(".")
                 ));
 
                 if let Some(targs) = targs {

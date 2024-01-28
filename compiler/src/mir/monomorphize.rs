@@ -9,15 +9,13 @@ use crate::{
     mangle,
     middle::{BinOp, CallConv, CmpOp, Mutability, NamePat, Pat, Vis},
     mir::{
-        BlockId, Body, Const, Fn, FnParam, FnSig, FnSigId, FxHashMap, GlobalId,
-        GlobalKind, IdMap, Inst, Mir, StaticGlobal, ValueId, ValueKind,
+        BlockId, Body, Const, Fn, FnParam, FnSig, FnSigId, FxHashMap, GlobalId, GlobalKind, IdMap,
+        Inst, Mir, StaticGlobal, ValueId, ValueKind,
     },
     span::{Span, Spanned as _},
     subst::{Subst, SubstTy},
     sym,
-    ty::{
-        fold::TyFolder, FnTy, FnTyFlags, FnTyParam, Instantiation, Ty, TyKind,
-    },
+    ty::{fold::TyFolder, FnTy, FnTyFlags, FnTyParam, Instantiation, Ty, TyKind},
     word::Word,
 };
 
@@ -156,12 +154,9 @@ impl<'db, 'cx> MonomorphizeBody<'db, 'cx> {
             JobTarget::Global(id) => {
                 let global = mir.globals.get(&id).expect("global to exist");
 
-                if let GlobalKind::Static(StaticGlobal { body, .. }) =
-                    &global.kind
-                {
+                if let GlobalKind::Static(StaticGlobal { body, .. }) = &global.kind {
                     let body_subst = self.monomorphize_body(mir, body);
-                    let body_mut =
-                        &mut mir.globals[id].kind.as_static_mut().unwrap().body;
+                    let body_mut = &mut mir.globals[id].kind.as_static_mut().unwrap().body;
                     body_subst.subst(body_mut);
                 }
             }
@@ -174,9 +169,7 @@ impl<'db, 'cx> MonomorphizeBody<'db, 'cx> {
         for value in body.values() {
             if let Some(instantiation) = body.instantation(value.id) {
                 // This is a polymorphic value which requires specialization
-                if let Some(new_kind) =
-                    self.monomorphize_value(mir, &value.kind, instantiation)
-                {
+                if let Some(new_kind) = self.monomorphize_value(mir, &value.kind, instantiation) {
                     body_subst.insert_value(value.id, new_kind);
                 }
             } else {
@@ -186,9 +179,7 @@ impl<'db, 'cx> MonomorphizeBody<'db, 'cx> {
                         self.cx.work.push(Job { target: JobTarget::Fn(id) });
                     }
                     ValueKind::Global(id) => {
-                        self.cx
-                            .work
-                            .push(Job { target: JobTarget::Global(id) });
+                        self.cx.work.push(Job { target: JobTarget::Global(id) });
                     }
                     _ => (),
                 }
@@ -234,15 +225,12 @@ impl<'db, 'cx> MonomorphizeBody<'db, 'cx> {
         monomorphized_fn: MonoFn,
         instantiation: &Instantiation,
     ) -> FnSigId {
-        if let Some(sig_id) =
-            self.cx.monomorphized_fns.get(&monomorphized_fn).copied()
-        {
+        if let Some(sig_id) = self.cx.monomorphized_fns.get(&monomorphized_fn).copied() {
             return sig_id;
         }
 
         let old_sig_id = monomorphized_fn.id;
-        let new_sig_id =
-            self.monomorphize_fn_sig(mir, &monomorphized_fn, instantiation);
+        let new_sig_id = self.monomorphize_fn_sig(mir, &monomorphized_fn, instantiation);
 
         self.cx.monomorphized_fns.insert(monomorphized_fn, new_sig_id);
 
@@ -273,8 +261,7 @@ impl<'db, 'cx> MonomorphizeBody<'db, 'cx> {
             .collect::<Vec<_>>()
             .join("_");
 
-        sig.mangled_name =
-            ustr(&format!("{}__{}", sig.mangled_name, instantation_str));
+        sig.mangled_name = ustr(&format!("{}__{}", sig.mangled_name, instantation_str));
 
         self.mono_mir.fn_sigs.insert_with_key(|id| {
             sig.id = id;
@@ -345,9 +332,7 @@ impl<'db> ExpandDestroys<'db> {
         }
 
         for global in mir.globals.values_mut() {
-            if let GlobalKind::Static(StaticGlobal { body, .. }) =
-                &mut global.kind
-            {
+            if let GlobalKind::Static(StaticGlobal { body, .. }) = &mut global.kind {
                 self.body(body);
             }
         }
@@ -416,36 +401,24 @@ impl<'db> ExpandDestroys<'db> {
         }
 
         for (block, inst_idx, free_fn) in expanded {
-            let Inst::Destroy { value, span, .. } =
-                body.block(block).insts[inst_idx]
-            else {
+            let Inst::Destroy { value, span, .. } = body.block(block).insts[inst_idx] else {
                 unreachable!()
             };
 
             if let Some(free_fn) = free_fn {
                 let free_fn_ty = self.mono_mir.fn_sigs[free_fn].ty;
                 let result = body.create_register(self.db.types.unit);
-                let callee =
-                    body.create_value(free_fn_ty, ValueKind::Fn(free_fn));
+                let callee = body.create_value(free_fn_ty, ValueKind::Fn(free_fn));
 
-                body.block_mut(block).insts[inst_idx] = Inst::Call {
-                    value: result,
-                    callee,
-                    args: vec![value],
-                    span,
-                };
-            } else {
                 body.block_mut(block).insts[inst_idx] =
-                    Inst::Free { value, traced: true, span };
+                    Inst::Call { value: result, callee, args: vec![value], span };
+            } else {
+                body.block_mut(block).insts[inst_idx] = Inst::Free { value, traced: true, span };
             }
         }
     }
 
-    fn get_free_call_values(
-        &mut self,
-        body: &mut Body,
-        ty: Ty,
-    ) -> (ValueId, ValueId) {
+    fn get_free_call_values(&mut self, body: &mut Body, ty: Ty) -> (ValueId, ValueId) {
         let free_fn = self.get_or_create_free_fn(ty);
 
         let free_fn_ty = self.mono_mir.fn_sigs[free_fn].ty;
@@ -511,47 +484,25 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
 
         let adt_name = mangle::mangle_adt(self.cx.db, adt, targs);
         let mangled_name = ustr(&format!("{adt_name}_destroy"));
-        let display_name = ustr(
-            &self.cx.db[adt.def_id]
-                .qpath
-                .clone()
-                .child(ustr("$destroy"))
-                .join(),
-        );
-        let sig = create_destroy_sig(
-            self.cx,
-            adt_ty,
-            mangled_name,
-            display_name,
-            adt_span,
-        );
+        let display_name =
+            ustr(&self.cx.db[adt.def_id].qpath.clone().child(ustr("$destroy")).join());
+        let sig = create_destroy_sig(self.cx, adt_ty, mangled_name, display_name, adt_span);
 
-        let self_value =
-            self.body.create_value(adt_ty, ValueKind::Param(DefId::null(), 0));
+        let self_value = self.body.create_value(adt_ty, ValueKind::Param(DefId::null(), 0));
 
         let join_block = match &adt.kind {
-            AdtKind::Union(union_def) => self.lower_union_free(
-                union_def,
-                self_value,
-                &instantiation,
-                adt_span,
-            ),
-            AdtKind::Struct(struct_def) => self.lower_struct_free(
-                struct_def,
-                self_value,
-                &instantiation,
-                adt_span,
-            ),
+            AdtKind::Union(union_def) => {
+                self.lower_union_free(union_def, self_value, &instantiation, adt_span)
+            }
+            AdtKind::Struct(struct_def) => {
+                self.lower_struct_free(struct_def, self_value, &instantiation, adt_span)
+            }
         };
 
-        let unit_value = self
-            .body
-            .create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
+        let unit_value =
+            self.body.create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
 
-        self.body
-            .ins(join_block)
-            .free(self_value, false, adt_span)
-            .ret(unit_value);
+        self.body.ins(join_block).free(self_value, false, adt_span).ret(unit_value);
 
         self.cx.mono_mir.fns.insert(sig, Fn { sig, body: self.body });
 
@@ -567,13 +518,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
     ) -> BlockId {
         let start_block = self.body.create_block("start");
 
-        self.free_adt_fields(
-            start_block,
-            self_value,
-            &struct_def.fields,
-            instantiation,
-            span,
-        );
+        self.free_adt_fields(start_block, self_value, &struct_def.fields, instantiation, span);
 
         start_block
     }
@@ -595,28 +540,19 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             let variant = &self.cx.db[variant_id];
             let name = variant.name.name();
 
-            let variant_value = self
-                .body
-                .create_value(self_ty, ValueKind::Variant(self_value, name));
+            let variant_value =
+                self.body.create_value(self_ty, ValueKind::Variant(self_value, name));
 
             let block = self.body.create_block(format!("case_{name}"));
 
-            self.free_adt_fields(
-                block,
-                variant_value,
-                &variant.fields,
-                instantiation,
-                span,
-            );
+            self.free_adt_fields(block, variant_value, &variant.fields, instantiation, span);
 
             self.body.ins(block).br(join_block);
             blocks.push(block);
         }
 
         let uint = self.cx.db.types.uint;
-        let tag_field = self
-            .body
-            .create_value(uint, ValueKind::Field(self_value, ustr("tag")));
+        let tag_field = self.body.create_value(uint, ValueKind::Field(self_value, ustr("tag")));
         self.body.ins(start_block).switch(tag_field, blocks);
 
         join_block
@@ -632,22 +568,14 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
     ) {
         for field in fields {
             let ty = instantiation.fold(field.ty);
-            let field_value = self.body.create_value(
-                field.ty,
-                ValueKind::Field(self_value, field.name.name()),
-            );
+            let field_value =
+                self.body.create_value(field.ty, ValueKind::Field(self_value, field.name.name()));
 
             match ty.kind() {
                 TyKind::Adt(..) => {
-                    let (result, callee) =
-                        self.cx.get_free_call_values(&mut self.body, ty);
+                    let (result, callee) = self.cx.get_free_call_values(&mut self.body, ty);
 
-                    self.body.ins(block).call(
-                        result,
-                        callee,
-                        vec![field_value],
-                        span,
-                    );
+                    self.body.ins(block).call(result, callee, vec![field_value], span);
                 }
                 TyKind::Ref(..) if self.cx.should_refcount_ty(ty) => {
                     self.body.ins(block).decref(field_value);
@@ -677,16 +605,9 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
         let tyname = mangle::mangle_ty_name(self.cx.db, ty);
         let mangled_name = ustr(&format!("{tyname}_destroy"));
         let display_name = ustr(&format!("{}$destroy", ty.display(self.cx.db)));
-        let sig = create_destroy_sig(
-            self.cx,
-            ty,
-            mangled_name,
-            display_name,
-            main_span,
-        );
+        let sig = create_destroy_sig(self.cx, ty, mangled_name, display_name, main_span);
 
-        let slice =
-            self.body.create_value(ty, ValueKind::Param(DefId::null(), 0));
+        let slice = self.body.create_value(ty, ValueKind::Param(DefId::null(), 0));
 
         let start = self.body.create_block("start");
 
@@ -696,9 +617,8 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
             start
         };
 
-        let unit_value = self
-            .body
-            .create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
+        let unit_value =
+            self.body.create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
         self.body.ins(end_block).free(slice, false, main_span).ret(unit_value);
 
         self.cx.mono_mir.fns.insert(sig, Fn { sig, body: self.body });
@@ -730,23 +650,15 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
 
         // uint i = 0;
         let index = self.body.create_register(uint);
-        let zero =
-            self.body.create_value(uint, ValueKind::Const(Const::Int(0)));
+        let zero = self.body.create_value(uint, ValueKind::Const(Const::Int(0)));
         self.body.ins(start).stackalloc(index, zero).br(loop_start);
 
         // slice.len
-        let slice_len = self
-            .body
-            .create_value(uint, ValueKind::Field(slice, ustr(sym::LEN)));
+        let slice_len = self.body.create_value(uint, ValueKind::Field(slice, ustr(sym::LEN)));
 
         // i == slice.len
         let cond = self.body.create_register(self.cx.db.types.bool);
-        self.body.ins(loop_start).binary_unchecked(
-            cond,
-            index,
-            slice_len,
-            BinOp::Cmp(CmpOp::Eq),
-        );
+        self.body.ins(loop_start).binary_unchecked(cond, index, slice_len, BinOp::Cmp(CmpOp::Eq));
 
         self.body.ins(loop_start).brif(cond, loop_end, None);
         self.free_elem(loop_start, slice, index, elem_ty, span);
@@ -777,8 +689,7 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
 
         match elem_ty.kind() {
             TyKind::Adt(..) | TyKind::Slice(..) => {
-                let (result, callee) =
-                    self.cx.get_free_call_values(&mut self.body, elem_ty);
+                let (result, callee) = self.cx.get_free_call_values(&mut self.body, elem_ty);
 
                 self.body.ins(block).call(result, callee, vec![elem], span);
             }
@@ -808,10 +719,8 @@ fn create_destroy_sig(
         ty,
     }];
 
-    let fn_ty_params = params
-        .iter()
-        .map(|p| FnTyParam { name: Some(p.pat.name().unwrap()), ty: p.ty })
-        .collect();
+    let fn_ty_params =
+        params.iter().map(|p| FnTyParam { name: Some(p.pat.name().unwrap()), ty: p.ty }).collect();
 
     let fn_ty = Ty::new(TyKind::Fn(FnTy {
         params: fn_ty_params,

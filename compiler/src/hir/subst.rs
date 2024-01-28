@@ -1,7 +1,7 @@
 use crate::{
     hir::{
-        Assign, Binary, Expr, ExprKind, ExternLet, Fn, FnKind, FnSig, Let,
-        MatchArm, MatchPat, Name, Swap, Variant,
+        Assign, Binary, Expr, ExprKind, ExternLet, Fn, FnKind, FnSig, Let, MatchArm, MatchPat,
+        Name, Swap, Variant,
     },
     span::Spanned,
     subst,
@@ -147,9 +147,7 @@ impl<S: SubstTy> Subst<S> for MatchPat {
             MatchPat::Name(_, ty, span) => {
                 *ty = s.subst_ty(*ty, *span);
             }
-            MatchPat::Adt(_, pats, _)
-            | MatchPat::Variant(_, pats, _)
-            | MatchPat::Or(pats, _) => {
+            MatchPat::Adt(_, pats, _) | MatchPat::Variant(_, pats, _) | MatchPat::Or(pats, _) => {
                 for pat in pats {
                     pat.subst(s);
                 }

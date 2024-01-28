@@ -23,11 +23,7 @@ impl<S: SubstTy> Subst<S> for Pat {
     }
 }
 
-pub fn subst_instantation(
-    s: &mut impl SubstTy,
-    instantiation: &mut Instantiation,
-    span: Span,
-) {
+pub fn subst_instantation(s: &mut impl SubstTy, instantiation: &mut Instantiation, span: Span) {
     for ty in instantiation.tys_mut() {
         *ty = s.subst_ty(*ty, span);
     }

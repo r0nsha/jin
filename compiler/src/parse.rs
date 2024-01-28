@@ -15,10 +15,7 @@ use crate::{
     span::SourceId,
 };
 
-pub fn parse_module_tree(
-    db: &mut Db,
-    root_file: &Utf8Path,
-) -> anyhow::Result<Ast> {
+pub fn parse_module_tree(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Ast> {
     let mut ast = Ast::new();
 
     // Std
@@ -29,8 +26,7 @@ pub fn parse_module_tree(
 
     // Main package
     let root_file_stem = root_file.file_stem().unwrap();
-    let (main_package, _) =
-        db.create_package(ustr(root_file_stem), root_file)?;
+    let (main_package, _) = db.create_package(ustr(root_file_stem), root_file)?;
     db.set_main_package(main_package);
     parse_package(db, &mut ast, main_package);
 
@@ -41,12 +37,7 @@ fn parse_package(db: &mut Db, ast: &mut Ast, package: Ustr) {
     parse_module(db, package, ast, db.package(package).main_source_id);
 }
 
-fn parse_module(
-    db: &mut Db,
-    package: Ustr,
-    ast: &mut Ast,
-    source_id: SourceId,
-) {
+fn parse_module(db: &mut Db, package: Ustr, ast: &mut Ast, source_id: SourceId) {
     match parse_module_inner(db, package, source_id) {
         Ok((module, imported_module_paths)) => {
             ast.modules.push(module);
@@ -65,33 +56,22 @@ fn parse_module_inner(
     source_id: SourceId,
 ) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
     let (mut module, paths) = {
-        let source =
-            &Ref::map(db.sources.borrow(), |s| s.get(source_id).unwrap());
+        let source = &Ref::map(db.sources.borrow(), |s| s.get(source_id).unwrap());
         let tokens = lexer::tokenize(source)?;
         parser::parse(db, package, source, tokens)?
     };
 
-    module.id = ModuleInfo::alloc(
-        db,
-        package,
-        module.source,
-        module.name.clone(),
-        module.is_main(),
-    );
+    module.id =
+        ModuleInfo::alloc(db, package, module.source, module.name.clone(), module.is_main());
 
     Ok((module, paths))
 }
 
 fn parse_module_from_path(db: &mut Db, path: Utf8PathBuf, ast: &mut Ast) {
     if db.sources.borrow().find_by_path(&path).is_none() {
-        let package =
-            db.find_package_by_path(&path).expect("to be part of a package");
+        let package = db.find_package_by_path(&path).expect("to be part of a package");
 
-        let source_id = db
-            .sources
-            .borrow_mut()
-            .load_file(path)
-            .expect("import path to exist");
+        let source_id = db.sources.borrow_mut().load_file(path).expect("import path to exist");
 
         parse_module(db, package.name, ast, source_id);
     }

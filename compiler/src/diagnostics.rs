@@ -53,10 +53,7 @@ impl Diagnostic {
         self.labels.extend(labels);
     }
 
-    pub fn with_labels(
-        mut self,
-        labels: impl IntoIterator<Item = Label>,
-    ) -> Self {
+    pub fn with_labels(mut self, labels: impl IntoIterator<Item = Label>) -> Self {
         self.labels.extend(labels);
         self
     }
@@ -66,10 +63,7 @@ impl Diagnostic {
         self
     }
 
-    pub fn with_notes(
-        mut self,
-        notes: impl IntoIterator<Item = String>,
-    ) -> Self {
+    pub fn with_notes(mut self, notes: impl IntoIterator<Item = String>) -> Self {
         self.notes.extend(notes);
         self
     }
@@ -130,9 +124,7 @@ impl From<Label> for codespan_diagnostic::Label<SourceId> {
         Self {
             style: match val.style {
                 LabelStyle::Primary => codespan_diagnostic::LabelStyle::Primary,
-                LabelStyle::Secondary => {
-                    codespan_diagnostic::LabelStyle::Secondary
-                }
+                LabelStyle::Secondary => codespan_diagnostic::LabelStyle::Secondary,
             },
             file_id: val.span.source_id(),
             range: val.span.start() as usize..val.span.end() as usize,
@@ -194,13 +186,8 @@ impl Diagnostics {
 
         let sources: &Sources = &self.sources.borrow();
 
-        codespan_reporting::term::emit(
-            w,
-            &self.config,
-            sources,
-            &diagnostic.into(),
-        )
-        .expect("failed emitting diagnostic");
+        codespan_reporting::term::emit(w, &self.config, sources, &diagnostic.into())
+            .expect("failed emitting diagnostic");
     }
 
     fn writer() -> StandardStream {

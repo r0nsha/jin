@@ -14,12 +14,7 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    fn collect_item(
-        &mut self,
-        module_id: ModuleId,
-        item: &ast::Item,
-        item_id: ast::ItemId,
-    ) {
+    fn collect_item(&mut self, module_id: ModuleId, item: &ast::Item, item_id: ast::ItemId) {
         match item {
             ast::Item::Fn(fun) => {
                 self.insert_item(module_id, fun.sig.word, item_id);
@@ -43,12 +38,8 @@ impl<'db> Typeck<'db> {
                 }
                 ast::ImportKind::Unqualified(imports) => {
                     for import in imports {
-                        if let ast::UnqualifiedImport::Name(name, alias, _) =
-                            import
-                        {
-                            self.collect_name_or_alias(
-                                module_id, item_id, *name, *alias,
-                            );
+                        if let ast::UnqualifiedImport::Name(name, alias, _) = import {
+                            self.collect_name_or_alias(module_id, item_id, *name, *alias);
                         }
                     }
                 }
@@ -74,12 +65,7 @@ impl<'db> Typeck<'db> {
         self.insert_item(module_id, name, item_id);
     }
 
-    fn insert_item(
-        &mut self,
-        module_id: ModuleId,
-        word: Word,
-        item_id: ast::ItemId,
-    ) {
+    fn insert_item(&mut self, module_id: ModuleId, word: Word, item_id: ast::ItemId) {
         self.global_scope
             .symbol_to_item
             .entry(Symbol::new(module_id, word.name()))

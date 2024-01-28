@@ -58,13 +58,10 @@ impl Ty {
 
                 fun.ret.occurs_check(var).map_err(|_| self)
             }
-            TyKind::Slice(inner)
-            | TyKind::Ref(inner, _)
-            | TyKind::RawPtr(inner) => {
+            TyKind::Slice(inner) | TyKind::Ref(inner, _) | TyKind::RawPtr(inner) => {
                 inner.occurs_check(var).map_err(|_| self)
             }
-            TyKind::Param(ParamTy { var: v, .. })
-            | TyKind::Infer(InferTy::Ty(v)) => {
+            TyKind::Param(ParamTy { var: v, .. }) | TyKind::Infer(InferTy::Ty(v)) => {
                 if *v == var {
                     Err(self)
                 } else {
@@ -105,8 +102,7 @@ impl Ty {
         f(self)
             || match self.kind() {
                 TyKind::Fn(fun) => {
-                    fun.params.iter().any(|p| p.ty.walk_short_(f))
-                        || fun.ret.walk_short_(f)
+                    fun.params.iter().any(|p| p.ty.walk_short_(f)) || fun.ret.walk_short_(f)
                 }
                 TyKind::Slice(inner)
                 | TyKind::Ref(inner, _)
@@ -267,10 +263,7 @@ impl TyKind {
     pub const DEFAULT_FLOAT: Self = Self::Float(FloatTy::F32);
 
     pub fn is_any_int(&self) -> bool {
-        matches!(
-            self,
-            TyKind::Int(_) | TyKind::Uint(_) | TyKind::Infer(InferTy::Int(_))
-        )
+        matches!(self, TyKind::Int(_) | TyKind::Uint(_) | TyKind::Infer(InferTy::Int(_)))
     }
 
     pub fn is_any_float(&self) -> bool {
@@ -583,9 +576,7 @@ impl FloatTy {
 
     pub fn contains(self, value: f64) -> bool {
         match self {
-            Self::F32 => {
-                value >= f64::from(f32::MIN) && value <= f64::from(f32::MAX)
-            }
+            Self::F32 => value >= f64::from(f32::MIN) && value <= f64::from(f32::MAX),
             Self::F64 => true,
         }
     }
@@ -646,11 +637,7 @@ impl FnTy {
         self.ret.collect_params_into(params);
     }
 
-    pub fn display<'db>(
-        &'db self,
-        db: &'db Db,
-        name: Option<Ustr>,
-    ) -> FnTyPrinter {
+    pub fn display<'db>(&'db self, db: &'db Db, name: Option<Ustr>) -> FnTyPrinter {
         FnTyPrinter {
             db,
             name,

@@ -87,23 +87,20 @@ fn main() {
 #[allow(clippy::similar_names)]
 fn build(db: &mut Db, root_file: &Utf8Path) {
     // Parse the entire module tree into an Ast
-    let ast =
-        match db.time("Parse", |db| parse::parse_module_tree(db, root_file)) {
-            Ok(ast) => ast,
-            Err(err) => {
-                eprintln!("{err}");
-                return;
-            }
-        };
+    let ast = match db.time("Parse", |db| parse::parse_module_tree(db, root_file)) {
+        Ok(ast) => ast,
+        Err(err) => {
+            eprintln!("{err}");
+            return;
+        }
+    };
 
     expect!(db);
 
     // Create the output directory
-    fs::create_dir_all(db.output_dir())
-        .expect("failed creating build directory");
+    fs::create_dir_all(db.output_dir()).expect("failed creating build directory");
 
-    db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file))
-        .expect("emitting ast failed");
+    db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file)).expect("emitting ast failed");
 
     // Resolve all root symbols into their corresponding id's
     let hir = match db.time("Type checking", |db| typeck::typeck(db, &ast)) {

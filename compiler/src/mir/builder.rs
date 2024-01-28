@@ -21,12 +21,7 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
-    pub fn brif(
-        &mut self,
-        cond: ValueId,
-        then: BlockId,
-        otherwise: Option<BlockId>,
-    ) -> &mut Self {
+    pub fn brif(&mut self, cond: ValueId, then: BlockId, otherwise: Option<BlockId>) -> &mut Self {
         self.body.create_edge(self.block, then);
 
         if let Some(otherwise) = otherwise {
@@ -80,12 +75,7 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
-    pub fn rtcall(
-        &mut self,
-        value: ValueId,
-        kind: RtCallKind,
-        span: Span,
-    ) -> &mut Self {
+    pub fn rtcall(&mut self, value: ValueId, kind: RtCallKind, span: Span) -> &mut Self {
         self.inst(Inst::RtCall { value, kind, span });
         self
     }
@@ -184,22 +174,12 @@ impl<'a> InstBuilder<'a> {
         self
     }
 
-    pub fn destroy(
-        &mut self,
-        value: ValueId,
-        destroy_glue: bool,
-        span: Span,
-    ) -> &mut Self {
+    pub fn destroy(&mut self, value: ValueId, destroy_glue: bool, span: Span) -> &mut Self {
         self.inst(Inst::Destroy { value, destroy_glue, span });
         self
     }
 
-    pub fn free(
-        &mut self,
-        value: ValueId,
-        traced: bool,
-        span: Span,
-    ) -> &mut Self {
+    pub fn free(&mut self, value: ValueId, traced: bool, span: Span) -> &mut Self {
         self.inst(Inst::Free { value, traced, span });
         self
     }

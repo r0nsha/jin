@@ -1,8 +1,5 @@
 use crate::{
-    mir::{
-        Block, Body, Fn, FnSig, Global, GlobalKind, Inst, Mir, StaticGlobal,
-        Value,
-    },
+    mir::{Block, Body, Fn, FnSig, Global, GlobalKind, Inst, Mir, StaticGlobal, Value},
     span::{Span, Spanned},
     subst,
     subst::{Subst, SubstTy},

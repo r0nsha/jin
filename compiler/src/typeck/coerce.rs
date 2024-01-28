@@ -20,8 +20,7 @@ impl CoerceExt<'_> for EqResult {
         match self {
             Ok(res) => Ok(res),
             Err(err) => {
-                let (source, target) =
-                    (cx.normalize(err.found), cx.normalize(err.expected));
+                let (source, target) = (cx.normalize(err.found), cx.normalize(err.expected));
 
                 if let Some(coercions) = source.coerce(&target, cx) {
                     cx.hir.push_coercions(expr_id, coercions);
@@ -46,12 +45,7 @@ pub trait Coerce<'a> {
         self.coerce_ex(target, cx, CoerceOptions::default())
     }
 
-    fn can_coerce(
-        &self,
-        target: &Self,
-        cx: &Typeck<'a>,
-        options: CoerceOptions,
-    ) -> bool {
+    fn can_coerce(&self, target: &Self, cx: &Typeck<'a>, options: CoerceOptions) -> bool {
         self.coerce_ex(target, cx, options).is_some()
     }
 }
@@ -83,18 +77,12 @@ fn coerce_tys(
     let target_metrics = cx.db.target_metrics();
 
     match (source.kind(), target.kind()) {
-        (TyKind::Int(a), TyKind::Int(b))
-            if b.size(target_metrics) >= a.size(target_metrics) =>
-        {
-            coercions
-                .push(Coercion { kind: CoercionKind::IntPromotion, target });
+        (TyKind::Int(a), TyKind::Int(b)) if b.size(target_metrics) >= a.size(target_metrics) => {
+            coercions.push(Coercion { kind: CoercionKind::IntPromotion, target });
             true
         }
-        (TyKind::Uint(a), TyKind::Uint(b))
-            if b.size(target_metrics) >= a.size(target_metrics) =>
-        {
-            coercions
-                .push(Coercion { kind: CoercionKind::IntPromotion, target });
+        (TyKind::Uint(a), TyKind::Uint(b)) if b.size(target_metrics) >= a.size(target_metrics) => {
+            coercions.push(Coercion { kind: CoercionKind::IntPromotion, target });
             true
         }
         (TyKind::Never, _) | (TyKind::Unit, TyKind::Never) => {
@@ -103,8 +91,7 @@ fn coerce_tys(
         }
         (TyKind::Ref(a, Mutability::Mut), TyKind::Ref(b, Mutability::Imm)) => {
             if can_unify_or_coerce(*a, *b, cx, coercions, options) {
-                coercions
-                    .push(Coercion { kind: CoercionKind::MutRefToImm, target });
+                coercions.push(Coercion { kind: CoercionKind::MutRefToImm, target });
                 true
             } else {
                 false
@@ -119,8 +106,7 @@ fn coerce_tys(
         }
         (_, TyKind::Ref(b, _)) => {
             if can_unify_or_coerce(source, *b, cx, coercions, options) {
-                coercions
-                    .push(Coercion { kind: CoercionKind::OwnedToRef, target });
+                coercions.push(Coercion { kind: CoercionKind::OwnedToRef, target });
                 true
             } else {
                 false
@@ -131,8 +117,7 @@ fn coerce_tys(
                 && !target.is_move(cx.db)
                 && unify_with_options(*a, target, cx, options).is_ok()
             {
-                coercions
-                    .push(Coercion { kind: CoercionKind::RefToOwned, target });
+                coercions.push(Coercion { kind: CoercionKind::RefToOwned, target });
                 true
             } else {
                 false
@@ -153,12 +138,7 @@ fn can_unify_or_coerce(
     unify_result.is_ok() || coerce_tys(source, target, cx, coercions, options)
 }
 
-fn unify_with_options(
-    source: Ty,
-    target: Ty,
-    cx: &Typeck,
-    options: CoerceOptions,
-) -> UnifyResult {
+fn unify_with_options(source: Ty, target: Ty, cx: &Typeck, options: CoerceOptions) -> UnifyResult {
     if options.rollback_unifications {
         source.can_unify(target, cx, options.unify_options)
     } else {
@@ -180,9 +160,6 @@ impl Default for CoerceOptions {
 
 impl CoerceOptions {
     pub fn new() -> Self {
-        Self {
-            unify_options: UnifyOptions::default(),
-            rollback_unifications: false,
-        }
+        Self { unify_options: UnifyOptions::default(), rollback_unifications: false }
     }
 }

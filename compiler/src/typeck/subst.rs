@@ -10,10 +10,8 @@ use crate::{
 
 impl<'db> Typeck<'db> {
     pub fn subst(&mut self) {
-        let mut cx = SubstCx {
-            storage: &mut self.storage.borrow_mut(),
-            unbound_tys: FxHashMap::default(),
-        };
+        let mut cx =
+            SubstCx { storage: &mut self.storage.borrow_mut(), unbound_tys: FxHashMap::default() };
 
         for f in &mut self.hir.fns {
             f.subst(&mut cx);
@@ -38,13 +36,8 @@ impl<'db> Typeck<'db> {
             .into_iter()
             .map(|(span, ty)| {
                 Diagnostic::error()
-                    .with_message(format!(
-                        "type annotations needed for `{}`",
-                        ty.display(self.db)
-                    ))
-                    .with_label(
-                        Label::primary(span).with_message("cannot infer type"),
-                    )
+                    .with_message(format!("type annotations needed for `{}`", ty.display(self.db)))
+                    .with_label(Label::primary(span).with_message("cannot infer type"))
             })
             .collect();
 
@@ -96,12 +89,7 @@ impl VarFolder<'_, '_> {
     fn fold_intvar(&mut self, var: IntVar) -> Ty {
         let root = self.cx.storage.int.find(var);
 
-        self.cx
-            .storage
-            .int
-            .probe_value(root)
-            .map_or_else(|| TyKind::DEFAULT_INT, Into::into)
-            .into()
+        self.cx.storage.int.probe_value(root).map_or_else(|| TyKind::DEFAULT_INT, Into::into).into()
     }
 
     fn fold_floatvar(&mut self, var: FloatVar) -> Ty {

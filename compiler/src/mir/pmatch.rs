@@ -19,11 +19,9 @@ pub fn compile(
 ) -> Result<(Decision, FxHashMap<BlockId, BlockId>), ()> {
     let body_pat_spans = collect_body_pat_spans(&rows);
 
-    let (decision, new_guards, diagnostics) =
-        Compiler::new(cx, body_pat_spans).compile(rows, span);
+    let (decision, new_guards, diagnostics) = Compiler::new(cx, body_pat_spans).compile(rows, span);
 
-    let had_errors =
-        diagnostics.iter().any(|d| d.severity() == Severity::Error);
+    let had_errors = diagnostics.iter().any(|d| d.severity() == Severity::Error);
 
     cx.cx.diagnostics.extend(diagnostics);
 
@@ -80,19 +78,12 @@ pub struct Row {
 }
 
 impl Row {
-    pub fn new(
-        cols: Vec<Col>,
-        guard: Option<BlockId>,
-        body: DecisionBody,
-    ) -> Self {
+    pub fn new(cols: Vec<Col>, guard: Option<BlockId>, body: DecisionBody) -> Self {
         Self { cols, guard, body }
     }
 
     fn remove_col(&mut self, value: ValueId) -> Option<Col> {
-        self.cols
-            .iter()
-            .position(|c| c.value == value)
-            .map(|idx| self.cols.remove(idx))
+        self.cols.iter().position(|c| c.value == value).map(|idx| self.cols.remove(idx))
     }
 }
 
@@ -108,22 +99,20 @@ struct Compiler<'a, 'cx, 'db> {
     /// The set of reachable body blocks
     reachable: FxHashSet<BlockId>,
 
-    /// A mapping of guard blocks introduced during compilation, to their original block.
-    /// This is done for guards which have the same code as the original one, but have different
-    /// branches.
+    /// A mapping of guard blocks introduced during compilation, to their
+    /// original block. This is done for guards which have the same code as
+    /// the original one, but have different branches.
     new_guards: NewGuards,
 
-    /// Associated body blocks with their span, used for reachability diagnostics
+    /// Associated body blocks with their span, used for reachability
+    /// diagnostics
     body_pat_spans: FxHashMap<BlockId, Span>,
 
     diagnostics: Vec<Diagnostic>,
 }
 
 impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
-    fn new(
-        cx: &'a mut LowerBody<'cx, 'db>,
-        body_pat_spans: FxHashMap<BlockId, Span>,
-    ) -> Self {
+    fn new(cx: &'a mut LowerBody<'cx, 'db>, body_pat_spans: FxHashMap<BlockId, Span>) -> Self {
         Self {
             cx,
             missing: false,
@@ -134,11 +123,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         }
     }
 
-    fn compile(
-        mut self,
-        rows: Vec<Row>,
-        span: Span,
-    ) -> (Decision, NewGuards, Vec<Diagnostic>) {
+    fn compile(mut self, rows: Vec<Row>, span: Span) -> (Decision, NewGuards, Vec<Diagnostic>) {
         let all_blocks: Vec<_> = rows.iter().map(|r| r.body.block).collect();
         let decision = self.compile_rows(rows);
 
@@ -155,26 +140,18 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
     }
 
     fn report_unreachable_pats(&mut self, all_blocks: &[BlockId]) {
-        self.diagnostics.extend(
-            all_blocks.iter().filter(|b| !self.reachable.contains(b)).map(
-                |block| {
-                    let span = self.body_pat_spans[block];
+        self.diagnostics.extend(all_blocks.iter().filter(|b| !self.reachable.contains(b)).map(
+            |block| {
+                let span = self.body_pat_spans[block];
 
-                    Diagnostic::warning()
-                        .with_message("unreachable pattern")
-                        .with_label(
-                            Label::primary(span)
-                                .with_message("unreachable pattern"),
-                        )
-                },
-            ),
-        );
+                Diagnostic::warning()
+                    .with_message("unreachable pattern")
+                    .with_label(Label::primary(span).with_message("unreachable pattern"))
+            },
+        ));
     }
 
-    fn missing_pats_diagnostic(
-        pats: IndexSet<String>,
-        span: Span,
-    ) -> Diagnostic {
+    fn missing_pats_diagnostic(pats: IndexSet<String>, span: Span) -> Diagnostic {
         const LIMIT: usize = 3;
 
         let pat_len = pats.len();
@@ -205,12 +182,8 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         };
 
         Diagnostic::error()
-            .with_message(format!(
-                "missing match arms: {missing} {verb} not covered"
-            ))
-            .with_label(
-                Label::primary(span).with_message("match is not exhaustive"),
-            )
+            .with_message(format!("missing match arms: {missing} {verb} not covered"))
+            .with_label(Label::primary(span).with_message("match is not exhaustive"))
     }
 
     fn collect_missing_pats(&self, decision: &Decision) -> IndexSet<String> {
@@ -251,18 +224,14 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         match Type::from_cond(self.cx, cond, self.cx.ty_of(cond)) {
             Type::Int => self.compile_int_decision(rows, cond),
             Type::Str => self.compile_str_decision(rows, cond),
-            Type::Finite(cases) => {
-                self.compile_finite_decision(rows, cond, cases)
-            }
+            Type::Finite(cases) => self.compile_finite_decision(rows, cond, cases),
         }
     }
 
     fn move_binding_pats(row: &mut Row) {
         row.cols.retain(|col| match &col.pat {
             Pat::Name(id, ty, span) => {
-                row.body
-                    .bindings
-                    .push(Binding::Name(*id, col.value, *ty, *span));
+                row.body.bindings.push(Binding::Name(*id, col.value, *ty, *span));
                 false
             }
             Pat::Wildcard(span) => {
@@ -282,19 +251,10 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             }
         }
 
-        rows[0]
-            .cols
-            .iter()
-            .map(|col| col.value)
-            .max_by_key(|var| counts[var])
-            .unwrap()
+        rows[0].cols.iter().map(|col| col.value).max_by_key(|var| counts[var]).unwrap()
     }
 
-    fn compile_int_decision(
-        &mut self,
-        rows: Vec<Row>,
-        cond: ValueId,
-    ) -> Decision {
+    fn compile_int_decision(&mut self, rows: Vec<Row>, cond: ValueId) -> Decision {
         self.compile_lit_decision(
             rows,
             cond,
@@ -303,11 +263,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         )
     }
 
-    fn compile_str_decision(
-        &mut self,
-        rows: Vec<Row>,
-        cond: ValueId,
-    ) -> Decision {
+    fn compile_str_decision(&mut self, rows: Vec<Row>, cond: ValueId) -> Decision {
         self.compile_lit_decision(
             rows,
             cond,
@@ -316,9 +272,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
         )
     }
 
-    fn compile_lit_decision<
-        K: Eq + core::hash::Hash + Copy + core::fmt::Debug,
-    >(
+    fn compile_lit_decision<K: Eq + core::hash::Hash + Copy + core::fmt::Debug>(
         &mut self,
         rows: Vec<Row>,
         cond: ValueId,
@@ -352,17 +306,14 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
                     continue;
                 }
 
-                // If this row has a guard, we don't want to keep its value as a key, since we do
-                // want to evaluate upcoming cases that could have same value.
+                // If this row has a guard, we don't want to keep its value as a key, since we
+                // do want to evaluate upcoming cases that could have same
+                // value.
                 if row.guard.is_none() {
                     indices.insert(key, type_cases.len());
                 }
 
-                type_cases.push(TypeCase::new_with_rows(
-                    get_ctor(key),
-                    vec![],
-                    vec![row],
-                ));
+                type_cases.push(TypeCase::new_with_rows(get_ctor(key), vec![], vec![row]));
             }
         }
 
@@ -372,9 +323,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
 
         let cases = type_cases
             .into_iter()
-            .map(|case| {
-                Case::new(case.ctor, case.values, self.compile_rows(case.rows))
-            })
+            .map(|case| Case::new(case.ctor, case.values, self.compile_rows(case.rows)))
             .collect();
 
         let fallback = self.compile_rows(fallback_rows);
@@ -418,9 +367,7 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
 
         let cases = type_cases
             .into_iter()
-            .map(|case| {
-                Case::new(case.ctor, case.values, self.compile_rows(case.rows))
-            })
+            .map(|case| Case::new(case.ctor, case.values, self.compile_rows(case.rows)))
             .collect();
 
         Decision::Switch { cond, cases, fallback: None }
@@ -441,8 +388,8 @@ pub(super) enum Decision {
     /// A pattern is missing
     Err,
 
-    /// Evaluates the given `guard` block. If it's evaluated to true, evaluates `body`, otherwise, evaluates
-    /// `fallback`.
+    /// Evaluates the given `guard` block. If it's evaluated to true, evaluates
+    /// `body`, otherwise, evaluates `fallback`.
     Guard { guard: BlockId, body: DecisionBody, fallback: Box<Decision> },
 
     /// Check if a value matches any of the given patterns
@@ -502,11 +449,7 @@ pub(super) struct Case {
 }
 
 impl Case {
-    pub(super) fn new(
-        ctor: Ctor,
-        values: Vec<ValueId>,
-        body: Decision,
-    ) -> Self {
+    pub(super) fn new(ctor: Ctor, values: Vec<ValueId>, body: Decision) -> Self {
         Self { ctor, values, decision: body }
     }
 }
@@ -543,15 +486,9 @@ impl TypeCase {
 }
 
 impl Type {
-    fn from_cond(
-        cx: &mut LowerBody<'_, '_>,
-        cond: ValueId,
-        matched_ty: Ty,
-    ) -> Self {
+    fn from_cond(cx: &mut LowerBody<'_, '_>, cond: ValueId, matched_ty: Ty) -> Self {
         match matched_ty.kind() {
-            TyKind::Unit => {
-                Self::Finite(vec![TypeCase::new(Ctor::Unit, vec![])])
-            }
+            TyKind::Unit => Self::Finite(vec![TypeCase::new(Ctor::Unit, vec![])]),
             TyKind::Bool => Self::Finite(vec![
                 TypeCase::new(Ctor::False, vec![]),
                 TypeCase::new(Ctor::True, vec![]),
@@ -568,19 +505,10 @@ impl Type {
                         let values: Vec<_> = struct_def
                             .fields
                             .iter()
-                            .map(|f| {
-                                cx.field_or_create(
-                                    cond,
-                                    f.name.name(),
-                                    folder.fold(f.ty),
-                                )
-                            })
+                            .map(|f| cx.field_or_create(cond, f.name.name(), folder.fold(f.ty)))
                             .collect();
 
-                        Self::Finite(vec![TypeCase::new(
-                            Ctor::Struct(*adt_id),
-                            values,
-                        )])
+                        Self::Finite(vec![TypeCase::new(Ctor::Struct(*adt_id), values)])
                     }
                     AdtKind::Union(union_def) => {
                         let adt_ty = folder.fold(adt.ty());
@@ -590,10 +518,7 @@ impl Type {
                             .map(|variant| {
                                 let variant_value = cx.create_untracked_value(
                                     adt_ty,
-                                    ValueKind::Variant(
-                                        cond,
-                                        variant.name.name(),
-                                    ),
+                                    ValueKind::Variant(cond, variant.name.name()),
                                 );
 
                                 let values: Vec<_> = variant
@@ -602,10 +527,7 @@ impl Type {
                                     .map(|f| {
                                         cx.create_untracked_value(
                                             folder.fold(f.ty),
-                                            ValueKind::Field(
-                                                variant_value,
-                                                f.name.name(),
-                                            ),
+                                            ValueKind::Field(variant_value, f.name.name()),
                                         )
                                     })
                                     .collect();
@@ -638,14 +560,11 @@ pub(super) enum Ctor {
 
 impl Ctor {
     /// Returns the index of this constructor relative to its type.
-    /// The index must match the order which constructor are defined in `Type::from_ty`
+    /// The index must match the order which constructor are defined in
+    /// `Type::from_ty`
     fn index(&self, db: &Db) -> usize {
         match self {
-            Self::Unit
-            | Self::False
-            | Self::Int(_)
-            | Self::Str(_)
-            | Self::Struct(_) => 0,
+            Self::Unit | Self::False | Self::Int(_) | Self::Str(_) | Self::Struct(_) => 0,
             Self::True => 1,
             Self::Variant(id) => db[*id].index,
         }
@@ -747,12 +666,8 @@ impl Pat {
             hir::MatchPat::Name(id, ty, span) => Self::Name(*id, *ty, *span),
             hir::MatchPat::Wildcard(span) => Self::Wildcard(*span),
             hir::MatchPat::Unit(span) => Self::Ctor(Ctor::Unit, vec![], *span),
-            hir::MatchPat::Bool(true, span) => {
-                Self::Ctor(Ctor::True, vec![], *span)
-            }
-            hir::MatchPat::Bool(false, span) => {
-                Self::Ctor(Ctor::False, vec![], *span)
-            }
+            hir::MatchPat::Bool(true, span) => Self::Ctor(Ctor::True, vec![], *span),
+            hir::MatchPat::Bool(false, span) => Self::Ctor(Ctor::False, vec![], *span),
             hir::MatchPat::Int(value, span) => Self::Int(*value, *span),
             hir::MatchPat::Str(value, span) => Self::Str(*value, *span),
             hir::MatchPat::Adt(adt_id, pats, span) => {
@@ -798,23 +713,14 @@ fn collect_missing_pats(
         Decision::Switch { cond, cases, fallback } => {
             for case in cases {
                 match &case.ctor {
-                    Ctor::Unit => case_infos.push(CaseInfo::new(
-                        *cond,
-                        "{}".to_string(),
-                        vec![],
-                    )),
-                    Ctor::True => case_infos.push(CaseInfo::new(
-                        *cond,
-                        "true".to_string(),
-                        vec![],
-                    )),
-                    Ctor::False => case_infos.push(CaseInfo::new(
-                        *cond,
-                        "false".to_string(),
-                        vec![],
-                    )),
-                    Ctor::Int(_) | Ctor::Str(_) => case_infos
-                        .push(CaseInfo::new(*cond, "_".to_string(), vec![])),
+                    Ctor::Unit => case_infos.push(CaseInfo::new(*cond, "{}".to_string(), vec![])),
+                    Ctor::True => case_infos.push(CaseInfo::new(*cond, "true".to_string(), vec![])),
+                    Ctor::False => {
+                        case_infos.push(CaseInfo::new(*cond, "false".to_string(), vec![]))
+                    }
+                    Ctor::Int(_) | Ctor::Str(_) => {
+                        case_infos.push(CaseInfo::new(*cond, "_".to_string(), vec![]))
+                    }
                     Ctor::Struct(adt_id) => case_infos.push(CaseInfo::new(
                         *cond,
                         cx.cx.db[*adt_id].name.to_string(),

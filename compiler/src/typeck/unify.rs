@@ -16,11 +16,7 @@ impl<'db> Typeck<'db> {
     }
 
     #[inline]
-    pub fn eq_obvious_expr(
-        &mut self,
-        expected: Ty,
-        found_expr: &hir::Expr,
-    ) -> EqResult {
+    pub fn eq_obvious_expr(&mut self, expected: Ty, found_expr: &hir::Expr) -> EqResult {
         self.at(Obligation::obvious(found_expr.span))
             .eq(expected, found_expr.ty)
             .or_coerce(self, found_expr.id)
@@ -43,22 +39,17 @@ impl At<'_, '_> {
                     let expected_ty = expected.display(self.cx.db).to_string();
                     let found_ty = found.display(self.cx.db).to_string();
 
-                    let mut diag = errors::ty_mismatch(
-                        &expected_ty,
-                        &found_ty,
-                        self.obligation.span(),
-                    );
+                    let mut diag =
+                        errors::ty_mismatch(&expected_ty, &found_ty, self.obligation.span());
 
                     match *self.obligation.kind() {
                         ObligationKind::Obvious => (),
                         ObligationKind::Exprs(expected_span, found_span) => {
                             diag.push_labels([
-                                Label::secondary(expected_span).with_message(
-                                    format!("expected `{expected_ty}`"),
-                                ),
-                                Label::secondary(found_span).with_message(
-                                    format!("found `{found_ty}`"),
-                                ),
+                                Label::secondary(expected_span)
+                                    .with_message(format!("expected `{expected_ty}`")),
+                                Label::secondary(found_span)
+                                    .with_message(format!("found `{found_ty}`")),
                             ]);
                         }
                         ObligationKind::ReturnTy(return_ty_span) => {
@@ -73,8 +64,7 @@ impl At<'_, '_> {
                 }
                 UnifyError::InfiniteTy { ty } => {
                     let ty = self.cx.normalize(ty);
-                    let obligation =
-                        Obligation::obvious(self.obligation.span());
+                    let obligation = Obligation::obvious(self.obligation.span());
 
                     Diagnostic::error()
                         .with_message(format!(
@@ -91,21 +81,11 @@ impl At<'_, '_> {
 }
 
 impl Ty {
-    pub fn unify(
-        self,
-        other: Ty,
-        cx: &Typeck,
-        options: UnifyOptions,
-    ) -> UnifyResult {
+    pub fn unify(self, other: Ty, cx: &Typeck, options: UnifyOptions) -> UnifyResult {
         UnifyCx { cx, options }.unify_ty_ty(self, other)
     }
 
-    pub fn can_unify(
-        self,
-        other: Ty,
-        cx: &Typeck,
-        options: UnifyOptions,
-    ) -> UnifyResult {
+    pub fn can_unify(self, other: Ty, cx: &Typeck, options: UnifyOptions) -> UnifyResult {
         let snapshot = cx.storage.borrow_mut().snapshot();
         let result = self.unify(other, cx, options);
         cx.storage.borrow_mut().rollback_to(snapshot);
@@ -236,12 +216,9 @@ impl UnifyCx<'_, '_> {
                 }
             }
 
-            (TyKind::Ref(a, ma), TyKind::Ref(b, mb)) if *ma == *mb => {
-                self.unify_ty_ty(*a, *b)
-            }
+            (TyKind::Ref(a, ma), TyKind::Ref(b, mb)) if *ma == *mb => self.unify_ty_ty(*a, *b),
 
-            (TyKind::Slice(a), TyKind::Slice(b))
-            | (TyKind::RawPtr(a), TyKind::RawPtr(b)) => {
+            (TyKind::Slice(a), TyKind::Slice(b)) | (TyKind::RawPtr(a), TyKind::RawPtr(b)) => {
                 self.unify_ty_ty(*a, *b)
             }
 
@@ -252,10 +229,7 @@ impl UnifyCx<'_, '_> {
             }
 
             // Unify ?int ~ ?int
-            (
-                TyKind::Infer(InferTy::Int(a)),
-                TyKind::Infer(InferTy::Int(b)),
-            ) => {
+            (TyKind::Infer(InferTy::Int(a)), TyKind::Infer(InferTy::Int(b))) => {
                 self.cx.storage.borrow_mut().int.unify_var_var(*a, *b)?;
                 Ok(())
             }
@@ -283,10 +257,7 @@ impl UnifyCx<'_, '_> {
             }
 
             // Unify ?float ~ ?float
-            (
-                TyKind::Infer(InferTy::Float(a)),
-                TyKind::Infer(InferTy::Float(b)),
-            ) => {
+            (TyKind::Infer(InferTy::Float(a)), TyKind::Infer(InferTy::Float(b))) => {
                 self.cx.storage.borrow_mut().float.unify_var_var(*a, *b)?;
                 Ok(())
             }
@@ -294,11 +265,7 @@ impl UnifyCx<'_, '_> {
             // Unify ?float ~ float
             (TyKind::Float(fty), TyKind::Infer(InferTy::Float(var)))
             | (TyKind::Infer(InferTy::Float(var)), TyKind::Float(fty)) => {
-                self.cx
-                    .storage
-                    .borrow_mut()
-                    .float
-                    .unify_var_value(*var, Some(*fty))?;
+                self.cx.storage.borrow_mut().float.unify_var_value(*var, Some(*fty))?;
                 Ok(())
             }
 
@@ -316,11 +283,7 @@ impl UnifyCx<'_, '_> {
                 }
             }
 
-            (TyKind::Param(_), _) | (_, TyKind::Param(_))
-                if self.options.unify_param_tys =>
-            {
-                Ok(())
-            }
+            (TyKind::Param(_), _) | (_, TyKind::Param(_)) if self.options.unify_param_tys => Ok(()),
 
             (_, _) => Err(UnifyError::TyMismatch { a, b }),
         }

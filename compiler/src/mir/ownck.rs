@@ -20,17 +20,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.emit_result(result);
     }
 
-    fn try_move_aux(
-        &mut self,
-        value: ValueId,
-        moved_to: Span,
-    ) -> DiagnosticResult<()> {
+    fn try_move_aux(&mut self, value: ValueId, moved_to: Span) -> DiagnosticResult<()> {
         // If the value is copy, we don't need to move it.
         // Just check that its parents can be used.
         if !self.value_is_move(value) {
-            self.walk_parents(value, |this, parent, _| {
-                this.check_if_moved(parent, moved_to)
-            })?;
+            self.walk_parents(value, |this, parent, _| this.check_if_moved(parent, moved_to))?;
 
             return Ok(());
         }
@@ -46,14 +40,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             Ok(())
         })
         .unwrap();
-        self.walk_parents(
-            value,
-            |this, parent, child| -> DiagnosticResult<()> {
-                this.check_move_out_of_ref(parent, child, moved_to)?;
-                this.set_partially_moved(parent, moved_to);
-                Ok(())
-            },
-        )?;
+        self.walk_parents(value, |this, parent, child| -> DiagnosticResult<()> {
+            this.check_move_out_of_ref(parent, child, moved_to)?;
+            this.set_partially_moved(parent, moved_to);
+            Ok(())
+        })?;
 
         self.insert_loop_move(value, moved_to);
         self.check_move_out_of_global(value, moved_to)?;
@@ -68,59 +59,38 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.emit_result(result);
     }
 
-    fn check_can_move(
-        &mut self,
-        value: ValueId,
-        moved_to: Span,
-    ) -> DiagnosticResult<()> {
+    fn check_can_move(&mut self, value: ValueId, moved_to: Span) -> DiagnosticResult<()> {
         match self.value_states.cannot_move(value) {
             Some(CannotMove::SliceIndex) => Err(Diagnostic::error()
                 .with_message(format!(
                     "cannot move element of type `{}` out of slice",
                     self.ty_of(value).display(self.cx.db)
                 ))
-                .with_label(
-                    Label::primary(moved_to).with_message("cannot move out"),
-                )),
+                .with_label(Label::primary(moved_to).with_message("cannot move out"))),
             Some(CannotMove::SliceSlice) => Err(Diagnostic::error()
                 .with_message("slice must be behind a `&` or `&mut` reference")
-                .with_label(
-                    Label::primary(moved_to).with_message("cannot move slice"),
-                )),
+                .with_label(Label::primary(moved_to).with_message("cannot move slice"))),
             None => Ok(()),
         }
     }
 
-    fn check_if_moved(
-        &mut self,
-        value: ValueId,
-        moved_to: Span,
-    ) -> DiagnosticResult<()> {
-        if !self.value_is_move(value)
-            || self.value_states.cannot_move(value).is_some()
-        {
+    fn check_if_moved(&mut self, value: ValueId, moved_to: Span) -> DiagnosticResult<()> {
+        if !self.value_is_move(value) || self.value_states.cannot_move(value).is_some() {
             return Ok(());
         }
 
         match self.value_state(value) {
             ValueState::Owned => Ok(()),
-            ValueState::Moved(already_moved_to)
-            | ValueState::MaybeMoved(already_moved_to) => Err(self
-                .use_after_move_err(
-                    value,
-                    moved_to,
-                    already_moved_to,
-                    "move",
-                    "moved",
-                )),
-            ValueState::PartiallyMoved(already_moved_to) => Err(self
-                .use_after_move_err(
-                    value,
-                    moved_to,
-                    already_moved_to,
-                    "partial move",
-                    "partially moved",
-                )),
+            ValueState::Moved(already_moved_to) | ValueState::MaybeMoved(already_moved_to) => {
+                Err(self.use_after_move_err(value, moved_to, already_moved_to, "move", "moved"))
+            }
+            ValueState::PartiallyMoved(already_moved_to) => Err(self.use_after_move_err(
+                value,
+                moved_to,
+                already_moved_to,
+                "partial move",
+                "partially moved",
+            )),
         }
     }
 
@@ -137,35 +107,23 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         Diagnostic::error()
             .with_message(format!("use of {past_move_kind} {name}"))
             .with_label(
-                Label::primary(moved_to).with_message(format!(
-                    "{name} used here after {move_kind}"
-                )),
+                Label::primary(moved_to)
+                    .with_message(format!("{name} used here after {move_kind}")),
             )
             .with_label(
-                Label::secondary(already_moved_to).with_message(format!(
-                    "{name} already {past_move_kind} here"
-                )),
+                Label::secondary(already_moved_to)
+                    .with_message(format!("{name} already {past_move_kind} here")),
             )
     }
 
-    fn check_move_out_of_global(
-        &self,
-        value: ValueId,
-        moved_to: Span,
-    ) -> DiagnosticResult<()> {
+    fn check_move_out_of_global(&self, value: ValueId, moved_to: Span) -> DiagnosticResult<()> {
         if let ValueKind::Global(id) = self.body.value(value).kind {
             let global = &self.cx.mir.globals[id];
             let def = &self.cx.db[global.def_id];
 
             Err(Diagnostic::error()
-                .with_message(format!(
-                    "cannot move out of global item `{}`",
-                    def.qpath
-                ))
-                .with_label(
-                    Label::primary(moved_to)
-                        .with_message("global item moved here"),
-                ))
+                .with_message(format!("cannot move out of global item `{}`", def.qpath))
+                .with_label(Label::primary(moved_to).with_message("global item moved here")))
         } else {
             Ok(())
         }
@@ -186,10 +144,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.value_name(field),
                     parent_ty.display(self.cx.db)
                 ))
-                .with_label(Label::primary(moved_to).with_message(format!(
-                    "cannot move out of {}",
-                    self.value_name(parent)
-                ))))
+                .with_label(
+                    Label::primary(moved_to)
+                        .with_message(format!("cannot move out of {}", self.value_name(parent))),
+                ))
         } else {
             Ok(())
         }
@@ -198,8 +156,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn insert_loop_move(&mut self, value: ValueId, span: Span) {
         let scope = self.scope();
 
-        if scope.loop_depth == 0 || self.value_depth(value) >= scope.loop_depth
-        {
+        if scope.loop_depth == 0 || self.value_depth(value) >= scope.loop_depth {
             return;
         }
 
@@ -222,15 +179,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.cx.diagnostics.push(
                     Diagnostic::error()
                         .with_message(format!("use of moved {name}"))
-                        .with_label(Label::primary(moved_to).with_message(
-                            format!(
-                                "{name} moved here, in the previous loop \
-                                 iteration"
-                            ),
-                        ))
+                        .with_label(Label::primary(moved_to).with_message(format!(
+                            "{name} moved here, in the previous loop iteration"
+                        )))
                         .with_label(
-                            Label::secondary(self.scope().span)
-                                .with_message("inside this loop"),
+                            Label::secondary(self.scope().span).with_message("inside this loop"),
                         ),
                 );
             }
@@ -242,26 +195,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.emit_result(result);
     }
 
-    fn move_out_aux(
-        &mut self,
-        value: ValueId,
-        moved_to: Span,
-    ) -> DiagnosticResult<()> {
+    fn move_out_aux(&mut self, value: ValueId, moved_to: Span) -> DiagnosticResult<()> {
         self.check_if_moved(value, moved_to)?;
 
         let scope = self.scope_mut();
         scope.created_values.remove(&value);
         scope.moved_out.insert(value);
 
-        self.walk_fields(value, |this, field| {
-            this.move_out_aux(field, moved_to)
-        })
+        self.walk_fields(value, |this, field| this.move_out_aux(field, moved_to))
     }
 
     pub(super) fn value_state(&mut self, value: ValueId) -> ValueState {
-        if let Some(state) =
-            self.value_states.get(self.current_block, value).cloned()
-        {
+        if let Some(state) = self.value_states.get(self.current_block, value).cloned() {
             return state;
         }
 
@@ -273,8 +218,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     fn solve_value_state(&self, value: ValueId) -> ValueState {
         let block = self.current_block;
 
-        let mut work: Vec<BlockId> =
-            self.body.block(block).predecessors.iter().copied().collect();
+        let mut work: Vec<BlockId> = self.body.block(block).predecessors.iter().copied().collect();
         let mut visited = FxHashSet::from_iter([block]);
         let mut result_state = ValueState::Owned;
         let mut last_move_span: Option<Span> = None;
@@ -299,13 +243,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         is_initial_state = false;
                     }
                     ValueState::MaybeMoved(_) => break,
-                    ValueState::Owned
-                    | ValueState::Moved(_)
-                    | ValueState::PartiallyMoved(_) => {
+                    ValueState::Owned | ValueState::Moved(_) | ValueState::PartiallyMoved(_) => {
                         if result_state != state {
                             result_state = ValueState::MaybeMoved(
-                                last_move_span
-                                    .expect("to have been moved somewhere"),
+                                last_move_span.expect("to have been moved somewhere"),
                             );
                         }
                     }
@@ -314,11 +255,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 // Add this block's predecessors, since we need to
                 // calculate the value's state for those blocks too
                 work.extend(
-                    self.body
-                        .block(block)
-                        .predecessors
-                        .iter()
-                        .filter(|b| !visited.contains(b)),
+                    self.body.block(block).predecessors.iter().filter(|b| !visited.contains(b)),
                 );
             }
         }
@@ -347,19 +284,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.set_value_state(value, ValueState::Moved(moved_to));
     }
 
-    pub(super) fn set_partially_moved(
-        &mut self,
-        value: ValueId,
-        moved_to: Span,
-    ) {
+    pub(super) fn set_partially_moved(&mut self, value: ValueId, moved_to: Span) {
         self.set_value_state(value, ValueState::PartiallyMoved(moved_to));
     }
 
-    pub(super) fn set_value_state(
-        &mut self,
-        value: ValueId,
-        state: ValueState,
-    ) {
+    pub(super) fn set_value_state(&mut self, value: ValueId, state: ValueState) {
         self.value_states.insert(self.current_block, value, state);
     }
 
@@ -469,11 +398,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         .unwrap();
     }
 
-    pub(super) fn destroy_value_entirely(
-        &mut self,
-        value: ValueId,
-        span: Span,
-    ) {
+    pub(super) fn destroy_value_entirely(&mut self, value: ValueId, span: Span) {
         self.destroy_fields(value, span);
         self.destroy_value(value, span);
     }
@@ -492,19 +417,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.body.destroy_flags.insert(value, flag);
     }
 
-    pub(super) fn destroy_and_set_flag(
-        &mut self,
-        value: ValueId,
-        destroy_glue: bool,
-        span: Span,
-    ) {
+    pub(super) fn destroy_and_set_flag(&mut self, value: ValueId, destroy_glue: bool, span: Span) {
         self.ins(self.current_block).destroy(value, destroy_glue, span);
         self.set_destroy_flag(value);
     }
 
     fn set_destroy_flag(&mut self, value: ValueId) {
-        if let Some(destroy_flag) = self.body.destroy_flags.get(&value).copied()
-        {
+        if let Some(destroy_flag) = self.body.destroy_flags.get(&value).copied() {
             let const_false = self.const_bool(false);
             self.ins(self.current_block).store(const_false, destroy_flag);
             self.walk_fields(value, |this, field| {
@@ -534,12 +453,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
-    pub(super) fn check_assign_mutability(
-        &mut self,
-        kind: AssignKind,
-        lhs: ValueId,
-        span: Span,
-    ) {
+    pub(super) fn check_assign_mutability(&mut self, kind: AssignKind, lhs: ValueId, span: Span) {
         if let Err(root) = self.value_imm_root(lhs, BreakOnMutRef::Yes) {
             self.emit_assign_mutability_err(kind, lhs, span, root);
         }
@@ -600,8 +514,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 };
 
                 Diagnostic::error().with_message(message).with_label(
-                    Label::primary(span)
-                        .with_message(format!("{prefix} immutable value")),
+                    Label::primary(span).with_message(format!("{prefix} immutable value")),
                 )
             }
             ImmutableRoot::Ref(root) => {
@@ -616,9 +529,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 Diagnostic::error()
                     .with_message(message)
-                    .with_label(Label::primary(span).with_message(format!(
-                        "{prefix} to immutable reference"
-                    )))
+                    .with_label(
+                        Label::primary(span)
+                            .with_message(format!("{prefix} to immutable reference")),
+                    )
                     .with_note(format!(
                         "{} is of type `{}`, which is immutable",
                         root_name,
@@ -642,10 +556,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
             }
             ValueKind::Global(id) => {
-                if self.def_is_imm(
-                    self.cx.mir.globals[*id].def_id,
-                    self.ty_of(value),
-                ) {
+                if self.def_is_imm(self.cx.mir.globals[*id].def_id, self.ty_of(value)) {
                     Err(ImmutableRoot::Def(value))
                 } else {
                     Ok(())
@@ -654,9 +565,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             ValueKind::Field(parent, _) | ValueKind::Variant(parent, _) => {
                 match (self.value_ty_imm_root(*parent), break_on_mut_ty) {
                     (Ok(()), BreakOnMutRef::Yes) => Ok(()),
-                    (Ok(()), BreakOnMutRef::No) => {
-                        self.value_imm_root(*parent, break_on_mut_ty)
-                    }
+                    (Ok(()), BreakOnMutRef::No) => self.value_imm_root(*parent, break_on_mut_ty),
                     (Err(err), _) => Err(err),
                 }
             }
@@ -697,20 +606,11 @@ impl ValueStates {
         Self { states: FxHashMap::default(), cannot_move: FxHashMap::default() }
     }
 
-    pub(super) fn get(
-        &self,
-        block: BlockId,
-        value: ValueId,
-    ) -> Option<&ValueState> {
+    pub(super) fn get(&self, block: BlockId, value: ValueId) -> Option<&ValueState> {
         self.states.get(&block).and_then(|b| b.states.get(&value))
     }
 
-    pub(super) fn insert(
-        &mut self,
-        block: BlockId,
-        value: ValueId,
-        state: ValueState,
-    ) {
+    pub(super) fn insert(&mut self, block: BlockId, value: ValueId, state: ValueState) {
         self.states.entry(block).or_default().states.insert(value, state);
     }
 
@@ -718,10 +618,7 @@ impl ValueStates {
         self.cannot_move.insert(value, kind);
     }
 
-    pub(super) fn cannot_move(
-        &mut self,
-        value: ValueId,
-    ) -> Option<&CannotMove> {
+    pub(super) fn cannot_move(&mut self, value: ValueId) -> Option<&CannotMove> {
         self.cannot_move.get(&value)
     }
 }
@@ -794,7 +691,8 @@ pub(super) enum ValueState {
     Moved(Span),
 
     /// The value has been moved in one branch, but is still
-    /// owned in another branch. This value should be dropped conditionally at the end of its scope
+    /// owned in another branch. This value should be dropped conditionally at
+    /// the end of its scope
     MaybeMoved(Span),
 
     // Some of this value's fields have been moved, and the parent value is considered as moved.

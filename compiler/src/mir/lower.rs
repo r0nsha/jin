@@ -3,9 +3,7 @@ use indexmap::IndexSet;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    db::{
-        AdtField, AdtKind, Db, DefId, DefKind, Intrinsic, StructKind, VariantId,
-    },
+    db::{AdtField, AdtKind, Db, DefId, DefKind, Intrinsic, StructKind, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     hir::{FnKind, Hir},
@@ -14,9 +12,8 @@ use crate::{
     mir::{
         builder::InstBuilder,
         ownck::{CannotMove, ValueState, ValueStates},
-        pmatch, AdtId, Block, BlockId, Body, Const, Fn, FnParam, FnSig,
-        FnSigId, FxHashMap, Global, GlobalId, GlobalKind, Inst, Mir,
-        RtCallKind, Span, StaticGlobal, UnOp, ValueId, ValueKind,
+        pmatch, AdtId, Block, BlockId, Body, Const, Fn, FnParam, FnSig, FnSigId, FxHashMap, Global,
+        GlobalId, GlobalKind, Inst, Mir, RtCallKind, Span, StaticGlobal, UnOp, ValueId, ValueKind,
     },
     span::Spanned,
     sym,
@@ -86,12 +83,7 @@ impl<'db> Lower<'db> {
             self.id_to_global.insert(let_.id, id);
         }
 
-        for f in self
-            .hir
-            .fns
-            .iter()
-            .filter(|f| matches!(f.kind, FnKind::Bare { .. }))
-        {
+        for f in self.hir.fns.iter().filter(|f| matches!(f.kind, FnKind::Bare { .. })) {
             let sig = self.id_to_fn_sig[&f.def_id];
             self.lower_fn_body(sig, f);
         }
@@ -110,10 +102,7 @@ impl<'db> Lower<'db> {
         if let Some(let_) = let_ {
             self.lower_global_let(let_).expect("to output a GlobalId")
         } else {
-            panic!(
-                "global let {} not found in hir.lets",
-                self.db[def_id].qpath
-            );
+            panic!("global let {} not found in hir.lets", self.db[def_id].qpath);
         }
     }
 
@@ -137,8 +126,7 @@ impl<'db> Lower<'db> {
         let def = &self.db[adt.def_id];
         let struct_def = adt.as_struct().unwrap();
 
-        let mangled_name =
-            ustr(&def.qpath.clone().child(ustr("ctor")).join_with("_"));
+        let mangled_name = ustr(&def.qpath.clone().child(ustr("ctor")).join_with("_"));
         let display_name = ustr(&def.qpath.join());
 
         let params = Self::adt_fields_to_fn_params(&struct_def.fields);
@@ -170,12 +158,7 @@ impl<'db> Lower<'db> {
             }
         };
 
-        Self::ctor_init_adt_fields(
-            &mut body,
-            start_block,
-            this,
-            &struct_def.fields,
-        );
+        Self::ctor_init_adt_fields(&mut body, start_block, this, &struct_def.fields);
 
         // Return the struct
         body.ins(start_block).ret(this);
@@ -201,10 +184,8 @@ impl<'db> Lower<'db> {
         let adt = &self.db[variant.adt_id];
         let def = &self.db[adt.def_id];
 
-        let mangled_name =
-            ustr(&def.qpath.clone().child(variant.name.name()).join_with("_"));
-        let display_name =
-            ustr(&def.qpath.clone().child(variant.name.name()).join());
+        let mangled_name = ustr(&def.qpath.clone().child(variant.name.name()).join_with("_"));
+        let display_name = ustr(&def.qpath.clone().child(variant.name.name()).join());
 
         let params = Self::adt_fields_to_fn_params(&variant.fields);
         let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
@@ -230,25 +211,15 @@ impl<'db> Lower<'db> {
 
         // Set the tag to this variant
         let uint = self.db.types.uint;
-        let tag_field =
-            body.create_value(uint, ValueKind::Field(this, ustr("tag")));
-        let tag_value = body.create_value(
-            uint,
-            ValueKind::Const(Const::Int(variant.index as i128)),
-        );
+        let tag_field = body.create_value(uint, ValueKind::Field(this, ustr("tag")));
+        let tag_value =
+            body.create_value(uint, ValueKind::Const(Const::Int(variant.index as i128)));
         body.ins(start_block).store(tag_value, tag_field);
 
-        let this_variant = body.create_value(
-            adt.ty(),
-            ValueKind::Variant(this, variant.name.name()),
-        );
+        let this_variant =
+            body.create_value(adt.ty(), ValueKind::Variant(this, variant.name.name()));
 
-        Self::ctor_init_adt_fields(
-            &mut body,
-            start_block,
-            this_variant,
-            &variant.fields,
-        );
+        Self::ctor_init_adt_fields(&mut body, start_block, this_variant, &variant.fields);
 
         // Return the struct
         body.ins(start_block).ret(this);
@@ -274,19 +245,12 @@ impl<'db> Lower<'db> {
             .collect()
     }
 
-    fn ctor_init_adt_fields(
-        body: &mut Body,
-        block: BlockId,
-        this: ValueId,
-        fields: &[AdtField],
-    ) {
+    fn ctor_init_adt_fields(body: &mut Body, block: BlockId, this: ValueId, fields: &[AdtField]) {
         for (idx, field) in fields.iter().enumerate() {
             let name = field.name.name();
             let ty = field.ty;
-            let field_value =
-                body.create_value(ty, ValueKind::Field(this, name));
-            let param =
-                body.create_value(ty, ValueKind::Param(DefId::null(), idx));
+            let field_value = body.create_value(ty, ValueKind::Field(this, name));
+            let param = body.create_value(ty, ValueKind::Param(DefId::null(), idx));
             body.ins(block).store(param, field_value);
         }
     }
@@ -365,10 +329,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     match &param.pat {
                         Pat::Name(name) => {
                             let id = name.id;
-                            let value = self.create_value(
-                                param.ty,
-                                ValueKind::Param(id, idx),
-                            );
+                            let value = self.create_value(param.ty, ValueKind::Param(id, idx));
                             self.create_destroy_flag(value);
                             self.locals.insert(id, value);
                         }
@@ -417,19 +378,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 self.body.cleanup();
 
-                let kind = if self.body.blocks.is_empty()
-                    && self.body.values().len() == 1
-                {
+                let kind = if self.body.blocks.is_empty() && self.body.values().len() == 1 {
                     let value = self.body.values.swap_remove(ValueId(0));
-                    let ValueKind::Const(value) = value.kind else {
-                        unreachable!()
-                    };
+                    let ValueKind::Const(value) = value.kind else { unreachable!() };
                     GlobalKind::Const(value)
                 } else {
-                    GlobalKind::Static(StaticGlobal {
-                        body: self.body,
-                        result: value,
-                    })
+                    GlobalKind::Static(StaticGlobal { body: self.body, result: value })
                 };
 
                 let id = self.cx.mir.globals.insert_with_key(|id| Global {
@@ -460,14 +414,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 match &let_.pat {
                     Pat::Name(name) => {
                         let init = self.lower_input_expr(&let_.value);
-                        let value = self.push_inst_with(
-                            let_.ty,
-                            ValueKind::Local(name.id),
-                            |value| Inst::StackAlloc {
-                                value,
-                                init: Some(init),
-                            },
-                        );
+                        let value =
+                            self.push_inst_with(let_.ty, ValueKind::Local(name.id), |value| {
+                                Inst::StackAlloc { value, init: Some(init) }
+                            });
                         self.create_destroy_flag(value);
                         self.locals.insert(name.id, value);
                     }
@@ -497,8 +447,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 }
             }
             hir::ExprKind::Match(match_) => {
-                let output = self.push_inst_with_register(expr.ty, |value| {
-                    Inst::StackAlloc { value, init: None }
+                let output = self.push_inst_with_register(expr.ty, |value| Inst::StackAlloc {
+                    value,
+                    init: None,
                 });
 
                 let value = self.lower_expr(&match_.expr);
@@ -525,21 +476,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 state.join_block = self.body.create_block("match_join");
 
-                if let Ok((decision, new_guards)) =
-                    pmatch::compile(self, rows, expr.span)
-                {
+                if let Ok((decision, new_guards)) = pmatch::compile(self, rows, expr.span) {
                     for (new_guard, old_guard) in new_guards {
-                        state
-                            .guards
-                            .insert(new_guard, state.guards[&old_guard]);
+                        state.guards.insert(new_guard, state.guards[&old_guard]);
                     }
 
-                    self.lower_decision(
-                        &mut state,
-                        decision,
-                        self.current_block,
-                        vec![],
-                    );
+                    self.lower_decision(&mut state, decision, self.current_block, vec![]);
                 }
 
                 self.position_at(state.join_block);
@@ -550,10 +492,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let start_block = self.body.create_block("loop_start");
                 let end_block = self.body.create_block("loop_end");
 
-                self.enter_scope(
-                    ScopeKind::Loop(LoopScope::new(end_block)),
-                    expr.span,
-                );
+                self.enter_scope(ScopeKind::Loop(LoopScope::new(end_block)), expr.span);
 
                 self.ins(self.current_block).br(start_block);
                 self.position_at(start_block);
@@ -561,14 +500,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 if let Some(cond_expr) = &loop_.cond {
                     let cond = self.lower_input_expr(cond_expr);
 
-                    let not_cond = self.push_inst_with_register(
-                        self.cx.db.types.bool,
-                        |value| Inst::Unary {
-                            value,
-                            inner: cond,
-                            op: UnOp::Not,
-                        },
-                    );
+                    let not_cond = self.push_inst_with_register(self.cx.db.types.bool, |value| {
+                        Inst::Unary { value, inner: cond, op: UnOp::Not }
+                    });
 
                     self.ins(start_block).brif(not_cond, end_block, None);
                 }
@@ -588,10 +522,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Break => {
                 self.destroy_loop_values(expr.span);
 
-                let end_block = self
-                    .closest_loop_scope()
-                    .expect("to be inside a loop block")
-                    .end_block;
+                let end_block =
+                    self.closest_loop_scope().expect("to be inside a loop block").end_block;
                 self.ins(self.current_block).br(end_block);
 
                 self.const_unit()
@@ -615,10 +547,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     result.unwrap_or_else(|| self.const_unit())
                 };
 
-                self.move_out(
-                    result,
-                    block.exprs.last().map_or(expr.span, |e| e.span),
-                );
+                self.move_out(result, block.exprs.last().map_or(expr.span, |e| e.span));
                 self.exit_scope();
 
                 result
@@ -631,55 +560,50 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Call(call) => {
                 let entered = self.enter_call_scope(expr.span);
                 let callee = self.lower_input_expr(&call.callee);
-                let intrinsic =
-                    if let ValueKind::Fn(id) = &self.body.value(callee).kind {
-                        self.cx
-                            .db
-                            .intrinsics
-                            .get(&self.cx.mir.fn_sigs[*id].def_id)
-                            .copied()
-                    } else {
-                        None
-                    };
+                let intrinsic = if let ValueKind::Fn(id) = &self.body.value(callee).kind {
+                    self.cx.db.intrinsics.get(&self.cx.mir.fn_sigs[*id].def_id).copied()
+                } else {
+                    None
+                };
 
-                let call_result =
-                    if let Some(intrinsic) = intrinsic {
-                        let args = self.lower_intrinsic_call_args(&call.args);
-                        self.lower_intrinsic_call(expr, intrinsic, args)
-                    } else {
-                        let args = self.lower_call_args(&call.args);
-                        self.push_inst_with_register(expr.ty, |value| {
-                            Inst::Call { value, callee, args, span: expr.span }
-                        })
-                    };
+                let call_result = if let Some(intrinsic) = intrinsic {
+                    let args = self.lower_intrinsic_call_args(&call.args);
+                    self.lower_intrinsic_call(expr, intrinsic, args)
+                } else {
+                    let args = self.lower_call_args(&call.args);
+                    self.push_inst_with_register(expr.ty, |value| Inst::Call {
+                        value,
+                        callee,
+                        args,
+                        span: expr.span,
+                    })
+                };
 
                 self.exit_call_scope(call_result, entered);
 
                 call_result
             }
-            hir::ExprKind::Unary(un) => {
-                match un.op {
-                    UnOp::Neg | UnOp::Not => {
-                        let inner = self.lower_input_expr(&un.expr);
-                        self.push_inst_with_register(expr.ty, |value| {
-                            Inst::Unary { value, inner, op: un.op }
-                        })
-                    }
-                    UnOp::Ref(_) => {
-                        let inner = self.lower_expr(&un.expr);
-                        self.try_use(inner, un.expr.span);
-                        self.create_ref(inner, expr.ty, expr.span)
-                    }
+            hir::ExprKind::Unary(un) => match un.op {
+                UnOp::Neg | UnOp::Not => {
+                    let inner = self.lower_input_expr(&un.expr);
+                    self.push_inst_with_register(expr.ty, |value| Inst::Unary {
+                        value,
+                        inner,
+                        op: un.op,
+                    })
                 }
-            }
+                UnOp::Ref(_) => {
+                    let inner = self.lower_expr(&un.expr);
+                    self.try_use(inner, un.expr.span);
+                    self.create_ref(inner, expr.ty, expr.span)
+                }
+            },
             hir::ExprKind::Binary(bin) => {
                 let lhs = self.lower_input_expr(&bin.lhs);
                 let rhs = self.lower_input_expr(&bin.rhs);
 
-                let value =
-                    self.create_value(expr.ty, ValueKind::Register(None));
-                self.ins(self.current_block)
-                    .binary(value, lhs, rhs, bin.op, expr.span);
+                let value = self.create_value(expr.ty, ValueKind::Register(None));
+                self.ins(self.current_block).binary(value, lhs, rhs, bin.op, expr.span);
                 value
             }
             hir::ExprKind::Cast(cast) => {
@@ -698,33 +622,23 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.field_or_create(value, name, expr.ty)
             }
             hir::ExprKind::Index(idx) => {
-                let SliceIndexResult { elem, .. } =
-                    self.lower_slice_index(idx, expr.span);
+                let SliceIndexResult { elem, .. } = self.lower_slice_index(idx, expr.span);
 
                 if self.ty_of(elem).is_move(self.cx.db) {
                     // An element can never be moved out of its slice
-                    self.value_states
-                        .set_cannot_move(elem, CannotMove::SliceIndex);
+                    self.value_states.set_cannot_move(elem, CannotMove::SliceIndex);
                 }
 
                 elem
             }
             hir::ExprKind::Slice(slice) => self.lower_slice_slice(expr, slice),
-            hir::ExprKind::Name(name) => {
-                self.lower_name(name.id, &name.instantiation)
-            }
+            hir::ExprKind::Name(name) => self.lower_name(name.id, &name.instantiation),
             hir::ExprKind::Variant(variant) => {
                 let id = self.cx.get_or_create_variant_ctor(variant.id);
-                let value = self.create_value(
-                    self.cx.mir.fn_sigs[id].ty,
-                    ValueKind::Fn(id),
-                );
+                let value = self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id));
 
                 if !variant.instantiation.is_empty() {
-                    self.body.create_instantation(
-                        value,
-                        variant.instantiation.clone(),
-                    );
+                    self.body.create_instantation(value, variant.instantiation.clone());
                 }
 
                 value
@@ -737,43 +651,31 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     self.const_int(uint, lit.exprs.len() as _)
                 };
 
-                let slice = self.push_inst_with_register(expr.ty, |value| {
-                    Inst::SliceAlloc { value, cap }
-                });
+                let slice =
+                    self.push_inst_with_register(expr.ty, |value| Inst::SliceAlloc { value, cap });
 
                 for (index, expr) in lit.exprs.iter().enumerate() {
                     let value = self.lower_input_expr(expr);
 
                     let index = self.const_int(uint, index as _);
-                    self.ins(self.current_block)
-                        .slice_store_unchecked(slice, index, value);
+                    self.ins(self.current_block).slice_store_unchecked(slice, index, value);
                 }
 
                 if !lit.exprs.is_empty() {
                     // slice.len = lit.exprs.len()
                     let value = self.const_int(uint, lit.exprs.len() as i128);
-                    let len_field = self.create_untracked_value(
-                        uint,
-                        ValueKind::Field(slice, ustr(sym::LEN)),
-                    );
+                    let len_field =
+                        self.create_untracked_value(uint, ValueKind::Field(slice, ustr(sym::LEN)));
                     self.ins(self.current_block).store(value, len_field);
                 }
 
                 slice
             }
-            hir::ExprKind::StrLit(lit) => {
-                self.lower_const(&Const::Str(*lit), expr.ty)
-            }
+            hir::ExprKind::StrLit(lit) => self.lower_const(&Const::Str(*lit), expr.ty),
             #[allow(clippy::cast_possible_wrap)]
-            hir::ExprKind::IntLit(lit) => {
-                self.lower_const(&Const::Int(*lit as i128), expr.ty)
-            }
-            hir::ExprKind::FloatLit(lit) => {
-                self.lower_const(&Const::Float(*lit), expr.ty)
-            }
-            hir::ExprKind::BoolLit(lit) => {
-                self.lower_const(&Const::Bool(*lit), expr.ty)
-            }
+            hir::ExprKind::IntLit(lit) => self.lower_const(&Const::Int(*lit as i128), expr.ty),
+            hir::ExprKind::FloatLit(lit) => self.lower_const(&Const::Float(*lit), expr.ty),
+            hir::ExprKind::BoolLit(lit) => self.lower_const(&Const::Bool(*lit), expr.ty),
         }
     }
 
@@ -790,12 +692,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         new_args.into_iter().map(|(_, arg)| arg).collect()
     }
 
-    // This is very similar to `lower_call_args`, the only difference is that ref args are not
-    // incremented.
-    fn lower_intrinsic_call_args(
-        &mut self,
-        args: &[hir::CallArg],
-    ) -> Vec<ValueId> {
+    // This is very similar to `lower_call_args`, the only difference is that ref
+    // args are not incremented.
+    fn lower_intrinsic_call_args(&mut self, args: &[hir::CallArg]) -> Vec<ValueId> {
         let mut new_args = vec![];
 
         for arg in args {
@@ -828,17 +727,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
-    fn lower_assign_rhs(
-        &mut self,
-        assign: &hir::Assign,
-        lhs: ValueId,
-        span: Span,
-    ) -> ValueId {
+    fn lower_assign_rhs(&mut self, assign: &hir::Assign, lhs: ValueId, span: Span) -> ValueId {
         let rhs = self.lower_input_expr(&assign.rhs);
 
         if let Some(op) = assign.op {
-            let result =
-                self.create_value(self.ty_of(rhs), ValueKind::Register(None));
+            let result = self.create_value(self.ty_of(rhs), ValueKind::Register(None));
             self.ins(self.current_block).binary(result, lhs, rhs, op, span);
             result
         } else {
@@ -872,17 +765,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let rhs = self.lower_input_expr(&swap.rhs);
 
         if self.is_builtin_field(lhs).is_some() {
-            self.cx.diagnostics.push(self.assign_builtin_field_err(
-                "swap",
-                lhs,
-                swap.lhs.span,
-            ));
+            self.cx.diagnostics.push(self.assign_builtin_field_err("swap", lhs, swap.lhs.span));
         }
 
         self.check_assign_mutability(AssignKind::Swap, lhs, span);
 
-        let old_lhs = self.push_inst_with_register(self.ty_of(lhs), |value| {
-            Inst::StackAlloc { value, init: Some(lhs) }
+        let old_lhs = self.push_inst_with_register(self.ty_of(lhs), |value| Inst::StackAlloc {
+            value,
+            init: Some(lhs),
         });
         self.create_destroy_flag(old_lhs);
         self.ins(self.current_block).store(rhs, lhs);
@@ -890,59 +780,33 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         old_lhs
     }
 
-    fn lower_slice_assign(
-        &mut self,
-        assign: &hir::Assign,
-        idx: &hir::Index,
-        span: Span,
-    ) {
-        let SliceIndexResult { slice, index, elem } =
-            self.lower_slice_index(idx, span);
+    fn lower_slice_assign(&mut self, assign: &hir::Assign, idx: &hir::Index, span: Span) {
+        let SliceIndexResult { slice, index, elem } = self.lower_slice_index(idx, span);
         let rhs = self.lower_assign_rhs(assign, elem, span);
 
         self.check_slice_assign_mutability(AssignKind::Assign, slice, span);
 
         self.destroy_value_entirely(elem, idx.expr.span);
-        self.ins(self.current_block).slice_store(
-            slice,
-            index,
-            rhs,
-            assign.lhs.span,
-        );
+        self.ins(self.current_block).slice_store(slice, index, rhs, assign.lhs.span);
     }
 
-    fn lower_slice_swap(
-        &mut self,
-        swap: &hir::Swap,
-        idx: &hir::Index,
-        span: Span,
-    ) -> ValueId {
-        let SliceIndexResult { slice, index, elem } =
-            self.lower_slice_index(idx, span);
+    fn lower_slice_swap(&mut self, swap: &hir::Swap, idx: &hir::Index, span: Span) -> ValueId {
+        let SliceIndexResult { slice, index, elem } = self.lower_slice_index(idx, span);
         let rhs = self.lower_input_expr(&swap.rhs);
 
         self.check_slice_assign_mutability(AssignKind::Swap, slice, span);
 
-        let old_elem = self
-            .push_inst_with_register(self.ty_of(elem), |value| {
-                Inst::StackAlloc { value, init: Some(elem) }
-            });
+        let old_elem = self.push_inst_with_register(self.ty_of(elem), |value| Inst::StackAlloc {
+            value,
+            init: Some(elem),
+        });
         self.create_destroy_flag(old_elem);
-        self.ins(self.current_block).slice_store(
-            slice,
-            index,
-            rhs,
-            swap.lhs.span,
-        );
+        self.ins(self.current_block).slice_store(slice, index, rhs, swap.lhs.span);
 
         old_elem
     }
 
-    fn lower_slice_index(
-        &mut self,
-        idx: &hir::Index,
-        span: Span,
-    ) -> SliceIndexResult {
+    fn lower_slice_index(&mut self, idx: &hir::Index, span: Span) -> SliceIndexResult {
         let slice = self.lower_expr(&idx.expr);
         self.try_use(slice, idx.expr.span);
         let index = self.lower_input_expr(&idx.index);
@@ -959,11 +823,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         SliceIndexResult { slice, index, elem }
     }
 
-    fn lower_slice_slice(
-        &mut self,
-        expr: &hir::Expr,
-        slice: &hir::Slice,
-    ) -> ValueId {
+    fn lower_slice_slice(&mut self, expr: &hir::Expr, slice: &hir::Slice) -> ValueId {
         let og_slice = self.lower_expr(&slice.expr);
         self.try_use(og_slice, slice.expr.span);
 
@@ -982,15 +842,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.try_move(value, high.span);
             value
         } else {
-            self.create_untracked_value(
-                uint,
-                ValueKind::Field(og_slice, ustr(sym::LEN)),
-            )
+            self.create_untracked_value(uint, ValueKind::Field(og_slice, ustr(sym::LEN)))
         };
 
         let sliced = self.create_value(expr.ty, ValueKind::Register(None));
-        self.ins(self.current_block)
-            .slice_slice(sliced, og_slice, low, high, expr.span);
+        self.ins(self.current_block).slice_slice(sliced, og_slice, low, high, expr.span);
 
         // A re-sliced slice can never move out of its original slice
         self.set_moved(sliced, expr.span);
@@ -1015,33 +871,27 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let slice = self.value_roots.root_of(args[0]);
                 let value = args[1];
 
-                self.push_inst_with_register(self.cx.db.types.unit, |value| {
-                    Inst::RtCall {
-                        value,
-                        kind: RtCallKind::SlicePushBoundscheck { slice },
-                        span: expr.span,
-                    }
+                self.push_inst_with_register(self.cx.db.types.unit, |value| Inst::RtCall {
+                    value,
+                    kind: RtCallKind::SlicePushBoundscheck { slice },
+                    span: expr.span,
                 });
 
                 // slice.[slice.len] = value
                 let uint = self.cx.db.types.uint;
-                let slice_len = self.create_untracked_value(
-                    uint,
-                    ValueKind::Field(slice, ustr(sym::LEN)),
-                );
-                self.ins(self.current_block)
-                    .slice_store_unchecked(slice, slice_len, value);
+                let slice_len =
+                    self.create_untracked_value(uint, ValueKind::Field(slice, ustr(sym::LEN)));
+                self.ins(self.current_block).slice_store_unchecked(slice, slice_len, value);
 
                 // slice.len += 1
                 let one = self.const_int(uint, 1);
-                let new_slice_len =
-                    self.push_inst_with_register(uint, |value| Inst::Binary {
-                        value,
-                        lhs: slice_len,
-                        rhs: one,
-                        op: BinOp::Add,
-                        span: None,
-                    });
+                let new_slice_len = self.push_inst_with_register(uint, |value| Inst::Binary {
+                    value,
+                    lhs: slice_len,
+                    rhs: one,
+                    op: BinOp::Add,
+                    span: None,
+                });
                 self.ins(self.current_block).store(new_slice_len, slice_len);
 
                 self.const_unit()
@@ -1077,56 +927,29 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 body.block
             }
             pmatch::Decision::Err => unreachable!(),
-            pmatch::Decision::Guard { guard, body, fallback } => self
-                .lower_decision_guard(
+            pmatch::Decision::Guard { guard, body, fallback } => {
+                self.lower_decision_guard(state, guard, body, *fallback, parent_block, values)
+            }
+            pmatch::Decision::Switch { cond, cases, fallback } => match cases[0].ctor {
+                pmatch::Ctor::Unit => self.lower_decision_unit(state, cases, parent_block, values),
+                pmatch::Ctor::True | pmatch::Ctor::False => {
+                    self.lower_decision_bool(state, cond, cases, parent_block, values)
+                }
+                pmatch::Ctor::Int(_) | pmatch::Ctor::Str(_) => self.lower_decision_lit(
                     state,
-                    guard,
-                    body,
-                    *fallback,
+                    cond,
+                    cases,
+                    *fallback.unwrap(),
                     parent_block,
                     values,
                 ),
-            pmatch::Decision::Switch { cond, cases, fallback } => {
-                match cases[0].ctor {
-                    pmatch::Ctor::Unit => self.lower_decision_unit(
-                        state,
-                        cases,
-                        parent_block,
-                        values,
-                    ),
-                    pmatch::Ctor::True | pmatch::Ctor::False => self
-                        .lower_decision_bool(
-                            state,
-                            cond,
-                            cases,
-                            parent_block,
-                            values,
-                        ),
-                    pmatch::Ctor::Int(_) | pmatch::Ctor::Str(_) => self
-                        .lower_decision_lit(
-                            state,
-                            cond,
-                            cases,
-                            *fallback.unwrap(),
-                            parent_block,
-                            values,
-                        ),
-                    pmatch::Ctor::Struct(_) => self.lower_decision_struct(
-                        state,
-                        cond,
-                        cases,
-                        parent_block,
-                        values,
-                    ),
-                    pmatch::Ctor::Variant(_) => self.lower_decision_variant(
-                        state,
-                        cond,
-                        cases,
-                        parent_block,
-                        values,
-                    ),
+                pmatch::Ctor::Struct(_) => {
+                    self.lower_decision_struct(state, cond, cases, parent_block, values)
                 }
-            }
+                pmatch::Ctor::Variant(_) => {
+                    self.lower_decision_variant(state, cond, cases, parent_block, values)
+                }
+            },
         }
     }
 
@@ -1157,9 +980,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         let blocks: Vec<_> = cases
             .into_iter()
-            .map(|case| {
-                self.lower_decision(state, case.decision, block, values.clone())
-            })
+            .map(|case| self.lower_decision(state, case.decision, block, values.clone()))
             .collect();
 
         self.ins(block).brif(cond, blocks[1], Some(blocks[0]));
@@ -1182,30 +1003,21 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.body.connect_blocks(&blocks);
         values.push(cond);
 
-        let fallback_block = self.lower_decision(
-            state,
-            fallback,
-            *blocks.last().unwrap(),
-            values.clone(),
-        );
+        let fallback_block =
+            self.lower_decision(state, fallback, *blocks.last().unwrap(), values.clone());
 
         for (idx, case) in cases.into_iter().enumerate() {
             let test_block = blocks[idx];
 
-            let else_block =
-                blocks.get(idx + 1).copied().unwrap_or(fallback_block);
+            let else_block = blocks.get(idx + 1).copied().unwrap_or(fallback_block);
             self.body.create_edge(test_block, else_block);
 
-            let result_value = self.create_untracked_value(
-                self.cx.db.types.bool,
-                ValueKind::Register(None),
-            );
+            let result_value =
+                self.create_untracked_value(self.cx.db.types.bool, ValueKind::Register(None));
 
             self.position_at(test_block);
-            let lit_value = self.create_untracked_value(
-                self.ty_of(cond),
-                ValueKind::Const(case.ctor.into()),
-            );
+            let lit_value =
+                self.create_untracked_value(self.ty_of(cond), ValueKind::Const(case.ctor.into()));
 
             self.ins(test_block).binary(
                 result_value,
@@ -1215,20 +1027,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 state.span,
             );
 
-            let then_block = self.lower_decision(
-                state,
-                case.decision,
-                test_block,
-                values.clone(),
-            );
+            let then_block = self.lower_decision(state, case.decision, test_block, values.clone());
 
             self.position_at(test_block);
 
-            self.ins(test_block).brif(
-                result_value,
-                then_block,
-                Some(else_block),
-            );
+            self.ins(test_block).brif(result_value, then_block, Some(else_block));
         }
 
         blocks[0]
@@ -1285,8 +1088,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         let uint = self.cx.db.types.uint;
-        let tag_field = self
-            .create_untracked_value(uint, ValueKind::Field(cond, ustr("tag")));
+        let tag_field = self.create_untracked_value(uint, ValueKind::Field(cond, ustr("tag")));
         self.ins(test_block).switch(tag_field, blocks);
 
         test_block
@@ -1316,11 +1118,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         for binding in bindings {
             match binding {
                 pmatch::Binding::Name(id, source, binding_ty, span) => {
-                    let binding_value = self.push_inst_with(
-                        binding_ty,
-                        ValueKind::Local(id),
-                        |value| Inst::StackAlloc { value, init: Some(source) },
-                    );
+                    let binding_value =
+                        self.push_inst_with(binding_ty, ValueKind::Local(id), |value| {
+                            Inst::StackAlloc { value, init: Some(source) }
+                        });
                     self.create_destroy_flag(binding_value);
                     self.locals.insert(id, binding_value);
 
@@ -1337,39 +1138,32 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                         }
                     }
                 }
-                pmatch::Binding::Discard(source, span) => {
-                    match state.actions.get(&source) {
-                        Some(&ValueAction::Move(_)) => {
-                            self.destroy_value_entirely(source, span);
-                            self.try_move(source, span);
-                        }
-                        Some(&ValueAction::IncRef(_)) => {
-                            self.set_moved(source, span);
-                        }
-                        None => {
-                            self.destroy_value_entirely(source, span);
-                            self.set_moved(source, span);
-                        }
+                pmatch::Binding::Discard(source, span) => match state.actions.get(&source) {
+                    Some(&ValueAction::Move(_)) => {
+                        self.destroy_value_entirely(source, span);
+                        self.try_move(source, span);
                     }
-                }
+                    Some(&ValueAction::IncRef(_)) => {
+                        self.set_moved(source, span);
+                    }
+                    None => {
+                        self.destroy_value_entirely(source, span);
+                        self.set_moved(source, span);
+                    }
+                },
             }
         }
     }
 
-    fn destroy_match_values(
-        &mut self,
-        state: &DecisionState,
-        mut values: Vec<ValueId>,
-    ) {
+    fn destroy_match_values(&mut self, state: &DecisionState, mut values: Vec<ValueId>) {
         while let Some(value) = values.pop() {
             if matches!(self.value_state(value), ValueState::Moved(..)) {
                 continue;
             }
 
             match state.actions.get(&value) {
-                Some(
-                    &ValueAction::Move(parent) | &ValueAction::IncRef(parent),
-                ) if self.value_is_moved(parent) => {}
+                Some(&ValueAction::Move(parent) | &ValueAction::IncRef(parent))
+                    if self.value_is_moved(parent) => {}
                 Some(&ValueAction::IncRef(_)) => {
                     self.set_moved(value, state.span);
                 }
@@ -1389,8 +1183,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> BlockId {
         self.body.create_edge(parent_block, start_block);
 
-        // Removing the expression makes sure that the code for a given block is only compiled
-        // once.
+        // Removing the expression makes sure that the code for a given block is only
+        // compiled once.
         let Some(expr) = state.bodies.remove(&start_block) else {
             self.exit_scope();
             return start_block;
@@ -1401,19 +1195,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.exit_scope();
 
         if self.in_connected_block() {
-            self.ins(self.current_block)
-                .store(value, state.output)
-                .br(state.join_block);
+            self.ins(self.current_block).store(value, state.output).br(state.join_block);
         }
 
         start_block
     }
 
-    fn lower_name(
-        &mut self,
-        id: DefId,
-        instantiation: &Instantiation,
-    ) -> ValueId {
+    fn lower_name(&mut self, id: DefId, instantiation: &Instantiation) -> ValueId {
         let value = match self.cx.db[id].kind.as_ref() {
             DefKind::Fn(_) => {
                 let id = self.cx.id_to_fn_sig[&id];
@@ -1421,10 +1209,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             DefKind::ExternGlobal | DefKind::Global => {
                 let id = self.cx.lower_global(id);
-                self.create_value(
-                    self.cx.mir.globals[id].ty,
-                    ValueKind::Global(id),
-                )
+                self.create_value(self.cx.mir.globals[id].ty, ValueKind::Global(id))
             }
             DefKind::Variable => self.locals[&id],
             DefKind::Adt(adt_id) => {
@@ -1480,8 +1265,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         let guard_join = self.current_block;
-        let fallback_block =
-            self.lower_decision(state, fallback, guard_join, values.clone());
+        let fallback_block = self.lower_decision(state, fallback, guard_join, values.clone());
 
         self.position_at(guard_join);
         self.ins(guard_join).brif(cond, body.block, Some(fallback_block));
@@ -1495,13 +1279,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub fn lower_const(&mut self, value: &Const, ty: Ty) -> ValueId {
         match value {
-            Const::Str(lit) => self.push_inst_with_register(ty, |value| {
-                Inst::StrLit { value, lit: *lit }
-            }),
-            Const::Int(value) => self.const_int(ty, *value),
-            Const::Float(value) => {
-                self.create_value(ty, ValueKind::Const(Const::Float(*value)))
+            Const::Str(lit) => {
+                self.push_inst_with_register(ty, |value| Inst::StrLit { value, lit: *lit })
             }
+            Const::Int(value) => self.const_int(ty, *value),
+            Const::Float(value) => self.create_value(ty, ValueKind::Const(Const::Float(*value))),
             Const::Bool(value) => self.const_bool(*value),
             Const::Unit => self.const_unit(),
         }
@@ -1512,10 +1294,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub fn const_bool(&mut self, value: bool) -> ValueId {
-        self.create_value(
-            self.cx.db.types.bool,
-            ValueKind::Const(Const::Bool(value)),
-        )
+        self.create_value(self.cx.db.types.bool, ValueKind::Const(Const::Bool(value)))
     }
 
     pub fn const_int(&mut self, ty: Ty, value: i128) -> ValueId {
@@ -1555,11 +1334,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.ins(self.current_block).ret(value);
     }
 
-    pub fn create_untracked_value(
-        &mut self,
-        ty: Ty,
-        kind: ValueKind,
-    ) -> ValueId {
+    pub fn create_untracked_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
         let value = self.body.create_value(ty, kind);
         self.set_owned(value);
         value
@@ -1573,19 +1348,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
-    pub fn create_ref(
-        &mut self,
-        to_clone: ValueId,
-        ty: Ty,
-        span: Span,
-    ) -> ValueId {
+    pub fn create_ref(&mut self, to_clone: ValueId, ty: Ty, span: Span) -> ValueId {
         if ty.is_mut_ref() {
             self.check_ref_mutability(to_clone, span);
         }
 
-        let ref_value = self.push_inst_with_register(ty, |value| {
-            Inst::StackAlloc { value, init: Some(to_clone) }
-        });
+        let ref_value = self
+            .push_inst_with_register(ty, |value| Inst::StackAlloc { value, init: Some(to_clone) });
 
         self.create_destroy_flag(ref_value);
         self.ins(self.current_block).incref(ref_value);
@@ -1595,12 +1364,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         ref_value
     }
 
-    pub fn create_once_ref(
-        &mut self,
-        to_clone: ValueId,
-        ty: Ty,
-        span: Span,
-    ) -> ValueId {
+    pub fn create_once_ref(&mut self, to_clone: ValueId, ty: Ty, span: Span) -> ValueId {
         let value = self.create_ref(to_clone, ty, span);
         self.set_moved(value, span);
         value
@@ -1618,7 +1382,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let value = value.id;
 
                 // In order for fields to be destroyed in field-order,
-                // we must introduce them in reverse order (since values are destroyed in reverse).
+                // we must introduce them in reverse order (since values are destroyed in
+                // reverse).
                 let fields: FxHashMap<_, _> = struct_def
                     .fields
                     .iter()
@@ -1626,8 +1391,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     .map(|f| {
                         let name = f.name.name();
                         let ty = folder.fold(f.ty);
-                        let value = self
-                            .create_value(ty, ValueKind::Field(value, name));
+                        let value = self.create_value(ty, ValueKind::Field(value, name));
                         self.create_destroy_flag(value);
                         (name, value)
                     })
@@ -1684,10 +1448,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     pub(super) fn value_depth(&self, value: ValueId) -> usize {
-        self.scopes
-            .iter()
-            .find(|s| s.created_values.contains(&value))
-            .map_or(0, |s| s.depth)
+        self.scopes.iter().find(|s| s.created_values.contains(&value)).map_or(0, |s| s.depth)
     }
 
     #[inline]
@@ -1700,11 +1461,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.body.ins(block)
     }
 
-    pub fn apply_coercions_to_expr(
-        &mut self,
-        expr: &hir::Expr,
-        value: ValueId,
-    ) -> ValueId {
+    pub fn apply_coercions_to_expr(&mut self, expr: &hir::Expr, value: ValueId) -> ValueId {
         if let Some(coercions) = self.cx.hir.coercions.get(&expr.id) {
             self.apply_coercions(coercions, value, expr.span)
         } else {
@@ -1720,24 +1477,21 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> ValueId {
         for coercion in coercions.iter() {
             coerced_value = match coercion.kind {
-                CoercionKind::NeverToAny | CoercionKind::RefToOwned => {
-                    coerced_value
-                }
+                CoercionKind::NeverToAny | CoercionKind::RefToOwned => coerced_value,
                 CoercionKind::AnyToUnit => self.const_unit(),
                 CoercionKind::IntPromotion => {
-                    self.push_inst_with_register(coercion.target, |value| {
-                        Inst::Cast {
-                            value,
-                            inner: coerced_value,
-                            target: coercion.target,
-                            span,
-                        }
+                    self.push_inst_with_register(coercion.target, |value| Inst::Cast {
+                        value,
+                        inner: coerced_value,
+                        target: coercion.target,
+                        span,
                     })
                 }
                 CoercionKind::MutRefToImm => {
                     self.set_moved(coerced_value, span);
-                    self.push_inst_with_register(coercion.target, |value| {
-                        Inst::StackAlloc { value, init: Some(coerced_value) }
+                    self.push_inst_with_register(coercion.target, |value| Inst::StackAlloc {
+                        value,
+                        init: Some(coerced_value),
                     })
                 }
                 CoercionKind::OwnedToRef => {
@@ -1797,11 +1551,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         Scope {
             kind,
             depth: self.scopes.len(),
-            loop_depth: self
-                .scopes
-                .last()
-                .map(|s| s.loop_depth + 1)
-                .unwrap_or_default(),
+            loop_depth: self.scopes.last().map(|s| s.loop_depth + 1).unwrap_or_default(),
             span,
             created_values: IndexSet::default(),
             moved_out: IndexSet::default(),
@@ -1818,24 +1568,17 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub(super) fn value_name(&self, value: ValueId) -> String {
         match &self.body.value(value).kind {
-            ValueKind::Register(_) | ValueKind::Const(_) => {
-                "temporary value".to_string()
-            }
+            ValueKind::Register(_) | ValueKind::Const(_) => "temporary value".to_string(),
             _ => format!("`{}`", self.value_name_aux(value)),
         }
     }
 
     fn value_name_aux(&self, value: ValueId) -> String {
         match &self.body.value(value).kind {
-            ValueKind::Param(id, _) | ValueKind::Local(id) => {
-                self.cx.db[*id].name.to_string()
-            }
+            ValueKind::Param(id, _) | ValueKind::Local(id) => self.cx.db[*id].name.to_string(),
             ValueKind::Global(id) => self.cx.mir.globals[*id].name.to_string(),
-            ValueKind::Fn(id) => {
-                self.cx.mir.fn_sigs[*id].mangled_name.to_string()
-            }
-            ValueKind::Field(parent, child)
-            | ValueKind::Variant(parent, child) => {
+            ValueKind::Fn(id) => self.cx.mir.fn_sigs[*id].mangled_name.to_string(),
+            ValueKind::Field(parent, child) | ValueKind::Variant(parent, child) => {
                 format!("{}.{}", self.value_name_aux(*parent), child)
             }
             ValueKind::Register(_) | ValueKind::Const(_) => "_".to_string(),
@@ -1864,15 +1607,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.body.value(value).ty
     }
 
-    pub fn field_or_create(
-        &mut self,
-        of: ValueId,
-        name: Ustr,
-        ty: Ty,
-    ) -> ValueId {
-        self.field(of, name).unwrap_or_else(|| {
-            self.create_untracked_value(ty, ValueKind::Field(of, name))
-        })
+    pub fn field_or_create(&mut self, of: ValueId, name: Ustr, ty: Ty) -> ValueId {
+        self.field(of, name)
+            .unwrap_or_else(|| self.create_untracked_value(ty, ValueKind::Field(of, name)))
     }
 
     pub fn field(&self, of: ValueId, name: Ustr) -> Option<ValueId> {
@@ -1881,28 +1618,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub fn is_builtin_field(&self, value: ValueId) -> Option<Ustr> {
         if let ValueKind::Field(_, field) = self.body.value(value).kind {
-            matches!(field.as_str(), sym::LEN | sym::CAP | sym::PTR)
-                .then_some(field)
+            matches!(field.as_str(), sym::LEN | sym::CAP | sym::PTR).then_some(field)
         } else {
             None
         }
     }
 
-    pub fn assign_builtin_field_err(
-        &self,
-        action: &str,
-        value: ValueId,
-        span: Span,
-    ) -> Diagnostic {
+    pub fn assign_builtin_field_err(&self, action: &str, value: ValueId, span: Span) -> Diagnostic {
         Diagnostic::error()
-            .with_message(format!(
-                "cannot {action} builtin field {}",
-                self.value_name(value)
-            ))
-            .with_label(
-                Label::primary(span)
-                    .with_message(format!("cannot {action} builtin field")),
-            )
+            .with_message(format!("cannot {action} builtin field {}", self.value_name(value)))
+            .with_label(Label::primary(span).with_message(format!("cannot {action} builtin field")))
     }
 }
 

@@ -32,29 +32,19 @@ impl<'db> CheckMain<'db> {
         });
 
         if let Some(main_def_id) = main_def_id {
-            let main_fn =
-                hir.fns.iter().find(|f| f.def_id == main_def_id).unwrap();
+            let main_fn = hir.fns.iter().find(|f| f.def_id == main_def_id).unwrap();
             hir.main_fn.set(main_fn.id);
             true
         } else {
-            let main_source_end = self
-                .db
-                .main_source()
-                .contents()
-                .len()
-                .checked_sub(1)
-                .unwrap_or_default();
-            let source_end_span =
-                Span::uniform(self.db.main_source_id(), main_source_end as u32);
+            let main_source_end =
+                self.db.main_source().contents().len().checked_sub(1).unwrap_or_default();
+            let source_end_span = Span::uniform(self.db.main_source_id(), main_source_end as u32);
 
             self.db.diagnostics.emit(
-                Diagnostic::error()
-                    .with_message("`main` function not found")
-                    .with_label(
-                        Label::primary(source_end_span).with_message(
-                            "consider adding a main function here",
-                        ),
-                    ),
+                Diagnostic::error().with_message("`main` function not found").with_label(
+                    Label::primary(source_end_span)
+                        .with_message("consider adding a main function here"),
+                ),
             );
 
             false
@@ -69,30 +59,22 @@ impl<'db> CheckMain<'db> {
             let tp = &main_fn.sig.ty_params;
 
             if !tp.is_empty() {
-                let tp_span =
-                    tp[0].word.span().merge(tp.last().unwrap().word.span());
+                let tp_span = tp[0].word.span().merge(tp.last().unwrap().word.span());
 
                 self.db.diagnostics.emit(
                     Diagnostic::error()
-                        .with_message(
-                            "type parameters in `main` function are not \
-                             allowed",
-                        )
-                        .with_label(
-                            Label::primary(tp_span).with_message("not allowed"),
-                        ),
+                        .with_message("type parameters in `main` function are not allowed")
+                        .with_label(Label::primary(tp_span).with_message("not allowed")),
                 );
             }
         } else {
             self.db.diagnostics.emit(
                 Diagnostic::error()
                     .with_message("`main` function's type must be `fn() ()`")
-                    .with_label(Label::primary(main_fn.span).with_message(
-                        format!(
-                            "found type `{}`",
-                            fty.display(self.db)
-                        ),
-                    )),
+                    .with_label(
+                        Label::primary(main_fn.span)
+                            .with_message(format!("found type `{}`", fty.display(self.db))),
+                    ),
             );
         }
     }

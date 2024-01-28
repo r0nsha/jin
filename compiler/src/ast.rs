@@ -52,13 +52,7 @@ pub struct Module {
 
 impl Module {
     pub fn new(source_id: SourceId, name: QPath, is_main: bool) -> Self {
-        Self {
-            id: ModuleId::null(),
-            source: source_id,
-            name,
-            is_main,
-            items: IndexVec::new(),
-        }
+        Self { id: ModuleId::null(), source: source_id, name, is_main, items: IndexVec::new() }
     }
 
     pub fn is_main(&self) -> bool {

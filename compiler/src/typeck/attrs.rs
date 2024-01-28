@@ -15,15 +15,10 @@ pub enum AttrsPlacement {
 
 impl<'db> Typeck<'db> {
     #[allow(clippy::unused_self)]
-    pub fn check_attrs(
-        &self,
-        attrs: &ast::Attrs,
-        placement: AttrsPlacement,
-    ) -> TypeckResult<()> {
+    pub fn check_attrs(&self, attrs: &ast::Attrs, placement: AttrsPlacement) -> TypeckResult<()> {
         for attr in attrs.iter() {
-            validate_attr_placement(attr, placement).map_err(|applies_to| {
-                invalid_attr_placement(attr, applies_to)
-            })?;
+            validate_attr_placement(attr, placement)
+                .map_err(|applies_to| invalid_attr_placement(attr, applies_to))?;
         }
 
         Ok(())

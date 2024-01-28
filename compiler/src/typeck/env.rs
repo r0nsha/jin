@@ -7,8 +7,7 @@ use ustr::{ustr, Ustr, UstrMap};
 use crate::{
     ast,
     db::{
-        AdtId, AdtKind, Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo,
-        ScopeLevel, VariantId,
+        AdtId, AdtKind, Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, VariantId,
     },
     diagnostics::{Diagnostic, Label},
     hir,
@@ -36,8 +35,7 @@ pub enum LookupResult {
 impl LookupResult {
     pub fn id(&self) -> DefId {
         match self {
-            LookupResult::Def(id)
-            | LookupResult::Fn(FnCandidate { id, .. }) => *id,
+            LookupResult::Def(id) | LookupResult::Fn(FnCandidate { id, .. }) => *id,
         }
     }
 }
@@ -66,8 +64,7 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<DefId> {
         let qpath = self.db[module_id].qpath.clone().child(name.name());
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
-        let id =
-            Def::alloc(self.db, qpath, scope, kind, mutability, name.span());
+        let id = Def::alloc(self.db, qpath, scope, kind, mutability, name.span());
         self.def_to_ty.insert(id, ty);
         self.insert_global_def(module_id, name, id, vis)
     }
@@ -83,10 +80,7 @@ impl<'db> Typeck<'db> {
 
         if let Some(candidates) = self.global_scope.fns.get(&symbol) {
             let last_candidate = candidates.iter().last().unwrap();
-            return Err(errors::multiple_item_def_err(
-                last_candidate.word.span(),
-                name,
-            ));
+            return Err(errors::multiple_item_def_err(last_candidate.word.span(), name));
         }
 
         let new_def = GlobalScopeDef::new(id, vis, name.span());
@@ -107,13 +101,9 @@ impl<'db> Typeck<'db> {
         ty: Ty,
     ) -> DefId {
         let qpath = env.scope_path(self.db).child(name.name());
-        let scope = ScopeInfo {
-            module_id: env.module_id(),
-            level: env.scope_level(),
-            vis: Vis::Private,
-        };
-        let id =
-            Def::alloc(self.db, qpath, scope, kind, mutability, name.span());
+        let scope =
+            ScopeInfo { module_id: env.module_id(), level: env.scope_level(), vis: Vis::Private };
+        let id = Def::alloc(self.db, qpath, scope, kind, mutability, name.span());
         self.def_to_ty.insert(id, ty);
         env.insert(name.name(), id);
         id
@@ -129,14 +119,7 @@ impl<'db> Typeck<'db> {
         ty: Ty,
     ) -> TypeckResult<DefId> {
         if env.in_global_scope() {
-            self.define_global_def(
-                env.module_id(),
-                vis,
-                kind,
-                name,
-                mutability,
-                ty,
-            )
+            self.define_global_def(env.module_id(), vis, kind, name, mutability, ty)
         } else {
             Ok(self.define_local_def(env, kind, name, mutability, ty))
         }
@@ -155,9 +138,7 @@ impl<'db> Typeck<'db> {
 
                 let base_qpath = if let Some(assoc_ty) = assoc_ty {
                     match assoc_ty {
-                        AssocTy::Adt(adt_id) => {
-                            self.db[self.db[adt_id].def_id].qpath.clone()
-                        }
+                        AssocTy::Adt(adt_id) => self.db[self.db[adt_id].def_id].qpath.clone(),
                         AssocTy::BuiltinTy(ty) => {
                             QPath::from(ustr(&ty.display(self.db).to_string()))
                         }
@@ -168,16 +149,10 @@ impl<'db> Typeck<'db> {
 
                 let qpath = base_qpath.child(sig.word.name());
 
-                let scope = ScopeInfo {
-                    module_id,
-                    level: ScopeLevel::Global,
-                    vis: fun.vis,
-                };
+                let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis: fun.vis };
 
                 if let Some(def) = self.global_scope.defs.get(&symbol) {
-                    return Err(errors::multiple_item_def_err(
-                        def.span, sig.word,
-                    ));
+                    return Err(errors::multiple_item_def_err(def.span, sig.word));
                 }
 
                 let id = Def::alloc(
@@ -190,11 +165,8 @@ impl<'db> Typeck<'db> {
                 );
                 self.def_to_ty.insert(id, sig.ty);
 
-                let candidate = FnCandidate {
-                    id,
-                    word: sig.word,
-                    ty: sig.ty.as_fn().cloned().unwrap(),
-                };
+                let candidate =
+                    FnCandidate { id, word: sig.word, ty: sig.ty.as_fn().cloned().unwrap() };
 
                 if let Some(ty) = assoc_ty {
                     self.insert_fn_candidate_in_ty(
@@ -255,12 +227,7 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<()> {
         set.try_insert(candidate).map_err(|err| match err {
             FnCandidateInsertError::AlreadyExists { prev, curr } => {
-                errors::multiple_fn_def_err(
-                    db,
-                    module_id,
-                    prev.word.span(),
-                    &curr,
-                )
+                errors::multiple_fn_def_err(db, module_id, prev.word.span(), &curr)
             }
         })
     }
@@ -274,14 +241,7 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<Pat> {
         match pat {
             Pat::Name(name) => {
-                let id = self.define_def(
-                    env,
-                    name.vis,
-                    kind,
-                    name.word,
-                    name.mutability,
-                    ty,
-                )?;
+                let id = self.define_def(env, name.vis, kind, name.word, name.mutability, ty)?;
 
                 Ok(Pat::Name(NamePat { id, ty, ..name.clone() }))
             }
@@ -292,12 +252,7 @@ impl<'db> Typeck<'db> {
     pub fn insert_pat(&mut self, env: &mut Env, pat: &Pat) -> TypeckResult<()> {
         match pat {
             Pat::Name(name) => {
-                self.insert_def(
-                    env,
-                    name.word,
-                    name.id,
-                    self.db[name.id].scope.vis,
-                )?;
+                self.insert_def(env, name.word, name.id, self.db[name.id].scope.vis)?;
             }
             Pat::Discard(_) => (),
         }
@@ -321,19 +276,13 @@ impl<'db> Typeck<'db> {
         Ok(())
     }
 
-    pub fn path_lookup(
-        &mut self,
-        env: &Env,
-        path: &[Word],
-    ) -> TypeckResult<PathLookup> {
-        let (&last, path) =
-            path.split_last().expect("to have at least one element");
+    pub fn path_lookup(&mut self, env: &Env, path: &[Word]) -> TypeckResult<PathLookup> {
+        let (&last, path) = path.split_last().expect("to have at least one element");
 
         let mut target_module = env.module_id();
 
         for (idx, &part) in path.iter().enumerate() {
-            let part_id =
-                self.lookup(env, target_module, &Query::Name(part))?;
+            let part_id = self.lookup(env, target_module, &Query::Name(part))?;
             let part_ty = self.normalize(self.def_ty(part_id));
 
             match part_ty.kind() {
@@ -341,7 +290,8 @@ impl<'db> Typeck<'db> {
                     target_module = *module_id;
                 }
                 TyKind::Type(ty) => {
-                    // The type could be a union, and the next part could be a variant, so we explicitly look it up
+                    // The type could be a union, and the next part could be a variant, so we
+                    // explicitly look it up
                     let next_part = path.get(idx + 1).copied().unwrap_or(last);
 
                     match self.lookup_in_ty(
@@ -351,8 +301,8 @@ impl<'db> Typeck<'db> {
                         &Query::Name(next_part),
                     )? {
                         TyLookup::Variant(variant_id) => {
-                            // If there are more parts after this variant, it's an error, since we there
-                            // are no symbols under variants
+                            // If there are more parts after this variant, it's an error, since we
+                            // there are no symbols under variants
                             if path.get(idx + 2).is_some() {
                                 return Err(Diagnostic::error()
                                     .with_message(format!(
@@ -370,13 +320,11 @@ impl<'db> Typeck<'db> {
                         TyLookup::AssocFn(id) => {
                             return Err(Diagnostic::error()
                                 .with_message(format!(
-                                    "`{}` is an associated function, not a \
-                                     module",
+                                    "`{}` is an associated function, not a module",
                                     self.db[id].name,
                                 ))
                                 .with_label(
-                                    Label::primary(next_part.span())
-                                        .with_message("not a module"),
+                                    Label::primary(next_part.span()).with_message("not a module"),
                                 ));
                         }
                     }
@@ -408,9 +356,7 @@ impl<'db> Typeck<'db> {
         }
 
         if let Query::Fn(fn_query) = query {
-            if let Some(id) =
-                self.lookup_assoc_fn(from_module, AssocTy::from(ty), fn_query)?
-            {
+            if let Some(id) = self.lookup_assoc_fn(from_module, AssocTy::from(ty), fn_query)? {
                 return Ok(TyLookup::AssocFn(id));
             }
         }
@@ -456,18 +402,9 @@ impl<'db> Typeck<'db> {
                     .variants(self.db)
                     .find(|v| v.name.name() == name.name())
                     .map(|v| TyLookup::Variant(v.id))
-                    .ok_or_else(|| {
-                        errors::variant_not_found(
-                            self.db,
-                            adt.ty(),
-                            ty_span,
-                            name,
-                        )
-                    });
+                    .ok_or_else(|| errors::variant_not_found(self.db, adt.ty(), ty_span, name));
             }
-            AdtKind::Struct(_) => {
-                Err(errors::assoc_name_not_found(self.db, adt.ty(), query))
-            }
+            AdtKind::Struct(_) => Err(errors::assoc_name_not_found(self.db, adt.ty(), query)),
         }
     }
 
@@ -492,12 +429,7 @@ impl<'db> Typeck<'db> {
         );
 
         if results.is_empty() {
-            return Err(errors::name_not_found(
-                self.db,
-                from_module,
-                in_module,
-                word,
-            ));
+            return Err(errors::name_not_found(self.db, from_module, in_module, word));
         }
 
         if from_module != in_module {
@@ -509,12 +441,7 @@ impl<'db> Typeck<'db> {
         Ok(results)
     }
 
-    pub fn lookup(
-        &mut self,
-        env: &Env,
-        in_module: ModuleId,
-        query: &Query,
-    ) -> TypeckResult<DefId> {
+    pub fn lookup(&mut self, env: &Env, in_module: ModuleId, query: &Query) -> TypeckResult<DefId> {
         let id = self.lookup_inner(env, in_module, query)?;
         self.check_def_access(env.module_id(), id, query.span())?;
         Ok(id)
@@ -541,61 +468,38 @@ impl<'db> Typeck<'db> {
         let from_module = env.module_id();
 
         if let Query::Fn(fn_query) = query {
-            if let Some(id) =
-                self.lookup_fn_candidate(from_module, in_module, fn_query)?
-            {
+            if let Some(id) = self.lookup_fn_candidate(from_module, in_module, fn_query)? {
                 return Ok(id);
             }
         }
 
         // We should only lookup functions if we didn't already query for a function
-        let should_lookup_fns =
-            ShouldLookupFns::from(!matches!(query, Query::Fn(_)));
+        let should_lookup_fns = ShouldLookupFns::from(!matches!(query, Query::Fn(_)));
 
-        // Allow looking up builtin types only when looking up a symbol in the same module as its
-        // environment's module.
-        let allow_builtin_tys =
-            AllowBuiltinTys::from(env.module_id() == in_module);
+        // Allow looking up builtin types only when looking up a symbol in the same
+        // module as its environment's module.
+        let allow_builtin_tys = AllowBuiltinTys::from(env.module_id() == in_module);
 
-        self.lookup_global_one(
-            &symbol,
-            query.span(),
-            should_lookup_fns,
-            allow_builtin_tys,
-        )?
-        .ok_or_else(|| match query {
-            Query::Name(word) => {
-                errors::name_not_found(self.db, from_module, in_module, *word)
-            }
-            Query::Fn(fn_query) => errors::fn_not_found(self.db, fn_query),
-        })
+        self.lookup_global_one(&symbol, query.span(), should_lookup_fns, allow_builtin_tys)?
+            .ok_or_else(|| match query {
+                Query::Name(word) => errors::name_not_found(self.db, from_module, in_module, *word),
+                Query::Fn(fn_query) => errors::fn_not_found(self.db, fn_query),
+            })
     }
 
     #[inline]
-    fn find_and_check_items(
-        &mut self,
-        symbol: &Symbol,
-        is_ufcs: IsUfcs,
-    ) -> TypeckResult<()> {
-        let lookup_modules = self
-            .get_lookup_modules(symbol.module_id, is_ufcs)
-            .collect::<Vec<_>>();
+    fn find_and_check_items(&mut self, symbol: &Symbol, is_ufcs: IsUfcs) -> TypeckResult<()> {
+        let lookup_modules = self.get_lookup_modules(symbol.module_id, is_ufcs).collect::<Vec<_>>();
 
         for module_id in lookup_modules {
-            if let Some(item_ids) =
-                self.global_scope.symbol_to_item.get(symbol).cloned()
-            {
+            if let Some(item_ids) = self.global_scope.symbol_to_item.get(symbol).cloned() {
                 let mut env = Env::new(module_id);
 
                 for item_id in item_ids {
                     let item = &self.ast.modules[module_id].items[item_id];
                     let gid = ast::GlobalItemId::new(module_id, item_id);
 
-                    if self
-                        .resolution_state
-                        .get_item_status(&gid)
-                        .is_unresolved()
-                    {
+                    if self.resolution_state.get_item_status(&gid).is_unresolved() {
                         self.check_item(&mut env, item, gid)?;
                     }
                 }
@@ -614,9 +518,7 @@ impl<'db> Typeck<'db> {
         let candidates = self
             .get_lookup_modules(in_module, query.is_ufcs)
             .filter_map(|module_id| {
-                self.global_scope
-                    .fns
-                    .get(&Symbol::new(module_id, query.word.name()))
+                self.global_scope.fns.get(&Symbol::new(module_id, query.word.name()))
             })
             .flat_map(|set| set.find(self, query))
             .unique_by(|candidate| candidate.id)
@@ -631,18 +533,15 @@ impl<'db> Typeck<'db> {
         mut candidates: Vec<&FnCandidate>,
         from_module: ModuleId,
     ) -> TypeckResult<Option<DefId>> {
-        if !candidates.is_empty()
-            && candidates.iter().all(|c| !self.can_access(from_module, c.id))
+        if !candidates.is_empty() && candidates.iter().all(|c| !self.can_access(from_module, c.id))
         {
             return Err(Diagnostic::error()
                 .with_message(format!(
-                    "all functions which apply to `{}` are private to their \
-                     module",
+                    "all functions which apply to `{}` are private to their module",
                     query.display(self.db)
                 ))
                 .with_label(
-                    Label::primary(query.word.span())
-                        .with_message("no accessible function found"),
+                    Label::primary(query.word.span()).with_message("no accessible function found"),
                 ));
         }
 
@@ -657,19 +556,10 @@ impl<'db> Typeck<'db> {
             0 => Ok(None),
             1 => Ok(Some(candidates.first().unwrap().id)),
             _ => Err(Diagnostic::error()
-                .with_message(format!(
-                    "ambiguous call to `{}`",
-                    query.display(self.db)
-                ))
-                .with_label(
-                    Label::primary(query.word.span()).with_message("call here"),
-                )
+                .with_message(format!("ambiguous call to `{}`", query.display(self.db)))
+                .with_label(Label::primary(query.word.span()).with_message("call here"))
                 .with_note("these functions apply:")
-                .with_notes(
-                    candidates
-                        .into_iter()
-                        .map(|c| c.display(self.db).to_string()),
-                )),
+                .with_notes(candidates.into_iter().map(|c| c.display(self.db).to_string()))),
         }
     }
 
@@ -692,10 +582,7 @@ impl<'db> Typeck<'db> {
             0 => Ok(None),
             1 => Ok(results.first().map(LookupResult::id)),
             _ => Err(Diagnostic::error()
-                .with_message(format!(
-                    "ambiguous use of item `{}`",
-                    symbol.name
-                ))
+                .with_message(format!("ambiguous use of item `{}`", symbol.name))
                 .with_label(Label::primary(span).with_message("used here"))
                 .with_labels(results.iter().map(|res| {
                     let def = &self.db[res.id()];
@@ -723,20 +610,13 @@ impl<'db> Typeck<'db> {
                 results.push(LookupResult::Def(id));
             } else if should_lookup_fns == ShouldLookupFns::Yes {
                 if let Some(candidates) = self.global_scope.fns.get(&symbol) {
-                    results.extend(
-                        candidates.iter().cloned().map(LookupResult::Fn),
-                    );
+                    results.extend(candidates.iter().cloned().map(LookupResult::Fn));
                 }
             }
         }
 
         if results.is_empty() && allow_builtin_tys == AllowBuiltinTys::Yes {
-            return self
-                .builtin_tys
-                .get(symbol.name)
-                .into_iter()
-                .map(LookupResult::Def)
-                .collect();
+            return self.builtin_tys.get(symbol.name).into_iter().map(LookupResult::Def).collect();
         }
 
         results
@@ -747,7 +627,8 @@ impl<'db> Typeck<'db> {
         in_module: ModuleId,
         is_ufcs: IsUfcs,
     ) -> impl Iterator<Item = ModuleId> + '_ {
-        // When `is_ufcs` is IsUfcs::No, we only include glob imports which are IsUfcs::No
+        // When `is_ufcs` is IsUfcs::No, we only include glob imports which are
+        // IsUfcs::No
         iter::once(in_module).chain(
             self.resolution_state
                 .module_state(in_module)
@@ -814,11 +695,7 @@ impl GlobalScope {
         }
     }
 
-    pub fn get_def(
-        &self,
-        from_module: ModuleId,
-        symbol: &Symbol,
-    ) -> Option<DefId> {
+    pub fn get_def(&self, from_module: ModuleId, symbol: &Symbol) -> Option<DefId> {
         if let Some(def) = self.defs.get(symbol) {
             if def.vis == Vis::Public || from_module == symbol.module_id {
                 return Some(def.id);
@@ -828,11 +705,7 @@ impl GlobalScope {
         None
     }
 
-    fn insert_def(
-        &mut self,
-        symbol: Symbol,
-        def: GlobalScopeDef,
-    ) -> Option<GlobalScopeDef> {
+    fn insert_def(&mut self, symbol: Symbol, def: GlobalScopeDef) -> Option<GlobalScopeDef> {
         self.defs.insert(symbol, def)
     }
 }
@@ -981,11 +854,7 @@ impl Env {
         res
     }
 
-    pub fn with_anon_scope<R>(
-        &mut self,
-        kind: ScopeKind,
-        f: impl FnMut(&mut Self) -> R,
-    ) -> R {
+    pub fn with_anon_scope<R>(&mut self, kind: ScopeKind, f: impl FnMut(&mut Self) -> R) -> R {
         self.with_scope(ustr(Self::ANON_SCOPE), kind, f)
     }
 
@@ -1093,10 +962,7 @@ impl FnCandidateSet {
         self.0.iter()
     }
 
-    pub fn try_insert(
-        &mut self,
-        candidate: FnCandidate,
-    ) -> Result<(), FnCandidateInsertError> {
+    pub fn try_insert(&mut self, candidate: FnCandidate) -> Result<(), FnCandidateInsertError> {
         if let Some(prev) = self.0.iter().find(|c| *c == &candidate) {
             return Err(FnCandidateInsertError::AlreadyExists {
                 prev: prev.clone(),
@@ -1114,10 +980,7 @@ impl FnCandidateSet {
         let Some(&min_score) = scores.iter().map(|(_, s)| s).min() else {
             return vec![];
         };
-        scores
-            .into_iter()
-            .filter_map(|(c, s)| (s == min_score).then_some(c))
-            .collect()
+        scores.into_iter().filter_map(|(c, s)| (s == min_score).then_some(c)).collect()
     }
 
     fn scores(&self, cx: &Typeck, query: &FnQuery) -> Vec<(&FnCandidate, u32)> {
@@ -1163,9 +1026,7 @@ impl FnCandidate {
         // Check that the amount of given type arguments == the amount of type
         // parameters in this candidate
         match query.ty_args {
-            Some(ty_args)
-                if ty_args.len() != self.ty.collect_params().len() =>
-            {
+            Some(ty_args) if ty_args.len() != self.ty.collect_params().len() => {
                 return None;
             }
             _ => (),
@@ -1173,9 +1034,7 @@ impl FnCandidate {
 
         // Make sure that all passed named arguments exist in this candidate
         if !query.args.iter().all(|arg| {
-            arg.name.map_or(true, |name| {
-                self.ty.params.iter().any(|p| Some(name) == p.name)
-            })
+            arg.name.map_or(true, |name| self.ty.params.iter().any(|p| Some(name) == p.name))
         }) {
             return None;
         }
@@ -1190,8 +1049,8 @@ impl FnCandidate {
         Some(total_score)
     }
 
-    // Calculates the distance between an argument and the parameter it is applied to.
-    // The actual distance is calculated by the amount of "steps"
+    // Calculates the distance between an argument and the parameter it is applied
+    // to. The actual distance is calculated by the amount of "steps"
     // required to convert the argument to the parameter.
     fn distance(cx: &Typeck, arg: Ty, param: Ty) -> Option<FnCandidateScore> {
         if arg.can_unify(param, cx, UnifyOptions::default()).is_ok() {
@@ -1201,10 +1060,7 @@ impl FnCandidate {
         if arg.can_coerce(
             &param,
             cx,
-            CoerceOptions {
-                unify_options: UnifyOptions::default(),
-                rollback_unifications: true,
-            },
+            CoerceOptions { unify_options: UnifyOptions::default(), rollback_unifications: true },
         ) {
             return Some(FnCandidateScore::Coerce);
         }
@@ -1230,9 +1086,7 @@ impl FnCandidate {
 
 impl PartialEq for FnCandidate {
     fn eq(&self, other: &Self) -> bool {
-        if self.word.name() != other.word.name()
-            || self.ty.params.len() != other.ty.params.len()
-        {
+        if self.word.name() != other.word.name() || self.ty.params.len() != other.ty.params.len() {
             return false;
         }
 

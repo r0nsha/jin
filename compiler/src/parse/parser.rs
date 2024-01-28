@@ -31,12 +31,10 @@ pub fn parse(
     source: &Source,
     tokens: Vec<Token>,
 ) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
-    let name = QPath::from_path(&db.package(package).root_path, source.path())
-        .unwrap();
+    let name = QPath::from_path(&db.package(package).root_path, source.path()).unwrap();
 
     let mut parser = Parser::new(db, source, tokens);
-    let is_main = db.is_main_package(package)
-        && source.id() == db.package(package).main_source_id;
+    let is_main = db.is_main_package(package) && source.id() == db.package(package).main_source_id;
     let module = parser.parse(source.id(), name, is_main)?;
 
     Ok((module, parser.imported_module_paths))
@@ -53,13 +51,7 @@ pub(super) struct Parser<'a> {
 
 impl<'a> Parser<'a> {
     fn new(db: &'a Db, source: &'a Source, tokens: Vec<Token>) -> Self {
-        Self {
-            db,
-            source,
-            tokens,
-            pos: 0,
-            imported_module_paths: FxHashSet::default(),
-        }
+        Self { db, source, tokens, pos: 0, imported_module_paths: FxHashSet::default() }
     }
 
     fn parse(
@@ -110,14 +102,10 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_optional_ty_params(&mut self) -> DiagnosticResult<Vec<TyParam>> {
-        self.parse_list_optional(
-            TokenKind::OpenBracket,
-            TokenKind::CloseBracket,
-            |this| {
-                let ident = this.eat_ident()?;
-                Ok(ControlFlow::Continue(TyParam { word: ident.word() }))
-            },
-        )
+        self.parse_list_optional(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
+            let ident = this.eat_ident()?;
+            Ok(ControlFlow::Continue(TyParam { word: ident.word() }))
+        })
         .map(|(t, _)| t)
     }
 
@@ -163,10 +151,7 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
-    pub(super) fn eat(
-        &mut self,
-        expected: TokenKind,
-    ) -> DiagnosticResult<Token> {
+    pub(super) fn eat(&mut self, expected: TokenKind) -> DiagnosticResult<Token> {
         let tok = self.eat_any()?;
         Self::require_kind(tok, expected)
     }
@@ -196,9 +181,7 @@ impl<'a> Parser<'a> {
         self.token().ok_or_else(|| {
             Diagnostic::error()
                 .with_message("unexpected end of file")
-                .with_label(
-                    Label::primary(self.last_span()).with_message("here"),
-                )
+                .with_label(Label::primary(self.last_span()).with_message("here"))
         })
     }
 
@@ -233,10 +216,7 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
-    pub(super) fn is_predicate(
-        &mut self,
-        mut f: impl FnMut(&mut Self, Token) -> bool,
-    ) -> bool {
+    pub(super) fn is_predicate(&mut self, mut f: impl FnMut(&mut Self, Token) -> bool) -> bool {
         match self.token() {
             Some(tok) if f(self, tok) => {
                 self.next();
@@ -296,18 +276,11 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
-    pub(super) fn require_kind(
-        tok: Token,
-        expected: TokenKind,
-    ) -> DiagnosticResult<Token> {
+    pub(super) fn require_kind(tok: Token, expected: TokenKind) -> DiagnosticResult<Token> {
         if tok.kind_is(expected) {
             Ok(tok)
         } else {
-            Err(errors::unexpected_token_err(
-                &expected.to_string(),
-                tok.kind,
-                tok.span,
-            ))
+            Err(errors::unexpected_token_err(&expected.to_string(), tok.kind, tok.span))
         }
     }
 

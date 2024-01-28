@@ -2,8 +2,8 @@ use std::ops::ControlFlow;
 
 use crate::{
     ast::{
-        token::TokenKind, Attrs, StructTyDef, StructTyField, TyDef, TyDefKind,
-        UnionTyDef, UnionVariant, UnionVariantField,
+        token::TokenKind, Attrs, StructTyDef, StructTyField, TyDef, TyDefKind, UnionTyDef,
+        UnionVariant, UnionVariantField,
     },
     db::StructKind,
     diagnostics::DiagnosticResult,
@@ -11,10 +11,7 @@ use crate::{
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_tydef(
-        &mut self,
-        attrs: Attrs,
-    ) -> DiagnosticResult<TyDef> {
+    pub(super) fn parse_tydef(&mut self, attrs: Attrs) -> DiagnosticResult<TyDef> {
         let start = self.last_span();
 
         let ident = self.eat_ident()?;
@@ -37,49 +34,30 @@ impl<'a> Parser<'a> {
             self.parse_tydef_union()
         } else {
             let tok = self.require()?;
-            Err(errors::unexpected_token_err(
-                "( or `extern`",
-                tok.kind,
-                tok.span,
-            ))
+            Err(errors::unexpected_token_err("( or `extern`", tok.kind, tok.span))
         }
     }
 
-    fn parse_tydef_struct(
-        &mut self,
-        kind: StructKind,
-    ) -> DiagnosticResult<TyDefKind> {
-        let (fields, _) = self.parse_list(
-            TokenKind::OpenParen,
-            TokenKind::CloseParen,
-            |this| {
-                let ident = this.eat_ident()?;
-                let vis = this.parse_vis();
-                this.eat(TokenKind::Colon)?;
-                let ty_expr = this.parse_ty()?;
-                Ok(ControlFlow::Continue(StructTyField {
-                    name: ident.word(),
-                    vis,
-                    ty_expr,
-                }))
-            },
-        )?;
+    fn parse_tydef_struct(&mut self, kind: StructKind) -> DiagnosticResult<TyDefKind> {
+        let (fields, _) = self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
+            let ident = this.eat_ident()?;
+            let vis = this.parse_vis();
+            this.eat(TokenKind::Colon)?;
+            let ty_expr = this.parse_ty()?;
+            Ok(ControlFlow::Continue(StructTyField { name: ident.word(), vis, ty_expr }))
+        })?;
 
         Ok(TyDefKind::Struct(StructTyDef { kind, fields }))
     }
 
     fn parse_tydef_union(&mut self) -> DiagnosticResult<TyDefKind> {
-        let (variants, _) = self.parse_list(
-            TokenKind::OpenCurly,
-            TokenKind::CloseCurly,
-            |this| {
+        let (variants, _) =
+            self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
                 let ident = this.eat_ident()?;
 
                 let fields = if this.peek_is(TokenKind::OpenParen) {
-                    let (fields, _) = this.parse_list(
-                        TokenKind::OpenParen,
-                        TokenKind::CloseParen,
-                        |this| {
+                    let (fields, _) =
+                        this.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
                             let ident = this.eat_ident()?;
                             this.eat(TokenKind::Colon)?;
                             let ty_expr = this.parse_ty()?;
@@ -87,20 +65,15 @@ impl<'a> Parser<'a> {
                                 name: ident.word(),
                                 ty_expr,
                             }))
-                        },
-                    )?;
+                        })?;
 
                     fields
                 } else {
                     vec![]
                 };
 
-                Ok(ControlFlow::Continue(UnionVariant {
-                    name: ident.word(),
-                    fields,
-                }))
-            },
-        )?;
+                Ok(ControlFlow::Continue(UnionVariant { name: ident.word(), fields }))
+            })?;
 
         Ok(TyDefKind::Union(UnionTyDef { variants }))
     }

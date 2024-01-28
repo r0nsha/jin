@@ -7,16 +7,12 @@ use ustr::ustr;
 use crate::{
     db::Db,
     mir::{
-        Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, Pat,
-        RtCallKind, StaticGlobal, ValueId, ValueKind,
+        Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, Pat, RtCallKind,
+        StaticGlobal, ValueId, ValueKind,
     },
 };
 
-pub(super) fn print(
-    db: &Db,
-    mir: &Mir,
-    w: &mut impl io::Write,
-) -> io::Result<()> {
+pub(super) fn print(db: &Db, mir: &Mir, w: &mut impl io::Write) -> io::Result<()> {
     let mut cx = PrettyCx { db, mir };
     let mut docs: Vec<D> = vec![];
 
@@ -71,9 +67,7 @@ impl<'db> PrettyCx<'db> {
                         .append(D::hardline())
                         .append(
                             D::intersperse(
-                                body.blocks
-                                    .iter()
-                                    .map(|b| self.pp_block(body, b).into_doc()),
+                                body.blocks.iter().map(|b| self.pp_block(body, b).into_doc()),
                                 D::hardline().append(D::hardline()),
                             )
                             .group(),
@@ -97,12 +91,7 @@ impl<'db> PrettyCx<'db> {
 
         PrintFn {
             sig: self.pp_fn_sig(sig),
-            blocks: f
-                .body
-                .blocks
-                .iter()
-                .map(|b| self.pp_block(&f.body, b))
-                .collect(),
+            blocks: f.body.blocks.iter().map(|b| self.pp_block(&f.body, b)).collect(),
         }
         .into_doc()
     }
@@ -131,11 +120,7 @@ impl<'db> PrettyCx<'db> {
         }
     }
 
-    fn pp_block(
-        &mut self,
-        body: &'db Body,
-        block: &'db Block,
-    ) -> PrintBlock<'db> {
+    fn pp_block(&mut self, body: &'db Body, block: &'db Block) -> PrintBlock<'db> {
         PrintBlock {
             name: D::text(block.display_name()),
             insts: block.insts.iter().map(|i| self.pp_inst(body, i)).collect(),
@@ -167,16 +152,14 @@ impl<'db> PrettyCx<'db> {
                 .value_assign(body, *value)
                 .append(D::text("slice_alloc, cap: "))
                 .append(self.value(body, *cap)),
-            Inst::SliceIndex { value, slice, index, .. } => {
-                self.value_assign(body, *value).append(
-                    D::text("slice_index")
-                        .append(D::space())
-                        .append(self.value(body, *slice))
-                        .append(D::text("["))
-                        .append(self.value(body, *index))
-                        .append(D::text("]")),
-                )
-            }
+            Inst::SliceIndex { value, slice, index, .. } => self.value_assign(body, *value).append(
+                D::text("slice_index")
+                    .append(D::space())
+                    .append(self.value(body, *slice))
+                    .append(D::text("["))
+                    .append(self.value(body, *index))
+                    .append(D::text("]")),
+            ),
             Inst::SliceSlice { value, slice, low, high, .. } => {
                 self.value_assign(body, *value).append(
                     D::text("slice_slice")
@@ -189,31 +172,29 @@ impl<'db> PrettyCx<'db> {
                         .append(D::text("]")),
                 )
             }
-            Inst::SliceStore { slice, index, value, .. } => {
-                D::text("slice_store")
-                    .append(D::space())
-                    .append(self.value(body, *value))
-                    .append(D::text(" in "))
-                    .append(self.value(body, *slice))
-                    .append(D::text("["))
-                    .append(self.value(body, *index))
-                    .append(D::text("]"))
+            Inst::SliceStore { slice, index, value, .. } => D::text("slice_store")
+                .append(D::space())
+                .append(self.value(body, *value))
+                .append(D::text(" in "))
+                .append(self.value(body, *slice))
+                .append(D::text("["))
+                .append(self.value(body, *index))
+                .append(D::text("]")),
+            Inst::Destroy { value, .. } => {
+                D::text("destroy").append(D::space()).append(self.value(body, *value))
             }
-            Inst::Destroy { value, .. } => D::text("destroy")
-                .append(D::space())
-                .append(self.value(body, *value)),
-            Inst::Free { value, .. } => D::text("free")
-                .append(D::space())
-                .append(self.value(body, *value)),
-            Inst::IncRef { value } => D::text("incref")
-                .append(D::space())
-                .append(self.value(body, *value)),
-            Inst::DecRef { value } => D::text("decref")
-                .append(D::space())
-                .append(self.value(body, *value)),
-            Inst::Br { target } => D::text("br")
-                .append(D::space())
-                .append(D::text(body.block(*target).display_name())),
+            Inst::Free { value, .. } => {
+                D::text("free").append(D::space()).append(self.value(body, *value))
+            }
+            Inst::IncRef { value } => {
+                D::text("incref").append(D::space()).append(self.value(body, *value))
+            }
+            Inst::DecRef { value } => {
+                D::text("decref").append(D::space()).append(self.value(body, *value))
+            }
+            Inst::Br { target } => {
+                D::text("br").append(D::space()).append(D::text(body.block(*target).display_name()))
+            }
             Inst::BrIf { cond, then, otherwise } => D::text("brif")
                 .append(D::text("("))
                 .append(self.value(body, *cond))
@@ -233,15 +214,13 @@ impl<'db> PrettyCx<'db> {
                 .append(D::space())
                 .append(D::text("["))
                 .append(D::intersperse(
-                    blocks
-                        .iter()
-                        .map(|&b| D::text(body.block(b).display_name())),
+                    blocks.iter().map(|&b| D::text(body.block(b).display_name())),
                     D::text(", "),
                 ))
                 .append(D::text("]")),
-            Inst::Return { value } => D::text("ret")
-                .append(D::space())
-                .append(self.value(body, *value)),
+            Inst::Return { value } => {
+                D::text("ret").append(D::space()).append(self.value(body, *value))
+            }
             Inst::Call { value, callee, args, .. } => self
                 .value_assign(body, *value)
                 .append(D::text("call"))
@@ -261,10 +240,9 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text("("))
                 .append(D::intersperse(
                     match kind {
-                        RtCallKind::SliceGrow { slice, new_cap } => vec![
-                            self.value(body, *slice),
-                            self.value(body, *new_cap),
-                        ],
+                        RtCallKind::SliceGrow { slice, new_cap } => {
+                            vec![self.value(body, *slice), self.value(body, *new_cap)]
+                        }
                         RtCallKind::SlicePushBoundscheck { slice } => {
                             vec![self.value(body, *slice)]
                         }
@@ -292,21 +270,14 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text("to"))
                 .append(D::space())
                 .append(D::text(target.to_string(self.db))),
-            Inst::StrLit { value, lit } => {
-                self.value_assign(body, *value).append(
-                    D::text("\"")
-                        .append(D::text(lit.as_str()))
-                        .append(D::text("\"")),
-                )
-            }
+            Inst::StrLit { value, lit } => self
+                .value_assign(body, *value)
+                .append(D::text("\"").append(D::text(lit.as_str())).append(D::text("\""))),
         }
     }
 
     fn value_assign(&self, body: &'db Body, id: ValueId) -> D<'db> {
-        self.value(body, id)
-            .append(D::space())
-            .append(D::text("="))
-            .append(D::space())
+        self.value(body, id).append(D::space()).append(D::text("=")).append(D::space())
     }
 
     fn global(name: &'db str) -> D<'db> {
@@ -329,12 +300,9 @@ impl<'db> PrettyCx<'db> {
             }
             ValueKind::Local(id) => D::text(self.db[*id].name.as_str()),
             ValueKind::Global(id) => Self::global(&self.mir.globals[*id].name),
-            ValueKind::Fn(id) => {
-                Self::global(&self.mir.fn_sigs[*id].mangled_name)
-            }
+            ValueKind::Fn(id) => Self::global(&self.mir.fn_sigs[*id].mangled_name),
             ValueKind::Const(value) => pp_const_value(value),
-            ValueKind::Field(value, field)
-            | ValueKind::Variant(value, field) => {
+            ValueKind::Field(value, field) | ValueKind::Variant(value, field) => {
                 self.value(body, *value).append(D::text(format!(".{field}")))
             }
         }
@@ -343,9 +311,7 @@ impl<'db> PrettyCx<'db> {
 
 fn pp_const_value<'a>(value: &Const) -> D<'a> {
     match value {
-        Const::Str(v) => {
-            D::text("\"").append(D::text(v.as_str())).append(D::text("\""))
-        }
+        Const::Str(v) => D::text("\"").append(D::text(v.as_str())).append(D::text("\"")),
         Const::Int(v) => D::text(v.to_string()),
         Const::Float(v) => D::text(v.to_string()),
         Const::Bool(v) => D::text(v.to_string()),
@@ -360,24 +326,19 @@ struct PrintFn<'a> {
 
 impl<'a> PrintFn<'a> {
     fn into_doc(self) -> D<'a> {
-        self.sig
-            .into_doc()
-            .append(D::space())
-            .append(D::text("="))
-            .append(D::space())
-            .append(
-                D::text("{")
-                    .append(D::hardline())
-                    .append(
-                        D::intersperse(
-                            self.blocks.into_iter().map(PrintBlock::into_doc),
-                            D::hardline().append(D::hardline()),
-                        )
-                        .group(),
+        self.sig.into_doc().append(D::space()).append(D::text("=")).append(D::space()).append(
+            D::text("{")
+                .append(D::hardline())
+                .append(
+                    D::intersperse(
+                        self.blocks.into_iter().map(PrintBlock::into_doc),
+                        D::hardline().append(D::hardline()),
                     )
-                    .append(D::hardline())
-                    .append(D::text("}")),
-            )
+                    .group(),
+                )
+                .append(D::hardline())
+                .append(D::text("}")),
+        )
     }
 }
 
@@ -400,15 +361,8 @@ impl<'a> PrintFnSig<'a> {
         doc.append(self.name)
             .append(
                 D::text("(")
-                    .append(D::intersperse(
-                        self.params,
-                        D::text(",").append(D::space()),
-                    ))
-                    .append(if self.is_c_variadic {
-                        D::text(", ..")
-                    } else {
-                        D::nil()
-                    })
+                    .append(D::intersperse(self.params, D::text(",").append(D::space())))
+                    .append(if self.is_c_variadic { D::text(", ..") } else { D::nil() })
                     .append(D::text(")").nest(NEST).group()),
             )
             .append(D::space())

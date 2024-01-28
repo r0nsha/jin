@@ -37,13 +37,7 @@ impl<'db> Typeck<'db> {
         let mut last_case_span: Option<Span> = None;
 
         for arm in arms {
-            let new_arm = self.check_match_arm(
-                env,
-                arm,
-                expr_ty,
-                expr.span,
-                expected_ty,
-            )?;
+            let new_arm = self.check_match_arm(env, arm, expr_ty, expr.span, expected_ty)?;
 
             if let Some(result_ty) = result_ty {
                 self.at(if let Some(last_case_span) = last_case_span {
@@ -63,10 +57,7 @@ impl<'db> Typeck<'db> {
         }
 
         Ok(self.expr(
-            hir::ExprKind::Match(hir::Match {
-                expr: Box::new(expr),
-                arms: new_arms,
-            }),
+            hir::ExprKind::Match(hir::Match { expr: Box::new(expr), arms: new_arms }),
             result_ty.unwrap_or(self.db.types.unit),
             span,
         ))
@@ -83,9 +74,7 @@ impl<'db> Typeck<'db> {
         env.with_anon_scope(ScopeKind::Block, |env| {
             let mut names = UstrMap::default();
 
-            let pat = self.check_match_pat(
-                env, &case.pat, expr_ty, expr_span, &mut names,
-            )?;
+            let pat = self.check_match_pat(env, &case.pat, expr_ty, expr_span, &mut names)?;
             self.check_match_pat_name_bound_once(&pat)?;
 
             let guard = if let Some(guard) = &case.guard {
@@ -123,33 +112,24 @@ impl<'db> Typeck<'db> {
                     let expected_ty = self.def_ty(*id);
 
                     if let Err(err) = self
-                        .at(Obligation::exprs(
-                            word.span(),
-                            self.db[*id].span,
-                            word.span(),
-                        ))
+                        .at(Obligation::exprs(word.span(), self.db[*id].span, word.span()))
                         .eq(expected_ty, pat_ty)
                     {
                         return Err(Diagnostic::error()
                             .with_message(format!(
-                                "in the same arm, the identifier `{word}` \
-                                 must have the same type in all alternatives",
+                                "in the same arm, the identifier `{word}` must have the same type \
+                                 in all alternatives",
                             ))
-                            .with_label(
-                                Label::primary(word.span()).with_message(
-                                    format!(
-                                        "has type `{}` here",
-                                        err.found.display(self.db)
-                                    ),
+                            .with_label(Label::primary(word.span()).with_message(format!(
+                                "has type `{}` here",
+                                err.found.display(self.db)
+                            )))
+                            .with_label(Label::secondary(self.db[*id].span).with_message(
+                                format!(
+                                    "previously introduce with type `{}`",
+                                    err.expected.display(self.db)
                                 ),
-                            )
-                            .with_label(
-                                Label::secondary(self.db[*id].span)
-                                    .with_message(format!(
-                                        "previously introduce with type `{}`",
-                                        err.expected.display(self.db)
-                                    )),
-                            ));
+                            )));
                     }
 
                     *id
@@ -211,9 +191,7 @@ impl<'db> Typeck<'db> {
             ast::MatchPat::Or(pats, span) => {
                 let pats: Vec<_> = pats
                     .iter()
-                    .map(|pat| {
-                        self.check_match_pat(env, pat, pat_ty, *span, names)
-                    })
+                    .map(|pat| self.check_match_pat(env, pat, pat_ty, *span, names))
                     .try_collect()?;
 
                 let all_bound: Vec<_> = pats
@@ -225,10 +203,8 @@ impl<'db> Typeck<'db> {
                     })
                     .collect();
 
-                let mut name_counts: UstrMap<usize> = all_bound
-                    .iter()
-                    .flat_map(|b| b.keys().map(|name| (*name, 0)))
-                    .collect();
+                let mut name_counts: UstrMap<usize> =
+                    all_bound.iter().flat_map(|b| b.keys().map(|name| (*name, 0))).collect();
 
                 for bound in all_bound {
                     for name in bound.into_keys() {
@@ -240,13 +216,9 @@ impl<'db> Typeck<'db> {
                     if count < pats.len() {
                         return Err(Diagnostic::error()
                             .with_message(format!(
-                                "identifier `{name}` is not bound in all \
-                                 alternatives"
+                                "identifier `{name}` is not bound in all alternatives"
                             ))
-                            .with_label(
-                                Label::primary(*span)
-                                    .with_message("in these patterns"),
-                            ));
+                            .with_label(Label::primary(*span).with_message("in these patterns")));
                     }
                 }
 
@@ -268,28 +240,15 @@ impl<'db> Typeck<'db> {
                 let def = &self.db[id];
 
                 match def.kind.as_ref() {
-                    &DefKind::Adt(adt_id) => self.check_match_pat_struct(
-                        env,
-                        pat,
-                        pat_ty,
-                        parent_span,
-                        names,
-                        adt_id,
-                    ),
-                    _ => Err(errors::expected_named_ty(
-                        self.def_ty(id).display(self.db),
-                        pat.span,
-                    )),
+                    &DefKind::Adt(adt_id) => {
+                        self.check_match_pat_struct(env, pat, pat_ty, parent_span, names, adt_id)
+                    }
+                    _ => Err(errors::expected_named_ty(self.def_ty(id).display(self.db), pat.span)),
                 }
             }
-            PathLookup::Variant(variant_id) => self.check_match_pat_variant(
-                env,
-                pat,
-                pat_ty,
-                parent_span,
-                names,
-                variant_id,
-            ),
+            PathLookup::Variant(variant_id) => {
+                self.check_match_pat_variant(env, pat, pat_ty, parent_span, names, variant_id)
+            }
         }
     }
 
@@ -302,25 +261,13 @@ impl<'db> Typeck<'db> {
         names: &mut UstrMap<DefId>,
         adt_id: AdtId,
     ) -> TypeckResult<hir::MatchPat> {
-        let instantiation = self.check_match_pat_adt_ty(
-            env,
-            pat.span,
-            pat_ty,
-            parent_span,
-            adt_id,
-        )?;
+        let instantiation =
+            self.check_match_pat_adt_ty(env, pat.span, pat_ty, parent_span, adt_id)?;
 
         let fields = self.db[adt_id].as_struct().unwrap().fields.clone();
 
-        let new_subpats = self.check_match_pat_subpats(
-            env,
-            pat,
-            pat_ty,
-            names,
-            adt_id,
-            &fields,
-            &instantiation,
-        )?;
+        let new_subpats =
+            self.check_match_pat_subpats(env, pat, pat_ty, names, adt_id, &fields, &instantiation)?;
 
         Ok(hir::MatchPat::Adt(adt_id, new_subpats, pat.span))
     }
@@ -336,13 +283,8 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<hir::MatchPat> {
         let adt_id = self.db[variant_id].adt_id;
 
-        let instantiation = self.check_match_pat_adt_ty(
-            env,
-            pat.span,
-            pat_ty,
-            parent_span,
-            adt_id,
-        )?;
+        let instantiation =
+            self.check_match_pat_adt_ty(env, pat.span, pat_ty, parent_span, adt_id)?;
 
         let new_subpats = self.check_match_pat_subpats(
             env,
@@ -366,8 +308,7 @@ impl<'db> Typeck<'db> {
         adt_id: AdtId,
     ) -> TypeckResult<Instantiation> {
         let adt_ty = self.db[adt_id].ty();
-        let instantiation =
-            self.fresh_instantiation(env, adt_ty.collect_params());
+        let instantiation = self.fresh_instantiation(env, adt_ty.collect_params());
 
         self.at(Obligation::exprs(span, parent_span, span))
             .eq(pat_ty.auto_deref(), instantiation.fold(adt_ty))?;
@@ -395,13 +336,10 @@ impl<'db> Typeck<'db> {
                 let dup_span = span;
 
                 Err(Diagnostic::error()
-                    .with_message(format!(
-                        "field `{name}` has already been matched"
-                    ))
+                    .with_message(format!("field `{name}` has already been matched"))
                     .with_label(
-                        Label::primary(dup_span).with_message(format!(
-                            "`{name}` matched again here"
-                        )),
+                        Label::primary(dup_span)
+                            .with_message(format!("`{name}` matched again here")),
                     )
                     .with_label(
                         Label::secondary(prev_span)
@@ -412,8 +350,7 @@ impl<'db> Typeck<'db> {
             }
         };
 
-        let mut new_subpats =
-            vec![hir::MatchPat::Wildcard(pat.span); fields.len()];
+        let mut new_subpats = vec![hir::MatchPat::Wildcard(pat.span); fields.len()];
 
         for (idx, subpat) in pat.subpats.iter().enumerate() {
             let (field_idx, field, subpat, field_use_span) = match subpat {
@@ -428,17 +365,14 @@ impl<'db> Typeck<'db> {
                                 adt_name
                             ))
                             .with_label(
-                                Label::primary(subpat.span()).with_message(
-                                    "pattern doesn't map to any field",
-                                ),
+                                Label::primary(subpat.span())
+                                    .with_message("pattern doesn't map to any field"),
                             ));
                     }
                 }
                 ast::Subpat::Named(name, subpat) => {
-                    if let Some((field_idx, field)) = fields
-                        .iter()
-                        .enumerate()
-                        .find(|(_, f)| f.name.name() == name.name())
+                    if let Some((field_idx, field)) =
+                        fields.iter().enumerate().find(|(_, f)| f.name.name() == name.name())
                     {
                         (field_idx, field, subpat, name.span())
                     } else {
@@ -454,12 +388,7 @@ impl<'db> Typeck<'db> {
 
             use_field(field.name.name(), field_use_span)?;
 
-            self.check_field_access(
-                env,
-                &self.db[adt_id],
-                field,
-                field_use_span,
-            )?;
+            self.check_field_access(env, &self.db[adt_id], field, field_use_span)?;
 
             let field_ty = instantiation.fold(field.ty);
             let field_ty = match pat_ty.kind() {
@@ -471,24 +400,13 @@ impl<'db> Typeck<'db> {
                 _ => field_ty,
             };
 
-            let new_subpat = self.check_match_pat(
-                env,
-                subpat,
-                field_ty,
-                field.span(),
-                names,
-            )?;
+            let new_subpat = self.check_match_pat(env, subpat, field_ty, field.span(), names)?;
 
             new_subpats[field_idx] = new_subpat;
         }
 
         if pat.is_exhaustive {
-            Self::check_match_pat_adt_missing_fields(
-                adt_name,
-                fields,
-                &used_fields,
-                pat.span,
-            )?;
+            Self::check_match_pat_adt_missing_fields(adt_name, fields, &used_fields, pat.span)?;
         }
 
         Ok(new_subpats)
@@ -511,27 +429,14 @@ impl<'db> Typeck<'db> {
                     "missing {} field(s) in `{}` pattern: {}",
                     missing_fields.len(),
                     adt_name,
-                    missing_fields
-                        .into_iter()
-                        .map(|f| format!("`{}`", f.name))
-                        .join(", ")
+                    missing_fields.into_iter().map(|f| format!("`{}`", f.name)).join(", ")
                 ))
-                .with_label(
-                    Label::primary(span)
-                        .with_message("pattern is not exhaustive"),
-                )
-                .with_note(
-                    "if this is intentional, use `..` at the end of the \
-                     pattern",
-                ))
+                .with_label(Label::primary(span).with_message("pattern is not exhaustive"))
+                .with_note("if this is intentional, use `..` at the end of the pattern"))
         }
     }
 
-    fn collect_bound_names_in_pat(
-        &self,
-        pat: &hir::MatchPat,
-        bound: &mut UstrMap<Vec<Span>>,
-    ) {
+    fn collect_bound_names_in_pat(&self, pat: &hir::MatchPat, bound: &mut UstrMap<Vec<Span>>) {
         match pat {
             hir::MatchPat::Name(id, _, span) => {
                 bound.entry(self.db[*id].name).or_default().push(*span);
@@ -550,10 +455,7 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    fn check_match_pat_name_bound_once(
-        &self,
-        pat: &hir::MatchPat,
-    ) -> TypeckResult<()> {
+    fn check_match_pat_name_bound_once(&self, pat: &hir::MatchPat) -> TypeckResult<()> {
         let mut bound = UstrMap::default();
         self.collect_bound_names_in_pat(pat, &mut bound);
 
@@ -561,13 +463,10 @@ impl<'db> Typeck<'db> {
             if spans.len() > 1 {
                 return Err(Diagnostic::error()
                     .with_message(format!(
-                        "identifier `{name}` is bound more than once in the \
-                         same pattern"
+                        "identifier `{name}` is bound more than once in the same pattern"
                     ))
                     .with_labels(
-                        spans
-                            .into_iter()
-                            .map(|s| Label::primary(s).with_message("here")),
+                        spans.into_iter().map(|s| Label::primary(s).with_message("here")),
                     ));
             }
         }

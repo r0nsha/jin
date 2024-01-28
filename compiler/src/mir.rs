@@ -53,11 +53,7 @@ impl Mir {
         }
     }
 
-    pub fn pretty_print(
-        &self,
-        db: &Db,
-        w: &mut impl io::Write,
-    ) -> io::Result<()> {
+    pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
         pretty_print::print(db, self, w)
     }
 }
@@ -180,11 +176,7 @@ impl Body {
         self.blocks.push_with_key(|id| Block::new(id, name))
     }
 
-    pub fn create_blocks(
-        &mut self,
-        base: impl core::fmt::Display,
-        len: usize,
-    ) -> Vec<BlockId> {
+    pub fn create_blocks(&mut self, base: impl core::fmt::Display, len: usize) -> Vec<BlockId> {
         (0..len).map(|i| self.create_block(format!("{base}{i}"))).collect()
     }
 
@@ -206,9 +198,7 @@ impl Body {
 
     pub fn parent(&self, value: ValueId) -> Option<ValueId> {
         match self.value(value).kind {
-            ValueKind::Field(parent, _) | ValueKind::Variant(parent, _) => {
-                Some(parent)
-            }
+            ValueKind::Field(parent, _) | ValueKind::Variant(parent, _) => Some(parent),
             _ => None,
         }
     }
@@ -250,17 +240,11 @@ impl Body {
         &self.instantations
     }
 
-    pub fn instantations_mut(
-        &mut self,
-    ) -> &mut FxHashMap<ValueId, Instantiation> {
+    pub fn instantations_mut(&mut self) -> &mut FxHashMap<ValueId, Instantiation> {
         &mut self.instantations
     }
 
-    pub fn create_instantation(
-        &mut self,
-        value: ValueId,
-        instantation: Instantiation,
-    ) {
+    pub fn create_instantation(&mut self, value: ValueId, instantation: Instantiation) {
         self.instantations.insert(value, instantation);
     }
 
@@ -302,8 +286,7 @@ impl Body {
 
             new_blocks[block_id].insts = block.insts.clone();
 
-            let (last_inst, insts) =
-                new_blocks[block_id].insts.split_last_mut().unwrap();
+            let (last_inst, insts) = new_blocks[block_id].insts.split_last_mut().unwrap();
 
             for inst in insts {
                 update_block_ids(blocks, &id_map, inst);
@@ -322,9 +305,7 @@ impl Body {
                         indexset! { *then }
                     }
                 }
-                Inst::Switch { cond: _, blocks } => {
-                    blocks.iter().copied().collect::<IndexSet<_>>()
-                }
+                Inst::Switch { cond: _, blocks } => blocks.iter().copied().collect::<IndexSet<_>>(),
                 _ => continue,
             };
 
@@ -342,10 +323,7 @@ impl Body {
         for block in self.blocks_mut() {
             match block.insts.last() {
                 Some(
-                    Inst::Br { .. }
-                    | Inst::BrIf { .. }
-                    | Inst::Switch { .. }
-                    | Inst::Return { .. },
+                    Inst::Br { .. } | Inst::BrIf { .. } | Inst::Switch { .. } | Inst::Return { .. },
                 ) => (),
                 _ if block.successors.len() == 1 => {
                     block.push_inst(Inst::Br { target: block.successors[0] });
@@ -381,10 +359,7 @@ fn update_block_ids(
     }
 }
 
-fn find_successor(
-    blocks: &IndexSlice<BlockId, Block>,
-    old_id: BlockId,
-) -> BlockId {
+fn find_successor(blocks: &IndexSlice<BlockId, Block>, old_id: BlockId) -> BlockId {
     let mut id = old_id;
 
     loop {
@@ -435,104 +410,27 @@ impl Block {
 
 #[derive(Debug, Clone)]
 pub enum Inst {
-    StackAlloc {
-        value: ValueId,
-        init: Option<ValueId>,
-    },
-    Store {
-        value: ValueId,
-        target: ValueId,
-    },
-    Alloc {
-        value: ValueId,
-    },
-    SliceAlloc {
-        value: ValueId,
-        cap: ValueId,
-    },
-    SliceIndex {
-        value: ValueId,
-        slice: ValueId,
-        index: ValueId,
-        span: Option<Span>,
-    },
-    SliceSlice {
-        value: ValueId,
-        slice: ValueId,
-        low: ValueId,
-        high: ValueId,
-        span: Span,
-    },
-    SliceStore {
-        slice: ValueId,
-        index: ValueId,
-        value: ValueId,
-        span: Option<Span>,
-    },
-    Destroy {
-        value: ValueId,
-        destroy_glue: bool,
-        span: Span,
-    },
-    Free {
-        value: ValueId,
-        traced: bool,
-        span: Span,
-    },
-    IncRef {
-        value: ValueId,
-    },
-    DecRef {
-        value: ValueId,
-    },
-    Br {
-        target: BlockId,
-    },
-    BrIf {
-        cond: ValueId,
-        then: BlockId,
-        otherwise: Option<BlockId>,
-    },
-    Switch {
-        cond: ValueId,
-        blocks: Vec<BlockId>,
-    },
-    Return {
-        value: ValueId,
-    },
-    Call {
-        value: ValueId,
-        callee: ValueId,
-        args: Vec<ValueId>,
-        span: Span,
-    },
-    RtCall {
-        value: ValueId,
-        kind: RtCallKind,
-        span: Span,
-    },
-    Binary {
-        value: ValueId,
-        lhs: ValueId,
-        rhs: ValueId,
-        op: BinOp,
-        span: Option<Span>,
-    },
-    Unary {
-        value: ValueId,
-        inner: ValueId,
-        op: UnOp,
-    },
-    Cast {
-        value: ValueId,
-        inner: ValueId,
-        target: Ty,
-        span: Span,
-    },
-    StrLit {
-        value: ValueId,
-        lit: Ustr,
-    },
+    StackAlloc { value: ValueId, init: Option<ValueId> },
+    Store { value: ValueId, target: ValueId },
+    Alloc { value: ValueId },
+    SliceAlloc { value: ValueId, cap: ValueId },
+    SliceIndex { value: ValueId, slice: ValueId, index: ValueId, span: Option<Span> },
+    SliceSlice { value: ValueId, slice: ValueId, low: ValueId, high: ValueId, span: Span },
+    SliceStore { slice: ValueId, index: ValueId, value: ValueId, span: Option<Span> },
+    Destroy { value: ValueId, destroy_glue: bool, span: Span },
+    Free { value: ValueId, traced: bool, span: Span },
+    IncRef { value: ValueId },
+    DecRef { value: ValueId },
+    Br { target: BlockId },
+    BrIf { cond: ValueId, then: BlockId, otherwise: Option<BlockId> },
+    Switch { cond: ValueId, blocks: Vec<BlockId> },
+    Return { value: ValueId },
+    Call { value: ValueId, callee: ValueId, args: Vec<ValueId>, span: Span },
+    RtCall { value: ValueId, kind: RtCallKind, span: Span },
+    Binary { value: ValueId, lhs: ValueId, rhs: ValueId, op: BinOp, span: Option<Span> },
+    Unary { value: ValueId, inner: ValueId, op: UnOp },
+    Cast { value: ValueId, inner: ValueId, target: Ty, span: Span },
+    StrLit { value: ValueId, lit: Ustr },
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -544,16 +442,13 @@ pub enum RtCallKind {
 impl RtCallKind {
     pub fn traced(self) -> bool {
         match self {
-            RtCallKind::SlicePushBoundscheck { .. }
-            | RtCallKind::SliceGrow { .. } => true,
+            RtCallKind::SlicePushBoundscheck { .. } | RtCallKind::SliceGrow { .. } => true,
         }
     }
 
     pub fn as_str(self) -> &'static str {
         match self {
-            RtCallKind::SlicePushBoundscheck { .. } => {
-                "jinrt_slice_push_boundscheck"
-            }
+            RtCallKind::SlicePushBoundscheck { .. } => "jinrt_slice_push_boundscheck",
             RtCallKind::SliceGrow { .. } => "jinrt_slice_grow",
         }
     }

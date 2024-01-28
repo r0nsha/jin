@@ -34,10 +34,7 @@ impl Timings {
 
         let total: Duration = self.passes.iter().map(|p| p.duration).sum();
 
-        print_row(
-            "total".color(AnsiColors::BrightWhite).bold(),
-            duration_display(total),
-        );
+        print_row("total".color(AnsiColors::BrightWhite).bold(), duration_display(total));
     }
 }
 
@@ -67,10 +64,7 @@ impl Timing {
             AnsiColors::BrightRed
         };
 
-        print_row(
-            self.name.color(color).bold(),
-            duration_display(self.duration),
-        );
+        print_row(self.name.color(color).bold(), duration_display(self.duration));
     }
 }
 

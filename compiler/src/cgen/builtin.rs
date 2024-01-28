@@ -45,21 +45,16 @@ impl<'db> Generator<'db> {
         let casted_ty = state.ty_of(casted);
 
         if casted_ty.is_any_int() && target.is_any_int() {
-            let (value_bits, target_bits) = (
-                casted_ty.size(&self.target_metrics),
-                target.size(&self.target_metrics),
-            );
+            let (value_bits, target_bits) =
+                (casted_ty.size(&self.target_metrics), target.size(&self.target_metrics));
 
             if target_bits < value_bits {
                 let casted_doc = self.value(state, casted);
                 let (min, max) = (target.min(), target.max());
 
-                let cond =
-                    util::group(casted_doc.clone().append(format!(" < {min}")))
-                        .append(D::text(" || "))
-                        .append(util::group(
-                            casted_doc.append(format!(" > {max}")),
-                        ));
+                let cond = util::group(casted_doc.clone().append(format!(" < {min}")))
+                    .append(D::text(" || "))
+                    .append(util::group(casted_doc.append(format!(" > {max}"))));
 
                 return D::intersperse(
                     [
@@ -67,8 +62,7 @@ impl<'db> Generator<'db> {
                             state,
                             cond,
                             &format!(
-                                "value is out of range of type `{}`: \
-                                 {min}..{max}",
+                                "value is out of range of type `{}`: {min}..{max}",
                                 target.display(self.db)
                             ),
                             span,
@@ -83,19 +77,13 @@ impl<'db> Generator<'db> {
         cast
     }
 
-    pub fn codegen_bin_op(
-        &mut self,
-        state: &GenState<'db>,
-        data: &BinOpData,
-    ) -> D<'db> {
+    pub fn codegen_bin_op(&mut self, state: &GenState<'db>, data: &BinOpData) -> D<'db> {
         if data.do_safety_checks() && data.ty.is_any_int() {
             match data.op {
                 BinOp::Add | BinOp::Sub | BinOp::Mul => {
                     return self.codegen_safe_bin_op(state, data)
                 }
-                BinOp::Div | BinOp::Rem => {
-                    return self.codegen_safe_bin_op_div(state, data)
-                }
+                BinOp::Div | BinOp::Rem => return self.codegen_safe_bin_op_div(state, data),
                 _ => (),
             }
         }
@@ -103,13 +91,8 @@ impl<'db> Generator<'db> {
         self.codegen_bin_op_unchecked(state, data)
     }
 
-    pub fn codegen_bin_op_unchecked(
-        &mut self,
-        state: &GenState<'db>,
-        data: &BinOpData,
-    ) -> D<'db> {
-        let (lhs, rhs) =
-            (self.value(state, data.lhs), self.value(state, data.rhs));
+    pub fn codegen_bin_op_unchecked(&mut self, state: &GenState<'db>, data: &BinOpData) -> D<'db> {
+        let (lhs, rhs) = (self.value(state, data.lhs), self.value(state, data.rhs));
 
         let init = match (data.op, data.ty.kind()) {
             (BinOp::Rem, TyKind::Float(fty)) => util::call(
@@ -120,44 +103,27 @@ impl<'db> Generator<'db> {
                 [lhs, rhs],
             ),
             (BinOp::Cmp(CmpOp::Eq), TyKind::Str) => cmp_strs(lhs, rhs),
-            (BinOp::Cmp(CmpOp::Ne), TyKind::Str) => {
-                D::text("!").append(cmp_strs(lhs, rhs))
-            }
+            (BinOp::Cmp(CmpOp::Ne), TyKind::Str) => D::text("!").append(cmp_strs(lhs, rhs)),
             _ => bin_op(lhs, data.op, rhs),
         };
 
         self.value_assign(state, data.target, |_| init)
     }
 
-    fn codegen_safe_bin_op_div(
-        &mut self,
-        state: &GenState<'db>,
-        data: &BinOpData,
-    ) -> D<'db> {
-        let (lhs, rhs) =
-            (self.value(state, data.lhs), self.value(state, data.rhs));
+    fn codegen_safe_bin_op_div(&mut self, state: &GenState<'db>, data: &BinOpData) -> D<'db> {
+        let (lhs, rhs) = (self.value(state, data.lhs), self.value(state, data.rhs));
 
         let cond = rhs.clone().append(D::text(" == 0"));
-        let safety_check = self.panic_if(
-            state,
-            cond,
-            "attempt to divide by zero",
-            data.span.unwrap(),
-        );
+        let safety_check =
+            self.panic_if(state, cond, "attempt to divide by zero", data.span.unwrap());
 
-        let op = self
-            .value_assign(state, data.target, |_| bin_op(lhs, data.op, rhs));
+        let op = self.value_assign(state, data.target, |_| bin_op(lhs, data.op, rhs));
 
         D::intersperse([safety_check, op], D::hardline())
     }
 
-    fn codegen_safe_bin_op(
-        &mut self,
-        state: &GenState<'db>,
-        data: &BinOpData,
-    ) -> D<'db> {
-        let (lhs, rhs) =
-            (self.value(state, data.lhs), self.value(state, data.rhs));
+    fn codegen_safe_bin_op(&mut self, state: &GenState<'db>, data: &BinOpData) -> D<'db> {
+        let (lhs, rhs) = (self.value(state, data.lhs), self.value(state, data.rhs));
 
         let cond = self.codegen_bin_op_overflow_check_cond(data, &lhs, &rhs);
 
@@ -171,15 +137,8 @@ impl<'db> Generator<'db> {
 
         D::intersperse(
             [
-                self.panic_if(
-                    state,
-                    cond,
-                    &overflow_msg(action),
-                    data.span.unwrap(),
-                ),
-                self.value_assign(state, data.target, |_| {
-                    bin_op(lhs, data.op, rhs)
-                }),
+                self.panic_if(state, cond, &overflow_msg(action), data.span.unwrap()),
+                self.value_assign(state, data.target, |_| bin_op(lhs, data.op, rhs)),
             ],
             D::hardline(),
         )
@@ -195,25 +154,15 @@ impl<'db> Generator<'db> {
         let target_metrics = &self.target_metrics;
 
         let (min, max) = match data.ty.kind() {
-            TyKind::Int(IntTy::Int) => {
-                (D::text("INTPTR_MIN"), D::text("INTPTR_MAX"))
-            }
+            TyKind::Int(IntTy::Int) => (D::text("INTPTR_MIN"), D::text("INTPTR_MAX")),
             TyKind::Int(ity) => {
                 let size = ity.size(target_metrics);
-                (
-                    D::text(format!("INT{size}_MIN")),
-                    D::text(format!("INT{size}_MAX")),
-                )
+                (D::text(format!("INT{size}_MIN")), D::text(format!("INT{size}_MAX")))
             }
-            TyKind::Uint(UintTy::Uint) => {
-                (D::text("UINTPTR_MIN"), D::text("UINTPTR_MAX"))
-            }
+            TyKind::Uint(UintTy::Uint) => (D::text("UINTPTR_MIN"), D::text("UINTPTR_MAX")),
             TyKind::Uint(uty) => {
                 let size = uty.size(target_metrics);
-                (
-                    D::text(format!("UINT{size}_MIN")),
-                    D::text(format!("UINT{size}_MAX")),
-                )
+                (D::text(format!("UINT{size}_MIN")), D::text(format!("UINT{size}_MAX")))
             }
             ty => unreachable!("{ty:?}"),
         };
@@ -294,9 +243,9 @@ impl<'db> Generator<'db> {
             ),
 
             // (rhs > lhs)
-            (BinOp::Sub, TyKind::Uint(_)) => util::group(
-                rhs.clone().append(D::text(" > ")).append(lhs.clone()),
-            ),
+            (BinOp::Sub, TyKind::Uint(_)) => {
+                util::group(rhs.clone().append(D::text(" > ")).append(lhs.clone()))
+            }
 
             // (rhs != 0 && lhs > max / rhs)
             (BinOp::Mul, TyKind::Uint(_)) => util::group(
@@ -322,9 +271,8 @@ impl<'db> Generator<'db> {
         span: Option<Span>,
     ) -> D<'db> {
         if let Some(span) = span {
-            let safety_check = util::stmt(|| {
-                self.slice_index_boundscheck(state, slice, index, span)
-            });
+            let safety_check =
+                util::stmt(|| self.slice_index_boundscheck(state, slice, index, span));
 
             D::intersperse([safety_check, guarded_stmt], D::hardline())
         } else {

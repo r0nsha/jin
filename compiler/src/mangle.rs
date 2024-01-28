@@ -10,22 +10,20 @@ use crate::{
 
 pub fn mangle_fn_name(db: &Db, fun: &hir::Fn) -> Ustr {
     let sig_str = {
-        let params_str = fun.sig.params.iter().map(|param| {
-            format!("{}_{}", param.pat, mangle_ty_name(db, param.ty))
-        });
+        let params_str = fun
+            .sig
+            .params
+            .iter()
+            .map(|param| format!("{}_{}", param.pat, mangle_ty_name(db, param.ty)));
 
         params_str.collect::<Vec<String>>().join("_")
     };
 
     let def = &db[fun.def_id];
 
-    let mangle_name = if sig_str.is_empty() {
-        def.name.to_string()
-    } else {
-        format!("{}_{}", def.name, sig_str)
-    };
-    let qualified_name =
-        def.qpath.clone().with_name(ustr(&mangle_name)).join_with("_");
+    let mangle_name =
+        if sig_str.is_empty() { def.name.to_string() } else { format!("{}_{}", def.name, sig_str) };
+    let qualified_name = def.qpath.clone().with_name(ustr(&mangle_name)).join_with("_");
 
     ustr(&qualified_name)
 }
@@ -69,11 +67,8 @@ pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
 pub fn mangle_adt(db: &Db, adt: &Adt, targs: &[Ty]) -> String {
     let adt_name = db[adt.def_id].qpath.join_with("_");
 
-    let targs_str = targs
-        .iter()
-        .map(|ty| mangle_ty_name(db, *ty))
-        .collect::<Vec<String>>()
-        .join("_");
+    let targs_str =
+        targs.iter().map(|ty| mangle_ty_name(db, *ty)).collect::<Vec<String>>().join("_");
 
     if targs_str.is_empty() {
         adt_name

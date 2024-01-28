@@ -28,16 +28,12 @@ impl TyFolder for Normalize<'_> {
             TyKind::Infer(InferTy::Ty(var)) => {
                 self.storage.ty.probe_value(*var).map_or(ty, |ty| self.fold(ty))
             }
-            TyKind::Infer(InferTy::Int(var)) => self
-                .storage
-                .int
-                .probe_value(*var)
-                .map_or(ty, |ty| TyKind::from(ty).into()),
-            TyKind::Infer(InferTy::Float(var)) => self
-                .storage
-                .float
-                .probe_value(*var)
-                .map_or(ty, |ty| TyKind::from(ty).into()),
+            TyKind::Infer(InferTy::Int(var)) => {
+                self.storage.int.probe_value(*var).map_or(ty, |ty| TyKind::from(ty).into())
+            }
+            TyKind::Infer(InferTy::Float(var)) => {
+                self.storage.float.probe_value(*var).map_or(ty, |ty| TyKind::from(ty).into())
+            }
             _ => self.super_fold(ty),
         }
     }

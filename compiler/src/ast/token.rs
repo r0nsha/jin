@@ -17,10 +17,7 @@ impl Token {
     #[track_caller]
     pub fn str_value(&self) -> Ustr {
         match self.kind {
-            TokenKind::Ident(v)
-            | TokenKind::Int(v)
-            | TokenKind::Float(v)
-            | TokenKind::Str(v) => v,
+            TokenKind::Ident(v) | TokenKind::Int(v) | TokenKind::Float(v) | TokenKind::Str(v) => v,
             kind => panic!("expected Ident or Str, found {kind:?}"),
         }
     }

@@ -17,8 +17,7 @@ use winapi::{
     um::{
         combaseapi::{CoCreateInstance, CoInitializeEx},
         fileapi::{
-            FindClose, FindFirstFileW, FindNextFileW, GetFileAttributesW,
-            INVALID_FILE_ATTRIBUTES,
+            FindClose, FindFirstFileW, FindNextFileW, GetFileAttributesW, INVALID_FILE_ATTRIBUTES,
         },
         handleapi::INVALID_HANDLE_VALUE,
         minwinbase::WIN32_FIND_DATAW,
@@ -26,12 +25,10 @@ use winapi::{
         oleauto::SysFreeString,
         unknwnbase::{IUnknown, IUnknownVtbl},
         winnt::{
-            FILE_ATTRIBUTE_DIRECTORY, KEY_ENUMERATE_SUB_KEYS, KEY_QUERY_VALUE,
-            KEY_WOW64_32KEY, REG_SZ,
+            FILE_ATTRIBUTE_DIRECTORY, KEY_ENUMERATE_SUB_KEYS, KEY_QUERY_VALUE, KEY_WOW64_32KEY,
+            REG_SZ,
         },
-        winreg::{
-            RegCloseKey, RegOpenKeyExA, RegQueryValueExW, HKEY_LOCAL_MACHINE,
-        },
+        winreg::{RegCloseKey, RegOpenKeyExA, RegQueryValueExW, HKEY_LOCAL_MACHINE},
     },
     RIDL,
 };
@@ -132,11 +129,7 @@ fn os_file_exists(name: *const wchar_t) -> bool {
 
 type VisitFn = unsafe fn(&U16CStr, U16String, &mut VersionData);
 
-unsafe fn visit_files_w(
-    dir_name: U16String,
-    data: &mut VersionData,
-    f: VisitFn,
-) -> bool {
+unsafe fn visit_files_w(dir_name: U16String, data: &mut VersionData, f: VisitFn) -> bool {
     let mut wildcard_name = dir_name.clone();
     wildcard_name.push(u16str!("\\*"));
     let wildcard_name = U16CString::from_ustr(wildcard_name).unwrap();
@@ -178,10 +171,7 @@ unsafe fn visit_files_w(
     }
 }
 
-unsafe fn read_from_the_registry(
-    key: HKEY,
-    value_name: *const wchar_t,
-) -> Option<Box<wchar_t>> {
+unsafe fn read_from_the_registry(key: HKEY, value_name: *const wchar_t) -> Option<Box<wchar_t>> {
     let mut required_length: DWORD = 0;
 
     if RegQueryValueExW(
@@ -200,8 +190,10 @@ unsafe fn read_from_the_registry(
         let mut length: DWORD = 0;
 
         loop {
-            length = required_length + 2; // The +2 is for the maybe optional zero later on. Probably we are over-allocating.
-            value = malloc(length as usize + 2) as _; // This second +2 is for crazy situations where there are race conditions or the API doesn't do what we want!
+            length = required_length + 2; // The +2 is for the maybe optional zero later on. Probably we are
+                                          // over-allocating.
+            value = malloc(length as usize + 2) as _; // This second +2 is for crazy situations where there are race conditions or the
+                                                      // API doesn't do what we want!
 
             if value.is_null() {
                 return None;
@@ -233,8 +225,9 @@ unsafe fn read_from_the_registry(
             break;
         }
 
-        // If the string was already zero-terminated, this just puts an extra 0 after (since that 0 was counted in 'length').
-        // If it wasn't, this puts a 0 after the nonzero characters we got.
+        // If the string was already zero-terminated, this just puts an extra 0 after
+        // (since that 0 was counted in 'length'). If it wasn't, this puts a 0
+        // after the nonzero characters we got.
         let num_wchars = length / 2;
         *value.add(num_wchars as _) = 0;
 
@@ -248,11 +241,7 @@ unsafe fn read_from_the_registry(
     }
 }
 
-unsafe fn win10_best(
-    short_name: &U16CStr,
-    full_name: U16String,
-    data: &mut VersionData,
-) {
+unsafe fn win10_best(short_name: &U16CStr, full_name: U16String, data: &mut VersionData) {
     let parts = short_name
         .to_string()
         .unwrap()
@@ -279,8 +268,9 @@ unsafe fn win10_best(
             }
         }
 
-        // we have to copy_string and free here because visit_files free's the full_name string
-        // after we execute this function, so Win*_Data would contain an invalid pointer.
+        // we have to copy_string and free here because visit_files free's the full_name
+        // string after we execute this function, so Win*_Data would contain an
+        // invalid pointer.
         data.best_name = full_name;
 
         data.best_version[0] = i0;
@@ -290,11 +280,7 @@ unsafe fn win10_best(
     }
 }
 
-unsafe fn win8_best(
-    short_name: &U16CStr,
-    full_name: U16String,
-    data: &mut VersionData,
-) {
+unsafe fn win8_best(short_name: &U16CStr, full_name: U16String, data: &mut VersionData) {
     let parts = short_name
         .to_string()
         .unwrap()
@@ -314,8 +300,9 @@ unsafe fn win8_best(
             }
         }
 
-        // we have to copy_string and free here because visit_files free's the full_name string
-        // after we execute this function, so Win*_Data would contain an invalid pointer.
+        // we have to copy_string and free here because visit_files free's the full_name
+        // string after we execute this function, so Win*_Data would contain an
+        // invalid pointer.
         data.best_name = full_name;
 
         data.best_version[0] = i0;
@@ -369,13 +356,9 @@ unsafe fn find_windows_kit_root(result: &mut FindResult) {
     {
         let windows10_root = windows10_root.as_ref() as *const u16;
 
-        let mut data = VersionData {
-            best_version: [0, 0, 0, 0],
-            best_name: U16String::new(),
-        };
+        let mut data = VersionData { best_version: [0, 0, 0, 0], best_name: U16String::new() };
 
-        let mut windows10_lib =
-            U16String::from_ptr(windows10_root, wcslen(windows10_root));
+        let mut windows10_lib = U16String::from_ptr(windows10_root, wcslen(windows10_root));
         windows10_lib.push(u16str!("Lib"));
 
         visit_files_w(windows10_lib, &mut data, win10_best);
@@ -390,13 +373,9 @@ unsafe fn find_windows_kit_root(result: &mut FindResult) {
     {
         let windows8_root = windows8_root.as_ref() as *const u16;
 
-        let mut data = VersionData {
-            best_version: [0, 0, 0, 0],
-            best_name: U16String::new(),
-        };
+        let mut data = VersionData { best_version: [0, 0, 0, 0], best_name: U16String::new() };
 
-        let mut windows8_lib =
-            U16String::from_ptr(windows8_root, wcslen(windows8_root));
+        let mut windows8_lib = U16String::from_ptr(windows8_root, wcslen(windows8_root));
         windows8_lib.push(u16str!("Lib"));
 
         visit_files_w(windows8_lib, &mut data, win8_best);
@@ -416,15 +395,16 @@ unsafe fn find_visual_studio_2017_by_fighting_through_microsoft_craziness(
     // Visual Studio team want you to do, JUST TO FIND A SINGLE FOLDER
     // THAT EVERYONE NEEDS TO FIND, are ridiculous garbage.
 
-    // For earlier versions of Visual Studio, you'd find this information in the registry,
-    // similarly to the Windows Kits above. But no, now it's the future, so to ask the
-    // question "Where is the Visual Studio folder?" you have to do a bunch of COM object
-    // instantiation, enumeration, and querying. (For extra bonus points, try doing this in
-    // a new, underdeveloped programming language where you don't have COM routines up
-    // and running yet. So fun.)
+    // For earlier versions of Visual Studio, you'd find this information in the
+    // registry, similarly to the Windows Kits above. But no, now it's the
+    // future, so to ask the question "Where is the Visual Studio folder?" you
+    // have to do a bunch of COM object instantiation, enumeration, and
+    // querying. (For extra bonus points, try doing this in
+    // a new, underdeveloped programming language where you don't have COM routines
+    // up and running yet. So fun.)
     //
-    // If all this COM object instantiation, enumeration, and querying doesn't give us
-    // a useful result, we drop back to the registry-checking method.
+    // If all this COM object instantiation, enumeration, and querying doesn't give
+    // us a useful result, we drop back to the registry-checking method.
 
     let rc = CoInitializeEx(ptr::null_mut(), COINIT_MULTITHREADED);
 
@@ -491,12 +471,10 @@ unsafe fn find_visual_studio_2017_by_fighting_through_microsoft_craziness(
 
         let _d3 = defer(|| SysFreeString(bstr_inst_path));
 
-        let inst_path =
-            U16String::from_ptr(bstr_inst_path, wcslen(bstr_inst_path));
+        let inst_path = U16String::from_ptr(bstr_inst_path, wcslen(bstr_inst_path));
         let mut tools_filename = inst_path.clone();
-        tools_filename.push(u16str!(
-            "\\VC\\Auxiliary\\Build\\Microsoft.VCToolsVersion.default.txt"
-        ));
+        tools_filename
+            .push(u16str!("\\VC\\Auxiliary\\Build\\Microsoft.VCToolsVersion.default.txt"));
 
         match fs::read_to_string(tools_filename.to_string().unwrap()) {
             Ok(mut version) => {
@@ -516,9 +494,7 @@ unsafe fn find_visual_studio_2017_by_fighting_through_microsoft_craziness(
                 let mut library_file = library_path.clone();
                 library_file.push(u16str!("\\vcruntime.lib"));
 
-                if os_file_exists(
-                    U16CString::from_ustr(library_file).unwrap().as_ptr(),
-                ) {
+                if os_file_exists(U16CString::from_ustr(library_file).unwrap().as_ptr()) {
                     let mut link_exe_path = inst_path.clone();
                     link_exe_path.push(u16str!("\\VC\\Tools\\MSVC\\"));
                     link_exe_path.push(U16String::from_str(&version));
@@ -545,9 +521,7 @@ unsafe fn find_visual_studio_2017_by_fighting_through_microsoft_craziness(
     false
 }
 
-unsafe fn find_visual_studio_by_fighting_through_microsoft_craziness(
-    result: &mut FindResult,
-) {
+unsafe fn find_visual_studio_by_fighting_through_microsoft_craziness(result: &mut FindResult) {
     if find_visual_studio_2017_by_fighting_through_microsoft_craziness(result) {
         return;
     }
@@ -565,18 +539,12 @@ unsafe fn find_visual_studio_by_fighting_through_microsoft_craziness(
         return;
     }
 
-    // Hardcoded search for 4 prior Visual Studio versions. Is there something better to do here?
-    let versions = [
-        u16cstr!("14.0"),
-        u16cstr!("12.0"),
-        u16cstr!("11.0"),
-        u16cstr!("10.0"),
-    ];
+    // Hardcoded search for 4 prior Visual Studio versions. Is there something
+    // better to do here?
+    let versions = [u16cstr!("14.0"), u16cstr!("12.0"), u16cstr!("11.0"), u16cstr!("10.0")];
 
     for version in versions {
-        if let Some(buffer) =
-            read_from_the_registry(vs7_key.inner, version.as_ptr())
-        {
+        if let Some(buffer) = read_from_the_registry(vs7_key.inner, version.as_ptr()) {
             let root = buffer.as_ref() as *const u16;
             let root_path = U16String::from_ptr(root, wcslen(root));
 
@@ -619,8 +587,7 @@ pub unsafe fn find_visual_studio_and_windows_sdk() -> FindResult {
 
         let mut windows_sdk_ucrt_library_path = windows_sdk_root.clone();
         windows_sdk_ucrt_library_path.push(u16str!("\\ucrt\\x64"));
-        result.windows_sdk_ucrt_library_path =
-            Some(windows_sdk_ucrt_library_path);
+        result.windows_sdk_ucrt_library_path = Some(windows_sdk_ucrt_library_path);
     }
 
     find_visual_studio_by_fighting_through_microsoft_craziness(&mut result);

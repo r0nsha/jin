@@ -3,8 +3,7 @@ use std::ops::ControlFlow;
 use crate::{
     ast::{
         token::{Token, TokenKind},
-        Attr, AttrArgs, AttrId, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig,
-        Item, Let,
+        Attr, AttrArgs, AttrId, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig, Item, Let,
     },
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{CallConv, TyExpr},
@@ -17,9 +16,7 @@ use crate::{
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn maybe_parse_item(
-        &mut self,
-    ) -> DiagnosticResult<Option<Item>> {
+    pub(super) fn maybe_parse_item(&mut self) -> DiagnosticResult<Option<Item>> {
         let attrs = self.parse_attrs()?;
 
         if self.is(TokenKind::Fn) {
@@ -47,9 +44,7 @@ impl<'a> Parser<'a> {
                     .map(|i| Some(Item::ExternImport(i)));
             }
 
-            return self
-                .parse_import(&attrs, start)
-                .map(|i| Some(Item::Import(i)));
+            return self.parse_import(&attrs, start).map(|i| Some(Item::Import(i)));
         }
 
         if !attrs.is_empty() {
@@ -86,8 +81,7 @@ impl<'a> Parser<'a> {
         let callconv = self.parse_callconv()?;
         let name = self.eat_ident()?;
         let vis = self.parse_vis();
-        let (sig, is_c_variadic) =
-            self.parse_fn_sig(name.word(), RequireSigTy::Yes)?;
+        let (sig, is_c_variadic) = self.parse_fn_sig(name.word(), RequireSigTy::Yes)?;
 
         Ok(Fn {
             attrs,
@@ -103,24 +97,16 @@ impl<'a> Parser<'a> {
         let callconv_str = callconv.str_value().as_str();
         CallConv::try_from(callconv_str).map_err(|()| {
             Diagnostic::error()
-                .with_message(format!(
-                    "unknown calling convention `{callconv_str}`"
-                ))
+                .with_message(format!("unknown calling convention `{callconv_str}`"))
                 .with_label(
-                    Label::primary(callconv.span)
-                        .with_message("unknown calling convention"),
+                    Label::primary(callconv.span).with_message("unknown calling convention"),
                 )
         })
     }
 
-    fn parse_bare_fn(
-        &mut self,
-        attrs: Attrs,
-        name: Token,
-    ) -> DiagnosticResult<Fn> {
+    fn parse_bare_fn(&mut self, attrs: Attrs, name: Token) -> DiagnosticResult<Fn> {
         let vis = self.parse_vis();
-        let (sig, is_c_variadic) =
-            self.parse_fn_sig(name.word(), RequireSigTy::Yes)?;
+        let (sig, is_c_variadic) = self.parse_fn_sig(name.word(), RequireSigTy::Yes)?;
 
         if is_c_variadic {
             return Err(errors::invalid_c_variadic(name.span));
@@ -129,13 +115,7 @@ impl<'a> Parser<'a> {
         self.eat(TokenKind::Eq)?;
         let body = self.parse_expr()?;
 
-        Ok(Fn {
-            attrs,
-            vis,
-            sig,
-            kind: FnKind::Bare { body: Box::new(body) },
-            span: name.span,
-        })
+        Ok(Fn { attrs, vis, sig, kind: FnKind::Bare { body: Box::new(body) }, span: name.span })
     }
 
     pub(super) fn parse_fn_sig(
@@ -156,13 +136,12 @@ impl<'a> Parser<'a> {
         allow_omit_parens: AllowOmitParens,
         require_sig_ty: RequireSigTy,
     ) -> DiagnosticResult<(Vec<FnParam>, Option<TyExpr>, bool)> {
-        let (params, is_c_variadic) = if allow_omit_parens.into()
-            && !self.peek_is(TokenKind::OpenParen)
-        {
-            (vec![], false)
-        } else {
-            self.parse_fn_params(require_sig_ty)?
-        };
+        let (params, is_c_variadic) =
+            if allow_omit_parens.into() && !self.peek_is(TokenKind::OpenParen) {
+                (vec![], false)
+            } else {
+                self.parse_fn_params(require_sig_ty)?
+            };
 
         let ret = match require_sig_ty {
             RequireSigTy::Yes => Some(self.parse_ty()?),
@@ -184,33 +163,25 @@ impl<'a> Parser<'a> {
     ) -> DiagnosticResult<(Vec<FnParam>, bool)> {
         let mut is_c_variadic = false;
 
-        let (params, _) = self.parse_list(
-            TokenKind::OpenParen,
-            TokenKind::CloseParen,
-            |this| {
-                if this.is(TokenKind::DotDot) {
-                    is_c_variadic = true;
-                    return Ok(ControlFlow::Break(()));
-                }
+        let (params, _) = self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
+            if this.is(TokenKind::DotDot) {
+                is_c_variadic = true;
+                return Ok(ControlFlow::Break(()));
+            }
 
-                let pat = this.parse_pat()?;
+            let pat = this.parse_pat()?;
 
-                let ty_expr = if require_sig_ty == RequireSigTy::Yes {
-                    this.eat(TokenKind::Colon)?;
-                    Some(this.parse_ty()?)
-                } else if this.is(TokenKind::Colon) {
-                    Some(this.parse_ty()?)
-                } else {
-                    None
-                };
+            let ty_expr = if require_sig_ty == RequireSigTy::Yes {
+                this.eat(TokenKind::Colon)?;
+                Some(this.parse_ty()?)
+            } else if this.is(TokenKind::Colon) {
+                Some(this.parse_ty()?)
+            } else {
+                None
+            };
 
-                Ok(ControlFlow::Continue(FnParam {
-                    span: pat.span(),
-                    pat,
-                    ty_expr,
-                }))
-            },
-        )?;
+            Ok(ControlFlow::Continue(FnParam { span: pat.span(), pat, ty_expr }))
+        })?;
 
         Ok((params, is_c_variadic))
     }
@@ -236,9 +207,7 @@ impl<'a> Parser<'a> {
         let id = AttrId::try_from(name).map_err(|()| {
             Diagnostic::error()
                 .with_message(format!("unknown attribute `{name}`"))
-                .with_label(
-                    Label::primary(span).with_message("unknown attribute"),
-                )
+                .with_label(Label::primary(span).with_message("unknown attribute"))
         })?;
 
         Ok((id, span))
@@ -259,26 +228,15 @@ impl<'a> Parser<'a> {
         let start = self.last_span();
         let pat = self.parse_pat()?;
 
-        let ty_expr = self
-            .is_and(TokenKind::Colon, |this, _| this.parse_ty())
-            .transpose()?;
+        let ty_expr = self.is_and(TokenKind::Colon, |this, _| this.parse_ty()).transpose()?;
         self.eat(TokenKind::Eq)?;
 
         let value = self.parse_expr()?;
 
-        Ok(Let {
-            attrs,
-            pat,
-            ty_expr,
-            span: start.merge(value.span()),
-            value: Box::new(value),
-        })
+        Ok(Let { attrs, pat, ty_expr, span: start.merge(value.span()), value: Box::new(value) })
     }
 
-    fn parse_extern_let(
-        &mut self,
-        attrs: Attrs,
-    ) -> DiagnosticResult<ExternLet> {
+    fn parse_extern_let(&mut self, attrs: Attrs) -> DiagnosticResult<ExternLet> {
         let start = self.last_span();
 
         let mutability = self.parse_mutability();
@@ -290,13 +248,6 @@ impl<'a> Parser<'a> {
 
         let span = start.merge(ty_expr.span());
 
-        Ok(ExternLet {
-            attrs,
-            mutability,
-            vis,
-            word: ident.word(),
-            ty_expr,
-            span,
-        })
+        Ok(ExternLet { attrs, mutability, vis, word: ident.word(), ty_expr, span })
     }
 }

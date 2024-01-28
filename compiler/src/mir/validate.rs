@@ -8,8 +8,7 @@ impl Mir {
         }
 
         for global in self.globals.values() {
-            if let GlobalKind::Static(StaticGlobal { body, .. }) = &global.kind
-            {
+            if let GlobalKind::Static(StaticGlobal { body, .. }) = &global.kind {
                 validate_body(&global.name, body);
             }
         }
@@ -36,8 +35,6 @@ fn validate_refcnt_balance(name: &str, body: &Body) {
 
     let balance = increfs - decrefs;
     if balance != 0 {
-        eprintln!(
-            "{name}: unbalanced refcounts - {increfs}/{decrefs} ({balance})"
-        );
+        eprintln!("{name}: unbalanced refcounts - {increfs}/{decrefs} ({balance})");
     }
 }

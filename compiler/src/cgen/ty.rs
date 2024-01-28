@@ -33,8 +33,7 @@ impl<'db> CTy<'db> for TyKind {
         match self {
             Self::Fn(fty) => fty.cty(cx),
             Self::Adt(adt_id, targs) => {
-                let adt_name =
-                    cx.get_or_create_adt(Ty::from_ref(self), *adt_id, targs);
+                let adt_name = cx.get_or_create_adt(Ty::from_ref(self), *adt_id, targs);
                 let name = D::text(format!("struct {adt_name}"));
 
                 match &cx.db[*adt_id].kind {
@@ -51,9 +50,7 @@ impl<'db> CTy<'db> for TyKind {
             Self::Int(ity) => ity.cty(cx),
             Self::Uint(uty) => uty.cty(cx),
             Self::Float(fty) => fty.cty(cx),
-            Self::Str | Self::Bool | Self::Never | Self::Unit => {
-                D::text(self.to_string(cx.db))
-            }
+            Self::Str | Self::Bool | Self::Never | Self::Unit => D::text(self.to_string(cx.db)),
             _ => panic!("unexpected type {self:?}"),
         }
     }
@@ -126,11 +123,7 @@ impl<'db> CTy<'db> for FnTy {
     }
 }
 
-fn fn_ty<'a>(
-    fn_ty: &FnTy,
-    cx: &mut Generator<'a>,
-    name: Option<D<'a>>,
-) -> D<'a> {
+fn fn_ty<'a>(fn_ty: &FnTy, cx: &mut Generator<'a>, name: Option<D<'a>>) -> D<'a> {
     let ret = fn_ty.ret.cty(cx);
     let name_doc = util::group(D::text("*").append(name.unwrap_or(D::nil())));
 
@@ -142,19 +135,13 @@ fn fn_ty<'a>(
 
     param_docs.extend(fn_ty.params.iter().map(|p| p.ty.cty(cx)));
 
-    let params = D::intersperse(param_docs, D::text(",").append(D::space()))
-        .nest(1)
-        .group();
+    let params = D::intersperse(param_docs, D::text(",").append(D::space())).nest(1).group();
 
-    ret.append(D::space()).append(name_doc).append(util::group(params.append(
-        if fn_ty.is_c_variadic() { D::text(", ...") } else { D::nil() },
-    )))
+    ret.append(D::space()).append(name_doc).append(util::group(
+        params.append(if fn_ty.is_c_variadic() { D::text(", ...") } else { D::nil() }),
+    ))
 }
 
-fn ty_and_name<'a>(
-    ty: &impl CTy<'a>,
-    cx: &mut Generator<'a>,
-    name: D<'a>,
-) -> D<'a> {
+fn ty_and_name<'a>(ty: &impl CTy<'a>, cx: &mut Generator<'a>, name: D<'a>) -> D<'a> {
     ty.cty(cx).append(D::space()).append(name)
 }

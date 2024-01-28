@@ -107,13 +107,8 @@ impl CheckBodies<'_> {
 
                     self.db.diagnostics.emit(
                         Diagnostic::error()
-                            .with_message(format!(
-                                "cannot cast `{source}` to `{target}`"
-                            ))
-                            .with_label(
-                                Label::primary(expr.span)
-                                    .with_message("invalid cast"),
-                            ),
+                            .with_message(format!("cannot cast `{source}` to `{target}`"))
+                            .with_label(Label::primary(expr.span).with_message("invalid cast")),
                     );
                 }
 
@@ -121,9 +116,9 @@ impl CheckBodies<'_> {
             }
             ExprKind::Unary(un) => {
                 if un.op == UnOp::Neg && un.expr.ty.is_uint() {
-                    self.db.diagnostics.emit(errors::invalid_un_op(
-                        self.db, un.op, un.expr.ty, expr.span,
-                    ));
+                    self.db
+                        .diagnostics
+                        .emit(errors::invalid_un_op(self.db, un.op, un.expr.ty, expr.span));
                 }
 
                 self.expr(&un.expr);
@@ -137,10 +132,7 @@ impl CheckBodies<'_> {
                                 "intrinsic `{}` must be called",
                                 self.db[name.id].name
                             ))
-                            .with_label(
-                                Label::primary(expr.span)
-                                    .with_message("must be called"),
-                            ),
+                            .with_label(Label::primary(expr.span).with_message("must be called")),
                     );
                 }
             }

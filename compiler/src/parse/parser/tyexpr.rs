@@ -37,11 +37,7 @@ impl<'a> Parser<'a> {
             }
             TokenKind::Ident(..) => self.parse_ty_path(tok.word())?,
             TokenKind::Underscore => TyExpr::Hole(tok.span),
-            _ => {
-                return Err(errors::unexpected_token_err(
-                    "a type", tok.kind, tok.span,
-                ))
-            }
+            _ => return Err(errors::unexpected_token_err("a type", tok.kind, tok.span)),
         };
 
         Ok(ty)
@@ -85,25 +81,19 @@ impl<'a> Parser<'a> {
     fn parse_fn_ty_params(&mut self) -> DiagnosticResult<(Vec<TyExpr>, bool)> {
         let mut is_c_variadic = false;
 
-        let (params, _) = self.parse_list(
-            TokenKind::OpenParen,
-            TokenKind::CloseParen,
-            |this| {
-                if this.is(TokenKind::DotDot) {
-                    is_c_variadic = true;
-                    return Ok(ControlFlow::Break(()));
-                }
+        let (params, _) = self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
+            if this.is(TokenKind::DotDot) {
+                is_c_variadic = true;
+                return Ok(ControlFlow::Break(()));
+            }
 
-                this.parse_ty().map(ControlFlow::Continue)
-            },
-        )?;
+            this.parse_ty().map(ControlFlow::Continue)
+        })?;
 
         Ok((params, is_c_variadic))
     }
 
-    pub(super) fn parse_optional_ty_args(
-        &mut self,
-    ) -> DiagnosticResult<Option<Vec<TyExpr>>> {
+    pub(super) fn parse_optional_ty_args(&mut self) -> DiagnosticResult<Option<Vec<TyExpr>>> {
         if !self.peek(|t| {
             t.kind_is(TokenKind::OpenBracket)
                 && self.spans_are_on_same_line(self.last_span(), t.span)
@@ -112,11 +102,9 @@ impl<'a> Parser<'a> {
         }
 
         let args = self
-            .parse_list(
-                TokenKind::OpenBracket,
-                TokenKind::CloseBracket,
-                |this| this.parse_ty().map(ControlFlow::Continue),
-            )
+            .parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
+                this.parse_ty().map(ControlFlow::Continue)
+            })
             .map(|(t, _)| t)?;
 
         Ok(Some(args))
