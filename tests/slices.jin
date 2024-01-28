@@ -35,7 +35,9 @@ fn ints() unit = {
 	std.intrinsics.push(&mut c2, 9)
 	print(&c2)
 	print(&c)
-	print(&c.[..2])
+	print(&c.[..3])
+	print(&c.[2..])
+	print(&c.[..])
 }
 
 fn print(s: &[int]) unit = {

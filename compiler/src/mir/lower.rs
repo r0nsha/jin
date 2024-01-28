@@ -951,12 +951,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let og_slice = self.lower_expr(&slice.expr);
         self.try_use(og_slice, slice.expr.span);
 
+        let uint = self.cx.db.types.uint;
+
         let low = if let Some(low) = &slice.low {
             let value = self.lower_expr(low);
             self.try_move(value, low.span);
             value
         } else {
-            todo!()
+            self.const_int(uint, 0)
         };
 
         let high = if let Some(high) = &slice.high {
@@ -964,7 +966,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.try_move(value, high.span);
             value
         } else {
-            todo!()
+            self.create_untracked_value(
+                uint,
+                ValueKind::Field(og_slice, ustr(sym::LEN)),
+            )
         };
 
         let sliced = self.create_value(expr.ty, ValueKind::Register(None));
