@@ -1,3 +1,4 @@
+import array*
 import int*
 import intrinsics*
 import io*
