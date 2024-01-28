@@ -1021,6 +1021,8 @@ impl<'db> Typeck<'db> {
             }
             ast::Expr::Assign { lhs, rhs, op, span } => {
                 let lhs = self.check_expr(env, lhs, None)?;
+                self.check_assign_lhs(&lhs)?;
+
                 let rhs = self.check_expr(env, rhs, Some(lhs.ty))?;
 
                 if let Some(op) = op {
@@ -1043,6 +1045,8 @@ impl<'db> Typeck<'db> {
             }
             ast::Expr::Swap { lhs, rhs, span } => {
                 let lhs = self.check_expr(env, lhs, None)?;
+                self.check_swap_lhs(&lhs)?;
+
                 let rhs = self.check_expr(env, rhs, Some(lhs.ty))?;
 
                 self.at(Obligation::exprs(*span, lhs.span, rhs.span))
@@ -2183,6 +2187,47 @@ impl<'db> Typeck<'db> {
 
     fn def_ty(&self, id: DefId) -> Ty {
         self.def_to_ty[&id]
+    }
+
+    fn check_assign_lhs(&self, expr: &hir::Expr) -> TypeckResult<()> {
+        self.check_assign_lhs_aux(expr).then_some(()).ok_or_else(|| {
+            Diagnostic::error()
+                .with_message("invalid left-hand side of assignment")
+                .with_label(Label::primary(expr.span).with_message("expression is not assignable"))
+        })
+    }
+
+    fn check_swap_lhs(&self, expr: &hir::Expr) -> TypeckResult<()> {
+        self.check_assign_lhs_aux(expr).then_some(()).ok_or_else(|| {
+            Diagnostic::error()
+                .with_message("invalid left-hand side of swap")
+                .with_label(Label::primary(expr.span).with_message("expression is not swappable"))
+        })
+    }
+
+    fn check_assign_lhs_aux(&self, expr: &hir::Expr) -> bool {
+        match &expr.kind {
+            hir::ExprKind::Field(_) | hir::ExprKind::Index(_) | hir::ExprKind::Name(_) => true,
+            hir::ExprKind::Slice(_)
+            | hir::ExprKind::Match(_)
+            | hir::ExprKind::Loop(_)
+            | hir::ExprKind::Break
+            | hir::ExprKind::Block(_)
+            | hir::ExprKind::Return(_)
+            | hir::ExprKind::Call(_)
+            | hir::ExprKind::Unary(_)
+            | hir::ExprKind::Binary(_)
+            | hir::ExprKind::Cast(_)
+            | hir::ExprKind::Let(_)
+            | hir::ExprKind::Assign(_)
+            | hir::ExprKind::Swap(_)
+            | hir::ExprKind::Variant(_)
+            | hir::ExprKind::SliceLit(_)
+            | hir::ExprKind::BoolLit(_)
+            | hir::ExprKind::IntLit(_)
+            | hir::ExprKind::FloatLit(_)
+            | hir::ExprKind::StrLit(_) => false,
+        }
     }
 }
 
