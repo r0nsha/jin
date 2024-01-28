@@ -13,13 +13,13 @@ type Ref(field: int)
 
 fn ref_type() unit = {
 	let mut ref = Ref(1)
-	print(ref) // should be 1
+	print(&ref) // should be 1
 
 	ref.field = 2
-	print(ref) // should be 2
+	print(&ref) // should be 2
 
 	ref.mutate()
-	print(ref) // should be 3
+	print(&ref) // should be 3
 }
 
 fn mutate(ref: &mut Ref) unit = {

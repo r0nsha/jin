@@ -38,7 +38,7 @@ use crate::{
     },
     typeck::{
         attrs::AttrsPlacement,
-        coerce::CoerceExt,
+        coerce::{CoerceExt, CoerceOptions},
         env::{
             AssocTy, BuiltinTys, Env, FnQuery, GlobalScope, LookupResult, PathLookup, Query,
             ScopeKind, Symbol, TyLookup,
@@ -1178,7 +1178,7 @@ impl<'db> Typeck<'db> {
                         let (callee, _) =
                             self.check_query_in_ty(env, ty, word.span(), &Query::Fn(query), *span)?;
 
-                        return self.check_call(callee, args, *span);
+                        return self.check_call(callee, args, *span, IsUfcs::No);
                     }
                 }
 
@@ -1194,7 +1194,7 @@ impl<'db> Typeck<'db> {
                             &Query::Name(*method),
                             expr.span,
                         )?;
-                        return self.check_call(callee, args, *span);
+                        return self.check_call(callee, args, *span, IsUfcs::No);
                     }
                     _ => {
                         // This is a UFCS call: add `expr` as the first argument of the call
@@ -1215,7 +1215,7 @@ impl<'db> Typeck<'db> {
 
                 let callee = self.check_name(env, id, *method, *span, targs.as_deref())?;
 
-                self.check_call(callee, args, *span)
+                self.check_call(callee, args, *span, IsUfcs::Yes)
             }
             ast::Expr::Call { callee, args, span } => {
                 let args = self.check_call_args(env, args)?;
@@ -1239,7 +1239,7 @@ impl<'db> Typeck<'db> {
                     _ => self.check_expr(env, callee, None)?,
                 };
 
-                self.check_call(callee, args, *span)
+                self.check_call(callee, args, *span, IsUfcs::No)
             }
             ast::Expr::Unary { expr, op, span } => {
                 let expr = self.check_expr(env, expr, None)?;
@@ -1642,7 +1642,7 @@ impl<'db> Typeck<'db> {
                     self.check_query_in_ty(env, *ty, span, &Query::Name(field), expr.span)?;
 
                 return if can_implicitly_call {
-                    self.check_call(expr, vec![], span)
+                    self.check_call(expr, vec![], span, IsUfcs::No)
                 } else {
                     Ok(expr)
                 };
@@ -1744,11 +1744,12 @@ impl<'db> Typeck<'db> {
         callee: hir::Expr,
         args: Vec<hir::CallArg>,
         span: Span,
+        is_ufcs: IsUfcs,
     ) -> TypeckResult<hir::Expr> {
         let callee_ty = self.normalize(callee.ty);
 
         match callee_ty.kind() {
-            TyKind::Fn(fn_ty) => self.check_call_fn(callee, args, fn_ty, span),
+            TyKind::Fn(fn_ty) => self.check_call_fn(callee, args, fn_ty, span, is_ufcs),
             TyKind::Type(ty) => {
                 if args.len() != 1 {
                     return Err(errors::arg_mismatch(1, args.len(), span));
@@ -1786,6 +1787,7 @@ impl<'db> Typeck<'db> {
         mut args: Vec<hir::CallArg>,
         fn_ty: &FnTy,
         span: Span,
+        is_ufcs: IsUfcs,
     ) -> TypeckResult<hir::Expr> {
         #[derive(Debug)]
         struct PassedArg {
@@ -1863,11 +1865,17 @@ impl<'db> Typeck<'db> {
         }
 
         // Unify all args with their corresponding param type
-        for arg in &args {
-            let idx = arg.index.expect("arg index to be resolved");
+        for (arg_idx, arg) in args.iter().enumerate() {
+            let param_idx = arg.index.expect("arg index to be resolved");
 
-            if let Some(param) = fn_ty.params.get(idx) {
-                self.eq_obvious_expr(param.ty, &arg.expr)?;
+            if let Some(param) = fn_ty.params.get(param_idx) {
+                let coerce_options = CoerceOptions {
+                    allow_owned_to_ref: is_ufcs == IsUfcs::Yes && arg_idx == 0,
+                    ..CoerceOptions::default()
+                };
+                self.at(Obligation::obvious(arg.expr.span))
+                    .eq(param.ty, arg.expr.ty)
+                    .or_coerce_ex(self, arg.expr.id, coerce_options)?;
             }
         }
 
@@ -1886,20 +1894,20 @@ impl<'db> Typeck<'db> {
         mutability: Mutability,
         span: Span,
     ) -> TypeckResult<hir::Expr> {
-        if ty.can_create_ref(self.db) {
-            Ok(self.expr(
-                hir::ExprKind::Unary(hir::Unary { expr: Box::new(expr), op }),
-                ty.create_ref(mutability),
-                span,
-            ))
-        } else {
-            Err(Diagnostic::error()
-                .with_message(format!(
-                    "cannot take a reference to value of type `{}`",
-                    ty.display(self.db)
-                ))
-                .with_label(Label::primary(span).with_message("cannot take reference")))
-        }
+        // if ty.can_create_ref(self.db) {
+        Ok(self.expr(
+            hir::ExprKind::Unary(hir::Unary { expr: Box::new(expr), op }),
+            ty.create_ref(mutability),
+            span,
+        ))
+        // } else {
+        //     Err(Diagnostic::error()
+        //         .with_message(format!(
+        //             "cannot take a reference to value of type `{}`",
+        //             ty.display(self.db)
+        //         ))
+        //         .with_label(Label::primary(span).with_message("cannot take
+        // reference"))) }
     }
 
     fn check_call_args(

@@ -11,18 +11,24 @@ use crate::{
     },
 };
 
-pub trait CoerceExt<'db> {
-    fn or_coerce(self, cx: &mut Typeck<'db>, expr_id: ExprId) -> Self;
+pub trait CoerceExt<'db>
+where
+    Self: Sized,
+{
+    fn or_coerce_ex(self, cx: &mut Typeck<'db>, expr_id: ExprId, options: CoerceOptions) -> Self;
+    fn or_coerce(self, cx: &mut Typeck<'db>, expr_id: ExprId) -> Self {
+        self.or_coerce_ex(cx, expr_id, CoerceOptions::default())
+    }
 }
 
 impl CoerceExt<'_> for EqResult {
-    fn or_coerce(self, cx: &mut Typeck, expr_id: ExprId) -> Self {
+    fn or_coerce_ex(self, cx: &mut Typeck, expr_id: ExprId, options: CoerceOptions) -> Self {
         match self {
             Ok(res) => Ok(res),
             Err(err) => {
                 let (source, target) = (cx.normalize(err.found), cx.normalize(err.expected));
 
-                if let Some(coercions) = source.coerce(&target, cx) {
+                if let Some(coercions) = source.coerce_ex(&target, cx, options) {
                     cx.hir.push_coercions(expr_id, coercions);
                     Ok(())
                 } else {
@@ -104,7 +110,7 @@ fn coerce_tys(
             coercions.push(Coercion { kind: CoercionKind::AnyToUnit, target });
             true
         }
-        (_, TyKind::Ref(b, _)) => {
+        (_, TyKind::Ref(b, _)) if options.allow_owned_to_ref => {
             if can_unify_or_coerce(source, *b, cx, coercions, options) {
                 coercions.push(Coercion { kind: CoercionKind::OwnedToRef, target });
                 true
@@ -112,11 +118,8 @@ fn coerce_tys(
                 false
             }
         }
-        (TyKind::Ref(a, _), _) => {
-            if !target.is_ref()
-                && !target.is_move(cx.db)
-                && unify_with_options(*a, target, cx, options).is_ok()
-            {
+        (TyKind::Ref(a, _), _) if !target.is_ref() && !target.is_move(cx.db) => {
+            if unify_with_options(*a, target, cx, options).is_ok() {
                 coercions.push(Coercion { kind: CoercionKind::RefToOwned, target });
                 true
             } else {
@@ -150,6 +153,7 @@ fn unify_with_options(source: Ty, target: Ty, cx: &Typeck, options: CoerceOption
 pub struct CoerceOptions {
     pub unify_options: UnifyOptions,
     pub rollback_unifications: bool,
+    pub allow_owned_to_ref: bool,
 }
 
 impl Default for CoerceOptions {
@@ -160,6 +164,10 @@ impl Default for CoerceOptions {
 
 impl CoerceOptions {
     pub fn new() -> Self {
-        Self { unify_options: UnifyOptions::default(), rollback_unifications: false }
+        Self {
+            unify_options: UnifyOptions::default(),
+            rollback_unifications: false,
+            allow_owned_to_ref: false,
+        }
     }
 }

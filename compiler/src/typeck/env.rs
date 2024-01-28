@@ -1041,8 +1041,9 @@ impl FnCandidate {
 
         let mut total_score = 0;
 
-        for (arg, param) in query.args.iter().zip(self.ty.params.iter()) {
-            let score = Self::distance(cx, arg.ty, param.ty)?;
+        for (idx, (arg, param)) in query.args.iter().zip(self.ty.params.iter()).enumerate() {
+            let allow_owned_to_ref = query.is_ufcs == IsUfcs::Yes && idx == 0;
+            let score = Self::distance(cx, arg.ty, param.ty, allow_owned_to_ref)?;
             total_score += score as u32;
         }
 
@@ -1052,7 +1053,12 @@ impl FnCandidate {
     // Calculates the distance between an argument and the parameter it is applied
     // to. The actual distance is calculated by the amount of "steps"
     // required to convert the argument to the parameter.
-    fn distance(cx: &Typeck, arg: Ty, param: Ty) -> Option<FnCandidateScore> {
+    fn distance(
+        cx: &Typeck,
+        arg: Ty,
+        param: Ty,
+        allow_owned_to_ref: bool,
+    ) -> Option<FnCandidateScore> {
         if arg.can_unify(param, cx, UnifyOptions::default()).is_ok() {
             return Some(FnCandidateScore::Eq);
         }
@@ -1060,7 +1066,11 @@ impl FnCandidate {
         if arg.can_coerce(
             &param,
             cx,
-            CoerceOptions { unify_options: UnifyOptions::default(), rollback_unifications: true },
+            CoerceOptions {
+                unify_options: UnifyOptions::default(),
+                rollback_unifications: true,
+                allow_owned_to_ref,
+            },
         ) {
             return Some(FnCandidateScore::Coerce);
         }
@@ -1071,6 +1081,7 @@ impl FnCandidate {
             CoerceOptions {
                 unify_options: UnifyOptions { unify_param_tys: true },
                 rollback_unifications: true,
+                allow_owned_to_ref,
             },
         ) {
             return Some(FnCandidateScore::Polymorphic);
