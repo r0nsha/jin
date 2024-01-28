@@ -6,7 +6,7 @@ use crate::{
     db::{
         AdtField, AdtKind, Db, DefId, DefKind, Intrinsic, StructKind, VariantId,
     },
-    diagnostics::{Diagnostic, DiagnosticResult},
+    diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
     hir::{FnKind, Hir},
     mangle,
@@ -851,6 +851,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.try_use(lhs, assign.lhs.span);
         let rhs = self.lower_assign_rhs(assign, lhs, span);
 
+        if self.is_builtin_field(lhs).is_some() {
+            self.cx.diagnostics.push(self.assign_builtin_field_err(
+                "assign to",
+                lhs,
+                assign.lhs.span,
+            ));
+        }
+
         self.check_assign_mutability(AssignKind::Assign, lhs, span);
 
         self.destroy_value_entirely(lhs, assign.lhs.span);
@@ -862,6 +870,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let lhs = self.lower_expr(&swap.lhs);
         self.try_use(lhs, swap.lhs.span);
         let rhs = self.lower_input_expr(&swap.rhs);
+
+        if self.is_builtin_field(lhs).is_some() {
+            self.cx.diagnostics.push(self.assign_builtin_field_err(
+                "swap",
+                lhs,
+                swap.lhs.span,
+            ));
+        }
 
         self.check_assign_mutability(AssignKind::Swap, lhs, span);
 
@@ -1861,6 +1877,32 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub fn field(&self, of: ValueId, name: Ustr) -> Option<ValueId> {
         self.fields.get(&of).and_then(|fields| fields.get(&name)).copied()
+    }
+
+    pub fn is_builtin_field(&self, value: ValueId) -> Option<Ustr> {
+        if let ValueKind::Field(_, field) = self.body.value(value).kind {
+            matches!(field.as_str(), sym::LEN | sym::CAP | sym::PTR)
+                .then_some(field)
+        } else {
+            None
+        }
+    }
+
+    pub fn assign_builtin_field_err(
+        &self,
+        action: &str,
+        value: ValueId,
+        span: Span,
+    ) -> Diagnostic {
+        Diagnostic::error()
+            .with_message(format!(
+                "cannot {action} builtin field {}",
+                self.value_name(value)
+            ))
+            .with_label(
+                Label::primary(span)
+                    .with_message(format!("cannot {action} builtin field")),
+            )
     }
 }
 
