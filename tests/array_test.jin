@@ -3,7 +3,7 @@ import std.array.{Array}
 fn extern "c" printf(fmt: *u8, ..) i32
 
 fn main() unit = {
-	let array = Array[int].new()
+	let array = Array.new[int]()
 }
 
 fn print(s: &Array[int]) unit = {

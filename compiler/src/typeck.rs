@@ -1177,8 +1177,14 @@ impl<'db> Typeck<'db> {
                             *span,
                         )?;
 
-                        let (callee, _) =
-                            self.check_query_in_ty(env, ty, word.span(), &Query::Fn(query), *span)?;
+                        let (callee, _) = self.check_query_in_ty(
+                            env,
+                            ty,
+                            word.span(),
+                            &Query::Fn(query),
+                            targs.as_deref(),
+                            *span,
+                        )?;
 
                         return self.check_call(callee, args, *span, IsUfcs::No);
                     }
@@ -1189,11 +1195,13 @@ impl<'db> Typeck<'db> {
                 let lookup_in_module = match self.normalize(expr.ty).kind() {
                     TyKind::Module(in_module) => *in_module,
                     TyKind::Type(ty) => {
+                        // This is probably a union variant
                         let (callee, _) = self.check_query_in_ty(
                             env,
                             *ty,
                             *span,
                             &Query::Name(*method),
+                            targs.as_deref(),
                             expr.span,
                         )?;
                         return self.check_call(callee, args, *span, IsUfcs::No);
@@ -1640,8 +1648,9 @@ impl<'db> Typeck<'db> {
                 }
             }
             TyKind::Type(ty) => {
+                // This is a union variant
                 let (expr, can_implicitly_call) =
-                    self.check_query_in_ty(env, *ty, span, &Query::Name(field), expr.span)?;
+                    self.check_query_in_ty(env, *ty, span, &Query::Name(field), None, expr.span)?;
 
                 return if can_implicitly_call {
                     self.check_call(expr, vec![], span, IsUfcs::No)
@@ -1693,6 +1702,7 @@ impl<'db> Typeck<'db> {
         ty: Ty,
         ty_span: Span,
         query: &Query,
+        targs: Option<&[Ty]>,
         span: Span,
     ) -> TypeckResult<(hir::Expr, bool)> {
         match self.lookup_in_ty(env.module_id(), ty, ty_span, query)? {
@@ -1705,6 +1715,7 @@ impl<'db> Typeck<'db> {
                 let instantiation = adt.instantiation(targs);
                 let ctor_ty = instantiation.fold(variant.ctor_ty);
 
+                // Union variants without fields are implicitly called for convenience
                 let can_implicitly_call = variant.fields.is_empty();
                 let expr = self.expr(
                     hir::ExprKind::Variant(hir::Variant { id: variant.id, instantiation }),
@@ -1715,7 +1726,7 @@ impl<'db> Typeck<'db> {
                 Ok((expr, can_implicitly_call))
             }
             TyLookup::AssocFn(id) => {
-                let expr = self.check_name(env, id, query.word(), span, None)?;
+                let expr = self.check_name(env, id, query.word(), span, targs)?;
                 Ok((expr, false))
             }
         }
