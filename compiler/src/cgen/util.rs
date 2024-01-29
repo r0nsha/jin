@@ -232,6 +232,14 @@ pub fn cast<'a>(ty: D<'a>, value: D<'a>) -> D<'a> {
     util::group(ty).append(util::group(value))
 }
 
+pub fn addr<'a>(value: D<'a>) -> D<'a> {
+    D::text("&").append(value)
+}
+
+pub fn deref<'a>(value: D<'a>) -> D<'a> {
+    D::text("*").append(value)
+}
+
 pub fn if_stmt<'a>(cond: D<'a>, then: D<'a>, otherwise: Option<D<'a>>) -> D<'a> {
     D::text("if")
         .append(D::space())

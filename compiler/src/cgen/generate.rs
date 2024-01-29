@@ -581,9 +581,9 @@ impl<'db> Generator<'db> {
             }
             Inst::Transmute { value, source, target } => self.value_assign(state, *value, |this| {
                 let target_doc = target.cty(this).append(D::text("*"));
-                let source_doc = D::text("&").append(this.value(state, *source));
+                let source_doc = util::addr(this.value(state, *source));
                 let cast = util::cast(target_doc, source_doc);
-                D::text("*").append(cast)
+                util::deref(cast)
             }),
             Inst::StrLit { value, lit } => self.value_assign(state, *value, |_| str_value(lit)),
             Inst::Destroy { .. } => unreachable!(),
