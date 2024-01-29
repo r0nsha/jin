@@ -617,7 +617,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 })
             }
             hir::ExprKind::Transmute(trans) => {
-                let source = self.lower_input_expr(&trans.expr);
+                let source = self.lower_expr(&trans.expr);
+                self.try_use(source, trans.expr.span);
 
                 self.push_inst_with_register(trans.target, |value| Inst::Transmute {
                     value,
