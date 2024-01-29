@@ -754,13 +754,13 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.try_use(lhs, assign.lhs.span);
         let rhs = self.lower_assign_rhs(assign, lhs, span);
 
-        if self.is_builtin_field(lhs).is_some() {
-            self.cx.diagnostics.push(self.assign_builtin_field_err(
-                "assign to",
-                lhs,
-                assign.lhs.span,
-            ));
-        }
+        // if self.is_builtin_field(lhs).is_some() {
+        //     self.cx.diagnostics.push(self.assign_builtin_field_err(
+        //         "assign to",
+        //         lhs,
+        //         assign.lhs.span,
+        //     ));
+        // }
 
         self.check_assign_mutability(AssignKind::Assign, lhs, span);
 
@@ -774,9 +774,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.try_use(lhs, swap.lhs.span);
         let rhs = self.lower_input_expr(&swap.rhs);
 
-        if self.is_builtin_field(lhs).is_some() {
-            self.cx.diagnostics.push(self.assign_builtin_field_err("swap", lhs, swap.lhs.span));
-        }
+        // if self.is_builtin_field(lhs).is_some() {
+        //     self.cx.diagnostics.push(self.assign_builtin_field_err("swap", lhs,
+        // swap.lhs.span)); }
 
         self.check_assign_mutability(AssignKind::Swap, lhs, span);
 
@@ -874,38 +874,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         args: Vec<ValueId>,
     ) -> ValueId {
         match intrinsic {
-            Intrinsic::SlicePush => {
-                debug_assert_eq!(args.len(), 2);
-
-                // We must get the root value of this ref, so that it is assigned to
-                let slice = self.value_roots.root_of(args[0]);
-                let value = args[1];
-
-                self.push_inst_with_register(self.cx.db.types.unit, |value| Inst::RtCall {
-                    value,
-                    kind: RtCallKind::SlicePushBoundscheck { slice },
-                    span: expr.span,
-                });
-
-                // slice.[slice.len] = value
-                let uint = self.cx.db.types.uint;
-                let slice_len =
-                    self.create_untracked_value(uint, ValueKind::Field(slice, ustr(sym::LEN)));
-                self.ins(self.current_block).slice_store_unchecked(slice, slice_len, value);
-
-                // slice.len += 1
-                let one = self.const_int(uint, 1);
-                let new_slice_len = self.push_inst_with_register(uint, |value| Inst::Binary {
-                    value,
-                    lhs: slice_len,
-                    rhs: one,
-                    op: BinOp::Add,
-                    span: None,
-                });
-                self.ins(self.current_block).store(new_slice_len, slice_len);
-
-                self.const_unit()
-            }
             Intrinsic::SliceGrow => {
                 debug_assert_eq!(args.len(), 2);
 

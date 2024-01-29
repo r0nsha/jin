@@ -38,7 +38,8 @@ fn push*[a](self: &mut Array[a], value: a) unit = {
 	if self.buf.len == self.buf.cap {
 		self.grow()
 	}
-	intrinsics.push(&mut self.buf, value)
+	self.buf.len += 1
+	self.buf.[self.buf.len - 1] = value
 }
 
 fn pop*[a](self: &mut Array[a]) Option[a] = {

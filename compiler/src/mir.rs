@@ -436,20 +436,18 @@ pub enum Inst {
 
 #[derive(Debug, Clone, Copy)]
 pub enum RtCallKind {
-    SlicePushBoundscheck { slice: ValueId },
     SliceGrow { slice: ValueId, new_cap: ValueId },
 }
 
 impl RtCallKind {
     pub fn traced(self) -> bool {
         match self {
-            RtCallKind::SlicePushBoundscheck { .. } | RtCallKind::SliceGrow { .. } => true,
+            RtCallKind::SliceGrow { .. } => true,
         }
     }
 
     pub fn as_str(self) -> &'static str {
         match self {
-            RtCallKind::SlicePushBoundscheck { .. } => "jinrt_slice_push_boundscheck",
             RtCallKind::SliceGrow { .. } => "jinrt_slice_grow",
         }
     }

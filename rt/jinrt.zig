@@ -255,29 +255,6 @@ export fn jinrt_slice_grow(
     return slice.grow(elem_size, new_cap);
 }
 
-export fn jinrt_slice_push_boundscheck(
-    backtrace: *Backtrace,
-    slice: anyslice,
-    frame: StackFrame,
-) void {
-    if (slice.len >= slice.cap) {
-        slice_push_panic(backtrace, slice, frame);
-    }
-}
-
-inline fn slice_push_panic(
-    backtrace: *Backtrace,
-    slice: anyslice,
-    frame: StackFrame,
-) void {
-    const msg = std.fmt.allocPrint(
-        std.heap.c_allocator,
-        "push out of bounds: cap is {} but len is {}",
-        .{ slice.cap, slice.len },
-    ) catch unreachable;
-    jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
-}
-
 export fn jinrt_strcmp(a: str, b: str) bool {
     return std.mem.eql(u8, str_slice(a), str_slice(b));
 }

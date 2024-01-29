@@ -1,4 +1,4 @@
-import std
+import std.intrinsics
 
 fn extern "c" printf(fmt: *u8, ..) i32
 
@@ -12,16 +12,16 @@ fn ints() unit = {
 	print(&a)
 
 	let mut b: [int] = [:3]
-	std.intrinsics.push(&mut b, 3)
-	std.intrinsics.push(&mut b, 2)
-	std.intrinsics.push(&mut b, 1)
+	b.push(3)
+	b.push(2)
+	b.push(1)
 	print(&b)
-	let mut b = std.intrinsics.grow(b, 4)
-	std.intrinsics.push(&mut b, 0)
+	let mut b = intrinsics.grow(b, 4)
+	b.push(0)
 	print(&b)
-	let mut b = std.intrinsics.grow(b, 8)
-	std.intrinsics.push(&mut b, 6)
-	std.intrinsics.push(&mut b, 7)
+	let mut b = intrinsics.grow(b, 8)
+	b.push(6)
+	b.push(7)
 	print(&b)
 
 	let mut c = [1, 2, 3, 4, 5]
@@ -31,8 +31,8 @@ fn ints() unit = {
 	print(&c)
 	let c2 = &mut c.[1..3]
 	print(&c2)
-	std.intrinsics.push(&mut c2, 8)
-	std.intrinsics.push(&mut c2, 9)
+	c2.push(8)
+	c2.push(9)
 	print(&c2)
 	print(&c)
 	print(&c.[..3])
@@ -60,4 +60,9 @@ fn boxes() unit = {
 	let b = &a.[0]
 	let c = &a.[0]
 	let nested = [[Box(1), Box(2)], [Box(3)]]
+}
+
+fn push[a](slice: &mut [a], value: a) unit = {
+	slice.len += 1
+	slice.[slice.len - 1] = value
 }

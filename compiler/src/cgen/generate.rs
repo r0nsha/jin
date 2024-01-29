@@ -531,9 +531,6 @@ impl<'db> Generator<'db> {
                 }
 
                 match kind {
-                    RtCallKind::SlicePushBoundscheck { slice } => {
-                        args.push(self.value(state, *slice));
-                    }
                     RtCallKind::SliceGrow { slice, new_cap } => {
                         args.push(self.value(state, *slice));
                         args.push(self.sizeof_slice_elem(state, *slice));

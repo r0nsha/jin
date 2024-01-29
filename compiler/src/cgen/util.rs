@@ -232,11 +232,11 @@ pub fn cast<'a>(ty: D<'a>, value: D<'a>) -> D<'a> {
     util::group(ty).append(util::group(value))
 }
 
-pub fn addr<'a>(value: D<'a>) -> D<'a> {
+pub fn addr(value: D<'_>) -> D<'_> {
     D::text("&").append(value)
 }
 
-pub fn deref<'a>(value: D<'a>) -> D<'a> {
+pub fn deref(value: D<'_>) -> D<'_> {
     D::text("*").append(value)
 }
 

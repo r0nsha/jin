@@ -243,9 +243,6 @@ impl<'db> PrettyCx<'db> {
                         RtCallKind::SliceGrow { slice, new_cap } => {
                             vec![self.value(body, *slice), self.value(body, *new_cap)]
                         }
-                        RtCallKind::SlicePushBoundscheck { slice } => {
-                            vec![self.value(body, *slice)]
-                        }
                     },
                     D::text(",").append(D::space()),
                 ))
