@@ -27,6 +27,16 @@ fn push*[a](self: &mut Array[a], value: a) unit = {
 	intrinsics.push(&mut self.buf, value)
 }
 
+fn pop*[a](self: &mut Array[a]) Option[a] = {
+	if self.buf.len == 0 {
+		Option.none
+	} else {
+		Option.none
+		// TODO: self.len -= 1
+		// TODO: Option.some({self.buf.ptr + self.buf.len}.*)
+	}
+}
+
 fn grow[a](self: &mut Array[a]) unit = {
 	let new_cap = if self.buf.cap == 0 {
 		MIN_CAP
