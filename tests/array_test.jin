@@ -4,16 +4,16 @@ fn extern "c" printf(fmt: *u8, ..) i32
 
 fn main() unit = {
 	let array = Array.new[int]()
-	// array.print()
-	print(&array)
+	array.print()
 }
 
-fn print(s: &Array[int]) unit = {
+fn print(array: &Array[int]) unit = {
+	let slice = array.as_ref()
 	printf("[".ptr)
 	let mut i = 0
-	loop if i < s.len() {
-		printf("%d".ptr, s.as_ref().[i])
-		if i < s.len() - 1 {
+	loop if i < slice.len {
+		printf("%d".ptr, slice.[i])
+		if i < slice.len - 1 {
 			printf(", ".ptr)
 		}
 		i += 1

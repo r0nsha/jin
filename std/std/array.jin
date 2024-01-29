@@ -1,7 +1,29 @@
+import std.intrinsics
+
 type Array*[a](buf: [a])
 
 fn Array.new*[a]() Array[a] = Array([])
 
 fn len*[a](self: &Array[a]) uint = self.buf.len
 fn cap*[a](self: &Array[a]) uint = self.buf.cap
+fn is_empty*[a](self: &Array[a]) bool = self.len() == 0
+
 fn as_ref*[a](self: &Array[a]) &[a] = &self.buf
+fn as_mut*[a](self: &mut Array[a]) &mut [a] = &mut self.buf
+
+fn push*[a](self: &mut Array[a], value: a) unit = {
+	// ensure cap
+	// push
+}
+
+fn grow[a](self: &mut Array[a]) unit = {
+	let new_cap = if self.buf.cap == 0 {
+		MIN_CAP
+	} else {
+		self.buf.cap * 2
+	}
+
+	self.buf = intrinsics.grow(self.buf, new_cap)
+}
+
+let MIN_CAP = 4
