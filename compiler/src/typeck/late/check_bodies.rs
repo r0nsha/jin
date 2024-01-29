@@ -114,6 +114,9 @@ impl CheckBodies<'_> {
 
                 self.expr(&cast.expr);
             }
+            ExprKind::Transmute(trans) => {
+                // TODO: validate trans tys
+            }
             ExprKind::Unary(un) => {
                 if un.op == UnOp::Neg && un.expr.ty.is_uint() {
                     self.db

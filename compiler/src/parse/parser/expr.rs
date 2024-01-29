@@ -103,6 +103,7 @@ impl<'a> Parser<'a> {
             TokenKind::Match => self.parse_match()?,
             TokenKind::Loop => self.parse_loop()?,
             TokenKind::Break => Expr::Break { span: tok.span },
+            TokenKind::Transmute => self.parse_transmute()?,
             TokenKind::Minus => {
                 let expr = self.parse_operand()?;
 
@@ -348,15 +349,31 @@ impl<'a> Parser<'a> {
         Ok(Expr::Loop { cond, expr: Box::new(expr), span })
     }
 
+    fn parse_transmute(&mut self) -> DiagnosticResult<Expr> {
+        let start = self.last_span();
+
+        self.eat(TokenKind::OpenBracket)?;
+        let target = self.parse_ty()?;
+        self.eat(TokenKind::CloseBracket)?;
+
+        self.eat(TokenKind::OpenParen)?;
+        let expr = self.parse_expr()?;
+        self.eat(TokenKind::CloseParen)?;
+
+        let span = start.merge(expr.span());
+
+        Ok(Expr::Transmute { expr: Box::new(expr), target, span })
+    }
+
     fn parse_postfix(&mut self, mut expr: Expr) -> DiagnosticResult<Expr> {
         while let Some(tok) = self.token() {
             expr = match tok.kind {
                 TokenKind::OpenParen => self.parse_call(expr)?,
                 TokenKind::As => {
                     self.next();
-                    let ty = self.parse_ty()?;
-                    let span = expr.span().merge(ty.span());
-                    Expr::Cast { expr: Box::new(expr), ty_expr: ty, span }
+                    let target = self.parse_ty()?;
+                    let span = expr.span().merge(target.span());
+                    Expr::Cast { expr: Box::new(expr), target, span }
                 }
                 TokenKind::Dot => {
                     self.next();

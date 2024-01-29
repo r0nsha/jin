@@ -173,7 +173,12 @@ pub enum Expr {
     },
     Cast {
         expr: Box<Self>,
-        ty_expr: TyExpr,
+        target: TyExpr,
+        span: Span,
+    },
+    Transmute {
+        expr: Box<Self>,
+        target: TyExpr,
         span: Span,
     },
     Field {
@@ -245,6 +250,7 @@ impl Spanned for Expr {
             | Self::Unary { span, .. }
             | Self::Binary { span, .. }
             | Self::Cast { span, .. }
+            | Self::Transmute { span, .. }
             | Self::SliceLit { span, .. }
             | Self::SliceLitCap { span, .. }
             | Self::BoolLit { span, .. }

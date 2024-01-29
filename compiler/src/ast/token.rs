@@ -104,6 +104,7 @@ pub enum TokenKind {
     Break,
     Mut,
     Imm,
+    Transmute,
 
     // Literals
     Int(Ustr),
@@ -189,6 +190,7 @@ impl fmt::Display for TokenKind {
             Self::Break => f.write_str("`break`"),
             Self::Mut => f.write_str("`mut`"),
             Self::Imm => f.write_str("`imm`"),
+            Self::Transmute => f.write_str("`transmute`"),
             Self::Int(lit) => write!(f, "integer literal `{lit}`"),
             Self::Float(lit) => write!(f, "float literal `{lit}`"),
             Self::Str(lit) => write!(f, "\"{lit}\""),

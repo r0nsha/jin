@@ -45,6 +45,10 @@ impl<S: SubstTy> Subst<S> for Expr {
                 cast.expr.subst(s);
                 cast.target = s.subst_ty(cast.target, self.span);
             }
+            ExprKind::Transmute(trans) => {
+                trans.expr.subst(s);
+                trans.target = s.subst_ty(trans.target, self.span);
+            }
             ExprKind::Field(access) => {
                 access.expr.subst(s);
             }

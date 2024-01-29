@@ -607,13 +607,22 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 value
             }
             hir::ExprKind::Cast(cast) => {
-                let inner = self.lower_input_expr(&cast.expr);
+                let source = self.lower_input_expr(&cast.expr);
 
                 self.push_inst_with_register(cast.target, |value| Inst::Cast {
                     value,
-                    inner,
+                    source,
                     target: cast.target,
                     span: expr.span,
+                })
+            }
+            hir::ExprKind::Transmute(trans) => {
+                let source = self.lower_input_expr(&trans.expr);
+
+                self.push_inst_with_register(trans.target, |value| Inst::Transmute {
+                    value,
+                    source,
+                    target: trans.target,
                 })
             }
             hir::ExprKind::Field(access) => {
@@ -1482,7 +1491,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 CoercionKind::IntPromotion => {
                     self.push_inst_with_register(coercion.target, |value| Inst::Cast {
                         value,
-                        inner: coerced_value,
+                        source: coerced_value,
                         target: coercion.target,
                         span,
                     })

@@ -261,11 +261,20 @@ impl<'db> PrettyCx<'db> {
                 .value_assign(body, *value)
                 .append(D::text(op.as_str()))
                 .append(self.value(body, *inner)),
-            Inst::Cast { value, inner, target, .. } => self
+            Inst::Cast { value, source, target, .. } => self
                 .value_assign(body, *value)
                 .append(D::text("cast"))
                 .append(D::space())
-                .append(self.value(body, *inner))
+                .append(self.value(body, *source))
+                .append(D::space())
+                .append(D::text("to"))
+                .append(D::space())
+                .append(D::text(target.to_string(self.db))),
+            Inst::Transmute { value, source, target, .. } => self
+                .value_assign(body, *value)
+                .append(D::text("transmute"))
+                .append(D::space())
+                .append(self.value(body, *source))
                 .append(D::space())
                 .append(D::text("to"))
                 .append(D::space())

@@ -34,27 +34,27 @@ impl<'db> Generator<'db> {
         &mut self,
         state: &GenState<'db>,
         value: ValueId,
-        casted: ValueId,
+        source: ValueId,
         target: Ty,
         span: Span,
     ) -> D<'db> {
         let cast = self.value_assign(state, value, |this| {
-            util::cast(target.cty(this), this.value(state, casted))
+            util::cast(target.cty(this), this.value(state, source))
         });
 
-        let casted_ty = state.ty_of(casted);
+        let source_ty = state.ty_of(source);
 
-        if casted_ty.is_any_int() && target.is_any_int() {
+        if source_ty.is_any_int() && target.is_any_int() {
             let (value_bits, target_bits) =
-                (casted_ty.size(&self.target_metrics), target.size(&self.target_metrics));
+                (source_ty.size(&self.target_metrics), target.size(&self.target_metrics));
 
             if target_bits < value_bits {
-                let casted_doc = self.value(state, casted);
+                let source_doc = self.value(state, source);
                 let (min, max) = (target.min(), target.max());
 
-                let cond = util::group(casted_doc.clone().append(format!(" < {min}")))
+                let cond = util::group(source_doc.clone().append(format!(" < {min}")))
                     .append(D::text(" || "))
-                    .append(util::group(casted_doc.append(format!(" > {max}"))));
+                    .append(util::group(source_doc.append(format!(" > {max}"))));
 
                 return D::intersperse(
                     [

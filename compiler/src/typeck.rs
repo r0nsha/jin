@@ -1303,12 +1303,22 @@ impl<'db> Typeck<'db> {
                     *span,
                 ))
             }
-            ast::Expr::Cast { expr, ty_expr: ty, span } => {
+            ast::Expr::Cast { expr, target, span } => {
                 let expr = self.check_expr(env, expr, None)?;
-                let target = self.check_ty_expr(env, ty, AllowTyHole::Yes)?;
+                let target = self.check_ty_expr(env, target, AllowTyHole::Yes)?;
 
                 Ok(self.expr(
                     hir::ExprKind::Cast(hir::Cast { expr: Box::new(expr), target }),
+                    target,
+                    *span,
+                ))
+            }
+            ast::Expr::Transmute { expr, target, span } => {
+                let expr = self.check_expr(env, expr, None)?;
+                let target = self.check_ty_expr(env, target, AllowTyHole::Yes)?;
+
+                Ok(self.expr(
+                    hir::ExprKind::Transmute(hir::Transmute { expr: Box::new(expr), target }),
                     target,
                     *span,
                 ))
@@ -2239,6 +2249,7 @@ impl<'db> Typeck<'db> {
             | hir::ExprKind::Unary(_)
             | hir::ExprKind::Binary(_)
             | hir::ExprKind::Cast(_)
+            | hir::ExprKind::Transmute(_)
             | hir::ExprKind::Let(_)
             | hir::ExprKind::Assign(_)
             | hir::ExprKind::Swap(_)

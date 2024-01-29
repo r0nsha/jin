@@ -80,6 +80,7 @@ pub enum ExprKind {
     Unary(Unary),
     Binary(Binary),
     Cast(Cast),
+    Transmute(Transmute),
     Field(Field),
     Index(Index),
     Slice(Slice),
@@ -262,6 +263,12 @@ pub struct Binary {
 
 #[derive(Debug, Clone)]
 pub struct Cast {
+    pub expr: Box<Expr>,
+    pub target: Ty,
+}
+
+#[derive(Debug, Clone)]
+pub struct Transmute {
     pub expr: Box<Expr>,
     pub target: Ty,
 }

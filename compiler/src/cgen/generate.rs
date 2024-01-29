@@ -576,9 +576,15 @@ impl<'db> Generator<'db> {
                     D::text(op_str).append(this.value(state, *inner))
                 })
             }
-            Inst::Cast { value, inner, target, span } => {
-                self.codegen_cast(state, *value, *inner, *target, *span)
+            Inst::Cast { value, source, target, span } => {
+                self.codegen_cast(state, *value, *source, *target, *span)
             }
+            Inst::Transmute { value, source, target } => self.value_assign(state, *value, |this| {
+                let target_doc = target.cty(this).append(D::text("*"));
+                let source_doc = D::text("&").append(this.value(state, *source));
+                let cast = util::cast(target_doc, source_doc);
+                D::text("*").append(cast)
+            }),
             Inst::StrLit { value, lit } => self.value_assign(state, *value, |_| str_value(lit)),
             Inst::Destroy { .. } => unreachable!(),
         }
