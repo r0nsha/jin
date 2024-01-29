@@ -155,12 +155,12 @@ impl<'db> Generator<'db> {
         let (min, max) = match data.ty.kind() {
             TyKind::Int(IntTy::Int) => (D::text("INTPTR_MIN"), D::text("INTPTR_MAX")),
             TyKind::Int(ity) => {
-                let size = ity.size(target_metrics);
+                let size = ity.size(target_metrics) * 8;
                 (D::text(format!("INT{size}_MIN")), D::text(format!("INT{size}_MAX")))
             }
             TyKind::Uint(UintTy::Uint) => (D::text("UINTPTR_MIN"), D::text("UINTPTR_MAX")),
             TyKind::Uint(uty) => {
-                let size = uty.size(target_metrics);
+                let size = uty.size(target_metrics) * 8;
                 (D::text(format!("UINT{size}_MIN")), D::text(format!("UINT{size}_MAX")))
             }
             ty => unreachable!("{ty:?}"),
