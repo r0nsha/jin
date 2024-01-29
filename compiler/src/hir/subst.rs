@@ -20,25 +20,20 @@ impl<S: SubstTy> Subst<S> for Expr {
             }
             ExprKind::Match(match_) => {
                 match_.expr.subst(s);
-
-                for arm in &mut match_.arms {
-                    arm.subst(s);
-                }
+                match_.arms.subst(s);
             }
             ExprKind::Loop(loop_) => {
+                loop_.cond.subst(s);
                 loop_.expr.subst(s);
             }
             ExprKind::Block(block) => {
-                for stmt in &mut block.exprs {
-                    stmt.subst(s);
-                }
+                block.exprs.subst(s);
             }
             ExprKind::Return(ret) => {
                 ret.expr.subst(s);
             }
             ExprKind::Call(call) => {
                 call.callee.subst(s);
-
                 for arg in &mut call.args {
                     arg.expr.subst(s);
                 }
@@ -59,27 +54,16 @@ impl<S: SubstTy> Subst<S> for Expr {
             }
             ExprKind::Slice(slice) => {
                 slice.expr.subst(s);
-
-                if let Some(low) = &mut slice.low {
-                    low.subst(s);
-                }
-
-                if let Some(high) = &mut slice.high {
-                    high.subst(s);
-                }
+                slice.low.subst(s);
+                slice.high.subst(s);
             }
             ExprKind::Name(Name { instantiation, .. })
             | ExprKind::Variant(Variant { instantiation, .. }) => {
                 subst::subst_instantation(s, instantiation, self.span);
             }
             ExprKind::SliceLit(lit) => {
-                for expr in &mut lit.exprs {
-                    expr.subst(s);
-                }
-
-                if let Some(cap) = &mut lit.cap {
-                    cap.subst(s);
-                }
+                lit.exprs.subst(s);
+                lit.cap.subst(s);
             }
             ExprKind::Break
             | ExprKind::BoolLit(_)
@@ -89,6 +73,22 @@ impl<S: SubstTy> Subst<S> for Expr {
         }
 
         self.ty = s.subst_ty(self.ty, self.span);
+    }
+}
+
+impl<S: SubstTy> Subst<S> for Option<Box<Expr>> {
+    fn subst(&mut self, s: &mut S) {
+        if let Some(this) = self {
+            this.subst(s);
+        }
+    }
+}
+
+impl<S: SubstTy, U: Subst<S>> Subst<S> for Vec<U> {
+    fn subst(&mut self, s: &mut S) {
+        for x in self {
+            x.subst(s);
+        }
     }
 }
 
@@ -132,11 +132,7 @@ impl<S: SubstTy> Subst<S> for ExternLet {
 impl<S: SubstTy> Subst<S> for MatchArm {
     fn subst(&mut self, s: &mut S) {
         self.pat.subst(s);
-
-        if let Some(guard) = &mut self.guard {
-            guard.subst(s);
-        }
-
+        self.guard.subst(s);
         self.expr.subst(s);
     }
 }
@@ -148,9 +144,7 @@ impl<S: SubstTy> Subst<S> for MatchPat {
                 *ty = s.subst_ty(*ty, *span);
             }
             MatchPat::Adt(_, pats, _) | MatchPat::Variant(_, pats, _) | MatchPat::Or(pats, _) => {
-                for pat in pats {
-                    pat.subst(s);
-                }
+                pats.subst(s);
             }
             MatchPat::Wildcard(_)
             | MatchPat::Unit(_)

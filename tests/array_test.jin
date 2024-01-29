@@ -4,6 +4,8 @@ fn extern "c" printf(fmt: *u8, ..) i32
 
 fn main() unit = {
 	let array = Array.new[int]()
+	// array.print()
+	print(&array)
 }
 
 fn print(s: &Array[int]) unit = {
