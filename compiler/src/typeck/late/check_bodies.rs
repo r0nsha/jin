@@ -115,7 +115,27 @@ impl CheckBodies<'_> {
                 self.expr(&cast.expr);
             }
             ExprKind::Transmute(trans) => {
-                // TODO: validate trans tys
+                let target_metrics = self.db.target_metrics();
+                let source_size = trans.expr.ty.size(target_metrics);
+                let target_size = trans.target.size(target_metrics);
+
+                if source_size != target_size {
+                    self.db.diagnostics.emit(
+                        Diagnostic::error()
+                            .with_message("cannot transmute between types of different sizes")
+                            .with_label(Label::primary(expr.span).with_message("invalid transmute"))
+                            .with_note(format!(
+                                "source type: {} ({} bits)",
+                                trans.expr.ty.display(self.db),
+                                source_size
+                            ))
+                            .with_note(format!(
+                                "target type: {} ({} bits)",
+                                trans.target.display(self.db),
+                                target_size
+                            )),
+                    );
+                }
             }
             ExprKind::Unary(un) => {
                 if un.op == UnOp::Neg && un.expr.ty.is_uint() {

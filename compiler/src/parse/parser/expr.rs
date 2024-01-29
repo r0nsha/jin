@@ -360,7 +360,7 @@ impl<'a> Parser<'a> {
         let expr = self.parse_expr()?;
         self.eat(TokenKind::CloseParen)?;
 
-        let span = start.merge(expr.span());
+        let span = start.merge(self.last_span());
 
         Ok(Expr::Transmute { expr: Box::new(expr), target, span })
     }
