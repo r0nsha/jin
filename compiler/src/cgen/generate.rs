@@ -535,7 +535,7 @@ impl<'db> Generator<'db> {
                         args.push(self.value(state, *slice));
                     }
                     RtCallKind::SliceGrow { slice, new_cap } => {
-                        args.push(util::addr(self.value(state, *slice)));
+                        args.push(self.value(state, *slice));
                         args.push(self.sizeof_slice_elem(state, *slice));
                         args.push(self.value(state, *new_cap));
                     }
