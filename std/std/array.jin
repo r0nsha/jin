@@ -1,1 +1,7 @@
 type Array*[a](buf: [a])
+
+fn Array.new*[a]() Array[a] = Array([])
+
+fn len*[a](self: &Array[a]) uint = self.buf.len
+fn cap*[a](self: &Array[a]) uint = self.buf.cap
+fn as_ref*[a](self: &Array[a]) &[a] = &self.buf

@@ -3,17 +3,18 @@ import std.array.{Array}
 fn extern "c" printf(fmt: *u8, ..) i32
 
 fn main() unit = {
+	let array = Array[int].new()
 }
 
-// fn print(s: &Array[int]) unit = {
-// 	printf("[".ptr)
-// 	let mut i = 0
-// 	loop if i < s.len {
-// 		printf("%d".ptr, s.[i])
-// 		if i < s.len - 1 {
-// 			printf(", ".ptr)
-// 		}
-// 		i += 1
-// 	}
-// 	printf("], ptr: %p, len: %d, cap: %d\n".ptr, s.ptr, s.len, s.cap)
-// }
+fn print(s: &Array[int]) unit = {
+	printf("[".ptr)
+	let mut i = 0
+	loop if i < s.len() {
+		printf("%d".ptr, s.as_ref().[i])
+		if i < s.len() - 1 {
+			printf(", ".ptr)
+		}
+		i += 1
+	}
+	printf("]\n".ptr)
+}
