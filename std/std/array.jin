@@ -12,8 +12,10 @@ fn as_ref*[a](self: &Array[a]) &[a] = &self.buf
 fn as_mut*[a](self: &mut Array[a]) &mut [a] = &mut self.buf
 
 fn push*[a](self: &mut Array[a], value: a) unit = {
-	// ensure cap
-	// push
+	if self.buf.len == self.buf.cap {
+		self.grow()
+	}
+	intrinsics.push(&mut self.buf, value)
 }
 
 fn grow[a](self: &mut Array[a]) unit = {
