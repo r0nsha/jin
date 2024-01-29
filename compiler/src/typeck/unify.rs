@@ -275,13 +275,7 @@ impl UnifyCx<'_, '_> {
             // Unify T ~ ?T
             (_, TyKind::Infer(InferTy::Ty(var))) => self.unify_ty_var(a, *var),
 
-            (TyKind::Param(p1), TyKind::Param(p2)) if p1.var == p2.var => {
-                if p1.var == p2.var {
-                    Ok(())
-                } else {
-                    Err(UnifyError::TyMismatch { a, b })
-                }
-            }
+            (TyKind::Param(p1), TyKind::Param(p2)) if p1.var == p2.var => Ok(()),
 
             (TyKind::Param(_), _) | (_, TyKind::Param(_)) if self.options.unify_param_tys => Ok(()),
 

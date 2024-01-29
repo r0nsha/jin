@@ -1087,6 +1087,8 @@ impl FnCandidate {
             return Some(FnCandidateScore::Polymorphic);
         }
 
+        // println!("arg: {} | param: {}", arg.display(cx.db), param.display(cx.db));
+
         None
     }
 

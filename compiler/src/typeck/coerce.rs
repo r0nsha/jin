@@ -110,21 +110,20 @@ fn coerce_tys(
             coercions.push(Coercion { kind: CoercionKind::AnyToUnit, target });
             true
         }
-        (_, TyKind::Ref(b, _)) if options.allow_owned_to_ref => {
-            if can_unify_or_coerce(source, *b, cx, coercions, options) {
-                coercions.push(Coercion { kind: CoercionKind::OwnedToRef, target });
-                true
-            } else {
-                false
-            }
+        (_, TyKind::Ref(b, _))
+            if options.allow_owned_to_ref
+                && can_unify_or_coerce(source, *b, cx, coercions, options) =>
+        {
+            coercions.push(Coercion { kind: CoercionKind::OwnedToRef, target });
+            true
         }
-        (TyKind::Ref(a, _), _) if !target.is_ref() && !target.is_move(cx.db) => {
-            if unify_with_options(*a, target, cx, options).is_ok() {
-                coercions.push(Coercion { kind: CoercionKind::RefToOwned, target });
-                true
-            } else {
-                false
-            }
+        (TyKind::Ref(a, _), _)
+            if !target.is_ref()
+                && !target.is_move(cx.db)
+                && unify_with_options(*a, target, cx, options).is_ok() =>
+        {
+            coercions.push(Coercion { kind: CoercionKind::RefToOwned, target });
+            true
         }
         _ => unify_with_options(source, target, cx, options).is_ok(),
     }
