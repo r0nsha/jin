@@ -25,7 +25,7 @@ fn grow[a](self: &mut Array[a]) unit = {
 		self.buf.cap * 2
 	}
 
-	self.buf = intrinsics.grow(transmute[[a]](&self.buf), new_cap)
+	intrinsics.grow(&mut self.buf, new_cap)
 }
 
 let MIN_CAP = 4

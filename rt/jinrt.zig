@@ -50,7 +50,7 @@ const anyslice = extern struct {
         };
     }
 
-    fn grow(self: Self, elem_size: usize, new_cap: usize) Self {
+    fn grow(self: *Self, elem_size: usize, new_cap: usize) void {
         if (self.array) |array| {
             // Allocate a new backing buffer for the array
             const new_data: [*]u8 = @ptrCast(alloc_raw(void, elem_size * new_cap));
@@ -63,14 +63,15 @@ const anyslice = extern struct {
             std.c.free(array.data);
             array.data = new_data;
 
-            return Self{
+            std.debug.print("new cap: {}\n", .{new_cap});
+            self.* = Self{
                 .array = array,
                 .start = array.data,
                 .len = self.len,
                 .cap = new_cap,
             };
         } else {
-            return Self.init(elem_size, new_cap);
+            self.* = Self.init(elem_size, new_cap);
         }
     }
 
@@ -238,11 +239,11 @@ export fn jinrt_slice_slice(
 
 export fn jinrt_slice_grow(
     backtrace: *Backtrace,
-    slice: anyslice,
+    slice: *anyslice,
     elem_size: usize,
     new_cap: usize,
     frame: StackFrame,
-) anyslice {
+) void {
     if (new_cap <= slice.cap) {
         const msg = std.fmt.allocPrint(
             std.heap.c_allocator,
@@ -251,7 +252,8 @@ export fn jinrt_slice_grow(
         ) catch unreachable;
         jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
     }
-    return slice.grow(elem_size, new_cap);
+
+    slice.grow(elem_size, new_cap);
 }
 
 export fn jinrt_slice_push_boundscheck(

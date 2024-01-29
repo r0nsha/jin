@@ -1192,6 +1192,7 @@ impl<'db> Typeck<'db> {
 
                 let expr = self.check_expr(env, expr, expected_ty)?;
 
+                let mut is_ufcs = IsUfcs::No;
                 let lookup_in_module = match self.normalize(expr.ty).kind() {
                     TyKind::Module(in_module) => *in_module,
                     TyKind::Type(ty) => {
@@ -1208,8 +1209,8 @@ impl<'db> Typeck<'db> {
                     }
                     _ => {
                         // This is a UFCS call: add `expr` as the first argument of the call
+                        is_ufcs = IsUfcs::Yes;
                         args.insert(0, hir::CallArg { name: None, expr, index: None });
-
                         env.module_id()
                     }
                 };
@@ -1220,12 +1221,12 @@ impl<'db> Typeck<'db> {
                     *method,
                     targs.as_deref(),
                     &args,
-                    IsUfcs::Yes,
+                    is_ufcs,
                 )?;
 
                 let callee = self.check_name(env, id, *method, *span, targs.as_deref())?;
 
-                self.check_call(callee, args, *span, IsUfcs::Yes)
+                self.check_call(callee, args, *span, is_ufcs)
             }
             ast::Expr::Call { callee, args, span } => {
                 let args = self.check_call_args(env, args)?;

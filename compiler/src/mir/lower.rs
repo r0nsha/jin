@@ -908,7 +908,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             Intrinsic::SliceGrow => {
                 debug_assert_eq!(args.len(), 2);
 
-                let slice = args[0];
+                // We must get the root value of this ref, so that it is assigned to
+                let slice = self.value_roots.root_of(args[0]);
                 let new_cap = args[1];
 
                 self.push_inst_with_register(expr.ty, |value| Inst::RtCall {

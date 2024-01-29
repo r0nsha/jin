@@ -2,4 +2,4 @@
 fn extern "jin" push*[a](slice: &mut [a], value: a) unit
 
 @intrinsic("slice_grow")
-fn extern "jin" grow*[a](slice: [a], new_cap: uint) [a]
+fn extern "jin" grow*[a](slice: &mut [a], new_cap: uint) unit
