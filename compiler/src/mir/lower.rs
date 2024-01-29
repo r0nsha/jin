@@ -918,6 +918,18 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     span: expr.span,
                 })
             }
+            Intrinsic::Forget => {
+                debug_assert_eq!(args.len(), 1);
+
+                // We must get the root value of this ref, so that we can forget it
+                let root = self.value_roots.root_of(args[0]);
+
+                for scope in &mut self.scopes {
+                    scope.created_values.remove(&root);
+                }
+
+                self.const_unit()
+            }
         }
     }
 

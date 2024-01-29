@@ -742,6 +742,7 @@ impl ExternLib {
 pub enum Intrinsic {
     SlicePush,
     SliceGrow,
+    Forget,
 }
 
 impl<'a> TryFrom<&'a str> for Intrinsic {
@@ -751,6 +752,7 @@ impl<'a> TryFrom<&'a str> for Intrinsic {
         match value {
             "slice_push" => Ok(Self::SlicePush),
             "slice_grow" => Ok(Self::SliceGrow),
+            "forget" => Ok(Self::Forget),
             _ => Err(()),
         }
     }
