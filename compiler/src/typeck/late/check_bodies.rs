@@ -115,9 +115,8 @@ impl CheckBodies<'_> {
                 self.expr(&cast.expr);
             }
             ExprKind::Transmute(trans) => {
-                let target_metrics = self.db.target_metrics();
-                let source_size = trans.expr.ty.size(target_metrics);
-                let target_size = trans.target.size(target_metrics);
+                let source_size = trans.expr.ty.size(self.db);
+                let target_size = trans.target.size(self.db);
 
                 if source_size != target_size {
                     self.db.diagnostics.emit(

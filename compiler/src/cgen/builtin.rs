@@ -45,10 +45,9 @@ impl<'db> Generator<'db> {
         let source_ty = state.ty_of(source);
 
         if source_ty.is_any_int() && target.is_any_int() {
-            let (value_bits, target_bits) =
-                (source_ty.size(&self.target_metrics), target.size(&self.target_metrics));
+            let (value_size, target_size) = (source_ty.size(self.db), target.size(self.db));
 
-            if target_bits < value_bits {
+            if target_size < value_size {
                 let source_doc = self.value(state, source);
                 let (min, max) = (target.min(), target.max());
 

@@ -1,6 +1,7 @@
 pub mod coerce;
 pub mod fold;
 pub mod printer;
+pub mod size;
 
 use std::ops::{self, Deref};
 
@@ -15,7 +16,6 @@ use crate::{
     middle::{CallConv, Mutability, Vis},
     span::Span,
     subst::SubstTy,
-    target::TargetMetrics,
     ty::{
         fold::TyFolder,
         printer::{FnTyPrinter, TyPrinter},
@@ -270,15 +270,6 @@ impl TyKind {
         matches!(self, TyKind::Float(_) | TyKind::Infer(InferTy::Float(_)))
     }
 
-    pub fn size(&self, target_metrics: &TargetMetrics) -> usize {
-        match self {
-            TyKind::Int(x) => x.size(target_metrics),
-            TyKind::Uint(x) => x.size(target_metrics),
-            TyKind::Float(x) => x.size(),
-            _ => panic!("cant find size of {self:?}"),
-        }
-    }
-
     pub fn min(&self) -> i128 {
         match self {
             TyKind::Int(i) => i128::from(i.min()),
@@ -456,16 +447,6 @@ pub enum IntTy {
 }
 
 impl IntTy {
-    pub fn size(self, target_metrics: &TargetMetrics) -> usize {
-        match self {
-            Self::I8 => 8,
-            Self::I16 => 16,
-            Self::I32 => 32,
-            Self::I64 => 64,
-            Self::Int => target_metrics.word_bit_size(),
-        }
-    }
-
     pub fn contains(self, value: i128) -> bool {
         // TODO: use target_metrics for Int
         match self {
@@ -510,16 +491,6 @@ pub enum UintTy {
 }
 
 impl UintTy {
-    pub fn size(self, target_metrics: &TargetMetrics) -> usize {
-        match self {
-            Self::U8 => 8,
-            Self::U16 => 16,
-            Self::U32 => 32,
-            Self::U64 => 64,
-            Self::Uint => target_metrics.word_bit_size(),
-        }
-    }
-
     pub fn contains(self, value: i128) -> bool {
         // TODO: use target_metrics
         match self {
@@ -567,13 +538,6 @@ impl From<FloatTy> for TyKind {
 }
 
 impl FloatTy {
-    pub fn size(self) -> usize {
-        match self {
-            Self::F32 => 32,
-            Self::F64 => 64,
-        }
-    }
-
     pub fn contains(self, value: f64) -> bool {
         match self {
             Self::F32 => value >= f64::from(f32::MIN) && value <= f64::from(f32::MAX),
