@@ -1160,8 +1160,10 @@ impl<'db> Typeck<'db> {
                 let mut args = self.check_call_args(env, args)?;
 
                 // Try looking up an associated function call first
-                if let ast::Expr::Name { word, targs: None, .. } = expr.as_ref() {
+                if let ast::Expr::Name { word, targs: name_targs, .. } = expr.as_ref() {
                     let id = self.lookup(env, env.module_id(), &Query::Name(*word))?;
+                    let name_targs =
+                        self.check_optional_ty_args(env, name_targs.as_deref(), AllowTyHole::Yes)?;
 
                     if let Some(assoc_ty) = self.try_extract_assoc_ty(id) {
                         let query_args = self.map_call_args_for_query(&args);
@@ -1171,7 +1173,7 @@ impl<'db> Typeck<'db> {
                         let (ty, _) = self.apply_ty_args_to_ty(
                             env,
                             assoc_ty.ty(self.db),
-                            targs.as_deref(),
+                            name_targs.as_deref(),
                             *span,
                         )?;
 
