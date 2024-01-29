@@ -5,6 +5,7 @@ fn extern "c" printf(fmt: *u8, ..) i32
 
 fn main() unit = {
 	let mut array = Array.new[int]()
+	// let array = Array.new[int](7) fn(idx) { {idx + 1} as int }
 
 	array.push(1)
 	array.push(2)

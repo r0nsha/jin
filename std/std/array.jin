@@ -5,6 +5,20 @@ type Array*[a](buf: [a])
 
 fn Array.new*[a]() Array[a] = Array([])
 
+fn Array.new*[a](len: uint, f: fn(uint) a) Array[a] = {
+	let mut array = Array.with_cap(len)
+	let mut i = 0
+
+	loop if i < len {
+		array.push(f(i))
+		i += 1
+	}
+
+	array
+}
+
+fn Array.with_cap*[a](cap: uint) Array[a] = Array([:cap])
+
 fn len*[a](self: &Array[a]) uint = self.buf.len
 fn cap*[a](self: &Array[a]) uint = self.buf.cap
 fn is_empty*[a](self: &Array[a]) bool = self.len() == 0
