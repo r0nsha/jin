@@ -63,7 +63,6 @@ const anyslice = extern struct {
             std.c.free(array.data);
             array.data = new_data;
 
-            std.debug.print("new cap: {}\n", .{new_cap});
             self.* = Self{
                 .array = array,
                 .start = array.data,
