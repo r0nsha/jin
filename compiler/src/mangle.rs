@@ -19,7 +19,7 @@ pub fn mangle_fn_name(db: &Db, fun: &hir::Fn) -> Ustr {
         hasher.write(mangle_ty_name(db, param.ty).as_bytes());
     }
 
-    ustr(&format!("{}_{:x}", def.name, hasher.finish()))
+    ustr(&format!("{}${:x}", def.name, hasher.finish()))
 }
 
 pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
@@ -68,5 +68,5 @@ pub fn mangle_adt(db: &Db, adt: &Adt, targs: &[Ty]) -> String {
         hasher.write(mangle_ty_name(db, ty).as_bytes());
     }
 
-    format!("{}_{:x}", def.name, hasher.finish())
+    format!("{}${:x}", def.name, hasher.finish())
 }
