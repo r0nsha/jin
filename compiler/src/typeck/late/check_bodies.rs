@@ -177,6 +177,9 @@ fn is_valid_cast(source: Ty, target: Ty) -> bool {
         (
             TyKind::Int(_) | TyKind::Uint(_) | TyKind::Float(_),
             TyKind::Int(_) | TyKind::Uint(_) | TyKind::Float(_)
+        ) | (
+            TyKind::RawPtr(_) | TyKind::Int(_) | TyKind::Uint(_),
+            TyKind::RawPtr(_) | TyKind::Int(_) | TyKind::Uint(_)
         )
     )
 }
