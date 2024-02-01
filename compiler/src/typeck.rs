@@ -2198,9 +2198,13 @@ impl<'db> Typeck<'db> {
         op: BinOp,
         span: Span,
     ) -> TypeckResult<()> {
-        self.at(Obligation::exprs(span, lhs.span, rhs.span))
-            .eq(lhs.ty, rhs.ty)
-            .or_coerce(self, rhs.id)?;
+        let (lhs_ty, rhs_ty) = (self.normalize(lhs.ty), self.normalize(rhs.ty));
+
+        let mut expected_tys_eq = || {
+            self.at(Obligation::exprs(span, lhs.span, rhs.span))
+                .eq(lhs_ty, rhs_ty)
+                .or_coerce(self, rhs.id)
+        };
 
         match op {
             BinOp::And | BinOp::Or => {
@@ -2208,24 +2212,36 @@ impl<'db> Typeck<'db> {
                 self.eq_obvious_expr(self.db.types.bool, rhs)?;
             }
             BinOp::Cmp(CmpOp::Eq | CmpOp::Ne) => {
-                let ty = self.normalize(lhs.ty);
+                expected_tys_eq()?;
 
-                if !can_use_eq(ty) {
-                    return Err(errors::invalid_bin_op(self.db, op, ty, span));
+                if !can_use_eq(lhs_ty) {
+                    return Err(errors::invalid_bin_op(self.db, op, lhs_ty, span));
                 }
             }
-            BinOp::Add | BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem | BinOp::Cmp(_) => {
-                let ty = self.normalize(lhs.ty);
+            BinOp::Add => {
+                if lhs_ty.is_raw_ptr() {
+                    self.eq_obvious_expr(self.db.types.uint, rhs)?;
+                    return Ok(());
+                }
 
-                if !ty.is_any_int() && !ty.is_any_float() {
-                    return Err(errors::invalid_bin_op(self.db, op, ty, span));
+                expected_tys_eq()?;
+
+                if !lhs_ty.is_any_int() && !lhs_ty.is_any_float() {
+                    return Err(errors::invalid_bin_op(self.db, op, lhs_ty, span));
+                }
+            }
+            BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem | BinOp::Cmp(_) => {
+                expected_tys_eq()?;
+
+                if !lhs_ty.is_any_int() && !lhs_ty.is_any_float() {
+                    return Err(errors::invalid_bin_op(self.db, op, lhs_ty, span));
                 }
             }
             BinOp::Shl | BinOp::Shr | BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => {
-                let ty = self.normalize(lhs.ty);
+                expected_tys_eq()?;
 
-                if !ty.is_any_int() {
-                    return Err(errors::invalid_bin_op(self.db, op, ty, span));
+                if !lhs_ty.is_any_int() {
+                    return Err(errors::invalid_bin_op(self.db, op, lhs_ty, span));
                 }
             }
         }

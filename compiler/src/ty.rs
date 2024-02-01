@@ -411,6 +411,14 @@ impl TyKind {
             None
         }
     }
+
+    /// Returns `true` if the ty kind is [`RawPtr`].
+    ///
+    /// [`RawPtr`]: TyKind::RawPtr
+    #[must_use]
+    pub fn is_raw_ptr(&self) -> bool {
+        matches!(self, Self::RawPtr(..))
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]
