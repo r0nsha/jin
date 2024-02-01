@@ -14,7 +14,6 @@ fn main() unit = {
 	array.push(5)
 	array.push(6)
 	array.push(7)
-	printf("char = %d\n".ptr, "foobar".ptr.*)
 
 	array.print()
 

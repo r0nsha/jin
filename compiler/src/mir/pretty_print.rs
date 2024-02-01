@@ -185,6 +185,12 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text("ptr_read"))
                 .append(D::space())
                 .append(self.value(body, *ptr)),
+            Inst::PtrWrite { ptr, value, .. } => D::text("ptr_write")
+                .append(D::space())
+                .append(self.value(body, *value))
+                .append(D::text(" in "))
+                .append(self.value(body, *ptr)),
+
             Inst::Destroy { value, .. } => {
                 D::text("destroy").append(D::space()).append(self.value(body, *value))
             }

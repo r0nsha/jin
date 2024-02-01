@@ -461,6 +461,9 @@ impl<'db> Generator<'db> {
             Inst::PtrRead { value, ptr } => {
                 self.value_assign(state, *value, |this| util::deref(this.value(state, *ptr)))
             }
+            Inst::PtrWrite { ptr, value } => stmt(|| {
+                util::assign(util::deref(self.value(state, *ptr)), self.value(state, *value))
+            }),
             Inst::Store { value, target } => {
                 stmt(|| assign(self.value(state, *target), self.value(state, *value)))
             }

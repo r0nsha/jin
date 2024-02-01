@@ -431,21 +431,25 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.const_unit()
             }
             hir::ExprKind::Assign(assign) => {
-                if let hir::ExprKind::Index(idx) = &assign.lhs.kind {
-                    self.lower_slice_assign(assign, idx, expr.span);
-                } else {
-                    self.lower_assign(assign, expr.span);
+                match &assign.lhs.kind {
+                    hir::ExprKind::Index(idx) => {
+                        self.lower_slice_assign(assign, idx, expr.span);
+                    }
+                    hir::ExprKind::Deref(deref) => {
+                        self.lower_deref_assign(assign, deref, expr.ty, expr.span);
+                    }
+                    _ => {
+                        self.lower_assign(assign, expr.span);
+                    }
                 }
 
                 self.const_unit()
             }
-            hir::ExprKind::Swap(swap) => {
-                if let hir::ExprKind::Index(idx) = &swap.lhs.kind {
-                    self.lower_slice_swap(swap, idx, expr.span)
-                } else {
-                    self.lower_swap(swap, expr.span)
-                }
-            }
+            hir::ExprKind::Swap(swap) => match &swap.lhs.kind {
+                hir::ExprKind::Index(idx) => self.lower_slice_swap(swap, idx, expr.span),
+                hir::ExprKind::Deref(deref) => self.lower_deref_swap(swap, deref, expr.ty),
+                _ => self.lower_swap(swap, expr.span),
+            },
             hir::ExprKind::Match(match_) => {
                 let output = self.push_inst_with_register(expr.ty, |value| Inst::StackAlloc {
                     value,
@@ -608,7 +612,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Deref(deref) => {
                 let ptr = self.lower_expr(&deref.expr);
-                self.push_inst_with_register(expr.ty, |value| Inst::PtrRead { value, ptr })
+                self.try_use(ptr, deref.expr.span);
+                self.lower_deref(ptr, expr.ty)
             }
             hir::ExprKind::Cast(cast) => {
                 let source = self.lower_input_expr(&cast.expr);
@@ -741,10 +746,16 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
-    fn lower_assign_rhs(&mut self, assign: &hir::Assign, lhs: ValueId, span: Span) -> ValueId {
+    fn lower_assign_rhs(
+        &mut self,
+        assign: &hir::Assign,
+        lhs: impl FnOnce(&mut Self) -> ValueId,
+        span: Span,
+    ) -> ValueId {
         let rhs = self.lower_input_expr(&assign.rhs);
 
         if let Some(op) = assign.op {
+            let lhs = lhs(self);
             let result = self.create_value(self.ty_of(rhs), ValueKind::Register(None));
             self.ins(self.current_block).binary(result, lhs, rhs, op, span);
             result
@@ -753,10 +764,41 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
     }
 
+    fn lower_deref(&mut self, ptr: ValueId, pointee_ty: Ty) -> ValueId {
+        self.push_inst_with_register(pointee_ty, |value| Inst::PtrRead { value, ptr })
+    }
+
+    fn lower_deref_assign(
+        &mut self,
+        assign: &hir::Assign,
+        deref: &hir::Deref,
+        pointee_ty: Ty,
+        span: Span,
+    ) {
+        let ptr = self.lower_expr(&deref.expr);
+        self.try_use(ptr, deref.expr.span);
+        let rhs = self.lower_assign_rhs(assign, |this| this.lower_deref(ptr, pointee_ty), span);
+        self.ins(self.current_block).inst(Inst::PtrWrite { ptr, value: rhs });
+    }
+
+    fn lower_deref_swap(
+        &mut self,
+        swap: &hir::Swap,
+        deref: &hir::Deref,
+        pointee_ty: Ty,
+    ) -> ValueId {
+        let ptr = self.lower_expr(&deref.expr);
+        let old_ptr_value = self.lower_deref(ptr, pointee_ty);
+        self.try_use(ptr, deref.expr.span);
+        let rhs = self.lower_input_expr(&swap.rhs);
+        self.ins(self.current_block).inst(Inst::PtrWrite { ptr, value: rhs });
+        old_ptr_value
+    }
+
     fn lower_assign(&mut self, assign: &hir::Assign, span: Span) {
         let lhs = self.lower_expr(&assign.lhs);
         self.try_use(lhs, assign.lhs.span);
-        let rhs = self.lower_assign_rhs(assign, lhs, span);
+        let rhs = self.lower_assign_rhs(assign, |_| lhs, span);
 
         self.check_assign_mutability(AssignKind::Assign, lhs, span);
 
@@ -784,7 +826,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn lower_slice_assign(&mut self, assign: &hir::Assign, idx: &hir::Index, span: Span) {
         let SliceIndexResult { slice, index, elem } = self.lower_slice_index(idx, span);
-        let rhs = self.lower_assign_rhs(assign, elem, span);
+        let rhs = self.lower_assign_rhs(assign, |_| elem, span);
 
         self.check_slice_assign_mutability(AssignKind::Assign, slice, span);
 
