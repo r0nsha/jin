@@ -44,13 +44,13 @@ pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
             .join("_"),
         TyKind::Adt(adt_id, targs) => mangle_adt(db, &db[*adt_id], targs),
         TyKind::Slice(inner) => {
-            format!("slice_{}", mangle_ty_name(db, *inner))
+            format!("s{}", mangle_ty_name(db, *inner))
         }
         TyKind::Ref(inner, mutability) => {
-            format!("ref_{}_{}", mutability, mangle_ty_name(db, *inner))
+            format!("r{}_{}", mutability, mangle_ty_name(db, *inner))
         }
         TyKind::RawPtr(pointee) => {
-            format!("ptr_{}", mangle_ty_name(db, *pointee))
+            format!("p{}", mangle_ty_name(db, *pointee))
         }
         TyKind::Unit => "unit".to_string(),
         TyKind::Param(p) => p.name.to_string(),
