@@ -25,6 +25,7 @@ fn is_empty*[a](self: &Array[a]) bool = self.len() == 0
 
 fn as_ref*[a](self: &Array[a]) &[a] = &self.buf
 fn as_mut*[a](self: &mut Array[a]) &mut [a] = &mut self.buf
+fn take*[a](self: Array[a]) [a] = self.buf
 
 fn get*[a](self: &Array[a], index: uint) Option[&a] = {
 	if index < self.buf.len {
