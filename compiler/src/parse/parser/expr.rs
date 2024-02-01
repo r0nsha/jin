@@ -380,6 +380,9 @@ impl<'a> Parser<'a> {
 
                     if self.is(TokenKind::OpenBracket) {
                         self.parse_index(expr)?
+                    } else if self.is(TokenKind::Star) {
+                        let span = expr.span().merge(self.last_span());
+                        Expr::Deref { expr: Box::new(expr), span }
                     } else {
                         self.parse_field(expr)?
                     }

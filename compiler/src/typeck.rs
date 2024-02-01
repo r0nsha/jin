@@ -1304,6 +1304,23 @@ impl<'db> Typeck<'db> {
                     *span,
                 ))
             }
+            ast::Expr::Deref { expr, span } => {
+                let expected_ty = self.fresh_ty_var().raw_ptr();
+                let expr = self.check_expr(env, expr, Some(expected_ty))?;
+
+                match self.normalize(expr.ty).auto_deref().kind() {
+                    TyKind::RawPtr(pointee) => Ok(self.expr(
+                        hir::ExprKind::Deref(hir::Deref { expr: Box::new(expr) }),
+                        *pointee,
+                        *span,
+                    )),
+                    ty => Err(errors::ty_mismatch(
+                        &expected_ty.to_string(self.db),
+                        &ty.to_string(self.db),
+                        expr.span,
+                    )),
+                }
+            }
             ast::Expr::Cast { expr, target, span } => {
                 let expr = self.check_expr(env, expr, None)?;
                 let target = self.check_ty_expr(env, target, AllowTyHole::Yes)?;
@@ -2239,7 +2256,10 @@ impl<'db> Typeck<'db> {
 
     fn check_assign_lhs_aux(&self, expr: &hir::Expr) -> bool {
         match &expr.kind {
-            hir::ExprKind::Field(_) | hir::ExprKind::Index(_) | hir::ExprKind::Name(_) => true,
+            hir::ExprKind::Deref(_)
+            | hir::ExprKind::Field(_)
+            | hir::ExprKind::Index(_)
+            | hir::ExprKind::Name(_) => true,
             hir::ExprKind::Slice(_)
             | hir::ExprKind::Match(_)
             | hir::ExprKind::Loop(_)

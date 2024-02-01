@@ -188,13 +188,19 @@ impl PrettyCx<'_> {
                 self.pp_expr(&bin.rhs);
                 self.builder.end_child();
             }
+            ExprKind::Deref(deref) => {
+                self.builder.begin_child(format!("deref (pointee: {})", expr.ty.display(self.db)));
+                self.pp_expr(&deref.expr);
+                self.builder.end_child();
+            }
             ExprKind::Cast(cast) => {
                 self.builder.begin_child(format!("cast (to: {})", cast.target.display(self.db)));
                 self.pp_expr(&cast.expr);
                 self.builder.end_child();
             }
             ExprKind::Transmute(trans) => {
-                self.builder.begin_child(format!("transmute (to: {})", trans.target.display(self.db)));
+                self.builder
+                    .begin_child(format!("transmute (to: {})", trans.target.display(self.db)));
                 self.pp_expr(&trans.expr);
                 self.builder.end_child();
             }

@@ -171,6 +171,10 @@ pub enum Expr {
         op: BinOp,
         span: Span,
     },
+    Deref {
+        expr: Box<Self>,
+        span: Span,
+    },
     Cast {
         expr: Box<Self>,
         target: TyExpr,
@@ -249,6 +253,7 @@ impl Spanned for Expr {
             | Self::MethodCall { span, .. }
             | Self::Unary { span, .. }
             | Self::Binary { span, .. }
+            | Self::Deref { span, .. }
             | Self::Cast { span, .. }
             | Self::Transmute { span, .. }
             | Self::SliceLit { span, .. }

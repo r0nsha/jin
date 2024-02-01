@@ -458,6 +458,9 @@ impl<'db> Generator<'db> {
 
                 self.maybe_slice_index_boundscheck(state, *slice, *index, slice_store, *span)
             }
+            Inst::PtrRead { value, ptr } => {
+                self.value_assign(state, *value, |this| util::deref(this.value(state, *ptr)))
+            }
             Inst::Store { value, target } => {
                 stmt(|| assign(self.value(state, *target), self.value(state, *value)))
             }

@@ -606,6 +606,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 self.ins(self.current_block).binary(value, lhs, rhs, bin.op, expr.span);
                 value
             }
+            hir::ExprKind::Deref(deref) => {
+                let ptr = self.lower_expr(&deref.expr);
+                self.push_inst_with_register(expr.ty, |value| Inst::PtrRead { value, ptr })
+            }
             hir::ExprKind::Cast(cast) => {
                 let source = self.lower_input_expr(&cast.expr);
 

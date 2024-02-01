@@ -41,6 +41,9 @@ impl<S: SubstTy> Subst<S> for Expr {
             ExprKind::Unary(un) => {
                 un.expr.subst(s);
             }
+            ExprKind::Deref(deref) => {
+                deref.expr.subst(s);
+            }
             ExprKind::Cast(cast) => {
                 cast.expr.subst(s);
                 cast.target = s.subst_ty(cast.target, self.span);

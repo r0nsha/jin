@@ -97,6 +97,9 @@ impl CheckBodies<'_> {
                     self.expr(high);
                 }
             }
+            ExprKind::Deref(deref) => {
+                self.expr(&deref.expr);
+            }
             ExprKind::Cast(cast) => {
                 let source = cast.expr.ty;
                 let target = expr.ty;

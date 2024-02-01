@@ -79,6 +79,7 @@ pub enum ExprKind {
     Call(Call),
     Unary(Unary),
     Binary(Binary),
+    Deref(Deref),
     Cast(Cast),
     Transmute(Transmute),
     Field(Field),
@@ -259,6 +260,11 @@ pub struct Binary {
     pub lhs: Box<Expr>,
     pub rhs: Box<Expr>,
     pub op: BinOp,
+}
+
+#[derive(Debug, Clone)]
+pub struct Deref {
+    pub expr: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]
