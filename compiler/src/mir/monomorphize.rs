@@ -32,6 +32,9 @@ struct Monomorphize<'db> {
 
     // Functions that have already been monomorphized and should be re-used
     monomorphized_fns: FxHashMap<MonoFn, FnSigId>,
+
+    // Functions that are a result of monomorphization, and should never be monomorphized again
+    dont_monomorphize: FxHashSet<FnSigId>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -48,6 +51,7 @@ impl<'db> Monomorphize<'db> {
             used_fns: FxHashSet::default(),
             used_globals: FxHashSet::default(),
             monomorphized_fns: FxHashMap::default(),
+            dont_monomorphize: FxHashSet::default(),
         }
     }
 
@@ -202,8 +206,11 @@ impl<'db, 'cx> MonomorphizeBody<'db, 'cx> {
                     return None;
                 }
 
-                let ty = instantiation.fold(mir.fn_sigs[id].ty);
+                if self.cx.dont_monomorphize.contains(&id) {
+                    return None;
+                }
 
+                let ty = instantiation.fold(mir.fn_sigs[id].ty);
                 let monomorphized_fn = MonoFn { id, ty };
 
                 let monomorphized_sig_id =
@@ -233,6 +240,7 @@ impl<'db, 'cx> MonomorphizeBody<'db, 'cx> {
         let new_sig_id = self.monomorphize_fn_sig(mir, &monomorphized_fn, instantiation);
 
         self.cx.monomorphized_fns.insert(monomorphized_fn, new_sig_id);
+        self.cx.dont_monomorphize.insert(new_sig_id);
 
         let mut fun = mir.fns.get(&old_sig_id).expect("fn to exist").clone();
 
