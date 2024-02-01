@@ -5,9 +5,8 @@ fn extern "c" printf(fmt: *u8, ..) i32
 
 fn main() unit = {
 	let mut array = Array.new[int]()
-	printf("Array push:\n".ptr)
-	let mut array = Array.new[int]()
 
+	printf("Array push:\n".ptr)
 	array.push(1)
 	array.push(2)
 	array.push(3)
