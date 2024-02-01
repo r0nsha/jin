@@ -2228,7 +2228,7 @@ impl<'db> Typeck<'db> {
                     return Err(errors::invalid_bin_op(self.db, op, ty, span));
                 }
             }
-            BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem | BinOp::Cmp(_) => {
+            BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Cmp(_) => {
                 self.at(Obligation::exprs(span, lhs.span, rhs.span))
                     .eq(lhs.ty, rhs.ty)
                     .or_coerce(self, rhs.id)?;
@@ -2238,7 +2238,7 @@ impl<'db> Typeck<'db> {
                     return Err(errors::invalid_bin_op(self.db, op, ty, span));
                 }
             }
-            BinOp::Shl | BinOp::Shr | BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => {
+            BinOp::Rem | BinOp::Shl | BinOp::Shr | BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => {
                 self.at(Obligation::exprs(span, lhs.span, rhs.span))
                     .eq(lhs.ty, rhs.ty)
                     .or_coerce(self, rhs.id)?;

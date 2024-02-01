@@ -10,7 +10,7 @@ use crate::{
     middle::{BinOp, CmpOp},
     mir::ValueId,
     span::Span,
-    ty::{FloatTy, IntTy, Ty, TyKind, UintTy},
+    ty::{IntTy, Ty, TyKind, UintTy},
 };
 
 #[derive(Debug)]
@@ -94,13 +94,6 @@ impl<'db> Generator<'db> {
         let (lhs, rhs) = (self.value(state, data.lhs), self.value(state, data.rhs));
 
         let init = match (data.op, data.ty.kind()) {
-            (BinOp::Rem, TyKind::Float(fty)) => util::call(
-                D::text(match fty {
-                    FloatTy::F32 => "fmodf",
-                    FloatTy::F64 => "fmod",
-                }),
-                [lhs, rhs],
-            ),
             (BinOp::Cmp(CmpOp::Eq), TyKind::Str) => cmp_strs(lhs, rhs),
             (BinOp::Cmp(CmpOp::Ne), TyKind::Str) => D::text("!").append(cmp_strs(lhs, rhs)),
             _ => bin_op(lhs, data.op, rhs),

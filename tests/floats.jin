@@ -9,5 +9,4 @@ fn main() unit = {
 	printf("a - b = %f\n".ptr, a - b)
 	printf("a * b = %f\n".ptr, a * b)
 	printf("a / b = %f\n".ptr, a / b)
-	printf("a %% b = %f\n".ptr, a % b)
 }
