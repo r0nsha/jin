@@ -4,6 +4,7 @@ import std.option.{Option}
 fn extern "c" printf(fmt: *u8, ..) i32
 
 fn main() unit = {
+	let mut array = Array.new[int]()
 	printf("Array push:\n".ptr)
 	let mut array = Array.new[int]()
 
@@ -21,6 +22,10 @@ fn main() unit = {
 	array.print_at(3)
 	array.print_at(8)
 
+	printf("\nArray take:\n".ptr)
+	let slice = array.take()
+	slice.print()
+
 	printf("\nArray pop:\n".ptr)
 	let mut array = Array.new[int](7) fn(idx) { {idx + 10} as int }
 	array.print()
@@ -35,10 +40,6 @@ fn main() unit = {
 	printf("\nArray clear:\n".ptr)
 	array.clear()
 	array.print()
-
-	printf("\nArray take:\n".ptr)
-	let slice = array.take()
-	// slice.print()
 }
 
 fn print_at(array: &Array[int], idx: uint) unit = {

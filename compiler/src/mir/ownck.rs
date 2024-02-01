@@ -296,6 +296,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         matches!(self.value_state(value), ValueState::Moved(..))
     }
 
+    pub(super) fn value_is_partially_moved(&mut self, value: ValueId) -> bool {
+        matches!(self.value_state(value), ValueState::PartiallyMoved(..))
+    }
+
     pub(super) fn destroy_scope_values(&mut self) {
         if !self.in_connected_block() {
             return;

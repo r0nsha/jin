@@ -343,14 +343,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     }
                 }
 
-                let last_value = self.lower_input_expr(body);
+                let result = self.lower_input_expr(body);
+                let result = self.copy_value_before_destroy(result);
 
                 self.exit_scope();
 
                 if !self.body.last_inst_is_return() {
                     // If the body isn't terminating, we must push a return instruction at the
                     // for the function's last value.
-                    self.ins(self.current_block).ret(last_value);
+                    self.ins(self.current_block).ret(result);
                 }
 
                 // println!("{}", self.value_states);
@@ -552,6 +553,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 };
 
                 self.move_out(result, block.exprs.last().map_or(expr.span, |e| e.span));
+                let result = self.copy_value_before_destroy(result);
                 self.exit_scope();
 
                 result
@@ -1365,6 +1367,27 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         value
     }
 
+    // Used to keep a copy of a value that its parent could potentially be destroyed
+    pub fn copy_value_before_destroy(&mut self, value: ValueId) -> ValueId {
+        let any_parent_destroyed = self
+            .walk_parents(value, |this, parent, _| -> Result<(), ()> {
+                if this.value_is_partially_moved(parent) {
+                    Err(())
+                } else {
+                    Ok(())
+                }
+            })
+            .is_err();
+
+        if !any_parent_destroyed {
+            return value;
+        }
+
+        let sa = self.create_untracked_value(self.ty_of(value), ValueKind::Register(None));
+        self.ins(self.current_block).stackalloc(sa, value);
+        sa
+    }
+
     pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
         let value = self.body.create_value(ty, kind);
         self.set_owned(value);
@@ -1563,12 +1586,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         true
     }
 
-    fn exit_call_scope(&mut self, call_result: ValueId, entered: bool) {
+    fn exit_call_scope(&mut self, result: ValueId, entered: bool) {
         if !entered {
             return;
         }
 
-        self.move_out(call_result, self.scope().span);
+        self.move_out(result, self.scope().span);
         self.exit_scope();
     }
 
