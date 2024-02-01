@@ -836,15 +836,26 @@ pub struct Env {
 }
 
 impl Env {
-    const ANON_SCOPE: &'static str = "_";
-
     pub fn new(module_id: ModuleId) -> Self {
         Self { module_id, scopes: vec![] }
     }
 
-    pub fn with_scope<R>(
+    pub fn with_anon_scope<R>(&mut self, kind: ScopeKind, f: impl FnMut(&mut Self) -> R) -> R {
+        self.with_scope(None, kind, f)
+    }
+
+    pub fn with_named_scope<R>(
         &mut self,
         name: Ustr,
+        kind: ScopeKind,
+        f: impl FnMut(&mut Self) -> R,
+    ) -> R {
+        self.with_scope(Some(name), kind, f)
+    }
+
+    pub fn with_scope<R>(
+        &mut self,
+        name: Option<Ustr>,
         kind: ScopeKind,
         mut f: impl FnMut(&mut Self) -> R,
     ) -> R {
@@ -852,10 +863,6 @@ impl Env {
         let res = f(self);
         self.scopes.pop();
         res
-    }
-
-    pub fn with_anon_scope<R>(&mut self, kind: ScopeKind, f: impl FnMut(&mut Self) -> R) -> R {
-        self.with_scope(ustr(Self::ANON_SCOPE), kind, f)
     }
 
     #[allow(unused)]
@@ -898,7 +905,7 @@ impl Env {
 
     pub fn scope_path(&self, db: &Db) -> QPath {
         let mut qpath = db[self.module_id].qpath.clone();
-        qpath.extend(self.scopes.iter().map(|s| s.name));
+        qpath.extend(self.scopes.iter().flat_map(|s| s.name));
         qpath
     }
 
@@ -938,7 +945,7 @@ impl Env {
 #[derive(Debug)]
 pub struct Scope {
     pub kind: ScopeKind,
-    pub name: Ustr,
+    pub name: Option<Ustr>,
     pub defs: UstrMap<DefId>,
 }
 

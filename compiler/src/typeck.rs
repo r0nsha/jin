@@ -331,8 +331,10 @@ impl<'db> Typeck<'db> {
         mut sig: hir::FnSig,
         def_id: DefId,
     ) -> TypeckResult<hir::Fn> {
-        let kind =
-            env.with_scope(sig.word.name(), ScopeKind::Fn(def_id), |env| -> TypeckResult<_> {
+        let kind = env.with_named_scope(
+            sig.word.name(),
+            ScopeKind::Fn(def_id),
+            |env| -> TypeckResult<_> {
                 for tp in &sig.ty_params {
                     env.insert(tp.word.name(), tp.id);
                 }
@@ -350,7 +352,8 @@ impl<'db> Typeck<'db> {
                         Ok(hir::FnKind::Extern { is_c_variadic: *is_c_variadic })
                     }
                 }
-            })?;
+            },
+        )?;
 
         Ok(hir::Fn {
             id: hir::FnId::null(),
@@ -370,10 +373,11 @@ impl<'db> Typeck<'db> {
         body: &ast::Expr,
         span: Span,
     ) -> TypeckResult<hir::Fn> {
-        let body =
-            env.with_scope(sig.word.name(), ScopeKind::Fn(def_id), |env| -> TypeckResult<_> {
-                self.check_fn_body_helper(env, body, &sig)
-            })?;
+        let body = env.with_named_scope(
+            sig.word.name(),
+            ScopeKind::Fn(def_id),
+            |env| -> TypeckResult<_> { self.check_fn_body_helper(env, body, &sig) },
+        )?;
 
         Ok(hir::Fn {
             id: hir::FnId::null(),
@@ -484,7 +488,7 @@ impl<'db> Typeck<'db> {
             }
         };
 
-        env.with_scope(fun.sig.word.name(), ScopeKind::Fn(DefId::null()), |env| {
+        env.with_named_scope(fun.sig.word.name(), ScopeKind::Fn(DefId::null()), |env| {
             self.check_fn_sig(env, &fun.sig, callconv, flags)
         })
     }
@@ -992,12 +996,11 @@ impl<'db> Typeck<'db> {
 
                 let word = sig.word;
                 let ty = sig.ty;
-
                 let id = self.define_def(
                     env,
                     Vis::Private,
                     DefKind::Fn(FnInfo::Bare),
-                    sig.word,
+                    word,
                     Mutability::Imm,
                     ty,
                 )?;

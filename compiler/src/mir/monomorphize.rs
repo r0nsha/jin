@@ -269,7 +269,7 @@ impl<'db, 'cx> MonomorphizeBody<'db, 'cx> {
             .collect::<Vec<_>>()
             .join("_");
 
-        sig.mangled_name = ustr(&format!("{}__{}", sig.mangled_name, instantation_str));
+        sig.mangled_name = ustr(&format!("{}_{}", sig.mangled_name, instantation_str));
 
         self.mono_mir.fn_sigs.insert_with_key(|id| {
             sig.id = id;
