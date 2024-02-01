@@ -414,15 +414,24 @@ impl<'db> Generator<'db> {
         D::text(block.display_name())
             .append(D::text(":;"))
             .append(D::hardline())
-            .append(
-                D::intersperse(
-                    block.insts.iter().map(|i| self.codegen_inst(state, i)),
-                    D::hardline(),
-                )
-                .group(),
-            )
+            .append(self.codegen_insts(state, &block.insts))
             .nest(NEST)
             .group()
+    }
+
+    fn codegen_insts(&mut self, state: &mut GenState<'db>, insts: &'db [Inst]) -> D<'db> {
+        let mut docs = vec![];
+
+        for inst in insts {
+            docs.push(self.codegen_inst(state, inst));
+
+            if let Inst::Return { .. } = inst {
+                // There's no need to continue lowering instructions after a return instruction
+                break;
+            }
+        }
+
+        D::intersperse(docs, D::hardline()).group()
     }
 
     #[allow(clippy::too_many_lines)]
