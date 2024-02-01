@@ -167,8 +167,6 @@ fn compile_with_tcc(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
         .args(libs.libs.into_iter().map(|path| format!("-l{path}")))
         .args(libs.includes.into_iter().map(|path| format!("-I{path}")))
         .arg("-fuse-ld=mold")
-        .arg("-lc")
-        .arg("-lm")
         .arg("-g");
 
     // println!("{:?}", cmd);
@@ -190,6 +188,10 @@ impl Libraries {
             libs: FxHashSet::default(),
             includes: FxHashSet::default(),
         };
+
+        // C standard library
+        this.libs.insert("c".to_string());
+        this.libs.insert("m".to_string());
 
         // Add runtime library
         let rt_path = crate::util::current_exe_dir().join("rt");
