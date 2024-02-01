@@ -1,4 +1,4 @@
-use std::iter;
+use std::{hash::Hasher as _, iter};
 
 use ustr::{ustr, Ustr};
 
@@ -9,23 +9,17 @@ use crate::{
 };
 
 pub fn mangle_fn_name(db: &Db, fun: &hir::Fn) -> Ustr {
-    let sig_str = {
-        let params_str = fun
-            .sig
-            .params
-            .iter()
-            .map(|param| format!("{}_{}", param.pat, mangle_ty_name(db, param.ty)));
-
-        params_str.collect::<Vec<String>>().join("_")
-    };
-
+    let mut hasher = rustc_hash::FxHasher::default();
     let def = &db[fun.def_id];
 
-    let mangle_name =
-        if sig_str.is_empty() { def.name.to_string() } else { format!("{}_{}", def.name, sig_str) };
-    let qualified_name = def.qpath.clone().with_name(ustr(&mangle_name)).join_with("_");
+    hasher.write(def.qpath.join().as_bytes());
 
-    ustr(&qualified_name)
+    for param in &fun.sig.params {
+        hasher.write(param.pat.to_string().as_bytes());
+        hasher.write(mangle_ty_name(db, param.ty).as_bytes());
+    }
+
+    ustr(&format!("{}_{:x}", def.name, hasher.finish()))
 }
 
 pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
@@ -65,14 +59,14 @@ pub fn mangle_ty_name(db: &Db, ty: Ty) -> String {
 }
 
 pub fn mangle_adt(db: &Db, adt: &Adt, targs: &[Ty]) -> String {
-    let adt_name = db[adt.def_id].qpath.join_with("_");
+    let mut hasher = rustc_hash::FxHasher::default();
+    let def = &db[adt.def_id];
 
-    let targs_str =
-        targs.iter().map(|ty| mangle_ty_name(db, *ty)).collect::<Vec<String>>().join("_");
+    hasher.write(def.qpath.join().as_bytes());
 
-    if targs_str.is_empty() {
-        adt_name
-    } else {
-        format!("{adt_name}_{targs_str}")
+    for &ty in targs {
+        hasher.write(mangle_ty_name(db, ty).as_bytes());
     }
+
+    format!("{}_{:x}", def.name, hasher.finish())
 }
