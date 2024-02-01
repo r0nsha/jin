@@ -2198,50 +2198,54 @@ impl<'db> Typeck<'db> {
         op: BinOp,
         span: Span,
     ) -> TypeckResult<()> {
-        let (lhs_ty, rhs_ty) = (self.normalize(lhs.ty), self.normalize(rhs.ty));
-
-        let mut expected_tys_eq = || {
-            self.at(Obligation::exprs(span, lhs.span, rhs.span))
-                .eq(lhs_ty, rhs_ty)
-                .or_coerce(self, rhs.id)
-        };
-
         match op {
             BinOp::And | BinOp::Or => {
                 self.eq_obvious_expr(self.db.types.bool, lhs)?;
                 self.eq_obvious_expr(self.db.types.bool, rhs)?;
             }
             BinOp::Cmp(CmpOp::Eq | CmpOp::Ne) => {
-                expected_tys_eq()?;
+                self.at(Obligation::exprs(span, lhs.span, rhs.span))
+                    .eq(lhs.ty, rhs.ty)
+                    .or_coerce(self, rhs.id)?;
 
-                if !can_use_eq(lhs_ty) {
-                    return Err(errors::invalid_bin_op(self.db, op, lhs_ty, span));
+                let ty = self.normalize(lhs.ty);
+                if !can_use_eq(ty) {
+                    return Err(errors::invalid_bin_op(self.db, op, ty, span));
                 }
             }
             BinOp::Add => {
-                if lhs_ty.is_raw_ptr() {
+                if self.normalize(lhs.ty).is_raw_ptr() {
                     self.eq_obvious_expr(self.db.types.uint, rhs)?;
                     return Ok(());
                 }
 
-                expected_tys_eq()?;
+                self.at(Obligation::exprs(span, lhs.span, rhs.span))
+                    .eq(lhs.ty, rhs.ty)
+                    .or_coerce(self, rhs.id)?;
 
-                if !lhs_ty.is_any_int() && !lhs_ty.is_any_float() {
-                    return Err(errors::invalid_bin_op(self.db, op, lhs_ty, span));
+                let ty = self.normalize(lhs.ty);
+                if !ty.is_any_int() && !ty.is_any_float() {
+                    return Err(errors::invalid_bin_op(self.db, op, ty, span));
                 }
             }
             BinOp::Sub | BinOp::Mul | BinOp::Div | BinOp::Rem | BinOp::Cmp(_) => {
-                expected_tys_eq()?;
+                self.at(Obligation::exprs(span, lhs.span, rhs.span))
+                    .eq(lhs.ty, rhs.ty)
+                    .or_coerce(self, rhs.id)?;
 
-                if !lhs_ty.is_any_int() && !lhs_ty.is_any_float() {
-                    return Err(errors::invalid_bin_op(self.db, op, lhs_ty, span));
+                let ty = self.normalize(lhs.ty);
+                if !ty.is_any_int() && !ty.is_any_float() {
+                    return Err(errors::invalid_bin_op(self.db, op, ty, span));
                 }
             }
             BinOp::Shl | BinOp::Shr | BinOp::BitAnd | BinOp::BitOr | BinOp::BitXor => {
-                expected_tys_eq()?;
+                self.at(Obligation::exprs(span, lhs.span, rhs.span))
+                    .eq(lhs.ty, rhs.ty)
+                    .or_coerce(self, rhs.id)?;
 
-                if !lhs_ty.is_any_int() {
-                    return Err(errors::invalid_bin_op(self.db, op, lhs_ty, span));
+                let ty = self.normalize(lhs.ty);
+                if !ty.is_any_int() {
+                    return Err(errors::invalid_bin_op(self.db, op, ty, span));
                 }
             }
         }

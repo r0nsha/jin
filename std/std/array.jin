@@ -44,12 +44,11 @@ fn push*[a](self: &mut Array[a], value: a) unit = {
 
 fn pop*[a](self: &mut Array[a]) Option[a] = {
 	if self.buf.len == 0 {
-		Option.none
-	} else {
-		Option.none
-		// TODO: self.len -= 1
-		// TODO: Option.some({self.buf.ptr + self.buf.len}.*)
+		return Option.none
 	}
+
+	self.buf.len -= 1
+	Option.some({self.buf.ptr + self.buf.len}.*)
 }
 
 fn grow[a](self: &mut Array[a]) unit = {
