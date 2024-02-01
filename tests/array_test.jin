@@ -1,12 +1,13 @@
 import std.array.{Array}
 import std.option.{Option}
+import std.io.{println}
 
 fn extern "c" printf(fmt: *u8, ..) i32
 
 fn main() unit = {
 	let mut array = Array.new[int]()
 
-	printf("Array push:\n".ptr)
+	println("Array push:")
 	array.push(1)
 	array.push(2)
 	array.push(3)
@@ -21,11 +22,11 @@ fn main() unit = {
 	array.print_at(3)
 	array.print_at(8)
 
-	printf("\nArray take:\n".ptr)
+	println("\nArray take:")
 	let slice = array.take()
 	slice.print()
 
-	printf("\nArray pop:\n".ptr)
+	println("\nArray pop:")
 	let mut array = Array.new[int](7) fn(idx) { {idx + 10} as int }
 	array.print()
 
@@ -36,7 +37,7 @@ fn main() unit = {
 
 	array.print()
 
-	printf("\nArray clear:\n".ptr)
+	println("\nArray clear:")
 	array.clear()
 	array.print()
 }
