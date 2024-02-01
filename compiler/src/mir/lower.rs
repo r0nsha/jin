@@ -350,7 +350,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 if !self.body.last_inst_is_return() {
                     // If the body isn't terminating, we must push a return instruction at the
                     // for the function's last value.
-                    self.push_return(last_value, body.span.tail());
+                    self.ins(self.current_block).ret(last_value);
                 }
 
                 // println!("{}", self.value_states);
