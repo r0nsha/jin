@@ -1688,9 +1688,8 @@ impl<'db> Typeck<'db> {
             }
             TyKind::Slice(..) if field.name() == sym::CAP => Some(self.db.types.uint),
             TyKind::Slice(..) | TyKind::Str if field.name() == sym::LEN => Some(self.db.types.uint),
-            TyKind::Slice(..) | TyKind::Str if field.name() == sym::PTR => {
-                Some(self.db.types.u8.raw_ptr())
-            }
+            TyKind::Slice(elem_ty) if field.name() == sym::PTR => Some(elem_ty.raw_ptr()),
+            TyKind::Str if field.name() == sym::PTR => Some(self.db.types.u8.raw_ptr()),
             _ => None,
         };
 
