@@ -33,6 +33,10 @@ fn main() unit = {
 	}
 
 	array.print()
+
+	printf("Array clear:\n".ptr)
+	array.clear()
+	array.print()
 }
 
 fn print_at(array: &Array[int], idx: uint) unit = {

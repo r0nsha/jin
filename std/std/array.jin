@@ -51,6 +51,10 @@ fn pop*[a](self: &mut Array[a]) Option[a] = {
 	Option.some({self.buf.ptr + self.buf.len}.*)
 }
 
+fn clear*[a](self: &mut Array[a]) unit = {
+	self.buf = []
+}
+
 fn grow[a](self: &mut Array[a]) unit = {
 	let new_cap = if self.buf.cap == 0 {
 		MIN_CAP
