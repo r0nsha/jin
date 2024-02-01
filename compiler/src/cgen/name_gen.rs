@@ -37,7 +37,7 @@ impl UniqueNameGenerator {
 
     pub fn generate(&mut self, name: Ustr) -> Ustr {
         let counter = self.counters.entry(name).or_default();
-        let unique_name = format!("{}{}", name, counter.value());
+        let unique_name = format!("{}${}", name, counter.value());
         counter.increment();
         ustr(&unique_name)
     }

@@ -655,7 +655,11 @@ impl<'db> Generator<'db> {
     }
 
     fn register_name(value: ValueId, name: Option<Ustr>) -> String {
-        format!("{}{}", name.unwrap_or(ustr("v")), value)
+        if let Some(name) = name {
+            format!("{}${}", name, value)
+        } else {
+            format!("v{}", value)
+        }
     }
 }
 
