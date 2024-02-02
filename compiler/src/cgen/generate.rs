@@ -709,7 +709,7 @@ fn global_init_fn_name(glob: &Global) -> String {
 
 fn param_name(pat: &Pat, index: usize) -> String {
     match pat {
-        Pat::Name(name) => format!("{}${}", name.word, index),
+        Pat::Name(name) => format!("{}$p{}", name.word, index),
         Pat::Discard(_) => format!("${index}"),
     }
 }
