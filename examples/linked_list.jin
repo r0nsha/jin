@@ -2,22 +2,22 @@ import std.option.{Option}
 
 fn extern "c" printf(fmt: *u8, ..) i32
 
-type LinkedList[a](
-  tail: Option[&mut Node[a]],
-  head: Option[Node[a]],
+type LinkedList[T](
+  tail: Option[&mut Node[T]],
+  head: Option[Node[T]],
 )
 
-fn LinkedList.new[a]() LinkedList[a] = LinkedList(tail: Option.none, head: Option.none)
+fn LinkedList.new[T]() LinkedList[T] = LinkedList(tail: Option.none, head: Option.none)
 
-type Node[a](
-  prev: Option[&mut Node[a]],
-  data: a,
-  next: Option[Node[a]],
+type Node[T](
+  prev: Option[&mut Node[T]],
+  data: T,
+  next: Option[Node[T]],
 )
 
-fn Node.new[a](data: a) Node[a] = Node(prev: Option.none, data: data, next: Option.none)
+fn Node.new[T](data: T) Node[T] = Node(prev: Option.none, data: data, next: Option.none)
 
-fn push_front[a](self: &mut LinkedList[a], data: a) unit = {
+fn push_front[T](self: &mut LinkedList[T], data: T) unit = {
   let mut node = Node.new(data)
   let node_mut = &mut node
 

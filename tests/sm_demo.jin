@@ -60,7 +60,7 @@ fn variables() int = {
 	x + y
 }
 
-fn id[a](x: a) a = {
+fn id[T](x: T) T = {
 	x
 }
 

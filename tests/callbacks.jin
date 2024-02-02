@@ -20,7 +20,7 @@ fn do_add(f: fn(int, int) int, a: int, b: int) unit = {
 	printf("a + b = %d\n".ptr, f(a, b))
 }
 
-fn map[a, b](val: a, f: fn(a) b) b = {
+fn map[A, B](val: A, f: fn(A) B) B = {
 	f(val)
 }
 

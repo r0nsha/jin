@@ -61,4 +61,4 @@ fn main() unit = {
 	}
 }
 
-fn destroy_poly[a](arg: a) unit = {}
+fn destroy_poly[T](arg: T) unit = {}

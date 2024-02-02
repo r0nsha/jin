@@ -62,7 +62,7 @@ fn boxes() unit = {
 	let nested = [[Box(1), Box(2)], [Box(3)]]
 }
 
-fn push[a](slice: &mut [a], value: a) unit = {
+fn push[T](slice: &mut [T], value: T) unit = {
 	slice.len += 1
 	slice.[slice.len - 1] = value
 }
