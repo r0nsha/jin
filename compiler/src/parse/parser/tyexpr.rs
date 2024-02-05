@@ -24,6 +24,10 @@ impl<'a> Parser<'a> {
                 let span = tok.span.merge(inner.span());
                 TyExpr::Slice(Box::new(inner), span)
             }
+            TokenKind::OpenCurly => {
+                self.eat(TokenKind::CloseCurly)?;
+                TyExpr::Unit(tok.span.merge(self.last_span()))
+            }
             TokenKind::Amp => {
                 let mutability = self.parse_mutability();
                 let inner = self.parse_ty()?;

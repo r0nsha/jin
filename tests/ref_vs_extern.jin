@@ -1,6 +1,6 @@
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
-fn main() -> unit = {
+fn main() -> {} = {
 	printf("Reference semantics:\n".ptr)
 	ref_type()
 	printf("\n".ptr)
@@ -11,7 +11,7 @@ fn main() -> unit = {
 
 type Ref(field: int)
 
-fn ref_type() -> unit = {
+fn ref_type() -> {} = {
 	let mut ref = Ref(1)
 	print(&ref) // should be 1
 
@@ -22,17 +22,17 @@ fn ref_type() -> unit = {
 	print(&ref) // should be 3
 }
 
-fn mutate(ref: &mut Ref) -> unit = {
+fn mutate(ref: &mut Ref) -> {} = {
 	ref.field = 3
 }
 
-fn print(ref: &Ref) -> unit = {
+fn print(ref: &Ref) -> {} = {
 	printf("Ref(field: %d)\n".ptr, ref.field)
 }
 
 type Ext extern(field: int)
 
-fn ext_type() -> unit = {
+fn ext_type() -> {} = {
 	let mut ext = Ext(1)
 	print(ext) // should be 1
 
@@ -43,11 +43,11 @@ fn ext_type() -> unit = {
 	print(ext) // should still be 2
 }
 
-fn mutate(mut ext: Ext) -> unit = {
+fn mutate(mut ext: Ext) -> {} = {
 	ext.field = 3
 }
 
-fn print(ext: Ext) -> unit = {
+fn print(ext: Ext) -> {} = {
 	printf("Ext(field: %d)\n".ptr, ext.field)	
 }
 

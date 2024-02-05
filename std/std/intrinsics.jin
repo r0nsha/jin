@@ -2,4 +2,4 @@
 fn extern "jin" grow*[T](slice: [T], new_cap: uint) -> [T]
 
 @intrinsic("forget")
-fn extern "jin" forget*[T](x: &T) -> unit
+fn extern "jin" forget*[T](x: &T) -> {}

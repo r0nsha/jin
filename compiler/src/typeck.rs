@@ -2088,6 +2088,7 @@ impl<'db> Typeck<'db> {
             TyExpr::Path(path, targs, span) => {
                 self.check_ty_expr_path(env, path, targs.as_deref(), *span, allow_hole)
             }
+            TyExpr::Unit(_) => Ok(self.db.types.unit),
             TyExpr::Hole(span) => {
                 if allow_hole == AllowTyHole::Yes {
                     Ok(self.fresh_ty_var())

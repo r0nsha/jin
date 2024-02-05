@@ -1,18 +1,18 @@
 import extern "raylib"
 import extern "m"
 
-fn extern "c" InitWindow*(width: i32, height: i32, title: *u8) -> unit
-fn extern "c" CloseWindow*() -> unit
+fn extern "c" InitWindow*(width: i32, height: i32, title: *u8) -> {}
+fn extern "c" CloseWindow*() -> {}
 fn extern "c" WindowShouldClose*() -> bool
-fn extern "c" SetTargetFPS*(fps: i32) -> unit
-fn extern "c" BeginDrawing*() -> unit
-fn extern "c" EndDrawing*() -> unit
-fn extern "c" ClearBackground*(color: Color) -> unit
-fn extern "c" DrawCircle*(center_x: i32, center_y: i32, radius: f32, color: Color) -> unit
-fn extern "c" DrawCircleV*(center: Vector2, radius: f32, color: Color) -> unit
-fn extern "c" DrawRectangle*(pos_x: i32, pos_y: i32, width: i32, height: i32, color: Color) -> unit
-fn extern "c" DrawFPS*(pos_x: i32, pos_y: i32) -> unit
-fn extern "c" DrawText*(text: *u8, pos_x: i32, pos_y: i32, font_size: i32, tint: Color) -> unit
+fn extern "c" SetTargetFPS*(fps: i32) -> {}
+fn extern "c" BeginDrawing*() -> {}
+fn extern "c" EndDrawing*() -> {}
+fn extern "c" ClearBackground*(color: Color) -> {}
+fn extern "c" DrawCircle*(center_x: i32, center_y: i32, radius: f32, color: Color) -> {}
+fn extern "c" DrawCircleV*(center: Vector2, radius: f32, color: Color) -> {}
+fn extern "c" DrawRectangle*(pos_x: i32, pos_y: i32, width: i32, height: i32, color: Color) -> {}
+fn extern "c" DrawFPS*(pos_x: i32, pos_y: i32) -> {}
+fn extern "c" DrawText*(text: *u8, pos_x: i32, pos_y: i32, font_size: i32, tint: Color) -> {}
 
 type Color* extern(r*: u8, g*: u8, b*: u8, a*: u8)
 

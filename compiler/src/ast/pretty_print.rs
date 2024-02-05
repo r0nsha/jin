@@ -457,6 +457,9 @@ impl PrettyPrint for TyExpr {
 
                 cx.builder.end_child();
             }
+            TyExpr::Unit(_) => {
+                cx.builder.add_empty_child("unit".to_string());
+            }
             TyExpr::Hole(_) => {
                 cx.builder.add_empty_child("_".to_string());
             }

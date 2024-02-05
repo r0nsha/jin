@@ -1,6 +1,6 @@
 import child
 
-fn main() -> unit = {
+fn main() -> {} = {
 	let s = child.Struct(1) // private constructor 
 	let x = s.num // private field
 }

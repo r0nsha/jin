@@ -4,7 +4,7 @@ fn extern "c" printf(fmt: *u8, ..) -> i32
 
 type Box(value: int)
 
-fn main() -> unit = {
+fn main() -> {} = {
 	// Value constructors
 	let a = Option.some(1)
 	let b = Option[int].some(1)

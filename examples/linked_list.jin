@@ -17,7 +17,7 @@ type Node[T](
 
 fn Node.new[T](data: T) -> Node[T] = Node(prev: Option.none, data: data, next: Option.none)
 
-fn push_front[T](self: &mut LinkedList[T], data: T) -> unit = {
+fn push_front[T](self: &mut LinkedList[T], data: T) -> {} = {
     let mut node = Node.new(data)
     let node_mut = &mut node
 
@@ -32,7 +32,7 @@ fn push_front[T](self: &mut LinkedList[T], data: T) -> unit = {
     }
 }
 
-fn print(self: &LinkedList[int]) -> unit = {
+fn print(self: &LinkedList[int]) -> {} = {
     let mut curr = &self.head
 
     printf("[".ptr)
@@ -53,7 +53,7 @@ fn print(self: &LinkedList[int]) -> unit = {
     printf("]\n".ptr)
 }
 
-fn main() -> unit = {
+fn main() -> {} = {
   let mut list = LinkedList.new()  
   list.push_front(3)
   list.push_front(2)

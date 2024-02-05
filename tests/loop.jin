@@ -1,6 +1,6 @@
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
-fn main() -> unit = {
+fn main() -> {} = {
 	loop {
 		printf("Once\n".ptr)
 		break

@@ -751,7 +751,6 @@ impl BuiltinTys {
                 (sym::STR, db.types.str),
                 (sym::BOOL, db.types.bool),
                 (sym::NEVER, db.types.never),
-                (sym::UNIT, db.types.unit),
             ],
         );
 
