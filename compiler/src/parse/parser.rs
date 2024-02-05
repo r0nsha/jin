@@ -179,9 +179,8 @@ impl<'a> Parser<'a> {
     #[inline]
     pub(super) fn require(&mut self) -> DiagnosticResult<Token> {
         self.token().ok_or_else(|| {
-            Diagnostic::error()
-                .with_message("unexpected end of file")
-                .with_label(Label::primary(self.last_span()).with_message("here"))
+            Diagnostic::error("unexpected end of file")
+                .with_label(Label::primary(self.last_span(), "here"))
         })
     }
 

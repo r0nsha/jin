@@ -66,12 +66,11 @@ impl At<'_, '_> {
                     let ty = self.cx.normalize(ty);
                     let obligation = Obligation::obvious(self.obligation.span());
 
-                    Diagnostic::error()
-                        .with_message(format!(
-                            "type `{}` is an infinite type",
-                            ty.display(self.cx.db)
-                        ))
-                        .with_label(Label::primary(obligation.span()))
+                    Diagnostic::error(format!(
+                        "type `{}` is an infinite type",
+                        ty.display(self.cx.db)
+                    ))
+                    .with_label(Label::primary(obligation.span()))
                 }
             };
 

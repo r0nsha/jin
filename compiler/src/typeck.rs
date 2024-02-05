@@ -271,12 +271,11 @@ impl<'db> Typeck<'db> {
         let id = self.lookup(env, env.module_id(), &Query::Name(tyname))?;
 
         let Some(assoc_ty) = self.try_extract_assoc_ty(id) else {
-            return Err(Diagnostic::error()
-                .with_message(format!(
-                    "expected a type, found value of type `{}`",
-                    self.def_ty(id).display(self.db)
-                ))
-                .with_label(Label::primary(tyname.span()).with_message("expected a type")));
+            return Err(Diagnostic::error(format!(
+                "expected a type, found value of type `{}`",
+                self.def_ty(id).display(self.db)
+            ))
+            .with_label(Label::primary(tyname.span()).with_message("expected a type")));
         };
 
         let env_package = self.db[env.module_id()].package;
@@ -287,26 +286,24 @@ impl<'db> Typeck<'db> {
                 let ty_package = self.db[ty_def.scope.module_id].package;
 
                 if env_package != ty_package {
-                    return Err(Diagnostic::error()
-                        .with_message(format!(
-                            "cannot define associated name for foreign type `{}`",
-                            self.db[adt_id].name
-                        ))
-                        .with_label(
-                            Label::primary(tyname.span())
-                                .with_message(format!("type is defined in package `{ty_package}`")),
-                        )
-                        .with_label(Label::secondary(ty_def.span).with_message("defined here")));
+                    return Err(Diagnostic::error(format!(
+                        "cannot define associated name for foreign type `{}`",
+                        self.db[adt_id].name
+                    ))
+                    .with_label(
+                        Label::primary(tyname.span())
+                            .with_message(format!("type is defined in package `{ty_package}`")),
+                    )
+                    .with_label(Label::secondary(ty_def.span).with_message("defined here")));
                 }
             }
             AssocTy::BuiltinTy(ty) => {
                 if !env.in_std(self.db) {
-                    return Err(Diagnostic::error()
-                        .with_message(format!(
-                            "cannot define associated name for builtin type `{}`",
-                            ty.display(self.db)
-                        ))
-                        .with_label(Label::primary(tyname.span()).with_message("builtin type")));
+                    return Err(Diagnostic::error(format!(
+                        "cannot define associated name for builtin type `{}`",
+                        ty.display(self.db)
+                    ))
+                    .with_label(Label::primary(tyname.span()).with_message("builtin type")));
                 }
             }
         }
@@ -430,18 +427,15 @@ impl<'db> Typeck<'db> {
                     if let Some(variant) =
                         union_def.variants(self.db).find(|v| v.name.name() == name.name())
                     {
-                        return Err(Diagnostic::error()
-                            .with_message(format!(
-                                "cannot define associated name `{}` on type `{}`",
-                                name, adt.name
-                            ))
-                            .with_label(
-                                Label::primary(name.span()).with_message("defined again here"),
-                            )
-                            .with_label(
-                                Label::secondary(variant.name.span())
-                                    .with_message("variant already defined here"),
-                            ));
+                        return Err(Diagnostic::error(format!(
+                            "cannot define associated name `{}` on type `{}`",
+                            name, adt.name
+                        ))
+                        .with_label(Label::primary(name.span()).with_message("defined again here"))
+                        .with_label(
+                            Label::secondary(variant.name.span())
+                                .with_message("variant already defined here"),
+                        ));
                     }
                 }
 
@@ -506,14 +500,12 @@ impl<'db> Typeck<'db> {
             let ast::AttrArgs::Intrinsic(name) = attr.args;
 
             let intrinsic = Intrinsic::try_from(name.as_str()).map_err(|()| {
-                Diagnostic::error()
-                    .with_message(format!("unknown intrinsic `{name}`"))
+                Diagnostic::error(format!("unknown intrinsic `{name}`"))
                     .with_label(Label::primary(name.span()).with_message("unknown intrinsic"))
             })?;
 
             if fnty.callconv != CallConv::Jin {
-                return Err(Diagnostic::error()
-                    .with_message("intrinsic calling convention must be \"jin\"")
+                return Err(Diagnostic::error("intrinsic calling convention must be \"jin\"")
                     .with_label(
                         Label::primary(fun.sig.word.span())
                             .with_message("invalid calling convention"),
@@ -521,15 +513,15 @@ impl<'db> Typeck<'db> {
             }
 
             if !env.in_std(self.db) {
-                return Err(Diagnostic::error()
-                    .with_message("intrinsic cannot be defined outside the `std` package")
-                    .with_label(Label::primary(fun.sig.word.span())));
+                return Err(Diagnostic::error(
+                    "intrinsic cannot be defined outside the `std` package",
+                )
+                .with_label(Label::primary(fun.sig.word.span())));
             }
 
             self.db.intrinsics.insert(id, intrinsic);
         } else if fnty.is_extern() && !sig.ty_params.is_empty() {
-            return Err(Diagnostic::error()
-                .with_message("type parameters are not allowed on extern functions")
+            return Err(Diagnostic::error("type parameters are not allowed on extern functions")
                 .with_label(
                     Label::primary(sig.word.span()).with_message("type parameters not allowed"),
                 ));
@@ -640,8 +632,7 @@ impl<'db> Typeck<'db> {
         self.eq_obvious_expr(ty, &value)?;
 
         if self.normalize(ty).is_module() {
-            return Err(Diagnostic::error()
-                .with_message("cannot store a module as a value")
+            return Err(Diagnostic::error("cannot store a module as a value")
                 .with_label(Label::primary(value.span).with_message("expected a value")));
         }
 
@@ -720,8 +711,7 @@ impl<'db> Typeck<'db> {
         let adt = &self.db[adt_id];
 
         if let Some(field) = adt.is_infinitely_sized() {
-            return Err(Diagnostic::error()
-                .with_message(format!("type `{}` is infinitely sized", adt.name))
+            return Err(Diagnostic::error(format!("type `{}` is infinitely sized", adt.name))
                 .with_label(Label::primary(adt.name.span()).with_message("defined here"))
                 .with_label(
                     Label::secondary(field.name.span())
@@ -770,8 +760,7 @@ impl<'db> Typeck<'db> {
         let adt = &self.db[adt_id];
 
         if let Some(field) = adt.is_infinitely_sized() {
-            return Err(Diagnostic::error()
-                .with_message(format!("type `{}` is infinitely sized", adt.name))
+            return Err(Diagnostic::error(format!("type `{}` is infinitely sized", adt.name))
                 .with_label(Label::primary(adt.name.span()).with_message("defined here"))
                 .with_label(
                     Label::secondary(field.name.span())
@@ -1084,8 +1073,7 @@ impl<'db> Typeck<'db> {
                         *span,
                     ))
                 } else {
-                    Err(Diagnostic::error()
-                        .with_message("cannot return outside of function scope")
+                    Err(Diagnostic::error("cannot return outside of function scope")
                         .with_label(Label::primary(*span)))
                 }
             }
@@ -1129,8 +1117,7 @@ impl<'db> Typeck<'db> {
                 if env.in_scope_kind(&ScopeKind::Loop) {
                     Ok(self.expr(hir::ExprKind::Break, self.db.types.never, *span))
                 } else {
-                    Err(Diagnostic::error()
-                        .with_message("cannot break outside of a loop")
+                    Err(Diagnostic::error("cannot break outside of a loop")
                         .with_label(Label::primary(*span).with_message("break outside of loop")))
                 }
             }
@@ -1561,16 +1548,15 @@ impl<'db> Typeck<'db> {
                 .find(|f| f.vis == Vis::Private)
                 .expect("to have at least one private field");
 
-            return Err(Diagnostic::error()
-                .with_message(format!(
-                    "constructor of type `{}` is private because `{}` is private",
-                    adt.name, private_field.name
-                ))
-                .with_label(Label::primary(span).with_message("private type constructor"))
-                .with_label(
-                    Label::secondary(private_field.name.span())
-                        .with_message(format!("`{}` is private", private_field.name)),
-                ));
+            return Err(Diagnostic::error(format!(
+                "constructor of type `{}` is private because `{}` is private",
+                adt.name, private_field.name
+            ))
+            .with_label(Label::primary(span).with_message("private type constructor"))
+            .with_label(
+                Label::secondary(private_field.name.span())
+                    .with_message(format!("`{}` is private", private_field.name)),
+            ));
         }
 
         let (ty, instantiation) = self.apply_ty_args_to_ty(env, struct_def.ctor_ty, targs, span)?;
@@ -1715,9 +1701,11 @@ impl<'db> Typeck<'db> {
         span: Span,
     ) -> TypeckResult<()> {
         if field.vis == Vis::Private && self.db[adt.def_id].scope.module_id != env.module_id() {
-            return Err(Diagnostic::error()
-                .with_message(format!("field `{}` of type `{}` is private", field.name, adt.name))
-                .with_label(Label::primary(span).with_message("private field")));
+            return Err(Diagnostic::error(format!(
+                "field `{}` of type `{}` is private",
+                field.name, adt.name
+            ))
+            .with_label(Label::primary(span).with_message("private field")));
         }
 
         Ok(())
@@ -1817,9 +1805,11 @@ impl<'db> Typeck<'db> {
                 let ty = self.normalize(callee.ty);
                 let span = callee.span;
 
-                Err(Diagnostic::error()
-                    .with_message(format!("expected a function, found `{}`", ty.display(self.db)))
-                    .with_label(Label::primary(span).with_message("expected a function")))
+                Err(Diagnostic::error(format!(
+                    "expected a function, found `{}`",
+                    ty.display(self.db)
+                ))
+                .with_label(Label::primary(span).with_message("expected a function")))
             }
         }
     }
@@ -1887,20 +1877,18 @@ impl<'db> Typeck<'db> {
                     let dup = arg_name.span();
                     let is_named = passed_arg.is_named;
 
-                    return Err(Diagnostic::error()
-                        .with_message(if is_named {
-                            format!("argument `{name}` is passed multiple times")
-                        } else {
-                            format!("argument `{name}` is already passed positionally")
-                        })
-                        .with_label(
-                            Label::primary(dup)
-                                .with_message(format!("`{name}` is passed again here")),
-                        )
-                        .with_label(
-                            Label::secondary(prev)
-                                .with_message(format!("`{name}` is already passed here")),
-                        ));
+                    return Err(Diagnostic::error(if is_named {
+                        format!("argument `{name}` is passed multiple times")
+                    } else {
+                        format!("argument `{name}` is already passed positionally")
+                    })
+                    .with_label(
+                        Label::primary(dup).with_message(format!("`{name}` is passed again here")),
+                    )
+                    .with_label(
+                        Label::secondary(prev)
+                            .with_message(format!("`{name}` is already passed here")),
+                    ));
                 }
 
                 arg.index = Some(idx);
@@ -2071,14 +2059,13 @@ impl<'db> Typeck<'db> {
                     | TyKind::Infer(_)
                     | TyKind::Type(_)
                     | TyKind::Module(_)
-                    | TyKind::Unknown => Err(Diagnostic::error()
-                        .with_message(format!(
-                            "type `{}` cannot be referenced",
-                            inner_ty.display(self.db)
-                        ))
-                        .with_label(
-                            Label::primary(inner.span()).with_message("invalid referenced type"),
-                        )),
+                    | TyKind::Unknown => Err(Diagnostic::error(format!(
+                        "type `{}` cannot be referenced",
+                        inner_ty.display(self.db)
+                    ))
+                    .with_label(
+                        Label::primary(inner.span()).with_message("invalid referenced type"),
+                    )),
                 }
             }
             TyExpr::RawPtr(pointee, _) => {
@@ -2093,8 +2080,7 @@ impl<'db> Typeck<'db> {
                 if allow_hole == AllowTyHole::Yes {
                     Ok(self.fresh_ty_var())
                 } else {
-                    Err(Diagnostic::error()
-                        .with_message("cannot use a _ type in a function's signature")
+                    Err(Diagnostic::error("cannot use a _ type in a function's signature")
                         .with_label(Label::primary(*span)))
                 }
             }
@@ -2116,14 +2102,13 @@ impl<'db> Typeck<'db> {
                 match def.kind.as_ref() {
                     DefKind::Ty(ty) => {
                         if targs.is_some() {
-                            Err(Diagnostic::error()
-                                .with_message(format!(
-                                    "type `{}` doesn't expect any type arguments",
-                                    ty.display(self.db)
-                                ))
-                                .with_label(
-                                    Label::primary(span).with_message("unexpected type arguments"),
-                                ))
+                            Err(Diagnostic::error(format!(
+                                "type `{}` doesn't expect any type arguments",
+                                ty.display(self.db)
+                            ))
+                            .with_label(
+                                Label::primary(span).with_message("unexpected type arguments"),
+                            ))
                         } else {
                             Ok(*ty)
                         }
@@ -2140,23 +2125,21 @@ impl<'db> Typeck<'db> {
                             Err(errors::adt_ty_arg_mismatch(self.db, adt_id, targs_len, span))
                         }
                     }
-                    _ => Err(Diagnostic::error()
-                        .with_message(format!(
-                            "expected a type, found value of type `{}`",
-                            self.def_ty(id).display(self.db)
-                        ))
-                        .with_label(Label::primary(span).with_message("expected a type"))),
+                    _ => Err(Diagnostic::error(format!(
+                        "expected a type, found value of type `{}`",
+                        self.def_ty(id).display(self.db)
+                    ))
+                    .with_label(Label::primary(span).with_message("expected a type"))),
                 }
             }
             PathLookup::Variant(variant_id) => {
                 let variant = &self.db[variant_id];
 
-                Err(Diagnostic::error()
-                    .with_message(format!(
-                        "expected a type, found variant `{}` of type `{}`",
-                        variant.name, self.db[variant.adt_id].name
-                    ))
-                    .with_label(Label::primary(span).with_message("expected type, found variant")))
+                Err(Diagnostic::error(format!(
+                    "expected a type, found variant `{}` of type `{}`",
+                    variant.name, self.db[variant.adt_id].name
+                ))
+                .with_label(Label::primary(span).with_message("expected type, found variant")))
             }
         }
     }
@@ -2268,16 +2251,14 @@ impl<'db> Typeck<'db> {
 
     fn check_assign_lhs(&self, expr: &hir::Expr) -> TypeckResult<()> {
         self.check_assign_lhs_aux(expr).then_some(()).ok_or_else(|| {
-            Diagnostic::error()
-                .with_message("invalid left-hand side of assignment")
+            Diagnostic::error("invalid left-hand side of assignment")
                 .with_label(Label::primary(expr.span).with_message("expression is not assignable"))
         })
     }
 
     fn check_swap_lhs(&self, expr: &hir::Expr) -> TypeckResult<()> {
         self.check_assign_lhs_aux(expr).then_some(()).ok_or_else(|| {
-            Diagnostic::error()
-                .with_message("invalid left-hand side of swap")
+            Diagnostic::error("invalid left-hand side of swap")
                 .with_label(Label::primary(expr.span).with_message("expression is not swappable"))
         })
     }

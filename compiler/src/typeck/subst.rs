@@ -35,8 +35,7 @@ impl<'db> Typeck<'db> {
             .unbound_tys
             .into_iter()
             .map(|(span, ty)| {
-                Diagnostic::error()
-                    .with_message(format!("type annotations needed for `{}`", ty.display(self.db)))
+                Diagnostic::error(format!("type annotations needed for `{}`", ty.display(self.db)))
                     .with_label(Label::primary(span).with_message("cannot infer type"))
             })
             .collect();

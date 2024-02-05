@@ -301,14 +301,13 @@ impl<'a> Parser<'a> {
 
                 match subpat {
                     Subpat::Positional(_) if passed_named_pat => {
-                        return Err(Diagnostic::error()
-                            .with_message(
-                                "positional patterns are not allowed after named patterns",
-                            )
-                            .with_label(
-                                Label::primary(subpat.span())
-                                    .with_message("unexpected positional pattern"),
-                            ));
+                        return Err(Diagnostic::error(
+                            "positional patterns are not allowed after named patterns",
+                        )
+                        .with_label(Label::primary(
+                            subpat.span(),
+                            "unexpected positional pattern",
+                        )));
                     }
                     Subpat::Positional(_) => (),
                     Subpat::Named(_, _) => passed_named_pat = true,
@@ -448,12 +447,10 @@ impl<'a> Parser<'a> {
 
             match &arg {
                 CallArg::Positional(expr) if passed_named_arg => {
-                    return Err(Diagnostic::error()
-                        .with_message("positional arguments are not allowed after named arguments")
-                        .with_label(
-                            Label::primary(expr.span())
-                                .with_message("unexpected positional argument"),
-                        ));
+                    return Err(Diagnostic::error(
+                        "positional arguments are not allowed after named arguments",
+                    )
+                    .with_label(Label::primary(expr.span(), "unexpected positional argument")));
                 }
                 CallArg::Positional(_) => (),
                 CallArg::Named(..) => passed_named_arg = true,

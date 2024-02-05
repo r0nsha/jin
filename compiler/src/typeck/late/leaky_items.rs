@@ -54,15 +54,14 @@ impl LeakyItems<'_> {
     fn ty(&mut self, ty: Ty, span: Span, item_kind: &str) {
         if let Some(priv_ty) = ty.has_private_ty(self.db) {
             self.db.diagnostics.emit(
-                Diagnostic::error()
-                    .with_message(format!(
-                        "private type `{}` used in public interface",
-                        priv_ty.display(self.db)
-                    ))
-                    .with_label(Label::primary(span).with_message(format!(
-                        "{item_kind} uses private type `{}`",
-                        ty.display(self.db)
-                    ))),
+                Diagnostic::error(format!(
+                    "private type `{}` used in public interface",
+                    priv_ty.display(self.db)
+                ))
+                .with_label(Label::primary(span).with_message(format!(
+                    "{item_kind} uses private type `{}`",
+                    ty.display(self.db)
+                ))),
             );
         }
     }

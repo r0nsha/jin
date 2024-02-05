@@ -304,28 +304,21 @@ impl<'db> Typeck<'db> {
                             // If there are more parts after this variant, it's an error, since we
                             // there are no symbols under variants
                             if path.get(idx + 2).is_some() {
-                                return Err(Diagnostic::error()
-                                    .with_message(format!(
-                                        "`{}` is a variant, not a module",
-                                        self.db[variant_id].name,
-                                    ))
-                                    .with_label(
-                                        Label::primary(next_part.span())
-                                            .with_message("not a module"),
-                                    ));
+                                return Err(Diagnostic::error(format!(
+                                    "`{}` is a variant, not a module",
+                                    self.db[variant_id].name,
+                                ))
+                                .with_label(Label::primary(next_part.span(), "not a module")));
                             }
 
                             return Ok(PathLookup::Variant(variant_id));
                         }
                         TyLookup::AssocFn(id) => {
-                            return Err(Diagnostic::error()
-                                .with_message(format!(
-                                    "`{}` is an associated function, not a module",
-                                    self.db[id].name,
-                                ))
-                                .with_label(
-                                    Label::primary(next_part.span()).with_message("not a module"),
-                                ));
+                            return Err(Diagnostic::error(format!(
+                                "`{}` is an associated function, not a module",
+                                self.db[id].name,
+                            ))
+                            .with_label(Label::primary(next_part.span(), "not a module")));
                         }
                     }
                 }
@@ -535,14 +528,11 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<Option<DefId>> {
         if !candidates.is_empty() && candidates.iter().all(|c| !self.can_access(from_module, c.id))
         {
-            return Err(Diagnostic::error()
-                .with_message(format!(
-                    "all functions which apply to `{}` are private to their module",
-                    query.display(self.db)
-                ))
-                .with_label(
-                    Label::primary(query.word.span()).with_message("no accessible function found"),
-                ));
+            return Err(Diagnostic::error(format!(
+                "all functions which apply to `{}` are private to their module",
+                query.display(self.db)
+            ))
+            .with_label(Label::primary(query.word.span(), "no accessible function found")));
         }
 
         // Filter fn candidates by their visibility if there's more than one,
@@ -555,9 +545,8 @@ impl<'db> Typeck<'db> {
         match candidates.len() {
             0 => Ok(None),
             1 => Ok(Some(candidates.first().unwrap().id)),
-            _ => Err(Diagnostic::error()
-                .with_message(format!("ambiguous call to `{}`", query.display(self.db)))
-                .with_label(Label::primary(query.word.span()).with_message("call here"))
+            _ => Err(Diagnostic::error(format!("ambiguous call to `{}`", query.display(self.db)))
+                .with_label(Label::primary(query.word.span(), "call here"))
                 .with_note("these functions apply:")
                 .with_notes(candidates.into_iter().map(|c| c.display(self.db).to_string()))),
         }
@@ -581,13 +570,11 @@ impl<'db> Typeck<'db> {
         match results.len() {
             0 => Ok(None),
             1 => Ok(results.first().map(LookupResult::id)),
-            _ => Err(Diagnostic::error()
-                .with_message(format!("ambiguous use of item `{}`", symbol.name))
-                .with_label(Label::primary(span).with_message("used here"))
+            _ => Err(Diagnostic::error(format!("ambiguous use of item `{}`", symbol.name))
+                .with_label(Label::primary(span, "used here"))
                 .with_labels(results.iter().map(|res| {
                     let def = &self.db[res.id()];
-                    Label::secondary(def.span)
-                        .with_message(format!("`{}` is defined here", def.name))
+                    Label::secondary(def.span, format!("`{}` is defined here", def.name))
                 }))),
         }
     }

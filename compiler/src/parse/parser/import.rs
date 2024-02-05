@@ -121,9 +121,8 @@ impl<'a> Parser<'a> {
             .or_else(|| self.search_package(name, &mut search_notes));
 
         path.ok_or_else(|| {
-            Diagnostic::error()
-                .with_message(format!("could not find module or library `{name}`"))
-                .with_label(Label::primary(name.span()))
+            Diagnostic::error(format!("could not find module or library `{name}`"))
+                .with_label(Label::primary(name.span(), "not found"))
                 .with_notes(search_notes)
         })
     }

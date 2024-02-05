@@ -97,11 +97,8 @@ impl<'a> Parser<'a> {
         let callconv = self.eat(TokenKind::empty_str())?;
         let callconv_str = callconv.str_value().as_str();
         CallConv::try_from(callconv_str).map_err(|()| {
-            Diagnostic::error()
-                .with_message(format!("unknown calling convention `{callconv_str}`"))
-                .with_label(
-                    Label::primary(callconv.span).with_message("unknown calling convention"),
-                )
+            Diagnostic::error(format!("unknown calling convention `{callconv_str}`"))
+                .with_label(Label::primary(callconv.span, "unknown calling convention"))
         })
     }
 
@@ -197,9 +194,8 @@ impl<'a> Parser<'a> {
         let name = ident.str_value().as_str();
 
         let id = AttrId::try_from(name).map_err(|()| {
-            Diagnostic::error()
-                .with_message(format!("unknown attribute `{name}`"))
-                .with_label(Label::primary(span).with_message("unknown attribute"))
+            Diagnostic::error(format!("unknown attribute `{name}`"))
+                .with_label(Label::primary(span, "unknown attribute"))
         })?;
 
         Ok((id, span))

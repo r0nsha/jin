@@ -144,9 +144,8 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             |block| {
                 let span = self.body_pat_spans[block];
 
-                Diagnostic::warning()
-                    .with_message("unreachable pattern")
-                    .with_label(Label::primary(span).with_message("unreachable pattern"))
+                Diagnostic::warning("unreachable pattern")
+                    .with_label(Label::primary(span, "unreachable pattern"))
             },
         ));
     }
@@ -181,9 +180,8 @@ impl<'a, 'cx, 'db> Compiler<'a, 'cx, 'db> {
             (format!("`{}`", pats[0]), "is")
         };
 
-        Diagnostic::error()
-            .with_message(format!("missing match arms: {missing} {verb} not covered"))
-            .with_label(Label::primary(span).with_message("match is not exhaustive"))
+        Diagnostic::error(format!("missing match arms: {missing} {verb} not covered"))
+            .with_label(Label::primary(span, "match is not exhaustive"))
     }
 
     fn collect_missing_pats(&self, decision: &Decision) -> IndexSet<String> {

@@ -61,15 +61,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     fn check_can_move(&mut self, value: ValueId, moved_to: Span) -> DiagnosticResult<()> {
         match self.value_states.cannot_move(value) {
-            Some(CannotMove::SliceIndex) => Err(Diagnostic::error()
-                .with_message(format!(
-                    "cannot move element of type `{}` out of slice",
-                    self.ty_of(value).display(self.cx.db)
-                ))
-                .with_label(Label::primary(moved_to).with_message("cannot move out"))),
-            Some(CannotMove::SliceSlice) => Err(Diagnostic::error()
-                .with_message("slice must be behind a `&` or `&mut` reference")
-                .with_label(Label::primary(moved_to).with_message("cannot move slice"))),
+            Some(CannotMove::SliceIndex) => Err(Diagnostic::error(format!(
+                "cannot move element of type `{}` out of slice",
+                self.ty_of(value).display(self.cx.db)
+            ))
+            .with_label(Label::primary(moved_to, "cannot move out"))),
+            Some(CannotMove::SliceSlice) => {
+                Err(Diagnostic::error("slice must be behind a `&` or `&mut` reference")
+                    .with_label(Label::primary(moved_to, "cannot move slice")))
+            }
             None => Ok(()),
         }
     }
@@ -104,16 +104,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     ) -> Diagnostic {
         let name = self.value_name(value);
 
-        Diagnostic::error()
-            .with_message(format!("use of {past_move_kind} {name}"))
-            .with_label(
-                Label::primary(moved_to)
-                    .with_message(format!("{name} used here after {move_kind}")),
-            )
-            .with_label(
-                Label::secondary(already_moved_to)
-                    .with_message(format!("{name} already {past_move_kind} here")),
-            )
+        Diagnostic::error(format!("use of {past_move_kind} {name}"))
+            .with_label(Label::primary(moved_to, format!("{name} used here after {move_kind}")))
+            .with_label(Label::secondary(
+                already_moved_to,
+                format!("{name} already {past_move_kind} here"),
+            ))
     }
 
     fn check_move_out_of_global(&self, value: ValueId, moved_to: Span) -> DiagnosticResult<()> {
@@ -121,9 +117,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             let global = &self.cx.mir.globals[id];
             let def = &self.cx.db[global.def_id];
 
-            Err(Diagnostic::error()
-                .with_message(format!("cannot move out of global item `{}`", def.qpath))
-                .with_label(Label::primary(moved_to).with_message("global item moved here")))
+            Err(Diagnostic::error(format!("cannot move out of global item `{}`", def.qpath))
+                .with_label(Label::primary(moved_to, "global item moved here")))
         } else {
             Ok(())
         }
@@ -138,16 +133,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         let parent_ty = self.ty_of(parent);
 
         if parent_ty.is_ref() {
-            Err(Diagnostic::error()
-                .with_message(format!(
-                    "cannot move {} out of reference `{}`",
-                    self.value_name(field),
-                    parent_ty.display(self.cx.db)
-                ))
-                .with_label(
-                    Label::primary(moved_to)
-                        .with_message(format!("cannot move out of {}", self.value_name(parent))),
-                ))
+            Err(Diagnostic::error(format!(
+                "cannot move {} out of reference `{}`",
+                self.value_name(field),
+                parent_ty.display(self.cx.db)
+            ))
+            .with_label(Label::primary(
+                moved_to,
+                format!("cannot move out of {}", self.value_name(parent)),
+            )))
         } else {
             Ok(())
         }
@@ -177,14 +171,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let name = self.value_name(value);
 
                 self.cx.diagnostics.push(
-                    Diagnostic::error()
-                        .with_message(format!("use of moved {name}"))
-                        .with_label(Label::primary(moved_to).with_message(format!(
-                            "{name} moved here, in the previous loop iteration"
-                        )))
-                        .with_label(
-                            Label::secondary(self.scope().span).with_message("inside this loop"),
-                        ),
+                    Diagnostic::error(format!("use of moved {name}"))
+                        .with_label(Label::primary(
+                            moved_to,
+                            format!("{name} moved here, in the previous loop iteration"),
+                        ))
+                        .with_label(Label::secondary(self.scope().span, "inside this loop")),
                 );
             }
         }
@@ -517,9 +509,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     )
                 };
 
-                Diagnostic::error().with_message(message).with_label(
-                    Label::primary(span).with_message(format!("{prefix} immutable value")),
-                )
+                Diagnostic::error(message)
+                    .with_label(Label::primary(span, format!("{prefix} immutable value")))
             }
             ImmutableRoot::Ref(root) => {
                 let root_name = self.value_name(root);
@@ -531,12 +522,8 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     root_name,
                 );
 
-                Diagnostic::error()
-                    .with_message(message)
-                    .with_label(
-                        Label::primary(span)
-                            .with_message(format!("{prefix} to immutable reference")),
-                    )
+                Diagnostic::error(message)
+                    .with_label(Label::primary(span, format!("{prefix} to immutable reference")))
                     .with_note(format!(
                         "{} is of type `{}`, which is immutable",
                         root_name,

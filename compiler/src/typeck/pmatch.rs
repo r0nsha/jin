@@ -115,21 +115,20 @@ impl<'db> Typeck<'db> {
                         .at(Obligation::exprs(word.span(), self.db[*id].span, word.span()))
                         .eq(expected_ty, pat_ty)
                     {
-                        return Err(Diagnostic::error()
-                            .with_message(format!(
-                                "in the same arm, the identifier `{word}` must have the same type \
-                                 in all alternatives",
-                            ))
-                            .with_label(Label::primary(word.span()).with_message(format!(
-                                "has type `{}` here",
-                                err.found.display(self.db)
-                            )))
-                            .with_label(Label::secondary(self.db[*id].span).with_message(
-                                format!(
-                                    "previously introduce with type `{}`",
-                                    err.expected.display(self.db)
-                                ),
-                            )));
+                        return Err(Diagnostic::error(format!(
+                            "in the same arm, the identifier `{word}` must have the same type in \
+                             all alternatives",
+                        ))
+                        .with_label(Label::primary(word.span()).with_message(format!(
+                            "has type `{}` here",
+                            err.found.display(self.db)
+                        )))
+                        .with_label(
+                            Label::secondary(self.db[*id].span).with_message(format!(
+                                "previously introduce with type `{}`",
+                                err.expected.display(self.db)
+                            )),
+                        ));
                     }
 
                     *id
@@ -214,11 +213,10 @@ impl<'db> Typeck<'db> {
 
                 for (name, count) in name_counts {
                     if count < pats.len() {
-                        return Err(Diagnostic::error()
-                            .with_message(format!(
-                                "identifier `{name}` is not bound in all alternatives"
-                            ))
-                            .with_label(Label::primary(*span).with_message("in these patterns")));
+                        return Err(Diagnostic::error(format!(
+                            "identifier `{name}` is not bound in all alternatives"
+                        ))
+                        .with_label(Label::primary(*span).with_message("in these patterns")));
                     }
                 }
 
@@ -335,8 +333,7 @@ impl<'db> Typeck<'db> {
             if let Some(prev_span) = used_fields.insert_split(name, span) {
                 let dup_span = span;
 
-                Err(Diagnostic::error()
-                    .with_message(format!("field `{name}` has already been matched"))
+                Err(Diagnostic::error(format!("field `{name}` has already been matched"))
                     .with_label(
                         Label::primary(dup_span)
                             .with_message(format!("`{name}` matched again here")),
@@ -358,16 +355,15 @@ impl<'db> Typeck<'db> {
                     if let Some(field) = fields.get(idx) {
                         (idx, field, subpat, subpat.span())
                     } else {
-                        return Err(Diagnostic::error()
-                            .with_message(format!(
-                                "expected at most {} patterns for type `{}`",
-                                fields.len(),
-                                adt_name
-                            ))
-                            .with_label(
-                                Label::primary(subpat.span())
-                                    .with_message("pattern doesn't map to any field"),
-                            ));
+                        return Err(Diagnostic::error(format!(
+                            "expected at most {} patterns for type `{}`",
+                            fields.len(),
+                            adt_name
+                        ))
+                        .with_label(
+                            Label::primary(subpat.span())
+                                .with_message("pattern doesn't map to any field"),
+                        ));
                     }
                 }
                 ast::Subpat::Named(name, subpat) => {
@@ -424,15 +420,14 @@ impl<'db> Typeck<'db> {
         if missing_fields.is_empty() {
             Ok(())
         } else {
-            Err(Diagnostic::error()
-                .with_message(format!(
-                    "missing {} field(s) in `{}` pattern: {}",
-                    missing_fields.len(),
-                    adt_name,
-                    missing_fields.into_iter().map(|f| format!("`{}`", f.name)).join(", ")
-                ))
-                .with_label(Label::primary(span).with_message("pattern is not exhaustive"))
-                .with_note("if this is intentional, use `..` at the end of the pattern"))
+            Err(Diagnostic::error(format!(
+                "missing {} field(s) in `{}` pattern: {}",
+                missing_fields.len(),
+                adt_name,
+                missing_fields.into_iter().map(|f| format!("`{}`", f.name)).join(", ")
+            ))
+            .with_label(Label::primary(span).with_message("pattern is not exhaustive"))
+            .with_note("if this is intentional, use `..` at the end of the pattern"))
         }
     }
 
@@ -461,13 +456,10 @@ impl<'db> Typeck<'db> {
 
         for (name, spans) in bound {
             if spans.len() > 1 {
-                return Err(Diagnostic::error()
-                    .with_message(format!(
-                        "identifier `{name}` is bound more than once in the same pattern"
-                    ))
-                    .with_labels(
-                        spans.into_iter().map(|s| Label::primary(s).with_message("here")),
-                    ));
+                return Err(Diagnostic::error(format!(
+                    "identifier `{name}` is bound more than once in the same pattern"
+                ))
+                .with_labels(spans.into_iter().map(|s| Label::primary(s).with_message("here"))));
             }
         }
 

@@ -179,9 +179,8 @@ impl<'s> Lexer<'s> {
                     }
                     ch => {
                         let span = self.create_span(start);
-                        return Err(Diagnostic::error()
-                            .with_message(format!("invalid character {ch}"))
-                            .with_label(Label::primary(span)));
+                        return Err(Diagnostic::error(format!("invalid character {ch}"))
+                            .with_label(Label::primary(span, "invalid character")));
                     }
                 };
 

@@ -13,31 +13,22 @@ pub type DiagnosticResult<T> = Result<T, Diagnostic>;
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
     severity: Severity,
-    message: Option<String>,
+    message: String,
     labels: Vec<Label>,
     notes: Vec<String>,
 }
 
 impl Diagnostic {
-    pub fn error() -> Self {
-        Self::new(Severity::Error)
+    pub fn error(message: impl Into<String>) -> Self {
+        Self::new(Severity::Error, message)
     }
 
-    pub fn warning() -> Self {
-        Self::new(Severity::Warning)
+    pub fn warning(message: impl Into<String>) -> Self {
+        Self::new(Severity::Warning, message)
     }
 
-    fn new(severity: Severity) -> Self {
-        Self { severity, message: None, labels: vec![], notes: vec![] }
-    }
-
-    pub fn set_message(&mut self, message: impl Into<String>) {
-        self.message = Some(message.into());
-    }
-
-    pub fn with_message(mut self, message: impl Into<String>) -> Self {
-        self.set_message(message);
-        self
+    fn new(severity: Severity, message: impl Into<String>) -> Self {
+        Self { severity, message: message.into(), labels: vec![], notes: vec![] }
     }
 
     pub fn with_label(mut self, label: Label) -> Self {
@@ -82,22 +73,17 @@ pub enum Severity {
 #[derive(Debug, Clone)]
 pub struct Label {
     style: LabelStyle,
-    message: Option<String>,
+    message: String,
     span: Span,
 }
 
 impl Label {
-    pub fn primary(span: Span) -> Self {
-        Self { style: LabelStyle::Primary, message: None, span }
+    pub fn primary(span: Span, message: impl Into<String>) -> Self {
+        Self { style: LabelStyle::Primary, message: message.into(), span }
     }
 
-    pub fn secondary(span: Span) -> Self {
-        Self { style: LabelStyle::Secondary, message: None, span }
-    }
-
-    pub fn with_message(mut self, message: impl Into<String>) -> Self {
-        self.message = Some(message.into());
-        self
+    pub fn secondary(span: Span, message: impl Into<String>) -> Self {
+        Self { style: LabelStyle::Secondary, message: message.into(), span }
     }
 }
 
@@ -112,7 +98,7 @@ impl From<Diagnostic> for codespan_diagnostic::Diagnostic<SourceId> {
         Self {
             severity: val.severity.into(),
             code: None,
-            message: val.message.unwrap_or_default(),
+            message: val.message,
             labels: val.labels.into_iter().map(Into::into).collect(),
             notes: val.notes,
         }
@@ -128,7 +114,7 @@ impl From<Label> for codespan_diagnostic::Label<SourceId> {
             },
             file_id: val.span.source_id(),
             range: val.span.start() as usize..val.span.end() as usize,
-            message: val.message.unwrap_or_default(),
+            message: val.message,
         }
     }
 }
