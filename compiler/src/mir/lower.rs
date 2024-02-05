@@ -749,6 +749,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         // When a value adt type is moved, its reference fields are incremented
         if !is_register && self.ty_of(value).is_value_struct(self.cx.db) {
             self.copy_value_type(value);
+            return value;
         }
 
         self.set_moved_with_fields(value, expr.span);
@@ -1443,9 +1444,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             let adt = &self.cx.db[*adt_id];
 
             if let AdtKind::Struct(struct_def) = &adt.kind {
+                let value = value.id;
                 let instantiation = adt.instantiation(targs);
                 let mut folder = instantiation.folder();
-                let value = value.id;
 
                 // In order for fields to be destroyed in field-order,
                 // we must introduce them in reverse order (since values are destroyed in
@@ -1455,11 +1456,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 for f in struct_def.fields.iter().rev() {
                     let name = f.name.name();
                     let ty = folder.fold(f.ty);
-                    let field_value = self.create_value(ty, ValueKind::Field(value, name));
 
-                    if f.ty.is_ref() || f.ty.needs_free(self.cx.db) {
-                        self.create_destroy_flag(field_value);
-                        fields.insert(name, field_value);
+                    let should_destroy = f.ty.is_ref() || f.ty.needs_free(self.cx.db);
+
+                    if should_destroy || f.ty.is_value_struct(self.cx.db) {
+                        let field_value = self.create_value(ty, ValueKind::Field(value, name));
+                        if should_destroy {
+                            self.create_destroy_flag(field_value);
+                            fields.insert(name, field_value);
+                        }
                     }
                 }
 

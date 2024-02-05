@@ -5,6 +5,7 @@ type M()
 type Move extern(m: M)
 type Ref extern(a: &M, b: Ref2)
 type Ref2 extern(c: &M)
+type Mixed extern(a: Ref, b: Move)
 
 type Point extern(x: int, y: int)
 
@@ -13,9 +14,14 @@ fn main() = {
 	let m2 = m
 	// let m3 = m // Error: use after move
 
-	let r = Ref(&m2.m, Ref2(&m2.m))
-	let r2 = r
-	let r3 = r
+	let r2 = &m2
+	let r3 = &m2
+
+	// let m3 = m2.m // Runtime error: Destroy with refs
+
+	let mixed = Mixed(Ref(&m2.m, Ref2(&m2.m)), m2)
+	let mixed2 = mixed.a
+	let mixed2c = mixed.a.b.c
 
 	print_point(Point(1, 2))
 	print_point(Point(x: 420, y: 69))
