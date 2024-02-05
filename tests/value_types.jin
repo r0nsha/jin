@@ -15,12 +15,13 @@ fn main() = {
 
 	let r = Ref(&m2.m, Ref2(&m2.m))
 	let r2 = r
-	// let r3 = r
-	// print_point(Point(1, 2))
-	// print_point(Point(x: 420, y: 69))
-	// print_point(Point(5, y: 10))
+	let r3 = r
+
+	print_point(Point(1, 2))
+	print_point(Point(x: 420, y: 69))
+	print_point(Point(5, y: 10))
 }
 
-// fn print_point(p: Point) = {
-// 	printf("Point(%d, %d)\n".ptr, p.x, p.y)
-// }
+fn print_point(p: Point) = {
+	printf("Point(%d, %d)\n".ptr, p.x, p.y)
+}

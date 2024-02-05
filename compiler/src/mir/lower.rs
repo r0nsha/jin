@@ -746,12 +746,12 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return value;
         }
 
-        self.set_moved_with_fields(value, expr.span);
-
         // When a value adt type is moved, its reference fields are incremented
         if !is_register && self.ty_of(value).is_value_struct(self.cx.db) {
-            return self.copy_value_type(value);
+            self.copy_value_type(value);
         }
+
+        self.set_moved_with_fields(value, expr.span);
 
         value
     }
@@ -1396,11 +1396,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         sa
     }
 
-    pub fn copy_value_type(&mut self, old_value: ValueId) -> ValueId {
-        let new_value = self.push_inst_with_register(self.ty_of(old_value), |value| {
-            Inst::StackAlloc { value, init: Some(old_value) }
-        });
-
+    pub fn copy_value_type(&mut self, old_value: ValueId) {
         self.walk_fields(old_value, |this, field| {
             if this.ty_of(field).is_ref() {
                 this.ins(this.current_block).incref(field);
@@ -1408,8 +1404,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             Ok(())
         })
         .unwrap();
-
-        new_value
     }
 
     pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
