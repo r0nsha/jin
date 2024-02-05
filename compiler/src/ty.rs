@@ -401,23 +401,10 @@ impl TyKind {
     #[must_use]
     pub fn needs_free(&self, db: &Db) -> bool {
         match self {
-            Self::Adt(adt_id, targs) => {
-                let adt = &db[*adt_id];
-
-                match &adt.kind {
-                    AdtKind::Struct(s) => s.kind.is_ref(),
-                    AdtKind::Union(u) => {
-                        let instantation = adt.instantiation(targs);
-                        let mut folder = instantation.folder();
-                        u.variants(db).any(|v| {
-                            v.fields.iter().any(|f| {
-                                let fty = folder.fold(f.ty);
-                                fty.is_ref() || fty.needs_free(db)
-                            })
-                        })
-                    }
-                }
-            }
+            Self::Adt(adt_id, _) => match &db[*adt_id].kind {
+                AdtKind::Struct(s) => s.kind.is_ref(),
+                AdtKind::Union(_) => true,
+            },
             Self::Slice(_) => true,
             _ => false,
         }
@@ -427,19 +414,10 @@ impl TyKind {
     #[must_use]
     pub fn is_move(&self, db: &Db) -> bool {
         match self {
-            Self::Adt(adt_id, targs) => {
-                let adt = &db[*adt_id];
-
-                match &adt.kind {
-                    AdtKind::Struct(s) => s.kind.is_ref(),
-                    AdtKind::Union(u) => {
-                        let instantation = adt.instantiation(targs);
-                        let mut folder = instantation.folder();
-                        u.variants(db)
-                            .any(|v| v.fields.iter().any(|f| folder.fold(f.ty).is_move(db)))
-                    }
-                }
-            }
+            Self::Adt(adt_id, _) => match &db[*adt_id].kind {
+                AdtKind::Struct(s) => s.kind.is_ref(),
+                AdtKind::Union(_) => true,
+            },
             Self::Slice(_) | Self::Param(_) => true,
             _ => false,
         }

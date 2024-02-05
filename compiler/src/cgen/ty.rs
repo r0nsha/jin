@@ -36,12 +36,15 @@ impl<'db> CTy<'db> for TyKind {
                 let adt_name = cx.get_or_create_adt(Ty::from_ref(self), *adt_id, targs);
                 let name = D::text(format!("struct {adt_name}"));
 
-                match &cx.db[*adt_id].kind {
-                    AdtKind::Struct(s) => match s.kind {
-                        StructKind::Ref => name.append(D::text("*")),
-                        StructKind::Extern => name,
-                    },
-                    AdtKind::Union(_) => name,
+                let is_ptr = match &cx.db[*adt_id].kind {
+                    AdtKind::Struct(s) => s.kind.is_ref(),
+                    AdtKind::Union(_) => true,
+                };
+
+                if is_ptr {
+                    name.append("*")
+                } else {
+                    name
                 }
             }
             Self::Slice(..) => D::text("slice"),
