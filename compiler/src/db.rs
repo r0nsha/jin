@@ -421,14 +421,6 @@ pub struct Adt {
 
 impl Adt {
     #[must_use]
-    pub fn is_move(&self, db: &Db) -> bool {
-        match &self.kind {
-            AdtKind::Struct(s) => s.kind.is_move(),
-            AdtKind::Union(u) => u.is_move(db),
-        }
-    }
-
-    #[must_use]
     pub fn is_rc(&self) -> bool {
         match &self.kind {
             AdtKind::Struct(s) => s.kind.is_ref(),
@@ -546,11 +538,6 @@ impl StructKind {
     pub fn is_ref(self) -> bool {
         matches!(self, Self::Ref)
     }
-
-    #[must_use]
-    pub fn is_move(self) -> bool {
-        self.is_ref()
-    }
 }
 
 impl StructDef {
@@ -615,11 +602,6 @@ impl UnionDef {
     pub fn variants<'a>(&'a self, db: &'a Db) -> impl Iterator<Item = &Variant> {
         self.variants.iter().map(|&id| &db[id])
     }
-
-    #[must_use]
-    pub fn is_move(&self, db: &Db) -> bool {
-        self.variants(db).any(|v| v.is_move(db))
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -652,11 +634,6 @@ impl Variant {
 
     pub fn full_name(&self, db: &Db) -> String {
         format!("{}.{}", db[self.adt_id].name, self.name)
-    }
-
-    #[must_use]
-    pub fn is_move(&self, db: &Db) -> bool {
-        self.fields.iter().any(|f| f.ty.is_move(db))
     }
 }
 
