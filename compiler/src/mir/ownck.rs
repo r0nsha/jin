@@ -33,13 +33,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.check_if_moved(value, moved_to)?;
 
         // Mark the value and its fields as moved.
+        self.set_moved_with_fields(value, moved_to);
+
         // Mark its parents (if any) as partially moved
-        self.set_moved(value, moved_to);
-        self.walk_fields(value, |this, field| {
-            this.set_moved(field, moved_to);
-            Ok(())
-        })
-        .unwrap();
         self.walk_parents(value, |this, parent, child| -> DiagnosticResult<()> {
             this.check_move_out_of_ref(parent, child, moved_to)?;
             this.set_partially_moved(parent, moved_to);
@@ -274,6 +270,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub(super) fn set_moved(&mut self, value: ValueId, moved_to: Span) {
         self.set_value_state(value, ValueState::Moved(moved_to));
+    }
+
+    pub(super) fn set_moved_with_fields(&mut self, value: ValueId, moved_to: Span) {
+        self.set_moved(value, moved_to);
+        self.walk_fields(value, |this, field| {
+            this.set_moved(field, moved_to);
+            Ok(())
+        })
+        .unwrap();
     }
 
     pub(super) fn set_partially_moved(&mut self, value: ValueId, moved_to: Span) {

@@ -738,13 +738,21 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return value;
         }
 
+        let is_register = self.body.value(value).kind.is_register();
+
         // When a reference is moved, its refcount is incremented.
-        if ty.is_ref() && !self.body.value(value).kind.is_register() {
+        if !is_register && ty.is_ref() {
             self.ins(self.current_block).incref(value);
             return value;
         }
 
-        self.set_moved(value, expr.span);
+        self.set_moved_with_fields(value, expr.span);
+
+        // When a value adt type is moved, its reference fields are incremented
+        if !is_register && self.ty_of(value).is_value_struct(self.cx.db) {
+            return self.copy_value_type(value);
+        }
+
         value
     }
 
@@ -1388,6 +1396,22 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         sa
     }
 
+    pub fn copy_value_type(&mut self, old_value: ValueId) -> ValueId {
+        let new_value = self.push_inst_with_register(self.ty_of(old_value), |value| {
+            Inst::StackAlloc { value, init: Some(old_value) }
+        });
+
+        self.walk_fields(old_value, |this, field| {
+            if this.ty_of(field).is_ref() {
+                this.ins(this.current_block).incref(field);
+            }
+            Ok(())
+        })
+        .unwrap();
+
+        new_value
+    }
+
     pub fn create_value(&mut self, ty: Ty, kind: ValueKind) -> ValueId {
         let value = self.body.create_value(ty, kind);
         self.set_owned(value);
@@ -1423,28 +1447,27 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
         if let TyKind::Adt(adt_id, targs) = value.ty.kind() {
             let adt = &self.cx.db[*adt_id];
-            let instantiation = adt.instantiation(targs);
-            let mut folder = instantiation.folder();
 
             if let AdtKind::Struct(struct_def) = &adt.kind {
+                let instantiation = adt.instantiation(targs);
+                let mut folder = instantiation.folder();
                 let value = value.id;
 
                 // In order for fields to be destroyed in field-order,
                 // we must introduce them in reverse order (since values are destroyed in
                 // reverse).
-                let fields: FxHashMap<_, _> = struct_def
-                    .fields
-                    .iter()
-                    .filter(|f| f.ty.is_move(self.cx.db) || f.ty.is_ref())
-                    .map(|f| {
-                        let name = f.name.name();
-                        let ty = folder.fold(f.ty);
-                        let value = self.create_value(ty, ValueKind::Field(value, name));
-                        self.create_destroy_flag(value);
-                        (name, value)
-                    })
-                    .rev()
-                    .collect();
+                let mut fields = FxHashMap::default();
+
+                for f in struct_def.fields.iter().rev() {
+                    let name = f.name.name();
+                    let ty = folder.fold(f.ty);
+                    let field_value = self.create_value(ty, ValueKind::Field(value, name));
+
+                    if f.ty.is_ref() || f.ty.needs_free(self.cx.db) {
+                        self.create_destroy_flag(field_value);
+                        fields.insert(name, field_value);
+                    }
+                }
 
                 self.fields.insert(value, fields);
             }

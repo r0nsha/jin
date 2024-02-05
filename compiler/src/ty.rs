@@ -12,7 +12,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
 use crate::{
-    db::{AdtId, AdtKind, Db, ModuleId},
+    db::{AdtId, AdtKind, Db, ModuleId, StructKind},
     middle::{CallConv, Mutability, Vis},
     span::Span,
     subst::SubstTy,
@@ -401,10 +401,23 @@ impl TyKind {
     #[must_use]
     pub fn needs_free(&self, db: &Db) -> bool {
         match self {
-            Self::Adt(adt_id, _) => match &db[*adt_id].kind {
-                AdtKind::Struct(s) => s.kind.is_ref(),
-                AdtKind::Union(_) => true,
-            },
+            Self::Adt(adt_id, targs) => {
+                let adt = &db[*adt_id];
+                match &adt.kind {
+                    AdtKind::Struct(s) => match s.kind {
+                        StructKind::Ref => true,
+                        StructKind::Value => {
+                            let instantiation = adt.instantiation(targs);
+                            let mut folder = instantiation.folder();
+                            s.fields.iter().any(|f| {
+                                let ty = folder.fold(f.ty);
+                                ty.is_ref() || ty.needs_free(db)
+                            })
+                        }
+                    },
+                    AdtKind::Union(_) => true,
+                }
+            }
             Self::Slice(_) => true,
             _ => false,
         }
@@ -414,10 +427,20 @@ impl TyKind {
     #[must_use]
     pub fn is_move(&self, db: &Db) -> bool {
         match self {
-            Self::Adt(adt_id, _) => match &db[*adt_id].kind {
-                AdtKind::Struct(s) => s.kind.is_ref(),
-                AdtKind::Union(_) => true,
-            },
+            Self::Adt(adt_id, targs) => {
+                let adt = &db[*adt_id];
+                match &adt.kind {
+                    AdtKind::Struct(s) => match s.kind {
+                        StructKind::Ref => true,
+                        StructKind::Value => {
+                            let instantiation = adt.instantiation(targs);
+                            let mut folder = instantiation.folder();
+                            s.fields.iter().any(|f| folder.fold(f.ty).is_move(db))
+                        }
+                    },
+                    AdtKind::Union(_) => true,
+                }
+            }
             Self::Slice(_) | Self::Param(_) => true,
             _ => false,
         }
@@ -429,6 +452,24 @@ impl TyKind {
         match self {
             Self::Adt(adt_id, _) => db[*adt_id].is_rc(),
             Self::Slice(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if this type is a struct
+    #[must_use]
+    pub fn is_struct(&self, db: &Db) -> bool {
+        match self {
+            Self::Adt(adt_id, _) => db[*adt_id].as_struct().is_some(),
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if this type is a value struct
+    #[must_use]
+    pub fn is_value_struct(&self, db: &Db) -> bool {
+        match self {
+            Self::Adt(adt_id, _) => db[*adt_id].is_value(),
             _ => false,
         }
     }

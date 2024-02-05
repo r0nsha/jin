@@ -1,8 +1,21 @@
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
+type M()
+
+type Move extern(m: M)
+type Ref extern(a: &M, b: Ref2)
+type Ref2 extern(c: &M)
+
 type Point extern(x: int, y: int)
 
 fn main() = {
+	let m = Move(M())
+	let m2 = m
+	// let m3 = m // Error: use after move
+
+	let r = Ref(&m2.m, Ref2(&m2.m))
+	let r2 = r
+	// let r3 = r
 	// print_point(Point(1, 2))
 	// print_point(Point(x: 420, y: 69))
 	// print_point(Point(5, y: 10))

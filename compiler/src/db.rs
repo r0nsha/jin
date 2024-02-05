@@ -429,6 +429,14 @@ impl Adt {
     }
 
     #[must_use]
+    pub fn is_value(&self) -> bool {
+        match &self.kind {
+            AdtKind::Struct(s) => s.kind.is_value(),
+            AdtKind::Union(_) => false,
+        }
+    }
+
+    #[must_use]
     pub fn as_struct(&self) -> Option<&StructDef> {
         self.kind.as_struct()
     }
