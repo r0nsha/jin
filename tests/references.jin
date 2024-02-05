@@ -1,11 +1,11 @@
-fn extern "c" printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) -> i32
 
 type Box(value: int)
 type Ref(box: &Box)
 type Mut(box: &mut Box)
 type Bag(a: Box, b: Box)
 
-fn main() unit = {
+fn main() -> unit = {
 	let mut box = Box(1)
 	box.print() // Coerced to &Box
 	box.set(42) // Coerced to &mut Box
@@ -33,11 +33,11 @@ fn main() unit = {
 	rmut.box.value = 2
 }
 
-fn print(box: &Box) unit = {
+fn print(box: &Box) -> unit = {
 	printf("Box(%d)\n".ptr, box.value)
 }
 
-fn set(self: &mut Box, value: int) unit =
+fn set(self: &mut Box, value: int) -> unit =
 	self.value = value
 
-fn copy(bag: Bag) Bag = Bag(bag.a, bag.b)
+fn copy(bag: Bag) -> Bag = Bag(bag.a, bag.b)

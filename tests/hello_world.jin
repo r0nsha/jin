@@ -1,4 +1,4 @@
 import std
 
-fn main() unit =
+fn main() -> unit =
 	std.io.println("Hello, World!")

@@ -1,4 +1,4 @@
-fn main() unit = {
+fn main() -> unit = {
 	let box = Box(Bag(Box(1), Box(Box(2))))
 	destroy(box)
 }
@@ -6,4 +6,4 @@ fn main() unit = {
 type Box[T](v: T)
 type Bag(a: Box[int], b: Box[Box[int]])
 
-fn destroy[T](value: T) unit = {}
+fn destroy[T](value: T) -> unit = {}

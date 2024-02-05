@@ -548,7 +548,12 @@ impl<'db> Typeck<'db> {
         let ty_params = self.check_ty_params(env, &sig.ty_params)?;
 
         let (params, fnty_params) = self.check_fn_sig_params(env, &sig.params)?;
-        let ret = self.check_fn_sig_ret(env, sig.ret.as_ref())?;
+        let ret = sig
+            .ret
+            .as_ref()
+            .map(|ret| self.check_ty_expr(env, ret, AllowTyHole::No))
+            .transpose()?
+            .unwrap_or(self.db.types.unit);
         let ret_span = sig.ret.as_ref().map_or(sig.word.span(), Spanned::span);
 
         let ty = Ty::new(TyKind::Fn(FnTy { params: fnty_params, ret, callconv, flags }));
@@ -565,7 +570,10 @@ impl<'db> Typeck<'db> {
     ) -> TypeckResult<hir::FnSig> {
         let (params, fnty_params) = self.check_fn_sig_params(env, params)?;
         let ret_span = ret.as_ref().map_or(span, |t| t.span());
-        let ret = self.check_fn_sig_ret(env, ret)?;
+        let ret = ret
+            .map(|ret| self.check_ty_expr(env, ret, AllowTyHole::No))
+            .transpose()?
+            .unwrap_or_else(|| self.fresh_ty_var());
 
         let ty = Ty::new(TyKind::Fn(FnTy {
             params: fnty_params,
@@ -617,14 +625,6 @@ impl<'db> Typeck<'db> {
             .collect();
 
         Ok((new_params, fnty_params))
-    }
-
-    fn check_fn_sig_ret(&mut self, env: &mut Env, ret: Option<&TyExpr>) -> TypeckResult<Ty> {
-        if let Some(ret) = ret {
-            self.check_ty_expr(env, ret, AllowTyHole::No)
-        } else {
-            Ok(self.fresh_ty_var())
-        }
     }
 
     fn check_let(&mut self, env: &mut Env, let_: &ast::Let) -> TypeckResult<hir::Let> {
@@ -2025,7 +2025,12 @@ impl<'db> Typeck<'db> {
                     })
                     .try_collect()?;
 
-                let ret = self.check_ty_expr(env, &fn_ty.ret, allow_hole)?;
+                let ret = fn_ty
+                    .ret
+                    .as_ref()
+                    .map(|ret| self.check_ty_expr(env, ret, allow_hole))
+                    .transpose()?
+                    .unwrap_or(self.db.types.unit);
 
                 let mut flags = FnTyFlags::empty();
 

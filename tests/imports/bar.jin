@@ -1,12 +1,12 @@
 import imports as root
 import baz*
 
-fn extern "c" printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) -> i32
 
-fn hello*() unit = {
+fn hello*() -> unit = {
 	printf(root.get_hello_world().ptr)
 }
 
-fn goodbye*() unit = {
+fn goodbye*() -> unit = {
 	printf("Goodbye...\n".ptr)
 }

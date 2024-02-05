@@ -1,13 +1,13 @@
 import std.io.{println}
 import std.int.*
 
-fn main() unit = {
+fn main() -> unit = {
     i()
     println()
     u()
 }
 
-fn i() unit = {
+fn i() -> unit = {
     println("signed:")
 
     let a: i64 = 1
@@ -18,7 +18,7 @@ fn i() unit = {
     // a * b
 }
 
-fn u() unit = {
+fn u() -> unit = {
     println("unsigned:")
 
     let a: u8 = 2

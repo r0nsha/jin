@@ -1,11 +1,11 @@
-fn extern "c" printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) -> i32
 
 type Num(field: int)
 type Wrapper(num: Num)
 type Duo(n1: Num, n2: Num)
 type WrapperDuo(w1: Wrapper, w2: Wrapper)
 
-fn main() unit = {
+fn main() -> unit = {
 	// Destroy temporary values
 	Num(1)
 	Wrapper(Num(1))
@@ -61,4 +61,4 @@ fn main() unit = {
 	}
 }
 
-fn destroy_poly[T](arg: T) unit = {}
+fn destroy_poly[T](arg: T) -> unit = {}

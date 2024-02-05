@@ -1,29 +1,29 @@
-fn extern "c" printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) -> i32
 
-fn main() unit = {
+fn main() -> unit = {
 	run(print_answer)
 	do_add(add, 1, 2)
 	printf("map: %d\n".ptr, map(1, int_to_uint))
 }
 
-fn run(f: fn() unit) unit = f()
+fn run(f: fn() -> unit) -> unit = f()
 
-fn print_answer() unit = {
+fn print_answer() -> unit = {
 	printf("The answer is %d\n".ptr, 42)
 }
 
-fn add(a: int, b: int) int = {
+fn add(a: int, b: int) -> int = {
 	a + b
 }
 
-fn do_add(f: fn(int, int) int, a: int, b: int) unit = {
+fn do_add(f: fn(int, int) -> int, a: int, b: int) -> unit = {
 	printf("a + b = %d\n".ptr, f(a, b))
 }
 
-fn map[A, B](val: A, f: fn(A) B) B = {
+fn map[A, B](val: A, f: fn(A) -> B) -> B = {
 	f(val)
 }
 
-fn int_to_uint(val: int) uint = {
+fn int_to_uint(val: int) -> uint = {
 	val as _
 }

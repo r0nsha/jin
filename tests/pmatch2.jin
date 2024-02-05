@@ -1,6 +1,6 @@
-fn extern "c" printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) -> i32
 
-fn main() unit = {
+fn main() -> unit = {
 	match 20 {
 		10 | 20 if false -> printf("guard\n".ptr), 
 		10 -> printf("10\n".ptr),

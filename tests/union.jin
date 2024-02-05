@@ -1,10 +1,10 @@
 import std.option.{Option}
 
-fn extern "c" printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) -> i32
 
 type Box(value: int)
 
-fn main() unit = {
+fn main() -> unit = {
 	// Value constructors
 	let a = Option.some(1)
 	let b = Option[int].some(1)
@@ -42,4 +42,4 @@ fn main() unit = {
 	}
 }
 
-fn is_negative(x: int) bool = x < 0
+fn is_negative(x: int) -> bool = x < 0

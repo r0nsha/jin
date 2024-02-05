@@ -3,9 +3,9 @@ import std.option.{Option}
 
 type Array*[T](buf: [T])
 
-fn Array.new*[T]() Array[T] = Array([])
+fn Array.new*[T]() -> Array[T] = Array([])
 
-fn Array.new*[T](len: uint, f: fn(uint) T) Array[T] = {
+fn Array.new*[T](len: uint, f: fn(uint) -> T) -> Array[T] = {
 	let mut array = Array.with_cap(len)
 	let mut i = 0
 
@@ -17,17 +17,17 @@ fn Array.new*[T](len: uint, f: fn(uint) T) Array[T] = {
 	array
 }
 
-fn Array.with_cap*[T](cap: uint) Array[T] = Array([:cap])
+fn Array.with_cap*[T](cap: uint) -> Array[T] = Array([:cap])
 
-fn len*[T](self: &Array[T]) uint = self.buf.len
-fn cap*[T](self: &Array[T]) uint = self.buf.cap
-fn is_empty*[T](self: &Array[T]) bool = self.len() == 0
+fn len*[T](self: &Array[T]) -> uint = self.buf.len
+fn cap*[T](self: &Array[T]) -> uint = self.buf.cap
+fn is_empty*[T](self: &Array[T]) -> bool = self.len() == 0
 
-fn as_ref*[T](self: &Array[T]) &[T] = &self.buf
-fn as_mut*[T](self: &mut Array[T]) &mut [T] = &mut self.buf
-fn take*[T](self: Array[T]) [T] = self.buf
+fn as_ref*[T](self: &Array[T]) -> &[T] = &self.buf
+fn as_mut*[T](self: &mut Array[T]) -> &mut [T] = &mut self.buf
+fn take*[T](self: Array[T]) -> [T] = self.buf
 
-fn get*[T](self: &Array[T], index: uint) Option[&T] = {
+fn get*[T](self: &Array[T], index: uint) -> Option[&T] = {
 	if index < self.buf.len {
 		Option.some(&self.buf.[index])
 	} else {
@@ -35,7 +35,7 @@ fn get*[T](self: &Array[T], index: uint) Option[&T] = {
 	}
 }
 
-fn push*[T](self: &mut Array[T], value: T) unit = {
+fn push*[T](self: &mut Array[T], value: T) -> unit = {
 	if self.buf.len == self.buf.cap {
 		self.grow()
 	}
@@ -43,7 +43,7 @@ fn push*[T](self: &mut Array[T], value: T) unit = {
 	self.buf.[self.buf.len - 1] = value
 }
 
-fn pop*[T](self: &mut Array[T]) Option[T] = {
+fn pop*[T](self: &mut Array[T]) -> Option[T] = {
 	if self.buf.len == 0 {
 		return Option.none
 	}
@@ -52,11 +52,11 @@ fn pop*[T](self: &mut Array[T]) Option[T] = {
 	Option.some({self.buf.ptr + self.buf.len}.*)
 }
 
-fn clear*[T](self: &mut Array[T]) unit = {
+fn clear*[T](self: &mut Array[T]) -> unit = {
 	self.buf = []
 }
 
-fn grow[T](self: &mut Array[T]) unit = {
+fn grow[T](self: &mut Array[T]) -> unit = {
 	let new_cap = if self.buf.cap == 0 {
 		MIN_CAP
 	} else {

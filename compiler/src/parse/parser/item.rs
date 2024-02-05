@@ -68,8 +68,8 @@ impl<'a> Parser<'a> {
         let name = self.eat_ident()?;
 
         if self.is(TokenKind::Dot) {
-            let fnname = self.eat_ident()?;
-            let fun = self.parse_bare_fn(attrs, fnname)?;
+            let fn_name = self.eat_ident()?;
+            let fun = self.parse_bare_fn(attrs, fn_name)?;
             Ok(Item::Assoc(name.word(), Box::new(Item::Fn(fun))))
         } else {
             let fun = self.parse_bare_fn(attrs, name)?;
@@ -143,15 +143,13 @@ impl<'a> Parser<'a> {
                 self.parse_fn_params(require_sig_ty)?
             };
 
-        let ret = match require_sig_ty {
-            RequireSigTy::Yes => Some(self.parse_ty()?),
-            RequireSigTy::No(delimeter) => {
-                if self.peek_is(delimeter) {
-                    None
-                } else {
-                    Some(self.parse_ty()?)
-                }
-            }
+        let ret = if self.is(TokenKind::Arrow) {
+            Some(self.parse_ty()?)
+        } else if require_sig_ty == RequireSigTy::Yes {
+            let tok = self.require()?;
+            return Err(errors::unexpected_token_err("->", tok.kind, tok.span));
+        } else {
+            None
         };
 
         Ok((params, ret, is_c_variadic))

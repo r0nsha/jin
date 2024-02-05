@@ -1,9 +1,9 @@
 import child
 import child.*
 
-fn extern "c" printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) -> i32
 
-fn main() unit = {
+fn main() -> unit = {
 	printf("Function overload matching:\n".ptr)
 	add(int(1), int(1)) // exact int
 	add(1, 1) // untyped int matching
@@ -37,22 +37,22 @@ fn main() unit = {
 	child.poly[int](1) // picking a module function with type application
 }
 
-fn add_one(x: int) int = {
+fn add_one(x: int) -> int = {
 	x + 1
 }
 
-fn named(x: int) unit = {
+fn named(x: int) -> unit = {
 	printf("named: x = %d\n".ptr, x)
 }
 
-fn named(x: int, y: int) unit = {
+fn named(x: int, y: int) -> unit = {
 	printf("named: x = %d, y = %d\n".ptr, x, y)
 }
 
-fn named(z: int) unit = {
+fn named(z: int) -> unit = {
 	printf("named: z = %d\n".ptr, z)
 }
 
-fn named[T](x: T) unit = {
+fn named[T](x: T) -> unit = {
 	printf("named[a]: x = %d\n".ptr, x)
 }

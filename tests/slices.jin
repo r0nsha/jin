@@ -1,13 +1,13 @@
 import std.intrinsics
 
-fn extern "c" printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) -> i32
 
-fn main() unit = {
+fn main() -> unit = {
 	ints()
 	boxes()
 }
 
-fn ints() unit = {
+fn ints() -> unit = {
 	let a: [int] = []
 	print(&a)
 
@@ -40,7 +40,7 @@ fn ints() unit = {
 	print(&c.[..])
 }
 
-fn print(s: &[int]) unit = {
+fn print(s: &[int]) -> unit = {
 	printf("[".ptr)
 	let mut i = 0
 	loop if i < s.len {
@@ -55,14 +55,14 @@ fn print(s: &[int]) unit = {
 
 type Box(value: int)
 
-fn boxes() unit = {
+fn boxes() -> unit = {
 	let a = [Box(1), Box(2), Box(3)]
 	let b = &a.[0]
 	let c = &a.[0]
 	let nested = [[Box(1), Box(2)], [Box(3)]]
 }
 
-fn push[T](slice: &mut [T], value: T) unit = {
+fn push[T](slice: &mut [T], value: T) -> unit = {
 	slice.len += 1
 	slice.[slice.len - 1] = value
 }

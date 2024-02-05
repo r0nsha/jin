@@ -291,9 +291,4 @@ impl<'a> Parser<'a> {
 }
 
 create_bool_enum!(AllowOmitParens);
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum RequireSigTy {
-    Yes,
-    No(TokenKind),
-}
+create_bool_enum!(RequireSigTy);

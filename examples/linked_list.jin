@@ -1,13 +1,13 @@
 import std.option.{Option}
 
-fn extern "c" printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) -> i32
 
 type LinkedList[T](
     tail: Option[&mut Node[T]],
     head: Option[Node[T]],
 )
 
-fn LinkedList.new[T]() LinkedList[T] = LinkedList(tail: Option.none, head: Option.none)
+fn LinkedList.new[T]() -> LinkedList[T] = LinkedList(tail: Option.none, head: Option.none)
 
 type Node[T](
     prev: Option[&mut Node[T]],
@@ -15,9 +15,9 @@ type Node[T](
     next: Option[Node[T]],
 )
 
-fn Node.new[T](data: T) Node[T] = Node(prev: Option.none, data: data, next: Option.none)
+fn Node.new[T](data: T) -> Node[T] = Node(prev: Option.none, data: data, next: Option.none)
 
-fn push_front[T](self: &mut LinkedList[T], data: T) unit = {
+fn push_front[T](self: &mut LinkedList[T], data: T) -> unit = {
     let mut node = Node.new(data)
     let node_mut = &mut node
 
@@ -32,7 +32,7 @@ fn push_front[T](self: &mut LinkedList[T], data: T) unit = {
     }
 }
 
-fn print(self: &LinkedList[int]) unit = {
+fn print(self: &LinkedList[int]) -> unit = {
     let mut curr = &self.head
 
     printf("[".ptr)
@@ -53,7 +53,7 @@ fn print(self: &LinkedList[int]) unit = {
     printf("]\n".ptr)
 }
 
-fn main() unit = {
+fn main() -> unit = {
   let mut list = LinkedList.new()  
   list.push_front(3)
   list.push_front(2)

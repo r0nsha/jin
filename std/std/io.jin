@@ -1,15 +1,15 @@
-fn extern "c" write(fd: i32, buf: *u8, count: uint) i32
+fn extern "c" write(fd: i32, buf: *u8, count: uint) -> i32
 
 let STDOUT: i32 = 1
 
-fn print*(fmt: str) unit =
+fn print*(fmt: str) -> unit =
 	write(STDOUT, fmt.ptr, fmt.len)
 
-fn println*() unit = {
+fn println*() -> unit = {
 	print("\n")
 }
 
-fn println*(fmt: str) unit = {
+fn println*(fmt: str) -> unit = {
 	print(fmt)
 	print("\n")
 }

@@ -607,7 +607,7 @@ impl<'a> Parser<'a> {
     fn parse_fn_expr(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
         let (params, ret, is_c_variadic) =
-            self.parse_fn_sig_helper(AllowOmitParens::Yes, RequireSigTy::No(TokenKind::OpenCurly))?;
+            self.parse_fn_sig_helper(AllowOmitParens::Yes, RequireSigTy::No)?;
 
         if is_c_variadic {
             return Err(errors::invalid_c_variadic(start));

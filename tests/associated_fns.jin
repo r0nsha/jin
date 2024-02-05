@@ -1,14 +1,14 @@
-fn extern "c" printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) -> i32
 
-fn main() unit = {
+fn main() -> unit = {
     let box = Box.default()
     box.print()
 }
 
 type Box(value: int)
 
-fn Box.default() Box = Box(0)
+fn Box.default() -> Box = Box(0)
 
-fn print(self: &Box) unit = {
+fn print(self: &Box) -> unit = {
     printf("Box(%d)\n".ptr, self.value)
 }

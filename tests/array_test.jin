@@ -2,9 +2,9 @@ import std.array.{Array}
 import std.option.{Option}
 import std.io.{println}
 
-fn extern "c" printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) -> i32
 
-fn main() unit = {
+fn main() -> unit = {
 	let mut array = Array.new[int]()
 
 	println("Array push:")
@@ -42,18 +42,18 @@ fn main() unit = {
 	array.print()
 }
 
-fn print_at(array: &Array[int], idx: uint) unit = {
+fn print_at(array: &Array[int], idx: uint) -> unit = {
 	match array.get(idx) {
 		Option.some(x) -> printf("array[%d] = some(%d)\n".ptr, idx, x),
 		Option.none -> printf("array[%d] = none\n".ptr, idx) 
 	}
 }
 
-fn print(array: &Array[int]) unit = {
+fn print(array: &Array[int]) -> unit = {
 	array.as_ref().print()
 }
 
-fn print(slice: &[int]) unit = {
+fn print(slice: &[int]) -> unit = {
 	printf("[".ptr)
 	let mut i = 0
 	loop if i < slice.len {

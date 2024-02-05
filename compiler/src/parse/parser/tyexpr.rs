@@ -66,11 +66,11 @@ impl<'a> Parser<'a> {
             (false, CallConv::default())
         };
         let (params, is_c_variadic) = self.parse_fn_ty_params()?;
-        let ret = self.parse_ty()?;
+        let ret = if self.is(TokenKind::Arrow) { Some(Box::new(self.parse_ty()?)) } else { None };
 
         Ok(TyExprFn {
             params,
-            ret: Box::new(ret),
+            ret,
             is_extern,
             is_c_variadic,
             callconv,

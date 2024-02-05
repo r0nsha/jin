@@ -1,15 +1,15 @@
 import std.result.{Result}
 
-fn extern "c" printf(fmt: *u8, ..) i32
+fn extern "c" printf(fmt: *u8, ..) -> i32
 
-fn main() unit = {
+fn main() -> unit = {
 	match try_add(1, 2) {
 		Result.ok(res) -> printf("res = %d\n".ptr, res),
 		Result.err(msg) -> printf(msg.ptr)
 	}
 }
 
-fn try_add(a: int, b: int) Result[int, str] = {
+fn try_add(a: int, b: int) -> Result[int, str] = {
 	if a == b {
 		Result.ok(a + b)
 	} else {
