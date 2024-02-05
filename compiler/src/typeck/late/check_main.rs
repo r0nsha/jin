@@ -40,12 +40,9 @@ impl<'db> CheckMain<'db> {
                 self.db.main_source().contents().len().checked_sub(1).unwrap_or_default();
             let source_end_span = Span::uniform(self.db.main_source_id(), main_source_end as u32);
 
-            self.db.diagnostics.emit(
-                Diagnostic::error("`main` function not found").with_label(
-                    Label::primary(source_end_span)
-                        .with_message("consider adding a main function here"),
-                ),
-            );
+            self.db.diagnostics.emit(Diagnostic::error("`main` function not found").with_label(
+                Label::primary(source_end_span, "consider adding a main function here"),
+            ));
 
             false
         }
@@ -63,14 +60,13 @@ impl<'db> CheckMain<'db> {
 
                 self.db.diagnostics.emit(
                     Diagnostic::error("type parameters in `main` function are not allowed")
-                        .with_label(Label::primary(tp_span).with_message("not allowed")),
+                        .with_label(Label::primary(tp_span, "not allowed")),
                 );
             }
         } else {
             self.db.diagnostics.emit(
                 Diagnostic::error("`main` function's type must be `fn() ()`").with_label(
-                    Label::primary(main_fn.span)
-                        .with_message(format!("found type `{}`", fty.display(self.db))),
+                    Label::primary(main_fn.span, format!("found type `{}`", fty.display(self.db))),
                 ),
             );
         }

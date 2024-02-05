@@ -36,7 +36,7 @@ impl<'db> Typeck<'db> {
             .into_iter()
             .map(|(span, ty)| {
                 Diagnostic::error(format!("type annotations needed for `{}`", ty.display(self.db)))
-                    .with_label(Label::primary(span).with_message("cannot infer type"))
+                    .with_label(Label::primary(span, "cannot infer type"))
             })
             .collect();
 

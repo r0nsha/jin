@@ -110,7 +110,7 @@ impl CheckBodies<'_> {
 
                     self.db.diagnostics.emit(
                         Diagnostic::error(format!("cannot cast `{source}` to `{target}`"))
-                            .with_label(Label::primary(expr.span).with_message("invalid cast")),
+                            .with_label(Label::primary(expr.span, "invalid cast")),
                     );
                 }
 
@@ -123,7 +123,7 @@ impl CheckBodies<'_> {
                 if source_size != target_size {
                     self.db.diagnostics.emit(
                         Diagnostic::error("cannot transmute between types of different sizes")
-                            .with_label(Label::primary(expr.span).with_message("invalid transmute"))
+                            .with_label(Label::primary(expr.span, "invalid transmute"))
                             .with_note(format!(
                                 "source type: {} ({} bits)",
                                 trans.expr.ty.display(self.db),
@@ -154,7 +154,7 @@ impl CheckBodies<'_> {
                             "intrinsic `{}` must be called",
                             self.db[name.id].name
                         ))
-                        .with_label(Label::primary(expr.span).with_message("must be called")),
+                        .with_label(Label::primary(expr.span, "must be called")),
                     );
                 }
             }

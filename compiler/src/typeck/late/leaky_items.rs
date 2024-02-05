@@ -58,7 +58,7 @@ impl LeakyItems<'_> {
                     "private type `{}` used in public interface",
                     priv_ty.display(self.db)
                 ))
-                .with_label(Label::primary(span).with_message(format!(
+                .with_label(Label::primary(span, format!(
                     "{item_kind} uses private type `{}`",
                     ty.display(self.db)
                 ))),

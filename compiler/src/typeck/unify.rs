@@ -46,17 +46,18 @@ impl At<'_, '_> {
                         ObligationKind::Obvious => (),
                         ObligationKind::Exprs(expected_span, found_span) => {
                             diag.push_labels([
-                                Label::secondary(expected_span)
-                                    .with_message(format!("expected `{expected_ty}`")),
-                                Label::secondary(found_span)
-                                    .with_message(format!("found `{found_ty}`")),
+                                Label::secondary(
+                                    expected_span,
+                                    format!("expected `{expected_ty}`"),
+                                ),
+                                Label::secondary(found_span, format!("found `{found_ty}`")),
                             ]);
                         }
                         ObligationKind::ReturnTy(return_ty_span) => {
-                            diag.push_label(
-                                Label::secondary(return_ty_span)
-                                    .with_message("because of return type"),
-                            );
+                            diag.push_label(Label::secondary(
+                                return_ty_span,
+                                "because of return type",
+                            ));
                         }
                     }
 
@@ -70,7 +71,7 @@ impl At<'_, '_> {
                         "type `{}` is an infinite type",
                         ty.display(self.cx.db)
                     ))
-                    .with_label(Label::primary(obligation.span()))
+                    .with_label(Label::primary(obligation.span(), "type is infinite"))
                 }
             };
 
