@@ -359,10 +359,10 @@ impl<'db> ExpandDestroys<'db> {
 
         for block in body.blocks_mut() {
             block.insts.retain_mut(|inst| match inst {
-                Inst::Destroy { value, .. } => {
+                Inst::Destroy { value, destroy_glue, .. } => {
                     let ty = value_tys[&*value];
 
-                    if !self.should_destroy_ty(ty) {
+                    if !self.should_destroy_ty(ty, *destroy_glue) {
                         return false;
                     }
 
@@ -380,8 +380,16 @@ impl<'db> ExpandDestroys<'db> {
         }
     }
 
-    fn should_destroy_ty(&self, ty: Ty) -> bool {
-        ty.is_rc(self.db) || self.should_refcount_ty(ty)
+    fn should_destroy_ty(&self, ty: Ty, destroy_glue: bool) -> bool {
+        if self.should_refcount_ty(ty) {
+            return true;
+        }
+
+        if !ty.is_rc(self.db) && !destroy_glue {
+            return false;
+        }
+
+        ty.is_move(self.db)
     }
 
     fn should_refcount_ty(&self, ty: Ty) -> bool {
@@ -614,7 +622,7 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
 
         let start = self.body.create_block("start");
 
-        let end_block = if self.cx.should_destroy_ty(elem_ty) {
+        let end_block = if self.cx.should_destroy_ty(elem_ty, true) {
             self.free_slice_elems(start, slice, elem_ty, main_span)
         } else {
             start
