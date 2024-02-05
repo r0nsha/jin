@@ -1,0 +1,7 @@
+fn extern "c" printf(fmt: *u8, ..) -> i32
+
+type Enum { foo, bar }
+
+fn main() = {
+	let enum = Enum.foo
+}
