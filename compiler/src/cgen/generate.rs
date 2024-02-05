@@ -257,9 +257,7 @@ impl<'db> Generator<'db> {
         match struct_def.kind {
             StructKind::Ref => {
                 let data_name = D::text(format!("{adt_name}__data"));
-
                 self.codegen_struct_typedef(data_name.clone(), &struct_def.fields, instantiation);
-
                 self.codegen_rc_wrapper_tydef(D::text(adt_name.as_str()), data_name);
             }
             StructKind::Extern => {
@@ -300,10 +298,8 @@ impl<'db> Generator<'db> {
             }))
         });
 
-        let data_name = format!("{adt_name}__data");
-
-        let data_typedef = stmt(|| {
-            D::text(format!("typedef struct {data_name}"))
+        let union_tydef = stmt(|| {
+            D::text(format!("typedef struct {adt_name}"))
                 .append(D::space())
                 .append(block(|| {
                     let tag =
@@ -312,12 +308,10 @@ impl<'db> Generator<'db> {
                     D::intersperse([tag, variants_union], D::hardline())
                 }))
                 .append(D::space())
-                .append(D::text(data_name.clone()))
+                .append(D::text(adt_name.as_str()))
         });
 
-        self.types.push(data_typedef);
-
-        self.codegen_rc_wrapper_tydef(D::text(adt_name.as_str()), D::text(data_name));
+        self.types.push(union_tydef);
     }
 
     fn codegen_rc_wrapper_tydef(&mut self, name: D<'db>, data_name: D<'db>) {

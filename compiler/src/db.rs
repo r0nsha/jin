@@ -421,7 +421,7 @@ pub struct Adt {
 
 impl Adt {
     #[must_use]
-    pub fn is_move<'db>(&self, db: &'db Db) -> bool {
+    pub fn is_move(&self, db: &Db) -> bool {
         match &self.kind {
             AdtKind::Struct(s) => s.kind.is_move(),
             AdtKind::Union(u) => u.is_move(db),

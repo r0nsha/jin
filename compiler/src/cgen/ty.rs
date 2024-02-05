@@ -41,7 +41,7 @@ impl<'db> CTy<'db> for TyKind {
                         StructKind::Ref => name.append(D::text("*")),
                         StructKind::Extern => name,
                     },
-                    AdtKind::Union(_) => name.append(D::text("*")),
+                    AdtKind::Union(_) => name,
                 }
             }
             Self::Slice(..) => D::text("slice"),
