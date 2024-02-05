@@ -1,0 +1,13 @@
+fn extern "c" printf(fmt: *u8, ..) -> i32
+
+type Point extern(x: int, y: int)
+
+fn main() = {
+	// print_point(Point(1, 2))
+	// print_point(Point(x: 420, y: 69))
+	// print_point(Point(5, y: 10))
+}
+
+// fn print_point(p: Point) = {
+// 	printf("Point(%d, %d)\n".ptr, p.x, p.y)
+// }

@@ -260,7 +260,7 @@ impl<'db> Generator<'db> {
                 self.codegen_struct_typedef(data_name.clone(), &struct_def.fields, instantiation);
                 self.codegen_rc_wrapper_tydef(D::text(adt_name.as_str()), data_name);
             }
-            StructKind::Extern => {
+            StructKind::Value => {
                 self.codegen_struct_typedef(
                     D::text(adt_name.as_str()),
                     &struct_def.fields,

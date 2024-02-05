@@ -293,7 +293,7 @@ impl PrettyPrint for TyDef {
                     "{}struct",
                     match sdef.kind {
                         StructKind::Ref => "",
-                        StructKind::Extern => "extern ",
+                        StructKind::Value => "value ",
                     }
                 ));
                 cx.builder.begin_child("fields".to_string());

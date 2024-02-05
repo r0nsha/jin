@@ -527,7 +527,7 @@ pub struct StructDef {
 #[derive(Debug, Clone, Copy)]
 pub enum StructKind {
     Ref,
-    Extern,
+    Value,
 }
 
 impl StructKind {
@@ -537,6 +537,14 @@ impl StructKind {
     #[must_use]
     pub fn is_ref(self) -> bool {
         matches!(self, Self::Ref)
+    }
+
+    /// Returns `true` if the struct kind is [`Value`].
+    ///
+    /// [`Value`]: StructKind::Value
+    #[must_use]
+    pub fn is_value(&self) -> bool {
+        matches!(self, Self::Value)
     }
 }
 
@@ -580,7 +588,7 @@ impl StructDef {
             }
         }
 
-        if let StructKind::Extern = self.kind {
+        if let StructKind::Value = self.kind {
             self.fields.iter().find(|f| contains_struct(f.ty, self.id))
         } else {
             None

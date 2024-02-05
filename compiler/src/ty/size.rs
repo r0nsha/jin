@@ -24,7 +24,7 @@ impl TyKind {
                 match &adt.kind {
                     AdtKind::Struct(sdef) => match &sdef.kind {
                         StructKind::Ref => word,
-                        StructKind::Extern => {
+                        StructKind::Value => {
                             let instantiation = adt.instantiation(targs);
                             let mut folder = instantiation.folder();
                             let mut offset = 0;
@@ -70,7 +70,7 @@ impl TyKind {
                 match &adt.kind {
                     AdtKind::Struct(sdef) => match &sdef.kind {
                         StructKind::Ref => db.target_metrics().word_size,
-                        StructKind::Extern => {
+                        StructKind::Value => {
                             let instantiation = adt.instantiation(targs);
                             let mut folder = instantiation.folder();
                             let mut max_align: usize = 1;

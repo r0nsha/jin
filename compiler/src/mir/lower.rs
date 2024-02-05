@@ -151,7 +151,7 @@ impl<'db> Lower<'db> {
                 body.ins(start_block).alloc(value);
                 value
             }
-            StructKind::Extern => {
+            StructKind::Value => {
                 let value = body.create_register(adt.ty());
                 body.ins(start_block).stackalloc_uninit(value);
                 value
