@@ -16,22 +16,22 @@ fn extern "c" DrawText*(text: *u8, pos_x: i32, pos_y: i32, font_size: i32, tint:
 
 type Color* extern(r*: u8, g*: u8, b*: u8, a*: u8)
 
-let RAYWHITE* = Color(245, 245, 245, 255)
-let LIGHTGRAY* = Color(200, 200, 200, 255)
-let DARKGRAY* = Color(80, 80, 80, 255)
-let BLACK* = Color(0, 0, 0, 255)
-let MAROON* = Color(190, 33, 55, 255)
-let BROWN* = Color(127, 106, 79, 255)
-let DARKGREEN* = Color(0, 117, 44, 255)
+let RAYWHITE*: Color = Color(245, 245, 245, 255)
+let LIGHTGRAY*: Color = Color(200, 200, 200, 255)
+let DARKGRAY*: Color = Color(80, 80, 80, 255)
+let BLACK*: Color = Color(0, 0, 0, 255)
+let MAROON*: Color = Color(190, 33, 55, 255)
+let BROWN*: Color = Color(127, 106, 79, 255)
+let DARKGREEN*: Color = Color(0, 117, 44, 255)
 
 type Vector2* extern(x*: f32, y*: f32)
 
 fn extern "c" GetMousePosition*() -> Vector2
 fn extern "c" IsKeyDown*(key: i32) -> bool
 
-let KEY_RIGHT* = 262
-let KEY_LEFT* = 263
-let KEY_DOWN* = 264
-let KEY_UP* = 265
+let KEY_RIGHT*: i32 = 262
+let KEY_LEFT*: i32 = 263
+let KEY_DOWN*: i32 = 264
+let KEY_UP*: i32 = 265
 
 fn extern "c" CheckCollisionPointCircle*(point: Vector2, center: Vector2, radius: f32) -> bool

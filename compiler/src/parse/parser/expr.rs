@@ -10,7 +10,7 @@ use crate::{
     middle::{BinOp, Mutability, NamePat, Pat, UnOp},
     parse::{
         errors,
-        parser::{AllowOmitParens, Parser, RequireSigTy},
+        parser::{item::RequireTy, AllowOmitParens, Parser, RequireSigTy},
     },
     span::{Span, Spanned},
     ty::TyKind,
@@ -582,7 +582,7 @@ impl<'a> Parser<'a> {
 
     fn parse_stmt(&mut self) -> DiagnosticResult<Expr> {
         if self.is(TokenKind::Let) {
-            let let_ = self.parse_let(Attrs::new())?;
+            let let_ = self.parse_let(Attrs::new(), RequireTy::No)?;
             Ok(Expr::Let(let_))
         } else {
             self.parse_expr()

@@ -68,4 +68,4 @@ fn grow[T](self: &mut Array[T]) = {
 	intrinsics.forget(&old)
 }
 
-let MIN_CAP = 4
+let MIN_CAP: uint = 4

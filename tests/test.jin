@@ -6,7 +6,7 @@ let extern answer: int
 fn extern "c" printf(fmt: *u8, ..) -> i32
 fn extern "c" write(fd: i32, buf: *u8, count: uint) -> i32
 
-let stdout = 1
+let stdout: i32 = 1
 
 fn print(fmt: str) = {
 	write(stdout, fmt.ptr, fmt.len)

@@ -6,6 +6,7 @@ use crate::{
         Attr, AttrArgs, AttrId, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig, Item, Let,
     },
     diagnostics::{Diagnostic, DiagnosticResult, Label},
+    macros::create_bool_enum,
     middle::{CallConv, TyExpr},
     parse::{
         errors,
@@ -27,7 +28,7 @@ impl<'a> Parser<'a> {
             return if self.is(TokenKind::Extern) {
                 self.parse_extern_let(attrs).map(|l| Some(Item::ExternLet(l)))
             } else {
-                self.parse_let(attrs).map(|l| Some(Item::Let(l)))
+                self.parse_let(attrs, RequireTy::Yes).map(|l| Some(Item::Let(l)))
             };
         }
 
@@ -215,11 +216,23 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn parse_let(&mut self, attrs: Attrs) -> DiagnosticResult<Let> {
+    pub(super) fn parse_let(
+        &mut self,
+        attrs: Attrs,
+        require_ty: RequireTy,
+    ) -> DiagnosticResult<Let> {
         let start = self.last_span();
         let pat = self.parse_pat()?;
 
-        let ty_expr = self.is_and(TokenKind::Colon, |this, _| this.parse_ty()).transpose()?;
+        let ty_expr = if self.is(TokenKind::Colon) {
+            Some(self.parse_ty()?)
+        } else if require_ty == RequireTy::Yes {
+            let tok = self.require()?;
+            return Err(errors::unexpected_token_err(":", tok.kind, tok.span));
+        } else {
+            None
+        };
+
         self.eat(TokenKind::Eq)?;
 
         let value = self.parse_expr()?;
@@ -242,3 +255,5 @@ impl<'a> Parser<'a> {
         Ok(ExternLet { attrs, mutability, vis, word: ident.word(), ty_expr, span })
     }
 }
+
+create_bool_enum!(RequireTy);

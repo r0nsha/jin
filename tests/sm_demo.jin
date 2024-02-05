@@ -84,7 +84,7 @@ fn named_args() = {
 	add_named(1, second: 2)
 }
 
-let global_answer = 42
+let global_answer: int = 42
 
 fn global_vars() = {
 	let answer = global_answer

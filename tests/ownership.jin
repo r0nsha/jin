@@ -27,8 +27,8 @@ fn use_after_move_scoped() = {
 	}
 }	
 
-let GLOBAL_INT = 1
-let GLOBAL_NUM = Num(1)
+let GLOBAL_INT: int = 1
+let GLOBAL_NUM: Num = Num(1)
 
 fn move_out_of_global() = {
 	let x = GLOBAL_INT // Ok
