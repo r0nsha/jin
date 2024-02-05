@@ -429,7 +429,7 @@ impl Adt {
     }
 
     #[must_use]
-    pub fn is_ref(&self) -> bool {
+    pub fn is_rc(&self) -> bool {
         match &self.kind {
             AdtKind::Struct(s) => s.kind.is_ref(),
             AdtKind::Union(_) => false,

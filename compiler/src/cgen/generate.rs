@@ -644,7 +644,9 @@ impl<'db> Generator<'db> {
             }
             ValueKind::Const(value) => codegen_const_value(value),
             ValueKind::Field(value, field) => self.field(state, *value, field),
-            ValueKind::Variant(value, variant) => self.variant(state, *value, variant),
+            ValueKind::Variant(value, variant) => {
+                util::field(self.value(state, *value), variant.as_str(), false)
+            }
         }
     }
 

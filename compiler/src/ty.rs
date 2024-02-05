@@ -387,7 +387,7 @@ impl TyKind {
     #[must_use]
     pub fn can_create_ref(&self, db: &Db) -> bool {
         match self {
-            Self::Adt(adt_id, _) if db[*adt_id].is_ref() => true,
+            Self::Adt(adt_id, _) if db[*adt_id].is_rc() => true,
             Self::Slice(..) | Self::Param(_) | Self::Ref(..) => true,
             _ => false,
         }
@@ -397,8 +397,18 @@ impl TyKind {
     #[must_use]
     pub fn is_move(&self, db: &Db) -> bool {
         match self {
-            Self::Adt(adt_id, _) => db[*adt_id].is_ref(),
+            Self::Adt(adt_id, _) => db[*adt_id].is_move(db),
             Self::Slice(_) | Self::Param(_) => true,
+            _ => false,
+        }
+    }
+
+    /// Returns `true` if this type is reference counted
+    #[must_use]
+    pub fn is_rc(&self, db: &Db) -> bool {
+        match self {
+            Self::Adt(adt_id, _) => db[*adt_id].is_rc(),
+            Self::Slice(_) => true,
             _ => false,
         }
     }

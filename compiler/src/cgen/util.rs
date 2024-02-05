@@ -36,7 +36,7 @@ impl<'db> Generator<'db> {
         match &value.kind {
             ValueKind::Variant(_, _) => util::field(value_doc, field, false),
             _ => match (ty.kind(), field) {
-                (TyKind::Adt(adt, _), _) if self.db[*adt].is_ref() => {
+                (TyKind::Adt(adt, _), _) if self.db[*adt].is_rc() => {
                     self.adt_field(state, value.id, field)
                 }
                 (TyKind::Ref(_, _), _) => self.adt_field(state, value.id, field),
@@ -44,10 +44,6 @@ impl<'db> Generator<'db> {
                 _ => util::field(value_doc, field, ty.is_ptr(self)),
             },
         }
-    }
-
-    pub fn variant(&mut self, state: &GenState<'db>, value: ValueId, variant: &str) -> D<'db> {
-        self.adt_field(state, value, variant)
     }
 
     pub fn adt_field(&mut self, state: &GenState<'db>, value: ValueId, field: &str) -> D<'db> {

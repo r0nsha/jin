@@ -1,7 +1,22 @@
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
+type Move()
 type Enum { foo, bar }
+type HasMove { has(m: Move) }
+// TODO: Ref
+// TODO: Poly (copy)
+// TODO: Poly (move)
+// TODO: Poly (ref)
+// TODO: Move + Ref
+// TODO: Poly (move T + ref to T)
 
 fn main() = {
 	let enum = Enum.foo
+	let enum2 = enum
+	let enum3 = enum
+
+	let hm = HasMove.has(Move())
+	let hm2 = &hm
+	let hm3 = &hm
+	let hmref = match hm { HasMove.has(m) -> m }
 }

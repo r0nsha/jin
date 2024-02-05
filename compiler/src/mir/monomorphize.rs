@@ -381,14 +381,11 @@ impl<'db> ExpandDestroys<'db> {
     }
 
     fn should_destroy_ty(&self, ty: Ty) -> bool {
-        ty.is_move(self.db) || self.should_refcount_ty(ty)
+        ty.is_rc(self.db) || self.should_refcount_ty(ty)
     }
 
     fn should_refcount_ty(&self, ty: Ty) -> bool {
-        match ty.kind() {
-            TyKind::Ref(ty, _) => ty.is_move(self.db),
-            _ => false,
-        }
+        matches!(ty.kind(), TyKind::Ref(ty, _) if ty.is_rc(self.db))
     }
 
     fn expand_destroy_glue(&mut self, body: &mut Body) {
@@ -509,8 +506,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
 
         let unit_value =
             self.body.create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
-
-        self.body.ins(join_block).free(self_value, false, adt_span).ret(unit_value);
+        self.body.ins(join_block).ret(unit_value);
 
         self.cx.mono_mir.fns.insert(sig, Fn { sig, body: self.body });
 
@@ -525,9 +521,8 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
         span: Span,
     ) -> BlockId {
         let start_block = self.body.create_block("start");
-
         self.free_adt_fields(start_block, self_value, &struct_def.fields, instantiation, span);
-
+        self.body.ins(start_block).free(self_value, false, span);
         start_block
     }
 
