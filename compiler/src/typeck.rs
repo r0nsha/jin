@@ -2039,9 +2039,7 @@ impl<'db> Typeck<'db> {
                 let inner_ty = self.check_ty_expr(env, inner, allow_hole)?;
 
                 match inner_ty.kind() {
-                    TyKind::Adt(adt_id, _) if self.db[*adt_id].is_ref() => {
-                        Ok(inner_ty.create_ref(*mutability))
-                    }
+                    TyKind::Adt(..) => Ok(inner_ty.create_ref(*mutability)),
                     TyKind::Param(_)
                     | TyKind::Fn(_)
                     | TyKind::Slice(_)
@@ -2052,8 +2050,7 @@ impl<'db> Typeck<'db> {
                     | TyKind::Str
                     | TyKind::Bool
                     | TyKind::Unit => Ok(inner_ty.create_ref(*mutability)),
-                    TyKind::Adt(..)
-                    | TyKind::Ref(..)
+                    TyKind::Ref(..)
                     | TyKind::Never
                     | TyKind::Infer(_)
                     | TyKind::Type(_)
