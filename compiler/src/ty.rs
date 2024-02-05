@@ -12,7 +12,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
 use crate::{
-    db::{AdtId, Db, ModuleId},
+    db::{AdtId, AdtKind, Db, ModuleId},
     middle::{CallConv, Mutability, Vis},
     span::Span,
     subst::SubstTy,
@@ -294,6 +294,10 @@ impl TyKind {
         self.display(db).to_string()
     }
 
+    pub fn print(&self, db: &Db) {
+        println!("{}", self.display(db))
+    }
+
     /// Returns `true` if the ty kind is [`Int`].
     ///
     /// [`Int`]: TyKind::Int
@@ -393,6 +397,23 @@ impl TyKind {
         }
     }
 
+    // TODO: Consider targs
+    /// Returns `true` if this type has move semantics
+    #[must_use]
+    pub fn needs_free(&self, db: &Db) -> bool {
+        match self {
+            Self::Adt(adt_id, _) => match &db[*adt_id].kind {
+                AdtKind::Struct(s) => s.kind.is_ref(),
+                AdtKind::Union(u) => u
+                    .variants(db)
+                    .any(|v| v.fields.iter().any(|f| f.ty.is_ref() || f.ty.needs_free(db))),
+            },
+            Self::Slice(_) => true,
+            _ => false,
+        }
+    }
+
+    // TODO: Consider targs
     /// Returns `true` if this type has move semantics
     #[must_use]
     pub fn is_move(&self, db: &Db) -> bool {
@@ -403,6 +424,7 @@ impl TyKind {
         }
     }
 
+    // TODO: Consider targs
     /// Returns `true` if this type is reference counted
     #[must_use]
     pub fn is_rc(&self, db: &Db) -> bool {

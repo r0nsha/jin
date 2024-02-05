@@ -432,7 +432,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     pub(super) fn needs_destroy(&self, value: ValueId) -> bool {
         let ty = self.ty_of(value);
-        ty.is_ref() || ty.is_move(self.cx.db)
+        ty.is_ref() || ty.needs_free(self.cx.db)
     }
 
     pub(super) fn check_slice_assign_mutability(

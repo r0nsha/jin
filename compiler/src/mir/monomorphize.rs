@@ -389,7 +389,7 @@ impl<'db> ExpandDestroys<'db> {
             return false;
         }
 
-        ty.is_move(self.db)
+        ty.needs_free(self.db)
     }
 
     fn should_refcount_ty(&self, ty: Ty) -> bool {
