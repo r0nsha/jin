@@ -3,7 +3,7 @@ use ustr::{Ustr, UstrMap};
 
 use crate::{
     ast,
-    db::{AdtField, AdtId, DefId, DefKind, VariantId},
+    db::{AdtField, AdtId, AdtKind, DefId, DefKind, VariantId},
     diagnostics::{Diagnostic, Label},
     hir,
     middle::Vis,
@@ -263,7 +263,16 @@ impl<'db> Typeck<'db> {
         let instantiation =
             self.check_match_pat_adt_ty(env, pat.span, pat_ty, parent_span, adt_id)?;
 
-        let fields = self.db[adt_id].as_struct().unwrap().fields.clone();
+        let fields = match &self.db[adt_id].kind {
+            AdtKind::Struct(s) => s.fields.clone(),
+            AdtKind::Union(_) => {
+                return Err(Diagnostic::error(format!(
+                    "expected a struct, but `{}` is a union type",
+                    pat_ty.display(self.db)
+                ))
+                .with_label(Label::primary(pat.span, "expected a struct type")))
+            }
+        };
 
         let new_subpats =
             self.check_match_pat_subpats(env, pat, pat_ty, names, adt_id, &fields, &instantiation)?;
