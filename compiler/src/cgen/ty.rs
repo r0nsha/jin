@@ -4,7 +4,7 @@ use pretty::RcDoc as D;
 
 use crate::{
     cgen::{generate::Generator, util},
-    db::{AdtKind, StructKind},
+    db::AdtKind,
     middle::CallConv,
     sym,
     ty::{FloatTy, FnTy, IntTy, Ty, TyKind, UintTy},
