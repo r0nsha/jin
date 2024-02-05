@@ -21,7 +21,7 @@ fn run*() = {
 	let mut iris_right_pos = Vector2(f32(screen_width / 2) + 100.0, half_screen_height)
 	let iris_radius = 24.0
 
-	loop if !WindowShouldClose() {
+	for if !WindowShouldClose() {
 		iris_left_pos = GetMousePosition()
 		iris_right_pos = GetMousePosition()
 

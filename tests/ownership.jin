@@ -7,7 +7,7 @@ fn main() = {
 	use_after_move()	
 	// use_after_move_scoped()	
 	// move_out_of_global()
-	// move_into_loop()
+	// move_into_for()
 	// copy()
 	// assign_not_moved()
 	// destroy_discarded_values(Num(1))
@@ -35,10 +35,10 @@ fn move_out_of_global() = {
 	//let y = GLOBAL_NUM // Error!
 }
 
-fn move_into_loop() = {
+fn move_into_for() = {
 	let mut n = Num(1)
 
-	loop if n.field < 10 {
+	for if n.field < 10 {
 		n.field += 1
 		//let x = n // Error!
 	}

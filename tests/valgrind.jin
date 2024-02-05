@@ -22,9 +22,9 @@ fn main() = {
 	let mut n = Num(1)
 	n = Num(2)
 
-	// Destroy in loop & break
+	// Destroy in for & break
 	let mut i: uint = 10
-	loop {
+	for {
 		let n = Num(1)
 		printf("i = %d\n".ptr, i)
 		i -= 1

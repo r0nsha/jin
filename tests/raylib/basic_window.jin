@@ -7,7 +7,7 @@ fn run*() = {
 	InitWindow(screen_width, screen_height, "raylib - basic window".ptr)
 	SetTargetFPS(60)
 
-	loop if !WindowShouldClose() {
+	for if !WindowShouldClose() {
 		BeginDrawing()
 		ClearBackground(RAYWHITE)
 		DrawText("Congrats! You created your first window!".ptr, 190, 200, 20, LIGHTGRAY)

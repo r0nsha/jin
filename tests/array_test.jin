@@ -56,7 +56,7 @@ fn print(array: &Array[int]) = {
 fn print(slice: &[int]) = {
 	printf("[".ptr)
 	let mut i = 0
-	loop if i < slice.len {
+	for if i < slice.len {
 		printf("%d".ptr, slice.[i])
 		if i < slice.len - 1 {
 			printf(", ".ptr)

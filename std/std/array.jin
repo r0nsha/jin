@@ -9,7 +9,7 @@ fn Array.new*[T](len: uint, f: fn(uint) -> T) -> Array[T] = {
 	let mut array = Array.with_cap(len)
 	let mut i = 0
 
-	loop if i < len {
+	for if i < len {
 		array.push(f(i))
 		i += 1
 	}

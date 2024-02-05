@@ -210,7 +210,7 @@ impl<'s> Lexer<'s> {
                     "false" => TokenKind::False,
                     "as" => TokenKind::As,
                     "import" => TokenKind::Import,
-                    "loop" => TokenKind::Loop,
+                    "for" => TokenKind::For,
                     "break" => TokenKind::Break,
                     "mut" => TokenKind::Mut,
                     "imm" => TokenKind::Imm,

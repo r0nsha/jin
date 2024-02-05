@@ -43,7 +43,7 @@ fn ints() = {
 fn print(s: &[int]) = {
 	printf("[".ptr)
 	let mut i = 0
-	loop if i < s.len {
+	for if i < s.len {
 		printf("%d".ptr, s.[i])
 		if i < s.len - 1 {
 			printf(", ".ptr)

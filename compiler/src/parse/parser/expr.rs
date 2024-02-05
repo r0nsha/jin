@@ -101,7 +101,7 @@ impl<'a> Parser<'a> {
             TokenKind::Return => self.parse_return()?,
             TokenKind::If => self.parse_if()?,
             TokenKind::Match => self.parse_match()?,
-            TokenKind::Loop => self.parse_loop()?,
+            TokenKind::For => self.parse_loop()?,
             TokenKind::Break => Expr::Break { span: tok.span },
             TokenKind::Transmute => self.parse_transmute()?,
             TokenKind::Minus => {

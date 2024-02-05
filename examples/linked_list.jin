@@ -37,7 +37,7 @@ fn print(self: &LinkedList[int]) = {
 
     printf("[".ptr)
 
-    loop {
+    for {
         match curr {
             Option.some(v) -> {
                 curr = &v.next
