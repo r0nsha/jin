@@ -143,14 +143,7 @@ impl<'a> Parser<'a> {
                 self.parse_fn_params(require_sig_ty)?
             };
 
-        let ret = if self.is(TokenKind::Arrow) {
-            Some(self.parse_ty()?)
-        } else if require_sig_ty == RequireSigTy::Yes {
-            let tok = self.require()?;
-            return Err(errors::unexpected_token_err("->", tok.kind, tok.span));
-        } else {
-            None
-        };
+        let ret = if self.is(TokenKind::Arrow) { Some(self.parse_ty()?) } else { None };
 
         Ok((params, ret, is_c_variadic))
     }

@@ -1,4 +1,4 @@
 import std
 
-fn main() -> {} =
+fn main() =
 	std.io.println("Hello, World!")

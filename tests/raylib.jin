@@ -3,7 +3,7 @@ import input_keys
 import following_eyes
 import bindings*
 
-fn main() -> {} = {
+fn main() = {
 	//basic_window.run()
 	//input_keys.run()
 	//following_eyes.run()

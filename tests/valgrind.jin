@@ -5,7 +5,7 @@ type Wrapper(num: Num)
 type Duo(n1: Num, n2: Num)
 type WrapperDuo(w1: Wrapper, w2: Wrapper)
 
-fn main() -> {} = {
+fn main() = {
 	// Destroy temporary values
 	Num(1)
 	Wrapper(Num(1))
@@ -61,4 +61,4 @@ fn main() -> {} = {
 	}
 }
 
-fn destroy_poly[T](arg: T) -> {} = {}
+fn destroy_poly[T](arg: T) = {}

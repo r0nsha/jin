@@ -35,7 +35,7 @@ fn get*[T](self: &Array[T], index: uint) -> Option[&T] = {
 	}
 }
 
-fn push*[T](self: &mut Array[T], value: T) -> {} = {
+fn push*[T](self: &mut Array[T], value: T) = {
 	if self.buf.len == self.buf.cap {
 		self.grow()
 	}
@@ -52,11 +52,11 @@ fn pop*[T](self: &mut Array[T]) -> Option[T] = {
 	Option.some({self.buf.ptr + self.buf.len}.*)
 }
 
-fn clear*[T](self: &mut Array[T]) -> {} = {
+fn clear*[T](self: &mut Array[T]) = {
 	self.buf = []
 }
 
-fn grow[T](self: &mut Array[T]) -> {} = {
+fn grow[T](self: &mut Array[T]) = {
 	let new_cap = if self.buf.cap == 0 {
 		MIN_CAP
 	} else {

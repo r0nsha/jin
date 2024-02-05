@@ -1,5 +1,5 @@
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
-fn print_int*(value: int) -> {} = {
+fn print_int*(value: int) = {
 	printf("print_int: %d\n".ptr, value)
 }

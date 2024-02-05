@@ -1,14 +1,14 @@
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
-fn main() -> {} = {
+fn main() = {
 	run(print_answer)
 	do_add(add, 1, 2)
 	printf("map: %d\n".ptr, map(1, int_to_uint))
 }
 
-fn run(f: fn() -> {}) -> {} = f()
+fn run(f: fn()) = f()
 
-fn print_answer() -> {} = {
+fn print_answer() = {
 	printf("The answer is %d\n".ptr, 42)
 }
 
@@ -16,7 +16,7 @@ fn add(a: int, b: int) -> int = {
 	a + b
 }
 
-fn do_add(f: fn(int, int) -> int, a: int, b: int) -> {} = {
+fn do_add(f: fn(int, int) -> int, a: int, b: int) = {
 	printf("a + b = %d\n".ptr, f(a, b))
 }
 

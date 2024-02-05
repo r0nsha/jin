@@ -3,7 +3,7 @@ fn extern "c" printf(fmt: *u8, ..) -> i32
 fn a() -> u8 = 5
 fn b() -> u8 = 9
 
-fn main() -> {} = {
+fn main() = {
     // a = 5(00000101)
     let a: u8 = a()
     // b = 9(00001001)
