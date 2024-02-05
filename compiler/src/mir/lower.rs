@@ -126,7 +126,7 @@ impl<'db> Lower<'db> {
         let def = &self.db[adt.def_id];
         let struct_def = adt.as_struct().unwrap();
 
-        let mangled_name = ustr(&def.qpath.clone().child(ustr("ctor")).join_with("_"));
+        let mangled_name = ustr(&format!("{}_ctor", def.qpath.join_with("_")));
         let display_name = ustr(&def.qpath.join());
 
         let params = Self::adt_fields_to_fn_params(&struct_def.fields);
@@ -184,8 +184,8 @@ impl<'db> Lower<'db> {
         let adt = &self.db[variant.adt_id];
         let def = &self.db[adt.def_id];
 
-        let mangled_name = ustr(&def.qpath.clone().child(variant.name.name()).join_with("_"));
-        let display_name = ustr(&def.qpath.clone().child(variant.name.name()).join());
+        let mangled_name = ustr(&format!("{}_{}", def.qpath.join_with("_"), variant.name));
+        let display_name = ustr(&format!("{}_{}", def.qpath.join(), variant.name));
 
         let params = Self::adt_fields_to_fn_params(&variant.fields);
         let sig = self.mir.fn_sigs.insert_with_key(|id| FnSig {
@@ -205,7 +205,7 @@ impl<'db> Lower<'db> {
         // Initialize the `this` value based on the struct kind
         let this = {
             let value = body.create_register(adt.ty());
-            body.block_mut(start_block).push_inst(Inst::Alloc { value });
+            body.ins(start_block).stackalloc_uninit(value);
             value
         };
 
