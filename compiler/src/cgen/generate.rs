@@ -277,7 +277,7 @@ impl<'db> Generator<'db> {
         instantiation: &Instantiation,
     ) {
         let variants_union = stmt(|| {
-            D::text("union").append(block(|| {
+            D::text("union").append(D::space()).append(block(|| {
                 util::stmts(union_def.variants.iter().map(|variant_id| {
                     let variant = &self.db[*variant_id];
                     let name = variant.name.name();
