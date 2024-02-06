@@ -740,7 +740,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         }
 
         // When a value struct type is moved, its reference fields are incremented
-        if !is_register && self.ty_of(value).is_value_struct(self.cx.db) {
+        if !is_register && ty.is_value_struct(self.cx.db) {
             self.copy_value_type(value);
             return value;
         }
