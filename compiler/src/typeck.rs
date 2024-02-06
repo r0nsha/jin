@@ -711,13 +711,8 @@ impl<'db> Typeck<'db> {
 
         let adt = &self.db[adt_id];
 
-        if let Some(field) = adt.is_infinitely_sized() {
-            return Err(Diagnostic::error(format!("type `{}` is infinitely sized", adt.name))
-                .with_label(Label::primary(adt.name.span(), "defined here"))
-                .with_label(Label::secondary(
-                    field.name.span(),
-                    format!("field has type `{}` without indirection", adt.name),
-                )));
+        if let Some(field) = adt.is_infinitely_sized(self.db) {
+            return Err(errors::infinitely_sized_adt(adt, field));
         }
 
         Ok(())
@@ -760,13 +755,8 @@ impl<'db> Typeck<'db> {
 
         let adt = &self.db[adt_id];
 
-        if let Some(field) = adt.is_infinitely_sized() {
-            return Err(Diagnostic::error(format!("type `{}` is infinitely sized", adt.name))
-                .with_label(Label::primary(adt.name.span(), "defined here"))
-                .with_label(Label::secondary(
-                    field.name.span(),
-                    format!("field has type `{}` without indirection", adt.name),
-                )));
+        if let Some(field) = adt.is_infinitely_sized(self.db) {
+            return Err(errors::infinitely_sized_adt(adt, field));
         }
 
         Ok(())

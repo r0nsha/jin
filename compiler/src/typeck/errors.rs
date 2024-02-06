@@ -1,7 +1,7 @@
 use crate::{
     ast,
     ast::Ast,
-    db::{AdtId, Db, DefId, ModuleId},
+    db::{Adt, AdtField, AdtId, Db, DefId, ModuleId},
     diagnostics::{Diagnostic, Label},
     middle::{BinOp, UnOp},
     span::{Span, Spanned},
@@ -141,6 +141,15 @@ pub fn adt_ty_arg_mismatch(db: &Db, adt_id: AdtId, targ_len: usize, span: Span) 
         span,
         format!("expected {expected} type arguments, found {targ_len}"),
     ))
+}
+
+pub fn infinitely_sized_adt(adt: &Adt, field: &AdtField) -> Diagnostic {
+    Diagnostic::error(format!("type `{}` is infinitely sized", adt.name))
+        .with_label(Label::primary(adt.name.span(), "defined here"))
+        .with_label(Label::secondary(
+            field.name.span(),
+            format!("field has type `{}` without indirection", adt.name),
+        ))
 }
 
 pub fn invalid_bin_op(db: &Db, op: BinOp, ty: Ty, span: Span) -> Diagnostic {

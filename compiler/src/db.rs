@@ -429,10 +429,18 @@ impl Adt {
     }
 
     #[must_use]
-    pub fn is_value(&self) -> bool {
+    pub fn is_value_struct(&self) -> bool {
         match &self.kind {
             AdtKind::Struct(s) => s.kind.is_value(),
             AdtKind::Union(_) => false,
+        }
+    }
+
+    #[must_use]
+    pub fn is_value_type(&self) -> bool {
+        match &self.kind {
+            AdtKind::Struct(s) => s.kind.is_value(),
+            AdtKind::Union(_) => true,
         }
     }
 
@@ -457,10 +465,10 @@ impl Adt {
     }
 
     #[must_use]
-    pub fn is_infinitely_sized(&self) -> Option<&AdtField> {
+    pub fn is_infinitely_sized<'a>(&'a self, db: &'a Db) -> Option<&AdtField> {
         match &self.kind {
-            AdtKind::Struct(s) => s.is_infinitely_sized(),
-            AdtKind::Union(_) => None,
+            AdtKind::Struct(s) => s.is_infinitely_sized(db),
+            AdtKind::Union(u) => u.is_infinitely_sized(db),
         }
     }
 
@@ -476,6 +484,13 @@ impl Adt {
             .zip(targs)
             .map(|(tp, ty)| (tp.ty.as_param().unwrap().var, *ty))
             .collect()
+    }
+
+    pub fn fields<'a>(&'a self, db: &'a Db) -> Box<dyn Iterator<Item = &AdtField> + '_> {
+        match &self.kind {
+            AdtKind::Struct(s) => Box::new(s.fields.iter()),
+            AdtKind::Union(u) => Box::new(u.variants(db).flat_map(|v| v.fields.iter())),
+        }
     }
 }
 
@@ -581,23 +596,9 @@ impl StructDef {
         }));
     }
 
-    pub fn is_infinitely_sized(&self) -> Option<&AdtField> {
-        fn contains_struct(ty: Ty, adt_id: AdtId) -> bool {
-            match ty.kind() {
-                TyKind::Fn(fun) => {
-                    if fun.params.iter().any(|p| contains_struct(p.ty, adt_id)) {
-                        return false;
-                    }
-
-                    contains_struct(fun.ret, adt_id)
-                }
-                TyKind::Adt(adt_id2, _) if *adt_id2 == adt_id => true,
-                _ => false,
-            }
-        }
-
+    pub fn is_infinitely_sized(&self, db: &Db) -> Option<&AdtField> {
         if let StructKind::Value = self.kind {
-            self.fields.iter().find(|f| contains_struct(f.ty, self.id))
+            self.fields.iter().find(|f| f.ty.infinitely_contains_adt(db, self.id))
         } else {
             None
         }
@@ -617,6 +618,11 @@ impl UnionDef {
 
     pub fn variants<'a>(&'a self, db: &'a Db) -> impl Iterator<Item = &Variant> {
         self.variants.iter().map(|&id| &db[id])
+    }
+
+    pub fn is_infinitely_sized<'a>(&'a self, db: &'a Db) -> Option<&AdtField> {
+        self.variants(db)
+            .find_map(|v| v.fields.iter().find(|f| f.ty.infinitely_contains_adt(db, self.id)))
     }
 }
 

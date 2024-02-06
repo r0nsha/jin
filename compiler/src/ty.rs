@@ -108,7 +108,7 @@ impl Ty {
                 | TyKind::Ref(inner, _)
                 | TyKind::RawPtr(inner)
                 | TyKind::Type(inner) => inner.walk_short_(f),
-                TyKind::Adt(_, tys) => tys.iter().any(|ty| ty.walk_short_(f)),
+                TyKind::Adt(_, targs) => targs.iter().any(|ty| ty.walk_short_(f)),
                 TyKind::Int(_)
                 | TyKind::Uint(_)
                 | TyKind::Float(_)
@@ -170,6 +170,39 @@ impl Ty {
         });
 
         result
+    }
+
+    pub fn infinitely_contains_adt(self, db: &Db, adt_id: AdtId) -> bool {
+        match self.kind() {
+            TyKind::Fn(fun) => {
+                fun.params.iter().any(|p| p.ty.infinitely_contains_adt(db, adt_id))
+                    || fun.ret.infinitely_contains_adt(db, adt_id)
+            }
+            TyKind::Slice(inner)
+            | TyKind::Ref(inner, _)
+            | TyKind::RawPtr(inner)
+            | TyKind::Type(inner) => inner.infinitely_contains_adt(db, adt_id),
+            TyKind::Adt(id2, _) if *id2 == adt_id => true,
+            TyKind::Adt(id2, targs) => {
+                if db[*id2].is_value_type() {
+                    db[*id2].fields(db).any(|f| f.ty.infinitely_contains_adt(db, adt_id))
+                        || targs.iter().any(|ty| ty.infinitely_contains_adt(db, adt_id))
+                } else {
+                    false
+                }
+            }
+            TyKind::Int(_)
+            | TyKind::Uint(_)
+            | TyKind::Float(_)
+            | TyKind::Str
+            | TyKind::Bool
+            | TyKind::Unit
+            | TyKind::Never
+            | TyKind::Param(_)
+            | TyKind::Infer(_)
+            | TyKind::Module(_)
+            | TyKind::Unknown => false,
+        }
     }
 
     pub fn raw_ptr(self) -> Ty {
@@ -483,7 +516,7 @@ impl TyKind {
     #[must_use]
     pub fn is_value_struct(&self, db: &Db) -> bool {
         match self {
-            Self::Adt(adt_id, _) => db[*adt_id].is_value(),
+            Self::Adt(adt_id, _) => db[*adt_id].is_value_struct(),
             _ => false,
         }
     }
