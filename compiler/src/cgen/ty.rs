@@ -38,7 +38,7 @@ impl<'db> CTy<'db> for TyKind {
 
                 let is_ptr = match &cx.db[*adt_id].kind {
                     AdtKind::Struct(s) => s.kind.is_ref(),
-                    AdtKind::Union(_) => true,
+                    AdtKind::Union(_) => false,
                 };
 
                 if is_ptr {

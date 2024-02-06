@@ -415,7 +415,16 @@ impl TyKind {
                             })
                         }
                     },
-                    AdtKind::Union(_) => true,
+                    AdtKind::Union(u) => {
+                        let instantiation = adt.instantiation(targs);
+                        let mut folder = instantiation.folder();
+                        u.variants(db).any(|v| {
+                            v.fields.iter().any(|f| {
+                                let ty = folder.fold(f.ty);
+                                ty.is_ref() || ty.needs_free(db)
+                            })
+                        })
+                    }
                 }
             }
             Self::Slice(_) => true,
@@ -438,7 +447,12 @@ impl TyKind {
                             s.fields.iter().any(|f| folder.fold(f.ty).is_move(db))
                         }
                     },
-                    AdtKind::Union(_) => true,
+                    AdtKind::Union(u) => {
+                        let instantiation = adt.instantiation(targs);
+                        let mut folder = instantiation.folder();
+                        u.variants(db)
+                            .any(|v| v.fields.iter().any(|f| folder.fold(f.ty).is_move(db)))
+                    }
                 }
             }
             Self::Slice(_) | Self::Param(_) => true,

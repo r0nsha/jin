@@ -298,12 +298,12 @@ impl<'db> Generator<'db> {
             }))
         });
 
-        let data_name = D::text(format!("{adt_name}__data"));
+        let tyname = D::text(adt_name.as_str());
 
         let union_tydef = stmt(|| {
             D::text("typedef struct")
                 .append(D::space())
-                .append(data_name.clone())
+                .append(tyname.clone())
                 .append(D::space())
                 .append(block(|| {
                     let tag =
@@ -312,12 +312,10 @@ impl<'db> Generator<'db> {
                     D::intersperse([tag, variants_union], D::hardline())
                 }))
                 .append(D::space())
-                .append(data_name.clone())
+                .append(tyname.clone())
         });
 
         self.types.push(union_tydef);
-
-        self.codegen_rc_wrapper_tydef(D::text(adt_name.as_str()), data_name);
     }
 
     fn codegen_rc_wrapper_tydef(&mut self, name: D<'db>, data_name: D<'db>) {
@@ -650,7 +648,9 @@ impl<'db> Generator<'db> {
             }
             ValueKind::Const(value) => codegen_const_value(value),
             ValueKind::Field(value, field) => self.field(state, *value, field),
-            ValueKind::Variant(value, variant) => self.adt_field(state, *value, variant.as_str()),
+            ValueKind::Variant(value, variant) => {
+                util::field(self.value(state, *value), variant.as_str(), false)
+            }
         }
     }
 

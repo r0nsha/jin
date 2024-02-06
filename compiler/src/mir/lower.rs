@@ -205,7 +205,7 @@ impl<'db> Lower<'db> {
         // Initialize the `this` value based on the struct kind
         let this = {
             let value = body.create_register(adt.ty());
-            body.ins(start_block).alloc(value);
+            body.ins(start_block).stackalloc_uninit(value);
             value
         };
 

@@ -424,7 +424,7 @@ impl Adt {
     pub fn is_rc(&self) -> bool {
         match &self.kind {
             AdtKind::Struct(s) => s.kind.is_ref(),
-            AdtKind::Union(_) => true,
+            AdtKind::Union(_) => false,
         }
     }
 

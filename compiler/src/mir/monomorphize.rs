@@ -514,7 +514,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
 
         let unit_value =
             self.body.create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
-        self.body.ins(join_block).free(self_value, false, adt_span).ret(unit_value);
+        self.body.ins(join_block).ret(unit_value);
 
         self.cx.mono_mir.fns.insert(sig, Fn { sig, body: self.body });
 
@@ -530,6 +530,7 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
     ) -> BlockId {
         let start_block = self.body.create_block("start");
         self.free_adt_fields(start_block, self_value, &struct_def.fields, instantiation, span);
+        self.body.ins(start_block).free(self_value, false, span);
         start_block
     }
 
