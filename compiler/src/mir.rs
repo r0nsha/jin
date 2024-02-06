@@ -19,6 +19,7 @@ pub use monomorphize::monomorphize;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
+use crate::db::VariantId;
 use crate::{
     db::{AdtId, Db, DefId},
     middle::{BinOp, Pat, UnOp},
@@ -485,7 +486,7 @@ pub enum ValueKind {
     Field(ValueId, Ustr),
 
     // A variant of a type union
-    Variant(ValueId, Ustr),
+    Variant(ValueId, VariantId),
 }
 
 impl ValueKind {

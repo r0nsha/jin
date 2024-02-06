@@ -6,10 +6,11 @@ use pretty::RcDoc as D;
 
 use crate::{
     cgen::{
-        generate::{GenState, Generator, DATA_FIELD, START_FIELD},
+        generate::{variant_name, GenState, Generator, DATA_FIELD, START_FIELD},
         ty::CTy,
         util,
     },
+    db::VariantId,
     mir::{Block, ValueId, ValueKind},
     span::Span,
     sym,
@@ -36,20 +37,37 @@ impl<'db> Generator<'db> {
         match &value.kind {
             ValueKind::Variant(_, _) => util::field(value_doc, field, false),
             _ => match (ty.kind(), field) {
-                (TyKind::Adt(adt, _), _) if self.db[*adt].is_rc() => {
-                    self.adt_field(state, value.id, field)
+                (TyKind::Adt(adt, _), _) if self.db[*adt].is_ref() => {
+                    self.rc_field(state, value.id, field)
                 }
-                (TyKind::Ref(_, _), _) => self.adt_field(state, value.id, field),
+                (TyKind::Ref(_, _), _) => self.rc_field(state, value.id, field),
                 (TyKind::Slice(_), sym::PTR) => self.slice_data_field(state, value.id),
                 _ => util::field(value_doc, field, ty.is_ptr(self)),
             },
         }
     }
 
-    pub fn adt_field(&mut self, state: &GenState<'db>, value: ValueId, field: &str) -> D<'db> {
+    pub fn rc_field(&mut self, state: &GenState<'db>, value: ValueId, field: &str) -> D<'db> {
         let value = self.value(state, value);
         let data_field = util::field(value, DATA_FIELD, true);
         util::field(data_field, field, false)
+    }
+
+    pub fn variant_field(
+        &mut self,
+        state: &GenState<'db>,
+        value: ValueId,
+        id: VariantId,
+    ) -> D<'db> {
+        let variant = &self.db[id];
+        let name = variant_name(variant.name, variant.id);
+        let ty = state.ty_of(value);
+
+        if ty.auto_deref().is_rc(self.db) {
+            self.rc_field(state, value, &name)
+        } else {
+            util::field(self.value(state, value), &name, false)
+        }
     }
 
     pub fn slice_data_field(&mut self, state: &GenState<'db>, slice: ValueId) -> D<'db> {

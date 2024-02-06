@@ -512,6 +512,10 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
             }
         };
 
+        if adt.is_ref() {
+            self.body.ins(join_block).free(self_value, false, adt_span);
+        }
+
         let unit_value =
             self.body.create_value(self.cx.db.types.unit, ValueKind::Const(Const::Unit));
         self.body.ins(join_block).ret(unit_value);
@@ -530,11 +534,6 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
     ) -> BlockId {
         let start_block = self.body.create_block("start");
         self.free_adt_fields(start_block, self_value, &struct_def.fields, instantiation, span);
-
-        if struct_def.kind.is_ref() {
-            self.body.ins(start_block).free(self_value, false, span);
-        }
-
         start_block
     }
 
@@ -553,12 +552,11 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
 
         for &variant_id in &union_def.variants {
             let variant = &self.cx.db[variant_id];
-            let name = variant.name.name();
 
             let variant_value =
-                self.body.create_value(self_ty, ValueKind::Variant(self_value, name));
+                self.body.create_value(self_ty, ValueKind::Variant(self_value, variant.id));
 
-            let block = self.body.create_block(format!("case_{name}"));
+            let block = self.body.create_block(format!("case_{}", variant.name));
 
             self.free_adt_fields(block, variant_value, &variant.fields, instantiation, span);
 

@@ -214,6 +214,8 @@ impl<'s> Lexer<'s> {
                     "mut" => TokenKind::Mut,
                     "imm" => TokenKind::Imm,
                     "transmute" => TokenKind::Transmute,
+                    "ref" => TokenKind::Ref,
+                    "move" => TokenKind::Move,
                     str => TokenKind::Ident(ustr(str)),
                 };
             }

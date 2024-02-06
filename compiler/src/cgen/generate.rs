@@ -1,6 +1,7 @@
 use std::{fs::File, io::Write, iter};
 
 use camino::Utf8PathBuf;
+use data_structures::index_vec::Key as _;
 use pretty::RcDoc as D;
 use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr};
@@ -15,7 +16,7 @@ use crate::{
             NEST,
         },
     },
-    db::{AdtField, AdtId, AdtKind, Db, StructDef, StructKind, UnionDef},
+    db::{AdtField, AdtId, AdtKind, Db, StructDef, StructKind, UnionDef, UnionKind, VariantId},
     mangle,
     middle::{CallConv, Pat, UnOp},
     mir::{
@@ -24,6 +25,7 @@ use crate::{
     },
     target::TargetMetrics,
     ty::{fold::TyFolder, Instantiation, Ty, TyKind},
+    word::Word,
 };
 
 pub const DATA_FIELD: &str = "data";
@@ -287,11 +289,36 @@ impl<'db> Generator<'db> {
         union_def: &UnionDef,
         instantiation: &Instantiation,
     ) {
+        match union_def.kind {
+            UnionKind::Ref => {
+                let data_name = D::text(format!("{adt_name}__data"));
+                let data_tydef =
+                    self.codegen_union_typedef(data_name.clone(), union_def, instantiation);
+                self.rc_types.push(data_tydef);
+                self.codegen_rc_wrapper_tydef(D::text(adt_name.as_str()), data_name);
+            }
+            UnionKind::Value => {
+                let tydef = self.codegen_union_typedef(
+                    D::text(adt_name.as_str()),
+                    union_def,
+                    instantiation,
+                );
+                self.types.push(tydef);
+            }
+        }
+    }
+
+    fn codegen_union_typedef(
+        &mut self,
+        adt_name: D<'db>,
+        union_def: &UnionDef,
+        instantiation: &Instantiation,
+    ) -> D<'db> {
         let variants_union = stmt(|| {
             D::text("union").append(D::space()).append(block(|| {
                 util::stmts(union_def.variants.iter().map(|variant_id| {
                     let variant = &self.db[*variant_id];
-                    let name = variant.name.name();
+                    let name = variant_name(variant.name, variant.id);
                     let fields = variant.fields.clone();
 
                     D::text("struct")
@@ -304,17 +331,15 @@ impl<'db> Generator<'db> {
                             }))
                         }))
                         .append(D::space())
-                        .append(D::text(name.as_str()))
+                        .append(D::text(name))
                 }))
             }))
         });
 
-        let tyname = D::text(adt_name.as_str());
-
-        let union_tydef = stmt(|| {
+        stmt(|| {
             D::text("typedef struct")
                 .append(D::space())
-                .append(tyname.clone())
+                .append(adt_name.clone())
                 .append(D::space())
                 .append(block(|| {
                     let tag =
@@ -323,10 +348,8 @@ impl<'db> Generator<'db> {
                     D::intersperse([tag, variants_union], D::hardline())
                 }))
                 .append(D::space())
-                .append(tyname.clone())
-        });
-
-        self.types.push(union_tydef);
+                .append(adt_name)
+        })
     }
 
     fn codegen_rc_wrapper_tydef(&mut self, name: D<'db>, data_name: D<'db>) {
@@ -659,9 +682,7 @@ impl<'db> Generator<'db> {
             }
             ValueKind::Const(value) => codegen_const_value(value),
             ValueKind::Field(value, field) => self.field(state, *value, field),
-            ValueKind::Variant(value, variant) => {
-                util::field(self.value(state, *value), variant.as_str(), false)
-            }
+            ValueKind::Variant(value, id) => self.variant_field(state, *value, *id),
         }
     }
 
@@ -723,4 +744,8 @@ fn param_name(pat: &Pat, index: usize) -> String {
         Pat::Name(name) => format!("{}$p{}", name.word, index),
         Pat::Discard(_) => format!("${index}"),
     }
+}
+
+pub fn variant_name(name: Word, id: VariantId) -> String {
+    format!("{}${}", name, id.data())
 }

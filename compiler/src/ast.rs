@@ -11,7 +11,7 @@ use data_structures::{
 use ustr::Ustr;
 
 use crate::{
-    db::{ExternLib, ModuleId, StructKind},
+    db::{ExternLib, ModuleId, StructKind, UnionKind},
     middle::{BinOp, CallConv, IsUfcs, Mutability, Pat, TyExpr, UnOp, Vis},
     qpath::QPath,
     span::{SourceId, Span, Spanned},
@@ -341,6 +341,7 @@ pub struct StructTyField {
 
 #[derive(Debug, Clone)]
 pub struct UnionTyDef {
+    pub kind: UnionKind,
     pub variants: Vec<UnionVariant>,
 }
 

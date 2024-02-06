@@ -3,7 +3,7 @@ use indexmap::IndexSet;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    db::{AdtField, AdtKind, Db, DefId, DefKind, Intrinsic, StructKind, VariantId},
+    db::{AdtField, AdtKind, Db, DefId, DefKind, Intrinsic, StructKind, UnionKind, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult},
     hir,
     hir::{FnKind, Hir},
@@ -145,17 +145,10 @@ impl<'db> Lower<'db> {
         let start_block = body.create_block("start");
 
         // Initialize the `this` value based on the struct kind
-        let this = match struct_def.kind {
-            StructKind::Ref => {
-                let value = body.create_register(adt.ty());
-                body.ins(start_block).alloc(value);
-                value
-            }
-            StructKind::Value => {
-                let value = body.create_register(adt.ty());
-                body.ins(start_block).stackalloc_uninit(value);
-                value
-            }
+        let this = body.create_register(adt.ty());
+        match struct_def.kind {
+            StructKind::Ref => body.ins(start_block).alloc(this),
+            StructKind::Value => body.ins(start_block).stackalloc_uninit(this),
         };
 
         Self::ctor_init_adt_fields(&mut body, start_block, this, &struct_def.fields);
@@ -183,6 +176,7 @@ impl<'db> Lower<'db> {
         let variant = &self.db[variant_id];
         let adt = &self.db[variant.adt_id];
         let def = &self.db[adt.def_id];
+        let union_def = adt.as_union().unwrap();
 
         let mangled_name = ustr(&format!("{}_{}", def.qpath.join_with("_"), variant.name));
         let display_name = ustr(&format!("{}_{}", def.qpath.join(), variant.name));
@@ -202,11 +196,11 @@ impl<'db> Lower<'db> {
         let mut body = Body::new();
         let start_block = body.create_block("start");
 
-        // Initialize the `this` value based on the struct kind
-        let this = {
-            let value = body.create_register(adt.ty());
-            body.ins(start_block).stackalloc_uninit(value);
-            value
+        // Initialize the `this` value based on the union kind
+        let this = body.create_register(adt.ty());
+        match union_def.kind {
+            UnionKind::Ref => body.ins(start_block).alloc(this),
+            UnionKind::Value => body.ins(start_block).stackalloc_uninit(this),
         };
 
         // Set the tag to this variant
@@ -216,8 +210,7 @@ impl<'db> Lower<'db> {
             body.create_value(uint, ValueKind::Const(Const::Int(variant.index as i128)));
         body.ins(start_block).store(tag_value, tag_field);
 
-        let this_variant =
-            body.create_value(adt.ty(), ValueKind::Variant(this, variant.name.name()));
+        let this_variant = body.create_value(adt.ty(), ValueKind::Variant(this, variant.id));
 
         Self::ctor_init_adt_fields(&mut body, start_block, this_variant, &variant.fields);
 
@@ -746,7 +739,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             return value;
         }
 
-        // When a value adt type is moved, its reference fields are incremented
+        // When a value struct type is moved, its reference fields are incremented
         if !is_register && self.ty_of(value).is_value_struct(self.cx.db) {
             self.copy_value_type(value);
             return value;
@@ -1648,8 +1641,11 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             ValueKind::Param(id, _) | ValueKind::Local(id) => self.cx.db[*id].name.to_string(),
             ValueKind::Global(id) => self.cx.mir.globals[*id].name.to_string(),
             ValueKind::Fn(id) => self.cx.mir.fn_sigs[*id].mangled_name.to_string(),
-            ValueKind::Field(parent, child) | ValueKind::Variant(parent, child) => {
-                format!("{}.{}", self.value_name_aux(*parent), child)
+            ValueKind::Field(parent, field) => {
+                format!("{}.{}", self.value_name_aux(*parent), field)
+            }
+            ValueKind::Variant(parent, id) => {
+                format!("{}.{}", self.value_name_aux(*parent), self.cx.db[*id].name)
             }
             ValueKind::Register(_) | ValueKind::Const(_) => "_".to_string(),
         }

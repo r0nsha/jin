@@ -100,7 +100,7 @@ fn match_types() = {
 		Bag(Box(1), _) -> { printf("a: 1, b: _\n".ptr) },
 		Bag(b: Box(3), a: Box(a)) -> { printf("a: %d, b: 3 (named)\n".ptr, a) },
 		Bag(Box(a), Box(3)) -> { printf("a: %d, b: 3\n".ptr, a) },
-		Bag(a, ..) -> move(a),
+		Bag(a, ..) -> move_(a),
 		_ -> {}, // unreachable
 	}
 
@@ -129,7 +129,7 @@ fn print(value: int) = {
 	printf("%d\n".ptr, value)
 }
 
-fn move(box: Box) = {}
+fn move_(box: Box) = {}
 
 fn match_guard() = {
 	let foo = true

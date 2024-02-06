@@ -319,8 +319,11 @@ impl<'db> PrettyCx<'db> {
             ValueKind::Global(id) => Self::global(&self.mir.globals[*id].name),
             ValueKind::Fn(id) => Self::global(&self.mir.fn_sigs[*id].mangled_name),
             ValueKind::Const(value) => pp_const_value(value),
-            ValueKind::Field(value, field) | ValueKind::Variant(value, field) => {
+            ValueKind::Field(value, field) => {
                 self.value(body, *value).append(D::text(format!(".{field}")))
+            }
+            ValueKind::Variant(value, id) => {
+                self.value(body, *value).append(D::text(format!(".{}", self.db[*id].name)))
             }
         }
     }

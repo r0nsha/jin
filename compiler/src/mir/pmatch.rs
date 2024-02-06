@@ -516,7 +516,7 @@ impl Type {
                             .map(|variant| {
                                 let variant_value = cx.create_untracked_value(
                                     adt_ty,
-                                    ValueKind::Variant(cond, variant.name.name()),
+                                    ValueKind::Variant(cond, variant.id),
                                 );
 
                                 let values: Vec<_> = variant

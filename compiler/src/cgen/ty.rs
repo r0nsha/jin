@@ -4,7 +4,6 @@ use pretty::RcDoc as D;
 
 use crate::{
     cgen::{generate::Generator, util},
-    db::AdtKind,
     middle::CallConv,
     sym,
     ty::{FloatTy, FnTy, IntTy, Ty, TyKind, UintTy},
@@ -36,12 +35,7 @@ impl<'db> CTy<'db> for TyKind {
                 let adt_name = cx.get_or_create_adt(Ty::from_ref(self), *adt_id, targs);
                 let name = D::text(format!("struct {adt_name}"));
 
-                let is_ptr = match &cx.db[*adt_id].kind {
-                    AdtKind::Struct(s) => s.kind.is_ref(),
-                    AdtKind::Union(_) => false,
-                };
-
-                if is_ptr {
+                if cx.db[*adt_id].is_ref() {
                     name.append("*")
                 } else {
                     name
@@ -60,7 +54,7 @@ impl<'db> CTy<'db> for TyKind {
 
     fn is_ptr(&self, cx: &Generator<'db>) -> bool {
         match self {
-            Self::Adt(adt_id, _) => cx.db[*adt_id].is_rc(),
+            Self::Adt(adt_id, _) => cx.db[*adt_id].is_ref(),
             Self::Ref(..) | Self::RawPtr(_) => true,
             Self::Fn(_)
             | Self::Int(_)

@@ -6,7 +6,7 @@ use crate::{
         CallArg, ExternImport, ExternLet, FnKind, FnParam, FnSig, Import, ImportKind, Let, TyDef,
         TyDefKind, TyExpr, UnqualifiedImport,
     },
-    db::StructKind,
+    db::{StructKind, UnionKind},
     middle::{BinOp, IsUfcs},
     word::Word,
 };
@@ -292,8 +292,8 @@ impl PrettyPrint for TyDef {
                 cx.builder.add_empty_child(format!(
                     "{}struct",
                     match sdef.kind {
-                        StructKind::Ref => "",
-                        StructKind::Value => "value ",
+                        StructKind::Ref => "ref ",
+                        StructKind::Value => "",
                     }
                 ));
                 cx.builder.begin_child("fields".to_string());
@@ -307,7 +307,13 @@ impl PrettyPrint for TyDef {
                 cx.builder.end_child();
             }
             TyDefKind::Union(udef) => {
-                cx.builder.add_empty_child("union".to_string());
+                cx.builder.add_empty_child(format!(
+                    "{}union",
+                    match udef.kind {
+                        UnionKind::Ref => "ref ",
+                        UnionKind::Value => "",
+                    }
+                ));
 
                 for variant in &udef.variants {
                     cx.builder.begin_child(variant.name.to_string());

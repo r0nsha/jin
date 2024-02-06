@@ -732,8 +732,9 @@ impl<'db> Typeck<'db> {
             variants.push(self.check_tydef_union_variant(variant, idx, &mut defined_variants)?);
         }
 
-        let (adt_id, def_id) =
-            self.define_adt(env, tydef, |id| AdtKind::Union(UnionDef::new(id, variants.clone())))?;
+        let (adt_id, def_id) = self.define_adt(env, tydef, |id| {
+            AdtKind::Union(UnionDef::new(id, union_def.kind, variants.clone()))
+        })?;
 
         env.with_anon_scope(ScopeKind::TyDef, |env| -> TypeckResult<()> {
             self.check_adt_ty_params(env, tydef, adt_id, def_id)?;

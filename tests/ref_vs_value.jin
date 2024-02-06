@@ -12,22 +12,22 @@ fn main() = {
 type Ref(field: int)
 
 fn ref_type() = {
-	let mut ref = Ref(1)
-	print(&ref) // should be 1
+	let mut r = Ref(1)
+	print(&r) // should be 1
 
-	ref.field = 2
-	print(&ref) // should be 2
+	r.field = 2
+	print(&r) // should be 2
 
-	ref.mutate()
-	print(&ref) // should be 3
+	r.mutate()
+	print(&r) // should be 3
 }
 
-fn mutate(ref: &mut Ref) = {
-	ref.field = 3
+fn mutate(r: &mut Ref) = {
+	r.field = 3
 }
 
-fn print(ref: &Ref) = {
-	printf("Ref(field: %d)\n".ptr, ref.field)
+fn print(r: &Ref) = {
+	printf("Ref(field: %d)\n".ptr, r.field)
 }
 
 type Ext value(field: int)

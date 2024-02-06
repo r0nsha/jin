@@ -421,10 +421,10 @@ pub struct Adt {
 
 impl Adt {
     #[must_use]
-    pub fn is_rc(&self) -> bool {
+    pub fn is_ref(&self) -> bool {
         match &self.kind {
             AdtKind::Struct(s) => s.kind.is_ref(),
-            AdtKind::Union(_) => false,
+            AdtKind::Union(u) => u.kind.is_ref(),
         }
     }
 
@@ -440,7 +440,7 @@ impl Adt {
     pub fn is_value_type(&self) -> bool {
         match &self.kind {
             AdtKind::Struct(s) => s.kind.is_value(),
-            AdtKind::Union(_) => true,
+            AdtKind::Union(u) => u.kind.is_value(),
         }
     }
 
@@ -608,12 +608,13 @@ impl StructDef {
 #[derive(Debug, Clone)]
 pub struct UnionDef {
     pub id: AdtId,
+    pub kind: UnionKind,
     pub variants: Vec<VariantId>,
 }
 
 impl UnionDef {
-    pub fn new(id: AdtId, variants: Vec<VariantId>) -> Self {
-        Self { id, variants }
+    pub fn new(id: AdtId, kind: UnionKind, variants: Vec<VariantId>) -> Self {
+        Self { id, kind, variants }
     }
 
     pub fn variants<'a>(&'a self, db: &'a Db) -> impl Iterator<Item = &Variant> {
@@ -621,8 +622,36 @@ impl UnionDef {
     }
 
     pub fn is_infinitely_sized<'a>(&'a self, db: &'a Db) -> Option<&AdtField> {
-        self.variants(db)
-            .find_map(|v| v.fields.iter().find(|f| f.ty.infinitely_contains_adt(db, self.id)))
+        if let UnionKind::Value = self.kind {
+            self.variants(db)
+                .find_map(|v| v.fields.iter().find(|f| f.ty.infinitely_contains_adt(db, self.id)))
+        } else {
+            None
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum UnionKind {
+    Ref,
+    Value,
+}
+
+impl UnionKind {
+    /// Returns `true` if the union kind is [`Ref`].
+    ///
+    /// [`Ref`]: UnionKind::Ref
+    #[must_use]
+    pub fn is_ref(&self) -> bool {
+        matches!(self, Self::Ref)
+    }
+
+    /// Returns `true` if the union kind is [`Value`].
+    ///
+    /// [`Value`]: UnionKind::Value
+    #[must_use]
+    pub fn is_value(&self) -> bool {
+        matches!(self, Self::Value)
     }
 }
 
