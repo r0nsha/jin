@@ -530,7 +530,11 @@ impl<'cx, 'db> CreateAdtFree<'cx, 'db> {
     ) -> BlockId {
         let start_block = self.body.create_block("start");
         self.free_adt_fields(start_block, self_value, &struct_def.fields, instantiation, span);
-        self.body.ins(start_block).free(self_value, false, span);
+
+        if struct_def.kind.is_ref() {
+            self.body.ins(start_block).free(self_value, false, span);
+        }
+
         start_block
     }
 
