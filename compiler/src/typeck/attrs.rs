@@ -9,7 +9,8 @@ pub enum AttrsPlacement {
     ExternFn,
     Let,
     ExternLet,
-    TyDef,
+    Struct,
+    Union,
     Import,
 }
 
@@ -35,6 +36,10 @@ fn validate_attr_placement(
         ast::AttrId::Intrinsic => match placement {
             AttrsPlacement::ExternFn => Ok(()),
             _ => Err("fn extern"),
+        },
+        ast::AttrId::Value => match placement {
+            AttrsPlacement::Struct => Ok(()),
+            _ => Err("struct"),
         },
     }
 }

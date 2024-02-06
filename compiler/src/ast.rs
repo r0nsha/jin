@@ -11,7 +11,7 @@ use data_structures::{
 use ustr::Ustr;
 
 use crate::{
-    db::{ExternLib, ModuleId, StructKind, UnionKind},
+    db::{ExternLib, ModuleId, UnionKind},
     middle::{BinOp, CallConv, IsUfcs, Mutability, Pat, TyExpr, UnOp, Vis},
     qpath::QPath,
     span::{SourceId, Span, Spanned},
@@ -328,7 +328,6 @@ pub enum TyDefKind {
 
 #[derive(Debug, Clone)]
 pub struct StructTyDef {
-    pub kind: StructKind,
     pub fields: Vec<StructTyField>,
 }
 
@@ -480,6 +479,10 @@ impl Attrs {
         self.iter().find(|a| a.id == id)
     }
 
+    pub fn contains(&self, id: AttrId) -> bool {
+        self.find(id).is_some()
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = &Attr> {
         self.0.iter()
     }
@@ -503,11 +506,13 @@ pub struct Attr {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AttrId {
     Intrinsic,
+    Value,
 }
 
 #[derive(Debug, Clone)]
 pub enum AttrArgs {
     Intrinsic(Word),
+    None,
 }
 
 impl TryFrom<&str> for AttrId {
@@ -516,6 +521,7 @@ impl TryFrom<&str> for AttrId {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
             "intrinsic" => Ok(Self::Intrinsic),
+            "value" => Ok(Self::Value),
             _ => Err(()),
         }
     }
@@ -525,6 +531,7 @@ impl fmt::Display for AttrId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
             AttrId::Intrinsic => "intrinsic",
+            AttrId::Value => "value",
         })
     }
 }

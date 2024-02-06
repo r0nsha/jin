@@ -5,7 +5,7 @@ use crate::{
         token::TokenKind, Attrs, StructTyDef, StructTyField, TyDef, TyDefKind, UnionTyDef,
         UnionVariant, UnionVariantField,
     },
-    db::{StructKind, UnionKind},
+    db::UnionKind,
     diagnostics::DiagnosticResult,
     parse::{errors, parser::Parser},
 };
@@ -27,20 +27,18 @@ impl<'a> Parser<'a> {
 
     fn parse_tydef_kind(&mut self) -> DiagnosticResult<TyDefKind> {
         if self.peek_is(TokenKind::OpenParen) {
-            self.parse_tydef_struct(StructKind::Ref)
+            self.parse_tydef_struct()
         } else if self.peek_is(TokenKind::OpenCurly) {
             self.parse_tydef_union(UnionKind::Value)
         } else if self.is(TokenKind::Ref) {
             self.parse_tydef_union(UnionKind::Ref)
-        } else if self.is_specific_ident("value") {
-            self.parse_tydef_struct(StructKind::Value)
         } else {
             let tok = self.require()?;
             Err(errors::unexpected_token_err("(, {, `ref` or `value`", tok.kind, tok.span))
         }
     }
 
-    fn parse_tydef_struct(&mut self, kind: StructKind) -> DiagnosticResult<TyDefKind> {
+    fn parse_tydef_struct(&mut self) -> DiagnosticResult<TyDefKind> {
         let (fields, _) = self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             let ident = this.eat_ident()?;
             let vis = this.parse_vis();
@@ -49,7 +47,7 @@ impl<'a> Parser<'a> {
             Ok(ControlFlow::Continue(StructTyField { name: ident.word(), vis, ty_expr }))
         })?;
 
-        Ok(TyDefKind::Struct(StructTyDef { kind, fields }))
+        Ok(TyDefKind::Struct(StructTyDef { fields }))
     }
 
     fn parse_tydef_union(&mut self, kind: UnionKind) -> DiagnosticResult<TyDefKind> {

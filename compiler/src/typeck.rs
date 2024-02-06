@@ -23,7 +23,7 @@ use crate::{
     counter::Counter,
     db::{
         Adt, AdtField, AdtId, AdtKind, Db, DefId, DefKind, FnInfo, Intrinsic, ModuleId, StructDef,
-        UnionDef, Variant, VariantId,
+        StructKind, UnionDef, Variant, VariantId,
     },
     diagnostics::{Diagnostic, Label},
     hir,
@@ -497,7 +497,7 @@ impl<'db> Typeck<'db> {
         let fnty = sig.ty.as_fn().unwrap();
 
         if let Some(attr) = fun.attrs.find(ast::AttrId::Intrinsic) {
-            let ast::AttrArgs::Intrinsic(name) = attr.args;
+            let ast::AttrArgs::Intrinsic(name) = attr.args else { unreachable!() };
 
             let intrinsic = Intrinsic::try_from(name.as_str()).map_err(|()| {
                 Diagnostic::error(format!("unknown intrinsic `{name}`"))
@@ -660,11 +660,20 @@ impl<'db> Typeck<'db> {
     }
 
     fn check_tydef(&mut self, env: &mut Env, tydef: &ast::TyDef) -> TypeckResult<()> {
-        self.check_attrs(&tydef.attrs, AttrsPlacement::TyDef)?;
-
         match &tydef.kind {
-            ast::TyDefKind::Struct(struct_def) => self.check_tydef_struct(env, tydef, struct_def),
-            ast::TyDefKind::Union(union_def) => self.check_tydef_union(env, tydef, union_def),
+            ast::TyDefKind::Struct(struct_def) => {
+                self.check_attrs(&tydef.attrs, AttrsPlacement::Struct)?;
+                let kind = if tydef.attrs.contains(ast::AttrId::Value) {
+                    StructKind::Value
+                } else {
+                    StructKind::Ref
+                };
+                self.check_tydef_struct(env, tydef, struct_def, kind)
+            }
+            ast::TyDefKind::Union(union_def) => {
+                self.check_attrs(&tydef.attrs, AttrsPlacement::Union)?;
+                self.check_tydef_union(env, tydef, union_def)
+            }
         }
     }
 
@@ -673,6 +682,7 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         tydef: &ast::TyDef,
         struct_def: &ast::StructTyDef,
+        kind: StructKind,
     ) -> TypeckResult<()> {
         let mut fields = vec![];
         let mut defined_fields = WordMap::default();
@@ -688,10 +698,7 @@ impl<'db> Typeck<'db> {
         let unknown = self.db.types.unknown;
         let (adt_id, def_id) = self.define_adt(env, tydef, |id| {
             AdtKind::Struct(StructDef::new(
-                id,
-                fields,
-                struct_def.kind,
-                unknown, // Will be filled later
+                id, fields, kind, unknown, // Will be filled later
             ))
         })?;
 

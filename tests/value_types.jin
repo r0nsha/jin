@@ -2,11 +2,15 @@ fn extern "c" printf(fmt: *u8, ..) -> i32
 
 type M()
 
-type Ref value(a: &M, b: Ref2)
-type Ref2 value(c: &M)
-type Mixed value(a: Ref)
+@value
+type Ref(a: &M, b: Ref2)
+@value
+type Ref2(c: &M)
+@value
+type Mixed(a: Ref)
 
-type Point value(x: int, y: int)
+@value
+type Point(x: int, y: int)
 
 fn main() = {
 	let m = M()

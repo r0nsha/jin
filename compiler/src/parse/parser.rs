@@ -214,6 +214,7 @@ impl<'a> Parser<'a> {
         self.is(TokenKind::empty_ident())
     }
 
+    #[allow(unused)]
     #[inline]
     pub(super) fn is_specific_ident(&mut self, s: &str) -> bool {
         self.is_predicate(|_, tok| matches!(tok.kind, TokenKind::Ident(ident) if ident == s))
