@@ -2,24 +2,20 @@ fn extern "c" printf(fmt: *u8, ..) -> i32
 
 type M()
 
-type Move value(m: M)
 type Ref value(a: &M, b: Ref2)
 type Ref2 value(c: &M)
-type Mixed value(a: Ref, b: Move)
+type Mixed value(a: Ref)
 
 type Point value(x: int, y: int)
 
 fn main() = {
-	let m = Move(M())
+	let m = M()
 	let m2 = m
 	// let m3 = m // Error: use after move
+	// let r3 = &m2 // Runtime error: Destroy with refs
+	let m3 = m2
 
-	let r2 = &m2
-	let r3 = &m2
-
-	// let m3 = m2.m // Runtime error: Destroy with refs
-
-	let mixed = Mixed(Ref(&m2.m, Ref2(&m2.m)), m2)
+	let mixed = Mixed(Ref(&m3, Ref2(&m3)))
 	let mixed2 = mixed.a
 	let mixed2c = mixed.a.b.c
 

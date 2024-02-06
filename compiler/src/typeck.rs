@@ -715,6 +715,23 @@ impl<'db> Typeck<'db> {
             return Err(errors::infinitely_sized_adt(adt, field));
         }
 
+        if adt.is_value_struct() {
+            let move_field =
+                self.db[adt_id].as_struct().unwrap().fields.iter().find(|f| f.ty.is_move(self.db));
+
+            if let Some(field) = move_field {
+                return Err(Diagnostic::error(format!(
+                    "value type `{}` cannot contain fields with move semantics",
+                    adt.name
+                ))
+                .with_label(Label::primary(
+                    field.span(),
+                    format!("has type `{}`", field.ty.display(self.db)),
+                ))
+                .with_label(Label::secondary(adt.name.span(), "type defined here")));
+            }
+        }
+
         Ok(())
     }
 
