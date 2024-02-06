@@ -35,6 +35,7 @@ pub struct Generator<'db> {
     pub db: &'db mut Db,
     pub mir: &'db Mir,
     pub types: Vec<D<'db>>,
+    pub rc_types: Vec<D<'db>>,
     pub fn_decls: Vec<D<'db>>,
     pub consts: Vec<D<'db>>,
     pub globals: Vec<D<'db>>,
@@ -83,7 +84,12 @@ impl<'db> Generator<'db> {
         file.write_all(b"#include \"jinrt.h\"\n\n").unwrap();
 
         let decls = D::intersperse(
-            self.types.into_iter().chain(self.fn_decls).chain(self.consts).chain(self.globals),
+            self.types
+                .into_iter()
+                .chain(self.rc_types)
+                .chain(self.fn_decls)
+                .chain(self.consts)
+                .chain(self.globals),
             D::hardline(),
         );
         let fns = D::intersperse(self.fn_defs, D::hardline().append(D::hardline()));
@@ -227,25 +233,24 @@ impl<'db> Generator<'db> {
         name: D<'db>,
         fields: &[AdtField],
         instantiation: &Instantiation,
-    ) {
+    ) -> D<'db> {
         let mut folder = instantiation.folder();
 
-        let typedef =
-            stmt(|| {
-                D::text("typedef struct")
-                    .append(D::space())
-                    .append(name.clone())
-                    .append(D::space())
-                    .append(block(|| {
-                        util::stmts(fields.iter().map(|f| {
+        stmt(|| {
+            D::text("typedef struct")
+                .append(D::space())
+                .append(name.clone())
+                .append(D::space())
+                .append(block(|| {
+                    util::stmts(
+                        fields.iter().map(|f| {
                             folder.fold(f.ty).cdecl(self, D::text(f.name.name().as_str()))
-                        }))
-                    }))
-                    .append(D::space())
-                    .append(name)
-            });
-
-        self.types.push(typedef);
+                        }),
+                    )
+                }))
+                .append(D::space())
+                .append(name)
+        })
     }
 
     fn codegen_struct_def(
@@ -257,15 +262,21 @@ impl<'db> Generator<'db> {
         match struct_def.kind {
             StructKind::Ref => {
                 let data_name = D::text(format!("{adt_name}__data"));
-                self.codegen_struct_typedef(data_name.clone(), &struct_def.fields, instantiation);
+                let data_tydef = self.codegen_struct_typedef(
+                    data_name.clone(),
+                    &struct_def.fields,
+                    instantiation,
+                );
+                self.rc_types.push(data_tydef);
                 self.codegen_rc_wrapper_tydef(D::text(adt_name.as_str()), data_name);
             }
             StructKind::Value => {
-                self.codegen_struct_typedef(
+                let tydef = self.codegen_struct_typedef(
                     D::text(adt_name.as_str()),
                     &struct_def.fields,
                     instantiation,
                 );
+                self.types.push(tydef);
             }
         }
     }
@@ -334,7 +345,7 @@ impl<'db> Generator<'db> {
             .append(D::space())
             .append(name);
 
-        self.types.push(stmt(|| tydef));
+        self.rc_types.push(stmt(|| tydef));
     }
 
     fn codegen_fn_sig(&mut self, sig: &FnSig) -> D<'db> {

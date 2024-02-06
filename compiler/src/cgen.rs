@@ -27,6 +27,7 @@ pub fn codegen(db: &mut Db, mir: &Mir) -> Utf8PathBuf {
             db,
             mir,
             types: vec![],
+            rc_types: vec![],
             fn_decls: vec![],
             consts: vec![],
             globals: vec![],
