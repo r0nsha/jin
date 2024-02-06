@@ -215,6 +215,11 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
+    pub(super) fn is_specific_ident(&mut self, s: &str) -> bool {
+        self.is_predicate(|_, tok| matches!(tok.kind, TokenKind::Ident(ident) if ident == s))
+    }
+
+    #[inline]
     pub(super) fn is_predicate(&mut self, mut f: impl FnMut(&mut Self, Token) -> bool) -> bool {
         match self.token() {
             Some(tok) if f(self, tok) => {

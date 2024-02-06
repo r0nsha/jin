@@ -26,7 +26,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_tydef_kind(&mut self) -> DiagnosticResult<TyDefKind> {
-        if self.is(TokenKind::Extern) {
+        if self.is_specific_ident("value") {
             self.parse_tydef_struct(StructKind::Value)
         } else if self.peek_is(TokenKind::OpenParen) {
             self.parse_tydef_struct(StructKind::Ref)
@@ -34,7 +34,7 @@ impl<'a> Parser<'a> {
             self.parse_tydef_union()
         } else {
             let tok = self.require()?;
-            Err(errors::unexpected_token_err("( or `extern`", tok.kind, tok.span))
+            Err(errors::unexpected_token_err("(, { or `value`", tok.kind, tok.span))
         }
     }
 
