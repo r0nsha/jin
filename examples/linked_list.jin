@@ -54,9 +54,9 @@ fn print(self: &LinkedList[int]) = {
 }
 
 fn main() = {
-  let mut list = LinkedList.new()
-  list.push_front(3) 
-  list.push_front(2) 
-  list.push_front(1) 
-  list.print() 
+    let mut list = LinkedList.new()
+    list.push_front(3) 
+    list.push_front(2) 
+    list.push_front(1) 
+    list.print() 
 }
