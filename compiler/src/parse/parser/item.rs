@@ -209,7 +209,6 @@ impl<'a> Parser<'a> {
                 self.eat(TokenKind::CloseParen)?;
                 Ok(AttrArgs::Intrinsic(name))
             }
-            AttrId::Value => Ok(AttrArgs::None),
         }
     }
 

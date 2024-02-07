@@ -37,9 +37,5 @@ fn validate_attr_placement(
             AttrsPlacement::ExternFn => Ok(()),
             _ => Err("fn extern"),
         },
-        ast::AttrId::Value => match placement {
-            AttrsPlacement::Struct => Ok(()),
-            _ => Err("struct"),
-        },
     }
 }

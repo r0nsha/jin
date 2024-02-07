@@ -23,7 +23,7 @@ use crate::{
     counter::Counter,
     db::{
         Adt, AdtField, AdtId, AdtKind, Db, DefId, DefKind, FnInfo, Intrinsic, ModuleId, StructDef,
-        StructKind, UnionDef, Variant, VariantId,
+        UnionDef, Variant, VariantId,
     },
     diagnostics::{Diagnostic, Label},
     hir,
@@ -663,12 +663,7 @@ impl<'db> Typeck<'db> {
         match &tydef.kind {
             ast::TyDefKind::Struct(struct_def) => {
                 self.check_attrs(&tydef.attrs, AttrsPlacement::Struct)?;
-                let kind = if tydef.attrs.contains(ast::AttrId::Value) {
-                    StructKind::Value
-                } else {
-                    StructKind::Ref
-                };
-                self.check_tydef_struct(env, tydef, struct_def, kind)
+                self.check_tydef_struct(env, tydef, struct_def)
             }
             ast::TyDefKind::Union(union_def) => {
                 self.check_attrs(&tydef.attrs, AttrsPlacement::Union)?;
@@ -682,7 +677,6 @@ impl<'db> Typeck<'db> {
         env: &mut Env,
         tydef: &ast::TyDef,
         struct_def: &ast::StructTyDef,
-        kind: StructKind,
     ) -> TypeckResult<()> {
         let mut fields = vec![];
         let mut defined_fields = WordMap::default();
@@ -698,7 +692,10 @@ impl<'db> Typeck<'db> {
         let unknown = self.db.types.unknown;
         let (adt_id, def_id) = self.define_adt(env, tydef, |id| {
             AdtKind::Struct(StructDef::new(
-                id, fields, kind, unknown, // Will be filled later
+                id,
+                fields,
+                struct_def.kind,
+                unknown, // Will be filled later
             ))
         })?;
 

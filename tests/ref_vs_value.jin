@@ -30,8 +30,7 @@ fn print(r: &Ref) = {
 	printf("Ref(field: %d)\n".ptr, r.field)
 }
 
-@value
-type Ext(field: int)
+type Ext extern(field: int)
 
 fn ext_type() = {
 	let mut ext = Ext(1)

@@ -11,7 +11,7 @@ use data_structures::{
 use ustr::Ustr;
 
 use crate::{
-    db::{ExternLib, ModuleId, UnionKind},
+    db::{ExternLib, ModuleId, StructKind, UnionKind},
     middle::{BinOp, CallConv, IsUfcs, Mutability, Pat, TyExpr, UnOp, Vis},
     qpath::QPath,
     span::{SourceId, Span, Spanned},
@@ -328,6 +328,7 @@ pub enum TyDefKind {
 
 #[derive(Debug, Clone)]
 pub struct StructTyDef {
+    pub kind: StructKind,
     pub fields: Vec<StructTyField>,
 }
 
@@ -506,7 +507,6 @@ pub struct Attr {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AttrId {
     Intrinsic,
-    Value,
 }
 
 #[derive(Debug, Clone)]
@@ -521,7 +521,6 @@ impl TryFrom<&str> for AttrId {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
             "intrinsic" => Ok(Self::Intrinsic),
-            "value" => Ok(Self::Value),
             _ => Err(()),
         }
     }
@@ -531,7 +530,6 @@ impl fmt::Display for AttrId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
             AttrId::Intrinsic => "intrinsic",
-            AttrId::Value => "value",
         })
     }
 }
