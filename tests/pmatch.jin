@@ -33,51 +33,51 @@ fn match_vars() = {
 			x = false
 			printf("x = %d\n".ptr, x)
 			{}
-		},
+		}
 		_ -> {
 			// ignored...
-		},
+		}
 	}
 }
 
 
 fn match_unit() = {
 	match {} {
-		{} -> printf("matched unit!\n".ptr),
-		_ -> 1, // This branch is unreachable
+		{} -> printf("matched unit!\n".ptr)
+		_ -> 1 // This branch is unreachable
 	}
 }
 
 fn match_bool(value: bool) = {
 	printf("value = %s\n".ptr, match value {
-		true -> "true",
-		false -> "false",
-		x -> "unreachable...",
+		true -> "true"
+		false -> "false"
+		x -> "unreachable..."
 	})
 }
 
 fn match_int(value: int) = {
 	match value {
-		42 -> printf("i'm the answer\n".ptr),
-		-3 -> printf("i'm -3\n".ptr),
-		x -> printf("value is %d\n".ptr, x),
+		42 -> printf("i'm the answer\n".ptr)
+		-3 -> printf("i'm -3\n".ptr)
+		x -> printf("value is %d\n".ptr, x)
 	}
 }
 
 fn match_uint(value: uint) = {
 	match value {
-		42 -> printf("i'm still the answer\n".ptr),
-		3 -> printf("i'm still 3\n".ptr),
-		x -> printf("and value is %d\n".ptr, x),
+		42 -> printf("i'm still the answer\n".ptr)
+		3 -> printf("i'm still 3\n".ptr)
+		x -> printf("and value is %d\n".ptr, x)
 	}
 }
 
 fn match_str(value: str) = {
 	match value {
-		"foo" -> printf("i'm 'foo'\n".ptr),
-		"bar" -> printf("i'm 'bar'\n".ptr),
-		"foo" | "bar" -> printf("i'm 'foo' or 'bar\n".ptr),
-		x -> printf("str is '%s'\n".ptr, x.ptr),
+		"foo" -> printf("i'm 'foo'\n".ptr)
+		"bar" -> printf("i'm 'bar'\n".ptr)
+		"foo" | "bar" -> printf("i'm 'foo' or 'bar\n".ptr)
+		x -> printf("str is '%s'\n".ptr, x.ptr)
 	}
 }
 
@@ -88,27 +88,27 @@ fn match_types() = {
 	let box = Box(1)
 
 	match box {
-		Box(1) -> { printf("it's 1!\n".ptr) },
-		Box(v) -> print(v),
-		Box(_) -> {}, // unreachable
-		_ -> {}, // unreachable
+		Box(1) -> { printf("it's 1!\n".ptr) }
+		Box(v) -> print(v)
+		Box(_) -> {} // unreachable
+		_ -> {} // unreachable
 	}
 
 	let bag = Bag(Box(1), Box(3))
 
 	match bag {
-		Bag(Box(1), _) -> { printf("a: 1, b: _\n".ptr) },
-		Bag(b: Box(3), a: Box(a)) -> { printf("a: %d, b: 3 (named)\n".ptr, a) },
-		Bag(Box(a), Box(3)) -> { printf("a: %d, b: 3\n".ptr, a) },
-		Bag(a, ..) -> move_(a),
-		_ -> {}, // unreachable
+		Bag(Box(1), _) -> { printf("a: 1, b: _\n".ptr) }
+		Bag(b: Box(3), a: Box(a)) -> { printf("a: %d, b: 3 (named)\n".ptr, a) }
+		Bag(Box(a), Box(3)) -> { printf("a: %d, b: 3\n".ptr, a) }
+		Bag(a, ..) -> move_(a)
+		_ -> {} // unreachable
 	}
 
 	// print(bag)
 
 	// match inner.get(1) {
-	// 	//inner.Inner(field: 1) -> {}, // Error: match private field
-	// 	inner.Inner(..) -> {}, // Ok, field isn't used
+	// 	//inner.Inner(field: 1) -> {} // Error: match private field
+	// 	inner.Inner(..) -> {} // Ok, field isn't used
 	// }
 }
 
@@ -121,7 +121,7 @@ fn print(bag: &Bag) = {
 		Bag(a, b) -> {
 			printf("Bag(a: Box(%d), b: Box(%d))\n".ptr, a.value, b.value)
 			{}
-		},
+		}
 	}
 }
 
@@ -134,10 +134,10 @@ fn move_(box: Box) = {}
 fn match_guard() = {
 	let foo = true
 	match foo {
-		_ if foo -> { printf("foo=true (guard)\n".ptr) }, 
-		true -> { printf("foo=true\n".ptr) },
-		false -> { printf("foo=false\n".ptr) },
-		foo -> { printf("foo=%d\n".ptr, foo) },
+		_ if foo -> { printf("foo=true (guard)\n".ptr) }
+		true -> { printf("foo=true\n".ptr) }
+		false -> { printf("foo=false\n".ptr) }
+		foo -> { printf("foo=%d\n".ptr, foo) }
 	}
 }
 
@@ -147,8 +147,8 @@ fn print_fac(n: int) = {
 
 fn fac(n: int) -> int =
 	match n {
-		0 | 1 -> 1,
-		n -> n * fac(n - 1),
+		0 | 1 -> 1
+		n -> n * fac(n - 1)
 	}
 
 fn print_fib(n: int) = {
@@ -157,6 +157,6 @@ fn print_fib(n: int) = {
 
 fn fib(n: int) -> int =
 	match n {
-		0 | 1 -> n,
-		n -> fib(n - 1) + fib(n - 2),
+		0 | 1 -> n
+		n -> fib(n - 1) + fib(n - 2)
 	}

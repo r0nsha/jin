@@ -1,13 +1,12 @@
 use std::ops::ControlFlow;
 
 use data_structures::index_vec::Key as _;
-use ustr::ustr;
 
 use crate::{
-    ast::{Attrs, CallArg, Expr, MatchArm, MatchPat, MatchPatAdt, Subpat},
+    ast::{Attrs, CallArg, Expr},
     db::DefId,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
-    middle::{BinOp, Mutability, NamePat, Pat, UnOp},
+    middle::{BinOp, NamePat, Pat, UnOp},
     parse::{
         errors,
         parser::{item::RequireTy, AllowOmitParens, Parser, RequireSigTy},

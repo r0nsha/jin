@@ -5,14 +5,14 @@ type Option*[T] {
 
 //fn get*[T](self: Option[T]) -> bool =
 //	match self {
-//		Option.some(v) -> v,
+//		Option.some(v) -> v
 //		Option.none -> panic("called `Option.get` on a `none` value")
 //	}
 
 fn is_some*[T](self: &Option[T]) -> bool =
 	match self {
-		Option.some(_) -> true,
-		Option.none -> false,
+		Option.some(_) -> true
+		Option.none -> false
 	}
 
 fn is_none*[T](self: &Option[T]) -> bool =
@@ -20,13 +20,13 @@ fn is_none*[T](self: &Option[T]) -> bool =
 
 fn map*[A, B](self: Option[A], f: fn(A) -> B) -> Option[B] =
 	match self {
-		Option.some(v) -> Option.some(f(v)),
-		Option.none -> Option.none,
+		Option.some(v) -> Option.some(f(v))
+		Option.none -> Option.none
 	}
 
 fn map_or*[A, B](self: Option[A], default: B, f: fn(A) -> B) -> B =
 	match self {
-		Option.some(v) -> f(v),
-		Option.none -> default,
+		Option.some(v) -> f(v)
+		Option.none -> default
 	}
 

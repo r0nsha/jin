@@ -25,10 +25,10 @@ fn push_front[T](self: &mut LinkedList[T], data: T) = {
         Option.some(old_head) -> {
             old_head.prev = Option.some(node_mut)
             node_mut.next = Option.some(old_head)
-        },
+        }
         Option.none -> {
             self.tail = Option.some(node_mut)
-        },
+        }
     }
 }
 
@@ -45,8 +45,8 @@ fn print(self: &LinkedList[int]) = {
                 if curr.is_some() {
                     printf(", ".ptr)
                 }
-            },
-            Option.none -> break,
+            }
+            Option.none -> break
         }
     }
 

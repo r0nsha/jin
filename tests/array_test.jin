@@ -31,8 +31,8 @@ fn main() = {
 	array.print()
 
 	match array.pop() {
-		Option.some(x) -> printf("popped = some(%d)\n".ptr, x),
-		Option.none -> printf("popped = none\n".ptr),
+		Option.some(x) -> printf("popped = some(%d)\n".ptr, x)
+		Option.none -> printf("popped = none\n".ptr)
 	}
 
 	array.print()
@@ -44,8 +44,8 @@ fn main() = {
 
 fn print_at(array: &Array[int], idx: uint) = {
 	match array.get(idx) {
-		Option.some(x) -> printf("array[%d] = some(%d)\n".ptr, idx, x),
-		Option.none -> printf("array[%d] = none\n".ptr, idx),
+		Option.some(x) -> printf("array[%d] = some(%d)\n".ptr, idx, x)
+		Option.none -> printf("array[%d] = none\n".ptr, idx)
 	}
 }
 

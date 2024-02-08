@@ -15,10 +15,12 @@ impl<'a> Parser<'a> {
         let start = self.last_span();
         let expr = self.parse_expr()?;
 
-        let (arms, _) = self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
-            let case = this.parse_match_arm()?;
-            Ok(ControlFlow::Continue(case))
-        })?;
+        let (arms, _) = self.parse_list_with_sep(
+            TokenKind::OpenCurly,
+            TokenKind::CloseCurly,
+            TokenKind::Semi(false),
+            |this| this.parse_match_arm().map(ControlFlow::Continue),
+        )?;
 
         let span = start.merge(self.last_span());
 
