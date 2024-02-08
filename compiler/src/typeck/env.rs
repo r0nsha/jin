@@ -398,15 +398,21 @@ impl<'db> Typeck<'db> {
         }
     }
 
+    pub(super) fn try_lookup_variant_in_union(
+        &self,
+        union_def: &'db UnionDef,
+        name: Word,
+    ) -> Option<&Variant> {
+        union_def.variants(self.db).find(|v| v.name.name() == name.name())
+    }
+
     pub(super) fn lookup_variant_in_union(
         &self,
         union_def: &'db UnionDef,
         name: Word,
         span: Span,
     ) -> TypeckResult<&Variant> {
-        union_def
-            .variants(self.db)
-            .find(|v| v.name.name() == name.name())
+        self.try_lookup_variant_in_union(union_def, name)
             .ok_or_else(|| errors::variant_not_found(self.db, union_def.id, span, name))
     }
 

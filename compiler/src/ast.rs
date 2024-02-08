@@ -414,23 +414,22 @@ impl Spanned for MatchPat {
 #[derive(Debug, Clone)]
 pub struct MatchPatAdt {
     pub path: Vec<Word>,
-    pub subpats: Vec<Subpat>,
+    pub subpats: Vec<MatchSubpat>,
     pub is_exhaustive: bool,
-    pub is_inferred_variant: bool,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub enum Subpat {
+pub enum MatchSubpat {
     Positional(MatchPat),
     Named(Word, MatchPat),
 }
 
-impl Spanned for Subpat {
+impl Spanned for MatchSubpat {
     fn span(&self) -> Span {
         match self {
-            Subpat::Positional(p) => p.span(),
-            Subpat::Named(n, p) => n.span().merge(p.span()),
+            MatchSubpat::Positional(p) => p.span(),
+            MatchSubpat::Named(n, p) => n.span().merge(p.span()),
         }
     }
 }

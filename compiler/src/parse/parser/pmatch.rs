@@ -3,7 +3,7 @@ use std::ops::ControlFlow;
 use ustr::ustr;
 
 use crate::{
-    ast::{Expr, MatchArm, MatchPat, MatchPatAdt, Subpat},
+    ast::{Expr, MatchArm, MatchPat, MatchPatAdt, MatchSubpat},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::Mutability,
     parse::{parser::Parser, token::TokenKind},
@@ -60,13 +60,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_match_pat_atom(&mut self) -> DiagnosticResult<MatchPat> {
-        if let Some(mutability) = self.parse_optional_mutability() {
-            let word = self.eat_ident()?.word();
-            Ok(MatchPat::Name(word, mutability))
-        } else if self.is(TokenKind::Dot) {
-            let word = self.eat_ident()?.word();
-            self.parse_match_pat_inferred_variant(word)
-        } else if self.is_ident() {
+        if self.is_ident() {
             let start_word = self.last_token().word();
 
             if self.peek_is(TokenKind::OpenParen) {
@@ -78,6 +72,9 @@ impl<'a> Parser<'a> {
             }
         } else if self.is(TokenKind::Underscore) {
             Ok(MatchPat::Wildcard(self.last_span()))
+        } else if let Some(mutability) = self.parse_optional_mutability() {
+            let word = self.eat_ident()?.word();
+            Ok(MatchPat::Name(word, mutability))
         } else if self.is(TokenKind::OpenCurly) {
             let start_span = self.last_span();
             let last_span = self.eat(TokenKind::CloseCurly)?.span;
@@ -103,30 +100,11 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_match_pat_inferred_variant(&mut self, word: Word) -> DiagnosticResult<MatchPat> {
-        let path = vec![word];
-        let (subpats, is_exhaustive) = self.parse_match_adt_subpats_optional()?;
-        let span = word.span().merge(self.last_span());
-        Ok(MatchPat::Adt(MatchPatAdt {
-            path,
-            subpats,
-            is_exhaustive,
-            is_inferred_variant: true,
-            span,
-        }))
-    }
-
     fn parse_match_pat_adt_name(&mut self, word: Word) -> DiagnosticResult<MatchPat> {
         let path = vec![word];
         let (subpats, is_exhaustive) = self.parse_match_adt_subpats()?;
         let span = word.span().merge(self.last_span());
-        Ok(MatchPat::Adt(MatchPatAdt {
-            path,
-            subpats,
-            is_exhaustive,
-            is_inferred_variant: false,
-            span,
-        }))
+        Ok(MatchPat::Adt(MatchPatAdt { path, subpats, is_exhaustive, span }))
     }
 
     fn parse_match_pat_adt_path(&mut self, start_word: Word) -> DiagnosticResult<MatchPat> {
@@ -140,16 +118,10 @@ impl<'a> Parser<'a> {
         let (subpats, is_exhaustive) = self.parse_match_adt_subpats_optional()?;
         let span = start_word.span().merge(self.last_span());
 
-        Ok(MatchPat::Adt(MatchPatAdt {
-            path,
-            subpats,
-            is_exhaustive,
-            is_inferred_variant: false,
-            span,
-        }))
+        Ok(MatchPat::Adt(MatchPatAdt { path, subpats, is_exhaustive, span }))
     }
 
-    fn parse_match_adt_subpats_optional(&mut self) -> DiagnosticResult<(Vec<Subpat>, bool)> {
+    fn parse_match_adt_subpats_optional(&mut self) -> DiagnosticResult<(Vec<MatchSubpat>, bool)> {
         if self.peek_is(TokenKind::OpenParen) {
             self.parse_match_adt_subpats()
         } else {
@@ -157,7 +129,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_match_adt_subpats(&mut self) -> DiagnosticResult<(Vec<Subpat>, bool)> {
+    fn parse_match_adt_subpats(&mut self) -> DiagnosticResult<(Vec<MatchSubpat>, bool)> {
         let mut is_exhaustive = true;
         let mut passed_named_pat = false;
 
@@ -171,7 +143,7 @@ impl<'a> Parser<'a> {
                 let subpat = this.parse_match_adt_subpat()?;
 
                 match subpat {
-                    Subpat::Positional(_) if passed_named_pat => {
+                    MatchSubpat::Positional(_) if passed_named_pat => {
                         return Err(Diagnostic::error(
                             "positional patterns are not allowed after named patterns",
                         )
@@ -180,8 +152,8 @@ impl<'a> Parser<'a> {
                             "unexpected positional pattern",
                         )));
                     }
-                    Subpat::Positional(_) => (),
-                    Subpat::Named(_, _) => passed_named_pat = true,
+                    MatchSubpat::Positional(_) => (),
+                    MatchSubpat::Named(_, _) => passed_named_pat = true,
                 }
 
                 Ok(ControlFlow::Continue(subpat))
@@ -190,19 +162,19 @@ impl<'a> Parser<'a> {
         Ok((subpats, is_exhaustive))
     }
 
-    fn parse_match_adt_subpat(&mut self) -> DiagnosticResult<Subpat> {
+    fn parse_match_adt_subpat(&mut self) -> DiagnosticResult<MatchSubpat> {
         if self.is_ident() {
             let name = self.last_token().word();
 
             if self.is(TokenKind::Colon) {
                 let pat = self.parse_match_pat()?;
-                return Ok(Subpat::Named(name, pat));
+                return Ok(MatchSubpat::Named(name, pat));
             }
 
             self.back();
         }
 
         let pat = self.parse_match_pat()?;
-        Ok(Subpat::Positional(pat))
+        Ok(MatchSubpat::Positional(pat))
     }
 }

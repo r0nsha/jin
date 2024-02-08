@@ -103,11 +103,11 @@ impl<'db> Typeck<'db> {
         parent_span: Span,
         names: &mut UstrMap<DefId>,
     ) -> TypeckResult<hir::MatchPat> {
-        let pat_ty_deref = pat_ty.auto_deref();
+        let pat_ty_deref = self.normalize(pat_ty).auto_deref();
 
         match pat {
             ast::MatchPat::Name(word, mutability) => {
-                self.check_match_pat_name(env, *word, *mutability, pat_ty, names)
+                self.check_match_pat_name(env, *word, *mutability, pat_ty, parent_span, names)
             }
             ast::MatchPat::Wildcard(span) => Ok(hir::MatchPat::Wildcard(*span)),
             ast::MatchPat::Unit(span) => {
@@ -159,8 +159,24 @@ impl<'db> Typeck<'db> {
         word: Word,
         mutability: Mutability,
         pat_ty: Ty,
+        parent_span: Span,
         names: &mut UstrMap<DefId>,
     ) -> TypeckResult<hir::MatchPat> {
+        if let Some(res) = self.maybe_check_match_pat_inferred_variant(
+            env,
+            &ast::MatchPatAdt {
+                path: vec![word],
+                subpats: vec![],
+                is_exhaustive: true,
+                span: word.span(),
+            },
+            pat_ty,
+            parent_span,
+            names,
+        ) {
+            return res;
+        }
+
         let id = if let Some(id) = names.get(&word.name()) {
             // We make sure that names in all alternatives are bound to the same type
             let expected_ty = self.def_ty(*id);
@@ -196,6 +212,33 @@ impl<'db> Typeck<'db> {
         Ok(hir::MatchPat::Name(id, self.def_ty(id), word.span()))
     }
 
+    fn maybe_check_match_pat_inferred_variant(
+        &mut self,
+        env: &mut Env,
+        pat: &ast::MatchPatAdt,
+        pat_ty: Ty,
+        parent_span: Span,
+        names: &mut UstrMap<DefId>,
+    ) -> Option<TypeckResult<hir::MatchPat>> {
+        let pat_ty_deref = self.normalize(pat_ty).auto_deref();
+
+        if let Some(union_def) = pat_ty_deref.as_union(self.db) {
+            let word = pat.path[0];
+            if let Some(variant) = self.try_lookup_variant_in_union(union_def, word) {
+                return Some(self.check_match_pat_variant(
+                    env,
+                    pat,
+                    pat_ty,
+                    parent_span,
+                    names,
+                    variant.id,
+                ));
+            }
+        }
+
+        None
+    }
+
     fn check_match_pat_adt(
         &mut self,
         env: &mut Env,
@@ -204,16 +247,12 @@ impl<'db> Typeck<'db> {
         parent_span: Span,
         names: &mut UstrMap<DefId>,
     ) -> TypeckResult<hir::MatchPat> {
-        if pat.is_inferred_variant {
-            let pat_ty_deref = pat_ty.auto_deref();
-            let union_def = pat_ty_deref
-                .as_union(self.db)
-                .ok_or_else(|| errors::expected_union_ty(self.db, pat_ty, pat.span))?;
-
-            debug_assert!(pat.path.len() == 1);
-            let variant = self.lookup_variant_in_union(union_def, pat.path[0], pat.span)?;
-
-            return self.check_match_pat_variant(env, pat, pat_ty, parent_span, names, variant.id);
+        if pat.path.len() == 1 {
+            if let Some(res) =
+                self.maybe_check_match_pat_inferred_variant(env, pat, pat_ty, parent_span, names)
+            {
+                return res;
+            }
         }
 
         match self.path_lookup(env, &pat.path)? {
@@ -337,7 +376,7 @@ impl<'db> Typeck<'db> {
 
         for (idx, subpat) in pat.subpats.iter().enumerate() {
             let (field_idx, field, subpat, field_use_span) = match subpat {
-                ast::Subpat::Positional(subpat) => {
+                ast::MatchSubpat::Positional(subpat) => {
                     if let Some(field) = fields.get(idx) {
                         (idx, field, subpat, subpat.span())
                     } else {
@@ -352,7 +391,7 @@ impl<'db> Typeck<'db> {
                         )));
                     }
                 }
-                ast::Subpat::Named(name, subpat) => {
+                ast::MatchSubpat::Named(name, subpat) => {
                     if let Some((field_idx, field)) =
                         fields.iter().enumerate().find(|(_, f)| f.name.name() == name.name())
                     {

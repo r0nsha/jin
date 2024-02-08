@@ -89,11 +89,6 @@ pub fn expected_module(found: impl core::fmt::Display, span: Span) -> Diagnostic
         .with_label(Label::primary(span, "not a module"))
 }
 
-pub fn expected_union_ty(db: &Db, found: Ty, span: Span) -> Diagnostic {
-    Diagnostic::error(format!("expected a union type, found type `{}`", found.display(db)))
-        .with_label(Label::primary(span, "not a union type"))
-}
-
 pub fn expected_named_ty(ty: impl core::fmt::Display, span: Span) -> Diagnostic {
     Diagnostic::error(format!("expected a named type, found type `{ty}`"))
         .with_label(Label::primary(span, "expected a named type"))

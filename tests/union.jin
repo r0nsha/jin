@@ -14,9 +14,9 @@ fn main() = {
 	// Pattern matching
 	let value = Option.some(1)
 	match &value {
-		.some(1) -> printf("some(1)\n".ptr)
-		.some(_) -> printf("some(other)\n".ptr)
-		.none() -> printf("none\n".ptr)
+		some(1) -> printf("some(1)\n".ptr)
+		some(_) -> printf("some(other)\n".ptr)
+		none() -> printf("none\n".ptr)
 	}
 
 	let o = Option.some(Box(4))
@@ -25,12 +25,12 @@ fn main() = {
 	printf("before match: Box(%d)\n".ptr, b.value)
 
 	match o {
-		.some(Box(value: 5)) -> printf("some(Box(5))\n".ptr)
-		.some(x) -> {
+		some(Box(value: 5)) -> printf("some(Box(5))\n".ptr)
+		some(x) -> {
 			printf("some(%d)\n".ptr, x.value)
 			b = x
 		}
-		.none -> printf("none\n".ptr)
+		none -> printf("none\n".ptr)
 	}
 
 	printf("after match: Box(%d)\n".ptr, b.value)
