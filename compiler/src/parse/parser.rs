@@ -64,6 +64,7 @@ impl<'a> Parser<'a> {
 
         while !self.eof() {
             let item = self.parse_item()?;
+            self.eat_semi()?;
             module.items.push(item);
         }
 
@@ -150,9 +151,8 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
-    pub(super) fn eat(&mut self, expected: TokenKind) -> DiagnosticResult<Token> {
-        let tok = self.eat_any()?;
-        Self::require_kind(tok, expected)
+    pub(super) fn eat_semi(&mut self) -> DiagnosticResult<Token> {
+        self.eat(TokenKind::Semi(false))
     }
 
     #[inline]
@@ -166,6 +166,19 @@ impl<'a> Parser<'a> {
         <F as FromStr>::Err: core::fmt::Debug,
     {
         value.replace('_', "").parse().expect("to be a valid integer")
+    }
+
+    #[inline]
+    pub(super) fn eat(&mut self, expected: TokenKind) -> DiagnosticResult<Token> {
+        self.token()
+            .ok_or_else(|| {
+                Diagnostic::error(format!("expected {expected}, found end of file"))
+                    .with_label(Label::primary(self.last_span(), "here"))
+            })
+            .and_then(|tok| {
+                self.next();
+                Self::require_kind(tok, expected)
+            })
     }
 
     #[inline]
