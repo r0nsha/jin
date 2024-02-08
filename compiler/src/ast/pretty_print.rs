@@ -126,6 +126,11 @@ impl PrettyPrint for Expr {
 
                 cx.builder.end_child();
             }
+            Self::Unsafe { expr, .. } => {
+                cx.builder.begin_child("unsafe".to_string());
+                expr.pretty_print(cx);
+                cx.builder.end_child();
+            }
             Self::Call { callee, args, .. } => {
                 print_call(cx, callee, args, None, None);
             }

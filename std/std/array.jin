@@ -63,7 +63,7 @@ fn grow[T](self: &mut Array[T]) = {
 		self.buf.cap * 2
 	}
 
-	let new_buf = intrinsics.grow(transmute[[T]](&mut self.buf), new_cap)
+	let new_buf = intrinsics.grow(unsafe transmute[[T]](&mut self.buf), new_cap)
 	let old = self.buf := new_buf
 	intrinsics.forget(&old)
 }

@@ -75,6 +75,7 @@ pub enum ExprKind {
     Loop(Loop),
     Break,
     Block(Block),
+    Unsafe(Unsafe),
     Return(Return),
     Call(Call),
     Unary(Unary),
@@ -219,6 +220,11 @@ pub struct Loop {
 #[derive(Debug, Clone)]
 pub struct Block {
     pub exprs: Vec<Expr>,
+}
+
+#[derive(Debug, Clone)]
+pub struct Unsafe {
+    pub expr: Box<Expr>,
 }
 
 #[derive(Debug, Clone)]

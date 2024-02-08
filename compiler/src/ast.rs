@@ -147,6 +147,10 @@ pub enum Expr {
         exprs: Vec<Self>,
         span: Span,
     },
+    Unsafe {
+        expr: Box<Self>,
+        span: Span,
+    },
     Call {
         callee: Box<Self>,
         args: Vec<CallArg>,
@@ -248,6 +252,7 @@ impl Spanned for Expr {
             | Self::Loop { span, .. }
             | Self::Break { span, .. }
             | Self::Block { span, .. }
+            | Self::Unsafe { span, .. }
             | Self::Call { span, .. }
             | Self::MethodCall { span, .. }
             | Self::Unary { span, .. }

@@ -551,6 +551,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
                 result
             }
+            hir::ExprKind::Unsafe(uns) => self.lower_expr(&uns.expr),
             hir::ExprKind::Return(ret) => {
                 let value = self.lower_input_expr(&ret.expr);
                 self.push_return(value, expr.span);

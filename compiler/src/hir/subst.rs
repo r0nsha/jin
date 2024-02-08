@@ -29,6 +29,9 @@ impl<S: SubstTy> Subst<S> for Expr {
             ExprKind::Block(block) => {
                 block.exprs.subst(s);
             }
+            ExprKind::Unsafe(uns) => {
+                uns.expr.subst(s);
+            }
             ExprKind::Return(ret) => {
                 ret.expr.subst(s);
             }

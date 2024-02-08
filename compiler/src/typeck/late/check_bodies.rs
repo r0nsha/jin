@@ -81,6 +81,12 @@ impl<'db, 'cx> CheckBody<'db, 'cx> {
                     self.expr(expr);
                 }
             }
+            ExprKind::Unsafe(uns) => {
+                let prev = self.in_unsafe_cx;
+                self.in_unsafe_cx = true;
+                self.expr(&uns.expr);
+                self.in_unsafe_cx = prev;
+            }
             ExprKind::SliceLit(lit) => {
                 for expr in &lit.exprs {
                     self.expr(expr);

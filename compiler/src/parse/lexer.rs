@@ -254,6 +254,7 @@ impl<'s> Lexer<'s> {
                     "transmute" => TokenKind::Transmute,
                     "ref" => TokenKind::Ref,
                     "move" => TokenKind::Move,
+                    "unsafe" => TokenKind::Unsafe,
                     str => TokenKind::Ident(ustr(str)),
                 };
             }

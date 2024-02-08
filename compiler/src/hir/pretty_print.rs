@@ -142,6 +142,11 @@ impl PrettyCx<'_> {
 
                 self.builder.end_child();
             }
+            ExprKind::Unsafe(uns) => {
+                self.builder.begin_child("unsafe".to_string());
+                self.pp_expr(&uns.expr);
+                self.builder.end_child();
+            }
             ExprKind::Return(ret) => {
                 self.builder.begin_child("return".to_string());
                 self.pp_expr(&ret.expr);

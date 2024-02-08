@@ -1158,6 +1158,15 @@ impl<'db> Typeck<'db> {
                     Ok(self.expr(hir::ExprKind::Block(hir::Block { exprs }), ty, *span))
                 })
             }
+            ast::Expr::Unsafe { expr, span } => {
+                let expr = self.check_expr(env, expr, expected_ty)?;
+                let ty = expr.ty;
+                Ok(self.expr(
+                    hir::ExprKind::Unsafe(hir::Unsafe { expr: Box::new(expr) }),
+                    ty,
+                    *span,
+                ))
+            }
             ast::Expr::MethodCall { expr, method, targs, args, span } => {
                 let targs = self.check_optional_ty_args(env, targs.as_deref(), AllowTyHole::Yes)?;
                 let mut args = self.check_call_args(env, args)?;
@@ -2254,21 +2263,22 @@ impl<'db> Typeck<'db> {
     }
 
     fn check_assign_lhs(&self, expr: &hir::Expr) -> TypeckResult<()> {
-        self.check_assign_lhs_aux(expr).then_some(()).ok_or_else(|| {
+        Self::check_assign_lhs_aux(expr).then_some(()).ok_or_else(|| {
             Diagnostic::error("invalid left-hand side of assignment")
                 .with_label(Label::primary(expr.span, "expression is not assignable"))
         })
     }
 
     fn check_swap_lhs(&self, expr: &hir::Expr) -> TypeckResult<()> {
-        self.check_assign_lhs_aux(expr).then_some(()).ok_or_else(|| {
+        Self::check_assign_lhs_aux(expr).then_some(()).ok_or_else(|| {
             Diagnostic::error("invalid left-hand side of swap")
                 .with_label(Label::primary(expr.span, "expression is not swappable"))
         })
     }
 
-    fn check_assign_lhs_aux(&self, expr: &hir::Expr) -> bool {
+    fn check_assign_lhs_aux(expr: &hir::Expr) -> bool {
         match &expr.kind {
+            hir::ExprKind::Unsafe(uns) => Self::check_assign_lhs_aux(&uns.expr),
             hir::ExprKind::Deref(_)
             | hir::ExprKind::Field(_)
             | hir::ExprKind::Index(_)

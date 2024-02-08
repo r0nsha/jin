@@ -123,6 +123,11 @@ impl<'a> Parser<'a> {
                 self.parse_block()?
             }
             TokenKind::OpenBracket => self.parse_slice_lit()?,
+            TokenKind::Unsafe => {
+                let expr = self.parse_expr()?;
+                let span = tok.span.merge(expr.span());
+                Expr::Unsafe { expr: Box::new(expr), span }
+            }
             TokenKind::True => Expr::BoolLit { value: true, span: tok.span },
             TokenKind::False => Expr::BoolLit { value: false, span: tok.span },
             TokenKind::Ident(..) => {

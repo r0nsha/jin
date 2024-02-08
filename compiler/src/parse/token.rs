@@ -107,6 +107,7 @@ pub enum TokenKind {
     Transmute,
     Ref,
     Move,
+    Unsafe,
 
     // Literals
     Int(Ustr),
@@ -160,6 +161,7 @@ impl TokenKind {
             | TokenKind::Transmute
             | TokenKind::Ref
             | TokenKind::Move
+            | TokenKind::Unsafe
             | TokenKind::Dot
             | TokenKind::DotDot
             | TokenKind::Colon
@@ -225,6 +227,7 @@ impl TokenKind {
             | TokenKind::Import
             | TokenKind::For
             | TokenKind::Transmute
+            | TokenKind::Unsafe
             | TokenKind::OpenParen
             | TokenKind::OpenBracket
             | TokenKind::OpenCurly
@@ -355,6 +358,7 @@ impl fmt::Display for TokenKind {
             Self::Transmute => f.write_str("`transmute`"),
             Self::Ref => f.write_str("`ref`"),
             Self::Move => f.write_str("`move`"),
+            Self::Unsafe => f.write_str("`unsafe`"),
             Self::Int(lit) => write!(f, "integer literal `{lit}`"),
             Self::Float(lit) => write!(f, "float literal `{lit}`"),
             Self::Str(lit) => write!(f, "\"{lit}\""),
