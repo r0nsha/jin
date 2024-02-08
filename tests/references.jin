@@ -34,7 +34,7 @@ fn main() = {
 }
 
 fn print(box: &Box) = {
-	printf("Box(%d)\n".ptr, box.value)
+	unsafe printf("Box(%d)\n".ptr, box.value)
 }
 
 fn set(self: &mut Box, value: int) =

@@ -10,21 +10,21 @@ fn main() = {
     let b: u8 = b()
  
     // The result is 00000001
-    printf("a = %d, b = %d\n".ptr, a, b)
-    printf("a&b = %d\n".ptr, a & b)
+    unsafe printf("a = %d, b = %d\n".ptr, a, b)
+    unsafe printf("a&b = %d\n".ptr, a & b)
  
     // The result is 00001101
-    printf("a|b = %d\n".ptr, a | b)
+    unsafe printf("a|b = %d\n".ptr, a | b)
  
     // The result is 00001100
-    printf("a^b = %d\n".ptr, a ^ b)
+    unsafe printf("a^b = %d\n".ptr, a ^ b)
  
     // The result is 11111010
-    printf("!a = %d\n".ptr, !a)
+    unsafe printf("!a = %d\n".ptr, !a)
  
     // The result is 00010010
-    printf("b<<1 = %d\n".ptr, b << 1)
+    unsafe printf("b<<1 = %d\n".ptr, b << 1)
  
     // The result is 00000100
-    printf("b>>1 = %d\n".ptr, b >> 1)
+    unsafe printf("b>>1 = %d\n".ptr, b >> 1)
 }

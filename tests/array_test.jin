@@ -31,8 +31,8 @@ fn main() = {
 	array.print()
 
 	match array.pop() {
-		Some(x) -> printf("popped = Some(%d)\n".ptr, x)
-		None -> printf("popped = None\n".ptr)
+		Some(x) -> unsafe printf("popped = Some(%d)\n".ptr, x)
+		None -> unsafe printf("popped = None\n".ptr)
 	}
 
 	array.print()
@@ -44,8 +44,8 @@ fn main() = {
 
 fn print_at(array: &Array[int], idx: uint) = {
 	match array.get(idx) {
-		Some(x) -> printf("array[%d] = Some(%d)\n".ptr, idx, x)
-		None -> printf("array[%d] = None\n".ptr, idx)
+		Some(x) -> unsafe printf("array[%d] = Some(%d)\n".ptr, idx, x)
+		None -> unsafe printf("array[%d] = None\n".ptr, idx)
 	}
 }
 
@@ -54,14 +54,14 @@ fn print(array: &Array[int]) = {
 }
 
 fn print(slice: &[int]) = {
-	printf("[".ptr)
+	unsafe printf("[".ptr)
 	let mut i = 0
 	for if i < slice.len {
-		printf("%d".ptr, slice.[i])
+		unsafe printf("%d".ptr, slice.[i])
 		if i < slice.len - 1 {
-			printf(", ".ptr)
+			unsafe printf(", ".ptr)
 		}
 		i += 1
 	}
-	printf("] | len=%d cap=%d\n".ptr, slice.len, slice.cap)
+	unsafe printf("] | len=%d cap=%d\n".ptr, slice.len, slice.cap)
 }

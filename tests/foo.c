@@ -4,5 +4,5 @@
 int64_t answer = 42;
 
 void hello() {
-	printf("Hello World\n");
+	unsafe printf("Hello World\n");
 }

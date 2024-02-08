@@ -1,6 +1,6 @@
 import raylib.bindings.*
 
-fn run*() = {
+fn run*() = unsafe {
 	let screen_width = 800
 	let screen_height = 450
 
@@ -11,10 +11,9 @@ fn run*() = {
 
 	for if !WindowShouldClose() {
 		if IsKeyDown(KEY_RIGHT) { ball_position.x += 2.0 }
-        if IsKeyDown(KEY_LEFT) { ball_position.x -= 2.0 }
-        if IsKeyDown(KEY_UP) { ball_position.y -= 2.0 }
-        if IsKeyDown(KEY_DOWN) { ball_position.y += 2.0 }
-
+		if IsKeyDown(KEY_LEFT) { ball_position.x -= 2.0 }
+		if IsKeyDown(KEY_UP) { ball_position.y -= 2.0 }
+		if IsKeyDown(KEY_DOWN) { ball_position.y += 2.0 }
 		BeginDrawing()
 		ClearBackground(RAYWHITE)
 		DrawText("move the ball with arrow keys".ptr, 10, 10, 20, DARKGRAY)

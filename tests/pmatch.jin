@@ -31,7 +31,7 @@ fn match_vars() = {
 	match true {
 		mut x -> {
 			x = false
-			printf("x = %d\n".ptr, x)
+			unsafe printf("x = %d\n".ptr, x)
 			{}
 		}
 		_ -> {
@@ -43,13 +43,13 @@ fn match_vars() = {
 
 fn match_unit() = {
 	match {} {
-		{} -> printf("matched unit!\n".ptr)
+		{} -> unsafe printf("matched unit!\n".ptr)
 		_ -> 1 // This branch is unreachable
 	}
 }
 
 fn match_bool(value: bool) = {
-	printf("value = %s\n".ptr, match value {
+	unsafe printf("value = %s\n".ptr, match value {
 		true -> "true"
 		false -> "false"
 		x -> "unreachable..."
@@ -58,26 +58,26 @@ fn match_bool(value: bool) = {
 
 fn match_int(value: int) = {
 	match value {
-		42 -> printf("i'm the answer\n".ptr)
-		-3 -> printf("i'm -3\n".ptr)
-		x -> printf("value is %d\n".ptr, x)
+		42 -> unsafe printf("i'm the answer\n".ptr)
+		-3 -> unsafe printf("i'm -3\n".ptr)
+		x -> unsafe printf("value is %d\n".ptr, x)
 	}
 }
 
 fn match_uint(value: uint) = {
 	match value {
-		42 -> printf("i'm still the answer\n".ptr)
-		3 -> printf("i'm still 3\n".ptr)
-		x -> printf("and value is %d\n".ptr, x)
+		42 -> unsafe printf("i'm still the answer\n".ptr)
+		3 -> unsafe printf("i'm still 3\n".ptr)
+		x -> unsafe printf("and value is %d\n".ptr, x)
 	}
 }
 
 fn match_str(value: str) = {
 	match value {
-		"foo" -> printf("i'm 'foo'\n".ptr)
-		"bar" -> printf("i'm 'bar'\n".ptr)
-		"foo" | "bar" -> printf("i'm 'foo' or 'bar\n".ptr)
-		x -> printf("str is '%s'\n".ptr, x.ptr)
+		"foo" -> unsafe printf("i'm 'foo'\n".ptr)
+		"bar" -> unsafe printf("i'm 'bar'\n".ptr)
+		"foo" | "bar" -> unsafe printf("i'm 'foo' or 'bar\n".ptr)
+		x -> unsafe printf("str is '%s'\n".ptr, x.ptr)
 	}
 }
 
@@ -88,7 +88,7 @@ fn match_types() = {
 	let box = Box(1)
 
 	match box {
-		Box(1) -> { printf("it's 1!\n".ptr) }
+		Box(1) -> { unsafe printf("it's 1!\n".ptr) }
 		Box(v) -> print(v)
 		Box(_) -> {} // unreachable
 		_ -> {} // unreachable
@@ -97,9 +97,9 @@ fn match_types() = {
 	let bag = Bag(Box(1), Box(3))
 
 	match bag {
-		Bag(Box(1), _) -> { printf("a: 1, b: _\n".ptr) }
-		Bag(b: Box(3), a: Box(a)) -> { printf("a: %d, b: 3 (named)\n".ptr, a) }
-		Bag(Box(a), Box(3)) -> { printf("a: %d, b: 3\n".ptr, a) }
+		Bag(Box(1), _) -> { unsafe printf("a: 1, b: _\n".ptr) }
+		Bag(b: Box(3), a: Box(a)) -> { unsafe printf("a: %d, b: 3 (named)\n".ptr, a) }
+		Bag(Box(a), Box(3)) -> { unsafe printf("a: %d, b: 3\n".ptr, a) }
 		Bag(a, ..) -> move_(a)
 		_ -> {} // unreachable
 	}
@@ -113,20 +113,20 @@ fn match_types() = {
 }
 
 fn print(box: &Box) = {
-	printf("Box(%d)\n".ptr, box.value)
+	unsafe printf("Box(%d)\n".ptr, box.value)
 }
 
 fn print(bag: &Bag) = {
 	match bag {
 		Bag(a, b) -> {
-			printf("Bag(a: Box(%d), b: Box(%d))\n".ptr, a.value, b.value)
+			unsafe printf("Bag(a: Box(%d), b: Box(%d))\n".ptr, a.value, b.value)
 			{}
 		}
 	}
 }
 
 fn print(value: int) = {
-	printf("%d\n".ptr, value)
+	unsafe printf("%d\n".ptr, value)
 }
 
 fn move_(box: Box) = {}
@@ -134,15 +134,15 @@ fn move_(box: Box) = {}
 fn match_guard() = {
 	let foo = true
 	match foo {
-		_ if foo -> { printf("foo=true (guard)\n".ptr) }
-		true -> { printf("foo=true\n".ptr) }
-		false -> { printf("foo=false\n".ptr) }
-		foo -> { printf("foo=%d\n".ptr, foo) }
+		_ if foo -> { unsafe printf("foo=true (guard)\n".ptr) }
+		true -> { unsafe printf("foo=true\n".ptr) }
+		false -> { unsafe printf("foo=false\n".ptr) }
+		foo -> { unsafe printf("foo=%d\n".ptr, foo) }
 	}
 }
 
 fn print_fac(n: int) = {
-	printf("fac(%d) = %d\n".ptr, n, fac(n))
+	unsafe printf("fac(%d) = %d\n".ptr, n, fac(n))
 }	
 
 fn fac(n: int) -> int =
@@ -152,7 +152,7 @@ fn fac(n: int) -> int =
 	}
 
 fn print_fib(n: int) = {
-	printf("fib(%d) = %d\n".ptr, n, fib(n))
+	unsafe printf("fib(%d) = %d\n".ptr, n, fib(n))
 }
 
 fn fib(n: int) -> int =

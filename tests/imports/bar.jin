@@ -4,9 +4,9 @@ import baz*
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
 fn hello*() = {
-	printf(root.get_hello_world().ptr)
+	unsafe printf(root.get_hello_world().ptr)
 }
 
 fn goodbye*() = {
-	printf("Goodbye...\n".ptr)
+	unsafe printf("Goodbye...\n".ptr)
 }

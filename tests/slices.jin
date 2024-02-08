@@ -16,10 +16,10 @@ fn ints() = {
 	b.push(2)
 	b.push(1)
 	print(&b)
-	let mut b = intrinsics.grow(b, 4)
+	let mut b = unsafe intrinsics.grow(b, 4)
 	b.push(0)
 	print(&b)
-	let mut b = intrinsics.grow(b, 8)
+	let mut b = unsafe intrinsics.grow(b, 8)
 	b.push(6)
 	b.push(7)
 	print(&b)
@@ -27,7 +27,7 @@ fn ints() = {
 	let mut c = [1, 2, 3, 4, 5]
 	print(&c)
 	c.[1] = 69
-	printf("old=%d\n".ptr, c.[2] := 42)
+	unsafe printf("old=%d\n".ptr, c.[2] := 42)
 	print(&c)
 	let c2 = &mut c.[1..3]
 	print(&c2)
@@ -41,16 +41,16 @@ fn ints() = {
 }
 
 fn print(s: &[int]) = {
-	printf("[".ptr)
+	unsafe printf("[".ptr)
 	let mut i = 0
 	for if i < s.len {
-		printf("%d".ptr, s.[i])
+		unsafe printf("%d".ptr, s.[i])
 		if i < s.len - 1 {
-			printf(", ".ptr)
+			unsafe printf(", ".ptr)
 		}
 		i += 1
 	}
-	printf("], ptr: %p, len: %d, cap: %d\n".ptr, s.ptr, s.len, s.cap)
+	unsafe printf("], ptr: %p, len: %d, cap: %d\n".ptr, s.ptr, s.len, s.cap)
 }
 
 type Box(value: int)

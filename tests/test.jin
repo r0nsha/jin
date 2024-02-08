@@ -9,7 +9,7 @@ fn extern "c" write(fd: i32, buf: *u8, count: uint) -> i32
 let stdout: i32 = 1
 
 fn print(fmt: str) = {
-	write(stdout, fmt.ptr, fmt.len)
+	unsafe write(stdout, fmt.ptr, fmt.len)
 }
 
 fn println(fmt: str) = {
@@ -19,14 +19,14 @@ fn println(fmt: str) = {
 
 fn main() = {
 	println("Hello, World!")
-	hello()
+	unsafe hello()
 	run(print_answer)
 	do_add(add, 1, 2)
-	printf("num = %d\n".ptr, map(1, id))
+	unsafe printf("num = %d\n".ptr, map(1, id))
 }
 
 fn print_answer() = {
-	printf("The answer is %d\n".ptr, answer)
+	unsafe printf("The answer is %d\n".ptr, answer)
 }
 
 fn add(a: int, b: int) -> int = {
@@ -34,7 +34,7 @@ fn add(a: int, b: int) -> int = {
 }
 
 fn do_add(f: fn(int, int) -> int, a: int, b: int) = {
-	printf("a + b = %d\n".ptr, f(a, b))
+	unsafe printf("a + b = %d\n".ptr, f(a, b))
 }
 
 fn run(f: fn()) = f()
