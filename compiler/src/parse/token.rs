@@ -144,6 +144,7 @@ impl TokenKind {
             | TokenKind::CloseCurly
             | TokenKind::Star
             | TokenKind::Semi(_) => true,
+
             TokenKind::Fn
             | TokenKind::Let
             | TokenKind::Type
@@ -224,7 +225,6 @@ impl TokenKind {
             | TokenKind::Import
             | TokenKind::For
             | TokenKind::Transmute
-            | TokenKind::Dot
             | TokenKind::OpenParen
             | TokenKind::OpenBracket
             | TokenKind::OpenCurly
@@ -244,6 +244,7 @@ impl TokenKind {
             | TokenKind::Imm
             | TokenKind::Ref
             | TokenKind::Move
+            | TokenKind::Dot
             | TokenKind::DotDot
             | TokenKind::Colon
             | TokenKind::Arrow
