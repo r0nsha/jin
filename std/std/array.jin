@@ -29,9 +29,9 @@ fn take*[T](self: Array[T]) -> [T] = self.buf
 
 fn get*[T](self: &Array[T], index: uint) -> Option[&T] = {
 	if index < self.buf.len {
-		Option.some(&self.buf.[index])
+		Option.Some(&self.buf.[index])
 	} else {
-		Option.none
+		Option.None
 	}
 }
 
@@ -45,11 +45,11 @@ fn push*[T](self: &mut Array[T], value: T) = {
 
 fn pop*[T](self: &mut Array[T]) -> Option[T] = {
 	if self.buf.len == 0 {
-		return Option.none
+		return Option.None
 	}
 
 	self.buf.len -= 1
-	Option.some({self.buf.ptr + self.buf.len}.*)
+	Option.Some({self.buf.ptr + self.buf.len}.*)
 }
 
 fn clear*[T](self: &mut Array[T]) = {

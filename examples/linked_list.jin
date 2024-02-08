@@ -7,7 +7,7 @@ type LinkedList[T](
     head: Option[Node[T]],
 )
 
-fn LinkedList.new[T]() -> LinkedList[T] = LinkedList(tail: Option.none, head: Option.none)
+fn LinkedList.new[T]() -> LinkedList[T] = LinkedList(tail: Option.None, head: Option.None)
 
 type Node[T](
     prev: Option[&mut Node[T]],
@@ -15,18 +15,18 @@ type Node[T](
     next: Option[Node[T]],
 )
 
-fn Node.new[T](data: T) -> Node[T] = Node(prev: Option.none, data: data, next: Option.none)
+fn Node.new[T](data: T) -> Node[T] = Node(prev: Option.None, data: data, next: Option.None)
 
 fn push_front[T](self: &mut LinkedList[T], data: T) = {
     let mut node = Node.new(data)
     let node_mut = &mut node
 
-    match self.head := Option.some(node) {
-        some(old_head) -> {
-            old_head.prev = Option.some(node_mut)
-            node_mut.next = Option.some(old_head)
+    match self.head := Option.Some(node) {
+        Some(old_head) -> {
+            old_head.prev = Option.Some(node_mut)
+            node_mut.next = Option.Some(old_head)
         }
-        none -> self.tail = Option.some(node_mut)
+        None -> self.tail = Option.Some(node_mut)
     }
 }
 
@@ -37,14 +37,14 @@ fn print(self: &LinkedList[int]) = {
 
     for {
         match curr {
-            some(v) -> {
+            Some(v) -> {
                 curr = &v.next
                 printf("%d".ptr, v.data)
                 if curr.is_some() {
                     printf(", ".ptr)
                 }
             }
-            none -> break
+            None -> break
         }
     }
 
