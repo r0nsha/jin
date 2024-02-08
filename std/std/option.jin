@@ -1,6 +1,6 @@
 type Option*[T] {
-	some(value: T),
-	none,
+	some(value: T)
+	none
 }
 
 //fn get*[T](self: Option[T]) -> bool =

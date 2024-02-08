@@ -52,30 +52,32 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_tydef_union(&mut self, kind: UnionKind) -> DiagnosticResult<TyDefKind> {
-        let (variants, _) =
-            self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
-                let ident = this.eat_ident()?;
+        self.parse_list_with_sep(
+            TokenKind::OpenCurly,
+            TokenKind::CloseCurly,
+            TokenKind::Semi(false),
+            |this| this.parse_tydef_union_variant().map(ControlFlow::Continue),
+        )
+        .map(|(variants, _)| TyDefKind::Union(UnionTyDef { kind, variants }))
+    }
 
-                let fields = if this.peek_is(TokenKind::OpenParen) {
-                    let (fields, _) =
-                        this.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
-                            let ident = this.eat_ident()?;
-                            this.eat(TokenKind::Colon)?;
-                            let ty_expr = this.parse_ty()?;
-                            Ok(ControlFlow::Continue(UnionVariantField {
-                                name: ident.word(),
-                                ty_expr,
-                            }))
-                        })?;
+    fn parse_tydef_union_variant(&mut self) -> DiagnosticResult<UnionVariant> {
+        let ident = self.eat_ident()?;
 
-                    fields
-                } else {
-                    vec![]
-                };
+        let fields = if self.peek_is(TokenKind::OpenParen) {
+            let (fields, _) =
+                self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
+                    let ident = this.eat_ident()?;
+                    this.eat(TokenKind::Colon)?;
+                    let ty_expr = this.parse_ty()?;
+                    Ok(ControlFlow::Continue(UnionVariantField { name: ident.word(), ty_expr }))
+                })?;
 
-                Ok(ControlFlow::Continue(UnionVariant { name: ident.word(), fields }))
-            })?;
+            fields
+        } else {
+            vec![]
+        };
 
-        Ok(TyDefKind::Union(UnionTyDef { kind, variants }))
+        Ok(UnionVariant { name: ident.word(), fields })
     }
 }

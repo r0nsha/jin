@@ -1,4 +1,4 @@
 type Result*[T, E] {
-	ok(value: T),
-	err(error: E),
+	ok(value: T)
+	err(error: E)
 }

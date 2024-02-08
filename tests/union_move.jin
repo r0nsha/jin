@@ -1,12 +1,18 @@
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
 type Move()
-type Enum { foo, bar }
+type Enum { foo; bar }
 type HasMove { has(m: Move) }
 type HasRef { has(r: &Move) }
-type MoveRef { m(m: Move), r(r: &Move) }
+type MoveRef {
+	m(m: Move)
+	r(r: &Move)
+}
 type Poly[T] { a(a: T) }
-type PolyRef[T] { m(m: T), r(r: &T) }
+type PolyRef[T] {
+	m(m: T)
+	r(r: &T)
+}
 
 fn main() = {
 	// Copy
