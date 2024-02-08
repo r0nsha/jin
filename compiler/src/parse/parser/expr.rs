@@ -25,11 +25,7 @@ impl<'a> Parser<'a> {
 
         expr_stack.push(self.parse_operand()?);
 
-        while !self.eof() {
-            let Some(tok) = self.token() else {
-                break;
-            };
-
+        while let Some(tok) = self.token() {
             let op = match BinOp::try_from(tok.kind).ok() {
                 Some(BinOp::BitAnd | BinOp::Sub)
                     if !self.spans_are_on_same_line(

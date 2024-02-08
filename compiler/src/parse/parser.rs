@@ -176,19 +176,19 @@ impl<'a> Parser<'a> {
     }
 
     #[inline]
-    pub(super) fn require(&mut self) -> DiagnosticResult<Token> {
-        self.token().ok_or_else(|| {
-            Diagnostic::error("unexpected end of file")
-                .with_label(Label::primary(self.last_span(), "here"))
-        })
-    }
-
-    #[inline]
     pub(super) fn unexpected_token(&mut self, expected: &str) -> Diagnostic {
         match self.require() {
             Ok(tok) => errors::unexpected_token_err(expected, tok.kind, tok.span),
             Err(diag) => diag,
         }
+    }
+
+    #[inline]
+    fn require(&mut self) -> DiagnosticResult<Token> {
+        self.token().ok_or_else(|| {
+            Diagnostic::error("unexpected end of file")
+                .with_label(Label::primary(self.last_span(), "here"))
+        })
     }
 
     #[inline]
