@@ -416,6 +416,7 @@ pub struct MatchPatAdt {
     pub path: Vec<Word>,
     pub subpats: Vec<Subpat>,
     pub is_exhaustive: bool,
+    pub is_inferred_variant: bool,
     pub span: Span,
 }
 
