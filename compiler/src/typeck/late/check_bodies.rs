@@ -53,10 +53,27 @@ impl<'db, 'cx> CheckBody<'db, 'cx> {
         match &expr.kind {
             ExprKind::Let(let_) => self.expr(&let_.value),
             ExprKind::Assign(hir::Assign { lhs, rhs, .. })
-            | ExprKind::Swap(hir::Swap { lhs, rhs })
-            | ExprKind::Binary(hir::Binary { lhs, rhs, .. }) => {
+            | ExprKind::Swap(hir::Swap { lhs, rhs }) => {
                 self.expr(lhs);
                 self.expr(rhs);
+
+                if let ExprKind::Field(f) = &lhs.kind {
+                    match f.expr.ty.auto_deref().kind() {
+                        TyKind::Slice(_) | TyKind::Str => self.expect_unsafe_cx(
+                            &format!("assign of builtin field `{}`", f.field),
+                            lhs.span,
+                        ),
+                        _ => (),
+                    }
+                }
+            }
+            ExprKind::Binary(hir::Binary { lhs, rhs, .. }) => {
+                self.expr(lhs);
+                self.expr(rhs);
+
+                if lhs.ty.is_raw_ptr() || rhs.ty.is_raw_ptr() {
+                    self.expect_unsafe_cx("pointer arithmetic", expr.span);
+                }
             }
             ExprKind::Match(match_) => {
                 self.expr(&match_.expr);
@@ -98,6 +115,10 @@ impl<'db, 'cx> CheckBody<'db, 'cx> {
             }
             ExprKind::Return(ret) => self.expr(&ret.expr),
             ExprKind::Call(call) => {
+                if call.callee.ty.as_fn().unwrap().is_extern() {
+                    self.expect_unsafe_cx("extern function call", expr.span);
+                }
+
                 match &call.callee.kind {
                     ExprKind::Name(_) => (),
                     _ => self.expr(&call.callee),
@@ -123,6 +144,7 @@ impl<'db, 'cx> CheckBody<'db, 'cx> {
                 }
             }
             ExprKind::Deref(deref) => {
+                self.expect_unsafe_cx("dereference of raw pointer", expr.span);
                 self.expr(&deref.expr);
             }
             ExprKind::Cast(cast) => {
@@ -139,9 +161,15 @@ impl<'db, 'cx> CheckBody<'db, 'cx> {
                     );
                 }
 
+                if source.is_raw_ptr() || target.is_raw_ptr() {
+                    self.expect_unsafe_cx("raw pointer cast", expr.span);
+                }
+
                 self.expr(&cast.expr);
             }
             ExprKind::Transmute(trans) => {
+                self.expect_unsafe_cx("transmute", expr.span);
+
                 let source_size = trans.expr.ty.size(self.cx.db);
                 let target_size = trans.target.size(self.cx.db);
 
@@ -161,8 +189,6 @@ impl<'db, 'cx> CheckBody<'db, 'cx> {
                             )),
                     );
                 }
-
-                self.expect_unsafe_cx("transmute", expr.span);
             }
             ExprKind::Unary(un) => {
                 if un.op == UnOp::Neg && un.expr.ty.is_uint() {

@@ -39,7 +39,7 @@ fn push*[T](self: &mut Array[T], value: T) = {
 	if self.buf.len == self.buf.cap {
 		self.grow()
 	}
-	self.buf.len += 1
+	unsafe self.buf.len += 1
 	self.buf.[self.buf.len - 1] = value
 }
 
@@ -48,8 +48,8 @@ fn pop*[T](self: &mut Array[T]) -> Option[T] = {
 		return Option.None
 	}
 
-	self.buf.len -= 1
-	Option.Some({self.buf.ptr + self.buf.len}.*)
+	unsafe self.buf.len -= 1
+	Option.Some(unsafe {self.buf.ptr + self.buf.len}.*)
 }
 
 fn clear*[T](self: &mut Array[T]) = {
@@ -63,9 +63,9 @@ fn grow[T](self: &mut Array[T]) = {
 		self.buf.cap * 2
 	}
 
-	let new_buf = intrinsics.grow(unsafe transmute[[T]](&mut self.buf), new_cap)
+	let new_buf = unsafe intrinsics.grow(unsafe transmute[[T]](&mut self.buf), new_cap)
 	let old = self.buf := new_buf
-	intrinsics.forget(&old)
+	unsafe intrinsics.forget(&old)
 }
 
 let MIN_CAP: uint = 4

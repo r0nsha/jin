@@ -3,7 +3,7 @@ fn extern "c" write(fd: i32, buf: *u8, count: uint) -> i32
 let STDOUT: i32 = 1
 
 fn print*(fmt: str) =
-	write(STDOUT, fmt.ptr, fmt.len)
+	unsafe write(STDOUT, fmt.ptr, fmt.len)
 
 fn println*() = {
 	print("\n")
