@@ -128,9 +128,11 @@ impl<'db> Typeck<'db> {
         self.collect_items();
 
         self.checking_items = true;
+
         for module in &self.ast.modules {
             self.check_module(module)?;
         }
+
         self.checking_items = false;
 
         self.check_fn_bodies()?;
@@ -930,22 +932,7 @@ impl<'db> Typeck<'db> {
         match uim {
             ast::UnqualifiedImport::Name(name, alias, vis) => {
                 let results = self.import_lookup(env.module_id(), module_id, *name)?;
-
-                let def_name = alias.unwrap_or(*name);
-
-                for res in results {
-                    match res {
-                        LookupResult::Def(id) => {
-                            self.insert_def(env, def_name, id, *vis)?;
-                        }
-                        LookupResult::Fn(candidate) => {
-                            self.insert_fn_candidate(
-                                Symbol::new(env.module_id(), def_name.name()),
-                                candidate,
-                            )?;
-                        }
-                    }
-                }
+                self.insert_import_lookup_results(env, alias.unwrap_or(*name), *vis, results)?;
             }
             ast::UnqualifiedImport::Glob(is_ufcs, _) => {
                 self.insert_glob_target(env, module_id, *is_ufcs);

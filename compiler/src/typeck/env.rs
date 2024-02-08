@@ -7,8 +7,8 @@ use ustr::{ustr, Ustr, UstrMap};
 use crate::{
     ast,
     db::{
-        AdtId, AdtKind, Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, UnionDef,
-        Variant, VariantId,
+        AdtId, AdtKind, Db, Def, DefId, DefKind, FnInfo, ModuleId, ModuleInfo, ScopeInfo,
+        ScopeLevel, UnionDef, Variant, VariantId,
     },
     diagnostics::{Diagnostic, Label},
     hir,
@@ -54,6 +54,10 @@ pub enum TyLookup {
 }
 
 impl<'db> Typeck<'db> {
+    pub fn module_by_path(&self, path: &str) -> &ModuleInfo {
+        self.db.modules.iter().find(|m| m.path == path).unwrap()
+    }
+
     pub fn define_global_def(
         &mut self,
         module_id: ModuleId,
@@ -447,6 +451,27 @@ impl<'db> Typeck<'db> {
         }
 
         Ok(results)
+    }
+
+    pub fn insert_import_lookup_results(
+        &mut self,
+        env: &mut Env,
+        name: Word,
+        vis: Vis,
+        results: Vec<LookupResult>,
+    ) -> TypeckResult<()> {
+        for res in results {
+            match res {
+                LookupResult::Def(id) => {
+                    self.insert_def(env, name, id, vis)?;
+                }
+                LookupResult::Fn(candidate) => {
+                    self.insert_fn_candidate(Symbol::new(env.module_id(), name.name()), candidate)?;
+                }
+            }
+        }
+
+        Ok(())
     }
 
     pub fn lookup(&mut self, env: &Env, in_module: ModuleId, query: &Query) -> TypeckResult<DefId> {
