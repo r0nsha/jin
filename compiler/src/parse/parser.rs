@@ -3,6 +3,7 @@ mod import;
 mod item;
 mod tydef;
 mod tyexpr;
+mod pmatch;
 
 use std::{ops::ControlFlow, str::FromStr};
 
