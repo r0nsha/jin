@@ -40,8 +40,7 @@ use crate::{
         attrs::AttrsPlacement,
         coerce::{CoerceExt, CoerceOptions},
         env::{
-            AssocTy, BuiltinTys, Env, FnQuery, GlobalScope, LookupResult, PathLookup, Query,
-            ScopeKind, Symbol, TyLookup,
+            AssocTy, BuiltinTys, Env, FnQuery, GlobalScope, PathLookup, Query, ScopeKind, TyLookup,
         },
         resolution_state::{ModuleStatus, ResolutionState, ResolvedFnSig},
         unify::Obligation,
