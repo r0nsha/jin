@@ -39,6 +39,7 @@ pub enum TokenKind {
     Dot,
     DotDot,
     Colon,
+    Semi(bool),
     At,
     Hash,
     Arrow,
@@ -139,6 +140,13 @@ impl fmt::Display for TokenKind {
             Self::Dot => f.write_char('.'),
             Self::DotDot => f.write_str(".."),
             Self::Colon => f.write_char(':'),
+            Self::Semi(auto) => {
+                if *auto {
+                    f.write_str("automatically inserted ;")
+                } else {
+                    f.write_char(';')
+                }
+            }
             Self::At => f.write_char('@'),
             Self::Hash => f.write_char('#'),
             Self::Arrow => f.write_str("->"),

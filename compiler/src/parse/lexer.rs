@@ -70,6 +70,7 @@ impl<'s> Lexer<'s> {
                             TokenKind::Colon
                         }
                     }
+                    ';' => TokenKind::Semi(false),
                     '@' => TokenKind::At,
                     '?' => TokenKind::QuestionMark,
                     '=' => {
