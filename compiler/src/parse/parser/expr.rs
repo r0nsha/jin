@@ -168,9 +168,7 @@ impl<'a> Parser<'a> {
             } else if self.is(TokenKind::If) {
                 Some(Box::new(self.parse_if()?))
             } else {
-                let tok = self.require()?;
-
-                return Err(errors::unexpected_token_err("{ or `if`", tok.kind, tok.span));
+                return Err(self.unexpected_token("{ or `if`"));
             }
         } else {
             None
@@ -282,8 +280,7 @@ impl<'a> Parser<'a> {
         } else if self.is(TokenKind::False) {
             Ok(MatchPat::Bool(false, self.last_span()))
         } else {
-            let tok = self.require()?;
-            Err(errors::unexpected_token_err("a pattern", tok.kind, tok.span))
+            Err(self.unexpected_token("a pattern"))
         }
     }
 

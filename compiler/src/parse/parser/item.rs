@@ -47,12 +47,7 @@ impl<'a> Parser<'a> {
         }
 
         if !attrs.is_empty() {
-            let token = self.require()?;
-            return Err(errors::unexpected_token_err(
-                "an item after attribute",
-                token.kind,
-                token.span,
-            ));
+            return Err(self.unexpected_token("an item after attribute"));
         }
 
         Ok(None)
@@ -221,8 +216,7 @@ impl<'a> Parser<'a> {
         let ty_expr = if self.is(TokenKind::Colon) {
             Some(self.parse_ty()?)
         } else if require_ty == RequireTy::Yes {
-            let tok = self.require()?;
-            return Err(errors::unexpected_token_err(":", tok.kind, tok.span));
+            return Err(self.unexpected_token(":"));
         } else {
             None
         };

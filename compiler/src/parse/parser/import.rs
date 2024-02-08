@@ -76,12 +76,7 @@ impl<'a> Parser<'a> {
                     )]),
                 ));
             } else {
-                let tok = self.require()?;
-                return Err(errors::unexpected_token_err(
-                    "identifier, {, * or ?",
-                    tok.kind,
-                    tok.span,
-                ));
+                return Err(self.unexpected_token("identifier, {, * or ?"));
             }
         }
 

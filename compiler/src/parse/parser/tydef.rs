@@ -7,7 +7,7 @@ use crate::{
     },
     db::{StructKind, UnionKind},
     diagnostics::DiagnosticResult,
-    parse::{errors, parser::Parser, token::TokenKind},
+    parse::{parser::Parser, token::TokenKind},
 };
 
 impl<'a> Parser<'a> {
@@ -35,8 +35,7 @@ impl<'a> Parser<'a> {
         } else if self.is(TokenKind::Ref) {
             self.parse_tydef_union(UnionKind::Ref)
         } else {
-            let tok = self.require()?;
-            Err(errors::unexpected_token_err("(, {, `ref` or `value`", tok.kind, tok.span))
+            return Err(self.unexpected_token("(, {, `ref` or `value`"));
         }
     }
 

@@ -63,19 +63,18 @@ impl<'a> Parser<'a> {
         let mut module = Module::new(source_id, name, is_main);
 
         while !self.eof() {
-            let item = self.parse_top_level()?;
+            let item = self.parse_item()?;
             module.items.push(item);
         }
 
         Ok(module)
     }
 
-    fn parse_top_level(&mut self) -> DiagnosticResult<Item> {
+    fn parse_item(&mut self) -> DiagnosticResult<Item> {
         if let Some(item) = self.maybe_parse_item()? {
             Ok(item)
         } else {
-            let token = self.require()?;
-            Err(errors::unexpected_token_err("an item", token.kind, token.span))
+            Err(self.unexpected_token("an item"))
         }
     }
 
@@ -182,6 +181,14 @@ impl<'a> Parser<'a> {
             Diagnostic::error("unexpected end of file")
                 .with_label(Label::primary(self.last_span(), "here"))
         })
+    }
+
+    #[inline]
+    pub(super) fn unexpected_token(&mut self, expected: &str) -> Diagnostic {
+        match self.require() {
+            Ok(tok) => errors::unexpected_token_err(expected, tok.kind, tok.span),
+            Err(diag) => diag,
+        }
     }
 
     #[inline]
