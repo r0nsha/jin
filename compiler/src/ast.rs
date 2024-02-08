@@ -1,5 +1,4 @@
 mod pretty_print;
-pub mod token;
 
 use std::{fmt, io};
 

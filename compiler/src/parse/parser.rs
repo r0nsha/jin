@@ -12,15 +12,15 @@ use rustc_hash::FxHashSet;
 use ustr::Ustr;
 
 use crate::{
-    ast::{
-        token::{Token, TokenKind},
-        Item, Module, TyParam,
-    },
+    ast::{Item, Module, TyParam},
     db::Db,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     macros::create_bool_enum,
     middle::{Mutability, Vis},
-    parse::errors,
+    parse::{
+        errors,
+        token::{Token, TokenKind},
+    },
     qpath::QPath,
     span::{Source, SourceId, Span},
 };

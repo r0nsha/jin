@@ -1,6 +1,7 @@
 mod errors;
 mod lexer;
 mod parser;
+pub mod token;
 
 use std::cell::Ref;
 

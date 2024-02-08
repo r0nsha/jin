@@ -1,16 +1,14 @@
 use std::ops::ControlFlow;
 
 use crate::{
-    ast::{
-        token::{Token, TokenKind},
-        Attr, AttrArgs, AttrId, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig, Item, Let,
-    },
+    ast::{Attr, AttrArgs, AttrId, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig, Item, Let},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     macros::create_bool_enum,
     middle::{CallConv, TyExpr},
     parse::{
         errors,
         parser::{AllowOmitParens, Parser, RequireSigTy},
+        token::{Token, TokenKind},
     },
     span::{Span, Spanned},
     word::Word,

@@ -1,8 +1,8 @@
 use ustr::ustr;
 
 use crate::{
-    ast::token::{Token, TokenKind},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
+    parse::token::{Token, TokenKind},
     span::{Source, SourceId, Span},
 };
 

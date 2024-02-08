@@ -1,10 +1,9 @@
 use std::ops::ControlFlow;
 
 use crate::{
-    ast::token::TokenKind,
     diagnostics::DiagnosticResult,
     middle::{CallConv, TyExpr, TyExprFn},
-    parse::{errors, parser::Parser},
+    parse::{errors, parser::Parser, token::TokenKind},
     span::Spanned,
     word::Word,
 };

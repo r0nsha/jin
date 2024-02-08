@@ -4,11 +4,11 @@ use camino::{Utf8Path, Utf8PathBuf};
 use path_absolutize::Absolutize as _;
 
 use crate::{
-    ast::{token::TokenKind, Attrs, ExternImport, Import, ImportKind, UnqualifiedImport},
+    ast::{Attrs, ExternImport, Import, ImportKind, UnqualifiedImport},
     db::ExternLib,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::IsUfcs,
-    parse::{errors, parser::Parser},
+    parse::{errors, parser::Parser, token::TokenKind},
     span::{Span, Spanned},
     word::Word,
 };

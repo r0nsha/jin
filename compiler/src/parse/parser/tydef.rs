@@ -2,12 +2,12 @@ use std::ops::ControlFlow;
 
 use crate::{
     ast::{
-        token::TokenKind, Attrs, StructTyDef, StructTyField, TyDef, TyDefKind, UnionTyDef,
-        UnionVariant, UnionVariantField,
+        Attrs, StructTyDef, StructTyField, TyDef, TyDefKind, UnionTyDef, UnionVariant,
+        UnionVariantField,
     },
     db::{StructKind, UnionKind},
     diagnostics::DiagnosticResult,
-    parse::{errors, parser::Parser},
+    parse::{errors, parser::Parser, token::TokenKind},
 };
 
 impl<'a> Parser<'a> {

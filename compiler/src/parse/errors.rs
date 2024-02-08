@@ -1,6 +1,6 @@
 use crate::{
-    ast::token::TokenKind,
     diagnostics::{Diagnostic, Label},
+    parse::token::TokenKind,
     span::Span,
 };
 

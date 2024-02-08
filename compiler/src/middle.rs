@@ -3,9 +3,9 @@ use core::fmt;
 use ustr::Ustr;
 
 use crate::{
-    ast::token::TokenKind,
     db::DefId,
     macros::create_bool_enum,
+    parse::token::TokenKind,
     span::{Span, Spanned},
     ty::Ty,
     word::Word,
