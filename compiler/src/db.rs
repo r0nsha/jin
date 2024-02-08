@@ -271,6 +271,7 @@ pub struct ModuleInfo {
     pub package: Ustr,
     pub source_id: SourceId,
     pub qpath: QPath,
+    pub path: String,
     #[allow(unused)]
     pub is_main: bool,
 }
@@ -280,17 +281,27 @@ impl ModuleInfo {
         db: &mut Db,
         package: Ustr,
         source_id: SourceId,
-        name: QPath,
+        qpath: QPath,
         is_main: bool,
     ) -> ModuleId {
-        let id =
-            db.modules.push_with_key(|id| Self { id, package, source_id, qpath: name, is_main });
+        let id = db.modules.push_with_key(|id| Self {
+            id,
+            package,
+            source_id,
+            path: qpath.join(),
+            qpath,
+            is_main,
+        });
 
         if is_main {
             db.main_module.set(id);
         }
 
         id
+    }
+
+    pub fn span(&self) -> Span {
+        Span::uniform(self.source_id, 0)
     }
 }
 
