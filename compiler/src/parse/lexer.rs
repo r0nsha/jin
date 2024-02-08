@@ -15,6 +15,7 @@ struct Lexer<'s> {
     source_contents: &'s str,
     source_bytes: &'s [u8],
     pos: u32,
+    encountered_nl: bool,
 }
 
 impl<'s> Lexer<'s> {
@@ -24,17 +25,49 @@ impl<'s> Lexer<'s> {
             source_contents: source.contents(),
             source_bytes: source.contents().as_bytes(),
             pos: 0,
+            encountered_nl: false,
         }
     }
 
     fn scan(mut self) -> DiagnosticResult<Vec<Token>> {
         let mut tokens = vec![];
 
-        while let Some(token) = self.eat_token()? {
-            tokens.push(token);
+        while let Some(tok) = self.eat_token()? {
+            self.auto_insert_semi(&mut tokens, &tok);
+            tokens.push(tok);
+            self.encountered_nl = false;
         }
 
+        Self::auto_insert_semi_eof(&mut tokens);
+
         Ok(tokens)
+    }
+
+    #[inline]
+    fn auto_insert_semi(&self, tokens: &mut Vec<Token>, tok: &Token) {
+        if self.encountered_nl && tok.kind.is_after_semi() {
+            if let Some(before_tok) = Self::can_auto_insert_semi_after_last(tokens) {
+                Self::insert_semi(tokens, before_tok.span)
+            }
+        }
+    }
+
+    #[inline]
+    fn auto_insert_semi_eof(tokens: &mut Vec<Token>) {
+        if let Some(before_tok) = Self::can_auto_insert_semi_after_last(tokens) {
+            Self::insert_semi(tokens, before_tok.span.tail());
+        }
+    }
+
+    #[inline]
+    fn insert_semi(tokens: &mut Vec<Token>, span: Span) {
+        let semi = Token { kind: TokenKind::Semi(true), span: span.tail() };
+        tokens.push(semi);
+    }
+
+    #[inline]
+    fn can_auto_insert_semi_after_last(tokens: &[Token]) -> Option<&Token> {
+        tokens.last().and_then(|t| t.kind.is_before_semi().then_some(t))
     }
 
     #[allow(clippy::too_many_lines)]
@@ -46,9 +79,13 @@ impl<'s> Lexer<'s> {
                 let kind = match ch {
                     ch if ch.is_ascii_alphabetic() || ch == '_' => self.ident(start),
                     ch if ch.is_ascii_digit() => self.numeric(start),
-                    ch if ch.is_ascii_whitespace() => return self.eat_token(),
+                    ch if ch.is_ascii_whitespace() => {
+                        if ch == '\n' {
+                            self.encountered_nl = true;
+                        }
+                        return self.eat_token();
+                    }
                     DQUOTE => self.eat_str(start + 1)?,
-                    '#' => TokenKind::Hash,
                     '(' => TokenKind::OpenParen,
                     ')' => TokenKind::CloseParen,
                     '[' => TokenKind::OpenBracket,
@@ -290,6 +327,7 @@ impl<'s> Lexer<'s> {
     fn eat_comment(&mut self) {
         while let Some(ch) = self.peek() {
             if ch == '\n' {
+                self.encountered_nl = true;
                 return;
             }
 
