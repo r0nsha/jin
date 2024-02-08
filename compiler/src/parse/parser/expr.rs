@@ -27,21 +27,11 @@ impl<'a> Parser<'a> {
 
         while let Some(tok) = self.token() {
             let op = match BinOp::try_from(tok.kind).ok() {
-                Some(BinOp::BitAnd | BinOp::Sub)
-                    if !self.spans_are_on_same_line(
-                        expr_stack.last().expect("to have an expr").span(),
-                        tok.span,
-                    ) =>
-                {
-                    // For these specific operators, we check if they are on the same line as the
-                    // last expr, to avoid ambiguity with unary operators
-                    break;
-                }
-                None => break,
                 Some(op) => {
                     self.next();
                     op
                 }
+                None => break,
             };
 
             let rhs = self.parse_operand()?;
@@ -389,7 +379,7 @@ impl<'a> Parser<'a> {
                     let span = expr.span().merge(rhs.span());
                     Expr::Swap { lhs: Box::new(expr), rhs: Box::new(rhs), span }
                 }
-                TokenKind::Fn if self.spans_are_on_same_line(expr.span(), tok.span) => {
+                TokenKind::Fn => {
                     self.next();
 
                     let fn_expr = self.parse_fn_expr()?;
@@ -574,16 +564,9 @@ impl<'a> Parser<'a> {
 
     fn parse_return(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
-
-        let expr = match self.token() {
-            Some(tok) if self.spans_are_on_same_line(start, tok.span) => {
-                Some(Box::new(self.parse_expr()?))
-            }
-            _ => None,
-        };
-
+        let expr =
+            if self.is(TokenKind::Semi(false)) { None } else { Some(Box::new(self.parse_expr()?)) };
         let span = expr.as_ref().map_or(start, |e| start.merge(e.span()));
-
         Ok(Expr::Return { expr, span })
     }
 

@@ -97,15 +97,12 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_optional_ty_args(&mut self) -> DiagnosticResult<Option<Vec<TyExpr>>> {
-        if !self.peek(|t| {
-            t.kind_is(TokenKind::OpenBracket)
-                && self.spans_are_on_same_line(self.last_span(), t.span)
-        }) {
+        if !self.peek_is(TokenKind::OpenBracket) {
             return Ok(None);
         }
 
         let args = self
-            .parse_list(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
+            .parse_list_optional(TokenKind::OpenBracket, TokenKind::CloseBracket, |this| {
                 this.parse_ty().map(ControlFlow::Continue)
             })
             .map(|(t, _)| t)?;

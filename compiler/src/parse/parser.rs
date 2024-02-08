@@ -7,7 +7,6 @@ mod tyexpr;
 use std::{ops::ControlFlow, str::FromStr};
 
 use camino::{Utf8Path, Utf8PathBuf};
-use codespan_reporting::files::Files;
 use rustc_hash::FxHashSet;
 use ustr::Ustr;
 
@@ -268,15 +267,6 @@ impl<'a> Parser<'a> {
             }
             _ => false,
         }
-    }
-
-    #[inline]
-    pub(super) fn spans_are_on_same_line(&self, s1: Span, s2: Span) -> bool {
-        fn line_index(parser: &Parser, pos: u32) -> usize {
-            parser.source.line_index(parser.source.id(), pos as usize).unwrap()
-        }
-
-        line_index(self, s1.end()) == line_index(self, s2.start())
     }
 
     #[inline]
