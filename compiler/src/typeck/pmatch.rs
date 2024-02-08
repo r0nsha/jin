@@ -148,39 +148,7 @@ impl<'db> Typeck<'db> {
                 self.check_match_pat_adt(env, pat, pat_ty, parent_span, names)
             }
             ast::MatchPat::Or(pats, span) => {
-                let pats: Vec<_> = pats
-                    .iter()
-                    .map(|pat| self.check_match_pat(env, pat, pat_ty, *span, names))
-                    .try_collect()?;
-
-                let all_bound: Vec<_> = pats
-                    .iter()
-                    .map(|pat| {
-                        let mut bound = UstrMap::default();
-                        self.collect_bound_names_in_pat(pat, &mut bound);
-                        bound
-                    })
-                    .collect();
-
-                let mut name_counts: UstrMap<usize> =
-                    all_bound.iter().flat_map(|b| b.keys().map(|name| (*name, 0))).collect();
-
-                for bound in all_bound {
-                    for name in bound.into_keys() {
-                        *name_counts.get_mut(&name).unwrap() += 1;
-                    }
-                }
-
-                for (name, count) in name_counts {
-                    if count < pats.len() {
-                        return Err(Diagnostic::error(format!(
-                            "identifier `{name}` is not bound in all alternatives"
-                        ))
-                        .with_label(Label::primary(*span, "in these patterns")));
-                    }
-                }
-
-                Ok(hir::MatchPat::Or(pats, *span))
+                self.check_match_pat_or(env, pats, *span, pat_ty, names)
             }
         }
     }
@@ -447,6 +415,49 @@ impl<'db> Typeck<'db> {
             .with_label(Label::primary(span, "pattern is not exhaustive"))
             .with_note("if this is intentional, use `..` at the end of the pattern"))
         }
+    }
+
+    fn check_match_pat_or(
+        &mut self,
+        env: &mut Env,
+        pats: &[ast::MatchPat],
+        span: Span,
+        pat_ty: Ty,
+        names: &mut UstrMap<DefId>,
+    ) -> TypeckResult<hir::MatchPat> {
+        let pats: Vec<_> = pats
+            .iter()
+            .map(|pat| self.check_match_pat(env, pat, pat_ty, span, names))
+            .try_collect()?;
+
+        let all_bound: Vec<_> = pats
+            .iter()
+            .map(|pat| {
+                let mut bound = UstrMap::default();
+                self.collect_bound_names_in_pat(pat, &mut bound);
+                bound
+            })
+            .collect();
+
+        let mut name_counts: UstrMap<usize> =
+            all_bound.iter().flat_map(|b| b.keys().map(|name| (*name, 0))).collect();
+
+        for bound in all_bound {
+            for name in bound.into_keys() {
+                *name_counts.get_mut(&name).unwrap() += 1;
+            }
+        }
+
+        for (name, count) in name_counts {
+            if count < pats.len() {
+                return Err(Diagnostic::error(format!(
+                    "identifier `{name}` is not bound in all alternatives"
+                ))
+                .with_label(Label::primary(span, "in these patterns")));
+            }
+        }
+
+        Ok(hir::MatchPat::Or(pats, span))
     }
 
     fn collect_bound_names_in_pat(&self, pat: &hir::MatchPat, bound: &mut UstrMap<Vec<Span>>) {
