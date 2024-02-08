@@ -56,7 +56,7 @@ impl<'a> Parser<'a> {
                 let alias = self.eat_ident()?.word();
                 let vis = self.parse_vis();
                 return Ok((path, ImportKind::Qualified(Some(alias), vis)));
-            } else if self.peek_is(TokenKind::OpenCurly) {
+            } else if self.peek_is(TokenKind::OpenParen) {
                 let imports = self.parse_unqualified_imports()?;
                 return Ok((path, ImportKind::Unqualified(imports)));
             } else if self.is(TokenKind::Star) {
@@ -85,7 +85,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_unqualified_imports(&mut self) -> DiagnosticResult<Vec<UnqualifiedImport>> {
-        self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
+        self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             this.parse_unqualified_import().map(ControlFlow::Continue)
         })
         .map(|(imports, _)| imports)

@@ -1,4 +1,4 @@
-import std.result.{Result}
+import std.result.(Result)
 
 fn extern "c" printf(fmt: *u8, ..) -> i32
 

@@ -1,4 +1,4 @@
-import std.option.{Option}
+import std.option.(Option)
 
 fn extern "c" printf(fmt: *u8, ..) -> i32
 

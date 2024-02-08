@@ -1,4 +1,4 @@
-import std.io.{println}
+import std.io.(println)
 import std.int.*
 
 fn main() = {

@@ -1,5 +1,5 @@
 import std.intrinsics
-import std.option.{Option}
+import std.option.(Option)
 
 type Array*[T](buf: [T])
 
