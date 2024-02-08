@@ -4,16 +4,20 @@ use crate::{
     hir,
     hir::{Expr, ExprKind, FnKind, Hir},
     middle::UnOp,
+    span::Span,
     ty::{Ty, TyKind},
     typeck::errors,
 };
 
 pub fn check_bodies(db: &mut Db, hir: &Hir) {
-    CheckBodies { db }.run(hir);
+    let mut cx = CheckBodies { db, diagnostics: vec![] };
+    cx.run(hir);
+    db.diagnostics.emit_many(cx.diagnostics);
 }
 
 struct CheckBodies<'db> {
-    db: &'db mut Db,
+    db: &'db Db,
+    diagnostics: Vec<Diagnostic>,
 }
 
 impl CheckBodies<'_> {
@@ -28,6 +32,21 @@ impl CheckBodies<'_> {
         for let_ in &hir.lets {
             self.expr(&let_.value);
         }
+    }
+
+    fn expr(&mut self, expr: &Expr) {
+        CheckBody::new(self).expr(expr)
+    }
+}
+
+struct CheckBody<'db, 'cx> {
+    cx: &'cx mut CheckBodies<'db>,
+    in_unsafe_cx: bool,
+}
+
+impl<'db, 'cx> CheckBody<'db, 'cx> {
+    fn new(cx: &'cx mut CheckBodies<'db>) -> Self {
+        Self { cx, in_unsafe_cx: false }
     }
 
     fn expr(&mut self, expr: &Expr) {
@@ -105,10 +124,10 @@ impl CheckBodies<'_> {
                 let target = expr.ty;
 
                 if !is_valid_cast(source, target) {
-                    let source = source.display(self.db);
-                    let target = target.display(self.db);
+                    let source = source.display(self.cx.db);
+                    let target = target.display(self.cx.db);
 
-                    self.db.diagnostics.emit(
+                    self.cx.diagnostics.push(
                         Diagnostic::error(format!("cannot cast `{source}` to `{target}`"))
                             .with_label(Label::primary(expr.span, "invalid cast")),
                     );
@@ -117,42 +136,44 @@ impl CheckBodies<'_> {
                 self.expr(&cast.expr);
             }
             ExprKind::Transmute(trans) => {
-                let source_size = trans.expr.ty.size(self.db);
-                let target_size = trans.target.size(self.db);
+                let source_size = trans.expr.ty.size(self.cx.db);
+                let target_size = trans.target.size(self.cx.db);
 
                 if source_size != target_size {
-                    self.db.diagnostics.emit(
+                    self.cx.diagnostics.push(
                         Diagnostic::error("cannot transmute between types of different sizes")
                             .with_label(Label::primary(expr.span, "invalid transmute"))
                             .with_note(format!(
                                 "source type: {} ({} bits)",
-                                trans.expr.ty.display(self.db),
+                                trans.expr.ty.display(self.cx.db),
                                 source_size
                             ))
                             .with_note(format!(
                                 "target type: {} ({} bits)",
-                                trans.target.display(self.db),
+                                trans.target.display(self.cx.db),
                                 target_size
                             )),
                     );
                 }
+
+                self.expect_unsafe_cx("transmute", expr.span);
             }
             ExprKind::Unary(un) => {
                 if un.op == UnOp::Neg && un.expr.ty.is_uint() {
-                    self.db
+                    self.cx
                         .diagnostics
-                        .emit(errors::invalid_un_op(self.db, un.op, un.expr.ty, expr.span));
+                        .push(errors::invalid_un_op(self.cx.db, un.op, un.expr.ty, expr.span));
                 }
 
                 self.expr(&un.expr);
             }
             ExprKind::Field(field) => self.expr(&field.expr),
             ExprKind::Name(name) => {
-                if self.db.intrinsics.contains_key(&name.id) {
-                    self.db.diagnostics.emit(
+                if self.cx.db.intrinsics.contains_key(&name.id) {
+                    self.cx.diagnostics.push(
                         Diagnostic::error(format!(
                             "intrinsic `{}` must be called",
-                            self.db[name.id].name
+                            self.cx.db[name.id].name
                         ))
                         .with_label(Label::primary(expr.span, "must be called")),
                     );
@@ -164,6 +185,15 @@ impl CheckBodies<'_> {
             | ExprKind::IntLit(_)
             | ExprKind::FloatLit(_)
             | ExprKind::StrLit(_) => (),
+        }
+    }
+
+    fn expect_unsafe_cx(&mut self, action: &str, span: Span) {
+        if !self.in_unsafe_cx {
+            self.cx.diagnostics.push(
+                Diagnostic::error(format!("{action} is unsafe and requires an `unsafe` keyword"))
+                    .with_label(Label::primary(span, format!("unsafe {action}"))),
+            )
         }
     }
 }
