@@ -12,7 +12,7 @@ use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
 use crate::{
-    db::{AdtId, AdtKind, Db, ModuleId, StructKind, UnionKind},
+    db::{AdtId, AdtKind, Db, ModuleId, StructKind, UnionDef, UnionKind},
     middle::{CallConv, Mutability, Vis},
     span::Span,
     subst::SubstTy,
@@ -223,7 +223,7 @@ impl Ty {
         }
     }
 
-    pub(crate) fn auto_deref(self) -> Ty {
+    pub fn auto_deref(self) -> Ty {
         match self.kind() {
             TyKind::Ref(inner, _) => inner.auto_deref(),
             _ => self,
@@ -533,6 +533,13 @@ impl TyKind {
     #[must_use]
     pub fn is_raw_ptr(&self) -> bool {
         matches!(self, Self::RawPtr(..))
+    }
+
+    pub fn as_union<'db>(&'db self, db: &'db Db) -> Option<&UnionDef> {
+        let TyKind::Adt(adt_id, _) = self else {
+            return None;
+        };
+        db[*adt_id].kind.as_union()
     }
 }
 

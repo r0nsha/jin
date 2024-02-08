@@ -26,11 +26,11 @@ fn main() = {
 	let hm2 = hm
 
 	// Ref
-	let hr = HasRef.has(match &hm2 { HasMove.has(m) -> m })
+	let hr = HasRef.has(match &hm2 { .has(m) -> m })
 
 	// Move + Ref
-	let mrr = MoveRef.r(match &hm2 { HasMove.has(m) -> m })
-	// let mrm = MoveRef.m(match hm2 { HasMove.has(m) -> m }) // (Ref error: Because this is defined after refs)
+	let mrr = MoveRef.r(match &hm2 { .has(m) -> m })
+	// let mrm = MoveRef.m(match hm2 { .has(m) -> m }) // (Ref error: Because this is defined after refs)
 
 	// Poly (Copy)
 	let pc = Poly.a(1)
@@ -43,9 +43,9 @@ fn main() = {
 	let pm2 = pm
 
 	// Poly (Ref)
-	let pr = Poly.a(match &pm2 { Poly.a(m) -> m })
+	let pr = Poly.a(match &pm2 { .a(m) -> m })
 
 	// Poly (Move + Ref)
-	let prr = PolyRef.r(match &pm2 { Poly.a(m) -> m })
-	// let prm = PolyRef.m(match pm2 { Poly.a(m) -> m }) // (Ref error: Because this is defined after refs)
+	let prr = PolyRef.r(match &pm2 { .a(m) -> m })
+	// let prm = PolyRef.m(match pm2 { .a(m) -> m }) // (Ref error: Because this is defined after refs)
 }

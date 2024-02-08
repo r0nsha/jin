@@ -19,10 +19,11 @@ pub fn field_not_found(db: &Db, ty: Ty, span: Span, field: Word) -> Diagnostic {
         .with_label(Label::secondary(span, format!("has type `{}`", ty.display(db))))
 }
 
-pub fn variant_not_found(db: &Db, ty: Ty, span: Span, variant: Word) -> Diagnostic {
-    Diagnostic::error(format!("no variant `{}` in type `{}`", variant, ty.display(db)))
+pub fn variant_not_found(db: &Db, adt_id: AdtId, span: Span, variant: Word) -> Diagnostic {
+    let adt_ty = db[adt_id].ty();
+    Diagnostic::error(format!("no variant `{}` in type `{}`", variant, adt_ty.display(db)))
         .with_label(Label::primary(variant.span(), format!("unknown variant `{variant}`")))
-        .with_label(Label::secondary(span, format!("has type `{}`", ty.display(db))))
+        .with_label(Label::secondary(span, format!("has type `{}`", adt_ty.display(db))))
 }
 
 pub fn name_not_found(
@@ -86,6 +87,11 @@ pub fn ty_mismatch(expected: &str, found: &str, span: Span) -> Diagnostic {
 pub fn expected_module(found: impl core::fmt::Display, span: Span) -> Diagnostic {
     Diagnostic::error(format!("expected a module, {found}"))
         .with_label(Label::primary(span, "not a module"))
+}
+
+pub fn expected_union_ty(db: &Db, found: Ty, span: Span) -> Diagnostic {
+    Diagnostic::error(format!("expected a union type, found type `{}`", found.display(db)))
+        .with_label(Label::primary(span, "not a union type"))
 }
 
 pub fn expected_named_ty(ty: impl core::fmt::Display, span: Span) -> Diagnostic {

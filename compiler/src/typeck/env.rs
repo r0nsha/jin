@@ -7,7 +7,8 @@ use ustr::{ustr, Ustr, UstrMap};
 use crate::{
     ast,
     db::{
-        AdtId, AdtKind, Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, VariantId,
+        AdtId, AdtKind, Db, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, UnionDef,
+        Variant, VariantId,
     },
     diagnostics::{Diagnostic, Label},
     hir,
@@ -390,15 +391,23 @@ impl<'db> Typeck<'db> {
         let adt = &self.db[adt_id];
 
         match &adt.kind {
-            AdtKind::Union(union_def) => {
-                return union_def
-                    .variants(self.db)
-                    .find(|v| v.name.name() == name.name())
-                    .map(|v| TyLookup::Variant(v.id))
-                    .ok_or_else(|| errors::variant_not_found(self.db, adt.ty(), ty_span, name));
-            }
+            AdtKind::Union(union_def) => self
+                .lookup_variant_in_union(union_def, name, ty_span)
+                .map(|v| TyLookup::Variant(v.id)),
             AdtKind::Struct(_) => Err(errors::assoc_name_not_found(self.db, adt.ty(), query)),
         }
+    }
+
+    pub(super) fn lookup_variant_in_union(
+        &self,
+        union_def: &'db UnionDef,
+        name: Word,
+        span: Span,
+    ) -> TypeckResult<&Variant> {
+        union_def
+            .variants(self.db)
+            .find(|v| v.name.name() == name.name())
+            .ok_or_else(|| errors::variant_not_found(self.db, union_def.id, span, name))
     }
 
     pub fn import_lookup(

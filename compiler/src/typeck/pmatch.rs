@@ -234,6 +234,18 @@ impl<'db> Typeck<'db> {
         parent_span: Span,
         names: &mut UstrMap<DefId>,
     ) -> TypeckResult<hir::MatchPat> {
+        if pat.is_inferred_variant {
+            let pat_ty_deref = pat_ty.auto_deref();
+            let union_def = pat_ty_deref
+                .as_union(self.db)
+                .ok_or_else(|| errors::expected_union_ty(self.db, pat_ty, pat.span))?;
+
+            debug_assert!(pat.path.len() == 1);
+            let variant = self.lookup_variant_in_union(union_def, pat.path[0], pat.span)?;
+
+            return self.check_match_pat_variant(env, pat, pat_ty, parent_span, names, variant.id);
+        }
+
         match self.path_lookup(env, &pat.path)? {
             PathLookup::Def(id) => {
                 let def = &self.db[id];

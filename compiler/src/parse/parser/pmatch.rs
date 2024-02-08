@@ -65,12 +65,12 @@ impl<'a> Parser<'a> {
             Ok(MatchPat::Name(word, mutability))
         } else if self.is(TokenKind::Dot) {
             let word = self.eat_ident()?.word();
-            self.parse_match_pat_adt_name(word, true)
+            self.parse_match_pat_inferred_variant(word)
         } else if self.is_ident() {
             let start_word = self.last_token().word();
 
             if self.peek_is(TokenKind::OpenParen) {
-                self.parse_match_pat_adt_name(start_word, false)
+                self.parse_match_pat_adt_name(start_word)
             } else if self.is(TokenKind::Dot) {
                 self.parse_match_pat_adt_path(start_word)
             } else {
@@ -103,15 +103,30 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_match_pat_adt_name(
-        &mut self,
-        start_word: Word,
-        is_inferred_variant: bool,
-    ) -> DiagnosticResult<MatchPat> {
-        let path = vec![start_word];
+    fn parse_match_pat_inferred_variant(&mut self, word: Word) -> DiagnosticResult<MatchPat> {
+        let path = vec![word];
+        let (subpats, is_exhaustive) = self.parse_match_adt_subpats_optional()?;
+        let span = word.span().merge(self.last_span());
+        Ok(MatchPat::Adt(MatchPatAdt {
+            path,
+            subpats,
+            is_exhaustive,
+            is_inferred_variant: true,
+            span,
+        }))
+    }
+
+    fn parse_match_pat_adt_name(&mut self, word: Word) -> DiagnosticResult<MatchPat> {
+        let path = vec![word];
         let (subpats, is_exhaustive) = self.parse_match_adt_subpats()?;
-        let span = start_word.span().merge(self.last_span());
-        Ok(MatchPat::Adt(MatchPatAdt { path, subpats, is_exhaustive, is_inferred_variant, span }))
+        let span = word.span().merge(self.last_span());
+        Ok(MatchPat::Adt(MatchPatAdt {
+            path,
+            subpats,
+            is_exhaustive,
+            is_inferred_variant: false,
+            span,
+        }))
     }
 
     fn parse_match_pat_adt_path(&mut self, start_word: Word) -> DiagnosticResult<MatchPat> {
@@ -122,12 +137,7 @@ impl<'a> Parser<'a> {
             path.push(self.eat_ident()?.word());
         }
 
-        let (subpats, is_exhaustive) = if self.peek_is(TokenKind::OpenParen) {
-            self.parse_match_adt_subpats()?
-        } else {
-            (vec![], true)
-        };
-
+        let (subpats, is_exhaustive) = self.parse_match_adt_subpats_optional()?;
         let span = start_word.span().merge(self.last_span());
 
         Ok(MatchPat::Adt(MatchPatAdt {
@@ -137,6 +147,14 @@ impl<'a> Parser<'a> {
             is_inferred_variant: false,
             span,
         }))
+    }
+
+    fn parse_match_adt_subpats_optional(&mut self) -> DiagnosticResult<(Vec<Subpat>, bool)> {
+        if self.peek_is(TokenKind::OpenParen) {
+            self.parse_match_adt_subpats()
+        } else {
+            Ok((vec![], true))
+        }
     }
 
     fn parse_match_adt_subpats(&mut self) -> DiagnosticResult<(Vec<Subpat>, bool)> {
