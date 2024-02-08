@@ -361,7 +361,7 @@ impl<'db> Generator<'db> {
             .append(D::space())
             .append(block(|| {
                 util::stmts([
-                    D::text("usize").append(D::space()).append(D::text(REFCNT_FIELD)),
+                    D::text("u32").append(D::space()).append(D::text(REFCNT_FIELD)),
                     data_name.append(D::space()).append(D::text(DATA_FIELD)),
                 ])
             }))

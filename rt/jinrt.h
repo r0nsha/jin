@@ -35,7 +35,7 @@ typedef struct str {
 
 typedef struct array {
   void *data;
-  usize refcnt;
+  u32 refcnt;
 } array;
 
 typedef struct slice {

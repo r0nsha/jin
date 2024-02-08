@@ -3,16 +3,17 @@ const Allocator = std.mem.Allocator;
 const testing = std.testing;
 
 const cstr = [*:0]const u8;
-const str = extern struct { ptr: cstr, len: usize };
+const Str = extern struct { ptr: cstr, len: usize };
+const Refcnt = u32;
 
-const anyrc = extern struct {
-    refcnt: usize,
+const Rc = extern struct {
+    refcnt: Refcnt,
     data: void,
 };
 
-const anyarray = extern struct {
+const RcBuf = extern struct {
     data: [*]u8,
-    refcnt: usize,
+    refcnt: Refcnt,
 
     const Self = @This();
 
@@ -22,8 +23,8 @@ const anyarray = extern struct {
     }
 };
 
-const anyslice = extern struct {
-    array: ?*anyarray,
+const RcSlice = extern struct {
+    array: ?*RcBuf,
     start: ?[*]u8,
     len: usize,
     cap: usize,
@@ -35,13 +36,13 @@ const anyslice = extern struct {
             return Self.empty(null, 0);
         }
 
-        const array = alloc_raw(anyarray, @sizeOf(anyarray));
-        array.* = anyarray.init(elem_size, cap);
+        const array = alloc_raw(RcBuf, @sizeOf(RcBuf));
+        array.* = RcBuf.init(elem_size, cap);
 
         return Self.empty(array, cap);
     }
 
-    fn empty(array: ?*anyarray, cap: usize) Self {
+    fn empty(array: ?*RcBuf, cap: usize) Self {
         return Self{
             .array = array,
             .start = if (array) |a| a.data else null,
@@ -149,15 +150,15 @@ export fn jinrt_panic_at(backtrace: *Backtrace, msg: cstr, frame: StackFrame) no
     std.process.exit(1);
 }
 
-export fn jinrt_alloc(size: usize) *anyrc {
-    const p = alloc_raw(anyrc, size);
+export fn jinrt_alloc(size: usize) *Rc {
+    const p = alloc_raw(Rc, size);
     p.refcnt = 0;
     return p;
 }
 
 export fn jinrt_free(
     backtrace: *Backtrace,
-    obj: *anyrc,
+    obj: *Rc,
     tyname: cstr,
     frame: StackFrame,
 ) void {
@@ -165,13 +166,13 @@ export fn jinrt_free(
     std.c.free(obj);
 }
 
-export fn jinrt_slice_alloc(elem_size: usize, cap: usize) anyslice {
-    return anyslice.init(elem_size, cap);
+export fn jinrt_slice_alloc(elem_size: usize, cap: usize) RcSlice {
+    return RcSlice.init(elem_size, cap);
 }
 
 export fn jinrt_slice_free(
     backtrace: *Backtrace,
-    slice: anyslice,
+    slice: RcSlice,
     tyname: cstr,
     frame: StackFrame,
 ) void {
@@ -183,17 +184,17 @@ export fn jinrt_slice_free(
     }
 }
 
-export fn jinrt_slice_incref(s: anyslice) void {
+export fn jinrt_slice_incref(s: RcSlice) void {
     if (s.array) |a| a.refcnt += 1;
 }
 
-export fn jinrt_slice_decref(s: anyslice) void {
+export fn jinrt_slice_decref(s: RcSlice) void {
     if (s.array) |a| a.refcnt -= 1;
 }
 
 export fn jinrt_slice_index_boundscheck(
     backtrace: *Backtrace,
-    slice: anyslice,
+    slice: RcSlice,
     index: usize,
     frame: StackFrame,
 ) void {
@@ -209,12 +210,12 @@ export fn jinrt_slice_index_boundscheck(
 
 export fn jinrt_slice_slice(
     backtrace: *Backtrace,
-    slice: anyslice,
+    slice: RcSlice,
     elem_size: usize,
     low: usize,
     high: usize,
     frame: StackFrame,
-) anyslice {
+) RcSlice {
     if (low > high) {
         const msg = std.fmt.allocPrint(
             std.heap.c_allocator,
@@ -238,11 +239,11 @@ export fn jinrt_slice_slice(
 
 export fn jinrt_slice_grow(
     backtrace: *Backtrace,
-    slice: anyslice,
+    slice: RcSlice,
     elem_size: usize,
     new_cap: usize,
     frame: StackFrame,
-) anyslice {
+) RcSlice {
     if (new_cap <= slice.cap) {
         const msg = std.fmt.allocPrint(
             std.heap.c_allocator,
@@ -255,7 +256,7 @@ export fn jinrt_slice_grow(
     return slice.grow(elem_size, new_cap);
 }
 
-export fn jinrt_strcmp(a: str, b: str) bool {
+export fn jinrt_strcmp(a: Str, b: Str) bool {
     return std.mem.eql(u8, str_slice(a), str_slice(b));
 }
 
@@ -278,7 +279,7 @@ export fn jinrt_backtrace_pop(backtrace: *Backtrace) void {
     };
 }
 
-inline fn str_slice(s: str) []const u8 {
+inline fn str_slice(s: Str) []const u8 {
     return s.ptr[0..s.len];
 }
 
@@ -288,7 +289,7 @@ inline fn alloc_raw(comptime T: type, size: usize) *T {
     return @alignCast(@ptrCast(p));
 }
 
-inline fn refcheck(backtrace: *Backtrace, refcnt: usize, tyname: cstr, frame: StackFrame) void {
+inline fn refcheck(backtrace: *Backtrace, refcnt: u32, tyname: cstr, frame: StackFrame) void {
     if (refcnt != 0) {
         const msg = std.fmt.allocPrint(
             std.heap.c_allocator,
