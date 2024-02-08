@@ -67,7 +67,7 @@ impl<'db> Typeck<'db> {
 
     fn insert_item(&mut self, module_id: ModuleId, word: Word, item_id: ast::ItemId) {
         self.global_scope
-            .symbol_to_item
+            .symbol_to_items
             .entry(Symbol::new(module_id, word.name()))
             .or_default()
             .push(item_id);

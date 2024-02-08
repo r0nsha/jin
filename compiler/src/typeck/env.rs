@@ -500,7 +500,7 @@ impl<'db> Typeck<'db> {
         let lookup_modules = self.get_lookup_modules(symbol.module_id, is_ufcs).collect::<Vec<_>>();
 
         for module_id in lookup_modules {
-            if let Some(item_ids) = self.global_scope.symbol_to_item.get(symbol).cloned() {
+            if let Some(item_ids) = self.global_scope.symbol_to_items.get(symbol).cloned() {
                 let mut env = Env::new(module_id);
 
                 for item_id in item_ids {
@@ -684,7 +684,7 @@ pub struct GlobalScope {
     pub defs: FxHashMap<Symbol, GlobalScopeDef>,
     pub fns: FxHashMap<Symbol, FnCandidateSet>,
     pub assoc_scopes: FxHashMap<AssocTy, AssocScope>,
-    pub symbol_to_item: FxHashMap<Symbol, Vec<ast::ItemId>>,
+    pub symbol_to_items: FxHashMap<Symbol, Vec<ast::ItemId>>,
 }
 
 impl GlobalScope {
@@ -693,7 +693,7 @@ impl GlobalScope {
             defs: FxHashMap::default(),
             fns: FxHashMap::default(),
             assoc_scopes: FxHashMap::default(),
-            symbol_to_item: FxHashMap::default(),
+            symbol_to_items: FxHashMap::default(),
         }
     }
 
