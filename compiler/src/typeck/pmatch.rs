@@ -6,7 +6,7 @@ use crate::{
     db::{AdtField, AdtId, AdtKind, DefId, DefKind, VariantId},
     diagnostics::{Diagnostic, Label},
     hir,
-    middle::Vis,
+    middle::{Mutability, Vis},
     span::{Span, Spanned as _},
     ty::{InferTy, Instantiation, Ty, TyKind},
     typeck::{
@@ -17,7 +17,7 @@ use crate::{
         unify::Obligation,
         Typeck, TypeckResult,
     },
-    word::WordMap,
+    word::{Word, WordMap},
 };
 
 impl<'db> Typeck<'db> {
@@ -103,86 +103,45 @@ impl<'db> Typeck<'db> {
         parent_span: Span,
         names: &mut UstrMap<DefId>,
     ) -> TypeckResult<hir::MatchPat> {
-        let derefed_ty = pat_ty.auto_deref();
+        let pat_ty_deref = pat_ty.auto_deref();
 
         match pat {
             ast::MatchPat::Name(word, mutability) => {
-                let id = if let Some(id) = names.get(&word.name()) {
-                    // We make sure that names in all alternatives are bound to the same type
-                    let expected_ty = self.def_ty(*id);
-
-                    if let Err(err) = self
-                        .at(Obligation::exprs(word.span(), self.db[*id].span, word.span()))
-                        .eq(expected_ty, pat_ty)
-                    {
-                        return Err(Diagnostic::error(format!(
-                            "in the same arm, the identifier `{word}` must have the same type in \
-                             all alternatives",
-                        ))
-                        .with_label(Label::primary(
-                            word.span(),
-                            format!("has type `{}` here", err.found.display(self.db)),
-                        ))
-                        .with_label(Label::secondary(
-                            self.db[*id].span,
-                            format!(
-                                "previously introduce with type `{}`",
-                                err.expected.display(self.db)
-                            ),
-                        )));
-                    }
-
-                    *id
-                } else {
-                    let id = self.define_def(
-                        env,
-                        Vis::Private,
-                        DefKind::Variable,
-                        *word,
-                        *mutability,
-                        pat_ty,
-                    )?;
-
-                    names.insert(word.name(), id);
-
-                    id
-                };
-
-                Ok(hir::MatchPat::Name(id, self.def_ty(id), word.span()))
+                self.check_match_pat_name(env, *word, *mutability, pat_ty, names)
             }
             ast::MatchPat::Wildcard(span) => Ok(hir::MatchPat::Wildcard(*span)),
             ast::MatchPat::Unit(span) => {
                 self.at(Obligation::exprs(*span, *span, parent_span))
-                    .eq(self.db.types.unit, derefed_ty)?;
+                    .eq(self.db.types.unit, pat_ty_deref)?;
                 Ok(hir::MatchPat::Unit(*span))
             }
             ast::MatchPat::Bool(value, span) => {
                 self.at(Obligation::exprs(*span, *span, parent_span))
-                    .eq(self.db.types.bool, derefed_ty)?;
+                    .eq(self.db.types.bool, pat_ty_deref)?;
                 Ok(hir::MatchPat::Bool(*value, *span))
             }
             ast::MatchPat::Int(value, span) => {
                 if *value < 0 {
-                    match derefed_ty.kind() {
+                    match pat_ty_deref.kind() {
                         TyKind::Int(_) | TyKind::Infer(InferTy::Int(_)) => (),
                         _ => {
                             return Err(errors::ty_mismatch(
                                 "int",
-                                &derefed_ty.to_string(self.db),
+                                &pat_ty_deref.to_string(self.db),
                                 *span,
                             ))
                         }
                     }
                 } else {
                     self.at(Obligation::exprs(*span, *span, parent_span))
-                        .eq(self.fresh_int_var(), derefed_ty)?;
+                        .eq(self.fresh_int_var(), pat_ty_deref)?;
                 }
 
                 Ok(hir::MatchPat::Int(*value, *span))
             }
             ast::MatchPat::Str(value, span) => {
                 self.at(Obligation::exprs(*span, *span, parent_span))
-                    .eq(self.db.types.str, derefed_ty)?;
+                    .eq(self.db.types.str, pat_ty_deref)?;
                 Ok(hir::MatchPat::Str(*value, *span))
             }
             ast::MatchPat::Adt(pat) => {
@@ -224,6 +183,49 @@ impl<'db> Typeck<'db> {
                 Ok(hir::MatchPat::Or(pats, *span))
             }
         }
+    }
+
+    fn check_match_pat_name(
+        &mut self,
+        env: &mut Env,
+        word: Word,
+        mutability: Mutability,
+        pat_ty: Ty,
+        names: &mut UstrMap<DefId>,
+    ) -> TypeckResult<hir::MatchPat> {
+        let id = if let Some(id) = names.get(&word.name()) {
+            // We make sure that names in all alternatives are bound to the same type
+            let expected_ty = self.def_ty(*id);
+
+            if let Err(err) = self
+                .at(Obligation::exprs(word.span(), self.db[*id].span, word.span()))
+                .eq(expected_ty, pat_ty)
+            {
+                return Err(Diagnostic::error(format!(
+                    "in the same arm, the identifier `{word}` must have the same type in all \
+                     alternatives",
+                ))
+                .with_label(Label::primary(
+                    word.span(),
+                    format!("has type `{}` here", err.found.display(self.db)),
+                ))
+                .with_label(Label::secondary(
+                    self.db[*id].span,
+                    format!("previously introduce with type `{}`", err.expected.display(self.db)),
+                )));
+            }
+
+            *id
+        } else {
+            let id =
+                self.define_def(env, Vis::Private, DefKind::Variable, word, mutability, pat_ty)?;
+
+            names.insert(word.name(), id);
+
+            id
+        };
+
+        Ok(hir::MatchPat::Name(id, self.def_ty(id), word.span()))
     }
 
     fn check_match_pat_adt(
