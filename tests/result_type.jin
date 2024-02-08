@@ -5,7 +5,7 @@ fn extern "c" printf(fmt: *u8, ..) -> i32
 fn main() = {
 	match try_add(1, 2) {
 		Result.ok(res) -> printf("res = %d\n".ptr, res),
-		Result.err(msg) -> printf(msg.ptr)
+		Result.err(msg) -> printf(msg.ptr),
 	}
 }
 

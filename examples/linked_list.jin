@@ -46,7 +46,7 @@ fn print(self: &LinkedList[int]) = {
                     printf(", ".ptr)
                 }
             },
-            Option.none -> break
+            Option.none -> break,
         }
     }
 

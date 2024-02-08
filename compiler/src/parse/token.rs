@@ -41,7 +41,6 @@ pub enum TokenKind {
     Colon,
     Semi(bool),
     At,
-    Hash,
     Arrow,
     QuestionMark,
 
@@ -125,6 +124,159 @@ impl TokenKind {
     pub fn empty_str() -> Self {
         Self::Str(ustr(""))
     }
+
+    // Whether this token can come before a semicolon
+    #[inline]
+    pub fn is_before_semi(self) -> bool {
+        match self {
+            TokenKind::Return
+            | TokenKind::True
+            | TokenKind::False
+            | TokenKind::Break
+            | TokenKind::Int(_)
+            | TokenKind::Float(_)
+            | TokenKind::Str(_)
+            | TokenKind::Ident(_)
+            | TokenKind::Underscore
+            | TokenKind::QuestionMark
+            | TokenKind::CloseParen
+            | TokenKind::CloseBracket
+            | TokenKind::CloseCurly
+            | TokenKind::Star
+            | TokenKind::Semi(_) => true,
+            TokenKind::Fn
+            | TokenKind::Let
+            | TokenKind::Type
+            | TokenKind::Extern
+            | TokenKind::If
+            | TokenKind::Else
+            | TokenKind::Match
+            | TokenKind::As
+            | TokenKind::Import
+            | TokenKind::For
+            | TokenKind::Mut
+            | TokenKind::Imm
+            | TokenKind::Transmute
+            | TokenKind::Ref
+            | TokenKind::Move
+            | TokenKind::Dot
+            | TokenKind::DotDot
+            | TokenKind::Colon
+            | TokenKind::Arrow
+            | TokenKind::Comma
+            | TokenKind::OpenParen
+            | TokenKind::OpenBracket
+            | TokenKind::OpenCurly
+            | TokenKind::Eq
+            | TokenKind::EqEq
+            | TokenKind::Bang
+            | TokenKind::BangEq
+            | TokenKind::StarEq
+            | TokenKind::FwSlash
+            | TokenKind::FwSlashEq
+            | TokenKind::Percent
+            | TokenKind::PercentEq
+            | TokenKind::Plus
+            | TokenKind::PlusEq
+            | TokenKind::Minus
+            | TokenKind::MinusEq
+            | TokenKind::Lt
+            | TokenKind::LtEq
+            | TokenKind::LtLt
+            | TokenKind::LtLtEq
+            | TokenKind::Gt
+            | TokenKind::GtEq
+            | TokenKind::GtGt
+            | TokenKind::GtGtEq
+            | TokenKind::Amp
+            | TokenKind::AmpEq
+            | TokenKind::AmpAmp
+            | TokenKind::Caret
+            | TokenKind::CaretEq
+            | TokenKind::Pipe
+            | TokenKind::PipeEq
+            | TokenKind::PipePipe
+            | TokenKind::Walrus
+            | TokenKind::At => false,
+        }
+    }
+
+    // Whether this token can come after a semicolon
+    #[inline]
+    pub fn is_after_semi(self) -> bool {
+        match self {
+            TokenKind::Return
+            | TokenKind::True
+            | TokenKind::False
+            | TokenKind::Break
+            | TokenKind::Int(_)
+            | TokenKind::Float(_)
+            | TokenKind::Str(_)
+            | TokenKind::Ident(_)
+            | TokenKind::Underscore
+            | TokenKind::Semi(_)
+            | TokenKind::Fn
+            | TokenKind::Let
+            | TokenKind::Type
+            | TokenKind::Extern
+            | TokenKind::If
+            | TokenKind::Match
+            | TokenKind::Import
+            | TokenKind::For
+            | TokenKind::Transmute
+            | TokenKind::Dot
+            | TokenKind::OpenParen
+            | TokenKind::OpenBracket
+            | TokenKind::OpenCurly
+            | TokenKind::CloseCurly
+            | TokenKind::Bang
+            | TokenKind::Minus
+            | TokenKind::Amp
+            | TokenKind::At => true,
+
+            TokenKind::QuestionMark
+            | TokenKind::CloseParen
+            | TokenKind::CloseBracket
+            | TokenKind::Star
+            | TokenKind::Else
+            | TokenKind::As
+            | TokenKind::Mut
+            | TokenKind::Imm
+            | TokenKind::Ref
+            | TokenKind::Move
+            | TokenKind::DotDot
+            | TokenKind::Colon
+            | TokenKind::Arrow
+            | TokenKind::Comma
+            | TokenKind::Eq
+            | TokenKind::EqEq
+            | TokenKind::BangEq
+            | TokenKind::StarEq
+            | TokenKind::FwSlash
+            | TokenKind::FwSlashEq
+            | TokenKind::Percent
+            | TokenKind::PercentEq
+            | TokenKind::Plus
+            | TokenKind::PlusEq
+            | TokenKind::MinusEq
+            | TokenKind::Lt
+            | TokenKind::LtEq
+            | TokenKind::LtLt
+            | TokenKind::LtLtEq
+            | TokenKind::Gt
+            | TokenKind::GtEq
+            | TokenKind::GtGt
+            | TokenKind::GtGtEq
+            | TokenKind::AmpEq
+            | TokenKind::AmpAmp
+            | TokenKind::Caret
+            | TokenKind::CaretEq
+            | TokenKind::Pipe
+            | TokenKind::PipeEq
+            | TokenKind::PipePipe
+            | TokenKind::Walrus => false,
+        }
+    }
 }
 
 impl fmt::Display for TokenKind {
@@ -148,7 +300,6 @@ impl fmt::Display for TokenKind {
                 }
             }
             Self::At => f.write_char('@'),
-            Self::Hash => f.write_char('#'),
             Self::Arrow => f.write_str("->"),
             Self::QuestionMark => f.write_char('?'),
             Self::Eq => f.write_char('='),

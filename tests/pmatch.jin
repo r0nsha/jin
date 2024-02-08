@@ -52,7 +52,7 @@ fn match_bool(value: bool) = {
 	printf("value = %s\n".ptr, match value {
 		true -> "true",
 		false -> "false",
-		x -> "unreachable..."
+		x -> "unreachable...",
 	})
 }
 
@@ -121,7 +121,7 @@ fn print(bag: &Bag) = {
 		Bag(a, b) -> {
 			printf("Bag(a: Box(%d), b: Box(%d))\n".ptr, a.value, b.value)
 			{}
-		}
+		},
 	}
 }
 
@@ -148,7 +148,7 @@ fn print_fac(n: int) = {
 fn fac(n: int) -> int =
 	match n {
 		0 | 1 -> 1,
-		n -> n * fac(n - 1)
+		n -> n * fac(n - 1),
 	}
 
 fn print_fib(n: int) = {
@@ -158,5 +158,5 @@ fn print_fib(n: int) = {
 fn fib(n: int) -> int =
 	match n {
 		0 | 1 -> n,
-		n -> fib(n - 1) + fib(n - 2)
+		n -> fib(n - 1) + fib(n - 2),
 	}

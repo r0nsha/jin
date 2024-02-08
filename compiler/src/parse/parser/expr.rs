@@ -129,7 +129,10 @@ impl<'a> Parser<'a> {
                     op: UnOp::Not,
                 }
             }
-            TokenKind::OpenCurly => self.parse_block()?,
+            TokenKind::OpenCurly => {
+                self.back();
+                self.parse_block()?
+            }
             TokenKind::OpenBracket => self.parse_slice_lit()?,
             TokenKind::True => Expr::BoolLit { value: true, span: tok.span },
             TokenKind::False => Expr::BoolLit { value: false, span: tok.span },
@@ -154,12 +157,10 @@ impl<'a> Parser<'a> {
     fn parse_if(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
         let cond = self.parse_expr()?;
-
-        self.eat(TokenKind::OpenCurly)?;
         let then = self.parse_block()?;
 
         let otherwise = if self.is(TokenKind::Else) {
-            if self.is(TokenKind::OpenCurly) {
+            if self.peek_is(TokenKind::OpenCurly) {
                 Some(Box::new(self.parse_block()?))
             } else if self.is(TokenKind::If) {
                 Some(Box::new(self.parse_if()?))
@@ -331,14 +332,9 @@ impl<'a> Parser<'a> {
 
     fn parse_loop(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
-
         let cond = if self.is(TokenKind::If) { Some(Box::new(self.parse_expr()?)) } else { None };
-
-        self.eat(TokenKind::OpenCurly)?;
         let expr = self.parse_block()?;
-
         let span = start.merge(expr.span());
-
         Ok(Expr::Loop { cond, expr: Box::new(expr), span })
     }
 
@@ -539,17 +535,13 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_block(&mut self) -> DiagnosticResult<Expr> {
-        let start = self.last_span();
-        let mut stmts = vec![];
-
-        loop {
-            if self.is(TokenKind::CloseCurly) {
-                let span = start.merge(self.last_span());
-                return Ok(Expr::Block { exprs: stmts, span });
-            }
-
-            stmts.push(self.parse_stmt()?);
-        }
+        self.parse_list_with_sep(
+            TokenKind::OpenCurly,
+            TokenKind::CloseCurly,
+            TokenKind::Semi(false),
+            |this| this.parse_stmt().map(ControlFlow::Continue),
+        )
+        .map(|(exprs, span)| Expr::Block { exprs, span })
     }
 
     fn parse_slice_lit(&mut self) -> DiagnosticResult<Expr> {
@@ -604,9 +596,7 @@ impl<'a> Parser<'a> {
             return Err(errors::invalid_c_variadic(start));
         }
 
-        self.eat(TokenKind::OpenCurly)?;
         let body = self.parse_block()?;
-
         let span = start.merge(body.span());
 
         Ok(Expr::Fn { params, ret, body: Box::new(body), span })

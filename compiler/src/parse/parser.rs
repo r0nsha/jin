@@ -25,6 +25,8 @@ use crate::{
     span::{Source, SourceId, Span},
 };
 
+const SEMI: TokenKind = TokenKind::Semi(false);
+
 pub fn parse(
     db: &Db,
     package: Ustr,
@@ -109,10 +111,33 @@ impl<'a> Parser<'a> {
         .map(|(t, _)| t)
     }
 
+    pub(super) fn parse_list_optional<T>(
+        &mut self,
+        open: TokenKind,
+        close: TokenKind,
+        f: impl FnMut(&mut Self) -> DiagnosticResult<ControlFlow<(), T>>,
+    ) -> DiagnosticResult<(Vec<T>, Span)> {
+        if self.peek_is(open) {
+            self.parse_list(open, close, f)
+        } else {
+            Ok((vec![], self.last_span()))
+        }
+    }
+
     pub(super) fn parse_list<T>(
         &mut self,
         open: TokenKind,
         close: TokenKind,
+        f: impl FnMut(&mut Self) -> DiagnosticResult<ControlFlow<(), T>>,
+    ) -> DiagnosticResult<(Vec<T>, Span)> {
+        self.parse_list_with_sep(open, close, TokenKind::Comma, f)
+    }
+
+    pub(super) fn parse_list_with_sep<T>(
+        &mut self,
+        open: TokenKind,
+        close: TokenKind,
+        sep: TokenKind,
         mut f: impl FnMut(&mut Self) -> DiagnosticResult<ControlFlow<(), T>>,
     ) -> DiagnosticResult<(Vec<T>, Span)> {
         let mut values = Vec::new();
@@ -128,8 +153,8 @@ impl<'a> Parser<'a> {
             }
 
             if !values.is_empty() && !self.peek_is(close) {
-                self.eat(TokenKind::Comma)?;
-            } else if self.peek_is(TokenKind::Comma) {
+                self.eat(sep)?;
+            } else if self.peek_is(sep) {
                 self.next();
             }
         }
@@ -137,22 +162,16 @@ impl<'a> Parser<'a> {
         Ok((values, open_tok.span.merge(self.last_span())))
     }
 
-    pub(super) fn parse_list_optional<T>(
-        &mut self,
-        open: TokenKind,
-        close: TokenKind,
-        f: impl FnMut(&mut Self) -> DiagnosticResult<ControlFlow<(), T>>,
-    ) -> DiagnosticResult<(Vec<T>, Span)> {
-        if self.peek_is(open) {
-            self.parse_list(open, close, f)
-        } else {
-            Ok((vec![], self.last_span()))
-        }
+    #[inline]
+    pub(super) fn eat_semi(&mut self) -> DiagnosticResult<()> {
+        self.eat(SEMI)?;
+        self.skip_semi();
+        Ok(())
     }
 
     #[inline]
-    pub(super) fn eat_semi(&mut self) -> DiagnosticResult<Token> {
-        self.eat(TokenKind::Semi(false))
+    pub(super) fn skip_semi(&mut self) {
+        while self.is(SEMI) {}
     }
 
     #[inline]

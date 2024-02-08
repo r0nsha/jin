@@ -174,6 +174,7 @@ impl<'a> Parser<'a> {
         while self.is(TokenKind::At) {
             let (id, span) = self.parse_attr_id()?;
             let args = self.parse_attr_args(id)?;
+            self.skip_semi();
             attrs.push(Attr { id, args, span });
         }
 
