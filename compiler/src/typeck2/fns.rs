@@ -8,7 +8,7 @@ use crate::{
     middle::Mutability,
     qpath::QPath,
     span::Spanned as _,
-    typeck2::{attrs, errors, AssocTy, ResolutionMap, Typeck},
+    typeck2::{attrs, errors, ns::AssocTy, ResolutionMap, Typeck},
 };
 
 pub(super) fn define(

@@ -3,7 +3,7 @@ use crate::{
     ast::Ast,
     db::{DefKind, ModuleId},
     diagnostics::DiagnosticResult,
-    middle::Mutability,
+    middle::{IsUfcs, Mutability},
     span::Spanned as _,
     ty::{Ty, TyKind},
     typeck2::{attrs, Query, Typeck},
@@ -61,10 +61,7 @@ pub(super) fn define_unqualified_imports(cx: &mut Typeck, ast: &Ast) -> Diagnost
                             )?;
                         }
                         ast::UnqualifiedImport::Glob(is_ufcs, _) => {
-                            todo!()
-                            // self.insert_glob_target(in_module,
-                            // target_module_id,
-                            // *is_ufcs);
+                            insert_glob_target(cx, in_module, target_module_id, *is_ufcs);
                         }
                     }
                 }
@@ -83,13 +80,12 @@ fn import_prologue(
     attrs::validate(&import.attrs, attrs::Placement::Import)?;
     let target_module_id = resolve_import_path(cx, in_module, import)?;
 
-    // TODO:
     // Insert imported modules as UFCS targets implicitly.
     // This is done because always adding `?` whenever we import any type is
     // really annoying... I couldn't find any issues with this yet, but if
     // some do pop up, we'll need to find a more clever solution for this
     // redundancy.
-    // self.insert_glob_target(in_module, target_module_id, IsUfcs::Yes);
+    insert_glob_target(cx, in_module, target_module_id, IsUfcs::Yes);
 
     Ok(target_module_id)
 }
@@ -110,4 +106,13 @@ fn resolve_import_path(
     }
 
     Ok(target_module_id)
+}
+
+fn insert_glob_target(
+    cx: &mut Typeck,
+    in_module: ModuleId,
+    target_module_id: ModuleId,
+    is_ufcs: IsUfcs,
+) {
+    cx.global_env.module_mut(in_module).globs.insert(target_module_id, is_ufcs);
 }

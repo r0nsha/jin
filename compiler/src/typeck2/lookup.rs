@@ -10,7 +10,7 @@ use crate::{
     macros::create_bool_enum,
     middle::{IsUfcs, Mutability, Vis},
     span::{Span, Spanned as _},
-    typeck2::{errors, FnCandidate, NamespaceDef, Query, Typeck},
+    typeck2::{errors, ns::NsDef, FnCandidate, Query, Typeck},
     word::Word,
 };
 

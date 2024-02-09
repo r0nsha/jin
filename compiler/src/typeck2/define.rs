@@ -6,7 +6,7 @@ use crate::{
     diagnostics::DiagnosticResult,
     middle::{Mutability, Vis},
     span::Spanned as _,
-    typeck2::{errors, NamespaceDef, Typeck},
+    typeck2::{errors, ns::NsDef, Typeck},
     word::Word,
 };
 
@@ -78,7 +78,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         //     return Err(errors::multiple_item_def_err(last_candidate.word.span(),
         // name)); }
 
-        let def = NamespaceDef::new(id, vis, name.span());
+        let def = NsDef::new(id, vis, name.span());
 
         if let Some(prev) = self.cx.global_env.module_mut(module_id).ns.insert_def(name.name(), def)
         {
