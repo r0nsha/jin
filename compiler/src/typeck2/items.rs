@@ -9,13 +9,16 @@ use crate::{
         Variant, VariantId,
     },
     diagnostics::DiagnosticResult,
-    middle::{Mutability, NamePat, Pat},
+    hir,
+    middle::{CallConv, Mutability, NamePat, Pat},
     qpath::QPath,
     span::Spanned as _,
-    ty::TyKind,
+    ty::{FnTyFlags, TyKind},
     typeck2::{
-        attrs, errors,
+        attrs, errors, fns,
         ns::{AssocTy, Env, ScopeKind},
+        tyexpr,
+        tyexpr::AllowTyHole,
         types, ResolutionMap, Typeck,
     },
     word::WordMap,
@@ -247,9 +250,9 @@ pub(super) fn check_sigs(
 ) -> DiagnosticResult<()> {
     for (module, item, id) in ast.items_with_id() {
         match item {
-            ast::Item::Let(let_) => todo!(),
-            ast::Item::ExternLet(let_) => todo!(),
-            ast::Item::Fn(fun) => check_fn_sig(cx, res_map, module.id, id, fun)?,
+            ast::Item::Let(let_) => check_let(cx, res_map, module.id, id, let_)?,
+            ast::Item::ExternLet(let_) => check_extern_let(cx, res_map, module.id, id, let_)?,
+            ast::Item::Fn(fun) => check_fn(cx, res_map, module.id, id, fun)?,
             // TODO: ast::Item::Assoc(word, item) => todo!(),
             _ => (),
         }
@@ -258,12 +261,68 @@ pub(super) fn check_sigs(
     Ok(())
 }
 
-fn check_fn_sig(
+fn check_let(
+    cx: &mut Typeck<'_>,
+    res_map: &mut ResolutionMap,
+    module_id: ModuleId,
+    item_id: ItemId,
+    let_: &ast::Let,
+) -> DiagnosticResult<()> {
+    // TODO: debug_assert!(in_global && ty.is_some());
+    todo!()
+}
+
+fn check_extern_let(
+    cx: &mut Typeck<'_>,
+    res_map: &mut ResolutionMap,
+    module_id: ModuleId,
+    item_id: ItemId,
+    let_: &ast::ExternLet,
+) -> DiagnosticResult<()> {
+    let env = Env::new(module_id);
+    let id = res_map
+        .item_to_def
+        .remove(&ast::GlobalItemId::new(module_id, item_id))
+        .expect("to be defined");
+
+    let ty = tyexpr::check(cx, &env, &let_.ty_expr, AllowTyHole::No)?;
+    cx.hir.extern_lets.push(hir::ExternLet { module_id, id, word: let_.word, ty, span: let_.span });
+
+    Ok(())
+}
+
+fn check_fn(
     cx: &mut Typeck<'_>,
     res_map: &mut ResolutionMap,
     module_id: ModuleId,
     item_id: ItemId,
     fun: &ast::Fn,
 ) -> DiagnosticResult<()> {
+    let env = Env::new(module_id);
+    let sig = check_fn_item_helper(cx, &env, fun)?;
+    todo!("{sig:?}");
+    // let id = self.define_fn(env.module_id(), fun, &sig, None)?;
+    // self.check_intrinsic_fn(env, fun, &sig, id)?;
+    // self.resolution_state.insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig
+    // });
     Ok(())
+}
+
+fn check_fn_item_helper(cx: &mut Typeck, env: &Env, fun: &ast::Fn) -> DiagnosticResult<hir::FnSig> {
+    let mut flags = FnTyFlags::empty();
+
+    let callconv = match &fun.kind {
+        ast::FnKind::Bare { .. } => CallConv::default(),
+        ast::FnKind::Extern { callconv, is_c_variadic } => {
+            flags.insert(FnTyFlags::EXTERN);
+
+            if *is_c_variadic {
+                flags.insert(FnTyFlags::C_VARIADIC);
+            }
+
+            *callconv
+        }
+    };
+
+    fns::check_sig(cx, env, &fun.sig, callconv, flags)
 }
