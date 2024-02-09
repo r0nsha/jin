@@ -6,7 +6,12 @@ use crate::{
     diagnostics::DiagnosticResult,
     middle::{Mutability, Vis},
     span::Spanned as _,
-    typeck2::{errors, ns::NsDef, Typeck},
+    ty::Ty,
+    typeck2::{
+        errors,
+        ns::{Env, NsDef},
+        Typeck,
+    },
     word::Word,
 };
 
@@ -86,5 +91,22 @@ impl<'db, 'cx> Define<'db, 'cx> {
         }
 
         Ok(id)
+    }
+
+    pub fn new_local(
+        &mut self,
+        env: &mut Env,
+        kind: DefKind,
+        name: Word,
+        mutability: Mutability,
+        ty: Ty,
+    ) -> DefId {
+        let qpath = env.scope_path(self.cx.db).child(name.name());
+        let scope =
+            ScopeInfo { module_id: env.module_id(), level: env.scope_level(), vis: Vis::Private };
+        let id = Def::alloc(self.cx.db, qpath, scope, kind, mutability, name.span());
+        self.cx.def_to_ty.insert(id, ty);
+        env.insert(name.name(), id);
+        id
     }
 }

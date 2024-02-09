@@ -3,7 +3,7 @@ use std::iter;
 use ustr::Ustr;
 
 use crate::{
-    db::{Db, DefId, ModuleId, VariantId},
+    db::{AdtKind, Db, DefId, ModuleId, UnionDef, Variant, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     macros::create_bool_enum,
     middle::{CallConv, IsUfcs, Vis},
@@ -94,7 +94,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
     }
 
     pub(super) fn import(
-        &mut self,
+        &self,
         from_module: ModuleId,
         in_module: ModuleId,
         word: Word,
@@ -119,6 +119,115 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         }
 
         Ok(results)
+    }
+
+    pub fn path(&self, from_module: ModuleId, path: &[Word]) -> DiagnosticResult<PathLookup> {
+        let (&last, path) = path.split_last().expect("to have at least one element");
+
+        let mut target_module = from_module;
+
+        for (idx, &part) in path.iter().enumerate() {
+            let part_id = self.query(from_module, target_module, &Query::Name(part))?;
+            let part_ty = self.cx.normalize(self.cx.def_ty(part_id));
+
+            match part_ty.kind() {
+                TyKind::Module(module_id) => {
+                    target_module = *module_id;
+                }
+                TyKind::Type(ty) => {
+                    // The type could be a union, and the next part could be a variant, so we
+                    // explicitly look it up
+                    let next_part = path.get(idx + 1).copied().unwrap_or(last);
+
+                    match self.query_assoc_ns(
+                        from_module,
+                        *ty,
+                        part.span(),
+                        &Query::Name(next_part),
+                    )? {
+                        TyLookup::Variant(variant_id) => {
+                            // If there are more parts after this variant, it's an error, since we
+                            // there are no symbols under variants
+                            if path.get(idx + 2).is_some() {
+                                return Err(Diagnostic::error(format!(
+                                    "`{}` is a variant, not a module",
+                                    self.cx.db[variant_id].name,
+                                ))
+                                .with_label(Label::primary(next_part.span(), "not a module")));
+                            }
+
+                            return Ok(PathLookup::Variant(variant_id));
+                        }
+                        TyLookup::AssocFn(id) => {
+                            return Err(Diagnostic::error(format!(
+                                "`{}` is an associated function, not a module",
+                                self.cx.db[id].name,
+                            ))
+                            .with_label(Label::primary(next_part.span(), "not a module")));
+                        }
+                    }
+                }
+                ty => {
+                    return Err(errors::expected_module(
+                        format!("found type `{}`", ty.display(self.cx.db)),
+                        part.span(),
+                    ))
+                }
+            }
+        }
+
+        let id = self.query(from_module, target_module, &Query::Name(last))?;
+        Ok(PathLookup::Def(id))
+    }
+
+    /// Looks up a `query` in the associated namespace of `ty`.
+    pub(super) fn query_assoc_ns(
+        &self,
+        from_module: ModuleId,
+        ty: Ty,
+        ty_span: Span,
+        query: &Query,
+    ) -> DiagnosticResult<TyLookup> {
+        if let Query::Fn(fn_query) = query {
+            todo!()
+            // if let Some(id) = self.lookup_assoc_fn(from_module,
+            // AssocTy::from(ty), fn_query)? {     return
+            // Ok(TyLookup::AssocFn(id)); }
+        }
+
+        if let TyKind::Adt(adt_id, _) = ty.kind() {
+            let name = query.word();
+            let adt = &self.cx.db[*adt_id];
+
+            match &adt.kind {
+                AdtKind::Union(union_def) => self
+                    .lookup_variant_in_union(union_def, name, ty_span)
+                    .map(|v| TyLookup::Variant(v.id)),
+                AdtKind::Struct(_) => {
+                    Err(errors::assoc_name_not_found(self.cx.db, adt.ty(), query))
+                }
+            }
+        } else {
+            Err(errors::assoc_name_not_found(self.cx.db, ty, query))
+        }
+    }
+
+    pub(super) fn try_lookup_variant_in_union(
+        &self,
+        union_def: &'db UnionDef,
+        name: Word,
+    ) -> Option<&Variant> {
+        union_def.variants(self.cx.db).find(|v| v.name.name() == name.name())
+    }
+
+    pub(super) fn lookup_variant_in_union(
+        &self,
+        union_def: &'db UnionDef,
+        name: Word,
+        span: Span,
+    ) -> DiagnosticResult<&Variant> {
+        self.try_lookup_variant_in_union(union_def, name)
+            .ok_or_else(|| errors::variant_not_found(self.cx.db, union_def.id, span, name))
     }
 
     fn one(

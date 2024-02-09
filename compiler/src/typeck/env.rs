@@ -897,8 +897,8 @@ impl Env {
         self.scopes.last_mut().expect("to have a scope")
     }
 
-    pub fn insert(&mut self, k: Ustr, v: DefId) {
-        self.scopes.last_mut().unwrap().defs.insert(k, v);
+    pub fn insert(&mut self, name: Ustr, id: DefId) {
+        self.scopes.last_mut().unwrap().defs.insert(name, id);
     }
 
     pub fn lookup(&self, k: Ustr) -> Option<&DefId> {

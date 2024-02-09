@@ -9,6 +9,7 @@ mod lookup;
 mod normalize;
 mod ns;
 mod types;
+mod tyexpr;
 
 use std::cell::RefCell;
 
