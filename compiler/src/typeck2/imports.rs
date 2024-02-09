@@ -9,7 +9,7 @@ use crate::{
     typeck2::{attrs, lookup::Query, Typeck},
 };
 
-pub(super) fn define_qualified_imports(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+pub(super) fn define_qualified(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item) in ast.items() {
         if let ast::Item::Import(import) = item {
             if let ast::ImportKind::Qualified(alias, vis) = &import.kind {
@@ -31,7 +31,7 @@ pub(super) fn define_qualified_imports(cx: &mut Typeck, ast: &Ast) -> Diagnostic
     Ok(())
 }
 
-pub(super) fn define_unqualified_imports(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+pub(super) fn define_unqualified(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item) in ast.items() {
         if let ast::Item::Import(import) = item {
             if let ast::ImportKind::Unqualified(imports) = &import.kind {

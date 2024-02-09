@@ -34,8 +34,8 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     let mut res_map = ResolutionMap::new();
     cx.init_global_env(&ast);
     items::define(&mut cx, &mut res_map, &ast)?;
-    imports::define_qualified_imports(&mut cx, &ast)?;
-    imports::define_unqualified_imports(&mut cx, &ast)?;
+    imports::define_qualified(&mut cx, &ast)?;
+    imports::define_unqualified(&mut cx, &ast)?;
     types::check(&mut cx, &mut res_map, &ast)?;
     Ok(cx.hir)
 }
