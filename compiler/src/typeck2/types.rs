@@ -3,11 +3,9 @@ use data_structures::index_vec::{IndexVecExt as _, Key as _};
 use crate::{
     ast,
     ast::{Ast, ItemId},
-    db::{
-        AdtField, AdtId, AdtKind, DefId, DefKind, ModuleId, StructDef, UnionDef, Variant, VariantId,
-    },
+    db::{AdtField, AdtId, AdtKind, DefKind, ModuleId, StructDef, UnionDef, Variant, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
-    middle::{Mutability, TyParam},
+    middle::{Mutability, TyParam, Vis},
     span::Spanned as _,
     ty::{ParamTy, Ty, TyKind},
     typeck2::{
@@ -117,30 +115,27 @@ fn check_tydef(
     item_id: ItemId,
     tydef: &ast::TyDef,
 ) -> DiagnosticResult<()> {
-    match &tydef.kind {
-        ast::TyDefKind::Struct(struct_def) => {
-            check_struct(cx, res_map, module_id, item_id, tydef, struct_def)
-        }
-        ast::TyDefKind::Union(union_def) => {
-            check_union(cx, res_map, module_id, item_id, tydef, union_def)
-        }
-    }
-}
-
-fn check_struct(
-    cx: &mut Typeck<'_>,
-    res_map: &mut ResolutionMap,
-    module_id: ModuleId,
-    item_id: ItemId,
-    tydef: &ast::TyDef,
-    struct_def: &ast::StructTyDef,
-) -> DiagnosticResult<()> {
-    let mut env = Env::new(module_id);
     let adt_id = res_map
         .item_to_adt
         .remove(&ast::GlobalItemId::new(module_id, item_id))
         .expect("to be defined");
 
+    match &tydef.kind {
+        ast::TyDefKind::Struct(struct_def) => {
+            check_struct(cx, module_id, adt_id, tydef, struct_def)
+        }
+        ast::TyDefKind::Union(union_def) => check_union(cx, module_id, adt_id, tydef, union_def),
+    }
+}
+
+fn check_struct(
+    cx: &mut Typeck<'_>,
+    module_id: ModuleId,
+    adt_id: AdtId,
+    tydef: &ast::TyDef,
+    struct_def: &ast::StructTyDef,
+) -> DiagnosticResult<()> {
+    let mut env = Env::new(module_id);
     let mut fields = vec![];
 
     env.with_anon_scope(ScopeKind::TyDef, |env| -> DiagnosticResult<()> {
@@ -153,7 +148,7 @@ fn check_struct(
                 return Err(errors::name_defined_twice("field", field.name, prev_span));
             }
 
-            let ty = tyexpr::check(cx, &env, &field.ty_expr, AllowTyHole::No)?;
+            let ty = tyexpr::check(cx, env, &field.ty_expr, AllowTyHole::No)?;
             fields.push(AdtField { name: field.name, vis: field.vis, ty });
         }
 
@@ -193,21 +188,57 @@ fn check_struct(
 
 fn check_union(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResolutionMap,
     module_id: ModuleId,
-    item_id: ItemId,
+    adt_id: AdtId,
     tydef: &ast::TyDef,
     union_def: &ast::UnionTyDef,
 ) -> DiagnosticResult<()> {
-    // TODO: create Env
-    // TODO: typarams
-    // TODO: typarams: dup
-    // TODO: variant: field: ty
-    // TODO: variant: field: dup
-    // TODO: variant: field: add
-    // TODO: variant: set ctor ty
-    // TODO: check infinitely sized
-    // todo!()
+    let mut env = Env::new(module_id);
+
+    env.with_anon_scope(ScopeKind::TyDef, |env| -> DiagnosticResult<()> {
+        check_adt_ty_params(cx, env, tydef, adt_id)?;
+
+        let adt_ty = cx.db[adt_id].ty();
+
+        for (idx, variant) in union_def.variants.iter().enumerate() {
+            let id = cx.db[adt_id].as_union().unwrap().variants[idx];
+            check_variant(cx, env, adt_ty, variant, id)?;
+        }
+
+        Ok(())
+    })?;
+
+    let adt = &cx.db[adt_id];
+    if let Some(field) = adt.is_infinitely_sized(cx.db) {
+        return Err(errors::infinitely_sized_adt(adt, field));
+    }
+
+    Ok(())
+}
+
+fn check_variant(
+    cx: &mut Typeck<'_>,
+    env: &Env,
+    adt_ty: Ty,
+    variant: &ast::UnionVariant,
+    variant_id: VariantId,
+) -> DiagnosticResult<()> {
+    let mut fields = vec![];
+    let mut defined_fields = WordMap::default();
+
+    for field in &variant.fields {
+        if let Some(prev_span) = defined_fields.insert(field.name) {
+            return Err(errors::name_defined_twice("field", field.name, prev_span));
+        }
+
+        let ty = tyexpr::check(cx, env, &field.ty_expr, AllowTyHole::No)?;
+        fields.push(AdtField { name: field.name, vis: Vis::Public, ty });
+    }
+
+    let variant = &mut cx.db[variant_id];
+    variant.fields = fields;
+    variant.fill_ctor_ty(adt_ty);
+
     Ok(())
 }
 
