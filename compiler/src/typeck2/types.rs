@@ -106,15 +106,6 @@ fn check_tydef(
     item_id: ItemId,
     tydef: &ast::TyDef,
 ) -> DiagnosticResult<()> {
-    // TODO: port Env
-    // TODO: create Env
-    // TODO: typarams
-    // TODO: typarams: dup
-    // TODO: field tys
-    // TODO: fields: dup
-    // TODO: set ctor ty
-    // TODO: check infinitely sized
-    // TODO: check value struct thing
     match &tydef.kind {
         ast::TyDefKind::Struct(struct_def) => {
             check_struct(cx, res_map, module_id, item_id, tydef, struct_def)
@@ -133,7 +124,6 @@ fn check_struct(
     tydef: &ast::TyDef,
     struct_def: &ast::StructTyDef,
 ) -> DiagnosticResult<()> {
-    // TODO: port Env
     // TODO: create Env
     // TODO: typarams
     // TODO: typarams: dup

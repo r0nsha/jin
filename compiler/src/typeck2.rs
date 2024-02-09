@@ -39,6 +39,7 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     fns::define(&mut cx, &mut res_map, &ast)?;
     imports::define_qualified_imports(&mut cx, &ast)?;
     imports::define_unqualified_imports(&mut cx, &ast)?;
+    types::check(&mut cx, &mut res_map, &ast)?;
     Ok(cx.hir)
 }
 
