@@ -18,6 +18,29 @@ impl<'db> Typeck<'db> {
     pub(super) fn lookup(&self) -> Lookup<'db, '_> {
         Lookup::new(self)
     }
+
+    pub(super) fn insert_import_lookup_results(
+        &mut self,
+        in_module: ModuleId,
+        name: Word,
+        vis: Vis,
+        results: Vec<LookupResult>,
+    ) -> DiagnosticResult<()> {
+        for res in results {
+            match res {
+                LookupResult::Def(id) => {
+                    self.define().global(in_module, name, id, vis)?;
+                }
+                LookupResult::Fn(candidate) => {
+                    todo!()
+                    // self.insert_fn_candidate(Symbol::new(env.module_id(),
+                    // name.name()), candidate)?;
+                }
+            }
+        }
+
+        Ok(())
+    }
 }
 
 pub(super) struct Lookup<'db, 'cx> {
@@ -71,6 +94,34 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             })
     }
 
+    pub(super) fn import(
+        &mut self,
+        from_module: ModuleId,
+        in_module: ModuleId,
+        word: Word,
+    ) -> DiagnosticResult<Vec<LookupResult>> {
+        let results = self.many(
+            from_module,
+            in_module,
+            word.name(),
+            ShouldLookupFns::Yes,
+            IsUfcs::No,
+            AllowBuiltinTys::No,
+        );
+
+        if results.is_empty() {
+            return Err(errors::name_not_found(self.cx.db, from_module, in_module, word));
+        }
+
+        if from_module != in_module {
+            for res in &results {
+                self.check_def_access(from_module, res.id(), word.span())?;
+            }
+        }
+
+        Ok(results)
+    }
+
     fn one(
         &self,
         from_module: ModuleId,
@@ -118,12 +169,13 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
             if let Some(id) = env.ns.get_def(from_module, name) {
                 results.push(LookupResult::Def(id));
-            } else if should_lookup_fns == ShouldLookupFns::Yes {
-                todo!()
-                // if let Some(candidates) = env.ns.fns.get(&symbol) {
-                //     results.extend(candidates.iter().cloned().
-                // map(LookupResult::Fn)); }
             }
+            // TODO: lookup fns
+            // else if should_lookup_fns == ShouldLookupFns::Yes {
+            // if let Some(candidates) = env.ns.fns.get(&symbol) {
+            //     results.extend(candidates.iter().cloned().
+            // map(LookupResult::Fn)); }
+            // }
         }
 
         if results.is_empty() && allow_builtin_tys == AllowBuiltinTys::Yes {

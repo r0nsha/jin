@@ -4,8 +4,9 @@ use crate::{
     db::{DefKind, ModuleId},
     diagnostics::DiagnosticResult,
     middle::Mutability,
+    span::Spanned as _,
     ty::{Ty, TyKind},
-    typeck2::{attrs, Typeck},
+    typeck2::{attrs, Query, Typeck},
 };
 
 pub(super) fn define_extern_imports(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
@@ -23,16 +24,17 @@ pub(super) fn define_qualified_imports(cx: &mut Typeck, ast: &Ast) -> Diagnostic
     for (module, item) in ast.items() {
         if let ast::Item::Import(import) = item {
             if let ast::ImportKind::Qualified(alias, vis) = &import.kind {
-                attrs::validate(&import.attrs, attrs::Placement::Import)?;
+                let in_module = module.id;
+                let target_module_id = import_prologue(cx, in_module, import)?;
                 let name = alias.unwrap_or(*import.path.last().unwrap());
                 let id = cx.define().new_global(
-                    module.id,
+                    in_module,
                     *vis,
                     DefKind::Variable,
                     name,
                     Mutability::Imm,
                 )?;
-                cx.def_to_ty.insert(id, Ty::new(TyKind::Module(module.id)));
+                cx.def_to_ty.insert(id, Ty::new(TyKind::Module(target_module_id)));
             }
         }
     }
@@ -44,9 +46,28 @@ pub(super) fn define_unqualified_imports(cx: &mut Typeck, ast: &Ast) -> Diagnost
     for (module, item) in ast.items() {
         if let ast::Item::Import(import) = item {
             if let ast::ImportKind::Unqualified(imports) = &import.kind {
-                attrs::validate(&import.attrs, attrs::Placement::Import)?;
-                dbg!(&imports);
-                todo!()
+                let in_module = module.id;
+                let target_module_id = import_prologue(cx, in_module, import)?;
+
+                for uim in imports {
+                    match uim {
+                        ast::UnqualifiedImport::Name(name, alias, vis) => {
+                            let results = cx.lookup().import(in_module, target_module_id, *name)?;
+                            cx.insert_import_lookup_results(
+                                in_module,
+                                alias.unwrap_or(*name),
+                                *vis,
+                                results,
+                            )?;
+                        }
+                        ast::UnqualifiedImport::Glob(is_ufcs, _) => {
+                            todo!()
+                            // self.insert_glob_target(in_module,
+                            // target_module_id,
+                            // *is_ufcs);
+                        }
+                    }
+                }
             }
         }
     }
@@ -54,12 +75,39 @@ pub(super) fn define_unqualified_imports(cx: &mut Typeck, ast: &Ast) -> Diagnost
     Ok(())
 }
 
-fn define_unqualified_import(
+fn import_prologue(
     cx: &mut Typeck,
-    module_id: ModuleId,
-    item_id: ast::ItemId,
+    in_module: ModuleId,
     import: &ast::Import,
-) -> DiagnosticResult<()> {
+) -> DiagnosticResult<ModuleId> {
     attrs::validate(&import.attrs, attrs::Placement::Import)?;
-    todo!()
+    let target_module_id = resolve_import_path(cx, in_module, import)?;
+
+    // TODO:
+    // Insert imported modules as UFCS targets implicitly.
+    // This is done because always adding `?` whenever we import any type is
+    // really annoying... I couldn't find any issues with this yet, but if
+    // some do pop up, we'll need to find a more clever solution for this
+    // redundancy.
+    // self.insert_glob_target(in_module, target_module_id, IsUfcs::Yes);
+
+    Ok(target_module_id)
+}
+
+fn resolve_import_path(
+    cx: &Typeck,
+    from_module: ModuleId,
+    import: &ast::Import,
+) -> DiagnosticResult<ModuleId> {
+    let module_info = cx.db.find_module_by_path(&import.module_path).unwrap();
+
+    let mut target_module_id = module_info.id;
+
+    // We skip the first part since it is the import root module name
+    for &part in import.path.iter().skip(1) {
+        let id = cx.lookup().query(from_module, target_module_id, &Query::Name(part))?;
+        target_module_id = cx.is_module_def(id, part.span())?;
+    }
+
+    Ok(target_module_id)
 }
