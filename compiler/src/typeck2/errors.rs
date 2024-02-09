@@ -5,7 +5,7 @@ use crate::{
     middle::{BinOp, UnOp},
     span::{Span, Spanned},
     ty::Ty,
-    typeck2::{FnCandidate, FnQuery, Query},
+    typeck2::lookup::{FnCandidate, FnQuery, Query},
     word::Word,
 };
 

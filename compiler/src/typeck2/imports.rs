@@ -6,7 +6,7 @@ use crate::{
     middle::{IsUfcs, Mutability},
     span::Spanned as _,
     ty::{Ty, TyKind},
-    typeck2::{attrs, Query, Typeck},
+    typeck2::{attrs, lookup::Query, Typeck},
 };
 
 pub(super) fn define_extern_imports(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
