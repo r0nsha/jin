@@ -386,6 +386,24 @@ pub enum ImportKind {
     Unqualified(Vec<UnqualifiedImport>),
 }
 
+impl ImportKind {
+    /// Returns `true` if the import kind is [`Qualified`].
+    ///
+    /// [`Qualified`]: ImportKind::Qualified
+    #[must_use]
+    pub fn is_qualified(&self) -> bool {
+        matches!(self, Self::Qualified(..))
+    }
+
+    /// Returns `true` if the import kind is [`Unqualified`].
+    ///
+    /// [`Unqualified`]: ImportKind::Unqualified
+    #[must_use]
+    pub fn is_unqualified(&self) -> bool {
+        matches!(self, Self::Unqualified(..))
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum UnqualifiedImport {
     Name(Word, Option<Word>, Vis),

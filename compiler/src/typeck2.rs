@@ -9,7 +9,7 @@ mod lookup;
 mod types;
 
 use rustc_hash::FxHashMap;
-use ustr::{Ustr, UstrMap, UstrSet};
+use ustr::{Ustr, UstrMap};
 
 use crate::{
     ast,
@@ -32,6 +32,8 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     types::define(&mut cx, &mut res_map, &ast)?;
     lets::define(&mut cx, &mut res_map, &ast)?;
     fns::define(&mut cx, &mut res_map, &ast)?;
+    imports::define_qualified_imports(&mut cx, &ast)?;
+    imports::define_unqualified_imports(&mut cx, &ast)?;
     Ok(cx.hir)
 }
 

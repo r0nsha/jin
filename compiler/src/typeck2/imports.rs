@@ -17,17 +17,43 @@ pub(super) fn define_extern_imports(cx: &mut Typeck, ast: &Ast) -> DiagnosticRes
     Ok(())
 }
 
-pub(super) fn define_imports(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+pub(super) fn define_qualified_imports(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item, id) in ast.items_with_id() {
-        if let ast::Item::Import(import) = item {
-            define_import(cx, module.id, id, import)?;
+        match item {
+            ast::Item::Import(import) if import.kind.is_qualified() => {
+                define_qualified_import(cx, module.id, id, import)?;
+            }
+            _ => (),
         }
     }
 
     Ok(())
 }
 
-fn define_import(
+fn define_qualified_import(
+    cx: &mut Typeck,
+    module_id: ModuleId,
+    item_id: ast::ItemId,
+    import: &ast::Import,
+) -> DiagnosticResult<()> {
+    attrs::validate(&import.attrs, attrs::Placement::Import)?;
+    todo!()
+}
+
+pub(super) fn define_unqualified_imports(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+    for (module, item, id) in ast.items_with_id() {
+        match item {
+            ast::Item::Import(import) if import.kind.is_unqualified() => {
+                define_unqualified_import(cx, module.id, id, import)?;
+            }
+            _ => (),
+        }
+    }
+
+    Ok(())
+}
+
+fn define_unqualified_import(
     cx: &mut Typeck,
     module_id: ModuleId,
     item_id: ast::ItemId,
