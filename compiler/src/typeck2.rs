@@ -1,12 +1,17 @@
-use crate::{ast::Ast, db::Db, diagnostics::DiagnosticResult, hir::Hir};
+mod define_extern_imports;
+
+use crate::{
+    ast::Ast, db::Db, diagnostics::DiagnosticResult, hir::Hir,
+    typeck2::define_extern_imports::define_extern_imports,
+};
 
 pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     let mut cx = Typeck::new(db, ast);
-    todo!();
+    define_extern_imports(&mut cx);
     Ok(cx.hir)
 }
 
-struct Typeck<'db> {
+pub(super) struct Typeck<'db> {
     db: &'db mut Db,
     ast: Ast,
     hir: Hir,
