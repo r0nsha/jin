@@ -4,7 +4,7 @@ use crate::{
     ast,
     db::{Adt, AdtId, AdtKind, Def, DefId, DefKind, ModuleId, ScopeInfo, ScopeLevel},
     diagnostics::DiagnosticResult,
-    middle::{Mutability, Vis},
+    middle::{Mutability, NamePat, Pat, Vis},
     span::Spanned as _,
     ty::Ty,
     typeck2::{
@@ -109,5 +109,32 @@ impl<'db, 'cx> Define<'db, 'cx> {
         self.cx.def_to_ty.insert(id, ty);
         env.insert(name.name(), id);
         id
+    }
+
+    pub fn global_pat(&mut self, module_id: ModuleId, pat: &Pat, ty: Ty) -> DiagnosticResult<Pat> {
+        match pat {
+            Pat::Name(name) => {
+                let id = self.new_global(
+                    module_id,
+                    name.vis,
+                    DefKind::Global,
+                    name.word,
+                    name.mutability,
+                )?;
+
+                Ok(Pat::Name(NamePat { id, ty, ..name.clone() }))
+            }
+            Pat::Discard(span) => Ok(Pat::Discard(*span)),
+        }
+    }
+
+    pub fn local_pat(&mut self, env: &mut Env, pat: &Pat, ty: Ty) -> Pat {
+        match pat {
+            Pat::Name(name) => {
+                let id = self.new_local(env, DefKind::Variable, name.word, name.mutability, ty);
+                Pat::Name(NamePat { id, ty, ..name.clone() })
+            }
+            Pat::Discard(span) => Pat::Discard(*span),
+        }
     }
 }

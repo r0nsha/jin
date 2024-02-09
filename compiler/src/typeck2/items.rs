@@ -5,8 +5,8 @@ use crate::{
     ast,
     ast::{Ast, ItemId},
     db::{
-        AdtId, AdtKind, Def, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, StructDef, UnionDef,
-        Variant, VariantId,
+        AdtId, AdtKind, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, StructDef,
+        UnionDef, Variant, VariantId,
     },
     diagnostics::DiagnosticResult,
     hir,
@@ -54,23 +54,9 @@ fn define_let(
     let_: &ast::Let,
 ) -> DiagnosticResult<()> {
     attrs::validate(&let_.attrs, attrs::Placement::Let)?;
-
-    let pat = match &let_.pat {
-        Pat::Name(name) => {
-            let id = cx.define().new_global(
-                module_id,
-                name.vis,
-                DefKind::Global,
-                name.word,
-                name.mutability,
-            )?;
-            Pat::Name(NamePat { id, ty: cx.db.types.unknown, ..name.clone() })
-        }
-        Pat::Discard(span) => Pat::Discard(*span),
-    };
-
+    let unknown = cx.db.types.unknown;
+    let pat = cx.define().global_pat(module_id, &let_.pat, unknown)?;
     res_map.item_to_pat.insert(ast::GlobalItemId::new(module_id, item_id), pat);
-
     Ok(())
 }
 
@@ -298,17 +284,23 @@ fn check_fn(
     item_id: ItemId,
     fun: &ast::Fn,
 ) -> DiagnosticResult<()> {
-    let env = Env::new(module_id);
-    let sig = check_fn_item_helper(cx, &env, fun)?;
+    let mut env = Env::new(module_id);
+    let sig = env.with_named_scope(fun.sig.word.name(), ScopeKind::Fn(DefId::null()), |env| {
+        check_fn_item_helper(cx, env, fun)
+    })?;
     todo!("{sig:?}");
-    // let id = self.define_fn(env.module_id(), fun, &sig, None)?;
-    // self.check_intrinsic_fn(env, fun, &sig, id)?;
-    // self.resolution_state.insert_resolved_fn_sig(item_id, ResolvedFnSig { id, sig
-    // });
+    // TODO: let id = from res_map
+    // TODO: add to def_to_ty
+    // TODO: self.check_intrinsic_fn(env, fun, &sig, id)?;
+    // TODO: add to item_to_sig
     Ok(())
 }
 
-fn check_fn_item_helper(cx: &mut Typeck, env: &Env, fun: &ast::Fn) -> DiagnosticResult<hir::FnSig> {
+fn check_fn_item_helper(
+    cx: &mut Typeck,
+    env: &mut Env,
+    fun: &ast::Fn,
+) -> DiagnosticResult<hir::FnSig> {
     let mut flags = FnTyFlags::empty();
 
     let callconv = match &fun.kind {
