@@ -153,7 +153,7 @@ fn check_struct(
                 return Err(errors::name_defined_twice("field", field.name, prev_span));
             }
 
-            let ty = tyexpr::check(cx, module_id, &field.ty_expr, AllowTyHole::No)?;
+            let ty = tyexpr::check(cx, &env, &field.ty_expr, AllowTyHole::No)?;
             fields.push(AdtField { name: field.name, vis: field.vis, ty });
         }
 

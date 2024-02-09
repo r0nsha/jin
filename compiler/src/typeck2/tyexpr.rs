@@ -1,17 +1,17 @@
 use crate::{
-    db::{DefKind, ModuleId},
+    db::DefKind,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     macros::create_bool_enum,
     middle::TyExpr,
     span::{Span, Spanned},
     ty::{FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
-    typeck2::{errors, lookup::PathLookup, Typeck},
+    typeck2::{errors, lookup::PathLookup, ns::Env, Typeck},
     word::Word,
 };
 
 pub(super) fn check(
     cx: &Typeck,
-    in_module: ModuleId,
+    env: &Env,
     ty: &TyExpr,
     allow_hole: AllowTyHole,
 ) -> DiagnosticResult<Ty> {
@@ -20,15 +20,13 @@ pub(super) fn check(
             let params = fn_ty
                 .params
                 .iter()
-                .map(|ty| {
-                    check(cx, in_module, ty, allow_hole).map(|ty| FnTyParam { name: None, ty })
-                })
+                .map(|ty| check(cx, env, ty, allow_hole).map(|ty| FnTyParam { name: None, ty }))
                 .try_collect()?;
 
             let ret = fn_ty
                 .ret
                 .as_ref()
-                .map(|ret| check(cx, in_module, ret, allow_hole))
+                .map(|ret| check(cx, env, ret, allow_hole))
                 .transpose()?
                 .unwrap_or(cx.db.types.unit);
 
@@ -45,11 +43,11 @@ pub(super) fn check(
             Ok(Ty::new(TyKind::Fn(FnTy { params, ret, callconv: fn_ty.callconv, flags })))
         }
         TyExpr::Slice(inner, _) => {
-            let inner = check(cx, in_module, inner, allow_hole)?;
+            let inner = check(cx, env, inner, allow_hole)?;
             Ok(Ty::new(TyKind::Slice(inner)))
         }
         TyExpr::Ref(inner, mutability, _) => {
-            let inner_ty = check(cx, in_module, inner, allow_hole)?;
+            let inner_ty = check(cx, env, inner, allow_hole)?;
 
             match inner_ty.kind() {
                 TyKind::Adt(..) => Ok(inner_ty.create_ref(*mutability)),
@@ -76,11 +74,11 @@ pub(super) fn check(
             }
         }
         TyExpr::RawPtr(pointee, _) => {
-            let pointee = check(cx, in_module, pointee, allow_hole)?;
+            let pointee = check(cx, env, pointee, allow_hole)?;
             Ok(Ty::new(TyKind::RawPtr(pointee)))
         }
         TyExpr::Path(path, targs, span) => {
-            check_path(cx, in_module, path, targs.as_deref(), *span, allow_hole)
+            check_path(cx, env, path, targs.as_deref(), *span, allow_hole)
         }
         TyExpr::Unit(_) => Ok(cx.db.types.unit),
         TyExpr::Hole(span) => {
@@ -96,13 +94,14 @@ pub(super) fn check(
 
 fn check_path(
     cx: &Typeck,
-    in_module: ModuleId,
+    env: &Env,
     path: &[Word],
     targs: Option<&[TyExpr]>,
     span: Span,
     allow_hole: AllowTyHole,
 ) -> DiagnosticResult<Ty> {
-    let result = cx.lookup().path(in_module, path)?;
+    let result = cx.lookup().with_env(env).path(env.module_id(), path)?;
+
     match result {
         PathLookup::Def(id) => {
             let def = &cx.db[id];
@@ -120,7 +119,7 @@ fn check_path(
                     }
                 }
                 &DefKind::Adt(adt_id) => {
-                    let targs = check_optional_targs(cx, in_module, targs, allow_hole)?;
+                    let targs = check_optional_targs(cx, env, targs, allow_hole)?;
 
                     let ty_params = &cx.db[adt_id].ty_params;
                     let targs_len = targs.as_ref().map_or(0, Vec::len);
@@ -152,12 +151,12 @@ fn check_path(
 
 pub(super) fn check_optional_targs(
     cx: &Typeck,
-    in_module: ModuleId,
+    env: &Env,
     targs: Option<&[TyExpr]>,
     allow_hole: AllowTyHole,
 ) -> DiagnosticResult<Option<Vec<Ty>>> {
     targs
-        .map(|targs| targs.iter().map(|arg| check(cx, in_module, arg, allow_hole)).try_collect())
+        .map(|targs| targs.iter().map(|arg| check(cx, env, arg, allow_hole)).try_collect())
         .transpose()
 }
 

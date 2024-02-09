@@ -9,7 +9,7 @@ use crate::{
     middle::{CallConv, IsUfcs, Vis},
     span::{Span, Spanned as _},
     ty::{printer::FnTyPrinter, FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
-    typeck2::{errors, Typeck},
+    typeck2::{errors, ns::Env, Typeck},
     word::Word,
 };
 
@@ -44,11 +44,17 @@ impl<'db> Typeck<'db> {
 
 pub(super) struct Lookup<'db, 'cx> {
     cx: &'cx Typeck<'db>,
+    env: Option<&'cx Env>,
 }
 
 impl<'db, 'cx> Lookup<'db, 'cx> {
     fn new(cx: &'cx Typeck<'db>) -> Self {
-        Self { cx }
+        Self { cx, env: None }
+    }
+
+    pub(super) fn with_env(mut self, env: &'cx Env) -> Self {
+        self.env = Some(env);
+        self
     }
 
     pub(super) fn query(
@@ -69,6 +75,12 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         query: &Query,
     ) -> DiagnosticResult<DefId> {
         let name = query.name();
+
+        if let Some(env) = &self.env {
+            if let Some(id) = env.lookup(name).copied() {
+                return Ok(id);
+            }
+        }
 
         if let Query::Fn(fn_query) = query {
             todo!()
