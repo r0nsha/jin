@@ -39,14 +39,19 @@ impl<'db, 'cx> Define<'db, 'cx> {
             kind: kind(id),
         });
 
-        let def_id =
-            self.global(module_id, tydef.vis, DefKind::Adt(adt_id), tydef.word, Mutability::Imm)?;
+        let def_id = self.new_global(
+            module_id,
+            tydef.vis,
+            DefKind::Adt(adt_id),
+            tydef.word,
+            Mutability::Imm,
+        )?;
         self.cx.db[adt_id].def_id = def_id;
 
         Ok((adt_id, def_id))
     }
 
-    pub(super) fn global(
+    pub(super) fn new_global(
         &mut self,
         module_id: ModuleId,
         vis: Vis,
@@ -57,10 +62,10 @@ impl<'db, 'cx> Define<'db, 'cx> {
         let qpath = self.cx.db[module_id].qpath.clone().child(name.name());
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let id = Def::alloc(self.cx.db, qpath, scope, kind, mutability, name.span());
-        self.global_def(module_id, name, id, vis)
+        self.global(module_id, name, id, vis)
     }
 
-    pub(super) fn global_def(
+    pub(super) fn global(
         &mut self,
         module_id: ModuleId,
         name: Word,

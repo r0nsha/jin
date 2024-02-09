@@ -3,6 +3,7 @@ mod builtins;
 mod define;
 mod errors;
 mod imports;
+mod lets;
 mod types;
 
 use rustc_hash::FxHashMap;
@@ -14,7 +15,7 @@ use crate::{
     db::{AdtId, Db, DefId, ModuleId},
     diagnostics::DiagnosticResult,
     hir::Hir,
-    middle::Vis,
+    middle::{Pat, Vis},
     span::Span,
     ty::{Ty, TyKind},
     typeck2::builtins::BuiltinTys,
@@ -25,7 +26,8 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     let mut res_map = ResolutionMap::new();
     cx.init_global_env(&ast);
     imports::define_extern_imports(&mut cx, &ast)?;
-    types::define_types(&mut cx, &mut res_map, &ast)?;
+    types::define(&mut cx, &mut res_map, &ast)?;
+    lets::define(&mut cx, &mut res_map, &ast)?;
     Ok(cx.hir)
 }
 
@@ -58,12 +60,18 @@ impl<'db> Typeck<'db> {
 
 /// Various mappings and resolutions from the `define_*` passes
 pub(super) struct ResolutionMap {
+    pub(super) item_to_def: FxHashMap<ast::GlobalItemId, DefId>,
     pub(super) item_to_adt: FxHashMap<ast::GlobalItemId, AdtId>,
+    pub(super) item_to_pat: FxHashMap<ast::GlobalItemId, Pat>,
 }
 
 impl ResolutionMap {
     pub(super) fn new() -> Self {
-        Self { item_to_adt: FxHashMap::default() }
+        Self {
+            item_to_def: FxHashMap::default(),
+            item_to_adt: FxHashMap::default(),
+            item_to_pat: FxHashMap::default(),
+        }
     }
 }
 

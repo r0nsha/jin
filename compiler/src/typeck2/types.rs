@@ -9,7 +9,7 @@ use crate::{
     word::WordMap,
 };
 
-pub(super) fn define_types(
+pub(super) fn define(
     cx: &mut Typeck,
     res_map: &mut ResolutionMap,
     ast: &Ast,
