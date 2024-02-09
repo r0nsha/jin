@@ -1,18 +1,11 @@
 use data_structures::index_vec::{IndexVecExt as _, Key as _};
-use rustc_hash::FxHashMap;
-use ustr::{ustr, Ustr, UstrMap};
 
 use crate::{
     ast,
-    ast::Ast,
-    db::{Adt, AdtId, AdtKind, Db, Def, DefId, DefKind, ModuleId, ScopeInfo, ScopeLevel},
+    db::{Adt, AdtId, AdtKind, Def, DefId, DefKind, ModuleId, ScopeInfo, ScopeLevel},
     diagnostics::DiagnosticResult,
-    hir::Hir,
     middle::{Mutability, Vis},
-    qpath::QPath,
-    span::{Span, Spanned as _},
-    sym,
-    ty::{Ty, TyKind},
+    span::Spanned as _,
     typeck2::{errors, NamespaceDef, Typeck},
     word::Word,
 };

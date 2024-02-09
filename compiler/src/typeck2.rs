@@ -22,9 +22,10 @@ use crate::{
 
 pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     let mut cx = Typeck::new(db);
+    let mut res_map = ResolutionMap::new();
     cx.init_global_env(&ast);
     imports::define_extern_imports(&mut cx, &ast)?;
-    types::define_types(&mut cx, &ast)?;
+    types::define_types(&mut cx, &mut res_map, &ast)?;
     Ok(cx.hir)
 }
 
@@ -33,9 +34,6 @@ pub(super) struct Typeck<'db> {
 
     /// The Hir being constructed
     hir: Hir,
-
-    /// Various mappings and resolutions from the `define_*` passes
-    res_map: ResolutionMap,
 
     /// The global namespace, mapped by module
     global_env: GlobalEnv,
@@ -48,13 +46,7 @@ impl<'db> Typeck<'db> {
     fn new(db: &'db mut Db) -> Self {
         let mut def_to_ty = FxHashMap::default();
         let builtin_tys = BuiltinTys::new(db, &mut def_to_ty);
-        Self {
-            db,
-            hir: Hir::new(),
-            res_map: ResolutionMap::new(),
-            global_env: GlobalEnv::new(builtin_tys),
-            def_to_ty,
-        }
+        Self { db, hir: Hir::new(), global_env: GlobalEnv::new(builtin_tys), def_to_ty }
     }
 
     fn init_global_env(&mut self, ast: &Ast) {
@@ -64,6 +56,7 @@ impl<'db> Typeck<'db> {
     }
 }
 
+/// Various mappings and resolutions from the `define_*` passes
 pub(super) struct ResolutionMap {
     pub(super) item_to_adt: FxHashMap<ast::GlobalItemId, AdtId>,
 }

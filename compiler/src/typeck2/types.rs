@@ -5,14 +5,18 @@ use crate::{
     ast::{Ast, ItemId},
     db::{AdtId, AdtKind, ModuleId, StructDef, UnionDef, Variant, VariantId},
     diagnostics::DiagnosticResult,
-    typeck2::{attrs, errors, Typeck},
+    typeck2::{attrs, errors, ResolutionMap, Typeck},
     word::WordMap,
 };
 
-pub(super) fn define_types(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+pub(super) fn define_types(
+    cx: &mut Typeck,
+    res_map: &mut ResolutionMap,
+    ast: &Ast,
+) -> DiagnosticResult<()> {
     for (module, item, id) in ast.items_with_id() {
         if let ast::Item::Type(tydef) = item {
-            define_tydef(cx, module.id, id, tydef)?;
+            define_tydef(cx, res_map, module.id, id, tydef)?;
         }
     }
 
@@ -21,6 +25,7 @@ pub(super) fn define_types(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
 
 fn define_tydef(
     cx: &mut Typeck<'_>,
+    res_map: &mut ResolutionMap,
     module_id: ModuleId,
     item_id: ItemId,
     tydef: &ast::TyDef,
@@ -47,7 +52,7 @@ fn define_tydef(
         }
     };
 
-    cx.res_map.item_to_adt.insert(ast::GlobalItemId::new(module_id, item_id), adt_id);
+    res_map.item_to_adt.insert(ast::GlobalItemId::new(module_id, item_id), adt_id);
 
     Ok(())
 }
