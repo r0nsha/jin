@@ -1,8 +1,10 @@
 use crate::{
     ast,
     ast::Ast,
-    db::ModuleId,
+    db::{DefKind, ModuleId},
     diagnostics::DiagnosticResult,
+    middle::Mutability,
+    ty::{Ty, TyKind},
     typeck2::{attrs, Typeck},
 };
 
@@ -18,35 +20,34 @@ pub(super) fn define_extern_imports(cx: &mut Typeck, ast: &Ast) -> DiagnosticRes
 }
 
 pub(super) fn define_qualified_imports(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
-    for (module, item, id) in ast.items_with_id() {
-        match item {
-            ast::Item::Import(import) if import.kind.is_qualified() => {
-                define_qualified_import(cx, module.id, id, import)?;
+    for (module, item) in ast.items() {
+        if let ast::Item::Import(import) = item {
+            if let ast::ImportKind::Qualified(alias, vis) = &import.kind {
+                attrs::validate(&import.attrs, attrs::Placement::Import)?;
+                let name = alias.unwrap_or(*import.path.last().unwrap());
+                let id = cx.define().new_global(
+                    module.id,
+                    *vis,
+                    DefKind::Variable,
+                    name,
+                    Mutability::Imm,
+                )?;
+                cx.def_to_ty.insert(id, Ty::new(TyKind::Module(module.id)));
             }
-            _ => (),
         }
     }
 
     Ok(())
 }
 
-fn define_qualified_import(
-    cx: &mut Typeck,
-    module_id: ModuleId,
-    item_id: ast::ItemId,
-    import: &ast::Import,
-) -> DiagnosticResult<()> {
-    attrs::validate(&import.attrs, attrs::Placement::Import)?;
-    todo!()
-}
-
 pub(super) fn define_unqualified_imports(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
-    for (module, item, id) in ast.items_with_id() {
-        match item {
-            ast::Item::Import(import) if import.kind.is_unqualified() => {
-                define_unqualified_import(cx, module.id, id, import)?;
+    for (module, item) in ast.items() {
+        if let ast::Item::Import(import) = item {
+            if let ast::ImportKind::Unqualified(imports) = &import.kind {
+                attrs::validate(&import.attrs, attrs::Placement::Import)?;
+                dbg!(&imports);
+                todo!()
             }
-            _ => (),
         }
     }
 
