@@ -46,14 +46,8 @@ impl<'db, 'cx> Define<'db, 'cx> {
             kind: kind(id),
         });
 
-        let def_id = self.global(
-            module_id,
-            tydef.vis,
-            DefKind::Adt(adt_id),
-            tydef.word,
-            Mutability::Imm,
-            self.cx.db.types.unknown, // Will be filled later
-        )?;
+        let def_id =
+            self.global(module_id, tydef.vis, DefKind::Adt(adt_id), tydef.word, Mutability::Imm)?;
         self.cx.db[adt_id].def_id = def_id;
 
         Ok((adt_id, def_id))
@@ -66,12 +60,10 @@ impl<'db, 'cx> Define<'db, 'cx> {
         kind: DefKind,
         name: Word,
         mutability: Mutability,
-        ty: Ty,
     ) -> DiagnosticResult<DefId> {
         let qpath = self.cx.db[module_id].qpath.clone().child(name.name());
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let id = Def::alloc(self.cx.db, qpath, scope, kind, mutability, name.span());
-        self.cx.def_to_ty.insert(id, ty);
         self.global_def(module_id, name, id, vis)
     }
 

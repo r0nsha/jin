@@ -47,7 +47,7 @@ fn define_tydef(
         }
     };
 
-    cx.item_map.item_to_adt.insert(ast::GlobalItemId::new(module_id, item_id), adt_id);
+    cx.res_map.item_to_adt.insert(ast::GlobalItemId::new(module_id, item_id), adt_id);
 
     Ok(())
 }

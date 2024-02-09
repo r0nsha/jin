@@ -1,9 +1,9 @@
 mod attrs;
 mod builtins;
 mod define;
+mod errors;
 mod imports;
 mod types;
-mod errors;
 
 use rustc_hash::FxHashMap;
 
@@ -30,8 +30,8 @@ pub(super) struct Typeck<'db> {
     /// The Hir being constructed
     hir: Hir,
 
-    /// Mappings from ast module items to their defined data
-    item_map: ItemMap,
+    /// Various mappings and resolutions from the `define_*` passes
+    res_map: ResolutionMap,
 
     /// The set of builtin types with their definitions
     builtin_tys: BuiltinTys,
@@ -44,15 +44,15 @@ impl<'db> Typeck<'db> {
     fn new(db: &'db mut Db) -> Self {
         let mut def_to_ty = FxHashMap::default();
         let builtin_tys = BuiltinTys::new(db, &mut def_to_ty);
-        Self { db, hir: Hir::new(), item_map: ItemMap::new(), builtin_tys, def_to_ty }
+        Self { db, hir: Hir::new(), res_map: ResolutionMap::new(), builtin_tys, def_to_ty }
     }
 }
 
-pub(super) struct ItemMap {
+pub(super) struct ResolutionMap {
     pub(super) item_to_adt: FxHashMap<ast::GlobalItemId, AdtId>,
 }
 
-impl ItemMap {
+impl ResolutionMap {
     pub(super) fn new() -> Self {
         Self { item_to_adt: FxHashMap::default() }
     }
