@@ -96,8 +96,8 @@ pub fn generic_expected_found(expected: &str, found: &str, span: Span) -> Diagno
 
 pub fn multiple_item_def_err(prev_span: Span, dup_name: Word) -> Diagnostic {
     Diagnostic::error(format!("item `{dup_name}` is defined multiple times"))
-        .with_label(Label::primary(dup_name.span(), format!("`{dup_name}` defined again here")))
-        .with_label(Label::secondary(prev_span, format!("first definition of `{dup_name}`")))
+        .with_label(Label::primary(dup_name.span(), format!("`{dup_name}` defined here")))
+        .with_label(Label::secondary(prev_span, format!("`{dup_name}` also defined here")))
         .with_note("you can only define items once in a module (except functions)")
 }
 
@@ -112,8 +112,8 @@ pub fn multiple_item_def_err(prev_span: Span, dup_name: Word) -> Diagnostic {
 //         candidate.display(db),
 //         db[in_module].qpath
 //     ))
-//     .with_label(Label::primary(candidate.word.span(), "defined again here"))
-//     .with_label(Label::secondary(prev_span, "previous definition here"))
+//     .with_label(Label::primary(candidate.word.span(), "defined here"))
+//     .with_label(Label::secondary(prev_span, "also defined here"))
 //     .with_note("functions may be overloaded by their parameters' types and
 // names") }
 

@@ -2,3 +2,5 @@ import std
 
 fn main() =
 	std.io.println("Hello, World!")
+
+let main: int = 1

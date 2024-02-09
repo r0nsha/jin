@@ -2,12 +2,13 @@ mod attrs;
 mod builtins;
 mod define;
 mod errors;
+mod fns;
 mod imports;
 mod lets;
 mod types;
 
 use rustc_hash::FxHashMap;
-use ustr::{Ustr, UstrMap};
+use ustr::{Ustr, UstrMap, UstrSet};
 
 use crate::{
     ast,
@@ -28,6 +29,7 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     imports::define_extern_imports(&mut cx, &ast)?;
     types::define(&mut cx, &mut res_map, &ast)?;
     lets::define(&mut cx, &mut res_map, &ast)?;
+    fns::define(&mut cx, &mut res_map, &ast)?;
     Ok(cx.hir)
 }
 
@@ -119,6 +121,7 @@ pub struct Namespace {
     pub module_id: ModuleId,
     defs: UstrMap<NamespaceDef>,
     // pub fns: UstrMap<FnCandidateSet>,
+    pub fn_names: UstrSet,
 }
 
 impl Namespace {
@@ -127,7 +130,12 @@ impl Namespace {
             module_id,
             defs: UstrMap::default(),
             // fns: FxHashMap::default()
+            fn_names: UstrSet::default(),
         }
+    }
+
+    pub fn insert_def(&mut self, name: Ustr, def: NamespaceDef) -> Option<NamespaceDef> {
+        self.defs.insert(name, def)
     }
 
     pub fn get_def(&self, from_module: ModuleId, name: Ustr) -> Option<DefId> {
@@ -137,8 +145,8 @@ impl Namespace {
             .map(|def| def.id)
     }
 
-    fn insert_def(&mut self, name: Ustr, def: NamespaceDef) -> Option<NamespaceDef> {
-        self.defs.insert(name, def)
+    pub fn contains_def(&self, name: Ustr) -> Option<&NamespaceDef> {
+        self.defs.get(&name)
     }
 }
 
