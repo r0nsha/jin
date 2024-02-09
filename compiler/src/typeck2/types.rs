@@ -1,9 +1,12 @@
+use data_structures::index_vec::{IndexVecExt as _, Key as _};
+
 use crate::{
     ast,
     ast::{Ast, ItemId},
-    db::{AdtKind, ModuleId, StructDef, UnionDef},
+    db::{AdtId, AdtKind, ModuleId, StructDef, UnionDef, Variant, VariantId},
     diagnostics::DiagnosticResult,
-    typeck2::{attrs, Typeck},
+    typeck2::{attrs, errors, Typeck},
+    word::WordMap,
 };
 
 pub(super) fn define_types(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
@@ -37,8 +40,9 @@ fn define_tydef(
         }
         ast::TyDefKind::Union(union_def) => {
             attrs::validate(&tydef.attrs, attrs::Placement::Union)?;
+            let variants = define_variants(cx, union_def)?;
             cx.define().adt(module_id, tydef, |id| {
-                AdtKind::Union(UnionDef::new(id, union_def.kind, vec![]))
+                AdtKind::Union(UnionDef::new(id, union_def.kind, variants))
             })?
         }
     };
@@ -46,4 +50,32 @@ fn define_tydef(
     cx.item_map.item_to_adt.insert(ast::GlobalItemId::new(module_id, item_id), adt_id);
 
     Ok(())
+}
+
+fn define_variants(
+    cx: &mut Typeck<'_>,
+    union_def: &ast::UnionTyDef,
+) -> DiagnosticResult<Vec<VariantId>> {
+    let mut variants = vec![];
+    let mut defined_variants = WordMap::default();
+
+    for (index, variant) in union_def.variants.iter().enumerate() {
+        if let Some(prev_span) = defined_variants.insert(variant.name) {
+            return Err(errors::name_defined_twice("variant", variant.name, prev_span));
+        }
+
+        let unknown = cx.db.types.unknown;
+        let id = cx.db.variants.push_with_key(|id| Variant {
+            id,
+            adt_id: AdtId::null(),
+            index,
+            name: variant.name,
+            fields: vec![],
+            ctor_ty: unknown,
+        });
+
+        variants.push(id);
+    }
+
+    Ok(variants)
 }

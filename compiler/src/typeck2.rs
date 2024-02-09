@@ -3,6 +3,7 @@ mod builtins;
 mod define;
 mod imports;
 mod types;
+mod errors;
 
 use rustc_hash::FxHashMap;
 
