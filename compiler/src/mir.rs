@@ -19,9 +19,8 @@ pub use monomorphize::monomorphize;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
-use crate::db::VariantId;
 use crate::{
-    db::{AdtId, Db, DefId},
+    db::{AdtId, Db, DefId, VariantId},
     middle::{BinOp, Pat, UnOp},
     mir::builder::InstBuilder,
     span::Span,

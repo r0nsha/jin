@@ -1,9 +1,9 @@
 mod expr;
 mod import;
 mod item;
+mod pmatch;
 mod tydef;
 mod tyexpr;
-mod pmatch;
 
 use std::{ops::ControlFlow, str::FromStr};
 

@@ -9,17 +9,6 @@ use crate::{
     typeck2::{attrs, lookup::Query, Typeck},
 };
 
-pub(super) fn define_extern_imports(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
-    for (_, item) in ast.items() {
-        if let ast::Item::ExternImport(import) = item {
-            attrs::validate(&import.attrs, attrs::Placement::ExternImport)?;
-            cx.db.extern_libs.insert(import.lib.clone());
-        }
-    }
-
-    Ok(())
-}
-
 pub(super) fn define_qualified_imports(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item) in ast.items() {
         if let ast::Item::Import(import) = item {

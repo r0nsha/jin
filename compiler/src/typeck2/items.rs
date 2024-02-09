@@ -31,6 +31,10 @@ pub(super) fn define(
             ast::Item::ExternLet(let_) => define_extern_let(cx, res_map, module.id, id, let_)?,
             ast::Item::Fn(fun) => define_fn(cx, res_map, module.id, id, fun, None)?,
             ast::Item::Type(tydef) => define_tydef(cx, res_map, module.id, id, tydef)?,
+            ast::Item::ExternImport(import) => {
+                attrs::validate(&import.attrs, attrs::Placement::ExternImport)?;
+                cx.db.extern_libs.insert(import.lib.clone());
+            }
             _ => (),
         }
     }

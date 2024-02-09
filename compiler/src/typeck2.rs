@@ -7,8 +7,8 @@ mod items;
 mod lookup;
 mod normalize;
 mod ns;
-mod types;
 mod tyexpr;
+mod types;
 
 use std::cell::RefCell;
 
@@ -33,7 +33,6 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     let mut cx = Typeck::new(db);
     let mut res_map = ResolutionMap::new();
     cx.init_global_env(&ast);
-    imports::define_extern_imports(&mut cx, &ast)?;
     items::define(&mut cx, &mut res_map, &ast)?;
     imports::define_qualified_imports(&mut cx, &ast)?;
     imports::define_unqualified_imports(&mut cx, &ast)?;
