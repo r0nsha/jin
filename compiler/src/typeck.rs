@@ -1,3 +1,4 @@
+#![allow(unused)]
 mod attrs;
 mod coerce;
 mod collect;
