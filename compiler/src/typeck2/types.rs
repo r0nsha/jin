@@ -42,40 +42,37 @@ fn check_tydef(
         .remove(&ast::GlobalItemId::new(module_id, item_id))
         .expect("to be defined");
 
-    match &tydef.kind {
-        ast::TyDefKind::Struct(struct_def) => {
-            check_struct(cx, module_id, adt_id, tydef, struct_def)
+    let mut env = Env::new(module_id);
+
+    env.with_anon_scope(ScopeKind::TyDef, |env| -> DiagnosticResult<()> {
+        for tp in &cx.db[adt_id].ty_params {
+            env.insert(tp.word.name(), tp.id);
         }
-        ast::TyDefKind::Union(union_def) => check_union(cx, module_id, adt_id, tydef, union_def),
-    }
+
+        match &tydef.kind {
+            ast::TyDefKind::Struct(struct_def) => check_struct(cx, env, adt_id, struct_def),
+            ast::TyDefKind::Union(union_def) => check_union(cx, env, adt_id, union_def),
+        }
+    })
 }
 
 fn check_struct(
     cx: &mut Typeck<'_>,
-    module_id: ModuleId,
+    env: &mut Env,
     adt_id: AdtId,
-    tydef: &ast::TyDef,
     struct_def: &ast::StructTyDef,
 ) -> DiagnosticResult<()> {
-    let mut env = Env::new(module_id);
     let mut fields = vec![];
+    let mut defined_fields = WordMap::default();
 
-    env.with_anon_scope(ScopeKind::TyDef, |env| -> DiagnosticResult<()> {
-        check_adt_ty_params(cx, env, tydef, adt_id)?;
-
-        let mut defined_fields = WordMap::default();
-
-        for field in &struct_def.fields {
-            if let Some(prev_span) = defined_fields.insert(field.name) {
-                return Err(errors::name_defined_twice("field", field.name, prev_span));
-            }
-
-            let ty = tyexpr::check(cx, env, &field.ty_expr, AllowTyHole::No)?;
-            fields.push(AdtField { name: field.name, vis: field.vis, ty });
+    for field in &struct_def.fields {
+        if let Some(prev_span) = defined_fields.insert(field.name) {
+            return Err(errors::name_defined_twice("field", field.name, prev_span));
         }
 
-        Ok(())
-    })?;
+        let ty = tyexpr::check(cx, env, &field.ty_expr, AllowTyHole::No)?;
+        fields.push(AdtField { name: field.name, vis: field.vis, ty });
+    }
 
     let adt_ty = cx.db[adt_id].ty();
     let struct_def = cx.db[adt_id].as_struct_mut().unwrap();
@@ -110,25 +107,16 @@ fn check_struct(
 
 fn check_union(
     cx: &mut Typeck<'_>,
-    module_id: ModuleId,
+    env: &mut Env,
     adt_id: AdtId,
-    tydef: &ast::TyDef,
     union_def: &ast::UnionTyDef,
 ) -> DiagnosticResult<()> {
-    let mut env = Env::new(module_id);
+    let adt_ty = cx.db[adt_id].ty();
 
-    env.with_anon_scope(ScopeKind::TyDef, |env| -> DiagnosticResult<()> {
-        check_adt_ty_params(cx, env, tydef, adt_id)?;
-
-        let adt_ty = cx.db[adt_id].ty();
-
-        for (idx, variant) in union_def.variants.iter().enumerate() {
-            let id = cx.db[adt_id].as_union().unwrap().variants[idx];
-            check_variant(cx, env, adt_ty, variant, id)?;
-        }
-
-        Ok(())
-    })?;
+    for (idx, variant) in union_def.variants.iter().enumerate() {
+        let id = cx.db[adt_id].as_union().unwrap().variants[idx];
+        check_variant(cx, env, adt_ty, variant, id)?;
+    }
 
     let adt = &cx.db[adt_id];
     if let Some(field) = adt.is_infinitely_sized(cx.db) {
@@ -164,20 +152,7 @@ fn check_variant(
     Ok(())
 }
 
-fn check_adt_ty_params(
-    cx: &mut Typeck,
-    env: &mut Env,
-    tydef: &ast::TyDef,
-    adt_id: AdtId,
-) -> DiagnosticResult<()> {
-    let ty_params = check_ty_params(cx, env, &tydef.ty_params)?;
-    cx.db[adt_id].ty_params = ty_params;
-    let adt = &cx.db[adt_id];
-    cx.def_to_ty.insert(adt.def_id, TyKind::Type(adt.ty()).into());
-    Ok(())
-}
-
-pub(super) fn check_ty_params(
+pub(super) fn define_ty_params(
     cx: &mut Typeck,
     env: &mut Env,
     ty_params: &[ast::TyParam],
