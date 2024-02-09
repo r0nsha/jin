@@ -84,3 +84,83 @@ fn define_variants(
 
     Ok(variants)
 }
+
+pub(super) fn check(
+    cx: &mut Typeck,
+    res_map: &mut ResolutionMap,
+    ast: &Ast,
+) -> DiagnosticResult<()> {
+    for (module, item, id) in ast.items_with_id() {
+        if let ast::Item::Type(tydef) = item {
+            check_tydef(cx, res_map, module.id, id, tydef)?;
+        }
+    }
+
+    Ok(())
+}
+
+fn check_tydef(
+    cx: &mut Typeck<'_>,
+    res_map: &mut ResolutionMap,
+    module_id: ModuleId,
+    item_id: ItemId,
+    tydef: &ast::TyDef,
+) -> DiagnosticResult<()> {
+    // TODO: port Env
+    // TODO: create Env
+    // TODO: typarams
+    // TODO: typarams: dup
+    // TODO: field tys
+    // TODO: fields: dup
+    // TODO: set ctor ty
+    // TODO: check infinitely sized
+    // TODO: check value struct thing
+    match &tydef.kind {
+        ast::TyDefKind::Struct(struct_def) => {
+            check_struct(cx, res_map, module_id, item_id, tydef, struct_def)
+        }
+        ast::TyDefKind::Union(union_def) => {
+            check_union(cx, res_map, module_id, item_id, tydef, union_def)
+        }
+    }
+}
+
+fn check_struct(
+    cx: &mut Typeck<'_>,
+    res_map: &mut ResolutionMap,
+    module_id: ModuleId,
+    item_id: ItemId,
+    tydef: &ast::TyDef,
+    struct_def: &ast::StructTyDef,
+) -> DiagnosticResult<()> {
+    // TODO: port Env
+    // TODO: create Env
+    // TODO: typarams
+    // TODO: typarams: dup
+    // TODO: field: ty
+    // TODO: field: dup
+    // TODO: field: add
+    // TODO: set ctor ty
+    // TODO: check infinitely sized
+    // TODO: check value struct thing
+    todo!()
+}
+
+fn check_union(
+    cx: &mut Typeck<'_>,
+    res_map: &mut ResolutionMap,
+    module_id: ModuleId,
+    item_id: ItemId,
+    tydef: &ast::TyDef,
+    union_def: &ast::UnionTyDef,
+) -> DiagnosticResult<()> {
+    // TODO: create Env
+    // TODO: typarams
+    // TODO: typarams: dup
+    // TODO: variant: field: ty
+    // TODO: variant: field: dup
+    // TODO: variant: field: add
+    // TODO: variant: set ctor ty
+    // TODO: check infinitely sized
+    todo!()
+}
