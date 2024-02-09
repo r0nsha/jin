@@ -13,7 +13,7 @@ use crate::{
     span::{Span, Spanned as _},
     sym,
     ty::{Ty, TyKind},
-    typeck2::Typeck,
+    typeck2::{errors, NamespaceDef, Typeck},
     word::Word,
 };
 
@@ -74,19 +74,18 @@ impl<'db, 'cx> Define<'db, 'cx> {
         id: DefId,
         vis: Vis,
     ) -> DiagnosticResult<DefId> {
-        todo!("insert global");
-        // let symbol = Symbol::new(module_id, name.name());
-
+        // TODO:
         // if let Some(candidates) = self.global_scope.fns.get(&symbol) {
         //     let last_candidate = candidates.iter().last().unwrap();
         //     return Err(errors::multiple_item_def_err(last_candidate.word.span(),
         // name)); }
 
-        // let new_def = GlobalScopeDef::new(id, vis, name.span());
+        let def = NamespaceDef::new(id, vis, name.span());
 
-        // if let Some(prev) = self.global_scope.insert_def(symbol, new_def) {
-        //     return Err(errors::multiple_item_def_err(prev.span, name));
-        // }
+        if let Some(prev) = self.cx.global_env.module_mut(module_id).ns.insert_def(name.name(), def)
+        {
+            return Err(errors::multiple_item_def_err(prev.span, name));
+        }
 
         Ok(id)
     }

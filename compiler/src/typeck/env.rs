@@ -723,13 +723,10 @@ impl GlobalScope {
     }
 
     pub fn get_def(&self, from_module: ModuleId, symbol: &Symbol) -> Option<DefId> {
-        if let Some(def) = self.defs.get(symbol) {
-            if def.vis == Vis::Public || from_module == symbol.module_id {
-                return Some(def.id);
-            }
-        }
-
-        None
+        self.defs
+            .get(symbol)
+            .filter(|def| def.vis == Vis::Public || from_module == symbol.module_id)
+            .map(|def| def.id)
     }
 
     fn insert_def(&mut self, symbol: Symbol, def: GlobalScopeDef) -> Option<GlobalScopeDef> {
