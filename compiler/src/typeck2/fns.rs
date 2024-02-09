@@ -45,8 +45,6 @@ fn define_fn(
 
     let id = match &fun.kind {
         ast::FnKind::Bare { .. } => {
-            cx.global_env.module_mut(module_id).ns.fn_names.insert(name);
-
             let base_qpath = if let Some(assoc_ty) = assoc_ty {
                 match assoc_ty {
                     AssocTy::Adt(adt_id) => cx.db[cx.db[adt_id].def_id].qpath.clone(),
@@ -64,14 +62,18 @@ fn define_fn(
                 return Err(errors::multiple_item_def_err(def.span, fun.sig.word));
             }
 
-            Def::alloc(
+            let id = Def::alloc(
                 cx.db,
                 qpath,
                 scope,
                 DefKind::Fn(FnInfo::Bare),
                 Mutability::Imm,
                 fun.sig.word.span(),
-            )
+            );
+
+            cx.global_env.module_mut(module_id).ns.defined_fns.entry(name).or_default().push(id);
+
+            id
         }
         ast::FnKind::Extern { .. } => cx.define().new_global(
             module_id,

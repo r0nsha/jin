@@ -5,6 +5,7 @@ use crate::{
     middle::{BinOp, UnOp},
     span::{Span, Spanned},
     ty::Ty,
+    typeck2::{FnCandidate, FnQuery, Query},
     word::Word,
 };
 
@@ -35,27 +36,27 @@ pub fn name_not_found(
     .with_label(Label::primary(word.span(), "not found"))
 }
 
-// pub fn assoc_name_not_found(db: &Db, ty: Ty, query: &Query) -> Diagnostic {
-//     let msg = match query {
-//         Query::Name(word) => {
-//             format!("cannot find associated name `{}` in type `{}`", word,
-// ty.display(db))         }
-//         Query::Fn(fn_query) => {
-//             format!(
-//                 "cannot find a matching associated function `{}` in type
-// `{}`",                 fn_query.display(db),
-//                 ty.display(db)
-//             )
-//         }
-//     };
-//
-//     Diagnostic::error(msg).with_label(Label::primary(query.span(), "not
-// found")) }
+pub fn assoc_name_not_found(db: &Db, ty: Ty, query: &Query) -> Diagnostic {
+    let msg = match query {
+        Query::Name(word) => {
+            format!("cannot find associated name `{}` in type `{}`", word, ty.display(db))
+        }
+        Query::Fn(fn_query) => {
+            format!(
+                "cannot find a matching associated function `{}` in type `{}`",
+                fn_query.display(db),
+                ty.display(db)
+            )
+        }
+    };
 
-// pub fn fn_not_found(db: &Db, query: &FnQuery) -> Diagnostic {
-//     Diagnostic::error(format!("cannot find a function matching `{}`",
-// query.display(db)))         .with_label(Label::primary(query.word.span(), "no
-// matching function")) }
+    Diagnostic::error(msg).with_label(Label::primary(query.span(), "not found"))
+}
+
+pub fn fn_not_found(db: &Db, query: &FnQuery) -> Diagnostic {
+    Diagnostic::error(format!("cannot find a function matching `{}`", query.display(db)))
+        .with_label(Label::primary(query.word.span(), "no matching function"))
+}
 
 pub fn private_access_violation(db: &Db, accessed: DefId, span: Span) -> Diagnostic {
     let def = &db[accessed];
@@ -101,21 +102,21 @@ pub fn multiple_item_def_err(prev_span: Span, dup_name: Word) -> Diagnostic {
         .with_note("you can only define items once in a module (except functions)")
 }
 
-// pub fn multiple_fn_def_err(
-//     db: &Db,
-//     in_module: ModuleId,
-//     prev_span: Span,
-//     candidate: &FnCandidate,
-// ) -> Diagnostic {
-//     Diagnostic::error(format!(
-//         "function `{}` is already defined in module `{}`",
-//         candidate.display(db),
-//         db[in_module].qpath
-//     ))
-//     .with_label(Label::primary(candidate.word.span(), "defined here"))
-//     .with_label(Label::secondary(prev_span, "also defined here"))
-//     .with_note("functions may be overloaded by their parameters' types and
-// names") }
+pub fn multiple_fn_def_err(
+    db: &Db,
+    in_module: ModuleId,
+    prev_span: Span,
+    candidate: &FnCandidate,
+) -> Diagnostic {
+    Diagnostic::error(format!(
+        "function `{}` is already defined in module `{}`",
+        candidate.display(db),
+        db[in_module].qpath
+    ))
+    .with_label(Label::primary(candidate.word.span(), "defined here"))
+    .with_label(Label::secondary(prev_span, "also defined here"))
+    .with_note("functions may be overloaded by their parameters' types and names")
+}
 
 pub fn ty_arg_mismatch(expected: usize, found: usize, span: Span) -> Diagnostic {
     Diagnostic::error(format!("expected {expected} type argument(s), but {found} were supplied"))
