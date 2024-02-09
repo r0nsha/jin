@@ -201,7 +201,7 @@ impl Db {
         }
     }
 
-    pub fn time<R>(&mut self, name: impl Into<String>, mut f: impl FnMut(&mut Self) -> R) -> R {
+    pub fn time<R>(&mut self, name: impl Into<String>, f: impl FnOnce(&mut Self) -> R) -> R {
         if self.build_options().timings {
             self.timings.start(name);
             let result = f(self);

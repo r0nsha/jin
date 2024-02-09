@@ -18,6 +18,7 @@ mod sym;
 mod target;
 mod ty;
 mod typeck;
+mod typeck2;
 mod util;
 mod word;
 
@@ -102,8 +103,8 @@ fn build(db: &mut Db, root_file: &Utf8Path) {
 
     db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file)).expect("emitting ast failed");
 
-    // Resolve all root symbols into their corresponding id's
-    let hir = match db.time("Type checking", |db| typeck::typeck(db, &ast)) {
+    // Type checking pass
+    let hir = match db.time("Type checking", |db| typeck2::typeck(db, ast)) {
         Ok(hir) => hir,
         Err(diag) => {
             db.diagnostics.emit(diag);
