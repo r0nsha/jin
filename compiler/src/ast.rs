@@ -31,6 +31,16 @@ impl Ast {
         self.modules.get(id.module_id).and_then(|m| m.items.get(id.item_id))
     }
 
+    pub fn items(&self) -> impl Iterator<Item = (&Module, &Item)> {
+        self.modules.iter().flat_map(|module| module.items.iter().map(move |item| (module, item)))
+    }
+
+    pub fn items_with_id(&self) -> impl Iterator<Item = (&Module, &Item, ItemId)> {
+        self.modules.iter().flat_map(|module| {
+            module.items.iter_enumerated().map(move |(id, item)| (module, item, id))
+        })
+    }
+
     pub fn pretty_print(&self, w: &mut impl io::Write) -> io::Result<()> {
         for module in &self.modules {
             pretty_print::print_module(module, w)?;
