@@ -59,8 +59,9 @@ impl ModuleEnv {
 
 #[derive(Debug)]
 pub(super) struct Ns {
+    #[allow(unused)]
     pub(super) module_id: ModuleId,
-    defs: UstrMap<NsDef>,
+    pub(super) defs: UstrMap<NsDef>,
     // pub(super) fns: UstrMap<FnCandidateSet>,
     pub(super) defined_fns: UstrMap<Vec<DefId>>,
 }
@@ -73,21 +74,6 @@ impl Ns {
             // fns: FxHashMap::default()
             defined_fns: UstrMap::default(),
         }
-    }
-
-    pub(super) fn insert_def(&mut self, name: Ustr, def: NsDef) -> Option<NsDef> {
-        self.defs.insert(name, def)
-    }
-
-    pub(super) fn get_def(&self, from_module: ModuleId, name: Ustr) -> Option<DefId> {
-        self.defs
-            .get(&name)
-            .filter(|def| def.vis == Vis::Public || from_module == self.module_id)
-            .map(|def| def.id)
-    }
-
-    pub(super) fn contains_def(&self, name: Ustr) -> Option<&NsDef> {
-        self.defs.get(&name)
     }
 }
 

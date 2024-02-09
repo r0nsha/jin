@@ -126,7 +126,7 @@ fn define_fn(
 
             let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis: fun.vis };
 
-            if let Some(def) = cx.global_env.module(module_id).ns.contains_def(name) {
+            if let Some(def) = cx.global_env.module(module_id).ns.defs.get(&name) {
                 return Err(errors::multiple_item_def_err(def.span, fun.sig.word));
             }
 
@@ -237,5 +237,33 @@ fn check_adt_ty_params(
     cx.db[adt_id].ty_params = ty_params;
     let adt = &cx.db[adt_id];
     cx.def_to_ty.insert(adt.def_id, TyKind::Type(adt.ty()).into());
+    Ok(())
+}
+
+pub(super) fn check_sigs(
+    cx: &mut Typeck,
+    res_map: &mut ResolutionMap,
+    ast: &Ast,
+) -> DiagnosticResult<()> {
+    for (module, item, id) in ast.items_with_id() {
+        match item {
+            ast::Item::Let(let_) => todo!(),
+            ast::Item::ExternLet(let_) => todo!(),
+            ast::Item::Fn(fun) => check_fn_sig(cx, res_map, module.id, id, fun)?,
+            // TODO: ast::Item::Assoc(word, item) => todo!(),
+            _ => (),
+        }
+    }
+
+    Ok(())
+}
+
+fn check_fn_sig(
+    cx: &mut Typeck<'_>,
+    res_map: &mut ResolutionMap,
+    module_id: ModuleId,
+    item_id: ItemId,
+    fun: &ast::Fn,
+) -> DiagnosticResult<()> {
     Ok(())
 }

@@ -124,13 +124,13 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             return Err(errors::name_not_found(self.cx.db, from_module, in_module, word));
         }
 
-        if from_module != in_module {
-            for res in &results {
-                self.check_def_access(from_module, res.id(), word.span())?;
-            }
+        let filtered_results = self.keep_accessible_lookup_results(from_module, results);
+        if filtered_results.is_empty() {
+            return Err(Diagnostic::error(format!("`{word}` is private"))
+                .with_label(Label::primary(word.span(), "private definition")));
         }
 
-        Ok(results)
+        Ok(filtered_results)
     }
 
     pub fn path(&self, from_module: ModuleId, path: &[Word]) -> DiagnosticResult<PathLookup> {
@@ -260,12 +260,22 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             allow_builtin_tys,
         );
 
-        match results.len() {
-            0 => Ok(None),
-            1 => Ok(results.first().map(LookupResult::id)),
+        if results.is_empty() {
+            return Ok(None);
+        }
+
+        let filtered_results = self.keep_accessible_lookup_results(from_module, results);
+        if filtered_results.is_empty() {
+            return Err(Diagnostic::error(format!("`{name}` is private"))
+                .with_label(Label::primary(span, "private definition")));
+        }
+
+        match filtered_results.len() {
+            0 => unreachable!(),
+            1 => Ok(filtered_results.first().map(LookupResult::id)),
             _ => Err(Diagnostic::error(format!("ambiguous use of item `{}`", name))
                 .with_label(Label::primary(span, "used here"))
-                .with_labels(results.iter().map(|res| {
+                .with_labels(filtered_results.iter().map(|res| {
                     let def = &self.cx.db[res.id()];
                     Label::secondary(def.span, format!("`{}` is defined here", def.name))
                 }))),
@@ -287,8 +297,8 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         for module_id in lookup_modules {
             let env = self.cx.global_env.module(module_id);
 
-            if let Some(id) = env.ns.get_def(from_module, name) {
-                results.push(LookupResult::Def(id));
+            if let Some(def) = env.ns.defs.get(&name) {
+                results.push(LookupResult::Def(def.id));
             }
             // TODO: lookup fns
             // else if should_lookup_fns == ShouldLookupFns::Yes {
@@ -346,6 +356,16 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         )
     }
 
+    #[inline]
+    fn keep_accessible_lookup_results(
+        &self,
+        from_module: ModuleId,
+        results: Vec<LookupResult>,
+    ) -> Vec<LookupResult> {
+        results.into_iter().filter(|r| self.can_access(from_module, r.id())).collect()
+    }
+
+    #[inline]
     fn can_access(&self, from_module: ModuleId, accessed: DefId) -> bool {
         let def = &self.cx.db[accessed];
         def.scope.vis == Vis::Public || from_module == def.scope.module_id

@@ -85,7 +85,8 @@ impl<'db, 'cx> Define<'db, 'cx> {
 
         let def = NsDef::new(id, vis, name.span());
 
-        if let Some(prev) = self.cx.global_env.module_mut(module_id).ns.insert_def(name.name(), def)
+        if let Some(prev) =
+            self.cx.global_env.module_mut(module_id).ns.defs.insert(name.name(), def)
         {
             return Err(errors::multiple_item_def_err(prev.span, name));
         }
