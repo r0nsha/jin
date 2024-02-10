@@ -462,7 +462,7 @@ fn check_assoc_item_ty(
 ) -> DiagnosticResult<AssocTy> {
     let id = cx.lookup().query(module_id, module_id, &Query::Name(tyname))?;
 
-    let Some(assoc_ty) = try_extract_assoc_ty(cx, id) else {
+    let Some(assoc_ty) = types::try_extract_assoc_ty(cx, id) else {
         return Err(Diagnostic::error(format!(
             "expected a type, found value of type `{}`",
             cx.def_ty(id).display(cx.db)
@@ -501,16 +501,6 @@ fn check_assoc_item_ty(
     }
 
     Ok(assoc_ty)
-}
-
-fn try_extract_assoc_ty(cx: &Typeck<'_>, id: DefId) -> Option<AssocTy> {
-    let def = &cx.db[id];
-
-    match def.kind.as_ref() {
-        DefKind::Adt(adt_id) => Some(AssocTy::Adt(*adt_id)),
-        DefKind::Ty(ty) => Some(AssocTy::BuiltinTy(*ty)),
-        _ => None,
-    }
 }
 
 pub(super) fn check_bodies(

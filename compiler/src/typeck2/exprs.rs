@@ -1,4 +1,5 @@
 use itertools::Itertools as _;
+use ustr::UstrMap;
 
 use crate::{
     ast::{self, Ast},
@@ -19,11 +20,13 @@ use crate::{
         TyVar,
     },
     typeck2::{
-        coerce::CoerceExt as _,
+        coerce::{CoerceExt as _, CoerceOptions},
         errors, fns, items,
+        lookup::{AssocLookup, FnQuery, Query},
         ns::{Env, ScopeKind},
         pmatch, tyexpr,
         tyexpr::AllowTyHole,
+        types,
         unify::Obligation,
         Typeck,
     },
@@ -219,22 +222,28 @@ pub(super) fn check(
 
             // Try looking up an associated function call first
             if let ast::Expr::Name { word, targs: name_targs, .. } = expr.as_ref() {
-                let id = self.lookup(env, env.module_id(), &Query::Name(*word))?;
+                let id = cx.lookup().with_env(env).query(
+                    env.module_id(),
+                    env.module_id(),
+                    &Query::Name(*word),
+                )?;
                 let name_targs =
-                    self.check_optional_ty_args(env, name_targs.as_deref(), AllowTyHole::Yes)?;
+                    tyexpr::check_optional_targs(cx, env, name_targs.as_deref(), AllowTyHole::Yes)?;
 
-                if let Some(assoc_ty) = self.try_extract_assoc_ty(id) {
-                    let query_args = self.map_call_args_for_query(&args);
+                if let Some(assoc_ty) = types::try_extract_assoc_ty(cx, id) {
+                    let query_args = map_call_args_for_query(cx, &args);
                     let query = FnQuery::new(*method, targs.as_deref(), &query_args, IsUfcs::No);
 
-                    let (ty, _) = self.apply_ty_args_to_ty(
+                    let (ty, _) = types::apply_targs_to_ty(
+                        cx,
                         env,
                         assoc_ty.ty(cx.db),
                         name_targs.as_deref(),
                         *span,
                     )?;
 
-                    let (callee, _) = self.check_query_in_ty(
+                    let (callee, _) = check_query_in_ty(
+                        cx,
                         env,
                         ty,
                         word.span(),
@@ -243,7 +252,7 @@ pub(super) fn check(
                         *span,
                     )?;
 
-                    return self.check_call(callee, args, *span, IsUfcs::No);
+                    return check_call(cx, callee, args, *span, IsUfcs::No);
                 }
             }
 
@@ -254,7 +263,8 @@ pub(super) fn check(
                 TyKind::Module(in_module) => *in_module,
                 TyKind::Type(ty) => {
                     // This is probably a union variant
-                    let (callee, _) = self.check_query_in_ty(
+                    let (callee, _) = check_query_in_ty(
+                        cx,
                         env,
                         *ty,
                         *span,
@@ -262,7 +272,7 @@ pub(super) fn check(
                         targs.as_deref(),
                         expr.span,
                     )?;
-                    return self.check_call(callee, args, *span, IsUfcs::No);
+                    return check_call(cx, callee, args, *span, IsUfcs::No);
                 }
                 _ => {
                     // This is a UFCS call: add `expr` as the first argument of the call
@@ -272,7 +282,8 @@ pub(super) fn check(
                 }
             };
 
-            let id = self.lookup_fn_for_call(
+            let id = lookup_fn_for_call(
+                cx,
                 env,
                 lookup_in_module,
                 *method,
@@ -281,9 +292,9 @@ pub(super) fn check(
                 is_ufcs,
             )?;
 
-            let callee = self.check_name(env, id, *method, *span, targs.as_deref())?;
+            let callee = check_name(cx, env, id, *method, *span, targs.as_deref())?;
 
-            self.check_call(callee, args, *span, is_ufcs)
+            check_call(cx, callee, args, *span, is_ufcs)
         }
         ast::Expr::Call { callee, args, span } => {
             let args = self.check_call_args(env, args)?;
@@ -563,103 +574,65 @@ fn check_if(
     ))
 }
 
-// fn check_name(
-//     &mut self,
-//     env: &Env,
-//     id: DefId,
-//     word: Word,
-//     span: Span,
-//     targs: Option<&[Ty]>,
-// ) -> DiagnosticResult<hir::Expr> {
-//     if let DefKind::Adt(adt_id) = cx.db[id].kind.as_ref() {
-//         match &cx.db[*adt_id].kind {
-//             AdtKind::Struct(_) => {
-//                 return self.check_name_struct(env, id, word, span, targs,
-// *adt_id);             }
-//             AdtKind::Union(_) => (),
-//         }
-//     }
-//
-//     let def_ty = cx.normalize(cx.def_ty(id));
-//     let (ty, instantiation) = self.apply_ty_args_to_ty(env, def_ty, targs,
-// span)?;
-//
-//     Ok(cx.expr(hir::ExprKind::Name(hir::Name { id, word, instantiation }),
-// ty, span)) }
+fn check_name(
+    cx: &mut Typeck<'_>,
+    env: &Env,
+    id: DefId,
+    word: Word,
+    span: Span,
+    targs: Option<&[Ty]>,
+) -> DiagnosticResult<hir::Expr> {
+    if let DefKind::Adt(adt_id) = cx.db[id].kind.as_ref() {
+        match &cx.db[*adt_id].kind {
+            AdtKind::Struct(_) => {
+                return check_name_struct(cx, env, id, word, span, targs, *adt_id);
+            }
+            AdtKind::Union(_) => (),
+        }
+    }
 
-// fn check_name_struct(
-//     &mut self,
-//     env: &Env,
-//     id: DefId,
-//     word: Word,
-//     span: Span,
-//     targs: Option<&[Ty]>,
-//     adt_id: AdtId,
-// ) -> DiagnosticResult<hir::Expr> {
-//     let adt = &cx.db[adt_id];
-//     let struct_def = adt.as_struct().unwrap();
-//
-//     // NOTE: if the named definition is a struct, we want to return its
-//     // constructor function's type
-//     if struct_def.ctor_vis == Vis::Private &&
-// cx.db[adt.def_id].scope.module_id != env.module_id()     {
-//         let private_field = struct_def
-//             .fields
-//             .iter()
-//             .find(|f| f.vis == Vis::Private)
-//             .expect("to have at least one private field");
-//
-//         return Err(Diagnostic::error(format!(
-//             "constructor of type `{}` is private because `{}` is private",
-//             adt.name, private_field.name
-//         ))
-//         .with_label(Label::primary(span, "private type constructor"))
-//         .with_label(Label::secondary(
-//             private_field.name.span(),
-//             format!("`{}` is private", private_field.name),
-//         )));
-//     }
-//
-//     let (ty, instantiation) = self.apply_ty_args_to_ty(env,
-// struct_def.ctor_ty, targs, span)?;
-//
-//     Ok(cx.expr(hir::ExprKind::Name(hir::Name { id, word, instantiation }),
-// ty, span)) }
+    let def_ty = cx.normalize(cx.def_ty(id));
+    let (ty, instantiation) = types::apply_targs_to_ty(cx, env, def_ty, targs, span)?;
 
-// Applies type arguments to the given type
-// fn apply_ty_args_to_ty(
-//     &mut self,
-//     env: &Env,
-//     ty: Ty,
-//     targs: Option<&[Ty]>,
-//     span: Span,
-// ) -> DiagnosticResult<(Ty, Instantiation)> {
-//     let mut ty_params = ty.collect_params();
-//
-//     // NOTE: map type params that are part of the current polymorphic
-// function to     // themselves, so that we don't instantiate them. that's
-// quite ugly     // though.
-//     if let Some(fn_id) = env.fn_id() {
-//         let fn_ty_params = cx.def_ty(fn_id).collect_params();
-//         for ftp in fn_ty_params {
-//             if let Some(tp) = ty_params.iter_mut().find(|p| p.var == ftp.var)
-// {                 *tp = ftp.clone();
-//             }
-//         }
-//     }
-//
-//     let instantiation: Instantiation = match &targs {
-//         Some(args) if args.len() == ty_params.len() => {
-//             ty_params.into_iter().zip(args.iter()).map(|(param, arg)|
-// (param.var, *arg)).collect()         }
-//         Some(args) => {
-//             return Err(errors::ty_arg_mismatch(ty_params.len(), args.len(),
-// span));         }
-//         _ => self.fresh_instantiation(env, ty_params),
-//     };
-//
-//     Ok((instantiation.fold(ty), instantiation))
-// }
+    Ok(cx.expr(hir::ExprKind::Name(hir::Name { id, word, instantiation }), ty, span))
+}
+
+fn check_name_struct(
+    cx: &mut Typeck<'_>,
+    env: &Env,
+    id: DefId,
+    word: Word,
+    span: Span,
+    targs: Option<&[Ty]>,
+    adt_id: AdtId,
+) -> DiagnosticResult<hir::Expr> {
+    let adt = &cx.db[adt_id];
+    let struct_def = adt.as_struct().unwrap();
+
+    // NOTE: if the named definition is a struct, we want to return its
+    // constructor function's type
+    if struct_def.ctor_vis == Vis::Private && cx.db[adt.def_id].scope.module_id != env.module_id() {
+        let private_field = struct_def
+            .fields
+            .iter()
+            .find(|f| f.vis == Vis::Private)
+            .expect("to have at least one private field");
+
+        return Err(Diagnostic::error(format!(
+            "constructor of type `{}` is private because `{}` is private",
+            adt.name, private_field.name
+        ))
+        .with_label(Label::primary(span, "private type constructor"))
+        .with_label(Label::secondary(
+            private_field.name.span(),
+            format!("`{}` is private", private_field.name),
+        )));
+    }
+
+    let (ty, instantiation) = types::apply_targs_to_ty(cx, env, struct_def.ctor_ty, targs, span)?;
+
+    Ok(cx.expr(hir::ExprKind::Name(hir::Name { id, word, instantiation }), ty, span))
+}
 
 // fn check_field(
 //     &mut self,
@@ -739,204 +712,198 @@ fn check_if(
 //     Ok(())
 // }
 
-// /// Tries to look up `name` in the namespace of `ty`.
-// /// Returns the evaluated expression, and whether it can be implicitly
-// /// called.
-// fn check_query_in_ty(
-//     &mut self,
-//     env: &Env,
-//     ty: Ty,
-//     ty_span: Span,
-//     query: &Query,
-//     targs: Option<&[Ty]>,
-//     span: Span,
-// ) -> DiagnosticResult<(hir::Expr, bool)> {
-//     match self.lookup_in_ty(env.module_id(), ty, ty_span, query)? {
-//         TyLookup::Variant(variant_id) => {
-//             let TyKind::Adt(adt_id, targs) = ty.kind() else { unreachable!()
-// };
-//
-//             let variant = &cx.db[variant_id];
-//             let adt = &cx.db[*adt_id];
-//
-//             let instantiation = adt.instantiation(targs);
-//             let ctor_ty = instantiation.fold(variant.ctor_ty);
-//
-//             // Union variants without fields are implicitly called for
-// convenience             let can_implicitly_call = variant.fields.is_empty();
-//             let expr = cx.expr(
-//                 hir::ExprKind::Variant(hir::Variant { id: variant.id,
-// instantiation }),                 ctor_ty,
-//                 span,
-//             );
-//
-//             Ok((expr, can_implicitly_call))
-//         }
-//         TyLookup::AssocFn(id) => {
-//             let expr = self.check_name(env, id, query.word(), span, targs)?;
-//             Ok((expr, false))
-//         }
-//     }
-// }
+/// Tries to look up `name` in the namespace of `ty`.
+/// Returns the evaluated expression, and whether it can be implicitly
+/// called.
+fn check_query_in_ty(
+    cx: &mut Typeck<'_>,
+    env: &Env,
+    ty: Ty,
+    ty_span: Span,
+    query: &Query,
+    targs: Option<&[Ty]>,
+    span: Span,
+) -> DiagnosticResult<(hir::Expr, bool)> {
+    match cx.lookup().query_assoc_ns(env.module_id(), ty, ty_span, query)? {
+        AssocLookup::Variant(variant_id) => {
+            let TyKind::Adt(adt_id, targs) = ty.kind() else { unreachable!() };
 
-// fn map_call_args_for_query(&mut self, args: &[hir::CallArg]) ->
-// Vec<FnTyParam> {     args.iter()
-//         .map(|a| FnTyParam { name: a.name.map(|w| w.name()), ty:
-// cx.normalize(a.expr.ty) })         .collect::<Vec<_>>()
-// }
+            let variant = &cx.db[variant_id];
+            let adt = &cx.db[*adt_id];
 
-// fn lookup_fn_for_call(
-//     &mut self,
-//     env: &Env,
-//     in_module: ModuleId,
-//     word: Word,
-//     ty_args: Option<&[Ty]>,
-//     args: &[hir::CallArg],
-//     is_ufcs: IsUfcs,
-// ) -> DiagnosticResult<DefId> {
-//     let args = self.map_call_args_for_query(args);
-//     let query = FnQuery::new(word, ty_args, &args, is_ufcs);
-//     self.lookup(env, in_module, &Query::Fn(query))
-// }
+            let instantiation = adt.instantiation(targs);
+            let ctor_ty = instantiation.fold(variant.ctor_ty);
 
-// fn check_call(
-//     &mut self,
-//     callee: hir::Expr,
-//     args: Vec<hir::CallArg>,
-//     span: Span,
-//     is_ufcs: IsUfcs,
-// ) -> DiagnosticResult<hir::Expr> {
-//     let callee_ty = cx.normalize(callee.ty);
-//
-//     match callee_ty.kind() {
-//         TyKind::Fn(fn_ty) => self.check_call_fn(callee, args, fn_ty, span,
-// is_ufcs),         TyKind::Type(ty) => {
-//             if args.len() != 1 {
-//                 return Err(errors::arg_mismatch(1, args.len(), span));
-//             }
-//
-//             let arg = &args[0];
-//
-//             if let Some(name) = arg.name {
-//                 return Err(errors::named_param_not_found(name));
-//             }
-//
-//             Ok(cx.expr(
-//                 hir::ExprKind::Cast(hir::Cast { expr:
-// Box::new(arg.expr.clone()), target: *ty }),                 *ty,
-//                 span,
-//             ))
-//         }
-//         _ => {
-//             let ty = cx.normalize(callee.ty);
-//             let span = callee.span;
-//
-//             Err(Diagnostic::error(format!("expected a function, found `{}`",
-// ty.display(cx.db)))                 .with_label(Label::primary(span,
-// "expected a function")))         }
-//     }
-// }
+            // Union variants without fields are implicitly called for convenience
+            let can_implicitly_call = variant.fields.is_empty();
+            let expr = cx.expr(
+                hir::ExprKind::Variant(hir::Variant { id: variant.id, instantiation }),
+                ctor_ty,
+                span,
+            );
 
-// fn check_call_fn(
-//     &mut self,
-//     callee: hir::Expr,
-//     mut args: Vec<hir::CallArg>,
-//     fn_ty: &FnTy,
-//     span: Span,
-//     is_ufcs: IsUfcs,
-// ) -> DiagnosticResult<hir::Expr> {
-//     #[derive(Debug)]
-//     struct PassedArg {
-//         is_named: bool,
-//         span: Span,
-//     }
-//
-//     if !fn_ty.is_c_variadic() && args.len() != fn_ty.params.len() {
-//         return Err(errors::arg_mismatch(fn_ty.params.len(), args.len(),
-// span));     }
-//
-//     let mut already_passed_args = UstrMap::<PassedArg>::default();
-//
-//     // Resolve positional arg indices
-//     for (idx, arg) in args.iter_mut().enumerate() {
-//         if arg.name.is_none() {
-//             arg.index = Some(idx);
-//
-//             if let Some(param_name) = fn_ty.params.get(idx).and_then(|p|
-// p.name) {                 already_passed_args
-//                     .insert(param_name, PassedArg { is_named: false, span:
-// arg.expr.span });             }
-//         }
-//
-//         let arg_ty = cx.normalize(arg.expr.ty);
-//
-//         if arg_ty.is_type() {
-//             return Err(errors::generic_expected_found(
-//                 "a value",
-//                 &format!("type `{}`", arg_ty.display(cx.db)),
-//                 arg.expr.span,
-//             ));
-//         }
-//     }
-//
-//     // Resolve named arg indices
-//     for arg in &mut args {
-//         if let Some(arg_name) = &arg.name {
-//             let name = arg_name.name();
-//
-//             let idx = fn_ty
-//                 .params
-//                 .iter()
-//                 .enumerate()
-//                 .find_map(|(i, p)| if p.name == Some(name) { Some(i) } else {
-// None })                 .ok_or_else(||
-// errors::named_param_not_found(*arg_name))?;
-//
-//             // Report named arguments that are passed twice
-//             if let Some(passed_arg) = already_passed_args
-//                 .insert(arg_name.name(), PassedArg { is_named: true, span:
-// arg_name.span() })             {
-//                 let name = arg_name.name();
-//                 let prev = passed_arg.span;
-//                 let dup = arg_name.span();
-//                 let is_named = passed_arg.is_named;
-//
-//                 return Err(Diagnostic::error(if is_named {
-//                     format!("argument `{name}` is passed multiple times")
-//                 } else {
-//                     format!("argument `{name}` is already passed
-// positionally")                 })
-//                 .with_label(Label::primary(dup, format!("`{name}` is passed
-// again here")))                 .with_label(Label::secondary(prev,
-// format!("`{name}` is already passed here"))));             }
-//
-//             arg.index = Some(idx);
-//         }
-//     }
-//
-//     // Unify all args with their corresponding param type
-//     for (arg_idx, arg) in args.iter().enumerate() {
-//         let param_idx = arg.index.expect("arg index to be resolved");
-//
-//         if let Some(param) = fn_ty.params.get(param_idx) {
-//             let coerce_options = CoerceOptions {
-//                 allow_owned_to_ref: is_ufcs == IsUfcs::Yes && arg_idx == 0,
-//                 ..CoerceOptions::default()
-//             };
-//             cx.at(Obligation::obvious(arg.expr.span)).eq(param.ty,
-// arg.expr.ty).or_coerce_ex(                 self,
-//                 arg.expr.id,
-//                 coerce_options,
-//             )?;
-//         }
-//     }
-//
-//     Ok(cx.expr(
-//         hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args }),
-//         fn_ty.ret,
-//         span,
-//     ))
-// }
+            Ok((expr, can_implicitly_call))
+        }
+        AssocLookup::AssocFn(id) => {
+            let expr = check_name(cx, env, id, query.word(), span, targs)?;
+            Ok((expr, false))
+        }
+    }
+}
+
+fn map_call_args_for_query(cx: &Typeck<'_>, args: &[hir::CallArg]) -> Vec<FnTyParam> {
+    args.iter()
+        .map(|a| FnTyParam { name: a.name.map(|w| w.name()), ty: cx.normalize(a.expr.ty) })
+        .collect::<Vec<_>>()
+}
+
+fn lookup_fn_for_call(
+    cx: &Typeck<'_>,
+    env: &Env,
+    in_module: ModuleId,
+    word: Word,
+    ty_args: Option<&[Ty]>,
+    args: &[hir::CallArg],
+    is_ufcs: IsUfcs,
+) -> DiagnosticResult<DefId> {
+    let args = map_call_args_for_query(cx, args);
+    let query = FnQuery::new(word, ty_args, &args, is_ufcs);
+    cx.lookup().with_env(env).query(env.module_id(), in_module, &Query::Fn(query))
+}
+
+fn check_call(
+    cx: &mut Typeck<'_>,
+    callee: hir::Expr,
+    args: Vec<hir::CallArg>,
+    span: Span,
+    is_ufcs: IsUfcs,
+) -> DiagnosticResult<hir::Expr> {
+    let callee_ty = cx.normalize(callee.ty);
+
+    match callee_ty.kind() {
+        TyKind::Fn(fn_ty) => check_call_fn(cx, callee, args, fn_ty, span, is_ufcs),
+        TyKind::Type(ty) => {
+            if args.len() != 1 {
+                return Err(errors::arg_mismatch(1, args.len(), span));
+            }
+
+            let arg = &args[0];
+
+            if let Some(name) = arg.name {
+                return Err(errors::named_param_not_found(name));
+            }
+
+            Ok(cx.expr(
+                hir::ExprKind::Cast(hir::Cast { expr: Box::new(arg.expr.clone()), target: *ty }),
+                *ty,
+                span,
+            ))
+        }
+        _ => {
+            let ty = cx.normalize(callee.ty);
+            let span = callee.span;
+
+            Err(Diagnostic::error(format!("expected a function, found `{}`", ty.display(cx.db)))
+                .with_label(Label::primary(span, "expected a function")))
+        }
+    }
+}
+
+fn check_call_fn(
+    cx: &mut Typeck<'_>,
+    callee: hir::Expr,
+    mut args: Vec<hir::CallArg>,
+    fn_ty: &FnTy,
+    span: Span,
+    is_ufcs: IsUfcs,
+) -> DiagnosticResult<hir::Expr> {
+    #[derive(Debug)]
+    struct PassedArg {
+        is_named: bool,
+        span: Span,
+    }
+
+    if !fn_ty.is_c_variadic() && args.len() != fn_ty.params.len() {
+        return Err(errors::arg_mismatch(fn_ty.params.len(), args.len(), span));
+    }
+
+    let mut already_passed_args = UstrMap::<PassedArg>::default();
+
+    // Resolve positional arg indices
+    for (idx, arg) in args.iter_mut().enumerate() {
+        if arg.name.is_none() {
+            arg.index = Some(idx);
+
+            if let Some(param_name) = fn_ty.params.get(idx).and_then(|p| p.name) {
+                already_passed_args
+                    .insert(param_name, PassedArg { is_named: false, span: arg.expr.span });
+            }
+        }
+
+        let arg_ty = cx.normalize(arg.expr.ty);
+
+        if arg_ty.is_type() {
+            return Err(errors::generic_expected_found(
+                "a value",
+                &format!("type `{}`", arg_ty.display(cx.db)),
+                arg.expr.span,
+            ));
+        }
+    }
+
+    // Resolve named arg indices
+    for arg in &mut args {
+        if let Some(arg_name) = &arg.name {
+            let name = arg_name.name();
+
+            let idx = fn_ty
+                .params
+                .iter()
+                .enumerate()
+                .find_map(|(i, p)| if p.name == Some(name) { Some(i) } else { None })
+                .ok_or_else(|| errors::named_param_not_found(*arg_name))?;
+
+            // Report named arguments that are passed twice
+            if let Some(passed_arg) = already_passed_args
+                .insert(arg_name.name(), PassedArg { is_named: true, span: arg_name.span() })
+            {
+                let name = arg_name.name();
+                let prev = passed_arg.span;
+                let dup = arg_name.span();
+                let is_named = passed_arg.is_named;
+
+                return Err(Diagnostic::error(if is_named {
+                    format!("argument `{name}` is passed multiple times")
+                } else {
+                    format!("argument `{name}` is already passed positionally")
+                })
+                .with_label(Label::primary(dup, format!("`{name}` is passed again here")))
+                .with_label(Label::secondary(prev, format!("`{name}` is already passed here"))));
+            }
+
+            arg.index = Some(idx);
+        }
+    }
+
+    // Unify all args with their corresponding param type
+    for (arg_idx, arg) in args.iter().enumerate() {
+        let param_idx = arg.index.expect("arg index to be resolved");
+
+        if let Some(param) = fn_ty.params.get(param_idx) {
+            let coerce_options = CoerceOptions {
+                allow_owned_to_ref: is_ufcs == IsUfcs::Yes && arg_idx == 0,
+                ..CoerceOptions::default()
+            };
+            cx.at(Obligation::obvious(arg.expr.span)).eq(param.ty, arg.expr.ty).or_coerce_ex(
+                cx,
+                arg.expr.id,
+                coerce_options,
+            )?;
+        }
+    }
+
+    Ok(cx.expr(hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args }), fn_ty.ret, span))
+}
 
 // fn check_ref(
 //     &mut self,

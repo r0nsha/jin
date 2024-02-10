@@ -1,14 +1,14 @@
 use crate::{
     ast,
     ast::Ast,
-    db::{AdtField, AdtId, DefKind, ModuleId, VariantId},
+    db::{AdtField, AdtId, DefId, DefKind, ModuleId, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{Mutability, TyParam, Vis},
-    span::Spanned as _,
+    span::{Span, Spanned as _},
     ty::{Instantiation, ParamTy, Ty, TyKind},
     typeck2::{
         errors,
-        ns::{Env, ScopeKind},
+        ns::{AssocTy, Env, ScopeKind},
         tyexpr,
         tyexpr::AllowTyHole,
         ResolutionMap, Typeck,
@@ -199,4 +199,47 @@ pub(super) fn fresh_instantiation(
             )
         })
         .collect()
+}
+
+pub(super) fn try_extract_assoc_ty(cx: &Typeck<'_>, id: DefId) -> Option<AssocTy> {
+    let def = &cx.db[id];
+
+    match def.kind.as_ref() {
+        DefKind::Adt(adt_id) => Some(AssocTy::Adt(*adt_id)),
+        DefKind::Ty(ty) => Some(AssocTy::BuiltinTy(*ty)),
+        _ => None,
+    }
+}
+
+pub(super) fn apply_targs_to_ty(
+    cx: &Typeck<'_>,
+    env: &Env,
+    ty: Ty,
+    targs: Option<&[Ty]>,
+    span: Span,
+) -> DiagnosticResult<(Ty, Instantiation)> {
+    let mut ty_params = ty.collect_params();
+
+    // NOTE: map type params that are part of the current polymorphic function to
+    // themselves, so that we don't instantiate them. that's quite ugly though.
+    if let Some(fn_id) = env.fn_id() {
+        let fn_ty_params = cx.def_ty(fn_id).collect_params();
+        for ftp in fn_ty_params {
+            if let Some(tp) = ty_params.iter_mut().find(|p| p.var == ftp.var) {
+                *tp = ftp.clone();
+            }
+        }
+    }
+
+    let instantiation: Instantiation = match &targs {
+        Some(args) if args.len() == ty_params.len() => {
+            ty_params.into_iter().zip(args.iter()).map(|(param, arg)| (param.var, *arg)).collect()
+        }
+        Some(args) => {
+            return Err(errors::ty_arg_mismatch(ty_params.len(), args.len(), span));
+        }
+        _ => fresh_instantiation(cx, env, ty_params),
+    };
+
+    Ok((instantiation.fold(ty), instantiation))
 }

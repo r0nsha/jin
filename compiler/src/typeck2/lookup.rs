@@ -157,7 +157,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                         part.span(),
                         &Query::Name(next_part),
                     )? {
-                        TyLookup::Variant(variant_id) => {
+                        AssocLookup::Variant(variant_id) => {
                             // If there are more parts after this variant, it's an error, since we
                             // there are no symbols under variants
                             if path.get(idx + 2).is_some() {
@@ -170,7 +170,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
                             return Ok(PathLookup::Variant(variant_id));
                         }
-                        TyLookup::AssocFn(id) => {
+                        AssocLookup::AssocFn(id) => {
                             return Err(Diagnostic::error(format!(
                                 "`{}` is an associated function, not a module",
                                 self.cx.db[id].name,
@@ -199,7 +199,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         ty: Ty,
         ty_span: Span,
         query: &Query,
-    ) -> DiagnosticResult<TyLookup> {
+    ) -> DiagnosticResult<AssocLookup> {
         if let Query::Fn(fn_query) = query {
             todo!()
             // if let Some(id) = self.lookup_assoc_fn(from_module,
@@ -213,7 +213,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
             match &adt.kind {
                 AdtKind::Union(union_def) => {
-                    self.variant_in_union(union_def, name, ty_span).map(|v| TyLookup::Variant(v.id))
+                    self.variant_in_union(union_def, name, ty_span).map(|v| AssocLookup::Variant(v.id))
                 }
                 AdtKind::Struct(_) => {
                     Err(errors::assoc_name_not_found(self.cx.db, adt.ty(), query))
@@ -393,7 +393,7 @@ pub(super) enum PathLookup {
 }
 
 #[derive(Debug, Clone)]
-pub(super) enum TyLookup {
+pub(super) enum AssocLookup {
     AssocFn(DefId),
     Variant(VariantId),
 }
