@@ -10,7 +10,7 @@ use crate::{
     typeck2::{
         errors,
         lookup::{FnCandidate, FnCandidateInsertError, FnCandidateSet},
-        ns::{Env, NsDef},
+        ns::{AssocTy, Env, Ns, NsDef},
         Typeck,
     },
     word::Word,
@@ -147,6 +147,26 @@ impl<'db, 'cx> Define<'db, 'cx> {
         let module_id = candidate.module_id(self.cx.db);
         let name = candidate.word.name();
         let set = self.cx.global_env.module_mut(module_id).ns.fns.entry(name).or_default();
+        Self::insert_fn_candidate_in(self.cx.db, set, candidate)
+    }
+
+    pub(super) fn assoc_fn_candidate(
+        &mut self,
+        assoc_ty: AssocTy,
+        candidate: FnCandidate,
+    ) -> DiagnosticResult<()> {
+        let module_id = candidate.module_id(self.cx.db);
+        let name = candidate.word.name();
+        let set = self
+            .cx
+            .global_env
+            .module_mut(module_id)
+            .assoc_ns
+            .entry(assoc_ty)
+            .or_insert_with(|| Ns::new(module_id))
+            .fns
+            .entry(name)
+            .or_default();
         Self::insert_fn_candidate_in(self.cx.db, set, candidate)
     }
 

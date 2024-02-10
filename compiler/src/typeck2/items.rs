@@ -35,7 +35,7 @@ pub(super) fn define(
         match item {
             ast::Item::Let(let_) => define_let(cx, res_map, module.id, id, let_)?,
             ast::Item::ExternLet(let_) => define_extern_let(cx, res_map, module.id, id, let_)?,
-            ast::Item::Fn(fun) => define_fn(cx, res_map, module.id, id, fun, None)?,
+            ast::Item::Fn(fun) => define_fn(cx, res_map, module.id, id, fun, None).map(|_| ())?,
             ast::Item::Type(tydef) => define_tydef(cx, res_map, module.id, id, tydef)?,
             ast::Item::ExternImport(import) => {
                 attrs::validate(&import.attrs, attrs::Placement::ExternImport)?;
@@ -91,14 +91,8 @@ fn define_fn(
     item_id: ast::GlobalItemId,
     fun: &ast::Fn,
     assoc_ty: Option<AssocTy>,
-) -> DiagnosticResult<()> {
-    attrs::validate(
-        &fun.attrs,
-        match &fun.kind {
-            ast::FnKind::Bare { .. } => attrs::Placement::Fn,
-            ast::FnKind::Extern { .. } => attrs::Placement::ExternFn,
-        },
-    )?;
+) -> DiagnosticResult<DefId> {
+    attrs::validate(&fun.attrs, attrs::Placement::from(&fun.kind))?;
 
     let name = fun.sig.word.name();
 
@@ -145,7 +139,7 @@ fn define_fn(
 
     res_map.item_to_def.insert(item_id, id);
 
-    Ok(())
+    Ok(id)
 }
 
 fn define_tydef(
@@ -295,6 +289,51 @@ fn check_fn(
     check_fn_helper(cx, res_map, module_id, item_id, id, fun, None)
 }
 
+fn check_assoc_fn(
+    cx: &mut Typeck<'_>,
+    res_map: &mut ResolutionMap,
+    module_id: ModuleId,
+    item_id: ast::GlobalItemId,
+    fun: &ast::Fn,
+    assoc_ty: AssocTy,
+) -> DiagnosticResult<()> {
+    check_assoc_name_overlap(cx, assoc_ty, fun.sig.word)?;
+    let id = define_fn(cx, res_map, module_id, item_id, fun, Some(assoc_ty))?;
+    check_fn_helper(cx, res_map, module_id, item_id, id, fun, Some(assoc_ty))
+}
+
+// Checks that a to-be-defined associated name doesn't overlap
+// with an existing name/definition
+fn check_assoc_name_overlap(
+    cx: &Typeck<'_>,
+    assoc_ty: AssocTy,
+    name: Word,
+) -> DiagnosticResult<()> {
+    match assoc_ty {
+        AssocTy::Adt(adt_id) => {
+            let adt = &cx.db[adt_id];
+            if let AdtKind::Union(union_def) = &adt.kind {
+                if let Some(variant) =
+                    union_def.variants(cx.db).find(|v| v.name.name() == name.name())
+                {
+                    return Err(Diagnostic::error(format!(
+                        "cannot define associated name `{}` on type `{}`",
+                        name, adt.name
+                    ))
+                    .with_label(Label::primary(name.span(), "defined again here"))
+                    .with_label(Label::secondary(
+                        variant.name.span(),
+                        "variant already defined here",
+                    )));
+                }
+            }
+
+            Ok(())
+        }
+        AssocTy::BuiltinTy(_) => Ok(()),
+    }
+}
+
 fn check_fn_helper(
     cx: &mut Typeck,
     res_map: &mut ResolutionMap,
@@ -329,10 +368,8 @@ fn check_fn_helper(
             let candidate =
                 FnCandidate { id, word: sig.word, ty: sig.ty.as_fn().cloned().unwrap() };
 
-            if let Some(ty) = assoc_ty {
-                todo!()
-                // self.insert_fn_candidate_in_ty(ty, sig.word.name(),
-                // symbol.module_id, candidate)?;
+            if let Some(assoc_ty) = assoc_ty {
+                cx.define().assoc_fn_candidate(assoc_ty, candidate)?;
             } else {
                 cx.define().fn_candidate(candidate)?;
             }
@@ -370,7 +407,7 @@ fn check_intrinsic_fn(
                 .with_label(Label::primary(fun.sig.word.span(), "invalid calling convention")));
         }
 
-        if ns::in_std(cx.db, module_id) {
+        if !ns::in_std(cx.db, module_id) {
             return Err(Diagnostic::error("intrinsic cannot be defined outside the `std` package")
                 .with_label(Label::primary(
                     fun.sig.word.span(),
@@ -408,10 +445,7 @@ fn check_assoc_item(
     let assoc_ty = check_assoc_item_ty(cx, module_id, tyname)?;
 
     match item {
-        ast::Item::Fn(fun) => {
-            todo!()
-            // self.check_assoc_fn_item(env, assoc_ty, fun, item_id)?;
-        }
+        ast::Item::Fn(fun) => check_assoc_fn(cx, res_map, module_id, item_id, fun, assoc_ty),
         ast::Item::Let(_)
         | ast::Item::Type(_)
         | ast::Item::Import(_)
@@ -419,8 +453,6 @@ fn check_assoc_item(
         | ast::Item::ExternImport(_)
         | ast::Item::Assoc(_, _) => unreachable!(),
     }
-
-    Ok(())
 }
 
 fn check_assoc_item_ty(

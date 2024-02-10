@@ -3,18 +3,6 @@ use crate::{
     diagnostics::{Diagnostic, DiagnosticResult, Label},
 };
 
-#[derive(Debug, Clone, Copy)]
-pub enum Placement {
-    Fn,
-    ExternFn,
-    Let,
-    ExternLet,
-    Struct,
-    Union,
-    Import,
-    ExternImport,
-}
-
 pub fn validate(attrs: &ast::Attrs, placement: Placement) -> DiagnosticResult<()> {
     for attr in attrs.iter() {
         validate_placement(attr, placement)
@@ -38,4 +26,25 @@ fn validate_placement(attr: &ast::Attr, placement: Placement) -> Result<(), &'st
 fn invalid_placement(attr: &ast::Attr, applies_to: &str) -> Diagnostic {
     Diagnostic::error(format!("attribute `{}` should be applied to {}", attr.id, applies_to))
         .with_label(Label::primary(attr.span, "invalid attribute placement"))
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum Placement {
+    Fn,
+    ExternFn,
+    Let,
+    ExternLet,
+    Struct,
+    Union,
+    Import,
+    ExternImport,
+}
+
+impl From<&ast::FnKind> for Placement {
+    fn from(value: &ast::FnKind) -> Self {
+        match value {
+            ast::FnKind::Bare { .. } => Self::Fn,
+            ast::FnKind::Extern { .. } => Self::ExternFn,
+        }
+    }
 }
