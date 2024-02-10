@@ -79,13 +79,14 @@ impl Default for Ns {
 #[derive(Debug, Clone, Copy)]
 pub(super) struct NsDef {
     pub(super) id: DefId,
+    pub(super) module_id: ModuleId,
     pub(super) vis: Vis,
     pub(super) span: Span,
 }
 
 impl NsDef {
-    pub(super) fn new(id: DefId, vis: Vis, span: Span) -> Self {
-        Self { id, vis, span }
+    pub(super) fn new(id: DefId, module_id: ModuleId, vis: Vis, span: Span) -> Self {
+        Self { id, module_id, vis, span }
     }
 }
 

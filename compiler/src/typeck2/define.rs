@@ -85,8 +85,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
             return Err(errors::multiple_item_def_err(last_candidate.word.span(), name));
         }
 
-        let def = NsDef::new(id, vis, name.span());
-
+        let def = NsDef::new(id, module_id, vis, name.span());
         if let Some(prev) = module.ns.defs.insert(name.name(), def) {
             return Err(errors::multiple_item_def_err(prev.span, name));
         }

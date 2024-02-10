@@ -372,7 +372,14 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                 .builtin_tys
                 .get(name)
                 .into_iter()
-                .map(|id| LookupResult::Def(NsDef { id, vis: Vis::Public, span: Span::unknown() }))
+                .map(|id| {
+                    LookupResult::Def(NsDef {
+                        id,
+                        module_id: in_module,
+                        vis: Vis::Public,
+                        span: Span::unknown(),
+                    })
+                })
                 .collect();
         }
 
@@ -422,7 +429,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         results
             .into_iter()
             .filter(|r| match r {
-                LookupResult::Def(def) => self.can_access_vis(from_module, def.id, def.vis),
+                LookupResult::Def(def) => self.can_access_ex(from_module, def.module_id, def.vis),
                 LookupResult::Fn(c) => self.can_access(from_module, c.id),
             })
             .collect()
@@ -431,13 +438,12 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
     #[inline]
     fn can_access(&self, from_module: ModuleId, accessed: DefId) -> bool {
         let def = &self.cx.db[accessed];
-        self.can_access_vis(from_module, accessed, def.scope.vis)
+        self.can_access_ex(from_module, def.scope.module_id, def.scope.vis)
     }
 
     #[inline]
-    fn can_access_vis(&self, from_module: ModuleId, accessed: DefId, vis: Vis) -> bool {
-        let def = &self.cx.db[accessed];
-        vis == Vis::Public || from_module == def.scope.module_id
+    fn can_access_ex(&self, from_module: ModuleId, in_module: ModuleId, vis: Vis) -> bool {
+        vis == Vis::Public || from_module == in_module
     }
 }
 
