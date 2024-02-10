@@ -297,14 +297,15 @@ pub(super) fn check(
             check_call(cx, callee, args, *span, is_ufcs)
         }
         ast::Expr::Call { callee, args, span } => {
-            let args = self.check_call_args(env, args)?;
+            let args = check_call_args(cx, env, args)?;
 
             let callee = match callee.as_ref() {
                 ast::Expr::Name { word, targs, span } => {
                     let targs =
-                        self.check_optional_ty_args(env, targs.as_deref(), AllowTyHole::Yes)?;
+                        tyexpr::check_optional_targs(cx, env, targs.as_deref(), AllowTyHole::Yes)?;
 
-                    let id = self.lookup_fn_for_call(
+                    let id = lookup_fn_for_call(
+                        cx,
                         env,
                         env.module_id(),
                         *word,
@@ -313,16 +314,15 @@ pub(super) fn check(
                         IsUfcs::No,
                     )?;
 
-                    self.check_name(env, id, *word, *span, targs.as_deref())?
+                    check_name(cx, env, id, *word, *span, targs.as_deref())?
                 }
                 _ => check(cx, env, callee, None)?,
             };
 
-            self.check_call(callee, args, *span, IsUfcs::No)
+            check_call(cx, callee, args, *span, IsUfcs::No)
         }
         ast::Expr::Unary { expr, op, span } => {
             let expr = check(cx, env, expr, None)?;
-
             let ty = cx.normalize(expr.ty);
 
             match op {
@@ -348,14 +348,14 @@ pub(super) fn check(
                         Err(errors::invalid_un_op(cx.db, *op, ty, *span))
                     }
                 }
-                UnOp::Ref(mutability) => self.check_ref(expr, ty, *op, *mutability, *span),
+                UnOp::Ref(mutability) => check_ref(cx, expr, ty, *op, *mutability, *span),
             }
         }
         ast::Expr::Binary { lhs, rhs, op, span } => {
             let lhs = check(cx, env, lhs, None)?;
             let rhs = check(cx, env, rhs, Some(lhs.ty))?;
 
-            self.check_bin_op(&lhs, &rhs, *op, *span)?;
+            check_bin_op(cx, &lhs, &rhs, *op, *span)?;
 
             let result_ty = match op {
                 BinOp::Cmp(..) => cx.db.types.bool,
@@ -373,7 +373,7 @@ pub(super) fn check(
             ))
         }
         ast::Expr::Deref { expr, span } => {
-            let expected_ty = self.fresh_ty_var().raw_ptr();
+            let expected_ty = cx.fresh_ty_var().raw_ptr();
             let expr = check(cx, env, expr, Some(expected_ty))?;
 
             match cx.normalize(expr.ty).auto_deref().kind() {
@@ -391,7 +391,7 @@ pub(super) fn check(
         }
         ast::Expr::Cast { expr, target, span } => {
             let expr = check(cx, env, expr, None)?;
-            let target = self.check_ty_expr(env, target, AllowTyHole::Yes)?;
+            let target = tyexpr::check(cx, env, target, AllowTyHole::Yes)?;
 
             Ok(cx.expr(
                 hir::ExprKind::Cast(hir::Cast { expr: Box::new(expr), target }),
@@ -401,7 +401,7 @@ pub(super) fn check(
         }
         ast::Expr::Transmute { expr, target, span } => {
             let expr = check(cx, env, expr, None)?;
-            let target = self.check_ty_expr(env, target, AllowTyHole::Yes)?;
+            let target = tyexpr::check(cx, env, target, AllowTyHole::Yes)?;
 
             Ok(cx.expr(
                 hir::ExprKind::Transmute(hir::Transmute { expr: Box::new(expr), target }),
@@ -411,13 +411,12 @@ pub(super) fn check(
         }
         ast::Expr::Field { expr, field, span } => {
             let expr = check(cx, env, expr, expected_ty)?;
-            self.check_field(env, expr, *field, *span)
+            check_field(cx, env, expr, *field, *span)
         }
         ast::Expr::Index { expr, index, span } => {
-            let expected_slice_ty = Ty::new(TyKind::Slice(self.fresh_ty_var()));
+            let expected_slice_ty = Ty::new(TyKind::Slice(cx.fresh_ty_var()));
 
             let expr = check(cx, env, expr, Some(expected_slice_ty))?;
-
             let expr_ty = cx.normalize(expr.ty);
 
             let elem_ty = match expr_ty.auto_deref().kind() {
@@ -442,7 +441,7 @@ pub(super) fn check(
             ))
         }
         ast::Expr::Slice { expr, low, high, span } => {
-            let expected_slice_ty = Ty::new(TyKind::Slice(self.fresh_ty_var()));
+            let expected_slice_ty = Ty::new(TyKind::Slice(cx.fresh_ty_var()));
 
             let expr = check(cx, env, expr, Some(expected_slice_ty))?;
             let expr_ty = cx.normalize(expr.ty).auto_deref();
@@ -474,14 +473,18 @@ pub(super) fn check(
             ))
         }
         ast::Expr::Name { word, targs, span } => {
-            let id = self.lookup(env, env.module_id(), &Query::Name(*word))?;
-            let targs = self.check_optional_ty_args(env, targs.as_deref(), AllowTyHole::Yes)?;
-            self.check_name(env, id, *word, *span, targs.as_deref())
+            let id = cx.lookup().with_env(env).query(
+                env.module_id(),
+                env.module_id(),
+                &Query::Name(*word),
+            )?;
+            let targs = tyexpr::check_optional_targs(cx, env, targs.as_deref(), AllowTyHole::Yes)?;
+            check_name(cx, env, id, *word, *span, targs.as_deref())
         }
         ast::Expr::SliceLit { exprs, span } => {
             let elem_ty = expected_ty
                 .and_then(|t| cx.normalize(t).slice_elem())
-                .unwrap_or_else(|| self.fresh_ty_var());
+                .unwrap_or_else(|| cx.fresh_ty_var());
 
             let mut new_exprs = vec![];
 
@@ -504,7 +507,7 @@ pub(super) fn check(
 
             Ok(cx.expr(
                 hir::ExprKind::SliceLit(hir::SliceLit { exprs: vec![], cap: Some(Box::new(cap)) }),
-                Ty::new(TyKind::Slice(self.fresh_ty_var())),
+                Ty::new(TyKind::Slice(cx.fresh_ty_var())),
                 *span,
             ))
         }
@@ -512,10 +515,10 @@ pub(super) fn check(
             Ok(cx.expr(hir::ExprKind::BoolLit(*value), cx.db.types.bool, *span))
         }
         ast::Expr::IntLit { value, span } => {
-            Ok(cx.expr(hir::ExprKind::IntLit(*value), self.fresh_int_var(), *span))
+            Ok(cx.expr(hir::ExprKind::IntLit(*value), cx.fresh_int_var(), *span))
         }
         ast::Expr::FloatLit { value, span } => {
-            Ok(cx.expr(hir::ExprKind::FloatLit(*value), self.fresh_float_var(), *span))
+            Ok(cx.expr(hir::ExprKind::FloatLit(*value), cx.fresh_float_var(), *span))
         }
         ast::Expr::StrLit { value, span } => {
             Ok(cx.expr(hir::ExprKind::StrLit(*value), cx.db.types.str, *span))
@@ -634,83 +637,77 @@ fn check_name_struct(
     Ok(cx.expr(hir::ExprKind::Name(hir::Name { id, word, instantiation }), ty, span))
 }
 
-// fn check_field(
-//     &mut self,
-//     env: &Env,
-//     expr: hir::Expr,
-//     field: Word,
-//     span: Span,
-// ) -> DiagnosticResult<hir::Expr> {
-//     let ty = cx.normalize(expr.ty).auto_deref();
-//
-//     let res_ty = match ty.kind() {
-//         TyKind::Module(module_id) => {
-//             let id = self.lookup(env, *module_id, &Query::Name(field))?;
-//             return self.check_name(env, id, field, span, None);
-//         }
-//         TyKind::Adt(adt_id, targs) => {
-//             let adt = &cx.db[*adt_id];
-//
-//             match &adt.kind {
-//                 AdtKind::Struct(struct_def) => {
-//                     if let Some(field) =
-// struct_def.field_by_name(field.name().as_str()) {
-// self.check_field_access(env, adt, field, span)?;
-// Some(adt.instantiation(targs).fold(field.ty))                     } else {
-//                         None
-//                     }
-//                 }
-//                 AdtKind::Union(_) => None,
-//             }
-//         }
-//         TyKind::Type(ty) => {
-//             // This is a union variant
-//             let (expr, can_implicitly_call) =
-//                 self.check_query_in_ty(env, *ty, span, &Query::Name(field),
-// None, expr.span)?;
-//
-//             return if can_implicitly_call {
-//                 self.check_call(expr, vec![], span, IsUfcs::No)
-//             } else {
-//                 Ok(expr)
-//             };
-//         }
-//         TyKind::Slice(..) if field.name() == sym::CAP =>
-// Some(cx.db.types.uint),         TyKind::Slice(..) | TyKind::Str if
-// field.name() == sym::LEN => Some(cx.db.types.uint),
-//         TyKind::Slice(elem_ty) if field.name() == sym::PTR =>
-// Some(elem_ty.raw_ptr()),         TyKind::Str if field.name() == sym::PTR =>
-// Some(cx.db.types.u8.raw_ptr()),         _ => None,
-//     };
-//
-//     if let Some(res_ty) = res_ty {
-//         Ok(cx.expr(
-//             hir::ExprKind::Field(hir::Field { expr: Box::new(expr), field }),
-//             res_ty,
-//             span,
-//         ))
-//     } else {
-//         Err(errors::field_not_found(cx.db, ty, expr.span, field))
-//     }
-// }
+fn check_field(
+    cx: &mut Typeck<'_>,
+    env: &Env,
+    expr: hir::Expr,
+    field: Word,
+    span: Span,
+) -> DiagnosticResult<hir::Expr> {
+    let ty = cx.normalize(expr.ty).auto_deref();
 
-// fn check_field_access(
-//     &self,
-//     env: &Env,
-//     adt: &Adt,
-//     field: &AdtField,
-//     span: Span,
-// ) -> DiagnosticResult<()> {
-//     if field.vis == Vis::Private && cx.db[adt.def_id].scope.module_id !=
-// env.module_id() {         return Err(Diagnostic::error(format!(
-//             "field `{}` of type `{}` is private",
-//             field.name, adt.name
-//         ))
-//         .with_label(Label::primary(span, "private field")));
-//     }
-//
-//     Ok(())
-// }
+    let res_ty = match ty.kind() {
+        TyKind::Module(module_id) => {
+            let id = cx.lookup().query(env.module_id(), *module_id, &Query::Name(field))?;
+            return check_name(cx, env, id, field, span, None);
+        }
+        TyKind::Adt(adt_id, targs) => {
+            let adt = &cx.db[*adt_id];
+
+            match &adt.kind {
+                AdtKind::Struct(struct_def) => {
+                    if let Some(field) = struct_def.field_by_name(field.name().as_str()) {
+                        check_field_access(cx, env, adt, field, span)?;
+                        Some(adt.instantiation(targs).fold(field.ty))
+                    } else {
+                        None
+                    }
+                }
+                AdtKind::Union(_) => None,
+            }
+        }
+        TyKind::Type(ty) => {
+            // This is a union variant
+            let (expr, can_implicitly_call) =
+                check_query_in_ty(cx, env, *ty, span, &Query::Name(field), None, expr.span)?;
+
+            return if can_implicitly_call {
+                check_call(cx, expr, vec![], span, IsUfcs::No)
+            } else {
+                Ok(expr)
+            };
+        }
+        TyKind::Slice(..) if field.name() == sym::CAP => Some(cx.db.types.uint),
+        TyKind::Slice(..) | TyKind::Str if field.name() == sym::LEN => Some(cx.db.types.uint),
+        TyKind::Slice(elem_ty) if field.name() == sym::PTR => Some(elem_ty.raw_ptr()),
+        TyKind::Str if field.name() == sym::PTR => Some(cx.db.types.u8.raw_ptr()),
+        _ => None,
+    };
+
+    if let Some(res_ty) = res_ty {
+        Ok(cx.expr(hir::ExprKind::Field(hir::Field { expr: Box::new(expr), field }), res_ty, span))
+    } else {
+        Err(errors::field_not_found(cx.db, ty, expr.span, field))
+    }
+}
+
+pub(super) fn check_field_access(
+    cx: &Typeck<'_>,
+    env: &Env,
+    adt: &Adt,
+    field: &AdtField,
+    span: Span,
+) -> DiagnosticResult<()> {
+    if field.vis == Vis::Private && cx.db[adt.def_id].scope.module_id != env.module_id() {
+        return Err(Diagnostic::error(format!(
+            "field `{}` of type `{}` is private",
+            field.name, adt.name
+        ))
+        .with_label(Label::primary(span, "private field")));
+    }
+
+    Ok(())
+}
 
 /// Tries to look up `name` in the namespace of `ty`.
 /// Returns the evaluated expression, and whether it can be implicitly
@@ -905,29 +902,29 @@ fn check_call_fn(
     Ok(cx.expr(hir::ExprKind::Call(hir::Call { callee: Box::new(callee), args }), fn_ty.ret, span))
 }
 
-// fn check_ref(
-//     &mut self,
-//     expr: hir::Expr,
-//     ty: Ty,
-//     op: UnOp,
-//     mutability: Mutability,
-//     span: Span,
-// ) -> DiagnosticResult<hir::Expr> {
-//     // if ty.can_create_ref(cx.db) {
-//     Ok(cx.expr(
-//         hir::ExprKind::Unary(hir::Unary { expr: Box::new(expr), op }),
-//         ty.create_ref(mutability),
-//         span,
-//     ))
-//     // } else {
-//     //     Err(Diagnostic::error()
-//     //         .with_message(format!(
-//     //             "cannot take a reference to value of type `{}`",
-//     //             ty.display(cx.db)
-//     //         ))
-//     //         .with_label(Label::primary(span, "cannot take
-//     // reference"))) }
-// }
+fn check_ref(
+    cx: &mut Typeck<'_>,
+    expr: hir::Expr,
+    ty: Ty,
+    op: UnOp,
+    mutability: Mutability,
+    span: Span,
+) -> DiagnosticResult<hir::Expr> {
+    // if ty.can_create_ref(cx.db) {
+    Ok(cx.expr(
+        hir::ExprKind::Unary(hir::Unary { expr: Box::new(expr), op }),
+        ty.create_ref(mutability),
+        span,
+    ))
+    // } else {
+    //     Err(Diagnostic::error()
+    //         .with_message(format!(
+    //             "cannot take a reference to value of type `{}`",
+    //             ty.display(cx.db)
+    //         ))
+    //         .with_label(Label::primary(span, "cannot take
+    // reference"))) }
+}
 
 fn check_call_args(
     cx: &mut Typeck<'_>,

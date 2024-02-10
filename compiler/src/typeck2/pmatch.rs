@@ -31,7 +31,7 @@ pub(super) fn check(
     span: Span,
     expected_ty: Option<Ty>,
 ) -> DiagnosticResult<hir::Expr> {
-    let expr = exprs::check(cx, env, expr, None)?;
+    let expr = exprs::check_expr(cx, env, expr, None)?;
     let expr_ty = cx.normalize(expr.ty);
 
     let mut new_arms = Vec::<hir::MatchArm>::new();
@@ -81,14 +81,14 @@ fn check_match_arm(
 
         let guard = if let Some(guard) = &case.guard {
             let bool_ty = cx.db.types.bool;
-            let guard = exprs::check(cx, env, guard, Some(bool_ty))?;
+            let guard = exprs::check_expr(cx, env, guard, Some(bool_ty))?;
             cx.at(Obligation::obvious(guard.span)).eq(bool_ty, guard.ty).or_coerce(cx, guard.id)?;
             Some(Box::new(guard))
         } else {
             None
         };
 
-        let expr = exprs::check(cx, env, &case.expr, expected_ty)?;
+        let expr = exprs::check_expr(cx, env, &case.expr, expected_ty)?;
 
         Ok(hir::MatchArm { pat, guard, expr: Box::new(expr) })
     })
