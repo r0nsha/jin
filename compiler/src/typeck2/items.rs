@@ -16,13 +16,14 @@ use crate::{
     ty::{FnTyFlags, Ty, TyKind},
     typeck2::{
         attrs, errors, fns,
-        lookup::FnCandidate,
+        lookup::{FnCandidate, Query},
+        ns,
         ns::{AssocTy, Env, ScopeKind},
         tyexpr,
         tyexpr::AllowTyHole,
         types, ResolutionMap, Typeck,
     },
-    word::WordMap,
+    word::{Word, WordMap},
 };
 
 pub(super) fn define(
@@ -239,8 +240,10 @@ pub(super) fn check_sigs(
         match item {
             ast::Item::Let(let_) => check_let_item(cx, res_map, module.id, id, let_)?,
             ast::Item::ExternLet(let_) => check_extern_let(cx, res_map, module.id, id, let_)?,
-            ast::Item::Fn(fun) => check_fn(cx, res_map, module.id, id, fun, None)?,
-            // TODO: ast::Item::Assoc(word, item) => todo!(),
+            ast::Item::Fn(fun) => check_fn(cx, res_map, module.id, id, fun)?,
+            ast::Item::Assoc(tyname, item) => {
+                check_assoc_item(cx, res_map, module.id, id, *tyname, item)?
+            }
             _ => (),
         }
     }
@@ -287,12 +290,38 @@ fn check_fn(
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     fun: &ast::Fn,
+) -> DiagnosticResult<()> {
+    let &id = res_map.item_to_def.get(&item_id).expect("to be defined");
+    check_fn_helper(cx, res_map, module_id, item_id, id, fun, None)
+}
+
+fn check_fn_helper(
+    cx: &mut Typeck,
+    res_map: &mut ResolutionMap,
+    module_id: ModuleId,
+    item_id: ast::GlobalItemId,
+    id: DefId,
+    fun: &ast::Fn,
     assoc_ty: Option<AssocTy>,
 ) -> DiagnosticResult<()> {
+    let mut flags = FnTyFlags::empty();
+
+    let callconv = match &fun.kind {
+        ast::FnKind::Bare { .. } => CallConv::default(),
+        ast::FnKind::Extern { callconv, is_c_variadic } => {
+            flags.insert(FnTyFlags::EXTERN);
+
+            if *is_c_variadic {
+                flags.insert(FnTyFlags::C_VARIADIC);
+            }
+
+            *callconv
+        }
+    };
+
     let mut env = Env::new(module_id);
-    let &id = res_map.item_to_def.get(&item_id).expect("to be defined");
     let sig = env.with_named_scope(fun.sig.word.name(), ScopeKind::Fn(DefId::null()), |env| {
-        check_fn_item_helper(cx, env, fun)
+        fns::check_sig(cx, env, &fun.sig, callconv, flags)
     })?;
 
     match &fun.kind {
@@ -309,7 +338,7 @@ fn check_fn(
             }
         }
         ast::FnKind::Extern { .. } => {
-            check_intrinsic_fn(cx, &env, fun, &sig, id)?;
+            check_intrinsic_fn(cx, module_id, fun, &sig, id)?;
         }
     }
 
@@ -319,32 +348,9 @@ fn check_fn(
     Ok(())
 }
 
-fn check_fn_item_helper(
-    cx: &mut Typeck,
-    env: &mut Env,
-    fun: &ast::Fn,
-) -> DiagnosticResult<hir::FnSig> {
-    let mut flags = FnTyFlags::empty();
-
-    let callconv = match &fun.kind {
-        ast::FnKind::Bare { .. } => CallConv::default(),
-        ast::FnKind::Extern { callconv, is_c_variadic } => {
-            flags.insert(FnTyFlags::EXTERN);
-
-            if *is_c_variadic {
-                flags.insert(FnTyFlags::C_VARIADIC);
-            }
-
-            *callconv
-        }
-    };
-
-    fns::check_sig(cx, env, &fun.sig, callconv, flags)
-}
-
 fn check_intrinsic_fn(
     cx: &mut Typeck<'_>,
-    env: &Env,
+    module_id: ModuleId,
     fun: &ast::Fn,
     sig: &hir::FnSig,
     id: DefId,
@@ -364,7 +370,7 @@ fn check_intrinsic_fn(
                 .with_label(Label::primary(fun.sig.word.span(), "invalid calling convention")));
         }
 
-        if !env.in_std(cx.db) {
+        if ns::in_std(cx.db, module_id) {
             return Err(Diagnostic::error("intrinsic cannot be defined outside the `std` package")
                 .with_label(Label::primary(
                     fun.sig.word.span(),
@@ -388,5 +394,89 @@ fn assign_pat_ty(cx: &mut Typeck<'_>, pat: &mut Pat, ty: Ty) {
             cx.def_to_ty.insert(name.id, ty);
         }
         Pat::Discard(_) => (),
+    }
+}
+
+fn check_assoc_item(
+    cx: &mut Typeck<'_>,
+    res_map: &mut ResolutionMap,
+    module_id: ModuleId,
+    item_id: ast::GlobalItemId,
+    tyname: Word,
+    item: &ast::Item,
+) -> DiagnosticResult<()> {
+    let assoc_ty = check_assoc_item_ty(cx, module_id, tyname)?;
+
+    match item {
+        ast::Item::Fn(fun) => {
+            todo!()
+            // self.check_assoc_fn_item(env, assoc_ty, fun, item_id)?;
+        }
+        ast::Item::Let(_)
+        | ast::Item::Type(_)
+        | ast::Item::Import(_)
+        | ast::Item::ExternLet(_)
+        | ast::Item::ExternImport(_)
+        | ast::Item::Assoc(_, _) => unreachable!(),
+    }
+
+    Ok(())
+}
+
+fn check_assoc_item_ty(
+    cx: &mut Typeck<'_>,
+    module_id: ModuleId,
+    tyname: Word,
+) -> DiagnosticResult<AssocTy> {
+    let id = cx.lookup().query(module_id, module_id, &Query::Name(tyname))?;
+
+    let Some(assoc_ty) = try_extract_assoc_ty(cx, id) else {
+        return Err(Diagnostic::error(format!(
+            "expected a type, found value of type `{}`",
+            cx.def_ty(id).display(cx.db)
+        ))
+        .with_label(Label::primary(tyname.span(), "expected a type")));
+    };
+
+    let env_package = cx.db[module_id].package;
+
+    match assoc_ty {
+        AssocTy::Adt(adt_id) => {
+            let ty_def = &cx.db[cx.db[adt_id].def_id];
+            let ty_package = cx.db[ty_def.scope.module_id].package;
+
+            if env_package != ty_package {
+                return Err(Diagnostic::error(format!(
+                    "cannot define associated name for foreign type `{}`",
+                    cx.db[adt_id].name
+                ))
+                .with_label(Label::primary(
+                    tyname.span(),
+                    format!("type is defined in package `{ty_package}`"),
+                ))
+                .with_label(Label::secondary(ty_def.span, "defined here")));
+            }
+        }
+        AssocTy::BuiltinTy(ty) => {
+            if !ns::in_std(cx.db, module_id) {
+                return Err(Diagnostic::error(format!(
+                    "cannot define associated name for builtin type `{}`",
+                    ty.display(cx.db)
+                ))
+                .with_label(Label::primary(tyname.span(), "builtin type")));
+            }
+        }
+    }
+
+    Ok(assoc_ty)
+}
+
+fn try_extract_assoc_ty(cx: &Typeck<'_>, id: DefId) -> Option<AssocTy> {
+    let def = &cx.db[id];
+
+    match def.kind.as_ref() {
+        DefKind::Adt(adt_id) => Some(AssocTy::Adt(*adt_id)),
+        DefKind::Ty(ty) => Some(AssocTy::BuiltinTy(*ty)),
+        _ => None,
     }
 }

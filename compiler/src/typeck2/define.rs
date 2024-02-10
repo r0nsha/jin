@@ -78,17 +78,16 @@ impl<'db, 'cx> Define<'db, 'cx> {
         id: DefId,
         vis: Vis,
     ) -> DiagnosticResult<DefId> {
-        // TODO:
-        // if let Some(candidates) = self.global_scope.fns.get(&symbol) {
-        //     let last_candidate = candidates.iter().last().unwrap();
-        //     return Err(errors::multiple_item_def_err(last_candidate.word.span(),
-        // name)); }
+        let module = self.cx.global_env.module_mut(module_id);
+
+        if let Some(candidates) = module.ns.fns.get(&name.name()) {
+            let last_candidate = candidates.iter().last().unwrap();
+            return Err(errors::multiple_item_def_err(last_candidate.word.span(), name));
+        }
 
         let def = NsDef::new(id, vis, name.span());
 
-        if let Some(prev) =
-            self.cx.global_env.module_mut(module_id).ns.defs.insert(name.name(), def)
-        {
+        if let Some(prev) = module.ns.defs.insert(name.name(), def) {
             return Err(errors::multiple_item_def_err(prev.span, name));
         }
 

@@ -9,6 +9,7 @@ use crate::{
     qpath::QPath,
     span::Span,
     ty::{Ty, TyKind},
+    typeck::Typeck,
     typeck2::{builtins::BuiltinTys, lookup::FnCandidateSet},
 };
 
@@ -244,4 +245,8 @@ pub(super) enum ScopeKind {
     TyDef,
     Loop,
     Block,
+}
+
+pub(super) fn in_std(db: &Db, module_id: ModuleId) -> bool {
+    db.package(db[module_id].package).is_std(db)
 }
