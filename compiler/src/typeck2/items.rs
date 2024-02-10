@@ -518,15 +518,22 @@ pub(super) fn check_bodies(
     res_map: &mut ResolutionMap,
     ast: &Ast,
 ) -> DiagnosticResult<()> {
-    for (module, item, id) in ast.items_with_id() {
+    for (_, item, id) in ast.items_with_id() {
         match item {
             ast::Item::Let(let_) => {
-                // TODO:
-                // define_let(cx, res_map, module.id, id, let_)?
+                let pat = res_map.item_to_pat.remove(&id).expect("to be defined");
+                let mut let_ = check_let_body(cx, pat, let_)?;
+                cx.hir.lets.push_with_key(|id| {
+                    let_.id = id;
+                    let_
+                });
             }
             ast::Item::Fn(fun) => {
                 // TODO:
-                // define_fn(cx, res_map, module.id, id, fun, None).map(|_| ())?
+                // cx.hir.fns.push_with_key(|id| {
+                //     fun.id = id;
+                //     fun
+                // });
             }
             ast::Item::Assoc(_, item) => {
                 // TODO:
@@ -537,4 +544,36 @@ pub(super) fn check_bodies(
     }
 
     Ok(())
+}
+
+pub(super) fn check_let_body(
+    cx: &mut Typeck<'_>,
+    pat: Pat,
+    let_: &ast::Let,
+) -> DiagnosticResult<hir::Let> {
+    todo!()
+    // let value = self.check_expr(env, &let_.value, Some(ty))?;
+    // self.eq_obvious_expr(ty, &value)?;
+
+    // if self.normalize(ty).is_module() {
+    //     return Err(Diagnostic::error("cannot store a module as a value")
+    //         .with_label(Label::primary(value.span, "expected a value")));
+    // }
+
+    // let value = if env.in_global_scope() {
+    //     // We do this so that global variable initialization always includes
+    // a block     // (required for destroys)
+    //     self.expr_or_block(value)
+    // } else {
+    //     value
+    // };
+
+    // Ok(hir::Let {
+    //     id: hir::LetId::null(),
+    //     module_id: env.module_id(),
+    //     pat,
+    //     value: Box::new(value),
+    //     ty,
+    //     span: let_.span,
+    // })
 }

@@ -127,6 +127,6 @@ fn build(db: &mut Db, root_file: &Utf8Path) {
     //
     // // Generate C code from Mir
     // cgen::codegen(db, &mir);
-    //
-    // db.print_timings();
+
+    db.print_timings();
 }

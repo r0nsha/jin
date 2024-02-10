@@ -3,25 +3,13 @@ use ustr::ustr;
 
 use crate::{
     ast,
-    ast::{Ast, ItemId},
-    db::{
-        AdtId, AdtKind, Def, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, StructDef, UnionDef,
-        Variant, VariantId,
-    },
     diagnostics::DiagnosticResult,
     hir,
-    middle::{CallConv, Mutability, NamePat, Pat},
-    qpath::QPath,
-    span::Spanned,
+    middle::{CallConv, Pat, TyExpr},
+    span::{Span, Spanned},
     ty::{FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
-    typeck2::{
-        attrs, errors,
-        ns::{AssocTy, Env, ScopeKind},
-        tyexpr,
-        tyexpr::AllowTyHole,
-        types, ResolutionMap, Typeck,
-    },
-    word::WordMap,
+    typeck2::{errors, ns::Env, tyexpr, tyexpr::AllowTyHole, types, Typeck},
+    word::{Word, WordMap},
 };
 
 pub(super) fn check_sig(
@@ -44,6 +32,34 @@ pub(super) fn check_sig(
 
     let ty = Ty::new(TyKind::Fn(FnTy { params: fnty_params, ret, callconv, flags }));
     Ok(hir::FnSig { word: sig.word, ty_params, params, ret, ret_span, ty })
+}
+
+pub(super) fn check_expr_sig(
+    cx: &mut Typeck<'_>,
+    env: &mut Env,
+    params: &[ast::FnParam],
+    ret: Option<&TyExpr>,
+    span: Span,
+) -> DiagnosticResult<hir::FnSig> {
+    let (params, fnty_params) = check_fn_sig_params(cx, env, params)?;
+    let ret_span = ret.as_ref().map_or(span, |t| t.span());
+    let ret = ret
+        .map(|ret| tyexpr::check(cx, env, ret, AllowTyHole::Yes))
+        .transpose()?
+        .unwrap_or_else(|| cx.fresh_ty_var());
+
+    let ty = Ty::new(TyKind::Fn(FnTy {
+        params: fnty_params,
+        ret,
+        callconv: CallConv::default(),
+        flags: FnTyFlags::empty(),
+    }));
+
+    let module_name = cx.db[env.module_id()].qpath.join_with("_");
+    let name = ustr(&format!("closure_{}_{}", module_name, span.start()));
+    let word = Word::new(name, span);
+
+    Ok(hir::FnSig { word, ty_params: vec![], params, ret, ret_span, ty })
 }
 
 fn check_fn_sig_params(
