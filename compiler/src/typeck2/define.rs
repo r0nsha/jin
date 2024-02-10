@@ -2,13 +2,14 @@ use data_structures::index_vec::{IndexVecExt as _, Key as _};
 
 use crate::{
     ast,
-    db::{Adt, AdtId, AdtKind, Def, DefId, DefKind, ModuleId, ScopeInfo, ScopeLevel},
+    db::{Adt, AdtId, AdtKind, Db, Def, DefId, DefKind, ModuleId, ScopeInfo, ScopeLevel},
     diagnostics::DiagnosticResult,
     middle::{Mutability, NamePat, Pat, Vis},
     span::Spanned as _,
     ty::Ty,
     typeck2::{
         errors,
+        lookup::{FnCandidate, FnCandidateInsertError, FnCandidateSet},
         ns::{Env, NsDef},
         Typeck,
     },
@@ -94,7 +95,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         Ok(id)
     }
 
-    pub fn new_local(
+    pub(super) fn new_local(
         &mut self,
         env: &mut Env,
         kind: DefKind,
@@ -111,7 +112,12 @@ impl<'db, 'cx> Define<'db, 'cx> {
         id
     }
 
-    pub fn global_pat(&mut self, module_id: ModuleId, pat: &Pat, ty: Ty) -> DiagnosticResult<Pat> {
+    pub(super) fn global_pat(
+        &mut self,
+        module_id: ModuleId,
+        pat: &Pat,
+        ty: Ty,
+    ) -> DiagnosticResult<Pat> {
         match pat {
             Pat::Name(name) => {
                 let id = self.new_global(
@@ -128,7 +134,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         }
     }
 
-    pub fn local_pat(&mut self, env: &mut Env, pat: &Pat, ty: Ty) -> Pat {
+    pub(super) fn local_pat(&mut self, env: &mut Env, pat: &Pat, ty: Ty) -> Pat {
         match pat {
             Pat::Name(name) => {
                 let id = self.new_local(env, DefKind::Variable, name.word, name.mutability, ty);
@@ -136,5 +142,20 @@ impl<'db, 'cx> Define<'db, 'cx> {
             }
             Pat::Discard(span) => Pat::Discard(*span),
         }
+    }
+
+    pub(super) fn fn_candidate(&mut self, candidate: FnCandidate) -> DiagnosticResult<()> {
+        let module_id = candidate.module_id(self.cx.db);
+        let name = candidate.word.name();
+        let set = self.cx.global_env.module_mut(module_id).ns.fns.entry(name).or_default();
+        Self::insert_fn_candidate_in(self.cx.db, set, candidate)
+    }
+
+    fn insert_fn_candidate_in(
+        db: &Db,
+        set: &mut FnCandidateSet,
+        candidate: FnCandidate,
+    ) -> DiagnosticResult<()> {
+        set.try_insert(candidate).map_err(|err| err.to_diagnostic(db))
     }
 }

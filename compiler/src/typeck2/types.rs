@@ -1,6 +1,6 @@
 use crate::{
     ast,
-    ast::{Ast, ItemId},
+    ast::Ast,
     db::{AdtField, AdtId, DefKind, ModuleId, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{Mutability, TyParam, Vis},
@@ -34,15 +34,11 @@ fn check_tydef(
     cx: &mut Typeck<'_>,
     res_map: &mut ResolutionMap,
     module_id: ModuleId,
-    item_id: ItemId,
+    item_id: ast::GlobalItemId,
     tydef: &ast::TyDef,
 ) -> DiagnosticResult<()> {
-    let adt_id = res_map
-        .item_to_adt
-        .remove(&ast::GlobalItemId::new(module_id, item_id))
-        .expect("to be defined");
-
     let mut env = Env::new(module_id);
+    let adt_id = res_map.item_to_adt.remove(&item_id).expect("to be defined");
 
     env.with_anon_scope(ScopeKind::TyDef, |env| -> DiagnosticResult<()> {
         for tp in &cx.db[adt_id].ty_params {

@@ -35,9 +35,11 @@ impl Ast {
         self.modules.iter().flat_map(|module| module.items.iter().map(move |item| (module, item)))
     }
 
-    pub fn items_with_id(&self) -> impl Iterator<Item = (&Module, &Item, ItemId)> {
+    pub fn items_with_id(&self) -> impl Iterator<Item = (&Module, &Item, GlobalItemId)> {
         self.modules.iter().flat_map(|module| {
-            module.items.iter_enumerated().map(move |(id, item)| (module, item, id))
+            module.items.iter_enumerated().map(move |(id, item)| {
+                (module, item, GlobalItemId { module_id: module.id, item_id: id })
+            })
         })
     }
 

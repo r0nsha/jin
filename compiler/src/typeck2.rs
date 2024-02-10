@@ -2,6 +2,7 @@ mod attrs;
 mod builtins;
 mod define;
 mod errors;
+mod fns;
 mod imports;
 mod items;
 mod lookup;
@@ -9,7 +10,6 @@ mod normalize;
 mod ns;
 mod tyexpr;
 mod types;
-mod fns;
 
 use std::cell::RefCell;
 
@@ -174,6 +174,7 @@ pub(super) struct ResolutionMap {
     pub(super) item_to_def: FxHashMap<ast::GlobalItemId, DefId>,
     pub(super) item_to_adt: FxHashMap<ast::GlobalItemId, AdtId>,
     pub(super) item_to_pat: FxHashMap<ast::GlobalItemId, Pat>,
+    pub(super) item_to_sig: FxHashMap<ast::GlobalItemId, hir::FnSig>,
 }
 
 impl ResolutionMap {
@@ -182,6 +183,7 @@ impl ResolutionMap {
             item_to_def: FxHashMap::default(),
             item_to_adt: FxHashMap::default(),
             item_to_pat: FxHashMap::default(),
+            item_to_sig: FxHashMap::default(),
         }
     }
 }

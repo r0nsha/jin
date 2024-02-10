@@ -3,19 +3,20 @@ use ustr::ustr;
 
 use crate::{
     ast,
-    ast::{Ast, ItemId},
+    ast::Ast,
     db::{
-        AdtId, AdtKind, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel, StructDef,
-        UnionDef, Variant, VariantId,
+        AdtId, AdtKind, Def, DefId, DefKind, FnInfo, Intrinsic, ModuleId, ScopeInfo, ScopeLevel,
+        StructDef, UnionDef, Variant, VariantId,
     },
-    diagnostics::DiagnosticResult,
+    diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
-    middle::{CallConv, Mutability, NamePat, Pat},
+    middle::{CallConv, Mutability},
     qpath::QPath,
     span::Spanned as _,
     ty::{FnTyFlags, TyKind},
     typeck2::{
         attrs, errors, fns,
+        lookup::FnCandidate,
         ns::{AssocTy, Env, ScopeKind},
         tyexpr,
         tyexpr::AllowTyHole,
@@ -50,13 +51,13 @@ fn define_let(
     cx: &mut Typeck<'_>,
     res_map: &mut ResolutionMap,
     module_id: ModuleId,
-    item_id: ItemId,
+    item_id: ast::GlobalItemId,
     let_: &ast::Let,
 ) -> DiagnosticResult<()> {
     attrs::validate(&let_.attrs, attrs::Placement::Let)?;
     let unknown = cx.db.types.unknown;
     let pat = cx.define().global_pat(module_id, &let_.pat, unknown)?;
-    res_map.item_to_pat.insert(ast::GlobalItemId::new(module_id, item_id), pat);
+    res_map.item_to_pat.insert(item_id, pat);
     Ok(())
 }
 
@@ -64,7 +65,7 @@ fn define_extern_let(
     cx: &mut Typeck<'_>,
     res_map: &mut ResolutionMap,
     module_id: ModuleId,
-    item_id: ItemId,
+    item_id: ast::GlobalItemId,
     let_: &ast::ExternLet,
 ) -> DiagnosticResult<()> {
     attrs::validate(&let_.attrs, attrs::Placement::ExternLet)?;
@@ -77,7 +78,7 @@ fn define_extern_let(
         let_.mutability,
     )?;
 
-    res_map.item_to_def.insert(ast::GlobalItemId::new(module_id, item_id), id);
+    res_map.item_to_def.insert(item_id, id);
 
     Ok(())
 }
@@ -86,7 +87,7 @@ fn define_fn(
     cx: &mut Typeck<'_>,
     res_map: &mut ResolutionMap,
     module_id: ModuleId,
-    item_id: ItemId,
+    item_id: ast::GlobalItemId,
     fun: &ast::Fn,
     assoc_ty: Option<AssocTy>,
 ) -> DiagnosticResult<()> {
@@ -141,7 +142,7 @@ fn define_fn(
         )?,
     };
 
-    res_map.item_to_def.insert(ast::GlobalItemId::new(module_id, item_id), id);
+    res_map.item_to_def.insert(item_id, id);
 
     Ok(())
 }
@@ -150,7 +151,7 @@ fn define_tydef(
     cx: &mut Typeck<'_>,
     res_map: &mut ResolutionMap,
     module_id: ModuleId,
-    item_id: ItemId,
+    item_id: ast::GlobalItemId,
     tydef: &ast::TyDef,
 ) -> DiagnosticResult<()> {
     let mut env = Env::new(module_id);
@@ -183,7 +184,7 @@ fn define_tydef(
         Ok(adt_id)
     })?;
 
-    res_map.item_to_adt.insert(ast::GlobalItemId::new(module_id, item_id), adt_id);
+    res_map.item_to_adt.insert(item_id, adt_id);
 
     Ok(())
 }
@@ -238,7 +239,7 @@ pub(super) fn check_sigs(
         match item {
             ast::Item::Let(let_) => check_let(cx, res_map, module.id, id, let_)?,
             ast::Item::ExternLet(let_) => check_extern_let(cx, res_map, module.id, id, let_)?,
-            ast::Item::Fn(fun) => check_fn(cx, res_map, module.id, id, fun)?,
+            ast::Item::Fn(fun) => check_fn(cx, res_map, module.id, id, fun, None)?,
             // TODO: ast::Item::Assoc(word, item) => todo!(),
             _ => (),
         }
@@ -251,7 +252,7 @@ fn check_let(
     cx: &mut Typeck<'_>,
     res_map: &mut ResolutionMap,
     module_id: ModuleId,
-    item_id: ItemId,
+    item_id: ast::GlobalItemId,
     let_: &ast::Let,
 ) -> DiagnosticResult<()> {
     // TODO: debug_assert!(in_global && ty.is_some());
@@ -262,14 +263,11 @@ fn check_extern_let(
     cx: &mut Typeck<'_>,
     res_map: &mut ResolutionMap,
     module_id: ModuleId,
-    item_id: ItemId,
+    item_id: ast::GlobalItemId,
     let_: &ast::ExternLet,
 ) -> DiagnosticResult<()> {
     let env = Env::new(module_id);
-    let id = res_map
-        .item_to_def
-        .remove(&ast::GlobalItemId::new(module_id, item_id))
-        .expect("to be defined");
+    let id = res_map.item_to_def.remove(&item_id).expect("to be defined");
 
     let ty = tyexpr::check(cx, &env, &let_.ty_expr, AllowTyHole::No)?;
     cx.hir.extern_lets.push(hir::ExternLet { module_id, id, word: let_.word, ty, span: let_.span });
@@ -281,18 +279,37 @@ fn check_fn(
     cx: &mut Typeck<'_>,
     res_map: &mut ResolutionMap,
     module_id: ModuleId,
-    item_id: ItemId,
+    item_id: ast::GlobalItemId,
     fun: &ast::Fn,
+    assoc_ty: Option<AssocTy>,
 ) -> DiagnosticResult<()> {
     let mut env = Env::new(module_id);
+    let &id = res_map.item_to_def.get(&item_id).expect("to be defined");
     let sig = env.with_named_scope(fun.sig.word.name(), ScopeKind::Fn(DefId::null()), |env| {
         check_fn_item_helper(cx, env, fun)
     })?;
-    todo!("{sig:?}");
-    // TODO: let id = from res_map
-    // TODO: add to def_to_ty
-    // TODO: self.check_intrinsic_fn(env, fun, &sig, id)?;
-    // TODO: add to item_to_sig
+
+    match &fun.kind {
+        ast::FnKind::Bare { .. } => {
+            let candidate =
+                FnCandidate { id, word: sig.word, ty: sig.ty.as_fn().cloned().unwrap() };
+
+            if let Some(ty) = assoc_ty {
+                todo!()
+                // self.insert_fn_candidate_in_ty(ty, sig.word.name(),
+                // symbol.module_id, candidate)?;
+            } else {
+                cx.define().fn_candidate(candidate)?;
+            }
+        }
+        ast::FnKind::Extern { .. } => {
+            check_intrinsic_fn(cx, &env, fun, &sig, id)?;
+        }
+    }
+
+    cx.def_to_ty.insert(id, sig.ty);
+    res_map.item_to_sig.insert(item_id, sig);
+
     Ok(())
 }
 
@@ -317,4 +334,43 @@ fn check_fn_item_helper(
     };
 
     fns::check_sig(cx, env, &fun.sig, callconv, flags)
+}
+
+fn check_intrinsic_fn(
+    cx: &mut Typeck<'_>,
+    env: &Env,
+    fun: &ast::Fn,
+    sig: &hir::FnSig,
+    id: DefId,
+) -> DiagnosticResult<()> {
+    let fnty = sig.ty.as_fn().unwrap();
+
+    if let Some(attr) = fun.attrs.find(ast::AttrId::Intrinsic) {
+        let ast::AttrArgs::Intrinsic(name) = attr.args else { unreachable!() };
+
+        let intrinsic = Intrinsic::try_from(name.as_str()).map_err(|()| {
+            Diagnostic::error(format!("unknown intrinsic `{name}`"))
+                .with_label(Label::primary(name.span(), "unknown intrinsic"))
+        })?;
+
+        if fnty.callconv != CallConv::Jin {
+            return Err(Diagnostic::error("intrinsic calling convention must be \"jin\"")
+                .with_label(Label::primary(fun.sig.word.span(), "invalid calling convention")));
+        }
+
+        if !env.in_std(cx.db) {
+            return Err(Diagnostic::error("intrinsic cannot be defined outside the `std` package")
+                .with_label(Label::primary(
+                    fun.sig.word.span(),
+                    "cannot be defined outside `std`",
+                )));
+        }
+
+        cx.db.intrinsics.insert(id, intrinsic);
+    } else if fnty.is_extern() && !sig.ty_params.is_empty() {
+        return Err(Diagnostic::error("type parameters are not allowed on extern functions")
+            .with_label(Label::primary(sig.word.span(), "type parameters not allowed")));
+    }
+
+    Ok(())
 }

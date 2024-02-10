@@ -9,7 +9,7 @@ use crate::{
     qpath::QPath,
     span::Span,
     ty::{Ty, TyKind},
-    typeck2::builtins::BuiltinTys,
+    typeck2::{builtins::BuiltinTys, lookup::FnCandidateSet},
 };
 
 #[derive(Debug)]
@@ -62,7 +62,7 @@ pub(super) struct Ns {
     #[allow(unused)]
     pub(super) module_id: ModuleId,
     pub(super) defs: UstrMap<NsDef>,
-    // pub(super) fns: UstrMap<FnCandidateSet>,
+    pub(super) fns: UstrMap<FnCandidateSet>,
     pub(super) defined_fns: UstrMap<Vec<DefId>>,
 }
 
@@ -71,7 +71,7 @@ impl Ns {
         Self {
             module_id,
             defs: UstrMap::default(),
-            // fns: FxHashMap::default()
+            fns: UstrMap::default(),
             defined_fns: UstrMap::default(),
         }
     }

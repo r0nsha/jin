@@ -458,6 +458,16 @@ pub(super) enum FnCandidateInsertError {
     AlreadyExists { prev: FnCandidate, curr: FnCandidate },
 }
 
+impl FnCandidateInsertError {
+    pub(super) fn to_diagnostic(self, db: &Db) -> Diagnostic {
+        match self {
+            FnCandidateInsertError::AlreadyExists { prev, curr } => {
+                errors::multiple_fn_def_err(db, prev.module_id(db), prev.word.span(), &curr)
+            }
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(super) struct FnCandidate {
     pub(super) id: DefId,
@@ -466,6 +476,10 @@ pub(super) struct FnCandidate {
 }
 
 impl FnCandidate {
+    pub(super) fn module_id(&self, db: &Db) -> ModuleId {
+        db[self.id].scope.module_id
+    }
+
     // Tests the given query against the function candidate, returning
     // a Some(score) if there's a match, or a None if there isn't.
     // See `distance` for how parameter scoring works.
