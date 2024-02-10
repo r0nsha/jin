@@ -212,9 +212,9 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             let adt = &self.cx.db[*adt_id];
 
             match &adt.kind {
-                AdtKind::Union(union_def) => self
-                    .lookup_variant_in_union(union_def, name, ty_span)
-                    .map(|v| TyLookup::Variant(v.id)),
+                AdtKind::Union(union_def) => {
+                    self.variant_in_union(union_def, name, ty_span).map(|v| TyLookup::Variant(v.id))
+                }
                 AdtKind::Struct(_) => {
                     Err(errors::assoc_name_not_found(self.cx.db, adt.ty(), query))
                 }
@@ -224,7 +224,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         }
     }
 
-    pub(super) fn try_lookup_variant_in_union(
+    pub(super) fn maybe_variant_in_union(
         &self,
         union_def: &'db UnionDef,
         name: Word,
@@ -232,13 +232,13 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         union_def.variants(self.cx.db).find(|v| v.name.name() == name.name())
     }
 
-    pub(super) fn lookup_variant_in_union(
+    pub(super) fn variant_in_union(
         &self,
         union_def: &'db UnionDef,
         name: Word,
         span: Span,
     ) -> DiagnosticResult<&Variant> {
-        self.try_lookup_variant_in_union(union_def, name)
+        self.maybe_variant_in_union(union_def, name)
             .ok_or_else(|| errors::variant_not_found(self.cx.db, union_def.id, span, name))
     }
 

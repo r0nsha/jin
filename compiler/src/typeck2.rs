@@ -1,17 +1,18 @@
 mod attrs;
 mod builtins;
+mod coerce;
 mod define;
 mod errors;
+mod exprs;
 mod fns;
 mod imports;
 mod items;
 mod lookup;
 mod normalize;
 mod ns;
+mod pmatch;
 mod tyexpr;
 mod types;
-mod expr;
-mod coerce;
 mod unify;
 
 use std::cell::RefCell;

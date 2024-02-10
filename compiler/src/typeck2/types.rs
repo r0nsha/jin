@@ -5,7 +5,7 @@ use crate::{
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{Mutability, TyParam, Vis},
     span::Spanned as _,
-    ty::{ParamTy, Ty, TyKind},
+    ty::{Instantiation, ParamTy, Ty, TyKind},
     typeck2::{
         errors,
         ns::{Env, ScopeKind},
@@ -175,4 +175,28 @@ pub(super) fn define_ty_params(
     }
 
     Ok(new_ty_params)
+}
+
+pub(super) fn fresh_instantiation(
+    cx: &Typeck<'_>,
+    env: &Env,
+    ty_params: Vec<ParamTy>,
+) -> Instantiation {
+    let env_fn_ty_params = env.fn_id().map_or(vec![], |id| cx.def_ty(id).collect_params());
+
+    ty_params
+        .into_iter()
+        .map(|param| {
+            (
+                param.var,
+                // If the type param is one of the current function's type
+                // params, we don't want to instantiate it
+                if env_fn_ty_params.iter().any(|p| p.var == param.var) {
+                    Ty::new(TyKind::Param(param))
+                } else {
+                    cx.fresh_ty_var()
+                },
+            )
+        })
+        .collect()
 }
