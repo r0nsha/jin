@@ -275,10 +275,9 @@ fn check_extern_let(
 ) -> DiagnosticResult<()> {
     let env = Env::new(module_id);
     let id = res_map.item_to_def.remove(&item_id).expect("to be defined");
-
     let ty = tyexpr::check(cx, &env, &let_.ty_expr, AllowTyHole::No)?;
+    cx.def_to_ty.insert(id, ty);
     cx.hir.extern_lets.push(hir::ExternLet { module_id, id, word: let_.word, ty, span: let_.span });
-
     Ok(())
 }
 

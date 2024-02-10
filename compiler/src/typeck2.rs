@@ -183,6 +183,7 @@ impl<'db> Typeck<'db> {
         Ty::new(TyKind::Infer(InferTy::Float(self.storage.borrow_mut().float.new_key(None))))
     }
 
+    #[track_caller]
     fn def_ty(&self, id: DefId) -> Ty {
         self.def_to_ty[&id]
     }
