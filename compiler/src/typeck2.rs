@@ -179,6 +179,7 @@ pub(super) struct ResolutionMap {
     pub(super) item_to_def: FxHashMap<ast::GlobalItemId, DefId>,
     pub(super) item_to_adt: FxHashMap<ast::GlobalItemId, AdtId>,
     pub(super) item_to_pat: FxHashMap<ast::GlobalItemId, Pat>,
+    pub(super) item_to_ty: FxHashMap<ast::GlobalItemId, Ty>,
     pub(super) item_to_sig: FxHashMap<ast::GlobalItemId, hir::FnSig>,
 }
 
@@ -188,6 +189,7 @@ impl ResolutionMap {
             item_to_def: FxHashMap::default(),
             item_to_adt: FxHashMap::default(),
             item_to_pat: FxHashMap::default(),
+            item_to_ty: FxHashMap::default(),
             item_to_sig: FxHashMap::default(),
         }
     }

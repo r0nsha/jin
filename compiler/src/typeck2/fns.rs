@@ -1,14 +1,24 @@
 use data_structures::index_vec::{IndexVecExt as _, Key as _};
 use ustr::ustr;
 
+use crate::typeck2::coerce::CoerceExt as _;
 use crate::{
     ast,
+    db::DefId,
     diagnostics::DiagnosticResult,
     hir,
     middle::{CallConv, Pat, TyExpr},
     span::{Span, Spanned},
     ty::{FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
-    typeck2::{errors, ns::Env, tyexpr, tyexpr::AllowTyHole, types, Typeck},
+    typeck2::{
+        errors, exprs,
+        ns::{Env, ScopeKind},
+        tyexpr,
+        tyexpr::AllowTyHole,
+        types,
+        unify::Obligation,
+        Typeck,
+    },
     word::{Word, WordMap},
 };
 
@@ -96,4 +106,64 @@ fn check_fn_sig_params(
         new_params.iter().map(|p| FnTyParam { name: p.pat.name(), ty: p.ty }).collect();
 
     Ok((new_params, fnty_params))
+}
+
+pub(super) fn check_fn_body(
+    cx: &mut Typeck<'_>,
+    fun: &ast::Fn,
+    mut sig: hir::FnSig,
+    def_id: DefId,
+    body: &ast::Expr,
+) -> DiagnosticResult<hir::Fn> {
+    let mut env = Env::new(cx.db[def_id].scope.module_id);
+
+    let kind = env.with_named_scope(
+        sig.word.name(),
+        ScopeKind::Fn(def_id),
+        |env| -> DiagnosticResult<_> {
+            for tp in &sig.ty_params {
+                env.insert(tp.word.name(), tp.id);
+            }
+
+            for p in &mut sig.params {
+                env.insert_pat(&p.pat);
+            }
+
+            match &fun.kind {
+                ast::FnKind::Bare { body } => {
+                    let body = check_fn_body_helper(cx, env, body, &sig)?;
+                    Ok(hir::FnKind::Bare { body })
+                }
+                ast::FnKind::Extern { .. } => {
+                    unreachable!()
+                }
+            }
+        },
+    )?;
+
+    Ok(hir::Fn {
+        id: hir::FnId::null(),
+        module_id: env.module_id(),
+        def_id,
+        sig,
+        kind,
+        span: fun.span,
+    })
+}
+
+fn check_fn_body_helper(
+    cx: &mut Typeck<'_>,
+    env: &mut Env,
+    body: &ast::Expr,
+    sig: &hir::FnSig,
+) -> DiagnosticResult<hir::Expr> {
+    let ret_ty = sig.ty.as_fn().unwrap().ret;
+
+    let body = exprs::check_expr(cx, env, body, Some(ret_ty))?;
+
+    cx.at(Obligation::return_ty(body.span, sig.ret_span))
+        .eq(ret_ty, body.ty)
+        .or_coerce(cx, body.id)?;
+
+    Ok(cx.expr_or_block(body))
 }

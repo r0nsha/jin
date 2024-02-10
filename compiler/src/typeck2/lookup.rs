@@ -1,5 +1,6 @@
 use std::iter;
 
+use itertools::Itertools as _;
 use ustr::Ustr;
 
 use crate::{
@@ -30,11 +31,7 @@ impl<'db> Typeck<'db> {
                 LookupResult::Def(id) => {
                     self.define().global(in_module, name, id, vis)?;
                 }
-                LookupResult::Fn(candidate) => {
-                    todo!()
-                    // self.insert_fn_candidate(Symbol::new(env.module_id(),
-                    // name.name()), candidate)?;
-                }
+                LookupResult::Fn(candidate) => self.define().fn_candidate(candidate)?,
             }
         }
 
@@ -83,10 +80,9 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         }
 
         if let Query::Fn(fn_query) = query {
-            todo!()
-            // if let Some(id) = self.lookup_fn_candidate(from_module,
-            // in_module, fn_query)? {     return Ok(id);
-            // }
+            if let Some(id) = self.query_fns(from_module, in_module, fn_query)? {
+                return Ok(id);
+            }
         }
 
         // We should only lookup functions if we didn't already query for a function
@@ -105,6 +101,58 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             })
     }
 
+    fn query_fns(
+        &self,
+        from_module: ModuleId,
+        in_module: ModuleId,
+        query: &FnQuery,
+    ) -> DiagnosticResult<Option<DefId>> {
+        let candidates = self
+            .get_lookup_modules(in_module, query.is_ufcs)
+            .filter_map(|module_id| {
+                self.cx.global_env.module(module_id).ns.fns.get(&query.word.name())
+            })
+            .flat_map(|set| set.find(self.cx, query))
+            .unique_by(|candidate| candidate.id)
+            .collect::<Vec<_>>();
+
+        self.check_and_filter_fn_candidates(query, candidates, from_module)
+    }
+
+    fn check_and_filter_fn_candidates(
+        &self,
+        query: &FnQuery,
+        mut candidates: Vec<&FnCandidate>,
+        from_module: ModuleId,
+    ) -> DiagnosticResult<Option<DefId>> {
+        if !candidates.is_empty() && candidates.iter().all(|c| !self.can_access(from_module, c.id))
+        {
+            return Err(Diagnostic::error(format!(
+                "all functions which apply to `{}` are private to their module",
+                query.display(self.cx.db)
+            ))
+            .with_label(Label::primary(query.word.span(), "no accessible function found")));
+        }
+
+        // Filter fn candidates by their visibility if there's more than one,
+        // otherwise, we want to emit a privacy error for better ux
+        candidates.retain(|c| {
+            let def = &self.cx.db[c.id];
+            def.scope.vis == Vis::Public || from_module == def.scope.module_id
+        });
+
+        match candidates.len() {
+            0 => Ok(None),
+            1 => Ok(Some(candidates.first().unwrap().id)),
+            _ => {
+                Err(Diagnostic::error(format!("ambiguous call to `{}`", query.display(self.cx.db)))
+                    .with_label(Label::primary(query.word.span(), "call here"))
+                    .with_note("these functions apply:")
+                    .with_notes(candidates.into_iter().map(|c| c.display(self.cx.db).to_string())))
+            }
+        }
+    }
+
     pub(super) fn import(
         &self,
         from_module: ModuleId,
@@ -112,7 +160,6 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         word: Word,
     ) -> DiagnosticResult<Vec<LookupResult>> {
         let results = self.many(
-            from_module,
             in_module,
             word.name(),
             ShouldLookupFns::Yes,
@@ -251,14 +298,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         should_lookup_fns: ShouldLookupFns,
         allow_builtin_tys: AllowBuiltinTys,
     ) -> DiagnosticResult<Option<DefId>> {
-        let results = self.many(
-            from_module,
-            in_module,
-            name,
-            should_lookup_fns,
-            IsUfcs::No,
-            allow_builtin_tys,
-        );
+        let results = self.many(in_module, name, should_lookup_fns, IsUfcs::No, allow_builtin_tys);
 
         if results.is_empty() {
             return Ok(None);
@@ -284,7 +324,6 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
     fn many(
         &self,
-        from_module: ModuleId,
         in_module: ModuleId,
         name: Ustr,
         should_lookup_fns: ShouldLookupFns,
@@ -299,13 +338,11 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
             if let Some(def) = env.ns.defs.get(&name) {
                 results.push(LookupResult::Def(def.id));
+            } else if should_lookup_fns == ShouldLookupFns::Yes {
+                if let Some(candidates) = env.ns.fns.get(&name) {
+                    results.extend(candidates.iter().cloned().map(LookupResult::Fn));
+                }
             }
-            // TODO: lookup fns
-            // else if should_lookup_fns == ShouldLookupFns::Yes {
-            // if let Some(candidates) = env.ns.fns.get(&symbol) {
-            //     results.extend(candidates.iter().cloned().
-            // map(LookupResult::Fn)); }
-            // }
         }
 
         if results.is_empty() && allow_builtin_tys == AllowBuiltinTys::Yes {

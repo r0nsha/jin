@@ -43,9 +43,9 @@ pub(super) fn check_expr(
     match expr {
         ast::Expr::Let(let_) => {
             let span = let_.span;
-            let ty = tyexpr::check_optional(cx, &env, let_.ty_expr.as_ref(), AllowTyHole::Yes)?;
+            let ty = tyexpr::check_optional(cx, env, let_.ty_expr.as_ref(), AllowTyHole::Yes)?;
             let pat = cx.define().local_pat(env, &let_.pat, ty);
-            let let_ = items::check_let_body(cx, pat, let_)?;
+            let let_ = items::check_let_body(cx, env, pat, ty, let_)?;
             Ok(cx.expr(hir::ExprKind::Let(let_), cx.db.types.unit, span))
         }
         ast::Expr::Fn { params, ret, body, span } => {

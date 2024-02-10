@@ -15,7 +15,7 @@ use crate::{
     span::Spanned as _,
     ty::{FnTyFlags, Ty, TyKind},
     typeck2::{
-        attrs, errors, fns,
+        attrs, errors, exprs, fns,
         lookup::{FnCandidate, Query},
         ns,
         ns::{AssocTy, Env, ScopeKind},
@@ -258,6 +258,7 @@ pub(super) fn check_let_item(
     debug_assert!(let_.ty_expr.is_some());
     let ty = tyexpr::check_optional(cx, &env, let_.ty_expr.as_ref(), AllowTyHole::No)?;
     assign_pat_ty(cx, pat, ty);
+    res_map.item_to_ty.insert(item_id, ty);
 
     Ok(())
 }
@@ -508,22 +509,38 @@ pub(super) fn check_bodies(
     res_map: &mut ResolutionMap,
     ast: &Ast,
 ) -> DiagnosticResult<()> {
-    for (_, item, id) in ast.items_with_id() {
+    for (module, item, id) in ast.items_with_id() {
         match item {
             ast::Item::Let(let_) => {
+                let mut env = Env::new(module.id);
                 let pat = res_map.item_to_pat.remove(&id).expect("to be defined");
-                let mut let_ = check_let_body(cx, pat, let_)?;
+                let ty = res_map.item_to_ty.remove(&id).expect("to be defined");
+                let mut let_ = check_let_body(cx, &mut env, pat, ty, let_)?;
                 cx.hir.lets.push_with_key(|id| {
                     let_.id = id;
                     let_
                 });
             }
             ast::Item::Fn(fun) => {
-                // TODO:
-                // cx.hir.fns.push_with_key(|id| {
-                //     fun.id = id;
-                //     fun
-                // });
+                let def_id = res_map.item_to_def.remove(&id).expect("to be defined");
+                let sig = res_map.item_to_sig.remove(&id).expect("to be defined");
+
+                let mut fun = match &fun.kind {
+                    ast::FnKind::Bare { body } => fns::check_fn_body(cx, fun, sig, def_id, body)?,
+                    ast::FnKind::Extern { is_c_variadic, .. } => hir::Fn {
+                        id: hir::FnId::null(),
+                        module_id: module.id,
+                        def_id,
+                        sig,
+                        kind: hir::FnKind::Extern { is_c_variadic: *is_c_variadic },
+                        span: fun.span,
+                    },
+                };
+
+                cx.hir.fns.push_with_key(|id| {
+                    fun.id = id;
+                    fun
+                });
             }
             ast::Item::Assoc(_, item) => {
                 // TODO:
@@ -538,32 +555,32 @@ pub(super) fn check_bodies(
 
 pub(super) fn check_let_body(
     cx: &mut Typeck<'_>,
+    env: &mut Env,
     pat: Pat,
+    ty: Ty,
     let_: &ast::Let,
 ) -> DiagnosticResult<hir::Let> {
-    todo!()
-    // let value = self.check_expr(env, &let_.value, Some(ty))?;
-    // self.eq_obvious_expr(ty, &value)?;
+    let value = exprs::check_expr(cx, env, &let_.value, Some(ty))?;
+    cx.eq_obvious_expr(ty, &value)?;
 
-    // if self.normalize(ty).is_module() {
-    //     return Err(Diagnostic::error("cannot store a module as a value")
-    //         .with_label(Label::primary(value.span, "expected a value")));
-    // }
+    if cx.normalize(ty).is_module() {
+        return Err(Diagnostic::error("cannot store a module as a value")
+            .with_label(Label::primary(value.span, "expected a value")));
+    }
 
-    // let value = if env.in_global_scope() {
-    //     // We do this so that global variable initialization always includes
-    // a block     // (required for destroys)
-    //     self.expr_or_block(value)
-    // } else {
-    //     value
-    // };
+    let value = if env.in_global_scope() {
+        // We do this so that global variable initialization always includes a block     // (required for destroys)
+        cx.expr_or_block(value)
+    } else {
+        value
+    };
 
-    // Ok(hir::Let {
-    //     id: hir::LetId::null(),
-    //     module_id: env.module_id(),
-    //     pat,
-    //     value: Box::new(value),
-    //     ty,
-    //     span: let_.span,
-    // })
+    Ok(hir::Let {
+        id: hir::LetId::null(),
+        module_id: env.module_id(),
+        pat,
+        value: Box::new(value),
+        ty,
+        span: let_.span,
+    })
 }

@@ -5,7 +5,7 @@ use ustr::{Ustr, UstrMap};
 
 use crate::{
     db::{AdtId, Db, DefId, ModuleId, ScopeLevel},
-    middle::{IsUfcs, Vis},
+    middle::{IsUfcs, Pat, Vis},
     qpath::QPath,
     span::Span,
     ty::{Ty, TyKind},
@@ -165,6 +165,13 @@ impl Env {
 
     pub(super) fn insert(&mut self, k: Ustr, v: DefId) {
         self.scopes.last_mut().unwrap().defs.insert(k, v);
+    }
+
+    pub(super) fn insert_pat(&mut self, pat: &Pat) {
+        match pat {
+            Pat::Name(name) => self.insert(name.word.name(), name.id),
+            Pat::Discard(_) => (),
+        }
     }
 
     pub(super) fn lookup(&self, k: Ustr) -> Option<&DefId> {
