@@ -94,17 +94,14 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         // We should only lookup functions if we didn't already query for a function
         let should_lookup_fns = ShouldLookupFns::from(!matches!(query, Query::Fn(_)));
 
-        // Allow looking up builtin types only when looking up a symbol in the same
-        // module as its environment's module.
-        let allow_builtin_tys = AllowBuiltinTys::from(from_module == in_module);
-
-        self.one(from_module, in_module, name, query.span(), should_lookup_fns, allow_builtin_tys)?
-            .ok_or_else(|| match query {
+        self.one(from_module, in_module, name, query.span(), should_lookup_fns)?.ok_or_else(|| {
+            match query {
                 Query::Name(word) => {
                     errors::name_not_found(self.cx.db, from_module, in_module, *word)
                 }
                 Query::Fn(fn_query) => errors::fn_not_found(self.cx.db, fn_query),
-            })
+            }
+        })
     }
 
     fn query_fns(
@@ -180,13 +177,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         in_module: ModuleId,
         word: Word,
     ) -> DiagnosticResult<Vec<LookupResult>> {
-        let results = self.many(
-            in_module,
-            word.name(),
-            ShouldLookupFns::Yes,
-            IsUfcs::No,
-            AllowBuiltinTys::No,
-        );
+        let results = self.many(in_module, word.name(), ShouldLookupFns::Yes, IsUfcs::No);
 
         if results.is_empty() {
             return Err(errors::name_not_found(self.cx.db, from_module, in_module, word));
@@ -316,11 +307,16 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         name: Ustr,
         span: Span,
         should_lookup_fns: ShouldLookupFns,
-        allow_builtin_tys: AllowBuiltinTys,
     ) -> DiagnosticResult<Option<DefId>> {
-        let results = self.many(in_module, name, should_lookup_fns, IsUfcs::No, allow_builtin_tys);
+        let results = self.many(in_module, name, should_lookup_fns, IsUfcs::No);
 
         if results.is_empty() {
+            // We allow looking up builtin types only when looking up a symbol in the same
+            // module as its environment's module.
+            if from_module == in_module {
+                return Ok(self.cx.global_env.builtin_tys.get(name));
+            }
+
             return Ok(None);
         }
 
@@ -348,7 +344,6 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         name: Ustr,
         should_lookup_fns: ShouldLookupFns,
         is_ufcs: IsUfcs,
-        allow_builtin_tys: AllowBuiltinTys,
     ) -> Vec<LookupResult> {
         let lookup_modules = self.get_lookup_modules(in_module, is_ufcs);
         let mut results = vec![];
@@ -363,24 +358,6 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                     results.extend(candidates.iter().cloned().map(LookupResult::Fn));
                 }
             }
-        }
-
-        if results.is_empty() && allow_builtin_tys == AllowBuiltinTys::Yes {
-            return self
-                .cx
-                .global_env
-                .builtin_tys
-                .get(name)
-                .into_iter()
-                .map(|id| {
-                    LookupResult::Def(NsDef {
-                        id,
-                        module_id: in_module,
-                        vis: Vis::Public,
-                        span: Span::unknown(),
-                    })
-                })
-                .collect();
         }
 
         results
@@ -746,4 +723,3 @@ impl<'a> FnQuery<'a> {
 }
 
 create_bool_enum!(ShouldLookupFns);
-create_bool_enum!(AllowBuiltinTys);
