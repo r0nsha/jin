@@ -7,10 +7,12 @@ mod exprs;
 mod fns;
 mod imports;
 mod items;
+mod late;
 mod lookup;
 mod normalize;
 mod ns;
 mod pmatch;
+mod subst;
 mod tyexpr;
 mod types;
 mod unify;
@@ -37,13 +39,23 @@ use crate::{
 pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     let mut cx = Typeck::new(db);
     let mut res_map = ResolutionMap::new();
+
     cx.init_global_env(&ast);
+
     items::define(&mut cx, &mut res_map, &ast)?;
     imports::define_qualified(&mut cx, &ast)?;
     imports::define_unqualified(&mut cx, &ast)?;
+
     types::check(&mut cx, &mut res_map, &ast)?;
     items::check_sigs(&mut cx, &mut res_map, &ast)?;
     items::check_bodies(&mut cx, &mut res_map, &ast)?;
+
+    subst::subst(&mut cx);
+
+    late::check_bodies(cx.db, &cx.hir);
+    late::leaky_items(cx.db, &cx.hir);
+    late::check_main(cx.db, &mut cx.hir);
+
     Ok(cx.hir)
 }
 
