@@ -10,6 +10,9 @@ mod normalize;
 mod ns;
 mod tyexpr;
 mod types;
+mod expr;
+mod coerce;
+mod unify;
 
 use std::cell::RefCell;
 
@@ -39,6 +42,7 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     imports::define_unqualified(&mut cx, &ast)?;
     types::check(&mut cx, &mut res_map, &ast)?;
     items::check_sigs(&mut cx, &mut res_map, &ast)?;
+    items::check_bodies(&mut cx, &mut res_map, &ast)?;
     Ok(cx.hir)
 }
 

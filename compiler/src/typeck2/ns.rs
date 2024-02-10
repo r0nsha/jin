@@ -9,7 +9,6 @@ use crate::{
     qpath::QPath,
     span::Span,
     ty::{Ty, TyKind},
-    typeck::Typeck,
     typeck2::{builtins::BuiltinTys, lookup::FnCandidateSet},
 };
 

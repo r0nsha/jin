@@ -512,3 +512,29 @@ fn try_extract_assoc_ty(cx: &Typeck<'_>, id: DefId) -> Option<AssocTy> {
         _ => None,
     }
 }
+
+pub(super) fn check_bodies(
+    cx: &mut Typeck<'_>,
+    res_map: &mut ResolutionMap,
+    ast: &Ast,
+) -> DiagnosticResult<()> {
+    for (module, item, id) in ast.items_with_id() {
+        match item {
+            ast::Item::Let(let_) => {
+                // TODO:
+                // define_let(cx, res_map, module.id, id, let_)?
+            }
+            ast::Item::Fn(fun) => {
+                // TODO:
+                // define_fn(cx, res_map, module.id, id, fun, None).map(|_| ())?
+            }
+            ast::Item::Assoc(_, item) => {
+                // TODO:
+                // define_fn(cx, res_map, module.id, id, fun, None).map(|_| ())?
+            }
+            _ => (),
+        }
+    }
+
+    Ok(())
+}

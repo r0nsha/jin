@@ -17,7 +17,7 @@ mod subst;
 mod sym;
 mod target;
 mod ty;
-mod typeck;
+// mod typeck;
 mod typeck2;
 mod util;
 mod word;
