@@ -691,7 +691,8 @@ pub(super) fn check_field_access(
             "field `{}` of type `{}` is private",
             field.name, adt.name
         ))
-        .with_label(Label::primary(span, "private field")));
+        .with_label(Label::primary(span, "private field"))
+        .with_label(Label::secondary(field.span(), "defined here")));
     }
 
     Ok(())
