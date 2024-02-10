@@ -212,9 +212,9 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             let adt = &self.cx.db[*adt_id];
 
             match &adt.kind {
-                AdtKind::Union(union_def) => {
-                    self.variant_in_union(union_def, name, ty_span).map(|v| AssocLookup::Variant(v.id))
-                }
+                AdtKind::Union(union_def) => self
+                    .variant_in_union(union_def, name, ty_span)
+                    .map(|v| AssocLookup::Variant(v.id)),
                 AdtKind::Struct(_) => {
                     Err(errors::assoc_name_not_found(self.cx.db, adt.ty(), query))
                 }

@@ -398,7 +398,7 @@ fn check_match_pat_subpats(
 
         use_field(field.name.name(), field_use_span)?;
 
-        check_field_access(cx, env, &cx.db[adt_id], field, field_use_span)?;
+        exprs::check_field_access(cx, env, &cx.db[adt_id], field, field_use_span)?;
 
         let field_ty = instantiation.fold(field.ty);
         let field_ty = match pat_ty.kind() {

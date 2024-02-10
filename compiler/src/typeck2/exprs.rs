@@ -34,7 +34,7 @@ use crate::{
 };
 
 #[allow(clippy::too_many_lines)]
-pub(super) fn check(
+pub(super) fn check_expr(
     cx: &mut Typeck<'_>,
     env: &mut Env,
     expr: &ast::Expr,
@@ -77,10 +77,10 @@ pub(super) fn check(
             // ))
         }
         ast::Expr::Assign { lhs, rhs, op, span } => {
-            let lhs = check(cx, env, lhs, None)?;
+            let lhs = check_expr(cx, env, lhs, None)?;
             check_assign_lhs(&lhs)?;
 
-            let rhs = check(cx, env, rhs, Some(lhs.ty))?;
+            let rhs = check_expr(cx, env, rhs, Some(lhs.ty))?;
 
             if let Some(op) = op {
                 check_bin_op(cx, &lhs, &rhs, *op, *span)?;
@@ -101,10 +101,10 @@ pub(super) fn check(
             ))
         }
         ast::Expr::Swap { lhs, rhs, span } => {
-            let lhs = check(cx, env, lhs, None)?;
+            let lhs = check_expr(cx, env, lhs, None)?;
             check_swap_lhs(&lhs)?;
 
-            let rhs = check(cx, env, rhs, Some(lhs.ty))?;
+            let rhs = check_expr(cx, env, rhs, Some(lhs.ty))?;
 
             cx.at(Obligation::exprs(*span, lhs.span, rhs.span))
                 .eq(lhs.ty, rhs.ty)
@@ -123,7 +123,7 @@ pub(super) fn check(
                 let ret_ty = cx.def_ty(fn_id).as_fn().unwrap().ret;
 
                 let expr = if let Some(expr) = expr {
-                    check(cx, env, expr, Some(ret_ty))?
+                    check_expr(cx, env, expr, Some(ret_ty))?
                 } else {
                     cx.unit_expr(*span)
                 };
@@ -156,7 +156,7 @@ pub(super) fn check(
         }
         ast::Expr::Loop { cond, expr, span } => {
             let cond = if let Some(cond) = cond.as_ref() {
-                let cond = check(cx, env, cond, Some(cx.db.types.bool))?;
+                let cond = check_expr(cx, env, cond, Some(cx.db.types.bool))?;
                 cx.eq_obvious_expr(cx.db.types.bool, &cond)?;
                 Some(Box::new(cond))
             } else {
@@ -164,7 +164,7 @@ pub(super) fn check(
             };
 
             let expr = env.with_anon_scope(ScopeKind::Loop, |env| {
-                check(cx, env, expr, Some(cx.db.types.never))
+                check_expr(cx, env, expr, Some(cx.db.types.never))
             })?;
 
             // NOTE: expected & actual types are flipped here so that all types are accepted
@@ -200,7 +200,7 @@ pub(super) fn check(
                             _ => Some(cx.db.types.unit),
                         };
 
-                        new_exprs.push(check(cx, env, expr, expected_ty)?);
+                        new_exprs.push(check_expr(cx, env, expr, expected_ty)?);
                     }
 
                     let ty = new_exprs.last().unwrap().ty;
@@ -212,7 +212,7 @@ pub(super) fn check(
             })
         }
         ast::Expr::Unsafe { expr, span } => {
-            let expr = check(cx, env, expr, expected_ty)?;
+            let expr = check_expr(cx, env, expr, expected_ty)?;
             let ty = expr.ty;
             Ok(cx.expr(hir::ExprKind::Unsafe(hir::Unsafe { expr: Box::new(expr) }), ty, *span))
         }
@@ -256,7 +256,7 @@ pub(super) fn check(
                 }
             }
 
-            let expr = check(cx, env, expr, expected_ty)?;
+            let expr = check_expr(cx, env, expr, expected_ty)?;
 
             let mut is_ufcs = IsUfcs::No;
             let lookup_in_module = match cx.normalize(expr.ty).kind() {
@@ -316,13 +316,13 @@ pub(super) fn check(
 
                     check_name(cx, env, id, *word, *span, targs.as_deref())?
                 }
-                _ => check(cx, env, callee, None)?,
+                _ => check_expr(cx, env, callee, None)?,
             };
 
             check_call(cx, callee, args, *span, IsUfcs::No)
         }
         ast::Expr::Unary { expr, op, span } => {
-            let expr = check(cx, env, expr, None)?;
+            let expr = check_expr(cx, env, expr, None)?;
             let ty = cx.normalize(expr.ty);
 
             match op {
@@ -352,8 +352,8 @@ pub(super) fn check(
             }
         }
         ast::Expr::Binary { lhs, rhs, op, span } => {
-            let lhs = check(cx, env, lhs, None)?;
-            let rhs = check(cx, env, rhs, Some(lhs.ty))?;
+            let lhs = check_expr(cx, env, lhs, None)?;
+            let rhs = check_expr(cx, env, rhs, Some(lhs.ty))?;
 
             check_bin_op(cx, &lhs, &rhs, *op, *span)?;
 
@@ -374,7 +374,7 @@ pub(super) fn check(
         }
         ast::Expr::Deref { expr, span } => {
             let expected_ty = cx.fresh_ty_var().raw_ptr();
-            let expr = check(cx, env, expr, Some(expected_ty))?;
+            let expr = check_expr(cx, env, expr, Some(expected_ty))?;
 
             match cx.normalize(expr.ty).auto_deref().kind() {
                 TyKind::RawPtr(pointee) => Ok(cx.expr(
@@ -390,7 +390,7 @@ pub(super) fn check(
             }
         }
         ast::Expr::Cast { expr, target, span } => {
-            let expr = check(cx, env, expr, None)?;
+            let expr = check_expr(cx, env, expr, None)?;
             let target = tyexpr::check(cx, env, target, AllowTyHole::Yes)?;
 
             Ok(cx.expr(
@@ -400,7 +400,7 @@ pub(super) fn check(
             ))
         }
         ast::Expr::Transmute { expr, target, span } => {
-            let expr = check(cx, env, expr, None)?;
+            let expr = check_expr(cx, env, expr, None)?;
             let target = tyexpr::check(cx, env, target, AllowTyHole::Yes)?;
 
             Ok(cx.expr(
@@ -410,13 +410,13 @@ pub(super) fn check(
             ))
         }
         ast::Expr::Field { expr, field, span } => {
-            let expr = check(cx, env, expr, expected_ty)?;
+            let expr = check_expr(cx, env, expr, expected_ty)?;
             check_field(cx, env, expr, *field, *span)
         }
         ast::Expr::Index { expr, index, span } => {
             let expected_slice_ty = Ty::new(TyKind::Slice(cx.fresh_ty_var()));
 
-            let expr = check(cx, env, expr, Some(expected_slice_ty))?;
+            let expr = check_expr(cx, env, expr, Some(expected_slice_ty))?;
             let expr_ty = cx.normalize(expr.ty);
 
             let elem_ty = match expr_ty.auto_deref().kind() {
@@ -431,7 +431,7 @@ pub(super) fn check(
             };
 
             let uint = cx.db.types.uint;
-            let index = check(cx, env, index, Some(uint))?;
+            let index = check_expr(cx, env, index, Some(uint))?;
             cx.eq_obvious_expr(uint, &index)?;
 
             Ok(cx.expr(
@@ -443,7 +443,7 @@ pub(super) fn check(
         ast::Expr::Slice { expr, low, high, span } => {
             let expected_slice_ty = Ty::new(TyKind::Slice(cx.fresh_ty_var()));
 
-            let expr = check(cx, env, expr, Some(expected_slice_ty))?;
+            let expr = check_expr(cx, env, expr, Some(expected_slice_ty))?;
             let expr_ty = cx.normalize(expr.ty).auto_deref();
             cx.at(Obligation::obvious(expr.span))
                 .eq(expected_slice_ty, expr_ty)
@@ -451,7 +451,7 @@ pub(super) fn check(
 
             let uint = cx.db.types.uint;
             let low = if let Some(low) = low {
-                let low = check(cx, env, low, Some(uint))?;
+                let low = check_expr(cx, env, low, Some(uint))?;
                 cx.eq_obvious_expr(uint, &low)?;
                 Some(Box::new(low))
             } else {
@@ -459,7 +459,7 @@ pub(super) fn check(
             };
 
             let high = if let Some(high) = high {
-                let high = check(cx, env, high, Some(uint))?;
+                let high = check_expr(cx, env, high, Some(uint))?;
                 cx.eq_obvious_expr(uint, &high)?;
                 Some(Box::new(high))
             } else {
@@ -489,7 +489,7 @@ pub(super) fn check(
             let mut new_exprs = vec![];
 
             for expr in exprs {
-                let new_expr = check(cx, env, expr, Some(elem_ty))?;
+                let new_expr = check_expr(cx, env, expr, Some(elem_ty))?;
                 cx.eq_obvious_expr(elem_ty, &new_expr)?;
                 new_exprs.push(new_expr);
             }
@@ -502,7 +502,7 @@ pub(super) fn check(
         }
         ast::Expr::SliceLitCap { cap, span } => {
             let uint = cx.db.types.uint;
-            let cap = check(cx, env, cap, Some(uint))?;
+            let cap = check_expr(cx, env, cap, Some(uint))?;
             cx.eq_obvious_expr(uint, &cap)?;
 
             Ok(cx.expr(
@@ -535,13 +535,13 @@ fn check_if(
     span: Span,
     expected_ty: Option<Ty>,
 ) -> DiagnosticResult<hir::Expr> {
-    let cond = check(cx, env, cond, Some(cx.db.types.bool))?;
+    let cond = check_expr(cx, env, cond, Some(cx.db.types.bool))?;
     cx.eq_obvious_expr(cx.db.types.bool, &cond)?;
 
-    let then = check(cx, env, then, expected_ty)?;
+    let then = check_expr(cx, env, then, expected_ty)?;
 
     let otherwise = if let Some(otherwise) = otherwise.as_ref() {
-        let otherwise = check(cx, env, otherwise, Some(then.ty))?;
+        let otherwise = check_expr(cx, env, otherwise, Some(then.ty))?;
 
         cx.at(Obligation::exprs(span, then.span, otherwise.span))
             .eq(then.ty, otherwise.ty)
@@ -935,11 +935,13 @@ fn check_call_args(
 
     for arg in args {
         new_args.push(match arg {
-            ast::CallArg::Named(name, expr) => {
-                hir::CallArg { name: Some(*name), expr: check(cx, env, expr, None)?, index: None }
-            }
+            ast::CallArg::Named(name, expr) => hir::CallArg {
+                name: Some(*name),
+                expr: check_expr(cx, env, expr, None)?,
+                index: None,
+            },
             ast::CallArg::Positional(expr) => {
-                hir::CallArg { name: None, expr: check(cx, env, expr, None)?, index: None }
+                hir::CallArg { name: None, expr: check_expr(cx, env, expr, None)?, index: None }
             }
         });
     }
