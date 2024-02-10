@@ -6,7 +6,11 @@ use crate::{
     middle::{IsUfcs, Mutability},
     span::Spanned as _,
     ty::{Ty, TyKind},
-    typeck2::{attrs, lookup::Query, Typeck},
+    typeck2::{
+        attrs,
+        lookup::{ImportLookupResult, LookupResult, Query},
+        Typeck,
+    },
 };
 
 pub(super) fn define_qualified(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
@@ -41,13 +45,21 @@ pub(super) fn define_unqualified(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult
                 for uim in imports {
                     match uim {
                         ast::UnqualifiedImport::Name(name, alias, vis) => {
-                            let results = cx.lookup().import(in_module, target_module_id, *name)?;
-                            cx.insert_import_lookup_results(
-                                in_module,
-                                alias.unwrap_or(*name),
-                                *vis,
-                                results,
-                            )?;
+                            let ImportLookupResult { results, fns_to_fill } =
+                                cx.lookup().import(in_module, target_module_id, *name)?;
+
+                            let name = alias.unwrap_or(*name);
+
+                            for res in results {
+                                match res {
+                                    LookupResult::Def(def) => {
+                                        cx.define().global(in_module, name, def.id, *vis)?;
+                                    }
+                                    LookupResult::Fn(candidate) => {
+                                        cx.define().fn_candidate(candidate)?
+                                    }
+                                }
+                            }
                         }
                         ast::UnqualifiedImport::Glob(is_ufcs, _) => {
                             insert_glob_target(cx, in_module, target_module_id, *is_ufcs);

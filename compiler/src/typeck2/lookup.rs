@@ -4,9 +4,8 @@ use itertools::Itertools as _;
 use ustr::Ustr;
 
 use crate::{
-    db::{AdtKind, Db, DefId, ModuleId, UnionDef, Variant, VariantId},
+    db::{AdtKind, Db, DefId, DefKind, FnInfo, ModuleId, UnionDef, Variant, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
-    macros::create_bool_enum,
     middle::{CallConv, IsUfcs, Vis},
     span::{Span, Spanned as _},
     ty::{printer::FnTyPrinter, FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
@@ -23,25 +22,6 @@ use crate::{
 impl<'db> Typeck<'db> {
     pub(super) fn lookup(&self) -> Lookup<'db, '_> {
         Lookup::new(self)
-    }
-
-    pub(super) fn insert_import_lookup_results(
-        &mut self,
-        in_module: ModuleId,
-        name: Word,
-        vis: Vis,
-        results: Vec<LookupResult>,
-    ) -> DiagnosticResult<()> {
-        for res in results {
-            match res {
-                LookupResult::Def(def) => {
-                    self.define().global(in_module, name, def.id, vis)?;
-                }
-                LookupResult::Fn(candidate) => self.define().fn_candidate(candidate)?,
-            }
-        }
-
-        Ok(())
     }
 }
 
@@ -66,17 +46,6 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         in_module: ModuleId,
         query: &Query,
     ) -> DiagnosticResult<DefId> {
-        let id = self.query_inner(from_module, in_module, query)?;
-        self.check_def_access(from_module, id, query.span())?;
-        Ok(id)
-    }
-
-    fn query_inner(
-        &self,
-        from_module: ModuleId,
-        in_module: ModuleId,
-        query: &Query,
-    ) -> DiagnosticResult<DefId> {
         let name = query.name();
 
         if let Some(env) = &self.env {
@@ -92,16 +61,23 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         }
 
         // We should only lookup functions if we didn't already query for a function
-        let should_lookup_fns = ShouldLookupFns::from(!matches!(query, Query::Fn(_)));
+        let should_lookup_fns = match query {
+            Query::Name(_) => ShouldLookupFns::Candidates,
+            Query::Fn(_) => ShouldLookupFns::No,
+        };
 
-        self.one(from_module, in_module, name, query.span(), should_lookup_fns)?.ok_or_else(|| {
-            match query {
+        let id = self
+            .one(from_module, in_module, name, query.span(), should_lookup_fns)?
+            .ok_or_else(|| match query {
                 Query::Name(word) => {
                     errors::name_not_found(self.cx.db, from_module, in_module, *word)
                 }
                 Query::Fn(fn_query) => errors::fn_not_found(self.cx.db, fn_query),
-            }
-        })
+            })?;
+
+        self.check_def_access(from_module, id, query.span())?;
+
+        Ok(id)
     }
 
     fn query_fns(
@@ -176,8 +152,8 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         from_module: ModuleId,
         in_module: ModuleId,
         word: Word,
-    ) -> DiagnosticResult<Vec<LookupResult>> {
-        let results = self.many(in_module, word.name(), ShouldLookupFns::Yes, IsUfcs::No);
+    ) -> DiagnosticResult<ImportLookupResult> {
+        let results = self.many(in_module, word.name(), ShouldLookupFns::Defs, IsUfcs::No);
 
         if results.is_empty() {
             return Err(errors::name_not_found(self.cx.db, from_module, in_module, word));
@@ -189,7 +165,18 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                 .with_label(Label::primary(word.span(), "private definition")));
         }
 
-        Ok(filtered_results)
+        let fns_to_fill: Vec<DefId> = filtered_results
+            .iter()
+            .filter_map(|res| match res {
+                LookupResult::Def(def) => {
+                    matches!(self.cx.db[def.id].kind.as_ref(), DefKind::Fn(FnInfo::Bare))
+                        .then_some(def.id)
+                }
+                LookupResult::Fn(_) => None,
+            })
+            .collect();
+
+        Ok(ImportLookupResult { results: filtered_results, fns_to_fill })
     }
 
     pub fn path(&self, from_module: ModuleId, path: &[Word]) -> DiagnosticResult<PathLookup> {
@@ -353,9 +340,26 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
             if let Some(def) = env.ns.defs.get(&name) {
                 results.push(LookupResult::Def(*def));
-            } else if should_lookup_fns == ShouldLookupFns::Yes {
-                if let Some(candidates) = env.ns.fns.get(&name) {
-                    results.extend(candidates.iter().cloned().map(LookupResult::Fn));
+            } else {
+                match should_lookup_fns {
+                    ShouldLookupFns::Candidates => {
+                        if let Some(candidates) = env.ns.fns.get(&name) {
+                            results.extend(candidates.iter().cloned().map(LookupResult::Fn));
+                        }
+                    }
+                    ShouldLookupFns::Defs => {
+                        if let Some(defs) = env.ns.defined_fns.get(&name) {
+                            results.extend(defs.iter().map(|&id| {
+                                LookupResult::Def(NsDef {
+                                    id,
+                                    module_id,
+                                    vis: Vis::Public,
+                                    span: self.cx.db[id].span,
+                                })
+                            }));
+                        }
+                    }
+                    ShouldLookupFns::No => (),
                 }
             }
         }
@@ -437,6 +441,15 @@ impl LookupResult {
             Self::Fn(c) => c.id,
         }
     }
+}
+
+#[derive(Debug, Clone)]
+pub(super) struct ImportLookupResult {
+    /// The actual lookup results
+    pub(super) results: Vec<LookupResult>,
+
+    /// The set of functions that will need their candidates to be filled
+    pub(super) fns_to_fill: Vec<DefId>,
 }
 
 #[derive(Debug, Clone)]
@@ -722,4 +735,9 @@ impl<'a> FnQuery<'a> {
     }
 }
 
-create_bool_enum!(ShouldLookupFns);
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ShouldLookupFns {
+    Candidates,
+    Defs,
+    No,
+}
