@@ -10,7 +10,13 @@ use crate::{
     middle::{CallConv, IsUfcs, Vis},
     span::{Span, Spanned as _},
     ty::{printer::FnTyPrinter, FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
-    typeck2::{errors, ns::Env, Typeck},
+    typeck2::{
+        coerce::{Coerce as _, CoerceOptions},
+        errors,
+        ns::{AssocTy, Env},
+        unify::UnifyOptions,
+        Typeck,
+    },
     word::Word,
 };
 
@@ -116,6 +122,26 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             .unique_by(|candidate| candidate.id)
             .collect::<Vec<_>>();
 
+        self.check_and_filter_fn_candidates(query, candidates, from_module)
+    }
+
+    fn query_assoc_fns(
+        &self,
+        from_module: ModuleId,
+        assoc_ty: AssocTy,
+        query: &FnQuery,
+    ) -> DiagnosticResult<Option<DefId>> {
+        let Some(set) = self
+            .cx
+            .global_env
+            .assoc_ns
+            .get(&assoc_ty)
+            .and_then(|ns| ns.fns.get(&query.word.name()))
+        else {
+            return Ok(None);
+        };
+
+        let candidates = set.find(self.cx, query);
         self.check_and_filter_fn_candidates(query, candidates, from_module)
     }
 
@@ -248,10 +274,9 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         query: &Query,
     ) -> DiagnosticResult<AssocLookup> {
         if let Query::Fn(fn_query) = query {
-            todo!()
-            // if let Some(id) = self.lookup_assoc_fn(from_module,
-            // AssocTy::from(ty), fn_query)? {     return
-            // Ok(TyLookup::AssocFn(id)); }
+            if let Some(id) = self.query_assoc_fns(from_module, AssocTy::from(ty), fn_query)? {
+                return Ok(AssocLookup::AssocFn(id));
+            }
         }
 
         if let TyKind::Adt(adt_id, _) = ty.kind() {
@@ -561,39 +586,37 @@ impl FnCandidate {
         param: Ty,
         allow_owned_to_ref: bool,
     ) -> Option<FnCandidateScore> {
-        todo!()
-        // if arg.can_unify(param, cx, UnifyOptions::default()).is_ok() {
-        //     return Some(FnCandidateScore::Eq);
-        // }
-        //
-        // if arg.can_coerce(
-        //     &param,
-        //     cx,
-        //     CoerceOptions {
-        //         unify_options: UnifyOptions::default(),
-        //         rollback_unifications: true,
-        //         allow_owned_to_ref,
-        //     },
-        // ) {
-        //     return Some(FnCandidateScore::Coerce);
-        // }
-        //
-        // if arg.can_coerce(
-        //     &param,
-        //     cx,
-        //     CoerceOptions {
-        //         unify_options: UnifyOptions { unify_param_tys: true },
-        //         rollback_unifications: true,
-        //         allow_owned_to_ref,
-        //     },
-        // ) {
-        //     return Some(FnCandidateScore::Polymorphic);
-        // }
-        //
-        // // println!("arg: {} | param: {}", arg.display(cx.db),
-        // param.display(cx.db));
-        //
-        // None
+        if arg.can_unify(param, cx, UnifyOptions::default()).is_ok() {
+            return Some(FnCandidateScore::Eq);
+        }
+
+        if arg.can_coerce(
+            &param,
+            cx,
+            CoerceOptions {
+                unify_options: UnifyOptions::default(),
+                rollback_unifications: true,
+                allow_owned_to_ref,
+            },
+        ) {
+            return Some(FnCandidateScore::Coerce);
+        }
+
+        if arg.can_coerce(
+            &param,
+            cx,
+            CoerceOptions {
+                unify_options: UnifyOptions { unify_param_tys: true },
+                rollback_unifications: true,
+                allow_owned_to_ref,
+            },
+        ) {
+            return Some(FnCandidateScore::Polymorphic);
+        }
+
+        // println!("arg: {} | param: {}", arg.display(cx.db), param.display(cx.db));
+
+        None
     }
 
     pub(super) fn display<'a>(&'a self, db: &'a Db) -> FnTyPrinter {

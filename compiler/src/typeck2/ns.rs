@@ -15,12 +15,13 @@ use crate::{
 #[derive(Debug)]
 pub(super) struct GlobalEnv {
     modules: FxHashMap<ModuleId, ModuleEnv>,
+    pub(super) assoc_ns: FxHashMap<AssocTy, Ns>,
     pub(super) builtin_tys: BuiltinTys,
 }
 
 impl GlobalEnv {
     pub(super) fn new(builtin_tys: BuiltinTys) -> Self {
-        Self { modules: FxHashMap::default(), builtin_tys }
+        Self { modules: FxHashMap::default(), assoc_ns: FxHashMap::default(), builtin_tys }
     }
 
     #[track_caller]
@@ -42,38 +43,31 @@ impl GlobalEnv {
 pub(super) struct ModuleEnv {
     pub(super) module_id: ModuleId,
     pub(super) ns: Ns,
-    pub(super) assoc_ns: FxHashMap<AssocTy, Ns>,
     pub(super) globs: FxHashMap<ModuleId, IsUfcs>,
 }
 
 impl ModuleEnv {
     pub(super) fn new(module_id: ModuleId) -> Self {
-        Self {
-            module_id,
-            ns: Ns::new(module_id),
-            assoc_ns: FxHashMap::default(),
-            globs: FxHashMap::default(),
-        }
+        Self { module_id, ns: Ns::new(), globs: FxHashMap::default() }
     }
 }
 
 #[derive(Debug)]
 pub(super) struct Ns {
-    #[allow(unused)]
-    pub(super) module_id: ModuleId,
     pub(super) defs: UstrMap<NsDef>,
     pub(super) fns: UstrMap<FnCandidateSet>,
     pub(super) defined_fns: UstrMap<Vec<DefId>>,
 }
 
 impl Ns {
-    pub(super) fn new(module_id: ModuleId) -> Self {
-        Self {
-            module_id,
-            defs: UstrMap::default(),
-            fns: UstrMap::default(),
-            defined_fns: UstrMap::default(),
-        }
+    pub(super) fn new() -> Self {
+        Self { defs: UstrMap::default(), fns: UstrMap::default(), defined_fns: UstrMap::default() }
+    }
+}
+
+impl Default for Ns {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

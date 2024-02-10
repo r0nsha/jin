@@ -305,7 +305,6 @@ fn check_match_pat_variant(
     variant_id: VariantId,
 ) -> DiagnosticResult<hir::MatchPat> {
     let adt_id = cx.db[variant_id].adt_id;
-
     let instantiation = check_match_pat_adt_ty(cx, env, pat.span, pat_ty, parent_span, adt_id)?;
 
     let new_subpats = check_match_pat_subpats(

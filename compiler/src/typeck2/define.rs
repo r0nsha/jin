@@ -9,8 +9,8 @@ use crate::{
     ty::Ty,
     typeck2::{
         errors,
-        lookup::{FnCandidate, FnCandidateInsertError, FnCandidateSet},
-        ns::{AssocTy, Env, Ns, NsDef},
+        lookup::{FnCandidate, FnCandidateSet},
+        ns::{AssocTy, Env, NsDef},
         Typeck,
     },
     word::Word,
@@ -36,7 +36,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         module_id: ModuleId,
         tydef: &ast::TyDef,
         kind: impl FnOnce(AdtId) -> AdtKind,
-    ) -> DiagnosticResult<(AdtId, DefId)> {
+    ) -> DiagnosticResult<AdtId> {
         let adt_id = self.cx.db.adts.push_with_key(|id| Adt {
             id,
             def_id: DefId::null(),
@@ -54,7 +54,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         )?;
         self.cx.db[adt_id].def_id = def_id;
 
-        Ok((adt_id, def_id))
+        Ok(adt_id)
     }
 
     pub(super) fn new_global(
@@ -155,18 +155,9 @@ impl<'db, 'cx> Define<'db, 'cx> {
         assoc_ty: AssocTy,
         candidate: FnCandidate,
     ) -> DiagnosticResult<()> {
-        let module_id = candidate.module_id(self.cx.db);
         let name = candidate.word.name();
-        let set = self
-            .cx
-            .global_env
-            .module_mut(module_id)
-            .assoc_ns
-            .entry(assoc_ty)
-            .or_insert_with(|| Ns::new(module_id))
-            .fns
-            .entry(name)
-            .or_default();
+        let set =
+            self.cx.global_env.assoc_ns.entry(assoc_ty).or_default().fns.entry(name).or_default();
         Self::insert_fn_candidate_in(self.cx.db, set, candidate)
     }
 

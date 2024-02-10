@@ -624,8 +624,8 @@ pub struct UnionDef {
 }
 
 impl UnionDef {
-    pub fn new(id: AdtId, kind: UnionKind, variants: Vec<VariantId>) -> Self {
-        Self { id, kind, variants }
+    pub fn new(id: AdtId, kind: UnionKind) -> Self {
+        Self { id, kind, variants: vec![] }
     }
 
     pub fn variants<'a>(&'a self, db: &'a Db) -> impl Iterator<Item = &Variant> {

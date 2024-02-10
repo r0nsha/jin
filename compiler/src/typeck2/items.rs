@@ -152,7 +152,7 @@ fn define_tydef(
     let mut env = Env::new(module_id);
 
     let adt_id = env.with_anon_scope(ScopeKind::TyDef, |env| -> DiagnosticResult<AdtId> {
-        let (adt_id, _) = match &tydef.kind {
+        let adt_id = match &tydef.kind {
             ast::TyDefKind::Struct(struct_def) => {
                 attrs::validate(&tydef.attrs, attrs::Placement::Struct)?;
                 let unknown = cx.db.types.unknown;
@@ -167,10 +167,12 @@ fn define_tydef(
             }
             ast::TyDefKind::Union(union_def) => {
                 attrs::validate(&tydef.attrs, attrs::Placement::Union)?;
-                let variants = define_variants(cx, union_def)?;
-                cx.define().adt(module_id, tydef, |id| {
-                    AdtKind::Union(UnionDef::new(id, union_def.kind, variants))
-                })?
+                let adt_id = cx.define().adt(module_id, tydef, |id| {
+                    AdtKind::Union(UnionDef::new(id, union_def.kind))
+                })?;
+                let variants = define_variants(cx, union_def, adt_id)?;
+                cx.db[adt_id].as_union_mut().unwrap().variants = variants;
+                adt_id
             }
         };
 
@@ -187,6 +189,7 @@ fn define_tydef(
 fn define_variants(
     cx: &mut Typeck<'_>,
     union_def: &ast::UnionTyDef,
+    adt_id: AdtId,
 ) -> DiagnosticResult<Vec<VariantId>> {
     let mut variants = vec![];
     let mut defined_variants = WordMap::default();
@@ -199,7 +202,7 @@ fn define_variants(
         let unknown = cx.db.types.unknown;
         let id = cx.db.variants.push_with_key(|id| Variant {
             id,
-            adt_id: AdtId::null(),
+            adt_id,
             index,
             name: variant.name,
             fields: vec![],
