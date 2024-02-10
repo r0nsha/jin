@@ -519,10 +519,14 @@ pub(super) fn check_bodies(
                 let mut env = Env::new(module.id);
                 let pat = res_map.item_to_pat.remove(&id).expect("to be defined");
                 let ty = res_map.item_to_ty.remove(&id).expect("to be defined");
-                let mut let_ = check_let_body(cx, &mut env, pat, ty, let_)?;
-                cx.hir.lets.push_with_key(|id| {
-                    let_.id = id;
-                    let_
+                let value = check_let_body(cx, &mut env, ty, let_)?;
+                cx.hir.lets.push_with_key(|id| hir::Let {
+                    id,
+                    module_id: env.module_id(),
+                    pat,
+                    value: Box::new(value),
+                    ty,
+                    span: let_.span,
                 });
             }
             ast::Item::Fn(fun) => check_fn_item_body(cx, res_map, id, fun)?,
@@ -545,10 +549,9 @@ pub(super) fn check_bodies(
 pub(super) fn check_let_body(
     cx: &mut Typeck<'_>,
     env: &mut Env,
-    pat: Pat,
     ty: Ty,
     let_: &ast::Let,
-) -> DiagnosticResult<hir::Let> {
+) -> DiagnosticResult<hir::Expr> {
     let value = exprs::check_expr(cx, env, &let_.value, Some(ty))?;
     cx.eq_obvious_expr(ty, &value)?;
 
@@ -564,14 +567,7 @@ pub(super) fn check_let_body(
         value
     };
 
-    Ok(hir::Let {
-        id: hir::LetId::null(),
-        module_id: env.module_id(),
-        pat,
-        value: Box::new(value),
-        ty,
-        span: let_.span,
-    })
+    Ok(value)
 }
 
 pub(super) fn check_fn_item_body(

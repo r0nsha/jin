@@ -1,4 +1,4 @@
-use data_structures::index_vec::IndexVecExt as _;
+use data_structures::index_vec::{IndexVecExt as _, Key as _};
 use itertools::Itertools as _;
 use ustr::UstrMap;
 
@@ -36,9 +36,21 @@ pub(super) fn check_expr(
         ast::Expr::Let(let_) => {
             let span = let_.span;
             let ty = tyexpr::check_optional(cx, env, let_.ty_expr.as_ref(), AllowTyHole::Yes)?;
+            let value = items::check_let_body(cx, env, ty, let_)?;
             let pat = cx.define().local_pat(env, &let_.pat, ty);
-            let let_ = items::check_let_body(cx, env, pat, ty, let_)?;
-            Ok(cx.expr(hir::ExprKind::Let(let_), cx.db.types.unit, span))
+
+            Ok(cx.expr(
+                hir::ExprKind::Let(hir::Let {
+                    id: hir::LetId::null(),
+                    module_id: env.module_id(),
+                    pat,
+                    value: Box::new(value),
+                    ty,
+                    span: let_.span,
+                }),
+                cx.db.types.unit,
+                span,
+            ))
         }
         ast::Expr::Fn { params, ret, body, span } => {
             let sig = fns::check_expr_sig(cx, env, params, ret.as_ref(), *span)?;
