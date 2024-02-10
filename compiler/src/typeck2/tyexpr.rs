@@ -149,6 +149,19 @@ fn check_path(
     }
 }
 
+pub(super) fn check_optional(
+    cx: &Typeck,
+    env: &Env,
+    ty: Option<&TyExpr>,
+    allow_hole: AllowTyHole,
+) -> DiagnosticResult<Ty> {
+    if let Some(ty) = ty {
+        check(cx, env, ty, allow_hole)
+    } else {
+        Ok(cx.fresh_ty_var())
+    }
+}
+
 pub(super) fn check_optional_targs(
     cx: &Typeck,
     env: &Env,

@@ -10,10 +10,10 @@ use crate::{
     },
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
-    middle::{CallConv, Mutability},
+    middle::{CallConv, Mutability, Pat},
     qpath::QPath,
     span::Spanned as _,
-    ty::{FnTyFlags, TyKind},
+    ty::{FnTyFlags, Ty, TyKind},
     typeck2::{
         attrs, errors, fns,
         lookup::FnCandidate,
@@ -237,7 +237,7 @@ pub(super) fn check_sigs(
 ) -> DiagnosticResult<()> {
     for (module, item, id) in ast.items_with_id() {
         match item {
-            ast::Item::Let(let_) => check_let(cx, res_map, module.id, id, let_)?,
+            ast::Item::Let(let_) => check_let_item(cx, res_map, module.id, id, let_)?,
             ast::Item::ExternLet(let_) => check_extern_let(cx, res_map, module.id, id, let_)?,
             ast::Item::Fn(fun) => check_fn(cx, res_map, module.id, id, fun, None)?,
             // TODO: ast::Item::Assoc(word, item) => todo!(),
@@ -248,15 +248,21 @@ pub(super) fn check_sigs(
     Ok(())
 }
 
-fn check_let(
+pub(super) fn check_let_item(
     cx: &mut Typeck<'_>,
     res_map: &mut ResolutionMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     let_: &ast::Let,
 ) -> DiagnosticResult<()> {
-    // TODO: debug_assert!(in_global && ty.is_some());
-    todo!()
+    let env = Env::new(module_id);
+    let pat = res_map.item_to_pat.get_mut(&item_id).expect("to be defined");
+
+    debug_assert!(let_.ty_expr.is_some());
+    let ty = tyexpr::check_optional(cx, &env, let_.ty_expr.as_ref(), AllowTyHole::No)?;
+    assign_pat_ty(cx, pat, ty);
+
+    Ok(())
 }
 
 fn check_extern_let(
@@ -373,4 +379,14 @@ fn check_intrinsic_fn(
     }
 
     Ok(())
+}
+
+fn assign_pat_ty(cx: &mut Typeck<'_>, pat: &mut Pat, ty: Ty) {
+    match pat {
+        Pat::Name(name) => {
+            debug_assert!(!name.id.is_null());
+            cx.def_to_ty.insert(name.id, ty);
+        }
+        Pat::Discard(_) => (),
+    }
 }
