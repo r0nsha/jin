@@ -1,24 +1,16 @@
+use data_structures::index_vec::IndexVecExt as _;
 use itertools::Itertools as _;
 use ustr::UstrMap;
 
 use crate::{
-    ast::{self, Ast},
-    counter::Counter,
-    db::{
-        Adt, AdtField, AdtId, AdtKind, Db, DefId, DefKind, FnInfo, Intrinsic, ModuleId, StructDef,
-        UnionDef, Variant, VariantId,
-    },
+    ast,
+    db::{Adt, AdtField, AdtId, AdtKind, DefId, DefKind, FnInfo, ModuleId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
-    hir::{ExprId, FnParam, Hir},
-    macros::create_bool_enum,
-    middle::{BinOp, CallConv, CmpOp, IsUfcs, Mutability, Pat, TyExpr, TyParam, UnOp, Vis},
+    middle::{BinOp, CmpOp, IsUfcs, Mutability, UnOp, Vis},
     span::{Span, Spanned},
     sym,
-    ty::{
-        FloatVar, FnTy, FnTyFlags, FnTyParam, InferTy, Instantiation, IntVar, ParamTy, Ty, TyKind,
-        TyVar,
-    },
+    ty::{FnTy, FnTyParam, InferTy, Instantiation, Ty, TyKind},
     typeck2::{
         coerce::{CoerceExt as _, CoerceOptions},
         errors, fns, items,
@@ -30,7 +22,7 @@ use crate::{
         unify::Obligation,
         Typeck,
     },
-    word::{Word, WordMap},
+    word::Word,
 };
 
 #[allow(clippy::too_many_lines)]
@@ -56,25 +48,21 @@ pub(super) fn check_expr(
             let id =
                 cx.define().new_local(env, DefKind::Fn(FnInfo::Bare), word, Mutability::Imm, ty);
 
-            todo!()
+            let mut fun = fns::check_fn_body(cx, sig, id, body, *span)?;
+            cx.hir.fns.push_with_key(|id| {
+                fun.id = id;
+                fun
+            });
 
-            // let mut fun = self.check_fn_expr_body(env, sig, id, body,
-            // *span)?;
-            //
-            // self.hir.fns.push_with_key(|id| {
-            //     fun.id = id;
-            //     fun
-            // });
-            //
-            // Ok(cx.expr(
-            //     hir::ExprKind::Name(hir::Name {
-            //         id,
-            //         word,
-            //         instantiation: Instantiation::default(),
-            //     }),
-            //     ty,
-            //     *span,
-            // ))
+            Ok(cx.expr(
+                hir::ExprKind::Name(hir::Name {
+                    id,
+                    word,
+                    instantiation: Instantiation::default(),
+                }),
+                ty,
+                *span,
+            ))
         }
         ast::Expr::Assign { lhs, rhs, op, span } => {
             let lhs = check_expr(cx, env, lhs, None)?;

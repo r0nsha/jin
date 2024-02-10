@@ -1,5 +1,4 @@
 use crate::{
-    ast,
     db::{Adt, AdtField, AdtId, Db, DefId, ModuleId},
     diagnostics::{Diagnostic, Label},
     middle::{BinOp, UnOp},
@@ -172,9 +171,4 @@ pub fn name_defined_twice(kind: &str, name: Word, prev_span: Span) -> Diagnostic
     Diagnostic::error(format!("the name `{name}` is already used as a {kind} name"))
         .with_label(Label::primary(name.span(), format!("`{name}` used again here")))
         .with_label(Label::secondary(prev_span, format!("first use of `{name}`")))
-}
-
-pub fn invalid_attr_placement(attr: &ast::Attr, applies_to: &str) -> Diagnostic {
-    Diagnostic::error(format!("attribute `{}` should be applied to {}", attr.id, applies_to))
-        .with_label(Label::primary(attr.span, "invalid attribute placement"))
 }

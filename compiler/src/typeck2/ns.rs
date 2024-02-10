@@ -13,7 +13,7 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub(super) struct GlobalEnv {
+pub(crate) struct GlobalEnv {
     modules: FxHashMap<ModuleId, ModuleEnv>,
     pub(super) assoc_ns: FxHashMap<AssocTy, Ns>,
     pub(super) builtin_tys: BuiltinTys,
@@ -35,20 +35,25 @@ impl GlobalEnv {
     }
 
     pub(super) fn insert_module(&mut self, id: ModuleId) {
-        self.modules.insert(id, ModuleEnv::new(id));
+        self.modules.insert(id, ModuleEnv::new());
     }
 }
 
 #[derive(Debug)]
 pub(super) struct ModuleEnv {
-    pub(super) module_id: ModuleId,
     pub(super) ns: Ns,
     pub(super) globs: FxHashMap<ModuleId, IsUfcs>,
 }
 
 impl ModuleEnv {
-    pub(super) fn new(module_id: ModuleId) -> Self {
-        Self { module_id, ns: Ns::new(), globs: FxHashMap::default() }
+    pub(super) fn new() -> Self {
+        Self { ns: Ns::new(), globs: FxHashMap::default() }
+    }
+}
+
+impl Default for ModuleEnv {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -71,7 +76,7 @@ impl Default for Ns {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub(super) struct NsDef {
     pub(super) id: DefId,
     pub(super) vis: Vis,
@@ -153,10 +158,6 @@ impl Env {
         self.scopes.last().expect("to have a scope")
     }
 
-    pub(super) fn current_mut(&mut self) -> &mut Scope {
-        self.scopes.last_mut().expect("to have a scope")
-    }
-
     pub(super) fn insert(&mut self, k: Ustr, v: DefId) {
         self.scopes.last_mut().unwrap().defs.insert(k, v);
     }
@@ -224,11 +225,6 @@ impl Env {
     #[inline]
     pub(super) fn module_id(&self) -> ModuleId {
         self.module_id
-    }
-
-    #[inline]
-    pub(super) fn in_std(&self, db: &Db) -> bool {
-        db.package(db[self.module_id].package).is_std(db)
     }
 }
 

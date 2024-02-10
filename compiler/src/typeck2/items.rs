@@ -584,7 +584,7 @@ pub(super) fn check_fn_item_body(
     let sig = res_map.item_to_sig.remove(&item_id).expect("to be defined");
 
     let mut fun = match &fun.kind {
-        ast::FnKind::Bare { body } => fns::check_fn_body(cx, fun, sig, def_id, body)?,
+        ast::FnKind::Bare { body } => fns::check_fn_body(cx, sig, def_id, body, fun.span)?,
         ast::FnKind::Extern { is_c_variadic, .. } => hir::Fn {
             id: hir::FnId::null(),
             module_id: cx.db[def_id].scope.module_id,

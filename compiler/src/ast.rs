@@ -27,10 +27,6 @@ impl Ast {
         Self { modules: IndexVec::new() }
     }
 
-    pub fn find_item(&self, id: GlobalItemId) -> Option<&Item> {
-        self.modules.get(id.module_id).and_then(|m| m.items.get(id.item_id))
-    }
-
     pub fn items(&self) -> impl Iterator<Item = (&Module, &Item)> {
         self.modules.iter().flat_map(|module| module.items.iter().map(move |item| (module, item)))
     }
@@ -79,12 +75,6 @@ new_key_type! {
 pub struct GlobalItemId {
     pub module_id: ModuleId,
     pub item_id: ItemId,
-}
-
-impl GlobalItemId {
-    pub fn new(module_id: ModuleId, item_id: ItemId) -> Self {
-        Self { module_id, item_id }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -496,6 +486,7 @@ impl Attrs {
         self.iter().find(|a| a.id == id)
     }
 
+    #[allow(unused)]
     pub fn contains(&self, id: AttrId) -> bool {
         self.find(id).is_some()
     }
@@ -504,6 +495,7 @@ impl Attrs {
         self.0.iter()
     }
 
+    #[allow(unused)]
     pub fn len(&self) -> usize {
         self.0.len()
     }
@@ -528,6 +520,7 @@ pub enum AttrId {
 #[derive(Debug, Clone)]
 pub enum AttrArgs {
     Intrinsic(Word),
+    #[allow(unused)]
     None,
 }
 

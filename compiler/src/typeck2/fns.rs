@@ -1,7 +1,6 @@
-use data_structures::index_vec::{IndexVecExt as _, Key as _};
+use data_structures::index_vec::Key as _;
 use ustr::ustr;
 
-use crate::typeck2::coerce::CoerceExt as _;
 use crate::{
     ast,
     db::DefId,
@@ -11,6 +10,7 @@ use crate::{
     span::{Span, Spanned},
     ty::{FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
     typeck2::{
+        coerce::CoerceExt as _,
         errors, exprs,
         ns::{Env, ScopeKind},
         tyexpr,
@@ -110,10 +110,10 @@ fn check_fn_sig_params(
 
 pub(super) fn check_fn_body(
     cx: &mut Typeck<'_>,
-    fun: &ast::Fn,
     mut sig: hir::FnSig,
     def_id: DefId,
     body: &ast::Expr,
+    span: Span,
 ) -> DiagnosticResult<hir::Fn> {
     let mut env = Env::new(cx.db[def_id].scope.module_id);
 
@@ -129,26 +129,12 @@ pub(super) fn check_fn_body(
                 env.insert_pat(&p.pat);
             }
 
-            match &fun.kind {
-                ast::FnKind::Bare { body } => {
-                    let body = check_fn_body_helper(cx, env, body, &sig)?;
-                    Ok(hir::FnKind::Bare { body })
-                }
-                ast::FnKind::Extern { .. } => {
-                    unreachable!()
-                }
-            }
+            let body = check_fn_body_helper(cx, env, body, &sig)?;
+            Ok(hir::FnKind::Bare { body })
         },
     )?;
 
-    Ok(hir::Fn {
-        id: hir::FnId::null(),
-        module_id: env.module_id(),
-        def_id,
-        sig,
-        kind,
-        span: fun.span,
-    })
+    Ok(hir::Fn { id: hir::FnId::null(), module_id: env.module_id(), def_id, sig, kind, span })
 }
 
 fn check_fn_body_helper(

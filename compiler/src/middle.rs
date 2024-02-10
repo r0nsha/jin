@@ -260,6 +260,7 @@ pub enum Pat {
 }
 
 impl Pat {
+    #[allow(unused)]
     pub fn walk(&self, mut f: impl FnMut(&NamePat)) {
         self.walk_(&mut f);
     }

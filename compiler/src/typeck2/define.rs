@@ -166,6 +166,6 @@ impl<'db, 'cx> Define<'db, 'cx> {
         set: &mut FnCandidateSet,
         candidate: FnCandidate,
     ) -> DiagnosticResult<()> {
-        set.try_insert(candidate).map_err(|err| err.to_diagnostic(db))
+        set.try_insert(candidate).map_err(|err| err.into_diagnostic(db))
     }
 }

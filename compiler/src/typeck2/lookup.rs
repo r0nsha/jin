@@ -13,7 +13,7 @@ use crate::{
     typeck2::{
         coerce::{Coerce as _, CoerceOptions},
         errors,
-        ns::{AssocTy, Env},
+        ns::{AssocTy, Env, NsDef},
         unify::UnifyOptions,
         Typeck,
     },
@@ -34,8 +34,8 @@ impl<'db> Typeck<'db> {
     ) -> DiagnosticResult<()> {
         for res in results {
             match res {
-                LookupResult::Def(id) => {
-                    self.define().global(in_module, name, id, vis)?;
+                LookupResult::Def(def) => {
+                    self.define().global(in_module, name, def.id, vis)?;
                 }
                 LookupResult::Fn(candidate) => self.define().fn_candidate(candidate)?,
             }
@@ -160,12 +160,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             .with_label(Label::primary(query.word.span(), "no accessible function found")));
         }
 
-        // Filter fn candidates by their visibility if there's more than one,
-        // otherwise, we want to emit a privacy error for better ux
-        candidates.retain(|c| {
-            let def = &self.cx.db[c.id];
-            def.scope.vis == Vis::Public || from_module == def.scope.module_id
-        });
+        candidates.retain(|c| self.can_access(from_module, c.id));
 
         match candidates.len() {
             0 => Ok(None),
@@ -362,7 +357,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             let env = self.cx.global_env.module(module_id);
 
             if let Some(def) = env.ns.defs.get(&name) {
-                results.push(LookupResult::Def(def.id));
+                results.push(LookupResult::Def(*def));
             } else if should_lookup_fns == ShouldLookupFns::Yes {
                 if let Some(candidates) = env.ns.fns.get(&name) {
                     results.extend(candidates.iter().cloned().map(LookupResult::Fn));
@@ -377,7 +372,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                 .builtin_tys
                 .get(name)
                 .into_iter()
-                .map(LookupResult::Def)
+                .map(|id| LookupResult::Def(NsDef { id, vis: Vis::Public, span: Span::unknown() }))
                 .collect();
         }
 
@@ -424,26 +419,39 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         from_module: ModuleId,
         results: Vec<LookupResult>,
     ) -> Vec<LookupResult> {
-        results.into_iter().filter(|r| self.can_access(from_module, r.id())).collect()
+        results
+            .into_iter()
+            .filter(|r| match r {
+                LookupResult::Def(def) => self.can_access_vis(from_module, def.id, def.vis),
+                LookupResult::Fn(c) => self.can_access(from_module, c.id),
+            })
+            .collect()
     }
 
     #[inline]
     fn can_access(&self, from_module: ModuleId, accessed: DefId) -> bool {
         let def = &self.cx.db[accessed];
-        def.scope.vis == Vis::Public || from_module == def.scope.module_id
+        self.can_access_vis(from_module, accessed, def.scope.vis)
+    }
+
+    #[inline]
+    fn can_access_vis(&self, from_module: ModuleId, accessed: DefId, vis: Vis) -> bool {
+        let def = &self.cx.db[accessed];
+        vis == Vis::Public || from_module == def.scope.module_id
     }
 }
 
 #[derive(Debug, Clone)]
 pub(super) enum LookupResult {
-    Def(DefId),
+    Def(NsDef),
     Fn(FnCandidate),
 }
 
 impl LookupResult {
     pub(super) fn id(&self) -> DefId {
         match self {
-            Self::Def(id) | Self::Fn(FnCandidate { id, .. }) => *id,
+            Self::Def(n) => n.id,
+            Self::Fn(c) => c.id,
         }
     }
 }
@@ -521,7 +529,7 @@ pub(super) enum FnCandidateInsertError {
 }
 
 impl FnCandidateInsertError {
-    pub(super) fn to_diagnostic(self, db: &Db) -> Diagnostic {
+    pub(super) fn into_diagnostic(self, db: &Db) -> Diagnostic {
         match self {
             FnCandidateInsertError::AlreadyExists { prev, curr } => {
                 errors::multiple_fn_def_err(db, prev.module_id(db), prev.word.span(), &curr)
@@ -698,13 +706,6 @@ impl<'a> Query<'a> {
     #[inline]
     pub(super) fn span(&self) -> Span {
         self.word().span()
-    }
-
-    pub(super) fn is_ufcs(&self) -> IsUfcs {
-        match self {
-            Query::Name(_) => IsUfcs::No,
-            Query::Fn(FnQuery { is_ufcs, .. }) => *is_ufcs,
-        }
     }
 }
 
