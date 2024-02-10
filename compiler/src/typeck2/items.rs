@@ -525,31 +525,16 @@ pub(super) fn check_bodies(
                     let_
                 });
             }
-            ast::Item::Fn(fun) => {
-                let def_id = res_map.item_to_def.remove(&id).expect("to be defined");
-                let sig = res_map.item_to_sig.remove(&id).expect("to be defined");
-
-                let mut fun = match &fun.kind {
-                    ast::FnKind::Bare { body } => fns::check_fn_body(cx, fun, sig, def_id, body)?,
-                    ast::FnKind::Extern { is_c_variadic, .. } => hir::Fn {
-                        id: hir::FnId::null(),
-                        module_id: module.id,
-                        def_id,
-                        sig,
-                        kind: hir::FnKind::Extern { is_c_variadic: *is_c_variadic },
-                        span: fun.span,
-                    },
-                };
-
-                cx.hir.fns.push_with_key(|id| {
-                    fun.id = id;
-                    fun
-                });
-            }
-            ast::Item::Assoc(_, item) => {
-                // TODO:
-                // define_fn(cx, res_map, module.id, id, fun, None).map(|_| ())?
-            }
+            ast::Item::Fn(fun) => check_fn_item_body(cx, res_map, id, fun)?,
+            ast::Item::Assoc(_, item) => match item.as_ref() {
+                ast::Item::Fn(fun) => check_fn_item_body(cx, res_map, id, fun)?,
+                ast::Item::Let(_)
+                | ast::Item::Type(_)
+                | ast::Item::Import(_)
+                | ast::Item::ExternLet(_)
+                | ast::Item::ExternImport(_)
+                | ast::Item::Assoc(_, _) => unreachable!(),
+            },
             _ => (),
         }
     }
@@ -587,4 +572,33 @@ pub(super) fn check_let_body(
         ty,
         span: let_.span,
     })
+}
+
+pub(super) fn check_fn_item_body(
+    cx: &mut Typeck<'_>,
+    res_map: &mut ResolutionMap,
+    item_id: ast::GlobalItemId,
+    fun: &ast::Fn,
+) -> DiagnosticResult<()> {
+    let def_id = res_map.item_to_def.remove(&item_id).expect("to be defined");
+    let sig = res_map.item_to_sig.remove(&item_id).expect("to be defined");
+
+    let mut fun = match &fun.kind {
+        ast::FnKind::Bare { body } => fns::check_fn_body(cx, fun, sig, def_id, body)?,
+        ast::FnKind::Extern { is_c_variadic, .. } => hir::Fn {
+            id: hir::FnId::null(),
+            module_id: cx.db[def_id].scope.module_id,
+            def_id,
+            sig,
+            kind: hir::FnKind::Extern { is_c_variadic: *is_c_variadic },
+            span: fun.span,
+        },
+    };
+
+    cx.hir.fns.push_with_key(|id| {
+        fun.id = id;
+        fun
+    });
+
+    Ok(())
 }
