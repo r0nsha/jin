@@ -432,6 +432,7 @@ fn assign_pat_ty(cx: &mut Typeck<'_>, pat: &mut Pat, ty: Ty) {
     match pat {
         Pat::Name(name) => {
             debug_assert!(!name.id.is_null());
+            name.ty = ty;
             cx.def_to_ty.insert(name.id, ty);
         }
         Pat::Discard(_) => (),

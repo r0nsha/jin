@@ -17,7 +17,6 @@ mod subst;
 mod sym;
 mod target;
 mod ty;
-// mod typeck;
 mod typeck2;
 mod util;
 mod word;
@@ -116,17 +115,17 @@ fn build(db: &mut Db, root_file: &Utf8Path) {
     db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))
         .expect("emitting hir failed");
 
-    // // Lower HIR to MIR
-    // let mut mir = db.time("Hir -> Mir", |db| mir::lower(db, &hir));
-    // expect!(db);
-    //
-    // db.time("Mir Monomorphization", |db| mir::monomorphize(db, &mut mir));
-    //
-    // db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
-    //     .expect("emitting mir failed");
-    //
-    // // Generate C code from Mir
-    // cgen::codegen(db, &mir);
+    // Lower HIR to MIR
+    let mut mir = db.time("Hir -> Mir", |db| mir::lower(db, &hir));
+    expect!(db);
+
+    db.time("Mir Monomorphization", |db| mir::monomorphize(db, &mut mir));
+
+    db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
+        .expect("emitting mir failed");
+
+    // Generate C code from Mir
+    cgen::codegen(db, &mir);
 
     db.print_timings();
 }
