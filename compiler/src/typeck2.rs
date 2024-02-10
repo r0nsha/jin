@@ -44,10 +44,12 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
 
     items::define(&mut cx, &mut res_map, &ast)?;
     imports::define_qualified(&mut cx, &ast)?;
-    imports::define_unqualified(&mut cx, &ast)?;
+    let imported_fns = imports::define_unqualified(&mut cx, &ast)?;
 
     types::check(&mut cx, &mut res_map, &ast)?;
     items::check_sigs(&mut cx, &mut res_map, &ast)?;
+    imports::fill_imported_fn_candidates(&mut cx, imported_fns)?;
+
     items::check_bodies(&mut cx, &mut res_map, &ast)?;
 
     subst::subst(&mut cx);

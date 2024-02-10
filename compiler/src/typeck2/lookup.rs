@@ -152,7 +152,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         from_module: ModuleId,
         in_module: ModuleId,
         word: Word,
-    ) -> DiagnosticResult<ImportLookupResult> {
+    ) -> DiagnosticResult<Vec<ImportLookupResult>> {
         let results = self.many(in_module, word.name(), ShouldLookupFns::Defs, IsUfcs::No);
 
         if results.is_empty() {
@@ -165,18 +165,21 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                 .with_label(Label::primary(word.span(), "private definition")));
         }
 
-        let fns_to_fill: Vec<DefId> = filtered_results
-            .iter()
-            .filter_map(|res| match res {
+        let import_results: Vec<_> = filtered_results
+            .into_iter()
+            .map(|res| match res {
                 LookupResult::Def(def) => {
-                    matches!(self.cx.db[def.id].kind.as_ref(), DefKind::Fn(FnInfo::Bare))
-                        .then_some(def.id)
+                    if matches!(self.cx.db[def.id].kind.as_ref(), DefKind::Fn(FnInfo::Bare)) {
+                        ImportLookupResult::Fn(def.id)
+                    } else {
+                        ImportLookupResult::Def(def.id)
+                    }
                 }
-                LookupResult::Fn(_) => None,
+                LookupResult::Fn(_) => unreachable!("candidates are not filled at this stage"),
             })
             .collect();
 
-        Ok(ImportLookupResult { results: filtered_results, fns_to_fill })
+        Ok(import_results)
     }
 
     pub fn path(&self, from_module: ModuleId, path: &[Word]) -> DiagnosticResult<PathLookup> {
@@ -443,13 +446,10 @@ impl LookupResult {
     }
 }
 
-#[derive(Debug, Clone)]
-pub(super) struct ImportLookupResult {
-    /// The actual lookup results
-    pub(super) results: Vec<LookupResult>,
-
-    /// The set of functions that will need their candidates to be filled
-    pub(super) fns_to_fill: Vec<DefId>,
+#[derive(Debug, Clone, Copy)]
+pub(super) enum ImportLookupResult {
+    Def(DefId),
+    Fn(DefId),
 }
 
 #[derive(Debug, Clone)]

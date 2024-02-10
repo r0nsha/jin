@@ -1,14 +1,17 @@
+use rustc_hash::FxHashMap;
+use ustr::Ustr;
+
 use crate::{
     ast,
     ast::Ast,
-    db::{DefKind, ModuleId},
+    db::{DefId, DefKind, ModuleId},
     diagnostics::DiagnosticResult,
     middle::{IsUfcs, Mutability},
     span::Spanned as _,
     ty::{Ty, TyKind},
     typeck2::{
         attrs,
-        lookup::{ImportLookupResult, LookupResult, Query},
+        lookup::{ImportLookupResult, Query},
         Typeck,
     },
 };
@@ -35,28 +38,33 @@ pub(super) fn define_qualified(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<(
     Ok(())
 }
 
-pub(super) fn define_unqualified(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+pub(super) fn define_unqualified(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ImportedFns> {
+    let mut imported_fns = ImportedFns::default();
+
     for (module, item) in ast.items() {
         if let ast::Item::Import(import) = item {
             if let ast::ImportKind::Unqualified(imports) = &import.kind {
+                let imported_fns_entry = imported_fns.entry(module.id).or_default();
                 let in_module = module.id;
                 let target_module_id = import_prologue(cx, in_module, import)?;
 
                 for uim in imports {
                     match uim {
                         ast::UnqualifiedImport::Name(name, alias, vis) => {
-                            let ImportLookupResult { results, fns_to_fill } =
-                                cx.lookup().import(in_module, target_module_id, *name)?;
-
-                            let name = alias.unwrap_or(*name);
+                            let results = cx.lookup().import(in_module, target_module_id, *name)?;
+                            let alias = alias.unwrap_or(*name);
 
                             for res in results {
                                 match res {
-                                    LookupResult::Def(def) => {
-                                        cx.define().global(in_module, name, def.id, *vis)?;
+                                    ImportLookupResult::Def(id) => {
+                                        cx.define().global(in_module, alias, id, *vis)?;
                                     }
-                                    LookupResult::Fn(candidate) => {
-                                        cx.define().fn_candidate(candidate)?
+                                    ImportLookupResult::Fn(id) => {
+                                        imported_fns_entry.push(ImportedFn {
+                                            id,
+                                            name: name.name(),
+                                            alias: alias.name(),
+                                        });
                                     }
                                 }
                             }
@@ -70,7 +78,39 @@ pub(super) fn define_unqualified(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult
         }
     }
 
+    Ok(imported_fns)
+}
+
+pub(super) fn fill_imported_fn_candidates(
+    cx: &mut Typeck,
+    imported_fns: ImportedFns,
+) -> DiagnosticResult<()> {
+    for (module_id, fns) in imported_fns {
+        for f in fns {
+            let from_module = cx.db[f.id].scope.module_id;
+            let from_set = cx
+                .global_env
+                .module(from_module)
+                .ns
+                .fns
+                .get(&f.name)
+                .expect("to have a defined set");
+            let candidate =
+                from_set.iter().find(|c| c.id == f.id).expect("candidate to be defined").clone();
+            let set = cx.global_env.module_mut(module_id).ns.fns.entry(f.alias).or_default();
+            set.try_insert(candidate).map_err(|err| err.into_diagnostic(cx.db))?;
+        }
+    }
+
     Ok(())
+}
+
+pub(super) type ImportedFns = FxHashMap<ModuleId, Vec<ImportedFn>>;
+
+pub(super) struct ImportedFn {
+    pub(super) id: DefId,
+    pub(super) name: Ustr,
+    pub(super) alias: Ustr,
 }
 
 fn import_prologue(
