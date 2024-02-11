@@ -47,20 +47,24 @@ fn define_globs(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ItemMap<ModuleId
     let mut item_to_module_id = ItemMap::<ModuleId>::default();
 
     for (module, item, item_id) in ast.items_with_id() {
-        if let ast::Item::Import(import) = item {
-            if let ast::ImportKind::Unqualified(imports) = &import.kind {
-                let in_module = module.id;
-                let target_module_id = import_prologue(cx, in_module, import)?;
-                item_to_module_id.insert(item_id, target_module_id);
+        let ast::Item::Import(import) = item else {
+            continue;
+        };
 
-                for uim in imports {
-                    match uim {
-                        ast::UnqualifiedImport::Glob(is_ufcs, _) => {
-                            insert_glob_target(cx, in_module, target_module_id, *is_ufcs);
-                        }
-                        ast::UnqualifiedImport::Name(..) => (),
-                    }
+        let ast::ImportKind::Unqualified(imports) = &import.kind else {
+            continue;
+        };
+
+        let in_module = module.id;
+        let target_module_id = import_prologue(cx, in_module, import)?;
+        item_to_module_id.insert(item_id, target_module_id);
+
+        for uim in imports {
+            match uim {
+                ast::UnqualifiedImport::Glob(is_ufcs, _) => {
+                    insert_glob_target(cx, in_module, target_module_id, *is_ufcs);
                 }
+                ast::UnqualifiedImport::Name(..) => (),
             }
         }
     }
@@ -78,37 +82,41 @@ fn define_unqualified_names(
     // TODO: Recognize imported names before resolving lookups
 
     for (module, item, item_id) in ast.items_with_id() {
-        if let ast::Item::Import(import) = item {
-            if let ast::ImportKind::Unqualified(imports) = &import.kind {
-                let imported_fns_entry = imported_fns.entry(module.id).or_default();
-                let in_module = module.id;
-                let target_module_id = item_to_module_id[&item_id];
+        let ast::Item::Import(import) = item else {
+            continue;
+        };
 
-                for uim in imports {
-                    match uim {
-                        ast::UnqualifiedImport::Name(name, alias, vis) => {
-                            let results = cx.lookup().import(in_module, target_module_id, *name)?;
-                            let alias = alias.unwrap_or(*name);
+        let ast::ImportKind::Unqualified(imports) = &import.kind else {
+            continue;
+        };
 
-                            for res in results {
-                                match res {
-                                    ImportLookupResult::Def(id) => {
-                                        cx.define().global(in_module, alias, id, *vis)?;
-                                    }
-                                    ImportLookupResult::Fn(id) => {
-                                        imported_fns_entry.push(ImportedFn {
-                                            id,
-                                            name: name.name(),
-                                            alias: alias.name(),
-                                        });
-                                    }
-                                }
+        let imported_fns_entry = imported_fns.entry(module.id).or_default();
+        let in_module = module.id;
+        let target_module_id = item_to_module_id[&item_id];
+
+        for uim in imports {
+            match uim {
+                ast::UnqualifiedImport::Name(name, alias, vis) => {
+                    let results = cx.lookup().import(in_module, target_module_id, *name)?;
+                    let alias = alias.unwrap_or(*name);
+
+                    for res in results {
+                        match res {
+                            ImportLookupResult::Def(id) => {
+                                cx.define().global(in_module, alias, id, *vis)?;
+                            }
+                            ImportLookupResult::Fn(id) => {
+                                imported_fns_entry.push(ImportedFn {
+                                    id,
+                                    name: name.name(),
+                                    alias: alias.name(),
+                                });
                             }
                         }
-                        ast::UnqualifiedImport::Glob(..) => {
-                            // Already defined in `define_globs`
-                        }
                     }
+                }
+                ast::UnqualifiedImport::Glob(..) => {
+                    // Already defined in `define_globs`
                 }
             }
         }
