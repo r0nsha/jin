@@ -12,7 +12,7 @@ use crate::{
     typeck::{
         attrs,
         lookup::{ImportLookupResult, Query},
-        Typeck,
+        ItemMap, Typeck,
     },
 };
 
@@ -39,14 +39,16 @@ pub(super) fn define_qualified(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<(
 }
 
 pub(super) fn define_unqualified(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ImportedFns> {
+    let item_to_module_id = define_globs(cx, ast)?;
     let mut imported_fns = ImportedFns::default();
 
-    for (module, item) in ast.items() {
+    // Name imports
+    for (module, item, item_id) in ast.items_with_id() {
         if let ast::Item::Import(import) = item {
             if let ast::ImportKind::Unqualified(imports) = &import.kind {
                 let imported_fns_entry = imported_fns.entry(module.id).or_default();
                 let in_module = module.id;
-                let target_module_id = import_prologue(cx, in_module, import)?;
+                let target_module_id = item_to_module_id[&item_id];
 
                 for uim in imports {
                     match uim {
@@ -69,8 +71,8 @@ pub(super) fn define_unqualified(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult
                                 }
                             }
                         }
-                        ast::UnqualifiedImport::Glob(is_ufcs, _) => {
-                            insert_glob_target(cx, in_module, target_module_id, *is_ufcs);
+                        ast::UnqualifiedImport::Glob(..) => {
+                            // Already defined in `define_globs`
                         }
                     }
                 }
@@ -79,6 +81,31 @@ pub(super) fn define_unqualified(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult
     }
 
     Ok(imported_fns)
+}
+
+fn define_globs(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ItemMap<ModuleId>> {
+    let mut item_to_module_id = ItemMap::<ModuleId>::default();
+
+    for (module, item, item_id) in ast.items_with_id() {
+        if let ast::Item::Import(import) = item {
+            if let ast::ImportKind::Unqualified(imports) = &import.kind {
+                let in_module = module.id;
+                let target_module_id = import_prologue(cx, in_module, import)?;
+                item_to_module_id.insert(item_id, target_module_id);
+
+                for uim in imports {
+                    match uim {
+                        ast::UnqualifiedImport::Glob(is_ufcs, _) => {
+                            insert_glob_target(cx, in_module, target_module_id, *is_ufcs);
+                        }
+                        ast::UnqualifiedImport::Name(..) => (),
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(item_to_module_id)
 }
 
 pub(super) fn fill_imported_fn_candidates(

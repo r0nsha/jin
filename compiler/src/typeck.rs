@@ -189,13 +189,15 @@ impl<'db> Typeck<'db> {
     }
 }
 
+pub(super) type ItemMap<T> = FxHashMap<ast::GlobalItemId, T>;
+
 /// Various mappings and resolutions from the `define_*` passes
 pub(super) struct ResolutionMap {
-    pub(super) item_to_def: FxHashMap<ast::GlobalItemId, DefId>,
-    pub(super) item_to_adt: FxHashMap<ast::GlobalItemId, AdtId>,
-    pub(super) item_to_pat: FxHashMap<ast::GlobalItemId, Pat>,
-    pub(super) item_to_ty: FxHashMap<ast::GlobalItemId, Ty>,
-    pub(super) item_to_sig: FxHashMap<ast::GlobalItemId, hir::FnSig>,
+    pub(super) item_to_def: ItemMap<DefId>,
+    pub(super) item_to_adt: ItemMap<AdtId>,
+    pub(super) item_to_pat: ItemMap<Pat>,
+    pub(super) item_to_ty: ItemMap<Ty>,
+    pub(super) item_to_sig: ItemMap<hir::FnSig>,
 }
 
 impl ResolutionMap {
