@@ -92,22 +92,21 @@ fn define_unqualified_names(
         let target_module_id = item_to_module_id[&item_id];
 
         for uim in imports {
-            if let ast::UnqualifiedImport::Name(name, alias, vis) = uim {
-                let results = cx.lookup().import(in_module, target_module_id, *name)?;
-                let alias = alias.unwrap_or(*name);
+            let ast::UnqualifiedImport::Name(name, alias, vis) = uim else { continue };
+            let results = cx.lookup().import(in_module, target_module_id, *name)?;
+            let alias = alias.unwrap_or(*name);
 
-                for res in results {
-                    match res {
-                        ImportLookupResult::Def(id) => {
-                            cx.define().global(in_module, alias, id, *vis)?;
-                        }
-                        ImportLookupResult::Fn(id) => {
-                            imported_fns_entry.push(ImportedFn {
-                                id,
-                                name: name.name(),
-                                alias: alias.name(),
-                            });
-                        }
+            for res in results {
+                match res {
+                    ImportLookupResult::Def(id) => {
+                        cx.define().global(in_module, alias, id, *vis)?;
+                    }
+                    ImportLookupResult::Fn(id) => {
+                        imported_fns_entry.push(ImportedFn {
+                            id,
+                            name: name.name(),
+                            alias: alias.name(),
+                        });
                     }
                 }
             }
