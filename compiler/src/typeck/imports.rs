@@ -47,13 +47,8 @@ fn define_globs(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ItemMap<ModuleId
     let mut item_to_module_id = ItemMap::<ModuleId>::default();
 
     for (module, item, item_id) in ast.items_with_id() {
-        let ast::Item::Import(import) = item else {
-            continue;
-        };
-
-        let ast::ImportKind::Unqualified(imports) = &import.kind else {
-            continue;
-        };
+        let ast::Item::Import(import) = item else { continue };
+        let ast::ImportKind::Unqualified(imports) = &import.kind else { continue };
 
         let in_module = module.id;
         let target_module_id = import_prologue(cx, in_module, import)?;
@@ -79,13 +74,8 @@ fn define_unqualified_names(
     // TODO: Recognize imported names before resolving lookups
 
     for (module, item, item_id) in ast.items_with_id() {
-        let ast::Item::Import(import) = item else {
-            continue;
-        };
-
-        let ast::ImportKind::Unqualified(imports) = &import.kind else {
-            continue;
-        };
+        let ast::Item::Import(import) = item else { continue };
+        let ast::ImportKind::Unqualified(imports) = &import.kind else { continue };
 
         let imported_fns_entry = imported_fns.entry(module.id).or_default();
         let in_module = module.id;
