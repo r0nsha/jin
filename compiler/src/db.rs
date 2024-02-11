@@ -584,10 +584,7 @@ impl StructKind {
 
 impl StructDef {
     pub fn new(id: AdtId, fields: Vec<AdtField>, kind: StructKind, ctor_ty: Ty) -> Self {
-        let ctor_vis =
-            if fields.iter().any(|f| f.vis == Vis::Private) { Vis::Private } else { Vis::Public };
-
-        Self { id, fields, kind, ctor_ty, ctor_vis }
+        Self { id, fields, kind, ctor_ty, ctor_vis: Vis::Private }
     }
 
     pub fn field_by_name(&self, name: &str) -> Option<&AdtField> {
@@ -605,6 +602,14 @@ impl StructDef {
             callconv: CallConv::default(),
             flags: FnTyFlags::empty(),
         }));
+    }
+
+    pub fn fill_ctor_vis(&mut self) {
+        self.ctor_vis = if self.fields.iter().any(|f| f.vis == Vis::Private) {
+            Vis::Private
+        } else {
+            Vis::Public
+        };
     }
 
     pub fn is_infinitely_sized(&self, db: &Db) -> Option<&AdtField> {

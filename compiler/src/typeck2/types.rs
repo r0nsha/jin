@@ -74,6 +74,7 @@ fn check_struct(
     let struct_def = cx.db[adt_id].as_struct_mut().unwrap();
     struct_def.fields = fields;
     struct_def.fill_ctor_ty(adt_ty);
+    struct_def.fill_ctor_vis();
 
     let adt = &cx.db[adt_id];
 
