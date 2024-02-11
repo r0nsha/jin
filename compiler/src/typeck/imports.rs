@@ -75,6 +75,8 @@ fn define_unqualified_names(
 ) -> DiagnosticResult<ImportedFns> {
     let mut imported_fns = ImportedFns::default();
 
+    // TODO: Recognize imported names before resolving lookups
+
     for (module, item, item_id) in ast.items_with_id() {
         if let ast::Item::Import(import) = item {
             if let ast::ImportKind::Unqualified(imports) = &import.kind {
