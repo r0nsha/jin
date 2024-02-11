@@ -1,4 +1,6 @@
-// import b.val
-import c.val
+import b*
+import c*
+import b.(val as vb)
+import c.(val as vc)
 
 fn main() = {}
