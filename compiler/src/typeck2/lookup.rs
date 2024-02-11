@@ -127,7 +127,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         if !candidates.is_empty() && candidates.iter().all(|c| !self.can_access(from_module, c.id))
         {
             return Err(Diagnostic::error(format!(
-                "all functions which apply to `{}` are private to their module",
+                "all functions which apply to `{}` are private",
                 query.display(self.cx.db)
             ))
             .with_label(Label::primary(query.word.span(), "no accessible function found")));
@@ -493,7 +493,6 @@ impl FnCandidateSet {
 
     pub(super) fn find(&self, cx: &Typeck, query: &FnQuery) -> Vec<&FnCandidate> {
         let scores = self.scores(cx, query);
-
         let Some(&min_score) = scores.iter().map(|(_, s)| s).min() else {
             return vec![];
         };
