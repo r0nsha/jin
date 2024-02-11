@@ -6,7 +6,7 @@ use crate::{
     middle::{Mutability, TyParam, Vis},
     span::{Span, Spanned as _},
     ty::{Instantiation, ParamTy, Ty, TyKind},
-    typeck2::{
+    typeck::{
         errors,
         ns::{AssocTy, Env, ScopeKind},
         tyexpr,

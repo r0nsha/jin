@@ -7,7 +7,7 @@ use crate::{
     middle::{Mutability, NamePat, Pat, Vis},
     span::Spanned as _,
     ty::Ty,
-    typeck2::{
+    typeck::{
         errors,
         lookup::{FnCandidate, FnCandidateSet},
         ns::{AssocTy, Env, NsDef},

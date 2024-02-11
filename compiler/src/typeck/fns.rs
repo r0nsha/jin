@@ -9,7 +9,7 @@ use crate::{
     middle::{CallConv, Pat, TyExpr},
     span::{Span, Spanned},
     ty::{FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
-    typeck2::{
+    typeck::{
         coerce::CoerceExt as _,
         errors, exprs,
         ns::{Env, ScopeKind},

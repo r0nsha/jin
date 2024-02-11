@@ -9,7 +9,7 @@ use crate::{
     middle::{IsUfcs, Mutability},
     span::Spanned as _,
     ty::{Ty, TyKind},
-    typeck2::{
+    typeck::{
         attrs,
         lookup::{ImportLookupResult, Query},
         Typeck,

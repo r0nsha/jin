@@ -81,11 +81,11 @@ impl At<'_, '_> {
 }
 
 impl Ty {
-    pub fn unify(self, other: Ty, cx: &Typeck, options: UnifyOptions) -> UnifyResult {
+    pub(super) fn unify(self, other: Ty, cx: &Typeck, options: UnifyOptions) -> UnifyResult {
         UnifyCx { cx, options }.unify_ty_ty(self, other)
     }
 
-    pub fn can_unify(self, other: Ty, cx: &Typeck, options: UnifyOptions) -> UnifyResult {
+    pub(super) fn can_unify(self, other: Ty, cx: &Typeck, options: UnifyOptions) -> UnifyResult {
         let snapshot = cx.storage.borrow_mut().snapshot();
         let result = self.unify(other, cx, options);
         cx.storage.borrow_mut().rollback_to(snapshot);

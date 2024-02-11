@@ -14,7 +14,7 @@ use crate::{
     qpath::QPath,
     span::Spanned as _,
     ty::{FnTyFlags, Ty, TyKind},
-    typeck2::{
+    typeck::{
         attrs, errors, exprs, fns,
         lookup::{FnCandidate, Query},
         ns,

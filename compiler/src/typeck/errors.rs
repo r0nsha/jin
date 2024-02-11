@@ -1,15 +1,10 @@
 use crate::{
-    ast,
-    ast::Ast,
     db::{Adt, AdtField, AdtId, Db, DefId, ModuleId},
     diagnostics::{Diagnostic, Label},
     middle::{BinOp, UnOp},
     span::{Span, Spanned},
     ty::Ty,
-    typeck::{
-        env::{FnCandidate, FnQuery, Query},
-        resolution_state::CyclicItemErr,
-    },
+    typeck::lookup::{FnCandidate, FnQuery, Query},
     word::Word,
 };
 
@@ -101,8 +96,8 @@ pub fn generic_expected_found(expected: &str, found: &str, span: Span) -> Diagno
 
 pub fn multiple_item_def_err(prev_span: Span, dup_name: Word) -> Diagnostic {
     Diagnostic::error(format!("item `{dup_name}` is defined multiple times"))
-        .with_label(Label::primary(dup_name.span(), format!("`{dup_name}` defined again here")))
-        .with_label(Label::secondary(prev_span, format!("first definition of `{dup_name}`")))
+        .with_label(Label::primary(dup_name.span(), format!("`{dup_name}` defined here")))
+        .with_label(Label::secondary(prev_span, format!("`{dup_name}` also defined here")))
         .with_note("you can only define items once in a module (except functions)")
 }
 
@@ -117,8 +112,8 @@ pub fn multiple_fn_def_err(
         candidate.display(db),
         db[in_module].qpath
     ))
-    .with_label(Label::primary(candidate.word.span(), "defined again here"))
-    .with_label(Label::secondary(prev_span, "previous definition here"))
+    .with_label(Label::primary(candidate.word.span(), "defined here"))
+    .with_label(Label::secondary(prev_span, "also defined here"))
     .with_note("functions may be overloaded by their parameters' types and names")
 }
 
@@ -163,21 +158,17 @@ pub fn invalid_un_op(db: &Db, op: UnOp, ty: Ty, span: Span) -> Diagnostic {
         .with_label(Label::primary(span, format!("invalid use of `{op}`")))
 }
 
-pub fn cyclic_def(ast: &Ast, origin_span: Span, err: CyclicItemErr) -> Diagnostic {
-    let reference_span = ast.find_item(err.causee).expect("item to exist").span();
-
-    Diagnostic::error("cycle detected while checking definition")
-        .with_label(Label::primary(origin_span, "definition here"))
-        .with_label(Label::secondary(reference_span, "cyclic reference here"))
-}
+// pub fn cyclic_def(ast: &Ast, origin_span: Span, err: CyclicItemErr) ->
+// Diagnostic {     let reference_span = ast.find_item(err.causee).expect("item
+// to exist").span();
+//
+//     Diagnostic::error("cycle detected while checking definition")
+//         .with_label(Label::primary(origin_span, "definition here"))
+//         .with_label(Label::secondary(reference_span, "cyclic reference
+// here")) }
 
 pub fn name_defined_twice(kind: &str, name: Word, prev_span: Span) -> Diagnostic {
     Diagnostic::error(format!("the name `{name}` is already used as a {kind} name"))
         .with_label(Label::primary(name.span(), format!("`{name}` used again here")))
         .with_label(Label::secondary(prev_span, format!("first use of `{name}`")))
-}
-
-pub fn invalid_attr_placement(attr: &ast::Attr, applies_to: &str) -> Diagnostic {
-    Diagnostic::error(format!("attribute `{}` should be applied to {}", attr.id, applies_to))
-        .with_label(Label::primary(attr.span, "invalid attribute placement"))
 }

@@ -9,7 +9,7 @@ use crate::{
     middle::{CallConv, IsUfcs, Vis},
     span::{Span, Spanned as _},
     ty::{printer::FnTyPrinter, FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
-    typeck2::{
+    typeck::{
         coerce::{Coerce as _, CoerceOptions},
         errors,
         ns::{AssocTy, Env, NsDef},

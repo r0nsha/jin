@@ -5,7 +5,7 @@ use crate::{
     middle::TyExpr,
     span::{Span, Spanned},
     ty::{FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
-    typeck2::{errors, lookup::PathLookup, ns::Env, Typeck},
+    typeck::{errors, lookup::PathLookup, ns::Env, Typeck},
     word::Word,
 };
 

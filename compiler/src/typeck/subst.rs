@@ -8,46 +8,44 @@ use crate::{
     typeck::{TyStorage, Typeck},
 };
 
-impl<'db> Typeck<'db> {
-    pub fn subst(&mut self) {
-        let mut cx =
-            SubstCx { storage: &mut self.storage.borrow_mut(), unbound_tys: FxHashMap::default() };
+pub(super) fn subst(cx: &mut Typeck<'_>) {
+    let mut scx =
+        SubstCx { storage: &mut cx.storage.borrow_mut(), unbound_tys: FxHashMap::default() };
 
-        for f in &mut self.hir.fns {
-            f.subst(&mut cx);
-        }
-
-        for let_ in &mut self.hir.lets {
-            let_.subst(&mut cx);
-        }
-
-        for let_ in &mut self.hir.extern_lets {
-            let_.subst(&mut cx);
-        }
-
-        for coercions in self.hir.coercions.values_mut() {
-            for coercion in coercions.iter_mut() {
-                coercion.target = cx.subst_ty(coercion.target, Span::unknown());
-            }
-        }
-
-        let diagnostics: Vec<_> = cx
-            .unbound_tys
-            .into_iter()
-            .map(|(span, ty)| {
-                Diagnostic::error(format!("type annotations needed for `{}`", ty.display(self.db)))
-                    .with_label(Label::primary(span, "cannot infer type"))
-            })
-            .collect();
-
-        self.db.diagnostics.emit_many(diagnostics);
-
-        self.db
-            .emit_file(crate::db::build_options::EmitOption::Hir, |db, file| {
-                self.hir.pretty_print(db, file)
-            })
-            .expect("emitting hir failed");
+    for f in &mut cx.hir.fns {
+        f.subst(&mut scx);
     }
+
+    for let_ in &mut cx.hir.lets {
+        let_.subst(&mut scx);
+    }
+
+    for let_ in &mut cx.hir.extern_lets {
+        let_.subst(&mut scx);
+    }
+
+    for coercions in cx.hir.coercions.values_mut() {
+        for coercion in coercions.iter_mut() {
+            coercion.target = scx.subst_ty(coercion.target, Span::unknown());
+        }
+    }
+
+    let diagnostics: Vec<_> = scx
+        .unbound_tys
+        .into_iter()
+        .map(|(span, ty)| {
+            Diagnostic::error(format!("type annotations needed for `{}`", ty.display(cx.db)))
+                .with_label(Label::primary(span, "cannot infer type"))
+        })
+        .collect();
+
+    cx.db.diagnostics.emit_many(diagnostics);
+
+    cx.db
+        .emit_file(crate::db::build_options::EmitOption::Hir, |db, file| {
+            cx.hir.pretty_print(db, file)
+        })
+        .expect("emitting hir failed");
 }
 
 struct SubstCx<'db> {

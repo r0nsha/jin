@@ -11,7 +11,7 @@ use crate::{
     span::{Span, Spanned},
     sym,
     ty::{FnTy, FnTyParam, InferTy, Instantiation, Ty, TyKind},
-    typeck2::{
+    typeck::{
         coerce::{CoerceExt as _, CoerceOptions},
         errors, fns, items,
         lookup::{AssocLookup, FnQuery, Query},
