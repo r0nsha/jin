@@ -10,7 +10,7 @@ use crate::{
     span::Spanned as _,
     ty::{Ty, TyKind},
     typeck::{
-        attrs,
+        attrs, errors,
         lookup::{ImportLookupResult, Query},
         ItemMap, Typeck,
     },
@@ -170,6 +170,11 @@ fn resolve_import_path(
     // We skip the first part since it is the import root module name
     for &part in import.path.iter().skip(1) {
         let id = cx.lookup().query(from_module, target_module_id, &Query::Name(part))?;
+
+        if !cx.def_to_ty.contains_key(&id) {
+            return Err(errors::expected_module("found an item", part.span()));
+        }
+
         target_module_id = cx.is_module_def(id, part.span())?;
     }
 

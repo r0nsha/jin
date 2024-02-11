@@ -76,7 +76,7 @@ impl<'a> Parser<'a> {
                     )]),
                 ));
             } else {
-                return Err(self.unexpected_token("identifier, {, * or ?"));
+                return Err(self.unexpected_token("identifier, (, * or ?"));
             }
         }
 

@@ -1,0 +1,4 @@
+// import b.val
+import c.val
+
+fn main() = {}
