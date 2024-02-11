@@ -60,11 +60,8 @@ fn define_globs(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ItemMap<ModuleId
         item_to_module_id.insert(item_id, target_module_id);
 
         for uim in imports {
-            match uim {
-                ast::UnqualifiedImport::Glob(is_ufcs, _) => {
-                    insert_glob_target(cx, in_module, target_module_id, *is_ufcs);
-                }
-                ast::UnqualifiedImport::Name(..) => (),
+            if let ast::UnqualifiedImport::Glob(is_ufcs, _) = uim {
+                insert_glob_target(cx, in_module, target_module_id, *is_ufcs);
             }
         }
     }
