@@ -20,7 +20,7 @@ use crate::{
 
 pub(super) fn build_graph(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
     build_graph_nodes(cx, ast)?;
-    dbg!("{:?}", petgraph::dot::Dot::new(&cx.res_map.import_graph));
+    println!("{:?}", petgraph::dot::Dot::new(&cx.res_map.import_graph));
     Ok(())
 }
 
