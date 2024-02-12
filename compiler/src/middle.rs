@@ -278,18 +278,6 @@ pub enum Pat {
 }
 
 impl Pat {
-    #[allow(unused)]
-    pub fn walk(&self, mut f: impl FnMut(&NamePat)) {
-        self.walk_(&mut f);
-    }
-
-    fn walk_(&self, f: &mut impl FnMut(&NamePat)) {
-        match self {
-            Self::Name(n) => f(n),
-            Self::Discard(_) => (),
-        }
-    }
-
     pub fn any(&self, mut f: impl FnMut(&NamePat) -> bool) -> bool {
         self.any_(&mut f)
     }

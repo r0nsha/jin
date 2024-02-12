@@ -11,15 +11,15 @@ use crate::{
         ns::{AssocTy, Env, ScopeKind},
         tyexpr,
         tyexpr::AllowTyHole,
-        ResMap, Typeck,
+        Typeck,
     },
     word::WordMap,
 };
 
-pub(super) fn check(cx: &mut Typeck, res_map: &mut ResMap, ast: &Ast) -> DiagnosticResult<()> {
+pub(super) fn check(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item, id) in ast.items_with_id() {
         if let ast::Item::Type(tydef) = item {
-            check_tydef(cx, res_map, module.id, id, tydef)?;
+            check_tydef(cx, module.id, id, tydef)?;
         }
     }
 
@@ -28,13 +28,12 @@ pub(super) fn check(cx: &mut Typeck, res_map: &mut ResMap, ast: &Ast) -> Diagnos
 
 fn check_tydef(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     tydef: &ast::TyDef,
 ) -> DiagnosticResult<()> {
     let mut env = Env::new(module_id);
-    let adt_id = res_map.item_to_adt.remove(&item_id).expect("to be defined");
+    let adt_id = cx.res_map.item_to_adt.remove(&item_id).expect("to be defined");
 
     env.with_anon_scope(ScopeKind::TyDef, |env| -> DiagnosticResult<()> {
         for tp in &cx.db[adt_id].ty_params {

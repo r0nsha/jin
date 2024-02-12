@@ -10,7 +10,7 @@ use crate::{
     },
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
-    middle::{CallConv, Mutability, Pat},
+    middle::{CallConv, Mutability, NamePat, Pat},
     qpath::QPath,
     span::Spanned as _,
     ty::{FnTyFlags, Ty, TyKind},
@@ -21,18 +21,18 @@ use crate::{
         ns::{AssocTy, Env, ScopeKind},
         tyexpr,
         tyexpr::AllowTyHole,
-        types, ResMap, Typeck,
+        types, Typeck,
     },
     word::{Word, WordMap},
 };
 
-pub(super) fn define(cx: &mut Typeck, res_map: &mut ResMap, ast: &Ast) -> DiagnosticResult<()> {
+pub(super) fn define(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item, id) in ast.items_with_id() {
         match item {
-            ast::Item::Let(let_) => define_let(cx, res_map, module.id, id, let_)?,
-            ast::Item::ExternLet(let_) => define_extern_let(cx, res_map, module.id, id, let_)?,
-            ast::Item::Fn(fun) => define_fn(cx, res_map, module.id, id, fun, None).map(|_| ())?,
-            ast::Item::Type(tydef) => define_tydef(cx, res_map, module.id, id, tydef)?,
+            ast::Item::Let(let_) => define_let(cx, module.id, id, let_)?,
+            ast::Item::ExternLet(let_) => define_extern_let(cx, module.id, id, let_)?,
+            ast::Item::Fn(fun) => define_fn(cx, module.id, id, fun, None).map(|_| ())?,
+            ast::Item::Type(tydef) => define_tydef(cx, module.id, id, tydef)?,
             ast::Item::ExternImport(import) => {
                 attrs::validate(&import.attrs, attrs::Placement::ExternImport)?;
                 cx.db.extern_libs.insert(import.lib.clone());
@@ -46,7 +46,6 @@ pub(super) fn define(cx: &mut Typeck, res_map: &mut ResMap, ast: &Ast) -> Diagno
 
 fn define_let(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     let_: &ast::Let,
@@ -54,13 +53,12 @@ fn define_let(
     attrs::validate(&let_.attrs, attrs::Placement::Let)?;
     let unknown = cx.db.types.unknown;
     let pat = cx.define().global_pat(module_id, &let_.pat, unknown)?;
-    res_map.item_to_pat.insert(item_id, pat);
+    cx.res_map.item_to_pat.insert(item_id, pat);
     Ok(())
 }
 
 fn define_extern_let(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     let_: &ast::ExternLet,
@@ -75,14 +73,13 @@ fn define_extern_let(
         let_.mutability,
     )?;
 
-    res_map.item_to_def.insert(item_id, id);
+    cx.res_map.item_to_def.insert(item_id, id);
 
     Ok(())
 }
 
 fn define_fn(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     fun: &ast::Fn,
@@ -133,14 +130,13 @@ fn define_fn(
         )?,
     };
 
-    res_map.item_to_def.insert(item_id, id);
+    cx.res_map.item_to_def.insert(item_id, id);
 
     Ok(id)
 }
 
 fn define_tydef(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     tydef: &ast::TyDef,
@@ -177,7 +173,7 @@ fn define_tydef(
         Ok(adt_id)
     })?;
 
-    res_map.item_to_adt.insert(item_id, adt_id);
+    cx.res_map.item_to_adt.insert(item_id, adt_id);
 
     Ok(())
 }
@@ -224,15 +220,13 @@ fn check_adt_ty_params(
     Ok(())
 }
 
-pub(super) fn check_sigs(cx: &mut Typeck, res_map: &mut ResMap, ast: &Ast) -> DiagnosticResult<()> {
+pub(super) fn check_sigs(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item, id) in ast.items_with_id() {
         match item {
-            ast::Item::Let(let_) => check_let_item(cx, res_map, module.id, id, let_)?,
-            ast::Item::ExternLet(let_) => check_extern_let(cx, res_map, module.id, id, let_)?,
-            ast::Item::Fn(fun) => check_fn(cx, res_map, module.id, id, fun)?,
-            ast::Item::Assoc(tyname, item) => {
-                check_assoc_item(cx, res_map, module.id, id, *tyname, item)?
-            }
+            ast::Item::Let(let_) => check_let_item(cx, module.id, id, let_)?,
+            ast::Item::ExternLet(let_) => check_extern_let(cx, module.id, id, let_)?,
+            ast::Item::Fn(fun) => check_fn(cx, module.id, id, fun)?,
+            ast::Item::Assoc(tyname, item) => check_assoc_item(cx, module.id, id, *tyname, item)?,
             _ => (),
         }
     }
@@ -242,31 +236,42 @@ pub(super) fn check_sigs(cx: &mut Typeck, res_map: &mut ResMap, ast: &Ast) -> Di
 
 pub(super) fn check_let_item(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     let_: &ast::Let,
 ) -> DiagnosticResult<()> {
     let env = Env::new(module_id);
-    let pat = res_map.item_to_pat.get_mut(&item_id).expect("to be defined");
 
     debug_assert!(let_.ty_expr.is_some());
     let ty = tyexpr::check_optional(cx, &env, let_.ty_expr.as_ref(), AllowTyHole::No)?;
-    assign_pat_ty(cx, pat, ty);
-    res_map.item_to_ty.insert(item_id, ty);
+
+    let pat = cx.res_map.item_to_pat.get(&item_id).cloned().expect("to be defined");
+    let typed_pat = map_typed_pat(cx, pat, ty);
+    cx.res_map.item_to_pat.insert(item_id, typed_pat);
+    cx.res_map.item_to_ty.insert(item_id, ty);
 
     Ok(())
 }
 
+fn map_typed_pat(cx: &mut Typeck<'_>, pat: Pat, ty: Ty) -> Pat {
+    match pat {
+        Pat::Name(name) => {
+            debug_assert!(!name.id.is_null());
+            cx.def_to_ty.insert(name.id, ty);
+            Pat::Name(NamePat { ty, ..name })
+        }
+        Pat::Discard(span) => Pat::Discard(span),
+    }
+}
+
 fn check_extern_let(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     let_: &ast::ExternLet,
 ) -> DiagnosticResult<()> {
     let env = Env::new(module_id);
-    let id = res_map.item_to_def.remove(&item_id).expect("to be defined");
+    let id = cx.res_map.item_to_def.remove(&item_id).expect("to be defined");
     let ty = tyexpr::check(cx, &env, &let_.ty_expr, AllowTyHole::No)?;
     cx.def_to_ty.insert(id, ty);
     cx.hir.extern_lets.push(hir::ExternLet { module_id, id, word: let_.word, ty, span: let_.span });
@@ -275,26 +280,24 @@ fn check_extern_let(
 
 fn check_fn(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     fun: &ast::Fn,
 ) -> DiagnosticResult<()> {
-    let &id = res_map.item_to_def.get(&item_id).expect("to be defined");
-    check_fn_helper(cx, res_map, module_id, item_id, id, fun, None)
+    let &id = cx.res_map.item_to_def.get(&item_id).expect("to be defined");
+    check_fn_helper(cx, module_id, item_id, id, fun, None)
 }
 
 fn check_assoc_fn(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     fun: &ast::Fn,
     assoc_ty: AssocTy,
 ) -> DiagnosticResult<()> {
     check_assoc_name_overlap(cx, assoc_ty, fun.sig.word)?;
-    let id = define_fn(cx, res_map, module_id, item_id, fun, Some(assoc_ty))?;
-    check_fn_helper(cx, res_map, module_id, item_id, id, fun, Some(assoc_ty))
+    let id = define_fn(cx, module_id, item_id, fun, Some(assoc_ty))?;
+    check_fn_helper(cx, module_id, item_id, id, fun, Some(assoc_ty))
 }
 
 // Checks that a to-be-defined associated name doesn't overlap
@@ -331,7 +334,6 @@ fn check_assoc_name_overlap(
 
 fn check_fn_helper(
     cx: &mut Typeck,
-    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     id: DefId,
@@ -375,7 +377,7 @@ fn check_fn_helper(
     }
 
     cx.def_to_ty.insert(id, sig.ty);
-    res_map.item_to_sig.insert(item_id, sig);
+    cx.res_map.item_to_sig.insert(item_id, sig);
 
     Ok(())
 }
@@ -419,20 +421,8 @@ fn check_intrinsic_fn(
     Ok(())
 }
 
-fn assign_pat_ty(cx: &mut Typeck<'_>, pat: &mut Pat, ty: Ty) {
-    match pat {
-        Pat::Name(name) => {
-            debug_assert!(!name.id.is_null());
-            name.ty = ty;
-            cx.def_to_ty.insert(name.id, ty);
-        }
-        Pat::Discard(_) => (),
-    }
-}
-
 fn check_assoc_item(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     tyname: Word,
@@ -441,7 +431,7 @@ fn check_assoc_item(
     let assoc_ty = check_assoc_item_ty(cx, module_id, tyname)?;
 
     match item {
-        ast::Item::Fn(fun) => check_assoc_fn(cx, res_map, module_id, item_id, fun, assoc_ty),
+        ast::Item::Fn(fun) => check_assoc_fn(cx, module_id, item_id, fun, assoc_ty),
         ast::Item::Let(_)
         | ast::Item::Type(_)
         | ast::Item::Import(_)
@@ -499,17 +489,13 @@ fn check_assoc_item_ty(
     Ok(assoc_ty)
 }
 
-pub(super) fn check_bodies(
-    cx: &mut Typeck<'_>,
-    res_map: &mut ResMap,
-    ast: &Ast,
-) -> DiagnosticResult<()> {
+pub(super) fn check_bodies(cx: &mut Typeck<'_>, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item, id) in ast.items_with_id() {
         match item {
             ast::Item::Let(let_) => {
                 let mut env = Env::new(module.id);
-                let pat = res_map.item_to_pat.remove(&id).expect("to be defined");
-                let ty = res_map.item_to_ty.remove(&id).expect("to be defined");
+                let pat = cx.res_map.item_to_pat.remove(&id).expect("to be defined");
+                let ty = cx.res_map.item_to_ty.remove(&id).expect("to be defined");
                 let value = check_let_body(cx, &mut env, ty, let_)?;
                 cx.hir.lets.push_with_key(|id| hir::Let {
                     id,
@@ -520,9 +506,9 @@ pub(super) fn check_bodies(
                     span: let_.span,
                 });
             }
-            ast::Item::Fn(fun) => check_fn_item_body(cx, res_map, id, fun)?,
+            ast::Item::Fn(fun) => check_fn_item_body(cx, id, fun)?,
             ast::Item::Assoc(_, item) => match item.as_ref() {
-                ast::Item::Fn(fun) => check_fn_item_body(cx, res_map, id, fun)?,
+                ast::Item::Fn(fun) => check_fn_item_body(cx, id, fun)?,
                 ast::Item::Let(_)
                 | ast::Item::Type(_)
                 | ast::Item::Import(_)
@@ -563,12 +549,11 @@ pub(super) fn check_let_body(
 
 pub(super) fn check_fn_item_body(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResMap,
     item_id: ast::GlobalItemId,
     fun: &ast::Fn,
 ) -> DiagnosticResult<()> {
-    let def_id = res_map.item_to_def.remove(&item_id).expect("to be defined");
-    let sig = res_map.item_to_sig.remove(&item_id).expect("to be defined");
+    let def_id = cx.res_map.item_to_def.remove(&item_id).expect("to be defined");
+    let sig = cx.res_map.item_to_sig.remove(&item_id).expect("to be defined");
 
     let mut fun = match &fun.kind {
         ast::FnKind::Bare { body } => fns::check_fn_body(cx, sig, def_id, body, fun.span)?,

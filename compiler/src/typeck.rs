@@ -42,20 +42,19 @@ use crate::{
 
 pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     let mut cx = Typeck::new(db);
-    let mut res_map = ResMap::new();
 
     cx.init_global_env(&ast);
 
-    items::define(&mut cx, &mut res_map, &ast)?;
+    items::define(&mut cx, &ast)?;
     imports::define_qualified_names(&mut cx, &ast)?;
     imports::define_qualified_paths(&mut cx, &ast)?;
     let imported_fns = imports::define_unqualified(&mut cx, &ast)?;
 
-    types::check(&mut cx, &mut res_map, &ast)?;
-    items::check_sigs(&mut cx, &mut res_map, &ast)?;
+    types::check(&mut cx, &ast)?;
+    items::check_sigs(&mut cx, &ast)?;
     imports::fill_imported_fn_candidates(&mut cx, imported_fns)?;
 
-    items::check_bodies(&mut cx, &mut res_map, &ast)?;
+    items::check_bodies(&mut cx, &ast)?;
 
     subst::subst(&mut cx);
 
@@ -74,6 +73,9 @@ pub(super) struct Typeck<'db> {
 
     /// The global namespace, mapped by module
     pub(super) global_env: GlobalEnv,
+
+    /// Mappings used for name and item resolution
+    pub(super) res_map: ResMap,
 
     /// Stores type unification tables
     pub(super) storage: RefCell<TyStorage>,
@@ -130,6 +132,7 @@ impl<'db> Typeck<'db> {
             db,
             hir: Hir::new(),
             global_env: GlobalEnv::new(builtin_tys),
+            res_map: ResMap::new(),
             storage: RefCell::new(TyStorage::new()),
             def_to_ty,
             expr_id: Counter::new(),

@@ -81,7 +81,7 @@ impl Default for Ns {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(super) struct NsDef<T> {
+pub(crate) struct NsDef<T> {
     pub(super) data: T,
     pub(super) module_id: ModuleId,
     pub(super) vis: Vis,
