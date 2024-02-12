@@ -237,9 +237,9 @@ pub(super) enum ImportNode {
 impl fmt::Debug for ImportNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Import(def) => write!(f, "Name({})", def.data),
-            Self::Fn(def) => write!(f, "Fn({})", def.data),
-            Self::Def(def) => write!(f, "Def({})", def.data.data()),
+            Self::Import(def) => write!(f, "Name({}, {:?})", def.data, def.vis),
+            Self::Fn(def) => write!(f, "Fn({}, {:?})", def.data, def.vis),
+            Self::Def(def) => write!(f, "Def({}, {:?})", def.data.data(), def.vis),
         }
     }
 }

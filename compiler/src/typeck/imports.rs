@@ -19,12 +19,13 @@ use crate::{
 };
 
 pub(super) fn build_graph(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
-    build_graph_nodes(cx, ast)?;
+    build_defined_graph_nodes(cx)?;
+    build_import_graph_nodes(cx, ast)?;
     println!("{:?}", petgraph::dot::Dot::new(&cx.res_map.import_graph));
     Ok(())
 }
 
-fn build_graph_nodes(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+fn build_defined_graph_nodes(cx: &mut Typeck) -> DiagnosticResult<()> {
     for (module_id, env) in &cx.global_env.modules {
         for def in env.ns.defs.values() {
             cx.res_map.import_graph.add_node(ImportNode::Def(*def));
@@ -38,6 +39,42 @@ fn build_graph_nodes(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
                 Vis::Public,
                 span,
             )));
+        }
+    }
+
+    Ok(())
+}
+
+fn build_import_graph_nodes(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+    for (module, item) in ast.items() {
+        let ast::Item::Import(import) = item else { continue };
+
+        match &import.kind {
+            ast::ImportKind::Qualified { alias, vis } => {
+                let name = alias.unwrap_or(*import.path.last().unwrap());
+                cx.res_map.import_graph.add_node(ImportNode::Import(NsDef::new(
+                    name.name(),
+                    module.id,
+                    *vis,
+                    name.span(),
+                )));
+            }
+            ast::ImportKind::Unqualified { imports } => {
+                for uim in imports {
+                    match uim {
+                        ast::UnqualifiedImport::Name(name, alias, vis) => {
+                            let name = alias.unwrap_or(*name);
+                            cx.res_map.import_graph.add_node(ImportNode::Import(NsDef::new(
+                                name.name(),
+                                module.id,
+                                *vis,
+                                name.span(),
+                            )));
+                        }
+                        ast::UnqualifiedImport::Glob(_, _) => (),
+                    }
+                }
+            }
         }
     }
 
