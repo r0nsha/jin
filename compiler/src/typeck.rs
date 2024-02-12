@@ -20,6 +20,7 @@ mod unify;
 use std::cell::RefCell;
 
 use ena::unify::{InPlace, InPlaceUnificationTable, Snapshot};
+use petgraph::Graph;
 use rustc_hash::FxHashMap;
 
 use crate::{
@@ -33,7 +34,10 @@ use crate::{
     middle::Pat,
     span::Span,
     ty::{FloatVar, InferTy, IntVar, Ty, TyKind, TyVar},
-    typeck::{builtins::BuiltinTys, ns::GlobalEnv},
+    typeck::{
+        builtins::BuiltinTys,
+        ns::{GlobalEnv, NsDef},
+    },
 };
 
 pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
@@ -199,6 +203,7 @@ pub(super) struct ResMap {
     pub(super) item_to_pat: ItemMap<Pat>,
     pub(super) item_to_ty: ItemMap<Ty>,
     pub(super) item_to_sig: ItemMap<hir::FnSig>,
+    pub(super) import_graph: ImportGraph,
 }
 
 impl ResMap {
@@ -209,6 +214,14 @@ impl ResMap {
             item_to_pat: FxHashMap::default(),
             item_to_ty: FxHashMap::default(),
             item_to_sig: FxHashMap::default(),
+            import_graph: ImportGraph::new(),
         }
     }
+}
+
+pub(super) type ImportGraph = Graph<ImportNode, ()>;
+
+pub(super) enum ImportNode {
+    Name(NsDef<()>),
+    Def(NsDef<DefId>),
 }

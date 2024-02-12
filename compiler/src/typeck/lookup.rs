@@ -353,12 +353,12 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                     ShouldLookupFns::Defs => {
                         if let Some(defs) = env.ns.defined_fns.get(&name) {
                             results.extend(defs.iter().map(|&id| {
-                                LookupResult::Def(NsDef {
-                                    data: id,
+                                LookupResult::Def(NsDef::new(
+                                    id,
                                     module_id,
-                                    vis: Vis::Public,
-                                    span: self.cx.db[id].span,
-                                })
+                                    Vis::Public,
+                                    self.cx.db[id].span,
+                                ))
                             }));
                         }
                     }
