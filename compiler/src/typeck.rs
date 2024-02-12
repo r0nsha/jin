@@ -43,7 +43,8 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     cx.init_global_env(&ast);
 
     items::define(&mut cx, &mut res_map, &ast)?;
-    imports::define_qualified(&mut cx, &ast)?;
+    imports::define_qualified_names(&mut cx, &ast)?;
+    imports::define_qualified_paths(&mut cx, &ast)?;
     let imported_fns = imports::define_unqualified(&mut cx, &ast)?;
 
     types::check(&mut cx, &mut res_map, &ast)?;

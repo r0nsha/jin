@@ -6,7 +6,7 @@ use crate::{
     ast::Ast,
     db::{DefId, DefKind, ModuleId},
     diagnostics::DiagnosticResult,
-    middle::{IsUfcs, Mutability},
+    middle::{IsUfcs, Mutability, Vis},
     span::Spanned as _,
     ty::{Ty, TyKind},
     typeck::{
@@ -14,22 +14,46 @@ use crate::{
         lookup::{ImportLookupResult, Query},
         ItemMap, Typeck,
     },
+    word::Word,
 };
 
-pub(super) fn define_qualified(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+pub(super) fn define_qualified_names(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item) in ast.items() {
         let ast::Item::Import(import) = item else { continue };
         let ast::ImportKind::Qualified(alias, vis) = &import.kind else { continue };
 
-        let in_module = module.id;
-        let target_module_id = import_prologue(cx, in_module, import)?;
-        let name = alias.unwrap_or(*import.path.last().unwrap());
-        let id =
-            cx.define().new_global(in_module, *vis, DefKind::Variable, name, Mutability::Imm)?;
-
-        cx.def_to_ty.insert(id, Ty::new(TyKind::Module(target_module_id)));
+        if import.path.len() == 1 {
+            define_qualified_helper(cx, module.id, import, *alias, *vis)?;
+        }
     }
 
+    Ok(())
+}
+
+pub(super) fn define_qualified_paths(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+    for (module, item) in ast.items() {
+        let ast::Item::Import(import) = item else { continue };
+        let ast::ImportKind::Qualified(alias, vis) = &import.kind else { continue };
+
+        if import.path.len() > 1 {
+            define_qualified_helper(cx, module.id, import, *alias, *vis)?;
+        }
+    }
+
+    Ok(())
+}
+
+pub(super) fn define_qualified_helper(
+    cx: &mut Typeck,
+    in_module: ModuleId,
+    import: &ast::Import,
+    alias: Option<Word>,
+    vis: Vis,
+) -> DiagnosticResult<()> {
+    let target_module_id = import_prologue(cx, in_module, import)?;
+    let name = alias.unwrap_or(*import.path.last().unwrap());
+    let id = cx.define().new_global(in_module, vis, DefKind::Variable, name, Mutability::Imm)?;
+    cx.def_to_ty.insert(id, Ty::new(TyKind::Module(target_module_id)));
     Ok(())
 }
 
@@ -153,9 +177,7 @@ fn resolve_import_path(
     from_module: ModuleId,
     import: &ast::Import,
 ) -> DiagnosticResult<ModuleId> {
-    let module_info = cx.db.find_module_by_path(&import.module_path).unwrap();
-
-    let mut target_module_id = module_info.id;
+    let mut target_module_id = cx.db.find_module_by_path(&import.module_path).unwrap().id;
 
     // We skip the first part since it is the import root module name
     for &part in import.path.iter().skip(1) {
