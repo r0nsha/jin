@@ -11,16 +11,12 @@ use crate::{
         ns::{AssocTy, Env, ScopeKind},
         tyexpr,
         tyexpr::AllowTyHole,
-        ResolutionMap, Typeck,
+        ResMap, Typeck,
     },
     word::WordMap,
 };
 
-pub(super) fn check(
-    cx: &mut Typeck,
-    res_map: &mut ResolutionMap,
-    ast: &Ast,
-) -> DiagnosticResult<()> {
+pub(super) fn check(cx: &mut Typeck, res_map: &mut ResMap, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item, id) in ast.items_with_id() {
         if let ast::Item::Type(tydef) = item {
             check_tydef(cx, res_map, module.id, id, tydef)?;
@@ -32,7 +28,7 @@ pub(super) fn check(
 
 fn check_tydef(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResolutionMap,
+    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     tydef: &ast::TyDef,

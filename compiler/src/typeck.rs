@@ -38,7 +38,7 @@ use crate::{
 
 pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     let mut cx = Typeck::new(db);
-    let mut res_map = ResolutionMap::new();
+    let mut res_map = ResMap::new();
 
     cx.init_global_env(&ast);
 
@@ -193,7 +193,7 @@ impl<'db> Typeck<'db> {
 pub(super) type ItemMap<T> = FxHashMap<ast::GlobalItemId, T>;
 
 /// Various mappings and resolutions from the `define_*` passes
-pub(super) struct ResolutionMap {
+pub(super) struct ResMap {
     pub(super) item_to_def: ItemMap<DefId>,
     pub(super) item_to_adt: ItemMap<AdtId>,
     pub(super) item_to_pat: ItemMap<Pat>,
@@ -201,7 +201,7 @@ pub(super) struct ResolutionMap {
     pub(super) item_to_sig: ItemMap<hir::FnSig>,
 }
 
-impl ResolutionMap {
+impl ResMap {
     pub(super) fn new() -> Self {
         Self {
             item_to_def: FxHashMap::default(),

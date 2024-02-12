@@ -21,16 +21,12 @@ use crate::{
         ns::{AssocTy, Env, ScopeKind},
         tyexpr,
         tyexpr::AllowTyHole,
-        types, ResolutionMap, Typeck,
+        types, ResMap, Typeck,
     },
     word::{Word, WordMap},
 };
 
-pub(super) fn define(
-    cx: &mut Typeck,
-    res_map: &mut ResolutionMap,
-    ast: &Ast,
-) -> DiagnosticResult<()> {
+pub(super) fn define(cx: &mut Typeck, res_map: &mut ResMap, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item, id) in ast.items_with_id() {
         match item {
             ast::Item::Let(let_) => define_let(cx, res_map, module.id, id, let_)?,
@@ -50,7 +46,7 @@ pub(super) fn define(
 
 fn define_let(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResolutionMap,
+    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     let_: &ast::Let,
@@ -64,7 +60,7 @@ fn define_let(
 
 fn define_extern_let(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResolutionMap,
+    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     let_: &ast::ExternLet,
@@ -86,7 +82,7 @@ fn define_extern_let(
 
 fn define_fn(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResolutionMap,
+    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     fun: &ast::Fn,
@@ -144,7 +140,7 @@ fn define_fn(
 
 fn define_tydef(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResolutionMap,
+    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     tydef: &ast::TyDef,
@@ -228,11 +224,7 @@ fn check_adt_ty_params(
     Ok(())
 }
 
-pub(super) fn check_sigs(
-    cx: &mut Typeck,
-    res_map: &mut ResolutionMap,
-    ast: &Ast,
-) -> DiagnosticResult<()> {
+pub(super) fn check_sigs(cx: &mut Typeck, res_map: &mut ResMap, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item, id) in ast.items_with_id() {
         match item {
             ast::Item::Let(let_) => check_let_item(cx, res_map, module.id, id, let_)?,
@@ -250,7 +242,7 @@ pub(super) fn check_sigs(
 
 pub(super) fn check_let_item(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResolutionMap,
+    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     let_: &ast::Let,
@@ -268,7 +260,7 @@ pub(super) fn check_let_item(
 
 fn check_extern_let(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResolutionMap,
+    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     let_: &ast::ExternLet,
@@ -283,7 +275,7 @@ fn check_extern_let(
 
 fn check_fn(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResolutionMap,
+    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     fun: &ast::Fn,
@@ -294,7 +286,7 @@ fn check_fn(
 
 fn check_assoc_fn(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResolutionMap,
+    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     fun: &ast::Fn,
@@ -339,7 +331,7 @@ fn check_assoc_name_overlap(
 
 fn check_fn_helper(
     cx: &mut Typeck,
-    res_map: &mut ResolutionMap,
+    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     id: DefId,
@@ -440,7 +432,7 @@ fn assign_pat_ty(cx: &mut Typeck<'_>, pat: &mut Pat, ty: Ty) {
 
 fn check_assoc_item(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResolutionMap,
+    res_map: &mut ResMap,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     tyname: Word,
@@ -509,7 +501,7 @@ fn check_assoc_item_ty(
 
 pub(super) fn check_bodies(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResolutionMap,
+    res_map: &mut ResMap,
     ast: &Ast,
 ) -> DiagnosticResult<()> {
     for (module, item, id) in ast.items_with_id() {
@@ -571,7 +563,7 @@ pub(super) fn check_let_body(
 
 pub(super) fn check_fn_item_body(
     cx: &mut Typeck<'_>,
-    res_map: &mut ResolutionMap,
+    res_map: &mut ResMap,
     item_id: ast::GlobalItemId,
     fun: &ast::Fn,
 ) -> DiagnosticResult<()> {
