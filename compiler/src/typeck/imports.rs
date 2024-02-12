@@ -71,20 +71,6 @@ fn define_unqualified_names(
 ) -> DiagnosticResult<ImportedFns> {
     let mut imported_fns = ImportedFns::default();
 
-    // TODO: Recognize imported names before resolving lookups
-    // TODO: let imported_names = Map<ModuleId, UstrSet>
-    // TODO: for unqualified_import in items:
-    // TODO:    imported_names.insert(...)
-    // TODO: for unqualified_import in items:
-    // TODO:    if imported_names[module_id].contains(name):
-    // TODO:        skip
-    // TODO:    else:
-    // TODO:        results = lookup_or_imported_name()
-    // TODO:        ...
-    // TODO: for unqualified_import in items:
-    // TODO:    for name in imported_names:
-    // TODO:        resolve_imported_name_to_results(name)
-
     for (module, item, item_id) in ast.items_with_id() {
         let ast::Item::Import(import) = item else { continue };
         let ast::ImportKind::Unqualified(imports) = &import.kind else { continue };
