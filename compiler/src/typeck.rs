@@ -17,11 +17,14 @@ mod tyexpr;
 mod types;
 mod unify;
 
+use core::fmt;
 use std::cell::RefCell;
 
+use data_structures::index_vec::Key as _;
 use ena::unify::{InPlace, InPlaceUnificationTable, Snapshot};
 use petgraph::Graph;
 use rustc_hash::FxHashMap;
+use ustr::Ustr;
 
 use crate::{
     ast,
@@ -46,13 +49,14 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     cx.init_global_env(&ast);
 
     items::define(&mut cx, &ast)?;
-    imports::define_qualified_names(&mut cx, &ast)?;
-    imports::define_qualified_paths(&mut cx, &ast)?;
-    let imported_fns = imports::define_unqualified(&mut cx, &ast)?;
+    imports::build_graph(&mut cx, &ast)?;
+    // imports::define_qualified_names(&mut cx, &ast)?;
+    // imports::define_qualified_paths(&mut cx, &ast)?;
+    // let imported_fns = imports::define_unqualified(&mut cx, &ast)?;
 
     types::check(&mut cx, &ast)?;
     items::check_sigs(&mut cx, &ast)?;
-    imports::fill_imported_fn_candidates(&mut cx, imported_fns)?;
+    // imports::fill_imported_fn_candidates(&mut cx, imported_fns)?;
 
     items::check_bodies(&mut cx, &ast)?;
 
@@ -225,6 +229,17 @@ impl ResMap {
 pub(super) type ImportGraph = Graph<ImportNode, ()>;
 
 pub(super) enum ImportNode {
-    Name(NsDef<()>),
+    Import(NsDef<Ustr>),
+    Fn(NsDef<Ustr>),
     Def(NsDef<DefId>),
+}
+
+impl fmt::Debug for ImportNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Import(def) => write!(f, "Name({})", def.data),
+            Self::Fn(def) => write!(f, "Fn({})", def.data),
+            Self::Def(def) => write!(f, "Def({})", def.data.data()),
+        }
+    }
 }

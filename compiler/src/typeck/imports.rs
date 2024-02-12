@@ -7,15 +7,42 @@ use crate::{
     db::{DefId, DefKind, ModuleId},
     diagnostics::DiagnosticResult,
     middle::{IsUfcs, Mutability, Vis},
-    span::Spanned as _,
+    span::{Span, Spanned as _},
     ty::{Ty, TyKind},
     typeck::{
         attrs, errors,
         lookup::{ImportLookupResult, Query},
-        ItemMap, Typeck,
+        ns::NsDef,
+        ImportNode, ItemMap, Typeck,
     },
     word::Word,
 };
+
+pub(super) fn build_graph(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+    build_graph_nodes(cx, ast)?;
+    dbg!("{:?}", petgraph::dot::Dot::new(&cx.res_map.import_graph));
+    Ok(())
+}
+
+fn build_graph_nodes(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+    for (module_id, env) in &cx.global_env.modules {
+        for def in env.ns.defs.values() {
+            cx.res_map.import_graph.add_node(ImportNode::Def(*def));
+        }
+
+        for (name, ids) in &env.ns.defined_fns {
+            let span = cx.db[ids[0]].span;
+            cx.res_map.import_graph.add_node(ImportNode::Fn(NsDef::new(
+                *name,
+                *module_id,
+                Vis::Public,
+                span,
+            )));
+        }
+    }
+
+    Ok(())
+}
 
 pub(super) fn define_qualified_names(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item) in ast.items() {

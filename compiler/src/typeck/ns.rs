@@ -14,7 +14,7 @@ use crate::{
 
 #[derive(Debug)]
 pub(crate) struct GlobalEnv {
-    modules: FxHashMap<ModuleId, ModuleEnv>,
+    pub(super) modules: FxHashMap<ModuleId, ModuleEnv>,
     pub(super) assoc_ns: FxHashMap<AssocTy, Ns>,
     pub(super) builtin_tys: BuiltinTys,
 }
