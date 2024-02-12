@@ -39,7 +39,7 @@ impl<'a> Parser<'a> {
         if self.is(TokenKind::As) {
             let alias = self.eat_ident()?.word();
             let vis = self.parse_vis();
-            return Ok((path, ImportKind::Qualified(Some(alias), vis)));
+            return Ok((path, ImportKind::Qualified { alias: Some(alias), vis }));
         }
 
         while self.is(TokenKind::Dot) {
@@ -55,25 +55,23 @@ impl<'a> Parser<'a> {
             } else if self.is(TokenKind::As) {
                 let alias = self.eat_ident()?.word();
                 let vis = self.parse_vis();
-                return Ok((path, ImportKind::Qualified(Some(alias), vis)));
+                return Ok((path, ImportKind::Qualified { alias: Some(alias), vis }));
             } else if self.peek_is(TokenKind::OpenParen) {
                 let imports = self.parse_unqualified_imports()?;
-                return Ok((path, ImportKind::Unqualified(imports)));
+                return Ok((path, ImportKind::Unqualified { imports }));
             } else if self.is(TokenKind::Star) {
                 return Ok((
                     path,
-                    ImportKind::Unqualified(vec![UnqualifiedImport::Glob(
-                        IsUfcs::No,
-                        self.last_span(),
-                    )]),
+                    ImportKind::Unqualified {
+                        imports: vec![UnqualifiedImport::Glob(IsUfcs::No, self.last_span())],
+                    },
                 ));
             } else if self.is(TokenKind::QuestionMark) {
                 return Ok((
                     path,
-                    ImportKind::Unqualified(vec![UnqualifiedImport::Glob(
-                        IsUfcs::Yes,
-                        self.last_span(),
-                    )]),
+                    ImportKind::Unqualified {
+                        imports: vec![UnqualifiedImport::Glob(IsUfcs::Yes, self.last_span())],
+                    },
                 ));
             } else {
                 return Err(self.unexpected_token("identifier, (, * or ?"));
@@ -81,7 +79,7 @@ impl<'a> Parser<'a> {
         }
 
         let vis = self.parse_vis();
-        Ok((path, ImportKind::Qualified(None, vis)))
+        Ok((path, ImportKind::Qualified { alias: None, vis }))
     }
 
     fn parse_unqualified_imports(&mut self) -> DiagnosticResult<Vec<UnqualifiedImport>> {

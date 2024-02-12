@@ -20,7 +20,7 @@ use crate::{
 pub(super) fn define_qualified_names(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item) in ast.items() {
         let ast::Item::Import(import) = item else { continue };
-        let ast::ImportKind::Qualified(alias, vis) = &import.kind else { continue };
+        let ast::ImportKind::Qualified { alias, vis } = &import.kind else { continue };
 
         if import.path.len() == 1 {
             define_qualified_helper(cx, module.id, import, *alias, *vis)?;
@@ -33,7 +33,7 @@ pub(super) fn define_qualified_names(cx: &mut Typeck, ast: &Ast) -> DiagnosticRe
 pub(super) fn define_qualified_paths(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item) in ast.items() {
         let ast::Item::Import(import) = item else { continue };
-        let ast::ImportKind::Qualified(alias, vis) = &import.kind else { continue };
+        let ast::ImportKind::Qualified { alias, vis } = &import.kind else { continue };
 
         if import.path.len() > 1 {
             define_qualified_helper(cx, module.id, import, *alias, *vis)?;
@@ -67,7 +67,7 @@ fn define_globs(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ItemMap<ModuleId
 
     for (module, item, item_id) in ast.items_with_id() {
         let ast::Item::Import(import) = item else { continue };
-        let ast::ImportKind::Unqualified(imports) = &import.kind else { continue };
+        let ast::ImportKind::Unqualified { imports } = &import.kind else { continue };
 
         let in_module = module.id;
         let target_module_id = import_prologue(cx, in_module, import)?;
@@ -91,7 +91,7 @@ fn define_unqualified_names(
 
     for (module, item, item_id) in ast.items_with_id() {
         let ast::Item::Import(import) = item else { continue };
-        let ast::ImportKind::Unqualified(imports) = &import.kind else { continue };
+        let ast::ImportKind::Unqualified { imports } = &import.kind else { continue };
 
         let imported_fns_entry = imported_fns.entry(module.id).or_default();
         let in_module = module.id;

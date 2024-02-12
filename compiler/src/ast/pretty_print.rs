@@ -346,12 +346,12 @@ impl PrettyPrint for Import {
 impl PrettyPrint for ImportKind {
     fn pretty_print(&self, cx: &mut PrettyCx) {
         match self {
-            ImportKind::Qualified(alias, _) => {
+            ImportKind::Qualified { alias, vis: _ } => {
                 if let Some(alias) = alias {
                     cx.builder.add_empty_child(format!("as {alias}"));
                 }
             }
-            ImportKind::Unqualified(imports) => {
+            ImportKind::Unqualified { imports } => {
                 for import in imports {
                     import.pretty_print(cx);
                 }

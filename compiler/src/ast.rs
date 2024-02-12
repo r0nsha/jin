@@ -374,8 +374,8 @@ pub struct Import {
 
 #[derive(Debug, Clone)]
 pub enum ImportKind {
-    Qualified(Option<Word>, Vis),
-    Unqualified(Vec<UnqualifiedImport>),
+    Qualified { alias: Option<Word>, vis: Vis },
+    Unqualified { imports: Vec<UnqualifiedImport> },
 }
 
 #[derive(Debug, Clone)]
