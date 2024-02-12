@@ -7,7 +7,7 @@ use crate::{
     db::{Adt, AdtField, AdtId, AdtKind, DefId, DefKind, FnInfo, ModuleId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,
-    middle::{BinOp, CmpOp, IsUfcs, Mutability, UnOp, Vis},
+    middle::{BinOp, CmpOp, IsUfcs, Mutability, UnOp},
     span::{Span, Spanned},
     sym,
     ty::{FnTy, FnTyParam, InferTy, Instantiation, Ty, TyKind},
@@ -614,11 +614,11 @@ fn check_name_struct(
 
     // NOTE: if the named definition is a struct, we want to return its
     // constructor function's type
-    if struct_def.ctor_vis == Vis::Private && cx.db[adt.def_id].scope.module_id != env.module_id() {
+    if struct_def.ctor_vis.is_private() && cx.db[adt.def_id].scope.module_id != env.module_id() {
         let private_field = struct_def
             .fields
             .iter()
-            .find(|f| f.vis == Vis::Private)
+            .find(|f| f.vis.is_private())
             .expect("to have at least one private field");
 
         return Err(Diagnostic::error(format!(
@@ -698,7 +698,7 @@ pub(super) fn check_field_access(
     field: &AdtField,
     span: Span,
 ) -> DiagnosticResult<()> {
-    if field.vis == Vis::Private && cx.db[adt.def_id].scope.module_id != env.module_id() {
+    if field.vis.is_private() && cx.db[adt.def_id].scope.module_id != env.module_id() {
         return Err(Diagnostic::error(format!(
             "field `{}` of type `{}` is private",
             field.name, adt.name

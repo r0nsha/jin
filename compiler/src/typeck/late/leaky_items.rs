@@ -2,7 +2,7 @@ use crate::{
     db::{Db, DefId},
     diagnostics::{Diagnostic, Label},
     hir::{FnSig, Hir},
-    middle::{Pat, Vis},
+    middle::Pat,
     span::{Span, Spanned},
     ty::Ty,
 };
@@ -18,7 +18,7 @@ struct LeakyItems<'db> {
 impl LeakyItems<'_> {
     fn run(&mut self, hir: &Hir) {
         for f in &hir.fns {
-            if self.db[f.def_id].scope.vis == Vis::Public {
+            if self.db[f.def_id].scope.vis.is_public() {
                 self.sig(&f.sig);
             }
         }
@@ -46,7 +46,7 @@ impl LeakyItems<'_> {
     fn def(&mut self, id: DefId, ty: Ty) {
         let def = &self.db[id];
 
-        if def.scope.vis == Vis::Public {
+        if def.scope.vis.is_public() {
             self.ty(ty, def.span, &format!("`{}`", def.name));
         }
     }

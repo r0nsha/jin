@@ -17,6 +17,24 @@ pub enum Vis {
     Private,
 }
 
+impl Vis {
+    /// Returns `true` if the vis is [`Public`].
+    ///
+    /// [`Public`]: Vis::Public
+    #[must_use]
+    pub fn is_public(&self) -> bool {
+        matches!(self, Self::Public)
+    }
+
+    /// Returns `true` if the vis is [`Private`].
+    ///
+    /// [`Private`]: Vis::Private
+    #[must_use]
+    pub fn is_private(&self) -> bool {
+        matches!(self, Self::Private)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Mutability {
     Imm,

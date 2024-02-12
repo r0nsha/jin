@@ -605,11 +605,8 @@ impl StructDef {
     }
 
     pub fn fill_ctor_vis(&mut self) {
-        self.ctor_vis = if self.fields.iter().any(|f| f.vis == Vis::Private) {
-            Vis::Private
-        } else {
-            Vis::Public
-        };
+        self.ctor_vis =
+            if self.fields.iter().any(|f| f.vis.is_private()) { Vis::Private } else { Vis::Public };
     }
 
     pub fn is_infinitely_sized(&self, db: &Db) -> Option<&AdtField> {

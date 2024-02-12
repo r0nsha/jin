@@ -427,7 +427,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
     #[inline]
     fn can_access_ex(&self, from_module: ModuleId, in_module: ModuleId, vis: Vis) -> bool {
-        vis == Vis::Public || from_module == in_module
+        vis.is_public() || from_module == in_module
     }
 }
 
