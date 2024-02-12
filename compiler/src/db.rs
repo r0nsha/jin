@@ -184,10 +184,6 @@ impl Db {
         Ok((name, source_id))
     }
 
-    pub fn adt_def(&self, adt_id: AdtId) -> Option<&Def> {
-        self.adts.get(adt_id).and_then(|s| self.defs.get(s.def_id))
-    }
-
     pub fn emit_file(
         &self,
         opt: EmitOption,

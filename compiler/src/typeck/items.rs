@@ -111,8 +111,8 @@ fn define_fn(
 
             let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis: fun.vis };
 
-            if let Some(def) = cx.global_env.module(module_id).ns.defs.get(&name) {
-                return Err(errors::multiple_item_def_err(def.span, fun.sig.word));
+            if let Some(span) = cx.global_env.module(module_id).ns.name_span(name) {
+                return Err(errors::multiple_item_def_err(span, fun.sig.word));
             }
 
             let id = Def::alloc(

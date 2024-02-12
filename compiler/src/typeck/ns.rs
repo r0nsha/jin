@@ -68,6 +68,10 @@ impl Ns {
     pub(super) fn new() -> Self {
         Self { defs: UstrMap::default(), fns: UstrMap::default(), defined_fns: UstrMap::default() }
     }
+
+    pub(super) fn name_span(&self, name: Ustr) -> Option<Span> {
+        self.defs.get(&name).map(|n| n.span)
+    }
 }
 
 impl Default for Ns {
