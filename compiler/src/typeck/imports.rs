@@ -18,21 +18,16 @@ use crate::{
 
 pub(super) fn define_qualified(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
     for (module, item) in ast.items() {
-        if let ast::Item::Import(import) = item {
-            if let ast::ImportKind::Qualified(alias, vis) = &import.kind {
-                let in_module = module.id;
-                let target_module_id = import_prologue(cx, in_module, import)?;
-                let name = alias.unwrap_or(*import.path.last().unwrap());
-                let id = cx.define().new_global(
-                    in_module,
-                    *vis,
-                    DefKind::Variable,
-                    name,
-                    Mutability::Imm,
-                )?;
-                cx.def_to_ty.insert(id, Ty::new(TyKind::Module(target_module_id)));
-            }
-        }
+        let ast::Item::Import(import) = item else { continue };
+        let ast::ImportKind::Qualified(alias, vis) = &import.kind else { continue };
+
+        let in_module = module.id;
+        let target_module_id = import_prologue(cx, in_module, import)?;
+        let name = alias.unwrap_or(*import.path.last().unwrap());
+        let id =
+            cx.define().new_global(in_module, *vis, DefKind::Variable, name, Mutability::Imm)?;
+
+        cx.def_to_ty.insert(id, Ty::new(TyKind::Module(target_module_id)));
     }
 
     Ok(())
@@ -55,9 +50,8 @@ fn define_globs(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ItemMap<ModuleId
         item_to_module_id.insert(item_id, target_module_id);
 
         for uim in imports {
-            if let ast::UnqualifiedImport::Glob(is_ufcs, _) = uim {
-                insert_glob_target(cx, in_module, target_module_id, *is_ufcs);
-            }
+            let ast::UnqualifiedImport::Glob(is_ufcs, _) = uim else { continue };
+            insert_glob_target(cx, in_module, target_module_id, *is_ufcs);
         }
     }
 
