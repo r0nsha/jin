@@ -169,10 +169,10 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             .into_iter()
             .map(|res| match res {
                 LookupResult::Def(def) => {
-                    if matches!(self.cx.db[def.id].kind.as_ref(), DefKind::Fn(FnInfo::Bare)) {
-                        ImportLookupResult::Fn(def.id)
+                    if matches!(self.cx.db[def.data].kind.as_ref(), DefKind::Fn(FnInfo::Bare)) {
+                        ImportLookupResult::Fn(def.data)
                     } else {
-                        ImportLookupResult::Def(def.id)
+                        ImportLookupResult::Def(def.data)
                     }
                 }
                 LookupResult::Fn(_) => unreachable!("candidates are not filled at this stage"),
@@ -318,11 +318,11 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
         match filtered_results.len() {
             0 => unreachable!(),
-            1 => Ok(filtered_results.first().map(LookupResult::id)),
+            1 => Ok(filtered_results.first().map(LookupResult::def_id)),
             _ => Err(Diagnostic::error(format!("ambiguous use of item `{}`", name))
                 .with_label(Label::primary(span, "used here"))
                 .with_labels(filtered_results.iter().map(|res| {
-                    let def = &self.cx.db[res.id()];
+                    let def = &self.cx.db[res.def_id()];
                     Label::secondary(def.span, format!("`{}` is defined here", def.name))
                 }))),
         }
@@ -354,7 +354,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                         if let Some(defs) = env.ns.defined_fns.get(&name) {
                             results.extend(defs.iter().map(|&id| {
                                 LookupResult::Def(NsDef {
-                                    id,
+                                    data: id,
                                     module_id,
                                     vis: Vis::Public,
                                     span: self.cx.db[id].span,
@@ -433,14 +433,14 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
 #[derive(Debug, Clone)]
 pub(super) enum LookupResult {
-    Def(NsDef),
+    Def(NsDef<DefId>),
     Fn(FnCandidate),
 }
 
 impl LookupResult {
-    pub(super) fn id(&self) -> DefId {
+    pub(super) fn def_id(&self) -> DefId {
         match self {
-            Self::Def(n) => n.id,
+            Self::Def(n) => n.data,
             Self::Fn(c) => c.id,
         }
     }

@@ -59,7 +59,7 @@ impl Default for ModuleEnv {
 
 #[derive(Debug)]
 pub(super) struct Ns {
-    pub(super) defs: UstrMap<NsDef>,
+    pub(super) defs: UstrMap<NsDef<DefId>>,
     pub(super) fns: UstrMap<FnCandidateSet>,
     pub(super) defined_fns: UstrMap<Vec<DefId>>,
 }
@@ -77,16 +77,16 @@ impl Default for Ns {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(super) struct NsDef {
-    pub(super) id: DefId,
+pub(super) struct NsDef<T> {
+    pub(super) data: T,
     pub(super) module_id: ModuleId,
     pub(super) vis: Vis,
     pub(super) span: Span,
 }
 
-impl NsDef {
-    pub(super) fn new(id: DefId, module_id: ModuleId, vis: Vis, span: Span) -> Self {
-        Self { id, module_id, vis, span }
+impl<T> NsDef<T> {
+    pub(super) fn new(data: T, module_id: ModuleId, vis: Vis, span: Span) -> Self {
+        Self { data, module_id, vis, span }
     }
 }
 
