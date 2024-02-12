@@ -11,7 +11,7 @@ fn i() = {
     println("signed:")
 
     let a: i64 = 1
-    let b: i64 = I64_MAX
+    let b: i64 = i64_max
 
     // a + b
     // a - b
@@ -22,7 +22,7 @@ fn u() = {
     println("unsigned:")
 
     let a: u8 = 2
-    let b: u8 = U8_MAX
+    let b: u8 = u8_max
 
     // a + b
     // a - b

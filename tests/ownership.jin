@@ -27,12 +27,12 @@ fn use_after_move_scoped() = {
 	}
 }	
 
-let GLOBAL_INT: int = 1
-let GLOBAL_NUM: Num = Num(1)
+let global_int: int = 1
+let global_num: Num = Num(1)
 
 fn move_out_of_global() = {
-	let x = GLOBAL_INT // Ok
-	//let y = GLOBAL_NUM // Error!
+	let x = global_int // Ok
+	//let y = global_num // Error!
 }
 
 fn move_into_for() = {

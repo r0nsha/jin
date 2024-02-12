@@ -1,31 +1,31 @@
-let I8_MIN*: i8 = -128
-let I8_MAX*: i8 = 127
+let i8_min*: i8 = -128
+let i8_max*: i8 = 127
  
-let I16_MIN*: i16 = -32_768
-let I16_MAX*: i16 = 32_767
+let i16_min*: i16 = -32_768
+let i16_max*: i16 = 32_767
  
-let I32_MIN*: i32 = -2_147_483_648
-let I32_MAX*: i32 = 2_147_483_647
+let i32_min*: i32 = -2_147_483_648
+let i32_max*: i32 = 2_147_483_647
  
-let I64_MIN*: i64 = -9_223_372_036_854_775_808
-let I64_MAX*: i64 = 9_223_372_036_854_775_807
+let i64_min*: i64 = -9_223_372_036_854_775_808
+let i64_max*: i64 = 9_223_372_036_854_775_807
 
 // TODO: Consider 32bit platforms!
-let INT_MIN*: int = I64_MIN
-let INT_MAX*: int = I64_MAX
+let int_min*: int = i64_min
+let int_max*: int = i64_max
 
-let U8_MIN*: u8 = 0
-let U8_MAX*: u8 = 255
+let u8_min*: u8 = 0
+let u8_max*: u8 = 255
 
-let U16_MIN*: u16 = 0
-let U16_MAX*: u16 = 65_535
+let u16_min*: u16 = 0
+let u16_max*: u16 = 65_535
 
-let U32_MIN*: u32 = 0
-let U32_MAX*: u32 = 4_294_967_295
+let u32_min*: u32 = 0
+let u32_max*: u32 = 4_294_967_295
 
-let U64_MIN*: u64 = 0
-let U64_MAX*: u64 = 18_446_744_073_709_551_615
+let u64_min*: u64 = 0
+let u64_max*: u64 = 18_446_744_073_709_551_615
 
 // TODO: Consider 32bit platforms!
-let UINT_MIN*: uint = U64_MIN
-let UINT_MAX*: uint = U64_MAX
+let uint_min*: uint = u64_min
+let uint_max*: uint = u64_max

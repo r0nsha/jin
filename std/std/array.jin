@@ -58,7 +58,7 @@ fn clear*[T](self: &mut Array[T]) = {
 
 fn grow[T](self: &mut Array[T]) = {
 	let new_cap = if self.buf.cap == 0 {
-		MIN_CAP
+		min_cap
 	} else {
 		self.buf.cap * 2
 	}
@@ -68,4 +68,4 @@ fn grow[T](self: &mut Array[T]) = {
 	unsafe intrinsics.forget(&old)
 }
 
-let MIN_CAP: uint = 4
+let min_cap: uint = 4
