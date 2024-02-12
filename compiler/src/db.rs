@@ -322,7 +322,7 @@ pub struct ScopeInfo {
 #[derive(Debug, Clone)]
 pub enum DefKind {
     Fn(FnInfo),
-    Ty(Ty),
+    BuiltinTy(Ty),
     Adt(AdtId),
     ExternGlobal,
     Global,
@@ -337,11 +337,31 @@ impl DefKind {
 
     #[must_use]
     pub fn as_ty(&self) -> Option<&Ty> {
-        if let Self::Ty(v) = self {
+        if let Self::BuiltinTy(v) = self {
             Some(v)
         } else {
             None
         }
+    }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Fn(fi) => match fi {
+                FnInfo::Bare => "function",
+                FnInfo::Extern => "extern function",
+            },
+            Self::BuiltinTy(_) => "builtin type",
+            Self::Adt(_) => "type",
+            Self::ExternGlobal => "extern let",
+            Self::Global => "let",
+            Self::Variable => "variable",
+        }
+    }
+}
+
+impl fmt::Display for DefKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(self.as_str())
     }
 }
 

@@ -158,7 +158,7 @@ pub(super) fn define_ty_params(
 
         let id = cx.define().new_local(
             env,
-            DefKind::Ty(ty),
+            DefKind::BuiltinTy(ty),
             tp.word,
             Mutability::Imm,
             TyKind::Type(ty).into(),
@@ -203,7 +203,7 @@ pub(super) fn try_extract_assoc_ty(cx: &Typeck<'_>, id: DefId) -> Option<AssocTy
 
     match def.kind.as_ref() {
         DefKind::Adt(adt_id) => Some(AssocTy::Adt(*adt_id)),
-        DefKind::Ty(ty) => Some(AssocTy::BuiltinTy(*ty)),
+        DefKind::BuiltinTy(ty) => Some(AssocTy::BuiltinTy(*ty)),
         _ => None,
     }
 }

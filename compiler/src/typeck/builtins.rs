@@ -73,7 +73,7 @@ impl BuiltinTys {
             db,
             QPath::from(name),
             scope_info,
-            DefKind::Ty(ty),
+            DefKind::BuiltinTy(ty),
             Mutability::Imm,
             Span::unknown(),
         );

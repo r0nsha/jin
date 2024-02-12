@@ -1246,7 +1246,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let id = self.cx.get_or_create_struct_ctor(*adt_id);
                 self.create_value(self.cx.mir.fn_sigs[id].ty, ValueKind::Fn(id))
             }
-            DefKind::Ty(_) => unreachable!("{:?}", &self.cx.db[id]),
+            DefKind::BuiltinTy(_) => unreachable!("{:?}", &self.cx.db[id]),
         };
 
         if !instantiation.is_empty() {

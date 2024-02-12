@@ -107,7 +107,7 @@ fn check_path(
             let def = &cx.db[id];
 
             match def.kind.as_ref() {
-                DefKind::Ty(ty) => {
+                DefKind::BuiltinTy(ty) => {
                     if targs.is_some() {
                         Err(Diagnostic::error(format!(
                             "type `{}` doesn't expect any type arguments",

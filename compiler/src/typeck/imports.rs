@@ -184,7 +184,7 @@ fn resolve_import_path(
         let id = cx.lookup().query(from_module, target_module_id, &Query::Name(part))?;
 
         if !cx.def_to_ty.contains_key(&id) {
-            return Err(errors::expected_module("found an item", part.span()));
+            return Err(errors::expected_module(format!("found {}", cx.db[id].kind), part.span()));
         }
 
         target_module_id = cx.is_module_def(id, part.span())?;
