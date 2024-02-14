@@ -4,7 +4,7 @@ use itertools::Itertools as _;
 use ustr::Ustr;
 
 use crate::{
-    db::{AdtKind, Db, DefId, DefKind, FnInfo, ModuleId, UnionDef, Variant, VariantId},
+    db::{AdtKind, Db, DefId, ModuleId, UnionDef, Variant, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{CallConv, IsUfcs},
     span::{Span, Spanned as _},
@@ -146,41 +146,6 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                     .with_notes(candidates.into_iter().map(|c| c.display(self.cx.db).to_string())))
             }
         }
-    }
-
-    pub(super) fn import(
-        &self,
-        from_module: ModuleId,
-        in_module: ModuleId,
-        word: Word,
-    ) -> DiagnosticResult<Vec<ImportLookupResult>> {
-        let results = self.many(in_module, word.name(), ShouldLookupFns::Defs, IsUfcs::No);
-
-        if results.is_empty() {
-            return Err(errors::name_not_found(self.cx.db, from_module, in_module, word));
-        }
-
-        let filtered_results = self.keep_accessible_lookup_results(from_module, results);
-        if filtered_results.is_empty() {
-            return Err(Diagnostic::error(format!("`{word}` is private"))
-                .with_label(Label::primary(word.span(), "private definition")));
-        }
-
-        let import_results: Vec<_> = filtered_results
-            .into_iter()
-            .map(|res| match res {
-                LookupResult::Def(def) => {
-                    if matches!(self.cx.db[def.id].kind.as_ref(), DefKind::Fn(FnInfo::Bare)) {
-                        ImportLookupResult::Fn(def.id)
-                    } else {
-                        ImportLookupResult::Def(def.id)
-                    }
-                }
-                LookupResult::Fn(_) => unreachable!("candidates are not filled at this stage"),
-            })
-            .collect();
-
-        Ok(import_results)
     }
 
     pub fn path(&self, from_module: ModuleId, path: &[Word]) -> DiagnosticResult<PathLookup> {
@@ -344,23 +309,9 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
             if let Some(def) = env.ns.defs.get(&name) {
                 results.push(LookupResult::Def(*def));
-            } else {
-                match should_lookup_fns {
-                    ShouldLookupFns::Candidates => {
-                        if let Some(candidates) = env.ns.fns.get(&name) {
-                            results.extend(candidates.iter().cloned().map(LookupResult::Fn));
-                        }
-                    }
-                    ShouldLookupFns::Defs => {
-                        if let Some(defs) = env.ns.defined_fns.get(&name) {
-                            results.extend(
-                                defs.iter().map(|&id| {
-                                    LookupResult::Def(NsDef::from_def_id(self.cx.db, id))
-                                }),
-                            );
-                        }
-                    }
-                    ShouldLookupFns::No => (),
+            } else if let ShouldLookupFns::Candidates = should_lookup_fns {
+                if let Some(candidates) = env.ns.fns.get(&name) {
+                    results.extend(candidates.iter().cloned().map(LookupResult::Fn));
                 }
             }
         }
@@ -418,12 +369,6 @@ impl LookupResult {
             Self::Fn(c) => c.id,
         }
     }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub(super) enum ImportLookupResult {
-    Def(DefId),
-    Fn(DefId),
 }
 
 #[derive(Debug, Clone)]
@@ -711,6 +656,5 @@ impl<'a> FnQuery<'a> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ShouldLookupFns {
     Candidates,
-    Defs,
     No,
 }
