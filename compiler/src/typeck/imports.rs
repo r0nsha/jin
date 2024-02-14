@@ -9,7 +9,7 @@ use ustr::{Ustr, UstrMap};
 use crate::{
     ast,
     ast::Ast,
-    db::{DefId, DefKind, ModuleId},
+    db::{DefId, DefKind, FnInfo, ModuleId},
     diagnostics::DiagnosticResult,
     middle::{IsUfcs, Mutability, Vis},
     span::{Span, Spanned as _},
@@ -273,18 +273,23 @@ impl<'db, 'cx> Define<'db, 'cx> {
         // Resolve the entire import path, recursing if needed
         let in_module = imp.module_id;
         let resolved = self.resolve_import_path(imports, imp)?;
-        self.resolved.entry(in_module).or_default().insert(imp.alias.name(), resolved);
 
         // Insert imported modules as UFCS targets implicitly.
         // This is done because always adding `?` whenever we import any type is
         // really annoying... I couldn't find any issues with this yet, but if
         // some do pop up, we'll need to find a more clever solution for this
         // redundancy.
-        let res_module_id = match resolved {
-            Resolved::Def(id) => self.cx.db[id].scope.module_id,
-            Resolved::Fn(module_id, _) => module_id,
+        let (resolved, res_module_id) = match resolved {
+            Resolved::Module(module_id) => {
+                let id = self.define_module(imp, module_id)?;
+                (Resolved::Def(id), module_id)
+            }
+            Resolved::Def(id) => (resolved, self.cx.db[id].scope.module_id),
+            Resolved::Fn(module_id, _) => (resolved, module_id),
         };
         self.insert_glob_target(in_module, res_module_id, IsUfcs::Yes);
+
+        self.resolved.entry(in_module).or_default().insert(imp.alias.name(), resolved);
 
         Ok(resolved)
     }
@@ -301,13 +306,13 @@ impl<'db, 'cx> Define<'db, 'cx> {
             let env = self.cx.global_env.module(curr_module_id);
             let name = part.name();
 
-            if let Some(def) = env.ns.defs.get(&name) {
-                todo!("def")
+            let resolved = if let Some(def) = env.ns.defs.get(&name) {
+                Resolved::Def(def.data)
             } else if let Some(defs) = env.ns.defined_fns.get(&name) {
                 todo!("fn")
             } else if let Some(target_imp) = imports.get(&curr_module_id).and_then(|m| m.get(&name))
             {
-                todo!("import")
+                todo!("resolve import")
             } else {
                 return Err(errors::name_not_found(
                     self.cx.db,
@@ -315,30 +320,36 @@ impl<'db, 'cx> Define<'db, 'cx> {
                     curr_module_id,
                     part,
                 ));
-            }
+            };
 
             match pos {
-                Position::First | Position::Middle => {
-                    todo!("{:?}", pos)
-                    // if !self.cx.def_to_ty.contains_key(&id) {
-                    //     return Err(errors::expected_module(
-                    //         format!("found {}", cx.db[id].kind),
-                    //         part.span(),
-                    //     ));
-                    // }
-                    //
-                    // curr_module_id = self.cx.is_module_def(id, part.span())?;
-                }
-                Position::Last | Position::Only => {
-                    // return Ok(Resolved::Def(()))
-                }
+                Position::First | Position::Middle => match resolved {
+                    Resolved::Module(_) => unreachable!(),
+                    Resolved::Def(id) => {
+                        if !self.cx.def_to_ty.contains_key(&id) {
+                            return Err(errors::expected_module(
+                                format!("found {}", self.cx.db[id].kind),
+                                part.span(),
+                            ));
+                        }
+
+                        curr_module_id = self.cx.is_module_def(id, part.span())?;
+                    }
+                    Resolved::Fn(_, _) => {
+                        return Err(errors::expected_module(
+                            format!("found {}", DefKind::Fn(FnInfo::Bare)),
+                            part.span(),
+                        ));
+                    }
+                },
+                Position::Last | Position::Only => return Ok(resolved),
             }
         }
 
-        self.define_import_package_or_submodule(imp).map(Resolved::Def)
+        Ok(Resolved::Module(imp.root_module_id))
     }
 
-    fn define_import_package_or_submodule(&mut self, imp: &ImportPath) -> DiagnosticResult<DefId> {
+    fn define_module(&mut self, imp: &ImportPath, module_id: ModuleId) -> DiagnosticResult<DefId> {
         let id = self.cx.define().new_global(
             imp.module_id,
             imp.vis,
@@ -346,7 +357,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
             imp.alias,
             Mutability::Imm,
         )?;
-        self.cx.def_to_ty.insert(id, Ty::new(TyKind::Module(imp.root_module_id)));
+        self.cx.def_to_ty.insert(id, Ty::new(TyKind::Module(module_id)));
         Ok(id)
     }
 
@@ -369,6 +380,7 @@ type ResolvedMap = FxHashMap<ModuleId, UstrMap<Resolved>>;
 
 #[derive(Debug, Clone, Copy)]
 enum Resolved {
+    Module(ModuleId),
     Def(DefId),
     Fn(ModuleId, Ustr),
 }
