@@ -1,4 +1,6 @@
-use rustc_hash::FxHashMap;
+use std::iter;
+
+use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
 use crate::{
@@ -13,7 +15,7 @@ use crate::{
         attrs, errors,
         lookup::{ImportLookupResult, Query},
         ns::NsDef,
-        ItemMap, Typeck,
+        ImportNode, ItemMap, Typeck,
     },
     word::Word,
 };
@@ -42,25 +44,30 @@ fn build_graph_nodes(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
 
         match &import.kind {
             ast::ImportKind::Qualified { alias, vis } => {
-                let name = alias.unwrap_or(*import.path.last().unwrap());
-                cx.res_map.import_graph.add_import(NsDef::new(
-                    name.name(),
-                    module.id,
-                    *vis,
-                    name.span(),
-                ));
+                cx.res_map.import_graph.add_import(ImportNode {
+                    path: import.path.clone(),
+                    alias: *alias,
+                    module_id: module.id,
+                    vis: *vis,
+                    span: import.span,
+                });
             }
             ast::ImportKind::Unqualified { imports } => {
                 for uim in imports {
                     match uim {
                         ast::UnqualifiedImport::Name(name, alias, vis) => {
-                            let name = alias.unwrap_or(*name);
-                            cx.res_map.import_graph.add_import(NsDef::new(
-                                name.name(),
-                                module.id,
-                                *vis,
-                                name.span(),
-                            ));
+                            cx.res_map.import_graph.add_import(ImportNode {
+                                path: import
+                                    .path
+                                    .iter()
+                                    .copied()
+                                    .chain(iter::once(*name))
+                                    .collect(),
+                                alias: *alias,
+                                module_id: module.id,
+                                vis: *vis,
+                                span: import.span,
+                            });
                         }
                         ast::UnqualifiedImport::Glob(_, _) => (),
                     }
@@ -73,9 +80,27 @@ fn build_graph_nodes(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
 }
 
 fn build_graph_edges(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+    let mut work = Work::new();
+
+    // TODO: for import in ast
+    // TODO: let mut module_id = import.module_id
+    // TODO: for part in path
+    // TODO: part =
+    // TODO: part =
     println!("{:?}", petgraph::dot::Dot::new(cx.res_map.import_graph.graph()));
     todo!();
     Ok(())
+}
+
+struct Work {
+    queue: Vec<(ModuleId, Ustr)>,
+    visited: FxHashSet<Span>,
+}
+
+impl Work {
+    fn new() -> Self {
+        Self { queue: vec![], visited: FxHashSet::default() }
+    }
 }
 
 pub(super) fn define(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {

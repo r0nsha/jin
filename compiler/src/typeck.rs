@@ -22,6 +22,7 @@ use std::cell::RefCell;
 
 use data_structures::index_vec::Key as _;
 use ena::unify::{InPlace, InPlaceUnificationTable, Snapshot};
+use itertools::Itertools;
 use petgraph::Graph;
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
@@ -34,13 +35,14 @@ use crate::{
     diagnostics::DiagnosticResult,
     hir,
     hir::Hir,
-    middle::Pat,
+    middle::{Pat, Vis},
     span::Span,
     ty::{FloatVar, InferTy, IntVar, Ty, TyKind, TyVar},
     typeck::{
         builtins::BuiltinTys,
         ns::{GlobalEnv, NsDef},
     },
+    word::Word,
 };
 
 pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
@@ -229,42 +231,64 @@ impl ResMap {
 }
 
 #[derive(Debug)]
-pub(super) struct ImportGraph(Graph<ImportNode, ()>);
+pub(super) struct ImportGraph(Graph<ImportGraphNode, ()>);
 
 impl ImportGraph {
     pub(super) fn new() -> Self {
         Self(Graph::new())
     }
 
-    pub(super) fn graph(&self) -> &Graph<ImportNode, ()> {
+    pub(super) fn graph(&self) -> &Graph<ImportGraphNode, ()> {
         &self.0
     }
 
     pub(super) fn add_def(&mut self, id: DefId) {
-        self.0.add_node(ImportNode::Def(id));
+        self.0.add_node(ImportGraphNode::Def(id));
     }
 
     pub(super) fn add_fn(&mut self, module_id: ModuleId, name: Ustr) {
-        self.0.add_node(ImportNode::Fn(module_id, name));
+        self.0.add_node(ImportGraphNode::Fn(module_id, name));
     }
 
-    pub(super) fn add_import(&mut self, def: NsDef<Ustr>) {
-        self.0.add_node(ImportNode::Import(def));
+    pub(super) fn add_import(&mut self, imp: ImportNode) {
+        self.0.add_node(ImportGraphNode::Import(imp));
     }
 }
 
-pub(super) enum ImportNode {
+pub(super) enum ImportGraphNode {
     Def(DefId),
     Fn(ModuleId, Ustr),
-    Import(NsDef<Ustr>),
+    Import(ImportNode),
 }
 
-impl fmt::Debug for ImportNode {
+pub(super) struct ImportNode {
+    pub(super) path: Vec<Word>,
+    pub(super) alias: Option<Word>,
+    pub(super) module_id: ModuleId,
+    pub(super) vis: Vis,
+    pub(super) span: Span,
+}
+
+impl ImportNode {
+    pub(super) fn name(&self) -> Word {
+        self.alias.unwrap_or_else(|| *self.path.last().unwrap())
+    }
+}
+
+impl fmt::Debug for ImportGraphNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Import(def) => write!(f, "Name({}, {:?})", def.data, def.vis),
-            Self::Fn(mid, name) => write!(f, "Fn({mid:?}, {name})"),
             Self::Def(id) => write!(f, "Def({id:?})"),
+            Self::Fn(mid, name) => write!(f, "Fn({mid:?}, {name})"),
+            Self::Import(imp) => {
+                write!(
+                    f,
+                    "Import({:?}, {}, alias: {:?})",
+                    imp.module_id,
+                    imp.path.iter().map(ToString::to_string).join(", "),
+                    imp.alias.as_ref().map(ToString::to_string)
+                )
+            }
         }
     }
 }
