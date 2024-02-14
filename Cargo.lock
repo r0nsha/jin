@@ -548,7 +548,6 @@ dependencies = [
  "libc",
  "owo-colors",
  "path-absolutize",
- "petgraph",
  "pretty",
  "ptree",
  "rustc-hash",

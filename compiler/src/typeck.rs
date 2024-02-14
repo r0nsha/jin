@@ -17,15 +17,10 @@ mod tyexpr;
 mod types;
 mod unify;
 
-use core::fmt;
 use std::cell::RefCell;
 
-use data_structures::index_vec::Key as _;
 use ena::unify::{InPlace, InPlaceUnificationTable, Snapshot};
-use itertools::Itertools;
-use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences, Graph};
 use rustc_hash::FxHashMap;
-use ustr::Ustr;
 
 use crate::{
     ast,
@@ -35,14 +30,10 @@ use crate::{
     diagnostics::DiagnosticResult,
     hir,
     hir::Hir,
-    middle::{Pat, Vis},
+    middle::Pat,
     span::Span,
     ty::{FloatVar, InferTy, IntVar, Ty, TyKind, TyVar},
-    typeck::{
-        builtins::BuiltinTys,
-        ns::{GlobalEnv, NsDef},
-    },
-    word::Word,
+    typeck::{builtins::BuiltinTys, ns::GlobalEnv},
 };
 
 pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
@@ -51,11 +42,7 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     cx.init_global_env(&ast);
 
     items::define(&mut cx, &ast)?;
-    // imports::build_graph(&mut cx, &ast)?;
     let imported_fns = imports::define(&mut cx, &ast)?;
-    // imports::define_qualified_names(&mut cx, &ast)?;
-    // imports::define_qualified_paths(&mut cx, &ast)?;
-    // let imported_fns = imports::define_unqualified(&mut cx, &ast)?;
 
     types::check(&mut cx, &ast)?;
     items::check_sigs(&mut cx, &ast)?;
