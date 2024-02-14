@@ -367,19 +367,14 @@ pub struct UnionVariantField {
 pub struct Import {
     pub attrs: Attrs,
     pub module_path: Utf8PathBuf,
-    pub path: Vec<Word>,
-    pub kind: ImportKind,
+    pub tree: ImportTree,
     pub span: Span,
 }
 
 #[derive(Debug, Clone)]
-pub enum ImportKind {
-    Qualified { alias: Option<Word>, vis: Vis },
-    Unqualified { imports: Vec<UnqualifiedImport> },
-}
-
-#[derive(Debug, Clone)]
-pub enum UnqualifiedImport {
+pub enum ImportTree {
+    Group(Vec<ImportTree>),
+    Path(Word, Box<Self>),
     Name(Word, Option<Word>, Vis),
     Glob(IsUfcs, Span),
 }

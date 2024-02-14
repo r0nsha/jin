@@ -1,5 +1,3 @@
-use std::iter;
-
 use itertools::{Itertools as _, Position};
 use rustc_hash::FxHashMap;
 use ustr::{Ustr, UstrMap};
@@ -24,78 +22,94 @@ pub(super) fn define(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ImportedFns
 }
 
 fn build_imports_map(cx: &Typeck, ast: &Ast) -> DiagnosticResult<ImportsMap> {
-    fn insert_import(map: &mut Imports, name: Word, imp: Import) -> DiagnosticResult<()> {
-        if let Some(prev) = map.imports.insert(name.name(), imp) {
-            Err(errors::multiple_item_def_err(prev.span(), name))
-        } else {
-            Ok(())
-        }
-    }
-
     let mut map = ImportsMap::default();
 
     for (module, item) in ast.items() {
         let ast::Item::Import(import) = item else { continue };
 
         attrs::validate(&import.attrs, attrs::Placement::Import)?;
+
         let entry = map.entry(module.id).or_default();
-
         let root_module_id = cx.db.find_module_by_path(&import.module_path).unwrap().id;
+        BuildImportsMap::new(entry, root_module_id, module.id).build(&import.tree)?;
+    }
 
-        match &import.kind {
-            ast::ImportKind::Qualified { alias, vis } => {
-                let alias = alias.unwrap_or_else(|| *import.path.last().unwrap());
-                insert_import(
-                    entry,
-                    alias,
-                    Import {
-                        root_module_id,
-                        path: import.path.clone(),
-                        alias,
-                        module_id: module.id,
-                        vis: *vis,
-                    },
-                )?;
-            }
-            ast::ImportKind::Unqualified { imports } => {
-                for uim in imports {
-                    match uim {
-                        ast::UnqualifiedImport::Name(name, alias, vis) => {
-                            let alias = alias.unwrap_or(*name);
-                            insert_import(
-                                entry,
-                                alias,
-                                Import {
-                                    root_module_id,
-                                    path: import
-                                        .path
-                                        .iter()
-                                        .copied()
-                                        .chain(iter::once(*name))
-                                        .collect(),
-                                    alias,
-                                    module_id: module.id,
-                                    vis: *vis,
-                                },
-                            )?;
-                        }
-                        ast::UnqualifiedImport::Glob(is_ufcs, span) => {
-                            entry.glob_imports.push(GlobImport {
-                                root_module_id,
-                                path: import.path.clone(),
-                                is_ufcs: *is_ufcs,
-                                module_id: module.id,
-                                vis: Vis::Private,
-                                span: *span,
-                            });
-                        }
-                    }
+    Ok(map)
+}
+
+struct BuildImportsMap<'a> {
+    entry: &'a mut Imports,
+    root_module_id: ModuleId,
+    module_id: ModuleId,
+}
+
+impl<'a> BuildImportsMap<'a> {
+    fn new(entry: &'a mut Imports, root_module_id: ModuleId, module_id: ModuleId) -> Self {
+        Self { entry, root_module_id, module_id }
+    }
+
+    fn build(&mut self, tree: &ast::ImportTree) -> DiagnosticResult<()> {
+        self.build_helper(vec![], tree)
+    }
+
+    fn build_helper(&mut self, path: Vec<Word>, tree: &ast::ImportTree) -> DiagnosticResult<()> {
+        match tree {
+            ast::ImportTree::Group(imports) => {
+                for import in imports {
+                    self.build_helper(path.clone(), import)?;
                 }
+
+                Ok(())
+            }
+            ast::ImportTree::Path(name, next) => {
+                let mut new_path = path.clone();
+                new_path.push(*name);
+                self.build_helper(new_path, next)
+            }
+            ast::ImportTree::Name(name, alias, vis) => self.insert_name(path, *name, *alias, *vis),
+            ast::ImportTree::Glob(is_ufcs, span) => {
+                self.insert_glob(path, *is_ufcs, *span);
+                Ok(())
             }
         }
     }
 
-    Ok(map)
+    fn insert_name(
+        &mut self,
+        path: Vec<Word>,
+        name: Word,
+        alias: Option<Word>,
+        vis: Vis,
+    ) -> DiagnosticResult<()> {
+        let mut new_path = path.clone();
+        new_path.push(name);
+
+        let alias = alias.unwrap_or(name);
+        let import = Import {
+            root_module_id: self.root_module_id,
+            path: new_path,
+            alias,
+            module_id: self.module_id,
+            vis,
+        };
+
+        if let Some(prev) = self.entry.imports.insert(alias.name(), import) {
+            Err(errors::multiple_item_def_err(prev.span(), name))
+        } else {
+            Ok(())
+        }
+    }
+
+    fn insert_glob(&mut self, path: Vec<Word>, is_ufcs: IsUfcs, span: Span) {
+        self.entry.glob_imports.push(GlobImport {
+            root_module_id: self.root_module_id,
+            path,
+            is_ufcs,
+            module_id: self.module_id,
+            vis: Vis::Private,
+            span,
+        });
+    }
 }
 
 struct Define<'db, 'cx> {

@@ -3,8 +3,8 @@ use std::io;
 use super::{Expr, Fn, Item, Module};
 use crate::{
     ast::{
-        CallArg, ExternImport, ExternLet, FnKind, FnParam, FnSig, Import, ImportKind, Let, TyDef,
-        TyDefKind, TyExpr, UnqualifiedImport,
+        CallArg, ExternImport, ExternLet, FnKind, FnParam, FnSig, Import, ImportTree, Let, TyDef,
+        TyDefKind, TyExpr,
     },
     db::UnionKind,
     middle::{BinOp, IsUfcs},
@@ -334,60 +334,38 @@ impl PrettyPrint for TyDef {
 
 impl PrettyPrint for Import {
     fn pretty_print(&self, cx: &mut PrettyCx) {
-        cx.builder.begin_child(format!(
-            "import {}",
-            self.path.iter().map(ToString::to_string).collect::<Vec<_>>().join(".")
-        ));
-        self.kind.pretty_print(cx);
+        cx.builder.begin_child("import".to_string());
+        self.tree.pretty_print(cx);
         cx.builder.end_child();
     }
 }
 
-impl PrettyPrint for ImportKind {
+impl PrettyPrint for ImportTree {
     fn pretty_print(&self, cx: &mut PrettyCx) {
         match self {
-            ImportKind::Qualified { alias, vis: _ } => {
-                if let Some(alias) = alias {
-                    cx.builder.add_empty_child(format!("as {alias}"));
-                }
-            }
-            ImportKind::Unqualified { imports } => {
+            ImportTree::Group(imports) => {
                 for import in imports {
                     import.pretty_print(cx);
                 }
             }
-        }
-    }
-}
-
-impl PrettyPrint for UnqualifiedImport {
-    fn pretty_print(&self, cx: &mut PrettyCx) {
-        match self {
-            UnqualifiedImport::Name(name, alias, _) => {
+            ImportTree::Path(name, next) => {
+                cx.builder.add_empty_child(name.to_string());
+                next.pretty_print(cx);
+            }
+            ImportTree::Name(name, alias, _) => {
                 cx.builder.add_empty_child(format!(
                     "{}{}",
                     name,
                     if let Some(alias) = alias { format!(" as {alias}") } else { String::new() }
                 ));
             }
-            UnqualifiedImport::Glob(is_ufcs, _) => {
+            ImportTree::Glob(is_ufcs, _) => {
                 cx.builder
                     .add_empty_child(if *is_ufcs == IsUfcs::Yes { "?" } else { "*" }.to_string());
             }
         }
     }
 }
-
-// impl PrettyPrint for ImportNode {
-//     fn pretty_print(&self, cx: &mut PrettyCx) {
-//         match self {
-//             ImportNode::Name(n) => n.pretty_print(cx),
-//             ImportNode::Glob(_) => {
-//                 cx.builder.add_empty_child("*".to_string());
-//             }
-//         }
-//     }
-// }
 
 impl PrettyPrint for ExternLet {
     fn pretty_print(&self, cx: &mut PrettyCx) {
