@@ -52,15 +52,14 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
 
     items::define(&mut cx, &ast)?;
     // imports::build_graph(&mut cx, &ast)?;
-    imports::define(&mut cx, &ast)?;
-    todo!();
+    let imported_fns = imports::define(&mut cx, &ast)?;
     // imports::define_qualified_names(&mut cx, &ast)?;
     // imports::define_qualified_paths(&mut cx, &ast)?;
     // let imported_fns = imports::define_unqualified(&mut cx, &ast)?;
 
     types::check(&mut cx, &ast)?;
     items::check_sigs(&mut cx, &ast)?;
-    // imports::fill_imported_fn_candidates(&mut cx, imported_fns)?;
+    imports::fill_imported_fn_candidates(&mut cx, imported_fns)?;
 
     items::check_bodies(&mut cx, &ast)?;
 
@@ -153,7 +152,7 @@ impl<'db> Typeck<'db> {
         }
     }
 
-    fn is_module_def(&self, def_id: DefId, span: Span) -> DiagnosticResult<ModuleId> {
+    fn expect_module_def(&self, def_id: DefId, span: Span) -> DiagnosticResult<ModuleId> {
         match self.normalize(self.def_ty(def_id)).kind() {
             TyKind::Module(module_id) => Ok(*module_id),
             ty => Err(errors::expected_module(format!("type `{}`", &ty.to_string(self.db)), span)),
