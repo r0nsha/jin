@@ -23,7 +23,7 @@ use std::cell::RefCell;
 use data_structures::index_vec::Key as _;
 use ena::unify::{InPlace, InPlaceUnificationTable, Snapshot};
 use itertools::Itertools;
-use petgraph::Graph;
+use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences, Graph};
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
 
@@ -242,6 +242,13 @@ impl ImportGraph {
         &self.0
     }
 
+    pub(super) fn imports(&self) -> impl Iterator<Item = (NodeIndex, &ImportNode)> {
+        self.0.node_references().filter_map(|(idx, node)| match node {
+            ImportGraphNode::Import(node) => Some((idx, node)),
+            _ => None,
+        })
+    }
+
     pub(super) fn add_def(&mut self, id: DefId) {
         self.0.add_node(ImportGraphNode::Def(id));
     }
@@ -261,6 +268,7 @@ pub(super) enum ImportGraphNode {
     Import(ImportNode),
 }
 
+#[derive(Debug)]
 pub(super) struct ImportNode {
     pub(super) path: Vec<Word>,
     pub(super) alias: Option<Word>,

@@ -1,5 +1,6 @@
 use std::iter;
 
+use petgraph::stable_graph::NodeIndex;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
@@ -80,26 +81,32 @@ fn build_graph_nodes(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
 }
 
 fn build_graph_edges(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
-    let mut work = Work::new();
+    let mut bge = BuildGraphEdges::new();
 
+    bge.work.extend(cx.res_map.import_graph.imports());
+
+    while let Some((idx, node)) = bge.work.pop() {
+        dbg!(idx, node);
+    }
     // TODO: for import in ast
     // TODO: let mut module_id = import.module_id
     // TODO: for part in path
     // TODO: part =
-    // TODO: part =
-    println!("{:?}", petgraph::dot::Dot::new(cx.res_map.import_graph.graph()));
+
+    // println!("{:?}", petgraph::dot::Dot::new(cx.res_map.import_graph.graph()));
     todo!();
     Ok(())
 }
 
-struct Work {
-    queue: Vec<(ModuleId, Ustr)>,
-    visited: FxHashSet<Span>,
+#[derive(Debug)]
+struct BuildGraphEdges<'a> {
+    work: Vec<(NodeIndex, &'a ImportNode)>,
+    done: FxHashSet<Span>,
 }
 
-impl Work {
+impl BuildGraphEdges<'_> {
     fn new() -> Self {
-        Self { queue: vec![], visited: FxHashSet::default() }
+        Self { work: vec![], done: FxHashSet::default() }
     }
 }
 
