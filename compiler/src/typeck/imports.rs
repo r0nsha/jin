@@ -13,19 +13,19 @@ use crate::{
         attrs, errors,
         lookup::{ImportLookupResult, Query},
         ns::NsDef,
-        ImportNode, ItemMap, Typeck,
+        ItemMap, Typeck,
     },
     word::Word,
 };
 
 pub(super) fn build_graph(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
-    build_defined_graph_nodes(cx)?;
-    build_import_graph_nodes(cx, ast)?;
-    println!("{:?}", petgraph::dot::Dot::new(cx.res_map.import_graph.graph()));
+    build_graph_nodes(cx, ast)?;
+    build_graph_edges(cx, ast)?;
     Ok(())
 }
 
-fn build_defined_graph_nodes(cx: &mut Typeck) -> DiagnosticResult<()> {
+fn build_graph_nodes(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+    // Build ImportNodeKind::{Def, Fn}
     for (module_id, env) in &cx.global_env.modules {
         for def in env.ns.defs.values() {
             cx.res_map.import_graph.add_def(def.data);
@@ -36,10 +36,7 @@ fn build_defined_graph_nodes(cx: &mut Typeck) -> DiagnosticResult<()> {
         }
     }
 
-    Ok(())
-}
-
-fn build_import_graph_nodes(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+    // Build ImportNodeKind::Import
     for (module, item) in ast.items() {
         let ast::Item::Import(import) = item else { continue };
 
@@ -66,6 +63,38 @@ fn build_import_graph_nodes(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> 
                             ));
                         }
                         ast::UnqualifiedImport::Glob(_, _) => (),
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+fn build_graph_edges(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+    println!("{:?}", petgraph::dot::Dot::new(cx.res_map.import_graph.graph()));
+    todo!();
+    Ok(())
+}
+
+pub(super) fn define(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+    for (module, item) in ast.items() {
+        let ast::Item::Import(import) = item else { continue };
+
+        match &import.kind {
+            ast::ImportKind::Qualified { alias, vis } => {
+                // TODO:
+            }
+            ast::ImportKind::Unqualified { imports } => {
+                for uim in imports {
+                    match uim {
+                        ast::UnqualifiedImport::Name(name, alias, vis) => {
+                            // TODO: same as qualified
+                        }
+                        ast::UnqualifiedImport::Glob(_, _) => {
+                            // TODO: insert_glob_target
+                        }
                     }
                 }
             }
