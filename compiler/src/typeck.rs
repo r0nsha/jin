@@ -50,6 +50,7 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
 
     items::define(&mut cx, &ast)?;
     imports::build_graph(&mut cx, &ast)?;
+    todo!();
     // imports::define_qualified_names(&mut cx, &ast)?;
     // imports::define_qualified_paths(&mut cx, &ast)?;
     // let imported_fns = imports::define_unqualified(&mut cx, &ast)?;
@@ -226,20 +227,43 @@ impl ResMap {
     }
 }
 
-pub(super) type ImportGraph = Graph<ImportNode, ()>;
+#[derive(Debug)]
+pub(super) struct ImportGraph(Graph<ImportNode, ()>);
+
+impl ImportGraph {
+    pub(super) fn new() -> Self {
+        Self(Graph::new())
+    }
+
+    pub(super) fn graph(&self) -> &Graph<ImportNode, ()> {
+        &self.0
+    }
+
+    pub(super) fn add_def(&mut self, id: DefId) {
+        self.0.add_node(ImportNode::Def(id));
+    }
+
+    pub(super) fn add_fn(&mut self, module_id: ModuleId, name: Ustr) {
+        self.0.add_node(ImportNode::Fn(module_id, name));
+    }
+
+    pub(super) fn add_import(&mut self, def: NsDef<Ustr>) {
+        self.0.add_node(ImportNode::Import(def));
+    }
+}
 
 pub(super) enum ImportNode {
+    Def(DefId),
+    Fn(ModuleId, Ustr),
     Import(NsDef<Ustr>),
-    Fn(NsDef<Ustr>),
-    Def(NsDef<DefId>),
 }
 
 impl fmt::Debug for ImportNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Import(def) => write!(f, "Name({}, {:?})", def.data, def.vis),
-            Self::Fn(def) => write!(f, "Fn({}, {:?})", def.data, def.vis),
-            Self::Def(def) => write!(f, "Def({}, {:?})", def.data.data(), def.vis),
+            Self::Fn(mid, name) => write!(f, "Fn({mid:?}, {name})"),
+            Self::Def(id) => write!(f, "Def({id:?})"),
         }
     }
 }

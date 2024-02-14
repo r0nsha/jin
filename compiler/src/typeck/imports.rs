@@ -21,24 +21,18 @@ use crate::{
 pub(super) fn build_graph(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
     build_defined_graph_nodes(cx)?;
     build_import_graph_nodes(cx, ast)?;
-    println!("{:?}", petgraph::dot::Dot::new(&cx.res_map.import_graph));
+    println!("{:?}", petgraph::dot::Dot::new(cx.res_map.import_graph.graph()));
     Ok(())
 }
 
 fn build_defined_graph_nodes(cx: &mut Typeck) -> DiagnosticResult<()> {
     for (module_id, env) in &cx.global_env.modules {
         for def in env.ns.defs.values() {
-            cx.res_map.import_graph.add_node(ImportNode::Def(*def));
+            cx.res_map.import_graph.add_def(def.data);
         }
 
-        for (name, ids) in &env.ns.defined_fns {
-            let span = cx.db[ids[0]].span;
-            cx.res_map.import_graph.add_node(ImportNode::Fn(NsDef::new(
-                *name,
-                *module_id,
-                Vis::Public,
-                span,
-            )));
+        for name in env.ns.defined_fns.keys() {
+            cx.res_map.import_graph.add_fn(*module_id, *name);
         }
     }
 
@@ -52,24 +46,24 @@ fn build_import_graph_nodes(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> 
         match &import.kind {
             ast::ImportKind::Qualified { alias, vis } => {
                 let name = alias.unwrap_or(*import.path.last().unwrap());
-                cx.res_map.import_graph.add_node(ImportNode::Import(NsDef::new(
+                cx.res_map.import_graph.add_import(NsDef::new(
                     name.name(),
                     module.id,
                     *vis,
                     name.span(),
-                )));
+                ));
             }
             ast::ImportKind::Unqualified { imports } => {
                 for uim in imports {
                     match uim {
                         ast::UnqualifiedImport::Name(name, alias, vis) => {
                             let name = alias.unwrap_or(*name);
-                            cx.res_map.import_graph.add_node(ImportNode::Import(NsDef::new(
+                            cx.res_map.import_graph.add_import(NsDef::new(
                                 name.name(),
                                 module.id,
                                 *vis,
                                 name.span(),
-                            )));
+                            ));
                         }
                         ast::UnqualifiedImport::Glob(_, _) => (),
                     }
