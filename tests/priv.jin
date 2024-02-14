@@ -1,6 +1,6 @@
 import b*
 import c*
-import b.(val as vb)
-import c.(val as vc)
+import b.val as vb
+import c.val as vc
 
 fn main() = {}

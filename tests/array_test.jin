@@ -1,6 +1,6 @@
-import std.array.(Array)
-import std.option.(Option)
-import std.io.(println)
+import std.array.Array
+import std.option.Option
+import std.io.println
 
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
