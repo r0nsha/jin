@@ -2,7 +2,7 @@ use core::fmt;
 use std::iter;
 
 use itertools::Itertools as _;
-use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences as _, Graph};
+use petgraph::prelude::*;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::{Ustr, UstrMap};
 
@@ -17,7 +17,6 @@ use crate::{
     typeck::{
         attrs, errors,
         lookup::{ImportLookupResult, Query},
-        ns::NsDef,
         ItemMap, Typeck,
     },
     word::Word,
@@ -110,56 +109,66 @@ fn build_graph_edges(
     graph: &mut ImportGraph,
     node_mapping: NodeMapping,
 ) -> DiagnosticResult<()> {
-    let mut bge = BuildGraphEdges::new();
-    bge.work.extend(graph.import_nodes());
+    let mut bge = BuildGraphEdges::new(cx);
 
-    while let Some((idx, node)) = bge.work.pop() {
-        resolve_import_node(cx, graph, &node_mapping, idx, node)?;
+    let import_indices: Vec<_> = graph.import_indices().collect();
+    for idx in import_indices {
+        bge.resolve_import_node(graph, &node_mapping, idx)?;
     }
 
-    // println!("{:?}", petgraph::dot::Dot::new(graph.graph()));
+    // println!("{:?}", petgraph::dot::Dot::new(graph.0));
     todo!();
     Ok(())
 }
 
-fn resolve_import_node(
-    cx: &Typeck,
-    graph: &mut ImportGraph,
-    node_mapping: &NodeMapping,
-    idx: NodeIndex,
-    node: &ImportNode,
-) -> DiagnosticResult<()> {
-    let mut curr_module_id = node.root_module_id;
+struct BuildGraphEdges<'db> {
+    cx: &'db Typeck<'db>,
+    visited: FxHashSet<NodeIndex>,
+}
 
-    for &part in node.path.iter().skip(1) {
-        let Some(part_node_idx) = &node_mapping[&curr_module_id].get(&part.name()) else {
-            return Err(errors::name_not_found(cx.db, node.module_id, curr_module_id, part));
-        };
-        let part_node_idx = **part_node_idx;
-        graph.add_edge(idx, part_node_idx);
-        match graph.node(part_node_idx) {
+impl<'db> BuildGraphEdges<'db> {
+    fn new(cx: &'db Typeck<'db>) -> Self {
+        Self { cx, visited: FxHashSet::default() }
+    }
+
+    fn resolve_import_node(
+        &mut self,
+        graph: &mut ImportGraph,
+        node_mapping: &NodeMapping,
+        idx: NodeIndex,
+    ) -> DiagnosticResult<()> {
+        match &graph.0[idx] {
             ImportGraphNode::Def(_) => todo!(),
             ImportGraphNode::Fn(_, _) => todo!(),
             ImportGraphNode::Import(node) => {
-                dbg!(&node.path);
+                let curr_module_id = node.root_module_id;
+
+                for &part in node.path.iter().skip(1) {
+                    let Some(part_node_idx) = &node_mapping[&curr_module_id].get(&part.name())
+                    else {
+                        return Err(errors::name_not_found(
+                            self.cx.db,
+                            node.module_id,
+                            curr_module_id,
+                            part,
+                        ));
+                    };
+                    let part_node_idx = **part_node_idx;
+                    match graph.node(part_node_idx) {
+                        ImportGraphNode::Def(_) => todo!(),
+                        ImportGraphNode::Fn(_, _) => todo!(),
+                        ImportGraphNode::Import(node) => {
+                            dbg!(&node.path);
+                        }
+                    }
+
+                    dbg!(part, part_node_idx, node);
+                    todo!()
+                }
+
+                Ok(())
             }
         }
-
-        dbg!(part, part_node_idx, node);
-        todo!()
-    }
-    todo!();
-}
-
-#[derive(Debug)]
-struct BuildGraphEdges<'a> {
-    work: Vec<(NodeIndex, &'a ImportNode)>,
-    done: FxHashSet<Span>,
-}
-
-impl BuildGraphEdges<'_> {
-    fn new() -> Self {
-        Self { work: vec![], done: FxHashSet::default() }
     }
 }
 
@@ -382,19 +391,12 @@ impl ImportGraph {
         Self(Graph::new())
     }
 
-    fn graph(&self) -> &Graph<ImportGraphNode, ()> {
-        &self.0
-    }
-
     fn node(&self, idx: NodeIndex) -> &ImportGraphNode {
         &self.0.raw_nodes()[idx.index()].weight
     }
 
-    fn import_nodes(&self) -> impl Iterator<Item = (NodeIndex, &ImportNode)> {
-        self.0.node_references().filter_map(|(idx, node)| match node {
-            ImportGraphNode::Import(node) => Some((idx, node)),
-            _ => None,
-        })
+    fn import_indices(&self) -> impl Iterator<Item = NodeIndex> + '_ {
+        self.0.node_indices().filter(|idx| matches!(self.0[*idx], ImportGraphNode::Import(_)))
     }
 
     fn add_def(&mut self, id: DefId) -> NodeIndex {
