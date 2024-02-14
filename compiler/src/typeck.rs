@@ -51,8 +51,8 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     cx.init_global_env(&ast);
 
     items::define(&mut cx, &ast)?;
-    imports::build_graph(&mut cx, &ast)?;
-    // imports::define(&mut cx, &ast)?;
+    // imports::build_graph(&mut cx, &ast)?;
+    imports::define(&mut cx, &ast)?;
     todo!();
     // imports::define_qualified_names(&mut cx, &ast)?;
     // imports::define_qualified_paths(&mut cx, &ast)?;

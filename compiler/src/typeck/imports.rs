@@ -31,6 +31,7 @@ use crate::{
 // TODO: if ImportPath is Fn
 //          -> add to imported_fns: ImportFns
 //          -> insert entry in ModuleId -> UstrMap<Imported::{Def(DefId), Fn(ModuleId, Ustr)}>
+
 type NodeMapping = FxHashMap<ModuleId, UstrMap<NodeIndex>>;
 
 pub(super) fn build_graph(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
@@ -183,29 +184,87 @@ impl<'db> BuildGraphEdges<'db> {
 }
 
 pub(super) fn define(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+    let imports_map = build_flat_imports_map(cx, ast)?;
+    Ok(())
+}
+
+type ImportsMap = FxHashMap<ModuleId, UstrMap<ImportPath>>;
+
+#[derive(Debug, Clone)]
+struct ImportPath {
+    root_module_id: ModuleId,
+    path: Vec<Word>,
+    alias: Word,
+    module_id: ModuleId,
+    vis: Vis,
+}
+
+impl ImportPath {
+    fn span(&self) -> Span {
+        self.alias.span()
+    }
+}
+
+fn build_flat_imports_map(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ImportsMap> {
+    let mut map = ImportsMap::default();
+
     for (module, item) in ast.items() {
         let ast::Item::Import(import) = item else { continue };
+        let entry = map.entry(module.id).or_default();
+
+        let root_module_id = cx.db.find_module_by_path(&import.module_path).unwrap().id;
+
+        let mut insert = |name: Word, imp: ImportPath| -> DiagnosticResult<()> {
+            if let Some(prev) = entry.insert(name.name(), imp) {
+                Err(errors::multiple_item_def_err(prev.span(), name))
+            } else {
+                Ok(())
+            }
+        };
 
         match &import.kind {
             ast::ImportKind::Qualified { alias, vis } => {
-                // TODO:
+                let alias = alias.unwrap_or_else(|| *import.path.last().unwrap());
+                insert(
+                    alias,
+                    ImportPath {
+                        root_module_id,
+                        path: import.path.clone(),
+                        alias,
+                        module_id: module.id,
+                        vis: *vis,
+                    },
+                )?;
             }
             ast::ImportKind::Unqualified { imports } => {
                 for uim in imports {
                     match uim {
                         ast::UnqualifiedImport::Name(name, alias, vis) => {
-                            // TODO: same as qualified
+                            let alias = alias.unwrap_or(*name);
+                            insert(
+                                alias,
+                                ImportPath {
+                                    root_module_id,
+                                    path: import
+                                        .path
+                                        .iter()
+                                        .copied()
+                                        .chain(iter::once(*name))
+                                        .collect(),
+                                    alias,
+                                    module_id: module.id,
+                                    vis: *vis,
+                                },
+                            )?;
                         }
-                        ast::UnqualifiedImport::Glob(_, _) => {
-                            // TODO: insert_glob_target
-                        }
+                        ast::UnqualifiedImport::Glob(_, _) => (),
                     }
                 }
             }
         }
     }
 
-    Ok(())
+    Ok(map)
 }
 
 pub(super) fn define_qualified_names(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
