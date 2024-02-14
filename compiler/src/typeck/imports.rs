@@ -22,6 +22,15 @@ use crate::{
     word::Word,
 };
 
+// TODO: build mapping of ModuleId -> UstrMap<Vec<ImportPath>>
+// TODO: iter the map ModuleId -> UstrMap<Vec<ImportPath>>
+// TODO: if is in done map -> return done item
+// TODO: if ImportPath is Def
+//          -> define
+//          -> insert entry in ModuleId -> UstrMap<Imported::{Def(DefId), Fn(ModuleId, Ustr)}>
+// TODO: if ImportPath is Fn
+//          -> add to imported_fns: ImportFns
+//          -> insert entry in ModuleId -> UstrMap<Imported::{Def(DefId), Fn(ModuleId, Ustr)}>
 type NodeMapping = FxHashMap<ModuleId, UstrMap<NodeIndex>>;
 
 pub(super) fn build_graph(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
@@ -109,66 +118,67 @@ fn build_graph_edges(
     graph: &mut ImportGraph,
     node_mapping: NodeMapping,
 ) -> DiagnosticResult<()> {
-    let mut bge = BuildGraphEdges::new(cx);
+    let mut bge = BuildGraphEdges::new(cx, node_mapping);
 
     let import_indices: Vec<_> = graph.import_indices().collect();
     for idx in import_indices {
-        bge.resolve_import_node(graph, &node_mapping, idx)?;
+        bge.resolve_import_node(graph, idx)?;
     }
 
-    // println!("{:?}", petgraph::dot::Dot::new(graph.0));
+    println!("{:?}", petgraph::dot::Dot::new(&graph.0));
     todo!();
     Ok(())
 }
 
 struct BuildGraphEdges<'db> {
     cx: &'db Typeck<'db>,
+    mapping: NodeMapping,
     visited: FxHashSet<NodeIndex>,
 }
 
 impl<'db> BuildGraphEdges<'db> {
-    fn new(cx: &'db Typeck<'db>) -> Self {
-        Self { cx, visited: FxHashSet::default() }
+    fn new(cx: &'db Typeck<'db>, mapping: NodeMapping) -> Self {
+        Self { cx, mapping, visited: FxHashSet::default() }
+    }
+
+    fn resolve_node(
+        &mut self,
+        graph: &mut ImportGraph,
+        parent_idx: NodeIndex,
+        idx: NodeIndex,
+    ) -> DiagnosticResult<()> {
+        match &graph.0[idx] {
+            ImportGraphNode::Def(_) | ImportGraphNode::Fn(_, _) => {
+                assert_ne!(parent_idx, idx);
+                graph.add_edge(parent_idx, idx);
+                Ok(())
+            }
+            ImportGraphNode::Import(_) => self.resolve_import_node(graph, idx),
+        }
     }
 
     fn resolve_import_node(
         &mut self,
         graph: &mut ImportGraph,
-        node_mapping: &NodeMapping,
         idx: NodeIndex,
     ) -> DiagnosticResult<()> {
-        match &graph.0[idx] {
-            ImportGraphNode::Def(_) => todo!(),
-            ImportGraphNode::Fn(_, _) => todo!(),
-            ImportGraphNode::Import(node) => {
-                let curr_module_id = node.root_module_id;
+        let ImportGraphNode::Import(node) = graph.0[idx].clone() else { unreachable!() };
+        let curr_module_id = node.root_module_id;
 
-                for &part in node.path.iter().skip(1) {
-                    let Some(part_node_idx) = &node_mapping[&curr_module_id].get(&part.name())
-                    else {
-                        return Err(errors::name_not_found(
-                            self.cx.db,
-                            node.module_id,
-                            curr_module_id,
-                            part,
-                        ));
-                    };
-                    let part_node_idx = **part_node_idx;
-                    match graph.node(part_node_idx) {
-                        ImportGraphNode::Def(_) => todo!(),
-                        ImportGraphNode::Fn(_, _) => todo!(),
-                        ImportGraphNode::Import(node) => {
-                            dbg!(&node.path);
-                        }
-                    }
+        for &part in node.path.iter().skip(1) {
+            let Some(&part_node_idx) = self.mapping[&curr_module_id].get(&part.name()) else {
+                return Err(errors::name_not_found(
+                    self.cx.db,
+                    node.module_id,
+                    curr_module_id,
+                    part,
+                ));
+            };
 
-                    dbg!(part, part_node_idx, node);
-                    todo!()
-                }
-
-                Ok(())
-            }
+            self.resolve_node(graph, idx, part_node_idx)?;
         }
+
+        Ok(())
     }
 }
 
@@ -416,13 +426,14 @@ impl ImportGraph {
     }
 }
 
+#[derive(Clone)]
 enum ImportGraphNode {
     Def(DefId),
     Fn(ModuleId, Ustr),
     Import(ImportNode),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct ImportNode {
     root_module_id: ModuleId,
     path: Vec<Word>,
