@@ -286,12 +286,15 @@ impl<'db, 'cx> Define<'db, 'cx> {
         // redundancy.
         let (resolved, res_module_id) = match resolved {
             Resolved::Module(module_id) => {
-                let id = self.define_module(imp, module_id)?;
+                let id = self.import_module(imp, module_id)?;
                 (Resolved::Def(id), module_id)
             }
-            Resolved::Def(id) => (resolved, self.cx.db[id].scope.module_id),
+            Resolved::Def(id) => {
+                self.import_def(imp, id)?;
+                (resolved, self.cx.db[id].scope.module_id)
+            }
             Resolved::Fn(target_module_id, name) => {
-                self.insert_imported_fns(in_module, target_module_id, name, imp.alias.name());
+                self.import_fns(in_module, target_module_id, name, imp.alias.name());
                 (resolved, target_module_id)
             }
         };
@@ -372,7 +375,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         Ok(Resolved::Module(root_module_id))
     }
 
-    fn define_module(&mut self, imp: &Import, module_id: ModuleId) -> DiagnosticResult<DefId> {
+    fn import_module(&mut self, imp: &Import, module_id: ModuleId) -> DiagnosticResult<DefId> {
         let id = self.cx.define().new_global(
             imp.module_id,
             imp.vis,
@@ -384,7 +387,12 @@ impl<'db, 'cx> Define<'db, 'cx> {
         Ok(id)
     }
 
-    fn insert_imported_fns(
+    fn import_def(&mut self, imp: &Import, id: DefId) -> DiagnosticResult<()> {
+        self.cx.define().global(imp.module_id, imp.alias, id, imp.vis)?;
+        Ok(())
+    }
+
+    fn import_fns(
         &mut self,
         in_module: ModuleId,
         target_module_id: ModuleId,
