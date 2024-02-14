@@ -242,23 +242,31 @@ impl ImportGraph {
         &self.0
     }
 
-    pub(super) fn imports(&self) -> impl Iterator<Item = (NodeIndex, &ImportNode)> {
+    pub(super) fn node(&self, idx: &NodeIndex) -> &ImportGraphNode {
+        &self.0.raw_nodes()[idx.index()].weight
+    }
+
+    pub(super) fn import_nodes(&self) -> impl Iterator<Item = (NodeIndex, &ImportNode)> {
         self.0.node_references().filter_map(|(idx, node)| match node {
             ImportGraphNode::Import(node) => Some((idx, node)),
             _ => None,
         })
     }
 
-    pub(super) fn add_def(&mut self, id: DefId) {
-        self.0.add_node(ImportGraphNode::Def(id));
+    pub(super) fn add_def(&mut self, id: DefId) -> NodeIndex {
+        self.0.add_node(ImportGraphNode::Def(id))
     }
 
-    pub(super) fn add_fn(&mut self, module_id: ModuleId, name: Ustr) {
-        self.0.add_node(ImportGraphNode::Fn(module_id, name));
+    pub(super) fn add_fn(&mut self, module_id: ModuleId, name: Ustr) -> NodeIndex {
+        self.0.add_node(ImportGraphNode::Fn(module_id, name))
     }
 
-    pub(super) fn add_import(&mut self, imp: ImportNode) {
-        self.0.add_node(ImportGraphNode::Import(imp));
+    pub(super) fn add_import(&mut self, imp: ImportNode) -> NodeIndex {
+        self.0.add_node(ImportGraphNode::Import(imp))
+    }
+
+    pub(super) fn add_edge(&mut self, a: NodeIndex, b: NodeIndex) {
+        self.0.add_edge(a, b, ());
     }
 }
 
@@ -270,6 +278,7 @@ pub(super) enum ImportGraphNode {
 
 #[derive(Debug)]
 pub(super) struct ImportNode {
+    pub(super) root_module_id: ModuleId,
     pub(super) path: Vec<Word>,
     pub(super) alias: Option<Word>,
     pub(super) module_id: ModuleId,
