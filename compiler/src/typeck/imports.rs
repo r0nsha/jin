@@ -24,18 +24,13 @@ pub(super) fn define(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ImportedFns
 }
 
 fn build_imports_map(cx: &Typeck, ast: &Ast) -> DiagnosticResult<ImportsMap> {
-    fn insert_import(
-        cx: &Typeck,
-        map: &mut Imports,
-        name: Word,
-        imp: Import,
-    ) -> DiagnosticResult<()> {
+    fn insert_import(map: &mut Imports, name: Word, imp: Import) -> DiagnosticResult<()> {
         if let Some(prev) = map.imports.insert(name.name(), imp) {
             Err(errors::multiple_item_def_err(prev.span(), name))
         } else {
             Ok(())
         }
-    };
+    }
 
     let mut map = ImportsMap::default();
 
@@ -51,7 +46,6 @@ fn build_imports_map(cx: &Typeck, ast: &Ast) -> DiagnosticResult<ImportsMap> {
             ast::ImportKind::Qualified { alias, vis } => {
                 let alias = alias.unwrap_or_else(|| *import.path.last().unwrap());
                 insert_import(
-                    cx,
                     entry,
                     alias,
                     Import {
@@ -69,7 +63,6 @@ fn build_imports_map(cx: &Typeck, ast: &Ast) -> DiagnosticResult<ImportsMap> {
                         ast::UnqualifiedImport::Name(name, alias, vis) => {
                             let alias = alias.unwrap_or(*name);
                             insert_import(
-                                cx,
                                 entry,
                                 alias,
                                 Import {
@@ -187,7 +180,6 @@ impl<'db, 'cx> Define<'db, 'cx> {
         imp_module_id: ModuleId,
         root_module_id: ModuleId,
         path: &[Word],
-        // imp: &Import,
     ) -> DiagnosticResult<Resolved> {
         let mut curr_module_id = root_module_id;
 
@@ -195,6 +187,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         for (pos, &part) in path.iter().skip(1).with_position() {
             let env = self.cx.global_env.module(curr_module_id);
             let name = part.name();
+            let span = part.span();
 
             let resolved = if let Some(def) = env.ns.defs.get(&name) {
                 Resolved::Def(def.data)
@@ -213,6 +206,8 @@ impl<'db, 'cx> Define<'db, 'cx> {
                 ));
             };
 
+            self.check_resolved_access(imp_module_id, &resolved, span)?;
+
             match pos {
                 Position::First | Position::Middle => match resolved {
                     Resolved::Module(_) => unreachable!(),
@@ -220,19 +215,47 @@ impl<'db, 'cx> Define<'db, 'cx> {
                         if !self.cx.def_to_ty.contains_key(&id) {
                             return Err(errors::expected_module(
                                 format!("found {}", self.cx.db[id].kind),
-                                part.span(),
+                                span,
                             ));
                         }
 
-                        curr_module_id = self.cx.expect_module_def(id, part.span())?;
+                        curr_module_id = self.cx.expect_module_def(id, span)?;
                     }
-                    Resolved::Fn(_, _) => return Err(Self::expected_module_found_fn(part.span())),
+                    Resolved::Fn(_, _) => return Err(Self::expected_module_found_fn(span)),
                 },
                 Position::Last | Position::Only => return Ok(resolved),
             }
         }
 
         Ok(Resolved::Module(root_module_id))
+    }
+
+    fn check_resolved_access(
+        &mut self,
+        from_module: ModuleId,
+        resolved: &Resolved,
+        span: Span,
+    ) -> DiagnosticResult<()> {
+        match resolved {
+            Resolved::Module(_) => unreachable!(),
+            Resolved::Def(id) => self.cx.check_def_access(from_module, *id, span),
+            Resolved::Fn(module_id, name) => {
+                let defined_fns = self
+                    .cx
+                    .global_env
+                    .module(*module_id)
+                    .ns
+                    .defined_fns
+                    .get(name)
+                    .expect("to be defined");
+
+                if defined_fns.len() == 1 {
+                    self.cx.check_def_access(from_module, defined_fns[0], span)
+                } else {
+                    Ok(())
+                }
+            }
+        }
     }
 
     fn import_module(&mut self, imp: &Import, module_id: ModuleId) -> DiagnosticResult<DefId> {

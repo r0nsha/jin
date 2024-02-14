@@ -75,7 +75,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                 Query::Fn(fn_query) => errors::fn_not_found(self.cx.db, fn_query),
             })?;
 
-        self.check_def_access(from_module, id, query.span())?;
+        self.cx.check_def_access(from_module, id, query.span())?;
 
         Ok(id)
     }
@@ -124,7 +124,8 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         mut candidates: Vec<&FnCandidate>,
         from_module: ModuleId,
     ) -> DiagnosticResult<Option<DefId>> {
-        if !candidates.is_empty() && candidates.iter().all(|c| !self.can_access(from_module, c.id))
+        if !candidates.is_empty()
+            && candidates.iter().all(|c| !self.cx.can_access(from_module, c.id))
         {
             return Err(Diagnostic::error(format!(
                 "all functions which apply to `{}` are private",
@@ -133,7 +134,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             .with_label(Label::primary(query.word.span(), "no accessible function found")));
         }
 
-        candidates.retain(|c| self.can_access(from_module, c.id));
+        candidates.retain(|c| self.cx.can_access(from_module, c.id));
 
         match candidates.len() {
             0 => Ok(None),
@@ -370,19 +371,6 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         results
     }
 
-    fn check_def_access(
-        &self,
-        from_module: ModuleId,
-        accessed: DefId,
-        span: Span,
-    ) -> DiagnosticResult<()> {
-        if self.can_access(from_module, accessed) {
-            Ok(())
-        } else {
-            Err(errors::private_access_violation(self.cx.db, accessed, span))
-        }
-    }
-
     fn get_lookup_modules(
         &self,
         in_module: ModuleId,
@@ -413,21 +401,12 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         results
             .into_iter()
             .filter(|r| match r {
-                LookupResult::Def(def) => self.can_access_ex(from_module, def.module_id, def.vis),
-                LookupResult::Fn(c) => self.can_access(from_module, c.id),
+                LookupResult::Def(def) => {
+                    self.cx.can_access_ex(from_module, def.module_id, def.vis)
+                }
+                LookupResult::Fn(c) => self.cx.can_access(from_module, c.id),
             })
             .collect()
-    }
-
-    #[inline]
-    fn can_access(&self, from_module: ModuleId, accessed: DefId) -> bool {
-        let def = &self.cx.db[accessed];
-        self.can_access_ex(from_module, def.scope.module_id, def.scope.vis)
-    }
-
-    #[inline]
-    fn can_access_ex(&self, from_module: ModuleId, in_module: ModuleId, vis: Vis) -> bool {
-        vis.is_public() || from_module == in_module
     }
 }
 

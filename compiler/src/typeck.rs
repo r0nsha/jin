@@ -30,7 +30,7 @@ use crate::{
     diagnostics::DiagnosticResult,
     hir,
     hir::Hir,
-    middle::Pat,
+    middle::{Pat, Vis},
     span::Span,
     ty::{FloatVar, InferTy, IntVar, Ty, TyKind, TyVar},
     typeck::{builtins::BuiltinTys, ns::GlobalEnv},
@@ -188,6 +188,39 @@ impl<'db> Typeck<'db> {
     #[track_caller]
     fn def_ty(&self, id: DefId) -> Ty {
         self.def_to_ty[&id]
+    }
+
+    #[inline]
+    pub(super) fn check_def_access(
+        &self,
+        from_module: ModuleId,
+        accessed: DefId,
+        span: Span,
+    ) -> DiagnosticResult<()> {
+        if self.can_access(from_module, accessed) {
+            Ok(())
+        } else {
+            Err(errors::private_access_violation(self.db, accessed, span))
+        }
+    }
+
+    #[inline]
+    pub(super) fn can_access(&self, from_module: ModuleId, accessed: DefId) -> bool {
+        let def = &self.db[accessed];
+        self.can_access_ex(from_module, def.scope.module_id, def.scope.vis)
+    }
+
+    #[inline]
+    pub(super) fn can_access_ex(
+        &self,
+        from_module: ModuleId,
+        in_module: ModuleId,
+        vis: Vis,
+    ) -> bool {
+        match vis {
+            Vis::Public => true,
+            Vis::Private => from_module == in_module,
+        }
     }
 }
 
