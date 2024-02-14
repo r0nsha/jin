@@ -214,7 +214,6 @@ pub(super) struct ResMap {
     pub(super) item_to_pat: ItemMap<Pat>,
     pub(super) item_to_ty: ItemMap<Ty>,
     pub(super) item_to_sig: ItemMap<hir::FnSig>,
-    pub(super) import_graph: ImportGraph,
 }
 
 impl ResMap {
@@ -225,87 +224,6 @@ impl ResMap {
             item_to_pat: FxHashMap::default(),
             item_to_ty: FxHashMap::default(),
             item_to_sig: FxHashMap::default(),
-            import_graph: ImportGraph::new(),
-        }
-    }
-}
-
-#[derive(Debug)]
-pub(super) struct ImportGraph(Graph<ImportGraphNode, ()>);
-
-impl ImportGraph {
-    pub(super) fn new() -> Self {
-        Self(Graph::new())
-    }
-
-    pub(super) fn graph(&self) -> &Graph<ImportGraphNode, ()> {
-        &self.0
-    }
-
-    pub(super) fn node(&self, idx: &NodeIndex) -> &ImportGraphNode {
-        &self.0.raw_nodes()[idx.index()].weight
-    }
-
-    pub(super) fn import_nodes(&self) -> impl Iterator<Item = (NodeIndex, &ImportNode)> {
-        self.0.node_references().filter_map(|(idx, node)| match node {
-            ImportGraphNode::Import(node) => Some((idx, node)),
-            _ => None,
-        })
-    }
-
-    pub(super) fn add_def(&mut self, id: DefId) -> NodeIndex {
-        self.0.add_node(ImportGraphNode::Def(id))
-    }
-
-    pub(super) fn add_fn(&mut self, module_id: ModuleId, name: Ustr) -> NodeIndex {
-        self.0.add_node(ImportGraphNode::Fn(module_id, name))
-    }
-
-    pub(super) fn add_import(&mut self, imp: ImportNode) -> NodeIndex {
-        self.0.add_node(ImportGraphNode::Import(imp))
-    }
-
-    pub(super) fn add_edge(&mut self, a: NodeIndex, b: NodeIndex) {
-        self.0.add_edge(a, b, ());
-    }
-}
-
-pub(super) enum ImportGraphNode {
-    Def(DefId),
-    Fn(ModuleId, Ustr),
-    Import(ImportNode),
-}
-
-#[derive(Debug)]
-pub(super) struct ImportNode {
-    pub(super) root_module_id: ModuleId,
-    pub(super) path: Vec<Word>,
-    pub(super) alias: Option<Word>,
-    pub(super) module_id: ModuleId,
-    pub(super) vis: Vis,
-    pub(super) span: Span,
-}
-
-impl ImportNode {
-    pub(super) fn name(&self) -> Word {
-        self.alias.unwrap_or_else(|| *self.path.last().unwrap())
-    }
-}
-
-impl fmt::Debug for ImportGraphNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Def(id) => write!(f, "Def({id:?})"),
-            Self::Fn(mid, name) => write!(f, "Fn({mid:?}, {name})"),
-            Self::Import(imp) => {
-                write!(
-                    f,
-                    "Import({:?}, {}, alias: {:?})",
-                    imp.module_id,
-                    imp.path.iter().map(ToString::to_string).join(", "),
-                    imp.alias.as_ref().map(ToString::to_string)
-                )
-            }
         }
     }
 }

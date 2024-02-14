@@ -80,9 +80,9 @@ impl<'db, 'cx> Define<'db, 'cx> {
     ) -> DiagnosticResult<DefId> {
         let module = self.cx.global_env.module_mut(module_id);
 
-        if let Some(candidates) = module.ns.fns.get(&name.name()) {
-            let last_candidate = candidates.iter().last().unwrap();
-            return Err(errors::multiple_item_def_err(last_candidate.word.span(), name));
+        if let Some(fns) = module.ns.defined_fns.get(&name.name()) {
+            let span = self.cx.db[fns[0]].span;
+            return Err(errors::multiple_item_def_err(span, name));
         }
 
         let def = NsDef::new(id, module_id, vis, name.span());

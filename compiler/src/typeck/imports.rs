@@ -1,6 +1,8 @@
+use core::fmt;
 use std::iter;
 
-use petgraph::stable_graph::NodeIndex;
+use itertools::Itertools as _;
+use petgraph::{stable_graph::NodeIndex, visit::IntoNodeReferences as _, Graph};
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::{Ustr, UstrMap};
 
@@ -16,21 +18,25 @@ use crate::{
         attrs, errors,
         lookup::{ImportLookupResult, Query},
         ns::NsDef,
-        ImportNode, ItemMap, Typeck,
+        ItemMap, Typeck,
     },
     word::Word,
 };
 
+type NodeMapping = FxHashMap<ModuleId, UstrMap<NodeIndex>>;
+
 pub(super) fn build_graph(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
-    let node_mapping = build_graph_nodes(cx, ast)?;
-    build_graph_edges(cx, node_mapping)?;
+    let mut graph = ImportGraph::new();
+    let node_mapping = build_graph_nodes(cx, &mut graph, ast)?;
+    build_graph_edges(cx, &mut graph, node_mapping)?;
     Ok(())
 }
 
 fn build_graph_nodes(
     cx: &mut Typeck,
+    graph: &mut ImportGraph,
     ast: &Ast,
-) -> DiagnosticResult<FxHashMap<ModuleId, UstrMap<NodeIndex>>> {
+) -> DiagnosticResult<NodeMapping> {
     let mut node_mapping = FxHashMap::<ModuleId, UstrMap<NodeIndex>>::default();
 
     // Build ImportNodeKind::{Def, Fn}
@@ -38,12 +44,12 @@ fn build_graph_nodes(
         let map = node_mapping.entry(module_id).or_default();
 
         for def in env.ns.defs.values() {
-            let idx = cx.res_map.import_graph.add_def(def.data);
+            let idx = graph.add_def(def.data);
             map.insert(cx.db[def.data].name, idx);
         }
 
         for &name in env.ns.defined_fns.keys() {
-            let idx = cx.res_map.import_graph.add_fn(module_id, name);
+            let idx = graph.add_fn(module_id, name);
             map.insert(name, idx);
         }
     }
@@ -65,7 +71,7 @@ fn build_graph_nodes(
                     span: import.span,
                 };
                 let name = node.name().name();
-                let idx = cx.res_map.import_graph.add_import(node);
+                let idx = graph.add_import(node);
                 map.insert(name, idx);
             }
             ast::ImportKind::Unqualified { imports } => {
@@ -86,7 +92,7 @@ fn build_graph_nodes(
                                 span: import.span,
                             };
                             let name = node.name().name();
-                            let idx = cx.res_map.import_graph.add_import(node);
+                            let idx = graph.add_import(node);
                             map.insert(name, idx);
                         }
                         ast::UnqualifiedImport::Glob(_, _) => (),
@@ -101,27 +107,48 @@ fn build_graph_nodes(
 
 fn build_graph_edges(
     cx: &mut Typeck,
-    node_mapping: FxHashMap<ModuleId, UstrMap<NodeIndex>>,
+    graph: &mut ImportGraph,
+    node_mapping: NodeMapping,
 ) -> DiagnosticResult<()> {
     let mut bge = BuildGraphEdges::new();
-    bge.work.extend(cx.res_map.import_graph.import_nodes());
+    bge.work.extend(graph.import_nodes());
 
     while let Some((idx, node)) = bge.work.pop() {
-        let mut curr_module_id = node.root_module_id;
-        for &part in node.path.iter().skip(1) {
-            let Some(part_node_idx) = &node_mapping[&curr_module_id].get(&part.name()) else {
-                return Err(errors::name_not_found(cx.db, node.module_id, curr_module_id, part));
-            };
-            let node = cx.res_map.import_graph.node(part_node_idx);
-            dbg!(part, part_node_idx, node);
-            todo!()
-        }
-        todo!();
+        resolve_import_node(cx, graph, &node_mapping, idx, node)?;
     }
 
-    // println!("{:?}", petgraph::dot::Dot::new(cx.res_map.import_graph.graph()));
+    // println!("{:?}", petgraph::dot::Dot::new(graph.graph()));
     todo!();
     Ok(())
+}
+
+fn resolve_import_node(
+    cx: &Typeck,
+    graph: &mut ImportGraph,
+    node_mapping: &NodeMapping,
+    idx: NodeIndex,
+    node: &ImportNode,
+) -> DiagnosticResult<()> {
+    let mut curr_module_id = node.root_module_id;
+
+    for &part in node.path.iter().skip(1) {
+        let Some(part_node_idx) = &node_mapping[&curr_module_id].get(&part.name()) else {
+            return Err(errors::name_not_found(cx.db, node.module_id, curr_module_id, part));
+        };
+        let part_node_idx = **part_node_idx;
+        graph.add_edge(idx, part_node_idx);
+        match graph.node(part_node_idx) {
+            ImportGraphNode::Def(_) => todo!(),
+            ImportGraphNode::Fn(_, _) => todo!(),
+            ImportGraphNode::Import(node) => {
+                dbg!(&node.path);
+            }
+        }
+
+        dbg!(part, part_node_idx, node);
+        todo!()
+    }
+    todo!();
 }
 
 #[derive(Debug)]
@@ -345,4 +372,84 @@ fn insert_glob_target(
     is_ufcs: IsUfcs,
 ) {
     cx.global_env.module_mut(in_module).globs.insert(target_module_id, is_ufcs);
+}
+
+#[derive(Debug)]
+struct ImportGraph(Graph<ImportGraphNode, ()>);
+
+impl ImportGraph {
+    fn new() -> Self {
+        Self(Graph::new())
+    }
+
+    fn graph(&self) -> &Graph<ImportGraphNode, ()> {
+        &self.0
+    }
+
+    fn node(&self, idx: NodeIndex) -> &ImportGraphNode {
+        &self.0.raw_nodes()[idx.index()].weight
+    }
+
+    fn import_nodes(&self) -> impl Iterator<Item = (NodeIndex, &ImportNode)> {
+        self.0.node_references().filter_map(|(idx, node)| match node {
+            ImportGraphNode::Import(node) => Some((idx, node)),
+            _ => None,
+        })
+    }
+
+    fn add_def(&mut self, id: DefId) -> NodeIndex {
+        self.0.add_node(ImportGraphNode::Def(id))
+    }
+
+    fn add_fn(&mut self, module_id: ModuleId, name: Ustr) -> NodeIndex {
+        self.0.add_node(ImportGraphNode::Fn(module_id, name))
+    }
+
+    fn add_import(&mut self, imp: ImportNode) -> NodeIndex {
+        self.0.add_node(ImportGraphNode::Import(imp))
+    }
+
+    fn add_edge(&mut self, a: NodeIndex, b: NodeIndex) {
+        self.0.add_edge(a, b, ());
+    }
+}
+
+enum ImportGraphNode {
+    Def(DefId),
+    Fn(ModuleId, Ustr),
+    Import(ImportNode),
+}
+
+#[derive(Debug)]
+struct ImportNode {
+    root_module_id: ModuleId,
+    path: Vec<Word>,
+    alias: Option<Word>,
+    module_id: ModuleId,
+    vis: Vis,
+    span: Span,
+}
+
+impl ImportNode {
+    fn name(&self) -> Word {
+        self.alias.unwrap_or_else(|| *self.path.last().unwrap())
+    }
+}
+
+impl fmt::Debug for ImportGraphNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Def(id) => write!(f, "Def({id:?})"),
+            Self::Fn(mid, name) => write!(f, "Fn({mid:?}, {name})"),
+            Self::Import(imp) => {
+                write!(
+                    f,
+                    "Import({:?}, {}, alias: {:?})",
+                    imp.module_id,
+                    imp.path.iter().map(ToString::to_string).join(", "),
+                    imp.alias.as_ref().map(ToString::to_string)
+                )
+            }
+        }
+    }
 }
