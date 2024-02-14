@@ -68,7 +68,8 @@ impl<'db, 'cx> Define<'db, 'cx> {
         let qpath = self.cx.db[module_id].qpath.clone().child(name.name());
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let id = Def::alloc(self.cx.db, qpath, scope, kind, mutability, name.span());
-        self.global(module_id, name, id, vis)
+        self.global(module_id, name, id, vis)?;
+        Ok(id)
     }
 
     pub(super) fn global(
@@ -77,7 +78,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         name: Word,
         id: DefId,
         vis: Vis,
-    ) -> DiagnosticResult<DefId> {
+    ) -> DiagnosticResult<()> {
         let module = self.cx.global_env.module_mut(module_id);
 
         if let Some(fns) = module.ns.defined_fns.get(&name.name()) {
@@ -90,7 +91,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
             return Err(errors::multiple_item_def_err(prev.span(), name));
         }
 
-        Ok(id)
+        Ok(())
     }
 
     pub(super) fn new_local(

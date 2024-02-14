@@ -92,9 +92,14 @@ impl NsDef {
         Self { id, name: def.word(), module_id: def.scope.module_id, vis: def.scope.vis }
     }
 
-    pub(super) fn check_access(&self, cx: &Typeck, from_module: ModuleId) -> DiagnosticResult<()> {
+    pub(super) fn check_access(
+        &self,
+        cx: &Typeck,
+        from_module: ModuleId,
+        span: Span,
+    ) -> DiagnosticResult<()> {
         self.can_access(cx, from_module).then_some(()).ok_or_else(|| {
-            errors::private_access_violation(cx.db, self.module_id, self.name.name(), self.span())
+            errors::private_access_violation(cx.db, self.module_id, self.name.name(), span)
         })
     }
 

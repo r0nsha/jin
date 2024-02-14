@@ -238,7 +238,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
     ) -> DiagnosticResult<()> {
         match resolved {
             Resolved::Module(_) => unreachable!(),
-            Resolved::Def(def) => def.check_access(self.cx, from_module),
+            Resolved::Def(def) => def.check_access(self.cx, from_module, span),
             Resolved::Fn(module_id, name) => {
                 let defined_fns = self
                     .cx
