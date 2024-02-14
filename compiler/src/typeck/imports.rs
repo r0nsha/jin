@@ -12,7 +12,7 @@ use crate::{
     middle::{IsUfcs, Mutability, Vis},
     span::{Span, Spanned as _},
     ty::{Ty, TyKind},
-    typeck::{attrs, errors, Typeck},
+    typeck::{attrs, errors, ns::NsDef, Typeck},
     word::Word,
 };
 
@@ -141,11 +141,11 @@ impl<'db, 'cx> Define<'db, 'cx> {
         let (resolved, res_module_id) = match resolved {
             Resolved::Module(module_id) => {
                 let id = self.import_module(imp, module_id)?;
-                (Resolved::Def(id), module_id)
+                (Resolved::Def(NsDef::from_def_id(self.cx.db, id)), module_id)
             }
-            Resolved::Def(id) => {
-                self.import_def(imp, id)?;
-                (resolved, self.cx.db[id].scope.module_id)
+            Resolved::Def(def) => {
+                self.import_def(imp, def.id)?;
+                (resolved, self.cx.db[def.id].scope.module_id)
             }
             Resolved::Fn(target_module_id, name) => {
                 self.import_fns(in_module, target_module_id, name, imp.alias.name());
@@ -165,7 +165,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
             self.resolve_import_path(map, imp.module_id, imp.root_module_id, &imp.path)?;
 
         let res_module_id = match resolved {
-            Resolved::Def(id) => self.cx.expect_module_def(id, imp.span)?,
+            Resolved::Def(def) => self.cx.expect_module_def(def.id, imp.span)?,
             Resolved::Module(module_id) => module_id,
             Resolved::Fn(_, _) => return Err(Self::expected_module_found_fn(imp.span)),
         };
@@ -190,7 +190,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
             let span = part.span();
 
             let resolved = if let Some(def) = env.ns.defs.get(&name) {
-                Resolved::Def(def.data)
+                Resolved::Def(*def)
             } else if env.ns.defined_fns.get(&name).is_some() {
                 Resolved::Fn(curr_module_id, name)
             } else if let Some(target_imp) =
@@ -211,15 +211,15 @@ impl<'db, 'cx> Define<'db, 'cx> {
             match pos {
                 Position::First | Position::Middle => match resolved {
                     Resolved::Module(_) => unreachable!(),
-                    Resolved::Def(id) => {
-                        if !self.cx.def_to_ty.contains_key(&id) {
+                    Resolved::Def(def) => {
+                        if !self.cx.def_to_ty.contains_key(&def.id) {
                             return Err(errors::expected_module(
-                                format!("found {}", self.cx.db[id].kind),
+                                format!("found {}", self.cx.db[def.id].kind),
                                 span,
                             ));
                         }
 
-                        curr_module_id = self.cx.expect_module_def(id, span)?;
+                        curr_module_id = self.cx.expect_module_def(def.id, span)?;
                     }
                     Resolved::Fn(_, _) => return Err(Self::expected_module_found_fn(span)),
                 },
@@ -238,7 +238,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
     ) -> DiagnosticResult<()> {
         match resolved {
             Resolved::Module(_) => unreachable!(),
-            Resolved::Def(id) => self.cx.check_def_access(from_module, *id, span),
+            Resolved::Def(def) => def.check_access(self.cx, from_module),
             Resolved::Fn(module_id, name) => {
                 let defined_fns = self
                     .cx
@@ -250,7 +250,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
                     .expect("to be defined");
 
                 if defined_fns.len() == 1 {
-                    self.cx.check_def_access(from_module, defined_fns[0], span)
+                    self.cx.check_access_def(from_module, defined_fns[0], span)
                 } else {
                     Ok(())
                 }
@@ -364,7 +364,7 @@ type ResolvedMap = FxHashMap<ModuleId, UstrMap<Resolved>>;
 #[derive(Debug, Clone, Copy)]
 enum Resolved {
     Module(ModuleId),
-    Def(DefId),
+    Def(NsDef),
     Fn(ModuleId, Ustr),
 }
 

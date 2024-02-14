@@ -1,5 +1,7 @@
+use ustr::Ustr;
+
 use crate::{
-    db::{Adt, AdtField, AdtId, Db, DefId, ModuleId},
+    db::{Adt, AdtField, AdtId, Db, ModuleId},
     diagnostics::{Diagnostic, Label},
     middle::{BinOp, UnOp},
     span::{Span, Spanned},
@@ -57,11 +59,14 @@ pub fn fn_not_found(db: &Db, query: &FnQuery) -> Diagnostic {
         .with_label(Label::primary(query.word.span(), "no matching function"))
 }
 
-pub fn private_access_violation(db: &Db, accessed: DefId, span: Span) -> Diagnostic {
-    let def = &db[accessed];
-    let module_name = db[def.scope.module_id].qpath.join();
-
-    Diagnostic::error(format!("`{}` is private to module `{}`", def.name, module_name))
+pub fn private_access_violation(
+    db: &Db,
+    module_id: ModuleId,
+    name: Ustr,
+    span: Span,
+) -> Diagnostic {
+    let module_name = db[module_id].qpath.join();
+    Diagnostic::error(format!("`{name}` is private to module `{module_name}`"))
         .with_label(Label::primary(span, format!("private to `{module_name}`")))
 }
 

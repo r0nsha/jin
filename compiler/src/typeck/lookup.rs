@@ -6,7 +6,7 @@ use ustr::Ustr;
 use crate::{
     db::{AdtKind, Db, DefId, DefKind, FnInfo, ModuleId, UnionDef, Variant, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
-    middle::{CallConv, IsUfcs, Vis},
+    middle::{CallConv, IsUfcs},
     span::{Span, Spanned as _},
     ty::{printer::FnTyPrinter, FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
     typeck::{
@@ -75,7 +75,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                 Query::Fn(fn_query) => errors::fn_not_found(self.cx.db, fn_query),
             })?;
 
-        self.cx.check_def_access(from_module, id, query.span())?;
+        self.cx.check_access_def(from_module, id, query.span())?;
 
         Ok(id)
     }
@@ -125,7 +125,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         from_module: ModuleId,
     ) -> DiagnosticResult<Option<DefId>> {
         if !candidates.is_empty()
-            && candidates.iter().all(|c| !self.cx.can_access(from_module, c.id))
+            && candidates.iter().all(|c| !self.cx.can_access_def(from_module, c.id))
         {
             return Err(Diagnostic::error(format!(
                 "all functions which apply to `{}` are private",
@@ -134,7 +134,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             .with_label(Label::primary(query.word.span(), "no accessible function found")));
         }
 
-        candidates.retain(|c| self.cx.can_access(from_module, c.id));
+        candidates.retain(|c| self.cx.can_access_def(from_module, c.id));
 
         match candidates.len() {
             0 => Ok(None),
@@ -170,10 +170,10 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             .into_iter()
             .map(|res| match res {
                 LookupResult::Def(def) => {
-                    if matches!(self.cx.db[def.data].kind.as_ref(), DefKind::Fn(FnInfo::Bare)) {
-                        ImportLookupResult::Fn(def.data)
+                    if matches!(self.cx.db[def.id].kind.as_ref(), DefKind::Fn(FnInfo::Bare)) {
+                        ImportLookupResult::Fn(def.id)
                     } else {
-                        ImportLookupResult::Def(def.data)
+                        ImportLookupResult::Def(def.id)
                     }
                 }
                 LookupResult::Fn(_) => unreachable!("candidates are not filled at this stage"),
@@ -353,14 +353,11 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                     }
                     ShouldLookupFns::Defs => {
                         if let Some(defs) = env.ns.defined_fns.get(&name) {
-                            results.extend(defs.iter().map(|&id| {
-                                LookupResult::Def(NsDef::new(
-                                    id,
-                                    module_id,
-                                    Vis::Public,
-                                    self.cx.db[id].span,
-                                ))
-                            }));
+                            results.extend(
+                                defs.iter().map(|&id| {
+                                    LookupResult::Def(NsDef::from_def_id(self.cx.db, id))
+                                }),
+                            );
                         }
                     }
                     ShouldLookupFns::No => (),
@@ -401,10 +398,8 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         results
             .into_iter()
             .filter(|r| match r {
-                LookupResult::Def(def) => {
-                    self.cx.can_access_ex(from_module, def.module_id, def.vis)
-                }
-                LookupResult::Fn(c) => self.cx.can_access(from_module, c.id),
+                LookupResult::Def(def) => def.can_access(self.cx, from_module),
+                LookupResult::Fn(c) => self.cx.can_access_def(from_module, c.id),
             })
             .collect()
     }
@@ -412,14 +407,14 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 
 #[derive(Debug, Clone)]
 pub(super) enum LookupResult {
-    Def(NsDef<DefId>),
+    Def(NsDef),
     Fn(FnCandidate),
 }
 
 impl LookupResult {
     pub(super) fn def_id(&self) -> DefId {
         match self {
-            Self::Def(n) => n.data,
+            Self::Def(n) => n.id,
             Self::Fn(c) => c.id,
         }
     }

@@ -5,11 +5,13 @@ use ustr::{Ustr, UstrMap};
 
 use crate::{
     db::{AdtId, Db, DefId, ModuleId, ScopeLevel},
+    diagnostics::DiagnosticResult,
     middle::{IsUfcs, Pat, Vis},
     qpath::QPath,
-    span::Span,
+    span::{Span, Spanned},
     ty::{Ty, TyKind},
-    typeck::{builtins::BuiltinTys, lookup::FnCandidateSet},
+    typeck::{builtins::BuiltinTys, errors, lookup::FnCandidateSet, Typeck},
+    word::Word,
 };
 
 #[derive(Debug)]
@@ -59,7 +61,7 @@ impl Default for ModuleEnv {
 
 #[derive(Debug)]
 pub(super) struct Ns {
-    pub(super) defs: UstrMap<NsDef<DefId>>,
+    pub(super) defs: UstrMap<NsDef>,
     pub(super) fns: UstrMap<FnCandidateSet>,
     pub(super) defined_fns: UstrMap<Vec<DefId>>,
 }
@@ -67,10 +69,6 @@ pub(super) struct Ns {
 impl Ns {
     pub(super) fn new() -> Self {
         Self { defs: UstrMap::default(), fns: UstrMap::default(), defined_fns: UstrMap::default() }
-    }
-
-    pub(super) fn name_span(&self, name: Ustr) -> Option<Span> {
-        self.defs.get(&name).map(|n| n.span)
     }
 }
 
@@ -81,16 +79,31 @@ impl Default for Ns {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct NsDef<T> {
-    pub(super) data: T,
+pub(crate) struct NsDef {
+    pub(super) id: DefId,
+    pub(super) name: Word,
     pub(super) module_id: ModuleId,
     pub(super) vis: Vis,
-    pub(super) span: Span,
 }
 
-impl<T> NsDef<T> {
-    pub(super) fn new(data: T, module_id: ModuleId, vis: Vis, span: Span) -> Self {
-        Self { data, module_id, vis, span }
+impl NsDef {
+    pub(super) fn from_def_id(db: &Db, id: DefId) -> Self {
+        let def = &db[id];
+        Self { id, name: def.word(), module_id: def.scope.module_id, vis: def.scope.vis }
+    }
+
+    pub(super) fn check_access(&self, cx: &Typeck, from_module: ModuleId) -> DiagnosticResult<()> {
+        self.can_access(cx, from_module).then_some(()).ok_or_else(|| {
+            errors::private_access_violation(cx.db, self.module_id, self.name.name(), self.span())
+        })
+    }
+
+    pub(super) fn can_access(&self, cx: &Typeck, from_module: ModuleId) -> bool {
+        cx.can_access(from_module, self.module_id, self.vis)
+    }
+
+    pub(super) fn span(&self) -> Span {
+        self.name.span()
     }
 }
 

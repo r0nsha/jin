@@ -191,32 +191,26 @@ impl<'db> Typeck<'db> {
     }
 
     #[inline]
-    pub(super) fn check_def_access(
+    pub(super) fn check_access_def(
         &self,
         from_module: ModuleId,
         accessed: DefId,
         span: Span,
     ) -> DiagnosticResult<()> {
-        if self.can_access(from_module, accessed) {
-            Ok(())
-        } else {
-            Err(errors::private_access_violation(self.db, accessed, span))
-        }
+        self.can_access_def(from_module, accessed).then_some(()).ok_or_else(|| {
+            let def = &self.db[accessed];
+            errors::private_access_violation(self.db, def.scope.module_id, def.name, span)
+        })
     }
 
     #[inline]
-    pub(super) fn can_access(&self, from_module: ModuleId, accessed: DefId) -> bool {
+    pub(super) fn can_access_def(&self, from_module: ModuleId, accessed: DefId) -> bool {
         let def = &self.db[accessed];
-        self.can_access_ex(from_module, def.scope.module_id, def.scope.vis)
+        self.can_access(from_module, def.scope.module_id, def.scope.vis)
     }
 
     #[inline]
-    pub(super) fn can_access_ex(
-        &self,
-        from_module: ModuleId,
-        in_module: ModuleId,
-        vis: Vis,
-    ) -> bool {
+    pub(super) fn can_access(&self, from_module: ModuleId, in_module: ModuleId, vis: Vis) -> bool {
         match vis {
             Vis::Public => true,
             Vis::Private => from_module == in_module,

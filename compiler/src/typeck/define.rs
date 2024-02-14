@@ -85,9 +85,9 @@ impl<'db, 'cx> Define<'db, 'cx> {
             return Err(errors::multiple_item_def_err(span, name));
         }
 
-        let def = NsDef::new(id, module_id, vis, name.span());
+        let def = NsDef { id, name, module_id, vis };
         if let Some(prev) = module.ns.defs.insert(name.name(), def) {
-            return Err(errors::multiple_item_def_err(prev.span, name));
+            return Err(errors::multiple_item_def_err(prev.span(), name));
         }
 
         Ok(id)
