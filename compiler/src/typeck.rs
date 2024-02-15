@@ -213,6 +213,7 @@ impl<'db> Typeck<'db> {
     pub(super) fn can_access(&self, from_module: ModuleId, in_module: ModuleId, vis: Vis) -> bool {
         match vis {
             Vis::Export => true,
+            Vis::Package => self.db[from_module].package == self.db[in_module].package,
             Vis::Module => from_module == in_module,
         }
     }

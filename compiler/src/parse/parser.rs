@@ -89,7 +89,7 @@ impl<'a> Parser<'a> {
 
     pub(super) fn parse_vis(&mut self) -> DiagnosticResult<Vis> {
         if !self.is(TokenKind::Pub) {
-            return Ok(Vis::Module);
+            return Ok(Vis::Package);
         }
 
         if !self.is(TokenKind::OpenParen) {
@@ -98,7 +98,9 @@ impl<'a> Parser<'a> {
 
         let vis = if self.is_weak_kw("export") {
             Vis::Export
-        } else if self.is_weak_kw("module") {
+        } else if self.is_weak_kw("package") {
+            Vis::Package
+        }else if self.is_weak_kw("module") {
             Vis::Module
         } else {
             return Err(self.unexpected_token("export, package or module"));

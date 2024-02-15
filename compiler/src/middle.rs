@@ -14,7 +14,8 @@ use crate::{
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Vis {
     Module = 0,
-    Export = 1,
+    Package = 1,
+    Export = 2,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
