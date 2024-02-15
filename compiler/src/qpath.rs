@@ -9,6 +9,10 @@ use crate::word::Word;
 pub struct QPath(Vec<Ustr>);
 
 impl QPath {
+    pub fn new() -> Self {
+        Self(vec![])
+    }
+
     pub fn from_path(root: &Utf8Path, target: &Utf8Path) -> Option<Self> {
         let target = target.with_extension("");
         let stripped = target.strip_prefix(root).ok()?;
@@ -54,6 +58,12 @@ impl QPath {
     }
 }
 
+impl Default for QPath {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Segment {
     Qualified(QPath),
@@ -81,6 +91,14 @@ impl From<Ustr> for QPath {
 impl From<Word> for QPath {
     fn from(value: Word) -> Self {
         Self::from(value.name())
+    }
+}
+
+impl<'a> FromIterator<&'a str> for QPath {
+    fn from_iter<T: IntoIterator<Item = &'a str>>(iter: T) -> Self {
+        let mut this = Self::new();
+        this.extend(iter.into_iter().map(ustr));
+        this
     }
 }
 

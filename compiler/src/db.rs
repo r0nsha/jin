@@ -143,8 +143,13 @@ impl Db {
             .find(|m| matches!(sources.get(m.source_id), Some(s) if s.path() == path))
     }
 
-    pub fn find_module_by_qpath(&self, qpath: &QPath) -> Option<&ModuleInfo> {
-        self.modules.iter().find(|m| &m.qpath == qpath)
+    pub fn find_module_by_qpath<'a>(
+        &self,
+        package: &str,
+        path: impl IntoIterator<Item = &'a str>,
+    ) -> Option<&ModuleInfo> {
+        let qpath = QPath::from_iter(path);
+        self.modules.iter().find(|m| m.package == package && m.qpath == qpath)
     }
 
     pub fn package(&self, package: Ustr) -> &Package {
