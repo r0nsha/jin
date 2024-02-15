@@ -88,27 +88,7 @@ pub enum TokenKind {
     // Ident & Keywords
     Ident(Ustr),
     Underscore,
-    Return,
-    Fn,
-    Let,
-    Type,
-    Extern,
-    If,
-    Else,
-    Match,
-    True,
-    False,
-    As,
-    Import,
-    For,
-    Break,
-    Mut,
-    Imm,
-    Transmute,
-    Ref,
-    Move,
-    Unsafe,
-    Pub,
+    Kw(Kw),
 
     // Literals
     Int(Ustr),
@@ -131,10 +111,7 @@ impl TokenKind {
     #[inline]
     pub fn is_before_semi(self) -> bool {
         match self {
-            TokenKind::Return
-            | TokenKind::True
-            | TokenKind::False
-            | TokenKind::Break
+            TokenKind::Kw(Kw::Return | Kw::True | Kw::False | Kw::Break)
             | TokenKind::Int(_)
             | TokenKind::Float(_)
             | TokenKind::Str(_)
@@ -147,23 +124,25 @@ impl TokenKind {
             | TokenKind::Star
             | TokenKind::Semi(_) => true,
 
-            TokenKind::Fn
-            | TokenKind::Let
-            | TokenKind::Type
-            | TokenKind::Extern
-            | TokenKind::If
-            | TokenKind::Else
-            | TokenKind::Match
-            | TokenKind::As
-            | TokenKind::Import
-            | TokenKind::For
-            | TokenKind::Mut
-            | TokenKind::Imm
-            | TokenKind::Transmute
-            | TokenKind::Ref
-            | TokenKind::Move
-            | TokenKind::Unsafe
-            | TokenKind::Pub
+            TokenKind::Kw(
+                Kw::Fn
+                | Kw::Let
+                | Kw::Type
+                | Kw::Extern
+                | Kw::If
+                | Kw::Else
+                | Kw::Match
+                | Kw::As
+                | Kw::Import
+                | Kw::For
+                | Kw::Mut
+                | Kw::Imm
+                | Kw::Transmute
+                | Kw::Ref
+                | Kw::Move
+                | Kw::Unsafe
+                | Kw::Pub,
+            )
             | TokenKind::Dot
             | TokenKind::DotDot
             | TokenKind::Colon
@@ -210,27 +189,29 @@ impl TokenKind {
     #[inline]
     pub fn is_after_semi(self) -> bool {
         match self {
-            TokenKind::Return
-            | TokenKind::True
-            | TokenKind::False
-            | TokenKind::Break
+            TokenKind::Kw(
+                Kw::Return
+                | Kw::True
+                | Kw::False
+                | Kw::Break
+                | Kw::Fn
+                | Kw::Let
+                | Kw::Type
+                | Kw::Extern
+                | Kw::If
+                | Kw::Match
+                | Kw::Import
+                | Kw::For
+                | Kw::Transmute
+                | Kw::Unsafe
+                | Kw::Pub,
+            )
             | TokenKind::Int(_)
             | TokenKind::Float(_)
             | TokenKind::Str(_)
             | TokenKind::Ident(_)
             | TokenKind::Underscore
             | TokenKind::Semi(_)
-            | TokenKind::Fn
-            | TokenKind::Let
-            | TokenKind::Type
-            | TokenKind::Extern
-            | TokenKind::If
-            | TokenKind::Match
-            | TokenKind::Import
-            | TokenKind::For
-            | TokenKind::Transmute
-            | TokenKind::Unsafe
-            | TokenKind::Pub
             | TokenKind::OpenParen
             | TokenKind::OpenBracket
             | TokenKind::OpenCurly
@@ -244,12 +225,7 @@ impl TokenKind {
             | TokenKind::CloseParen
             | TokenKind::CloseBracket
             | TokenKind::Star
-            | TokenKind::Else
-            | TokenKind::As
-            | TokenKind::Mut
-            | TokenKind::Imm
-            | TokenKind::Ref
-            | TokenKind::Move
+            | TokenKind::Kw(Kw::Else | Kw::As | Kw::Mut | Kw::Imm | Kw::Ref | Kw::Move)
             | TokenKind::Dot
             | TokenKind::DotDot
             | TokenKind::Colon
@@ -342,30 +318,98 @@ impl fmt::Display for TokenKind {
             Self::Walrus => f.write_str(":="),
             Self::Ident(..) => f.write_str("identifier"),
             Self::Underscore => f.write_str("_"),
-            Self::Return => f.write_str("`return`"),
-            Self::If => f.write_str("`if`"),
-            Self::Else => f.write_str("`else`"),
-            Self::Match => f.write_str("`match`"),
-            Self::Fn => f.write_str("`fn`"),
-            Self::Let => f.write_str("`let`"),
-            Self::Type => f.write_str("`type`"),
-            Self::Extern => f.write_str("`extern`"),
-            Self::True => f.write_str("`true`"),
-            Self::False => f.write_str("`false`"),
-            Self::As => f.write_str("`as`"),
-            Self::Import => f.write_str("`import`"),
-            Self::For => f.write_str("`for`"),
-            Self::Break => f.write_str("`break`"),
-            Self::Mut => f.write_str("`mut`"),
-            Self::Imm => f.write_str("`imm`"),
-            Self::Transmute => f.write_str("`transmute`"),
-            Self::Ref => f.write_str("`ref`"),
-            Self::Move => f.write_str("`move`"),
-            Self::Unsafe => f.write_str("`unsafe`"),
-            Self::Pub => f.write_str("`pub`"),
+            Self::Kw(kw) => write!(f, "{kw}"),
             Self::Int(lit) => write!(f, "integer literal `{lit}`"),
             Self::Float(lit) => write!(f, "float literal `{lit}`"),
             Self::Str(lit) => write!(f, "\"{lit}\""),
         }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Kw {
+    Return,
+    Fn,
+    Let,
+    Type,
+    Extern,
+    If,
+    Else,
+    Match,
+    True,
+    False,
+    As,
+    Import,
+    For,
+    Break,
+    Mut,
+    Imm,
+    Transmute,
+    Ref,
+    Move,
+    Unsafe,
+    Pub,
+}
+
+impl<'a> TryFrom<&'a str> for Kw {
+    type Error = &'a str;
+
+    fn try_from(value: &'a str) -> Result<Self, Self::Error> {
+        Ok(match value {
+            "return" => Self::Return,
+            "fn" => Self::Fn,
+            "let" => Self::Let,
+            "type" => Self::Type,
+            "extern" => Self::Extern,
+            "if" => Self::If,
+            "else" => Self::Else,
+            "match" => Self::Match,
+            "true" => Self::True,
+            "false" => Self::False,
+            "as" => Self::As,
+            "import" => Self::Import,
+            "for" => Self::For,
+            "break" => Self::Break,
+            "mut" => Self::Mut,
+            "imm" => Self::Imm,
+            "transmute" => Self::Transmute,
+            "ref" => Self::Ref,
+            "move" => Self::Move,
+            "unsafe" => Self::Unsafe,
+            "pub" => Self::Pub,
+            value => return Err(value),
+        })
+    }
+}
+
+impl fmt::Display for Kw {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "`{}`",
+            match self {
+                Self::Return => "return",
+                Self::If => "if",
+                Self::Else => "else",
+                Self::Match => "match",
+                Self::Fn => "fn",
+                Self::Let => "let",
+                Self::Type => "type",
+                Self::Extern => "extern",
+                Self::True => "true",
+                Self::False => "false",
+                Self::As => "as",
+                Self::Import => "import",
+                Self::For => "for",
+                Self::Break => "break",
+                Self::Mut => "mut",
+                Self::Imm => "imm",
+                Self::Transmute => "transmute",
+                Self::Ref => "ref",
+                Self::Move => "move",
+                Self::Unsafe => "unsafe",
+                Self::Pub => "pub",
+            }
+        )
     }
 }

@@ -3,7 +3,11 @@ use std::ops::ControlFlow;
 use crate::{
     diagnostics::DiagnosticResult,
     middle::{CallConv, TyExpr, TyExprFn},
-    parse::{errors, parser::Parser, token::TokenKind},
+    parse::{
+        errors,
+        parser::Parser,
+        token::{Kw, TokenKind},
+    },
     span::Spanned,
     word::Word,
 };
@@ -13,7 +17,7 @@ impl<'a> Parser<'a> {
         let tok = self.eat_any()?;
 
         let ty = match tok.kind {
-            TokenKind::Fn => {
+            TokenKind::Kw(Kw::Fn) => {
                 let fty = self.parse_fn_ty()?;
                 TyExpr::Fn(fty)
             }
@@ -62,7 +66,7 @@ impl<'a> Parser<'a> {
 
     fn parse_fn_ty(&mut self) -> DiagnosticResult<TyExprFn> {
         let start = self.last_span();
-        let (is_extern, callconv) = if self.is(TokenKind::Extern) {
+        let (is_extern, callconv) = if self.is_kw(Kw::Extern) {
             let callconv = self.parse_callconv()?;
             (true, callconv)
         } else {

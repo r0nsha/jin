@@ -8,7 +8,10 @@ use crate::{
     db::{StructKind, UnionKind},
     diagnostics::DiagnosticResult,
     middle::Vis,
-    parse::{parser::Parser, token::TokenKind},
+    parse::{
+        parser::Parser,
+        token::{Kw, TokenKind},
+    },
 };
 
 impl<'a> Parser<'a> {
@@ -26,11 +29,11 @@ impl<'a> Parser<'a> {
     fn parse_tydef_kind(&mut self) -> DiagnosticResult<TyDefKind> {
         if self.peek_is(TokenKind::OpenParen) {
             self.parse_tydef_struct(StructKind::Ref)
-        } else if self.is(TokenKind::Extern) {
+        } else if self.is_kw(Kw::Extern) {
             self.parse_tydef_struct(StructKind::Value)
         } else if self.peek_is(TokenKind::OpenCurly) {
             self.parse_tydef_union(UnionKind::Value)
-        } else if self.is(TokenKind::Ref) {
+        } else if self.is_kw(Kw::Ref) {
             self.parse_tydef_union(UnionKind::Ref)
         } else {
             Err(self.unexpected_token("(, {, `ref` or `value`"))

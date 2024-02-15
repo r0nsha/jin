@@ -2,7 +2,7 @@ use ustr::ustr;
 
 use crate::{
     diagnostics::{Diagnostic, DiagnosticResult, Label},
-    parse::token::{Token, TokenKind},
+    parse::token::{Kw, Token, TokenKind},
     span::{Source, SourceId, Span},
 };
 
@@ -235,30 +235,14 @@ impl<'s> Lexer<'s> {
             if ch.is_ascii_alphanumeric() || ch == '_' {
                 self.next();
             } else {
-                return match self.range_from(start) {
-                    "_" => TokenKind::Underscore,
-                    "return" => TokenKind::Return,
-                    "fn" => TokenKind::Fn,
-                    "let" => TokenKind::Let,
-                    "type" => TokenKind::Type,
-                    "extern" => TokenKind::Extern,
-                    "if" => TokenKind::If,
-                    "else" => TokenKind::Else,
-                    "match" => TokenKind::Match,
-                    "true" => TokenKind::True,
-                    "false" => TokenKind::False,
-                    "as" => TokenKind::As,
-                    "import" => TokenKind::Import,
-                    "for" => TokenKind::For,
-                    "break" => TokenKind::Break,
-                    "mut" => TokenKind::Mut,
-                    "imm" => TokenKind::Imm,
-                    "transmute" => TokenKind::Transmute,
-                    "ref" => TokenKind::Ref,
-                    "move" => TokenKind::Move,
-                    "unsafe" => TokenKind::Unsafe,
-                    "pub" => TokenKind::Pub,
-                    str => TokenKind::Ident(ustr(str)),
+                let s = self.range_from(start);
+
+                return if s == "_" {
+                    TokenKind::Underscore
+                } else if let Ok(kw) = Kw::try_from(s) {
+                    TokenKind::Kw(kw)
+                } else {
+                    TokenKind::Ident(ustr(s))
                 };
             }
         }

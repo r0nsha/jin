@@ -6,7 +6,10 @@ use crate::{
     ast::{Expr, MatchArm, MatchPat, MatchPatAdt, MatchSubpat},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::Mutability,
-    parse::{parser::Parser, token::TokenKind},
+    parse::{
+        parser::Parser,
+        token::{Kw, TokenKind},
+    },
     span::Spanned,
     word::Word,
 };
@@ -31,8 +34,10 @@ impl<'a> Parser<'a> {
     fn parse_match_arm(&mut self) -> DiagnosticResult<MatchArm> {
         let pat = self.parse_match_pat()?;
 
-        let guard =
-            self.is_and(TokenKind::If, |this, _| this.parse_expr()).transpose()?.map(Box::new);
+        let guard = self
+            .is_and(TokenKind::Kw(Kw::If), |this, _| this.parse_expr())
+            .transpose()?
+            .map(Box::new);
 
         self.eat(TokenKind::Arrow)?;
         let expr = self.parse_expr()?;
@@ -91,9 +96,9 @@ impl<'a> Parser<'a> {
         } else if self.is(TokenKind::empty_str()) {
             let tok = self.last_token();
             Ok(MatchPat::Str(tok.str_value(), tok.span))
-        } else if self.is(TokenKind::True) {
+        } else if self.is_kw(Kw::True) {
             Ok(MatchPat::Bool(true, self.last_span()))
-        } else if self.is(TokenKind::False) {
+        } else if self.is_kw(Kw::False) {
             Ok(MatchPat::Bool(false, self.last_span()))
         } else {
             Err(self.unexpected_token("a pattern"))

@@ -8,7 +8,11 @@ use crate::{
     db::ExternLib,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{IsUfcs, Vis},
-    parse::{errors, parser::Parser, token::TokenKind},
+    parse::{
+        errors,
+        parser::Parser,
+        token::{Kw, TokenKind},
+    },
     span::{Span, Spanned},
     word::Word,
 };
@@ -37,7 +41,7 @@ impl<'a> Parser<'a> {
         if self.is(TokenKind::Dot) {
             let next = self.parse_import_tree_cont()?;
             Ok(ImportTree::Path(name, Box::new(next)))
-        } else if self.is(TokenKind::As) {
+        } else if self.is_kw(Kw::As) {
             let alias = self.eat_ident()?.word();
             Ok(ImportTree::Name(name, Some(alias)))
         } else {

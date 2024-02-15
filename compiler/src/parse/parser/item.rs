@@ -8,7 +8,7 @@ use crate::{
     parse::{
         errors,
         parser::{AllowOmitParens, Parser, RequireSigTy},
-        token::{Token, TokenKind},
+        token::{Kw, Token, TokenKind},
     },
     span::{Span, Spanned},
     word::Word,
@@ -19,26 +19,26 @@ impl<'a> Parser<'a> {
         let attrs = self.parse_attrs()?;
         let vis = self.parse_vis()?;
 
-        if self.is(TokenKind::Fn) {
+        if self.is_kw(Kw::Fn) {
             return self.parse_fn_item(attrs, vis);
         }
 
-        if self.is(TokenKind::Let) {
-            return if self.is(TokenKind::Extern) {
+        if self.is_kw(Kw::Let) {
+            return if self.is_kw(Kw::Extern) {
                 self.parse_extern_let(attrs, vis).map(Item::ExternLet)
             } else {
                 self.parse_let(attrs, vis, RequireTy::Yes).map(Item::Let)
             };
         }
 
-        if self.is(TokenKind::Type) {
+        if self.is_kw(Kw::Type) {
             return self.parse_tydef(attrs, vis).map(Item::Type);
         }
 
-        if self.is(TokenKind::Import) {
+        if self.is_kw(Kw::Import) {
             let start = self.last_span();
 
-            if self.is(TokenKind::Extern) {
+            if self.is_kw(Kw::Extern) {
                 return self.parse_extern_import(&attrs, start).map(Item::ExternImport);
             }
 
@@ -53,7 +53,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_fn_item(&mut self, attrs: Attrs, vis: Vis) -> DiagnosticResult<Item> {
-        if self.is(TokenKind::Extern) {
+        if self.is_kw(Kw::Extern) {
             let fun = self.parse_extern_fn(attrs, vis)?;
             return Ok(Item::Fn(fun));
         }

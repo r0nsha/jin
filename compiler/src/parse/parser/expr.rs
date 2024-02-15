@@ -10,7 +10,7 @@ use crate::{
     parse::{
         errors,
         parser::{item::RequireTy, AllowOmitParens, Parser, RequireSigTy},
-        token::TokenKind,
+        token::{Kw, TokenKind},
     },
     span::{Span, Spanned},
     ty::TyKind,
@@ -83,13 +83,13 @@ impl<'a> Parser<'a> {
         let tok = self.eat_any()?;
 
         let expr = match tok.kind {
-            TokenKind::Fn => self.parse_fn_expr()?,
-            TokenKind::Return => self.parse_return()?,
-            TokenKind::If => self.parse_if()?,
-            TokenKind::Match => self.parse_match()?,
-            TokenKind::For => self.parse_loop()?,
-            TokenKind::Break => Expr::Break { span: tok.span },
-            TokenKind::Transmute => self.parse_transmute()?,
+            TokenKind::Kw(Kw::Fn) => self.parse_fn_expr()?,
+            TokenKind::Kw(Kw::Return) => self.parse_return()?,
+            TokenKind::Kw(Kw::If) => self.parse_if()?,
+            TokenKind::Kw(Kw::Match) => self.parse_match()?,
+            TokenKind::Kw(Kw::For) => self.parse_loop()?,
+            TokenKind::Kw(Kw::Break) => Expr::Break { span: tok.span },
+            TokenKind::Kw(Kw::Transmute) => self.parse_transmute()?,
             TokenKind::Minus => {
                 let expr = self.parse_operand()?;
 
@@ -123,13 +123,13 @@ impl<'a> Parser<'a> {
                 self.parse_block()?
             }
             TokenKind::OpenBracket => self.parse_slice_lit()?,
-            TokenKind::Unsafe => {
+            TokenKind::Kw(Kw::Unsafe) => {
                 let expr = self.parse_expr()?;
                 let span = tok.span.merge(expr.span());
                 Expr::Unsafe { expr: Box::new(expr), span }
             }
-            TokenKind::True => Expr::BoolLit { value: true, span: tok.span },
-            TokenKind::False => Expr::BoolLit { value: false, span: tok.span },
+            TokenKind::Kw(Kw::True) => Expr::BoolLit { value: true, span: tok.span },
+            TokenKind::Kw(Kw::False) => Expr::BoolLit { value: false, span: tok.span },
             TokenKind::Ident(..) => {
                 let targs = self.parse_optional_ty_args()?;
                 Expr::Name { word: tok.word(), targs, span: tok.span }
@@ -153,10 +153,10 @@ impl<'a> Parser<'a> {
         let cond = self.parse_expr()?;
         let then = self.parse_block()?;
 
-        let otherwise = if self.is(TokenKind::Else) {
+        let otherwise = if self.is_kw(Kw::Else) {
             if self.peek_is(TokenKind::OpenCurly) {
                 Some(Box::new(self.parse_block()?))
-            } else if self.is(TokenKind::If) {
+            } else if self.is_kw(Kw::If) {
                 Some(Box::new(self.parse_if()?))
             } else {
                 return Err(self.unexpected_token("{ or `if`"));
@@ -172,7 +172,7 @@ impl<'a> Parser<'a> {
 
     fn parse_loop(&mut self) -> DiagnosticResult<Expr> {
         let start = self.last_span();
-        let cond = if self.is(TokenKind::If) { Some(Box::new(self.parse_expr()?)) } else { None };
+        let cond = if self.is_kw(Kw::If) { Some(Box::new(self.parse_expr()?)) } else { None };
         let expr = self.parse_block()?;
         let span = start.merge(expr.span());
         Ok(Expr::Loop { cond, expr: Box::new(expr), span })
@@ -198,7 +198,7 @@ impl<'a> Parser<'a> {
         while let Some(tok) = self.token() {
             expr = match tok.kind {
                 TokenKind::OpenParen => self.parse_call(expr)?,
-                TokenKind::As => {
+                TokenKind::Kw(Kw::As) => {
                     self.next();
                     let target = self.parse_ty()?;
                     let span = expr.span().merge(target.span());
@@ -229,7 +229,7 @@ impl<'a> Parser<'a> {
                     let span = expr.span().merge(rhs.span());
                     Expr::Swap { lhs: Box::new(expr), rhs: Box::new(rhs), span }
                 }
-                TokenKind::Fn => {
+                TokenKind::Kw(Kw::Fn) => {
                     self.next();
 
                     let fn_expr = self.parse_fn_expr()?;
@@ -399,7 +399,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_stmt(&mut self) -> DiagnosticResult<Expr> {
-        if self.is(TokenKind::Let) {
+        if self.is_kw(Kw::Let) {
             let let_ = self.parse_let(Attrs::new(), Vis::Module, RequireTy::No)?;
             Ok(Expr::Let(let_))
         } else {

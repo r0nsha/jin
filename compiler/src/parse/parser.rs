@@ -19,7 +19,7 @@ use crate::{
     middle::{Mutability, Vis},
     parse::{
         errors,
-        token::{Token, TokenKind},
+        token::{Kw, Token, TokenKind},
     },
     qpath::QPath,
     span::{Source, SourceId, Span},
@@ -78,9 +78,9 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_optional_mutability(&mut self) -> Option<Mutability> {
-        if self.is(TokenKind::Mut) {
+        if self.is_kw(Kw::Mut) {
             Some(Mutability::Mut)
-        } else if self.is(TokenKind::Imm) {
+        } else if self.is_kw(Kw::Imm) {
             Some(Mutability::Imm)
         } else {
             None
@@ -88,7 +88,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_vis(&mut self) -> DiagnosticResult<Vis> {
-        if !self.is(TokenKind::Pub) {
+        if !self.is_kw(Kw::Pub) {
             return Ok(Vis::Package);
         }
 
@@ -100,7 +100,7 @@ impl<'a> Parser<'a> {
             Vis::Export
         } else if self.is_weak_kw("package") {
             Vis::Package
-        }else if self.is_weak_kw("module") {
+        } else if self.is_weak_kw("module") {
             Vis::Module
         } else {
             return Err(self.unexpected_token("export, package or module"));
@@ -254,6 +254,11 @@ impl<'a> Parser<'a> {
     #[inline]
     pub(super) fn is(&mut self, expected: TokenKind) -> bool {
         self.is_predicate(|_, tok| tok.kind_is(expected))
+    }
+
+    #[inline]
+    pub(super) fn is_kw(&mut self, expected: Kw) -> bool {
+        self.is_predicate(|_, tok| matches!(tok.kind, TokenKind::Kw(kw) if kw == expected))
     }
 
     #[inline]
