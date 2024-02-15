@@ -614,12 +614,9 @@ fn check_name_struct(
 
     // NOTE: if the named definition is a struct, we want to return its
     // constructor function's type
-    if struct_def.ctor_vis.is_module() && cx.db[adt.def_id].scope.module_id != env.module_id() {
-        let private_field = struct_def
-            .fields
-            .iter()
-            .find(|f| f.vis.is_module())
-            .expect("to have at least one private field");
+    if !cx.can_access(env.module_id(), cx.db[adt.def_id].scope.module_id, struct_def.ctor_vis) {
+        let private_field =
+            struct_def.fields.iter().min_by_key(|f| f.vis).expect("to have at least one field");
 
         return Err(Diagnostic::error(format!(
             "constructor of type `{}` is private because `{}` is private",
@@ -698,7 +695,7 @@ pub(super) fn check_field_access(
     field: &AdtField,
     span: Span,
 ) -> DiagnosticResult<()> {
-    if field.vis.is_module() && cx.db[adt.def_id].scope.module_id != env.module_id() {
+    if !cx.can_access(env.module_id(), cx.db[adt.def_id].scope.module_id, field.vis) {
         return Err(Diagnostic::error(format!(
             "field `{}` of type `{}` is private",
             field.name, adt.name

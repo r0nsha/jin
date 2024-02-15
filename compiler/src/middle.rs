@@ -17,16 +17,6 @@ pub enum Vis {
     Export = 1,
 }
 
-impl Vis {
-    /// Returns `true` if the vis is [`Module`].
-    ///
-    /// [`Module`]: Vis::Module
-    #[must_use]
-    pub fn is_module(&self) -> bool {
-        matches!(self, Self::Module)
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum Mutability {
     Imm,
