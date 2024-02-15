@@ -477,12 +477,8 @@ impl<'cx, 'db> CollectTransitiveGlobs<'cx, 'db> {
     }
 
     fn traverse_root(&mut self, module_id: ModuleId) {
-        if !self.visited.insert(module_id) {
-            return;
-        }
-
         for (&glob_module_id, imp) in &self.cx.global_env.module(module_id).globs {
-            self.collect_one(module_id, glob_module_id, imp, imp);
+            self.traverse(glob_module_id, imp);
         }
     }
 
@@ -492,11 +488,11 @@ impl<'cx, 'db> CollectTransitiveGlobs<'cx, 'db> {
         }
 
         for (&glob_module_id, imp) in &self.cx.global_env.module(module_id).globs {
-            self.collect_one(module_id, glob_module_id, parent_imp, imp);
+            self.collect(module_id, glob_module_id, parent_imp, imp);
         }
     }
 
-    fn collect_one(
+    fn collect(
         &mut self,
         in_module: ModuleId,
         glob_module_id: ModuleId,
@@ -507,10 +503,11 @@ impl<'cx, 'db> CollectTransitiveGlobs<'cx, 'db> {
             return;
         }
 
-        self.traverse(glob_module_id, imp);
+        let trans_imp = parent_imp.merge_transitive(imp);
+        self.traverse(glob_module_id, &trans_imp);
 
         if glob_module_id != self.module_id {
-            self.insert(glob_module_id, parent_imp.merge_transitive(imp));
+            self.insert(glob_module_id, trans_imp);
         }
     }
 
