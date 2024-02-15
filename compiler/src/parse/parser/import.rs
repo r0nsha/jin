@@ -56,7 +56,7 @@ impl<'a> Parser<'a> {
             Ok(ImportTree::Glob(IsUfcs::Yes, self.last_span()))
         } else if self.is_ident() {
             self.parse_import_tree(self.last_token().word())
-        } else if self.peek_is(TokenKind::OpenParen) {
+        } else if self.peek_is(TokenKind::OpenCurly) {
             self.parse_import_group()
         } else {
             Err(self.unexpected_token("an identifier . ( * or ?"))
@@ -64,7 +64,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_import_group(&mut self) -> DiagnosticResult<ImportTree> {
-        self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
+        self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
             this.parse_import_tree_cont().map(ControlFlow::Continue)
         })
         .map(|(imports, _)| ImportTree::Group(imports))
