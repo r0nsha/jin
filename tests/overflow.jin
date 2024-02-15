@@ -1,5 +1,5 @@
 use std.io.println
-use std.int.*
+use std.int.{*}
 
 fn main() = {
     i()

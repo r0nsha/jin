@@ -31,7 +31,7 @@ impl<'a> Parser<'a> {
             if is_submodule { self.search_submodule(root)? } else { self.search_package(root)? };
         self.imported_module_paths.insert(module_path.clone());
 
-        let tree = self.parse_import_tree(root)?;
+        let tree = self.parse_import_tree_name(root)?;
 
         Ok(Import {
             attrs: attrs.clone(),
@@ -42,9 +42,16 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_import_tree(&mut self, name: Word) -> DiagnosticResult<ImportTree> {
+    fn parse_import_tree_name(&mut self, name: Word) -> DiagnosticResult<ImportTree> {
         if self.is(TokenKind::Dot) {
-            let next = self.parse_import_tree_cont()?;
+            let next = if self.is_ident() {
+                self.parse_import_tree_name(self.last_token().word())
+            } else if self.peek_is(TokenKind::OpenCurly) {
+                self.parse_import_path_group()
+            } else {
+                Err(self.unexpected_token("an identifier or {"))
+            }?;
+
             Ok(ImportTree::Path(name, Box::new(next)))
         } else if self.is_kw(Kw::As) {
             let alias = self.eat_ident()?.word();
@@ -54,25 +61,23 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn parse_import_tree_cont(&mut self) -> DiagnosticResult<ImportTree> {
+    fn parse_import_path_group(&mut self) -> DiagnosticResult<ImportTree> {
+        self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
+            this.parse_import_group_tree().map(ControlFlow::Continue)
+        })
+        .map(|(imports, _)| ImportTree::Group(imports))
+    }
+
+    fn parse_import_group_tree(&mut self) -> DiagnosticResult<ImportTree> {
         if self.is(TokenKind::Star) {
             Ok(ImportTree::Glob(IsUfcs::No, self.last_span()))
         } else if self.is(TokenKind::QuestionMark) {
             Ok(ImportTree::Glob(IsUfcs::Yes, self.last_span()))
         } else if self.is_ident() {
-            self.parse_import_tree(self.last_token().word())
-        } else if self.peek_is(TokenKind::OpenCurly) {
-            self.parse_import_group()
+            self.parse_import_tree_name(self.last_token().word())
         } else {
-            Err(self.unexpected_token("an identifier . ( * or ?"))
+            Err(self.unexpected_token("an identifier . * or ?"))
         }
-    }
-
-    fn parse_import_group(&mut self) -> DiagnosticResult<ImportTree> {
-        self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
-            this.parse_import_tree_cont().map(ControlFlow::Continue)
-        })
-        .map(|(imports, _)| ImportTree::Group(imports))
     }
 
     fn search_package(&self, name: Word) -> DiagnosticResult<Utf8PathBuf> {
