@@ -121,7 +121,6 @@ impl TokenKind {
             | TokenKind::CloseParen
             | TokenKind::CloseBracket
             | TokenKind::CloseCurly
-            | TokenKind::Star
             | TokenKind::Semi(_) => true,
 
             TokenKind::Kw(
@@ -155,6 +154,7 @@ impl TokenKind {
             | TokenKind::EqEq
             | TokenKind::Bang
             | TokenKind::BangEq
+            | TokenKind::Star
             | TokenKind::StarEq
             | TokenKind::FwSlash
             | TokenKind::FwSlashEq
@@ -224,7 +224,6 @@ impl TokenKind {
             TokenKind::QuestionMark
             | TokenKind::CloseParen
             | TokenKind::CloseBracket
-            | TokenKind::Star
             | TokenKind::Kw(Kw::Else | Kw::As | Kw::Mut | Kw::Imm | Kw::Ref | Kw::Move)
             | TokenKind::Dot
             | TokenKind::DotDot
@@ -234,6 +233,7 @@ impl TokenKind {
             | TokenKind::Eq
             | TokenKind::EqEq
             | TokenKind::BangEq
+            | TokenKind::Star
             | TokenKind::StarEq
             | TokenKind::FwSlash
             | TokenKind::FwSlashEq
