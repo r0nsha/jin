@@ -517,3 +517,20 @@ impl<'cx, 'db> CollectTransitiveGlobs<'cx, 'db> {
         self.trans.get_mut(&self.module_id).unwrap().push((glob_module_id, imp));
     }
 }
+
+pub(super) fn insert_prelude(cx: &mut Typeck) {
+    let prelude_module_id =
+        cx.db.find_module_by_qpath("std", ["prelude"]).expect("std.prelude to exist").id;
+
+    for (&module_id, env) in &mut cx.global_env.modules {
+        // Don't insert the prelude for modules in package `std`
+        if ns::in_std(cx.db, module_id) {
+            continue;
+        }
+
+        // Don't insert the prelude for modules which already imported it
+        env.globs
+            .entry(prelude_module_id)
+            .or_insert(ns::GlobImport { is_ufcs: IsUfcs::No, vis: Vis::Module });
+    }
+}

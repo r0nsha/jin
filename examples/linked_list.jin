@@ -1,5 +1,4 @@
-use std.option.Option
-use std.prelude.{*}
+// use std.prelude.{*}
 
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
