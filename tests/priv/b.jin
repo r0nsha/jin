@@ -1,1 +1,1 @@
-pub use priv.c.val
+pub(package) use priv.c.val

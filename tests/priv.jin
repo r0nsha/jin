@@ -1,5 +1,5 @@
-use .b
-use .c
+pub(package) use .b
+pub(package) use .c
 use .b.val as vb
 use .c.val as vc
 

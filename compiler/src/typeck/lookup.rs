@@ -1,6 +1,7 @@
 use std::iter;
 
 use itertools::Itertools as _;
+use rustc_hash::FxHashSet;
 use ustr::Ustr;
 
 use crate::{
@@ -302,13 +303,13 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         is_ufcs: IsUfcs,
     ) -> Vec<LookupResult> {
         let lookup_modules = self.get_lookup_modules(in_module, is_ufcs);
-        let mut results = vec![];
+        let mut results = FxHashSet::default();
 
         for module_id in lookup_modules {
             let env = self.cx.global_env.module(module_id);
 
             if let Some(def) = env.ns.defs.get(&name) {
-                results.push(LookupResult::Def(*def));
+                results.insert(LookupResult::Def(*def));
             } else if let ShouldLookupFns::Candidates = should_lookup_fns {
                 if let Some(candidates) = env.ns.fns.get(&name) {
                     results.extend(candidates.iter().cloned().map(LookupResult::Fn));
@@ -316,7 +317,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             }
         }
 
-        results
+        results.into_iter().collect()
     }
 
     fn get_lookup_modules(
@@ -368,6 +369,20 @@ impl LookupResult {
             Self::Def(n) => n.id,
             Self::Fn(c) => c.id,
         }
+    }
+}
+
+impl std::cmp::PartialEq for LookupResult {
+    fn eq(&self, other: &Self) -> bool {
+        self.def_id() == other.def_id()
+    }
+}
+
+impl std::cmp::Eq for LookupResult {}
+
+impl std::hash::Hash for LookupResult {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.def_id().hash(state)
     }
 }
 
