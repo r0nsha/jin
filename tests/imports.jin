@@ -1,6 +1,6 @@
-import bar.baz.yup
-import bar.*
-import ufcs.?
+import .bar.baz.yup
+import .bar.*
+import .ufcs.?
 
 fn main() = {
 	hello()

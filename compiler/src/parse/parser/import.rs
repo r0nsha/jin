@@ -24,10 +24,15 @@ impl<'a> Parser<'a> {
         vis: Vis,
         start: Span,
     ) -> DiagnosticResult<Import> {
+        let is_submodule = self.is(TokenKind::Dot);
         let root = self.eat_ident()?.word();
-        let module_path = self.search_import_path(root)?;
+
+        let module_path =
+            if is_submodule { self.search_submodule(root)? } else { self.search_package(root)? };
         self.imported_module_paths.insert(module_path.clone());
+
         let tree = self.parse_import_tree(root)?;
+
         Ok(Import {
             attrs: attrs.clone(),
             vis,
@@ -70,18 +75,28 @@ impl<'a> Parser<'a> {
         .map(|(imports, _)| ImportTree::Group(imports))
     }
 
-    fn search_import_path(&self, name: Word) -> DiagnosticResult<Utf8PathBuf> {
+    fn search_package(&self, name: Word) -> DiagnosticResult<Utf8PathBuf> {
+        if let Some(pkg) = self.db.packages.get(&name.name()) {
+            let sources = self.db.sources.borrow();
+            let source = sources.get(pkg.main_source_id).unwrap();
+            Ok(source.path().to_path_buf())
+        } else {
+            Err(Diagnostic::error(format!("could not find package `{name}`"))
+                .with_label(Label::primary(name.span(), "not found")))
+        }
+    }
+
+    fn search_submodule(&self, name: Word) -> DiagnosticResult<Utf8PathBuf> {
         let mut search_notes = vec![];
 
         let path = self
             .is_package_root
             .then(|| self.search_module_in_currdir(name, &mut search_notes))
             .flatten()
-            .or_else(|| self.search_module_in_subdir(name, &mut search_notes))
-            .or_else(|| self.search_package(name, &mut search_notes));
+            .or_else(|| self.search_module_in_subdir(name, &mut search_notes));
 
         path.ok_or_else(|| {
-            Diagnostic::error(format!("could not find module or library `{name}`"))
+            Diagnostic::error(format!("could not find module `{name}`"))
                 .with_label(Label::primary(name.span(), "not found"))
                 .with_notes(search_notes)
         })
@@ -127,17 +142,6 @@ impl<'a> Parser<'a> {
         search_notes.push(format!("searched path: {absolute_path}"));
 
         absolute_path.exists().then_some(absolute_path)
-    }
-
-    fn search_package(&self, name: Word, search_notes: &mut Vec<String>) -> Option<Utf8PathBuf> {
-        if let Some(pkg) = self.db.packages.get(&name.name()) {
-            let sources = self.db.sources.borrow();
-            let source = sources.get(pkg.main_source_id).unwrap();
-            Some(source.path().to_path_buf())
-        } else {
-            search_notes.push(format!("searched package: {name}"));
-            None
-        }
     }
 
     pub(super) fn parse_extern_import(

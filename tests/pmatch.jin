@@ -1,4 +1,4 @@
-import inner
+import .inner
 
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
