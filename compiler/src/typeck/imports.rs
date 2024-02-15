@@ -449,10 +449,12 @@ pub(super) struct ImportedFn {
 pub(super) fn define_transitive_globs(cx: &mut Typeck) {
     let mut trans = TransitiveGlobs::default();
 
+    // Collect
     for &module_id in cx.global_env.modules.keys() {
         CollectTransitiveGlobs::new(cx, &mut trans, module_id).traverse_root(module_id);
     }
 
+    // Insert
     for (module_id, pairs) in trans {
         let module_globs = &mut cx.global_env.module_mut(module_id).globs;
         for (glob_module_id, imp) in pairs {
