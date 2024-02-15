@@ -1,4 +1,4 @@
-type Struct*(num: int)
+pub type Struct(num: int)
 
 fn foo() = {
 	let s = Struct(1)

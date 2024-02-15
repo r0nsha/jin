@@ -1,1 +1,1 @@
-type Inner*[a](value*: a)
+pub type Inner[a](pub value: a)

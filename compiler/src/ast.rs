@@ -311,6 +311,7 @@ pub struct FnParam {
 pub struct Let {
     pub attrs: Attrs,
     pub pat: Pat,
+    pub vis: Vis,
     pub ty_expr: Option<TyExpr>,
     pub value: Box<Expr>,
     pub span: Span,
@@ -366,6 +367,7 @@ pub struct UnionVariantField {
 #[derive(Debug, Clone)]
 pub struct Import {
     pub attrs: Attrs,
+    pub vis: Vis,
     pub module_path: Utf8PathBuf,
     pub tree: ImportTree,
     pub span: Span,
@@ -375,7 +377,7 @@ pub struct Import {
 pub enum ImportTree {
     Group(Vec<ImportTree>),
     Path(Word, Box<Self>),
-    Name(Word, Option<Word>, Vis),
+    Name(Word, Option<Word>),
     Glob(IsUfcs, Span),
 }
 

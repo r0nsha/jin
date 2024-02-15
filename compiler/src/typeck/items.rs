@@ -52,7 +52,7 @@ fn define_let(
 ) -> DiagnosticResult<()> {
     attrs::validate(&let_.attrs, attrs::Placement::Let)?;
     let unknown = cx.db.types.unknown;
-    let pat = cx.define().global_pat(module_id, &let_.pat, unknown)?;
+    let pat = cx.define().global_pat(module_id, &let_.pat, let_.vis, unknown)?;
     cx.res_map.item_to_pat.insert(item_id, pat);
     Ok(())
 }

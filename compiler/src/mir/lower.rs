@@ -8,7 +8,7 @@ use crate::{
     hir,
     hir::{FnKind, Hir},
     mangle,
-    middle::{BinOp, CmpOp, Mutability, NamePat, Pat, Vis},
+    middle::{BinOp, CmpOp, Mutability, NamePat, Pat},
     mir::{
         builder::InstBuilder,
         ownck::{CannotMove, ValueState, ValueStates},
@@ -229,7 +229,6 @@ impl<'db> Lower<'db> {
                 pat: Pat::Name(NamePat {
                     id: DefId::null(),
                     word: field.name,
-                    vis: Vis::Private,
                     mutability: Mutability::Imm,
                     ty: field.ty,
                 }),

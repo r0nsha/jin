@@ -132,11 +132,13 @@ impl<'s> Lexer<'s> {
                         }
                     }
                     '/' => {
-                        if self.eat('=') {
-                            TokenKind::FwSlashEq
-                        } else if self.eat('/') {
+                        if self.eat('/') {
                             self.eat_comment();
                             return self.eat_token();
+                        }
+
+                        if self.eat('=') {
+                            TokenKind::FwSlashEq
                         } else {
                             TokenKind::FwSlash
                         }
@@ -255,6 +257,7 @@ impl<'s> Lexer<'s> {
                     "ref" => TokenKind::Ref,
                     "move" => TokenKind::Move,
                     "unsafe" => TokenKind::Unsafe,
+                    "pub" => TokenKind::Pub,
                     str => TokenKind::Ident(ustr(str)),
                 };
             }

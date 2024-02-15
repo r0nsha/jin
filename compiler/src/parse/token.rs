@@ -108,6 +108,7 @@ pub enum TokenKind {
     Ref,
     Move,
     Unsafe,
+    Pub,
 
     // Literals
     Int(Ustr),
@@ -162,6 +163,7 @@ impl TokenKind {
             | TokenKind::Ref
             | TokenKind::Move
             | TokenKind::Unsafe
+            | TokenKind::Pub
             | TokenKind::Dot
             | TokenKind::DotDot
             | TokenKind::Colon
@@ -228,6 +230,7 @@ impl TokenKind {
             | TokenKind::For
             | TokenKind::Transmute
             | TokenKind::Unsafe
+            | TokenKind::Pub
             | TokenKind::OpenParen
             | TokenKind::OpenBracket
             | TokenKind::OpenCurly
@@ -359,6 +362,7 @@ impl fmt::Display for TokenKind {
             Self::Ref => f.write_str("`ref`"),
             Self::Move => f.write_str("`move`"),
             Self::Unsafe => f.write_str("`unsafe`"),
+            Self::Pub => f.write_str("`pub`"),
             Self::Int(lit) => write!(f, "integer literal `{lit}`"),
             Self::Float(lit) => write!(f, "float literal `{lit}`"),
             Self::Str(lit) => write!(f, "\"{lit}\""),

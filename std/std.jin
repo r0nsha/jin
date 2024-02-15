@@ -1,6 +1,6 @@
-import array*
-import int*
-import intrinsics*
-import io*
-import option*
-import result*
+pub import array
+pub import int
+pub import intrinsics
+pub import io
+pub import option
+pub import result

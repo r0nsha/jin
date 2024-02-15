@@ -4,7 +4,7 @@ use crate::{
     ast::{Attr, AttrArgs, AttrId, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig, Item, Let},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     macros::create_bool_enum,
-    middle::{CallConv, TyExpr},
+    middle::{CallConv, TyExpr, Vis},
     parse::{
         errors,
         parser::{AllowOmitParens, Parser, RequireSigTy},
@@ -15,47 +15,46 @@ use crate::{
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn maybe_parse_item(&mut self) -> DiagnosticResult<Option<Item>> {
+    pub(super) fn parse_item(&mut self) -> DiagnosticResult<Item> {
         let attrs = self.parse_attrs()?;
+        let vis = self.parse_vis();
 
         if self.is(TokenKind::Fn) {
-            return self.parse_fn_item(attrs).map(Some);
+            return self.parse_fn_item(attrs, vis);
         }
 
         if self.is(TokenKind::Let) {
             return if self.is(TokenKind::Extern) {
-                self.parse_extern_let(attrs).map(|l| Some(Item::ExternLet(l)))
+                self.parse_extern_let(attrs, vis).map(Item::ExternLet)
             } else {
-                self.parse_let(attrs, RequireTy::Yes).map(|l| Some(Item::Let(l)))
+                self.parse_let(attrs, vis, RequireTy::Yes).map(Item::Let)
             };
         }
 
         if self.is(TokenKind::Type) {
-            return self.parse_tydef(attrs).map(|t| Some(Item::Type(t)));
+            return self.parse_tydef(attrs, vis).map(Item::Type);
         }
 
         if self.is(TokenKind::Import) {
             let start = self.last_span();
 
             if self.is(TokenKind::Extern) {
-                return self
-                    .parse_extern_import(&attrs, start)
-                    .map(|i| Some(Item::ExternImport(i)));
+                return self.parse_extern_import(&attrs, start).map(Item::ExternImport);
             }
 
-            return self.parse_import(&attrs, start).map(|i| Some(Item::Import(i)));
+            return self.parse_import(&attrs, vis, start).map(Item::Import);
         }
 
         if !attrs.is_empty() {
             return Err(self.unexpected_token("an item after attribute"));
         }
 
-        Ok(None)
+        Err(self.unexpected_token("an item"))
     }
 
-    fn parse_fn_item(&mut self, attrs: Attrs) -> DiagnosticResult<Item> {
+    fn parse_fn_item(&mut self, attrs: Attrs, vis: Vis) -> DiagnosticResult<Item> {
         if self.is(TokenKind::Extern) {
-            let fun = self.parse_extern_fn(attrs)?;
+            let fun = self.parse_extern_fn(attrs, vis)?;
             return Ok(Item::Fn(fun));
         }
 
@@ -63,18 +62,17 @@ impl<'a> Parser<'a> {
 
         if self.is(TokenKind::Dot) {
             let fn_name = self.eat_ident()?;
-            let fun = self.parse_bare_fn(attrs, fn_name)?;
+            let fun = self.parse_bare_fn(attrs, vis, fn_name)?;
             Ok(Item::Assoc(name.word(), Box::new(Item::Fn(fun))))
         } else {
-            let fun = self.parse_bare_fn(attrs, name)?;
+            let fun = self.parse_bare_fn(attrs, vis, name)?;
             Ok(Item::Fn(fun))
         }
     }
 
-    fn parse_extern_fn(&mut self, attrs: Attrs) -> DiagnosticResult<Fn> {
+    fn parse_extern_fn(&mut self, attrs: Attrs, vis: Vis) -> DiagnosticResult<Fn> {
         let callconv = self.parse_callconv()?;
         let name = self.eat_ident()?;
-        let vis = self.parse_vis();
         let (sig, is_c_variadic) = self.parse_fn_sig(name.word(), RequireSigTy::Yes)?;
 
         Ok(Fn {
@@ -95,8 +93,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_bare_fn(&mut self, attrs: Attrs, name: Token) -> DiagnosticResult<Fn> {
-        let vis = self.parse_vis();
+    fn parse_bare_fn(&mut self, attrs: Attrs, vis: Vis, name: Token) -> DiagnosticResult<Fn> {
         let (sig, is_c_variadic) = self.parse_fn_sig(name.word(), RequireSigTy::Yes)?;
 
         if is_c_variadic {
@@ -209,6 +206,7 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_let(
         &mut self,
         attrs: Attrs,
+        vis: Vis,
         require_ty: RequireTy,
     ) -> DiagnosticResult<Let> {
         let start = self.last_span();
@@ -216,31 +214,35 @@ impl<'a> Parser<'a> {
 
         let ty_expr = if self.is(TokenKind::Colon) {
             Some(self.parse_ty()?)
-        } else if require_ty == RequireTy::Yes {
-            return Err(self.unexpected_token(":"));
-        } else {
+        } else if require_ty == RequireTy::No {
             None
+        } else {
+            return Err(self.unexpected_token(":"));
         };
 
         self.eat(TokenKind::Eq)?;
 
         let value = self.parse_expr()?;
 
-        Ok(Let { attrs, pat, ty_expr, span: start.merge(value.span()), value: Box::new(value) })
+        Ok(Let {
+            attrs,
+            pat,
+            vis,
+            ty_expr,
+            span: start.merge(value.span()),
+            value: Box::new(value),
+        })
     }
 
-    fn parse_extern_let(&mut self, attrs: Attrs) -> DiagnosticResult<ExternLet> {
+    fn parse_extern_let(&mut self, attrs: Attrs, vis: Vis) -> DiagnosticResult<ExternLet> {
         let start = self.last_span();
 
         let mutability = self.parse_mutability();
         let ident = self.eat_ident()?;
-        let vis = self.parse_vis();
-
         self.eat(TokenKind::Colon)?;
         let ty_expr = self.parse_ty()?;
 
         let span = start.merge(ty_expr.span());
-
         Ok(ExternLet { attrs, mutability, vis, word: ident.word(), ty_expr, span })
     }
 }

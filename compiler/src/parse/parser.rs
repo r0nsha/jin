@@ -12,7 +12,7 @@ use rustc_hash::FxHashSet;
 use ustr::Ustr;
 
 use crate::{
-    ast::{Item, Module, TyParam},
+    ast::{Module, TyParam},
     db::Db,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     macros::create_bool_enum,
@@ -73,14 +73,6 @@ impl<'a> Parser<'a> {
         Ok(module)
     }
 
-    fn parse_item(&mut self) -> DiagnosticResult<Item> {
-        if let Some(item) = self.maybe_parse_item()? {
-            Ok(item)
-        } else {
-            Err(self.unexpected_token("an item"))
-        }
-    }
-
     pub(super) fn parse_mutability(&mut self) -> Mutability {
         self.parse_optional_mutability().unwrap_or_default()
     }
@@ -96,7 +88,7 @@ impl<'a> Parser<'a> {
     }
 
     pub(super) fn parse_vis(&mut self) -> Vis {
-        if self.is(TokenKind::Star) {
+        if self.is(TokenKind::Pub) {
             Vis::Public
         } else {
             Vis::Private

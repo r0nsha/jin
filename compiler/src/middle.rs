@@ -323,7 +323,6 @@ impl Spanned for Pat {
 pub struct NamePat {
     pub id: DefId,
     pub word: Word,
-    pub vis: Vis,
     pub mutability: Mutability,
     pub ty: Ty,
 }

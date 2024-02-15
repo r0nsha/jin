@@ -7,19 +7,30 @@ use crate::{
     ast::{Attrs, ExternImport, Import, ImportTree},
     db::ExternLib,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
-    middle::IsUfcs,
+    middle::{IsUfcs, Vis},
     parse::{errors, parser::Parser, token::TokenKind},
     span::{Span, Spanned},
     word::Word,
 };
 
 impl<'a> Parser<'a> {
-    pub(super) fn parse_import(&mut self, attrs: &Attrs, start: Span) -> DiagnosticResult<Import> {
+    pub(super) fn parse_import(
+        &mut self,
+        attrs: &Attrs,
+        vis: Vis,
+        start: Span,
+    ) -> DiagnosticResult<Import> {
         let root = self.eat_ident()?.word();
         let module_path = self.search_import_path(root)?;
         self.imported_module_paths.insert(module_path.clone());
         let tree = self.parse_import_tree(root)?;
-        Ok(Import { attrs: attrs.clone(), module_path, tree, span: start.merge(self.last_span()) })
+        Ok(Import {
+            attrs: attrs.clone(),
+            vis,
+            module_path,
+            tree,
+            span: start.merge(self.last_span()),
+        })
     }
 
     fn parse_import_tree(&mut self, name: Word) -> DiagnosticResult<ImportTree> {
@@ -28,25 +39,13 @@ impl<'a> Parser<'a> {
             Ok(ImportTree::Path(name, Box::new(next)))
         } else if self.is(TokenKind::As) {
             let alias = self.eat_ident()?.word();
-            let vis = self.parse_vis();
-            Ok(ImportTree::Name(name, Some(alias), vis))
+            Ok(ImportTree::Name(name, Some(alias)))
         } else {
-            let vis = self.parse_vis();
-            Ok(ImportTree::Name(name, None, vis))
+            Ok(ImportTree::Name(name, None))
         }
     }
 
     fn parse_import_tree_cont(&mut self) -> DiagnosticResult<ImportTree> {
-        // TODO: import a
-        // TODO: import a as b
-        // TODO: import a.b
-        // TODO: import a.b as c
-        // TODO: import a.(b)
-        // TODO: import a.(b as c)
-        // TODO: import a.(b, c)
-        // TODO: import a.*
-        // TODO: import a.?
-        // TODO: import a.(b, c, *, ?)
         if self.is(TokenKind::Star) {
             Ok(ImportTree::Glob(IsUfcs::No, self.last_span()))
         } else if self.is(TokenKind::QuestionMark) {
@@ -54,9 +53,9 @@ impl<'a> Parser<'a> {
         } else if self.is_ident() {
             self.parse_import_tree(self.last_token().word())
         } else if self.peek_is(TokenKind::OpenParen) {
-            return self.parse_import_group();
+            self.parse_import_group()
         } else {
-            return Err(self.unexpected_token("an identifier . ( * or ?"));
+            Err(self.unexpected_token("an identifier . ( * or ?"))
         }
     }
 

@@ -352,7 +352,7 @@ impl PrettyPrint for ImportTree {
                 cx.builder.add_empty_child(name.to_string());
                 next.pretty_print(cx);
             }
-            ImportTree::Name(name, alias, _) => {
+            ImportTree::Name(name, alias) => {
                 cx.builder.add_empty_child(format!(
                     "{}{}",
                     name,

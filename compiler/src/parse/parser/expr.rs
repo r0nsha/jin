@@ -6,7 +6,7 @@ use crate::{
     ast::{Attrs, CallArg, Expr},
     db::DefId,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
-    middle::{BinOp, NamePat, Pat, UnOp},
+    middle::{BinOp, NamePat, Pat, UnOp, Vis},
     parse::{
         errors,
         parser::{item::RequireTy, AllowOmitParens, Parser, RequireSigTy},
@@ -358,17 +358,12 @@ impl<'a> Parser<'a> {
         let tok = self.eat_any()?;
 
         match tok.kind {
-            TokenKind::Ident(_) => {
-                let vis = self.parse_vis();
-
-                Ok(Pat::Name(NamePat {
-                    id: DefId::null(),
-                    word: tok.word(),
-                    vis,
-                    mutability,
-                    ty: TyKind::Unknown.into(),
-                }))
-            }
+            TokenKind::Ident(_) => Ok(Pat::Name(NamePat {
+                id: DefId::null(),
+                word: tok.word(),
+                mutability,
+                ty: TyKind::Unknown.into(),
+            })),
             TokenKind::Underscore => Ok(Pat::Discard(tok.span)),
             _ => Err(errors::unexpected_token_err("a pattern", tok.kind, tok.span)),
         }
@@ -405,7 +400,7 @@ impl<'a> Parser<'a> {
 
     fn parse_stmt(&mut self) -> DiagnosticResult<Expr> {
         if self.is(TokenKind::Let) {
-            let let_ = self.parse_let(Attrs::new(), RequireTy::No)?;
+            let let_ = self.parse_let(Attrs::new(), Vis::Private, RequireTy::No)?;
             Ok(Expr::Let(let_))
         } else {
             self.parse_expr()

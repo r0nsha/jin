@@ -115,18 +115,13 @@ impl<'db, 'cx> Define<'db, 'cx> {
         &mut self,
         module_id: ModuleId,
         pat: &Pat,
+        vis: Vis,
         ty: Ty,
     ) -> DiagnosticResult<Pat> {
         match pat {
             Pat::Name(name) => {
-                let id = self.new_global(
-                    module_id,
-                    name.vis,
-                    DefKind::Global,
-                    name.word,
-                    name.mutability,
-                )?;
-
+                let id =
+                    self.new_global(module_id, vis, DefKind::Global, name.word, name.mutability)?;
                 Ok(Pat::Name(NamePat { id, ty, ..name.clone() }))
             }
             Pat::Discard(span) => Ok(Pat::Discard(*span)),

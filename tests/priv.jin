@@ -1,5 +1,5 @@
-import b*
-import c*
+pub import b
+pub import c
 import b.val as vb
 import c.val as vc
 

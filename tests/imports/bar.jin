@@ -1,12 +1,12 @@
 import imports as root
-import baz*
+pub import baz
 
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
-fn hello*() = {
+pub fn hello() = {
 	unsafe printf(root.get_hello_world().ptr)
 }
 
-fn goodbye*() = {
+pub fn goodbye() = {
 	unsafe printf("Goodbye...\n".ptr)
 }

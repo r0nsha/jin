@@ -7,7 +7,7 @@ use ustr::{ustr, Ustr};
 use crate::{
     db::{AdtField, AdtKind, Db, DefId, StructDef, UnionDef},
     mangle,
-    middle::{BinOp, CallConv, CmpOp, Mutability, NamePat, Pat, Vis},
+    middle::{BinOp, CallConv, CmpOp, Mutability, NamePat, Pat},
     mir::{
         BlockId, Body, Const, Fn, FnParam, FnSig, FnSigId, FxHashMap, GlobalId, GlobalKind, IdMap,
         Inst, Mir, StaticGlobal, ValueId, ValueKind,
@@ -725,7 +725,6 @@ fn create_destroy_sig(
         pat: Pat::Name(NamePat {
             id: DefId::null(),
             word: Word::new(ustr("self"), Span::unknown()),
-            vis: Vis::Private,
             mutability: Mutability::Imm,
             ty,
         }),

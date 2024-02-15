@@ -31,7 +31,7 @@ fn build_imports_map(cx: &Typeck, ast: &Ast) -> DiagnosticResult<ImportsMap> {
 
         let entry = map.entry(module.id).or_default();
         let root_module_id = cx.db.find_module_by_path(&import.module_path).unwrap().id;
-        BuildImportsMap::new(entry, root_module_id, module.id).build(&import.tree)?;
+        BuildImportsMap::new(entry, root_module_id, module.id, import.vis).build(&import.tree)?;
     }
 
     Ok(map)
@@ -41,11 +41,17 @@ struct BuildImportsMap<'a> {
     entry: &'a mut Imports,
     root_module_id: ModuleId,
     module_id: ModuleId,
+    vis: Vis,
 }
 
 impl<'a> BuildImportsMap<'a> {
-    fn new(entry: &'a mut Imports, root_module_id: ModuleId, module_id: ModuleId) -> Self {
-        Self { entry, root_module_id, module_id }
+    fn new(
+        entry: &'a mut Imports,
+        root_module_id: ModuleId,
+        module_id: ModuleId,
+        vis: Vis,
+    ) -> Self {
+        Self { entry, root_module_id, module_id, vis }
     }
 
     fn build(&mut self, tree: &ast::ImportTree) -> DiagnosticResult<()> {
@@ -66,7 +72,7 @@ impl<'a> BuildImportsMap<'a> {
                 new_path.push(*name);
                 self.build_helper(new_path, next)
             }
-            ast::ImportTree::Name(name, alias, vis) => self.insert_name(path, *name, *alias, *vis),
+            ast::ImportTree::Name(name, alias) => self.insert_name(path, *name, *alias),
             ast::ImportTree::Glob(is_ufcs, span) => {
                 self.insert_glob(path, *is_ufcs, *span);
                 Ok(())
@@ -79,7 +85,6 @@ impl<'a> BuildImportsMap<'a> {
         path: Vec<Word>,
         name: Word,
         alias: Option<Word>,
-        vis: Vis,
     ) -> DiagnosticResult<()> {
         let mut new_path = path.clone();
         new_path.push(name);
@@ -90,7 +95,7 @@ impl<'a> BuildImportsMap<'a> {
             path: new_path,
             alias,
             module_id: self.module_id,
-            vis,
+            vis: self.vis,
         };
 
         if let Some(prev) = self.entry.imports.insert(alias.name(), import) {
