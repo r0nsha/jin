@@ -35,8 +35,9 @@ pub fn parse(
 ) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
     let name = QPath::from_path(&db.package(package).root_path, source.path()).unwrap();
 
-    let mut parser = Parser::new(db, source, tokens);
-    let is_main = db.is_main_package(package) && source.id() == db.package(package).main_source_id;
+    let is_package_root = source.id() == db.package(package).main_source_id;
+    let mut parser = Parser::new(db, source, tokens, is_package_root);
+    let is_main = db.is_main_package(package) && is_package_root;
     let module = parser.parse(source.id(), name, is_main)?;
 
     Ok((module, parser.imported_module_paths))
@@ -47,13 +48,21 @@ pub(super) struct Parser<'a> {
     pub(super) db: &'a Db,
     pub(super) source: &'a Source,
     pub(super) tokens: Vec<Token>,
+    pub(super) is_package_root: bool,
     pub(super) pos: usize,
     pub(super) imported_module_paths: FxHashSet<Utf8PathBuf>,
 }
 
 impl<'a> Parser<'a> {
-    fn new(db: &'a Db, source: &'a Source, tokens: Vec<Token>) -> Self {
-        Self { db, source, tokens, pos: 0, imported_module_paths: FxHashSet::default() }
+    fn new(db: &'a Db, source: &'a Source, tokens: Vec<Token>, is_package_root: bool) -> Self {
+        Self {
+            db,
+            source,
+            tokens,
+            is_package_root,
+            pos: 0,
+            imported_module_paths: FxHashSet::default(),
+        }
     }
 
     fn parse(

@@ -74,7 +74,10 @@ impl<'a> Parser<'a> {
         let mut search_notes = vec![];
 
         let path = self
-            .search_module_in_subdir(name, &mut search_notes)
+            .is_package_root
+            .then(|| self.search_module_in_currdir(name, &mut search_notes))
+            .flatten()
+            .or_else(|| self.search_module_in_subdir(name, &mut search_notes))
             .or_else(|| self.search_package(name, &mut search_notes));
 
         path.ok_or_else(|| {
@@ -84,17 +87,38 @@ impl<'a> Parser<'a> {
         })
     }
 
+    fn search_module_in_currdir(
+        &self,
+        name: Word,
+        search_notes: &mut Vec<String>,
+    ) -> Option<Utf8PathBuf> {
+        self.source
+            .path()
+            .with_extension("")
+            .parent()
+            .and_then(|dir| self.search_module_in_dir(dir, name, search_notes))
+    }
+
     fn search_module_in_subdir(
         &self,
         name: Word,
         search_notes: &mut Vec<String>,
     ) -> Option<Utf8PathBuf> {
+        let dir = self.source.path().with_extension("");
+        self.search_module_in_dir(&dir, name, search_notes)
+    }
+
+    fn search_module_in_dir(
+        &self,
+        dir: &Utf8Path,
+        name: Word,
+        search_notes: &mut Vec<String>,
+    ) -> Option<Utf8PathBuf> {
         let path = Utf8Path::new(&name.name()).with_extension("jin");
-        let relative_to = self.source.path().with_extension("");
 
         let absolute_path: Utf8PathBuf = path
             .as_std_path()
-            .absolutize_from(relative_to.as_std_path())
+            .absolutize_from(dir.as_std_path())
             .ok()?
             .to_path_buf()
             .try_into()
