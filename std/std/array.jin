@@ -1,7 +1,7 @@
 import std.intrinsics
 import std.option.Option
 
-pub type Array[T](buf: [T])
+type Array[T](buf: [T])
 
 pub fn Array.new[T]() -> Array[T] = Array([])
 

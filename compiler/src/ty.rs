@@ -13,7 +13,7 @@ use ustr::Ustr;
 
 use crate::{
     db::{AdtId, AdtKind, Db, ModuleId, StructKind, UnionDef, UnionKind},
-    middle::{CallConv, Mutability},
+    middle::{CallConv, Mutability, Vis},
     span::Span,
     subst::SubstTy,
     ty::{
@@ -154,17 +154,13 @@ impl Ty {
         }
     }
 
-    pub fn has_private_ty(self, db: &Db) -> Option<Ty> {
+    pub fn has_more_private_ty(self, db: &Db, vis: Vis) -> Option<Ty> {
         let mut result = None;
 
         self.walk_short(|ty| match ty.kind() {
-            TyKind::Adt(adt_id, _) => {
-                if db[db[*adt_id].def_id].scope.vis.is_module() {
-                    result = Some(ty);
-                    true
-                } else {
-                    false
-                }
+            TyKind::Adt(adt_id, _) if db[db[*adt_id].def_id].scope.vis < vis => {
+                result = Some(ty);
+                true
             }
             _ => false,
         });

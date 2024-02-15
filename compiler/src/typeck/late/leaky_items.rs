@@ -2,7 +2,7 @@ use crate::{
     db::{Db, DefId},
     diagnostics::{Diagnostic, Label},
     hir::{FnSig, Hir},
-    middle::Pat,
+    middle::{Pat, Vis},
     span::{Span, Spanned},
     ty::Ty,
 };
@@ -18,9 +18,8 @@ struct LeakyItems<'db> {
 impl LeakyItems<'_> {
     fn run(&mut self, hir: &Hir) {
         for f in &hir.fns {
-            if self.db[f.def_id].scope.vis.is_export() {
-                self.sig(&f.sig);
-            }
+            let vis = self.db[f.def_id].scope.vis;
+            self.sig(&f.sig, vis);
         }
 
         for let_ in &hir.lets {
@@ -35,24 +34,24 @@ impl LeakyItems<'_> {
         }
     }
 
-    fn sig(&mut self, sig: &FnSig) {
+    fn sig(&mut self, sig: &FnSig, vis: Vis) {
         for param in &sig.params {
-            self.ty(param.ty, param.pat.span(), "function parameter");
+            self.ty(param.ty, vis, param.pat.span(), "function parameter");
         }
 
-        self.ty(sig.ret, sig.ret_span, "return type");
+        self.ty(sig.ret, vis, sig.ret_span, "return type");
     }
 
     fn def(&mut self, id: DefId, ty: Ty) {
         let def = &self.db[id];
 
         if def.scope.vis.is_export() {
-            self.ty(ty, def.span, &format!("`{}`", def.name));
+            self.ty(ty, def.scope.vis, def.span, &format!("`{}`", def.name));
         }
     }
 
-    fn ty(&mut self, ty: Ty, span: Span, item_kind: &str) {
-        if let Some(priv_ty) = ty.has_private_ty(self.db) {
+    fn ty(&mut self, ty: Ty, vis: Vis, span: Span, item_kind: &str) {
+        if let Some(priv_ty) = ty.has_more_private_ty(self.db, vis) {
             self.db.diagnostics.emit(
                 Diagnostic::error(format!(
                     "private type `{}` used in public interface",
@@ -60,7 +59,7 @@ impl LeakyItems<'_> {
                 ))
                 .with_label(Label::primary(
                     span,
-                    format!("{item_kind} uses private type `{}`", ty.display(self.db)),
+                    format!("{item_kind} uses less accessible type `{}`", priv_ty.display(self.db)),
                 )),
             );
         }
