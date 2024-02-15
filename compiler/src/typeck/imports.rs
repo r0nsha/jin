@@ -1,3 +1,5 @@
+use std::collections::hash_map::Entry;
+
 use itertools::{Itertools as _, Position};
 use rustc_hash::FxHashMap;
 use ustr::{Ustr, UstrMap};
@@ -10,7 +12,11 @@ use crate::{
     middle::{IsUfcs, Mutability, Vis},
     span::{Span, Spanned as _},
     ty::{Ty, TyKind},
-    typeck::{attrs, errors, ns::NsDef, Typeck},
+    typeck::{
+        attrs, errors,
+        ns::{self, NsDef},
+        Typeck,
+    },
     word::Word,
 };
 
@@ -111,6 +117,7 @@ impl<'a> BuildImportsMap<'a> {
             path,
             is_ufcs,
             module_id: self.module_id,
+            vis: self.vis,
             span,
         });
     }
@@ -170,7 +177,11 @@ impl<'db, 'cx> Define<'db, 'cx> {
                 (resolved, target_module_id)
             }
         };
-        self.insert_glob_target(in_module, res_module_id, IsUfcs::Yes);
+        self.insert_glob_target(
+            in_module,
+            res_module_id,
+            ns::GlobImport { is_ufcs: IsUfcs::Yes, vis: Vis::Module },
+        );
 
         self.resolved.entry(in_module).or_default().insert(imp.alias.name(), resolved);
 
@@ -187,7 +198,12 @@ impl<'db, 'cx> Define<'db, 'cx> {
             Resolved::Module(module_id) => module_id,
             Resolved::Fn(_, _) => return Err(Self::expected_module_found_fn(imp.span)),
         };
-        self.insert_glob_target(in_module, res_module_id, imp.is_ufcs);
+
+        self.insert_glob_target(
+            in_module,
+            res_module_id,
+            ns::GlobImport { is_ufcs: imp.is_ufcs, vis: imp.vis },
+        );
 
         Ok(())
     }
@@ -322,9 +338,21 @@ impl<'db, 'cx> Define<'db, 'cx> {
         &mut self,
         in_module: ModuleId,
         target_module_id: ModuleId,
-        is_ufcs: IsUfcs,
+        imp: ns::GlobImport,
     ) {
-        self.cx.global_env.module_mut(in_module).globs.insert(target_module_id, is_ufcs);
+        let entry = self.cx.global_env.module_mut(in_module).globs.entry(target_module_id);
+        let entry = entry.or_insert(imp);
+
+        // Regular glob imports are considered `stronger` than UFCS imports.
+        // When glob importing of the same module multiple times, we always want to keep
+        // `IsUfcs::No` so that it doesn't become a UFCS import by accident.
+        if entry.is_ufcs == IsUfcs::Yes {
+            entry.is_ufcs = imp.is_ufcs;
+        }
+
+        // When two glob imports of the same module have different visibilities,
+        // we want to keep the most public (aka accessible) of the two.
+        entry.vis = entry.vis.max(imp.vis);
     }
 
     fn expected_module_found_fn(span: Span) -> Diagnostic {
@@ -373,6 +401,7 @@ struct GlobImport {
     path: Vec<Word>,
     is_ufcs: IsUfcs,
     module_id: ModuleId,
+    vis: Vis,
     span: Span,
 }
 
@@ -415,4 +444,12 @@ pub(super) struct ImportedFn {
     pub(super) id: DefId,
     pub(super) name: Ustr,
     pub(super) alias: Ustr,
+}
+
+pub(super) fn define_transitive_globs(cx: &mut Typeck) {
+    for (&module_id, env) in &cx.global_env.modules {
+        for (&glob_module_id, imp) in &env.globs {
+            dbg!(module_id, glob_module_id, imp);
+        }
+    }
 }

@@ -332,7 +332,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                 .module(in_module)
                 .globs
                 .iter()
-                .filter_map(move |(id, v)| match (is_ufcs, v) {
+                .filter_map(move |(id, imp)| match (is_ufcs, imp.is_ufcs) {
                     (IsUfcs::Yes, _) | (IsUfcs::No, IsUfcs::No) => Some(id),
                     (IsUfcs::No, IsUfcs::Yes) => None,
                 })

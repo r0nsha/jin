@@ -44,7 +44,7 @@ impl GlobalEnv {
 #[derive(Debug)]
 pub(super) struct ModuleEnv {
     pub(super) ns: Ns,
-    pub(super) globs: FxHashMap<ModuleId, IsUfcs>,
+    pub(super) globs: FxHashMap<ModuleId, GlobImport>,
 }
 
 impl ModuleEnv {
@@ -134,6 +134,12 @@ impl From<Ty> for AssocTy {
             _ => Self::BuiltinTy(value),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub(super) struct GlobImport {
+    pub(super) is_ufcs: IsUfcs,
+    pub(super) vis: Vis,
 }
 
 #[derive(Debug)]

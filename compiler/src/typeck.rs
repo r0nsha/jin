@@ -43,13 +43,12 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
 
     items::define(&mut cx, &ast)?;
     let imported_fns = imports::define(&mut cx, &ast)?;
-
+    imports::define_transitive_globs(&mut cx);
     types::check(&mut cx, &ast)?;
     items::check_sigs(&mut cx, &ast)?;
     imports::fill_imported_fn_candidates(&mut cx, imported_fns)?;
 
     items::check_bodies(&mut cx, &ast)?;
-
     subst::subst(&mut cx);
 
     late::check_bodies(cx.db, &cx.hir);
