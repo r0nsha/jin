@@ -450,7 +450,7 @@ pub(super) fn define_transitive_globs(cx: &mut Typeck) {
     let mut trans = TransitiveGlobs::default();
 
     for &module_id in cx.global_env.modules.keys() {
-        CollectTransitiveGlobs::new(cx, &mut trans, module_id).traverse_module_globs(module_id);
+        CollectTransitiveGlobs::new(cx, &mut trans, module_id).traverse_root(module_id);
     }
 
     for (module_id, pairs) in trans {
@@ -476,28 +476,42 @@ impl<'cx, 'db> CollectTransitiveGlobs<'cx, 'db> {
         Self { cx, trans, module_id, visited: FxHashSet::default() }
     }
 
-    fn traverse_module_globs(&mut self, module_id: ModuleId) {
+    fn traverse_root(&mut self, module_id: ModuleId) {
         if !self.visited.insert(module_id) {
             return;
         }
 
         for (&glob_module_id, imp) in &self.cx.global_env.module(module_id).globs {
-            self.collect(module_id, glob_module_id, imp);
+            self.collect_one(module_id, glob_module_id, imp, imp);
         }
     }
 
-    fn collect(&mut self, in_module: ModuleId, glob_module_id: ModuleId, imp: &ns::GlobImport) {
+    fn traverse(&mut self, module_id: ModuleId, parent_imp: &ns::GlobImport) {
+        if !self.visited.insert(module_id) {
+            return;
+        }
+
+        for (&glob_module_id, imp) in &self.cx.global_env.module(module_id).globs {
+            self.collect_one(module_id, glob_module_id, parent_imp, imp);
+        }
+    }
+
+    fn collect_one(
+        &mut self,
+        in_module: ModuleId,
+        glob_module_id: ModuleId,
+        parent_imp: &ns::GlobImport,
+        imp: &ns::GlobImport,
+    ) {
         if self.module_id != in_module && !self.cx.can_access(in_module, glob_module_id, imp.vis) {
             return;
         }
 
-        self.traverse_module_globs(glob_module_id);
+        self.traverse(glob_module_id, imp);
 
-        if glob_module_id == self.module_id {
-            return;
+        if glob_module_id != self.module_id {
+            self.insert(glob_module_id, parent_imp.merge_transitive(imp));
         }
-
-        self.insert(glob_module_id, *imp);
     }
 
     fn insert(&mut self, glob_module_id: ModuleId, imp: ns::GlobImport) {

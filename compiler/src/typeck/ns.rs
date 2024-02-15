@@ -142,6 +142,15 @@ pub(super) struct GlobImport {
     pub(super) vis: Vis,
 }
 
+impl GlobImport {
+    pub(super) fn merge_transitive(&self, other: &Self) -> Self {
+        Self {
+            is_ufcs: if other.is_ufcs == IsUfcs::Yes { IsUfcs::No } else { self.is_ufcs },
+            vis: self.vis.min(other.vis),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub(super) struct Env {
     module_id: ModuleId,
