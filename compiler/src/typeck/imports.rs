@@ -106,7 +106,6 @@ impl<'a> BuildImportsMap<'a> {
             path,
             is_ufcs,
             module_id: self.module_id,
-            vis: Vis::Private,
             span,
         });
     }
@@ -369,7 +368,6 @@ struct GlobImport {
     path: Vec<Word>,
     is_ufcs: IsUfcs,
     module_id: ModuleId,
-    vis: Vis,
     span: Span,
 }
 
