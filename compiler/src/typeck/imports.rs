@@ -177,7 +177,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
                 (resolved, target_module_id)
             }
         };
-        self.insert_glob_target(
+        self.insert_glob_import(
             in_module,
             res_module_id,
             ns::GlobImport { is_ufcs: IsUfcs::Yes, vis: Vis::Module },
@@ -199,7 +199,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
             Resolved::Fn(_, _) => return Err(Self::expected_module_found_fn(imp.span)),
         };
 
-        self.insert_glob_target(
+        self.insert_glob_import(
             in_module,
             res_module_id,
             ns::GlobImport { is_ufcs: imp.is_ufcs, vis: imp.vis },
@@ -334,7 +334,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         self.resolved.get(&imp.module_id).and_then(|m| m.get(&imp.alias.name()))
     }
 
-    fn insert_glob_target(
+    fn insert_glob_import(
         &mut self,
         in_module: ModuleId,
         target_module_id: ModuleId,
