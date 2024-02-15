@@ -25,14 +25,6 @@ impl Vis {
     pub fn is_module(&self) -> bool {
         matches!(self, Self::Module)
     }
-
-    /// Returns `true` if the vis is [`Export`].
-    ///
-    /// [`Export`]: Vis::Export
-    #[must_use]
-    pub fn is_export(&self) -> bool {
-        matches!(self, Self::Export)
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

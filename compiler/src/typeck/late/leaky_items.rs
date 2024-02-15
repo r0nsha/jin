@@ -44,10 +44,7 @@ impl LeakyItems<'_> {
 
     fn def(&mut self, id: DefId, ty: Ty) {
         let def = &self.db[id];
-
-        if def.scope.vis.is_export() {
-            self.ty(ty, def.scope.vis, def.span, &format!("`{}`", def.name));
-        }
+        self.ty(ty, def.scope.vis, def.span, &format!("`{}`", def.name));
     }
 
     fn ty(&mut self, ty: Ty, vis: Vis, span: Span, item_kind: &str) {
