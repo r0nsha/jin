@@ -96,13 +96,13 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub(super) fn parse_vis(&mut self) -> DiagnosticResult<Vis> {
+    pub(super) fn parse_vis(&mut self) -> DiagnosticResult<Option<Vis>> {
         if !self.is_kw(Kw::Pub) {
-            return Ok(Vis::Package);
+            return Ok(None);
         }
 
         if !self.is(TokenKind::OpenParen) {
-            return Ok(Vis::Export);
+            return Ok(Some(Vis::Export));
         }
 
         let vis = if self.is_weak_kw("export") {
@@ -117,7 +117,7 @@ impl<'a> Parser<'a> {
 
         self.eat(TokenKind::CloseParen)?;
 
-        Ok(vis)
+        Ok(Some(vis))
     }
 
     fn parse_optional_ty_params(&mut self) -> DiagnosticResult<Vec<TyParam>> {

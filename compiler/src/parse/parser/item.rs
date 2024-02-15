@@ -20,19 +20,19 @@ impl<'a> Parser<'a> {
         let vis = self.parse_vis()?;
 
         if self.is_kw(Kw::Fn) {
-            return self.parse_fn_item(attrs, vis);
+            return self.parse_fn_item(attrs, vis.unwrap_or(Vis::Package));
         }
 
         if self.is_kw(Kw::Let) {
             return if self.is_kw(Kw::Extern) {
-                self.parse_extern_let(attrs, vis).map(Item::ExternLet)
+                self.parse_extern_let(attrs, vis.unwrap_or(Vis::Package)).map(Item::ExternLet)
             } else {
-                self.parse_let(attrs, vis, RequireTy::Yes).map(Item::Let)
+                self.parse_let(attrs, vis.unwrap_or(Vis::Package), RequireTy::Yes).map(Item::Let)
             };
         }
 
         if self.is_kw(Kw::Type) {
-            return self.parse_tydef(attrs, vis).map(Item::Type);
+            return self.parse_tydef(attrs, vis.unwrap_or(Vis::Package)).map(Item::Type);
         }
 
         if self.is_kw(Kw::Use) {
@@ -42,7 +42,7 @@ impl<'a> Parser<'a> {
                 return self.parse_extern_import(&attrs, start).map(Item::ExternImport);
             }
 
-            return self.parse_import(&attrs, vis, start).map(Item::Import);
+            return self.parse_import(&attrs, vis.unwrap_or(Vis::Module), start).map(Item::Import);
         }
 
         if !attrs.is_empty() {

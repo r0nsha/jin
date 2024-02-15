@@ -1,7 +1,5 @@
-use std::collections::hash_map::Entry;
-
 use itertools::{Itertools as _, Position};
-use rustc_hash::FxHashMap;
+use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::{Ustr, UstrMap};
 
 use crate::{
@@ -446,10 +444,63 @@ pub(super) struct ImportedFn {
     pub(super) alias: Ustr,
 }
 
+// Iterate all accessible globs which are reached by other glob imports, creating a transitive
+// chain of glob imports which are then collected and flattened in each module's `ModuleEnv::globs`
 pub(super) fn define_transitive_globs(cx: &mut Typeck) {
-    for (&module_id, env) in &cx.global_env.modules {
-        for (&glob_module_id, imp) in &env.globs {
-            dbg!(module_id, glob_module_id, imp);
+    let mut trans = TransitiveGlobs::default();
+
+    for &module_id in cx.global_env.modules.keys() {
+        CollectTransitiveGlobs::new(cx, &mut trans, module_id).traverse_module_globs(module_id);
+    }
+
+    for (module_id, pairs) in trans {
+        let module_globs = &mut cx.global_env.module_mut(module_id).globs;
+        for (glob_module_id, imp) in pairs {
+            module_globs.insert(glob_module_id, imp);
         }
+    }
+}
+
+type TransitiveGlobs = FxHashMap<ModuleId, Vec<(ModuleId, ns::GlobImport)>>;
+
+struct CollectTransitiveGlobs<'cx, 'db> {
+    cx: &'cx Typeck<'db>,
+    trans: &'cx mut TransitiveGlobs,
+    module_id: ModuleId,
+    visited: FxHashSet<ModuleId>,
+}
+
+impl<'cx, 'db> CollectTransitiveGlobs<'cx, 'db> {
+    fn new(cx: &'cx Typeck<'db>, trans: &'cx mut TransitiveGlobs, module_id: ModuleId) -> Self {
+        trans.insert(module_id, vec![]);
+        Self { cx, trans, module_id, visited: FxHashSet::default() }
+    }
+
+    fn traverse_module_globs(&mut self, module_id: ModuleId) {
+        if !self.visited.insert(module_id) {
+            return;
+        }
+
+        for (&glob_module_id, imp) in &self.cx.global_env.module(module_id).globs {
+            self.collect(module_id, glob_module_id, imp);
+        }
+    }
+
+    fn collect(&mut self, in_module: ModuleId, glob_module_id: ModuleId, imp: &ns::GlobImport) {
+        if self.module_id != in_module && !self.cx.can_access(in_module, glob_module_id, imp.vis) {
+            return;
+        }
+
+        self.traverse_module_globs(glob_module_id);
+
+        if glob_module_id == self.module_id {
+            return;
+        }
+
+        self.insert(glob_module_id, *imp);
+    }
+
+    fn insert(&mut self, glob_module_id: ModuleId, imp: ns::GlobImport) {
+        self.trans.get_mut(&self.module_id).unwrap().push((glob_module_id, imp));
     }
 }
