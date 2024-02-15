@@ -35,7 +35,7 @@ impl<'a> Parser<'a> {
             return self.parse_tydef(attrs, vis).map(Item::Type);
         }
 
-        if self.is_kw(Kw::Import) {
+        if self.is_kw(Kw::Use) {
             let start = self.last_span();
 
             if self.is_kw(Kw::Extern) {

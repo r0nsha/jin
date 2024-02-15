@@ -1,4 +1,4 @@
-import raylib.bindings.*
+use raylib.bindings.*
 
 pub fn run() = unsafe {
 	let screen_width = 800

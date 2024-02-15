@@ -1,4 +1,4 @@
-import extern "./foo"
+use extern "./foo"
 
 fn extern "c" hello()
 let extern answer: int

@@ -1,6 +1,6 @@
-pub import .array
-pub import .int
-pub import .intrinsics
-pub import .io
-pub import .option
-pub import .result
+pub use .array
+pub use .int
+pub use .intrinsics
+pub use .io
+pub use .option
+pub use .result

@@ -133,7 +133,7 @@ impl TokenKind {
                 | Kw::Else
                 | Kw::Match
                 | Kw::As
-                | Kw::Import
+                | Kw::Use
                 | Kw::For
                 | Kw::Mut
                 | Kw::Imm
@@ -200,7 +200,7 @@ impl TokenKind {
                 | Kw::Extern
                 | Kw::If
                 | Kw::Match
-                | Kw::Import
+                | Kw::Use
                 | Kw::For
                 | Kw::Transmute
                 | Kw::Unsafe
@@ -339,7 +339,7 @@ pub enum Kw {
     True,
     False,
     As,
-    Import,
+    Use,
     For,
     Break,
     Mut,
@@ -367,7 +367,7 @@ impl<'a> TryFrom<&'a str> for Kw {
             "true" => Self::True,
             "false" => Self::False,
             "as" => Self::As,
-            "import" => Self::Import,
+            "use" => Self::Use,
             "for" => Self::For,
             "break" => Self::Break,
             "mut" => Self::Mut,
@@ -399,7 +399,7 @@ impl fmt::Display for Kw {
                 Self::True => "true",
                 Self::False => "false",
                 Self::As => "as",
-                Self::Import => "import",
+                Self::Use => "use",
                 Self::For => "for",
                 Self::Break => "break",
                 Self::Mut => "mut",

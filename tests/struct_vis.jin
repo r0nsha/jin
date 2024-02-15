@@ -1,4 +1,4 @@
-import .child
+use .child
 
 fn main() = {
 	let s = child.Struct(1) // private constructor 

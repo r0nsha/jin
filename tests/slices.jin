@@ -1,4 +1,4 @@
-import std.intrinsics
+use std.intrinsics
 
 fn extern "c" printf(fmt: *u8, ..) -> i32
 

@@ -1,5 +1,5 @@
-import extern "raylib"
-import extern "m"
+use extern "raylib"
+use extern "m"
 
 pub fn extern "c" InitWindow(width: i32, height: i32, title: *u8)
 pub fn extern "c" CloseWindow()

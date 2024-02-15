@@ -1,5 +1,5 @@
-import std.intrinsics
-import std.option.Option
+use std.intrinsics
+use std.option.Option
 
 pub type Array[T](buf: [T])
 
