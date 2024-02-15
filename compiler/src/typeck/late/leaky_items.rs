@@ -18,7 +18,7 @@ struct LeakyItems<'db> {
 impl LeakyItems<'_> {
     fn run(&mut self, hir: &Hir) {
         for f in &hir.fns {
-            if self.db[f.def_id].scope.vis.is_public() {
+            if self.db[f.def_id].scope.vis.is_export() {
                 self.sig(&f.sig);
             }
         }
@@ -46,7 +46,7 @@ impl LeakyItems<'_> {
     fn def(&mut self, id: DefId, ty: Ty) {
         let def = &self.db[id];
 
-        if def.scope.vis.is_public() {
+        if def.scope.vis.is_export() {
             self.ty(ty, def.span, &format!("`{}`", def.name));
         }
     }

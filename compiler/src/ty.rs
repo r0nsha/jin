@@ -159,7 +159,7 @@ impl Ty {
 
         self.walk_short(|ty| match ty.kind() {
             TyKind::Adt(adt_id, _) => {
-                if db[db[*adt_id].def_id].scope.vis.is_private() {
+                if db[db[*adt_id].def_id].scope.vis.is_module() {
                     result = Some(ty);
                     true
                 } else {

@@ -212,8 +212,8 @@ impl<'db> Typeck<'db> {
     #[inline]
     pub(super) fn can_access(&self, from_module: ModuleId, in_module: ModuleId, vis: Vis) -> bool {
         match vis {
-            Vis::Public => true,
-            Vis::Private => from_module == in_module,
+            Vis::Export => true,
+            Vis::Module => from_module == in_module,
         }
     }
 }

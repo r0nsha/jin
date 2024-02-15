@@ -17,7 +17,7 @@ use crate::{
 impl<'a> Parser<'a> {
     pub(super) fn parse_item(&mut self) -> DiagnosticResult<Item> {
         let attrs = self.parse_attrs()?;
-        let vis = self.parse_vis();
+        let vis = self.parse_vis()?;
 
         if self.is(TokenKind::Fn) {
             return self.parse_fn_item(attrs, vis);

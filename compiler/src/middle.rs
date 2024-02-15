@@ -11,27 +11,27 @@ use crate::{
     word::Word,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum Vis {
-    Public,
-    Private,
+    Module = 0,
+    Export = 1,
 }
 
 impl Vis {
-    /// Returns `true` if the vis is [`Public`].
+    /// Returns `true` if the vis is [`Module`].
     ///
-    /// [`Public`]: Vis::Public
+    /// [`Module`]: Vis::Module
     #[must_use]
-    pub fn is_public(&self) -> bool {
-        matches!(self, Self::Public)
+    pub fn is_module(&self) -> bool {
+        matches!(self, Self::Module)
     }
 
-    /// Returns `true` if the vis is [`Private`].
+    /// Returns `true` if the vis is [`Export`].
     ///
-    /// [`Private`]: Vis::Private
+    /// [`Export`]: Vis::Export
     #[must_use]
-    pub fn is_private(&self) -> bool {
-        matches!(self, Self::Private)
+    pub fn is_export(&self) -> bool {
+        matches!(self, Self::Export)
     }
 }
 

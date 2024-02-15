@@ -400,7 +400,7 @@ impl<'a> Parser<'a> {
 
     fn parse_stmt(&mut self) -> DiagnosticResult<Expr> {
         if self.is(TokenKind::Let) {
-            let let_ = self.parse_let(Attrs::new(), Vis::Private, RequireTy::No)?;
+            let let_ = self.parse_let(Attrs::new(), Vis::Module, RequireTy::No)?;
             Ok(Expr::Let(let_))
         } else {
             self.parse_expr()

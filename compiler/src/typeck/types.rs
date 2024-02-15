@@ -134,7 +134,7 @@ fn check_variant(
         }
 
         let ty = tyexpr::check(cx, env, &field.ty_expr, AllowTyHole::No)?;
-        fields.push(AdtField { name: field.name, vis: Vis::Public, ty });
+        fields.push(AdtField { name: field.name, vis: Vis::Export, ty });
     }
 
     let variant = &mut cx.db[variant_id];
