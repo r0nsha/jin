@@ -144,7 +144,9 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                 Err(Diagnostic::error(format!("ambiguous call to `{}`", query.display(self.cx.db)))
                     .with_label(Label::primary(query.word.span(), "call here"))
                     .with_note("these functions apply:")
-                    .with_notes(candidates.into_iter().map(|c| c.display(self.cx.db).to_string())))
+                    .with_notes(
+                        candidates.into_iter().map(|c| c.display_qualified(self.cx.db).to_string()),
+                    ))
             }
         }
     }
@@ -580,6 +582,10 @@ impl FnCandidate {
     }
 
     pub(super) fn display<'a>(&'a self, db: &'a Db) -> FnTyPrinter {
+        self.ty.display(db, Some(self.word.name()))
+    }
+
+    pub(super) fn display_qualified<'a>(&'a self, db: &'a Db) -> FnTyPrinter {
         self.ty.display(db, Some(ustr(&db[self.id].qpath.join())))
     }
 }
