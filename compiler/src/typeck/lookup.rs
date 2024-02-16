@@ -290,7 +290,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
                 .with_label(Label::primary(span, "used here"))
                 .with_labels(filtered_results.iter().map(|res| {
                     let def = &self.cx.db[res.def_id()];
-                    Label::secondary(def.span, format!("`{}` is defined here", def.name))
+                    Label::secondary(def.span, format!("`{}` defined here", def.name))
                 }))),
         }
     }
@@ -309,6 +309,12 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
             let env = self.cx.global_env.module(module_id);
 
             if let Some(def) = env.ns.defs.get(&name) {
+                if module_id == in_module {
+                    // For definitions, we always prioritize a definition which is defined or
+                    // imported in scope. Glob imports always come next for definitions.
+                    return vec![LookupResult::Def(*def)];
+                }
+
                 results.insert(LookupResult::Def(*def));
             } else if let ShouldLookupFns::Candidates = should_lookup_fns {
                 if let Some(candidates) = env.ns.fns.get(&name) {
@@ -374,7 +380,15 @@ impl LookupResult {
 
 impl std::cmp::PartialEq for LookupResult {
     fn eq(&self, other: &Self) -> bool {
-        self.def_id() == other.def_id()
+        match (self, other) {
+            (LookupResult::Def(a), LookupResult::Def(b)) => {
+                a.id == b.id && a.name.name() == b.name.name()
+            }
+            (LookupResult::Fn(a), LookupResult::Fn(b)) => {
+                a.id == b.id && a.word.name() == b.word.name()
+            }
+            _ => false,
+        }
     }
 }
 
@@ -382,7 +396,16 @@ impl std::cmp::Eq for LookupResult {}
 
 impl std::hash::Hash for LookupResult {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.def_id().hash(state)
+        match self {
+            LookupResult::Def(def) => {
+                def.id.hash(state);
+                def.name.name().hash(state);
+            }
+            LookupResult::Fn(c) => {
+                c.id.hash(state);
+                c.word.name().hash(state);
+            }
+        }
     }
 }
 

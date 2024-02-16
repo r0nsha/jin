@@ -171,7 +171,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
                 (resolved, self.cx.db[def.id].scope.module_id)
             }
             Resolved::Fn(target_module_id, name) => {
-                self.import_fns(in_module, target_module_id, name, imp.alias.name());
+                self.import_fns(in_module, target_module_id, name, imp.alias);
                 (resolved, target_module_id)
             }
         };
@@ -312,7 +312,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         in_module: ModuleId,
         target_module_id: ModuleId,
         name: Ustr,
-        alias: Ustr,
+        alias: Word,
     ) {
         let defined_fns = self
             .cx
@@ -426,9 +426,11 @@ pub(super) fn fill_imported_fn_candidates(
                 .fns
                 .get(&f.name)
                 .expect("to have a defined set");
-            let candidate =
+
+            let mut candidate =
                 from_set.iter().find(|c| c.id == f.id).expect("candidate to be defined").clone();
-            let set = cx.global_env.module_mut(module_id).ns.fns.entry(f.alias).or_default();
+            candidate.word = f.alias;
+            let set = cx.global_env.module_mut(module_id).ns.fns.entry(f.alias.name()).or_default();
             set.try_insert(candidate).map_err(|err| err.into_diagnostic(cx.db))?;
         }
     }
@@ -441,7 +443,7 @@ pub(super) type ImportedFns = FxHashMap<ModuleId, Vec<ImportedFn>>;
 pub(super) struct ImportedFn {
     pub(super) id: DefId,
     pub(super) name: Ustr,
-    pub(super) alias: Ustr,
+    pub(super) alias: Word,
 }
 
 // Iterate all accessible globs which are reached by other glob imports, creating a transitive

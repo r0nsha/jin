@@ -1,7 +1,3 @@
-use std.array.Array
-use std.option.Option
-use std.io.println
-
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
 fn main() = {

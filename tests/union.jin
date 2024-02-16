@@ -1,5 +1,3 @@
-use std.option.Option
-
 fn extern "c" printf(fmt: *u8, ..) -> i32
 
 type Box(value: int)
