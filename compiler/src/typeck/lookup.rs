@@ -2,7 +2,7 @@ use std::iter;
 
 use itertools::Itertools as _;
 use rustc_hash::FxHashSet;
-use ustr::Ustr;
+use ustr::{ustr, Ustr};
 
 use crate::{
     db::{AdtKind, Db, DefId, ModuleId, UnionDef, Variant, VariantId},
@@ -580,7 +580,7 @@ impl FnCandidate {
     }
 
     pub(super) fn display<'a>(&'a self, db: &'a Db) -> FnTyPrinter {
-        self.ty.display(db, Some(db[self.id].name))
+        self.ty.display(db, Some(ustr(&db[self.id].qpath.join())))
     }
 }
 
