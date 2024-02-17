@@ -27,5 +27,5 @@ pub let u64_min: U64 = 0
 pub let u64_max: U64 = 18_446_744_073_709_551_615
 
 # TODO: Consider 32bit platforms!
-pub let uint_min: UInt = u64_min
-pub let uint_max: UInt = u64_max
+pub let uint_min: Uint = u64_min
+pub let uint_max: Uint = u64_max

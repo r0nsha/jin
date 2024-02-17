@@ -21,7 +21,7 @@ fn quick_sort(slice: &mut [Int]) = {
     quick_sort(&mut slice.[pivot_idx + 1..len])
 }
 
-fn partition(slice: &mut [Int]) -> UInt = {
+fn partition(slice: &mut [Int]) -> Uint = {
     let len = slice.len
     let pivot_idx = len / 2
     let last_idx = len - 1
@@ -43,7 +43,7 @@ fn partition(slice: &mut [Int]) -> UInt = {
     store_idx
 }
 
-fn swap(slice: &mut [Int], a: UInt, b: UInt) = {
+fn swap(slice: &mut [Int], a: Uint, b: Uint) = {
     slice.[b] = slice.[a] := slice.[b] 
 }
 

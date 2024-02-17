@@ -23,7 +23,7 @@ fn main() = {
 	n = Num(2)
 
 	# Destroy in for & break
-	let mut i: UInt = 10
+	let mut i: Uint = 10
 	for {
 		let n = Num(1)
 		unsafe printf("i = %d\n".ptr, i)

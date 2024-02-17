@@ -15,7 +15,7 @@ fn int_types() = {
 	let promoted = as[I64](id) + 5555
 	let demoted_inferred: I32 = as[_](promoted)
 	let demoted_explicit: I16 = as[_](demoted_inferred - 4000)
-	let int_to_uint: UInt = as[_](as[Int](663151))
+	let int_to_uint: Uint = as[_](as[Int](663151))
 }
 
 fn unary() = {

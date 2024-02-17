@@ -12,9 +12,9 @@ fn main() = {
 	match_int(-3)
 	match_int(69)
 
-	match_UInt(42)
-	match_UInt(3)
-	match_UInt(69)
+	match_uint(42)
+	match_uint(3)
+	match_uint(69)
 
 	match_str("foo")
 	match_str("bar")
@@ -64,7 +64,7 @@ fn match_int(value: Int) = {
 	}
 }
 
-fn match_UInt(value: UInt) = {
+fn match_uint(value: Uint) = {
 	match value {
 		42 -> unsafe printf("i'm still the answer\n".ptr)
 		3 -> unsafe printf("i'm still 3\n".ptr)

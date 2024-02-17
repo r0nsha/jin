@@ -8,7 +8,7 @@ fn main() = {
     }
 }
 
-fn binary_search(haystack: &[Int], needle: Int) -> Option[UInt] = {
+fn binary_search(haystack: &[Int], needle: Int) -> Option[Uint] = {
     let mut lower = 0
     let mut upper = haystack.len - 1
 

@@ -8,7 +8,7 @@ pub const U8: &str = "U8";
 pub const U16: &str = "U16";
 pub const U32: &str = "U32";
 pub const U64: &str = "U64";
-pub const UINT: &str = "UInt";
+pub const UINT: &str = "Uint";
 
 pub const F32: &str = "F32";
 pub const F64: &str = "F64";

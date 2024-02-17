@@ -38,7 +38,7 @@ fn main() = {
 	array.print()
 }
 
-fn print_at(array: &Array[Int], idx: UInt) = {
+fn print_at(array: &Array[Int], idx: Uint) = {
 	match array.get(idx) {
 		Option.some(x) -> unsafe printf("array[%d] = Some(%d)\n".ptr, idx, x)
 		Option.none -> unsafe printf("array[%d] = None\n".ptr, idx)
