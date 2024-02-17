@@ -511,12 +511,12 @@ pub struct Attr {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AttrId {
-    Intrinsic,
+    Builtin,
 }
 
 #[derive(Debug, Clone)]
 pub enum AttrArgs {
-    Intrinsic(Word),
+    Builtin(Word),
     #[allow(unused)]
     None,
 }
@@ -526,7 +526,7 @@ impl TryFrom<&str> for AttrId {
 
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         match value {
-            "intrinsic" => Ok(Self::Intrinsic),
+            "builtin" => Ok(Self::Builtin),
             _ => Err(()),
         }
     }
@@ -535,7 +535,7 @@ impl TryFrom<&str> for AttrId {
 impl fmt::Display for AttrId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            AttrId::Intrinsic => "intrinsic",
+            AttrId::Builtin => "builtin",
         })
     }
 }

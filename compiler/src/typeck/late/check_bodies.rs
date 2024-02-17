@@ -177,10 +177,10 @@ impl<'db, 'cx> Visitor for CheckBody<'db, 'cx> {
     }
 
     fn visit_name(&mut self, expr: &Expr, name: &Name) {
-        if self.cx.db.intrinsics.contains_key(&name.id) {
+        if self.cx.db.builtins.contains_key(&name.id) {
             self.cx.diagnostics.push(
                 Diagnostic::error(format!(
-                    "intrinsic `{}` must be called",
+                    "builtin function `{}` must be called",
                     self.cx.db[name.id].name
                 ))
                 .with_label(Label::primary(expr.span, "must be called")),

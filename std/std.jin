@@ -1,6 +1,6 @@
 pub use .array
 pub use .int
-pub use .intrinsics
+pub use .builtin
 pub use .io
 pub use .option
 pub use .result

@@ -42,7 +42,7 @@ pub struct Db {
     pub adts: IndexVec<AdtId, Adt>,
     pub variants: IndexVec<VariantId, Variant>,
     pub types: CommonTypes,
-    pub intrinsics: FxHashMap<DefId, Intrinsic>,
+    pub builtins: FxHashMap<DefId, Builtin>,
     pub extern_libs: FxHashSet<ExternLib>,
     pub diagnostics: Diagnostics,
 
@@ -70,7 +70,7 @@ impl Db {
             adts: IndexVec::new(),
             variants: IndexVec::new(),
             types: CommonTypes::new(),
-            intrinsics: FxHashMap::default(),
+            builtins: FxHashMap::default(),
             extern_libs: FxHashSet::default(),
             std_package_name: Once::new(),
             main_package_name: Once::new(),
@@ -823,12 +823,12 @@ impl ExternLib {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum Intrinsic {
+pub enum Builtin {
     SliceGrow,
     Forget,
 }
 
-impl<'a> TryFrom<&'a str> for Intrinsic {
+impl<'a> TryFrom<&'a str> for Builtin {
     type Error = ();
 
     fn try_from(value: &'a str) -> Result<Self, Self::Error> {

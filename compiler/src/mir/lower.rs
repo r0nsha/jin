@@ -3,7 +3,7 @@ use indexmap::IndexSet;
 use ustr::{ustr, Ustr};
 
 use crate::{
-    db::{AdtField, AdtKind, Db, DefId, DefKind, Intrinsic, StructKind, UnionKind, VariantId},
+    db::{AdtField, AdtKind, Builtin, Db, DefId, DefKind, StructKind, UnionKind, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult},
     hir,
     hir::{FnKind, Hir},
@@ -559,15 +559,15 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             hir::ExprKind::Call(call) => {
                 let entered = self.enter_call_scope(expr.span);
                 let callee = self.lower_input_expr(&call.callee);
-                let intrinsic = if let ValueKind::Fn(id) = &self.body.value(callee).kind {
-                    self.cx.db.intrinsics.get(&self.cx.mir.fn_sigs[*id].def_id).copied()
+                let builtin = if let ValueKind::Fn(id) = &self.body.value(callee).kind {
+                    self.cx.db.builtins.get(&self.cx.mir.fn_sigs[*id].def_id).copied()
                 } else {
                     None
                 };
 
-                let call_result = if let Some(intrinsic) = intrinsic {
-                    let args = self.lower_intrinsic_call_args(&call.args);
-                    self.lower_intrinsic_call(expr, intrinsic, args)
+                let call_result = if let Some(builtin) = builtin {
+                    let args = self.lower_builtin_call_args(&call.args);
+                    self.lower_builtin_call(expr, builtin, args)
                 } else {
                     let args = self.lower_call_args(&call.args);
                     self.push_inst_with_register(expr.ty, |value| Inst::Call {
@@ -708,7 +708,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
 
     // This is very similar to `lower_call_args`, the only difference is that ref
     // args are not incremented.
-    fn lower_intrinsic_call_args(&mut self, args: &[hir::CallArg]) -> Vec<ValueId> {
+    fn lower_builtin_call_args(&mut self, args: &[hir::CallArg]) -> Vec<ValueId> {
         let mut new_args = vec![];
 
         for arg in args {
@@ -905,14 +905,14 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         sliced
     }
 
-    fn lower_intrinsic_call(
+    fn lower_builtin_call(
         &mut self,
         expr: &hir::Expr,
-        intrinsic: Intrinsic,
+        builtin: Builtin,
         args: Vec<ValueId>,
     ) -> ValueId {
-        match intrinsic {
-            Intrinsic::SliceGrow => {
+        match builtin {
+            Builtin::SliceGrow => {
                 debug_assert_eq!(args.len(), 2);
 
                 // We must get the root value of this ref, so that it is assigned to
@@ -925,7 +925,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     span: expr.span,
                 })
             }
-            Intrinsic::Forget => {
+            Builtin::Forget => {
                 debug_assert_eq!(args.len(), 1);
 
                 // We must get the root value of this ref, so that we can forget it

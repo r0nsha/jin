@@ -5,7 +5,7 @@ use crate::{
     ast,
     ast::Ast,
     db::{
-        AdtId, AdtKind, Def, DefId, DefKind, FnInfo, Intrinsic, ModuleId, ScopeInfo, ScopeLevel,
+        AdtId, AdtKind, Builtin, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel,
         StructDef, UnionDef, Variant, VariantId,
     },
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -372,7 +372,7 @@ fn check_fn_helper(
             }
         }
         ast::FnKind::Extern { .. } => {
-            check_intrinsic_fn(cx, module_id, fun, &sig, id)?;
+            check_builtin_fn(cx, module_id, fun, &sig, id)?;
         }
     }
 
@@ -382,7 +382,7 @@ fn check_fn_helper(
     Ok(())
 }
 
-fn check_intrinsic_fn(
+fn check_builtin_fn(
     cx: &mut Typeck<'_>,
     module_id: ModuleId,
     fun: &ast::Fn,
@@ -391,28 +391,28 @@ fn check_intrinsic_fn(
 ) -> DiagnosticResult<()> {
     let fnty = sig.ty.as_fn().unwrap();
 
-    if let Some(attr) = fun.attrs.find(ast::AttrId::Intrinsic) {
-        let ast::AttrArgs::Intrinsic(name) = attr.args else { unreachable!() };
+    if let Some(attr) = fun.attrs.find(ast::AttrId::Builtin) {
+        let ast::AttrArgs::Builtin(name) = attr.args else { unreachable!() };
 
-        let intrinsic = Intrinsic::try_from(name.as_str()).map_err(|()| {
-            Diagnostic::error(format!("unknown intrinsic `{name}`"))
-                .with_label(Label::primary(name.span(), "unknown intrinsic"))
+        let builtin = Builtin::try_from(name.as_str()).map_err(|()| {
+            Diagnostic::error(format!("unknown builtin `{name}`"))
+                .with_label(Label::primary(name.span(), "unknown builtin"))
         })?;
 
         if fnty.callconv != CallConv::Jin {
-            return Err(Diagnostic::error("intrinsic calling convention must be \"jin\"")
+            return Err(Diagnostic::error("builtin calling convention must be \"jin\"")
                 .with_label(Label::primary(fun.sig.word.span(), "invalid calling convention")));
         }
 
         if !ns::in_std(cx.db, module_id) {
-            return Err(Diagnostic::error("intrinsic cannot be defined outside the `std` package")
+            return Err(Diagnostic::error("builtin cannot be defined outside the `std` package")
                 .with_label(Label::primary(
                     fun.sig.word.span(),
                     "cannot be defined outside `std`",
                 )));
         }
 
-        cx.db.intrinsics.insert(id, intrinsic);
+        cx.db.builtins.insert(id, builtin);
     } else if fnty.is_extern() && !sig.ty_params.is_empty() {
         return Err(Diagnostic::error("type parameters are not allowed on extern functions")
             .with_label(Label::primary(sig.word.span(), "type parameters not allowed")));

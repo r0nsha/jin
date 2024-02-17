@@ -194,11 +194,11 @@ impl<'a> Parser<'a> {
 
     fn parse_attr_args(&mut self, id: AttrId) -> DiagnosticResult<AttrArgs> {
         match id {
-            AttrId::Intrinsic => {
+            AttrId::Builtin => {
                 self.eat(TokenKind::OpenParen)?;
                 let name = self.eat(TokenKind::empty_str())?.word();
                 self.eat(TokenKind::CloseParen)?;
-                Ok(AttrArgs::Intrinsic(name))
+                Ok(AttrArgs::Builtin(name))
             }
         }
     }

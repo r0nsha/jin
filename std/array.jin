@@ -1,4 +1,4 @@
-use std.intrinsics
+use std.builtin
 use std.option.Option
 
 pub type Array[T](buf: [T])
@@ -63,9 +63,9 @@ fn grow[T](self: &mut Array[T]) = {
 		self.buf.cap * 2
 	}
 
-	let new_buf = unsafe intrinsics.grow(unsafe transmute[[T]](&mut self.buf), new_cap)
+	let new_buf = unsafe builtin.grow(unsafe transmute[[T]](&mut self.buf), new_cap)
 	let old = self.buf := new_buf
-	unsafe intrinsics.forget(&old)
+	unsafe builtin.forget(&old)
 }
 
 let min_cap: uint = 4

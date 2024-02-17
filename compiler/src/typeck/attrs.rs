@@ -16,7 +16,7 @@ pub fn validate(attrs: &ast::Attrs, placement: Placement) -> DiagnosticResult<()
 /// Returns an error string with the valid placements.
 fn validate_placement(attr: &ast::Attr, placement: Placement) -> Result<(), &'static str> {
     match attr.id {
-        ast::AttrId::Intrinsic => match placement {
+        ast::AttrId::Builtin => match placement {
             Placement::ExternFn => Ok(()),
             _ => Err("fn extern"),
         },
