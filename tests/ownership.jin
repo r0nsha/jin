@@ -5,25 +5,25 @@ type Wrapper(num: Num)
 
 fn main() = {
 	use_after_move()	
-	// use_after_move_scoped()	
-	// move_out_of_global()
-	// move_into_for()
-	// copy()
-	// assign_not_moved()
-	// destroy_discarded_values(Num(1))
+	# use_after_move_scoped()	
+	# move_out_of_global()
+	# move_into_for()
+	# copy()
+	# assign_not_moved()
+	# destroy_discarded_values(Num(1))
 }
 
 fn use_after_move() = {
 	let n = Num(1)	
 	let x = n
-	//let y = n // Error!
+	#let y = n # Error!
 }	
 
 fn use_after_move_scoped() = {
 	let n = Num(1)	
 	let x = n
 	if false {
-		//let y = n // Error!
+		#let y = n # Error!
 	}
 }	
 
@@ -31,8 +31,8 @@ let global_int: int = 1
 let global_num: Num = Num(1)
 
 fn move_out_of_global() = {
-	let x = global_int // Ok
-	//let y = global_num // Error!
+	let x = global_int # Ok
+	#let y = global_num # Error!
 }
 
 fn move_into_for() = {
@@ -40,32 +40,32 @@ fn move_into_for() = {
 
 	for if n.field < 10 {
 		n.field += 1
-		//let x = n // Error!
+		#let x = n # Error!
 	}
 }
 
 fn copy() = {
 	let n = 1
 	let a = n
-	let b = n // Ok
+	let b = n # Ok
 
 	let n = Num(1)
 	let a = n.field
-	let b = n.field // Ok
+	let b = n.field # Ok
 
 	let w = { Wrapper(Num(1)) }
 	let a = w.num.field
-	let b = w.num.field // Ok
+	let b = w.num.field # Ok
 }
 
 fn assign_not_moved() = {
-	//let mut num = Num(1)
-	//num.field = 1
+	#let mut num = Num(1)
+	#num.field = 1
 
 	let mut wrapper = Wrapper(Num(1))
 
-	// `wrapper` is NOT marked as moved since this is a `place` expression.
-	// also `wrapper.num` is destroyed here. I also added some weird edge cases...
+	# `wrapper` is NOT marked as moved since this is a `place` expression.
+	# also `wrapper.num` is destroyed here. I also added some weird edge cases...
 	wrapper.num = Num(2) 
 	{ wrapper }.num = Num(2) 
 	{
@@ -74,7 +74,7 @@ fn assign_not_moved() = {
 	}.num = Num(2) 
 
 	let mut wrapper = Wrapper(Num(1))
-	wrapper.num = Num(3) // `wrapper.num` destroyed here
+	wrapper.num = Num(3) # `wrapper.num` destroyed here
 	wrapper.num.field = 2
 
 	let n1 = Num(1)

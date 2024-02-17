@@ -18,37 +18,37 @@ type PolyRef[T] {
 }
 
 fn main() = {
-	// Copy
+	# Copy
 	let enum = Enum.Foo
 	let enum2 = enum
 	let enum3 = enum
 
-	// Move
+	# Move
 	let hm = HasMove.Has(Move())
 	let hmref = &hm
 	let hm2 = hm
 
-	// Ref
+	# Ref
 	let hr = HasRef.Has(match &hm2 { Has(m) -> m })
 
-	// Move + Ref
+	# Move + Ref
 	let mrr = MoveRef.R(match &hm2 { Has(m) -> m })
-	// let mrm = MoveRef.M(match hm2 { Has(m) -> m }) // (Ref error: Because this is defined after refs)
+	# let mrm = MoveRef.M(match hm2 { Has(m) -> m }) # (Ref error: Because this is defined after refs)
 
-	// Poly (Copy)
+	# Poly (Copy)
 	let pc = Poly.A(1)
 	let pc2 = pc
 	let pc3 = pc
 
-	// Poly (Move)
+	# Poly (Move)
 	let pm = Poly.A(Move())
 	let pmref = &pm
 	let pm2 = pm
 
-	// Poly (Ref)
+	# Poly (Ref)
 	let pr = Poly.A(match &pm2 { A(m) -> m })
 
-	// Poly (Move + Ref)
+	# Poly (Move + Ref)
 	let prr = PolyRef.R(match &pm2 { A(m) -> m })
-	// let prm = PolyRef.M(match pm2 { A(m) -> m }) // (Ref error: Because this is defined after refs)
+	# let prm = PolyRef.M(match pm2 { A(m) -> m }) # (Ref error: Because this is defined after refs)
 }

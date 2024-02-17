@@ -13,13 +13,13 @@ type Ref(field: int)
 
 fn ref_type() = {
 	let mut r = Ref(1)
-	print(&r) // should be 1
+	print(&r) # should be 1
 
 	r.field = 2
-	print(&r) // should be 2
+	print(&r) # should be 2
 
 	r.mutate()
-	print(&r) // should be 3
+	print(&r) # should be 3
 }
 
 fn mutate(r: &mut Ref) = {
@@ -34,13 +34,13 @@ type Ext extern(field: int)
 
 fn ext_type() = {
 	let mut ext = Ext(1)
-	print(ext) // should be 1
+	print(ext) # should be 1
 
 	ext.field = 2
-	print(ext) // should be 2
+	print(ext) # should be 2
 
 	ext.mutate()
-	print(ext) // should still be 2
+	print(ext) # should still be 2
 }
 
 fn mutate(mut ext: Ext) = {

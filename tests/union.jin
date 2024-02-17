@@ -3,13 +3,13 @@ fn extern "c" printf(fmt: *u8, ..) -> i32
 type Box(value: int)
 
 fn main() = {
-	// Value constructors
+	# Value constructors
 	let a = Option.Some(1)
 	let b = Option[int].Some(1)
 	let c = Option.Some(value: 2)
 	let d: Option[int] = Option.None
 
-	// Pattern matching
+	# Pattern matching
 	let value = Option.Some(1)
 	match &value {
 		Some(1) -> unsafe printf("Some(1)\n".ptr)

@@ -11,8 +11,8 @@ type Point extern(x: int, y: int)
 fn main() = {
 	let m = M()
 	let m2 = m
-	// let m3 = m // Error: use after move
-	// let r3 = &m2 // Runtime error: Destroy with refs
+	# let m3 = m # Error: use after move
+	# let r3 = &m2 # Runtime error: Destroy with refs
 	let m3 = m2
 
 	let mixed = Mixed(Ref(&m3, Ref2(&m3)))

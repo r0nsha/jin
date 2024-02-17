@@ -85,7 +85,11 @@ impl<'s> Lexer<'s> {
                         }
                         return self.eat_token();
                     }
-                    DQUOTE => self.eat_str(start + 1)?,
+                    '"' => self.eat_str(start + 1)?,
+                    '#' => {
+                        self.eat_comment();
+                        return self.eat_token();
+                    }
                     '(' => TokenKind::OpenParen,
                     ')' => TokenKind::CloseParen,
                     '[' => TokenKind::OpenBracket,
@@ -132,11 +136,6 @@ impl<'s> Lexer<'s> {
                         }
                     }
                     '/' => {
-                        if self.eat('/') {
-                            self.eat_comment();
-                            return self.eat_token();
-                        }
-
                         if self.eat('=') {
                             TokenKind::FwSlashEq
                         } else {
@@ -277,39 +276,21 @@ impl<'s> Lexer<'s> {
     fn eat_str(&mut self, start: u32) -> DiagnosticResult<TokenKind> {
         loop {
             match self.bump() {
-                Some('"') => {
-                    let str = self.range_from(start);
-                    // Removes the ending double-quote
-                    let str = &str[..str.len() - 1];
-
-                    // TODO: unescaping
-                    // let stripped_str = unescaper::unescape(str).map_err(|err| match err {
-                    //     unescaper::Error::IncompleteStr(pos) =>
-                    // TokenizeError::EscapeIncompleteStr(
-                    //         Span::uniform(self.source_id, start + pos as u32),
-                    //     ),
-                    //     unescaper::Error::InvalidChar { char, pos } => {
-                    //         TokenizeError::EscapeInvalidChar(
-                    //             char,
-                    //             Span::uniform(self.source_id, start + pos as u32),
-                    //         )
-                    //     }
-                    //     unescaper::Error::ParseIntError { pos, .. } => {
-                    //         TokenizeError::EscapeParseIntError(Span::uniform(
-                    //             self.source_id,
-                    //             start + pos as u32,
-                    //         ))
-                    //     }
-                    // })?;
-
-                    return Ok(TokenKind::Str(ustr(str)));
-                }
+                Some('"') => break,
                 Some(_) => (),
-                None => break,
+                None => {
+                    return Err(Diagnostic::error("missing trailing `\"` to end the string")
+                        .with_label(Label::primary(
+                            self.create_span(self.pos),
+                            "unterminated string",
+                        )));
+                }
             }
         }
 
-        unreachable!()
+        let str = self.range_from(start);
+        let str = &str[..str.len() - 1];
+        Ok(TokenKind::Str(ustr(str)))
     }
 
     fn eat_comment(&mut self) {
@@ -361,5 +342,3 @@ impl<'s> Lexer<'s> {
         Span::new(self.source_id, start, self.pos)
     }
 }
-
-const DQUOTE: char = '"';
