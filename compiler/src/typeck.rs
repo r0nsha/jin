@@ -52,11 +52,9 @@ pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
     imports::fill_imported_fn_candidates(&mut cx, imported_fns)?;
 
     items::check_bodies(&mut cx, &ast)?;
-    subst::subst(&mut cx);
 
-    late::check_bodies(cx.db, &cx.hir);
-    late::leaky_items(cx.db, &cx.hir);
-    late::check_main(cx.db, &mut cx.hir);
+    subst::subst(&mut cx);
+    late::checks(cx.db, &mut cx.hir);
 
     Ok(cx.hir)
 }

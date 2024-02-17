@@ -14,7 +14,7 @@ use crate::{
 
 pub fn check_bodies(db: &mut Db, hir: &Hir) {
     let mut cx = CheckBodies { db, diagnostics: vec![] };
-    cx.run(hir);
+    cx.check(hir);
     db.diagnostics.emit_many(cx.diagnostics);
 }
 
@@ -24,7 +24,7 @@ struct CheckBodies<'db> {
 }
 
 impl CheckBodies<'_> {
-    fn run(&mut self, hir: &Hir) {
+    fn check(&mut self, hir: &Hir) {
         for f in &hir.fns {
             match &f.kind {
                 FnKind::Bare { body } => self.expr(body),
