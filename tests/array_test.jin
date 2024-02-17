@@ -23,7 +23,7 @@ fn main() = {
 	slice.print()
 
 	println("\nArray pop:")
-	let mut array = Array.new[Int](7) fn(idx) { {idx + 10} as Int }
+	let mut array = Array.new[Int](7) fn(idx) { as[Int](idx + 10) }
 	array.print()
 
 	match array.pop() {
