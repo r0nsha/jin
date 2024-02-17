@@ -1,4 +1,4 @@
-fn extern "c" printf(fmt: *u8, ..) -> i32
+fn extern "c" printf(fmt: *U8, ..) -> I32
 
 fn main() = {
 	match try_add(1, 2) {
@@ -7,7 +7,7 @@ fn main() = {
 	}
 }
 
-fn try_add(a: int, b: int) -> Result[int, str] = {
+fn try_add(a: Int, b: Int) -> Result[Int, Str] = {
 	if a == b {
 		Result.Ok(a + b)
 	} else {

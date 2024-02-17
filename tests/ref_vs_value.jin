@@ -1,4 +1,4 @@
-fn extern "c" printf(fmt: *u8, ..) -> i32
+fn extern "c" printf(fmt: *U8, ..) -> I32
 
 fn main() = {
 	unsafe printf("Reference semantics:\n".ptr)
@@ -9,7 +9,7 @@ fn main() = {
 	ext_type()
 }
 
-type Ref(field: int)
+type Ref(field: Int)
 
 fn ref_type() = {
 	let mut r = Ref(1)
@@ -30,7 +30,7 @@ fn print(r: &Ref) = {
 	unsafe printf("Ref(field: %d)\n".ptr, r.field)
 }
 
-type Ext extern(field: int)
+type Ext extern(field: Int)
 
 fn ext_type() = {
 	let mut ext = Ext(1)

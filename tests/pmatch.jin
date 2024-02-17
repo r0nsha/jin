@@ -1,6 +1,6 @@
 use .inner
 
-fn extern "c" printf(fmt: *u8, ..) -> i32
+fn extern "c" printf(fmt: *U8, ..) -> I32
 
 fn main() = {
 	match_vars()
@@ -12,9 +12,9 @@ fn main() = {
 	match_int(-3)
 	match_int(69)
 
-	match_uint(42)
-	match_uint(3)
-	match_uint(69)
+	match_UInt(42)
+	match_UInt(3)
+	match_UInt(69)
 
 	match_str("foo")
 	match_str("bar")
@@ -48,7 +48,7 @@ fn match_unit() = {
 	}
 }
 
-fn match_bool(value: bool) = {
+fn match_bool(value: Bool) = {
 	unsafe printf("value = %s\n".ptr, match value {
 		true -> "true"
 		false -> "false"
@@ -56,7 +56,7 @@ fn match_bool(value: bool) = {
 	})
 }
 
-fn match_int(value: int) = {
+fn match_int(value: Int) = {
 	match value {
 		42 -> unsafe printf("i'm the answer\n".ptr)
 		-3 -> unsafe printf("i'm -3\n".ptr)
@@ -64,7 +64,7 @@ fn match_int(value: int) = {
 	}
 }
 
-fn match_uint(value: uint) = {
+fn match_UInt(value: UInt) = {
 	match value {
 		42 -> unsafe printf("i'm still the answer\n".ptr)
 		3 -> unsafe printf("i'm still 3\n".ptr)
@@ -72,7 +72,7 @@ fn match_uint(value: uint) = {
 	}
 }
 
-fn match_str(value: str) = {
+fn match_str(value: Str) = {
 	match value {
 		"foo" -> unsafe printf("i'm 'foo'\n".ptr)
 		"bar" -> unsafe printf("i'm 'bar'\n".ptr)
@@ -81,7 +81,7 @@ fn match_str(value: str) = {
 	}
 }
 
-type Box(value: int)
+type Box(value: Int)
 type Bag(a: Box, b: Box)
 
 fn match_types() = {
@@ -125,7 +125,7 @@ fn print(bag: &Bag) = {
 	}
 }
 
-fn print(value: int) = {
+fn print(value: Int) = {
 	unsafe printf("%d\n".ptr, value)
 }
 
@@ -141,21 +141,21 @@ fn match_guard() = {
 	}
 }
 
-fn print_fac(n: int) = {
+fn print_fac(n: Int) = {
 	unsafe printf("fac(%d) = %d\n".ptr, n, fac(n))
 }	
 
-fn fac(n: int) -> int =
+fn fac(n: Int) -> Int =
 	match n {
 		0 | 1 -> 1
 		n -> n * fac(n - 1)
 	}
 
-fn print_fib(n: int) = {
+fn print_fib(n: Int) = {
 	unsafe printf("fib(%d) = %d\n".ptr, n, fib(n))
 }
 
-fn fib(n: int) -> int =
+fn fib(n: Int) -> Int =
 	match n {
 		0 | 1 -> n
 		n -> fib(n - 1) + fib(n - 2)

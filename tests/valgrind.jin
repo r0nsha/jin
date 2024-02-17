@@ -1,6 +1,6 @@
-fn extern "c" printf(fmt: *u8, ..) -> i32
+fn extern "c" printf(fmt: *U8, ..) -> I32
 
-type Num(field: int)
+type Num(field: Int)
 type Wrapper(num: Num)
 type Duo(n1: Num, n2: Num)
 type WrapperDuo(w1: Wrapper, w2: Wrapper)
@@ -23,7 +23,7 @@ fn main() = {
 	n = Num(2)
 
 	# Destroy in for & break
-	let mut i: uint = 10
+	let mut i: UInt = 10
 	for {
 		let n = Num(1)
 		unsafe printf("i = %d\n".ptr, i)

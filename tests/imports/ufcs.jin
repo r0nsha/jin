@@ -1,5 +1,5 @@
-fn extern "c" printf(fmt: *u8, ..) -> i32
+fn extern "c" printf(fmt: *U8, ..) -> I32
 
-pub fn print_int(value: int) = {
+pub fn print_int(value: Int) = {
 	unsafe printf("print_int: %d\n".ptr, value)
 }

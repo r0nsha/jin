@@ -1,5 +1,5 @@
 @builtin("slice_grow")
-pub fn extern "jin" grow[T](slice: [T], new_cap: uint) -> [T]
+pub fn extern "jin" grow[T](slice: [T], new_cap: UInt) -> [T]
 
 @builtin("forget")
 pub fn extern "jin" forget[T](x: &T)

@@ -1,6 +1,6 @@
 use std.builtin
 
-fn extern "c" printf(fmt: *u8, ..) -> i32
+fn extern "c" printf(fmt: *U8, ..) -> I32
 
 fn main() = {
 	ints()
@@ -8,10 +8,10 @@ fn main() = {
 }
 
 fn ints() = {
-	let a: [int] = []
+	let a: [Int] = []
 	print(&a)
 
-	let mut b: [int] = [:3]
+	let mut b: [Int] = [:3]
 	b.push(3)
 	b.push(2)
 	b.push(1)
@@ -40,7 +40,7 @@ fn ints() = {
 	print(&c.[..])
 }
 
-fn print(s: &[int]) = {
+fn print(s: &[Int]) = {
 	unsafe printf("[".ptr)
 	let mut i = 0
 	for if i < s.len {
@@ -53,7 +53,7 @@ fn print(s: &[int]) = {
 	unsafe printf("], ptr: %p, len: %d, cap: %d\n".ptr, s.ptr, s.len, s.cap)
 }
 
-type Box(value: int)
+type Box(value: Int)
 
 fn boxes() = {
 	let a = [Box(1), Box(2), Box(3)]

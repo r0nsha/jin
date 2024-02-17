@@ -3,19 +3,19 @@ pub type Option[T] {
 	None
 }
 
-# pub fn get[T](self: Option[T]) -> bool =
+# pub fn get[T](self: Option[T]) -> Bool =
 # 	match self {
 # 		Some(v) -> v
 # 		None -> panic("called `Option.get` on a `None` value")
 # 	}
 
-pub fn is_some[T](self: &Option[T]) -> bool =
+pub fn is_some[T](self: &Option[T]) -> Bool =
 	match self {
 		Some(_) -> true
 		None -> false
 	}
 
-pub fn is_none[T](self: &Option[T]) -> bool =
+pub fn is_none[T](self: &Option[T]) -> Bool =
 	!self.is_some()
 
 pub fn map[A, B](self: Option[A], f: fn(A) -> B) -> Option[B] =

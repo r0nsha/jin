@@ -1,7 +1,7 @@
-fn extern "c" printf(fmt: *u8, ..) -> i32
+fn extern "c" printf(fmt: *U8, ..) -> I32
 
 fn main() = {
-	let mut array = Array.new[int]()
+	let mut array = Array.new[Int]()
 
 	println("Array push:")
 	array.push(1)
@@ -23,7 +23,7 @@ fn main() = {
 	slice.print()
 
 	println("\nArray pop:")
-	let mut array = Array.new[int](7) fn(idx) { {idx + 10} as int }
+	let mut array = Array.new[Int](7) fn(idx) { {idx + 10} as Int }
 	array.print()
 
 	match array.pop() {
@@ -38,18 +38,18 @@ fn main() = {
 	array.print()
 }
 
-fn print_at(array: &Array[int], idx: uint) = {
+fn print_at(array: &Array[Int], idx: UInt) = {
 	match array.get(idx) {
 		Some(x) -> unsafe printf("array[%d] = Some(%d)\n".ptr, idx, x)
 		None -> unsafe printf("array[%d] = None\n".ptr, idx)
 	}
 }
 
-fn print(array: &Array[int]) = {
+fn print(array: &Array[Int]) = {
 	array.as_ref().print()
 }
 
-fn print(slice: &[int]) = {
+fn print(slice: &[Int]) = {
 	unsafe printf("[".ptr)
 	let mut i = 0
 	for if i < slice.len {

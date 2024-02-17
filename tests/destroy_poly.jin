@@ -4,6 +4,6 @@ fn main() = {
 }
 
 type Box[T](v: T)
-type Bag(a: Box[int], b: Box[Box[int]])
+type Bag(a: Box[Int], b: Box[Box[Int]])
 
 fn destroy[T](value: T) = {}

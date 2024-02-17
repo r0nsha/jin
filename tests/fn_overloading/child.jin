@@ -1,23 +1,23 @@
-pub(module) fn extern "c" printf(fmt: *u8, ..) -> i32
+pub(module) fn extern "c" printf(fmt: *U8, ..) -> I32
 
 pub fn add() = {
 	unsafe printf("there's nothing to add...\n".ptr)
 }
 
-pub fn add(a: int, b: int) = {
+pub fn add(a: Int, b: Int) = {
 	unsafe printf("add ints: %d\n".ptr, a + b)
 }
 
-pub fn add(a: int, b: int, c: int) = {
+pub fn add(a: Int, b: Int, c: Int) = {
 	unsafe printf("add 3 ints: %d\n".ptr, a + b + c)
 }
 
-pub fn add(a: f32, b: f32) = {
+pub fn add(a: F32, b: F32) = {
 	unsafe printf("add floats: %f\n".ptr, a + b)
 }
 
-pub fn add(a: int, b: f32) = {
-	unsafe printf("add int & f32: %f\n".ptr, f32(a) + b)
+pub fn add(a: Int, b: F32) = {
+	unsafe printf("add int & F32: %f\n".ptr, F32(a) + b)
 }
 
 pub fn poly[T](x: T) = {

@@ -1,6 +1,6 @@
-fn extern "c" printf(fmt: *u8, ..) -> i32
+fn extern "c" printf(fmt: *U8, ..) -> I32
 
-type Num(field: int)
+type Num(field: Int)
 type Wrapper(num: Num)
 
 fn main() = {
@@ -27,7 +27,7 @@ fn use_after_move_scoped() = {
 	}
 }	
 
-let global_int: int = 1
+let global_int: Int = 1
 let global_num: Num = Num(1)
 
 fn move_out_of_global() = {

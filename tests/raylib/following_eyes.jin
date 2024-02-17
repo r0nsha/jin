@@ -1,9 +1,9 @@
 use raylib.bindings.{*}
 
-fn extern "c" printf(fmt: *u8, ..) -> i32
-fn extern "c" atan2f(y: f32, x: f32) -> f32
-fn extern "c" cosf(arg: f32) -> f32
-fn extern "c" sinf(arg: f32) -> f32
+fn extern "c" printf(fmt: *U8, ..) -> I32
+fn extern "c" atan2f(y: F32, x: F32) -> F32
+fn extern "c" cosf(arg: F32) -> F32
+fn extern "c" sinf(arg: F32) -> F32
 
 pub fn run() = unsafe {
 	let screen_width = 800
@@ -12,13 +12,13 @@ pub fn run() = unsafe {
 	InitWindow(screen_width, screen_height, "raylib - following eyes".ptr)
 	SetTargetFPS(60)
 
-	let half_screen_height = f32(screen_height / 2)
-	let mut sclera_left_pos = Vector2(f32(screen_width / 2) - 100.0, half_screen_height)
-	let mut sclera_right_pos = Vector2(f32(screen_width / 2) + 100.0, half_screen_height)
+	let half_screen_height = F32(screen_height / 2)
+	let mut sclera_left_pos = Vector2(F32(screen_width / 2) - 100.0, half_screen_height)
+	let mut sclera_right_pos = Vector2(F32(screen_width / 2) + 100.0, half_screen_height)
 	let sclera_radius = 80.0
 
-	let mut iris_left_pos = Vector2(f32(screen_width / 2) - 100.0, half_screen_height)
-	let mut iris_right_pos = Vector2(f32(screen_width / 2) + 100.0, half_screen_height)
+	let mut iris_left_pos = Vector2(F32(screen_width / 2) - 100.0, half_screen_height)
+	let mut iris_right_pos = Vector2(F32(screen_width / 2) + 100.0, half_screen_height)
 	let iris_radius = 24.0
 
 	for if !WindowShouldClose() {
