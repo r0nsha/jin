@@ -1,0 +1,57 @@
+fn extern "c" printf(fmt: *U8, ..) -> I32
+
+fn main() = {
+    let mut slice = [1, 3, 42, 487, 5, 66, 4055, 33]
+    unsafe printf("Before: ".ptr)
+    slice.print()
+    quick_sort(&mut slice)
+    unsafe printf("After: ".ptr)
+    slice.print()
+}
+
+fn quick_sort(slice: &mut [Int]) = {
+    let len = slice.len
+
+    if len < 2 {
+        return
+    }
+
+    let pivot_idx = partition(&mut slice)
+    quick_sort(&mut slice.[0..pivot_idx])
+    quick_sort(&mut slice.[pivot_idx + 1..len])
+}
+
+fn partition(slice: &mut [Int]) -> UInt = {
+    let len = slice.len
+    let pivot_idx = len / 2
+    let last_idx = len - 1
+
+    slice.swap(pivot_idx, last_idx)
+
+    let mut store_idx = 0
+    let mut i = 0
+    for if i < last_idx {
+        if slice.[i] < slice.[last_idx] {
+            slice.swap(i, store_idx)
+            store_idx += 1
+        }
+
+        i += 1
+    }
+
+    slice.swap(store_idx, len - 1)
+    store_idx
+}
+
+fn swap(slice: &mut [Int], a: UInt, b: UInt) = {
+    slice.[b] = slice.[a] := slice.[b] 
+}
+
+fn print(slice: &[Int]) = {
+    let mut i = 0
+    for if i < slice.len {
+        unsafe printf("%d ".ptr, slice.[i])
+        i += 1
+    }
+    unsafe printf("\n".ptr)
+}

@@ -4,7 +4,7 @@ fn main() = {
     let mut slice = [1, 3, 42, 487, 5, 66, 4055, 33]
     unsafe printf("Before: ".ptr)
     slice.print()
-    slice.bubble_sort()
+    bubble_sort(&mut slice)
     unsafe printf("After: ".ptr)
     slice.print()
 }
@@ -18,12 +18,8 @@ fn bubble_sort(slice: &mut [Int]) = {
 
         let mut i = 1
         for if i < n {
-            let a = slice.[i - 1]
-            let b = slice.[i]
-
-            if a > b {
-                slice.[i - 1] = b
-                slice.[i] = a
+            if slice.[i - 1] > slice.[i] {
+                slice.[i] = slice.[i - 1] := slice.[i]
                 swapped = true
             }
 
