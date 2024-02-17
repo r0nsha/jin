@@ -20,11 +20,11 @@ fn push_front[T](self: &mut LinkedList[T], data: T) = {
     let node_mut = &mut node
 
     match self.head := Option.Some(node) {
-        Some(old_head) -> {
+        Option.Some(old_head) -> {
             old_head.prev = Option.Some(node_mut)
             node_mut.next = Option.Some(old_head)
         }
-        None -> self.tail = Option.Some(node_mut)
+        Option.None -> self.tail = Option.Some(node_mut)
     }
 }
 
@@ -35,14 +35,14 @@ fn print(self: &LinkedList[Int]) = {
 
     for {
         match curr {
-            Some(v) -> {
+            Option.Some(v) -> {
                 curr = &v.next
                 unsafe printf("%d".ptr, v.data)
                 if curr.is_some() {
                     unsafe printf(", ".ptr)
                 }
             }
-            None -> break
+            Option.None -> break
         }
     }
 

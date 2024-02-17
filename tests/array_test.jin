@@ -27,8 +27,8 @@ fn main() = {
 	array.print()
 
 	match array.pop() {
-		Some(x) -> unsafe printf("popped = Some(%d)\n".ptr, x)
-		None -> unsafe printf("popped = None\n".ptr)
+		Option.Some(x) -> unsafe printf("popped = Some(%d)\n".ptr, x)
+		Option.None -> unsafe printf("popped = None\n".ptr)
 	}
 
 	array.print()
@@ -40,8 +40,8 @@ fn main() = {
 
 fn print_at(array: &Array[Int], idx: UInt) = {
 	match array.get(idx) {
-		Some(x) -> unsafe printf("array[%d] = Some(%d)\n".ptr, idx, x)
-		None -> unsafe printf("array[%d] = None\n".ptr, idx)
+		Option.Some(x) -> unsafe printf("array[%d] = Some(%d)\n".ptr, idx, x)
+		Option.None -> unsafe printf("array[%d] = None\n".ptr, idx)
 	}
 }
 

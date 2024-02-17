@@ -12,9 +12,9 @@ fn main() = {
 	# Pattern matching
 	let value = Option.Some(1)
 	match &value {
-		Some(1) -> unsafe printf("Some(1)\n".ptr)
-		Some(_) -> unsafe printf("Some(other)\n".ptr)
-		None() -> unsafe printf("None\n".ptr)
+		Option.Some(1) -> unsafe printf("Some(1)\n".ptr)
+		Option.Some(_) -> unsafe printf("Some(other)\n".ptr)
+		Option.None() -> unsafe printf("None\n".ptr)
 	}
 
 	let o = Option.Some(Box(4))
@@ -23,12 +23,12 @@ fn main() = {
 	unsafe printf("before match: Box(%d)\n".ptr, b.value)
 
 	match o {
-		Some(Box(value: 5)) -> unsafe printf("Some(Box(5))\n".ptr)
-		Some(x) -> {
+		Option.Some(Box(value: 5)) -> unsafe printf("Some(Box(5))\n".ptr)
+		Option.Some(x) -> {
 			unsafe printf("Some(%d)\n".ptr, x.value)
 			b = x
 		}
-		None -> unsafe printf("None\n".ptr)
+		Option.None -> unsafe printf("None\n".ptr)
 	}
 
 	unsafe printf("after match: Box(%d)\n".ptr, b.value)

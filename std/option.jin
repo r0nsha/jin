@@ -5,14 +5,14 @@ pub type Option[T] {
 
 # pub fn get[T](self: Option[T]) -> Bool =
 # 	match self {
-# 		Some(v) -> v
-# 		None -> panic("called `Option.get` on a `None` value")
+# 		Option.Some(v) -> v
+# 		Option.None -> panic("called `Option.get` on a `None` value")
 # 	}
 
 pub fn is_some[T](self: &Option[T]) -> Bool =
 	match self {
-		Some(_) -> true
-		None -> false
+		Option.Some(_) -> true
+		Option.None -> false
 	}
 
 pub fn is_none[T](self: &Option[T]) -> Bool =
@@ -20,13 +20,13 @@ pub fn is_none[T](self: &Option[T]) -> Bool =
 
 pub fn map[A, B](self: Option[A], f: fn(A) -> B) -> Option[B] =
 	match self {
-		Some(v) -> Option.Some(f(v))
-		None -> Option.None
+		Option.Some(v) -> Option.Some(f(v))
+		Option.None -> Option.None
 	}
 
 pub fn map_or[A, B](self: Option[A], default: B, f: fn(A) -> B) -> B =
 	match self {
-		Some(v) -> f(v)
-		None -> default
+		Option.Some(v) -> f(v)
+		Option.None -> default
 	}
 

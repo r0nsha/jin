@@ -2,8 +2,8 @@ fn extern "c" printf(fmt: *U8, ..) -> I32
 
 fn main() = {
 	match try_add(1, 2) {
-		Ok(res) -> unsafe printf("res = %d\n".ptr, res)
-		Err(msg) -> unsafe printf(msg.ptr)
+		Result.Ok(res) -> unsafe printf("res = %d\n".ptr, res)
+		Result.Err(msg) -> unsafe printf(msg.ptr)
 	}
 }
 

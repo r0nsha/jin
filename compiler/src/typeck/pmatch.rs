@@ -107,7 +107,7 @@ fn check_match_pat(
 
     match pat {
         ast::MatchPat::Name(word, mutability) => {
-            check_match_pat_name(cx, env, *word, *mutability, pat_ty, parent_span, names)
+            check_match_pat_name(cx, env, *word, *mutability, pat_ty, names)
         }
         ast::MatchPat::Wildcard(span) => Ok(hir::MatchPat::Wildcard(*span)),
         ast::MatchPat::Unit(span) => {
@@ -155,25 +155,8 @@ fn check_match_pat_name(
     word: Word,
     mutability: Mutability,
     pat_ty: Ty,
-    parent_span: Span,
     names: &mut UstrMap<DefId>,
 ) -> DiagnosticResult<hir::MatchPat> {
-    if let Some(res) = maybe_check_match_pat_inferred_variant(
-        cx,
-        env,
-        &ast::MatchPatAdt {
-            path: vec![word],
-            subpats: vec![],
-            is_exhaustive: true,
-            span: word.span(),
-        },
-        pat_ty,
-        parent_span,
-        names,
-    ) {
-        return res;
-    }
-
     let id = if let Some(id) = names.get(&word.name()) {
         // We make sure that names in all alternatives are bound to the same type
         let expected_ty = cx.def_ty(*id);
@@ -206,33 +189,33 @@ fn check_match_pat_name(
     Ok(hir::MatchPat::Name(id, cx.def_ty(id), word.span()))
 }
 
-fn maybe_check_match_pat_inferred_variant(
-    cx: &mut Typeck<'_>,
-    env: &mut Env,
-    pat: &ast::MatchPatAdt,
-    pat_ty: Ty,
-    parent_span: Span,
-    names: &mut UstrMap<DefId>,
-) -> Option<DiagnosticResult<hir::MatchPat>> {
-    let pat_ty_deref = cx.normalize(pat_ty).auto_deref();
-
-    if let Some(union_def) = pat_ty_deref.as_union(cx.db) {
-        let word = pat.path[0];
-        if let Some(variant) = cx.lookup().maybe_variant_in_union(union_def, word) {
-            return Some(check_match_pat_variant(
-                cx,
-                env,
-                pat,
-                pat_ty,
-                parent_span,
-                names,
-                variant.id,
-            ));
-        }
-    }
-
-    None
-}
+// fn maybe_check_match_pat_inferred_variant(
+//     cx: &mut Typeck<'_>,
+//     env: &mut Env,
+//     pat: &ast::MatchPatAdt,
+//     pat_ty: Ty,
+//     parent_span: Span,
+//     names: &mut UstrMap<DefId>,
+// ) -> Option<DiagnosticResult<hir::MatchPat>> {
+//     let pat_ty_deref = cx.normalize(pat_ty).auto_deref();
+//
+//     if let Some(union_def) = pat_ty_deref.as_union(cx.db) {
+//         let word = pat.path[0];
+//         if let Some(variant) = cx.lookup().maybe_variant_in_union(union_def, word) {
+//             return Some(check_match_pat_variant(
+//                 cx,
+//                 env,
+//                 pat,
+//                 pat_ty,
+//                 parent_span,
+//                 names,
+//                 variant.id,
+//             ));
+//         }
+//     }
+//
+//     None
+// }
 
 fn check_match_pat_adt(
     cx: &mut Typeck<'_>,
@@ -242,14 +225,6 @@ fn check_match_pat_adt(
     parent_span: Span,
     names: &mut UstrMap<DefId>,
 ) -> DiagnosticResult<hir::MatchPat> {
-    if pat.path.len() == 1 {
-        if let Some(res) =
-            maybe_check_match_pat_inferred_variant(cx, env, pat, pat_ty, parent_span, names)
-        {
-            return res;
-        }
-    }
-
     match cx.lookup().path(env.module_id(), &pat.path)? {
         PathLookup::Def(id) => {
             let def = &cx.db[id];
