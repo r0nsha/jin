@@ -1,5 +1,6 @@
 mod pretty_print;
 pub mod subst;
+pub mod visit;
 
 use std::{collections::hash_map::Entry, io};
 
