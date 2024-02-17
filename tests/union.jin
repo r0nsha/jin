@@ -4,36 +4,36 @@ type Box(value: Int)
 
 fn main() = {
 	# Value constructors
-	let a = Option.Some(1)
+	let a = Option.some(1)
 	let b = Option[Int].Some(1)
-	let c = Option.Some(value: 2)
-	let d: Option[Int] = Option.None
+	let c = Option.some(value: 2)
+	let d: Option[Int] = Option.none
 
 	# Pattern matching
-	let value = Option.Some(1)
+	let value = Option.some(1)
 	match &value {
-		Option.Some(1) -> unsafe printf("Some(1)\n".ptr)
-		Option.Some(_) -> unsafe printf("Some(other)\n".ptr)
-		Option.None() -> unsafe printf("None\n".ptr)
+		Option.some(1) -> unsafe printf("Some(1)\n".ptr)
+		Option.some(_) -> unsafe printf("Some(other)\n".ptr)
+		Option.none() -> unsafe printf("None\n".ptr)
 	}
 
-	let o = Option.Some(Box(4))
+	let o = Option.some(Box(4))
 
 	let mut b = Box(1)
 	unsafe printf("before match: Box(%d)\n".ptr, b.value)
 
 	match o {
-		Option.Some(Box(value: 5)) -> unsafe printf("Some(Box(5))\n".ptr)
-		Option.Some(x) -> {
+		Option.some(Box(value: 5)) -> unsafe printf("Some(Box(5))\n".ptr)
+		Option.some(x) -> {
 			unsafe printf("Some(%d)\n".ptr, x.value)
 			b = x
 		}
-		Option.None -> unsafe printf("None\n".ptr)
+		Option.none -> unsafe printf("None\n".ptr)
 	}
 
 	unsafe printf("after match: Box(%d)\n".ptr, b.value)
 
-	if Option.Some(-1).map_or(false, is_negative) {
+	if Option.some(-1).map_or(false, is_negative) {
 		unsafe printf("o is negative\n".ptr)
 	} else {
 		unsafe printf("o is not negative\n".ptr)

@@ -1,7 +1,7 @@
 fn extern "c" printf(fmt: *U8, ..) -> I32
 
 fn main() = {
-	if Option.Some(1).map_or(false) fn(x) { x == 1 } {
+	if Option.some(1).map_or(false) fn(x) { x == 1 } {
 		call(fn { println("hello") })
 	}
 }

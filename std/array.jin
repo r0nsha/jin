@@ -29,9 +29,9 @@ pub fn take[T](self: Array[T]) -> [T] = self.buf
 
 pub fn get[T](self: &Array[T], index: UInt) -> Option[&T] = {
 	if index < self.buf.len {
-		Option.Some(&self.buf.[index])
+		Option.some(&self.buf.[index])
 	} else {
-		Option.None
+		Option.none
 	}
 }
 
@@ -45,11 +45,11 @@ pub fn push[T](self: &mut Array[T], value: T) = {
 
 pub fn pop[T](self: &mut Array[T]) -> Option[T] = {
 	if self.buf.len == 0 {
-		return Option.None
+		return Option.none
 	}
 
 	unsafe self.buf.len -= 1
-	Option.Some(unsafe {self.buf.ptr + self.buf.len}.*)
+	Option.some(unsafe {self.buf.ptr + self.buf.len}.*)
 }
 
 pub fn clear[T](self: &mut Array[T]) = {
