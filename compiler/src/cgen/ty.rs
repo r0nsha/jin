@@ -5,7 +5,6 @@ use pretty::RcDoc as D;
 use crate::{
     cgen::{generate::Generator, util},
     middle::CallConv,
-    sym,
     ty::{FloatTy, FnTy, IntTy, Ty, TyKind, UintTy},
 };
 
@@ -80,10 +79,10 @@ impl<'db> CTy<'db> for TyKind {
 impl<'db> CTy<'db> for IntTy {
     fn cty(&self, _: &mut Generator<'db>) -> D<'db> {
         D::text(match self {
-            Self::I8 => sym::I8,
-            Self::I16 => sym::I16,
-            Self::I32 => sym::I32,
-            Self::I64 => sym::I64,
+            Self::I8 => "i8",
+            Self::I16 => "i16",
+            Self::I32 => "i32",
+            Self::I64 => "i64",
             Self::Int => "isize",
         })
     }
@@ -92,10 +91,10 @@ impl<'db> CTy<'db> for IntTy {
 impl<'db> CTy<'db> for UintTy {
     fn cty(&self, _: &mut Generator<'db>) -> D<'db> {
         D::text(match self {
-            Self::U8 => sym::U8,
-            Self::U16 => sym::U16,
-            Self::U32 => sym::U32,
-            Self::U64 => sym::U64,
+            Self::U8 => "u8",
+            Self::U16 => "u16",
+            Self::U32 => "u32",
+            Self::U64 => "u64",
             Self::Uint => "usize",
         })
     }
@@ -104,8 +103,8 @@ impl<'db> CTy<'db> for UintTy {
 impl<'db> CTy<'db> for FloatTy {
     fn cty(&self, _: &mut Generator<'db>) -> D<'db> {
         D::text(match self {
-            Self::F32 => sym::F32,
-            Self::F64 => sym::F64,
+            Self::F32 => "f32",
+            Self::F64 => "f64",
         })
     }
 }

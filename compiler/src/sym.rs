@@ -15,7 +15,6 @@ pub const F64: &str = "f64";
 
 pub const STR: &str = "str";
 pub const BOOL: &str = "bool";
-pub const UNIT: &str = "unit";
 pub const NEVER: &str = "never";
 
 pub const CAP: &str = "cap";
