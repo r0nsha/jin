@@ -1,4 +1,4 @@
-fn extern "c" printf(fmt: Ptr[U8], ..) -> I32
+fn extern "c" printf(fmt: ptr[U8], ..) -> I32
 
 type Move()
 type Enum {
