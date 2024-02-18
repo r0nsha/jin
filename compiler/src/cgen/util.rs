@@ -41,7 +41,7 @@ impl<'db> Generator<'db> {
                     self.rc_field(state, value.id, field)
                 }
                 (TyKind::Ref(_, _), _) => self.rc_field(state, value.id, field),
-                (TyKind::Slice(_), sym::PTR) => self.slice_data_field(state, value.id),
+                (TyKind::Slice(_), sym::field::PTR) => self.slice_data_field(state, value.id),
                 _ => util::field(value_doc, field, ty.is_ptr(self)),
             },
         }
@@ -196,8 +196,8 @@ pub fn cmp_strs<'a>(a: D<'a>, b: D<'a>) -> D<'a> {
 
 pub fn str_value(value: &str) -> D {
     D::text("(str)").append(struct_lit(vec![
-        (sym::PTR, str_lit(value)),
-        (sym::LEN, D::text(value.len().to_string())),
+        (sym::field::PTR, str_lit(value)),
+        (sym::field::LEN, D::text(value.len().to_string())),
     ]))
 }
 

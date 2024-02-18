@@ -678,8 +678,10 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 if !lit.exprs.is_empty() {
                     // slice.len = lit.exprs.len()
                     let value = self.const_int(uint, lit.exprs.len() as i128);
-                    let len_field =
-                        self.create_untracked_value(uint, ValueKind::Field(slice, ustr(sym::LEN)));
+                    let len_field = self.create_untracked_value(
+                        uint,
+                        ValueKind::Field(slice, ustr(sym::field::LEN)),
+                    );
                     self.ins(self.current_block).store(value, len_field);
                 }
 
@@ -890,7 +892,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             self.try_move(value, high.span);
             value
         } else {
-            self.create_untracked_value(uint, ValueKind::Field(og_slice, ustr(sym::LEN)))
+            self.create_untracked_value(uint, ValueKind::Field(og_slice, ustr(sym::field::LEN)))
         };
 
         let sliced = self.create_value(expr.ty, ValueKind::Register(None));

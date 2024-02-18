@@ -67,27 +67,27 @@ impl<'db> TyPrinter<'db> {
                 self.fmt_type(f, pointee)
             }
             TyKind::Int(ity) => f.write_str(match ity {
-                IntTy::I8 => sym::I8,
-                IntTy::I16 => sym::I16,
-                IntTy::I32 => sym::I32,
-                IntTy::I64 => sym::I64,
-                IntTy::Int => sym::INT,
+                IntTy::I8 => sym::ty::I8,
+                IntTy::I16 => sym::ty::I16,
+                IntTy::I32 => sym::ty::I32,
+                IntTy::I64 => sym::ty::I64,
+                IntTy::Int => sym::ty::INT,
             }),
             TyKind::Uint(uty) => f.write_str(match uty {
-                UintTy::U8 => sym::U8,
-                UintTy::U16 => sym::U16,
-                UintTy::U32 => sym::U32,
-                UintTy::U64 => sym::U64,
-                UintTy::Uint => sym::UINT,
+                UintTy::U8 => sym::ty::U8,
+                UintTy::U16 => sym::ty::U16,
+                UintTy::U32 => sym::ty::U32,
+                UintTy::U64 => sym::ty::U64,
+                UintTy::Uint => sym::ty::UINT,
             }),
             TyKind::Float(fty) => f.write_str(match fty {
-                FloatTy::F32 => sym::F32,
-                FloatTy::F64 => sym::F64,
+                FloatTy::F32 => sym::ty::F32,
+                FloatTy::F64 => sym::ty::F64,
             }),
-            TyKind::Str => f.write_str(sym::STR),
-            TyKind::Bool => f.write_str(sym::BOOL),
+            TyKind::Str => f.write_str(sym::ty::STR),
+            TyKind::Bool => f.write_str(sym::ty::BOOL),
             TyKind::Unit => f.write_str("{}"),
-            TyKind::Never => f.write_str(sym::NEVER),
+            TyKind::Never => f.write_str(sym::ty::NEVER),
             TyKind::Param(p) => f.write_str(p.name.as_str()),
 
             #[cfg(debug_assertions)]

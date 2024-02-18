@@ -667,7 +667,8 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
         self.body.ins(start).stackalloc(index, zero).br(loop_start);
 
         // slice.len
-        let slice_len = self.body.create_value(uint, ValueKind::Field(slice, ustr(sym::LEN)));
+        let slice_len =
+            self.body.create_value(uint, ValueKind::Field(slice, ustr(sym::field::LEN)));
 
         // i == slice.len
         let cond = self.body.create_register(self.cx.db.types.bool);

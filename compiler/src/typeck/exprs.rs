@@ -657,10 +657,12 @@ fn check_field(
                 Ok(expr)
             };
         }
-        TyKind::Slice(..) if field.name() == sym::CAP => Some(cx.db.types.uint),
-        TyKind::Slice(..) | TyKind::Str if field.name() == sym::LEN => Some(cx.db.types.uint),
-        TyKind::Slice(elem_ty) if field.name() == sym::PTR => Some(elem_ty.raw_ptr()),
-        TyKind::Str if field.name() == sym::PTR => Some(cx.db.types.u8.raw_ptr()),
+        TyKind::Slice(..) if field.name() == sym::field::CAP => Some(cx.db.types.uint),
+        TyKind::Slice(..) | TyKind::Str if field.name() == sym::field::LEN => {
+            Some(cx.db.types.uint)
+        }
+        TyKind::Slice(elem_ty) if field.name() == sym::field::PTR => Some(elem_ty.raw_ptr()),
+        TyKind::Str if field.name() == sym::field::PTR => Some(cx.db.types.u8.raw_ptr()),
         TyKind::RawPtr(pointee) if field.name() == "0" => {
             return Ok(cx.expr(
                 hir::ExprKind::Deref(hir::Deref { expr: Box::new(expr) }),
