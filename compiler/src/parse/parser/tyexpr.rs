@@ -21,6 +21,13 @@ impl<'a> Parser<'a> {
                 let fty = self.parse_fn_ty()?;
                 TyExpr::Fn(fty)
             }
+            TokenKind::Kw(Kw::Ptr) => {
+                self.eat(TokenKind::OpenBracket)?;
+                let pointee = self.parse_ty()?;
+                self.eat(TokenKind::CloseBracket)?;
+                let span = tok.span.merge(self.last_span());
+                TyExpr::RawPtr(Box::new(pointee), span)
+            }
             TokenKind::OpenBracket => {
                 let inner = self.parse_ty()?;
                 self.eat(TokenKind::CloseBracket)?;
