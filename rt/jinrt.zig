@@ -3,7 +3,7 @@ const Allocator = std.mem.Allocator;
 const testing = std.testing;
 
 const cstr = [*:0]const u8;
-const Str = extern struct { ptr: cstr, len: usize };
+const Str = extern struct { data: cstr, len: usize };
 const Refcnt = u32;
 
 const Rc = extern struct {
@@ -280,7 +280,7 @@ export fn jinrt_backtrace_pop(backtrace: *Backtrace) void {
 }
 
 inline fn str_slice(s: Str) []const u8 {
-    return s.ptr[0..s.len];
+    return s.data[0..s.len];
 }
 
 inline fn alloc_raw(comptime T: type, size: usize) *T {

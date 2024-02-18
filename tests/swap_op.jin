@@ -9,4 +9,4 @@ fn main() = {
 }
 
 fn print(v: Int) =
-	unsafe printf("%d\n".ptr, v)
+	unsafe printf("%d\n".data, v)

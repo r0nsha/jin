@@ -12,31 +12,31 @@ fn main() = {
 	# Pattern matching
 	let value = Option.some(1)
 	match &value {
-		Option.some(1) -> unsafe printf("some(1)\n".ptr)
-		Option.some(_) -> unsafe printf("some(other)\n".ptr)
-		Option.none() -> unsafe printf("none\n".ptr)
+		Option.some(1) -> unsafe printf("some(1)\n".data)
+		Option.some(_) -> unsafe printf("some(other)\n".data)
+		Option.none() -> unsafe printf("none\n".data)
 	}
 
 	let o = Option.some(Box(4))
 
 	let mut b = Box(1)
-	unsafe printf("before match: Box(%d)\n".ptr, b.value)
+	unsafe printf("before match: Box(%d)\n".data, b.value)
 
 	match o {
-		Option.some(Box(value: 5)) -> unsafe printf("some(Box(5))\n".ptr)
+		Option.some(Box(value: 5)) -> unsafe printf("some(Box(5))\n".data)
 		Option.some(x) -> {
-			unsafe printf("some(%d)\n".ptr, x.value)
+			unsafe printf("some(%d)\n".data, x.value)
 			b = x
 		}
-		Option.none -> unsafe printf("none\n".ptr)
+		Option.none -> unsafe printf("none\n".data)
 	}
 
-	unsafe printf("after match: Box(%d)\n".ptr, b.value)
+	unsafe printf("after match: Box(%d)\n".data, b.value)
 
 	if Option.some(-1).map_or(false, is_negative) {
-		unsafe printf("o is negative\n".ptr)
+		unsafe printf("o is negative\n".data)
 	} else {
-		unsafe printf("o is not negative\n".ptr)
+		unsafe printf("o is not negative\n".data)
 	}
 }
 

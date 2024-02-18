@@ -2,10 +2,10 @@ fn extern "c" printf(fmt: Ptr[U8], ..) -> I32
 
 fn main() = {
     let mut slice = [1, 3, 42, 487, 5, 66, 4055, 33]
-    unsafe printf("Before: ".ptr)
+    unsafe printf("Before: ".data)
     slice.print()
     quick_sort(&mut slice)
-    unsafe printf("After: ".ptr)
+    unsafe printf("After: ".data)
     slice.print()
 }
 
@@ -50,8 +50,8 @@ fn swap(slice: &mut [Int], a: Uint, b: Uint) = {
 fn print(slice: &[Int]) = {
     let mut i = 0
     for if i < slice.len {
-        unsafe printf("%d ".ptr, slice.[i])
+        unsafe printf("%d ".data, slice.[i])
         i += 1
     }
-    unsafe printf("\n".ptr)
+    unsafe printf("\n".data)
 }

@@ -2,13 +2,13 @@ fn extern "c" printf(fmt: Ptr[U8], ..) -> I32
 
 fn main() = {
 	for {
-		unsafe printf("Once\n".ptr)
+		unsafe printf("Once\n".data)
 		break
 	}
 
 	let mut i = 0
 	for if i <= 10 {
-		unsafe printf("For for: %d\n".ptr, i)
+		unsafe printf("For for: %d\n".data, i)
 		i += 1
 	}
 }

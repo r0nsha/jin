@@ -10,11 +10,11 @@ fn main() = {
 	unsafe hello()
 	run(print_answer)
 	do_add(add, 1, 2)
-	unsafe printf("num = %d\n".ptr, map(1, id))
+	unsafe printf("num = %d\n".data, map(1, id))
 }
 
 fn print_answer() = {
-	unsafe printf("The answer is %d\n".ptr, answer)
+	unsafe printf("The answer is %d\n".data, answer)
 }
 
 fn add(a: Int, b: Int) -> Int = {
@@ -22,7 +22,7 @@ fn add(a: Int, b: Int) -> Int = {
 }
 
 fn do_add(f: fn(Int, Int) -> Int, a: Int, b: Int) = {
-	unsafe printf("a + b = %d\n".ptr, f(a, b))
+	unsafe printf("a + b = %d\n".data, f(a, b))
 }
 
 fn run(f: fn()) = f()

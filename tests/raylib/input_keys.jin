@@ -4,7 +4,7 @@ pub fn run() = unsafe {
 	let screen_width = 800
 	let screen_height = 450
 
-	InitWindow(screen_width, screen_height, "raylib - input keys".ptr)
+	InitWindow(screen_width, screen_height, "raylib - input keys".data)
 	SetTargetFPS(60)
 
 	let mut ball_position = Vector2(as[F32](screen_width / 2), as[F32](screen_height / 2))
@@ -16,7 +16,7 @@ pub fn run() = unsafe {
 		if IsKeyDown(KEY_DOWN) { ball_position.y += 2.0 }
 		BeginDrawing()
 		ClearBackground(RAYWHITE)
-		DrawText("move the ball with arrow keys".ptr, 10, 10, 20, DARKGRAY)
+		DrawText("move the ball with arrow keys".data, 10, 10, 20, DARKGRAY)
 		DrawCircleV(ball_position, 50.0, MAROON)
 		EndDrawing()
 	}

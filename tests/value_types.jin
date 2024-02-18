@@ -25,5 +25,5 @@ fn main() = {
 }
 
 fn print_point(p: Point) = {
-	unsafe printf("Point(%d, %d)\n".ptr, p.x, p.y)
+	unsafe printf("Point(%d, %d)\n".data, p.x, p.y)
 }

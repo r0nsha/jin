@@ -41,7 +41,7 @@ impl<'db> Generator<'db> {
                     self.rc_field(state, value.id, field)
                 }
                 (TyKind::Ref(_, _), _) => self.rc_field(state, value.id, field),
-                (TyKind::Slice(_), sym::field::PTR) => self.slice_data_field(state, value.id),
+                (TyKind::Slice(_), sym::field::DATA) => self.slice_addr_field(state, value.id),
                 _ => util::field(value_doc, field, ty.is_ptr(self)),
             },
         }
@@ -70,7 +70,7 @@ impl<'db> Generator<'db> {
         }
     }
 
-    pub fn slice_data_field(&mut self, state: &GenState<'db>, slice: ValueId) -> D<'db> {
+    pub fn slice_addr_field(&mut self, state: &GenState<'db>, slice: ValueId) -> D<'db> {
         // ((elem_ty*)(slice.start))
         let elem_ty = Self::slice_value_elem_ty(state, slice);
         let start_field = util::field(self.value(state, slice), START_FIELD, false);
@@ -78,7 +78,7 @@ impl<'db> Generator<'db> {
     }
 
     pub fn slice_index(&mut self, state: &GenState<'db>, slice: ValueId, index: ValueId) -> D<'db> {
-        let data_field = self.slice_data_field(state, slice);
+        let data_field = self.slice_addr_field(state, slice);
         data_field.append(D::text("[")).append(self.value(state, index)).append(D::text("]"))
     }
 
@@ -196,7 +196,7 @@ pub fn cmp_strs<'a>(a: D<'a>, b: D<'a>) -> D<'a> {
 
 pub fn str_value(value: &str) -> D {
     D::text("(str)").append(struct_lit(vec![
-        (sym::field::PTR, str_lit(value)),
+        (sym::field::DATA, str_lit(value)),
         (sym::field::LEN, D::text(value.len().to_string())),
     ]))
 }

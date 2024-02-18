@@ -4,9 +4,9 @@ pub use .baz
 fn extern "c" printf(fmt: Ptr[U8], ..) -> I32
 
 pub fn hello() = {
-	unsafe printf(root.get_hello_world().ptr)
+	unsafe printf(root.get_hello_world().data)
 }
 
 pub fn goodbye() = {
-	unsafe printf("Goodbye...\n".ptr)
+	unsafe printf("Goodbye...\n".data)
 }

@@ -22,5 +22,5 @@ pub mod ty {
 pub mod field {
     pub const CAP: &str = "cap";
     pub const LEN: &str = "len";
-    pub const PTR: &str = "ptr";
+    pub const DATA: &str = "data";
 }

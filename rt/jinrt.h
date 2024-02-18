@@ -29,7 +29,7 @@ typedef struct never {
 typedef unit never;
 
 typedef struct str {
-  u8 *ptr;
+  u8 *data;
   usize len;
 } str;
 
