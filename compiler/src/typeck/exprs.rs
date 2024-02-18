@@ -372,23 +372,6 @@ pub(super) fn check_expr(
                 *span,
             ))
         }
-        ast::Expr::Deref { expr, span } => {
-            let expected_ty = cx.fresh_ty_var().raw_ptr();
-            let expr = check_expr(cx, env, expr, Some(expected_ty))?;
-
-            match cx.normalize(expr.ty).auto_deref().kind() {
-                TyKind::RawPtr(pointee) => Ok(cx.expr(
-                    hir::ExprKind::Deref(hir::Deref { expr: Box::new(expr) }),
-                    *pointee,
-                    *span,
-                )),
-                ty => Err(errors::ty_mismatch(
-                    &expected_ty.to_string(cx.db),
-                    &ty.to_string(cx.db),
-                    expr.span,
-                )),
-            }
-        }
         ast::Expr::Cast { expr, target, span } => {
             let expr = check_expr(cx, env, expr, None)?;
             let target = tyexpr::check(cx, env, target, AllowTyHole::Yes)?;
