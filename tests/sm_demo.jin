@@ -11,11 +11,11 @@ fn main() = {
 }
 
 fn int_types() = {
-	let id: I8 = 126
-	let promoted = as[I64](id) + 5555
-	let demoted_inferred: I32 = as[_](promoted)
-	let demoted_explicit: I16 = as[_](demoted_inferred - 4000)
-	let int_to_uint: Uint = as[_](as[Int](663151))
+	let id: i8 = 126
+	let promoted = as[i64](id) + 5555
+	let demoted_inferred: i32 = as[_](promoted)
+	let demoted_explicit: i16 = as[_](demoted_inferred - 4000)
+	let int_to_uint: uint = as[_](as[int](663151))
 }
 
 fn unary() = {
@@ -53,9 +53,9 @@ fn if_expr() = {
 	}
 }
 
-fn variables() -> Int = {
+fn variables() -> int = {
 	let x = 7 # Inferred to `int`
-	let y: Int = 3 # Explicit type annotation
+	let y: int = 3 # Explicit type annotation
 	let x = 39  # Variables can be shadowed
 	x + y
 }
@@ -70,11 +70,11 @@ fn polymorphism() = {
 	id(true)
 
 	# Explicit type arguments
-	id[Int](111)
-	id[Bool](false)
+	id[int](111)
+	id[bool](false)
 }
 
-fn add_named(first: Int, second: Int) -> Int = {
+fn add_named(first: int, second: int) -> int = {
 	first + second
 }
 
@@ -84,7 +84,7 @@ fn named_args() = {
 	add_named(1, second: 2)
 }
 
-let global_answer: Int = 42
+let global_answer: int = 42
 
 fn global_vars() = {
 	let answer = global_answer

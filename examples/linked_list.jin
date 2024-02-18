@@ -1,4 +1,4 @@
-fn extern "c" printf(fmt: ptr[U8], ..) -> I32
+fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 type LinkedList[T](
     tail: Option[&mut Node[T]],
@@ -28,7 +28,7 @@ fn push_front[T](self: &mut LinkedList[T], data: T) = {
     }
 }
 
-fn print(self: &LinkedList[Int]) = {
+fn print(self: &LinkedList[int]) = {
     let mut curr = &self.head
 
     unsafe printf("[".data)

@@ -9,8 +9,8 @@ fn main() = {
 fn i() = {
     println("signed:")
 
-    let a: I64 = 1
-    let b: I64 = i64_max
+    let a: i64 = 1
+    let b: i64 = i64_max
 
     # a + b
     # a - b
@@ -20,8 +20,8 @@ fn i() = {
 fn u() = {
     println("unsigned:")
 
-    let a: U8 = 2
-    let b: U8 = u8_max
+    let a: u8 = 2
+    let b: u8 = u8_max
 
     # a + b
     # a - b

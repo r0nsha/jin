@@ -1,4 +1,4 @@
-fn extern "c" printf(fmt: ptr[U8], ..) -> I32
+fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 fn main() = {
     let slice = [1, 3, 42, 487, 5, 66, 4055, 33]
@@ -8,7 +8,7 @@ fn main() = {
     }
 }
 
-fn binary_search(haystack: &[Int], needle: Int) -> Option[Uint] = {
+fn binary_search(haystack: &[int], needle: int) -> Option[uint] = {
     let mut lower = 0
     let mut upper = haystack.len - 1
 

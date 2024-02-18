@@ -1,9 +1,9 @@
 use extern "./foo"
 
 fn extern "c" hello()
-let extern answer: Int
+let extern answer: int
 
-fn extern "c" printf(fmt: ptr[U8], ..) -> I32
+fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 fn main() = {
 	println("Hello, World!")
@@ -17,11 +17,11 @@ fn print_answer() = {
 	unsafe printf("The answer is %d\n".data, answer)
 }
 
-fn add(a: Int, b: Int) -> Int = {
+fn add(a: int, b: int) -> int = {
 	a + b
 }
 
-fn do_add(f: fn(Int, Int) -> Int, a: Int, b: Int) = {
+fn do_add(f: fn(int, int) -> int, a: int, b: int) = {
 	unsafe printf("a + b = %d\n".data, f(a, b))
 }
 

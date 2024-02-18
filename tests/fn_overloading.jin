@@ -1,33 +1,33 @@
 use .child
 use .child.{*}
 
-fn extern "c" printf(fmt: ptr[U8], ..) -> I32
+fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 fn main() = {
 	unsafe printf("Function overload matching:\n".data)
-	add(Int(1), Int(1)) # exact int
+	add(int(1), int(1)) # exact int
 	add(1, 1) # untyped int matching
 	add(8, 13, 9) # matching different arg count
-	add(F32(1.0), F32(2.5)) # exact F32
+	add(f32(1.0), f32(2.5)) # exact f32
 	add(1.0, 2.5) # untyped float matching
 	add(5, 2.25) # mixed parameter type matching
 	unsafe printf("\n".data)
 
 	unsafe printf("Same calls in UFCS style\n".data)
-	Int(1).add(Int(1))
+	int(1).add(int(1))
 	1.add(1)
 	8.add(13, 9)
-	F32(1.0).add(F32(2.5))
+	f32(1.0).add(f32(2.5))
 	{1.0}.add(2.5)
 	5.add(2.25)
 	unsafe printf("\n".data)
 
 	unsafe printf("Calls with named arguments:\n".data)
-	named(x: 1) # picks `fn named(x: Int)`
-	named[Int](x: 1) # picks `fn named[a](x: a)`
-	named(1, 2) # picks `fn named(x: Int, y: Int)`
-	named(y: 1, x: 2) # picks `fn named(x: Int, y: Int)`
-	named(z: 1) # picks `fn named(z: Int)`
+	named(x: 1) # picks `fn named(x: int)`
+	named[int](x: 1) # picks `fn named[a](x: a)`
+	named(1, 2) # picks `fn named(x: int, y: int)`
+	named(y: 1, x: 2) # picks `fn named(x: int, y: int)`
+	named(z: 1) # picks `fn named(z: int)`
 	unsafe printf("\n".data)
 
 	unsafe printf("Chaining add calls with a print at the end:\n".data)
@@ -37,22 +37,22 @@ fn main() = {
 		.add(3)
 	unsafe printf("\n".data)
 
-	child.poly[Int](1) # picking a module function with type application
+	child.poly[int](1) # picking a module function with type application
 }
 
-fn add_one(x: Int) -> Int = {
+fn add_one(x: int) -> int = {
 	x + 1
 }
 
-fn named(x: Int) = {
+fn named(x: int) = {
 	unsafe printf("named: x = %d\n".data, x)
 }
 
-fn named(x: Int, y: Int) = {
+fn named(x: int, y: int) = {
 	unsafe printf("named: x = %d, y = %d\n".data, x, y)
 }
 
-fn named(z: Int) = {
+fn named(z: int) = {
 	unsafe printf("named: z = %d\n".data, z)
 }
 

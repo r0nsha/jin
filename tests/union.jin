@@ -1,13 +1,13 @@
-fn extern "c" printf(fmt: ptr[U8], ..) -> I32
+fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
-type Box(value: Int)
+type Box(value: int)
 
 fn main() = {
 	# Value constructors
 	let a = Option.some(1)
-	let b = Option[Int].some(1)
+	let b = Option[int].some(1)
 	let c = Option.some(value: 2)
-	let d: Option[Int] = Option.none
+	let d: Option[int] = Option.none
 
 	# Pattern matching
 	let value = Option.some(1)
@@ -40,4 +40,4 @@ fn main() = {
 	}
 }
 
-fn is_negative(x: Int) -> Bool = x < 0
+fn is_negative(x: int) -> bool = x < 0

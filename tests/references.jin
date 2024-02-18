@@ -1,6 +1,6 @@
-fn extern "c" printf(fmt: ptr[U8], ..) -> I32
+fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
-type Box(value: Int)
+type Box(value: int)
 type Ref(box: &Box)
 type Mut(box: &mut Box)
 type Bag(a: Box, b: Box)
@@ -37,7 +37,7 @@ fn print(box: &Box) = {
 	unsafe printf("Box(%d)\n".data, box.value)
 }
 
-fn set(self: &mut Box, value: Int) =
+fn set(self: &mut Box, value: int) =
 	self.value = value
 
 fn copy(bag: Bag) -> Bag = Bag(bag.a, bag.b)

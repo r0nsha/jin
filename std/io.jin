@@ -1,15 +1,15 @@
-fn extern "c" write(fd: I32, buf: ptr[U8], count: Uint) -> I32
+fn extern "c" write(fd: i32, buf: ptr[u8], count: uint) -> i32
 
-let stdout: I32 = 1
+let stdout: i32 = 1
 
-pub fn print(fmt: Str) =
+pub fn print(fmt: str) =
 	unsafe write(stdout, fmt.data, fmt.len)
 
 pub fn println() = {
 	print("\n")
 }
 
-pub fn println(fmt: Str) = {
+pub fn println(fmt: str) = {
 	print(fmt)
 	print("\n")
 }

@@ -1,6 +1,6 @@
 use .child
 
 fn main() = {
-	let s = child.Struct(1) # private constructor 
+	let s = child.struct(1) # private constructor 
 	let x = s.num # private field
 }

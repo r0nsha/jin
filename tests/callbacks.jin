@@ -1,4 +1,4 @@
-fn extern "c" printf(fmt: ptr[U8], ..) -> I32
+fn extern "c" printf(fmt: ptr[u8], ..) -> i32
 
 fn main() = {
 	run(print_answer)
@@ -12,11 +12,11 @@ fn print_answer() = {
 	unsafe printf("The answer is %d\n".data, 42)
 }
 
-fn add(a: Int, b: Int) -> Int = {
+fn add(a: int, b: int) -> int = {
 	a + b
 }
 
-fn do_add(f: fn(Int, Int) -> Int, a: Int, b: Int) = {
+fn do_add(f: fn(int, int) -> int, a: int, b: int) = {
 	unsafe printf("a + b = %d\n".data, f(a, b))
 }
 
@@ -24,6 +24,6 @@ fn map[A, B](val: A, f: fn(A) -> B) -> B = {
 	f(val)
 }
 
-fn int_to_uint(val: Int) -> Uint = {
+fn int_to_uint(val: int) -> uint = {
 	as[_](val)
 }

@@ -5,7 +5,7 @@ pub type Array[T](buf: [T])
 
 pub fn Array.new[T]() -> Array[T] = Array([])
 
-pub fn Array.new[T](len: Uint, f: fn(Uint) -> T) -> Array[T] = {
+pub fn Array.new[T](len: uint, f: fn(uint) -> T) -> Array[T] = {
 	let mut array = Array.with_cap(len)
 	let mut i = 0
 
@@ -17,17 +17,17 @@ pub fn Array.new[T](len: Uint, f: fn(Uint) -> T) -> Array[T] = {
 	array
 }
 
-pub fn Array.with_cap[T](cap: Uint) -> Array[T] = Array([:cap])
+pub fn Array.with_cap[T](cap: uint) -> Array[T] = Array([:cap])
 
-pub fn len[T](self: &Array[T]) -> Uint = self.buf.len
-pub fn cap[T](self: &Array[T]) -> Uint = self.buf.cap
-pub fn is_empty[T](self: &Array[T]) -> Bool = self.len() == 0
+pub fn len[T](self: &Array[T]) -> uint = self.buf.len
+pub fn cap[T](self: &Array[T]) -> uint = self.buf.cap
+pub fn is_empty[T](self: &Array[T]) -> bool = self.len() == 0
 
 pub fn as_ref[T](self: &Array[T]) -> &[T] = &self.buf
 pub fn as_mut[T](self: &mut Array[T]) -> &mut [T] = &mut self.buf
 pub fn take[T](self: Array[T]) -> [T] = self.buf
 
-pub fn get[T](self: &Array[T], index: Uint) -> Option[&T] = {
+pub fn get[T](self: &Array[T], index: uint) -> Option[&T] = {
 	if index < self.buf.len {
 		Option.some(&self.buf.[index])
 	} else {
@@ -68,4 +68,4 @@ fn grow[T](self: &mut Array[T]) = {
 	unsafe builtin.forget(&old)
 }
 
-let min_cap: Uint = 4
+let min_cap: uint = 4
