@@ -3,3 +3,4 @@ pub use std.option.{Option, ?}
 pub use std.result.{Result, ?}
 pub use std.array.{Array, ?}
 pub use std.io.{print, println}
+pub use std.slice.{?}

@@ -43,10 +43,6 @@ fn partition(slice: &mut [int]) -> uint = {
     store_idx
 }
 
-fn swap(slice: &mut [int], a: uint, b: uint) = {
-    slice.[b] = slice.[a] := slice.[b] 
-}
-
 fn print(slice: &[int]) = {
     let mut i = 0
     for if i < slice.len {

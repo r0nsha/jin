@@ -1,7 +1,8 @@
 pub use .array
-pub use .int
 pub use .builtin
+pub use .int
 pub use .io
 pub use .option
-pub use .result
 pub use .prelude
+pub use .result
+pub use .slice

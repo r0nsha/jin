@@ -19,7 +19,7 @@ fn bubble_sort(slice: &mut [int]) = {
         let mut i = 1
         for if i < n {
             if slice.[i - 1] > slice.[i] {
-                slice.[i] = slice.[i - 1] := slice.[i]
+                slice.swap(i - 1, i)
                 swapped = true
             }
 
