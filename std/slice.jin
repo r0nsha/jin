@@ -1,4 +1,4 @@
-pub fn swap[t](self: &mut [t], a: uint, b: uint) = unsafe {
+pub fn swap[T](self: &mut [T], a: uint, b: uint) = unsafe {
 	let pa = self.data + a
 	let pb = self.data + b
 	pb.0 = pa.0 := pb.0
