@@ -1,4 +1,4 @@
-fn extern "c" printf(fmt: *U8, ..) -> I32
+fn extern "c" printf(fmt: Ptr[U8], ..) -> I32
 
 fn main() = {
 	if Option.some(1).map_or(false) fn(x) { x == 1 } {

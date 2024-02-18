@@ -1,4 +1,4 @@
-fn extern "c" printf(fmt: *U8, ..) -> I32
+fn extern "c" printf(fmt: Ptr[U8], ..) -> I32
 
 fn main() = {
 	let mut a = 1

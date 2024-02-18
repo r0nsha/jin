@@ -44,11 +44,6 @@ impl<'a> Parser<'a> {
                 let span = tok.span.merge(inner.span());
                 TyExpr::Ref(Box::new(inner), mutability, span)
             }
-            TokenKind::Star => {
-                let pointee = self.parse_ty()?;
-                let span = tok.span.merge(pointee.span());
-                TyExpr::RawPtr(Box::new(pointee), span)
-            }
             TokenKind::Ident(..) => self.parse_ty_path(tok.word())?,
             TokenKind::Underscore => TyExpr::Hole(tok.span),
             _ => return Err(errors::unexpected_token_err("a type", tok.kind, tok.span)),

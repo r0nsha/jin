@@ -1,6 +1,6 @@
 use raylib.bindings.{*}
 
-fn extern "c" printf(fmt: *U8, ..) -> I32
+fn extern "c" printf(fmt: Ptr[U8], ..) -> I32
 fn extern "c" atan2f(y: F32, x: F32) -> F32
 fn extern "c" cosf(arg: F32) -> F32
 fn extern "c" sinf(arg: F32) -> F32
