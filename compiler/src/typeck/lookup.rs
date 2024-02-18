@@ -556,24 +556,24 @@ impl FnCandidate {
             &param,
             cx,
             CoerceOptions {
-                unify_options: UnifyOptions::default(),
-                rollback_unifications: true,
-                allow_owned_to_ref,
-            },
-        ) {
-            return Some(FnCandidateScore::Coerce);
-        }
-
-        if arg.can_coerce(
-            &param,
-            cx,
-            CoerceOptions {
                 unify_options: UnifyOptions { unify_param_tys: true },
                 rollback_unifications: true,
                 allow_owned_to_ref,
             },
         ) {
             return Some(FnCandidateScore::Polymorphic);
+        }
+
+        if arg.can_coerce(
+            &param,
+            cx,
+            CoerceOptions {
+                unify_options: UnifyOptions::default(),
+                rollback_unifications: true,
+                allow_owned_to_ref,
+            },
+        ) {
+            return Some(FnCandidateScore::Coerce);
         }
 
         // println!("arg: {} | param: {}", arg.display(cx.db), param.display(cx.db));
@@ -638,8 +638,8 @@ fn fn_candidate_tys_eq(a: Ty, b: Ty) -> bool {
 #[repr(u32)]
 pub(super) enum FnCandidateScore {
     Eq = 0,
-    Coerce = 1,
-    Polymorphic = 2,
+    Polymorphic = 1,
+    Coerce = 2,
 }
 
 #[derive(Debug, Clone)]
