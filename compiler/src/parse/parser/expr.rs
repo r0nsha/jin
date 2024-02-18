@@ -1,6 +1,7 @@
 use std::ops::ControlFlow;
 
 use data_structures::index_vec::Key as _;
+use ustr::ustr;
 
 use crate::{
     ast::{Attrs, CallArg, Expr},
@@ -350,6 +351,12 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_field(&mut self, expr: Expr) -> DiagnosticResult<Expr> {
+        if self.is(TokenKind::Int(ustr(""))) {
+            let field = self.last_token().word();
+            let span = expr.span().merge(field.span());
+            return Ok(Expr::Field { expr: Box::new(expr), field, span });
+        }
+
         let name = self.eat_ident()?.word();
 
         let ty_args = self.parse_optional_ty_args()?;
