@@ -1,5 +1,5 @@
 use data_structures::index_vec::{IndexVecExt as _, Key as _};
-use itertools::Itertools as _;
+use itertools::{Itertools as _, Position};
 use ustr::UstrMap;
 
 use crate::{
@@ -196,8 +196,8 @@ pub(super) fn check_expr(
 
                     for (pos, expr) in exprs.iter().with_position() {
                         let expected_ty = match pos {
-                            itertools::Position::Last => expected_ty,
-                            _ => Some(cx.db.types.unit),
+                            Position::First | Position::Middle => Some(cx.db.types.unit),
+                            Position::Last | Position::Only => expected_ty,
                         };
 
                         new_exprs.push(check_expr(cx, env, expr, expected_ty)?);
