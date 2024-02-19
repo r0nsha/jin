@@ -49,8 +49,8 @@ struct Cli {
     #[arg(global = true, long, value_enum)]
     emit: Vec<EmitOption>,
 
-    #[arg(global = true, long)]
-    out_dir: Option<String>,
+    #[arg(global = true, long, short)]
+    output_dir: Option<String>,
 }
 
 #[derive(Subcommand)]
@@ -74,7 +74,7 @@ fn run_cli() -> anyhow::Result<()> {
 
     let target_platform =
         TargetPlatform::current().map_err(|os| anyhow!("{os} is not supported"))?;
-    let build_options = BuildOptions::new(cli.timings, cli.emit, cli.out_dir, target_platform);
+    let build_options = BuildOptions::new(cli.timings, cli.emit, cli.output_dir, target_platform);
     let mut db = Db::new(build_options);
 
     match cli.cmd {
@@ -133,6 +133,6 @@ impl TryFrom<Cli> for BuildOptions {
 
     fn try_from(cli: Cli) -> Result<Self, Self::Error> {
         let tp = TargetPlatform::current().map_err(|os| anyhow!("{os} is not supported"))?;
-        Ok(BuildOptions::new(cli.timings, cli.emit, cli.out_dir, tp))
+        Ok(BuildOptions::new(cli.timings, cli.emit, cli.output_dir, tp))
     }
 }

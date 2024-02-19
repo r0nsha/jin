@@ -88,8 +88,15 @@ impl Db {
         let binding = self.main_source();
         let main_path = binding.path();
         let file_name = main_path.file_stem().expect("main source to be a file");
-        let src_dir = main_path.parent().expect("to have a parent directory");
-        src_dir.join(self.build_options.output_dir.clone()).join(file_name)
+        let root_dir = main_path.parent().expect("to have a parent directory");
+
+        let target_dir = if let Some(dir) = &self.build_options.output_dir {
+            root_dir.join(dir)
+        } else {
+            root_dir.to_path_buf()
+        };
+
+        target_dir.join(file_name)
     }
 
     pub fn output_dir(&self) -> Utf8PathBuf {

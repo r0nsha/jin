@@ -6,28 +6,24 @@ use crate::target::{TargetMetrics, TargetPlatform};
 pub struct BuildOptions {
     pub timings: bool,
     pub emit: Vec<EmitOption>,
-    pub output_dir: String,
+    pub output_dir: Option<String>,
     pub target_platform: TargetPlatform,
     pub target_metrics: TargetMetrics,
 }
 
 impl BuildOptions {
-    const DEFAULT_OUTPUT_DIR: &'static str = "build";
-
     pub fn new(
         timings: bool,
         emit: Vec<EmitOption>,
         output_dir: Option<String>,
         target_platform: TargetPlatform,
     ) -> Self {
-        let target_metrics = target_platform.metrics();
-
         Self {
             timings,
             emit,
-            output_dir: output_dir.unwrap_or(Self::DEFAULT_OUTPUT_DIR.to_string()),
+            output_dir,
+            target_metrics: target_platform.metrics(),
             target_platform,
-            target_metrics,
         }
     }
 

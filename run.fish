@@ -41,7 +41,7 @@ cp rt/jinrt.h $rtdir/jinrt.h
 cp rt/zig-out/lib/libjinrt.a $rtdir/libjinrt.a
 
 # Run compiler
-cargo run $cargo_flags -- build $source $build_flags
+cargo run $cargo_flags -- build $source $build_flags -o build
 
 # Run output file if exists
 if test $status -eq 0 && test -f $output
