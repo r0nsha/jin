@@ -49,8 +49,7 @@ fn build_exe(db: &mut Db, c_file_path: &Utf8Path) -> Utf8PathBuf {
         output_path.with_extension("")
     };
 
-    db.time("Clang", |db| compile_with_clang(db, c_file_path, &exe_file_path));
-    // db.time("TCC", |db| compile_with_tcc(db, c_file_path, &exe_file_path));
+    db.time("GCC", |db| compile(db, c_file_path, &exe_file_path));
 
     if !db.build_options().should_emit(EmitOption::C) {
         let _ = std::fs::remove_file(c_file_path);
@@ -59,26 +58,25 @@ fn build_exe(db: &mut Db, c_file_path: &Utf8Path) -> Utf8PathBuf {
     exe_file_path
 }
 
-#[allow(unused)]
-fn compile_with_clang(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
+fn compile(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
     let libs = Libraries::new(db);
     let target_metrics = db.target_metrics();
 
     let link_flags = match target_metrics.arch {
         Arch::Amd64 => match target_metrics.os {
             Os::Windows => vec!["/machine:x64"],
-            Os::Linux | Os::FreeBSD => vec!["-arch x86-64"],
+            Os::Linux | Os::FreeBSD => vec!["-march=x86-64"],
             _ => vec![],
         },
         Arch::_386 => match target_metrics.os {
             Os::Windows => vec!["/machine:x86"],
             Os::Darwin => panic!("unsupported architecture"),
-            Os::Linux | Os::FreeBSD => vec!["-arch x86"],
+            Os::Linux | Os::FreeBSD => vec!["-march=x86"],
             _ => vec![],
         },
         Arch::Arm64 => match target_metrics.os {
-            Os::Darwin => vec!["-arch arm64"],
-            Os::Linux => vec!["-arch aarch64"],
+            Os::Darwin => vec!["-march=arm64"],
+            Os::Linux => vec!["-march=aarch64"],
             _ => vec![],
         },
         Arch::Wasm32 | Arch::Wasm64 => {
@@ -132,7 +130,7 @@ fn compile_with_clang(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path)
 
     //     #[cfg(not(windows))]
 
-    let mut cmd = Command::new("clang");
+    let mut cmd = Command::new("gcc");
 
     cmd
         .arg(c_file_path)
@@ -151,26 +149,6 @@ fn compile_with_clang(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path)
         .args(link_flags);
 
     //println!("{:?}", cmd);
-
-    cmd.execute_output().expect("linking to work");
-}
-
-#[allow(unused)]
-fn compile_with_tcc(db: &Db, c_file_path: &Utf8Path, exe_file_path: &Utf8Path) {
-    let libs = Libraries::new(db);
-    let mut cmd = Command::new("tcc");
-
-    cmd.arg(c_file_path)
-        .arg(format!("-o{exe_file_path}"))
-        .arg("-std=c99")
-        .arg("-w")
-        .args(libs.paths.into_iter().map(|path| format!("-L{path}")))
-        .args(libs.libs.into_iter().map(|path| format!("-l{path}")))
-        .args(libs.includes.into_iter().map(|path| format!("-I{path}")))
-        .arg("-fuse-ld=mold")
-        .arg("-g");
-
-    // println!("{:?}", cmd);
 
     cmd.execute_output().expect("linking to work");
 }
