@@ -62,18 +62,14 @@ enum Commands {
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
-    match run_cli() {
-        Ok(db) => {
-            db.print_timings();
-            db.diagnostics.print();
-        }
-        Err(err) => eprintln!("Error: {err}"),
+    if let Err(err) = run_cli() {
+        eprintln!("Error: {err}");
     }
 
     Ok(())
 }
 
-fn run_cli() -> anyhow::Result<Db> {
+fn run_cli() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     let target_platform =
@@ -86,7 +82,10 @@ fn run_cli() -> anyhow::Result<Db> {
         Commands::Check { file } => check(&mut db, &file)?,
     }
 
-    Ok(db)
+    db.print_timings();
+    db.print_diagnostics();
+
+    Ok(())
 }
 
 fn build(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<()> {

@@ -130,16 +130,15 @@ impl From<Severity> for codespan_diagnostic::Severity {
 
 #[derive(Debug)]
 pub struct Diagnostics {
-    sources: Rc<RefCell<Sources>>,
     diagnostics: Vec<Diagnostic>,
     config: codespan_reporting::term::Config,
     had_errors: bool,
 }
 
 impl Diagnostics {
-    pub fn new(sources: Rc<RefCell<Sources>>) -> Self {
+    pub fn new() -> Self {
         let config = codespan_reporting::term::Config::default();
-        Self { sources, diagnostics: vec![], config, had_errors: false }
+        Self { diagnostics: vec![], config, had_errors: false }
     }
 
     pub fn add(&mut self, diagnostic: impl Into<Diagnostic>) {
@@ -152,12 +151,12 @@ impl Diagnostics {
         self.diagnostics.push(diagnostic);
     }
 
-    pub fn print(self) {
+    pub fn print(self, sources: Rc<RefCell<Sources>>) {
         let w = StandardStream::stderr(ColorChoice::Always);
         let mut w = w.lock();
 
         for diagnostic in self.diagnostics {
-            let sources: &Sources = &self.sources.borrow();
+            let sources: &Sources = &sources.borrow();
 
             codespan_reporting::term::emit(&mut w, &self.config, sources, &diagnostic.into())
                 .expect("failed emitting diagnostic");
@@ -166,6 +165,12 @@ impl Diagnostics {
 
     pub fn any_errors(&self) -> bool {
         self.had_errors
+    }
+}
+
+impl Default for Diagnostics {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

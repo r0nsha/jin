@@ -62,7 +62,6 @@ impl Db {
         Self {
             timings: Timings::new(),
             build_options,
-            diagnostics: Diagnostics::new(sources.clone()),
             sources,
             packages: FxHashMap::default(),
             modules: IndexVec::new(),
@@ -72,6 +71,7 @@ impl Db {
             types: CommonTypes::new(),
             builtins: FxHashMap::default(),
             extern_libs: FxHashSet::default(),
+            diagnostics: Diagnostics::new(),
             std_package_name: Once::new(),
             main_package_name: Once::new(),
             main_source: Once::new(),
@@ -215,6 +215,10 @@ impl Db {
         if self.build_options().timings {
             self.timings.print();
         }
+    }
+
+    pub fn print_diagnostics(self) {
+        self.diagnostics.print(self.sources)
     }
 }
 
