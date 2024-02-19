@@ -86,7 +86,7 @@ impl<'db> TyPrinter<'db> {
             }),
             TyKind::Str => f.write_str(sym::ty::STR),
             TyKind::Bool => f.write_str(sym::ty::BOOL),
-            TyKind::Unit => f.write_str("{}"),
+            TyKind::Unit => f.write_str("()"),
             TyKind::Never => f.write_str(sym::ty::NEVER),
             TyKind::Param(p) => f.write_str(p.name.as_str()),
 

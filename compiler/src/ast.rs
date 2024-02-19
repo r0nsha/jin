@@ -231,6 +231,9 @@ pub enum Expr {
         value: Ustr,
         span: Span,
     },
+    UnitLit {
+        span: Span,
+    },
 }
 
 impl Spanned for Expr {
@@ -262,7 +265,8 @@ impl Spanned for Expr {
             | Self::BoolLit { span, .. }
             | Self::IntLit { span, .. }
             | Self::FloatLit { span, .. }
-            | Self::StrLit { span, .. } => *span,
+            | Self::StrLit { span, .. }
+            | Self::UnitLit { span, .. } => *span,
         }
     }
 }

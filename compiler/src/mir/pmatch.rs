@@ -711,7 +711,7 @@ fn collect_missing_pats(
         Decision::Switch { cond, cases, fallback } => {
             for case in cases {
                 match &case.ctor {
-                    Ctor::Unit => case_infos.push(CaseInfo::new(*cond, "{}".to_string(), vec![])),
+                    Ctor::Unit => case_infos.push(CaseInfo::new(*cond, "()".to_string(), vec![])),
                     Ctor::True => case_infos.push(CaseInfo::new(*cond, "true".to_string(), vec![])),
                     Ctor::False => {
                         case_infos.push(CaseInfo::new(*cond, "false".to_string(), vec![]))

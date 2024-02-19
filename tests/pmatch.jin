@@ -42,8 +42,8 @@ fn match_vars() = {
 
 
 fn match_unit() = {
-	match {} {
-		{} -> unsafe printf("matched unit!\n".data)
+	match () {
+		() -> unsafe printf("matched unit!\n".data)
 		_ -> 1 # This branch is unreachable
 	}
 }
@@ -90,8 +90,8 @@ fn match_types() = {
 	match box {
 		Box(1) -> { unsafe printf("it's 1!\n".data) }
 		Box(v) -> print(v)
-		Box(_) -> {} # unreachable
-		_ -> {} # unreachable
+		Box(_) -> () # unreachable
+		_ -> () # unreachable
 	}
 
 	let bag = Bag(Box(1), Box(3))
@@ -101,14 +101,14 @@ fn match_types() = {
 		Bag(b: Box(3), a: Box(a)) -> { unsafe printf("a: %d, b: 3 (named)\n".data, a) }
 		Bag(Box(a), Box(3)) -> { unsafe printf("a: %d, b: 3\n".data, a) }
 		Bag(a, ..) -> move_(a)
-		_ -> {} # unreachable
+		_ -> () # unreachable
 	}
 
 	# print(bag)
 
 	# match inner.get(1) {
-	# 	#inner.Inner(field: 1) -> {} # Error: match private field
-	# 	inner.Inner(..) -> {} # Ok, field isn't used
+	# 	#inner.Inner(field: 1) -> () # Error: match private field
+	# 	inner.Inner(..) -> () # Ok, field isn't used
 	# }
 }
 

@@ -335,7 +335,7 @@ fn pp_const_value<'a>(value: &Const) -> D<'a> {
         Const::Int(v) => D::text(v.to_string()),
         Const::Float(v) => D::text(v.to_string()),
         Const::Bool(v) => D::text(v.to_string()),
-        Const::Unit => D::text("{}"),
+        Const::Unit => D::text("()"),
     }
 }
 

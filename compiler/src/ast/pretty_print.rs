@@ -218,6 +218,9 @@ impl PrettyPrint for Expr {
             Self::StrLit { value, .. } => {
                 cx.builder.add_empty_child(format!("str: {value}"));
             }
+            Self::UnitLit { .. } => {
+                cx.builder.add_empty_child("unit".to_string());
+            }
         }
     }
 }

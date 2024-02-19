@@ -46,7 +46,7 @@ impl<'a> Parser<'a> {
         if self.is(TokenKind::Dot) {
             let next = if self.is_ident() {
                 self.parse_import_tree_name(self.last_token().word())
-            } else if self.peek_is(TokenKind::OpenCurly) {
+            } else if self.peek_is(TokenKind::OpenParen) {
                 self.parse_import_path_group()
             } else {
                 Err(self.unexpected_token("an identifier or {"))
@@ -62,7 +62,7 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_import_path_group(&mut self) -> DiagnosticResult<ImportTree> {
-        self.parse_list(TokenKind::OpenCurly, TokenKind::CloseCurly, |this| {
+        self.parse_list(TokenKind::OpenParen, TokenKind::CloseParen, |this| {
             this.parse_import_group_tree().map(ControlFlow::Continue)
         })
         .map(|(imports, _)| ImportTree::Group(imports))

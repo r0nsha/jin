@@ -1,1 +1,1 @@
-pub use .b.{*}
+pub use .b.(*)

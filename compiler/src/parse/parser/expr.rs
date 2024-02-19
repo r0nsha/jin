@@ -120,6 +120,15 @@ impl<'a> Parser<'a> {
                     op: UnOp::Not,
                 }
             }
+            TokenKind::OpenParen => {
+                if self.is(TokenKind::CloseParen) {
+                    Expr::UnitLit { span: tok.span.merge(self.last_span()) }
+                } else {
+                    let expr = self.parse_expr()?;
+                    self.eat(TokenKind::CloseParen)?;
+                    expr
+                }
+            }
             TokenKind::OpenCurly => {
                 self.back();
                 self.parse_block()?

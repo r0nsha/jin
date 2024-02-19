@@ -80,9 +80,9 @@ impl<'a> Parser<'a> {
         } else if let Some(mutability) = self.parse_optional_mutability() {
             let word = self.eat_ident()?.word();
             Ok(MatchPat::Name(word, mutability))
-        } else if self.is(TokenKind::OpenCurly) {
+        } else if self.is(TokenKind::OpenParen) {
             let start_span = self.last_span();
-            let last_span = self.eat(TokenKind::CloseCurly)?.span;
+            let last_span = self.eat(TokenKind::CloseParen)?.span;
             Ok(MatchPat::Unit(start_span.merge(last_span)))
         } else if self.is(TokenKind::Minus) {
             let start_span = self.last_span();
