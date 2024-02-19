@@ -32,6 +32,7 @@ use crate::{
         build_options::{BuildOptions, EmitOption},
         Db,
     },
+    mir::Mir,
     target::TargetPlatform,
 };
 
@@ -55,21 +56,17 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Build { file: Utf8PathBuf },
-}
-
-macro_rules! expect {
-    ($db: expr) => {
-        if $db.diagnostics.any_errors() {
-            return Ok(());
-        }
-    };
+    Check { file: Utf8PathBuf },
 }
 
 fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
 
     match run_cli() {
-        Ok(db) => db.diagnostics.print(),
+        Ok(db) => {
+            db.print_timings();
+            db.diagnostics.print();
+        }
         Err(err) => eprintln!("Error: {err}"),
     }
 
@@ -86,34 +83,50 @@ fn run_cli() -> anyhow::Result<Db> {
 
     match cli.cmd {
         Commands::Build { file } => build(&mut db, &file)?,
+        Commands::Check { file } => check(&mut db, &file)?,
     }
 
     Ok(db)
 }
 
 fn build(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<()> {
+    if let Some(mir) = build_to_mir(db, root_file)? {
+        cgen::codegen(db, &mir);
+    }
+
+    Ok(())
+}
+
+fn check(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<()> {
+    build_to_mir(db, root_file).map(|_| ())
+}
+
+fn build_to_mir(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Option<Mir>> {
     // File -> Ast
     let ast = db.time("Parse", |db| parse::parse(db, root_file))?;
     fs::create_dir_all(db.output_dir())?;
     db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file))?;
-    expect!(db);
+
+    if db.diagnostics.any_errors() {
+        return Ok(None);
+    }
 
     // Ast -> Hir
     let hir = db.time("Type checking", |db| typeck::typeck(db, ast));
-    expect!(db);
     db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))?;
+    if db.diagnostics.any_errors() {
+        return Ok(None);
+    }
 
     let mut mir = db.time("Hir -> Mir", |db| mir::lower(db, &hir));
-    expect!(db);
+    if db.diagnostics.any_errors() {
+        return Ok(Some(mir));
+    }
 
     db.time("Mir Monomorphization", |db| mir::monomorphize(db, &mut mir));
     db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))?;
 
-    // Generate C code from Mir
-    cgen::codegen(db, &mir);
-
-    db.print_timings();
-    Ok(())
+    Ok(Some(mir))
 }
 
 impl TryFrom<Cli> for BuildOptions {
