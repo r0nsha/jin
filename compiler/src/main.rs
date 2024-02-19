@@ -59,12 +59,12 @@ enum Commands {
 macro_rules! expect {
     ($db: expr) => {
         if $db.diagnostics.any() {
-            return;
+            anyhow::bail!("");
         }
     };
 }
 
-fn main() {
+fn main() -> anyhow::Result<()> {
     color_eyre::install().expect("color_eyre::install to work");
 
     let cli = Cli::parse();
@@ -79,41 +79,32 @@ fn main() {
     match cli.cmd {
         Commands::Build { file } => {
             let mut db = Db::new(build_options);
-            build(&mut db, &file);
+            build(&mut db, &file)
         }
     }
 }
 
 #[allow(clippy::similar_names)]
-fn build(db: &mut Db, root_file: &Utf8Path) {
+fn build(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<()> {
     // Parse the entire module tree into an Ast
-    let ast = match db.time("Parse", |db| parse::parse_module_tree(db, root_file)) {
-        Ok(ast) => ast,
-        Err(err) => {
-            eprintln!("{err}");
-            return;
-        }
-    };
-
+    let ast = db.time("Parse", |db| parse::parse(db, root_file))?;
     expect!(db);
 
-    // Create the output directory
-    fs::create_dir_all(db.output_dir()).expect("failed creating build directory");
+    fs::create_dir_all(db.output_dir())?;
 
-    db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file)).expect("emitting ast failed");
+    db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file))?;
 
     // Type checking pass
     let hir = match db.time("Type checking", |db| typeck::typeck(db, ast)) {
         Ok(hir) => hir,
         Err(diag) => {
             db.diagnostics.emit(diag);
-            return;
+            anyhow::bail!("");
         }
     };
     expect!(db);
 
-    db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))
-        .expect("emitting hir failed");
+    db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))?;
 
     // Lower HIR to MIR
     let mut mir = db.time("Hir -> Mir", |db| mir::lower(db, &hir));
@@ -121,11 +112,11 @@ fn build(db: &mut Db, root_file: &Utf8Path) {
 
     db.time("Mir Monomorphization", |db| mir::monomorphize(db, &mut mir));
 
-    db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))
-        .expect("emitting mir failed");
+    db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))?;
 
     // Generate C code from Mir
     cgen::codegen(db, &mir);
 
     db.print_timings();
+    Ok(())
 }

@@ -181,9 +181,7 @@ impl Db {
         }
 
         let source_id = self.sources.borrow_mut().load_file(absolute_path.to_path_buf())?;
-
         let root_path = absolute_path.parent().expect("to have a parent directory").to_path_buf();
-
         self.packages.insert(name, Package::new(name, root_path, source_id));
 
         Ok((name, source_id))

@@ -16,7 +16,7 @@ use crate::{
     span::SourceId,
 };
 
-pub fn parse_module_tree(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Ast> {
+pub fn parse(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Ast> {
     let mut ast = Ast::new();
 
     // Std
