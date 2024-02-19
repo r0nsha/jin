@@ -57,7 +57,7 @@ impl CyclicGlobals<'_> {
             &[ix] => {
                 let id = g[ix];
                 let use_ = g.edges_connecting(ix, ix).next().unwrap().weight();
-                self.db.diagnostics.emit(
+                self.db.diagnostics.add(
                     Diagnostic::error(format!(
                         "global variable `{}` references itself",
                         self.db[id].name
@@ -83,7 +83,7 @@ impl CyclicGlobals<'_> {
                 let last_use_label =
                     Self::get_use_label(self.db, g, *cycle.last().unwrap(), root_ix, use_num + 1);
 
-                self.db.diagnostics.emit(
+                self.db.diagnostics.add(
                     Diagnostic::error(format!(
                         "global variable `{}` is cyclic",
                         self.db[root_id].name

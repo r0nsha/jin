@@ -58,7 +58,7 @@ enum Commands {
 
 macro_rules! expect {
     ($db: expr) => {
-        if $db.diagnostics.any() {
+        if $db.diagnostics.any_errors() {
             anyhow::bail!("");
         }
     };
@@ -98,7 +98,7 @@ fn build(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<()> {
     let hir = match db.time("Type checking", |db| typeck::typeck(db, ast)) {
         Ok(hir) => hir,
         Err(diag) => {
-            db.diagnostics.emit(diag);
+            db.diagnostics.add(diag);
             anyhow::bail!("");
         }
     };

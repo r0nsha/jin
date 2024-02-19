@@ -15,7 +15,7 @@ use crate::{
 pub fn check_bodies(db: &mut Db, hir: &Hir) {
     let mut cx = CheckBodies { db, diagnostics: vec![] };
     cx.check(hir);
-    db.diagnostics.emit_many(cx.diagnostics);
+    db.diagnostics.extend(cx.diagnostics);
 }
 
 struct CheckBodies<'db> {

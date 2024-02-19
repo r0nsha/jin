@@ -39,7 +39,7 @@ pub(super) fn subst(cx: &mut Typeck<'_>) {
         })
         .collect();
 
-    cx.db.diagnostics.emit_many(diagnostics);
+    cx.db.diagnostics.extend(diagnostics);
 
     cx.db
         .emit_file(crate::db::build_options::EmitOption::Hir, |db, file| {

@@ -47,7 +47,7 @@ fn parse_module(db: &mut Db, package: Ustr, ast: &mut Ast, source_id: SourceId) 
                 parse_module_from_path(db, path, ast);
             }
         }
-        Err(diag) => db.diagnostics.emit(diag),
+        Err(diag) => db.diagnostics.add(diag),
     }
 }
 

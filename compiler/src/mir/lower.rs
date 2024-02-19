@@ -29,7 +29,7 @@ pub fn lower(db: &mut Db, hir: &Hir) -> Mir {
     let mut cx = Lower::new(db, hir);
     cx.run();
     let mir = cx.mir;
-    db.diagnostics.emit_many(cx.diagnostics);
+    db.diagnostics.extend(cx.diagnostics);
     mir
 }
 

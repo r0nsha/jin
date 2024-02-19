@@ -2,7 +2,7 @@ use std::{cell::RefCell, rc::Rc};
 
 use codespan_reporting::{
     diagnostic as codespan_diagnostic,
-    term::termcolor::{ColorChoice, StandardStream, StandardStreamLock},
+    term::termcolor::{ColorChoice, StandardStream},
 };
 
 use crate::span::{SourceId, Sources, Span};
@@ -131,6 +131,7 @@ impl From<Severity> for codespan_diagnostic::Severity {
 #[derive(Debug)]
 pub struct Diagnostics {
     sources: Rc<RefCell<Sources>>,
+    diagnostics: Vec<Diagnostic>,
     config: codespan_reporting::term::Config,
     had_errors: bool,
 }
@@ -138,42 +139,40 @@ pub struct Diagnostics {
 impl Diagnostics {
     pub fn new(sources: Rc<RefCell<Sources>>) -> Self {
         let config = codespan_reporting::term::Config::default();
-        Self { sources, config, had_errors: false }
+        Self { sources, diagnostics: vec![], config, had_errors: false }
     }
 
-    pub fn emit(&mut self, diagnostic: impl Into<Diagnostic>) {
-        self.emit_(&mut Self::writer().lock(), diagnostic.into());
-    }
+    pub fn add(&mut self, diagnostic: impl Into<Diagnostic>) {
+        let diagnostic = diagnostic.into();
 
-    pub fn emit_many<T, I>(&mut self, diagnostics: I)
-    where
-        T: Into<Diagnostic>,
-        I: IntoIterator<Item = T>,
-    {
-        let w = Self::writer();
-        let mut w = w.lock();
-
-        for diagnostic in diagnostics {
-            self.emit_(&mut w, diagnostic.into());
-        }
-    }
-
-    pub fn any(&self) -> bool {
-        self.had_errors
-    }
-
-    fn emit_(&mut self, w: &mut StandardStreamLock, diagnostic: Diagnostic) {
         if let Severity::Error = diagnostic.severity() {
             self.had_errors = true;
         }
 
-        let sources: &Sources = &self.sources.borrow();
-
-        codespan_reporting::term::emit(w, &self.config, sources, &diagnostic.into())
-            .expect("failed emitting diagnostic");
+        self.diagnostics.push(diagnostic);
     }
 
-    fn writer() -> StandardStream {
-        StandardStream::stderr(ColorChoice::Always)
+    pub fn print(self) {
+        let w = StandardStream::stderr(ColorChoice::Always);
+        let mut w = w.lock();
+
+        for diagnostic in self.diagnostics {
+            let sources: &Sources = &self.sources.borrow();
+
+            codespan_reporting::term::emit(&mut w, &self.config, sources, &diagnostic.into())
+                .expect("failed emitting diagnostic");
+        }
+    }
+
+    pub fn any_errors(&self) -> bool {
+        self.had_errors
+    }
+}
+
+impl<T: Into<Diagnostic>> Extend<T> for Diagnostics {
+    fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
+        for d in iter {
+            self.add(d);
+        }
     }
 }
