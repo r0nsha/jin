@@ -3,8 +3,6 @@ mod lexer;
 mod parser;
 pub mod token;
 
-use std::cell::Ref;
-
 use camino::{Utf8Path, Utf8PathBuf};
 use rustc_hash::FxHashSet;
 use ustr::{ustr, Ustr};
@@ -57,7 +55,7 @@ fn parse_module_inner(
     source_id: SourceId,
 ) -> DiagnosticResult<(Module, FxHashSet<Utf8PathBuf>)> {
     let (mut module, paths) = {
-        let source = &Ref::map(db.sources.borrow(), |s| s.get(source_id).unwrap());
+        let source = db.sources.get(source_id).unwrap();
         let tokens = lexer::tokenize(source)?;
         parser::parse(db, package, source, tokens)?
     };
@@ -69,11 +67,9 @@ fn parse_module_inner(
 }
 
 fn parse_module_from_path(db: &mut Db, path: Utf8PathBuf, ast: &mut Ast) {
-    if db.sources.borrow().find_by_path(&path).is_none() {
-        let package = db.find_package_by_path(&path).expect("to be part of a package");
-
-        let source_id = db.sources.borrow_mut().load_file(path).expect("import path to exist");
-
-        parse_module(db, package.name, ast, source_id);
+    if db.sources.find_by_path(&path).is_none() {
+        let package = db.find_package_by_path(&path).expect("to be part of a package").name;
+        let source_id = db.sources.load_file(path).expect("import path to exist");
+        parse_module(db, package, ast, source_id);
     }
 }

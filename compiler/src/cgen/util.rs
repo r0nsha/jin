@@ -161,9 +161,7 @@ impl<'db> Generator<'db> {
     }
 
     pub fn create_stackframe_value(&self, state: &GenState<'db>, span: Span) -> D<'db> {
-        let sources = self.db.sources.borrow();
-        let source = sources.get(span.source_id()).unwrap();
-
+        let source = self.db.sources.get(span.source_id()).unwrap();
         let root_path = &self.db.find_package_by_source_id(source.id()).unwrap().root_path;
         let root_parent = root_path.parent().unwrap_or(root_path);
         let path = source.path();

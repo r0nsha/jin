@@ -1,5 +1,3 @@
-use std::{cell::RefCell, rc::Rc};
-
 use codespan_reporting::{
     diagnostic as codespan_diagnostic,
     term::termcolor::{ColorChoice, StandardStream},
@@ -151,13 +149,11 @@ impl Diagnostics {
         self.diagnostics.push(diagnostic);
     }
 
-    pub fn print(self, sources: Rc<RefCell<Sources>>) {
+    pub fn print(self, sources: &Sources) {
         let w = StandardStream::stderr(ColorChoice::Always);
         let mut w = w.lock();
 
         for diagnostic in self.diagnostics {
-            let sources: &Sources = &sources.borrow();
-
             codespan_reporting::term::emit(&mut w, &self.config, sources, &diagnostic.into())
                 .expect("failed emitting diagnostic");
         }

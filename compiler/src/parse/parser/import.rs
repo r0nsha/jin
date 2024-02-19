@@ -82,8 +82,7 @@ impl<'a> Parser<'a> {
 
     fn search_package(&self, name: Word) -> DiagnosticResult<Utf8PathBuf> {
         if let Some(pkg) = self.db.packages.get(&name.name()) {
-            let sources = self.db.sources.borrow();
-            let source = sources.get(pkg.main_source_id).unwrap();
+            let source = self.db.sources.get(pkg.main_source_id).unwrap();
             Ok(source.path().to_path_buf())
         } else {
             Err(Diagnostic::error(format!("could not find package `{name}`"))

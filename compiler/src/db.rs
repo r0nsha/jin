@@ -2,12 +2,7 @@ pub mod build_options;
 mod timing;
 
 use core::fmt;
-use std::{
-    cell::{Ref, RefCell},
-    cmp, fs, io,
-    path::Path,
-    rc::Rc,
-};
+use std::{cmp, fs, io, path::Path};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use data_structures::{
@@ -35,7 +30,7 @@ use crate::{
 
 #[derive(Debug)]
 pub struct Db {
-    pub sources: Rc<RefCell<Sources>>,
+    pub sources: Sources,
     pub packages: FxHashMap<Ustr, Package>,
     pub modules: IndexVec<ModuleId, ModuleInfo>,
     pub defs: IndexVec<DefId, Def>,
@@ -57,12 +52,10 @@ pub struct Db {
 
 impl Db {
     pub fn new(build_options: BuildOptions) -> Self {
-        let sources = Rc::new(RefCell::new(Sources::new()));
-
         Self {
             timings: Timings::new(),
             build_options,
-            sources,
+            sources: Sources::new(),
             packages: FxHashMap::default(),
             modules: IndexVec::new(),
             defs: IndexVec::new(),
@@ -119,10 +112,8 @@ impl Db {
         self.main_source.unwrap()
     }
 
-    pub fn main_source(&self) -> Ref<'_, Source> {
-        Ref::map(self.sources.borrow(), |s| {
-            s.get(self.main_source.unwrap()).expect("to always have a main source")
-        })
+    pub fn main_source(&self) -> &Source {
+        self.sources.get(self.main_source.unwrap()).expect("to always have a main source")
     }
 
     #[inline]
@@ -136,11 +127,9 @@ impl Db {
     }
 
     pub fn find_module_by_path(&self, path: &Utf8Path) -> Option<&ModuleInfo> {
-        let sources = &self.sources.borrow();
-
         self.modules
             .iter()
-            .find(|m| matches!(sources.get(m.source_id), Some(s) if s.path() == path))
+            .find(|m| matches!(self.sources.get(m.source_id), Some(s) if s.path() == path))
     }
 
     pub fn find_module_by_qpath<'a>(
@@ -180,7 +169,7 @@ impl Db {
             anyhow::bail!("`{}` in not a file", absolute_path);
         }
 
-        let source_id = self.sources.borrow_mut().load_file(absolute_path.to_path_buf())?;
+        let source_id = self.sources.load_file(absolute_path.to_path_buf())?;
         let root_path = absolute_path.parent().expect("to have a parent directory").to_path_buf();
         self.packages.insert(name, Package::new(name, root_path, source_id));
 
@@ -218,7 +207,7 @@ impl Db {
     }
 
     pub fn print_diagnostics(self) {
-        self.diagnostics.print(self.sources)
+        self.diagnostics.print(&self.sources)
     }
 }
 
