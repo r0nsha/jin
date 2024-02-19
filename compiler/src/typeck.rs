@@ -36,27 +36,35 @@ use crate::{
     typeck::{builtins::BuiltinTys, ns::GlobalEnv},
 };
 
-pub fn typeck(db: &mut Db, ast: Ast) -> DiagnosticResult<Hir> {
+pub fn typeck(db: &mut Db, ast: Ast) -> Hir {
     let mut cx = Typeck::new(db);
 
+    if let Err(diagnostic) = typeck_inner(&mut cx, ast) {
+        cx.db.diagnostics.add(diagnostic);
+    }
+
+    cx.hir
+}
+
+fn typeck_inner(cx: &mut Typeck, ast: Ast) -> DiagnosticResult<()> {
     cx.init_global_env(&ast);
 
-    items::define(&mut cx, &ast)?;
+    items::define(cx, &ast)?;
 
-    let imported_fns = imports::define(&mut cx, &ast)?;
-    imports::insert_prelude(&mut cx);
-    imports::define_transitive_globs(&mut cx);
+    let imported_fns = imports::define(cx, &ast)?;
+    imports::insert_prelude(cx);
+    imports::define_transitive_globs(cx);
 
-    types::check(&mut cx, &ast)?;
-    items::check_sigs(&mut cx, &ast)?;
-    imports::fill_imported_fn_candidates(&mut cx, imported_fns)?;
+    types::check(cx, &ast)?;
+    items::check_sigs(cx, &ast)?;
+    imports::fill_imported_fn_candidates(cx, imported_fns)?;
 
-    items::check_bodies(&mut cx, &ast)?;
+    items::check_bodies(cx, &ast)?;
 
-    subst::subst(&mut cx);
+    subst::subst(cx);
     late::checks(cx.db, &mut cx.hir);
 
-    Ok(cx.hir)
+    Ok(())
 }
 
 pub(super) struct Typeck<'db> {

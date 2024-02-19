@@ -91,34 +91,22 @@ fn run_cli() -> anyhow::Result<Db> {
     Ok(db)
 }
 
-#[allow(clippy::similar_names)]
 fn build(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<()> {
-    // Parse the entire module tree into an Ast
+    // File -> Ast
     let ast = db.time("Parse", |db| parse::parse(db, root_file))?;
-    expect!(db);
-
     fs::create_dir_all(db.output_dir())?;
-
     db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file))?;
-
-    // Type checking pass
-    let hir = match db.time("Type checking", |db| typeck::typeck(db, ast)) {
-        Ok(hir) => hir,
-        Err(diag) => {
-            db.diagnostics.add(diag);
-            anyhow::bail!("");
-        }
-    };
     expect!(db);
 
+    // Ast -> Hir
+    let hir = db.time("Type checking", |db| typeck::typeck(db, ast));
+    expect!(db);
     db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))?;
 
-    // Lower HIR to MIR
     let mut mir = db.time("Hir -> Mir", |db| mir::lower(db, &hir));
     expect!(db);
 
     db.time("Mir Monomorphization", |db| mir::monomorphize(db, &mut mir));
-
     db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))?;
 
     // Generate C code from Mir
