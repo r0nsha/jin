@@ -2,13 +2,6 @@
 
 Jin is a statically typed, procedural and safe programming language.
 
-## Highlights
-
-- Deterministic, automatic memory management
-- Pattern matching and union types
-- Polymorphic types
-- Compiled
-
 ## Hello, World
 
 ```
@@ -16,6 +9,13 @@ fn main() = {
     println("Hello, World!")
 }
 ```
+
+## Highlights
+
+- Deterministic, automatic memory management
+- Pattern matching and union types
+- Polymorphic types
+- Compiled
 
 ## Goals
 
