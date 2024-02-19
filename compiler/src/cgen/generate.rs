@@ -432,7 +432,8 @@ impl<'db> Generator<'db> {
             fun.body.blocks().iter().map(|b| self.codegen_block(&mut state, b)).collect();
 
         let sig_doc = {
-            let inline = if sig.is_inline { D::text("FORCE_INLINE ") } else { D::nil() };
+            let inline =
+                if sig.is_inline { D::text("inline").append(D::space()) } else { D::nil() };
             inline.append(self.codegen_fn_sig(sig))
         };
 
