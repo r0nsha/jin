@@ -23,12 +23,6 @@ fn main() = {
 - Simple and orthogonal
 - Fast compile times
 
-## Non-goals
-
-- Competing with low-level languages like Rust and Zig.
-- Simple (small surface area)
-- Fast compile times
-
 ## Usage
 
 ```sh
