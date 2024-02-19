@@ -23,6 +23,7 @@ mod word;
 
 use std::fs;
 
+use anyhow::anyhow;
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, Subcommand};
 
@@ -59,29 +60,35 @@ enum Commands {
 macro_rules! expect {
     ($db: expr) => {
         if $db.diagnostics.any_errors() {
-            anyhow::bail!("");
+            return Ok(());
         }
     };
 }
 
-fn main() -> anyhow::Result<()> {
-    color_eyre::install().expect("color_eyre::install to work");
+fn main() -> color_eyre::Result<()> {
+    color_eyre::install()?;
 
+    match run_cli() {
+        Ok(db) => db.diagnostics.print(),
+        Err(err) => eprintln!("Error: {err}"),
+    }
+
+    Ok(())
+}
+
+fn run_cli() -> anyhow::Result<Db> {
     let cli = Cli::parse();
 
-    let build_options = BuildOptions::new(
-        cli.timings,
-        cli.emit,
-        cli.out_dir,
-        TargetPlatform::current().expect("Current platform is not supported"),
-    );
+    let target_platform =
+        TargetPlatform::current().map_err(|os| anyhow!("{os} is not supported"))?;
+    let build_options = BuildOptions::new(cli.timings, cli.emit, cli.out_dir, target_platform);
+    let mut db = Db::new(build_options);
 
     match cli.cmd {
-        Commands::Build { file } => {
-            let mut db = Db::new(build_options);
-            build(&mut db, &file)
-        }
+        Commands::Build { file } => build(&mut db, &file)?,
     }
+
+    Ok(db)
 }
 
 #[allow(clippy::similar_names)]
@@ -119,4 +126,13 @@ fn build(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<()> {
 
     db.print_timings();
     Ok(())
+}
+
+impl TryFrom<Cli> for BuildOptions {
+    type Error = anyhow::Error;
+
+    fn try_from(cli: Cli) -> Result<Self, Self::Error> {
+        let tp = TargetPlatform::current().map_err(|os| anyhow!("{os} is not supported"))?;
+        Ok(BuildOptions::new(cli.timings, cli.emit, cli.out_dir, tp))
+    }
 }

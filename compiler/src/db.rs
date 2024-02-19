@@ -177,7 +177,7 @@ impl Db {
             root_file.as_std_path().absolutize()?.into_owned().try_into()?;
 
         if !absolute_path.is_file() {
-            anyhow::bail!("provided path `{}` in not a file", absolute_path);
+            anyhow::bail!("`{}` in not a file", absolute_path);
         }
 
         let source_id = self.sources.borrow_mut().load_file(absolute_path.to_path_buf())?;
