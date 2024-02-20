@@ -1,0 +1,14 @@
+fn extern "c" printf(fmt: ptr[u8], ..) -> i32
+
+fn main() = {
+    let box = Box.default()
+    box.print()
+}
+
+type Box(value: int)
+
+fn Box.default() -> Box = Box(0)
+
+fn print(self: &Box) = {
+    unsafe printf("Box(%d)\n".data, self.value)
+}

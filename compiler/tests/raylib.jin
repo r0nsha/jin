@@ -1,0 +1,10 @@
+use .basic_window
+use .input_keys
+use .following_eyes
+pub(package) use .bindings
+
+fn main() = {
+	# basic_window.run()
+	# input_keys.run()
+	# following_eyes.run()
+}

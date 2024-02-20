@@ -1,0 +1,1 @@
+pub type Inner[a](pub value: a)

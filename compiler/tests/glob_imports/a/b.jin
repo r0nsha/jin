@@ -1,0 +1,3 @@
+use std
+
+pub fn hello() = std.io.println("Hello!")

@@ -1,0 +1,33 @@
+use extern "./foo"
+
+fn extern "c" hello()
+let extern answer: int
+
+fn extern "c" printf(fmt: ptr[u8], ..) -> i32
+
+fn main() = {
+	println("Hello, World!")
+	unsafe hello()
+	run(print_answer)
+	do_add(add, 1, 2)
+	unsafe printf("num = %d\n".data, map(1, id))
+}
+
+fn print_answer() = {
+	unsafe printf("The answer is %d\n".data, answer)
+}
+
+fn add(a: int, b: int) -> int = {
+	a + b
+}
+
+fn do_add(f: fn(int, int) -> int, a: int, b: int) = {
+	unsafe printf("a + b = %d\n".data, f(a, b))
+}
+
+fn run(f: fn()) = f()
+
+fn id[T](x: T) -> T = x
+
+fn map[A, B](val: A, f: fn(A) -> B) -> B =
+	f(val)

@@ -1,0 +1,29 @@
+fn extern "c" printf(fmt: ptr[u8], ..) -> i32
+
+type M()
+
+type Ref extern(a: &M, b: Ref2)
+type Ref2 extern(c: &M)
+type Mixed extern(a: Ref)
+
+type Point extern(x: int, y: int)
+
+fn main() = {
+	let m = M()
+	let m2 = m
+	# let m3 = m # Error: use after move
+	# let r3 = &m2 # Runtime error: Destroy with refs
+	let m3 = m2
+
+	let mixed = Mixed(Ref(&m3, Ref2(&m3)))
+	let mixed2 = mixed.a
+	let mixed2c = mixed.a.b.c
+
+	print_point(Point(1, 2))
+	print_point(Point(x: 420, y: 69))
+	print_point(Point(5, y: 10))
+}
+
+fn print_point(p: Point) = {
+	unsafe printf("Point(%d, %d)\n".data, p.x, p.y)
+}

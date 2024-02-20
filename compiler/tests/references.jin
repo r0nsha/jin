@@ -1,0 +1,43 @@
+fn extern "c" printf(fmt: ptr[u8], ..) -> i32
+
+type Box(value: int)
+type Ref(box: &Box)
+type Mut(box: &mut Box)
+type Bag(a: Box, b: Box)
+
+fn main() = {
+	let mut box = Box(1)
+	box.print() # Coerced to &Box
+	box.set(42) # Coerced to &mut Box
+	box.print() # box.value == 42
+
+	let ref_ = Ref(&box)
+	print(ref_.box)
+
+	let mut bag = Bag(Box(2), Box(3)).copy().copy()
+	let ref_a = &mut bag.a
+	let ref_b = &bag.b
+	let ref_a = ref_a
+	let ref_b = ref_b
+
+	let ref_bag = &bag
+	let a = &ref_bag.a
+	let b = &ref_bag.b
+
+	print(ref_a)
+	print(ref_b)
+
+	let mut box = Box(1)
+	let mut rmut = Mut(&mut box)
+	let m = &mut rmut.box
+	rmut.box.value = 2
+}
+
+fn print(box: &Box) = {
+	unsafe printf("Box(%d)\n".data, box.value)
+}
+
+fn set(self: &mut Box, value: int) =
+	self.value = value
+
+fn copy(bag: Bag) -> Bag = Bag(bag.a, bag.b)
