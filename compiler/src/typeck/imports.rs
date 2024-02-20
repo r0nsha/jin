@@ -162,7 +162,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         // redundancy.
         let (resolved, res_module_id) = match resolved {
             Resolved::Module(module_id) => {
-                let id = self.import_module(imp, module_id)?;
+                let id = self.import_module(imp, module_id);
                 (Resolved::Def(NsDef::from_def_id(self.cx.db, id)), module_id)
             }
             Resolved::Def(def) => {
@@ -289,16 +289,16 @@ impl<'db, 'cx> Define<'db, 'cx> {
         }
     }
 
-    fn import_module(&mut self, imp: &Import, module_id: ModuleId) -> DiagnosticResult<DefId> {
+    fn import_module(&mut self, imp: &Import, module_id: ModuleId) -> DefId {
         let id = self.cx.define().new_global(
             imp.module_id,
             imp.vis,
             DefKind::Global,
             imp.alias,
             Mutability::Imm,
-        )?;
+        );
         self.cx.def_to_ty.insert(id, Ty::new(TyKind::Module(module_id)));
-        Ok(id)
+        id
     }
 
     fn import_def(&mut self, imp: &Import, id: DefId) -> DiagnosticResult<()> {

@@ -51,7 +51,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
             DefKind::Adt(adt_id),
             tydef.word,
             Mutability::Imm,
-        )?;
+        );
         self.cx.db[adt_id].def_id = def_id;
 
         Ok(adt_id)
@@ -64,12 +64,16 @@ impl<'db, 'cx> Define<'db, 'cx> {
         kind: DefKind,
         name: Word,
         mutability: Mutability,
-    ) -> DiagnosticResult<DefId> {
+    ) -> DefId {
         let qpath = self.cx.db[module_id].qpath.clone().child(name.name());
         let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis };
         let id = Def::alloc(self.cx.db, qpath, scope, kind, mutability, name.span());
-        self.global(module_id, name, id, vis)?;
-        Ok(id)
+
+        if let Err(diagnostic) = self.global(module_id, name, id, vis) {
+            self.cx.db.diagnostics.add(diagnostic);
+        }
+
+        id
     }
 
     pub(super) fn global(
@@ -111,20 +115,14 @@ impl<'db, 'cx> Define<'db, 'cx> {
         id
     }
 
-    pub(super) fn global_pat(
-        &mut self,
-        module_id: ModuleId,
-        pat: &Pat,
-        vis: Vis,
-        ty: Ty,
-    ) -> DiagnosticResult<Pat> {
+    pub(super) fn global_pat(&mut self, module_id: ModuleId, pat: &Pat, vis: Vis, ty: Ty) -> Pat {
         match pat {
             Pat::Name(name) => {
                 let id =
-                    self.new_global(module_id, vis, DefKind::Global, name.word, name.mutability)?;
-                Ok(Pat::Name(NamePat { id, ty, ..name.clone() }))
+                    self.new_global(module_id, vis, DefKind::Global, name.word, name.mutability);
+                Pat::Name(NamePat { id, ty, ..name.clone() })
             }
-            Pat::Discard(span) => Ok(Pat::Discard(*span)),
+            Pat::Discard(span) => Pat::Discard(*span),
         }
     }
 

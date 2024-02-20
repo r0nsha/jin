@@ -49,22 +49,25 @@ pub fn typeck(db: &mut Db, ast: Ast) -> Hir {
 fn typeck_inner(cx: &mut Typeck, ast: Ast) -> DiagnosticResult<()> {
     cx.init_global_env(&ast);
 
-    items::define(cx, &ast)?;
-
+    // Define
+    items::define(cx, &ast);
     let imported_fns = imports::define(cx, &ast)?;
     imports::insert_prelude(cx);
     imports::define_transitive_globs(cx);
 
-    // if cx.db.diagnostics.any_errors(){
-    //     return;
-    // }
+    if cx.db.diagnostics.any_errors() {
+        return Ok(());
+    }
 
+    // Check top-level types and signatures
     types::check(cx, &ast)?;
     items::check_sigs(cx, &ast)?;
     imports::fill_imported_fn_candidates(cx, imported_fns)?;
 
+    // Check bodies & expressions
     items::check_bodies(cx, &ast)?;
 
+    // Finalization steps & checks
     subst::subst(cx);
     late::checks(cx.db, &mut cx.hir);
 
