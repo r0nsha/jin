@@ -1,4 +1,4 @@
-pub use .array
+pub use .collections
 pub use .builtin
 pub use .int
 pub use .io
