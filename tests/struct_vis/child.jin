@@ -1,6 +1,6 @@
-pub type struct(num: int)
+type Struct(pub(module) num: int)
 
 fn foo() = {
-	let s = struct(1)
+	let s = Struct(1)
 	let x = s.num
 }

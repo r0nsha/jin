@@ -211,18 +211,20 @@ fn check_adt_ty_params(cx: &mut Typeck, env: &mut Env, tydef: &ast::TyDef, adt_i
     cx.def_to_ty.insert(adt.def_id, TyKind::Type(adt.ty()).into());
 }
 
-pub(super) fn check_sigs(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+pub(super) fn check_sigs(cx: &mut Typeck, ast: &Ast) {
     for (module, item, id) in ast.items_with_id() {
-        match item {
-            ast::Item::Let(let_) => check_let_item(cx, module.id, id, let_)?,
-            ast::Item::ExternLet(let_) => check_extern_let(cx, module.id, id, let_)?,
-            ast::Item::Fn(fun) => check_fn(cx, module.id, id, fun)?,
-            ast::Item::Assoc(tyname, item) => check_assoc_item(cx, module.id, id, *tyname, item)?,
-            _ => (),
+        let result = match item {
+            ast::Item::Let(let_) => check_let_item(cx, module.id, id, let_),
+            ast::Item::ExternLet(let_) => check_extern_let(cx, module.id, id, let_),
+            ast::Item::Fn(fun) => check_fn(cx, module.id, id, fun),
+            ast::Item::Assoc(tyname, item) => check_assoc_item(cx, module.id, id, *tyname, item),
+            _ => Ok(()),
+        };
+
+        if let Err(diagnostic) = result {
+            cx.db.diagnostics.add(diagnostic);
         }
     }
-
-    Ok(())
 }
 
 pub(super) fn check_let_item(
@@ -480,38 +482,48 @@ fn check_assoc_item_ty(
     Ok(assoc_ty)
 }
 
-pub(super) fn check_bodies(cx: &mut Typeck<'_>, ast: &Ast) -> DiagnosticResult<()> {
+pub(super) fn check_bodies(cx: &mut Typeck<'_>, ast: &Ast) {
     for (module, item, id) in ast.items_with_id() {
-        match item {
-            ast::Item::Let(let_) => {
-                let mut env = Env::new(module.id);
-                let pat = cx.res_map.item_to_pat.remove(&id).expect("to be defined");
-                let ty = cx.res_map.item_to_ty.remove(&id).expect("to be defined");
-                let value = check_let_body(cx, &mut env, ty, let_)?;
-                cx.hir.lets.push_with_key(|id| hir::Let {
-                    id,
-                    module_id: env.module_id(),
-                    pat,
-                    value: Box::new(value),
-                    ty,
-                    span: let_.span,
-                });
-            }
-            ast::Item::Fn(fun) => check_fn_item_body(cx, id, fun)?,
-            ast::Item::Assoc(_, item) => match item.as_ref() {
-                ast::Item::Fn(fun) => check_fn_item_body(cx, id, fun)?,
-                ast::Item::Let(_)
-                | ast::Item::Type(_)
-                | ast::Item::Import(_)
-                | ast::Item::ExternLet(_)
-                | ast::Item::ExternImport(_)
-                | ast::Item::Assoc(_, _) => unreachable!(),
-            },
-            _ => (),
+        if let Err(diagnostic) = check_item_body(cx, module.id, item, id) {
+            cx.db.diagnostics.add(diagnostic);
         }
     }
+}
 
-    Ok(())
+fn check_item_body(
+    cx: &mut Typeck<'_>,
+    module_id: ModuleId,
+    item: &ast::Item,
+    id: ast::GlobalItemId,
+) -> DiagnosticResult<()> {
+    match item {
+        ast::Item::Let(let_) => {
+            let mut env = Env::new(module_id);
+            let pat = cx.res_map.item_to_pat.remove(&id).expect("to be defined");
+            let ty = cx.res_map.item_to_ty.remove(&id).expect("to be defined");
+            let value = check_let_body(cx, &mut env, ty, let_)?;
+            cx.hir.lets.push_with_key(|id| hir::Let {
+                id,
+                module_id: env.module_id(),
+                pat,
+                value: Box::new(value),
+                ty,
+                span: let_.span,
+            });
+            Ok(())
+        }
+        ast::Item::Fn(fun) => check_fn_item_body(cx, id, fun),
+        ast::Item::Assoc(_, item) => match item.as_ref() {
+            ast::Item::Fn(fun) => check_fn_item_body(cx, id, fun),
+            ast::Item::Let(_)
+            | ast::Item::Type(_)
+            | ast::Item::Import(_)
+            | ast::Item::ExternLet(_)
+            | ast::Item::ExternImport(_)
+            | ast::Item::Assoc(_, _) => unreachable!(),
+        },
+        _ => Ok(()),
+    }
 }
 
 pub(super) fn check_let_body(

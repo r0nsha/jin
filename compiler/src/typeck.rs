@@ -38,40 +38,42 @@ use crate::{
 
 pub fn typeck(db: &mut Db, ast: Ast) -> Hir {
     let mut cx = Typeck::new(db);
-
-    if let Err(diagnostic) = typeck_inner(&mut cx, ast) {
-        cx.db.diagnostics.add(diagnostic);
-    }
-
+    typeck_inner(&mut cx, ast);
     cx.hir
 }
 
-fn typeck_inner(cx: &mut Typeck, ast: Ast) -> DiagnosticResult<()> {
+fn typeck_inner(cx: &mut Typeck, ast: Ast) {
     cx.init_global_env(&ast);
 
     // Define
     items::define(cx, &ast);
-    let imported_fns = imports::define(cx, &ast)?;
+    let imported_fns = imports::define(cx, &ast);
     imports::insert_prelude(cx);
     imports::define_transitive_globs(cx);
 
     if cx.db.diagnostics.any_errors() {
-        return Ok(());
+        return;
     }
 
     // Check top-level types and signatures
-    types::check(cx, &ast)?;
-    items::check_sigs(cx, &ast)?;
-    imports::fill_imported_fn_candidates(cx, imported_fns)?;
+    types::check(cx, &ast);
+    items::check_sigs(cx, &ast);
+    imports::fill_imported_fn_candidates(cx, imported_fns);
+
+    if cx.db.diagnostics.any_errors() {
+        return;
+    }
 
     // Check bodies & expressions
-    items::check_bodies(cx, &ast)?;
+    items::check_bodies(cx, &ast);
+
+    if cx.db.diagnostics.any_errors() {
+        return;
+    }
 
     // Finalization steps & checks
     subst::subst(cx);
     late::checks(cx.db, &mut cx.hir);
-
-    Ok(())
 }
 
 pub(super) struct Typeck<'db> {

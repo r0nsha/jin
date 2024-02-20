@@ -18,14 +18,14 @@ use crate::{
     word::Word,
 };
 
-pub(super) fn define(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ImportedFns> {
-    let imports = build_imports_map(cx, ast)?;
+pub(super) fn define(cx: &mut Typeck, ast: &Ast) -> ImportedFns {
+    let imports = build_imports_map(cx, ast);
     let mut define = Define::new(cx);
-    define.define_imports(imports)?;
-    Ok(define.imported_fns)
+    define.define_imports(imports);
+    define.imported_fns
 }
 
-fn build_imports_map(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ImportsMap> {
+fn build_imports_map(cx: &mut Typeck, ast: &Ast) -> ImportsMap {
     let mut map = ImportsMap::default();
 
     for (module, item) in ast.items() {
@@ -34,61 +34,55 @@ fn build_imports_map(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ImportsMap>
 
         let entry = map.entry(module.id).or_default();
         let root_module_id = cx.db.find_module_by_path(&import.module_path).unwrap().id;
-        BuildImportsMap::new(entry, root_module_id, module.id, import.vis).build(&import.tree)?;
+        BuildImportsMap::new(cx, entry, root_module_id, module.id, import.vis).build(&import.tree);
     }
 
-    Ok(map)
+    map
 }
 
-struct BuildImportsMap<'a> {
+struct BuildImportsMap<'a, 'db> {
+    cx: &'a mut Typeck<'db>,
     entry: &'a mut Imports,
     root_module_id: ModuleId,
     module_id: ModuleId,
     vis: Vis,
 }
 
-impl<'a> BuildImportsMap<'a> {
+impl<'a, 'db> BuildImportsMap<'a, 'db> {
     fn new(
+        cx: &'a mut Typeck<'db>,
         entry: &'a mut Imports,
         root_module_id: ModuleId,
         module_id: ModuleId,
         vis: Vis,
     ) -> Self {
-        Self { entry, root_module_id, module_id, vis }
+        Self { cx, entry, root_module_id, module_id, vis }
     }
 
-    fn build(&mut self, tree: &ast::ImportTree) -> DiagnosticResult<()> {
-        self.build_helper(vec![], tree)
+    fn build(&mut self, tree: &ast::ImportTree) {
+        self.build_helper(vec![], tree);
     }
 
-    fn build_helper(&mut self, path: Vec<Word>, tree: &ast::ImportTree) -> DiagnosticResult<()> {
+    fn build_helper(&mut self, path: Vec<Word>, tree: &ast::ImportTree) {
         match tree {
             ast::ImportTree::Group(imports) => {
                 for import in imports {
-                    self.build_helper(path.clone(), import)?;
+                    self.build_helper(path.clone(), import);
                 }
-
-                Ok(())
             }
             ast::ImportTree::Path(name, next) => {
                 let mut new_path = path.clone();
                 new_path.push(*name);
-                self.build_helper(new_path, next)
+                self.build_helper(new_path, next);
             }
             ast::ImportTree::Name(name, alias) => self.insert_name(path, *name, *alias),
             ast::ImportTree::Glob(is_ufcs, span) => {
                 self.insert_glob(path, *is_ufcs, *span);
-                Ok(())
             }
         }
     }
 
-    fn insert_name(
-        &mut self,
-        path: Vec<Word>,
-        name: Word,
-        alias: Option<Word>,
-    ) -> DiagnosticResult<()> {
+    fn insert_name(&mut self, path: Vec<Word>, name: Word, alias: Option<Word>) {
         let mut new_path = path.clone();
         new_path.push(name);
 
@@ -102,9 +96,7 @@ impl<'a> BuildImportsMap<'a> {
         };
 
         if let Some(prev) = self.entry.imports.insert(alias.name(), import) {
-            Err(errors::multiple_item_def_err(prev.span(), name))
-        } else {
-            Ok(())
+            self.cx.db.diagnostics.add(errors::multiple_item_def_err(prev.span(), name))
         }
     }
 
@@ -131,18 +123,20 @@ impl<'db, 'cx> Define<'db, 'cx> {
         Self { cx, resolved: ResolvedMap::default(), imported_fns: ImportedFns::default() }
     }
 
-    fn define_imports(&mut self, map: ImportsMap) -> DiagnosticResult<()> {
+    fn define_imports(&mut self, map: ImportsMap) {
         for imports in map.values() {
             for imp in imports.imports.values() {
-                self.define(&map, imp)?;
+                if let Err(diagnostic) = self.define(&map, imp) {
+                    self.cx.db.diagnostics.add(diagnostic);
+                }
             }
 
             for imp in &imports.glob_imports {
-                self.define_glob(&map, imp)?;
+                if let Err(diagnostic) = self.define_glob(&map, imp) {
+                    self.cx.db.diagnostics.add(diagnostic);
+                }
             }
         }
-
-        Ok(())
     }
 
     fn define(&mut self, map: &ImportsMap, imp: &Import) -> DiagnosticResult<Resolved> {
@@ -411,10 +405,7 @@ enum Resolved {
     Fn(ModuleId, Ustr),
 }
 
-pub(super) fn fill_imported_fn_candidates(
-    cx: &mut Typeck,
-    imported_fns: ImportedFns,
-) -> DiagnosticResult<()> {
+pub(super) fn fill_imported_fn_candidates(cx: &mut Typeck, imported_fns: ImportedFns) {
     for (module_id, fns) in imported_fns {
         for f in fns {
             let from_module = cx.db[f.id].scope.module_id;
@@ -429,12 +420,14 @@ pub(super) fn fill_imported_fn_candidates(
             let mut candidate =
                 from_set.iter().find(|c| c.id == f.id).expect("candidate to be defined").clone();
             candidate.word = f.alias;
+
             let set = cx.global_env.module_mut(module_id).ns.fns.entry(f.alias.name()).or_default();
-            set.try_insert(candidate).map_err(|err| err.into_diagnostic(cx.db))?;
+
+            if let Err(err) = set.try_insert(candidate) {
+                cx.db.diagnostics.add(err.into_diagnostic(cx.db));
+            }
         }
     }
-
-    Ok(())
 }
 
 pub(super) type ImportedFns = FxHashMap<ModuleId, Vec<ImportedFn>>;

@@ -16,14 +16,14 @@ use crate::{
     word::WordMap,
 };
 
-pub(super) fn check(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
+pub(super) fn check(cx: &mut Typeck, ast: &Ast) {
     for (module, item, id) in ast.items_with_id() {
         if let ast::Item::Type(tydef) = item {
-            check_tydef(cx, module.id, id, tydef)?;
+            if let Err(diagnostic) = check_tydef(cx, module.id, id, tydef) {
+                cx.db.diagnostics.add(diagnostic);
+            }
         }
     }
-
-    Ok(())
 }
 
 fn check_tydef(
