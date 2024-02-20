@@ -148,7 +148,7 @@ pub(super) fn define_ty_params(
     cx: &mut Typeck,
     env: &mut Env,
     ty_params: &[ast::TyParam],
-) -> DiagnosticResult<Vec<TyParam>> {
+) -> Vec<TyParam> {
     let mut new_ty_params = vec![];
     let mut defined_ty_params = WordMap::default();
 
@@ -164,13 +164,13 @@ pub(super) fn define_ty_params(
         );
 
         if let Some(prev_span) = defined_ty_params.insert(tp.word) {
-            return Err(errors::name_defined_twice("type parameter", tp.word, prev_span));
+            cx.db.diagnostics.add(errors::name_defined_twice("type parameter", tp.word, prev_span));
         }
 
         new_ty_params.push(TyParam { id, word: tp.word, ty });
     }
 
-    Ok(new_ty_params)
+    new_ty_params
 }
 
 pub(super) fn fresh_instantiation(

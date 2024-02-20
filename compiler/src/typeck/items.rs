@@ -36,11 +36,7 @@ pub(super) fn define(cx: &mut Typeck, ast: &Ast) {
                     cx.db.diagnostics.add(diagnostic);
                 }
             }
-            ast::Item::Type(tydef) => {
-                if let Err(diagnostic) = define_tydef(cx, module.id, id, tydef) {
-                    cx.db.diagnostics.add(diagnostic);
-                }
-            }
+            ast::Item::Type(tydef) => define_tydef(cx, module.id, id, tydef),
             ast::Item::ExternImport(import) => {
                 attrs::validate(cx, &import.attrs, attrs::Placement::ExternImport);
                 cx.db.extern_libs.insert(import.lib.clone());
@@ -143,10 +139,10 @@ fn define_tydef(
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
     tydef: &ast::TyDef,
-) -> DiagnosticResult<()> {
+) {
     let mut env = Env::new(module_id);
 
-    let adt_id = env.with_anon_scope(ScopeKind::TyDef, |env| -> DiagnosticResult<AdtId> {
+    let adt_id = env.with_anon_scope(ScopeKind::TyDef, |env| {
         let adt_id = match &tydef.kind {
             ast::TyDefKind::Struct(struct_def) => {
                 attrs::validate(cx, &tydef.attrs, attrs::Placement::Struct);
@@ -158,40 +154,38 @@ fn define_tydef(
                         struct_def.kind,
                         unknown, // Will be filled later
                     ))
-                })?
+                })
             }
             ast::TyDefKind::Union(union_def) => {
                 attrs::validate(cx, &tydef.attrs, attrs::Placement::Union);
-                let adt_id = cx.define().adt(module_id, tydef, |id| {
-                    AdtKind::Union(UnionDef::new(id, union_def.kind))
-                })?;
-                let variants = define_variants(cx, union_def, adt_id)?;
+                let adt_id = cx
+                    .define()
+                    .adt(module_id, tydef, |id| AdtKind::Union(UnionDef::new(id, union_def.kind)));
+                let variants = define_variants(cx, union_def, adt_id);
                 cx.db[adt_id].as_union_mut().unwrap().variants = variants;
                 adt_id
             }
         };
 
-        check_adt_ty_params(cx, env, tydef, adt_id)?;
+        check_adt_ty_params(cx, env, tydef, adt_id);
 
-        Ok(adt_id)
-    })?;
+        adt_id
+    });
 
     cx.res_map.item_to_adt.insert(item_id, adt_id);
-
-    Ok(())
 }
 
 fn define_variants(
     cx: &mut Typeck<'_>,
     union_def: &ast::UnionTyDef,
     adt_id: AdtId,
-) -> DiagnosticResult<Vec<VariantId>> {
+) -> Vec<VariantId> {
     let mut variants = vec![];
     let mut defined_variants = WordMap::default();
 
     for (index, variant) in union_def.variants.iter().enumerate() {
         if let Some(prev_span) = defined_variants.insert(variant.name) {
-            return Err(errors::name_defined_twice("variant", variant.name, prev_span));
+            cx.db.diagnostics.add(errors::name_defined_twice("variant", variant.name, prev_span));
         }
 
         let unknown = cx.db.types.unknown;
@@ -207,20 +201,14 @@ fn define_variants(
         variants.push(id);
     }
 
-    Ok(variants)
+    variants
 }
 
-fn check_adt_ty_params(
-    cx: &mut Typeck,
-    env: &mut Env,
-    tydef: &ast::TyDef,
-    adt_id: AdtId,
-) -> DiagnosticResult<()> {
-    let ty_params = types::define_ty_params(cx, env, &tydef.ty_params)?;
+fn check_adt_ty_params(cx: &mut Typeck, env: &mut Env, tydef: &ast::TyDef, adt_id: AdtId) {
+    let ty_params = types::define_ty_params(cx, env, &tydef.ty_params);
     cx.db[adt_id].ty_params = ty_params;
     let adt = &cx.db[adt_id];
     cx.def_to_ty.insert(adt.def_id, TyKind::Type(adt.ty()).into());
-    Ok(())
 }
 
 pub(super) fn check_sigs(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {

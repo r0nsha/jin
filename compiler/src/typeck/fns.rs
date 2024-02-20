@@ -29,7 +29,7 @@ pub(super) fn check_sig(
     callconv: CallConv,
     flags: FnTyFlags,
 ) -> DiagnosticResult<hir::FnSig> {
-    let ty_params = types::define_ty_params(cx, env, &sig.ty_params)?;
+    let ty_params = types::define_ty_params(cx, env, &sig.ty_params);
     let (params, fnty_params) = check_fn_sig_params(cx, env, &sig.params)?;
 
     let ret = sig

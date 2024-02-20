@@ -36,7 +36,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         module_id: ModuleId,
         tydef: &ast::TyDef,
         kind: impl FnOnce(AdtId) -> AdtKind,
-    ) -> DiagnosticResult<AdtId> {
+    ) -> AdtId {
         let adt_id = self.cx.db.adts.push_with_key(|id| Adt {
             id,
             def_id: DefId::null(),
@@ -54,7 +54,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         );
         self.cx.db[adt_id].def_id = def_id;
 
-        Ok(adt_id)
+        adt_id
     }
 
     pub(super) fn new_global(
