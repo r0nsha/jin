@@ -25,13 +25,12 @@ pub(super) fn define(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ImportedFns
     Ok(define.imported_fns)
 }
 
-fn build_imports_map(cx: &Typeck, ast: &Ast) -> DiagnosticResult<ImportsMap> {
+fn build_imports_map(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<ImportsMap> {
     let mut map = ImportsMap::default();
 
     for (module, item) in ast.items() {
         let ast::Item::Import(import) = item else { continue };
-
-        attrs::validate(&import.attrs, attrs::Placement::Import)?;
+        attrs::validate(cx, &import.attrs, attrs::Placement::Import);
 
         let entry = map.entry(module.id).or_default();
         let root_module_id = cx.db.find_module_by_path(&import.module_path).unwrap().id;

@@ -1,15 +1,21 @@
 use crate::{
     ast::{self},
-    diagnostics::{Diagnostic, DiagnosticResult, Label},
+    diagnostics::{Diagnostic, Label},
+    typeck::Typeck,
 };
 
-pub fn validate(attrs: &ast::Attrs, placement: Placement) -> DiagnosticResult<()> {
+pub fn validate(cx: &mut Typeck, attrs: &ast::Attrs, placement: Placement) {
     for attr in attrs.iter() {
-        validate_placement(attr, placement)
-            .map_err(|applies_to| invalid_placement(attr, applies_to))?;
+        if let Err(applies_to) = validate_placement(attr, placement) {
+            cx.db.diagnostics.add(
+                Diagnostic::error(format!(
+                    "attribute `{}` should be applied to {}",
+                    attr.id, applies_to
+                ))
+                .with_label(Label::primary(attr.span, "invalid attribute placement")),
+            );
+        }
     }
-
-    Ok(())
 }
 
 /// Validates that `attr` is valid in `placement`.
@@ -21,11 +27,6 @@ fn validate_placement(attr: &ast::Attr, placement: Placement) -> Result<(), &'st
             _ => Err("fn extern"),
         },
     }
-}
-
-fn invalid_placement(attr: &ast::Attr, applies_to: &str) -> Diagnostic {
-    Diagnostic::error(format!("attribute `{}` should be applied to {}", attr.id, applies_to))
-        .with_label(Label::primary(attr.span, "invalid attribute placement"))
 }
 
 #[derive(Debug, Clone, Copy)]

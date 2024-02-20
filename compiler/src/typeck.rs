@@ -55,6 +55,10 @@ fn typeck_inner(cx: &mut Typeck, ast: Ast) -> DiagnosticResult<()> {
     imports::insert_prelude(cx);
     imports::define_transitive_globs(cx);
 
+    // if cx.db.diagnostics.any_errors(){
+    //     return;
+    // }
+
     types::check(cx, &ast)?;
     items::check_sigs(cx, &ast)?;
     imports::fill_imported_fn_candidates(cx, imported_fns)?;

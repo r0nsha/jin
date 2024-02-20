@@ -34,7 +34,7 @@ pub(super) fn define(cx: &mut Typeck, ast: &Ast) -> DiagnosticResult<()> {
             ast::Item::Fn(fun) => define_fn(cx, module.id, id, fun, None).map(|_| ())?,
             ast::Item::Type(tydef) => define_tydef(cx, module.id, id, tydef)?,
             ast::Item::ExternImport(import) => {
-                attrs::validate(&import.attrs, attrs::Placement::ExternImport)?;
+                attrs::validate(cx, &import.attrs, attrs::Placement::ExternImport);
                 cx.db.extern_libs.insert(import.lib.clone());
             }
             _ => (),
@@ -50,7 +50,7 @@ fn define_let(
     item_id: ast::GlobalItemId,
     let_: &ast::Let,
 ) -> DiagnosticResult<()> {
-    attrs::validate(&let_.attrs, attrs::Placement::Let)?;
+    attrs::validate(cx, &let_.attrs, attrs::Placement::Let);
     let unknown = cx.db.types.unknown;
     let pat = cx.define().global_pat(module_id, &let_.pat, let_.vis, unknown)?;
     cx.res_map.item_to_pat.insert(item_id, pat);
@@ -63,7 +63,7 @@ fn define_extern_let(
     item_id: ast::GlobalItemId,
     let_: &ast::ExternLet,
 ) -> DiagnosticResult<()> {
-    attrs::validate(&let_.attrs, attrs::Placement::ExternLet)?;
+    attrs::validate(cx, &let_.attrs, attrs::Placement::ExternLet);
 
     let id = cx.define().new_global(
         module_id,
@@ -85,7 +85,7 @@ fn define_fn(
     fun: &ast::Fn,
     assoc_ty: Option<AssocTy>,
 ) -> DiagnosticResult<DefId> {
-    attrs::validate(&fun.attrs, attrs::Placement::from(&fun.kind))?;
+    attrs::validate(cx, &fun.attrs, attrs::Placement::from(&fun.kind));
 
     let name = fun.sig.word.name();
 
@@ -146,7 +146,7 @@ fn define_tydef(
     let adt_id = env.with_anon_scope(ScopeKind::TyDef, |env| -> DiagnosticResult<AdtId> {
         let adt_id = match &tydef.kind {
             ast::TyDefKind::Struct(struct_def) => {
-                attrs::validate(&tydef.attrs, attrs::Placement::Struct)?;
+                attrs::validate(cx, &tydef.attrs, attrs::Placement::Struct);
                 let unknown = cx.db.types.unknown;
                 cx.define().adt(module_id, tydef, |id| {
                     AdtKind::Struct(StructDef::new(
@@ -158,7 +158,7 @@ fn define_tydef(
                 })?
             }
             ast::TyDefKind::Union(union_def) => {
-                attrs::validate(&tydef.attrs, attrs::Placement::Union)?;
+                attrs::validate(cx, &tydef.attrs, attrs::Placement::Union);
                 let adt_id = cx.define().adt(module_id, tydef, |id| {
                     AdtKind::Union(UnionDef::new(id, union_def.kind))
                 })?;
