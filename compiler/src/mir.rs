@@ -8,7 +8,7 @@ pub mod subst;
 
 use std::{io, iter};
 
-use data_structures::{
+use compiler_data_structures::{
     id_map::IdMap,
     index_vec::{IndexSlice, IndexVec, IndexVecExt},
     new_key_type,

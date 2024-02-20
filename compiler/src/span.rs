@@ -2,7 +2,7 @@ use std::{fs, io, ops};
 
 use camino::{Utf8Path, Utf8PathBuf};
 use codespan_reporting::files::{self, line_starts};
-use data_structures::{
+use compiler_data_structures::{
     index_vec::{IndexVec, IndexVecExt, Key as _},
     new_key_type,
 };

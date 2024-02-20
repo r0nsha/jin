@@ -30,7 +30,7 @@ pretty = "0.12.3"
 itertools = "0.12.0"
 indexmap = "2.1.0"
 bitflags = "2.4.2"
-data_structures = { path = "../data_structures" }
+compiler_data_structures = { path = "../compiler_data_structures" }
 petgraph = "0.6.4"
 graph-cycles = "0.1.0"
 

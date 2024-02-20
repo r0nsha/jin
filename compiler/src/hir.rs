@@ -4,7 +4,7 @@ pub mod visit;
 
 use std::{collections::hash_map::Entry, io};
 
-use data_structures::{index_vec::IndexVec, new_key_type, once::Once};
+use compiler_data_structures::{index_vec::IndexVec, new_key_type, once::Once};
 use rustc_hash::FxHashMap;
 use ustr::Ustr;
 

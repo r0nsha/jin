@@ -1,4 +1,4 @@
-use data_structures::index_vec::Key as _;
+use compiler_data_structures::index_vec::Key as _;
 use graph_cycles::Cycles;
 use petgraph::{stable_graph::NodeIndex, Graph};
 use rustc_hash::FxHashMap;

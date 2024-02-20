@@ -1,6 +1,6 @@
 use std::{collections::VecDeque, mem};
 
-use data_structures::index_vec::Key;
+use compiler_data_structures::index_vec::Key;
 use rustc_hash::FxHashSet;
 use ustr::{ustr, Ustr};
 

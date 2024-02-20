@@ -1,7 +1,7 @@
 use std::{fs::File, io::Write, iter};
 
 use camino::Utf8PathBuf;
-use data_structures::index_vec::Key as _;
+use compiler_data_structures::index_vec::Key as _;
 use pretty::RcDoc as D;
 use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr};

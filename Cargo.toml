@@ -1,5 +1,5 @@
 [workspace]
-members = ["compiler", "data_structures"]
+members = ["compiler", "compiler_data_structures"]
 resolver = "2"
 
 [workspace.lints.clippy]
@@ -15,3 +15,6 @@ too_many_lines = "allow"
 missing_const_for_fn = "allow"
 cast_possible_truncation = "allow"
 wildcard_imports = "allow"
+
+[workspace.dev-dependencies]
+goldentests = "1.1.0"

@@ -5,7 +5,7 @@ use core::fmt;
 use std::{cmp, fs, io, path::Path};
 
 use camino::{Utf8Path, Utf8PathBuf};
-use data_structures::{
+use compiler_data_structures::{
     index_vec::{IndexVec, IndexVecExt},
     new_key_type,
     once::Once,

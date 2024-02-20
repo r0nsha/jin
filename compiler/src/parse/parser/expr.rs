@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use data_structures::index_vec::Key as _;
+use compiler_data_structures::index_vec::Key as _;
 use ustr::ustr;
 
 use crate::{

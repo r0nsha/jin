@@ -3,7 +3,7 @@ mod pretty_print;
 use std::{fmt, io};
 
 use camino::Utf8PathBuf;
-use data_structures::{
+use compiler_data_structures::{
     index_vec::{IndexVec, Key as _},
     new_key_type,
 };

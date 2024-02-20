@@ -1,4 +1,4 @@
-use data_structures::index_vec::Key;
+use compiler_data_structures::index_vec::Key;
 use indexmap::IndexSet;
 use ustr::{ustr, Ustr};
 

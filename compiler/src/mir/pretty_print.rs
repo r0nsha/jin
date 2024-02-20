@@ -1,6 +1,6 @@
 use std::io;
 
-use data_structures::index_vec::Key;
+use compiler_data_structures::index_vec::Key;
 use pretty::RcDoc as D;
 use ustr::ustr;
 

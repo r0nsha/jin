@@ -1,4 +1,4 @@
-use data_structures::index_vec::{IndexVecExt as _, Key as _};
+use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
 use itertools::{Itertools as _, Position};
 use ustr::UstrMap;
 
