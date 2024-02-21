@@ -1,9 +1,0 @@
-fn extern "c" printf(fmt: ptr[u8], ..) -> i32
-
-fn main() = {
-	if Option.some(1).map_or(false) fn(x) { x == 1 } {
-		call(fn { println("hello") })
-	}
-}
-
-fn call(f: fn()) = f()
