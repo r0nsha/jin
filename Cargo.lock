@@ -292,11 +292,9 @@ dependencies = [
  "camino",
  "clap",
  "codespan-reporting",
- "color-eyre",
  "compiler_data_structures",
  "derive_more",
  "ena",
- "enum-as-inner",
  "execute",
  "fs_extra",
  "graph-cycles",
@@ -393,18 +391,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c533630cf40e9caa44bd91aadc88a75d75a4c3a12b4cfde353cbed41daa1e1f1"
 dependencies = [
  "log",
-]
-
-[[package]]
-name = "enum-as-inner"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ffccbb6966c05b32ef8fbac435df276c4ae4d3dc55a8cd0eb9745e6c12f546a"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
- "syn 2.0.50",
 ]
 
 [[package]]
