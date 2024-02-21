@@ -768,15 +768,6 @@ pub enum InferTy {
     Float(FloatVar),
 }
 
-pub trait Typed {
-    fn ty(&self) -> Ty;
-    fn ty_mut(&mut self) -> &mut Ty;
-
-    fn set_ty(&mut self, ty: Ty) {
-        *self.ty_mut() = ty;
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct Instantiation(FxHashMap<TyVar, Ty>);
 

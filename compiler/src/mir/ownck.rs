@@ -187,7 +187,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
         self.check_if_moved(value, moved_to)?;
 
         let scope = self.scope_mut();
-        scope.created_values.remove(&value);
+        scope.created_values.shift_remove(&value);
         scope.moved_out.insert(value);
 
         self.walk_fields(value, |this, field| this.move_out_aux(field, moved_to))

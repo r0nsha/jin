@@ -17,11 +17,12 @@ pub(super) fn check(
 ) -> DiagnosticResult<Ty> {
     match ty {
         TyExpr::Fn(fn_ty) => {
-            let params = fn_ty
-                .params
-                .iter()
-                .map(|ty| check(cx, env, ty, allow_hole).map(|ty| FnTyParam { name: None, ty }))
-                .try_collect()?;
+            let mut params = vec![];
+            for tyexpr in &fn_ty.params {
+                let ty =
+                    check(cx, env, tyexpr, allow_hole).map(|ty| FnTyParam { name: None, ty })?;
+                params.push(ty);
+            }
 
             let ret = fn_ty
                 .ret
@@ -168,9 +169,15 @@ pub(super) fn check_optional_targs(
     targs: Option<&[TyExpr]>,
     allow_hole: AllowTyHole,
 ) -> DiagnosticResult<Option<Vec<Ty>>> {
-    targs
-        .map(|targs| targs.iter().map(|arg| check(cx, env, arg, allow_hole)).try_collect())
-        .transpose()
+    if let Some(targs) = targs {
+        let mut new_targs = vec![];
+        for arg in targs {
+            new_targs.push(check(cx, env, arg, allow_hole)?);
+        }
+        Ok(Some(new_targs))
+    } else {
+        Ok(None)
+    }
 }
 
 create_bool_enum!(AllowTyHole);
