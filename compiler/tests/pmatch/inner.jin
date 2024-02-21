@@ -1,3 +1,0 @@
-pub type Inner(field: int)
-
-pub fn get(field: int) -> Inner = Inner(field)

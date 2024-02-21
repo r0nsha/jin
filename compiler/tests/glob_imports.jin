@@ -1,3 +1,0 @@
-use .a.(*)
-
-fn main() = hello()
