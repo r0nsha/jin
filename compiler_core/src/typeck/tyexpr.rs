@@ -1,7 +1,8 @@
+use compiler_helpers::create_bool_enum;
+
 use crate::{
     db::DefKind,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
-    macros::create_bool_enum,
     middle::TyExpr,
     span::{Span, Spanned},
     ty::{FnTy, FnTyFlags, FnTyParam, Ty, TyKind},

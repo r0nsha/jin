@@ -2,19 +2,13 @@ use compiler_data_structures::index_vec::Key;
 use indexmap::IndexSet;
 use ustr::{ustr, Ustr};
 
-use crate::{
+use compiler_core::{
     db::{AdtField, AdtKind, Builtin, Db, DefId, DefKind, StructKind, UnionKind, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult},
     hir,
     hir::{FnKind, Hir},
     mangle,
     middle::{BinOp, CmpOp, Mutability, NamePat, Pat},
-    mir::{
-        builder::InstBuilder,
-        ownck::{CannotMove, ValueState, ValueStates},
-        pmatch, AdtId, Block, BlockId, Body, Const, Fn, FnParam, FnSig, FnSigId, FxHashMap, Global,
-        GlobalId, GlobalKind, Inst, Mir, RtCallKind, Span, StaticGlobal, UnOp, ValueId, ValueKind,
-    },
     span::Spanned,
     sym,
     ty::{
@@ -22,6 +16,13 @@ use crate::{
         fold::TyFolder,
         Instantiation, Ty, TyKind,
     },
+};
+
+use crate::{
+    builder::InstBuilder,
+    ownck::{CannotMove, ValueState, ValueStates},
+    pmatch, AdtId, Block, BlockId, Body, Const, Fn, FnParam, FnSig, FnSigId, FxHashMap, Global,
+    GlobalId, GlobalKind, Inst, Mir, RtCallKind, Span, StaticGlobal, UnOp, ValueId, ValueKind,
 };
 
 #[allow(clippy::similar_names)]

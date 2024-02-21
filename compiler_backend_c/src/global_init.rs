@@ -1,4 +1,4 @@
-use compiler_core::mir::{Global, GlobalId, GlobalKind, StaticGlobal, ValueKind};
+use compiler_mir::{Global, GlobalId, GlobalKind, StaticGlobal, ValueKind};
 
 use crate::generate::Generator;
 

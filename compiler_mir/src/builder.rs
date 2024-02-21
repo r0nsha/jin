@@ -1,8 +1,6 @@
-use crate::{
-    middle::BinOp,
-    mir::{BlockId, Body, Inst, RtCallKind, ValueId},
-    span::Span,
-};
+use compiler_core::{middle::BinOp, span::Span};
+
+use crate::{BlockId, Body, Inst, RtCallKind, ValueId};
 
 pub struct InstBuilder<'a> {
     body: &'a mut Body,

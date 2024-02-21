@@ -1,15 +1,13 @@
 use std::io;
 
+use compiler_core::db::Db;
 use compiler_data_structures::index_vec::Key;
 use pretty::RcDoc as D;
 use ustr::ustr;
 
 use crate::{
-    db::Db,
-    mir::{
-        Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, Pat, RtCallKind,
-        StaticGlobal, ValueId, ValueKind,
-    },
+    Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, Pat, RtCallKind, StaticGlobal,
+    ValueId, ValueKind,
 };
 
 pub(super) fn print(db: &Db, mir: &Mir, w: &mut impl io::Write) -> io::Result<()> {

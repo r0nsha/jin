@@ -1,9 +1,10 @@
 use std::ops::ControlFlow;
 
+use compiler_helpers::create_bool_enum;
+
 use crate::{
     ast::{Attr, AttrArgs, AttrId, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig, Item, Let},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
-    macros::create_bool_enum,
     middle::{CallConv, TyExpr, Vis},
     parse::{
         errors,

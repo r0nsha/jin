@@ -50,11 +50,6 @@ impl Span {
     }
 
     #[allow(unused)]
-    pub fn len(&self) -> u32 {
-        self.end - self.start
-    }
-
-    #[allow(unused)]
     pub fn contains(&self, other: Self) -> bool {
         self.start <= other.start && self.end >= other.end
     }

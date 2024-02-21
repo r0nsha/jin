@@ -1,17 +1,18 @@
 use std::{fmt, mem};
 
+use compiler_helpers::create_bool_enum;
 use itertools::Itertools as _;
 use ustr::ustr;
 
-use crate::{
+use compiler_core::{
     db::{AdtKind, DefId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
-    macros::create_bool_enum,
-    mir::{
-        lower::{AssignKind, LowerBody, ScopeKind},
-        BlockId, FxHashMap, FxHashSet, Inst, Span, ValueId, ValueKind,
-    },
     ty::{Ty, TyKind},
+};
+
+use crate::{
+    lower::{AssignKind, LowerBody, ScopeKind},
+    BlockId, FxHashMap, FxHashSet, Inst, Span, ValueId, ValueKind,
 };
 
 impl<'cx, 'db> LowerBody<'cx, 'db> {

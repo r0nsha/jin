@@ -1,19 +1,20 @@
 [package]
-name = "compiler_backend_c"
+name = "compiler_mir"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+indexmap = "2.1.0"
 compiler_core = { path = "../compiler_core" }
 compiler_helpers = { path = "../compiler_helpers" }
 compiler_data_structures = { path = "../compiler_data_structures" }
-compiler_mir = { path = "../compiler_mir" }
 codespan-reporting = { workspace = true }
 ustr = { workspace = true }
 rustc-hash = { workspace = true }
 execute = { workspace = true }
 camino = { workspace = true }
 pretty = { workspace = true }
+itertools = { workspace = true }
 
 [lints]
 workspace = true

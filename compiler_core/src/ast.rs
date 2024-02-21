@@ -22,6 +22,12 @@ pub struct Ast {
     pub modules: IndexVec<ModuleId, Module>,
 }
 
+impl Default for Ast {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Ast {
     pub fn new() -> Self {
         Self { modules: IndexVec::new() }

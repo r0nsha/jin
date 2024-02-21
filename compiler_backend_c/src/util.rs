@@ -4,11 +4,11 @@ use std::iter;
 use codespan_reporting::files::Files;
 use compiler_core::{
     db::VariantId,
-    mir::{Block, ValueId, ValueKind},
     span::Span,
     sym,
     ty::{Ty, TyKind},
 };
+use compiler_mir::{Block, ValueId, ValueKind};
 use pretty::RcDoc as D;
 
 use crate::{

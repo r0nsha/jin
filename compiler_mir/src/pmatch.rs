@@ -3,14 +3,15 @@ use indexmap::IndexSet;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
-use crate::{
+use compiler_core::{
     db::{AdtId, AdtKind, Db, DefId, VariantId},
     diagnostics::{Diagnostic, Label, Severity},
     hir,
-    mir::{lower::LowerBody, BlockId, Const, ValueId, ValueKind},
     span::{Span, Spanned},
     ty::{fold::TyFolder as _, Ty, TyKind},
 };
+
+use crate::{lower::LowerBody, BlockId, Const, ValueId, ValueKind};
 
 pub fn compile(
     cx: &mut LowerBody<'_, '_>,

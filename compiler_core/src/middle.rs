@@ -1,10 +1,10 @@
 use core::fmt;
 
+use compiler_helpers::create_bool_enum;
 use ustr::Ustr;
 
 use crate::{
     db::DefId,
-    macros::create_bool_enum,
     parse::token::TokenKind,
     span::{Span, Spanned},
     ty::Ty,

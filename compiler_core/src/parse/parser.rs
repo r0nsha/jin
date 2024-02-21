@@ -8,6 +8,7 @@ mod tyexpr;
 use std::{ops::ControlFlow, str::FromStr};
 
 use camino::{Utf8Path, Utf8PathBuf};
+use compiler_helpers::create_bool_enum;
 use rustc_hash::FxHashSet;
 use ustr::Ustr;
 
@@ -15,7 +16,6 @@ use crate::{
     ast::{Module, TyParam},
     db::Db,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
-    macros::create_bool_enum,
     middle::{Mutability, Vis},
     parse::{
         errors,

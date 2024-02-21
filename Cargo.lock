@@ -279,6 +279,7 @@ dependencies = [
  "compiler_core",
  "compiler_data_structures",
  "compiler_helpers",
+ "compiler_mir",
  "execute",
  "pretty",
  "rustc-hash",
@@ -296,6 +297,7 @@ dependencies = [
  "color-eyre",
  "compiler_backend_c",
  "compiler_core",
+ "compiler_mir",
  "execute",
 ]
 
@@ -312,6 +314,7 @@ dependencies = [
  "compiler_helpers",
  "derive_more",
  "ena",
+ "execute",
  "fs_extra",
  "graph-cycles",
  "indexmap",
@@ -344,6 +347,23 @@ name = "compiler_helpers"
 version = "0.1.0"
 dependencies = [
  "camino",
+]
+
+[[package]]
+name = "compiler_mir"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "codespan-reporting",
+ "compiler_core",
+ "compiler_data_structures",
+ "compiler_helpers",
+ "execute",
+ "indexmap",
+ "itertools",
+ "pretty",
+ "rustc-hash",
+ "ustr",
 ]
 
 [[package]]

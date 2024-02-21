@@ -15,9 +15,9 @@ use rustc_hash::{FxHashMap, FxHashSet};
 
 use compiler_core::{
     db::{build_options::EmitOption, Db, ExternLib},
-    mir::Mir,
     target::{Arch, Os},
 };
+use compiler_mir::Mir;
 
 use crate::generate::Generator;
 
@@ -194,4 +194,3 @@ impl Libraries {
         this
     }
 }
-

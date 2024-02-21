@@ -1,9 +1,9 @@
 use compiler_core::{
     middle::{BinOp, CmpOp},
-    mir::ValueId,
     span::Span,
     ty::{IntTy, Ty, TyKind, UintTy},
 };
+use compiler_mir::ValueId;
 use pretty::RcDoc as D;
 
 use crate::{

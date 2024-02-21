@@ -10,13 +10,13 @@ use compiler_core::{
     db::{AdtField, AdtId, AdtKind, Db, StructDef, StructKind, UnionDef, UnionKind, VariantId},
     mangle,
     middle::{CallConv, Pat, UnOp},
-    mir::{
-        Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, RtCallKind, StaticGlobal,
-        ValueId, ValueKind,
-    },
     target::TargetMetrics,
     ty::{fold::TyFolder, Instantiation, Ty, TyKind},
     word::Word,
+};
+use compiler_mir::{
+    Block, Body, Const, Fn, FnSig, Global, GlobalKind, Inst, Mir, RtCallKind, StaticGlobal,
+    ValueId, ValueKind,
 };
 
 use crate::{

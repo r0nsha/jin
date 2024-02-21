@@ -19,13 +19,14 @@ pub use monomorphize::monomorphize;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
-use crate::{
+use compiler_core::{
     db::{AdtId, Db, DefId, VariantId},
     middle::{BinOp, Pat, UnOp},
-    mir::builder::InstBuilder,
     span::Span,
     ty::{Instantiation, Ty},
 };
+
+use crate::builder::InstBuilder;
 
 new_key_type! {
     pub struct FnSigId;
@@ -40,6 +41,12 @@ pub struct Mir {
     pub fns: FxHashMap<FnSigId, Fn>,
     pub globals: IdMap<GlobalId, Global>,
     pub main_fn: Option<FnSigId>,
+}
+
+impl Default for Mir {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Mir {
@@ -133,6 +140,12 @@ impl BlockId {
     #[inline]
     pub fn start() -> Self {
         Self::from(0)
+    }
+}
+
+impl Default for Body {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

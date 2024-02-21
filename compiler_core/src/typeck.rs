@@ -129,6 +129,12 @@ impl TyStorage {
     }
 }
 
+impl Default for TyStorage {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 pub struct TyStorageSnapshot {
     ty: Snapshot<InPlace<TyVar>>,
     int: Snapshot<InPlace<IntVar>>,

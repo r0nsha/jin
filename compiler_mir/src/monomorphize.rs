@@ -4,19 +4,20 @@ use compiler_data_structures::index_vec::Key;
 use rustc_hash::FxHashSet;
 use ustr::{ustr, Ustr};
 
-use crate::{
+use compiler_core::{
     db::{AdtField, AdtKind, Db, DefId, StructDef, UnionDef},
     mangle,
     middle::{BinOp, CallConv, CmpOp, Mutability, NamePat, Pat},
-    mir::{
-        BlockId, Body, Const, Fn, FnParam, FnSig, FnSigId, FxHashMap, GlobalId, GlobalKind, IdMap,
-        Inst, Mir, StaticGlobal, ValueId, ValueKind,
-    },
     span::{Span, Spanned as _},
     subst::{Subst, SubstTy},
     sym,
     ty::{fold::TyFolder, FnTy, FnTyFlags, FnTyParam, Instantiation, Ty, TyKind},
     word::Word,
+};
+
+use crate::{
+    BlockId, Body, Const, Fn, FnParam, FnSig, FnSigId, FxHashMap, GlobalId, GlobalKind, IdMap,
+    Inst, Mir, StaticGlobal, ValueId, ValueKind,
 };
 
 pub fn monomorphize(db: &Db, mir: &mut Mir) {

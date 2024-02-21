@@ -25,6 +25,12 @@ pub struct Hir {
     pub main_fn: Once<FnId>,
 }
 
+impl Default for Hir {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Hir {
     pub fn new() -> Self {
         Self {

@@ -1,9 +1,10 @@
-use crate::{
-    mir::{Block, Body, Fn, FnSig, Global, GlobalKind, Inst, Mir, StaticGlobal, Value},
+use compiler_core::{
     span::{Span, Spanned},
     subst,
     subst::{Subst, SubstTy},
 };
+
+use crate::{Block, Body, Fn, FnSig, Global, GlobalKind, Inst, Mir, StaticGlobal, Value};
 
 impl<S: SubstTy> Subst<S> for Mir {
     fn subst(&mut self, s: &mut S) {

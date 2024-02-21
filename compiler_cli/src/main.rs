@@ -8,12 +8,11 @@ use compiler_core::{
         build_options::{BuildOptions, EmitOption},
         Db,
     },
-    mir,
-    mir::Mir,
     parse,
     target::TargetPlatform,
     typeck,
 };
+use compiler_mir::Mir;
 use execute::Execute;
 
 #[derive(Parser)]
@@ -103,12 +102,12 @@ fn build_to_mir(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Option<Mir>
         return Ok(None);
     }
 
-    let mut mir = db.time("Hir -> Mir", |db| mir::lower(db, &hir));
+    let mut mir = db.time("Hir -> Mir", |db| compiler_mir::lower(db, &hir));
     if db.diagnostics.any_errors() {
         return Ok(Some(mir));
     }
 
-    db.time("Mir Monomorphization", |db| mir::monomorphize(db, &mut mir));
+    db.time("Mir Monomorphization", |db| compiler_mir::monomorphize(db, &mut mir));
     db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))?;
 
     Ok(Some(mir))
