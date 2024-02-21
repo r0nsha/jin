@@ -1,7 +1,6 @@
-use crate::{
-    cgen::generate::Generator,
-    mir::{Global, GlobalId, GlobalKind, StaticGlobal, ValueKind},
-};
+use compiler_core::mir::{Global, GlobalId, GlobalKind, StaticGlobal, ValueKind};
+
+use crate::generate::Generator;
 
 impl<'db> Generator<'db> {
     pub fn get_global_init_order(&self) -> Vec<GlobalId> {

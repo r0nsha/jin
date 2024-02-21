@@ -3,9 +3,7 @@ use std::{fs, process::Command};
 use anyhow::anyhow;
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, Subcommand};
-use execute::Execute;
 use compiler_core::{
-    cgen,
     db::{
         build_options::{BuildOptions, EmitOption},
         Db,
@@ -16,6 +14,7 @@ use compiler_core::{
     target::TargetPlatform,
     typeck,
 };
+use execute::Execute;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -80,7 +79,7 @@ fn run_cli() -> anyhow::Result<()> {
 }
 
 fn build(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Option<Utf8PathBuf>> {
-    Ok(build_to_mir(db, root_file)?.map(|mir| cgen::codegen(db, &mir)))
+    Ok(build_to_mir(db, root_file)?.map(|mir| compiler_backend_c::codegen(db, &mir)))
 }
 
 fn check(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<()> {

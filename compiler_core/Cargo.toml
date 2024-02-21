@@ -6,17 +6,14 @@ build = "build.rs"
 
 [dependencies]
 clap = { version = "4.3.19", features = ["derive"] }
-codespan-reporting = "0.11.1"
 derive_more = "0.99.17"
 ena = "0.14.2"
 owo-colors = "3.5.0"
 path-absolutize = "3.1.0"
 ptree = "0.4.0"
-ustr = "1.0.0"
 libc = "0.2"
 internment = "0.7.4"
 lazy_static = "1.4.0"
-rustc-hash = "1.1.0"
 typed-index-collections = "3.1.0"
 pretty = "0.12.3"
 itertools = "0.12.0"
@@ -25,6 +22,10 @@ bitflags = "2.4.2"
 petgraph = "0.6.4"
 graph-cycles = "0.1.0"
 compiler_data_structures = { path = "../compiler_data_structures" }
+compiler_helpers = { path = "../compiler_helpers" }
+codespan-reporting = { workspace = true }
+ustr = { workspace = true }
+rustc-hash = { workspace = true }
 execute = { workspace = true }
 anyhow = { workspace = true }
 camino = { workspace = true }

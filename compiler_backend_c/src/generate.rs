@@ -6,16 +6,7 @@ use pretty::RcDoc as D;
 use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr};
 
-use crate::{
-    cgen::{
-        builtin::BinOpData,
-        name_gen::LocalNames,
-        ty::CTy,
-        util::{
-            self, assign, attr, block, block_, bool_value, goto_stmt, stmt, str_value, unit_value,
-            NEST,
-        },
-    },
+use compiler_core::{
     db::{AdtField, AdtId, AdtKind, Db, StructDef, StructKind, UnionDef, UnionKind, VariantId},
     mangle,
     middle::{CallConv, Pat, UnOp},
@@ -26,6 +17,15 @@ use crate::{
     target::TargetMetrics,
     ty::{fold::TyFolder, Instantiation, Ty, TyKind},
     word::Word,
+};
+
+use crate::{
+    builtin::BinOpData,
+    name_gen::LocalNames,
+    ty::CTy,
+    util::{
+        self, assign, attr, block, block_, bool_value, goto_stmt, stmt, str_value, unit_value, NEST,
+    },
 };
 
 pub const DATA_FIELD: &str = "data";

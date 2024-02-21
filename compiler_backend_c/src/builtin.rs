@@ -1,16 +1,16 @@
-use pretty::RcDoc as D;
-
-use crate::{
-    cgen::{
-        generate::{GenState, Generator},
-        ty::CTy,
-        util,
-        util::cmp_strs,
-    },
+use compiler_core::{
     middle::{BinOp, CmpOp},
     mir::ValueId,
     span::Span,
     ty::{IntTy, Ty, TyKind, UintTy},
+};
+use pretty::RcDoc as D;
+
+use crate::{
+    generate::{GenState, Generator},
+    ty::CTy,
+    util,
+    util::cmp_strs,
 };
 
 #[derive(Debug)]

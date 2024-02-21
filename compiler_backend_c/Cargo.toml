@@ -1,0 +1,18 @@
+[package]
+name = "compiler_backend_c"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+compiler_core = { path = "../compiler_core" }
+compiler_helpers = { path = "../compiler_helpers" }
+compiler_data_structures = { path = "../compiler_data_structures" }
+codespan-reporting = { workspace = true }
+ustr = { workspace = true }
+rustc-hash = { workspace = true }
+execute = { workspace = true }
+camino = { workspace = true }
+pretty = { workspace = true }
+
+[lints]
+workspace = true

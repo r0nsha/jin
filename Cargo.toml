@@ -1,11 +1,21 @@
 [workspace]
-members = ["compiler_cli", "compiler_core", "compiler_data_structures"]
+members = [
+	"compiler_backend_c",
+	"compiler_cli",
+	"compiler_core",
+	"compiler_data_structures",
+	"compiler_helpers",
+]
 resolver = "2"
 
 [workspace.dependencies]
+codespan-reporting = "0.11.1"
+ustr = "1.0.0"
 execute = "0.2.12"
 camino = "1.1.6"
 anyhow = "1.0.75"
+rustc-hash = "1.1.0"
+pretty = "0.12.3"
 
 [workspace.lints.clippy]
 correctness = "warn"

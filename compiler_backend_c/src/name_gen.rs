@@ -1,7 +1,7 @@
 use rustc_hash::FxHashMap;
 use ustr::{ustr, Ustr, UstrMap};
 
-use crate::{counter::Counter, db::DefId};
+use compiler_core::{counter::Counter, db::DefId};
 
 #[derive(Debug, Clone)]
 pub struct LocalNames {

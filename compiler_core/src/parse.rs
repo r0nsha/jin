@@ -18,7 +18,7 @@ pub fn parse(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Ast> {
     let mut ast = Ast::new();
 
     // Std
-    let root_std_file = crate::util::current_exe_dir().join("std/std.jin");
+    let root_std_file = compiler_helpers::current_exe_dir().join("std/std.jin");
     let (std_package, _) = db.create_package(ustr("std"), &root_std_file)?;
     db.std_package_name.set(std_package);
     parse_package(db, &mut ast, std_package);

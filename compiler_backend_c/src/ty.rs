@@ -1,12 +1,12 @@
 use core::fmt;
 
-use pretty::RcDoc as D;
-
-use crate::{
-    cgen::{generate::Generator, util},
+use compiler_core::{
     middle::CallConv,
     ty::{FloatTy, FnTy, IntTy, Ty, TyKind, UintTy},
 };
+use pretty::RcDoc as D;
+
+use crate::{generate::Generator, util};
 
 pub trait CTy<'db>
 where

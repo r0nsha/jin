@@ -2,19 +2,19 @@ use core::fmt;
 use std::iter;
 
 use codespan_reporting::files::Files;
-use pretty::RcDoc as D;
-
-use crate::{
-    cgen::{
-        generate::{variant_name, GenState, Generator, DATA_FIELD, START_FIELD},
-        ty::CTy,
-        util,
-    },
+use compiler_core::{
     db::VariantId,
     mir::{Block, ValueId, ValueKind},
     span::Span,
     sym,
     ty::{Ty, TyKind},
+};
+use pretty::RcDoc as D;
+
+use crate::{
+    generate::{variant_name, GenState, Generator, DATA_FIELD, START_FIELD},
+    ty::CTy,
+    util,
 };
 
 impl<'db> Generator<'db> {

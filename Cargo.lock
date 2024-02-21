@@ -271,6 +271,21 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
+name = "compiler_backend_c"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "codespan-reporting",
+ "compiler_core",
+ "compiler_data_structures",
+ "compiler_helpers",
+ "execute",
+ "pretty",
+ "rustc-hash",
+ "ustr",
+]
+
+[[package]]
 name = "compiler_cli"
 version = "0.1.0"
 dependencies = [
@@ -279,6 +294,7 @@ dependencies = [
  "clap",
  "codespan-reporting",
  "color-eyre",
+ "compiler_backend_c",
  "compiler_core",
  "execute",
 ]
@@ -293,6 +309,7 @@ dependencies = [
  "clap",
  "codespan-reporting",
  "compiler_data_structures",
+ "compiler_helpers",
  "derive_more",
  "ena",
  "execute",
@@ -321,6 +338,13 @@ version = "0.1.0"
 dependencies = [
  "rustc-hash",
  "typed-index-collections",
+]
+
+[[package]]
+name = "compiler_helpers"
+version = "0.1.0"
+dependencies = [
+ "camino",
 ]
 
 [[package]]

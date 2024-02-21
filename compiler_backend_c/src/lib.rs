@@ -13,12 +13,13 @@ use camino::{Utf8Path, Utf8PathBuf};
 use execute::Execute;
 use rustc_hash::{FxHashMap, FxHashSet};
 
-use crate::{
-    cgen::generate::Generator,
+use compiler_core::{
     db::{build_options::EmitOption, Db, ExternLib},
     mir::Mir,
     target::{Arch, Os},
 };
+
+use crate::generate::Generator;
 
 pub fn codegen(db: &mut Db, mir: &Mir) -> Utf8PathBuf {
     let c_file_path = db.time("Code generation", |db| {
@@ -172,7 +173,7 @@ impl Libraries {
         this.libs.insert("m".to_string());
 
         // Add runtime library
-        let rt_path = crate::util::current_exe_dir().join("rt");
+        let rt_path = compiler_helpers::current_exe_dir().join("rt");
         this.paths.insert(rt_path.to_string());
         this.includes.insert(rt_path.to_string());
         this.libs.insert("jinrt".to_string());
@@ -193,3 +194,4 @@ impl Libraries {
         this
     }
 }
+

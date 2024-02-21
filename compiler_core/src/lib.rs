@@ -1,5 +1,4 @@
 pub mod ast;
-pub mod cgen;
 pub mod counter;
 pub mod db;
 pub mod diagnostics;
@@ -16,5 +15,4 @@ pub mod sym;
 pub mod target;
 pub mod ty;
 pub mod typeck;
-pub mod util;
 pub mod word;
