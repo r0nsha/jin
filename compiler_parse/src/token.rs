@@ -3,9 +3,8 @@ use std::{
     mem,
 };
 
+use compiler_core::{span::Span, word::Word};
 use ustr::{ustr, Ustr};
-
-use crate::{span::Span, word::Word};
 
 #[derive(Debug, Clone, Copy)]
 pub struct Token {

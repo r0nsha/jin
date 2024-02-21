@@ -12,17 +12,18 @@ use compiler_helpers::create_bool_enum;
 use rustc_hash::FxHashSet;
 use ustr::Ustr;
 
-use crate::{
+use compiler_core::{
     ast::{Module, TyParam},
     db::Db,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{Mutability, Vis},
-    parse::{
-        errors,
-        token::{Kw, Token, TokenKind},
-    },
     qpath::QPath,
     span::{Source, SourceId, Span},
+};
+
+use crate::{
+    errors,
+    token::{Kw, Token, TokenKind},
 };
 
 const SEMI: TokenKind = TokenKind::Semi(false);

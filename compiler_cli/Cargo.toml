@@ -15,6 +15,7 @@ execute = { workspace = true }
 camino = { workspace = true }
 anyhow = { workspace = true }
 compiler_core = { path = "../compiler_core" }
+compiler_parse = { path = "../compiler_parse" }
 compiler_mir = { path = "../compiler_mir" }
 compiler_backend_c = { path = "../compiler_backend_c" }
 

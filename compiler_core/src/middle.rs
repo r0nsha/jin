@@ -5,7 +5,6 @@ use ustr::Ustr;
 
 use crate::{
     db::DefId,
-    parse::token::TokenKind,
     span::{Span, Spanned},
     ty::Ty,
     word::Word,
@@ -129,24 +128,6 @@ impl BinOp {
             Self::Or => 1,
         }
     }
-
-    pub fn from_assign_op(tk: TokenKind) -> Option<Self> {
-        let op = match tk {
-            TokenKind::StarEq => Self::Mul,
-            TokenKind::FwSlashEq => Self::Div,
-            TokenKind::PercentEq => Self::Rem,
-            TokenKind::PlusEq => Self::Add,
-            TokenKind::MinusEq => Self::Sub,
-            TokenKind::LtLtEq => Self::Shl,
-            TokenKind::GtGtEq => Self::Shr,
-            TokenKind::AmpEq => Self::BitAnd,
-            TokenKind::CaretEq => Self::BitXor,
-            TokenKind::PipeEq => Self::BitOr,
-            _ => return None,
-        };
-
-        Some(op)
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -162,36 +143,6 @@ pub enum CmpOp {
 impl fmt::Display for BinOp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(self.as_str())
-    }
-}
-
-impl TryFrom<TokenKind> for BinOp {
-    type Error = ();
-
-    fn try_from(value: TokenKind) -> Result<Self, Self::Error> {
-        let op = match value {
-            TokenKind::EqEq => Self::Cmp(CmpOp::Eq),
-            TokenKind::BangEq => Self::Cmp(CmpOp::Ne),
-            TokenKind::Star => Self::Mul,
-            TokenKind::FwSlash => Self::Div,
-            TokenKind::Percent => Self::Rem,
-            TokenKind::Plus => Self::Add,
-            TokenKind::Minus => Self::Sub,
-            TokenKind::Lt => Self::Cmp(CmpOp::Lt),
-            TokenKind::LtLt => Self::Shl,
-            TokenKind::LtEq => Self::Cmp(CmpOp::Le),
-            TokenKind::Gt => Self::Cmp(CmpOp::Gt),
-            TokenKind::GtGt => Self::Shr,
-            TokenKind::GtEq => Self::Cmp(CmpOp::Ge),
-            TokenKind::Amp => Self::BitAnd,
-            TokenKind::AmpAmp => Self::And,
-            TokenKind::Caret => Self::BitXor,
-            TokenKind::Pipe => Self::BitOr,
-            TokenKind::PipePipe => Self::Or,
-            _ => return Err(()),
-        };
-
-        Ok(op)
     }
 }
 

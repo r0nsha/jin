@@ -1,6 +1,6 @@
 use std::ops::ControlFlow;
 
-use crate::{
+use compiler_core::{
     ast::{
         Attrs, StructTyDef, StructTyField, TyDef, TyDefKind, UnionTyDef, UnionVariant,
         UnionVariantField,
@@ -8,10 +8,11 @@ use crate::{
     db::{StructKind, UnionKind},
     diagnostics::DiagnosticResult,
     middle::Vis,
-    parse::{
-        parser::Parser,
-        token::{Kw, TokenKind},
-    },
+};
+
+use crate::{
+    parser::Parser,
+    token::{Kw, TokenKind},
 };
 
 impl<'a> Parser<'a> {

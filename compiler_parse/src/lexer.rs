@@ -1,10 +1,11 @@
 use ustr::ustr;
 
-use crate::{
+use compiler_core::{
     diagnostics::{Diagnostic, DiagnosticResult, Label},
-    parse::token::{Kw, Token, TokenKind},
     span::{Source, SourceId, Span},
 };
+
+use crate::token::{Kw, Token, TokenKind};
 
 pub fn tokenize(source: &Source) -> DiagnosticResult<Vec<Token>> {
     Lexer::new(source).scan()

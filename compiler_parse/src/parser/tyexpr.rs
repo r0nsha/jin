@@ -1,15 +1,16 @@
 use std::ops::ControlFlow;
 
-use crate::{
+use compiler_core::{
     diagnostics::DiagnosticResult,
     middle::{CallConv, TyExpr, TyExprFn},
-    parse::{
-        errors,
-        parser::Parser,
-        token::{Kw, TokenKind},
-    },
     span::Spanned,
     word::Word,
+};
+
+use crate::{
+    errors,
+    parser::Parser,
+    token::{Kw, TokenKind},
 };
 
 impl<'a> Parser<'a> {

@@ -298,6 +298,7 @@ dependencies = [
  "compiler_backend_c",
  "compiler_core",
  "compiler_mir",
+ "compiler_parse",
  "execute",
 ]
 
@@ -360,6 +361,35 @@ dependencies = [
  "itertools",
  "pretty",
  "rustc-hash",
+ "ustr",
+]
+
+[[package]]
+name = "compiler_parse"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bitflags 2.4.2",
+ "camino",
+ "clap",
+ "codespan-reporting",
+ "compiler_core",
+ "compiler_data_structures",
+ "compiler_helpers",
+ "derive_more",
+ "ena",
+ "graph-cycles",
+ "indexmap",
+ "internment",
+ "itertools",
+ "lazy_static 1.4.0",
+ "libc",
+ "owo-colors",
+ "path-absolutize",
+ "petgraph",
+ "ptree",
+ "rustc-hash",
+ "typed-index-collections",
  "ustr",
 ]
 

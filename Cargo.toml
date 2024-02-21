@@ -4,7 +4,7 @@ members = [
 	"compiler_cli",
 	"compiler_core",
 	"compiler_data_structures",
-	"compiler_helpers", "compiler_mir",
+	"compiler_helpers", "compiler_mir", "compiler_parse",
 ]
 resolver = "2"
 

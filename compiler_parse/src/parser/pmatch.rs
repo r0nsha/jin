@@ -2,16 +2,17 @@ use std::ops::ControlFlow;
 
 use ustr::ustr;
 
-use crate::{
+use compiler_core::{
     ast::{Expr, MatchArm, MatchPat, MatchPatAdt, MatchSubpat},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::Mutability,
-    parse::{
-        parser::Parser,
-        token::{Kw, TokenKind},
-    },
     span::Spanned,
     word::Word,
+};
+
+use crate::{
+    parser::Parser,
+    token::{Kw, TokenKind},
 };
 
 impl<'a> Parser<'a> {

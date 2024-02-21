@@ -5,7 +5,6 @@ pub mod diagnostics;
 pub mod hir;
 pub mod mangle;
 pub mod middle;
-pub mod parse;
 pub mod qpath;
 pub mod span;
 pub mod subst;

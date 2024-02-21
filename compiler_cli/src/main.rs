@@ -8,7 +8,6 @@ use compiler_core::{
         build_options::{BuildOptions, EmitOption},
         Db,
     },
-    parse,
     target::TargetPlatform,
     typeck,
 };
@@ -87,7 +86,7 @@ fn check(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<()> {
 
 fn build_to_mir(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Option<Mir>> {
     // File -> Ast
-    let ast = db.time("Parse", |db| parse::parse(db, root_file))?;
+    let ast = db.time("Parse", |db| compiler_parse::parse(db, root_file))?;
     fs::create_dir_all(db.output_dir())?;
     db.emit_file(EmitOption::Ast, |_, file| ast.pretty_print(file))?;
 

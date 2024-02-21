@@ -1,20 +1,21 @@
 use std::ops::ControlFlow;
 
-use compiler_data_structures::index_vec::Key as _;
-use ustr::ustr;
-
-use crate::{
+use compiler_core::{
     ast::{Attrs, CallArg, Expr},
     db::DefId,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{BinOp, NamePat, Pat, UnOp, Vis},
-    parse::{
-        errors,
-        parser::{item::RequireTy, AllowOmitParens, Parser, RequireSigTy},
-        token::{Kw, TokenKind},
-    },
     span::{Span, Spanned},
     ty::TyKind,
+};
+use compiler_data_structures::index_vec::Key as _;
+use ustr::ustr;
+
+use crate::bin_op_from_assign_op;
+use crate::{
+    errors,
+    parser::{item::RequireTy, AllowOmitParens, Parser, RequireSigTy},
+    token::{Kw, TokenKind},
 };
 
 impl<'a> Parser<'a> {
@@ -263,7 +264,7 @@ impl<'a> Parser<'a> {
                     }
                 }
                 _ => {
-                    if let Some(op) = BinOp::from_assign_op(tok.kind) {
+                    if let Some(op) = bin_op_from_assign_op(tok.kind) {
                         // OpAssign (x += 1)
                         self.next();
 

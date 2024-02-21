@@ -1,8 +1,9 @@
-use crate::{
+use compiler_core::{
     diagnostics::{Diagnostic, Label},
-    parse::token::TokenKind,
     span::Span,
 };
+
+use crate::token::TokenKind;
 
 pub fn path_not_found(path: &str, span: Span) -> Diagnostic {
     Diagnostic::error(format!("path `{path}` not found"))
