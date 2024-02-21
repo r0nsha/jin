@@ -21,11 +21,12 @@ mod typeck;
 mod util;
 mod word;
 
-use std::fs;
+use std::{fs, process::Command};
 
 use anyhow::anyhow;
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, Subcommand};
+use execute::Execute;
 
 use crate::{
     db::{
@@ -56,6 +57,7 @@ struct Cli {
 #[derive(Subcommand)]
 enum Commands {
     Build { file: Utf8PathBuf },
+    Run { file: Utf8PathBuf },
     Check { file: Utf8PathBuf },
 }
 
@@ -78,8 +80,17 @@ fn run_cli() -> anyhow::Result<()> {
     let mut db = Db::new(build_options);
 
     match cli.cmd {
-        Commands::Build { file } => build(&mut db, &file)?,
-        Commands::Check { file } => check(&mut db, &file)?,
+        Commands::Build { file } => {
+            build(&mut db, &file)?;
+        }
+        Commands::Run { file } => {
+            if let Some(exe) = build(&mut db, &file)? {
+                let _ = Command::new(exe).execute_output();
+            }
+        }
+        Commands::Check { file } => {
+            check(&mut db, &file)?;
+        }
     }
 
     db.print_timings();
@@ -88,12 +99,8 @@ fn run_cli() -> anyhow::Result<()> {
     Ok(())
 }
 
-fn build(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<()> {
-    if let Some(mir) = build_to_mir(db, root_file)? {
-        cgen::codegen(db, &mir);
-    }
-
-    Ok(())
+fn build(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Option<Utf8PathBuf>> {
+    Ok(build_to_mir(db, root_file)?.map(|mir| cgen::codegen(db, &mir)))
 }
 
 fn check(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<()> {

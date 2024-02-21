@@ -49,7 +49,7 @@ impl<'a> Parser<'a> {
             } else if self.peek_is(TokenKind::OpenParen) {
                 self.parse_import_path_group()
             } else {
-                Err(self.unexpected_token("an identifier or {"))
+                Err(self.unexpected_token("an identifier or ("))
             }?;
 
             Ok(ImportTree::Path(name, Box::new(next)))
