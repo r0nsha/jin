@@ -1,5 +1,5 @@
 [workspace]
-members = ["compiler", "compiler_data_structures"]
+members = ["compiler_core", "compiler_data_structures"]
 resolver = "2"
 
 [workspace.lints.clippy]
