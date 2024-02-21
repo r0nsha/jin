@@ -11,5 +11,5 @@ pub fn println() = {
 
 pub fn println(fmt: str) = {
 	print(fmt)
-	print("\n")
+	println()
 }

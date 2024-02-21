@@ -34,7 +34,7 @@ fn copy_std(pwd: &Path, target: &Path) -> fs_extra::error::Result<()> {
         },
     )?;
 
-    println!("cargo:rerun-if-changed={}", std.display());
+    println!("cargo:rerun-if-changed={}/**/*", std.display());
     Ok(())
 }
 
@@ -46,13 +46,18 @@ fn build_rt(pwd: &Path) -> io::Result<()> {
 
 fn copy_rt(pwd: &Path, target: &Path) -> io::Result<()> {
     let rt = pwd.join("rt");
-    let target = target.join("rt");
 
+    let target = target.join("rt");
     let _ = fs::create_dir(&target);
 
-    fs::copy(rt.join("jinrt.h"), target.join("jinrt.h"))?;
-    fs::copy(rt.join("zig-out/lib/libjinrt.a"), target.join("libjinrt.a"))?;
+    let header = rt.join("jinrt.h");
+    let lib = rt.join("zig-out/lib/libjinrt.a");
 
-    println!("cargo:rerun-if-changed={}", rt.display());
+    fs::copy(&header, target.join("jinrt.h"))?;
+    fs::copy(&lib, target.join("libjinrt.a"))?;
+
+    println!("cargo:rerun-if-changed={}", header.display());
+    println!("cargo:rerun-if-changed={}", lib.display());
+
     Ok(())
 }
