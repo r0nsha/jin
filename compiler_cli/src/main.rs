@@ -1,38 +1,20 @@
-mod ast;
-mod cgen;
-mod counter;
-mod db;
-mod diagnostics;
-mod hir;
-mod macros;
-mod mangle;
-mod middle;
-mod mir;
-mod parse;
-mod qpath;
-mod span;
-mod subst;
-mod sym;
-mod target;
-mod ty;
-mod typeck;
-mod util;
-mod word;
-
 use std::{fs, process::Command};
 
 use anyhow::anyhow;
 use camino::{Utf8Path, Utf8PathBuf};
 use clap::{Parser, Subcommand};
 use execute::Execute;
-
-use crate::{
+use compiler_core::{
+    cgen,
     db::{
         build_options::{BuildOptions, EmitOption},
         Db,
     },
+    mir,
     mir::Mir,
+    parse,
     target::TargetPlatform,
+    typeck,
 };
 
 #[derive(Parser)]
@@ -131,13 +113,4 @@ fn build_to_mir(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Option<Mir>
     db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))?;
 
     Ok(Some(mir))
-}
-
-impl TryFrom<Cli> for BuildOptions {
-    type Error = anyhow::Error;
-
-    fn try_from(cli: Cli) -> Result<Self, Self::Error> {
-        let tp = TargetPlatform::current().map_err(|os| anyhow!("{os} is not supported"))?;
-        Ok(BuildOptions::new(cli.timings, cli.emit, cli.output_dir, tp))
-    }
 }

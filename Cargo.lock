@@ -271,6 +271,53 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
+name = "compiler_cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "camino",
+ "clap",
+ "codespan-reporting",
+ "color-eyre",
+ "compiler_core",
+ "execute",
+]
+
+[[package]]
+name = "compiler_core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bitflags 2.4.2",
+ "camino",
+ "clap",
+ "codespan-reporting",
+ "color-eyre",
+ "compiler_data_structures",
+ "derive_more",
+ "ena",
+ "enum-as-inner",
+ "execute",
+ "fs_extra",
+ "graph-cycles",
+ "indexmap",
+ "internment",
+ "itertools",
+ "lazy_static 1.4.0",
+ "libc",
+ "owo-colors",
+ "path-absolutize",
+ "petgraph",
+ "pretty",
+ "ptree",
+ "rustc-hash",
+ "typed-index-collections",
+ "ustr",
+ "widestring",
+ "winapi",
+]
+
+[[package]]
 name = "compiler_data_structures"
 version = "0.1.0"
 dependencies = [
@@ -532,40 +579,6 @@ name = "itoa"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1a46d1a171d865aa5f83f92695765caa047a9b4cbae2cbf37dbd613a793fd4c"
-
-[[package]]
-name = "jin"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bitflags 2.4.2",
- "camino",
- "clap",
- "codespan-reporting",
- "color-eyre",
- "compiler_data_structures",
- "derive_more",
- "ena",
- "enum-as-inner",
- "execute",
- "fs_extra",
- "graph-cycles",
- "indexmap",
- "internment",
- "itertools",
- "lazy_static 1.4.0",
- "libc",
- "owo-colors",
- "path-absolutize",
- "petgraph",
- "pretty",
- "ptree",
- "rustc-hash",
- "typed-index-collections",
- "ustr",
- "widestring",
- "winapi",
-]
 
 [[package]]
 name = "lazy_static"

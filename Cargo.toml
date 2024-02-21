@@ -1,6 +1,11 @@
 [workspace]
-members = ["compiler_core", "compiler_data_structures"]
+members = ["compiler_cli", "compiler_core", "compiler_data_structures"]
 resolver = "2"
+
+[workspace.dependencies]
+execute = "0.2.12"
+camino = "1.1.6"
+anyhow = "1.0.75"
 
 [workspace.lints.clippy]
 correctness = "warn"

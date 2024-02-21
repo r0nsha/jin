@@ -1,12 +1,8 @@
 [package]
-name = "jin"
+name = "compiler_core"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"
-
-[[bin]]
-name = "jin"
-path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.3.19", features = ["derive"] }
@@ -20,20 +16,20 @@ path-absolutize = "3.1.0"
 ptree = "0.4.0"
 ustr = "1.0.0"
 libc = "0.2"
-execute = "0.2.12"
-anyhow = "1.0.75"
 internment = "0.7.4"
 lazy_static = "1.4.0"
 rustc-hash = "1.1.0"
-camino = "1.1.6"
 typed-index-collections = "3.1.0"
 pretty = "0.12.3"
 itertools = "0.12.0"
 indexmap = "2.1.0"
 bitflags = "2.4.2"
-compiler_data_structures = { path = "../compiler_data_structures" }
 petgraph = "0.6.4"
 graph-cycles = "0.1.0"
+compiler_data_structures = { path = "../compiler_data_structures" }
+execute = { workspace = true }
+anyhow = { workspace = true }
+camino = { workspace = true }
 
 [target.'cfg(windows)'.dependencies]
 libc = "0.2.132"
