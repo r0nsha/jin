@@ -16,6 +16,7 @@ camino = "1.1.6"
 anyhow = "1.0.75"
 rustc-hash = "1.1.0"
 pretty = "0.12.3"
+typed-index-collections = "3.1.0"
 
 [workspace.lints.clippy]
 correctness = "warn"

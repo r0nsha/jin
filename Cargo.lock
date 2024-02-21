@@ -312,7 +312,6 @@ dependencies = [
  "compiler_helpers",
  "derive_more",
  "ena",
- "execute",
  "fs_extra",
  "graph-cycles",
  "indexmap",
