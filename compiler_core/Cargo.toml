@@ -6,7 +6,6 @@ build = "build.rs"
 
 [dependencies]
 clap = { version = "4.3.19", features = ["derive"] }
-derive_more = "0.99.17"
 ena = "0.14.2"
 owo-colors = "3.5.0"
 path-absolutize = "3.1.0"

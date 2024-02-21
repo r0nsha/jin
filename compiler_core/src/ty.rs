@@ -6,7 +6,6 @@ pub mod size;
 use std::ops::{self, Deref};
 
 use bitflags::bitflags;
-use derive_more::{From, Into};
 use internment::Intern;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
@@ -539,14 +538,50 @@ impl TyKind {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct TyVar(u32);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]
+impl From<u32> for TyVar {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<TyVar> for u32 {
+    fn from(value: TyVar) -> Self {
+        value.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct IntVar(u32);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, From, Into)]
+impl From<u32> for IntVar {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<IntVar> for u32 {
+    fn from(value: IntVar) -> Self {
+        value.0
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FloatVar(u32);
+
+impl From<u32> for FloatVar {
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<FloatVar> for u32 {
+    fn from(value: FloatVar) -> Self {
+        value.0
+    }
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum IntVarValue {
