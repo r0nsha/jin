@@ -12,7 +12,7 @@ use crate::{
     db::{AdtId, Db, DefId, ModuleId, VariantId},
     middle::{BinOp, Pat, TyParam, UnOp},
     span::{Span, Spanned},
-    ty::{coerce::Coercions, Instantiation, Ty, Typed},
+    ty::{coerce::Coercions, Instantiation, Ty},
     word::Word,
 };
 
@@ -244,16 +244,6 @@ pub struct CallArg {
     pub name: Option<Word>,
     pub expr: Expr,
     pub index: Option<usize>,
-}
-
-impl Typed for CallArg {
-    fn ty(&self) -> Ty {
-        self.expr.ty
-    }
-
-    fn ty_mut(&mut self) -> &mut Ty {
-        &mut self.expr.ty
-    }
 }
 
 #[derive(Debug, Clone)]

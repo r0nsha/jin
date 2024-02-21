@@ -28,7 +28,7 @@ impl CoerceExt<'_> for EqResult {
             Err(err) => {
                 let (source, target) = (cx.normalize(err.found), cx.normalize(err.expected));
 
-                if let Some(coercions) = source.coerce_ex(&target, cx, options) {
+                if let Some(coercions) = source.coerce(&target, cx, options) {
                     cx.hir.push_coercions(expr_id, coercions);
                     Ok(())
                 } else {
@@ -40,29 +40,15 @@ impl CoerceExt<'_> for EqResult {
 }
 
 pub trait Coerce<'a> {
-    fn coerce_ex(
-        &self,
-        target: &Self,
-        cx: &Typeck<'a>,
-        options: CoerceOptions,
-    ) -> Option<Coercions>;
-
-    fn coerce(&self, target: &Self, cx: &Typeck<'a>) -> Option<Coercions> {
-        self.coerce_ex(target, cx, CoerceOptions::default())
-    }
+    fn coerce(&self, target: &Self, cx: &Typeck<'a>, options: CoerceOptions) -> Option<Coercions>;
 
     fn can_coerce(&self, target: &Self, cx: &Typeck<'a>, options: CoerceOptions) -> bool {
-        self.coerce_ex(target, cx, options).is_some()
+        self.coerce(target, cx, options).is_some()
     }
 }
 
 impl<'a> Coerce<'a> for Ty {
-    fn coerce_ex(
-        &self,
-        target: &Self,
-        cx: &Typeck<'a>,
-        options: CoerceOptions,
-    ) -> Option<Coercions> {
+    fn coerce(&self, target: &Self, cx: &Typeck<'a>, options: CoerceOptions) -> Option<Coercions> {
         let mut coercions = Coercions::new();
 
         if coerce_tys(*self, *target, cx, &mut coercions, options) {

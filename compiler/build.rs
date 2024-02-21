@@ -1,17 +1,16 @@
-use std::{
-    env, fs, io,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::{env, fs, io, path::Path, process::Command};
 
 use fs_extra::dir;
 
 fn main() {
     let debug = env::var("DEBUG").map(|d| d == "true").unwrap_or_default();
+    let pwd = env::current_dir().unwrap();
 
-    let pwd = PathBuf::from(env::var("PWD").unwrap());
     let target = if debug { pwd.join("target/debug") } else { pwd.join("target/release") };
-    assert!(target.exists());
+
+    if !target.exists() {
+        return;
+    }
 
     copy_std(&pwd, &target).expect("copying std failed");
     build_rt(&pwd).expect("building rt failed");

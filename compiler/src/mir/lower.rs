@@ -934,7 +934,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                 let root = self.value_roots.root_of(args[0]);
 
                 for scope in &mut self.scopes {
-                    scope.created_values.remove(&root);
+                    scope.created_values.shift_remove(&root);
                 }
 
                 self.const_unit()
