@@ -7,7 +7,7 @@ fn main() = {
 	}
 }
 
-fn try_add(a: int, b: int) -> Result[int, str] = {
+fn try_add(a: int, b: int) -> Result[int, &str] = {
 	if a == b {
 		Result.ok(a + b)
 	} else {

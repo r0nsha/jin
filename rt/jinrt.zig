@@ -3,7 +3,6 @@ const Allocator = std.mem.Allocator;
 const testing = std.testing;
 
 const cstr = [*:0]const u8;
-const Str = extern struct { data: cstr, len: usize };
 const Refcnt = u32;
 
 const Rc = extern struct {
@@ -90,7 +89,13 @@ const RcSlice = extern struct {
             return self;
         }
     }
+
+    fn as_slice(self: Self) ?[]u8 {
+        return if (self.array) |a| a.data[0..self.len] else null;
+    }
 };
+
+const Str = RcSlice;
 
 const Backtrace = struct {
     frames: std.ArrayList(StackFrame),
@@ -260,7 +265,13 @@ export fn jinrt_slice_cap(slice: *RcSlice) usize {
 }
 
 export fn jinrt_strcmp(a: Str, b: Str) bool {
-    return std.mem.eql(u8, str_slice(a), str_slice(b));
+    if (a.as_slice()) |as| {
+        if (b.as_slice()) |bs| {
+            return std.mem.eql(u8, as, bs);
+        }
+    }
+
+    return false;
 }
 
 export fn jinrt_backtrace_new() *Backtrace {
@@ -280,10 +291,6 @@ export fn jinrt_backtrace_pop(backtrace: *Backtrace) void {
     _ = backtrace.pop() orelse {
         std.debug.panic("jinrt_backtrace_pop: backtrace is empty", .{});
     };
-}
-
-inline fn str_slice(s: Str) []const u8 {
-    return s.data[0..s.len];
 }
 
 inline fn alloc_raw(comptime T: type, size: usize) *T {

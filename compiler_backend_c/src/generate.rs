@@ -11,7 +11,7 @@ use compiler_core::{
     mangle,
     middle::{CallConv, Pat, UnOp},
     target::TargetMetrics,
-    ty::{fold::TyFolder, Instantiation, Ty, TyKind},
+    ty::{fold::TyFolder, Instantiation, Ty},
     word::Word,
 };
 use compiler_mir::{
@@ -64,7 +64,7 @@ impl<'db> GenState<'db> {
     }
 
     pub fn value_is_slice(&self, value: ValueId) -> bool {
-        matches!(self.ty_of(value).auto_deref().kind(), TyKind::Slice(..))
+        self.ty_of(value).auto_deref().is_slice_like()
     }
 }
 

@@ -85,6 +85,10 @@ pub fn ty_mismatch(expected: &str, found: &str, span: Span) -> Diagnostic {
     generic_expected_found(&format!("type `{expected}`"), &format!("type `{found}`"), span)
 }
 
+pub fn expected_slice_like(db: &Db, found: Ty, span: Span) -> Diagnostic {
+    ty_mismatch("`[_]` or `str`", &found.to_string(db), span)
+}
+
 pub fn expected_module(found: impl core::fmt::Display, span: Span) -> Diagnostic {
     Diagnostic::error(format!("expected a module, {found}"))
         .with_label(Label::primary(span, "not a module"))

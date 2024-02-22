@@ -207,6 +207,7 @@ impl Ty {
     pub fn slice_elem(self) -> Option<Ty> {
         match self.kind() {
             TyKind::Slice(elem) => Some(*elem),
+            TyKind::Str => Some(Ty::new(TyKind::Uint(UintTy::U8))),
             _ => None,
         }
     }
@@ -458,7 +459,7 @@ impl TyKind {
                     },
                 }
             }
-            Self::Slice(_) => true,
+            Self::Slice(_) | Self::Str => true,
             _ => false,
         }
     }
@@ -489,7 +490,7 @@ impl TyKind {
                     },
                 }
             }
-            Self::Slice(_) | Self::Param(_) => true,
+            Self::Slice(_) | Self::Str | Self::Param(_) => true,
             _ => false,
         }
     }
@@ -535,6 +536,10 @@ impl TyKind {
             return None;
         };
         db[*adt_id].kind.as_union()
+    }
+
+    pub fn is_slice_like(&self) -> bool {
+        matches!(self, TyKind::Slice(..) | TyKind::Str)
     }
 }
 

@@ -6,3 +6,4 @@ pub use .option
 pub use .prelude
 pub use .result
 pub use .slice
+pub use .str

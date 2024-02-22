@@ -76,7 +76,7 @@ fn build_to_mir(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Option<Mir>
 
     let mut mir = db.time("Hir -> Mir", |db| compiler_mir::lower(db, &hir));
     if db.diagnostics.any_errors() {
-        return Ok(Some(mir));
+        return Ok(None);
     }
 
     db.time("Mir Monomorphization", |db| compiler_mir::monomorphize(db, &mut mir));

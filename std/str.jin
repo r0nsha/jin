@@ -1,0 +1,2 @@
+pub fn str.from_utf8_unchecked(bytes: &[u8]) -> &str =
+	unsafe transmute[_](bytes)
