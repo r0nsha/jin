@@ -9,7 +9,7 @@ jobs:
     name: Check
     runs-on: ubuntu-latest
     steps:
-      # - uses: rui314/setup-mold@v1
+      - uses: rui314/setup-mold@v1
       - uses: goto-bus-stop/setup-zig@v2
         with:
           version: 0.12.0-dev.2254+195eeed2d
@@ -43,7 +43,7 @@ jobs:
     name: Clippy
     runs-on: ubuntu-latest
     steps:
-      # - uses: rui314/setup-mold@v1
+      - uses: rui314/setup-mold@v1
       - uses: goto-bus-stop/setup-zig@v2
         with:
           version: 0.12.0-dev.2254+195eeed2d
