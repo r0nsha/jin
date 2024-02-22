@@ -2,7 +2,6 @@
 name = "compiler_core"
 version = "0.1.0"
 edition = "2021"
-build = "build.rs"
 
 [dependencies]
 owo-colors = "3.5.0"
@@ -18,9 +17,6 @@ anyhow = { workspace = true }
 camino = { workspace = true }
 path-absolutize = { workspace = true }
 ena = { workspace = true }
-
-[build-dependencies]
-fs_extra = "1.2.0"
 
 [lints]
 workspace = true

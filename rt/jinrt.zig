@@ -256,6 +256,10 @@ export fn jinrt_slice_grow(
     return slice.grow(elem_size, new_cap);
 }
 
+// export fn jinrt_slice_cap(slice: RcSlice) usize {
+//     return if (slice.array) |a| a.cap else 0;
+// }
+
 export fn jinrt_strcmp(a: Str, b: Str) bool {
     return std.mem.eql(u8, str_slice(a), str_slice(b));
 }
