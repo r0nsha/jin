@@ -1,4 +1,21 @@
+fn extern "c" printf(fmt: ptr[u8], ..) -> i32
+
 fn main() = {
-	let s = "Hello World"
+	let mut s = "Hello World"
 	println(s)
+	
+	# Indexing
+	s.print_at(1)
+	s.print_at(10)
+	# s.[1] = 42 # Error: &str is immutable
+
+	# Slicing
+	println(&s.[..])
+	println(&s.[1..])
+	println(&s.[..4])
+	println(&s.[3..10])
+}
+
+fn print_at(s: &str, at: uint) = {
+	unsafe printf("s.[%d] = %c\n".data, at, s.[at])
 }
