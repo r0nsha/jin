@@ -629,12 +629,12 @@ fn check_field(
 ) -> DiagnosticResult<hir::Expr> {
     let ty = cx.normalize(expr.ty).auto_deref();
 
-    let res_ty = match ty.kind() {
-        TyKind::Module(module_id) => {
+    let res_ty = match (ty.kind(), field.as_str()) {
+        (TyKind::Module(module_id), _) => {
             let id = cx.lookup().query(env.module_id(), *module_id, &Query::Name(field))?;
             return check_name(cx, env, id, field, span, None);
         }
-        TyKind::Adt(adt_id, targs) => {
+        (TyKind::Adt(adt_id, targs), _) => {
             let adt = &cx.db[*adt_id];
 
             match &adt.kind {
@@ -649,7 +649,7 @@ fn check_field(
                 AdtKind::Union(_) => None,
             }
         }
-        TyKind::Type(ty) => {
+        (TyKind::Type(ty), _) => {
             // This is a union variant
             let (expr, can_implicitly_call) =
                 check_query_in_ty(cx, env, *ty, span, &Query::Name(field), None, expr.span)?;
@@ -660,13 +660,11 @@ fn check_field(
                 Ok(expr)
             };
         }
-        TyKind::Slice(..) if field.name() == sym::field::CAP => Some(cx.db.types.uint),
-        TyKind::Slice(..) | TyKind::Str if field.name() == sym::field::LEN => {
-            Some(cx.db.types.uint)
-        }
-        TyKind::Slice(elem_ty) if field.name() == sym::field::DATA => Some(elem_ty.raw_ptr()),
-        TyKind::Str if field.name() == sym::field::DATA => Some(cx.db.types.u8.raw_ptr()),
-        TyKind::RawPtr(pointee) if field.name() == "0" => {
+        (TyKind::Slice(..) | TyKind::Str, sym::field::CAP) => Some(cx.db.types.uint),
+        (TyKind::Slice(..) | TyKind::Str, sym::field::LEN) => Some(cx.db.types.uint),
+        (TyKind::Slice(elem_ty), sym::field::DATA) => Some(elem_ty.raw_ptr()),
+        (TyKind::Str, sym::field::DATA) => Some(cx.db.types.u8.raw_ptr()),
+        (TyKind::RawPtr(pointee), "0") => {
             return Ok(cx.expr(
                 hir::ExprKind::Deref(hir::Deref { expr: Box::new(expr) }),
                 *pointee,
