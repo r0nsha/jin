@@ -256,7 +256,7 @@ export fn jinrt_slice_grow(
 }
 
 export fn jinrt_slice_cap(slice: *RcSlice) usize {
-    return if (slice.array) |a| a.cap else 0;
+    return if (slice.array) |a| a.cap else slice.len;
 }
 
 export fn jinrt_strcmp(a: Str, b: Str) bool {

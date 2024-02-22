@@ -40,7 +40,6 @@ fn copy_std(pwd: &Path, target: &Path) -> fs_extra::error::Result<()> {
 
 fn build_rt(pwd: &Path) -> io::Result<()> {
     let rt = pwd.join("rt");
-    println!("cargo:warning={}", rt.display());
     let output = Command::new("zig").current_dir(rt).arg("build").output()?;
 
     if !output.status.success() {
