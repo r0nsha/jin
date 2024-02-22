@@ -218,7 +218,7 @@ dependencies = [
  "heck",
  "proc-macro2",
  "quote",
- "syn 2.0.50",
+ "syn",
 ]
 
 [[package]]
@@ -271,11 +271,140 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
+name = "compiler_ast"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "compiler_core",
+ "compiler_data_structures",
+ "compiler_helpers",
+ "path-absolutize",
+ "ptree",
+ "rustc-hash",
+ "ustr",
+]
+
+[[package]]
+name = "compiler_backend_c"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "codespan-reporting",
+ "compiler_core",
+ "compiler_data_structures",
+ "compiler_helpers",
+ "compiler_mir",
+ "execute",
+ "libc",
+ "pretty",
+ "rustc-hash",
+ "ustr",
+ "widestring",
+ "winapi",
+]
+
+[[package]]
+name = "compiler_cli"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "camino",
+ "clap",
+ "codespan-reporting",
+ "color-eyre",
+ "compiler_backend_c",
+ "compiler_core",
+ "compiler_mir",
+ "compiler_parse",
+ "compiler_typeck",
+ "execute",
+]
+
+[[package]]
+name = "compiler_core"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "bitflags 2.4.2",
+ "camino",
+ "codespan-reporting",
+ "compiler_data_structures",
+ "compiler_helpers",
+ "ena",
+ "fs_extra",
+ "internment",
+ "owo-colors",
+ "path-absolutize",
+ "ptree",
+ "rustc-hash",
+ "ustr",
+]
+
+[[package]]
 name = "compiler_data_structures"
 version = "0.1.0"
 dependencies = [
  "rustc-hash",
  "typed-index-collections",
+]
+
+[[package]]
+name = "compiler_helpers"
+version = "0.1.0"
+dependencies = [
+ "camino",
+]
+
+[[package]]
+name = "compiler_mir"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "codespan-reporting",
+ "compiler_core",
+ "compiler_data_structures",
+ "compiler_helpers",
+ "indexmap",
+ "itertools",
+ "pretty",
+ "rustc-hash",
+ "ustr",
+]
+
+[[package]]
+name = "compiler_parse"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "camino",
+ "codespan-reporting",
+ "compiler_ast",
+ "compiler_core",
+ "compiler_data_structures",
+ "compiler_helpers",
+ "path-absolutize",
+ "rustc-hash",
+ "ustr",
+]
+
+[[package]]
+name = "compiler_typeck"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "codespan-reporting",
+ "compiler_ast",
+ "compiler_core",
+ "compiler_data_structures",
+ "compiler_helpers",
+ "ena",
+ "graph-cycles",
+ "itertools",
+ "owo-colors",
+ "petgraph",
+ "ptree",
+ "rustc-hash",
+ "ustr",
 ]
 
 [[package]]
@@ -292,25 +421,6 @@ dependencies = [
  "serde_json",
  "toml",
  "yaml-rust",
-]
-
-[[package]]
-name = "convert_case"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6245d59a3e82a7fc217c5828a6692dbc6dfb63a0c8c90495621f7b9d79704a0e"
-
-[[package]]
-name = "derive_more"
-version = "0.99.17"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fb810d30a7c1953f91334de7244731fc3f3c10d7fe163338a35b9f640960321"
-dependencies = [
- "convert_case",
- "proc-macro2",
- "quote",
- "rustc_version",
- "syn 1.0.109",
 ]
 
 [[package]]
@@ -349,18 +459,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "enum-as-inner"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5ffccbb6966c05b32ef8fbac435df276c4ae4d3dc55a8cd0eb9745e6c12f546a"
-dependencies = [
- "heck",
- "proc-macro2",
- "quote",
- "syn 2.0.50",
-]
-
-[[package]]
 name = "equivalent"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -394,7 +492,7 @@ checksum = "ce8cd46a041ad005ab9c71263f9a0ff5b529eac0fe4cc9b4a20f4f0765d8cf4b"
 dependencies = [
  "execute-command-tokens",
  "quote",
- "syn 2.0.50",
+ "syn",
 ]
 
 [[package]]
@@ -532,40 +630,6 @@ name = "itoa"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b1a46d1a171d865aa5f83f92695765caa047a9b4cbae2cbf37dbd613a793fd4c"
-
-[[package]]
-name = "jin"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "bitflags 2.4.2",
- "camino",
- "clap",
- "codespan-reporting",
- "color-eyre",
- "compiler_data_structures",
- "derive_more",
- "ena",
- "enum-as-inner",
- "execute",
- "fs_extra",
- "graph-cycles",
- "indexmap",
- "internment",
- "itertools",
- "lazy_static 1.4.0",
- "libc",
- "owo-colors",
- "path-absolutize",
- "petgraph",
- "pretty",
- "ptree",
- "rustc-hash",
- "typed-index-collections",
- "ustr",
- "widestring",
- "winapi",
-]
 
 [[package]]
 name = "lazy_static"
@@ -875,15 +939,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08d43f7aa6b08d49f382cde6a7982047c3426db949b1424bc4b7ec9ae12c6ce2"
 
 [[package]]
-name = "rustc_version"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bfa0f585226d2e68097d4f95d113b15b83a82e819ab25717ec0590d9584ef366"
-dependencies = [
- "semver",
-]
-
-[[package]]
 name = "ryu"
 version = "1.0.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -894,12 +949,6 @@ name = "scopeguard"
 version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
-
-[[package]]
-name = "semver"
-version = "1.0.22"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92d43fe69e652f3df9bdc2b85b2854a0825b86e4fb76bc44d945137d053639ca"
 
 [[package]]
 name = "serde"
@@ -946,7 +995,7 @@ checksum = "7eb0b34b42edc17f6b7cac84a52a1c5f0e1bb2227e997ca9011ea3dd34e8610b"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.50",
+ "syn",
 ]
 
 [[package]]
@@ -989,17 +1038,6 @@ checksum = "5ee073c9e4cd00e28217186dbe12796d692868f432bf2e97ee73bed0c56dfa01"
 
 [[package]]
 name = "syn"
-version = "1.0.109"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "72b64191b275b66ffe2469e8af2c1cfe3bafa67b529ead792a6d0160888b4237"
-dependencies = [
- "proc-macro2",
- "quote",
- "unicode-ident",
-]
-
-[[package]]
-name = "syn"
 version = "2.0.50"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "74f1bdc9872430ce9b75da68329d1c1746faf50ffac5f19e02b71e37ff881ffb"
@@ -1035,7 +1073,7 @@ checksum = "a953cb265bef375dae3de6663da4d3804eee9682ea80d8e2542529b73c531c81"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.50",
+ "syn",
 ]
 
 [[package]]
@@ -1359,5 +1397,5 @@ checksum = "9ce1b18ccd8e73a9321186f97e46f9f04b778851177567b1975109d26a08d2a6"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.50",
+ "syn",
 ]

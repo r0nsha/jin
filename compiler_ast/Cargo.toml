@@ -1,0 +1,17 @@
+[package]
+name = "compiler_ast"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+ptree = "0.4.0"
+compiler_core = { path = "../compiler_core" }
+compiler_data_structures = { path = "../compiler_data_structures" }
+compiler_helpers = { path = "../compiler_helpers" }
+ustr = { workspace = true }
+rustc-hash = { workspace = true }
+camino = { workspace = true }
+path-absolutize = { workspace = true }
+
+[lints]
+workspace = true

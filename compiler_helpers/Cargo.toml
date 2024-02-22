@@ -1,0 +1,10 @@
+[package]
+name = "compiler_helpers"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+camino = { workspace = true }
+
+[lints]
+workspace = true

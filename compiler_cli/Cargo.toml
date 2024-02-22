@@ -1,0 +1,24 @@
+[package]
+name = "compiler_cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "jin"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.3.19", features = ["derive"] }
+codespan-reporting = "0.11.1"
+color-eyre = "0.6.2"
+execute = { workspace = true }
+camino = { workspace = true }
+anyhow = { workspace = true }
+compiler_core = { path = "../compiler_core" }
+compiler_parse = { path = "../compiler_parse" }
+compiler_typeck = { path = "../compiler_typeck" }
+compiler_mir = { path = "../compiler_mir" }
+compiler_backend_c = { path = "../compiler_backend_c" }
+
+[lints]
+workspace = true

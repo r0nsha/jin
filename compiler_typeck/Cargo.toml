@@ -1,0 +1,23 @@
+[package]
+name = "compiler_typeck"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+owo-colors = "3.5.0"
+ptree = "0.4.0"
+petgraph = "0.6.4"
+graph-cycles = "0.1.0"
+compiler_core = { path = "../compiler_core" }
+compiler_ast = { path = "../compiler_ast" }
+compiler_data_structures = { path = "../compiler_data_structures" }
+compiler_helpers = { path = "../compiler_helpers" }
+codespan-reporting = { workspace = true }
+ustr = { workspace = true }
+rustc-hash = { workspace = true }
+camino = { workspace = true }
+itertools = { workspace = true }
+ena = { workspace = true }
+
+[lints]
+workspace = true
