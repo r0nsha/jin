@@ -17,7 +17,7 @@ impl TyKind {
             TyKind::Fn(_) => word * 2,
             TyKind::Ref(inner, _) => inner.size(db),
             TyKind::RawPtr(_) => word,
-            TyKind::Slice(_) | TyKind::Str => word * 4,
+            TyKind::Slice(_) | TyKind::Str => word * 3,
             TyKind::Adt(adt_id, targs) => {
                 let adt = &db[*adt_id];
 
