@@ -219,17 +219,17 @@ export fn jinrt_slice_slice(
     if (low > high) {
         const msg = std.fmt.allocPrint(
             std.heap.c_allocator,
-            "low ({}) must be lower than high ({})",
+            "low bound ({}) must be lower than high bound ({})",
             .{ low, high },
         ) catch unreachable;
         jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
     }
 
-    if (high > slice.cap) {
+    if (high > slice.len) {
         const msg = std.fmt.allocPrint(
             std.heap.c_allocator,
-            "slice out of bounds: high is {} but cap is {}",
-            .{ high, slice.cap },
+            "slice out of bounds: high bound is {} but len is {}",
+            .{ high, slice.len },
         ) catch unreachable;
         jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
     }
