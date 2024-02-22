@@ -42,6 +42,7 @@ impl<'db> Generator<'db> {
                 }
                 (TyKind::Ref(_, _), _) => self.rc_field(state, value.id, field),
                 (TyKind::Slice(_), sym::field::DATA) => self.slice_addr_field(state, value.id),
+                (TyKind::Slice(_), sym::field::CAP) => self.slice_cap_field(state, value.id),
                 _ => util::field(value_doc, field, ty.is_ptr(self)),
             },
         }
@@ -75,6 +76,10 @@ impl<'db> Generator<'db> {
         let elem_ty = Self::slice_value_elem_ty(state, slice);
         let start_field = util::field(self.value(state, slice), START_FIELD, false);
         group(util::cast(elem_ty.cty(self).append(D::text("*")), start_field))
+    }
+
+    pub fn slice_cap_field(&mut self, state: &GenState<'db>, slice: ValueId) -> D<'db> {
+        call(D::text("jinrt_slice_cap"), [addr(self.value(state, slice))])
     }
 
     pub fn slice_index(&mut self, state: &GenState<'db>, slice: ValueId, index: ValueId) -> D<'db> {
