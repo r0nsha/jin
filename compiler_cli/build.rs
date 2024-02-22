@@ -41,7 +41,13 @@ fn copy_std(pwd: &Path, target: &Path) -> fs_extra::error::Result<()> {
 
 fn build_rt(pwd: &Path) -> io::Result<()> {
     let rt = pwd.join("rt");
-    Command::new("zig").current_dir(rt).arg("build").output()?;
+    let output = Command::new("zig").current_dir(rt).arg("build").output()?;
+
+    if !output.status.success() {
+        eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+        panic!("`zig build` failed");
+    }
+
     Ok(())
 }
 
