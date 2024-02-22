@@ -281,9 +281,12 @@ dependencies = [
  "compiler_helpers",
  "compiler_mir",
  "execute",
+ "libc",
  "pretty",
  "rustc-hash",
  "ustr",
+ "widestring",
+ "winapi",
 ]
 
 [[package]]
@@ -315,11 +318,8 @@ dependencies = [
  "ena",
  "fs_extra",
  "graph-cycles",
- "indexmap",
  "internment",
  "itertools",
- "lazy_static 1.4.0",
- "libc",
  "owo-colors",
  "path-absolutize",
  "petgraph",
@@ -327,8 +327,6 @@ dependencies = [
  "rustc-hash",
  "typed-index-collections",
  "ustr",
- "widestring",
- "winapi",
 ]
 
 [[package]]
@@ -367,23 +365,13 @@ name = "compiler_parse"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "bitflags 2.4.2",
  "camino",
  "codespan-reporting",
  "compiler_core",
  "compiler_data_structures",
  "compiler_helpers",
- "ena",
- "graph-cycles",
- "indexmap",
- "internment",
  "itertools",
- "lazy_static 1.4.0",
- "libc",
- "owo-colors",
  "path-absolutize",
- "petgraph",
- "ptree",
  "rustc-hash",
  "typed-index-collections",
  "ustr",

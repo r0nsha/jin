@@ -15,5 +15,14 @@ execute = { workspace = true }
 camino = { workspace = true }
 pretty = { workspace = true }
 
+[target.'cfg(windows)'.dependencies]
+libc = "0.2"
+widestring = "1.0.2"
+winapi = { version = "0.3.9", features = [
+	"winuser",
+	"impl-default",
+	"oleauto",
+] }
+
 [lints]
 workspace = true
