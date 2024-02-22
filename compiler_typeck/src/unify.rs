@@ -1,12 +1,12 @@
-use ena::unify::{EqUnifyValue, UnifyKey};
-
-use crate::{
+use compiler_core::ty::FloatTy;
+use compiler_core::{
     diagnostics::{Diagnostic, Label},
     hir,
     span::Span,
-    ty::{FloatTy, FloatVar, InferTy, IntVar, IntVarValue, Ty, TyKind, TyVar},
-    typeck::{coerce::CoerceExt as _, errors, Typeck},
+    ty::{InferTy, IntVarValue, Ty, TyKind, TyVar},
 };
+
+use crate::{coerce::CoerceExt as _, errors, Typeck};
 
 impl<'db> Typeck<'db> {
     #[inline]
@@ -77,19 +77,6 @@ impl At<'_, '_> {
 
             EqError { expected, found, diagnostic }
         })
-    }
-}
-
-impl Ty {
-    pub(super) fn unify(self, other: Ty, cx: &Typeck, options: UnifyOptions) -> UnifyResult {
-        UnifyCx { cx, options }.unify_ty_ty(self, other)
-    }
-
-    pub(super) fn can_unify(self, other: Ty, cx: &Typeck, options: UnifyOptions) -> UnifyResult {
-        let snapshot = cx.storage.borrow_mut().snapshot();
-        let result = self.unify(other, cx, options);
-        cx.storage.borrow_mut().rollback_to(snapshot);
-        result
     }
 }
 
@@ -290,60 +277,6 @@ impl UnifyCx<'_, '_> {
     }
 }
 
-impl UnifyKey for TyVar {
-    type Value = Option<Ty>;
-
-    fn index(&self) -> u32 {
-        (*self).into()
-    }
-
-    fn from_index(u: u32) -> Self {
-        Self::from(u)
-    }
-
-    fn tag() -> &'static str {
-        "TyVar"
-    }
-}
-
-impl EqUnifyValue for Ty {}
-
-impl UnifyKey for IntVar {
-    type Value = Option<IntVarValue>;
-
-    fn index(&self) -> u32 {
-        (*self).into()
-    }
-
-    fn from_index(u: u32) -> Self {
-        Self::from(u)
-    }
-
-    fn tag() -> &'static str {
-        "IntVar"
-    }
-}
-
-impl EqUnifyValue for IntVarValue {}
-
-impl UnifyKey for FloatVar {
-    type Value = Option<FloatTy>;
-
-    fn index(&self) -> u32 {
-        (*self).into()
-    }
-
-    fn from_index(u: u32) -> Self {
-        Self::from(u)
-    }
-
-    fn tag() -> &'static str {
-        "FloatVar"
-    }
-}
-
-impl EqUnifyValue for FloatTy {}
-
 pub type UnifyResult = Result<(), UnifyError>;
 
 pub enum UnifyError {
@@ -357,12 +290,41 @@ impl From<(Ty, Ty)> for UnifyError {
     }
 }
 
-impl<A, B> From<(A, B)> for UnifyError
-where
-    A: Into<TyKind>,
-    B: Into<TyKind>,
-{
-    fn from((a, b): (A, B)) -> Self {
+impl From<(IntVarValue, IntVarValue)> for UnifyError {
+    fn from((a, b): (IntVarValue, IntVarValue)) -> Self {
         Self::TyMismatch { a: Ty::new(a.into()), b: Ty::new(b.into()) }
+    }
+}
+
+impl From<(FloatTy, FloatTy)> for UnifyError {
+    fn from((a, b): (FloatTy, FloatTy)) -> Self {
+        Self::TyMismatch { a: Ty::new(a.into()), b: Ty::new(b.into()) }
+    }
+}
+
+// impl<A, B> From<(A, B)> for UnifyError
+// where
+//     A: Into<TyKind>,
+//     B: Into<TyKind>,
+// {
+//     fn from((a, b): (A, B)) -> Self {
+//         Self::TyMismatch { a: Ty::new(a.into()), b: Ty::new(b.into()) }
+//     }
+// }
+
+pub(crate) trait TyUnifyExt: Sized {
+    fn unify(self, other: Ty, cx: &Typeck, options: UnifyOptions) -> UnifyResult;
+
+    fn can_unify(self, other: Ty, cx: &Typeck, options: UnifyOptions) -> UnifyResult {
+        let snapshot = cx.storage.borrow_mut().snapshot();
+        let result = self.unify(other, cx, options);
+        cx.storage.borrow_mut().rollback_to(snapshot);
+        result
+    }
+}
+
+impl TyUnifyExt for Ty {
+    fn unify(self, other: Ty, cx: &Typeck, options: UnifyOptions) -> UnifyResult {
+        UnifyCx { cx, options }.unify_ty_ty(self, other)
     }
 }

@@ -10,5 +10,4 @@ pub mod span;
 pub mod sym;
 pub mod target;
 pub mod ty;
-pub mod typeck;
 pub mod word;

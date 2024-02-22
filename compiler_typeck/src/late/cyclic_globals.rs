@@ -1,15 +1,14 @@
-use compiler_data_structures::index_vec::Key as _;
-use graph_cycles::Cycles;
-use petgraph::{stable_graph::NodeIndex, Graph};
-use rustc_hash::FxHashMap;
-
-use crate::{
+use compiler_core::{
     db::{Db, DefId, DefKind},
     diagnostics::{Diagnostic, Label},
     hir::{visit::Visitor, Expr, Hir, Name},
     middle::Pat,
     span::Span,
 };
+use compiler_data_structures::index_vec::Key as _;
+use graph_cycles::Cycles;
+use petgraph::{stable_graph::NodeIndex, Graph};
+use rustc_hash::FxHashMap;
 
 pub fn cyclic_globals(db: &mut Db, hir: &Hir) {
     let mut cx = CyclicGlobals {

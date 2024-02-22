@@ -5,23 +5,19 @@ edition = "2021"
 build = "build.rs"
 
 [dependencies]
-ena = "0.14.2"
 owo-colors = "3.5.0"
 ptree = "0.4.0"
 internment = "0.7.4"
 bitflags = "2.4.2"
-petgraph = "0.6.4"
-graph-cycles = "0.1.0"
 compiler_data_structures = { path = "../compiler_data_structures" }
 compiler_helpers = { path = "../compiler_helpers" }
 codespan-reporting = { workspace = true }
 ustr = { workspace = true }
-typed-index-collections = { workspace = true }
 rustc-hash = { workspace = true }
 anyhow = { workspace = true }
 camino = { workspace = true }
-itertools = { workspace = true }
 path-absolutize = { workspace = true }
+ena = { workspace = true }
 
 [build-dependencies]
 fs_extra = "1.2.0"

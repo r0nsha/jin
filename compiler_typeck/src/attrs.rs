@@ -1,8 +1,9 @@
-use crate::{
+use compiler_core::{
     ast::{self},
     diagnostics::{Diagnostic, Label},
-    typeck::Typeck,
 };
+
+use crate::Typeck;
 
 pub fn validate(cx: &mut Typeck, attrs: &ast::Attrs, placement: Placement) {
     for attr in attrs.iter() {

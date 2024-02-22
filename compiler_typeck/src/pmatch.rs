@@ -1,7 +1,4 @@
-use itertools::Itertools;
-use ustr::{Ustr, UstrMap};
-
-use crate::{
+use compiler_core::{
     ast,
     db::{AdtField, AdtId, AdtKind, DefId, DefKind, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -9,21 +6,24 @@ use crate::{
     middle::Mutability,
     span::{Span, Spanned as _},
     ty::{InferTy, Instantiation, Ty, TyKind},
-    typeck::{
-        coerce::CoerceExt as _,
-        errors,
-        errors::field_not_found,
-        exprs,
-        lookup::PathLookup,
-        ns::{Env, ScopeKind},
-        types,
-        unify::Obligation,
-        Typeck,
-    },
     word::{Word, WordMap},
 };
+use itertools::Itertools;
+use ustr::{Ustr, UstrMap};
 
-pub(super) fn check(
+use crate::{
+    coerce::CoerceExt as _,
+    errors,
+    errors::field_not_found,
+    exprs,
+    lookup::PathLookup,
+    ns::{Env, ScopeKind},
+    types,
+    unify::Obligation,
+    Typeck,
+};
+
+pub(crate) fn check(
     cx: &mut Typeck<'_>,
     env: &mut Env,
     expr: &ast::Expr,

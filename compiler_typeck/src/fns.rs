@@ -1,7 +1,4 @@
-use compiler_data_structures::index_vec::Key as _;
-use ustr::ustr;
-
-use crate::{
+use compiler_core::{
     ast,
     db::DefId,
     diagnostics::DiagnosticResult,
@@ -9,20 +6,23 @@ use crate::{
     middle::{CallConv, Pat, TyExpr},
     span::{Span, Spanned},
     ty::{FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
-    typeck::{
-        coerce::CoerceExt as _,
-        errors, exprs,
-        ns::{Env, ScopeKind},
-        tyexpr,
-        tyexpr::AllowTyHole,
-        types,
-        unify::Obligation,
-        Typeck,
-    },
     word::{Word, WordMap},
 };
+use compiler_data_structures::index_vec::Key as _;
+use ustr::ustr;
 
-pub(super) fn check_sig(
+use crate::{
+    coerce::CoerceExt as _,
+    errors, exprs,
+    ns::{Env, ScopeKind},
+    tyexpr,
+    tyexpr::AllowTyHole,
+    types,
+    unify::Obligation,
+    Typeck,
+};
+
+pub(crate) fn check_sig(
     cx: &mut Typeck<'_>,
     env: &mut Env,
     sig: &ast::FnSig,
@@ -44,7 +44,7 @@ pub(super) fn check_sig(
     Ok(hir::FnSig { word: sig.word, ty_params, params, ret, ret_span, ty })
 }
 
-pub(super) fn check_expr_sig(
+pub(crate) fn check_expr_sig(
     cx: &mut Typeck<'_>,
     env: &mut Env,
     params: &[ast::FnParam],
@@ -108,7 +108,7 @@ fn check_fn_sig_params(
     Ok((new_params, fnty_params))
 }
 
-pub(super) fn check_fn_body(
+pub(crate) fn check_fn_body(
     cx: &mut Typeck<'_>,
     mut sig: hir::FnSig,
     def_id: DefId,

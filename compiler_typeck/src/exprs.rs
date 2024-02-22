@@ -1,8 +1,4 @@
-use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
-use itertools::{Itertools as _, Position};
-use ustr::UstrMap;
-
-use crate::{
+use compiler_core::{
     ast,
     db::{Adt, AdtField, AdtId, AdtKind, DefId, DefKind, FnInfo, ModuleId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
@@ -11,22 +7,26 @@ use crate::{
     span::{Span, Spanned},
     sym,
     ty::{FnTy, FnTyParam, InferTy, Instantiation, Ty, TyKind},
-    typeck::{
-        coerce::{CoerceExt as _, CoerceOptions},
-        errors, fns, items,
-        lookup::{AssocLookup, FnQuery, Query},
-        ns::{Env, ScopeKind},
-        pmatch, tyexpr,
-        tyexpr::AllowTyHole,
-        types,
-        unify::Obligation,
-        Typeck,
-    },
     word::Word,
+};
+use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
+use itertools::{Itertools as _, Position};
+use ustr::UstrMap;
+
+use crate::{
+    coerce::{CoerceExt as _, CoerceOptions},
+    errors, fns, items,
+    lookup::{AssocLookup, FnQuery, Query},
+    ns::{Env, ScopeKind},
+    pmatch, tyexpr,
+    tyexpr::AllowTyHole,
+    types,
+    unify::Obligation,
+    Typeck,
 };
 
 #[allow(clippy::too_many_lines)]
-pub(super) fn check_expr(
+pub(crate) fn check_expr(
     cx: &mut Typeck<'_>,
     env: &mut Env,
     expr: &ast::Expr,
@@ -683,7 +683,7 @@ fn check_field(
     }
 }
 
-pub(super) fn check_field_access(
+pub(crate) fn check_field_access(
     cx: &Typeck<'_>,
     env: &Env,
     adt: &Adt,

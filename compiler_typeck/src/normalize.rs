@@ -1,13 +1,12 @@
 use std::cell::RefMut;
 
-use crate::{
-    ty::{fold::TyFolder, InferTy, Ty, TyKind},
-    typeck::{TyStorage, Typeck},
-};
+use compiler_core::ty::{fold::TyFolder, InferTy, Ty, TyKind};
+
+use crate::{TyStorage, Typeck};
 
 impl Typeck<'_> {
     #[inline]
-    pub(super) fn normalize(&self, ty: Ty) -> Ty {
+    pub(crate) fn normalize(&self, ty: Ty) -> Ty {
         Normalize::from(self).fold(ty)
     }
 }

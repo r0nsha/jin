@@ -9,7 +9,6 @@ use compiler_core::{
         Db,
     },
     target::TargetPlatform,
-    typeck,
 };
 use compiler_mir::Mir;
 use execute::Execute;
@@ -69,7 +68,7 @@ fn build_to_mir(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Option<Mir>
     }
 
     // Ast -> Hir
-    let hir = db.time("Type checking", |db| typeck::typeck(db, ast));
+    let hir = db.time("Type checking", |db| compiler_typeck::typeck(db, ast));
     db.emit_file(EmitOption::Hir, |db, file| hir.pretty_print(db, file))?;
     if db.diagnostics.any_errors() {
         return Ok(None);

@@ -6,6 +6,7 @@ pub mod size;
 use std::ops::{self, Deref};
 
 use bitflags::bitflags;
+use ena::unify::{EqUnifyValue, UnifyKey};
 use internment::Intern;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
@@ -909,3 +910,57 @@ impl<S: SubstTy> Subst<S> for Pat {
         }
     }
 }
+
+impl UnifyKey for TyVar {
+    type Value = Option<Ty>;
+
+    fn index(&self) -> u32 {
+        (*self).into()
+    }
+
+    fn from_index(u: u32) -> Self {
+        Self::from(u)
+    }
+
+    fn tag() -> &'static str {
+        "TyVar"
+    }
+}
+
+impl EqUnifyValue for Ty {}
+
+impl UnifyKey for IntVar {
+    type Value = Option<IntVarValue>;
+
+    fn index(&self) -> u32 {
+        (*self).into()
+    }
+
+    fn from_index(u: u32) -> Self {
+        Self::from(u)
+    }
+
+    fn tag() -> &'static str {
+        "IntVar"
+    }
+}
+
+impl EqUnifyValue for IntVarValue {}
+
+impl UnifyKey for FloatVar {
+    type Value = Option<FloatTy>;
+
+    fn index(&self) -> u32 {
+        (*self).into()
+    }
+
+    fn from_index(u: u32) -> Self {
+        Self::from(u)
+    }
+
+    fn tag() -> &'static str {
+        "FloatVar"
+    }
+}
+
+impl EqUnifyValue for FloatTy {}

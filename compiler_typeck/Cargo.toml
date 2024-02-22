@@ -1,18 +1,24 @@
 [package]
-name = "compiler_parse"
+name = "compiler_typeck"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+owo-colors = "3.5.0"
+ptree = "0.4.0"
+internment = "0.7.4"
+bitflags = "2.4.2"
+petgraph = "0.6.4"
+graph-cycles = "0.1.0"
 compiler_core = { path = "../compiler_core" }
 compiler_data_structures = { path = "../compiler_data_structures" }
 compiler_helpers = { path = "../compiler_helpers" }
 codespan-reporting = { workspace = true }
 ustr = { workspace = true }
 rustc-hash = { workspace = true }
-anyhow = { workspace = true }
 camino = { workspace = true }
-path-absolutize = { workspace = true }
+itertools = { workspace = true }
+ena = { workspace = true }
 
 [lints]
 workspace = true

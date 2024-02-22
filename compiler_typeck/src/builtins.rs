@@ -1,7 +1,4 @@
-use rustc_hash::FxHashMap;
-use ustr::{ustr, Ustr, UstrMap};
-
-use crate::{
+use compiler_core::{
     db::{Db, Def, DefId, DefKind, ScopeInfo, ScopeLevel},
     middle::{Mutability, Vis},
     qpath::QPath,
@@ -9,6 +6,8 @@ use crate::{
     sym,
     ty::{Ty, TyKind},
 };
+use rustc_hash::FxHashMap;
+use ustr::{ustr, Ustr, UstrMap};
 
 #[derive(Debug)]
 pub struct BuiltinTys {

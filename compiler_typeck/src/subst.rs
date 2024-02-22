@@ -1,13 +1,13 @@
-use rustc_hash::FxHashMap;
-
-use crate::{
+use compiler_core::{
     diagnostics::{Diagnostic, Label},
     span::Span,
     ty::{fold::TyFolder, FloatVar, InferTy, IntVar, Subst, SubstTy, Ty, TyKind, TyVar},
-    typeck::{TyStorage, Typeck},
 };
+use rustc_hash::FxHashMap;
 
-pub(super) fn subst(cx: &mut Typeck<'_>) {
+use crate::{TyStorage, Typeck};
+
+pub(crate) fn subst(cx: &mut Typeck<'_>) {
     let mut scx =
         SubstCx { storage: &mut cx.storage.borrow_mut(), unbound_tys: FxHashMap::default() };
 
@@ -39,12 +39,6 @@ pub(super) fn subst(cx: &mut Typeck<'_>) {
         .collect();
 
     cx.db.diagnostics.extend(diagnostics);
-
-    cx.db
-        .emit_file(crate::db::build_options::EmitOption::Hir, |db, file| {
-            cx.hir.pretty_print(db, file)
-        })
-        .expect("emitting hir failed");
 }
 
 struct SubstCx<'db> {

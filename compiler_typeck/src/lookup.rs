@@ -1,32 +1,33 @@
 use std::iter;
 
-use itertools::Itertools as _;
-use rustc_hash::FxHashSet;
-use ustr::{ustr, Ustr};
-
-use crate::{
+use compiler_core::{
     db::{AdtKind, Db, DefId, ModuleId, UnionDef, Variant, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{CallConv, IsUfcs},
     span::{Span, Spanned as _},
     ty::{printer::FnTyPrinter, FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
-    typeck::{
-        coerce::{Coerce as _, CoerceOptions},
-        errors,
-        ns::{AssocTy, Env, NsDef},
-        unify::UnifyOptions,
-        Typeck,
-    },
     word::Word,
+};
+use itertools::Itertools as _;
+use rustc_hash::FxHashSet;
+use ustr::{ustr, Ustr};
+
+use crate::unify::TyUnifyExt as _;
+use crate::{
+    coerce::{Coerce as _, CoerceOptions},
+    errors,
+    ns::{AssocTy, Env, NsDef},
+    unify::UnifyOptions,
+    Typeck,
 };
 
 impl<'db> Typeck<'db> {
-    pub(super) fn lookup(&self) -> Lookup<'db, '_> {
+    pub(crate) fn lookup(&self) -> Lookup<'db, '_> {
         Lookup::new(self)
     }
 }
 
-pub(super) struct Lookup<'db, 'cx> {
+pub(crate) struct Lookup<'db, 'cx> {
     cx: &'cx Typeck<'db>,
     env: Option<&'cx Env>,
 }
@@ -36,12 +37,12 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         Self { cx, env: None }
     }
 
-    pub(super) fn with_env(mut self, env: &'cx Env) -> Self {
+    pub(crate) fn with_env(mut self, env: &'cx Env) -> Self {
         self.env = Some(env);
         self
     }
 
-    pub(super) fn query(
+    pub(crate) fn query(
         &self,
         from_module: ModuleId,
         in_module: ModuleId,
@@ -211,7 +212,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
     }
 
     /// Looks up a `query` in the associated namespace of `ty`.
-    pub(super) fn query_assoc_ns(
+    pub(crate) fn query_assoc_ns(
         &self,
         from_module: ModuleId,
         ty: Ty,
@@ -241,7 +242,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         }
     }
 
-    pub(super) fn maybe_variant_in_union(
+    pub(crate) fn maybe_variant_in_union(
         &self,
         union_def: &'db UnionDef,
         name: Word,
@@ -249,7 +250,7 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
         union_def.variants(self.cx.db).find(|v| v.name.name() == name.name())
     }
 
-    pub(super) fn variant_in_union(
+    pub(crate) fn variant_in_union(
         &self,
         union_def: &'db UnionDef,
         name: Word,
@@ -366,13 +367,13 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
 }
 
 #[derive(Debug, Clone)]
-pub(super) enum LookupResult {
+pub(crate) enum LookupResult {
     Def(NsDef),
     Fn(FnCandidate),
 }
 
 impl LookupResult {
-    pub(super) fn def_id(&self) -> DefId {
+    pub(crate) fn def_id(&self) -> DefId {
         match self {
             Self::Def(n) => n.id,
             Self::Fn(c) => c.id,
@@ -412,30 +413,30 @@ impl std::hash::Hash for LookupResult {
 }
 
 #[derive(Debug, Clone)]
-pub(super) enum PathLookup {
+pub(crate) enum PathLookup {
     Def(DefId),
     Variant(VariantId),
 }
 
 #[derive(Debug, Clone)]
-pub(super) enum AssocLookup {
+pub(crate) enum AssocLookup {
     AssocFn(DefId),
     Variant(VariantId),
 }
 
 #[derive(Debug)]
-pub(super) struct FnCandidateSet(Vec<FnCandidate>);
+pub(crate) struct FnCandidateSet(Vec<FnCandidate>);
 
 impl FnCandidateSet {
-    pub(super) fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self(vec![])
     }
 
-    pub(super) fn iter(&self) -> std::slice::Iter<'_, FnCandidate> {
+    pub(crate) fn iter(&self) -> std::slice::Iter<'_, FnCandidate> {
         self.0.iter()
     }
 
-    pub(super) fn try_insert(
+    pub(crate) fn try_insert(
         &mut self,
         candidate: FnCandidate,
     ) -> Result<(), FnCandidateInsertError> {
@@ -450,7 +451,7 @@ impl FnCandidateSet {
         Ok(())
     }
 
-    pub(super) fn find(&self, cx: &Typeck, query: &FnQuery) -> Vec<&FnCandidate> {
+    pub(crate) fn find(&self, cx: &Typeck, query: &FnQuery) -> Vec<&FnCandidate> {
         let scores = self.scores(cx, query);
         let Some(&min_score) = scores.iter().map(|(_, s)| s).min() else {
             return vec![];
@@ -478,12 +479,12 @@ impl Default for FnCandidateSet {
 }
 
 #[derive(Debug)]
-pub(super) enum FnCandidateInsertError {
+pub(crate) enum FnCandidateInsertError {
     AlreadyExists { prev: FnCandidate, curr: FnCandidate },
 }
 
 impl FnCandidateInsertError {
-    pub(super) fn into_diagnostic(self, db: &Db) -> Diagnostic {
+    pub(crate) fn into_diagnostic(self, db: &Db) -> Diagnostic {
         match self {
             FnCandidateInsertError::AlreadyExists { prev, curr } => {
                 errors::multiple_fn_def_err(db, prev.module_id(db), prev.word.span(), &curr)
@@ -493,14 +494,14 @@ impl FnCandidateInsertError {
 }
 
 #[derive(Debug, Clone)]
-pub(super) struct FnCandidate {
-    pub(super) id: DefId,
-    pub(super) word: Word,
-    pub(super) ty: FnTy,
+pub(crate) struct FnCandidate {
+    pub(crate) id: DefId,
+    pub(crate) word: Word,
+    pub(crate) ty: FnTy,
 }
 
 impl FnCandidate {
-    pub(super) fn module_id(&self, db: &Db) -> ModuleId {
+    pub(crate) fn module_id(&self, db: &Db) -> ModuleId {
         db[self.id].scope.module_id
     }
 
@@ -581,11 +582,11 @@ impl FnCandidate {
         None
     }
 
-    pub(super) fn display<'a>(&'a self, db: &'a Db) -> FnTyPrinter {
+    pub(crate) fn display<'a>(&'a self, db: &'a Db) -> FnTyPrinter {
         self.ty.display(db, Some(self.word.name()))
     }
 
-    pub(super) fn display_qualified<'a>(&'a self, db: &'a Db) -> FnTyPrinter {
+    pub(crate) fn display_qualified<'a>(&'a self, db: &'a Db) -> FnTyPrinter {
         self.ty.display(db, Some(ustr(&db[self.id].qpath.join())))
     }
 }
@@ -636,47 +637,47 @@ fn fn_candidate_tys_eq(a: Ty, b: Ty) -> bool {
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u32)]
-pub(super) enum FnCandidateScore {
+pub(crate) enum FnCandidateScore {
     Eq = 0,
     Polymorphic = 1,
     Coerce = 2,
 }
 
 #[derive(Debug, Clone)]
-pub(super) enum Query<'a> {
+pub(crate) enum Query<'a> {
     Name(Word),
     Fn(FnQuery<'a>),
 }
 
 impl<'a> Query<'a> {
     #[inline]
-    pub(super) fn word(&self) -> Word {
+    pub(crate) fn word(&self) -> Word {
         match self {
             Query::Name(word) | Query::Fn(FnQuery { word, .. }) => *word,
         }
     }
 
     #[inline]
-    pub(super) fn name(&self) -> Ustr {
+    pub(crate) fn name(&self) -> Ustr {
         self.word().name()
     }
 
     #[inline]
-    pub(super) fn span(&self) -> Span {
+    pub(crate) fn span(&self) -> Span {
         self.word().span()
     }
 }
 
 #[derive(Debug, Clone)]
-pub(super) struct FnQuery<'a> {
-    pub(super) word: Word,
-    pub(super) ty_args: Option<&'a [Ty]>,
-    pub(super) args: &'a [FnTyParam],
-    pub(super) is_ufcs: IsUfcs,
+pub(crate) struct FnQuery<'a> {
+    pub(crate) word: Word,
+    pub(crate) ty_args: Option<&'a [Ty]>,
+    pub(crate) args: &'a [FnTyParam],
+    pub(crate) is_ufcs: IsUfcs,
 }
 
 impl<'a> FnQuery<'a> {
-    pub(super) fn new(
+    pub(crate) fn new(
         word: Word,
         ty_args: Option<&'a [Ty]>,
         args: &'a [FnTyParam],
@@ -685,7 +686,7 @@ impl<'a> FnQuery<'a> {
         Self { word, ty_args, args, is_ufcs }
     }
 
-    pub(super) fn display<'db>(&'db self, db: &'db Db) -> FnTyPrinter {
+    pub(crate) fn display<'db>(&'db self, db: &'db Db) -> FnTyPrinter {
         FnTyPrinter {
             db,
             name: Some(self.word.name()),

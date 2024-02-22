@@ -1,14 +1,15 @@
 use ustr::Ustr;
 
-use crate::{
+use compiler_core::{
     db::{Adt, AdtField, AdtId, Db, ModuleId},
     diagnostics::{Diagnostic, Label},
     middle::{BinOp, UnOp},
     span::{Span, Spanned},
     ty::Ty,
-    typeck::lookup::{FnCandidate, FnQuery, Query},
     word::Word,
 };
+
+use crate::lookup::{FnCandidate, FnQuery, Query};
 
 pub fn field_not_found(db: &Db, ty: Ty, span: Span, field: Word) -> Diagnostic {
     Diagnostic::error(format!("no field `{}` in type `{}`", field, ty.display(db)))

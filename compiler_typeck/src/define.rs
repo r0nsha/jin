@@ -1,28 +1,28 @@
-use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
-
-use crate::{
+use compiler_core::{
     ast,
     db::{Adt, AdtId, AdtKind, Db, Def, DefId, DefKind, ModuleId, ScopeInfo, ScopeLevel},
     diagnostics::DiagnosticResult,
     middle::{Mutability, NamePat, Pat, Vis},
     span::Spanned as _,
     ty::Ty,
-    typeck::{
-        errors,
-        lookup::{FnCandidate, FnCandidateSet},
-        ns::{AssocTy, Env, NsDef},
-        Typeck,
-    },
     word::Word,
+};
+use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
+
+use crate::{
+    errors,
+    lookup::{FnCandidate, FnCandidateSet},
+    ns::{AssocTy, Env, NsDef},
+    Typeck,
 };
 
 impl<'db> Typeck<'db> {
-    pub(super) fn define(&mut self) -> Define<'db, '_> {
+    pub(crate) fn define(&mut self) -> Define<'db, '_> {
         Define::new(self)
     }
 }
 
-pub(super) struct Define<'db, 'cx> {
+pub(crate) struct Define<'db, 'cx> {
     cx: &'cx mut Typeck<'db>,
 }
 
@@ -31,7 +31,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         Self { cx }
     }
 
-    pub(super) fn adt(
+    pub(crate) fn adt(
         &mut self,
         module_id: ModuleId,
         tydef: &ast::TyDef,
@@ -57,7 +57,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         adt_id
     }
 
-    pub(super) fn new_global(
+    pub(crate) fn new_global(
         &mut self,
         module_id: ModuleId,
         vis: Vis,
@@ -76,7 +76,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         id
     }
 
-    pub(super) fn global(
+    pub(crate) fn global(
         &mut self,
         module_id: ModuleId,
         name: Word,
@@ -98,7 +98,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         Ok(())
     }
 
-    pub(super) fn new_local(
+    pub(crate) fn new_local(
         &mut self,
         env: &mut Env,
         kind: DefKind,
@@ -115,7 +115,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         id
     }
 
-    pub(super) fn global_pat(&mut self, module_id: ModuleId, pat: &Pat, vis: Vis, ty: Ty) -> Pat {
+    pub(crate) fn global_pat(&mut self, module_id: ModuleId, pat: &Pat, vis: Vis, ty: Ty) -> Pat {
         match pat {
             Pat::Name(name) => {
                 let id =
@@ -126,7 +126,7 @@ impl<'db, 'cx> Define<'db, 'cx> {
         }
     }
 
-    pub(super) fn local_pat(&mut self, env: &mut Env, pat: &Pat, ty: Ty) -> Pat {
+    pub(crate) fn local_pat(&mut self, env: &mut Env, pat: &Pat, ty: Ty) -> Pat {
         match pat {
             Pat::Name(name) => {
                 let id = self.new_local(env, DefKind::Variable, name.word, name.mutability, ty);
@@ -136,14 +136,14 @@ impl<'db, 'cx> Define<'db, 'cx> {
         }
     }
 
-    pub(super) fn fn_candidate(&mut self, candidate: FnCandidate) -> DiagnosticResult<()> {
+    pub(crate) fn fn_candidate(&mut self, candidate: FnCandidate) -> DiagnosticResult<()> {
         let module_id = candidate.module_id(self.cx.db);
         let name = candidate.word.name();
         let set = self.cx.global_env.module_mut(module_id).ns.fns.entry(name).or_default();
         Self::insert_fn_candidate_in(self.cx.db, set, candidate)
     }
 
-    pub(super) fn assoc_fn_candidate(
+    pub(crate) fn assoc_fn_candidate(
         &mut self,
         assoc_ty: AssocTy,
         candidate: FnCandidate,

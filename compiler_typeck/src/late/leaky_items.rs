@@ -1,4 +1,4 @@
-use crate::{
+use compiler_core::{
     db::{Db, DefId},
     diagnostics::{Diagnostic, Label},
     hir::{FnSig, Hir},

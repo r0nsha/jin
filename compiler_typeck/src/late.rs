@@ -3,7 +3,7 @@ mod check_main;
 mod cyclic_globals;
 mod leaky_items;
 
-use crate::{db::Db, hir::Hir};
+use compiler_core::{db::Db, hir::Hir};
 
 pub fn checks(db: &mut Db, hir: &mut Hir) {
     cyclic_globals::cyclic_globals(db, hir);

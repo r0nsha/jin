@@ -1,4 +1,4 @@
-use crate::{
+use compiler_core::{
     db::Db,
     diagnostics::{Diagnostic, Label},
     hir::{
@@ -9,8 +9,9 @@ use crate::{
     middle::UnOp,
     span::Span,
     ty::{Ty, TyKind},
-    typeck::errors,
 };
+
+use crate::errors;
 
 pub fn check_bodies(db: &mut Db, hir: &Hir) {
     let mut cx = CheckBodies { db, diagnostics: vec![] };

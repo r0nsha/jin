@@ -302,6 +302,7 @@ dependencies = [
  "compiler_core",
  "compiler_mir",
  "compiler_parse",
+ "compiler_typeck",
  "execute",
 ]
 
@@ -317,15 +318,11 @@ dependencies = [
  "compiler_helpers",
  "ena",
  "fs_extra",
- "graph-cycles",
  "internment",
- "itertools",
  "owo-colors",
  "path-absolutize",
- "petgraph",
  "ptree",
  "rustc-hash",
- "typed-index-collections",
  "ustr",
 ]
 
@@ -370,10 +367,29 @@ dependencies = [
  "compiler_core",
  "compiler_data_structures",
  "compiler_helpers",
- "itertools",
  "path-absolutize",
  "rustc-hash",
- "typed-index-collections",
+ "ustr",
+]
+
+[[package]]
+name = "compiler_typeck"
+version = "0.1.0"
+dependencies = [
+ "bitflags 2.4.2",
+ "camino",
+ "codespan-reporting",
+ "compiler_core",
+ "compiler_data_structures",
+ "compiler_helpers",
+ "ena",
+ "graph-cycles",
+ "internment",
+ "itertools",
+ "owo-colors",
+ "petgraph",
+ "ptree",
+ "rustc-hash",
  "ustr",
 ]
 

@@ -1,16 +1,16 @@
-use compiler_helpers::create_bool_enum;
-
-use crate::{
+use compiler_core::{
     db::DefKind,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::TyExpr,
     span::{Span, Spanned},
     ty::{FnTy, FnTyFlags, FnTyParam, Ty, TyKind},
-    typeck::{errors, lookup::PathLookup, ns::Env, Typeck},
     word::Word,
 };
+use compiler_helpers::create_bool_enum;
 
-pub(super) fn check(
+use crate::{errors, lookup::PathLookup, ns::Env, Typeck};
+
+pub(crate) fn check(
     cx: &Typeck,
     env: &Env,
     ty: &TyExpr,
@@ -151,7 +151,7 @@ fn check_path(
     }
 }
 
-pub(super) fn check_optional(
+pub(crate) fn check_optional(
     cx: &Typeck,
     env: &Env,
     ty: Option<&TyExpr>,
@@ -164,7 +164,7 @@ pub(super) fn check_optional(
     }
 }
 
-pub(super) fn check_optional_targs(
+pub(crate) fn check_optional_targs(
     cx: &Typeck,
     env: &Env,
     targs: Option<&[TyExpr]>,

@@ -1,7 +1,4 @@
-use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
-use ustr::ustr;
-
-use crate::{
+use compiler_core::{
     ast,
     ast::Ast,
     db::{
@@ -14,19 +11,22 @@ use crate::{
     qpath::QPath,
     span::Spanned as _,
     ty::{FnTyFlags, Ty, TyKind},
-    typeck::{
-        attrs, errors, exprs, fns,
-        lookup::{FnCandidate, Query},
-        ns,
-        ns::{AssocTy, Env, ScopeKind},
-        tyexpr,
-        tyexpr::AllowTyHole,
-        types, Typeck,
-    },
     word::{Word, WordMap},
 };
+use compiler_data_structures::index_vec::{IndexVecExt as _, Key as _};
+use ustr::ustr;
 
-pub(super) fn define(cx: &mut Typeck, ast: &Ast) {
+use crate::{
+    attrs, errors, exprs, fns,
+    lookup::{FnCandidate, Query},
+    ns,
+    ns::{AssocTy, Env, ScopeKind},
+    tyexpr,
+    tyexpr::AllowTyHole,
+    types, Typeck,
+};
+
+pub(crate) fn define(cx: &mut Typeck, ast: &Ast) {
     for (module, item, id) in ast.items_with_id() {
         match item {
             ast::Item::Let(let_) => define_let(cx, module.id, id, let_),
@@ -211,7 +211,7 @@ fn check_adt_ty_params(cx: &mut Typeck, env: &mut Env, tydef: &ast::TyDef, adt_i
     cx.def_to_ty.insert(adt.def_id, TyKind::Type(adt.ty()).into());
 }
 
-pub(super) fn check_sigs(cx: &mut Typeck, ast: &Ast) {
+pub(crate) fn check_sigs(cx: &mut Typeck, ast: &Ast) {
     for (module, item, id) in ast.items_with_id() {
         let result = match item {
             ast::Item::Let(let_) => check_let_item(cx, module.id, id, let_),
@@ -227,7 +227,7 @@ pub(super) fn check_sigs(cx: &mut Typeck, ast: &Ast) {
     }
 }
 
-pub(super) fn check_let_item(
+pub(crate) fn check_let_item(
     cx: &mut Typeck<'_>,
     module_id: ModuleId,
     item_id: ast::GlobalItemId,
@@ -482,7 +482,7 @@ fn check_assoc_item_ty(
     Ok(assoc_ty)
 }
 
-pub(super) fn check_bodies(cx: &mut Typeck<'_>, ast: &Ast) {
+pub(crate) fn check_bodies(cx: &mut Typeck<'_>, ast: &Ast) {
     for (module, item, id) in ast.items_with_id() {
         if let Err(diagnostic) = check_item_body(cx, module.id, item, id) {
             cx.db.diagnostics.add(diagnostic);
@@ -526,7 +526,7 @@ fn check_item_body(
     }
 }
 
-pub(super) fn check_let_body(
+pub(crate) fn check_let_body(
     cx: &mut Typeck<'_>,
     env: &mut Env,
     ty: Ty,
@@ -550,7 +550,7 @@ pub(super) fn check_let_body(
     Ok(value)
 }
 
-pub(super) fn check_fn_item_body(
+pub(crate) fn check_fn_item_body(
     cx: &mut Typeck<'_>,
     item_id: ast::GlobalItemId,
     fun: &ast::Fn,

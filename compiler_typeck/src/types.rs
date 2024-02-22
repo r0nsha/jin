@@ -1,4 +1,4 @@
-use crate::{
+use compiler_core::{
     ast,
     ast::Ast,
     db::{AdtField, AdtId, DefId, DefKind, ModuleId, VariantId},
@@ -6,17 +6,18 @@ use crate::{
     middle::{Mutability, TyParam, Vis},
     span::{Span, Spanned as _},
     ty::{Instantiation, ParamTy, Ty, TyKind},
-    typeck::{
-        errors,
-        ns::{AssocTy, Env, ScopeKind},
-        tyexpr,
-        tyexpr::AllowTyHole,
-        Typeck,
-    },
     word::WordMap,
 };
 
-pub(super) fn check(cx: &mut Typeck, ast: &Ast) {
+use crate::{
+    errors,
+    ns::{AssocTy, Env, ScopeKind},
+    tyexpr,
+    tyexpr::AllowTyHole,
+    Typeck,
+};
+
+pub(crate) fn check(cx: &mut Typeck, ast: &Ast) {
     for (module, item, id) in ast.items_with_id() {
         if let ast::Item::Type(tydef) = item {
             if let Err(diagnostic) = check_tydef(cx, module.id, id, tydef) {
@@ -144,7 +145,7 @@ fn check_variant(
     Ok(())
 }
 
-pub(super) fn define_ty_params(
+pub(crate) fn define_ty_params(
     cx: &mut Typeck,
     env: &mut Env,
     ty_params: &[ast::TyParam],
@@ -173,7 +174,7 @@ pub(super) fn define_ty_params(
     new_ty_params
 }
 
-pub(super) fn fresh_instantiation(
+pub(crate) fn fresh_instantiation(
     cx: &Typeck<'_>,
     env: &Env,
     ty_params: Vec<ParamTy>,
@@ -197,7 +198,7 @@ pub(super) fn fresh_instantiation(
         .collect()
 }
 
-pub(super) fn try_extract_assoc_ty(cx: &Typeck<'_>, id: DefId) -> Option<AssocTy> {
+pub(crate) fn try_extract_assoc_ty(cx: &Typeck<'_>, id: DefId) -> Option<AssocTy> {
     let def = &cx.db[id];
 
     match def.kind.as_ref() {
@@ -207,7 +208,7 @@ pub(super) fn try_extract_assoc_ty(cx: &Typeck<'_>, id: DefId) -> Option<AssocTy
     }
 }
 
-pub(super) fn apply_targs_to_ty(
+pub(crate) fn apply_targs_to_ty(
     cx: &Typeck<'_>,
     env: &Env,
     ty: Ty,

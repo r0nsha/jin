@@ -1,14 +1,16 @@
-use crate::{
+use compiler_core::{
     hir::ExprId,
     middle::Mutability,
     ty::{
         coerce::{Coercion, CoercionKind, Coercions},
         Ty, TyKind,
     },
-    typeck::{
-        unify::{EqResult, UnifyOptions, UnifyResult},
-        Typeck,
-    },
+};
+
+use crate::unify::TyUnifyExt as _;
+use crate::{
+    unify::{EqResult, UnifyOptions, UnifyResult},
+    Typeck,
 };
 
 pub trait CoerceExt<'db>

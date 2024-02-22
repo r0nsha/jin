@@ -19,10 +19,7 @@ mod unify;
 
 use std::cell::RefCell;
 
-use ena::unify::{InPlace, InPlaceUnificationTable, Snapshot};
-use rustc_hash::FxHashMap;
-
-use crate::{
+use compiler_core::{
     ast,
     ast::Ast,
     counter::Counter,
@@ -33,8 +30,11 @@ use crate::{
     middle::{Pat, Vis},
     span::Span,
     ty::{FloatVar, InferTy, IntVar, Ty, TyKind, TyVar},
-    typeck::{builtins::BuiltinTys, ns::GlobalEnv},
 };
+use ena::unify::{InPlace, InPlaceUnificationTable, Snapshot};
+use rustc_hash::FxHashMap;
+
+use crate::{builtins::BuiltinTys, ns::GlobalEnv};
 
 pub fn typeck(db: &mut Db, ast: Ast) -> Hir {
     let mut cx = Typeck::new(db);
@@ -76,26 +76,26 @@ fn typeck_inner(cx: &mut Typeck, ast: Ast) {
     late::checks(cx.db, &mut cx.hir);
 }
 
-pub(super) struct Typeck<'db> {
-    pub(super) db: &'db mut Db,
+pub(crate) struct Typeck<'db> {
+    pub(crate) db: &'db mut Db,
 
     /// The Hir being constructed
-    pub(super) hir: Hir,
+    pub(crate) hir: Hir,
 
     /// The global namespace, mapped by module
-    pub(super) global_env: GlobalEnv,
+    pub(crate) global_env: GlobalEnv,
 
     /// Mappings used for name and item resolution
-    pub(super) res_map: ResMap,
+    pub(crate) res_map: ResMap,
 
     /// Stores type unification tables
-    pub(super) storage: RefCell<TyStorage>,
+    pub(crate) storage: RefCell<TyStorage>,
 
     /// A mapping from definitions to their resolved type
-    pub(super) def_to_ty: FxHashMap<DefId, Ty>,
+    pub(crate) def_to_ty: FxHashMap<DefId, Ty>,
 
     /// Counter for generating hir::ExprId's
-    pub(super) expr_id: Counter<hir::ExprId>,
+    pub(crate) expr_id: Counter<hir::ExprId>,
 }
 
 #[derive(Debug)]
@@ -214,7 +214,7 @@ impl<'db> Typeck<'db> {
     }
 
     #[inline]
-    pub(super) fn check_access_def(
+    pub(crate) fn check_access_def(
         &self,
         from_module: ModuleId,
         accessed: DefId,
@@ -227,13 +227,13 @@ impl<'db> Typeck<'db> {
     }
 
     #[inline]
-    pub(super) fn can_access_def(&self, from_module: ModuleId, accessed: DefId) -> bool {
+    pub(crate) fn can_access_def(&self, from_module: ModuleId, accessed: DefId) -> bool {
         let def = &self.db[accessed];
         self.can_access(from_module, def.scope.module_id, def.scope.vis)
     }
 
     #[inline]
-    pub(super) fn can_access(&self, from_module: ModuleId, in_module: ModuleId, vis: Vis) -> bool {
+    pub(crate) fn can_access(&self, from_module: ModuleId, in_module: ModuleId, vis: Vis) -> bool {
         match vis {
             Vis::Export => true,
             Vis::Package => self.db[from_module].package == self.db[in_module].package,
@@ -242,19 +242,19 @@ impl<'db> Typeck<'db> {
     }
 }
 
-pub(super) type ItemMap<T> = FxHashMap<ast::GlobalItemId, T>;
+pub(crate) type ItemMap<T> = FxHashMap<ast::GlobalItemId, T>;
 
 /// Various mappings and resolutions from the `define_*` passes
-pub(super) struct ResMap {
-    pub(super) item_to_def: ItemMap<DefId>,
-    pub(super) item_to_adt: ItemMap<AdtId>,
-    pub(super) item_to_pat: ItemMap<Pat>,
-    pub(super) item_to_ty: ItemMap<Ty>,
-    pub(super) item_to_sig: ItemMap<hir::FnSig>,
+pub(crate) struct ResMap {
+    pub(crate) item_to_def: ItemMap<DefId>,
+    pub(crate) item_to_adt: ItemMap<AdtId>,
+    pub(crate) item_to_pat: ItemMap<Pat>,
+    pub(crate) item_to_ty: ItemMap<Ty>,
+    pub(crate) item_to_sig: ItemMap<hir::FnSig>,
 }
 
 impl ResMap {
-    pub(super) fn new() -> Self {
+    pub(crate) fn new() -> Self {
         Self {
             item_to_def: FxHashMap::default(),
             item_to_adt: FxHashMap::default(),

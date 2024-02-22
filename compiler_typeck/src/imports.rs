@@ -1,8 +1,4 @@
-use itertools::{Itertools as _, Position};
-use rustc_hash::{FxHashMap, FxHashSet};
-use ustr::{Ustr, UstrMap};
-
-use crate::{
+use compiler_core::{
     ast,
     ast::Ast,
     db::{DefId, DefKind, FnInfo, ModuleId},
@@ -10,15 +6,19 @@ use crate::{
     middle::{IsUfcs, Mutability, Vis},
     span::{Span, Spanned as _},
     ty::{Ty, TyKind},
-    typeck::{
-        attrs, errors,
-        ns::{self, NsDef},
-        Typeck,
-    },
     word::Word,
 };
+use itertools::{Itertools as _, Position};
+use rustc_hash::{FxHashMap, FxHashSet};
+use ustr::{Ustr, UstrMap};
 
-pub(super) fn define(cx: &mut Typeck, ast: &Ast) -> ImportedFns {
+use crate::{
+    attrs, errors,
+    ns::{self, NsDef},
+    Typeck,
+};
+
+pub(crate) fn define(cx: &mut Typeck, ast: &Ast) -> ImportedFns {
     let imports = build_imports_map(cx, ast);
     let mut define = Define::new(cx);
     define.define_imports(imports);
@@ -405,7 +405,7 @@ enum Resolved {
     Fn(ModuleId, Ustr),
 }
 
-pub(super) fn fill_imported_fn_candidates(cx: &mut Typeck, imported_fns: ImportedFns) {
+pub(crate) fn fill_imported_fn_candidates(cx: &mut Typeck, imported_fns: ImportedFns) {
     for (module_id, fns) in imported_fns {
         for f in fns {
             let from_module = cx.db[f.id].scope.module_id;
@@ -430,17 +430,17 @@ pub(super) fn fill_imported_fn_candidates(cx: &mut Typeck, imported_fns: Importe
     }
 }
 
-pub(super) type ImportedFns = FxHashMap<ModuleId, Vec<ImportedFn>>;
+pub(crate) type ImportedFns = FxHashMap<ModuleId, Vec<ImportedFn>>;
 
-pub(super) struct ImportedFn {
-    pub(super) id: DefId,
-    pub(super) name: Ustr,
-    pub(super) alias: Word,
+pub(crate) struct ImportedFn {
+    pub(crate) id: DefId,
+    pub(crate) name: Ustr,
+    pub(crate) alias: Word,
 }
 
 // Iterate all accessible globs which are reached by other glob imports, creating a transitive
 // chain of glob imports which are then collected and flattened in each module's `ModuleEnv::globs`
-pub(super) fn define_transitive_globs(cx: &mut Typeck) {
+pub(crate) fn define_transitive_globs(cx: &mut Typeck) {
     let mut trans = TransitiveGlobs::default();
 
     // Collect
@@ -512,7 +512,7 @@ impl<'cx, 'db> CollectTransitiveGlobs<'cx, 'db> {
     }
 }
 
-pub(super) fn insert_prelude(cx: &mut Typeck) {
+pub(crate) fn insert_prelude(cx: &mut Typeck) {
     let prelude_module_id =
         cx.db.find_module_by_qpath("std", ["prelude"]).expect("std.prelude to exist").id;
 
