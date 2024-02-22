@@ -44,7 +44,9 @@ impl<'db> Generator<'db> {
                 (TyKind::Slice(_) | TyKind::Str, sym::field::DATA) => {
                     self.slice_addr_field(state, value.id)
                 }
-                (TyKind::Slice(_), sym::field::CAP) => self.slice_cap_field(state, value.id),
+                (TyKind::Slice(_) | TyKind::Str, sym::field::CAP) => {
+                    self.slice_cap_field(state, value.id)
+                }
                 _ => util::field(value_doc, field, ty.is_ptr(self)),
             },
         }
