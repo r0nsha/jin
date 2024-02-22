@@ -448,7 +448,7 @@ impl<'db> ExpandDestroys<'db> {
 
         match ty.kind() {
             TyKind::Adt(..) => CreateAdtFree::new(self).create(ty),
-            TyKind::Slice(..) => CreateSliceFree::new(self).create(ty),
+            TyKind::Slice(..) | TyKind::Str => CreateSliceFree::new(self).create(ty),
             ty => unreachable!("unexpected ty {ty:?}"),
         }
     }
@@ -611,7 +611,7 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
     }
 
     fn create(mut self, ty: Ty) -> FnSigId {
-        let &TyKind::Slice(elem_ty) = ty.kind() else { unreachable!() };
+        let elem_ty = ty.slice_elem().unwrap();
 
         let main_span = Span::uniform(self.cx.db.main_source_id(), 0);
 
@@ -702,9 +702,8 @@ impl<'cx, 'db> CreateSliceFree<'cx, 'db> {
         self.body.ins(block).slice_index_unchecked(elem, slice, index);
 
         match elem_ty.kind() {
-            TyKind::Adt(..) | TyKind::Slice(..) => {
+            TyKind::Adt(..) | TyKind::Slice(..) | TyKind::Str => {
                 let (result, callee) = self.cx.get_free_call_values(&mut self.body, elem_ty);
-
                 self.body.ins(block).call(result, callee, vec![elem], span);
             }
             TyKind::Ref(..) if self.cx.should_refcount_ty(elem_ty) => {

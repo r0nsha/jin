@@ -490,7 +490,7 @@ impl TyKind {
                     },
                 }
             }
-            Self::Slice(_) | Self::Param(_) => true,
+            Self::Slice(_) | Self::Str | Self::Param(_) => true,
             _ => false,
         }
     }
