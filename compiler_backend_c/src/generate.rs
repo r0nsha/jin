@@ -342,8 +342,7 @@ impl<'db> Generator<'db> {
                 .append(adt_name.clone())
                 .append(D::space())
                 .append(block(|| {
-                    let tag =
-                        stmt(|| D::text("usize").append(D::space()).append(D::text(TAG_FIELD)));
+                    let tag = stmt(|| D::text("u8").append(D::space()).append(D::text(TAG_FIELD)));
 
                     D::intersperse([tag, variants_union], D::hardline())
                 }))

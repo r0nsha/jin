@@ -200,6 +200,16 @@ fn define_variants(
         variants.push(id);
     }
 
+    // TODO: We store the union tag in a u8, so the variant count must be under 255.
+    // What we should be doing is make the tag type accommodate the variant count.
+    if variants.len() > 255 {
+        cx.db.diagnostics.add(
+            Diagnostic::error("cannot define more than 255 variants")
+                .with_label(Label::primary(cx.db[adt_id].name.span(), "exceeds variant limit"))
+                .with_note("this limitation will be lifted in the future"),
+        )
+    }
+
     variants
 }
 
