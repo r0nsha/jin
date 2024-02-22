@@ -136,7 +136,6 @@ impl TokenKind {
                 | Kw::Mut
                 | Kw::Imm
                 | Kw::Transmute
-                | Kw::Ptr
                 | Kw::Ref
                 | Kw::Move
                 | Kw::Unsafe
@@ -224,7 +223,7 @@ impl TokenKind {
             TokenKind::QuestionMark
             | TokenKind::CloseParen
             | TokenKind::CloseBracket
-            | TokenKind::Kw(Kw::Else | Kw::As | Kw::Mut | Kw::Imm | Kw::Ptr | Kw::Ref | Kw::Move)
+            | TokenKind::Kw(Kw::Else | Kw::As | Kw::Mut | Kw::Imm | Kw::Ref | Kw::Move)
             | TokenKind::Dot
             | TokenKind::DotDot
             | TokenKind::Colon
@@ -345,7 +344,6 @@ pub enum Kw {
     Mut,
     Imm,
     Transmute,
-    Ptr,
     Ref,
     Move,
     Unsafe,
@@ -374,7 +372,6 @@ impl<'a> TryFrom<&'a str> for Kw {
             "mut" => Self::Mut,
             "imm" => Self::Imm,
             "transmute" => Self::Transmute,
-            "ptr" => Self::Ptr,
             "ref" => Self::Ref,
             "move" => Self::Move,
             "unsafe" => Self::Unsafe,
@@ -407,7 +404,6 @@ impl fmt::Display for Kw {
                 Self::Mut => "mut",
                 Self::Imm => "imm",
                 Self::Transmute => "transmute",
-                Self::Ptr => "ptr",
                 Self::Ref => "ref",
                 Self::Move => "move",
                 Self::Unsafe => "unsafe",

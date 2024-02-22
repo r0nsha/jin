@@ -1,7 +1,7 @@
 use extern "raylib"
 use extern "m"
 
-pub fn extern "c" InitWindow(width: i32, height: i32, title: ptr[u8])
+pub fn extern "c" InitWindow(width: i32, height: i32, title: *u8)
 pub fn extern "c" CloseWindow()
 pub fn extern "c" WindowShouldClose() -> bool
 pub fn extern "c" SetTargetFPS(fps: i32)
@@ -12,7 +12,7 @@ pub fn extern "c" DrawCircle(center_x: i32, center_y: i32, radius: f32, color: C
 pub fn extern "c" DrawCircleV(center: Vector2, radius: f32, color: Color)
 pub fn extern "c" DrawRectangle(pos_x: i32, pos_y: i32, width: i32, height: i32, color: Color)
 pub fn extern "c" DrawFPS(pos_x: i32, pos_y: i32)
-pub fn extern "c" DrawText(text: ptr[u8], pos_x: i32, pos_y: i32, font_size: i32, tint: Color)
+pub fn extern "c" DrawText(text: *u8, pos_x: i32, pos_y: i32, font_size: i32, tint: Color)
 
 pub type Color extern(pub r: u8, pub g: u8, pub b: u8, pub a: u8)
 

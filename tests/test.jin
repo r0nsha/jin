@@ -3,7 +3,7 @@ use extern "./foo"
 fn extern "c" hello()
 let extern answer: int
 
-fn extern "c" printf(fmt: ptr[u8], ..) -> i32
+fn extern "c" printf(fmt: *u8, ..) -> i32
 
 fn main() = {
 	println("Hello, World!")

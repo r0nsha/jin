@@ -1,4 +1,4 @@
-pub(module) fn extern "c" printf(fmt: ptr[u8], ..) -> i32
+pub(module) fn extern "c" printf(fmt: *u8, ..) -> i32
 
 pub fn add() = {
 	unsafe printf("there's nothing to add...\n".data)
