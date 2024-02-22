@@ -429,9 +429,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     hir::ExprKind::Index(idx) => {
                         self.lower_slice_assign(assign, idx, expr.span);
                     }
-                    hir::ExprKind::Deref(deref) => {
-                        self.lower_deref_assign(assign, deref, expr.ty, expr.span);
-                    }
                     _ => {
                         self.lower_assign(assign, expr.span);
                     }
@@ -441,7 +438,6 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             hir::ExprKind::Swap(swap) => match &swap.lhs.kind {
                 hir::ExprKind::Index(idx) => self.lower_slice_swap(swap, idx, expr.span),
-                hir::ExprKind::Deref(deref) => self.lower_deref_swap(swap, deref, expr.ty),
                 _ => self.lower_swap(swap, expr.span),
             },
             hir::ExprKind::Match(match_) => {
@@ -772,34 +768,7 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
     }
 
     fn lower_deref(&mut self, ptr: ValueId, pointee_ty: Ty) -> ValueId {
-        self.push_inst_with_register(pointee_ty, |value| Inst::PtrRead { value, ptr })
-    }
-
-    fn lower_deref_assign(
-        &mut self,
-        assign: &hir::Assign,
-        deref: &hir::Deref,
-        pointee_ty: Ty,
-        span: Span,
-    ) {
-        let ptr = self.lower_expr(&deref.expr);
-        self.try_use(ptr, deref.expr.span);
-        let rhs = self.lower_assign_rhs(assign, |this| this.lower_deref(ptr, pointee_ty), span);
-        self.ins(self.current_block).inst(Inst::PtrWrite { ptr, value: rhs });
-    }
-
-    fn lower_deref_swap(
-        &mut self,
-        swap: &hir::Swap,
-        deref: &hir::Deref,
-        pointee_ty: Ty,
-    ) -> ValueId {
-        let ptr = self.lower_expr(&deref.expr);
-        let old_ptr_value = self.lower_deref(ptr, pointee_ty);
-        self.try_use(ptr, deref.expr.span);
-        let rhs = self.lower_input_expr(&swap.rhs);
-        self.ins(self.current_block).inst(Inst::PtrWrite { ptr, value: rhs });
-        old_ptr_value
+        self.create_value(pointee_ty, ValueKind::Deref(ptr))
     }
 
     fn lower_assign(&mut self, assign: &hir::Assign, span: Span) {
@@ -1649,6 +1618,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
             }
             ValueKind::Variant(parent, id) => {
                 format!("{}.{}", self.value_name_aux(*parent), self.cx.db[*id].name)
+            }
+            ValueKind::Deref(parent) => {
+                format!("{}.0", self.value_name_aux(*parent))
             }
             ValueKind::Register(_) | ValueKind::Const(_) => "_".to_string(),
         }

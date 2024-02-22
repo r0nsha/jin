@@ -499,12 +499,6 @@ impl<'db> Generator<'db> {
 
                 self.maybe_slice_index_boundscheck(state, *slice, *index, slice_store, *span)
             }
-            Inst::PtrRead { value, ptr } => {
-                self.value_assign(state, *value, |this| util::deref(this.value(state, *ptr)))
-            }
-            Inst::PtrWrite { ptr, value } => stmt(|| {
-                util::assign(util::deref(self.value(state, *ptr)), self.value(state, *value))
-            }),
             Inst::Store { value, target } => {
                 stmt(|| assign(self.value(state, *target), self.value(state, *value)))
             }
@@ -683,6 +677,7 @@ impl<'db> Generator<'db> {
             ValueKind::Const(value) => codegen_const_value(value),
             ValueKind::Field(value, field) => self.field(state, *value, field),
             ValueKind::Variant(value, id) => self.variant_field(state, *value, *id),
+            ValueKind::Deref(value) => util::deref(self.value(state, *value)),
         }
     }
 

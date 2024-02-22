@@ -559,7 +559,9 @@ impl<'cx, 'db> LowerBody<'cx, 'db> {
                     Ok(())
                 }
             }
-            ValueKind::Field(parent, _) | ValueKind::Variant(parent, _) => {
+            ValueKind::Field(parent, _)
+            | ValueKind::Variant(parent, _)
+            | ValueKind::Deref(parent) => {
                 match (self.value_ty_imm_root(*parent), break_on_mut_ty) {
                     (Ok(()), BreakOnMutRef::Yes) => Ok(()),
                     (Ok(()), BreakOnMutRef::No) => self.value_imm_root(*parent, break_on_mut_ty),

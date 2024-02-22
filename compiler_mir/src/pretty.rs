@@ -178,17 +178,6 @@ impl<'db> PrettyCx<'db> {
                 .append(D::text("["))
                 .append(self.value(body, *index))
                 .append(D::text("]")),
-            Inst::PtrRead { value, ptr, .. } => self
-                .value_assign(body, *value)
-                .append(D::text("ptr_read"))
-                .append(D::space())
-                .append(self.value(body, *ptr)),
-            Inst::PtrWrite { ptr, value, .. } => D::text("ptr_write")
-                .append(D::space())
-                .append(self.value(body, *value))
-                .append(D::text(" in "))
-                .append(self.value(body, *ptr)),
-
             Inst::Destroy { value, .. } => {
                 D::text("destroy").append(D::space()).append(self.value(body, *value))
             }
@@ -323,6 +312,7 @@ impl<'db> PrettyCx<'db> {
             ValueKind::Variant(value, id) => {
                 self.value(body, *value).append(D::text(format!(".{}", self.db[*id].name)))
             }
+            ValueKind::Deref(value) => self.value(body, *value).append(D::text(".0")),
         }
     }
 }

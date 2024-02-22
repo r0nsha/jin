@@ -429,8 +429,6 @@ pub enum Inst {
     SliceIndex { value: ValueId, slice: ValueId, index: ValueId, span: Option<Span> },
     SliceSlice { value: ValueId, slice: ValueId, low: ValueId, high: ValueId, span: Span },
     SliceStore { slice: ValueId, index: ValueId, value: ValueId, span: Option<Span> },
-    PtrRead { value: ValueId, ptr: ValueId },
-    PtrWrite { ptr: ValueId, value: ValueId },
     Destroy { value: ValueId, destroy_glue: bool, span: Span },
     Free { value: ValueId, traced: bool, span: Span },
     IncRef { value: ValueId },
@@ -499,6 +497,9 @@ pub enum ValueKind {
 
     // A variant of a type union
     Variant(ValueId, VariantId),
+
+    // A dereferenced pointer
+    Deref(ValueId),
 }
 
 impl ValueKind {
