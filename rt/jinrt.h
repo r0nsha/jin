@@ -27,6 +27,7 @@ typedef unit never;
 
 typedef struct array {
   void *data;
+  usize cap;
   u32 refcnt;
 } array;
 

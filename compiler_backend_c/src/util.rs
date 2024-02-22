@@ -41,7 +41,9 @@ impl<'db> Generator<'db> {
                     self.rc_field(state, value.id, field)
                 }
                 (TyKind::Ref(_, _), _) => self.rc_field(state, value.id, field),
-                (TyKind::Slice(_), sym::field::DATA) => self.slice_addr_field(state, value.id),
+                (TyKind::Slice(_) | TyKind::Str, sym::field::DATA) => {
+                    self.slice_addr_field(state, value.id)
+                }
                 (TyKind::Slice(_), sym::field::CAP) => self.slice_cap_field(state, value.id),
                 _ => util::field(value_doc, field, ty.is_ptr(self)),
             },
@@ -198,8 +200,9 @@ pub fn cmp_strs<'a>(a: D<'a>, b: D<'a>) -> D<'a> {
 }
 
 pub fn str_value(value: &str) -> D {
-    D::text("(str)").append(struct_lit(vec![
-        (sym::field::DATA, str_lit(value)),
+    D::text("(slice)").append(struct_lit(vec![
+        ("array", null_value()),
+        (START_FIELD, str_lit(value)),
         (sym::field::LEN, D::text(value.len().to_string())),
     ]))
 }
@@ -214,6 +217,10 @@ pub fn bool_value<'a>(value: bool) -> D<'a> {
 
 pub fn unit_value<'a>() -> D<'a> {
     D::text("(unit){}")
+}
+
+pub fn null_value<'a>() -> D<'a> {
+    D::text("NULL")
 }
 
 pub fn struct_lit<'a>(fields: Vec<(&'a str, D<'a>)>) -> D<'a> {

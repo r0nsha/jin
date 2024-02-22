@@ -207,6 +207,7 @@ impl Ty {
     pub fn slice_elem(self) -> Option<Ty> {
         match self.kind() {
             TyKind::Slice(elem) => Some(*elem),
+            TyKind::Str => Some(Ty::new(TyKind::Uint(UintTy::U8))),
             _ => None,
         }
     }
