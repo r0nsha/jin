@@ -17,7 +17,13 @@ pub fn Array.new[T](len: uint, f: fn(uint) -> T) -> Array[T] = {
 	array
 }
 
-pub fn Array.with_cap[T](cap: uint) -> Array[T] = Array([:cap])
+pub fn Array.from[T](slice: [T]) -> Array[T] = Array(slice)
+
+pub fn Array.with_cap[T](cap: uint) -> Array[T] = {
+	# TODO: use a polymorphic `min` function for this	
+	let c = if cap > min_cap { cap } else { min_cap }
+	Array([:c])
+}
 
 pub fn len[T](self: &Array[T]) -> uint = self.buf.len
 pub fn cap[T](self: &Array[T]) -> uint = self.buf.cap
@@ -30,6 +36,14 @@ pub fn take[T](self: Array[T]) -> [T] = self.buf
 pub fn get[T](self: &Array[T], index: uint) -> Option[&T] = {
 	if index < self.buf.len {
 		Option.some(&self.buf.[index])
+	} else {
+		Option.none
+	}
+}
+
+pub fn set[T](self: &mut Array[T], index: uint, value: T) -> Option[T] = {
+	if index < self.buf.len {
+		Option.some(self.buf.[index] := value)
 	} else {
 		Option.none
 	}
