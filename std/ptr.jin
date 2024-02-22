@@ -1,0 +1,2 @@
+pub fn null[T]() -> *T = unsafe as[_](0)
+pub fn is_null[T](self: *T) -> bool = unsafe as[uint](self) == 0
