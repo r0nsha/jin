@@ -3,8 +3,7 @@ use rustc_hash::FxHashMap;
 use crate::{
     diagnostics::{Diagnostic, Label},
     span::Span,
-    subst::{Subst, SubstTy},
-    ty::{fold::TyFolder, FloatVar, InferTy, IntVar, Ty, TyKind, TyVar},
+    ty::{fold::TyFolder, FloatVar, InferTy, IntVar, Subst, SubstTy, Ty, TyKind, TyVar},
     typeck::{TyStorage, Typeck},
 };
 

@@ -7,7 +7,6 @@ pub mod mangle;
 pub mod middle;
 pub mod qpath;
 pub mod span;
-pub mod subst;
 pub mod sym;
 pub mod target;
 pub mod ty;

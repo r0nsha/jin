@@ -10,11 +10,12 @@ use internment::Intern;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
+use crate::middle::Pat;
+use crate::span::Spanned as _;
 use crate::{
     db::{AdtId, AdtKind, Db, ModuleId, StructKind, UnionDef, UnionKind},
     middle::{CallConv, Mutability, Vis},
     span::Span,
-    subst::SubstTy,
     ty::{
         fold::TyFolder,
         printer::{FnTyPrinter, TyPrinter},
@@ -819,16 +820,18 @@ impl Instantiation {
         self.0.values().copied()
     }
 
-    pub fn tys_mut(&mut self) -> impl Iterator<Item = &mut Ty> + '_ {
-        self.0.values_mut()
-    }
-
     pub fn folder(&self) -> ParamFolder {
         ParamFolder::new(self)
     }
 
     pub fn fold(&self, ty: Ty) -> Ty {
         self.folder().fold(ty)
+    }
+
+    pub fn subst(&mut self, s: &mut impl SubstTy, span: Span) {
+        for ty in self.0.values_mut() {
+            *ty = s.subst_ty(*ty, span);
+        }
     }
 }
 
@@ -886,6 +889,25 @@ impl TyFolder for ParamFolder<'_> {
                 }
             },
             _ => self.super_fold(ty),
+        }
+    }
+}
+
+pub trait SubstTy {
+    fn subst_ty(&mut self, ty: Ty, span: Span) -> Ty;
+}
+
+pub trait Subst<S: SubstTy> {
+    fn subst(&mut self, s: &mut S);
+}
+
+impl<S: SubstTy> Subst<S> for Pat {
+    fn subst(&mut self, s: &mut S) {
+        match self {
+            Pat::Name(name) => {
+                name.ty = s.subst_ty(name.ty, name.span());
+            }
+            Pat::Discard(_) => (),
         }
     }
 }

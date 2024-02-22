@@ -1,7 +1,6 @@
 use compiler_core::{
     span::{Span, Spanned},
-    subst,
-    subst::{Subst, SubstTy},
+    ty::{Subst, SubstTy},
 };
 
 use crate::{Block, Body, Fn, FnSig, Global, GlobalKind, Inst, Mir, StaticGlobal, Value};
@@ -46,7 +45,7 @@ impl<S: SubstTy> Subst<S> for Body {
         self.blocks_mut().into_iter().for_each(|b| b.subst(s));
         self.values_mut().into_iter().for_each(|v| v.subst(s));
         self.instantations_mut().iter_mut().for_each(|(_, i)| {
-            subst::subst_instantation(s, i, Span::unknown());
+            i.subst(s, Span::unknown());
         });
     }
 }

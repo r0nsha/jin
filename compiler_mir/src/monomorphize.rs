@@ -9,9 +9,8 @@ use compiler_core::{
     mangle,
     middle::{BinOp, CallConv, CmpOp, Mutability, NamePat, Pat},
     span::{Span, Spanned as _},
-    subst::{Subst, SubstTy},
     sym,
-    ty::{fold::TyFolder, FnTy, FnTyFlags, FnTyParam, Instantiation, Ty, TyKind},
+    ty::{fold::TyFolder, FnTy, FnTyFlags, FnTyParam, Instantiation, Subst, SubstTy, Ty, TyKind},
     word::Word,
 };
 

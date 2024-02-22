@@ -4,8 +4,7 @@ use crate::{
         Name, Swap, Variant,
     },
     span::Spanned,
-    subst,
-    subst::{Subst, SubstTy},
+    ty::{Subst, SubstTy},
 };
 
 impl<S: SubstTy> Subst<S> for Expr {
@@ -69,7 +68,7 @@ impl<S: SubstTy> Subst<S> for Expr {
             }
             ExprKind::Name(Name { instantiation, .. })
             | ExprKind::Variant(Variant { instantiation, .. }) => {
-                subst::subst_instantation(s, instantiation, self.span);
+                instantiation.subst(s, self.span);
             }
             ExprKind::SliceLit(lit) => {
                 lit.exprs.subst(s);
