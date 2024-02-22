@@ -271,6 +271,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "acbf1af155f9b9ef647e42cdc158db4b64a1b61f743629225fde6f3e0be2a7c7"
 
 [[package]]
+name = "compiler_ast"
+version = "0.1.0"
+dependencies = [
+ "camino",
+ "compiler_core",
+ "compiler_data_structures",
+ "compiler_helpers",
+ "path-absolutize",
+ "ptree",
+ "rustc-hash",
+ "ustr",
+]
+
+[[package]]
 name = "compiler_backend_c"
 version = "0.1.0"
 dependencies = [
@@ -364,6 +378,7 @@ dependencies = [
  "anyhow",
  "camino",
  "codespan-reporting",
+ "compiler_ast",
  "compiler_core",
  "compiler_data_structures",
  "compiler_helpers",
@@ -376,15 +391,14 @@ dependencies = [
 name = "compiler_typeck"
 version = "0.1.0"
 dependencies = [
- "bitflags 2.4.2",
  "camino",
  "codespan-reporting",
+ "compiler_ast",
  "compiler_core",
  "compiler_data_structures",
  "compiler_helpers",
  "ena",
  "graph-cycles",
- "internment",
  "itertools",
  "owo-colors",
  "petgraph",

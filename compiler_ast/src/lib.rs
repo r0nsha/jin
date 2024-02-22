@@ -1,4 +1,4 @@
-mod pretty_print;
+mod pretty;
 
 use std::{fmt, io};
 
@@ -9,7 +9,7 @@ use compiler_data_structures::{
 };
 use ustr::Ustr;
 
-use crate::{
+use compiler_core::{
     db::{ExternLib, ModuleId, StructKind, UnionKind},
     middle::{BinOp, CallConv, IsUfcs, Mutability, Pat, TyExpr, UnOp, Vis},
     qpath::QPath,
@@ -47,7 +47,7 @@ impl Ast {
 
     pub fn pretty_print(&self, w: &mut impl io::Write) -> io::Result<()> {
         for module in &self.modules {
-            pretty_print::print_module(module, w)?;
+            pretty::print_module(module, w)?;
         }
 
         Ok(())

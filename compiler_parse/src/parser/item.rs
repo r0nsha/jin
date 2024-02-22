@@ -2,8 +2,10 @@ use std::ops::ControlFlow;
 
 use compiler_helpers::create_bool_enum;
 
+use compiler_ast::{
+    Attr, AttrArgs, AttrId, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig, Item, Let,
+};
 use compiler_core::{
-    ast::{Attr, AttrArgs, AttrId, Attrs, ExternLet, Fn, FnKind, FnParam, FnSig, Item, Let},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{CallConv, TyExpr, Vis},
     span::{Span, Spanned},

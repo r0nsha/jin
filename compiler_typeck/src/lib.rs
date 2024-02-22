@@ -19,9 +19,8 @@ mod unify;
 
 use std::cell::RefCell;
 
+use compiler_ast::{self as ast, Ast};
 use compiler_core::{
-    ast,
-    ast::Ast,
     counter::Counter,
     db::{AdtId, Db, DefId, ModuleId},
     diagnostics::DiagnosticResult,

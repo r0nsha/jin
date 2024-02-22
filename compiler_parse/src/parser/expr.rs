@@ -1,7 +1,7 @@
 use std::ops::ControlFlow;
 
+use compiler_ast::{Attrs, CallArg, Expr};
 use compiler_core::{
-    ast::{Attrs, CallArg, Expr},
     db::DefId,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{BinOp, NamePat, Pat, UnOp, Vis},

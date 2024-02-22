@@ -1,5 +1,5 @@
+use compiler_ast::{self as ast};
 use compiler_core::{
-    ast,
     db::{AdtField, AdtId, AdtKind, DefId, DefKind, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     hir,

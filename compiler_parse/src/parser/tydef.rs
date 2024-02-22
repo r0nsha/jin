@@ -1,10 +1,10 @@
 use std::ops::ControlFlow;
 
+use compiler_ast::{
+    Attrs, StructTyDef, StructTyField, TyDef, TyDefKind, UnionTyDef, UnionVariant,
+    UnionVariantField,
+};
 use compiler_core::{
-    ast::{
-        Attrs, StructTyDef, StructTyField, TyDef, TyDefKind, UnionTyDef, UnionVariant,
-        UnionVariantField,
-    },
     db::{StructKind, UnionKind},
     diagnostics::DiagnosticResult,
     middle::Vis,

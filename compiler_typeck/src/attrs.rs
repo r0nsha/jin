@@ -1,7 +1,5 @@
-use compiler_core::{
-    ast::{self},
-    diagnostics::{Diagnostic, Label},
-};
+use compiler_ast::{self as ast};
+use compiler_core::diagnostics::{Diagnostic, Label};
 
 use crate::Typeck;
 

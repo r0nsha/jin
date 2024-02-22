@@ -1,6 +1,5 @@
+use compiler_ast::{self as ast, Ast};
 use compiler_core::{
-    ast,
-    ast::Ast,
     db::{
         AdtId, AdtKind, Builtin, Def, DefId, DefKind, FnInfo, ModuleId, ScopeInfo, ScopeLevel,
         StructDef, UnionDef, Variant, VariantId,

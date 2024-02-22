@@ -4,16 +4,15 @@ mod parser;
 mod token;
 
 use camino::{Utf8Path, Utf8PathBuf};
-use compiler_core::middle::{BinOp, CmpOp};
-use rustc_hash::FxHashSet;
-use ustr::{ustr, Ustr};
-
+use compiler_ast::{Ast, Module};
 use compiler_core::{
-    ast::{Ast, Module},
     db::{Db, ModuleInfo},
     diagnostics::DiagnosticResult,
+    middle::{BinOp, CmpOp},
     span::SourceId,
 };
+use rustc_hash::FxHashSet;
+use ustr::{ustr, Ustr};
 
 use crate::token::TokenKind;
 

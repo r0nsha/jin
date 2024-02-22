@@ -1,6 +1,5 @@
+use compiler_ast::{self as ast, Ast};
 use compiler_core::{
-    ast,
-    ast::Ast,
     db::{DefId, DefKind, FnInfo, ModuleId},
     diagnostics::{Diagnostic, DiagnosticResult},
     middle::{IsUfcs, Mutability, Vis},

@@ -1,14 +1,14 @@
 use std::io;
 
-use super::{Expr, Fn, Item, Module};
-use crate::{
-    ast::{
-        CallArg, ExternImport, ExternLet, FnKind, FnParam, FnSig, Import, ImportTree, Let, TyDef,
-        TyDefKind, TyExpr,
-    },
+use compiler_core::{
     db::UnionKind,
     middle::{BinOp, IsUfcs},
     word::Word,
+};
+
+use crate::{
+    CallArg, Expr, ExternImport, ExternLet, Fn, FnKind, FnParam, FnSig, Import, ImportTree, Item,
+    Let, Module, TyDef, TyDefKind, TyExpr,
 };
 
 pub(super) fn print_module(module: &Module, w: &mut impl io::Write) -> io::Result<()> {

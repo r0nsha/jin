@@ -1,14 +1,13 @@
 use std::ops::ControlFlow;
 
-use ustr::ustr;
-
+use compiler_ast::{Expr, MatchArm, MatchPat, MatchPatAdt, MatchSubpat};
 use compiler_core::{
-    ast::{Expr, MatchArm, MatchPat, MatchPatAdt, MatchSubpat},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::Mutability,
     span::Spanned,
     word::Word,
 };
+use ustr::ustr;
 
 use crate::{
     parser::Parser,

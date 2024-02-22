@@ -1,4 +1,4 @@
-mod pretty_print;
+mod pretty;
 pub mod subst;
 pub mod visit;
 
@@ -54,7 +54,7 @@ impl Hir {
     }
 
     pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
-        pretty_print::print(db, self, w)
+        pretty::print(db, self, w)
     }
 }
 

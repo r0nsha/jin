@@ -8,18 +8,17 @@ mod tyexpr;
 use std::{ops::ControlFlow, str::FromStr};
 
 use camino::{Utf8Path, Utf8PathBuf};
-use compiler_helpers::create_bool_enum;
-use rustc_hash::FxHashSet;
-use ustr::Ustr;
-
+use compiler_ast::{Module, TyParam};
 use compiler_core::{
-    ast::{Module, TyParam},
     db::Db,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{Mutability, Vis},
     qpath::QPath,
     span::{Source, SourceId, Span},
 };
+use compiler_helpers::create_bool_enum;
+use rustc_hash::FxHashSet;
+use ustr::Ustr;
 
 use crate::{
     errors,

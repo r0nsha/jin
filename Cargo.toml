@@ -1,5 +1,5 @@
 [workspace]
-members = [
+members = [ "compiler_ast",
 	"compiler_backend_c",
 	"compiler_cli",
 	"compiler_core",

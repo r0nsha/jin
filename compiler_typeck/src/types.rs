@@ -1,6 +1,5 @@
+use compiler_ast::{self as ast, Ast};
 use compiler_core::{
-    ast,
-    ast::Ast,
     db::{AdtField, AdtId, DefId, DefKind, ModuleId, VariantId},
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{Mutability, TyParam, Vis},

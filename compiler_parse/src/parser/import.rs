@@ -1,16 +1,15 @@
 use std::ops::ControlFlow;
 
 use camino::{Utf8Path, Utf8PathBuf};
-use path_absolutize::Absolutize as _;
-
+use compiler_ast::{Attrs, ExternImport, Import, ImportTree};
 use compiler_core::{
-    ast::{Attrs, ExternImport, Import, ImportTree},
     db::ExternLib,
     diagnostics::{Diagnostic, DiagnosticResult, Label},
     middle::{IsUfcs, Vis},
     span::{Span, Spanned},
     word::Word,
 };
+use path_absolutize::Absolutize as _;
 
 use crate::{
     errors,

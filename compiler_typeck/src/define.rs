@@ -1,5 +1,5 @@
+use compiler_ast::{self as ast};
 use compiler_core::{
-    ast,
     db::{Adt, AdtId, AdtKind, Db, Def, DefId, DefKind, ModuleId, ScopeInfo, ScopeLevel},
     diagnostics::DiagnosticResult,
     middle::{Mutability, NamePat, Pat, Vis},

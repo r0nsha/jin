@@ -3,7 +3,7 @@ mod lower;
 mod monomorphize;
 mod ownck;
 mod pmatch;
-mod pretty_print;
+mod pretty;
 pub mod subst;
 
 use std::{io, iter};
@@ -60,7 +60,7 @@ impl Mir {
     }
 
     pub fn pretty_print(&self, db: &Db, w: &mut impl io::Write) -> io::Result<()> {
-        pretty_print::print(db, self, w)
+        pretty::print(db, self, w)
     }
 }
 

@@ -1,4 +1,3 @@
-pub mod ast;
 pub mod counter;
 pub mod db;
 pub mod diagnostics;
