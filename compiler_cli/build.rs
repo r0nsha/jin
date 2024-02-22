@@ -23,7 +23,7 @@ fn copy_std(pwd: &Path, target: &Path) -> fs_extra::error::Result<()> {
     let std = pwd.join("std");
 
     dir::copy(
-        std,
+        &std,
         target,
         &dir::CopyOptions {
             overwrite: true,
@@ -35,6 +35,7 @@ fn copy_std(pwd: &Path, target: &Path) -> fs_extra::error::Result<()> {
         },
     )?;
 
+    println!("cargo:rerun-if-changed={}/**/*", std.display());
     Ok(())
 }
 
