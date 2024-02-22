@@ -13,13 +13,14 @@ const Rc = extern struct {
 
 const RcBuf = extern struct {
     data: [*]u8,
+    cap: usize,
     refcnt: Refcnt,
 
     const Self = @This();
 
     fn init(elem_size: usize, cap: usize) Self {
         const data: [*]u8 = @ptrCast(alloc_raw(void, elem_size * cap));
-        return Self{ .data = data, .refcnt = 0 };
+        return Self{ .data = data, .cap = cap, .refcnt = 0 };
     }
 };
 
@@ -27,27 +28,25 @@ const RcSlice = extern struct {
     array: ?*RcBuf,
     start: ?[*]u8,
     len: usize,
-    cap: usize,
 
     const Self = @This();
 
     fn init(elem_size: usize, cap: usize) Self {
         if (cap == 0) {
-            return Self.empty(null, 0);
+            return Self.empty(null);
         }
 
         const array = alloc_raw(RcBuf, @sizeOf(RcBuf));
         array.* = RcBuf.init(elem_size, cap);
 
-        return Self.empty(array, cap);
+        return Self.empty(array);
     }
 
-    fn empty(array: ?*RcBuf, cap: usize) Self {
+    fn empty(array: ?*RcBuf) Self {
         return Self{
             .array = array,
             .start = if (array) |a| a.data else null,
             .len = 0,
-            .cap = cap,
         };
     }
 
@@ -68,7 +67,6 @@ const RcSlice = extern struct {
                 .array = array,
                 .start = array.data,
                 .len = self.len,
-                .cap = new_cap,
             };
         } else {
             return Self.init(elem_size, new_cap);
@@ -87,7 +85,6 @@ const RcSlice = extern struct {
                 .array = self.array,
                 .start = new_start.ptr,
                 .len = high - low,
-                .cap = self.cap - low,
             };
         } else {
             return self;
@@ -176,11 +173,11 @@ export fn jinrt_slice_free(
     tyname: cstr,
     frame: StackFrame,
 ) void {
-    if (slice.cap == 0) return;
-    if (slice.array) |array| {
-        refcheck(backtrace, array.refcnt, tyname, frame);
-        std.c.free(array.data);
-        std.c.free(array);
+    if (slice.array) |a| {
+        if (a.cap == 0) return;
+        refcheck(backtrace, a.refcnt, tyname, frame);
+        std.c.free(a.data);
+        std.c.free(a);
     }
 }
 
@@ -219,17 +216,17 @@ export fn jinrt_slice_slice(
     if (low > high) {
         const msg = std.fmt.allocPrint(
             std.heap.c_allocator,
-            "low ({}) must be lower than high ({})",
+            "low bound ({}) must be lower than high bound ({})",
             .{ low, high },
         ) catch unreachable;
         jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
     }
 
-    if (high > slice.cap) {
+    if (high > slice.len) {
         const msg = std.fmt.allocPrint(
             std.heap.c_allocator,
-            "slice out of bounds: high is {} but cap is {}",
-            .{ high, slice.cap },
+            "slice out of bounds: high bound is {} but len is {}",
+            .{ high, slice.len },
         ) catch unreachable;
         jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
     }
@@ -244,16 +241,22 @@ export fn jinrt_slice_grow(
     new_cap: usize,
     frame: StackFrame,
 ) RcSlice {
-    if (new_cap <= slice.cap) {
-        const msg = std.fmt.allocPrint(
-            std.heap.c_allocator,
-            "grow out of bounds: cap is {} but new cap is {}",
-            .{ slice.cap, new_cap },
-        ) catch unreachable;
-        jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
+    if (slice.array) |a| {
+        if (new_cap <= a.cap) {
+            const msg = std.fmt.allocPrint(
+                std.heap.c_allocator,
+                "grow out of bounds: cap is {} but new cap is {}",
+                .{ a.cap, new_cap },
+            ) catch unreachable;
+            jinrt_panic_at(backtrace, @ptrCast(msg.ptr), frame);
+        }
     }
 
     return slice.grow(elem_size, new_cap);
+}
+
+export fn jinrt_slice_cap(slice: *RcSlice) usize {
+    return if (slice.array) |a| a.cap else 0;
 }
 
 export fn jinrt_strcmp(a: Str, b: Str) bool {

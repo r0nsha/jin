@@ -318,6 +318,7 @@ dependencies = [
  "compiler_parse",
  "compiler_typeck",
  "execute",
+ "fs_extra",
 ]
 
 [[package]]
@@ -331,7 +332,6 @@ dependencies = [
  "compiler_data_structures",
  "compiler_helpers",
  "ena",
- "fs_extra",
  "internment",
  "owo-colors",
  "path-absolutize",

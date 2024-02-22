@@ -4,24 +4,26 @@ use fs_extra::dir;
 
 fn main() {
     let debug = env::var("DEBUG").map(|d| d == "true").unwrap_or_default();
-    let pwd = env::current_dir().unwrap();
+    let manifest_dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+    let manifest_dir = Path::new(&manifest_dir);
+    let ws_dir = manifest_dir.parent().unwrap();
 
-    let target = if debug { pwd.join("target/debug") } else { pwd.join("target/release") };
+    let target = if debug { ws_dir.join("target/debug") } else { ws_dir.join("target/release") };
 
     if !target.exists() {
         return;
     }
 
-    copy_std(&pwd, &target).expect("copying std failed");
-    build_rt(&pwd).expect("building rt failed");
-    copy_rt(&pwd, &target).expect("copying rt failed");
+    copy_std(ws_dir, &target).expect("copying std failed");
+    build_rt(ws_dir).expect("building rt failed");
+    copy_rt(ws_dir, &target).expect("copying rt failed");
 }
 
 fn copy_std(pwd: &Path, target: &Path) -> fs_extra::error::Result<()> {
     let std = pwd.join("std");
 
     dir::copy(
-        &std,
+        std,
         target,
         &dir::CopyOptions {
             overwrite: true,
@@ -33,13 +35,19 @@ fn copy_std(pwd: &Path, target: &Path) -> fs_extra::error::Result<()> {
         },
     )?;
 
-    println!("cargo:rerun-if-changed={}/**/*", std.display());
     Ok(())
 }
 
 fn build_rt(pwd: &Path) -> io::Result<()> {
     let rt = pwd.join("rt");
-    Command::new("zig").current_dir(rt).arg("build").output()?;
+    println!("cargo:warning={}", rt.display());
+    let output = Command::new("zig").current_dir(rt).arg("build").output()?;
+
+    if !output.status.success() {
+        eprintln!("{}", String::from_utf8_lossy(&output.stderr));
+        panic!("`zig build` failed");
+    }
+
     Ok(())
 }
 
