@@ -23,7 +23,7 @@ fn copy_std(pwd: &Path, target: &Path) -> fs_extra::error::Result<()> {
     let std = pwd.join("std");
 
     dir::copy(
-        &std,
+        std,
         target,
         &dir::CopyOptions {
             overwrite: true,
@@ -35,12 +35,12 @@ fn copy_std(pwd: &Path, target: &Path) -> fs_extra::error::Result<()> {
         },
     )?;
 
-    println!("cargo:rerun-if-changed={}/**/*", std.display());
     Ok(())
 }
 
 fn build_rt(pwd: &Path) -> io::Result<()> {
     let rt = pwd.join("rt");
+    println!("cargo:warning={}", rt.display());
     let output = Command::new("zig").current_dir(rt).arg("build").output()?;
 
     if !output.status.success() {
