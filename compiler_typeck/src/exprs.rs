@@ -397,21 +397,13 @@ pub(crate) fn check_expr(
             check_field(cx, env, expr, *field, *span)
         }
         ast::Expr::Index { expr, index, span } => {
-            let expected_slice_ty = Ty::new(TyKind::Slice(cx.fresh_ty_var()));
-
-            let expr = check_expr(cx, env, expr, Some(expected_slice_ty))?;
+            let expr = check_expr(cx, env, expr, None)?;
             let expr_ty = cx.normalize(expr.ty);
 
-            let elem_ty = match expr_ty.auto_deref().kind() {
-                TyKind::Slice(inner) => *inner,
-                _ => {
-                    return Err(errors::ty_mismatch(
-                        &expected_slice_ty.to_string(cx.db),
-                        &expr_ty.to_string(cx.db),
-                        expr.span,
-                    ))
-                }
-            };
+            let elem_ty = expr_ty
+                .auto_deref()
+                .slice_elem()
+                .ok_or_else(|| errors::expected_slice_like(cx.db, expr_ty, expr.span))?;
 
             let uint = cx.db.types.uint;
             let index = check_expr(cx, env, index, Some(uint))?;
@@ -424,13 +416,12 @@ pub(crate) fn check_expr(
             ))
         }
         ast::Expr::Slice { expr, low, high, span } => {
-            let expected_slice_ty = Ty::new(TyKind::Slice(cx.fresh_ty_var()));
-
-            let expr = check_expr(cx, env, expr, Some(expected_slice_ty))?;
+            let expr = check_expr(cx, env, expr, None)?;
             let expr_ty = cx.normalize(expr.ty).auto_deref();
-            cx.at(Obligation::obvious(expr.span))
-                .eq(expected_slice_ty, expr_ty)
-                .or_coerce(cx, expr.id)?;
+
+            if !expr_ty.auto_deref().is_slice_like() {
+                return Err(errors::expected_slice_like(cx.db, expr_ty, expr.span));
+            }
 
             let uint = cx.db.types.uint;
             let low = if let Some(low) = low {
@@ -660,10 +651,10 @@ fn check_field(
                 Ok(expr)
             };
         }
-        (TyKind::Slice(..) | TyKind::Str, sym::field::CAP) => Some(cx.db.types.uint),
-        (TyKind::Slice(..) | TyKind::Str, sym::field::LEN) => Some(cx.db.types.uint),
         (TyKind::Slice(elem_ty), sym::field::DATA) => Some(elem_ty.raw_ptr()),
         (TyKind::Str, sym::field::DATA) => Some(cx.db.types.u8.raw_ptr()),
+        (TyKind::Slice(..) | TyKind::Str, sym::field::LEN) => Some(cx.db.types.uint),
+        (TyKind::Slice(..) | TyKind::Str, sym::field::CAP) => Some(cx.db.types.uint),
         (TyKind::RawPtr(pointee), "0") => {
             return Ok(cx.expr(
                 hir::ExprKind::Deref(hir::Deref { expr: Box::new(expr) }),
