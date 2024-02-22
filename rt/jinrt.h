@@ -20,15 +20,10 @@ typedef uintptr_t usize;
 typedef float f32;
 typedef double f64;
 
-typedef struct never {
+typedef struct unit {
 } unit;
 
 typedef unit never;
-
-typedef struct str {
-  u8 *data;
-  usize len;
-} str;
 
 typedef struct array {
   void *data;
@@ -39,8 +34,9 @@ typedef struct slice {
   array *array;
   void *start;
   usize len;
-  usize cap;
 } slice;
+
+typedef slice str;
 
 typedef void *jinrt_backtrace;
 
