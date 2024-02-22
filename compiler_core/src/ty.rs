@@ -10,12 +10,10 @@ use internment::Intern;
 use rustc_hash::{FxHashMap, FxHashSet};
 use ustr::Ustr;
 
-use crate::middle::Pat;
-use crate::span::Spanned as _;
 use crate::{
     db::{AdtId, AdtKind, Db, ModuleId, StructKind, UnionDef, UnionKind},
-    middle::{CallConv, Mutability, Vis},
-    span::Span,
+    middle::{CallConv, Mutability, Pat, Vis},
+    span::{Span, Spanned as _},
     ty::{
         fold::TyFolder,
         printer::{FnTyPrinter, TyPrinter},
