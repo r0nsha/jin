@@ -1,2 +1,5 @@
 pub fn str.from_utf8_unchecked(bytes: &[u8]) -> &str =
 	unsafe transmute[_](bytes)
+
+pub fn as_bytes(self: &str) -> &[u8] = 
+	unsafe transmute[_](self)
