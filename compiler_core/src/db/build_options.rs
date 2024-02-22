@@ -1,5 +1,3 @@
-use clap::ValueEnum;
-
 use crate::target::{TargetMetrics, TargetPlatform};
 
 #[derive(Debug)]
@@ -32,7 +30,7 @@ impl BuildOptions {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum EmitOption {
     Ast,
     Hir,

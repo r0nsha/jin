@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-clap = { version = "4.3.19", features = ["derive"] }
 ena = "0.14.2"
 owo-colors = "3.5.0"
 path-absolutize = "3.1.0"

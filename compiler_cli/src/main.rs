@@ -2,7 +2,7 @@ use std::{fs, process::Command};
 
 use anyhow::anyhow;
 use camino::{Utf8Path, Utf8PathBuf};
-use clap::{Parser, Subcommand};
+use clap::{Parser, Subcommand, ValueEnum};
 use compiler_core::{
     db::{
         build_options::{BuildOptions, EmitOption},
@@ -14,46 +14,20 @@ use compiler_core::{
 use compiler_mir::Mir;
 use execute::Execute;
 
-#[derive(Parser)]
-#[command(author, version, about, long_about = None)]
-#[allow(clippy::struct_excessive_bools)]
-struct Cli {
-    #[command(subcommand)]
-    cmd: Commands,
+fn main() -> anyhow::Result<()> {
+    color_eyre::install().map_err(|r| anyhow!("{r}"))?;
 
-    #[arg(global = true, long, default_value_t = false)]
-    timings: bool,
-
-    #[arg(global = true, long, value_enum)]
-    emit: Vec<EmitOption>,
-
-    #[arg(global = true, long, short)]
-    output_dir: Option<String>,
-}
-
-#[derive(Subcommand)]
-enum Commands {
-    Build { file: Utf8PathBuf },
-    Run { file: Utf8PathBuf },
-    Check { file: Utf8PathBuf },
-}
-
-fn main() -> color_eyre::Result<()> {
-    color_eyre::install()?;
-
-    if let Err(err) = run_cli() {
-        eprintln!("Error: {err}");
-    }
-
-    Ok(())
-}
-
-fn run_cli() -> anyhow::Result<()> {
     let cli = Cli::parse();
 
     let target_platform =
         TargetPlatform::current().map_err(|os| anyhow!("{os} is not supported"))?;
-    let build_options = BuildOptions::new(cli.timings, cli.emit, cli.output_dir, target_platform);
+    let build_options = BuildOptions::new(
+        cli.timings,
+        cli.emit.into_iter().map(Into::into).collect(),
+        cli.output_dir,
+        target_platform,
+    );
+
     let mut db = Db::new(build_options);
 
     match cli.cmd {
@@ -110,4 +84,47 @@ fn build_to_mir(db: &mut Db, root_file: &Utf8Path) -> anyhow::Result<Option<Mir>
     db.emit_file(EmitOption::Mir, |db, file| mir.pretty_print(db, file))?;
 
     Ok(Some(mir))
+}
+
+#[derive(Parser)]
+#[command(author, version, about, long_about = None)]
+#[allow(clippy::struct_excessive_bools)]
+struct Cli {
+    #[command(subcommand)]
+    cmd: Commands,
+
+    #[arg(global = true, long, default_value_t = false)]
+    timings: bool,
+
+    #[arg(global = true, long, value_enum)]
+    emit: Vec<Emit>,
+
+    #[arg(global = true, long, short)]
+    output_dir: Option<String>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    Build { file: Utf8PathBuf },
+    Run { file: Utf8PathBuf },
+    Check { file: Utf8PathBuf },
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, ValueEnum)]
+pub enum Emit {
+    Ast,
+    Hir,
+    Mir,
+    C,
+}
+
+impl From<Emit> for EmitOption {
+    fn from(value: Emit) -> Self {
+        match value {
+            Emit::Ast => EmitOption::Ast,
+            Emit::Hir => EmitOption::Hir,
+            Emit::Mir => EmitOption::Mir,
+            Emit::C => EmitOption::C,
+        }
+    }
 }
