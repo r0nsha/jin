@@ -54,8 +54,8 @@ pub fn push(self: &mut StrBuilder, s: &str) = {
 		i += 1
 	}
 
-	# Set the NUL byte to the last position
-	self.array.push(b'x') # TODO: NUL byte
+	# Add the terminating NUL byte
+	self.array.push(b'\'') # TODO: NUL byte
 }
 
 pub fn clear(self: &mut StrBuilder) = {

@@ -1,3 +1,4 @@
+use compiler_helpers::escape;
 use ustr::ustr;
 
 use compiler_core::{
@@ -80,7 +81,7 @@ impl<'s> Lexer<'s> {
                 let kind = match ch {
                     ch if ch.is_ascii_alphabetic() || ch == '_' => {
                         if ch == 'b' && self.eat('\'') {
-                            self.eat_char(CharKind::Byte)?
+                            self.eat_char(CharKind::Byte, start + 2)?
                         } else {
                             self.ident(start)
                         }
@@ -281,34 +282,72 @@ impl<'s> Lexer<'s> {
     }
 
     fn eat_str(&mut self, start: u32) -> DiagnosticResult<TokenKind> {
-        loop {
-            match self.bump() {
-                Some('"') => break,
-                Some(_) => (),
-                None => {
-                    return Err(Diagnostic::error("missing trailing `\"` to end the string")
-                        .with_label(Label::primary(
-                            self.create_span(self.pos),
-                            "unterminated string",
-                        )));
+        let s = self.eat_terminated_lit(start, '"', "string")?;
+        Ok(TokenKind::Str(ustr(s)))
+    }
+
+    fn eat_char(&mut self, kind: CharKind, start: u32) -> DiagnosticResult<TokenKind> {
+        let s = self.eat_terminated_lit(start, '\'', "char")?;
+
+        let unescaped = escape::unescape(s).map_err(|e| match e {
+            escape::UnescapeError::InvalidEscape(r) => Diagnostic::error("invalid escape sequence")
+                .with_label(Label::primary(
+                    self.create_span_range(start + r.start, start + r.end),
+                    "invalid sequence",
+                )),
+        })?;
+
+        let char_count = unescaped.chars().count();
+        if char_count != 1 {
+            return Err(Diagnostic::error("character literal can only contain one codepoint")
+                .with_label(Label::primary(
+                    self.create_span_range(start, self.pos - 1),
+                    format!("contains {char_count} codepoints"),
+                )));
+        }
+
+        let ch = unescaped.chars().nth(0).unwrap();
+
+        match kind {
+            CharKind::Byte => {
+                if !ch.is_ascii() {
+                    return Err(Diagnostic::error(format!(
+                        "non-ascii character `{ch}` in byte char"
+                    ))
+                    .with_label(Label::primary(self.create_span(self.pos), "non-ascii char")));
                 }
             }
         }
 
-        let str = self.range_from(start);
-        let str = &str[..str.len() - 1];
-        Ok(TokenKind::Str(ustr(str)))
+        Ok(TokenKind::ByteChar(ch))
     }
 
-    fn eat_char(&mut self, kind: CharKind) -> DiagnosticResult<TokenKind> {
-        let ch = self.bump().unwrap(); // TODO: remove unwrap
+    fn eat_terminated_lit<'a>(
+        &'a mut self,
+        start: u32,
+        term: char,
+        kind: &str,
+    ) -> DiagnosticResult<&'a str> {
+        let mut last: Option<char> = None;
 
-        if self.bump() != Some('\'') {
-            return Err(Diagnostic::error("missing trailing `'` to end the char")
-                .with_label(Label::primary(self.create_span(self.pos), "unterminated char")));
+        loop {
+            match self.bump() {
+                Some(ch) if last != Some('\\') && ch == term => break,
+                Some(ch) => last = Some(ch),
+                None => {
+                    return Err(Diagnostic::error(format!(
+                        "missing trailing `{term}` to end the {kind}"
+                    ))
+                    .with_label(Label::primary(
+                        self.create_span(self.pos),
+                        format!("unterminated {kind}"),
+                    )));
+                }
+            }
         }
 
-        Ok(TokenKind::ByteChar(ch))
+        let s = self.range_from(start);
+        Ok(&s[..s.len() - 1])
     }
 
     fn eat_comment(&mut self) {
@@ -356,8 +395,14 @@ impl<'s> Lexer<'s> {
         ch
     }
 
+    #[inline]
     fn create_span(&self, start: u32) -> Span {
-        Span::new(self.source_id, start, self.pos)
+        self.create_span_range(start, self.pos)
+    }
+
+    #[inline]
+    fn create_span_range(&self, start: u32, end: u32) -> Span {
+        Span::new(self.source_id, start, end)
     }
 }
 
