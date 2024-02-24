@@ -13,10 +13,13 @@ fn main() = {
 	b.push("World")
 	print_str(&b)
 
-	b.clear()
-	print_str(&b)
+	# b.clear()
+	# print_str(&b)
 
+	b.push(' ')
+	print_str(&b)
 	b.push('👍')
+	print_str(&b)
 }
 
 fn print_str(b: &StrBuilder) =

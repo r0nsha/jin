@@ -1,4 +1,4 @@
-use std.char.encode_utf8_raw
+use std.char.(encode_utf8_raw, ?)
 use std.collections.Array
 
 pub fn str.from_utf8_unchecked(bytes: [u8]) -> str =
@@ -57,12 +57,12 @@ pub fn push(self: &mut StrBuilder, s: &str) = {
 
 pub fn push(self: &mut StrBuilder, ch: char) = {
 	let len = self.array.len()
+	let ch_len = ch.len_utf8()
 
-	self.array.reserve(4 + 1)
-	self.array.set_len(len + 4)
+	self.array.reserve(ch_len + 1)
+	self.array.set_len(len + ch_len)
 
-	# TODO: char.encode_utf8(dst)
-	encode_utf8_raw(u32(ch), &mut self.array.as_mut().[len - 1..len + 4])
+	ch.encode_utf8(&mut self.array.as_mut().[len - 1..len + ch_len - 1])
 
 	self.array.push(b'\0')
 }
