@@ -1,5 +1,0 @@
-fn main() = {
-	let mut s = StrBuf.new()
-	s.push("Hello")
-	println(s.as_ref())
-}
