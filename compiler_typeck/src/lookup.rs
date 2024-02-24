@@ -50,8 +50,8 @@ impl<'db, 'cx> Lookup<'db, 'cx> {
     ) -> DiagnosticResult<DefId> {
         let name = query.name();
 
-        if let Some(env) = &self.env {
-            if let Some(id) = env.lookup(name).copied() {
+        if let Query::Name(_) | Query::Fn(FnQuery { is_ufcs: IsUfcs::No, .. }) = query {
+            if let Some(id) = self.env.and_then(|env| env.lookup(name).copied()) {
                 return Ok(id);
             }
         }
