@@ -99,7 +99,6 @@ fn define_fn(
             };
 
             let qpath = base_qpath.child(name);
-
             let scope = ScopeInfo { module_id, level: ScopeLevel::Global, vis: fun.vis };
 
             if let Some(prev) = cx.global_env.module(module_id).ns.defs.get(&name) {
